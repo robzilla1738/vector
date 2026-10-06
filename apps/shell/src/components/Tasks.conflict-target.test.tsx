@@ -1,49 +1,158 @@
 // @vitest-environment jsdom
-import {readFileSync} from "node:fs";
-import {act} from "react";
-import {createRoot} from "react-dom/client";
-import {expect,it,vi} from "vitest";
-import {TaskSchema,TaskReceiptSchema} from "@aux/contracts";
-vi.mock("../use-feature",()=>({useFeature:()=>true,featureStage:()=>"on"}));
-import {bridge} from "../bridge";
-import {useStore} from "../store";
-import {Tasks} from "./Tasks";
+import { readFileSync } from "node:fs";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { expect, it, vi } from "vitest";
+import { TaskSchema, TaskReceiptSchema } from "@aux/contracts";
+vi.mock("../use-feature", () => ({ useFeature: () => true, featureStage: () => "on" }));
+import { bridge } from "../bridge";
+import { useStore } from "../store";
+import { Tasks } from "./Tasks";
 
-it("keeps full saved conflict details reachable without applying or discarding the original draft",async()=>{
- vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);
- const initial=useStore.getState(),windowId=bridge.windowId,kind=bridge.windowKind,privateMode=bridge.privateMode;
- const scroll=Object.getOwnPropertyDescriptor(HTMLElement.prototype,"scrollTo");
- Object.defineProperty(HTMLElement.prototype,"scrollTo",{configurable:true,value:vi.fn()});
- const storage=new Map<string,string>();vi.stubGlobal("localStorage",{getItem:(key:string)=>storage.get(key)??null,setItem:(key:string,value:string)=>storage.set(key,value),removeItem:(key:string)=>storage.delete(key)});
- bridge.windowId="conflict-original";bridge.windowKind="normal";bridge.privateMode=false;
- const task=TaskSchema.parse({taskId:"conflict",workspaceId:"workspace",revision:2,title:"Task"+"T".repeat(196),objective:"https://objective.fixture.invalid/"+"objective".repeat(100),criteria:[{criterionId:"one",description:"https://criterion.fixture.invalid/"+"criterion".repeat(100),verification:"manual"}],resources:[],state:"open",createdAt:1,updatedAt:2});
- const draft={title:"Original unsaved draft",objective:"Original unsaved objective",criteria:"Original criterion",baseRevision:1};
- localStorage.setItem("aux.task-selection.v1",JSON.stringify({tasks:{workspace:task.taskId}}));localStorage.setItem("aux.task-draft.v1:workspace:conflict",JSON.stringify(draft));
- useStore.setState({layout:{...initial.layout,activeSpaceId:"original-space",spaces:[{id:"original-space",name:"Original",workspaceId:"workspace"} as never]}});
- const receipt=TaskReceiptSchema.parse({taskId:task.taskId,taskRevision:2,objective:task.objective,generatedAt:2,status:"needs_review",criteria:[],unresolvedActions:[],runs:[],modelCalls:0,knownCostUsd:0,costComplete:true});
- const invoke=vi.spyOn(bridge,"invoke").mockImplementation(async method=>{
-  if(["goals.list","hooks.list","mcp.servers.list","routines.alerts","routines.inbox","routines.list","workspaces.folders.list"].includes(method))return[] as never;if(method==="tasks.list")return[task] as never;if(method==="tasks.get")return{task,revisions:[task],runs:[],children:[]} as never;if(method==="tasks.receipt")return receipt as never;
-  throw new Error("Unexpected conflict mutation "+method);
- });
- const host=document.createElement("div"),style=document.createElement("style");document.body.append(host);document.head.append(style);
- const css=readFileSync("apps/shell/src/components/Tasks.css","utf8"),token=readFileSync("apps/shell/src/tokens.css","utf8").match(/--hit:\s*([^;]+);/)![1]!;
- style.textContent=(css.match(/\.task-content\s+\[role="alert"\]\s*>\s*details\s*>\s*summary\s*\{[^}]+\}/)?.[0]??"").replace("var(--hit)",token);
- const root=createRoot(host);
- try {
-  await act(async()=>root.render(<Tasks/>));
-  const details=host.querySelector<HTMLDetailsElement>('.task-content [role="alert"] > details')!,summary=details.querySelector("summary")!;
-  expect(summary.textContent).toBe("Current saved task · revision 2");
-  expect(details.querySelector("h4")!.textContent).toBe(task.title);expect(details.querySelector("p")!.textContent).toBe(task.objective);expect(details.querySelector("li")!.textContent).toBe(task.criteria[0]!.description);
-  expect(details.open).toBe(false);expect(getComputedStyle(summary).minHeight).toBe("32px");
-  summary.focus();await act(async()=>summary.click());expect(details.open).toBe(true);expect(document.activeElement).toBe(summary);
-  const key=new KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true});summary.dispatchEvent(key);expect(key.defaultPrevented).toBe(false);
-  await act(async()=>summary.click());expect(details.open).toBe(false);expect(document.activeElement).toBe(summary);
-  expect(host.querySelector<HTMLInputElement>("#task-title")!.value).toBe(draft.title);expect(host.querySelector<HTMLTextAreaElement>("#task-objective")!.value).toBe(draft.objective);
-  expect(JSON.parse(localStorage.getItem("aux.task-draft.v1:workspace:conflict")!)).toEqual(draft);
-  expect([...host.querySelectorAll<HTMLButtonElement>("button")].find(node=>node.textContent==="Save task")!.disabled).toBe(true);
-  expect([...new Set(invoke.mock.calls.map(([method])=>method))].sort()).toEqual(["goals.list","hooks.list","mcp.servers.list","routines.alerts","routines.inbox","routines.list","workspaces.folders.list","tasks.get","tasks.list","tasks.receipt"].sort());
- } finally {
-  await act(async()=>root.unmount());host.remove();style.remove();bridge.windowId=windowId;bridge.windowKind=kind;bridge.privateMode=privateMode;useStore.setState(initial,true);
-  if(scroll)Object.defineProperty(HTMLElement.prototype,"scrollTo",scroll);else Reflect.deleteProperty(HTMLElement.prototype,"scrollTo");vi.restoreAllMocks();vi.unstubAllGlobals();
- }
+it("keeps full saved conflict details reachable without applying or discarding the original draft", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const initial = useStore.getState(),
+    windowId = bridge.windowId,
+    kind = bridge.windowKind,
+    privateMode = bridge.privateMode;
+  const scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollTo");
+  Object.defineProperty(HTMLElement.prototype, "scrollTo", { configurable: true, value: vi.fn() });
+  const storage = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+    removeItem: (key: string) => storage.delete(key),
+  });
+  bridge.windowId = "conflict-original";
+  bridge.windowKind = "normal";
+  bridge.privateMode = false;
+  const task = TaskSchema.parse({
+    taskId: "conflict",
+    workspaceId: "workspace",
+    revision: 2,
+    title: "Task" + "T".repeat(196),
+    objective: "https://objective.fixture.invalid/" + "objective".repeat(100),
+    criteria: [
+      {
+        criterionId: "one",
+        description: "https://criterion.fixture.invalid/" + "criterion".repeat(100),
+        verification: "manual",
+      },
+    ],
+    resources: [],
+    state: "open",
+    createdAt: 1,
+    updatedAt: 2,
+  });
+  const draft = {
+    title: "Original unsaved draft",
+    objective: "Original unsaved objective",
+    criteria: "Original criterion",
+    baseRevision: 1,
+  };
+  localStorage.setItem("aux.task-selection.v1", JSON.stringify({ tasks: { workspace: task.taskId } }));
+  localStorage.setItem("aux.task-draft.v1:workspace:conflict", JSON.stringify(draft));
+  useStore.setState({
+    layout: {
+      ...initial.layout,
+      activeSpaceId: "original-space",
+      spaces: [{ id: "original-space", name: "Original", workspaceId: "workspace" } as never],
+    },
+  });
+  const receipt = TaskReceiptSchema.parse({
+    taskId: task.taskId,
+    taskRevision: 2,
+    objective: task.objective,
+    generatedAt: 2,
+    status: "needs_review",
+    criteria: [],
+    unresolvedActions: [],
+    runs: [],
+    modelCalls: 0,
+    knownCostUsd: 0,
+    costComplete: true,
+  });
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
+    if (
+      [
+        "goals.list",
+        "hooks.list",
+        "mcp.servers.list",
+        "routines.alerts",
+        "routines.inbox",
+        "routines.list",
+        "workspaces.folders.list",
+      ].includes(method)
+    )
+      return [] as never;
+    if (method === "tasks.list") return [task] as never;
+    if (method === "tasks.get") return { task, revisions: [task], runs: [], children: [] } as never;
+    if (method === "tasks.receipt") return receipt as never;
+    throw new Error("Unexpected conflict mutation " + method);
+  });
+  const host = document.createElement("div"),
+    style = document.createElement("style");
+  document.body.append(host);
+  document.head.append(style);
+  const css = readFileSync("apps/shell/src/components/Tasks.css", "utf8"),
+    token = readFileSync("apps/shell/src/tokens.css", "utf8").match(/--hit:\s*([^;]+);/)![1]!;
+  style.textContent = (
+    css.match(/\.task-content\s+\[role="alert"\]\s*>\s*details\s*>\s*summary\s*\{[^}]+\}/)?.[0] ?? ""
+  ).replace("var(--hit)", token);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<Tasks />));
+    const details = host.querySelector<HTMLDetailsElement>('.task-content [role="alert"] > details')!,
+      summary = details.querySelector("summary")!;
+    expect(summary.textContent).toBe("Current saved task · revision 2");
+    expect(details.querySelector("h4")!.textContent).toBe(task.title);
+    expect(details.querySelector("p")!.textContent).toBe(task.objective);
+    expect(details.querySelector("li")!.textContent).toBe(task.criteria[0]!.description);
+    expect(details.open).toBe(false);
+    expect(getComputedStyle(summary).minHeight).toBe("32px");
+    summary.focus();
+    await act(async () => summary.click());
+    expect(details.open).toBe(true);
+    expect(document.activeElement).toBe(summary);
+    const key = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    summary.dispatchEvent(key);
+    expect(key.defaultPrevented).toBe(false);
+    await act(async () => summary.click());
+    expect(details.open).toBe(false);
+    expect(document.activeElement).toBe(summary);
+    expect(host.querySelector<HTMLInputElement>("#task-title")!.value).toBe(draft.title);
+    expect(host.querySelector<HTMLTextAreaElement>("#task-objective")!.value).toBe(draft.objective);
+    expect(JSON.parse(localStorage.getItem("aux.task-draft.v1:workspace:conflict")!)).toEqual(draft);
+    expect(
+      [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+        (node) => node.textContent === "Save task",
+      )!.disabled,
+    ).toBe(true);
+    expect([...new Set(invoke.mock.calls.map(([method]) => method))].sort()).toEqual(
+      [
+        "goals.list",
+        "hooks.list",
+        "mcp.servers.list",
+        "routines.alerts",
+        "routines.inbox",
+        "routines.list",
+        "workspaces.folders.list",
+        "tasks.get",
+        "tasks.list",
+        "tasks.receipt",
+      ].sort(),
+    );
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    style.remove();
+    bridge.windowId = windowId;
+    bridge.windowKind = kind;
+    bridge.privateMode = privateMode;
+    useStore.setState(initial, true);
+    if (scroll) Object.defineProperty(HTMLElement.prototype, "scrollTo", scroll);
+    else Reflect.deleteProperty(HTMLElement.prototype, "scrollTo");
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  }
 });

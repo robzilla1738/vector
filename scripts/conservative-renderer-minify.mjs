@@ -29,42 +29,76 @@ export function conservativeRendererMinifyOptions() {
 }
 
 function chunkGraph(ast, code) {
-  const imports = [], exports = [], dynamic = [], preloads = [];
+  const imports = [],
+    exports = [],
+    dynamic = [],
+    preloads = [];
   let closed = true;
-  const literal = node => node?.type === "Literal" && typeof node.value === "string";
-  const name = node => node?.name ?? node?.value;
+  const literal = (node) => node?.type === "Literal" && typeof node.value === "string";
+  const name = (node) => node?.name ?? node?.value;
   function bindingNames(node) {
     if (node.type === "Identifier") return [node.name];
     if (node.type === "RestElement") return bindingNames(node.argument);
     if (node.type === "AssignmentPattern") return bindingNames(node.left);
-    if (node.type === "ArrayPattern") return node.elements.flatMap(item => item ? bindingNames(item) : []);
-    if (node.type === "ObjectPattern") return node.properties.flatMap(item => bindingNames(item.value ?? item.argument));
+    if (node.type === "ArrayPattern")
+      return node.elements.flatMap((item) => (item ? bindingNames(item) : []));
+    if (node.type === "ObjectPattern")
+      return node.properties.flatMap((item) => bindingNames(item.value ?? item.argument));
     closed = false;
     return [];
   }
   function attributes(node) {
-    return (node.attributes ?? []).map(item => [name(item.key), name(item.value)]);
+    return (node.attributes ?? []).map((item) => [name(item.key), name(item.value)]);
   }
   function visit(node) {
     if (!node || typeof node !== "object") return;
     if (node.type === "ImportDeclaration") {
-      imports.push({ source: node.source.value, names: node.specifiers.map(item => ({ kind: item.type, name: item.type === "ImportSpecifier" ? name(item.imported) : item.type === "ImportDefaultSpecifier" ? "default" : "*" })), attributes: attributes(node) });
+      imports.push({
+        source: node.source.value,
+        names: node.specifiers.map((item) => ({
+          kind: item.type,
+          name:
+            item.type === "ImportSpecifier"
+              ? name(item.imported)
+              : item.type === "ImportDefaultSpecifier"
+                ? "default"
+                : "*",
+        })),
+        attributes: attributes(node),
+      });
     } else if (node.type === "ExportNamedDeclaration") {
       const names = node.declaration
         ? node.declaration.type === "VariableDeclaration"
-          ? node.declaration.declarations.flatMap(item => bindingNames(item.id))
+          ? node.declaration.declarations.flatMap((item) => bindingNames(item.id))
           : [node.declaration.id.name]
-        : node.specifiers.map(item => name(item.exported));
-      exports.push({ source: node.source?.value ?? null, names, external: node.source ? node.specifiers.map(item => name(item.local)) : null, all: false, attributes: attributes(node) });
+        : node.specifiers.map((item) => name(item.exported));
+      exports.push({
+        source: node.source?.value ?? null,
+        names,
+        external: node.source ? node.specifiers.map((item) => name(item.local)) : null,
+        all: false,
+        attributes: attributes(node),
+      });
     } else if (node.type === "ExportDefaultDeclaration") {
       exports.push({ source: null, names: ["default"], external: null, all: false, attributes: [] });
     } else if (node.type === "ExportAllDeclaration") {
-      exports.push({ source: node.source.value, names: [node.exported ? name(node.exported) : "*"], external: null, all: true, attributes: attributes(node) });
+      exports.push({
+        source: node.source.value,
+        names: [node.exported ? name(node.exported) : "*"],
+        external: null,
+        all: true,
+        attributes: attributes(node),
+      });
     } else if (node.type === "ImportExpression") {
       if (!literal(node.source) || node.options != null) closed = false;
       dynamic.push(literal(node.source) ? node.source.value : code.slice(node.source.start, node.source.end));
-    } else if (node.type === "ArrayExpression" && node.elements.length && node.elements.every(literal) && node.elements.some(item => /\.(?:js|css)$/.test(item.value))) {
-      preloads.push(node.elements.map(item => item.value));
+    } else if (
+      node.type === "ArrayExpression" &&
+      node.elements.length &&
+      node.elements.every(literal) &&
+      node.elements.some((item) => /\.(?:js|css)$/.test(item.value))
+    ) {
+      preloads.push(node.elements.map((item) => item.value));
     }
     for (const [key, child] of Object.entries(node)) {
       if (key === "parent") continue;
@@ -78,7 +112,11 @@ function chunkGraph(ast, code) {
 
 /** Refuse changed load records, computed import URLs and invalid candidate syntax. */
 export function chooseConservativeRendererChunk(original, candidate, parse) {
-  if (typeof candidate !== "string" || Buffer.byteLength(candidate, "utf8") >= Buffer.byteLength(original, "utf8")) return original;
+  if (
+    typeof candidate !== "string" ||
+    Buffer.byteLength(candidate, "utf8") >= Buffer.byteLength(original, "utf8")
+  )
+    return original;
   const before = chunkGraph(parse(original), original);
   if (!before) return original;
   let after;
@@ -99,7 +137,10 @@ export async function minifyConservativeRendererChunk(code, parse, warn, minifyC
       result = await minifyCode(current, conservativeRendererMinifyOptions());
     } catch (reason) {
       parse(current);
-      warn({ code: "AUX_MINIFY_RETAINED_ORIGINAL", message: "Conservative minification retained the last validated chunk: " + String(reason) });
+      warn({
+        code: "AUX_MINIFY_RETAINED_ORIGINAL",
+        message: "Conservative minification retained the last validated chunk: " + String(reason),
+      });
       break;
     }
     const selected = chooseConservativeRendererChunk(current, result.code, parse);
@@ -119,7 +160,11 @@ export function conservativeRendererMinify() {
       order: "post",
       async handler(code, _chunk, outputOptions) {
         if (outputOptions.format !== "es") return null;
-        const selected = await minifyConservativeRendererChunk(code, source => this.parse(source), warning => this.warn(warning));
+        const selected = await minifyConservativeRendererChunk(
+          code,
+          (source) => this.parse(source),
+          (warning) => this.warn(warning),
+        );
         return selected === code ? null : { code: selected, map: null };
       },
     },

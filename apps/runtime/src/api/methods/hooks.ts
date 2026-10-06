@@ -4,7 +4,8 @@ import { AuxError } from "@aux/contracts";
 
 async function h_hooks_register(ctx: MethodCtx): Promise<unknown> {
   const { client, hooks, method, params } = ctx;
-  if (client.external || client.codeMode) throw new AuxError("permission_denied", "Hooks are managed in Aux.");
+  if (client.external || client.codeMode)
+    throw new AuxError("permission_denied", "Hooks are managed in Aux.");
   if (method === "hooks.register") return hooks.register(params);
   if (method === "hooks.get") return hooks.get(params.hookId);
   if (method === "hooks.list") return hooks.list(params.workspaceId);

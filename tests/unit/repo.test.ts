@@ -97,9 +97,31 @@ describe("Repo", () => {
   it("persists runs, steps, results, programs, history", () => {
     const r = memRepo();
     r.saveRun(run("r1"));
-    r.saveStep({ stepId: "s1", runId: "r1", op: "click", startedAt: Date.now(), outcome: { stepId: "s1", op: "click", status: "ok", startedAt: 0, durationMs: 5 } });
-    r.saveResult({ resultId: "res1", runId: "r1", sourceUrl: "http://x", values: { a: 1 }, observedAt: Date.now(), status: "ok" });
-    r.saveProgram({ programId: "pr1", name: "n", version: 1, siteKey: "x.test", parameters: [], stepsJson: "[]", useCount: 0, createdAt: Date.now() });
+    r.saveStep({
+      stepId: "s1",
+      runId: "r1",
+      op: "click",
+      startedAt: Date.now(),
+      outcome: { stepId: "s1", op: "click", status: "ok", startedAt: 0, durationMs: 5 },
+    });
+    r.saveResult({
+      resultId: "res1",
+      runId: "r1",
+      sourceUrl: "http://x",
+      values: { a: 1 },
+      observedAt: Date.now(),
+      status: "ok",
+    });
+    r.saveProgram({
+      programId: "pr1",
+      name: "n",
+      version: 1,
+      siteKey: "x.test",
+      parameters: [],
+      stepsJson: "[]",
+      useCount: 0,
+      createdAt: Date.now(),
+    });
     r.addHistory("http://x.test", "X", "p1");
     expect(r.getRun("r1")?.status).toBe("running");
     expect(r.listSteps("r1")).toHaveLength(1);

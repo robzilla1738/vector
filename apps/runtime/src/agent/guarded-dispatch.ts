@@ -49,8 +49,12 @@ export type GuardedDispatch =
   | { kind: "ran"; result: ExecuteResult; program: Program };
 
 /** compile → authorize → persist write intent → execute → settle: the one dispatch path for model-authored steps. */
-export async function guardedExecute(deps: GuardedDispatchDeps, opts: GuardedDispatchOpts): Promise<GuardedDispatch> {
-  if (opts.isCurrent && !opts.isCurrent()) return { kind: "rejected", reason: "The user corrected this run; re-plan before acting." };
+export async function guardedExecute(
+  deps: GuardedDispatchDeps,
+  opts: GuardedDispatchOpts,
+): Promise<GuardedDispatch> {
+  if (opts.isCurrent && !opts.isCurrent())
+    return { kind: "rejected", reason: "The user corrected this run; re-plan before acting." };
   const prepared = compileAndAuthorize({
     pageId: opts.pageId,
     documentEpoch: opts.documentEpoch,
@@ -63,7 +67,8 @@ export async function guardedExecute(deps: GuardedDispatchDeps, opts: GuardedDis
   });
   if ("rejected" in prepared) return { kind: "rejected", reason: prepared.rejected };
   if ("denied" in prepared) return { kind: "denied", reason: prepared.denied };
-  if (opts.isCurrent && !opts.isCurrent()) return { kind: "rejected", reason: "The user corrected this run; re-plan before acting." };
+  if (opts.isCurrent && !opts.isCurrent())
+    return { kind: "rejected", reason: "The user corrected this run; re-plan before acting." };
   const program = { ...prepared.program, ...opts.program };
   const write = beginConsequentialWrite(deps.durable, {
     runId: opts.runId,
@@ -80,11 +85,16 @@ export async function guardedExecute(deps: GuardedDispatchDeps, opts: GuardedDis
     taskRevision: opts.taskRevision,
   });
   if (write.skip) return { kind: "skipped", reason: write.reason! };
-  const result = await deps.pages.execute(program, { ...opts.exec,
-    // Navigation has no durable write intent. Let the executor classify it
-    // normally instead of claiming a pre-journaled write without an ID.
-    ...(write.intentId ? { journaled: true, journalIntentId: write.intentId } : {}),
-  }, opts.returnObservation ? { returnObservation: opts.returnObservation } : {});
+  const result = await deps.pages.execute(
+    program,
+    {
+      ...opts.exec,
+      // Navigation has no durable write intent. Let the executor classify it
+      // normally instead of claiming a pre-journaled write without an ID.
+      ...(write.intentId ? { journaled: true, journalIntentId: write.intentId } : {}),
+    },
+    opts.returnObservation ? { returnObservation: opts.returnObservation } : {},
+  );
   settleWrite(deps.durable, write.intentId, result);
   return { kind: "ran", result, program };
 }

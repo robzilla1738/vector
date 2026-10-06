@@ -3,23 +3,54 @@ import { NullNativeBridge } from "../../apps/runtime/src/native.js";
 import { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress.js";
 import type { EgressLease } from "@aux/contracts";
 const cleanup: Array<() => void> = [];
-afterEach(() => cleanup.splice(0).forEach(fn => fn()));
+afterEach(() => cleanup.splice(0).forEach((fn) => fn()));
 function fixture() {
   const native = Object.assign(new NullNativeBridge(), {
-    egressContext: vi.fn(async () => ({ controlGeneration: "fixture-native-generation", personControlled: false, profileId: "profile", tabId: "tab", frameId: "frame", documentToken: "document",
-      sourceOrigin: "https://source.test", isolation: { isolationId: "isolated", runId: "run", taskId: "task", taskRevision: 1, inMemory: true as const, cookies: "empty" as const } })),
-    egressInstall: vi.fn(async (_input: { lease: EgressLease; expectedUrl: string }) => ({ accepted: true as const })),
+    egressContext: vi.fn(async () => ({
+      controlGeneration: "fixture-native-generation",
+      personControlled: false,
+      profileId: "profile",
+      tabId: "tab",
+      frameId: "frame",
+      documentToken: "document",
+      sourceOrigin: "https://source.test",
+      isolation: {
+        isolationId: "isolated",
+        runId: "run",
+        taskId: "task",
+        taskRevision: 1,
+        inMemory: true as const,
+        cookies: "empty" as const,
+      },
+    })),
+    egressInstall: vi.fn(async (_input: { lease: EgressLease; expectedUrl: string }) => ({
+      accepted: true as const,
+    })),
     egressRevoke: vi.fn(async (_input: { lease: EgressLease }) => ({ accepted: true as const })),
   });
-  const service = new BrowserEgress({ runAncestry: runId => [runId], profileId: "profile", native, run: () => ({ taskId: "task", taskRevision: 1, threadId: "thread" }),
-    page: () => ({ url: "https://source.test/page", documentEpoch: 1 }), ownsPage: () => true, audit: () => {}, approve: async () => false });
+  const service = new BrowserEgress({
+    runAncestry: (runId) => [runId],
+    profileId: "profile",
+    native,
+    run: () => ({ taskId: "task", taskRevision: 1, threadId: "thread" }),
+    page: () => ({ url: "https://source.test/page", documentEpoch: 1 }),
+    ownsPage: () => true,
+    audit: () => {},
+    approve: async () => false,
+  });
   cleanup.push(() => service.close());
   return { service, native };
 }
 it("revocation during native document lookup prevents installation", async () => {
-  const f = fixture(), context = await f.native.egressContext();
+  const f = fixture(),
+    context = await f.native.egressContext();
   let release!: () => void;
-  f.native.egressContext.mockImplementationOnce(async () => { await new Promise<void>(resolve => { release = resolve; }); return context; });
+  f.native.egressContext.mockImplementationOnce(async () => {
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return context;
+  });
   const acquire = f.service.acquire("run", "tab");
   await f.service.invalidateAuthority((_runId, origins) => origins.includes("https://source.test"));
   release();
@@ -29,8 +60,16 @@ it("revocation during native document lookup prevents installation", async () =>
 it("revocation during native installation refuses the late acknowledgement and repeats the exact tombstone", async () => {
   const f = fixture();
   let release!: () => void, entered!: () => void;
-  const started = new Promise<void>(resolve => { entered = resolve; });
-  f.native.egressInstall.mockImplementationOnce(async () => { entered(); await new Promise<void>(resolve => { release = resolve; }); return { accepted: true }; });
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  f.native.egressInstall.mockImplementationOnce(async () => {
+    entered();
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return { accepted: true };
+  });
   const acquire = f.service.acquire("run", "tab");
   await started;
   const lease = f.native.egressInstall.mock.calls[0]![0].lease;
@@ -43,8 +82,14 @@ it("revocation during native installation refuses the late acknowledgement and r
   release();
   await expect(acquire).rejects.toMatchObject({ code: "ref_stale" });
   expect(finalCheck).toThrow();
-  expect(f.native.egressRevoke.mock.calls.every(([request]) => request.lease.leaseId === lease.leaseId)).toBe(true);
-  expect(f.native.egressRevoke.mock.calls.every(([request]) => JSON.stringify(request.lease) === JSON.stringify(lease))).toBe(true);
+  expect(f.native.egressRevoke.mock.calls.every(([request]) => request.lease.leaseId === lease.leaseId)).toBe(
+    true,
+  );
+  expect(
+    f.native.egressRevoke.mock.calls.every(
+      ([request]) => JSON.stringify(request.lease) === JSON.stringify(lease),
+    ),
+  ).toBe(true);
   expect(f.native.egressRevoke.mock.calls.length).toBeGreaterThanOrEqual(2);
 });
 it("an unrelated origin leaves the current exact document lease active", async () => {

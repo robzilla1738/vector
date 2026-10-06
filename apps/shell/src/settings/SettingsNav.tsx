@@ -66,8 +66,8 @@ export function SettingsNav({
           aria-label="Search settings"
           placeholder="Search settings…"
           value={query}
-          onChange={event => onQueryChange(event.target.value)}
-          onKeyDown={event => {
+          onChange={(event) => onQueryChange(event.target.value)}
+          onKeyDown={(event) => {
             if (event.nativeEvent.isComposing || !searching) return;
             if (event.key === "ArrowDown" || event.key === "Enter") {
               event.preventDefault();

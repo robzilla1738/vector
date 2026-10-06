@@ -3,10 +3,12 @@ import { test } from "node:test";
 import { histogram, metric, oneObservation } from "./native-histograms.mjs";
 
 test("extracts only the aggregate named UMA histogram", () => {
-  const response = { histograms: [
-    { name: "Browser.Tabs.TotalSwitchDuration3.WithSavedFrames", count: 5, sum: 70 },
-    { name: "Browser.Tabs.TotalSwitchDuration3", count: 3, sum: 36 },
-  ] };
+  const response = {
+    histograms: [
+      { name: "Browser.Tabs.TotalSwitchDuration3.WithSavedFrames", count: 5, sum: 70 },
+      { name: "Browser.Tabs.TotalSwitchDuration3", count: 3, sum: 36 },
+    ],
+  };
   assert.deepEqual(histogram(response, "Browser.Tabs.TotalSwitchDuration3"), { count: 3, sum: 36 });
   assert.deepEqual(histogram(response, "Startup.BrowserWindow.FirstPaint"), { count: 0, sum: 0 });
 });

@@ -13,10 +13,14 @@ const STAGING_KEY = "historyProjection:staging";
 /** SQLite/FTS is a disposable projection of Chromium HistoryService. */
 export class HistoryProjection {
   private fresh = false;
-  constructor(private repo: Repo, private profileId: string) {}
+  constructor(
+    private repo: Repo,
+    private profileId: string,
+  ) {}
 
   private requireProfile(profileId: string) {
-    if (profileId !== this.profileId) throw new AuxError("permission_denied", "History projection belongs to another browser Profile.");
+    if (profileId !== this.profileId)
+      throw new AuxError("permission_denied", "History projection belongs to another browser Profile.");
   }
 
   snapshot(input: Snapshot) {
@@ -28,20 +32,43 @@ export class HistoryProjection {
       let staging = this.repo.getSetting<Staging>(STAGING_KEY);
       if (input.batchIndex === 0) {
         this.repo.db.prepare("DELETE FROM history_projection_staging").run();
-        staging = { profileId: input.profileId, sourceGeneration: input.sourceGeneration, sequence: input.sequence, nextBatchIndex: 0 };
+        staging = {
+          profileId: input.profileId,
+          sourceGeneration: input.sourceGeneration,
+          sequence: input.sequence,
+          nextBatchIndex: 0,
+        };
       }
-      if (!staging || staging.profileId !== input.profileId || staging.sourceGeneration !== input.sourceGeneration || staging.sequence !== input.sequence)
+      if (
+        !staging ||
+        staging.profileId !== input.profileId ||
+        staging.sourceGeneration !== input.sourceGeneration ||
+        staging.sequence !== input.sequence
+      )
         throw new AuxError("conflict", "History snapshot generation changed; restart at batch zero.");
       if (input.batchIndex !== staging.nextBatchIndex)
-        throw new AuxError("conflict", `History snapshot expected batch ${staging.nextBatchIndex}; resend from that batch.`);
-      const insert = this.repo.db.prepare("INSERT OR REPLACE INTO history_projection_staging(url,title,visited_at) VALUES(?,?,?)");
+        throw new AuxError(
+          "conflict",
+          `History snapshot expected batch ${staging.nextBatchIndex}; resend from that batch.`,
+        );
+      const insert = this.repo.db.prepare(
+        "INSERT OR REPLACE INTO history_projection_staging(url,title,visited_at) VALUES(?,?,?)",
+      );
       for (const visit of input.visits) insert.run(visit.url, visit.title, visit.visitedAt);
       staging.nextBatchIndex += 1;
       if (input.complete) {
         this.repo.db.prepare("DELETE FROM history").run();
-        this.repo.db.prepare("INSERT INTO history(url,title,page_id,visited_at) SELECT url,title,NULL,visited_at FROM history_projection_staging").run();
+        this.repo.db
+          .prepare(
+            "INSERT INTO history(url,title,page_id,visited_at) SELECT url,title,NULL,visited_at FROM history_projection_staging",
+          )
+          .run();
         this.repo.db.prepare("DELETE FROM history_projection_staging").run();
-        this.repo.setSetting(CURSOR_KEY, { profileId: input.profileId, sourceGeneration: input.sourceGeneration, sequence: input.sequence } satisfies Cursor);
+        this.repo.setSetting(CURSOR_KEY, {
+          profileId: input.profileId,
+          sourceGeneration: input.sourceGeneration,
+          sequence: input.sequence,
+        } satisfies Cursor);
         this.repo.deleteSetting(STAGING_KEY);
       } else this.repo.setSetting(STAGING_KEY, staging);
       return { accepted: true, committed: input.complete, nextBatchIndex: staging.nextBatchIndex };
@@ -67,7 +94,9 @@ export class HistoryProjection {
       for (const visit of input.removals) remove.run(visit.url, visit.visitedAt);
       const title = this.repo.db.prepare("UPDATE history SET title=? WHERE url=?");
       for (const update of input.titleUpdates) title.run(update.title, update.url);
-      const insert = this.repo.db.prepare("INSERT INTO history(url,title,page_id,visited_at) VALUES(?,?,NULL,?) ON CONFLICT(url,visited_at) DO UPDATE SET title=excluded.title");
+      const insert = this.repo.db.prepare(
+        "INSERT INTO history(url,title,page_id,visited_at) VALUES(?,?,NULL,?) ON CONFLICT(url,visited_at) DO UPDATE SET title=excluded.title",
+      );
       for (const visit of input.upserts) insert.run(visit.url, visit.title, visit.visitedAt);
       this.repo.setSetting(CURSOR_KEY, { ...cursor, sequence: input.sequence });
       return { accepted: true, sequence: input.sequence };
@@ -75,7 +104,11 @@ export class HistoryProjection {
   }
 
   /** Once native history is authoritative, runtime navigation cannot create visits. */
-  isAuthoritative() { return this.repo.nativeHistoryAuthoritative(); }
+  isAuthoritative() {
+    return this.repo.nativeHistoryAuthoritative();
+  }
   /** Avoid showing a stale projection from a previous runtime process. */
-  isCurrentSessionReady() { return this.fresh; }
+  isCurrentSessionReady() {
+    return this.fresh;
+  }
 }

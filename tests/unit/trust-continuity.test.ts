@@ -55,11 +55,15 @@ type StreamFrame = {
 };
 
 type Gate = {
-  (method: string, params: unknown, client?: {
-    external: boolean;
-    connectionId?: string;
-    scope?: AgentConnectionScope;
-  }): Promise<unknown>;
+  (
+    method: string,
+    params: unknown,
+    client?: {
+      external: boolean;
+      connectionId?: string;
+      scope?: AgentConnectionScope;
+    },
+  ): Promise<unknown>;
   eventVisible: (scope: AgentConnectionScope, connectionId: string | undefined, event: AuxEvent) => boolean;
   dispose: () => Promise<void>;
 };
@@ -133,7 +137,9 @@ it("resyncs a scoped replay gap without widening scope or killing an unverifiabl
   } as unknown as Services) as Gate;
   cleanup.push(() => void gate.dispose());
 
-  const anchor = events.emit("task.updated", { task: { taskId: task.taskId, workspaceId: workspace.workspaceId } });
+  const anchor = events.emit("task.updated", {
+    task: { taskId: task.taskId, workspaceId: workspace.workspaceId },
+  });
   const dropped = events.emit("task.updated", {
     task: { taskId: other.taskId, workspaceId: otherWorkspace.workspaceId },
   });
@@ -145,11 +151,15 @@ it("resyncs a scoped replay gap without widening scope or killing an unverifiabl
   events.emit("task.updated", { task: { taskId: other.taskId, workspaceId: otherWorkspace.workspaceId } });
   events.emit("settings.changed", { category: "calendar" });
 
-  const gap = (await gate("events.since", {
-    sinceSeq: anchor.seq,
-    limit: 50,
-    streamId: events.streamId,
-  }, client)) as SinceBody;
+  const gap = (await gate(
+    "events.since",
+    {
+      sinceSeq: anchor.seq,
+      limit: 50,
+      streamId: events.streamId,
+    },
+    client,
+  )) as SinceBody;
   // A hole answers resync with no rows. It must not fill the hole from the retained buffer.
   expect(gap.resync).toBe(true);
   expect(gap.events).toEqual([]);
@@ -180,25 +190,37 @@ it("resyncs a scoped replay gap without widening scope or killing an unverifiabl
   cleanup.push(() => void server.close());
   const wsBase = `ws://127.0.0.1:${port}/ws?token=${encodeURIComponent(created.token)}`;
 
-  const gapped = openSocket(`${wsBase}&afterSeq=${anchor.seq}&streamId=${encodeURIComponent(events.streamId)}`);
+  const gapped = openSocket(
+    `${wsBase}&afterSeq=${anchor.seq}&streamId=${encodeURIComponent(events.streamId)}`,
+  );
   await gapped.ready;
   await delay(80);
-  expect(gapped.frames.some((frame) => frame.kind === "resync" && frame.streamId === events.streamId)).toBe(true);
+  expect(gapped.frames.some((frame) => frame.kind === "resync" && frame.streamId === events.streamId)).toBe(
+    true,
+  );
   expect(gapped.frames.filter((frame) => frame.event)).toEqual([]);
 
-  const replay = openSocket(`${wsBase}&afterSeq=${dropped.seq}&streamId=${encodeURIComponent(events.streamId)}`);
+  const replay = openSocket(
+    `${wsBase}&afterSeq=${dropped.seq}&streamId=${encodeURIComponent(events.streamId)}`,
+  );
   await replay.ready;
   await delay(80);
   expect(replay.frames.some((frame) => frame.kind === "resync")).toBe(false);
-  expect(replay.frames.filter((frame) => frame.event).map((frame) => mark(frame.event!))).toEqual(["page:p1"]);
+  expect(replay.frames.filter((frame) => frame.event).map((frame) => mark(frame.event!))).toEqual([
+    "page:p1",
+  ]);
   replay.ws.close();
 
   const beforeLive = gapped.frames.length;
   events.emit("page.emitted", { pageId: "p1" });
   events.emit("task.updated", { task: { taskId: sibling.taskId, workspaceId: workspace.workspaceId } });
   await delay(80);
-  expect(gapped.frames.slice(beforeLive).filter((frame) => frame.event).map((frame) => mark(frame.event!)))
-    .toEqual(["page:p1"]);
+  expect(
+    gapped.frames
+      .slice(beforeLive)
+      .filter((frame) => frame.event)
+      .map((frame) => mark(frame.event!)),
+  ).toEqual(["page:p1"]);
   gapped.ws.close();
 
   const directory = mkdtempSync(join(tmpdir(), "aux-trust-peer-"));
@@ -269,7 +291,8 @@ function authorizationOf(init?: RequestInit): string | null {
   const headers = init?.headers;
   if (!headers) return null;
   if (headers instanceof Headers) return headers.get("authorization");
-  if (Array.isArray(headers)) return headers.find(([key]) => key.toLowerCase() === "authorization")?.[1] ?? null;
+  if (Array.isArray(headers))
+    return headers.find(([key]) => key.toLowerCase() === "authorization")?.[1] ?? null;
   return headers.authorization ?? null;
 }
 
@@ -296,7 +319,9 @@ async function review(opts: {
     identity,
     ...(opts.realIdentity
       ? {}
-      : { identify: opts.identify ?? (async () => ({ uid: identity.uid, executable: identity.executable })) }),
+      : {
+          identify: opts.identify ?? (async () => ({ uid: identity.uid, executable: identity.executable })),
+        }),
     idleWaitMs: opts.idleWaitMs,
     alive: () => living,
     ownsPort: async () => true,
@@ -306,9 +331,11 @@ async function review(opts: {
       living = false;
     },
     log: () => {},
-    sleep: opts.sleep ?? (async () => {
-      throw new Error("refused peer must not be waited on");
-    }),
+    sleep:
+      opts.sleep ??
+      (async () => {
+        throw new Error("refused peer must not be waited on");
+      }),
     fetchImpl: (async (input: unknown, init?: RequestInit) => {
       const url = String(input);
       if (url.includes("/internal/peer")) {
@@ -341,7 +368,13 @@ function runtimeEnv(dataDir: string): NodeJS.ProcessEnv {
     AUX_API_PORT: "0",
     AUX_LOAD_DOTENV: "0",
   };
-  for (const key of ["AUX_HOST_SOCKET", "AUX_HOST_TOKEN", "AUX_BROWSER_PROFILE_ID", "AUX_INTERNAL_CDP", "AUX_RUNTIME_AUTOSTART"])
+  for (const key of [
+    "AUX_HOST_SOCKET",
+    "AUX_HOST_TOKEN",
+    "AUX_BROWSER_PROFILE_ID",
+    "AUX_INTERNAL_CDP",
+    "AUX_RUNTIME_AUTOSTART",
+  ])
     delete env[key];
   return env;
 }
@@ -365,7 +398,10 @@ async function untilStarted(started: () => boolean, pending: Promise<unknown>) {
   while (!started() && Date.now() < deadline) await delay(10);
   if (started()) return;
   const outcome = await Promise.race([
-    pending.then((value) => value, (error: unknown) => error),
+    pending.then(
+      (value) => value,
+      (error: unknown) => error,
+    ),
     delay(50).then(() => new Error("page program did not start")),
   ]);
   throw outcome instanceof Error ? outcome : new Error("page program finished before it was held");
@@ -443,7 +479,8 @@ it("refuses a foreign or changed development peer even when the command line loo
 
   const replaced = await review({
     peer: identityPeer(SCHEMA_VERSION - 1),
-    onRpc: (directory) => writePeerFile(directory, identityPeer(SCHEMA_VERSION - 1, { executable: "/opt/aux/replaced" })),
+    onRpc: (directory) =>
+      writePeerFile(directory, identityPeer(SCHEMA_VERSION - 1, { executable: "/opt/aux/replaced" })),
   });
   expect(replaced.outcome).toMatchObject({ action: "defer", reason: "peer executable changed" });
   expect(replaced.killed).toEqual([]);
@@ -453,28 +490,36 @@ it("development identity is the user and executable, not a code signature", asyn
   const identity = developmentPeerIdentity();
   expect(identity.executable.startsWith("/")).toBe(true);
   expect(await peerProcessIdentity(process.pid)).toEqual(identity);
-  expect(assessDevelopmentPeer({
-    ours: identity,
-    peerUid: identity.uid,
-    peerExecutable: identity.executable,
-  })).toBe("accept");
-  expect(assessDevelopmentPeer({
-    ours: identity,
-    peerUid: identity.uid + 1,
-    peerExecutable: identity.executable,
-  })).toBe("foreign");
-  expect(assessDevelopmentPeer({
-    ours: identity,
-    peerUid: identity.uid,
-    peerExecutable: "/not/aux",
-  })).toBe("changed");
+  expect(
+    assessDevelopmentPeer({
+      ours: identity,
+      peerUid: identity.uid,
+      peerExecutable: identity.executable,
+    }),
+  ).toBe("accept");
+  expect(
+    assessDevelopmentPeer({
+      ours: identity,
+      peerUid: identity.uid + 1,
+      peerExecutable: identity.executable,
+    }),
+  ).toBe("foreign");
+  expect(
+    assessDevelopmentPeer({
+      ours: identity,
+      peerUid: identity.uid,
+      peerExecutable: "/not/aux",
+    }),
+  ).toBe("changed");
   expect(assessDevelopmentPeer({ ours: identity, peerUid: null, peerExecutable: null })).toBe("unproven");
-  expect(assessDevelopmentPeer({
-    ours: identity,
-    peerUid: identity.uid,
-    peerExecutable: identity.executable,
-    descriptorExecutable: "/opt/aux/replaced",
-  })).toBe("changed");
+  expect(
+    assessDevelopmentPeer({
+      ours: identity,
+      peerUid: identity.uid,
+      peerExecutable: identity.executable,
+      descriptorExecutable: "/opt/aux/replaced",
+    }),
+  ).toBe("changed");
 
   const sameBinary = await review({
     peer: identityPeer(SCHEMA_VERSION - 1, {
@@ -594,7 +639,11 @@ it("reopens a crashed runtime without widening a scoped replay gap", async () =>
   const db = openDb(join(directory, "state.sqlite"));
   let current = db;
   cleanup.push(() => {
-    try { current.close(); } catch { /* Repo.close already released it */ }
+    try {
+      current.close();
+    } catch {
+      /* Repo.close already released it */
+    }
   });
   const repo = new Repo(db);
   const events = new EventBus(repo);
@@ -639,7 +688,9 @@ it("reopens a crashed runtime without widening a scoped replay gap", async () =>
     pages: { list: () => [], get: () => ({ controller: "none" }) },
     settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
   } as unknown as Services) as Gate;
-  const anchor = events.emit("task.updated", { task: { taskId: task.taskId, workspaceId: workspace.workspaceId } });
+  const anchor = events.emit("task.updated", {
+    task: { taskId: task.taskId, workspaceId: workspace.workspaceId },
+  });
   const dropped = events.emit("task.updated", {
     task: { taskId: other.taskId, workspaceId: otherWorkspace.workspaceId },
   });
@@ -670,17 +721,25 @@ it("reopens a crashed runtime without widening a scoped replay gap", async () =>
   expect(restartedEvents.streamId).toBe(streamId);
   expect(restartedConnections.authorize(created.token)?.connectionId).toBe(created.connection.connectionId);
 
-  const gap = (await restarted("events.since", {
-    sinceSeq: anchor.seq,
-    limit: 50,
-    streamId,
-  }, client)) as SinceBody;
+  const gap = (await restarted(
+    "events.since",
+    {
+      sinceSeq: anchor.seq,
+      limit: 50,
+      streamId,
+    },
+    client,
+  )) as SinceBody;
   expect(gap.resync).toBe(true);
   expect(gap.events).toEqual([]);
   expect(JSON.stringify(gap)).not.toContain(sibling.taskId);
   expect(JSON.stringify(gap)).not.toContain(other.taskId);
   const snapshot = (await restarted("events.since", { sinceSeq: 0, limit: 50 }, client)) as SinceBody;
-  const master = (await restarted("events.since", { sinceSeq: 0, limit: 50 }, { external: true })) as SinceBody;
+  const master = (await restarted(
+    "events.since",
+    { sinceSeq: 0, limit: 50 },
+    { external: true },
+  )) as SinceBody;
   expect(snapshot.events.map(mark)).toEqual(["page:p1"]);
   expect(master.events.map(mark)).toEqual([
     "page:p1",
@@ -710,9 +769,20 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
     createTarget: async () => "t",
     attach: async () => driverPage,
   } as unknown as BrowserDriver;
-  const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
-  const pages = new PageService({ turnMentions: pagesTurnMentions,
-    safetyGate: new SafetyDispatchGate({ approvals: new ApprovalStore(db), journal: new DecisionJournal(db), managedRules: () => [], userRules: () => [], localCeiling: () => "ask", settingsGrants: () => [], audit: () => {} }),
+  const pagesTurnMentions = fixtureTurnMentions(
+    (pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId),
+  );
+  const pages = new PageService({
+    turnMentions: pagesTurnMentions,
+    safetyGate: new SafetyDispatchGate({
+      approvals: new ApprovalStore(db),
+      journal: new DecisionJournal(db),
+      managedRules: () => [],
+      userRules: () => [],
+      localCeiling: () => "ask",
+      settingsGrants: () => [],
+      audit: () => {},
+    }),
     repo,
     events,
     native: new NullNativeBridge(),
@@ -775,21 +845,28 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
   };
   const held = holdExecute(pages);
   let settled = false;
-  const inflight = gate("pages.execute", program, client).finally(() => { settled = true; });
+  const inflight = gate("pages.execute", program, client).finally(() => {
+    settled = true;
+  });
   await untilStarted(held.started, inflight);
   expect(settled).toBe(false);
   await gate("pages.navigate", { pageId: opened.pageId, url: "https://example.com/during-activity" }, owner);
   expect(pages.get(opened.pageId).url).toBe("https://example.com/during-activity");
   const runId = repo.conversationRuns(`external:${created.connection.connectionId}`)[0]?.runId;
   if (!runId) throw new Error("expected a session run");
-  repo.db.prepare("UPDATE agent_connections SET expires_at=? WHERE connection_id=?").run(
-    Date.now() - 1,
-    created.connection.connectionId,
-  );
-  await expect(gate("pages.navigate", {
-    pageId: opened.pageId,
-    url: "https://evil.example/exfil",
-  }, client)).rejects.toMatchObject({ code: "permission_denied" });
+  repo.db
+    .prepare("UPDATE agent_connections SET expires_at=? WHERE connection_id=?")
+    .run(Date.now() - 1, created.connection.connectionId);
+  await expect(
+    gate(
+      "pages.navigate",
+      {
+        pageId: opened.pageId,
+        url: "https://evil.example/exfil",
+      },
+      client,
+    ),
+  ).rejects.toMatchObject({ code: "permission_denied" });
   expect(pages.get(opened.pageId).url).toBe("https://example.com/during-activity");
   await expect(gate("pages.list", {}, client)).rejects.toMatchObject({ code: "permission_denied" });
   expect(repo.getRun(runId)).toMatchObject({ status: "completed", statusMessage: "Connection expired" });
@@ -810,7 +887,9 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
   await gate("pages.list", {}, revokedClient);
   const again = holdExecute(pages);
   let revokeSettled = false;
-  const second = gate("pages.execute", program, revokedClient).finally(() => { revokeSettled = true; });
+  const second = gate("pages.execute", program, revokedClient).finally(() => {
+    revokeSettled = true;
+  });
   await untilStarted(again.started, second);
   expect(revokeSettled).toBe(false);
   await gate("agentConnections.revoke", { connectionId: revoked.connection.connectionId }, owner);
@@ -831,14 +910,18 @@ it("lets the unscoped loopback owner navigate while an external program holds th
   const events = new EventBus(repo);
   let url = "https://start.example/";
   let releaseWait: () => void = () => {};
-  const waiting = new Promise<void>((resolve) => { releaseWait = resolve; });
+  const waiting = new Promise<void>((resolve) => {
+    releaseWait = resolve;
+  });
   let waitStarted = false;
   const driverPage = {
     identity: { pageId: "", targetId: "t", backend: "aux" as const },
     url: () => url,
     title: async () => "Start",
     isAttached: () => true,
-    navigate: async (next: string) => { url = next; },
+    navigate: async (next: string) => {
+      url = next;
+    },
     waitFor: async () => {
       waitStarted = true;
       await waiting;
@@ -857,17 +940,32 @@ it("lets the unscoped loopback owner navigate while an external program holds th
       return driverPage as unknown as DriverPage;
     },
   } as unknown as BrowserDriver;
-  const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
-  const pages = new PageService({ turnMentions: pagesTurnMentions,
-    safetyGate: new SafetyDispatchGate({ approvals: new ApprovalStore(db), journal: new DecisionJournal(db), managedRules: () => [], userRules: () => [], localCeiling: () => "ask", settingsGrants: () => [], audit: () => {} }),
-    repo, events, native: new NullNativeBridge(),
+  const pagesTurnMentions = fixtureTurnMentions(
+    (pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId),
+  );
+  const pages = new PageService({
+    turnMentions: pagesTurnMentions,
+    safetyGate: new SafetyDispatchGate({
+      approvals: new ApprovalStore(db),
+      journal: new DecisionJournal(db),
+      managedRules: () => [],
+      userRules: () => [],
+      localCeiling: () => "ask",
+      settingsGrants: () => [],
+      audit: () => {},
+    }),
+    repo,
+    events,
+    native: new NullNativeBridge(),
     drivers: () => ({ aux: driver, chrome: null }),
   });
   const opened = await pages.open({ url: "https://start.example/", background: true, ownedByRuntime: false });
   const tasks = new TaskService(repo, events);
   const workspace = tasks.createWorkspace("Browsing");
   const task = tasks.create({
-    workspaceId: workspace.workspaceId, title: "Read", objective: "Read the page",
+    workspaceId: workspace.workspaceId,
+    title: "Read",
+    objective: "Read the page",
     criteria: [{ criterionId: "c", description: "Read", verification: "manual" }],
     resources: [{ resourceId: "page", kind: "page", locator: opened.pageId, label: "Tab" }],
   });
@@ -875,7 +973,9 @@ it("lets the unscoped loopback owner navigate while an external program holds th
   const sessions = new ExternalSessionService(repo, events, pagesTurnMentions);
   const pageOwnership = new PageOwnership();
   const gate = makeInvoker({
-    repo, events, pages,
+    repo,
+    events,
+    pages,
     runs: { pageOwnership },
     settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
     agentConnections: connections,
@@ -883,17 +983,37 @@ it("lets the unscoped loopback owner navigate while an external program holds th
     turnMentions: pagesTurnMentions,
   } as unknown as Services) as Gate;
   const created = connections.create({
-    name: "Codex", client: "codex",
+    name: "Codex",
+    client: "codex",
     scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId },
     expiresAt: Date.now() + 60 * 60_000,
   });
-  const client = { external: true as const, connectionId: created.connection.connectionId, scope: created.connection.scope };
+  const client = {
+    external: true as const,
+    connectionId: created.connection.connectionId,
+    scope: created.connection.scope,
+  };
   let settled = false;
-  const inflight = gate("pages.execute", {
-    program: { pageId: opened.pageId, steps: [{ id: "s", op: "waitFor", condition: { kind: "selector", selector: "#absent", state: "visible", timeoutMs: 30_000 } }] },
-    taskId: task.taskId,
-    expectedRevision: task.revision,
-  }, client).finally(() => { settled = true; });
+  const inflight = gate(
+    "pages.execute",
+    {
+      program: {
+        pageId: opened.pageId,
+        steps: [
+          {
+            id: "s",
+            op: "waitFor",
+            condition: { kind: "selector", selector: "#absent", state: "visible", timeoutMs: 30_000 },
+          },
+        ],
+      },
+      taskId: task.taskId,
+      expectedRevision: task.revision,
+    },
+    client,
+  ).finally(() => {
+    settled = true;
+  });
   const deadline = Date.now() + 2_000;
   while (!waitStarted && !settled && Date.now() < deadline) await delay(10);
   if (!waitStarted) {
@@ -901,17 +1021,44 @@ it("lets the unscoped loopback owner navigate while an external program holds th
     await inflight;
     throw new Error("the external program never reached its wait");
   }
-  const reads = db.prepare("SELECT request_json AS requestJson, decision_json AS decisionJson FROM safety_decisions").all().map(row => ({ request: JSON.parse(String(row.requestJson)), decision: JSON.parse(String(row.decisionJson)) }));
-  expect(reads).toContainEqual(expect.objectContaining({ request: expect.objectContaining({ action: "waitFor", actor: "external_token", category: "read" }), decision: expect.objectContaining({ status: "allow", authorizedBy: expect.objectContaining({ authorizedBy: "task_resource", taskId: task.taskId, taskRevision: task.revision }) }) }));
+  const reads = db
+    .prepare("SELECT request_json AS requestJson, decision_json AS decisionJson FROM safety_decisions")
+    .all()
+    .map((row) => ({
+      request: JSON.parse(String(row.requestJson)),
+      decision: JSON.parse(String(row.decisionJson)),
+    }));
+  expect(reads).toContainEqual(
+    expect.objectContaining({
+      request: expect.objectContaining({ action: "waitFor", actor: "external_token", category: "read" }),
+      decision: expect.objectContaining({
+        status: "allow",
+        authorizedBy: expect.objectContaining({
+          authorizedBy: "task_resource",
+          taskId: task.taskId,
+          taskRevision: task.revision,
+        }),
+      }),
+    }),
+  );
   try {
     const navigated = Promise.race([
-      gate("pages.navigate", { pageId: opened.pageId, url: "https://example.com/during-activity" }, { external: true }),
-      delay(500).then(() => { throw new Error("owner navigate waited on the external program"); }),
+      gate(
+        "pages.navigate",
+        { pageId: opened.pageId, url: "https://example.com/during-activity" },
+        { external: true },
+      ),
+      delay(500).then(() => {
+        throw new Error("owner navigate waited on the external program");
+      }),
     ]);
     await navigated;
     expect(pages.get(opened.pageId).url).toBe("https://example.com/during-activity");
     expect(settled).toBe(false);
-    expect(pageOwnership.snapshot()[opened.pageId]).toMatchObject({ actor: "external", connectionId: created.connection.connectionId });
+    expect(pageOwnership.snapshot()[opened.pageId]).toMatchObject({
+      actor: "external",
+      connectionId: created.connection.connectionId,
+    });
   } finally {
     releaseWait();
     await expect(inflight).rejects.toMatchObject({ code: "ref_stale" });
@@ -931,7 +1078,10 @@ it("loads an owner address through the native tab command instead of page.goto",
     url: () => reported,
     title: async () => "Start",
     isAttached: () => true,
-    navigate: async (next: string) => { driverNavigations += 1; reported = next; },
+    navigate: async (next: string) => {
+      driverNavigations += 1;
+      reported = next;
+    },
     observe: async () => ({}),
     setEvents: () => undefined,
     dispose: async () => undefined,
@@ -954,7 +1104,10 @@ it("loads an owner address through the native tab command instead of page.goto",
   };
   const native = {
     available: () => true,
-    tabCommand: async (envelope: { commandId: string; command: { kind: string; url?: string; pageId?: string } }): Promise<TabAck> => {
+    tabCommand: async (envelope: {
+      commandId: string;
+      command: { kind: string; url?: string; pageId?: string };
+    }): Promise<TabAck> => {
       commands.push(envelope.command);
       if (envelope.command.kind === "navigate") reported = envelope.command.url ?? reported;
       return {
@@ -966,17 +1119,34 @@ it("loads an owner address through the native tab command instead of page.goto",
       };
     },
   };
-  const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
-  const pages = new PageService({ turnMentions: pagesTurnMentions,
-    safetyGate: new SafetyDispatchGate({ approvals: new ApprovalStore(db), journal: new DecisionJournal(db), managedRules: () => [], userRules: () => [], localCeiling: () => "ask", settingsGrants: () => [], audit: () => {} }),
-    repo, events, native: native as never,
+  const pagesTurnMentions = fixtureTurnMentions(
+    (pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId),
+  );
+  const pages = new PageService({
+    turnMentions: pagesTurnMentions,
+    safetyGate: new SafetyDispatchGate({
+      approvals: new ApprovalStore(db),
+      journal: new DecisionJournal(db),
+      managedRules: () => [],
+      userRules: () => [],
+      localCeiling: () => "ask",
+      settingsGrants: () => [],
+      audit: () => {},
+    }),
+    repo,
+    events,
+    native: native as never,
     drivers: () => ({ aux: driver, chrome: null }),
   });
   const opened = await pages.open({ url: "https://start.example/", background: true, ownedByRuntime: false });
   const navigationsAfterOpen = driverNavigations;
   const target = await pages.navigate(opened.pageId, "https://example.com/native-load");
   expect(target.url).toBe("https://example.com/native-load");
-  expect(commands).toContainEqual({ kind: "navigate", pageId: opened.pageId, url: "https://example.com/native-load" });
+  expect(commands).toContainEqual({
+    kind: "navigate",
+    pageId: opened.pageId,
+    url: "https://example.com/native-load",
+  });
   expect(driverNavigations).toBe(navigationsAfterOpen);
 
   reported = "https://start.example/";

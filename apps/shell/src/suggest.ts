@@ -13,9 +13,16 @@ export interface SuggestCandidate {
 }
 
 /** Lowercased fields of one candidate; cached per candidate object across keystrokes. */
-interface Folded { t: string; u: string; host: string }
+interface Folded {
+  t: string;
+  u: string;
+  host: string;
+}
 const folded = new WeakMap<object, Folded>();
-const fold = (title: string, url: string): Folded => { const u = url.toLowerCase(); return { t: title.toLowerCase(), u, host: hostOf(u) }; };
+const fold = (title: string, url: string): Folded => {
+  const u = url.toLowerCase();
+  return { t: title.toLowerCase(), u, host: hostOf(u) };
+};
 
 /** Scores one query against many candidates — the query is folded and compiled once. */
 export function queryMatcher(query: string): (title: string, url?: string, key?: object) => number {
@@ -24,7 +31,10 @@ export function queryMatcher(query: string): (title: string, url?: string, key?:
   const boundary = new RegExp(`(^|[\\s\\-_—:])${escapeRegExp(q)}`);
   return (title, url = "", key) => {
     let f = key && folded.get(key);
-    if (!f) { f = fold(title, url); if (key) folded.set(key, f); }
+    if (!f) {
+      f = fold(title, url);
+      if (key) folded.set(key, f);
+    }
     const { t, u, host } = f;
     if (t === q || host === q) return 100;
     if (host.startsWith(`${q}.`) || host.startsWith(`www.${q}.`)) return 95;
@@ -53,20 +63,32 @@ export function recencyBoost(lastVisit: number | undefined, now: number): number
 }
 
 /** Rank candidates by match tier + recency; stable within equal scores. */
-export function rankCandidates<T extends SuggestCandidate>(query: string, candidates: T[], now = Date.now()): T[] {
+export function rankCandidates<T extends SuggestCandidate>(
+  query: string,
+  candidates: T[],
+  now = Date.now(),
+): T[] {
   const match = queryMatcher(query);
   return candidates
-    .map((candidate, index) => ({ candidate, index, score: match(candidate.title, candidate.url ?? "", candidate) }))
-    .map(entry => entry.score < 0 ? entry : { ...entry, score: entry.score + recencyBoost(entry.candidate.lastVisit, now) })
-    .filter(entry => entry.score >= 0)
+    .map((candidate, index) => ({
+      candidate,
+      index,
+      score: match(candidate.title, candidate.url ?? "", candidate),
+    }))
+    .map((entry) =>
+      entry.score < 0
+        ? entry
+        : { ...entry, score: entry.score + recencyBoost(entry.candidate.lastVisit, now) },
+    )
+    .filter((entry) => entry.score >= 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
-    .map(entry => entry.candidate);
+    .map((entry) => entry.candidate);
 }
 
 /** First match wins across providers — one URL appears once in the list. */
 export function dedupeByUrl<T extends { url?: string }>(candidates: T[]): T[] {
   const seen = new Set<string>();
-  return candidates.filter(candidate => {
+  return candidates.filter((candidate) => {
     if (!candidate.url) return true;
     const key = candidate.url.replace(/\/$/, "");
     if (seen.has(key)) return false;

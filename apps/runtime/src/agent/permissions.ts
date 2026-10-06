@@ -14,20 +14,33 @@ export interface PermissionGrant {
   expiresAt: number;
 }
 
-export type GrantInput = string | Partial<PermissionGrant> & { effect: PermissionGrant["effect"] };
+export type GrantInput = string | (Partial<PermissionGrant> & { effect: PermissionGrant["effect"] });
 
 export const DEFAULT_GRANTS = ["effect:read"] as const;
 /** User-started work may edit the current page. Navigation and destructive actions need explicit grants. */
 export const USER_RUN_GRANTS = ["effect:read", "effect:write"] as const;
-export const ALL_EFFECT_GRANTS = ["effect:read", "effect:write", "effect:destructive", "effect:egress"] as const;
+export const ALL_EFFECT_GRANTS = [
+  "effect:read",
+  "effect:write",
+  "effect:destructive",
+  "effect:egress",
+] as const;
 
 /** Child profile restriction is applied at dispatch, after ambient settings grants. */
-export function subagentGrants(profile: "explorer" | "read_only" | "default" | undefined,
-  ambient?: GrantSource): GrantSource {
-  return profile === "explorer" || profile === "read_only" ? DEFAULT_GRANTS : ambient ?? DEFAULT_GRANTS;
+export function subagentGrants(
+  profile: "explorer" | "read_only" | "default" | undefined,
+  ambient?: GrantSource,
+): GrantSource {
+  return profile === "explorer" || profile === "read_only" ? DEFAULT_GRANTS : (ambient ?? DEFAULT_GRANTS);
 }
 
-export const KNOWN_GRANTS = ["effect:read", "effect:write", "effect:destructive", "effect:egress", "effect:*"] as const;
+export const KNOWN_GRANTS = [
+  "effect:read",
+  "effect:write",
+  "effect:destructive",
+  "effect:egress",
+  "effect:*",
+] as const;
 
 export type GrantSource = readonly GrantInput[] | (() => readonly GrantInput[]);
 
@@ -46,7 +59,13 @@ export function parseGrant(raw: unknown): PermissionGrant | null {
   }
   if (!raw || typeof raw !== "object" || !("effect" in raw)) return null;
   const effect = (raw as { effect: unknown }).effect;
-  if (effect !== "*" && effect !== "read" && effect !== "write" && effect !== "destructive" && effect !== "egress") {
+  if (
+    effect !== "*" &&
+    effect !== "read" &&
+    effect !== "write" &&
+    effect !== "destructive" &&
+    effect !== "egress"
+  ) {
     return null;
   }
   const rec = raw as Record<string, unknown>;
@@ -58,7 +77,12 @@ export function parseGrant(raw: unknown): PermissionGrant | null {
   };
 }
 
-export function grantAllows(grant: PermissionGrant, needed: EffectClass, origin: string, now: number): boolean {
+export function grantAllows(
+  grant: PermissionGrant,
+  needed: EffectClass,
+  origin: string,
+  now: number,
+): boolean {
   if (grant.expiresAt > 0 && now >= grant.expiresAt) return false;
   if (grant.origin !== "*" && grant.origin !== origin) return false;
   if (grant.scope !== "*" && grant.scope !== "page") return false;
@@ -67,7 +91,9 @@ export function grantAllows(grant: PermissionGrant, needed: EffectClass, origin:
 
 /** Compact wildcard grants to `effect:…` strings; keep origin/expiry as objects. */
 export function sanitizeGrants(raw: unknown): GrantInput[] {
-  const parsed = (Array.isArray(raw) ? raw : []).map(parseGrant).filter((g): g is PermissionGrant => g != null);
+  const parsed = (Array.isArray(raw) ? raw : [])
+    .map(parseGrant)
+    .filter((g): g is PermissionGrant => g != null);
   if (!parsed.some((g) => g.effect === "read" || g.effect === "*")) {
     parsed.unshift({ effect: "read", origin: "*", scope: "*", expiresAt: 0 });
   }
@@ -127,7 +153,9 @@ export function authorizeProgram(
   origin = "",
   now = Date.now(),
 ): { ok: true } | { ok: false; denied: string; effect: EffectClass } {
-  const allowed = sanitizeGrants(resolveGrants(grants)).map(parseGrant).filter((g): g is PermissionGrant => g != null);
+  const allowed = sanitizeGrants(resolveGrants(grants))
+    .map(parseGrant)
+    .filter((g): g is PermissionGrant => g != null);
   for (const step of steps) {
     let effect = classifyStep(step.op);
     let effectOrigin = origin;
@@ -140,8 +168,11 @@ export function authorizeProgram(
         // Opaque pages (about:blank) have origin "null", which is not a URL base.
         // Absolute destinations must be checked independently of the current page.
         let destination: URL;
-        try { destination = new URL(step.url); }
-        catch { destination = new URL(step.url, origin || undefined); }
+        try {
+          destination = new URL(step.url);
+        } catch {
+          destination = new URL(step.url, origin || undefined);
+        }
         effectOrigin = destination.origin;
         if (origin && destination.origin === origin) effect = "read";
       } catch {

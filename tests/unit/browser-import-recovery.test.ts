@@ -264,7 +264,11 @@ it("retains five metadata-only receipts and cannot discover them from another Pr
   const ids: string[] = [];
   for (let i = 0; i < 7; i++)
     ids.push(
-      (await importer.runNow({ selections: [{ sourceId: "chrome", profileId: "Reviewed", categories: ["history"] }] })).jobId,
+      (
+        await importer.runNow({
+          selections: [{ sourceId: "chrome", profileId: "Reviewed", categories: ["history"] }],
+        })
+      ).jobId,
     );
   const restored = new BrowserImporter({ repo, emit: () => {}, sources: () => [] });
   expect((await restored.preview()).recentJobs).toHaveLength(5);

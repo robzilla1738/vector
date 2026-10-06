@@ -1,6 +1,12 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
 import { normalizeAuxEnvironment, AuxError } from "@aux/contracts";
-import { PlaywrightDriverPage, RefRegistry, type BrowserDriver, type DiscoveredTarget, type DriverPage } from "@aux/chromium-driver";
+import {
+  PlaywrightDriverPage,
+  RefRegistry,
+  type BrowserDriver,
+  type DiscoveredTarget,
+  type DriverPage,
+} from "@aux/chromium-driver";
 
 /** Test-only headless browser fixture; never selected by the runtime. */
 export class StandaloneDriver implements BrowserDriver {
@@ -99,7 +105,10 @@ export class StandaloneDriver implements BrowserDriver {
         // surface the failure instead of handing back a healthy-looking id
         this.targets.delete(targetId);
         await page.close().catch(() => {});
-        throw new AuxError("step_failed", `navigation to ${url} failed: ${e instanceof Error ? e.message : String(e)}`);
+        throw new AuxError(
+          "step_failed",
+          `navigation to ${url} failed: ${e instanceof Error ? e.message : String(e)}`,
+        );
       }
     }
     return targetId;

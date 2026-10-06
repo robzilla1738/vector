@@ -5,16 +5,26 @@ import { Toast } from "../ui/toast";
 import { nativePoliteLiveProps } from "../ui/native-attribute-props";
 
 const ToastRow = memo(function ToastRow({ id }: { id: number }) {
-  const toast = useStore(state => state.toasts.find(item => item.id === id));
+  const toast = useStore((state) => state.toasts.find((item) => item.id === id));
   if (!toast) return null;
-  return <Toast id={toast.id} text={toast.text} kind={toast.kind} action={toast.action} onDismiss={useStore.getState().dismissToast} />;
+  return (
+    <Toast
+      id={toast.id}
+      text={toast.text}
+      kind={toast.kind}
+      action={toast.action}
+      onDismiss={useStore.getState().dismissToast}
+    />
+  );
 });
 
 export const Toasts = memo(function Toasts() {
-  const toastIds = useStore(useShallow(state => state.toasts.map(item => item.id)));
+  const toastIds = useStore(useShallow((state) => state.toasts.map((item) => item.id)));
   return (
     <div className="toasts" {...nativePoliteLiveProps}>
-      {toastIds.map(id => <ToastRow key={id} id={id} />)}
+      {toastIds.map((id) => (
+        <ToastRow key={id} id={id} />
+      ))}
     </div>
   );
 });

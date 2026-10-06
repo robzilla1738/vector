@@ -32,7 +32,11 @@ function target(backend: PageTarget["backend"]): PageTarget {
 }
 
 /** addLive installs the real onDestroyed handler; the test then fires it. */
-function closeTarget(native: boolean, backend: PageTarget["backend"], reason: "closed" | "crashed" = "closed") {
+function closeTarget(
+  native: boolean,
+  backend: PageTarget["backend"],
+  reason: "closed" | "crashed" = "closed",
+) {
   const repo = new Repo(openDb(":memory:"));
   repos.push(repo);
   const events = new EventBus(repo);
@@ -40,7 +44,8 @@ function closeTarget(native: boolean, backend: PageTarget["backend"], reason: "c
   events.subscribe((event) => {
     seen.push({ type: event.type, payload: event.payload });
   });
-  const registry = new PageRegistry({ turnMentions: fixtureTurnMentions(pageId => repo.getPage(pageId)),
+  const registry = new PageRegistry({
+    turnMentions: fixtureTurnMentions((pageId) => repo.getPage(pageId)),
     repo,
     events,
     native: { available: () => native } as NativeBridge,

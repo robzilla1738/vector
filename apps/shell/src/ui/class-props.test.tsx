@@ -6,7 +6,11 @@ import { staticHintProps, staticRowProps } from "./class-props";
 
 const actEnvironment = Object.getOwnPropertyDescriptor(globalThis, "IS_REACT_ACT_ENVIRONMENT");
 beforeAll(() => {
-  Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", { value: true, writable: true, configurable: true });
+  Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", {
+    value: true,
+    writable: true,
+    configurable: true,
+  });
 });
 afterAll(() => {
   if (actEnvironment) Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", actEnvironment);
@@ -18,8 +22,23 @@ describe("closed static hint and row attributes", () => {
     const onClick = () => {};
     const ref = () => {};
     for (const attributes of [staticHintProps, staticRowProps]) {
-      const original: ReactElement<ComponentPropsWithRef<"button">> = <button id="original" className={attributes.className} disabled={false} ref={ref} onClick={onClick} key="original-key">Retry</button>;
-      const result: ReactElement<ComponentPropsWithRef<"button">> = <button id="original" {...attributes} disabled={false} ref={ref} onClick={onClick} key="original-key">Retry</button>;
+      const original: ReactElement<ComponentPropsWithRef<"button">> = (
+        <button
+          id="original"
+          className={attributes.className}
+          disabled={false}
+          ref={ref}
+          onClick={onClick}
+          key="original-key"
+        >
+          Retry
+        </button>
+      );
+      const result: ReactElement<ComponentPropsWithRef<"button">> = (
+        <button id="original" {...attributes} disabled={false} ref={ref} onClick={onClick} key="original-key">
+          Retry
+        </button>
+      );
       expect(Object.isFrozen(attributes)).toBe(true);
       expect(result.props).not.toBe(original.props);
       expect(Object.keys(result.props)).toEqual(Object.keys(original.props));
@@ -33,8 +52,15 @@ describe("closed static hint and row attributes", () => {
 
   it("keeps surrounding evaluations and later overwrite precedence", () => {
     const calls: string[] = [];
-    const read = (value: string) => { calls.push(value); return value; };
-    const later: Record<string, unknown> = { get className() { return read("later-class"); } };
+    const read = (value: string) => {
+      calls.push(value);
+      return value;
+    };
+    const later: Record<string, unknown> = {
+      get className() {
+        return read("later-class");
+      },
+    };
     const original = { id: read("before"), className: "hint", title: read("after"), ...later };
     const originalCalls = calls.splice(0);
     const result = { id: read("before"), ...staticHintProps, title: read("after"), ...later };
@@ -49,24 +75,47 @@ describe("closed static hint and row attributes", () => {
     const root = createRoot(host);
     let original: HTMLButtonElement | null = null;
     const events: Event[] = [];
-    const render = (disabled: boolean) => <button {...staticRowProps} ref={node => { original = node; }} disabled={disabled} onClick={event => { events.push(event.nativeEvent); }}>Retry</button>;
+    const render = (disabled: boolean) => (
+      <button
+        {...staticRowProps}
+        ref={(node) => {
+          original = node;
+        }}
+        disabled={disabled}
+        onClick={(event) => {
+          events.push(event.nativeEvent);
+        }}
+      >
+        Retry
+      </button>
+    );
     try {
-      await act(async () => { root.render(render(false)); });
+      await act(async () => {
+        root.render(render(false));
+      });
       const button = host.querySelector("button")!;
       expect(original).toBe(button);
       expect(button.className).toBe("row");
       button.focus();
       expect(document.activeElement).toBe(button);
       const event = new MouseEvent("click", { bubbles: true });
-      await act(async () => { button.dispatchEvent(event); });
+      await act(async () => {
+        button.dispatchEvent(event);
+      });
       expect(events).toEqual([event]);
-      await act(async () => { root.render(render(true)); });
+      await act(async () => {
+        root.render(render(true));
+      });
       expect(original).toBe(button);
-      await act(async () => { button.click(); });
+      await act(async () => {
+        button.click();
+      });
       expect(events).toEqual([event]);
       expect(button.textContent).toBe("Retry");
     } finally {
-      await act(async () => { root.unmount(); });
+      await act(async () => {
+        root.unmount();
+      });
       host.remove();
     }
   });

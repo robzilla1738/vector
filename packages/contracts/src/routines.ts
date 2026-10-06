@@ -120,9 +120,7 @@ export const RoutineSourceEventSchema = z.discriminatedUnion("kind", [
     .strict(),
 ]);
 /** Host-only preflight before Chromium reads a watched document. */
-export const RoutinePageChangeTargetParamsSchema = z
-  .object({ pageId: text.max(200), url: siteUrl })
-  .strict();
+export const RoutinePageChangeTargetParamsSchema = z.object({ pageId: text.max(200), url: siteUrl }).strict();
 export const RoutineDefinitionSchema = z.object({
   title: text.max(200),
   objective: text.max(10000),
@@ -260,33 +258,53 @@ export const RoutineSchema = RoutineDefinitionSchema.extend({
   /** Server-assigned origin requiring a separate, revision-bound activation review. */
   activationReview: z.enum(["run_result", "imported", "untrusted_task"]).optional(),
   /** Declarative, same-site trace. Imported documents cannot carry this local proof. */
-  replay: z.object({
-    format: z.literal("aux-skill-replay@2"),
-    sourceRunId: text.optional(),
-    sourceRecordingId: text.optional(),
-    siteOrigin: siteOrigin,
-    siteOrigins: z.array(siteOrigin).min(1).max(20),
-    steps: z.array(PlanStepSchema).min(2).max(50),
-    digest: z.string().regex(/^[a-f0-9]{64}$/),
-    state: z.enum(["untested", "testing", "tested", "needs_repair"]),
-    testRunId: text.optional(),
-    testRevision: z.number().int().positive().optional(),
-    testedRevision: z.number().int().positive().optional(),
-    testedAt: z.number().int().nonnegative().optional(),
-  }).strict().refine(replay => Number(!!replay.sourceRunId) + Number(!!replay.sourceRecordingId) === 1, "Choose one exact replay source.").optional(),
+  replay: z
+    .object({
+      format: z.literal("aux-skill-replay@2"),
+      sourceRunId: text.optional(),
+      sourceRecordingId: text.optional(),
+      siteOrigin: siteOrigin,
+      siteOrigins: z.array(siteOrigin).min(1).max(20),
+      steps: z.array(PlanStepSchema).min(2).max(50),
+      digest: z.string().regex(/^[a-f0-9]{64}$/),
+      state: z.enum(["untested", "testing", "tested", "needs_repair"]),
+      testRunId: text.optional(),
+      testRevision: z.number().int().positive().optional(),
+      testedRevision: z.number().int().positive().optional(),
+      testedAt: z.number().int().nonnegative().optional(),
+    })
+    .strict()
+    .refine(
+      (replay) => Number(!!replay.sourceRunId) + Number(!!replay.sourceRecordingId) === 1,
+      "Choose one exact replay source.",
+    )
+    .optional(),
 });
-export const RoutineReplayCompileParams = z.object({
-  routineId: text, expectedRevision: z.number().int().positive(), sourceRunId: text, pageId: text,
-  /** Source values are reviewed by the owner and replaced by placeholders before persistence. */
-  samples: z.record(z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,40}$/), z.string().min(1).max(4000)),
-}).strict();
-export const RoutineReplayTestParams = z.object({
-  routineId: text, expectedRevision: z.number().int().positive(), pageId: text,
-  parameters: z.record(z.string(), z.string().min(1).max(4000)),
-}).strict();
-export const RoutineReplayResultParams = z.object({
-  routineId: text, expectedRevision: z.number().int().positive(), runId: text,
-}).strict();
+export const RoutineReplayCompileParams = z
+  .object({
+    routineId: text,
+    expectedRevision: z.number().int().positive(),
+    sourceRunId: text,
+    pageId: text,
+    /** Source values are reviewed by the owner and replaced by placeholders before persistence. */
+    samples: z.record(z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,40}$/), z.string().min(1).max(4000)),
+  })
+  .strict();
+export const RoutineReplayTestParams = z
+  .object({
+    routineId: text,
+    expectedRevision: z.number().int().positive(),
+    pageId: text,
+    parameters: z.record(z.string(), z.string().min(1).max(4000)),
+  })
+  .strict();
+export const RoutineReplayResultParams = z
+  .object({
+    routineId: text,
+    expectedRevision: z.number().int().positive(),
+    runId: text,
+  })
+  .strict();
 export const RoutineOccurrenceSchema = z.object({
   occurrenceId: text,
   routineId: text,

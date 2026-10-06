@@ -12,8 +12,13 @@ function fixture() {
   directories.push(directory);
   return { directory, path: join(directory, "state.sqlite") };
 }
-function track(db: DatabaseSync) { connections.push(db); return db; }
-function version(db: DatabaseSync) { return (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version; }
+function track(db: DatabaseSync) {
+  connections.push(db);
+  return db;
+}
+function version(db: DatabaseSync) {
+  return (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
+}
 /** A test that rewinds user_version must also remove tables that did not exist at that version. */
 const addedTables: [number, string[]][] = [
   [26, ["task_lookup"]],
@@ -27,7 +32,16 @@ const addedTables: [number, string[]][] = [
   [16, ["plugin_assets"]],
   [15, ["command_escalation_grants", "command_escalation_requests"]],
   [14, ["history_projection_staging"]],
-  [13, ["safety_approval_requests", "safety_standing_grants", "safety_send_journal", "safety_challenge_recovery", "safety_audit"]],
+  [
+    13,
+    [
+      "safety_approval_requests",
+      "safety_standing_grants",
+      "safety_send_journal",
+      "safety_challenge_recovery",
+      "safety_audit",
+    ],
+  ],
   [12, ["result_versions"]],
   [10, ["content_memory"]],
   [8, ["calendar_task_grants"]],
@@ -42,10 +56,18 @@ function rewindProfile(db: DatabaseSync, targetVersion: number) {
       for (const table of tables) db.exec(`DROP TABLE IF EXISTS ${table}`);
     }
     db.exec(`PRAGMA user_version=${targetVersion}`);
-  } finally { db.exec("PRAGMA foreign_keys=ON"); }
+  } finally {
+    db.exec("PRAGMA foreign_keys=ON");
+  }
 }
 afterEach(() => {
-  for (const db of connections.splice(0)) { try { db.close(); } catch { /* already closed */ } }
+  for (const db of connections.splice(0)) {
+    try {
+      db.close();
+    } catch {
+      /* already closed */
+    }
+  }
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
@@ -54,34 +76,71 @@ describe("schema versioning", () => {
     const { path } = fixture();
     const old = track(openDb(path));
     old.prepare("INSERT INTO workspaces VALUES(?,?,?)").run("space", "private Space", 1);
-    old.prepare("INSERT INTO tasks VALUES(?,?,?,?,?,?)").run("task", "space", 1, "open", 1,
-      JSON.stringify({ taskId: "task", conversationId: "chat", sourceOrigin: "conversation",
-        title: "private task title", objective: "private objective" }));
+    old
+      .prepare("INSERT INTO tasks VALUES(?,?,?,?,?,?)")
+      .run(
+        "task",
+        "space",
+        1,
+        "open",
+        1,
+        JSON.stringify({
+          taskId: "task",
+          conversationId: "chat",
+          sourceOrigin: "conversation",
+          title: "private task title",
+          objective: "private objective",
+        }),
+      );
     rewindProfile(old, 25);
     old.close();
     const upgraded = track(openDb(path));
-    const projection = upgraded.prepare("SELECT conversation_id,source_origin FROM task_lookup WHERE task_id='task'").get();
+    const projection = upgraded
+      .prepare("SELECT conversation_id,source_origin FROM task_lookup WHERE task_id='task'")
+      .get();
     expect(projection).toEqual({ conversation_id: "chat", source_origin: "conversation" });
     expect(JSON.stringify(projection)).not.toContain("private");
     expect(new Repo(upgraded).taskForConversation("chat")).toBe("task");
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='idx_task_lookup_conversation'").get()).toBeDefined();
+    expect(
+      upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='idx_task_lookup_conversation'").get(),
+    ).toBeDefined();
   });
   it("backfills only indexed run metadata when migrating v24", () => {
     const { path } = fixture();
     const old = track(openDb(path));
-    new Repo(old).saveRun({ runId: "run", goal: "private goal", status: "completed", pageIds: [],
-      config: { chatId: "chat", taskId: "task", context: "private context",
-        contextImageArtifactIds: ["image"] }, createdAt: 1 });
+    new Repo(old).saveRun({
+      runId: "run",
+      goal: "private goal",
+      status: "completed",
+      pageIds: [],
+      config: {
+        chatId: "chat",
+        taskId: "task",
+        context: "private context",
+        contextImageArtifactIds: ["image"],
+      },
+      createdAt: 1,
+    });
     rewindProfile(old, 24);
     old.exec("CREATE INDEX idx_runs_task ON runs(json_extract(config,'$.taskId'))");
     old.close();
     const upgraded = track(openDb(path));
-    const projection = upgraded.prepare("SELECT config FROM run_lookup WHERE run_id='run'").get() as { config: string };
-    expect(JSON.parse(projection.config)).toMatchObject({ chatId: "chat", taskId: "task", contextImageArtifactIds: ["image"] });
+    const projection = upgraded.prepare("SELECT config FROM run_lookup WHERE run_id='run'").get() as {
+      config: string;
+    };
+    expect(JSON.parse(projection.config)).toMatchObject({
+      chatId: "chat",
+      taskId: "task",
+      contextImageArtifactIds: ["image"],
+    });
     expect(projection.config).not.toContain("private context");
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='idx_runs_task'").get()).toBeUndefined();
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='idx_run_lookup_task'").get()).toBeDefined();
-    expect(new Repo(upgraded).conversationRuns("chat").map(run => run.runId)).toEqual(["run"]);
+    expect(
+      upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='idx_runs_task'").get(),
+    ).toBeUndefined();
+    expect(
+      upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='idx_run_lookup_task'").get(),
+    ).toBeDefined();
+    expect(new Repo(upgraded).conversationRuns("chat").map((run) => run.runId)).toEqual(["run"]);
   });
   it("migrates v12 profiles to the safety approval and send journal tables", () => {
     const { path } = fixture();
@@ -90,10 +149,22 @@ describe("schema versioning", () => {
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    for (const table of ["safety_approval_requests", "safety_standing_grants", "safety_send_journal", "safety_challenge_recovery", "safety_audit"]) {
-      expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name=?").get(table)).toBeDefined();
+    for (const table of [
+      "safety_approval_requests",
+      "safety_standing_grants",
+      "safety_send_journal",
+      "safety_challenge_recovery",
+      "safety_audit",
+    ]) {
+      expect(
+        upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name=?").get(table),
+      ).toBeDefined();
     }
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='history_projection_staging'").get()).toBeDefined();
+    expect(
+      upgraded
+        .prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='history_projection_staging'")
+        .get(),
+    ).toBeDefined();
   });
   it("migrates a v13 safety profile to the history projection table", () => {
     const { path } = fixture();
@@ -102,7 +173,11 @@ describe("schema versioning", () => {
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='history_projection_staging'").get()).toBeDefined();
+    expect(
+      upgraded
+        .prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='history_projection_staging'")
+        .get(),
+    ).toBeDefined();
   });
   it("migrates a v14 profile to durable command escalation tables", () => {
     const { path } = fixture();
@@ -111,8 +186,16 @@ describe("schema versioning", () => {
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='command_escalation_requests'").get()).toBeDefined();
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='command_escalation_grants'").get()).toBeDefined();
+    expect(
+      upgraded
+        .prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='command_escalation_requests'")
+        .get(),
+    ).toBeDefined();
+    expect(
+      upgraded
+        .prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='command_escalation_grants'")
+        .get(),
+    ).toBeDefined();
   });
   it("migrates a v15 profile to the inert plugin asset inventory", () => {
     const { path } = fixture();
@@ -121,7 +204,9 @@ describe("schema versioning", () => {
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='plugin_assets'").get()).toBeDefined();
+    expect(
+      upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='plugin_assets'").get(),
+    ).toBeDefined();
   });
   it("migrates a v16 profile to durable goals", () => {
     const { path } = fixture();
@@ -130,7 +215,9 @@ describe("schema versioning", () => {
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='goals'").get()).toBeDefined();
+    expect(
+      upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='goals'").get(),
+    ).toBeDefined();
   });
   it("migrates a v17 profile to the hook catalog and dispatch journal", () => {
     const { path } = fixture();
@@ -139,8 +226,12 @@ describe("schema versioning", () => {
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='hooks'").get()).toBeDefined();
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='hook_invocations'").get()).toBeDefined();
+    expect(
+      upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='hooks'").get(),
+    ).toBeDefined();
+    expect(
+      upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='hook_invocations'").get(),
+    ).toBeDefined();
   });
   it("migrates a v18 profile to reviewed outbound MCP servers and call journal", () => {
     const { path } = fixture();
@@ -150,7 +241,9 @@ describe("schema versioning", () => {
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
     for (const table of ["outbound_mcp_servers", "outbound_mcp_grants", "outbound_mcp_calls"])
-      expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name=?").get(table)).toBeDefined();
+      expect(
+        upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name=?").get(table),
+      ).toBeDefined();
   });
   it("migrates a v19 profile to durable subagent groups and reservations", () => {
     const { path } = fixture();
@@ -160,7 +253,9 @@ describe("schema versioning", () => {
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
     for (const table of ["subagent_groups", "subagents"])
-      expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name=?").get(table)).toBeDefined();
+      expect(
+        upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name=?").get(table),
+      ).toBeDefined();
   });
   it("migrates a v20 profile to Profile-owned customization", () => {
     const { path } = fixture();
@@ -171,7 +266,9 @@ describe("schema versioning", () => {
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
     for (const table of ["site_user_css", "site_zap_rules"])
-      expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name=?").get(table)).toBeDefined();
+      expect(
+        upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name=?").get(table),
+      ).toBeDefined();
   });
   it("migrates a v21 profile to revocable imported Skill grants", () => {
     const { path } = fixture();
@@ -181,17 +278,27 @@ describe("schema versioning", () => {
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='plugin_skill_grants'").get()).toBeDefined();
+    expect(
+      upgraded
+        .prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='plugin_skill_grants'")
+        .get(),
+    ).toBeDefined();
   });
   it("scrubs legacy operation input samples when a Profile opens", () => {
     const { path } = fixture();
     const db = track(openDb(path));
-    db.prepare(`INSERT INTO operations(operation_id,site_key,name,created_at,updated_at) VALUES('op','app.test','read',1,1)`).run();
-    db.prepare(`INSERT INTO operation_implementations(impl_id,operation_id,kind,executable,stats,created_at,updated_at)
-      VALUES('impl','op','request','{}',?,1,1)`).run(JSON.stringify({ successInputs: ['{"private":"article answer"}'], successCount: 1 }));
+    db.prepare(
+      `INSERT INTO operations(operation_id,site_key,name,created_at,updated_at) VALUES('op','app.test','read',1,1)`,
+    ).run();
+    db.prepare(
+      `INSERT INTO operation_implementations(impl_id,operation_id,kind,executable,stats,created_at,updated_at)
+      VALUES('impl','op','request','{}',?,1,1)`,
+    ).run(JSON.stringify({ successInputs: ['{"private":"article answer"}'], successCount: 1 }));
     db.close();
     const reopened = track(openDb(path));
-    const row = reopened.prepare("SELECT stats FROM operation_implementations WHERE impl_id='impl'").get() as { stats: string };
+    const row = reopened
+      .prepare("SELECT stats FROM operation_implementations WHERE impl_id='impl'")
+      .get() as { stats: string };
     expect(row.stats).not.toContain("article answer");
     expect(JSON.parse(row.stats).successInputs).toEqual([expect.stringMatching(/^sha256:[a-f0-9]{64}$/)]);
   });
@@ -222,7 +329,7 @@ describe("schema versioning", () => {
       const deadline = Date.now() + 5_000;
       while (Date.now() < deadline && statSync(`${path}-wal`).size > 0) {
         expect(db.prepare("SELECT count(*) AS count FROM kv").get()).toEqual({ count: 0 });
-        await new Promise(resolve => setTimeout(resolve, 20));
+        await new Promise((resolve) => setTimeout(resolve, 20));
       }
       expect(statSync(`${path}-wal`).size).toBe(0);
       expect(readFileSync(path).includes(Buffer.from("forgotten-wal-sentinel"))).toBe(false);
@@ -242,12 +349,12 @@ describe("schema versioning", () => {
     const checkpoint = new PrivacyCheckpoint(path);
     try {
       checkpoint.request();
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       expect(statSync(`${path}-wal`).size).toBeGreaterThan(0);
       reader.exec("COMMIT");
       const deadline = Date.now() + 5_000;
       while (Date.now() < deadline && statSync(`${path}-wal`).size > 0)
-        await new Promise(resolve => setTimeout(resolve, 20));
+        await new Promise((resolve) => setTimeout(resolve, 20));
       expect(statSync(`${path}-wal`).size).toBe(0);
     } finally {
       reader.close();
@@ -259,33 +366,101 @@ describe("schema versioning", () => {
     const { directory, path } = fixture();
     const db = track(openDb(path));
     expect(version(db)).toBe(SCHEMA_VERSION);
-    expect((db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as { value: string }).value).toBe("aux");
-    const tables = db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all() as { name: string }[];
+    expect(
+      (db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as { value: string }).value,
+    ).toBe("aux");
+    const tables = db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all() as {
+      name: string;
+    }[];
     for (const table of [
-      "kv", "sessions", "pages", "tabs", "page_sets", "set_members", "runs", "run_messages", "conversations",
-      "steps", "results", "content_memory", "programs", "artifacts", "model_calls", "events",
-      "history", "bookmarks", "bookmark_folders", "bookmark_articles", "downloads", "spans", "response_metadata",
-      "datasets", "operations", "operation_implementations", "operation_invocations",
-      "operation_reconciliations", "action_intents", "action_transitions", "workspaces",
-      "tasks", "task_lookup", "task_revisions", "task_evidence", "criterion_reviews", "agent_connections",
-      "vault_items", "vault_grants", "vault_access", "routines", "routine_revisions", "calendar_connections", "calendar_task_grants",
-      "routine_runs", "coordinator_leases", "criterion_verifications", "history_fts", "plugins",
-      "history_projection_staging", "safety_approval_requests", "safety_standing_grants", "safety_send_journal",
-      "command_escalation_requests", "command_escalation_grants", "plugin_assets", "plugin_skill_grants", "goals", "hooks", "hook_invocations",
-      "site_user_css", "site_zap_rules", "run_lookup",
+      "kv",
+      "sessions",
+      "pages",
+      "tabs",
+      "page_sets",
+      "set_members",
+      "runs",
+      "run_messages",
+      "conversations",
+      "steps",
+      "results",
+      "content_memory",
+      "programs",
+      "artifacts",
+      "model_calls",
+      "events",
+      "history",
+      "bookmarks",
+      "bookmark_folders",
+      "bookmark_articles",
+      "downloads",
+      "spans",
+      "response_metadata",
+      "datasets",
+      "operations",
+      "operation_implementations",
+      "operation_invocations",
+      "operation_reconciliations",
+      "action_intents",
+      "action_transitions",
+      "workspaces",
+      "tasks",
+      "task_lookup",
+      "task_revisions",
+      "task_evidence",
+      "criterion_reviews",
+      "agent_connections",
+      "vault_items",
+      "vault_grants",
+      "vault_access",
+      "routines",
+      "routine_revisions",
+      "calendar_connections",
+      "calendar_task_grants",
+      "routine_runs",
+      "coordinator_leases",
+      "criterion_verifications",
+      "history_fts",
+      "plugins",
+      "history_projection_staging",
+      "safety_approval_requests",
+      "safety_standing_grants",
+      "safety_send_journal",
+      "command_escalation_requests",
+      "command_escalation_grants",
+      "plugin_assets",
+      "plugin_skill_grants",
+      "goals",
+      "hooks",
+      "hook_invocations",
+      "site_user_css",
+      "site_zap_rules",
+      "run_lookup",
     ]) {
-      expect(tables.map(row => row.name)).toContain(table);
+      expect(tables.map((row) => row.name)).toContain(table);
     }
-    expect(tables.map(row => row.name)).not.toContain("journal_imports");
-    expect(tables.map(row => row.name)).not.toContain("observations");
-    for (const index of ["idx_conversations_state_updated", "idx_run_lookup_task", "idx_tasks_workspace", "idx_task_lookup_conversation", "idx_action_intents_unresolved", "idx_action_intents_task_unresolved", "idx_events_run", "idx_artifacts_run", "idx_respmeta_run"]) {
-      expect(db.prepare("SELECT name FROM sqlite_schema WHERE type='index' AND name=?").get(index)).toBeDefined();
+    expect(tables.map((row) => row.name)).not.toContain("journal_imports");
+    expect(tables.map((row) => row.name)).not.toContain("observations");
+    for (const index of [
+      "idx_conversations_state_updated",
+      "idx_run_lookup_task",
+      "idx_tasks_workspace",
+      "idx_task_lookup_conversation",
+      "idx_action_intents_unresolved",
+      "idx_action_intents_task_unresolved",
+      "idx_events_run",
+      "idx_artifacts_run",
+      "idx_respmeta_run",
+    ]) {
+      expect(
+        db.prepare("SELECT name FROM sqlite_schema WHERE type='index' AND name=?").get(index),
+      ).toBeDefined();
     }
     db.prepare("INSERT INTO kv VALUES (?, ?)").run("synthetic", "retained");
     db.close();
     const reopened = track(openDb(path));
     expect((reopened.prepare("SELECT value FROM kv").get() as { value: string }).value).toBe("retained");
-    expect(readdirSync(directory).filter(name => !name.startsWith("state.sqlite"))).toEqual([]);
+    expect(readdirSync(directory).filter((name) => !name.startsWith("state.sqlite"))).toEqual([]);
   });
 
   it("advances a schema 29 database to the development-identity peer generation", () => {
@@ -296,7 +471,9 @@ describe("schema versioning", () => {
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    expect(upgraded.prepare("SELECT 1 FROM sqlite_schema WHERE name='outbound_mcp_bundles'").get()).toBeDefined();
+    expect(
+      upgraded.prepare("SELECT 1 FROM sqlite_schema WHERE name='outbound_mcp_bundles'").get(),
+    ).toBeDefined();
   });
 
   it("adds durable page-change authority to existing v27 automation rows", () => {
@@ -308,8 +485,9 @@ describe("schema versioning", () => {
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    const names = (upgraded.prepare("PRAGMA table_info(routine_runs)").all() as { name: string }[])
-      .map(column => column.name);
+    const names = (upgraded.prepare("PRAGMA table_info(routine_runs)").all() as { name: string }[]).map(
+      (column) => column.name,
+    );
     expect(names).toContain("trigger_page_id");
     expect(names).toContain("trigger_document_epoch");
   });
@@ -318,11 +496,18 @@ describe("schema versioning", () => {
     const { path } = fixture();
     const db = track(openDb(path));
     expect(() =>
-      db.prepare("INSERT INTO action_transitions(intent_id,status,recorded_at) VALUES(?,?,?)").run("missing", "pending", 1)
+      db
+        .prepare("INSERT INTO action_transitions(intent_id,status,recorded_at) VALUES(?,?,?)")
+        .run("missing", "pending", 1),
     ).toThrow(/FOREIGN KEY/);
-    db.prepare("INSERT INTO action_intents(id,idempotency_key,run_id,page_id,document_epoch,status,created_at) VALUES(?,?,?,?,?,?,?)")
-      .run("i1", "k1", "run", "page", 1, "pending", 1);
-    db.prepare("INSERT INTO action_transitions(intent_id,status,recorded_at) VALUES(?,?,?)").run("i1", "pending", 1);
+    db.prepare(
+      "INSERT INTO action_intents(id,idempotency_key,run_id,page_id,document_epoch,status,created_at) VALUES(?,?,?,?,?,?,?)",
+    ).run("i1", "k1", "run", "page", 1, "pending", 1);
+    db.prepare("INSERT INTO action_transitions(intent_id,status,recorded_at) VALUES(?,?,?)").run(
+      "i1",
+      "pending",
+      1,
+    );
     db.prepare("DELETE FROM action_intents WHERE id='i1'").run();
     expect((db.prepare("SELECT count(*) AS n FROM action_transitions").get() as { n: number }).n).toBe(0);
   });
@@ -330,18 +515,24 @@ describe("schema versioning", () => {
   it("refuses pre-versioning development databases without modifying them", () => {
     const { directory, path } = fixture();
     const legacy = track(new DatabaseSync(path));
-    legacy.exec("CREATE TABLE kv(key TEXT PRIMARY KEY, value TEXT NOT NULL); INSERT INTO kv VALUES ('kept','yes')");
+    legacy.exec(
+      "CREATE TABLE kv(key TEXT PRIMARY KEY, value TEXT NOT NULL); INSERT INTO kv VALUES ('kept','yes')",
+    );
     expect(() => openDb(path)).toThrow(/pre-versioning development schema/);
     expect(version(legacy)).toBe(0);
     expect((legacy.prepare("SELECT value FROM kv").get() as { value: string }).value).toBe("yes");
     expect(legacy.prepare("SELECT name FROM sqlite_schema WHERE name='pages'").get()).toBeUndefined();
-    expect(readdirSync(directory).filter(name => name !== "state.sqlite" && !name.startsWith("state.sqlite-"))).toEqual([]);
+    expect(
+      readdirSync(directory).filter((name) => name !== "state.sqlite" && !name.startsWith("state.sqlite-")),
+    ).toEqual([]);
   });
 
   it("refuses legacy versioned databases that lack the Aux marker", () => {
     const { path } = fixture();
     const legacy = track(new DatabaseSync(path));
-    legacy.exec("PRAGMA user_version=13; CREATE TABLE kv(key TEXT PRIMARY KEY, value TEXT NOT NULL); INSERT INTO kv VALUES ('kept','yes')");
+    legacy.exec(
+      "PRAGMA user_version=13; CREATE TABLE kv(key TEXT PRIMARY KEY, value TEXT NOT NULL); INSERT INTO kv VALUES ('kept','yes')",
+    );
     expect(() => openDb(path)).toThrow(/incompatible development schema/);
     expect(version(legacy)).toBe(13);
     expect((legacy.prepare("SELECT value FROM kv").get() as { value: string }).value).toBe("yes");
@@ -350,11 +541,15 @@ describe("schema versioning", () => {
   it("refuses newer Aux schemas without modifying them", () => {
     const { directory, path } = fixture();
     const newer = track(openDb(path));
-    newer.exec(`PRAGMA user_version=${SCHEMA_VERSION + 1}; CREATE TABLE future(value TEXT); INSERT INTO future VALUES ('keep')`);
+    newer.exec(
+      `PRAGMA user_version=${SCHEMA_VERSION + 1}; CREATE TABLE future(value TEXT); INSERT INTO future VALUES ('keep')`,
+    );
     expect(() => openDb(path)).toThrow(/newer than this Aux build/);
     expect(version(newer)).toBe(SCHEMA_VERSION + 1);
     expect((newer.prepare("SELECT value FROM future").get() as { value: string }).value).toBe("keep");
-    expect(readdirSync(directory).filter(name => name !== "state.sqlite" && !name.startsWith("state.sqlite-"))).toEqual([]);
+    expect(
+      readdirSync(directory).filter((name) => name !== "state.sqlite" && !name.startsWith("state.sqlite-")),
+    ).toEqual([]);
   });
 
   it("refuses partially-initialized databases even when table names match", () => {
@@ -364,7 +559,9 @@ describe("schema versioning", () => {
     legacy.exec("CREATE TABLE aux_meta(synthetic TEXT); INSERT INTO aux_meta VALUES ('preserved')");
     legacy.exec("CREATE TABLE kv(key TEXT PRIMARY KEY, value TEXT NOT NULL)");
     expect(() => openDb(path)).toThrow(/pre-versioning/);
-    expect((legacy.prepare("SELECT synthetic FROM aux_meta").get() as { synthetic: string }).synthetic).toBe("preserved");
+    expect((legacy.prepare("SELECT synthetic FROM aux_meta").get() as { synthetic: string }).synthetic).toBe(
+      "preserved",
+    );
   });
 
   it("applies future schema steps atomically without losing data", () => {
@@ -388,9 +585,15 @@ describe("schema versioning", () => {
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
     expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='run_messages'").get()).toBeDefined();
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='calendar_connections'").get()).toBeDefined();
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='calendar_task_grants'").get()).toBeDefined();
-    expect((upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as { value: string }).value).toBe("kept");
+    expect(
+      upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='calendar_connections'").get(),
+    ).toBeDefined();
+    expect(
+      upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='calendar_task_grants'").get(),
+    ).toBeDefined();
+    expect(
+      (upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as { value: string }).value,
+    ).toBe("kept");
   });
 
   it("removes legacy ambient page observations while preserving other profile data", () => {
@@ -405,20 +608,28 @@ describe("schema versioning", () => {
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    expect(upgraded.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='observations'").get()).toBeUndefined();
-    expect((upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as { value: string }).value).toBe("kept");
+    expect(
+      upgraded.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='observations'").get(),
+    ).toBeUndefined();
+    expect(
+      (upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as { value: string }).value,
+    ).toBe("kept");
   });
 
-  it("adds durable result lineage to an existing v11 profile",()=>{
-    const {path}=fixture();
-    const old=track(openDb(path));
+  it("adds durable result lineage to an existing v11 profile", () => {
+    const { path } = fixture();
+    const old = track(openDb(path));
     old.prepare("INSERT INTO kv(key,value) VALUES('saved','kept')").run();
     rewindProfile(old, 11);
     old.close();
-    const upgraded=track(openDb(path));
+    const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='result_versions'").get()).toBeDefined();
-    expect((upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as {value:string}).value).toBe("kept");
+    expect(
+      upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='result_versions'").get(),
+    ).toBeDefined();
+    expect(
+      (upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as { value: string }).value,
+    ).toBe("kept");
   });
 
   it("upgrades v7 profiles with task-scoped Calendar grants", () => {
@@ -429,23 +640,33 @@ describe("schema versioning", () => {
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='calendar_task_grants'").get()).toBeDefined();
-    expect((upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as { value: string }).value).toBe("kept");
+    expect(
+      upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='calendar_task_grants'").get(),
+    ).toBeDefined();
+    expect(
+      (upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as { value: string }).value,
+    ).toBe("kept");
   });
 
   it("migrates an existing v8 action journal without losing unresolved writes", () => {
-    const {path}=fixture();
-    const old=track(new DatabaseSync(path));
+    const { path } = fixture();
+    const old = track(new DatabaseSync(path));
     old.exec(`PRAGMA user_version=8;
       CREATE TABLE aux_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
       INSERT INTO aux_meta VALUES('schema','aux');
       CREATE TABLE action_intents(id TEXT PRIMARY KEY,idempotency_key TEXT NOT NULL UNIQUE,run_id TEXT NOT NULL,page_id TEXT NOT NULL,document_epoch INTEGER NOT NULL,status TEXT NOT NULL,created_at INTEGER NOT NULL,evidence TEXT);
       INSERT INTO action_intents VALUES('i1','k1','r1','p1',1,'uncertain',100,NULL);`);
     old.close();
-    const upgraded=track(openDb(path));
+    const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(SCHEMA_VERSION);
-    expect(upgraded.prepare("SELECT task_id,task_revision,status FROM action_intents WHERE id='i1'").get()).toMatchObject({task_id:null,task_revision:null,status:'uncertain'});
-    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='idx_action_intents_task_unresolved'").get()).toBeDefined();
+    expect(
+      upgraded.prepare("SELECT task_id,task_revision,status FROM action_intents WHERE id='i1'").get(),
+    ).toMatchObject({ task_id: null, task_revision: null, status: "uncertain" });
+    expect(
+      upgraded
+        .prepare("SELECT name FROM sqlite_schema WHERE name='idx_action_intents_task_unresolved'")
+        .get(),
+    ).toBeDefined();
   });
 
   it("migrates v1 databases to v2 and backfills the history index", () => {
@@ -464,7 +685,9 @@ describe("schema versioning", () => {
     legacy.close();
     const db = track(openDb(path));
     expect(version(db)).toBe(SCHEMA_VERSION);
-    expect(db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='plugins'").get()).toBeDefined();
+    expect(
+      db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='plugins'").get(),
+    ).toBeDefined();
     const repo = new Repo(db);
     expect(repo.listHistory()).toHaveLength(2);
     expect(repo.listHistory("kept")).toMatchObject([{ url: "https://kept.example/", title: "Kept Page" }]);

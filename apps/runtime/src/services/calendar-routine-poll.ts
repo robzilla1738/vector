@@ -28,28 +28,40 @@ export async function pollCalendarRoutines(
     let pageToken: string | undefined;
     const events: Awaited<ReturnType<CalendarConnectionService["taskEvents"]>>["events"] = [];
     for (let page = 0; page < PAGE_LIMIT; page++) {
-      const result = await calendar.taskEvents({ taskId, grantId, timeMin, timeMax,
-        limit: 100, ...(pageToken ? { pageToken } : {}) }, signal);
+      const result = await calendar.taskEvents(
+        { taskId, grantId, timeMin, timeMax, limit: 100, ...(pageToken ? { pageToken } : {}) },
+        signal,
+      );
       events.push(...result.events);
       pageToken = result.nextPageToken;
       if (!pageToken) break;
     }
-    if (pageToken) throw new Error("Calendar automation scan exceeded its page limit; no results were enqueued.");
+    if (pageToken)
+      throw new Error("Calendar automation scan exceeded its page limit; no results were enqueued.");
     const seen = new Set<string>();
     for (const event of events) {
       if (signal?.aborted) return;
       const startAt = Date.parse(event.start);
       if (!Number.isFinite(startAt) || startAt < 0 || event.source.connectionId.length === 0) continue;
-      if (!offsets.some((minutes) => {
-        const dueAt = startAt - minutes * 60_000;
-        return dueAt >= now - GRACE_MS && dueAt <= now + 30_000;
-      })) continue;
+      if (
+        !offsets.some((minutes) => {
+          const dueAt = startAt - minutes * 60_000;
+          return dueAt >= now - GRACE_MS && dueAt <= now + 30_000;
+        })
+      )
+        continue;
       const identity = `${event.source.calendarId}:${event.eventId}:${startAt}`;
       if (seen.has(identity)) continue;
       seen.add(identity);
-      await ingest({ kind: "calendar_event", grantId,
-        connectionId: event.source.connectionId, calendarId: event.source.calendarId,
-        eventId: event.eventId, startAt, observedAt: now });
+      await ingest({
+        kind: "calendar_event",
+        grantId,
+        connectionId: event.source.connectionId,
+        calendarId: event.source.calendarId,
+        eventId: event.eventId,
+        startAt,
+        observedAt: now,
+      });
     }
   }
 }

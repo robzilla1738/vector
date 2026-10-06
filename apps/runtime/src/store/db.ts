@@ -412,7 +412,11 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
   ],
   // v4 → v5: indexes for per-run/per-page lookups and retention deletes.
   4: (db) =>
-    HOT_PATH_INDEXES.filter((sql) => db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(/ ON (\w+)\(/.exec(sql)![1]!)),
+    HOT_PATH_INDEXES.filter((sql) =>
+      db
+        .prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?")
+        .get(/ ON (\w+)\(/.exec(sql)![1]!),
+    ),
   // v5 → v6: ordered, crash-recoverable conversation messages.
   5: [
     `CREATE TABLE run_messages(
@@ -446,12 +450,13 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
   ],
   // v8 → v9: direct browser effects belong to an exact saved task revision.
   8: (db) => {
-    if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='action_intents'").get())return [];
-    const columns=db.prepare("PRAGMA table_info(action_intents)").all() as {name:string}[];
-    const names=new Set(columns.map(column=>column.name));
+    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='action_intents'").get())
+      return [];
+    const columns = db.prepare("PRAGMA table_info(action_intents)").all() as { name: string }[];
+    const names = new Set(columns.map((column) => column.name));
     return [
-      ...(!names.has('task_id')?[`ALTER TABLE action_intents ADD COLUMN task_id TEXT`]:[]),
-      ...(!names.has('task_revision')?[`ALTER TABLE action_intents ADD COLUMN task_revision INTEGER`]:[]),
+      ...(!names.has("task_id") ? [`ALTER TABLE action_intents ADD COLUMN task_id TEXT`] : []),
+      ...(!names.has("task_revision") ? [`ALTER TABLE action_intents ADD COLUMN task_revision INTEGER`] : []),
       `CREATE INDEX IF NOT EXISTS idx_action_intents_task_unresolved ON action_intents(task_id,task_revision,status)`,
     ];
   },
@@ -600,15 +605,19 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
   ],
   // v22 → v23: resend nonce chain on conversation messages (04-A).
   22: (db) => {
-    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='run_messages'").get()) return [];
-    return (db.prepare("PRAGMA table_info(run_messages)").all() as { name: string }[]).some(c => c.name === "resends_nonce")
+    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='run_messages'").get())
+      return [];
+    return (db.prepare("PRAGMA table_info(run_messages)").all() as { name: string }[]).some(
+      (c) => c.name === "resends_nonce",
+    )
       ? []
       : [`ALTER TABLE run_messages ADD COLUMN resends_nonce TEXT`];
   },
   // v23 → v24: scoped tokens gain session scope + expiry; the CHECK on
   // scope_kind must be rebuilt since SQLite cannot alter constraints.
   23: (db) => {
-    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='agent_connections'").get()) return [];
+    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='agent_connections'").get())
+      return [];
     return [
       `CREATE TABLE agent_connections_new(
         connection_id TEXT PRIMARY KEY, name TEXT NOT NULL, client TEXT NOT NULL,
@@ -633,7 +642,9 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
   24: (db) => [
     `CREATE TABLE IF NOT EXISTS run_lookup(run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
       config TEXT NOT NULL DEFAULT '{}')`,
-    ...(db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='runs'").get() ? [`INSERT OR REPLACE INTO run_lookup(run_id,config)
+    ...(db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='runs'").get()
+      ? [
+          `INSERT OR REPLACE INTO run_lookup(run_id,config)
       SELECT run_id,json_object(
         'chatId',json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId'),
         'taskId',json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.taskId'),
@@ -643,7 +654,9 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
         'contextWorkspaceId',json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextWorkspaceId'),
         'contextMemoryRevoked',json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextMemoryRevoked'),
         'contextImageArtifactIds',json(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextImageArtifactIds')))
-      FROM runs`] : []),
+      FROM runs`,
+        ]
+      : []),
     `DROP INDEX IF EXISTS idx_runs_task`,
     `CREATE INDEX IF NOT EXISTS idx_run_lookup_task ON run_lookup(json_extract(config,'$.taskId'))`,
   ],
@@ -651,21 +664,25 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
   25: (db) => [
     `CREATE TABLE IF NOT EXISTS task_lookup(task_id TEXT PRIMARY KEY REFERENCES tasks(task_id) ON DELETE CASCADE,
       conversation_id TEXT, source_origin TEXT)`,
-    ...(db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='tasks'").get() ? [
-      `INSERT OR REPLACE INTO task_lookup(task_id,conversation_id,source_origin)
+    ...(db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='tasks'").get()
+      ? [
+          `INSERT OR REPLACE INTO task_lookup(task_id,conversation_id,source_origin)
        SELECT task_id,
          json_extract(CASE WHEN json_valid(json) THEN json ELSE '{}' END,'$.conversationId'),
          json_extract(CASE WHEN json_valid(json) THEN json ELSE '{}' END,'$.sourceOrigin')
        FROM tasks`,
-    ] : []),
+        ]
+      : []),
     `CREATE INDEX IF NOT EXISTS idx_task_lookup_conversation ON task_lookup(conversation_id)`,
     `CREATE INDEX IF NOT EXISTS idx_task_lookup_source ON task_lookup(source_origin,conversation_id)`,
   ],
   // v26 → v27: exact active account matching uses a keyed lookup after account metadata is sealed.
   26: (db) => {
-    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='calendar_connections'").get()) return [];
-    const hasLookup = (db.prepare("PRAGMA table_info(calendar_connections)").all() as { name: string }[])
-      .some(column => column.name === "account_key_lookup");
+    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='calendar_connections'").get())
+      return [];
+    const hasLookup = (
+      db.prepare("PRAGMA table_info(calendar_connections)").all() as { name: string }[]
+    ).some((column) => column.name === "account_key_lookup");
     return [
       ...(!hasLookup ? [`ALTER TABLE calendar_connections ADD COLUMN account_key_lookup TEXT`] : []),
       `DROP INDEX IF EXISTS idx_calendar_account_active`,
@@ -674,12 +691,18 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
   },
   // v27 → v28: keep the exact page-change authority across review and restart.
   27: (db) => {
-    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='routine_runs'").get()) return [];
-    const names = new Set((db.prepare("PRAGMA table_info(routine_runs)").all() as { name: string }[])
-      .map(column => column.name));
+    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='routine_runs'").get())
+      return [];
+    const names = new Set(
+      (db.prepare("PRAGMA table_info(routine_runs)").all() as { name: string }[]).map(
+        (column) => column.name,
+      ),
+    );
     return [
       ...(!names.has("trigger_page_id") ? [`ALTER TABLE routine_runs ADD COLUMN trigger_page_id TEXT`] : []),
-      ...(!names.has("trigger_document_epoch") ? [`ALTER TABLE routine_runs ADD COLUMN trigger_document_epoch INTEGER`] : []),
+      ...(!names.has("trigger_document_epoch")
+        ? [`ALTER TABLE routine_runs ADD COLUMN trigger_document_epoch INTEGER`]
+        : []),
     ];
   },
   // v28 → v29: Profile-owned immutable MCP bundle bytes, sealed at startup.
@@ -728,7 +751,11 @@ function migrate(db: DatabaseSync, path: string, from: number): void {
     }
     db.exec("VACUUM");
   } catch (error) {
-    if (backupDirectory) throw new Error(`Database migration failed. The original snapshot is at ${join(backupDirectory, "aux-state.sqlite")}.`, { cause: error });
+    if (backupDirectory)
+      throw new Error(
+        `Database migration failed. The original snapshot is at ${join(backupDirectory, "aux-state.sqlite")}.`,
+        { cause: error },
+      );
     throw error;
   }
   if (backupDirectory) rmSync(backupDirectory, { recursive: true, force: true });
@@ -742,20 +769,32 @@ export function openDb(path: string): DatabaseSync {
     db.exec("PRAGMA busy_timeout = 5000");
     db.exec("PRAGMA foreign_keys = ON");
     const version = (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
-    const { count } = db.prepare("SELECT count(*) AS count FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%'").get() as { count: number };
+    const { count } = db
+      .prepare("SELECT count(*) AS count FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%'")
+      .get() as { count: number };
     if (version === 0 && count > 0) {
-      throw new Error("This database uses a pre-versioning development schema. It was preserved unchanged; move it aside or choose a different AUX_DATA_DIR.");
+      throw new Error(
+        "This database uses a pre-versioning development schema. It was preserved unchanged; move it aside or choose a different AUX_DATA_DIR.",
+      );
     }
     if (version > 0) {
-      const marker = count > 0 && db.prepare("SELECT name FROM sqlite_schema WHERE name='aux_meta'").get()
-        ? (db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as { value: string } | undefined)?.value
-        : undefined;
+      const marker =
+        count > 0 && db.prepare("SELECT name FROM sqlite_schema WHERE name='aux_meta'").get()
+          ? (
+              db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as
+                { value: string } | undefined
+            )?.value
+          : undefined;
       if (marker !== "aux") {
-        throw new Error("This database uses an incompatible development schema. It was preserved unchanged; move it aside or choose a different AUX_DATA_DIR.");
+        throw new Error(
+          "This database uses an incompatible development schema. It was preserved unchanged; move it aside or choose a different AUX_DATA_DIR.",
+        );
       }
     }
     if (version > SCHEMA_VERSION || version < 0) {
-      throw new Error(`Database schema ${version} is newer than this Aux build supports (schema ${SCHEMA_VERSION}). The file was left unchanged; use the matching newer application.`);
+      throw new Error(
+        `Database schema ${version} is newer than this Aux build supports (schema ${SCHEMA_VERSION}). The file was left unchanged; use the matching newer application.`,
+      );
     }
     // SQLite may otherwise leave deleted run answers in reusable database pages.
     // Set on every compatible connection, before migrations or Forget writes.

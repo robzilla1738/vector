@@ -1,9 +1,15 @@
 import { createElement, lazy, Suspense } from "react";
 import { call, useStore } from "../../store";
 import type { FeatureMount } from "../registry";
-const DownloadNamingSettings = lazy(() => import("./Settings").then(module => ({ default: module.DownloadNamingSettings })));
+const DownloadNamingSettings = lazy(() =>
+  import("./Settings").then((module) => ({ default: module.DownloadNamingSettings })),
+);
 function DownloadNamingSection() {
-  return createElement(Suspense, { fallback: createElement("output", null, "Loading download naming settings…") }, createElement(DownloadNamingSettings));
+  return createElement(
+    Suspense,
+    { fallback: createElement("output", null, "Loading download naming settings…") },
+    createElement(DownloadNamingSettings),
+  );
 }
 import { bootDownloadRenames, undoDownloadRename } from "./state";
 export const mount: FeatureMount = {

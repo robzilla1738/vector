@@ -18,34 +18,60 @@ assert.ok(process.stdin.isTTY, "Store lifecycle requires a human at the candidat
 
 const directory = mkdtempSync(join(tmpdir(), "aux-store-lifecycle-"));
 const profile = join(directory, "profile");
-const probe = join(directory, "probe"); mkdirSync(probe);
-writeFileSync(join(probe, "manifest.json"), JSON.stringify({ manifest_version: 3,
-  name: "Aux Store lifecycle observer", version: "1.0", permissions: ["management"],
-  background: { service_worker: "worker.js" } }));
+const probe = join(directory, "probe");
+mkdirSync(probe);
+writeFileSync(
+  join(probe, "manifest.json"),
+  JSON.stringify({
+    manifest_version: 3,
+    name: "Aux Store lifecycle observer",
+    version: "1.0",
+    permissions: ["management"],
+    background: { service_worker: "worker.js" },
+  }),
+);
 writeFileSync(join(probe, "worker.js"), "chrome.runtime.onInstalled.addListener(()=>{});");
 writeFileSync(join(probe, "inspect.html"), "<!doctype html><title>Aux Store lifecycle observer</title>");
-const evidence = { at: new Date().toISOString(), binary: realpathSync(binary), storeId,
-  profile: "disposable", checks: {} };
+const evidence = {
+  at: new Date().toISOString(),
+  binary: realpathSync(binary),
+  storeId,
+  profile: "disposable",
+  checks: {},
+};
 const input = createInterface({ input: process.stdin, output: process.stdout });
 let context;
 const launch = async () => {
-  context = await chromium.launchPersistentContext(profile, { headless: false, executablePath: realpathSync(binary),
+  context = await chromium.launchPersistentContext(profile, {
+    headless: false,
+    executablePath: realpathSync(binary),
     env: { PATH: process.env.PATH, HOME: directory, TMPDIR: directory },
-    args: [`--load-extension=${probe}`,
-      "--use-mock-keychain", "--password-store=basic", "--no-first-run"] });
-  const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker", { timeout: 30_000 });
+    args: [`--load-extension=${probe}`, "--use-mock-keychain", "--password-store=basic", "--no-first-run"],
+  });
+  const worker =
+    context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker", { timeout: 30_000 }));
   const page = await context.newPage();
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/inspect.html`);
   return page;
 };
-const inspect = async page => page.evaluate(async id => {
-  try {
-    const item = await chrome.management.get(id);
-    return { installed: true, id: item.id, name: item.name, version: item.version,
-      enabled: item.enabled, installType: item.installType, permissions: item.permissions };
-  } catch { return { installed: false }; }
-}, storeId);
-const checkpoint = async message => {
+const inspect = async (page) =>
+  page.evaluate(async (id) => {
+    try {
+      const item = await chrome.management.get(id);
+      return {
+        installed: true,
+        id: item.id,
+        name: item.name,
+        version: item.version,
+        enabled: item.enabled,
+        installType: item.installType,
+        permissions: item.permissions,
+      };
+    } catch {
+      return { installed: false };
+    }
+  }, storeId);
+const checkpoint = async (message) => {
   const answer = await input.question(`${message} Type yes to continue, or anything else to stop: `);
   assert.equal(answer.trim().toLowerCase(), "yes", "Operator stopped the Store probe.");
 };
@@ -55,33 +81,46 @@ try {
   await storePage.goto(`https://chromewebstore.google.com/detail/${storeId}`);
   await checkpoint("In the candidate UI, review the Store listing, install it and approve its permissions.");
   const installed = await inspect(observer);
-  assert.ok(installed.installed && installed.enabled, "Store extension did not appear enabled after UI installation.");
+  assert.ok(
+    installed.installed && installed.enabled,
+    "Store extension did not appear enabled after UI installation.",
+  );
   evidence.checks.install = installed;
-  evidence.checks.permissionPrompt = { status: "operator_confirmed", note: "Prompt content is not captured by Playwright." };
+  evidence.checks.permissionPrompt = {
+    status: "operator_confirmed",
+    note: "Prompt content is not captured by Playwright.",
+  };
 
   try {
-    await observer.evaluate(id => chrome.management.setEnabled(id, false), storeId);
+    await observer.evaluate((id) => chrome.management.setEnabled(id, false), storeId);
     assert.equal((await inspect(observer)).enabled, false);
-    await observer.evaluate(id => chrome.management.setEnabled(id, true), storeId);
+    await observer.evaluate((id) => chrome.management.setEnabled(id, true), storeId);
     assert.equal((await inspect(observer)).enabled, true);
     evidence.checks.disableEnable = { status: "pass" };
   } catch (error) {
     evidence.checks.disableEnable = { status: "fail", reason: String(error) };
   }
 
-  await context.close(); context = undefined;
+  await context.close();
+  context = undefined;
   observer = await launch();
   const retained = await inspect(observer);
-  assert.ok(retained.installed && retained.enabled && retained.id === storeId,
-    "Store extension was not retained after candidate restart.");
+  assert.ok(
+    retained.installed && retained.enabled && retained.id === storeId,
+    "Store extension was not retained after candidate restart.",
+  );
   evidence.checks.restart = retained;
-  evidence.checks.update = { status: "unqualified", reason: "A Store update needs a published version change; opening a current listing cannot prove one." };
+  evidence.checks.update = {
+    status: "unqualified",
+    reason: "A Store update needs a published version change; opening a current listing cannot prove one.",
+  };
 
-  await context.newPage().then(page => page.goto("chrome://extensions"));
+  await context.newPage().then((page) => page.goto("chrome://extensions"));
   await checkpoint("Remove the Store extension in chrome://extensions, including its native confirmation.");
   assert.equal((await inspect(observer)).installed, false, "Store extension remained installed.");
   evidence.checks.remove = { status: "pass" };
-  await context.close(); context = undefined;
+  await context.close();
+  context = undefined;
   observer = await launch();
   assert.equal((await inspect(observer)).installed, false, "Removed Store extension returned after restart.");
   evidence.checks.removedAfterRestart = { status: "pass" };

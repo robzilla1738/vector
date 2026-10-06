@@ -1,10 +1,14 @@
 import type { FeatureMount } from "../registry";
 import { createElement, lazy, Suspense } from "react";
-const MentionComposer = lazy(() => import("../../mentions/MentionComposer").then(module => ({ default: module.MentionComposer })));
+const MentionComposer = lazy(() =>
+  import("../../mentions/MentionComposer").then((module) => ({ default: module.MentionComposer })),
+);
 import { mentionController } from "../../mentions/controller";
 export const mount: FeatureMount = {
   feature: "tabMentions",
-  composerPlugins: [props => createElement(Suspense, { fallback: null }, createElement(MentionComposer, props))],
+  composerPlugins: [
+    (props) => createElement(Suspense, { fallback: null }, createElement(MentionComposer, props)),
+  ],
   commands: {
     "mention-insert": (_state, { payload }) => {
       if (!payload || !("composerId" in payload) || !("candidateId" in payload))

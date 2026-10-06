@@ -53,23 +53,35 @@ describe("agent page driver", () => {
   it("keeps a condition wait open when navigation interrupts the locator", async () => {
     let calls = 0;
     let release: () => void = () => {};
-    const waiting = new Promise<void>((resolve) => { release = resolve; });
+    const waiting = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     const subject = driver({
       isClosed: () => false,
       locator: () => ({
         first: () => ({
           waitFor: async () => {
             calls += 1;
-            if (calls === 1) throw new Error('Navigation to "https://start.example/" is interrupted by another navigation to "https://example.com/next"');
+            if (calls === 1)
+              throw new Error(
+                'Navigation to "https://start.example/" is interrupted by another navigation to "https://example.com/next"',
+              );
             await waiting;
           },
         }),
       }),
     });
     let settled = false;
-    const pending = subject.waitFor({
-      kind: "selector", selector: "#absent", state: "visible", timeoutMs: 2_000,
-    }).finally(() => { settled = true; });
+    const pending = subject
+      .waitFor({
+        kind: "selector",
+        selector: "#absent",
+        state: "visible",
+        timeoutMs: 2_000,
+      })
+      .finally(() => {
+        settled = true;
+      });
     const deadline = Date.now() + 1_000;
     while (calls < 2 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
     expect(calls).toBe(2);
@@ -91,7 +103,12 @@ describe("agent page driver", () => {
         }),
       }),
     });
-    const result = await subject.waitFor({ kind: "selector", selector: "#absent", state: "visible", timeoutMs: 2_000 });
+    const result = await subject.waitFor({
+      kind: "selector",
+      selector: "#absent",
+      state: "visible",
+      timeoutMs: 2_000,
+    });
     expect(calls).toBe(1);
     expect(result).toMatchObject({ ok: false, timedOut: false });
   });
@@ -110,7 +127,12 @@ describe("agent page driver", () => {
       }),
     });
     const started = Date.now();
-    const result = await subject.waitFor({ kind: "selector", selector: "#absent", state: "visible", timeoutMs: 80 });
+    const result = await subject.waitFor({
+      kind: "selector",
+      selector: "#absent",
+      state: "visible",
+      timeoutMs: 80,
+    });
     expect(calls).toBeGreaterThan(1);
     expect(Date.now() - started).toBeLessThan(1_000);
     expect(result).toMatchObject({ ok: false, timedOut: true });

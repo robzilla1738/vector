@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { ProgramSchema, ProgramBudgetSchema, StepSchema, MethodSchemas, EventSchema, errorAdvice, isElementRef } from "@aux/contracts";
+import {
+  ProgramSchema,
+  ProgramBudgetSchema,
+  StepSchema,
+  MethodSchemas,
+  EventSchema,
+  errorAdvice,
+  isElementRef,
+} from "@aux/contracts";
 
 describe("StepSchema", () => {
   it("accepts every core op", () => {
@@ -29,15 +37,34 @@ describe("StepSchema", () => {
     expect(StepSchema.safeParse({ id: "x", op: "click" }).success).toBe(false); // no target
     expect(StepSchema.safeParse({ id: "x", op: "navigate", url: "not a url" }).success).toBe(false);
     expect(StepSchema.safeParse({ op: "click", target: "r1" }).success).toBe(false); // no id
-    expect(StepSchema.safeParse({ id: "pw", op: "fillCredential", passwordSelector: "#password", credentialRef: `cref_${"ab".repeat(12)}` }).success).toBe(false);
-    expect(StepSchema.safeParse({ id: "pw", op: "fillCredential", passwordSelector: "#password", value: "secret" }).success).toBe(false);
+    expect(
+      StepSchema.safeParse({
+        id: "pw",
+        op: "fillCredential",
+        passwordSelector: "#password",
+        credentialRef: `cref_${"ab".repeat(12)}`,
+      }).success,
+    ).toBe(false);
+    expect(
+      StepSchema.safeParse({ id: "pw", op: "fillCredential", passwordSelector: "#password", value: "secret" })
+        .success,
+    ).toBe(false);
   });
 
   it("waitFor accepts the settled readiness condition", () => {
-    expect(StepSchema.safeParse({ id: "w", op: "waitFor", condition: { kind: "settled" } }).success).toBe(true);
-    expect(StepSchema.safeParse({ id: "w", op: "waitFor", condition: { kind: "settled", timeoutMs: 500 } }).success).toBe(true);
-    expect(StepSchema.safeParse({ id: "w", op: "click", target: "r1", expect: [{ kind: "settled" }] }).success).toBe(true);
-    expect(StepSchema.safeParse({ id: "w", op: "waitFor", condition: { kind: "settled", timeoutMs: 0 } }).success).toBe(false);
+    expect(StepSchema.safeParse({ id: "w", op: "waitFor", condition: { kind: "settled" } }).success).toBe(
+      true,
+    );
+    expect(
+      StepSchema.safeParse({ id: "w", op: "waitFor", condition: { kind: "settled", timeoutMs: 500 } })
+        .success,
+    ).toBe(true);
+    expect(
+      StepSchema.safeParse({ id: "w", op: "click", target: "r1", expect: [{ kind: "settled" }] }).success,
+    ).toBe(true);
+    expect(
+      StepSchema.safeParse({ id: "w", op: "waitFor", condition: { kind: "settled", timeoutMs: 0 } }).success,
+    ).toBe(false);
   });
 
   it("press/scroll make target optional", () => {
@@ -53,7 +80,10 @@ describe("ProgramSchema", () => {
     ).toBe(true);
     expect(ProgramSchema.safeParse({ steps: [] }).success).toBe(false);
     expect(ProgramSchema.safeParse({ pageId: "p1", steps: [] }).success).toBe(false);
-    const huge = { pageId: "p1", steps: Array.from({ length: 201 }, (_, i) => ({ id: `s${i}`, op: "reload" })) };
+    const huge = {
+      pageId: "p1",
+      steps: Array.from({ length: 201 }, (_, i) => ({ id: `s${i}`, op: "reload" })),
+    };
     expect(ProgramSchema.safeParse(huge).success).toBe(false);
   });
 
@@ -73,17 +103,46 @@ describe("ProgramSchema", () => {
 describe("API schemas", () => {
   it("has all versioned methods from the roadmap", () => {
     for (const m of [
-      "pages.list", "pages.open", "pages.observe", "pages.execute", "pages.capture",
-      "pages.extract", "pages.waitFor", "pages.console", "pages.dialog", "pages.network",
-      "sets.create", "sets.map", "sets.results",
-      "runs.start", "runs.pause", "runs.resume", "runs.cancel", "runs.events",
-      "conversations.artifacts.get", "conversations.artifacts.toggle", "conversations.sources.get",
-      "conversations.workspace.get", "conversations.workspace.set", "workspaces.memory.get", "workspaces.memory.set",
-      "artifacts.list", "artifacts.read",
-      "vault.status", "vault.save", "vault.grant", "vault.renewGrant", "vault.expiredGrants",
-      "routines.list", "routines.fromResult", "routines.alerts", "routines.compare",
-      "installation.listBackups", "installation.backupRetention",
-      "tasks.verifyCriterion", "tasks.replaceAgent",
+      "pages.list",
+      "pages.open",
+      "pages.observe",
+      "pages.execute",
+      "pages.capture",
+      "pages.extract",
+      "pages.waitFor",
+      "pages.console",
+      "pages.dialog",
+      "pages.network",
+      "sets.create",
+      "sets.map",
+      "sets.results",
+      "runs.start",
+      "runs.pause",
+      "runs.resume",
+      "runs.cancel",
+      "runs.events",
+      "conversations.artifacts.get",
+      "conversations.artifacts.toggle",
+      "conversations.sources.get",
+      "conversations.workspace.get",
+      "conversations.workspace.set",
+      "workspaces.memory.get",
+      "workspaces.memory.set",
+      "artifacts.list",
+      "artifacts.read",
+      "vault.status",
+      "vault.save",
+      "vault.grant",
+      "vault.renewGrant",
+      "vault.expiredGrants",
+      "routines.list",
+      "routines.fromResult",
+      "routines.alerts",
+      "routines.compare",
+      "installation.listBackups",
+      "installation.backupRetention",
+      "tasks.verifyCriterion",
+      "tasks.replaceAgent",
     ]) {
       expect(MethodSchemas).toHaveProperty(m);
     }
@@ -92,7 +151,9 @@ describe("API schemas", () => {
   it("pages.observe accepts format compact|full alongside the observation request", () => {
     const P = MethodSchemas["pages.observe"];
     expect(P.safeParse({ pageId: "p1" }).success).toBe(true);
-    expect(P.safeParse({ pageId: "p1", format: "compact", scope: "forms", maxElements: 40 }).success).toBe(true);
+    expect(P.safeParse({ pageId: "p1", format: "compact", scope: "forms", maxElements: 40 }).success).toBe(
+      true,
+    );
     expect(P.safeParse({ pageId: "p1", format: "tiny" }).success).toBe(false);
     // backward compatible: an omitted format parses to undefined (full behaviour)
     expect((P.parse({ pageId: "p1" }) as { format?: string }).format).toBeUndefined();
@@ -103,7 +164,10 @@ describe("API schemas", () => {
     const program = { pageId: "p1", steps: [{ id: "s1", op: "click", target: "r1" }] };
     expect(P.safeParse({ program }).success).toBe(true);
     expect(P.safeParse({ program, returnObservation: { format: "compact" } }).success).toBe(true);
-    expect(P.safeParse({ program, returnObservation: { scope: "subtree", subtreeRef: "r2", format: "full" } }).success).toBe(true);
+    expect(
+      P.safeParse({ program, returnObservation: { scope: "subtree", subtreeRef: "r2", format: "full" } })
+        .success,
+    ).toBe(true);
     expect(P.safeParse({ program, returnObservation: { scope: "everything" } }).success).toBe(false);
     expect(P.safeParse({ program, returnObservation: { format: "yaml" } }).success).toBe(false);
   });
@@ -120,14 +184,25 @@ describe("API schemas", () => {
       retryable: true,
       hint: "re-observe and retry with a fresh ref",
     });
-    expect(errorAdvice("permission_denied")).toMatchObject({ retryable: false, hint: expect.stringMatching(/grant/) });
+    expect(errorAdvice("permission_denied")).toMatchObject({
+      retryable: false,
+      hint: expect.stringMatching(/grant/),
+    });
     expect(errorAdvice("cancelled")).toEqual({ retryable: false, hint: null });
   });
 
   it("validates events", () => {
-    const e = EventSchema.safeParse({ seq: 3, streamId: "s1", type: "page.updated", payload: { a: 1 }, ts: Date.now() });
+    const e = EventSchema.safeParse({
+      seq: 3,
+      streamId: "s1",
+      type: "page.updated",
+      payload: { a: 1 },
+      ts: Date.now(),
+    });
     expect(e.success).toBe(true);
-    expect(EventSchema.safeParse({ seq: -1, streamId: "s1", type: "x", payload: {}, ts: 0 }).success).toBe(false);
+    expect(EventSchema.safeParse({ seq: -1, streamId: "s1", type: "x", payload: {}, ts: 0 }).success).toBe(
+      false,
+    );
     expect(EventSchema.safeParse({ seq: 3, type: "x", payload: {}, ts: 0 }).success).toBe(false);
   });
 });

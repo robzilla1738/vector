@@ -6,10 +6,24 @@ export function availableConversationPage(page: PageTarget) {
   try {
     const url = new URL(page.url);
     return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
-export function conversationPage(pages: PageTarget[], selection: string, activePageId: string | null, linkedPageId?: string) {
-  const id = selection === "active" ? activePageId : selection === "linked" ? linkedPageId : selection === "none" ? null : selection;
-  return pages.find(page => page.pageId === id && availableConversationPage(page));
+export function conversationPage(
+  pages: PageTarget[],
+  selection: string,
+  activePageId: string | null,
+  linkedPageId?: string,
+) {
+  const id =
+    selection === "active"
+      ? activePageId
+      : selection === "linked"
+        ? linkedPageId
+        : selection === "none"
+          ? null
+          : selection;
+  return pages.find((page) => page.pageId === id && availableConversationPage(page));
 }

@@ -4,15 +4,24 @@ import { expect, it } from "vitest";
 import type { PageTarget } from "@aux/contracts";
 import { canClaim, inSharedSidebar, isLocal, ownPages } from "../../tab-window-transfer";
 
-const page = (windowId: string, fields = {}) => ({ windowId, ownedByRuntime: false, viewStatus: "hidden", controller: "none", ...fields }) as PageTarget;
+const page = (windowId: string, fields = {}) =>
+  ({ windowId, ownedByRuntime: false, viewStatus: "hidden", controller: "none", ...fields }) as PageTarget;
 it("shares normal human rows while keeping surfaces in their owning window", () => {
-  const local = page("a"), remote = page("b");
-  expect([local, remote].filter(item => inSharedSidebar(item, "a"))).toEqual([local, remote]);
+  const local = page("a"),
+    remote = page("b");
+  expect([local, remote].filter((item) => inSharedSidebar(item, "a"))).toEqual([local, remote]);
   expect(ownPages([local, remote], "a")).toEqual([local]);
   expect(isLocal(remote, "a")).toBe(false);
 });
 it("excludes anchors, workers, detached and special-window rows", () => {
-  for (const fields of [{ anchor: true }, { ownedByRuntime: true }, { viewStatus: "detached" }, { windowKind: "little" }, { windowKind: "quick-ask" }, { windowKind: "private" }]) {
+  for (const fields of [
+    { anchor: true },
+    { ownedByRuntime: true },
+    { viewStatus: "detached" },
+    { windowKind: "little" },
+    { windowKind: "quick-ask" },
+    { windowKind: "private" },
+  ]) {
     expect(inSharedSidebar(page("a", fields), "a")).toBe(false);
     expect(canClaim(page("a", fields))).toBe(false);
   }

@@ -19,7 +19,12 @@ const MISSING = "__aux_missing__";
 function installAuxWorld(collect: (args: unknown) => unknown) {
   const g = globalThis as any;
   if (g.__aux || g.top !== g) return;
-  const st = { id: Math.random().toString(36).slice(2, 10), mutations: 0, last: null as number | null, formProbes: 0 };
+  const st = {
+    id: Math.random().toString(36).slice(2, 10),
+    mutations: 0,
+    last: null as number | null,
+    formProbes: 0,
+  };
   // registered at DOMContentLoaded: nodes the parser inserts are present when
   // navigation returns, so only post-load activity has to go quiet
   const track = () => {
@@ -84,7 +89,20 @@ function installAuxWorld(collect: (args: unknown) => unknown) {
       const formProbe = controls.length ? ++st.formProbes : 0;
       const a = d.activeElement;
       const focus = a ? `${a.tagName}#${a.id}.${String(a.className)}` : "";
-      return [st.id, st.mutations, location.href, d.title, Math.round(scrollX), Math.round(scrollY), innerWidth, innerHeight, d.readyState, controls.length, formProbe, focus].join("\u0001");
+      return [
+        st.id,
+        st.mutations,
+        location.href,
+        d.title,
+        Math.round(scrollX),
+        Math.round(scrollY),
+        innerWidth,
+        innerHeight,
+        d.readyState,
+        controls.length,
+        formProbe,
+        focus,
+      ].join("\u0001");
     },
     /** Two frames, then DOM mutation-free for `quietMs` — or false at the deadline. */
     settle: async (timeoutMs: number, quietMs: number) => {
@@ -128,7 +146,8 @@ function installAuxWorld(collect: (args: unknown) => unknown) {
         if (disabled(el)) return "disabled";
         const tag = el.tagName;
         if (tag === "INPUT") {
-          if (!TEXT_INPUTS.includes((el.getAttribute("type") || "").toLowerCase()) || el.readOnly) return "kind";
+          if (!TEXT_INPUTS.includes((el.getAttribute("type") || "").toLowerCase()) || el.readOnly)
+            return "kind";
         } else if (tag === "TEXTAREA") {
           if (el.readOnly) return "kind";
         } else if (!el.isContentEditable) return "kind";
@@ -166,12 +185,24 @@ function installAuxWorld(collect: (args: unknown) => unknown) {
       const tag = el.tagName;
       const type = String(el.type ?? el.getAttribute?.("type") ?? "").toLowerCase();
       const autocomplete = String(el.getAttribute?.("autocomplete") ?? "").toLowerCase();
-      const protectedCtl = type === "password" || /current-password|new-password|one-time-code|cc-number|cc-csc|cc-exp/.test(autocomplete);
+      const protectedCtl =
+        type === "password" ||
+        /current-password|new-password|one-time-code|cc-number|cc-csc|cc-exp/.test(autocomplete);
       if (tag === "SELECT")
-        return { selected: Array.from(el.selectedOptions ?? []).map((o: any) => o.label ?? o.value).join("|") };
+        return {
+          selected: Array.from(el.selectedOptions ?? [])
+            .map((o: any) => o.label ?? o.value)
+            .join("|"),
+        };
       if (type === "checkbox" || type === "radio") return { checked: !!el.checked };
       if (tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable)
-        return { value: protectedCtl ? (el.value || el.innerText ? "{redacted}" : "") : (el.isContentEditable ? el.innerText : el.value) ?? "" };
+        return {
+          value: protectedCtl
+            ? el.value || el.innerText
+              ? "{redacted}"
+              : ""
+            : ((el.isContentEditable ? el.innerText : el.value) ?? ""),
+        };
       return {};
     },
   };
@@ -205,7 +236,10 @@ export class AuxWorld {
       const [, { frameTree }] = await Promise.all([
         session.send("Page.enable"),
         session.send("Page.getFrameTree"),
-        session.send("Page.addScriptToEvaluateOnNewDocument", { source: AUX_WORLD_SOURCE, worldName: AUX_WORLD }),
+        session.send("Page.addScriptToEvaluateOnNewDocument", {
+          source: AUX_WORLD_SOURCE,
+          worldName: AUX_WORLD,
+        }),
         session.send("Runtime.enable"),
       ]);
       world.frameId = frameTree.frame.id;
@@ -244,7 +278,8 @@ export class AuxWorld {
           returnByValue: true,
           awaitPromise,
         });
-        if (res.exceptionDetails) throw new Error(res.exceptionDetails.exception?.description ?? res.exceptionDetails.text);
+        if (res.exceptionDetails)
+          throw new Error(res.exceptionDetails.exception?.description ?? res.exceptionDetails.text);
         if (res.result.value !== MISSING) return res.result.value as T;
         // a document that predates the attach (or the init script) gets the world now
         await this.session.send("Runtime.evaluate", { expression: AUX_WORLD_SOURCE, contextId });
@@ -258,7 +293,10 @@ export class AuxWorld {
   }
 
   /** Raw trusted input on this page's session — bypasses Playwright's actionability waits. */
-  input(method: "Input.dispatchMouseEvent" | "Input.dispatchKeyEvent" | "Input.insertText", params: Record<string, unknown>): Promise<unknown> {
+  input(
+    method: "Input.dispatchMouseEvent" | "Input.dispatchKeyEvent" | "Input.insertText",
+    params: Record<string, unknown>,
+  ): Promise<unknown> {
     return this.session.send(method, params as never);
   }
 

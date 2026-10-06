@@ -55,7 +55,10 @@ export class ExternalSessionService {
   }
 
   /** The live session run for a connection — created on first dispatch. */
-  ensure(client: { connectionId: string; scope: AgentConnectionScope }, now = Date.now()): string | undefined {
+  ensure(
+    client: { connectionId: string; scope: AgentConnectionScope },
+    now = Date.now(),
+  ): string | undefined {
     const row = this.connectionRow(client.connectionId);
     if (!row || row.revoked_at !== null) {
       this.end(client.connectionId, "cancelled", row ? "Connection revoked" : "Connection removed");
@@ -66,8 +69,10 @@ export class ExternalSessionService {
       return undefined;
     }
     this.lastActivity.set(client.connectionId, now);
-    const taskRevision = client.scope.kind === "task"
-      ? new TaskService(this.repo, this.events).get(client.scope.taskId).revision : undefined;
+    const taskRevision =
+      client.scope.kind === "task"
+        ? new TaskService(this.repo, this.events).get(client.scope.taskId).revision
+        : undefined;
     const cached = this.active.get(client.connectionId) ?? this.activeRunId(client.connectionId);
     if (cached) {
       const run = this.repo.getRun(cached);
@@ -92,8 +97,7 @@ export class ExternalSessionService {
           implementation: "external-agent",
           externalConnectionId: client.connectionId,
           chatId: `external:${client.connectionId}`,
-          ...(client.scope.kind === "task" ? { taskId: client.scope.taskId,
-            taskRevision } : {}),
+          ...(client.scope.kind === "task" ? { taskId: client.scope.taskId, taskRevision } : {}),
         },
         startedAt: now,
         createdAt: now,
@@ -116,14 +120,34 @@ export class ExternalSessionService {
 
   /** Record only an allowlisted operation name and status; never external arguments or results. */
   noteInvocation(connectionId: string, runId: string, method: string, startedAt: number, succeeded: boolean) {
-    if (!/^(?:agent\.(?:web\.|turn\.|js\.|images\.)|pages\.(?:execute|cuaExecute)|tasks\.(?:create|update|start)|mcp\.tools\.call|results\.generate)/.test(method)) return;
+    if (
+      !/^(?:agent\.(?:web\.|turn\.|js\.|images\.)|pages\.(?:execute|cuaExecute)|tasks\.(?:create|update|start)|mcp\.tools\.call|results\.generate)/.test(
+        method,
+      )
+    )
+      return;
     const run = this.repo.getRun(runId);
     if (!run || run.config?.externalConnectionId !== connectionId || !ACTIVE.has(run.status)) return;
     const stepId = `external_${randomUUID()}`;
-    this.repo.saveStep({ stepId, runId, op: method, startedAt,
-      outcome: { stepId, op: method, status: succeeded ? "ok" : "failed", startedAt,
-        durationMs: Math.max(0, Date.now() - startedAt) } });
-    const updated: Run = { ...run, statusMessage: succeeded ? `External agent used ${method}` : `External agent action ${method} needs review` };
+    this.repo.saveStep({
+      stepId,
+      runId,
+      op: method,
+      startedAt,
+      outcome: {
+        stepId,
+        op: method,
+        status: succeeded ? "ok" : "failed",
+        startedAt,
+        durationMs: Math.max(0, Date.now() - startedAt),
+      },
+    });
+    const updated: Run = {
+      ...run,
+      statusMessage: succeeded
+        ? `External agent used ${method}`
+        : `External agent action ${method} needs review`,
+    };
     this.repo.saveRun(updated);
     this.events.emit("run.updated", { run: updated }, runId);
   }

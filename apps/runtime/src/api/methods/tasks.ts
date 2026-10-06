@@ -6,17 +6,23 @@ import { AuxError, taskMatchesQuery } from "@aux/contracts";
 async function h_tasks_receipt(ctx: MethodCtx): Promise<unknown> {
   const { client, params, taskEvidence } = ctx;
   const receipt = taskEvidence.receipt(params.taskId, params.revision);
-  return client.external ? { ...receipt,
-    undoReviews: [],
-    browserChanges: receipt.browserChanges.map(({ before: _before, after: _after, ...change }) => change),
-    tabChanges: receipt.tabChanges.map(({ url: _url, ...change }) => change),
-    groupChanges: [],
-    remoteActions: receipt.remoteActions.map(({ browserObserved: _browserObserved, ...change }) => change),
-    bookmarkChanges: receipt.bookmarkChanges.map(({ url: _url, title: _title, ...change }) => change),
-    downloadChanges: receipt.downloadChanges.map(({ filename: _filename, sourceUrl: _sourceUrl,
-      path: _path, ...change }) => change),
-    historyChanges: receipt.historyChanges.map(({ url: _url, title: _title, ...change }) => change),
-  } : receipt;
+  return client.external
+    ? {
+        ...receipt,
+        undoReviews: [],
+        browserChanges: receipt.browserChanges.map(({ before: _before, after: _after, ...change }) => change),
+        tabChanges: receipt.tabChanges.map(({ url: _url, ...change }) => change),
+        groupChanges: [],
+        remoteActions: receipt.remoteActions.map(
+          ({ browserObserved: _browserObserved, ...change }) => change,
+        ),
+        bookmarkChanges: receipt.bookmarkChanges.map(({ url: _url, title: _title, ...change }) => change),
+        downloadChanges: receipt.downloadChanges.map(
+          ({ filename: _filename, sourceUrl: _sourceUrl, path: _path, ...change }) => change,
+        ),
+        historyChanges: receipt.historyChanges.map(({ url: _url, title: _title, ...change }) => change),
+      }
+    : receipt;
 }
 async function h_tasks_undoBrowserChange(ctx: MethodCtx): Promise<unknown> {
   const { client, params, taskEvidence } = ctx;
@@ -35,12 +41,14 @@ async function h_tasks_undoBookmarkChange(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_tasks_undoDownloadChange(ctx: MethodCtx): Promise<unknown> {
   const { client, params, taskEvidence } = ctx;
-  if (client.external) throw new AuxError("permission_denied", "Download cleanup requires the Aux desktop interface");
+  if (client.external)
+    throw new AuxError("permission_denied", "Download cleanup requires the Aux desktop interface");
   return taskEvidence.undoDownloadChange(params);
 }
 async function h_tasks_undoHistoryChange(ctx: MethodCtx): Promise<unknown> {
   const { client, params, taskEvidence } = ctx;
-  if (client.external) throw new AuxError("permission_denied", "History cleanup requires the Aux desktop interface");
+  if (client.external)
+    throw new AuxError("permission_denied", "History cleanup requires the Aux desktop interface");
   return taskEvidence.undoHistoryChange(params);
 }
 async function h_tasks_verifyCriterion(ctx: MethodCtx): Promise<unknown> {
@@ -53,7 +61,8 @@ async function h_tasks_replaceAgent(ctx: MethodCtx): Promise<unknown> {
   if (scope && Array.isArray(pageIds))
     for (const pageId of pageIds) requireScopedPage(scope, pageId, client.connectionId);
 
-  if (["tasks.replaceAgent"].includes(ctx.method)) return withTaskAuthorityMutation(ctx.s.repo, ctx.params.taskId, () => retired_h_tasks_replaceAgent(ctx));
+  if (["tasks.replaceAgent"].includes(ctx.method))
+    return withTaskAuthorityMutation(ctx.s.repo, ctx.params.taskId, () => retired_h_tasks_replaceAgent(ctx));
   return retired_h_tasks_replaceAgent(ctx);
 }
 
@@ -145,7 +154,8 @@ async function h_tasks_update(ctx: MethodCtx): Promise<unknown> {
     throw new AuxError("permission_denied", "Write access on task resources can only be set in Aux.");
   }
 
-  if (["tasks.update"].includes(ctx.method)) return withTaskAuthorityMutation(ctx.s.repo, ctx.params.taskId, () => retired_h_tasks_update(ctx));
+  if (["tasks.update"].includes(ctx.method))
+    return withTaskAuthorityMutation(ctx.s.repo, ctx.params.taskId, () => retired_h_tasks_update(ctx));
   return retired_h_tasks_update(ctx);
 }
 
@@ -154,7 +164,8 @@ async function retired_h_tasks_update(ctx: MethodCtx): Promise<unknown> {
   return tasks.update(params, client.external ? "external" : "desktop");
 }
 async function h_tasks_archive(ctx: MethodCtx): Promise<unknown> {
-  if (["tasks.archive"].includes(ctx.method)) return withTaskAuthorityMutation(ctx.s.repo, ctx.params.taskId, () => retired_h_tasks_archive(ctx));
+  if (["tasks.archive"].includes(ctx.method))
+    return withTaskAuthorityMutation(ctx.s.repo, ctx.params.taskId, () => retired_h_tasks_archive(ctx));
   return retired_h_tasks_archive(ctx);
 }
 

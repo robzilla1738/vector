@@ -71,9 +71,41 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   const FIELD_SELECTOR = "input:not([type=hidden]),select,textarea,[contenteditable=true]";
   const SKIP_TEXT = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE"]);
   const BLOCK_TAGS = new Set([
-    "ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "DD", "DETAILS", "DIALOG", "DIV", "DL", "DT", "FIELDSET", "FIGCAPTION",
-    "FIGURE", "FOOTER", "FORM", "H1", "H2", "H3", "H4", "H5", "H6", "HEADER", "HR", "LI", "MAIN", "NAV", "OL", "P", "PRE",
-    "SECTION", "SUMMARY", "TABLE", "TR", "UL", "OPTION",
+    "ADDRESS",
+    "ARTICLE",
+    "ASIDE",
+    "BLOCKQUOTE",
+    "DD",
+    "DETAILS",
+    "DIALOG",
+    "DIV",
+    "DL",
+    "DT",
+    "FIELDSET",
+    "FIGCAPTION",
+    "FIGURE",
+    "FOOTER",
+    "FORM",
+    "H1",
+    "H2",
+    "H3",
+    "H4",
+    "H5",
+    "H6",
+    "HEADER",
+    "HR",
+    "LI",
+    "MAIN",
+    "NAV",
+    "OL",
+    "P",
+    "PRE",
+    "SECTION",
+    "SUMMARY",
+    "TABLE",
+    "TR",
+    "UL",
+    "OPTION",
   ]);
 
   const IMPLICIT_ROLE: Record<string, string> = {
@@ -120,7 +152,8 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
 
   function visible(el: any): boolean {
     const style = styleOf(el);
-    if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") return false;
+    if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse")
+      return false;
     const r = rectOf(el);
     return r.width > 0 && r.height > 0;
   }
@@ -183,7 +216,8 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     }
     let p = el.parentElement;
     while (p) {
-      if (p.tagName === "LABEL" && p.textContent?.trim()) return redactText(p.textContent).trim().slice(0, 120);
+      if (p.tagName === "LABEL" && p.textContent?.trim())
+        return redactText(p.textContent).trim().slice(0, 120);
       p = p.parentElement;
     }
     const tag = el.tagName as string;
@@ -200,7 +234,9 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     if (tag === "IMG") return redactText(el.getAttribute("alt") || "").slice(0, 120);
     const text = redactText(textOf(el, 160));
     if (text) return text.slice(0, 120);
-    return redactText(el.getAttribute("title") || el.getAttribute("placeholder") || el.getAttribute("name") || "").slice(0, 120);
+    return redactText(
+      el.getAttribute("title") || el.getAttribute("placeholder") || el.getAttribute("name") || "",
+    ).slice(0, 120);
   }
 
   /** nth-of-type index among same-tag siblings, 0 when the tag is unique. */
@@ -280,10 +316,36 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
 
   function protectedField(el: any): boolean {
     if (String(el.type ?? el.getAttribute?.("type") ?? "").toLowerCase() === "password") return true;
-    const tokens = String(el.getAttribute?.("autocomplete") ?? "").toLowerCase().split(/\s+/);
-    if (tokens.some(token => ["current-password", "new-password", "one-time-code", "cc-number", "cc-csc", "cc-exp", "cc-exp-month", "cc-exp-year"].includes(token))) return true;
-    const identity = [el.getAttribute?.("name"), el.getAttribute?.("id"), el.getAttribute?.("aria-label"), el.getAttribute?.("placeholder")].filter(Boolean).join(" ").toLowerCase();
-    return /(?:password|passphrase|secret|api[-_ ]?key|access[-_ ]?token|refresh[-_ ]?token|id[-_ ]?token|auth(?:orization)?[-_ ]?token|session[-_ ]?token|bearer[-_ ]?token|card[-_ ]?number|credit[-_ ]?card|security[-_ ]?code|\bcvv\b|\bcvc\b|\bcsc\b)/i.test(identity);
+    const tokens = String(el.getAttribute?.("autocomplete") ?? "")
+      .toLowerCase()
+      .split(/\s+/);
+    if (
+      tokens.some((token) =>
+        [
+          "current-password",
+          "new-password",
+          "one-time-code",
+          "cc-number",
+          "cc-csc",
+          "cc-exp",
+          "cc-exp-month",
+          "cc-exp-year",
+        ].includes(token),
+      )
+    )
+      return true;
+    const identity = [
+      el.getAttribute?.("name"),
+      el.getAttribute?.("id"),
+      el.getAttribute?.("aria-label"),
+      el.getAttribute?.("placeholder"),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return /(?:password|passphrase|secret|api[-_ ]?key|access[-_ ]?token|refresh[-_ ]?token|id[-_ ]?token|auth(?:orization)?[-_ ]?token|session[-_ ]?token|bearer[-_ ]?token|card[-_ ]?number|credit[-_ ]?card|security[-_ ]?code|\bcvv\b|\bcvc\b|\bcsc\b)/i.test(
+      identity,
+    );
   }
 
   const protectedValues = new Set<string>();
@@ -300,7 +362,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
 
   function fieldValue(el: any): string | undefined {
     const tag = el.tagName as string;
-    if (protectedField(el)) return (el.value || el.innerText) ? "{redacted}" : "";
+    if (protectedField(el)) return el.value || el.innerText ? "{redacted}" : "";
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return redactText(el.value ?? "");
     if (el.isContentEditable) return redactText(el.innerText || "").slice(0, 500);
     return undefined;
@@ -309,8 +371,15 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   // Per-world ref state: a WeakMap keeps a node's ref across observations of
   // one document; numbers only grow, so a ref is never reissued to another node.
   const g: any = globalThis as any;
-  const store: { ids: WeakMap<any, number>; refs: Map<string, any>; next: number; cssPath?: (el: any) => string } =
-    g.__auxStore && g.__auxStore.ids instanceof WeakMap ? g.__auxStore : (g.__auxStore = { ids: new WeakMap(), refs: new Map(), next: 1 });
+  const store: {
+    ids: WeakMap<any, number>;
+    refs: Map<string, any>;
+    next: number;
+    cssPath?: (el: any) => string;
+  } =
+    g.__auxStore && g.__auxStore.ids instanceof WeakMap
+      ? g.__auxStore
+      : (g.__auxStore = { ids: new WeakMap(), refs: new Map(), next: 1 });
   store.next = Math.max(store.next, args.refStart);
   store.cssPath = cssPath;
   const refOf = (el: any) => {
@@ -321,7 +390,9 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
 
   const doc = document;
   const scoped = args.subtreeRef ? store.refs.get(args.subtreeRef) : undefined;
-  const root: any = (scoped?.isConnected ? scoped : null) ?? (args.subtreeCss ? doc.querySelector(args.subtreeCss) ?? doc.body : doc.body);
+  const root: any =
+    (scoped?.isConnected ? scoped : null) ??
+    (args.subtreeCss ? (doc.querySelector(args.subtreeCss) ?? doc.body) : doc.body);
   const result: ObserveScriptResult = {
     url: location.href,
     title: doc.title,
@@ -357,7 +428,12 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     const tw = doc.createTreeWalker(container, 1 /* SHOW_ELEMENT */);
     for (let el: any = tw.nextNode(); el; el = tw.nextNode()) {
       const tag = el.tagName as string;
-      const interactive = (CANDIDATE_TAGS.has(tag) || el.hasAttribute("role") || el.hasAttribute("tabindex") || el.hasAttribute("contenteditable")) && el.matches(INTERACTIVE_SELECTOR);
+      const interactive =
+        (CANDIDATE_TAGS.has(tag) ||
+          el.hasAttribute("role") ||
+          el.hasAttribute("tabindex") ||
+          el.hasAttribute("contenteditable")) &&
+        el.matches(INTERACTIVE_SELECTOR);
       // `all` refs containers too, but skips the host of a shadow root's own
       // bookkeeping noise: deep document structures stay interactive-first.
       if (interactive || (collectAll && !SKIP_TEXT.has(tag) && tag !== "HTML" && tag !== "HEAD"))
@@ -365,9 +441,14 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
       if (light) {
         if ((tag === "H1" || tag === "H2" || tag === "H3") && headingEls.length < 12) headingEls.push(el);
         else if (tag === "TABLE" && tableEls.length < 6) tableEls.push(el);
-        if (fieldEls.length < 60 && (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || el.hasAttribute("contenteditable")) && el.matches(FIELD_SELECTOR))
+        if (
+          fieldEls.length < 60 &&
+          (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || el.hasAttribute("contenteditable")) &&
+          el.matches(FIELD_SELECTOR)
+        )
           fieldEls.push(el);
-        if (!mainEl && (tag === "MAIN" || tag === "ARTICLE" || el.getAttribute("role") === "main")) mainEl = el;
+        if (!mainEl && (tag === "MAIN" || tag === "ARTICLE" || el.getAttribute("role") === "main"))
+          mainEl = el;
       }
       if (el.shadowRoot) {
         shadowHosts.push(el);
@@ -380,7 +461,9 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   protectedTexts = [...protectedValues].sort((a, b) => b.length - a.length);
   result.title = redactText(result.title);
   for (const h of headingEls) {
-    const t = redactText(h.textContent || "").replace(/\s+/g, " ").trim();
+    const t = redactText(h.textContent || "")
+      .replace(/\s+/g, " ")
+      .trim();
     if (t) result.headings.push(t.slice(0, 140));
   }
 
@@ -442,17 +525,24 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     // Action-reliability state (plan A10): choices, toggles, focus, and
     // whether a click would actually land (viewport + occlusion).
     if (tag === "select" && el.options) {
-      const opts = Array.from(el.options as any[]).map((o: any) => redactText((o.label || o.text || "").trim())).filter(Boolean);
+      const opts = Array.from(el.options as any[])
+        .map((o: any) => redactText((o.label || o.text || "").trim()))
+        .filter(Boolean);
       if (opts.length) entry.options = opts.slice(0, 20);
     } else if (role === "listbox" || role === "menu" || role === "radiogroup") {
-      const opts = Array.from(el.querySelectorAll('[role="option"],[role="menuitem"],[role="radio"]') as any[])
-        .map((o: any) => redactText((o.getAttribute("aria-label") || o.textContent || "").replace(/\s+/g, " ").trim()))
+      const opts = Array.from(
+        el.querySelectorAll('[role="option"],[role="menuitem"],[role="radio"]') as any[],
+      )
+        .map((o: any) =>
+          redactText((o.getAttribute("aria-label") || o.textContent || "").replace(/\s+/g, " ").trim()),
+        )
         .filter(Boolean);
       if (opts.length) entry.options = opts.slice(0, 20);
     }
     const ariaExpanded = el.getAttribute?.("aria-expanded");
     if (ariaExpanded === "true" || ariaExpanded === "false") entry.expanded = ariaExpanded === "true";
-    else if (tag === "summary" && el.parentElement?.tagName === "DETAILS") entry.expanded = !!el.parentElement.open;
+    else if (tag === "summary" && el.parentElement?.tagName === "DETAILS")
+      entry.expanded = !!el.parentElement.open;
     const ariaPressed = el.getAttribute?.("aria-pressed");
     if (ariaPressed === "true" || ariaPressed === "false") entry.pressed = ariaPressed === "true";
     if (doc.activeElement === el) entry.focused = true;
@@ -480,7 +570,8 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     result.elements.push(entry);
     refMap.set(entry.ref, el);
     refByEl.set(el, entry.ref);
-    if (tag === "a" && entry.href) result.links.push({ ref: entry.ref, text: name || txt || entry.href, href: entry.href });
+    if (tag === "a" && entry.href)
+      result.links.push({ ref: entry.ref, text: name || txt || entry.href, href: entry.href });
   }
   result.nextRef = store.next;
 
@@ -491,13 +582,17 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
       ref: refByEl.get(el),
       label: redactText(accessibleName(el)) || undefined,
       name: el.getAttribute?.("name") || undefined,
-      type: (el.tagName === "INPUT" ? (el.getAttribute("type") || "text").toLowerCase() : (el.tagName as string).toLowerCase()),
+      type:
+        el.tagName === "INPUT"
+          ? (el.getAttribute("type") || "text").toLowerCase()
+          : (el.tagName as string).toLowerCase(),
       value: fieldValue(el)?.slice(0, 300),
       required: !!el.required || el.getAttribute?.("aria-required") === "true",
     };
     if (typeof el.checkValidity === "function") {
       field.valid = el.checkValidity();
-      if (!field.valid && el.validationMessage && !protectedField(el)) field.validationMessage = redactText(el.validationMessage);
+      if (!field.valid && el.validationMessage && !protectedField(el))
+        field.validationMessage = redactText(el.validationMessage);
     }
     result.formFields.push(field);
   }
@@ -507,13 +602,30 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     if (!visible(t)) continue;
     const rows = Array.from(t.querySelectorAll("tr")) as any[];
     const headerRow = rows.find((r) => r.querySelector("th")) ?? rows[0];
-    const cols = headerRow ? (Array.from(headerRow.querySelectorAll("th,td")) as any[]).map((c) => redactText((c.textContent as string) || "").trim().slice(0, 60)) : [];
+    const cols = headerRow
+      ? (Array.from(headerRow.querySelectorAll("th,td")) as any[]).map((c) =>
+          redactText((c.textContent as string) || "")
+            .trim()
+            .slice(0, 60),
+        )
+      : [];
     const bodyRows = rows.slice(headerRow ? rows.indexOf(headerRow) + 1 : 0).slice(0, 12);
     result.tables.push({
       ref: `t${result.tables.length + 1}`,
-      caption: t.caption ? redactText(t.caption.textContent || "").trim().slice(0, 80) : undefined,
+      caption: t.caption
+        ? redactText(t.caption.textContent || "")
+            .trim()
+            .slice(0, 80)
+        : undefined,
       columns: cols,
-      rows: bodyRows.map((r) => (Array.from(r.querySelectorAll("th,td")) as any[]).map((c) => redactText((c.textContent as string) || "").replace(/\s+/g, " ").trim().slice(0, 120))),
+      rows: bodyRows.map((r) =>
+        (Array.from(r.querySelectorAll("th,td")) as any[]).map((c) =>
+          redactText((c.textContent as string) || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 120),
+        ),
+      ),
       totalRows: Math.max(0, rows.length - 1),
       truncated: rows.length - 1 > bodyRows.length,
     });
@@ -575,7 +687,10 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
       }
       const display = String(style.display || "");
       const cell = display === "table-cell" || c.tagName === "TD" || c.tagName === "TH";
-      const block = !cell && (BLOCK_TAGS.has(c.tagName) || (display !== "" && !display.startsWith("inline") && display !== "contents"));
+      const block =
+        !cell &&
+        (BLOCK_TAGS.has(c.tagName) ||
+          (display !== "" && !display.startsWith("inline") && display !== "contents"));
       const edge = c.tagName === "P" ? "\uFDD1" : "\uFDD0";
       if (block) push(edge);
       // hidden boxes can hold visible descendants — only those contribute

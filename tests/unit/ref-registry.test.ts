@@ -1,7 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { RefRegistry, parseTarget } from "@aux/chromium-driver";
 
-const el = (ref: string) => ({ ref, frame: "main", tag: "button", rect: { x: 0, y: 0, w: 10, h: 10 }, selector: { css: "#b" } });
+const el = (ref: string) => ({
+  ref,
+  frame: "main",
+  tag: "button",
+  rect: { x: 0, y: 0, w: 10, h: 10 },
+  selector: { css: "#b" },
+});
 
 describe("RefRegistry", () => {
   it("registers, resolves, and clears per page", () => {
@@ -33,9 +39,18 @@ describe("parseTarget", () => {
   it("classifies targets", () => {
     expect(parseTarget("r12")).toEqual({ kind: "ref", ref: "r12" });
     expect(parseTarget("css:#save")).toEqual({ kind: "selector", strategy: { css: "#save" } });
-    expect(parseTarget("text:Save record")).toEqual({ kind: "selector", strategy: { text: "Save record", exact: true } });
-    expect(parseTarget("role=button[name=Save]")).toEqual({ kind: "selector", strategy: { role: { role: "button", name: "Save" } } });
-    expect(parseTarget("xpath://button[1]")).toEqual({ kind: "selector", strategy: { xpath: "xpath=//button[1]" } });
+    expect(parseTarget("text:Save record")).toEqual({
+      kind: "selector",
+      strategy: { text: "Save record", exact: true },
+    });
+    expect(parseTarget("role=button[name=Save]")).toEqual({
+      kind: "selector",
+      strategy: { role: { role: "button", name: "Save" } },
+    });
+    expect(parseTarget("xpath://button[1]")).toEqual({
+      kind: "selector",
+      strategy: { xpath: "xpath=//button[1]" },
+    });
     expect(parseTarget("#plain-css")).toEqual({ kind: "selector", strategy: { css: "#plain-css" } });
   });
 });

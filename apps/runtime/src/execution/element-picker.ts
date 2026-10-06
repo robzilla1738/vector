@@ -25,28 +25,36 @@ export interface PickedElement {
 export const ELEMENT_PICK_TIMEOUT_MS = 60_000;
 
 export function describePickedElement(el: PickedElement): string {
-  const bits = [el.tag, ...(el.id ? [`#${el.id}`] : []), ...(el.classes.length ? [`(${el.classes.slice(0, 3).join(", ")})`] : [])];
+  const bits = [
+    el.tag,
+    ...(el.id ? [`#${el.id}`] : []),
+    ...(el.classes.length ? [`(${el.classes.slice(0, 3).join(", ")})`] : []),
+  ];
   const extra = [
     el.ariaLabel && `aria-label "${el.ariaLabel}"`,
     el.role && `role "${el.role}"`,
     el.text && `text "${el.text}"`,
     el.href && `link ${el.href}`,
-  ].filter(Boolean).join("; ");
+  ]
+    .filter(Boolean)
+    .join("; ");
   return `${bits.join(" ")} at "${el.selector}"${extra ? ` — ${extra}` : ""}`;
 }
 
 /** Serialized into the page — keep it free of module-scope references. */
 export function pickElementInPage(timeoutMs: number): Promise<unknown> {
   const CHROME_ATTR = "data-aux-element-picker";
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     let done = false;
     const overlay = document.createElement("div");
     overlay.setAttribute(CHROME_ATTR, "overlay");
-    overlay.style.cssText = "position:fixed;pointer-events:none;z-index:2147483646;border:2px solid #4c8dff;background:rgba(76,141,255,.12);border-radius:4px;transition:all 60ms ease;display:none;";
+    overlay.style.cssText =
+      "position:fixed;pointer-events:none;z-index:2147483646;border:2px solid #4c8dff;background:rgba(76,141,255,.12);border-radius:4px;transition:all 60ms ease;display:none;";
     const hint = document.createElement("div");
     hint.setAttribute(CHROME_ATTR, "hint");
     hint.textContent = "Click the element to request an edit — Esc cancels";
-    hint.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#17181c;color:#f3f4f6;font:13px/1.4 system-ui,sans-serif;padding:8px 14px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.35);pointer-events:none;";
+    hint.style.cssText =
+      "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#17181c;color:#f3f4f6;font:13px/1.4 system-ui,sans-serif;padding:8px 14px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.35);pointer-events:none;";
     document.documentElement.append(overlay, hint);
 
     const deepest = (event: Event): Element | null => {
@@ -69,7 +77,10 @@ export function pickElementInPage(timeoutMs: number): Promise<unknown> {
           segments.unshift(`${tag}#${escapeIdent(cursor.id)}`);
           break;
         }
-        const klass = [...cursor.classList].slice(0, 2).map(name => `.${escapeIdent(name)}`).join("");
+        const klass = [...cursor.classList]
+          .slice(0, 2)
+          .map((name) => `.${escapeIdent(name)}`)
+          .join("");
         segments.unshift(`${tag}${klass}`);
         if (tag === "body" || tag === "html") break;
         const root = cursor.getRootNode();
@@ -87,7 +98,12 @@ export function pickElementInPage(timeoutMs: number): Promise<unknown> {
         ariaLabel: el.getAttribute("aria-label") || undefined,
         href: href || undefined,
         selector: segments.join(" > "),
-        rect: { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) },
+        rect: {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        },
       };
     };
     const place = (el: Element) => {

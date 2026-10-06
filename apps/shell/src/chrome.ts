@@ -30,7 +30,8 @@ export function toUrl(v: string, searchEngine?: string): string {
   const s = v.trim();
   if (/^(https?:\/\/|about:|chrome:\/\/|file:\/\/|view-source:|data:)/i.test(s)) return s;
   if (isUrlLike(s) && !s.includes(" ")) {
-    const local = /^(localhost|127\.|0\.0\.0\.0|::|\[::|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|.*\.local\b)/i.test(s);
+    const local =
+      /^(localhost|127\.|0\.0\.0\.0|::|\[::|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|.*\.local\b)/i.test(s);
     const host = /^[0-9a-f:]*::[0-9a-f:]*$/i.test(s) ? `[${s}]` : s;
     return `${local ? "http" : "https"}://${host}`;
   }
@@ -44,7 +45,18 @@ export function addressNavigate(input: string, searchEngine?: string): { action:
 
 /** Scrim overlays cover the stage and must hide WebContentsView. In-flow strips shrink the stage instead. */
 export function isScrimOverlay(overlay: string | null): boolean {
-  return overlay === "reader" || overlay === "bookmarks" || overlay === "command-surface" || overlay === "settings" || overlay === "history" || overlay === "clear-history" || overlay === "observe" || overlay === "tasks" || overlay === "site" || overlay === "capture";
+  return (
+    overlay === "reader" ||
+    overlay === "bookmarks" ||
+    overlay === "command-surface" ||
+    overlay === "settings" ||
+    overlay === "history" ||
+    overlay === "clear-history" ||
+    overlay === "observe" ||
+    overlay === "tasks" ||
+    overlay === "site" ||
+    overlay === "capture"
+  );
 }
 
 export function isFlowOverlay(overlay: string | null): boolean {

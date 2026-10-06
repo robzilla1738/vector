@@ -40,7 +40,15 @@ export async function runMemberAgent(opts: {
   durable?: DurableWriteLedger;
   budget?: ResearchBudget;
   beforeModelCall?: () => Promise<void>;
-  recordModelCall?: (c: { modelId: string; durationMs: number; inputTokens?: number; outputTokens?: number; cachedInputTokens?: number; providerMetadata?: Record<string, unknown>; error?: string }) => void | Promise<void>;
+  recordModelCall?: (c: {
+    modelId: string;
+    durationMs: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    cachedInputTokens?: number;
+    providerMetadata?: Record<string, unknown>;
+    error?: string;
+  }) => void | Promise<void>;
 }): Promise<{ result: ResultRecord; executedSteps: Step[] }> {
   const { member, pages, model, modelId, signal, runId } = opts;
   const pageId = opts.pageId;
@@ -49,29 +57,65 @@ export async function runMemberAgent(opts: {
   const memberGoal = `For this single record/page: ${opts.goal}\nReturn result fields as the structured result when done.`;
 
   let notes: string | undefined;
-  for (let calls = 0, stepsRun = 0; calls < MEMBER_MAX_CALLS && stepsRun < MEMBER_MAX_STEPS; ) {
+  for (let calls = 0, stepsRun = 0; calls < MEMBER_MAX_CALLS && stepsRun < MEMBER_MAX_STEPS;) {
     if (signal.aborted || opts.budget?.signal.aborted) break;
-    const obs = await opts.turnMentions.useSourcePage(runId, pageId, "read", opts.checkSource, () => pages.observe(pageId, {}));
-    const prompt = buildPlannerPrompt({ goal: memberGoal, observations: [obs], recentOutcomes: outcomes, pageIds: [pageId], notes, budget: { tokens: 3000 } });
+    const obs = await opts.turnMentions.useSourcePage(runId, pageId, "read", opts.checkSource, () =>
+      pages.observe(pageId, {}),
+    );
+    const prompt = buildPlannerPrompt({
+      goal: memberGoal,
+      observations: [obs],
+      recentOutcomes: outcomes,
+      pageIds: [pageId],
+      notes,
+      budget: { tokens: 3000 },
+    });
     await opts.beforeModelCall?.();
-    const permit=opts.budget?.reserveModel(modelId,prompt,PLANNER_SYSTEM,8192);
-    if(permit&&"reason" in permit)return err(member,pageId,obs.content.url,permit.reason,executed);
+    const permit = opts.budget?.reserveModel(modelId, prompt, PLANNER_SYSTEM, 8192);
+    if (permit && "reason" in permit) return err(member, pageId, obs.content.url, permit.reason, executed);
     let call: StructuredCallResult<PlanChunk>;
-    const callStarted=Date.now();
+    const callStarted = Date.now();
     try {
-      call=await model.generateStructured({modelId,system:PLANNER_SYSTEM,prompt,schema:PlanChunkSchema,
-        signal:opts.budget?.signal??signal,maxOutputTokens:8192,...(opts.budget?{maxAttempts:1}:{})});
-      if(permit&&"finish" in permit)permit.finish([...(call.retries??[]),call]);
-    } catch(error) {
-      const attempts=attemptsOf(error);
-      if(permit&&"finish" in permit)permit.finish(attempts);
-      for(const attempt of attempts)await opts.recordModelCall?.({...attempt,modelId:attempt.modelId??modelId});
-      if(!attempts.length)await opts.recordModelCall?.({modelId,durationMs:Date.now()-callStarted,error:error instanceof Error?error.message:String(error)});
-      return err(member,pageId,obs.content.url,error instanceof Error?error.message:String(error),executed);
+      call = await model.generateStructured({
+        modelId,
+        system: PLANNER_SYSTEM,
+        prompt,
+        schema: PlanChunkSchema,
+        signal: opts.budget?.signal ?? signal,
+        maxOutputTokens: 8192,
+        ...(opts.budget ? { maxAttempts: 1 } : {}),
+      });
+      if (permit && "finish" in permit) permit.finish([...(call.retries ?? []), call]);
+    } catch (error) {
+      const attempts = attemptsOf(error);
+      if (permit && "finish" in permit) permit.finish(attempts);
+      for (const attempt of attempts)
+        await opts.recordModelCall?.({ ...attempt, modelId: attempt.modelId ?? modelId });
+      if (!attempts.length)
+        await opts.recordModelCall?.({
+          modelId,
+          durationMs: Date.now() - callStarted,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      return err(
+        member,
+        pageId,
+        obs.content.url,
+        error instanceof Error ? error.message : String(error),
+        executed,
+      );
     }
     calls += 1 + (call.retries?.length ?? 0);
-    for (const retry of call.retries ?? []) await opts.recordModelCall?.({ ...retry, modelId: retry.modelId ?? modelId });
-    await opts.recordModelCall?.({ modelId: call.resolvedModelId ?? modelId, durationMs: call.durationMs, inputTokens: call.inputTokens, outputTokens: call.outputTokens, cachedInputTokens: call.cachedInputTokens, providerMetadata: call.providerMetadata });
+    for (const retry of call.retries ?? [])
+      await opts.recordModelCall?.({ ...retry, modelId: retry.modelId ?? modelId });
+    await opts.recordModelCall?.({
+      modelId: call.resolvedModelId ?? modelId,
+      durationMs: call.durationMs,
+      inputTokens: call.inputTokens,
+      outputTokens: call.outputTokens,
+      cachedInputTokens: call.cachedInputTokens,
+      providerMetadata: call.providerMetadata,
+    });
     const plan = call.object;
     if (plan.notes !== undefined) notes = plan.notes;
 
@@ -97,29 +141,42 @@ export async function runMemberAgent(opts: {
       if (plan.observationRequest) continue;
       return err(member, pageId, obs.content.url, "planner returned no steps", executed);
     }
-    if(stepsRun+plan.steps.length>MEMBER_MAX_STEPS)return err(member,pageId,obs.content.url,"member step budget exhausted",executed);
+    if (stepsRun + plan.steps.length > MEMBER_MAX_STEPS)
+      return err(member, pageId, obs.content.url, "member step budget exhausted", executed);
     const live = pages.get(pageId);
     const stepsToExecute = plan.steps;
-    const g = await opts.turnMentions.useSourcePage(runId, pageId, "act", opts.checkSource, () => guardedExecute({ pages, durable: opts.durable, grants: opts.grants }, {
-      runId,
-      pageId,
-      steps: stepsToExecute,
-      observation: obs.content,
-      url: live.url ?? obs.content.url,
-      documentEpoch: live.documentEpoch ?? obs.documentEpoch,
-      observedEpoch: obs.documentEpoch,
-      revision: obs.revision,
-      exec: { runId, signal:opts.budget?.signal??signal, sourcePageCheck: opts.checkSource },
-    }));
+    const g = await opts.turnMentions.useSourcePage(runId, pageId, "act", opts.checkSource, () =>
+      guardedExecute(
+        { pages, durable: opts.durable, grants: opts.grants },
+        {
+          runId,
+          pageId,
+          steps: stepsToExecute,
+          observation: obs.content,
+          url: live.url ?? obs.content.url,
+          documentEpoch: live.documentEpoch ?? obs.documentEpoch,
+          observedEpoch: obs.documentEpoch,
+          revision: obs.revision,
+          exec: { runId, signal: opts.budget?.signal ?? signal, sourcePageCheck: opts.checkSource },
+        },
+      ),
+    );
     if (g.kind !== "ran") return err(member, pageId, obs.content.url, g.reason, executed);
     const steps = g.program.steps ?? plan.steps;
     executed.push(...steps);
     outcomes.push(...g.result.steps);
     stepsRun += steps.length;
-    if (g.result.status === "failed") return err(member, pageId, obs.content.url, g.result.error ?? "step failed", executed);
+    if (g.result.status === "failed")
+      return err(member, pageId, obs.content.url, g.result.error ?? "step failed", executed);
     if (g.result.status === "cancelled") break;
   }
-  return err(member, pageId, member.url ?? "", opts.budget?.reason()??"member budget exhausted without completion", executed);
+  return err(
+    member,
+    pageId,
+    member.url ?? "",
+    opts.budget?.reason() ?? "member budget exhausted without completion",
+    executed,
+  );
 
   function err(m: SetMember, pid: string, url: string, error: string, executedSteps: Step[]) {
     return {

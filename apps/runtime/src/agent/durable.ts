@@ -18,8 +18,14 @@ export interface WriteIntent {
   status: "pending" | "confirmed" | "uncertain" | "not_applied";
   createdAt: number;
   /** Only operation names and hashes of redacted pre-dispatch lines are retained. */
-  summary?: { ops: string[]; actionLabels?: string[]; beforeLineHashes: string[]; expectedNavigationUrlHash?: string;
-    modalWasOpen?: boolean; beforeHeadingHashes?: string[] };
+  summary?: {
+    ops: string[];
+    actionLabels?: string[];
+    beforeLineHashes: string[];
+    expectedNavigationUrlHash?: string;
+    modalWasOpen?: boolean;
+    beforeHeadingHashes?: string[];
+  };
 }
 
 const SELECT = `SELECT id, run_id AS runId, page_id AS pageId,
@@ -31,10 +37,17 @@ export const observationLineHash = (line: string): string =>
 
 function withSummary(db: DatabaseSync, intent: WriteIntent | undefined): WriteIntent | undefined {
   if (!intent) return undefined;
-  const row = db.prepare("SELECT evidence FROM action_transitions WHERE intent_id=? AND status='pending' ORDER BY seq LIMIT 1")
+  const row = db
+    .prepare(
+      "SELECT evidence FROM action_transitions WHERE intent_id=? AND status='pending' ORDER BY seq LIMIT 1",
+    )
     .get(intent.id) as { evidence: string | null } | undefined;
   if (row?.evidence) {
-    try { intent.summary = JSON.parse(row.evidence) as WriteIntent["summary"]; } catch { /* old ledger row */ }
+    try {
+      intent.summary = JSON.parse(row.evidence) as WriteIntent["summary"];
+    } catch {
+      /* old ledger row */
+    }
   }
   return intent;
 }
@@ -45,48 +58,80 @@ export class DurableWriteLedger {
 
   constructor(storage?: DatabaseSync | string) {
     this.ownsDb = !storage || typeof storage === "string";
-    this.db = typeof storage === "string" ? openDb(`${storage}.sqlite`) : storage ?? openDb(":memory:");
+    this.db = typeof storage === "string" ? openDb(`${storage}.sqlite`) : (storage ?? openDb(":memory:"));
   }
 
-  close(): void { if (this.ownsDb) this.db.close(); }
+  close(): void {
+    if (this.ownsDb) this.db.close();
+  }
 
   key(runId: string, pageId: string, epoch: number, signature: string, revision = 0): string {
-    return createHash("sha256").update(JSON.stringify([runId, pageId, epoch, revision, signature])).digest("hex");
+    return createHash("sha256")
+      .update(JSON.stringify([runId, pageId, epoch, revision, signature]))
+      .digest("hex");
   }
 
   begin(opts: {
-    runId: string; pageId: string; documentEpoch: number;
-    signature: string; revision?: number; logicalActionId?: string;
-    taskId?: string; taskRevision?: number;
+    runId: string;
+    pageId: string;
+    documentEpoch: number;
+    signature: string;
+    revision?: number;
+    logicalActionId?: string;
+    taskId?: string;
+    taskRevision?: number;
     summary?: WriteIntent["summary"];
   }): { intent: WriteIntent; duplicate: boolean } {
     const idempotencyKey = opts.logicalActionId
-      ? createHash("sha256").update(JSON.stringify(["logical-action", opts.logicalActionId])).digest("hex")
+      ? createHash("sha256")
+          .update(JSON.stringify(["logical-action", opts.logicalActionId]))
+          .digest("hex")
       : this.key(opts.runId, opts.pageId, opts.documentEpoch, opts.signature, opts.revision);
     this.db.exec("BEGIN IMMEDIATE");
     try {
       // A new observation, target ref, or repair plan cannot bypass an unresolved
       // effect. Reads can still establish what happened before another write.
-      const existing = this.db.prepare(`${SELECT} WHERE idempotency_key=? OR
+      const existing = this.db
+        .prepare(
+          `${SELECT} WHERE idempotency_key=? OR
         (run_id=? AND page_id=? AND status IN ('pending','uncertain')) OR
         (task_id=? AND status IN ('pending','uncertain'))
-        ORDER BY CASE WHEN status IN ('pending','uncertain') THEN 0 ELSE 1 END LIMIT 1`)
-        .get(idempotencyKey, opts.runId, opts.pageId,opts.taskId??null) as unknown as WriteIntent | undefined;
+        ORDER BY CASE WHEN status IN ('pending','uncertain') THEN 0 ELSE 1 END LIMIT 1`,
+        )
+        .get(idempotencyKey, opts.runId, opts.pageId, opts.taskId ?? null) as unknown as
+        WriteIntent | undefined;
       if (existing) {
         this.db.exec("COMMIT");
         return { intent: withSummary(this.db, existing)!, duplicate: true };
       }
-      const intent: WriteIntent = { id: randomUUID(), runId: opts.runId, pageId: opts.pageId,
-        documentEpoch: opts.documentEpoch, idempotencyKey, taskId: opts.taskId, taskRevision: opts.taskRevision, status: "pending", createdAt: Date.now(), summary: opts.summary };
+      const intent: WriteIntent = {
+        id: randomUUID(),
+        runId: opts.runId,
+        pageId: opts.pageId,
+        documentEpoch: opts.documentEpoch,
+        idempotencyKey,
+        taskId: opts.taskId,
+        taskRevision: opts.taskRevision,
+        status: "pending",
+        createdAt: Date.now(),
+        summary: opts.summary,
+      };
       this.insert(intent);
       this.db.exec("COMMIT");
       return { intent, duplicate: false };
-    } catch (error) { this.db.exec("ROLLBACK"); throw error; }
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
   }
 
-  confirm(id: string): void { this.transition(id, "confirmed"); }
+  confirm(id: string): void {
+    this.transition(id, "confirmed");
+  }
   // A failed browser response is not proof that the external effect failed.
-  fail(id: string): void { this.transition(id, "uncertain"); }
+  fail(id: string): void {
+    this.transition(id, "uncertain");
+  }
 
   /** Pre-dispatch failure: the write never left this process. */
   abortUndispatched(id: string, reason: string): void {
@@ -101,44 +146,83 @@ export class DurableWriteLedger {
   }
 
   get(idempotencyKey: string): WriteIntent | undefined {
-    return withSummary(this.db, this.db.prepare(`${SELECT} WHERE idempotency_key=?`).get(idempotencyKey) as unknown as WriteIntent | undefined);
+    return withSummary(
+      this.db,
+      this.db.prepare(`${SELECT} WHERE idempotency_key=?`).get(idempotencyKey) as unknown as
+        WriteIntent | undefined,
+    );
   }
 
   getById(id: string): WriteIntent | undefined {
-    return withSummary(this.db, this.db.prepare(`${SELECT} WHERE id=?`).get(id) as unknown as WriteIntent | undefined);
+    return withSummary(
+      this.db,
+      this.db.prepare(`${SELECT} WHERE id=?`).get(id) as unknown as WriteIntent | undefined,
+    );
   }
 
   unresolved(runId: string): WriteIntent[] {
-    return (this.db.prepare(`${SELECT} WHERE run_id=? AND status IN ('pending','uncertain') ORDER BY created_at,id`)
-      .all(runId) as unknown as WriteIntent[]).map((intent) => withSummary(this.db, intent)!);
+    return (
+      this.db
+        .prepare(`${SELECT} WHERE run_id=? AND status IN ('pending','uncertain') ORDER BY created_at,id`)
+        .all(runId) as unknown as WriteIntent[]
+    ).map((intent) => withSummary(this.db, intent)!);
   }
 
   private insert(intent: WriteIntent): void {
     const now = intent.createdAt;
-    this.db.prepare(`INSERT INTO action_intents(id,idempotency_key,run_id,page_id,document_epoch,task_id,task_revision,status,created_at)
-      VALUES(?,?,?,?,?,?,?,?,?)`).run(intent.id, intent.idempotencyKey, intent.runId, intent.pageId, intent.documentEpoch, intent.taskId ?? null, intent.taskRevision ?? null, intent.status, now);
-    this.db.prepare("INSERT INTO action_transitions(intent_id,status,recorded_at,evidence) VALUES(?,?,?,?)")
+    this.db
+      .prepare(
+        `INSERT INTO action_intents(id,idempotency_key,run_id,page_id,document_epoch,task_id,task_revision,status,created_at)
+      VALUES(?,?,?,?,?,?,?,?,?)`,
+      )
+      .run(
+        intent.id,
+        intent.idempotencyKey,
+        intent.runId,
+        intent.pageId,
+        intent.documentEpoch,
+        intent.taskId ?? null,
+        intent.taskRevision ?? null,
+        intent.status,
+        now,
+      );
+    this.db
+      .prepare("INSERT INTO action_transitions(intent_id,status,recorded_at,evidence) VALUES(?,?,?,?)")
       .run(intent.id, intent.status, now, intent.summary ? JSON.stringify(intent.summary) : null);
   }
 
   private transition(id: string, status: WriteIntent["status"], evidence?: string): void {
     this.db.exec("BEGIN IMMEDIATE");
     try {
-      const prior = this.db.prepare("SELECT status FROM action_intents WHERE id=?").get(id) as { status: string } | undefined;
+      const prior = this.db.prepare("SELECT status FROM action_intents WHERE id=?").get(id) as
+        { status: string } | undefined;
       if (!prior) throw new Error("Unknown action intent");
-      if (!evidence && prior.status !== "pending") throw new Error("Settled action requires reconciliation evidence");
-      this.db.prepare("UPDATE action_intents SET status=?, evidence=? WHERE id=?").run(status, evidence ?? null, id);
-      this.db.prepare("INSERT INTO action_transitions(intent_id,status,recorded_at,evidence) VALUES(?,?,?,?)")
+      if (!evidence && prior.status !== "pending")
+        throw new Error("Settled action requires reconciliation evidence");
+      this.db
+        .prepare("UPDATE action_intents SET status=?, evidence=? WHERE id=?")
+        .run(status, evidence ?? null, id);
+      this.db
+        .prepare("INSERT INTO action_transitions(intent_id,status,recorded_at,evidence) VALUES(?,?,?,?)")
         .run(id, status, Date.now(), evidence ?? null);
       this.db.exec("COMMIT");
-    } catch (error) { this.db.exec("ROLLBACK"); throw error; }
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
   }
-
 }
 
 export function stepSignature(ops: Array<{ op: string; target?: unknown; value?: unknown }>): string {
-  const canonical = JSON.stringify(ops, (_key, value) => value && typeof value === "object" && !Array.isArray(value)
-    ? Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]])) : value);
+  const canonical = JSON.stringify(ops, (_key, value) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(
+          Object.keys(value)
+            .sort()
+            .map((key) => [key, value[key]]),
+        )
+      : value,
+  );
   return createHash("sha256").update(canonical).digest("hex");
 }
 
@@ -176,8 +260,11 @@ export function beginConsequentialWrite(
   });
   if (!writes) return { skip: false };
   const signature = stepSignature(opts.steps);
-  const logicalActionId = opts.logicalActionId
-    ?? (opts.taskId && opts.taskRevision != null ? taskLogicalActionId(opts.taskId, opts.taskRevision, signature) : undefined);
+  const logicalActionId =
+    opts.logicalActionId ??
+    (opts.taskId && opts.taskRevision != null
+      ? taskLogicalActionId(opts.taskId, opts.taskRevision, signature)
+      : undefined);
   const began = ledger.begin({
     runId: opts.runId,
     pageId: opts.pageId,
@@ -193,23 +280,45 @@ export function beginConsequentialWrite(
       expectedNavigationUrlHash: opts.expectedNavigationUrlHash,
       modalWasOpen: opts.modalWasOpen,
       beforeHeadingHashes: opts.beforeHeadingHashes,
-      beforeLineHashes: [...new Set((opts.beforeText ?? "").split("\n").map((line) => line.trim())
-        .filter(Boolean).map(observationLineHash))],
+      beforeLineHashes: [
+        ...new Set(
+          (opts.beforeText ?? "")
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .map(observationLineHash),
+        ),
+      ],
     },
   });
-  if (began.duplicate) return { skip: true, reason: `Action ${began.intent.id} is ${began.intent.status}; reconcile its outcome before dispatch. No new action was executed.` };
+  if (began.duplicate)
+    return {
+      skip: true,
+      reason: `Action ${began.intent.id} is ${began.intent.status}; reconcile its outcome before dispatch. No new action was executed.`,
+    };
   return { skip: false, intentId: began.intent.id };
 }
 
 /** Failures raised while resolving or authorizing a target: no input reached the page. */
 const PRE_DISPATCH_CODES = new Set([
-  "target_detached", "ref_stale", "target_ambiguous", "not_found", "invalid_params", "permission_denied", "needs_input", "capability_unsupported",
+  "target_detached",
+  "ref_stale",
+  "target_ambiguous",
+  "not_found",
+  "invalid_params",
+  "permission_denied",
+  "needs_input",
+  "capability_unsupported",
 ]);
 
 export interface WriteResultLike {
   status: string;
-  steps?: Array<{ op: string; status: string; error?: { code: string; message?: string };
-    receipt?: { observed?: string; uncertain?: boolean; dispatchedBeforeTakeover?: boolean } }>;
+  steps?: Array<{
+    op: string;
+    status: string;
+    error?: { code: string; message?: string };
+    receipt?: { observed?: string; uncertain?: boolean; dispatchedBeforeTakeover?: boolean };
+  }>;
 }
 
 /**
@@ -218,9 +327,17 @@ export interface WriteResultLike {
  * - the first consequential failure happened before dispatch and nothing consequential ran: `not_applied`
  * - otherwise an input may have reached the site: `uncertain`
  */
-export function writeOutcome(result: WriteResultLike): { outcome: "confirmed" | "not_applied" | "uncertain"; reason?: string } {
-  if (result.steps?.some((step) => isWriteIntentStep(step.op)
-    && (step.receipt?.uncertain || step.receipt?.dispatchedBeforeTakeover))) return { outcome: "uncertain" };
+export function writeOutcome(result: WriteResultLike): {
+  outcome: "confirmed" | "not_applied" | "uncertain";
+  reason?: string;
+} {
+  if (
+    result.steps?.some(
+      (step) =>
+        isWriteIntentStep(step.op) && (step.receipt?.uncertain || step.receipt?.dispatchedBeforeTakeover),
+    )
+  )
+    return { outcome: "uncertain" };
   if (result.status === "completed") return { outcome: "confirmed" };
   // without step outcomes nothing proves the input stayed in this process
   if (!result.steps?.length) return { outcome: "uncertain" };
@@ -228,13 +345,20 @@ export function writeOutcome(result: WriteResultLike): { outcome: "confirmed" | 
   // An expectation may fail after an action has already produced a separate
   // browser-state proof. Keep the program failure, but settle its write intent
   // when every dispatched write is accounted for by a non-uncertain receipt.
-  if (writes.length && writes.every((step) => step.status === "ok"
-    || step.status === "failed" && !!step.receipt?.observed && step.receipt.uncertain === false))
+  if (
+    writes.length &&
+    writes.every(
+      (step) =>
+        step.status === "ok" ||
+        (step.status === "failed" && !!step.receipt?.observed && step.receipt.uncertain === false),
+    )
+  )
     return { outcome: "confirmed" };
   const failed = writes.find((s) => s.status === "failed");
   if (!failed) {
     if (writes.length && writes.every((s) => s.status === "ok")) return { outcome: "confirmed" };
-    if (writes.every((s) => s.status === "skipped")) return { outcome: "not_applied", reason: "no consequential step was dispatched" };
+    if (writes.every((s) => s.status === "skipped"))
+      return { outcome: "not_applied", reason: "no consequential step was dispatched" };
     return { outcome: "uncertain" };
   }
   const dispatchedBefore = writes.slice(0, writes.indexOf(failed)).some((s) => s.status === "ok");
@@ -250,9 +374,13 @@ export function settleWrite(
   result: boolean | WriteResultLike,
 ): void {
   if (!ledger || !intentId) return;
-  const settled = typeof result === "boolean" ? { outcome: result ? "confirmed" as const : "uncertain" as const } : writeOutcome(result);
+  const settled =
+    typeof result === "boolean"
+      ? { outcome: result ? ("confirmed" as const) : ("uncertain" as const) }
+      : writeOutcome(result);
   if (settled.outcome === "confirmed") ledger.confirm(intentId);
-  else if (settled.outcome === "not_applied") ledger.abortUndispatched(intentId, settled.reason ?? "not dispatched");
+  else if (settled.outcome === "not_applied")
+    ledger.abortUndispatched(intentId, settled.reason ?? "not dispatched");
   else ledger.fail(intentId);
 }
 
@@ -274,15 +402,24 @@ export interface PageClaim {
 }
 
 type ClaimRow = {
-  claim_id: string; page_id: string; run_id: string; kind: string;
-  status: string; created_at: number; released_at: number | null;
+  claim_id: string;
+  page_id: string;
+  run_id: string;
+  kind: string;
+  status: string;
+  created_at: number;
+  released_at: number | null;
 };
 
 function rowToClaim(row: ClaimRow): PageClaim {
   return {
-    claimId: row.claim_id, pageId: row.page_id, runId: row.run_id,
-    kind: row.kind as PageClaim["kind"], status: row.status as PageClaim["status"],
-    createdAt: row.created_at, ...(row.released_at != null ? { releasedAt: row.released_at } : {}),
+    claimId: row.claim_id,
+    pageId: row.page_id,
+    runId: row.run_id,
+    kind: row.kind as PageClaim["kind"],
+    status: row.status as PageClaim["status"],
+    createdAt: row.created_at,
+    ...(row.released_at != null ? { releasedAt: row.released_at } : {}),
   };
 }
 
@@ -303,38 +440,55 @@ export class PageClaimStore {
   claim(opts: { pageId: string; runId: string; kind: PageClaim["kind"]; now?: number }): PageClaim {
     const now = opts.now ?? Date.now();
     const existing = this.db
-      .prepare(`${CLAIM_SELECT} WHERE page_id=? AND run_id=? AND status='active' ORDER BY created_at DESC LIMIT 1`)
+      .prepare(
+        `${CLAIM_SELECT} WHERE page_id=? AND run_id=? AND status='active' ORDER BY created_at DESC LIMIT 1`,
+      )
       .get(opts.pageId, opts.runId) as ClaimRow | undefined;
     if (existing) return rowToClaim(existing);
     const claim: PageClaim = {
-      claimId: randomUUID(), pageId: opts.pageId, runId: opts.runId,
-      kind: opts.kind, status: "active", createdAt: now,
+      claimId: randomUUID(),
+      pageId: opts.pageId,
+      runId: opts.runId,
+      kind: opts.kind,
+      status: "active",
+      createdAt: now,
     };
-    this.db.prepare(`INSERT INTO page_claims(claim_id,page_id,run_id,kind,status,created_at) VALUES(?,?,?,?,?,?)`)
+    this.db
+      .prepare(`INSERT INTO page_claims(claim_id,page_id,run_id,kind,status,created_at) VALUES(?,?,?,?,?,?)`)
       .run(claim.claimId, claim.pageId, claim.runId, claim.kind, claim.status, now);
     return claim;
   }
 
   /** Release every active claim on a page (the controller changed or the lease ended). */
   release(pageId: string, now = Date.now()): number {
-    return Number(this.db.prepare(`UPDATE page_claims SET status='released', released_at=? WHERE page_id=? AND status='active'`)
-      .run(now, pageId).changes);
+    return Number(
+      this.db
+        .prepare(
+          `UPDATE page_claims SET status='released', released_at=? WHERE page_id=? AND status='active'`,
+        )
+        .run(now, pageId).changes,
+    );
   }
 
   /** Release every claim a run holds (run finished). */
   releaseRun(runId: string, now = Date.now()): number {
-    return Number(this.db.prepare(`UPDATE page_claims SET status='released', released_at=? WHERE run_id=? AND status='active'`)
-      .run(now, runId).changes);
+    return Number(
+      this.db
+        .prepare(`UPDATE page_claims SET status='released', released_at=? WHERE run_id=? AND status='active'`)
+        .run(now, runId).changes,
+    );
   }
 
   activeForPage(pageId: string): PageClaim | undefined {
-    const row = this.db.prepare(`${CLAIM_SELECT} WHERE page_id=? AND status='active' ORDER BY created_at DESC LIMIT 1`)
+    const row = this.db
+      .prepare(`${CLAIM_SELECT} WHERE page_id=? AND status='active' ORDER BY created_at DESC LIMIT 1`)
       .get(pageId) as ClaimRow | undefined;
     return row ? rowToClaim(row) : undefined;
   }
 
   activeForRun(runId: string): PageClaim[] {
-    const rows = this.db.prepare(`${CLAIM_SELECT} WHERE run_id=? AND status='active' ORDER BY created_at`)
+    const rows = this.db
+      .prepare(`${CLAIM_SELECT} WHERE run_id=? AND status='active' ORDER BY created_at`)
       .all(runId) as ClaimRow[];
     return rows.map(rowToClaim);
   }
@@ -345,7 +499,9 @@ export class PageClaimStore {
     let count = 0;
     for (const row of rows) {
       if (!liveRunIds.has(row.run_id)) {
-        this.db.prepare(`UPDATE page_claims SET status='released', released_at=? WHERE claim_id=?`).run(now, row.claim_id);
+        this.db
+          .prepare(`UPDATE page_claims SET status='released', released_at=? WHERE claim_id=?`)
+          .run(now, row.claim_id);
         count += 1;
       }
     }

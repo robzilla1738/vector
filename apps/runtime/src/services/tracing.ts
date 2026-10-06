@@ -9,7 +9,18 @@ export interface SpanHandle {
   end: (outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>) => void;
 }
 
-type SpanRow = [string, string | null, string, string | null, string | null, number, number, number, string, string];
+type SpanRow = [
+  string,
+  string | null,
+  string,
+  string | null,
+  string | null,
+  number,
+  number,
+  number,
+  string,
+  string,
+];
 
 /**
  * Minimal structured span layer (roadmap §6): spans persist to SQLite and
@@ -50,7 +61,18 @@ export class Tracer {
         const endedAt = Date.now();
         const merged = { ...ctx?.attrs, ...attrs };
         // a span end is the program/run boundary — land the counters with it
-        this.pendingSpans.push([spanId, ctx?.parentId ?? null, name, ctx?.runId ?? null, ctx?.pageId ?? null, startedAt, endedAt, endedAt - startedAt, outcome, JSON.stringify(merged)]);
+        this.pendingSpans.push([
+          spanId,
+          ctx?.parentId ?? null,
+          name,
+          ctx?.runId ?? null,
+          ctx?.pageId ?? null,
+          startedAt,
+          endedAt,
+          endedAt - startedAt,
+          outcome,
+          JSON.stringify(merged),
+        ]);
         if (!this.tick && !this.closed) {
           this.tick = setImmediate(() => {
             this.tick = null;
@@ -132,7 +154,8 @@ export class Tracer {
     } catch {
       // keep the rows and increments for the next flush rather than lose them
       this.pendingSpans.unshift(...spans);
-      for (const [name, by] of batch) this.pendingCounters.set(name, (this.pendingCounters.get(name) ?? 0) + by);
+      for (const [name, by] of batch)
+        this.pendingCounters.set(name, (this.pendingCounters.get(name) ?? 0) + by);
     }
   }
 
@@ -153,15 +176,17 @@ export class Tracer {
   /** Persisted value plus anything not yet flushed. */
   counter(name: string): number {
     const row = this.db.prepare("SELECT value FROM kv WHERE key=?").get(`counter:${name}`) as
-      | { value: string }
-      | undefined;
+      { value: string } | undefined;
     return (row ? Number(row.value) : 0) + (this.pendingCounters.get(name) ?? 0);
   }
 
   /** Every counter, flushed first so kv is authoritative. */
   counters(): Record<string, number> {
     this.flush();
-    const rows = this.db.prepare("SELECT key,value FROM kv WHERE key LIKE 'counter:%'").all() as { key: string; value: string }[];
+    const rows = this.db.prepare("SELECT key,value FROM kv WHERE key LIKE 'counter:%'").all() as {
+      key: string;
+      value: string;
+    }[];
     return Object.fromEntries(rows.map((r) => [r.key.slice(8), Number(r.value)]));
   }
 

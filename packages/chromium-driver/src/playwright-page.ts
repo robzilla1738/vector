@@ -1,6 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { extractElements } from "./extract-script.js";
-import type { BrowserContext, ConsoleMessage, Dialog, Download, ElementHandle, Frame, Locator, Page, Request, Response } from "playwright-core";
+import type {
+  BrowserContext,
+  ConsoleMessage,
+  Dialog,
+  Download,
+  ElementHandle,
+  Frame,
+  Locator,
+  Page,
+  Request,
+  Response,
+} from "playwright-core";
 import {
   AuxError,
   normalizeAuxEnvironment,
@@ -14,11 +25,28 @@ import {
 import { collectObservation, type ObserveScriptArgs, type ObserveScriptResult } from "./observe-script.js";
 import { parseTarget, RefRegistry } from "./ref-registry.js";
 import { locatorAttempts, selectUniqueLocator } from "./locator-resolve.js";
-import { bodyCapturePolicy, defaultResponseCaptureOptions, type ResponseCaptureOptions } from "./response-capture.js";
-import { READINESS_POLICIES, RequestTracker, SETTLED_CONDITION_MS, settledProbe, type ReadinessPolicy } from "./readiness.js";
+import {
+  bodyCapturePolicy,
+  defaultResponseCaptureOptions,
+  type ResponseCaptureOptions,
+} from "./response-capture.js";
+import {
+  READINESS_POLICIES,
+  RequestTracker,
+  SETTLED_CONDITION_MS,
+  settledProbe,
+  type ReadinessPolicy,
+} from "./readiness.js";
 import { ScriptRecorderObserver } from "./recorder-observer.js";
 import { AuxWorld } from "./aux-world.js";
-import type { ObservedActionTarget, DriverPage, DriverPageEvents, PageIdentity, ScreenshotResult, WaitOutcome } from "./types.js";
+import type {
+  ObservedActionTarget,
+  DriverPage,
+  DriverPageEvents,
+  PageIdentity,
+  ScreenshotResult,
+  WaitOutcome,
+} from "./types.js";
 
 const DEFAULT_STEP_TIMEOUT = 15_000;
 const DEFAULT_CONDITION_TIMEOUT = 10_000;
@@ -32,7 +60,8 @@ const NAVIGATION_COMMIT_MS = 10_000;
  * so rejections are swallowed to avoid unhandled rejections later. */
 /** A resolved step target: a live handle from the ref map, or a searched locator. */
 type Actionable = Locator | ElementHandle<HTMLElement | SVGElement>;
-const isHandle = (a: Actionable): a is ElementHandle<HTMLElement | SVGElement> => typeof (a as Locator).count !== "function";
+const isHandle = (a: Actionable): a is ElementHandle<HTMLElement | SVGElement> =>
+  typeof (a as Locator).count !== "function";
 
 export function bounded<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
   return Promise.race([
@@ -47,7 +76,9 @@ const CAPTURE_RESPONSES = normalizeAuxEnvironment(process.env).AUX_CAPTURE_RESPO
 /** A load replaced the document under an in-flight condition. A closed page is not that. */
 function navigationSuperseded(message: string): boolean {
   if (/has been closed|target closed|page closed|page crashed/i.test(message)) return false;
-  return /interrupted by another navigation|execution context was destroyed|navigation interrupted|attempting a navigation|frame was detached|net::ERR_ABORTED/i.test(message);
+  return /interrupted by another navigation|execution context was destroyed|navigation interrupted|attempting a navigation|frame was detached|net::ERR_ABORTED/i.test(
+    message,
+  );
 }
 
 interface FrameKeys {
@@ -166,7 +197,10 @@ export class PlaywrightDriverPage implements DriverPage {
     };
     this.on("request", (request: Request) => {
       this.requests.started(request);
-      this.responseDocuments.set(request, { documentEpoch: this.documentEpoch, documentUrl: this.page.url() });
+      this.responseDocuments.set(request, {
+        documentEpoch: this.documentEpoch,
+        documentUrl: this.page.url(),
+      });
       try {
         if (!request.isNavigationRequest() || request.frame() !== this.page.mainFrame()) return;
       } catch {
@@ -174,7 +208,9 @@ export class PlaywrightDriverPage implements DriverPage {
       }
       endNavigation();
       let resolve!: () => void;
-      const done = new Promise<void>((r) => { resolve = r; });
+      const done = new Promise<void>((r) => {
+        resolve = r;
+      });
       this.pendingNavigation = { request, done, resolve };
     });
     // a download or a 204 never commits a document
@@ -274,7 +310,11 @@ export class PlaywrightDriverPage implements DriverPage {
     };
     const declared = Number(headers["content-length"]);
     const decision = bodyCapturePolicy(
-      { resourceType, contentType, contentLength: Number.isFinite(declared) && declared >= 0 ? declared : undefined },
+      {
+        resourceType,
+        contentType,
+        contentLength: Number.isFinite(declared) && declared >= 0 ? declared : undefined,
+      },
       this.capture,
     );
     if (decision === "too-large") {
@@ -329,9 +369,13 @@ export class PlaywrightDriverPage implements DriverPage {
   }
 
   /** Native Aux downloads complete through the profile session, not Playwright's start event. */
-  setNativeDownloadAuthority() { this.nativeDownloadAuthority = true; }
+  setNativeDownloadAuthority() {
+    this.nativeDownloadAuthority = true;
+  }
   /** Session storage dir non-native downloads save into (S4). */
-  setDownloadDir(dir: string) { this.downloadDir = dir; }
+  setDownloadDir(dir: string) {
+    this.downloadDir = dir;
+  }
 
   /**
    * Save a finished download under `dir`: the suggested filename stays
@@ -364,9 +408,17 @@ export class PlaywrightDriverPage implements DriverPage {
   }
 
   /** Called by the runtime when the native side reports a terminal download. */
-  notifyDownload(info: { id: string; startedAt: number; suggestedFilename: string; path?: string; state: string }) {
-    const waiters = this.externalDownloadWaiters.filter(w => w.downloadId === info.id || (!w.downloadId && info.startedAt >= w.startedAt));
-    this.externalDownloadWaiters = this.externalDownloadWaiters.filter(w => !waiters.includes(w));
+  notifyDownload(info: {
+    id: string;
+    startedAt: number;
+    suggestedFilename: string;
+    path?: string;
+    state: string;
+  }) {
+    const waiters = this.externalDownloadWaiters.filter(
+      (w) => w.downloadId === info.id || (!w.downloadId && info.startedAt >= w.startedAt),
+    );
+    this.externalDownloadWaiters = this.externalDownloadWaiters.filter((w) => !waiters.includes(w));
     for (const w of waiters) {
       w.cleanup?.();
       if (info.state === "completed") w.resolve(info);
@@ -399,21 +451,39 @@ export class PlaywrightDriverPage implements DriverPage {
     await this.world;
     await this.page.goto(url, { timeout: timeoutMs, waitUntil: "domcontentloaded" });
   }
-  async navigateWithReceipt(url: string, timeoutMs = 30_000): Promise<{ url: string; documentEpoch: number; loaderId: string }> {
+  async navigateWithReceipt(
+    url: string,
+    timeoutMs = 30_000,
+  ): Promise<{ url: string; documentEpoch: number; loaderId: string }> {
     const deadline = Date.now() + Math.max(1, timeoutMs);
     const stage = async <T>(work: () => Promise<T>): Promise<T> => {
       const remaining = deadline - Date.now();
       if (remaining <= 0) throw new AuxError("condition_timeout", "Navigation receipt deadline exceeded.");
       let timer: ReturnType<typeof setTimeout> | undefined;
-      try { return await Promise.race([work(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new AuxError("condition_timeout", "Navigation receipt deadline exceeded.")), remaining); })]); }
-      finally { if (timer) clearTimeout(timer); }
+      try {
+        return await Promise.race([
+          work(),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new AuxError("condition_timeout", "Navigation receipt deadline exceeded.")),
+              remaining,
+            );
+          }),
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
     };
     await stage(() => this.world);
     const epoch = this.documentEpoch;
     const attaching = this.context.newCDPSession(this.page);
     let session: Awaited<typeof attaching>;
-    try { session = await stage(() => attaching); }
-    catch (error) { void attaching.then(late => late.detach()).catch(() => {}); throw error; }
+    try {
+      session = await stage(() => attaching);
+    } catch (error) {
+      void attaching.then((late) => late.detach()).catch(() => {});
+      throw error;
+    }
     let timer: ReturnType<typeof setTimeout> | undefined;
     const commits = new Map<string, { id: string; loaderId: string; url: string }>();
     let loaderId: string | undefined;
@@ -423,54 +493,87 @@ export class PlaywrightDriverPage implements DriverPage {
     let receipt: { url: string; documentEpoch: number; loaderId: string } | undefined;
     let resolveCommit: (() => void) | undefined;
     let rejectCommit: ((error: Error) => void) | undefined;
-    const committed = new Promise<void>((resolve, reject) => { resolveCommit = resolve; rejectCommit = reject; });
+    const committed = new Promise<void>((resolve, reject) => {
+      resolveCommit = resolve;
+      rejectCommit = reject;
+    });
     session.on("Page.frameNavigated", ({ frame }) => {
       if (frame.parentId) return;
       currentLoader = frame.loaderId;
       if (!loaderId && !commits.has(frame.loaderId) && commits.size >= 8) overflow = true;
-      if (!loaderId && !overflow) commits.set(frame.loaderId, { id: frame.id, loaderId: frame.loaderId, url: frame.url });
+      if (!loaderId && !overflow)
+        commits.set(frame.loaderId, { id: frame.id, loaderId: frame.loaderId, url: frame.url });
       if (loaderId && frame.id === frameId) {
         if (frame.loaderId === loaderId) resolveCommit?.();
-        else rejectCommit?.(new AuxError("ref_stale", "Another navigation replaced this command's document."));
+        else
+          rejectCommit?.(new AuxError("ref_stale", "Another navigation replaced this command's document."));
       }
     });
     try {
       await stage(() => session.send("Page.enable"));
       const ack = await stage(() => session.send("Page.navigate", { url }));
-      if (ack.errorText || !ack.loaderId) throw new AuxError("ref_stale", ack.errorText || "Navigation produced no document loader receipt.");
-      if (overflow) throw new AuxError("ref_stale", "Too many documents committed while awaiting the command receipt.");
+      if (ack.errorText || !ack.loaderId)
+        throw new AuxError("ref_stale", ack.errorText || "Navigation produced no document loader receipt.");
+      if (overflow)
+        throw new AuxError("ref_stale", "Too many documents committed while awaiting the command receipt.");
       loaderId = ack.loaderId;
       frameId = ack.frameId;
-      timer = setTimeout(() => rejectCommit?.(new AuxError("condition_timeout", "The commanded document did not commit.")), Math.max(1, deadline - Date.now()));
+      timer = setTimeout(
+        () => rejectCommit?.(new AuxError("condition_timeout", "The commanded document did not commit.")),
+        Math.max(1, deadline - Date.now()),
+      );
       const early = commits.get(loaderId);
       if (early?.id === frameId && currentLoader === loaderId) resolveCommit?.();
       else if (early) throw new AuxError("ref_stale", "Another document replaced the early command receipt.");
       await stage(() => committed);
-      await stage(() => this.page.waitForLoadState("domcontentloaded", { timeout: Math.max(1, deadline - Date.now()) }));
+      await stage(() =>
+        this.page.waitForLoadState("domcontentloaded", { timeout: Math.max(1, deadline - Date.now()) }),
+      );
       const boundEpoch = this.documentEpoch;
-      if (currentLoader !== loaderId || boundEpoch <= epoch) throw new AuxError("ref_stale", "The loader has no matching live document epoch.");
+      if (currentLoader !== loaderId || boundEpoch <= epoch)
+        throw new AuxError("ref_stale", "The loader has no matching live document epoch.");
       const { frameTree } = await stage(() => session.send("Page.getFrameTree"));
-      if (!this.isAttached() || currentLoader !== loaderId || this.documentEpoch !== boundEpoch || frameTree.frame.id !== frameId || frameTree.frame.loaderId !== loaderId)
+      if (
+        !this.isAttached() ||
+        currentLoader !== loaderId ||
+        this.documentEpoch !== boundEpoch ||
+        frameTree.frame.id !== frameId ||
+        frameTree.frame.loaderId !== loaderId
+      )
         throw new AuxError("ref_stale", "The commanded document was replaced before its receipt returned.");
       // Capture the epoch bound to this loader; never borrow a replacement's epoch.
       receipt = { url: frameTree.frame.url, documentEpoch: boundEpoch, loaderId };
     } finally {
       if (timer) clearTimeout(timer);
       const detach = session.detach();
-      await Promise.race([detach.catch(() => {}), new Promise<void>(resolve => {
-        const cleanup = setTimeout(resolve, 1_000); cleanup.unref(); detach.finally(() => clearTimeout(cleanup)).catch(() => {});
-      })]);
+      await Promise.race([
+        detach.catch(() => {}),
+        new Promise<void>((resolve) => {
+          const cleanup = setTimeout(resolve, 1_000);
+          cleanup.unref();
+          detach.finally(() => clearTimeout(cleanup)).catch(() => {});
+        }),
+      ]);
     }
-    if (!receipt || !this.isAttached() || currentLoader !== receipt.loaderId || this.documentEpoch !== receipt.documentEpoch)
+    if (
+      !receipt ||
+      !this.isAttached() ||
+      currentLoader !== receipt.loaderId ||
+      this.documentEpoch !== receipt.documentEpoch
+    )
       throw new AuxError("ref_stale", "The commanded document changed during receipt cleanup.");
     return receipt;
   }
   async back(timeoutMs = 15_000) {
-    const res = await this.page.goBack({ timeout: timeoutMs, waitUntil: "domcontentloaded" }).catch(() => null);
+    const res = await this.page
+      .goBack({ timeout: timeoutMs, waitUntil: "domcontentloaded" })
+      .catch(() => null);
     if (!res) throw new AuxError("step_failed", "No back history");
   }
   async forward(timeoutMs = 15_000) {
-    const res = await this.page.goForward({ timeout: timeoutMs, waitUntil: "domcontentloaded" }).catch(() => null);
+    const res = await this.page
+      .goForward({ timeout: timeoutMs, waitUntil: "domcontentloaded" })
+      .catch(() => null);
     if (!res) throw new AuxError("step_failed", "No forward history");
   }
   async reload(timeoutMs = 30_000) {
@@ -484,7 +587,10 @@ export class PlaywrightDriverPage implements DriverPage {
    * and no DOM mutation for ~100 ms — or the deadline. Returns whether the
    * page settled. Never throws; a wedged renderer just reports false.
    */
-  async waitForSettled(timeoutMs = SETTLED_CONDITION_MS, policy: ReadinessPolicy = READINESS_POLICIES.networkIdle): Promise<boolean> {
+  async waitForSettled(
+    timeoutMs = SETTLED_CONDITION_MS,
+    policy: ReadinessPolicy = READINESS_POLICIES.networkIdle,
+  ): Promise<boolean> {
     if (policy.quietMs === 0 && !policy.networkIdle) {
       await this.page.waitForLoadState("domcontentloaded", { timeout: timeoutMs });
       await this.page.waitForLoadState("load", { timeout: Math.min(timeoutMs, 10_000) }).catch(() => {});
@@ -492,13 +598,19 @@ export class PlaywrightDriverPage implements DriverPage {
     }
     const world = await this.world;
     if (!world) {
-      const r = await bounded(this.page.evaluate(settledProbe, { timeoutMs, quietMs: policy.quietMs }), timeoutMs + 250);
+      const r = await bounded(
+        this.page.evaluate(settledProbe, { timeoutMs, quietMs: policy.quietMs }),
+        timeoutMs + 250,
+      );
       return r === true;
     }
     const deadline = Date.now() + timeoutMs;
     for (;;) {
       const left = Math.max(0, deadline - Date.now());
-      const dom = await bounded(world.call<boolean>(`__aux.settle(${left}, ${policy.quietMs})`, true), left + 250);
+      const dom = await bounded(
+        world.call<boolean>(`__aux.settle(${left}, ${policy.quietMs})`, true),
+        left + 250,
+      );
       if (dom !== true) return false;
       if (!policy.networkIdle || this.requests.quiet(policy.quietMs)) return true;
       // requests in flight: wait them out, then re-check the DOM — a completed fetch usually renders
@@ -544,10 +656,7 @@ export class PlaywrightDriverPage implements DriverPage {
     if (parsed.kind === "ref") {
       const entry = this.refs.resolve(this.identity.pageId, parsed.ref);
       if (!entry) {
-        throw new AuxError(
-          "target_detached",
-          `Ref ${parsed.ref} is unknown or stale — re-observe the page`,
-        );
+        throw new AuxError("target_detached", `Ref ${parsed.ref} is unknown or stale — re-observe the page`);
       }
       strategy = entry.selector;
       frameKey = entry.frame;
@@ -565,28 +674,42 @@ export class PlaywrightDriverPage implements DriverPage {
     let iframeRef = false;
     if (parsed.kind === "ref") {
       const entry = this.refs.resolve(this.identity.pageId, parsed.ref);
-      if (!entry) throw new AuxError("target_detached", `Ref ${parsed.ref} is unknown or stale — re-observe the page`);
+      if (!entry)
+        throw new AuxError("target_detached", `Ref ${parsed.ref} is unknown or stale — re-observe the page`);
       frame = this.frameForKey(entry.frame);
       iframeRef = entry.tag.toLowerCase() === "iframe";
     }
-    if ((parsed.kind !== "ref" || iframeRef) && this.page.frames().some(child => child.parentFrame() === frame)) {
+    if (
+      (parsed.kind !== "ref" || iframeRef) &&
+      this.page.frames().some((child) => child.parentFrame() === frame)
+    ) {
       const locator = await this.resolveLocator(target);
       const handle = isHandle(locator) ? locator : await locator.elementHandle();
       const child = await handle?.contentFrame();
       if (child) frame = child;
     }
-    try { return new URL(frame.url()).origin; }
-    catch { throw new AuxError("target_detached", "Target frame is navigating — re-observe the page"); }
+    try {
+      return new URL(frame.url()).origin;
+    } catch {
+      throw new AuxError("target_detached", "Target frame is navigating — re-observe the page");
+    }
   }
 
   hasForeignFrames(): boolean {
     const main = this.page.mainFrame().url();
     let origin: string;
-    try { origin = new URL(main).origin; } catch { return true; }
-    return this.page.frames().some(frame => {
+    try {
+      origin = new URL(main).origin;
+    } catch {
+      return true;
+    }
+    return this.page.frames().some((frame) => {
       if (frame === this.page.mainFrame()) return false;
-      try { return new URL(frame.url()).origin !== origin; }
-      catch { return true; }
+      try {
+        return new URL(frame.url()).origin !== origin;
+      } catch {
+        return true;
+      }
     });
   }
 
@@ -610,13 +733,19 @@ export class PlaywrightDriverPage implements DriverPage {
         const frame = this.frameForKey(entry.frame);
         const world = entry.frame === "main" ? await this.world : null;
         if (world) {
-          const css = await bounded(world.call<string | null>(`__aux.css(${JSON.stringify(parsed.ref)})`), FRAME_PROBE_MS);
-          const loc = css ? await selectUniqueLocator(locatorAttempts(frame, { css }), target).catch(() => null) : null;
+          const css = await bounded(
+            world.call<string | null>(`__aux.css(${JSON.stringify(parsed.ref)})`),
+            FRAME_PROBE_MS,
+          );
+          const loc = css
+            ? await selectUniqueLocator(locatorAttempts(frame, { css }), target).catch(() => null)
+            : null;
           if (loc) return loc;
         } else {
           const handle = await bounded(
             frame.evaluateHandle((ref) => {
-              const m = (globalThis as unknown as { __auxStore?: { refs?: Map<string, Element> } }).__auxStore?.refs;
+              const m = (globalThis as unknown as { __auxStore?: { refs?: Map<string, Element> } }).__auxStore
+                ?.refs;
               const el = m instanceof Map ? m.get(ref) : undefined;
               return el && el.isConnected ? el : null;
             }, parsed.ref),
@@ -635,7 +764,8 @@ export class PlaywrightDriverPage implements DriverPage {
   private async worldRef(target: string): Promise<{ world: AuxWorld; ref: string } | null> {
     await this.navigationCommitted();
     const parsed = parseTarget(target);
-    if (parsed.kind !== "ref" || this.refs.resolve(this.identity.pageId, parsed.ref)?.frame !== "main") return null;
+    if (parsed.kind !== "ref" || this.refs.resolve(this.identity.pageId, parsed.ref)?.frame !== "main")
+      return null;
     const world = await this.world;
     return world ? { world, ref: JSON.stringify(parsed.ref) } : null;
   }
@@ -647,17 +777,44 @@ export class PlaywrightDriverPage implements DriverPage {
    * false so the caller takes Playwright's actionability path — its waits
    * and error messages stay the behaviour for everything but the easy case.
    */
-  private async rawPointer(target: string, button: "left" | "right" | "middle" | "none", clicks: number): Promise<boolean> {
+  private async rawPointer(
+    target: string,
+    button: "left" | "right" | "middle" | "none",
+    clicks: number,
+  ): Promise<boolean> {
     const w = await this.worldRef(target);
     if (!w) return false;
-    const point = await bounded(w.world.call<[number, number] | string>(`__aux.point(${w.ref})`), FRAME_PROBE_MS);
+    const point = await bounded(
+      w.world.call<[number, number] | string>(`__aux.point(${w.ref})`),
+      FRAME_PROBE_MS,
+    );
     if (!Array.isArray(point)) return false;
     const [x, y] = point;
     const mask = button === "left" ? 1 : button === "right" ? 2 : button === "middle" ? 4 : 0;
-    const sent = [w.world.input("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 })];
+    const sent = [
+      w.world.input("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 }),
+    ];
     for (let n = 1; n <= clicks; n++) {
-      sent.push(w.world.input("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button, buttons: mask, clickCount: n }));
-      sent.push(w.world.input("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button, buttons: 0, clickCount: n }));
+      sent.push(
+        w.world.input("Input.dispatchMouseEvent", {
+          type: "mousePressed",
+          x,
+          y,
+          button,
+          buttons: mask,
+          clickCount: n,
+        }),
+      );
+      sent.push(
+        w.world.input("Input.dispatchMouseEvent", {
+          type: "mouseReleased",
+          x,
+          y,
+          button,
+          buttons: 0,
+          clickCount: n,
+        }),
+      );
     }
     await Promise.all(sent);
     return true;
@@ -673,7 +830,11 @@ export class PlaywrightDriverPage implements DriverPage {
 
   // ---------- actions ----------
 
-  async click(target: string, button: "left" | "right" | "middle" = "left", timeoutMs = DEFAULT_STEP_TIMEOUT) {
+  async click(
+    target: string,
+    button: "left" | "right" | "middle" = "left",
+    timeoutMs = DEFAULT_STEP_TIMEOUT,
+  ) {
     if (await this.rawPointer(target, button, 1)) {
       await this.settleClickNavigation();
       return;
@@ -700,7 +861,10 @@ export class PlaywrightDriverPage implements DriverPage {
       if (value) await world.input("Input.insertText", { text: value });
       else {
         const key = { key: "Delete", code: "Delete", windowsVirtualKeyCode: 46 };
-        await Promise.all([world.input("Input.dispatchKeyEvent", { type: "keyDown", ...key }), world.input("Input.dispatchKeyEvent", { type: "keyUp", ...key })]);
+        await Promise.all([
+          world.input("Input.dispatchKeyEvent", { type: "keyDown", ...key }),
+          world.input("Input.dispatchKeyEvent", { type: "keyUp", ...key }),
+        ]);
       }
       return;
     }
@@ -738,7 +902,9 @@ export class PlaywrightDriverPage implements DriverPage {
   }
   async select(target: string, value: string | string[], timeoutMs = DEFAULT_STEP_TIMEOUT) {
     const loc = await this.resolveActionable(target);
-    await loc.selectOption(Array.isArray(value) ? value.map((v) => ({ label: v })) : { label: value }, { timeout: timeoutMs });
+    await loc.selectOption(Array.isArray(value) ? value.map((v) => ({ label: v })) : { label: value }, {
+      timeout: timeoutMs,
+    });
   }
   /** Before-state for setter steps (S4): value/checked/selected, redacted for protected controls. */
   async actionTarget(target: string): Promise<ObservedActionTarget> {
@@ -758,33 +924,65 @@ export class PlaywrightDriverPage implements DriverPage {
         for (let index = 0; index < form.elements.length; index++) {
           const field = form.elements.item(index);
           if (field && /^(INPUT|TEXTAREA|SELECT)$/.test(field.tagName))
-            fields.push({ type: boundedAttribute(field, "type").toLowerCase(), autocomplete: boundedAttribute(field, "autocomplete").toLowerCase() });
+            fields.push({
+              type: boundedAttribute(field, "type").toLowerCase(),
+              autocomplete: boundedAttribute(field, "autocomplete").toLowerCase(),
+            });
         }
       }
       // Field values and field text are excluded, even when nested in a button.
-      let name = tag === "button" || tag === "input" && /^(submit|button)$/.test(type) ? boundedAttribute(el, "aria-label") : "";
+      let name =
+        tag === "button" || (tag === "input" && /^(submit|button)$/.test(type))
+          ? boundedAttribute(el, "aria-label")
+          : "";
       if (tag === "button" && !name) {
         const walker = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
         let count = 0;
         for (let node = walker.nextNode(); node; node = walker.nextNode()) {
           if (++count > 128) throw new Error("This button exceeds the action metadata bound.");
-          if (node.nodeType === Node.TEXT_NODE && !node.parentElement?.closest("input,textarea,select,[contenteditable]")) name += node.textContent ?? "";
+          if (
+            node.nodeType === Node.TEXT_NODE &&
+            !node.parentElement?.closest("input,textarea,select,[contenteditable]")
+          )
+            name += node.textContent ?? "";
           if (name.length > 512) throw new Error("This button caption exceeds the action metadata bound.");
         }
       }
-      const challenge = el.ownerDocument.querySelector('iframe[src*="recaptcha"], iframe[src*="hcaptcha"], [name="g-recaptcha-response"], [name="h-captcha-response"]') ? "captcha" as const : undefined;
-      const action = form ? el.hasAttribute("formaction") ? new URL(boundedAttribute(el, "formaction"), el.ownerDocument.baseURI).href : form.action : undefined;
-      const method = form ? (el.hasAttribute("formmethod") ? boundedAttribute(el, "formmethod") : form.method).toLowerCase() : undefined;
-      return { origin: el.ownerDocument.location.origin, tag, type, autocomplete: boundedAttribute(el, "autocomplete").toLowerCase(), name: name.trim(),
-        ...(form && action && method ? { form: { action, method, fields } } : {}), ...(challenge ? { challenge } : {}) };
+      const challenge = el.ownerDocument.querySelector(
+        'iframe[src*="recaptcha"], iframe[src*="hcaptcha"], [name="g-recaptcha-response"], [name="h-captcha-response"]',
+      )
+        ? ("captcha" as const)
+        : undefined;
+      const action = form
+        ? el.hasAttribute("formaction")
+          ? new URL(boundedAttribute(el, "formaction"), el.ownerDocument.baseURI).href
+          : form.action
+        : undefined;
+      const method = form
+        ? (el.hasAttribute("formmethod") ? boundedAttribute(el, "formmethod") : form.method).toLowerCase()
+        : undefined;
+      return {
+        origin: el.ownerDocument.location.origin,
+        tag,
+        type,
+        autocomplete: boundedAttribute(el, "autocomplete").toLowerCase(),
+        name: name.trim(),
+        ...(form && action && method ? { form: { action, method, fields } } : {}),
+        ...(challenge ? { challenge } : {}),
+      };
     };
     const locator = await this.resolveActionable(target);
-    return (locator as { evaluate: (fn: typeof metadata) => Promise<ObservedActionTarget> }).evaluate(metadata);
+    return (locator as { evaluate: (fn: typeof metadata) => Promise<ObservedActionTarget> }).evaluate(
+      metadata,
+    );
   }
   async fieldState(target: string): Promise<Record<string, unknown> | undefined> {
     const w = await this.worldRef(target);
     if (w) {
-      const st = await bounded(w.world.call<Record<string, unknown> | string>(`__aux.state(${JSON.stringify(w.ref)})`), FRAME_PROBE_MS).catch(() => "gone");
+      const st = await bounded(
+        w.world.call<Record<string, unknown> | string>(`__aux.state(${JSON.stringify(w.ref)})`),
+        FRAME_PROBE_MS,
+      ).catch(() => "gone");
       if (st && typeof st === "object") return st;
     }
     const stateOf = (el: HTMLElement | SVGElement) => {
@@ -792,12 +990,24 @@ export class PlaywrightDriverPage implements DriverPage {
       const tag = el.tagName;
       const type = String(input.type ?? el.getAttribute("type") ?? "").toLowerCase();
       const autocomplete = String(el.getAttribute("autocomplete") ?? "").toLowerCase();
-      const protectedCtl = type === "password" || /current-password|new-password|one-time-code|cc-number|cc-csc|cc-exp/.test(autocomplete);
+      const protectedCtl =
+        type === "password" ||
+        /current-password|new-password|one-time-code|cc-number|cc-csc|cc-exp/.test(autocomplete);
       if (tag === "SELECT")
-        return { selected: Array.from((el as HTMLSelectElement).selectedOptions ?? []).map((o) => o.label ?? o.value).join("|") };
+        return {
+          selected: Array.from((el as HTMLSelectElement).selectedOptions ?? [])
+            .map((o) => o.label ?? o.value)
+            .join("|"),
+        };
       if (type === "checkbox" || type === "radio") return { checked: !!input.checked };
       if (tag === "INPUT" || tag === "TEXTAREA" || (el as HTMLElement).isContentEditable)
-        return { value: protectedCtl ? (input.value || (el as HTMLElement).innerText ? "{redacted}" : "") : ((el as HTMLElement).isContentEditable ? (el as HTMLElement).innerText : input.value) ?? "" };
+        return {
+          value: protectedCtl
+            ? input.value || (el as HTMLElement).innerText
+              ? "{redacted}"
+              : ""
+            : (((el as HTMLElement).isContentEditable ? (el as HTMLElement).innerText : input.value) ?? ""),
+        };
       return {};
     };
     const loc = await this.resolveActionable(target);
@@ -906,7 +1116,8 @@ export class PlaywrightDriverPage implements DriverPage {
               const root = scroller ?? document.body ?? document.documentElement;
               const current = () => {
                 const roots = (scroller ?? document).querySelectorAll(item);
-                const keyOf = (el: Element) => (key ? el.getAttribute(key) : null) ?? el.textContent?.trim() ?? "";
+                const keyOf = (el: Element) =>
+                  (key ? el.getAttribute(key) : null) ?? el.textContent?.trim() ?? "";
                 const first = roots[0];
                 const last = roots[roots.length - 1];
                 return `${roots.length}:${first ? keyOf(first) : ""}:${last ? keyOf(last) : ""}`;
@@ -965,7 +1176,8 @@ export class PlaywrightDriverPage implements DriverPage {
 
   async waitFor(condition: Condition): Promise<WaitOutcome> {
     await this.navigationCommitted();
-    const budget = "timeoutMs" in condition && condition.timeoutMs ? condition.timeoutMs : DEFAULT_CONDITION_TIMEOUT;
+    const budget =
+      "timeoutMs" in condition && condition.timeoutMs ? condition.timeoutMs : DEFAULT_CONDITION_TIMEOUT;
     const deadline = Date.now() + budget;
     let detail = "condition timed out";
     while (Date.now() < deadline) {
@@ -973,7 +1185,10 @@ export class PlaywrightDriverPage implements DriverPage {
       try {
         switch (condition.kind) {
           case "textVisible":
-            await this.page.getByText(condition.text, { exact: false }).first().waitFor({ state: "visible", timeout });
+            await this.page
+              .getByText(condition.text, { exact: false })
+              .first()
+              .waitFor({ state: "visible", timeout });
             break;
           case "selector":
             await this.page.locator(condition.selector).first().waitFor({ state: condition.state, timeout });
@@ -986,7 +1201,9 @@ export class PlaywrightDriverPage implements DriverPage {
           case "urlMatches": {
             const p = condition.pattern;
             const regex = p.startsWith("/") && p.endsWith("/") ? new RegExp(p.slice(1, -1)) : null;
-            await this.page.waitForURL(url => regex ? regex.test(url.href) : url.href.includes(p), { timeout });
+            await this.page.waitForURL((url) => (regex ? regex.test(url.href) : url.href.includes(p)), {
+              timeout,
+            });
             break;
           }
           case "navigationSettled":
@@ -996,7 +1213,12 @@ export class PlaywrightDriverPage implements DriverPage {
           case "settled": {
             const policy = READINESS_POLICIES[condition.policy ?? "networkIdle"];
             const ok = await this.waitForSettled(condition.timeoutMs ?? policy.timeoutMs, policy);
-            if (!ok) return { ok: false, timedOut: true, detail: `page did not settle (${condition.policy ?? "networkIdle"}): quiet window not reached` };
+            if (!ok)
+              return {
+                ok: false,
+                timedOut: true,
+                detail: `page did not settle (${condition.policy ?? "networkIdle"}): quiet window not reached`,
+              };
             break;
           }
           case "downloadCompleted": {
@@ -1005,7 +1227,9 @@ export class PlaywrightDriverPage implements DriverPage {
           }
           case "response":
             await this.page.waitForResponse(
-              (r) => r.url().includes(condition.urlIncludes) && (condition.status === undefined || r.status() === condition.status),
+              (r) =>
+                r.url().includes(condition.urlIncludes) &&
+                (condition.status === undefined || r.status() === condition.status),
               { timeout },
             );
             break;
@@ -1019,7 +1243,11 @@ export class PlaywrightDriverPage implements DriverPage {
         // A browser load, including Playwright's own page.goto, destroys the
         // in-flight locator evaluation. The condition is still running.
         let closed = false;
-        try { closed = this.page.isClosed(); } catch { closed = true; }
+        try {
+          closed = this.page.isClosed();
+        } catch {
+          closed = true;
+        }
         if (!closed && this.attached && navigationSuperseded(detail) && Date.now() < deadline) {
           await new Promise((resolve) => setTimeout(resolve, 20));
           continue;
@@ -1031,18 +1259,36 @@ export class PlaywrightDriverPage implements DriverPage {
     return { ok: false, timedOut: true, detail };
   }
 
-  waitForDownload(timeoutMs = 30_000, signal?: AbortSignal): Promise<{ suggestedFilename: string; path?: string }> {
+  waitForDownload(
+    timeoutMs = 30_000,
+    signal?: AbortSignal,
+  ): Promise<{ suggestedFilename: string; path?: string }> {
     return new Promise((resolve, reject) => {
-      if (signal?.aborted) { reject(new AuxError("conflict", "Download wait was cancelled")); return; }
-      const waiter = { resolve, reject, timer: undefined as unknown as NodeJS.Timeout, startedAt: Date.now(), cleanup: undefined as (() => void) | undefined };
+      if (signal?.aborted) {
+        reject(new AuxError("conflict", "Download wait was cancelled"));
+        return;
+      }
+      const waiter = {
+        resolve,
+        reject,
+        timer: undefined as unknown as NodeJS.Timeout,
+        startedAt: Date.now(),
+        cleanup: undefined as (() => void) | undefined,
+      };
       const cleanup = () => {
         clearTimeout(waiter.timer);
         signal?.removeEventListener("abort", onAbort);
-        this.externalDownloadWaiters = this.externalDownloadWaiters.filter(w => w !== waiter);
+        this.externalDownloadWaiters = this.externalDownloadWaiters.filter((w) => w !== waiter);
       };
-      const onAbort = () => { cleanup(); reject(new AuxError("conflict", "Download wait was cancelled")); };
+      const onAbort = () => {
+        cleanup();
+        reject(new AuxError("conflict", "Download wait was cancelled"));
+      };
       waiter.cleanup = cleanup;
-      waiter.timer = setTimeout(() => { cleanup(); reject(new AuxError("condition_timeout", "Timed out waiting for download")); }, timeoutMs);
+      waiter.timer = setTimeout(() => {
+        cleanup();
+        reject(new AuxError("condition_timeout", "Timed out waiting for download"));
+      }, timeoutMs);
       this.externalDownloadWaiters.push(waiter);
       signal?.addEventListener("abort", onAbort, { once: true });
     });
@@ -1068,9 +1314,15 @@ export class PlaywrightDriverPage implements DriverPage {
     // tokens, or text from an unlabeled editor. Playwright resolves each
     // locator in its own frame, including out-of-process child frames. If a
     // frame cannot be masked, screenshot() fails closed instead of retrying raw.
-    const editable = "input:not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea, select, [contenteditable]:not([contenteditable='false'])";
-    const mask = this.page.frames().map(frame => frame.locator(editable).filter({ visible: true }));
-    const buffer = await this.page.screenshot({ fullPage: opts?.fullPage ?? false, type: "png", mask, maskColor: "#242424" });
+    const editable =
+      "input:not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea, select, [contenteditable]:not([contenteditable='false'])";
+    const mask = this.page.frames().map((frame) => frame.locator(editable).filter({ visible: true }));
+    const buffer = await this.page.screenshot({
+      fullPage: opts?.fullPage ?? false,
+      type: "png",
+      mask,
+      maskColor: "#242424",
+    });
     const meta = await this.page
       .evaluate(() => ({ w: innerWidth, h: innerHeight, s: devicePixelRatio || 1 }))
       .catch(() => ({ w: 0, h: 0, s: 1 }));
@@ -1087,13 +1339,18 @@ export class PlaywrightDriverPage implements DriverPage {
     const main = await bounded(world.call<string>("__aux.fingerprint()"), FRAME_PROBE_MS);
     if (typeof main !== "string") throw new AuxError("backend_unavailable", "fingerprint probe timed out");
     const mainOrigin = new URL(this.page.url()).origin;
-    const children = this.page.frames().filter(frame => frame !== this.page.mainFrame());
+    const children = this.page.frames().filter((frame) => frame !== this.page.mainFrame());
     for (const frame of children) {
       let origin: string;
-      try { origin = new URL(frame.url()).origin; } catch { throw new AuxError("backend_unavailable", "Child frame is navigating"); }
-      if (origin === "null" || origin === mainOrigin) throw new AuxError("backend_unavailable", "Observed child frame needs a fresh read");
+      try {
+        origin = new URL(frame.url()).origin;
+      } catch {
+        throw new AuxError("backend_unavailable", "Child frame is navigating");
+      }
+      if (origin === "null" || origin === mainOrigin)
+        throw new AuxError("backend_unavailable", "Observed child frame needs a fresh read");
     }
-    const frames = children.map(frame => frame.url()).join("\u0002");
+    const frames = children.map((frame) => frame.url()).join("\u0002");
     return frames ? `${main}\u0001frames:${frames}` : main;
   }
 
@@ -1135,18 +1392,22 @@ export class PlaywrightDriverPage implements DriverPage {
       } catch {
         /* ambiguous url — probe below */
       }
-      const probed = (
+      const probed =
         (await bounded(
-          frame.evaluate(() => true).then(() => true).catch(() => false),
+          frame
+            .evaluate(() => true)
+            .then(() => true)
+            .catch(() => false),
           FRAME_PROBE_MS,
-        )) === true
-      );
+        )) === true;
       // An about:blank frame may navigate while the probe is in flight. Use
       // its current URL before allowing a content read.
       try {
         const currentOrigin = new URL(frame.url()).origin;
         if (mainOrigin !== null && currentOrigin !== "null") return currentOrigin === mainOrigin;
-      } catch { /* still ambiguous */ }
+      } catch {
+        /* still ambiguous */
+      }
       return probed;
     };
     // Subtree scope (plan A10): `subtreeRef` is an `rN` from the last
@@ -1158,7 +1419,11 @@ export class PlaywrightDriverPage implements DriverPage {
       const parsed = parseTarget(req.subtreeRef);
       if (parsed.kind === "ref") {
         const entry = this.refs.resolve(this.identity.pageId, parsed.ref);
-        if (!entry) throw new AuxError("target_detached", `subtreeRef ${parsed.ref} is unknown or stale — re-observe the page`);
+        if (!entry)
+          throw new AuxError(
+            "target_detached",
+            `subtreeRef ${parsed.ref} is unknown or stale — re-observe the page`,
+          );
         subtree = { css: entry.selector.css, ref: parsed.ref, frameKey: entry.frame };
         if (entry.tag === "iframe" && entry.selector.css) {
           const owner = this.frameForKey(entry.frame);
@@ -1172,7 +1437,10 @@ export class PlaywrightDriverPage implements DriverPage {
         const css = parsed.strategy.css ?? req.subtreeRef;
         subtree = { css, frameKey: "main" };
         const child = await bounded(
-          this.page.mainFrame().$(css).then(handle => handle?.contentFrame() ?? null),
+          this.page
+            .mainFrame()
+            .$(css)
+            .then((handle) => handle?.contentFrame() ?? null),
           FRAME_PROBE_MS,
         ).catch(() => null);
         if (child) subtree = { onlyFrame: child };
@@ -1245,10 +1513,17 @@ export class PlaywrightDriverPage implements DriverPage {
   }
 
   /** One frame's observe pass: the aux world for the main frame, the frame's own world otherwise. */
-  private async collect(key: string, frame: Frame, world: AuxWorld | null, args: ObserveScriptArgs): Promise<ObserveScriptResult | undefined> {
+  private async collect(
+    key: string,
+    frame: Frame,
+    world: AuxWorld | null,
+    args: ObserveScriptArgs,
+  ): Promise<ObserveScriptResult | undefined> {
     const part = await bounded(
       key === "main" && world
-        ? world.call<string>(`__aux.collect(${JSON.stringify(args)})`).then((json) => JSON.parse(json) as ObserveScriptResult)
+        ? world
+            .call<string>(`__aux.collect(${JSON.stringify(args)})`)
+            .then((json) => JSON.parse(json) as ObserveScriptResult)
         : frame.evaluate(collectObservation, args),
       FRAME_OBSERVE_MS,
     );
@@ -1273,7 +1548,9 @@ export class PlaywrightDriverPage implements DriverPage {
     return els;
   }
 
-  async extract(fields: { name: string; selector?: string; attribute?: string; all?: boolean }[]): Promise<Record<string, unknown>> {
+  async extract(
+    fields: { name: string; selector?: string; attribute?: string; all?: boolean }[],
+  ): Promise<Record<string, unknown>> {
     await this.navigationCommitted();
     const out: Record<string, unknown> = {};
     for (const f of fields) {
@@ -1292,7 +1569,7 @@ export class PlaywrightDriverPage implements DriverPage {
       }
       const loc = this.page.locator(f.selector);
       const values = await (f.all ? loc : loc.first()).evaluateAll(extractElements, f.attribute ?? null);
-      out[f.name] = f.all ? values.map(value => value ?? "") : values[0] ?? null;
+      out[f.name] = f.all ? values.map((value) => value ?? "") : (values[0] ?? null);
     }
     return out;
   }

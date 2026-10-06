@@ -23,8 +23,14 @@ import {
 } from "@aux/contracts/model-registry";
 import { call } from "../../store";
 import { SettingsField as IndexedField, SettingsSection } from "../primitives";
-import { staticGrowProps as auxReuseStaticGrowProps, staticDrawerSectionProps as auxReuseStaticDrawerSectionProps } from "../../ui/class-props";
-import { nativeAutocompleteOffProps as auxReuseNativeAutocompleteOffProps, nativeNumberTypeProps as auxReuseNativeNumberTypeProps } from "../../ui/native-attribute-props";
+import {
+  staticGrowProps as auxReuseStaticGrowProps,
+  staticDrawerSectionProps as auxReuseStaticDrawerSectionProps,
+} from "../../ui/class-props";
+import {
+  nativeAutocompleteOffProps as auxReuseNativeAutocompleteOffProps,
+  nativeNumberTypeProps as auxReuseNativeNumberTypeProps,
+} from "../../ui/native-attribute-props";
 
 /** what settings.get returns in place of the real key */
 const KEY_MASK = "••••••••";
@@ -477,8 +483,7 @@ export function ModelsSettings({
         if (!result.models.length) setConnectionError("The endpoint returned no models.");
         return result;
       } catch (error) {
-        if (owner.current() && sequence === modelsSequence.current)
-          setConnectionError(errorMessage(error));
+        if (owner.current() && sequence === modelsSequence.current) setConnectionError(errorMessage(error));
         throw error;
       } finally {
         owner.finish("discovery");

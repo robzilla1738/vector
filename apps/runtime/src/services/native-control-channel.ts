@@ -1,4 +1,10 @@
-import { AuxError, NativePageTakeoverSchema, type AuxErrorCode, type NativePageTakeover, type RpcChannel } from "@aux/contracts";
+import {
+  AuxError,
+  NativePageTakeoverSchema,
+  type AuxErrorCode,
+  type NativePageTakeover,
+  type RpcChannel,
+} from "@aux/contracts";
 
 /** Bind only to the authenticated Profile host channel, never the public API. */
 export function registerNativeControlChannel(

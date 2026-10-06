@@ -32,7 +32,16 @@ export function caretAnchor(input: HTMLTextAreaElement, caret: number): { left: 
   const rect = marker.getBoundingClientRect();
   mirror.remove();
   return {
-    left: Math.max(12, Math.min(rect.left - input.scrollLeft, window.innerWidth - Math.min(330, window.innerWidth - 24) - 12)),
-    top: Math.max(12, Math.min(rect.bottom - input.scrollTop, window.innerHeight - Math.min(360, window.innerHeight / 2) - 12)),
+    left: Math.max(
+      12,
+      Math.min(rect.left - input.scrollLeft, window.innerWidth - Math.min(330, window.innerWidth - 24) - 12),
+    ),
+    top: Math.max(
+      12,
+      Math.min(
+        rect.bottom - input.scrollTop,
+        window.innerHeight - Math.min(360, window.innerHeight / 2) - 12,
+      ),
+    ),
   };
 }

@@ -38,15 +38,30 @@ describe("code-mode REPL", () => {
   it("finishes a scripted read through the same verified result callback", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
-    const submitResult = vi.fn(async ({ report, citations }: { report: string; citations?: { observationId?: string; quote: string }[] }) =>
-      report === "Jordan Lee" && citations?.[0]?.observationId === "obs-1" && citations[0].quote === "Jordan Lee"
-        ? { ok: true as const, result: { report, citations } }
-        : { ok: false as const, error: "Unverifiable citation" });
+    const submitResult = vi.fn(
+      async ({
+        report,
+        citations,
+      }: {
+        report: string;
+        citations?: { observationId?: string; quote: string }[];
+      }) =>
+        report === "Jordan Lee" &&
+        citations?.[0]?.observationId === "obs-1" &&
+        citations[0].quote === "Jordan Lee"
+          ? { ok: true as const, result: { report, citations } }
+          : { ok: false as const, error: "Unverifiable citation" },
+    );
     const step = vi.fn(async () => ({ output: { status: "completed" } }));
-    const result = await pool.eval(deps({
-      observe: async () => ({ text: "Owner: Jordan Lee", observationId: "obs-1", revision: 2 }),
-      submitResult, step,
-    }), `const s = snapshot(); const owner = s.text.match(/Owner: ([^\\n]+)/)[1]; submitResult(owner, [{observationId:s.observationId, quote:owner}]); page.click("r1")`, { pageId: "p1" });
+    const result = await pool.eval(
+      deps({
+        observe: async () => ({ text: "Owner: Jordan Lee", observationId: "obs-1", revision: 2 }),
+        submitResult,
+        step,
+      }),
+      `const s = snapshot(); const owner = s.text.match(/Owner: ([^\\n]+)/)[1]; submitResult(owner, [{observationId:s.observationId, quote:owner}]); page.click("r1")`,
+      { pageId: "p1" },
+    );
     expect(result).toMatchObject({ finish: { result: { report: "Jordan Lee" } } });
     expect(submitResult).toHaveBeenCalledOnce();
     expect(step).not.toHaveBeenCalled(); // verified completion fences later effects in the script
@@ -56,11 +71,15 @@ describe("code-mode REPL", () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
     let calls = 0;
-    const submitResult = async (input: { report: string }) => ++calls === 1
-      ? { ok: false as const, error: "Unverifiable citation" }
-      : { ok: true as const, result: { report: input.report } };
-    const result = await pool.eval(deps({ submitResult }),
-      `try { submitResult("wrong", []); } catch (e) {} submitResult("correct", [])`, { pageId: "p1" });
+    const submitResult = async (input: { report: string }) =>
+      ++calls === 1
+        ? { ok: false as const, error: "Unverifiable citation" }
+        : { ok: true as const, result: { report: input.report } };
+    const result = await pool.eval(
+      deps({ submitResult }),
+      `try { submitResult("wrong", []); } catch (e) {} submitResult("correct", [])`,
+      { pageId: "p1" },
+    );
     expect(result).toMatchObject({ finish: { result: { report: "correct" } } });
     expect(calls).toBe(2);
   });
@@ -68,12 +87,21 @@ describe("code-mode REPL", () => {
   it("carries a bounded plain text proposal through verified scripted completion", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
-    const submitResult = vi.fn(async (input: { report: string; textProposal?: string }) =>
-      ({ ok: true as const, result: { report: input.report, textProposal: input.textProposal } }));
-    const result = await pool.eval(deps({ submitResult }),
-      `submitResult("Draft ready", [], "A clear project note.")`, { pageId: "p1" });
+    const submitResult = vi.fn(async (input: { report: string; textProposal?: string }) => ({
+      ok: true as const,
+      result: { report: input.report, textProposal: input.textProposal },
+    }));
+    const result = await pool.eval(
+      deps({ submitResult }),
+      `submitResult("Draft ready", [], "A clear project note.")`,
+      { pageId: "p1" },
+    );
     expect(result).toMatchObject({ finish: { result: { textProposal: "A clear project note." } } });
-    expect(submitResult).toHaveBeenCalledWith({ report: "Draft ready", citations: [], textProposal: "A clear project note." });
+    expect(submitResult).toHaveBeenCalledWith({
+      report: "Draft ready",
+      citations: [],
+      textProposal: "A clear project note.",
+    });
   });
 
   it("evaluates guest code and returns marshaled data", async () => {
@@ -102,30 +130,48 @@ describe("code-mode REPL", () => {
   });
 
   it.each([
-    { first: "refusal", checkInitial: async (result: Promise<LoopToolResult>) => {
-      await expect(result).rejects.toThrow("Current site authority was revoked");
-    } },
-    { first: "park", checkInitial: async (result: Promise<LoopToolResult>) => {
-      expect(await result).toMatchObject({ park: { approvalId: "ap-owned" } });
-    } },
-  ])("reaches the real gate again after a $first interrupts a top-level declaration", async ({ first, checkInitial }) => {
-    const pool = new ReplPool();
-    cleanup.push(() => pool.disposeAll());
-    let calls = 0;
-    const openTab = vi.fn(async () => {
-      if (++calls === 1) {
-        if (first === "refusal") throw new AuxError("permission_denied", "Current site authority was revoked.");
-        return { park: { kind: "approval" as const, approvalId: "ap-owned", instruction: "Approve this destination?" } };
-      }
-      return { output: { pageId: "p2", url: "http://allowed.test", title: "New", active: false, owned: true } };
-    });
-    const host = deps({ openTab });
-    const code = 'const opened = openTab("http://allowed.test"); display(opened); opened.pageId';
-    await checkInitial(pool.eval(host, code));
-    expect(openTab).toHaveBeenCalledTimes(1);
-    expect(out(await pool.eval(host, code)).value).toBe("p2");
-    expect(openTab).toHaveBeenCalledTimes(2);
-  });
+    {
+      first: "refusal",
+      checkInitial: async (result: Promise<LoopToolResult>) => {
+        await expect(result).rejects.toThrow("Current site authority was revoked");
+      },
+    },
+    {
+      first: "park",
+      checkInitial: async (result: Promise<LoopToolResult>) => {
+        expect(await result).toMatchObject({ park: { approvalId: "ap-owned" } });
+      },
+    },
+  ])(
+    "reaches the real gate again after a $first interrupts a top-level declaration",
+    async ({ first, checkInitial }) => {
+      const pool = new ReplPool();
+      cleanup.push(() => pool.disposeAll());
+      let calls = 0;
+      const openTab = vi.fn(async () => {
+        if (++calls === 1) {
+          if (first === "refusal")
+            throw new AuxError("permission_denied", "Current site authority was revoked.");
+          return {
+            park: {
+              kind: "approval" as const,
+              approvalId: "ap-owned",
+              instruction: "Approve this destination?",
+            },
+          };
+        }
+        return {
+          output: { pageId: "p2", url: "http://allowed.test", title: "New", active: false, owned: true },
+        };
+      });
+      const host = deps({ openTab });
+      const code = 'const opened = openTab("http://allowed.test"); display(opened); opened.pageId';
+      await checkInitial(pool.eval(host, code));
+      expect(openTab).toHaveBeenCalledTimes(1);
+      expect(out(await pool.eval(host, code)).value).toBe("p2");
+      expect(openTab).toHaveBeenCalledTimes(2);
+    },
+  );
 
   it("preserves global bindings after correcting a syntax-invalid declaration", async () => {
     const pool = new ReplPool();
@@ -140,8 +186,9 @@ describe("code-mode REPL", () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
     const host = deps();
-    await expect(pool.eval(host, 'const retained = (() => { throw new SyntaxError("guest failure"); })();'))
-      .rejects.toThrow("guest failure");
+    await expect(
+      pool.eval(host, 'const retained = (() => { throw new SyntaxError("guest failure"); })();'),
+    ).rejects.toThrow("guest failure");
     expect(out(await pool.eval(host, "const retained = 42; retained")).value).toBe(42);
   });
 
@@ -150,13 +197,21 @@ describe("code-mode REPL", () => {
     cleanup.push(() => pool.disposeAll());
     let release!: () => void;
     let entered!: () => void;
-    const held = new Promise<void>(resolve => { release = resolve; });
-    const started = new Promise<void>(resolve => { entered = resolve; });
-    const host = deps({ openTab: async () => {
-      entered();
-      await held;
-      return { output: { pageId: "p2", url: "http://allowed.test", title: "New", active: false, owned: true } };
-    } });
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const host = deps({
+      openTab: async () => {
+        entered();
+        await held;
+        return {
+          output: { pageId: "p2", url: "http://allowed.test", title: "New", active: false, owned: true },
+        };
+      },
+    });
     await pool.eval(host, "1"); // Warm the single actual session before concurrency.
     const first = pool.eval(host, 'const queued = openTab("http://allowed.test"); queued.pageId');
     await started;
@@ -166,16 +221,26 @@ describe("code-mode REPL", () => {
       expect(out(await first).value).toBe("p2");
       expect(out(await second).value).toBe("second");
       expect(out(await pool.eval(host, "queued.pageId")).value).toBe("p2");
-    } finally { release(); await Promise.allSettled([first, second]); }
+    } finally {
+      release();
+      await Promise.allSettled([first, second]);
+    }
   });
 
   it("accepts model-style await on synchronous host calls without changing strings", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
     const step = vi.fn(async () => ({ output: { status: "completed" } }));
-    const result = out(await pool.eval(deps({
-      step, observe: async () => ({ text: "await snapshot() remains text", observationId: "o1", revision: 1 }),
-    }), `await page.navigate("http://x.test/next"); const s = await snapshot(); s.text`, { pageId: "p1" }));
+    const result = out(
+      await pool.eval(
+        deps({
+          step,
+          observe: async () => ({ text: "await snapshot() remains text", observationId: "o1", revision: 1 }),
+        }),
+        `await page.navigate("http://x.test/next"); const s = await snapshot(); s.text`,
+        { pageId: "p1" },
+      ),
+    );
     expect(step).toHaveBeenCalledOnce();
     expect(result.value).toBe("await snapshot() remains text");
   });
@@ -198,7 +263,9 @@ describe("code-mode REPL", () => {
       const pool = new ReplPool();
       cleanup.push(() => pool.disposeAll());
       const step = vi.fn(async () => ({ output }));
-      await expect(pool.eval(deps({ step }), `page.click("r1"); page.click("r2")`, { pageId: "p1" })).rejects.toThrow(/Action (skipped|outcome uncertain|failed)/);
+      await expect(
+        pool.eval(deps({ step }), `page.click("r1"); page.click("r2")`, { pageId: "p1" }),
+      ).rejects.toThrow(/Action (skipped|outcome uncertain|failed)/);
       expect(step).toHaveBeenCalledOnce();
     }
   });
@@ -219,9 +286,13 @@ describe("code-mode REPL", () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
     const step = vi.fn(async () => ({ output: { status: "completed" } }));
-    const yielded = out(await pool.eval(deps({ step }), `sleep(40); page.click("r1")`, { pageId: "p1", yieldTimeMs: 0 }));
+    const yielded = out(
+      await pool.eval(deps({ step }), `sleep(40); page.click("r1")`, { pageId: "p1", yieldTimeMs: 0 }),
+    );
     expect(yielded).toMatchObject({ running: true, cellId: expect.any(String) });
-    expect(out(await pool.wait("run-1", String(yielded.cellId), 0, true))).toMatchObject({ terminated: true });
+    expect(out(await pool.wait("run-1", String(yielded.cellId), 0, true))).toMatchObject({
+      terminated: true,
+    });
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(out(await pool.wait("run-1", String(yielded.cellId), 0))).toMatchObject({ terminated: true });
     expect(step).not.toHaveBeenCalled();
@@ -233,11 +304,15 @@ describe("code-mode REPL", () => {
     cleanup.push(() => pool.disposeAll());
     const findRef = vi.fn(async (_pageId: string, _name: string, _role?: string) => ({ ref: "r7" }));
     const step = vi.fn(async (_pageId: string, _step: unknown) => ({ output: { status: "completed" } }));
-    await pool.eval(deps({ findRef, step }), `page.clickByName("Details", "button"); page.click("r8")`, { pageId: "p1" });
+    await pool.eval(deps({ findRef, step }), `page.clickByName("Details", "button"); page.click("r8")`, {
+      pageId: "p1",
+    });
     expect(findRef).toHaveBeenCalledWith("p1", "Details", "button");
     expect(step).toHaveBeenCalledTimes(2);
     expect(step.mock.calls[0]![1]).toMatchObject({ op: "click", target: "r7" });
-    expect((step.mock.calls[0]![1] as { id: string }).id).not.toBe((step.mock.calls[1]![1] as { id: string }).id);
+    expect((step.mock.calls[0]![1] as { id: string }).id).not.toBe(
+      (step.mock.calls[1]![1] as { id: string }).id,
+    );
   });
 
   it("strips a copied rendered link suffix before the fresh named-control lookup", async () => {
@@ -245,7 +320,11 @@ describe("code-mode REPL", () => {
     cleanup.push(() => pool.disposeAll());
     const findRef = vi.fn(async () => ({ ref: "r10" }));
     const step = vi.fn(async () => ({ output: { status: "completed" } }));
-    await pool.eval(deps({ findRef, step }), `page.clickByName('Record 15 — Alpha project" href=/records/rec-15')`, { pageId: "p1" });
+    await pool.eval(
+      deps({ findRef, step }),
+      `page.clickByName('Record 15 — Alpha project" href=/records/rec-15')`,
+      { pageId: "p1" },
+    );
     expect(findRef).toHaveBeenCalledWith("p1", "Record 15 — Alpha project", undefined);
     expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "click", target: "r10" }));
   });
@@ -255,8 +334,14 @@ describe("code-mode REPL", () => {
     cleanup.push(() => pool.disposeAll());
     const findRef = vi.fn(async () => ({ ref: "r17", navigationUrl: "http://x.test/records?page=2" }));
     const step = vi.fn(async () => ({ output: { status: "completed" } }));
-    await pool.eval(deps({ findRef, step }), `page.followLinkByName("2"); page.clickByName("2")`, { pageId: "p1" });
-    expect(step).toHaveBeenNthCalledWith(1, "p1", expect.objectContaining({ op: "navigate", url: "http://x.test/records?page=2" }));
+    await pool.eval(deps({ findRef, step }), `page.followLinkByName("2"); page.clickByName("2")`, {
+      pageId: "p1",
+    });
+    expect(step).toHaveBeenNthCalledWith(
+      1,
+      "p1",
+      expect.objectContaining({ op: "navigate", url: "http://x.test/records?page=2" }),
+    );
     expect(step).toHaveBeenNthCalledWith(2, "p1", expect.objectContaining({ op: "click", target: "r17" }));
   });
 
@@ -265,41 +350,77 @@ describe("code-mode REPL", () => {
     cleanup.push(() => pool.disposeAll());
     const findRef = vi.fn(async () => ({ ref: "r10", navigationUrl: "http://x.test/records/rec-15" }));
     const step = vi.fn(async () => ({ output: { status: "completed" } }));
-    await pool.eval(deps({ findRef, step }), `page.followLinkByName('Record 15 — Alpha project" href=/records/rec-15')`, { pageId: "p1" });
+    await pool.eval(
+      deps({ findRef, step }),
+      `page.followLinkByName('Record 15 — Alpha project" href=/records/rec-15')`,
+      { pageId: "p1" },
+    );
     expect(findRef).toHaveBeenCalledWith("p1", "Record 15 — Alpha project", "link");
-    expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "navigate", url: "http://x.test/records/rec-15" }));
+    expect(step).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ op: "navigate", url: "http://x.test/records/rec-15" }),
+    );
   });
 
   it("refuses explicit route navigation when the named link has no same-origin href", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
     const step = vi.fn(async () => ({ output: { status: "completed" } }));
-    await expect(pool.eval(deps({ findRef: async () => ({ ref: "r3" }), step }), `page.followLinkByName("Download")`, { pageId: "p1" })).rejects.toThrow(/no observed same-origin route/);
+    await expect(
+      pool.eval(deps({ findRef: async () => ({ ref: "r3" }), step }), `page.followLinkByName("Download")`, {
+        pageId: "p1",
+      }),
+    ).rejects.toThrow(/no observed same-origin route/);
     expect(step).not.toHaveBeenCalled();
   });
 
   it("extracts one labeled value with its observed quote and can submit it", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
-    const submitResult = vi.fn(async (input: { report: string; citations?: { observationId?: string; quote: string }[] }) => ({
-      ok: true as const, result: { report: input.report, citations: input.citations },
-    }));
-    const result = await pool.eval(deps({
-      observe: async () => ({ text: "Created by the user. Internal ref rec-13.\nAttachment: notes.txt", observationId: "obs-3", revision: 3 }),
-      submitResult,
-    }), `page.submitLabeledValue("Internal ref")`, { pageId: "p1" });
+    const submitResult = vi.fn(
+      async (input: { report: string; citations?: { observationId?: string; quote: string }[] }) => ({
+        ok: true as const,
+        result: { report: input.report, citations: input.citations },
+      }),
+    );
+    const result = await pool.eval(
+      deps({
+        observe: async () => ({
+          text: "Created by the user. Internal ref rec-13.\nAttachment: notes.txt",
+          observationId: "obs-3",
+          revision: 3,
+        }),
+        submitResult,
+      }),
+      `page.submitLabeledValue("Internal ref")`,
+      { pageId: "p1" },
+    );
     expect(result).toMatchObject({ finish: { result: { report: "rec-13" } } });
-    expect(submitResult).toHaveBeenCalledWith({ report: "rec-13", citations: [{ observationId: "obs-3", quote: "Created by the user. Internal ref rec-13." }] });
+    expect(submitResult).toHaveBeenCalledWith({
+      report: "rec-13",
+      citations: [{ observationId: "obs-3", quote: "Created by the user. Internal ref rec-13." }],
+    });
   });
 
   it("matches an unambiguous reference/ref label synonym", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
-    const submitResult = vi.fn(async (input: { report: string }) => ({ ok: true as const, result: { report: input.report } }));
-    const result = await pool.eval(deps({
-      observe: async () => ({ text: "Created by fixture. Internal ref rec-15.", observationId: "obs-ref", revision: 3 }),
-      submitResult,
-    }), `page.submitLabeledValue("Internal reference")`, { pageId: "p1" });
+    const submitResult = vi.fn(async (input: { report: string }) => ({
+      ok: true as const,
+      result: { report: input.report },
+    }));
+    const result = await pool.eval(
+      deps({
+        observe: async () => ({
+          text: "Created by fixture. Internal ref rec-15.",
+          observationId: "obs-ref",
+          revision: 3,
+        }),
+        submitResult,
+      }),
+      `page.submitLabeledValue("Internal reference")`,
+      { pageId: "p1" },
+    );
     expect(result).toMatchObject({ finish: { result: { report: "rec-15" } } });
   });
 
@@ -310,11 +431,20 @@ describe("code-mode REPL", () => {
     const step = vi.fn(async () => ({ output: { status: "completed" } }));
     await pool.eval(deps({ findRoute, step }), `page.navigateMatching("rec-14")`, { pageId: "p1" });
     expect(findRoute).toHaveBeenCalledWith("p1", "rec-14");
-    expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "navigate", url: "http://x.test/records/rec-14" }));
-    const denied = vi.fn(async () => { throw new AuxError("invalid_params", "ambiguous route"); });
+    expect(step).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ op: "navigate", url: "http://x.test/records/rec-14" }),
+    );
+    const denied = vi.fn(async () => {
+      throw new AuxError("invalid_params", "ambiguous route");
+    });
     const deniedPool = new ReplPool();
     cleanup.push(() => deniedPool.disposeAll());
-    await expect(deniedPool.eval(deps({ runId: "run-2", findRoute: denied, step }), `page.navigateMatching("rec-99")`, { pageId: "p2" })).rejects.toThrow(/ambiguous route/);
+    await expect(
+      deniedPool.eval(deps({ runId: "run-2", findRoute: denied, step }), `page.navigateMatching("rec-99")`, {
+        pageId: "p2",
+      }),
+    ).rejects.toThrow(/ambiguous route/);
     expect(step).toHaveBeenCalledTimes(1);
   });
 
@@ -322,10 +452,20 @@ describe("code-mode REPL", () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
     const submitResult = vi.fn(async () => ({ ok: true as const, result: { report: "wrong" } }));
-    await expect(pool.eval(deps({
-      observe: async () => ({ text: "Owner: Jordan Lee\nOwner: Priya Patel", observationId: "obs-4", revision: 4 }),
-      submitResult,
-    }), `page.submitLabeledValue("Owner")`, { pageId: "p1" })).rejects.toThrow(/2/);
+    await expect(
+      pool.eval(
+        deps({
+          observe: async () => ({
+            text: "Owner: Jordan Lee\nOwner: Priya Patel",
+            observationId: "obs-4",
+            revision: 4,
+          }),
+          submitResult,
+        }),
+        `page.submitLabeledValue("Owner")`,
+        { pageId: "p1" },
+      ),
+    ).rejects.toThrow(/2/);
     expect(submitResult).not.toHaveBeenCalled();
   });
 
@@ -426,15 +566,25 @@ describe("code-mode REPL", () => {
   it("lists and calls page.webmcp tools and parks a write", async () => {
     const webmcp = vi.fn(async (_pageId: string, action: { op?: string; name?: string }) => {
       if (action?.op === "call") {
-        return { park: { kind: "approval" as const, instruction: "Allow this action before it runs.", approvalId: "ap-w" } };
+        return {
+          park: {
+            kind: "approval" as const,
+            instruction: "Allow this action before it runs.",
+            approvalId: "ap-w",
+          },
+        };
       }
       return [{ name: "read_count", readOnly: true }];
     });
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
-    const listed = out(await pool.eval(deps({ webmcp }), `JSON.stringify(page.webmcp.tools())`, { pageId: "p1" }));
+    const listed = out(
+      await pool.eval(deps({ webmcp }), `JSON.stringify(page.webmcp.tools())`, { pageId: "p1" }),
+    );
     expect(JSON.parse(String(listed.value))).toEqual([{ name: "read_count", readOnly: true }]);
-    const parked = await pool.eval(deps({ webmcp }), `page.webmcp.call("add_write", { n: 1 })`, { pageId: "p1" });
+    const parked = await pool.eval(deps({ webmcp }), `page.webmcp.call("add_write", { n: 1 })`, {
+      pageId: "p1",
+    });
     expect(parked).toEqual({
       park: { kind: "approval", instruction: "Allow this action before it runs.", approvalId: "ap-w" },
     });
@@ -521,10 +671,16 @@ describe("code-mode REPL", () => {
     cleanup.push(() => pool.disposeAll());
     const d = deps({ spawnCell, waitCell, sendCell, cancelCell });
     const spawned = out(
-      await pool.eval(d, `spawn({ goal: "find the pricing", profile: "explorer", pageIds: ["p1"] })`, { pageId: "p1" }),
+      await pool.eval(d, `spawn({ goal: "find the pricing", profile: "explorer", pageIds: ["p1"] })`, {
+        pageId: "p1",
+      }),
     );
     expect(spawned.value).toEqual({ cellId: "cell-1" });
-    expect(spawnCell).toHaveBeenCalledWith({ goal: "find the pricing", profile: "explorer", pageIds: ["p1"] });
+    expect(spawnCell).toHaveBeenCalledWith({
+      goal: "find the pricing",
+      profile: "explorer",
+      pageIds: ["p1"],
+    });
     const waited = out(await pool.eval(d, `wait("cell-1")`, { pageId: "p1" }));
     expect(waited.value).toEqual({ state: "completed", runId: "run-cell", result: { answer: 7 } });
     await pool.eval(d, `send("cell-1", "also check taxes"); stop("cell-1")`, { pageId: "p1" });
@@ -536,7 +692,9 @@ describe("code-mode REPL", () => {
     const waitCell = vi.fn(async (_id: string, ms: number) => ({ state: "running", pending: true, ms }));
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
-    const result = out(await pool.eval(deps({ waitCell }), `wait("cell-1")`, { pageId: "p1", deadlineMs: 500 }));
+    const result = out(
+      await pool.eval(deps({ waitCell }), `wait("cell-1")`, { pageId: "p1", deadlineMs: 500 }),
+    );
     expect((result.value as { ms: number }).ms).toBeLessThanOrEqual(500);
   });
 

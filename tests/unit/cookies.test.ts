@@ -37,7 +37,11 @@ describe("chrome cookie helpers", () => {
   it("strips the SHA256(host) prefix for meta version ≥24", () => {
     const hash = createHash("sha256").update(".example.com").digest();
     const c = createCipheriv("aes-128-cbc", KEY, IV);
-    const enc = Buffer.concat([Buffer.from("v10"), c.update(Buffer.concat([hash, Buffer.from("v42")])), c.final()]);
+    const enc = Buffer.concat([
+      Buffer.from("v10"),
+      c.update(Buffer.concat([hash, Buffer.from("v42")])),
+      c.final(),
+    ]);
     expect(decryptValue(enc, KEY, 24)).toBe("v42");
   });
 
@@ -49,7 +53,9 @@ describe("chrome cookie helpers", () => {
 
 describe("CookieService.importCookies — native Profile import", () => {
   const fixtures: string[] = [];
-  afterEach(() => { for (const fixture of fixtures.splice(0)) rmSync(fixture, { recursive: true, force: true }); });
+  afterEach(() => {
+    for (const fixture of fixtures.splice(0)) rmSync(fixture, { recursive: true, force: true });
+  });
 
   function profileSource() {
     const directory = mkdtempSync(join(tmpdir(), "aux-cookie-import-test-"));
@@ -75,24 +81,37 @@ describe("CookieService.importCookies — native Profile import", () => {
     const received: BrowserCookie[] = [];
     const services: string[] = [];
     const svc = new CookieService({
-      native: { available: () => true, setCookies: async (cookies: BrowserCookie[]) => {
-        received.push(...cookies); return { count: cookies.length };
-      } } as never,
+      native: {
+        available: () => true,
+        setCookies: async (cookies: BrowserCookie[]) => {
+          received.push(...cookies);
+          return { count: cookies.length };
+        },
+      } as never,
       profileSources: [source],
-      readSafeStoragePassword: async service => { services.push(service); return "test-password"; },
+      readSafeStoragePassword: async (service) => {
+        services.push(service);
+        return "test-password";
+      },
     });
     const res = await svc.importCookies({ source: "auto" });
     expect(res).toMatchObject({ ok: true, source: "profile", imported: 2, skipped: 2, domains: 1 });
     expect(res.detail).toMatch(/1 cookie.*app-bound.*cannot be imported/);
     expect(services).toEqual(["Disposable Safe Storage"]);
-    expect(received.map(cookie => [cookie.name, cookie.value])).toEqual([
-      ["plain", "plaintext"], ["encrypted", "session-token-123"],
+    expect(received.map((cookie) => [cookie.name, cookie.value])).toEqual([
+      ["plain", "plaintext"],
+      ["encrypted", "session-token-123"],
     ]);
-    expect(received.every(cookie => cookie.httpOnly && cookie.secure && cookie.sameSite === "Lax")).toBe(true);
+    expect(received.every((cookie) => cookie.httpOnly && cookie.secure && cookie.sameSite === "Lax")).toBe(
+      true,
+    );
     expect(JSON.stringify(res)).not.toContain("session-token-123");
     const original = new DatabaseSync(join(source.directory, "Default", "Cookies"), { readOnly: true });
-    try { expect(original.prepare("SELECT count(*) AS count FROM cookies").get()?.count).toBe(4); }
-    finally { original.close(); }
+    try {
+      expect(original.prepare("SELECT count(*) AS count FROM cookies").get()?.count).toBe(4);
+    } finally {
+      original.close();
+    }
   });
 
   it("rejects unavailable native import before reading a Profile or keychain", async () => {
@@ -100,9 +119,14 @@ describe("CookieService.importCookies — native Profile import", () => {
     const svc = new CookieService({
       native: { available: () => false } as never,
       profileSources: [],
-      readSafeStoragePassword: async () => { keychainReads++; return "test-password"; },
+      readSafeStoragePassword: async () => {
+        keychainReads++;
+        return "test-password";
+      },
     });
-    await expect(svc.importCookies({ source: "profile" })).rejects.toThrow(/Native Profile cookie import is unavailable/);
+    await expect(svc.importCookies({ source: "profile" })).rejects.toThrow(
+      /Native Profile cookie import is unavailable/,
+    );
     expect(keychainReads).toBe(0);
   });
 

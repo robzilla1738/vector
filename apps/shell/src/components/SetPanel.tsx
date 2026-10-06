@@ -4,8 +4,19 @@ import { useShallow } from "zustand/react/shallow";
 import type { SetMember } from "@aux/contracts";
 import { useStore, errToast } from "../store";
 import { hostOf } from "../workspace";
-import { shellIconAlert, shellIconCheck, shellIconCircle, shellIconClose, shellIconLayers, shellIconPlay, shellIconTable } from "./icons";
-import { staticSpacerProps as auxClassSpacerProps, staticNumericCountProps as auxClassNumericCountProps } from "../ui/class-props";
+import {
+  shellIconAlert,
+  shellIconCheck,
+  shellIconCircle,
+  shellIconClose,
+  shellIconLayers,
+  shellIconPlay,
+  shellIconTable,
+} from "./icons";
+import {
+  staticSpacerProps as auxClassSpacerProps,
+  staticNumericCountProps as auxClassNumericCountProps,
+} from "../ui/class-props";
 
 const ORDER: SetMember["status"][] = ["completed", "running", "failed", "queued", "skipped"];
 
@@ -17,13 +28,26 @@ export function SetPanel({ setId }: { setId: string }) {
   const refreshResults = useStore((s) => s.refreshResults);
   const activate = useStore((s) => s.activate);
   const counts = useMemo(() => {
-    const c: Record<SetMember["status"], number> = { completed: 0, running: 0, failed: 0, queued: 0, skipped: 0 };
+    const c: Record<SetMember["status"], number> = {
+      completed: 0,
+      running: 0,
+      failed: 0,
+      queued: 0,
+      skipped: 0,
+    };
     for (const m of members) c[m.status]++;
     return c;
   }, [members]);
   if (!set) return <div className="rail-empty">This set is no longer available.</div>;
   const total = members.length || set.memberIds.length;
-  const list: SetMember[] = members.length ? members : set.memberIds.map((id, i) => ({ memberId: id, setId: set.setId, ordinal: i, status: "queued" as const }));
+  const list: SetMember[] = members.length
+    ? members
+    : set.memberIds.map((id, i) => ({
+        memberId: id,
+        setId: set.setId,
+        ordinal: i,
+        status: "queued" as const,
+      }));
   const running = counts.running > 0;
   const failed = list.filter((m) => m.status === "failed");
   const label = (m: SetMember) => m.label ?? (m.url ? hostOf(m.url) : m.memberId);
@@ -36,19 +60,38 @@ export function SetPanel({ setId }: { setId: string }) {
       </div>
 
       <div className="run-status nums">
-        <span className={`st ${running ? "running" : counts.failed && counts.completed + counts.failed === total ? "partial" : counts.completed === total ? "completed" : "queued"}`}>
-          {running ? "Working" : counts.completed === total ? "Done" : counts.queued === total ? "Queued" : "Partly done"}
+        <span
+          className={`st ${running ? "running" : counts.failed && counts.completed + counts.failed === total ? "partial" : counts.completed === total ? "completed" : "queued"}`}
+        >
+          {running
+            ? "Working"
+            : counts.completed === total
+              ? "Done"
+              : counts.queued === total
+                ? "Queued"
+                : "Partly done"}
         </span>
-        <span className="run-time" title="Members done">{counts.completed}/{total} done</span>
+        <span className="run-time" title="Members done">
+          {counts.completed}/{total} done
+        </span>
         <span {...auxClassSpacerProps} />
-        <button {...smallButtonProps} onClick={() => { void refreshResults(set.setId).then(() => setMode("table")).catch(errToast); }}>
+        <button
+          {...smallButtonProps}
+          onClick={() => {
+            void refreshResults(set.setId)
+              .then(() => setMode("table"))
+              .catch(errToast);
+          }}
+        >
           {shellIconTable} Results
         </button>
       </div>
 
       {/* one segment per member, in ordinal order — the shape of progress, not a percentage */}
       <div className="set-bar" role="img" aria-label={`${counts.completed} of ${total} members completed`}>
-        {list.map((m) => <i key={m.memberId} className={m.status} />)}
+        {list.map((m) => (
+          <i key={m.memberId} className={m.status} />
+        ))}
       </div>
       <div className="set-counts nums">
         {ORDER.filter((k) => counts[k] > 0).map((k) => (
@@ -79,7 +122,17 @@ export function SetPanel({ setId }: { setId: string }) {
               <span className="member-label">{label(m)}</span>
               <span className="member-foot">
                 {m.url && m.label && <span className="member-host">{hostOf(m.url)}</span>}
-                <span className="member-state">{m.status === "running" ? shellIconPlay : m.status === "completed" ? shellIconCheck : m.status === "failed" ? shellIconClose : m.status === "queued" ? shellIconCircle : shellIconClose}</span>
+                <span className="member-state">
+                  {m.status === "running"
+                    ? shellIconPlay
+                    : m.status === "completed"
+                      ? shellIconCheck
+                      : m.status === "failed"
+                        ? shellIconClose
+                        : m.status === "queued"
+                          ? shellIconCircle
+                          : shellIconClose}
+                </span>
               </span>
             </button>
           ))}

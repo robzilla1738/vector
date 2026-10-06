@@ -9,6 +9,8 @@ describe("bookmark drop", () => {
   ];
 
   it("bookmarks each dragged web tab once", () => {
-    expect(bookmarkTabsFromDrop("a\nb\nc", pages)).toEqual([{ url: "https://github.com/x", title: "GitHub" }]);
+    expect(bookmarkTabsFromDrop("a\nb\nc", pages)).toEqual([
+      { url: "https://github.com/x", title: "GitHub" },
+    ]);
   });
 });

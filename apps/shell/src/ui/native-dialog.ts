@@ -7,10 +7,14 @@ const ownedDialogs = new Set<HTMLDialogElement>();
 const topModal = () => {
   // Fallback DOMs can expose dialog.open without implementing the native top layer.
   // Only ask the selector engine for native modal state when it advertises support.
-  const nativeModalState = typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("selector(:modal)");
-  if (nativeModalState && [...document.querySelectorAll<HTMLDialogElement>("dialog:modal")]
-    .some(item => !ownedDialogs.has(item))) return null;
-  return [...ownedDialogs].findLast(item => item.open && item.isConnected);
+  const nativeModalState =
+    typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("selector(:modal)");
+  if (
+    nativeModalState &&
+    [...document.querySelectorAll<HTMLDialogElement>("dialog:modal")].some((item) => !ownedDialogs.has(item))
+  )
+    return null;
+  return [...ownedDialogs].findLast((item) => item.open && item.isConnected);
 };
 
 /** One lifecycle for native top-layer dialogs, menus and popovers. */
@@ -31,7 +35,8 @@ export function useNativeDialog(
       else dialog.setAttribute("open", "");
     }
     ownedDialogs.add(dialog);
-    const focusInside = (node = availableControls(dialog)[0] ?? dialog) => node.focus({ preventScroll: true });
+    const focusInside = (node = availableControls(dialog)[0] ?? dialog) =>
+      node.focus({ preventScroll: true });
     let focused = document.activeElement;
     const preferred = initialFocus?.current;
     if (preferred && dialog.contains(preferred) && availableForFocus(preferred)) {
@@ -46,10 +51,18 @@ export function useNativeDialog(
       focusInside();
     }
     focused = document.activeElement;
-    const rememberFocus = () => { focused = document.activeElement; };
+    const rememberFocus = () => {
+      focused = document.activeElement;
+    };
     dialog.addEventListener("focusin", rememberFocus);
     const observer = new MutationObserver(() => {
-      if (dialog.open && focused && !focused.isConnected && document.activeElement === document.body && topModal() === dialog)
+      if (
+        dialog.open &&
+        focused &&
+        !focused.isConnected &&
+        document.activeElement === document.body &&
+        topModal() === dialog
+      )
         focusInside();
     });
     observer.observe(dialog, { childList: true, subtree: true });
@@ -66,7 +79,8 @@ export function useNativeDialog(
       // pull focus back behind it; otherwise return to the explicit/live opener.
       if (ownedFocus && target && availableForFocus(target)) {
         const remaining = topModal();
-        if (remaining !== null && (!remaining || remaining.contains(target))) target.focus({ preventScroll: true });
+        if (remaining !== null && (!remaining || remaining.contains(target)))
+          target.focus({ preventScroll: true });
       }
       requestAnimationFrame(requestStageReport);
     };

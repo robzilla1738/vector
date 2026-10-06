@@ -9,7 +9,7 @@ import type { CommandSlot, Slice, UiKeys } from "./types";
 let findSequence = 0;
 const TOAST_LIMIT = 4;
 
-const zoomRequests = new Map<string,symbol>();
+const zoomRequests = new Map<string, symbol>();
 
 export const createUiSlice: Slice<UiKeys> = (set, get) => ({
   mode: "focus",
@@ -49,35 +49,48 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
     if (overlay !== "reader") readerFinder.clear();
     set({ overlay, readerFindOpen: false });
   },
-  showConversationInRail: chatId => {
-    const latest = get().runs.filter(run => (run.config?.chatId ?? run.runId) === chatId)
+  showConversationInRail: (chatId) => {
+    const latest = get()
+      .runs.filter((run) => (run.config?.chatId ?? run.runId) === chatId)
       .sort((a, b) => b.createdAt - a.createdAt || b.runId.localeCompare(a.runId))[0];
     get().setOverlay(null);
-    set({ mode: "focus", railOpen: true, railView: latest ? {kind:"run",runId:latest.runId}
-      : chatId ? {kind:"draft",chatId} : {kind:"home"} });
+    set({
+      mode: "focus",
+      railOpen: true,
+      railView: latest
+        ? { kind: "run", runId: latest.runId }
+        : chatId
+          ? { kind: "draft", chatId }
+          : { kind: "home" },
+    });
   },
   toggleRail: () => {
     const state = get();
-    if (state.mode === "conversation" && state.conversationId !== "history") state.showConversationInRail(state.conversationId);
-    else set({railOpen:!state.railOpen});
+    if (state.mode === "conversation" && state.conversationId !== "history")
+      state.showConversationInRail(state.conversationId);
+    else set({ railOpen: !state.railOpen });
   },
   openRail: (view) => set((s) => ({ railOpen: true, railView: view ?? s.railView })),
   setRailView: (railView) => set({ railView }),
   setSidebar: (sidebar) => {
-    const focused = typeof document === 'undefined' ? null : document.activeElement;
+    const focused = typeof document === "undefined" ? null : document.activeElement;
     // Focus relocates when the element holding it unmounts with the mode
     // change — sidebar surfaces, plus the toolbar's own reveal button.
-    const moveFocus = focused && focused instanceof HTMLElement && !!focused.closest('.sidebar, .sidebar-reveal, .sidebar-rail, [aria-label="Show sidebar"]');
+    const moveFocus =
+      focused &&
+      focused instanceof HTMLElement &&
+      !!focused.closest('.sidebar, .sidebar-reveal, .sidebar-rail, [aria-label="Show sidebar"]');
     storage?.setItem("aux.sidebar", sidebar);
     set({ sidebar, sidebarPeek: false });
-    if (moveFocus) requestAnimationFrame(() => {
-      const focusTarget = () => document.querySelector<HTMLElement>(sidebarFocusSelector(sidebar));
-      const target = focusTarget();
-      if (target) target.focus();
-      // The reveal control mounts with the same render pass — wait one more
-      // frame if it is not in the tree yet.
-      else requestAnimationFrame(() => focusTarget()?.focus());
-    });
+    if (moveFocus)
+      requestAnimationFrame(() => {
+        const focusTarget = () => document.querySelector<HTMLElement>(sidebarFocusSelector(sidebar));
+        const target = focusTarget();
+        if (target) target.focus();
+        // The reveal control mounts with the same render pass — wait one more
+        // frame if it is not in the tree yet.
+        else requestAnimationFrame(() => focusTarget()?.focus());
+      });
   },
   toggleSidebar: () => {
     get().setSidebar(nextSidebarMode(get().sidebar));
@@ -98,25 +111,38 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
     set((s) => {
       // Keep one visible notice for the same unresolved error. Action-bearing
       // notices retain their own callback and must not be merged.
-      if (kind === "error" && !action && s.toasts.some(t => t.kind === "error" && !t.action && t.text === text)) return s;
+      if (
+        kind === "error" &&
+        !action &&
+        s.toasts.some((t) => t.kind === "error" && !t.action && t.text === text)
+      )
+        return s;
       return { toasts: [...s.toasts, { id, text, kind, ...(action ? { action } : {}) }].slice(-TOAST_LIMIT) };
     });
   },
-  dismissToast: (id) => set((s) => (s.toasts.some((t) => t.id === id) ? { toasts: s.toasts.filter((t) => t.id !== id) } : s)),
+  dismissToast: (id) =>
+    set((s) => (s.toasts.some((t) => t.id === id) ? { toasts: s.toasts.filter((t) => t.id !== id) } : s)),
 
   zoomLevels: {},
   zoomPage: async (pageId, options = {}) => {
-    const token=Symbol(pageId);
-    zoomRequests.set(pageId,token);
-    const origin=get().pages.find(page=>page.pageId===pageId);
-    try{
+    const token = Symbol(pageId);
+    zoomRequests.set(pageId, token);
+    const origin = get().pages.find((page) => page.pageId === pageId);
+    try {
       const result = bridge.privateMode
         ? await bridge.privatePageZoom(pageId, options)
         : await call("pages.zoom", { pageId, ...options });
-      const page=get().pages.find(page=>page.pageId===pageId);
-      if(zoomRequests.get(pageId)===token&&page&&page.url===origin?.url&&page.documentEpoch===origin?.documentEpoch)
-        set(state => ({ zoomLevels: { ...state.zoomLevels, [pageId]: result.level } }));
-    }finally{if(zoomRequests.get(pageId)===token)zoomRequests.delete(pageId);}
+      const page = get().pages.find((page) => page.pageId === pageId);
+      if (
+        zoomRequests.get(pageId) === token &&
+        page &&
+        page.url === origin?.url &&
+        page.documentEpoch === origin?.documentEpoch
+      )
+        set((state) => ({ zoomLevels: { ...state.zoomLevels, [pageId]: result.level } }));
+    } finally {
+      if (zoomRequests.get(pageId) === token) zoomRequests.delete(pageId);
+    }
   },
 
   find: async (text, findNext = false, forward = true) => {
@@ -124,24 +150,31 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
     const sequence = ++findSequence;
     if (get().overlay === "reader") {
       const result = readerFinder.find(text, findNext, forward);
-      set({findText:text,findMatches:text ? result : null});
+      set({ findText: text, findMatches: text ? result : null });
       return;
     }
     if (get().mode === "conversation") {
       const result = conversationFinder.find(text, findNext, forward);
-      set({findText:text,findMatches:text ? result : null});
+      set({ findText: text, findMatches: text ? result : null });
       return;
     }
     conversationFinder.clear();
-    const epoch = get().pages.find(page => page.pageId === id)?.documentEpoch;
+    const epoch = get().pages.find((page) => page.pageId === id)?.documentEpoch;
     set({ findText: text, findMatches: null });
     if (!id || !text) {
       if (id) await call("pages.stopFind", { pageId: id, action: "clear" });
       return;
     }
     const r = await call("pages.find", { pageId: id, text, findNext, forward });
-    if (sequence === findSequence && get().mode !== "conversation" && get().overlay === "find" && get().activePageId === id && get().findText === text
-      && get().pages.find(page => page.pageId === id)?.documentEpoch === epoch) set({ findMatches: r });
+    if (
+      sequence === findSequence &&
+      get().mode !== "conversation" &&
+      get().overlay === "find" &&
+      get().activePageId === id &&
+      get().findText === text &&
+      get().pages.find((page) => page.pageId === id)?.documentEpoch === epoch
+    )
+      set({ findMatches: r });
   },
 
   sidebarWidth: Number(storage?.getItem("aux.sb-w")) || 280,
@@ -150,7 +183,7 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
     chats: storage?.getItem("aux.sidebar.chats") !== "closed",
     tabs: storage?.getItem("aux.sidebar.tabs") !== "closed",
   },
-  toggleSidebarSection: section => {
+  toggleSidebarSection: (section) => {
     const open = !get().sidebarSections[section];
     storage?.setItem(`aux.sidebar.${section}`, open ? "open" : "closed");
     set({ sidebarSections: { ...get().sidebarSections, [section]: open } });

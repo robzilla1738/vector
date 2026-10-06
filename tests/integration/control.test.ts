@@ -24,7 +24,10 @@ beforeAll(async () => {
   dataDir = mkdtempSync(join(tmpdir(), "aux-ctrl-"));
   // This fixture deliberately exercises reload after control returns. Keep the
   // production default read-only and grant egress only inside this isolated run.
-  writeFileSync(join(dataDir, "settings.json"), JSON.stringify({ effectGrants: ["effect:read", "effect:egress"] }));
+  writeFileSync(
+    join(dataDir, "settings.json"),
+    JSON.stringify({ effectGrants: ["effect:read", "effect:egress"] }),
+  );
   rt = await startRuntime({ ...process.env, AUX_DATA_DIR: dataDir, AUX_ELECTRON_CDP: "" });
 }, 60_000);
 
@@ -68,7 +71,11 @@ describe("saved programs", () => {
       // give an explicit program instead, which becomes the reusable shape:
       program: {
         steps: [
-          { id: "s1", op: "waitFor", condition: { kind: "selector", selector: "#record-title", state: "visible" } },
+          {
+            id: "s1",
+            op: "waitFor",
+            condition: { kind: "selector", selector: "#record-title", state: "visible" },
+          },
           { id: "s2", op: "extract", fields: [{ name: "title", selector: "#record-title" }], as: "rec" },
         ],
       },
@@ -90,19 +97,31 @@ describe("saved programs", () => {
       name: "read-record-title",
       siteKey: "http://127.0.0.1:4810/records/*",
       steps: [
-        { id: "s1", op: "waitFor", condition: { kind: "selector", selector: "#record-title", state: "visible" } },
+        {
+          id: "s1",
+          op: "waitFor",
+          condition: { kind: "selector", selector: "#record-title", state: "visible" },
+        },
         { id: "s2", op: "extract", fields: [{ name: "title", selector: "#record-title" }], as: "rec" },
       ],
       parameters: [],
     });
     expect(saved.programId).toBeTruthy();
 
-    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records/rec-07`, background: true });
-    const { runId } = await invoke<{ runId: string }>("programs.run", { programId: saved.programId, pageId: page.pageId });
+    const page = await invoke<PageTarget>("pages.open", {
+      url: `${RECORDS}/records/rec-07`,
+      background: true,
+    });
+    const { runId } = await invoke<{ runId: string }>("programs.run", {
+      programId: saved.programId,
+      pageId: page.pageId,
+    });
     const deadline = Date.now() + 60_000;
     let run: { status: string; result?: Record<string, unknown> } | undefined;
     for (;;) {
-      ({ run } = await invoke<{ run: { status: string; result?: Record<string, unknown> } }>("runs.get", { runId }));
+      ({ run } = await invoke<{ run: { status: string; result?: Record<string, unknown> } }>("runs.get", {
+        runId,
+      }));
       if (["completed", "failed"].includes(run.status)) break;
       if (Date.now() > deadline) throw new Error("program run timed out");
       await new Promise((r) => setTimeout(r, 250));

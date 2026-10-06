@@ -5,7 +5,10 @@ import type { makeInvoker } from "../api/invoke.js";
 
 export interface FeatureBoot {
   feature: AuxFeature;
-  boot: (services: Services, invoke: ReturnType<typeof makeInvoker>) => Promise<void | (() => void | Promise<void>)> | void | (() => void | Promise<void>);
+  boot: (
+    services: Services,
+    invoke: ReturnType<typeof makeInvoker>,
+  ) => Promise<void | (() => void | Promise<void>)> | void | (() => void | Promise<void>);
 }
 /** Each lane owns features/<lane>/boot.ts; startup and shutdown are wired once here. */
 export async function bootRuntimeFeatures(services: Services, invoke: ReturnType<typeof makeInvoker>) {
@@ -21,5 +24,7 @@ export async function bootRuntimeFeatures(services: Services, invoke: ReturnType
     for (const stop of cleanup.reverse()) await stop();
     throw error;
   }
-  return async () => { for (const stop of cleanup.reverse()) await stop(); };
+  return async () => {
+    for (const stop of cleanup.reverse()) await stop();
+  };
 }

@@ -46,11 +46,24 @@ export function readChromeBookmarksFile(path: string): ImportedBookmark[] {
   const walk = (node: ChromeNode | undefined, folderPath: string[]) => {
     if (!node || !Array.isArray(node.children)) return;
     for (const child of node.children) {
-      if (child.type === "url" && typeof child.url === "string" && /^https?:\/\//.test(child.url) && child.url.length <= 8192 && !seen.has(child.url)) {
+      if (
+        child.type === "url" &&
+        typeof child.url === "string" &&
+        /^https?:\/\//.test(child.url) &&
+        child.url.length <= 8192 &&
+        !seen.has(child.url)
+      ) {
         seen.add(child.url);
-        out.push({ url: child.url, title: typeof child.name === "string" ? child.name.slice(0, 1000) : "", folderPath });
+        out.push({
+          url: child.url,
+          title: typeof child.name === "string" ? child.name.slice(0, 1000) : "",
+          folderPath,
+        });
       } else if (child.type === "folder") {
-        walk(child, [...folderPath, (typeof child.name === "string" && child.name.slice(0, 200)) || "Folder"]);
+        walk(child, [
+          ...folderPath,
+          (typeof child.name === "string" && child.name.slice(0, 200)) || "Folder",
+        ]);
       }
     }
   };

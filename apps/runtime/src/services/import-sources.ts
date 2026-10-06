@@ -45,7 +45,11 @@ const HOME = process.env.AUX_IMPORT_SOURCE_HOME ?? homedir();
 
 const CHROMIUM_SOURCES: { id: ImportSourceId; label: string; dir: string }[] = [
   { id: "chrome", label: "Chrome", dir: join(HOME, "Library/Application Support/Google/Chrome") },
-  { id: "chrome-beta", label: "Chrome Beta", dir: join(HOME, "Library/Application Support/Google/Chrome Beta") },
+  {
+    id: "chrome-beta",
+    label: "Chrome Beta",
+    dir: join(HOME, "Library/Application Support/Google/Chrome Beta"),
+  },
   { id: "edge", label: "Microsoft Edge", dir: join(HOME, "Library/Application Support/Microsoft Edge") },
   { id: "chromium", label: "Chromium", dir: join(HOME, "Library/Application Support/Chromium") },
   { id: "chrome", label: "Chrome", dir: join(HOME, ".config/google-chrome") },
@@ -68,18 +72,25 @@ function dirState(dir: string): "ok" | "missing" | "denied" {
   try {
     return statSync(dir).isDirectory() ? "ok" : "missing";
   } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM" || (error as NodeJS.ErrnoException).code === "EACCES" ? "denied" : "missing";
+    return (error as NodeJS.ErrnoException).code === "EPERM" ||
+      (error as NodeJS.ErrnoException).code === "EACCES"
+      ? "denied"
+      : "missing";
   }
 }
 
 function chromiumProfiles(base: string): ImportProfileRef[] {
   let names: string[];
   try {
-    names = readdirSync(base).filter(p => CHROMIUM_PROFILE.test(p) && (existsSync(join(base, p, "Bookmarks")) || existsSync(join(base, p, "History"))));
+    names = readdirSync(base).filter(
+      (p) =>
+        CHROMIUM_PROFILE.test(p) &&
+        (existsSync(join(base, p, "Bookmarks")) || existsSync(join(base, p, "History"))),
+    );
   } catch {
     return [];
   }
-  return names.map(p => ({ id: p, dir: join(base, p) }));
+  return names.map((p) => ({ id: p, dir: join(base, p) }));
 }
 
 /** Snapshot a live SQLite store (db + WAL + shm) into a fresh temp dir. */
@@ -121,11 +132,12 @@ export function listImportSources(): ImportSource[] {
       id: "safari",
       label: "Safari",
       profiles: [{ id: "Safari", dir: SAFARI_DIR }],
-      blocker: safariState === "denied"
-        ? "macOS needs Full Disk Access for Aux to read Safari's data (System Settings → Privacy & Security → Full Disk Access)."
-        : !existsSync(join(SAFARI_DIR, "Bookmarks.plist")) && !existsSync(join(SAFARI_DIR, "History.db"))
-          ? "Safari has no bookmarks or history store to import."
-          : undefined,
+      blocker:
+        safariState === "denied"
+          ? "macOS needs Full Disk Access for Aux to read Safari's data (System Settings → Privacy & Security → Full Disk Access)."
+          : !existsSync(join(SAFARI_DIR, "Bookmarks.plist")) && !existsSync(join(SAFARI_DIR, "History.db"))
+            ? "Safari has no bookmarks or history store to import."
+            : undefined,
     });
   }
   for (const base of FIREFOX_DIRS) {
@@ -133,9 +145,11 @@ export function listImportSources(): ImportSource[] {
     let profiles: ImportProfileRef[] = [];
     try {
       profiles = readdirSync(base)
-        .filter(p => existsSync(join(base, p, "places.sqlite")))
-        .map(p => ({ id: p, dir: join(base, p) }));
-    } catch { /* unreadable profiles dir — no source */ }
+        .filter((p) => existsSync(join(base, p, "places.sqlite")))
+        .map((p) => ({ id: p, dir: join(base, p) }));
+    } catch {
+      /* unreadable profiles dir — no source */
+    }
     if (profiles.length) {
       out.push({ id: "firefox", label: "Firefox", profiles });
       break;
@@ -178,27 +192,47 @@ export function readArcSidebar(dir: string): { bookmarks: ImportedBookmark[]; sk
   const seen = new Set<string>();
   let skipped = 0;
   for (const container of sidebar?.containers ?? []) {
-    const c = container as { spaces?: { id?: unknown; title?: unknown; name?: unknown; customInfo?: { title?: unknown } }[]; items?: unknown[] };
+    const c = container as {
+      spaces?: { id?: unknown; title?: unknown; name?: unknown; customInfo?: { title?: unknown } }[];
+      items?: unknown[];
+    };
     const spaceNames = new Map<string, string>();
     for (const space of c.spaces ?? []) {
       const id = typeof space.id === "string" ? space.id : undefined;
-      const title = (typeof space.title === "string" && space.title) || (typeof space.name === "string" && space.name) || (typeof space.customInfo?.title === "string" && space.customInfo.title) || undefined;
+      const title =
+        (typeof space.title === "string" && space.title) ||
+        (typeof space.name === "string" && space.name) ||
+        (typeof space.customInfo?.title === "string" && space.customInfo.title) ||
+        undefined;
       if (id && title) spaceNames.set(id, title.slice(0, 200));
     }
-    const items = new Map<string, { parentID?: string; spaceID?: string; title?: string; isFolder: boolean; url?: string; name?: string }>();
+    const items = new Map<
+      string,
+      { parentID?: string; spaceID?: string; title?: string; isFolder: boolean; url?: string; name?: string }
+    >();
     const rawItems = c.items ?? [];
     for (const raw of rawItems) {
-      const item = raw as { id?: unknown; parentID?: unknown; spaceID?: unknown; title?: unknown; data?: { tab?: ArcTabData; itemContainer?: unknown } };
+      const item = raw as {
+        id?: unknown;
+        parentID?: unknown;
+        spaceID?: unknown;
+        title?: unknown;
+        data?: { tab?: ArcTabData; itemContainer?: unknown };
+      };
       if (typeof item.id !== "string") continue;
       const tab = item.data?.tab;
-      const url = typeof tab?.savedURL === "string" ? tab.savedURL : typeof tab?.url === "string" ? tab.url : undefined;
+      const url =
+        typeof tab?.savedURL === "string" ? tab.savedURL : typeof tab?.url === "string" ? tab.url : undefined;
       items.set(item.id, {
         parentID: typeof item.parentID === "string" ? item.parentID : undefined,
         spaceID: typeof item.spaceID === "string" ? item.spaceID : undefined,
         title: typeof item.title === "string" ? item.title.slice(0, 200) : undefined,
         isFolder: item.data?.itemContainer != null,
         url,
-        name: (typeof tab?.customTitle === "string" && tab.customTitle.slice(0, 1000)) || (typeof tab?.title === "string" && tab.title.slice(0, 1000)) || (typeof item.title === "string" ? item.title.slice(0, 1000) : undefined),
+        name:
+          (typeof tab?.customTitle === "string" && tab.customTitle.slice(0, 1000)) ||
+          (typeof tab?.title === "string" && tab.title.slice(0, 1000)) ||
+          (typeof item.title === "string" ? item.title.slice(0, 1000) : undefined),
       });
     }
     for (const item of items.values()) {
@@ -226,16 +260,35 @@ export function readArcSidebar(dir: string): { bookmarks: ImportedBookmark[]; sk
 export function readSafariBookmarks(dir: string): ImportedBookmark[] {
   const path = join(dir, "Bookmarks.plist");
   if (!existsSync(path)) return [];
-  const json = execFileSync("plutil", ["-convert", "json", "-o", "-", path], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 30_000 });
+  const json = execFileSync("plutil", ["-convert", "json", "-o", "-", path], {
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+    timeout: 30_000,
+  });
   const root = JSON.parse(json) as { Children?: unknown[] };
   const out: ImportedBookmark[] = [];
   const seen = new Set<string>();
-  const walk = (node: { Children?: unknown[]; Title?: unknown; URLString?: unknown }, folderPath: string[]) => {
+  const walk = (
+    node: { Children?: unknown[]; Title?: unknown; URLString?: unknown },
+    folderPath: string[],
+  ) => {
     for (const child of node.Children ?? []) {
-      const c = child as { Children?: unknown[]; Title?: unknown; URLString?: unknown; URIDictionary?: { title?: unknown } };
-      if (typeof c.URLString === "string" && HTTP_URL.test(c.URLString) && c.URLString.length <= 8192 && !seen.has(c.URLString)) {
+      const c = child as {
+        Children?: unknown[];
+        Title?: unknown;
+        URLString?: unknown;
+        URIDictionary?: { title?: unknown };
+      };
+      if (
+        typeof c.URLString === "string" &&
+        HTTP_URL.test(c.URLString) &&
+        c.URLString.length <= 8192 &&
+        !seen.has(c.URLString)
+      ) {
         seen.add(c.URLString);
-        const title = (typeof c.URIDictionary?.title === "string" && c.URIDictionary.title) || (typeof c.Title === "string" ? c.Title : "");
+        const title =
+          (typeof c.URIDictionary?.title === "string" && c.URIDictionary.title) ||
+          (typeof c.Title === "string" ? c.Title : "");
         out.push({ url: c.URLString, title: title.slice(0, 1000), folderPath });
       } else if (Array.isArray(c.Children)) {
         const name = typeof c.Title === "string" && c.Title ? c.Title.slice(0, 200) : "Folder";
@@ -252,13 +305,26 @@ export function readSafariBookmarks(dir: string): ImportedBookmark[] {
 const CHROME_EPOCH_MS = 11_644_473_600_000; // microseconds→ms offset from 1601 to 1970
 const SAFARI_EPOCH_S = 978_307_200; // seconds from 1970 to 2001-01-01
 
-function* queryHistory(db: DatabaseSync, select: string, params: number[], cursorColumn: string, batch: number): Generator<ImportHistoryRow[]> {
+function* queryHistory(
+  db: DatabaseSync,
+  select: string,
+  params: number[],
+  cursorColumn: string,
+  batch: number,
+): Generator<ImportHistoryRow[]> {
   const stmt = db.prepare(`${select} WHERE ${cursorColumn} < ? ORDER BY ${cursorColumn} DESC LIMIT ?`);
   let cursor = Number.MAX_SAFE_INTEGER;
   for (;;) {
-    const rows = stmt.all(...params, cursor, batch) as { id: number; url: string; title: string | null; t: number }[];
+    const rows = stmt.all(...params, cursor, batch) as {
+      id: number;
+      url: string;
+      title: string | null;
+      t: number;
+    }[];
     if (!rows.length) return;
-    yield rows.filter(r => r.url && HTTP_URL.test(r.url)).map(r => ({ url: r.url, title: r.title ?? "", visitedAt: Math.max(0, Math.round(r.t)) }));
+    yield rows
+      .filter((r) => r.url && HTTP_URL.test(r.url))
+      .map((r) => ({ url: r.url, title: r.title ?? "", visitedAt: Math.max(0, Math.round(r.t)) }));
     cursor = rows[rows.length - 1]!.id;
     if (rows.length < batch) return;
   }
@@ -311,12 +377,26 @@ export function readFirefoxBookmarks(profileDir: string): ImportedBookmark[] {
   let db: DatabaseSync | null = null;
   try {
     db = new DatabaseSync(snap.path);
-    const rows = db.prepare(
-      "SELECT b.id AS id, b.parent AS parent, b.type AS type, b.title AS title, b.position AS pos, p.url AS url " +
-      "FROM moz_bookmarks b LEFT JOIN moz_places p ON p.id = b.fk ORDER BY b.parent, b.position",
-    ).all() as { id: number; parent: number; type: number; title: string | null; pos: number; url: string | null }[];
-    const byId = new Map(rows.map(r => [r.id, r]));
-    const ROOTS: Record<number, string> = { 2: "Bookmarks menu", 3: "Bookmarks toolbar", 5: "Unfiled bookmarks", 6: "Mobile bookmarks" };
+    const rows = db
+      .prepare(
+        "SELECT b.id AS id, b.parent AS parent, b.type AS type, b.title AS title, b.position AS pos, p.url AS url " +
+          "FROM moz_bookmarks b LEFT JOIN moz_places p ON p.id = b.fk ORDER BY b.parent, b.position",
+      )
+      .all() as {
+      id: number;
+      parent: number;
+      type: number;
+      title: string | null;
+      pos: number;
+      url: string | null;
+    }[];
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const ROOTS: Record<number, string> = {
+      2: "Bookmarks menu",
+      3: "Bookmarks toolbar",
+      5: "Unfiled bookmarks",
+      6: "Mobile bookmarks",
+    };
     const pathFor = (start: number): string[] => {
       const path: string[] = [];
       let id = start;
@@ -334,7 +414,8 @@ export function readFirefoxBookmarks(profileDir: string): ImportedBookmark[] {
     const out: ImportedBookmark[] = [];
     const seen = new Set<string>();
     for (const row of rows) {
-      if (row.type !== 1 || !row.url || !HTTP_URL.test(row.url) || row.url.length > 8192 || seen.has(row.url)) continue;
+      if (row.type !== 1 || !row.url || !HTTP_URL.test(row.url) || row.url.length > 8192 || seen.has(row.url))
+        continue;
       seen.add(row.url);
       out.push({ url: row.url, title: (row.title ?? "").slice(0, 1000), folderPath: pathFor(row.parent) });
     }
@@ -371,8 +452,11 @@ export function sourceStoreSize(profile: ImportProfileRef, files: string[]): num
   for (const file of files) {
     try {
       bytes += statSync(join(profile.dir, file)).size;
-      if (existsSync(join(profile.dir, `${file}-wal`))) bytes += statSync(join(profile.dir, `${file}-wal`)).size;
-    } catch { /* file gone between listing and stat — skip */ }
+      if (existsSync(join(profile.dir, `${file}-wal`)))
+        bytes += statSync(join(profile.dir, `${file}-wal`)).size;
+    } catch {
+      /* file gone between listing and stat — skip */
+    }
   }
   return bytes;
 }

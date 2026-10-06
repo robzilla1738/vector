@@ -28,8 +28,16 @@ export class ArtifactStore {
     const group = opts.subdir ?? opts.runId ?? opts.pageId ?? "misc";
     const dir = join(this.dir, group);
     const safe = opts.label.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 60) || "file";
-    const ext = opts.mediaType === "image/png" ? ".png" : opts.mediaType === "image/jpeg" ? ".jpg"
-      : opts.mediaType === "image/webp" ? ".webp" : opts.mediaType.includes("json") ? ".json" : "";
+    const ext =
+      opts.mediaType === "image/png"
+        ? ".png"
+        : opts.mediaType === "image/jpeg"
+          ? ".jpg"
+          : opts.mediaType === "image/webp"
+            ? ".webp"
+            : opts.mediaType.includes("json")
+              ? ".json"
+              : "";
     const filename = `${artifactId}-${safe}${ext && !safe.toLowerCase().endsWith(ext) ? ext : ""}`;
     return {
       dir,
@@ -46,12 +54,19 @@ export class ArtifactStore {
     };
   }
 
-  save(opts: ArtifactInput, onSaved?: (artifact:Artifact)=>void): Artifact {
+  save(opts: ArtifactInput, onSaved?: (artifact: Artifact) => void): Artifact {
     const { artifact, dir } = this.place(opts);
     mkdirSync(dir, { recursive: true });
     writeFileSync(artifact.path, opts.buffer);
-    try { this.repo.transaction(()=>{this.repo.saveArtifact(artifact);onSaved?.(artifact);}); }
-    catch(error){rmSync(artifact.path,{force:true});throw error;}
+    try {
+      this.repo.transaction(() => {
+        this.repo.saveArtifact(artifact);
+        onSaved?.(artifact);
+      });
+    } catch (error) {
+      rmSync(artifact.path, { force: true });
+      throw error;
+    }
     this.events.emit(EventTypes.ArtifactAdded, { artifact }, opts.runId);
     return artifact;
   }
@@ -82,17 +97,22 @@ export class ArtifactStore {
   /** Writes every file before committing any row; a failed batch leaves no partial files. */
   async saveManyStrict(items: ArtifactInput[]): Promise<Artifact[]> {
     if (!items.length) return [];
-    const placed = items.map(item => this.place(item));
-    await Promise.all([...new Set(placed.map(item => item.dir))].map(dir => mkdir(dir, {recursive:true})));
+    const placed = items.map((item) => this.place(item));
+    await Promise.all(
+      [...new Set(placed.map((item) => item.dir))].map((dir) => mkdir(dir, { recursive: true })),
+    );
     try {
-      await Promise.all(placed.map((item,index) => writeFile(item.artifact.path,items[index]!.buffer)));
-      this.repo.transaction(() => { for (const item of placed) this.repo.saveArtifact(item.artifact); });
+      await Promise.all(placed.map((item, index) => writeFile(item.artifact.path, items[index]!.buffer)));
+      this.repo.transaction(() => {
+        for (const item of placed) this.repo.saveArtifact(item.artifact);
+      });
     } catch (error) {
-      for (const item of placed) rmSync(item.artifact.path,{force:true});
+      for (const item of placed) rmSync(item.artifact.path, { force: true });
       throw error;
     }
-    for (const item of placed) this.events.emit(EventTypes.ArtifactAdded,{artifact:item.artifact},item.artifact.runId);
-    return placed.map(item => item.artifact);
+    for (const item of placed)
+      this.events.emit(EventTypes.ArtifactAdded, { artifact: item.artifact }, item.artifact.runId);
+    return placed.map((item) => item.artifact);
   }
 
   list(filter: { runId?: string; pageId?: string }): Artifact[] {

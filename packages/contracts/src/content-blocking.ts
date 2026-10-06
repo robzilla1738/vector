@@ -13,28 +13,40 @@ export interface FilterSourceDefinition {
   kind: FilterSourceKind;
 }
 
-export interface CookieBannerRule { domains: string[]; selector: string }
+export interface CookieBannerRule {
+  domains: string[];
+  selector: string;
+}
 
 /** The wire digest uses one canonical line per rule so Chromium can verify chunks. */
 export function canonicalCookieRules(rules: readonly CookieBannerRule[]): CookieBannerRule[] {
-  const sorted = [...rules].map(rule => ({ domains: [...new Set(rule.domains)].sort(), selector: rule.selector }))
+  const sorted = [...rules]
+    .map((rule) => ({ domains: [...new Set(rule.domains)].sort(), selector: rule.selector }))
     .sort((a, b) => {
       const left = `${a.domains.join(",")}##${a.selector}`;
       const right = `${b.domains.join(",")}##${b.selector}`;
       return left < right ? -1 : left > right ? 1 : 0;
     });
-  return sorted.filter((rule, index) => index === 0 ||
-    `${rule.domains.join(",")}##${rule.selector}` !== `${sorted[index - 1]!.domains.join(",")}##${sorted[index - 1]!.selector}`);
+  return sorted.filter(
+    (rule, index) =>
+      index === 0 ||
+      `${rule.domains.join(",")}##${rule.selector}` !==
+        `${sorted[index - 1]!.domains.join(",")}##${sorted[index - 1]!.selector}`,
+  );
 }
 export function cookieRuleDigestInput(rules: readonly CookieBannerRule[]): string {
-  return canonicalCookieRules(rules).map(rule => `${rule.domains.join(",")}##${rule.selector}`).join("\n");
+  return canonicalCookieRules(rules)
+    .map((rule) => `${rule.domains.join(",")}##${rule.selector}`)
+    .join("\n");
 }
 
 /** A deliberately small cosmetic subset. Scriptlets, procedural rules and arbitrary CSS are ignored. */
 export function parseCookieBannerList(text: string, maxRules = 10_000): CookieBannerRule[] {
   // Self-contained because the desktop parses downloaded lists in a worker.
-  const HOST = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)+$/;
-  const SAFE = /^(?:[.#][a-zA-Z][\w-]*|\[data-[a-zA-Z][\w-]*(?:[~|^$*]?=["']?[a-zA-Z0-9_ -]{1,80}["']?)?\])(?:\s*(?:>|\s)\s*(?:[.#][a-zA-Z][\w-]*|\[data-[a-zA-Z][\w-]*(?:[~|^$*]?=["']?[a-zA-Z0-9_ -]{1,80}["']?)?\])){0,3}$/;
+  const HOST =
+    /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)+$/;
+  const SAFE =
+    /^(?:[.#][a-zA-Z][\w-]*|\[data-[a-zA-Z][\w-]*(?:[~|^$*]?=["']?[a-zA-Z0-9_ -]{1,80}["']?)?\])(?:\s*(?:>|\s)\s*(?:[.#][a-zA-Z][\w-]*|\[data-[a-zA-Z][\w-]*(?:[~|^$*]?=["']?[a-zA-Z0-9_ -]{1,80}["']?)?\])){0,3}$/;
   const rules: CookieBannerRule[] = [];
   const seen = new Set<string>();
   for (const raw of text.split(/\r?\n/)) {
@@ -44,9 +56,15 @@ export function parseCookieBannerList(text: string, maxRules = 10_000): CookieBa
     if (marker < 0 || line.includes("#@#") || line.includes("#$#") || line.includes("#?#")) continue;
     const scope = line.slice(0, marker).trim().toLowerCase();
     const selector = line.slice(marker + 2).trim();
-    if (!selector || selector.length > 300 || !SAFE.test(selector) || /[{};\\]|url\s*\(|:has\s*\(/i.test(selector)) continue;
+    if (
+      !selector ||
+      selector.length > 300 ||
+      !SAFE.test(selector) ||
+      /[{};\\]|url\s*\(|:has\s*\(/i.test(selector)
+    )
+      continue;
     const domains = scope ? scope.split(",") : [];
-    if (domains.some(domain => !HOST.test(domain))) continue;
+    if (domains.some((domain) => !HOST.test(domain))) continue;
     const key = `${scope}##${selector}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -58,20 +76,37 @@ export function parseCookieBannerList(text: string, maxRules = 10_000): CookieBa
 
 export function cookieSelectorsForSite(rules: readonly CookieBannerRule[], siteHost: string): string[] {
   const host = siteHost.toLowerCase();
-  return rules.filter(rule => rule.domains.length === 0 || rule.domains.some(domain => host === domain || host.endsWith(`.${domain}`)))
-    .map(rule => rule.selector);
+  return rules
+    .filter(
+      (rule) =>
+        rule.domains.length === 0 ||
+        rule.domains.some((domain) => host === domain || host.endsWith(`.${domain}`)),
+    )
+    .map((rule) => rule.selector);
 }
 
 /** Exact HTTPS source URL; embedded credentials and local literal targets are rejected. */
 export function filterSourceUrl(value: string): string {
   if (value.length > 2048) throw new Error("The filter list URL is too long.");
   let url: URL;
-  try { url = new URL(value); }
-  catch { throw new Error("Enter a complete HTTPS filter list URL."); }
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Enter a complete HTTPS filter list URL.");
+  }
   const host = url.hostname.toLowerCase();
-  if (url.protocol !== "https:" || url.username || url.password || url.hash ||
-      !host.includes(".") || host === "localhost" || host.endsWith(".localhost") ||
-      host.endsWith(".local") || /^\d+(?:\.\d+){3}$/.test(host) || host.startsWith("["))
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    url.hash ||
+    !host.includes(".") ||
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    /^\d+(?:\.\d+){3}$/.test(host) ||
+    host.startsWith("[")
+  )
     throw new Error("Choose a public HTTPS filter list URL without credentials or a fragment.");
   return url.href;
 }
@@ -79,17 +114,25 @@ export function filterSourceUrl(value: string): string {
 /** Only bare host lines and sink-address plus host lines are accepted. */
 export function parseHostsList(text: string, maxHosts = 400_000): Set<string> {
   // Keep this function self-contained: the desktop host runs it off-thread.
-  const HOST_RE = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)+$/;
+  const HOST_RE =
+    /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)+$/;
   const SINK_RE = /^(?:0\.0\.0\.0|127\.0\.0\.1|255\.255\.255\.255|::1)$/;
   const hosts = new Set<string>();
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.split("#", 1)[0]!.trim().toLowerCase();
     if (!line) continue;
     const parts = line.split(/\s+/);
-    const host = parts.length === 1 ? parts[0] : parts.length === 2 && SINK_RE.test(parts[0]!)
-      ? parts[1] : undefined;
-    if (!host || /^\d+(?:\.\d+){3}$/.test(host) || host === "localhost" || host.endsWith(".localhost") ||
-        host === "local" || host === "broadcasthost") continue;
+    const host =
+      parts.length === 1 ? parts[0] : parts.length === 2 && SINK_RE.test(parts[0]!) ? parts[1] : undefined;
+    if (
+      !host ||
+      /^\d+(?:\.\d+){3}$/.test(host) ||
+      host === "localhost" ||
+      host.endsWith(".localhost") ||
+      host === "local" ||
+      host === "broadcasthost"
+    )
+      continue;
     if (HOST_RE.test(host)) hosts.add(host);
     if (hosts.size >= maxHosts) break;
   }
@@ -161,23 +204,44 @@ export interface ChromiumCookieBannerReceipt {
 export interface ChromiumCookieBannerPort {
   apply(snapshot: ChromiumCookieBannerSnapshot): Promise<ChromiumCookieBannerReceipt>;
 }
-export function assertCookieBannerReceipt(snapshot: ChromiumCookieBannerSnapshot, receipt: ChromiumCookieBannerReceipt): void {
-  if (!snapshot.profileId || !Number.isSafeInteger(snapshot.generation) || snapshot.generation < 1 ||
-      !/^[a-f0-9]{64}$/.test(snapshot.rulesDigest) || snapshot.rules.length > MAX_COOKIE_SELECTORS ||
-      receipt.backend !== "isolated_world_stylesheet" || receipt.profileId !== snapshot.profileId ||
-      receipt.private !== snapshot.private || receipt.generation !== snapshot.generation ||
-      receipt.rulesDigest !== snapshot.rulesDigest || receipt.phase !== "document_start" ||
-      receipt.futureDocuments !== true || !Number.isSafeInteger(receipt.installedRules) ||
-      receipt.installedRules !== snapshot.rules.length)
+export function assertCookieBannerReceipt(
+  snapshot: ChromiumCookieBannerSnapshot,
+  receipt: ChromiumCookieBannerReceipt,
+): void {
+  if (
+    !snapshot.profileId ||
+    !Number.isSafeInteger(snapshot.generation) ||
+    snapshot.generation < 1 ||
+    !/^[a-f0-9]{64}$/.test(snapshot.rulesDigest) ||
+    snapshot.rules.length > MAX_COOKIE_SELECTORS ||
+    receipt.backend !== "isolated_world_stylesheet" ||
+    receipt.profileId !== snapshot.profileId ||
+    receipt.private !== snapshot.private ||
+    receipt.generation !== snapshot.generation ||
+    receipt.rulesDigest !== snapshot.rulesDigest ||
+    receipt.phase !== "document_start" ||
+    receipt.futureDocuments !== true ||
+    !Number.isSafeInteger(receipt.installedRules) ||
+    receipt.installedRules !== snapshot.rules.length
+  )
     throw new Error("Chromium did not attest the reviewed cookie-banner snapshot.");
 }
-export function assertContentBlockReceipt(snapshot: ContentBlockSnapshot, receipt: ChromiumContentBlockReceipt): void {
-  if (!Number.isSafeInteger(snapshot.generation) || snapshot.generation < 1 ||
-      !/^[a-f0-9]{64}$/.test(snapshot.hostsDigest) || snapshot.hosts.length > MAX_FILTER_HOSTS ||
-      !["subresource_filter", "declarative_net_request"].includes(receipt.backend) ||
-      receipt.generation !== snapshot.generation || receipt.hostsDigest !== snapshot.hostsDigest ||
-      !Number.isSafeInteger(receipt.installedRules) || receipt.installedRules < 0 ||
-      (snapshot.enabled && snapshot.hosts.length > 0 && receipt.installedRules === 0))
+export function assertContentBlockReceipt(
+  snapshot: ContentBlockSnapshot,
+  receipt: ChromiumContentBlockReceipt,
+): void {
+  if (
+    !Number.isSafeInteger(snapshot.generation) ||
+    snapshot.generation < 1 ||
+    !/^[a-f0-9]{64}$/.test(snapshot.hostsDigest) ||
+    snapshot.hosts.length > MAX_FILTER_HOSTS ||
+    !["subresource_filter", "declarative_net_request"].includes(receipt.backend) ||
+    receipt.generation !== snapshot.generation ||
+    receipt.hostsDigest !== snapshot.hostsDigest ||
+    !Number.isSafeInteger(receipt.installedRules) ||
+    receipt.installedRules < 0 ||
+    (snapshot.enabled && snapshot.hosts.length > 0 && receipt.installedRules === 0)
+  )
     throw new Error("Chromium did not attest the reviewed content-blocking snapshot.");
 }
 
@@ -192,6 +256,10 @@ export class BlockedCountState {
     if (host && (this.bySite.has(host) || this.bySite.size < 4096))
       this.bySite.set(host, (this.bySite.get(host) ?? 0) + 1);
   }
-  get total(): number { return this.totalCount; }
-  forSite(siteHost: string): number { return this.bySite.get(siteHost.toLowerCase()) ?? 0; }
+  get total(): number {
+    return this.totalCount;
+  }
+  forSite(siteHost: string): number {
+    return this.bySite.get(siteHost.toLowerCase()) ?? 0;
+  }
 }

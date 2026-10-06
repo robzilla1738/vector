@@ -18,14 +18,18 @@ export function PictureInPictureSetting({ active }: { active: boolean }) {
     write,
     formatReadError: String,
   });
-  const [controlRef, run] = usePreferenceCommand<HTMLSelectElement>("set-auto-picture-in-picture", scopeId, (original) => {
+  const [controlRef, run] = usePreferenceCommand<HTMLSelectElement>(
+    "set-auto-picture-in-picture",
+    scopeId,
+    (original) => {
       if (!value || !owner.owns(value) || value.managed || busy)
         return Promise.reject(new Error("Choose the current unmanaged picture in picture control."));
       const mode = original.value;
       if (!MODES.some((candidate) => candidate === mode))
         return Promise.reject(new Error("Choose an available picture in picture mode."));
       return perform(mode as Preference["mode"], value);
-  });
+    },
+  );
   if (bridge.privateMode)
     return (
       <span {...staticHintProps}>

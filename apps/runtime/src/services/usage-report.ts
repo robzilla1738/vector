@@ -55,13 +55,25 @@ export function usageReport(
       FROM model_calls m LEFT JOIN runs r ON r.run_id=m.run_id
       WHERE m.created_at<=? GROUP BY m.run_id ORDER BY lastAt DESC, runId LIMIT ? OFFSET ?`,
     )
-    .all(asOf, limit + 1, offset) as (RawBucket & { runId: string | null; storedTitle: string | null; lastAt: number })[];
+    .all(asOf, limit + 1, offset) as (RawBucket & {
+    runId: string | null;
+    storedTitle: string | null;
+    lastAt: number;
+  })[];
   return {
     asOf,
     total,
     byRun: rows
       .slice(0, limit)
-      .map((row) => ({ runId: row.runId, title: (row.runId && repo?.getRun(row.runId)?.goal) ?? (repo ? "Other model calls" : row.storedTitle) ?? "Other model calls", lastAt: row.lastAt, ...bucket(row) })),
+      .map((row) => ({
+        runId: row.runId,
+        title:
+          (row.runId && repo?.getRun(row.runId)?.goal) ??
+          (repo ? "Other model calls" : row.storedTitle) ??
+          "Other model calls",
+        lastAt: row.lastAt,
+        ...bucket(row),
+      })),
     byModel,
     byDay,
     nextOffset: rows.length > limit ? offset + limit : null,

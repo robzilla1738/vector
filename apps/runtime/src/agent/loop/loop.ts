@@ -14,7 +14,13 @@ import type {
 import { parkAnswerOutput, toolResultsMessage } from "./types.js";
 import { TranscriptStore } from "./transcript.js";
 import { buildSystemPrompt } from "./prompt.js";
-import { budgetToolOutputs, compactMessages, pruneMedia, transcriptBytes, TRANSCRIPT_COMPACT_BYTES } from "./context.js";
+import {
+  budgetToolOutputs,
+  compactMessages,
+  pruneMedia,
+  transcriptBytes,
+  TRANSCRIPT_COMPACT_BYTES,
+} from "./context.js";
 import { parseLooseJson } from "./tools.js";
 
 /**
@@ -45,10 +51,18 @@ export interface AgentLoopOptions {
   /** New steer pending → stop before the next model call (or after in-flight tools). */
   steerCheck?: () => boolean;
   /** Pre-call gate (D11 budgets): throws before the model step is billed. */
-  beforeModelCall?: (request: { modelId: string; promptBytes: number; toolsBytes: number;
-    maxOutputTokens: number }) => string | undefined | Promise<string | undefined>;
+  beforeModelCall?: (request: {
+    modelId: string;
+    promptBytes: number;
+    toolsBytes: number;
+    maxOutputTokens: number;
+  }) => string | undefined | Promise<string | undefined>;
   /** Called after each model step is persisted — usage/billing/reporting. */
-  onStep?: (info: { index: number; step: ToolCallStepResult; reservationId?: string }) => void | Promise<void>;
+  onStep?: (info: {
+    index: number;
+    step: ToolCallStepResult;
+    reservationId?: string;
+  }) => void | Promise<void>;
   /** A dispatched provider request failed; persist every attempted call before returning. */
   onModelFailure?: (info: { index: number; error: unknown; reservationId?: string }) => void | Promise<void>;
   /** A funded Goal permits one provider attempt per reservation. */
@@ -72,7 +86,8 @@ export type AgentLoopOutcome =
 const DEFAULT_MAX_LOOP_STEPS = 24;
 
 /** Provider markup a model leaks when it serialises calls into text rather than emitting real tool calls. */
-const LEAKED_TOOL_MARKUP = /<(?:atem|antml)[:\w-]*(?:function_calls|invoke|tool_call)|<invoke\s+name="[\w.]+"/i;
+const LEAKED_TOOL_MARKUP =
+  /<(?:atem|antml)[:\w-]*(?:function_calls|invoke|tool_call)|<invoke\s+name="[\w.]+"/i;
 
 /** Muse serialises a real call as `<atem:invoke name="default.submit_result">`. Run it instead of spending another turn. */
 function parseLeakedToolCalls(text: string): LoopToolCall[] {
@@ -109,9 +124,19 @@ function looseParameter(raw: string): unknown {
 function withoutLeakedMarkup(message: ModelMessage): ModelMessage {
   if (message.role !== "assistant" || !Array.isArray(message.content)) return message;
   const content = message.content.flatMap((part) => {
-    if (!part || typeof part !== "object" || !("type" in part) || part.type !== "text" || !("text" in part) || typeof part.text !== "string") return [part];
+    if (
+      !part ||
+      typeof part !== "object" ||
+      !("type" in part) ||
+      part.type !== "text" ||
+      !("text" in part) ||
+      typeof part.text !== "string"
+    )
+      return [part];
     if (!LEAKED_TOOL_MARKUP.test(part.text)) return [part];
-    const text = part.text.replace(/<(?:atem|antml):function_calls>[\s\S]*?<\/(?:atem|antml):function_calls>/gi, "").trim();
+    const text = part.text
+      .replace(/<(?:atem|antml):function_calls>[\s\S]*?<\/(?:atem|antml):function_calls>/gi, "")
+      .trim();
     return text ? [{ ...part, text }] : [];
   });
   return { ...message, content };
@@ -121,16 +146,21 @@ function withoutLeakedMarkup(message: ModelMessage): ModelMessage {
 function unansweredToolCalls(messages: ModelMessage[]): LoopToolCall[] {
   const last = messages.at(-1);
   if (last?.role !== "assistant" || !Array.isArray(last.content)) return [];
-  const calls = last.content.filter((part): part is { type: "tool-call"; toolCallId: string; toolName: string; input: unknown } =>
-    typeof part === "object" && part !== null && (part as { type?: string }).type === "tool-call",
+  const calls = last.content.filter(
+    (part): part is { type: "tool-call"; toolCallId: string; toolName: string; input: unknown } =>
+      typeof part === "object" && part !== null && (part as { type?: string }).type === "tool-call",
   );
   return calls.map((part) => ({ toolCallId: part.toolCallId, toolName: part.toolName, input: part.input }));
 }
 
 /** An interrupted step's unanswered calls get honest placeholders — never silent drops. */
-function interruptedResults(calls: LoopToolCall[], reason: string): { toolCallId: string; toolName: string; output: unknown }[] {
+function interruptedResults(
+  calls: LoopToolCall[],
+  reason: string,
+): { toolCallId: string; toolName: string; output: unknown }[] {
   return calls.map((call) => ({
-    toolCallId: call.toolCallId, toolName: call.toolName,
+    toolCallId: call.toolCallId,
+    toolName: call.toolName,
     output: { interrupted: true, detail: reason },
   }));
 }
@@ -144,7 +174,12 @@ async function executeOne(
   const tool = tools[toolName];
   if (!tool) return { output: new AuxError("capability_unsupported", `Unknown tool: ${toolName}`) };
   if (tool.requiresSoloCall && ctx.callCount > 1) {
-    return { output: new AuxError("invalid_params", `${toolName} must be the only tool call in its turn. Re-issue it alone.`) };
+    return {
+      output: new AuxError(
+        "invalid_params",
+        `${toolName} must be the only tool call in its turn. Re-issue it alone.`,
+      ),
+    };
   }
   try {
     return await tool.execute(call.input, ctx);
@@ -157,17 +192,27 @@ async function executeOne(
 
 /** The provider pairs each tool result with a tool-call part. A text-only assistant message plus a result is a duplicate or an orphan output. */
 function assistantWithToolCalls(message: ModelMessage, calls: LoopToolCall[]): ModelMessage {
-  const content = message.role === "assistant" && Array.isArray(message.content)
-    ? [...message.content]
-    : message.role === "assistant" && typeof message.content === "string" && message.content
-      ? [{ type: "text" as const, text: message.content }]
-      : [];
-  const present = new Set(content.flatMap((part) =>
-    part && typeof part === "object" && "type" in part && part.type === "tool-call" && "toolCallId" in part
-      ? [String(part.toolCallId)]
-      : []));
+  const content =
+    message.role === "assistant" && Array.isArray(message.content)
+      ? [...message.content]
+      : message.role === "assistant" && typeof message.content === "string" && message.content
+        ? [{ type: "text" as const, text: message.content }]
+        : [];
+  const present = new Set(
+    content.flatMap((part) =>
+      part && typeof part === "object" && "type" in part && part.type === "tool-call" && "toolCallId" in part
+        ? [String(part.toolCallId)]
+        : [],
+    ),
+  );
   for (const call of calls) {
-    if (!present.has(call.toolCallId)) content.push({ type: "tool-call", toolCallId: call.toolCallId, toolName: call.toolName, input: call.input });
+    if (!present.has(call.toolCallId))
+      content.push({
+        type: "tool-call",
+        toolCallId: call.toolCallId,
+        toolName: call.toolName,
+        input: call.input,
+      });
   }
   return { role: "assistant", content };
 }
@@ -175,7 +220,13 @@ function assistantWithToolCalls(message: ModelMessage, calls: LoopToolCall[]): M
 export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOutcome> {
   const { model, tools, transcript, runId } = opts;
   if (!model.toolCallStep) {
-    return { kind: "failed", error: new AuxError("capability_unsupported", "The configured model client does not support tool calling.") };
+    return {
+      kind: "failed",
+      error: new AuxError(
+        "capability_unsupported",
+        "The configured model client does not support tool calling.",
+      ),
+    };
   }
   const messages = transcript.load(runId);
   // The assistant call is persisted before any tool is dispatched. A process
@@ -185,32 +236,53 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
   // the authority for reconciling consequential effects.
   const interrupted = unansweredToolCalls(messages);
   if (interrupted.length && !transcript.openPark(runId)) {
-    const recovery = toolResultsMessage(interruptedResults(
-      interrupted,
-      "The process stopped before this tool result was recorded. Its outcome is unknown. Do not repeat a consequential action; inspect the write ledger and fresh page state first.",
-    ));
+    const recovery = toolResultsMessage(
+      interruptedResults(
+        interrupted,
+        "The process stopped before this tool result was recorded. Its outcome is unknown. Do not repeat a consequential action; inspect the write ledger and fresh page state first.",
+      ),
+    );
     transcript.append(runId, [recovery]);
     messages.push(recovery);
   }
-  const system = opts.system ?? buildSystemPrompt({
-    hasPage: !!(typeof opts.pageId === "function" ? opts.pageId() : opts.pageId),
-    webEnabled: !!(opts.deps.webFetch || opts.deps.webSearch),
-    webmcp: opts.webmcp === true,
-  });
+  const system =
+    opts.system ??
+    buildSystemPrompt({
+      hasPage: !!(typeof opts.pageId === "function" ? opts.pageId() : opts.pageId),
+      webEnabled: !!(opts.deps.webFetch || opts.deps.webSearch),
+      webmcp: opts.webmcp === true,
+    });
   const maxSteps = Math.max(1, opts.maxSteps ?? DEFAULT_MAX_LOOP_STEPS);
   const sdkTools = Object.fromEntries(
-    Object.entries(tools).map(([name, tool]) => [name, { description: `${tool.description}\n\n(${tool.byline})`, inputSchema: tool.inputSchema }]),
+    Object.entries(tools).map(([name, tool]) => [
+      name,
+      { description: `${tool.description}\n\n(${tool.byline})`, inputSchema: tool.inputSchema },
+    ]),
   );
-  const firstTurnPageTools = (typeof opts.pageId === "function" ? opts.pageId() : opts.pageId) && opts.deps.repl && tools.goal_program
-    ? { goal_program: sdkTools.goal_program!, submit_result: sdkTools.submit_result!, ask_user_question: sdkTools.ask_user_question! }
-    : undefined;
+  const firstTurnPageTools =
+    (typeof opts.pageId === "function" ? opts.pageId() : opts.pageId) && opts.deps.repl && tools.goal_program
+      ? {
+          goal_program: sdkTools.goal_program!,
+          submit_result: sdkTools.submit_result!,
+          ask_user_question: sdkTools.ask_user_question!,
+        }
+      : undefined;
 
   // Auto-recall (06-Z): query content memory for the task once, durably. The
   // recall message lands before any assistant turn, so every later step shares
   // the same cache prefix.
-  if (opts.deps.recall && messages.length === 1 && messages[0]?.role === "user" && typeof messages[0].content === "string") {
+  if (
+    opts.deps.recall &&
+    messages.length === 1 &&
+    messages[0]?.role === "user" &&
+    typeof messages[0].content === "string"
+  ) {
     try {
-      const hits = await opts.deps.recall(messages[0].content, { runId, threadId: opts.threadId, turnId: opts.turnId ?? runId });
+      const hits = await opts.deps.recall(messages[0].content, {
+        runId,
+        threadId: opts.threadId,
+        turnId: opts.turnId ?? runId,
+      });
       if (hits?.length) {
         const recallMessage = {
           role: "user" as const,
@@ -245,19 +317,43 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       }
     }
     if (transcriptBytes(messages) > TRANSCRIPT_COMPACT_BYTES)
-      return { kind: "failed", error: new AuxError("model_error", "Context remains above the 192 KB limit after durable compaction; no model call was made.") };
+      return {
+        kind: "failed",
+        error: new AuxError(
+          "model_error",
+          "Context remains above the 192 KB limit after durable compaction; no model call was made.",
+        ),
+      };
 
-    const callTools = firstTurnPageTools && !messages.some((message) => message.role === "assistant")
-      ? firstTurnPageTools : sdkTools;
+    const callTools =
+      firstTurnPageTools && !messages.some((message) => message.role === "assistant")
+        ? firstTurnPageTools
+        : sdkTools;
     let reservationId: string | undefined;
     try {
-      reservationId = await opts.beforeModelCall?.({ modelId: opts.modelId,
+      reservationId = await opts.beforeModelCall?.({
+        modelId: opts.modelId,
         promptBytes: Buffer.byteLength(`${system}\n${JSON.stringify(messages)}`, "utf8"),
-        toolsBytes: Buffer.byteLength(JSON.stringify(Object.entries(callTools).map(([name, spec]) =>
-          ({ name, description: spec.description, schema: z.toJSONSchema(spec.inputSchema) }))), "utf8"),
-        maxOutputTokens: opts.maxOutputTokens ?? 4000 });
+        toolsBytes: Buffer.byteLength(
+          JSON.stringify(
+            Object.entries(callTools).map(([name, spec]) => ({
+              name,
+              description: spec.description,
+              schema: z.toJSONSchema(spec.inputSchema),
+            })),
+          ),
+          "utf8",
+        ),
+        maxOutputTokens: opts.maxOutputTokens ?? 4000,
+      });
     } catch (error) {
-      return { kind: "failed", error: error instanceof AuxError ? error : new AuxError("step_failed", error instanceof Error ? error.message : String(error)) };
+      return {
+        kind: "failed",
+        error:
+          error instanceof AuxError
+            ? error
+            : new AuxError("step_failed", error instanceof Error ? error.message : String(error)),
+      };
     }
 
     let step;
@@ -277,7 +373,13 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     } catch (error) {
       await opts.onModelFailure?.({ index, error, reservationId });
       if (opts.steerCheck?.()) return { kind: "steered" };
-      return { kind: "failed", error: error instanceof AuxError ? error : new AuxError("step_failed", error instanceof Error ? error.message : String(error)) };
+      return {
+        kind: "failed",
+        error:
+          error instanceof AuxError
+            ? error
+            : new AuxError("step_failed", error instanceof Error ? error.message : String(error)),
+      };
     }
 
     let toolCalls = step.toolCalls.filter((call) => !step.providerExecuted?.includes(call.toolCallId));
@@ -295,16 +397,22 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
 
     if (!toolCalls.length) {
       if (!step.text?.trim()) {
-        const nudge: ModelMessage = { role: "user",
-          content: "Your last turn had no tool call or answer, so no result was submitted. Continue with a real tool call; use submit_result with verified citations to finish." };
+        const nudge: ModelMessage = {
+          role: "user",
+          content:
+            "Your last turn had no tool call or answer, so no result was submitted. Continue with a real tool call; use submit_result with verified citations to finish.",
+        };
         messages.push(nudge);
         transcript.append(runId, [nudge]);
         continue;
       }
       // Markup that is not a complete invoke still gets one correction.
       if (step.text && LEAKED_TOOL_MARKUP.test(step.text)) {
-        const nudge: ModelMessage = { role: "user",
-          content: "Your last message contained raw function-call markup instead of real tool calls — it was not executed. Issue the actual tool call (submit_result to finish), not its markup." };
+        const nudge: ModelMessage = {
+          role: "user",
+          content:
+            "Your last message contained raw function-call markup instead of real tool calls — it was not executed. Issue the actual tool call (submit_result to finish), not its markup.",
+        };
         messages.push(nudge);
         transcript.append(runId, [nudge]);
         continue;
@@ -313,10 +421,13 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     }
 
     const ctx: LoopToolContext = {
-      runId, threadId: opts.threadId, turnId: opts.turnId ?? runId,
+      runId,
+      threadId: opts.threadId,
+      turnId: opts.turnId ?? runId,
       pageId: typeof opts.pageId === "function" ? opts.pageId() : opts.pageId,
-      signal: opts.signal, callCount: toolCalls.length,
-      goalTurn: messages.filter(message => message.role === "assistant").length,
+      signal: opts.signal,
+      callCount: toolCalls.length,
+      goalTurn: messages.filter((message) => message.role === "assistant").length,
       deps: opts.deps,
     };
 
@@ -354,10 +465,15 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     if (finished !== undefined) {
       const answered = new Set(results.map((result) => result.toolCallId));
       for (const call of toolCalls) {
-        if (!answered.has(call.toolCallId)) results.push({
-          toolCallId: call.toolCallId, toolName: call.toolName,
-          output: { interrupted: true, detail: "The accepted submit_result ended this turn before this call ran." },
-        });
+        if (!answered.has(call.toolCallId))
+          results.push({
+            toolCallId: call.toolCallId,
+            toolName: call.toolName,
+            output: {
+              interrupted: true,
+              detail: "The accepted submit_result ended this turn before this call ran.",
+            },
+          });
       }
     }
 
@@ -373,20 +489,30 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       for (const call of toolCalls) {
         if (answered.has(call.toolCallId)) continue;
         results.push({
-          toolCallId: call.toolCallId, toolName: call.toolName,
-          output: { interrupted: true, detail: "a suspension ended this step; the call was not executed — re-issue if still needed." },
+          toolCallId: call.toolCallId,
+          toolName: call.toolName,
+          output: {
+            interrupted: true,
+            detail: "a suspension ended this step; the call was not executed — re-issue if still needed.",
+          },
         });
       }
       transcript.park(runId, {
         toolCallId: parked.call.toolCallId,
         toolName: parked.call.toolName,
         suspension: parked.park,
-        pendingResults: results.map((r) => (r.parked ? { toolCallId: r.toolCallId, toolName: r.toolName, parked: true } : { toolCallId: r.toolCallId, toolName: r.toolName, output: r.output })),
+        pendingResults: results.map((r) =>
+          r.parked
+            ? { toolCallId: r.toolCallId, toolName: r.toolName, parked: true }
+            : { toolCallId: r.toolCallId, toolName: r.toolName, output: r.output },
+        ),
       });
       return { kind: "parked", park: parked.park, toolCallId: parked.call.toolCallId };
     }
 
-    const toolMessage = toolResultsMessage(results.map((r) => ({ toolCallId: r.toolCallId, toolName: r.toolName, output: r.output })));
+    const toolMessage = toolResultsMessage(
+      results.map((r) => ({ toolCallId: r.toolCallId, toolName: r.toolName, output: r.output })),
+    );
 
     if (finished !== undefined) {
       // A verified result beats a pending steer — the run is already done;
@@ -402,7 +528,10 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       // calls honestly, then hand control back.
       const toolMessage = toolResultsMessage([
         ...results.map((r) => ({ toolCallId: r.toolCallId, toolName: r.toolName, output: r.output })),
-        ...interruptedResults(unansweredToolCalls(messages).filter((c) => !results.some((r) => r.toolCallId === c.toolCallId)), "interrupted by a user steer"),
+        ...interruptedResults(
+          unansweredToolCalls(messages).filter((c) => !results.some((r) => r.toolCallId === c.toolCallId)),
+          "interrupted by a user steer",
+        ),
       ]);
       messages.push(toolMessage);
       transcript.append(runId, [toolMessage]);
@@ -423,7 +552,11 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
 export async function resumeAgentLoop(opts: AgentLoopOptions, answer: unknown): Promise<AgentLoopOutcome> {
   const { transcript, runId } = opts;
   const parked = transcript.openPark(runId);
-  if (!parked) return { kind: "failed", error: new AuxError("not_found", "This run has no parked tool call to resume.") };
+  if (!parked)
+    return {
+      kind: "failed",
+      error: new AuxError("not_found", "This run has no parked tool call to resume."),
+    };
   const message = toolResultsMessage(
     parked.pendingResults.map((part) =>
       "parked" in part

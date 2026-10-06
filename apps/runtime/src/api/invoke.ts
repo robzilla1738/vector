@@ -31,10 +31,17 @@ export function makeInvoker(s: Services) {
     const params: any = schema.parse(rawParams ?? {});
 
     const scope = client.external ? client.scope : undefined;
-    if (scope && client.connectionId && s.agentConnections &&
-      !s.agentConnections.isLive({ external: true, connectionId: client.connectionId, scope })) {
+    if (
+      scope &&
+      client.connectionId &&
+      s.agentConnections &&
+      !s.agentConnections.isLive({ external: true, connectionId: client.connectionId, scope })
+    ) {
       s.externalSessions?.sweepIdle();
-      throw new AuxError("permission_denied", "This external connection expired, was revoked, or changed scope.");
+      throw new AuxError(
+        "permission_denied",
+        "This external connection expired, was revoked, or changed scope.",
+      );
     }
     if (scope) {
       if (method === "agent.js.run" || method === "agent.js.reset") {
@@ -198,8 +205,7 @@ export function makeInvoker(s: Services) {
       // loopback owner is the local profile and keeps browsing while that
       // program is still waiting.
       const automated =
-        internalAutomation ||
-        (client.external && (client.connectionId !== undefined || scope !== undefined));
+        internalAutomation || (client.external && (client.connectionId !== undefined || scope !== undefined));
       const release = automated
         ? s.runs.pageOwnership.tryAcquire({
             pageId,
@@ -305,16 +311,27 @@ export function makeInvoker(s: Services) {
       const explicit = !!run?.config?.mentions?.length;
       const created = s.turnMentions.ownedPages(externalRunId).includes(target.pageId);
       if (explicit || created) {
-        const taskRead = target.access === "read" && scope
-          ? deps.captureScopedTaskRead(scope, target.pageId, externalRunId, client.connectionId) : undefined;
+        const taskRead =
+          target.access === "read" && scope
+            ? deps.captureScopedTaskRead(scope, target.pageId, externalRunId, client.connectionId)
+            : undefined;
         ctx.taskRead = taskRead;
-        const policy = target.access === "read" ? await s.pages.authorizeAgentRead(externalRunId, target.pageId, ctx.method, taskRead) : undefined;
-        return s.turnMentions.use(externalRunId, target.pageId, target.access, async () => {
-          policy?.();
-          const result = await METHODS[ctx.method](ctx);
-          policy?.();
-          return result;
-        }, taskRead);
+        const policy =
+          target.access === "read"
+            ? await s.pages.authorizeAgentRead(externalRunId, target.pageId, ctx.method, taskRead)
+            : undefined;
+        return s.turnMentions.use(
+          externalRunId,
+          target.pageId,
+          target.access,
+          async () => {
+            policy?.();
+            const result = await METHODS[ctx.method](ctx);
+            policy?.();
+            return result;
+          },
+          taskRead,
+        );
       }
       // Source-task authorization remains the prior person-approved path.
       // A task resource is never relabelled as a run-created page or mention.
@@ -325,13 +342,24 @@ export function makeInvoker(s: Services) {
       const identity = { sessionId: before.sessionId, documentEpoch: before.documentEpoch, url: before.url };
       if (!identity.sessionId || before.viewStatus === "detached" || before.viewStatus === "crashed")
         throw new AuxError("target_detached", "The authorized task attachment is unavailable.");
-      const taskRead = target.access === "read" ? deps.captureScopedTaskRead(scope, target.pageId, externalRunId, client.connectionId) : undefined;
-      const recheckReadPolicy = target.access === "read" ? await s.pages.authorizeAgentRead(externalRunId, target.pageId, ctx.method, taskRead) : undefined;
+      const taskRead =
+        target.access === "read"
+          ? deps.captureScopedTaskRead(scope, target.pageId, externalRunId, client.connectionId)
+          : undefined;
+      const recheckReadPolicy =
+        target.access === "read"
+          ? await s.pages.authorizeAgentRead(externalRunId, target.pageId, ctx.method, taskRead)
+          : undefined;
       ctx.taskRead = taskRead;
       recheckSource();
       const ready = s.pages.get(target.pageId);
-      if (ready.sessionId !== identity.sessionId || ready.viewStatus === "detached" || ready.viewStatus === "crashed" ||
-        (target.access === "read" && (ready.documentEpoch !== identity.documentEpoch || ready.url !== identity.url)))
+      if (
+        ready.sessionId !== identity.sessionId ||
+        ready.viewStatus === "detached" ||
+        ready.viewStatus === "crashed" ||
+        (target.access === "read" &&
+          (ready.documentEpoch !== identity.documentEpoch || ready.url !== identity.url))
+      )
         throw new AuxError("ref_stale", "The approved source changed while authorizing its read.");
       recheckReadPolicy?.();
       const result = await METHODS[ctx.method](ctx);
@@ -339,16 +367,31 @@ export function makeInvoker(s: Services) {
       requireScopedPage(scope, target.pageId, client.connectionId);
       recheckSource();
       const currentRun = s.repo.getRun(externalRunId);
-      if (!currentRun || !["running", "planning", "needs_input"].includes(currentRun.status) ||
+      if (
+        !currentRun ||
+        !["running", "planning", "needs_input"].includes(currentRun.status) ||
         currentRun.config?.externalConnectionId !== client.connectionId ||
         currentRun.config?.taskRevision !== run?.config?.taskRevision ||
-        currentRun.config?.messageRevision !== run?.config?.messageRevision)
-        throw new AuxError("permission_denied", "This external tool turn ended or changed while using its source.");
-      if (client.connectionId && s.agentConnections && !s.agentConnections.isLive({ external: true, connectionId: client.connectionId, scope }))
+        currentRun.config?.messageRevision !== run?.config?.messageRevision
+      )
+        throw new AuxError(
+          "permission_denied",
+          "This external tool turn ended or changed while using its source.",
+        );
+      if (
+        client.connectionId &&
+        s.agentConnections &&
+        !s.agentConnections.isLive({ external: true, connectionId: client.connectionId, scope })
+      )
         throw new AuxError("permission_denied", "This connection changed during the tool call.");
       const current = s.pages.get(target.pageId);
-      if (current.sessionId !== identity.sessionId || current.viewStatus === "detached" || current.viewStatus === "crashed" ||
-          (target.access === "read" && (current.documentEpoch !== identity.documentEpoch || current.url !== identity.url)))
+      if (
+        current.sessionId !== identity.sessionId ||
+        current.viewStatus === "detached" ||
+        current.viewStatus === "crashed" ||
+        (target.access === "read" &&
+          (current.documentEpoch !== identity.documentEpoch || current.url !== identity.url))
+      )
         throw new AuxError("ref_stale", "The authorized task document changed while using it.");
       return result;
     });

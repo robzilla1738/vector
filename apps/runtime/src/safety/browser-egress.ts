@@ -1,25 +1,56 @@
 import { browserContextPage } from "../services/browser-context-page.js";
 import { createHash } from "node:crypto";
 import {
-  HostMethods, AuxError, EgressContextSchema, EgressLeaseSchema, EgressRequestSchema,
-  NativeCdpNavigationReceiptSchema, type NativeCdpNavigationReceipt,
-  type EgressDecision, type EgressLease, type EgressRequest, type AgentPageCreate, type AgentPageIsolation, type NativePageTakeover,
+  HostMethods,
+  AuxError,
+  EgressContextSchema,
+  EgressLeaseSchema,
+  EgressRequestSchema,
+  NativeCdpNavigationReceiptSchema,
+  type NativeCdpNavigationReceipt,
+  type EgressDecision,
+  type EgressLease,
+  type EgressRequest,
+  type AgentPageCreate,
+  type AgentPageIsolation,
+  type NativePageTakeover,
 } from "@aux/contracts";
 import type { NativeBridge } from "../native.js";
 import { AgentEgressGuard, type EgressAuditEvidence, type ProtectedClass } from "./egress.js";
 
 interface RunIdentity {
-  taskId?: string; taskRevision: number; threadId: string;
+  taskId?: string;
+  taskRevision: number;
+  threadId: string;
 }
-interface PageIdentity { agentIsolation?: AgentPageIsolation; url: string; documentEpoch: number; controller?: string; controllerEpoch?: number; viewStatus?: string }
+interface PageIdentity {
+  agentIsolation?: AgentPageIsolation;
+  url: string;
+  documentEpoch: number;
+  controller?: string;
+  controllerEpoch?: number;
+  viewStatus?: string;
+}
 interface BindingSource {
-  runId: string; origin: string; run: RunIdentity; page: PageIdentity; version: number;
+  runId: string;
+  origin: string;
+  run: RunIdentity;
+  page: PageIdentity;
+  version: number;
   /** Present only for an original installed continuation, never preparing Install. */
   retirement?: AbortController;
 }
 interface ActivePage {
-  runId: string; pageId: string; url: string; epoch: number; lease: EgressLease;
-  timer?: ReturnType<typeof setInterval>; released: boolean; installed: boolean; acknowledgedExpiresAt: number; renewing?: boolean;
+  runId: string;
+  pageId: string;
+  url: string;
+  epoch: number;
+  lease: EgressLease;
+  timer?: ReturnType<typeof setInterval>;
+  released: boolean;
+  installed: boolean;
+  acknowledgedExpiresAt: number;
+  renewing?: boolean;
 }
 
 export interface BrowserEgressDeps {
@@ -33,8 +64,13 @@ export interface BrowserEgressDeps {
   audit(decision: EgressDecision, evidence: EgressAuditEvidence): void;
   /** Must approve the exact ephemeral request digest, never a standing grant. */
   approve(input: {
-    runId: string; threadId: string; taskId?: string; digest: string;
-    sourceOrigin: string; destinationOrigin: string; pageContent: boolean;
+    runId: string;
+    threadId: string;
+    taskId?: string;
+    digest: string;
+    sourceOrigin: string;
+    destinationOrigin: string;
+    pageContent: boolean;
     signal: AbortSignal;
   }): Promise<boolean>;
   now?: () => number;
@@ -61,7 +97,7 @@ export class BrowserEgress {
     this.now = deps.now ?? Date.now;
     this.guard = new AgentEgressGuard({
       now: this.now,
-      currentTaskRevision: runId => deps.run(runId)?.taskRevision ?? null,
+      currentTaskRevision: (runId) => deps.run(runId)?.taskRevision ?? null,
       audit: deps.audit,
     });
   }
@@ -72,19 +108,37 @@ export class BrowserEgress {
     if (!this.deps.native.egressRunTerminal)
       throw new AuxError("capability_unsupported", "Native terminal-run retirement is unavailable.");
     for (const runId of runIds)
-      HostMethods["native.egressRunTerminal"].result.parse(await this.deps.native.egressRunTerminal({ runId }));
+      HostMethods["native.egressRunTerminal"].result.parse(
+        await this.deps.native.egressRunTerminal({ runId }),
+      );
   }
 
   /** Private creation authority; source transfers its URL only, never page state. */
-  async creationScope(runId: string, sourcePageId?: string): Promise<Omit<AgentPageCreate, "windowId" | "background">> {
+  async creationScope(
+    runId: string,
+    sourcePageId?: string,
+  ): Promise<Omit<AgentPageCreate, "windowId" | "background">> {
     const run = this.deps.run(runId);
     if (this.closed || !run || !this.deps.native.createAgentPage)
-      throw new AuxError("capability_unsupported", "This browser cannot open a protected temporary tab. Update Aux before continuing.");
+      throw new AuxError(
+        "capability_unsupported",
+        "This browser cannot open a protected temporary tab. Update Aux before continuing.",
+      );
     const ancestry = this.deps.runAncestry(runId);
-    if (ancestry[0] !== runId || ancestry.length === 0 || ancestry.length > 32
-      || new Set(ancestry).size !== ancestry.length)
+    if (
+      ancestry[0] !== runId ||
+      ancestry.length === 0 ||
+      ancestry.length > 32 ||
+      new Set(ancestry).size !== ancestry.length
+    )
       throw new AuxError("permission_denied", "The original run ancestry is unavailable.");
-    const identity = { profileId: this.deps.profileId, runId, taskId: run.taskId, taskRevision: run.taskRevision, ancestry };
+    const identity = {
+      profileId: this.deps.profileId,
+      runId,
+      taskId: run.taskId,
+      taskRevision: run.taskRevision,
+      ancestry,
+    };
     if (!sourcePageId) return identity;
     const sourcePage = () => browserContextPage(() => this.deps.page(sourcePageId));
     const page = { ...sourcePage() };
@@ -93,15 +147,28 @@ export class BrowserEgress {
       throw new AuxError("permission_denied", "Choose a website to open in a separate signed-out tab.");
     if (!this.deps.native.egressContext)
       throw new AuxError("capability_unsupported", "The source document cannot be verified.");
-    const context = EgressContextSchema.parse(await this.deps.native.egressContext({ tabId: sourcePageId, expectedUrl: page.url }));
-    const after = sourcePage(), currentRun = this.deps.run(runId);
-    if (JSON.stringify(this.deps.runAncestry(runId)) !== JSON.stringify(ancestry)
-      || context.profileId !== identity.profileId || context.tabId !== sourcePageId || context.sourceOrigin !== url.origin
-      || !currentRun || currentRun.taskId !== run.taskId || currentRun.taskRevision !== run.taskRevision
-      || after.url !== page.url || after.documentEpoch !== page.documentEpoch
-      || ["detached", "crashed"].includes(after.viewStatus ?? ""))
+    const context = EgressContextSchema.parse(
+      await this.deps.native.egressContext({ tabId: sourcePageId, expectedUrl: page.url }),
+    );
+    const after = sourcePage(),
+      currentRun = this.deps.run(runId);
+    if (
+      JSON.stringify(this.deps.runAncestry(runId)) !== JSON.stringify(ancestry) ||
+      context.profileId !== identity.profileId ||
+      context.tabId !== sourcePageId ||
+      context.sourceOrigin !== url.origin ||
+      !currentRun ||
+      currentRun.taskId !== run.taskId ||
+      currentRun.taskRevision !== run.taskRevision ||
+      after.url !== page.url ||
+      after.documentEpoch !== page.documentEpoch ||
+      ["detached", "crashed"].includes(after.viewStatus ?? "")
+    )
       throw new AuxError("ref_stale", "The selected source tab changed. Review it before continuing.");
-    return { ...identity, source: { tabId: sourcePageId, expectedUrl: page.url, documentToken: context.documentToken } };
+    return {
+      ...identity,
+      source: { tabId: sourcePageId, expectedUrl: page.url, documentToken: context.documentToken },
+    };
   }
 
   /** Called after the durable page claim and before observation or dispatch. */
@@ -129,70 +196,144 @@ export class BrowserEgress {
     const run = this.deps.run(runId);
     if (!run) throw new AuxError("permission_denied", "The original task is no longer active.");
     const source = page.url;
-    this.bindingSources.set(pageId, { runId, origin: source === "about:blank" ? "aux://blank" : new URL(source).origin, run: { ...run }, page, version: authorityVersion });
+    this.bindingSources.set(pageId, {
+      runId,
+      origin: source === "about:blank" ? "aux://blank" : new URL(source).origin,
+      run: { ...run },
+      page,
+      version: authorityVersion,
+    });
     const work = this.bind(runId, pageId, initialDestination, authorityVersion);
     this.preparing.set(pageId, work);
-    try { await work; }
-    finally { if (this.preparing.get(pageId) === work) { this.preparing.delete(pageId); this.bindingSources.delete(pageId); } }
+    try {
+      await work;
+    } finally {
+      if (this.preparing.get(pageId) === work) {
+        this.preparing.delete(pageId);
+        this.bindingSources.delete(pageId);
+      }
+    }
   }
 
-  private async bind(runId: string, pageId: string, initialDestination: string | undefined, authorityVersion: number): Promise<void> {
+  private async bind(
+    runId: string,
+    pageId: string,
+    initialDestination: string | undefined,
+    authorityVersion: number,
+  ): Promise<void> {
     const run = this.deps.run(runId);
     const page = { ...this.deps.page(pageId) };
-    if (this.closed || this.blocked(runId) || !run || !this.deps.ownsPage(runId, pageId) || page.controller === "human"
-      || page.viewStatus === "detached" || page.viewStatus === "crashed")
+    if (
+      this.closed ||
+      this.blocked(runId) ||
+      !run ||
+      !this.deps.ownsPage(runId, pageId) ||
+      page.controller === "human" ||
+      page.viewStatus === "detached" ||
+      page.viewStatus === "crashed"
+    )
       throw new AuxError("permission_denied", "Browser transmission requires a current run-owned page.");
     const existing = this.pages.get(pageId);
     if (existing && this.current(existing) && existing.lease.expiresAt > this.now()) return;
     this.revokePage(pageId);
-    await this.repay([...this.retirementDebt.values()].filter(lease => lease.tabId === pageId));
+    await this.repay([...this.retirementDebt.values()].filter((lease) => lease.tabId === pageId));
     if (this.blocked(runId)) throw new AuxError("permission_denied", "Browser authority is being retired.");
     const { egressContext, egressInstall, egressRevoke } = this.deps.native;
     if (!egressContext || !egressInstall || !egressRevoke)
-      throw new AuxError("capability_unsupported", "This browser cannot enforce agent transmission authority.");
-    const native = EgressContextSchema.parse(await egressContext.call(this.deps.native, {
-      tabId: pageId, expectedUrl: page.url,
-    }));
+      throw new AuxError(
+        "capability_unsupported",
+        "This browser cannot enforce agent transmission authority.",
+      );
+    const native = EgressContextSchema.parse(
+      await egressContext.call(this.deps.native, {
+        tabId: pageId,
+        expectedUrl: page.url,
+      }),
+    );
     if (this.blocked(runId) || (this.authorityVersions.get(pageId) ?? 0) !== authorityVersion)
       throw new AuxError("permission_denied", "Browser authority changed while reading its native document.");
     if (native.personControlled)
-      throw new AuxError("permission_denied", "The person holds this native document. Return control explicitly before running the task.");
+      throw new AuxError(
+        "permission_denied",
+        "The person holds this native document. Return control explicitly before running the task.",
+      );
     const isolation = native.isolation;
-    if (!isolation || isolation.runId !== runId || isolation.taskId !== run.taskId || isolation.taskRevision !== run.taskRevision
-      || page.agentIsolation?.isolationId && page.agentIsolation.isolationId !== isolation.isolationId)
-      throw new AuxError("permission_denied", "This is not this run’s protected temporary tab. Open a fresh tab for the task; sign in there separately. Existing cookies cannot be copied.");
-    const after = this.deps.page(pageId), currentRun = this.deps.run(runId);
-    if (!this.deps.ownsPage(runId, pageId) || !currentRun
-      || currentRun.taskId !== run.taskId || currentRun.taskRevision !== run.taskRevision
-      || after.url !== page.url || after.documentEpoch !== page.documentEpoch || after.controller === "human"
-      || native.profileId !== this.deps.profileId || native.tabId !== pageId
-      || native.sourceOrigin !== (page.url === "about:blank" ? "aux://blank" : new URL(page.url).origin))
+    if (
+      !isolation ||
+      isolation.runId !== runId ||
+      isolation.taskId !== run.taskId ||
+      isolation.taskRevision !== run.taskRevision ||
+      (page.agentIsolation?.isolationId && page.agentIsolation.isolationId !== isolation.isolationId)
+    )
+      throw new AuxError(
+        "permission_denied",
+        "This is not this run’s protected temporary tab. Open a fresh tab for the task; sign in there separately. Existing cookies cannot be copied.",
+      );
+    const after = this.deps.page(pageId),
+      currentRun = this.deps.run(runId);
+    if (
+      !this.deps.ownsPage(runId, pageId) ||
+      !currentRun ||
+      currentRun.taskId !== run.taskId ||
+      currentRun.taskRevision !== run.taskRevision ||
+      after.url !== page.url ||
+      after.documentEpoch !== page.documentEpoch ||
+      after.controller === "human" ||
+      native.profileId !== this.deps.profileId ||
+      native.tabId !== pageId ||
+      native.sourceOrigin !== (page.url === "about:blank" ? "aux://blank" : new URL(page.url).origin)
+    )
       throw new AuxError("ref_stale", "The page changed while preparing protected browser requests.");
     const lease = this.guard.issue({
-      profileId: native.profileId, tabId: native.tabId, frameId: native.frameId,
-      documentToken: native.documentToken, sourceOrigin: native.sourceOrigin, isolationId: isolation.isolationId,
+      profileId: native.profileId,
+      tabId: native.tabId,
+      frameId: native.frameId,
+      documentToken: native.documentToken,
+      sourceOrigin: native.sourceOrigin,
+      isolationId: isolation.isolationId,
       controlGeneration: native.controlGeneration,
-      runId, taskId: run.taskId, taskRevision: run.taskRevision,
-      documentEpoch: page.documentEpoch, recipientOrigins: [],
+      runId,
+      taskId: run.taskId,
+      taskRevision: run.taskRevision,
+      documentEpoch: page.documentEpoch,
+      recipientOrigins: [],
       ...(initialDestination ? { initialDestination } : {}),
     });
-    const active: ActivePage = { runId, pageId, url: page.url, epoch: page.documentEpoch, lease, released: false, installed: false, acknowledgedExpiresAt: 0 };
+    const active: ActivePage = {
+      runId,
+      pageId,
+      url: page.url,
+      epoch: page.documentEpoch,
+      lease,
+      released: false,
+      installed: false,
+      acknowledgedExpiresAt: 0,
+    };
     this.pages.set(pageId, active);
     try {
       const installed = await egressInstall.call(this.deps.native, { lease, expectedUrl: page.url });
-      if (installed?.accepted !== true) throw new AuxError("permission_denied", "Native browser request protection was not accepted.");
-      if ((this.authorityVersions.get(pageId) ?? 0) !== authorityVersion || !this.current(active)) throw new AuxError("ref_stale", "The page changed while installing request protection.");
+      if (installed?.accepted !== true)
+        throw new AuxError("permission_denied", "Native browser request protection was not accepted.");
+      if ((this.authorityVersions.get(pageId) ?? 0) !== authorityVersion || !this.current(active))
+        throw new AuxError("ref_stale", "The page changed while installing request protection.");
       active.installed = true;
       active.acknowledgedExpiresAt = lease.expiresAt;
-      active.timer = setInterval(() => { void this.renew(active); }, 10_000);
+      active.timer = setInterval(() => {
+        void this.renew(active);
+      }, 10_000);
       active.timer.unref();
     } catch (error) {
       // A missing/rejected Install reply does not prove the browser omitted
       // its effect. Retain that exact lease until native retirement ACK.
       this.owe(active);
-      try { await this.repay([active.lease]); }
-      catch (cleanupError) {
-        throw new AggregateError([error, cleanupError], "Browser authority installation and retirement failed", { cause: error });
+      try {
+        await this.repay([active.lease]);
+      } catch (cleanupError) {
+        throw new AggregateError(
+          [error, cleanupError],
+          "Browser authority installation and retirement failed",
+          { cause: error },
+        );
       }
       throw error;
     }
@@ -201,25 +342,43 @@ export class BrowserEgress {
   /** Capture the original acknowledged lease for one native CDP attachment.
    * The closure never adopts a replacement row or a receive-time run identity.
    */
-  captureCdpAuthority(pageId: string, nativeLease: EgressLease): {
+  captureCdpAuthority(
+    pageId: string,
+    nativeLease: EgressLease,
+  ): {
     lease: Readonly<Omit<EgressLease, "recipientOrigins">> & { readonly recipientOrigins: readonly string[] };
     current(): boolean;
     acknowledgedExpiresAt(): number;
   } {
     const original = EgressLeaseSchema.parse(nativeLease);
     const active = this.pages.get(pageId);
-    const matches = () => !!active && !this.closed && active.installed
-      && this.current(active) && active.acknowledgedExpiresAt > this.now()
-      && active.lease.expiresAt > this.now()
-      && ![...this.retirementDebt.values()].some(lease => lease.tabId === pageId)
-      && sameCdpLease(original, active.lease);
+    const matches = () =>
+      !!active &&
+      !this.closed &&
+      active.installed &&
+      this.current(active) &&
+      active.acknowledgedExpiresAt > this.now() &&
+      active.lease.expiresAt > this.now() &&
+      ![...this.retirementDebt.values()].some((lease) => lease.tabId === pageId) &&
+      sameCdpLease(original, active.lease);
     if (!matches())
-      throw new AuxError("permission_denied", "The original acknowledged browser attachment authority is unavailable.");
-    const lease = Object.freeze({ ...original, recipientOrigins: Object.freeze([...original.recipientOrigins]) });
-    return Object.freeze({ lease, current: matches, acknowledgedExpiresAt: () => {
-      if (!matches() || !active) throw new AuxError("permission_denied", "Original CDP acknowledged authority retired.");
-      return active.acknowledgedExpiresAt;
-    } });
+      throw new AuxError(
+        "permission_denied",
+        "The original acknowledged browser attachment authority is unavailable.",
+      );
+    const lease = Object.freeze({
+      ...original,
+      recipientOrigins: Object.freeze([...original.recipientOrigins]),
+    });
+    return Object.freeze({
+      lease,
+      current: matches,
+      acknowledgedExpiresAt: () => {
+        if (!matches() || !active)
+          throw new AuxError("permission_denied", "Original CDP acknowledged authority retired.");
+        return active.acknowledgedExpiresAt;
+      },
+    });
   }
 
   /** Original controlled-command continuation. No model/RPC input can
@@ -227,10 +386,20 @@ export class BrowserEgress {
   captureControlledNavigation(runId: string, pageId: string, validateSource: () => void) {
     validateSource();
     const original = this.pages.get(pageId);
-    if (!original || original.runId !== runId || !original.installed || !this.current(original)
-      || original.acknowledgedExpiresAt <= this.now() || this.preparing.has(pageId) || this.bindingSources.has(pageId)
-      || [...this.retirementDebt.values()].some(lease => lease.tabId === pageId))
-      throw new AuxError("permission_denied", "Controlled navigation needs its original installed browser authority.");
+    if (
+      !original ||
+      original.runId !== runId ||
+      !original.installed ||
+      !this.current(original) ||
+      original.acknowledgedExpiresAt <= this.now() ||
+      this.preparing.has(pageId) ||
+      this.bindingSources.has(pageId) ||
+      [...this.retirementDebt.values()].some((lease) => lease.tabId === pageId)
+    )
+      throw new AuxError(
+        "permission_denied",
+        "Controlled navigation needs its original installed browser authority.",
+      );
     const originalLease = EgressLeaseSchema.parse(original.lease);
     const commandExpiry = original.acknowledgedExpiresAt;
     let effectExpiry = commandExpiry;
@@ -239,50 +408,89 @@ export class BrowserEgress {
     if (!run) throw new AuxError("permission_denied", "The original navigation run is unavailable.");
     const version = this.authorityVersions.get(pageId) ?? 0;
     const retirement = new AbortController();
-    const binding: BindingSource = { runId, origin: originalLease.sourceOrigin, run: { ...run }, page: originalPage, version, retirement };
+    const binding: BindingSource = {
+      runId,
+      origin: originalLease.sourceOrigin,
+      run: { ...run },
+      page: originalPage,
+      version,
+      retirement,
+    };
     const retirementTimer = setTimeout(() => retirement.abort(), Math.max(0, commandExpiry - this.now()));
     retirementTimer.unref();
     let protection: ReturnType<AgentEgressGuard["captureDocumentContinuation"]> | undefined;
     this.bindingSources.set(pageId, binding);
-    let consumed = false, completed = false, published = false, staged: { url: string; epoch: number } | undefined;
+    let consumed = false,
+      completed = false,
+      published = false,
+      staged: { url: string; epoch: number } | undefined;
     let replacement: ActivePage | undefined;
     const check = (validateOriginal = true) => {
       if (validateOriginal) validateSource();
-      const currentRun = this.deps.run(runId), page = this.deps.page(pageId);
-      if (retirement.signal.aborted || this.closed || this.blocked(runId) || this.now() >= effectExpiry
-        || !this.deps.ownsPage(runId, pageId) || !currentRun
-        || currentRun.taskId !== run.taskId || currentRun.taskRevision !== run.taskRevision
-        || this.bindingSources.get(pageId) !== binding
-        || (this.authorityVersions.get(pageId) ?? 0) !== version
-        || page.controller === "human" || page.controllerEpoch !== originalPage.controllerEpoch
-        || page.url !== (staged?.url ?? originalPage.url)
-        || page.documentEpoch !== (staged?.epoch ?? originalPage.documentEpoch))
+      const currentRun = this.deps.run(runId),
+        page = this.deps.page(pageId);
+      if (
+        retirement.signal.aborted ||
+        this.closed ||
+        this.blocked(runId) ||
+        this.now() >= effectExpiry ||
+        !this.deps.ownsPage(runId, pageId) ||
+        !currentRun ||
+        currentRun.taskId !== run.taskId ||
+        currentRun.taskRevision !== run.taskRevision ||
+        this.bindingSources.get(pageId) !== binding ||
+        (this.authorityVersions.get(pageId) ?? 0) !== version ||
+        page.controller === "human" ||
+        page.controllerEpoch !== originalPage.controllerEpoch ||
+        page.url !== (staged?.url ?? originalPage.url) ||
+        page.documentEpoch !== (staged?.epoch ?? originalPage.documentEpoch)
+      )
         throw new AuxError("ref_stale", "The original controlled navigation source or authority changed.");
     };
     return {
       signal: retirement.signal,
       expiresAt: commandExpiry,
       check,
-      install: async (raw: NativeCdpNavigationReceipt, stage: (document: { url: string; documentEpoch: number }) => void, deadline: number) => {
+      install: async (
+        raw: NativeCdpNavigationReceipt,
+        stage: (document: { url: string; documentEpoch: number }) => void,
+        deadline: number,
+      ) => {
         if (!Number.isSafeInteger(deadline) || deadline <= this.now() || deadline > commandExpiry)
-          throw new AuxError("ref_stale", "The original navigation command deadline is unavailable or expired.");
+          throw new AuxError(
+            "ref_stale",
+            "The original navigation command deadline is unavailable or expired.",
+          );
         effectExpiry = deadline;
         check();
         if (consumed || this.pages.get(pageId) !== original)
           throw new AuxError("ref_stale", "The original navigation authority was already consumed.");
         consumed = true;
         const receipt = NativeCdpNavigationReceiptSchema.parse(raw);
-        const context = receipt.context, isolation = context.isolation;
+        const context = receipt.context,
+          isolation = context.isolation;
         const url = new URL(receipt.url);
-        if (!["http:", "https:"].includes(url.protocol) || url.username || url.password
-          || receipt.originalLeaseId !== originalLease.leaseId || context.tabId !== pageId
-          || context.profileId !== originalLease.profileId || context.personControlled
-          || context.documentToken === originalLease.documentToken
-          || context.controlGeneration === originalLease.controlGeneration
-          || context.sourceOrigin !== url.origin || !isolation
-          || isolation.isolationId !== originalLease.isolationId || isolation.runId !== runId
-          || isolation.taskId !== run.taskId || isolation.taskRevision !== run.taskRevision)
-          throw new AuxError("ref_stale", "The native navigation receipt belongs to another source or document.");
+        if (
+          !["http:", "https:"].includes(url.protocol) ||
+          url.username ||
+          url.password ||
+          receipt.originalLeaseId !== originalLease.leaseId ||
+          context.tabId !== pageId ||
+          context.profileId !== originalLease.profileId ||
+          context.personControlled ||
+          context.documentToken === originalLease.documentToken ||
+          context.controlGeneration === originalLease.controlGeneration ||
+          context.sourceOrigin !== url.origin ||
+          !isolation ||
+          isolation.isolationId !== originalLease.isolationId ||
+          isolation.runId !== runId ||
+          isolation.taskId !== run.taskId ||
+          isolation.taskRevision !== run.taskRevision
+        )
+          throw new AuxError(
+            "ref_stale",
+            "The native navigation receipt belongs to another source or document.",
+          );
         // Snapshot the final actual taint and retire the old guard in this
         // same synchronous section. No late taint can fall between them.
         protection = this.guard.captureDocumentContinuation(originalLease.leaseId);
@@ -292,36 +500,77 @@ export class BrowserEgress {
         staged = { url: receipt.url, epoch: originalPage.documentEpoch + 1 };
         stage({ url: staged.url, documentEpoch: staged.epoch });
         check();
-        const lease = protection.issue({ profileId: context.profileId, tabId: pageId,
-          frameId: context.frameId, documentToken: context.documentToken,
-          controlGeneration: context.controlGeneration, isolationId: isolation.isolationId,
-          runId, taskId: run.taskId, taskRevision: run.taskRevision,
-          sourceOrigin: context.sourceOrigin, documentEpoch: staged.epoch,
-          recipientOrigins: [], expiresAt: effectExpiry });
-        replacement = { runId, pageId, url: staged.url, epoch: staged.epoch, lease,
-          released: false, installed: false, acknowledgedExpiresAt: 0 };
+        const lease = protection.issue({
+          profileId: context.profileId,
+          tabId: pageId,
+          frameId: context.frameId,
+          documentToken: context.documentToken,
+          controlGeneration: context.controlGeneration,
+          isolationId: isolation.isolationId,
+          runId,
+          taskId: run.taskId,
+          taskRevision: run.taskRevision,
+          sourceOrigin: context.sourceOrigin,
+          documentEpoch: staged.epoch,
+          recipientOrigins: [],
+          expiresAt: effectExpiry,
+        });
+        replacement = {
+          runId,
+          pageId,
+          url: staged.url,
+          epoch: staged.epoch,
+          lease,
+          released: false,
+          installed: false,
+          acknowledgedExpiresAt: 0,
+        };
         this.pages.set(pageId, replacement);
         try {
           if (!this.deps.native.egressInstall)
-            throw new AuxError("permission_denied", "Native navigation authority installation is unavailable.");
-          const installed = await this.deps.native.egressInstall({ lease, expectedUrl: staged.url,
-            navigationTransitionId: receipt.navigationTransitionId });
+            throw new AuxError(
+              "permission_denied",
+              "Native navigation authority installation is unavailable.",
+            );
+          const installed = await this.deps.native.egressInstall({
+            lease,
+            expectedUrl: staged.url,
+            navigationTransitionId: receipt.navigationTransitionId,
+          });
           check();
-          if (installed.accepted !== true || this.pages.get(pageId) !== replacement || !this.current(replacement))
-            throw new AuxError("ref_stale", "The navigation's fresh native installation was not acknowledged.");
+          if (
+            installed.accepted !== true ||
+            this.pages.get(pageId) !== replacement ||
+            !this.current(replacement)
+          )
+            throw new AuxError(
+              "ref_stale",
+              "The navigation's fresh native installation was not acknowledged.",
+            );
           replacement.installed = true;
           replacement.acknowledgedExpiresAt = lease.expiresAt;
           return lease;
         } catch (error) {
           this.owe(replacement);
-          try { await this.repay([replacement.lease]); }
-          catch (cleanupError) { throw new AggregateError([error, cleanupError], "Navigation installation and retirement failed", { cause: error }); }
+          try {
+            await this.repay([replacement.lease]);
+          } catch (cleanupError) {
+            throw new AggregateError([error, cleanupError], "Navigation installation and retirement failed", {
+              cause: error,
+            });
+          }
           throw error;
         }
       },
       complete: () => {
         check();
-        if (completed || !protection || !replacement?.installed || this.pages.get(pageId) !== replacement || !this.current(replacement))
+        if (
+          completed ||
+          !protection ||
+          !replacement?.installed ||
+          this.pages.get(pageId) !== replacement ||
+          !this.current(replacement)
+        )
           throw new AuxError("ref_stale", "The fresh navigation authority is not current.");
         completed = true;
         protection.discard();
@@ -329,13 +578,27 @@ export class BrowserEgress {
       publish: (validatePublication: () => void) => {
         validatePublication();
         check(false);
-        if (!completed || published || !replacement?.installed || this.pages.get(pageId) !== replacement || !this.current(replacement))
-          throw new AuxError("ref_stale", "The completed navigation is unavailable for original publication.");
+        if (
+          !completed ||
+          published ||
+          !replacement?.installed ||
+          this.pages.get(pageId) !== replacement ||
+          !this.current(replacement)
+        )
+          throw new AuxError(
+            "ref_stale",
+            "The completed navigation is unavailable for original publication.",
+          );
         published = true;
         clearTimeout(retirementTimer);
         this.bindingSources.delete(pageId);
-        const interval = Math.max(1, Math.min(10_000, Math.floor((replacement.acknowledgedExpiresAt - this.now()) / 2)));
-        replacement.timer = setInterval(() => { void this.renew(replacement!); }, interval);
+        const interval = Math.max(
+          1,
+          Math.min(10_000, Math.floor((replacement.acknowledgedExpiresAt - this.now()) / 2)),
+        );
+        replacement.timer = setInterval(() => {
+          void this.renew(replacement!);
+        }, interval);
         replacement.timer.unref();
       },
       cancel: async () => {
@@ -344,21 +607,40 @@ export class BrowserEgress {
         protection?.discard();
         if (this.pages.get(pageId) === replacement && replacement) this.owe(replacement);
         else if (this.pages.get(pageId) === original) this.owe(original);
-        try { await this.repay([...this.retirementDebt.values()].filter(lease => lease.tabId === pageId)); }
-        finally { if (this.bindingSources.get(pageId) === binding) this.bindingSources.delete(pageId); }
+        try {
+          await this.repay([...this.retirementDebt.values()].filter((lease) => lease.tabId === pageId));
+        } finally {
+          if (this.bindingSources.get(pageId) === binding) this.bindingSources.delete(pageId);
+        }
       },
     };
   }
 
   private current(active: ActivePage): boolean {
-    if (this.blocked(active.runId) || active.released || this.pages.get(active.pageId) !== active
-      || !this.deps.ownsPage(active.runId, active.pageId)) return false;
+    if (
+      this.blocked(active.runId) ||
+      active.released ||
+      this.pages.get(active.pageId) !== active ||
+      !this.deps.ownsPage(active.runId, active.pageId)
+    )
+      return false;
     const run = this.deps.run(active.runId);
     let page: PageIdentity;
-    try { page = this.deps.page(active.pageId); } catch { return false; }
-    return page.controller !== "human" && page.viewStatus !== "detached" && page.viewStatus !== "crashed"
-      && !!run && run.taskId === active.lease.taskId && run.taskRevision === active.lease.taskRevision
-      && page.url === active.url && page.documentEpoch === active.epoch;
+    try {
+      page = this.deps.page(active.pageId);
+    } catch {
+      return false;
+    }
+    return (
+      page.controller !== "human" &&
+      page.viewStatus !== "detached" &&
+      page.viewStatus !== "crashed" &&
+      !!run &&
+      run.taskId === active.lease.taskId &&
+      run.taskRevision === active.lease.taskRevision &&
+      page.url === active.url &&
+      page.documentEpoch === active.epoch
+    );
   }
 
   private async renew(active: ActivePage): Promise<void> {
@@ -375,8 +657,15 @@ export class BrowserEgress {
       try {
         renewedLease = this.guard.renew(active.lease.leaseId);
         active.lease = renewedLease;
-        const renewed = await this.deps.native.egressInstall!({ lease: renewedLease, expectedUrl: active.url });
-        if (renewed?.accepted !== true) throw new AuxError("permission_denied", "Native browser request protection renewal was not accepted.");
+        const renewed = await this.deps.native.egressInstall!({
+          lease: renewedLease,
+          expectedUrl: active.url,
+        });
+        if (renewed?.accepted !== true)
+          throw new AuxError(
+            "permission_denied",
+            "Native browser request protection renewal was not accepted.",
+          );
       } catch {
         this.owe(active);
         await this.repay([active.lease]).catch(() => {});
@@ -389,31 +678,46 @@ export class BrowserEgress {
         return;
       }
       active.acknowledgedExpiresAt = renewedLease.expiresAt;
-    } finally { active.renewing = false; }
+    } finally {
+      active.renewing = false;
+    }
   }
 
   protect(runId: string, value: string, dataClass: ProtectedClass): void {
-    if (!this.deps.run(runId)) throw new AuxError("permission_denied", "Protected context requires a current run.");
+    if (!this.deps.run(runId))
+      throw new AuxError("permission_denied", "Protected context requires a current run.");
     if (dataClass === "memory") {
-      try { this.guard.protectRunMemory(runId, value); }
-      catch (error) { this.revokeRun(runId); throw error; }
+      try {
+        this.guard.protectRunMemory(runId, value);
+      } catch (error) {
+        this.revokeRun(runId);
+        throw error;
+      }
       return;
     }
-    const active = [...this.pages.values()].filter(page => page.runId === runId && this.current(page));
-    if (!active.length) throw new AuxError("permission_denied", "Protected context requires an active browser lease.");
+    const active = [...this.pages.values()].filter((page) => page.runId === runId && this.current(page));
+    if (!active.length)
+      throw new AuxError("permission_denied", "Protected context requires an active browser lease.");
     try {
       for (const page of active) {
         this.guard.taint(page.lease.leaseId, value, dataClass);
       }
-    } catch (error) { this.revokeRun(runId); throw error; }
+    } catch (error) {
+      this.revokeRun(runId);
+      throw error;
+    }
   }
 
   notePageText(runId: string, pageId: string, text: string, observedUrl = this.deps.page(pageId).url): void {
     if (!this.deps.run(runId) || !this.deps.ownsPage(runId, pageId))
       throw new AuxError("permission_denied", "Page evidence requires its current browser lease.");
     if (!text) return;
-    try { this.guard.noteRunPageText(runId, new URL(observedUrl).origin, text); }
-    catch (error) { this.revokeRun(runId); throw error; }
+    try {
+      this.guard.noteRunPageText(runId, new URL(observedUrl).origin, text);
+    } catch (error) {
+      this.revokeRun(runId);
+      throw error;
+    }
   }
 
   /** Capture only the original installed row or a genuine in-flight binding.
@@ -430,57 +734,156 @@ export class BrowserEgress {
     const run = this.deps.run(scope.runId);
     const page = { ...this.deps.page(scope.tabId) };
     const version = this.authorityVersions.get(scope.tabId) ?? 0;
-    const reject = () => { throw new AuxError("ref_stale", "The original native input belongs to a changed task or document."); };
-    if (!run || scope.profileId !== this.deps.profileId || run.taskId !== scope.taskId
-      || run.taskRevision !== scope.taskRevision || !this.deps.ownsPage(scope.runId, scope.tabId)) reject();
+    const reject = () => {
+      throw new AuxError("ref_stale", "The original native input belongs to a changed task or document.");
+    };
+    if (
+      !run ||
+      scope.profileId !== this.deps.profileId ||
+      run.taskId !== scope.taskId ||
+      run.taskRevision !== scope.taskRevision ||
+      !this.deps.ownsPage(scope.runId, scope.tabId)
+    )
+      reject();
     if (input.phase === "installed") {
-      if (!active || active.runId !== scope.runId || active.lease.leaseId !== input.lease.leaseId
-        || (["leaseId", "controlGeneration", "isolationId", "profileId", "runId", "taskRevision", "taskId", "tabId", "frameId", "documentToken", "documentEpoch", "sourceOrigin", "initialDestination", "recipientOrigins", "issuedAt", "expiresAt"] as const).some(field => {
+      if (
+        !active ||
+        active.runId !== scope.runId ||
+        active.lease.leaseId !== input.lease.leaseId ||
+        (
+          [
+            "leaseId",
+            "controlGeneration",
+            "isolationId",
+            "profileId",
+            "runId",
+            "taskRevision",
+            "taskId",
+            "tabId",
+            "frameId",
+            "documentToken",
+            "documentEpoch",
+            "sourceOrigin",
+            "initialDestination",
+            "recipientOrigins",
+            "issuedAt",
+            "expiresAt",
+          ] as const
+        ).some((field) => {
           return field === "recipientOrigins"
             ? JSON.stringify(active.lease.recipientOrigins) !== JSON.stringify(input.lease.recipientOrigins)
             : active.lease[field] !== input.lease[field];
-        })) reject();
-    } else if (!binding || binding.runId !== scope.runId || binding.run.taskId !== scope.taskId
-      || binding.run.taskRevision !== scope.taskRevision || binding.version !== version
-      || binding.page.url !== page.url || binding.page.documentEpoch !== page.documentEpoch) reject();
+        })
+      )
+        reject();
+    } else if (
+      !binding ||
+      binding.runId !== scope.runId ||
+      binding.run.taskId !== scope.taskId ||
+      binding.run.taskRevision !== scope.taskRevision ||
+      binding.version !== version ||
+      binding.page.url !== page.url ||
+      binding.page.documentEpoch !== page.documentEpoch
+    )
+      reject();
     const local = (retired: boolean) => {
-      const currentRun = this.deps.run(scope.runId), currentPage = this.deps.page(scope.tabId);
-      if (this.closed || !currentRun || currentRun.taskId !== scope.taskId || currentRun.taskRevision !== scope.taskRevision
-        || !this.deps.ownsPage(scope.runId, scope.tabId) || currentPage.url !== page.url
-        || currentPage.documentEpoch !== page.documentEpoch || currentPage.controller !== page.controller
-        || currentPage.controllerEpoch !== page.controllerEpoch || ["detached", "crashed"].includes(currentPage.viewStatus ?? "")
-        || currentPage.agentIsolation?.isolationId !== page.agentIsolation?.isolationId) reject();
+      const currentRun = this.deps.run(scope.runId),
+        currentPage = this.deps.page(scope.tabId);
+      if (
+        this.closed ||
+        !currentRun ||
+        currentRun.taskId !== scope.taskId ||
+        currentRun.taskRevision !== scope.taskRevision ||
+        !this.deps.ownsPage(scope.runId, scope.tabId) ||
+        currentPage.url !== page.url ||
+        currentPage.documentEpoch !== page.documentEpoch ||
+        currentPage.controller !== page.controller ||
+        currentPage.controllerEpoch !== page.controllerEpoch ||
+        ["detached", "crashed"].includes(currentPage.viewStatus ?? "") ||
+        currentPage.agentIsolation?.isolationId !== page.agentIsolation?.isolationId
+      )
+        reject();
       const current = this.pages.get(scope.tabId);
       if (retired) {
         if (current || (this.authorityVersions.get(scope.tabId) ?? 0) !== version + 1) reject();
-      } else if ((this.authorityVersions.get(scope.tabId) ?? 0) !== version
-        || (input.phase === "installed" ? current !== active || active?.released : this.bindingSources.get(scope.tabId) !== binding)) reject();
+      } else if (
+        (this.authorityVersions.get(scope.tabId) ?? 0) !== version ||
+        (input.phase === "installed"
+          ? current !== active || active?.released
+          : this.bindingSources.get(scope.tabId) !== binding)
+      )
+        reject();
     };
     const check = async (retired: boolean) => {
       local(retired);
-      if (!this.deps.native.egressContext) throw new AuxError("permission_denied", "Native input document verification is unavailable.");
-      const native = EgressContextSchema.parse(await this.deps.native.egressContext({ tabId: scope.tabId, expectedUrl: page.url }));
+      if (!this.deps.native.egressContext)
+        throw new AuxError("permission_denied", "Native input document verification is unavailable.");
+      const native = EgressContextSchema.parse(
+        await this.deps.native.egressContext({ tabId: scope.tabId, expectedUrl: page.url }),
+      );
       local(retired);
-      if (!native.personControlled || native.controlGeneration !== scope.retiredControlGeneration
-        || native.profileId !== scope.profileId || native.tabId !== scope.tabId
-        || native.frameId !== scope.frameId || native.documentToken !== scope.documentToken
-        || native.sourceOrigin !== scope.sourceOrigin || native.isolation?.isolationId !== scope.isolationId
-        || native.isolation.runId !== scope.runId || native.isolation.taskId !== scope.taskId
-        || native.isolation.taskRevision !== scope.taskRevision) reject();
+      if (
+        !native.personControlled ||
+        native.controlGeneration !== scope.retiredControlGeneration ||
+        native.profileId !== scope.profileId ||
+        native.tabId !== scope.tabId ||
+        native.frameId !== scope.frameId ||
+        native.documentToken !== scope.documentToken ||
+        native.sourceOrigin !== scope.sourceOrigin ||
+        native.isolation?.isolationId !== scope.isolationId ||
+        native.isolation.runId !== scope.runId ||
+        native.isolation.taskId !== scope.taskId ||
+        native.isolation.taskRevision !== scope.taskRevision
+      )
+        reject();
     };
     return { validate: () => check(false), validateRetired: () => check(true) };
   }
 
   /** Permission prompts borrow only the exact already installed frame/document lease. */
-  permissionAuthority(evidence: Pick<EgressLease, "leaseId" | "isolationId" | "profileId" | "runId" | "taskId" | "taskRevision" | "tabId" | "frameId" | "documentToken" | "documentEpoch">): () => void {
+  permissionAuthority(
+    evidence: Pick<
+      EgressLease,
+      | "leaseId"
+      | "isolationId"
+      | "profileId"
+      | "runId"
+      | "taskId"
+      | "taskRevision"
+      | "tabId"
+      | "frameId"
+      | "documentToken"
+      | "documentEpoch"
+    >,
+  ): () => void {
     const active = this.pages.get(evidence.tabId);
-    const fields = ["leaseId", "isolationId", "profileId", "runId", "taskId", "taskRevision", "tabId", "frameId", "documentToken", "documentEpoch"] as const;
+    const fields = [
+      "leaseId",
+      "isolationId",
+      "profileId",
+      "runId",
+      "taskId",
+      "taskRevision",
+      "tabId",
+      "frameId",
+      "documentToken",
+      "documentEpoch",
+    ] as const;
     const check = () => {
-      if (this.closed || !active || !active.installed || !this.current(active) ||
-        active.acknowledgedExpiresAt <= this.now() || active.lease.expiresAt <= this.now() ||
-        [...this.retirementDebt.values()].some(lease => lease.tabId === evidence.tabId) ||
-        fields.some(field => active.lease[field] !== evidence[field]))
-        throw new AuxError("permission_denied", "This permission prompt has no current frame/document lease.");
+      if (
+        this.closed ||
+        !active ||
+        !active.installed ||
+        !this.current(active) ||
+        active.acknowledgedExpiresAt <= this.now() ||
+        active.lease.expiresAt <= this.now() ||
+        [...this.retirementDebt.values()].some((lease) => lease.tabId === evidence.tabId) ||
+        fields.some((field) => active.lease[field] !== evidence[field])
+      )
+        throw new AuxError(
+          "permission_denied",
+          "This permission prompt has no current frame/document lease.",
+        );
     };
     check();
     return check;
@@ -490,7 +893,9 @@ export class BrowserEgress {
     const parsed = EgressRequestSchema.safeParse(input);
     if (!parsed.success) {
       if (process.env.AUX_EGRESS_DIAGNOSTIC === "1")
-        console.error(`AUX_EGRESS_SCHEMA paths=${parsed.error.issues.map(issue => issue.path.join(".")).join(",")}`);
+        console.error(
+          `AUX_EGRESS_SCHEMA paths=${parsed.error.issues.map((issue) => issue.path.join(".")).join(",")}`,
+        );
       throw new AuxError("invalid_params", "Native browser request evidence has an invalid shape.");
     }
     const request = parsed.data;
@@ -498,17 +903,28 @@ export class BrowserEgress {
     const result = (decision: EgressDecision) => ({ requestId: request.requestId, decision });
     const denied = (reason: EgressDecision["reason"]) => {
       const decision: EgressDecision = { status: "deny", reason, leaseId: evidence.leaseId };
-      this.deps.audit(decision, { leaseId: evidence.leaseId, profileId: evidence.profileId,
-        runId: evidence.runId, kind: evidence.kind, method: evidence.method, byteCount: evidence.byteCount });
+      this.deps.audit(decision, {
+        leaseId: evidence.leaseId,
+        profileId: evidence.profileId,
+        runId: evidence.runId,
+        kind: evidence.kind,
+        method: evidence.method,
+        byteCount: evidence.byteCount,
+      });
       return result(decision);
     };
     for (const [id, expiry] of this.seen) if (expiry <= this.now()) this.seen.delete(id);
     if (this.seen.has(request.requestId) || this.seen.size >= 4096) return denied("stale_lease");
     this.seen.set(request.requestId, this.now() + 150_000);
     const active = this.pages.get(evidence.tabId);
-    if (!active || !this.current(active) || active.lease.leaseId !== evidence.leaseId) return denied("revoked_lease");
+    if (!active || !this.current(active) || active.lease.leaseId !== evidence.leaseId)
+      return denied("revoked_lease");
     const decision = this.guard.decide(evidence, "", false, request.projection);
-    if (decision.status === "allow" || !["recipient_denied", "page_content_overlap"].includes(decision.reason)) return result(decision);
+    if (
+      decision.status === "allow" ||
+      !["recipient_denied", "page_content_overlap"].includes(decision.reason)
+    )
+      return result(decision);
     if (this.pending.has(active.runId)) return denied("approval_declined");
     const run = this.deps.run(active.runId);
     if (!run) return denied("revoked_lease");
@@ -519,9 +935,14 @@ export class BrowserEgress {
     try {
       const digest = requestDigest(request);
       const approved = await this.deps.approve({
-        runId: active.runId, threadId: run.threadId, taskId: run.taskId, digest,
-        sourceOrigin: decision.sourceOrigin!, destinationOrigin: decision.destinationOrigin!,
-        pageContent: decision.reason === "page_content_overlap", signal: controller.signal,
+        runId: active.runId,
+        threadId: run.threadId,
+        taskId: run.taskId,
+        digest,
+        sourceOrigin: decision.sourceOrigin!,
+        destinationOrigin: decision.destinationOrigin!,
+        pageContent: decision.reason === "page_content_overlap",
+        signal: controller.signal,
       });
       if (controller.signal.aborted) return denied("approval_expired");
       if (!approved) return denied("approval_declined");
@@ -560,8 +981,11 @@ export class BrowserEgress {
       this.authorityVersions.set(pageId, (this.authorityVersions.get(pageId) ?? 0) + 1);
     // A prior failed acknowledgement remains a real debt after the active
     // page was retired. Subsequent mutations must retry that exact identity.
-    return this.repay([...this.retirementDebt.values()].filter(lease =>
-      matches(lease.runId, [lease.sourceOrigin, ...lease.recipientOrigins])));
+    return this.repay(
+      [...this.retirementDebt.values()].filter((lease) =>
+        matches(lease.runId, [lease.sourceOrigin, ...lease.recipientOrigins]),
+      ),
+    );
   }
 
   /** Destruction-only cleanup retires original effects and repays real native debt first. */
@@ -576,7 +1000,9 @@ export class BrowserEgress {
       binding.retirement.abort(new AuxError("cancelled", "The original creator is cleaning up this page."));
     }
     if (active) this.owe(active);
-    await this.repay([...this.retirementDebt.values()].filter(lease => lease.runId === runId && lease.tabId === pageId));
+    await this.repay(
+      [...this.retirementDebt.values()].filter((lease) => lease.runId === runId && lease.tabId === pageId),
+    );
   }
 
   private owe(active: ActivePage): void {
@@ -585,29 +1011,39 @@ export class BrowserEgress {
   }
 
   private blocked(runId: string): boolean {
-    return [...this.mutationBarriers].some(matches => matches(runId));
+    return [...this.mutationBarriers].some((matches) => matches(runId));
   }
 
   private async repay(leases: readonly EgressLease[]): Promise<void> {
-    await Promise.all(leases.map(async lease => {
-      if (!this.deps.native.egressRevoke)
-        throw new AuxError("permission_denied", "Native browser authority retirement is unavailable.");
-      const reply = await this.deps.native.egressRevoke({ lease });
-      if (reply.accepted !== true)
-        throw new AuxError("permission_denied", "Native browser authority retirement was not acknowledged.");
-      if (this.retirementDebt.get(lease.leaseId) === lease) this.retirementDebt.delete(lease.leaseId);
-    }));
+    await Promise.all(
+      leases.map(async (lease) => {
+        if (!this.deps.native.egressRevoke)
+          throw new AuxError("permission_denied", "Native browser authority retirement is unavailable.");
+        const reply = await this.deps.native.egressRevoke({ lease });
+        if (reply.accepted !== true)
+          throw new AuxError(
+            "permission_denied",
+            "Native browser authority retirement was not acknowledged.",
+          );
+        if (this.retirementDebt.get(lease.leaseId) === lease) this.retirementDebt.delete(lease.leaseId);
+      }),
+    );
   }
 
   /** Called inside the existing controller's serialized lifecycle boundary. */
-  async withAuthorityMutation<T>(matches: (runId: string) => boolean, mutation: () => Promise<T>): Promise<T> {
+  async withAuthorityMutation<T>(
+    matches: (runId: string) => boolean,
+    mutation: () => Promise<T>,
+  ): Promise<T> {
     // Each nested caller owns its own barrier, even when its predicate matches.
     const barrier = (runId: string) => matches(runId);
     this.mutationBarriers.add(barrier);
     try {
-      await this.invalidateAuthority(runId => matches(runId));
+      await this.invalidateAuthority((runId) => matches(runId));
       return await mutation();
-    } finally { this.mutationBarriers.delete(barrier); }
+    } finally {
+      this.mutationBarriers.delete(barrier);
+    }
   }
 
   revokePage(pageId: string, runId?: string): void {
@@ -617,7 +1053,7 @@ export class BrowserEgress {
       this.authorityVersions.set(pageId, (this.authorityVersions.get(pageId) ?? 0) + 1);
     }
     const active = this.pages.get(pageId);
-    if (!active || runId && active.runId !== runId) return;
+    if (!active || (runId && active.runId !== runId)) return;
     this.owe(active);
     // Failure retains the original identity for the next acknowledged mutation.
     void this.repay([active.lease]).catch(() => {});
@@ -644,15 +1080,15 @@ export class BrowserEgress {
   close(): void {
     this.closed = true;
     for (const source of this.bindingSources.values()) source.retirement?.abort();
-    for (const runId of new Set([...this.pages.values()].map(page => page.runId))) this.revokeRun(runId);
+    for (const runId of new Set([...this.pages.values()].map((page) => page.runId))) this.revokeRun(runId);
     this.seen.clear();
   }
 }
 
 function requestDigest(request: EgressRequest): string {
-  return createHash("sha256").update(JSON.stringify([
-    request.requestId, request.evidence, request.projection,
-  ])).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify([request.requestId, request.evidence, request.projection]))
+    .digest("hex");
 }
 
 function sameCdpLease(original: EgressLease, current: EgressLease): boolean {

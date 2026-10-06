@@ -12,11 +12,20 @@ export function answerHeadings() {
     const used = new Set<string>();
     function visit(node: MarkdownNode) {
       if (node.type === "heading") {
-        const base = textOf(node).toLowerCase().trim().replace(/[^\p{L}\p{N}\p{M}_\s-]/gu, "").replace(/\s/g, "-") || "section";
-        let slug = base, suffix = 0;
+        const base =
+          textOf(node)
+            .toLowerCase()
+            .trim()
+            .replace(/[^\p{L}\p{N}\p{M}_\s-]/gu, "")
+            .replace(/\s/g, "-") || "section";
+        let slug = base,
+          suffix = 0;
         while (used.has(slug)) slug = `${base}-${++suffix}`;
         used.add(slug);
-        node.data = { ...node.data, hProperties: { ...node.data?.hProperties, "data-answer-heading": slug, tabIndex: -1 } };
+        node.data = {
+          ...node.data,
+          hProperties: { ...node.data?.hProperties, "data-answer-heading": slug, tabIndex: -1 },
+        };
       }
       node.children?.forEach(visit);
     }
@@ -25,5 +34,9 @@ export function answerHeadings() {
 }
 
 export function answerFragment(href: string): string {
-  try { return decodeURIComponent(href.slice(1)); } catch { return href.slice(1); }
+  try {
+    return decodeURIComponent(href.slice(1));
+  } catch {
+    return href.slice(1);
+  }
 }

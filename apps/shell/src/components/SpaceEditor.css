@@ -1,5 +1,6 @@
 @layer components {
-  .space-grain-control, .space-theme-controls {
+  .space-grain-control,
+  .space-theme-controls {
     display: grid;
     gap: var(--space-2);
   }
@@ -11,11 +12,13 @@
     color: var(--ink-1);
     font-size: var(--fs-sm);
   }
-  .space-theme-controls input[type="range"], .space-grain-control input {
+  .space-theme-controls input[type="range"],
+  .space-grain-control input {
     width: 100%;
     accent-color: var(--space-color);
   }
-  .space-theme-controls .space-theme-invert, .space-theme-actions {
+  .space-theme-controls .space-theme-invert,
+  .space-theme-actions {
     display: flex;
   }
   .space-color-pad {
@@ -65,5 +68,4 @@
     border-radius: var(--r-md);
     background: color-mix(in srgb, var(--space-color) 28%, var(--sb-bg));
   }
-
 }

@@ -3,7 +3,15 @@
  * compact observation, a set with member progress. Deterministic so
  * screenshots are reproducible.
  */
-import type { CompactObservation, PageSet, PageTarget, Run, SavedProgram, SetMember, StepRecord } from "@aux/contracts";
+import type {
+  CompactObservation,
+  PageSet,
+  PageTarget,
+  Run,
+  SavedProgram,
+  SetMember,
+  StepRecord,
+} from "@aux/contracts";
 
 const T0 = Date.now() - 2_000; // "now" at load, so elapsed timers read sensibly
 
@@ -15,18 +23,73 @@ interface Site {
 }
 
 export const SITES: Site[] = [
-  { url: "https://github.com/aux-browser/aux/pull/3", title: "Aux Engine M0 — agent-first browser engine foundation · Pull Request #3", letter: "G", color: "#24292f" },
-  { url: "https://linear.app/aux/issue/AUX-142/unified-command-bar", title: "AUX-142 Unified command bar — Linear", letter: "L", color: "#5e6ad2" },
-  { url: "https://stripe.com/docs/api/checkout/sessions/create", title: "Create a Checkout Session | Stripe API Reference", letter: "S", color: "#635bff" },
-  { url: "https://www.notion.so/aux/Shell-redesign-notes", title: "Shell redesign notes", letter: "N", color: "#111111" },
+  {
+    url: "https://github.com/aux-browser/aux/pull/3",
+    title: "Aux Engine M0 — agent-first browser engine foundation · Pull Request #3",
+    letter: "G",
+    color: "#24292f",
+  },
+  {
+    url: "https://linear.app/aux/issue/AUX-142/unified-command-bar",
+    title: "AUX-142 Unified command bar — Linear",
+    letter: "L",
+    color: "#5e6ad2",
+  },
+  {
+    url: "https://stripe.com/docs/api/checkout/sessions/create",
+    title: "Create a Checkout Session | Stripe API Reference",
+    letter: "S",
+    color: "#635bff",
+  },
+  {
+    url: "https://www.notion.so/aux/Shell-redesign-notes",
+    title: "Shell redesign notes",
+    letter: "N",
+    color: "#111111",
+  },
   { url: "https://news.ycombinator.com/", title: "Hacker News", letter: "Y", color: "#ff6600" },
-  { url: "https://www.figma.com/design/aux-shell/Aux-Shell?node-id=12-4", title: "Aux Shell – Figma", letter: "F", color: "#a259ff" },
-  { url: "https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver", title: "ResizeObserver - Web APIs | MDN", letter: "M", color: "#1b1b1b" },
-  { url: "https://www.are.na/aux/browser-references", title: "Browser references — Are.na", letter: "A", color: "#4a4a4a" },
-  { url: "https://vercel.com/aux/aux-web/deployments", title: "Deployments – aux-web – Vercel", letter: "▲", color: "#000000" },
-  { url: "https://mail.google.com/mail/u/0/#inbox", title: "Inbox (12) - hello@aux.dev - Gmail", letter: "M", color: "#d93025" },
-  { url: "https://calendar.google.com/calendar/u/0/r/week", title: "Google Calendar - Week of Sep 15, 2026", letter: "C", color: "#1a73e8" },
-  { url: "https://en.wikipedia.org/wiki/Web_browser_engine", title: "Web browser engine - Wikipedia", letter: "W", color: "#3a3a3a" },
+  {
+    url: "https://www.figma.com/design/aux-shell/Aux-Shell?node-id=12-4",
+    title: "Aux Shell – Figma",
+    letter: "F",
+    color: "#a259ff",
+  },
+  {
+    url: "https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver",
+    title: "ResizeObserver - Web APIs | MDN",
+    letter: "M",
+    color: "#1b1b1b",
+  },
+  {
+    url: "https://www.are.na/aux/browser-references",
+    title: "Browser references — Are.na",
+    letter: "A",
+    color: "#4a4a4a",
+  },
+  {
+    url: "https://vercel.com/aux/aux-web/deployments",
+    title: "Deployments – aux-web – Vercel",
+    letter: "▲",
+    color: "#000000",
+  },
+  {
+    url: "https://mail.google.com/mail/u/0/#inbox",
+    title: "Inbox (12) - hello@aux.dev - Gmail",
+    letter: "M",
+    color: "#d93025",
+  },
+  {
+    url: "https://calendar.google.com/calendar/u/0/r/week",
+    title: "Google Calendar - Week of Sep 15, 2026",
+    letter: "C",
+    color: "#1a73e8",
+  },
+  {
+    url: "https://en.wikipedia.org/wiki/Web_browser_engine",
+    title: "Web browser engine - Wikipedia",
+    letter: "W",
+    color: "#3a3a3a",
+  },
 ];
 
 export function makePage(i: number, overrides: Partial<PageTarget> = {}, site?: Site): PageTarget {
@@ -72,15 +135,158 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
 
 export function makeSteps(runId = RUN_ID, count = 6): StepRecord[] {
   const all: Omit<StepRecord, "runId">[] = [
-    { stepId: "s1", pageId: "page-1", op: "navigate", inputs: { url: "https://github.com/aux-browser/aux/pull/3/files" }, expected: "Files tab opens", outcome: { stepId: "s1", op: "navigate", status: "ok", startedAt: T0 - 46_000, durationMs: 812, detail: "github.com/…/pull/3/files" }, startedAt: T0 - 46_000 },
-    { stepId: "s2", pageId: "page-1", op: "waitFor", inputs: { condition: { kind: "settled" } }, outcome: { stepId: "s2", op: "waitFor", status: "ok", startedAt: T0 - 45_000, durationMs: 340 }, startedAt: T0 - 45_000 },
-    { stepId: "s3", pageId: "page-1", op: "click", inputs: { target: "r18", obsArtifactId: "art-obs-1" }, expected: "Conversation tab shows all review threads", outcome: { stepId: "s3", op: "click", status: "ok", startedAt: T0 - 44_000, durationMs: 128, detail: "tab “Conversation”", receipt: { observed: "tab “Conversation”", remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false } }, startedAt: T0 - 44_000 },
-    { stepId: "s4", pageId: "page-1", op: "extract", inputs: { fields: [{ name: "comments", selector: ".review-comment", all: true }], obsArtifactId: "art-obs-1" }, outcome: { stepId: "s4", op: "extract", status: "ok", startedAt: T0 - 43_000, durationMs: 96, detail: "23 comments", extracted: { comments: 23 } }, startedAt: T0 - 43_000 },
-    { stepId: "s5", pageId: "page-1", op: "click", inputs: { target: "r41" }, expected: "Load more review comments", outcome: { stepId: "s5", op: "click", status: "failed", startedAt: T0 - 41_000, durationMs: 2_004, error: { code: "not_visible", message: "r41 “Load more…” is off-screen; scrolling first" } }, startedAt: T0 - 41_000 },
-    { stepId: "s6", pageId: "page-1", op: "scroll", inputs: { direction: "down" }, outcome: { stepId: "s6", op: "scroll", status: "ok", startedAt: T0 - 39_000, durationMs: 210, detail: "↓ 1 viewport" }, startedAt: T0 - 39_000 },
-    { stepId: "s7", pageId: "page-1", op: "click", inputs: { target: "r41", obsArtifactId: "art-obs-2" }, expected: "Load more review comments", outcome: { stepId: "s7", op: "click", status: "ok", startedAt: T0 - 38_000, durationMs: 151, detail: "button “Load more…”", receipt: { observed: "button “Load more…”", remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true } }, startedAt: T0 - 38_000 },
-    { stepId: "s8", pageId: "page-1", op: "extract", inputs: { fields: [{ name: "comments", selector: ".review-comment", all: true }], obsArtifactId: "art-obs-2" }, outcome: { stepId: "s8", op: "extract", status: "ok", startedAt: T0 - 36_000, durationMs: 88, detail: "31 comments", extracted: { comments: 31 } }, startedAt: T0 - 36_000 },
-    { stepId: "s9", pageId: "page-1", op: "screenshot", inputs: {}, outcome: { stepId: "s9", op: "screenshot", status: "skipped", startedAt: T0 - 35_000, durationMs: 0, detail: "not needed — structured path succeeded" }, startedAt: T0 - 35_000 },
+    {
+      stepId: "s1",
+      pageId: "page-1",
+      op: "navigate",
+      inputs: { url: "https://github.com/aux-browser/aux/pull/3/files" },
+      expected: "Files tab opens",
+      outcome: {
+        stepId: "s1",
+        op: "navigate",
+        status: "ok",
+        startedAt: T0 - 46_000,
+        durationMs: 812,
+        detail: "github.com/…/pull/3/files",
+      },
+      startedAt: T0 - 46_000,
+    },
+    {
+      stepId: "s2",
+      pageId: "page-1",
+      op: "waitFor",
+      inputs: { condition: { kind: "settled" } },
+      outcome: { stepId: "s2", op: "waitFor", status: "ok", startedAt: T0 - 45_000, durationMs: 340 },
+      startedAt: T0 - 45_000,
+    },
+    {
+      stepId: "s3",
+      pageId: "page-1",
+      op: "click",
+      inputs: { target: "r18", obsArtifactId: "art-obs-1" },
+      expected: "Conversation tab shows all review threads",
+      outcome: {
+        stepId: "s3",
+        op: "click",
+        status: "ok",
+        startedAt: T0 - 44_000,
+        durationMs: 128,
+        detail: "tab “Conversation”",
+        receipt: {
+          observed: "tab “Conversation”",
+          remoteConfirmed: true,
+          uncertain: false,
+          dispatchedBeforeTakeover: false,
+        },
+      },
+      startedAt: T0 - 44_000,
+    },
+    {
+      stepId: "s4",
+      pageId: "page-1",
+      op: "extract",
+      inputs: {
+        fields: [{ name: "comments", selector: ".review-comment", all: true }],
+        obsArtifactId: "art-obs-1",
+      },
+      outcome: {
+        stepId: "s4",
+        op: "extract",
+        status: "ok",
+        startedAt: T0 - 43_000,
+        durationMs: 96,
+        detail: "23 comments",
+        extracted: { comments: 23 },
+      },
+      startedAt: T0 - 43_000,
+    },
+    {
+      stepId: "s5",
+      pageId: "page-1",
+      op: "click",
+      inputs: { target: "r41" },
+      expected: "Load more review comments",
+      outcome: {
+        stepId: "s5",
+        op: "click",
+        status: "failed",
+        startedAt: T0 - 41_000,
+        durationMs: 2_004,
+        error: { code: "not_visible", message: "r41 “Load more…” is off-screen; scrolling first" },
+      },
+      startedAt: T0 - 41_000,
+    },
+    {
+      stepId: "s6",
+      pageId: "page-1",
+      op: "scroll",
+      inputs: { direction: "down" },
+      outcome: {
+        stepId: "s6",
+        op: "scroll",
+        status: "ok",
+        startedAt: T0 - 39_000,
+        durationMs: 210,
+        detail: "↓ 1 viewport",
+      },
+      startedAt: T0 - 39_000,
+    },
+    {
+      stepId: "s7",
+      pageId: "page-1",
+      op: "click",
+      inputs: { target: "r41", obsArtifactId: "art-obs-2" },
+      expected: "Load more review comments",
+      outcome: {
+        stepId: "s7",
+        op: "click",
+        status: "ok",
+        startedAt: T0 - 38_000,
+        durationMs: 151,
+        detail: "button “Load more…”",
+        receipt: {
+          observed: "button “Load more…”",
+          remoteConfirmed: false,
+          uncertain: true,
+          dispatchedBeforeTakeover: true,
+        },
+      },
+      startedAt: T0 - 38_000,
+    },
+    {
+      stepId: "s8",
+      pageId: "page-1",
+      op: "extract",
+      inputs: {
+        fields: [{ name: "comments", selector: ".review-comment", all: true }],
+        obsArtifactId: "art-obs-2",
+      },
+      outcome: {
+        stepId: "s8",
+        op: "extract",
+        status: "ok",
+        startedAt: T0 - 36_000,
+        durationMs: 88,
+        detail: "31 comments",
+        extracted: { comments: 31 },
+      },
+      startedAt: T0 - 36_000,
+    },
+    {
+      stepId: "s9",
+      pageId: "page-1",
+      op: "screenshot",
+      inputs: {},
+      outcome: {
+        stepId: "s9",
+        op: "screenshot",
+        status: "skipped",
+        startedAt: T0 - 35_000,
+        durationMs: 0,
+        detail: "not needed — structured path succeeded",
+      },
+      startedAt: T0 - 35_000,
+    },
   ];
   return all.slice(0, count).map((s) => ({ ...s, runId }));
 }
@@ -147,9 +353,16 @@ export const PAST_RUNS: Run[] = [
     goal: "Compare Checkout Session pricing modes and list which support subscriptions",
     status: "completed",
     pageIds: ["page-3"],
-    config: { implementation: "program", routeReason: "saved program Stripe · compare pricing modes", modelCalls: 0 },
+    config: {
+      implementation: "program",
+      routeReason: "saved program Stripe · compare pricing modes",
+      modelCalls: 0,
+    },
     statusMessage: "Done — 3 modes compared",
-    result: { answer: "## Checkout modes\n\n| Mode | Purpose |\n| --- | --- |\n| payment | One-time purchase |\n| setup | Save payment details |\n| subscription | Recurring payment |\n\n```json\n{ \"mode\": \"subscription\", \"description\": \"A sample configuration for reviewing the checkout flow in this synthetic design fixture.\" }\n```" },
+    result: {
+      answer:
+        '## Checkout modes\n\n| Mode | Purpose |\n| --- | --- |\n| payment | One-time purchase |\n| setup | Save payment details |\n| subscription | Recurring payment |\n\n```json\n{ "mode": "subscription", "description": "A sample configuration for reviewing the checkout flow in this synthetic design fixture." }\n```',
+    },
     createdAt: T0 - 3_600_000,
     startedAt: T0 - 3_600_000,
     endedAt: T0 - 3_590_000,
@@ -188,9 +401,39 @@ export const PAST_RUNS: Run[] = [
 ];
 
 export const PROGRAMS: SavedProgram[] = [
-  { programId: "prog-1", name: "Stripe · compare pricing modes", siteKey: "stripe.com/docs", version: 3, parameters: [], stepsJson: "[]", useCount: 7, lastUsedAt: T0 - 3_600_000, createdAt: T0 - 9e8 },
-  { programId: "prog-2", name: "GitHub · unresolved review threads", siteKey: "github.com/*/pull", version: 1, parameters: ["pr"], stepsJson: "[]", useCount: 2, lastUsedAt: T0 - 5e7, createdAt: T0 - 4e8 },
-  { programId: "prog-3", name: "HN · top stories to table", siteKey: "news.ycombinator.com", version: 5, parameters: [], stepsJson: "[]", useCount: 19, lastUsedAt: T0 - 2e8, createdAt: T0 - 8e8 },
+  {
+    programId: "prog-1",
+    name: "Stripe · compare pricing modes",
+    siteKey: "stripe.com/docs",
+    version: 3,
+    parameters: [],
+    stepsJson: "[]",
+    useCount: 7,
+    lastUsedAt: T0 - 3_600_000,
+    createdAt: T0 - 9e8,
+  },
+  {
+    programId: "prog-2",
+    name: "GitHub · unresolved review threads",
+    siteKey: "github.com/*/pull",
+    version: 1,
+    parameters: ["pr"],
+    stepsJson: "[]",
+    useCount: 2,
+    lastUsedAt: T0 - 5e7,
+    createdAt: T0 - 4e8,
+  },
+  {
+    programId: "prog-3",
+    name: "HN · top stories to table",
+    siteKey: "news.ycombinator.com",
+    version: 5,
+    parameters: [],
+    stepsJson: "[]",
+    useCount: 19,
+    lastUsedAt: T0 - 2e8,
+    createdAt: T0 - 8e8,
+  },
 ];
 
 export const SET: PageSet = {
@@ -206,13 +449,30 @@ export const MEMBERS: SetMember[] = SET.memberIds.map((memberId, i) => ({
   setId: SET.setId,
   ordinal: i,
   url: `https://example-${i + 1}.com/pricing`,
-  label: ["Linear", "Notion", "Figma", "Vercel", "Stripe", "Arc", "Raycast", "Superhuman", "Cron", "Warp", "Zed", "Loom"][i],
+  label: [
+    "Linear",
+    "Notion",
+    "Figma",
+    "Vercel",
+    "Stripe",
+    "Arc",
+    "Raycast",
+    "Superhuman",
+    "Cron",
+    "Warp",
+    "Zed",
+    "Loom",
+  ][i],
   status: i < 6 ? "completed" : i < 8 ? "running" : i === 8 ? "failed" : "queued",
   ...(i < 6 ? { resultId: `res-${i + 1}` } : {}),
   ...(i === 8 ? { error: "429 rate limited" } : {}),
 }));
 
-export const HISTORY = SITES.map((s, i) => ({ url: s.url, title: s.title, visitedAt: T0 - (i + 1) * 900_000 }));
+export const HISTORY = SITES.map((s, i) => ({
+  url: s.url,
+  title: s.title,
+  visitedAt: T0 - (i + 1) * 900_000,
+}));
 
 export const PIN_SITES: Site[] = [
   { url: "https://chatgpt.com/", title: "ChatGPT", letter: "C", color: "#10a37f" },
@@ -223,8 +483,18 @@ export const PIN_SITES: Site[] = [
 ];
 
 export const SIDEBAR_TABS: Site[] = [
-  { url: "https://developer.apple.com/account", title: "Account – Apple Developer", letter: "A", color: "#555555" },
-  { url: "https://www.spaceship.com/login", title: "Spaceship Login – Secure Account…", letter: "S", color: "#2563eb" },
+  {
+    url: "https://developer.apple.com/account",
+    title: "Account – Apple Developer",
+    letter: "A",
+    color: "#555555",
+  },
+  {
+    url: "https://www.spaceship.com/login",
+    title: "Spaceship Login – Secure Account…",
+    letter: "S",
+    color: "#2563eb",
+  },
   { url: "https://github.com/", title: "GitHub · Change is constant. GitHu…", letter: "G", color: "#24292f" },
   { url: "https://dashboard.clerk.com/", title: "Dashboard | Clerk.com", letter: "C", color: "#171717" },
   { url: "https://www.google.com/", title: "Google", letter: "G", color: "#4285f4" },

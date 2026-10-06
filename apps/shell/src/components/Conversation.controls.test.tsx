@@ -10,20 +10,41 @@ import { makeRun } from "../mock/fixtures";
 import { COMMANDS } from "@aux/contracts";
 import { ConversationDetails, useConversationOwner } from "./ConversationControls";
 
-
 let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
 const initial = useStore.getState();
 const originalScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
-  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
-  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { callback(0); return 1; });
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
+    { width: 100 },
+  ] as unknown as DOMRectList);
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    callback(0);
+    return 1;
+  });
   vi.stubGlobal("cancelAnimationFrame", () => {});
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
-  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-  useStore.setState({ agentDraft: "Keep this page-free question", railOpen: false, runs: [], pendingTurns: [], pages: [], connected: true, conversationId: null, toasts: [] });
-  vi.spyOn(bridge, "invoke").mockImplementation(async method => {
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  useStore.setState({
+    agentDraft: "Keep this page-free question",
+    railOpen: false,
+    runs: [],
+    pendingTurns: [],
+    pages: [],
+    connected: true,
+    conversationId: null,
+    toasts: [],
+  });
+  vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "runs.list" || method === "runs.messages.list") return [];
     if (method === "conversations.get") return { title: "Other chat", archived: false };
     if (method === "conversations.artifacts.get") return { artifacts: [] };
@@ -35,13 +56,24 @@ beforeEach(() => {
   });
 });
 afterEach(async () => {
-  await act(async () => root.unmount()); host.remove(); useStore.setState(initial, true);
-  vi.restoreAllMocks(); vi.unstubAllGlobals();
+  await act(async () => root.unmount());
+  host.remove();
+  useStore.setState(initial, true);
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   if (originalScroll) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", originalScroll);
   else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
 
-function Details({ id, text = "Original diagnostic", capture }: { id: string; text?: string; capture?(current: () => boolean): void }) {
+function Details({
+  id,
+  text = "Original diagnostic",
+  capture,
+}: {
+  id: string;
+  text?: string;
+  capture?(current: () => boolean): void;
+}) {
   const current = useConversationOwner(id, true);
   capture?.(current);
   return <ConversationDetails current={current} text={text} />;
@@ -53,19 +85,24 @@ it("dispatches the original native disclosure once and supports its focused rema
   await act(async () => summary.click());
   expect(details.open).toBe(true);
   summary.focus();
-  await act(async () => { await executeCommand("toggle-conversation-error-details"); });
+  await act(async () => {
+    await executeCommand("toggle-conversation-error-details");
+  });
   expect(details.open).toBe(false);
   expect(host.querySelector("p")?.textContent).toBe("Original diagnostic");
 });
 it("refuses a changed native window before disclosure and keeps foreign focus out", async () => {
   await act(async () => root.render(<Details id="a" />));
-  const summary = host.querySelector("summary")!; summary.focus();
+  const summary = host.querySelector("summary")!;
+  summary.focus();
   const original = bridge.windowId;
   bridge.windowId = "foreign";
   await expect(executeCommand("toggle-conversation-error-details")).rejects.toThrow("current conversation");
   expect(host.querySelector("details")!.open).toBe(false);
   bridge.windowId = original;
-  const foreign = document.createElement("button"); document.body.append(foreign); foreign.focus();
+  const foreign = document.createElement("button");
+  document.body.append(foreign);
+  foreign.focus();
   await expect(executeCommand("toggle-conversation-error-details")).rejects.toThrow("original focused");
   foreign.remove();
 });
@@ -90,7 +127,10 @@ it("retires a held history error across committed chat A to B to A", async () =>
   let attempts = 0;
   const original = vi.mocked(bridge.invoke).getMockImplementation()!;
   vi.mocked(bridge.invoke).mockImplementation(async (method, params) => {
-    if (method === "runs.list" && ++attempts === 1) return new Promise((_done, fail) => { reject = fail; });
+    if (method === "runs.list" && ++attempts === 1)
+      return new Promise((_done, fail) => {
+        reject = fail;
+      });
     return original(method, params);
   });
   await act(async () => root.render(<Conversation chatId="a" />));
@@ -104,7 +144,8 @@ it("retries actual saved-context failure without changing the retained draft", a
   let attempts = 0;
   const original = vi.mocked(bridge.invoke).getMockImplementation()!;
   vi.mocked(bridge.invoke).mockImplementation(async (method, params) => {
-    if (method === "conversations.images.get" && ++attempts === 1) throw new Error("Original context failure");
+    if (method === "conversations.images.get" && ++attempts === 1)
+      throw new Error("Original context failure");
     return original(method, params);
   });
   useStore.setState({ conversationDrafts: { "chat:a": "Retained reply" } });
@@ -120,21 +161,32 @@ it("retries actual saved-context failure without changing the retained draft", a
 it("keeps the original history cursor and reserves same-tick load-earlier input", async () => {
   let complete!: (value: unknown[]) => void;
   let attempts = 0;
-  const rows = Array.from({ length: 50 }, (_, n) => makeRun({ runId: `run-${n}`, status: "completed", createdAt: n + 1 }));
+  const rows = Array.from({ length: 50 }, (_, n) =>
+    makeRun({ runId: `run-${n}`, status: "completed", createdAt: n + 1 }),
+  );
   const original = vi.mocked(bridge.invoke).getMockImplementation()!;
   vi.mocked(bridge.invoke).mockImplementation(async (method, params) => {
     if (method === "runs.list") {
       if (++attempts === 1) return rows;
-      return new Promise(done => { complete = done; });
+      return new Promise((done) => {
+        complete = done;
+      });
     }
     return original(method, params);
   });
   await act(async () => root.render(<Conversation chatId="a" />));
   const earlier = host.querySelector<HTMLButtonElement>('[data-command-id="load-conversation-history"]')!;
   expect(earlier.textContent).toBe("Load earlier messages");
-  await act(async () => { earlier.click(); earlier.click(); });
+  await act(async () => {
+    earlier.click();
+    earlier.click();
+  });
   expect(attempts).toBe(2);
-  expect(vi.mocked(bridge.invoke).mock.calls.filter(([method]) => method === "runs.list")[1]?.[1]).toEqual({ chatId: "a", limit: 50, before: { createdAt: 50, runId: "run-49" } });
+  expect(vi.mocked(bridge.invoke).mock.calls.filter(([method]) => method === "runs.list")[1]?.[1]).toEqual({
+    chatId: "a",
+    limit: 50,
+    before: { createdAt: 50, runId: "run-49" },
+  });
   await act(async () => complete([]));
   expect(host.querySelector('[data-command-id="load-conversation-history"]')).toBeNull();
 });
@@ -143,7 +195,10 @@ it("does not deliver a held old context failure after a committed chat roundtrip
   let attempts = 0;
   const original = vi.mocked(bridge.invoke).getMockImplementation()!;
   vi.mocked(bridge.invoke).mockImplementation(async (method, params) => {
-    if (method === "conversations.images.get" && ++attempts === 1) return new Promise((_done, fail) => { reject = fail; });
+    if (method === "conversations.images.get" && ++attempts === 1)
+      return new Promise((_done, fail) => {
+        reject = fail;
+      });
     return original(method, params);
   });
   await act(async () => root.render(<Conversation chatId="a" />));
@@ -154,15 +209,27 @@ it("does not deliver a held old context failure after a committed chat roundtrip
   expect(host.querySelector('[data-command-id="reload-conversation-context"]')).toBeNull();
 });
 it("registers only the closed original normal-window scoped command policies", () => {
-  for (const id of ["load-conversation-history", "reload-conversation-context", "toggle-conversation-error-details"]) {
-    const command = COMMANDS.find(command => command.id === id)!;
-    expect(command).toMatchObject({ handler: "shell", dispatch: "scoped", windows: ["normal"], palette: false, intercept: true, bindings: [] });
+  for (const id of [
+    "load-conversation-history",
+    "reload-conversation-context",
+    "toggle-conversation-error-details",
+  ]) {
+    const command = COMMANDS.find((command) => command.id === id)!;
+    expect(command).toMatchObject({
+      handler: "shell",
+      dispatch: "scoped",
+      windows: ["normal"],
+      palette: false,
+      intercept: true,
+      bindings: [],
+    });
   }
 });
 
 it("permanently retires the original focused disclosure after an observed window mismatch without a render", async () => {
   await act(async () => root.render(<Details id="a" />));
-  const summary = host.querySelector("summary")!; summary.focus();
+  const summary = host.querySelector("summary")!;
+  summary.focus();
   const original = bridge.windowId;
   try {
     bridge.windowId = "foreign";
@@ -171,7 +238,9 @@ it("permanently retires the original focused disclosure after an observed window
     await expect(executeCommand("toggle-conversation-error-details")).rejects.toThrow("current conversation");
     expect(host.querySelector("details")!.open).toBe(false);
     expect(host.querySelector("p")?.textContent).toBe("Original diagnostic");
-  } finally { bridge.windowId = original; }
+  } finally {
+    bridge.windowId = original;
+  }
 });
 
 for (const heldMethod of ["runs.list", "conversations.images.get"] as const) {
@@ -179,18 +248,25 @@ for (const heldMethod of ["runs.list", "conversations.images.get"] as const) {
     let reject!: (reason: Error) => void;
     const fallback = vi.mocked(bridge.invoke).getMockImplementation()!;
     vi.mocked(bridge.invoke).mockImplementation((method, params) => {
-      if (method === heldMethod) return new Promise((_done, fail) => { reject = fail; });
+      if (method === heldMethod)
+        return new Promise((_done, fail) => {
+          reject = fail;
+        });
       if (method === (heldMethod === "runs.list" ? "conversations.images.get" : "runs.list"))
         return Promise.reject(new Error("Other original diagnostic"));
       return fallback(method, params);
     });
     useStore.setState({ conversationDrafts: { "chat:a": "Original retained question" } });
     await act(async () => root.render(<Conversation chatId="a" />));
-    const summary = host.querySelector("summary")!; expect(summary).toBeTruthy(); summary.focus();
+    const summary = host.querySelector("summary")!;
+    expect(summary).toBeTruthy();
+    summary.focus();
     const original = bridge.windowId;
     try {
       bridge.windowId = "foreign";
-      await expect(executeCommand("toggle-conversation-error-details")).rejects.toThrow("current conversation");
+      await expect(executeCommand("toggle-conversation-error-details")).rejects.toThrow(
+        "current conversation",
+      );
       bridge.windowId = original;
       await act(async () => reject(new Error("Retired original async diagnostic")));
       expect(host.textContent).not.toContain("Retired original async diagnostic");
@@ -198,19 +274,42 @@ for (const heldMethod of ["runs.list", "conversations.images.get"] as const) {
       expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("Original retained question");
       expect(useStore.getState().pages).toEqual([]);
       expect(useStore.getState().toasts).toEqual([]);
-    } finally { bridge.windowId = original; }
+    } finally {
+      bridge.windowId = original;
+    }
   });
 }
 
 it("a stale captured callback refuses without retiring the newer committed conversation owner", async () => {
   let captured!: () => boolean;
-  await act(async () => root.render(<Details id="a" capture={current => { captured = current; }} />));
+  await act(async () =>
+    root.render(
+      <Details
+        id="a"
+        capture={(current) => {
+          captured = current;
+        }}
+      />,
+    ),
+  );
   const original = captured;
-  await act(async () => root.render(<Details id="b" capture={current => { captured = current; }} />));
+  await act(async () =>
+    root.render(
+      <Details
+        id="b"
+        capture={(current) => {
+          captured = current;
+        }}
+      />,
+    ),
+  );
   expect(original()).toBe(false);
   expect(captured()).toBe(true);
-  const summary = host.querySelector("summary")!; summary.focus();
-  await act(async () => { await executeCommand("toggle-conversation-error-details"); });
+  const summary = host.querySelector("summary")!;
+  summary.focus();
+  await act(async () => {
+    await executeCommand("toggle-conversation-error-details");
+  });
   expect(host.querySelector("details")!.open).toBe(true);
 });
 
@@ -219,8 +318,11 @@ it("opens the original Home conversation through the scoped action while closing
   await act(async () => root.render(<Conversation chatId="a" home embedded />));
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Add context"]')!.click());
   const control = document.querySelector<HTMLButtonElement>('[data-command-id="open-home-conversation"]')!;
-  expect(control.textContent).toContain("Open full conversation"); control.focus();
-  await act(async () => { await executeCommand("open-home-conversation"); });
+  expect(control.textContent).toContain("Open full conversation");
+  control.focus();
+  await act(async () => {
+    await executeCommand("open-home-conversation");
+  });
   expect(document.querySelector('dialog[aria-label="Add context"]')).toBeNull();
   expect(useStore.getState().conversationId).toBe("a");
   expect(useStore.getState().mode).toBe("conversation");

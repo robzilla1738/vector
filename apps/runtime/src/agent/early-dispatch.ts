@@ -55,7 +55,10 @@ export class EarlyDispatcher {
   offer(raw: unknown): void {
     if (this.halted || this.accepted >= this.maxSteps) return;
     const withId =
-      raw && typeof raw === "object" && !Array.isArray(raw) && ((raw as { id?: unknown }).id == null || (raw as { id?: unknown }).id === "")
+      raw &&
+      typeof raw === "object" &&
+      !Array.isArray(raw) &&
+      ((raw as { id?: unknown }).id == null || (raw as { id?: unknown }).id === "")
         ? { ...(raw as Record<string, unknown>), id: `s${this.accepted + 1}` }
         : raw;
     const parsed = PlanStepSchema.safeParse(withId);

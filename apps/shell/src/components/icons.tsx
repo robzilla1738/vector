@@ -10,7 +10,13 @@ export { shellIconTable } from "./icon-elements/Table";
 export { shellIconLayers, shellIconLayersSm } from "./icon-elements/deferred";
 export { shellIconGear, shellIconGearSm } from "./icon-elements/Settings";
 export { shellIconRail } from "./icon-elements/deferred";
-export { shellIconSidebar, shellIconSidebarClose, shellIconSidebarOpen, shellIconSidebarSm, shellIconSidebarCloseSm } from "./icon-elements/PanelLeft";
+export {
+  shellIconSidebar,
+  shellIconSidebarClose,
+  shellIconSidebarOpen,
+  shellIconSidebarSm,
+  shellIconSidebarCloseSm,
+} from "./icon-elements/PanelLeft";
 export { shellIconSearch, shellIconSearchLg } from "./icon-elements/Search";
 export { shellIconFind, shellIconFindSm } from "./icon-elements/deferred";
 export { shellIconChrome, shellIconChromeSm } from "./icon-elements/AppWindow";

@@ -27,7 +27,7 @@ export function spaceThemeColor(theme: SpaceTheme): string {
 }
 
 export function spaceThemeStyle(space?: Pick<Space, "theme"> | null): CSSProperties | undefined {
-  return space?.theme ? { "--space-color": spaceThemeColor(space.theme) } as CSSProperties : undefined;
+  return space?.theme ? ({ "--space-color": spaceThemeColor(space.theme) } as CSSProperties) : undefined;
 }
 
 export interface Pin {
@@ -100,13 +100,34 @@ export function spaceGrain(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : 0;
 }
 
-export function tabLabel(layout: Layout, page: Pick<PageTarget, "pageId" | "url" | "title" | "showBlankDocument">): string {
+export function tabLabel(
+  layout: Layout,
+  page: Pick<PageTarget, "pageId" | "url" | "title" | "showBlankDocument">,
+): string {
   const saved = layout.tabNames?.[page.pageId];
-  return saved?.url === page.url ? saved.title : isHomeAddress(page.url) && !page.showBlankDocument ? "New Tab" : page.title || hostOf(page.url);
+  return saved?.url === page.url
+    ? saved.title
+    : isHomeAddress(page.url) && !page.showBlankDocument
+      ? "New Tab"
+      : page.title || hostOf(page.url);
 }
 
 export function emptyLayout(): Layout {
-  return { spaces: [DEFAULT_SPACE], archivedSpaces: [], splitGroups: [], splitRatio: .5, activeTabs: {}, activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] }, folders: [], tabFolder: {}, archivedTabs: [], tabNames: {} };
+  return {
+    spaces: [DEFAULT_SPACE],
+    archivedSpaces: [],
+    splitGroups: [],
+    splitRatio: 0.5,
+    activeTabs: {},
+    activeSpaceId: DEFAULT_SPACE.id,
+    tabSpace: {},
+    order: [],
+    pins: { [DEFAULT_SPACE.id]: [] },
+    folders: [],
+    tabFolder: {},
+    archivedTabs: [],
+    tabNames: {},
+  };
 }
 
 let seq = 0;
@@ -129,14 +150,22 @@ const sleeping = (lifecycle: PageTarget["lifecycle"] | undefined) =>
   lifecycle === "discarded" || lifecycle === "frozen" || lifecycle === "placeholder";
 
 /** A discard detaches the renderer. Keep a sleeping lifecycle so the strip does not treat that as a close. */
-export function lifecycleForStrip(current: PageTarget["lifecycle"] | undefined, incoming: PageTarget["lifecycle"] | undefined, viewStatus: PageTarget["viewStatus"] | undefined): PageTarget["lifecycle"] | undefined {
+export function lifecycleForStrip(
+  current: PageTarget["lifecycle"] | undefined,
+  incoming: PageTarget["lifecycle"] | undefined,
+  viewStatus: PageTarget["viewStatus"] | undefined,
+): PageTarget["lifecycle"] | undefined {
   if (sleeping(incoming)) return incoming;
   if (viewStatus === "detached") return sleeping(current) ? current : "discarded";
   return incoming ?? current ?? "live";
 }
 
 /** Bring `order` in sync with the live page list: keep known order, append new pages, drop closed. Unchanged order is returned as-is. */
-export function syncOrder(order: string[], pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): string[] {
+export function syncOrder(
+  order: string[],
+  pages: Pick<PageTarget, "pageId">[],
+  preservedIds: string[] = [],
+): string[] {
   const live = new Set(pages.map((p) => p.pageId));
   for (const id of preservedIds) live.add(id);
   const kept = order.filter((id) => live.has(id));
@@ -146,26 +175,40 @@ export function syncOrder(order: string[], pages: Pick<PageTarget, "pageId">[], 
 }
 
 /** Layout with its order synced; the same object when nothing moved. */
-export function withSyncedOrder(layout: Layout, pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): Layout {
+export function withSyncedOrder(
+  layout: Layout,
+  pages: Pick<PageTarget, "pageId">[],
+  preservedIds: string[] = [],
+): Layout {
   const order = syncOrder(layout.order, pages, preservedIds);
   return order === layout.order ? layout : { ...layout, order };
 }
 
 /** Order and Space assignment synced to the live pages — identity-preserving. */
-export function syncLayout(layout: Layout, pages: (Pick<PageTarget, "pageId"> & Partial<Pick<PageTarget, "url">>)[], preservedIds: string[] = []): Layout {
+export function syncLayout(
+  layout: Layout,
+  pages: (Pick<PageTarget, "pageId"> & Partial<Pick<PageTarget, "url">>)[],
+  preservedIds: string[] = [],
+): Layout {
   const synced = syncSpaces(withSyncedOrder(layout, pages, preservedIds), pages, preservedIds);
   const names = synced.tabNames;
   if (!names || !Object.keys(names).length) return synced;
-  const live = new Map(pages.map(page => [page.pageId, page]));
-  const next = Object.fromEntries(Object.entries(names).filter(([pageId, name]) => {
-    const page = live.get(pageId);
-    return page ? page.url === undefined || page.url === name.url : preservedIds.includes(pageId);
-  }));
+  const live = new Map(pages.map((page) => [page.pageId, page]));
+  const next = Object.fromEntries(
+    Object.entries(names).filter(([pageId, name]) => {
+      const page = live.get(pageId);
+      return page ? page.url === undefined || page.url === name.url : preservedIds.includes(pageId);
+    }),
+  );
   return Object.keys(next).length === Object.keys(names).length ? synced : { ...synced, tabNames: next };
 }
 
 /** Ensure every live page has a space; new pages land in the active space. */
-export function syncSpaces(layout: Layout, pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): Layout {
+export function syncSpaces(
+  layout: Layout,
+  pages: Pick<PageTarget, "pageId">[],
+  preservedIds: string[] = [],
+): Layout {
   const ids = new Set(pages.map((p) => p.pageId));
   for (const id of preservedIds) ids.add(id);
   const tabSpace: Record<string, string> = {};
@@ -184,12 +227,12 @@ export function syncSpaces(layout: Layout, pages: Pick<PageTarget, "pageId">[], 
 /** Horizontal groups are contiguous, positioned where their first member occurs. */
 export function groupedTabs<T extends { pageId: string }>(layout: Layout, tabs: T[]): T[] {
   const seen = new Set<string>();
-  return tabs.flatMap(page => {
+  return tabs.flatMap((page) => {
     const folderId = layout.tabFolder[page.pageId];
-    if (!folderId || !layout.folders.some(folder => folder.id === folderId)) return [page];
+    if (!folderId || !layout.folders.some((folder) => folder.id === folderId)) return [page];
     if (seen.has(folderId)) return [];
     seen.add(folderId);
-    return tabs.filter(item => layout.tabFolder[item.pageId] === folderId);
+    return tabs.filter((item) => layout.tabFolder[item.pageId] === folderId);
   });
 }
 
@@ -208,7 +251,12 @@ export function tabsInSpace<T extends Pick<PageTarget, "pageId" | "viewStatus" |
   // pages that have not been ordered yet (racing an event) trail the list
   const ordered = new Set(layout.order);
   for (const p of pages) {
-    if (!ordered.has(p.pageId) && isStripTab(p) && (layout.tabSpace[p.pageId] ?? layout.activeSpaceId) === spaceId) out.push(p);
+    if (
+      !ordered.has(p.pageId) &&
+      isStripTab(p) &&
+      (layout.tabSpace[p.pageId] ?? layout.activeSpaceId) === spaceId
+    )
+      out.push(p);
   }
   return out;
 }
@@ -225,7 +273,13 @@ export function moveTab(layout: Layout, pageId: string, beforeId: string | null)
 }
 
 /** Reorder by index within a space — what a drag gesture produces. */
-export function reorderInSpace(layout: Layout, spaceId: string, from: number, to: number, pages: Pick<PageTarget, "pageId" | "viewStatus" | "ownedByRuntime">[]): Layout {
+export function reorderInSpace(
+  layout: Layout,
+  spaceId: string,
+  from: number,
+  to: number,
+  pages: Pick<PageTarget, "pageId" | "viewStatus" | "ownedByRuntime">[],
+): Layout {
   const tabs = tabsInSpace(layout, pages, spaceId).map((p) => p.pageId);
   if (from < 0 || from >= tabs.length || to < 0 || to > tabs.length || from === to) return layout;
   const moving = tabs[from]!;
@@ -248,23 +302,64 @@ export function assignSpace(layout: Layout, pageId: string, spaceId: string): La
   if (folder && folder.spaceId !== spaceId) {
     const tabFolder = { ...layout.tabFolder };
     delete tabFolder[pageId];
-    return { ...layout, tabSpace, tabFolder,
-      tidyUndo: layout.tidyUndo?.moved.some(item => item.pageId === pageId) ? undefined : layout.tidyUndo };
+    return {
+      ...layout,
+      tabSpace,
+      tabFolder,
+      tidyUndo: layout.tidyUndo?.moved.some((item) => item.pageId === pageId) ? undefined : layout.tidyUndo,
+    };
   }
   return { ...layout, tabSpace };
 }
 
-export function createSpace(layout: Layout, name: string, color?: SpaceColor, grain = 0, theme?: SpaceTheme | null): Layout {
+export function createSpace(
+  layout: Layout,
+  name: string,
+  color?: SpaceColor,
+  grain = 0,
+  theme?: SpaceTheme | null,
+): Layout {
   const used = new Set(layout.spaces.map((s) => s.color));
-  const pick = color ?? SPACE_COLORS.find((c) => !used.has(c)) ?? SPACE_COLORS[layout.spaces.length % SPACE_COLORS.length]!;
-  const space: Space = { id: newSpaceId(), name: name.trim() || `Space ${layout.spaces.length + 1}`, color: pick, grain: spaceGrain(grain), ...(theme ? { theme } : {}) };
-  return { ...layout, spaces: [...layout.spaces, space], activeSpaceId: space.id, pins: { ...layout.pins, [space.id]: [] } };
-}
-
-export function renameSpace(layout: Layout, spaceId: string, name: string, color?: SpaceColor, grain?: number, theme?: SpaceTheme | null): Layout {
+  const pick =
+    color ??
+    SPACE_COLORS.find((c) => !used.has(c)) ??
+    SPACE_COLORS[layout.spaces.length % SPACE_COLORS.length]!;
+  const space: Space = {
+    id: newSpaceId(),
+    name: name.trim() || `Space ${layout.spaces.length + 1}`,
+    color: pick,
+    grain: spaceGrain(grain),
+    ...(theme ? { theme } : {}),
+  };
   return {
     ...layout,
-    spaces: layout.spaces.map((s) => (s.id === spaceId ? { ...s, name: name.trim() || s.name, color: color ?? s.color, grain: grain === undefined ? s.grain : spaceGrain(grain), ...(theme === undefined ? {} : { theme: theme ?? undefined }) } : s)),
+    spaces: [...layout.spaces, space],
+    activeSpaceId: space.id,
+    pins: { ...layout.pins, [space.id]: [] },
+  };
+}
+
+export function renameSpace(
+  layout: Layout,
+  spaceId: string,
+  name: string,
+  color?: SpaceColor,
+  grain?: number,
+  theme?: SpaceTheme | null,
+): Layout {
+  return {
+    ...layout,
+    spaces: layout.spaces.map((s) =>
+      s.id === spaceId
+        ? {
+            ...s,
+            name: name.trim() || s.name,
+            color: color ?? s.color,
+            grain: grain === undefined ? s.grain : spaceGrain(grain),
+            ...(theme === undefined ? {} : { theme: theme ?? undefined }),
+          }
+        : s,
+    ),
   };
 }
 
@@ -274,7 +369,9 @@ export function removeSpace(layout: Layout, spaceId: string): Layout {
   const idx = layout.spaces.findIndex((s) => s.id === spaceId);
   if (idx === -1) return layout;
   const fallback = layout.spaces[idx === 0 ? 1 : idx - 1]!;
-  const tabSpace = Object.fromEntries(Object.entries(layout.tabSpace).map(([k, v]) => [k, v === spaceId ? fallback.id : v]));
+  const tabSpace = Object.fromEntries(
+    Object.entries(layout.tabSpace).map(([k, v]) => [k, v === spaceId ? fallback.id : v]),
+  );
   const pins = { ...layout.pins };
   const moved = pins[spaceId] ?? [];
   delete pins[spaceId];
@@ -295,11 +392,15 @@ export function setActiveSpace(layout: Layout, spaceId: string): Layout {
 }
 
 export function reconcileSpaces(layout: Layout, records: BrowserSpace[]): Layout {
-  const spaces = records.filter(space => !space.archived);
+  const spaces = records.filter((space) => !space.archived);
   if (!spaces.length) return layout;
   return {
-    ...layout, spaces, archivedSpaces: records.filter(space => space.archived),
-    activeSpaceId: spaces.some(space => space.id === layout.activeSpaceId) ? layout.activeSpaceId : spaces[0]!.id,
+    ...layout,
+    spaces,
+    archivedSpaces: records.filter((space) => space.archived),
+    activeSpaceId: spaces.some((space) => space.id === layout.activeSpaceId)
+      ? layout.activeSpaceId
+      : spaces[0]!.id,
   };
 }
 
@@ -313,10 +414,11 @@ export function togglePin(layout: Layout, spaceId: string, pin: Pin): Layout {
 /** Move by stable site identity so overflow and visible pins share one order. */
 export function reorderPin(layout: Layout, spaceId: string, url: string, beforeUrl: string | null): Layout {
   const pins = layout.pins[spaceId] ?? [];
-  const pin = pins.find(item => item.url === url);
-  if (!pin || beforeUrl === url || (beforeUrl !== null && !pins.some(item => item.url === beforeUrl))) return layout;
-  const next = pins.filter(item => item.url !== url);
-  const index = beforeUrl === null ? next.length : next.findIndex(item => item.url === beforeUrl);
+  const pin = pins.find((item) => item.url === url);
+  if (!pin || beforeUrl === url || (beforeUrl !== null && !pins.some((item) => item.url === beforeUrl)))
+    return layout;
+  const next = pins.filter((item) => item.url !== url);
+  const index = beforeUrl === null ? next.length : next.findIndex((item) => item.url === beforeUrl);
   next.splice(index, 0, pin);
   return { ...layout, pins: { ...layout.pins, [spaceId]: next } };
 }
@@ -334,7 +436,9 @@ export function tabsInFolder<T extends Pick<PageTarget, "pageId" | "viewStatus" 
   pages: T[],
   folderId: string,
 ): T[] {
-  return tabsInSpace(layout, pages, layout.folders.find((f) => f.id === folderId)?.spaceId ?? "").filter((p) => layout.tabFolder[p.pageId] === folderId);
+  return tabsInSpace(layout, pages, layout.folders.find((f) => f.id === folderId)?.spaceId ?? "").filter(
+    (p) => layout.tabFolder[p.pageId] === folderId,
+  );
 }
 
 export function unfiledTabs<T extends Pick<PageTarget, "pageId" | "viewStatus" | "ownedByRuntime">>(
@@ -358,12 +462,21 @@ export function createFolder(layout: Layout, spaceId: string, name: string): Lay
 export function renameFolder(layout: Layout, folderId: string, name: string): Layout {
   const n = name.trim();
   if (!n) return layout;
-  return { ...layout, folders: layout.folders.map((f) => (f.id === folderId ? { ...f, name: n } : f)),
-    tidyUndo: layout.tidyUndo?.created.some(item => item.id === folderId && item.name !== n) ? undefined : layout.tidyUndo };
+  return {
+    ...layout,
+    folders: layout.folders.map((f) => (f.id === folderId ? { ...f, name: n } : f)),
+    tidyUndo: layout.tidyUndo?.created.some((item) => item.id === folderId && item.name !== n)
+      ? undefined
+      : layout.tidyUndo,
+  };
 }
 
 /** Partial folder update — name, accent colour and emoji glyph share one path. */
-export function updateFolder(layout: Layout, folderId: string, patch: { name?: string; color?: SpaceColor | null; emoji?: string | null }): Layout {
+export function updateFolder(
+  layout: Layout,
+  folderId: string,
+  patch: { name?: string; color?: SpaceColor | null; emoji?: string | null },
+): Layout {
   if (!layout.folders.some((f) => f.id === folderId)) return layout;
   const updated = {
     ...layout,
@@ -371,27 +484,46 @@ export function updateFolder(layout: Layout, folderId: string, patch: { name?: s
       if (f.id !== folderId) return f;
       const next = { ...f };
       if (patch.name !== undefined && patch.name.trim()) next.name = patch.name.trim();
-      if (patch.color !== undefined) { if (patch.color) next.color = patch.color; else delete next.color; }
-      if (patch.emoji !== undefined) { if (patch.emoji) next.emoji = patch.emoji; else delete next.emoji; }
+      if (patch.color !== undefined) {
+        if (patch.color) next.color = patch.color;
+        else delete next.color;
+      }
+      if (patch.emoji !== undefined) {
+        if (patch.emoji) next.emoji = patch.emoji;
+        else delete next.emoji;
+      }
       return next;
     }),
   };
-  const original = layout.tidyUndo?.created.find(item => item.id === folderId);
-  const changed = updated.folders.find(item => item.id === folderId);
-  return { ...updated, tidyUndo: original && JSON.stringify(original) !== JSON.stringify(changed) ? undefined : layout.tidyUndo };
+  const original = layout.tidyUndo?.created.find((item) => item.id === folderId);
+  const changed = updated.folders.find((item) => item.id === folderId);
+  return {
+    ...updated,
+    tidyUndo: original && JSON.stringify(original) !== JSON.stringify(changed) ? undefined : layout.tidyUndo,
+  };
 }
 
 export function toggleFolder(layout: Layout, folderId: string): Layout {
-  return { ...layout, folders: layout.folders.map((f) => (f.id === folderId ? { ...f, collapsed: !f.collapsed } : f)),
-    tidyUndo: layout.tidyUndo?.created.some(item => item.id === folderId) ? undefined : layout.tidyUndo };
+  return {
+    ...layout,
+    folders: layout.folders.map((f) => (f.id === folderId ? { ...f, collapsed: !f.collapsed } : f)),
+    tidyUndo: layout.tidyUndo?.created.some((item) => item.id === folderId) ? undefined : layout.tidyUndo,
+  };
 }
 
 export function removeFolder(layout: Layout, folderId: string): Layout {
   const tabFolder = { ...layout.tabFolder };
   for (const [pageId, fid] of Object.entries(tabFolder)) if (fid === folderId) delete tabFolder[pageId];
-  return { ...layout, folders: layout.folders.filter((f) => f.id !== folderId), tabFolder,
-    tidyUndo: layout.tidyUndo?.created.some(item => item.id === folderId) ||
-      layout.tidyUndo?.moved.some(item => item.fromFolderId === folderId) ? undefined : layout.tidyUndo };
+  return {
+    ...layout,
+    folders: layout.folders.filter((f) => f.id !== folderId),
+    tabFolder,
+    tidyUndo:
+      layout.tidyUndo?.created.some((item) => item.id === folderId) ||
+      layout.tidyUndo?.moved.some((item) => item.fromFolderId === folderId)
+        ? undefined
+        : layout.tidyUndo,
+  };
 }
 
 export function assignFolder(layout: Layout, pageId: string, folderId: string | null): Layout {
@@ -401,7 +533,9 @@ export function assignFolder(layout: Layout, pageId: string, folderId: string | 
   const previous = tabFolder[pageId];
   const leaves = !!previous && created.has(previous) && previous !== folderId;
   const enters = !!folderId && created.has(folderId) && previous !== folderId;
-  const movesReceipt = !!layout.tidyUndo?.moved.some((item) => item.pageId === pageId && item.toFolderId !== folderId);
+  const movesReceipt = !!layout.tidyUndo?.moved.some(
+    (item) => item.pageId === pageId && item.toFolderId !== folderId,
+  );
   // A later session restores assignments from this receipt. Any membership change
   // on a Tidy folder has to drop it, or Undo becomes valid for the old grouping.
   const tidyUndo = leaves || enters || movesReceipt ? undefined : layout.tidyUndo;
@@ -452,18 +586,28 @@ export function hostOf(url: string): string {
 
 /** Only pages that Aux can display inside its own stage can be paired. */
 export function canSplitPage(page: PageTarget | undefined): boolean {
-  return !!page && isTab(page) && !!nativePageId({mode:"focus",overlay:null,activePageId:page.pageId,...page});
+  return (
+    !!page &&
+    isTab(page) &&
+    !!nativePageId({ mode: "focus", overlay: null, activePageId: page.pageId, ...page })
+  );
 }
 
 /** Pair a preview with the current tab, or with another tab in the same Space. */
-export function previewSplit(layout: Layout, pages: PageTarget[], pageId: string, activePageId: string | null): { primary: string; companion: string } | null {
-  const target = pages.find(page => page.pageId === pageId);
+export function previewSplit(
+  layout: Layout,
+  pages: PageTarget[],
+  pageId: string,
+  activePageId: string | null,
+): { primary: string; companion: string } | null {
+  const target = pages.find((page) => page.pageId === pageId);
   if (!canSplitPage(target)) return null;
   const spaceId = layout.tabSpace[pageId];
-  const partner = (page: PageTarget | undefined) => !!page && page.pageId !== pageId && canSplitPage(page) && layout.tabSpace[page.pageId] === spaceId;
-  const active = pages.find(page => page.pageId === activePageId);
+  const partner = (page: PageTarget | undefined) =>
+    !!page && page.pageId !== pageId && canSplitPage(page) && layout.tabSpace[page.pageId] === spaceId;
+  const active = pages.find((page) => page.pageId === activePageId);
   if (active && partner(active)) return { primary: active.pageId, companion: pageId };
-  const other = pages.find(page => partner(page));
+  const other = pages.find((page) => partner(page));
   return other ? { primary: pageId, companion: other.pageId } : null;
 }
 
@@ -476,59 +620,111 @@ export function splitIndex(layout: Pick<Layout, "splitGroups">): ReadonlyMap<str
   if (!groups) return new Map();
   let index = splitIndexes.get(groups);
   if (!index) {
-    index = new Map(groups.flatMap(group => group.panes.map(id => [id, group] as const)));
+    index = new Map(groups.flatMap((group) => group.panes.map((id) => [id, group] as const)));
     splitIndexes.set(groups, index);
   }
   return index;
 }
 
 export function splitGroupForPage(layout: Layout, pageId: string | null): SplitGroup | null {
-  return pageId ? splitIndex(layout).get(pageId) ?? null : null;
+  return pageId ? (splitIndex(layout).get(pageId) ?? null) : null;
 }
 
 /** All panes must remain available in their original Space. */
 export function splitForPage(layout: Layout, pages: PageTarget[], pageId: string | null): string | null {
   const group = splitGroupForPage(layout, pageId);
   let pageIndex = pageIndexes.get(pages);
-  if (!pageIndex) { pageIndex = new Map(pages.map(page => [page.pageId, page])); pageIndexes.set(pages, pageIndex); }
-  if (!group || !group.panes.every(id => layout.tabSpace[id] === layout.tabSpace[pageId!]
-    && !!pageIndex.get(id) && isTab(pageIndex.get(id)!))) return null;
-  return group.panes.find(id => id !== pageId) ?? null;
+  if (!pageIndex) {
+    pageIndex = new Map(pages.map((page) => [page.pageId, page]));
+    pageIndexes.set(pages, pageIndex);
+  }
+  if (
+    !group ||
+    !group.panes.every(
+      (id) =>
+        layout.tabSpace[id] === layout.tabSpace[pageId!] && !!pageIndex.get(id) && isTab(pageIndex.get(id)!),
+    )
+  )
+    return null;
+  return group.panes.find((id) => id !== pageId) ?? null;
 }
 
-const defaultSplitLayout = (count: number): SplitGroup["layout"] => count === 4 ? "grid" : count === 3 ? "columns" : "row";
-const defaultSplitRatios = (layout: SplitGroup["layout"]) => layout === "columns" ? [1 / 3, .5] : layout === "grid" ? [.5, .5, .5] : layout === "one-plus-two" ? [.5, .5] : [.5];
+const defaultSplitLayout = (count: number): SplitGroup["layout"] =>
+  count === 4 ? "grid" : count === 3 ? "columns" : "row";
+const defaultSplitRatios = (layout: SplitGroup["layout"]) =>
+  layout === "columns"
+    ? [1 / 3, 0.5]
+    : layout === "grid"
+      ? [0.5, 0.5, 0.5]
+      : layout === "one-plus-two"
+        ? [0.5, 0.5]
+        : [0.5];
 
 function updateSplit(layout: Layout, group: SplitGroup, next: SplitGroup | null): Layout {
-  return { ...layout, splitGroups: (layout.splitGroups ?? []).flatMap(item => item.id === group.id ? next ? [next] : [] : [item]) };
+  return {
+    ...layout,
+    splitGroups: (layout.splitGroups ?? []).flatMap((item) =>
+      item.id === group.id ? (next ? [next] : []) : [item],
+    ),
+  };
 }
 
-export function addPane(layout: Layout, primary: string, pageId: string, edge: "left" | "right" | "top" | "bottom" = "right"): Layout {
-  if (primary === pageId || !layout.tabSpace[primary] || layout.tabSpace[primary] !== layout.tabSpace[pageId]) return layout;
+export function addPane(
+  layout: Layout,
+  primary: string,
+  pageId: string,
+  edge: "left" | "right" | "top" | "bottom" = "right",
+): Layout {
+  if (primary === pageId || !layout.tabSpace[primary] || layout.tabSpace[primary] !== layout.tabSpace[pageId])
+    return layout;
   const group = splitGroupForPage(layout, primary);
   if (splitGroupForPage(layout, pageId) || group?.panes.length === 4) return layout;
   const panes = [...(group?.panes ?? [primary])];
-  if (edge === "left" || edge === "top") panes.unshift(pageId); else panes.push(pageId);
-  const shape = panes.length === 2 ? edge === "top" || edge === "bottom" ? "column" : "row"
-    : panes.length === 3 && (edge === "top" || edge === "bottom") ? "one-plus-two" : defaultSplitLayout(panes.length);
-  const next: SplitGroup = { id: group?.id ?? `split-${primary}`, panes, layout: shape, ratios: defaultSplitRatios(shape), focused: pageId };
-  return group ? updateSplit(layout, group, next) : { ...layout, splitGroups: [...(layout.splitGroups ?? []), next] };
+  if (edge === "left" || edge === "top") panes.unshift(pageId);
+  else panes.push(pageId);
+  const shape =
+    panes.length === 2
+      ? edge === "top" || edge === "bottom"
+        ? "column"
+        : "row"
+      : panes.length === 3 && (edge === "top" || edge === "bottom")
+        ? "one-plus-two"
+        : defaultSplitLayout(panes.length);
+  const next: SplitGroup = {
+    id: group?.id ?? `split-${primary}`,
+    panes,
+    layout: shape,
+    ratios: defaultSplitRatios(shape),
+    focused: pageId,
+  };
+  return group
+    ? updateSplit(layout, group, next)
+    : { ...layout, splitGroups: [...(layout.splitGroups ?? []), next] };
 }
 
 export function removePane(layout: Layout, pageId: string): Layout {
   const group = splitGroupForPage(layout, pageId);
   if (!group) return layout;
-  const panes = group.panes.filter(id => id !== pageId);
+  const panes = group.panes.filter((id) => id !== pageId);
   if (panes.length < 2) return updateSplit(layout, group, null);
   const shape = defaultSplitLayout(panes.length);
-  return updateSplit(layout, group, { ...group, panes, layout: shape, ratios: defaultSplitRatios(shape),
-    focused: group.focused === pageId ? panes[Math.min(group.panes.indexOf(pageId), panes.length - 1)]! : group.focused });
+  return updateSplit(layout, group, {
+    ...group,
+    panes,
+    layout: shape,
+    ratios: defaultSplitRatios(shape),
+    focused:
+      group.focused === pageId
+        ? panes[Math.min(group.panes.indexOf(pageId), panes.length - 1)]!
+        : group.focused,
+  });
 }
 
 export function swapPanes(layout: Layout, pageId: string, otherId?: string): Layout {
   const group = splitGroupForPage(layout, pageId);
   if (!group) return layout;
-  const first = group.panes.indexOf(pageId), second = otherId ? group.panes.indexOf(otherId) : (first + 1) % group.panes.length;
+  const first = group.panes.indexOf(pageId),
+    second = otherId ? group.panes.indexOf(otherId) : (first + 1) % group.panes.length;
   if (second < 0 || first === second) return layout;
   const panes = [...group.panes];
   [panes[first], panes[second]] = [panes[second]!, panes[first]!];
@@ -538,7 +734,14 @@ export function swapPanes(layout: Layout, pageId: string, otherId?: string): Lay
 export function flipLayout(layout: Layout, pageId: string): Layout {
   const group = splitGroupForPage(layout, pageId);
   if (!group || group.layout === "grid") return layout;
-  const shape = group.layout === "row" ? "column" : group.layout === "column" ? "row" : group.layout === "columns" ? "one-plus-two" : "columns";
+  const shape =
+    group.layout === "row"
+      ? "column"
+      : group.layout === "column"
+        ? "row"
+        : group.layout === "columns"
+          ? "one-plus-two"
+          : "columns";
   return updateSplit(layout, group, { ...group, layout: shape, ratios: defaultSplitRatios(shape) });
 }
 
@@ -549,13 +752,16 @@ export function separate(layout: Layout, pageId: string): Layout {
 
 export function focusPane(layout: Layout, pageId: string): Layout {
   const group = splitGroupForPage(layout, pageId);
-  return group && group.focused !== pageId ? updateSplit(layout, group, { ...group, focused: pageId }) : layout;
+  return group && group.focused !== pageId
+    ? updateSplit(layout, group, { ...group, focused: pageId })
+    : layout;
 }
 
 export function resizeSplit(layout: Layout, pageId: string, divider: number, ratio: number): Layout {
   const group = splitGroupForPage(layout, pageId);
   if (!group || divider < 0 || divider >= group.ratios.length || !Number.isFinite(ratio)) return layout;
-  const ratios = [...group.ratios]; ratios[divider] = Math.max(.1, Math.min(.9, ratio));
+  const ratios = [...group.ratios];
+  ratios[divider] = Math.max(0.1, Math.min(0.9, ratio));
   return updateSplit(layout, group, { ...group, ratios });
 }
 

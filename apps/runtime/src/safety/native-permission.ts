@@ -73,10 +73,15 @@ export class NativePermissionController {
   private mutationContext = new AsyncLocalStorage<{ active: boolean }>();
   private mutationTail: Promise<void> = Promise.resolve();
   private retirementAttempts = new Map<string, Promise<void>>();
-  private retirementDebt = new Map<string, { runId: string; tabId: string; batchId: string; reservationId: string }>();
+  private retirementDebt = new Map<
+    string,
+    { runId: string; tabId: string; batchId: string; reservationId: string }
+  >();
   private authorityChanging(runId: string): boolean {
-    return [...this.authorityMutations].some(matches => matches(runId))
-      || [...this.retirementDebt.values()].some(receipt => receipt.runId === runId);
+    return (
+      [...this.authorityMutations].some((matches) => matches(runId)) ||
+      [...this.retirementDebt.values()].some((receipt) => receipt.runId === runId)
+    );
   }
   constructor(
     private deps: {
@@ -91,7 +96,11 @@ export class NativePermissionController {
       standingOnly(runId: string): boolean;
       assertDispatch(runId: string): Promise<void>;
       overnightAuthority(runId: string): { windowEnd: number; requireAC: boolean } | null;
-      retireReservation(input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }>;
+      retireReservation(input: {
+        tabId: string;
+        batchId: string;
+        reservationId: string;
+      }): Promise<{ accepted: true }>;
       requiresTurn(run: Run, pageId: string): boolean;
       now?: () => number;
     },
@@ -101,7 +110,8 @@ export class NativePermissionController {
   }
   invalidateAuthority(matches: (runId: string, origins: readonly string[]) => boolean): void {
     for (const [batchId, batch] of this.batches)
-      if (matches(batch.runId, [batch.request.requestingOrigin, batch.request.embeddingOrigin])) this.invalidate(batchId);
+      if (matches(batch.runId, [batch.request.requestingOrigin, batch.request.embeddingOrigin]))
+        this.invalidate(batchId);
   }
   invalidate(batchId: string): void {
     const batch = this.batches.get(batchId);
@@ -264,35 +274,51 @@ export class NativePermissionController {
 
   /** Retire exact queued receipts before a real settings, lifecycle or ledger mutation. */
   private captureRetirementDebt(matches: (runId: string) => boolean): void {
-    for (const [batchId, batch] of this.batches) if (matches(batch.runId) && batch.status === "authorized" && batch.reservation) {
-      this.retirementDebt.set(batch.reservation.id, { runId: batch.runId, tabId: batch.request.tabId,
-        batchId, reservationId: batch.reservation.id });
-      this.invalidate(batchId);
-    }
+    for (const [batchId, batch] of this.batches)
+      if (matches(batch.runId) && batch.status === "authorized" && batch.reservation) {
+        this.retirementDebt.set(batch.reservation.id, {
+          runId: batch.runId,
+          tabId: batch.request.tabId,
+          batchId,
+          reservationId: batch.reservation.id,
+        });
+        this.invalidate(batchId);
+      }
   }
   private async retireDebt(matches: (runId: string) => boolean): Promise<void> {
-    for (const receipt of [...this.retirementDebt.values()].filter(receipt => matches(receipt.runId))) {
+    for (const receipt of [...this.retirementDebt.values()].filter((receipt) => matches(receipt.runId))) {
       let attempt = this.retirementAttempts.get(receipt.reservationId);
       if (!attempt) {
         attempt = Promise.resolve().then(async () => {
           const { runId: _runId, ...input } = receipt;
           const result = await this.deps.retireReservation(input);
-          if (result.accepted !== true) throw new AuxError("permission_denied", "Native permission retirement was not acknowledged.");
+          if (result.accepted !== true)
+            throw new AuxError("permission_denied", "Native permission retirement was not acknowledged.");
           this.retirementDebt.delete(receipt.reservationId);
         });
         this.retirementAttempts.set(receipt.reservationId, attempt);
       }
-      try { await attempt; }
-      finally { if (this.retirementAttempts.get(receipt.reservationId) === attempt) this.retirementAttempts.delete(receipt.reservationId); }
+      try {
+        await attempt;
+      } finally {
+        if (this.retirementAttempts.get(receipt.reservationId) === attempt)
+          this.retirementAttempts.delete(receipt.reservationId);
+      }
     }
   }
-  async withAuthorityMutation<T>(matches: (runId: string) => boolean, mutation: () => Promise<T>): Promise<T> {
+  async withAuthorityMutation<T>(
+    matches: (runId: string) => boolean,
+    mutation: () => Promise<T>,
+  ): Promise<T> {
     // Capture exact debt BEFORE any await; a concurrent denial cannot hide its receipt.
     const barrier = (runId: string) => matches(runId);
     this.authorityMutations.add(barrier);
     this.captureRetirementDebt(matches);
-    try { return await this.withMutationTurn(() => this.retireDebt(matches), mutation); }
-    finally { this.authorityMutations.delete(barrier); }
+    try {
+      return await this.withMutationTurn(() => this.retireDebt(matches), mutation);
+    } finally {
+      this.authorityMutations.delete(barrier);
+    }
   }
 
   /** Native control must recheck its original binding inside the existing turn
@@ -313,7 +339,9 @@ export class NativePermissionController {
         await this.retireDebt(matches);
         await validate();
       }, mutation);
-    } finally { this.authorityMutations.delete(barrier); }
+    } finally {
+      this.authorityMutations.delete(barrier);
+    }
   }
 
   private async withMutationTurn<T>(prepare: () => Promise<void>, mutation: () => Promise<T>): Promise<T> {
@@ -324,22 +352,50 @@ export class NativePermissionController {
     }
     const previous = this.mutationTail;
     let release!: () => void;
-    this.mutationTail = new Promise<void>(resolve => { release = resolve; });
+    this.mutationTail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     try {
       await previous;
       await prepare();
       const context = { active: true };
-      try { return await this.mutationContext.run(context, mutation); }
-      finally { context.active = false; }
-    } finally { release(); }
+      try {
+        return await this.mutationContext.run(context, mutation);
+      } finally {
+        context.active = false;
+      }
+    } finally {
+      release();
+    }
   }
 
   /** Authenticated native-only fresh effect check; never consumes consent again. */
-  async revalidate(raw: unknown): Promise<{ batchId: string; reservationId: string; nonce: number; decision: "allow" | "deny"; overnight?: { windowEnd: number; requireAC: boolean } }> {
-    const input = z.object({ batchId: z.string().min(1).max(160), reservationId: z.string().uuid(), nonce: z.number().int().positive() }).strict().parse(raw);
+  async revalidate(
+    raw: unknown,
+  ): Promise<{
+    batchId: string;
+    reservationId: string;
+    nonce: number;
+    decision: "allow" | "deny";
+    overnight?: { windowEnd: number; requireAC: boolean };
+  }> {
+    const input = z
+      .object({
+        batchId: z.string().min(1).max(160),
+        reservationId: z.string().uuid(),
+        nonce: z.number().int().positive(),
+      })
+      .strict()
+      .parse(raw);
     const denied = () => ({ ...input, decision: "deny" as const });
     const batch = this.batches.get(input.batchId);
-    if (!batch || batch.status !== "authorized" || batch.reservation?.id !== input.reservationId || input.nonce !== batch.reservation.nonce + 1) return denied();
+    if (
+      !batch ||
+      batch.status !== "authorized" ||
+      batch.reservation?.id !== input.reservationId ||
+      input.nonce !== batch.reservation.nonce + 1
+    )
+      return denied();
     const reservation = batch.reservation;
     // Reserve nonce synchronously; overlapping replies cannot redeem one attempt twice.
     reservation.nonce = input.nonce;
@@ -350,7 +406,10 @@ export class NativePermissionController {
       if (batch.reservation !== reservation || reservation.nonce !== input.nonce) return denied();
       const overnight = this.deps.overnightAuthority(batch.runId);
       if (this.deps.standingOnly(batch.runId) && !overnight)
-        throw new AuxError("permission_denied", "Overnight native effects require their exact claimed window.");
+        throw new AuxError(
+          "permission_denied",
+          "Overnight native effects require their exact claimed window.",
+        );
       return { ...input, decision: "allow", ...(overnight ? { overnight } : {}) };
     } catch (error) {
       this.invalidate(input.batchId);
@@ -361,12 +420,15 @@ export class NativePermissionController {
 
   /** Native finalization retires this exact reservation; no other batch is touched. */
   finalize(raw: unknown): { retired: boolean } {
-    const input = z.object({ batchId: z.string().min(1).max(160), reservationId: z.string().uuid() }).strict().parse(raw);
+    const input = z
+      .object({ batchId: z.string().min(1).max(160), reservationId: z.string().uuid() })
+      .strict()
+      .parse(raw);
     const batch = this.batches.get(input.batchId);
-    if (!batch || batch.status !== "authorized" || batch.reservation?.id !== input.reservationId) return { retired: false };
+    if (!batch || batch.status !== "authorized" || batch.reservation?.id !== input.reservationId)
+      return { retired: false };
     batch.status = "used";
     batch.reservation = undefined;
     return { retired: true };
   }
-
 }

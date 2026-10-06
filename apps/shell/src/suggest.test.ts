@@ -22,11 +22,15 @@ describe("matchScore tiers", () => {
 describe("rankCandidates", () => {
   it("orders by tier, breaks ties by recency, drops non-matches", () => {
     const now = Date.now();
-    const ranked = rankCandidates("git", [
-      c("a", "Gitea", "https://gitea.io/", now), // prefix, fresh
-      c("b", "GitHub", "https://github.com/", now - 40 * 86_400_000), // prefix, stale
-      c("c", "no match", "https://nope.test/"),
-    ], now);
+    const ranked = rankCandidates(
+      "git",
+      [
+        c("a", "Gitea", "https://gitea.io/", now), // prefix, fresh
+        c("b", "GitHub", "https://github.com/", now - 40 * 86_400_000), // prefix, stale
+        c("c", "no match", "https://nope.test/"),
+      ],
+      now,
+    );
     expect(ranked.map((r) => r.id)).toEqual(["a", "b"]);
   });
 
@@ -53,12 +57,27 @@ describe("dedupeByUrl", () => {
 describe("isPrivateAddress — remote suggestion gating", () => {
   it("blocks localhost, IPs, intranet and credential URLs", () => {
     for (const v of [
-      "localhost", "localhost:3000", "127.0.0.1", "0.0.0.0", "::1", "[::1]:8080",
-      "192.168.1.1", "10.0.0.5/admin", "172.16.0.1", "169.254.1.1",
-      "intranet", "wiki.local", "nas.internal", "corp.lan", "router.home",
-      "https://user:pass@internal.example/", "fd00::1",
+      "localhost",
+      "localhost:3000",
+      "127.0.0.1",
+      "0.0.0.0",
+      "::1",
+      "[::1]:8080",
+      "192.168.1.1",
+      "10.0.0.5/admin",
+      "172.16.0.1",
+      "169.254.1.1",
+      "intranet",
+      "wiki.local",
+      "nas.internal",
+      "corp.lan",
+      "router.home",
+      "https://user:pass@internal.example/",
+      "fd00::1",
       // Bare single-label names might be intranet hosts — never leave the machine.
-      "github", "wiki", "docs",
+      "github",
+      "wiki",
+      "docs",
     ]) {
       expect(isPrivateAddress(v)).toBe(true);
     }
@@ -66,8 +85,14 @@ describe("isPrivateAddress — remote suggestion gating", () => {
 
   it("allows public queries and multi-label domains", () => {
     for (const v of [
-      "github copilot", "how to bake bread", "node.js", "münchen weather", "8.8.8.8",
-      "docs.stripe.com/api", "what's new", "github.com",
+      "github copilot",
+      "how to bake bread",
+      "node.js",
+      "münchen weather",
+      "8.8.8.8",
+      "docs.stripe.com/api",
+      "what's new",
+      "github.com",
     ]) {
       expect(isPrivateAddress(v)).toBe(false);
     }

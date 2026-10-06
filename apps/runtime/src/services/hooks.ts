@@ -36,10 +36,7 @@ export type HookExecutor = (
   context: HookDispatchContext,
   signal: AbortSignal,
 ) => Promise<void>;
-export type HookAuthority = (
-  handler: HookHandler,
-  workspaceId: string,
-) => void;
+export type HookAuthority = (handler: HookHandler, workspaceId: string) => void;
 
 export class HookService {
   private active = new Map<string, Set<AbortController>>();
@@ -50,11 +47,16 @@ export class HookService {
 
   private invocation(row: InvocationRow): HookInvocation {
     return HookInvocationSchema.parse({
-      invocationId: row.invocation_id, hookId: row.hook_id, eventId: row.event_id,
+      invocationId: row.invocation_id,
+      hookId: row.hook_id,
+      eventId: row.event_id,
       state: row.state,
-      error: row.error === null ? undefined : this.repo.revealRecordField(
-        "hook_invocations", [row.invocation_id], "error", row.error),
-      createdAt: row.created_at, endedAt: row.ended_at ?? undefined,
+      error:
+        row.error === null
+          ? undefined
+          : this.repo.revealRecordField("hook_invocations", [row.invocation_id], "error", row.error),
+      createdAt: row.created_at,
+      endedAt: row.ended_at ?? undefined,
     });
   }
 
@@ -134,8 +136,11 @@ export class HookService {
   /** Approval is bound to the exact reviewed handler bytes. Imported hooks remain untrusted. */
   approve(hookId: string, expectedDigest: string): Hook {
     const hook = this.get(hookId);
-    if (hook.trust !== "untrusted" || hook.handlerDigest !== expectedDigest ||
-      digest(hook.handler) !== hook.handlerDigest)
+    if (
+      hook.trust !== "untrusted" ||
+      hook.handlerDigest !== expectedDigest ||
+      digest(hook.handler) !== hook.handlerDigest
+    )
       throw new AuxError("conflict", "This hook changed. Review its handler before approval.");
     if (!this.authorize)
       throw new AuxError("capability_unsupported", "A supervised Hook executor is unavailable.");
@@ -162,19 +167,24 @@ export class HookService {
       this.repo.db
         .prepare("SELECT * FROM hook_invocations WHERE hook_id=? ORDER BY created_at DESC LIMIT ?")
         .all(hookId, limit) as InvocationRow[]
-    ).map(row => this.invocation(row));
+    ).map((row) => this.invocation(row));
   }
 
   /** A reviewed Hook can be tried once through the same executor used by automatic dispatch. */
   async test(hookId: string, executor: HookExecutor): Promise<HookInvocation> {
     const hook = this.get(hookId);
-    if (hook.trust !== "approved") throw new AuxError("permission_denied", "Approve this Hook before testing it.");
-    const result = await this.dispatch({
-      eventId: `manual:${randomUUID()}`,
-      workspaceId: hook.workspaceId,
-      event: hook.event,
-      at: Date.now(),
-    }, executor, hookId);
+    if (hook.trust !== "approved")
+      throw new AuxError("permission_denied", "Approve this Hook before testing it.");
+    const result = await this.dispatch(
+      {
+        eventId: `manual:${randomUUID()}`,
+        workspaceId: hook.workspaceId,
+        event: hook.event,
+        at: Date.now(),
+      },
+      executor,
+      hookId,
+    );
     if (!result[0]) throw new AuxError("conflict", "Hook approval changed during the test.");
     return result[0];
   }
@@ -233,8 +243,14 @@ export class HookService {
       if (modified) this.revoke(hook.hookId);
       this.repo.db
         .prepare("UPDATE hook_invocations SET state=?,error=?,ended_at=? WHERE invocation_id=?")
-        .run(state, error === undefined ? null : this.repo.protectRecordField(
-          "hook_invocations", [invocationId], "error", error), Date.now(), invocationId);
+        .run(
+          state,
+          error === undefined
+            ? null
+            : this.repo.protectRecordField("hook_invocations", [invocationId], "error", error),
+          Date.now(),
+          invocationId,
+        );
       const saved = this.repo.db
         .prepare("SELECT * FROM hook_invocations WHERE hook_id=? AND event_id=?")
         .get(hook.hookId, context.eventId) as InvocationRow;

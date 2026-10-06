@@ -338,10 +338,15 @@ it("keeps import consent and exclusions visible with optional folder and system-
     const descriptions = [...host.querySelectorAll(":scope > .import-setting > p")];
     expect(descriptions).toHaveLength(2);
     expect(descriptions[0]!.textContent).toContain("Nothing is imported until you confirm.");
-    expect(descriptions[1]!.textContent).toContain("Passwords, cookies, extensions and agent permissions are not imported");
+    expect(descriptions[1]!.textContent).toContain(
+      "Passwords, cookies, extensions and agent permissions are not imported",
+    );
     const details = [...host.querySelectorAll("details")];
-    expect(details.map(item => item.querySelector("summary")!.textContent)).toEqual(["Folders and retries", "Keychain and macOS access"]);
-    expect(details.every(item => !item.open)).toBe(true);
+    expect(details.map((item) => item.querySelector("summary")!.textContent)).toEqual([
+      "Folders and retries",
+      "Keychain and macOS access",
+    ]);
+    expect(details.every((item) => !item.open)).toBe(true);
     expect(details[0]!.textContent).toContain("Arc Spaces and pinned pages become bookmark folders");
     expect(details[0]!.textContent).toContain("Existing bookmarks keep their titles and");
     expect(details[0]!.textContent).toContain("history visits are skipped on retry");
@@ -359,31 +364,53 @@ it("keeps import consent and exclusions visible with optional folder and system-
 it("sends one original cancel request for duplicate activations before the pending render", async () => {
   rpc.mockReset();
   let release!: () => void;
-  const pending = new Promise<void>(resolve => { release = resolve; });
-  rpc.mockImplementation((method: string) => method === "import.cancel" ? pending : Promise.resolve(receipt()));
-  const host = document.createElement("div"), root = createRoot(host);
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  rpc.mockImplementation((method: string) =>
+    method === "import.cancel" ? pending : Promise.resolve(receipt()),
+  );
+  const host = document.createElement("div"),
+    root = createRoot(host);
   try {
     await act(async () => root.render(<ImportDataSetting />));
-    const button = [...host.querySelectorAll("button")].find(item => item.textContent === "Cancel import")!;
-    await act(async () => { button.click(); button.click(); });
-    expect(rpc.mock.calls.filter(([method]) => method === "import.cancel")).toEqual([["import.cancel", { jobId: "recover" }]]);
+    const button = [...host.querySelectorAll("button")].find((item) => item.textContent === "Cancel import")!;
+    await act(async () => {
+      button.click();
+      button.click();
+    });
+    expect(rpc.mock.calls.filter(([method]) => method === "import.cancel")).toEqual([
+      ["import.cancel", { jobId: "recover" }],
+    ]);
     expect(button.disabled).toBe(true);
     await act(async () => release());
   } finally {
-    await act(async () => { release(); root.unmount(); });
+    await act(async () => {
+      release();
+      root.unmount();
+    });
   }
 });
 
 it("does not publish an old cancellation failure into a newer import and keeps its cancel available", async () => {
   rpc.mockReset();
   let reject!: (error: Error) => void;
-  rpc.mockImplementation((method: string) => method === "import.cancel" ? new Promise<void>((_, fail) => { reject = fail; }) : Promise.resolve(receipt()));
-  const host = document.createElement("div"), root = createRoot(host);
+  rpc.mockImplementation((method: string) =>
+    method === "import.cancel"
+      ? new Promise<void>((_, fail) => {
+          reject = fail;
+        })
+      : Promise.resolve(receipt()),
+  );
+  const host = document.createElement("div"),
+    root = createRoot(host);
   try {
     await act(async () => root.render(<ImportDataSetting />));
-    await act(async () => [...host.querySelectorAll("button")].find(item => item.textContent === "Cancel import")!.click());
+    await act(async () =>
+      [...host.querySelectorAll("button")].find((item) => item.textContent === "Cancel import")!.click(),
+    );
     await act(async () => emit(receipt({ jobId: "newer", startedAt: 200 })));
-    const cancel = [...host.querySelectorAll("button")].find(item => item.textContent === "Cancel import");
+    const cancel = [...host.querySelectorAll("button")].find((item) => item.textContent === "Cancel import");
     expect(cancel).toBeDefined();
     expect(cancel!.disabled).toBe(false);
     await act(async () => reject(new Error("Old cancellation failed")));
@@ -391,9 +418,13 @@ it("does not publish an old cancellation failure into a newer import and keeps i
     expect(host.textContent).toContain("500 imported");
     await act(async () => cancel!.click());
     expect(rpc.mock.calls.filter(([method]) => method === "import.cancel")).toEqual([
-      ["import.cancel", { jobId: "recover" }], ["import.cancel", { jobId: "newer" }],
+      ["import.cancel", { jobId: "recover" }],
+      ["import.cancel", { jobId: "newer" }],
     ]);
   } finally {
-    await act(async () => { reject(new Error("Original cleanup")); root.unmount(); });
+    await act(async () => {
+      reject(new Error("Original cleanup"));
+      root.unmount();
+    });
   }
 });

@@ -1,6 +1,19 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { shellIconAlert, shellIconCircle, shellIconClose, shellIconMore, shellIconSearch, shellIconSidebar, shellIconSidebarClose, shellIconSidebarCloseSm, shellIconSidebarOpen, shellIconSidebarSm, shellIconStop, shellIconUnplug } from "./icons";
+import {
+  shellIconAlert,
+  shellIconCircle,
+  shellIconClose,
+  shellIconMore,
+  shellIconSearch,
+  shellIconSidebar,
+  shellIconSidebarClose,
+  shellIconSidebarCloseSm,
+  shellIconSidebarOpen,
+  shellIconSidebarSm,
+  shellIconStop,
+  shellIconUnplug,
+} from "./icons";
 import * as shellIcons from "./icons";
 import { Mic } from "./central-icons";
 
@@ -10,7 +23,7 @@ describe("Central Icons", () => {
       const markup = renderToStaticMarkup(icon);
       expect(markup).toContain('viewBox="0 0 24 24"');
       expect(markup).toContain('aria-hidden="true"');
-      expect(markup).toContain('currentColor');
+      expect(markup).toContain("currentColor");
       expect(markup).not.toMatch(/lucide|<image|<script|https?:\/\/(?!www.w3.org)/);
     }
   });

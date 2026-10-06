@@ -65,13 +65,22 @@ export function parseTarget(
 ): { kind: "ref"; ref: string } | { kind: "selector"; strategy: SelectorStrategy } {
   if (isElementRef(target)) return { kind: "ref", ref: target };
   if (target.startsWith("css:")) return { kind: "selector", strategy: { css: target.slice(4) } };
-  if (target.startsWith("xpath:")) return { kind: "selector", strategy: { xpath: `xpath=${target.slice(6)}` } };
-  if (target.startsWith("text:")) return { kind: "selector", strategy: { text: target.slice(5), exact: true } };
-  if (target.startsWith("name:")) return { kind: "selector", strategy: { css: `[name=${JSON.stringify(target.slice(5))}]` } };
-  if (target.startsWith("testid:")) return { kind: "selector", strategy: { testId: target.slice(7), exact: true } };
-  if (target.startsWith("label:")) return { kind: "selector", strategy: { label: target.slice(6), exact: true } };
+  if (target.startsWith("xpath:"))
+    return { kind: "selector", strategy: { xpath: `xpath=${target.slice(6)}` } };
+  if (target.startsWith("text:"))
+    return { kind: "selector", strategy: { text: target.slice(5), exact: true } };
+  if (target.startsWith("name:"))
+    return { kind: "selector", strategy: { css: `[name=${JSON.stringify(target.slice(5))}]` } };
+  if (target.startsWith("testid:"))
+    return { kind: "selector", strategy: { testId: target.slice(7), exact: true } };
+  if (target.startsWith("label:"))
+    return { kind: "selector", strategy: { label: target.slice(6), exact: true } };
   const semanticRole = /^role:([a-z][a-z-]*)\|(.+)$/.exec(target);
-  if (semanticRole) return { kind: "selector", strategy: { role: { role: semanticRole[1]!, name: semanticRole[2]! }, exact: true } };
+  if (semanticRole)
+    return {
+      kind: "selector",
+      strategy: { role: { role: semanticRole[1]!, name: semanticRole[2]! }, exact: true },
+    };
   const roleMatch = /^role=([a-zA-Z]+)(?:\[name=(.+)\])?$/.exec(target);
   if (roleMatch) {
     return {

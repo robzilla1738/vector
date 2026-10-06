@@ -47,9 +47,18 @@ interface CookieProfileSource {
 }
 
 const CHROME_PROFILES: readonly CookieProfileSource[] = [
-  { directory: join(homedir(), "Library/Application Support/Google/Chrome"), safeStorageService: "Chrome Safe Storage" },
-  { directory: join(homedir(), "Library/Application Support/Google/Chrome Beta"), safeStorageService: "Chrome Beta Safe Storage" },
-  { directory: join(homedir(), "Library/Application Support/Chromium"), safeStorageService: "Chromium Safe Storage" },
+  {
+    directory: join(homedir(), "Library/Application Support/Google/Chrome"),
+    safeStorageService: "Chrome Safe Storage",
+  },
+  {
+    directory: join(homedir(), "Library/Application Support/Google/Chrome Beta"),
+    safeStorageService: "Chrome Beta Safe Storage",
+  },
+  {
+    directory: join(homedir(), "Library/Application Support/Chromium"),
+    safeStorageService: "Chromium Safe Storage",
+  },
 ];
 
 export function chromeEpochToUnix(expiresUtc: number): number | undefined {
@@ -121,7 +130,9 @@ export class CookieService {
     }
 
     // ---- profile path ----
-    const source = (this.deps.profileSources ?? CHROME_PROFILES).find((candidate) => existsSync(candidate.directory));
+    const source = (this.deps.profileSources ?? CHROME_PROFILES).find((candidate) =>
+      existsSync(candidate.directory),
+    );
     if (!source) {
       throw new AuxError("not_found", "no Chrome profile found on this machine");
     }
@@ -142,7 +153,9 @@ export class CookieService {
     }
     if (!profiles.length) throw new AuxError("not_found", "Chrome profile has no Cookies store");
 
-    const password = await (this.deps.readSafeStoragePassword ?? safeStoragePassword)(source.safeStorageService);
+    const password = await (this.deps.readSafeStoragePassword ?? safeStoragePassword)(
+      source.safeStorageService,
+    );
     const key = pbkdf2Sync(password, "saltysalt", 1003, 16, "sha1");
 
     const byKey = new Map<string, BrowserCookie>();
@@ -152,58 +165,63 @@ export class CookieService {
     // they must not outlive the import (P1-11), hence the finally below.
     const tmp = mkdtempSync(join(tmpdir(), "aux-cookies-"));
     try {
-    for (const profile of profiles) {
-      const src = join(dir, profile, "Cookies");
-      const dst = join(tmp, `${profile}.db`);
-      try {
-        copyFileSync(src, dst); // Chrome holds a lock on the live DB — work on a copy
-      } catch {
-        continue;
-      }
-      let db: DatabaseSync | null = null;
-      try {
-        db = new DatabaseSync(dst, { readOnly: true });
-        const metaVersion =
-          Number(
-            (db.prepare("SELECT value FROM meta WHERE key='version'").get() as { value: string } | undefined)?.value,
-          ) || 0;
-        const rows = db
-          .prepare(
-            `SELECT host_key, name, value, encrypted_value, path, expires_utc,
+      for (const profile of profiles) {
+        const src = join(dir, profile, "Cookies");
+        const dst = join(tmp, `${profile}.db`);
+        try {
+          copyFileSync(src, dst); // Chrome holds a lock on the live DB — work on a copy
+        } catch {
+          continue;
+        }
+        let db: DatabaseSync | null = null;
+        try {
+          db = new DatabaseSync(dst, { readOnly: true });
+          const metaVersion =
+            Number(
+              (
+                db.prepare("SELECT value FROM meta WHERE key='version'").get() as
+                  { value: string } | undefined
+              )?.value,
+            ) || 0;
+          const rows = db
+            .prepare(
+              `SELECT host_key, name, value, encrypted_value, path, expires_utc,
                     is_secure, is_httponly, samesite, is_persistent FROM cookies`,
-          )
-          .all() as unknown as ChromeProfileRow[];
-        for (const r of rows) {
-          const enc = Buffer.isBuffer(r.encrypted_value) ? r.encrypted_value : Buffer.from(r.encrypted_value ?? []);
-          let value: string | null = r.value || null;
-          if (!value && enc.length) {
-            if (enc.subarray(0, 3).toString("latin1") === "v20") {
-              appBound++;
+            )
+            .all() as unknown as ChromeProfileRow[];
+          for (const r of rows) {
+            const enc = Buffer.isBuffer(r.encrypted_value)
+              ? r.encrypted_value
+              : Buffer.from(r.encrypted_value ?? []);
+            let value: string | null = r.value || null;
+            if (!value && enc.length) {
+              if (enc.subarray(0, 3).toString("latin1") === "v20") {
+                appBound++;
+                continue;
+              }
+              value = decryptValue(enc, key, metaVersion);
+            }
+            if (value === null || !r.name || !r.host_key) {
+              skipped++;
               continue;
             }
-            value = decryptValue(enc, key, metaVersion);
+            byKey.set(`${r.host_key}${r.path}${r.name}`, {
+              name: r.name,
+              value,
+              domain: r.host_key,
+              path: r.path || "/",
+              secure: Boolean(r.is_secure),
+              httpOnly: Boolean(r.is_httponly),
+              sameSite: mapSameSite(r.samesite),
+              expires: r.is_persistent ? chromeEpochToUnix(r.expires_utc) : undefined,
+            });
           }
-          if (value === null || !r.name || !r.host_key) {
-            skipped++;
-            continue;
-          }
-          byKey.set(`${r.host_key}${r.path}${r.name}`, {
-            name: r.name,
-            value,
-            domain: r.host_key,
-            path: r.path || "/",
-            secure: Boolean(r.is_secure),
-            httpOnly: Boolean(r.is_httponly),
-            sameSite: mapSameSite(r.samesite),
-            expires: r.is_persistent ? chromeEpochToUnix(r.expires_utc) : undefined,
-          });
+        } catch {
+          skipped++;
+        } finally {
+          db?.close();
         }
-      } catch {
-        skipped++;
-      } finally {
-        db?.close();
       }
-    }
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

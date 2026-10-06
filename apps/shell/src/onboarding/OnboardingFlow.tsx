@@ -26,8 +26,15 @@ import "./onboarding.css";
 import { PastedMemorySetup } from "./PastedMemorySetup";
 import { SetupReview } from "./SetupReview";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
-import { staticGhostButtonProps as auxClassGhostButtonProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
-import { nativeCheckboxTypeProps, nativeGroupRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
+import {
+  staticGhostButtonProps as auxClassGhostButtonProps,
+  staticButtonProps as auxClassButtonProps,
+} from "../ui/class-props";
+import {
+  nativeCheckboxTypeProps,
+  nativeGroupRoleProps,
+  nativeAlertRoleProps,
+} from "../ui/native-attribute-props";
 
 const TITLES = {
   welcome: "Welcome to Aux",
@@ -314,461 +321,484 @@ export function OnboardingFlow({
           ))}
         </nav>
         <div className="onboarding-scroll" ref={scroller}>
-        <h1 ref={heading} tabIndex={-1}>
-          {TITLES[step]}
-        </h1>
-        {!connected && (
-          <output>
-            Aux is disconnected. Saved setup progress is safe; reconnect to continue, or finish later to
-            browse.
-          </output>
-        )}
-        <fieldset className="onboarding-content" disabled={!connected} aria-label="Setup choices">
-          {step === "welcome" && (
-            <>
-              <p>
-                Bring your browsing with you, choose a model, and turn a question into a useful first chat.
-              </p>
-              <p>Every step is optional. Start with what you need.</p>
-              <details className="onboarding-details">
-                <summary>Setup tips</summary>
-                <p>Your progress stays with this Profile. Replay setup in Settings → General at any time. Press ⌘↩ to finish later.</p>
-              </details>
-              <button {...auxClassGhostButtonProps} aria-expanded={recovery} onClick={() => setRecovery(!recovery)}>
-                Recover an existing Aux Profile
-              </button>
-              {recovery && (
-                <fieldset disabled={restoreStatus !== "ready"}>
-                  <RecoveryPackage active={connected && restoreStatus === "ready"} refreshVersion={0} pending={restorePending} onStaged={() => setRestoreStatus("pending")} />
-                </fieldset>
-              )}
-            </>
+          <h1 ref={heading} tabIndex={-1}>
+            {TITLES[step]}
+          </h1>
+          {!connected && (
+            <output>
+              Aux is disconnected. Saved setup progress is safe; reconnect to continue, or finish later to
+              browse.
+            </output>
           )}
-          {step === "import" && (
-            <>
-              <ImportDataSetting />
-              <p {...staticHintProps}>
-                Imports continue if you leave. Check progress here before retrying.
-              </p>
-            </>
-          )}
-          {step === "model" && (
-            <>
-              <ModelDataDisclosure reviewed={state.disclosureVersion === ONBOARDING_DISCLOSURE_VERSION} />
-              {state.disclosureVersion !== ONBOARDING_DISCLOSURE_VERSION ? (
-                <button
-                  {...auxClassButtonProps}
-                  disabled={busy}
-                  onClick={() =>
-                    void work(async () => {
-                      await update("disclosure");
-                    })
-                  }
-                >
-                  I’ve reviewed model data use
-                </button>
-              ) : (
-                <>
-                  <p {...staticHintProps}>
-                    A connection test sends a model request only when you choose Test. Setup itself makes no
-                    model call.
+          <fieldset className="onboarding-content" disabled={!connected} aria-label="Setup choices">
+            {step === "welcome" && (
+              <>
+                <p>
+                  Bring your browsing with you, choose a model, and turn a question into a useful first chat.
+                </p>
+                <p>Every step is optional. Start with what you need.</p>
+                <details className="onboarding-details">
+                  <summary>Setup tips</summary>
+                  <p>
+                    Your progress stays with this Profile. Replay setup in Settings → General at any time.
+                    Press ⌘↩ to finish later.
                   </p>
-                  <ModelsSettings active settings={settings} onSave={saveSettings} />
-                </>
-              )}
-            </>
-          )}
-          {step === "appearance" && (
-            <>
-              <p>
-                Changes apply immediately to this Profile. Try both tab layouts and choose a color for the
-                current Space.
-              </p>
-              <fieldset disabled={busy}>
-                <legend>Theme</legend>
-                {(["system", "dark", "light"] as const).map((theme) => (
-                  <label key={theme}>
-                    <input
-                      type="radio"
-                      name="onboarding-theme"
-                      checked={(settings.theme ?? "dark") === theme}
-                      onChange={() =>
-                        void work(async () => {
-                          await saveSettings({ theme });
-                        })
-                      }
-                    />
-                    {theme}
-                  </label>
-                ))}
-              </fieldset>
-              <LayoutChoice
-                value={String(settings.tabLayout ?? "horizontal")}
-                onChange={(tabLayout) =>
-                  void work(async () => {
-                    await saveSettings({ tabLayout });
-                  })
-                }
-              />
-              {activeSpace && (
-                <label>
-                  Space color
-                  <select
-                    value={activeSpace.color}
-                    disabled={busy}
-                    onChange={(event) => {
-                      const color = event.target.value as SpaceColor;
-                      void work(async () => {
-                        await useStore
-                          .getState()
-                          .editSpace(activeSpace.id, activeSpace.name, color, activeSpace.grain, null);
-                      });
-                    }}
-                  >
-                    {SPACE_COLORS.map((color) => (
-                      <option key={color}>{color}</option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <p {...staticHintProps}>Your system’s reduced motion and contrast preferences still apply.</p>
-            </>
-          )}
-          {step === "default" && (
-            <>
-              <p>
-                Make Aux the place links open from other apps. This is optional and does not change what you
-                can use.
-              </p>
-              {isDefault === true ? (
-                <p>Aux is your default browser.</p>
-              ) : (
+                </details>
                 <button
-                  {...auxClassButtonProps}
-                  disabled={busy || !inNativeHost || cooldown || isDefault === null}
-                  onClick={() =>
-                    void work(async () => {
-                      await update("default-prompt");
-                      const value = await bridge.setDefaultBrowser();
-                      setIsDefault(value.isDefault);
-                      if (!value.isDefault)
-                        setError(
-                          "The system has not confirmed a change. You can check System Settings or continue setup.",
-                        );
-                    })
-                  }
+                  {...auxClassGhostButtonProps}
+                  aria-expanded={recovery}
+                  onClick={() => setRecovery(!recovery)}
                 >
-                  Make Aux the default browser
+                  Recover an existing Aux Profile
                 </button>
-              )}
-              {cooldown && (
-                <p>
-                  Setup will wait seven days before offering another system prompt. You can change this in
-                  Settings at any time.
-                </p>
-              )}
-              {!inNativeHost && <p>This choice is available in the native Aux app.</p>}
-            </>
-          )}
-          {step === "permissions" && (
-            <>
-              <p>
-                Starting a chat gives Aux the question and sources you select. It does not connect accounts or
-                grant access to folders.
-              </p>
-              <details className="onboarding-details" open={permissionDetails === state}>
-                <summary
-                  ref={permissionRef}
-                  data-command-id="toggle-setup-permission-details"
-                  onClick={(event) => { event.preventDefault(); permissionInput(event); }}
-                >How permissions and browsing work</summary>
-              <ul>
-                <li>
-                  Review the source, recipient and action when Aux asks for approval. Never approve a request
-                  you do not recognize.
-                </li>
-                <li>
-                  Connected services need their own reviewed grants. A connected account is not permission to
-                  send, change or delete anything.
-                </li>
-                <li>
-                  Browser tasks use a separate, temporary browsing session. It starts without your cookies or
-                  saved passwords; sign in separately if needed.
-                </li>
-                <li>
-                  You can stop a task, take control of a page, or change permissions in Settings. Stopping
-                  cannot undo an action that already completed.
-                </li>
-                <li>
-                  Memory is optional. Review remembered information and pasted assistant notes through the
-                  existing Memory controls before using them.
-                </li>
-              </ul>
-              </details>
-              <p>
-                Setup does not enable Memory, broaden grants, connect services or import credentials
-                automatically.
-              </p>
-              <button
-                {...auxClassGhostButtonProps}
-                aria-expanded={showMemoryImport}
-                onClick={() => setShowMemoryImport(!showMemoryImport)}
-              >
-                Import notes from another assistant
-              </button>
-              {showMemoryImport && <PastedMemorySetup />}
-            </>
-          )}
-          {step === "postcard" && (
-            <>
-              <p>
-                Choose a page you want to understand. Aux will use a separate browsing session; the page’s
-                address is copied, without its cookies or saved passwords.
-              </p>
-              <SetupReview
-                connected={connected}
-                settings={settings}
-                state={state}
-                recovery={restoreStatus}
-                source={pageReviewed ? reviewedPage : null}
-                onCheckRecovery={() => void checkRecovery()}
-                onVisit={(next) => {
-                  void work(async () => {
-                    await update("visit", next);
-                  });
-                }}
-              />
-              {first?.status === "started" ? (
-                <button
-                  {...auxClassButtonProps}
-                  disabled={busy}
-                  onClick={() =>
-                    void work(async () => {
-                      const result = await call("runs.get", { runId: first.runId });
-                      reveal(result.run);
-                    })
-                  }
-                >
-                  Open your first chat
-                </button>
-              ) : first?.status === "unavailable" ? (
-                <p>
-                  Your first setup chat is unavailable. Replay will not recreate it. Check Chats before
-                  starting anything again. Start a new chat from Aux whenever you’re ready.
-                </p>
-              ) : (
-                <>
-                  {!ready && (
-                    <p>
-                      Review model data use and configure a connection in step 3 before starting. You can skip
-                      this step and browse normally.
-                    </p>
-                  )}
-                  <label>
-                    Page to explore
-                    <input
-                      type="url"
-                      value={pageUrl}
-                      placeholder="https://example.com"
-                      disabled={busy}
-                      onChange={(event) => setPageUrl(event.target.value)}
+                {recovery && (
+                  <fieldset disabled={restoreStatus !== "ready"}>
+                    <RecoveryPackage
+                      active={connected && restoreStatus === "ready"}
+                      refreshVersion={0}
+                      pending={restorePending}
+                      onStaged={() => setRestoreStatus("pending")}
                     />
-                  </label>
+                  </fieldset>
+                )}
+              </>
+            )}
+            {step === "import" && (
+              <>
+                <ImportDataSetting />
+                <p {...staticHintProps}>
+                  Imports continue if you leave. Check progress here before retrying.
+                </p>
+              </>
+            )}
+            {step === "model" && (
+              <>
+                <ModelDataDisclosure reviewed={state.disclosureVersion === ONBOARDING_DISCLOSURE_VERSION} />
+                {state.disclosureVersion !== ONBOARDING_DISCLOSURE_VERSION ? (
                   <button
-                    {...smallButtonProps}
-                    disabled={busy || !pageUrl.trim() || !activeSpace}
+                    {...auxClassButtonProps}
+                    disabled={busy}
                     onClick={() =>
                       void work(async () => {
-                        const url = new URL(pageUrl.trim());
-                        if (!["http:", "https:"].includes(url.protocol) || url.username || url.password)
-                          throw new Error("Enter an HTTP or HTTPS page without embedded credentials.");
-                        const opened = await useStore
-                          .getState()
-                          .openBackgroundTab(url.href, activeSpace!.id, false);
-                        setPageId(opened.pageId);
-                        setReviewedPage(null);
+                        await update("disclosure");
                       })
                     }
                   >
-                    Open page in background
+                    I’ve reviewed model data use
                   </button>
+                ) : (
+                  <>
+                    <p {...staticHintProps}>
+                      A connection test sends a model request only when you choose Test. Setup itself makes no
+                      model call.
+                    </p>
+                    <ModelsSettings active settings={settings} onSave={saveSettings} />
+                  </>
+                )}
+              </>
+            )}
+            {step === "appearance" && (
+              <>
+                <p>
+                  Changes apply immediately to this Profile. Try both tab layouts and choose a color for the
+                  current Space.
+                </p>
+                <fieldset disabled={busy}>
+                  <legend>Theme</legend>
+                  {(["system", "dark", "light"] as const).map((theme) => (
+                    <label key={theme}>
+                      <input
+                        type="radio"
+                        name="onboarding-theme"
+                        checked={(settings.theme ?? "dark") === theme}
+                        onChange={() =>
+                          void work(async () => {
+                            await saveSettings({ theme });
+                          })
+                        }
+                      />
+                      {theme}
+                    </label>
+                  ))}
+                </fieldset>
+                <LayoutChoice
+                  value={String(settings.tabLayout ?? "horizontal")}
+                  onChange={(tabLayout) =>
+                    void work(async () => {
+                      await saveSettings({ tabLayout });
+                    })
+                  }
+                />
+                {activeSpace && (
                   <label>
-                    Reviewed source
+                    Space color
                     <select
-                      value={pageId}
+                      value={activeSpace.color}
                       disabled={busy}
                       onChange={(event) => {
-                        setPageId(event.target.value);
-                        setReviewedPage(null);
+                        const color = event.target.value as SpaceColor;
+                        void work(async () => {
+                          await useStore
+                            .getState()
+                            .editSpace(activeSpace.id, activeSpace.name, color, activeSpace.grain, null);
+                        });
                       }}
                     >
-                      <option value="">Choose an available page</option>
-                      {pages.filter(availableOnboardingPage).map((item) => (
-                        <option key={item.pageId} value={item.pageId}>
-                          {item.title || item.url} — {item.url}
-                        </option>
+                      {SPACE_COLORS.map((color) => (
+                        <option key={color}>{color}</option>
                       ))}
                     </select>
                   </label>
-                  {page && availableOnboardingPage(page) && (
+                )}
+                <p {...staticHintProps}>Your system’s reduced motion and contrast preferences still apply.</p>
+              </>
+            )}
+            {step === "default" && (
+              <>
+                <p>
+                  Make Aux the place links open from other apps. This is optional and does not change what you
+                  can use.
+                </p>
+                {isDefault === true ? (
+                  <p>Aux is your default browser.</p>
+                ) : (
+                  <button
+                    {...auxClassButtonProps}
+                    disabled={busy || !inNativeHost || cooldown || isDefault === null}
+                    onClick={() =>
+                      void work(async () => {
+                        await update("default-prompt");
+                        const value = await bridge.setDefaultBrowser();
+                        setIsDefault(value.isDefault);
+                        if (!value.isDefault)
+                          setError(
+                            "The system has not confirmed a change. You can check System Settings or continue setup.",
+                          );
+                      })
+                    }
+                  >
+                    Make Aux the default browser
+                  </button>
+                )}
+                {cooldown && (
+                  <p>
+                    Setup will wait seven days before offering another system prompt. You can change this in
+                    Settings at any time.
+                  </p>
+                )}
+                {!inNativeHost && <p>This choice is available in the native Aux app.</p>}
+              </>
+            )}
+            {step === "permissions" && (
+              <>
+                <p>
+                  Starting a chat gives Aux the question and sources you select. It does not connect accounts
+                  or grant access to folders.
+                </p>
+                <details className="onboarding-details" open={permissionDetails === state}>
+                  <summary
+                    ref={permissionRef}
+                    data-command-id="toggle-setup-permission-details"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      permissionInput(event);
+                    }}
+                  >
+                    How permissions and browsing work
+                  </summary>
+                  <ul>
+                    <li>
+                      Review the source, recipient and action when Aux asks for approval. Never approve a
+                      request you do not recognize.
+                    </li>
+                    <li>
+                      Connected services need their own reviewed grants. A connected account is not permission
+                      to send, change or delete anything.
+                    </li>
+                    <li>
+                      Browser tasks use a separate, temporary browsing session. It starts without your cookies
+                      or saved passwords; sign in separately if needed.
+                    </li>
+                    <li>
+                      You can stop a task, take control of a page, or change permissions in Settings. Stopping
+                      cannot undo an action that already completed.
+                    </li>
+                    <li>
+                      Memory is optional. Review remembered information and pasted assistant notes through the
+                      existing Memory controls before using them.
+                    </li>
+                  </ul>
+                </details>
+                <p>
+                  Setup does not enable Memory, broaden grants, connect services or import credentials
+                  automatically.
+                </p>
+                <button
+                  {...auxClassGhostButtonProps}
+                  aria-expanded={showMemoryImport}
+                  onClick={() => setShowMemoryImport(!showMemoryImport)}
+                >
+                  Import notes from another assistant
+                </button>
+                {showMemoryImport && <PastedMemorySetup />}
+              </>
+            )}
+            {step === "postcard" && (
+              <>
+                <p>
+                  Choose a page you want to understand. Aux will use a separate browsing session; the page’s
+                  address is copied, without its cookies or saved passwords.
+                </p>
+                <SetupReview
+                  connected={connected}
+                  settings={settings}
+                  state={state}
+                  recovery={restoreStatus}
+                  source={pageReviewed ? reviewedPage : null}
+                  onCheckRecovery={() => void checkRecovery()}
+                  onVisit={(next) => {
+                    void work(async () => {
+                      await update("visit", next);
+                    });
+                  }}
+                />
+                {first?.status === "started" ? (
+                  <button
+                    {...auxClassButtonProps}
+                    disabled={busy}
+                    onClick={() =>
+                      void work(async () => {
+                        const result = await call("runs.get", { runId: first.runId });
+                        reveal(result.run);
+                      })
+                    }
+                  >
+                    Open your first chat
+                  </button>
+                ) : first?.status === "unavailable" ? (
+                  <p>
+                    Your first setup chat is unavailable. Replay will not recreate it. Check Chats before
+                    starting anything again. Start a new chat from Aux whenever you’re ready.
+                  </p>
+                ) : (
+                  <>
+                    {!ready && (
+                      <p>
+                        Review model data use and configure a connection in step 3 before starting. You can
+                        skip this step and browse normally.
+                      </p>
+                    )}
+                    <label>
+                      Page to explore
+                      <input
+                        type="url"
+                        value={pageUrl}
+                        placeholder="https://example.com"
+                        disabled={busy}
+                        onChange={(event) => setPageUrl(event.target.value)}
+                      />
+                    </label>
                     <button
-                      {...smallGhostButtonProps}
-                      disabled={busy}
+                      {...smallButtonProps}
+                      disabled={busy || !pageUrl.trim() || !activeSpace}
                       onClick={() =>
                         void work(async () => {
-                          await update("later");
-                          await useStore.getState().activate(page.pageId);
-                          onClose();
+                          const url = new URL(pageUrl.trim());
+                          if (!["http:", "https:"].includes(url.protocol) || url.username || url.password)
+                            throw new Error("Enter an HTTP or HTTPS page without embedded credentials.");
+                          const opened = await useStore
+                            .getState()
+                            .openBackgroundTab(url.href, activeSpace!.id, false);
+                          setPageId(opened.pageId);
+                          setReviewedPage(null);
                         })
                       }
                     >
-                      View selected page; finish setup later
+                      Open page in background
                     </button>
-                  )}
-                  {page && availableOnboardingPage(page) && (
                     <label>
-                      <input
-                        {...nativeCheckboxTypeProps}
-                        checked={pageReviewed}
+                      Reviewed source
+                      <select
+                        value={pageId}
                         disabled={busy}
-                        onChange={(event) =>
-                          setReviewedPage(
-                            event.target.checked
-                              ? {
-                                  pageId: page.pageId,
-                                  url: page.url,
-                                  documentEpoch: page.documentEpoch,
-                                  sessionId: page.sessionId,
-                                }
-                              : null,
-                          )
-                        }
-                      />
-                      I’ve reviewed this page and want to send its context to the selected model.
+                        onChange={(event) => {
+                          setPageId(event.target.value);
+                          setReviewedPage(null);
+                        }}
+                      >
+                        <option value="">Choose an available page</option>
+                        {pages.filter(availableOnboardingPage).map((item) => (
+                          <option key={item.pageId} value={item.pageId}>
+                            {item.title || item.url} — {item.url}
+                          </option>
+                        ))}
+                      </select>
                     </label>
-                  )}
-                  {first && (
-                    <output>
-                      {first.status === "pending"
-                        ? "Starting your first chat. Check progress if the connection was interrupted."
-                        : "The first chat did not finish starting. Review the page and retry; Aux reuses the same delivery identity."}
-                    </output>
-                  )}
-                  <div className="onboarding-postcards">
-                    {ONBOARDING_POSTCARDS.filter(
-                      (card) => !selectedPostcard || card.id === selectedPostcard,
-                    ).map((card) => (
-                      <article key={card.id}>
-                        <h2>{card.question}</h2>
-                        <p>{card.prompt}</p>
-                        {/* chrome:// web UI fatals when aria-label is on a generic div. */}
-                        <div {...staticRowProps} {...nativeGroupRoleProps} aria-label="Tools for this question">
-                          {card.tools.map((tool) => (
-                            <Badge key={tool} label={tool} />
-                          ))}
-                        </div>
-                        {card.id === "plan" &&
-                          catalog?.entries.some(
-                            (entry) => entry.kind === "calendar" && entry.state === "active",
-                          ) && <p {...staticHintProps}>Calendar connected · task approval still required</p>}
-                        {catalog?.entries.some(
-                          (entry) => entry.kind === "mcp" && entry.state === "approved",
-                        ) && <p {...staticHintProps}>MCP connected · tool approval still required</p>}
-                        <button
-                          {...auxClassButtonProps}
-                          disabled={
-                            busy ||
-                            !connected ||
-                            restoreStatus !== "ready" ||
-                            !ready ||
-                            !pageReviewed ||
-                            first?.status === "pending"
+                    {page && availableOnboardingPage(page) && (
+                      <button
+                        {...smallGhostButtonProps}
+                        disabled={busy}
+                        onClick={() =>
+                          void work(async () => {
+                            await update("later");
+                            await useStore.getState().activate(page.pageId);
+                            onClose();
+                          })
+                        }
+                      >
+                        View selected page; finish setup later
+                      </button>
+                    )}
+                    {page && availableOnboardingPage(page) && (
+                      <label>
+                        <input
+                          {...nativeCheckboxTypeProps}
+                          checked={pageReviewed}
+                          disabled={busy}
+                          onChange={(event) =>
+                            setReviewedPage(
+                              event.target.checked
+                                ? {
+                                    pageId: page.pageId,
+                                    url: page.url,
+                                    documentEpoch: page.documentEpoch,
+                                    sessionId: page.sessionId,
+                                  }
+                                : null,
+                            )
                           }
-                          onClick={() =>
-                            void work(async () => {
-                              if (!(await checkRecovery()))
-                                throw new Error(
-                                  "Recovery readiness changed. Resolve it before starting a chat.",
-                                );
-                              const livePage = useStore
-                                .getState()
-                                .pages.find((item) => item.pageId === reviewedPage?.pageId);
-                              if (
-                                !livePage ||
-                                !availableOnboardingPage(livePage) ||
-                                livePage.url !== reviewedPage?.url ||
-                                livePage.documentEpoch !== reviewedPage?.documentEpoch ||
-                                livePage.sessionId !== reviewedPage?.sessionId
-                              )
-                                throw new Error(
-                                  "The selected page changed during review. Review its current document before starting.",
-                                );
-                              const result = await call("onboarding.start", {
-                                revision: state.revision,
-                                postcardId: card.id,
-                                page: reviewedPage!,
-                              });
-                              setState(result.state);
-                              if (result.run) reveal(result.run);
-                            })
-                          }
-                        >
-                          {first ? "Retry this first chat" : "Start this chat"}
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-                </>
-              )}
-              {first?.status === "pending" && (
-                <button
-                  {...smallButtonProps}
-                  disabled={busy}
-                  onClick={() =>
-                    void work(async () => {
-                      setState(await call("onboarding.get"));
-                    })
-                  }
-                >
-                  Check chat progress
-                </button>
-              )}
-            </>
+                        />
+                        I’ve reviewed this page and want to send its context to the selected model.
+                      </label>
+                    )}
+                    {first && (
+                      <output>
+                        {first.status === "pending"
+                          ? "Starting your first chat. Check progress if the connection was interrupted."
+                          : "The first chat did not finish starting. Review the page and retry; Aux reuses the same delivery identity."}
+                      </output>
+                    )}
+                    <div className="onboarding-postcards">
+                      {ONBOARDING_POSTCARDS.filter(
+                        (card) => !selectedPostcard || card.id === selectedPostcard,
+                      ).map((card) => (
+                        <article key={card.id}>
+                          <h2>{card.question}</h2>
+                          <p>{card.prompt}</p>
+                          {/* chrome:// web UI fatals when aria-label is on a generic div. */}
+                          <div
+                            {...staticRowProps}
+                            {...nativeGroupRoleProps}
+                            aria-label="Tools for this question"
+                          >
+                            {card.tools.map((tool) => (
+                              <Badge key={tool} label={tool} />
+                            ))}
+                          </div>
+                          {card.id === "plan" &&
+                            catalog?.entries.some(
+                              (entry) => entry.kind === "calendar" && entry.state === "active",
+                            ) && (
+                              <p {...staticHintProps}>Calendar connected · task approval still required</p>
+                            )}
+                          {catalog?.entries.some(
+                            (entry) => entry.kind === "mcp" && entry.state === "approved",
+                          ) && <p {...staticHintProps}>MCP connected · tool approval still required</p>}
+                          <button
+                            {...auxClassButtonProps}
+                            disabled={
+                              busy ||
+                              !connected ||
+                              restoreStatus !== "ready" ||
+                              !ready ||
+                              !pageReviewed ||
+                              first?.status === "pending"
+                            }
+                            onClick={() =>
+                              void work(async () => {
+                                if (!(await checkRecovery()))
+                                  throw new Error(
+                                    "Recovery readiness changed. Resolve it before starting a chat.",
+                                  );
+                                const livePage = useStore
+                                  .getState()
+                                  .pages.find((item) => item.pageId === reviewedPage?.pageId);
+                                if (
+                                  !livePage ||
+                                  !availableOnboardingPage(livePage) ||
+                                  livePage.url !== reviewedPage?.url ||
+                                  livePage.documentEpoch !== reviewedPage?.documentEpoch ||
+                                  livePage.sessionId !== reviewedPage?.sessionId
+                                )
+                                  throw new Error(
+                                    "The selected page changed during review. Review its current document before starting.",
+                                  );
+                                const result = await call("onboarding.start", {
+                                  revision: state.revision,
+                                  postcardId: card.id,
+                                  page: reviewedPage!,
+                                });
+                                setState(result.state);
+                                if (result.run) reveal(result.run);
+                              })
+                            }
+                          >
+                            {first ? "Retry this first chat" : "Start this chat"}
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {first?.status === "pending" && (
+                  <button
+                    {...smallButtonProps}
+                    disabled={busy}
+                    onClick={() =>
+                      void work(async () => {
+                        setState(await call("onboarding.get"));
+                      })
+                    }
+                  >
+                    Check chat progress
+                  </button>
+                )}
+              </>
+            )}
+          </fieldset>
+          {error && (
+            <div {...nativeAlertRoleProps}>
+              <p>{error}</p>
+              <button
+                {...smallButtonProps}
+                disabled={busy}
+                onClick={() =>
+                  void work(async () => {
+                    setState(await call("onboarding.get"));
+                  })
+                }
+              >
+                Reload setup progress
+              </button>
+            </div>
           )}
-        </fieldset>
-        {error && (
-          <div {...nativeAlertRoleProps}>
-            <p>{error}</p>
-            <button
-              {...smallButtonProps}
-              disabled={busy}
-              onClick={() =>
-                void work(async () => {
-                  setState(await call("onboarding.get"));
-                })
-              }
-            >
-              Reload setup progress
-            </button>
-          </div>
-        )}
-        {restoreStatus === "unavailable" && (
-          <p {...nativeAlertRoleProps}>
-            Recovery readiness is unavailable. New chat starts are blocked until it can be checked.{" "}
-            <button
-              {...smallGhostButtonProps}
-              disabled={busy || !connected}
-              onClick={() => void checkRecovery()}
-            >
-              Retry recovery check
-            </button>
-          </p>
-        )}
-        {restorePending && (
-          <output>
-            Recovery is staged. Quit Aux normally and reopen to apply it before starting new work.
-          </output>
-        )}
+          {restoreStatus === "unavailable" && (
+            <p {...nativeAlertRoleProps}>
+              Recovery readiness is unavailable. New chat starts are blocked until it can be checked.{" "}
+              <button
+                {...smallGhostButtonProps}
+                disabled={busy || !connected}
+                onClick={() => void checkRecovery()}
+              >
+                Retry recovery check
+              </button>
+            </p>
+          )}
+          {restorePending && (
+            <output>
+              Recovery is staged. Quit Aux normally and reopen to apply it before starting new work.
+            </output>
+          )}
         </div>
         <footer>
           <button

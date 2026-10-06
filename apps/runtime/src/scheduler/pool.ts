@@ -21,7 +21,10 @@ export class WorkerPool {
   private perOriginCount = new Map<string, number>();
   private waiters: Waiter[] = [];
 
-  constructor(private opts: PoolOptions, readonly ownership = new PageOwnership()) {}
+  constructor(
+    private opts: PoolOptions,
+    readonly ownership = new PageOwnership(),
+  ) {}
 
   static originOf(url: string): string {
     try {
@@ -92,10 +95,7 @@ export class WorkerPool {
   }
 
   private canRun(origin: string): boolean {
-    return (
-      this.active < this.opts.maxWorkers &&
-      (this.perOriginCount.get(origin) ?? 0) < this.opts.perOrigin
-    );
+    return this.active < this.opts.maxWorkers && (this.perOriginCount.get(origin) ?? 0) < this.opts.perOrigin;
   }
 
   private pump() {
@@ -114,7 +114,11 @@ export class WorkerPool {
   }
 
   stats() {
-    return { active: this.active, queued: this.waiters.length, perOrigin: Object.fromEntries(this.perOriginCount),
-      pageOwners: this.ownership.snapshot() };
+    return {
+      active: this.active,
+      queued: this.waiters.length,
+      perOrigin: Object.fromEntries(this.perOriginCount),
+      pageOwners: this.ownership.snapshot(),
+    };
   }
 }

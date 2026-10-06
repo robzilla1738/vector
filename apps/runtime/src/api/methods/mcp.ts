@@ -15,7 +15,9 @@ async function h_mcp_servers_register(ctx: MethodCtx): Promise<unknown> {
   if (method === "mcp.servers.revoke") {
     const revoked = outboundMcp.revoke(params.serverId);
     if (revoked.source.kind === "remote" && revoked.source.auth === "oauth" && s.mcpOAuth)
-      await s.mcpOAuth.clear(revoked as typeof revoked & { source: { kind: "remote"; url: string; auth: "oauth" } });
+      await s.mcpOAuth.clear(
+        revoked as typeof revoked & { source: { kind: "remote"; url: string; auth: "oauth" } },
+      );
     return revoked;
   }
   if (method.startsWith("mcp.oauth.")) {
@@ -35,8 +37,9 @@ async function h_mcp_servers_register(ctx: MethodCtx): Promise<unknown> {
   if (method === "mcp.grants.revoke") return outboundMcp.revokeGrant(params.grantId);
   if (ctx.externalRunId && s.repo.getRun(ctx.externalRunId)?.config?.mentions?.length) {
     const grant = outboundMcp.getGrant(params.grantId);
-    return s.turnMentions.useConnector(ctx.externalRunId, `mcp:${grant.serverId}`, grant.toolName,
-      () => outboundMcp.callTool(params.grantId, params.arguments, params.context));
+    return s.turnMentions.useConnector(ctx.externalRunId, `mcp:${grant.serverId}`, grant.toolName, () =>
+      outboundMcp.callTool(params.grantId, params.arguments, params.context),
+    );
   }
   return outboundMcp.callTool(params.grantId, params.arguments, params.context);
 }

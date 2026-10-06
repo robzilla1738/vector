@@ -15,8 +15,13 @@ export const HookEventSchema = z.enum([
   "page.after",
 ]);
 export const HookHandlerSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("command"), command: z.string().trim().min(1).max(8000),
-    workdir: z.string().min(1).max(4096) }).strict(),
+  z
+    .object({
+      type: z.literal("command"),
+      command: z.string().trim().min(1).max(8000),
+      workdir: z.string().min(1).max(4096),
+    })
+    .strict(),
   z
     .object({
       type: z.literal("mcp_tool"),

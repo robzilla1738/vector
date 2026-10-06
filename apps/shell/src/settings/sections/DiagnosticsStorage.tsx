@@ -149,17 +149,22 @@ export function DiagnosticsStorage({
     if (!owner.begin(action)) return Promise.reject(new Error("Choose the current diagnostics control."));
     setPending({ owner, actions: owner.actions() });
     setMessage(null);
-    return constructOperationChain(producer, (value) => {
+    return constructOperationChain(
+      producer,
+      (value) => {
         if (current()) publish(value);
         return value;
-      }, (reason) => {
-        if (current())
-          setMessage({ owner, action, text: errorMessage(reason) });
+      },
+      (reason) => {
+        if (current()) setMessage({ owner, action, text: errorMessage(reason) });
         throw reason;
-      }, () => {
+      },
+      () => {
         owner.finish(action);
         if (current()) setPending({ owner, actions: owner.actions() });
-      }, current);
+      },
+      current,
+    );
   }
   const [summaryRef, toggle] = usePreferenceCommand<HTMLElement>(
     "toggle-diagnostics-storage",

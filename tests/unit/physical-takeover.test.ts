@@ -10,17 +10,25 @@ it("validated native run takeover holds an agent page even while its program is 
   let persisted = 0;
   const registry = {
     live: new Map([["active", lp]]),
-    persist: () => { persisted++; },
-    deps: { events: { emit: (type: string, payload: Record<string, unknown>) => emitted.push({ type, payload }) } },
+    persist: () => {
+      persisted++;
+    },
+    deps: {
+      events: { emit: (type: string, payload: Record<string, unknown>) => emitted.push({ type, payload }) },
+    },
   } as unknown as PageRegistry;
   const control = new ControlAuthority(registry);
   control.programInflight.add("active");
-  await expect(control.takeoverFromNative("other", "original-run")).rejects.toMatchObject({ code: "not_found" });
+  await expect(control.takeoverFromNative("other", "original-run")).rejects.toMatchObject({
+    code: "not_found",
+  });
   expect(target.controller).toBe("agent");
   await control.takeoverFromNative("active", "original-run");
   expect(target).toMatchObject({ controller: "human", controllerEpoch: 5 });
-  expect(emitted).toContainEqual({ type: EventTypes.PageTakeover,
-    payload: { pageId: "active", controller: "human", controllerEpoch: 5, nativeRunId: "original-run" } });
+  expect(emitted).toContainEqual({
+    type: EventTypes.PageTakeover,
+    payload: { pageId: "active", controller: "human", controllerEpoch: 5, nativeRunId: "original-run" },
+  });
   await control.takeoverFromNative("active", "original-run");
   expect(persisted).toBe(1);
   await control.resume("active");

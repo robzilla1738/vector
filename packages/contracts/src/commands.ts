@@ -19,30 +19,188 @@ const controlShiftModifiers = Object.freeze({ ctrl: true, shift: true });
 const commandAltModifiers = Object.freeze({ command: true, alt: true });
 const controlModifiers = Object.freeze({ ctrl: true });
 const Numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
-const K = <const I extends string, const S extends CommandDef["section"]>(id: I, label: string, section: S, bindings: readonly ShortcutBinding[]) => ({ id, label, section, handler: "shell", bindings, intercept: true } as const);
+const K = <const I extends string, const S extends CommandDef["section"]>(
+  id: I,
+  label: string,
+  section: S,
+  bindings: readonly ShortcutBinding[],
+) => ({ id, label, section, handler: "shell", bindings, intercept: true }) as const;
 
 // Share immutable metadata for commands with identical routing and restrictions.
-const C = <const I extends string, const D extends Omit<CommandDef, "id" | "label">>(id: I, label: string, defaults: D) => ({ id, label, ...defaults });
+const C = <const I extends string, const D extends Omit<CommandDef, "id" | "label">>(
+  id: I,
+  label: string,
+  defaults: D,
+) => ({ id, label, ...defaults });
 /** Scoped actions derive their dispatcher from this authoritative registry. */
-const S = <const I extends string, const D extends Omit<CommandDef, "id" | "label">>(id: I, label: string, defaults: D) => ({ ...C(id, label, defaults), dispatch: "scoped" } as const);
-const G = <const M extends string, const R extends readonly (readonly [string, string, string])[], const D extends Omit<CommandDef, "id" | "label">>(defaults: D, middle: M, rows: R) => rows.map(([start, end, label]) => S(`${start}${middle}${end}`, label, defaults)) as { [I in keyof R]: D & { readonly id: `${R[I][0]}${M}${R[I][1]}`; readonly label: string; readonly dispatch: "scoped" } };
-const GL = <const M extends string, const R extends readonly (readonly [string, string, string, string])[], const D extends Omit<CommandDef, "id" | "label">>(defaults: D, middle: M, labelMiddle: string, rows: R) => rows.map(([start, end, labelStart, labelEnd]) => S(`${start}${middle}${end}`, `${labelStart}${labelMiddle}${labelEnd}`, defaults)) as { [I in keyof R]: D & { readonly id: `${R[I][0]}${M}${R[I][1]}`; readonly label: string; readonly dispatch: "scoped" } };
+const S = <const I extends string, const D extends Omit<CommandDef, "id" | "label">>(
+  id: I,
+  label: string,
+  defaults: D,
+) => ({ ...C(id, label, defaults), dispatch: "scoped" }) as const;
+const G = <
+  const M extends string,
+  const R extends readonly (readonly [string, string, string])[],
+  const D extends Omit<CommandDef, "id" | "label">,
+>(
+  defaults: D,
+  middle: M,
+  rows: R,
+) =>
+  rows.map(([start, end, label]) => S(`${start}${middle}${end}`, label, defaults)) as {
+    [I in keyof R]: D & {
+      readonly id: `${R[I][0]}${M}${R[I][1]}`;
+      readonly label: string;
+      readonly dispatch: "scoped";
+    };
+  };
+const GL = <
+  const M extends string,
+  const R extends readonly (readonly [string, string, string, string])[],
+  const D extends Omit<CommandDef, "id" | "label">,
+>(
+  defaults: D,
+  middle: M,
+  labelMiddle: string,
+  rows: R,
+) =>
+  rows.map(([start, end, labelStart, labelEnd]) =>
+    S(`${start}${middle}${end}`, `${labelStart}${labelMiddle}${labelEnd}`, defaults),
+  ) as {
+    [I in keyof R]: D & {
+      readonly id: `${R[I][0]}${M}${R[I][1]}`;
+      readonly label: string;
+      readonly dispatch: "scoped";
+    };
+  };
 /** New single-row cohorts keep the original S result's mutable id and label fields. */
-const singleScopedRows = GL as <const M extends string, const R extends readonly (readonly [string, string, string, string])[], const D extends Omit<CommandDef, "id" | "label">>(defaults: D, middle: M, labelMiddle: string, rows: R) => { [I in keyof R]: { id: `${R[I][0]}${M}${R[I][1]}`; label: string } & D & { readonly dispatch: "scoped" } };
-const focusedFeature = <const T extends CommandDef["section"], const F extends AuxFeature>(section: T, feature: F) => ({ section, handler: "shell", feature, focusShell: true, palette: false, windows: ["normal"], bindings: [] } as const);
-const tabFeature = <const F extends AuxFeature>(feature: F) => ({ section: "Tabs", handler: "shell", feature, palette: false, windows: ["normal"], bindings: [] } as const);
-const nightFeature = <const P extends boolean>(palette: P) => ({ section: "Agent", handler: "shell", feature: "overnightReview", focusShell: true, windows: ["normal"], bindings: [], palette } as const);
-const quickAskControl = { section: "Agent", handler: "shell", feature: "quickAsk", focusShell: true, palette: false, bindings: [], intercept: true } as const;
-const searchEngineControl = { section: "Application", handler: "shell", focusShell: true, palette: false, bindings: [], intercept: true } as const;
-const memoryControl = { section: "Application", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [], intercept: true } as const;
+const singleScopedRows = GL as <
+  const M extends string,
+  const R extends readonly (readonly [string, string, string, string])[],
+  const D extends Omit<CommandDef, "id" | "label">,
+>(
+  defaults: D,
+  middle: M,
+  labelMiddle: string,
+  rows: R,
+) => {
+  [I in keyof R]: { id: `${R[I][0]}${M}${R[I][1]}`; label: string } & D & { readonly dispatch: "scoped" };
+};
+const focusedFeature = <const T extends CommandDef["section"], const F extends AuxFeature>(
+  section: T,
+  feature: F,
+) =>
+  ({
+    section,
+    handler: "shell",
+    feature,
+    focusShell: true,
+    palette: false,
+    windows: ["normal"],
+    bindings: [],
+  }) as const;
+const tabFeature = <const F extends AuxFeature>(feature: F) =>
+  ({
+    section: "Tabs",
+    handler: "shell",
+    feature,
+    palette: false,
+    windows: ["normal"],
+    bindings: [],
+  }) as const;
+const nightFeature = <const P extends boolean>(palette: P) =>
+  ({
+    section: "Agent",
+    handler: "shell",
+    feature: "overnightReview",
+    focusShell: true,
+    windows: ["normal"],
+    bindings: [],
+    palette,
+  }) as const;
+const quickAskControl = {
+  section: "Agent",
+  handler: "shell",
+  feature: "quickAsk",
+  focusShell: true,
+  palette: false,
+  bindings: [],
+  intercept: true,
+} as const;
+const searchEngineControl = {
+  section: "Application",
+  handler: "shell",
+  focusShell: true,
+  palette: false,
+  bindings: [],
+  intercept: true,
+} as const;
+const memoryControl = {
+  section: "Application",
+  handler: "shell",
+  focusShell: true,
+  palette: false,
+  windows: ["normal"],
+  bindings: [],
+  intercept: true,
+} as const;
 const sitePermissionControl = focusedFeature("Agent", "agentSitePermissions");
-const focusedAgentControl = { section: "Agent", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [] } as const;
-const runControl = { section: "Agent", handler: "shell", focusShell: true, windows: ["normal"], bindings: [], intercept: true } as const;
-const browserContextControl = { section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true } as const;
-const shellApplication = { section: "Application", handler: "shell", focusShell: true, bindings: [] } as const;
-const normalApplication = { section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] } as const;
-const demonstrationControl = { section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: false } as const;
-const skillReplayControl = { section: "Agent", handler: "shell", feature: "automations", focusShell: true, windows: ["normal"], bindings: [], palette: false } as const;
+const focusedAgentControl = {
+  section: "Agent",
+  handler: "shell",
+  focusShell: true,
+  palette: false,
+  windows: ["normal"],
+  bindings: [],
+} as const;
+const runControl = {
+  section: "Agent",
+  handler: "shell",
+  focusShell: true,
+  windows: ["normal"],
+  bindings: [],
+  intercept: true,
+} as const;
+const browserContextControl = {
+  section: "Agent",
+  handler: "shell",
+  palette: false,
+  focusShell: true,
+  windows: ["normal"],
+  bindings: [],
+  intercept: true,
+} as const;
+const shellApplication = {
+  section: "Application",
+  handler: "shell",
+  focusShell: true,
+  bindings: [],
+} as const;
+const normalApplication = {
+  section: "Application",
+  handler: "shell",
+  windows: ["normal"],
+  focusShell: true,
+  bindings: [],
+} as const;
+const demonstrationControl = {
+  section: "Agent",
+  handler: "shell",
+  feature: "demonstrationSkills",
+  focusShell: true,
+  windows: ["normal"],
+  bindings: [],
+  palette: false,
+} as const;
+const skillReplayControl = {
+  section: "Agent",
+  handler: "shell",
+  feature: "automations",
+  focusShell: true,
+  windows: ["normal"],
+  bindings: [],
+  palette: false,
+} as const;
 const profileControl = focusedFeature("Application", "profiles");
 const linkRoutingControl = focusedFeature("Application", "linkRouting");
 const extensionControl = focusedFeature("Application", "extensions");
@@ -51,17 +209,52 @@ const liveFolderControl = tabFeature("liveFolders");
 const archiveControl = tabFeature("archive");
 
 const mentionControl = focusedFeature("Agent", "tabMentions");
-const translationControl = { section: "Application", handler: "shell", feature: "aiTranslate", focusShell: true, bindings: [] } as const;
+const translationControl = {
+  section: "Application",
+  handler: "shell",
+  feature: "aiTranslate",
+  focusShell: true,
+  bindings: [],
+} as const;
 const nightReviewEntry = nightFeature(true);
 const nightReviewControl = nightFeature(false);
 const nightSettingsControl = { ...nightFeature(false), intercept: true } as const;
-const downloadNamingControl = { section: "Application", bindings: [], handler: "shell", feature: "smartDownloadNames", palette: false, windows: ["normal"] } as const;
-const windowSyncControl = { section: "Windows", handler: "shell", feature: "windowSync", windows: ["normal"], bindings: [] } as const;
-const littlePageControl = { section: "Windows", handler: "shell", feature: "littleWindow", windows: ["little"], bindings: [] } as const;
+const downloadNamingControl = {
+  section: "Application",
+  bindings: [],
+  handler: "shell",
+  feature: "smartDownloadNames",
+  palette: false,
+  windows: ["normal"],
+} as const;
+const windowSyncControl = {
+  section: "Windows",
+  handler: "shell",
+  feature: "windowSync",
+  windows: ["normal"],
+  bindings: [],
+} as const;
+const littlePageControl = {
+  section: "Windows",
+  handler: "shell",
+  feature: "littleWindow",
+  windows: ["little"],
+  bindings: [],
+} as const;
 const profileWindowControl = focusedFeature("Windows", "profiles");
-const archiveBatchControl = { section: "Tabs", handler: "shell", feature: "archive", windows: ["normal"], bindings: [] } as const;
+const archiveBatchControl = {
+  section: "Tabs",
+  handler: "shell",
+  feature: "archive",
+  windows: ["normal"],
+  bindings: [],
+} as const;
 
-const pageRecoveryControl = { ...memoryControl, section: "Page", windows: ["normal", "private", "little", "quick-ask"] } as const;
+const pageRecoveryControl = {
+  ...memoryControl,
+  section: "Page",
+  windows: ["normal", "private", "little", "quick-ask"],
+} as const;
 const diagnosticsControl = { ...memoryControl, windows: ["normal", "private"] } as const;
 const runPanelControl = { ...runControl, palette: false } as const;
 const modelControl = { ...memoryControl, windows: ["normal", "private"] } as const;
@@ -452,18 +645,10 @@ export const COMMANDS = [
     ["confirm-forget", "", "Confirm forgetting ", "s"],
     ["cancel-forget", "", "Cancel forgetting ", "s"],
   ]),
-  ...GL(memoryControl, "-browsing-memory", "browsing memory ", [
-    ["retry", "-load", "Retry ", "load"],
-  ]),
-  ...G(memoryControl, "-memory-", [
-    ["select", "space", "Select Space memory"],
-  ]),
-  ...GL(memoryControl, "-memory-", "memory ", [
-    ["retry", "search", "Retry ", "search"],
-  ]),
-  ...G(memoryControl, "-memory-", [
-    ["retry", "load", "Retry saved notes load"],
-  ]),
+  ...GL(memoryControl, "-browsing-memory", "browsing memory ", [["retry", "-load", "Retry ", "load"]]),
+  ...G(memoryControl, "-memory-", [["select", "space", "Select Space memory"]]),
+  ...GL(memoryControl, "-memory-", "memory ", [["retry", "search", "Retry ", "search"]]),
+  ...G(memoryControl, "-memory-", [["retry", "load", "Retry saved notes load"]]),
   C("set-site-agent-access", "Change site agent access", sitePermissionControl),
   C("delete-site-agent-rule", "Remove site agent access rule", sitePermissionControl),
   C("revoke-site-agent-grant", "Revoke site agent grant", sitePermissionControl),
@@ -536,7 +721,16 @@ export const COMMANDS = [
   C("command-tabs", "Search open tabs", shellApplication),
   C("command-observe", "Inspect what the agent sees", normalApplication),
   C("command-inline-assist", "Assist writing in this field…", normalApplication),
-  { id: "command-collect-tabs", label: "Collect open tabs into a Set", section: "Application", handler: "shell", feature: "subagents", windows: ["normal"], focusShell: true, bindings: [] },
+  {
+    id: "command-collect-tabs",
+    label: "Collect open tabs into a Set",
+    section: "Application",
+    handler: "shell",
+    feature: "subagents",
+    windows: ["normal"],
+    focusShell: true,
+    bindings: [],
+  },
   C("command-reading-list", "Read later", shellApplication),
   C("command-autofill", "Fill personal info", normalApplication),
   C("command-vault-fill", "Fill sign-in…", normalApplication),
@@ -544,12 +738,39 @@ export const COMMANDS = [
   C("command-show-original", "Show original page", translationControl),
   C("command-bookmarks", "Bookmarks and history", shellApplication),
   C("command-open-live-chrome", "Open live in Chrome", normalApplication),
-  { id: "command-new-space", label: "New Space", section: "Application", handler: "shell", feature: "spaces", focusShell: true, bindings: [] },
+  {
+    id: "command-new-space",
+    label: "New Space",
+    section: "Application",
+    handler: "shell",
+    feature: "spaces",
+    focusShell: true,
+    bindings: [],
+  },
 
-  { id: "command-switch-space", label: "Switch Space", section: "Layout", handler: "shell", feature: "spaces", palette: false, focusShell: true, bindings: [] },
+  {
+    id: "command-switch-space",
+    label: "Switch Space",
+    section: "Layout",
+    handler: "shell",
+    feature: "spaces",
+    palette: false,
+    focusShell: true,
+    bindings: [],
+  },
 
   C("export-demonstration", "Export reviewed demonstration", demonstrationControl),
-  { id: "record-demonstration", label: "Record a demonstration", section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: true },
+  {
+    id: "record-demonstration",
+    label: "Record a demonstration",
+    section: "Agent",
+    handler: "shell",
+    feature: "demonstrationSkills",
+    focusShell: true,
+    windows: ["normal"],
+    bindings: [],
+    palette: true,
+  },
   C("pause-demonstration", "Pause recording", demonstrationControl),
   C("resume-demonstration", "Resume recording", demonstrationControl),
   C("stop-demonstration", "Stop recording", demonstrationControl),
@@ -570,7 +791,15 @@ export const COMMANDS = [
   C("propose-skill-repair", "Propose Skill target repair", demonstrationControl),
   C("approve-skill-repair", "Approve Skill target repair", demonstrationControl),
 
-  { id: "show-download-settings", label: "Download naming settings", section: "Application", bindings: [], handler: "shell", feature: "smartDownloadNames", windows: ["normal"] },
+  {
+    id: "show-download-settings",
+    label: "Download naming settings",
+    section: "Application",
+    bindings: [],
+    handler: "shell",
+    feature: "smartDownloadNames",
+    windows: ["normal"],
+  },
   C("set-download-naming", "Change download naming", downloadNamingControl),
   C("undo-download-rename", "Undo download rename", downloadNamingControl),
   C("create-browser-profile", "Create Profile", profileControl),
@@ -584,10 +813,30 @@ export const COMMANDS = [
   C("test-link-routing", "Test link routing", linkRoutingControl),
   C("resolve-link-routing", "Open held link", linkRoutingControl),
   C("refresh-link-routing", "Refresh link routing", linkRoutingControl),
-  { id: "set-javascript-apple-events", label: "Allow JavaScript from Apple Events", section: "Application", handler: "shell", feature: "appleScript", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  {
+    id: "set-javascript-apple-events",
+    label: "Allow JavaScript from Apple Events",
+    section: "Application",
+    handler: "shell",
+    feature: "appleScript",
+    focusShell: true,
+    palette: false,
+    windows: ["normal"],
+    bindings: [],
+  },
   C("extension-action", "Open extension action", extensionControl),
   C("pin-extension-action", "Pin or unpin extension action", extensionControl),
-  { id: "show-extensions", label: "Manage extensions", section: "Application", handler: "shell", feature: "extensions", focusShell: true, palette: true, windows: ["normal"], bindings: [] },
+  {
+    id: "show-extensions",
+    label: "Manage extensions",
+    section: "Application",
+    handler: "shell",
+    feature: "extensions",
+    focusShell: true,
+    palette: true,
+    windows: ["normal"],
+    bindings: [],
+  },
   C("close-extension-panel", "Close extension side panel", extensionControl),
   C("set-extension-command-shortcut", "Change extension shortcut", extensionControl),
   C("install-store-extension", "Install Chrome Web Store extension", extensionControl),
@@ -600,37 +849,231 @@ export const COMMANDS = [
   C("show-tab-window", "Show this tab's window", windowSyncControl),
   C("little-space-picker", "Choose destination Space", littlePageControl),
   C("little-downloads", "Downloads for this page", littlePageControl),
-  { id: "set-external-link-target", label: "Choose where external links open", section: "Windows", handler: "shell", feature: "littleWindow", palette: false, bindings: [] },
+  {
+    id: "set-external-link-target",
+    label: "Choose where external links open",
+    section: "Windows",
+    handler: "shell",
+    feature: "littleWindow",
+    palette: false,
+    bindings: [],
+  },
   C("focus-profile-space", "Open Profile Space", profileWindowControl),
   C("move-tab-to-profile", "Move tab to Profile", profileWindowControl),
-  { id: "show-profiles", label: "Manage Profiles", section: "Application", handler: "shell", feature: "profiles", focusShell: true, windows: ["normal"], bindings: [] },
-  { id: "show-link-routing", label: "Manage link routing", section: "Application", handler: "shell", feature: "linkRouting", focusShell: true, windows: ["normal"], bindings: [] },
-  { id: "minimal-ui", label: "Minimal UI", section: "Layout", handler: "shell", feature: "minimalUi", focusShell: true, bindings: [B("b", commandShiftModifiers)], intercept: true },
-  { id: "pin-tab", label: "Pin or unpin tab", section: "Tabs", handler: "shell", feature: "pinnedApps", focusShell: true, bindings: [B("d", commandShiftModifiers)], intercept: true },
-  { id: "little-window", label: "New Little window", section: "Windows", handler: "shell", feature: "littleWindow", focusShell: true, bindings: [B("n", commandAltModifiers)], intercept: true },
-  { id: "promote-tab", label: "Open in main window", section: "Windows", handler: "shell", feature: "littleWindow", focusShell: true, bindings: [B("o", commandAltModifiers)], intercept: true },
-  { id: "picture-in-picture", label: "Picture in picture", section: "Page", handler: "shell", feature: "pictureInPicture", focusShell: true, bindings: [B("p", { ctrl: true, command: true })], intercept: true },
-  { id: "copy-url", label: "Copy URL", section: "Page", handler: "shell", focusShell: true, bindings: [B("c", commandShiftModifiers)], intercept: true },
-  { id: "split-add", label: "Split with\u2026", section: "Layout", handler: "shell", feature: "splitView", focusShell: true, bindings: [B("=", controlShiftModifiers), B("+", controlShiftModifiers)], intercept: true },
-  { id: "split-close", label: "Close split pane", section: "Layout", handler: "shell", feature: "splitView", focusShell: true, bindings: [B("-", controlShiftModifiers), B("_", controlShiftModifiers)], intercept: true },
-  { id: "split-next", label: "Focus next split pane", section: "Layout", handler: "shell", feature: "splitView", focusShell: true, bindings: [B("]", controlShiftModifiers), B("}", controlShiftModifiers)], intercept: true },
-  { id: "split-previous", label: "Focus previous split pane", section: "Layout", handler: "shell", feature: "splitView", focusShell: true, bindings: [B("[", controlShiftModifiers), B("{", controlShiftModifiers)], intercept: true },
-  { id: "split-swap", label: "Swap split sides", section: "Layout", handler: "shell", feature: "splitView", focusShell: true, bindings: [B("\\", controlShiftModifiers), B("|", controlShiftModifiers)], intercept: true },
-  { id: "split-flip", label: "Flip split layout", section: "Layout", handler: "shell", feature: "splitView", focusShell: true, bindings: [B("o", controlShiftModifiers)], intercept: true },
-  { id: "split-separate", label: "Separate split tabs", section: "Layout", handler: "shell", feature: "splitView", focusShell: true, windows: ["normal", "private"], bindings: [] },
-  { id: "split-resize", label: "Resize split divider", section: "Layout", handler: "shell", feature: "splitView", focusShell: true, palette: false, windows: ["normal", "private"], bindings: [] },
-  { id: "mute-tab", label: "Mute or unmute tab", section: "Page", handler: "shell", focusShell: true, bindings: [] },
-  { id: "new-tab", windows: ["normal", "private"], focusShell: true, section: "Tabs", handler: "shell", label: "New Tab", bindings: [B("t", commandModifiers)], intercept: true },
-  { id: "new-window", section: "Windows", handler: "native", label: "New Window", bindings: [B("n", commandModifiers)] },
-  { id: "new-private-window", section: "Windows", handler: "native", label: "New Private Window", bindings: [B("n", commandShiftModifiers)] },
+  {
+    id: "show-profiles",
+    label: "Manage Profiles",
+    section: "Application",
+    handler: "shell",
+    feature: "profiles",
+    focusShell: true,
+    windows: ["normal"],
+    bindings: [],
+  },
+  {
+    id: "show-link-routing",
+    label: "Manage link routing",
+    section: "Application",
+    handler: "shell",
+    feature: "linkRouting",
+    focusShell: true,
+    windows: ["normal"],
+    bindings: [],
+  },
+  {
+    id: "minimal-ui",
+    label: "Minimal UI",
+    section: "Layout",
+    handler: "shell",
+    feature: "minimalUi",
+    focusShell: true,
+    bindings: [B("b", commandShiftModifiers)],
+    intercept: true,
+  },
+  {
+    id: "pin-tab",
+    label: "Pin or unpin tab",
+    section: "Tabs",
+    handler: "shell",
+    feature: "pinnedApps",
+    focusShell: true,
+    bindings: [B("d", commandShiftModifiers)],
+    intercept: true,
+  },
+  {
+    id: "little-window",
+    label: "New Little window",
+    section: "Windows",
+    handler: "shell",
+    feature: "littleWindow",
+    focusShell: true,
+    bindings: [B("n", commandAltModifiers)],
+    intercept: true,
+  },
+  {
+    id: "promote-tab",
+    label: "Open in main window",
+    section: "Windows",
+    handler: "shell",
+    feature: "littleWindow",
+    focusShell: true,
+    bindings: [B("o", commandAltModifiers)],
+    intercept: true,
+  },
+  {
+    id: "picture-in-picture",
+    label: "Picture in picture",
+    section: "Page",
+    handler: "shell",
+    feature: "pictureInPicture",
+    focusShell: true,
+    bindings: [B("p", { ctrl: true, command: true })],
+    intercept: true,
+  },
+  {
+    id: "copy-url",
+    label: "Copy URL",
+    section: "Page",
+    handler: "shell",
+    focusShell: true,
+    bindings: [B("c", commandShiftModifiers)],
+    intercept: true,
+  },
+  {
+    id: "split-add",
+    label: "Split with\u2026",
+    section: "Layout",
+    handler: "shell",
+    feature: "splitView",
+    focusShell: true,
+    bindings: [B("=", controlShiftModifiers), B("+", controlShiftModifiers)],
+    intercept: true,
+  },
+  {
+    id: "split-close",
+    label: "Close split pane",
+    section: "Layout",
+    handler: "shell",
+    feature: "splitView",
+    focusShell: true,
+    bindings: [B("-", controlShiftModifiers), B("_", controlShiftModifiers)],
+    intercept: true,
+  },
+  {
+    id: "split-next",
+    label: "Focus next split pane",
+    section: "Layout",
+    handler: "shell",
+    feature: "splitView",
+    focusShell: true,
+    bindings: [B("]", controlShiftModifiers), B("}", controlShiftModifiers)],
+    intercept: true,
+  },
+  {
+    id: "split-previous",
+    label: "Focus previous split pane",
+    section: "Layout",
+    handler: "shell",
+    feature: "splitView",
+    focusShell: true,
+    bindings: [B("[", controlShiftModifiers), B("{", controlShiftModifiers)],
+    intercept: true,
+  },
+  {
+    id: "split-swap",
+    label: "Swap split sides",
+    section: "Layout",
+    handler: "shell",
+    feature: "splitView",
+    focusShell: true,
+    bindings: [B("\\", controlShiftModifiers), B("|", controlShiftModifiers)],
+    intercept: true,
+  },
+  {
+    id: "split-flip",
+    label: "Flip split layout",
+    section: "Layout",
+    handler: "shell",
+    feature: "splitView",
+    focusShell: true,
+    bindings: [B("o", controlShiftModifiers)],
+    intercept: true,
+  },
+  {
+    id: "split-separate",
+    label: "Separate split tabs",
+    section: "Layout",
+    handler: "shell",
+    feature: "splitView",
+    focusShell: true,
+    windows: ["normal", "private"],
+    bindings: [],
+  },
+  {
+    id: "split-resize",
+    label: "Resize split divider",
+    section: "Layout",
+    handler: "shell",
+    feature: "splitView",
+    focusShell: true,
+    palette: false,
+    windows: ["normal", "private"],
+    bindings: [],
+  },
+  {
+    id: "mute-tab",
+    label: "Mute or unmute tab",
+    section: "Page",
+    handler: "shell",
+    focusShell: true,
+    bindings: [],
+  },
+  {
+    id: "new-tab",
+    windows: ["normal", "private"],
+    focusShell: true,
+    section: "Tabs",
+    handler: "shell",
+    label: "New Tab",
+    bindings: [B("t", commandModifiers)],
+    intercept: true,
+  },
+  {
+    id: "new-window",
+    section: "Windows",
+    handler: "native",
+    label: "New Window",
+    bindings: [B("n", commandModifiers)],
+  },
+  {
+    id: "new-private-window",
+    section: "Windows",
+    handler: "native",
+    label: "New Private Window",
+    bindings: [B("n", commandShiftModifiers)],
+  },
   K("open-file", "Open File…", "Tabs", [B("o", commandModifiers)]),
   K("reopen-closed-tab", "Reopen Closed Tab", "Tabs", [B("t", commandShiftModifiers)]),
   K("close-tab", "Close Tab", "Tabs", [B("w", commandModifiers)]),
   K("close-window", "Close Window", "Windows", [B("w", commandShiftModifiers)]),
   K("print", "Print…", "Page", [B("p", commandModifiers)]),
   K("save-pdf", "Save Page as PDF…", "Page", [B("p", commandShiftModifiers)]),
-  { id: "new-chat", section: "Agent", handler: "shell", label: "New chat", focusShell: true, windows: ["normal"], bindings: [] },
-  { id: "quick-ask", section: "Agent", handler: "shell", label: "Quick Ask", bindings: [B(" ", commandShiftModifiers)] },
+  {
+    id: "new-chat",
+    section: "Agent",
+    handler: "shell",
+    label: "New chat",
+    focusShell: true,
+    windows: ["normal"],
+    bindings: [],
+  },
+  {
+    id: "quick-ask",
+    section: "Agent",
+    handler: "shell",
+    label: "Quick Ask",
+    bindings: [B(" ", commandShiftModifiers)],
+  },
   K("find", "Find…", "Page", [B("f", commandModifiers)]),
   K("find-next", "Find Next", "Page", [B("g", commandModifiers)]),
   K("find-previous", "Find Previous", "Page", [B("g", commandShiftModifiers)]),
@@ -638,60 +1081,164 @@ export const COMMANDS = [
   K("hard-reload", "Hard Reload", "Page", [B("r", commandShiftModifiers)]),
   K("actual-size", "Actual Size", "Page", [B("0", commandModifiers)]),
   {
-    id: "zoom-in", section: "Page", handler: "shell", label: "Zoom In", intercept: true,
+    id: "zoom-in",
+    section: "Page",
+    handler: "shell",
+    label: "Zoom In",
+    intercept: true,
     // `+` is Shift+= on US layouts — the shifted variants are the same chord.
-    bindings: [B("=", commandModifiers), B("=", commandShiftModifiers), B("+", commandModifiers), B("+", commandShiftModifiers)],
+    bindings: [
+      B("=", commandModifiers),
+      B("=", commandShiftModifiers),
+      B("+", commandModifiers),
+      B("+", commandShiftModifiers),
+    ],
   },
   {
-    id: "zoom-out", section: "Page", handler: "shell", label: "Zoom Out", intercept: true,
-    bindings: [B("-", commandModifiers), B("-", commandShiftModifiers), B("_", commandModifiers), B("_", commandShiftModifiers)],
+    id: "zoom-out",
+    section: "Page",
+    handler: "shell",
+    label: "Zoom Out",
+    intercept: true,
+    bindings: [
+      B("-", commandModifiers),
+      B("-", commandShiftModifiers),
+      B("_", commandModifiers),
+      B("_", commandShiftModifiers),
+    ],
   },
   K("reader", "Reader View", "Page", [B("r", commandAltModifiers)]),
   K("sidebar", "Toggle Sidebar", "Layout", [B("s", commandModifiers)]),
-  { id: "sidebar-hide", section: "Layout", handler: "shell", label: "Hide Sidebar", bindings: [], palette: false, windows: ["normal", "private"] },
+  {
+    id: "sidebar-hide",
+    section: "Layout",
+    handler: "shell",
+    label: "Hide Sidebar",
+    bindings: [],
+    palette: false,
+    windows: ["normal", "private"],
+  },
   K("overview", "Tab Overview", "Layout", [B("o", commandShiftModifiers)]),
   K("devtools", "Developer Tools", "Developer", [B("i", commandAltModifiers)]),
   K("inspect-element", "Inspect Element", "Developer", [B("c", commandAltModifiers)]),
   K("view-source", "View Source", "Developer", [B("u", commandAltModifiers)]),
-  K("back", "Back", "Page", [B("[", commandModifiers), B("left", { alt: true, platforms: ["win32", "linux"] })]),
-  K("forward", "Forward", "Page", [B("]", commandModifiers), B("right", { alt: true, platforms: ["win32", "linux"] })]),
-  { id: "open-address", windows: ["normal", "private"], focusShell: true, section: "Page", handler: "shell", label: "Open Address", bindings: [B("l", commandModifiers), B("e", commandModifiers)], intercept: true },
-  { id: "palette", windows: ["normal", "private"], focusShell: true, section: "Application", handler: "shell", label: "Command Palette", bindings: [B("k", commandModifiers)], intercept: true },
-  { id: "settings", windows: ["normal"], focusShell: true, section: "Application", handler: "shell", label: "Settings", bindings: [B(",", commandModifiers)], intercept: true },
+  K("back", "Back", "Page", [
+    B("[", commandModifiers),
+    B("left", { alt: true, platforms: ["win32", "linux"] }),
+  ]),
+  K("forward", "Forward", "Page", [
+    B("]", commandModifiers),
+    B("right", { alt: true, platforms: ["win32", "linux"] }),
+  ]),
+  {
+    id: "open-address",
+    windows: ["normal", "private"],
+    focusShell: true,
+    section: "Page",
+    handler: "shell",
+    label: "Open Address",
+    bindings: [B("l", commandModifiers), B("e", commandModifiers)],
+    intercept: true,
+  },
+  {
+    id: "palette",
+    windows: ["normal", "private"],
+    focusShell: true,
+    section: "Application",
+    handler: "shell",
+    label: "Command Palette",
+    bindings: [B("k", commandModifiers)],
+    intercept: true,
+  },
+  {
+    id: "settings",
+    windows: ["normal"],
+    focusShell: true,
+    section: "Application",
+    handler: "shell",
+    label: "Settings",
+    bindings: [B(",", commandModifiers)],
+    intercept: true,
+  },
   K("history", "History", "Application", [B("y", commandModifiers)]),
   K("downloads", "Downloads", "Application", [B("j", commandShiftModifiers)]),
   K("bookmark", "Bookmark This Page", "Tabs", [B("d", commandModifiers)]),
   K("bookmark-all", "Bookmark All Tabs", "Tabs", []),
-  { id: "agent-rail", windows: ["normal"], section: "Agent", handler: "shell", label: "Toggle Agent Rail", bindings: [B("a", commandShiftModifiers)], intercept: true },
+  {
+    id: "agent-rail",
+    windows: ["normal"],
+    section: "Agent",
+    handler: "shell",
+    label: "Toggle Agent Rail",
+    bindings: [B("a", commandShiftModifiers)],
+    intercept: true,
+  },
   K("clear-history", "Clear History", "Application", [B("backspace", commandShiftModifiers)]),
   {
-    id: "tab-next", section: "Tabs", handler: "shell", label: "Next Tab", intercept: true,
+    id: "tab-next",
+    section: "Tabs",
+    handler: "shell",
+    label: "Next Tab",
+    intercept: true,
     bindings: [
       B("right", commandAltModifiers),
-      B("]", commandShiftModifiers), B("}", commandShiftModifiers),
-      B("tab", controlModifiers), B("tab", { command: true, platforms: ["win32", "linux"] }),
+      B("]", commandShiftModifiers),
+      B("}", commandShiftModifiers),
+      B("tab", controlModifiers),
+      B("tab", { command: true, platforms: ["win32", "linux"] }),
     ],
   },
   {
-    id: "tab-previous", section: "Tabs", handler: "shell", label: "Previous Tab", intercept: true,
+    id: "tab-previous",
+    section: "Tabs",
+    handler: "shell",
+    label: "Previous Tab",
+    intercept: true,
     bindings: [
       B("left", commandAltModifiers),
-      B("[", commandShiftModifiers), B("{", commandShiftModifiers),
-      B("tab", controlShiftModifiers), B("tab", { command: true, shift: true, platforms: ["win32", "linux"] }),
+      B("[", commandShiftModifiers),
+      B("{", commandShiftModifiers),
+      B("tab", controlShiftModifiers),
+      B("tab", { command: true, shift: true, platforms: ["win32", "linux"] }),
     ],
   },
-  ...Numbers.map(n => ({
-    id: `tab-${n}` as const, label: n === 9 ? "Last Tab" : `Switch to Tab ${n}`,
-    section: "Tabs", handler: "shell", bindings: [B(String(n), commandModifiers)], intercept: true,
-  } as const)),
-  ...Numbers.map(n => ({
-    id: `space-${n}` as const, label: `Switch to Space ${n}`, section: "Layout", handler: "shell", feature: "spaces",
-    focusShell: true, bindings: [B(String(n), controlModifiers)], intercept: true,
-  } as const)),
-  ...Numbers.map(n => ({
-    id: `profile-${n}` as const, label: `Switch to Profile ${n}`, section: "Windows", handler: "shell", feature: "profiles",
-    focusShell: true, bindings: [B(String(n), { ctrl: true, alt: true })], intercept: true,
-  } as const)),
+  ...Numbers.map(
+    (n) =>
+      ({
+        id: `tab-${n}` as const,
+        label: n === 9 ? "Last Tab" : `Switch to Tab ${n}`,
+        section: "Tabs",
+        handler: "shell",
+        bindings: [B(String(n), commandModifiers)],
+        intercept: true,
+      }) as const,
+  ),
+  ...Numbers.map(
+    (n) =>
+      ({
+        id: `space-${n}` as const,
+        label: `Switch to Space ${n}`,
+        section: "Layout",
+        handler: "shell",
+        feature: "spaces",
+        focusShell: true,
+        bindings: [B(String(n), controlModifiers)],
+        intercept: true,
+      }) as const,
+  ),
+  ...Numbers.map(
+    (n) =>
+      ({
+        id: `profile-${n}` as const,
+        label: `Switch to Profile ${n}`,
+        section: "Windows",
+        handler: "shell",
+        feature: "profiles",
+        focusShell: true,
+        bindings: [B(String(n), { ctrl: true, alt: true })],
+        intercept: true,
+      }) as const,
+  ),
   C("reset-pinned-app", "Reset to pinned URL", pinnedAppControl),
   C("toggle-pin-keep-awake", "Keep pinned app awake", pinnedAppControl),
   C("open-pinned-app", "Open pinned app", pinnedAppControl),
@@ -710,15 +1257,58 @@ export const COMMANDS = [
   C("archive-restore-all", "Restore all archived tabs", archiveBatchControl),
   C("archive-delete", "Delete archived tab", archiveControl),
   C("archive-undo", "Undo archived tabs", archiveControl),
-  { id: "acknowledge-auto-archive", label: "Acknowledge auto-archive", section: "Tabs", handler: "shell", feature: "autoArchive", palette: false, windows: ["normal"], bindings: [] },
-  { id: "configure-auto-archive", label: "Change auto-archive policy", section: "Tabs", handler: "shell", feature: "autoArchive", windows: ["normal"], bindings: [] },
-  { id: "save-live-folder", label: "Save live folder", section: "Tabs", handler: "shell", feature: "liveFolders", windows: ["normal"], palette: false, bindings: [] },
-  { id: "set-auto-archive-policy", label: "Set auto-archive policy", section: "Tabs", handler: "shell", feature: "autoArchive", windows: ["normal"], palette: false, bindings: [] },
-  { id: "show-archived-tabs", label: "Show archived tabs", section: "Tabs", handler: "shell", feature: "archive", bindings: [] },
+  {
+    id: "acknowledge-auto-archive",
+    label: "Acknowledge auto-archive",
+    section: "Tabs",
+    handler: "shell",
+    feature: "autoArchive",
+    palette: false,
+    windows: ["normal"],
+    bindings: [],
+  },
+  {
+    id: "configure-auto-archive",
+    label: "Change auto-archive policy",
+    section: "Tabs",
+    handler: "shell",
+    feature: "autoArchive",
+    windows: ["normal"],
+    bindings: [],
+  },
+  {
+    id: "save-live-folder",
+    label: "Save live folder",
+    section: "Tabs",
+    handler: "shell",
+    feature: "liveFolders",
+    windows: ["normal"],
+    palette: false,
+    bindings: [],
+  },
+  {
+    id: "set-auto-archive-policy",
+    label: "Set auto-archive policy",
+    section: "Tabs",
+    handler: "shell",
+    feature: "autoArchive",
+    windows: ["normal"],
+    palette: false,
+    bindings: [],
+  },
+  {
+    id: "show-archived-tabs",
+    label: "Show archived tabs",
+    section: "Tabs",
+    handler: "shell",
+    feature: "archive",
+    bindings: [],
+  },
 ] as const satisfies readonly CommandDef[];
 
-
-export const SCOPED_COMMANDS = COMMANDS.filter(command => "dispatch" in command && command.dispatch === "scoped");
+export const SCOPED_COMMANDS = COMMANDS.filter(
+  (command) => "dispatch" in command && command.dispatch === "scoped",
+);
 
 export type ShellCommandId = Extract<(typeof COMMANDS)[number], { handler: "shell" }>["id"];
 export type NativeCommandId = Extract<(typeof COMMANDS)[number], { handler: "native" }>["id"];

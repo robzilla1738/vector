@@ -28,11 +28,7 @@ export function emptyRepairState(): RepairState {
 
 export function classifyRepair(error: unknown): RepairClass {
   const code = error instanceof AuxError ? error.code : "";
-  const message = typeof error === "string"
-    ? error
-    : error instanceof Error
-      ? error.message
-      : "";
+  const message = typeof error === "string" ? error : error instanceof Error ? error.message : "";
   const text = `${code} ${message}`.toLowerCase();
 
   if (
@@ -44,11 +40,7 @@ export function classifyRepair(error: unknown): RepairClass {
   ) {
     return "stale";
   }
-  if (
-    text.includes("condition_timeout") ||
-    text.includes("deadline exceeded") ||
-    /\btimeout\b/.test(text)
-  ) {
+  if (text.includes("condition_timeout") || text.includes("deadline exceeded") || /\btimeout\b/.test(text)) {
     return "timeout";
   }
   if (text.includes("needs_input")) {
@@ -56,10 +48,7 @@ export function classifyRepair(error: unknown): RepairClass {
     // the human rather than repairing around the block.
     return "suspended";
   }
-  if (
-    text.includes("permission_denied") ||
-    /\bdenied\b/.test(text)
-  ) {
+  if (text.includes("permission_denied") || /\bdenied\b/.test(text)) {
     return "auth";
   }
   if (text.includes("model_error") || text.includes("model_output_invalid")) {

@@ -3,26 +3,41 @@ import { afterEach, test } from "node:test";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { macNativeMessagingLocations, scanNativeMessagingLocations,
-  validateNativeMessagingManifest } from "./native-messaging-manifests.mjs";
+import {
+  macNativeMessagingLocations,
+  scanNativeMessagingLocations,
+  validateNativeMessagingManifest,
+} from "./native-messaging-manifests.mjs";
 
 const directories = [];
 const fixture = () => {
-  const dir = mkdtempSync(join(tmpdir(), "aux-native-manifest-test-")); directories.push(dir);
-  const host = join(dir, "host"); writeFileSync(host, "#!/bin/sh\nexit 0\n"); chmodSync(host, 0o700);
+  const dir = mkdtempSync(join(tmpdir(), "aux-native-manifest-test-"));
+  directories.push(dir);
+  const host = join(dir, "host");
+  writeFileSync(host, "#!/bin/sh\nexit 0\n");
+  chmodSync(host, 0o700);
   const file = join(dir, "aux.synthetic.json");
-  const manifest = { name: "aux.synthetic", description: "Synthetic fixture", path: host,
-    type: "stdio", allowed_origins: [`chrome-extension://${"a".repeat(32)}/`] };
-  const write = value => writeFileSync(file, JSON.stringify(value));
+  const manifest = {
+    name: "aux.synthetic",
+    description: "Synthetic fixture",
+    path: host,
+    type: "stdio",
+    allowed_origins: [`chrome-extension://${"a".repeat(32)}/`],
+  };
+  const write = (value) => writeFileSync(file, JSON.stringify(value));
   write(manifest);
   return { dir, host, file, manifest, write };
 };
-afterEach(() => { while (directories.length) rmSync(directories.pop(), { recursive: true, force: true }); });
+afterEach(() => {
+  while (directories.length) rmSync(directories.pop(), { recursive: true, force: true });
+});
 
 test("accepts one exact extension grant and a present executable", () => {
   const { file } = fixture();
   assert.deepEqual(validateNativeMessagingManifest(file), {
-    valid: true, name: "aux.synthetic", allowedOrigins: [`chrome-extension://${"a".repeat(32)}/`],
+    valid: true,
+    name: "aux.synthetic",
+    allowedOrigins: [`chrome-extension://${"a".repeat(32)}/`],
   });
 });
 
@@ -43,7 +58,8 @@ test("rejects malformed names, paths, host type and broad or unrelated origins",
     write(value);
     assert.equal(validateNativeMessagingManifest(file).reason, reason);
   }
-  write(manifest); chmodSync(host, 0o600);
+  write(manifest);
+  chmodSync(host, 0o600);
   assert.equal(validateNativeMessagingManifest(file).reason, "host_not_executable");
 });
 
@@ -52,11 +68,18 @@ test("sanitizes system inventory and honors active user-data discovery", () => {
   const userData = join(dir, "disposable-profile");
   const locations = macNativeMessagingLocations(userData, dir);
   assert.equal(locations[0].path, join(userData, "NativeMessagingHosts"));
-  assert.ok(locations.some(item => item.label === "chrome-user-default"));
-  assert.ok(locations.some(item => item.label === "chromium-global"));
+  assert.ok(locations.some((item) => item.label === "chrome-user-default"));
+  assert.ok(locations.some((item) => item.label === "chromium-global"));
   const inventory = scanNativeMessagingLocations([{ label: "test", path: dir }]);
-  assert.deepEqual(inventory[0], { location: "test", present: true, manifests: 1,
-    valid: 1, invalid: 0, truncated: false, onePassword: "absent" });
+  assert.deepEqual(inventory[0], {
+    location: "test",
+    present: true,
+    manifests: 1,
+    valid: 1,
+    invalid: 0,
+    truncated: false,
+    onePassword: "absent",
+  });
   assert.ok(!JSON.stringify(inventory).includes(file));
   assert.ok(!JSON.stringify(inventory).includes("chrome-extension://"));
   mkdirSync(join(dir, "empty"));

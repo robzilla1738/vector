@@ -11,4 +11,3 @@ export function canonicalCommandUrl(value?: string): string | null {
     return null;
   }
 }
-

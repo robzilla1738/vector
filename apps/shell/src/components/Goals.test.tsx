@@ -99,18 +99,38 @@ it("binds a new Goal to the current conversation and blocks a second unfinished 
   rpc.mockImplementation(async (method: string, params: Record<string, unknown>) => {
     if (method === "goals.list") return goal ? [goal] : [];
     if (method === "goals.create") {
-      goal = { goalId: "goal-2", ...params, status: "draft", usedTokens: 0, knownCostUsd: 0, costComplete: true };
+      goal = {
+        goalId: "goal-2",
+        ...params,
+        status: "draft",
+        usedTokens: 0,
+        knownCostUsd: 0,
+        costComplete: true,
+      };
       return goal;
     }
     throw new Error(`Unexpected ${method}`);
   });
-  await act(async () => root.render(<Goals workspaceId="space-1" chatId="chat-1" activePageId={null}
-    modelConfigured={false} openRun={() => {}} />));
+  await act(async () =>
+    root.render(
+      <Goals
+        workspaceId="space-1"
+        chatId="chat-1"
+        activePageId={null}
+        modelConfigured={false}
+        openRun={() => {}}
+      />,
+    ),
+  );
   await act(async () => button("New Goal").click());
   act(() => change("textarea", "Bounded conversation work"));
   await act(async () => button("Save Goal").click());
-  expect(rpc).toHaveBeenCalledWith("goals.create", { workspaceId: "space-1", chatId: "chat-1",
-    objective: "Bounded conversation work", budget: { maxTokens: 200000, maxCostUsd: 1, deadlineMs: 1_800_000 } });
+  expect(rpc).toHaveBeenCalledWith("goals.create", {
+    workspaceId: "space-1",
+    chatId: "chat-1",
+    objective: "Bounded conversation work",
+    budget: { maxTokens: 200000, maxCostUsd: 1, deadlineMs: 1_800_000 },
+  });
   expect(button("New Goal").disabled).toBe(true);
   expect(container.textContent).toContain("Finish or cancel this conversation’s current Goal");
 });
@@ -118,14 +138,32 @@ it("binds a new Goal to the current conversation and blocks a second unfinished 
 it("shows a model-reported blocker and lets the owner resume the Goal", async () => {
   let status = "blocked";
   rpc.mockImplementation(async (method: string) => {
-    if (method === "goals.list") return [{ goalId: "goal-3", workspaceId: "space-1", objective: "Investigate",
-      budget: { maxTokens: 1200 }, status, blocker: "Authentication needed", usedTokens: 12,
-      knownCostUsd: 0, costComplete: true, runId: "run-3" }];
-    if (method === "goals.resume") { status = "active"; return {}; }
+    if (method === "goals.list")
+      return [
+        {
+          goalId: "goal-3",
+          workspaceId: "space-1",
+          objective: "Investigate",
+          budget: { maxTokens: 1200 },
+          status,
+          blocker: "Authentication needed",
+          usedTokens: 12,
+          knownCostUsd: 0,
+          costComplete: true,
+          runId: "run-3",
+        },
+      ];
+    if (method === "goals.resume") {
+      status = "active";
+      return {};
+    }
     throw new Error(`Unexpected ${method}`);
   });
-  await act(async () => root.render(<Goals workspaceId="space-1" activePageId={null}
-    modelConfigured={true} openRun={() => {}} />));
+  await act(async () =>
+    root.render(
+      <Goals workspaceId="space-1" activePageId={null} modelConfigured={true} openRun={() => {}} />,
+    ),
+  );
   expect(container.textContent).toContain("Blocked: Authentication needed");
   await act(async () => button("Resume").click());
   expect(rpc).toHaveBeenCalledWith("goals.resume", { goalId: "goal-3" });
@@ -135,14 +173,27 @@ it("shows a model-reported blocker and lets the owner resume the Goal", async ()
 it("separates held capacity from confirmed usage and links the interrupted run", async () => {
   const openRun = vi.fn();
   rpc.mockImplementation(async (method: string) => {
-    if (method === "goals.list") return [{ goalId: "goal-4", workspaceId: "space-1", objective: "Read fixture",
-      budget: { maxTokens: 5000, maxCostUsd: 1 }, status: "needs_input", usedTokens: 12,
-      knownCostUsd: 0.01, costComplete: false, reservedTokens: 1324,
-      reservedCostUsd: 0.2, runId: "run-4" }];
+    if (method === "goals.list")
+      return [
+        {
+          goalId: "goal-4",
+          workspaceId: "space-1",
+          objective: "Read fixture",
+          budget: { maxTokens: 5000, maxCostUsd: 1 },
+          status: "needs_input",
+          usedTokens: 12,
+          knownCostUsd: 0.01,
+          costComplete: false,
+          reservedTokens: 1324,
+          reservedCostUsd: 0.2,
+          runId: "run-4",
+        },
+      ];
     throw new Error(`Unexpected ${method}`);
   });
-  await act(async () => root.render(<Goals workspaceId="space-1" activePageId={null}
-    modelConfigured={true} openRun={openRun} />));
+  await act(async () =>
+    root.render(<Goals workspaceId="space-1" activePageId={null} modelConfigured={true} openRun={openRun} />),
+  );
   expect(container.textContent).toContain("12 / 5,000 tokens");
   expect(container.textContent).toContain("Held capacity: 1,324 tokens");
   expect(container.textContent).toContain("not confirmed provider usage");

@@ -14,9 +14,27 @@ import {
 import { createGateway } from "@ai-sdk/gateway";
 import { z } from "zod";
 import { AuxError, TaskPlanChunkSchema } from "@aux/contracts";
-import { clampOutputTokens, MODEL_REGISTRY, modelAcceptsImages, modelCapabilities, type AgentModelRoute, type ModelCapability } from "@aux/contracts/model-registry";
+import {
+  clampOutputTokens,
+  MODEL_REGISTRY,
+  modelAcceptsImages,
+  modelCapabilities,
+  type AgentModelRoute,
+  type ModelCapability,
+} from "@aux/contracts/model-registry";
 import { extractJson } from "./json-text.js";
-import { attemptsOf, DEFAULT_PLANNER_MODEL, modelCallCost, usageFields, withAttempts, type ModelAttempt, type ModelClient, type StructuredCallResult, type TextCallResult, type ToolCallStepResult } from "./model-client.js";
+import {
+  attemptsOf,
+  DEFAULT_PLANNER_MODEL,
+  modelCallCost,
+  usageFields,
+  withAttempts,
+  type ModelAttempt,
+  type ModelClient,
+  type StructuredCallResult,
+  type TextCallResult,
+  type ToolCallStepResult,
+} from "./model-client.js";
 import { estimatedPromptTokens, projectedModelCostUsd, SpendLedger } from "../store/spend-ledger.js";
 import { ANTHROPIC_CACHE_CONTROL, anthropicCachedMessages, openAiSessionCache } from "./prompt-cache.js";
 
@@ -50,7 +68,10 @@ export function isStructuredOutputError(e: unknown): boolean {
   if (/unsupported json schema|json schema fields|\boneOf\b|\banyOf\b/i.test(msg)) return true;
   if (APICallError.isInstance(e)) {
     // a 400 that names the structured-output feature — everything else is not ours to retry
-    return e.statusCode === 400 && /response_format|json_schema|structured|schema|tool_choice|tools?\b/i.test(e.message);
+    return (
+      e.statusCode === 400 &&
+      /response_format|json_schema|structured|schema|tool_choice|tools?\b/i.test(e.message)
+    );
   }
   return false;
 }
@@ -133,15 +154,16 @@ Use source with no browser steps; its result is returned before the next decisio
  */
 /** Build one user message without permitting implicit network image retrieval. */
 export function imageReferenceMessage(prompt: string, images: string[] = []): ModelMessage[] {
-  if (!images.length) return [{role:"user",content:prompt}];
+  if (!images.length) return [{ role: "user", content: prompt }];
   if (images.length > 5 || images.reduce((total, image) => total + image.length, 0) > 16_000_000)
     throw new AuxError("invalid_params", "Use up to five images totaling at most 12 MB.");
-  const files = images.map(image => {
+  const files = images.map((image) => {
     const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(image);
-    if (!match || match[2]!.length % 4 !== 0) throw new AuxError("invalid_params", "Image references must be PNG, JPEG or WebP snapshots.");
-    return {type:"file" as const, mediaType:match[1]!, data:{type:"data" as const,data:match[2]!}};
+    if (!match || match[2]!.length % 4 !== 0)
+      throw new AuxError("invalid_params", "Image references must be PNG, JPEG or WebP snapshots.");
+    return { type: "file" as const, mediaType: match[1]!, data: { type: "data" as const, data: match[2]! } };
   });
-  return [{role:"user",content:[{type:"text",text:prompt},...files]}];
+  return [{ role: "user", content: [{ type: "text", text: prompt }, ...files] }];
 }
 
 /**
@@ -171,10 +193,13 @@ export function isFailoverStatus(e: unknown): boolean {
     seen.add(v);
     const rec = v as Record<string, unknown>;
     const status =
-      typeof rec.statusCode === "number" ? rec.statusCode
-      : typeof rec.status === "number" ? rec.status
-      : typeof rec.responseStatusCode === "number" ? rec.responseStatusCode
-      : undefined;
+      typeof rec.statusCode === "number"
+        ? rec.statusCode
+        : typeof rec.status === "number"
+          ? rec.status
+          : typeof rec.responseStatusCode === "number"
+            ? rec.responseStatusCode
+            : undefined;
     if (status === 429 || (status !== undefined && status >= 500 && status <= 599)) return true;
     return visit(rec.cause) || visit(rec.lastError) || visit(rec.error);
   };
@@ -190,7 +215,8 @@ export function gatewayProviderOptions(
 ) {
   const effective = modelId ? gatewayOnlyForModel(modelId, only) : only;
   const cap = modelId ? modelCapabilities(modelId, models) : undefined;
-  const reasons = cap?.provider === "openai" && (cap.reasoning === "supported" || cap.reasoning === "required");
+  const reasons =
+    cap?.provider === "openai" && (cap.reasoning === "supported" || cap.reasoning === "required");
   return {
     gateway: {
       sort: "ttft" as const,
@@ -198,7 +224,14 @@ export function gatewayProviderOptions(
       ...(effective?.length ? { only: effective } : {}),
       ...(modelId?.endsWith("-fast") ? { speed: "fast" as const } : {}),
     },
-    ...(reasons ? { openai: { reasoningEffort: (effort === "xhigh" ? "high" : effort ?? "minimal") as "low" | "medium" | "high" | "minimal" } } : {}),
+    ...(reasons
+      ? {
+          openai: {
+            reasoningEffort: (effort === "xhigh" ? "high" : (effort ?? "minimal")) as
+              "low" | "medium" | "high" | "minimal",
+          },
+        }
+      : {}),
   };
 }
 
@@ -215,7 +248,8 @@ type CallOpts = {
   providerOptions?: Record<string, Record<string, unknown>>;
 };
 
-const RETRY_SYSTEM = "\n\nRespond with ONLY the JSON object — no <think> tags, no reasoning, no prose, no markdown fences.";
+const RETRY_SYSTEM =
+  "\n\nRespond with ONLY the JSON object — no <think> tags, no reasoning, no prose, no markdown fences.";
 
 export class GatewayModelClient implements ModelClient {
   private gateway: ReturnType<typeof createGateway> | undefined;
@@ -230,19 +264,23 @@ export class GatewayModelClient implements ModelClient {
   /** Benchmark authorization: only this model may receive requests, even after 429/5xx. */
   private readonly allowedModelId: string | undefined;
 
-  constructor(apiKey: string, opts: {
-    callTimeoutMs?: number;
-    only?: string[];
-    model?: (id: string) => LanguageModel;
-    spendLedger?: SpendLedger;
-    models?: () => readonly ModelCapability[];
-    candidatesFor?: (modelId: string) => readonly AgentModelRoute[];
-    allowedModelId?: string;
-  } = {}) {
+  constructor(
+    apiKey: string,
+    opts: {
+      callTimeoutMs?: number;
+      only?: string[];
+      model?: (id: string) => LanguageModel;
+      spendLedger?: SpendLedger;
+      models?: () => readonly ModelCapability[];
+      candidatesFor?: (modelId: string) => readonly AgentModelRoute[];
+      allowedModelId?: string;
+    } = {},
+  ) {
     if (!apiKey) throw new AuxError("invalid_params", "AI_GATEWAY_API_KEY is required");
     this.gateway = opts.model ? undefined : createGateway({ apiKey });
     this.resolveModel = opts.model ?? ((id: string) => this.gateway!(id));
-    this.callTimeoutMs = opts.callTimeoutMs && opts.callTimeoutMs > 0 ? opts.callTimeoutMs : DEFAULT_MODEL_CALL_TIMEOUT_MS;
+    this.callTimeoutMs =
+      opts.callTimeoutMs && opts.callTimeoutMs > 0 ? opts.callTimeoutMs : DEFAULT_MODEL_CALL_TIMEOUT_MS;
     this.only = this.gateway && opts.only?.length ? opts.only : undefined;
     this.spendLedger = opts.spendLedger ?? (this.gateway ? new SpendLedger() : undefined);
     this.registryModels = opts.models ?? (() => MODEL_REGISTRY);
@@ -250,7 +288,9 @@ export class GatewayModelClient implements ModelClient {
     this.allowedModelId = opts.allowedModelId;
   }
 
-  private capabilities() { return this.registryModels(); }
+  private capabilities() {
+    return this.registryModels();
+  }
 
   /**
    * Walk the route chain for `opts.modelId`: each candidate carries its own
@@ -262,16 +302,35 @@ export class GatewayModelClient implements ModelClient {
    */
   private async withFailover<
     R extends ModelAttempt & { retries?: ModelAttempt[]; resolvedModelId?: string },
-    O extends { modelId: string; reasoning?: CallOpts["reasoning"]; signal?: AbortSignal; singleCandidate?: boolean },
+    O extends {
+      modelId: string;
+      reasoning?: CallOpts["reasoning"];
+      signal?: AbortSignal;
+      singleCandidate?: boolean;
+    },
   >(opts: O, invoke: (o: O) => Promise<R>): Promise<R> {
     if (this.allowedModelId && opts.modelId !== this.allowedModelId)
-      throw new AuxError("permission_denied", `Model ${opts.modelId} is outside this benchmark's authorized model pin.`);
+      throw new AuxError(
+        "permission_denied",
+        `Model ${opts.modelId} is outside this benchmark's authorized model pin.`,
+      );
     const chain = this.candidatesFor?.(opts.modelId) ?? [];
     const at = chain.findIndex((c) => c.modelId === opts.modelId);
-    const seq: readonly AgentModelRoute[] =
-      this.allowedModelId
-        ? [{ modelId: this.allowedModelId, reasoning: (opts.reasoning as AgentModelRoute["reasoning"]) ?? "medium" }]
-        : at >= 0 ? chain.slice(at) : [{ modelId: opts.modelId, reasoning: (opts.reasoning as AgentModelRoute["reasoning"]) ?? "medium" }];
+    const seq: readonly AgentModelRoute[] = this.allowedModelId
+      ? [
+          {
+            modelId: this.allowedModelId,
+            reasoning: (opts.reasoning as AgentModelRoute["reasoning"]) ?? "medium",
+          },
+        ]
+      : at >= 0
+        ? chain.slice(at)
+        : [
+            {
+              modelId: opts.modelId,
+              reasoning: (opts.reasoning as AgentModelRoute["reasoning"]) ?? "medium",
+            },
+          ];
     const prior: ModelAttempt[] = [];
     for (let i = 0; i < (opts.singleCandidate ? 1 : seq.length); i++) {
       const c = seq[i]!;
@@ -284,11 +343,18 @@ export class GatewayModelClient implements ModelClient {
       } catch (e) {
         if (opts.signal?.aborted) throw withAttempts(e, prior);
         const billed = attemptsOf(e).map((a) => ({ ...a, modelId: a.modelId ?? c.modelId }));
-        if (opts.singleCandidate || i === seq.length - 1 || !isFailoverStatus(e)) throw withAttempts(e, prior);
+        if (opts.singleCandidate || i === seq.length - 1 || !isFailoverStatus(e))
+          throw withAttempts(e, prior);
         prior.push(
           ...(billed.length
             ? billed
-            : [{ durationMs: 0, modelId: c.modelId, error: `failover: ${e instanceof Error ? e.message.slice(0, 120) : String(e)}` }]),
+            : [
+                {
+                  durationMs: 0,
+                  modelId: c.modelId,
+                  error: `failover: ${e instanceof Error ? e.message.slice(0, 120) : String(e)}`,
+                },
+              ]),
         );
       }
     }
@@ -296,38 +362,67 @@ export class GatewayModelClient implements ModelClient {
   }
 
   private async billed<T extends { usage?: unknown; providerMetadata?: unknown }>(
-    modelId: string, promptTokens: number, maxOutputTokens: number, call: () => Promise<T>,
+    modelId: string,
+    promptTokens: number,
+    maxOutputTokens: number,
+    call: () => Promise<T>,
   ): Promise<T> {
     const started = Date.now();
-    const reservation = this.spendLedger?.reserve("aux-runtime", modelId, projectedModelCostUsd(modelId, promptTokens, maxOutputTokens, this.capabilities()));
+    const reservation = this.spendLedger?.reserve(
+      "aux-runtime",
+      modelId,
+      projectedModelCostUsd(modelId, promptTokens, maxOutputTokens, this.capabilities()),
+    );
     try {
       const result = await call();
-      const cost = modelCallCost(modelId, { ...usageFields(result.usage), providerMetadata: result.providerMetadata as Record<string, unknown> | undefined });
+      const cost = modelCallCost(modelId, {
+        ...usageFields(result.usage),
+        providerMetadata: result.providerMetadata as Record<string, unknown> | undefined,
+      });
       if (reservation) this.spendLedger?.settle(reservation, cost.costUsd);
       return result;
     } catch (error) {
       const billed = error as { usage?: unknown; providerMetadata?: unknown };
-      const cost = modelCallCost(modelId, { ...usageFields(billed?.usage), providerMetadata: billed?.providerMetadata as Record<string, unknown> | undefined });
+      const cost = modelCallCost(modelId, {
+        ...usageFields(billed?.usage),
+        providerMetadata: billed?.providerMetadata as Record<string, unknown> | undefined,
+      });
       const known = attemptsOf(error);
-      if (reservation) this.spendLedger?.settle(reservation, cost.costUsd ?? (known.length ? modelCallCost(modelId, known.at(-1)!).costUsd : undefined));
-      throw known.length || (!billed?.usage && !billed?.providerMetadata) ? error
+      if (reservation)
+        this.spendLedger?.settle(
+          reservation,
+          cost.costUsd ?? (known.length ? modelCallCost(modelId, known.at(-1)!).costUsd : undefined),
+        );
+      throw known.length || (!billed?.usage && !billed?.providerMetadata)
+        ? error
         : withAttempts(error, [{ ...attempt(started, billed), modelId }]);
     }
   }
 
   private requireVision(modelId: string, images?: string[]) {
     if (images?.length && !modelAcceptsImages(modelId, this.capabilities()))
-      throw new AuxError("capability_unsupported", "Choose an image-capable model to use these image references. This model accepts text only.");
+      throw new AuxError(
+        "capability_unsupported",
+        "Choose an image-capable model to use these image references. This model accepts text only.",
+      );
   }
 
   /** Gateway keeps `caching: "auto"`. Direct Anthropic and OpenAI get their own cache markers. */
-  private directRequest(opts: Omit<CallOpts, "prompt"> & { messages: ModelMessage[] }, maxOutputTokens: number) {
+  private directRequest(
+    opts: Omit<CallOpts, "prompt"> & { messages: ModelMessage[] },
+    maxOutputTokens: number,
+  ) {
     const model = this.resolveModel(opts.modelId);
     const provider = this.gateway ? undefined : (model as { provider?: string }).provider;
     const anthropic = provider === "anthropic";
     const cachedMessages = anthropic ? anthropicCachedMessages(opts.system, opts.messages) : opts.messages;
     const gateway = this.gateway
-      ? gatewayProviderOptions(this.only, opts.modelId, this.capabilities(), opts.reasoning as "low" | "medium" | "xhigh" | undefined)
+      ? gatewayProviderOptions(
+          this.only,
+          opts.modelId,
+          this.capabilities(),
+          opts.reasoning as "low" | "medium" | "xhigh" | undefined,
+        )
       : undefined;
     const session = provider === "openai" && opts.sessionId ? openAiSessionCache(opts.sessionId) : undefined;
     return {
@@ -335,7 +430,7 @@ export class GatewayModelClient implements ModelClient {
       abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
       maxRetries: 0 as const,
       maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens, this.capabilities()),
-      ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? "medium" as const } : {}),
+      ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? ("medium" as const) } : {}),
       // Gateway rejects a `system` message. `instructions` is the supported channel.
       // Direct Anthropic still needs a system message so the cache breakpoint can sit on it.
       ...(anthropic ? { allowSystemInMessages: true as const } : { instructions: opts.system }),
@@ -356,7 +451,9 @@ export class GatewayModelClient implements ModelClient {
     return this.withFailover(opts, (o) => this.generateStructuredInner(o));
   }
 
-  private async generateStructuredInner<T>(opts: CallOpts & { schema: z.ZodType<T> }): Promise<StructuredCallResult<T>> {
+  private async generateStructuredInner<T>(
+    opts: CallOpts & { schema: z.ZodType<T> },
+  ): Promise<StructuredCallResult<T>> {
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
     const retries: ModelAttempt[] = [];
@@ -365,17 +462,23 @@ export class GatewayModelClient implements ModelClient {
     // still use structured output.
     if (!schemaNeedsJsonFallback(opts.schema)) {
       try {
-        const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, opts.prompt, z.toJSONSchema(opts.schema)) + (opts.imageDataUrls?.length ?? 0) * 8192, opts.maxOutputTokens ?? 2000, () => {
-          const { cacheTools: _cacheTools, ...request } = this.directRequest(
-            { ...opts, messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls) },
-            opts.maxOutputTokens ?? 2000,
-          );
-          return generateObject({ ...request, schema: opts.schema });
-        });
+        const res = await this.billed(
+          opts.modelId,
+          estimatedPromptTokens(opts.system, opts.prompt, z.toJSONSchema(opts.schema)) +
+            (opts.imageDataUrls?.length ?? 0) * 8192,
+          opts.maxOutputTokens ?? 2000,
+          () => {
+            const { cacheTools: _cacheTools, ...request } = this.directRequest(
+              { ...opts, messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls) },
+              opts.maxOutputTokens ?? 2000,
+            );
+            return generateObject({ ...request, schema: opts.schema });
+          },
+        );
         return { object: res.object, ...attempt(started, res) };
       } catch (e) {
         if (opts.signal?.aborted || !isStructuredOutputError(e) || opts.maxAttempts === 1) throw e;
-        retries.push(...attemptsOf(e).map(a => ({ ...a, error: "structured output unusable" })));
+        retries.push(...attemptsOf(e).map((a) => ({ ...a, error: "structured output unusable" })));
       }
     }
     return this.structuredFromText(opts, retries);
@@ -390,38 +493,68 @@ export class GatewayModelClient implements ModelClient {
    * `retries` — the caller must not mix the retry's steps with any it
    * already dispatched from the stream.
    */
-  async streamStructured<T>(opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void }): Promise<StructuredCallResult<T>> {
+  async streamStructured<T>(
+    opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void },
+  ): Promise<StructuredCallResult<T>> {
     return this.withFailover(opts, (o) => this.streamStructuredInner(o));
   }
 
-  private async streamStructuredInner<T>(opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void }): Promise<StructuredCallResult<T>> {
+  private async streamStructuredInner<T>(
+    opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void },
+  ): Promise<StructuredCallResult<T>> {
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
     const { cacheTools: _cacheTools, ...request } = this.directRequest(
-      { ...opts, system: `${opts.system}${schemaHint(opts.schema)}`, messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls) },
+      {
+        ...opts,
+        system: `${opts.system}${schemaHint(opts.schema)}`,
+        messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls),
+      },
       opts.maxOutputTokens ?? 2000,
     );
     let text = "";
-    const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, opts.prompt, schemaHint(opts.schema)) + (opts.imageDataUrls?.length ?? 0) * 8192, opts.maxOutputTokens ?? 2000, async () => {
-      let completed: ModelAttempt | undefined;
-      const stream = streamText({ ...request, onStepFinish: result => { completed = reportedAttempt(started, opts.modelId, result); } });
-      try {
-        for await (const part of stream.fullStream) {
-          if (part.type === "error") throw part.error;
-          if (part.type === "abort") throw request.abortSignal?.reason ?? new AuxError("cancelled", "Model stream was cancelled.");
-          if (part.type === "text-delta") { text += part.text; opts.onText(part.text); }
+    const res = await this.billed(
+      opts.modelId,
+      estimatedPromptTokens(opts.system, opts.prompt, schemaHint(opts.schema)) +
+        (opts.imageDataUrls?.length ?? 0) * 8192,
+      opts.maxOutputTokens ?? 2000,
+      async () => {
+        let completed: ModelAttempt | undefined;
+        const stream = streamText({
+          ...request,
+          onStepFinish: (result) => {
+            completed = reportedAttempt(started, opts.modelId, result);
+          },
+        });
+        try {
+          for await (const part of stream.fullStream) {
+            if (part.type === "error") throw part.error;
+            if (part.type === "abort")
+              throw request.abortSignal?.reason ?? new AuxError("cancelled", "Model stream was cancelled.");
+            if (part.type === "text-delta") {
+              text += part.text;
+              opts.onText(part.text);
+            }
+          }
+          return { usage: await stream.usage, providerMetadata: await stream.providerMetadata };
+        } catch (error) {
+          throw completed ? withAttempts(error, [completed]) : error;
         }
-        return { usage: await stream.usage, providerMetadata: await stream.providerMetadata };
-      } catch (error) { throw completed ? withAttempts(error, [completed]) : error; }
-    });
+      },
+    );
     return this.parseOrRetry(opts, text, attempt(started, res), []);
   }
 
-  private async structuredFromText<T>(opts: CallOpts & { schema: z.ZodType<T> }, retries: ModelAttempt[]): Promise<StructuredCallResult<T>> {
+  private async structuredFromText<T>(
+    opts: CallOpts & { schema: z.ZodType<T> },
+    retries: ModelAttempt[],
+  ): Promise<StructuredCallResult<T>> {
     const res = await this.generateText({
       ...opts,
       system: `${opts.system}${schemaHint(opts.schema)}`,
-    }).catch((e: unknown) => { throw withAttempts(e, retries); });
+    }).catch((e: unknown) => {
+      throw withAttempts(e, retries);
+    });
     return this.parseOrRetry(opts, res.text, res, retries);
   }
 
@@ -437,17 +570,29 @@ export class GatewayModelClient implements ModelClient {
       return { object: parse(text), ...stripText(first), ...(retries.length ? { retries } : {}) };
     } catch (e) {
       if (opts.signal?.aborted) throw withAttempts(e, [...retries, first]);
-      if(opts.maxAttempts===1)throw withAttempts(e,[...retries,{...stripText(first),error:"unparseable output"}]);
-      const failed = [...retries, { ...stripText(first), error: `unparseable output: ${e instanceof Error ? e.message.slice(0, 120) : String(e)}` }];
+      if (opts.maxAttempts === 1)
+        throw withAttempts(e, [...retries, { ...stripText(first), error: "unparseable output" }]);
+      const failed = [
+        ...retries,
+        {
+          ...stripText(first),
+          error: `unparseable output: ${e instanceof Error ? e.message.slice(0, 120) : String(e)}`,
+        },
+      ];
       const retry = await this.generateText({
         ...opts,
         system: `${opts.system}${RETRY_SYSTEM}`,
         maxOutputTokens: (opts.maxOutputTokens ?? 2000) * 2,
-      }).catch((err: unknown) => { throw withAttempts(err, failed); });
+      }).catch((err: unknown) => {
+        throw withAttempts(err, failed);
+      });
       try {
         return { object: parse(retry.text), ...stripText(retry), retries: failed };
       } catch (err) {
-        throw withAttempts(err, [...failed, { ...stripText(retry), error: "unparseable output after retry" }]);
+        throw withAttempts(err, [
+          ...failed,
+          { ...stripText(retry), error: "unparseable output after retry" },
+        ]);
       }
     }
   }
@@ -480,13 +625,18 @@ export class GatewayModelClient implements ModelClient {
     const started = Date.now();
     const images = [...(opts.imageDataUrls ?? []), ...(opts.imageDataUrl ? [opts.imageDataUrl] : [])];
     this.requireVision(opts.modelId, images);
-    const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system ?? "", opts.prompt) + images.length * 8192, opts.maxOutputTokens ?? 1200, () => {
-      const { cacheTools: _cacheTools, ...request } = this.directRequest(
-        { ...opts, system: opts.system ?? "", messages: imageReferenceMessage(opts.prompt, images) },
-        opts.maxOutputTokens ?? 1200,
-      );
-      return generateText(request);
-    });
+    const res = await this.billed(
+      opts.modelId,
+      estimatedPromptTokens(opts.system ?? "", opts.prompt) + images.length * 8192,
+      opts.maxOutputTokens ?? 1200,
+      () => {
+        const { cacheTools: _cacheTools, ...request } = this.directRequest(
+          { ...opts, system: opts.system ?? "", messages: imageReferenceMessage(opts.prompt, images) },
+          opts.maxOutputTokens ?? 1200,
+        );
+        return generateText(request);
+      },
+    );
     return { text: res.text, ...attempt(started, res) };
   }
 
@@ -509,7 +659,9 @@ export class GatewayModelClient implements ModelClient {
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<ToolCallStepResult> {
-    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) => this.toolCallStepInner(o));
+    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) =>
+      this.toolCallStepInner(o),
+    );
   }
 
   private async toolCallStepInner(opts: {
@@ -533,46 +685,83 @@ export class GatewayModelClient implements ModelClient {
     const tools = Object.fromEntries(
       names.map((name) => {
         const spec = opts.tools[name]!;
-        return [name, tool({
-          ...(spec.description ? { description: spec.description } : {}),
-          inputSchema: spec.inputSchema,
-          ...(cacheTools && name === lastTool
-            ? { providerOptions: { anthropic: { cacheControl: ANTHROPIC_CACHE_CONTROL } } }
-            : {}),
-        })];
+        return [
+          name,
+          tool({
+            ...(spec.description ? { description: spec.description } : {}),
+            inputSchema: spec.inputSchema,
+            ...(cacheTools && name === lastTool
+              ? { providerOptions: { anthropic: { cacheControl: ANTHROPIC_CACHE_CONTROL } } }
+              : {}),
+          }),
+        ];
       }),
     );
-    const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, JSON.stringify(opts.messages).slice(0, 120_000)), maxOut, async () => {
-      if (!opts.onText) return generateText({ ...request, tools });
-      let completed: ModelAttempt | undefined;
-      const stream = streamText({ ...request, tools, onStepFinish: result => { completed = reportedAttempt(started, opts.modelId, result); } });
-      let text = "";
-      opts.onText(text);
-      try {
-        for await (const part of stream.fullStream) {
-          if (part.type === "error") throw part.error;
-          if (part.type === "abort") throw request.abortSignal?.reason ?? new AuxError("cancelled", "Model stream was cancelled.");
-          if (part.type === "text-delta") { text += part.text; opts.onText(text); }
+    const res = await this.billed(
+      opts.modelId,
+      estimatedPromptTokens(opts.system, JSON.stringify(opts.messages).slice(0, 120_000)),
+      maxOut,
+      async () => {
+        if (!opts.onText) return generateText({ ...request, tools });
+        let completed: ModelAttempt | undefined;
+        const stream = streamText({
+          ...request,
+          tools,
+          onStepFinish: (result) => {
+            completed = reportedAttempt(started, opts.modelId, result);
+          },
+        });
+        let text = "";
+        opts.onText(text);
+        try {
+          for await (const part of stream.fullStream) {
+            if (part.type === "error") throw part.error;
+            if (part.type === "abort")
+              throw request.abortSignal?.reason ?? new AuxError("cancelled", "Model stream was cancelled.");
+            if (part.type === "text-delta") {
+              text += part.text;
+              opts.onText(text);
+            }
+          }
+          return {
+            text: await stream.text,
+            steps: await stream.steps,
+            toolCalls: await stream.toolCalls,
+            response: await stream.response,
+            finishReason: await stream.finishReason,
+            usage: await stream.usage,
+            providerMetadata: await stream.providerMetadata,
+          };
+        } catch (error) {
+          throw completed ? withAttempts(error, [completed]) : error;
         }
-        return { text: await stream.text, steps: await stream.steps, toolCalls: await stream.toolCalls,
-          response: await stream.response, finishReason: await stream.finishReason,
-          usage: await stream.usage, providerMetadata: await stream.providerMetadata };
-      } catch (error) { throw completed ? withAttempts(error, [completed]) : error; }
-    });
+      },
+    );
     const lastStep = res.steps.at(-1);
     const calls = (lastStep?.toolCalls ?? res.toolCalls ?? []).map((call) => ({
       toolCallId: call.toolCallId,
       toolName: call.toolName,
       input: call.input,
     }));
-    const providerExecuted = ((lastStep?.toolCalls ?? []) as { toolCallId: string; providerExecuted?: boolean }[])
-      .filter((call) => call.providerExecuted).map((call) => call.toolCallId);
+    const providerExecuted = (
+      (lastStep?.toolCalls ?? []) as { toolCallId: string; providerExecuted?: boolean }[]
+    )
+      .filter((call) => call.providerExecuted)
+      .map((call) => call.toolCallId);
     // The response can end on a tool message. Replaying that plus the loop's
     // own tool result sends the provider two outputs for one call.
     const responseMessages = res.response.messages ?? [];
     const assistant = [...responseMessages].reverse().find((message) => message.role === "assistant");
     return {
-      message: assistant ?? { role: "assistant", content: calls.map((call) => ({ type: "tool-call" as const, toolCallId: call.toolCallId, toolName: call.toolName, input: call.input })) },
+      message: assistant ?? {
+        role: "assistant",
+        content: calls.map((call) => ({
+          type: "tool-call" as const,
+          toolCallId: call.toolCallId,
+          toolName: call.toolName,
+          input: call.input,
+        })),
+      },
       toolCalls: calls,
       text: res.text || undefined,
       finishReason: res.finishReason === "tool-calls" ? "tool-calls" : res.finishReason,
@@ -585,10 +774,15 @@ export class GatewayModelClient implements ModelClient {
     if (!this.gateway) return [];
     const catalog = await this.gateway.getAvailableModels();
     return catalog.models.map((m) => {
-      const input=Number(m.pricing?.input),output=Number(m.pricing?.output);
-      return {id:m.id,name:m.name,
-        ...(m.pricing&&Number.isFinite(input)&&input>=0&&Number.isFinite(output)&&output>=0
-          ?{inputUsdPerMTok:input*1_000_000,outputUsdPerMTok:output*1_000_000}:{})};
+      const input = Number(m.pricing?.input),
+        output = Number(m.pricing?.output);
+      return {
+        id: m.id,
+        name: m.name,
+        ...(m.pricing && Number.isFinite(input) && input >= 0 && Number.isFinite(output) && output >= 0
+          ? { inputUsdPerMTok: input * 1_000_000, outputUsdPerMTok: output * 1_000_000 }
+          : {}),
+      };
     });
   }
 }
@@ -602,10 +796,17 @@ function attempt(started: number, res: { usage?: unknown; providerMetadata?: unk
 }
 
 /** SDK error steps may have entirely unknown usage; never replace a provider's actual error receipt with that empty step. */
-function reportedAttempt(started: number, modelId: string, res: { usage?: unknown; providerMetadata?: unknown }): ModelAttempt | undefined {
+function reportedAttempt(
+  started: number,
+  modelId: string,
+  res: { usage?: unknown; providerMetadata?: unknown },
+): ModelAttempt | undefined {
   const recorded = attempt(started, res);
-  return recorded.inputTokens !== undefined || recorded.outputTokens !== undefined || recorded.providerMetadata
-    ? { ...recorded, modelId } : undefined;
+  return recorded.inputTokens !== undefined ||
+    recorded.outputTokens !== undefined ||
+    recorded.providerMetadata
+    ? { ...recorded, modelId }
+    : undefined;
 }
 
 function stripText(a: ModelAttempt & { text?: string }): ModelAttempt {

@@ -182,9 +182,16 @@ export function AppearanceSettings({
         />
       </SettingsField>
       <SidebarOptions />
-      <SettingsField compact label="Tab switcher order" hint="Control-Tab follows the sidebar or recently used tabs in this space.">
-        <select aria-label="Tab switcher order" value={String(settings.tabSwitcherOrder ?? "sidebar")}
-          onChange={event => void set({ tabSwitcherOrder: event.target.value })}>
+      <SettingsField
+        compact
+        label="Tab switcher order"
+        hint="Control-Tab follows the sidebar or recently used tabs in this space."
+      >
+        <select
+          aria-label="Tab switcher order"
+          value={String(settings.tabSwitcherOrder ?? "sidebar")}
+          onChange={(event) => void set({ tabSwitcherOrder: event.target.value })}
+        >
           <option value="sidebar">Sidebar order</option>
           <option value="recently-used">Recently used</option>
         </select>
@@ -192,18 +199,30 @@ export function AppearanceSettings({
       <SettingsField label="Website sizes">
         <WebsiteSizes />
       </SettingsField>
-      <SettingsField label="Default page zoom" hint="Page size for websites without a saved site-specific zoom. Existing site sizes stay as chosen.">
+      <SettingsField
+        label="Default page zoom"
+        hint="Page size for websites without a saved site-specific zoom. Existing site sizes stay as chosen."
+      >
         <DefaultPageZoomSetting active={active} />
       </SettingsField>
-      <SettingsField label="Keyboard shortcuts" hint="Change browser and app shortcuts. Collisions are explained before saving.">
-        <button {...smallGhostButtonProps} aria-expanded={showShortcuts} onClick={() => setShowShortcuts(value => !value)}>
+      <SettingsField
+        label="Keyboard shortcuts"
+        hint="Change browser and app shortcuts. Collisions are explained before saving."
+      >
+        <button
+          {...smallGhostButtonProps}
+          aria-expanded={showShortcuts}
+          onClick={() => setShowShortcuts((value) => !value)}
+        >
           {showShortcuts ? "Hide shortcuts" : "Manage shortcuts"}
         </button>
-        {showShortcuts && <ShortcutsSetting
-          active={active}
-          value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}}
-          onSave={(shortcutOverrides) => onSave({ shortcutOverrides })}
-        />}
+        {showShortcuts && (
+          <ShortcutsSetting
+            active={active}
+            value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}}
+            onSave={(shortcutOverrides) => onSave({ shortcutOverrides })}
+          />
+        )}
       </SettingsField>
     </SettingsSection>
   );

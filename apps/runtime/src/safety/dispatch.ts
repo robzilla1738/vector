@@ -79,7 +79,10 @@ export class SafetyDispatchGate {
   }): Promise<AuthorizationProvenance | undefined> {
     const source = input.context.taskRead;
     if (source) {
-      if (source.provenance.pageId !== input.context.pageId || source.provenance.sessionId !== input.context.sessionId)
+      if (
+        source.provenance.pageId !== input.context.pageId ||
+        source.provenance.sessionId !== input.context.sessionId
+      )
         throw new AuxError("permission_denied", "The task read proof belongs to another step attachment.");
       source.check();
     }
@@ -132,8 +135,12 @@ export class SafetyDispatchGate {
       requestedAt: Date.now(),
     });
     const source = input.context.taskRead;
-    if (source && (source.provenance.pageId !== input.document.pageId || source.provenance.sessionId !== input.document.sessionId ||
-        source.provenance.documentEpoch !== input.document.documentEpoch))
+    if (
+      source &&
+      (source.provenance.pageId !== input.document.pageId ||
+        source.provenance.sessionId !== input.document.sessionId ||
+        source.provenance.documentEpoch !== input.document.documentEpoch)
+    )
       throw new AuxError("permission_denied", "The read task source belongs to another attachment.");
     source?.check();
     const action = actionFor(request, input.origin);

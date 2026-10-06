@@ -1,4 +1,8 @@
-import { retireControlledAttachmentNavigation, finalizeControlledAttachmentNavigation, type ControlledAttachmentNavigationReceipt } from "./pages/controlled-navigation.js";
+import {
+  retireControlledAttachmentNavigation,
+  finalizeControlledAttachmentNavigation,
+  type ControlledAttachmentNavigationReceipt,
+} from "./pages/controlled-navigation.js";
 import type { ValidatedTaskRead } from "@aux/contracts";
 import {
   MentionRefsSchema,
@@ -70,12 +74,14 @@ export class TurnMentionService {
       for (const ref of refs) {
         if (ref.kind === "tab") selected.add(ref.pageId);
         if (ref.kind === "group") for (const member of ref.members) selected.add(member.pageId);
-        if (ref.kind === "space") for (const [pageId, spaceId] of Object.entries(organization?.shared?.tabSpace ?? {}))
-          if (spaceId === ref.spaceId) selected.add(pageId);
+        if (ref.kind === "space")
+          for (const [pageId, spaceId] of Object.entries(organization?.shared?.tabSpace ?? {}))
+            if (spaceId === ref.spaceId) selected.add(pageId);
       }
       if (this.deps.prepareReadPage && selected.size) {
-        await Promise.all([...selected].map(pageId => this.deps.prepareReadPage!(pageId)));
-        if (this.starts.get(runId) !== token) throw new MentionUnavailable("This turn changed while preparing its sources.");
+        await Promise.all([...selected].map((pageId) => this.deps.prepareReadPage!(pageId)));
+        if (this.starts.get(runId) !== token)
+          throw new MentionUnavailable("This turn changed while preparing its sources.");
       }
       const active: Active = {
         token,
@@ -192,7 +198,8 @@ export class TurnMentionService {
   async require(runId: string, pageId: string, access: MentionAccess): Promise<MentionAvailability> {
     const active = await this.refresh(runId);
     const unavailable: MentionAvailability = {
-      status: "unavailable", reason: "This turn or its Space snapshot changed. Mention the sources again.",
+      status: "unavailable",
+      reason: "This turn or its Space snapshot changed. Mention the sources again.",
     };
     if (!active) return unavailable;
     const initial = active.authority.require(runId, pageId, access);
@@ -213,12 +220,19 @@ export class TurnMentionService {
       throw new MentionUnavailable("This turn changed while checking its sources.");
     if (result.status === "unavailable") throw new MentionUnavailable(result.reason);
   }
-  async use<T>(runId: string, pageId: string, access: MentionAccess, dispatch: () => Promise<T>, taskRead?: ValidatedTaskRead): Promise<T> {
+  async use<T>(
+    runId: string,
+    pageId: string,
+    access: MentionAccess,
+    dispatch: () => Promise<T>,
+    taskRead?: ValidatedTaskRead,
+  ): Promise<T> {
     const active = this.turns.get(runId);
     await this.assert(runId, pageId, access, active?.token);
     if (!active || this.turns.get(runId) !== active)
       throw new MentionUnavailable("The turn changed before using this tab.");
-    const recheckPolicy = access === "read" ? await this.deps.authorizeRead?.(runId, pageId, taskRead) : undefined;
+    const recheckPolicy =
+      access === "read" ? await this.deps.authorizeRead?.(runId, pageId, taskRead) : undefined;
     await this.assert(runId, pageId, access, active.token);
     recheckPolicy?.();
     const result = await dispatch();
@@ -248,7 +262,8 @@ export class TurnMentionService {
     }
     if (access === "read" && this.deps.prepareReadPage) {
       await this.deps.prepareReadPage(pageId);
-      if (this.turns.get(runId) !== active) throw new MentionUnavailable("This turn ended while preparing its source.");
+      if (this.turns.get(runId) !== active)
+        throw new MentionUnavailable("This turn ended while preparing its source.");
       checkSource();
     }
     const before = this.page(pageId);
@@ -345,17 +360,25 @@ export class TurnMentionService {
     if ("status" in outcome) throw new MentionUnavailable(outcome.reason);
     return outcome.value;
   }
-  async navigateAttachmentUse<T>(runId: string, pageId: string,
-    dispatch: (mentionAuthority: () => void, revalidateMentionSource: () => Promise<void>) => Promise<{ result: T; receipt: ControlledAttachmentNavigationReceipt }>): Promise<T> {
+  async navigateAttachmentUse<T>(
+    runId: string,
+    pageId: string,
+    dispatch: (
+      mentionAuthority: () => void,
+      revalidateMentionSource: () => Promise<void>,
+    ) => Promise<{ result: T; receipt: ControlledAttachmentNavigationReceipt }>,
+  ): Promise<T> {
     const active = await this.refresh(runId);
     if (!active) throw new MentionUnavailable("This turn or its Space snapshot changed.");
     const revalidateMentionSource = async () => {
       if ((await this.refresh(runId)) !== active)
-        throw new MentionUnavailable("This turn or its Space snapshot changed before attachment publication.");
+        throw new MentionUnavailable(
+          "This turn or its Space snapshot changed before attachment publication.",
+        );
     };
     let originalReceipt: ControlledAttachmentNavigationReceipt | undefined;
     try {
-      const outcome = await active.authority.navigateAttachment(runId, pageId, async mentionAuthority => {
+      const outcome = await active.authority.navigateAttachment(runId, pageId, async (mentionAuthority) => {
         const receipt = await dispatch(mentionAuthority, revalidateMentionSource);
         originalReceipt = receipt.receipt;
         await revalidateMentionSource();
@@ -367,8 +390,15 @@ export class TurnMentionService {
       return outcome.value;
     } catch (error) {
       if (originalReceipt) {
-        try { await retireControlledAttachmentNavigation(originalReceipt); }
-        catch (cleanupError) { throw new AggregateError([error, cleanupError], "Original mention navigation and retirement failed", { cause: error }); }
+        try {
+          await retireControlledAttachmentNavigation(originalReceipt);
+        } catch (cleanupError) {
+          throw new AggregateError(
+            [error, cleanupError],
+            "Original mention navigation and retirement failed",
+            { cause: error },
+          );
+        }
       }
       throw error;
     }

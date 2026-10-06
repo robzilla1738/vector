@@ -20,7 +20,9 @@ it("stores Zap rules and site CSS by exact origin and browser Profile", () => {
   expect(work.list(origin)).toEqual([]);
   expect(personal.list("https://other.example.com")).toEqual([]);
   expect(personal.setCss(origin, "main { color: rebeccapurple; }").css).toContain("rebeccapurple");
-  expect(personal.effectiveCss(origin)).toBe("aside[data-testid=promo] { display: none !important; }\nmain { color: rebeccapurple; }");
+  expect(personal.effectiveCss(origin)).toBe(
+    "aside[data-testid=promo] { display: none !important; }\nmain { color: rebeccapurple; }",
+  );
   expect(work.effectiveCss(origin)).toBe("");
   expect(work.remove(rule.ruleId)).toBe(false);
   expect(personal.remove(rule.ruleId)).toBe(true);
@@ -43,8 +45,9 @@ it("persists customization across database reopen and rejects unsafe scope or un
   first.close();
   const reopened = openDb(path);
   cleanup.push(() => reopened.close());
-  expect(new SiteCustomization(reopened, "profile-a").effectiveCss("https://example.com"))
-    .toContain("nav .promotion { display: none !important; }");
+  expect(new SiteCustomization(reopened, "profile-a").effectiveCss("https://example.com")).toContain(
+    "nav .promotion { display: none !important; }",
+  );
   expect(new SiteCustomization(reopened, "profile-b").getCss("https://example.com").css).toBe("");
 });
 
@@ -57,15 +60,27 @@ it("allows only the trusted Profile host to read or change site customization", 
     countZapMatches: async () => 2,
     applyUserCss: async () => ({ applied: true, origin: "https://example.com" }),
   } as unknown as PageService;
-  const invoke = makeInvoker({ repo, events: new EventBus(repo), pages, featureProfileId: "profile-a" } as Services);
+  const invoke = makeInvoker({
+    repo,
+    events: new EventBus(repo),
+    pages,
+    featureProfileId: "profile-a",
+  } as Services);
   const trusted = { external: false };
-  await expect(invoke("customization.zap.list", { origin: "https://example.com" }))
-    .rejects.toMatchObject({ code: "permission_denied" });
-  const rule = await invoke("customization.zap.add", { pageId: "page", expectedDocumentEpoch: 3,
-    origin: "https://example.com", selector: ".promotion" }, trusted) as { ruleId: string };
+  await expect(invoke("customization.zap.list", { origin: "https://example.com" })).rejects.toMatchObject({
+    code: "permission_denied",
+  });
+  const rule = (await invoke(
+    "customization.zap.add",
+    { pageId: "page", expectedDocumentEpoch: 3, origin: "https://example.com", selector: ".promotion" },
+    trusted,
+  )) as { ruleId: string };
   expect(rule.ruleId).toBeTruthy();
-  expect(await invoke("customization.css.effective", { origin: "https://example.com" }, trusted))
-    .toEqual({ origin: "https://example.com", css: ".promotion { display: none !important; }" });
-  expect(await invoke("customization.css.apply", { pageId: "page", expectedDocumentEpoch: 3 }, trusted))
-    .toEqual({ applied: true, origin: "https://example.com" });
+  expect(await invoke("customization.css.effective", { origin: "https://example.com" }, trusted)).toEqual({
+    origin: "https://example.com",
+    css: ".promotion { display: none !important; }",
+  });
+  expect(
+    await invoke("customization.css.apply", { pageId: "page", expectedDocumentEpoch: 3 }, trusted),
+  ).toEqual({ applied: true, origin: "https://example.com" });
 });

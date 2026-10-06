@@ -9,7 +9,10 @@ import { compactObservation } from "./observation-render.js";
  * required flag of form fields whose element carries them. Console lines are served by
  * `pages.console`, not observations.
  */
-export function wireObservation(obs: Observation, format?: "full" | "compact"): Observation | { observation: CompactObservation } {
+export function wireObservation(
+  obs: Observation,
+  format?: "full" | "compact",
+): Observation | { observation: CompactObservation } {
   if (format === "compact") return { observation: obs.delta ? compactDelta(obs) : compactObservation(obs) };
   return slimObservation(obs);
 }
@@ -42,11 +45,13 @@ type ElementView = Partial<ElementRef> & { ref: string };
 function elementLine(e: ElementView): string {
   const bits = [e.role ?? e.tag ?? "element"];
   if (e.name) bits.push(JSON.stringify(e.name));
-  if (e.value !== undefined) bits.push(`value=${e.type === "password" ? "{handle}" : JSON.stringify(e.value)}`);
+  if (e.value !== undefined)
+    bits.push(`value=${e.type === "password" ? "{handle}" : JSON.stringify(e.value)}`);
   if (e.checked !== undefined) bits.push(`checked=${e.checked}`);
   if (e.selected !== undefined) bits.push(`selected=${JSON.stringify(e.selected)}`);
   if (e.href) bits.push(`href=${e.href}`);
-  for (const flag of ["focused", "required", "disabled", "offscreen", "occluded"] as const) if (e[flag]) bits.push(flag);
+  for (const flag of ["focused", "required", "disabled", "offscreen", "occluded"] as const)
+    if (e[flag]) bits.push(flag);
   if (e.frame && e.frame !== "main") bits.push(`@${e.frame}`);
   return `${e.ref} ${bits.join(" ")}`;
 }
@@ -63,15 +68,21 @@ function compactDelta(obs: Observation): CompactObservation {
     `url: ${obs.content.url}`,
     `title: ${obs.content.title}`,
   ];
-  if (!added.length && !d.removed?.length && !changed.length && !text.added.length && !text.removed.length) lines.push("no changes");
+  if (!added.length && !d.removed?.length && !changed.length && !text.added.length && !text.removed.length)
+    lines.push("no changes");
   if (added.length) lines.push("added:", ...added.map((e) => `  ${elementLine(e)}`));
   if (d.removed?.length) lines.push(`removed: ${d.removed.join(" ")}`);
   if (changed.length) {
     lines.push("changed:");
     for (const { ref, fields } of changed)
-      lines.push(`  ${ref} ${Object.entries(fields).map(([k, v]) => `${k}=${v === null ? "(none)" : JSON.stringify(v)}`).join(" ")}`);
+      lines.push(
+        `  ${ref} ${Object.entries(fields)
+          .map(([k, v]) => `${k}=${v === null ? "(none)" : JSON.stringify(v)}`)
+          .join(" ")}`,
+      );
   }
-  if (text.added.length || text.removed.length) lines.push("text:", ...text.added.map((l) => `  + ${l}`), ...text.removed.map((l) => `  - ${l}`));
+  if (text.added.length || text.removed.length)
+    lines.push("text:", ...text.added.map((l) => `  + ${l}`), ...text.removed.map((l) => `  - ${l}`));
   const touched = new Set([...added.map((e) => e.ref), ...changed.map((c) => c.ref)]);
   const refs = obs.content.elements
     .filter((e) => touched.has(e.ref))

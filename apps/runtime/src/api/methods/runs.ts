@@ -6,7 +6,8 @@ import { projectRunTranscript } from "../../services/run-transcript.js";
 import { assertRunAnswerable, currentRunSuspension } from "../../services/run-suspension.js";
 
 async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
-  if (ctx.client.external && ctx.params.mentions?.length) throw new AuxError("permission_denied", "Mention sources through the Aux composer.");
+  if (ctx.client.external && ctx.params.mentions?.length)
+    throw new AuxError("permission_denied", "Mention sources through the Aux composer.");
   const { client, params, s } = ctx;
   if (client.external && params.contextMemoryIds?.length)
     throw new AuxError(
@@ -70,7 +71,9 @@ async function h_runs_resume(ctx: MethodCtx): Promise<unknown> {
       throw new AuxError("ref_stale", "This original run is no longer paused.");
     if (!s.native?.egressResumeRun)
       throw new AuxError("capability_unsupported", "Native run control is unavailable.");
-    HostMethods["native.egressResumeRun"].result.parse(await s.native.egressResumeRun({ runId: original.runId, ticketId: client.nativeRunResume }));
+    HostMethods["native.egressResumeRun"].result.parse(
+      await s.native.egressResumeRun({ runId: original.runId, ticketId: client.nativeRunResume }),
+    );
     const current = s.runs.coordinator.get(original.runId);
     if (current.status !== "paused" || JSON.stringify(current) !== JSON.stringify(original))
       throw new AuxError("ref_stale", "This paused run changed while returning control.");
@@ -78,7 +81,9 @@ async function h_runs_resume(ctx: MethodCtx): Promise<unknown> {
     if (!s.native.egressCheckRunResume)
       throw new AuxError("capability_unsupported", "Native run control is unavailable.");
     const original = structuredClone(s.runs.coordinator.get(params.runId));
-    HostMethods["native.egressCheckRunResume"].result.parse(await s.native.egressCheckRunResume({ runId: original.runId }));
+    HostMethods["native.egressCheckRunResume"].result.parse(
+      await s.native.egressCheckRunResume({ runId: original.runId }),
+    );
     if (JSON.stringify(s.runs.coordinator.get(original.runId)) !== JSON.stringify(original))
       throw new AuxError("ref_stale", "This run changed while checking its native control.");
   }
@@ -90,12 +95,17 @@ async function h_runs_cancel(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_runs_answer(ctx: MethodCtx): Promise<unknown> {
   const { client, params: p, s, suspensions } = ctx;
-  if (client.external) throw new AuxError("permission_denied", "Answers and mentions must come from the Aux composer.");
+  if (client.external)
+    throw new AuxError("permission_denied", "Answers and mentions must come from the Aux composer.");
   const run = s.runs.coordinator.get(p.runId);
   const pending = suspensions.pending(p.runId);
   assertRunAnswerable(run, pending, p.expectedSuspensionId);
   return s.runs.coordinator.answerWithMentions(p.runId, p.answer, p.mentions ?? [], () => {
-    assertRunAnswerable(s.runs.coordinator.get(p.runId), suspensions.pending(p.runId), p.expectedSuspensionId);
+    assertRunAnswerable(
+      s.runs.coordinator.get(p.runId),
+      suspensions.pending(p.runId),
+      p.expectedSuspensionId,
+    );
   });
 }
 async function h_runs_queue(ctx: MethodCtx): Promise<unknown> {

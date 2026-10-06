@@ -15,10 +15,16 @@ export interface HostSocketTransport extends Transport {
  * and passes a fresh 256-bit token only to its Aux runtime child. The host must
  * validate the token, peer and Profile before acknowledging this connection.
  */
-export function connectHostSocket(path: string, token: string, timeoutMs = 15_000, generation = ""): Promise<HostSocketTransport> {
+export function connectHostSocket(
+  path: string,
+  token: string,
+  timeoutMs = 15_000,
+  generation = "",
+): Promise<HostSocketTransport> {
   if (!isAbsolute(path)) return Promise.reject(new Error("Aux host socket path must be absolute"));
   if (!/^[a-f0-9]{64}$/i.test(token)) return Promise.reject(new Error("Aux host token must be 256-bit hex"));
-  if (generation && !/^[1-9][0-9]*$/.test(generation)) return Promise.reject(new Error("Invalid Aux host generation"));
+  if (generation && !/^[1-9][0-9]*$/.test(generation))
+    return Promise.reject(new Error("Invalid Aux host generation"));
 
   return new Promise((resolve, reject) => {
     const socket: Socket = createConnection(path);
@@ -56,12 +62,16 @@ export function connectHostSocket(path: string, token: string, timeoutMs = 15_00
         if (closed) queueMicrotask(callback);
         else closeCallbacks.add(callback);
       },
-      close() { socket.end(); },
+      close() {
+        socket.end();
+      },
     };
 
     socket.setEncoding("utf8");
     socket.on("connect", () => {
-      socket.write(`${JSON.stringify({ kind: "hello", protocol: AUX_HOST_PROTOCOL, nonce, token, generation })}\n`);
+      socket.write(
+        `${JSON.stringify({ kind: "hello", protocol: AUX_HOST_PROTOCOL, nonce, token, generation })}\n`,
+      );
     });
     socket.on("data", (chunk: string) => {
       buffer += chunk;
@@ -74,12 +84,20 @@ export function connectHostSocket(path: string, token: string, timeoutMs = 15_00
         buffer = buffer.slice(end + 1);
         if (!line) continue;
         let message: unknown;
-        try { message = JSON.parse(line); }
-        catch { fail(new Error("Aux host sent malformed JSON")); return; }
+        try {
+          message = JSON.parse(line);
+        } catch {
+          fail(new Error("Aux host sent malformed JSON"));
+          return;
+        }
         if (!authenticated) {
           const ack = message as { kind?: string; protocol?: string; nonce?: string; generation?: string };
-          if (ack.kind !== "hello-ack" || ack.protocol !== AUX_HOST_PROTOCOL || ack.nonce !== nonce ||
-              (generation && ack.generation !== generation)) {
+          if (
+            ack.kind !== "hello-ack" ||
+            ack.protocol !== AUX_HOST_PROTOCOL ||
+            ack.nonce !== nonce ||
+            (generation && ack.generation !== generation)
+          ) {
             fail(new Error("Aux host socket authentication failed"));
             return;
           }

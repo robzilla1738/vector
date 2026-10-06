@@ -20,14 +20,18 @@ async function h_workspaces_folders(ctx: MethodCtx): Promise<unknown> {
   const { client, method, params, workspaceFolders } = ctx;
   if (client.external || client.codeMode)
     throw new AuxError("permission_denied", "Local folder access is managed in Aux Settings.");
-  if (method === "workspaces.folders.inspect") return workspaceFolders.inspect(params.workspaceId, params.path, params.access);
-  if (method === "workspaces.folders.add") return workspaceFolders.add(params.workspaceId, params.path, params.access, params.expectedDigest);
+  if (method === "workspaces.folders.inspect")
+    return workspaceFolders.inspect(params.workspaceId, params.path, params.access);
+  if (method === "workspaces.folders.add")
+    return workspaceFolders.add(params.workspaceId, params.path, params.access, params.expectedDigest);
   if (method === "workspaces.folders.list") return workspaceFolders.list(params.workspaceId);
   return workspaceFolders.archive(params.workspaceId, params.folderId);
 }
 async function h_command_escalations(ctx: MethodCtx): Promise<unknown> {
-  if (ctx.client.external || ctx.client.codeMode) throw new AuxError("permission_denied", "Command exceptions require review in local Aux Settings.");
-  if (["commands.escalations.revoke"].includes(ctx.method)) return withRunAuthorityMutation(ctx.s.repo, () => retired_h_command_escalations(ctx));
+  if (ctx.client.external || ctx.client.codeMode)
+    throw new AuxError("permission_denied", "Command exceptions require review in local Aux Settings.");
+  if (["commands.escalations.revoke"].includes(ctx.method))
+    return withRunAuthorityMutation(ctx.s.repo, () => retired_h_command_escalations(ctx));
   return retired_h_command_escalations(ctx);
 }
 
@@ -44,7 +48,8 @@ async function h_workspaces_memory_search(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_workspaces_browsingMemory_get(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external) throw new AuxError("permission_denied", "Browsing memory is managed in Aux.");
-  if (["workspaces.browsingMemory.set", "workspaces.browsingMemory.forget"].includes(ctx.method)) return withRunAuthorityMutation(ctx.s.repo, () => retired_h_workspaces_browsingMemory_get(ctx));
+  if (["workspaces.browsingMemory.set", "workspaces.browsingMemory.forget"].includes(ctx.method))
+    return withRunAuthorityMutation(ctx.s.repo, () => retired_h_workspaces_browsingMemory_get(ctx));
   return retired_h_workspaces_browsingMemory_get(ctx);
 }
 
@@ -53,8 +58,10 @@ async function retired_h_workspaces_browsingMemory_get(ctx: MethodCtx): Promise<
   if (method === "workspaces.browsingMemory.get") return browsingMemory.get(params.workspaceId);
   if (method === "workspaces.browsingMemory.set") {
     const prior = browsingMemory.policy(params.workspaceId);
-    const generation = params.policy.retentionDays < prior.retentionDays && browsingMemory.get(params.workspaceId).pages.length
-      ? advanceManagedRecoveryGeneration(s.settings.all().dataDir) : undefined;
+    const generation =
+      params.policy.retentionDays < prior.retentionDays && browsingMemory.get(params.workspaceId).pages.length
+        ? advanceManagedRecoveryGeneration(s.settings.all().dataDir)
+        : undefined;
     const result = browsingMemory.setPolicy(params.workspaceId, params.policy);
     if ((prior.enabled && !result.policy.enabled) || result.policy.retentionDays < prior.retentionDays)
       await revokeWorkspaceContext(params.workspaceId, true);
@@ -69,8 +76,9 @@ async function retired_h_workspaces_browsingMemory_get(ctx: MethodCtx): Promise<
       params.expectedDocumentEpoch,
     );
   const saved = browsingMemory.get(params.workspaceId).pages;
-  const generation = saved.some(page => !params.memoryId || page.memoryId === params.memoryId)
-    ? advanceManagedRecoveryGeneration(s.settings.all().dataDir) : undefined;
+  const generation = saved.some((page) => !params.memoryId || page.memoryId === params.memoryId)
+    ? advanceManagedRecoveryGeneration(s.settings.all().dataDir)
+    : undefined;
   const result = browsingMemory.forget(params.workspaceId, params.memoryId);
   await revokeWorkspaceContext(params.workspaceId, true);
   s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId });
@@ -79,7 +87,8 @@ async function retired_h_workspaces_browsingMemory_get(ctx: MethodCtx): Promise<
 }
 async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external) throw new AuxError("permission_denied", "Page-content memory is managed in Aux.");
-  if (["workspaces.contentMemory.setPolicy", "workspaces.contentMemory.forget"].includes(ctx.method)) return withRunAuthorityMutation(ctx.s.repo, () => retired_h_workspaces_contentMemory_policy(ctx));
+  if (["workspaces.contentMemory.setPolicy", "workspaces.contentMemory.forget"].includes(ctx.method))
+    return withRunAuthorityMutation(ctx.s.repo, () => retired_h_workspaces_contentMemory_policy(ctx));
   return retired_h_workspaces_contentMemory_policy(ctx);
 }
 
@@ -95,10 +104,16 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
     let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
     let result: Awaited<ReturnType<typeof store.setPolicy>>;
     try {
-      result = await store.setPolicy(params.workspaceId, params.policy,
-        () => { generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir); advanced = true; });
+      result = await store.setPolicy(params.workspaceId, params.policy, () => {
+        generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir);
+        advanced = true;
+      });
     } catch (error) {
-      if (advanced) throw new AuxError("conflict", "Article removal could not be confirmed. Older managed backups were invalidated; review saved articles and create a fresh local backup.");
+      if (advanced)
+        throw new AuxError(
+          "conflict",
+          "Article removal could not be confirmed. Older managed backups were invalidated; review saved articles and create a fresh local backup.",
+        );
       throw error;
     }
     if (
@@ -125,10 +140,16 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
     let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
     let forgotten: number;
     try {
-      forgotten = await store.forget(params.workspaceId, params.memoryId,
-        () => { generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir); advanced = true; });
+      forgotten = await store.forget(params.workspaceId, params.memoryId, () => {
+        generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir);
+        advanced = true;
+      });
     } catch (error) {
-      if (advanced) throw new AuxError("conflict", "Article Forget could not be confirmed. Older managed backups were invalidated; review saved articles and create a fresh local backup.");
+      if (advanced)
+        throw new AuxError(
+          "conflict",
+          "Article Forget could not be confirmed. Older managed backups were invalidated; review saved articles and create a fresh local backup.",
+        );
       throw error;
     }
     await revokeArticleRuns(params.workspaceId, params.memoryId);
@@ -162,17 +183,25 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
     current.ownedByRuntime
   )
     throw new AuxError("conflict", "The document changed during capture. Try again.");
-  const saved = await store.saveEligible({
-    workspaceId: params.workspaceId,
-    pageId: page.pageId,
-    documentEpoch: page.documentEpoch,
-    sessionId: page.sessionId,
-    ...captured,
-  }, () => {
-    const live = s.pages.get(page.pageId);
-    return live.documentEpoch === page.documentEpoch && live.sessionId === page.sessionId &&
-      live.url === page.url && live.backend === "aux" && !live.ownedByRuntime;
-  });
+  const saved = await store.saveEligible(
+    {
+      workspaceId: params.workspaceId,
+      pageId: page.pageId,
+      documentEpoch: page.documentEpoch,
+      sessionId: page.sessionId,
+      ...captured,
+    },
+    () => {
+      const live = s.pages.get(page.pageId);
+      return (
+        live.documentEpoch === page.documentEpoch &&
+        live.sessionId === page.sessionId &&
+        live.url === page.url &&
+        live.backend === "aux" &&
+        !live.ownedByRuntime
+      );
+    },
+  );
   s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
   return { memoryId: saved.memoryId, capturedAt: saved.capturedAt, title: saved.title, url: saved.url };
 }
@@ -183,7 +212,8 @@ async function h_workspaces_memory_get(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external) throw new AuxError("permission_denied", "Workspace memory is managed in Aux.");
-  if (["workspaces.memory.set"].includes(ctx.method)) return withRunAuthorityMutation(ctx.s.repo, () => retired_h_workspaces_memory_set(ctx));
+  if (["workspaces.memory.set"].includes(ctx.method))
+    return withRunAuthorityMutation(ctx.s.repo, () => retired_h_workspaces_memory_set(ctx));
   return retired_h_workspaces_memory_set(ctx);
 }
 
@@ -192,14 +222,25 @@ async function retired_h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown>
   const prior = tasks.workspaceMemory(params.workspaceId);
   const items = (params.items ?? prior.items ?? []) as NonNullable<WorkspaceMemory["items"]>;
   const removesText = !!prior.content && !params.content.includes(prior.content);
-  const removesItem = (prior.items ?? []).some(old => !items.some(item => item.itemId === old.itemId
-    && item.content === old.content && item.sourceUrl === old.sourceUrl));
-  const addsExclusion = ((params.excludedOrigins ?? []) as string[])
-    .some(origin => !(prior.excludedOrigins ?? []).includes(origin));
+  const removesItem = (prior.items ?? []).some(
+    (old) =>
+      !items.some(
+        (item) =>
+          item.itemId === old.itemId && item.content === old.content && item.sourceUrl === old.sourceUrl,
+      ),
+  );
+  const addsExclusion = ((params.excludedOrigins ?? []) as string[]).some(
+    (origin) => !(prior.excludedOrigins ?? []).includes(origin),
+  );
   let advanced = false;
   let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
-  const beforeSave = prior.revision === params.expectedRevision && (removesText || removesItem || addsExclusion)
-    ? () => { generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir); advanced = true; } : undefined;
+  const beforeSave =
+    prior.revision === params.expectedRevision && (removesText || removesItem || addsExclusion)
+      ? () => {
+          generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir);
+          advanced = true;
+        }
+      : undefined;
   let memory: ReturnType<typeof tasks.setWorkspaceMemory>;
   try {
     memory = tasks.setWorkspaceMemory(
@@ -212,7 +253,11 @@ async function retired_h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown>
       beforeSave,
     );
   } catch (error) {
-    if (advanced) throw new AuxError("conflict", "Memory update could not be confirmed. Older managed backups were invalidated; review Memory and create a fresh local backup.");
+    if (advanced)
+      throw new AuxError(
+        "conflict",
+        "Memory update could not be confirmed. Older managed backups were invalidated; review Memory and create a fresh local backup.",
+      );
     throw error;
   }
   await revokeWorkspaceContext(params.workspaceId, false);

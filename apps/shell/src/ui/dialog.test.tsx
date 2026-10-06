@@ -13,13 +13,21 @@ afterEach(() => vi.unstubAllGlobals());
 
 it("ActionMenu focuses the first enabled item and Escape restores its trigger", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  const host = document.createElement("div"); document.body.append(host);
+  const host = document.createElement("div");
+  document.body.append(host);
   const root = createRoot(host);
   try {
-    await act(async () => root.render(<ActionMenu label="Actions" actions={[
-      { label: "Disabled", disabled: true, onSelect() {} },
-      { label: "Open", onSelect() {} },
-    ]} />));
+    await act(async () =>
+      root.render(
+        <ActionMenu
+          label="Actions"
+          actions={[
+            { label: "Disabled", disabled: true, onSelect() {} },
+            { label: "Open", onSelect() {} },
+          ]}
+        />,
+      ),
+    );
     const trigger = host.querySelector("button")!;
     await act(async () => key(trigger, "ArrowDown"));
     const menu = document.querySelector<HTMLElement>('[role="menu"]')!;
@@ -28,45 +36,78 @@ it("ActionMenu focuses the first enabled item and Escape restores its trigger", 
     await act(async () => key(menu, "Escape"));
     expect(document.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(trigger);
-  } finally { await act(async () => root.unmount()); host.remove(); }
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
 });
 
 it("Tab leaves the menu toward the next control while Shift-Tab moves backward", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const getClientRects = HTMLElement.prototype.getClientRects;
-  HTMLElement.prototype.getClientRects = () => ({ length: 1 } as DOMRectList);
-  const host = document.createElement("div"); document.body.append(host);
+  HTMLElement.prototype.getClientRects = () => ({ length: 1 }) as DOMRectList;
+  const host = document.createElement("div");
+  document.body.append(host);
   const root = createRoot(host);
-  function Fixture() { return <><button>Before</button><ActionMenu label="Actions" actions={[{ label: "Open", onSelect() {} }]} /><button>After</button></>; }
+  function Fixture() {
+    return (
+      <>
+        <button>Before</button>
+        <ActionMenu label="Actions" actions={[{ label: "Open", onSelect() {} }]} />
+        <button>After</button>
+      </>
+    );
+  }
   try {
     await act(async () => root.render(<Fixture />));
     const buttons = host.querySelectorAll("button");
     await act(async () => key(buttons[1]!, "ArrowDown"));
-    await act(async () => { key(document.querySelector('[role="menu"]')!, "Tab"); await Promise.resolve(); });
+    await act(async () => {
+      key(document.querySelector('[role="menu"]')!, "Tab");
+      await Promise.resolve();
+    });
     expect(document.activeElement).toBe(buttons[2]);
     await act(async () => key(buttons[1]!, "ArrowDown"));
-    await act(async () => { key(document.querySelector('[role="menu"]')!, "Tab", true); await Promise.resolve(); });
+    await act(async () => {
+      key(document.querySelector('[role="menu"]')!, "Tab", true);
+      await Promise.resolve();
+    });
     expect(document.activeElement).toBe(buttons[0]);
-  } finally { HTMLElement.prototype.getClientRects = getClientRects; await act(async () => root.unmount()); host.remove(); }
+  } finally {
+    HTMLElement.prototype.getClientRects = getClientRects;
+    await act(async () => root.unmount());
+    host.remove();
+  }
 });
 
 it("keeps menu Tab traversal inside its parent dialog and skips unavailable controls", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const getClientRects = HTMLElement.prototype.getClientRects;
-  HTMLElement.prototype.getClientRects = () => ({ length: 1 } as DOMRectList);
-  const host = document.createElement("div"); document.body.append(host);
+  HTMLElement.prototype.getClientRects = () => ({ length: 1 }) as DOMRectList;
+  const host = document.createElement("div");
+  document.body.append(host);
   const root = createRoot(host);
   function Fixture() {
     const [open, setOpen] = useState(false);
     const opener = useRef<HTMLButtonElement>(null);
-    return <><button ref={opener} onClick={() => setOpen(true)}>Open dialog</button>
-      <button>Outside dialog</button>
-      {open && <Dialog label="Parent" onClose={() => setOpen(false)} returnFocus={opener}>
-        <button>Before</button>
-        <ActionMenu label="Actions" actions={[{ label: "Run", onSelect() {} }]} />
-        <button hidden>Hidden</button><button aria-disabled="true">Unavailable</button>
-        <button>After</button><button onClick={() => setOpen(false)}>Close dialog</button>
-      </Dialog>}</>;
+    return (
+      <>
+        <button ref={opener} onClick={() => setOpen(true)}>
+          Open dialog
+        </button>
+        <button>Outside dialog</button>
+        {open && (
+          <Dialog label="Parent" onClose={() => setOpen(false)} returnFocus={opener}>
+            <button>Before</button>
+            <ActionMenu label="Actions" actions={[{ label: "Run", onSelect() {} }]} />
+            <button hidden>Hidden</button>
+            <button aria-disabled="true">Unavailable</button>
+            <button>After</button>
+            <button onClick={() => setOpen(false)}>Close dialog</button>
+          </Dialog>
+        )}
+      </>
+    );
   }
   try {
     await act(async () => root.render(<Fixture />));
@@ -75,28 +116,58 @@ it("keeps menu Tab traversal inside its parent dialog and skips unavailable cont
     const parent = document.querySelector<HTMLDialogElement>('dialog[aria-label="Parent"]')!;
     const trigger = parent.querySelector<HTMLButtonElement>('[aria-label="Actions"]')!;
     await act(async () => key(trigger, "ArrowDown"));
-    await act(async () => { key(document.querySelector('[role="menu"]')!, "Tab"); await Promise.resolve(); });
+    await act(async () => {
+      key(document.querySelector('[role="menu"]')!, "Tab");
+      await Promise.resolve();
+    });
     expect(document.activeElement?.textContent).toBe("After");
     await act(async () => key(trigger, "ArrowDown"));
-    await act(async () => { key(document.querySelector('[role="menu"]')!, "Tab", true); await Promise.resolve(); });
+    await act(async () => {
+      key(document.querySelector('[role="menu"]')!, "Tab", true);
+      await Promise.resolve();
+    });
     expect(document.activeElement?.textContent).toBe("Before");
     await act(async () => key(trigger, "ArrowDown"));
     await act(async () => key(document.querySelector('[role="menu"]')!, "Escape"));
     expect(document.activeElement).toBe(trigger);
     await act(async () => parent.querySelector<HTMLButtonElement>("button:last-child")!.click());
     expect(document.activeElement).toBe(opener);
-  } finally { HTMLElement.prototype.getClientRects = getClientRects; await act(async () => root.unmount()); host.remove(); }
+  } finally {
+    HTMLElement.prototype.getClientRects = getClientRects;
+    await act(async () => root.unmount());
+    host.remove();
+  }
 });
 
 it("Dialog focuses an explicit heading and restores the opener on close", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  const host = document.createElement("div"); document.body.append(host);
+  const host = document.createElement("div");
+  document.body.append(host);
   const root = createRoot(host);
   function Fixture() {
     const [open, setOpen] = useState(false);
     const heading = useRef<HTMLElement>(null);
     const opener = useRef<HTMLButtonElement>(null);
-    return <><button ref={opener} onClick={() => setOpen(true)}>Inspect</button>{open && <Dialog label="Observation" initialFocusRef={heading} returnFocus={opener} onClose={() => setOpen(false)}><strong tabIndex={-1} ref={heading}>What the agent sees</strong><button onClick={() => setOpen(false)}>Close</button></Dialog>}</>;
+    return (
+      <>
+        <button ref={opener} onClick={() => setOpen(true)}>
+          Inspect
+        </button>
+        {open && (
+          <Dialog
+            label="Observation"
+            initialFocusRef={heading}
+            returnFocus={opener}
+            onClose={() => setOpen(false)}
+          >
+            <strong tabIndex={-1} ref={heading}>
+              What the agent sees
+            </strong>
+            <button onClick={() => setOpen(false)}>Close</button>
+          </Dialog>
+        )}
+      </>
+    );
   }
   try {
     await act(async () => root.render(<Fixture />));
@@ -106,5 +177,8 @@ it("Dialog focuses an explicit heading and restores the opener on close", async 
     await act(async () => key(document.querySelector("dialog")!, "Escape"));
     expect(document.querySelector("dialog")).toBeNull();
     expect(document.activeElement).toBe(opener);
-  } finally { await act(async () => root.unmount()); host.remove(); }
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
 });

@@ -16,7 +16,9 @@ export function renderObservation(obs: Observation): string {
     `viewport: ${c.viewport.width}x${c.viewport.height} @${c.viewport.scale}x  scroll: y=${c.scroll.y}/${c.scroll.maxY}`,
   ];
   if (c.frames.length > 1)
-    lines.push(`frames: ${c.frames.map((f) => `${f.frame}${f.sameOrigin ? "" : " (cross-origin)"}=${f.url}`).join(" | ")}`);
+    lines.push(
+      `frames: ${c.frames.map((f) => `${f.frame}${f.sameOrigin ? "" : " (cross-origin)"}=${f.url}`).join(" | ")}`,
+    );
   lines.push("");
   if (c.headings.length) lines.push(`headings: ${c.headings.join(" · ")}`);
 
@@ -25,7 +27,12 @@ export function renderObservation(obs: Observation): string {
   // back re-buries the signal.
   const want = {
     fields: scope === "full" || scope === "all" || scope === "forms" || scope === "subtree",
-    elements: scope === "full" || scope === "all" || scope === "interactive" || scope === "viewport" || scope === "subtree",
+    elements:
+      scope === "full" ||
+      scope === "all" ||
+      scope === "interactive" ||
+      scope === "viewport" ||
+      scope === "subtree",
     tables: scope === "full" || scope === "all" || scope === "tables" || scope === "subtree",
     text: scope === "full" || scope === "all" || scope === "subtree",
   };
@@ -45,7 +52,8 @@ export function renderObservation(obs: Observation): string {
     for (const e of c.elements) {
       const bits = [e.role ?? e.tag];
       if (e.name) bits.push(JSON.stringify(e.name));
-      if (e.value !== undefined) bits.push(`value=${e.type === "password" ? "{handle}" : JSON.stringify(e.value)}`);
+      if (e.value !== undefined)
+        bits.push(`value=${e.type === "password" ? "{handle}" : JSON.stringify(e.value)}`);
       if (e.checked !== undefined) bits.push(`checked=${e.checked}`);
       if (e.selected !== undefined) bits.push(`selected=${JSON.stringify(e.selected)}`);
       if (e.href) bits.push(`href=${e.href}`);
@@ -63,7 +71,9 @@ export function renderObservation(obs: Observation): string {
   }
   if (want.tables && c.tables.length) {
     for (const t of c.tables) {
-      lines.push(`table ${t.ref} cols=[${t.columns.join(" | ")}] rows=${t.totalRows ?? t.rows.length}${t.truncated ? " (truncated)" : ""}:`);
+      lines.push(
+        `table ${t.ref} cols=[${t.columns.join(" | ")}] rows=${t.totalRows ?? t.rows.length}${t.truncated ? " (truncated)" : ""}:`,
+      );
       for (const r of t.rows) lines.push(`  ${r.join(" | ")}`);
     }
   }
@@ -76,7 +86,9 @@ export function renderObservation(obs: Observation): string {
     for (const ch of obs.changesSince) lines.push(`  ${ch}`);
   }
   if (c.truncated)
-    lines.push(`[truncated — ${c.stats.elementsTotal} elements total, showing ${c.stats.elementsShown}; request scope="subtree", "viewport", or forms/links/tables]`);
+    lines.push(
+      `[truncated — ${c.stats.elementsTotal} elements total, showing ${c.stats.elementsShown}; request scope="subtree", "viewport", or forms/links/tables]`,
+    );
   return lines.join("\n");
 }
 
@@ -105,13 +117,15 @@ export function compactObservation(obs: Observation): CompactObservation {
 
 /** P1-style viewport-clipped accessibility HTML for observer comparisons. */
 export function accessibilityHtml(obs: Observation): string {
-  const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  const escape = (value: string) =>
+    value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
   const { width, height } = obs.content.viewport;
   const lines = [`<page url="${escape(obs.content.url)}" title="${escape(obs.content.title)}">`];
   for (const element of obs.content.elements) {
     if (element.offscreen || element.hidden) continue;
     const rect = element.rect;
-    if (rect && (rect.x + rect.w <= 0 || rect.y + rect.h <= 0 || rect.x >= width || rect.y >= height)) continue;
+    if (rect && (rect.x + rect.w <= 0 || rect.y + rect.h <= 0 || rect.x >= width || rect.y >= height))
+      continue;
     const role = element.role ?? element.tag;
     const attributes = [
       `ref="${escape(element.ref)}"`,
@@ -121,7 +135,7 @@ export function accessibilityHtml(obs: Observation): string {
       ...(element.frame !== "main" ? [`frame="${escape(element.frame)}"`] : []),
       ...(element.disabled ? ["disabled"] : []),
     ];
-    const value = element.type === "password" ? "{handle}" : element.value ?? element.text ?? "";
+    const value = element.type === "password" ? "{handle}" : (element.value ?? element.text ?? "");
     lines.push(`  <element ${attributes.join(" ")}>${escape(value.slice(0, 500))}</element>`);
   }
   lines.push("</page>");

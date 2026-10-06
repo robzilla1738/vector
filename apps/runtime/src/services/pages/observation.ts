@@ -1,4 +1,13 @@
-import { AuxError, type ElementRef, EventTypes, type Observation, type ObservationContent, type ObservationDelta, newObservationId, PersonReadRequestSchema } from "@aux/contracts";
+import {
+  AuxError,
+  type ElementRef,
+  EventTypes,
+  type Observation,
+  type ObservationContent,
+  type ObservationDelta,
+  newObservationId,
+  PersonReadRequestSchema,
+} from "@aux/contracts";
 import type { PageLanes } from "./lanes.js";
 import type { PageRegistry } from "./registry.js";
 import { type LivePage, OBSERVATION_HISTORY, type ObserveReq, type ObservedRevision } from "./types.js";
@@ -13,7 +22,11 @@ const elementView = ({ selector: _s, rect: _r, frame, ...rest }: ElementRef): Re
  * added (full), removed (refs), changed (ref + the fields that differ, null
  * for a field that went away) and the text lines added/removed.
  */
-function structuralDelta(base: ObservedRevision, elements: Map<string, Record<string, unknown>>, text: string): ObservationDelta {
+function structuralDelta(
+  base: ObservedRevision,
+  elements: Map<string, Record<string, unknown>>,
+  text: string,
+): ObservationDelta {
   const added: Record<string, unknown>[] = [];
   const changed: { ref: string; fields: Record<string, unknown> }[] = [];
   for (const [ref, el] of elements) {
@@ -38,22 +51,32 @@ function lineDelta(before: string, after: string, cap = Infinity): { added: stri
   const b = after.split("\n").filter(Boolean);
   const inA = new Set(a);
   const inB = new Set(b);
-  return { added: b.filter((l) => !inA.has(l)).slice(0, cap), removed: a.filter((l) => !inB.has(l)).slice(0, cap) };
+  return {
+    added: b.filter((l) => !inA.has(l)).slice(0, cap),
+    removed: a.filter((l) => !inB.has(l)).slice(0, cap),
+  };
 }
 
 const observeReqKey = (req: ObserveReq) =>
   `${req.scope ?? "full"}|${req.subtreeRef ?? ""}|${req.maxElements ?? 120}|${req.maxTextChars ?? 6000}`;
 
 export class ObservationService {
-  constructor(private pages: PageRegistry, private lanes: PageLanes) {}
+  constructor(
+    private pages: PageRegistry,
+    private lanes: PageLanes,
+  ) {}
 
   // ---------- observation ----------
 
   async observe(pageId: string, req: ObserveReq): Promise<Observation> {
     return this.lanes.enqueue(pageId, async () => {
       const original = this.pages.live.get(pageId);
-      if (original?.target.backend === "aux" && !original.target.ownedByRuntime &&
-          !original.target.agentIsolation && this.pages.deps.native.available()) {
+      if (
+        original?.target.backend === "aux" &&
+        !original.target.ownedByRuntime &&
+        !original.target.agentIsolation &&
+        this.pages.deps.native.available()
+      ) {
         if (original.target.controller !== "human" && original.target.controller !== "none")
           throw new AuxError("permission_denied", "This page is not available for a person read.");
         return this.observePerson(pageId, original, req);
@@ -84,14 +107,21 @@ export class ObservationService {
           const current = lp.history.find((h) => h.revision === hit.obs.revision);
           const delta = current ? this.deltaSince(lp, req, current) : undefined;
           this.pages.deps.recordAgentObservation?.(pageId, hit.obs.content.url, hit.obs.content.text);
-          return { ...hit.obs, observedAt: Date.now(), cached: true, changesSince: undefined, deltaFrom: undefined, delta };
+          return {
+            ...hit.obs,
+            observedAt: Date.now(),
+            cached: true,
+            changesSince: undefined,
+            deltaFrom: undefined,
+            delta,
+          };
         }
       }
-    // console lines reach lp.consoleLines through onConsole; observations do not carry them
-    const content = await dp.observe(req);
-    if (lp?.target.documentEpoch !== startingEpoch)
-      throw new AuxError("conflict", "This page changed while it was being observed. Observe it again.");
-    return this.recordObservation(pageId, content, req, fingerprint);
+      // console lines reach lp.consoleLines through onConsole; observations do not carry them
+      const content = await dp.observe(req);
+      if (lp?.target.documentEpoch !== startingEpoch)
+        throw new AuxError("conflict", "This page changed while it was being observed. Observe it again.");
+      return this.recordObservation(pageId, content, req, fingerprint);
     });
   }
 
@@ -101,10 +131,15 @@ export class ObservationService {
     const controlEpoch = original.target.controllerEpoch;
     const sessionId = original.target.sessionId;
     const url = original.target.url;
-    const current = () => !this.pages.closing && this.pages.live.get(pageId) === original &&
-      original.target.documentEpoch === epoch && original.target.controllerEpoch === controlEpoch &&
+    const current = () =>
+      !this.pages.closing &&
+      this.pages.live.get(pageId) === original &&
+      original.target.documentEpoch === epoch &&
+      original.target.controllerEpoch === controlEpoch &&
       original.target.sessionId === sessionId &&
-      original.target.url === url && !original.target.ownedByRuntime && !original.target.agentIsolation &&
+      original.target.url === url &&
+      !original.target.ownedByRuntime &&
+      !original.target.agentIsolation &&
       ["human", "none"].includes(original.target.controller) &&
       !["detached", "crashed"].includes(original.target.viewStatus);
     const read = this.pages.deps.native.personRead;
@@ -116,10 +151,16 @@ export class ObservationService {
     if (req.scope === "subtree" && !req.subtreeRef)
       throw new AuxError("invalid_params", "Choose a subtree reference or selector.");
     const { reader, current, url } = this.personReader(pageId, original);
-    const result = await reader.observe(pageId, { maxElements: req.maxElements ?? 120,
-      maxTextChars: req.maxTextChars ?? 6000,
-      ...(req.scope === "all" || req.scope === "viewport" ? { filter: req.scope } : {}),
-      ...(req.scope === "subtree" ? { subtreeRef: req.subtreeRef } : {}) }, current);
+    const result = await reader.observe(
+      pageId,
+      {
+        maxElements: req.maxElements ?? 120,
+        maxTextChars: req.maxTextChars ?? 6000,
+        ...(req.scope === "all" || req.scope === "viewport" ? { filter: req.scope } : {}),
+        ...(req.scope === "subtree" ? { subtreeRef: req.subtreeRef } : {}),
+      },
+      current,
+    );
     if (!current() || result.content.url !== url)
       throw new AuxError("target_detached", "This page changed while it was being observed.");
     if (original.target.sessionId && original.target.sessionId !== result.sessionId)
@@ -135,7 +176,9 @@ export class ObservationService {
     const delta = structuralDelta(base, current.elements, current.text);
     // Diffs by default, but only when they are the smaller view (S4): a delta
     // at least half the size of the full tree costs a second trip for no gain.
-    const fullSize = current.text.length + [...current.elements.values()].reduce((n, el) => n + JSON.stringify(el).length, 0);
+    const fullSize =
+      current.text.length +
+      [...current.elements.values()].reduce((n, el) => n + JSON.stringify(el).length, 0);
     if (JSON.stringify(delta).length * 2 >= fullSize) return undefined;
     return delta;
   }
@@ -144,7 +187,12 @@ export class ObservationService {
    * Stamp an `ObservationContent` with ids/revision/epoch, diff it against
    * the previous one, retain it for this live page, and announce it.
    */
-  recordObservation(pageId: string, content: ObservationContent, req: ObserveReq, fingerprint?: string): Observation {
+  recordObservation(
+    pageId: string,
+    content: ObservationContent,
+    req: ObserveReq,
+    fingerprint?: string,
+  ): Observation {
     const lp = this.pages.live.get(pageId);
     if (!lp) throw new AuxError("target_detached", `page ${pageId} detached during observation`);
     const revision = (this.pages.revCounters.get(pageId) ?? lp.target.lastRevision) + 1;
@@ -155,7 +203,9 @@ export class ObservationService {
     // `sinceRevision` picks the observation the caller last saw as the diff
     // base (falls back to the most recent one when it has aged out)
     const base =
-      req.sinceRevision !== undefined ? (lp.history.find((h) => h.revision === req.sinceRevision) ?? lp.history.at(-1)) : lp.history.at(-1);
+      req.sinceRevision !== undefined
+        ? (lp.history.find((h) => h.revision === req.sinceRevision) ?? lp.history.at(-1))
+        : lp.history.at(-1);
     const changesSince = this.diffObservations(base, content);
     const deltaFrom = lp.lastObservationId;
     const fields = new Map(content.formFields.map((f) => [f.label ?? f.name ?? f.ref ?? "?", f.value ?? ""]));
@@ -169,7 +219,8 @@ export class ObservationService {
     };
     const delta = this.deltaSince(lp, req, current);
     lp.history.push(current);
-    if (lp.history.length > OBSERVATION_HISTORY) lp.history.splice(0, lp.history.length - OBSERVATION_HISTORY);
+    if (lp.history.length > OBSERVATION_HISTORY)
+      lp.history.splice(0, lp.history.length - OBSERVATION_HISTORY);
     const obs: Observation = {
       observationId: newObservationId(),
       pageId,
@@ -196,7 +247,10 @@ export class ObservationService {
     return obs;
   }
 
-  private diffObservations(base: { text: string; fields: Map<string, string> } | undefined, next: ObservationContent): string[] {
+  private diffObservations(
+    base: { text: string; fields: Map<string, string> } | undefined,
+    next: ObservationContent,
+  ): string[] {
     const changes: string[] = [];
     if (!base) return changes;
     if (base.text !== next.text) {
@@ -225,8 +279,12 @@ export class ObservationService {
     const { picked, css } = pickExtractFields(obs.content, fields);
     if (css.length) {
       const original = this.pages.live.get(pageId);
-      if (original?.personReadDocumentId && original.target.backend === "aux" &&
-          this.pages.deps.native.available() && !original.target.ownedByRuntime) {
+      if (
+        original?.personReadDocumentId &&
+        original.target.backend === "aux" &&
+        this.pages.deps.native.available() &&
+        !original.target.ownedByRuntime
+      ) {
         const documentId = original.personReadDocumentId;
         const { reader, current } = this.personReader(pageId, original);
         const fixed = PersonReadRequestSchema.options[1].parse({ operation: "extract", fields: css });

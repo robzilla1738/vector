@@ -34,13 +34,17 @@ const routes: readonly SettingsRoute[] = [
 
 export function settingsRouteFromPath(pathname: string): SettingsRoute | null {
   const match = /^\/settings\/([a-z-]+)\/?$/.exec(pathname);
-  return routes.find(route => route.slug === match?.[1]) ?? null;
+  return routes.find((route) => route.slug === match?.[1]) ?? null;
 }
 
 /** Internal shell URLs must stay in the top WebUI, never open as guest tabs. */
 export function auxShellPathFromUrl(rawUrl: string): string | null {
   let url: URL;
-  try { url = new URL(rawUrl); } catch { return null; }
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return null;
+  }
   if (url.protocol !== "chrome:" || url.hostname !== "aux") return null;
   if (url.search || url.hash) throw new Error("This Aux page isn't available.");
   if (url.pathname === "/") return "/";
@@ -50,11 +54,20 @@ export function auxShellPathFromUrl(rawUrl: string): string | null {
 }
 
 export function settingsPath(category: string, connectionTab: ConnectionTab = "Services"): string {
-  const legacyTab: ConnectionTab | null = category === "Models" ? "Models"
-    : category === "External agents" ? "Agents" : category === "Vault" ? "Vault" : null;
-  const route = category === "Connections" || legacyTab
-    ? routes.find(item => item.category === "Connections" && item.connectionTab === (legacyTab ?? connectionTab))
-    : routes.find(item => item.category === category);
+  const legacyTab: ConnectionTab | null =
+    category === "Models"
+      ? "Models"
+      : category === "External agents"
+        ? "Agents"
+        : category === "Vault"
+          ? "Vault"
+          : null;
+  const route =
+    category === "Connections" || legacyTab
+      ? routes.find(
+          (item) => item.category === "Connections" && item.connectionTab === (legacyTab ?? connectionTab),
+        )
+      : routes.find((item) => item.category === category);
   return `/settings/${route?.slug ?? "general"}`;
 }
 

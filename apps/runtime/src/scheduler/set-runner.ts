@@ -35,7 +35,13 @@ export interface SetRunnerDeps {
     member: SetMember,
     pageId: string,
     goal: string,
-    ctx: { runId: string; signal: AbortSignal; budget?: ResearchBudget; modelId?: string; checkSource: () => void },
+    ctx: {
+      runId: string;
+      signal: AbortSignal;
+      budget?: ResearchBudget;
+      modelId?: string;
+      checkSource: () => void;
+    },
   ) => Promise<{ result: ResultRecord; executedSteps?: Step[] }>;
   /** look up a saved program to replay */
   getProgram: (programId: string) => { stepsJson: string; siteKey: string } | undefined;
@@ -47,7 +53,12 @@ export interface SetRunnerDeps {
    */
   translateSteps: (pageId: string, steps: Step[]) => Step[];
   nativeAvailable?: () => boolean;
-  controlledPage?: (runId: string, url: string, sourcePageId: string | undefined, signal: AbortSignal) => Promise<{ pageId: string; release: () => void }>;
+  controlledPage?: (
+    runId: string,
+    url: string,
+    sourcePageId: string | undefined,
+    signal: AbortSignal,
+  ) => Promise<{ pageId: string; release: () => void }>;
   /** Privilege-independent grants for learned replay (Finding 5 / Gate F). */
   grants?: GrantSource;
   /** Shared persist-before-dispatch ledger (Gate D). */
@@ -86,17 +97,25 @@ class Semaphore {
   private queue: (() => void)[] = [];
   private active = 0;
   constructor(private readonly limit: number) {}
-  async acquire(signal?:AbortSignal): Promise<() => void> {
-    while(this.active>=this.limit){
-      if(signal?.aborted)throw new AuxError('cancelled','research budget or run stopped while waiting for capacity');
-      await new Promise<void>(resolve=>{
-        const wake=()=>{signal?.removeEventListener('abort',onAbort);resolve();};
-        const onAbort=()=>{this.queue=this.queue.filter(item=>item!==wake);wake();};
+  async acquire(signal?: AbortSignal): Promise<() => void> {
+    while (this.active >= this.limit) {
+      if (signal?.aborted)
+        throw new AuxError("cancelled", "research budget or run stopped while waiting for capacity");
+      await new Promise<void>((resolve) => {
+        const wake = () => {
+          signal?.removeEventListener("abort", onAbort);
+          resolve();
+        };
+        const onAbort = () => {
+          this.queue = this.queue.filter((item) => item !== wake);
+          wake();
+        };
         this.queue.push(wake);
-        signal?.addEventListener('abort',onAbort,{once:true});
+        signal?.addEventListener("abort", onAbort, { once: true });
       });
     }
-    if(signal?.aborted)throw new AuxError('cancelled','research budget or run stopped while waiting for capacity');
+    if (signal?.aborted)
+      throw new AuxError("cancelled", "research budget or run stopped while waiting for capacity");
     this.active++;
     let released = false;
     return () => {
@@ -130,186 +149,221 @@ export class SetRunner {
     researchModels?: ModelCapability[];
     signal: AbortSignal;
     /** pause gate — resolves immediately unless the owning run is paused */
-    waitIfPaused?: (signal?:AbortSignal) => Promise<void>;
+    waitIfPaused?: (signal?: AbortSignal) => Promise<void>;
     /** synchronous view of the gate, re-checked after waiting for capacity */
     isPaused?: () => boolean;
   }): Promise<void> {
-    const budget=opts.goal&&opts.researchLimits?new ResearchBudget(opts.researchLimits,opts.signal,opts.researchModels):undefined;
-    const signal=budget?.signal??opts.signal;
-    const skipReason=()=>budget?.reason()==="shared research deadline exhausted"?"research deadline exceeded":"cancelled";
+    const budget =
+      opts.goal && opts.researchLimits
+        ? new ResearchBudget(opts.researchLimits, opts.signal, opts.researchModels)
+        : undefined;
+    const signal = budget?.signal ?? opts.signal;
+    const skipReason = () =>
+      budget?.reason() === "shared research deadline exhausted" ? "research deadline exceeded" : "cancelled";
     try {
-    const { set, members } = this.deps.sets.get(opts.setId);
-    const target = members.filter(
-      (m) => (!opts.memberIds || opts.memberIds.includes(m.memberId)) && m.status !== "completed",
-    );
+      const { set, members } = this.deps.sets.get(opts.setId);
+      const target = members.filter(
+        (m) => (!opts.memberIds || opts.memberIds.includes(m.memberId)) && m.status !== "completed",
+      );
 
-    // saved program bodies may hold {steps, nodes} — parse like runProgram does
-    const parseSaved = (json: string): { steps?: Step[]; nodes?: Program["nodes"] } => {
-      const body = JSON.parse(json) as Step[] | { steps?: Step[]; nodes?: Program["nodes"] };
-      return Array.isArray(body) ? { steps: body } : { steps: body.steps, nodes: body.nodes };
-    };
-    // `trusted` marks programs authored by the API caller or saved by a user;
-    // programs learned from a member agent's plan mid-map are model output
-    // and never get eval rights.
-    let learned: Learned | undefined;
-    // programs learned by pilot members, keyed by site (plan A9)
-    const learnedBySite = new Map<string, Learned>();
-    const learnedFor = (url: string): Learned | undefined => learned ?? learnedBySite.get(siteKeyOf(url));
-    if (opts.programId) {
-      const p = this.deps.getProgram(opts.programId);
-      if (p) learned = { siteKey: p.siteKey, ...parseSaved(p.stepsJson), trusted: true };
-    } else if (opts.program) {
-      learned = { siteKey: "*", steps: opts.program.steps, nodes: opts.program.nodes, trusted: true };
-    } else if (set.programId) {
-      const p = this.deps.getProgram(set.programId);
-      if (p) learned = { siteKey: p.siteKey, ...parseSaved(p.stepsJson), trusted: true };
-    }
+      // saved program bodies may hold {steps, nodes} — parse like runProgram does
+      const parseSaved = (json: string): { steps?: Step[]; nodes?: Program["nodes"] } => {
+        const body = JSON.parse(json) as Step[] | { steps?: Step[]; nodes?: Program["nodes"] };
+        return Array.isArray(body) ? { steps: body } : { steps: body.steps, nodes: body.nodes };
+      };
+      // `trusted` marks programs authored by the API caller or saved by a user;
+      // programs learned from a member agent's plan mid-map are model output
+      // and never get eval rights.
+      let learned: Learned | undefined;
+      // programs learned by pilot members, keyed by site (plan A9)
+      const learnedBySite = new Map<string, Learned>();
+      const learnedFor = (url: string): Learned | undefined => learned ?? learnedBySite.get(siteKeyOf(url));
+      if (opts.programId) {
+        const p = this.deps.getProgram(opts.programId);
+        if (p) learned = { siteKey: p.siteKey, ...parseSaved(p.stepsJson), trusted: true };
+      } else if (opts.program) {
+        learned = { siteKey: "*", steps: opts.program.steps, nodes: opts.program.nodes, trusted: true };
+      } else if (set.programId) {
+        const p = this.deps.getProgram(set.programId);
+        if (p) learned = { siteKey: p.siteKey, ...parseSaved(p.stepsJson), trusted: true };
+      }
 
-    const sem = new Semaphore(Math.max(1, opts.concurrency ?? Number.MAX_SAFE_INTEGER));
-    const jobs = target.map((m) => async () => {
-      // gate order: pause → per-map concurrency → global pool. A paused run
-      // starts no new members; cancel while paused releases the gate (the
-      // owner rejects/resolves it) and the member is skipped below.
-      await opts.waitIfPaused?.(signal);
-      if (signal.aborted) {
-        this.skip(m, opts.runId,skipReason());
-        return;
-      }
-      let url: string | undefined;
-      try {
-        url = this.memberUrl(m);
-      } catch (e) {
-        // one member's vanished page must not reject the whole set run
-        this.fail(m, e instanceof Error ? e.message : String(e), opts.runId);
-        return;
-      }
-      if (!url && !m.pageId) {
-        this.fail(m, "member has neither url nor page", opts.runId);
-        return;
-      }
-      let releaseSem: (() => void) | undefined;
-      let release: (() => void) | undefined;
-      let workerPageId: string | undefined;
-      let releaseControlled: (() => void) | undefined;
-      const owner = m.pageId && !this.deps.controlledPage ? { pageId: m.pageId, actor: "set_member" as const, runId: opts.runId, memberId: m.memberId } : undefined;
-      try {
-        releaseSem = await sem.acquire(signal);
-        // pause may have arrived while this member waited for capacity —
-        // re-check, and never hold a global pool slot while gated (other
-        // runs share the pool)
+      const sem = new Semaphore(Math.max(1, opts.concurrency ?? Number.MAX_SAFE_INTEGER));
+      const jobs = target.map((m) => async () => {
+        // gate order: pause → per-map concurrency → global pool. A paused run
+        // starts no new members; cancel while paused releases the gate (the
+        // owner rejects/resolves it) and the member is skipped below.
         await opts.waitIfPaused?.(signal);
-        release = await this.deps.pool.acquire(url ?? "unknown", signal, owner);
-        while (!signal.aborted && opts.isPaused?.()) {
-          release();
-          release = undefined;
+        if (signal.aborted) {
+          this.skip(m, opts.runId, skipReason());
+          return;
+        }
+        let url: string | undefined;
+        try {
+          url = this.memberUrl(m);
+        } catch (e) {
+          // one member's vanished page must not reject the whole set run
+          this.fail(m, e instanceof Error ? e.message : String(e), opts.runId);
+          return;
+        }
+        if (!url && !m.pageId) {
+          this.fail(m, "member has neither url nor page", opts.runId);
+          return;
+        }
+        let releaseSem: (() => void) | undefined;
+        let release: (() => void) | undefined;
+        let workerPageId: string | undefined;
+        let releaseControlled: (() => void) | undefined;
+        const owner =
+          m.pageId && !this.deps.controlledPage
+            ? { pageId: m.pageId, actor: "set_member" as const, runId: opts.runId, memberId: m.memberId }
+            : undefined;
+        try {
+          releaseSem = await sem.acquire(signal);
+          // pause may have arrived while this member waited for capacity —
+          // re-check, and never hold a global pool slot while gated (other
+          // runs share the pool)
           await opts.waitIfPaused?.(signal);
           release = await this.deps.pool.acquire(url ?? "unknown", signal, owner);
-        }
-        if (signal.aborted) {
-          this.skip(m, opts.runId,skipReason());
-          return;
-        }
-        m.status = "running";
-        this.deps.sets.updateMember(m);
-        const outcome = await this.processMember(m, url!, {...opts,signal,budget}, learnedFor(url!), (id, cleanup) => { workerPageId = id; releaseControlled = cleanup; });
-        if (signal.aborted) {
-          this.skip(m, opts.runId,skipReason());
-          return;
-        }
-        const { result } = outcome;
-        result.runId ??= opts.runId;
-        this.deps.repo.saveResult(result);
-        m.status = result.status === "ok" ? "completed" : "failed";
-        m.resultId = result.resultId;
-        if (result.error) m.error = result.error;
-        this.deps.sets.updateMember(m);
-        this.deps.events.emit(EventTypes.ResultAdded, { result }, opts.runId);
-
-        // M5 speed path: a successful agent member becomes a replayable
-        // program for same-site siblings — no more model calls for them.
-        const site = siteKeyOf(result.sourceUrl);
-        if (!learned && !learnedBySite.has(site) && opts.goal && result.status === "ok" && outcome.executedSteps?.length) {
-          const portable = this.deps.translateSteps(workerPageId ?? m.pageId ?? "", outcome.executedSteps);
-          if (portable.length) {
-            learnedBySite.set(site, { siteKey: site, steps: portable, trusted: false });
-            this.deps.saveProgram({
-              name: `learned:${opts.setId}:${opts.goal.slice(0, 40)}`,
-              siteKey: site,
-              steps: portable,
-              parameters: [],
-            });
+          while (!signal.aborted && opts.isPaused?.()) {
+            release();
+            release = undefined;
+            await opts.waitIfPaused?.(signal);
+            release = await this.deps.pool.acquire(url ?? "unknown", signal, owner);
           }
-        }
-      } catch (e) {
-        if (signal.aborted) {
-          // cancelled mid-flight: the member never finished — never leave it "running"
-          this.skip(m, opts.runId,skipReason());
-          return;
-        }
-        this.fail(m, e instanceof Error ? e.message : String(e), opts.runId);
-      } finally {
-        releaseControlled?.();
-        if (workerPageId) await this.releaseWorker(workerPageId);
-        release?.();
-        releaseSem?.();
-      }
-    });
+          if (signal.aborted) {
+            this.skip(m, opts.runId, skipReason());
+            return;
+          }
+          m.status = "running";
+          this.deps.sets.updateMember(m);
+          const outcome = await this.processMember(
+            m,
+            url!,
+            { ...opts, signal, budget },
+            learnedFor(url!),
+            (id, cleanup) => {
+              workerPageId = id;
+              releaseControlled = cleanup;
+            },
+          );
+          if (signal.aborted) {
+            this.skip(m, opts.runId, skipReason());
+            return;
+          }
+          const { result } = outcome;
+          result.runId ??= opts.runId;
+          this.deps.repo.saveResult(result);
+          m.status = result.status === "ok" ? "completed" : "failed";
+          m.resultId = result.resultId;
+          if (result.error) m.error = result.error;
+          this.deps.sets.updateMember(m);
+          this.deps.events.emit(EventTypes.ResultAdded, { result }, opts.runId);
 
-    // Pilot-then-fan-out (plan A9): with a goal and no program yet, every
-    // member of the first wave would otherwise run the model. Run one member
-    // per site first; if it yields a replayable program, its siblings replay
-    // it with zero model calls (agent only on divergence). Members whose
-    // site has no pilot result still run as agents, as before.
-    if (opts.goal && !learned && target.length > 1) {
-      const bySite = new Map<string, number[]>();
-      target.forEach((m, i) => {
-        let key = "";
-        try {
-          key = siteKeyOf(this.memberUrl(m) ?? "");
-        } catch {
-          /* the member fails when its job runs */
+          // M5 speed path: a successful agent member becomes a replayable
+          // program for same-site siblings — no more model calls for them.
+          const site = siteKeyOf(result.sourceUrl);
+          if (
+            !learned &&
+            !learnedBySite.has(site) &&
+            opts.goal &&
+            result.status === "ok" &&
+            outcome.executedSteps?.length
+          ) {
+            const portable = this.deps.translateSteps(workerPageId ?? m.pageId ?? "", outcome.executedSteps);
+            if (portable.length) {
+              learnedBySite.set(site, { siteKey: site, steps: portable, trusted: false });
+              this.deps.saveProgram({
+                name: `learned:${opts.setId}:${opts.goal.slice(0, 40)}`,
+                siteKey: site,
+                steps: portable,
+                parameters: [],
+              });
+            }
+          }
+        } catch (e) {
+          if (signal.aborted) {
+            // cancelled mid-flight: the member never finished — never leave it "running"
+            this.skip(m, opts.runId, skipReason());
+            return;
+          }
+          this.fail(m, e instanceof Error ? e.message : String(e), opts.runId);
+        } finally {
+          releaseControlled?.();
+          if (workerPageId) await this.releaseWorker(workerPageId);
+          release?.();
+          releaseSem?.();
         }
-        const list = bySite.get(key) ?? [];
-        list.push(i);
-        bySite.set(key, list);
       });
-      const pilots: number[] = [];
-      const rest: number[] = [];
-      for (const idx of bySite.values()) {
-        pilots.push(idx[0]!);
-        rest.push(...idx.slice(1));
+
+      // Pilot-then-fan-out (plan A9): with a goal and no program yet, every
+      // member of the first wave would otherwise run the model. Run one member
+      // per site first; if it yields a replayable program, its siblings replay
+      // it with zero model calls (agent only on divergence). Members whose
+      // site has no pilot result still run as agents, as before.
+      if (opts.goal && !learned && target.length > 1) {
+        const bySite = new Map<string, number[]>();
+        target.forEach((m, i) => {
+          let key = "";
+          try {
+            key = siteKeyOf(this.memberUrl(m) ?? "");
+          } catch {
+            /* the member fails when its job runs */
+          }
+          const list = bySite.get(key) ?? [];
+          list.push(i);
+          bySite.set(key, list);
+        });
+        const pilots: number[] = [];
+        const rest: number[] = [];
+        for (const idx of bySite.values()) {
+          pilots.push(idx[0]!);
+          rest.push(...idx.slice(1));
+        }
+        this.deps.events.emit(
+          EventTypes.SetUpdated,
+          { setId: opts.setId, pilot: pilots.map((i) => target[i]!.memberId), sites: bySite.size },
+          opts.runId,
+        );
+        await Promise.all(pilots.map((i) => jobs[i]!()));
+        if (signal.aborted) {
+          for (const i of rest) this.skip(target[i]!, opts.runId, skipReason());
+        } else {
+          await Promise.all(rest.map((i) => jobs[i]!()));
+        }
+      } else {
+        await Promise.all(jobs.map((j) => j()));
       }
       this.deps.events.emit(
         EventTypes.SetUpdated,
-        { setId: opts.setId, pilot: pilots.map((i) => target[i]!.memberId), sites: bySite.size },
+        { setId: opts.setId, done: true, ...(budget ? { researchBudget: budget.snapshot() } : {}) },
         opts.runId,
       );
-      await Promise.all(pilots.map((i) => jobs[i]!()));
-      if (signal.aborted) {
-        for (const i of rest) this.skip(target[i]!, opts.runId,skipReason());
-      } else {
-        await Promise.all(rest.map((i) => jobs[i]!()));
-      }
-    } else {
-      await Promise.all(jobs.map((j) => j()));
+    } finally {
+      budget?.close();
     }
-    this.deps.events.emit(EventTypes.SetUpdated, { setId: opts.setId, done: true,
-      ...(budget?{researchBudget:budget.snapshot()}:{}) }, opts.runId);
-    } finally { budget?.close(); }
   }
 
   private async processMember(
     m: SetMember,
     url: string,
-    opts: { goal?: string; runId: string; signal: AbortSignal; budget?: ResearchBudget; modelId?:string },
+    opts: { goal?: string; runId: string; signal: AbortSignal; budget?: ResearchBudget; modelId?: string },
     learned: Learned | undefined,
     setWorker: (id: string, release?: () => void) => void,
   ): Promise<{ result: ResultRecord; executedSteps?: Step[] }> {
     let pageId = m.pageId;
     if (pageId && this.deps.pages.isAttached(pageId) && m.url && this.deps.pages.get(pageId).url !== m.url)
-      throw new AuxError("conflict", "Set member page changed since it was added; refresh the set before running it");
+      throw new AuxError(
+        "conflict",
+        "Set member page changed since it was added; refresh the set before running it",
+      );
     if (this.deps.controlledPage) {
-      const page = await this.deps.controlledPage(opts.runId, url, pageId && this.deps.pages.isAttached(pageId) ? pageId : undefined, opts.signal);
+      const page = await this.deps.controlledPage(
+        opts.runId,
+        url,
+        pageId && this.deps.pages.isAttached(pageId) ? pageId : undefined,
+        opts.signal,
+      );
       pageId = page.pageId;
       this.deps.turnMentions.created(opts.runId, pageId);
       setWorker(pageId, page.release);
@@ -321,23 +375,42 @@ export class SetRunner {
         ownedByRuntime: true,
       });
       pageId = page.pageId;
-      const release = await this.deps.pool.ownership.acquire({ pageId, actor: "set_member", runId: opts.runId, memberId: m.memberId }, opts.signal);
+      const release = await this.deps.pool.ownership.acquire(
+        { pageId, actor: "set_member", runId: opts.runId, memberId: m.memberId },
+        opts.signal,
+      );
       setWorker(pageId, release);
       this.deps.turnMentions.created(opts.runId, pageId);
     }
     if (this.deps.pages.get(pageId).controller === "human")
       throw new AuxError("conflict", "A person controls this tab; return control before mapping the set");
 
-    const source = { memberId: m.memberId, setId: m.setId, pageId: m.pageId, url: m.url, recordKey: m.recordKey };
+    const source = {
+      memberId: m.memberId,
+      setId: m.setId,
+      pageId: m.pageId,
+      url: m.url,
+      recordKey: m.recordKey,
+    };
     const checkSource = () => {
       if (opts.signal.aborted) throw new AuxError("cancelled", "This Set member was cancelled.");
       const current = this.deps.sets.get(source.setId);
-      const member = current.members.find(item => item.memberId === source.memberId);
-      if (!current.set.memberIds.includes(source.memberId) || !member || member.pageId !== source.pageId || member.url !== source.url || member.recordKey !== source.recordKey)
+      const member = current.members.find((item) => item.memberId === source.memberId);
+      if (
+        !current.set.memberIds.includes(source.memberId) ||
+        !member ||
+        member.pageId !== source.pageId ||
+        member.url !== source.url ||
+        member.recordKey !== source.recordKey
+      )
         throw new AuxError("permission_denied", "This Set member's approved source changed.");
       const owner = this.deps.pool.ownership.snapshot()[pageId];
-      if (!owner || owner.runId !== opts.runId ||
-        (owner.actor !== "coordinator" && !(owner.actor === "set_member" && owner.memberId === source.memberId)))
+      if (
+        !owner ||
+        owner.runId !== opts.runId ||
+        (owner.actor !== "coordinator" &&
+          !(owner.actor === "set_member" && owner.memberId === source.memberId))
+      )
         throw new AuxError("permission_denied", "This Set run no longer owns its source page lease.");
     };
     const scopedOpts = { ...opts, checkSource };
@@ -358,7 +431,13 @@ export class SetRunner {
       }
     }
     if (opts.goal) {
-      const agentRes = await this.deps.runAgentForMember(m, pageId, opts.goal, { runId: opts.runId, signal: opts.signal,budget:opts.budget,modelId:opts.modelId, checkSource });
+      const agentRes = await this.deps.runAgentForMember(m, pageId, opts.goal, {
+        runId: opts.runId,
+        signal: opts.signal,
+        budget: opts.budget,
+        modelId: opts.modelId,
+        checkSource,
+      });
       return { result: agentRes.result, executedSteps: agentRes.executedSteps };
     }
     if (learned) {
@@ -380,8 +459,12 @@ export class SetRunner {
     pageId: string,
     url: string,
     opts: { runId: string; signal: AbortSignal; checkSource: () => void },
-  ): Promise<{ res: { status: string; extracted?: Record<string, unknown>; error?: string } } | { blocked: string }> {
-    const obs = await this.deps.turnMentions.useSourcePage(opts.runId, pageId, "read", opts.checkSource, () => this.deps.pages.observe(pageId, {}));
+  ): Promise<
+    { res: { status: string; extracted?: Record<string, unknown>; error?: string } } | { blocked: string }
+  > {
+    const obs = await this.deps.turnMentions.useSourcePage(opts.runId, pageId, "read", opts.checkSource, () =>
+      this.deps.pages.observe(pageId, {}),
+    );
     const live = this.deps.pages.get(pageId);
     const origin = originOfSiteKey(learned.siteKey);
     const href = live.url ?? obs.content.url ?? url;
@@ -414,19 +497,25 @@ export class SetRunner {
       steps: collectProgramSteps(program),
     });
     if (write.skip) return { blocked: write.reason! };
-    const res = await this.deps.turnMentions.useSourcePage(opts.runId, pageId, "act", opts.checkSource, () => this.deps.pages.execute(program, {
-      runId: opts.runId,
-      journaled: true,
-      journalIntentId: write.intentId,
-      signal: opts.signal,
-      allowEval: learned.trusted,
-      sourcePageCheck: opts.checkSource,
-    }));
+    const res = await this.deps.turnMentions.useSourcePage(opts.runId, pageId, "act", opts.checkSource, () =>
+      this.deps.pages.execute(program, {
+        runId: opts.runId,
+        journaled: true,
+        journalIntentId: write.intentId,
+        signal: opts.signal,
+        allowEval: learned.trusted,
+        sourcePageCheck: opts.checkSource,
+      }),
+    );
     settleWrite(this.deps.durableWrites, write.intentId, res);
     return { res };
   }
 
-  private resultOf(m: SetMember, pageId: string, res: { status: string; extracted?: Record<string, unknown>; error?: string }): ResultRecord {
+  private resultOf(
+    m: SetMember,
+    pageId: string,
+    res: { status: string; extracted?: Record<string, unknown>; error?: string },
+  ): ResultRecord {
     const sourceUrl = this.deps.pages.get(pageId).url;
     return {
       resultId: newResultId(),

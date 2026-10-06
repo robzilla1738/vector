@@ -7,18 +7,30 @@ const SPACE_KEY = "browserSpaces";
 
 /** Browser organization and task context share identities, never name-based guesses. */
 export class SpaceService {
-  constructor(private repo: Repo, private events: EventBus) {}
+  constructor(
+    private repo: Repo,
+    private events: EventBus,
+  ) {}
 
   list(): BrowserSpace[] {
     const saved = BrowserSpaceSchema.array().parse(this.repo.getSetting(SPACE_KEY) ?? []);
     const workspaces = this.repo.listWorkspaces();
-    const mapped = new Set(saved.map(space => space.workspaceId));
+    const mapped = new Set(saved.map((space) => space.workspaceId));
     return [
-      ...saved.map(space => ({ ...space, name: workspaces.find(workspace => workspace.workspaceId === space.workspaceId)?.name ?? space.name })),
-      ...workspaces.filter(workspace => !mapped.has(workspace.workspaceId)).map(workspace => ({
-        id: `workspace:${workspace.workspaceId}`, workspaceId: workspace.workspaceId,
-        name: workspace.name, color: "slate" as const, grain: 0, archived: false,
+      ...saved.map((space) => ({
+        ...space,
+        name: workspaces.find((workspace) => workspace.workspaceId === space.workspaceId)?.name ?? space.name,
       })),
+      ...workspaces
+        .filter((workspace) => !mapped.has(workspace.workspaceId))
+        .map((workspace) => ({
+          id: `workspace:${workspace.workspaceId}`,
+          workspaceId: workspace.workspaceId,
+          name: workspace.name,
+          color: "slate" as const,
+          grain: 0,
+          archived: false,
+        })),
     ];
   }
 
@@ -27,7 +39,7 @@ export class SpaceService {
     const spaces = this.repo.transaction(() => {
       const spaces = this.list();
       for (const input of inputs) {
-        if (spaces.some(space => space.id === input.id)) continue;
+        if (spaces.some((space) => space.id === input.id)) continue;
         const workspaceId = randomUUID();
         this.repo.insertWorkspace(workspaceId, input.name, Date.now());
         spaces.push({ ...input, workspaceId, archived: false });
@@ -40,16 +52,26 @@ export class SpaceService {
     return spaces;
   }
 
-  create(name: string, color: BrowserSpace["color"], grain = 0, theme?: BrowserSpace["theme"]): BrowserSpace[] {
+  create(
+    name: string,
+    color: BrowserSpace["color"],
+    grain = 0,
+    theme?: BrowserSpace["theme"],
+  ): BrowserSpace[] {
     return this.import([{ id: `space-${randomUUID()}`, name, color, grain, ...(theme ? { theme } : {}) }]);
   }
 
-  update(id: string, patch: Partial<Pick<BrowserSpace, "name" | "color" | "grain" | "archived">> & { theme?: BrowserSpace["theme"] | null }): BrowserSpace[] {
+  update(
+    id: string,
+    patch: Partial<Pick<BrowserSpace, "name" | "color" | "grain" | "archived">> & {
+      theme?: BrowserSpace["theme"] | null;
+    },
+  ): BrowserSpace[] {
     const spaces = this.repo.transaction(() => {
       const spaces = this.list();
-      const current = spaces.find(space => space.id === id);
+      const current = spaces.find((space) => space.id === id);
       if (!current) throw new AuxError("not_found", "This space no longer exists.");
-      if (patch.archived && !current.archived && spaces.filter(space => !space.archived).length === 1) {
+      if (patch.archived && !current.archived && spaces.filter((space) => !space.archived).length === 1) {
         throw new AuxError("conflict", "Keep at least one active space.");
       }
       Object.assign(current, patch);

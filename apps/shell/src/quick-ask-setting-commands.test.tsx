@@ -214,13 +214,25 @@ it("recovers an original synchronous initial transport throw through Try again",
 });
 
 it("keeps the two measured owners independent during a real OS focus read and held shortcut mutation", async () => {
-  await act(async () => root.render(<><QuickAskSetting /><DefaultBrowserSetting /></>));
-  const defaultButton = () => [...host.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Make Aux the default browser")!;
+  await act(async () =>
+    root.render(
+      <>
+        <QuickAskSetting />
+        <DefaultBrowserSetting />
+      </>,
+    ),
+  );
+  const defaultButton = () =>
+    [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+      (button) => button.textContent === "Make Aux the default browser",
+    )!;
   const heldShortcut = deferred<typeof status>();
   vi.mocked(bridge.quickAskShortcut).mockReturnValueOnce(heldShortcut.promise);
   shortcut().focus();
   let completion!: Promise<unknown>;
-  await act(async () => { completion = invokeScopedControl("toggle-quick-ask-shortcut") as Promise<unknown>; });
+  await act(async () => {
+    completion = invokeScopedControl("toggle-quick-ask-shortcut") as Promise<unknown>;
+  });
   const heldRead = deferred<{ isDefault: boolean }>();
   vi.mocked(bridge.defaultBrowser).mockReturnValueOnce(heldRead.promise);
   await act(async () => window.dispatchEvent(new Event("focus")));

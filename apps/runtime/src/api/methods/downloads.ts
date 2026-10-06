@@ -13,18 +13,32 @@ async function h_downloads_projectNative(ctx: MethodCtx): Promise<unknown> {
     throw new AuxError("permission_denied", "Native download projection requires the Aux browser shell");
   const p = params as Download & { tabUrl: string; downloadRoot: string };
   const existing = s.repo.downloadStep(p.id);
-  const matches = s.pages.list().filter(page => page.backend === "aux" &&
-    page.viewStatus !== "detached" && page.url === p.tabUrl);
+  const matches = s.pages
+    .list()
+    .filter((page) => page.backend === "aux" && page.viewStatus !== "detached" && page.url === p.tabUrl);
   const candidate = matches.length === 1 ? matches[0] : undefined;
   const claim = candidate && new PageClaimStore(s.repo.db).activeForPage(candidate.pageId);
   const run = claim && s.repo.getRun(claim.runId);
-  const pageId = existing?.pageId ?? (candidate?.controller === "agent" && claim &&
-    run?.status === "running" && claim.createdAt <= p.startedAt &&
+  const pageId =
+    existing?.pageId ??
+    (candidate?.controller === "agent" &&
+    claim &&
+    run?.status === "running" &&
+    claim.createdAt <= p.startedAt &&
     (run.startedAt ?? run.createdAt) <= p.startedAt
-    ? candidate.pageId : undefined);
-  const info = { id: p.id, sourceUrl: p.sourceUrl, filename: p.filename, path: p.path,
-    size: p.size, totalBytes: p.totalBytes, startedAt: p.startedAt,
-    endedAt: p.endedAt, downloadRoot: p.downloadRoot };
+      ? candidate.pageId
+      : undefined);
+  const info = {
+    id: p.id,
+    sourceUrl: p.sourceUrl,
+    filename: p.filename,
+    path: p.path,
+    size: p.size,
+    totalBytes: p.totalBytes,
+    startedAt: p.startedAt,
+    endedAt: p.endedAt,
+    downloadRoot: p.downloadRoot,
+  };
   if (!existing) s.pages.onNativeDownloadStarted(pageId, info);
   if (p.state === "completed" || p.state === "interrupted" || p.state === "cancelled")
     await s.pages.onNativeDownload(pageId, { ...info, state: p.state });

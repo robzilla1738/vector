@@ -1,6 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
-import { AuxError, type Backend, EventTypes, type PageTarget, type NativePersonReadContext, type AgentPageCreated, NativeCreatorCleanupProofSchema } from "@aux/contracts";
+import {
+  AuxError,
+  type Backend,
+  EventTypes,
+  type PageTarget,
+  type NativePersonReadContext,
+  type AgentPageCreated,
+  NativeCreatorCleanupProofSchema,
+} from "@aux/contracts";
 import type { Repo } from "../../store/repo.js";
 import { parsePersonReadContext } from "../native-person-reader.js";
 import type { LivePage, PageServiceDeps } from "./types.js";
@@ -18,7 +26,17 @@ export class PageRegistry {
   agentCreations = new Set<Promise<void>>();
   pendingExternal = new Map<string, { removed: boolean; done?: Promise<PageTarget> }>();
   private driverAttaches = new Map<string, Promise<void>>();
-  private controlledTransitions = new Map<string, { live: LivePage; driver: DriverPage; sessionId: string; controllerEpoch: number; retired: boolean; retirementObservers: Set<() => void> }>();
+  private controlledTransitions = new Map<
+    string,
+    {
+      live: LivePage;
+      driver: DriverPage;
+      sessionId: string;
+      controllerEpoch: number;
+      retired: boolean;
+      retirementObservers: Set<() => void>;
+    }
+  >();
   /** Suppress catalog reattachment while a native page open is awaiting its driver. */
   opening = new Set<string>();
   /** Foreground tabs/popups return to the tab that launched them when closed. */
@@ -62,33 +80,58 @@ export class PageRegistry {
     const snapshot = structuredClone(original);
     const creation = this.creatorPages.get(snapshot.pageId);
     const current = this.live.get(snapshot.pageId);
-    const sameOriginal = () => !!creation && !!current
-      && this.creatorPages.get(snapshot.pageId) === creation
-      && this.live.get(snapshot.pageId) === current
-      && creation.isolation.runId === runId && snapshot.ownedByRuntime
-      && current.target.ownedByRuntime && current.target.controller !== "human"
-      && current.target.viewStatus !== "detached"
-      && current.target.backend === snapshot.backend && current.target.targetId === snapshot.targetId
-      && current.target.sessionId === snapshot.sessionId && current.target.documentEpoch === snapshot.documentEpoch
-      && current.target.controllerEpoch === snapshot.controllerEpoch && current.target.url === snapshot.url
-      && JSON.stringify(current.target.agentIsolation) === JSON.stringify(snapshot.agentIsolation)
-      && JSON.stringify(snapshot.agentIsolation) === JSON.stringify(creation.isolation);
+    const sameOriginal = () =>
+      !!creation &&
+      !!current &&
+      this.creatorPages.get(snapshot.pageId) === creation &&
+      this.live.get(snapshot.pageId) === current &&
+      creation.isolation.runId === runId &&
+      snapshot.ownedByRuntime &&
+      current.target.ownedByRuntime &&
+      current.target.controller !== "human" &&
+      current.target.viewStatus !== "detached" &&
+      current.target.backend === snapshot.backend &&
+      current.target.targetId === snapshot.targetId &&
+      current.target.sessionId === snapshot.sessionId &&
+      current.target.documentEpoch === snapshot.documentEpoch &&
+      current.target.controllerEpoch === snapshot.controllerEpoch &&
+      current.target.url === snapshot.url &&
+      JSON.stringify(current.target.agentIsolation) === JSON.stringify(snapshot.agentIsolation) &&
+      JSON.stringify(snapshot.agentIsolation) === JSON.stringify(creation.isolation);
     if (!sameOriginal() || !creation || !current)
       throw new AuxError("ref_stale", "The original temporary-page cleanup scope changed.");
-    if (!this.deps.retireCreatedPage || !this.deps.native.creatorCleanupProof || !this.deps.native.closeCreatedPage)
+    if (
+      !this.deps.retireCreatedPage ||
+      !this.deps.native.creatorCleanupProof ||
+      !this.deps.native.closeCreatedPage
+    )
       throw new AuxError("capability_unsupported", "Native temporary-page cleanup is unavailable.");
     await this.deps.retireCreatedPage(runId, snapshot.pageId);
-    if (!sameOriginal()) throw new AuxError("ref_stale", "The original temporary page changed during retirement.");
-    const proof = NativeCreatorCleanupProofSchema.parse(await this.deps.native.creatorCleanupProof({
-      pageId: snapshot.pageId, creationId: creation.creationId,
-    }));
-    if (!sameOriginal()) throw new AuxError("ref_stale", "The original temporary page changed while obtaining cleanup authority.");
-    if (proof.creationId !== creation.creationId || proof.pageId !== creation.pageId ||
-        proof.runId !== runId || proof.isolationId !== creation.isolation.isolationId ||
-        proof.taskId !== creation.isolation.taskId || proof.taskRevision !== creation.isolation.taskRevision)
+    if (!sameOriginal())
+      throw new AuxError("ref_stale", "The original temporary page changed during retirement.");
+    const proof = NativeCreatorCleanupProofSchema.parse(
+      await this.deps.native.creatorCleanupProof({
+        pageId: snapshot.pageId,
+        creationId: creation.creationId,
+      }),
+    );
+    if (!sameOriginal())
+      throw new AuxError(
+        "ref_stale",
+        "The original temporary page changed while obtaining cleanup authority.",
+      );
+    if (
+      proof.creationId !== creation.creationId ||
+      proof.pageId !== creation.pageId ||
+      proof.runId !== runId ||
+      proof.isolationId !== creation.isolation.isolationId ||
+      proof.taskId !== creation.isolation.taskId ||
+      proof.taskRevision !== creation.isolation.taskRevision
+    )
       throw new AuxError("permission_denied", "Native cleanup returned another creator's authority.");
     const reply = await this.deps.native.closeCreatedPage({ proof });
-    if (reply.closed !== true) throw new AuxError("backend_unavailable", "Original temporary-page closure was not acknowledged.");
+    if (reply.closed !== true)
+      throw new AuxError("backend_unavailable", "Original temporary-page closure was not acknowledged.");
     if (this.creatorPages.get(snapshot.pageId) === creation) this.creatorPages.delete(snapshot.pageId);
     if (this.live.get(snapshot.pageId) === current) {
       this.live.delete(snapshot.pageId);
@@ -137,19 +180,30 @@ export class PageRegistry {
   async prepareReadPage(pageId: string): Promise<void> {
     const lp = this.live.get(pageId);
     if (!lp) throw new AuxError("target_detached", "This tab is no longer available.");
-    if (lp.driver || lp.target.backend !== "aux" || lp.target.ownedByRuntime || lp.target.agentIsolation) return;
-    if (!["human", "none"].includes(lp.target.controller) ||
-        ["detached", "crashed"].includes(lp.target.viewStatus))
+    if (lp.driver || lp.target.backend !== "aux" || lp.target.ownedByRuntime || lp.target.agentIsolation)
+      return;
+    if (
+      !["human", "none"].includes(lp.target.controller) ||
+      ["detached", "crashed"].includes(lp.target.viewStatus)
+    )
       throw new AuxError("permission_denied", "This tab is unavailable for read-only context.");
     const prepare = this.deps.native.personReadContext;
     if (!this.deps.native.available() || !prepare)
       throw new AuxError("backend_unavailable", "The native page reader is unavailable.");
-    const epoch = lp.target.documentEpoch, control = lp.target.controllerEpoch, url = lp.target.url;
+    const epoch = lp.target.documentEpoch,
+      control = lp.target.controllerEpoch,
+      url = lp.target.url;
     const raw = await prepare.call(this.deps.native, pageId);
-    if (this.live.get(pageId) !== lp || this.closing || lp.driver ||
-        lp.target.controllerEpoch !== control ||
-        lp.target.ownedByRuntime || lp.target.agentIsolation ||
-        !["human", "none"].includes(lp.target.controller) || ["detached", "crashed"].includes(lp.target.viewStatus))
+    if (
+      this.live.get(pageId) !== lp ||
+      this.closing ||
+      lp.driver ||
+      lp.target.controllerEpoch !== control ||
+      lp.target.ownedByRuntime ||
+      lp.target.agentIsolation ||
+      !["human", "none"].includes(lp.target.controller) ||
+      ["detached", "crashed"].includes(lp.target.viewStatus)
+    )
       throw new AuxError("target_detached", "This tab changed while preparing its context.");
     if (lp.target.documentEpoch !== epoch || lp.target.url !== url)
       throw new AuxError("ref_stale", "This tab navigated before its context was ready.");
@@ -163,8 +217,12 @@ export class PageRegistry {
   async attachVisible(pageId: string): Promise<void> {
     const lp = this.live.get(pageId);
     if (!lp || lp.driver || lp.target.backend !== "aux" || this.controlledTransitions.has(pageId)) return;
-    if (this.deps.native.available() && typeof this.deps.native.personReadContext === "function"
-      && !lp.target.ownedByRuntime && !lp.target.agentIsolation) {
+    if (
+      this.deps.native.available() &&
+      typeof this.deps.native.personReadContext === "function" &&
+      !lp.target.ownedByRuntime &&
+      !lp.target.agentIsolation
+    ) {
       await this.prepareReadPage(pageId);
       return;
     }
@@ -180,39 +238,67 @@ export class PageRegistry {
         await attached.dispose().catch(() => {});
         return;
       }
-      try { this.installDriver(lp, attached); }
-      catch (error) { await attached.dispose().catch(() => {}); throw error; }
+      try {
+        this.installDriver(lp, attached);
+      } catch (error) {
+        await attached.dispose().catch(() => {});
+        throw error;
+      }
       void this.refreshMeta(lp);
     })();
     this.driverAttaches.set(pageId, work);
-    try { await work; }
-    finally { this.driverAttaches.delete(pageId); }
+    try {
+      await work;
+    } finally {
+      this.driverAttaches.delete(pageId);
+    }
   }
 
-  hasControlledTransition(pageId: string): boolean { return this.controlledTransitions.has(pageId); }
+  hasControlledTransition(pageId: string): boolean {
+    return this.controlledTransitions.has(pageId);
+  }
 
   /** Internal producer used only while an original native command is pending.
    * The caller must validate its native receipt and source authority before
    * and after attachment. This token never authorizes a browser effect. */
   beginControlledTransition(pageId: string) {
     const live = this.live.get(pageId);
-    if (!live?.driver?.isAttached() || !live.target.sessionId || live.target.backend !== "aux"
-      || live.target.controller === "human" || this.closing || this.controlledTransitions.has(pageId))
+    if (
+      !live?.driver?.isAttached() ||
+      !live.target.sessionId ||
+      live.target.backend !== "aux" ||
+      live.target.controller === "human" ||
+      this.closing ||
+      this.controlledTransitions.has(pageId)
+    )
       throw new AuxError("ref_stale", "This original attachment cannot start a controlled navigation.");
-    const original = { live, driver: live.driver, sessionId: live.target.sessionId,
-      controllerEpoch: live.target.controllerEpoch, retired: false, retirementObservers: new Set<() => void>(),
-      url: live.target.url, documentEpoch: live.target.documentEpoch,
-      targetId: live.target.targetId, controller: live.target.controller };
+    const original = {
+      live,
+      driver: live.driver,
+      sessionId: live.target.sessionId,
+      controllerEpoch: live.target.controllerEpoch,
+      retired: false,
+      retirementObservers: new Set<() => void>(),
+      url: live.target.url,
+      documentEpoch: live.target.documentEpoch,
+      targetId: live.target.targetId,
+      controller: live.target.controller,
+    };
     this.controlledTransitions.set(pageId, original);
     let committed: { url: string; documentEpoch: number } | undefined;
     let published: { driver: DriverPage; sessionId: string } | undefined;
-    const current = () => this.controlledTransitions.get(pageId) === original
-      && this.live.get(pageId) === live && !this.closing
-      && live.target.controllerEpoch === original.controllerEpoch && live.target.controller !== "human"
-      && live.target.url === (committed?.url ?? original.url)
-      && live.target.documentEpoch === (committed?.documentEpoch ?? original.documentEpoch)
-      && live.target.targetId === original.targetId && live.target.controller === original.controller
-      && (original.retired ? live.driver === null && live.target.sessionId === undefined
+    const current = () =>
+      this.controlledTransitions.get(pageId) === original &&
+      this.live.get(pageId) === live &&
+      !this.closing &&
+      live.target.controllerEpoch === original.controllerEpoch &&
+      live.target.controller !== "human" &&
+      live.target.url === (committed?.url ?? original.url) &&
+      live.target.documentEpoch === (committed?.documentEpoch ?? original.documentEpoch) &&
+      live.target.targetId === original.targetId &&
+      live.target.controller === original.controller &&
+      (original.retired
+        ? live.driver === null && live.target.sessionId === undefined
         : live.driver === original.driver && live.target.sessionId === original.sessionId);
     const finish = () => {
       if (this.controlledTransitions.get(pageId) === original) this.controlledTransitions.delete(pageId);
@@ -220,53 +306,72 @@ export class PageRegistry {
     };
     return {
       current,
-      waitRetired: (deadline: number, signal: AbortSignal, validate: () => void): Promise<void> => new Promise((resolve, reject) => {
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        const cleanup = () => {
-          if (timer !== undefined) clearTimeout(timer);
-          original.retirementObservers.delete(check);
-          signal.removeEventListener("abort", check);
-        };
-        const check = () => {
-          try {
-            validate();
-            if (signal.aborted || !current() || !Number.isSafeInteger(deadline) || Date.now() >= deadline)
-              throw new AuxError("ref_stale", "The original navigation retirement deadline or source changed.");
-            if (!original.retired) return;
-            cleanup();
-            resolve();
-          } catch (error) { cleanup(); reject(error); }
-        };
-        original.retirementObservers.add(check);
-        signal.addEventListener("abort", check, { once: true });
-        const wake = () => {
-          timer = undefined;
+      waitRetired: (deadline: number, signal: AbortSignal, validate: () => void): Promise<void> =>
+        new Promise((resolve, reject) => {
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const cleanup = () => {
+            if (timer !== undefined) clearTimeout(timer);
+            original.retirementObservers.delete(check);
+            signal.removeEventListener("abort", check);
+          };
+          const check = () => {
+            try {
+              validate();
+              if (signal.aborted || !current() || !Number.isSafeInteger(deadline) || Date.now() >= deadline)
+                throw new AuxError(
+                  "ref_stale",
+                  "The original navigation retirement deadline or source changed.",
+                );
+              if (!original.retired) return;
+              cleanup();
+              resolve();
+            } catch (error) {
+              cleanup();
+              reject(error);
+            }
+          };
+          original.retirementObservers.add(check);
+          signal.addEventListener("abort", check, { once: true });
+          const wake = () => {
+            timer = undefined;
+            check();
+            // Timer delivery may precede the wall-clock deadline. Keep only the
+            // original remaining interval; an early wake never retires the wait.
+            if (original.retirementObservers.has(check))
+              timer = setTimeout(wake, Math.max(1, deadline - Date.now()));
+          };
+          timer = setTimeout(wake, Math.max(0, deadline - Date.now()));
           check();
-          // Timer delivery may precede the wall-clock deadline. Keep only the
-          // original remaining interval; an early wake never retires the wait.
-          if (original.retirementObservers.has(check))
-            timer = setTimeout(wake, Math.max(1, deadline - Date.now()));
-        };
-        timer = setTimeout(wake, Math.max(0, deadline - Date.now()));
-        check();
-      }),
+        }),
       cancel: async () => {
         finish();
-        if (published && this.live.get(pageId) === live && live.driver === published.driver
-          && live.target.sessionId === published.sessionId) {
+        if (
+          published &&
+          this.live.get(pageId) === live &&
+          live.driver === published.driver &&
+          live.target.sessionId === published.sessionId
+        ) {
           const driver = published.driver;
           live.driver = null;
           delete live.target.sessionId;
           live.target.viewStatus = "detached";
-          if (live.target.controllerEpoch === original.controllerEpoch && live.target.controller === original.controller)
+          if (
+            live.target.controllerEpoch === original.controllerEpoch &&
+            live.target.controller === original.controller
+          )
             live.target.controller = "none";
           this.resetDocumentState(live);
           this.persist(live);
           await driver.dispose();
           return;
         }
-        if (this.live.get(pageId) === live && original.retired && !live.driver
-          && live.target.controllerEpoch === original.controllerEpoch && live.target.controller !== "human") {
+        if (
+          this.live.get(pageId) === live &&
+          original.retired &&
+          !live.driver &&
+          live.target.controllerEpoch === original.controllerEpoch &&
+          live.target.controller !== "human"
+        ) {
           live.target.controller = "none";
           live.target.viewStatus = "detached";
           this.persist(live);
@@ -274,8 +379,13 @@ export class PageRegistry {
       },
       stage: (receipt: { url: string; documentEpoch: number }, validate: () => void) => {
         validate();
-        if (!current() || !original.retired || committed || !Number.isSafeInteger(receipt.documentEpoch)
-          || receipt.documentEpoch !== original.documentEpoch + 1)
+        if (
+          !current() ||
+          !original.retired ||
+          committed ||
+          !Number.isSafeInteger(receipt.documentEpoch) ||
+          receipt.documentEpoch !== original.documentEpoch + 1
+        )
           throw new AuxError("ref_stale", "The original navigation attachment is not retired.");
         committed = { ...receipt };
         live.target.url = receipt.url;
@@ -287,20 +397,35 @@ export class PageRegistry {
         this.deps.repo.markDatasetsStale(pageId);
         this.persist(live);
       },
-      attach: async (receipt: { url: string; documentEpoch: number }, validate: () => void): Promise<DriverPage> => {
+      attach: async (
+        receipt: { url: string; documentEpoch: number },
+        validate: () => void,
+      ): Promise<DriverPage> => {
         validate();
-        if (!current() || !original.retired || (committed
-          ? receipt.url !== committed.url || receipt.documentEpoch !== committed.documentEpoch
-          : receipt.documentEpoch !== original.documentEpoch + 1 || !Number.isSafeInteger(receipt.documentEpoch)))
+        if (
+          !current() ||
+          !original.retired ||
+          (committed
+            ? receipt.url !== committed.url || receipt.documentEpoch !== committed.documentEpoch
+            : receipt.documentEpoch !== original.documentEpoch + 1 ||
+              !Number.isSafeInteger(receipt.documentEpoch))
+        )
           throw new AuxError("ref_stale", "The original navigation attachment is not retired.");
         const browser = this.driverFor("aux");
         if (!browser) throw new AuxError("target_detached", "The browser driver is unavailable.");
-        const attached = await browser.attach(live.target.targetId, pageId, { initialDocumentEpoch: receipt.documentEpoch });
+        const attached = await browser.attach(live.target.targetId, pageId, {
+          initialDocumentEpoch: receipt.documentEpoch,
+        });
         try {
           validate();
-          if (!current() || !attached.isAttached() || attached === original.driver
-            || attached.identity.pageId !== pageId || attached.identity.backend !== "aux"
-            || attached.url() !== receipt.url)
+          if (
+            !current() ||
+            !attached.isAttached() ||
+            attached === original.driver ||
+            attached.identity.pageId !== pageId ||
+            attached.identity.backend !== "aux" ||
+            attached.url() !== receipt.url
+          )
             throw new AuxError("ref_stale", "The navigation's fresh attachment changed before admission.");
           live.target.url = receipt.url;
           live.target.documentEpoch = receipt.documentEpoch;
@@ -310,26 +435,47 @@ export class PageRegistry {
           finish();
           const installedSession = this.installDriver(live, attached);
           if (installedSession) published = { driver: attached, sessionId: installedSession };
-          if (this.live.get(pageId) !== live || live.driver !== attached || !installedSession
-            || live.target.sessionId !== installedSession || live.target.controllerEpoch !== original.controllerEpoch
-            || live.target.controller !== original.controller)
+          if (
+            this.live.get(pageId) !== live ||
+            live.driver !== attached ||
+            !installedSession ||
+            live.target.sessionId !== installedSession ||
+            live.target.controllerEpoch !== original.controllerEpoch ||
+            live.target.controller !== original.controller
+          )
             throw new AuxError("ref_stale", "The new attachment changed while publishing its incarnation.");
           return attached;
         } catch (error) {
           const cleanupErrors: unknown[] = [];
           // installDriver publishes identity before binding its callbacks. A
           // binding failure must not leave that exact partial incarnation live.
-          if (published && this.live.get(pageId) === live && live.driver === attached
-            && live.target.sessionId === published.sessionId) {
+          if (
+            published &&
+            this.live.get(pageId) === live &&
+            live.driver === attached &&
+            live.target.sessionId === published.sessionId
+          ) {
             live.driver = null;
             delete live.target.sessionId;
             live.target.viewStatus = "detached";
-            try { this.resetDocumentState(live); this.persist(live); }
-            catch (cleanupError) { cleanupErrors.push(cleanupError); }
+            try {
+              this.resetDocumentState(live);
+              this.persist(live);
+            } catch (cleanupError) {
+              cleanupErrors.push(cleanupError);
+            }
           }
-          try { await attached.dispose(); }
-          catch (cleanupError) { cleanupErrors.push(cleanupError); }
-          if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], "Navigation attachment admission and cleanup failed", { cause: error });
+          try {
+            await attached.dispose();
+          } catch (cleanupError) {
+            cleanupErrors.push(cleanupError);
+          }
+          if (cleanupErrors.length)
+            throw new AggregateError(
+              [error, ...cleanupErrors],
+              "Navigation attachment admission and cleanup failed",
+              { cause: error },
+            );
           throw error;
         }
       },
@@ -338,7 +484,8 @@ export class PageRegistry {
 
   /** A real attachment, shared by fresh open, restore, discard recovery and crash reload. */
   installDriver(lp: LivePage, driver: DriverPage) {
-    if (this.live.get(lp.target.pageId) !== lp || this.closing) throw new AuxError("target_detached", "This tab closed while attaching.");
+    if (this.live.get(lp.target.pageId) !== lp || this.closing)
+      throw new AuxError("target_detached", "This tab closed while attaching.");
     if (lp.driver === driver) return lp.target.sessionId;
     if (lp.driver) throw new AuxError("conflict", "This tab already has a newer attachment.");
     lp.driver = driver;
@@ -351,12 +498,24 @@ export class PageRegistry {
       this.persist(lp);
       this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
     } catch (error) {
-      if (this.live.get(lp.target.pageId) === lp && lp.driver === driver && lp.target.sessionId === sessionId) {
+      if (
+        this.live.get(lp.target.pageId) === lp &&
+        lp.driver === driver &&
+        lp.target.sessionId === sessionId
+      ) {
         lp.driver = null;
         delete lp.target.sessionId;
         lp.target.viewStatus = "detached";
-        try { this.resetDocumentState(lp); this.persist(lp); }
-        catch (cleanupError) { throw new AggregateError([error, cleanupError], "Attachment binding and partial publication retirement failed", { cause: error }); }
+        try {
+          this.resetDocumentState(lp);
+          this.persist(lp);
+        } catch (cleanupError) {
+          throw new AggregateError(
+            [error, cleanupError],
+            "Attachment binding and partial publication retirement failed",
+            { cause: error },
+          );
+        }
       }
       throw error;
     }
@@ -364,9 +523,12 @@ export class PageRegistry {
   }
 
   wireDriverEvents(lp: LivePage) {
-    const driver = lp.driver, sessionId = lp.target.sessionId;
-    const identityCurrent = () => this.live.get(lp.target.pageId) === lp && lp.driver === driver && lp.target.sessionId === sessionId;
-    const current = () => identityCurrent() && this.controlledTransitions.get(lp.target.pageId)?.driver !== driver;
+    const driver = lp.driver,
+      sessionId = lp.target.sessionId;
+    const identityCurrent = () =>
+      this.live.get(lp.target.pageId) === lp && lp.driver === driver && lp.target.sessionId === sessionId;
+    const current = () =>
+      identityCurrent() && this.controlledTransitions.get(lp.target.pageId)?.driver !== driver;
     const response = this.deps.responses?.record(lp.target.pageId);
     driver?.setEvents({
       onNavigated: (url, epoch) => {
@@ -376,14 +538,21 @@ export class PageRegistry {
         this.resetDocumentState(lp);
         this.deps.repo.markDatasetsStale(lp.target.pageId);
         this.persist(lp);
-        this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, url: lp.target.url, documentEpoch: epoch });
+        this.deps.events.emit(EventTypes.PageUpdated, {
+          pageId: lp.target.pageId,
+          url: lp.target.url,
+          documentEpoch: epoch,
+        });
         void this.refreshMeta(lp);
       },
       onDestroyed: (reason) => {
         if (!identityCurrent()) return;
         const transition = this.controlledTransitions.get(lp.target.pageId);
-        const controlledRetirement = reason !== "crashed" && transition?.live === lp
-          && transition.driver === driver && transition.sessionId === sessionId;
+        const controlledRetirement =
+          reason !== "crashed" &&
+          transition?.live === lp &&
+          transition.driver === driver &&
+          transition.sessionId === sessionId;
         if (controlledRetirement) transition.retired = true;
         else if (transition?.live === lp) this.controlledTransitions.delete(lp.target.pageId);
         delete lp.target.sessionId;
@@ -412,12 +581,15 @@ export class PageRegistry {
         this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, dialog: info });
       },
       decideDialog: this.deps.decideDialog
-        ? (info) => current() ? this.deps.decideDialog!({ pageId: lp.target.pageId, ...info }) : Promise.resolve("leave" as const)
+        ? (info) =>
+            current()
+              ? this.deps.decideDialog!({ pageId: lp.target.pageId, ...info })
+              : Promise.resolve("leave" as const)
         : undefined,
       onConsole: (info) => {
         if (!current()) return;
-      lp.consoleLines.push({ level: info.level, message: info.message, atMs: info.atMs ?? Date.now() });
-      if (lp.consoleLines.length > 200) lp.consoleLines.splice(0, lp.consoleLines.length - 200);
+        lp.consoleLines.push({ level: info.level, message: info.message, atMs: info.atMs ?? Date.now() });
+        if (lp.consoleLines.length > 200) lp.consoleLines.splice(0, lp.consoleLines.length - 200);
       },
       onDownload: (info) => {
         if (!current()) return;
@@ -428,7 +600,11 @@ export class PageRegistry {
           this.deps.events.emit(EventTypes.DownloadStarted, { pageId: lp.target.pageId, ...info });
         }
       },
-      onResponse: response ? info => { if (current()) return response({ ...info, sessionId }); } : undefined,
+      onResponse: response
+        ? (info) => {
+            if (current()) return response({ ...info, sessionId });
+          }
+        : undefined,
     });
   }
 
@@ -455,7 +631,9 @@ export class PageRegistry {
   saveTabsSnapshot() {
     if (this.closing || this.restoring) return;
     const tabs = [...this.live.values()]
-      .filter((x) => !x.target.ownedByRuntime && x.target.backend === "aux" && x.target.viewStatus !== "detached")
+      .filter(
+        (x) => !x.target.ownedByRuntime && x.target.backend === "aux" && x.target.viewStatus !== "detached",
+      )
       .map((x, i) => ({
         pageId: x.target.pageId,
         windowId: x.target.windowId ?? "main",
@@ -465,39 +643,64 @@ export class PageRegistry {
         backend: x.target.backend,
         active: this.activeByWindow.get(x.target.windowId ?? "main") === x.target.pageId,
       }));
-    const liveIds=new Set(tabs.map(tab=>tab.pageId));
-    for(const saved of this.pendingRestore.values())if(!liveIds.has(saved.page_id))tabs.push({pageId:saved.page_id,windowId:saved.window_id,ordinal:tabs.length,url:saved.url,title:saved.title,backend:saved.backend as Backend,active:!!saved.active});
+    const liveIds = new Set(tabs.map((tab) => tab.pageId));
+    for (const saved of this.pendingRestore.values())
+      if (!liveIds.has(saved.page_id))
+        tabs.push({
+          pageId: saved.page_id,
+          windowId: saved.window_id,
+          ordinal: tabs.length,
+          url: saved.url,
+          title: saved.title,
+          backend: saved.backend as Backend,
+          active: !!saved.active,
+        });
     const key = JSON.stringify(tabs);
     if (key === this.savedTabs) return;
     this.savedTabs = key;
     // snapshot is best-effort — a failed write is retried by the next change;
     // late: tab rows reference page rows queued in the same batch
-    this.deps.repo.defer("tabs", () => {
-      try {
-        this.deps.repo.saveTabs(tabs);
-      } catch (e) {
-        if (this.savedTabs === key) this.savedTabs = "";
-        this.deps.tracer?.incr("swallowed.saveTabsSnapshot");
-        throw e;
-      }
-    }, true);
+    this.deps.repo.defer(
+      "tabs",
+      () => {
+        try {
+          this.deps.repo.saveTabs(tabs);
+        } catch (e) {
+          if (this.savedTabs === key) this.savedTabs = "";
+          this.deps.tracer?.incr("swallowed.saveTabsSnapshot");
+          throw e;
+        }
+      },
+      true,
+    );
   }
 
   async refreshMeta(lp: LivePage) {
-    const driver = lp.driver, sessionId = lp.target.sessionId;
+    const driver = lp.driver,
+      sessionId = lp.target.sessionId;
     if (!driver?.isAttached()) return;
     try {
       const title = await driver.title();
-      if (this.live.get(lp.target.pageId) !== lp || lp.driver !== driver || lp.target.sessionId !== sessionId
-        || this.controlledTransitions.get(lp.target.pageId)?.driver === driver) return;
+      if (
+        this.live.get(lp.target.pageId) !== lp ||
+        lp.driver !== driver ||
+        lp.target.sessionId !== sessionId ||
+        this.controlledTransitions.get(lp.target.pageId)?.driver === driver
+      )
+        return;
       const url = driver.url();
       if (lp.target.navigationError || url.startsWith("chrome-error://")) return;
       lp.target.title = title;
       lp.target.url = url;
       this.persist(lp);
-      this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, title: lp.target.title, url: lp.target.url });
+      this.deps.events.emit(EventTypes.PageUpdated, {
+        pageId: lp.target.pageId,
+        title: lp.target.title,
+        url: lp.target.url,
+      });
       // browsing history is the human's: agent/worker pages do not write it
-      if (!lp.target.ownedByRuntime && lp.target.url.startsWith("http")) this.deps.repo.recordVisit(lp.target.url, lp.target.title, lp.target.pageId);
+      if (!lp.target.ownedByRuntime && lp.target.url.startsWith("http"))
+        this.deps.repo.recordVisit(lp.target.url, lp.target.title, lp.target.pageId);
     } catch {
       // target racing a navigation — next event fixes it
       this.deps.tracer?.incr("swallowed.refreshMeta");

@@ -27,21 +27,73 @@ type RecordBody = {
   capturedAt: number;
 };
 export type RecoveryPageMemory = { body: RecordBody; expiresAt: number };
-type Row = { memory_id: string; source_key: string; origin: string; captured_at: number; expires_at: number; ciphertext: string };
-type Index = { revision: number; expiresAt: number; rows: Map<string, RecordBody>; searchable: Map<string, { title: string; text: string }> };
+type Row = {
+  memory_id: string;
+  source_key: string;
+  origin: string;
+  captured_at: number;
+  expires_at: number;
+  ciphertext: string;
+};
+type Index = {
+  revision: number;
+  expiresAt: number;
+  rows: Map<string, RecordBody>;
+  searchable: Map<string, { title: string; text: string }>;
+};
 
 const policyKey = (workspaceId: string) => `contentMemoryPolicy:${workspaceId}`;
-const STOPWORDS = new Set(["a", "an", "and", "are", "at", "be", "by", "did", "do", "does", "for", "from", "how", "in", "is", "it", "of", "on", "or", "the", "to", "was", "were", "what", "when", "where", "which", "who", "why", "with"]);
-const terms = (text: string) => [...new Set([...new Intl.Segmenter(undefined, { granularity: "word" }).segment(text)]
-  .filter(part => part.isWordLike).map(part => part.segment.toLocaleLowerCase())
-  .filter(part => part.length > 1 && !STOPWORDS.has(part)))];
+const STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "at",
+  "be",
+  "by",
+  "did",
+  "do",
+  "does",
+  "for",
+  "from",
+  "how",
+  "in",
+  "is",
+  "it",
+  "of",
+  "on",
+  "or",
+  "the",
+  "to",
+  "was",
+  "were",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "why",
+  "with",
+]);
+const terms = (text: string) => [
+  ...new Set(
+    [...new Intl.Segmenter(undefined, { granularity: "word" }).segment(text)]
+      .filter((part) => part.isWordLike)
+      .map((part) => part.segment.toLocaleLowerCase())
+      .filter((part) => part.length > 1 && !STOPWORDS.has(part)),
+  ),
+];
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 function termPosition(text: string, token: string): number {
   let at = text.indexOf(token);
   if (CJK.test(token)) return at;
   while (at >= 0) {
-    if ((!at || !WORD_CHAR.test(text[at - 1]!)) && (at + token.length === text.length || !WORD_CHAR.test(text[at + token.length]!))) return at;
+    if (
+      (!at || !WORD_CHAR.test(text[at - 1]!)) &&
+      (at + token.length === text.length || !WORD_CHAR.test(text[at + token.length]!))
+    )
+      return at;
     at = text.indexOf(token, at + token.length);
   }
   return -1;
@@ -55,28 +107,43 @@ export class ContentMemoryStore {
   private indexes = new Map<string, Index>();
   private unsubscribe?: () => void;
 
-  constructor(private repo: Repo, private native: Pick<NativeBridge, "readSecret" | "storeSecret">,
-    private profileId: string, private now: () => number = Date.now, events?: EventBus) {
+  constructor(
+    private repo: Repo,
+    private native: Pick<NativeBridge, "readSecret" | "storeSecret">,
+    private profileId: string,
+    private now: () => number = Date.now,
+    events?: EventBus,
+  ) {
     if (!profileId) throw new Error("Protected page memory requires a Profile identity.");
     this.protectedStore = new ProtectedStore(native, profileId);
-    this.unsubscribe = events?.subscribe(event => {
+    this.unsubscribe = events?.subscribe((event) => {
       if (event.type === "workspace.memory.updated" && typeof event.payload.workspaceId === "string")
         this.indexes.delete(event.payload.workspaceId);
     });
   }
 
-  close() { this.unsubscribe?.(); this.indexes.clear(); this.keyPromise = undefined; }
+  close() {
+    this.unsubscribe?.();
+    this.indexes.clear();
+    this.keyPromise = undefined;
+  }
 
-  private factorSetting() { return `pageMemoryFactorName:${this.profileId}`; }
-  private retiredSetting() { return `pageMemoryRetiredFactors:${this.profileId}`; }
+  private factorSetting() {
+    return `pageMemoryFactorName:${this.profileId}`;
+  }
+  private retiredSetting() {
+    return `pageMemoryRetiredFactors:${this.profileId}`;
+  }
   private serialized<T>(work: () => Promise<T>): Promise<T> {
     const operation = this.rotationQueue.then(work);
     this.rotationQueue = operation.catch(() => undefined);
     return operation;
   }
   private factorName() {
-    return this.repo.getSetting<string>(this.factorSetting()) ??
-      `pageMemoryFactorV2_${createHash("sha256").update(this.profileId).digest("hex").slice(0, 24)}`;
+    return (
+      this.repo.getSetting<string>(this.factorSetting()) ??
+      `pageMemoryFactorV2_${createHash("sha256").update(this.profileId).digest("hex").slice(0, 24)}`
+    );
   }
 
   private async retirePendingFactors() {
@@ -86,7 +153,10 @@ export class ContentMemoryStore {
       await this.native.storeSecret(name, "");
       if ((await this.native.readSecret(name)).value)
         throw new Error("A retired page-memory factor is still available in the OS credential store.");
-      this.repo.setSetting(this.retiredSetting(), pending.filter(item => item !== name));
+      this.repo.setSetting(
+        this.retiredSetting(),
+        pending.filter((item) => item !== name),
+      );
     }
   }
 
@@ -100,48 +170,86 @@ export class ContentMemoryStore {
     const saved = this.repo.getSetting<unknown>(policyKey(workspaceId));
     if (saved && typeof saved === "object" && !Array.isArray(saved)) {
       const value = saved as Record<string, unknown>;
-      if (typeof value.enabled === "boolean" && (value.retentionDays === 30 || value.retentionDays === 90)
-        && Array.isArray(value.allowedOrigins) && value.allowedOrigins.every(origin => typeof origin === "string"))
-        return { enabled: value.enabled, retentionDays: value.retentionDays, allowedOrigins: value.allowedOrigins };
+      if (
+        typeof value.enabled === "boolean" &&
+        (value.retentionDays === 30 || value.retentionDays === 90) &&
+        Array.isArray(value.allowedOrigins) &&
+        value.allowedOrigins.every((origin) => typeof origin === "string")
+      )
+        return {
+          enabled: value.enabled,
+          retentionDays: value.retentionDays,
+          allowedOrigins: value.allowedOrigins,
+        };
     }
     return { enabled: false, retentionDays: 30, allowedOrigins: [] };
   }
 
   /** Run before requesting readable text from the browser or native host. */
-  assertCaptureEligible(input: { workspaceId: string; url: string; title: string; privateMode?: boolean }): void {
+  assertCaptureEligible(input: {
+    workspaceId: string;
+    url: string;
+    title: string;
+    privateMode?: boolean;
+  }): void {
     const policy = this.policy(input.workspaceId);
     const memory = this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${input.workspaceId}`);
     let url: URL;
-    try { url = new URL(input.url); }
-    catch { throw new AuxError("permission_denied", "This page is not eligible for content recall."); }
+    try {
+      url = new URL(input.url);
+    } catch {
+      throw new AuxError("permission_denied", "This page is not eligible for content recall.");
+    }
     if (!policy.enabled || memory?.enabled === false)
       throw new AuxError("permission_denied", "Enable page-content recall in this Space first.");
     if (input.privateMode || memorySensitivityReason(input.url, input.title))
       throw new AuxError("permission_denied", "Sensitive pages cannot be saved to Memory.");
-    if (url.protocol !== "https:"
-      || url.username || url.password || input.url.length > 8192
-      || !policy.allowedOrigins.includes(url.origin) || memory && memorySourceExcluded(memory, url.href))
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      input.url.length > 8192 ||
+      !policy.allowedOrigins.includes(url.origin) ||
+      (memory && memorySourceExcluded(memory, url.href))
+    )
       throw new AuxError("permission_denied", "This page is not eligible for content recall.");
   }
 
-  async setPolicy(workspaceId: string, policy: Policy, beforeRemoval?: () => void | Promise<void>): Promise<Policy> {
+  async setPolicy(
+    workspaceId: string,
+    policy: Policy,
+    beforeRemoval?: () => void | Promise<void>,
+  ): Promise<Policy> {
     this.requireSpace(workspaceId);
-    if (typeof policy.enabled !== "boolean" || (policy.retentionDays !== 30 && policy.retentionDays !== 90)
-      || !Array.isArray(policy.allowedOrigins) || policy.allowedOrigins.length > 100)
+    if (
+      typeof policy.enabled !== "boolean" ||
+      (policy.retentionDays !== 30 && policy.retentionDays !== 90) ||
+      !Array.isArray(policy.allowedOrigins) ||
+      policy.allowedOrigins.length > 100
+    )
       throw new AuxError("invalid_params", "Choose a valid content-memory policy.");
     let allowedOrigins: string[];
     try {
-      allowedOrigins = [...new Set(policy.allowedOrigins.map(origin => memoryOrigin(origin)))];
-      if (allowedOrigins.some(origin => !origin.startsWith("https://"))) throw new Error("Secure origin required");
+      allowedOrigins = [...new Set(policy.allowedOrigins.map((origin) => memoryOrigin(origin)))];
+      if (allowedOrigins.some((origin) => !origin.startsWith("https://")))
+        throw new Error("Secure origin required");
+    } catch {
+      throw new AuxError("invalid_params", "Use valid web origins for content recall.");
     }
-    catch { throw new AuxError("invalid_params", "Use valid web origins for content recall."); }
     const next = { ...policy, allowedOrigins };
     return this.serialized(async () => {
-      const expires = (row: Row & { workspace_id: string }) => row.workspace_id === workspaceId
-        ? Math.min(row.expires_at, row.captured_at + policy.retentionDays * DAY) : row.expires_at;
-      await this.rotateSelection(row => row.workspace_id === workspaceId &&
-        (expires(row) <= this.now() || !allowedOrigins.includes(row.origin)),
-      expires, () => this.repo.setSetting(policyKey(workspaceId), next), beforeRemoval);
+      const expires = (row: Row & { workspace_id: string }) =>
+        row.workspace_id === workspaceId
+          ? Math.min(row.expires_at, row.captured_at + policy.retentionDays * DAY)
+          : row.expires_at;
+      await this.rotateSelection(
+        (row) =>
+          row.workspace_id === workspaceId &&
+          (expires(row) <= this.now() || !allowedOrigins.includes(row.origin)),
+        expires,
+        () => this.repo.setSetting(policyKey(workspaceId), next),
+        beforeRemoval,
+      );
       this.indexes.delete(workspaceId);
       return next;
     });
@@ -150,11 +258,15 @@ export class ContentMemoryStore {
   private async key(): Promise<Buffer> {
     this.keyPromise ??= (async () => {
       const factorName = this.factorName();
-      const hasNewRows = !!this.repo.db.prepare("SELECT 1 FROM content_memory WHERE profile_id=? AND ciphertext LIKE 'v2:%' LIMIT 1")
+      const hasNewRows = !!this.repo.db
+        .prepare("SELECT 1 FROM content_memory WHERE profile_id=? AND ciphertext LIKE 'v2:%' LIMIT 1")
         .get(this.profileId);
       let saved = (await this.native.readSecret(factorName)).value;
       if (!saved) {
-        if (hasNewRows) throw new Error("Protected page-memory factor is missing. Restore the original OS credential store or use reviewed recovery.");
+        if (hasNewRows)
+          throw new Error(
+            "Protected page-memory factor is missing. Restore the original OS credential store or use reviewed recovery.",
+          );
         const created = randomBytes(32).toString("base64");
         await this.native.storeSecret(factorName, created);
         saved = (await this.native.readSecret(factorName)).value;
@@ -162,12 +274,20 @@ export class ContentMemoryStore {
       }
       const factor = Buffer.from(saved, "base64");
       if (factor.length !== 32 || factor.toString("base64") !== saved)
-        throw new Error("Protected page-memory key is invalid. Restore the original OS credential store or forget this memory.");
+        throw new Error(
+          "Protected page-memory key is invalid. Restore the original OS credential store or forget this memory.",
+        );
       const key = await this.protectedStore.generationKey("page-memory", factor, !hasNewRows);
       await this.migrateLegacy(key);
       return key;
-    })().catch(error => { this.keyPromise = undefined; throw error; });
-    return this.keyPromise.then(async key => { await this.retirePendingFactors(); return key; });
+    })().catch((error) => {
+      this.keyPromise = undefined;
+      throw error;
+    });
+    return this.keyPromise.then(async (key) => {
+      await this.retirePendingFactors();
+      return key;
+    });
   }
 
   private encrypt(key: Buffer, body: RecordBody): string {
@@ -180,29 +300,45 @@ export class ContentMemoryStore {
     if (bytes.length < 29) throw new Error("Protected page memory is incomplete.");
     const decipher = createDecipheriv("aes-256-gcm", key, bytes.subarray(0, 12));
     decipher.setAuthTag(bytes.subarray(12, 28));
-    return JSON.parse(Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString("utf8")) as RecordBody;
+    return JSON.parse(
+      Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString("utf8"),
+    ) as RecordBody;
   }
 
   private decrypt(key: Buffer, row: Row): RecordBody {
     if (!row.ciphertext.startsWith("v2:")) throw new Error("Unknown protected page-memory format.");
-    return JSON.parse(this.protectedStore.open(key, "page-memory", row.memory_id,
-      row.ciphertext.slice(3)).toString("utf8")) as RecordBody;
+    return JSON.parse(
+      this.protectedStore.open(key, "page-memory", row.memory_id, row.ciphertext.slice(3)).toString("utf8"),
+    ) as RecordBody;
   }
 
   /** Export canonical records only after authenticating every row and its Profile-bound lookup. */
   async recoverySnapshot(): Promise<RecoveryPageMemory[]> {
-    const foreign = this.repo.db.prepare("SELECT 1 FROM content_memory WHERE profile_id<>? LIMIT 1").get(this.profileId);
+    const foreign = this.repo.db
+      .prepare("SELECT 1 FROM content_memory WHERE profile_id<>? LIMIT 1")
+      .get(this.profileId);
     if (foreign) throw new Error("Recovery requires a single disposable Profile's page memory.");
-    const rows = this.repo.db.prepare(`SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext,workspace_id
-      FROM content_memory WHERE profile_id=? ORDER BY memory_id`).all(this.profileId) as (Row & { workspace_id: string })[];
+    const rows = this.repo.db
+      .prepare(
+        `SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext,workspace_id
+      FROM content_memory WHERE profile_id=? ORDER BY memory_id`,
+      )
+      .all(this.profileId) as (Row & { workspace_id: string })[];
     if (!rows.length) return [];
     const key = await this.key();
-    return rows.map(row => {
+    return rows.map((row) => {
       const body = this.decrypt(key, row);
       const sourceKey = createHmac("sha256", key)
-        .update(`${this.profileId}\0${row.workspace_id}\0${body.url}`).digest("hex");
-      if (body.memoryId !== row.memory_id || body.profileId !== this.profileId || body.workspaceId !== row.workspace_id ||
-        new URL(body.url).origin !== row.origin || body.capturedAt !== row.captured_at || sourceKey !== row.source_key)
+        .update(`${this.profileId}\0${row.workspace_id}\0${body.url}`)
+        .digest("hex");
+      if (
+        body.memoryId !== row.memory_id ||
+        body.profileId !== this.profileId ||
+        body.workspaceId !== row.workspace_id ||
+        new URL(body.url).origin !== row.origin ||
+        body.capturedAt !== row.captured_at ||
+        sourceKey !== row.source_key
+      )
         throw new Error("Protected page-memory provenance does not match its storage record.");
       return { body, expiresAt: row.expires_at };
     });
@@ -219,38 +355,65 @@ export class ContentMemoryStore {
         (memory_id,profile_id,workspace_id,source_key,origin,captured_at,expires_at,ciphertext) VALUES(?,?,?,?,?,?,?,?)`);
       for (const record of records) {
         const body = { ...record.body, profileId: this.profileId };
-        if (!body.memoryId || !body.workspaceId || !Number.isSafeInteger(record.expiresAt) ||
-          !this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(body.workspaceId))
+        if (
+          !body.memoryId ||
+          !body.workspaceId ||
+          !Number.isSafeInteger(record.expiresAt) ||
+          !this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(body.workspaceId)
+        )
           throw new Error("Recovery page-memory record is invalid.");
         const origin = new URL(body.url).origin;
         const sourceKey = createHmac("sha256", key)
-          .update(`${this.profileId}\0${body.workspaceId}\0${body.url}`).digest("hex");
-        insert.run(body.memoryId, this.profileId, body.workspaceId, sourceKey, origin,
-          body.capturedAt, record.expiresAt, this.encrypt(key, body));
+          .update(`${this.profileId}\0${body.workspaceId}\0${body.url}`)
+          .digest("hex");
+        insert.run(
+          body.memoryId,
+          this.profileId,
+          body.workspaceId,
+          sourceKey,
+          origin,
+          body.capturedAt,
+          record.expiresAt,
+          this.encrypt(key, body),
+        );
       }
     });
     this.indexes.clear();
   }
 
   private async migrateLegacy(key: Buffer) {
-    const rows = this.repo.db.prepare(`SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext
-      FROM content_memory WHERE profile_id=? AND ciphertext LIKE 'v1:%'`).all(this.profileId) as Row[];
+    const rows = this.repo.db
+      .prepare(
+        `SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext
+      FROM content_memory WHERE profile_id=? AND ciphertext LIKE 'v1:%'`,
+      )
+      .all(this.profileId) as Row[];
     if (!rows.length) return;
     const saved = (await this.native.readSecret(KEY_NAME)).value;
     const legacyKey = saved ? Buffer.from(saved, "base64") : Buffer.alloc(0);
     if (legacyKey.length !== 32 || legacyKey.toString("base64") !== saved)
-      throw new Error("Legacy page-memory key is missing. Restore the original OS credential store before migration.");
+      throw new Error(
+        "Legacy page-memory key is missing. Restore the original OS credential store before migration.",
+      );
     this.repo.transaction(() => {
       for (const row of rows) {
         const body = this.legacyDecrypt(legacyKey, row.ciphertext);
         const oldSourceKey = createHmac("sha256", legacyKey)
-          .update(`${this.profileId}\0${body.workspaceId}\0${body.url}`).digest("hex");
-        if (body.memoryId !== row.memory_id || body.profileId !== this.profileId ||
-          new URL(body.url).origin !== row.origin || body.capturedAt !== row.captured_at || oldSourceKey !== row.source_key)
+          .update(`${this.profileId}\0${body.workspaceId}\0${body.url}`)
+          .digest("hex");
+        if (
+          body.memoryId !== row.memory_id ||
+          body.profileId !== this.profileId ||
+          new URL(body.url).origin !== row.origin ||
+          body.capturedAt !== row.captured_at ||
+          oldSourceKey !== row.source_key
+        )
           throw new Error("Legacy page-memory provenance does not match its storage record.");
         const sourceKey = createHmac("sha256", key)
-          .update(`${this.profileId}\0${body.workspaceId}\0${body.url}`).digest("hex");
-        this.repo.db.prepare("UPDATE content_memory SET source_key=?,ciphertext=? WHERE memory_id=?")
+          .update(`${this.profileId}\0${body.workspaceId}\0${body.url}`)
+          .digest("hex");
+        this.repo.db
+          .prepare("UPDATE content_memory SET source_key=?,ciphertext=? WHERE memory_id=?")
           .run(sourceKey, this.encrypt(key, body), row.memory_id);
       }
     });
@@ -261,40 +424,85 @@ export class ContentMemoryStore {
   }
 
   /** Caller must establish foreground/document eligibility before supplying page text. */
-  async saveEligible(input: Omit<RecordBody, "memoryId" | "profileId" | "capturedAt">,
-    currentDocument?: () => boolean): Promise<RecordBody> {
+  async saveEligible(
+    input: Omit<RecordBody, "memoryId" | "profileId" | "capturedAt">,
+    currentDocument?: () => boolean,
+  ): Promise<RecordBody> {
     this.assertCaptureEligible(input);
     let url: URL;
-    try { url = new URL(input.url); } catch { throw new AuxError("invalid_params", "Choose a secure web page."); }
+    try {
+      url = new URL(input.url);
+    } catch {
+      throw new AuxError("invalid_params", "Choose a secure web page.");
+    }
     if (memoryContentSensitivityReason(input.text))
       throw new AuxError("permission_denied", "Sensitive pages cannot be saved to Memory.");
-    if (!input.pageId || input.pageId.length > 200 || (input.sessionId?.length ?? 0) > 200
-      || !Number.isSafeInteger(input.documentEpoch) || input.documentEpoch < 0
-      || !input.text.trim() || Buffer.byteLength(input.text, "utf8") > MAX_TEXT_BYTES)
+    if (
+      !input.pageId ||
+      input.pageId.length > 200 ||
+      (input.sessionId?.length ?? 0) > 200 ||
+      !Number.isSafeInteger(input.documentEpoch) ||
+      input.documentEpoch < 0 ||
+      !input.text.trim() ||
+      Buffer.byteLength(input.text, "utf8") > MAX_TEXT_BYTES
+    )
       throw new AuxError("invalid_params", "Use readable page text up to 64 KB from the current document.");
-    url.search = ""; url.hash = "";
+    url.search = "";
+    url.hash = "";
     const key = await this.key();
     // Recheck after the OS credential call; opt-in or exclusions may have changed.
     const current = this.policy(input.workspaceId);
     const currentMemory = this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${input.workspaceId}`);
-    if (!current.enabled || !current.allowedOrigins.includes(url.origin) || currentMemory?.enabled === false
-      || currentMemory && memorySourceExcluded(currentMemory, url.href))
-      throw new AuxError("permission_denied", "Page-content recall changed while this page was being protected.");
+    if (
+      !current.enabled ||
+      !current.allowedOrigins.includes(url.origin) ||
+      currentMemory?.enabled === false ||
+      (currentMemory && memorySourceExcluded(currentMemory, url.href))
+    )
+      throw new AuxError(
+        "permission_denied",
+        "Page-content recall changed while this page was being protected.",
+      );
     if (currentDocument && !currentDocument())
       throw new AuxError("conflict", "The document changed while this page was being protected.");
-    const sourceKey = createHmac("sha256", key).update(`${this.profileId}\0${input.workspaceId}\0${url.href}`).digest("hex");
-    const existing = this.repo.db.prepare("SELECT memory_id FROM content_memory WHERE profile_id=? AND workspace_id=? AND source_key=?")
+    const sourceKey = createHmac("sha256", key)
+      .update(`${this.profileId}\0${input.workspaceId}\0${url.href}`)
+      .digest("hex");
+    const existing = this.repo.db
+      .prepare("SELECT memory_id FROM content_memory WHERE profile_id=? AND workspace_id=? AND source_key=?")
       .get(this.profileId, input.workspaceId, sourceKey) as { memory_id: string } | undefined;
     const at = this.now();
-    const body: RecordBody = { ...input, memoryId: existing?.memory_id ?? randomUUID(), profileId: this.profileId,
-      url: url.href, title: input.title.trim().slice(0, 300) || url.hostname, text: input.text.trim(), capturedAt: at };
+    const body: RecordBody = {
+      ...input,
+      memoryId: existing?.memory_id ?? randomUUID(),
+      profileId: this.profileId,
+      url: url.href,
+      title: input.title.trim().slice(0, 300) || url.hostname,
+      text: input.text.trim(),
+      capturedAt: at,
+    };
     this.repo.transaction(() => {
-      this.repo.db.prepare(`INSERT INTO content_memory(memory_id,profile_id,workspace_id,source_key,origin,captured_at,expires_at,ciphertext)
+      this.repo.db
+        .prepare(
+          `INSERT INTO content_memory(memory_id,profile_id,workspace_id,source_key,origin,captured_at,expires_at,ciphertext)
         VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(profile_id,workspace_id,source_key) DO UPDATE SET
-        origin=excluded.origin,captured_at=excluded.captured_at,expires_at=excluded.expires_at,ciphertext=excluded.ciphertext`)
-        .run(body.memoryId, this.profileId, input.workspaceId, sourceKey, url.origin, at, at + current.retentionDays * DAY, this.encrypt(key, body));
-      this.repo.db.prepare(`DELETE FROM content_memory WHERE memory_id IN (SELECT memory_id FROM content_memory
-        WHERE profile_id=? AND workspace_id=? ORDER BY captured_at DESC,memory_id DESC LIMIT -1 OFFSET ?)`)
+        origin=excluded.origin,captured_at=excluded.captured_at,expires_at=excluded.expires_at,ciphertext=excluded.ciphertext`,
+        )
+        .run(
+          body.memoryId,
+          this.profileId,
+          input.workspaceId,
+          sourceKey,
+          url.origin,
+          at,
+          at + current.retentionDays * DAY,
+          this.encrypt(key, body),
+        );
+      this.repo.db
+        .prepare(
+          `DELETE FROM content_memory WHERE memory_id IN (SELECT memory_id FROM content_memory
+        WHERE profile_id=? AND workspace_id=? ORDER BY captured_at DESC,memory_id DESC LIMIT -1 OFFSET ?)`,
+        )
         .run(this.profileId, input.workspaceId, MAX_PAGES_PER_SPACE);
     });
     this.indexes.delete(input.workspaceId);
@@ -307,29 +515,57 @@ export class ContentMemoryStore {
     const cached = this.indexes.get(workspaceId);
     if (cached?.revision === revision && cached.expiresAt > this.now()) return cached;
     const policy = this.policy(workspaceId);
-    if (!policy.enabled || this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false)
+    if (
+      !policy.enabled ||
+      this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false
+    )
       return { revision, expiresAt: this.now(), rows: new Map(), searchable: new Map() };
-    if (!this.repo.db.prepare("SELECT 1 FROM content_memory WHERE profile_id=? AND workspace_id=? LIMIT 1")
-      .get(this.profileId, workspaceId)) {
+    if (
+      !this.repo.db
+        .prepare("SELECT 1 FROM content_memory WHERE profile_id=? AND workspace_id=? LIMIT 1")
+        .get(this.profileId, workspaceId)
+    ) {
       await this.retirePendingFactors();
       return { revision, expiresAt: this.now(), rows: new Map(), searchable: new Map() };
     }
     const key = await this.key();
-    const rows = this.repo.db.prepare(`SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext FROM content_memory
-      WHERE profile_id=? AND workspace_id=? AND expires_at>? AND captured_at>? ORDER BY captured_at DESC LIMIT ?`)
-      .all(this.profileId, workspaceId, this.now(), this.now() - policy.retentionDays * DAY, MAX_PAGES_PER_SPACE) as Row[];
+    const rows = this.repo.db
+      .prepare(
+        `SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext FROM content_memory
+      WHERE profile_id=? AND workspace_id=? AND expires_at>? AND captured_at>? ORDER BY captured_at DESC LIMIT ?`,
+      )
+      .all(
+        this.profileId,
+        workspaceId,
+        this.now(),
+        this.now() - policy.retentionDays * DAY,
+        MAX_PAGES_PER_SPACE,
+      ) as Row[];
     const index: Index = { revision, expiresAt: Infinity, rows: new Map(), searchable: new Map() };
     for (const row of rows) {
-      if (!policy.allowedOrigins.includes(row.origin) || memory?.excludedOrigins?.includes(row.origin)) continue;
+      if (!policy.allowedOrigins.includes(row.origin) || memory?.excludedOrigins?.includes(row.origin))
+        continue;
       index.expiresAt = Math.min(index.expiresAt, row.expires_at);
       const body = this.decrypt(key, row);
-      const sourceKey = createHmac("sha256", key).update(`${this.profileId}\0${workspaceId}\0${body.url}`).digest("hex");
-      if (body.memoryId !== row.memory_id || body.profileId !== this.profileId || body.workspaceId !== workspaceId
-        || new URL(body.url).origin !== row.origin || body.capturedAt !== row.captured_at || sourceKey !== row.source_key)
+      const sourceKey = createHmac("sha256", key)
+        .update(`${this.profileId}\0${workspaceId}\0${body.url}`)
+        .digest("hex");
+      if (
+        body.memoryId !== row.memory_id ||
+        body.profileId !== this.profileId ||
+        body.workspaceId !== workspaceId ||
+        new URL(body.url).origin !== row.origin ||
+        body.capturedAt !== row.captured_at ||
+        sourceKey !== row.source_key
+      )
         throw new Error("Protected page-memory provenance does not match its storage record.");
-      if (memorySensitivityReason(body.url, body.title) || memoryContentSensitivityReason(body.text)) continue;
+      if (memorySensitivityReason(body.url, body.title) || memoryContentSensitivityReason(body.text))
+        continue;
       index.rows.set(row.memory_id, body);
-      index.searchable.set(row.memory_id, { title: body.title.toLocaleLowerCase(), text: body.text.toLocaleLowerCase() });
+      index.searchable.set(row.memory_id, {
+        title: body.title.toLocaleLowerCase(),
+        text: body.text.toLocaleLowerCase(),
+      });
     }
     this.indexes.delete(workspaceId);
     this.indexes.set(workspaceId, index);
@@ -340,54 +576,101 @@ export class ContentMemoryStore {
   private readable(body: RecordBody): boolean {
     const policy = this.policy(body.workspaceId);
     const memory = this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${body.workspaceId}`);
-    return policy.enabled && memory?.enabled !== false && policy.allowedOrigins.includes(new URL(body.url).origin)
-      && (!memory || !memorySourceExcluded(memory, body.url));
+    return (
+      policy.enabled &&
+      memory?.enabled !== false &&
+      policy.allowedOrigins.includes(new URL(body.url).origin) &&
+      (!memory || !memorySourceExcluded(memory, body.url))
+    );
   }
 
   async search(workspaceId: string, query: string, limit = 10) {
-    if (!this.policy(workspaceId).enabled || this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false) return [];
+    if (
+      !this.policy(workspaceId).enabled ||
+      this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false
+    )
+      return [];
     const tokens = terms(query.slice(0, 200)).slice(0, 8);
     if (!tokens.length) return [];
     const index = await this.index(workspaceId);
-    if (!this.policy(workspaceId).enabled || this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false) return [];
-    const frequencies = new Map(tokens.map(token => [token, 0]));
+    if (
+      !this.policy(workspaceId).enabled ||
+      this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false
+    )
+      return [];
+    const frequencies = new Map(tokens.map((token) => [token, 0]));
     const candidates = [...index.rows].flatMap(([id, body]) => {
       const haystack = index.searchable.get(id)!;
-      const hits = tokens.filter(token => termPosition(haystack.title, token) >= 0 || termPosition(haystack.text, token) >= 0);
+      const hits = tokens.filter(
+        (token) => termPosition(haystack.title, token) >= 0 || termPosition(haystack.text, token) >= 0,
+      );
       for (const token of hits) frequencies.set(token, frequencies.get(token)! + 1);
       // Multi-term questions need corroboration. A single common word such as
       // Spanish "de" should not surface an unrelated saved page as an answer.
       return hits.length >= (tokens.length >= 3 ? 2 : 1) ? [{ body, haystack, hits }] : [];
     });
-    const ranked = candidates.map(({ body, haystack, hits }) => {
-      const score = hits.reduce((sum, token) => {
-        const frequency = frequencies.get(token) ?? 1;
-        const rarity = Math.log(1 + (index.rows.size + 1) / frequency);
-        return sum + rarity * (termPosition(haystack.title, token) >= 0 ? 3 : 1);
-      }, 0) * (0.5 + hits.length / tokens.length);
-      return { body, haystack, score, hits };
-    }).sort((a, b) => b.score - a.score || b.body.capturedAt - a.body.capturedAt);
-    return ranked.filter(({ body }) => this.readable(body)).slice(0, Math.max(1, Math.min(limit, 20)))
+    const ranked = candidates
       .map(({ body, haystack, hits }) => {
-        const at = Math.max(0, termPosition(haystack.text, hits.find(token => termPosition(haystack.text, token) >= 0) ?? hits[0]!));
-        const start = Math.max(0, at - 70), end = Math.min(body.text.length, start + 240);
-        return { memoryId: body.memoryId, profileId: body.profileId, workspaceId: body.workspaceId,
-          url: body.url, title: body.title, capturedAt: body.capturedAt, pageId: body.pageId,
-          documentEpoch: body.documentEpoch, snippet: `${start ? "…" : ""}${body.text.slice(start, end)}${end < body.text.length ? "…" : ""}` };
+        const score =
+          hits.reduce((sum, token) => {
+            const frequency = frequencies.get(token) ?? 1;
+            const rarity = Math.log(1 + (index.rows.size + 1) / frequency);
+            return sum + rarity * (termPosition(haystack.title, token) >= 0 ? 3 : 1);
+          }, 0) *
+          (0.5 + hits.length / tokens.length);
+        return { body, haystack, score, hits };
+      })
+      .sort((a, b) => b.score - a.score || b.body.capturedAt - a.body.capturedAt);
+    return ranked
+      .filter(({ body }) => this.readable(body))
+      .slice(0, Math.max(1, Math.min(limit, 20)))
+      .map(({ body, haystack, hits }) => {
+        const at = Math.max(
+          0,
+          termPosition(
+            haystack.text,
+            hits.find((token) => termPosition(haystack.text, token) >= 0) ?? hits[0]!,
+          ),
+        );
+        const start = Math.max(0, at - 70),
+          end = Math.min(body.text.length, start + 240);
+        return {
+          memoryId: body.memoryId,
+          profileId: body.profileId,
+          workspaceId: body.workspaceId,
+          url: body.url,
+          title: body.title,
+          capturedAt: body.capturedAt,
+          pageId: body.pageId,
+          documentEpoch: body.documentEpoch,
+          snippet: `${start ? "…" : ""}${body.text.slice(start, end)}${end < body.text.length ? "…" : ""}`,
+        };
       });
   }
 
   async get(workspaceId: string, memoryId: string): Promise<RecordBody | undefined> {
-    if (!this.policy(workspaceId).enabled || this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false) return undefined;
+    if (
+      !this.policy(workspaceId).enabled ||
+      this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false
+    )
+      return undefined;
     const record = (await this.index(workspaceId)).rows.get(memoryId);
     return record && this.readable(record) ? record : undefined;
   }
 
-  async forget(workspaceId: string, memoryId?: string, beforeRemoval?: () => void | Promise<void>): Promise<number> {
+  async forget(
+    workspaceId: string,
+    memoryId?: string,
+    beforeRemoval?: () => void | Promise<void>,
+  ): Promise<number> {
     return this.serialized(async () => {
       this.requireSpace(workspaceId);
-      const removed = await this.rotateSelection(row => row.workspace_id === workspaceId &&
-        (!memoryId || row.memory_id === memoryId), undefined, undefined, beforeRemoval);
+      const removed = await this.rotateSelection(
+        (row) => row.workspace_id === workspaceId && (!memoryId || row.memory_id === memoryId),
+        undefined,
+        undefined,
+        beforeRemoval,
+      );
       if (removed) this.indexes.clear();
       return removed;
     });
@@ -395,17 +678,23 @@ export class ContentMemoryStore {
 
   private async rotateSelection(
     select: (row: Row & { workspace_id: string }) => boolean,
-    expiryFor: (row: Row & { workspace_id: string }) => number = row => row.expires_at,
+    expiryFor: (row: Row & { workspace_id: string }) => number = (row) => row.expires_at,
     onCommit: () => void = () => {},
     beforeRemoval?: () => void | Promise<void>,
   ): Promise<number> {
-    const query = () => this.repo.db.prepare(`SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext,workspace_id
-      FROM content_memory WHERE profile_id=?`).all(this.profileId) as (Row & { workspace_id: string })[];
+    const query = () =>
+      this.repo.db
+        .prepare(
+          `SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext,workspace_id
+      FROM content_memory WHERE profile_id=?`,
+        )
+        .all(this.profileId) as (Row & { workspace_id: string })[];
     let rows = query();
     if (!rows.some(select)) {
       this.repo.transaction(() => {
         const update = this.repo.db.prepare("UPDATE content_memory SET expires_at=? WHERE memory_id=?");
-        for (const row of rows) if (expiryFor(row) !== row.expires_at) update.run(expiryFor(row), row.memory_id);
+        for (const row of rows)
+          if (expiryFor(row) !== row.expires_at) update.run(expiryFor(row), row.memory_id);
         onCommit();
       });
       await this.retirePendingFactors();
@@ -416,16 +705,28 @@ export class ContentMemoryStore {
     const oldFactor = this.factorName();
     rows = query();
     const removed = rows.filter(select);
-    if (!removed.length) { this.repo.transaction(onCommit); return 0; }
-    const retained = rows.filter(row => !removed.includes(row)).map(row => {
-      const body = this.decrypt(oldKey, row);
-      const sourceKey = createHmac("sha256", oldKey)
-        .update(`${this.profileId}\0${row.workspace_id}\0${body.url}`).digest("hex");
-      if (body.memoryId !== row.memory_id || body.profileId !== this.profileId || body.workspaceId !== row.workspace_id ||
-        new URL(body.url).origin !== row.origin || body.capturedAt !== row.captured_at || sourceKey !== row.source_key)
-        throw new Error("Protected page-memory provenance does not match its storage record.");
-      return { row, body };
-    });
+    if (!removed.length) {
+      this.repo.transaction(onCommit);
+      return 0;
+    }
+    const retained = rows
+      .filter((row) => !removed.includes(row))
+      .map((row) => {
+        const body = this.decrypt(oldKey, row);
+        const sourceKey = createHmac("sha256", oldKey)
+          .update(`${this.profileId}\0${row.workspace_id}\0${body.url}`)
+          .digest("hex");
+        if (
+          body.memoryId !== row.memory_id ||
+          body.profileId !== this.profileId ||
+          body.workspaceId !== row.workspace_id ||
+          new URL(body.url).origin !== row.origin ||
+          body.capturedAt !== row.captured_at ||
+          sourceKey !== row.source_key
+        )
+          throw new Error("Protected page-memory provenance does not match its storage record.");
+        return { row, body };
+      });
     const nextFactor = randomBytes(32);
     const nextName = `pageMemoryFactorV2_${createHash("sha256").update(this.profileId).digest("hex").slice(0, 16)}_${randomUUID().slice(0, 8)}`;
     const nextKey = await this.protectedStore.generationKey("page-memory", nextFactor);
@@ -435,12 +736,16 @@ export class ContentMemoryStore {
     try {
       this.repo.transaction(() => {
         const remove = this.repo.db.prepare("DELETE FROM content_memory WHERE profile_id=? AND memory_id=?");
-        for (const row of removed) if (remove.run(this.profileId, row.memory_id).changes !== 1)
-          throw new Error("Page memory changed during removal.");
-        const update = this.repo.db.prepare("UPDATE content_memory SET source_key=?,ciphertext=?,expires_at=? WHERE memory_id=?");
+        for (const row of removed)
+          if (remove.run(this.profileId, row.memory_id).changes !== 1)
+            throw new Error("Page memory changed during removal.");
+        const update = this.repo.db.prepare(
+          "UPDATE content_memory SET source_key=?,ciphertext=?,expires_at=? WHERE memory_id=?",
+        );
         for (const { row, body } of retained) {
           const sourceKey = createHmac("sha256", nextKey)
-            .update(`${this.profileId}\0${row.workspace_id}\0${body.url}`).digest("hex");
+            .update(`${this.profileId}\0${row.workspace_id}\0${body.url}`)
+            .digest("hex");
           update.run(sourceKey, this.encrypt(nextKey, body), expiryFor(row), row.memory_id);
         }
         onCommit();
@@ -460,9 +765,14 @@ export class ContentMemoryStore {
 
   async prune(): Promise<{ removed: number; workspaceIds: string[] }> {
     return this.serialized(async () => {
-      const workspaceIds = (this.repo.db.prepare("SELECT DISTINCT workspace_id AS workspaceId FROM content_memory WHERE profile_id=? AND expires_at<=?")
-        .all(this.profileId, this.now()) as { workspaceId: string }[]).map(row => row.workspaceId);
-      const removed = await this.rotateSelection(row => row.expires_at <= this.now());
+      const workspaceIds = (
+        this.repo.db
+          .prepare(
+            "SELECT DISTINCT workspace_id AS workspaceId FROM content_memory WHERE profile_id=? AND expires_at<=?",
+          )
+          .all(this.profileId, this.now()) as { workspaceId: string }[]
+      ).map((row) => row.workspaceId);
+      const removed = await this.rotateSelection((row) => row.expires_at <= this.now());
       if (removed) this.indexes.clear();
       return { removed, workspaceIds };
     });

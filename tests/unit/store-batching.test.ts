@@ -3,10 +3,23 @@ import { EventBus, Repo, openDb } from "@aux/runtime";
 import type { PageTarget } from "@aux/contracts";
 
 const tick = () => new Promise((r) => setImmediate(r));
-const sync = (db: ReturnType<typeof openDb>) => (db.prepare("PRAGMA synchronous").get() as { synchronous: number }).synchronous;
+const sync = (db: ReturnType<typeof openDb>) =>
+  (db.prepare("PRAGMA synchronous").get() as { synchronous: number }).synchronous;
 const page = (id: string, over: Partial<PageTarget> = {}): PageTarget => ({
-  pageId: id, backend: "aux", targetId: `t-${id}`, url: "https://x.test/", title: "", documentEpoch: 0, lastRevision: 0,
-  viewStatus: "visible", controller: "none", controllerEpoch: 0, ownedByRuntime: false, createdAt: 1, lastActiveAt: Date.now(), ...over,
+  pageId: id,
+  backend: "aux",
+  targetId: `t-${id}`,
+  url: "https://x.test/",
+  title: "",
+  documentEpoch: 0,
+  lastRevision: 0,
+  viewStatus: "visible",
+  controller: "none",
+  controllerEpoch: 0,
+  ownedByRuntime: false,
+  createdAt: 1,
+  lastActiveAt: Date.now(),
+  ...over,
 });
 
 describe("deferred hot-path writes", () => {
@@ -39,13 +52,19 @@ describe("deferred hot-path writes", () => {
     const repo = new Repo(db);
     repo.defer("x", () => db.prepare("INSERT INTO kv VALUES('k','joined')").run());
     repo.transaction(() => repo.flush());
-    expect((db.prepare("SELECT value FROM kv WHERE key='k'").get() as { value: string }).value).toBe("joined");
+    expect((db.prepare("SELECT value FROM kv WHERE key='k'").get() as { value: string }).value).toBe(
+      "joined",
+    );
   });
 
   it("write late rows after the rows they reference", () => {
     const db = openDb(":memory:");
     const repo = new Repo(db);
-    repo.defer("tabs", () => repo.saveTabs([{ pageId: "a", ordinal: 0, url: "u", title: "", backend: "aux", active: true }]), true);
+    repo.defer(
+      "tabs",
+      () => repo.saveTabs([{ pageId: "a", ordinal: 0, url: "u", title: "", backend: "aux", active: true }]),
+      true,
+    );
     repo.deferPage(page("a"));
     expect(repo.loadTabs().map((t) => t.page_id)).toEqual(["a"]);
   });
@@ -76,7 +95,12 @@ describe("boot and retention", () => {
     repo.upsertPage(page("worker", { ownedByRuntime: true, lastActiveAt: old }));
     repo.upsertPage(page("recent-worker", { ownedByRuntime: true }));
     repo.detachAllPages();
-    expect(repo.listPages({ includeDetached: true }).map((p) => [p.pageId, p.viewStatus, p.controller]).sort()).toEqual([
+    expect(
+      repo
+        .listPages({ includeDetached: true })
+        .map((p) => [p.pageId, p.viewStatus, p.controller])
+        .sort(),
+    ).toEqual([
       ["human", "detached", "none"],
       ["recent-worker", "detached", "none"],
     ]);
@@ -94,11 +118,14 @@ describe("boot and retention", () => {
     const db = openDb(":memory:");
     const repo = new Repo(db);
     const old = Date.now() - 40 * 24 * 60 * 60 * 1000;
-    for (let i = 0; i < 3; i++) db.prepare("INSERT INTO spans(span_id,name,started_at) VALUES(?,?,?)").run(`s${i}`, "x", old);
+    for (let i = 0; i < 3; i++)
+      db.prepare("INSERT INTO spans(span_id,name,started_at) VALUES(?,?,?)").run(`s${i}`, "x", old);
     db.prepare("INSERT INTO spans(span_id,name,started_at) VALUES('fresh','x',?)").run(Date.now());
     db.prepare("INSERT INTO steps(step_id,run_id,op,started_at) VALUES('st','r','click',?)").run(old);
     expect(repo.pruneRetention(undefined, 2)).toBe(3); // 2 spans + 1 step
     expect(repo.pruneRetention(undefined, 2)).toBe(1);
-    expect((db.prepare("SELECT span_id FROM spans").all() as { span_id: string }[]).map((r) => r.span_id)).toEqual(["fresh"]);
+    expect(
+      (db.prepare("SELECT span_id FROM spans").all() as { span_id: string }[]).map((r) => r.span_id),
+    ).toEqual(["fresh"]);
   });
 });

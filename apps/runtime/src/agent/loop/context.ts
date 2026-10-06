@@ -37,7 +37,13 @@ function isMediaString(value: string): boolean {
 export function pruneMedia(value: unknown, depth = 0): unknown {
   if (depth > 8 || value === null || value === undefined) return value;
   if (typeof value === "string") {
-    return isMediaString(value) ? { prunedMedia: true, bytes: value.length, mime: value.startsWith("data:") ? value.slice(5, value.indexOf(";")) : "raw" } : value;
+    return isMediaString(value)
+      ? {
+          prunedMedia: true,
+          bytes: value.length,
+          mime: value.startsWith("data:") ? value.slice(5, value.indexOf(";")) : "raw",
+        }
+      : value;
   }
   if (Array.isArray(value)) return value.map((item) => pruneMedia(item, depth + 1));
   if (typeof value === "object") {
@@ -46,7 +52,8 @@ export function pruneMedia(value: unknown, depth = 0): unknown {
     const proto = Object.getPrototypeOf(value);
     if (proto !== Object.prototype && proto !== null) return value;
     const out: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value as Record<string, unknown>)) out[key] = pruneMedia(item, depth + 1);
+    for (const [key, item] of Object.entries(value as Record<string, unknown>))
+      out[key] = pruneMedia(item, depth + 1);
     return out;
   }
   return value;
@@ -92,26 +99,58 @@ interface MessagePart {
 
 function compactPart(part: MessagePart): MessagePart {
   if (part.type === "tool-result" && bytes(part.output) > COMPACT_PART_BYTES)
-    return { ...part, output: { type: "json", value: { compacted: true, bytes: bytes(part.output), hint: "This tool result was compacted — re-issue the call if you still need its content." } } };
+    return {
+      ...part,
+      output: {
+        type: "json",
+        value: {
+          compacted: true,
+          bytes: bytes(part.output),
+          hint: "This tool result was compacted — re-issue the call if you still need its content.",
+        },
+      },
+    };
   // Provider reasoning signatures can be tens of KB per part. Once the
   // assistant's tool result is durable, the provider metadata is no longer
   // evidence or action authority and need not accompany the next request.
   if (part.type === "reasoning" && part.providerOptions && bytes(part.providerOptions) > COMPACT_PART_BYTES) {
     const { providerOptions: _providerOptions, ...rest } = part;
     return typeof rest.text === "string" && rest.text.length > COMPACT_TEXT_CHARS
-      ? { ...rest, text: `${rest.text.slice(0, COMPACT_TEXT_CHARS)}… [compacted ${rest.text.length - COMPACT_TEXT_CHARS} chars]` }
+      ? {
+          ...rest,
+          text: `${rest.text.slice(0, COMPACT_TEXT_CHARS)}… [compacted ${rest.text.length - COMPACT_TEXT_CHARS} chars]`,
+        }
       : rest;
   }
-  if ((part.type === "text" || part.type === "reasoning") && typeof part.text === "string" && part.text.length > COMPACT_TEXT_CHARS)
-    return { ...part, text: `${part.text.slice(0, COMPACT_TEXT_CHARS)}… [compacted ${part.text.length - COMPACT_TEXT_CHARS} chars]` };
+  if (
+    (part.type === "text" || part.type === "reasoning") &&
+    typeof part.text === "string" &&
+    part.text.length > COMPACT_TEXT_CHARS
+  )
+    return {
+      ...part,
+      text: `${part.text.slice(0, COMPACT_TEXT_CHARS)}… [compacted ${part.text.length - COMPACT_TEXT_CHARS} chars]`,
+    };
   return part;
 }
 
 /** A completed tool call can shed its bulky input without losing its ID or result pairing. */
 function compactCompletedCall(part: MessagePart, answered: Set<string>): MessagePart {
-  if (part.type !== "tool-call" || typeof part.toolCallId !== "string" || !answered.has(part.toolCallId)
-    || bytes(part.input) <= COMPACT_PART_BYTES) return part;
-  return { ...part, input: { compacted: true, bytes: bytes(part.input), hint: "The completed tool input was compacted; the durable action ledger retains effect authority." } };
+  if (
+    part.type !== "tool-call" ||
+    typeof part.toolCallId !== "string" ||
+    !answered.has(part.toolCallId) ||
+    bytes(part.input) <= COMPACT_PART_BYTES
+  )
+    return part;
+  return {
+    ...part,
+    input: {
+      compacted: true,
+      bytes: bytes(part.input),
+      hint: "The completed tool input was compacted; the durable action ledger retains effect authority.",
+    },
+  };
 }
 
 /**
@@ -119,7 +158,9 @@ function compactCompletedCall(part: MessagePart, answered: Set<string>): Message
  * shrink older history; if still over budget, shrink the older part of the
  * tail. Returns changed indexes for one durable transaction.
  */
-export function compactMessages(messages: ModelMessage[]): { messages: ModelMessage[]; changed: number[] } | null {
+export function compactMessages(
+  messages: ModelMessage[],
+): { messages: ModelMessage[]; changed: number[] } | null {
   const tailStart = Math.max(1, messages.length - TRANSCRIPT_KEEP_TAIL);
   const next = [...messages];
   const changed: number[] = [];
@@ -147,13 +188,17 @@ export function compactMessages(messages: ModelMessage[]): { messages: ModelMess
   // unanswered call after a crash must keep its original input for recovery.
   if (transcriptBytes(next) > TRANSCRIPT_COMPACT_BYTES) {
     const answered = new Set<string>();
-    for (const message of next) if (message.role === "tool" && Array.isArray(message.content))
-      for (const part of message.content as MessagePart[])
-        if (part.type === "tool-result" && typeof part.toolCallId === "string") answered.add(part.toolCallId);
+    for (const message of next)
+      if (message.role === "tool" && Array.isArray(message.content))
+        for (const part of message.content as MessagePart[])
+          if (part.type === "tool-result" && typeof part.toolCallId === "string")
+            answered.add(part.toolCallId);
     for (let i = 1; i < next.length; i++) {
       const message = next[i]!;
       if (!Array.isArray(message.content)) continue;
-      const compacted = (message.content as MessagePart[]).map((part) => compactCompletedCall(part, answered));
+      const compacted = (message.content as MessagePart[]).map((part) =>
+        compactCompletedCall(part, answered),
+      );
       if (JSON.stringify(compacted) !== JSON.stringify(message.content)) {
         next[i] = { ...message, content: compacted } as ModelMessage;
         if (!changed.includes(i)) changed.push(i);

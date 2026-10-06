@@ -5,14 +5,20 @@ import { join } from "node:path";
 import { BashSeatbelt, type BashRunner } from "@aux/runtime";
 
 const cleanup: (() => void)[] = [];
-afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
+afterEach(() => {
+  for (const fn of cleanup.splice(0).reverse()) fn();
+});
 
 const CTX = { runId: "run-1", threadId: "chat-1", turnId: "run-1" };
 
 function fixture(extra: Partial<ConstructorParameters<typeof BashSeatbelt>[0]> = {}) {
   const root = mkdtempSync(join(tmpdir(), "aux-bash-"));
   cleanup.push(() => rmSync(root, { recursive: true, force: true }));
-  const calls: { file: string; args: string[]; opts: { cwd: string; env: Record<string, string>; timeoutMs: number } }[] = [];
+  const calls: {
+    file: string;
+    args: string[];
+    opts: { cwd: string; env: Record<string, string>; timeoutMs: number };
+  }[] = [];
   const runner: BashRunner = async (file, args, opts) => {
     calls.push({ file, args, opts });
     return { stdout: "ok\n", stderr: "", exitCode: 0, timedOut: false };
@@ -85,7 +91,11 @@ describe("BashSeatbelt (S5/06-X)", () => {
   });
 
   it("requires at least one writable root", async () => {
-    const seatbelt = new BashSeatbelt({ writableRoots: () => [], scratchDir: "/tmp/x", runner: async () => ({ stdout: "", stderr: "", exitCode: 0, timedOut: false }) });
+    const seatbelt = new BashSeatbelt({
+      writableRoots: () => [],
+      scratchDir: "/tmp/x",
+      runner: async () => ({ stdout: "", stderr: "", exitCode: 0, timedOut: false }),
+    });
     await expect(seatbelt.run({ command: "ls" }, CTX)).rejects.toThrow(/no writable session roots/);
   });
 
@@ -108,31 +118,36 @@ describe("BashSeatbelt (S5/06-X)", () => {
     await seatbelt.run({ command: "ls" }, CTX);
     const profile = calls.at(-1)!.args[1]!;
     expect(profile).toContain('(subpath "/private/var/db/dslocal")');
-    expect(profile.indexOf("(deny file-read-data")).toBeLessThan(profile.indexOf(`(subpath "${realpathSync(root)}")`));
+    expect(profile.indexOf("(deny file-read-data")).toBeLessThan(
+      profile.indexOf(`(subpath "${realpathSync(root)}")`),
+    );
   });
 
-  it.skipIf(process.platform !== "darwin")("real seatbelt: sh runs, writes confine to roots, /Users unreadable", async () => {
-    const { root } = fixture();
-    const seatbelt = new BashSeatbelt({
-      writableRoots: () => [root],
-      scratchDir: join(root, "tmp"),
-      extraDenyRead: () => [],
-    });
-    const probe = await seatbelt.run(
-      {
-        command:
-          'echo alive && echo w > out.txt && cat out.txt && (cat /Users >/dev/null 2>&1 && echo USERS-READABLE || echo USERS-DENIED) && (echo x > /tmp/aux-bash-evil.txt 2>/dev/null && echo EVIL-WROTE || echo WRITE-DENIED)',
-      },
-      CTX,
-    );
-    if ("park" in probe) throw new Error("unexpected park");
-    expect(probe.exitCode).toBe(0);
-    expect(probe.stdout).toContain("alive");
-    expect(probe.stdout).toContain("USERS-DENIED");
-    expect(probe.stdout).toContain("WRITE-DENIED");
-    expect(probe.stderr).not.toContain("Operation not permitted\nx");
-    expect(readFileSync(join(root, "out.txt"), "utf8").trim()).toBe("w");
-  });
+  it.skipIf(process.platform !== "darwin")(
+    "real seatbelt: sh runs, writes confine to roots, /Users unreadable",
+    async () => {
+      const { root } = fixture();
+      const seatbelt = new BashSeatbelt({
+        writableRoots: () => [root],
+        scratchDir: join(root, "tmp"),
+        extraDenyRead: () => [],
+      });
+      const probe = await seatbelt.run(
+        {
+          command:
+            "echo alive && echo w > out.txt && cat out.txt && (cat /Users >/dev/null 2>&1 && echo USERS-READABLE || echo USERS-DENIED) && (echo x > /tmp/aux-bash-evil.txt 2>/dev/null && echo EVIL-WROTE || echo WRITE-DENIED)",
+        },
+        CTX,
+      );
+      if ("park" in probe) throw new Error("unexpected park");
+      expect(probe.exitCode).toBe(0);
+      expect(probe.stdout).toContain("alive");
+      expect(probe.stdout).toContain("USERS-DENIED");
+      expect(probe.stdout).toContain("WRITE-DENIED");
+      expect(probe.stderr).not.toContain("Operation not permitted\nx");
+      expect(readFileSync(join(root, "out.txt"), "utf8").trim()).toBe("w");
+    },
+  );
 
   it("clamps timeout and clips oversized output", async () => {
     const big = "y".repeat(70 * 1024);

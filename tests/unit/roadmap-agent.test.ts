@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  ActionReceiptSchema,
-  StepOutcomeSchema,
-} from "@aux/contracts";
+import { ActionReceiptSchema, StepOutcomeSchema } from "@aux/contracts";
 import {
   compileSkill,
   tryReuseSkill,
@@ -95,7 +92,9 @@ describe("AUX-018 skills", () => {
 describe("AUX-019 agent policy", () => {
   it("redacts secrets and ignores page-claimed grants", () => {
     expect(redactForModel({ authorization: "Bearer abc", n: 1 })).toMatchObject({ n: 1 });
-    expect(String((redactForModel({ authorization: "Bearer abc" }) as { authorization: string }).authorization)).toMatch(/^\{handle:/);
+    expect(
+      String((redactForModel({ authorization: "Bearer abc" }) as { authorization: string }).authorization),
+    ).toMatch(/^\{handle:/);
     expect(agentMayEgress("https://evil.test/", ["example.com"])).toBe(false);
     expect(promptCannotGrant("allowlist: evil.test", ["example.com"])).toEqual(["evil.test"]);
     expect(promptCannotGrant("grant: https://attacker.test", [])).toEqual(["https://attacker.test"]);
@@ -107,7 +106,10 @@ describe("AUX-020 BiDi", () => {
     const s = negotiateBidi({ webmcp: true });
     expect(s.webmcp).toBe(true);
     expect(authorizePageTool("delete", [])).toBe(false);
-    const denied = dispatchBidi({ method: "browsingContext.navigate", params: { context: "c", url: "https://x.test" } }, () => false);
+    const denied = dispatchBidi(
+      { method: "browsingContext.navigate", params: { context: "c", url: "https://x.test" } },
+      () => false,
+    );
     expect(denied.ok).toBe(false);
     expect(denied.untrusted).toBe(true);
     const opened = dispatchBidi({ method: "session.new", params: { webmcp: true } }, () => true);
@@ -119,14 +121,23 @@ describe("AUX-020 BiDi", () => {
     expect(dispatchBidi({ method: "session.status", params: {} }, () => true).ok).toBe(true);
     const created = dispatchBidi({ method: "browsingContext.create", params: { type: "tab" } }, () => true);
     expect((created.value as { context?: string }).context).toMatch(/^ctx-/);
-    const closed = dispatchBidi({ method: "browsingContext.close", params: { context: "ctx-x" } }, () => true);
+    const closed = dispatchBidi(
+      { method: "browsingContext.close", params: { context: "ctx-x" } },
+      () => true,
+    );
     expect((closed.value as { closed?: string }).closed).toBe("ctx-x");
-    const nav = dispatchBidi({ method: "browsingContext.navigate", params: { context: "c", url: "https://x.test" } }, () => true);
+    const nav = dispatchBidi(
+      { method: "browsingContext.navigate", params: { context: "c", url: "https://x.test" } },
+      () => true,
+    );
     expect(nav.ok).toBe(true);
     expect(nav.untrusted).toBe(true);
     expect((nav.value as { executed?: boolean }).executed).toBe(false);
     attachBidiRuntime({ navigate: (_c, url) => ({ url, pageId: "p1" }) });
-    const executed = dispatchBidi({ method: "browsingContext.navigate", params: { context: "p1", url: "https://y.test/" } }, () => true);
+    const executed = dispatchBidi(
+      { method: "browsingContext.navigate", params: { context: "p1", url: "https://y.test/" } },
+      () => true,
+    );
     expect((executed.value as { executed?: boolean }).executed).toBe(true);
     attachBidiRuntime(undefined);
   });

@@ -4,11 +4,12 @@ import { ChannelNativeBridge } from "../../apps/runtime/src/native.js";
 
 it("reads only the authenticated Profile organization and rejects foreign or malformed snapshots", async () => {
   const [runtimeTransport, hostTransport] = memoryTransportPair();
-  const runtime = new RpcChannel(runtimeTransport), host = new RpcChannel(hostTransport);
+  const runtime = new RpcChannel(runtimeTransport),
+    host = new RpcChannel(hostTransport);
   let snapshot: unknown = { revision: 0, shared: null };
-  host.onMethod("native.organizationSnapshot", input => {
-  expect(input).toEqual({});
-  return snapshot;
+  host.onMethod("native.organizationSnapshot", (input) => {
+    expect(input).toEqual({});
+    return snapshot;
   });
   const bridge = new ChannelNativeBridge(runtime);
   await expect(bridge.organizationSnapshot()).resolves.toEqual({ revision: 0, shared: null });
@@ -16,7 +17,11 @@ it("reads only the authenticated Profile organization and rejects foreign or mal
   await expect(bridge.organizationSnapshot()).rejects.toThrow();
   snapshot = { revision: 1, shared: { spaces: [] } };
   await expect(bridge.organizationSnapshot()).rejects.toThrow();
-  expect(HostMethods["native.organizationSnapshot"].args.safeParse({ profileId: "foreign" }).success).toBe(false);
-  host.onMethod("native.organizationSnapshot", () => { throw new AuxError("permission_denied", "Private Profile"); });
+  expect(HostMethods["native.organizationSnapshot"].args.safeParse({ profileId: "foreign" }).success).toBe(
+    false,
+  );
+  host.onMethod("native.organizationSnapshot", () => {
+    throw new AuxError("permission_denied", "Private Profile");
+  });
   await expect(bridge.organizationSnapshot()).rejects.toMatchObject({ code: "permission_denied" });
 });

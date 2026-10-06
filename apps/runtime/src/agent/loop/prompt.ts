@@ -54,7 +54,11 @@ This page exposes site-authored tools. Call \`page.webmcp.tools()\` to list them
 
 export function buildSystemPrompt(ctx: PromptContext): string {
   const docs = CONDITIONAL_DOCS.filter((doc) => {
-    try { return doc.requiredFor(ctx); } catch { return false; }
+    try {
+      return doc.requiredFor(ctx);
+    } catch {
+      return false;
+    }
   }).map((doc) => (typeof doc.doc === "string" ? doc.doc : doc.doc()).trim());
   return [SYSTEM_PROMPT.trim(), ...docs].join("\n\n");
 }

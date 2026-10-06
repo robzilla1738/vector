@@ -43,9 +43,7 @@ it("a registered command cannot borrow an unfocused, hidden or foreign Memory ow
   retire.push(registerScopedControl(button, "retry-memory-load", "workspace", invoke));
   expect(() => invokeScopedControl("retry-memory-load")).toThrow();
   button.focus();
-  expect(() =>
-    invokeScopedControl("retry-memory-load", { payload: { scopeId: "foreign" } }),
-  ).toThrow();
+  expect(() => invokeScopedControl("retry-memory-load", { payload: { scopeId: "foreign" } })).toThrow();
   button.hidden = true;
   expect(() => invokeScopedControl("retry-memory-load")).toThrow();
   expect(invoke).not.toHaveBeenCalled();

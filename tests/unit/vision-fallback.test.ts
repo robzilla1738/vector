@@ -32,13 +32,31 @@ const obs = (over: { elements?: number; text?: string } = {}): Observation => ({
     links: [],
     dialogs: [],
     truncated: false,
-    stats: { elementsTotal: over.elements ?? 5, elementsShown: over.elements ?? 5, textChars: 40, approxTokens: 10 },
+    stats: {
+      elementsTotal: over.elements ?? 5,
+      elementsShown: over.elements ?? 5,
+      textChars: 40,
+      approxTokens: 10,
+    },
   },
 });
 
 const WRITE_LIKE = new Set([
-  "click", "dblclick", "fill", "type", "press", "select", "check", "uncheck",
-  "navigate", "submit", "hover", "scroll", "dragTo", "clickPoint", "reload",
+  "click",
+  "dblclick",
+  "fill",
+  "type",
+  "press",
+  "select",
+  "check",
+  "uncheck",
+  "navigate",
+  "submit",
+  "hover",
+  "scroll",
+  "dragTo",
+  "clickPoint",
+  "reload",
 ]);
 
 const doneOutcome = (stepId: string, op: string): StepOutcome => ({
@@ -50,7 +68,15 @@ const doneOutcome = (stepId: string, op: string): StepOutcome => ({
   // evaluate reports its return value as the step detail (e4 → "4")
   ...(op === "evaluate" ? { detail: stepId.replace(/\D/g, "") } : {}),
   ...(WRITE_LIKE.has(op)
-    ? { receipt: { observed: `${op} dispatched`, remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false } }
+    ? {
+        receipt: {
+          observed: `${op} dispatched`,
+          remoteConfirmed: false,
+          uncertain: false,
+          unconfirmed: false,
+          dispatchedBeforeTakeover: false,
+        },
+      }
     : {}),
 });
 
@@ -69,8 +95,14 @@ function harness(opts: {
   let executeFailures = opts.executeFails ?? 0;
   const plans = [opts.structuredPlan, ...(opts.thenPlans ?? [])];
 
-  const generateStructured = vi.fn(async (_opts: { modelId: string; prompt: string }) => ({ object: (plans.length > 1 ? plans.shift()! : plans[0]) as never, durationMs: 5 }));
-  const generateText = vi.fn(async (_opts: { modelId: string; prompt: string; imageDataUrl?: string }) => ({ text: opts.visionText, durationMs: 7 }));
+  const generateStructured = vi.fn(async (_opts: { modelId: string; prompt: string }) => ({
+    object: (plans.length > 1 ? plans.shift()! : plans[0]) as never,
+    durationMs: 5,
+  }));
+  const generateText = vi.fn(async (_opts: { modelId: string; prompt: string; imageDataUrl?: string }) => ({
+    text: opts.visionText,
+    durationMs: 7,
+  }));
   const model = {
     generateStructured,
     generateText,
@@ -78,20 +110,34 @@ function harness(opts: {
   } as unknown as ModelClient;
 
   const pages = {
-    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/", 1),  controller: "none"  }),
-    observe: vi.fn(async () => opts.observeOverride ?? obs()),
-    execute: vi.fn(async (program: { steps: { id: string; op: string }[] }, ctx: { onStep?: (o: StepOutcome, s: unknown) => void }) => {
-      executeCalls.push({ steps: program.steps.length });
-      if (executeFailures-- > 0) {
-        return { status: "failed" as const, steps: [], error: "locator not found" };
-      }
-      for (const s of program.steps) ctx.onStep?.(doneOutcome(s.id, s.op), s);
-      return { status: "completed" as const, steps: program.steps.map((s) => doneOutcome(s.id, s.op)) };
+    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({
+      ...fixturePage(fixturePageId, "http://x.test/", 1),
+      controller: "none",
     }),
-    capture: vi.fn(async () => ({ dataUrl: "data:image/png;base64,AAAA", width: 100, height: 100, scale: 1 })),
+    observe: vi.fn(async () => opts.observeOverride ?? obs()),
+    execute: vi.fn(
+      async (
+        program: { steps: { id: string; op: string }[] },
+        ctx: { onStep?: (o: StepOutcome, s: unknown) => void },
+      ) => {
+        executeCalls.push({ steps: program.steps.length });
+        if (executeFailures-- > 0) {
+          return { status: "failed" as const, steps: [], error: "locator not found" };
+        }
+        for (const s of program.steps) ctx.onStep?.(doneOutcome(s.id, s.op), s);
+        return { status: "completed" as const, steps: program.steps.map((s) => doneOutcome(s.id, s.op)) };
+      },
+    ),
+    capture: vi.fn(async () => ({
+      dataUrl: "data:image/png;base64,AAAA",
+      width: 100,
+      height: 100,
+      scale: 1,
+    })),
   };
 
-  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
+  const coordinator = new RunCoordinator({
+    turnMentions: fixtureTurnMentions((pageId) => pages.get(pageId)),
     repo,
     events,
     pages: pages as never,
@@ -99,7 +145,9 @@ function harness(opts: {
     defaultModel: () => "test/planner",
     recoveryModel: () => undefined,
     visionModel: () => "test/vision",
-    recordModelCall: (c) => { modelCalls.push({ role: c.role, modelId: c.modelId }); },
+    recordModelCall: (c) => {
+      modelCalls.push({ role: c.role, modelId: c.modelId });
+    },
     grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   });
   return { repo, coordinator, model, generateStructured, generateText, pages, modelCalls, executeCalls };
@@ -109,7 +157,8 @@ async function waitForRun(repo: Repo, runId: string, ms = 5000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) {
     const r = repo.getRun(runId);
-    if (r && ["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(r.status)) return r;
+    if (r && ["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(r.status))
+      return r;
     await new Promise((r) => setTimeout(r, 25));
   }
   throw new Error("run did not finish");
@@ -119,7 +168,11 @@ describe("vision fallback", () => {
   it("stops before vision replanning when a failed write may have taken effect", async () => {
     const h = harness({
       executeFails: 1,
-      structuredPlan: { status: "continue", message: "clicking", steps: [{ id: "s1", op: "click", target: "r1" }] },
+      structuredPlan: {
+        status: "continue",
+        message: "clicking",
+        steps: [{ id: "s1", op: "click", target: "r1" }],
+      },
       visionText: `sure! {"status":"done","message":"done","result":{"ok":true}}`,
     });
     const run = await h.coordinator.start({ goal: "do it", pageIds: ["p1"] });
@@ -148,12 +201,17 @@ describe("vision fallback", () => {
 
   it("attaches the saved observation artifact to each step record", async () => {
     const h = harness({
-      structuredPlan: { status: "continue", message: "clicking", steps: [{ id: "s1", op: "click", target: "r1" }] },
+      structuredPlan: {
+        status: "continue",
+        message: "clicking",
+        steps: [{ id: "s1", op: "click", target: "r1" }],
+      },
       thenPlans: [{ status: "done", message: "ok", result: { note: "done" } }],
       visionText: "",
     });
     const recorded: { obsArtifactId?: string }[] = [];
-    const coord = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => h.pages.get(pageId)),
+    const coord = new RunCoordinator({
+      turnMentions: fixtureTurnMentions((pageId) => h.pages.get(pageId)),
       repo: h.repo,
       events: new EventBus(h.repo),
       pages: h.pages as never,
@@ -175,11 +233,16 @@ describe("vision fallback", () => {
   it("does not screenshot-replan when no vision model is configured", async () => {
     const h = harness({
       executeFails: 1,
-      structuredPlan: { status: "continue", message: "clicking", steps: [{ id: "s1", op: "click", target: "r1" }] },
+      structuredPlan: {
+        status: "continue",
+        message: "clicking",
+        steps: [{ id: "s1", op: "click", target: "r1" }],
+      },
       thenPlans: [{ status: "done", message: "ok", result: { ok: true } }],
       visionText: `{"status":"done","message":"via vision","result":{"note":"vision"}}`,
     });
-    const coord = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => h.pages.get(pageId)),
+    const coord = new RunCoordinator({
+      turnMentions: fixtureTurnMentions((pageId) => h.pages.get(pageId)),
       repo: h.repo,
       events: new EventBus(h.repo),
       pages: h.pages as never,
@@ -201,7 +264,11 @@ describe("vision fallback", () => {
   it("does not fall back to another planner after an uncertain write", async () => {
     const h = harness({
       executeFails: 1,
-      structuredPlan: { status: "continue", message: "clicking", steps: [{ id: "s1", op: "click", target: "r1" }] },
+      structuredPlan: {
+        status: "continue",
+        message: "clicking",
+        steps: [{ id: "s1", op: "click", target: "r1" }],
+      },
       thenPlans: [{ status: "done", message: "ok", result: { ok: true } }],
       visionText: "I cannot help with that.",
     });
@@ -216,12 +283,21 @@ describe("vision fallback", () => {
 });
 
 describe("no-progress guard", () => {
-  const cont = (op: string, id: string) => ({ status: "continue", message: "working", steps: [{ id, op, expression: "1" }] });
+  const cont = (op: string, id: string) => ({
+    status: "continue",
+    message: "working",
+    steps: [{ id, op, expression: "1" }],
+  });
 
   it("does not trip while observation-blind steps succeed — unobserved writes complete marked unconfirmed", async () => {
     const h = harness({
       structuredPlan: cont("evaluate", "e1"),
-      thenPlans: [cont("evaluate", "e2"), cont("evaluate", "e3"), cont("evaluate", "e4"), { status: "done", message: "count is 4", result: { count: 4 } }],
+      thenPlans: [
+        cont("evaluate", "e2"),
+        cont("evaluate", "e3"),
+        cont("evaluate", "e4"),
+        { status: "done", message: "count is 4", result: { count: 4 } },
+      ],
       visionText: "",
     });
     const run = await h.coordinator.start({ goal: "increment a shadow counter", pageIds: ["p1"] });
@@ -246,48 +322,114 @@ describe("no-progress guard", () => {
   });
 });
 
-
 it("records actual failed vision provider usage and identity before continuing with the planner", async () => {
-  const h = harness({ observeOverride: obs({ elements: 0, text: "" }),
-    structuredPlan: { status: "done", result: { note: "planner" } }, visionText: "" });
-  h.generateText.mockImplementation(async () => { throw withAttempts(new Error("Vision provider failed"),
-    [{ modelId: "actual/vision", durationMs: 9, inputTokens: 31, outputTokens: 4,
-      providerMetadata: { gateway: { cost: 0.25 } } }]); });
+  const h = harness({
+    observeOverride: obs({ elements: 0, text: "" }),
+    structuredPlan: { status: "done", result: { note: "planner" } },
+    visionText: "",
+  });
+  h.generateText.mockImplementation(async () => {
+    throw withAttempts(new Error("Vision provider failed"), [
+      {
+        modelId: "actual/vision",
+        durationMs: 9,
+        inputTokens: 31,
+        outputTokens: 4,
+        providerMetadata: { gateway: { cost: 0.25 } },
+      },
+    ]);
+  });
   const recorded: Parameters<typeof h.coordinator.deps.recordModelCall>[0][] = [];
-  h.coordinator.deps.recordModelCall = async call => { recorded.push(call); };
+  h.coordinator.deps.recordModelCall = async (call) => {
+    recorded.push(call);
+  };
   const run = await h.coordinator.start({ goal: "Inspect the fixture", pageIds: ["p1"] });
   await waitForRun(h.repo, run.runId);
   expect(h.generateText).toHaveBeenCalledOnce();
-  expect(recorded.filter(call => call.role === "vision")).toEqual([{ runId: run.runId, role: "vision",
-    modelId: "actual/vision", durationMs: 9, inputTokens: 31, outputTokens: 4,
-    providerMetadata: { gateway: { cost: 0.25 } }, error: "Vision provider failed" }]);
+  expect(recorded.filter((call) => call.role === "vision")).toEqual([
+    {
+      runId: run.runId,
+      role: "vision",
+      modelId: "actual/vision",
+      durationMs: 9,
+      inputTokens: 31,
+      outputTokens: 4,
+      providerMetadata: { gateway: { cost: 0.25 } },
+      error: "Vision provider failed",
+    },
+  ]);
 });
 
 it("prices successful vision by the provider that actually served the attempt", async () => {
-  const h = harness({ observeOverride: obs({ elements: 0, text: "" }),
-    structuredPlan: { status: "done", result: { note: "planner" } }, visionText: "" });
-  h.generateText.mockImplementation(async () => ({ text: '{"status":"done","result":{"note":"vision"}}', durationMs: 9,
-    resolvedModelId: "served/vision", inputTokens: 23, outputTokens: 4 }));
+  const h = harness({
+    observeOverride: obs({ elements: 0, text: "" }),
+    structuredPlan: { status: "done", result: { note: "planner" } },
+    visionText: "",
+  });
+  h.generateText.mockImplementation(async () => ({
+    text: '{"status":"done","result":{"note":"vision"}}',
+    durationMs: 9,
+    resolvedModelId: "served/vision",
+    inputTokens: 23,
+    outputTokens: 4,
+  }));
   const recorded: Parameters<typeof h.coordinator.deps.recordModelCall>[0][] = [];
-  h.coordinator.deps.recordModelCall = async call => { recorded.push(call); };
+  h.coordinator.deps.recordModelCall = async (call) => {
+    recorded.push(call);
+  };
   const run = await h.coordinator.start({ goal: "Inspect", pageIds: ["p1"] });
   await waitForRun(h.repo, run.runId);
-  expect(recorded.filter(call => call.role === "vision")).toMatchObject([{ runId: run.runId, modelId: "served/vision", inputTokens: 23, outputTokens: 4 }]);
+  expect(recorded.filter((call) => call.role === "vision")).toMatchObject([
+    { runId: run.runId, modelId: "served/vision", inputTokens: 23, outputTokens: 4 },
+  ]);
 });
 
 it("retains actual billed vision usage after cancellation without fabricating another attempt", async () => {
-  const h = harness({ observeOverride: obs({ elements: 0, text: "" }), structuredPlan: { status: "done", result: {} }, visionText: "" });
+  const h = harness({
+    observeOverride: obs({ elements: 0, text: "" }),
+    structuredPlan: { status: "done", result: {} },
+    visionText: "",
+  });
   const recorded: Parameters<typeof h.coordinator.deps.recordModelCall>[0][] = [];
-  h.coordinator.deps.recordModelCall = async call => { recorded.push(call); h.repo.saveModelCall({ ...call, callId: randomUUID(), createdAt: Date.now(), costUsd: modelCallCost(call.modelId, call).costUsd }); };
+  h.coordinator.deps.recordModelCall = async (call) => {
+    recorded.push(call);
+    h.repo.saveModelCall({
+      ...call,
+      callId: randomUUID(),
+      createdAt: Date.now(),
+      costUsd: modelCallCost(call.modelId, call).costUsd,
+    });
+  };
   h.generateText.mockImplementation(async () => {
     const current = h.repo.listRuns(1)[0]!;
     await h.coordinator.cancel(current.runId);
-    throw withAttempts(new Error("Vision cancelled after partial usage"), [{ modelId: "served/cancelled-vision", durationMs: 12, inputTokens: 17, outputTokens: 3, providerMetadata: { gateway: { cost: 0.125 } } }]);
+    throw withAttempts(new Error("Vision cancelled after partial usage"), [
+      {
+        modelId: "served/cancelled-vision",
+        durationMs: 12,
+        inputTokens: 17,
+        outputTokens: 3,
+        providerMetadata: { gateway: { cost: 0.125 } },
+      },
+    ]);
   });
   const run = await h.coordinator.start({ goal: "Inspect", pageIds: ["p1"] });
-  await vi.waitFor(() => expect(recorded.filter(call => call.role === "vision")).toHaveLength(1));
+  await vi.waitFor(() => expect(recorded.filter((call) => call.role === "vision")).toHaveLength(1));
   expect(h.repo.getRun(run.runId)?.status).toBe("cancelled");
-  expect(recorded.filter(call => call.role === "vision")).toEqual([{ runId: run.runId, role: "vision", modelId: "served/cancelled-vision", durationMs: 12, inputTokens: 17, outputTokens: 3, providerMetadata: { gateway: { cost: 0.125 } }, error: "Vision cancelled after partial usage" }]);
-  expect(h.repo.listModelCalls(run.runId)).toMatchObject([{ modelId: "served/cancelled-vision", inputTokens: 17, outputTokens: 3, costUsd: 0.125 }]);
+  expect(recorded.filter((call) => call.role === "vision")).toEqual([
+    {
+      runId: run.runId,
+      role: "vision",
+      modelId: "served/cancelled-vision",
+      durationMs: 12,
+      inputTokens: 17,
+      outputTokens: 3,
+      providerMetadata: { gateway: { cost: 0.125 } },
+      error: "Vision cancelled after partial usage",
+    },
+  ]);
+  expect(h.repo.listModelCalls(run.runId)).toMatchObject([
+    { modelId: "served/cancelled-vision", inputTokens: 17, outputTokens: 3, costUsd: 0.125 },
+  ]);
   expect(h.executeCalls).toEqual([]);
 });

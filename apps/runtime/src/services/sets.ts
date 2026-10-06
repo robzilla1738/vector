@@ -79,7 +79,9 @@ export class SetService {
       void page;
       const sel = opts.linkSelector;
       const links = sel
-        ? obs.content.elements.filter((e) => e.href && e.selector.css?.includes(sel.replace(/^.*\s/, "").split(/[>:[]/)[0] ?? ""))
+        ? obs.content.elements.filter(
+            (e) => e.href && e.selector.css?.includes(sel.replace(/^.*\s/, "").split(/[>:[]/)[0] ?? ""),
+          )
         : obs.content.links;
       const seen = new Set<string>();
       for (const l of links) {

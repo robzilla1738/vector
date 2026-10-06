@@ -10,9 +10,19 @@ it("opens an accessible dialog, focuses its first control, and restores its trig
   document.body.append(host);
   const root = createRoot(host);
   try {
-    await act(async () => root.render(<Popover label="Choose context" trigger="Context">{close =>
-      <><button disabled>Unavailable</button><input aria-label="Find context" /><button onClick={close}>Done</button></>
-    }</Popover>));
+    await act(async () =>
+      root.render(
+        <Popover label="Choose context" trigger="Context">
+          {(close) => (
+            <>
+              <button disabled>Unavailable</button>
+              <input aria-label="Find context" />
+              <button onClick={close}>Done</button>
+            </>
+          )}
+        </Popover>,
+      ),
+    );
     const trigger = host.querySelector<HTMLButtonElement>("button")!;
     await act(async () => trigger.click());
     const panel = document.querySelector<HTMLDialogElement>('dialog[aria-label="Choose context"]')!;
@@ -21,7 +31,9 @@ it("opens an accessible dialog, focuses its first control, and restores its trig
     expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
     expect(trigger.getAttribute("aria-controls")).toBe(panel.id);
     expect(document.activeElement).toBe(panel.querySelector('input[aria-label="Find context"]'));
-    await act(async () => panel.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
+    await act(async () =>
+      panel.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
+    );
     expect(document.querySelector('dialog[aria-label="Choose context"]')).toBeNull();
     expect(document.activeElement).toBe(trigger);
   } finally {

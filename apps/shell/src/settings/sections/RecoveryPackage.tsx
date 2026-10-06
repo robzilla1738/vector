@@ -105,16 +105,22 @@ export function RecoveryPackage({
       return Promise.reject(new Error("Choose the current protected recovery control."));
     setOperation(owner);
     setNotice(null);
-    return constructOperationChain(producer, (result) => {
+    return constructOperationChain(
+      producer,
+      (result) => {
         if (current()) publish(result);
         return result;
-      }, (reason) => {
+      },
+      (reason) => {
         if (current()) setNotice({ owner, text: errorMessage(reason) });
         throw reason;
-      }, () => {
+      },
+      () => {
         owner.finish();
         setOperation((value) => (value === owner ? null : value));
-      }, current);
+      },
+      current,
+    );
   }
   function create() {
     return perform(

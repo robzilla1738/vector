@@ -66,7 +66,19 @@ function fixture(withDriver = true) {
       pageId: "pageId" in input.command ? input.command.pageId : undefined,
     };
   });
-  return { driver, repo, pages, opener, activation, attach, reconnect, tabCommand, personReadContext, native, sync };
+  return {
+    driver,
+    repo,
+    pages,
+    opener,
+    activation,
+    attach,
+    reconnect,
+    tabCommand,
+    personReadContext,
+    native,
+    sync,
+  };
 }
 it("opens and activates a genuine native person tab without a control socket or CDP commands", async () => {
   const f = fixture();
@@ -275,109 +287,254 @@ it("refuses a replacement while the original native document context is held and
 });
 
 it("refuses same-row control replacement during held navigation without closing the new owner", async () => {
- const f=fixture(false);let release!:(value:TabCommandAck)=>void;
- f.tabCommand.mockImplementationOnce(async input=>({commandId:input.commandId,status:"applied",catalogVersion:1}));
- f.tabCommand.mockImplementationOnce(async()=>new Promise(resolve=>{release=resolve;}));
- const work=f.opener.open({url:"https://person.test/",background:true,ownedByRuntime:false});
- await vi.waitFor(()=>expect(f.tabCommand).toHaveBeenCalledTimes(2));
- const original=checked([...f.pages.live.values()][0]);original.target.ownedByRuntime=true;
- const input=checked(f.tabCommand.mock.calls[1])[0];release({commandId:input.commandId,status:"applied",catalogVersion:2});
- const error=await work.catch(error=>error);expect(error).toBeInstanceOf(AggregateError);expect(error.errors[0]).toMatchObject({code:"target_detached"});expect(error.errors[1]).toMatchObject({code:"permission_denied"});
- expect(f.pages.live.get(original.target.pageId)).toBe(original);expect(f.tabCommand.mock.calls.filter(([input])=>input.command.kind==="close")).toHaveLength(0);
+  const f = fixture(false);
+  let release!: (value: TabCommandAck) => void;
+  f.tabCommand.mockImplementationOnce(async (input) => ({
+    commandId: input.commandId,
+    status: "applied",
+    catalogVersion: 1,
+  }));
+  f.tabCommand.mockImplementationOnce(
+    async () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  );
+  const work = f.opener.open({ url: "https://person.test/", background: true, ownedByRuntime: false });
+  await vi.waitFor(() => expect(f.tabCommand).toHaveBeenCalledTimes(2));
+  const original = checked([...f.pages.live.values()][0]);
+  original.target.ownedByRuntime = true;
+  const input = checked(f.tabCommand.mock.calls[1])[0];
+  release({ commandId: input.commandId, status: "applied", catalogVersion: 2 });
+  const error = await work.catch((error) => error);
+  expect(error).toBeInstanceOf(AggregateError);
+  expect(error.errors[0]).toMatchObject({ code: "target_detached" });
+  expect(error.errors[1]).toMatchObject({ code: "permission_denied" });
+  expect(f.pages.live.get(original.target.pageId)).toBe(original);
+  expect(f.tabCommand.mock.calls.filter(([input]) => input.command.kind === "close")).toHaveLength(0);
 });
 
-it("keeps restored runtime-owned catalog targets on the original attachment path", async()=>{
- const f=fixture();const pageId=randomUUID();
- const person=await f.opener.registerExternal({pageId,marker:`atab-${pageId}`,url:"https://person.test/",backend:"aux",ownedByRuntime:false});
- f.pages.live.delete(pageId);
- await expect(f.opener.registerExternal({pageId,marker:`atab-${pageId}`,url:person.url,backend:"aux",restored:{...person,ownedByRuntime:true}})).rejects.toThrow("Ordinary native pages cannot attach CDP");
- expect(f.attach).toHaveBeenCalledOnce();expect(f.pages.live.has(pageId)).toBe(false);
+it("keeps restored runtime-owned catalog targets on the original attachment path", async () => {
+  const f = fixture();
+  const pageId = randomUUID();
+  const person = await f.opener.registerExternal({
+    pageId,
+    marker: `atab-${pageId}`,
+    url: "https://person.test/",
+    backend: "aux",
+    ownedByRuntime: false,
+  });
+  f.pages.live.delete(pageId);
+  await expect(
+    f.opener.registerExternal({
+      pageId,
+      marker: `atab-${pageId}`,
+      url: person.url,
+      backend: "aux",
+      restored: { ...person, ownedByRuntime: true },
+    }),
+  ).rejects.toThrow("Ordinary native pages cannot attach CDP");
+  expect(f.attach).toHaveBeenCalledOnce();
+  expect(f.pages.live.has(pageId)).toBe(false);
 });
-it("retains cleanup debt rather than closing a manually transferred window during held context", async()=>{
- const f=fixture(false);let release!:(value:Awaited<ReturnType<typeof f.personReadContext>>)=>void;
- f.personReadContext.mockImplementation(async()=>new Promise(resolve=>{release=resolve;}));
- const work=f.opener.open({url:"https://person.test/",background:true,ownedByRuntime:false});
- await vi.waitFor(()=>expect(f.personReadContext).toHaveBeenCalled());
- const original=checked([...f.pages.live.values()][0]);original.target.windowId="original-human-other-window";
- release({pageId:original.target.pageId,documentId:randomUUID(),sessionId:randomUUID(),producerSha256:createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex"),url:"https://person.test/"});
- const error=await work.catch(error=>error);expect(error).toBeInstanceOf(AggregateError);expect(error.errors[1]).toMatchObject({code:"permission_denied"});
- expect(f.pages.live.get(original.target.pageId)).toBe(original);expect(f.tabCommand.mock.calls.filter(([input])=>input.command.kind==="close")).toHaveLength(0);
+it("retains cleanup debt rather than closing a manually transferred window during held context", async () => {
+  const f = fixture(false);
+  let release!: (value: Awaited<ReturnType<typeof f.personReadContext>>) => void;
+  f.personReadContext.mockImplementation(
+    async () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  );
+  const work = f.opener.open({ url: "https://person.test/", background: true, ownedByRuntime: false });
+  await vi.waitFor(() => expect(f.personReadContext).toHaveBeenCalled());
+  const original = checked([...f.pages.live.values()][0]);
+  original.target.windowId = "original-human-other-window";
+  release({
+    pageId: original.target.pageId,
+    documentId: randomUUID(),
+    sessionId: randomUUID(),
+    producerSha256: createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex"),
+    url: "https://person.test/",
+  });
+  const error = await work.catch((error) => error);
+  expect(error).toBeInstanceOf(AggregateError);
+  expect(error.errors[1]).toMatchObject({ code: "permission_denied" });
+  expect(f.pages.live.get(original.target.pageId)).toBe(original);
+  expect(f.tabCommand.mock.calls.filter(([input]) => input.command.kind === "close")).toHaveLength(0);
 });
-it("waits for genuine publication to clear a previous failed navigation on Retry", async()=>{
- const f=fixture(false);const pageId=randomUUID();
- await f.opener.registerExternal({pageId,marker:`atab-${pageId}`,url:"https://person.test/",backend:"aux",ownedByRuntime:false});
- f.sync.onNativeNavigationError(pageId,{url:"https://person.test/",code:-105,message:"previous failure"});
- f.tabCommand.mockImplementationOnce(async input=>({commandId:input.commandId,status:"applied",catalogVersion:2}));
- let finished=false;const work=navigateNativePage(f.pages,pageId,"https://person.test/").then(value=>{finished=true;return value;});
- await new Promise(resolve=>setTimeout(resolve,10));expect(finished).toBe(false);
- f.sync.onNativeNavigated(pageId,"https://person.test/");
- await expect(work).resolves.toMatchObject({pageId,url:"https://person.test/",navigationError:null});
+it("waits for genuine publication to clear a previous failed navigation on Retry", async () => {
+  const f = fixture(false);
+  const pageId = randomUUID();
+  await f.opener.registerExternal({
+    pageId,
+    marker: `atab-${pageId}`,
+    url: "https://person.test/",
+    backend: "aux",
+    ownedByRuntime: false,
+  });
+  f.sync.onNativeNavigationError(pageId, {
+    url: "https://person.test/",
+    code: -105,
+    message: "previous failure",
+  });
+  f.tabCommand.mockImplementationOnce(async (input) => ({
+    commandId: input.commandId,
+    status: "applied",
+    catalogVersion: 2,
+  }));
+  let finished = false;
+  const work = navigateNativePage(f.pages, pageId, "https://person.test/").then((value) => {
+    finished = true;
+    return value;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  expect(finished).toBe(false);
+  f.sync.onNativeNavigated(pageId, "https://person.test/");
+  await expect(work).resolves.toMatchObject({ pageId, url: "https://person.test/", navigationError: null });
 });
 
-it("returns the actual fresh redirected native document instead of closing a valid redirect", async()=>{
- const f=fixture(false);
- f.tabCommand.mockImplementation(async input=>{
-  if(input.command.kind==="navigate") f.sync.onNativeNavigated(input.command.pageId,"https://person.test/redirected");
-  return {commandId:input.commandId,status:"applied",catalogVersion:2};
- });
- f.personReadContext.mockImplementation(async pageId=>({pageId,documentId:randomUUID(),sessionId:randomUUID(),producerSha256:createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex"),url:"https://person.test/redirected"}));
- const target=await f.opener.open({url:"http://person.test/",background:true,ownedByRuntime:false});
- expect(target.url).toBe("https://person.test/redirected");expect(target.documentEpoch).toBeGreaterThan(0);expect(target.sessionId).toBeDefined();
- expect(f.tabCommand.mock.calls.filter(([input])=>input.command.kind==="close")).toHaveLength(0);expect(f.attach).not.toHaveBeenCalled();
+it("returns the actual fresh redirected native document instead of closing a valid redirect", async () => {
+  const f = fixture(false);
+  f.tabCommand.mockImplementation(async (input) => {
+    if (input.command.kind === "navigate")
+      f.sync.onNativeNavigated(input.command.pageId, "https://person.test/redirected");
+    return { commandId: input.commandId, status: "applied", catalogVersion: 2 };
+  });
+  f.personReadContext.mockImplementation(async (pageId) => ({
+    pageId,
+    documentId: randomUUID(),
+    sessionId: randomUUID(),
+    producerSha256: createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex"),
+    url: "https://person.test/redirected",
+  }));
+  const target = await f.opener.open({ url: "http://person.test/", background: true, ownedByRuntime: false });
+  expect(target.url).toBe("https://person.test/redirected");
+  expect(target.documentEpoch).toBeGreaterThan(0);
+  expect(target.sessionId).toBeDefined();
+  expect(f.tabCommand.mock.calls.filter(([input]) => input.command.kind === "close")).toHaveLength(0);
+  expect(f.attach).not.toHaveBeenCalled();
 });
-it("does not accept an old same-URL native context until a genuine fresh document publication", async()=>{
- const f=fixture(false);const pageId=randomUUID();
- const original=await f.opener.registerExternal({pageId,marker:`atab-${pageId}`,url:"https://person.test/",backend:"aux",ownedByRuntime:false});
- await f.pages.prepareReadPage(pageId);const oldSession=original.sessionId;const oldEpoch=original.documentEpoch;
- f.personReadContext.mockClear();
- f.tabCommand.mockImplementationOnce(async input=>({commandId:input.commandId,status:"applied",catalogVersion:2}));
- let finished=false;const work=navigateNativePage(f.pages,pageId,original.url).then(value=>{finished=true;return value;});
- await new Promise(resolve=>setTimeout(resolve,10));expect(finished).toBe(false);expect(f.personReadContext).not.toHaveBeenCalled();expect(original.sessionId).toBe(oldSession);
- f.sync.onNativeNavigated(pageId,original.url);const fresh=await work;
- expect(fresh?.documentEpoch).toBeGreaterThan(oldEpoch);expect(fresh?.sessionId).not.toBe(oldSession);expect(f.personReadContext).toHaveBeenCalled();
+it("does not accept an old same-URL native context until a genuine fresh document publication", async () => {
+  const f = fixture(false);
+  const pageId = randomUUID();
+  const original = await f.opener.registerExternal({
+    pageId,
+    marker: `atab-${pageId}`,
+    url: "https://person.test/",
+    backend: "aux",
+    ownedByRuntime: false,
+  });
+  await f.pages.prepareReadPage(pageId);
+  const oldSession = original.sessionId;
+  const oldEpoch = original.documentEpoch;
+  f.personReadContext.mockClear();
+  f.tabCommand.mockImplementationOnce(async (input) => ({
+    commandId: input.commandId,
+    status: "applied",
+    catalogVersion: 2,
+  }));
+  let finished = false;
+  const work = navigateNativePage(f.pages, pageId, original.url).then((value) => {
+    finished = true;
+    return value;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  expect(finished).toBe(false);
+  expect(f.personReadContext).not.toHaveBeenCalled();
+  expect(original.sessionId).toBe(oldSession);
+  f.sync.onNativeNavigated(pageId, original.url);
+  const fresh = await work;
+  expect(fresh?.documentEpoch).toBeGreaterThan(oldEpoch);
+  expect(fresh?.sessionId).not.toBe(oldSession);
+  expect(f.personReadContext).toHaveBeenCalled();
 });
 
-it("retains original attached-driver behavior only when fixed person reader capability is absent", async()=>{
- const f=fixture();Object.defineProperty(f.native,"personReadContext",{value:undefined});Object.defineProperty(f.driver,"isConnected",{value:()=>true});
- await expect(f.opener.open({url:"https://person.test/",background:true,ownedByRuntime:false})).rejects.toThrow("Ordinary native pages cannot attach CDP");
- expect(f.attach).toHaveBeenCalledOnce();expect(f.personReadContext).not.toHaveBeenCalled();expect(f.reconnect).not.toHaveBeenCalled();
+it("retains original attached-driver behavior only when fixed person reader capability is absent", async () => {
+  const f = fixture();
+  Object.defineProperty(f.native, "personReadContext", { value: undefined });
+  Object.defineProperty(f.driver, "isConnected", { value: () => true });
+  await expect(
+    f.opener.open({ url: "https://person.test/", background: true, ownedByRuntime: false }),
+  ).rejects.toThrow("Ordinary native pages cannot attach CDP");
+  expect(f.attach).toHaveBeenCalledOnce();
+  expect(f.personReadContext).not.toHaveBeenCalled();
+  expect(f.reconnect).not.toHaveBeenCalled();
 });
-it("does not manufacture a legacy driverless branch when fixed reader capability is absent", async()=>{
- const f=fixture(false);Object.defineProperty(f.native,"personReadContext",{value:undefined});
- await expect(f.opener.open({url:"https://person.test/",background:true,ownedByRuntime:false})).rejects.toMatchObject({code:"backend_unavailable"});
- expect(f.tabCommand).not.toHaveBeenCalled();expect(f.attach).not.toHaveBeenCalled();
+it("does not manufacture a legacy driverless branch when fixed reader capability is absent", async () => {
+  const f = fixture(false);
+  Object.defineProperty(f.native, "personReadContext", { value: undefined });
+  await expect(
+    f.opener.open({ url: "https://person.test/", background: true, ownedByRuntime: false }),
+  ).rejects.toMatchObject({ code: "backend_unavailable" });
+  expect(f.tabCommand).not.toHaveBeenCalled();
+  expect(f.attach).not.toHaveBeenCalled();
 });
-it("preserves installed fixed-reader refusal instead of silently borrowing driver authority", async()=>{
- const f=fixture();const reason=new Error("original installed reader transport refusal");f.personReadContext.mockRejectedValue(reason);
- await expect(f.opener.open({url:"https://person.test/",background:true,ownedByRuntime:false})).rejects.toBe(reason);
- expect(f.attach).not.toHaveBeenCalled();expect(f.pages.live.size).toBe(0);
+it("preserves installed fixed-reader refusal instead of silently borrowing driver authority", async () => {
+  const f = fixture();
+  const reason = new Error("original installed reader transport refusal");
+  f.personReadContext.mockRejectedValue(reason);
+  await expect(
+    f.opener.open({ url: "https://person.test/", background: true, ownedByRuntime: false }),
+  ).rejects.toBe(reason);
+  expect(f.attach).not.toHaveBeenCalled();
+  expect(f.pages.live.size).toBe(0);
 });
 
- it("retries a superseded document read while the original native opening remains current", async () => {
+it("retries a superseded document read while the original native opening remains current", async () => {
   const f = fixture(false);
   let reads = 0;
-  const documentId = randomUUID(), sessionId = randomUUID();
-  f.personReadContext.mockImplementation(async pageId => {
+  const documentId = randomUUID(),
+    sessionId = randomUUID();
+  f.personReadContext.mockImplementation(async (pageId) => {
     if (++reads === 2) f.sync.onNativeNavigated(pageId, "https://person.test/");
-    return { pageId, documentId, sessionId, producerSha256: createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex"), url: "https://person.test/" };
+    return {
+      pageId,
+      documentId,
+      sessionId,
+      producerSha256: createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex"),
+      url: "https://person.test/",
+    };
   });
-  const target = await f.opener.open({ url: "https://person.test/", background: true, ownedByRuntime: false });
+  const target = await f.opener.open({
+    url: "https://person.test/",
+    background: true,
+    ownedByRuntime: false,
+  });
   expect(target.url).toBe("https://person.test/");
   expect(target.sessionId).toBe(sessionId);
   expect(f.pages.live.get(target.pageId)?.target).toBe(target);
   expect(reads).toBeGreaterThan(2);
   expect(f.tabCommand.mock.calls.filter(([input]) => input.command.kind === "close")).toHaveLength(0);
- });
+});
 
 it("keeps original read-owner retirement fatal even when its document also changes", async () => {
- const f = fixture(false), pageId = randomUUID();
- const target = await f.opener.registerExternal({ pageId, marker: `atab-${pageId}`, url: "https://person.test/", backend: "aux", ownedByRuntime: false });
- let release!: (value: Awaited<ReturnType<typeof f.personReadContext>>) => void;
- f.personReadContext.mockImplementationOnce(async () => new Promise(resolve => { release = resolve; }));
- const work = f.pages.prepareReadPage(pageId);
- target.documentEpoch++;
- target.controllerEpoch++;
- release({ pageId, documentId: randomUUID(), sessionId: randomUUID(), producerSha256: createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex"), url: target.url });
- await expect(work).rejects.toMatchObject({ code: "target_detached" });
- expect(target.sessionId).toBeUndefined();
+  const f = fixture(false),
+    pageId = randomUUID();
+  const target = await f.opener.registerExternal({
+    pageId,
+    marker: `atab-${pageId}`,
+    url: "https://person.test/",
+    backend: "aux",
+    ownedByRuntime: false,
+  });
+  let release!: (value: Awaited<ReturnType<typeof f.personReadContext>>) => void;
+  f.personReadContext.mockImplementationOnce(
+    async () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  );
+  const work = f.pages.prepareReadPage(pageId);
+  target.documentEpoch++;
+  target.controllerEpoch++;
+  release({
+    pageId,
+    documentId: randomUUID(),
+    sessionId: randomUUID(),
+    producerSha256: createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex"),
+    url: target.url,
+  });
+  await expect(work).rejects.toMatchObject({ code: "target_detached" });
+  expect(target.sessionId).toBeUndefined();
 });

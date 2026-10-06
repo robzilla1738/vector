@@ -9,16 +9,18 @@ import { useFeature } from "../use-feature";
 import { useExtensionActions } from "../features/extensions/use-extension-actions";
 import { extensionActionAnchor } from "../features/extensions/action-anchor";
 import "../features/extensions/extensions.css";
-import {
-  nativeButtonTypeProps as auxNativeButtonTypeProps,
-} from "../ui/native-attribute-props";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { nativeAlertRoleProps, nativeMenuItemRoleProps } from "../ui/native-attribute-props";
 
 type Action = HostMethodResult<"extensionActions">[number];
 function ActionIcon({ action }: { action: Action }) {
   // Chromium's action icon already contains its native badge and attention
   // state; adding another badge here would draw it twice.
-  return action.iconPng ? <img className="extension-action-icon" src={action.iconPng} alt="" /> : shellIconExtension;
+  return action.iconPng ? (
+    <img className="extension-action-icon" src={action.iconPng} alt="" />
+  ) : (
+    shellIconExtension
+  );
 }
 export function ExtensionActions() {
   const available = useFeature("extensions");

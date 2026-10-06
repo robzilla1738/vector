@@ -16,10 +16,14 @@ it("normalizes accents, requires every token, and ranks field names above descri
 });
 
 it("caps results and exposes implemented Calendar and Plugins destinations", () => {
-  const items = Array.from({ length: 20 }, (_, index) => ({ category: "General", label: `Option ${index}`, description: "setting" }));
+  const items = Array.from({ length: 20 }, (_, index) => ({
+    category: "General",
+    label: `Option ${index}`,
+    description: "setting",
+  }));
   expect(searchSettingsIndex(items, "option")).toHaveLength(12);
-  expect(searchSettings("calendar").some(item => item.label === "Google Calendar")).toBe(true);
-  expect(searchSettings("plugins").some(item => item.label === "Plugins")).toBe(true);
+  expect(searchSettings("calendar").some((item) => item.label === "Google Calendar")).toBe(true);
+  expect(searchSettings("plugins").some((item) => item.label === "Plugins")).toBe(true);
 });
 
 it("indexes the rendered field props and uses them in search", async () => {
@@ -27,17 +31,27 @@ it("indexes the rendered field props and uses them in search", async () => {
   const container = document.createElement("div");
   const root = createRoot(container);
   try {
-    await act(async () => root.render(
-      <section data-settings-section="Appearance">
-        <SettingsField label="Theme" description="Appearance mode" searchTerms={["color", "contrast"]}>
-          <button>Dark</button>
-        </SettingsField>
-      </section>,
-    ));
+    await act(async () =>
+      root.render(
+        <section data-settings-section="Appearance">
+          <SettingsField label="Theme" description="Appearance mode" searchTerms={["color", "contrast"]}>
+            <button>Dark</button>
+          </SettingsField>
+        </section>,
+      ),
+    );
     const fields = collectSettingsFields(container);
-    expect(fields).toEqual([{ category: "Appearance", label: "Theme", description: "Appearance mode", target: "Theme", searchTerms: ["color", "contrast"] }]);
+    expect(fields).toEqual([
+      {
+        category: "Appearance",
+        label: "Theme",
+        description: "Appearance mode",
+        target: "Theme",
+        searchTerms: ["color", "contrast"],
+      },
+    ]);
     expect(searchSettings("contrast", fields)).toEqual(fields);
-    expect(searchSettings("theme", fields).filter(item => item.label === "Theme")).toHaveLength(1);
+    expect(searchSettings("theme", fields).filter((item) => item.label === "Theme")).toHaveLength(1);
   } finally {
     await act(async () => root.unmount());
     vi.unstubAllGlobals();

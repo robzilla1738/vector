@@ -28,12 +28,16 @@ import {
 } from "@aux/runtime";
 
 const cleanup: (() => void)[] = [];
-afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
+afterEach(() => {
+  for (const fn of cleanup.splice(0).reverse()) fn();
+});
 
 it("keeps Aux session and MCP identities fail-closed", () => {
   expect(SESSION_PARTITIONS).toEqual({ browsing: "persist:aux-default" });
-  expect(mcpCatalogGrouped("task").map(group => group.group)).toEqual(["browser", "task", "workspace"]);
-  expect(mcpCatalogForScope("task", { query: "verify", group: "task" }).map(tool => tool.name)).toEqual(["aux_task_verify_criterion"]);
+  expect(mcpCatalogGrouped("task").map((group) => group.group)).toEqual(["browser", "task", "workspace"]);
+  expect(mcpCatalogForScope("task", { query: "verify", group: "task" }).map((tool) => tool.name)).toEqual([
+    "aux_task_verify_criterion",
+  ]);
   expect(profileBackupAction("Default/Bookmarks")).toBe("copy");
   expect(profileBackupAction("Default/Cookies")).toBe("refuse");
   expect(profileBackupAction("Default/Login Data")).toBe("refuse");
@@ -43,8 +47,8 @@ it("keeps Aux session and MCP identities fail-closed", () => {
   expect(() => refuseSilentCredentialMove("Adapter")).toThrow(/stay in place/i);
   expect(() => requireScopedAuxMcpCatalog({})).toThrow(/AUX_MCP_TOKEN/);
   requireScopedAuxMcpCatalog({ AUX_MCP_TOKEN: "scoped" });
-  expect(mcpCatalogForScope("task").some(tool => tool.name === "aux_task_verify_criterion")).toBe(true);
-  expect(mcpCatalogForScope("task").some(tool => tool.name === "aux_task_replace_agent")).toBe(true);
+  expect(mcpCatalogForScope("task").some((tool) => tool.name === "aux_task_verify_criterion")).toBe(true);
+  expect(mcpCatalogForScope("task").some((tool) => tool.name === "aux_task_replace_agent")).toBe(true);
 });
 
 it("unifies Spaces with workspaces by retained IDs and never merges the same name", () => {
@@ -57,9 +61,13 @@ it("unifies Spaces with workspaces by retained IDs and never merges the same nam
   const first = tasks.createWorkspace("Research");
   const second = tasks.createWorkspace("Research");
   const listed = spaces.list();
-  expect(listed.filter(space => space.name === "Research")).toHaveLength(2);
-  expect(new Set(listed.map(space => space.workspaceId))).toEqual(new Set([first.workspaceId, second.workspaceId]));
-  expect(listed.find(space => space.workspaceId === first.workspaceId)?.id).not.toBe(listed.find(space => space.workspaceId === second.workspaceId)?.id);
+  expect(listed.filter((space) => space.name === "Research")).toHaveLength(2);
+  expect(new Set(listed.map((space) => space.workspaceId))).toEqual(
+    new Set([first.workspaceId, second.workspaceId]),
+  );
+  expect(listed.find((space) => space.workspaceId === first.workspaceId)?.id).not.toBe(
+    listed.find((space) => space.workspaceId === second.workspaceId)?.id,
+  );
 });
 
 it("fences coordinator leases in-process and allows expired takeover", () => {
@@ -84,9 +92,17 @@ it("skips incomplete backups and fails closed when the backup cannot fit", async
   mkdirSync(incomplete, { recursive: true });
   writeFileSync(join(incomplete, "readme.txt"), "not a backup");
   expect(await listRuntimeBackups(directory)).toEqual([]);
-  await expect(createRuntimeBackup(repo, directory, { maxBackupBytes: 1 })).rejects.toThrow(/Not enough free space/);
+  await expect(createRuntimeBackup(repo, directory, { maxBackupBytes: 1 })).rejects.toThrow(
+    /Not enough free space/,
+  );
   expect(await listRuntimeBackups(directory)).toEqual([]);
-  await expect(createRuntimeBackup(repo, directory, { interrupt: () => { throw new Error("killed"); } })).rejects.toThrow(/killed/);
+  await expect(
+    createRuntimeBackup(repo, directory, {
+      interrupt: () => {
+        throw new Error("killed");
+      },
+    }),
+  ).rejects.toThrow(/killed/);
   expect(await listRuntimeBackups(directory)).toEqual([]);
   const killed = join(directory, "backups", "aux-runtime-killed");
   mkdirSync(killed, { recursive: true });
@@ -99,7 +115,10 @@ it("keeps the compact and mid-width conversation breakpoints", () => {
   // wider layouts are governed by the full-page conversation rule, not a breakpoint
   expect(css).toContain("@media (max-width: 1024px)");
   expect(css).toContain("@media (min-width: 1025px) and (max-width: 1279px)");
-  const compact = css.slice(css.indexOf("@media (max-width: 1024px)"), css.indexOf("@media (min-width: 1025px)"));
+  const compact = css.slice(
+    css.indexOf("@media (max-width: 1024px)"),
+    css.indexOf("@media (min-width: 1025px)"),
+  );
   expect(compact).toContain(".empty-state");
   expect(compact).toContain(".stage-card.loading");
   expect(compact).toContain(".sidebar.collapsed");
@@ -108,17 +127,49 @@ it("keeps the compact and mid-width conversation breakpoints", () => {
 });
 
 it("defaults task resource access to reference and never journals read-only programs", () => {
-  expect(TaskResourceSchema.parse({ resourceId: "r1", kind: "url", locator: "https://example.test/", label: "Example" }).access).toBeUndefined();
-  expect(TaskResourceSchema.parse({ resourceId: "r2", kind: "repository", locator: "/tmp/checkout", label: "Repo" }).access).toBeUndefined();
-  expect(TaskResourceSchema.parse({ resourceId: "r3", kind: "url", locator: "https://example.test/", label: "Example", access: "read" }).access).toBe("read");
+  expect(
+    TaskResourceSchema.parse({
+      resourceId: "r1",
+      kind: "url",
+      locator: "https://example.test/",
+      label: "Example",
+    }).access,
+  ).toBeUndefined();
+  expect(
+    TaskResourceSchema.parse({
+      resourceId: "r2",
+      kind: "repository",
+      locator: "/tmp/checkout",
+      label: "Repo",
+    }).access,
+  ).toBeUndefined();
+  expect(
+    TaskResourceSchema.parse({
+      resourceId: "r3",
+      kind: "url",
+      locator: "https://example.test/",
+      label: "Example",
+      access: "read",
+    }).access,
+  ).toBe("read");
   const db = openDb(":memory:");
   cleanup.push(() => db.close());
   const ledger = new DurableWriteLedger(db);
-  const read = beginConsequentialWrite(ledger, { runId: "direct:p", pageId: "p", documentEpoch: 1, steps: [{ op: "extract", target: "r1" }] });
+  const read = beginConsequentialWrite(ledger, {
+    runId: "direct:p",
+    pageId: "p",
+    documentEpoch: 1,
+    steps: [{ op: "extract", target: "r1" }],
+  });
   expect(read.skip).toBe(false);
   expect(read.intentId).toBeUndefined();
   expect(ledger.unresolved("direct:p")).toEqual([]);
-  const write = beginConsequentialWrite(ledger, { runId: "direct:p", pageId: "p", documentEpoch: 1, steps: [{ op: "click", target: "r1" }] });
+  const write = beginConsequentialWrite(ledger, {
+    runId: "direct:p",
+    pageId: "p",
+    documentEpoch: 1,
+    steps: [{ op: "click", target: "r1" }],
+  });
   expect(write.intentId).toBeTruthy();
 });
 
@@ -138,8 +189,22 @@ it("derives the same task logical action across runs until it is confirmed", () 
   const db = openDb(":memory:");
   cleanup.push(() => db.close());
   const ledger = new DurableWriteLedger(db);
-  const first = beginConsequentialWrite(ledger, { runId: "a", pageId: "p", documentEpoch: 1, steps: [{ op: "click", target: "r1" }], taskId: "t", taskRevision: 2 });
+  const first = beginConsequentialWrite(ledger, {
+    runId: "a",
+    pageId: "p",
+    documentEpoch: 1,
+    steps: [{ op: "click", target: "r1" }],
+    taskId: "t",
+    taskRevision: 2,
+  });
   expect(first.skip).toBe(false);
-  const second = beginConsequentialWrite(ledger, { runId: "b", pageId: "q", documentEpoch: 8, steps: [{ op: "click", target: "r1" }], taskId: "t", taskRevision: 2 });
+  const second = beginConsequentialWrite(ledger, {
+    runId: "b",
+    pageId: "q",
+    documentEpoch: 8,
+    steps: [{ op: "click", target: "r1" }],
+    taskId: "t",
+    taskRevision: 2,
+  });
   expect(second.skip).toBe(true);
 });

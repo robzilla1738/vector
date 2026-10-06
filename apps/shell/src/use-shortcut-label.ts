@@ -4,13 +4,17 @@ import { bridge } from "./bridge";
 import { useStore } from "./store";
 
 /** Display chord for a command after the person's remaps; "" when it has no binding on this platform. */
-export function shortcutLabel(commandId: string, overrides?: ShortcutOverrides | null, platform = bridge.platform): string {
-  const def = effectiveShortcuts(overrides).find(item => item.id === commandId);
-  const binding = def?.bindings.find(b => !b.platforms || b.platforms.includes(platform));
+export function shortcutLabel(
+  commandId: string,
+  overrides?: ShortcutOverrides | null,
+  platform = bridge.platform,
+): string {
+  const def = effectiveShortcuts(overrides).find((item) => item.id === commandId);
+  const binding = def?.bindings.find((b) => !b.platforms || b.platforms.includes(platform));
   return binding ? bindingLabel(binding, platform) : "";
 }
 
-const useOverrides = () => useStore(s => s.settings?.shortcutOverrides as ShortcutOverrides | undefined);
+const useOverrides = () => useStore((s) => s.settings?.shortcutOverrides as ShortcutOverrides | undefined);
 
 export function useShortcutLabel(commandId: string): string {
   return shortcutLabel(commandId, useOverrides());

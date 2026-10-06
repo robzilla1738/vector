@@ -48,30 +48,55 @@ const scripted = (objects: unknown[]): ModelClient => {
  * a failed step outcome — the coordinator must wait on THAT suspension, not a
  * second ask-user-question record.
  */
-function gateAsk(runId: string, step: PlanStep | undefined, park?: (ctx: { runId: string; approvalId: string }) => void) {
+function gateAsk(
+  runId: string,
+  step: PlanStep | undefined,
+  park?: (ctx: { runId: string; approvalId: string }) => void,
+) {
   const approvalId = "ap-1";
   park?.({ runId, approvalId });
-  const steps: StepOutcome[] = [{
-    stepId: step?.id ?? "s1", op: step?.op ?? "click", status: "failed", startedAt: 1, durationMs: 1,
-    error: { code: "needs_input", message: "Approve the checkout click?" },
-  }];
+  const steps: StepOutcome[] = [
+    {
+      stepId: step?.id ?? "s1",
+      op: step?.op ?? "click",
+      status: "failed",
+      startedAt: 1,
+      durationMs: 1,
+      error: { code: "needs_input", message: "Approve the checkout click?" },
+    },
+  ];
   return { status: "failed" as const, steps };
 }
 
-function harness(model: ModelClient, onExecute: (runId: string, step: PlanStep | undefined) => { status: string; steps: StepOutcome[] }) {
+function harness(
+  model: ModelClient,
+  onExecute: (runId: string, step: PlanStep | undefined) => { status: string; steps: StepOutcome[] },
+) {
   const db: DatabaseSync = openDb(":memory:");
   const repo = new Repo(db);
   const events = new EventBus(repo);
   const pages = {
     observe: vi.fn(async () => obs()),
-    execute: vi.fn(async (program: { steps: PlanStep[] }, ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void }) =>
-      onExecute(ctx?.runId ?? "", program.steps[0])),
+    execute: vi.fn(
+      async (
+        program: { steps: PlanStep[] },
+        ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void },
+      ) => onExecute(ctx?.runId ?? "", program.steps[0]),
+    ),
     capture: vi.fn(async () => ({ dataUrl: undefined, width: 0, height: 0, scale: 1 })),
     livePageIds: () => ["p1"],
-    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/order", 1),  viewStatus: "visible", documentEpoch: 1, url: "http://x.test/order"  }),
+    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({
+      ...fixturePage(fixturePageId, "http://x.test/order", 1),
+      viewStatus: "visible",
+      documentEpoch: 1,
+      url: "http://x.test/order",
+    }),
   };
-  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
-    repo, events, pages: pages as never,
+  const coordinator = new RunCoordinator({
+    turnMentions: fixtureTurnMentions((pageId) => pages.get(pageId)),
+    repo,
+    events,
+    pages: pages as never,
     model: () => model,
     defaultModel: () => "test/planner",
     recoveryModel: () => undefined,
@@ -82,12 +107,20 @@ function harness(model: ModelClient, onExecute: (runId: string, step: PlanStep |
 }
 
 const suspensionState = (db: DatabaseSync, suspensionId: string) =>
-  (db.prepare("SELECT state FROM safety_suspensions WHERE suspension_id=?").get(suspensionId) as { state: string }).state;
+  (
+    db.prepare("SELECT state FROM safety_suspensions WHERE suspension_id=?").get(suspensionId) as {
+      state: string;
+    }
+  ).state;
 
 async function waitForStatus(repo: Repo, runId: string, status: string) {
   for (let i = 0; i < 400; i++) {
     const r = repo.getRun(runId)!;
-    if (r.status === status || ["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(r.status)) return r;
+    if (
+      r.status === status ||
+      ["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(r.status)
+    )
+      return r;
     await new Promise((res) => setTimeout(res, 10));
   }
   throw new Error(`run never reached ${status}`);
@@ -96,7 +129,8 @@ async function waitForStatus(repo: Repo, runId: string, status: string) {
 async function settle(repo: Repo, runId: string) {
   for (let i = 0; i < 400; i++) {
     const r = repo.getRun(runId)!;
-    if (["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(r.status)) return r;
+    if (["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(r.status))
+      return r;
     await new Promise((res) => setTimeout(res, 10));
   }
   throw new Error("run did not settle");
@@ -109,11 +143,22 @@ describe("gate ask → coordinator suspension flow", () => {
       { status: "done", message: "done", result: { ok: "Order page" } },
     ]);
     let coordinator!: RunCoordinator;
-    const h = harness(model, (runId) => gateAsk(runId, { id: "s1", op: "click", target: "r1" } as PlanStep,
-      ({ runId, approvalId }) => coordinator.suspensions.park({
-        runId, threadId: "chat-1", turnId: runId, kind: "approval",
-        request: { kind: "approval", approvalId, instruction: "Approve the checkout click?", guidance: "Wait for approval." },
-      })));
+    const h = harness(model, (runId) =>
+      gateAsk(runId, { id: "s1", op: "click", target: "r1" } as PlanStep, ({ runId, approvalId }) =>
+        coordinator.suspensions.park({
+          runId,
+          threadId: "chat-1",
+          turnId: runId,
+          kind: "approval",
+          request: {
+            kind: "approval",
+            approvalId,
+            instruction: "Approve the checkout click?",
+            guidance: "Wait for approval.",
+          },
+        }),
+      ),
+    );
     coordinator = h.coordinator;
 
     const run = await coordinator.start({ goal: "place the order", pageIds: ["p1"], chatId: "chat-1" });
@@ -125,7 +170,9 @@ describe("gate ask → coordinator suspension flow", () => {
     expect(parked.status).toBe("needs_input");
     expect(pending?.kind).toBe("approval");
     expect(pending?.request.approvalId).toBe("ap-1");
-    expect(h.db.prepare("SELECT COUNT(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId)).toEqual({ n: 1 });
+    expect(
+      h.db.prepare("SELECT COUNT(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId),
+    ).toEqual({ n: 1 });
 
     // What safety.approvals.decide does: resolve the suspension, wake the run.
     const resolved = coordinator.suspensions.resolveByApprovalId("ap-1", "answered");
@@ -144,11 +191,22 @@ describe("gate ask → coordinator suspension flow", () => {
       { status: "done", message: "done", result: { ok: "Order page" } },
     ]);
     let coordinator!: RunCoordinator;
-    const h = harness(model, (runId) => gateAsk(runId, { id: "s1", op: "click", target: "r1" } as PlanStep,
-      ({ runId, approvalId }) => coordinator.suspensions.park({
-        runId, threadId: "chat-1", turnId: runId, kind: "approval",
-        request: { kind: "approval", approvalId, instruction: "Approve the checkout click?", guidance: "Wait for approval." },
-      })));
+    const h = harness(model, (runId) =>
+      gateAsk(runId, { id: "s1", op: "click", target: "r1" } as PlanStep, ({ runId, approvalId }) =>
+        coordinator.suspensions.park({
+          runId,
+          threadId: "chat-1",
+          turnId: runId,
+          kind: "approval",
+          request: {
+            kind: "approval",
+            approvalId,
+            instruction: "Approve the checkout click?",
+            guidance: "Wait for approval.",
+          },
+        }),
+      ),
+    );
     coordinator = h.coordinator;
 
     const run = await coordinator.start({ goal: "place the order", pageIds: ["p1"], chatId: "chat-1" });
@@ -156,7 +214,10 @@ describe("gate ask → coordinator suspension flow", () => {
     const pending = coordinator.suspensions.pending(run.runId)!;
 
     const resolved = coordinator.suspensions.resolveByApprovalId("ap-1", "cancelled");
-    await coordinator.answer(resolved!.runId, "The user declined the requested action. Do not retry it; choose a different action.");
+    await coordinator.answer(
+      resolved!.runId,
+      "The user declined the requested action. Do not retry it; choose a different action.",
+    );
 
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -176,12 +237,32 @@ describe("gate ask → coordinator suspension flow", () => {
       // Only the first dispatch asks; the replanned chunk dispatches cleanly.
       if (!asked) {
         asked = true;
-        return gateAsk(runId, step, ({ runId }) => coordinator.suspensions.park({
-          runId, threadId: "chat-1", turnId: runId, kind: "action-confirmation",
-          request: { kind: "action-confirmation", instruction: "Produce a final confirmation turn with a review artifact.", guidance: "End the turn with one tool call carrying the artifact." },
-        }));
+        return gateAsk(runId, step, ({ runId }) =>
+          coordinator.suspensions.park({
+            runId,
+            threadId: "chat-1",
+            turnId: runId,
+            kind: "action-confirmation",
+            request: {
+              kind: "action-confirmation",
+              instruction: "Produce a final confirmation turn with a review artifact.",
+              guidance: "End the turn with one tool call carrying the artifact.",
+            },
+          }),
+        );
       }
-      return { status: "completed" as const, steps: [{ stepId: step?.id ?? "s1", op: step?.op ?? "click", status: "ok" as const, startedAt: 1, durationMs: 1 }] };
+      return {
+        status: "completed" as const,
+        steps: [
+          {
+            stepId: step?.id ?? "s1",
+            op: step?.op ?? "click",
+            status: "ok" as const,
+            startedAt: 1,
+            durationMs: 1,
+          },
+        ],
+      };
     });
     coordinator = h.coordinator;
 

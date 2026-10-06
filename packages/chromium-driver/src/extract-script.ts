@@ -1,19 +1,48 @@
 /** Serialized by Playwright: keep helpers inside this function, with no imports. */
-export function extractElements(elements: Element[] | null, attribute: string | null = null): (string | null)[] {
+export function extractElements(
+  elements: Element[] | null,
+  attribute: string | null = null,
+): (string | null)[] {
   const doc = elements?.[0]?.ownerDocument ?? document;
   const secrets = new Set<string>();
   const protectedField = (element: Element) => {
     if ((element.getAttribute("type") ?? "").toLowerCase() === "password") return true;
-    if ((element.getAttribute("autocomplete") ?? "").toLowerCase().split(/\s+/)
-      .some(token => ["current-password", "new-password", "one-time-code", "cc-number", "cc-csc", "cc-exp", "cc-exp-month", "cc-exp-year"].includes(token))) return true;
-    const identity = ["name", "id", "aria-label", "placeholder"].map(name => element.getAttribute(name)).filter(Boolean).join(" ").toLowerCase();
-    return /(?:password|passphrase|secret|api[-_ ]?key|access[-_ ]?token|refresh[-_ ]?token|id[-_ ]?token|auth(?:orization)?[-_ ]?token|session[-_ ]?token|bearer[-_ ]?token|card[-_ ]?number|credit[-_ ]?card|security[-_ ]?code|\bcvv\b|\bcvc\b|\bcsc\b)/i.test(identity);
+    if (
+      (element.getAttribute("autocomplete") ?? "")
+        .toLowerCase()
+        .split(/\s+/)
+        .some((token) =>
+          [
+            "current-password",
+            "new-password",
+            "one-time-code",
+            "cc-number",
+            "cc-csc",
+            "cc-exp",
+            "cc-exp-month",
+            "cc-exp-year",
+          ].includes(token),
+        )
+    )
+      return true;
+    const identity = ["name", "id", "aria-label", "placeholder"]
+      .map((name) => element.getAttribute(name))
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return /(?:password|passphrase|secret|api[-_ ]?key|access[-_ ]?token|refresh[-_ ]?token|id[-_ ]?token|auth(?:orization)?[-_ ]?token|session[-_ ]?token|bearer[-_ ]?token|card[-_ ]?number|credit[-_ ]?card|security[-_ ]?code|\bcvv\b|\bcvc\b|\bcsc\b)/i.test(
+      identity,
+    );
   };
   const scan = (root: Document | ShadowRoot) => {
     for (const element of root.querySelectorAll("*")) {
       if (protectedField(element)) {
         const field = element as HTMLInputElement;
-        for (const value of [field.value, field.defaultValue, field.isContentEditable ? field.innerText : undefined])
+        for (const value of [
+          field.value,
+          field.defaultValue,
+          field.isContentEditable ? field.innerText : undefined,
+        ])
           if (typeof value === "string" && value) secrets.add(value);
       }
       if (element.shadowRoot) scan(element.shadowRoot);
@@ -28,11 +57,20 @@ export function extractElements(elements: Element[] | null, attribute: string | 
   const textOf = (root: Node): string => {
     const parts: string[] = [];
     const walk = (node: Node) => {
-      if (node.nodeType === 3) { const text = redact(node.nodeValue ?? "").replace(/\s+/g, " ").trim(); if (text) parts.push(text); return; }
+      if (node.nodeType === 3) {
+        const text = redact(node.nodeValue ?? "")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (text) parts.push(text);
+        return;
+      }
       if (node.nodeType === 1) {
         const element = node as Element;
         if (["style", "script", "template", "noscript"].includes(element.tagName.toLowerCase())) return;
-        if (protectedField(element)) { if ((element as HTMLInputElement).value || element.textContent) parts.push("{redacted}"); return; }
+        if (protectedField(element)) {
+          if ((element as HTMLInputElement).value || element.textContent) parts.push("{redacted}");
+          return;
+        }
       }
       node.childNodes.forEach(walk);
       if (node.nodeType === 1 && (node as Element).shadowRoot) walk((node as Element).shadowRoot!);
@@ -55,7 +93,7 @@ export function extractElements(elements: Element[] | null, attribute: string | 
     visit(doc.body ?? doc.documentElement);
     return [(chunks.length ? `— shadow DOM —\n${chunks.join("\n")}\n\n${base}` : base).slice(0, 4000)];
   }
-  return elements.map(element => {
+  return elements.map((element) => {
     if (!attribute) return textOf(element);
     const value = element.getAttribute(attribute);
     if (value === null) return null;

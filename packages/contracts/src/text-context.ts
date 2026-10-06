@@ -2,7 +2,9 @@
 export function textContextShares(lengths: number[], budget: number): number[] {
   const shares = lengths.map(() => 0);
   let remaining = Math.max(0, Math.floor(budget));
-  let active = lengths.map((length, index) => ({ length: Math.max(0, Math.floor(length)), index })).filter(item => item.length > 0);
+  let active = lengths
+    .map((length, index) => ({ length: Math.max(0, Math.floor(length)), index }))
+    .filter((item) => item.length > 0);
   while (remaining > 0 && active.length) {
     const share = Math.max(1, Math.floor(remaining / active.length));
     for (const item of active) {
@@ -10,7 +12,7 @@ export function textContextShares(lengths: number[], budget: number): number[] {
       shares[item.index]! += added;
       remaining -= added;
     }
-    active = active.filter(item => shares[item.index]! < item.length);
+    active = active.filter((item) => shares[item.index]! < item.length);
   }
   return shares;
 }

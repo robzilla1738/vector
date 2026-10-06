@@ -32,7 +32,11 @@ export function engineList(custom?: readonly KeywordEngine[]): KeywordEngine[] {
   for (const engine of DEFAULT_ENGINES) byKeyword.set(engine.keyword, engine);
   for (const engine of custom ?? []) {
     if (!KEYWORD.test(engine.keyword) || !isSearchEngineTemplate(engine.template)) continue;
-    byKeyword.set(engine.keyword.toLowerCase(), { keyword: engine.keyword.toLowerCase(), name: engine.name.slice(0, 60), template: engine.template });
+    byKeyword.set(engine.keyword.toLowerCase(), {
+      keyword: engine.keyword.toLowerCase(),
+      name: engine.name.slice(0, 60),
+      template: engine.template,
+    });
   }
   return [...byKeyword.values()];
 }
@@ -41,14 +45,17 @@ export function engineList(custom?: readonly KeywordEngine[]): KeywordEngine[] {
  * `kw` alone focuses engine selection; `kw terms` resolves to a URL.
  * Returns null when the first word is not a registered keyword.
  */
-export function resolveKeyword(input: string, engines: readonly KeywordEngine[]): { engine: KeywordEngine; terms: string; url: string } | null {
+export function resolveKeyword(
+  input: string,
+  engines: readonly KeywordEngine[],
+): { engine: KeywordEngine; terms: string; url: string } | null {
   const v = input.trim();
   const space = v.indexOf(" ");
   if (space < 0) return null;
   const keyword = v.slice(0, space).toLowerCase();
   const terms = v.slice(space + 1).trim();
   if (!terms) return null;
-  const engine = engines.find(candidate => candidate.keyword === keyword);
+  const engine = engines.find((candidate) => candidate.keyword === keyword);
   if (!engine) return null;
   return { engine, terms, url: engine.template.replace("%s", encodeURIComponent(terms)) };
 }
@@ -57,7 +64,7 @@ export function resolveKeyword(input: string, engines: readonly KeywordEngine[])
 export function keywordOf(input: string, engines: readonly KeywordEngine[]): KeywordEngine | null {
   const v = input.trim();
   const head = (v.includes(" ") ? v.slice(0, v.indexOf(" ")) : v).toLowerCase();
-  return engines.find(engine => engine.keyword === head) ?? null;
+  return engines.find((engine) => engine.keyword === head) ?? null;
 }
 
 /**
@@ -74,15 +81,20 @@ export function suggestEndpoint(engineTemplate: string | undefined): string | nu
   try {
     const host = new URL(engineTemplate).hostname.toLowerCase();
     return SUGGEST_ENDPOINTS[host] ?? null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** Provider responses are loosely shaped — take the first string array found. */
 export function parseSuggestResponse(data: unknown): string[] {
   const walk = (value: unknown): string[] => {
     if (Array.isArray(value)) {
-      if (value.every(item => typeof item === "string")) return value as string[];
-      for (const item of value) { const found = walk(item); if (found.length) return found; }
+      if (value.every((item) => typeof item === "string")) return value as string[];
+      for (const item of value) {
+        const found = walk(item);
+        if (found.length) return found;
+      }
     }
     return [];
   };

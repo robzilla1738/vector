@@ -30,12 +30,20 @@ it("wraps complete recorded account and Profile metadata while preserving the or
   const accountKey = `${"OriginalRecordedAccount".repeat(12)}@example.test`;
   const profileName = "OriginalProfileName".repeat(15);
   const source: ConversationSource = {
-    kind: "calendar", sourceId: "original-source", runId: "original-run",
-    connectionId: "original-connection", accountKey, profileId: "original-profile",
-    title: "Original Calendar event", url: "https://calendar.google.com/calendar/u/0/r/eventedit/original",
-    start: "2026-10-04", end: "2026-10-05", observedAt: 1,
+    kind: "calendar",
+    sourceId: "original-source",
+    runId: "original-run",
+    connectionId: "original-connection",
+    accountKey,
+    profileId: "original-profile",
+    title: "Original Calendar event",
+    url: "https://calendar.google.com/calendar/u/0/r/eventedit/original",
+    start: "2026-10-04",
+    end: "2026-10-05",
+    observedAt: 1,
   };
-  const names = { "original-profile": profileName }, opened = vi.fn();
+  const names = { "original-profile": profileName },
+    opened = vi.fn();
   await act(async () => root.render(<SourceRow source={source} profileNames={names} onOpen={opened} />));
   const metadata = host.querySelector("small")!;
   expect(metadata.textContent).toBe(sourceDescription(source, names));

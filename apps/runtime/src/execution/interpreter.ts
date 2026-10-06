@@ -22,16 +22,13 @@ export interface NodeContext {
   emit: (outcome: StepOutcome, step: Step) => void;
   onEmit?: (label: string | undefined, value: unknown) => void;
   onNode?: (info: { kind: string; id: string; detail?: string }) => void;
-  observe?: (req: {
-    scope?: ObservationScope;
-    subtreeRef?: string;
-  }) => Promise<unknown>;
+  observe?: (req: { scope?: ObservationScope; subtreeRef?: string }) => Promise<unknown>;
   callOperation?: (name: string, args: Record<string, unknown>) => Promise<unknown>;
   checkpoint?: (name: string, env: Record<string, unknown>) => void;
   /** §7.7 — fetch the persisted env for `program.resumeFrom`. */
-  loadCheckpoint?: (name: string) =>
-    | { inputs?: Record<string, unknown>; vars?: Record<string, unknown>; emitted?: unknown[] }
-    | undefined;
+  loadCheckpoint?: (
+    name: string,
+  ) => { inputs?: Record<string, unknown>; vars?: Record<string, unknown>; emitted?: unknown[] } | undefined;
   allowEval: boolean;
 }
 
@@ -63,7 +60,11 @@ function getPath(root: unknown, path: string): unknown {
   return cur;
 }
 
-function resolveExpr(expr: { input?: string; variable?: string; literal?: unknown; eval?: string }, env: Env, allowEval: boolean): unknown {
+function resolveExpr(
+  expr: { input?: string; variable?: string; literal?: unknown; eval?: string },
+  env: Env,
+  allowEval: boolean,
+): unknown {
   if (expr.input !== undefined) return env.inputs[expr.input];
   if (expr.variable !== undefined) {
     const [head, ...rest] = expr.variable.split(".");
@@ -72,7 +73,8 @@ function resolveExpr(expr: { input?: string; variable?: string; literal?: unknow
   }
   if ("literal" in expr) return expr.literal;
   if (expr.eval !== undefined) {
-    if (!allowEval) throw new AuxError("invalid_params", "eval expressions are disabled for this program source");
+    if (!allowEval)
+      throw new AuxError("invalid_params", "eval expressions are disabled for this program source");
     // trusted-input escape hatch — same trust tier as the `evaluate` step
     // op but in-process; only reachable when allowEval is set.
     const fn = new Function("vars", "inputs", `"use strict"; return (${expr.eval});`);
@@ -86,7 +88,9 @@ function resolveValue(v: unknown, env: Env, allowEval: boolean): unknown {
   if (isExprRef(v)) return resolveExpr(v, env, allowEval);
   if (Array.isArray(v)) return v.map((x) => resolveValue(x, env, allowEval));
   if (typeof v === "object" && v !== null) {
-    return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, resolveValue(x, env, allowEval)]));
+    return Object.fromEntries(
+      Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, resolveValue(x, env, allowEval)]),
+    );
   }
   return v;
 }
@@ -111,12 +115,18 @@ export function evalPredicate(p: Predicate, env: Env, allowEval: boolean): boole
   const a = resolveValue(p.a, env, allowEval);
   const b = resolveValue(p.b, env, allowEval);
   switch (p.op) {
-    case "eq": return deepEq(a, b);
-    case "ne": return !deepEq(a, b);
-    case "gt": return Number(a) > Number(b);
-    case "gte": return Number(a) >= Number(b);
-    case "lt": return Number(a) < Number(b);
-    case "lte": return Number(a) <= Number(b);
+    case "eq":
+      return deepEq(a, b);
+    case "ne":
+      return !deepEq(a, b);
+    case "gt":
+      return Number(a) > Number(b);
+    case "gte":
+      return Number(a) >= Number(b);
+    case "lt":
+      return Number(a) < Number(b);
+    case "lte":
+      return Number(a) <= Number(b);
     case "contains":
       if (typeof a === "string") return a.includes(String(b));
       if (Array.isArray(a)) return a.some((x) => deepEq(x, b));
@@ -124,8 +134,10 @@ export function evalPredicate(p: Predicate, env: Env, allowEval: boolean): boole
       return false;
     case "in":
       return Array.isArray(b) ? b.some((x) => deepEq(x, a)) : false;
-    case "exists": return a !== undefined && a !== null;
-    case "truthy": return !!a;
+    case "exists":
+      return a !== undefined && a !== null;
+    case "truthy":
+      return !!a;
   }
 }
 
@@ -156,7 +168,14 @@ export async function executeNodes(
   const maxNodes = budget.maxNodes ?? 2000;
   const maxIterations = budget.maxIterations ?? 500;
   const deadline = budget.deadlineMs ? Date.now() + budget.deadlineMs : undefined;
-  const state: LoopState = { nodeCount: 0, iterationCount: 0, emitted: [], checkpoints: [], returnValue: undefined, returned: false };
+  const state: LoopState = {
+    nodeCount: 0,
+    iterationCount: 0,
+    emitted: [],
+    checkpoints: [],
+    returnValue: undefined,
+    returned: false,
+  };
 
   // §7.7/§17.3 — resume from a persisted checkpoint: restore its env, then
   // skip top-level nodes until the checkpoint marker is passed. This is a
@@ -164,14 +183,20 @@ export async function executeNodes(
   let resumeAt: string | undefined;
   if (program.resumeFrom) {
     const saved = ctx.loadCheckpoint?.(program.resumeFrom);
-    if (!saved) throw new AuxError("not_found", `no persisted checkpoint "${program.resumeFrom}" to resume from`);
+    if (!saved)
+      throw new AuxError("not_found", `no persisted checkpoint "${program.resumeFrom}" to resume from`);
     env.inputs = { ...saved.inputs, ...env.inputs };
     Object.assign(env.vars, saved.vars ?? {});
     state.emitted.push(...(saved.emitted ?? []));
     resumeAt = program.resumeFrom;
   }
 
-  const nodeOutcome = (id: string, kind: string, detail?: string, status: StepOutcome["status"] = "ok"): StepOutcome => {
+  const nodeOutcome = (
+    id: string,
+    kind: string,
+    detail?: string,
+    status: StepOutcome["status"] = "ok",
+  ): StepOutcome => {
     const o: StepOutcome = {
       stepId: id,
       op: kind === "step" ? "step" : kind,
@@ -194,7 +219,8 @@ export async function executeNodes(
       }
       if (ctx.signal?.aborted) throw new AuxError("cancelled", "program cancelled");
       if (state.returned) return;
-      if (deadline && Date.now() > deadline) throw new AuxError("condition_timeout", "program deadline exceeded");
+      if (deadline && Date.now() > deadline)
+        throw new AuxError("condition_timeout", "program deadline exceeded");
       if (++state.nodeCount > maxNodes) throw new AuxError("step_failed", `node budget ${maxNodes} exceeded`);
 
       const nodeId = path ? `${path}.${nodeIdOf(node, i)}` : nodeIdOf(node, i);
@@ -209,7 +235,17 @@ export async function executeNodes(
             const next = nodes[i + 1];
             if (next?.kind !== "step") {
               ctx.emit(
-                { stepId: nodeId, op: step.op, status: "failed", startedAt: Date.now(), durationMs: 0, error: { code: "invalid_params", message: "expectDownload must precede the step that triggers the download" } },
+                {
+                  stepId: nodeId,
+                  op: step.op,
+                  status: "failed",
+                  startedAt: Date.now(),
+                  durationMs: 0,
+                  error: {
+                    code: "invalid_params",
+                    message: "expectDownload must precede the step that triggers the download",
+                  },
+                },
                 step,
               );
               throw new AuxError("invalid_params", "expectDownload must precede the trigger step");
@@ -258,7 +294,10 @@ export async function executeNodes(
           const declared = Math.max(1, Math.min(node.concurrency ?? 1, 8));
           // iterations share one page: only bodies that just read it may overlap
           const conc = drivesPage(node.body) ? 1 : declared;
-          ctx.emit(nodeOutcome(nodeId, "forEach", `${cap} items${conc > 1 ? ` · ×${conc}` : ""}`), fakeStep(nodeId, "forEach"));
+          ctx.emit(
+            nodeOutcome(nodeId, "forEach", `${cap} items${conc > 1 ? ` · ×${conc}` : ""}`),
+            fakeStep(nodeId, "forEach"),
+          );
           // sequential: shared env, in-order side effects
           if (declared === 1) {
             for (let idx = 0; idx < cap; idx++) {
@@ -307,16 +346,23 @@ export async function executeNodes(
           break;
         }
         case "observe": {
-          if (!ctx.observe) throw new AuxError("backend_unavailable", "observe node requires an observation hook");
+          if (!ctx.observe)
+            throw new AuxError("backend_unavailable", "observe node requires an observation hook");
           const obs = await ctx.observe({ scope: node.scope, subtreeRef: node.subtreeRef });
           env.vars[node.saveAs ?? "observation"] = obs;
-          ctx.emit({ ...nodeOutcome(nodeId, "observe", node.scope ?? "full") , stepId: nodeId }, fakeStep(nodeId, "observe"));
+          ctx.emit(
+            { ...nodeOutcome(nodeId, "observe", node.scope ?? "full"), stepId: nodeId },
+            fakeStep(nodeId, "observe"),
+          );
           break;
         }
         case "assert": {
           if (!evalPredicate(node.check, env, ctx.allowEval)) {
             const msg = node.message ?? `assert ${nodeId} failed`;
-            ctx.emit({ ...nodeOutcome(nodeId, "assert", msg, "failed"), stepId: nodeId }, fakeStep(nodeId, "assert"));
+            ctx.emit(
+              { ...nodeOutcome(nodeId, "assert", msg, "failed"), stepId: nodeId },
+              fakeStep(nodeId, "assert"),
+            );
             throw new AuxError("assertion_failed", msg);
           }
           ctx.emit(nodeOutcome(nodeId, "assert"), fakeStep(nodeId, "assert"));
@@ -343,7 +389,8 @@ export async function executeNodes(
           return;
         }
         case "call": {
-          if (!ctx.callOperation) throw new AuxError("backend_unavailable", "call node requires an operation registry");
+          if (!ctx.callOperation)
+            throw new AuxError("backend_unavailable", "call node requires an operation registry");
           try {
             const args = Object.fromEntries(
               Object.entries(node.args ?? {}).map(([k, v]) => [k, resolveValue(v, env, ctx.allowEval)]),
@@ -353,7 +400,15 @@ export async function executeNodes(
             ctx.emit(nodeOutcome(nodeId, "call", `${node.operation} ok`), fakeStep(nodeId, "call"));
           } catch (e) {
             ctx.emit(
-              { ...nodeOutcome(nodeId, "call", `${node.operation}: ${e instanceof Error ? e.message : e}`, "failed"), stepId: nodeId },
+              {
+                ...nodeOutcome(
+                  nodeId,
+                  "call",
+                  `${node.operation}: ${e instanceof Error ? e.message : e}`,
+                  "failed",
+                ),
+                stepId: nodeId,
+              },
               fakeStep(nodeId, "call"),
             );
             if (!node.optional) throw e;
@@ -403,28 +458,40 @@ const READ_ONLY_OPS = new Set(["waitFor", "screenshot", "extract"]);
 const drivesPage = (nodes: readonly ProgramNode[]): boolean =>
   nodes.some((n) => {
     switch (n.kind) {
-      case "step": return !READ_ONLY_OPS.has(n.step.op);
-      case "call": return true;
-      case "if": return drivesPage(n.then) || drivesPage(n.else ?? []);
+      case "step":
+        return !READ_ONLY_OPS.has(n.step.op);
+      case "call":
+        return true;
+      case "if":
+        return drivesPage(n.then) || drivesPage(n.else ?? []);
       case "forEach":
-      case "until": return drivesPage(n.body);
-      default: return false;
+      case "until":
+        return drivesPage(n.body);
+      default:
+        return false;
     }
   });
 
 const nodeIdOf = (node: ProgramNode, i: number): string => {
   switch (node.kind) {
-    case "step": return node.step.id;
-    case "let": return `let:${node.name}`;
-    case "call": return `call:${node.operation}`;
-    case "observe": return `observe`;
-    case "emit": return `emit:${node.label ?? i}`;
-    case "checkpoint": return `checkpoint:${node.name ?? i}`;
-    default: return `${node.kind}#${i}`;
+    case "step":
+      return node.step.id;
+    case "let":
+      return `let:${node.name}`;
+    case "call":
+      return `call:${node.operation}`;
+    case "observe":
+      return `observe`;
+    case "emit":
+      return `emit:${node.label ?? i}`;
+    case "checkpoint":
+      return `checkpoint:${node.name ?? i}`;
+    default:
+      return `${node.kind}#${i}`;
   }
 };
 
 /** Node-level ledger rows reuse the StepOutcome shape; the placeholder
  * step carries the node kind so the ledger reads `forEach`/`call`/`emit`
  * rather than a misleading browser op. It never reaches validation. */
-const fakeStep = (id: string, kind: string): Step => ({ id, op: kind } as unknown as Step);
+const fakeStep = (id: string, kind: string): Step => ({ id, op: kind }) as unknown as Step;

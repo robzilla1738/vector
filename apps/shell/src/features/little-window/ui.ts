@@ -8,5 +8,7 @@ export function toggleLittlePanel(next: Exclude<LittlePanel, null>) {
 }
 export const observeLittlePanel = (listener: () => void) => {
   listeners.add(listener);
-  return () => { listeners.delete(listener); };
+  return () => {
+    listeners.delete(listener);
+  };
 };

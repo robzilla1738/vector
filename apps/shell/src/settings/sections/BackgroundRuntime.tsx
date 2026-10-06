@@ -17,17 +17,15 @@ export function BackgroundRuntimeSetting({ active }: { active: boolean }) {
     write,
     formatReadError: String,
   });
-  const [controlRef, run] = usePreferenceCommand<HTMLInputElement>("toggle-background-runtime", scopeId, () => {
-      if (
-        !value ||
-        !owner.owns(value) ||
-        value.managed ||
-        !value.available ||
-        busy
-      )
+  const [controlRef, run] = usePreferenceCommand<HTMLInputElement>(
+    "toggle-background-runtime",
+    scopeId,
+    () => {
+      if (!value || !owner.owns(value) || value.managed || !value.available || busy)
         return Promise.reject(new Error("Choose the current available background runtime control."));
       return perform(!value.enabled, value);
-  });
+    },
+  );
   if (bridge.privateMode)
     return (
       <span {...staticHintProps}>

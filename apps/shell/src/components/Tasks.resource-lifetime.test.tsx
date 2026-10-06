@@ -7,7 +7,9 @@ const state = vi.hoisted(() => ({
   call: vi.fn(),
   privateMode: false,
   windowId: "one",
-  props: null as null | { update: (resources: import("@aux/contracts").Task["resources"]) => Promise<boolean> },
+  props: null as null | {
+    update: (resources: import("@aux/contracts").Task["resources"]) => Promise<boolean>;
+  },
 }));
 vi.mock("../store", async (original) => ({
   ...(await original<typeof import("../store")>()),
@@ -29,7 +31,12 @@ vi.mock("../bridge", async (original) => {
   };
 });
 vi.mock("./TaskReceiptView", () => ({ TaskReceiptView: () => null }));
-vi.mock("./TaskResources", () => ({ TaskResources: (props: typeof state.props) => { state.props = props; return <div>Resource parent probe</div>; } }));
+vi.mock("./TaskResources", () => ({
+  TaskResources: (props: typeof state.props) => {
+    state.props = props;
+    return <div>Resource parent probe</div>;
+  },
+}));
 vi.mock("./CalendarTaskGrants", () => ({ CalendarTaskGrants: () => null }));
 vi.mock("./Routines", () => ({ Routines: () => null }));
 vi.mock("./Goals", () => ({ Goals: () => null }));
@@ -117,46 +124,111 @@ async function render() {
   await act(async () => root.render(<Tasks />));
   expect(state.props).not.toBeNull();
 }
-const resources = [{resourceId:"source",kind:"file" as const,locator:"/original/ref.txt",label:"Original reference",access:"reference" as const}];
+const resources = [
+  {
+    resourceId: "source",
+    kind: "file" as const,
+    locator: "/original/ref.txt",
+    label: "Original reference",
+    access: "reference" as const,
+  },
+];
 const update = () => state.props!.update(resources);
 it("keeps exact original revision/resources and refresh after acknowledged mutation", async () => {
-  await render(); const before = state.call.mock.calls.length;
-  let result!: boolean; await act(async () => {result = await update();});
+  await render();
+  const before = state.call.mock.calls.length;
+  let result!: boolean;
+  await act(async () => {
+    result = await update();
+  });
   expect(result).toBe(true);
   expect(state.call.mock.calls.slice(before)).toEqual([
-    ["tasks.update", {taskId:"original",expectedRevision:1,resources}],
-    ["tasks.get",{taskId:"original"}],["tasks.receipt",{taskId:"original"}],
-    ["tasks.list",{workspaceId:"workspace",includeArchived:true}],
+    ["tasks.update", { taskId: "original", expectedRevision: 1, resources }],
+    ["tasks.get", { taskId: "original" }],
+    ["tasks.receipt", { taskId: "original" }],
+    ["tasks.list", { workspaceId: "workspace", includeArchived: true }],
   ]);
   expect(host.querySelector("fieldset")!.disabled).toBe(false);
 });
 it("retired resource callback refuses before mutation after Private ABA", async () => {
-  await render(); const original = state.props!.update;
-  state.privateMode = true; await render();state.privateMode=false;await render();
-  const before = state.call.mock.calls.length;let result!: boolean;
-  await act(async () => {result=await original(resources);});
-  expect(result).toBe(false);expect(state.call.mock.calls).toHaveLength(before);
+  await render();
+  const original = state.props!.update;
+  state.privateMode = true;
+  await render();
+  state.privateMode = false;
+  await render();
+  const before = state.call.mock.calls.length;
+  let result!: boolean;
+  await act(async () => {
+    result = await original(resources);
+  });
+  expect(result).toBe(false);
+  expect(state.call.mock.calls).toHaveLength(before);
 });
-it.each(["resolve", "reject"])("held resource mutation %s cannot refresh or publish after Private ABA", async outcome => {
-  await render();const pending=held<unknown>();state.call.mockReturnValueOnce(pending.promise);
-  let completion!:Promise<boolean>;await act(async () => {completion=update();});
-  state.privateMode=true;await render();state.privateMode=false;await render();
-  const before=state.call.mock.calls.length;
-  await act(async () => {if(outcome==="resolve")pending.resolve(task);else pending.reject(new Error("Retired resource write"));});
-  expect(await completion).toBe(outcome==="resolve");expect(state.call.mock.calls).toHaveLength(before);
-  expect(host.querySelector('[role="alert"]')).toBeNull();expect(host.querySelector("fieldset")!.disabled).toBe(false);
-});
+it.each(["resolve", "reject"])(
+  "held resource mutation %s cannot refresh or publish after Private ABA",
+  async (outcome) => {
+    await render();
+    const pending = held<unknown>();
+    state.call.mockReturnValueOnce(pending.promise);
+    let completion!: Promise<boolean>;
+    await act(async () => {
+      completion = update();
+    });
+    state.privateMode = true;
+    await render();
+    state.privateMode = false;
+    await render();
+    const before = state.call.mock.calls.length;
+    await act(async () => {
+      if (outcome === "resolve") pending.resolve(task);
+      else pending.reject(new Error("Retired resource write"));
+    });
+    expect(await completion).toBe(outcome === "resolve");
+    expect(state.call.mock.calls).toHaveLength(before);
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(host.querySelector("fieldset")!.disabled).toBe(false);
+  },
+);
 it("held original readback does not replace current task after window ABA", async () => {
-  await render();const pending=held<unknown>();state.call.mockImplementation(async method => method==="tasks.get"?pending.promise:method==="tasks.receipt"?receipt:method==="tasks.list"?[task]:task);
-  let completion!:Promise<boolean>;await act(async () => {completion=update();});
-  state.windowId="two";await render();state.windowId="one";await render();
-  await act(async () => pending.resolve({...details,task:{...task,title:"Retired readback"}}));
-  expect(await completion).toBe(true);expect(host.textContent).not.toContain("Retired readback");
+  await render();
+  const pending = held<unknown>();
+  state.call.mockImplementation(async (method) =>
+    method === "tasks.get"
+      ? pending.promise
+      : method === "tasks.receipt"
+        ? receipt
+        : method === "tasks.list"
+          ? [task]
+          : task,
+  );
+  let completion!: Promise<boolean>;
+  await act(async () => {
+    completion = update();
+  });
+  state.windowId = "two";
+  await render();
+  state.windowId = "one";
+  await render();
+  await act(async () => pending.resolve({ ...details, task: { ...task, title: "Retired readback" } }));
+  expect(await completion).toBe(true);
+  expect(host.textContent).not.toContain("Retired readback");
 });
 it("original pending resource write refuses a duplicate", async () => {
-  await render();const pending=held<unknown>();state.call.mockReturnValueOnce(pending.promise);
-  let first!:Promise<boolean>;await act(async () => {first=update();});const before=state.call.mock.calls.length;
-  let second!:boolean;await act(async () => {second=await update();});
-  expect(second).toBe(false);expect(state.call.mock.calls).toHaveLength(before);
-  await act(async () => pending.resolve(task));expect(await first).toBe(true);
+  await render();
+  const pending = held<unknown>();
+  state.call.mockReturnValueOnce(pending.promise);
+  let first!: Promise<boolean>;
+  await act(async () => {
+    first = update();
+  });
+  const before = state.call.mock.calls.length;
+  let second!: boolean;
+  await act(async () => {
+    second = await update();
+  });
+  expect(second).toBe(false);
+  expect(state.call.mock.calls).toHaveLength(before);
+  await act(async () => pending.resolve(task));
+  expect(await first).toBe(true);
 });

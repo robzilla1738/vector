@@ -21,7 +21,10 @@ afterEach(() => {
 const textResult = (text: string) => ({
   content: [{ type: "text" as const, text }],
   finishReason: { unified: "stop" as const, raw: "stop" },
-  usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 2, text: 2, reasoning: 0 } },
+  usage: {
+    inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+    outputTokens: { total: 2, text: 2, reasoning: 0 },
+  },
   warnings: [],
 });
 
@@ -48,10 +51,17 @@ it("puts Anthropic cache breakpoints on the system, the last tool, and the histo
     maxOutputTokens: 32,
   });
   const call = model.doGenerateCalls[0]!;
-  const prompt = call.prompt as Array<{ role: string; providerOptions?: { anthropic?: { cacheControl?: { type?: string } } }; content?: unknown }>;
+  const prompt = call.prompt as Array<{
+    role: string;
+    providerOptions?: { anthropic?: { cacheControl?: { type?: string } } };
+    content?: unknown;
+  }>;
   expect(prompt.map((message) => message.role)).toEqual(["system", "user", "assistant", "user"]);
   expect(prompt.map(hasAnthropicCache)).toEqual([true, false, true, false]);
-  const tools = (call.tools ?? []) as Array<{ name: string; providerOptions?: { anthropic?: { cacheControl?: { type?: string } } } }>;
+  const tools = (call.tools ?? []) as Array<{
+    name: string;
+    providerOptions?: { anthropic?: { cacheControl?: { type?: string } } };
+  }>;
   expect(tools.filter(hasAnthropicCache).map((tool) => tool.name)).toEqual(["beta"]);
 });
 
@@ -94,12 +104,16 @@ it("sends the loop thread id through as the OpenAI session", async () => {
   expect(model.doGenerateCalls[0]?.providerOptions).toMatchObject({ openai: { promptCacheKey: "chat-1" } });
 });
 
-function hasAnthropicCache(value: { providerOptions?: { anthropic?: { cacheControl?: { type?: string } } }; content?: unknown }): boolean {
+function hasAnthropicCache(value: {
+  providerOptions?: { anthropic?: { cacheControl?: { type?: string } } };
+  content?: unknown;
+}): boolean {
   if (value.providerOptions?.anthropic?.cacheControl?.type === "ephemeral") return true;
   if (!Array.isArray(value.content)) return false;
   return value.content.some((part) => {
     if (!part || typeof part !== "object") return false;
-    const options = (part as { providerOptions?: { anthropic?: { cacheControl?: { type?: string } } } }).providerOptions;
+    const options = (part as { providerOptions?: { anthropic?: { cacheControl?: { type?: string } } } })
+      .providerOptions;
     return options?.anthropic?.cacheControl?.type === "ephemeral";
   });
 }

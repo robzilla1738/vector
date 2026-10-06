@@ -11,7 +11,8 @@ function spendCap(env: NodeJS.ProcessEnv = process.env): number {
   const raw = env.AUX_PROGRAM_SPEND_CAP_USD;
   if (raw === undefined || raw === "") return Number.POSITIVE_INFINITY;
   const cap = Number(raw);
-  if (!Number.isFinite(cap) || cap <= 0) throw new Error("AUX_PROGRAM_SPEND_CAP_USD must be a positive USD amount");
+  if (!Number.isFinite(cap) || cap <= 0)
+    throw new Error("AUX_PROGRAM_SPEND_CAP_USD must be a positive USD amount");
   return cap;
 }
 
@@ -32,7 +33,15 @@ function nanos(usd: number): number {
 
 /** Fail closed when a Gateway model has no bounded context or list prices. */
 export function estimatedPromptTokens(...parts: unknown[]): number {
-  return Math.max(1, Math.ceil(Buffer.byteLength(parts.map(part => typeof part === "string" ? part : JSON.stringify(part) ?? "").join("\n"), "utf8") / 3));
+  return Math.max(
+    1,
+    Math.ceil(
+      Buffer.byteLength(
+        parts.map((part) => (typeof part === "string" ? part : (JSON.stringify(part) ?? ""))).join("\n"),
+        "utf8",
+      ) / 3,
+    ),
+  );
 }
 
 export function projectedModelCostUsd(
@@ -43,11 +52,15 @@ export function projectedModelCostUsd(
 ): number {
   const model = modelCapabilities(modelId, models);
   if (!model?.contextTokens || model.inputUsdPerMTok === undefined || model.outputUsdPerMTok === undefined) {
-    throw new Error(`AI spend projection unavailable for ${modelId}; configure a priced model before calling Gateway`);
+    throw new Error(
+      `AI spend projection unavailable for ${modelId}; configure a priced model before calling Gateway`,
+    );
   }
-  if (!Number.isSafeInteger(promptTokens) || promptTokens <= 0) throw new Error("A positive promptTokens estimate is required");
-  if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens <= 0) throw new Error("A positive maxOutputTokens is required for a bounded Gateway call");
-  return 2 * (promptTokens * model.inputUsdPerMTok + maxOutputTokens * model.outputUsdPerMTok) / 1_000_000;
+  if (!Number.isSafeInteger(promptTokens) || promptTokens <= 0)
+    throw new Error("A positive promptTokens estimate is required");
+  if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens <= 0)
+    throw new Error("A positive maxOutputTokens is required for a bounded Gateway call");
+  return (2 * (promptTokens * model.inputUsdPerMTok + maxOutputTokens * model.outputUsdPerMTok)) / 1_000_000;
 }
 
 export interface SpendSummary {
@@ -80,10 +93,14 @@ export class SpendLedger {
   }
 
   summary(): SpendSummary {
-    const row = this.db.prepare(`SELECT
+    const row = this.db
+      .prepare(
+        `SELECT
       COALESCE(SUM(CASE WHEN settled_at IS NOT NULL THEN actual_nanos ELSE 0 END),0) AS committed,
       COALESCE(SUM(CASE WHEN settled_at IS NULL THEN reserved_nanos ELSE 0 END),0) AS reserved
-      FROM ai_spend`).get() as { committed: number; reserved: number };
+      FROM ai_spend`,
+      )
+      .get() as { committed: number; reserved: number };
     return {
       limitUsd: this.capUsd,
       committedUsd: row.committed / NANODOLLARS_PER_USD,
@@ -98,10 +115,15 @@ export class SpendLedger {
     try {
       const { remainingUsd } = this.summary();
       if (Number.isFinite(remainingUsd) && amount > nanos(remainingUsd)) {
-        throw new Error(`AI Gateway $${this.capUsd} program cap reached; ${remainingUsd.toFixed(4)} USD remains, ${projectedUsd.toFixed(4)} USD projected`);
+        throw new Error(
+          `AI Gateway $${this.capUsd} program cap reached; ${remainingUsd.toFixed(4)} USD remains, ${projectedUsd.toFixed(4)} USD projected`,
+        );
       }
       const id = randomUUID();
-      this.db.prepare("INSERT INTO ai_spend(reservation_id,source,model_id,reserved_nanos,created_at) VALUES(?,?,?,?,?)")
+      this.db
+        .prepare(
+          "INSERT INTO ai_spend(reservation_id,source,model_id,reserved_nanos,created_at) VALUES(?,?,?,?,?)",
+        )
         .run(id, source, modelId, amount, Date.now());
       this.db.exec("COMMIT");
       return id;
@@ -114,10 +136,15 @@ export class SpendLedger {
   /** Unknown usage retains the full reservation, including after a failed request. */
   settle(id: string, actualUsd?: number): void {
     const amount = actualUsd === undefined ? null : nanos(actualUsd);
-    this.db.prepare(`UPDATE ai_spend SET actual_nanos=COALESCE(?,reserved_nanos),
-      cost_estimated=?, settled_at=? WHERE reservation_id=? AND settled_at IS NULL`)
+    this.db
+      .prepare(
+        `UPDATE ai_spend SET actual_nanos=COALESCE(?,reserved_nanos),
+      cost_estimated=?, settled_at=? WHERE reservation_id=? AND settled_at IS NULL`,
+      )
       .run(amount, amount === null ? 1 : 0, Date.now(), id);
   }
 
-  close(): void { this.db.close(); }
+  close(): void {
+    this.db.close();
+  }
 }

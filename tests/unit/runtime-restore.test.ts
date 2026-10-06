@@ -1,6 +1,14 @@
 import { afterEach, expect, it } from "vitest";
 import { createHash, randomBytes } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -14,9 +22,15 @@ import {
   runtimeRestoreStatus,
   stageRuntimeRestore,
 } from "@aux/runtime";
-import { migrateSensitiveKv, migrateSensitiveTable, SqliteColumnCipher } from "../../apps/runtime/src/store/sqlite-protection.js";
-import { advanceManagedRecoveryGeneration, currentManagedRecoveryGeneration } from
-  "../../apps/runtime/src/services/managed-recovery-generation.js";
+import {
+  migrateSensitiveKv,
+  migrateSensitiveTable,
+  SqliteColumnCipher,
+} from "../../apps/runtime/src/store/sqlite-protection.js";
+import {
+  advanceManagedRecoveryGeneration,
+  currentManagedRecoveryGeneration,
+} from "../../apps/runtime/src/services/managed-recovery-generation.js";
 import { issueFreshManagedBackup } from "../../apps/runtime/src/services/runtime-backup.js";
 
 const directories: string[] = [];
@@ -33,8 +47,14 @@ async function stagedFixture() {
   const artifactPath = join(dataDir, "artifacts", "restore-fixture.txt");
   mkdirSync(join(dataDir, "artifacts"), { recursive: true });
   writeFileSync(artifactPath, "restored artifact");
-  original.saveArtifact({ artifactId: "restore-fixture", path: artifactPath, mediaType: "text/plain",
-    size: 17, status: "complete", createdAt: Date.now() });
+  original.saveArtifact({
+    artifactId: "restore-fixture",
+    path: artifactPath,
+    mediaType: "text/plain",
+    size: 17,
+    status: "complete",
+    createdAt: Date.now(),
+  });
   const backup = await createRuntimeBackup(original, dataDir);
   original.close();
   const changed = new Repo(openDb(dbPath));
@@ -74,23 +94,40 @@ it("sanitizes protected article recall and authenticates the same Profile before
   const dbPath = join(dataDir, "aux-state.sqlite");
   const db = openDb(dbPath);
   const legacy = new Repo(db);
-  legacy.saveRun({ runId: "article", goal: "private goal", status: "completed", pageIds: [],
+  legacy.saveRun({
+    runId: "article",
+    goal: "private goal",
+    status: "completed",
+    pageIds: [],
     config: { chatId: "chat", contextMemoryIds: ["source"], context: "private source paragraph" },
-    result: { answer: "private answer" }, createdAt: 1 });
-  legacy.setSetting("conversationAttachments:chat", [{ sourceArtifactId: "unrelated", filename: "retained.txt" }]);
+    result: { answer: "private answer" },
+    createdAt: 1,
+  });
+  legacy.setSetting("conversationAttachments:chat", [
+    { sourceArtifactId: "unrelated", filename: "retained.txt" },
+  ]);
   db.prepare("INSERT INTO workspaces(workspace_id,name,created_at) VALUES('space','private space',1)").run();
-  db.prepare("INSERT INTO tasks(task_id,workspace_id,revision,state,updated_at,json) VALUES('task','space',1,'open',1,?)")
-    .run(JSON.stringify({ title: "private task" }));
-  db.prepare("INSERT INTO task_evidence(evidence_id,task_id,task_revision,criterion_id,json) VALUES('evidence','task',1,'criterion',?)")
-    .run(JSON.stringify({ note: "private evidence" }));
-  db.prepare("INSERT INTO criterion_reviews(review_id,task_id,task_revision,criterion_id,json) VALUES('review','task',1,'criterion',?)")
-    .run(JSON.stringify({ note: "private review" }));
+  db.prepare(
+    "INSERT INTO tasks(task_id,workspace_id,revision,state,updated_at,json) VALUES('task','space',1,'open',1,?)",
+  ).run(JSON.stringify({ title: "private task" }));
+  db.prepare(
+    "INSERT INTO task_evidence(evidence_id,task_id,task_revision,criterion_id,json) VALUES('evidence','task',1,'criterion',?)",
+  ).run(JSON.stringify({ note: "private evidence" }));
+  db.prepare(
+    "INSERT INTO criterion_reviews(review_id,task_id,task_revision,criterion_id,json) VALUES('review','task',1,'criterion',?)",
+  ).run(JSON.stringify({ note: "private review" }));
   const saved = new Map<string, string>();
   const profileId = "restore-profile";
-  const secretName = (prefix: string) => `${prefix}_${createHash("sha256").update(profileId).digest("hex").slice(0, 24)}`;
+  const secretName = (prefix: string) =>
+    `${prefix}_${createHash("sha256").update(profileId).digest("hex").slice(0, 24)}`;
   const secrets = {
-    async readSecret(name: string) { return { value: saved.get(name) }; },
-    async storeSecret(name: string, value: string) { saved.set(name, value); return { ok: true as const }; },
+    async readSecret(name: string) {
+      return { value: saved.get(name) };
+    },
+    async storeSecret(name: string, value: string) {
+      saved.set(name, value);
+      return { ok: true as const };
+    },
     async profileStorageRoot() {
       const name = secretName("aux_root_v1");
       if (!saved.has(name)) saved.set(name, randomBytes(32).toString("base64"));
@@ -122,18 +159,28 @@ it("sanitizes protected article recall and authenticates the same Profile before
   const restored = new Repo(openDb(dbPath), cipher);
   expect(restored.getRun("article")?.config?.contextMemoryRevoked).toBe(true);
   expect(restored.getRun("article")?.config?.context).toBeUndefined();
-  expect(restored.db.prepare("SELECT json_extract(config,'$.contextMemoryRevoked') AS revoked FROM run_lookup WHERE run_id='article'").get())
-    .toMatchObject({ revoked: 1 });
+  expect(
+    restored.db
+      .prepare(
+        "SELECT json_extract(config,'$.contextMemoryRevoked') AS revoked FROM run_lookup WHERE run_id='article'",
+      )
+      .get(),
+  ).toMatchObject({ revoked: 1 });
   expect(restored.getSetting("conversationAttachments:chat")).toEqual([
     { sourceArtifactId: "unrelated", filename: "retained.txt" },
   ]);
-  const evidence = restored.db.prepare("SELECT json FROM task_evidence WHERE evidence_id='evidence'").get() as { json: string };
-  expect(JSON.parse(cipher.decrypt("task_evidence", JSON.stringify(["evidence"]), "json", evidence.json)))
-    .toMatchObject({ note: "private evidence" });
+  const evidence = restored.db
+    .prepare("SELECT json FROM task_evidence WHERE evidence_id='evidence'")
+    .get() as { json: string };
+  expect(
+    JSON.parse(cipher.decrypt("task_evidence", JSON.stringify(["evidence"]), "json", evidence.json)),
+  ).toMatchObject({ note: "private evidence" });
   restored.close();
   const backupDbPath = join(backup.path, "state.sqlite");
   const tampered = new DatabaseSync(backupDbPath);
-  tampered.prepare("UPDATE aux_meta SET value='auxenc:v1:tampered' WHERE key='portable_profile_proof_v1'").run();
+  tampered
+    .prepare("UPDATE aux_meta SET value='auxenc:v1:tampered' WHERE key='portable_profile_proof_v1'")
+    .run();
   tampered.close();
   const manifestPath = join(backup.path, "manifest.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
@@ -160,7 +207,9 @@ it("rejects a changed staged database without touching the active database", asy
 it("preserves an artifact that changed after staging", async () => {
   const { dataDir, dbPath, artifactPath } = await stagedFixture();
   writeFileSync(artifactPath, "new local work");
-  await expect(applyPendingRuntimeRestore(dataDir, dbPath)).rejects.toThrow(/conflicts with existing Aux data/);
+  await expect(applyPendingRuntimeRestore(dataDir, dbPath)).rejects.toThrow(
+    /conflicts with existing Aux data/,
+  );
   expect(readFileSync(artifactPath, "utf8")).toBe("new local work");
   const active = new Repo(openDb(dbPath));
   expect(active.getSetting("restore-marker")).toBe("after");
@@ -199,14 +248,28 @@ it("refuses an older managed backup after Forget and accepts a fresh generation"
     const before = currentManagedRecoveryGeneration(dataDir);
     const after = advanceManagedRecoveryGeneration(dataDir);
     expect(after).toEqual({ lineageId: before.lineageId, generation: before.generation + 1 });
-    expect((await listRuntimeBackups(dataDir)).find(item => item.path === old.path)?.restorable).toBe(false);
-    expect((await runtimeRestoreStatus(dataDir)).managedRecovery).toEqual({ generation: after.generation, freshBackupIssued: false });
-    await expect(stageRuntimeRestore(dataDir, old.path)).rejects.toThrow(/predates the current recovery generation/);
+    expect((await listRuntimeBackups(dataDir)).find((item) => item.path === old.path)?.restorable).toBe(
+      false,
+    );
+    expect((await runtimeRestoreStatus(dataDir)).managedRecovery).toEqual({
+      generation: after.generation,
+      freshBackupIssued: false,
+    });
+    await expect(stageRuntimeRestore(dataDir, old.path)).rejects.toThrow(
+      /predates the current recovery generation/,
+    );
     const fresh = await createRuntimeBackup(repo, dataDir);
-    expect((await listRuntimeBackups(dataDir)).find(item => item.path === fresh.path)?.restorable).toBe(true);
-    expect((await runtimeRestoreStatus(dataDir)).managedRecovery).toEqual({ generation: after.generation, freshBackupIssued: true });
+    expect((await listRuntimeBackups(dataDir)).find((item) => item.path === fresh.path)?.restorable).toBe(
+      true,
+    );
+    expect((await runtimeRestoreStatus(dataDir)).managedRecovery).toEqual({
+      generation: after.generation,
+      freshBackupIssued: true,
+    });
     await expect(stageRuntimeRestore(dataDir, fresh.path)).resolves.toMatchObject({ staged: true });
-  } finally { repo.close(); }
+  } finally {
+    repo.close();
+  }
 });
 
 it("does not issue a partial post-Forget recovery point and permits a complete retry", async () => {
@@ -216,22 +279,36 @@ it("does not issue a partial post-Forget recovery point and permits a complete r
   try {
     const old = await createRuntimeBackup(repo, dataDir);
     const current = advanceManagedRecoveryGeneration(dataDir);
-    repo.saveArtifact({ artifactId: "missing", path: join(dataDir, "artifacts", "missing.txt"),
-      mediaType: "text/plain", size: 7, status: "complete", createdAt: Date.now() });
-    await expect(issueFreshManagedBackup(repo, dataDir, current)).rejects.toThrow(/complete current-generation backup/);
+    repo.saveArtifact({
+      artifactId: "missing",
+      path: join(dataDir, "artifacts", "missing.txt"),
+      mediaType: "text/plain",
+      size: 7,
+      status: "complete",
+      createdAt: Date.now(),
+    });
+    await expect(issueFreshManagedBackup(repo, dataDir, current)).rejects.toThrow(
+      /complete current-generation backup/,
+    );
     expect((await runtimeRestoreStatus(dataDir)).managedRecovery.freshBackupIssued).toBe(false);
-    expect((await listRuntimeBackups(dataDir)).map(item => [item.path, item.restorable])).toEqual([[old.path, false]]);
+    expect((await listRuntimeBackups(dataDir)).map((item) => [item.path, item.restorable])).toEqual([
+      [old.path, false],
+    ]);
     repo.db.prepare("DELETE FROM artifacts WHERE artifact_id='missing'").run();
     const fresh = await issueFreshManagedBackup(repo, dataDir, current);
     expect((await runtimeRestoreStatus(dataDir)).managedRecovery.freshBackupIssued).toBe(true);
     await expect(stageRuntimeRestore(dataDir, fresh.path)).resolves.toMatchObject({ staged: true });
-  } finally { repo.close(); }
+  } finally {
+    repo.close();
+  }
 });
 
 it("rejects a restore staged before Forget at pre-open apply without replacing current data", async () => {
   const { dataDir, dbPath } = await stagedFixture();
   advanceManagedRecoveryGeneration(dataDir);
-  await expect(applyPendingRuntimeRestore(dataDir, dbPath)).rejects.toThrow(/predates the current recovery generation/);
+  await expect(applyPendingRuntimeRestore(dataDir, dbPath)).rejects.toThrow(
+    /predates the current recovery generation/,
+  );
   const current = new Repo(openDb(dbPath));
   expect(current.getSetting("restore-marker")).toBe("after");
   current.close();
@@ -250,7 +327,9 @@ it("fails closed when the recovery anchor is missing or corrupt", async () => {
     writeFileSync(anchor, "not JSON");
     await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(/anchor is invalid/);
     expect(existsSync(join(dataDir, "pending-runtime-restore.json"))).toBe(false);
-  } finally { repo.close(); }
+  } finally {
+    repo.close();
+  }
 });
 
 it("does not publish a backup if Forget advances generation during its snapshot", async () => {
@@ -258,11 +337,17 @@ it("does not publish a backup if Forget advances generation during its snapshot"
   directories.push(dataDir);
   const repo = new Repo(openDb(join(dataDir, "aux-state.sqlite")));
   try {
-    await expect(createRuntimeBackup(repo, dataDir, {
-      interrupt: () => { advanceManagedRecoveryGeneration(dataDir); },
-    })).rejects.toThrow(/predates the current recovery generation/);
+    await expect(
+      createRuntimeBackup(repo, dataDir, {
+        interrupt: () => {
+          advanceManagedRecoveryGeneration(dataDir);
+        },
+      }),
+    ).rejects.toThrow(/predates the current recovery generation/);
     expect(await listRuntimeBackups(dataDir)).toEqual([]);
-  } finally { repo.close(); }
+  } finally {
+    repo.close();
+  }
 });
 
 it("stages an existing same-Profile legacy backup only before the first Forget", async () => {
@@ -282,8 +367,13 @@ it("stages an existing same-Profile legacy backup only before the first Forget",
     const pending = JSON.parse(readFileSync(join(dataDir, "pending-runtime-restore.json"), "utf8"));
     expect(pending.recoveryGeneration).toEqual(currentManagedRecoveryGeneration(dataDir));
     advanceManagedRecoveryGeneration(dataDir);
-    await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(/predates the current recovery generation/);
-    await expect(applyPendingRuntimeRestore(dataDir, join(dataDir, "aux-state.sqlite")))
-      .rejects.toThrow(/predates the current recovery generation/);
-  } finally { repo.close(); }
+    await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(
+      /predates the current recovery generation/,
+    );
+    await expect(applyPendingRuntimeRestore(dataDir, join(dataDir, "aux-state.sqlite"))).rejects.toThrow(
+      /predates the current recovery generation/,
+    );
+  } finally {
+    repo.close();
+  }
 });

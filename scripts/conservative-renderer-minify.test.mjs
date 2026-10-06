@@ -1,23 +1,30 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { test } from "node:test";
-import { conservativeRendererMinify, conservativeRendererMinifyOptions, chooseConservativeRendererChunk, minifyConservativeRendererChunk } from "./conservative-renderer-minify.mjs";
+import {
+  conservativeRendererMinify,
+  conservativeRendererMinifyOptions,
+  chooseConservativeRendererChunk,
+  minifyConservativeRendererChunk,
+} from "./conservative-renderer-minify.mjs";
 const require = createRequire(new URL("../apps/shell/package.json", import.meta.url));
 const { parseAst } = createRequire(require.resolve("vite"))("rollup/parseAst");
-const parse = code => parseAst(code);
+const parse = (code) => parseAst(code);
 const padding = "/* " + "retained source padding ".repeat(80) + " */";
-const load = code => import("data:text/javascript;base64," + Buffer.from(code).toString("base64"));
+const load = (code) => import("data:text/javascript;base64," + Buffer.from(code).toString("base64"));
 
 test("pins supported conservative options and independent per-call bookkeeping", () => {
   assert.equal(require("terser/package.json").version, "5.44.0");
-  const first = conservativeRendererMinifyOptions(), next = conservativeRendererMinifyOptions();
+  const first = conservativeRendererMinifyOptions(),
+    next = conservativeRendererMinifyOptions();
   assert.equal(first.keep_fnames, true);
   assert.equal(first.keep_classnames, true);
   assert.equal(first.mangle.properties, false);
   assert.equal(first.compress.keep_fargs, true);
   assert.equal(first.compress.pure_getters, false);
   assert.equal(first.compress.passes, 3);
-  for (const [key, value] of Object.entries(first.compress)) if (key.startsWith("unsafe")) assert.equal(value, false);
+  for (const [key, value] of Object.entries(first.compress))
+    if (key.startsWith("unsafe")) assert.equal(value, false);
   assert.equal(first.sourceMap, false);
   assert.equal(first.format.comments, "some");
   first.compress.passes = 99;
@@ -47,7 +54,8 @@ test("actual minifier preserves getter/evaluation effects, exported values, func
   assert.ok(result);
   assert.ok(Buffer.byteLength(result.code) < Buffer.byteLength(code));
   assert.equal(result.map, null);
-  const before = await load(code), after = await load(result.code);
+  const before = await load(code),
+    after = await load(result.code);
   assert.deepEqual(Object.keys(after), Object.keys(before));
   assert.deepEqual(after.exercise(), before.exercise());
   assert.deepEqual(after.effects, before.effects);
@@ -64,9 +72,17 @@ test("retains original thrown reason identity and mutation timing", async () => 
     const subject = { get value() { effects.push("get"); throw reason; } };
     export function fail() { effects.push("before"); return subject.value; }
   `;
-  const result = await conservativeRendererMinify().renderChunk.handler.call({ parse }, code, {}, { format: "es" });
+  const result = await conservativeRendererMinify().renderChunk.handler.call(
+    { parse },
+    code,
+    {},
+    { format: "es" },
+  );
   const current = await load(result?.code ?? code);
-  assert.throws(() => current.fail(), thrown => thrown === current.reason);
+  assert.throws(
+    () => current.fail(),
+    (thrown) => thrown === current.reason,
+  );
   assert.deepEqual(current.effects, ["before", "get"]);
 });
 
@@ -74,14 +90,23 @@ test("refuses changed ordered static imports, external exports, dynamic URLs and
   const cases = [
     ['import "./a.js"; import "./b.js";', 'import "./b.js"; import "./a.js";'],
     ['import { one } from "./a.js"; export { one };', 'import { two } from "./a.js"; export { two };'],
-    ['const a=1,b=2; export {a,b};', 'const a=1,b=2; export {b,a};'],
+    ["const a=1,b=2; export {a,b};", "const a=1,b=2; export {b,a};"],
     ['export {a} from "./a.js";', 'export {a} from "./b.js";'],
     ['export {a as publicValue} from "./a.js";', 'export {b as publicValue} from "./a.js";'],
     ['export * as publicValue from "./a.js";', 'export {publicValue} from "./a.js";'],
-    ['import * as value from "./a.js"; export {value};', 'import {"*" as value} from "./a.js"; export {value};'],
+    [
+      'import * as value from "./a.js"; export {value};',
+      'import {"*" as value} from "./a.js"; export {value};',
+    ],
     ['export const open=()=>import("./a.js");', 'export const open=()=>import("./b.js");'],
-    ['export const a=()=>import("./a.js"),b=()=>import("./b.js");', 'export const b=()=>import("./b.js"),a=()=>import("./a.js");'],
-    ['export const paths=["assets/a.js","assets/b.css"];', 'export const paths=["assets/b.css","assets/a.js"];'],
+    [
+      'export const a=()=>import("./a.js"),b=()=>import("./b.js");',
+      'export const b=()=>import("./b.js"),a=()=>import("./a.js");',
+    ],
+    [
+      'export const paths=["assets/a.js","assets/b.css"];',
+      'export const paths=["assets/b.css","assets/a.js"];',
+    ],
   ];
   for (const [source, candidate] of cases) {
     const original = padding + source;
@@ -90,12 +115,15 @@ test("refuses changed ordered static imports, external exports, dynamic URLs and
 });
 
 test("fails closed for computed imports, import options and invalid candidate syntax", () => {
-  for (const source of ['export const open=(url)=>import(url);', 'export const open=()=>import("./a.js", {with:{type:"json"}});']) {
+  for (const source of [
+    "export const open=(url)=>import(url);",
+    'export const open=()=>import("./a.js", {with:{type:"json"}});',
+  ]) {
     const original = padding + source;
     assert.equal(chooseConservativeRendererChunk(original, source, parse), original);
   }
-  const original = padding + 'export const value=1;';
-  assert.equal(chooseConservativeRendererChunk(original, 'export const =;', parse), original);
+  const original = padding + "export const value=1;";
+  assert.equal(chooseConservativeRendererChunk(original, "export const =;", parse), original);
   assert.equal(chooseConservativeRendererChunk(original, undefined, parse), original);
 });
 
@@ -106,9 +134,20 @@ test("selects only smaller UTF8 bytes and leaves non-ES output untouched", async
   assert.equal(chooseConservativeRendererChunk(original, original, parse), original);
   assert.equal(chooseConservativeRendererChunk(padding + original, original, parse), original);
   const plugin = conservativeRendererMinify();
-  assert.equal(await plugin.renderChunk.handler.call({ parse() { throw new Error("must not parse"); } }, original, {}, { format: "cjs" }), null);
+  assert.equal(
+    await plugin.renderChunk.handler.call(
+      {
+        parse() {
+          throw new Error("must not parse");
+        },
+      },
+      original,
+      {},
+      { format: "cjs" },
+    ),
+    null,
+  );
 });
-
 
 test("retains existing legal notices without manufacturing comments", async () => {
   const code = `/*! Original retained license */
@@ -117,7 +156,12 @@ test("retains existing legal notices without manufacturing comments", async () =
     export const original = 1 + 2;
     export const repeated = original + original + original;
   `;
-  const result = await conservativeRendererMinify().renderChunk.handler.call({ parse }, code, {}, { format: "es" });
+  const result = await conservativeRendererMinify().renderChunk.handler.call(
+    { parse },
+    code,
+    {},
+    { format: "es" },
+  );
   assert.ok(result);
   assert.ok(result.code.includes("Original retained license"));
   assert.ok(result.code.includes("Original retained attribution"));
@@ -125,39 +169,75 @@ test("retains existing legal notices without manufacturing comments", async () =
 });
 
 test("does not suppress invalid baseline syntax behind the optional minifier", async () => {
-  await assert.rejects(() => conservativeRendererMinify().renderChunk.handler.call({ parse }, "export const =;", {}, { format: "es" }));
+  await assert.rejects(() =>
+    conservativeRendererMinify().renderChunk.handler.call({ parse }, "export const =;", {}, { format: "es" }),
+  );
 });
 
-
 test("bounds the sequence at two accepted reductions and stops at unchanged or declining candidates", async () => {
-  const original = padding + 'export const original=3;', first = '/* retained */ export const original=3;', final = 'export const original=3;';
+  const original = padding + "export const original=3;",
+    first = "/* retained */ export const original=3;",
+    final = "export const original=3;";
   let calls = 0;
-  const bounded = await minifyConservativeRendererChunk(original, parse, () => assert.fail("unexpected warning"), async (_code, options) => {
-    assert.equal(options.compress.passes, 3);
-    calls++;
-    return {code:calls === 1 ? first : final};
-  });
+  const bounded = await minifyConservativeRendererChunk(
+    original,
+    parse,
+    () => assert.fail("unexpected warning"),
+    async (_code, options) => {
+      assert.equal(options.compress.passes, 3);
+      calls++;
+      return { code: calls === 1 ? first : final };
+    },
+  );
   assert.equal(bounded, final);
   assert.equal(calls, 2);
   calls = 0;
-  const declining = await minifyConservativeRendererChunk(original, parse, () => assert.fail("unexpected warning"), async () => ({code:++calls === 1 ? first : original}));
+  const declining = await minifyConservativeRendererChunk(
+    original,
+    parse,
+    () => assert.fail("unexpected warning"),
+    async () => ({ code: ++calls === 1 ? first : original }),
+  );
   assert.equal(declining, first);
   assert.equal(calls, 2);
   calls = 0;
-  const unchanged = await minifyConservativeRendererChunk(original, parse, () => assert.fail("unexpected warning"), async () => {calls++;return {code:original};});
+  const unchanged = await minifyConservativeRendererChunk(
+    original,
+    parse,
+    () => assert.fail("unexpected warning"),
+    async () => {
+      calls++;
+      return { code: original };
+    },
+  );
   assert.equal(unchanged, original);
   assert.equal(calls, 1);
 });
 
 test("preserves the last validated output on second-round graph refusal or minifier failure", async () => {
-  const original = padding + 'export const original=3;', first = '/* retained */ export const original=3;';
-  let calls=0;
-  const refused = await minifyConservativeRendererChunk(original, parse, () => assert.fail("unexpected warning"), async () => ({code:++calls === 1 ? first : 'export const foreign=3;'}));
+  const original = padding + "export const original=3;",
+    first = "/* retained */ export const original=3;";
+  let calls = 0;
+  const refused = await minifyConservativeRendererChunk(
+    original,
+    parse,
+    () => assert.fail("unexpected warning"),
+    async () => ({ code: ++calls === 1 ? first : "export const foreign=3;" }),
+  );
   assert.equal(refused, first);
   assert.equal(calls, 2);
-  calls=0;
-  const reason=new Error("Original minifier failure"), warnings=[];
-  const failed = await minifyConservativeRendererChunk(original, parse, warning=>warnings.push(warning), async () => {if(++calls===1)return {code:first};throw reason;});
+  calls = 0;
+  const reason = new Error("Original minifier failure"),
+    warnings = [];
+  const failed = await minifyConservativeRendererChunk(
+    original,
+    parse,
+    (warning) => warnings.push(warning),
+    async () => {
+      if (++calls === 1) return { code: first };
+      throw reason;
+    },
+  );
   assert.equal(failed, first);
   assert.equal(calls, 2);
   assert.equal(warnings.length, 1);

@@ -88,7 +88,9 @@ describe("Repo.transaction", () => {
     const repo = new Repo(openDb(":memory:"));
     repo.transaction(() => {
       repo.saveResponse({ requestId: "a", pageId: "p", url: "u", method: "GET", startedAt: 1 });
-      repo.transaction(() => repo.saveResponse({ requestId: "b", pageId: "p", url: "u", method: "GET", startedAt: 2 })); // nested joins
+      repo.transaction(() =>
+        repo.saveResponse({ requestId: "b", pageId: "p", url: "u", method: "GET", startedAt: 2 }),
+      ); // nested joins
     });
     expect(repo.listResponses("p")).toHaveLength(2);
     expect(() =>

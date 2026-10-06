@@ -16,19 +16,21 @@ export const RefusalIdSchema = z.enum([
 ]);
 export type RefusalId = z.infer<typeof RefusalIdSchema>;
 
-export const RefusalDefinitionSchema = z.object({
-  refusalId: RefusalIdSchema,
-  /** What did not happen. */
-  outcome: z.string().trim().min(1).max(400),
-  /** Why it was refused. */
-  reason: z.string().trim().min(1).max(400),
-  /** The condition under which retrying is pointless. */
-  noRetryUntil: z.string().trim().min(1).max(400),
-  /** What to do instead. */
-  instead: z.string().trim().min(1).max(400),
-  /** When retrying becomes acceptable. */
-  retryWhen: z.string().trim().min(1).max(400),
-}).strict();
+export const RefusalDefinitionSchema = z
+  .object({
+    refusalId: RefusalIdSchema,
+    /** What did not happen. */
+    outcome: z.string().trim().min(1).max(400),
+    /** Why it was refused. */
+    reason: z.string().trim().min(1).max(400),
+    /** The condition under which retrying is pointless. */
+    noRetryUntil: z.string().trim().min(1).max(400),
+    /** What to do instead. */
+    instead: z.string().trim().min(1).max(400),
+    /** When retrying becomes acceptable. */
+    retryWhen: z.string().trim().min(1).max(400),
+  })
+  .strict();
 export type RefusalDefinition = z.infer<typeof RefusalDefinitionSchema>;
 
 export const REFUSAL_REGISTRY = {

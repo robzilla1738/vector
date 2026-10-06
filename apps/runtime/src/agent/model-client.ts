@@ -1,6 +1,11 @@
 import type { z } from "zod";
 import type { ModelMessage } from "ai";
-import { DEFAULT_PLANNER_MODEL_ID, MODEL_REGISTRY, modelPickerEntries, registryCostUsd } from "@aux/contracts/model-registry";
+import {
+  DEFAULT_PLANNER_MODEL_ID,
+  MODEL_REGISTRY,
+  modelPickerEntries,
+  registryCostUsd,
+} from "@aux/contracts/model-registry";
 
 /** Usage of one provider round trip. Every attempt a client makes is reported, including hidden retries. */
 export interface ModelAttempt {
@@ -62,14 +67,29 @@ export function withAttempts<E>(error: E, attempts: ModelAttempt[]): E {
 }
 
 export function attemptsOf(error: unknown): ModelAttempt[] {
-  return (error && typeof error === "object" ? (error as Record<symbol, ModelAttempt[] | undefined>)[ATTEMPTS] : undefined) ?? [];
+  return (
+    (error && typeof error === "object"
+      ? (error as Record<symbol, ModelAttempt[] | undefined>)[ATTEMPTS]
+      : undefined) ?? []
+  );
 }
 
 /** Normalize SDK usage (v7 inputTokenDetails, older cachedInputTokens) into attempt fields. */
-export function usageFields(usage: unknown): Pick<ModelAttempt, "inputTokens" | "outputTokens" | "cachedInputTokens"> {
-  const u = (usage ?? {}) as { inputTokens?: number; outputTokens?: number; cachedInputTokens?: number; inputTokenDetails?: { cacheReadTokens?: number } };
+export function usageFields(
+  usage: unknown,
+): Pick<ModelAttempt, "inputTokens" | "outputTokens" | "cachedInputTokens"> {
+  const u = (usage ?? {}) as {
+    inputTokens?: number;
+    outputTokens?: number;
+    cachedInputTokens?: number;
+    inputTokenDetails?: { cacheReadTokens?: number };
+  };
   const cached = u.inputTokenDetails?.cacheReadTokens ?? u.cachedInputTokens;
-  return { inputTokens: u.inputTokens, outputTokens: u.outputTokens, ...(cached ? { cachedInputTokens: cached } : {}) };
+  return {
+    inputTokens: u.inputTokens,
+    outputTokens: u.outputTokens,
+    ...(cached ? { cachedInputTokens: cached } : {}),
+  };
 }
 
 /** Gateway-reported cost (providerMetadata.gateway.cost) wins; registry pricing is an estimate. */
@@ -82,7 +102,8 @@ export function modelCallCost(
     const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() ? Number(raw) : NaN;
     if (Number.isFinite(n) && n >= 0) return { costUsd: n, costEstimated: false };
   }
-  const estimate = c.inputTokens !== undefined || c.outputTokens !== undefined ? registryCostUsd(modelId, c) : undefined;
+  const estimate =
+    c.inputTokens !== undefined || c.outputTokens !== undefined ? registryCostUsd(modelId, c) : undefined;
   return estimate === undefined ? {} : { costUsd: estimate, costEstimated: true };
 }
 

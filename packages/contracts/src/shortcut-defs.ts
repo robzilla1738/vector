@@ -33,17 +33,20 @@ export interface ShortcutCommandDef {
 }
 
 export const SHORTCUTS: readonly ShortcutCommandDef[] = COMMANDS.map((command: CommandDef) => ({
-  id: command.id, label: command.label, bindings: command.bindings,
+  id: command.id,
+  label: command.label,
+  bindings: command.bindings,
   ...(command.intercept ? { intercept: true } : {}),
   ...(command.focusShell ? { focusShell: true } : {}),
 }));
 
-export const shortcutById = (id: string, defs: readonly ShortcutCommandDef[] = SHORTCUTS) => defs.find(def => def.id === id);
+export const shortcutById = (id: string, defs: readonly ShortcutCommandDef[] = SHORTCUTS) =>
+  defs.find((def) => def.id === id);
 
 /** Defaults layered with the person's saved overrides. */
 export function effectiveShortcuts(overrides?: ShortcutOverrides | null): ShortcutCommandDef[] {
   if (!overrides) return [...SHORTCUTS];
-  return SHORTCUTS.map(def => {
+  return SHORTCUTS.map((def) => {
     const next = overrides[def.id];
     if (next === undefined) return def;
     return { ...def, bindings: next ?? [] };
@@ -52,11 +55,21 @@ export function effectiveShortcuts(overrides?: ShortcutOverrides | null): Shortc
 
 /** Native reserves default chords before installing the effective replacement inventory. */
 export function shortcutInventorySize(overrides: ShortcutOverrides, platform: string): number {
-  return [...SHORTCUTS, ...effectiveShortcuts(overrides)].reduce((count, command) =>
-    count + command.bindings.filter(binding => !binding.platforms || binding.platforms.includes(platform)).length, 0);
+  return [...SHORTCUTS, ...effectiveShortcuts(overrides)].reduce(
+    (count, command) =>
+      count +
+      command.bindings.filter((binding) => !binding.platforms || binding.platforms.includes(platform)).length,
+    0,
+  );
 }
 
-export interface ShortcutInput { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }
+export interface ShortcutInput {
+  key: string;
+  meta: boolean;
+  shift: boolean;
+  alt: boolean;
+  ctrl?: boolean;
+}
 
 /** Exact-chord match: every modifier is required iff the binding asks for it. */
 export function matchShortcut(
@@ -72,7 +85,14 @@ export function matchShortcut(
     if (options?.forIntercept && !def.intercept) continue;
     for (const b of def.bindings) {
       if (b.platforms && !b.platforms.includes(platform)) continue;
-      if (b.key === key && !!b.command === command && !!b.shift === input.shift && !!b.alt === input.alt && !!b.ctrl === ctrl) return def;
+      if (
+        b.key === key &&
+        !!b.command === command &&
+        !!b.shift === input.shift &&
+        !!b.alt === input.alt &&
+        !!b.ctrl === ctrl
+      )
+        return def;
     }
   }
   return undefined;
@@ -83,26 +103,40 @@ export const bindingKey = (b: ShortcutBinding): string =>
   `${b.command ? "1" : "0"}${b.ctrl ? "1" : "0"}${b.shift ? "1" : "0"}${b.alt ? "1" : "0"}:${b.platforms?.join(",") ?? "*"}:${b.key}`;
 
 /** Commands whose bindings collide on the same chord (same modifier map). */
-export function shortcutConflicts(defs: readonly ShortcutCommandDef[]): { binding: ShortcutBinding; commands: ShortcutCommandDef[] }[] {
+export function shortcutConflicts(
+  defs: readonly ShortcutCommandDef[],
+): { binding: ShortcutBinding; commands: ShortcutCommandDef[] }[] {
   const byChord = new Map<string, { binding: ShortcutBinding; commands: ShortcutCommandDef[] }>();
   for (const def of defs) {
     for (const b of def.bindings) {
       const chord = bindingKey(b);
       const entry = byChord.get(chord);
-      if (entry) entry.commands.push(def); else byChord.set(chord, { binding: b, commands: [def] });
+      if (entry) entry.commands.push(def);
+      else byChord.set(chord, { binding: b, commands: [def] });
     }
   }
-  return [...byChord.values()].filter(entry => entry.commands.length > 1);
+  return [...byChord.values()].filter((entry) => entry.commands.length > 1);
 }
 
 const DISPLAY_KEYS: Record<string, string> = {
-  " ": "Space", "left": "Left", "right": "Right", "up": "Up", "down": "Down",
-  "{": "[", "}": "]", "_": "-", "+": "=", "backspace": "Backspace", "tab": "Tab",
+  " ": "Space",
+  left: "Left",
+  right: "Right",
+  up: "Up",
+  down: "Down",
+  "{": "[",
+  "}": "]",
+  _: "-",
+  "+": "=",
+  backspace: "Backspace",
+  tab: "Tab",
 };
 
 /** Portable accelerator string for a binding ("CmdOrCtrl+Shift+T"). */
 export function acceleratorFor(b: ShortcutBinding): string {
-  const parts = [b.command && "CmdOrCtrl", b.ctrl && "Ctrl", b.shift && "Shift", b.alt && "Alt"].filter(Boolean);
+  const parts = [b.command && "CmdOrCtrl", b.ctrl && "Ctrl", b.shift && "Shift", b.alt && "Alt"].filter(
+    Boolean,
+  );
   const key = DISPLAY_KEYS[b.key] ?? (b.key.length === 1 ? b.key.toUpperCase() : b.key);
   return [...parts, key].join("+");
 }
@@ -110,5 +144,11 @@ export function acceleratorFor(b: ShortcutBinding): string {
 /** Human-readable chord for Settings rows ("⌘⇧T" on macOS). */
 export function bindingLabel(b: ShortcutBinding, platform = "darwin"): string {
   const mac = platform === "darwin";
-  return [b.command ? (mac ? "⌘" : "Ctrl+") : "", b.ctrl ? "⌃" : "", b.alt ? (mac ? "⌥" : "Alt+") : "", b.shift ? (mac ? "⇧" : "Shift+") : "", DISPLAY_KEYS[b.key] ?? b.key.toUpperCase()].join("");
+  return [
+    b.command ? (mac ? "⌘" : "Ctrl+") : "",
+    b.ctrl ? "⌃" : "",
+    b.alt ? (mac ? "⌥" : "Alt+") : "",
+    b.shift ? (mac ? "⇧" : "Shift+") : "",
+    DISPLAY_KEYS[b.key] ?? b.key.toUpperCase(),
+  ].join("");
 }

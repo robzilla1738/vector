@@ -17,23 +17,40 @@ describe("native interactive stage", () => {
         if (mode === "lost") throw new Error("socket closed");
         return { ok: mode === "ready" && !requiresVisible };
       },
-      releaseStage: async () => { releases++; return { ok: true }; },
+      releaseStage: async () => {
+        releases++;
+        return { ok: true };
+      },
     });
     const page = {
       identity: { pageId: "p", targetId: "t", backend: "aux" },
-      url: () => "https://app.test/", title: async () => "App", isAttached: () => true,
-      navigate: async () => {}, click: async () => { clicked++; },
-      setEvents: () => {}, dispose: async () => {},
+      url: () => "https://app.test/",
+      title: async () => "App",
+      isAttached: () => true,
+      navigate: async () => {},
+      click: async () => {
+        clicked++;
+      },
+      setEvents: () => {},
+      dispose: async () => {},
     } as unknown as DriverPage;
     const driver = {
-      backend: "aux", isConnected: () => true, createTarget: async () => "t",
+      backend: "aux",
+      isConnected: () => true,
+      createTarget: async () => "t",
       attach: async (_targetId: string, pageId: string) => ({
-        ...page, identity: { pageId, targetId: "t", backend: "aux" },
+        ...page,
+        identity: { pageId, targetId: "t", backend: "aux" },
       }),
     } as unknown as BrowserDriver;
     const repo = new Repo(openDb(":memory:"));
-    const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)),
-      repo, events: new EventBus(repo), native,
+    const pages = new PageService({
+      turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined =>
+        pages.get(pageId),
+      ),
+      repo,
+      events: new EventBus(repo),
+      native,
       grants: ["effect:read", "effect:write"],
       drivers: () => ({ aux: driver, chrome: null }),
     });
@@ -49,9 +66,9 @@ describe("native interactive stage", () => {
     await expect(pages.execute(program)).resolves.toMatchObject({ status: "completed" });
     expect(clicked).toBe(1);
     expect(releases).toBe(2);
-    await expect(pages.execute({ pageId: target.pageId, steps: [
-      { id: "pixel", op: "clickPoint", x: 12, y: 24 },
-    ] })).rejects.toMatchObject({ code: "backend_unavailable" });
+    await expect(
+      pages.execute({ pageId: target.pageId, steps: [{ id: "pixel", op: "clickPoint", x: 12, y: 24 }] }),
+    ).rejects.toMatchObject({ code: "backend_unavailable" });
     expect(visibilityRequests).toEqual([false, false, false, true]);
     expect(clicked).toBe(1);
   });

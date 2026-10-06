@@ -23,7 +23,9 @@ const obs: Observation = {
     frames: [],
     text: "Increment the counter",
     headings: [],
-    elements: [{ ref: "r1", tag: "button", role: "button", name: "Increment", frame: "main" }] as Observation["content"]["elements"],
+    elements: [
+      { ref: "r1", tag: "button", role: "button", name: "Increment", frame: "main" },
+    ] as Observation["content"]["elements"],
     formFields: [],
     tables: [],
     links: [],
@@ -34,7 +36,12 @@ const obs: Observation = {
 };
 
 const done = (stepId: string, op: string): StepOutcome => ({
-  stepId, op, status: "ok", startedAt: Date.now(), durationMs: 1, ...(op === "click" ? { effect: "observed" as const } : {}),
+  stepId,
+  op,
+  status: "ok",
+  startedAt: Date.now(),
+  durationMs: 1,
+  ...(op === "click" ? { effect: "observed" as const } : {}),
 });
 
 function harness(model: MockModelClient) {
@@ -43,9 +50,15 @@ function harness(model: MockModelClient) {
   const tokens: { input: number; output: number; ms: number }[] = [];
   let currentObservation = obs;
   const pages = {
-    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "https://app.test/counter", 1),  controller: "none"  }),
+    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({
+      ...fixturePage(fixturePageId, "https://app.test/counter", 1),
+      controller: "none",
+    }),
     observe: async () => currentObservation,
-    execute: async (program: { steps: { id: string; op: string }[] }, ctx: { onStep?: (o: StepOutcome, s: unknown) => void }) => {
+    execute: async (
+      program: { steps: { id: string; op: string }[] },
+      ctx: { onStep?: (o: StepOutcome, s: unknown) => void },
+    ) => {
       for (const s of program.steps) ctx.onStep?.(done(s.id, s.op), s);
       currentObservation = {
         ...currentObservation,
@@ -56,7 +69,8 @@ function harness(model: MockModelClient) {
     },
     capture: async () => ({ dataUrl: "data:image/png;base64,AA", width: 1, height: 1, scale: 1 }),
   };
-  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
+  const coordinator = new RunCoordinator({
+    turnMentions: fixtureTurnMentions((pageId) => pages.get(pageId)),
     repo,
     events,
     pages: pages as never,
@@ -75,7 +89,8 @@ async function waitForRun(repo: Repo, runId: string, ms = 5000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) {
     const r = repo.getRun(runId);
-    if (r && ["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(r.status)) return r;
+    if (r && ["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(r.status))
+      return r;
     await new Promise((r) => setTimeout(r, 15));
   }
   throw new Error("run did not finish");
@@ -141,10 +156,13 @@ describe("AUX-021 token-measured stretch", () => {
       baseline.tokens.reduce((n, t) => n + t.input + t.output, 0) / 2,
     );
 
-    expect(tokensPerSuccess(skilled.tokens, true)! * 2).toBeLessThanOrEqual(tokensPerSuccess(baseline.tokens, true)!);
-    expect(Math.max(modelMs(baseline.tokens), 1) / Math.max(modelMs(skilled.tokens), 1)).toBeGreaterThanOrEqual(2);
+    expect(tokensPerSuccess(skilled.tokens, true)! * 2).toBeLessThanOrEqual(
+      tokensPerSuccess(baseline.tokens, true)!,
+    );
+    expect(
+      Math.max(modelMs(baseline.tokens), 1) / Math.max(modelMs(skilled.tokens), 1),
+    ).toBeGreaterThanOrEqual(2);
 
     // Mock usage validates reuse logic; it must never overwrite live evaluation evidence.
-
   });
 });

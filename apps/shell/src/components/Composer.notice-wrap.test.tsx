@@ -17,7 +17,9 @@ const error = `This queued reply needs attention: ${"OriginalNativeDeliveryDiagn
 let host: HTMLDivElement, root: ReturnType<typeof createRoot>, style: HTMLStyleElement;
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
+    { width: 100 },
+  ] as unknown as DOMRectList);
   vi.stubGlobal(
     "ResizeObserver",
     class {

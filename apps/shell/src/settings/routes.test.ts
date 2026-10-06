@@ -15,7 +15,9 @@ it("maps current Settings panels to stable section URLs", () => {
   expect(settingsPath("Selection & Capture")).toBe("/settings/selection-capture");
   expect(settingsPath("Archived chats")).toBe("/settings/archived-chats");
   expect(settingsRouteFromPath("/settings/mcp-connectors")).toEqual({
-    slug: "mcp-connectors", category: "Connections", connectionTab: "Services",
+    slug: "mcp-connectors",
+    category: "Connections",
+    connectionTab: "Services",
   });
   expect(settingsRouteFromPath("/settings/appearance/")?.category).toBe("Appearance");
   expect(settingsRouteFromPath("/settings/unknown")).toBeNull();

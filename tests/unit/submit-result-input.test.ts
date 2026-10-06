@@ -25,9 +25,13 @@ it("accepts citations the model sent as a JSON string", async () => {
       return { ok: true, result: { report: input.report, citations: input.citations } };
     }),
   );
-  expect(seen).toEqual([{ report: "Jordan Lee", citations: [{ observationId: "art_1", quote: "Jordan Lee" }] }]);
+  expect(seen).toEqual([
+    { report: "Jordan Lee", citations: [{ observationId: "art_1", quote: "Jordan Lee" }] },
+  ]);
   expect(result).toEqual({
-    finish: { result: { report: "Jordan Lee", citations: [{ observationId: "art_1", quote: "Jordan Lee" }] } },
+    finish: {
+      result: { report: "Jordan Lee", citations: [{ observationId: "art_1", quote: "Jordan Lee" }] },
+    },
   });
 });
 
@@ -43,7 +47,9 @@ it("parses citations whose JSON contains a raw tab", async () => {
       return { ok: true, result: { report: input.report } };
     }),
   );
-  expect(seen).toEqual([{ report: "Jordan Lee", citations: [{ observationId: "art_1", quote: "Jordan\tLee" }] }]);
+  expect(seen).toEqual([
+    { report: "Jordan Lee", citations: [{ observationId: "art_1", quote: "Jordan\tLee" }] },
+  ]);
 });
 
 it("parses a submit_result payload that arrived as one JSON string", async () => {
@@ -57,7 +63,9 @@ it("parses a submit_result payload that arrived as one JSON string", async () =>
       return { ok: true, result: { report: input.report } };
     }),
   );
-  expect(seen).toEqual([{ report: "in review", citations: [{ observationId: "art_2", quote: "in review" }] }]);
+  expect(seen).toEqual([
+    { report: "in review", citations: [{ observationId: "art_2", quote: "in review" }] },
+  ]);
 });
 
 it("wraps one citation object and numeric revision strings", async () => {
@@ -71,5 +79,7 @@ it("wraps one citation object and numeric revision strings", async () => {
       return { ok: true, result: { report: input.report } };
     }),
   );
-  expect(seen).toEqual([{ report: "approved", citations: [{ pageId: "p1", revision: 2, quote: "approved" }] }]);
+  expect(seen).toEqual([
+    { report: "approved", citations: [{ pageId: "p1", revision: 2, quote: "approved" }] },
+  ]);
 });

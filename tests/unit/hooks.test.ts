@@ -1,5 +1,13 @@
 import { expect, it } from "vitest";
-import { BashSeatbelt, EventBus, HookService, installRunEndHooks, openDb, Repo, TaskService } from "@aux/runtime";
+import {
+  BashSeatbelt,
+  EventBus,
+  HookService,
+  installRunEndHooks,
+  openDb,
+  Repo,
+  TaskService,
+} from "@aux/runtime";
 import { AuxError, EventTypes } from "@aux/contracts";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,45 +22,104 @@ function fixture(authorize: () => void = () => {}) {
 
 it("rechecks a Hook's capability and exact handler bytes before automatic dispatch", async () => {
   let allowed = true;
-  const f = fixture(() => { if (!allowed) throw new AuxError("permission_denied", "Grant was revoked."); });
+  const f = fixture(() => {
+    if (!allowed) throw new AuxError("permission_denied", "Grant was revoked.");
+  });
   try {
     const create = (event: "run.start" | "run.end") => {
-      const hook = f.hooks.register({ workspaceId: f.workspace.workspaceId, event,
-        handler: { type: "mcp_tool", serverId: "fixture", grantId: "11111111-1111-4111-8111-111111111111",
-          toolName: "record_result" } });
+      const hook = f.hooks.register({
+        workspaceId: f.workspace.workspaceId,
+        event,
+        handler: {
+          type: "mcp_tool",
+          serverId: "fixture",
+          grantId: "11111111-1111-4111-8111-111111111111",
+          toolName: "record_result",
+        },
+      });
       f.hooks.approve(hook.hookId, hook.handlerDigest);
       return hook;
     };
     const revokedGrant = create("run.start");
     allowed = false;
     let calls = 0;
-    const executor = async () => { calls++; };
-    expect((await f.hooks.dispatch({ eventId: "grant-revoked", workspaceId: f.workspace.workspaceId,
-      event: "run.start", at: Date.now() }, executor))[0]?.state).toBe("failed");
+    const executor = async () => {
+      calls++;
+    };
+    expect(
+      (
+        await f.hooks.dispatch(
+          {
+            eventId: "grant-revoked",
+            workspaceId: f.workspace.workspaceId,
+            event: "run.start",
+            at: Date.now(),
+          },
+          executor,
+        )
+      )[0]?.state,
+    ).toBe("failed");
     expect(calls).toBe(0);
     expect(f.hooks.invocations(revokedGrant.hookId)).toHaveLength(1);
     allowed = true;
     const changed = create("run.end");
     const altered = { ...changed, handler: { ...changed.handler, toolName: "other_tool" } };
-    f.repo.db.prepare("UPDATE hooks SET body=? WHERE hook_id=?")
-      .run(f.repo.protectRecordField("hooks", [changed.hookId], "body", JSON.stringify(altered)), changed.hookId);
-    expect((await f.hooks.dispatch({ eventId: "changed-handler", workspaceId: f.workspace.workspaceId,
-      event: "run.end", at: Date.now() }, executor))[0]?.state).toBe("failed");
+    f.repo.db
+      .prepare("UPDATE hooks SET body=? WHERE hook_id=?")
+      .run(
+        f.repo.protectRecordField("hooks", [changed.hookId], "body", JSON.stringify(altered)),
+        changed.hookId,
+      );
+    expect(
+      (
+        await f.hooks.dispatch(
+          {
+            eventId: "changed-handler",
+            workspaceId: f.workspace.workspaceId,
+            event: "run.end",
+            at: Date.now(),
+          },
+          executor,
+        )
+      )[0]?.state,
+    ).toBe("failed");
     expect(f.hooks.get(changed.hookId).trust).toBe("revoked");
     expect(calls).toBe(0);
-  } finally { f.db.close(); }
+  } finally {
+    f.db.close();
+  }
 });
 
 it("rejects unavailable handlers, then dispatches a grant-bound hook once after exact approval", async () => {
   const f = fixture();
-  expect(() => f.hooks.register({ workspaceId: f.workspace.workspaceId, event: "tool.after",
-    handler: { type: "command", command: "printf REVIEWED" } })).toThrow();
-  const hook = f.hooks.register({ workspaceId: f.workspace.workspaceId, event: "run.end",
-    handler: { type: "mcp_tool", serverId: "local", grantId: "11111111-1111-4111-8111-111111111111",
-      toolName: "summarize", arguments: {} } });
-  const event = { eventId: "event-1", workspaceId: f.workspace.workspaceId, event: "run.end", at: Date.now() };
+  expect(() =>
+    f.hooks.register({
+      workspaceId: f.workspace.workspaceId,
+      event: "tool.after",
+      handler: { type: "command", command: "printf REVIEWED" },
+    }),
+  ).toThrow();
+  const hook = f.hooks.register({
+    workspaceId: f.workspace.workspaceId,
+    event: "run.end",
+    handler: {
+      type: "mcp_tool",
+      serverId: "local",
+      grantId: "11111111-1111-4111-8111-111111111111",
+      toolName: "summarize",
+      arguments: {},
+    },
+  });
+  const event = {
+    eventId: "event-1",
+    workspaceId: f.workspace.workspaceId,
+    event: "run.end",
+    at: Date.now(),
+  };
   let calls = 0;
-  const executor = async () => { calls++; };
+  const executor = async () => {
+    calls++;
+  };
   expect(await f.hooks.dispatch(event, executor)).toEqual([]);
   expect(() => f.hooks.approve(hook.hookId, "0".repeat(64))).toThrow(/Review/);
   expect(f.hooks.approve(hook.hookId, hook.handlerDigest).trust).toBe("approved");
@@ -71,45 +138,76 @@ it("rejects unavailable handlers, then dispatches a grant-bound hook once after 
 
 it("aborts a revoked in-flight hook and never replays an uncertain dispatch after restart", async () => {
   const f = fixture();
-  const hook = f.hooks.register({ workspaceId: f.workspace.workspaceId, event: "run.end",
-    handler: { type: "mcp_tool", serverId: "local", grantId: "11111111-1111-4111-8111-111111111111",
-      toolName: "summarize" } });
+  const hook = f.hooks.register({
+    workspaceId: f.workspace.workspaceId,
+    event: "run.end",
+    handler: {
+      type: "mcp_tool",
+      serverId: "local",
+      grantId: "11111111-1111-4111-8111-111111111111",
+      toolName: "summarize",
+    },
+  });
   f.hooks.approve(hook.hookId, hook.handlerDigest);
-  const event = { eventId: "event-race", workspaceId: f.workspace.workspaceId, event: "run.end", at: Date.now() };
+  const event = {
+    eventId: "event-race",
+    workspaceId: f.workspace.workspaceId,
+    event: "run.end",
+    at: Date.now(),
+  };
   let started!: () => void;
-  const ready = new Promise<void>(resolve => { started = resolve; });
+  const ready = new Promise<void>((resolve) => {
+    started = resolve;
+  });
   const pending = f.hooks.dispatch(event, async (_handler, _context, signal) => {
     started();
-    await new Promise<void>(resolve => signal.addEventListener("abort", () => resolve(), { once: true }));
+    await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }));
   });
   await ready;
   f.hooks.revoke(hook.hookId);
   expect((await pending)[0]?.state).toBe("uncertain");
   expect(f.hooks.invocations(hook.hookId)[0]?.state).toBe("uncertain");
-  f.repo.db.prepare("INSERT INTO hook_invocations(invocation_id,hook_id,event_id,state,created_at) VALUES(?,?,?,'invoking',?)")
+  f.repo.db
+    .prepare(
+      "INSERT INTO hook_invocations(invocation_id,hook_id,event_id,state,created_at) VALUES(?,?,?,'invoking',?)",
+    )
     .run("00000000-0000-4000-8000-000000000001", hook.hookId, "crashed", Date.now());
   const recovered = new HookService(f.repo);
-  expect(recovered.invocations(hook.hookId).find(item => item.eventId === "crashed")?.state).toBe("uncertain");
+  expect(recovered.invocations(hook.hookId).find((item) => item.eventId === "crashed")?.state).toBe(
+    "uncertain",
+  );
   f.db.close();
 });
 
 it("dispatches a terminal run update once and records the invocation", async () => {
   const f = fixture();
   const eventBus = new EventBus(f.repo);
-  const hook = f.hooks.register({ workspaceId: f.workspace.workspaceId, event: "run.end",
-    handler: { type: "mcp_tool", serverId: "local", grantId: "11111111-1111-4111-8111-111111111111",
-      toolName: "summarize", arguments: { marker: "reviewed" } } });
+  const hook = f.hooks.register({
+    workspaceId: f.workspace.workspaceId,
+    event: "run.end",
+    handler: {
+      type: "mcp_tool",
+      serverId: "local",
+      grantId: "11111111-1111-4111-8111-111111111111",
+      toolName: "summarize",
+      arguments: { marker: "reviewed" },
+    },
+  });
   f.hooks.approve(hook.hookId, hook.handlerDigest);
   let calls = 0;
-  const stop = installRunEndHooks(eventBus, f.hooks, async handler => {
+  const stop = installRunEndHooks(eventBus, f.hooks, async (handler) => {
     expect(handler).toMatchObject({ type: "mcp_tool", arguments: { marker: "reviewed" } });
     calls++;
   });
-  const run = { runId: "run-1", status: "completed", config: { contextWorkspaceId: f.workspace.workspaceId },
-    endedAt: Date.now() };
+  const run = {
+    runId: "run-1",
+    status: "completed",
+    config: { contextWorkspaceId: f.workspace.workspaceId },
+    endedAt: Date.now(),
+  };
   eventBus.emit(EventTypes.RunUpdated, { run });
   eventBus.emit(EventTypes.RunUpdated, { run });
-  await new Promise(resolve => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(calls).toBe(1);
   expect(f.hooks.invocations(hook.hookId)).toMatchObject([{ state: "completed", eventId: "run:run-1:end" }]);
   stop();
@@ -119,70 +217,139 @@ it("dispatches a terminal run update once and records the invocation", async () 
 it("dispatches a run-start Hook once when the run is queued, independently of run-end", async () => {
   const f = fixture();
   const eventBus = new EventBus(f.repo);
-  const start = f.hooks.register({ workspaceId: f.workspace.workspaceId, event: "run.start",
-    handler: { type: "mcp_tool", serverId: "local", grantId: "11111111-1111-4111-8111-111111111111",
-      toolName: "notify", arguments: { phase: "start" } } });
-  const end = f.hooks.register({ workspaceId: f.workspace.workspaceId, event: "run.end",
-    handler: { type: "mcp_tool", serverId: "local", grantId: "11111111-1111-4111-8111-111111111111",
-      toolName: "notify", arguments: { phase: "end" } } });
+  const start = f.hooks.register({
+    workspaceId: f.workspace.workspaceId,
+    event: "run.start",
+    handler: {
+      type: "mcp_tool",
+      serverId: "local",
+      grantId: "11111111-1111-4111-8111-111111111111",
+      toolName: "notify",
+      arguments: { phase: "start" },
+    },
+  });
+  const end = f.hooks.register({
+    workspaceId: f.workspace.workspaceId,
+    event: "run.end",
+    handler: {
+      type: "mcp_tool",
+      serverId: "local",
+      grantId: "11111111-1111-4111-8111-111111111111",
+      toolName: "notify",
+      arguments: { phase: "end" },
+    },
+  });
   f.hooks.approve(start.hookId, start.handlerDigest);
   f.hooks.approve(end.hookId, end.handlerDigest);
   const seen: string[] = [];
-  const stop = installRunEndHooks(eventBus, f.hooks, async (_handler, context) => { seen.push(context.event); });
-  const base = { runId: "run-lifecycle", config: { contextWorkspaceId: f.workspace.workspaceId }, createdAt: Date.now() };
+  const stop = installRunEndHooks(eventBus, f.hooks, async (_handler, context) => {
+    seen.push(context.event);
+  });
+  const base = {
+    runId: "run-lifecycle",
+    config: { contextWorkspaceId: f.workspace.workspaceId },
+    createdAt: Date.now(),
+  };
   eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "queued" } });
   eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "queued" } });
   eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "running" } });
   eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "completed", endedAt: Date.now() } });
-  await new Promise(resolve => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(seen).toEqual(["run.start", "run.end"]);
-  expect(f.hooks.invocations(start.hookId)).toMatchObject([{ eventId: "run:run-lifecycle:start", state: "completed" }]);
-  expect(f.hooks.invocations(end.hookId)).toMatchObject([{ eventId: "run:run-lifecycle:end", state: "completed" }]);
-  stop(); f.db.close();
+  expect(f.hooks.invocations(start.hookId)).toMatchObject([
+    { eventId: "run:run-lifecycle:start", state: "completed" },
+  ]);
+  expect(f.hooks.invocations(end.hookId)).toMatchObject([
+    { eventId: "run:run-lifecycle:end", state: "completed" },
+  ]);
+  stop();
+  f.db.close();
 });
 
 it("dispatches run.start once when a run is first seen running, then run.end once when it fails", async () => {
   const f = fixture();
   const eventBus = new EventBus(f.repo);
-  const start = f.hooks.register({ workspaceId: f.workspace.workspaceId, event: "run.start",
-    handler: { type: "mcp_tool", serverId: "local", grantId: "11111111-1111-4111-8111-111111111111",
-      toolName: "notify", arguments: { phase: "start" } } });
-  const end = f.hooks.register({ workspaceId: f.workspace.workspaceId, event: "run.end",
-    handler: { type: "mcp_tool", serverId: "local", grantId: "11111111-1111-4111-8111-111111111111",
-      toolName: "notify", arguments: { phase: "end" } } });
+  const start = f.hooks.register({
+    workspaceId: f.workspace.workspaceId,
+    event: "run.start",
+    handler: {
+      type: "mcp_tool",
+      serverId: "local",
+      grantId: "11111111-1111-4111-8111-111111111111",
+      toolName: "notify",
+      arguments: { phase: "start" },
+    },
+  });
+  const end = f.hooks.register({
+    workspaceId: f.workspace.workspaceId,
+    event: "run.end",
+    handler: {
+      type: "mcp_tool",
+      serverId: "local",
+      grantId: "11111111-1111-4111-8111-111111111111",
+      toolName: "notify",
+      arguments: { phase: "end" },
+    },
+  });
   f.hooks.approve(start.hookId, start.handlerDigest);
   f.hooks.approve(end.hookId, end.handlerDigest);
   const seen: string[] = [];
-  const stop = installRunEndHooks(eventBus, f.hooks, async (_handler, context) => { seen.push(`${context.event}:${context.runId}`); });
-  const base = { runId: "run-already-running", config: { contextWorkspaceId: f.workspace.workspaceId }, createdAt: Date.now() };
+  const stop = installRunEndHooks(eventBus, f.hooks, async (_handler, context) => {
+    seen.push(`${context.event}:${context.runId}`);
+  });
+  const base = {
+    runId: "run-already-running",
+    config: { contextWorkspaceId: f.workspace.workspaceId },
+    createdAt: Date.now(),
+  };
   eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "running", startedAt: base.createdAt } });
   eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "running", startedAt: base.createdAt } });
-  await new Promise(resolve => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(seen).toEqual(["run.start:run-already-running"]);
   expect(f.hooks.invocations(end.hookId)).toEqual([]);
   eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "failed", endedAt: Date.now() } });
   eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "failed", endedAt: Date.now() } });
-  await new Promise(resolve => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(seen).toEqual(["run.start:run-already-running", "run.end:run-already-running"]);
-  expect(f.hooks.invocations(start.hookId)).toMatchObject([{ eventId: "run:run-already-running:start", state: "completed" }]);
-  expect(f.hooks.invocations(end.hookId)).toMatchObject([{ eventId: "run:run-already-running:end", state: "completed" }]);
-  stop(); f.db.close();
+  expect(f.hooks.invocations(start.hookId)).toMatchObject([
+    { eventId: "run:run-already-running:start", state: "completed" },
+  ]);
+  expect(f.hooks.invocations(end.hookId)).toMatchObject([
+    { eventId: "run:run-already-running:end", state: "completed" },
+  ]);
+  stop();
+  f.db.close();
 });
 
 it("executes an exactly approved command Hook inside the confined folder and stops after revoke", async () => {
   const f = fixture();
   const root = mkdtempSync(join(tmpdir(), "aux-hook-command-"));
   try {
-    const hook = f.hooks.register({ workspaceId: f.workspace.workspaceId, event: "run.end",
-      handler: { type: "command", command: "pwd", workdir: root } });
+    const hook = f.hooks.register({
+      workspaceId: f.workspace.workspaceId,
+      event: "run.end",
+      handler: { type: "command", command: "pwd", workdir: root },
+    });
     const launches: string[] = [];
-    const seatbelt = new BashSeatbelt({ writableRoots: () => [root], scratchDir: root, platform: "darwin",
-      runner: async (file, args) => { launches.push(`${file} ${args.at(-1)}`);
-        return { stdout: root, stderr: "", exitCode: 0, timedOut: false }; } });
-    const executor = async (handler: typeof hook.handler, context: { eventId: string }, signal: AbortSignal) => {
+    const seatbelt = new BashSeatbelt({
+      writableRoots: () => [root],
+      scratchDir: root,
+      platform: "darwin",
+      runner: async (file, args) => {
+        launches.push(`${file} ${args.at(-1)}`);
+        return { stdout: root, stderr: "", exitCode: 0, timedOut: false };
+      },
+    });
+    const executor = async (
+      handler: typeof hook.handler,
+      context: { eventId: string },
+      signal: AbortSignal,
+    ) => {
       if (handler.type !== "command") throw new Error("unexpected handler");
-      const result = await seatbelt.run({ command: handler.command, workdir: handler.workdir, signal },
-        { runId: "run-1", threadId: "run-1", turnId: context.eventId });
+      const result = await seatbelt.run(
+        { command: handler.command, workdir: handler.workdir, signal },
+        { runId: "run-1", threadId: "run-1", turnId: context.eventId },
+      );
       expect(result).toMatchObject({ exitCode: 0 });
     };
     await expect(f.hooks.test(hook.hookId, executor)).rejects.toThrow(/Approve/);
@@ -191,5 +358,8 @@ it("executes an exactly approved command Hook inside the confined folder and sto
     expect(launches).toEqual(["/usr/bin/sandbox-exec pwd"]);
     f.hooks.revoke(hook.hookId);
     await expect(f.hooks.test(hook.hookId, executor)).rejects.toThrow(/Approve/);
-  } finally { f.db.close(); rmSync(root, { recursive: true, force: true }); }
+  } finally {
+    f.db.close();
+    rmSync(root, { recursive: true, force: true });
+  }
 });

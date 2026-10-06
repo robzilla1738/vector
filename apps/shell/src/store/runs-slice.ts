@@ -7,7 +7,17 @@ import { storage } from "./persistence";
 import { call } from "./shared";
 import type { RailView, RunKeys, RunModelStats, Slice, Workspace } from "./types";
 
-export const emptyStats = (): RunModelStats => ({ calls: 0, costUsd: 0, costEstimated: false, inputTokens: 0, outputTokens: 0, modelIds: [], providers: [], destinations: [], costComplete: true });
+export const emptyStats = (): RunModelStats => ({
+  calls: 0,
+  costUsd: 0,
+  costEstimated: false,
+  inputTokens: 0,
+  outputTokens: 0,
+  modelIds: [],
+  providers: [],
+  destinations: [],
+  costComplete: true,
+});
 export const modelAuxValue = (call: Partial<ModelCall> | undefined, key: "provider" | "destination") => {
   const aux = call?.providerMetadata?.aux;
   if (!aux || typeof aux !== "object" || Array.isArray(aux)) return undefined;
@@ -23,17 +33,32 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
   programs: [],
   conversationId: null,
   openConversation: (runId) => {
-    const run = get().runs.find(r => r.runId === runId);
+    const run = get().runs.find((r) => r.runId === runId);
     void bridge.overlay(false);
-    set({ resultPreview: null, mode: "conversation", conversationId: run ? run.config?.chatId ?? run.runId : null, railOpen: false, overlay: null, ...(run?{}:{railView:{kind:"home"} as RailView}) });
+    set({
+      resultPreview: null,
+      mode: "conversation",
+      conversationId: run ? (run.config?.chatId ?? run.runId) : null,
+      railOpen: false,
+      overlay: null,
+      ...(run ? {} : { railView: { kind: "home" } as RailView }),
+    });
   },
   openConversationDraft: (chatId) => {
     try {
       if (chatId) storage?.setItem(PENDING_CHAT_KEY, chatId);
       else storage?.removeItem(PENDING_CHAT_KEY);
-    } catch { /* Drafts remain available in this window. */ }
+    } catch {
+      /* Drafts remain available in this window. */
+    }
     void bridge.overlay(false);
-    set({ resultPreview: null, mode: "conversation", conversationId: chatId, railOpen: false, overlay: null });
+    set({
+      resultPreview: null,
+      mode: "conversation",
+      conversationId: chatId,
+      railOpen: false,
+      overlay: null,
+    });
   },
   activeSetId: null,
   results: [],
@@ -51,23 +76,32 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     const g = goal.trim();
     if (!g) return null;
     const before = get();
-    const originPage = before.pages.find(page => page.pageId === before.activePageId);
+    const originPage = before.pages.find((page) => page.pageId === before.activePageId);
     const stayed = () => {
       const current = get();
-      const page = current.pages.find(page => page.pageId === before.activePageId);
-      return current.mode === before.mode && current.conversationId === before.conversationId
-        && current.activePageId === before.activePageId && current.railView === before.railView
-        && current.overlay === before.overlay && current.railOpen === before.railOpen
-        && current.layout.activeSpaceId === before.layout.activeSpaceId
-        && page?.url === originPage?.url && page?.documentEpoch === originPage?.documentEpoch;
+      const page = current.pages.find((page) => page.pageId === before.activePageId);
+      return (
+        current.mode === before.mode &&
+        current.conversationId === before.conversationId &&
+        current.activePageId === before.activePageId &&
+        current.railView === before.railView &&
+        current.overlay === before.overlay &&
+        current.railOpen === before.railOpen &&
+        current.layout.activeSpaceId === before.layout.activeSpaceId &&
+        page?.url === originPage?.url &&
+        page?.documentEpoch === originPage?.documentEpoch
+      );
     };
-    const existingChat = opts.chatId && before.runs.some(r => (r.config?.chatId ?? r.runId) === opts.chatId);
-    const hasChatDraft = !!opts.chatId && Object.prototype.hasOwnProperty.call(before.conversationDrafts, draftKey(opts.chatId));
+    const existingChat =
+      opts.chatId && before.runs.some((r) => (r.config?.chatId ?? r.runId) === opts.chatId);
+    const hasChatDraft =
+      !!opts.chatId && Object.prototype.hasOwnProperty.call(before.conversationDrafts, draftKey(opts.chatId));
     const preserveDraft = () => {
       if (opts.ownsDraft) return;
       if ((existingChat || hasChatDraft) && opts.chatId) {
         const key = draftKey(opts.chatId);
-        if (get().conversationDrafts[key] === before.conversationDrafts[key]) get().setConversationDraft(opts.chatId, g);
+        if (get().conversationDrafts[key] === before.conversationDrafts[key])
+          get().setConversationDraft(opts.chatId, g);
       } else if (get().agentDraft === before.agentDraft) get().setAgentDraft(g);
       else get().setConversationDraft(opts.chatId ?? crypto.randomUUID(), g);
     };
@@ -78,23 +112,41 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
       return null;
     }
     const pending = { id: crypto.randomUUID(), chatId: opts.chatId ?? null, goal: g, createdAt: Date.now() };
-    set(state => ({ pendingTurns: [...state.pendingTurns, pending] }));
-    const settle = (runs?: (state: Workspace) => Run[]) => set(state => ({ pendingTurns: state.pendingTurns.filter(turn => turn !== pending), ...(runs ? { runs: runs(state) } : {}) }));
+    set((state) => ({ pendingTurns: [...state.pendingTurns, pending] }));
+    const settle = (runs?: (state: Workspace) => Run[]) =>
+      set((state) => ({
+        pendingTurns: state.pendingTurns.filter((turn) => turn !== pending),
+        ...(runs ? { runs: runs(state) } : {}),
+      }));
     try {
-      const pageId = opts.scope === "new" ? null
-        : opts.pageId === undefined ? opts.pageIds?.[0] ?? (opts.scope === "page" ? before.activePageId : null) : opts.pageId;
+      const pageId =
+        opts.scope === "new"
+          ? null
+          : opts.pageId === undefined
+            ? (opts.pageIds?.[0] ?? (opts.scope === "page" ? before.activePageId : null))
+            : opts.pageId;
       const n = Number(before.settings.maxModelCalls);
       const budget = n === 0 ? 0 : Math.min(256, Math.max(1, Number.isFinite(n) ? n : 8));
       const pageIds = [...new Set([...(pageId ? [pageId] : []), ...(opts.pageIds ?? [])])];
-      const run = await call("runs.start", { goal: g, pageIds,
+      const run = await call("runs.start", {
+        goal: g,
+        pageIds,
         contextPageRefs: opts.contextPageRefs,
         mentions: opts.mentions,
         contextMemoryIds: opts.memorySource ? [opts.memorySource.memoryId] : undefined,
-        maxModelCalls: budget, chatId: opts.chatId,
-        defaultWorkspaceId: bridge.privateMode ? undefined : opts.memorySource?.workspaceId ?? before.layout.spaces.find(space => space.id === before.layout.activeSpaceId)?.workspaceId });
+        maxModelCalls: budget,
+        chatId: opts.chatId,
+        defaultWorkspaceId: bridge.privateMode
+          ? undefined
+          : (opts.memorySource?.workspaceId ??
+            before.layout.spaces.find((space) => space.id === before.layout.activeSpaceId)?.workspaceId),
+      });
       const reveal = stayed();
-      settle(state => state.runs.some(item => item.runId === run.runId) ? state.runs : [run, ...state.runs]);
-      if (!opts.ownsDraft && !existingChat && !hasChatDraft && get().agentDraft === before.agentDraft) get().setAgentDraft("");
+      settle((state) =>
+        state.runs.some((item) => item.runId === run.runId) ? state.runs : [run, ...state.runs],
+      );
+      if (!opts.ownsDraft && !existingChat && !hasChatDraft && get().agentDraft === before.agentDraft)
+        get().setAgentDraft("");
       if (opts.reveal !== false && reveal) {
         if (opts.presentation === "conversation") get().openConversation(run.runId);
         else set({ railOpen: true, railView: { kind: "run", runId: run.runId } });
@@ -110,18 +162,22 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
   },
 
   retryRun: async (runId, pageId) => {
-    if(get().retryingRuns[runId])return null;
-    const before=get();
-    set(state=>({retryingRuns:{...state.retryingRuns,[runId]:true}}));
+    if (get().retryingRuns[runId]) return null;
+    const before = get();
+    set((state) => ({ retryingRuns: { ...state.retryingRuns, [runId]: true } }));
     try {
-      const run = await call("runs.retry", { runId, ...(pageId ? {pageId} : {}) });
-      const current=get();
-      const stayed=current.mode===before.mode && current.conversationId===before.conversationId
-        && current.activePageId===before.activePageId && current.railView===before.railView
-        && current.overlay===before.overlay && current.railOpen===before.railOpen;
+      const run = await call("runs.retry", { runId, ...(pageId ? { pageId } : {}) });
+      const current = get();
+      const stayed =
+        current.mode === before.mode &&
+        current.conversationId === before.conversationId &&
+        current.activePageId === before.activePageId &&
+        current.railView === before.railView &&
+        current.overlay === before.overlay &&
+        current.railOpen === before.railOpen;
       set((s) => ({ runs: s.runs.some((item) => item.runId === run.runId) ? s.runs : [run, ...s.runs] }));
-      if(stayed) {
-        set({railOpen:true,railView:{kind:"run",runId:run.runId}});
+      if (stayed) {
+        set({ railOpen: true, railView: { kind: "run", runId: run.runId } });
         get().openConversation(run.runId);
       } else toast("Retry started. It’s available in your conversation.");
       return run;
@@ -129,34 +185,54 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
       errToast(error);
       return null;
     } finally {
-      set(state=>{const pending={...state.retryingRuns};delete pending[runId];return {retryingRuns:pending};});
+      set((state) => {
+        const pending = { ...state.retryingRuns };
+        delete pending[runId];
+        return { retryingRuns: pending };
+      });
     }
   },
 
   answerRun: async (runId, answer, displayedQuestion, expectedSuspensionId, mentions) => {
-    if(get().runAnswerPending[runId])return;
+    if (get().runAnswerPending[runId]) return;
     const prompt = get().prompt;
     const draft = get().runAnswerDrafts[runId];
-    set(state=>({runAnswerPending:{...state.runAnswerPending,[runId]:true}}));
+    set((state) => ({ runAnswerPending: { ...state.runAnswerPending, [runId]: true } }));
     try {
       const current = await call("runs.get", { runId });
       const suspension = current.suspension;
-      if (current.run.runId !== runId || current.run.status !== "needs_input" ||
-          (current.run.statusMessage ?? "") !== displayedQuestion || !expectedSuspensionId ||
-          suspension?.suspensionId !== expectedSuspensionId || suspension.runId !== runId ||
-          suspension.turnId !== runId || suspension.state !== "pending" ||
-          (suspension.kind !== "ask-user-question" && suspension.kind !== "handoff"))
+      if (
+        current.run.runId !== runId ||
+        current.run.status !== "needs_input" ||
+        (current.run.statusMessage ?? "") !== displayedQuestion ||
+        !expectedSuspensionId ||
+        suspension?.suspensionId !== expectedSuspensionId ||
+        suspension.runId !== runId ||
+        suspension.turnId !== runId ||
+        suspension.state !== "pending" ||
+        (suspension.kind !== "ask-user-question" && suspension.kind !== "handoff")
+      )
         throw new Error("This request changed. Review the latest question before sending.");
       await call("runs.answer", { runId, answer, expectedSuspensionId, mentions });
-      try { clearSubmittedRunAnswer(bridge.privateMode ? null : storage,runId,draft); }
-      catch { toast("Your answer was sent, but its saved draft could not be cleared.","error"); }
-      set(state=>{
-        const drafts={...state.runAnswerDrafts};
-        if(drafts[runId]===draft)delete drafts[runId];
-        return {runAnswerDrafts:drafts,...(state.prompt===prompt && prompt?.runId===runId ? {prompt:null} : {})};
+      try {
+        clearSubmittedRunAnswer(bridge.privateMode ? null : storage, runId, draft);
+      } catch {
+        toast("Your answer was sent, but its saved draft could not be cleared.", "error");
+      }
+      set((state) => {
+        const drafts = { ...state.runAnswerDrafts };
+        if (drafts[runId] === draft) delete drafts[runId];
+        return {
+          runAnswerDrafts: drafts,
+          ...(state.prompt === prompt && prompt?.runId === runId ? { prompt: null } : {}),
+        };
       });
     } finally {
-      set(state=>{const pending={...state.runAnswerPending};delete pending[runId];return {runAnswerPending:pending};});
+      set((state) => {
+        const pending = { ...state.runAnswerPending };
+        delete pending[runId];
+        return { runAnswerPending: pending };
+      });
     }
   },
 
@@ -168,11 +244,28 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     try {
       const d = await call("runs.get", { runId });
       set((s) => ({
-        runs: s.runs.some((r) => r.runId === runId) ? s.runs.map((r) => (r.runId === runId ? d.run : r)) : [d.run, ...s.runs],
+        runs: s.runs.some((r) => r.runId === runId)
+          ? s.runs.map((r) => (r.runId === runId ? d.run : r))
+          : [d.run, ...s.runs],
         steps: { ...s.steps, [runId]: d.steps },
         modelStats:
           d.modelCalls != null && !s.modelStats[runId]
-            ? { ...s.modelStats, [runId]: d.usage ? { calls: d.usage.calls, modelIds: d.usage.modelIds, providers: d.usage.providers, destinations: d.usage.destinations, inputTokens: d.usage.inputTokens, outputTokens: d.usage.outputTokens, costUsd: d.usage.knownCostUsd, costEstimated: !d.usage.costComplete, costComplete: d.usage.costComplete } : { ...emptyStats(), calls: d.modelCalls } }
+            ? {
+                ...s.modelStats,
+                [runId]: d.usage
+                  ? {
+                      calls: d.usage.calls,
+                      modelIds: d.usage.modelIds,
+                      providers: d.usage.providers,
+                      destinations: d.usage.destinations,
+                      inputTokens: d.usage.inputTokens,
+                      outputTokens: d.usage.outputTokens,
+                      costUsd: d.usage.knownCostUsd,
+                      costEstimated: !d.usage.costComplete,
+                      costComplete: d.usage.costComplete,
+                    }
+                  : { ...emptyStats(), calls: d.modelCalls },
+              }
             : s.modelStats,
       }));
     } catch (e) {

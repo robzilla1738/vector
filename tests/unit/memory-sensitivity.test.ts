@@ -13,7 +13,13 @@ it("rejects banking, health, login and account metadata while allowing ordinary 
 
 it("rejects high-confidence financial, health and credential content on neutral URLs", () => {
   expect(memoryContentSensitivityReason("Your account balance is $4,000.")).toBe("financial account content");
-  expect(memoryContentSensitivityReason("Lab results are available for this patient.")).toBe("health record content");
-  expect(memoryContentSensitivityReason("Enter your password to continue.")).toBe("credential or identity content");
-  expect(memoryContentSensitivityReason("The coffee harvest begins in October. Farmers dry beans in the sun.")).toBeUndefined();
+  expect(memoryContentSensitivityReason("Lab results are available for this patient.")).toBe(
+    "health record content",
+  );
+  expect(memoryContentSensitivityReason("Enter your password to continue.")).toBe(
+    "credential or identity content",
+  );
+  expect(
+    memoryContentSensitivityReason("The coffee harvest begins in October. Farmers dry beans in the sun."),
+  ).toBeUndefined();
 });

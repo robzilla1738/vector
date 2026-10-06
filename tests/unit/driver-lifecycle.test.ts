@@ -8,8 +8,10 @@ import { CdpAttachedDriver } from "@aux/chromium-driver";
 type Page = { id?: string; on(ev: string, cb: (...a: unknown[]) => void): unknown; url(): string };
 type Browser = { isConnected(): boolean; close(): Promise<void>; on(ev: string, cb: () => void): unknown };
 type Connector = (endpoint: string, opts: { timeout: number }) => Promise<Browser>;
-const inject = (connectOverCDP: Connector) => ({ connectOverCDP }) as unknown as ConstructorParameters<typeof CdpAttachedDriver>[1];
-const launcher = (launch: () => Promise<Browser>) => ({ launch }) as unknown as ConstructorParameters<typeof StandaloneDriver>[0];
+const inject = (connectOverCDP: Connector) =>
+  ({ connectOverCDP }) as unknown as ConstructorParameters<typeof CdpAttachedDriver>[1];
+const launcher = (launch: () => Promise<Browser>) =>
+  ({ launch }) as unknown as ConstructorParameters<typeof StandaloneDriver>[0];
 
 /** Minimal Playwright stand-ins: only what the drivers touch. */
 function fakePage(url = "about:blank") {
@@ -20,7 +22,9 @@ function fakePage(url = "about:blank") {
     isClosed: () => false,
     mainFrame: () => ({ url: () => url }),
     goto: vi.fn(async () => ({})),
-    close: vi.fn(async () => { em.emit("close"); }),
+    close: vi.fn(async () => {
+      em.emit("close");
+    }),
     evaluate: vi.fn(async () => null),
   });
   return page as unknown as Page & { goto: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> };
@@ -28,14 +32,25 @@ function fakePage(url = "about:blank") {
 function fakeBrowser(pages: Page[] = []) {
   const em = new EventEmitter();
   let connected = true;
-  const ctx = { pages: () => pages, on: () => ctx, newCDPSession: async () => ({ send: async () => ({}), detach: async () => {} }), newPage: vi.fn(async () => fakePage()) };
+  const ctx = {
+    pages: () => pages,
+    on: () => ctx,
+    newCDPSession: async () => ({ send: async () => ({}), detach: async () => {} }),
+    newPage: vi.fn(async () => fakePage()),
+  };
   const browser = Object.assign(em, {
     contexts: () => [ctx],
     newContext: async () => ctx,
     isConnected: () => connected,
-    close: vi.fn(async () => { connected = false; em.emit("disconnected"); }),
+    close: vi.fn(async () => {
+      connected = false;
+      em.emit("disconnected");
+    }),
     /** simulate the socket dropping out from under us */
-    drop: () => { connected = false; em.emit("disconnected"); },
+    drop: () => {
+      connected = false;
+      em.emit("disconnected");
+    },
   });
   return { browser: browser as unknown as Browser & { drop(): void; close: ReturnType<typeof vi.fn> }, ctx };
 }
@@ -54,8 +69,24 @@ describe("CDP driver lifecycle (P1-6)", () => {
     const main = fakeBrowser([]);
     const directPage = fakePage("http://x.test/");
     const direct = fakeBrowser([directPage]);
-    const connect = vi.fn(async (endpoint: string) => (endpoint.startsWith("ws://") ? direct.browser : main.browser));
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => [{ id: "T1", type: "page", url: "http://x.test/", title: "x", webSocketDebuggerUrl: "ws://127.0.0.1:1/devtools/page/T1" }] })));
+    const connect = vi.fn(async (endpoint: string) =>
+      endpoint.startsWith("ws://") ? direct.browser : main.browser,
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => [
+          {
+            id: "T1",
+            type: "page",
+            url: "http://x.test/",
+            title: "x",
+            webSocketDebuggerUrl: "ws://127.0.0.1:1/devtools/page/T1",
+          },
+        ],
+      })),
+    );
     const d = new TestDriver("http://127.0.0.1:1", inject(connect));
     await d.connect();
     const dp = await d.attach("T1", "p1");
@@ -73,8 +104,17 @@ describe("CDP driver lifecycle (P1-6)", () => {
     const main = fakeBrowser([]);
     const directPage = fakePage();
     const direct = fakeBrowser([directPage]);
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => [{ id: "T1", type: "page", url: "", title: "", webSocketDebuggerUrl: "ws://h/T1" }] })));
-    const d = new TestDriver("http://h", inject(async (e) => (e.startsWith("ws://") ? direct.browser : main.browser)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => [{ id: "T1", type: "page", url: "", title: "", webSocketDebuggerUrl: "ws://h/T1" }],
+      })),
+    );
+    const d = new TestDriver(
+      "http://h",
+      inject(async (e) => (e.startsWith("ws://") ? direct.browser : main.browser)),
+    );
     await d.connect();
     await d.attach("T1", "p1");
     expect(d.directConnectionCount()).toBe(1);
@@ -120,18 +160,31 @@ describe("CDP driver lifecycle (P1-6)", () => {
       pages: () => pages,
       newCDPSession: async (p: { tid: string }) => {
         sessions();
-        return { send: async (m: string) => (m === "Target.getTargetInfo" ? { targetInfo: { targetId: p.tid } } : {}), detach: async () => {} };
+        return {
+          send: async (m: string) =>
+            m === "Target.getTargetInfo" ? { targetInfo: { targetId: p.tid } } : {},
+          detach: async () => {},
+        };
       },
     });
     const b = fakeBrowser([]);
     Object.assign(b.browser, { contexts: () => [ctx] });
-    const d = new TestDriver("http://h", inject(async () => b.browser));
-    const scan = vi.spyOn(d as unknown as { identityOfPage(p: object): Promise<string | null> }, "identityOfPage");
+    const d = new TestDriver(
+      "http://h",
+      inject(async () => b.browser),
+    );
+    const scan = vi.spyOn(
+      d as unknown as { identityOfPage(p: object): Promise<string | null> },
+      "identityOfPage",
+    );
     await d.connect();
     const a = (await d.attach("atab-a", "pa", { cdpTargetId: "CDP-A" })) as unknown as { rawPage(): unknown };
     expect(a.rawPage()).toBe(early);
     const pending = d.attach("atab-b", "pb", { cdpTargetId: "CDP-B" });
-    setTimeout(() => { pages.push(late); ctx.emit("page", late); }, 20);
+    setTimeout(() => {
+      pages.push(late);
+      ctx.emit("page", late);
+    }, 20);
     expect(((await pending) as unknown as { rawPage(): unknown }).rawPage()).toBe(late);
     expect(scan).not.toHaveBeenCalled();
     const lookups = sessions.mock.calls.length;
@@ -141,7 +194,10 @@ describe("CDP driver lifecycle (P1-6)", () => {
 
   it("an intentional disconnect() does not report a drop", async () => {
     const b = fakeBrowser([]);
-    const d = new TestDriver("http://h", inject(async () => b.browser));
+    const d = new TestDriver(
+      "http://h",
+      inject(async () => b.browser),
+    );
     const disconnected = vi.fn();
     d.onDisconnected = disconnected;
     await d.connect();

@@ -7,7 +7,9 @@ import { refusalGuidance, REFUSAL_REGISTRY } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
 
 const databases: ReturnType<typeof openDb>[] = [];
-afterEach(() => { for (const db of databases.splice(0)) db.close(); });
+afterEach(() => {
+  for (const db of databases.splice(0)) db.close();
+});
 
 const request = (over: Partial<SuspensionRequest> = {}): SuspensionRequest => ({
   kind: "ask-user-question",
@@ -17,7 +19,8 @@ const request = (over: Partial<SuspensionRequest> = {}): SuspensionRequest => ({
 });
 
 function store() {
-  const db = openDb(":memory:"); databases.push(db);
+  const db = openDb(":memory:");
+  databases.push(db);
   return new SuspensionStore(db);
 }
 
@@ -35,7 +38,11 @@ describe("S3 durable suspensions", () => {
   it("a different re-park supersedes the pending suspension", () => {
     const s = store();
     const first = s.park({ ...base, kind: "ask-user-question", request: request() });
-    const second = s.park({ ...base, kind: "handoff", request: request({ kind: "handoff", instruction: "Finish the captcha in the page." }) });
+    const second = s.park({
+      ...base,
+      kind: "handoff",
+      request: request({ kind: "handoff", instruction: "Finish the captcha in the page." }),
+    });
     expect(second.suspensionId).not.toBe(first.suspensionId);
     expect(s.pending("run-1")?.suspensionId).toBe(second.suspensionId);
     expect(s.pendingAll()).toHaveLength(1);
@@ -46,7 +53,12 @@ describe("S3 durable suspensions", () => {
     const a = s.park({ ...base, kind: "ask-user-question", request: request() });
     s.resolve(a.suspensionId, "answered");
     expect(s.pending("run-1")).toBeUndefined();
-    const b = s.park({ ...base, runId: "run-2", kind: "approval", request: request({ kind: "approval", approvalId: "ap-1" }) });
+    const b = s.park({
+      ...base,
+      runId: "run-2",
+      kind: "approval",
+      request: request({ kind: "approval", approvalId: "ap-1" }),
+    });
     s.resolveRun("run-2", "cancelled");
     expect(s.pending("run-2")).toBeUndefined();
     expect(s.pendingAll()).toHaveLength(0);
@@ -72,7 +84,11 @@ describe("S3 durable suspensions", () => {
 
   it("validates the stored record against the contract schema", () => {
     const s = store();
-    const parked = s.park({ ...base, kind: "action-confirmation", request: request({ kind: "action-confirmation" }) });
+    const parked = s.park({
+      ...base,
+      kind: "action-confirmation",
+      request: request({ kind: "action-confirmation" }),
+    });
     const pending = s.pending("run-1");
     expect(pending).toMatchObject({
       suspensionId: parked.suspensionId,
@@ -85,8 +101,12 @@ describe("S3 durable suspensions", () => {
 
 describe("S3 suspension classification", () => {
   it("classifies needs_input as suspended, not auth", () => {
-    expect(classifyRepair(new AuxError("needs_input", "Complete this action directly in the site."))).toBe("suspended");
-    expect(classifyRepair(new AuxError("permission_denied", "permission denied for click (effect:write)"))).toBe("auth");
+    expect(classifyRepair(new AuxError("needs_input", "Complete this action directly in the site."))).toBe(
+      "suspended",
+    );
+    expect(
+      classifyRepair(new AuxError("permission_denied", "permission denied for click (effect:write)")),
+    ).toBe("auth");
   });
 });
 

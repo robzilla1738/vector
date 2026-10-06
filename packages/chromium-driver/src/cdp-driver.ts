@@ -37,7 +37,10 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
   /** CDP connector — injectable so lifecycle tests can run without a browser. */
   protected readonly connectOverCDP: (endpoint: string, opts: { timeout: number }) => Promise<Browser>;
 
-  constructor(endpoint: string, deps: { connectOverCDP?: (endpoint: string, opts: { timeout: number }) => Promise<Browser> } = {}) {
+  constructor(
+    endpoint: string,
+    deps: { connectOverCDP?: (endpoint: string, opts: { timeout: number }) => Promise<Browser> } = {},
+  ) {
     this.endpoint = endpoint;
     this.connectOverCDP = deps.connectOverCDP ?? ((e, o) => chromium.connectOverCDP(e, o));
   }
@@ -49,7 +52,7 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
   async connect(): Promise<void> {
     const endpoint = this.endpoint;
     // connectOverCDP accepts either the http(s) base or a ws URL.
-    const browser = await this.connectOverCDP(endpoint, { timeout: 15_000 }).catch(error => {
+    const browser = await this.connectOverCDP(endpoint, { timeout: 15_000 }).catch((error) => {
       // The internal broker's URL carries a generation capability. Playwright
       // includes its endpoint in connection errors, which can be persisted by
       // the runtime or shown in the UI; do not let that token escape IPC.
@@ -116,7 +119,12 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
   }
 
   /** Register a page reached through its own per-target connection; owns that connection. */
-  protected trackDirect(targetId: string, browser: Browser, page: Page, dp: PlaywrightDriverPage): PlaywrightDriverPage {
+  protected trackDirect(
+    targetId: string,
+    browser: Browser,
+    page: Page,
+    dp: PlaywrightDriverPage,
+  ): PlaywrightDriverPage {
     const prev = this.directBrowsers.get(targetId);
     if (prev && prev !== browser) void prev.close().catch(() => {});
     this.directBrowsers.set(targetId, browser);
@@ -258,7 +266,12 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
     return out;
   }
 
-  private track(page: Page, targetId: string, pageId: string, initialDocumentEpoch?: number): PlaywrightDriverPage {
+  private track(
+    page: Page,
+    targetId: string,
+    pageId: string,
+    initialDocumentEpoch?: number,
+  ): PlaywrightDriverPage {
     const dp = new PlaywrightDriverPage({
       page,
       context: this.context!,
@@ -272,7 +285,11 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
     return dp;
   }
 
-  async attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string; initialDocumentEpoch?: number }): Promise<DriverPage> {
+  async attach(
+    targetId: string,
+    pageId: string,
+    hint?: { cdpTargetId?: string; initialDocumentEpoch?: number },
+  ): Promise<DriverPage> {
     const existing = this.pagesByTarget.get(targetId);
     if (existing?.isAttached()) return existing;
     // the shell named the tab's CDP target: match it directly, no marker scan
@@ -350,7 +367,9 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
   /** Browser-level Storage.getCookies — returns the backend's whole cookie jar. */
   async getAllCookies(): Promise<BrowserCookie[]> {
     const session = await this.browserCdp();
-    const res = (await session.send("Storage.getCookies")) as unknown as { cookies?: Record<string, unknown>[] };
+    const res = (await session.send("Storage.getCookies")) as unknown as {
+      cookies?: Record<string, unknown>[];
+    };
     return (res.cookies ?? []).map((c) => ({
       name: String(c.name),
       value: String(c.value ?? ""),
@@ -380,7 +399,8 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
         await new Promise((r) => setTimeout(r, 120));
         page = this.pages().find((p) => !p.isClosed());
       }
-      if (!page) throw new AuxError("target_detached", `no page to scope cookie writes (created ${targetId})`);
+      if (!page)
+        throw new AuxError("target_detached", `no page to scope cookie writes (created ${targetId})`);
     }
     const session = await this.context.newCDPSession(page);
     try {

@@ -20,7 +20,9 @@ export const DEFAULT_BODY_CAP = 256 * 1024;
 
 /** Env override for the resource types (`AUX_CAPTURE_BODY_TYPES=xhr,fetch,document`). */
 export function defaultResponseCaptureOptions(env: NodeJS.ProcessEnv = process.env): ResponseCaptureOptions {
-  const fromEnv = env.AUX_CAPTURE_BODY_TYPES?.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const fromEnv = env.AUX_CAPTURE_BODY_TYPES?.split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
   return {
     bodyResourceTypes: new Set(fromEnv?.length ? fromEnv : DEFAULT_BODY_RESOURCE_TYPES),
     bodyContentTypes: DEFAULT_BODY_CONTENT_TYPES,

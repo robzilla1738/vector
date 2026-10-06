@@ -2,11 +2,7 @@ import { staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { useScopedCommandControls } from "../scoped-command-controls";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-} from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { bridge, inNativeHost } from "../bridge";
 import { useSettingsStatusOwner } from "../settings/sections/use-settings-status-owner";
 import { useShortcutLabels } from "../use-shortcut-label";
@@ -18,17 +14,29 @@ export function QuickAskSetting() {
   const key = useShortcutLabels(),
     windowId = bridge.windowId,
     privateMode = bridge.privateMode;
-  const identity = useMemo(() => ([windowId, privateMode]), [windowId, privateMode]);
-  const [getOwner, current, status, busy, error, read, perform] = useSettingsStatusOwner<Status>(identity, windowId, privateMode);
+  const identity = useMemo(() => [windowId, privateMode], [windowId, privateMode]);
+  const [getOwner, current, status, busy, error, read, perform] = useSettingsStatusOwner<Status>(
+    identity,
+    windowId,
+    privateMode,
+  );
   useEffect(() => {
-    read(getOwner(), () => bridge.quickAskShortcut(), (value) => value);
+    read(
+      getOwner(),
+      () => bridge.quickAskShortcut(),
+      (value) => value,
+    );
   }, [getOwner, read]);
   const change = useCallback(
     (enabled: boolean) => {
       const owner = getOwner();
       if (!inNativeHost || !current(owner) || owner.pending || owner.value !== status)
         throw new Error("Choose the current Quick Ask shortcut control.");
-      return perform(owner, () => bridge.quickAskShortcut(enabled), (value) => value);
+      return perform(
+        owner,
+        () => bridge.quickAskShortcut(enabled),
+        (value) => value,
+      );
     },
     [getOwner, current, status, perform],
   );
@@ -46,11 +54,13 @@ export function QuickAskSetting() {
     return () => current(owner);
   });
   const toggleRef = useCallback(
-    (node: HTMLInputElement | null) => publish("toggle-quick-ask-shortcut", "toggle-quick-ask-shortcut", node, toggle),
+    (node: HTMLInputElement | null) =>
+      publish("toggle-quick-ask-shortcut", "toggle-quick-ask-shortcut", node, toggle),
     [publish, toggle],
   );
   const retryRef = useCallback(
-    (node: HTMLButtonElement | null) => publish("retry-quick-ask-shortcut", "retry-quick-ask-shortcut", node, retry),
+    (node: HTMLButtonElement | null) =>
+      publish("retry-quick-ask-shortcut", "retry-quick-ask-shortcut", node, retry),
     [publish, retry],
   );
   return (

@@ -1,13 +1,6 @@
 import { useMemoryCallbackControl } from "./memory-control-construction";
 import { type ButtonHTMLAttributes } from "react";
-import {
-  nativeButtonTypeProps as auxNativeButtonTypeProps,
-} from "../ui/native-attribute-props";
-
-
-
-
-
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 
 export const MEMORY_NOTE_COMMANDS = [
   "add-memory-note",
@@ -30,7 +23,14 @@ export function useMemoryNoteControl(
   scopeId: string,
   invoke: (element: HTMLElement) => unknown,
 ) {
-  return useMemoryCallbackControl(command, scopeId, invoke, "Choose the current memory note control.", "Choose the original memory note control.", false);
+  return useMemoryCallbackControl(
+    command,
+    scopeId,
+    invoke,
+    "Choose the current memory note control.",
+    "Choose the original memory note control.",
+    false,
+  );
 }
 
 export function MemoryNoteButton({

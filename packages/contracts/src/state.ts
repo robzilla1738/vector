@@ -23,7 +23,9 @@ export const StateQuerySchema = z.object({
       }),
     )
     .optional(),
-  freshness: z.enum(["current-required", "previous-observation-allowed"]).default("previous-observation-allowed"),
+  freshness: z
+    .enum(["current-required", "previous-observation-allowed"])
+    .default("previous-observation-allowed"),
   completeness: z.enum(["complete-required", "partial-allowed"]).default("partial-allowed"),
   limit: z.number().int().positive().max(5000).optional(),
   cursor: z.string().optional(),

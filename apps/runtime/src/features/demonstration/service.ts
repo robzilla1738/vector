@@ -5,7 +5,10 @@ const instances = new WeakMap<Services, DemoRecorder>();
 export function installDemoRecorder(s: Services, recorder: DemoRecorder) {
   if (instances.has(s)) throw new AuxError("conflict", "This Profile already has a recorder.");
   instances.set(s, recorder);
-  return async () => { instances.delete(s); await recorder.close(); };
+  return async () => {
+    instances.delete(s);
+    await recorder.close();
+  };
 }
 export function demoRecorder(s: Services): DemoRecorder {
   const recorder = instances.get(s);

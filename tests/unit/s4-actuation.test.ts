@@ -15,10 +15,20 @@ import {
 import { PageOwnership } from "../../apps/runtime/src/scheduler/page-ownership";
 import { READINESS_POLICIES } from "@aux/chromium-driver";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
-import { AuxError, ObservationRequestSchema, type AuxErrorCode, type Condition, type ElementRef, type ObservationContent, type Program } from "@aux/contracts";
+import {
+  AuxError,
+  ObservationRequestSchema,
+  type AuxErrorCode,
+  type Condition,
+  type ElementRef,
+  type ObservationContent,
+  type Program,
+} from "@aux/contracts";
 
 const cleanup: (() => void)[] = [];
-afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
+afterEach(() => {
+  for (const fn of cleanup.splice(0).reverse()) fn();
+});
 function fixture() {
   const directory = mkdtempSync(join(tmpdir(), "aux-claims-"));
   cleanup.push(() => rmSync(directory, { recursive: true, force: true }));
@@ -36,8 +46,9 @@ describe("durable page claims (S4)", () => {
     expect(claims.activeForPage("p1")).toMatchObject({ runId: "r1", kind: "owned", status: "active" });
     expect(claims.activeForRun("r1")).toHaveLength(2);
     // re-claiming the same (run,page) reuses the active row
-    expect(claims.claim({ pageId: "p1", runId: "r1", kind: "owned" }).claimId)
-      .toBe(claims.activeForPage("p1")!.claimId);
+    expect(claims.claim({ pageId: "p1", runId: "r1", kind: "owned" }).claimId).toBe(
+      claims.activeForPage("p1")!.claimId,
+    );
     claims.release("p1");
     expect(claims.activeForPage("p1")).toBeUndefined();
     claims.releaseRun("r1");
@@ -89,10 +100,29 @@ function fakePage(failOnce?: { code: AuxErrorCode }) {
     identity: { pageId: "p1", targetId: "t1", backend: "aux" },
     url: () => "http://x.test/",
     isAttached: () => true,
-    click: async (t: string) => { calls.push(`click:${t}`); if (failOnce && !failed) { failed = true; throw new AuxError(failOnce.code, `${t} gone`); } },
-    fill: async (t: string, v: string) => { calls.push(`fill:${t}=${v}`); if (failOnce && !failed) { failed = true; throw new AuxError(failOnce.code, `${t} gone`); } value = v; },
-    waitFor: async (c: Condition) => { calls.push(`waitFor:${c.kind}`); return { ok: true, timedOut: false }; },
-    fieldState: async (t: string) => { calls.push(`state:${t}`); return { value }; },
+    click: async (t: string) => {
+      calls.push(`click:${t}`);
+      if (failOnce && !failed) {
+        failed = true;
+        throw new AuxError(failOnce.code, `${t} gone`);
+      }
+    },
+    fill: async (t: string, v: string) => {
+      calls.push(`fill:${t}=${v}`);
+      if (failOnce && !failed) {
+        failed = true;
+        throw new AuxError(failOnce.code, `${t} gone`);
+      }
+      value = v;
+    },
+    waitFor: async (c: Condition) => {
+      calls.push(`waitFor:${c.kind}`);
+      return { ok: true, timedOut: false };
+    },
+    fieldState: async (t: string) => {
+      calls.push(`state:${t}`);
+      return { value };
+    },
     observe: async () => ({}) as never,
     setEvents: () => {},
     dispose: async () => {},
@@ -146,9 +176,14 @@ describe("executor: before-state ledger (S4)", () => {
   it("keeps before-state on a failed setter outcome", async () => {
     const page = {
       ...fakePage().page,
-      fill: async () => { throw new AuxError("step_failed", "broken"); },
+      fill: async () => {
+        throw new AuxError("step_failed", "broken");
+      },
     } as DriverPage;
-    const res = await executeProgram(page, { pageId: "p1", steps: [{ id: "s1", op: "fill", target: "r1", value: "new" }] });
+    const res = await executeProgram(page, {
+      pageId: "p1",
+      steps: [{ id: "s1", op: "fill", target: "r1", value: "new" }],
+    });
     expect(res.status).toBe("failed");
     expect(res.steps[0]?.before).toEqual({ value: "previous" });
   });
@@ -167,11 +202,16 @@ describe("readiness: named policies (S4)", () => {
     const seen: Condition[] = [];
     const page = {
       identity: { pageId: "p1", targetId: "t", backend: "aux" },
-      waitFor: async (c: Condition) => { seen.push(c); return { ok: true, timedOut: false }; },
+      waitFor: async (c: Condition) => {
+        seen.push(c);
+        return { ok: true, timedOut: false };
+      },
     } as unknown as DriverPage;
     const res = await executeProgram(page, {
       pageId: "p1",
-      steps: [{ id: "w", op: "waitFor", condition: { kind: "settled", policy: "interactive", timeoutMs: 900 } }],
+      steps: [
+        { id: "w", op: "waitFor", condition: { kind: "settled", policy: "interactive", timeoutMs: 900 } },
+      ],
     });
     expect(res.status).toBe("completed");
     expect(seen).toEqual([{ kind: "settled", policy: "interactive", timeoutMs: 900 }]);
@@ -180,7 +220,16 @@ describe("readiness: named policies (S4)", () => {
 
 describe("observation scope contract (S4)", () => {
   it("accepts every v2 scope", () => {
-    for (const scope of ["full", "all", "interactive", "viewport", "forms", "links", "tables", "subtree"] as const) {
+    for (const scope of [
+      "full",
+      "all",
+      "interactive",
+      "viewport",
+      "forms",
+      "links",
+      "tables",
+      "subtree",
+    ] as const) {
       expect(ObservationRequestSchema.parse({ scope }).scope).toBe(scope);
     }
   });
@@ -190,16 +239,33 @@ describe("downloads into session storage (S4)", () => {
   it("attaches the configured downloads dir to every live page", async () => {
     const dirs: string[] = [];
     const page = {
-      identity: { pageId: "p", targetId: "t", backend: "aux" }, url: () => "https://a.test/", title: async () => "A",
-      isAttached: () => true, navigate: async () => {}, observe: async () => ({}) as never,
-      setEvents: () => {}, dispose: async () => {},
-      setDownloadDir: (d: string) => { dirs.push(d); },
+      identity: { pageId: "p", targetId: "t", backend: "aux" },
+      url: () => "https://a.test/",
+      title: async () => "A",
+      isAttached: () => true,
+      navigate: async () => {},
+      observe: async () => ({}) as never,
+      setEvents: () => {},
+      dispose: async () => {},
+      setDownloadDir: (d: string) => {
+        dirs.push(d);
+      },
     } as unknown as DriverPage;
-    const driver = { backend: "aux", isConnected: () => true, createTarget: async () => "t", attach: async () => page } as unknown as BrowserDriver;
+    const driver = {
+      backend: "aux",
+      isConnected: () => true,
+      createTarget: async () => "t",
+      attach: async () => page,
+    } as unknown as BrowserDriver;
     const repo = new Repo(openDb(":memory:"));
     cleanup.push(() => repo.db.close());
-    const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)),
-      repo, events: new EventBus(repo), native: new NullNativeBridge(),
+    const pages = new PageService({
+      turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined =>
+        pages.get(pageId),
+      ),
+      repo,
+      events: new EventBus(repo),
+      native: new NullNativeBridge(),
       drivers: () => ({ aux: driver, chrome: null }),
       downloadsDir: "/tmp/aux-downloads",
     });
@@ -210,27 +276,73 @@ describe("downloads into session storage (S4)", () => {
 
 describe("sinceRevision delta size gate (S4)", () => {
   const el = (ref: string, over: Partial<ElementRef> = {}): ElementRef => ({
-    ref, frame: "main", tag: "button", role: "button", name: ref.toUpperCase(),
-    selector: { css: `#${ref}` }, rect: { x: 1, y: 2, w: 3, h: 4 }, ...over,
+    ref,
+    frame: "main",
+    tag: "button",
+    role: "button",
+    name: ref.toUpperCase(),
+    selector: { css: `#${ref}` },
+    rect: { x: 1, y: 2, w: 3, h: 4 },
+    ...over,
   });
   const content = (elements: ElementRef[], text = "hello"): ObservationContent => ({
-    url: "https://a.test/", title: "A", viewport: { width: 800, height: 600, scale: 1 }, scroll: { x: 0, y: 0, maxY: 0 },
-    frames: [], text, headings: [], elements,
-    formFields: [], tables: [], links: [], dialogs: [], console: [],
-    truncated: false, stats: { elementsTotal: elements.length, elementsShown: elements.length, textChars: text.length, approxTokens: 1 },
+    url: "https://a.test/",
+    title: "A",
+    viewport: { width: 800, height: 600, scale: 1 },
+    scroll: { x: 0, y: 0, maxY: 0 },
+    frames: [],
+    text,
+    headings: [],
+    elements,
+    formFields: [],
+    tables: [],
+    links: [],
+    dialogs: [],
+    console: [],
+    truncated: false,
+    stats: {
+      elementsTotal: elements.length,
+      elementsShown: elements.length,
+      textChars: text.length,
+      approxTokens: 1,
+    },
   });
 
   function harness(initial: ObservationContent) {
     let current = initial;
     const page = {
-      identity: { pageId: "p", targetId: "t", backend: "aux" }, url: () => current.url, title: async () => "A", isAttached: () => true,
-      navigate: async () => {}, observe: async () => current, setEvents: () => {}, dispose: async () => {},
+      identity: { pageId: "p", targetId: "t", backend: "aux" },
+      url: () => current.url,
+      title: async () => "A",
+      isAttached: () => true,
+      navigate: async () => {},
+      observe: async () => current,
+      setEvents: () => {},
+      dispose: async () => {},
     } as unknown as DriverPage;
-    const driver = { backend: "aux", isConnected: () => true, createTarget: async () => "t", attach: async () => page } as unknown as BrowserDriver;
+    const driver = {
+      backend: "aux",
+      isConnected: () => true,
+      createTarget: async () => "t",
+      attach: async () => page,
+    } as unknown as BrowserDriver;
     const repo = new Repo(openDb(":memory:"));
     cleanup.push(() => repo.db.close());
-    const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, events: new EventBus(repo), native: new NullNativeBridge(), drivers: () => ({ aux: driver, chrome: null }) });
-    return { pages, set: (c: ObservationContent) => { current = c; } };
+    const pages = new PageService({
+      turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined =>
+        pages.get(pageId),
+      ),
+      repo,
+      events: new EventBus(repo),
+      native: new NullNativeBridge(),
+      drivers: () => ({ aux: driver, chrome: null }),
+    });
+    return {
+      pages,
+      set: (c: ObservationContent) => {
+        current = c;
+      },
+    };
   }
 
   it("returns a delta only when it is materially smaller than the full observation", async () => {

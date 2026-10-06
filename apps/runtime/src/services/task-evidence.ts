@@ -45,7 +45,8 @@ function eligibleUndoStep(step: StepRecord): boolean {
     return !!(outcome.before && outcome.after && step.pageId);
   if (step.op === "tab.open") return !!(step.pageId && outcome.after?.ownedByRuntime === true);
   if (step.op === "bookmark.add") return outcome.before?.existed === false && !!outcome.after;
-  if (step.op === "download") return outcome.before?.existed === false && typeof outcome.after?.sha256 === "string";
+  if (step.op === "download")
+    return outcome.before?.existed === false && typeof outcome.after?.sha256 === "string";
   if (step.op === "history.visit") return outcome.before?.existed === false && !!outcome.after;
   return false;
 }
@@ -53,10 +54,10 @@ function eligibleUndoStep(step: StepRecord): boolean {
 function undoReview(steps: StepRecord[]): { token: string; eligibleStepIds: string[] } {
   // Include every step, including remote effects. A newly recorded effect or an
   // updated outcome invalidates the owner's reviewed snapshot before undo starts.
-  const token = createHash("sha256").update(JSON.stringify(steps.map(step => [
-    step.stepId, step.op, step.inputs, step.outcome,
-  ]))).digest("hex");
-  const eligibleStepIds = steps.filter(eligibleUndoStep).map(step => step.stepId);
+  const token = createHash("sha256")
+    .update(JSON.stringify(steps.map((step) => [step.stepId, step.op, step.inputs, step.outcome])))
+    .digest("hex");
+  const eligibleStepIds = steps.filter(eligibleUndoStep).map((step) => step.stepId);
   return { token, eligibleStepIds: eligibleStepIds.length <= 200 ? eligibleStepIds : [] };
 }
 
@@ -186,8 +187,18 @@ export class TaskEvidenceService {
         .prepare(
           "INSERT INTO criterion_reviews(review_id,task_id,task_revision,criterion_id,json) VALUES(?,?,?,?,?)",
         )
-        .run(record.reviewId, record.taskId, record.taskRevision, record.criterionId,
-          this.repo.protectRecordField("criterion_reviews", [record.reviewId], "json", JSON.stringify(record)));
+        .run(
+          record.reviewId,
+          record.taskId,
+          record.taskRevision,
+          record.criterionId,
+          this.repo.protectRecordField(
+            "criterion_reviews",
+            [record.reviewId],
+            "json",
+            JSON.stringify(record),
+          ),
+        );
       return record;
     });
     this.events.emit("task.reviewed", { taskId: p.taskId, reviewId: review.reviewId });
@@ -236,18 +247,34 @@ export class TaskEvidenceService {
     const p = TaskUndoBrowserChangeParams.parse(input);
     this.current(p.taskId, p.expectedRevision, undefined, true);
     const details = this.tasks.details(p.taskId);
-    const run = details.runs.find(item => item.run.runId === p.runId &&
-      item.run.config?.taskRevision === p.expectedRevision)?.run;
-    if (!run || ACTIVE.has(run.status)) throw new AuxError("conflict", "The run is unavailable or still active");
+    const run = details.runs.find(
+      (item) => item.run.runId === p.runId && item.run.config?.taskRevision === p.expectedRevision,
+    )?.run;
+    if (!run || ACTIVE.has(run.status))
+      throw new AuxError("conflict", "The run is unavailable or still active");
     const steps = this.repo.listSteps(p.runId);
-    const step = steps.find(item => item.stepId === p.stepId);
-    if (!step || !["fill", "type", "check", "uncheck", "select"].includes(step.op) ||
-      step.outcome?.status !== "ok" || step.outcome.undoneAt || !step.pageId ||
-      typeof step.inputs?.target !== "string" || !step.outcome.pageUrl ||
-      step.outcome.receipt?.identity?.documentEpoch === undefined)
+    const step = steps.find((item) => item.stepId === p.stepId);
+    if (
+      !step ||
+      !["fill", "type", "check", "uncheck", "select"].includes(step.op) ||
+      step.outcome?.status !== "ok" ||
+      step.outcome.undoneAt ||
+      !step.pageId ||
+      typeof step.inputs?.target !== "string" ||
+      !step.outcome.pageUrl ||
+      step.outcome.receipt?.identity?.documentEpoch === undefined
+    )
       throw new AuxError("conflict", "This form edit has no safe undo record");
-    if (steps.some(other => other.pageId === step.pageId && steps.indexOf(other) > steps.indexOf(step) &&
-      other.inputs?.target === step.inputs?.target && other.outcome?.status === "ok" && !other.outcome?.undoneAt))
+    if (
+      steps.some(
+        (other) =>
+          other.pageId === step.pageId &&
+          steps.indexOf(other) > steps.indexOf(step) &&
+          other.inputs?.target === step.inputs?.target &&
+          other.outcome?.status === "ok" &&
+          !other.outcome?.undoneAt,
+      )
+    )
       throw new AuxError("conflict", "A later edit touched this control; undo the later edit first");
     const state = (value: Record<string, unknown> | undefined) => {
       if (!value || Object.keys(value).length !== 1) return undefined;
@@ -260,30 +287,48 @@ export class TaskEvidenceService {
     };
     const before = state(step.outcome.before);
     const after = state(step.outcome.after);
-    if (!before || !after || !this.pages) throw new AuxError("conflict", "The prior or resulting form state was not recorded safely");
-    await this.pages.undoFormChange({ pageId: step.pageId, target: step.inputs.target,
-      url: step.outcome.pageUrl, documentEpoch: step.outcome.receipt.identity.documentEpoch,
-      before, after });
+    if (!before || !after || !this.pages)
+      throw new AuxError("conflict", "The prior or resulting form state was not recorded safely");
+    await this.pages.undoFormChange({
+      pageId: step.pageId,
+      target: step.inputs.target,
+      url: step.outcome.pageUrl,
+      documentEpoch: step.outcome.receipt.identity.documentEpoch,
+      before,
+      after,
+    });
     this.repo.transaction(() => {
-      const current = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
-      if (!current?.outcome || current.outcome.undoneAt) throw new AuxError("conflict", "This form edit was already undone");
+      const current = this.repo.listSteps(p.runId).find((item) => item.stepId === p.stepId);
+      if (!current?.outcome || current.outcome.undoneAt)
+        throw new AuxError("conflict", "This form edit was already undone");
       this.repo.saveStep({ ...current, outcome: { ...current.outcome, undoneAt: Date.now() } });
     });
     return { ok: true };
   }
 
-  async undoRunBrowserChanges(input: unknown): Promise<{ restored: number; skipped: { stepId: string; reason: string }[] }> {
+  async undoRunBrowserChanges(
+    input: unknown,
+  ): Promise<{ restored: number; skipped: { stepId: string; reason: string }[] }> {
     const p = TaskUndoRunBrowserChangesParams.parse(input);
     this.current(p.taskId, p.expectedRevision, undefined, true);
-    const run = this.tasks.details(p.taskId).runs.find(item => item.run.runId === p.runId &&
-      item.run.config?.taskRevision === p.expectedRevision)?.run;
-    if (!run || ACTIVE.has(run.status)) throw new AuxError("conflict", "The run is unavailable or still active");
+    const run = this.tasks
+      .details(p.taskId)
+      .runs.find(
+        (item) => item.run.runId === p.runId && item.run.config?.taskRevision === p.expectedRevision,
+      )?.run;
+    if (!run || ACTIVE.has(run.status))
+      throw new AuxError("conflict", "The run is unavailable or still active");
     const recorded = this.repo.listSteps(p.runId);
     const review = undoReview(recorded);
-    if (review.token !== p.reviewToken ||
+    if (
+      review.token !== p.reviewToken ||
       JSON.stringify(review.eligibleStepIds) !== JSON.stringify(p.expectedStepIds) ||
-      !p.selectedStepIds.every(id => review.eligibleStepIds.includes(id)))
-      throw new AuxError("conflict", "The run receipt changed. Review its browser changes again before undoing.");
+      !p.selectedStepIds.every((id) => review.eligibleStepIds.includes(id))
+    )
+      throw new AuxError(
+        "conflict",
+        "The run receipt changed. Review its browser changes again before undoing.",
+      );
     const selected = new Set(p.selectedStepIds);
     const steps = recorded.reverse();
     const single = { taskId: p.taskId, expectedRevision: p.expectedRevision, runId: p.runId };
@@ -301,29 +346,45 @@ export class TaskEvidenceService {
         } else if (step.op === "history.visit") {
           await this.undoHistoryChange({ ...single, stepId: step.stepId });
         } else if (step.op === "tab.open" && step.pageId && this.pages) {
-          if (steps.some((later, index) => index < steps.indexOf(step) && later.op === "tab.close" &&
-            later.pageId === step.pageId && later.outcome?.status === "ok")) {
+          if (
+            steps.some(
+              (later, index) =>
+                index < steps.indexOf(step) &&
+                later.op === "tab.close" &&
+                later.pageId === step.pageId &&
+                later.outcome?.status === "ok",
+            )
+          ) {
             skipped.push({ stepId: step.stepId, reason: "The run already closed this tab" });
             continue;
           }
           const after = step.outcome?.after;
-          if (typeof after?.url !== "string" || typeof after?.documentEpoch !== "number" ||
-            after.ownedByRuntime !== true)
+          if (
+            typeof after?.url !== "string" ||
+            typeof after?.documentEpoch !== "number" ||
+            after.ownedByRuntime !== true
+          )
             throw new AuxError("conflict", "This tab has no safe run-owned before/after record");
           await this.pages.undoOpenedTab(step.pageId, { url: after.url, documentEpoch: after.documentEpoch });
-          const current = this.repo.listSteps(p.runId).find(item => item.stepId === step.stepId);
-          if (!current?.outcome || current.outcome.undoneAt) throw new AuxError("conflict", "This tab was already undone");
+          const current = this.repo.listSteps(p.runId).find((item) => item.stepId === step.stepId);
+          if (!current?.outcome || current.outcome.undoneAt)
+            throw new AuxError("conflict", "This tab was already undone");
           this.repo.saveStep({ ...current, outcome: { ...current.outcome, undoneAt: Date.now() } });
         } else if (step.op === "tab.open") {
-          throw new AuxError("backend_unavailable", "This tab cannot be closed through the current browser connection");
+          throw new AuxError(
+            "backend_unavailable",
+            "This tab cannot be closed through the current browser connection",
+          );
         } else if (step.op === "tab.close") {
           skipped.push({ stepId: step.stepId, reason: "A closed tab cannot be safely reconstructed" });
           continue;
         } else continue;
         restored++;
       } catch (error) {
-        skipped.push({ stepId: step.stepId,
-          reason: (error instanceof Error ? error.message : String(error)).slice(0, 500) });
+        skipped.push({
+          stepId: step.stepId,
+          reason: (error instanceof Error ? error.message : String(error)).slice(0, 500),
+        });
       }
     }
     return { restored, skipped };
@@ -332,16 +393,25 @@ export class TaskEvidenceService {
   async undoBookmarkChange(input: unknown): Promise<{ ok: true }> {
     const p = TaskUndoBrowserChangeParams.parse(input);
     this.current(p.taskId, p.expectedRevision, undefined, true);
-    const run = this.tasks.details(p.taskId).runs.find(item => item.run.runId === p.runId &&
-      item.run.config?.taskRevision === p.expectedRevision)?.run;
-    if (!run || ACTIVE.has(run.status)) throw new AuxError("conflict", "The run is unavailable or still active");
-    const step = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
-    if (step?.op !== "bookmark.add" || step.outcome?.status !== "ok" || step.outcome.undoneAt ||
-      step.outcome.before?.existed !== false || !step.outcome.after)
+    const run = this.tasks
+      .details(p.taskId)
+      .runs.find(
+        (item) => item.run.runId === p.runId && item.run.config?.taskRevision === p.expectedRevision,
+      )?.run;
+    if (!run || ACTIVE.has(run.status))
+      throw new AuxError("conflict", "The run is unavailable or still active");
+    const step = this.repo.listSteps(p.runId).find((item) => item.stepId === p.stepId);
+    if (
+      step?.op !== "bookmark.add" ||
+      step.outcome?.status !== "ok" ||
+      step.outcome.undoneAt ||
+      step.outcome.before?.existed !== false ||
+      !step.outcome.after
+    )
       throw new AuxError("conflict", "This bookmark has no safe undo record");
     await new BrowserBookmarkLedger(this.repo, this.native).undo({ after: step.outcome.after });
     this.repo.transaction(() => {
-      const current = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+      const current = this.repo.listSteps(p.runId).find((item) => item.stepId === p.stepId);
       if (!current?.outcome || current.outcome.undoneAt)
         throw new AuxError("conflict", "This bookmark was already undone");
       this.repo.saveStep({ ...current, outcome: { ...current.outcome, undoneAt: Date.now() } });
@@ -352,15 +422,19 @@ export class TaskEvidenceService {
   async undoDownloadChange(input: unknown): Promise<{ ok: true }> {
     const p = TaskUndoBrowserChangeParams.parse(input);
     this.current(p.taskId, p.expectedRevision, undefined, true);
-    const run = this.tasks.details(p.taskId).runs.find(item => item.run.runId === p.runId &&
-      item.run.config?.taskRevision === p.expectedRevision)?.run;
-    if (!run || ACTIVE.has(run.status)) throw new AuxError("conflict", "The run is unavailable or still active");
-    const step = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+    const run = this.tasks
+      .details(p.taskId)
+      .runs.find(
+        (item) => item.run.runId === p.runId && item.run.config?.taskRevision === p.expectedRevision,
+      )?.run;
+    if (!run || ACTIVE.has(run.status))
+      throw new AuxError("conflict", "The run is unavailable or still active");
+    const step = this.repo.listSteps(p.runId).find((item) => item.stepId === p.stepId);
     if (step?.op !== "download" || step.outcome?.status !== "ok" || step.outcome.undoneAt)
       throw new AuxError("conflict", "This download has no safe cleanup record");
     await new BrowserDownloadLedger(this.repo, this.downloadsDir, this.trashDir).undo(step);
     this.repo.transaction(() => {
-      const current = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+      const current = this.repo.listSteps(p.runId).find((item) => item.stepId === p.stepId);
       if (!current?.outcome || current.outcome.undoneAt)
         throw new AuxError("conflict", "This download was already cleaned up");
       this.repo.saveStep({ ...current, outcome: { ...current.outcome, undoneAt: Date.now() } });
@@ -371,15 +445,19 @@ export class TaskEvidenceService {
   async undoHistoryChange(input: unknown): Promise<{ ok: true }> {
     const p = TaskUndoBrowserChangeParams.parse(input);
     this.current(p.taskId, p.expectedRevision, undefined, true);
-    const run = this.tasks.details(p.taskId).runs.find(item => item.run.runId === p.runId &&
-      item.run.config?.taskRevision === p.expectedRevision)?.run;
-    if (!run || ACTIVE.has(run.status)) throw new AuxError("conflict", "The run is unavailable or still active");
-    const step = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+    const run = this.tasks
+      .details(p.taskId)
+      .runs.find(
+        (item) => item.run.runId === p.runId && item.run.config?.taskRevision === p.expectedRevision,
+      )?.run;
+    if (!run || ACTIVE.has(run.status))
+      throw new AuxError("conflict", "The run is unavailable or still active");
+    const step = this.repo.listSteps(p.runId).find((item) => item.stepId === p.stepId);
     if (step?.op !== "history.visit" || step.outcome?.status !== "ok" || step.outcome.undoneAt)
       throw new AuxError("conflict", "This visit has no safe removal record");
     await new BrowserHistoryLedger(this.repo, this.native).undo(step);
     this.repo.transaction(() => {
-      const current = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+      const current = this.repo.listSteps(p.runId).find((item) => item.stepId === p.stepId);
       if (!current?.outcome || current.outcome.undoneAt)
         throw new AuxError("conflict", "This visit was already removed");
       this.repo.saveStep({ ...current, outcome: { ...current.outcome, undoneAt: Date.now() } });
@@ -419,9 +497,15 @@ export class TaskEvidenceService {
         .run(p.outcome === "applied" ? "verified" : "not-dispatched", recordedAt, p.invocationId);
       if (updated.changes !== 1)
         throw new AuxError("conflict", "The operation was reconciled by another client");
-      this.repo.saveOperationReconciliation({ invocationId: p.invocationId, taskId: p.taskId,
-        taskRevision: p.expectedRevision, outcome: p.outcome, evidenceId: p.evidenceId,
-        note: p.note, recordedAt });
+      this.repo.saveOperationReconciliation({
+        invocationId: p.invocationId,
+        taskId: p.taskId,
+        taskRevision: p.expectedRevision,
+        outcome: p.outcome,
+        evidenceId: p.evidenceId,
+        note: p.note,
+        recordedAt,
+      });
       if (operation.runId && this.repo.getRun(operation.runId)?.config?.contextMemoryRevoked)
         redactSettledRunInvocations(this.repo.db, operation.runId);
     });
@@ -490,7 +574,12 @@ export class TaskEvidenceService {
         record.taskId,
         record.taskRevision,
         record.criterionId,
-        this.repo.protectRecordField("criterion_verifications", [record.verificationId], "json", JSON.stringify(record)),
+        this.repo.protectRecordField(
+          "criterion_verifications",
+          [record.verificationId],
+          "json",
+          JSON.stringify(record),
+        ),
         record.recordedAt,
       );
     this.events.emit("task.criterion_verified", {
@@ -535,103 +624,194 @@ export class TaskEvidenceService {
       ...(error ? { error } : {}),
     }));
     const setterOps = new Set(["fill", "type", "check", "uncheck", "select"]);
-    const browserChanges: TaskReceipt["browserChanges"] = runs.flatMap(({ run }) =>
-      this.repo.listSteps(run.runId).flatMap(step => {
-        const status = step.outcome?.status;
-        if (!setterOps.has(step.op) || (status !== "ok" && status !== "failed")) return [];
-        const boundedState = (raw: Record<string, unknown> | undefined) => raw && {
-          ...(typeof raw.value === "string" ? { value: raw.value.slice(0, 300) } : {}),
-          ...(typeof raw.checked === "boolean" ? { checked: raw.checked } : {}),
-          ...(typeof raw.selected === "string" ? { selected: raw.selected.slice(0, 300) } : {}),
-        };
-        const before = boundedState(step.outcome?.before);
-        const after = boundedState(step.outcome?.after);
-        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
-          taskRevision: run.config!.taskRevision!, op: step.op as TaskReceipt["browserChanges"][number]["op"],
-          status, startedAt: step.startedAt,
-          ...(typeof step.inputs?.target === "string" ? { target: step.inputs.target.slice(0, 200) } : {}),
-          ...(before && Object.keys(before).length ? { before } : {}),
-          ...(after && Object.keys(after).length ? { after } : {}),
-          ...(step.outcome?.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
-        }];
-      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
-    const tabChanges: TaskReceipt["tabChanges"] = runs.flatMap(({ run }) =>
-      this.repo.listSteps(run.runId).flatMap(step => {
-        if (step.op !== "tab.open" && step.op !== "tab.close") return [];
-        const status = step.outcome?.status;
-        if (status !== "ok" && status !== "failed") return [];
-        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
-          taskRevision: run.config!.taskRevision!, op: step.op as "tab.open" | "tab.close", status, startedAt: step.startedAt,
-          ...(typeof step.inputs?.url === "string" ? { url: step.inputs.url.slice(0, 8192) } : {}),
-          ...(step.outcome?.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
-        }];
-      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
-    const groupChanges: TaskReceipt["groupChanges"] = runs.flatMap(({ run }) =>
-      this.repo.listSteps(run.runId).flatMap(step => {
-        if (step.op !== "group.change" || step.outcome?.status !== "ok") return [];
-        return [BrowserGroupReceiptSchema.parse({ stepId: step.stepId, runId: run.runId,
-          groupId: step.inputs?.groupId, taskRevision: run.config!.taskRevision!,
-          observedAt: step.startedAt, before: step.outcome.before, after: step.outcome.after,
-          undoAvailable: false })];
-      })).sort((a, b) => a.observedAt - b.observedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
-    const remoteActions: TaskReceipt["remoteActions"] = runs.flatMap(({ run }) =>
-      this.repo.listSteps(run.runId).flatMap(step => {
-        if (!isConsequential(step.op) || setterOps.has(step.op) || step.op.startsWith("tab.")) return [];
-        const status = step.outcome?.status;
-        if (status !== "ok" && status !== "failed") return [];
-        const receipt = step.outcome?.receipt;
-        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
-          taskRevision: run.config!.taskRevision!, op: step.op, status, startedAt: step.startedAt,
-          ...(step.outcome?.effect ? { effect: step.outcome.effect } : {}),
-          ...(receipt?.observed ? { browserObserved: receipt.observed.slice(0, 300) } : {}),
-          remoteConfirmed: receipt?.remoteConfirmed === true,
-          uncertain: status === "failed" || receipt?.uncertain === true || receipt?.unconfirmed === true ||
-            receipt?.dispatchedBeforeTakeover === true || step.outcome?.effect === "uncertain",
-        }];
-      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
-    const bookmarkChanges: TaskReceipt["bookmarkChanges"] = runs.flatMap(({ run }) =>
-      this.repo.listSteps(run.runId).flatMap(step => {
-        if (step.op !== "bookmark.add" || !step.outcome ||
-          !["ok", "failed"].includes(step.outcome.status)) return [];
-        const after = step.outcome.after;
-        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
-          taskRevision: run.config!.taskRevision!, status: step.outcome.status as "ok" | "failed",
-          startedAt: step.startedAt,
-          ...(typeof after?.url === "string" ? { url: after.url.slice(0, 8192) } : {}),
-          ...(typeof after?.title === "string" ? { title: after.title.slice(0, 1000) } : {}),
-          ...(step.outcome.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
-        }];
-      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
-    const downloadChanges: TaskReceipt["downloadChanges"] = runs.flatMap(({ run }) =>
-      this.repo.listSteps(run.runId).flatMap(step => {
-        if (step.op !== "download" || !step.outcome) return [];
-        const after = step.outcome.after;
-        const state = after?.state;
-        const status: TaskReceipt["downloadChanges"][number]["status"] =
-          state === "completed" ? "completed" : state === "started" ? "started" : "interrupted";
-        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
-          taskRevision: run.config!.taskRevision!, status, startedAt: step.startedAt,
-          ...(typeof after?.filename === "string" ? { filename: after.filename.slice(0, 1000) } : {}),
-          ...(typeof step.inputs?.sourceUrl === "string" ? { sourceUrl: step.inputs.sourceUrl.slice(0, 8192) } : {}),
-          ...(typeof after?.path === "string" ? { path: after.path.slice(0, 4096) } : {}),
-          ...(typeof after?.size === "number" ? { size: after.size } : {}),
-          cleanupAvailable: status === "completed" && step.outcome.before?.existed === false &&
-            typeof after?.sha256 === "string" && !step.outcome.undoneAt,
-          ...(step.outcome.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
-        }];
-      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
-    const historyChanges: TaskReceipt["historyChanges"] = runs.flatMap(({ run }) =>
-      this.repo.listSteps(run.runId).flatMap(step => {
-        if (step.op !== "history.visit" || step.outcome?.status !== "ok") return [];
-        const after = step.outcome.after;
-        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
-          taskRevision: run.config!.taskRevision!, status: "ok" as const, startedAt: step.startedAt,
-          ...(typeof after?.url === "string" ? { url: after.url.slice(0, 8192) } : {}),
-          ...(typeof after?.title === "string" ? { title: after.title.slice(0, 4096) } : {}),
-          ...(typeof after?.visitedAt === "number" ? { visitedAt: after.visitedAt } : {}),
-          ...(step.outcome.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
-        }];
-      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
+    const browserChanges: TaskReceipt["browserChanges"] = runs
+      .flatMap(({ run }) =>
+        this.repo.listSteps(run.runId).flatMap((step) => {
+          const status = step.outcome?.status;
+          if (!setterOps.has(step.op) || (status !== "ok" && status !== "failed")) return [];
+          const boundedState = (raw: Record<string, unknown> | undefined) =>
+            raw && {
+              ...(typeof raw.value === "string" ? { value: raw.value.slice(0, 300) } : {}),
+              ...(typeof raw.checked === "boolean" ? { checked: raw.checked } : {}),
+              ...(typeof raw.selected === "string" ? { selected: raw.selected.slice(0, 300) } : {}),
+            };
+          const before = boundedState(step.outcome?.before);
+          const after = boundedState(step.outcome?.after);
+          return [
+            {
+              stepId: step.stepId,
+              runId: run.runId,
+              pageId: step.pageId ?? "unknown",
+              taskRevision: run.config!.taskRevision!,
+              op: step.op as TaskReceipt["browserChanges"][number]["op"],
+              status,
+              startedAt: step.startedAt,
+              ...(typeof step.inputs?.target === "string"
+                ? { target: step.inputs.target.slice(0, 200) }
+                : {}),
+              ...(before && Object.keys(before).length ? { before } : {}),
+              ...(after && Object.keys(after).length ? { after } : {}),
+              ...(step.outcome?.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
+            },
+          ];
+        }),
+      )
+      .sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId))
+      .slice(-200);
+    const tabChanges: TaskReceipt["tabChanges"] = runs
+      .flatMap(({ run }) =>
+        this.repo.listSteps(run.runId).flatMap((step) => {
+          if (step.op !== "tab.open" && step.op !== "tab.close") return [];
+          const status = step.outcome?.status;
+          if (status !== "ok" && status !== "failed") return [];
+          return [
+            {
+              stepId: step.stepId,
+              runId: run.runId,
+              pageId: step.pageId ?? "unknown",
+              taskRevision: run.config!.taskRevision!,
+              op: step.op as "tab.open" | "tab.close",
+              status,
+              startedAt: step.startedAt,
+              ...(typeof step.inputs?.url === "string" ? { url: step.inputs.url.slice(0, 8192) } : {}),
+              ...(step.outcome?.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
+            },
+          ];
+        }),
+      )
+      .sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId))
+      .slice(-200);
+    const groupChanges: TaskReceipt["groupChanges"] = runs
+      .flatMap(({ run }) =>
+        this.repo.listSteps(run.runId).flatMap((step) => {
+          if (step.op !== "group.change" || step.outcome?.status !== "ok") return [];
+          return [
+            BrowserGroupReceiptSchema.parse({
+              stepId: step.stepId,
+              runId: run.runId,
+              groupId: step.inputs?.groupId,
+              taskRevision: run.config!.taskRevision!,
+              observedAt: step.startedAt,
+              before: step.outcome.before,
+              after: step.outcome.after,
+              undoAvailable: false,
+            }),
+          ];
+        }),
+      )
+      .sort((a, b) => a.observedAt - b.observedAt || a.stepId.localeCompare(b.stepId))
+      .slice(-200);
+    const remoteActions: TaskReceipt["remoteActions"] = runs
+      .flatMap(({ run }) =>
+        this.repo.listSteps(run.runId).flatMap((step) => {
+          if (!isConsequential(step.op) || setterOps.has(step.op) || step.op.startsWith("tab.")) return [];
+          const status = step.outcome?.status;
+          if (status !== "ok" && status !== "failed") return [];
+          const receipt = step.outcome?.receipt;
+          return [
+            {
+              stepId: step.stepId,
+              runId: run.runId,
+              pageId: step.pageId ?? "unknown",
+              taskRevision: run.config!.taskRevision!,
+              op: step.op,
+              status,
+              startedAt: step.startedAt,
+              ...(step.outcome?.effect ? { effect: step.outcome.effect } : {}),
+              ...(receipt?.observed ? { browserObserved: receipt.observed.slice(0, 300) } : {}),
+              remoteConfirmed: receipt?.remoteConfirmed === true,
+              uncertain:
+                status === "failed" ||
+                receipt?.uncertain === true ||
+                receipt?.unconfirmed === true ||
+                receipt?.dispatchedBeforeTakeover === true ||
+                step.outcome?.effect === "uncertain",
+            },
+          ];
+        }),
+      )
+      .sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId))
+      .slice(-200);
+    const bookmarkChanges: TaskReceipt["bookmarkChanges"] = runs
+      .flatMap(({ run }) =>
+        this.repo.listSteps(run.runId).flatMap((step) => {
+          if (step.op !== "bookmark.add" || !step.outcome || !["ok", "failed"].includes(step.outcome.status))
+            return [];
+          const after = step.outcome.after;
+          return [
+            {
+              stepId: step.stepId,
+              runId: run.runId,
+              pageId: step.pageId ?? "unknown",
+              taskRevision: run.config!.taskRevision!,
+              status: step.outcome.status as "ok" | "failed",
+              startedAt: step.startedAt,
+              ...(typeof after?.url === "string" ? { url: after.url.slice(0, 8192) } : {}),
+              ...(typeof after?.title === "string" ? { title: after.title.slice(0, 1000) } : {}),
+              ...(step.outcome.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
+            },
+          ];
+        }),
+      )
+      .sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId))
+      .slice(-200);
+    const downloadChanges: TaskReceipt["downloadChanges"] = runs
+      .flatMap(({ run }) =>
+        this.repo.listSteps(run.runId).flatMap((step) => {
+          if (step.op !== "download" || !step.outcome) return [];
+          const after = step.outcome.after;
+          const state = after?.state;
+          const status: TaskReceipt["downloadChanges"][number]["status"] =
+            state === "completed" ? "completed" : state === "started" ? "started" : "interrupted";
+          return [
+            {
+              stepId: step.stepId,
+              runId: run.runId,
+              pageId: step.pageId ?? "unknown",
+              taskRevision: run.config!.taskRevision!,
+              status,
+              startedAt: step.startedAt,
+              ...(typeof after?.filename === "string" ? { filename: after.filename.slice(0, 1000) } : {}),
+              ...(typeof step.inputs?.sourceUrl === "string"
+                ? { sourceUrl: step.inputs.sourceUrl.slice(0, 8192) }
+                : {}),
+              ...(typeof after?.path === "string" ? { path: after.path.slice(0, 4096) } : {}),
+              ...(typeof after?.size === "number" ? { size: after.size } : {}),
+              cleanupAvailable:
+                status === "completed" &&
+                step.outcome.before?.existed === false &&
+                typeof after?.sha256 === "string" &&
+                !step.outcome.undoneAt,
+              ...(step.outcome.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
+            },
+          ];
+        }),
+      )
+      .sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId))
+      .slice(-200);
+    const historyChanges: TaskReceipt["historyChanges"] = runs
+      .flatMap(({ run }) =>
+        this.repo.listSteps(run.runId).flatMap((step) => {
+          if (step.op !== "history.visit" || step.outcome?.status !== "ok") return [];
+          const after = step.outcome.after;
+          return [
+            {
+              stepId: step.stepId,
+              runId: run.runId,
+              pageId: step.pageId ?? "unknown",
+              taskRevision: run.config!.taskRevision!,
+              status: "ok" as const,
+              startedAt: step.startedAt,
+              ...(typeof after?.url === "string" ? { url: after.url.slice(0, 8192) } : {}),
+              ...(typeof after?.title === "string" ? { title: after.title.slice(0, 4096) } : {}),
+              ...(typeof after?.visitedAt === "number" ? { visitedAt: after.visitedAt } : {}),
+              ...(step.outcome.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
+            },
+          ];
+        }),
+      )
+      .sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId))
+      .slice(-200);
     const criteria: TaskReceipt["criteria"] = task.criteria.map((criterion) => {
       const rows = this.evidence(taskId, task.revision, criterion.criterionId);
       const evidence = rows.map(({ record }) => {
@@ -643,8 +823,13 @@ export class TaskEvidenceService {
           "SELECT review_id,json FROM criterion_reviews WHERE task_id=? AND task_revision=? AND criterion_id=? ORDER BY seq DESC LIMIT 1",
         )
         .get(taskId, task.revision, criterion.criterionId) as { review_id: string; json: string } | undefined;
-      const review = reviewRow ? CriterionReviewSchema.parse(JSON.parse(this.repo.revealRecordField(
-        "criterion_reviews", [reviewRow.review_id], "json", reviewRow.json))) : undefined;
+      const review = reviewRow
+        ? CriterionReviewSchema.parse(
+            JSON.parse(
+              this.repo.revealRecordField("criterion_reviews", [reviewRow.review_id], "json", reviewRow.json),
+            ),
+          )
+        : undefined;
       let status: TaskReceipt["criteria"][number]["status"] = evidence.length ? "needs_review" : "unverified";
       if (review) {
         const stale = review.evidenceIds.some(
@@ -706,10 +891,12 @@ export class TaskEvidenceService {
       status,
       criteria,
       unresolvedActions,
-      undoReviews: runs.flatMap(({ run }) => {
-        if (ACTIVE.has(run.status) || run.config?.taskRevision !== task.revision) return [];
-        return [{ runId: run.runId, ...undoReview(this.repo.listSteps(run.runId)) }];
-      }).slice(-200),
+      undoReviews: runs
+        .flatMap(({ run }) => {
+          if (ACTIVE.has(run.status) || run.config?.taskRevision !== task.revision) return [];
+          return [{ runId: run.runId, ...undoReview(this.repo.listSteps(run.runId)) }];
+        })
+        .slice(-200),
       browserChanges,
       tabChanges,
       groupChanges,
@@ -743,8 +930,11 @@ export class TaskEvidenceService {
           )
           .all(taskId, task.revision) as { verification_id: string; json: string }[]
       ).flatMap((row) => {
-        const parsed = CriterionVerificationSchema.safeParse(JSON.parse(this.repo.revealRecordField(
-          "criterion_verifications", [row.verification_id], "json", row.json)));
+        const parsed = CriterionVerificationSchema.safeParse(
+          JSON.parse(
+            this.repo.revealRecordField("criterion_verifications", [row.verification_id], "json", row.json),
+          ),
+        );
         return parsed.success ? [parsed.data] : [];
       }),
     };
@@ -784,8 +974,11 @@ export class TaskEvidenceService {
         )
         .all(taskId, revision, criterion.criterionId) as { review_id: string; json: string }[];
       const review = reviews
-        .map((item) => CriterionReviewSchema.parse(JSON.parse(this.repo.revealRecordField(
-          "criterion_reviews", [item.review_id], "json", item.json))))
+        .map((item) =>
+          CriterionReviewSchema.parse(
+            JSON.parse(this.repo.revealRecordField("criterion_reviews", [item.review_id], "json", item.json)),
+          ),
+        )
         .find(
           (item) =>
             rows.length > 0 &&
@@ -822,7 +1015,9 @@ export class TaskEvidenceService {
   private runSequence(taskId: string): number {
     return Number(
       this.repo.db
-        .prepare("SELECT coalesce(max(r.rowid),0) AS seq FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=?")
+        .prepare(
+          "SELECT coalesce(max(r.rowid),0) AS seq FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=?",
+        )
         .get(taskId)?.seq,
     );
   }
@@ -859,8 +1054,12 @@ export class TaskEvidenceService {
           "SELECT seq,evidence_id,json FROM task_evidence WHERE task_id=? AND task_revision=? AND (? IS NULL OR criterion_id=?) ORDER BY seq",
         )
         .all(taskId, revision, criterionId ?? null, criterionId ?? null) as EvidenceRow[]
-    ).map((row) => ({ seq: row.seq, record: TaskEvidenceSchema.parse(JSON.parse(this.repo.revealRecordField(
-      "task_evidence", [row.evidence_id], "json", row.json))) }));
+    ).map((row) => ({
+      seq: row.seq,
+      record: TaskEvidenceSchema.parse(
+        JSON.parse(this.repo.revealRecordField("task_evidence", [row.evidence_id], "json", row.json)),
+      ),
+    }));
   }
 
   private saveEvidence(record: TaskEvidence): TaskEvidence {
@@ -874,7 +1073,12 @@ export class TaskEvidenceService {
         validated.taskId,
         validated.taskRevision,
         validated.criterionId,
-        this.repo.protectRecordField("task_evidence", [validated.evidenceId], "json", JSON.stringify(validated)),
+        this.repo.protectRecordField(
+          "task_evidence",
+          [validated.evidenceId],
+          "json",
+          JSON.stringify(validated),
+        ),
       );
     this.events.emit("task.evidence_recorded", {
       taskId: validated.taskId,

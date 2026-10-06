@@ -85,7 +85,7 @@ export class ApiServer {
         parsedSeq !== undefined && Number.isInteger(parsedSeq) && parsedSeq >= 0 ? parsedSeq : undefined;
       const streamId = url.searchParams.get("streamId") ?? undefined;
       const resume = afterSeq === undefined ? undefined : { afterSeq, streamId };
-      const scopedToken = client.scope ? bearer ?? queryToken ?? undefined : undefined;
+      const scopedToken = client.scope ? (bearer ?? queryToken ?? undefined) : undefined;
       this.wss.handleUpgrade(req, socket, head, (ws) => this.onSocket(ws, client!, resume, scopedToken));
     });
     this.opts.events.subscribe((e) => this.broadcast(e));
@@ -144,8 +144,16 @@ export class ApiServer {
     }
   }
 
-  private onSocket(ws: WebSocket, client: ClientContext, resume?: { afterSeq: number; streamId?: string }, scopedToken?: string) {
-    const entry: { client: ClientContext; scopedToken?: string; backlog?: string[] } = { client, scopedToken };
+  private onSocket(
+    ws: WebSocket,
+    client: ClientContext,
+    resume?: { afterSeq: number; streamId?: string },
+    scopedToken?: string,
+  ) {
+    const entry: { client: ClientContext; scopedToken?: string; backlog?: string[] } = {
+      client,
+      scopedToken,
+    };
     if (resume) entry.backlog = [];
     this.sockets.set(ws, entry);
     ws.on("close", () => this.sockets.delete(ws));
@@ -184,8 +192,12 @@ export class ApiServer {
   private liveSocket(ws: WebSocket, entry: { client: ClientContext; scopedToken?: string }): boolean {
     if (!entry.client.scope) return true;
     const fresh = entry.scopedToken ? this.opts.authorizeScopedToken?.(entry.scopedToken) : null;
-    if (fresh && fresh.connectionId === entry.client.connectionId &&
-      JSON.stringify(fresh.scope) === JSON.stringify(entry.client.scope)) return true;
+    if (
+      fresh &&
+      fresh.connectionId === entry.client.connectionId &&
+      JSON.stringify(fresh.scope) === JSON.stringify(entry.client.scope)
+    )
+      return true;
     ws.close(1008, "Connection expired or revoked");
     return false;
   }

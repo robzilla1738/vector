@@ -34,12 +34,17 @@ import { ProfilesSettings } from "../settings/sections/Profiles";
 import { bridge, inNativeHost } from "../bridge";
 import { SettingsNav } from "../settings/SettingsNav";
 import { SettingsShell } from "../settings/SettingsShell";
-import { pushSettingsPath, settingsPath, settingsRouteFromPath, type ConnectionTab, type SettingsRoute } from "../settings/routes";
+import {
+  pushSettingsPath,
+  settingsPath,
+  settingsRouteFromPath,
+  type ConnectionTab,
+  type SettingsRoute,
+} from "../settings/routes";
 import { availableForFocus, ownsFocus } from "../ui/focus";
 import { moveListFocus } from "../keyboard-list";
 import { useFeature } from "../use-feature";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
-
 
 const categoryDescriptions: Record<string, string> = {
   Downloads: "File names, exclusions and smart downloads.",
@@ -67,7 +72,7 @@ const connectionCategories = ["Models", "Connections", "External agents", "Vault
 export function Settings() {
   const [refreshVersion, setRefreshVersion] = useState(0);
   useEffect(() => {
-    const refresh = () => setRefreshVersion(value => value + 1);
+    const refresh = () => setRefreshVersion((value) => value + 1);
     window.addEventListener("aux-settings-refresh", refresh);
     return () => window.removeEventListener("aux-settings-refresh", refresh);
   }, []);
@@ -79,10 +84,21 @@ export function Settings() {
   const appleScriptAvailable = useFeature("appleScript") && inNativeHost && !bridge.privateMode;
   const skillsAvailable = useFeature("skills");
   const automationsFeatureAvailable = useFeature("automations");
-  const automationsAvailable = automationsFeatureAvailable || featureSettingsAvailable("Automations", settings.featureOverrides as import("@aux/contracts").FeatureOverride | undefined);
+  const automationsAvailable =
+    automationsFeatureAvailable ||
+    featureSettingsAvailable(
+      "Automations",
+      settings.featureOverrides as import("@aux/contracts").FeatureOverride | undefined,
+    );
   const outboundMcpAvailable = useFeature("outboundMcp");
   const connectorsAvailable = useFeature("connectors");
-  const servicesAvailable = outboundMcpAvailable || connectorsAvailable || featureSettingsAvailable("Connections", settings.featureOverrides as import("@aux/contracts").FeatureOverride | undefined);
+  const servicesAvailable =
+    outboundMcpAvailable ||
+    connectorsAvailable ||
+    featureSettingsAvailable(
+      "Connections",
+      settings.featureOverrides as import("@aux/contracts").FeatureOverride | undefined,
+    );
   const permissionsAvailable = useFeature("sitePermissions");
   const vaultAvailable = useFeature("vault");
   const extensionsAvailable = useFeature("extensions");
@@ -100,7 +116,9 @@ export function Settings() {
     (route.connectionTab !== "Services" || servicesAvailable);
   const [requestedRoute] = useState(() => settingsRouteFromPath(window.location.pathname));
   const initialRoute = requestedRoute && routeEnabled(requestedRoute) ? requestedRoute : null;
-  const [initialCategory] = useState(() => requestedRoute ? initialRoute?.category ?? "General" : useStore.getState().settingsCategory);
+  const [initialCategory] = useState(() =>
+    requestedRoute ? (initialRoute?.category ?? "General") : useStore.getState().settingsCategory,
+  );
   const [category, setCategory] = useState(() =>
     (initialCategory === "Memory" && !memoryAvailable) ||
     (initialCategory === "Downloads" && !downloadNamingAvailable) ||
@@ -117,13 +135,16 @@ export function Settings() {
         : initialCategory,
   );
   const [connectionTab, setConnectionTab] = useState<ConnectionTab>(
-    initialRoute?.connectionTab ?? (initialCategory === "External agents"
-      ? "Agents"
-      : initialCategory === "Connections"
-        ? servicesAvailable ? "Services" : "Models"
-        : initialCategory === "Vault" && vaultAvailable
-          ? "Vault"
-          : "Models"),
+    initialRoute?.connectionTab ??
+      (initialCategory === "External agents"
+        ? "Agents"
+        : initialCategory === "Connections"
+          ? servicesAvailable
+            ? "Services"
+            : "Models"
+          : initialCategory === "Vault" && vaultAvailable
+            ? "Vault"
+            : "Models"),
   );
   const [subview, setSubview] = useState<string | null>(null);
   const subviewOrigin = useRef<HTMLButtonElement | null>(null);
@@ -159,21 +180,37 @@ export function Settings() {
   function openCategory(name: string, tabOverride?: ConnectionTab) {
     setSubview(null);
     setCategory(connectionCategories.includes(name) ? "Connections" : name);
-    const nextTab = tabOverride ?? (name === "Models"
-          ? "Models"
-          : name === "External agents"
-            ? "Agents"
-            : name === "Vault"
-              ? "Vault"
-              : servicesAvailable ? "Services" : "Models");
+    const nextTab =
+      tabOverride ??
+      (name === "Models"
+        ? "Models"
+        : name === "External agents"
+          ? "Agents"
+          : name === "Vault"
+            ? "Vault"
+            : servicesAvailable
+              ? "Services"
+              : "Models");
     if (connectionCategories.includes(name)) setConnectionTab(nextTab);
     pushSettingsPath(name, nextTab);
   }
   const [query, setQuery] = useState("");
-  const sectionTitle = category === "Connections"
-    ? ({ Models: "Models", Services: "MCP & Connectors", Agents: "Developers & External Agents", Vault: "Vault", Plugins: "Skills & Plugins" } as const)[connectionTab]
-    : category === "Site permissions" ? "Privacy & Security"
-    : category === "Agent permissions" ? "Agents" : category;
+  const sectionTitle =
+    category === "Connections"
+      ? (
+          {
+            Models: "Models",
+            Services: "MCP & Connectors",
+            Agents: "Developers & External Agents",
+            Vault: "Vault",
+            Plugins: "Skills & Plugins",
+          } as const
+        )[connectionTab]
+      : category === "Site permissions"
+        ? "Privacy & Security"
+        : category === "Agent permissions"
+          ? "Agents"
+          : category;
   const [indexedFields, setIndexedFields] = useState<SettingsDestination[]>([]);
   const searching = !!query.trim();
   const results = searchSettings(query, indexedFields).filter(
@@ -232,7 +269,8 @@ export function Settings() {
     const shell = dialogRef.current;
     firstCategory.current?.focus();
     return () => {
-      if (ownsFocus(shell) && previous && availableForFocus(previous)) previous.focus({ preventScroll: true });
+      if (ownsFocus(shell) && previous && availableForFocus(previous))
+        previous.focus({ preventScroll: true });
     };
   }, []);
 
@@ -247,12 +285,11 @@ export function Settings() {
   useLayoutEffect(() => {
     if (!destination || searching) return;
     const controller = new AbortController();
-    void focusSettingsDestination(scrollRef.current, destination, controller.signal)
-      .then(() => { if (!controller.signal.aborted) setDestination(null); });
+    void focusSettingsDestination(scrollRef.current, destination, controller.signal).then(() => {
+      if (!controller.signal.aborted) setDestination(null);
+    });
     return () => controller.abort();
   }, [destination, searching]);
-
-
 
   const set = async (patch: Record<string, unknown>, present?: () => boolean) => {
     try {
@@ -261,7 +298,9 @@ export function Settings() {
         const publication = {};
         savedPublication.current = publication;
         setSaved(true);
-        setTimeout(() => { if (!present || savedPublication.current === publication) setSaved(false); }, 1200);
+        setTimeout(() => {
+          if (!present || savedPublication.current === publication) setSaved(false);
+        }, 1200);
       }
       return true;
     } catch (e) {
@@ -272,9 +311,22 @@ export function Settings() {
 
   const indexFields = useCallback(() => {
     const next = collectSettingsFields(dialogRef.current);
-    setIndexedFields(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
+    setIndexedFields((current) => (JSON.stringify(current) === JSON.stringify(next) ? current : next));
   }, []);
-  useLayoutEffect(indexFields, [indexFields, category, connectionTab, subview, settings, generalIndexVersion, memoryAvailable, permissionsAvailable, vaultAvailable, extensionsAvailable, automationsAvailable, refreshVersion]);
+  useLayoutEffect(indexFields, [
+    indexFields,
+    category,
+    connectionTab,
+    subview,
+    settings,
+    generalIndexVersion,
+    memoryAvailable,
+    permissionsAvailable,
+    vaultAvailable,
+    extensionsAvailable,
+    automationsAvailable,
+    refreshVersion,
+  ]);
   useEffect(() => {
     if (!dialogRef.current) return;
     const observer = new MutationObserver(indexFields);
@@ -283,229 +335,272 @@ export function Settings() {
   }, [indexFields, refreshVersion]);
 
   return (
-    <SettingsShell key={refreshVersion} shellRef={dialogRef} nav={<SettingsNav
-        query={query}
-        onQueryChange={setQuery}
-        category={category}
-        connectionTab={connectionTab}
-        searching={searching}
-        memoryAvailable={memoryAvailable}
-        downloadNamingAvailable={downloadNamingAvailable}
-        profilesAvailable={profilesAvailable}
-        linkRoutingAvailable={linkRoutingAvailable}
-        appleScriptAvailable={appleScriptAvailable}
-        skillsAvailable={skillsAvailable}
-        automationsAvailable={automationsAvailable}
-        servicesAvailable={servicesAvailable}
-        permissionsAvailable={permissionsAvailable}
-        extensionsAvailable={extensionsAvailable}
-        firstCategory={firstCategory}
-        firstSearchResult={firstSearchResult}
-        searchInput={searchInput}
-        onOpenCategory={(name, tab) => {
-          openCategory(name, tab);
-          setQuery("");
-          if (scrollRef.current) scrollRef.current.scrollTop = 0;
-        }}
-      />}>
-        <div className="drawer-head">
-          {subview && !searching && (
-            <button
-              {...staticIconButtonProps}
-              aria-label="Back to General settings"
-              onClick={() => {
-                setSubview(null);
-                requestAnimationFrame(() => subviewOrigin.current?.focus());
-              }}
-            >
-              {shellIconBack}
-            </button>
-          )}
-          <div className="settings-heading">
-            <h3>{searching ? "Search settings" : (subview ?? sectionTitle)}</h3>
-            <p>
-              {searching
-                ? "Find a preference across all categories."
-                : subview
-                  ? "General settings"
-                  : categoryDescriptions[category]}
-            </p>
-          </div>
-          <span {...auxClassSpacerProps} />
-          {saved && <output className="saved">{shellIconCheck} Saved</output>}
+    <SettingsShell
+      key={refreshVersion}
+      shellRef={dialogRef}
+      nav={
+        <SettingsNav
+          query={query}
+          onQueryChange={setQuery}
+          category={category}
+          connectionTab={connectionTab}
+          searching={searching}
+          memoryAvailable={memoryAvailable}
+          downloadNamingAvailable={downloadNamingAvailable}
+          profilesAvailable={profilesAvailable}
+          linkRoutingAvailable={linkRoutingAvailable}
+          appleScriptAvailable={appleScriptAvailable}
+          skillsAvailable={skillsAvailable}
+          automationsAvailable={automationsAvailable}
+          servicesAvailable={servicesAvailable}
+          permissionsAvailable={permissionsAvailable}
+          extensionsAvailable={extensionsAvailable}
+          firstCategory={firstCategory}
+          firstSearchResult={firstSearchResult}
+          searchInput={searchInput}
+          onOpenCategory={(name, tab) => {
+            openCategory(name, tab);
+            setQuery("");
+            if (scrollRef.current) scrollRef.current.scrollTop = 0;
+          }}
+        />
+      }
+    >
+      <div className="drawer-head">
+        {subview && !searching && (
           <button
             {...staticIconButtonProps}
-            title="Close (Esc)"
-            aria-label="Close settings"
-            onClick={() => setOverlay(null)}
+            aria-label="Back to General settings"
+            onClick={() => {
+              setSubview(null);
+              requestAnimationFrame(() => subviewOrigin.current?.focus());
+            }}
           >
-            {shellIconClose}
+            {shellIconBack}
           </button>
+        )}
+        <div className="settings-heading">
+          <h3>{searching ? "Search settings" : (subview ?? sectionTitle)}</h3>
+          <p>
+            {searching
+              ? "Find a preference across all categories."
+              : subview
+                ? "General settings"
+                : categoryDescriptions[category]}
+          </p>
         </div>
+        <span {...auxClassSpacerProps} />
+        {saved && <output className="saved">{shellIconCheck} Saved</output>}
+        <button
+          {...staticIconButtonProps}
+          title="Close (Esc)"
+          aria-label="Close settings"
+          onClick={() => setOverlay(null)}
+        >
+          {shellIconClose}
+        </button>
+      </div>
 
-        {!searching && category === "Connections" && (
-          <div
-            className="settings-connection-tabs"
-            role="tablist"
-            aria-label="Connection types"
-            onKeyDown={(event) => moveListFocus(event, '[role="tab"]', false)}
-          >
-            {(
-              [
-                "Models",
-                ...(servicesAvailable ? (["Services"] as const) : []),
-                ...(vaultAvailable ? (["Vault"] as const) : []),
-                "Agents",
-                ...(skillsAvailable ? (["Plugins"] as const) : []),
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab}
-                role="tab"
-                id={`connection-tab-${tab}`}
-                aria-controls={`connection-panel-${tab}`}
-                aria-selected={connectionTab === tab}
-                tabIndex={connectionTab === tab ? 0 : -1}
-                onClick={() => {
-                  setConnectionTab(tab);
-                  pushSettingsPath("Connections", tab);
-                }}
-              >
-                {tab}
-              </button>
-            ))}
+      {!searching && category === "Connections" && (
+        <div
+          className="settings-connection-tabs"
+          role="tablist"
+          aria-label="Connection types"
+          onKeyDown={(event) => moveListFocus(event, '[role="tab"]', false)}
+        >
+          {(
+            [
+              "Models",
+              ...(servicesAvailable ? (["Services"] as const) : []),
+              ...(vaultAvailable ? (["Vault"] as const) : []),
+              "Agents",
+              ...(skillsAvailable ? (["Plugins"] as const) : []),
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab}
+              role="tab"
+              id={`connection-tab-${tab}`}
+              aria-controls={`connection-panel-${tab}`}
+              aria-selected={connectionTab === tab}
+              tabIndex={connectionTab === tab ? 0 : -1}
+              onClick={() => {
+                setConnectionTab(tab);
+                pushSettingsPath("Connections", tab);
+              }}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      )}
+      <div
+        role="group"
+        className="settings-scroll"
+        ref={scrollRef}
+        tabIndex={0}
+        aria-label={searching ? "Settings search results" : `${category} settings`}
+      >
+        <FeatureSettings
+          category={
+            !searching && !subview && (category !== "Connections" || connectionTab === "Services")
+              ? category
+              : null
+          }
+        />
+        {searching && (
+          <div className="settings-search-results">
+            <output {...staticHintProps} data-block>
+              {results.length
+                ? `${results.length} matching ${results.length === 1 ? "setting" : "settings"}`
+                : `No settings found for “${query.trim()}”. Try theme, privacy, models or backup.`}
+            </output>
+            <div onKeyDown={(event) => moveListFocus(event, "button")}>
+              {results.map((result) => (
+                <button
+                  key={`${result.category}:${result.label}`}
+                  ref={result === results[0] ? firstSearchResult : undefined}
+                  className="settings-search-result"
+                  onClick={() => {
+                    openCategory(
+                      result.category,
+                      result.category === "Connections" && result.target === "Plugins"
+                        ? "Plugins"
+                        : undefined,
+                    );
+                    setQuery("");
+                    setSubview(
+                      result.category === "General" &&
+                        ["Keyword engines", "Task data backup"].includes(result.target ?? "")
+                        ? result.target!
+                        : null,
+                    );
+                    setDestination(result);
+                  }}
+                >
+                  <span className="settings-search-category">
+                    {connectionCategories.includes(result.category)
+                      ? `Connections · ${result.category === "Connections" ? (servicesAvailable ? "Services" : "Models") : result.category === "External agents" ? "Agents" : result.category === "Vault" ? "Vault" : "Models"}`
+                      : result.category}
+                  </span>
+                  <strong>{result.label}</strong>
+                  <span>{result.description}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
-        <div
-          role="group"
-          className="settings-scroll"
-          ref={scrollRef}
-          tabIndex={0}
-          aria-label={searching ? "Settings search results" : `${category} settings`}
-        >
-          <FeatureSettings category={!searching && !subview && (category !== "Connections" || connectionTab === "Services") ? category : null} />
-          {searching && (
-            <div className="settings-search-results">
-              <output {...staticHintProps} data-block>
-                {results.length
-                  ? `${results.length} matching ${results.length === 1 ? "setting" : "settings"}`
-                  : `No settings found for “${query.trim()}”. Try theme, privacy, models or backup.`}
-              </output>
-              <div onKeyDown={(event) => moveListFocus(event, "button")}>
-                {results.map((result) => (
-                  <button
-                    key={`${result.category}:${result.label}`}
-                    ref={result === results[0] ? firstSearchResult : undefined}
-                    className="settings-search-result"
-                    onClick={() => {
-                      openCategory(result.category, result.category === "Connections" && result.target === "Plugins" ? "Plugins" : undefined);
-                      setQuery("");
-                      setSubview(
-                        result.category === "General" &&
-                          [
-                            "Keyword engines",
-                            "Task data backup",
-                          ].includes(result.target ?? "")
-                          ? result.target!
-                          : null,
-                      );
-                      setDestination(result);
-                    }}
-                  >
-                    <span className="settings-search-category">
-                      {connectionCategories.includes(result.category)
-                        ? `Connections · ${result.category === "Connections" ? servicesAvailable ? "Services" : "Models" : result.category === "External agents" ? "Agents" : result.category === "Vault" ? "Vault" : "Models"}`
-                        : result.category}
-                    </span>
-                    <strong>{result.label}</strong>
-                    <span>{result.description}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
-          {visible("Memory") && (
-            <section tabIndex={-1}>
-              <MemorySettings />
-            </section>
-          )}
-          {permissionsAvailable && <PrivacySecuritySettings active={visible("Site permissions")} />}
-          <ModelsSettings active={visible("Models")} settings={settings} onSave={set} />
-          <UsageBudgetsSettings active={visible("Usage & Budgets")} settings={settings} onSave={set} />
-          {automationsFeatureAvailable && <AutomationsSettings active={visible("Automations")} />}
-          <WorkspacesSettings active={visible("Workspaces")} />
-          <QuickAskSettings active={visible("Quick Ask")} />
-          <SelectionCaptureSettings active={visible("Selection & Capture")} settings={settings} onSave={set} />
-          <ArchivedChatsSettings active={visible("Archived chats")} />
-          {servicesAvailable && <section
+        {visible("Memory") && (
+          <section tabIndex={-1}>
+            <MemorySettings />
+          </section>
+        )}
+        {permissionsAvailable && <PrivacySecuritySettings active={visible("Site permissions")} />}
+        <ModelsSettings active={visible("Models")} settings={settings} onSave={set} />
+        <UsageBudgetsSettings active={visible("Usage & Budgets")} settings={settings} onSave={set} />
+        {automationsFeatureAvailable && <AutomationsSettings active={visible("Automations")} />}
+        <WorkspacesSettings active={visible("Workspaces")} />
+        <QuickAskSettings active={visible("Quick Ask")} />
+        <SelectionCaptureSettings active={visible("Selection & Capture")} settings={settings} onSave={set} />
+        <ArchivedChatsSettings active={visible("Archived chats")} />
+        {servicesAvailable && (
+          <section
             id="connection-panel-Services"
             role="tabpanel"
             aria-labelledby="connection-tab-Services"
             hidden={!visible("Connections")}
           >
-            {connectorsAvailable && <>
-              <ReviewedConnectors onManage={manageConnector} />
-              <div id="connection-calendar" data-setting="Google Calendar" ref={node => { if (node) connectorSections.current.set("calendar", node); else connectorSections.current.delete("calendar"); }} tabIndex={-1}>
-                <CalendarConnections />
+            {connectorsAvailable && (
+              <>
+                <ReviewedConnectors onManage={manageConnector} />
+                <div
+                  id="connection-calendar"
+                  data-setting="Google Calendar"
+                  ref={(node) => {
+                    if (node) connectorSections.current.set("calendar", node);
+                    else connectorSections.current.delete("calendar");
+                  }}
+                  tabIndex={-1}
+                >
+                  <CalendarConnections />
+                </div>
+              </>
+            )}
+            {outboundMcpAvailable && (
+              <div
+                id="connection-mcp"
+                ref={(node) => {
+                  if (node) connectorSections.current.set("mcp", node);
+                  else connectorSections.current.delete("mcp");
+                }}
+                tabIndex={-1}
+              >
+                <OutboundMcpSettings />
               </div>
-            </>}
-            {outboundMcpAvailable && <div id="connection-mcp" ref={node => { if (node) connectorSections.current.set("mcp", node); else connectorSections.current.delete("mcp"); }} tabIndex={-1}>
-              <OutboundMcpSettings />
-            </div>}
-          </section>}
-          {vaultAvailable && (
-            <section
-              tabIndex={-1}
-              id="connection-panel-Vault"
-              role="tabpanel"
-              aria-labelledby="connection-tab-Vault"
-              hidden={!visible("Vault")}
-            >
-              <VaultSettings />
-            </section>
-          )}
+            )}
+          </section>
+        )}
+        {vaultAvailable && (
           <section
             tabIndex={-1}
-            id="connection-panel-Agents"
+            id="connection-panel-Vault"
             role="tabpanel"
-            aria-labelledby="connection-tab-Agents"
-            hidden={!visible("External agents")}
+            aria-labelledby="connection-tab-Vault"
+            hidden={!visible("Vault")}
           >
-            <ExternalAgents />
+            <VaultSettings />
           </section>
-          {skillsAvailable && <section
+        )}
+        <section
+          tabIndex={-1}
+          id="connection-panel-Agents"
+          role="tabpanel"
+          aria-labelledby="connection-tab-Agents"
+          hidden={!visible("External agents")}
+        >
+          <ExternalAgents />
+        </section>
+        {skillsAvailable && (
+          <section
             tabIndex={-1}
             id="connection-panel-Plugins"
             role="tabpanel"
             aria-labelledby="connection-tab-Plugins"
             hidden={!(category === "Connections" && connectionTab === "Plugins")}
           >
-            <div data-setting="Plugins" tabIndex={-1}><PluginsPanel /></div>
-          </section>}
-          {extensionsAvailable && (
-            <section tabIndex={-1} hidden={!visible("Extensions")}>
-              <Extensions />
-            </section>
-          )}
+            <div data-setting="Plugins" tabIndex={-1}>
+              <PluginsPanel />
+            </div>
+          </section>
+        )}
+        {extensionsAvailable && (
+          <section tabIndex={-1} hidden={!visible("Extensions")}>
+            <Extensions />
+          </section>
+        )}
 
-          <LabsSettings active={visible("Labs")} settings={settings} onSave={set} />
-          <AppearanceSettings active={visible("Appearance")} settings={settings} onSave={set} />
-          {profilesAvailable && visible("Profiles") && <ProfilesSettings />}
-          <AgentsSettings active={visible("Agent permissions")} settings={settings} onSave={set} />
-          <PasswordsAutofillSettings active={visible("Passwords & Autofill")} settings={settings} onSave={set} />
-          <GeneralSettings
-            active={category === "General"}
-            searching={searching}
-            subview={subview}
-            settings={settings}
-            onSave={set}
-            onOpenEditor={openEditor}
-            editorViews={editorViews}
-            refreshVersion={refreshVersion}
-            onIndexChange={setGeneralIndexVersion}
-          />
-        </div>
+        <LabsSettings active={visible("Labs")} settings={settings} onSave={set} />
+        <AppearanceSettings active={visible("Appearance")} settings={settings} onSave={set} />
+        {profilesAvailable && visible("Profiles") && <ProfilesSettings />}
+        <AgentsSettings active={visible("Agent permissions")} settings={settings} onSave={set} />
+        <PasswordsAutofillSettings
+          active={visible("Passwords & Autofill")}
+          settings={settings}
+          onSave={set}
+        />
+        <GeneralSettings
+          active={category === "General"}
+          searching={searching}
+          subview={subview}
+          settings={settings}
+          onSave={set}
+          onOpenEditor={openEditor}
+          editorViews={editorViews}
+          refreshVersion={refreshVersion}
+          onIndexChange={setGeneralIndexVersion}
+        />
+      </div>
     </SettingsShell>
   );
 }

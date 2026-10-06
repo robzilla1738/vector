@@ -53,7 +53,7 @@ export type BashGate = (
 ) => Promise<"allow" | "deny" | { park: LoopPark }>;
 
 /** SBPL string literals escape `"` and `\`. */
-const sbplLiteral = (path: string) => `"${path.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
+const sbplLiteral = (path: string) => `"${path.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 
 /** Real path when the entry exists — the sandbox evaluates resolved paths, not spellings. */
 const canonical = (path: string) => {
@@ -84,7 +84,9 @@ const defaultRunner: BashRunner = (file, args, opts) =>
         const err = error as (Error & { code?: number | string }) | null;
         resolvePromise({
           stdout: stdout ?? "",
-          stderr: stderr ?? (timedOut ? "" : err && typeof err.code === "string" ? `${err.code}: ${err.message}` : ""),
+          stderr:
+            stderr ??
+            (timedOut ? "" : err && typeof err.code === "string" ? `${err.code}: ${err.message}` : ""),
           exitCode: timedOut ? null : typeof err?.code === "number" ? err.code : err ? null : 0,
           timedOut,
         });
@@ -109,10 +111,14 @@ export class BashSeatbelt {
       extraDenyRead?: () => string[];
       /** decide() gate for `network: true` — absent means network requests are unsupported. */
       networkGate?: BashGate;
-      escalationGate?: (input: { command: string; workdir: string; justification: string; prefixRule?: string },
-        ctx: { runId: string; threadId: string; turnId: string }) => Promise<{ allow: string; requestIds: string[] } | { park: LoopPark }>;
-      escalationRecheck?: (input: { workdir: string; scopeDigest: string; requestIds: string[] },
-        ctx: { runId: string; threadId: string; turnId: string }) => void;
+      escalationGate?: (
+        input: { command: string; workdir: string; justification: string; prefixRule?: string },
+        ctx: { runId: string; threadId: string; turnId: string },
+      ) => Promise<{ allow: string; requestIds: string[] } | { park: LoopPark }>;
+      escalationRecheck?: (
+        input: { workdir: string; scopeDigest: string; requestIds: string[] },
+        ctx: { runId: string; threadId: string; turnId: string },
+      ) => void;
       runner?: BashRunner;
       platform?: string;
     },
@@ -135,8 +141,13 @@ export class BashSeatbelt {
     const roots = this.roots(ctx);
     const readable = [...roots, ...(this.opts.readableRoots?.(ctx) ?? []).map(canonical)];
     const dev = ["/dev/null", "/dev/zero", "/dev/random", "/dev/urandom"];
-    const deny = ["/Users", "/private/tmp", "/private/var/folders", "/Volumes",
-      ...(this.opts.extraDenyRead?.() ?? []).map(canonical)];
+    const deny = [
+      "/Users",
+      "/private/tmp",
+      "/private/var/folders",
+      "/Volumes",
+      ...(this.opts.extraDenyRead?.() ?? []).map(canonical),
+    ];
     const lines = [
       "(version 1)",
       "(deny default)",
@@ -156,7 +167,10 @@ export class BashSeatbelt {
   private runner(): BashRunner {
     const platform = this.opts.platform ?? process.platform;
     if (platform !== "darwin" || (!this.opts.runner && !existsSync(SANDBOX_EXEC)))
-      throw new AuxError("capability_unsupported", "bash needs the macOS seatbelt (sandbox-exec); it is unavailable here.");
+      throw new AuxError(
+        "capability_unsupported",
+        "bash needs the macOS seatbelt (sandbox-exec); it is unavailable here.",
+      );
     return this.opts.runner ?? defaultRunner;
   }
 
@@ -176,19 +190,41 @@ export class BashSeatbelt {
       throw new AuxError("permission_denied", "bash workdir must stay inside reviewed session roots.");
     const timeoutMs = Math.min(Math.max(1_000, Math.floor(input.timeoutMs ?? 30_000)), MAX_TIMEOUT_MS);
     if (input.requireEscalated) {
-      if (input.network) throw new AuxError("invalid_params", "Escalated commands cannot also request the separate network grant.");
-      if (!this.opts.escalationGate) throw new AuxError("capability_unsupported", "Command escalation is unavailable.");
-      const verdict = await this.opts.escalationGate({ command, workdir: cwd,
-        justification: input.justification ?? "", ...(input.prefixRule ? { prefixRule: input.prefixRule } : {}) }, ctx);
+      if (input.network)
+        throw new AuxError(
+          "invalid_params",
+          "Escalated commands cannot also request the separate network grant.",
+        );
+      if (!this.opts.escalationGate)
+        throw new AuxError("capability_unsupported", "Command escalation is unavailable.");
+      const verdict = await this.opts.escalationGate(
+        {
+          command,
+          workdir: cwd,
+          justification: input.justification ?? "",
+          ...(input.prefixRule ? { prefixRule: input.prefixRule } : {}),
+        },
+        ctx,
+      );
       if ("park" in verdict) return verdict;
       const runner = this.runner();
       if (!this.opts.escalationRecheck)
         throw new AuxError("permission_denied", "Escalated command scope cannot be rechecked.");
-      this.opts.escalationRecheck({ workdir: cwd, scopeDigest: verdict.allow,
-        requestIds: verdict.requestIds }, ctx);
-      const result = await runner("/bin/sh", ["-c", command], { cwd,
-        env: { PATH: "/usr/bin:/bin:/usr/sbin:/sbin", TMPDIR: this.opts.scratchDir,
-          HOME: this.opts.scratchDir, LANG: "en_US.UTF-8" }, timeoutMs, signal: input.signal });
+      this.opts.escalationRecheck(
+        { workdir: cwd, scopeDigest: verdict.allow, requestIds: verdict.requestIds },
+        ctx,
+      );
+      const result = await runner("/bin/sh", ["-c", command], {
+        cwd,
+        env: {
+          PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
+          TMPDIR: this.opts.scratchDir,
+          HOME: this.opts.scratchDir,
+          LANG: "en_US.UTF-8",
+        },
+        timeoutMs,
+        signal: input.signal,
+      });
       return this.clip(result);
     }
     if (input.network) {
@@ -211,7 +247,12 @@ export class BashSeatbelt {
     return this.clip(result);
   }
 
-  private clip(result: { stdout: string; stderr: string; exitCode: number | null; timedOut: boolean }): BashSeatbeltResult {
+  private clip(result: {
+    stdout: string;
+    stderr: string;
+    exitCode: number | null;
+    timedOut: boolean;
+  }): BashSeatbeltResult {
     const clip = (text: string) => {
       const bytes = Buffer.byteLength(text, "utf8");
       return bytes > OUTPUT_CAP_BYTES

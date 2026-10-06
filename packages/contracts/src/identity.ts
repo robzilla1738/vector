@@ -28,7 +28,8 @@ const PROFILE_CREDENTIAL_PATH =
 export function profileBackupAction(relativePath: string): "copy" | "refuse" {
   const normalized = relativePath.replaceAll("\\", "/");
   const base = normalized.split("/").pop() ?? normalized;
-  if (PROFILE_CREDENTIAL_BASENAMES.some(name => base === name || base.startsWith(`${name}-`))) return "refuse";
+  if (PROFILE_CREDENTIAL_BASENAMES.some((name) => base === name || base.startsWith(`${name}-`)))
+    return "refuse";
   if (PROFILE_CREDENTIAL_PATH.test(normalized)) return "refuse";
   return "copy";
 }

@@ -1,11 +1,14 @@
-import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { RECORDER_SOURCE } from '../dist/recorder-script.js';
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { RECORDER_SOURCE } from "../dist/recorder-script.js";
 
-const output = resolve(import.meta.dirname, '../../../.native/chrome/common/native_recorder_script.h');
-const wrapperOutput = resolve(import.meta.dirname, '../../../.native/chrome/browser/ui/aux/native_recorder_script.h');
-const sourceSha = createHash('sha256').update(RECORDER_SOURCE).digest('hex');
+const output = resolve(import.meta.dirname, "../../../.native/chrome/common/native_recorder_script.h");
+const wrapperOutput = resolve(
+  import.meta.dirname,
+  "../../../.native/chrome/browser/ui/aux/native_recorder_script.h",
+);
+const sourceSha = createHash("sha256").update(RECORDER_SOURCE).digest("hex");
 const begin = `((token) => {
   globalThis.__auxRecorderStop?.();
   const state = { token, events: [], bytes: 0, overflow: false };
@@ -35,8 +38,8 @@ const stop = `((token) => {
   delete globalThis.__auxRec;
   return true;
 })`;
-const literal = value => {
-  if (value.includes(')AUX_REC"')) throw new Error('Recorder literal delimiter collision');
+const literal = (value) => {
+  if (value.includes(')AUX_REC"')) throw new Error("Recorder literal delimiter collision");
   return `uR"AUX_REC(${value})AUX_REC"`;
 };
 const header = `// Generated from the single fixed RECORDER_SOURCE; run gen-native-recorder.mjs.
@@ -48,7 +51,7 @@ inline constexpr char16_t kBegin[] = ${literal(begin)};
 inline constexpr char16_t kDrain[] = ${literal(drain)};
 inline constexpr char16_t kStop[] = ${literal(stop)};
 inline constexpr char16_t kStreamingBegin[] = ${literal(`globalThis.__auxRecorderStop?.();${RECORDER_SOURCE};true`)};
-inline constexpr char16_t kStreamingStop[] = ${literal('globalThis.__auxRecorderStop?.();delete globalThis.__auxRec;true')};
+inline constexpr char16_t kStreamingStop[] = ${literal("globalThis.__auxRecorderStop?.();delete globalThis.__auxRec;true")};
 }  // namespace aux::recorder_script
 #endif
 `;
@@ -58,9 +61,12 @@ const wrapper = `// Fixed recorder producer lives in the shared common header.
 #include "chrome/common/native_recorder_script.h"
 #endif
 `;
-if (process.argv.includes('--check')) {
-  if (readFileSync(output, 'utf8') !== header || readFileSync(wrapperOutput, 'utf8') !== wrapper) throw new Error('Native recorder source is stale');
+if (process.argv.includes("--check")) {
+  if (readFileSync(output, "utf8") !== header || readFileSync(wrapperOutput, "utf8") !== wrapper)
+    throw new Error("Native recorder source is stale");
 } else {
-  mkdirSync(dirname(output), { recursive: true }); writeFileSync(output, header);
-  mkdirSync(dirname(wrapperOutput), { recursive: true }); writeFileSync(wrapperOutput, wrapper);
+  mkdirSync(dirname(output), { recursive: true });
+  writeFileSync(output, header);
+  mkdirSync(dirname(wrapperOutput), { recursive: true });
+  writeFileSync(wrapperOutput, wrapper);
 }

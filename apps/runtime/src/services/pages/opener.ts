@@ -1,13 +1,26 @@
 import { randomUUID } from "node:crypto";
 import { navigateNativePage } from "./navigation.js";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
-import { AuxError, AgentPageCreatedSchema, type AgentPageCreate, type AgentPageCreated, type AuxErrorCode, type Backend, EventTypes, type PageTarget, newPageId } from "@aux/contracts";
+import {
+  AuxError,
+  AgentPageCreatedSchema,
+  type AgentPageCreate,
+  type AgentPageCreated,
+  type AuxErrorCode,
+  type Backend,
+  EventTypes,
+  type PageTarget,
+  newPageId,
+} from "@aux/contracts";
 import { runAncestry } from "../run-lineage.js";
 import type { ActivationPolicy } from "./activation.js";
 import type { PageRegistry } from "./registry.js";
 
 export class PageOpener {
-  constructor(private pages: PageRegistry, private activation: ActivationPolicy) {}
+  constructor(
+    private pages: PageRegistry,
+    private activation: ActivationPolicy,
+  ) {}
 
   /** Open a page. An omitted backend selects embedded Chromium (`aux`). */
   async open(opts: {
@@ -36,7 +49,7 @@ export class PageOpener {
     initialUrl: string,
     background: boolean,
     windowId?: string,
-    ownedByRuntime=false,
+    ownedByRuntime = false,
   ): Promise<{ targetId: string; nativeCreated: boolean; cdpTargetId?: string; windowId?: string }> {
     if (backend === "aux") {
       const marker = `atab-${pageId}`;
@@ -46,14 +59,25 @@ export class PageOpener {
         const ack = await this.pages.deps.native.tabCommand({
           commandId: `agent-${newPageId()}`,
           windowId: windowId ?? "main",
-          command: { kind: "open", pageId, url: initialUrl, background, activate: !background, runtimeOwned: ownedByRuntime },
+          command: {
+            kind: "open",
+            pageId,
+            url: initialUrl,
+            background,
+            activate: !background,
+            runtimeOwned: ownedByRuntime,
+          },
         });
         if (ack.status === "rejected") {
           const raw = ack.error?.code;
-          const code: AuxErrorCode = raw === "forbidden" ? "permission_denied"
-            : raw === "stale_tab" ? "conflict"
-            : raw === "invalid_params" || raw === "not_found" || raw === "backend_unavailable" ? raw
-            : "backend_unavailable";
+          const code: AuxErrorCode =
+            raw === "forbidden"
+              ? "permission_denied"
+              : raw === "stale_tab"
+                ? "conflict"
+                : raw === "invalid_params" || raw === "not_found" || raw === "backend_unavailable"
+                  ? raw
+                  : "backend_unavailable";
           throw new AuxError(code, ack.error?.message ?? "The tab could not be opened.");
         }
         return { targetId: marker, nativeCreated: true, cdpTargetId: ack.targetId, windowId: ack.windowId };
@@ -77,7 +101,17 @@ export class PageOpener {
 
   async openOn(
     backend: Backend,
-    opts: { url: string; windowId?: string; background: boolean; ownedByRuntime: boolean; activate?: boolean; targetId?: string; beforeNavigate?: (target: PageTarget) => Promise<void>; agentScope?: Omit<AgentPageCreate, "windowId" | "background">; signal?: AbortSignal },
+    opts: {
+      url: string;
+      windowId?: string;
+      background: boolean;
+      ownedByRuntime: boolean;
+      activate?: boolean;
+      targetId?: string;
+      beforeNavigate?: (target: PageTarget) => Promise<void>;
+      agentScope?: Omit<AgentPageCreate, "windowId" | "background">;
+      signal?: AbortSignal;
+    },
     routeReason: string,
     restored?: PageTarget,
   ): Promise<PageTarget> {
@@ -85,21 +119,40 @@ export class PageOpener {
     // Ordinary native tabs use the browser's fixed person read/navigation
     // routes, never an agent CDP attachment. A driver is still mandatory for
     // controlled/isolated tabs and external/standalone backends.
-    const nativePerson = backend === "aux" && this.pages.deps.native.available()
-      && typeof this.pages.deps.native.personReadContext === "function"
-      && !opts.ownedByRuntime && !opts.agentScope && !opts.beforeNavigate && !opts.targetId;
+    const nativePerson =
+      backend === "aux" &&
+      this.pages.deps.native.available() &&
+      typeof this.pages.deps.native.personReadContext === "function" &&
+      !opts.ownedByRuntime &&
+      !opts.agentScope &&
+      !opts.beforeNavigate &&
+      !opts.targetId;
     // a dropped control socket is recovered lazily for control consumers.
-    if (!nativePerson && driver && !driver.isConnected() && driver.reconnect) await driver.reconnect().catch(() => {});
+    if (!nativePerson && driver && !driver.isConnected() && driver.reconnect)
+      await driver.reconnect().catch(() => {});
     if (!nativePerson && !driver?.isConnected())
       throw new AuxError("backend_unavailable", `${backend} backend is not connected`);
 
     if (restored?.agentIsolation)
-      throw new AuxError("permission_denied", "This temporary sign-in session has ended. Start a new run to open a fresh protected tab.");
-    if (opts.agentScope && (backend !== "aux" || opts.targetId || !opts.beforeNavigate || !opts.ownedByRuntime))
-      throw new AuxError("permission_denied", "Protected tabs require a fresh native page and request authority before navigation.");
+      throw new AuxError(
+        "permission_denied",
+        "This temporary sign-in session has ended. Start a new run to open a fresh protected tab.",
+      );
+    if (
+      opts.agentScope &&
+      (backend !== "aux" || opts.targetId || !opts.beforeNavigate || !opts.ownedByRuntime)
+    )
+      throw new AuxError(
+        "permission_denied",
+        "Protected tabs require a fresh native page and request authority before navigation.",
+      );
     let pageId = restored?.pageId ?? (nativePerson ? randomUUID() : newPageId());
     let registered = () => {};
-    const creating = opts.agentScope ? new Promise<void>(resolve => { registered = resolve; }) : undefined;
+    const creating = opts.agentScope
+      ? new Promise<void>((resolve) => {
+          registered = resolve;
+        })
+      : undefined;
     if (creating) this.pages.agentCreations.add(creating);
     this.pages.opening.add(pageId);
     let isolated: AgentPageCreated | undefined;
@@ -114,23 +167,38 @@ export class PageOpener {
       const initialUrl = opts.targetId ? opts.url : "about:blank";
       if (opts.agentScope) {
         if (!this.pages.deps.native.createAgentPage)
-          throw new AuxError("capability_unsupported", "Protected temporary tabs are unavailable in this browser.");
+          throw new AuxError(
+            "capability_unsupported",
+            "Protected temporary tabs are unavailable in this browser.",
+          );
         if (opts.agentScope.source && opts.agentScope.source.expectedUrl !== opts.url)
           throw new AuxError("permission_denied", "The temporary tab must open the selected source address.");
         const originalRun = this.pages.deps.repo.getRun(opts.agentScope.runId);
-        if (opts.signal?.aborted || !originalRun ||
-            !["queued", "running", "planning", "needs_input"].includes(originalRun.status) ||
-            originalRun.config?.taskId !== opts.agentScope.taskId ||
-            (originalRun.config?.taskRevision ?? 0) !== opts.agentScope.taskRevision ||
-            JSON.stringify(runAncestry(this.pages.deps.repo, originalRun.runId, true)) !== JSON.stringify(opts.agentScope.ancestry))
+        if (
+          opts.signal?.aborted ||
+          !originalRun ||
+          !["queued", "running", "planning", "needs_input"].includes(originalRun.status) ||
+          originalRun.config?.taskId !== opts.agentScope.taskId ||
+          (originalRun.config?.taskRevision ?? 0) !== opts.agentScope.taskRevision ||
+          JSON.stringify(runAncestry(this.pages.deps.repo, originalRun.runId, true)) !==
+            JSON.stringify(opts.agentScope.ancestry)
+        )
           throw new AuxError("ref_stale", "The original run ended before opening its temporary tab.");
-        isolated = AgentPageCreatedSchema.parse(await this.pages.deps.native.createAgentPage({
-          ...opts.agentScope, windowId: opts.windowId ?? "main", background: opts.background,
-        }));
-        if (isolated.isolation.runId !== opts.agentScope.runId || isolated.isolation.taskId !== opts.agentScope.taskId
-          || isolated.isolation.taskRevision !== opts.agentScope.taskRevision
-          || JSON.stringify(isolated.source) !== JSON.stringify(opts.agentScope.source)
-          || this.pages.live.has(isolated.pageId) || this.pages.opening.has(isolated.pageId))
+        isolated = AgentPageCreatedSchema.parse(
+          await this.pages.deps.native.createAgentPage({
+            ...opts.agentScope,
+            windowId: opts.windowId ?? "main",
+            background: opts.background,
+          }),
+        );
+        if (
+          isolated.isolation.runId !== opts.agentScope.runId ||
+          isolated.isolation.taskId !== opts.agentScope.taskId ||
+          isolated.isolation.taskRevision !== opts.agentScope.taskRevision ||
+          JSON.stringify(isolated.source) !== JSON.stringify(opts.agentScope.source) ||
+          this.pages.live.has(isolated.pageId) ||
+          this.pages.opening.has(isolated.pageId)
+        )
           throw new AuxError("permission_denied", "Native temporary-tab authority did not match this run.");
         this.pages.opening.delete(pageId);
         pageId = isolated.pageId;
@@ -141,23 +209,46 @@ export class PageOpener {
       } else if (opts.targetId && backend === "chrome") {
         targetId = opts.targetId;
       } else {
-        ({ targetId, nativeCreated, cdpTargetId, windowId: nativeWindowId } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background, opts.windowId,opts.ownedByRuntime));
+        ({
+          targetId,
+          nativeCreated,
+          cdpTargetId,
+          windowId: nativeWindowId,
+        } = await this.createSurface(
+          backend,
+          driver,
+          pageId,
+          initialUrl,
+          opts.background,
+          opts.windowId,
+          opts.ownedByRuntime,
+        ));
       }
 
       if (nativePerson && (this.pages.closing || opts.signal?.aborted)) {
-        const error = new AuxError("target_detached", "The original native page opening retired before publication.");
+        const error = new AuxError(
+          "target_detached",
+          "The original native page opening retired before publication.",
+        );
         try {
           const cleanup = await this.pages.deps.native.tabCommand({
-            commandId: `agent-${newPageId()}`, windowId: nativeWindowId ?? opts.windowId ?? "main",
+            commandId: `agent-${newPageId()}`,
+            windowId: nativeWindowId ?? opts.windowId ?? "main",
             command: { kind: "close", pageId },
           });
-          if (cleanup.status === "rejected") throw new AuxError("backend_unavailable", "Original native page cleanup was not acknowledged.");
-        } catch (cleanup) { throw new AggregateError([error, cleanup], "Native page opening retired with original cleanup debt."); }
+          if (cleanup.status === "rejected")
+            throw new AuxError("backend_unavailable", "Original native page cleanup was not acknowledged.");
+        } catch (cleanup) {
+          throw new AggregateError(
+            [error, cleanup],
+            "Native page opening retired with original cleanup debt.",
+          );
+        }
         throw error;
       }
       const target: PageTarget = {
         pageId,
-        windowId: nativePerson ? nativeWindowId ?? opts.windowId : opts.windowId,
+        windowId: nativePerson ? (nativeWindowId ?? opts.windowId) : opts.windowId,
         backend,
         targetId,
         url: opts.beforeNavigate || nativePerson ? initialUrl : opts.url,
@@ -181,13 +272,22 @@ export class PageOpener {
         // CDP attachment initializes execution worlds. Install genuine native
         // authority before even these commands reach a protected document.
         if (protectedPage) await opts.beforeNavigate!(target);
-        dp = nativePerson ? null : restored && driver!.recoverPage
-          ? await driver!.recoverPage(targetId, pageId, restored.documentEpoch + 1)
-          : await driver!.attach(targetId, pageId, cdpTargetId ? { cdpTargetId } : undefined);
+        dp = nativePerson
+          ? null
+          : restored && driver!.recoverPage
+            ? await driver!.recoverPage(targetId, pageId, restored.documentEpoch + 1)
+            : await driver!.attach(targetId, pageId, cdpTargetId ? { cdpTargetId } : undefined);
       } catch (e) {
         // the shell view already exists — destroy it rather than leaking a
         // driverless zombie tab in the strip
-        if (nativeCreated && !protectedPage) await this.pages.deps.native.tabCommand({ commandId: `agent-${newPageId()}`, windowId: opts.windowId ?? "main", command: { kind: "close", pageId } }).catch(() => {});
+        if (nativeCreated && !protectedPage)
+          await this.pages.deps.native
+            .tabCommand({
+              commandId: `agent-${newPageId()}`,
+              windowId: opts.windowId ?? "main",
+              command: { kind: "close", pageId },
+            })
+            .catch(() => {});
         throw e;
       }
       const lp = protectedPage ?? this.pages.addLive(target, dp);
@@ -198,14 +298,19 @@ export class PageOpener {
       if (!this.pages.restoring) this.pages.deps.events.emit(EventTypes.PageAdded, { page: target });
       this.pages.deps.tracer?.incr(`router.open.${backend}`);
       if (opts.beforeNavigate && !protectedPage) {
-        try { await opts.beforeNavigate(target); }
-        catch (error) {
+        try {
+          await opts.beforeNavigate(target);
+        } catch (error) {
           // Failed authority never falls through to the requested navigation.
           // Close only the newly created surface; attached owner tabs stay inert.
-          if (nativeCreated) await this.pages.deps.native.tabCommand({
-            commandId: `agent-${newPageId()}`, windowId: opts.windowId ?? "main",
-            command: { kind: "close", pageId },
-          }).catch(() => {});
+          if (nativeCreated)
+            await this.pages.deps.native
+              .tabCommand({
+                commandId: `agent-${newPageId()}`,
+                windowId: opts.windowId ?? "main",
+                command: { kind: "close", pageId },
+              })
+              .catch(() => {});
           target.viewStatus = "detached";
           this.pages.persist(lp);
           this.pages.live.delete(pageId);
@@ -217,26 +322,53 @@ export class PageOpener {
       // Select the requested foreground tab before loading. A slow response must
       // not steal focus later or leave commands targeting the previous tab.
       if (nativePerson && opts.url !== initialUrl) {
-        const cleanupOwner = { windowId: target.windowId, controller: target.controller, controllerEpoch: target.controllerEpoch, driver: lp.driver, ownedByRuntime: target.ownedByRuntime, isolation: JSON.stringify(target.agentIsolation) };
+        const cleanupOwner = {
+          windowId: target.windowId,
+          controller: target.controller,
+          controllerEpoch: target.controllerEpoch,
+          driver: lp.driver,
+          ownedByRuntime: target.ownedByRuntime,
+          isolation: JSON.stringify(target.agentIsolation),
+        };
         try {
-          if (!await navigateNativePage(this.pages, pageId, opts.url, opts.signal))
+          if (!(await navigateNativePage(this.pages, pageId, opts.url, opts.signal)))
             throw new AuxError("target_detached", "The original native tab was unavailable for navigation.");
           if (opts.signal?.aborted || this.pages.closing || this.pages.live.get(pageId) !== lp)
             throw new AuxError("target_detached", "The original native opening retired before completion.");
         } catch (error) {
           try {
-            if (this.pages.live.get(pageId) !== lp || lp.driver !== cleanupOwner.driver || target.windowId !== cleanupOwner.windowId || target.controller !== cleanupOwner.controller || target.controllerEpoch !== cleanupOwner.controllerEpoch || target.ownedByRuntime !== cleanupOwner.ownedByRuntime || JSON.stringify(target.agentIsolation) !== cleanupOwner.isolation)
-              throw new AuxError("permission_denied", "Original native page cleanup lost its retained owner.");
+            if (
+              this.pages.live.get(pageId) !== lp ||
+              lp.driver !== cleanupOwner.driver ||
+              target.windowId !== cleanupOwner.windowId ||
+              target.controller !== cleanupOwner.controller ||
+              target.controllerEpoch !== cleanupOwner.controllerEpoch ||
+              target.ownedByRuntime !== cleanupOwner.ownedByRuntime ||
+              JSON.stringify(target.agentIsolation) !== cleanupOwner.isolation
+            )
+              throw new AuxError(
+                "permission_denied",
+                "Original native page cleanup lost its retained owner.",
+              );
             const cleanup = await this.pages.deps.native.tabCommand({
-              commandId: `agent-${newPageId()}`, windowId: target.windowId ?? "main",
+              commandId: `agent-${newPageId()}`,
+              windowId: target.windowId ?? "main",
               command: { kind: "close", pageId },
             });
-            if (cleanup.status === "rejected") throw new AuxError("backend_unavailable", "Original native page cleanup was not acknowledged.");
+            if (cleanup.status === "rejected")
+              throw new AuxError("backend_unavailable", "Original native page cleanup was not acknowledged.");
             if (this.pages.live.get(pageId) === lp) {
-              target.viewStatus = "detached"; this.pages.persist(lp); this.pages.live.delete(pageId);
+              target.viewStatus = "detached";
+              this.pages.persist(lp);
+              this.pages.live.delete(pageId);
               this.pages.deps.events.emit(EventTypes.PageRemoved, { pageId });
             }
-          } catch (cleanup) { throw new AggregateError([error, cleanup], "Native page opening failed with original cleanup debt."); }
+          } catch (cleanup) {
+            throw new AggregateError(
+              [error, cleanup],
+              "Native page opening failed with original cleanup debt.",
+            );
+          }
           throw error;
         }
       }
@@ -247,22 +379,36 @@ export class PageOpener {
         if (protectedPage && isolated) {
           const navigate = this.pages.deps.navigateControlled;
           if (!navigate)
-            throw new AuxError("capability_unsupported", "Protected initial navigation requires native continuation authority.");
+            throw new AuxError(
+              "capability_unsupported",
+              "Protected initial navigation requires native continuation authority.",
+            );
           const originalIsolation = structuredClone(isolated.isolation);
           const originalControllerEpoch = target.controllerEpoch;
           const validateSource = () => {
             const run = this.pages.deps.repo.getRun(originalIsolation.runId);
             const current = this.pages.live.get(pageId);
-            if (opts.signal?.aborted || current !== lp || !current.target.ownedByRuntime
-              || current.target.controller === "human" || current.target.controllerEpoch !== originalControllerEpoch
-              || JSON.stringify(current.target.agentIsolation) !== JSON.stringify(originalIsolation)
-              || !run || !["queued", "running", "planning", "needs_input"].includes(run.status)
-              || run.config?.taskId !== originalIsolation.taskId
-              || (run.config?.taskRevision ?? 0) !== originalIsolation.taskRevision)
-              throw new AuxError("ref_stale", "The original task or temporary tab changed before its first navigation.");
+            if (
+              opts.signal?.aborted ||
+              current !== lp ||
+              !current.target.ownedByRuntime ||
+              current.target.controller === "human" ||
+              current.target.controllerEpoch !== originalControllerEpoch ||
+              JSON.stringify(current.target.agentIsolation) !== JSON.stringify(originalIsolation) ||
+              !run ||
+              !["queued", "running", "planning", "needs_input"].includes(run.status) ||
+              run.config?.taskId !== originalIsolation.taskId ||
+              (run.config?.taskRevision ?? 0) !== originalIsolation.taskRevision
+            )
+              throw new AuxError(
+                "ref_stale",
+                "The original task or temporary tab changed before its first navigation.",
+              );
           };
-          await navigate({ runId: originalIsolation.runId, pageId, url: opts.url,
-            signal: opts.signal, validateSource }, this.pages);
+          await navigate(
+            { runId: originalIsolation.runId, pageId, url: opts.url, signal: opts.signal, validateSource },
+            this.pages,
+          );
         } else {
           const navigation = lp.driver!.navigate(opts.url).catch(() => {});
           if (!restored) await navigation;
@@ -273,10 +419,20 @@ export class PageOpener {
     } catch (error) {
       if (isolated && createdTarget) {
         const current = this.pages.live.get(pageId);
-        if (current && current.target.ownedByRuntime && current.target.controller !== "human" &&
-            JSON.stringify(current.target.agentIsolation) === JSON.stringify(isolated.isolation)) {
-          try { await this.pages.closeCreator(structuredClone(current.target), isolated.isolation.runId); }
-          catch (cleanup) { throw new AggregateError([error, cleanup], "Temporary-page opening failed and its original native cleanup remains unresolved."); }
+        if (
+          current &&
+          current.target.ownedByRuntime &&
+          current.target.controller !== "human" &&
+          JSON.stringify(current.target.agentIsolation) === JSON.stringify(isolated.isolation)
+        ) {
+          try {
+            await this.pages.closeCreator(structuredClone(current.target), isolated.isolation.runId);
+          } catch (cleanup) {
+            throw new AggregateError(
+              [error, cleanup],
+              "Temporary-page opening failed and its original native cleanup remains unresolved.",
+            );
+          }
         }
       }
       throw error;
@@ -310,8 +466,7 @@ export class PageOpener {
     cdpTargetId?: string;
     restored?: PageTarget;
   }): Promise<PageTarget> {
-    if (opts.ownedByRuntime && this.pages.agentCreations.size)
-      await Promise.all(this.pages.agentCreations);
+    if (opts.ownedByRuntime && this.pages.agentCreations.size) await Promise.all(this.pages.agentCreations);
     const pageId = opts.pageId ?? newPageId();
     const existing = this.pages.live.get(pageId);
     if (existing) return existing.target;
@@ -322,7 +477,11 @@ export class PageOpener {
     // explicit session-restore pass. Read its prior epoch here as well so
     // either arrival order invalidates refs from the previous process.
     const previous = opts.restored ?? this.pages.deps.repo.getPage(pageId);
-    pending.done = this.attachExternal({ ...opts, restored: previous?.backend === opts.backend ? previous : undefined }, pageId, pending);
+    pending.done = this.attachExternal(
+      { ...opts, restored: previous?.backend === opts.backend ? previous : undefined },
+      pageId,
+      pending,
+    );
     this.pages.pendingExternal.set(pageId, pending);
     try {
       return await pending.done;
@@ -331,31 +490,41 @@ export class PageOpener {
     }
   }
 
-  private async attachExternal(opts: {
-    windowId?: string;
-    marker: string;
-    url: string;
-    backend: Backend;
-    title?: string;
-    themeColor?: string;
-    split?: PageTarget["split"];
-    active?: boolean;
-    ownedByRuntime?: boolean;
-    lifecycle?: PageTarget["lifecycle"];
-    showBlankDocument?: boolean;
-    cdpTargetId?: string;
-    restored?: PageTarget;
-  }, pageId: string, pending: { removed: boolean }): Promise<PageTarget> {
+  private async attachExternal(
+    opts: {
+      windowId?: string;
+      marker: string;
+      url: string;
+      backend: Backend;
+      title?: string;
+      themeColor?: string;
+      split?: PageTarget["split"];
+      active?: boolean;
+      ownedByRuntime?: boolean;
+      lifecycle?: PageTarget["lifecycle"];
+      showBlankDocument?: boolean;
+      cdpTargetId?: string;
+      restored?: PageTarget;
+    },
+    pageId: string,
+    pending: { removed: boolean },
+  ): Promise<PageTarget> {
     const driver = this.pages.driverFor(opts.backend);
     const dormant = !opts.active && (opts.lifecycle === "placeholder" || opts.lifecycle === "discarded");
     const ownedByRuntime = opts.ownedByRuntime ?? opts.restored?.ownedByRuntime ?? false;
-    const nativePerson = opts.backend === "aux" && this.pages.deps.native.available()
-      && typeof this.pages.deps.native.personReadContext === "function"
-      && !ownedByRuntime && !opts.restored?.agentIsolation;
-    const dp = driver && !dormant && !nativePerson ? await driver.attach(opts.marker, pageId, {
-      cdpTargetId: opts.cdpTargetId,
-      initialDocumentEpoch: opts.restored ? opts.restored.documentEpoch + 1 : undefined,
-    }) : null;
+    const nativePerson =
+      opts.backend === "aux" &&
+      this.pages.deps.native.available() &&
+      typeof this.pages.deps.native.personReadContext === "function" &&
+      !ownedByRuntime &&
+      !opts.restored?.agentIsolation;
+    const dp =
+      driver && !dormant && !nativePerson
+        ? await driver.attach(opts.marker, pageId, {
+            cdpTargetId: opts.cdpTargetId,
+            initialDocumentEpoch: opts.restored ? opts.restored.documentEpoch + 1 : undefined,
+          })
+        : null;
     if (pending.removed || this.pages.closing) {
       await dp?.dispose().catch(() => {});
       throw new AuxError("not_found", "Page closed while it was being attached");

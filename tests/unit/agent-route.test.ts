@@ -13,7 +13,9 @@ describe("observed record route matching", () => {
   it("fails closed on weak, conflicting, or foreign evidence", () => {
     expect(matchingRoute(base, [links[0]!], "rec-14")).toBeUndefined();
     expect(matchingRoute(base, [...links, "/archive/rec-01", "/archive/rec-02"], "rec-14")).toBeUndefined();
-    expect(matchingRoute(base, ["https://evil.test/records/rec-01", "https://evil.test/records/rec-02"], "rec-14")).toBeUndefined();
+    expect(
+      matchingRoute(base, ["https://evil.test/records/rec-01", "https://evil.test/records/rec-02"], "rec-14"),
+    ).toBeUndefined();
     expect(matchingRoute(base, links, "../secrets")).toBeUndefined();
   });
 });

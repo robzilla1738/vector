@@ -25,7 +25,9 @@ const image = (chatId: string) => ({
 });
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
+    { width: 100 },
+  ] as unknown as DOMRectList);
   HTMLElement.prototype.scrollIntoView = vi.fn();
   host = document.createElement("div");
   document.body.append(host);
@@ -45,17 +47,39 @@ function button(name: string) {
 }
 
 function mount(extra: Partial<Parameters<typeof ConversationImages>[0]> = {}) {
-  return act(async () => root.render(<ConversationImages chatId="a" images={[]} disabled={false} ensureChatId={() => "a"} onChange={vi.fn()} onBusy={vi.fn()} onDocument={vi.fn()} {...extra} />));
+  return act(async () =>
+    root.render(
+      <ConversationImages
+        chatId="a"
+        images={[]}
+        disabled={false}
+        ensureChatId={() => "a"}
+        onChange={vi.fn()}
+        onBusy={vi.fn()}
+        onDocument={vi.fn()}
+        {...extra}
+      />,
+    ),
+  );
 }
 it("routes original focused image picking and cancellation without granting page context", async () => {
-  const picker = vi.spyOn(bridge, "pickEvidenceImage").mockResolvedValue({ filename: "Original.png", dataUrl: "data:image/png;base64,AA==" });
+  const picker = vi
+    .spyOn(bridge, "pickEvidenceImage")
+    .mockResolvedValue({ filename: "Original.png", dataUrl: "data:image/png;base64,AA==" });
   const native = vi.spyOn(bridge, "invoke");
-  await mount(); button("Image").focus();
-  await act(async () => { await executeCommand("choose-conversation-image"); });
+  await mount();
+  button("Image").focus();
+  await act(async () => {
+    await executeCommand("choose-conversation-image");
+  });
   expect(picker).toHaveBeenCalledOnce();
-  expect(host.querySelector('.capture-editor img')?.getAttribute("alt")).toBe("Capture to review before attaching");
+  expect(host.querySelector(".capture-editor img")?.getAttribute("alt")).toBe(
+    "Capture to review before attaching",
+  );
   button("Cancel").focus();
-  await act(async () => { await executeCommand("cancel-conversation-image"); });
+  await act(async () => {
+    await executeCommand("cancel-conversation-image");
+  });
   expect(host.querySelector(".capture-editor")).toBeNull();
   expect(native).not.toHaveBeenCalled();
 });
@@ -63,77 +87,161 @@ it("uses the original checkbox state for remapped inclusion and the original ima
   const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ images: [] });
   const changed = vi.fn();
   await mount({ images: [image("a")], onChange: changed });
-  const choice = host.querySelector<HTMLInputElement>('input')!; choice.focus();
-  const key = new KeyboardEvent("keydown", { key: "i", bubbles: true }); choice.dispatchEvent(key);
-  await act(async () => { await executeCommand("toggle-conversation-image", { nativeInputEvent: key }); });
-  expect(invoke).toHaveBeenCalledWith("conversations.images.toggle", { chatId: "a", imageId: "image-a", included: false });
+  const choice = host.querySelector<HTMLInputElement>("input")!;
+  choice.focus();
+  const key = new KeyboardEvent("keydown", { key: "i", bubbles: true });
+  choice.dispatchEvent(key);
+  await act(async () => {
+    await executeCommand("toggle-conversation-image", { nativeInputEvent: key });
+  });
+  expect(invoke).toHaveBeenCalledWith("conversations.images.toggle", {
+    chatId: "a",
+    imageId: "image-a",
+    included: false,
+  });
   expect(changed).toHaveBeenCalledWith("a", []);
   host.querySelector<HTMLButtonElement>('[aria-label="Remove a.png"]')!.focus();
-  await act(async () => { await executeCommand("remove-conversation-image"); });
+  await act(async () => {
+    await executeCommand("remove-conversation-image");
+  });
   expect(invoke).toHaveBeenLastCalledWith("conversations.images.remove", { chatId: "a", imageId: "image-a" });
 });
 it("opens and closes the exact read-only image preview through its own mounted controls", async () => {
-  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ image: image("a"), dataUrl: "data:image/png;base64,AA==" });
-  await mount({ images: [image("a")] }); button("Preview").focus();
-  await act(async () => { await executeCommand("preview-conversation-image"); });
-  expect(host.querySelector('img')?.getAttribute("alt")).toBe("a.png");
+  const invoke = vi
+    .spyOn(bridge, "invoke")
+    .mockResolvedValue({ image: image("a"), dataUrl: "data:image/png;base64,AA==" });
+  await mount({ images: [image("a")] });
+  button("Preview").focus();
+  await act(async () => {
+    await executeCommand("preview-conversation-image");
+  });
+  expect(host.querySelector("img")?.getAttribute("alt")).toBe("a.png");
   host.querySelector<HTMLButtonElement>('[aria-label="Close image preview"]')!.focus();
-  await act(async () => { await executeCommand("cancel-conversation-image"); });
-  expect(host.querySelector('.viewer-frame')).toBeNull();
+  await act(async () => {
+    await executeCommand("cancel-conversation-image");
+  });
+  expect(host.querySelector(".viewer-frame")).toBeNull();
   expect(invoke).toHaveBeenCalledTimes(1);
 });
 it("keeps selection keyboard input and registered whole-image reset before actual attach ACK", async () => {
-  vi.stubGlobal("Image", class { naturalWidth = 16; naturalHeight = 16; src = ""; async decode() {} });
+  vi.stubGlobal(
+    "Image",
+    class {
+      naturalWidth = 16;
+      naturalHeight = 16;
+      src = "";
+      async decode() {}
+    },
+  );
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage: vi.fn() } as never);
   vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AA==");
-  vi.spyOn(bridge, "pickEvidenceImage").mockResolvedValue({ filename: "Original.png", dataUrl: "data:image/png;base64,AA==" });
-  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ images: [image("a")] }), changed = vi.fn();
-  await mount({ onChange: changed }); await act(async () => button("Image").click());
-  await act(async () => host.querySelector('.capture-canvas')!.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })));
-  expect(host.querySelector('.capture-region')).toBeTruthy();
+  vi.spyOn(bridge, "pickEvidenceImage").mockResolvedValue({
+    filename: "Original.png",
+    dataUrl: "data:image/png;base64,AA==",
+  });
+  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ images: [image("a")] }),
+    changed = vi.fn();
+  await mount({ onChange: changed });
+  await act(async () => button("Image").click());
+  await act(async () =>
+    host
+      .querySelector(".capture-canvas")!
+      .dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })),
+  );
+  expect(host.querySelector(".capture-region")).toBeTruthy();
   button("Use whole image").focus();
-  await act(async () => { await executeCommand("use-whole-conversation-image"); });
-  expect(host.querySelector('.capture-region')).toBeNull();
+  await act(async () => {
+    await executeCommand("use-whole-conversation-image");
+  });
+  expect(host.querySelector(".capture-region")).toBeNull();
   button("Attach image").focus();
-  await act(async () => { await executeCommand("attach-conversation-image"); });
-  expect(invoke).toHaveBeenCalledWith("conversations.images.add", { chatId: "a", filename: "Original.png", dataUrl: "data:image/png;base64,AA==", sourceUrl: undefined, sourcePage: undefined });
+  await act(async () => {
+    await executeCommand("attach-conversation-image");
+  });
+  expect(invoke).toHaveBeenCalledWith("conversations.images.add", {
+    chatId: "a",
+    filename: "Original.png",
+    dataUrl: "data:image/png;base64,AA==",
+    sourceUrl: undefined,
+    sourcePage: undefined,
+  });
   expect(changed).toHaveBeenCalledWith("a", [image("a")]);
 });
 it("refuses capture when original target ownership changes while the actual native reply is held", async () => {
   const page = makePage(0, { pageId: "original", url: "https://loopback.invalid/owned", documentEpoch: 3 });
   useStore.setState({ pages: [page] });
   let complete!: (value: unknown) => void;
-  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(() => new Promise(done => { complete = done; }));
-  await mount({ page }); await act(async () => button("Capture").click());
-  expect(invoke).toHaveBeenCalledWith("pages.capture", { pageId: page.pageId, format: "dataUrl", fullPage: false, expectedDocumentEpoch: 3 });
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(
+    () =>
+      new Promise((done) => {
+        complete = done;
+      }),
+  );
+  await mount({ page });
+  await act(async () => button("Capture").click());
+  expect(invoke).toHaveBeenCalledWith("pages.capture", {
+    pageId: page.pageId,
+    format: "dataUrl",
+    fullPage: false,
+    expectedDocumentEpoch: 3,
+  });
   useStore.setState({ pages: [{ ...page, targetId: "foreign-original-target" }] });
   await act(async () => complete({ dataUrl: "data:image/png;base64,AA==" }));
-  expect(host.querySelector('.capture-editor')).toBeNull();
+  expect(host.querySelector(".capture-editor")).toBeNull();
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("page changed during capture");
 });
 it("refuses foreign focus and native-window changes before invoking the original picker", async () => {
   const picker = vi.spyOn(bridge, "pickEvidenceImage");
   await mount();
-  const foreign = document.createElement("button"); document.body.append(foreign); foreign.focus();
-  await expect(executeCommand("choose-conversation-image")).rejects.toThrow("original focused"); foreign.remove();
-  button("Image").focus(); const originalWindow = bridge.windowId; bridge.windowId = "foreign";
+  const foreign = document.createElement("button");
+  document.body.append(foreign);
+  foreign.focus();
+  await expect(executeCommand("choose-conversation-image")).rejects.toThrow("original focused");
+  foreign.remove();
+  button("Image").focus();
+  const originalWindow = bridge.windowId;
+  bridge.windowId = "foreign";
   await expect(executeCommand("choose-conversation-image")).rejects.toThrow("current image control");
   bridge.windowId = originalWindow;
   expect(picker).not.toHaveBeenCalled();
 });
 it("uses only closed normal-window scoped registry rows for all ten original actions", () => {
-  for (const id of ["choose-conversation-image", "capture-conversation-page", "select-conversation-image-region", "attach-conversation-image", "cancel-conversation-image", "use-whole-conversation-image", "toggle-conversation-image", "remove-conversation-image", "preview-conversation-image", "attach-conversation-document"]) {
-    expect(COMMANDS.find(command => command.id === id)).toMatchObject({ handler: "shell", dispatch: "scoped", windows: ["normal"], palette: false, intercept: true, bindings: [] });
+  for (const id of [
+    "choose-conversation-image",
+    "capture-conversation-page",
+    "select-conversation-image-region",
+    "attach-conversation-image",
+    "cancel-conversation-image",
+    "use-whole-conversation-image",
+    "toggle-conversation-image",
+    "remove-conversation-image",
+    "preview-conversation-image",
+    "attach-conversation-document",
+  ]) {
+    expect(COMMANDS.find((command) => command.id === id)).toMatchObject({
+      handler: "shell",
+      dispatch: "scoped",
+      windows: ["normal"],
+      palette: false,
+      intercept: true,
+      bindings: [],
+    });
   }
 });
 
 it("retains the new same-chat image snapshot when a held original preview completes", async () => {
   let complete!: (value: unknown) => void;
-  vi.spyOn(bridge, "invoke").mockImplementation(() => new Promise(done => { complete = done; }));
-  await mount({ images: [image("a")] }); await act(async () => button("Preview").click());
+  vi.spyOn(bridge, "invoke").mockImplementation(
+    () =>
+      new Promise((done) => {
+        complete = done;
+      }),
+  );
+  await mount({ images: [image("a")] });
+  await act(async () => button("Preview").click());
   await mount({ images: [{ ...image("a"), filename: "Fresh snapshot.png" }] });
   await act(async () => complete({ image: image("a"), dataUrl: "data:image/png;base64,AA==" }));
-  expect(host.querySelector('.viewer-frame')).toBeNull();
+  expect(host.querySelector(".viewer-frame")).toBeNull();
   expect(host.textContent).toContain("Fresh snapshot.png");
   expect(button("Preview").disabled).toBe(false);
 });

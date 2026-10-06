@@ -25,15 +25,22 @@ export class TranslateService {
   private client() {
     const model = this.settings.model();
     const modelId = this.settings.plannerModel();
-    if (!model || !modelId) throw new AuxError("backend_unavailable", "Translation needs a configured model provider in Settings.");
+    if (!model || !modelId)
+      throw new AuxError("backend_unavailable", "Translation needs a configured model provider in Settings.");
     return { model, modelId };
   }
 
-  private async batch(texts: string[], target: string, context: string | undefined, depth = 0): Promise<{ lang: string; translations: string[] }> {
+  private async batch(
+    texts: string[],
+    target: string,
+    context: string | undefined,
+    depth = 0,
+  ): Promise<{ lang: string; translations: string[] }> {
     const { model, modelId } = this.client();
     const result = await model.generateStructured({
       modelId,
-      system: "You are a translation engine inside a web browser. Translate every segment faithfully and neutrally. Do not add commentary, do not censor, do not translate URLs, code or proper nouns that should stay literal. Return one translation per input segment in the same order.",
+      system:
+        "You are a translation engine inside a web browser. Translate every segment faithfully and neutrally. Do not add commentary, do not censor, do not translate URLs, code or proper nouns that should stay literal. Return one translation per input segment in the same order.",
       prompt: `Translate these ${texts.length} web page segments into ${target}.${context ? ` The page is titled: ${context}.` : ""} Detect the source language.\n\nSegments (JSON array):\n${JSON.stringify(texts)}`,
       schema: TranslationSchema,
       maxOutputTokens: Math.min(8192, texts.length * 400 + 256),
@@ -42,7 +49,10 @@ export class TranslateService {
     if (parsed.translations.length === texts.length) return parsed;
     // Misaligned batch → bisect until segments line up (bounded recursion).
     if (texts.length === 1 || depth >= 4) {
-      return { lang: parsed.lang, translations: texts.map((text, index) => parsed.translations[index] ?? text) };
+      return {
+        lang: parsed.lang,
+        translations: texts.map((text, index) => parsed.translations[index] ?? text),
+      };
     }
     const half = Math.ceil(texts.length / 2);
     const [a, b] = await Promise.all([
@@ -57,12 +67,16 @@ export class TranslateService {
     const truncated = texts.length > MAX_SEGMENTS;
     const slice = texts.slice(0, MAX_SEGMENTS);
     const chunks: string[][] = [];
-    let current: string[] = [], chars = 0;
+    let current: string[] = [],
+      chars = 0;
     for (const text of slice) {
       if (current.length && (current.length >= BATCH_SEGMENTS || chars + text.length > BATCH_CHARS)) {
-        chunks.push(current); current = []; chars = 0;
+        chunks.push(current);
+        current = [];
+        chars = 0;
       }
-      current.push(text); chars += text.length;
+      current.push(text);
+      chars += text.length;
     }
     if (current.length) chunks.push(current);
     let lang = "";
@@ -80,7 +94,8 @@ export class TranslateService {
     const { model, modelId } = this.client();
     const result = await model.generateStructured({
       modelId,
-      system: "You are a translation engine inside a web browser. Translate the selected text faithfully and neutrally. Return the detected source language and the translation.",
+      system:
+        "You are a translation engine inside a web browser. Translate the selected text faithfully and neutrally. Return the detected source language and the translation.",
       prompt: `Translate this text into ${goal}.${context ? ` Selection context: ${context}.` : ""}\n\nText:\n${text}`,
       schema: z.object({ lang: z.string().min(2).max(40), translation: z.string() }),
       maxOutputTokens: 4096,

@@ -1,7 +1,41 @@
 @layer components {
-.findbar { flex: none; display: flex; align-items: center; gap: var(--space-2); height: var(--row-h-lg); padding: 0 var(--space-2) 0 var(--space-3); border-radius: var(--r-lg); background: var(--bg-1); box-shadow: var(--line-inset), var(--shadow-sm); }
-.fb-ico { width: var(--ico); height: var(--ico); color: var(--ink-2); display: grid; place-items: center; flex: none; }
-.findbar input { flex: 1; min-width: 0; max-width: 420px; background: none; border: none; outline: none; font-size: var(--fs-md); color: var(--ink-0); }
-.fb-n { font-size: var(--fs-xs); color: var(--ink-2); min-width: 64px; text-align: right; flex: none; }
-.fb-n.none { color: var(--err); }
+  .findbar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: var(--row-h-lg);
+    padding: 0 var(--space-2) 0 var(--space-3);
+    border-radius: var(--r-lg);
+    background: var(--bg-1);
+    box-shadow: var(--line-inset), var(--shadow-sm);
+  }
+  .fb-ico {
+    width: var(--ico);
+    height: var(--ico);
+    color: var(--ink-2);
+    display: grid;
+    place-items: center;
+    flex: none;
+  }
+  .findbar input {
+    flex: 1;
+    min-width: 0;
+    max-width: 420px;
+    background: none;
+    border: none;
+    outline: none;
+    font-size: var(--fs-md);
+    color: var(--ink-0);
+  }
+  .fb-n {
+    font-size: var(--fs-xs);
+    color: var(--ink-2);
+    min-width: 64px;
+    text-align: right;
+    flex: none;
+  }
+  .fb-n.none {
+    color: var(--err);
+  }
 }

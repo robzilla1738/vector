@@ -28,8 +28,18 @@ beforeEach(() => {
   });
   vi.stubGlobal("cancelAnimationFrame", () => {});
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
-  Object.defineProperty(HTMLDialogElement.prototype,"showModal",{configurable:true,value:function(this:HTMLDialogElement){this.open=true;}});
-  Object.defineProperty(HTMLDialogElement.prototype,"close",{configurable:true,value:function(this:HTMLDialogElement){this.open=false;}});
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+    configurable: true,
+    value: function (this: HTMLDialogElement) {
+      this.open = true;
+    },
+  });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", {
+    configurable: true,
+    value: function (this: HTMLDialogElement) {
+      this.open = false;
+    },
+  });
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -64,44 +74,115 @@ afterEach(async () => {
   else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
 
-const image = (chatId:string, included=true) => ({imageId:`image-${chatId}`,artifactId:`artifact-${chatId}`,chatId,filename:`${chatId}.png`,width:16,height:16,createdAt:1,included,byteLength:15,mediaType:"image/png"});
-async function mount(chatId:string) { await act(async()=>root.render(<Conversation chatId={chatId}/>)); }
-let records:Record<string,ReturnType<typeof image>[]>;
+const image = (chatId: string, included = true) => ({
+  imageId: `image-${chatId}`,
+  artifactId: `artifact-${chatId}`,
+  chatId,
+  filename: `${chatId}.png`,
+  width: 16,
+  height: 16,
+  createdAt: 1,
+  included,
+  byteLength: 15,
+  mediaType: "image/png",
+});
+async function mount(chatId: string) {
+  await act(async () => root.render(<Conversation chatId={chatId} />));
+}
+let records: Record<string, ReturnType<typeof image>[]>;
 function setupImages() {
- records={A:[image("A")],B:[image("B")]};
- const invoke=vi.mocked(bridge.invoke), fallback=invoke.getMockImplementation()!;
- invoke.mockImplementation((method,params)=>{
-  if(method==="conversations.images.get")return Promise.resolve({images:records[(params as {chatId:string}).chatId]});
-  if(method==="conversations.images.read")return Promise.resolve({image:image((params as {chatId:string}).chatId),dataUrl:"data:image/png;base64,AA=="});
-  return fallback(method,params);
- });return invoke;
+  records = { A: [image("A")], B: [image("B")] };
+  const invoke = vi.mocked(bridge.invoke),
+    fallback = invoke.getMockImplementation()!;
+  invoke.mockImplementation((method, params) => {
+    if (method === "conversations.images.get")
+      return Promise.resolve({ images: records[(params as { chatId: string }).chatId] });
+    if (method === "conversations.images.read")
+      return Promise.resolve({
+        image: image((params as { chatId: string }).chatId),
+        dataUrl: "data:image/png;base64,AA==",
+      });
+    return fallback(method, params);
+  });
+  return invoke;
 }
 
 it("reopens the same original image through the registered tray command after Escape without changing the draft", async () => {
- const invoke=setupImages();useStore.getState().setConversationDraft("A","Keep original question");
- await mount("A");const draft=host.querySelector<HTMLTextAreaElement>("textarea")!;
- const preview=host.querySelector<HTMLButtonElement>(".attachment-open")!;
- preview.focus();await act(async()=>{await executeCommand("preview-conversation-image");});
- const first=document.querySelector<HTMLDialogElement>("dialog.supporting-dialog")!;expect(first.open).toBe(true);
- await act(async()=>first.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true,cancelable:true})));
- expect(document.querySelector("dialog.supporting-dialog")).toBeNull();expect(host.querySelector(".supporting-chip")).not.toBeNull();
- preview.focus();await act(async()=>{await executeCommand("preview-conversation-image");});
- const second=document.querySelector<HTMLDialogElement>("dialog.supporting-dialog")!;expect(second.open).toBe(true);expect(second).not.toBe(first);
- expect(host.querySelector("textarea")).toBe(draft);expect(draft.value).toBe("Keep original question");
- expect(invoke.mock.calls.filter(([method])=>method==="conversations.images.read").map(([,params])=>params)).toEqual([{chatId:"A",imageId:"image-A"},{chatId:"A",imageId:"image-A"}]);
- expect(invoke.mock.calls.some(([method])=>method==="runs.start" || method==="conversations.images.toggle" || method==="conversations.images.remove")).toBe(false);
- expect(useStore.getState().pages).toEqual([]);expect(useStore.getState().runs).toEqual([]);
+  const invoke = setupImages();
+  useStore.getState().setConversationDraft("A", "Keep original question");
+  await mount("A");
+  const draft = host.querySelector<HTMLTextAreaElement>("textarea")!;
+  const preview = host.querySelector<HTMLButtonElement>(".attachment-open")!;
+  preview.focus();
+  await act(async () => {
+    await executeCommand("preview-conversation-image");
+  });
+  const first = document.querySelector<HTMLDialogElement>("dialog.supporting-dialog")!;
+  expect(first.open).toBe(true);
+  await act(async () =>
+    first.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
+  );
+  expect(document.querySelector("dialog.supporting-dialog")).toBeNull();
+  expect(host.querySelector(".supporting-chip")).not.toBeNull();
+  preview.focus();
+  await act(async () => {
+    await executeCommand("preview-conversation-image");
+  });
+  const second = document.querySelector<HTMLDialogElement>("dialog.supporting-dialog")!;
+  expect(second.open).toBe(true);
+  expect(second).not.toBe(first);
+  expect(host.querySelector("textarea")).toBe(draft);
+  expect(draft.value).toBe("Keep original question");
+  expect(
+    invoke.mock.calls
+      .filter(([method]) => method === "conversations.images.read")
+      .map(([, params]) => params),
+  ).toEqual([
+    { chatId: "A", imageId: "image-A" },
+    { chatId: "A", imageId: "image-A" },
+  ]);
+  expect(
+    invoke.mock.calls.some(
+      ([method]) =>
+        method === "runs.start" ||
+        method === "conversations.images.toggle" ||
+        method === "conversations.images.remove",
+    ),
+  ).toBe(false);
+  expect(useStore.getState().pages).toEqual([]);
+  expect(useStore.getState().runs).toEqual([]);
 });
 it("retires the original pending read on an explicit reopen and rejects a detached original Preview", async () => {
- const invoke=setupImages(),fallback=invoke.getMockImplementation()!;
- const replies:Array<(value:unknown)=>void>=[];
- invoke.mockImplementation((method,params)=>method==="conversations.images.read"?new Promise(resolve=>replies.push(resolve)):fallback(method,params));
- await mount("A");const preview=host.querySelector<HTMLButtonElement>(".attachment-open")!;
- preview.focus();await act(async()=>{await executeCommand("preview-conversation-image");});
- const first=document.querySelector<HTMLDialogElement>("dialog.supporting-dialog")!;
- await act(async()=>first.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true,cancelable:true})));
- preview.focus();await act(async()=>{await executeCommand("preview-conversation-image");});expect(replies).toHaveLength(2);
- await act(async()=>replies[0]!({image:image("A"),dataUrl:"data:image/png;base64,old"}));expect(document.querySelector(".image-viewer")).toBeNull();
- await act(async()=>replies[1]!({image:image("A"),dataUrl:"data:image/png;base64,fresh"}));expect(document.querySelector<HTMLImageElement>(".image-viewer img")?.src).toContain("fresh");
- await mount("B");const beforeDetached=replies.length;preview.focus();await expect(executeCommand("preview-conversation-image")).rejects.toThrow();expect(replies).toHaveLength(beforeDetached);
+  const invoke = setupImages(),
+    fallback = invoke.getMockImplementation()!;
+  const replies: Array<(value: unknown) => void> = [];
+  invoke.mockImplementation((method, params) =>
+    method === "conversations.images.read"
+      ? new Promise((resolve) => replies.push(resolve))
+      : fallback(method, params),
+  );
+  await mount("A");
+  const preview = host.querySelector<HTMLButtonElement>(".attachment-open")!;
+  preview.focus();
+  await act(async () => {
+    await executeCommand("preview-conversation-image");
+  });
+  const first = document.querySelector<HTMLDialogElement>("dialog.supporting-dialog")!;
+  await act(async () =>
+    first.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
+  );
+  preview.focus();
+  await act(async () => {
+    await executeCommand("preview-conversation-image");
+  });
+  expect(replies).toHaveLength(2);
+  await act(async () => replies[0]!({ image: image("A"), dataUrl: "data:image/png;base64,old" }));
+  expect(document.querySelector(".image-viewer")).toBeNull();
+  await act(async () => replies[1]!({ image: image("A"), dataUrl: "data:image/png;base64,fresh" }));
+  expect(document.querySelector<HTMLImageElement>(".image-viewer img")?.src).toContain("fresh");
+  await mount("B");
+  const beforeDetached = replies.length;
+  preview.focus();
+  await expect(executeCommand("preview-conversation-image")).rejects.toThrow();
+  expect(replies).toHaveLength(beforeDetached);
 });

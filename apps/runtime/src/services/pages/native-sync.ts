@@ -7,7 +7,11 @@ import { BrowserDownloadLedger } from "../browser-download-ledger.js";
 
 export class NativeViewSync {
   private downloads: BrowserDownloadLedger;
-  constructor(private pages: PageRegistry, private opener: PageOpener, private activation: ActivationPolicy) {
+  constructor(
+    private pages: PageRegistry,
+    private opener: PageOpener,
+    private activation: ActivationPolicy,
+  ) {
     this.downloads = new BrowserDownloadLedger(pages.deps.repo, pages.deps.downloadsDir);
   }
 
@@ -24,7 +28,12 @@ export class NativeViewSync {
     lp.target.documentEpoch++;
     if (!lp.driver) delete lp.target.sessionId;
     this.pages.resetDocumentState(lp);
-    if (lp.target.viewStatus === "crashed") lp.target.viewStatus = lp.target.ownedByRuntime ? "background" : this.pages.activeByWindow.get(lp.target.windowId ?? "main") === pageId ? "visible" : "hidden";
+    if (lp.target.viewStatus === "crashed")
+      lp.target.viewStatus = lp.target.ownedByRuntime
+        ? "background"
+        : this.pages.activeByWindow.get(lp.target.windowId ?? "main") === pageId
+          ? "visible"
+          : "hidden";
     lp.target.error = undefined;
     lp.target.navigationError = null;
     this.pages.persist(lp);
@@ -35,12 +44,19 @@ export class NativeViewSync {
 
   private async publishReadContext(pageId: string) {
     const original = this.pages.live.get(pageId);
-    if (!original || original.driver || original.target.ownedByRuntime || original.target.agentIsolation) return;
-    const sessionId = original.target.sessionId, epoch = original.target.documentEpoch;
-    try { await this.pages.prepareReadPage(pageId); }
-    catch {
-      if (this.pages.live.get(pageId) === original && original.target.documentEpoch === epoch &&
-          original.target.sessionId === sessionId && sessionId) {
+    if (!original || original.driver || original.target.ownedByRuntime || original.target.agentIsolation)
+      return;
+    const sessionId = original.target.sessionId,
+      epoch = original.target.documentEpoch;
+    try {
+      await this.pages.prepareReadPage(pageId);
+    } catch {
+      if (
+        this.pages.live.get(pageId) === original &&
+        original.target.documentEpoch === epoch &&
+        original.target.sessionId === sessionId &&
+        sessionId
+      ) {
         delete original.target.sessionId;
         this.pages.persist(original);
         this.pages.deps.events.emit(EventTypes.PageUpdated, { page: original.target });
@@ -48,12 +64,20 @@ export class NativeViewSync {
     }
   }
 
-  onNativeNavigationError(pageId: string, error: { url: string; code: number; message: string; upgradedFrom?: string } | null) {
+  onNativeNavigationError(
+    pageId: string,
+    error: { url: string; code: number; message: string; upgradedFrom?: string } | null,
+  ) {
     const lp = this.pages.live.get(pageId);
     if (!lp) return;
     if (JSON.stringify(lp.target.navigationError ?? null) === JSON.stringify(error)) return;
     lp.target.navigationError = error;
-    if (error) { lp.target.url = error.url; lp.target.title = "Page couldn’t load"; lp.target.loading = false; this.pages.resetDocumentState(lp); }
+    if (error) {
+      lp.target.url = error.url;
+      lp.target.title = "Page couldn’t load";
+      lp.target.loading = false;
+      this.pages.resetDocumentState(lp);
+    }
     this.pages.persist(lp);
     if (!this.pages.restoring) this.pages.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
   }
@@ -91,18 +115,22 @@ export class NativeViewSync {
         const displaced = this.pages.activeByWindow.get(w.windowId);
         // The window op is activation truth — record the displaced tab as the
         // close-return target even for a page that dies before registering.
-        if (displaced && displaced !== w.activePageId) this.pages.returnTargets.set(w.activePageId, displaced);
+        if (displaced && displaced !== w.activePageId)
+          this.pages.returnTargets.set(w.activePageId, displaced);
         this.pages.activeByWindow.set(w.windowId, w.activePageId);
         this.pages.lastKnownWindow.set(w.activePageId, w.windowId);
-      }
-      else this.pages.activeByWindow.delete(w.windowId);
+      } else this.pages.activeByWindow.delete(w.windowId);
       const lp = w.activePageId ? this.pages.live.get(w.activePageId) : undefined;
       if (lp) {
         // The window op is the truth for activation — the global pointer
         // follows the most recently activated tab main reports.
         this.pages.activeId = lp.target.pageId;
         lp.target.lastActiveAt = Date.now();
-        this.pages.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, activePageId: lp.target.pageId, lastActiveAt: lp.target.lastActiveAt });
+        this.pages.deps.events.emit(EventTypes.PageUpdated, {
+          pageId: lp.target.pageId,
+          activePageId: lp.target.pageId,
+          lastActiveAt: lp.target.lastActiveAt,
+        });
       } else if (!w.activePageId) {
         const active = this.pages.activeId ? this.pages.live.get(this.pages.activeId) : undefined;
         if (active && (active.target.windowId ?? "main") === w.windowId) this.pages.activeId = null;
@@ -150,7 +178,10 @@ export class NativeViewSync {
           if (lp.target.themeColor !== tab.themeColor) {
             lp.target.themeColor = tab.themeColor;
             this.pages.persist(lp);
-            this.pages.deps.events.emit(EventTypes.PageUpdated, { pageId: tab.pageId, themeColor: tab.themeColor });
+            this.pages.deps.events.emit(EventTypes.PageUpdated, {
+              pageId: tab.pageId,
+              themeColor: tab.themeColor,
+            });
           }
           if (lp.target.lifecycle !== tab.lifecycle) {
             lp.target.lifecycle = tab.lifecycle;
@@ -161,15 +192,23 @@ export class NativeViewSync {
           if ((lp.target.windowId ?? "main") !== tab.windowId) {
             lp.target.windowId = tab.windowId;
             this.pages.persist(lp);
-            this.pages.deps.events.emit(EventTypes.PageUpdated, { pageId: tab.pageId, windowId: tab.windowId });
+            this.pages.deps.events.emit(EventTypes.PageUpdated, {
+              pageId: tab.pageId,
+              windowId: tab.windowId,
+            });
           }
           return;
         }
         // Pages the runtime itself created echo back through the catalog —
         // skip them. Human/external surfaces register so agent ops can
         // attach on the stable marker.
-        if (op.origin === "runtime" || this.pages.opening.has(tab.pageId) ||
-          this.pages.pendingExternal.has(tab.pageId) || this.pages.closing) return;
+        if (
+          op.origin === "runtime" ||
+          this.pages.opening.has(tab.pageId) ||
+          this.pages.pendingExternal.has(tab.pageId) ||
+          this.pages.closing
+        )
+          return;
         const active = this.pages.activeByWindow.get(tab.windowId) === tab.pageId;
         await this.opener.registerExternal({
           pageId: tab.pageId,
@@ -261,7 +300,10 @@ export class NativeViewSync {
         if (discarded) {
           if (lp) this.pages.deps.events.emit(EventTypes.PageUpdated, { pageId, viewStatus: "detached" });
         } else {
-          this.pages.deps.events.emit(EventTypes.PageRemoved, { pageId, ...(next ? { activePageId: next.target.pageId } : {}) });
+          this.pages.deps.events.emit(EventTypes.PageRemoved, {
+            pageId,
+            ...(next ? { activePageId: next.target.pageId } : {}),
+          });
         }
       }
       if (next) void this.activation.activate(next.target.pageId).catch(() => {});
@@ -303,7 +345,16 @@ export class NativeViewSync {
   /** main -> runtime: a profile-session download began (authoritative record). */
   onNativeDownloadStarted(
     pageId: string | undefined,
-    info: { id: string; sourceUrl?: string; filename: string; path: string; size: number; totalBytes?: number; startedAt: number; downloadRoot?: string },
+    info: {
+      id: string;
+      sourceUrl?: string;
+      filename: string;
+      path: string;
+      size: number;
+      totalBytes?: number;
+      startedAt: number;
+      downloadRoot?: string;
+    },
   ) {
     this.pages.deps.repo.saveDownload({ ...info, pageId, state: "started" });
     const lp = pageId ? this.pages.live.get(pageId) : undefined;
@@ -314,7 +365,17 @@ export class NativeViewSync {
 
   async onNativeDownload(
     pageId: string | undefined,
-    info: { id: string; sourceUrl?: string; filename: string; path: string; state: string; size: number; totalBytes?: number; startedAt: number; endedAt?: number },
+    info: {
+      id: string;
+      sourceUrl?: string;
+      filename: string;
+      path: string;
+      state: string;
+      size: number;
+      totalBytes?: number;
+      startedAt: number;
+      endedAt?: number;
+    },
   ) {
     this.pages.deps.repo.saveDownload({ ...info, pageId });
     await this.downloads.finished(info);

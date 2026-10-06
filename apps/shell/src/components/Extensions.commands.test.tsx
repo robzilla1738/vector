@@ -9,7 +9,11 @@ import { executeCommand, dispatchShortcut } from "../commands";
 import { extensionInventory } from "../features/extensions/extension-inventory";
 import { Extensions } from "./Extensions";
 const policy = vi.hoisted(() => ({ available: true }));
-vi.mock("../feature-availability", () => ({ featureAvailable: () => policy.available, featureVisible: () => policy.available, featureStage: () => policy.available ? "on" : "off" }));
+vi.mock("../feature-availability", () => ({
+  featureAvailable: () => policy.available,
+  featureVisible: () => policy.available,
+  featureStage: () => (policy.available ? "on" : "off"),
+}));
 vi.mock("../bridge", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../bridge")>()),
   inNativeHost: true,

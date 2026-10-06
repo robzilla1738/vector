@@ -1,7 +1,11 @@
 import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useState } from "react";
-import { DEFAULT_DOWNLOAD_NAMING, DownloadNamingSettingsSchema, type DownloadNamingSettings } from "@aux/contracts";
+import {
+  DEFAULT_DOWNLOAD_NAMING,
+  DownloadNamingSettingsSchema,
+  type DownloadNamingSettings,
+} from "@aux/contracts";
 import { useStore } from "../../store";
 import { executeCommand } from "../../commands";
 import { SettingsField, SettingsSection } from "../../settings/primitives";

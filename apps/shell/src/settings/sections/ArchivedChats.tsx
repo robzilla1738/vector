@@ -29,9 +29,13 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
     setError("");
     try {
       const target = append ? PAGE_SIZE : Math.max(PAGE_SIZE, rowsRef.current.length);
-      let before = append && rowsRef.current.length
-        ? { updatedAt: rowsRef.current[rowsRef.current.length - 1]!.updatedAt, chatId: rowsRef.current[rowsRef.current.length - 1]!.chatId }
-        : undefined;
+      let before =
+        append && rowsRef.current.length
+          ? {
+              updatedAt: rowsRef.current[rowsRef.current.length - 1]!.updatedAt,
+              chatId: rowsRef.current[rowsRef.current.length - 1]!.chatId,
+            }
+          : undefined;
       const found: ConversationSummary[] = [];
       while (found.length <= target) {
         const limit = Math.min(200, target + 1 - found.length);
@@ -49,7 +53,11 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
       }
       if (request !== version.current) return;
       const page = found.slice(0, target);
-      setRows(current => append ? [...current, ...page.filter(item => !current.some(row => row.chatId === item.chatId))] : page);
+      setRows((current) =>
+        append
+          ? [...current, ...page.filter((item) => !current.some((row) => row.chatId === item.chatId))]
+          : page,
+      );
       setMore(found.length > target);
     } catch (reason) {
       if (request === version.current) setError(errorMessage(reason));
@@ -59,17 +67,23 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
   }
 
   useEffect(() => {
-    if (!active) { ++version.current; return; }
+    if (!active) {
+      ++version.current;
+      return;
+    }
     const requestVersion = version;
     const timer = window.setTimeout(() => void load(false, query), 180);
-    return () => { window.clearTimeout(timer); ++requestVersion.current; };
+    return () => {
+      window.clearTimeout(timer);
+      ++requestVersion.current;
+    };
     // A new query starts at the first page; pagination uses the current rows.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, query]);
 
   useEffect(() => {
     if (!active) return;
-    return bridge.onEvent(event => {
+    return bridge.onEvent((event) => {
       if (event.type === "conversation.changed" || event.type === "conversation.deleted") void load(false);
     });
     // Refresh the visible archive when another surface changes a conversation.
@@ -82,7 +96,7 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
     try {
       const restored = await call("conversations.archive", { chatId: item.chatId, archived: false });
       mergeHistory([restored.latestRun]);
-      setRows(current => current.filter(row => row.chatId !== item.chatId));
+      setRows((current) => current.filter((row) => row.chatId !== item.chatId));
     } catch (reason) {
       setError(errorMessage(reason));
     } finally {
@@ -92,13 +106,16 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
 
   return (
     <SettingsSection name="Archived chats" hidden={!active}>
-      <SettingsField label="Find archived chats" hint="Archived chats remain available until you delete them from chat history.">
+      <SettingsField
+        label="Find archived chats"
+        hint="Archived chats remain available until you delete them from chat history."
+      >
         <input
           aria-label="Search archived chats"
           placeholder="Search archived chats…"
           maxLength={500}
           value={query}
-          onChange={event => {
+          onChange={(event) => {
             ++version.current;
             rowsRef.current = [];
             setRows([]);
@@ -107,23 +124,51 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
           }}
         />
       </SettingsField>
-      {error && <p {...nativeAlertRoleProps} {...staticFieldErrorProps}>{error} <button {...smallButtonProps} onClick={() => void load(false)}>Try again</button></p>}
+      {error && (
+        <p {...nativeAlertRoleProps} {...staticFieldErrorProps}>
+          {error}{" "}
+          <button {...smallButtonProps} onClick={() => void load(false)}>
+            Try again
+          </button>
+        </p>
+      )}
       <div className="settings-archived-list" aria-busy={loading}>
-        {rows.map(item => <div className="settings-archived-row" key={item.chatId}>
-          <button className="settings-archived-open" disabled={busyId !== null} onClick={() => {
-            mergeHistory([item.latestRun]);
-            useStore.getState().openConversation(item.latestRun.runId);
-          }}>
-            <strong>{item.title}</strong>
-            <span>{new Date(item.updatedAt).toLocaleString()} · {item.turnCount} {item.turnCount === 1 ? "turn" : "turns"}</span>
+        {rows.map((item) => (
+          <div className="settings-archived-row" key={item.chatId}>
+            <button
+              className="settings-archived-open"
+              disabled={busyId !== null}
+              onClick={() => {
+                mergeHistory([item.latestRun]);
+                useStore.getState().openConversation(item.latestRun.runId);
+              }}
+            >
+              <strong>{item.title}</strong>
+              <span>
+                {new Date(item.updatedAt).toLocaleString()} · {item.turnCount}{" "}
+                {item.turnCount === 1 ? "turn" : "turns"}
+              </span>
+            </button>
+            <button {...smallGhostButtonProps} disabled={busyId !== null} onClick={() => void restore(item)}>
+              {busyId === item.chatId ? "Restoring…" : "Restore"}
+            </button>
+          </div>
+        ))}
+        {loading && (
+          <output {...staticHintProps} data-block>
+            Loading archived chats…
+          </output>
+        )}
+        {!loading && !error && !rows.length && (
+          <p {...staticHintProps}>
+            {query.trim() ? "No archived chats match your search." : "No archived chats yet."}
+          </p>
+        )}
+        {more && !error && (
+          <button {...smallButtonProps} disabled={loading || busyId !== null} onClick={() => void load(true)}>
+            Load more
           </button>
-          <button {...smallGhostButtonProps} disabled={busyId !== null} onClick={() => void restore(item)}>
-            {busyId === item.chatId ? "Restoring…" : "Restore"}
-          </button>
-        </div>)}
-        {loading && <output {...staticHintProps} data-block>Loading archived chats…</output>}
-        {!loading && !error && !rows.length && <p {...staticHintProps}>{query.trim() ? "No archived chats match your search." : "No archived chats yet."}</p>}
-        {more && !error && <button {...smallButtonProps} disabled={loading || busyId !== null} onClick={() => void load(true)}>Load more</button>}
+        )}
       </div>
     </SettingsSection>
   );

@@ -6,8 +6,12 @@ import { exactOrigin } from "@aux/contracts/util/exact-origin";
  */
 import { createHash, randomUUID } from "node:crypto";
 import {
-  EgressLeaseSchema, EgressRequestEvidenceSchema,
-  type EgressDecision, type EgressLease, type EgressRequestEvidence, type EgressProjection,
+  EgressLeaseSchema,
+  EgressRequestEvidenceSchema,
+  type EgressDecision,
+  type EgressLease,
+  type EgressRequestEvidence,
+  type EgressProjection,
 } from "@aux/contracts";
 
 import { MEMORY_WINDOW, textFingerprints, phraseHashes, inspectableText } from "./egress-projection.js";
@@ -19,35 +23,58 @@ const MAX_REQUEST_BYTES = 64 * 1024;
 const MAX_LEASE_MS = 30_000;
 
 export interface EgressAuditEvidence {
-  leaseId: string; profileId: string; runId: string; kind: EgressRequestEvidence["kind"];
-  method: EgressRequestEvidence["method"]; byteCount: number; destinationOrigin?: string;
+  leaseId: string;
+  profileId: string;
+  runId: string;
+  kind: EgressRequestEvidence["kind"];
+  method: EgressRequestEvidence["method"];
+  byteCount: number;
+  destinationOrigin?: string;
 }
 
-interface Specimen { value: string; dataClass: ProtectedClass; sourceOrigin: string }
+interface Specimen {
+  value: string;
+  dataClass: ProtectedClass;
+  sourceOrigin: string;
+}
 interface ActiveLease {
-  lease: EgressLease; specimens: Specimen[];
-  memoryFingerprints: Set<string>; revoked: boolean; runRetired: boolean; initialNavigationStarted: boolean;
+  lease: EgressLease;
+  specimens: Specimen[];
+  memoryFingerprints: Set<string>;
+  revoked: boolean;
+  runRetired: boolean;
+  initialNavigationStarted: boolean;
 }
-
 
 function variants(value: string): string[] {
   // URL and form encoders use both %20 and +. Base64 captures common encoded
   // query/body exfiltration without recording or logging the original value.
   const encoded = encodeURIComponent(value);
-  const byteEncoded = [...Buffer.from(value, "utf8")].map(byte => `%${byte.toString(16).toUpperCase().padStart(2, "0")}`).join("");
-  return [value, encoded, encoded.replace(/%20/g, "+"), byteEncoded,
+  const byteEncoded = [...Buffer.from(value, "utf8")]
+    .map((byte) => `%${byte.toString(16).toUpperCase().padStart(2, "0")}`)
+    .join("");
+  return [
+    value,
+    encoded,
+    encoded.replace(/%20/g, "+"),
+    byteEncoded,
     Buffer.from(value, "utf8").toString("base64"),
-    Buffer.from(value, "utf8").toString("base64url")];
+    Buffer.from(value, "utf8").toString("base64url"),
+  ];
 }
 
 function overlap(specimens: readonly Specimen[], outbound: string): Specimen | null {
   const representations = [outbound];
   for (let depth = 0; depth < 2; depth++) {
-    try { representations.push(decodeURIComponent(representations.at(-1)!.replace(/\+/g, "%20"))); }
-    catch { break; }
+    try {
+      representations.push(decodeURIComponent(representations.at(-1)!.replace(/\+/g, "%20")));
+    } catch {
+      break;
+    }
   }
   for (const specimen of specimens) {
-    if (representations.some(request => variants(specimen.value).some(value => request.includes(value)))) return specimen;
+    if (representations.some((request) => variants(specimen.value).some((value) => request.includes(value))))
+      return specimen;
   }
   return null;
 }
@@ -57,33 +84,52 @@ export class AgentEgressGuard {
   private readonly leases = new Map<string, ActiveLease>();
   private readonly memoryByRun = new Map<string, Set<string>>();
   private readonly pageTextByRun = new Map<string, Map<string, Set<string>>>();
-  constructor(private readonly authority: {
-    currentTaskRevision(runId: string): number | null;
-    audit(decision: EgressDecision, evidence: EgressAuditEvidence): void;
-    now(): number;
-  }) {}
+  constructor(
+    private readonly authority: {
+      currentTaskRevision(runId: string): number | null;
+      audit(decision: EgressDecision, evidence: EgressAuditEvidence): void;
+      now(): number;
+    },
+  ) {}
 
-  issue(input: Omit<EgressLease, "leaseId" | "issuedAt" | "expiresAt"> & { durationMs?: number }): EgressLease {
+  issue(
+    input: Omit<EgressLease, "leaseId" | "issuedAt" | "expiresAt"> & { durationMs?: number },
+  ): EgressLease {
     const now = this.authority.now();
-    const sourceOrigin = input.sourceOrigin === "aux://blank" ? "aux://blank" : exactOrigin(input.sourceOrigin);
+    const sourceOrigin =
+      input.sourceOrigin === "aux://blank" ? "aux://blank" : exactOrigin(input.sourceOrigin);
     if (!sourceOrigin || this.authority.currentTaskRevision(input.runId) !== input.taskRevision)
       throw new Error("Cannot issue egress authority for an invalid or stale run.");
-    if (sourceOrigin === "aux://blank" ? !input.initialDestination || !exactOrigin(input.initialDestination) : !!input.initialDestination)
+    if (
+      sourceOrigin === "aux://blank"
+        ? !input.initialDestination || !exactOrigin(input.initialDestination)
+        : !!input.initialDestination
+    )
       throw new Error("Initial navigation authority requires a blank page and exact HTTP(S) target.");
-    const recipientOrigins = input.recipientOrigins.map(raw => {
+    const recipientOrigins = input.recipientOrigins.map((raw) => {
       const normalized = exactOrigin(raw);
       if (!normalized || normalized !== raw) throw new Error("Recipient must be an exact HTTP(S) origin.");
       return normalized;
     });
     const { durationMs, ...identity } = input;
     const lease = EgressLeaseSchema.parse({
-      ...identity, sourceOrigin, recipientOrigins,
-      leaseId: randomUUID(), issuedAt: now,
+      ...identity,
+      sourceOrigin,
+      recipientOrigins,
+      leaseId: randomUUID(),
+      issuedAt: now,
       expiresAt: now + Math.min(Math.max(durationMs ?? MAX_LEASE_MS, 1), MAX_LEASE_MS),
     });
     const memoryFingerprints = this.memoryByRun.get(lease.runId) ?? new Set<string>();
     this.memoryByRun.set(lease.runId, memoryFingerprints);
-    this.leases.set(lease.leaseId, { lease, specimens: [], memoryFingerprints, revoked: false, runRetired: false, initialNavigationStarted: false });
+    this.leases.set(lease.leaseId, {
+      lease,
+      specimens: [],
+      memoryFingerprints,
+      revoked: false,
+      runRetired: false,
+      initialNavigationStarted: false,
+    });
     return lease;
   }
 
@@ -93,20 +139,27 @@ export class AgentEgressGuard {
     const original = this.leases.get(originalLeaseId);
     if (!original || original.revoked || original.lease.expiresAt <= this.authority.now())
       throw new Error("Controlled navigation needs current original document protection.");
-    const specimens = original.specimens.map(specimen => ({ ...specimen }));
+    const specimens = original.specimens.map((specimen) => ({ ...specimen }));
     let consumed = false;
     const issue = (input: Omit<EgressLease, "leaseId" | "issuedAt">): EgressLease => {
       const alreadyConsumed = consumed;
       consumed = true;
       try {
-        if (alreadyConsumed || !original.revoked || input.recipientOrigins.length || input.initialDestination
-          || original.runRetired
-          || !Number.isSafeInteger(input.expiresAt) || input.expiresAt <= this.authority.now()
-          || input.expiresAt > original.lease.expiresAt
-          || input.documentToken === original.lease.documentToken
-          || input.documentEpoch !== original.lease.documentEpoch + 1
-          || (["profileId", "runId", "taskId", "taskRevision", "tabId", "isolationId"] as const)
-            .some(field => input[field] !== original.lease[field]))
+        if (
+          alreadyConsumed ||
+          !original.revoked ||
+          input.recipientOrigins.length ||
+          input.initialDestination ||
+          original.runRetired ||
+          !Number.isSafeInteger(input.expiresAt) ||
+          input.expiresAt <= this.authority.now() ||
+          input.expiresAt > original.lease.expiresAt ||
+          input.documentToken === original.lease.documentToken ||
+          input.documentEpoch !== original.lease.documentEpoch + 1 ||
+          (["profileId", "runId", "taskId", "taskRevision", "tabId", "isolationId"] as const).some(
+            (field) => input[field] !== original.lease[field],
+          )
+        )
           throw new Error("Controlled navigation needs the retired original task and document protection.");
         const { expiresAt, ...identity } = input;
         const lease = this.issue({ ...identity, durationMs: expiresAt - this.authority.now() });
@@ -117,18 +170,30 @@ export class AgentEgressGuard {
           this.revoke(lease.leaseId);
           throw new Error("Controlled navigation needs the retired original task and document protection.");
         }
-        this.leases.get(lease.leaseId)!.specimens = specimens.map(specimen => ({ ...specimen }));
+        this.leases.get(lease.leaseId)!.specimens = specimens.map((specimen) => ({ ...specimen }));
         return lease;
-      } finally { specimens.length = 0; }
+      } finally {
+        specimens.length = 0;
+      }
     };
-    return Object.freeze({ issue, discard: () => { consumed = true; specimens.length = 0; } });
+    return Object.freeze({
+      issue,
+      discard: () => {
+        consumed = true;
+        specimens.length = 0;
+      },
+    });
   }
 
   /** Renewal never changes identity or recipients; the owner rechecks its claim. */
   renew(leaseId: string): EgressLease {
     const active = this.leases.get(leaseId);
-    if (!active || active.revoked || active.lease.expiresAt <= this.authority.now()
-      || this.authority.currentTaskRevision(active.lease.runId) !== active.lease.taskRevision)
+    if (
+      !active ||
+      active.revoked ||
+      active.lease.expiresAt <= this.authority.now() ||
+      this.authority.currentTaskRevision(active.lease.runId) !== active.lease.taskRevision
+    )
       throw new Error("Egress lease is unavailable.");
     active.lease = { ...active.lease, expiresAt: this.authority.now() + MAX_LEASE_MS };
     return { ...active.lease };
@@ -194,28 +259,37 @@ export class AgentEgressGuard {
   revoke(leaseId: string): void {
     const active = this.leases.get(leaseId);
     if (active) {
-      active.revoked = true; active.specimens.length = 0;
+      active.revoked = true;
+      active.specimens.length = 0;
     }
   }
 
   revokeRun(runId: string): void {
-    for (const [id, active] of this.leases) if (active.lease.runId === runId) {
-      active.runRetired = true;
-      this.revoke(id);
-    }
+    for (const [id, active] of this.leases)
+      if (active.lease.runId === runId) {
+        active.runRetired = true;
+        this.revoke(id);
+      }
     this.memoryByRun.get(runId)?.clear();
     this.memoryByRun.delete(runId);
     this.pageTextByRun.delete(runId);
   }
 
   /** Raw URL and complete bounded request body stay in the trusted process only. */
-  decide(raw: EgressRequestEvidence, body = "", approvedRequest = false, projection?: EgressProjection): EgressDecision {
+  decide(
+    raw: EgressRequestEvidence,
+    body = "",
+    approvedRequest = false,
+    projection?: EgressProjection,
+  ): EgressDecision {
     const evidence = EgressRequestEvidenceSchema.parse(raw);
     const active = this.leases.get(evidence.leaseId);
     const dest = exactOrigin(evidence.destination);
     const source = active?.lease.sourceOrigin;
     const deny = (reason: EgressDecision["reason"], protectedClass?: ProtectedClass): EgressDecision => ({
-      status: "deny", reason, leaseId: evidence.leaseId,
+      status: "deny",
+      reason,
+      leaseId: evidence.leaseId,
       ...(source ? { sourceOrigin: source } : {}),
       ...(dest ? { destinationOrigin: dest } : {}),
       ...(protectedClass ? { protectedClass } : {}),
@@ -223,55 +297,125 @@ export class AgentEgressGuard {
     let decision: EgressDecision;
     if (!active) decision = deny("missing_lease");
     else if (active.revoked) decision = deny("revoked_lease");
-    else if (active.lease.expiresAt <= this.authority.now()
-      || evidence.observedAt < active.lease.issuedAt
-      || evidence.observedAt > this.authority.now() + 1000
-      || this.authority.currentTaskRevision(evidence.runId) !== active.lease.taskRevision)
+    else if (
+      active.lease.expiresAt <= this.authority.now() ||
+      evidence.observedAt < active.lease.issuedAt ||
+      evidence.observedAt > this.authority.now() + 1000 ||
+      this.authority.currentTaskRevision(evidence.runId) !== active.lease.taskRevision
+    )
       decision = deny("stale_lease");
-    else if (["isolationId", "profileId", "runId", "taskId", "taskRevision", "tabId", "frameId", "documentToken", "documentEpoch"].some(key =>
-      (active.lease as unknown as Record<string, unknown>)[key] !== (evidence as unknown as Record<string, unknown>)[key]))
+    else if (
+      [
+        "isolationId",
+        "profileId",
+        "runId",
+        "taskId",
+        "taskRevision",
+        "tabId",
+        "frameId",
+        "documentToken",
+        "documentEpoch",
+      ].some(
+        (key) =>
+          (active.lease as unknown as Record<string, unknown>)[key] !==
+          (evidence as unknown as Record<string, unknown>)[key],
+      )
+    )
       decision = deny("identity_mismatch");
     else if (!dest) decision = deny("invalid_destination");
-    else if (source === "aux://blank" && (
-      evidence.kind === "navigation"
-        ? active.initialNavigationStarted || evidence.method !== "GET" || evidence.byteCount !== 0
-          || !!active.lease.initialDestination && (projection
-            ? projection.urlDigest !== createHash("sha256").update(active.lease.initialDestination).digest("hex")
-            : evidence.destination !== active.lease.initialDestination)
-        : evidence.kind !== "redirect" || !active.initialNavigationStarted
-    )) decision = deny("identity_mismatch");
-    else if (!evidence.bodyComplete || evidence.byteCount > MAX_REQUEST_BYTES
-      || !projection && (Buffer.byteLength(body) > MAX_REQUEST_BYTES || Buffer.byteLength(body) !== evidence.byteCount))
+    else if (
+      source === "aux://blank" &&
+      (evidence.kind === "navigation"
+        ? active.initialNavigationStarted ||
+          evidence.method !== "GET" ||
+          evidence.byteCount !== 0 ||
+          (!!active.lease.initialDestination &&
+            (projection
+              ? projection.urlDigest !==
+                createHash("sha256").update(active.lease.initialDestination).digest("hex")
+              : evidence.destination !== active.lease.initialDestination))
+        : evidence.kind !== "redirect" || !active.initialNavigationStarted)
+    )
+      decision = deny("identity_mismatch");
+    else if (
+      !evidence.bodyComplete ||
+      evidence.byteCount > MAX_REQUEST_BYTES ||
+      (!projection &&
+        (Buffer.byteLength(body) > MAX_REQUEST_BYTES || Buffer.byteLength(body) !== evidence.byteCount))
+    )
       decision = deny("incomplete_body");
-    else if (projection && (!projection.projectionComplete || projection.phase === "send" && !projection.headersComplete))
+    else if (
+      projection &&
+      (!projection.projectionComplete || (projection.phase === "send" && !projection.headersComplete))
+    )
       decision = deny("incomplete_projection");
     else {
       const outbound = evidence.destination + "\n" + body;
       const inspected = projection ? [] : inspectableText(outbound);
-      const hashes = new Set(projection?.textHashes ?? inspected.flatMap(text => [...textFingerprints(text)]));
-      const memoryOverlap = [...hashes].some(hash => active.memoryFingerprints.has(hash));
-      const protectedForDestination = active.specimens.filter(specimen => specimen.sourceOrigin !== dest);
+      const hashes = new Set(
+        projection?.textHashes ?? inspected.flatMap((text) => [...textFingerprints(text)]),
+      );
+      const memoryOverlap = [...hashes].some((hash) => active.memoryFingerprints.has(hash));
+      const protectedForDestination = active.specimens.filter((specimen) => specimen.sourceOrigin !== dest);
       const found = projection
-        ? protectedForDestination.find(specimen => [...textFingerprints(specimen.value)].some(hash => hashes.has(hash))) ?? null
+        ? (protectedForDestination.find((specimen) =>
+            [...textFingerprints(specimen.value)].some((hash) => hashes.has(hash)),
+          ) ?? null)
         : overlap(protectedForDestination, outbound);
-      const outboundPhrases = new Set(projection?.phraseHashes ?? inspected.flatMap(text => [...phraseHashes(text)]));
-      const pageSource = [...(this.pageTextByRun.get(evidence.runId) ?? [])].find(([origin, hashes]) =>
-        origin !== dest && [...outboundPhrases].some(hash => hashes.has(hash)))?.[0];
-      if (memoryOverlap || found) decision = deny("protected_overlap", memoryOverlap ? "memory" : found!.dataClass);
+      const outboundPhrases = new Set(
+        projection?.phraseHashes ?? inspected.flatMap((text) => [...phraseHashes(text)]),
+      );
+      const pageSource = [...(this.pageTextByRun.get(evidence.runId) ?? [])].find(
+        ([origin, hashes]) => origin !== dest && [...outboundPhrases].some((hash) => hashes.has(hash)),
+      )?.[0];
+      if (memoryOverlap || found)
+        decision = deny("protected_overlap", memoryOverlap ? "memory" : found!.dataClass);
       else if (projection?.phase === "preflight")
-        decision = { status: "inspected", reason: "preflight_only", leaseId: evidence.leaseId, sourceOrigin: source, destinationOrigin: dest };
-      else if (!approvedRequest && pageSource) decision = { ...deny("page_content_overlap"), sourceOrigin: pageSource };
+        decision = {
+          status: "inspected",
+          reason: "preflight_only",
+          leaseId: evidence.leaseId,
+          sourceOrigin: source,
+          destinationOrigin: dest,
+        };
+      else if (!approvedRequest && pageSource)
+        decision = { ...deny("page_content_overlap"), sourceOrigin: pageSource };
       else if (source === "aux://blank" && dest === exactOrigin(active.lease.initialDestination!))
-        decision = { status: "allow", reason: "authorized_recipient", leaseId: evidence.leaseId, sourceOrigin: source, destinationOrigin: dest };
-      else if (dest === source) decision = { status: "allow", reason: "same_origin", leaseId: evidence.leaseId, sourceOrigin: source, destinationOrigin: dest };
-      else if (!approvedRequest && !active.lease.recipientOrigins.includes(dest)) decision = deny("recipient_denied");
-      else decision = { status: "allow", reason: "authorized_recipient", leaseId: evidence.leaseId, sourceOrigin: source, destinationOrigin: dest };
+        decision = {
+          status: "allow",
+          reason: "authorized_recipient",
+          leaseId: evidence.leaseId,
+          sourceOrigin: source,
+          destinationOrigin: dest,
+        };
+      else if (dest === source)
+        decision = {
+          status: "allow",
+          reason: "same_origin",
+          leaseId: evidence.leaseId,
+          sourceOrigin: source,
+          destinationOrigin: dest,
+        };
+      else if (!approvedRequest && !active.lease.recipientOrigins.includes(dest))
+        decision = deny("recipient_denied");
+      else
+        decision = {
+          status: "allow",
+          reason: "authorized_recipient",
+          leaseId: evidence.leaseId,
+          sourceOrigin: source,
+          destinationOrigin: dest,
+        };
     }
     if (decision.status === "allow" && source === "aux://blank" && evidence.kind === "navigation")
       active!.initialNavigationStarted = true;
     this.authority.audit(decision, {
-      leaseId: evidence.leaseId, profileId: evidence.profileId, runId: evidence.runId,
-      kind: evidence.kind, method: evidence.method, byteCount: evidence.byteCount,
+      leaseId: evidence.leaseId,
+      profileId: evidence.profileId,
+      runId: evidence.runId,
+      kind: evidence.kind,
+      method: evidence.method,
+      byteCount: evidence.byteCount,
       ...(dest ? { destinationOrigin: dest } : {}),
     });
     return decision;

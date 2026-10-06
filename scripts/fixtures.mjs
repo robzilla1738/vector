@@ -76,6 +76,12 @@ if (isMain) {
   await waitForFixtures();
   console.log("fixtures up:", FIXTURES.map((f) => `http://127.0.0.1:${f.port}`).join("  "));
   const stop = () => procs.forEach((p) => p.kill());
-  process.on("SIGINT", () => { stop(); process.exit(0); });
-  process.on("SIGTERM", () => { stop(); process.exit(0); });
+  process.on("SIGINT", () => {
+    stop();
+    process.exit(0);
+  });
+  process.on("SIGTERM", () => {
+    stop();
+    process.exit(0);
+  });
 }

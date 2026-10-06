@@ -157,8 +157,14 @@ export class TaskService {
     this.repo.transaction(() => {
       this.repo.db
         .prepare("INSERT INTO tasks VALUES(?,?,?,?,?,?)")
-        .run(task.taskId, task.workspaceId, task.revision, task.state, now,
-          this.repo.protectTaskJson(task.taskId, JSON.stringify(task)));
+        .run(
+          task.taskId,
+          task.workspaceId,
+          task.revision,
+          task.state,
+          now,
+          this.repo.protectTaskJson(task.taskId, JSON.stringify(task)),
+        );
       this.repo.saveTaskLookup(task.taskId, task.conversationId, task.sourceOrigin);
       this.saveRevision(task);
     });
@@ -221,8 +227,14 @@ export class TaskService {
       };
       this.repo.db
         .prepare("INSERT INTO tasks VALUES(?,?,?,?,?,?)")
-        .run(task.taskId, task.workspaceId, task.revision, task.state, now,
-          this.repo.protectTaskJson(task.taskId, JSON.stringify(task)));
+        .run(
+          task.taskId,
+          task.workspaceId,
+          task.revision,
+          task.state,
+          now,
+          this.repo.protectTaskJson(task.taskId, JSON.stringify(task)),
+        );
       this.repo.saveTaskLookup(task.taskId, task.conversationId, task.sourceOrigin);
       this.saveRevision(task);
       this.repo.setSetting(`conversationWorkspace:${chatId}`, task.workspaceId);
@@ -269,7 +281,8 @@ export class TaskService {
           "SELECT task_id,json FROM tasks WHERE (? IS NULL OR workspace_id=?) AND (? OR state='open') ORDER BY updated_at DESC,task_id LIMIT 500",
         )
         .all(opts.workspaceId ?? null, opts.workspaceId ?? null, opts.includeArchived ? 1 : 0) as {
-        task_id: string; json: string;
+        task_id: string;
+        json: string;
       }[]
     )
       .map((row) => TaskSchema.parse(JSON.parse(this.repo.taskJson(row.task_id, row.json))))
@@ -283,10 +296,15 @@ export class TaskService {
       this.repo.db
         .prepare("SELECT revision,json FROM task_revisions WHERE task_id=? ORDER BY revision")
         .all(taskId) as { revision: number; json: string }[]
-    ).map((row) => TaskSchema.parse(JSON.parse(this.repo.revealRecordField(
-      "task_revisions", [taskId, row.revision], "json", row.json))));
+    ).map((row) =>
+      TaskSchema.parse(
+        JSON.parse(this.repo.revealRecordField("task_revisions", [taskId, row.revision], "json", row.json)),
+      ),
+    );
     const rows = this.repo.db
-      .prepare("SELECT r.run_id FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=? ORDER BY r.created_at DESC")
+      .prepare(
+        "SELECT r.run_id FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=? ORDER BY r.created_at DESC",
+      )
       .all(taskId) as { run_id: string }[];
     const runs = rows.map((row) => {
       const run = this.repo.getRun(row.run_id)!;
@@ -320,8 +338,11 @@ export class TaskService {
 
   update(input: unknown, origin: "desktop" | "external" = "desktop"): Task {
     const { taskId, expectedRevision, ...patch } = TaskUpdateParams.parse(input);
-    return this.change(taskId, expectedRevision,
-      origin === "external" ? { ...patch, sourceOrigin: "external" } : patch);
+    return this.change(
+      taskId,
+      expectedRevision,
+      origin === "external" ? { ...patch, sourceOrigin: "external" } : patch,
+    );
   }
 
   archive(taskId: string, expectedRevision: number, archived: boolean): Task {
@@ -360,8 +381,14 @@ export class TaskService {
       });
       const result = this.repo.db
         .prepare("UPDATE tasks SET revision=?,state=?,updated_at=?,json=? WHERE task_id=? AND revision=?")
-        .run(next.revision, next.state, next.updatedAt,
-          this.repo.protectTaskJson(taskId, JSON.stringify(next)), taskId, expectedRevision);
+        .run(
+          next.revision,
+          next.state,
+          next.updatedAt,
+          this.repo.protectTaskJson(taskId, JSON.stringify(next)),
+          taskId,
+          expectedRevision,
+        );
       if (result.changes !== 1)
         throw new AuxError("conflict", "Task was changed by another client; refresh it before editing");
       this.repo.saveTaskLookup(taskId, next.conversationId, next.sourceOrigin);
@@ -372,7 +399,8 @@ export class TaskService {
         .run(next.updatedAt, taskId);
       const chatId = next.conversationId ?? taskConversationId(taskId);
       this.repo.setConversationTitle(chatId, next.title.slice(0, 160));
-      this.repo.db.prepare("UPDATE conversations SET archived=? WHERE chat_id=?")
+      this.repo.db
+        .prepare("UPDATE conversations SET archived=? WHERE chat_id=?")
         .run(next.state === "archived" ? 1 : 0, chatId);
       this.saveRevision(next);
       return next;
@@ -491,7 +519,15 @@ export class TaskService {
   private saveRevision(task: Task) {
     this.repo.db
       .prepare("INSERT INTO task_revisions VALUES(?,?,?)")
-      .run(task.taskId, task.revision, this.repo.protectRecordField(
-        "task_revisions", [task.taskId, task.revision], "json", JSON.stringify(task)));
+      .run(
+        task.taskId,
+        task.revision,
+        this.repo.protectRecordField(
+          "task_revisions",
+          [task.taskId, task.revision],
+          "json",
+          JSON.stringify(task),
+        ),
+      );
   }
 }

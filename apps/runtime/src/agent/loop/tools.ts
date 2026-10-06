@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { AuxError, InlineAssistTextSchema, ObservationScopeSchema, PlanStepSchema, ResultCitationSchema } from "@aux/contracts";
+import {
+  AuxError,
+  InlineAssistTextSchema,
+  ObservationScopeSchema,
+  PlanStepSchema,
+  ResultCitationSchema,
+} from "@aux/contracts";
 import type { LoopTool, LoopToolManifest, LoopToolContext, LoopToolResult } from "./types.js";
 
 /**
@@ -11,7 +17,8 @@ import type { LoopTool, LoopToolManifest, LoopToolContext, LoopToolResult } from
  */
 
 const need = <T>(value: T | undefined, name: string): T => {
-  if (value === undefined) throw new AuxError("capability_unsupported", `${name} is not available in this context.`);
+  if (value === undefined)
+    throw new AuxError("capability_unsupported", `${name} is not available in this context.`);
   return value;
 };
 
@@ -65,7 +72,8 @@ export function normalizeSubmitResultInput(raw: unknown): unknown {
     citations = citations.map((item) => {
       if (!item || typeof item !== "object" || Array.isArray(item)) return item;
       const citation = { ...(item as Record<string, unknown>) };
-      if (typeof citation.revision === "string" && /^\d+$/.test(citation.revision)) citation.revision = Number(citation.revision);
+      if (typeof citation.revision === "string" && /^\d+$/.test(citation.revision))
+        citation.revision = Number(citation.revision);
       return citation;
     });
   }
@@ -81,13 +89,21 @@ export function buildToolManifest(): LoopToolManifest {
       "Use 'subtree' with subtreeRef to read below one element.",
     byline: "Aux page observation",
     inputSchema: z.object({
-      scope: ObservationScopeSchema.optional().describe("Element-collection scope; default 'full' (interactive elements + all sections)."),
+      scope: ObservationScopeSchema.optional().describe(
+        "Element-collection scope; default 'full' (interactive elements + all sections).",
+      ),
       subtreeRef: z.string().optional().describe("Read only the subtree below this ref (e.g. 'r12')."),
     }),
     execute: async (raw, ctx: LoopToolContext) => {
-      const input = z.object({ scope: ObservationScopeSchema.optional(), subtreeRef: z.string().optional() }).parse(raw ?? {});
-      if (!ctx.pageId) throw new AuxError("invalid_params", "snapshot needs an active page; this run claims none.");
-      const obs = await need(ctx.deps.observe, "snapshot")({ pageId: ctx.pageId, scope: input.scope, subtreeRef: input.subtreeRef });
+      const input = z
+        .object({ scope: ObservationScopeSchema.optional(), subtreeRef: z.string().optional() })
+        .parse(raw ?? {});
+      if (!ctx.pageId)
+        throw new AuxError("invalid_params", "snapshot needs an active page; this run claims none.");
+      const obs = await need(
+        ctx.deps.observe,
+        "snapshot",
+      )({ pageId: ctx.pageId, scope: input.scope, subtreeRef: input.subtreeRef });
       return { output: obs };
     },
   };
@@ -105,31 +121,47 @@ export function buildToolManifest(): LoopToolManifest {
     }),
     execute: async (raw, ctx: LoopToolContext) => {
       const input = z.object({ steps: z.array(PlanStepSchema).min(1).max(16) }).parse(raw);
-      if (!ctx.pageId) throw new AuxError("invalid_params", "act needs an active page; this run claims none.");
+      if (!ctx.pageId)
+        throw new AuxError("invalid_params", "act needs an active page; this run claims none.");
       if (input.steps.some((step, index) => step.op === "expectDownload" && index === input.steps.length - 1))
-        throw new AuxError("invalid_params", "expectDownload must immediately precede its trigger; no page action was dispatched. Reissue one batch with expectDownload before the click.");
+        throw new AuxError(
+          "invalid_params",
+          "expectDownload must immediately precede its trigger; no page action was dispatched. Reissue one batch with expectDownload before the click.",
+        );
       // The dep returns LoopToolResult — a safety `ask` may park the loop.
       return need(ctx.deps.act, "act")({ pageId: ctx.pageId, steps: input.steps });
     },
   };
 
   const webfetch: LoopTool = {
-    description: "Fetch a public web page (text/HTML/JSON/XML, ≤1 MB). Carries no cookies; the destination is decided by decide() before dispatch.",
+    description:
+      "Fetch a public web page (text/HTML/JSON/XML, ≤1 MB). Carries no cookies; the destination is decided by decide() before dispatch.",
     byline: "Aux cookie-free web fetch",
-    inputSchema: z.object({ url: z.string().url().describe("Absolute http(s) URL; private-network addresses are denied.") }),
+    inputSchema: z.object({
+      url: z.string().url().describe("Absolute http(s) URL; private-network addresses are denied."),
+    }),
     execute: async (raw, ctx) => {
       const { url } = z.object({ url: z.string().url() }).parse(raw);
-      return need(ctx.deps.webFetch, "webfetch")(url, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId });
+      return need(ctx.deps.webFetch, "webfetch")(url, {
+        runId: ctx.runId,
+        threadId: ctx.threadId,
+        turnId: ctx.turnId,
+      });
     },
   };
 
   const websearch: LoopTool = {
-    description: "Search the web through the configured search engine; returns title, text and links. Same egress rules as webfetch.",
+    description:
+      "Search the web through the configured search engine; returns title, text and links. Same egress rules as webfetch.",
     byline: "Aux web search",
     inputSchema: z.object({ query: z.string().min(1).max(500) }),
     execute: async (raw, ctx) => {
       const { query } = z.object({ query: z.string().min(1).max(500) }).parse(raw);
-      return need(ctx.deps.webSearch, "websearch")(query, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId });
+      return need(ctx.deps.webSearch, "websearch")(query, {
+        runId: ctx.runId,
+        threadId: ctx.threadId,
+        turnId: ctx.turnId,
+      });
     },
   };
 
@@ -138,7 +170,13 @@ export function buildToolManifest(): LoopToolManifest {
       "Park this turn and ask the user a question when their answer changes what you do next. " +
       "The turn resumes with your question's answer as this call's result. Must be the only tool call in its turn.",
     byline: "Aux durable suspension",
-    inputSchema: z.object({ question: z.string().min(1).max(2_000).describe("One clear question with the options or format you need.") }),
+    inputSchema: z.object({
+      question: z
+        .string()
+        .min(1)
+        .max(2_000)
+        .describe("One clear question with the options or format you need."),
+    }),
     requiresSoloCall: true,
     execute: (raw) => {
       const { question } = z.object({ question: z.string().min(1).max(2_000) }).parse(raw);
@@ -157,13 +195,22 @@ export function buildToolManifest(): LoopToolManifest {
     }),
     requiresSoloCall: true,
     execute: (raw) => {
-      const { summary, links } = z.object({ summary: z.string().min(1).max(4_000), links: z.array(z.string().url()).max(8).optional() }).parse(raw);
-      return { park: { kind: "action-confirmation", instruction: summary, detail: links?.length ? { links } : undefined } };
+      const { summary, links } = z
+        .object({ summary: z.string().min(1).max(4_000), links: z.array(z.string().url()).max(8).optional() })
+        .parse(raw);
+      return {
+        park: {
+          kind: "action-confirmation",
+          instruction: summary,
+          detail: links?.length ? { links } : undefined,
+        },
+      };
     },
   };
 
   const writeTodos: LoopTool = {
-    description: "Update your durable todo scratchpad for this run — short items the user can watch; survives suspension and restart.",
+    description:
+      "Update your durable todo scratchpad for this run — short items the user can watch; survives suspension and restart.",
     byline: "Aux run scratchpad",
     inputSchema: z.object({ todos: z.array(z.string().min(1).max(280)).max(12) }),
     execute: async (raw, ctx) => {
@@ -174,7 +221,8 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const repl: LoopTool = {
-    description: "Run a whole browsing workflow in one persistent JavaScript REPL call. When the script sees the final evidence, call submitResult(report, citations) inside it to finish the run without another model call. The guest surface: page.* page actions " +
+    description:
+      "Run a whole browsing workflow in one persistent JavaScript REPL call. When the script sees the final evidence, call submitResult(report, citations) inside it to finish the run without another model call. The guest surface: page.* page actions " +
       "(page.click(ref), page.clickByName(name, role?), page.followLinkByName(name) for explicit same-origin route navigation, page.labeledValue(label), page.submitLabeledValue(label), page.fill(ref, text), page.navigate(url), page.waitFor({…}) and friends — every action " +
       "compiles to a governed step through decide() and the write ledger), snapshot(scope), tabs(), " +
       "openTab(url)/closeTab(id) for owned background tabs, page.bookmark() to save the current page after a write decision, annotatedScreenshot(), display(value), sleep(ms), " +
@@ -186,66 +234,134 @@ export function buildToolManifest(): LoopToolManifest {
     byline: "Aux code mode — page ops still pass authorization and the ledger",
     inputSchema: z.object({
       code: z.string().min(1).max(64_000).describe("Synchronous-looking JavaScript for the REPL session."),
-      deadlineMs: z.number().int().positive().optional().describe("Max run time for this call; capped at 120000."),
-      yieldTimeMs: z.number().int().min(0).max(120_000).optional().describe("Return a cell ID if the script is still running after this many milliseconds."),
+      deadlineMs: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Max run time for this call; capped at 120000."),
+      yieldTimeMs: z
+        .number()
+        .int()
+        .min(0)
+        .max(120_000)
+        .optional()
+        .describe("Return a cell ID if the script is still running after this many milliseconds."),
     }),
     execute: async (raw, ctx) => {
-      const input = z.object({ code: z.string().min(1).max(64_000), deadlineMs: z.number().int().positive().optional(),
-        yieldTimeMs: z.number().int().min(0).max(120_000).optional() }).parse(raw);
+      const input = z
+        .object({
+          code: z.string().min(1).max(64_000),
+          deadlineMs: z.number().int().positive().optional(),
+          yieldTimeMs: z.number().int().min(0).max(120_000).optional(),
+        })
+        .parse(raw);
       return need(ctx.deps.repl, "repl")(input, ctx);
     },
   };
 
   const replWait: LoopTool = {
-    description: "Resume a yielded REPL cell. Returns its result when finished, or the same cell ID while running. terminate stops the guest and prevents further effects from that script.",
+    description:
+      "Resume a yielded REPL cell. Returns its result when finished, or the same cell ID while running. terminate stops the guest and prevents further effects from that script.",
     byline: "Aux code mode — yielded script continuation",
-    inputSchema: z.object({ cellId: z.string().uuid(), yieldTimeMs: z.number().int().min(0).max(120_000).optional(),
-      terminate: z.boolean().optional() }),
+    inputSchema: z.object({
+      cellId: z.string().uuid(),
+      yieldTimeMs: z.number().int().min(0).max(120_000).optional(),
+      terminate: z.boolean().optional(),
+    }),
     execute: async (raw, ctx) => {
-      const input = z.object({ cellId: z.string().uuid(), yieldTimeMs: z.number().int().min(0).max(120_000).optional(),
-        terminate: z.boolean().optional() }).parse(raw);
+      const input = z
+        .object({
+          cellId: z.string().uuid(),
+          yieldTimeMs: z.number().int().min(0).max(120_000).optional(),
+          terminate: z.boolean().optional(),
+        })
+        .parse(raw);
       return need(ctx.deps.replWait, "repl_wait")(input, ctx);
     },
   };
 
   const goalProgram: LoopTool = {
-    description: "First-turn page workflow. Write one synchronous-looking JavaScript script that performs the whole task and calls submitResult(report, citations) or page.submitLabeledValue(label) after inspecting live evidence. Supply answerLabel with the requested field label (or empty string for non-labeled answers); for a requested dialog-only value set answerScope to dialog. If the script's own extraction fails after opening a visible modal, a unique labeled value in that modal may complete via the same verifier. For pagination or a route link, use page.followLinkByName(name): it resolves one observed same-origin href and navigates the current tab without firing click handlers. Use page.clickByName(name, role?) when click behavior is required, such as a button, download, or new-tab link. page.navigateMatching(targetId) resolves a unique same-origin route only when observed sibling links support it. All named lookups fail on ambiguity; actions still pass decide() and the durable write ledger. On other ambiguity, throw rather than guess; ordinary tools are available on the next turn.",
+    description:
+      "First-turn page workflow. Write one synchronous-looking JavaScript script that performs the whole task and calls submitResult(report, citations) or page.submitLabeledValue(label) after inspecting live evidence. Supply answerLabel with the requested field label (or empty string for non-labeled answers); for a requested dialog-only value set answerScope to dialog. If the script's own extraction fails after opening a visible modal, a unique labeled value in that modal may complete via the same verifier. For pagination or a route link, use page.followLinkByName(name): it resolves one observed same-origin href and navigates the current tab without firing click handlers. Use page.clickByName(name, role?) when click behavior is required, such as a button, download, or new-tab link. page.navigateMatching(targetId) resolves a unique same-origin route only when observed sibling links support it. All named lookups fail on ambiguity; actions still pass decide() and the durable write ledger. On other ambiguity, throw rather than guess; ordinary tools are available on the next turn.",
     byline: "Aux first-turn goal program — governed REPL with verified finish",
     inputSchema: z.object({
-      code: z.string().min(1).max(64_000).describe("One complete REPL script ending in submitResult(...) or page.submitLabeledValue(...)."),
-      answerLabel: z.string().max(160).describe("Requested visible field label, or empty when the answer is not a labeled value."),
+      code: z
+        .string()
+        .min(1)
+        .max(64_000)
+        .describe("One complete REPL script ending in submitResult(...) or page.submitLabeledValue(...)."),
+      answerLabel: z
+        .string()
+        .max(160)
+        .describe("Requested visible field label, or empty when the answer is not a labeled value."),
       answerScope: z.enum(["dialog"]).optional(),
       deadlineMs: z.number().int().positive().optional(),
     }),
     execute: async (raw, ctx) => {
-      const input = z.object({ code: z.string().min(1).max(64_000), answerLabel: z.string().max(160),
-        answerScope: z.enum(["dialog"]).optional(), deadlineMs: z.number().int().positive().optional() }).parse(raw);
+      const input = z
+        .object({
+          code: z.string().min(1).max(64_000),
+          answerLabel: z.string().max(160),
+          answerScope: z.enum(["dialog"]).optional(),
+          deadlineMs: z.number().int().positive().optional(),
+        })
+        .parse(raw);
       if (!/\b(?:submitResult|submitLabeledValue)\s*\(/.test(input.code))
-        return { output: new AuxError("invalid_params", "Goal program needs a verified terminal submitResult or page.submitLabeledValue call; use ordinary tools on the next turn if the answer cannot be derived safely.") };
+        return {
+          output: new AuxError(
+            "invalid_params",
+            "Goal program needs a verified terminal submitResult or page.submitLabeledValue call; use ordinary tools on the next turn if the answer cannot be derived safely.",
+          ),
+        };
       const run = need(ctx.deps.repl, "goal_program");
-      const recoveryLabel = ctx.deps.dialogAnswerLabel?.() ?? (input.answerScope === "dialog" ? input.answerLabel : "");
+      const recoveryLabel =
+        ctx.deps.dialogAnswerLabel?.() ?? (input.answerScope === "dialog" ? input.answerLabel : "");
       const failureWithProgress = async (error: unknown): Promise<LoopToolResult> => {
         const message = error instanceof Error ? error.message : String(error);
         if (ctx.signal?.aborted || !ctx.deps.replProgress) return { output: { error: message } };
         try {
           const current = await ctx.deps.replProgress();
           if (!current) return { output: { error: message } };
-          return { output: { error: message, currentObservation: {
-            pageId: current.pageId, observationId: current.observationId, revision: current.revision,
-            text: current.text.slice(0, 4_096), truncated: current.text.length > 4_096,
-          }, guidance: "Continue from this fresh page state. Do not repeat an action whose outcome is uncertain; reconcile it with evidence first." } };
+          return {
+            output: {
+              error: message,
+              currentObservation: {
+                pageId: current.pageId,
+                observationId: current.observationId,
+                revision: current.revision,
+                text: current.text.slice(0, 4_096),
+                truncated: current.text.length > 4_096,
+              },
+              guidance:
+                "Continue from this fresh page state. Do not repeat an action whose outcome is uncertain; reconcile it with evidence first.",
+            },
+          };
         } catch {
           return { output: { error: message } };
         }
       };
       try {
         const result = await run(input, ctx);
-        if ("finish" in result || "park" in result || !recoveryLabel || !ctx.deps.canRecoverDialogValue?.(recoveryLabel)) return result;
+        if (
+          "finish" in result ||
+          "park" in result ||
+          !recoveryLabel ||
+          !ctx.deps.canRecoverDialogValue?.(recoveryLabel)
+        )
+          return result;
       } catch (error) {
-        if (!recoveryLabel || !ctx.deps.canRecoverDialogValue?.(recoveryLabel)) return failureWithProgress(error);
+        if (!recoveryLabel || !ctx.deps.canRecoverDialogValue?.(recoveryLabel))
+          return failureWithProgress(error);
       }
-      try { return await run({ code: `page.submitLabeledValue(${JSON.stringify(recoveryLabel)})`, deadlineMs: input.deadlineMs }, ctx); }
-      catch (error) { return failureWithProgress(error); }
+      try {
+        return await run(
+          { code: `page.submitLabeledValue(${JSON.stringify(recoveryLabel)})`, deadlineMs: input.deadlineMs },
+          ctx,
+        );
+      } catch (error) {
+        return failureWithProgress(error);
+      }
     },
   };
 
@@ -274,7 +390,9 @@ export function buildToolManifest(): LoopToolManifest {
       content: z.string().max(1_000_000),
     }),
     execute: async (raw, ctx) => {
-      const input = z.object({ path: z.string().min(1).max(4_096), content: z.string().max(1_000_000) }).parse(raw);
+      const input = z
+        .object({ path: z.string().min(1).max(4_096), content: z.string().max(1_000_000) })
+        .parse(raw);
       await need(ctx.deps.fileWrite, "write_file")(input.path, input.content);
       return { output: { written: input.path } };
     },
@@ -306,8 +424,13 @@ export function buildToolManifest(): LoopToolManifest {
       const occurrences = current.split(input.oldText).length - 1;
       if (!occurrences) throw new AuxError("not_found", "oldText is not in the file — re-read it and retry.");
       if (!input.all && occurrences > 1)
-        throw new AuxError("conflict", `oldText occurs ${occurrences} times — quote more context or pass all: true.`);
-      const next = input.all ? current.split(input.oldText).join(input.newText) : current.replace(input.oldText, input.newText);
+        throw new AuxError(
+          "conflict",
+          `oldText occurs ${occurrences} times — quote more context or pass all: true.`,
+        );
+      const next = input.all
+        ? current.split(input.oldText).join(input.newText)
+        : current.replace(input.oldText, input.newText);
       await write(input.path, next);
       return { output: { edited: input.path, replacements: input.all ? occurrences : 1 } };
     },
@@ -320,13 +443,34 @@ export function buildToolManifest(): LoopToolManifest {
       "For a needed exception, set requireEscalated with a justification and optional prefixRule proposal. Each literal shell segment must be reviewed in Settings → Workspaces; no command executes while review is pending. The owner can allow once, amend a safe prefix, or decline. After review, retry the command. stdout/stderr are capped at 64 KB; the command times out after timeoutMs (max 120000).",
     byline: "Aux seatbelt — confined fs, no cookies, network off by default",
     inputSchema: z.object({
-      command: z.string().min(1).max(8_192).describe("The command line, run via /bin/sh -c inside the seatbelt."),
+      command: z
+        .string()
+        .min(1)
+        .max(8_192)
+        .describe("The command line, run via /bin/sh -c inside the seatbelt."),
       timeoutMs: z.number().int().positive().optional(),
-      workdir: z.string().max(4_096).optional().describe("Working directory — must be inside the session roots."),
+      workdir: z
+        .string()
+        .max(4_096)
+        .optional()
+        .describe("Working directory — must be inside the session roots."),
       network: z.boolean().optional().describe("Allow outbound network — requires user approval first."),
-      requireEscalated: z.boolean().optional().describe("Request an owner-reviewed exception outside the file/network seatbelt."),
-      justification: z.string().min(8).max(2_000).optional().describe("Required with requireEscalated: why the seatbelt cannot perform this command."),
-      prefixRule: z.string().min(1).max(200).optional().describe("Optional proposal for a narrowly reusable command prefix; owner decides."),
+      requireEscalated: z
+        .boolean()
+        .optional()
+        .describe("Request an owner-reviewed exception outside the file/network seatbelt."),
+      justification: z
+        .string()
+        .min(8)
+        .max(2_000)
+        .optional()
+        .describe("Required with requireEscalated: why the seatbelt cannot perform this command."),
+      prefixRule: z
+        .string()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe("Optional proposal for a narrowly reusable command prefix; owner decides."),
     }),
     execute: async (raw, ctx) => {
       const input = z
@@ -340,7 +484,11 @@ export function buildToolManifest(): LoopToolManifest {
           prefixRule: z.string().min(1).max(200).optional(),
         })
         .parse(raw);
-      return need(ctx.deps.bash, "bash")(input, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId });
+      return need(ctx.deps.bash, "bash")(input, {
+        runId: ctx.runId,
+        threadId: ctx.threadId,
+        turnId: ctx.turnId,
+      });
     },
   };
 
@@ -352,8 +500,14 @@ export function buildToolManifest(): LoopToolManifest {
       limit: z.number().int().positive().max(50).optional(),
     }),
     execute: async (raw, ctx) => {
-      const input = z.object({ query: z.string().min(1).max(500), limit: z.number().int().positive().max(50).optional() }).parse(raw);
-      return { output: { entries: await need(ctx.deps.historySearch, "history_search")(input.query, input.limit ?? 10) } };
+      const input = z
+        .object({ query: z.string().min(1).max(500), limit: z.number().int().positive().max(50).optional() })
+        .parse(raw);
+      return {
+        output: {
+          entries: await need(ctx.deps.historySearch, "history_search")(input.query, input.limit ?? 10),
+        },
+      };
     },
   };
 
@@ -365,7 +519,15 @@ export function buildToolManifest(): LoopToolManifest {
     inputSchema: z.object({ query: z.string().min(1).max(500) }),
     execute: async (raw, ctx) => {
       const { query } = z.object({ query: z.string().min(1).max(500) }).parse(raw);
-      return { output: { memories: await need(ctx.deps.memorySearch, "memory_search")(query, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId }) } };
+      return {
+        output: {
+          memories: await need(ctx.deps.memorySearch, "memory_search")(query, {
+            runId: ctx.runId,
+            threadId: ctx.threadId,
+            turnId: ctx.turnId,
+          }),
+        },
+      };
     },
   };
 
@@ -377,7 +539,11 @@ export function buildToolManifest(): LoopToolManifest {
     inputSchema: z.object({
       goal: z.string().min(1).max(8_000).describe("The cell's objective."),
       profile: z.enum(["default", "explorer", "read_only"]).optional(),
-      pageIds: z.array(z.string().min(1).max(200)).max(8).optional().describe("Pages to hand the cell — default: this run's pages."),
+      pageIds: z
+        .array(z.string().min(1).max(200))
+        .max(8)
+        .optional()
+        .describe("Pages to hand the cell — default: this run's pages."),
     }),
     execute: async (raw, ctx) => {
       const input = z
@@ -388,20 +554,27 @@ export function buildToolManifest(): LoopToolManifest {
         })
         .parse(raw);
       const spawn = ctx.deps.subagents?.spawnCell;
-      if (!spawn) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
+      if (!spawn)
+        throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
       return { output: await spawn(input, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId }) };
     },
   };
 
   const subagentWait: LoopTool = {
-    description: "Wait for a subagent cell to finish or the timeout to lapse; returns its state, result or error.",
+    description:
+      "Wait for a subagent cell to finish or the timeout to lapse; returns its state, result or error.",
     byline: "Aux subagent cells",
     inputSchema: z.object({
       cellId: z.string().min(1).max(200),
       timeoutMs: z.number().int().positive().max(120_000).optional(),
     }),
     execute: async (raw, ctx) => {
-      const input = z.object({ cellId: z.string().min(1).max(200), timeoutMs: z.number().int().positive().max(120_000).optional() }).parse(raw);
+      const input = z
+        .object({
+          cellId: z.string().min(1).max(200),
+          timeoutMs: z.number().int().positive().max(120_000).optional(),
+        })
+        .parse(raw);
       const wait = ctx.deps.subagents?.waitCell;
       if (!wait) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
       return { output: await wait(input.cellId, input.timeoutMs ?? 60_000) };
@@ -416,7 +589,9 @@ export function buildToolManifest(): LoopToolManifest {
       message: z.string().min(1).max(8_000),
     }),
     execute: async (raw, ctx) => {
-      const input = z.object({ cellId: z.string().min(1).max(200), message: z.string().min(1).max(8_000) }).parse(raw);
+      const input = z
+        .object({ cellId: z.string().min(1).max(200), message: z.string().min(1).max(8_000) })
+        .parse(raw);
       const send = ctx.deps.subagents?.sendCell;
       if (!send) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
       await send(input.cellId, input.message);
@@ -431,7 +606,8 @@ export function buildToolManifest(): LoopToolManifest {
     execute: async (raw, ctx) => {
       const { cellId } = z.object({ cellId: z.string().min(1).max(200) }).parse(raw);
       const cancel = ctx.deps.subagents?.cancelCell;
-      if (!cancel) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
+      if (!cancel)
+        throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
       await cancel(cellId);
       return { output: { stopped: cellId } };
     },
@@ -447,9 +623,17 @@ export function buildToolManifest(): LoopToolManifest {
       title: z.string().min(1).max(200).optional(),
       description: z.string().max(2_000).optional(),
       objective: z.string().max(4_000).optional(),
-      trigger: z.unknown().optional().describe("RoutineTrigger payload, e.g. {kind:'schedule', cron:'0 9 * * *'}."),
+      trigger: z
+        .unknown()
+        .optional()
+        .describe("RoutineTrigger payload, e.g. {kind:'schedule', cron:'0 9 * * *'}."),
       paused: z.boolean().optional(),
-      expectedRevision: z.number().int().positive().optional().describe("Optimistic-concurrency guard — omit to apply to the current revision."),
+      expectedRevision: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Optimistic-concurrency guard — omit to apply to the current revision."),
     }),
     execute: async (raw, ctx) => {
       const input = z
@@ -463,7 +647,11 @@ export function buildToolManifest(): LoopToolManifest {
           expectedRevision: z.number().int().positive().optional(),
         })
         .parse(raw);
-      return need(ctx.deps.routineUpdate, "routine_update")(input, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId });
+      return need(ctx.deps.routineUpdate, "routine_update")(input, {
+        runId: ctx.runId,
+        threadId: ctx.threadId,
+        turnId: ctx.turnId,
+      });
     },
   };
 
@@ -489,16 +677,31 @@ export function buildToolManifest(): LoopToolManifest {
       "When the answer depends on a result you have not seen yet, it is the only call on the next turn.",
     byline: "Aux verified result — citations checked against the cited snapshots",
     inputSchema: z.object({
-      report: z.string().min(1).max(64_000).describe(
-        "The final answer. Give exactly what the task asked for — a bare name, number, status, filename, or short " +
-        "confirmation — not a narrative of the steps you took. Longer prose only when the task asks for a report."
+      report: z
+        .string()
+        .min(1)
+        .max(64_000)
+        .describe(
+          "The final answer. Give exactly what the task asked for — a bare name, number, status, filename, or short " +
+            "confirmation — not a narrative of the steps you took. Longer prose only when the task asks for a report.",
+        ),
+      citations: z
+        .array(ResultCitationSchema)
+        .max(32)
+        .optional()
+        .describe("Array of citation objects. Never a JSON string."),
+      textProposal: InlineAssistTextSchema.optional().describe(
+        "Optional exact plain text the person may review and insert into a focused browser field. Use only for a requested writing draft.",
       ),
-      citations: z.array(ResultCitationSchema).max(32).optional().describe("Array of citation objects. Never a JSON string."),
-      textProposal: InlineAssistTextSchema.optional().describe("Optional exact plain text the person may review and insert into a focused browser field. Use only for a requested writing draft."),
     }),
     execute: async (raw, ctx) => {
-      const input = z.object({ report: z.string().min(1).max(64_000), citations: z.array(ResultCitationSchema).max(32).optional(),
-        textProposal: InlineAssistTextSchema.optional() }).parse(normalizeSubmitResultInput(raw));
+      const input = z
+        .object({
+          report: z.string().min(1).max(64_000),
+          citations: z.array(ResultCitationSchema).max(32).optional(),
+          textProposal: InlineAssistTextSchema.optional(),
+        })
+        .parse(normalizeSubmitResultInput(raw));
       const verdict = await need(ctx.deps.submitResult, "submit_result")(input, ctx);
       if (!verdict.ok) return { output: new AuxError("invalid_params", verdict.error) };
       return { finish: { result: verdict.result } };
@@ -506,26 +709,42 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const reconcileAction: LoopTool = {
-    description: "Settle one uncertain page write after observing its actual effect. Cite one exact full line from a fresh snapshot of the affected page that was absent before dispatch; describe the specific intended effect shown by that line. An unchanged title or generic page text is not proof. Omit intentId only when this run has exactly one unresolved intent. Do not replay the write.",
+    description:
+      "Settle one uncertain page write after observing its actual effect. Cite one exact full line from a fresh snapshot of the affected page that was absent before dispatch; describe the specific intended effect shown by that line. An unchanged title or generic page text is not proof. Omit intentId only when this run has exactly one unresolved intent. Do not replay the write.",
     byline: "Aux durable write reconciliation — fresh effect evidence",
-    inputSchema: z.object({
-      intentId: z.string().optional(),
-      citation: ResultCitationSchema,
-      effect: z.string().min(1).max(500),
-    }).strict(),
+    inputSchema: z
+      .object({
+        intentId: z.string().optional(),
+        citation: ResultCitationSchema,
+        effect: z.string().min(1).max(500),
+      })
+      .strict(),
     execute: async (raw, ctx) => {
-      const input = z.object({ intentId: z.string().optional(), citation: ResultCitationSchema, effect: z.string().min(1).max(500) }).strict().parse(raw);
+      const input = z
+        .object({
+          intentId: z.string().optional(),
+          citation: ResultCitationSchema,
+          effect: z.string().min(1).max(500),
+        })
+        .strict()
+        .parse(raw);
       return { output: await need(ctx.deps.reconcileAction, "reconcile_action")(input) };
     },
   };
 
   const goalUpdate: LoopTool = {
-    description: "Report this Goal as paused, or report a blocker. A blocked Goal pauses only after you report the exact same blocker on three consecutive model turns. Use submit_result to complete. This cannot change the owner's budget.",
+    description:
+      "Report this Goal as paused, or report a blocker. A blocked Goal pauses only after you report the exact same blocker on three consecutive model turns. Use submit_result to complete. This cannot change the owner's budget.",
     byline: "Aux Goal status — owner-controlled budget",
-    inputSchema: z.object({ status: z.enum(["paused", "blocked"]), blocker: z.string().min(1).max(2_000).optional() }).strict(),
+    inputSchema: z
+      .object({ status: z.enum(["paused", "blocked"]), blocker: z.string().min(1).max(2_000).optional() })
+      .strict(),
     requiresSoloCall: true,
     execute: async (raw, ctx) => {
-      const input = z.object({ status: z.enum(["paused", "blocked"]), blocker: z.string().min(1).max(2_000).optional() }).strict().parse(raw);
+      const input = z
+        .object({ status: z.enum(["paused", "blocked"]), blocker: z.string().min(1).max(2_000).optional() })
+        .strict()
+        .parse(raw);
       return { output: await need(ctx.deps.goalUpdate, "goal_update")(input, ctx) };
     },
   };

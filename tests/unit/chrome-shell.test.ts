@@ -10,10 +10,15 @@ import {
 } from "../../apps/shell/src/chrome";
 
 describe("Aux Home native aliases", () => {
-  it.each(["", "about:blank", "chrome://newtab", "chrome://newtab/", "chrome://new-tab-page/"])("keeps %s in the Aux shell", url => {
-    expect(nativePageId({ mode: "focus", overlay: null, activePageId: "home", url })).toBeNull();
-    expect(nativePageId({ mode: "focus", overlay: null, activePageId: "home", url, showBlankDocument: true })).toBe("home");
-  });
+  it.each(["", "about:blank", "chrome://newtab", "chrome://newtab/", "chrome://new-tab-page/"])(
+    "keeps %s in the Aux shell",
+    (url) => {
+      expect(nativePageId({ mode: "focus", overlay: null, activePageId: "home", url })).toBeNull();
+      expect(
+        nativePageId({ mode: "focus", overlay: null, activePageId: "home", url, showBlankDocument: true }),
+      ).toBe("home");
+    },
+  );
 });
 
 describe("address rules — URL vs search", () => {
@@ -29,7 +34,9 @@ describe("address rules — URL vs search", () => {
 
   it("sends a search string through the configured engine", () => {
     expect(toUrl("open source browsers")).toBe("https://duckduckgo.com/?q=open%20source%20browsers");
-    expect(toUrl("aux agent runtime", "https://www.google.com/search?q=%s")).toBe("https://www.google.com/search?q=aux%20agent%20runtime");
+    expect(toUrl("aux agent runtime", "https://www.google.com/search?q=%s")).toBe(
+      "https://www.google.com/search?q=aux%20agent%20runtime",
+    );
   });
 
   it("addressNavigate is the plain navigate/search path — no goal, no run", () => {
@@ -64,15 +71,27 @@ describe("overlay → native-view visibility", () => {
 
   it("shows the native page only in focus with no scrim", () => {
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url })).toBe(page);
-    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, confirming: true })).toBeNull();
+    expect(
+      nativePageId({ mode: "focus", overlay: null, activePageId: page, url, confirming: true }),
+    ).toBeNull();
     expect(nativePageId({ mode: "overview", overlay: null, activePageId: page, url })).toBeNull();
     expect(nativePageId({ mode: "table", overlay: null, activePageId: page, url })).toBeNull();
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: null, url })).toBeNull();
   });
 
   it("keeps recovery controls above crashed or failed native views", () => {
-    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, viewStatus: "crashed" })).toBeNull();
-    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, navigationError: { message: "ERR_CONNECTION_REFUSED" } })).toBeNull();
+    expect(
+      nativePageId({ mode: "focus", overlay: null, activePageId: page, url, viewStatus: "crashed" }),
+    ).toBeNull();
+    expect(
+      nativePageId({
+        mode: "focus",
+        overlay: null,
+        activePageId: page,
+        url,
+        navigationError: { message: "ERR_CONNECTION_REFUSED" },
+      }),
+    ).toBeNull();
   });
 
   it("hides the native page for a missing or about:blank URL so the start page is visible", () => {
@@ -80,20 +99,35 @@ describe("overlay → native-view visibility", () => {
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: "" })).toBeNull();
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: null })).toBeNull();
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: undefined })).toBeNull();
-    expect(nativePageId({ mode: "focus", overlay: "find", activePageId: page, url: "about:blank" })).toBeNull();
-    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: "https://example.com/" })).toBe(page);
+    expect(
+      nativePageId({ mode: "focus", overlay: "find", activePageId: page, url: "about:blank" }),
+    ).toBeNull();
+    expect(
+      nativePageId({ mode: "focus", overlay: null, activePageId: page, url: "https://example.com/" }),
+    ).toBe(page);
   });
 
   it("does not pin a Chromium view over attached Chrome tabs", () => {
-    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "chrome" })).toBeNull();
-    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "aux" })).toBe(page);
+    expect(
+      nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "chrome" }),
+    ).toBeNull();
+    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "aux" })).toBe(
+      page,
+    );
   });
 });
 
 describe("activity counts", () => {
   it("reports complete / active / queued / files and never a percentage", () => {
     const counts = activityCounts({
-      members: [{ status: "completed" }, { status: "completed" }, { status: "running" }, { status: "queued" }, { status: "queued" }, { status: "failed" }],
+      members: [
+        { status: "completed" },
+        { status: "completed" },
+        { status: "running" },
+        { status: "queued" },
+        { status: "queued" },
+        { status: "failed" },
+      ],
       runs: [{ status: "running" }],
       downloads: [{ state: "completed" }, { state: "progressing" }],
     });

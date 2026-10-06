@@ -86,118 +86,141 @@ const stepOptions = <C extends z.ZodType>(condition: C) => {
     expect: z.array(condition).optional().describe("verified after the step runs"),
   };
   return [
-  z.object({ ...stepBase, op: z.literal("navigate"), url: z.string().url() }),
-  z.object({ ...stepBase, op: z.literal("back") }),
-  z.object({ ...stepBase, op: z.literal("forward") }),
-  z.object({ ...stepBase, op: z.literal("reload") }),
-  z.object({ ...stepBase, op: z.literal("stop") }),
-  z.object({ ...stepBase, op: z.literal("click"), ...targetFields, button: z.enum(["left", "right", "middle"]).optional() }),
-  z.object({ ...stepBase, op: z.literal("dblclick"), ...targetFields }),
-  z.object({ ...stepBase, op: z.literal("hover"), ...targetFields }),
-  z.object({
-    ...stepBase,
-    op: z.literal("fill"),
-    ...targetFields,
-    value: z.string().describe("replaces the field value; fires input/change"),
-  }),
-  z.object({
-    ...stepBase,
-    op: z.literal("fillCredential"),
-    passwordSelector: CredentialSelectorSchema.describe("CSS selector for the active page's password field"),
-    usernameSelector: CredentialSelectorSchema.optional().describe("CSS selector for a username field in the same form"),
-  }).strict(),
-  z.object({
-    ...stepBase,
-    op: z.literal("type"),
-    ...targetFields,
-    value: z.string(),
-    delayMs: z.number().int().nonnegative().optional(),
-  }),
-  z.object({
-    ...stepBase,
-    op: z.literal("press"),
-    key: z.string().describe("e.g. Enter, Tab, Control+A"),
-    ...targetFieldsOptional,
-  }),
-  z.object({ ...stepBase, op: z.literal("check"), ...targetFields }),
-  z.object({ ...stepBase, op: z.literal("uncheck"), ...targetFields }),
-  z.object({ ...stepBase, op: z.literal("select"), ...targetFields, value: z.union([z.string(), z.array(z.string())]) }),
-  z.object({
-    ...stepBase,
-    op: z.literal("scroll"),
-    ...targetFieldsOptional,
-    direction: z.enum(["up", "down", "top", "bottom"]).default("down"),
-    amount: z.number().positive().optional().describe("pixels; defaults to a viewport"),
-  }),
-  z.object({
-    ...stepBase,
-    op: z.literal("dragTo"),
-    ...targetFields,
-    to: z.string().describe("target ref or selector"),
-  }),
-  z.object({
-    ...stepBase,
-    op: z.literal("clickPoint"),
-    x: z.number(),
-    y: z.number(),
-    button: z.enum(["left", "right", "middle"]).optional(),
-  }),
-  z.object({ ...stepBase, op: z.literal("waitFor"), condition }),
-  z.object({
-    ...stepBase,
-    op: z.literal("screenshot"),
-    fullPage: z.boolean().optional(),
-    artifact: z.string().optional().describe("artifact label"),
-  }),
-  z.object({
-    ...stepBase,
-    op: z.literal("extract"),
-    fields: z.array(
-      z.object({
-        name: z.string(),
-        selector: z.string().optional().describe("css; default: whole page text"),
-        attribute: z.string().optional(),
-        all: z.boolean().optional().describe("collect every match"),
-      }),
-    ),
-    as: z.string().optional().describe("result key"),
-  }),
-  z.object({
-    ...stepBase,
-    op: z.literal("upload"),
-    ...targetFields,
-    files: z.array(z.string()).describe("absolute paths"),
-  }),
-  z.object({
-    ...stepBase,
-    op: z.literal("expectDownload"),
-    saveAs: z.string().optional(),
-  }),
-  z.object({
-    ...stepBase,
-    op: z.literal("collectScroll"),
-    /** result key under which collected items are exposed */
-    as: z.string().optional(),
-    /** css for each row/item inside the scroller */
-    item: z.string(),
-    /** scroller css; defaults to the document viewport */
-    container: z.string().optional(),
-    /** attribute used as the dedupe key; default: item text */
-    key: z.string().optional(),
-    fields: z
-      .array(z.object({ name: z.string(), selector: z.string().optional(), attribute: z.string().optional() }))
-      .optional()
-      .describe("per-item field extraction"),
-    limit: z.number().int().positive().optional().describe("stop once this many unique items are collected"),
-    maxScrolls: z.number().int().positive().optional(),
-    settleMs: z.number().int().nonnegative().optional().describe("render settle between scrolls"),
-  }),
-  z.object({
-    ...stepBase,
-    op: z.literal("dialog"),
-    action: z.enum(["accept", "dismiss"]),
-    promptText: z.string().optional(),
-  }),
+    z.object({ ...stepBase, op: z.literal("navigate"), url: z.string().url() }),
+    z.object({ ...stepBase, op: z.literal("back") }),
+    z.object({ ...stepBase, op: z.literal("forward") }),
+    z.object({ ...stepBase, op: z.literal("reload") }),
+    z.object({ ...stepBase, op: z.literal("stop") }),
+    z.object({
+      ...stepBase,
+      op: z.literal("click"),
+      ...targetFields,
+      button: z.enum(["left", "right", "middle"]).optional(),
+    }),
+    z.object({ ...stepBase, op: z.literal("dblclick"), ...targetFields }),
+    z.object({ ...stepBase, op: z.literal("hover"), ...targetFields }),
+    z.object({
+      ...stepBase,
+      op: z.literal("fill"),
+      ...targetFields,
+      value: z.string().describe("replaces the field value; fires input/change"),
+    }),
+    z
+      .object({
+        ...stepBase,
+        op: z.literal("fillCredential"),
+        passwordSelector: CredentialSelectorSchema.describe(
+          "CSS selector for the active page's password field",
+        ),
+        usernameSelector: CredentialSelectorSchema.optional().describe(
+          "CSS selector for a username field in the same form",
+        ),
+      })
+      .strict(),
+    z.object({
+      ...stepBase,
+      op: z.literal("type"),
+      ...targetFields,
+      value: z.string(),
+      delayMs: z.number().int().nonnegative().optional(),
+    }),
+    z.object({
+      ...stepBase,
+      op: z.literal("press"),
+      key: z.string().describe("e.g. Enter, Tab, Control+A"),
+      ...targetFieldsOptional,
+    }),
+    z.object({ ...stepBase, op: z.literal("check"), ...targetFields }),
+    z.object({ ...stepBase, op: z.literal("uncheck"), ...targetFields }),
+    z.object({
+      ...stepBase,
+      op: z.literal("select"),
+      ...targetFields,
+      value: z.union([z.string(), z.array(z.string())]),
+    }),
+    z.object({
+      ...stepBase,
+      op: z.literal("scroll"),
+      ...targetFieldsOptional,
+      direction: z.enum(["up", "down", "top", "bottom"]).default("down"),
+      amount: z.number().positive().optional().describe("pixels; defaults to a viewport"),
+    }),
+    z.object({
+      ...stepBase,
+      op: z.literal("dragTo"),
+      ...targetFields,
+      to: z.string().describe("target ref or selector"),
+    }),
+    z.object({
+      ...stepBase,
+      op: z.literal("clickPoint"),
+      x: z.number(),
+      y: z.number(),
+      button: z.enum(["left", "right", "middle"]).optional(),
+    }),
+    z.object({ ...stepBase, op: z.literal("waitFor"), condition }),
+    z.object({
+      ...stepBase,
+      op: z.literal("screenshot"),
+      fullPage: z.boolean().optional(),
+      artifact: z.string().optional().describe("artifact label"),
+    }),
+    z.object({
+      ...stepBase,
+      op: z.literal("extract"),
+      fields: z.array(
+        z.object({
+          name: z.string(),
+          selector: z.string().optional().describe("css; default: whole page text"),
+          attribute: z.string().optional(),
+          all: z.boolean().optional().describe("collect every match"),
+        }),
+      ),
+      as: z.string().optional().describe("result key"),
+    }),
+    z.object({
+      ...stepBase,
+      op: z.literal("upload"),
+      ...targetFields,
+      files: z.array(z.string()).describe("absolute paths"),
+    }),
+    z.object({
+      ...stepBase,
+      op: z.literal("expectDownload"),
+      saveAs: z.string().optional(),
+    }),
+    z.object({
+      ...stepBase,
+      op: z.literal("collectScroll"),
+      /** result key under which collected items are exposed */
+      as: z.string().optional(),
+      /** css for each row/item inside the scroller */
+      item: z.string(),
+      /** scroller css; defaults to the document viewport */
+      container: z.string().optional(),
+      /** attribute used as the dedupe key; default: item text */
+      key: z.string().optional(),
+      fields: z
+        .array(
+          z.object({ name: z.string(), selector: z.string().optional(), attribute: z.string().optional() }),
+        )
+        .optional()
+        .describe("per-item field extraction"),
+      limit: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("stop once this many unique items are collected"),
+      maxScrolls: z.number().int().positive().optional(),
+      settleMs: z.number().int().nonnegative().optional().describe("render settle between scrolls"),
+    }),
+    z.object({
+      ...stepBase,
+      op: z.literal("dialog"),
+      action: z.enum(["accept", "dismiss"]),
+      promptText: z.string().optional(),
+    }),
   ] as const;
 };
 
@@ -207,7 +230,9 @@ const evaluateStep = z.object({
   optional: z.boolean().optional().describe("failure does not fail the program"),
   expect: z.array(ConditionSchema).optional().describe("verified after the step runs"),
   op: z.literal("evaluate"),
-  expression: z.string().describe("developer escape hatch; trusted program sources only — never planner output"),
+  expression: z
+    .string()
+    .describe("developer escape hatch; trusted program sources only — never planner output"),
   /** result key under which the return value is exposed in `extracted` */
   as: z.string().optional(),
 });
@@ -250,14 +275,22 @@ export type Value = z.infer<typeof ValueSchema>;
 /** Deterministic predicates for if/until/assert — no inference. */
 export const PredicateSchema: z.ZodType<Predicate> = z.lazy(() =>
   z.union([
-    z.object({ op: z.enum(["eq", "ne", "gt", "gte", "lt", "lte", "contains", "in", "exists", "truthy"]), a: ValueSchema, b: ValueSchema.optional() }),
+    z.object({
+      op: z.enum(["eq", "ne", "gt", "gte", "lt", "lte", "contains", "in", "exists", "truthy"]),
+      a: ValueSchema,
+      b: ValueSchema.optional(),
+    }),
     z.object({ and: z.array(PredicateSchema) }),
     z.object({ or: z.array(PredicateSchema) }),
     z.object({ not: PredicateSchema }),
   ]),
 );
 export type Predicate =
-  | { op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "contains" | "in" | "exists" | "truthy"; a: unknown; b?: unknown }
+  | {
+      op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "contains" | "in" | "exists" | "truthy";
+      a: unknown;
+      b?: unknown;
+    }
   | { and: Predicate[] }
   | { or: Predicate[] }
   | { not: Predicate };
@@ -385,7 +418,10 @@ export const ResultCitationSchema = z
     quote: z.string().trim().min(1).max(4_000),
   })
   .strict()
-  .refine((c) => c.observationId !== undefined || c.pageId !== undefined, "a citation needs observationId or pageId");
+  .refine(
+    (c) => c.observationId !== undefined || c.pageId !== undefined,
+    "a citation needs observationId or pageId",
+  );
 export type ResultCitation = z.infer<typeof ResultCitationSchema>;
 
 export const StepOutcomeSchema = z.object({
@@ -395,9 +431,7 @@ export const StepOutcomeSchema = z.object({
   startedAt: z.number(),
   durationMs: z.number(),
   detail: z.string().optional(),
-  error: z
-    .object({ code: z.string(), message: z.string() })
-    .optional(),
+  error: z.object({ code: z.string(), message: z.string() }).optional(),
   extracted: z.record(z.string(), z.unknown()).optional(),
   /** Form-control before-state for setter steps (S4) — the ledger's record of what the write replaced. */
   before: z.record(z.string(), z.unknown()).optional(),

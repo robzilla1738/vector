@@ -18,7 +18,10 @@ let procs: ChildProcess[];
 
 const invoke = <T>(m: string, p?: unknown) => rt.invoke(m, p ?? {}) as Promise<T>;
 
-async function waitForRun(runId: string, timeoutMs = 90_000): Promise<{ run: { status: string }; steps: unknown[] }> {
+async function waitForRun(
+  runId: string,
+  timeoutMs = 90_000,
+): Promise<{ run: { status: string }; steps: unknown[] }> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const r = await invoke<{ run: { status: string }; steps: unknown[] }>("runs.get", { runId });
@@ -55,7 +58,11 @@ describe("sets.map", () => {
       concurrency: 4,
       program: {
         steps: [
-          { id: "s1", op: "waitFor", condition: { kind: "selector", selector: "#record-title", state: "visible" } },
+          {
+            id: "s1",
+            op: "waitFor",
+            condition: { kind: "selector", selector: "#record-title", state: "visible" },
+          },
           {
             id: "s2",
             op: "extract",
@@ -96,7 +103,11 @@ describe("sets.map", () => {
       concurrency: 3,
       program: {
         steps: [
-          { id: "s1", op: "waitFor", condition: { kind: "selector", selector: "#record-title", state: "visible", timeoutMs: 5000 } },
+          {
+            id: "s1",
+            op: "waitFor",
+            condition: { kind: "selector", selector: "#record-title", state: "visible", timeoutMs: 5000 },
+          },
           { id: "s2", op: "extract", fields: [{ name: "title", selector: "#record-title" }] },
         ],
       },

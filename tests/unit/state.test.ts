@@ -32,11 +32,22 @@ describe("StateService", () => {
   it("reads live form controls without persisting page observations", () => {
     const r = repo();
     let live = true;
-    const pages = { livePageIds: () => ["p1"], currentObservation: () => live ? {
-      revision: 7, content: { formFields: [{ ref: "f1", label: "Email", value: "person@example.test" }] },
-    } : undefined } as never;
+    const pages = {
+      livePageIds: () => ["p1"],
+      currentObservation: () =>
+        live
+          ? {
+              revision: 7,
+              content: { formFields: [{ ref: "f1", label: "Email", value: "person@example.test" }] },
+            }
+          : undefined,
+    } as never;
     const state = new StateService({ repo: r, pages });
-    const query = { entity: "controls" as const, freshness: "current-required" as const, completeness: "partial-allowed" as const };
+    const query = {
+      entity: "controls" as const,
+      freshness: "current-required" as const,
+      completeness: "partial-allowed" as const,
+    };
     expect(state.query(query).rows).toMatchObject([{ pageId: "p1", revision: 7, label: "Email" }]);
     expect(r.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='observations'").get()).toBeUndefined();
     live = false;
@@ -85,11 +96,24 @@ describe("StateService", () => {
         truncated: 0,
       });
     }
-    const first = state.query({ entity: "responses", scope: { pageIds: ["p1"] }, freshness: "current-required", completeness: "partial-allowed", limit: 5 });
+    const first = state.query({
+      entity: "responses",
+      scope: { pageIds: ["p1"] },
+      freshness: "current-required",
+      completeness: "partial-allowed",
+      limit: 5,
+    });
     expect(first.rows).toHaveLength(5);
     expect(first.truncated).toBe(true);
     expect(first.nextCursor).toBeDefined();
-    const second = state.query({ entity: "responses", scope: { pageIds: ["p1"] }, freshness: "current-required", completeness: "partial-allowed", limit: 20, cursor: first.nextCursor });
+    const second = state.query({
+      entity: "responses",
+      scope: { pageIds: ["p1"] },
+      freshness: "current-required",
+      completeness: "partial-allowed",
+      limit: 20,
+      cursor: first.nextCursor,
+    });
     expect(second.rows).toHaveLength(7);
     expect(second.truncated).toBe(false);
   });
@@ -141,7 +165,11 @@ describe("StateService", () => {
         { id: "rec-9", owner: "nobody" },
       ],
     });
-    const joined = state.transform(left.datasetId, "join", { right: right.datasetId, leftField: "id", rightField: "id" });
+    const joined = state.transform(left.datasetId, "join", {
+      right: right.datasetId,
+      leftField: "id",
+      rightField: "id",
+    });
     const rows = state.rows(joined.datasetId);
     expect(rows).toHaveLength(1); // only rec-1 matches
     expect(rows[0]).toEqual({ id: "rec-1", summary: "x", r_id: "rec-1", r_owner: "rob" });

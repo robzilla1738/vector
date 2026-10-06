@@ -12,8 +12,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const outPath =
-  process.env.CHROME_SP_OUT ||
-  join(root, "docs/engine/evidence/speedometer-chrome-tracked.json");
+  process.env.CHROME_SP_OUT || join(root, "docs/engine/evidence/speedometer-chrome-tracked.json");
 
 const html = `<!doctype html>
 <meta charset="utf-8">

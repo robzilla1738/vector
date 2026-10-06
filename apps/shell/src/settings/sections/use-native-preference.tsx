@@ -61,7 +61,7 @@ function invokeNative<T>(producer: () => Promise<T>): Promise<T> {
     return Promise.reject(reason);
   }
 }
-const describeError = (reason: unknown) => (errorMessage(reason));
+const describeError = (reason: unknown) => errorMessage(reason);
 /** UI delivery lifetime only; each caller keeps its fixed native producer and policy. */
 export function useNativePreference<T extends Preference, Input>({
   active,

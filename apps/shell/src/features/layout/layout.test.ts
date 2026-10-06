@@ -1,11 +1,29 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { toggleMinimalUi, MINIMAL_UI_HINT } from "./layout";
-const mocked = vi.hoisted(() => ({ settings: {} as Record<string, unknown>, toast: vi.fn(), call: vi.fn(), kind: "normal" }));
-vi.mock("../../bridge", () => ({ bridge: { get windowKind() { return mocked.kind; } } }));
-vi.mock("../../store", () => ({ useStore: { getState: () => ({ settings: mocked.settings, toast: mocked.toast }) } }));
+const mocked = vi.hoisted(() => ({
+  settings: {} as Record<string, unknown>,
+  toast: vi.fn(),
+  call: vi.fn(),
+  kind: "normal",
+}));
+vi.mock("../../bridge", () => ({
+  bridge: {
+    get windowKind() {
+      return mocked.kind;
+    },
+  },
+}));
+vi.mock("../../store", () => ({
+  useStore: { getState: () => ({ settings: mocked.settings, toast: mocked.toast }) },
+}));
 vi.mock("../../store/shared", () => ({ call: mocked.call }));
 vi.mock("../../use-feature", () => ({ featureStage: () => "on" }));
-beforeEach(() => { mocked.settings = {}; mocked.kind = "normal"; vi.clearAllMocks(); mocked.call.mockResolvedValue({}); });
+beforeEach(() => {
+  mocked.settings = {};
+  mocked.kind = "normal";
+  vi.clearAllMocks();
+  mocked.call.mockResolvedValue({});
+});
 it("persists Minimal UI before the first-use hint and retains the user's sidebar preference", async () => {
   mocked.settings = { sidebar: "expanded" };
   await toggleMinimalUi();

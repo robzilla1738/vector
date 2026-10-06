@@ -2,12 +2,19 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { emptyLayout } from "../../workspace";
 import type { CommandContext } from "../registry";
-const native = vi.hoisted(() => ({ windowKind: "little", littleWindow: vi.fn(), externalLinkTarget: vi.fn() }));
+const native = vi.hoisted(() => ({
+  windowKind: "little",
+  littleWindow: vi.fn(),
+  externalLinkTarget: vi.fn(),
+}));
 const peek = vi.hoisted(() => vi.fn());
 vi.mock("../../bridge", () => ({ bridge: native }));
 vi.mock("../../peek-link", () => ({ promotePeekLink: peek }));
 import { openLittleWindow, promoteTab, setExternalLinkTarget } from "./actions";
-afterEach(() => { native.windowKind = "little"; vi.resetAllMocks(); });
+afterEach(() => {
+  native.windowKind = "little";
+  vi.resetAllMocks();
+});
 const state = () => ({ layout: emptyLayout(), peekPageId: null }) as CommandContext;
 it("refuses an unavailable chosen Space before attempting native promotion", async () => {
   await expect(promoteTab(state(), { payload: { spaceId: "gone" } })).rejects.toThrow("no longer available");
@@ -41,9 +48,13 @@ it("surfaces a refused external-link preference without announcing a saved chang
   window.addEventListener("aux-external-link-target-changed", changed);
   try {
     native.externalLinkTarget.mockResolvedValueOnce("little").mockResolvedValueOnce("main");
-    await expect(setExternalLinkTarget(state(), { payload: { target: "main" } })).rejects.toThrow("could not save");
+    await expect(setExternalLinkTarget(state(), { payload: { target: "main" } })).rejects.toThrow(
+      "could not save",
+    );
     expect(changed).not.toHaveBeenCalled();
     await setExternalLinkTarget(state(), { payload: { target: "main" } });
     expect(changed).toHaveBeenCalledTimes(1);
-  } finally { window.removeEventListener("aux-external-link-target-changed", changed); }
+  } finally {
+    window.removeEventListener("aux-external-link-target-changed", changed);
+  }
 });

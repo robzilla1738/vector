@@ -83,13 +83,22 @@ export function readRuntimeDescriptor(path = resolveRuntimeDescriptor()): AuxCon
 
 /** A leftover descriptor does not prove that its native runtime is still alive. */
 export async function requireLiveRuntime(connection: AuxConnection, fetchImpl = fetch): Promise<void> {
-  if (!Number.isInteger(connection.pid) || connection.pid! <= 0) throw new Error("Aux runtime descriptor has no live process identity.");
-  try { process.kill(connection.pid!, 0); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code !== "EPERM") throw new Error("Aux runtime process is no longer running."); }
-  const response = await fetchImpl(`http://127.0.0.1:${connection.port}/health`, { signal: AbortSignal.timeout(1500), redirect: "error" });
+  if (!Number.isInteger(connection.pid) || connection.pid! <= 0)
+    throw new Error("Aux runtime descriptor has no live process identity.");
+  try {
+    process.kill(connection.pid!, 0);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EPERM")
+      throw new Error("Aux runtime process is no longer running.");
+  }
+  const response = await fetchImpl(`http://127.0.0.1:${connection.port}/health`, {
+    signal: AbortSignal.timeout(1500),
+    redirect: "error",
+  });
   if (!response.ok) throw new Error("Aux runtime is not ready.");
-  const health = await response.json() as { service?: string; ready?: boolean };
-  if (health.service !== "aux-runtime" || health.ready !== true) throw new Error("Aux runtime health is invalid.");
+  const health = (await response.json()) as { service?: string; ready?: boolean };
+  if (health.service !== "aux-runtime" || health.ready !== true)
+    throw new Error("Aux runtime health is invalid.");
 }
 
 export class AuxClient {

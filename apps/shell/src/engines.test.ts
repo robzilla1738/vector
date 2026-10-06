@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_ENGINES, engineList, keywordOf, parseSuggestResponse, resolveKeyword, suggestEndpoint } from "./engines";
+import {
+  DEFAULT_ENGINES,
+  engineList,
+  keywordOf,
+  parseSuggestResponse,
+  resolveKeyword,
+  suggestEndpoint,
+} from "./engines";
 
 describe("engineList", () => {
   it("ships the built-ins and merges user engines over them by keyword", () => {
@@ -7,7 +14,11 @@ describe("engineList", () => {
     expect(list.map((e) => e.keyword)).toContain("gh");
     const custom = engineList([
       { keyword: "gh", name: "My GitHub", template: "https://ghe.example/search?q=%s" },
-      { keyword: "jira", name: "Jira", template: "https://jira.example/secure/QuickSearch.jspa?searchString=%s" },
+      {
+        keyword: "jira",
+        name: "Jira",
+        template: "https://jira.example/secure/QuickSearch.jspa?searchString=%s",
+      },
     ]);
     expect(custom.find((e) => e.keyword === "gh")?.template).toBe("https://ghe.example/search?q=%s");
     expect(custom.find((e) => e.keyword === "jira")?.name).toBe("Jira");
@@ -30,7 +41,9 @@ describe("resolveKeyword", () => {
     const hit = resolveKeyword("gh aux browser", engines);
     expect(hit?.engine.name).toBe("GitHub");
     expect(hit?.url).toBe("https://github.com/search?q=aux%20browser");
-    expect(resolveKeyword("MDN array methods", engines)?.url).toContain("developer.mozilla.org/search?q=array%20methods");
+    expect(resolveKeyword("MDN array methods", engines)?.url).toContain(
+      "developer.mozilla.org/search?q=array%20methods",
+    );
   });
 
   it("returns null without terms or for unknown keywords", () => {

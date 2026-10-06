@@ -31,14 +31,30 @@ export const TabPlacementSchema = z.object({
     theme: SpaceThemeSchema.optional(),
     workspaceId: z.string().max(200).optional(),
   }),
-  folder: z.object({ id, name: z.string().max(200), spaceId: z.string().min(1).max(200), collapsed: z.boolean(), color: z.string().max(40).optional(), emoji: z.string().max(16).optional() }).optional(),
+  folder: z
+    .object({
+      id,
+      name: z.string().max(200),
+      spaceId: z.string().min(1).max(200),
+      collapsed: z.boolean(),
+      color: z.string().max(40).optional(),
+      emoji: z.string().max(16).optional(),
+    })
+    .optional(),
   tabName: z.object({ title: TabNameSchema, url: z.string().url().max(8192) }).optional(),
 });
 export type TabPlacement = z.infer<typeof TabPlacementSchema>;
 
 export const TabCommandSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("claim"), pageId: id, activate: z.boolean() }).strict(),
-  z.object({ kind: z.literal("split"), pageIds: z.tuple([id, id]), layout: z.enum(["row", "column"]), ratio: z.number().min(0.1).max(0.9) }).strict(),
+  z
+    .object({
+      kind: z.literal("split"),
+      pageIds: z.tuple([id, id]),
+      layout: z.enum(["row", "column"]),
+      ratio: z.number().min(0.1).max(0.9),
+    })
+    .strict(),
   z.object({ kind: z.literal("unsplit"), pageId: id }).strict(),
   z.object({
     kind: z.literal("open"),
@@ -108,7 +124,10 @@ export type TabCommandAck = z.infer<typeof TabCommandAckSchema>;
 export const TabRecordSchema = z.object({
   anchor: z.boolean().optional(),
   windowKind: WindowKindSchema.optional(),
-  split: z.object({ id, index: z.number().int().min(0).max(1) }).strict().optional(),
+  split: z
+    .object({ id, index: z.number().int().min(0).max(1) })
+    .strict()
+    .optional(),
   pageId: id,
   windowId: id,
   /** Main-owned destination for page-derived memory; set only after Space validation. */
@@ -117,7 +136,10 @@ export const TabRecordSchema = z.object({
   url: z.string(),
   title: z.string(),
   /** Browser-owned theme-color metadata, serialized as an opaque RGB value. */
-  themeColor: z.string().regex(/^#[0-9a-f]{6}$/).optional(),
+  themeColor: z
+    .string()
+    .regex(/^#[0-9a-f]{6}$/)
+    .optional(),
   favicon: z.string().optional(),
   loading: z.boolean(),
   muted: z.boolean(),
@@ -127,7 +149,9 @@ export const TabRecordSchema = z.object({
   popup: z.boolean(),
   crashed: z.boolean(),
   /** last main-frame load failure — the error surface must not depend on the runtime */
-  navigationError: z.object({ url: z.string(), code: z.number(), message: z.string(), upgradedFrom: z.string().optional() }).optional(),
+  navigationError: z
+    .object({ url: z.string(), code: z.number(), message: z.string(), upgradedFrom: z.string().optional() })
+    .optional(),
   /** agent-owned pages render in the catalog but outside the human strip */
   runtimeOwned: z.boolean(),
   /** tab-instance generation — bumps when the underlying WebContents is replaced */
@@ -142,7 +166,9 @@ export const TabRecordSchema = z.object({
 export type TabRecord = z.infer<typeof TabRecordSchema>;
 
 /** One-time import from a window's older renderer layout; existing catalog bindings always win. */
-export const TabSpaceMigrationSchema = z.array(z.object({ pageId: id, spaceId: z.string().min(1).max(200) }).strict()).max(512);
+export const TabSpaceMigrationSchema = z
+  .array(z.object({ pageId: id, spaceId: z.string().min(1).max(200) }).strict())
+  .max(512);
 
 export const WindowTabsSchema = z.object({
   windowId: id,

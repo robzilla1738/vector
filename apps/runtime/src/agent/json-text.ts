@@ -15,9 +15,18 @@ export function extractJson(text: string): unknown {
   let esc = false;
   for (let i = start; i < body.length; i++) {
     const c = body[i]!;
-    if (esc) { esc = false; continue; }
-    if (c === "\\") { if (inStr) esc = true; continue; }
-    if (c === '"') { inStr = !inStr; continue; }
+    if (esc) {
+      esc = false;
+      continue;
+    }
+    if (c === "\\") {
+      if (inStr) esc = true;
+      continue;
+    }
+    if (c === '"') {
+      inStr = !inStr;
+      continue;
+    }
     if (inStr) continue;
     if (c === "{" || c === "[") stack.push(c);
     else if (c === "}" || c === "]") {

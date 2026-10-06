@@ -6,8 +6,22 @@ function fixture() {
   const repo = new Repo(db);
   const tasks = new TaskService(repo, new EventBus(repo));
   const workspace = tasks.createWorkspace("Research");
-  repo.saveRun({ runId: "first", goal: "Compare options", status: "completed", pageIds: [], createdAt: 1, config: { chatId: "original-chat" } });
-  const input = { chatId: "original-chat", expectedRunId: "first", workspaceId: workspace.workspaceId, title: "Compare options", objective: "Complete the comparison", criteria: [{ criterionId: "outcome", description: "Report the comparison", verification: "manual" }] };
+  repo.saveRun({
+    runId: "first",
+    goal: "Compare options",
+    status: "completed",
+    pageIds: [],
+    createdAt: 1,
+    config: { chatId: "original-chat" },
+  });
+  const input = {
+    chatId: "original-chat",
+    expectedRunId: "first",
+    workspaceId: workspace.workspaceId,
+    title: "Compare options",
+    objective: "Complete the comparison",
+    criteria: [{ criterionId: "outcome", description: "Report the comparison", verification: "manual" }],
+  };
   return { db, repo, tasks, input };
 }
 it("promotes once, preserves original chat context and scopes future task runs to that chat", () => {
@@ -27,14 +41,25 @@ it("promotes once, preserves original chat context and scopes future task runs t
     expect(f.repo.getConversation("original-chat")?.title).toBe("Prepared comparison");
     f.tasks.archive(task.taskId, 2, true);
     expect(f.repo.getConversation("original-chat")?.archived).toBe(true);
-  } finally { f.db.close(); }
+  } finally {
+    f.db.close();
+  }
 });
 it("rejects stale or still-running conversations without creating a task", () => {
   const f = fixture();
   try {
-    f.repo.saveRun({ runId: "second", goal: "Continue", status: "running", pageIds: [], createdAt: 2, config: { chatId: "original-chat" } });
+    f.repo.saveRun({
+      runId: "second",
+      goal: "Continue",
+      status: "running",
+      pageIds: [],
+      createdAt: 2,
+      config: { chatId: "original-chat" },
+    });
     expect(() => f.tasks.promote(f.input)).toThrow(/changed/);
     expect(() => f.tasks.promote({ ...f.input, expectedRunId: "second" })).toThrow(/current turn/);
     expect(f.tasks.list()).toEqual([]);
-  } finally { f.db.close(); }
+  } finally {
+    f.db.close();
+  }
 });

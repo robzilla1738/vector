@@ -19,10 +19,17 @@ export function CookieControlsSetting({ active }: { active: boolean }) {
   useEffect(() => {
     if (!active || !inNativeHost || bridge.privateMode) return;
     const token = ++request.current;
-    void bridge.cookieControls()
-      .then(result => { if (token === request.current) setValue(result); })
-      .catch(reason => { if (token === request.current) setError(errorMessage(reason)); });
-    return () => { ++request.current; };
+    void bridge
+      .cookieControls()
+      .then((result) => {
+        if (token === request.current) setValue(result);
+      })
+      .catch((reason) => {
+        if (token === request.current) setError(errorMessage(reason));
+      });
+    return () => {
+      ++request.current;
+    };
   }, [active, retry]);
 
   async function change(block: boolean) {
@@ -31,7 +38,7 @@ export function CookieControlsSetting({ active }: { active: boolean }) {
     setBusy(true);
     setError("");
     try {
-      if (await bridge.setCookieControls(block) !== block)
+      if ((await bridge.setCookieControls(block)) !== block)
         throw new Error("Chromium did not save the cookie setting.");
       const result = await bridge.cookieControls();
       if (token === request.current) setValue(result);
@@ -42,13 +49,35 @@ export function CookieControlsSetting({ active }: { active: boolean }) {
     }
   }
 
-  if (bridge.privateMode) return <span {...staticHintProps}>Private windows use their own cookie protections. Change the regular Profile setting outside Private mode.</span>;
+  if (bridge.privateMode)
+    return (
+      <span {...staticHintProps}>
+        Private windows use their own cookie protections. Change the regular Profile setting outside Private
+        mode.
+      </span>
+    );
   if (!inNativeHost) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
-  return <div {...staticRowProps}>
-    {value ? <Switch aria-label="Block third-party cookies" checked={value.blockThirdParty}
-      disabled={busy || value.managed} onChange={event => void change(event.target.checked)} />
-      : <span {...staticHintProps}>Reading cookie setting…</span>}
-    {value?.managed && <span {...staticHintProps}>Managed by your organization</span>}
-    {error && <span {...nativeAlertRoleProps} {...staticFieldErrorProps}>{error} <button {...smallGhostButtonProps} onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
-  </div>;
+  return (
+    <div {...staticRowProps}>
+      {value ? (
+        <Switch
+          aria-label="Block third-party cookies"
+          checked={value.blockThirdParty}
+          disabled={busy || value.managed}
+          onChange={(event) => void change(event.target.checked)}
+        />
+      ) : (
+        <span {...staticHintProps}>Reading cookie setting…</span>
+      )}
+      {value?.managed && <span {...staticHintProps}>Managed by your organization</span>}
+      {error && (
+        <span {...nativeAlertRoleProps} {...staticFieldErrorProps}>
+          {error}{" "}
+          <button {...smallGhostButtonProps} onClick={() => setRetry((current) => current + 1)}>
+            Retry
+          </button>
+        </span>
+      )}
+    </div>
+  );
 }

@@ -4,9 +4,7 @@ import { runCommand } from "../../commands";
 import { shellIconClose } from "../../components/icons";
 import { extensionPanel } from "./extension-panel";
 import "./extensions.css";
-import {
-  nativeButtonTypeProps as auxNativeButtonTypeProps,
-} from "../../ui/native-attribute-props";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../../ui/native-attribute-props";
 import { staticSpacerProps as auxClassSpacerProps } from "../../ui/class-props";
 
 export function SidePanelSurface() {

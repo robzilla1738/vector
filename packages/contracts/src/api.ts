@@ -4,9 +4,19 @@ import { ModelConnectionChangeSchema, ImageModelSchema } from "./model-connectio
 import { BrowserRuntimeMethodSchemas, BrowserRuntimeResultSchemas } from "./browser-runtime-api.js";
 import { MentionRefsSchema } from "./mentions.js";
 export * from "./model-connections.js";
-import { MemoryPastePreviewParams, MemoryPastePreviewSchema, MemoryPasteCommitParams, MemoryPasteStatusParams, MemoryPasteStatusSchema } from "./memory-paste.js";
+import {
+  MemoryPastePreviewParams,
+  MemoryPastePreviewSchema,
+  MemoryPasteCommitParams,
+  MemoryPasteStatusParams,
+  MemoryPasteStatusSchema,
+} from "./memory-paste.js";
 export * from "./memory-paste.js";
-import { OnboardingStateSchema, OnboardingUpdateParamsSchema, OnboardingStartParamsSchema } from "./onboarding.js";
+import {
+  OnboardingStateSchema,
+  OnboardingUpdateParamsSchema,
+  OnboardingStartParamsSchema,
+} from "./onboarding.js";
 export * from "./onboarding.js";
 import {
   GenerateResultParamsSchema,
@@ -24,7 +34,11 @@ import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js
 import { z } from "zod";
 import { AutofillProfileSchema } from "./autofill.js";
 export { AutofillProfileSchema, type AutofillProfile } from "./autofill.js";
-import { SkillRepairProposeSchema, SkillRepairProposalSchema, SkillRepairApplySchema } from "./demonstration.js";
+import {
+  SkillRepairProposeSchema,
+  SkillRepairProposalSchema,
+  SkillRepairApplySchema,
+} from "./demonstration.js";
 import { DemonstrationReplayCompileSchema } from "./demonstration.js";
 import {
   ApprovalDecisionSchema,
@@ -212,10 +226,20 @@ import {
   PluginSkillReadParams,
   PluginSkillReadSchema,
 } from "./routines.js";
-import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchema, SpaceThemeSchema } from "./spaces.js";
+import {
+  BrowserSpaceSchema,
+  SpaceInputSchema,
+  SpaceColorSchema,
+  SpaceGrainSchema,
+  SpaceThemeSchema,
+} from "./spaces.js";
 import { GoalCreateParams, GoalSchema } from "./goals.js";
 import { HookCreateParams, HookInvocationSchema, HookSchema } from "./hooks.js";
-import { WorkspaceFolderAccessSchema, WorkspaceFolderReviewSchema, WorkspaceFolderSchema } from "./workspace-folders.js";
+import {
+  WorkspaceFolderAccessSchema,
+  WorkspaceFolderReviewSchema,
+  WorkspaceFolderSchema,
+} from "./workspace-folders.js";
 import { CommandEscalationRequestSchema } from "./command-escalation.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
 import { NightShiftSettingsSchema } from "./night-shift.js";
@@ -510,7 +534,12 @@ export const RunsEventsParams = z.object({
   /** Stream identity the cursor was issued against — a mismatch answers `resync` (D9). */
   streamId: z.string().optional(),
 });
-export const RunsAnswerParams = z.object({ runId: id, answer: z.string(), expectedSuspensionId: id.optional(), mentions: MentionRefsSchema.optional() });
+export const RunsAnswerParams = z.object({
+  runId: id,
+  answer: z.string(),
+  expectedSuspensionId: id.optional(),
+  mentions: MentionRefsSchema.optional(),
+});
 export const RunsQueueParams = z.object({
   mentions: MentionRefsSchema.optional(),
   messageId: z.string().uuid(),
@@ -756,7 +785,9 @@ export const SidebarMaterialSchema = z.enum(["liquid-glass", "titlebar", "sideba
 export type SidebarMaterial = z.infer<typeof SidebarMaterialSchema>;
 
 export const SettingsSetParams = z.object({
-  featureOverrides: z.partialRecord(z.enum(Object.keys(AUX_FEATURES) as [AuxFeature, ...AuxFeature[]]), z.boolean()).optional(),
+  featureOverrides: z
+    .partialRecord(z.enum(Object.keys(AUX_FEATURES) as [AuxFeature, ...AuxFeature[]]), z.boolean())
+    .optional(),
   modelProvider: ModelProviderSchema.optional(),
   modelCredential: ModelCredentialSchema.optional(),
   modelConnection: ModelConnectionChangeSchema.optional(),
@@ -775,11 +806,14 @@ export const SettingsSetParams = z.object({
     })
     .strict()
     .optional(),
-  budgets: z.object({
-    runUsd: z.number().positive().max(100_000).optional(),
-    dayUsd: z.number().positive().max(100_000).optional(),
-    routineUsd: z.number().positive().max(100_000).optional(),
-  }).strict().optional(),
+  budgets: z
+    .object({
+      runUsd: z.number().positive().max(100_000).optional(),
+      dayUsd: z.number().positive().max(100_000).optional(),
+      routineUsd: z.number().positive().max(100_000).optional(),
+    })
+    .strict()
+    .optional(),
   searchEngine: SearchEngineTemplateSchema.optional(),
   /** Preferred surface when a new blank tab opens. Private windows always start in Search. */
   homeEntryMode: z.enum(["search", "ask"]).optional(),
@@ -818,9 +852,27 @@ export const SettingsSetParams = z.object({
   toolbarAutoHide: z.boolean().optional(),
   minimalUi: z.boolean().optional(),
   minimalUiAcknowledged: z.boolean().optional(),
-  autoArchive: z.object({ acknowledged: z.boolean(), bySpace: z.record(z.string().min(1).max(200), z.union([z.literal(12), z.literal(24), z.literal(72), z.literal(168), z.literal(720), z.literal("never")])) }).strict().optional(),
+  autoArchive: z
+    .object({
+      acknowledged: z.boolean(),
+      bySpace: z.record(
+        z.string().min(1).max(200),
+        z.union([
+          z.literal(12),
+          z.literal(24),
+          z.literal(72),
+          z.literal(168),
+          z.literal(720),
+          z.literal("never"),
+        ]),
+      ),
+    })
+    .strict()
+    .optional(),
   /** Idle minutes before a clean background tab may be discarded. Zero disables automatic sleep. */
-  memorySaverMinutes: z.union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)]).optional(),
+  memorySaverMinutes: z
+    .union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)])
+    .optional(),
   tabSwitcherOrder: z.enum(["sidebar", "recently-used"]).optional(),
   /** commandId → replacement bindings; null disables the command's shortcuts. */
   shortcutOverrides: ShortcutOverridesSchema.optional(),
@@ -845,11 +897,13 @@ export const SettingsSetParams = z.object({
   safetyCeilings: z.partialRecord(EffectSchema, z.enum(["never", "ask", "always"])).optional(),
 });
 export const SettingsGetParams = z.object({});
-export const UsageReportParams = z.object({
-  asOf: z.number().int().nonnegative().optional(),
-  offset: z.number().int().nonnegative().default(0),
-  limit: z.number().int().min(1).max(500).default(50),
-}).strict();
+export const UsageReportParams = z
+  .object({
+    asOf: z.number().int().nonnegative().optional(),
+    offset: z.number().int().nonnegative().default(0),
+    limit: z.number().int().min(1).max(500).default(50),
+  })
+  .strict();
 const UsageBucketSchema = z.object({
   calls: z.number().int().nonnegative(),
   recordedUsd: z.number().nonnegative(),
@@ -859,11 +913,13 @@ const UsageBucketSchema = z.object({
 export const UsageReportResultSchema = z.object({
   asOf: z.number().int().nonnegative(),
   total: UsageBucketSchema,
-  byRun: z.array(UsageBucketSchema.extend({
-    runId: z.string().nullable(),
-    title: z.string(),
-    lastAt: z.number(),
-  })),
+  byRun: z.array(
+    UsageBucketSchema.extend({
+      runId: z.string().nullable(),
+      title: z.string(),
+      lastAt: z.number(),
+    }),
+  ),
   byModel: z.array(UsageBucketSchema.extend({ modelId: z.string() })),
   byDay: z.array(UsageBucketSchema.extend({ day: z.string() })),
   nextOffset: z.number().int().nonnegative().nullable(),
@@ -993,8 +1049,14 @@ export const BookmarkUpdateParams = BookmarkAddParams.extend({
 export const BookmarkRemoveParams = z.object({
   url: z.string().url(),
   nodeId: BookmarkNodeIdSchema.optional(),
-  expected: z.object({ title: z.string(), createdAt: z.number(),
-    folderPath: BookmarkFolderPathSchema.optional(), readingList: z.boolean().optional() }).optional(),
+  expected: z
+    .object({
+      title: z.string(),
+      createdAt: z.number(),
+      folderPath: BookmarkFolderPathSchema.optional(),
+      readingList: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export const PageWindowMoveParams = z.object({
@@ -1106,14 +1168,27 @@ export const MethodSchemas = {
     archived: z.boolean().optional(),
   }),
   "workspaces.list": z.object({}),
-  "workspaces.folders.inspect": z.object({ workspaceId: id, path: z.string().min(1).max(4096), access: WorkspaceFolderAccessSchema }).strict(),
-  "workspaces.folders.add": z.object({ workspaceId: id, path: z.string().min(1).max(4096), access: WorkspaceFolderAccessSchema,
-    expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  "workspaces.folders.inspect": z
+    .object({ workspaceId: id, path: z.string().min(1).max(4096), access: WorkspaceFolderAccessSchema })
+    .strict(),
+  "workspaces.folders.add": z
+    .object({
+      workspaceId: id,
+      path: z.string().min(1).max(4096),
+      access: WorkspaceFolderAccessSchema,
+      expectedDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    })
+    .strict(),
   "workspaces.folders.list": z.object({ workspaceId: id }).strict(),
   "workspaces.folders.archive": z.object({ workspaceId: id, folderId: z.string().uuid() }).strict(),
   "commands.escalations.list": z.object({ workspaceId: id }).strict(),
-  "commands.escalations.decide": z.object({ requestId: z.string().uuid(), decision: z.enum(["once", "prefix", "decline"]),
-    prefixRule: z.string().min(1).max(200).optional() }).strict(),
+  "commands.escalations.decide": z
+    .object({
+      requestId: z.string().uuid(),
+      decision: z.enum(["once", "prefix", "decline"]),
+      prefixRule: z.string().min(1).max(200).optional(),
+    })
+    .strict(),
   "commands.escalations.revoke": z.object({ requestId: z.string().uuid() }).strict(),
   "workspaces.browsingMemory.get": z.object({ workspaceId: id }),
   "workspaces.browsingMemory.set": z.object({ workspaceId: id, policy: BrowsingMemoryPolicySchema }),
@@ -1172,14 +1247,24 @@ export const MethodSchemas = {
   "installation.setBackupRetention": z
     .object({ keep: z.union([z.literal(3), z.literal(5), z.literal(10), z.literal(20)]) })
     .strict(),
-  "installation.stageListedRestore": z.object({ name: z.string().min(1).max(200), expectedSha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  "installation.stageListedRestore": z
+    .object({ name: z.string().min(1).max(200), expectedSha256: z.string().regex(/^[a-f0-9]{64}$/) })
+    .strict(),
   "installation.stageRestore": z.object({ path: z.string().min(1).max(4096) }).strict(),
   "installation.cancelRestore": z.object({}).strict(),
   "installation.restoreStatus": z.object({}).strict(),
   "installation.exportRecovery": z.object({ phrase: z.string().min(16).max(200) }).strict(),
-  "installation.inspectRecovery": z.object({ path: z.string().min(1).max(4096), phrase: z.string().min(1).max(200) }).strict(),
-  "installation.stageRecovery": z.object({ path: z.string().min(1).max(4096), phrase: z.string().min(1).max(200),
-    expectedSha256: z.string().regex(/^[a-f0-9]{64}$/), reviewToken: z.string().uuid() }).strict(),
+  "installation.inspectRecovery": z
+    .object({ path: z.string().min(1).max(4096), phrase: z.string().min(1).max(200) })
+    .strict(),
+  "installation.stageRecovery": z
+    .object({
+      path: z.string().min(1).max(4096),
+      phrase: z.string().min(1).max(200),
+      expectedSha256: z.string().regex(/^[a-f0-9]{64}$/),
+      reviewToken: z.string().uuid(),
+    })
+    .strict(),
   "vault.status": z.object({}),
   "vault.list": z.object({ includeRevoked: z.boolean().default(false) }),
   "vault.save": VaultSaveParams,
@@ -1352,7 +1437,9 @@ export const MethodSchemas = {
   "memory.pipeline.claims": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.history": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.revert": z.object({ workspaceId: id, revisionId: z.string().uuid() }).strict(),
-  "memory.pipeline.review": z.object({ workspaceId: id, claimId: z.string().uuid(), decision: z.enum(["accept", "discard"]) }).strict(),
+  "memory.pipeline.review": z
+    .object({ workspaceId: id, claimId: z.string().uuid(), decision: z.enum(["accept", "discard"]) })
+    .strict(),
   "memory.pipeline.overview": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.search": z.object({ workspaceId: id, query: z.string().trim().min(2).max(200) }).strict(),
   "memory.pipeline.forget": MemoryPipelineForgetParams,
@@ -1547,9 +1634,11 @@ export const MethodSchemas = {
   "onboarding.update": OnboardingUpdateParamsSchema,
   "onboarding.start": OnboardingStartParamsSchema,
   "import.preview": z.object({}),
-  "import.run": z.object({
-    selections: z.array(ImportSelectionSchema).min(1).max(12),
-  }).strict(),
+  "import.run": z
+    .object({
+      selections: z.array(ImportSelectionSchema).min(1).max(12),
+    })
+    .strict(),
   "import.status": z.object({ jobId: z.string().min(1).max(64).optional() }),
   "import.cancel": z.object({ jobId: z.string().min(1).max(64) }),
   "chrome.openLive": ChromeOpenLiveParams,
@@ -1634,8 +1723,10 @@ export const MethodSchemas = {
   "downloads.list": z.object({}),
   "downloads.projectNative": DownloadSchema.extend({
     id: z.string().min(1).max(200),
-    filename: z.string().max(1000), path: z.string().max(4096),
-    tabUrl: z.string().url().max(8192), downloadRoot: z.string().min(1).max(4096),
+    filename: z.string().max(1000),
+    path: z.string().max(4096),
+    tabUrl: z.string().url().max(8192),
+    downloadRoot: z.string().min(1).max(4096),
   }).strict(),
   "downloads.remove": z.object({ ids: z.array(z.string().min(1).max(200)).min(1).max(200) }),
   "workspace.get": WorkspaceGetParams,
@@ -1778,8 +1869,10 @@ export const ResultSchemas = {
   "tasks.reconcileOperation": z.object({ ok: z.literal(true) }),
   "tasks.receipt": TaskReceiptSchema,
   "tasks.undoBrowserChange": z.object({ ok: z.literal(true) }),
-  "tasks.undoRunBrowserChanges": z.object({ restored: z.number().int().nonnegative(),
-    skipped: z.array(z.object({ stepId: id, reason: z.string().max(500) })) }),
+  "tasks.undoRunBrowserChanges": z.object({
+    restored: z.number().int().nonnegative(),
+    skipped: z.array(z.object({ stepId: id, reason: z.string().max(500) })),
+  }),
   "tasks.undoBookmarkChange": z.object({ ok: z.literal(true) }),
   "tasks.undoDownloadChange": z.object({ ok: z.literal(true) }),
   "tasks.undoHistoryChange": z.object({ ok: z.literal(true) }),
@@ -1873,15 +1966,19 @@ export const ResultSchemas = {
   "installation.deleteBackup": z.object({ deleted: z.literal(true) }),
   "installation.backupRetention": z.object({ keep: z.number().int().positive() }),
   "installation.setBackupRetention": z.object({ keep: z.number().int().positive() }),
-  "installation.stageListedRestore": z.object({
-    source: z.object({ path: z.string(), name: z.string(), sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
-    staged: z.literal(true),
-    schemaVersion: z.number().int().positive(),
-    bytes: z.number().int().nonnegative(),
-    sha256: z.string().regex(/^[a-f0-9]{64}$/),
-    artifactFiles: z.number().int().nonnegative(),
-    missingArtifacts: z.number().int().nonnegative(),
-  }).strict(),
+  "installation.stageListedRestore": z
+    .object({
+      source: z
+        .object({ path: z.string(), name: z.string(), sha256: z.string().regex(/^[a-f0-9]{64}$/) })
+        .strict(),
+      staged: z.literal(true),
+      schemaVersion: z.number().int().positive(),
+      bytes: z.number().int().nonnegative(),
+      sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      artifactFiles: z.number().int().nonnegative(),
+      missingArtifacts: z.number().int().nonnegative(),
+    })
+    .strict(),
   "installation.stageRestore": z.object({
     staged: z.literal(true),
     schemaVersion: z.number().int().positive(),
@@ -1891,22 +1988,47 @@ export const ResultSchemas = {
     missingArtifacts: z.number().int().nonnegative(),
   }),
   "installation.cancelRestore": z.object({ cancelled: z.literal(true) }),
-  "installation.restoreStatus": z.object({ pending: z.boolean(), lastAppliedAt: z.number().optional(),
-    managedRecovery: z.object({ generation: z.number().int().nonnegative(), freshBackupIssued: z.boolean() }) }),
-  "installation.exportRecovery": z.object({ path: z.string(), sha256: z.string(), manifest: z.object({
-    version: z.literal(1), createdAt: z.number(), sourceProfileId: z.string(), sqliteBytes: z.number(),
-    sqliteTables: z.array(z.string()), artifactIds: z.array(z.string()),
-    spaceMemory: z.array(z.object({ workspaceId: z.string(), files: z.array(z.string()) })),
-    pageMemoryCount: z.number(), excluded: z.array(z.string()),
-  }) }),
-  "installation.inspectRecovery": z.object({ sha256: z.string(), reviewToken: z.string().uuid(), manifest: z.object({
-    version: z.literal(1), createdAt: z.number(), sourceProfileId: z.string(), sqliteBytes: z.number(),
-    sqliteTables: z.array(z.string()), artifactIds: z.array(z.string()),
-    spaceMemory: z.array(z.object({ workspaceId: z.string(), files: z.array(z.string()) })),
-    pageMemoryCount: z.number(), excluded: z.array(z.string()),
-  }) }),
-  "installation.stageRecovery": z.object({ staged: z.literal(true), artifactFiles: z.number(),
-    spaceCount: z.number(), pageMemoryCount: z.number() }),
+  "installation.restoreStatus": z.object({
+    pending: z.boolean(),
+    lastAppliedAt: z.number().optional(),
+    managedRecovery: z.object({ generation: z.number().int().nonnegative(), freshBackupIssued: z.boolean() }),
+  }),
+  "installation.exportRecovery": z.object({
+    path: z.string(),
+    sha256: z.string(),
+    manifest: z.object({
+      version: z.literal(1),
+      createdAt: z.number(),
+      sourceProfileId: z.string(),
+      sqliteBytes: z.number(),
+      sqliteTables: z.array(z.string()),
+      artifactIds: z.array(z.string()),
+      spaceMemory: z.array(z.object({ workspaceId: z.string(), files: z.array(z.string()) })),
+      pageMemoryCount: z.number(),
+      excluded: z.array(z.string()),
+    }),
+  }),
+  "installation.inspectRecovery": z.object({
+    sha256: z.string(),
+    reviewToken: z.string().uuid(),
+    manifest: z.object({
+      version: z.literal(1),
+      createdAt: z.number(),
+      sourceProfileId: z.string(),
+      sqliteBytes: z.number(),
+      sqliteTables: z.array(z.string()),
+      artifactIds: z.array(z.string()),
+      spaceMemory: z.array(z.object({ workspaceId: z.string(), files: z.array(z.string()) })),
+      pageMemoryCount: z.number(),
+      excluded: z.array(z.string()),
+    }),
+  }),
+  "installation.stageRecovery": z.object({
+    staged: z.literal(true),
+    artifactFiles: z.number(),
+    spaceCount: z.number(),
+    pageMemoryCount: z.number(),
+  }),
   "vault.status": VaultStatusSchema,
   "vault.list": z.array(VaultItemSchema),
   "vault.save": VaultItemSchema,
@@ -2019,7 +2141,9 @@ export const ResultSchemas = {
   "mcp.servers.revoke": OutboundMcpServerSchema,
   "mcp.oauth.start": z.discriminatedUnion("state", [
     z.object({ state: z.literal("connected") }).strict(),
-    z.object({ state: z.literal("authorization"), url: z.string().url(), expiresAt: z.number().int() }).strict(),
+    z
+      .object({ state: z.literal("authorization"), url: z.string().url(), expiresAt: z.number().int() })
+      .strict(),
   ]),
   "mcp.oauth.status": z.object({ connected: z.boolean(), expiresAt: z.number().int().optional() }).strict(),
   "mcp.oauth.clear": z.object({ connected: z.literal(false) }).strict(),
@@ -2286,7 +2410,10 @@ export const ResultSchemas = {
   "onboarding.get": OnboardingStateSchema,
   "onboarding.update": OnboardingStateSchema,
   "onboarding.start": z.object({ state: OnboardingStateSchema, run: RunSchema.nullable() }).strict(),
-  "import.preview": z.object({ sources: z.array(ImportSourcePreviewSchema), recentJobs: z.array(ImportJobStatusSchema).max(5).optional() }),
+  "import.preview": z.object({
+    sources: z.array(ImportSourcePreviewSchema),
+    recentJobs: z.array(ImportJobStatusSchema).max(5).optional(),
+  }),
   "import.run": z.object({ jobId: z.string() }),
   "import.status": ImportJobStatusSchema,
   "import.cancel": z.object({ ok: z.boolean() }),
@@ -2321,7 +2448,12 @@ export const ResultSchemas = {
       retrying: z.boolean(),
     }),
   ),
-  "browser.recovery.retry": z.object({ ok: z.boolean(), pageId: id, page: PageTargetSchema, restored: z.boolean() }),
+  "browser.recovery.retry": z.object({
+    ok: z.boolean(),
+    pageId: id,
+    page: PageTargetSchema,
+    restored: z.boolean(),
+  }),
   "history.list": z.array(HistoryEntrySchema),
   "history.projectSnapshot": z.object({
     accepted: z.boolean(),

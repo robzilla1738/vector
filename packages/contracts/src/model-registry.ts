@@ -36,19 +36,27 @@ export const DEFAULT_PLANNER_MODEL_ID = "meta/muse-spark-1.3-contributor";
 
 export const AgentModelCategorySchema = z.enum(["fast", "standard", "deep", "visual"]);
 export type AgentModelCategory = z.infer<typeof AgentModelCategorySchema>;
-export const AgentModelRouteSchema = z.object({
-  modelId: z.string().min(1),
-  reasoning: z.enum(["low", "medium", "xhigh"]),
-}).strict();
+export const AgentModelRouteSchema = z
+  .object({
+    modelId: z.string().min(1),
+    reasoning: z.enum(["low", "medium", "xhigh"]),
+  })
+  .strict();
 export type AgentModelRoute = z.infer<typeof AgentModelRouteSchema>;
 /**
  * Settings value per category: one route or an ordered candidate chain.
  * Each candidate carries its own reasoning effort; runtime failover walks
  * the chain on 429/5xx (S5 deliverable 9).
  */
-export const AgentModelRouteChainSchema = z.union([AgentModelRouteSchema, z.array(AgentModelRouteSchema).min(1).max(8)]);
+export const AgentModelRouteChainSchema = z.union([
+  AgentModelRouteSchema,
+  z.array(AgentModelRouteSchema).min(1).max(8),
+]);
 export type AgentModelRouteChain = z.infer<typeof AgentModelRouteChainSchema>;
-export const AgentModelRoutesSettingSchema = z.partialRecord(AgentModelCategorySchema, AgentModelRouteChainSchema);
+export const AgentModelRoutesSettingSchema = z.partialRecord(
+  AgentModelCategorySchema,
+  AgentModelRouteChainSchema,
+);
 export function normalizeRouteChain(value: unknown): AgentModelRoute[] {
   const parsed = AgentModelRouteChainSchema.safeParse(value);
   if (!parsed.success) return [];
@@ -63,7 +71,10 @@ export const DEFAULT_AGENT_MODEL_ROUTES: Readonly<Record<AgentModelCategory, Age
   visual: { modelId: DEFAULT_PLANNER_MODEL_ID, reasoning: "medium" },
 };
 
-export function agentModelRoute(category: AgentModelCategory, overrides?: Partial<Record<AgentModelCategory, AgentModelRoute>>): AgentModelRoute {
+export function agentModelRoute(
+  category: AgentModelCategory,
+  overrides?: Partial<Record<AgentModelCategory, AgentModelRoute>>,
+): AgentModelRoute {
   return AgentModelRouteSchema.parse(overrides?.[category] ?? DEFAULT_AGENT_MODEL_ROUTES[category]);
 }
 
@@ -80,8 +91,8 @@ export const MODEL_REGISTRY: readonly ModelCapability[] = [
     contextTokens: 1_048_576,
     modalities: ["text", "image"],
     reasoning: "supported",
-    inputUsdPerMTok: 0.10,
-    outputUsdPerMTok: 0.20,
+    inputUsdPerMTok: 0.1,
+    outputUsdPerMTok: 0.2,
     source: "snapshot",
     status: "verified",
   },
@@ -124,7 +135,11 @@ export function modelAcceptsImages(modelId: string, models?: readonly ModelCapab
 }
 
 /** Clamp a requested output budget to the model's registered limit. */
-export function clampOutputTokens(modelId: string, requested: number, models?: readonly ModelCapability[]): number {
+export function clampOutputTokens(
+  modelId: string,
+  requested: number,
+  models?: readonly ModelCapability[],
+): number {
   const limit = modelCapabilities(modelId, models)?.maxOutputTokens;
   return limit ? Math.min(requested, limit) : requested;
 }
@@ -137,7 +152,10 @@ export function registryCostUsd(
 ): number | undefined {
   const m = modelCapabilities(modelId, models);
   if (m?.inputUsdPerMTok === undefined || m.outputUsdPerMTok === undefined) return undefined;
-  return ((usage.inputTokens ?? 0) * m.inputUsdPerMTok + (usage.outputTokens ?? 0) * m.outputUsdPerMTok) / 1_000_000;
+  return (
+    ((usage.inputTokens ?? 0) * m.inputUsdPerMTok + (usage.outputTokens ?? 0) * m.outputUsdPerMTok) /
+    1_000_000
+  );
 }
 
 /**
@@ -145,9 +163,7 @@ export function registryCostUsd(
  * re-tag the entry with their own `source`. IDs never drop out — a catalog or
  * configured model the snapshot does not know stays selectable.
  */
-export function mergeModelCapabilities(
-  ...lists: readonly (readonly ModelCapability[])[]
-): ModelCapability[] {
+export function mergeModelCapabilities(...lists: readonly (readonly ModelCapability[])[]): ModelCapability[] {
   const merged = new Map<string, ModelCapability>();
   for (const list of lists) {
     for (const entry of list) {
@@ -159,8 +175,6 @@ export function mergeModelCapabilities(
 }
 
 /** Lightweight `{id, name}` projection for pickers and legacy callers. */
-export function modelPickerEntries(
-  models: readonly ModelCapability[],
-): { id: string; name?: string }[] {
+export function modelPickerEntries(models: readonly ModelCapability[]): { id: string; name?: string }[] {
   return models.map((m) => (m.name === undefined ? { id: m.id } : { id: m.id, name: m.name }));
 }

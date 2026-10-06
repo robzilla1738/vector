@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-vi.mock("../use-feature", () => ({useFeature:()=>true,featureStage:()=>"on"}));
+vi.mock("../use-feature", () => ({ useFeature: () => true, featureStage: () => "on" }));
 import { TaskSchema } from "@aux/contracts";
 import { TaskResources } from "./TaskResources";
 import { useStore } from "../store";
@@ -31,7 +31,9 @@ let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
 const update = vi.fn(async () => true);
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
+    { width: 100 },
+  ] as unknown as DOMRectList);
   useStore.setState({ pages: [] });
   host = document.createElement("div");
   document.body.append(host);

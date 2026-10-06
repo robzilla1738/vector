@@ -15,9 +15,11 @@ it("pages tied visit times without skipping entries and combines date and litera
     const second = repo.listHistory(undefined, 1, { before: first[0]! });
     expect(second[0]?.url).toBe("https://a.test");
     expect(repo.listHistory(undefined, 1, { before: second[0]! })[0]?.url).toBe("https://c.test");
-    expect(repo.listHistory("%", 100, { since: 20 }).map(item => item.url)).toEqual(["https://a.test"]);
+    expect(repo.listHistory("%", 100, { since: 20 }).map((item) => item.url)).toEqual(["https://a.test"]);
     expect(repo.listHistory("_", 100)).toEqual([]);
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 });
 
 it("removes only the selected visit, retaining another visit and its bookmark", () => {
@@ -30,9 +32,11 @@ it("removes only the selected visit, retaining another visit and its bookmark", 
     repo.addBookmark(url, "Saved page");
     expect(repo.removeHistory(url, 10)).toBe(true);
     expect(repo.removeHistory(url, 10)).toBe(false);
-    expect(repo.listHistory().map(item => item.visitedAt)).toEqual([20]);
+    expect(repo.listHistory().map((item) => item.visitedAt)).toEqual([20]);
     expect(repo.listBookmarks()).toHaveLength(1);
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 });
 
 it("clears only visits inside the confirmed time range and preserves later visits and bookmarks", () => {
@@ -48,13 +52,15 @@ it("clears only visits inside the confirmed time range and preserves later visit
     expect(repo.listHistory()).toHaveLength(5);
     expect(repo.clearHistory({ since: 10, before: 20 })).toBe(2);
     expect(repo.countHistory({ since: 10, before: 20 })).toBe(0);
-    expect(repo.listHistory().map(item => item.visitedAt)).toEqual([21, 20, 9]);
+    expect(repo.listHistory().map((item) => item.visitedAt)).toEqual([21, 20, 9]);
     expect(repo.clearHistory({ since: 10, before: 20 })).toBe(0);
     expect(repo.listBookmarks()).toHaveLength(1);
     expect(repo.clearHistory({ before: 20 })).toBe(1);
-    expect(repo.listHistory().map(item => item.visitedAt)).toEqual([21, 20]);
+    expect(repo.listHistory().map((item) => item.visitedAt)).toEqual([21, 20]);
     expect(repo.clearHistory()).toBe(2);
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 });
 
 it("rejects invalid history deletion ranges before they reach storage", () => {

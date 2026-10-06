@@ -9,7 +9,12 @@ const originalSidebar = useStore.getState().sidebar;
 const originalSidebarPeek = useStore.getState().sidebarPeek;
 afterEach(() => {
   vi.restoreAllMocks();
-  useStore.setState({ toast: originalToast, toasts: [], sidebar: originalSidebar, sidebarPeek: originalSidebarPeek });
+  useStore.setState({
+    toast: originalToast,
+    toasts: [],
+    sidebar: originalSidebar,
+    sidebarPeek: originalSidebarPeek,
+  });
 });
 it("passes contextual payload and catches an asynchronous feature failure once", async () => {
   const toast = vi.fn();
@@ -67,13 +72,21 @@ it("awaits the actual registered feature acknowledgment and propagates refusal w
   let acknowledge!: () => void;
   const toast = vi.fn();
   useStore.setState({ toast });
-  const invoke = vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: true,
-    result: new Promise<void>(resolve => { acknowledge = resolve; }) });
+  const invoke = vi.spyOn(registry, "runFeatureCommand").mockReturnValue({
+    handled: true,
+    result: new Promise<void>((resolve) => {
+      acknowledge = resolve;
+    }),
+  });
   let completed = false;
-  const operation = executeCommand("archive-delete", { payload: { archiveId: "saved-tab" } }).then(() => { completed = true; });
+  const operation = executeCommand("archive-delete", { payload: { archiveId: "saved-tab" } }).then(() => {
+    completed = true;
+  });
   await Promise.resolve();
   expect(completed).toBe(false);
-  expect(invoke).toHaveBeenCalledExactlyOnceWith("archive-delete", useStore.getState(), { payload: { archiveId: "saved-tab" } });
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("archive-delete", useStore.getState(), {
+    payload: { archiveId: "saved-tab" },
+  });
   acknowledge();
   await operation;
   expect(completed).toBe(true);
@@ -85,9 +98,11 @@ it("awaits the actual registered feature acknowledgment and propagates refusal w
 
 it("opens page-free chat through the remappable command without creating a tab", () => {
   vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
-  const state = useStore.getState(), openConversation = vi.fn(), newTab = vi.fn();
+  const state = useStore.getState(),
+    openConversation = vi.fn(),
+    newTab = vi.fn();
   expect(runCommand("new-chat", { state: { ...state, openConversation, newTab } })).toBe(true);
   expect(openConversation).toHaveBeenCalledExactlyOnceWith(null);
   expect(newTab).not.toHaveBeenCalled();
-  expect(COMMANDS.find(command => command.id === "new-chat")?.windows).toEqual(["normal"]);
+  expect(COMMANDS.find((command) => command.id === "new-chat")?.windows).toEqual(["normal"]);
 });

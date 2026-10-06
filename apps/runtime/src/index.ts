@@ -46,7 +46,13 @@ export {
   snapshotSqlite,
   listImportSources,
 } from "./services/import-sources.js";
-export { RunCoordinator, verifyDoneAgainstObservation, verifyResultCitations, markUnconfirmedWrites, NAV_OPS } from "./agent/coordinator.js";
+export {
+  RunCoordinator,
+  verifyDoneAgainstObservation,
+  verifyResultCitations,
+  markUnconfirmedWrites,
+  NAV_OPS,
+} from "./agent/coordinator.js";
 export { MockModelClient } from "./agent/mock-client.js";
 export {
   DEFAULT_PLANNER_MODEL,
@@ -142,7 +148,12 @@ export {
   type PageClaim,
 } from "./agent/durable.js";
 export { CoordinatorLease, coordinatorOwnerId, COORDINATOR_LEASE_TTL_MS } from "./agent/coordinator-lease.js";
-export { runAgentLoop, resumeAgentLoop, type AgentLoopOptions, type AgentLoopOutcome } from "./agent/loop/loop.js";
+export {
+  runAgentLoop,
+  resumeAgentLoop,
+  type AgentLoopOptions,
+  type AgentLoopOutcome,
+} from "./agent/loop/loop.js";
 export { runToolLoop, steerMessage, type AgentLoopHostDeps } from "./agent/loop/host.js";
 export { ReplPool, REPL_MAX_DEADLINE_MS, type ReplHostDeps, type ReplTab } from "./agent/loop/repl.js";
 export {
@@ -156,8 +167,19 @@ export {
 } from "./agent/loop/context.js";
 export { TranscriptStore, type ParkedCall } from "./agent/loop/transcript.js";
 export { buildToolManifest, normalizeSubmitResultInput } from "./agent/loop/tools.js";
-export { BashSeatbelt, type BashSeatbeltInput, type BashSeatbeltResult, type BashRunner, type BashGate } from "./agent/loop/bash.js";
-export { buildSystemPrompt, CONDITIONAL_DOCS, type ConditionalDoc, type PromptContext } from "./agent/loop/prompt.js";
+export {
+  BashSeatbelt,
+  type BashSeatbeltInput,
+  type BashSeatbeltResult,
+  type BashRunner,
+  type BashGate,
+} from "./agent/loop/bash.js";
+export {
+  buildSystemPrompt,
+  CONDITIONAL_DOCS,
+  type ConditionalDoc,
+  type PromptContext,
+} from "./agent/loop/prompt.js";
 export { SYSTEM_PROMPT } from "./agent/loop/system-prompt.js";
 export type {
   LoopTool,
@@ -228,9 +250,17 @@ export {
 export { createGuardianJudge } from "./safety/guardian-model.js";
 export { SafetyDispatchGate, type StepSafetyContext } from "./safety/dispatch.js";
 export {
-  decide, categoryForOp, effectRequestForStep, sensitiveStep, confirmsAtAction,
-  DecisionJournal, REFUSAL,
-  type DecideDeps, type DecideContext, type DecisionRecord, type DecisionSource,
+  decide,
+  categoryForOp,
+  effectRequestForStep,
+  sensitiveStep,
+  confirmsAtAction,
+  DecisionJournal,
+  REFUSAL,
+  type DecideDeps,
+  type DecideContext,
+  type DecisionRecord,
+  type DecisionSource,
 } from "./safety/decide.js";
 export { SafetyAuditStore } from "./safety/audit.js";
 export { SuspensionStore } from "./safety/suspensions.js";

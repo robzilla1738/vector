@@ -5,11 +5,13 @@ export class ConnectionRecovery {
   private stopped = false;
   private failures = 0;
 
-  constructor(private readonly connection: {
-    reconnect(): Promise<void>;
-    isConnected(): boolean;
-    onReady(): void;
-  }) {}
+  constructor(
+    private readonly connection: {
+      reconnect(): Promise<void>;
+      isConnected(): boolean;
+      onReady(): void;
+    },
+  ) {}
 
   retry(): void {
     if (this.stopped || this.timer || this.pending) return;

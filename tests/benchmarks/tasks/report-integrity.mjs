@@ -22,24 +22,45 @@ export function coverage(rows, taskIds, trials) {
 export function modelAttribution(events) {
   const calls = events.filter((event) => event.type === "model.call");
   const modelIds = [...new Set(calls.map((event) => event.payload?.modelId))];
-  const runtimeModel = calls.length && modelIds.length === 1 &&
-    typeof modelIds[0] === "string" && modelIds[0].length ? modelIds[0] : null;
+  const runtimeModel =
+    calls.length && modelIds.length === 1 && typeof modelIds[0] === "string" && modelIds[0].length
+      ? modelIds[0]
+      : null;
   return { runtimeModel, modelCallEvents: calls.length, modelIds };
 }
 
 /** A gate candidate still needs a separately reviewed comparable baseline. */
-export function candidateReadiness({ suiteName, selectedIds, allIds, trials, adapterName, rows, engine, budget, model }) {
+export function candidateReadiness({
+  suiteName,
+  selectedIds,
+  allIds,
+  trials,
+  adapterName,
+  rows,
+  engine,
+  budget,
+  model,
+}) {
   const fullCorpus = selectedIds.length === allIds.length && selectedIds.every((id, i) => id === allIds[i]);
   const completeCoverage = coverage(rows, selectedIds, trials);
-  const receiptCoverage = rows.every((row) => row.durableIntents &&
-    Number.isSafeInteger(row.durableIntents.unresolved) &&
-    Array.isArray(row.durableIntents.ids) &&
-    Number.isSafeInteger(row.modelCalls));
-  const modelCoverage = typeof model === "string" && model.length > 0 && rows.every((row) =>
-    row.runtimeModel === model && row.modelCalls > 0 && row.modelCallEvents === row.modelCalls);
+  const receiptCoverage = rows.every(
+    (row) =>
+      row.durableIntents &&
+      Number.isSafeInteger(row.durableIntents.unresolved) &&
+      Array.isArray(row.durableIntents.ids) &&
+      Number.isSafeInteger(row.modelCalls),
+  );
+  const modelCoverage =
+    typeof model === "string" &&
+    model.length > 0 &&
+    rows.every(
+      (row) => row.runtimeModel === model && row.modelCalls > 0 && row.modelCallEvents === row.modelCalls,
+    );
   const expectedEngine = adapterName === "aux" ? "agent" : adapterName === "aux-loop" ? "agent-loop" : null;
-  const engineMatches = expectedEngine !== null && (engine === expectedEngine ||
-    (expectedEngine === "agent" && typeof engine === "string" && engine.startsWith("agent:")));
+  const engineMatches =
+    expectedEngine !== null &&
+    (engine === expectedEngine ||
+      (expectedEngine === "agent" && typeof engine === "string" && engine.startsWith("agent:")));
   const requiredCount = suiteName === "local" ? 50 : suiteName === "heldout" ? 10 : Infinity;
   const reasons = [];
   if (!fullCorpus || allIds.length !== requiredCount) reasons.push("partial or nonstandard corpus");
@@ -48,8 +69,17 @@ export function candidateReadiness({ suiteName, selectedIds, allIds, trials, ada
   if (!receiptCoverage) reasons.push("model-call or durable receipt attribution is missing");
   if (!modelCoverage) reasons.push("served model or model-call event attribution is missing or mismatched");
   if (!engineMatches) reasons.push("engine identity is missing or mismatched");
-  if (typeof budget !== "number" || !Number.isSafeInteger(budget) || budget <= 0) reasons.push("effective model-call budget is unknown");
-  return { ready: reasons.length === 0, reasons, fullCorpus, completeCoverage, receiptCoverage, modelCoverage, engineMatches };
+  if (typeof budget !== "number" || !Number.isSafeInteger(budget) || budget <= 0)
+    reasons.push("effective model-call budget is unknown");
+  return {
+    ready: reasons.length === 0,
+    reasons,
+    fullCorpus,
+    completeCoverage,
+    receiptCoverage,
+    modelCoverage,
+    engineMatches,
+  };
 }
 
 /** This only checks whether a single report can support an A/B comparison. */
@@ -65,7 +95,8 @@ export function abReadiness(report) {
   if (budgets.some((set) => set.size !== 1) || [...budgets[0]][0] !== [...budgets[1]][0])
     reasons.push("effective model-call budgets differ");
   const models = [planner, loop].map((adapter) => new Set(adapter?.rows?.map((row) => row.runtimeModel)));
-  if (models.some((set) => set.size !== 1 || !set.has(report.model))) reasons.push("runtime model attribution differs");
+  if (models.some((set) => set.size !== 1 || !set.has(report.model)))
+    reasons.push("runtime model attribution differs");
   return { ready: reasons.length === 0, reasons };
 }
 
@@ -76,8 +107,11 @@ export function summarizeIntents(intents) {
     if (!(intent.status in statuses)) throw new Error(`Unknown durable intent status: ${intent.status}`);
     statuses[intent.status]++;
   }
-  return { statuses, unresolved: statuses.pending + statuses.uncertain,
-    ids: intents.map(({ id, status }) => ({ id, status })) };
+  return {
+    statuses,
+    unresolved: statuses.pending + statuses.uncertain,
+    ids: intents.map(({ id, status }) => ({ id, status })),
+  };
 }
 
 /** Wrapper expiry has no run receipt, so it cannot become a scored task row. */
@@ -88,7 +122,6 @@ export function benchmarkInfrastructureFailure(error) {
     return "Benchmark wrapper timed out before run attribution";
   if (/unauthenticated request to ai gateway|invalid ai.gateway.api.key/i.test(message))
     return "AI Gateway authentication failed";
-  if (/benchmark receipt attribution failed/i.test(message))
-    return "Durable receipt attribution failed";
+  if (/benchmark receipt attribution failed/i.test(message)) return "Durable receipt attribution failed";
   return null;
 }

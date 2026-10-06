@@ -17,7 +17,12 @@ describe("readiness request tracking", () => {
     t.started(b);
     t.started(req("image", main));
     t.started(req("fetch", {})); // child frame
-    t.started({ resourceType: () => "fetch", frame: () => { throw new Error("service worker"); } });
+    t.started({
+      resourceType: () => "fetch",
+      frame: () => {
+        throw new Error("service worker");
+      },
+    });
     expect(t.size).toBe(2);
     t.ended(a);
     const endedAt = Date.now();
@@ -48,7 +53,9 @@ describe("executor: waitFor settled", () => {
       identity: { pageId: "p1", targetId: "t", backend: "aux" },
       waitFor: async (c: Condition) => {
         seen.push(c);
-        return settles ? { ok: true, timedOut: false } : { ok: false, timedOut: true, detail: "page did not settle" };
+        return settles
+          ? { ok: true, timedOut: false }
+          : { ok: false, timedOut: true, detail: "page did not settle" };
       },
     } as unknown as DriverPage;
     return { page, seen };
@@ -56,14 +63,20 @@ describe("executor: waitFor settled", () => {
 
   it("forwards the condition and succeeds when the page settles", async () => {
     const { page, seen } = fake(true);
-    const res = await executeProgram(page, { pageId: "p1", steps: [{ id: "w", op: "waitFor", condition: { kind: "settled", timeoutMs: 300 } }] });
+    const res = await executeProgram(page, {
+      pageId: "p1",
+      steps: [{ id: "w", op: "waitFor", condition: { kind: "settled", timeoutMs: 300 } }],
+    });
     expect(res.status).toBe("completed");
     expect(seen).toEqual([{ kind: "settled", timeoutMs: 300 }]);
   });
 
   it("fails the step with condition_timeout when the page never settles", async () => {
     const { page } = fake(false);
-    const res = await executeProgram(page, { pageId: "p1", steps: [{ id: "w", op: "waitFor", condition: { kind: "settled" } }] });
+    const res = await executeProgram(page, {
+      pageId: "p1",
+      steps: [{ id: "w", op: "waitFor", condition: { kind: "settled" } }],
+    });
     expect(res.status).toBe("failed");
     expect(res.steps[0]?.error?.code).toBe("condition_timeout");
   });

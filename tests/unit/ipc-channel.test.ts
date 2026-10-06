@@ -19,7 +19,10 @@ describe("RpcChannel", () => {
     b.onMethod("boom", () => {
       throw new AuxError("not_found", "thing missing", { id: 7 });
     });
-    await expect(a.call("boom")).rejects.toMatchObject({ code: "not_found", message: "The requested item was not found." });
+    await expect(a.call("boom")).rejects.toMatchObject({
+      code: "not_found",
+      message: "The requested item was not found.",
+    });
   });
 
   it("delivers notifications", async () => {

@@ -28,7 +28,11 @@ import { PluginService } from "../../services/plugins.js";
 import type { Repo } from "../../store/repo.js";
 import type { ResponseStore } from "../../services/responses.js";
 import { RoutineService } from "../../services/routines.js";
-import { requireRoutineTriggerPage, selectSkillReplayPage, startSkillReplay } from "../../services/skill-replay.js";
+import {
+  requireRoutineTriggerPage,
+  selectSkillReplayPage,
+  startSkillReplay,
+} from "../../services/skill-replay.js";
 import type { RunService } from "../../services/runs.js";
 import { WorkspaceFolderService } from "../../services/workspace-folders.js";
 import { SafetyAuditStore } from "../../safety/audit.js";
@@ -105,7 +109,7 @@ export function browserImporter(s: Services): BrowserImporter {
     repo: s.repo,
     native: s.native,
     emit: (type, payload) => s.events.emit(type, payload),
-      openTab: async (url) => {
+    openTab: async (url) => {
       await s.pages.open({ url, background: true, ownedByRuntime: false });
     },
   });
@@ -234,8 +238,12 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
           : { kind: "workspace" as const, id: "rpc" },
         actor: "external_token",
         effect: "egress",
-        category: input.action === "agent.web.fetch" || input.action === "agent.web.search" ? "read"
-          : input.action === "agent.turn.open" ? "navigate" : "external_tool",
+        category:
+          input.action === "agent.web.fetch" || input.action === "agent.web.search"
+            ? "read"
+            : input.action === "agent.turn.open"
+              ? "navigate"
+              : "external_tool",
         action: input.action,
         origin: input.url.origin,
         destination: input.url.href.slice(0, 2048),
@@ -291,12 +299,17 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
         if (routine.trigger.kind !== "page_change" || context.triggerDocumentEpoch === undefined)
           throw new AuxError("conflict", "The page-change occurrence lost its exact document binding.");
         const triggerUrl = routine.trigger.url;
-        const inTask = details.task.resources.some(resource =>
-          (resource.kind === "page" && resource.locator === context.triggerPageId)
-          || (resource.kind === "url" && resource.locator === triggerUrl));
+        const inTask = details.task.resources.some(
+          (resource) =>
+            (resource.kind === "page" && resource.locator === context.triggerPageId) ||
+            (resource.kind === "url" && resource.locator === triggerUrl),
+        );
         if (!inTask) throw new AuxError("conflict", "The watched tab left the source task's reviewed scope.");
-        pageIds.splice(0, pageIds.length, requireRoutineTriggerPage(s.pages, context.triggerPageId,
-          triggerUrl, context.triggerDocumentEpoch));
+        pageIds.splice(
+          0,
+          pageIds.length,
+          requireRoutineTriggerPage(s.pages, context.triggerPageId, triggerUrl, context.triggerDocumentEpoch),
+        );
       }
       if (!pageIds.length)
         throw new AuxError(
@@ -305,8 +318,15 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
         );
       if (routine.replay) {
         const pageId = selectSkillReplayPage(s.pages, pageIds, routine.replay.siteOrigin);
-        const started = startSkillReplay({ repo: s.repo, pages: s.pages, events: s.events,
-          routine, pageId, parameters, expectedDocumentEpoch: context?.triggerDocumentEpoch });
+        const started = startSkillReplay({
+          repo: s.repo,
+          pages: s.pages,
+          events: s.events,
+          routine,
+          pageId,
+          parameters,
+          expectedDocumentEpoch: context?.triggerDocumentEpoch,
+        });
         return { chatId: details.task.conversationId, runId: started.runId };
       }
       const prepared = tasks.prepareRun(routine.sourceTaskId, details.task.revision);
@@ -471,28 +491,56 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
   };
   const captureScopedPageSource = (scope: AgentConnectionScope, pageId: string, connectionId?: string) => {
     requireScopedPage(scope, pageId, connectionId);
-    const sources = scopedTasks(scope).filter(task => task.state === "open").flatMap(task => {
-      const preview = !!connectionId && turnTabs.owns(connectionId, task.taskId, pageId);
-      const attached = task.resources.some(resource => resource.kind === "page" && resource.locator === pageId) ||
-        tasks.details(task.taskId).runs.some(item => item.currentRevision && item.run.pageIds.includes(pageId));
-      return attached || preview ? [{ taskId: task.taskId, revision: task.revision, sourceOrigin: task.sourceOrigin, preview }] : [];
-    });
+    const sources = scopedTasks(scope)
+      .filter((task) => task.state === "open")
+      .flatMap((task) => {
+        const preview = !!connectionId && turnTabs.owns(connectionId, task.taskId, pageId);
+        const attached =
+          task.resources.some((resource) => resource.kind === "page" && resource.locator === pageId) ||
+          tasks
+            .details(task.taskId)
+            .runs.some((item) => item.currentRevision && item.run.pageIds.includes(pageId));
+        return attached || preview
+          ? [{ taskId: task.taskId, revision: task.revision, sourceOrigin: task.sourceOrigin, preview }]
+          : [];
+      });
     const session = scope.kind === "session" && sessionPageIds(scope.sessionId).has(pageId);
-    if (!sources.length && !session) throw new AuxError("permission_denied", "The person-approved source page is no longer authorized.");
+    if (!sources.length && !session)
+      throw new AuxError("permission_denied", "The person-approved source page is no longer authorized.");
     return () => {
       requireScopedPage(scope, pageId, connectionId);
       if (session && scope.kind === "session" && sessionPageIds(scope.sessionId).has(pageId)) return;
-      const current = sources.some(source => {
+      const current = sources.some((source) => {
         const task = tasks.get(source.taskId);
-        if (task.revision !== source.revision || task.sourceOrigin !== source.sourceOrigin || task.state !== "open") return false;
+        if (
+          task.revision !== source.revision ||
+          task.sourceOrigin !== source.sourceOrigin ||
+          task.state !== "open"
+        )
+          return false;
         const preview = source.preview && !!connectionId && turnTabs.owns(connectionId, task.taskId, pageId);
-        try { tasks.preparePageAccess(task.taskId, source.revision, pageId, false, preview); return true; }
-        catch (error) { if (error instanceof AuxError && (error.code === "permission_denied" || error.code === "conflict")) return false; throw error; }
+        try {
+          tasks.preparePageAccess(task.taskId, source.revision, pageId, false, preview);
+          return true;
+        } catch (error) {
+          if (error instanceof AuxError && (error.code === "permission_denied" || error.code === "conflict"))
+            return false;
+          throw error;
+        }
       });
-      if (!current) throw new AuxError("permission_denied", "The source task revision or page approval changed during this tool call.");
+      if (!current)
+        throw new AuxError(
+          "permission_denied",
+          "The source task revision or page approval changed during this tool call.",
+        );
     };
   };
-  const captureScopedTaskRead = (scope: AgentConnectionScope, pageId: string, runId: string, connectionId?: string): ValidatedTaskRead | undefined => {
+  const captureScopedTaskRead = (
+    scope: AgentConnectionScope,
+    pageId: string,
+    runId: string,
+    connectionId?: string,
+  ): ValidatedTaskRead | undefined => {
     const run = s.repo.getRun(runId);
     const taskId = run?.config?.taskId;
     if (!taskId || run.config?.implementation !== "external-agent") return undefined;
@@ -500,28 +548,63 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     if (task.state !== "open" || task.revision !== run.config.taskRevision) return undefined;
     const page = s.pages.get(pageId);
     if (!page.sessionId) throw new AuxError("target_detached", "The task read attachment is unavailable.");
-    const resource = task.resources.find(item => item.kind === "page" && item.locator === pageId);
+    const resource = task.resources.find((item) => item.kind === "page" && item.locator === pageId);
     const preview = !!connectionId && turnTabs.owns(connectionId, taskId, pageId);
-    const taskRun = !resource && !preview ? tasks.details(taskId).runs.find(item => item.currentRevision && item.run.pageIds.includes(pageId)) : undefined;
+    const taskRun =
+      !resource && !preview
+        ? tasks.details(taskId).runs.find((item) => item.currentRevision && item.run.pageIds.includes(pageId))
+        : undefined;
     if (!resource && !preview && !taskRun) return undefined;
-    const provenance = TaskReadProvenanceSchema.parse({ authorizedBy: "task_resource", taskId, taskRevision: task.revision,
-      pageId, sessionId: page.sessionId, documentEpoch: page.documentEpoch, sourceOrigin: task.sourceOrigin,
-      source: resource ? { kind: "resource", resourceId: resource.resourceId }
-        : preview ? { kind: "preview", connectionId } : { kind: "task_run", runId: taskRun!.run.runId },
+    const provenance = TaskReadProvenanceSchema.parse({
+      authorizedBy: "task_resource",
+      taskId,
+      taskRevision: task.revision,
+      pageId,
+      sessionId: page.sessionId,
+      documentEpoch: page.documentEpoch,
+      sourceOrigin: task.sourceOrigin,
+      source: resource
+        ? { kind: "resource", resourceId: resource.resourceId }
+        : preview
+          ? { kind: "preview", connectionId }
+          : { kind: "task_run", runId: taskRun!.run.runId },
     });
     const sourceCheck = captureScopedPageSource(scope, pageId, connectionId);
     const check = () => {
       sourceCheck();
-      const current = tasks.get(taskId), currentRun = s.repo.getRun(runId), currentPage = s.pages.get(pageId);
-      if (!currentRun || !["running", "planning", "needs_input"].includes(currentRun.status) ||
-          currentRun.config?.taskId !== taskId || currentRun.config?.taskRevision !== provenance.taskRevision ||
-          current.revision !== provenance.taskRevision || current.state !== "open" || current.sourceOrigin !== provenance.sourceOrigin ||
-          currentPage.sessionId !== provenance.sessionId || currentPage.documentEpoch !== provenance.documentEpoch || currentPage.url !== page.url)
+      const current = tasks.get(taskId),
+        currentRun = s.repo.getRun(runId),
+        currentPage = s.pages.get(pageId);
+      if (
+        !currentRun ||
+        !["running", "planning", "needs_input"].includes(currentRun.status) ||
+        currentRun.config?.taskId !== taskId ||
+        currentRun.config?.taskRevision !== provenance.taskRevision ||
+        current.revision !== provenance.taskRevision ||
+        current.state !== "open" ||
+        current.sourceOrigin !== provenance.sourceOrigin ||
+        currentPage.sessionId !== provenance.sessionId ||
+        currentPage.documentEpoch !== provenance.documentEpoch ||
+        currentPage.url !== page.url
+      )
         throw new AuxError("permission_denied", "The person-approved task read source changed.");
       const source = provenance.source;
-      const exists = source.kind === "resource" ? current.resources.some(item => item.resourceId === source.resourceId && item.kind === "page" && item.locator === pageId)
-        : source.kind === "preview" ? turnTabs.owns(source.connectionId, taskId, pageId)
-        : tasks.details(taskId).runs.some(item => item.currentRevision && item.run.runId === source.runId && item.run.pageIds.includes(pageId));
+      const exists =
+        source.kind === "resource"
+          ? current.resources.some(
+              (item) =>
+                item.resourceId === source.resourceId && item.kind === "page" && item.locator === pageId,
+            )
+          : source.kind === "preview"
+            ? turnTabs.owns(source.connectionId, taskId, pageId)
+            : tasks
+                .details(taskId)
+                .runs.some(
+                  (item) =>
+                    item.currentRevision &&
+                    item.run.runId === source.runId &&
+                    item.run.pageIds.includes(pageId),
+                );
       if (!exists) throw new AuxError("permission_denied", "This task read resource was revoked.");
     };
     check();

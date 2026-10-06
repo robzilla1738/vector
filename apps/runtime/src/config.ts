@@ -58,7 +58,12 @@ export function loadDotEnv(env: NodeJS.ProcessEnv, files: string[]): NodeJS.Proc
 export function dotEnvCandidates(env: NodeJS.ProcessEnv, cwd = process.cwd()): string[] {
   const dataDir = resolveDataDirectory(env);
   const out: string[] = [];
-  for (const p of [join(dataDir, ".env"), join(cwd, ".env"), join(cwd, "..", ".env"), join(cwd, "..", "..", ".env")]) {
+  for (const p of [
+    join(dataDir, ".env"),
+    join(cwd, ".env"),
+    join(cwd, "..", ".env"),
+    join(cwd, "..", "..", ".env"),
+  ]) {
     if (!out.includes(p)) out.push(p);
   }
   return out;

@@ -25,9 +25,22 @@ afterEach(async () => {
 
 it("updates one closed-tab row while keeping its group action", async () => {
   const spaceId = initial.layout.activeSpaceId;
-  const first = { pageId: "closed-one", url: "https://example.com/one", title: "First page", spaceId,
-    index: 0, closedAt: Date.now(), groupId: "closed-group" };
-  const second = { ...first, pageId: "closed-two", url: "https://example.com/two", title: "Second page", index: 1 };
+  const first = {
+    pageId: "closed-one",
+    url: "https://example.com/one",
+    title: "First page",
+    spaceId,
+    index: 0,
+    closedAt: Date.now(),
+    groupId: "closed-group",
+  };
+  const second = {
+    ...first,
+    pageId: "closed-two",
+    url: "https://example.com/two",
+    title: "Second page",
+    index: 1,
+  };
   useStore.setState({ closedTabs: [first, second], reopeningTab: false });
   await act(async () => root.render(<RecentlyClosed query="" />));
   expect(host.textContent).toContain("Reopen group · 2");

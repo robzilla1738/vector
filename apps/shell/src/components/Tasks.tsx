@@ -28,7 +28,13 @@ import { CalendarTaskGrants } from "./CalendarTaskGrants";
 import { bridge } from "../bridge";
 import { RunAttentionFeed, selectAttentionRuns } from "../agent/RunAttentionFeed";
 import { RunNoticePreference } from "../agent/RunNoticeControls";
-import { staticSpacerProps as auxReuseStaticSpacerProps, staticPrimaryButtonProps as auxReuseStaticPrimaryButtonProps, staticGhostButtonProps as auxReuseStaticGhostButtonProps, staticButtonProps as auxReuseStaticButtonProps, staticGrowProps as auxReuseStaticGrowProps } from "../ui/class-props";
+import {
+  staticSpacerProps as auxReuseStaticSpacerProps,
+  staticPrimaryButtonProps as auxReuseStaticPrimaryButtonProps,
+  staticGhostButtonProps as auxReuseStaticGhostButtonProps,
+  staticButtonProps as auxReuseStaticButtonProps,
+  staticGrowProps as auxReuseStaticGrowProps,
+} from "../ui/class-props";
 
 type Details = {
   task: Task;
@@ -71,8 +77,11 @@ export function Tasks() {
   const [newParentTaskId, setNewParentTaskId] = useState<string | null>(null);
 
   // Original receipt callback owner, independent of incidental busy renders.
-  const windowId = bridge.windowId, privateMode = bridge.privateMode, kind = bridge.windowKind;
-  const receiptTaskId = selected?.task.taskId, receiptRevision = selected?.task.revision;
+  const windowId = bridge.windowId,
+    privateMode = bridge.privateMode,
+    kind = bridge.windowKind;
+  const receiptTaskId = selected?.task.taskId,
+    receiptRevision = selected?.task.revision;
   const receiptOwner = useMemo(() => {
     const generatedAt = receipt?.generatedAt;
     let live = false;
@@ -85,7 +94,9 @@ export function Tasks() {
       },
       current: () =>
         live &&
-        receipt?.taskId === receiptTaskId && receipt?.taskRevision === receiptRevision && receipt?.generatedAt === generatedAt &&
+        receipt?.taskId === receiptTaskId &&
+        receipt?.taskRevision === receiptRevision &&
+        receipt?.generatedAt === generatedAt &&
         bridge.windowId === windowId &&
         bridge.privateMode === privateMode &&
         bridge.windowKind === kind &&
@@ -121,14 +132,36 @@ export function Tasks() {
   const resourceOwner = useMemo(() => {
     let live = false;
     return {
-      activate: () => { live = true; },
-      retire: () => { live = false; },
-      current: () => live && !!receiptTaskId && resourceEditable &&
-        bridge.windowId === windowId && bridge.privateMode === privateMode && bridge.windowKind === kind &&
+      activate: () => {
+        live = true;
+      },
+      retire: () => {
+        live = false;
+      },
+      current: () =>
+        live &&
+        !!receiptTaskId &&
+        resourceEditable &&
+        bridge.windowId === windowId &&
+        bridge.privateMode === privateMode &&
+        bridge.windowKind === kind &&
         useStore.getState().layout.activeSpaceId === layout.activeSpaceId &&
-        useStore.getState().layout.spaces.some(space => space.id === layout.activeSpaceId && space.workspaceId === workspaceId),
+        useStore
+          .getState()
+          .layout.spaces.some(
+            (space) => space.id === layout.activeSpaceId && space.workspaceId === workspaceId,
+          ),
     };
-  }, [receiptTaskId, receiptRevision, workspaceId, layout.activeSpaceId, windowId, privateMode, kind, resourceEditable]);
+  }, [
+    receiptTaskId,
+    receiptRevision,
+    workspaceId,
+    layout.activeSpaceId,
+    windowId,
+    privateMode,
+    kind,
+    resourceEditable,
+  ]);
   const resourcePending = useRef<{ owner: typeof resourceOwner; token: object } | null>(null);
   const busyRef = useRef(busy);
   busyRef.current = busy;
@@ -143,7 +176,8 @@ export function Tasks() {
     };
   }, [resourceOwner]);
   async function updateResources(resources: Task["resources"]) {
-    const owner = resourceOwner, original = selected?.task;
+    const owner = resourceOwner,
+      original = selected?.task;
     if (!original || !owner.current() || resourcePending.current || busyRef.current) return false;
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const slot = { owner, token: {} };
@@ -163,7 +197,13 @@ export function Tasks() {
         if (owner.current()) {
           setBusy(false);
           requestAnimationFrame(() => {
-            if (owner.current() && document.activeElement === document.body && focused && availableForFocus(focused)) focused.focus();
+            if (
+              owner.current() &&
+              document.activeElement === document.body &&
+              focused &&
+              availableForFocus(focused)
+            )
+              focused.focus();
           });
         }
       }
@@ -337,7 +377,12 @@ export function Tasks() {
       call("tasks.list", { workspaceId, includeArchived: true }),
     ]);
     if (!current()) return;
-    if (details.task.taskId !== taskId || receipt.taskId !== taskId || receipt.taskRevision !== details.task.revision) throw new Error("This task changed while refreshing its receipt.");
+    if (
+      details.task.taskId !== taskId ||
+      receipt.taskId !== taskId ||
+      receipt.taskRevision !== details.task.revision
+    )
+      throw new Error("This task changed while refreshing its receipt.");
     edit(details, restoreDraft);
     setReceipt(receipt);
     setTasks(tasks);
@@ -436,7 +481,12 @@ export function Tasks() {
         <div className="drawer-head">
           <h3>{creating ? "New task" : selected ? selected.task.title : "Tasks"}</h3>
           <span {...auxReuseStaticSpacerProps} />
-          <button ref={closeButton} {...staticIconButtonProps} aria-label="Close tasks" onClick={() => close(null)}>
+          <button
+            ref={closeButton}
+            {...staticIconButtonProps}
+            aria-label="Close tasks"
+            onClick={() => close(null)}
+          >
             {shellIconClose}
           </button>
         </div>
@@ -445,10 +495,18 @@ export function Tasks() {
             {error}
           </p>
         )}
-        {!selected && !creating && <>
-          <RunAttentionFeed runs={runs} onOpenRun={(runId) => { close(null); useStore.getState().openConversation(runId); }} />
-          <RunNoticePreference />
-        </>}
+        {!selected && !creating && (
+          <>
+            <RunAttentionFeed
+              runs={runs}
+              onOpenRun={(runId) => {
+                close(null);
+                useStore.getState().openConversation(runId);
+              }}
+            />
+            <RunNoticePreference />
+          </>
+        )}
         {(selected || creating) && (
           <button
             className="btn ghost task-back"

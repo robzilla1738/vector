@@ -40,23 +40,33 @@ export const CalendarEventSchema = z.object({
 });
 export type CalendarEvent = z.infer<typeof CalendarEventSchema>;
 
-const CalendarReadBase = z.object({
-  connectionId: z.string().uuid(),
-  timeMin: z.string().datetime({ offset: true }),
-  timeMax: z.string().datetime({ offset: true }),
-  limit: z.number().int().min(1).max(100).default(25),
-  pageToken: z.string().min(1).max(2048).optional(),
-}).strict();
+const CalendarReadBase = z
+  .object({
+    connectionId: z.string().uuid(),
+    timeMin: z.string().datetime({ offset: true }),
+    timeMax: z.string().datetime({ offset: true }),
+    limit: z.number().int().min(1).max(100).default(25),
+    pageToken: z.string().min(1).max(2048).optional(),
+  })
+  .strict();
 const validRange = (value: { timeMin: string; timeMax: string }) => {
   const span = Date.parse(value.timeMax) - Date.parse(value.timeMin);
   return span > 0 && span <= 31 * 24 * 60 * 60 * 1000;
 };
-export const CalendarEventsQuerySchema = CalendarReadBase.refine(validRange, "Choose a calendar range of at most 31 days.");
+export const CalendarEventsQuerySchema = CalendarReadBase.refine(
+  validRange,
+  "Choose a calendar range of at most 31 days.",
+);
 export type CalendarEventsQuery = z.output<typeof CalendarEventsQuerySchema>;
 
-export const CalendarTaskEventsInputSchema = CalendarReadBase.omit({ connectionId: true }).extend({
-  taskId: z.string().uuid(),
-  grantId: z.string().uuid(),
-}).strict();
-export const CalendarTaskEventsQuerySchema = CalendarTaskEventsInputSchema.refine(validRange, "Choose a calendar range of at most 31 days.");
+export const CalendarTaskEventsInputSchema = CalendarReadBase.omit({ connectionId: true })
+  .extend({
+    taskId: z.string().uuid(),
+    grantId: z.string().uuid(),
+  })
+  .strict();
+export const CalendarTaskEventsQuerySchema = CalendarTaskEventsInputSchema.refine(
+  validRange,
+  "Choose a calendar range of at most 31 days.",
+);
 export type CalendarTaskEventsQuery = z.output<typeof CalendarTaskEventsQuerySchema>;

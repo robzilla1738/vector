@@ -24,9 +24,21 @@
     font: inherit;
     outline: none;
   }
-  .chat-sidebar-search:focus-within { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
-  .chat-sidebar .chat-sidebar-search input::placeholder { color: var(--sb-ink-2); }
-  .chat-sidebar .chat-sidebar-content > nav { gap: 0; padding: 0 6px 6px; }
-  .chat-sidebar .chat-sidebar-history { padding-top: 0; }
-  .chat-sidebar .session-heading { font-size: 13px; }
+  .chat-sidebar-search:focus-within {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+  }
+  .chat-sidebar .chat-sidebar-search input::placeholder {
+    color: var(--sb-ink-2);
+  }
+  .chat-sidebar .chat-sidebar-content > nav {
+    gap: 0;
+    padding: 0 6px 6px;
+  }
+  .chat-sidebar .chat-sidebar-history {
+    padding-top: 0;
+  }
+  .chat-sidebar .session-heading {
+    font-size: 13px;
+  }
 }

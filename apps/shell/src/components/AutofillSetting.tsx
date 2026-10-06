@@ -7,9 +7,7 @@ import type { AutofillProfile } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { useSettingsSaveOwner, type SettingsSaveOwner } from "../settings/sections/use-settings-save-owner";
 import { useScopedCommandControls } from "../scoped-command-controls";
-import {
-  nativeButtonTypeProps as auxNativeButtonTypeProps,
-} from "../ui/native-attribute-props";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 const FIELDS: { key: keyof AutofillProfile; label: string; auto?: string }[] = [
   { key: "name", label: "Name", auto: "name" },
@@ -41,15 +39,19 @@ export function AutofillSetting({
     kind = bridge.windowKind;
   const snapshot = JSON.stringify(value ?? {});
   const identity = useMemo(
-    () => ([snapshot, windowId, privateMode, kind, active]),
+    () => [snapshot, windowId, privateMode, kind, active],
     [snapshot, windowId, privateMode, kind, active],
   );
   const admitted = useCallback(
     () => active && !privateMode && kind === "normal" && !bridge.privateMode && bridge.windowKind === kind,
     [active, privateMode, kind],
   );
-  const [getOwner, current, busy, error, , clearFailure, perform] =
-    useSettingsSaveOwner(identity, windowId, privateMode, admitted);
+  const [getOwner, current, busy, error, , clearFailure, perform] = useSettingsSaveOwner(
+    identity,
+    windowId,
+    privateMode,
+    admitted,
+  );
   const [editing, setEditing] = useState<{ owner: SettingsSaveOwner; draft: AutofillProfile } | null>(null);
   const draft = editing?.owner.active && editing.owner.identity === identity ? editing.draft : null;
   const draftRef = useRef(draft);
@@ -90,17 +92,25 @@ export function AutofillSetting({
     const original = requireOwner(),
       savedDraft = draftRef.current;
     if (!savedDraft) throw new Error("Edit the current personal info first.");
-    return perform(original, savedDraft, draftRef, () => {
-      const clean = {} as AutofillProfile;
-      for (const field of FIELDS) {
-        const text = savedDraft[field.key]?.trim();
-        if (text) clean[field.key] = text;
-      }
-      return onSave(clean);
-    }, () => {
-      draftRef.current = null;
-      setEditing(null);
-    }, "Personal info wasn’t saved. Try again.", SAVE_POLICY);
+    return perform(
+      original,
+      savedDraft,
+      draftRef,
+      () => {
+        const clean = {} as AutofillProfile;
+        for (const field of FIELDS) {
+          const text = savedDraft[field.key]?.trim();
+          if (text) clean[field.key] = text;
+        }
+        return onSave(clean);
+      },
+      () => {
+        draftRef.current = null;
+        setEditing(null);
+      },
+      "Personal info wasn’t saved. Try again.",
+      SAVE_POLICY,
+    );
   }
 
   const filled = FIELDS.filter((field) => value?.[field.key]?.trim());

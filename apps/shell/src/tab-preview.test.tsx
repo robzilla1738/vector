@@ -12,17 +12,26 @@ import { TabPreview, useSidebarTabPreview } from "./components/TabPreview";
   disconnect() {}
 };
 
-const page = { pageId: "preview", title: "Previewed page", url: "https://example.com/preview", viewStatus: "visible" } as PageTarget;
+const page = {
+  pageId: "preview",
+  title: "Previewed page",
+  url: "https://example.com/preview",
+  viewStatus: "visible",
+} as PageTarget;
 const host = document.createElement("div");
 document.body.append(host);
 let root: ReturnType<typeof createRoot>;
 
 function PreviewHarness() {
   const preview = useSidebarTabPreview();
-  return <>
-    <button onMouseEnter={event => preview.show(event.currentTarget)} onMouseLeave={preview.hide}>Tab</button>
-    {preview.position && <TabPreview page={page} {...preview.position} />}
-  </>;
+  return (
+    <>
+      <button onMouseEnter={(event) => preview.show(event.currentTarget)} onMouseLeave={preview.hide}>
+        Tab
+      </button>
+      {preview.position && <TabPreview page={page} {...preview.position} />}
+    </>
+  );
 }
 
 afterEach(async () => {

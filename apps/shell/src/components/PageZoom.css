@@ -1,3 +1,8 @@
 @layer components {
-.page-zoom-value { min-width: 42px; text-align: center; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+  .page-zoom-value {
+    min-width: 42px;
+    text-align: center;
+    font-size: var(--fs-sm);
+    font-variant-numeric: tabular-nums;
+  }
 }

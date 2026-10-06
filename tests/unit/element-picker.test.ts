@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { describePickedElement, pickElementInPage, type PickedElement } from "../../apps/runtime/src/execution/element-picker.js";
+import {
+  describePickedElement,
+  pickElementInPage,
+  type PickedElement,
+} from "../../apps/runtime/src/execution/element-picker.js";
 
 const CHROME = "data-aux-element-picker";
 
@@ -14,13 +18,15 @@ function target(): HTMLElement {
 
 afterEach(() => {
   document.body.innerHTML = "";
-  document.querySelectorAll(`[${CHROME}]`).forEach(node => node.remove());
+  document.querySelectorAll(`[${CHROME}]`).forEach((node) => node.remove());
   vi.useRealTimers();
 });
 
 describe("pickElementInPage", () => {
   it("resolves with a summary of the clicked element and cleans up", async () => {
-    mount(`<main><section class="hero"><h1 id="pick-me" class="title big" aria-label="Welcome title">Welcome home</h1></section></main>`);
+    mount(
+      `<main><section class="hero"><h1 id="pick-me" class="title big" aria-label="Welcome title">Welcome home</h1></section></main>`,
+    );
     const promise = pickElementInPage(30_000) as Promise<PickedElement | null>;
     target().dispatchEvent(new MouseEvent("mouseover", { bubbles: true, composed: true }));
     target().dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
@@ -57,7 +63,9 @@ describe("pickElementInPage", () => {
     mount(`<a id="pick-me" href="https://example.com">Link</a>`);
     const anchor = target();
     let navigated = 0;
-    anchor.addEventListener("click", event => { if (!event.defaultPrevented) navigated += 1; });
+    anchor.addEventListener("click", (event) => {
+      if (!event.defaultPrevented) navigated += 1;
+    });
     const promise = pickElementInPage(30_000) as Promise<PickedElement | null>;
     anchor.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true }));
     const pick = await promise;
@@ -90,6 +98,8 @@ describe("describePickedElement", () => {
       selector: "main > button#save",
       rect: { x: 0, y: 0, width: 10, height: 10 },
     };
-    expect(describePickedElement(el)).toBe('button #save (primary) at "main > button#save" — text "Save draft"');
+    expect(describePickedElement(el)).toBe(
+      'button #save (primary) at "main > button#save" — text "Save draft"',
+    );
   });
 });

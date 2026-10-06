@@ -11,11 +11,15 @@ import { extensionInventory, refreshExtensions } from "../features/extensions/ex
 
 import { guardCommandCompletion } from "../command-completion";
 import { ExtensionLocalButton, ExtensionPermissions, useExtensionsOwner } from "./ExtensionsControls";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import {
-  nativeButtonTypeProps as auxNativeButtonTypeProps,
-} from "../ui/native-attribute-props";
-import { staticButtonProps as auxClassButtonProps, staticGhostButtonProps as auxClassGhostButtonProps } from "../ui/class-props";
-import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
+  staticButtonProps as auxClassButtonProps,
+  staticGhostButtonProps as auxClassGhostButtonProps,
+} from "../ui/class-props";
+import {
+  staticDrawerSectionProps as auxClassDrawerSectionProps,
+  staticErrorHintProps as auxClassErrorHintProps,
+} from "../ui/class-props";
 import { nativeAutocompleteOffProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export function Extensions() {

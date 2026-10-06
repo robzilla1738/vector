@@ -55,17 +55,23 @@ export function readRuntimeDescriptor(dataDir: string): RuntimeDescriptor | null
   const path = join(dataDir, "runtime.json");
   try {
     const file = lstatSync(path);
-    if (!file.isFile() || file.isSymbolicLink() || file.size > 8192 ||
-        (file.mode & 0o077) !== 0 ||
-        (typeof process.getuid === "function" && file.uid !== process.getuid())) return null;
+    if (
+      !file.isFile() ||
+      file.isSymbolicLink() ||
+      file.size > 8192 ||
+      (file.mode & 0o077) !== 0 ||
+      (typeof process.getuid === "function" && file.uid !== process.getuid())
+    )
+      return null;
     const value = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
     if (!Number.isInteger(value.port) || typeof value.token !== "string") return null;
-    const executable = typeof value.executable === "string"
-      && value.executable.startsWith("/")
-      && value.executable.length <= 1024
-      && !value.executable.includes("\0")
-      ? value.executable
-      : undefined;
+    const executable =
+      typeof value.executable === "string" &&
+      value.executable.startsWith("/") &&
+      value.executable.length <= 1024 &&
+      !value.executable.includes("\0")
+        ? value.executable
+        : undefined;
     return {
       port: value.port as number,
       token: value.token,
@@ -110,9 +116,18 @@ async function probeHealth(
 }
 
 /** Bind a bearer-authenticated challenge to the descriptor and listening peer. */
-async function probePeer(descriptor: RuntimeDescriptor, fetchImpl: Fetch): Promise<"ready" | "booting" | null> {
-  if (!descriptor.pid || !descriptor.instanceId || !descriptor.startedAt ||
-      !descriptor.version || !descriptor.token) return null;
+async function probePeer(
+  descriptor: RuntimeDescriptor,
+  fetchImpl: Fetch,
+): Promise<"ready" | "booting" | null> {
+  if (
+    !descriptor.pid ||
+    !descriptor.instanceId ||
+    !descriptor.startedAt ||
+    !descriptor.version ||
+    !descriptor.token
+  )
+    return null;
   const nonce = randomBytes(24).toString("hex");
   try {
     const res = await fetchImpl(`http://127.0.0.1:${descriptor.port}/internal/peer?nonce=${nonce}`, {
@@ -124,12 +139,20 @@ async function probePeer(descriptor: RuntimeDescriptor, fetchImpl: Fetch): Promi
       return null;
     }
     const body = (await res.json()) as Record<string, unknown>;
-    if (body.service !== "aux-runtime" || body.nonce !== nonce ||
-        body.instanceId !== descriptor.instanceId || body.pid !== descriptor.pid ||
-        body.schema !== descriptor.version.schema || body.startedAt !== descriptor.startedAt ||
-        typeof body.ready !== "boolean") return null;
+    if (
+      body.service !== "aux-runtime" ||
+      body.nonce !== nonce ||
+      body.instanceId !== descriptor.instanceId ||
+      body.pid !== descriptor.pid ||
+      body.schema !== descriptor.version.schema ||
+      body.startedAt !== descriptor.startedAt ||
+      typeof body.ready !== "boolean"
+    )
+      return null;
     return body.ready ? "ready" : "booting";
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** Require the descriptor PID to own the loopback listening socket. */
@@ -137,14 +160,15 @@ export async function peerOwnsPort(pid: number, port: number): Promise<boolean> 
   try {
     const { execFile } = await import("node:child_process");
     return await new Promise<boolean>((resolve) => {
-      execFile("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"],
-        { timeout: 3_000 }, (err, stdout) => {
-          if (err) return resolve(false);
-          const pids = stdout.trim().split(/\s+/).filter(Boolean);
-          resolve(pids.length === 1 && pids[0] === String(pid));
-        });
+      execFile("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"], { timeout: 3_000 }, (err, stdout) => {
+        if (err) return resolve(false);
+        const pids = stdout.trim().split(/\s+/).filter(Boolean);
+        resolve(pids.length === 1 && pids[0] === String(pid));
+      });
     });
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 /** Active runs on the peer, or null when the count can't be learned. */
@@ -221,11 +245,13 @@ function canonicalPath(path: string): string {
 
 function execText(command: string, args: string[]): Promise<string | null> {
   return new Promise((resolve) => {
-    import("node:child_process").then(({ execFile }) => {
-      execFile(command, args, { timeout: 3_000 }, (err, stdout) => {
-        resolve(err ? null : String(stdout));
-      });
-    }).catch(() => resolve(null));
+    import("node:child_process")
+      .then(({ execFile }) => {
+        execFile(command, args, { timeout: 3_000 }, (err, stdout) => {
+          resolve(err ? null : String(stdout));
+        });
+      })
+      .catch(() => resolve(null));
   });
 }
 
@@ -277,7 +303,8 @@ export function assessDevelopmentPeer(input: {
   if (input.descriptorUid !== undefined && input.descriptorUid !== input.peerUid) return "foreign";
   const live = canonicalPath(input.peerExecutable);
   if (live !== canonicalPath(input.ours.executable)) return "changed";
-  if (input.descriptorExecutable !== undefined && canonicalPath(input.descriptorExecutable) !== live) return "changed";
+  if (input.descriptorExecutable !== undefined && canonicalPath(input.descriptorExecutable) !== live)
+    return "changed";
   return "accept";
 }
 
@@ -346,8 +373,13 @@ export async function resolvePortInUse(opts: {
     };
   }
 
-  if (!peer.pid || !peer.instanceId || !peer.startedAt || !peer.version ||
-      (opts.boundPort !== undefined && peer.port !== opts.boundPort))
+  if (
+    !peer.pid ||
+    !peer.instanceId ||
+    !peer.startedAt ||
+    !peer.version ||
+    (opts.boundPort !== undefined && peer.port !== opts.boundPort)
+  )
     return { action: "defer", reason: "peer descriptor lacks exact identity or bound port" };
 
   const peerPid = peer.pid;
@@ -372,15 +404,13 @@ export async function resolvePortInUse(opts: {
   };
 
   const authenticated = await probePeer(peer, fetchImpl);
-  if (!authenticated || !alive(peerPid) || !(await ownsPort(peerPid, peer.port)) ||
-      !(await verify(peerPid)))
+  if (!authenticated || !alive(peerPid) || !(await ownsPort(peerPid, peer.port)) || !(await verify(peerPid)))
     return { action: "defer", reason: "peer identity, port ownership, or executable could not be verified" };
 
   const initialBlock = await developmentBlock(peer);
   if (initialBlock) return initialBlock;
 
-  if (authenticated !== "ready")
-    return { action: "defer", reason: "peer is still booting" };
+  if (authenticated !== "ready") return { action: "defer", reason: "peer is still booting" };
 
   // A peer that stops answering health after the proof must be left alone.
   const probe = await probeHealth(peer, fetchImpl);
@@ -401,8 +431,12 @@ export async function resolvePortInUse(opts: {
   const deadline = Date.now() + idleWaitMs;
   for (;;) {
     const reviewed = readRuntimeDescriptor(opts.dataDir);
-    if (!reviewed || reviewed.instanceId !== peer.instanceId ||
-        (await probePeer(peer, fetchImpl)) !== "ready" || !(await ownsPort(peerPid, peer.port)))
+    if (
+      !reviewed ||
+      reviewed.instanceId !== peer.instanceId ||
+      (await probePeer(peer, fetchImpl)) !== "ready" ||
+      !(await ownsPort(peerPid, peer.port))
+    )
       return { action: "defer", reason: "peer changed during takeover review" };
     const reviewedBlock = await developmentBlock(reviewed);
     if (reviewedBlock) return reviewedBlock;
@@ -421,9 +455,13 @@ export async function resolvePortInUse(opts: {
   // Re-read immediately before the signal. A peer whose user or executable
   // changed during the idle wait is left running.
   const fresh = readRuntimeDescriptor(opts.dataDir);
-  if (!fresh || fresh.instanceId !== peer.instanceId ||
-      (await probePeer(peer, fetchImpl)) !== "ready" || !(await ownsPort(peerPid, peer.port)) ||
-      !(await verify(peerPid)))
+  if (
+    !fresh ||
+    fresh.instanceId !== peer.instanceId ||
+    (await probePeer(peer, fetchImpl)) !== "ready" ||
+    !(await ownsPort(peerPid, peer.port)) ||
+    !(await verify(peerPid))
+  )
     return { action: "defer", reason: "peer changed before takeover dispatch" };
   const freshBlock = await developmentBlock(fresh);
   if (freshBlock) return freshBlock;

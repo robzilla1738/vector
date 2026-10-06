@@ -266,14 +266,18 @@ it("preserves undefined setter success and original synchronous rejected complet
   save.mockResolvedValueOnce(undefined);
   button("Save").focus();
   let completion: Promise<unknown>;
-  await act(async () => { completion = invokeScopedControl("save-personal-info") as Promise<unknown>; });
+  await act(async () => {
+    completion = invokeScopedControl("save-personal-info") as Promise<unknown>;
+  });
   expect(await completion!).toBeUndefined();
   expect(save).toHaveBeenLastCalledWith({ name: "Ada" });
   expect(host.querySelector("form")).toBeNull();
   await click("Add personal info");
   await edit("Kept draft");
   const reason = new Error("original synchronous setter failure");
-  save.mockImplementationOnce(() => { throw reason; });
+  save.mockImplementationOnce(() => {
+    throw reason;
+  });
   button("Save").focus();
   let observed: Promise<unknown>;
   await act(async () => {
@@ -297,7 +301,9 @@ it("checks live normal-kind admission before dispatch and a held completion with
   const pending = held<unknown>();
   save.mockReturnValueOnce(pending.promise);
   let completion: Promise<unknown>;
-  await act(async () => { completion = invokeScopedControl("save-personal-info") as Promise<unknown>; });
+  await act(async () => {
+    completion = invokeScopedControl("save-personal-info") as Promise<unknown>;
+  });
   const originalInput = host.querySelector<HTMLInputElement>('input[autocomplete="name"]')!;
   native.windowKind = "little";
   await act(async () => pending.resolve(undefined));

@@ -100,8 +100,7 @@ export function RestoreBackupControls({
       if (owner.request(sequence)) setLoaded({ owner, status: result });
       return result;
     } catch (reason) {
-      if (owner.request(sequence))
-        setMessage({ owner, text: errorMessage(reason) });
+      if (owner.request(sequence)) setMessage({ owner, text: errorMessage(reason) });
       throw reason;
     }
   }, [owner, current]);
@@ -121,18 +120,23 @@ export function RestoreBackupControls({
     onOperation(token, true);
     setPending(owner);
     setMessage(null);
-    return constructOperationChain(producer, (result) => {
+    return constructOperationChain(
+      producer,
+      (result) => {
         if (deliveryCurrent()) publish(result);
         return result;
-      }, (reason) => {
-        if (deliveryCurrent())
-          setMessage({ owner, text: errorMessage(reason) });
+      },
+      (reason) => {
+        if (deliveryCurrent()) setMessage({ owner, text: errorMessage(reason) });
         throw reason;
-      }, () => {
+      },
+      () => {
         owner.finish();
         onOperation(token, false);
         if (current()) setPending(null);
-      }, deliveryCurrent);
+      },
+      deliveryCurrent,
+    );
   }
   const staged = () => {
     if (current())

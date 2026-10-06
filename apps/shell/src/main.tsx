@@ -13,13 +13,29 @@ const root = createRoot(document.getElementById("root")!);
 let booting = false;
 
 function BootFailure({ error, retry }: { error: unknown; retry: () => void }) {
-  return <div className="boot-status"><div {...nativeAlertRoleProps}><h1>Aux couldn’t open</h1><p>The browser interface didn’t finish loading.</p><button {...auxClassPrimaryButtonProps} onClick={retry}>Try again</button><details><summary>Details</summary><p>{errorMessage(error)}</p></details></div></div>;
+  return (
+    <div className="boot-status">
+      <div {...nativeAlertRoleProps}>
+        <h1>Aux couldn’t open</h1>
+        <p>The browser interface didn’t finish loading.</p>
+        <button {...auxClassPrimaryButtonProps} onClick={retry}>
+          Try again
+        </button>
+        <details>
+          <summary>Details</summary>
+          <p>{errorMessage(error)}</p>
+        </details>
+      </div>
+    </div>
+  );
 }
 
 /** A render failure anywhere in the shell leaves a recoverable screen, not a dead window. */
 class RootBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   override state: { error: Error | null } = { error: null };
-  static getDerivedStateFromError(error: Error) { return { error }; }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
   override render() {
     if (this.state.error) return <BootFailure error={this.state.error} retry={() => location.reload()} />;
     return this.props.children;
@@ -29,7 +45,11 @@ class RootBoundary extends Component<{ children: ReactNode }, { error: Error | n
 async function boot() {
   if (booting) return;
   booting = true;
-  root.render(<output className="boot-status" data-block>Opening Aux…</output>);
+  root.render(
+    <output className="boot-status" data-block>
+      Opening Aux…
+    </output>,
+  );
   try {
     const chromiumShell = location.protocol === "chrome:" && location.hostname === "aux";
     if (chromiumShell) {
@@ -48,10 +68,16 @@ async function boot() {
       installMockBridge(new URLSearchParams(location.search));
     }
     const { App } = await import("./App");
-    root.render(<RootBoundary><App /></RootBoundary>);
+    root.render(
+      <RootBoundary>
+        <App />
+      </RootBoundary>,
+    );
   } catch (error) {
     root.render(<BootFailure error={error} retry={() => void boot()} />);
-  } finally { booting = false; }
+  } finally {
+    booting = false;
+  }
 }
 
 void boot();

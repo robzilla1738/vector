@@ -327,12 +327,28 @@ it("reviewed deletion retains original backend refusal and confirmation for a de
     expect(button(host, "delete-reviewed-local-backup").disabled).toBe(false);
   }));
 
-it("does not start queued passive reads after original component retirement", async()=>{
- const host=document.createElement("div");document.body.append(host);const root=createRoot(host);
- await act(async()=>{
-  flushSync(()=>root.render(<BackupSettings active refreshVersion={0} externalBusy={false} restorePending={false} onOperation={vi.fn()} attended={()=>null} restore={()=>null}/>));
-  flushSync(()=>root.unmount());
-  await Promise.resolve();
- });
- expect(mocks.call).not.toHaveBeenCalled();expect(mocks.create).not.toHaveBeenCalled();host.remove();
+it("does not start queued passive reads after original component retirement", async () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  await act(async () => {
+    flushSync(() =>
+      root.render(
+        <BackupSettings
+          active
+          refreshVersion={0}
+          externalBusy={false}
+          restorePending={false}
+          onOperation={vi.fn()}
+          attended={() => null}
+          restore={() => null}
+        />,
+      ),
+    );
+    flushSync(() => root.unmount());
+    await Promise.resolve();
+  });
+  expect(mocks.call).not.toHaveBeenCalled();
+  expect(mocks.create).not.toHaveBeenCalled();
+  host.remove();
 });

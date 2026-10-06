@@ -23,12 +23,14 @@ export class PageOwnership {
   private owners = new Map<string, PageOwner>();
   private waiters = new Map<string, Waiter[]>();
 
-  constructor(private deps: {
-    /** Durable claim record (S4) — acquire/release both write through. */
-    claims?: PageClaimStore;
-    /** owned = a tab the runtime created; borrowed = an existing session tab it drives. */
-    kindOf?: (pageId: string) => "owned" | "borrowed";
-  } = {}) {}
+  constructor(
+    private deps: {
+      /** Durable claim record (S4) — acquire/release both write through. */
+      claims?: PageClaimStore;
+      /** owned = a tab the runtime created; borrowed = an existing session tab it drives. */
+      kindOf?: (pageId: string) => "owned" | "borrowed";
+    } = {},
+  ) {}
 
   /** The ledger key for a claim: the run id when the owner has one, else its actor+member handle. */
   private claimKey(owner: PageOwner): string {
@@ -37,9 +39,17 @@ export class PageOwnership {
 
   tryAcquire(owner: PageOwner): () => void {
     const current = this.owners.get(owner.pageId);
-    if (current) throw new AuxError("conflict", `Page ${owner.pageId} is in use by ${current.actor}${current.runId ? ` (${current.runId})` : ""}`);
+    if (current)
+      throw new AuxError(
+        "conflict",
+        `Page ${owner.pageId} is in use by ${current.actor}${current.runId ? ` (${current.runId})` : ""}`,
+      );
     this.owners.set(owner.pageId, owner);
-    this.deps.claims?.claim({ pageId: owner.pageId, runId: this.claimKey(owner), kind: this.deps.kindOf?.(owner.pageId) ?? "borrowed" });
+    this.deps.claims?.claim({
+      pageId: owner.pageId,
+      runId: this.claimKey(owner),
+      kind: this.deps.kindOf?.(owner.pageId) ?? "borrowed",
+    });
     return this.releaseFor(owner);
   }
 
@@ -50,7 +60,7 @@ export class PageOwnership {
       const onAbort = () => {
         const queue = this.waiters.get(owner.pageId);
         if (queue) {
-          const next = queue.filter(item => item !== waiter);
+          const next = queue.filter((item) => item !== waiter);
           if (next.length) this.waiters.set(owner.pageId, next);
           else this.waiters.delete(owner.pageId);
         }
@@ -64,18 +74,27 @@ export class PageOwnership {
     });
   }
 
-  async acquireMany(pageIds: readonly string[], owner: Omit<PageOwner, "pageId">, signal?: AbortSignal): Promise<() => void> {
+  async acquireMany(
+    pageIds: readonly string[],
+    owner: Omit<PageOwner, "pageId">,
+    signal?: AbortSignal,
+  ): Promise<() => void> {
     const releases: Array<() => void> = [];
     try {
-      for (const pageId of [...new Set(pageIds)].sort()) releases.push(await this.acquire({ ...owner, pageId }, signal));
-      return () => { for (const release of releases.reverse()) release(); };
+      for (const pageId of [...new Set(pageIds)].sort())
+        releases.push(await this.acquire({ ...owner, pageId }, signal));
+      return () => {
+        for (const release of releases.reverse()) release();
+      };
     } catch (error) {
       for (const release of releases.reverse()) release();
       throw error;
     }
   }
 
-  snapshot(): Record<string, PageOwner> { return Object.fromEntries(this.owners); }
+  snapshot(): Record<string, PageOwner> {
+    return Object.fromEntries(this.owners);
+  }
 
   private releaseFor(owner: PageOwner): () => void {
     let released = false;
@@ -97,7 +116,11 @@ export class PageOwnership {
         // closes first so a run's active claims match what it really holds.
         this.owners.set(owner.pageId, next.owner);
         this.deps.claims?.release(owner.pageId);
-        this.deps.claims?.claim({ pageId: next.owner.pageId, runId: this.claimKey(next.owner), kind: this.deps.kindOf?.(next.owner.pageId) ?? "borrowed" });
+        this.deps.claims?.claim({
+          pageId: next.owner.pageId,
+          runId: this.claimKey(next.owner),
+          kind: this.deps.kindOf?.(next.owner.pageId) ?? "borrowed",
+        });
         next.resolve(this.releaseFor(next.owner));
         return;
       }

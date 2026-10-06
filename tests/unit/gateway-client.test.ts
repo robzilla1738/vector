@@ -18,7 +18,9 @@ describe("extractJson", () => {
     expect(extractJson('{"ok":true}')).toEqual({ ok: true });
   });
   it("extracts from fenced prose", () => {
-    expect(extractJson('Sure! Here is the plan:\n```json\n{"steps":[{"op":"click"}]}\n```')).toEqual({ steps: [{ op: "click" }] });
+    expect(extractJson('Sure! Here is the plan:\n```json\n{"steps":[{"op":"click"}]}\n```')).toEqual({
+      steps: [{ op: "click" }],
+    });
   });
   it("handles mixed nesting", () => {
     expect(extractJson('[{"a":[1,{"b":2}]}]')).toEqual([{ a: [1, { b: 2 }] }]);
@@ -30,7 +32,10 @@ describe("extractJson", () => {
     expect(extractJson('{"q":"say \\"hi\\" then }"}')).toEqual({ q: 'say "hi" then }' });
   });
   it("strips Qwen think tags before parsing", () => {
-    expect(extractJson('<think>consider {not json}</think>\n{"status":"done","message":"ok"}')).toEqual({ status: "done", message: "ok" });
+    expect(extractJson('<think>consider {not json}</think>\n{"status":"done","message":"ok"}')).toEqual({
+      status: "done",
+      message: "ok",
+    });
   });
   it("throws on no JSON", () => {
     expect(() => extractJson("no json here")).toThrow("no JSON value");
@@ -75,7 +80,11 @@ describe("stripReasoning / oneOf errors", () => {
     expect(stripReasoning("<think>nope</think>ok").trim()).toBe("ok");
   });
   it("treats Cerebras oneOf rejection as a structured-output failure", () => {
-    expect(isStructuredOutputError(new Error("Unsupported JSON schema fields in schema with keys: dict_keys(['oneOf'])."))).toBe(true);
+    expect(
+      isStructuredOutputError(
+        new Error("Unsupported JSON schema fields in schema with keys: dict_keys(['oneOf'])."),
+      ),
+    ).toBe(true);
   });
   it("drops a Cerebras pin for GPT Luna Fast", () => {
     expect(gatewayOnlyForModel("openai/gpt-5.6-luna-fast", ["cerebras"])).toBeUndefined();
@@ -86,8 +95,17 @@ describe("stripReasoning / oneOf errors", () => {
     expect(gatewayProviderOptions(["cerebras"], "openai/gpt-5.6-luna-fast").gateway.only).toBeUndefined();
     expect(gatewayProviderOptions(undefined, "openai/gpt-5.6-luna-fast").openai).toBeUndefined();
     expect(gatewayProviderOptions(undefined, "openai/gpt-5.4").openai).toBeUndefined();
-    const reasoner = [{ id: "openai/gpt-5.4", provider: "openai", reasoning: "supported" as const, source: "configured" as const }];
-    expect(gatewayProviderOptions(undefined, "openai/gpt-5.4", reasoner).openai).toEqual({ reasoningEffort: "minimal" });
+    const reasoner = [
+      {
+        id: "openai/gpt-5.4",
+        provider: "openai",
+        reasoning: "supported" as const,
+        source: "configured" as const,
+      },
+    ];
+    expect(gatewayProviderOptions(undefined, "openai/gpt-5.4", reasoner).openai).toEqual({
+      reasoningEffort: "minimal",
+    });
   });
   it("rejects image parts before the Gateway call when pinned to Cerebras", async () => {
     const client = new GatewayModelClient("vg_test", { only: ["cerebras"] });

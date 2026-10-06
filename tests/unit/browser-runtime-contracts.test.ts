@@ -1,5 +1,14 @@
 import { expect, it } from "vitest";
-import { createClock, HostEvents, HostMethods, LiveFolderSchema, LinkRoutesSchema, SplitGroupSchema, MethodSchemas, WindowTabsSchema } from "@aux/contracts";
+import {
+  createClock,
+  HostEvents,
+  HostMethods,
+  LiveFolderSchema,
+  LinkRoutesSchema,
+  SplitGroupSchema,
+  MethodSchemas,
+  WindowTabsSchema,
+} from "@aux/contracts";
 
 it("keeps live sources bounded and excludes connection secrets from layout", () => {
   const rss = { kind: "rss", config: { url: "https://fixture.invalid/feed" }, refreshMinutes: 15 };
@@ -8,8 +17,16 @@ it("keeps live sources bounded and excludes connection secrets from layout", () 
   expect(LiveFolderSchema.safeParse({ ...rss, refreshMinutes: 0 }).success).toBe(false);
   const github = { kind: "github", config: { connectionId: "fixture", source: "query" }, refreshMinutes: 15 };
   expect(LiveFolderSchema.safeParse(github).success).toBe(false);
-  expect(LiveFolderSchema.safeParse({ ...github, config: { ...github.config, query: "repo:aux/fixture", token: "secret" } }).success).toBe(false);
-  expect(LiveFolderSchema.safeParse({ ...github, config: { ...github.config, query: "repo:aux/fixture" } }).success).toBe(true);
+  expect(
+    LiveFolderSchema.safeParse({
+      ...github,
+      config: { ...github.config, query: "repo:aux/fixture", token: "secret" },
+    }).success,
+  ).toBe(false);
+  expect(
+    LiveFolderSchema.safeParse({ ...github, config: { ...github.config, query: "repo:aux/fixture" } })
+      .success,
+  ).toBe(true);
 });
 
 it("rejects duplicate split members and invalid focused panes", () => {
@@ -29,14 +46,28 @@ it("bounds native stage visibility and permits hiding every page", () => {
 });
 
 it("requires unique routing rules and known destinations", () => {
-  const rule = { id: "rule", enabled: true, order: 0, match: { kind: "host", pattern: "fixture.invalid", subdomains: false },
-    destination: { kind: "profile", profileId: "Default", window: "tab" }, hits: 0 };
-  const config = { version: 1, revision: 0, enabled: true, inApp: "off", default: { kind: "last-used" }, rules: [rule] };
+  const rule = {
+    id: "rule",
+    enabled: true,
+    order: 0,
+    match: { kind: "host", pattern: "fixture.invalid", subdomains: false },
+    destination: { kind: "profile", profileId: "Default", window: "tab" },
+    hits: 0,
+  };
+  const config = {
+    version: 1,
+    revision: 0,
+    enabled: true,
+    inApp: "off",
+    default: { kind: "last-used" },
+    rules: [rule],
+  };
   expect(LinkRoutesSchema.safeParse(config).success).toBe(true);
   expect(LinkRoutesSchema.safeParse({ ...config, rules: [rule, rule] }).success).toBe(false);
-  expect(LinkRoutesSchema.safeParse({ ...config, rules: [{ ...rule, destination: { kind: "private" } }] }).success).toBe(false);
+  expect(
+    LinkRoutesSchema.safeParse({ ...config, rules: [{ ...rule, destination: { kind: "private" } }] }).success,
+  ).toBe(false);
 });
-
 
 it("scales elapsed ages and delays without changing native wall timestamps", () => {
   const clock = createClock(3600, () => 20000);
@@ -50,7 +81,11 @@ it("scales elapsed ages and delays without changing native wall timestamps", () 
 });
 
 it.each([
-  ["row", 2], ["column", 2], ["columns", 3], ["one-plus-two", 3], ["grid", 4],
+  ["row", 2],
+  ["column", 2],
+  ["columns", 3],
+  ["one-plus-two", 3],
+  ["grid", 4],
 ])("requires exactly one ratio per %s divider", (layout, count) => {
   const panes = ["red", "blue", "green", "yellow"].slice(0, Number(count));
   const group = { id: "split", panes, layout, ratios: Array(Number(count) - 1).fill(0.5), focused: "red" };
@@ -60,30 +95,44 @@ it.each([
 });
 
 it("keeps routed receipts bounded, source reasons strict and Space focus window-specific", () => {
-  const receipt = { pageId: "red", profileId: "Profile 1", spaceId: "research", fallbackReason: "space-unavailable" };
+  const receipt = {
+    pageId: "red",
+    profileId: "Profile 1",
+    spaceId: "research",
+    fallbackReason: "space-unavailable",
+  };
   expect(HostMethods.routedOpens.result.safeParse([receipt]).success).toBe(true);
   expect(HostEvents.onRoutedOpen.payload.safeParse(receipt).success).toBe(true);
   expect(HostMethods.routedOpens.result.safeParse(Array(129).fill(receipt)).success).toBe(false);
-  expect(HostEvents.onRoutedOpen.payload.safeParse({ ...receipt, fallbackReason: "network-error" }).success).toBe(false);
+  expect(
+    HostEvents.onRoutedOpen.payload.safeParse({ ...receipt, fallbackReason: "network-error" }).success,
+  ).toBe(false);
   expect(HostEvents.onRoutedOpen.payload.safeParse({ ...receipt, token: "unexpected" }).success).toBe(false);
   const prompt = { id: "prompt", url: "https://fixture.invalid/red", expiresAt: 1000 };
   expect(HostMethods.routePrompts.result.safeParse([prompt]).success).toBe(true);
   expect(HostMethods.routePrompts.result.safeParse(Array(129).fill(prompt)).success).toBe(false);
   expect(HostEvents.onRoutePrompt.payload.safeParse({ ...prompt, expiresAt: -1 }).success).toBe(false);
   expect(HostEvents.onFocusSpace.payload.safeParse({ spaceId: "research" }).success).toBe(false);
-  expect(HostEvents.onFocusSpace.payload.safeParse({ spaceId: "research", windowId: "2" }).success).toBe(true);
+  expect(HostEvents.onFocusSpace.payload.safeParse({ spaceId: "research", windowId: "2" }).success).toBe(
+    true,
+  );
 });
 it("requires typed managed JavaScript Apple Events state", () => {
   expect(HostMethods.javascriptAppleEvents.args.safeParse([]).success).toBe(true);
   expect(HostMethods.javascriptAppleEvents.args.safeParse([true]).success).toBe(true);
   expect(HostMethods.javascriptAppleEvents.args.safeParse(["true"]).success).toBe(false);
-  expect(HostMethods.javascriptAppleEvents.result.safeParse({ enabled: false, managed: true }).success).toBe(true);
+  expect(HostMethods.javascriptAppleEvents.result.safeParse({ enabled: false, managed: true }).success).toBe(
+    true,
+  );
   expect(HostMethods.javascriptAppleEvents.result.safeParse({ enabled: false }).success).toBe(false);
 });
 
 it("limits authoritative live-folder sources to configuration without unrelated Profile data", () => {
   const method = HostMethods["native.liveFolderSources"];
-  const source = { id: "feed", live: { kind: "rss", config: { url: "https://fixture.invalid/feed" }, refreshMinutes: 15 } };
+  const source = {
+    id: "feed",
+    live: { kind: "rss", config: { url: "https://fixture.invalid/feed" }, refreshMinutes: 15 },
+  };
   expect(method.args.safeParse({}).success).toBe(true);
   expect(method.args.safeParse({ profileId: "Profile 1" }).success).toBe(false);
   expect(method.result.safeParse([source]).success).toBe(true);
@@ -94,9 +143,17 @@ it("limits authoritative live-folder sources to configuration without unrelated 
 
 it("accepts only the specified archive policies and authoritative window kinds", () => {
   for (const hours of [12, 24, 72, 168, 720, "never"])
-    expect(MethodSchemas["settings.set"].safeParse({ autoArchive: { acknowledged: true, bySpace: { work: hours } } }).success).toBe(true);
+    expect(
+      MethodSchemas["settings.set"].safeParse({
+        autoArchive: { acknowledged: true, bySpace: { work: hours } },
+      }).success,
+    ).toBe(true);
   for (const hours of [0, 1, 48, "12", "Never"])
-    expect(MethodSchemas["settings.set"].safeParse({ autoArchive: { acknowledged: true, bySpace: { work: hours } } }).success).toBe(false);
+    expect(
+      MethodSchemas["settings.set"].safeParse({
+        autoArchive: { acknowledged: true, bySpace: { work: hours } },
+      }).success,
+    ).toBe(false);
   expect(MethodSchemas["settings.set"].safeParse({ autoArchive: { bySpace: {} } }).success).toBe(false);
   const window = { windowId: "1", order: [], activePageId: null };
   expect(WindowTabsSchema.safeParse({ ...window, windowKind: "normal" }).success).toBe(true);
@@ -104,13 +161,22 @@ it("accepts only the specified archive policies and authoritative window kinds",
 });
 
 it("targets extension side-panel state to its owning window and separates guest IDs from page IDs", () => {
-  const state = { extensionId: "extension", windowId: "2", pageId: "red", contentId: "guest", title: "Fixture panel", open: true };
+  const state = {
+    extensionId: "extension",
+    windowId: "2",
+    pageId: "red",
+    contentId: "guest",
+    title: "Fixture panel",
+    open: true,
+  };
   expect(HostMethods.extensionSidePanel.args.safeParse(["describe"]).success).toBe(true);
   expect(HostMethods.extensionSidePanel.args.safeParse(["close"]).success).toBe(true);
   expect(HostMethods.extensionSidePanel.args.safeParse(["open"]).success).toBe(false);
   expect(HostMethods.extensionSidePanel.result.safeParse(null).success).toBe(true);
   expect(HostEvents.onSidePanel.payload.safeParse(state).success).toBe(true);
-  expect(HostEvents.onSidePanel.payload.safeParse({ ...state, contentId: null, open: false }).success).toBe(true);
+  expect(HostEvents.onSidePanel.payload.safeParse({ ...state, contentId: null, open: false }).success).toBe(
+    true,
+  );
   const { windowId, ...untargeted } = state;
   expect(HostEvents.onSidePanel.payload.safeParse(untargeted).success).toBe(false);
   expect(HostMethods.extensionSidePanel.result.safeParse({ ...state, token: "secret" }).success).toBe(false);

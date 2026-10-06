@@ -18,7 +18,10 @@ function trackingPage() {
     title: async () => "",
     isAttached: () => true,
     click: op,
-    extract: async () => { await op(); return { v: 1 }; },
+    extract: async () => {
+      await op();
+      return { v: 1 };
+    },
   } as unknown as DriverPage;
   return { page, state };
 }
@@ -30,14 +33,20 @@ const forEach = (body: ProgramNode[]): Program => ({
 describe("forEach concurrency on one page", () => {
   it("serializes bodies that drive the page", async () => {
     const { page, state } = trackingPage();
-    const res = await executeProgram(page, forEach([{ kind: "step", step: { id: "c", op: "click", target: "r1" } }]));
+    const res = await executeProgram(
+      page,
+      forEach([{ kind: "step", step: { id: "c", op: "click", target: "r1" } }]),
+    );
     expect(res.status).toBe("completed");
     expect(state.peak).toBe(1);
   });
 
   it("lets read-only bodies overlap", async () => {
     const { page, state } = trackingPage();
-    const res = await executeProgram(page, forEach([{ kind: "step", step: { id: "x", op: "extract", fields: [{ name: "v" }] } }]));
+    const res = await executeProgram(
+      page,
+      forEach([{ kind: "step", step: { id: "x", op: "extract", fields: [{ name: "v" }] } }]),
+    );
     expect(res.status).toBe("completed");
     expect(state.peak).toBeGreaterThan(1);
   });

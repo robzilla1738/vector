@@ -65,7 +65,12 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
   const c = self.controls.get(runId)!;
   const model = self.deps.model();
   if (!model) {
-    const failure = { category: "configuration", message: "Set up a model connection in Settings before starting this turn.", retryable: false, action: "model_settings" } as const;
+    const failure = {
+      category: "configuration",
+      message: "Set up a model connection in Settings before starting this turn.",
+      retryable: false,
+      action: "model_settings",
+    } as const;
     await self.finish(runId, "failed", undefined, failure.message, undefined, failure);
     return;
   }
@@ -93,7 +98,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     lastActionFailed: false,
     doneChallenged: false,
     appliedRevision: run.config?.messageRevision ?? 0,
-    steers: self.deps.repo.listRunSteers(runId).map(message => message.text),
+    steers: self.deps.repo.listRunSteers(runId).map((message) => message.text),
   };
   const maxSteps = run.config?.maxSteps ?? DEFAULT_MAX_STEPS;
   const maxModelCalls = run.config?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
@@ -106,7 +111,13 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     run.config = { ...run.config, lastCrashRecovery: recovery as unknown as Record<string, unknown> };
     self.deps.repo.saveRun(run);
     if (recovery.needsUserReview) {
-      await self.finish(runId, "partially_completed", undefined, "Uncertain dispatched effects need review after crash", "Needs review — already-dispatched writes were not retried");
+      await self.finish(
+        runId,
+        "partially_completed",
+        undefined,
+        "Uncertain dispatched effects need review after crash",
+        "Needs review — already-dispatched writes were not retried",
+      );
       return;
     }
   }
@@ -121,21 +132,27 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
         const latest = self.get(runId);
         const unresolved = self.durable.unresolved(runId);
         if (unresolved.length) {
-          await self.finish(runId, "interrupted", undefined,
-            `An action's outcome is uncertain (${unresolved.map(intent => intent.id).join(", ")}). Review it before continuing.`,
-            "Stopped to avoid repeating an uncertain action");
+          await self.finish(
+            runId,
+            "interrupted",
+            undefined,
+            `An action's outcome is uncertain (${unresolved.map((intent) => intent.id).join(", ")}). Review it before continuing.`,
+            "Stopped to avoid repeating an uncertain action",
+          );
           return;
         }
         const revision = latest.config?.messageRevision ?? 0;
         if (revision !== s.appliedRevision) {
           await self.deps.turnMentions.begin(runId, latest.config?.mentions ?? [], self.ownedPages(runId), {
-            workspaceId: latest.config?.contextWorkspaceId, taskId: latest.config?.taskId, taskRevision: latest.config?.taskRevision,
+            workspaceId: latest.config?.contextWorkspaceId,
+            taskId: latest.config?.taskId,
+            taskRevision: latest.config?.taskRevision,
           });
           const selected = await self.refreshPageSelection(runId);
           s.activePageId = selected.includes(s.activePageId ?? "") ? s.activePageId : selected[0];
           s.observedPages.clear();
           s.appliedRevision = revision;
-          s.steers = self.deps.repo.listRunSteers(runId).map(message => message.text);
+          s.steers = self.deps.repo.listRunSteers(runId).map((message) => message.text);
           s.notes = undefined;
           s.carriedObs = undefined;
           s.pendingObs = undefined;
@@ -182,7 +199,12 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
           if (next === "return") return;
           continue;
         }
-        if (attempt.early && (attempt.plan.status !== "continue" || (attempt.plan.pageId && attempt.plan.pageId !== s.activePageId) || !attempt.plan.steps?.length)) {
+        if (
+          attempt.early &&
+          (attempt.plan.status !== "continue" ||
+            (attempt.plan.pageId && attempt.plan.pageId !== s.activePageId) ||
+            !attempt.plan.steps?.length)
+        ) {
           attempt.early.discardPending();
           const partial = await attempt.early.finish([]);
           s.stepsRun += partial.steps.length;
@@ -195,14 +217,21 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
         // Accounting/retirement may finish after the owner has already returned
         // the page. The old aborted planning turn still cannot become a failure
         // or a retry against its stale observation merely because pause ended.
-        if (c.takeoverInterrupted && !c.abort.signal.aborted && !TERMINAL_STATUSES.has(self.get(runId).status)) {
+        if (
+          c.takeoverInterrupted &&
+          !c.abort.signal.aborted &&
+          !TERMINAL_STATUSES.has(self.get(runId).status)
+        ) {
           c.takeoverInterrupted = false;
-          s.observedPages.clear(); s.carriedObs = undefined; s.pendingObs = undefined;
+          s.observedPages.clear();
+          s.carriedObs = undefined;
+          s.pendingObs = undefined;
           resetGuards(s);
           continue;
         }
         if (c.paused && !c.abort.signal.aborted && !TERMINAL_STATUSES.has(self.get(runId).status)) continue;
-        if (hasNewSteer(s) && !c.abort.signal.aborted && !TERMINAL_STATUSES.has(self.get(runId).status)) continue;
+        if (hasNewSteer(s) && !c.abort.signal.aborted && !TERMINAL_STATUSES.has(self.get(runId).status))
+          continue;
         throw error;
       }
     }
@@ -213,10 +242,14 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     else await giveUpRepair(s, e instanceof Error ? e.message : String(e));
   } finally {
     if (c.deadlineHit && self.ownsPages(runId) && !TERMINAL_STATUSES.has(self.get(runId).status)) {
-      await withDeadline(async (signal) => {
-        s.c = { ...c, abort: controllerFor(signal), answerWaiter: undefined };
-        await finalBeforeFailing(s, `run deadline exceeded (${run.config?.deadlineMs}ms)`);
-      }, deadlineFinalMs(run.config?.deadlineMs), c.abort.signal).catch(() => false);
+      await withDeadline(
+        async (signal) => {
+          s.c = { ...c, abort: controllerFor(signal), answerWaiter: undefined };
+          await finalBeforeFailing(s, `run deadline exceeded (${run.config?.deadlineMs}ms)`);
+        },
+        deadlineFinalMs(run.config?.deadlineMs),
+        c.abort.signal,
+      ).catch(() => false);
     }
     if (c.deadlineHit && !TERMINAL_STATUSES.has(self.get(runId).status)) {
       const partial = partialResult(s.outcomes);
@@ -232,13 +265,18 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
   }
 }
 
-async function applyPlan(s: TurnState, obs: Observation, attempt: PlanAttempt): Promise<"return" | "continue"> {
+async function applyPlan(
+  s: TurnState,
+  obs: Observation,
+  attempt: PlanAttempt,
+): Promise<"return" | "continue"> {
   const { plan } = attempt;
   if (plan.status === "source") {
     await s.self.setStatus(s.runId, "running", plan.message);
     return dispatchSourcePlan(s, plan);
   }
-  if (plan.status === "done" && !plan.steps?.some((step) => isConsequential(step.op))) return settleDonePlan(s, plan, obs, attempt);
+  if (plan.status === "done" && !plan.steps?.some((step) => isConsequential(step.op)))
+    return settleDonePlan(s, plan, obs, attempt);
   if (plan.status === "needs_input") {
     return (await awaitHumanAnswer(s, plan.question ?? "Needs input")) ? "continue" : "return";
   }
@@ -269,5 +307,9 @@ async function applyPlan(s: TurnState, obs: Observation, attempt: PlanAttempt): 
   }
   s.modelErrorCount = 0;
   // a "done" carrying actions is treated as a continue: run them, then re-plan
-  return dispatchPlan(s, obs, plan.status === "done" ? { ...attempt, plan: { ...plan, status: "continue" } } : attempt);
+  return dispatchPlan(
+    s,
+    obs,
+    plan.status === "done" ? { ...attempt, plan: { ...plan, status: "continue" } } : attempt,
+  );
 }

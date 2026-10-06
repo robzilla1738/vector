@@ -7,10 +7,24 @@ const observe = (over: Partial<Parameters<typeof collectObservation>[0]> = {}) =
 
 beforeEach(() => {
   vi.stubGlobal("CSS", { escape: (value: string) => value });
-  vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 120, bottom: 32, width: 120, height: 32, toJSON: () => ({}) });
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
+    x: 0,
+    y: 0,
+    left: 0,
+    top: 0,
+    right: 120,
+    bottom: 32,
+    width: 120,
+    height: 32,
+    toJSON: () => ({}),
+  });
   delete (globalThis as { __auxStore?: unknown }).__auxStore;
 });
-afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  document.body.replaceChildren();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it("keeps a node's ref across observations and never reissues a number to another node", () => {
   document.body.innerHTML = '<button id="a">A</button><button id="b">B</button>';
@@ -38,7 +52,8 @@ it("seeds new numbers from the page-wide counter so frames never collide", () =>
 });
 
 it("interactive filter collects only actionable elements; all refs containers too (S4)", () => {
-  document.body.innerHTML = '<div class="wrapper"><button id="b">B</button><section class="panel"><a href="/x">link</a></section></div>';
+  document.body.innerHTML =
+    '<div class="wrapper"><button id="b">B</button><section class="panel"><a href="/x">link</a></section></div>';
   const interactive = observe();
   expect(interactive.elements.map((e) => e.tag).sort()).toEqual(["a", "button"]);
   const all = observe({ filter: "all" });
@@ -53,7 +68,17 @@ it("viewport filter drops interactive elements outside the viewport (S4)", () =>
   document.body.innerHTML = '<button id="in">IN</button><button id="out">OUT</button>';
   vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
     const off = this.id === "out";
-    return { x: 0, y: off ? 5000 : 0, left: 0, top: off ? 5000 : 0, right: 120, bottom: off ? 5032 : 32, width: 120, height: 32, toJSON: () => ({}) } as DOMRect;
+    return {
+      x: 0,
+      y: off ? 5000 : 0,
+      left: 0,
+      top: off ? 5000 : 0,
+      right: 120,
+      bottom: off ? 5032 : 32,
+      width: 120,
+      height: 32,
+      toJSON: () => ({}),
+    } as DOMRect;
   });
   const r = observe({ filter: "viewport" });
   expect(r.elements.map((e) => e.name)).toEqual(["IN"]);
@@ -63,9 +88,23 @@ it("viewport scope leaves offscreen elements out while interactive still lists t
   document.body.innerHTML = '<button id="in">IN</button><button id="out">OUT</button>';
   vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
     const off = this.id === "out";
-    return { x: 0, y: off ? 5000 : 0, left: 0, top: off ? 5000 : 0, right: 120, bottom: off ? 5032 : 32, width: 120, height: 32, toJSON: () => ({}) } as DOMRect;
+    return {
+      x: 0,
+      y: off ? 5000 : 0,
+      left: 0,
+      top: off ? 5000 : 0,
+      right: 120,
+      bottom: off ? 5032 : 32,
+      width: 120,
+      height: 32,
+      toJSON: () => ({}),
+    } as DOMRect;
   });
-  expect(observe().elements.map((e) => e.name).sort()).toEqual(["IN", "OUT"]);
+  expect(
+    observe()
+      .elements.map((e) => e.name)
+      .sort(),
+  ).toEqual(["IN", "OUT"]);
   expect(observe({ filter: "viewport" }).elements.map((e) => e.name)).toEqual(["IN"]);
 });
 
@@ -74,7 +113,9 @@ it("links form fields to their element refs", () => {
   const r = observe();
   const input = r.elements.find((e) => e.tag === "input");
   expect(r.formFields.find((f) => f.name === "title")?.ref).toBe(input?.ref);
-  expect(r.formFields.find((f) => f.name === "notes")?.ref).toBe(r.elements.find((e) => e.tag === "textarea")?.ref);
+  expect(r.formFields.find((f) => f.name === "notes")?.ref).toBe(
+    r.elements.find((e) => e.tag === "textarea")?.ref,
+  );
 });
 
 it("reads main text within budget, skipping hidden subtrees and scripts", () => {

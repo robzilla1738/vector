@@ -32,7 +32,12 @@ import {
   tryVisionPlan,
 } from "./coordinator-loop.js";
 
-export { verifyDoneAgainstObservation, verifyResultCitations, markUnconfirmedWrites, NAV_OPS } from "./coordinator-loop.js";
+export {
+  verifyDoneAgainstObservation,
+  verifyResultCitations,
+  markUnconfirmedWrites,
+  NAV_OPS,
+} from "./coordinator-loop.js";
 
 export interface RunControl {
   abort: AbortController;
@@ -43,7 +48,10 @@ export interface RunControl {
   deadlineHit?: boolean;
   deadlineTimer?: ReturnType<typeof setTimeout>;
   answerWaiter?: { resolve: (answer: string) => void };
-  span?: { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void };
+  span?: {
+    spanId: string;
+    end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void;
+  };
 }
 
 export interface CoordinatorDeps {
@@ -54,7 +62,9 @@ export interface CoordinatorDeps {
   pages: PageService;
   model: () => ModelClient | null;
   imageReferences?: (run: Run) => string[];
-  memoryReferences?: (run: Run) => Promise<{ url: string; title: string; capturedAt: number; text: string }[]>;
+  memoryReferences?: (
+    run: Run,
+  ) => Promise<{ url: string; title: string; capturedAt: number; text: string }[]>;
   defaultModel: () => string;
   recoveryModel: () => string | undefined;
   visionModel?: () => string | undefined;
@@ -76,12 +86,18 @@ export interface CoordinatorDeps {
   saveObservation?: (runId: string, obs: Observation) => string | undefined;
   saveCompletedReport?: (run: Run, markdown: string) => string;
   saveCompletedHtml?: (run: Run, html: string) => void;
-  saveCompletedGenerated?: (run: Run, file: import("@aux/contracts").CompletedGeneratedFile) => Promise<{artifactId:string}>;
+  saveCompletedGenerated?: (
+    run: Run,
+    file: import("@aux/contracts").CompletedGeneratedFile,
+  ) => Promise<{ artifactId: string }>;
   tracer?: {
     start(
       name: string,
       ctx?: { runId?: string; pageId?: string; attrs?: Record<string, unknown> },
-    ): { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void };
+    ): {
+      spanId: string;
+      end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void;
+    };
     incr(name: string, by?: number): void;
   };
   grants?: GrantSource;
@@ -185,9 +201,14 @@ export class RunCoordinator {
       const existing = this.deps.repo.getRun(opts.runId);
       if (existing) return existing;
     }
-    const calendarGrantIds = opts.calendarGrantIds ?? (opts.taskId && opts.taskRevision && this.deps.calendar
-      ? this.deps.calendar.taskGrants(opts.taskId).filter(grant => grant.taskRevision === opts.taskRevision).map(grant => grant.grantId)
-      : undefined);
+    const calendarGrantIds =
+      opts.calendarGrantIds ??
+      (opts.taskId && opts.taskRevision && this.deps.calendar
+        ? this.deps.calendar
+            .taskGrants(opts.taskId)
+            .filter((grant) => grant.taskRevision === opts.taskRevision)
+            .map((grant) => grant.grantId)
+        : undefined);
     const leaseKey = opts.taskId ? `task:${opts.taskId}` : undefined;
     if (leaseKey) {
       this.leases.acquire(leaseKey, this.leaseOwner);
@@ -231,7 +252,8 @@ export class RunCoordinator {
         subagentProfile: opts.subagentProfile,
         calendarGrantIds,
         retryOfRunId: opts.retryOfRunId,
-        implementation: opts.engine === "agent-loop" ? "agent-loop" : opts.modelId ? `agent:${opts.modelId}` : "agent",
+        implementation:
+          opts.engine === "agent-loop" ? "agent-loop" : opts.modelId ? `agent:${opts.modelId}` : "agent",
       },
       createdAt: Date.now(),
     };
@@ -248,16 +270,21 @@ export class RunCoordinator {
         attrs: { goal: opts.goal.slice(0, 120), pages: opts.pageIds.length, modelId: opts.modelId },
       }),
     };
-    if (run.config?.deadlineMs) control.deadlineTimer = setTimeout(() => {
-      if (control.abort.signal.aborted) return;
-      control.deadlineHit = true;
-      control.abort.abort();
-      control.answerWaiter?.resolve("");
-    }, run.config.deadlineMs);
+    if (run.config?.deadlineMs)
+      control.deadlineTimer = setTimeout(() => {
+        if (control.abort.signal.aborted) return;
+        control.deadlineHit = true;
+        control.abort.abort();
+        control.answerWaiter?.resolve("");
+      }, run.config.deadlineMs);
     this.controls.set(run.runId, control);
     this.deps.tracer?.incr("run.started");
     void this.loop(run.runId).catch(async (e) => {
-      const error = control.deadlineHit ? `run deadline exceeded (${run.config?.deadlineMs}ms)` : e instanceof Error ? e.message : String(e);
+      const error = control.deadlineHit
+        ? `run deadline exceeded (${run.config?.deadlineMs}ms)`
+        : e instanceof Error
+          ? e.message
+          : String(e);
       await this.finish(run.runId, "failed", undefined, error, error);
       this.controls.delete(run.runId);
     });
@@ -312,24 +339,28 @@ export class RunCoordinator {
   }
 
   async refreshPageSelection(runId: string): Promise<string[]> {
-    return withRunAuthorityMutation(this.deps.repo, async () => {
-    const token = this.deps.turnMentions.capture(runId);
-    const run = this.get(runId);
-    this.releasePages(runId);
-    if (run.config?.mentions?.length) run.pageIds = this.deps.turnMentions.selectedPages(runId);
-    else {
-      const steer = this.deps.repo.listRunSteers(runId).at(-1);
-      if (steer) run.pageIds = [...steer.pageIds];
-    }
-    run.config = { ...run.config, isolatedPageSources: undefined };
-    this.deps.repo.saveRun(run);
-    await this.acquirePages(runId);
-    if (!this.deps.turnMentions.has(runId) || this.deps.turnMentions.capture(runId) !== token) {
-      this.releasePages(runId);
-      throw new AuxError("conflict", "This turn changed while acquiring its newly selected pages.");
-    }
-    return [...this.get(runId).pageIds];
-    }, runId);
+    return withRunAuthorityMutation(
+      this.deps.repo,
+      async () => {
+        const token = this.deps.turnMentions.capture(runId);
+        const run = this.get(runId);
+        this.releasePages(runId);
+        if (run.config?.mentions?.length) run.pageIds = this.deps.turnMentions.selectedPages(runId);
+        else {
+          const steer = this.deps.repo.listRunSteers(runId).at(-1);
+          if (steer) run.pageIds = [...steer.pageIds];
+        }
+        run.config = { ...run.config, isolatedPageSources: undefined };
+        this.deps.repo.saveRun(run);
+        await this.acquirePages(runId);
+        if (!this.deps.turnMentions.has(runId) || this.deps.turnMentions.capture(runId) !== token) {
+          this.releasePages(runId);
+          throw new AuxError("conflict", "This turn changed while acquiring its newly selected pages.");
+        }
+        return [...this.get(runId).pageIds];
+      },
+      runId,
+    );
   }
 
   pageSourceCheck(runId: string, pageId: string): () => void {
@@ -344,20 +375,39 @@ export class RunCoordinator {
       const run = this.get(runId);
       const control = this.controls.get(runId);
       const owner = this.pageOwnership.snapshot()[pageId];
-      if (!control || control.abort.signal.aborted || !owner || owner.actor !== "coordinator" || owner.runId !== runId ||
+      if (
+        !control ||
+        control.abort.signal.aborted ||
+        !owner ||
+        owner.actor !== "coordinator" ||
+        owner.runId !== runId ||
         (!run.pageIds.includes(pageId) && !this.ownedPages(runId).includes(pageId)) ||
-        run.config?.messageRevision !== revision || run.config?.taskId !== taskId || run.config?.taskRevision !== taskRevision)
+        run.config?.messageRevision !== revision ||
+        run.config?.taskId !== taskId ||
+        run.config?.taskRevision !== taskRevision
+      )
         throw new AuxError("permission_denied", "This run's approved source or page lease changed.");
       if (taskId) {
         const current = this.deps.taskSource?.(taskId);
-        if (!current || current.state !== "open" || current.revision !== taskRevision || current.sourceOrigin !== source?.sourceOrigin)
+        if (
+          !current ||
+          current.state !== "open" ||
+          current.revision !== taskRevision ||
+          current.sourceOrigin !== source?.sourceOrigin
+        )
           throw new AuxError("permission_denied", "This task's current source approval changed.");
       }
     };
   }
 
   usePage<T>(runId: string, pageId: string, access: "read" | "act", dispatch: () => Promise<T>): Promise<T> {
-    return this.deps.turnMentions.useSourcePage(runId, pageId, access, this.pageSourceCheck(runId, pageId), dispatch);
+    return this.deps.turnMentions.useSourcePage(
+      runId,
+      pageId,
+      access,
+      this.pageSourceCheck(runId, pageId),
+      dispatch,
+    );
   }
 
   assertPage(runId: string, pageId: string, access: "read" | "act"): Promise<void> {
@@ -385,56 +435,89 @@ export class RunCoordinator {
     c.answerWaiter?.resolve("");
   }
 
-  async answerWithMentions(runId: string, answer: string, mentions: readonly import("@aux/contracts").MentionRef[], recheck: () => void): Promise<Run> {
-    return withRunAuthorityMutation(this.deps.repo, async () => {
-      const run = this.get(runId);
-      const owned = this.ownedPages(runId);
-      return this.deps.turnMentions.acknowledge(runId, mentions, owned, {
-        workspaceId: run.config?.contextWorkspaceId, taskId: run.config?.taskId, taskRevision: run.config?.taskRevision,
-      }, validated => {
-        recheck();
-        const current = this.get(runId);
-        current.config = { ...current.config, mentions: [...validated], messageRevision: (current.config?.messageRevision ?? 0) + 1 };
-        this.deps.repo.saveRun(current);
-        return this.answer(runId, answer);
-      });
-    }, runId);
+  async answerWithMentions(
+    runId: string,
+    answer: string,
+    mentions: readonly import("@aux/contracts").MentionRef[],
+    recheck: () => void,
+  ): Promise<Run> {
+    return withRunAuthorityMutation(
+      this.deps.repo,
+      async () => {
+        const run = this.get(runId);
+        const owned = this.ownedPages(runId);
+        return this.deps.turnMentions.acknowledge(
+          runId,
+          mentions,
+          owned,
+          {
+            workspaceId: run.config?.contextWorkspaceId,
+            taskId: run.config?.taskId,
+            taskRevision: run.config?.taskRevision,
+          },
+          (validated) => {
+            recheck();
+            const current = this.get(runId);
+            current.config = {
+              ...current.config,
+              mentions: [...validated],
+              messageRevision: (current.config?.messageRevision ?? 0) + 1,
+            };
+            this.deps.repo.saveRun(current);
+            return this.answer(runId, answer);
+          },
+        );
+      },
+      runId,
+    );
   }
 
   async answer(runId: string, answer: string): Promise<Run> {
-    return withRunAuthorityMutation(this.deps.repo, async () => {
-      const c = this.controls.get(runId);
-      const run = this.get(runId);
-      if (run.status === "needs_input") await this.setStatus(runId, "running", `Answer received`);
-      this.answers.set(runId, answer);
-      c?.answerWaiter?.resolve(answer);
-      return this.get(runId);
-    }, runId);
+    return withRunAuthorityMutation(
+      this.deps.repo,
+      async () => {
+        const c = this.controls.get(runId);
+        const run = this.get(runId);
+        if (run.status === "needs_input") await this.setStatus(runId, "running", `Answer received`);
+        this.answers.set(runId, answer);
+        c?.answerWaiter?.resolve(answer);
+        return this.get(runId);
+      },
+      runId,
+    );
   }
 
   async setStatus(runId: string, status: Run["status"], message?: string) {
-    const mutate = status === "paused" || TERMINAL_STATUSES.has(status) ? withRunDispatchMutation : withRunAuthorityMutation;
-    await mutate(this.deps.repo, async () => {
-    const run = this.get(runId);
-    if (this.controls.get(runId)?.paused && (status === "running" || status === "planning")) {
-      status = "paused";
-      message = "Paused — active work is finishing";
-    }
-    run.status = status;
-    if (message !== undefined) run.statusMessage = message;
-    this.deps.repo.saveRun(run);
-    this.persistCheckpoint(run);
-    this.deps.events.emit(EventTypes.RunStatus, { runId, status, message }, runId);
-    this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
-
-    }, runId);
+    const mutate =
+      status === "paused" || TERMINAL_STATUSES.has(status)
+        ? withRunDispatchMutation
+        : withRunAuthorityMutation;
+    await mutate(
+      this.deps.repo,
+      async () => {
+        const run = this.get(runId);
+        if (this.controls.get(runId)?.paused && (status === "running" || status === "planning")) {
+          status = "paused";
+          message = "Paused — active work is finishing";
+        }
+        run.status = status;
+        if (message !== undefined) run.statusMessage = message;
+        this.deps.repo.saveRun(run);
+        this.persistCheckpoint(run);
+        this.deps.events.emit(EventTypes.RunStatus, { runId, status, message }, runId);
+        this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+      },
+      runId,
+    );
   }
 
   persistCheckpoint(run: Run) {
-    const unresolvedEffects = [...new Set([
-      ...(this.unresolvedByRun.get(run.runId) ?? []),
-      ...this.durable.unresolved(run.runId).map(intent => intent.id),
-    ])];
+    const unresolvedEffects = [
+      ...new Set([
+        ...(this.unresolvedByRun.get(run.runId) ?? []),
+        ...this.durable.unresolved(run.runId).map((intent) => intent.id),
+      ]),
+    ];
     const checkpoint = {
       planBoundary: run.status,
       unresolvedEffects,
@@ -446,71 +529,105 @@ export class RunCoordinator {
     this.deps.repo.saveRun(run);
     this.deps.repo.saveCheckpoint(`run:${run.runId}`, "coordinator", checkpoint);
     const taskKey = run.config?.taskId ? `task:${run.config.taskId}` : undefined;
-    try { if (taskKey && this.heldLeases.has(taskKey)) this.leases.refresh(taskKey, this.leaseOwner); } catch { /* fenced owners stop at finish */ }
+    try {
+      if (taskKey && this.heldLeases.has(taskKey)) this.leases.refresh(taskKey, this.leaseOwner);
+    } catch {
+      /* fenced owners stop at finish */
+    }
   }
 
-  async finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]) {
-    await withRunDispatchMutation(this.deps.repo, async () => {
-    this.deps.turnMentions.end(runId);
-    this.createdPages.delete(runId);
-    const run = this.get(runId);
-    if (run.status === "cancelled") return;
-    const unresolved = this.durable.unresolved(runId);
-    if (unresolved.length) {
-      if (status === "completed") result = undefined;
-      if (["completed", "partially_completed", "failed"].includes(status)) status = "interrupted";
-      error = `Uncertain action outcome (${unresolved.map(intent => intent.id).join(", ")}). Reconciliation is required.${error ? ` ${error}` : ""}`;
-      message = "Stopped with an uncertain outcome; no automatic retry";
-    }
-    run.status = status;
-    if (result) { result = { ...result }; delete result.automaticReportArtifactId; }
-    run.result = result;
-    run.error = error;
-    run.failure = failure;
-    run.endedAt = Date.now();
-    if (message !== undefined) run.statusMessage = message;
-    run.config = { ...run.config, modelCalls: this.deps.repo.listModelCalls(runId).length };
-    this.deps.repo.saveRun(run);
-    this.persistCheckpoint(run);
-    this.suspensions.resolveRun(runId, "cancelled");
-    if (status === "completed" && run.config?.chatId &&
-      ((typeof result?.report === "string" && result.report.trim()) || (typeof result?.html === "string" && result.html.trim()))) {
-      try {
-        if (typeof result?.report === "string" && result.report.trim()) {
-          const artifactId = this.deps.saveCompletedReport?.(run, result.report);
-          if (artifactId) { run.result = { ...run.result, automaticReportArtifactId: artifactId }; this.deps.repo.saveRun(run); }
+  async finish(
+    runId: string,
+    status: Run["status"],
+    result?: Record<string, unknown>,
+    error?: string,
+    message?: string,
+    failure?: Run["failure"],
+  ) {
+    await withRunDispatchMutation(
+      this.deps.repo,
+      async () => {
+        this.deps.turnMentions.end(runId);
+        this.createdPages.delete(runId);
+        const run = this.get(runId);
+        if (run.status === "cancelled") return;
+        const unresolved = this.durable.unresolved(runId);
+        if (unresolved.length) {
+          if (status === "completed") result = undefined;
+          if (["completed", "partially_completed", "failed"].includes(status)) status = "interrupted";
+          error = `Uncertain action outcome (${unresolved.map((intent) => intent.id).join(", ")}). Reconciliation is required.${error ? ` ${error}` : ""}`;
+          message = "Stopped with an uncertain outcome; no automatic retry";
         }
-        if (typeof result?.html === "string" && result.html.trim()) this.deps.saveCompletedHtml?.(run, result.html);
-      }
-      catch (cause) {
-        run.status = "partially_completed";
-        run.error = `The generated result could not be saved: ${cause instanceof Error ? cause.message : String(cause)}`;
-        run.statusMessage = "A generated result could not be saved";
+        run.status = status;
+        if (result) {
+          result = { ...result };
+          delete result.automaticReportArtifactId;
+        }
+        run.result = result;
+        run.error = error;
+        run.failure = failure;
+        run.endedAt = Date.now();
+        if (message !== undefined) run.statusMessage = message;
+        run.config = { ...run.config, modelCalls: this.deps.repo.listModelCalls(runId).length };
+        this.deps.repo.saveRun(run);
         this.persistCheckpoint(run);
-        status = run.status;
-        error = run.error;
-      }
-    }
-    this.deps.events.emit(EventTypes.RunStatus, { runId, status, error }, runId);
-    this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
-    const span = this.controls.get(runId)?.span;
-    const timer = this.controls.get(runId)?.deadlineTimer;
-    if (timer) clearTimeout(timer);
-    if (span) {
-      span.end(
-        status === "completed" ? "ok" : status === "cancelled" || status === "interrupted" ? "cancelled" : "failed",
-        { status, durationMs: run.startedAt ? Date.now() - run.startedAt : undefined, error },
-      );
-      this.controls.get(runId)!.span = undefined;
-    }
-    this.deps.tracer?.incr(`run.${status}`);
-    for (const pageId of run.pageIds) this.deps.pages.releaseAgent?.(pageId);
-    const taskKey = run.config?.taskId ? `task:${run.config.taskId}` : undefined;
-    const runKey = `run:${runId}`;
-    if (taskKey && this.heldLeases.has(taskKey)) { this.leases.release(taskKey, this.leaseOwner); this.heldLeases.delete(taskKey); }
-    if (this.heldLeases.has(runKey)) { this.leases.release(runKey, this.leaseOwner); this.heldLeases.delete(runKey); }
-
-    }, runId);
+        this.suspensions.resolveRun(runId, "cancelled");
+        if (
+          status === "completed" &&
+          run.config?.chatId &&
+          ((typeof result?.report === "string" && result.report.trim()) ||
+            (typeof result?.html === "string" && result.html.trim()))
+        ) {
+          try {
+            if (typeof result?.report === "string" && result.report.trim()) {
+              const artifactId = this.deps.saveCompletedReport?.(run, result.report);
+              if (artifactId) {
+                run.result = { ...run.result, automaticReportArtifactId: artifactId };
+                this.deps.repo.saveRun(run);
+              }
+            }
+            if (typeof result?.html === "string" && result.html.trim())
+              this.deps.saveCompletedHtml?.(run, result.html);
+          } catch (cause) {
+            run.status = "partially_completed";
+            run.error = `The generated result could not be saved: ${cause instanceof Error ? cause.message : String(cause)}`;
+            run.statusMessage = "A generated result could not be saved";
+            this.persistCheckpoint(run);
+            status = run.status;
+            error = run.error;
+          }
+        }
+        this.deps.events.emit(EventTypes.RunStatus, { runId, status, error }, runId);
+        this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+        const span = this.controls.get(runId)?.span;
+        const timer = this.controls.get(runId)?.deadlineTimer;
+        if (timer) clearTimeout(timer);
+        if (span) {
+          span.end(
+            status === "completed"
+              ? "ok"
+              : status === "cancelled" || status === "interrupted"
+                ? "cancelled"
+                : "failed",
+            { status, durationMs: run.startedAt ? Date.now() - run.startedAt : undefined, error },
+          );
+          this.controls.get(runId)!.span = undefined;
+        }
+        this.deps.tracer?.incr(`run.${status}`);
+        for (const pageId of run.pageIds) this.deps.pages.releaseAgent?.(pageId);
+        const taskKey = run.config?.taskId ? `task:${run.config.taskId}` : undefined;
+        const runKey = `run:${runId}`;
+        if (taskKey && this.heldLeases.has(taskKey)) {
+          this.leases.release(taskKey, this.leaseOwner);
+          this.heldLeases.delete(taskKey);
+        }
+        if (this.heldLeases.has(runKey)) {
+          this.leases.release(runKey, this.leaseOwner);
+          this.heldLeases.delete(runKey);
+        }
+      },
+      runId,
+    );
   }
 
   async waitIfPaused(c: RunControl, runId: string) {
@@ -530,7 +647,12 @@ export class RunCoordinator {
     }
     this.releasePages(runId, true);
     const answer = await new Promise<string>((resolve) => {
-      c.answerWaiter = { resolve: answer => { c.answerWaiter = undefined; resolve(answer); } };
+      c.answerWaiter = {
+        resolve: (answer) => {
+          c.answerWaiter = undefined;
+          resolve(answer);
+        },
+      };
     });
     if (!c.abort.signal.aborted) await this.acquirePages(runId);
     return answer;
@@ -565,7 +687,9 @@ export class RunCoordinator {
     try {
       const run = this.get(runId);
       await this.deps.turnMentions.begin(runId, run.config?.mentions ?? [], this.ownedPages(runId), {
-        workspaceId: run.config?.contextWorkspaceId, taskId: run.config?.taskId, taskRevision: run.config?.taskRevision,
+        workspaceId: run.config?.contextWorkspaceId,
+        taskId: run.config?.taskId,
+        taskRevision: run.config?.taskRevision,
       });
       if (run.config?.mentions?.length) {
         run.pageIds = this.deps.turnMentions.selectedPages(runId);
@@ -594,59 +718,90 @@ export class RunCoordinator {
       if (this.deps.browserEgress) {
         // Protect run context before even the first controlled navigation.
         const memoryOffset = run.config?.context?.indexOf("SPACE MEMORY SUMMARY") ?? -1;
-        if (memoryOffset >= 0) this.deps.browserEgress.protect(runId, run.config!.context!.slice(memoryOffset), "memory");
+        if (memoryOffset >= 0)
+          this.deps.browserEgress.protect(runId, run.config!.context!.slice(memoryOffset), "memory");
         if (run.config?.contextWorkspaceId && run.config.instructions)
           this.deps.browserEgress.protect(runId, run.config.instructions, "memory");
       }
-      if (this.deps.browserEgress && !run.config?.isolatedPageSources && !(run.config?.mentions?.length)) {
+      if (this.deps.browserEgress && !run.config?.isolatedPageSources && !run.config?.mentions?.length) {
         const sources: NonNullable<NonNullable<Run["config"]>["isolatedPageSources"]> = [];
         for (const sourcePageId of run.pageIds) {
-          if (control.abort.signal.aborted) throw new AuxError("cancelled", "Run cancelled before opening its temporary tab.");
+          if (control.abort.signal.aborted)
+            throw new AuxError("cancelled", "Run cancelled before opening its temporary tab.");
           const source = browserContextPage(() => this.deps.pages.get(sourcePageId));
           // An empty tab grants no destination. The tool loop must choose an
           // exact HTTP(S) URL before openTab creates any actionable document.
           if (source.url === "about:blank") continue;
           const agentScope = await this.deps.browserEgress.creationScope(runId, sourcePageId);
-          const copy = await this.deps.pages.open({ url: agentScope.source!.expectedUrl,
-            windowId: source.windowId, background: true, ownedByRuntime: true, agentScope,
+          const copy = await this.deps.pages.open({
+            url: agentScope.source!.expectedUrl,
+            windowId: source.windowId,
+            background: true,
+            ownedByRuntime: true,
+            agentScope,
             signal: control.abort.signal,
-            beforeNavigate: async target => { releases.push(await this.claimPage(runId, target.pageId, agentScope.source!.expectedUrl)); },
+            beforeNavigate: async (target) => {
+              releases.push(await this.claimPage(runId, target.pageId, agentScope.source!.expectedUrl));
+            },
           });
           opened.push(structuredClone(copy));
           this.ownPage(runId, copy.pageId);
           sources.push({ sourcePageId, pageId: copy.pageId, url: agentScope.source!.expectedUrl });
         }
-        if (control.abort.signal.aborted) throw new AuxError("cancelled", "Run cancelled while opening its temporary tab.");
+        if (control.abort.signal.aborted)
+          throw new AuxError("cancelled", "Run cancelled while opening its temporary tab.");
         if (!sources.length && run.config?.implementation !== "agent-loop")
-          throw new AuxError("capability_unsupported", "This planner needs a website to open in a protected temporary tab. Choose a website before starting.");
+          throw new AuxError(
+            "capability_unsupported",
+            "This planner needs a website to open in a protected temporary tab. Choose a website before starting.",
+          );
         const current = this.get(runId);
-        if (this.controls.get(runId) !== control || TERMINAL_STATUSES.has(current.status)
-          || current.config?.taskId !== run.config?.taskId || current.config?.taskRevision !== run.config?.taskRevision
-          || current.config?.messageRevision !== run.config?.messageRevision
-          || JSON.stringify(current.pageIds) !== JSON.stringify(run.pageIds))
+        if (
+          this.controls.get(runId) !== control ||
+          TERMINAL_STATUSES.has(current.status) ||
+          current.config?.taskId !== run.config?.taskId ||
+          current.config?.taskRevision !== run.config?.taskRevision ||
+          current.config?.messageRevision !== run.config?.messageRevision ||
+          JSON.stringify(current.pageIds) !== JSON.stringify(run.pageIds)
+        )
           throw new AuxError("ref_stale", "The original run changed while opening its temporary tabs.");
-        current.pageIds = sources.map(source => source.pageId);
+        current.pageIds = sources.map((source) => source.pageId);
         current.config = { ...current.config, isolatedPageSources: sources };
         this.deps.repo.saveRun(current);
         this.deps.events.emit(EventTypes.RunUpdated, { run: current }, runId);
       } else {
-        releases.push(await this.pageOwnership.acquireMany(run.pageIds,
-          { actor: "coordinator", runId }, control.abort.signal));
-        const humanHeld = run.pageIds.find(pageId => this.deps.pages.get(pageId).controller === "human");
+        releases.push(
+          await this.pageOwnership.acquireMany(
+            run.pageIds,
+            { actor: "coordinator", runId },
+            control.abort.signal,
+          ),
+        );
+        const humanHeld = run.pageIds.find((pageId) => this.deps.pages.get(pageId).controller === "human");
         if (humanHeld) throw new AuxError("conflict", `Page ${humanHeld} is under human control`);
         for (const pageId of run.pageIds) await this.deps.browserEgress?.acquire(runId, pageId);
       }
-      if (control.abort.signal.aborted) throw new AuxError("cancelled", "run cancelled while waiting for a page");
-      this.pageReleases.set(runId, () => { for (const release of releases.slice().reverse()) release(); });
+      if (control.abort.signal.aborted)
+        throw new AuxError("cancelled", "run cancelled while waiting for a page");
+      this.pageReleases.set(runId, () => {
+        for (const release of releases.slice().reverse()) release();
+      });
     } catch (error) {
       this.deps.browserEgress?.revokeRun(runId);
       for (const release of releases.reverse()) release();
       const cleanupErrors: unknown[] = [];
       for (const page of opened) {
-        try { await closeCreatedPage(this.deps.pages, page, runId); }
-        catch (cleanup) { cleanupErrors.push(cleanup); }
+        try {
+          await closeCreatedPage(this.deps.pages, page, runId);
+        } catch (cleanup) {
+          cleanupErrors.push(cleanup);
+        }
       }
-      if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], "Page acquisition failed and original native cleanup remains unresolved.");
+      if (cleanupErrors.length)
+        throw new AggregateError(
+          [error, ...cleanupErrors],
+          "Page acquisition failed and original native cleanup remains unresolved.",
+        );
       throw error;
     }
   }
@@ -659,16 +814,27 @@ export class RunCoordinator {
     release?.();
   }
 
-  ownsPages(runId: string): boolean { return this.pageReleases.has(runId); }
+  ownsPages(runId: string): boolean {
+    return this.pageReleases.has(runId);
+  }
 
   async claimPage(runId: string, pageId: string, initialDestination?: string): Promise<() => void> {
     const control = this.controls.get(runId);
     if (!control) throw new AuxError("cancelled", "run has ended");
-    const release = await this.pageOwnership.acquire({ pageId, actor: "coordinator", runId }, control.abort.signal);
+    const release = await this.pageOwnership.acquire(
+      { pageId, actor: "coordinator", runId },
+      control.abort.signal,
+    );
     try {
       const revoke = await this.deps.browserEgress?.acquire(runId, pageId, initialDestination);
-      return () => { revoke?.(); release(); };
-    } catch (error) { release(); throw error; }
+      return () => {
+        revoke?.();
+        release();
+      };
+    } catch (error) {
+      release();
+      throw error;
+    }
   }
 
   async failActive(reason: string): Promise<string[]> {
@@ -689,13 +855,21 @@ export class RunCoordinator {
   async markInterrupted() {
     for (const run of this.deps.repo.listRuns(200)) {
       if (["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) {
-        await withRunDispatchMutation(this.deps.repo, async () => {
-          const current = this.deps.repo.getRun(run.runId);
-          if (!current || !["queued", "planning", "running", "paused", "needs_input"].includes(current.status)) return;
-          current.status = "interrupted";
-          current.endedAt = Date.now();
-          this.deps.repo.saveRun(current);
-        }, run.runId);
+        await withRunDispatchMutation(
+          this.deps.repo,
+          async () => {
+            const current = this.deps.repo.getRun(run.runId);
+            if (
+              !current ||
+              !["queued", "planning", "running", "paused", "needs_input"].includes(current.status)
+            )
+              return;
+            current.status = "interrupted";
+            current.endedAt = Date.now();
+            this.deps.repo.saveRun(current);
+          },
+          run.runId,
+        );
       }
     }
   }

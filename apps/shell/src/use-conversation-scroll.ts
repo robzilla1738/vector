@@ -10,19 +10,26 @@ export function useConversationScroll(id: string | null) {
   const [awayFromLatest, setAwayFromLatest] = useState(false);
   const position = useRef<Position>({ follow: true, fraction: 0, top: 0 });
   const capture = () => {
-    const scroll = scrollRef.current, thread = threadRef.current;
+    const scroll = scrollRef.current,
+      thread = threadRef.current;
     if (!scroll || !thread) return;
     const top = scroll.getBoundingClientRect().top;
-    const turn = [...thread.querySelectorAll<HTMLElement>("[data-turn-id]")].find(turn => turn.getBoundingClientRect().bottom > top);
+    const turn = [...thread.querySelectorAll<HTMLElement>("[data-turn-id]")].find(
+      (turn) => turn.getBoundingClientRect().bottom > top,
+    );
     const bounds = turn?.getBoundingClientRect();
-    position.current = { follow: scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 96,
-      top: scroll.scrollTop, turn: turn?.dataset.turnId,
-      fraction: bounds?.height ? (top - bounds.top) / bounds.height : 0 };
+    position.current = {
+      follow: scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 96,
+      top: scroll.scrollTop,
+      turn: turn?.dataset.turnId,
+      fraction: bounds?.height ? (top - bounds.top) / bounds.height : 0,
+    };
     setAwayFromLatest(!position.current.follow);
   };
 
   useLayoutEffect(() => {
-    const scroll = scrollRef.current, thread = threadRef.current;
+    const scroll = scrollRef.current,
+      thread = threadRef.current;
     if (!scroll || !thread) return;
     position.current = (id && positions.get(id)) || { follow: true, fraction: 0, top: 0 };
     setAwayFromLatest(!position.current.follow);
@@ -30,21 +37,27 @@ export function useConversationScroll(id: string | null) {
       const saved = position.current;
       if (saved.follow) scroll.scrollTop = scroll.scrollHeight;
       else {
-        const turn = [...thread.querySelectorAll<HTMLElement>("[data-turn-id]")].find(turn => turn.dataset.turnId === saved.turn);
+        const turn = [...thread.querySelectorAll<HTMLElement>("[data-turn-id]")].find(
+          (turn) => turn.dataset.turnId === saved.turn,
+        );
         if (turn) {
           const bounds = turn.getBoundingClientRect();
-          scroll.scrollTop += bounds.top - scroll.getBoundingClientRect().top + saved.fraction * bounds.height;
+          scroll.scrollTop +=
+            bounds.top - scroll.getBoundingClientRect().top + saved.fraction * bounds.height;
         } else if (!saved.turn) scroll.scrollTop = saved.top;
       }
     };
     restore();
     const observer = new ResizeObserver(restore);
-    observer.observe(thread); observer.observe(scroll);
+    observer.observe(thread);
+    observer.observe(scroll);
     scroll.addEventListener("scroll", capture, { passive: true });
     return () => {
-      observer.disconnect(); scroll.removeEventListener("scroll", capture);
+      observer.disconnect();
+      scroll.removeEventListener("scroll", capture);
       if (id) {
-        positions.delete(id); positions.set(id, position.current);
+        positions.delete(id);
+        positions.set(id, position.current);
         if (positions.size > 100) positions.delete(positions.keys().next().value!);
       }
     };

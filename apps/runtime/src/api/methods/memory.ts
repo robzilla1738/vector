@@ -6,8 +6,17 @@ import { advanceManagedRecoveryGeneration } from "../../services/managed-recover
 import { attemptFreshManagedBackup } from "../../services/runtime-backup.js";
 
 async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
-  if (ctx.client.external || ctx.client.codeMode) throw new AuxError("permission_denied", "Space memory is managed in Aux.");
-  if (["memory.pipeline.setPolicy", "memory.pipeline.revert", "memory.pipeline.review", "memory.pipeline.forget"].includes(ctx.method)) return withRunAuthorityMutation(ctx.s.repo, () => retired_h_memory_pipeline_policy(ctx));
+  if (ctx.client.external || ctx.client.codeMode)
+    throw new AuxError("permission_denied", "Space memory is managed in Aux.");
+  if (
+    [
+      "memory.pipeline.setPolicy",
+      "memory.pipeline.revert",
+      "memory.pipeline.review",
+      "memory.pipeline.forget",
+    ].includes(ctx.method)
+  )
+    return withRunAuthorityMutation(ctx.s.repo, () => retired_h_memory_pipeline_policy(ctx));
   return retired_h_memory_pipeline_policy(ctx);
 }
 
@@ -22,7 +31,8 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
     return value;
   };
   if (method === "memory.pipeline.policy") return pipeline.policy(params.workspaceId);
-  if (method === "memory.pipeline.setPolicy") return changed(pipeline.setPolicy(params.workspaceId, params.enabled));
+  if (method === "memory.pipeline.setPolicy")
+    return changed(pipeline.setPolicy(params.workspaceId, params.enabled));
   if (method === "memory.pipeline.extractRun") {
     const result = await pipeline.extractRun(params.workspaceId, params.runId);
     return result.extracted ? changed(result) : result;
@@ -31,8 +41,10 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
   if (method === "memory.pipeline.inbox") return pipeline.inbox(params.workspaceId);
   if (method === "memory.pipeline.claims") return pipeline.claims(params.workspaceId);
   if (method === "memory.pipeline.history") return pipeline.history(params.workspaceId);
-  if (method === "memory.pipeline.revert") return changed(await pipeline.revert(params.workspaceId, params.revisionId));
-  if (method === "memory.pipeline.review") return changed(await pipeline.review(params.workspaceId, params.claimId, params.decision));
+  if (method === "memory.pipeline.revert")
+    return changed(await pipeline.revert(params.workspaceId, params.revisionId));
+  if (method === "memory.pipeline.review")
+    return changed(await pipeline.review(params.workspaceId, params.claimId, params.decision));
   if (method === "memory.pipeline.overview") return pipeline.overview(params.workspaceId);
   if (method === "memory.pipeline.search") return pipeline.search(params.workspaceId, params.query);
   let advanced = false;
@@ -45,7 +57,10 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
     });
   } catch (error) {
     if (advanced)
-      throw new AuxError("conflict", "Memory removal could not be confirmed. Older managed backups were invalidated; review Memory and create a fresh local backup.");
+      throw new AuxError(
+        "conflict",
+        "Memory removal could not be confirmed. Older managed backups were invalidated; review Memory and create a fresh local backup.",
+      );
     throw error;
   }
   const response = result.forgotten ? changed(result) : result;
@@ -56,14 +71,16 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
 function pastePipeline(ctx: MethodCtx) {
   if (ctx.client.external || ctx.client.codeMode)
     throw new AuxError("permission_denied", "Pasted Memory is reviewed in Aux.");
-  if (!ctx.s.memoryPipeline) throw new AuxError("backend_unavailable", "Protected Memory requires the Aux desktop app.");
+  if (!ctx.s.memoryPipeline)
+    throw new AuxError("backend_unavailable", "Protected Memory requires the Aux desktop app.");
   return ctx.s.memoryPipeline;
 }
 async function h_memory_paste_preview(ctx: MethodCtx): Promise<unknown> {
   return pastePipeline(ctx).previewPaste(MethodSchemas["memory.paste.preview"].parse(ctx.params));
 }
 async function h_memory_paste_commit(ctx: MethodCtx): Promise<unknown> {
-  const pipeline = pastePipeline(ctx), input = MethodSchemas["memory.paste.commit"].parse(ctx.params);
+  const pipeline = pastePipeline(ctx),
+    input = MethodSchemas["memory.paste.commit"].parse(ctx.params);
   const result = await pipeline.commitPaste(input);
   ctx.s.events.emit("workspace.memory.updated", { workspaceId: input.workspaceId });
   return result;

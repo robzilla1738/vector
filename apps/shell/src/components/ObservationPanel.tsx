@@ -2,7 +2,10 @@ import { smallGhostButtonProps } from "../ui/button-props";
 import { memo, useMemo, useState } from "react";
 import type { CompactObservation } from "@aux/contracts";
 import { shellIconCopy, shellIconRight } from "./icons";
-import { staticNumericCountProps as auxClassNumericCountProps, staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
+import {
+  staticNumericCountProps as auxClassNumericCountProps,
+  staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps,
+} from "../ui/class-props";
 
 interface ParsedObs {
   header: string[];
@@ -48,7 +51,15 @@ function RefLine({ line }: { line: string }) {
   );
 }
 
-const ObsSection = memo(function ObsSection({ name, lines, startOpen }: { name: string; lines: string[]; startOpen: boolean }) {
+const ObsSection = memo(function ObsSection({
+  name,
+  lines,
+  startOpen,
+}: {
+  name: string;
+  lines: string[];
+  startOpen: boolean;
+}) {
   const [open, setOpen] = useState(startOpen);
   const [limit, setLimit] = useState(80);
   const isRefs = /interactive|form|links|tables/i.test(name);
@@ -62,8 +73,22 @@ const ObsSection = memo(function ObsSection({ name, lines, startOpen }: { name: 
       </button>
       {open && (
         <ul className={`obs-lines ${isRefs ? "refs" : ""} ${isHeadings ? "headings" : ""}`}>
-          {lines.slice(0, limit).map((l, i) => (isRefs ? <RefLine key={i} line={l} /> : <li key={i} className="obs-text">{l.replace(/^-\s*/, "")}</li>))}
-          {lines.length > limit && <li className="obs-more"><button {...smallGhostButtonProps} onClick={() => setLimit(value => value + 80)}>Show {Math.min(80, lines.length - limit)} more in {name}</button></li>}
+          {lines.slice(0, limit).map((l, i) =>
+            isRefs ? (
+              <RefLine key={i} line={l} />
+            ) : (
+              <li key={i} className="obs-text">
+                {l.replace(/^-\s*/, "")}
+              </li>
+            ),
+          )}
+          {lines.length > limit && (
+            <li className="obs-more">
+              <button {...smallGhostButtonProps} onClick={() => setLimit((value) => value + 80)}>
+                Show {Math.min(80, lines.length - limit)} more in {name}
+              </button>
+            </li>
+          )}
         </ul>
       )}
     </section>
@@ -71,24 +96,63 @@ const ObsSection = memo(function ObsSection({ name, lines, startOpen }: { name: 
 });
 
 export const ObservationPanel = memo(
-  function ObservationPanel({ obs, onCopy, compact }: { obs: CompactObservation; onCopy?: () => void; compact?: boolean }) {
+  function ObservationPanel({
+    obs,
+    onCopy,
+    compact,
+  }: {
+    obs: CompactObservation;
+    onCopy?: () => void;
+    compact?: boolean;
+  }) {
     const parsed = useMemo(() => parseCompact(obs.text), [obs.text]);
     return (
       <div className={`obs-panel ${compact ? "compact" : ""}`} data-testid="observation">
         {!compact && (
           <div className="obs-head">
-            <span className="obs-title" title={obs.url}>{obs.title || obs.url}</span>
-            <span className="obs-meta nums">rev {obs.revision} · {obs.refs.length} refs</span>
-            {onCopy && <button {...auxClassExtraSmallIconButtonProps} title="Copy observation" aria-label="Copy observation" onClick={onCopy}>{shellIconCopy}</button>}
+            <span className="obs-title" title={obs.url}>
+              {obs.title || obs.url}
+            </span>
+            <span className="obs-meta nums">
+              rev {obs.revision} · {obs.refs.length} refs
+            </span>
+            {onCopy && (
+              <button
+                {...auxClassExtraSmallIconButtonProps}
+                title="Copy observation"
+                aria-label="Copy observation"
+                onClick={onCopy}
+              >
+                {shellIconCopy}
+              </button>
+            )}
           </div>
         )}
-        {!compact && parsed.header.slice(1).map((l, i) => (
-          <div key={i} className="obs-subtle nums">{l}</div>
+        {!compact &&
+          parsed.header.slice(1).map((l, i) => (
+            <div key={i} className="obs-subtle nums">
+              {l}
+            </div>
+          ))}
+        {parsed.sections.map((s) => (
+          <ObsSection
+            key={`${obs.pageId}:${obs.revision}:${s.name}`}
+            name={s.name}
+            lines={s.lines}
+            startOpen={!compact}
+          />
         ))}
-        {parsed.sections.map((s) => <ObsSection key={`${obs.pageId}:${obs.revision}:${s.name}`} name={s.name} lines={s.lines} startOpen={!compact} />)}
         {parsed.sections.length === 0 && <pre className="obs-raw">{obs.text}</pre>}
       </div>
     );
   },
-  (a, b) => a.obs.pageId === b.obs.pageId && a.obs.revision === b.obs.revision && a.obs.text === b.obs.text && a.compact === b.compact && a.onCopy === b.onCopy && a.obs.title === b.obs.title && a.obs.url === b.obs.url && a.obs.refs === b.obs.refs,
+  (a, b) =>
+    a.obs.pageId === b.obs.pageId &&
+    a.obs.revision === b.obs.revision &&
+    a.obs.text === b.obs.text &&
+    a.compact === b.compact &&
+    a.onCopy === b.onCopy &&
+    a.obs.title === b.obs.title &&
+    a.obs.url === b.obs.url &&
+    a.obs.refs === b.obs.refs,
 );

@@ -48,11 +48,11 @@ semantics, manifest minimum, and fixture reachability without an API key.
 These results predate the 50-task corpus and independent effect oracles. They
 are retained for history and cannot be compared directly with a new run.
 
-| Adapter | Pass | p50 wall | Model calls (mean) | Tokens (mean) |
-|---|---:|---:|---:|---:|
-| `aux` (runtime loop, Chromium) | 6/8 | 1.5 s | 2.8 | 5.7 k |
-| `aux-mcp` (generic loop, Aux tools) | 8/8 | 2.6 s | 5.5 | 32.7 k |
-| `playwright-mcp` (generic loop, Playwright tools) | 8/8 | 4.0 s | 5.4 | 36.1 k |
+| Adapter                                           | Pass | p50 wall | Model calls (mean) | Tokens (mean) |
+| ------------------------------------------------- | ---: | -------: | -----------------: | ------------: |
+| `aux` (runtime loop, Chromium)                    |  6/8 |    1.5 s |                2.8 |         5.7 k |
+| `aux-mcp` (generic loop, Aux tools)               |  8/8 |    2.6 s |                5.5 |        32.7 k |
+| `playwright-mcp` (generic loop, Playwright tools) |  8/8 |    4.0 s |                5.4 |        36.1 k |
 
 Findings from this run:
 

@@ -182,11 +182,17 @@ describe("ApiServer over WebSocket", () => {
     for (const reason of ["revoked", "expired"] as const) {
       let live = true;
       const calls: string[] = [];
-      const gated = new ApiServer({ token: TOKEN, events,
-        invoke: async method => { calls.push(method); return {}; },
-        authorizeScopedToken: token => live && token === "scoped"
-          ? { external: true, connectionId: "c1", scope: { kind: "task", workspaceId: "w1", taskId: "t1" } }
-          : null,
+      const gated = new ApiServer({
+        token: TOKEN,
+        events,
+        invoke: async (method) => {
+          calls.push(method);
+          return {};
+        },
+        authorizeScopedToken: (token) =>
+          live && token === "scoped"
+            ? { external: true, connectionId: "c1", scope: { kind: "task", workspaceId: "w1", taskId: "t1" } }
+            : null,
         filterEvent: () => true,
       });
       const port = await gated.listen(0);
@@ -194,15 +200,19 @@ describe("ApiServer over WebSocket", () => {
       try {
         const ws = await connect(`ws://127.0.0.1:${port}/ws?token=scoped`);
         const frames: Record<string, unknown>[] = [];
-        ws.onmessage = event => frames.push(JSON.parse(String(event.data)) as Record<string, unknown>);
-        const closed = new Promise<void>(resolve => { ws.onclose = () => resolve(); });
+        ws.onmessage = (event) => frames.push(JSON.parse(String(event.data)) as Record<string, unknown>);
+        const closed = new Promise<void>((resolve) => {
+          ws.onclose = () => resolve();
+        });
         live = false; // the same callback reports revocation or expiry from durable authority
         if (reason === "revoked") ws.send(JSON.stringify({ id: 77, method: "pages.list", params: {} }));
         else events.emit("task.updated", { task: { taskId: "t1", workspaceId: "w1" } });
         await closed;
         expect(calls).toEqual([]);
-        expect(frames.filter(frame => "event" in frame || frame.id === 77)).toEqual([]);
-      } finally { await gated.close(); }
+        expect(frames.filter((frame) => "event" in frame || frame.id === 77)).toEqual([]);
+      } finally {
+        await gated.close();
+      }
     }
   });
 

@@ -83,7 +83,9 @@ async function h_pages_stop(ctx: MethodCtx): Promise<unknown> {
 async function h_pages_observe(ctx: MethodCtx): Promise<unknown> {
   const { params, s, withExternalPage } = ctx;
   const { format, ...req } = params as { format?: "full" | "compact" } & Record<string, unknown>;
-  return withExternalPage(params.pageId, async () => wireObservation(await s.pages.observe(params.pageId, req as never), format));
+  return withExternalPage(params.pageId, async () =>
+    wireObservation(await s.pages.observe(params.pageId, req as never), format),
+  );
 }
 async function h_pages_cuaExecute(ctx: MethodCtx): Promise<unknown> {
   const { client, invoke, params, s } = ctx;
@@ -332,8 +334,9 @@ async function h_pages_network(ctx: MethodCtx): Promise<unknown> {
   if (!ctx.externalRunId) return s.responses.list(p.pageId, p);
   const records = s.responses.listForDocument(s.pages.get(p.pageId), p);
   const checks: Array<() => void> = [];
-  for (const record of records) checks.push(await s.pages.authorizeAgentResponseRead(ctx.externalRunId, record.requestId, ctx.taskRead));
-  checks.forEach(check => check());
+  for (const record of records)
+    checks.push(await s.pages.authorizeAgentResponseRead(ctx.externalRunId, record.requestId, ctx.taskRead));
+  checks.forEach((check) => check());
   return records;
 }
 async function h_pages_capture(ctx: MethodCtx): Promise<unknown> {

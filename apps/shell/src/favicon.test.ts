@@ -3,9 +3,12 @@ import { faviconCandidates, hostLetter } from "./favicon";
 
 describe("faviconCandidates", () => {
   it("uses only the page-provided icon — never a third-party lookup", () => {
-    expect(faviconCandidates("https://mail.google.com/mail", "https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico")).toEqual([
-      "https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico",
-    ]);
+    expect(
+      faviconCandidates(
+        "https://mail.google.com/mail",
+        "https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico",
+      ),
+    ).toEqual(["https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico"]);
     expect(faviconCandidates("https://www.github.com/")).toEqual([]);
   });
 

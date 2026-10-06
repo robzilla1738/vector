@@ -26,9 +26,13 @@ export function SearchEnginesSetting({
   const windowId = bridge.windowId,
     privateMode = bridge.privateMode,
     snapshot = JSON.stringify(value);
-  const identity = useMemo(() => ([snapshot, windowId, privateMode]), [snapshot, windowId, privateMode]);
-  const draftIdentity = useMemo(() => ([windowId, privateMode]), [windowId, privateMode]);
-  const [getOwner,current,busy,error,fail,clearFailure,perform] = useSettingsSaveOwner(identity,windowId,privateMode);
+  const identity = useMemo(() => [snapshot, windowId, privateMode], [snapshot, windowId, privateMode]);
+  const draftIdentity = useMemo(() => [windowId, privateMode], [windowId, privateMode]);
+  const [getOwner, current, busy, error, fail, clearFailure, perform] = useSettingsSaveOwner(
+    identity,
+    windowId,
+    privateMode,
+  );
   const [editing, setEditing] = useState({ identity: draftIdentity, draft: emptyDraft() });
   const draft = editing.identity === draftIdentity ? editing.draft : emptyDraft();
   const draftRef = useRef(draft);
@@ -41,13 +45,20 @@ export function SearchEnginesSetting({
         savedDraft = draftRef.current;
       if (!current(original) || original.pending)
         throw new Error("Choose the current keyword engine control.");
-      return perform(original, savedDraft, draftRef, () => onSave(next), () => {
-        if (clearDraft) {
-          const fresh = emptyDraft();
-          draftRef.current = fresh;
-          setEditing({ identity: draftIdentity, draft: fresh });
-        }
-      }, "The engines weren’t saved. Try again.");
+      return perform(
+        original,
+        savedDraft,
+        draftRef,
+        () => onSave(next),
+        () => {
+          if (clearDraft) {
+            const fresh = emptyDraft();
+            draftRef.current = fresh;
+            setEditing({ identity: draftIdentity, draft: fresh });
+          }
+        },
+        "The engines weren’t saved. Try again.",
+      );
     },
     [getOwner, current, onSave, draftIdentity, perform],
   );

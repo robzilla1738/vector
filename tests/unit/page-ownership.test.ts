@@ -5,7 +5,10 @@ it("queues owners in order and skips a cancelled waiter", async () => {
   const ownership = new PageOwnership();
   const first = ownership.tryAcquire({ pageId: "tab", actor: "set_member", runId: "first" });
   const cancelled = new AbortController();
-  const second = ownership.acquire({ pageId: "tab", actor: "coordinator", runId: "second" }, cancelled.signal);
+  const second = ownership.acquire(
+    { pageId: "tab", actor: "coordinator", runId: "second" },
+    cancelled.signal,
+  );
   const third = ownership.acquire({ pageId: "tab", actor: "coordinator", runId: "third" });
   cancelled.abort();
   await expect(second).rejects.toMatchObject({ code: "cancelled" });
@@ -20,7 +23,11 @@ it("releases earlier pages when a multi-page claim is cancelled", async () => {
   const ownership = new PageOwnership();
   const blocker = ownership.tryAcquire({ pageId: "b", actor: "external" });
   const abort = new AbortController();
-  const pending = ownership.acquireMany(["b", "a", "a"], { actor: "coordinator", runId: "run" }, abort.signal);
+  const pending = ownership.acquireMany(
+    ["b", "a", "a"],
+    { actor: "coordinator", runId: "run" },
+    abort.signal,
+  );
   await Promise.resolve();
   expect(ownership.snapshot().a).toMatchObject({ runId: "run" });
   abort.abort();

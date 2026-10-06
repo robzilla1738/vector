@@ -4,16 +4,31 @@ import { persistLayout } from "./store/persistence";
 import type { Pin } from "./workspace";
 
 export function pinnedPage(pin: Pin, pages: readonly PageTarget[]) {
-  return pin.pageId ? pages.find(page => page.pageId === pin.pageId && !page.ownedByRuntime && !page.anchor) : undefined;
+  return pin.pageId
+    ? pages.find((page) => page.pageId === pin.pageId && !page.ownedByRuntime && !page.anchor)
+    : undefined;
 }
 
 export { boundPin } from "./pin-layout";
 
-export async function updatePin(spaceId: string, url: string, patch: Partial<Pick<Pin, "pageId" | "keepAwake">>) {
+export async function updatePin(
+  spaceId: string,
+  url: string,
+  patch: Partial<Pick<Pin, "pageId" | "keepAwake">>,
+) {
   const state = useStore.getState();
-  if (!state.layout.pins[spaceId]?.some(pin => pin.url === url)) throw new Error("This pinned app is no longer in this Space.");
-  const layout = { ...state.layout, pins: { ...state.layout.pins, [spaceId]: state.layout.pins[spaceId]!.map(pin => pin.url === url ? { ...pin, ...patch } : pin) } };
-  useStore.setState({ layout }); persistLayout(layout); await flushLayout();
+  if (!state.layout.pins[spaceId]?.some((pin) => pin.url === url))
+    throw new Error("This pinned app is no longer in this Space.");
+  const layout = {
+    ...state.layout,
+    pins: {
+      ...state.layout.pins,
+      [spaceId]: state.layout.pins[spaceId]!.map((pin) => (pin.url === url ? { ...pin, ...patch } : pin)),
+    },
+  };
+  useStore.setState({ layout });
+  persistLayout(layout);
+  await flushLayout();
 }
 
 export async function openPinnedApp(pin: Pin, spaceId: string) {
@@ -32,4 +47,3 @@ export async function resetPinnedApp(pin: Pin) {
   if (!page) throw new Error("Open this pinned app before resetting it.");
   await useStore.getState().navigatePage(page.pageId, pin.url);
 }
-

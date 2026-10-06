@@ -33,31 +33,51 @@ const memberAuthorities = new WeakMap<PageService, ReturnType<typeof fixtureTurn
 async function memberAuthority(pages: PageService, runId: string) {
   let turnMentions = memberAuthorities.get(pages);
   if (!turnMentions) {
-    turnMentions = fixtureTurnMentions(id => pages.get(id));
+    turnMentions = fixtureTurnMentions((id) => pages.get(id));
     memberAuthorities.set(pages, turnMentions);
   }
   const source = pages.get("p1");
   if (!turnMentions.has(runId)) await turnMentions.begin(runId, [], []);
-  return { turnMentions, checkSource: () => {
-    const current = pages.get("p1");
-    if (current.pageId !== source.pageId || current.sessionId !== source.sessionId || current.url !== source.url ||
-        current.documentEpoch !== source.documentEpoch)
-      throw new AuxError("ref_stale", "The synthetic member source lease changed.");
-  } };
+  return {
+    turnMentions,
+    checkSource: () => {
+      const current = pages.get("p1");
+      if (
+        current.pageId !== source.pageId ||
+        current.sessionId !== source.sessionId ||
+        current.url !== source.url ||
+        current.documentEpoch !== source.documentEpoch
+      )
+        throw new AuxError("ref_stale", "The synthetic member source lease changed.");
+    },
+  };
 }
-const memberPage = (documentEpoch: number) => PageTargetSchema.parse({ pageId: "p1", targetId: "fixture-target",
-  backend: "aux", windowId: "main", url: "https://app.test/form", title: "Fixture", documentEpoch,
-  sessionId: "synthetic-member-attachment", lastRevision: 0, viewStatus: "visible", lifecycle: "live",
-  controller: "none", controllerEpoch: 0, ownedByRuntime: false, createdAt: 1, lastActiveAt: 1 });
+const memberPage = (documentEpoch: number) =>
+  PageTargetSchema.parse({
+    pageId: "p1",
+    targetId: "fixture-target",
+    backend: "aux",
+    windowId: "main",
+    url: "https://app.test/form",
+    title: "Fixture",
+    documentEpoch,
+    sessionId: "synthetic-member-attachment",
+    lastRevision: 0,
+    viewStatus: "visible",
+    lifecycle: "live",
+    controller: "none",
+    controllerEpoch: 0,
+    ownedByRuntime: false,
+    createdAt: 1,
+    lastActiveAt: 1,
+  });
 
 const obs = (opts?: { ref?: string; name?: string; url?: string }): ObservationContent =>
   ({
     title: "t",
     url: opts?.url ?? "https://app.test/form",
     headings: [],
-    elements: [
-      { ref: opts?.ref ?? "r9", role: "button", name: opts?.name ?? "Save", tag: "button" },
-    ],
+    elements: [{ ref: opts?.ref ?? "r9", role: "button", name: opts?.name ?? "Save", tag: "button" }],
     formFields: [],
     tables: [],
     links: [],
@@ -124,7 +144,8 @@ describe("Gate F page query and action compiler", () => {
         throw new Error("pages.execute must not run when write is not granted");
       },
     } as unknown as PageService;
-    const denied = await runMemberAgent({ ...await memberAuthority(deniedPages, "run-deny"),
+    const denied = await runMemberAgent({
+      ...(await memberAuthority(deniedPages, "run-deny")),
       member,
       pageId: "p1",
       goal: "click save",
@@ -146,7 +167,8 @@ describe("Gate F page query and action compiler", () => {
         throw new Error("pages.execute must not run on a stale document epoch");
       },
     } as unknown as PageService;
-    const stale = await runMemberAgent({ ...await memberAuthority(stalePages, "run-stale"),
+    const stale = await runMemberAgent({
+      ...(await memberAuthority(stalePages, "run-stale")),
       member,
       pageId: "p1",
       goal: "click save",
@@ -178,7 +200,8 @@ describe("Gate F page query and action compiler", () => {
       () => ({ status: "continue", message: "click save", steps: [{ id: "c", op: "click", target: "r9" }] }),
       () => ({ status: "done", message: "done", result: { ok: true } }),
     ]);
-    const first = await runMemberAgent({ ...await memberAuthority(pages, "run-dup"),
+    const first = await runMemberAgent({
+      ...(await memberAuthority(pages, "run-dup")),
       member,
       pageId: "p1",
       goal: "click save",
@@ -196,7 +219,8 @@ describe("Gate F page query and action compiler", () => {
       () => ({ status: "continue", message: "click save", steps: [{ id: "c", op: "click", target: "r9" }] }),
       () => ({ status: "done", message: "done", result: { ok: true } }),
     ]);
-    const replay = await runMemberAgent({ ...await memberAuthority(pages, "run-dup"),
+    const replay = await runMemberAgent({
+      ...(await memberAuthority(pages, "run-dup")),
       member,
       pageId: "p1",
       goal: "click save",
@@ -242,23 +266,35 @@ describe("Gate D permissions and durable writes", () => {
     const steps = [{ id: "nav", op: "navigate", url: "https://github.com" }] satisfies Program["steps"];
     const grants = [{ effect: "egress" as const, origin: "https://github.com", scope: "*", expiresAt: 0 }];
     expect(authorizeProgram(steps, grants, "null").ok).toBe(true);
-    expect(authorizeProgram(steps, ["effect:read"], "null")).toMatchObject({ ok: false, effect: "egress", denied: "permission denied for navigate (effect:egress)" });
-    expect(authorizeProgram([{ id: "nav", op: "navigate", url: "/relative" }], grants, "null").ok).toBe(false);
-    expect(authorizeProgram([{ id: "nav", op: "navigate", url: "https://elsewhere.test" }], grants, "null").ok).toBe(false);
+    expect(authorizeProgram(steps, ["effect:read"], "null")).toMatchObject({
+      ok: false,
+      effect: "egress",
+      denied: "permission denied for navigate (effect:egress)",
+    });
+    expect(authorizeProgram([{ id: "nav", op: "navigate", url: "/relative" }], grants, "null").ok).toBe(
+      false,
+    );
+    expect(
+      authorizeProgram([{ id: "nav", op: "navigate", url: "https://elsewhere.test" }], grants, "null").ok,
+    ).toBe(false);
   });
 
   it("allows same-origin navigate on a user run and still denies a different origin", () => {
     const grants = ["effect:read", "effect:write"];
-    expect(authorizeProgram(
-      [{ id: "nav", op: "navigate", url: "http://127.0.0.1:4810/records/rec-11" }],
-      grants,
-      "http://127.0.0.1:4810",
-    ).ok).toBe(true);
-    expect(authorizeProgram(
-      [{ id: "nav", op: "navigate", url: "https://elsewhere.test/records" }],
-      grants,
-      "http://127.0.0.1:4810",
-    )).toMatchObject({ ok: false, effect: "egress" });
+    expect(
+      authorizeProgram(
+        [{ id: "nav", op: "navigate", url: "http://127.0.0.1:4810/records/rec-11" }],
+        grants,
+        "http://127.0.0.1:4810",
+      ).ok,
+    ).toBe(true);
+    expect(
+      authorizeProgram(
+        [{ id: "nav", op: "navigate", url: "https://elsewhere.test/records" }],
+        grants,
+        "http://127.0.0.1:4810",
+      ),
+    ).toMatchObject({ ok: false, effect: "egress" });
     expect(authorizeProgram([{ id: "b", op: "back" }], grants, "http://127.0.0.1:4810").ok).toBe(true);
   });
 
@@ -320,8 +356,11 @@ describe("Gate D permissions and durable writes", () => {
       attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/form"),
     };
     const repo = new Repo(openDb(":memory:"));
-    const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
-  const pages = new PageService({ turnMentions: pagesTurnMentions,
+    const pagesTurnMentions = fixtureTurnMentions(
+      (pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId),
+    );
+    const pages = new PageService({
+      turnMentions: pagesTurnMentions,
       repo,
       events: new EventBus(repo),
       native: new NullNativeBridge(),
@@ -398,8 +437,11 @@ describe("Gate D permissions and durable writes", () => {
       attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/counter"),
     };
     const repo = new Repo(openDb(":memory:"));
-    const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
-  const pages = new PageService({ turnMentions: pagesTurnMentions,
+    const pagesTurnMentions = fixtureTurnMentions(
+      (pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId),
+    );
+    const pages = new PageService({
+      turnMentions: pagesTurnMentions,
       repo,
       events: new EventBus(repo),
       native: new NullNativeBridge(),
@@ -407,14 +449,32 @@ describe("Gate D permissions and durable writes", () => {
       grantsForRun: ["effect:read", "effect:write", "effect:egress"],
       drivers: () => ({ aux: driver, chrome: null }),
     });
-    const opened = await pages.open({ url: "https://app.test/counter", background: true, ownedByRuntime: true });
+    const opened = await pages.open({
+      url: "https://app.test/counter",
+      background: true,
+      ownedByRuntime: true,
+    });
     await expect(
       pages.execute({
         pageId: opened.pageId,
         steps: [{ id: "c", op: "click", target: "r9" }],
       }),
     ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
-    await pagesTurnMentions.begin("run_user_started", [{ kind: "tab", pageId: opened.pageId, title: opened.title, url: opened.url, documentEpoch: opened.documentEpoch, sessionId: opened.sessionId!, access: "act" }], []);
+    await pagesTurnMentions.begin(
+      "run_user_started",
+      [
+        {
+          kind: "tab",
+          pageId: opened.pageId,
+          title: opened.title,
+          url: opened.url,
+          documentEpoch: opened.documentEpoch,
+          sessionId: opened.sessionId!,
+          access: "act",
+        },
+      ],
+      [],
+    );
     const run = await pages.execute(
       { pageId: opened.pageId, steps: [{ id: "c", op: "click", target: "r9" }] },
       { runId: "run_user_started" },
@@ -481,7 +541,12 @@ describe("Gate D permissions and durable writes", () => {
       postconditions: [{ exactOrigin: "https://app.test" }],
       evidence: "exact origin",
     });
-    const skip = tryReuseSkill([skill], "save the form", obs({ url: "https://evil.test/" }), "https://evil.test/");
+    const skip = tryReuseSkill(
+      [skill],
+      "save the form",
+      obs({ url: "https://evil.test/" }),
+      "https://evil.test/",
+    );
     expect("skipped" in skip).toBe(true);
   });
 });

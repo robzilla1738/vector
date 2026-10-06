@@ -1,10 +1,4 @@
-import type {
-  Backend,
-  Condition,
-  ElementRef,
-  ObservationContent,
-  ObservationRequest,
-} from "@aux/contracts";
+import type { Backend, Condition, ElementRef, ObservationContent, ObservationRequest } from "@aux/contracts";
 
 export interface PageIdentity {
   /** Aux page id assigned by the target registry. */
@@ -33,7 +27,10 @@ export interface DriverPageEvents {
    * keeps it open (a parked suspension or the user resolves it). Absent or
    * returning undefined falls back to dismiss.
    */
-  decideDialog?: (info: { type: string; message: string }) => Promise<"accept" | "dismiss" | "leave" | undefined>;
+  decideDialog?: (info: {
+    type: string;
+    message: string;
+  }) => Promise<"accept" | "dismiss" | "leave" | undefined>;
   onConsole?: (info: { level: string; message: string; atMs?: number }) => void;
   onDownload?: (info: { suggestedFilename: string; path?: string }) => void;
   onPopup?: (targetId: string | null, url: string) => void;
@@ -100,7 +97,10 @@ export interface DriverPage {
 
   navigate(url: string, timeoutMs?: number): Promise<void>;
   /** Command-owned main-frame loader receipt, unavailable for same-document navigation. */
-  navigateWithReceipt?(url: string, timeoutMs?: number): Promise<{ url: string; documentEpoch: number; loaderId: string }>;
+  navigateWithReceipt?(
+    url: string,
+    timeoutMs?: number,
+  ): Promise<{ url: string; documentEpoch: number; loaderId: string }>;
   back(timeoutMs?: number): Promise<void>;
   forward(timeoutMs?: number): Promise<void>;
   reload(timeoutMs?: number): Promise<void>;
@@ -123,19 +123,32 @@ export interface DriverPage {
   /** Metadata only: no credential values are read. Resolves the live target in its frame. */
   actionTarget?(target: string): Promise<ObservedActionTarget>;
   fieldState?(target: string): Promise<Record<string, unknown> | undefined>;
-  scroll(opts: { target?: string; direction: "up" | "down" | "top" | "bottom"; amount?: number }): Promise<void>;
+  scroll(opts: {
+    target?: string;
+    direction: "up" | "down" | "top" | "bottom";
+    amount?: number;
+  }): Promise<void>;
   dragTo(target: string, to: string, timeoutMs?: number): Promise<void>;
   clickPoint(x: number, y: number, button?: "left" | "right" | "middle"): Promise<void>;
   uploadFiles(target: string, files: string[], timeoutMs?: number): Promise<void>;
 
   waitFor(condition: Condition): Promise<WaitOutcome>;
-  waitForDownload(timeoutMs?: number, signal?: AbortSignal): Promise<{ suggestedFilename: string; path?: string }>;
+  waitForDownload(
+    timeoutMs?: number,
+    signal?: AbortSignal,
+  ): Promise<{ suggestedFilename: string; path?: string }>;
   /** Desktop profile downloads report terminal results through the native session. */
   setNativeDownloadAuthority?(): void;
   /** Session storage dir non-native downloads are saved into (S4). */
   setDownloadDir?(dir: string): void;
   notifyDownloadStarted?(info: { id: string; startedAt: number }): void;
-  notifyDownload?(info: { id: string; startedAt: number; suggestedFilename: string; path?: string; state: string }): void;
+  notifyDownload?(info: {
+    id: string;
+    startedAt: number;
+    suggestedFilename: string;
+    path?: string;
+    state: string;
+  }): void;
   handleDialog(action: "accept" | "dismiss", promptText?: string): Promise<void>;
 
   /** Scroll a container/viewport, accumulating items by stable key (virtualized/infinite lists). */
@@ -160,7 +173,9 @@ export interface DriverPage {
    */
   observeFingerprint?(): Promise<string>;
   expandRef(ref: string, maxElements?: number): Promise<ElementRef[]>;
-  extract(fields: { name: string; selector?: string; attribute?: string; all?: boolean }[]): Promise<Record<string, unknown>>;
+  extract(
+    fields: { name: string; selector?: string; attribute?: string; all?: boolean }[],
+  ): Promise<Record<string, unknown>>;
   evaluate(expression: string): Promise<unknown>;
   /** Page `console.*` lines when the backend keeps a buffer. */
   console?(): Promise<{ level: string; message: string; atMs?: number }[]>;
@@ -203,7 +218,11 @@ export interface BrowserDriver {
    * the CDP target id. `hint.cdpTargetId` (the shell's ack for a tab it just
    * created) lets a marker-identified backend match the page directly.
    */
-  attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string; initialDocumentEpoch?: number }): Promise<DriverPage>;
+  attach(
+    targetId: string,
+    pageId: string,
+    hint?: { cdpTargetId?: string; initialDocumentEpoch?: number },
+  ): Promise<DriverPage>;
   /** Reattach a recovered renderer without reusing a crashed protocol handle. */
   recoverPage?(targetId: string, pageId: string, documentEpoch?: number): Promise<DriverPage>;
   /** Look up the registered element entry for an observation ref. */

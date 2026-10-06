@@ -15,7 +15,7 @@ export async function sidebarAction(page, name) {
 export async function expandedSidebar(page) {
   await page.evaluate(() => window.aux.invoke("settings.set", { tabLayout: "vertical" }));
   await page.locator(".tabs-vertical").waitFor();
-  if (await page.locator(".sidebar").getAttribute("aria-hidden") === "true") {
+  if ((await page.locator(".sidebar").getAttribute("aria-hidden")) === "true") {
     await page.evaluate(() => localStorage.setItem("aux.sidebar", "expanded"));
     await page.reload();
   }

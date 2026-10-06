@@ -4,13 +4,23 @@ import { AuxError } from "@aux/contracts";
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 /** Model-visible PNGs stay inside both P1 image limits without native addons. */
-export function limitCapturePng(buffer: Buffer): { buffer: Buffer; width: number; height: number; ratio: number } {
+export function limitCapturePng(buffer: Buffer): {
+  buffer: Buffer;
+  width: number;
+  height: number;
+  ratio: number;
+} {
   if (buffer.length < 24 || !buffer.subarray(0, 8).equals(PNG_SIGNATURE))
     throw new AuxError("backend_unavailable", "The captured image is not a valid PNG.");
   const width = buffer.readUInt32BE(16);
   const height = buffer.readUInt32BE(20);
-  if (!width || !height) throw new AuxError("backend_unavailable", "The captured image has invalid dimensions.");
-  if (width * height > 50_000_000) throw new AuxError("capability_unsupported", "This full-page image is too large to process safely. Capture a smaller region.");
+  if (!width || !height)
+    throw new AuxError("backend_unavailable", "The captured image has invalid dimensions.");
+  if (width * height > 50_000_000)
+    throw new AuxError(
+      "capability_unsupported",
+      "This full-page image is too large to process safely. Capture a smaller region.",
+    );
   const ratio = Math.min(1, 1568 / width, 1568 / height, Math.sqrt(1_150_000 / (width * height)));
   if (ratio === 1) return { buffer, width, height, ratio };
   const scaledWidth = Math.max(1, Math.floor(width * ratio));
@@ -39,5 +49,10 @@ export function limitCapturePng(buffer: Buffer): { buffer: Buffer; width: number
       }
     }
   }
-  return { buffer: PNG.sync.write(output), width: scaledWidth, height: scaledHeight, ratio: scaledWidth / width };
+  return {
+    buffer: PNG.sync.write(output),
+    width: scaledWidth,
+    height: scaledHeight,
+    ratio: scaledWidth / width,
+  };
 }

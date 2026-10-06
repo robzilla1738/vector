@@ -32,20 +32,37 @@ export interface LocatorAttempt<L extends LocatorLike = LocatorLike> {
  * ambiguous. Semantic attempts only run when every path attempt matched
  * zero elements (the DOM moved under the ref).
  */
-export function locatorAttempts<L extends LocatorLike>(frame: FrameLike<L>, strategy: SelectorStrategy): LocatorAttempt<L>[] {
+export function locatorAttempts<L extends LocatorLike>(
+  frame: FrameLike<L>,
+  strategy: SelectorStrategy,
+): LocatorAttempt<L>[] {
   const attempts: LocatorAttempt<L>[] = [];
   if (strategy.css) attempts.push({ loc: frame.locator(strategy.css), kind: "path", label: "css" });
   if (strategy.xpath) attempts.push({ loc: frame.locator(strategy.xpath), kind: "path", label: "xpath" });
-  if (strategy.testId) attempts.push({ loc: frame.getByTestId(strategy.testId), kind: "path", label: "testid" });
-  if (strategy.label) attempts.push({ loc: frame.getByLabel(strategy.label, { exact: true }), kind: "semantic", label: "label" });
+  if (strategy.testId)
+    attempts.push({ loc: frame.getByTestId(strategy.testId), kind: "path", label: "testid" });
+  if (strategy.label)
+    attempts.push({
+      loc: frame.getByLabel(strategy.label, { exact: true }),
+      kind: "semantic",
+      label: "label",
+    });
   if (strategy.role) {
     attempts.push({
-      loc: frame.getByRole(strategy.role.role as never, { name: strategy.role.name, exact: strategy.exact ?? false }),
+      loc: frame.getByRole(strategy.role.role as never, {
+        name: strategy.role.name,
+        exact: strategy.exact ?? false,
+      }),
       kind: "semantic",
       label: "role",
     });
   }
-  if (strategy.text) attempts.push({ loc: frame.getByText(strategy.text, { exact: strategy.exact ?? false }), kind: "semantic", label: "text" });
+  if (strategy.text)
+    attempts.push({
+      loc: frame.getByText(strategy.text, { exact: strategy.exact ?? false }),
+      kind: "semantic",
+      label: "text",
+    });
   if (attempts.length === 0) throw new AuxError("invalid_params", "Empty selector strategy");
   return attempts;
 }

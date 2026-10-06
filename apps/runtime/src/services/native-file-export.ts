@@ -10,7 +10,12 @@ const MAX_RECTANGLE = 2_000_000;
 
 function inside(root: string, path: string): boolean {
   const part = relative(root, path);
-  return !!part && part !== ".." && !part.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) && !isAbsolute(part);
+  return (
+    !!part &&
+    part !== ".." &&
+    !part.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) &&
+    !isAbsolute(part)
+  );
 }
 
 /** A host-only descriptor. The browser validates the path again before copying it. */
@@ -64,7 +69,11 @@ export async function renderWorkbookForNativeExport(
     });
   } else {
     const snapshot = WorkbookSnapshotSchema.parse(JSON.parse(content));
-    if (!snapshot.sheets.length || snapshot.sheets.length > 12 || snapshot.sheets.every(sheet => sheet.hidden))
+    if (
+      !snapshot.sheets.length ||
+      snapshot.sheets.length > 12 ||
+      snapshot.sheets.every((sheet) => sheet.hidden)
+    )
       throw new Error("Workbook needs a visible sheet");
     const names = new Set<string>();
     for (const source of snapshot.sheets) {
@@ -91,5 +100,9 @@ export async function renderWorkbookForNativeExport(
   if (!cells) throw new Error("Workbook has no cells");
   const bytes = Buffer.from(await book.xlsx.writeBuffer());
   if (bytes.length > MAX_WORKBOOK_BYTES) throw new Error("Workbook export is too large");
-  return { filename: format === "csv" ? "results.xlsx" : "workbook.xlsx", dataBase64: bytes.toString("base64"), size: bytes.length };
+  return {
+    filename: format === "csv" ? "results.xlsx" : "workbook.xlsx",
+    dataBase64: bytes.toString("base64"),
+    size: bytes.length,
+  };
 }

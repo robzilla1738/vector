@@ -5,10 +5,11 @@ import { bridge } from "../bridge";
 import { RunPanelAction, useRunPanelCommand } from "./RunPanelAction";
 import { errToast, useStore } from "../store";
 import { shellIconCheck, shellIconClose, shellIconObs, shellIconRight } from "./icons";
+import { nativeAriaHiddenProps as auxNativeAriaHiddenProps } from "../ui/native-attribute-props";
 import {
-  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
-} from "../ui/native-attribute-props";
-import { staticMetadataKeyProps as auxClassMetadataKeyProps, staticMetadataValueProps as auxClassMetadataValueProps } from "../ui/class-props";
+  staticMetadataKeyProps as auxClassMetadataKeyProps,
+  staticMetadataValueProps as auxClassMetadataValueProps,
+} from "../ui/class-props";
 
 export type StepState = "ok" | "failed" | "skipped" | "running";
 
@@ -19,7 +20,9 @@ const MAX_ENTRANCE = 800;
 function recordEntrance(id: string) {
   playedEntrance.set(id, Date.now());
   if (playedEntrance.size <= MAX_ENTRANCE) return;
-  const oldest = [...playedEntrance.entries()].sort((a, b) => a[1] - b[1]).slice(0, playedEntrance.size - MAX_ENTRANCE);
+  const oldest = [...playedEntrance.entries()]
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, playedEntrance.size - MAX_ENTRANCE);
   for (const [key] of oldest) playedEntrance.delete(key);
 }
 
@@ -149,16 +152,75 @@ export function nestSteps(steps: StepRecord[]): { step: StepRecord; children: St
   return out;
 }
 
-function ownsStep(run:Run,step:StepRecord){return step.runId===run.runId&&useStore.getState().steps[run.runId]?.includes(step)===true;}
-function UrlChip({chip,href,run,step}:{chip:StepChip;href:string;run:Run;step:StepRecord}){
-  const valid=()=>ownsStep(run,step)&&stepChips(step).some(value=>value.kind===chip.kind&&value.value===chip.value);
-  const [element,dispatch]=useRunPanelCommand<HTMLAnchorElement>("open-run-step-url",run,(_current,event)=>openBrowserLink(href,event instanceof MouseEvent?backgroundLink(event):false),step,valid);
-  return <a className="tl-chip" ref={element} href={href} title={chip.value} data-command-id="open-run-step-url" onClick={event=>{event.preventDefault();dispatch(event);}} onAuxClick={event=>{if(event.button===1){event.preventDefault();dispatch(event);}}}>{chip.value.replace(/^https?:\/\//,"")}</a>;
+function ownsStep(run: Run, step: StepRecord) {
+  return step.runId === run.runId && useStore.getState().steps[run.runId]?.includes(step) === true;
 }
-function Chip({chip,run,step}:{chip:StepChip;run:Run;step:StepRecord}){
-  if(chip.kind==="url"){const href=browserLinkUrl(chip.value);if(href)return <UrlChip chip={chip} href={href} run={run} step={step}/>;}
-  if(chip.kind==="path"&&isOpenablePath(chip.value))return <RunPanelAction command="open-run-step-path" run={run} identity={step} valid={()=>ownsStep(run,step)&&stepChips(step).some(value=>value.kind===chip.kind&&value.value===chip.value)} type="button" className="tl-chip" title={chip.value} invoke={current=>bridge.openPath(chip.value).then(error=>{if(error&&current())errToast(new Error(error));return error;})}>{chip.value}</RunPanelAction>;
-  return <code className="tl-chip" title={chip.value}>{chip.value}</code>;
+function UrlChip({ chip, href, run, step }: { chip: StepChip; href: string; run: Run; step: StepRecord }) {
+  const valid = () =>
+    ownsStep(run, step) &&
+    stepChips(step).some((value) => value.kind === chip.kind && value.value === chip.value);
+  const [element, dispatch] = useRunPanelCommand<HTMLAnchorElement>(
+    "open-run-step-url",
+    run,
+    (_current, event) => openBrowserLink(href, event instanceof MouseEvent ? backgroundLink(event) : false),
+    step,
+    valid,
+  );
+  return (
+    <a
+      className="tl-chip"
+      ref={element}
+      href={href}
+      title={chip.value}
+      data-command-id="open-run-step-url"
+      onClick={(event) => {
+        event.preventDefault();
+        dispatch(event);
+      }}
+      onAuxClick={(event) => {
+        if (event.button === 1) {
+          event.preventDefault();
+          dispatch(event);
+        }
+      }}
+    >
+      {chip.value.replace(/^https?:\/\//, "")}
+    </a>
+  );
+}
+function Chip({ chip, run, step }: { chip: StepChip; run: Run; step: StepRecord }) {
+  if (chip.kind === "url") {
+    const href = browserLinkUrl(chip.value);
+    if (href) return <UrlChip chip={chip} href={href} run={run} step={step} />;
+  }
+  if (chip.kind === "path" && isOpenablePath(chip.value))
+    return (
+      <RunPanelAction
+        command="open-run-step-path"
+        run={run}
+        identity={step}
+        valid={() =>
+          ownsStep(run, step) &&
+          stepChips(step).some((value) => value.kind === chip.kind && value.value === chip.value)
+        }
+        type="button"
+        className="tl-chip"
+        title={chip.value}
+        invoke={(current) =>
+          bridge.openPath(chip.value).then((error) => {
+            if (error && current()) errToast(new Error(error));
+            return error;
+          })
+        }
+      >
+        {chip.value}
+      </RunPanelAction>
+    );
+  return (
+    <code className="tl-chip" title={chip.value}>
+      {chip.value}
+    </code>
+  );
 }
 
 const StepCard = memo(function StepCard({
@@ -176,7 +238,7 @@ const StepCard = memo(function StepCard({
   live: boolean;
   current: boolean;
   nested?: boolean;
-  onInspect?: (artifactId: string, step: StepRecord,current:()=>boolean) => unknown;
+  onInspect?: (artifactId: string, step: StepRecord, current: () => boolean) => unknown;
   children?: ReactNode;
 }) {
   const state = stepState(s);
@@ -185,7 +247,7 @@ const StepCard = memo(function StepCard({
   const chips = stepChips(s);
   const obsId = typeof inputsOf(s).obsArtifactId === "string" ? String(inputsOf(s).obsArtifactId) : "";
   const redacted = redactedInputs(s);
-  const detailKeys = Object.keys(redacted).filter(key => key !== "obsArtifactId");
+  const detailKeys = Object.keys(redacted).filter((key) => key !== "obsArtifactId");
   const hasBody = chips.length > 0 || !!s.outcome || detailKeys.length > 0;
   const [open, setOpen] = useState(false);
   const [enter, setEnter] = useState(() => live && !playedEntrance.has(s.stepId));
@@ -196,32 +258,102 @@ const StepCard = memo(function StepCard({
     return () => window.clearTimeout(timer);
   }, [enter, s.stepId]);
   return (
-    <li className={`tl-step tl-card ${state}${enter ? " enter" : ""}${nested ? " nested" : ""}`} aria-current={current ? "step" : undefined} data-testid="tl-step">
+    <li
+      className={`tl-step tl-card ${state}${enter ? " enter" : ""}${nested ? " nested" : ""}`}
+      aria-current={current ? "step" : undefined}
+      data-testid="tl-step"
+    >
       <span className="tl-dot">
-        {state === "ok" ? shellIconCheck : state === "failed" ? shellIconClose : state === "skipped" ? <span className="tl-skip" /> : <span className="live-dot" />}
+        {state === "ok" ? (
+          shellIconCheck
+        ) : state === "failed" ? (
+          shellIconClose
+        ) : state === "skipped" ? (
+          <span className="tl-skip" />
+        ) : (
+          <span className="live-dot" />
+        )}
       </span>
       <div className="tl-body">
-        <RunPanelAction command="toggle-run-step" run={run} identity={s} valid={()=>ownsStep(run,s)} className="tl-summary" type="button" aria-expanded={open} disabled={!hasBody} invoke={() => hasBody && setOpen(v => !v)}>
+        <RunPanelAction
+          command="toggle-run-step"
+          run={run}
+          identity={s}
+          valid={() => ownsStep(run, s)}
+          className="tl-summary"
+          type="button"
+          aria-expanded={open}
+          disabled={!hasBody}
+          invoke={() => hasBody && setOpen((v) => !v)}
+        >
           <span className="tl-op">{opLabel(s.op)}</span>
-          <span className="tl-detail" title={stepSummary(s)}>{stepSummary(s)}</span>
+          <span className="tl-detail" title={stepSummary(s)}>
+            {stepSummary(s)}
+          </span>
           <span className={`tl-status ${state}`}>{statusLabel(state)}</span>
-          {hasBody && <span className={`tl-disclosure ${open ? "open" : ""}`} {...auxNativeAriaHiddenProps}>{shellIconRight}</span>}
-
+          {hasBody && (
+            <span className={`tl-disclosure ${open ? "open" : ""}`} {...auxNativeAriaHiddenProps}>
+              {shellIconRight}
+            </span>
+          )}
         </RunPanelAction>
-        {receipt && <span className="tl-receipt" data-testid="tl-receipt" data-receipt={kind}>{receipt}</span>}
+        {receipt && (
+          <span className="tl-receipt" data-testid="tl-receipt" data-receipt={kind}>
+            {receipt}
+          </span>
+        )}
         {open && (
           <div className="tl-expand">
-            {s.outcome && <div className="tl-evidence-summary"><span className="tl-ms nums">{fmtMs(s.outcome.durationMs)}</span>{s.outcome.receipt?.observed && <span>{s.outcome.receipt.observed}</span>}</div>}
+            {s.outcome && (
+              <div className="tl-evidence-summary">
+                <span className="tl-ms nums">{fmtMs(s.outcome.durationMs)}</span>
+                {s.outcome.receipt?.observed && <span>{s.outcome.receipt.observed}</span>}
+              </div>
+            )}
             {s.outcome?.error?.code && <code className="tl-code">{s.outcome.error.code}</code>}
-            {s.outcome?.receipt?.identity && <div className="tl-identity"><span {...auxClassMetadataKeyProps}>Page</span><span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.pageId}</span><span {...auxClassMetadataKeyProps}>Document</span><span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.documentEpoch}</span>{s.outcome.receipt.identity.generation !== undefined && <><span {...auxClassMetadataKeyProps}>Generation</span><span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.generation}</span></>}{s.outcome.receipt.identity.target && <><span {...auxClassMetadataKeyProps}>Target</span><span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.target}</span></>}</div>}
-            {chips.length > 0 && <div className="tl-chips">{chips.map(chip => <Chip key={`${chip.kind}:${chip.value}`} chip={chip} run={run} step={s} />)}</div>}
+            {s.outcome?.receipt?.identity && (
+              <div className="tl-identity">
+                <span {...auxClassMetadataKeyProps}>Page</span>
+                <span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.pageId}</span>
+                <span {...auxClassMetadataKeyProps}>Document</span>
+                <span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.documentEpoch}</span>
+                {s.outcome.receipt.identity.generation !== undefined && (
+                  <>
+                    <span {...auxClassMetadataKeyProps}>Generation</span>
+                    <span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.generation}</span>
+                  </>
+                )}
+                {s.outcome.receipt.identity.target && (
+                  <>
+                    <span {...auxClassMetadataKeyProps}>Target</span>
+                    <span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.target}</span>
+                  </>
+                )}
+              </div>
+            )}
+            {chips.length > 0 && (
+              <div className="tl-chips">
+                {chips.map((chip) => (
+                  <Chip key={`${chip.kind}:${chip.value}`} chip={chip} run={run} step={s} />
+                ))}
+              </div>
+            )}
             {detailKeys.length > 0 && <pre className="tl-json">{JSON.stringify(redacted, null, 2)}</pre>}
           </div>
         )}
         {children}
       </div>
       {obsId && onInspect && (
-        <RunPanelAction command="inspect-run-step" run={run} identity={s} valid={()=>ownsStep(run,s)&&inputsOf(s).obsArtifactId===obsId} className="icon-btn xs tl-obs" title="Show what the agent saw before this step" aria-label="Inspect observation" invoke={current=>onInspect(obsId,s,current)}>
+        <RunPanelAction
+          command="inspect-run-step"
+          run={run}
+          identity={s}
+          valid={() => ownsStep(run, s) && inputsOf(s).obsArtifactId === obsId}
+          className="icon-btn xs tl-obs"
+          title="Show what the agent saw before this step"
+          aria-label="Inspect observation"
+          invoke={(current) => onInspect(obsId, s, current)}
+        >
           {shellIconObs}
         </RunPanelAction>
       )}
@@ -246,16 +378,21 @@ export const StepTimeline = memo(function StepTimeline({
   steps: StepRecord[];
   /** the run is still going — the last unfinished step is marked current */
   live: boolean;
-  onInspect?: (artifactId: string, step: StepRecord,current:()=>boolean) => unknown;
+  onInspect?: (artifactId: string, step: StepRecord, current: () => boolean) => unknown;
   compact?: boolean;
 }) {
-  const windowScope=useMemo(()=>({windowId,privateMode,windowKind}),[windowId,privateMode,windowKind]);
+  const windowScope = useMemo(
+    () => ({ windowId, privateMode, windowKind }),
+    [windowId, privateMode, windowKind],
+  );
   if (steps.length === 0) {
     return (
       <ol className={`timeline ${compact ? "compact" : ""}`} aria-label="Steps">
         {live && (
           <li className="tl-step running" aria-current="step">
-            <span className="tl-dot"><span className="live-dot" /></span>
+            <span className="tl-dot">
+              <span className="live-dot" />
+            </span>
             <span className="tl-body">
               <span className="tl-op">Observing</span>
               <span className="tl-detail">Reading the page before the first step</span>
@@ -281,7 +418,7 @@ export const StepTimeline = memo(function StepTimeline({
         >
           {children.length > 0 && (
             <ol className="tl-nest" aria-label="Nested steps">
-              {children.map(child => (
+              {children.map((child) => (
                 <StepCard
                   key={child.stepId}
                   s={child}
@@ -299,7 +436,9 @@ export const StepTimeline = memo(function StepTimeline({
       ))}
       {live && steps[steps.length - 1]?.outcome && (
         <li className="tl-step running" aria-current="step">
-          <span className="tl-dot"><span className="live-dot" /></span>
+          <span className="tl-dot">
+            <span className="live-dot" />
+          </span>
           <span className="tl-body">
             <span className="tl-op">Thinking</span>
             <span className="tl-detail">Planning the next step</span>

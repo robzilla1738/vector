@@ -158,104 +158,108 @@ export class RunMessageQueue {
   }
 
   async steer(input: QueueMessageInput): Promise<RunMessage> {
-    return withRunAuthorityMutation(this.repo, async () => {
-    const mentions = MentionRefsSchema.parse(input.mentions ?? []);
-    const { message, created } = this.repo.transaction(() => {
-      const previous = this.repo.getRunMessage(input.messageId);
-      if (previous) {
-        if (
-          previous.mode !== "steer" ||
-          previous.chatId !== input.chatId ||
-          previous.targetRunId !== input.runId ||
-          previous.text !== input.text ||
-          previous.expectedRevision !== input.expectedRevision ||
-          previous.resendsNonce !== input.resendsMessageId ||
-          JSON.stringify(previous.pageIds) !== JSON.stringify(input.pageIds) ||
-          JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs) ||
-          JSON.stringify(previous.mentions ?? []) !== JSON.stringify(mentions)
-        ) {
-          throw new AuxError("conflict", "This message ID already belongs to another correction.");
+    return withRunAuthorityMutation(
+      this.repo,
+      async () => {
+        const mentions = MentionRefsSchema.parse(input.mentions ?? []);
+        const { message, created } = this.repo.transaction(() => {
+          const previous = this.repo.getRunMessage(input.messageId);
+          if (previous) {
+            if (
+              previous.mode !== "steer" ||
+              previous.chatId !== input.chatId ||
+              previous.targetRunId !== input.runId ||
+              previous.text !== input.text ||
+              previous.expectedRevision !== input.expectedRevision ||
+              previous.resendsNonce !== input.resendsMessageId ||
+              JSON.stringify(previous.pageIds) !== JSON.stringify(input.pageIds) ||
+              JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs) ||
+              JSON.stringify(previous.mentions ?? []) !== JSON.stringify(mentions)
+            ) {
+              throw new AuxError("conflict", "This message ID already belongs to another correction.");
+            }
+            return { message: previous, created: false };
+          }
+          const target = this.repo.getRun(input.runId);
+          if (!target || target.config?.chatId !== input.chatId)
+            throw new AuxError("not_found", "The conversation run was not found.");
+          if (input.resendsMessageId) {
+            const superseded = this.repo.getRunMessage(input.resendsMessageId);
+            if (!superseded || superseded.chatId !== input.chatId)
+              throw new AuxError("not_found", "The message this send supersedes was not found.");
+          }
+          if (target.config?.taskId) {
+            const tasks = new TaskService(this.repo, this.events);
+            const task = tasks.get(target.config.taskId);
+            if (
+              task.revision !== target.config.taskRevision ||
+              task.state === "archived" ||
+              (task.conversationId ?? taskConversationId(task.taskId)) !== input.chatId
+            ) {
+              throw new AuxError("conflict", "This saved task changed. Review it before steering this run.");
+            }
+          }
+          if (!active.has(target.status) || !this.canSteer(input.runId))
+            throw new AuxError("conflict", "This run has finished. Send a follow-up instead.");
+          if (this.repo.getConversation(input.chatId)?.archived)
+            throw new AuxError("conflict", "Restore this conversation before correcting it.");
+          if ((target.config?.messageRevision ?? 0) !== input.expectedRevision)
+            throw new AuxError("conflict", "This run changed. Review it before steering again.");
+          const corrections = this.repo.listRunSteers(input.runId);
+          if (
+            corrections.length >= 32 ||
+            corrections.reduce((size, correction) => size + correction.text.length, 0) + input.text.length >
+              20_000
+          ) {
+            throw new AuxError(
+              "conflict",
+              "This run has reached its correction limit. Stop it and start a follow-up.",
+            );
+          }
+          if (
+            input.pageIds.length !== target.pageIds.length ||
+            input.pageIds.some((pageId, index) => pageId !== target.pageIds[index]) ||
+            JSON.stringify(input.contextPageRefs) !== JSON.stringify(target.config?.contextPageRefs ?? [])
+          ) {
+            throw new AuxError(
+              "conflict",
+              "The selected browser context changed. Update it after this run finishes.",
+            );
+          }
+          const at = Date.now();
+          const inserted = this.repo.insertRunMessage({
+            messageId: input.messageId,
+            chatId: input.chatId,
+            targetRunId: input.runId,
+            deliveryRunId: newRunId(),
+            mode: "steer",
+            status: "delivered",
+            text: input.text,
+            pageIds: input.pageIds,
+            contextPageRefs: input.contextPageRefs,
+            mentions,
+            expectedRevision: input.expectedRevision,
+            ...(input.resendsMessageId ? { resendsNonce: input.resendsMessageId } : {}),
+            createdAt: at,
+            updatedAt: at,
+          });
+          target.config = { ...target.config, messageRevision: input.expectedRevision + 1, mentions };
+          this.repo.saveRun(target);
+          return { message: inserted, created: true };
+        });
+        if (created) {
+          this.changed(message);
+          this.events.emit(
+            EventTypes.RunUpdated,
+            { run: this.repo.getRun(message.targetRunId)! },
+            message.targetRunId,
+          );
+          this.signalSteer(message.targetRunId);
         }
-        return { message: previous, created: false };
-      }
-      const target = this.repo.getRun(input.runId);
-      if (!target || target.config?.chatId !== input.chatId)
-        throw new AuxError("not_found", "The conversation run was not found.");
-      if (input.resendsMessageId) {
-        const superseded = this.repo.getRunMessage(input.resendsMessageId);
-        if (!superseded || superseded.chatId !== input.chatId)
-          throw new AuxError("not_found", "The message this send supersedes was not found.");
-      }
-      if (target.config?.taskId) {
-        const tasks = new TaskService(this.repo, this.events);
-        const task = tasks.get(target.config.taskId);
-        if (
-          task.revision !== target.config.taskRevision ||
-          task.state === "archived" ||
-          (task.conversationId ?? taskConversationId(task.taskId)) !== input.chatId
-        ) {
-          throw new AuxError("conflict", "This saved task changed. Review it before steering this run.");
-        }
-      }
-      if (!active.has(target.status) || !this.canSteer(input.runId))
-        throw new AuxError("conflict", "This run has finished. Send a follow-up instead.");
-      if (this.repo.getConversation(input.chatId)?.archived)
-        throw new AuxError("conflict", "Restore this conversation before correcting it.");
-      if ((target.config?.messageRevision ?? 0) !== input.expectedRevision)
-        throw new AuxError("conflict", "This run changed. Review it before steering again.");
-      const corrections = this.repo.listRunSteers(input.runId);
-      if (
-        corrections.length >= 32 ||
-        corrections.reduce((size, correction) => size + correction.text.length, 0) + input.text.length >
-          20_000
-      ) {
-        throw new AuxError(
-          "conflict",
-          "This run has reached its correction limit. Stop it and start a follow-up.",
-        );
-      }
-      if (
-        input.pageIds.length !== target.pageIds.length ||
-        input.pageIds.some((pageId, index) => pageId !== target.pageIds[index]) ||
-        JSON.stringify(input.contextPageRefs) !== JSON.stringify(target.config?.contextPageRefs ?? [])
-      ) {
-        throw new AuxError(
-          "conflict",
-          "The selected browser context changed. Update it after this run finishes.",
-        );
-      }
-      const at = Date.now();
-      const inserted = this.repo.insertRunMessage({
-        messageId: input.messageId,
-        chatId: input.chatId,
-        targetRunId: input.runId,
-        deliveryRunId: newRunId(),
-        mode: "steer",
-        status: "delivered",
-        text: input.text,
-        pageIds: input.pageIds,
-        contextPageRefs: input.contextPageRefs,
-        mentions,
-        expectedRevision: input.expectedRevision,
-        ...(input.resendsMessageId ? { resendsNonce: input.resendsMessageId } : {}),
-        createdAt: at,
-        updatedAt: at,
-      });
-      target.config = { ...target.config, messageRevision: input.expectedRevision + 1, mentions };
-      this.repo.saveRun(target);
-      return { message: inserted, created: true };
-    });
-    if (created) {
-      this.changed(message);
-      this.events.emit(
-        EventTypes.RunUpdated,
-        { run: this.repo.getRun(message.targetRunId)! },
-        message.targetRunId,
-      );
-      this.signalSteer(message.targetRunId);
-    }
-    return message;
-    }, input.runId);
+        return message;
+      },
+      input.runId,
+    );
   }
 
   cancel(messageId: string): RunMessage {
@@ -298,8 +302,13 @@ export class RunMessageQueue {
 
   private syncJournal(message: RunMessage): void {
     const record = this.sendJournal.queue(
-      { nonce: message.messageId, threadId: message.chatId, turnId: message.targetRunId, text: message.text,
-        ...(message.resendsNonce ? { supersedes: message.resendsNonce } : {}) },
+      {
+        nonce: message.messageId,
+        threadId: message.chatId,
+        turnId: message.targetRunId,
+        text: message.text,
+        ...(message.resendsNonce ? { supersedes: message.resendsNonce } : {}),
+      },
       message.createdAt,
     );
     if (message.status === "cancelled") {

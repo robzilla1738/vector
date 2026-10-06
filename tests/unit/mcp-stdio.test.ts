@@ -164,12 +164,18 @@ describe("Gate F MCP stdio session", () => {
             break;
           }
           case "pages.execute":
-            if ((body.params as { program?: { steps?: { target?: string }[] } })?.program?.steps?.[0]?.target === "r404") {
+            if (
+              (body.params as { program?: { steps?: { target?: string }[] } })?.program?.steps?.[0]
+                ?.target === "r404"
+            ) {
               res.setHeader("content-type", "application/json");
               res.end(JSON.stringify({ error: { code: "ref_stale", message: "ref r404 is stale" } }));
               return;
             }
-            result = { status: "completed", steps: [{ stepId: "c", op: "click", status: "ok", startedAt: 1, durationMs: 1 }] };
+            result = {
+              status: "completed",
+              steps: [{ stepId: "c", op: "click", status: "ok", startedAt: 1, durationMs: 1 }],
+            };
             break;
           case "pages.takeover":
             controller = "human";
@@ -261,7 +267,7 @@ describe("Gate F MCP stdio session", () => {
 
   it("keeps page creation outside the scoped catalog", async () => {
     const listed = await mcp.call("tools/list");
-    const names = ((listed.result as { tools: { name: string }[] }).tools ?? []).map(t => t.name);
+    const names = ((listed.result as { tools: { name: string }[] }).tools ?? []).map((t) => t.name);
     expect(names).toContain("aux_pages_list");
     expect(names).not.toContain("aux_page_open");
     const opened = await mcp.call("tools/call", {
@@ -269,46 +275,86 @@ describe("Gate F MCP stdio session", () => {
       arguments: { url: "https://app.test/auto" },
     });
     expect(JSON.stringify(opened)).not.toMatch(/app\.test\/auto/);
-    expect(calls.some(c => c.method === "pages.open")).toBe(false);
+    expect(calls.some((c) => c.method === "pages.open")).toBe(false);
   });
 
   it("keeps tools/list small, annotated and free of uncallable tools", async () => {
     const listed = await mcp.call("tools/list");
-    const tools = (listed.result as { tools: { name: string; inputSchema: unknown; annotations?: Record<string, boolean> }[] }).tools;
+    const tools = (
+      listed.result as {
+        tools: { name: string; inputSchema: unknown; annotations?: Record<string, boolean> }[];
+      }
+    ).tools;
     expect(JSON.stringify(listed.result).length).toBeLessThan(30_000);
     const execute = tools.find((t) => t.name === "aux_page_execute")!;
     expect(JSON.stringify(execute).length).toBeLessThan(8_000);
     expect(execute.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
-    expect(tools.find((t) => t.name === "aux_page_observe")?.annotations).toMatchObject({ readOnlyHint: true });
+    expect(tools.find((t) => t.name === "aux_page_observe")?.annotations).toMatchObject({
+      readOnlyHint: true,
+    });
     expect(tools.every((t) => t.annotations)).toBe(true);
-    expect(tools.some((t) => t.name.startsWith("aux_development_") || t.name.startsWith("aux_cloud_"))).toBe(false);
+    expect(tools.some((t) => t.name.startsWith("aux_development_") || t.name.startsWith("aux_cloud_"))).toBe(
+      false,
+    );
     expect(tools.map((t) => t.name)).toContain("aux_api_describe");
     expect(tools.map((t) => t.name)).toContain("aux_api_call");
-    const described = await mcp.call("tools/call", { name: "aux_api_describe", arguments: { path: "tabs.list" } });
-    expect(JSON.parse((described.result as { content: [{ text: string }] }).content[0].text)).toMatchObject({ path: "tabs.list", inputSchema: { type: "object" } });
-    const called = await mcp.call("tools/call", { name: "aux_api_call", arguments: { path: "tabs.list", params: {} } });
+    const described = await mcp.call("tools/call", {
+      name: "aux_api_describe",
+      arguments: { path: "tabs.list" },
+    });
+    expect(JSON.parse((described.result as { content: [{ text: string }] }).content[0].text)).toMatchObject({
+      path: "tabs.list",
+      inputSchema: { type: "object" },
+    });
+    const called = await mcp.call("tools/call", {
+      name: "aux_api_call",
+      arguments: { path: "tabs.list", params: {} },
+    });
     expect((called.result as { isError?: boolean }).isError).not.toBe(true);
-    for (const gone of ["aux_run_start", "aux_set_map", "aux_operation_invoke", "aux_chrome_import_cookies", "aux_task_create"]) expect(tools.map((t) => t.name)).not.toContain(gone);
+    for (const gone of [
+      "aux_run_start",
+      "aux_set_map",
+      "aux_operation_invoke",
+      "aux_chrome_import_cookies",
+      "aux_task_create",
+    ])
+      expect(tools.map((t) => t.name)).not.toContain(gone);
   });
 
   it("validates flat steps against the planner vocabulary and summarizes results one line per step", async () => {
-    const bad = await mcp.call("tools/call", { name: "aux_page_execute", arguments: { pageId: "p1", steps: [{ id: "n", op: "navigate", url: "not a url" }] } });
+    const bad = await mcp.call("tools/call", {
+      name: "aux_page_execute",
+      arguments: { pageId: "p1", steps: [{ id: "n", op: "navigate", url: "not a url" }] },
+    });
     expect(JSON.stringify(bad)).toMatch(/invalid_params/);
-    const good = await mcp.call("tools/call", { name: "aux_page_execute", arguments: { pageId: "p1", steps: [{ id: "c", op: "click", target: "r9" }] } });
+    const good = await mcp.call("tools/call", {
+      name: "aux_page_execute",
+      arguments: { pageId: "p1", steps: [{ id: "c", op: "click", target: "r9" }] },
+    });
     const text = (good.result as { content: [{ text: string }] }).content[0].text;
     expect(text).toBe("completed (1 step)\nc click ok 1ms");
   });
 
   it("preserves runtime error codes", async () => {
-    const stale = await mcp.call("tools/call", { name: "aux_page_execute", arguments: { pageId: "p1", steps: [{ id: "c", op: "click", target: "r404" }] } });
-    const payload = JSON.parse((stale.result as { content: [{ text: string }] }).content[0].text) as { code: string; retryable: boolean };
+    const stale = await mcp.call("tools/call", {
+      name: "aux_page_execute",
+      arguments: { pageId: "p1", steps: [{ id: "c", op: "click", target: "r404" }] },
+    });
+    const payload = JSON.parse((stale.result as { content: [{ text: string }] }).content[0].text) as {
+      code: string;
+      retryable: boolean;
+    };
     expect(payload).toMatchObject({ code: "ref_stale", retryable: true });
   });
 
   it("reports a revoked scoped token as a non-retryable authorization denial", async () => {
     revoked = true;
     const denied = await mcp.call("tools/call", { name: "aux_pages_list" });
-    const payload = JSON.parse((denied.result as { content: [{ text: string }] }).content[0].text) as { code: string; retryable: boolean; message: string };
+    const payload = JSON.parse((denied.result as { content: [{ text: string }] }).content[0].text) as {
+      code: string;
+      retryable: boolean;
+      message: string;
+    };
     expect(payload).toMatchObject({ code: "permission_denied", retryable: false });
     expect(payload.message).not.toContain("Revoked token");
   });

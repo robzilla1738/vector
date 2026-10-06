@@ -4,20 +4,34 @@ import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { Routine, RoutineInboxItem, RoutineRunOutcome, RoutineTrigger, Task, Workspace } from "@aux/contracts";
+import type {
+  Routine,
+  RoutineInboxItem,
+  RoutineRunOutcome,
+  RoutineTrigger,
+  Task,
+  Workspace,
+} from "@aux/contracts";
 import { call, errToast, useStore } from "../../store";
 import { bridge } from "../../bridge";
 import { openSavedSkill } from "../../task-navigation";
 import { RoutineSchedule, type CalendarTriggerAccounts } from "../../components/RoutineSchedule";
 import { SettingsField, SettingsSection } from "../primitives";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../../ui/native-attribute-props";
 import {
-  nativeButtonTypeProps as auxNativeButtonTypeProps,
+  nativeNumberTypeProps,
+  nativeAlertRoleProps,
+  nativeStatusRoleProps,
+  nativePoliteLiveProps,
 } from "../../ui/native-attribute-props";
-import { nativeNumberTypeProps, nativeAlertRoleProps, nativeStatusRoleProps, nativePoliteLiveProps } from "../../ui/native-attribute-props";
 
 const effectiveCap = (routine: Routine) => routine.spendCapUsd ?? 50;
 
-function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
+function CreateAutomationDialog({
+  workspaceId,
+  onClose,
+  onCreated,
+}: {
   workspaceId: string;
   onClose: () => void;
   onCreated: (routine: Routine) => void;
@@ -38,15 +52,19 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
   }, []);
   useEffect(() => {
     let live = true;
-    void call("tasks.list", { workspaceId, limit: 500 }).then((items) => {
-      if (!live) return;
-      const open = items.filter((item) => item.state === "open");
-      setTasks(open);
-      setTaskId(open[0]?.taskId ?? "");
-    }).catch((reason) => {
-      if (live) setError(errorMessage(reason));
-    });
-    return () => { live = false; };
+    void call("tasks.list", { workspaceId, limit: 500 })
+      .then((items) => {
+        if (!live) return;
+        const open = items.filter((item) => item.state === "open");
+        setTasks(open);
+        setTaskId(open[0]?.taskId ?? "");
+      })
+      .catch((reason) => {
+        if (live) setError(errorMessage(reason));
+      });
+    return () => {
+      live = false;
+    };
   }, [workspaceId]);
 
   useEffect(() => {
@@ -57,26 +75,49 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
     void Promise.all([
       call("calendar.connections.list", {}),
       call("calendar.taskGrants.list", { taskId: task.taskId }),
-    ]).then(([connections, grants]) => {
-      if (!live) return;
-      const choices = grants.filter((grant) => grant.taskRevision === task.revision && !grant.revokedAt)
-        .flatMap((grant) => {
-          const account = connections.connections.find((item) =>
-            item.connectionId === grant.connectionId && item.state === "active");
-          return account ? [{ grantId: grant.grantId, connectionId: account.connectionId,
-            label: account.label, accountKey: account.accountKey }] : [];
+    ])
+      .then(([connections, grants]) => {
+        if (!live) return;
+        const choices = grants
+          .filter((grant) => grant.taskRevision === task.revision && !grant.revokedAt)
+          .flatMap((grant) => {
+            const account = connections.connections.find(
+              (item) => item.connectionId === grant.connectionId && item.state === "active",
+            );
+            return account
+              ? [
+                  {
+                    grantId: grant.grantId,
+                    connectionId: account.connectionId,
+                    label: account.label,
+                    accountKey: account.accountKey,
+                  },
+                ]
+              : [];
+          });
+        setCalendar({
+          status: "ready",
+          choices,
+          message: !connections.available
+            ? connections.reason
+            : !choices.length
+              ? "Connect an account in Settings → Connections and grant it to this task revision first."
+              : undefined,
         });
-      setCalendar({ status: "ready", choices,
-        message: !connections.available ? connections.reason : !choices.length
-          ? "Connect an account in Settings → Connections and grant it to this task revision first."
-          : undefined });
-    }).catch((reason) => {
-      if (live) setCalendar({ status: "error", choices: [], message:
-        /preview|feature_unavailable/.test(String(reason))
-          ? "Calendar accounts are unavailable in this build. Connect and grant an account when Calendar support is enabled."
-          : `Calendar accounts could not be loaded. ${String(reason)}` });
-    });
-    return () => { live = false; };
+      })
+      .catch((reason) => {
+        if (live)
+          setCalendar({
+            status: "error",
+            choices: [],
+            message: /preview|feature_unavailable/.test(String(reason))
+              ? "Calendar accounts are unavailable in this build. Connect and grant an account when Calendar support is enabled."
+              : `Calendar accounts could not be loaded. ${String(reason)}`,
+          });
+      });
+    return () => {
+      live = false;
+    };
   }, [tasks, taskId]);
 
   async function create(trigger: RoutineTrigger) {
@@ -86,12 +127,21 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
     if (!Number.isFinite(amount) || amount <= 0 || amount > 50)
       return setError("Enter a model spend cap above $0 and no more than $50.");
     if (trigger.kind === "manual") return setError("Choose a schedule or event trigger.");
-    if (trigger.kind === "calendar_event" && !calendar.choices.some((item) => item.grantId === trigger.grantId))
+    if (
+      trigger.kind === "calendar_event" &&
+      !calendar.choices.some((item) => item.grantId === trigger.grantId)
+    )
       return setError("Choose a Calendar account granted to this task revision.");
-    const origins = new Set(task.resources.flatMap((resource) => {
-      if (resource.kind !== "url" && resource.kind !== "page") return [];
-      try { return [new URL(resource.locator).origin]; } catch { return []; }
-    }));
+    const origins = new Set(
+      task.resources.flatMap((resource) => {
+        if (resource.kind !== "url" && resource.kind !== "page") return [];
+        try {
+          return [new URL(resource.locator).origin];
+        } catch {
+          return [];
+        }
+      }),
+    );
     if (trigger.kind === "site_notification") origins.add(trigger.origin);
     if (trigger.kind === "page_change") origins.add(new URL(trigger.url).origin);
     setBusy(true);
@@ -120,26 +170,82 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
   }
 
   return createPortal(
-    <dialog ref={dialog} className="automation-create-dialog" aria-label="Create automation"
-      onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>
+    <dialog
+      ref={dialog}
+      className="automation-create-dialog"
+      aria-label="Create automation"
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!busy) onClose();
+      }}
+    >
       <h3>Create automation</h3>
-      <p {...staticHintProps}>Start from a saved task. New automations stay paused until you review and resume them.</p>
-      <label>Saved task
-        <select aria-label="Automation source task" value={taskId} onChange={(event) => setTaskId(event.target.value)} disabled={busy}>
+      <p {...staticHintProps}>
+        Start from a saved task. New automations stay paused until you review and resume them.
+      </p>
+      <label>
+        Saved task
+        <select
+          aria-label="Automation source task"
+          value={taskId}
+          onChange={(event) => setTaskId(event.target.value)}
+          disabled={busy}
+        >
           {!taskId && <option value="">Choose a task</option>}
-          {tasks.map((task) => <option key={task.taskId} value={task.taskId}>{task.title}</option>)}
+          {tasks.map((task) => (
+            <option key={task.taskId} value={task.taskId}>
+              {task.title}
+            </option>
+          ))}
         </select>
       </label>
-      <label>Skill name
-        <input aria-label="New automation name" value={title} maxLength={200} onChange={(event) => setTitle(event.target.value)} disabled={busy} placeholder="Use task title" />
+      <label>
+        Skill name
+        <input
+          aria-label="New automation name"
+          value={title}
+          maxLength={200}
+          onChange={(event) => setTitle(event.target.value)}
+          disabled={busy}
+          placeholder="Use task title"
+        />
       </label>
-      <label>Model spend cap (USD)
-        <input aria-label="New automation model spend cap" {...nativeNumberTypeProps} min="0.01" max="50" step="0.01" value={cap} onChange={(event) => setCap(event.target.value)} disabled={busy} />
+      <label>
+        Model spend cap (USD)
+        <input
+          aria-label="New automation model spend cap"
+          {...nativeNumberTypeProps}
+          min="0.01"
+          max="50"
+          step="0.01"
+          value={cap}
+          onChange={(event) => setCap(event.target.value)}
+          disabled={busy}
+        />
       </label>
-      <RoutineSchedule mode="create" trigger={{ kind: "schedule", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", hour: 9, minute: 0, days: [1, 2, 3, 4, 5] }} calendar={calendar} disabled={busy || !taskId} onSave={(trigger) => void create(trigger)} />
-      {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}</p>}
-      <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={onClose} disabled={busy}>Cancel</button>
-    </dialog>, document.body,
+      <RoutineSchedule
+        mode="create"
+        trigger={{
+          kind: "schedule",
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+          hour: 9,
+          minute: 0,
+          days: [1, 2, 3, 4, 5],
+        }}
+        calendar={calendar}
+        disabled={busy || !taskId}
+        onSave={(trigger) => void create(trigger)}
+      />
+      {error && (
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
+          {error}
+        </p>
+      )}
+      <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={onClose} disabled={busy}>
+        Cancel
+      </button>
+    </dialog>,
+    document.body,
   );
 }
 
@@ -171,15 +277,18 @@ export function AutomationsSettings({ active }: { active: boolean }) {
         setWorkspaceId((current) =>
           items.some((item) => item.workspaceId === current)
             ? current
-            : items.find((item) => item.workspaceId === preferredWorkspaceId)?.workspaceId ??
-              items[0]?.workspaceId ?? "",
+            : (items.find((item) => item.workspaceId === preferredWorkspaceId)?.workspaceId ??
+              items[0]?.workspaceId ??
+              ""),
         );
         setError("");
       })
       .catch((reason) => {
         if (live) setError(errorMessage(reason));
       });
-    return () => { live = false; };
+    return () => {
+      live = false;
+    };
   }, [active, preferredWorkspaceId]);
 
   useEffect(() => {
@@ -199,8 +308,12 @@ export function AutomationsSettings({ active }: { active: boolean }) {
       .catch((reason) => {
         if (live) setError(errorMessage(reason));
       })
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
   }, [active, workspaceId]);
 
   useEffect(() => {
@@ -210,17 +323,34 @@ export function AutomationsSettings({ active }: { active: boolean }) {
       if (event.type !== "routine.updated") return;
       const routine = event.payload.routine as Routine | undefined;
       if (routine?.workspaceId === workspaceId && routine.trigger.kind !== "manual")
-        setRoutines((items) => items.some((item) => item.routineId === routine.routineId)
-          ? items.map((item) => item.routineId === routine.routineId ? routine : item)
-          : [routine, ...items]);
+        setRoutines((items) =>
+          items.some((item) => item.routineId === routine.routineId)
+            ? items.map((item) => (item.routineId === routine.routineId ? routine : item))
+            : [routine, ...items],
+        );
       void call("routines.inbox", { workspaceId, limit: 30 })
-        .then((items) => { if (live) setInbox(items); })
-        .catch((reason) => { if (live) setError(errorMessage(reason)); });
+        .then((items) => {
+          if (live) setInbox(items);
+        })
+        .catch((reason) => {
+          if (live) setError(errorMessage(reason));
+        });
     });
-    return () => { live = false; off(); };
+    return () => {
+      live = false;
+      off();
+    };
   }, [active, workspaceId]);
 
-  async function changeRoutine(routine: Routine, patch: { spendCapUsd?: number; paused?: boolean; missedRunPolicy?: Routine["missedRunPolicy"]; presenceGuardExempt?: boolean }) {
+  async function changeRoutine(
+    routine: Routine,
+    patch: {
+      spendCapUsd?: number;
+      paused?: boolean;
+      missedRunPolicy?: Routine["missedRunPolicy"];
+      presenceGuardExempt?: boolean;
+    },
+  ) {
     setBusyId(routine.routineId);
     setError("");
     try {
@@ -229,14 +359,16 @@ export function AutomationsSettings({ active }: { active: boolean }) {
         expectedRevision: routine.revision,
         ...patch,
       });
-      setRoutines((items) => items.map((item) => item.routineId === updated.routineId ? updated : item));
+      setRoutines((items) => items.map((item) => (item.routineId === updated.routineId ? updated : item)));
     } catch (reason) {
       setError(errorMessage(reason));
       // A revision conflict should show the latest state before another edit.
       try {
         const items = await call("routines.list", { workspaceId, includeArchived: true, limit: 200 });
         setRoutines(items.filter((item) => item.trigger.kind !== "manual"));
-      } catch { /* Keep the original error visible. */ }
+      } catch {
+        /* Keep the original error visible. */
+      }
     } finally {
       setBusyId("");
     }
@@ -249,14 +381,18 @@ export function AutomationsSettings({ active }: { active: boolean }) {
         hint="Suggest saved Skills from the current task or page. Scans stay on this device and never start a run."
         searchTerms={["suggestions", "scan frequency", "skills"]}
       >
-        <select aria-label="Skill suggestion scan frequency" value={scanMode} disabled={scanBusy}
+        <select
+          aria-label="Skill suggestion scan frequency"
+          value={scanMode}
+          disabled={scanBusy}
           onChange={(event) => {
             setScanBusy(true);
             setError("");
             void call("settings.set", { routineSuggestionScan: event.target.value as typeof scanMode })
               .catch((reason) => setError(errorMessage(reason)))
               .finally(() => setScanBusy(false));
-          }}>
+          }}
+        >
           <option value="off">Off</option>
           <option value="context">When context changes</option>
           <option value="five-minutes">Every 5 minutes</option>
@@ -267,18 +403,30 @@ export function AutomationsSettings({ active }: { active: boolean }) {
         hint="Scheduled Skills and Calendar checks run while Aux is open. Calendar checks poll granted accounts once a minute; no event titles are stored in automation runs."
         searchTerms={["monitor", "schedule", "calendar", "automation"]}
       >
-        <button {...smallButtonProps} {...auxNativeButtonTypeProps} disabled={!workspaceId || !!busyId} onClick={() => setCreating(true)}>Create automation</button>
+        <button
+          {...smallButtonProps}
+          {...auxNativeButtonTypeProps}
+          disabled={!workspaceId || !!busyId}
+          onClick={() => setCreating(true)}
+        >
+          Create automation
+        </button>
         <label>
           Space
           <select
             aria-label="Automation Space"
             value={workspaceId}
-            onChange={(event) => { setWorkspaceId(event.target.value); setOutcome(null); }}
+            onChange={(event) => {
+              setWorkspaceId(event.target.value);
+              setOutcome(null);
+            }}
             disabled={!active || loading || !!busyId}
           >
             {!workspaceId && <option value="">No Spaces</option>}
             {workspaces.map((workspace) => (
-              <option key={workspace.workspaceId} value={workspace.workspaceId}>{workspace.name}</option>
+              <option key={workspace.workspaceId} value={workspace.workspaceId}>
+                {workspace.name}
+              </option>
             ))}
           </select>
         </label>
@@ -288,16 +436,18 @@ export function AutomationsSettings({ active }: { active: boolean }) {
           <div className="field" key={routine.routineId}>
             <strong>{routine.title}</strong>
             <span {...staticHintProps}>
-              {routine.trigger.kind.replaceAll("_", " ")} · {routine.archivedAt ? "Archived" : routine.paused ? "Paused" : "Ready"}
+              {routine.trigger.kind.replaceAll("_", " ")} ·{" "}
+              {routine.archivedAt ? "Archived" : routine.paused ? "Paused" : "Ready"}
             </span>
-            <span {...staticHintProps}>{routine.replay
-              ? routine.replay.state === "tested" ? "Tested browser replay on its reviewed site" : "Replay requires a fresh test and review"
-              : "Model-led Skill; model spend cap applies"}</span>
+            <span {...staticHintProps}>
+              {routine.replay
+                ? routine.replay.state === "tested"
+                  ? "Tested browser replay on its reviewed site"
+                  : "Replay requires a fresh test and review"
+                : "Model-led Skill; model spend cap applies"}
+            </span>
             <div {...staticRowProps}>
-              <button
-                {...smallGhostButtonProps}
-                onClick={() => void openSavedSkill(routine).catch(errToast)}
-              >
+              <button {...smallGhostButtonProps} onClick={() => void openSavedSkill(routine).catch(errToast)}>
                 Open Skill
               </button>
               {!routine.archivedAt && routine.activationReview && (
@@ -305,28 +455,57 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                   Review Skill
                 </button>
               )}
-              {!routine.archivedAt && !routine.activationReview && routine.pauseCause !== "unread_results" && (
-                <button
-                  {...smallButtonProps}
-                  disabled={!!busyId}
-                  onClick={() => void changeRoutine(routine, { paused: !routine.paused })}
-                >
-                  {routine.paused ? "Resume" : "Pause"}
-                </button>
-              )}
+              {!routine.archivedAt &&
+                !routine.activationReview &&
+                routine.pauseCause !== "unread_results" && (
+                  <button
+                    {...smallButtonProps}
+                    disabled={!!busyId}
+                    onClick={() => void changeRoutine(routine, { paused: !routine.paused })}
+                  >
+                    {routine.paused ? "Resume" : "Pause"}
+                  </button>
+                )}
             </div>
             {routine.pauseCause === "unread_results" && (
               <div {...staticFieldProps} {...nativeStatusRoleProps}>
-                <span>Paused after three unread results over at least a day while model work was recorded. Review the results before continuing; the model spend cap still applies.</span>
+                <span>
+                  Paused after three unread results over at least a day while model work was recorded. Review
+                  the results before continuing; the model spend cap still applies.
+                </span>
                 <div {...staticRowProps}>
-                  <button {...smallButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: false })}>Keep running</button>
-                  <button {...smallGhostButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: true })}>Pause Skill</button>
-                  <button {...smallGhostButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: false, presenceGuardExempt: true })}>Don’t ask again · keep running</button>
+                  <button
+                    {...smallButtonProps}
+                    disabled={!!busyId}
+                    onClick={() => void changeRoutine(routine, { paused: false })}
+                  >
+                    Keep running
+                  </button>
+                  <button
+                    {...smallGhostButtonProps}
+                    disabled={!!busyId}
+                    onClick={() => void changeRoutine(routine, { paused: true })}
+                  >
+                    Pause Skill
+                  </button>
+                  <button
+                    {...smallGhostButtonProps}
+                    disabled={!!busyId}
+                    onClick={() => void changeRoutine(routine, { paused: false, presenceGuardExempt: true })}
+                  >
+                    Don’t ask again · keep running
+                  </button>
                 </div>
               </div>
             )}
             {!routine.archivedAt && routine.presenceGuardExempt && (
-              <button {...smallGhostButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { presenceGuardExempt: false })}>Re-enable unread-results pause</button>
+              <button
+                {...smallGhostButtonProps}
+                disabled={!!busyId}
+                onClick={() => void changeRoutine(routine, { presenceGuardExempt: false })}
+              >
+                Re-enable unread-results pause
+              </button>
             )}
             {!routine.archivedAt && (
               <form
@@ -357,10 +536,17 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                     required
                   />
                 </label>
-                <button {...smallButtonProps} type="submit" disabled={!!busyId}>Save cap</button>
+                <button {...smallButtonProps} type="submit" disabled={!!busyId}>
+                  Save cap
+                </button>
               </form>
             )}
-            {!routine.archivedAt && <span {...staticHintProps}>Checks recorded model spending before each new run and pauses at this cap. A running model call may go over it; tested browser replays do not call a model.</span>}
+            {!routine.archivedAt && (
+              <span {...staticHintProps}>
+                Checks recorded model spending before each new run and pauses at this cap. A running model
+                call may go over it; tested browser replays do not call a model.
+              </span>
+            )}
             {!routine.archivedAt && routine.trigger.kind === "schedule" && (
               <label>
                 When Aux missed a scheduled time
@@ -368,12 +554,19 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                   aria-label={`${routine.title} missed run policy`}
                   value={routine.missedRunPolicy}
                   disabled={!!busyId}
-                  onChange={(event) => void changeRoutine(routine, { missedRunPolicy: event.target.value as Routine["missedRunPolicy"] })}
+                  onChange={(event) =>
+                    void changeRoutine(routine, {
+                      missedRunPolicy: event.target.value as Routine["missedRunPolicy"],
+                    })
+                  }
                 >
                   <option value="record_only">Record missed runs</option>
                   <option value="run_once_on_wake">Run once when Aux opens</option>
                 </select>
-                <span {...staticHintProps}>Earlier missed times stay in the results inbox. If a current scheduled time is due, it takes priority. Writes still wait for review.</span>
+                <span {...staticHintProps}>
+                  Earlier missed times stay in the results inbox. If a current scheduled time is due, it takes
+                  priority. Writes still wait for review.
+                </span>
               </label>
             )}
           </div>
@@ -392,34 +585,70 @@ export function AutomationsSettings({ active }: { active: boolean }) {
               {item.run.status.replaceAll("_", " ")} · {new Date(item.run.createdAt).toLocaleString()}
               {item.run.reason ? ` · ${item.run.reason}` : ""}
             </span>
-            <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={() => void call("routines.get", { routineId: item.run.routineId })
-              .then(({ routine }) => openSavedSkill(routine)).catch(errToast)}>Open Skill</button>
-            {item.run.runId && <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps}
-              disabled={!!outcomeBusy}
-              onClick={() => {
-                setOutcomeBusy(item.run.routineRunId);
-                setError("");
-                void call("routines.outcome", { routineRunId: item.run.routineRunId })
-                  .then(setOutcome)
-                  .catch((reason) => setError(errorMessage(reason)))
-                  .finally(() => setOutcomeBusy(""));
-              }}>View result</button>}
-            {outcome?.run.routineRunId === item.run.routineRunId && <div {...nativePoliteLiveProps} {...staticHintProps}>
-              <div>Linked run: <code>{outcome.run.runId ?? "unavailable"}</code> · {outcome.linkedRunFound ? "Saved run available" : "Linked run unavailable"}</div>
-              {outcome.criteria.map(entry => <div key={entry.criterion.criterionId}>
-                {entry.criterion.description}: {entry.status.replaceAll("_", " ")} · {entry.evidence.length} evidence record{entry.evidence.length === 1 ? "" : "s"}
-              </div>)}
-            </div>}
+            <button
+              {...smallGhostButtonProps}
+              {...auxNativeButtonTypeProps}
+              onClick={() =>
+                void call("routines.get", { routineId: item.run.routineId })
+                  .then(({ routine }) => openSavedSkill(routine))
+                  .catch(errToast)
+              }
+            >
+              Open Skill
+            </button>
+            {item.run.runId && (
+              <button
+                {...smallGhostButtonProps}
+                {...auxNativeButtonTypeProps}
+                disabled={!!outcomeBusy}
+                onClick={() => {
+                  setOutcomeBusy(item.run.routineRunId);
+                  setError("");
+                  void call("routines.outcome", { routineRunId: item.run.routineRunId })
+                    .then(setOutcome)
+                    .catch((reason) => setError(errorMessage(reason)))
+                    .finally(() => setOutcomeBusy(""));
+                }}
+              >
+                View result
+              </button>
+            )}
+            {outcome?.run.routineRunId === item.run.routineRunId && (
+              <div {...nativePoliteLiveProps} {...staticHintProps}>
+                <div>
+                  Linked run: <code>{outcome.run.runId ?? "unavailable"}</code> ·{" "}
+                  {outcome.linkedRunFound ? "Saved run available" : "Linked run unavailable"}
+                </div>
+                {outcome.criteria.map((entry) => (
+                  <div key={entry.criterion.criterionId}>
+                    {entry.criterion.description}: {entry.status.replaceAll("_", " ")} ·{" "}
+                    {entry.evidence.length} evidence record{entry.evidence.length === 1 ? "" : "s"}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </SettingsField>
-      {error && <p {...staticHintProps} {...nativeAlertRoleProps}>{error}</p>}
-      {creating && workspaceId && <CreateAutomationDialog workspaceId={workspaceId} onClose={() => setCreating(false)} onCreated={(routine) => {
-        setRoutines((items) => items.some((item) => item.routineId === routine.routineId)
-          ? items.map((item) => item.routineId === routine.routineId ? routine : item)
-          : [routine, ...items]);
-        setCreating(false);
-      }} />}
+      {error && (
+        <p {...staticHintProps} {...nativeAlertRoleProps}>
+          {error}
+        </p>
+      )}
+      {creating && workspaceId && (
+        <CreateAutomationDialog
+          workspaceId={workspaceId}
+          onClose={() => setCreating(false)}
+          onCreated={(routine) => {
+            setRoutines((items) =>
+              items.some((item) => item.routineId === routine.routineId)
+                ? items.map((item) => (item.routineId === routine.routineId ? routine : item))
+                : [routine, ...items],
+            );
+            setCreating(false);
+          }}
+        />
+      )}
     </SettingsSection>
   );
 }

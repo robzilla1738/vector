@@ -8,7 +8,10 @@ export class PrivacyCheckpoint {
   private closed = false;
   private retry = 0;
 
-  constructor(private readonly path: string, private readonly onError: (error: Error) => void = () => {}) {}
+  constructor(
+    private readonly path: string,
+    private readonly onError: (error: Error) => void = () => {},
+  ) {}
 
   request(): void {
     if (this.closed || this.path === ":memory:") return;
@@ -24,7 +27,9 @@ export class PrivacyCheckpoint {
       this.pending = false;
       let worker: Worker;
       try {
-        worker = new Worker(new URL("./privacy-checkpoint-worker.js", import.meta.url), { workerData: { path: this.path } });
+        worker = new Worker(new URL("./privacy-checkpoint-worker.js", import.meta.url), {
+          workerData: { path: this.path },
+        });
       } catch (error) {
         this.onError(error instanceof Error ? error : new Error(String(error)));
         this.pending = true;
@@ -35,12 +40,18 @@ export class PrivacyCheckpoint {
       this.worker = worker;
       let complete = false;
       let failed = false;
-      worker.on("message", (result: { complete: boolean }) => { complete = result.complete; });
-      worker.on("error", error => { failed = true; this.onError(error); });
-      worker.on("exit", code => {
+      worker.on("message", (result: { complete: boolean }) => {
+        complete = result.complete;
+      });
+      worker.on("error", (error) => {
+        failed = true;
+        this.onError(error);
+      });
+      worker.on("exit", (code) => {
         if (this.worker === worker) this.worker = undefined;
         if (this.closed) return;
-        if (code !== 0 && !failed) this.onError(new Error(`Privacy checkpoint worker exited with code ${code}`));
+        if (code !== 0 && !failed)
+          this.onError(new Error(`Privacy checkpoint worker exited with code ${code}`));
         if (complete) this.retry = 0;
         else {
           this.pending = true;

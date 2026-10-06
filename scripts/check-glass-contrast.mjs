@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 
 const tokens = readFileSync(new URL("../apps/shell/src/tokens.css", import.meta.url), "utf8");
 const surfaces = readFileSync(new URL("../apps/shell/src/styles/surfaces.css", import.meta.url), "utf8");
-const floatingOpacity = Number(surfaces.match(/--floating-glass-tint:\s*color-mix\(in srgb, var\(--floating-sidebar-surface\) (\d+)%, transparent\)/)?.[1]) / 100;
+const floatingOpacity =
+  Number(
+    surfaces.match(
+      /--floating-glass-tint:\s*color-mix\(in srgb, var\(--floating-sidebar-surface\) (\d+)%, transparent\)/,
+    )?.[1],
+  ) / 100;
 assert.ok(floatingOpacity > 0 && floatingOpacity <= 1, "floating glass opacity must be present");
 const dark = tokens.slice(0, tokens.indexOf('[data-theme="light"] {'));
 const light = tokens.slice(tokens.indexOf('[data-theme="light"] {'));
@@ -11,13 +16,16 @@ const light = tokens.slice(tokens.indexOf('[data-theme="light"] {'));
 function tokenColor(sheet, name) {
   const hex = sheet.match(new RegExp(`--${name}:\\s*#([\\da-f]{6}|[\\da-f]{3});`, "i"))?.[1];
   if (hex) {
-    const expanded = hex.length === 3 ? [...hex].map(channel => channel.repeat(2)).join("") : hex;
-    const channels = expanded.match(/.{2}/g).map(channel => parseInt(channel, 16) / 255);
+    const expanded = hex.length === 3 ? [...hex].map((channel) => channel.repeat(2)).join("") : hex;
+    const channels = expanded.match(/.{2}/g).map((channel) => parseInt(channel, 16) / 255);
     return { channels, alpha: 1 };
   }
   const match = sheet.match(new RegExp(`--${name}: oklch\\(([\\d.]+)% 0 0(?: / ([\\d.]+))?\\);`));
   assert.ok(match, `${name} must be a neutral hex or OKLCH token for this check`);
-  return { channels: Array(3).fill(srgb((Number(match[1]) / 100) ** 3)), alpha: match[2] ? Number(match[2]) : 1 };
+  return {
+    channels: Array(3).fill(srgb((Number(match[1]) / 100) ** 3)),
+    alpha: match[2] ? Number(match[2]) : 1,
+  };
 }
 
 function srgb(linear) {
@@ -29,20 +37,33 @@ function linear(srgbValue) {
 }
 
 function contrast(ink, glass, behind) {
-  const background = glass.channels.map(channel => channel * glass.alpha + behind * (1 - glass.alpha));
-  const foreground = ink.channels.map((channel, index) => channel * ink.alpha + background[index] * (1 - ink.alpha));
-  const luminance = channels => channels.map(linear).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+  const background = glass.channels.map((channel) => channel * glass.alpha + behind * (1 - glass.alpha));
+  const foreground = ink.channels.map(
+    (channel, index) => channel * ink.alpha + background[index] * (1 - ink.alpha),
+  );
+  const luminance = (channels) =>
+    channels.map(linear).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
   const [higher, lower] = [luminance(background), luminance(foreground)].sort((a, b) => b - a);
   return (higher + 0.05) / (lower + 0.05);
 }
 
-for (const [theme, sheet] of [["dark", dark], ["light", light]]) {
+for (const [theme, sheet] of [
+  ["dark", dark],
+  ["light", light],
+]) {
   const ink = tokenColor(sheet, "ink-2");
   const glass = tokenColor(sheet, "glass");
   const strong = tokenColor(sheet, "glass-strong");
   const floating = tokenColor(sheet, "floating-sidebar-surface");
-  for (const [surface, material] of [["glass", glass], ["strong glass", strong], ["floating glass", { ...floating, alpha: floatingOpacity }]]) {
-    for (const [underlay, behind] of [["black", 0], ["white", 1]]) {
+  for (const [surface, material] of [
+    ["glass", glass],
+    ["strong glass", strong],
+    ["floating glass", { ...floating, alpha: floatingOpacity }],
+  ]) {
+    for (const [underlay, behind] of [
+      ["black", 0],
+      ["white", 1],
+    ]) {
       const ratio = contrast(ink, material, behind);
       console.log(`${theme} ${surface} over ${underlay}: ${ratio.toFixed(2)}:1`);
       assert.ok(ratio >= 4.5, `${theme} secondary text on ${surface} over ${underlay} is below 4.5:1`);

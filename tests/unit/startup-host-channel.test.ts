@@ -6,8 +6,12 @@ it("delivers native responses during unlock and replays startup requests only af
   let incoming!: (frame: unknown) => void;
   const sent: unknown[] = [];
   const socket: HostSocketTransport = {
-    send(frame) { sent.push(frame); },
-    onMessage(callback) { incoming = callback; },
+    send(frame) {
+      sent.push(frame);
+    },
+    onMessage(callback) {
+      incoming = callback;
+    },
     close() {},
   };
   const startup = startupHostChannel(socket);
@@ -19,7 +23,7 @@ it("delivers native responses during unlock and replays startup requests only af
   expect(sent).toHaveLength(1);
   const notes: string[] = [];
   startup.channel.onMethod("history.projectSnapshot", () => ({ ok: true }));
-  startup.channel.onNotify(type => notes.push(type));
+  startup.channel.onNotify((type) => notes.push(type));
   startup.release();
   await Promise.resolve();
   expect(notes).toEqual(["view.navigated"]);

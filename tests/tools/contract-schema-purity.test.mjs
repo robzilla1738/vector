@@ -87,15 +87,57 @@ test("relative schema derivation preserves original imports and nullable/strict 
 });
 
 test("mapping joins exact original UTF-16 factory columns across newline and non-ASCII text", () => {
-  const code='import {z} from "zod";\nconst Label="🟦";const Value=z.string().min(1);';
-  const result=annotateContractSchemaFactories(code,"original.js");
-  const alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  const decode=segment=>{let n=0,shift=0,values=[];for(const c of segment){const bits=alphabet.indexOf(c);n+=(bits&31)*2**shift;if(bits&32)shift+=5;else{values.push(n&1?-(n>>1):n>>1);n=shift=0;}}return values;};
-  let source=0,line=0,column=0;const rows=[];
-  for(const [generatedLine,mappings] of result.map.mappings.split(";").entries()){let generatedColumn=0;for(const segment of mappings.split(",")){if(!segment)continue;const values=decode(segment);generatedColumn+=values[0];source+=values[1];line+=values[2];column+=values[3];rows.push({generatedLine,generatedColumn,source,line,column});}}
-  const originalLines=code.split("\n"),generatedLines=result.code.split("\n");
-  for(const target of ["z.string", ".min"]){const original=originalLines[1].indexOf(target),generated=generatedLines[1].indexOf(target);assert.ok(rows.some(row=>row.generatedLine===1&&row.generatedColumn===generated&&row.source===0&&row.line===1&&row.column===original));}
-  assert.equal(strip(result.code),code);
+  const code = 'import {z} from "zod";\nconst Label="🟦";const Value=z.string().min(1);';
+  const result = annotateContractSchemaFactories(code, "original.js");
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const decode = (segment) => {
+    let n = 0,
+      shift = 0,
+      values = [];
+    for (const c of segment) {
+      const bits = alphabet.indexOf(c);
+      n += (bits & 31) * 2 ** shift;
+      if (bits & 32) shift += 5;
+      else {
+        values.push(n & 1 ? -(n >> 1) : n >> 1);
+        n = shift = 0;
+      }
+    }
+    return values;
+  };
+  let source = 0,
+    line = 0,
+    column = 0;
+  const rows = [];
+  for (const [generatedLine, mappings] of result.map.mappings.split(";").entries()) {
+    let generatedColumn = 0;
+    for (const segment of mappings.split(",")) {
+      if (!segment) continue;
+      const values = decode(segment);
+      generatedColumn += values[0];
+      source += values[1];
+      line += values[2];
+      column += values[3];
+      rows.push({ generatedLine, generatedColumn, source, line, column });
+    }
+  }
+  const originalLines = code.split("\n"),
+    generatedLines = result.code.split("\n");
+  for (const target of ["z.string", ".min"]) {
+    const original = originalLines[1].indexOf(target),
+      generated = generatedLines[1].indexOf(target);
+    assert.ok(
+      rows.some(
+        (row) =>
+          row.generatedLine === 1 &&
+          row.generatedColumn === generated &&
+          row.source === 0 &&
+          row.line === 1 &&
+          row.column === original,
+      ),
+    );
+  }
+  assert.equal(strip(result.code), code);
 });
 
 test("actual partialRecord/nonoptional constructors preserve missing/foreign/undefined validation and schema identity", () => {

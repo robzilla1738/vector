@@ -50,7 +50,9 @@ function harness(readOnly = false) {
       object: {
         status: "continue",
         message: "retry",
-        steps: readOnly ? [{ id: `s-${roles.length}`, op: "extract", fields: [{ name: "text", selector: "h1" }] }] : [{ id: `s-${roles.length}`, op: "click", target: "r1" }],
+        steps: readOnly
+          ? [{ id: `s-${roles.length}`, op: "extract", fields: [{ name: "text", selector: "h1" }] }]
+          : [{ id: `s-${roles.length}`, op: "click", target: "r1" }],
       },
       durationMs: 5,
     };
@@ -63,7 +65,10 @@ function harness(readOnly = false) {
 
   let executeCalls = 0;
   const pages = {
-    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/", 1),  controller: "none"  }),
+    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({
+      ...fixturePage(fixturePageId, "http://x.test/", 1),
+      controller: "none",
+    }),
     observe: vi.fn(async () => obs()),
     execute: vi.fn(async () => {
       executeCalls += 1;
@@ -73,10 +78,16 @@ function harness(readOnly = false) {
         error: "locator not found",
       };
     }),
-    capture: vi.fn(async () => ({ dataUrl: "data:image/png;base64,AAAA", width: 100, height: 100, scale: 1 })),
+    capture: vi.fn(async () => ({
+      dataUrl: "data:image/png;base64,AAAA",
+      width: 100,
+      height: 100,
+      scale: 1,
+    })),
   };
 
-  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
+  const coordinator = new RunCoordinator({
+    turnMentions: fixtureTurnMentions((pageId) => pages.get(pageId)),
     repo,
     events,
     pages: pages as never,
@@ -86,7 +97,15 @@ function harness(readOnly = false) {
     recordModelCall: () => {},
     grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   });
-  return { repo, coordinator, generateStructured, roles, get executeCalls() { return executeCalls; } };
+  return {
+    repo,
+    coordinator,
+    generateStructured,
+    roles,
+    get executeCalls() {
+      return executeCalls;
+    },
+  };
 }
 
 async function waitForRun(repo: Repo, runId: string, ms = 5000) {
@@ -136,7 +155,12 @@ describe("H2-C3 repair taxonomy", () => {
 describe("repair escalation", () => {
   it("invokes the recovery model exactly once after three consecutive failed read chunks", async () => {
     const h = harness(true);
-    const run = await h.coordinator.start({ goal: "read heading", pageIds: ["p1"], maxModelCalls: 20, maxSteps: 40 });
+    const run = await h.coordinator.start({
+      goal: "read heading",
+      pageIds: ["p1"],
+      maxModelCalls: 20,
+      maxSteps: 40,
+    });
     const final = await waitForRun(h.repo, run.runId);
     expect(final.status).toBe("failed");
     expect(h.roles.filter((id) => id === "test/recovery")).toHaveLength(1);
@@ -149,17 +173,26 @@ describe("repair escalation", () => {
     expect(final.status).toBe("interrupted");
     expect(final.error).toContain("Uncertain action outcome");
     expect(h.executeCalls).toBe(1);
-    expect(h.roles.filter(id => id === "test/recovery")).toHaveLength(0);
+    expect(h.roles.filter((id) => id === "test/recovery")).toHaveLength(0);
   });
 
   it("gives up on permission_denied without spending the miss budget or calling recovery", async () => {
     const h = harness();
     h.coordinator.deps.grants = ["effect:read"];
-    const run = await h.coordinator.start({ goal: "click go", pageIds: ["p1"], maxModelCalls: 10, maxSteps: 10 });
+    const run = await h.coordinator.start({
+      goal: "click go",
+      pageIds: ["p1"],
+      maxModelCalls: 10,
+      maxSteps: 10,
+    });
     const final = await waitForRun(h.repo, run.runId);
     expect(final.status).toBe("failed");
     expect(final.error).toMatch(/permission denied/i);
-    expect(final.failure).toMatchObject({ category: "permission", action: "permission_settings", retryable: true });
+    expect(final.failure).toMatchObject({
+      category: "permission",
+      action: "permission_settings",
+      retryable: true,
+    });
     expect(final.failure?.message).toContain("interact with pages");
     expect(h.executeCalls).toBe(0);
     expect(h.roles.filter((id) => id === "test/recovery")).toHaveLength(0);

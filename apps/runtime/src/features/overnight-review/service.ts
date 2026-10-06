@@ -6,8 +6,13 @@ const byRepo = new WeakMap<Services["repo"], NightShiftService>();
 const instances = new WeakMap<Services, NightShiftService>();
 export function installNightShift(s: Services, service: NightShiftService) {
   if (instances.has(s)) throw new AuxError("conflict", "This Profile already has Night shift.");
-  instances.set(s, service); byRepo.set(s.repo, service);
-  return async () => { await service.close(); instances.delete(s); byRepo.delete(s.repo); };
+  instances.set(s, service);
+  byRepo.set(s.repo, service);
+  return async () => {
+    await service.close();
+    instances.delete(s);
+    byRepo.delete(s.repo);
+  };
 }
 export function nightShift(s: Services) {
   const service = instances.get(s);
@@ -24,9 +29,11 @@ export async function checkNightShiftDispatch(repo: Services["repo"], runId: str
   const itemId = run.config?.nightShiftItemId;
   if (!itemId) throw new AuxError("permission_denied", "The overnight queue authority changed.");
   const item = service.get(itemId);
-  if (item.runId !== rootId || item.createdBy !== "person") throw new AuxError("permission_denied", "This run is outside its person-queued overnight item.");
+  if (item.runId !== rootId || item.createdBy !== "person")
+    throw new AuxError("permission_denied", "This run is outside its person-queued overnight item.");
   await service.assertDispatch(rootId);
-  if (overnightRoot(repo, runId) !== rootId) throw new AuxError("permission_denied", "Run lineage changed during dispatch authorization.");
+  if (overnightRoot(repo, runId) !== rootId)
+    throw new AuxError("permission_denied", "Run lineage changed during dispatch authorization.");
 }
 
 /** Runtime-owned exact queue authority for a native effect receipt. */

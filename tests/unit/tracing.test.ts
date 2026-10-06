@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { openDb, Tracer } from "@aux/runtime";
 
 const kvCounter = (db: ReturnType<typeof openDb>, name: string) => {
-  const row = db.prepare("SELECT value FROM kv WHERE key=?").get(`counter:${name}`) as { value: string } | undefined;
+  const row = db.prepare("SELECT value FROM kv WHERE key=?").get(`counter:${name}`) as
+    { value: string } | undefined;
   return row ? Number(row.value) : undefined;
 };
 

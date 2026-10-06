@@ -7,8 +7,10 @@ import { useConversationOwner } from "./ConversationControls";
 import { useConversationAttachmentOwner } from "./ConversationAttachmentControls";
 import { StructuredResultControl, StructuredResultRow } from "./StructuredResultControls";
 import { csvPreview } from "../csv-preview";
-import { staticMetadataKeyProps as auxClassMetadataKeyProps, staticMetadataValueProps as auxClassMetadataValueProps } from "../ui/class-props";
-
+import {
+  staticMetadataKeyProps as auxClassMetadataKeyProps,
+  staticMetadataValueProps as auxClassMetadataValueProps,
+} from "../ui/class-props";
 
 const admitted = () => true;
 export function StructuredResult({

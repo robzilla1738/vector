@@ -3,7 +3,11 @@ import { createElement, type ComponentType, type ReactElement, type ReactNode, t
 
 type IcoSize = "sm" | "md" | "lg";
 
-export function icon(Icon: ComponentType<SVGProps<SVGSVGElement>>, size: IcoSize = "md", fill = "none"): ReactElement {
+export function icon(
+  Icon: ComponentType<SVGProps<SVGSVGElement>>,
+  size: IcoSize = "md",
+  fill = "none",
+): ReactElement {
   return (
     <span className={`ci ico-${size}`} aria-hidden>
       <Icon fill={fill} />
@@ -15,6 +19,12 @@ export function svg(props: SVGProps<SVGSVGElement>, ...children: ReactNode[]): R
   return createElement("svg", { ...baseSvgProps, ...props }, ...children);
 }
 
-export function svgPath(d: string, stroke: Pick<SVGProps<SVGPathElement>, "stroke" | "strokeWidth" | "strokeLinecap" | "strokeLinejoin"> = roundJoinedStrokeProps): ReactElement {
+export function svgPath(
+  d: string,
+  stroke: Pick<
+    SVGProps<SVGPathElement>,
+    "stroke" | "strokeWidth" | "strokeLinecap" | "strokeLinejoin"
+  > = roundJoinedStrokeProps,
+): ReactElement {
   return createElement("path", { d, ...stroke });
 }

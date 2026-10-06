@@ -1,8 +1,12 @@
 import { newAsyncContext, type QuickJSAsyncContext } from "quickjs-emscripten";
 import { randomUUID } from "node:crypto";
 import {
-  AgentJsRunParams, MethodSchemas, ResultSchemas,
-  supportedAgentApi, AuxError, type AgentApiSupport,
+  AgentJsRunParams,
+  MethodSchemas,
+  ResultSchemas,
+  supportedAgentApi,
+  AuxError,
+  type AgentApiSupport,
 } from "@aux/contracts";
 
 type Client = { external: boolean; connectionId?: string; scope?: unknown; codeMode?: true };
@@ -25,7 +29,10 @@ const MAX_HOST_FAILURES = 32;
 /** An isolated QuickJS context per caller/session. Only manifest-backed handles cross it. */
 export class AgentCodeMode {
   private sessions = new Map<string, Session>();
-  constructor(private invoke: Invoke, private support: AgentApiSupport = { surface: "code" }) {}
+  constructor(
+    private invoke: Invoke,
+    private support: AgentApiSupport = { surface: "code" },
+  ) {}
 
   private key(client: Client, sessionId: string) {
     return `${client.connectionId ?? (client.external ? "external" : "internal")}:${sessionId}`;
@@ -53,31 +60,47 @@ export class AgentCodeMode {
     const context = await newAsyncContext();
     context.runtime.setMemoryLimit(MAX_HEAP_BYTES);
     context.runtime.setMaxStackSize(2 * 1024 * 1024);
-    const session: Session = { context, queue: Promise.resolve(), client, deadline: 0, touchedAt: Date.now(), hostFailures: new Map() };
+    const session: Session = {
+      context,
+      queue: Promise.resolve(),
+      client,
+      deadline: 0,
+      touchedAt: Date.now(),
+      hostFailures: new Map(),
+    };
     context.runtime.setInterruptHandler(() => Date.now() >= session.deadline);
     const available = supportedAgentApi(this.support);
-    const byPath = new Map(available.map(item => [item.path, item]));
+    const byPath = new Map(available.map((item) => [item.path, item]));
     const handle = context.newAsyncifiedFunction("aux_call", async (pathHandle, paramsHandle) => {
       const path = context.getString(pathHandle);
       const entry = byPath.get(path);
-      if (!entry) return context.newString(JSON.stringify({ ok: false, error: `Unsupported Aux API member: ${path}` }));
-      if (Date.now() >= session.deadline) return context.newString(JSON.stringify({ ok: false, error: "Code mode deadline expired" }));
+      if (!entry)
+        return context.newString(JSON.stringify({ ok: false, error: `Unsupported Aux API member: ${path}` }));
+      if (Date.now() >= session.deadline)
+        return context.newString(JSON.stringify({ ok: false, error: "Code mode deadline expired" }));
       try {
-        const params = MethodSchemas[entry.method].parse(JSON.parse(context.getString(paramsHandle))) as never;
+        const params = MethodSchemas[entry.method].parse(
+          JSON.parse(context.getString(paramsHandle)),
+        ) as never;
         const result = await this.invoke(entry.method, params, { ...session.client, codeMode: true });
-        return context.newString(JSON.stringify({ ok: true, value: ResultSchemas[entry.method].parse(result) }));
+        return context.newString(
+          JSON.stringify({ ok: true, value: ResultSchemas[entry.method].parse(result) }),
+        );
       } catch (error) {
         // Keep the host's error code across the QuickJS boundary. Unknown host
         // failures contain no public diagnostic and must not leak into code or RPC.
         const failure = error instanceof AuxError ? error : new AuxError("internal", "Aux host call failed.");
         const id = randomUUID();
         session.hostFailures.set(id, failure);
-        if (session.hostFailures.size > MAX_HOST_FAILURES) session.hostFailures.delete(session.hostFailures.keys().next().value!);
-        return context.newString(JSON.stringify({ ok: false, error: `${failure.message} [${HOST_FAILURE_MARKER}${id}]` }));
+        if (session.hostFailures.size > MAX_HOST_FAILURES)
+          session.hostFailures.delete(session.hostFailures.keys().next().value!);
+        return context.newString(
+          JSON.stringify({ ok: false, error: `${failure.message} [${HOST_FAILURE_MARKER}${id}]` }),
+        );
       }
     });
-    handle.consume(fn => context.setProp(context.global, "aux_call", fn));
-    const paths = available.map(item => item.path);
+    handle.consume((fn) => context.setProp(context.global, "aux_call", fn));
+    const paths = available.map((item) => item.path);
     const bootstrap = `
       const aux = Object.create(null);
       for (const path of ${JSON.stringify(paths)}) {
@@ -104,14 +127,17 @@ export class AgentCodeMode {
     for (const [id, session] of this.sessions) if (Date.now() - session.touchedAt > IDLE_MS) this.dispose(id);
     let session = this.sessions.get(key);
     if (!session) {
-      if (this.sessions.size >= MAX_SESSIONS) throw new AuxError("conflict", "Too many active code-mode sessions; reset an old session.");
+      if (this.sessions.size >= MAX_SESSIONS)
+        throw new AuxError("conflict", "Too many active code-mode sessions; reset an old session.");
       session = await this.makeSession(client);
       this.sessions.set(key, session);
     }
     const current = session;
     let release!: () => void;
     const previous = current.queue;
-    current.queue = new Promise<void>(resolve => { release = resolve; });
+    current.queue = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     await previous;
     const started = Date.now();
     current.client = client;
@@ -120,9 +146,10 @@ export class AgentCodeMode {
     current.hostFailures.clear();
     try {
       const result = await current.context.evalCodeAsync(params.code);
-      const value = current.context.unwrapResult(result).consume(handle => current.context.dump(handle));
+      const value = current.context.unwrapResult(result).consume((handle) => current.context.dump(handle));
       const json = JSON.stringify(value ?? null);
-      if (json.length > 1_000_000) throw new AuxError("invalid_params", "Code mode output exceeds 1 MB; return a smaller result.");
+      if (json.length > 1_000_000)
+        throw new AuxError("invalid_params", "Code mode output exceeds 1 MB; return a smaller result.");
       return { value: JSON.parse(json) as unknown, durationMs: Date.now() - started };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

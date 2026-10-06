@@ -34,7 +34,15 @@ function sampleObservation(n = 40): Observation {
       headings: ["Records"],
       elements,
       formFields: [{ ref: "r1", type: "select", label: "Status", value: "approved" }],
-      tables: [{ ref: "t1", columns: ["id", "title"], rows: [["rec-1", "Record 1"]], totalRows: 30, truncated: true }],
+      tables: [
+        {
+          ref: "t1",
+          columns: ["id", "title"],
+          rows: [["rec-1", "Record 1"]],
+          totalRows: 30,
+          truncated: true,
+        },
+      ],
       links: [],
       dialogs: [],
       truncated: false,
@@ -49,7 +57,13 @@ describe("compactObservation", () => {
     const obs = sampleObservation();
     const c = compactObservation(obs);
     expect(CompactObservationSchema.safeParse(c).success).toBe(true);
-    expect(c).toMatchObject({ pageId: "p_1", url: obs.content.url, title: "Records", revision: 7, documentEpoch: 2 });
+    expect(c).toMatchObject({
+      pageId: "p_1",
+      url: obs.content.url,
+      title: "Records",
+      revision: 7,
+      documentEpoch: 2,
+    });
     expect(c.refs).toHaveLength(40);
     expect(c.refs[0]).toEqual({ ref: "r1", role: "button", name: "Save 0" });
     for (const r of c.refs) {

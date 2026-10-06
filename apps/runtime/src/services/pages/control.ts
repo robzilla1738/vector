@@ -17,34 +17,51 @@ export class ControlAuthority {
     lp.target.controller = "human";
     lp.target.controllerEpoch++;
     this.pages.persist(lp);
-    this.pages.deps.events.emit(EventTypes.PageTakeover, { pageId, controller: "human", controllerEpoch: lp.target.controllerEpoch, ...(nativeRunId ? { nativeRunId } : {}) });
+    this.pages.deps.events.emit(EventTypes.PageTakeover, {
+      pageId,
+      controller: "human",
+      controllerEpoch: lp.target.controllerEpoch,
+      ...(nativeRunId ? { nativeRunId } : {}),
+    });
     return lp.target;
   }
 
-  takeover(pageId: string): Promise<PageTarget> { return this.hold(pageId); }
+  takeover(pageId: string): Promise<PageTarget> {
+    return this.hold(pageId);
+  }
 
   /** Host-only caller has already checked its original native scope and ACK. */
-  takeoverFromNative(pageId: string, runId: string): Promise<PageTarget> { return this.hold(pageId, runId); }
+  takeoverFromNative(pageId: string, runId: string): Promise<PageTarget> {
+    return this.hold(pageId, runId);
+  }
 
   /** Release human takeover. */
   async resume(pageId: string, nativePersonResume?: string): Promise<PageTarget> {
     const lp = this.pages.live.get(pageId);
     if (!lp) throw new AuxError("not_found", `no page ${pageId}`);
     if (lp.target.controller !== "human")
-      throw new AuxError("conflict", "This page is no longer held by the person. Refresh before returning control.");
+      throw new AuxError(
+        "conflict",
+        "This page is no longer held by the person. Refresh before returning control.",
+      );
     if (lp.target.backend === "aux") {
       const original = structuredClone(lp.target);
       const localDeadline = performance.now() + 8_000;
       let expiresAt: number | undefined;
       const current = () => {
         const now = this.pages.live.get(pageId);
-        if (performance.now() >= localDeadline || (expiresAt !== undefined && Date.now() >= expiresAt) ||
-            now !== lp || now.target.controller !== "human" ||
-            now.target.controllerEpoch !== original.controllerEpoch ||
-            now.target.documentEpoch !== original.documentEpoch ||
-            now.target.sessionId !== original.sessionId || now.target.url !== original.url ||
-            JSON.stringify(now.target.agentIsolation) !== JSON.stringify(original.agentIsolation) ||
-            ["detached", "crashed"].includes(now.target.viewStatus ?? ""))
+        if (
+          performance.now() >= localDeadline ||
+          (expiresAt !== undefined && Date.now() >= expiresAt) ||
+          now !== lp ||
+          now.target.controller !== "human" ||
+          now.target.controllerEpoch !== original.controllerEpoch ||
+          now.target.documentEpoch !== original.documentEpoch ||
+          now.target.sessionId !== original.sessionId ||
+          now.target.url !== original.url ||
+          JSON.stringify(now.target.agentIsolation) !== JSON.stringify(original.agentIsolation) ||
+          ["detached", "crashed"].includes(now.target.viewStatus ?? "")
+        )
           throw new AuxError("ref_stale", "The selected page changed. Refresh before returning control.");
       };
       const native = this.pages.deps.native;
@@ -58,12 +75,21 @@ export class ControlAuthority {
       current();
       const context = EgressContextSchema.parse(reply.context);
       const isolation = original.agentIsolation;
-      if (reply.accepted !== true || context.personControlled || context.tabId !== pageId ||
-          !isolation || context.isolation?.isolationId !== isolation.isolationId ||
-          context.isolation.runId !== isolation.runId || context.isolation.taskId !== isolation.taskId ||
-          context.isolation.taskRevision !== isolation.taskRevision || context.profileId !== this.pages.deps.profileId)
+      if (
+        reply.accepted !== true ||
+        context.personControlled ||
+        context.tabId !== pageId ||
+        !isolation ||
+        context.isolation?.isolationId !== isolation.isolationId ||
+        context.isolation.runId !== isolation.runId ||
+        context.isolation.taskId !== isolation.taskId ||
+        context.isolation.taskRevision !== isolation.taskRevision ||
+        context.profileId !== this.pages.deps.profileId
+      )
         throw new AuxError("ref_stale", "The original person-held task is no longer available.");
-      const confirmed = EgressContextSchema.parse(await native.egressContext({ tabId: pageId, expectedUrl: original.url }));
+      const confirmed = EgressContextSchema.parse(
+        await native.egressContext({ tabId: pageId, expectedUrl: original.url }),
+      );
       current();
       if (JSON.stringify(confirmed) !== JSON.stringify(context))
         throw new AuxError("ref_stale", "The native page changed before Return control completed.");

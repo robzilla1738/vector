@@ -19,7 +19,14 @@ export class EventBus {
   }
 
   emit(type: string, payload: Record<string, unknown>, runId?: string): AuxEvent {
-    const ev: AuxEvent = { seq: this.nextSeq++, streamId: this.streamId, runId, type, payload, ts: Date.now() };
+    const ev: AuxEvent = {
+      seq: this.nextSeq++,
+      streamId: this.streamId,
+      runId,
+      type,
+      payload,
+      ts: Date.now(),
+    };
     this.repo.queueEvent(ev);
     for (const l of this.listeners) {
       try {

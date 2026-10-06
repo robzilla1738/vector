@@ -127,7 +127,11 @@ export class ResponseStore {
       }
     });
     for (const [pageId, count] of perPage) {
-      this.deps.events.emit(RESPONSES_UPDATED, { pageId, count, bodies: withBody.filter((b) => b.pageId === pageId).length });
+      this.deps.events.emit(RESPONSES_UPDATED, {
+        pageId,
+        count,
+        bodies: withBody.filter((b) => b.pageId === pageId).length,
+      });
     }
   }
 
@@ -137,12 +141,21 @@ export class ResponseStore {
 
   /** Agent reads require the actual captured attachment and initiating document. */
   private matchesDocument(record: ResponseRecord, page: PageTarget): boolean {
-    return !!page.sessionId && page.viewStatus !== "detached" && page.viewStatus !== "crashed" &&
-      record.sessionId === page.sessionId && record.documentEpoch === page.documentEpoch && record.documentUrl === page.url;
+    return (
+      !!page.sessionId &&
+      page.viewStatus !== "detached" &&
+      page.viewStatus !== "crashed" &&
+      record.sessionId === page.sessionId &&
+      record.documentEpoch === page.documentEpoch &&
+      record.documentUrl === page.url
+    );
   }
 
-  listForDocument(page: PageTarget, opts?: { since?: number; urlIncludes?: string; limit?: number }): ResponseRecord[] {
-    return this.list(page.pageId, opts).filter(record => this.matchesDocument(record, page));
+  listForDocument(
+    page: PageTarget,
+    opts?: { since?: number; urlIncludes?: string; limit?: number },
+  ): ResponseRecord[] {
+    return this.list(page.pageId, opts).filter((record) => this.matchesDocument(record, page));
   }
 
   bodyForDocument(requestId: string, page: PageTarget): { buffer: Buffer; mediaType: string } | undefined {

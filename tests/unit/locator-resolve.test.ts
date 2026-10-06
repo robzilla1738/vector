@@ -4,7 +4,12 @@ import { AuxError } from "@aux/contracts";
 
 /** Fake locator: a fixed match count plus a visible-filtered count; records count() calls. */
 // oxlint-disable-next-line oxc/only-used-in-recursion — visibleCount is threaded to the fake's recursive filter()
-function fakeLocator(label: string, count: number, visibleCount = count, log: string[] = []): LocatorLike & { label: string } {
+function fakeLocator(
+  label: string,
+  count: number,
+  visibleCount = count,
+  log: string[] = [],
+): LocatorLike & { label: string } {
   return {
     label,
     async count() {
@@ -17,7 +22,14 @@ function fakeLocator(label: string, count: number, visibleCount = count, log: st
   };
 }
 
-function fakeFrame(counts: { css?: [number, number?]; xpath?: [number, number?]; label?: [number, number?]; testid?: [number, number?]; role?: [number, number?]; text?: [number, number?] }) {
+function fakeFrame(counts: {
+  css?: [number, number?];
+  xpath?: [number, number?];
+  label?: [number, number?];
+  testid?: [number, number?];
+  role?: [number, number?];
+  text?: [number, number?];
+}) {
   const log: string[] = [];
   const frame: FrameLike<ReturnType<typeof fakeLocator>> = {
     locator(sel) {
@@ -27,10 +39,12 @@ function fakeFrame(counts: { css?: [number, number?]; xpath?: [number, number?];
     },
     getByLabel(_label, options) {
       expect(options.exact).toBe(true);
-      const [c, v] = counts.label ?? [0]; return fakeLocator("label", c, v ?? c, log);
+      const [c, v] = counts.label ?? [0];
+      return fakeLocator("label", c, v ?? c, log);
     },
     getByTestId() {
-      const [c, v] = counts.testid ?? [0]; return fakeLocator("testid", c, v ?? c, log);
+      const [c, v] = counts.testid ?? [0];
+      return fakeLocator("testid", c, v ?? c, log);
     },
     getByRole() {
       const [c, v] = counts.role ?? [0];
@@ -44,13 +58,23 @@ function fakeFrame(counts: { css?: [number, number?]; xpath?: [number, number?];
   return { frame, log };
 }
 
-const strategy = { role: { role: "button", name: "Save" }, css: "form > button:nth-of-type(1)", xpath: "/html/body/form/button[1]", text: "Save" };
+const strategy = {
+  role: { role: "button", name: "Save" },
+  css: "form > button:nth-of-type(1)",
+  xpath: "/html/body/form/button[1]",
+  text: "Save",
+};
 
 describe("locatorAttempts", () => {
   it("orders unique paths (css, xpath) before semantic searches (role, text)", () => {
     const { frame } = fakeFrame({});
     const attempts = locatorAttempts(frame, strategy);
-    expect(attempts.map((a) => `${a.kind}:${a.label}`)).toEqual(["path:css", "path:xpath", "semantic:role", "semantic:text"]);
+    expect(attempts.map((a) => `${a.kind}:${a.label}`)).toEqual([
+      "path:css",
+      "path:xpath",
+      "semantic:role",
+      "semantic:text",
+    ]);
   });
   it("rejects an empty strategy", () => {
     const { frame } = fakeFrame({});
@@ -89,14 +113,18 @@ describe("selectUniqueLocator", () => {
 
   it("reports target_ambiguous for a multi-match path without consulting role/text", async () => {
     const { frame, log } = fakeFrame({ css: [3, 3], xpath: [0], role: [1] });
-    await expect(selectUniqueLocator(locatorAttempts(frame, strategy), "r3")).rejects.toMatchObject({ code: "target_ambiguous" });
+    await expect(selectUniqueLocator(locatorAttempts(frame, strategy), "r3")).rejects.toMatchObject({
+      code: "target_ambiguous",
+    });
     expect(log).not.toContain("count:role");
     expect(log).not.toContain("count:text");
   });
 
   it("reports target_detached when nothing matches", async () => {
     const { frame } = fakeFrame({});
-    await expect(selectUniqueLocator(locatorAttempts(frame, strategy), "r9")).rejects.toMatchObject({ code: "target_detached" });
+    await expect(selectUniqueLocator(locatorAttempts(frame, strategy), "r9")).rejects.toMatchObject({
+      code: "target_detached",
+    });
   });
 
   it("a semantic substring collision no longer causes ambiguity when the path is unique (P0-3)", async () => {
@@ -109,7 +137,11 @@ describe("selectUniqueLocator", () => {
 
 it("resolves recorder test IDs and exact labels through the actual unique locator policy", async () => {
   const first = fakeFrame({ testid: [1], label: [2] });
-  expect((await selectUniqueLocator(locatorAttempts(first.frame, { testId: "submit" }), "testid:submit")).label).toBe("testid");
+  expect(
+    (await selectUniqueLocator(locatorAttempts(first.frame, { testId: "submit" }), "testid:submit")).label,
+  ).toBe("testid");
   const second = fakeFrame({ label: [2] });
-  await expect(selectUniqueLocator(locatorAttempts(second.frame, { label: "Company", exact: true }), "label:Company")).rejects.toThrow(/ambiguous|matched/);
+  await expect(
+    selectUniqueLocator(locatorAttempts(second.frame, { label: "Company", exact: true }), "label:Company"),
+  ).rejects.toThrow(/ambiguous|matched/);
 });

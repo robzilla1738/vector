@@ -56,21 +56,23 @@ it("walks Chromium roots into titled bookmarks with folder paths and dedupes by 
 });
 
 it("skips non-HTTP schemes, oversized URLs, malformed entries and empty roots", () => {
-  const bookmarks = readChromeBookmarksFile(fixture({
-    roots: {
-      bookmark_bar: {
-        type: "folder",
-        children: [
-          { type: "url", name: "JS", url: "javascript:alert(1)" },
-          { type: "url", name: "File", url: "file:///etc/passwd" },
-          { type: "url", name: "No URL" },
-          { type: "url", name: "Long", url: `https://x.test/${"a".repeat(9000)}` },
-          { type: "something", name: "Separator" },
-          { name: "Missing type" },
-        ],
+  const bookmarks = readChromeBookmarksFile(
+    fixture({
+      roots: {
+        bookmark_bar: {
+          type: "folder",
+          children: [
+            { type: "url", name: "JS", url: "javascript:alert(1)" },
+            { type: "url", name: "File", url: "file:///etc/passwd" },
+            { type: "url", name: "No URL" },
+            { type: "url", name: "Long", url: `https://x.test/${"a".repeat(9000)}` },
+            { type: "something", name: "Separator" },
+            { name: "Missing type" },
+          ],
+        },
       },
-    },
-  }));
+    }),
+  );
   expect(bookmarks).toEqual([]);
 });
 
@@ -83,15 +85,23 @@ it("survives a malformed file with a thrown parse error, not silent data", () =>
 });
 
 it("labels unnamed folders rather than dropping their children", () => {
-  const bookmarks = readChromeBookmarksFile(fixture({
-    roots: {
-      other: {
-        type: "folder",
-        children: [
-          { type: "folder", name: "", children: [{ type: "url", name: "Deep", url: "https://deep.test/" }] },
-        ],
+  const bookmarks = readChromeBookmarksFile(
+    fixture({
+      roots: {
+        other: {
+          type: "folder",
+          children: [
+            {
+              type: "folder",
+              name: "",
+              children: [{ type: "url", name: "Deep", url: "https://deep.test/" }],
+            },
+          ],
+        },
       },
-    },
-  }));
-  expect(bookmarks).toEqual([{ url: "https://deep.test/", title: "Deep", folderPath: ["Other bookmarks", "Folder"] }]);
+    }),
+  );
+  expect(bookmarks).toEqual([
+    { url: "https://deep.test/", title: "Deep", folderPath: ["Other bookmarks", "Folder"] },
+  ]);
 });

@@ -14,7 +14,11 @@ import { call } from "../store";
 import { bridge } from "../bridge";
 import "./ImportDataSetting.css";
 import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
-import { nativeCheckboxTypeProps, nativeAlertRoleProps, nativePoliteLiveProps } from "../ui/native-attribute-props";
+import {
+  nativeCheckboxTypeProps,
+  nativeAlertRoleProps,
+  nativePoliteLiveProps,
+} from "../ui/native-attribute-props";
 
 type Selection = Record<string, Record<string, Partial<Record<ImportCategory, boolean>>>>;
 
@@ -229,9 +233,7 @@ export function ImportDataSetting() {
         Choose bookmarks and history from Chrome, Arc, Safari or Firefox. Live tabs require an attached
         Chrome. Nothing is imported until you confirm.
       </p>
-      <p {...staticHintProps}>
-        Passwords, cookies, extensions and agent permissions are not imported here.
-      </p>
+      <p {...staticHintProps}>Passwords, cookies, extensions and agent permissions are not imported here.</p>
       <details>
         <summary>Folders and retries</summary>
         <p {...staticHintProps}>
@@ -242,10 +244,10 @@ export function ImportDataSetting() {
       <details>
         <summary>Keychain and macOS access</summary>
         <p {...staticHintProps}>
-          This import does not ask for browser Keychain passwords. Aux may separately ask macOS to unlock
-          its protected local storage. Check the app and purpose in that system prompt; you can cancel it.
-          Review password transfers separately in Passwords &amp; Autofill. Reading Safari data may require
-          Full Disk Access.
+          This import does not ask for browser Keychain passwords. Aux may separately ask macOS to unlock its
+          protected local storage. Check the app and purpose in that system prompt; you can cancel it. Review
+          password transfers separately in Passwords &amp; Autofill. Reading Safari data may require Full Disk
+          Access.
         </p>
       </details>
       {!preview && (
@@ -303,7 +305,11 @@ export function ImportDataSetting() {
           </button>
         )}
         {running && (
-          <button {...smallGhostButtonProps} disabled={stopping || job.cancelled} onClick={() => void cancel()}>
+          <button
+            {...smallGhostButtonProps}
+            disabled={stopping || job.cancelled}
+            onClick={() => void cancel()}
+          >
             {stopping || job.cancelled ? "Stopping…" : "Cancel import"}
           </button>
         )}
@@ -358,8 +364,8 @@ export function ImportDataSetting() {
               )) && (
               <>
                 <p {...staticHintProps}>
-                  Review sources and select what to retry. Bookmarks and history merge safely; live tabs can open
-                  duplicates. Counts cover confirmed batches; an interrupted request may have added more.
+                  Review sources and select what to retry. Bookmarks and history merge safely; live tabs can
+                  open duplicates. Counts cover confirmed batches; an interrupted request may have added more.
                 </p>
                 <button {...smallGhostButtonProps} disabled={loading} onClick={() => void loadPreview()}>
                   Review sources to retry

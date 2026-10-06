@@ -29,10 +29,14 @@ describe("AI Gateway program spend", () => {
   });
 
   it("requires known prices and a bounded output before allowing a Gateway call", () => {
-    const estimated = (10_000 * 0.10 + 2048 * 0.20) / 1_000_000;
-    expect(projectedModelCostUsd("meta/muse-spark-1.3-contributor", 10_000, 2048)).toBeLessThanOrEqual(2 * estimated);
+    const estimated = (10_000 * 0.1 + 2048 * 0.2) / 1_000_000;
+    expect(projectedModelCostUsd("meta/muse-spark-1.3-contributor", 10_000, 2048)).toBeLessThanOrEqual(
+      2 * estimated,
+    );
     expect(() => projectedModelCostUsd("unknown/model", 10_000, 2048)).toThrow(/projection unavailable/);
-    expect(() => projectedModelCostUsd("meta/muse-spark-1.3-contributor", 10_000, 0)).toThrow(/maxOutputTokens/);
+    expect(() => projectedModelCostUsd("meta/muse-spark-1.3-contributor", 10_000, 0)).toThrow(
+      /maxOutputTokens/,
+    );
   });
 
   it("uses an explicit cap without discarding existing ledger history", () => {
@@ -50,15 +54,25 @@ describe("AI Gateway program spend", () => {
     const path = join(mkdtempSync(join(tmpdir(), "aux-spend-gateway-")), "ledger.sqlite");
     const ledger = new SpendLedger(path, cap);
     ledger.reserve("other-run", "meta/muse-spark-1.3-contributor", 49.99999);
-    const model = new MockLanguageModelV4({ doGenerate: {
-      content: [{ type: "text", text: "hello" }],
-      finishReason: { unified: "stop", raw: "stop" },
-      usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 2, text: 2, reasoning: 0 } },
-      warnings: [],
-    } });
+    const model = new MockLanguageModelV4({
+      doGenerate: {
+        content: [{ type: "text", text: "hello" }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: {
+          inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 2, text: 2, reasoning: 0 },
+        },
+        warnings: [],
+      },
+    });
     const client = new GatewayModelClient("fixture-only", { model: () => model, spendLedger: ledger });
-    await expect(client.generateText({ modelId: "meta/muse-spark-1.3-contributor", prompt: "hello", maxOutputTokens: 32 }))
-      .rejects.toThrow(/program cap/);
+    await expect(
+      client.generateText({
+        modelId: "meta/muse-spark-1.3-contributor",
+        prompt: "hello",
+        maxOutputTokens: 32,
+      }),
+    ).rejects.toThrow(/program cap/);
     expect(model.doGenerateCalls).toHaveLength(0);
     ledger.close();
   });

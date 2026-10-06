@@ -13,7 +13,12 @@ export interface DriverSet {
   chrome: BrowserDriver | null;
 }
 
-export type ObserveReq = Partial<Pick<ObservationRequest, "scope" | "subtreeRef" | "maxElements" | "maxTextChars" | "sinceRevision" | "format">>;
+export type ObserveReq = Partial<
+  Pick<
+    ObservationRequest,
+    "scope" | "subtreeRef" | "maxElements" | "maxTextChars" | "sinceRevision" | "format"
+  >
+>;
 
 /** `pages.execute` result: the program result plus the act-and-observe observation. */
 export type ExecuteResult = ProgramResult & { observation?: Observation };
@@ -60,7 +65,11 @@ export interface PageServiceDeps {
   nativePasswordFillEnabled?: boolean;
   drivers: () => DriverSet;
   recordStep?: (s: StepRecord) => void;
-  artifacts?: { save(o: { runId?: string; pageId?: string; label: string; buffer: Buffer; mediaType: string }): { artifactId: string } };
+  artifacts?: {
+    save(o: { runId?: string; pageId?: string; label: string; buffer: Buffer; mediaType: string }): {
+      artifactId: string;
+    };
+  };
   /** passive response capture — bound per page in wireDriverEvents */
   responses?: {
     record(pageId: string): NonNullable<DriverPageEvents["onResponse"]>;
@@ -72,7 +81,10 @@ export interface PageServiceDeps {
     start(
       name: string,
       ctx?: { runId?: string; pageId?: string; attrs?: Record<string, unknown> },
-    ): { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void };
+    ): {
+      spanId: string;
+      end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void;
+    };
     incr(name: string, by?: number): void;
   };
   /** fallback `call` node dispatch when the caller didn't supply one */
@@ -94,12 +106,18 @@ export interface PageServiceDeps {
   /** Native request protection must be installed before an agent dispatch. */
   prepareAgentEgress?: (runId: string, pageId: string) => Promise<void>;
   /** Private native continuation; no request/tool input may supply this producer. */
-  navigateControlled?: (input: {
-    runId: string; pageId: string; url: string; signal?: AbortSignal;
-    validateSource(): void;
-    mentionAuthority?: () => void;
-    revalidateMentionSource?: () => Promise<void>;
-  }, pages: import("./registry.js").PageRegistry) => Promise<import("./controlled-navigation.js").ControlledNavigationReadmission>;
+  navigateControlled?: (
+    input: {
+      runId: string;
+      pageId: string;
+      url: string;
+      signal?: AbortSignal;
+      validateSource(): void;
+      mentionAuthority?: () => void;
+      revalidateMentionSource?: () => Promise<void>;
+    },
+    pages: import("./registry.js").PageRegistry,
+  ) => Promise<import("./controlled-navigation.js").ControlledNavigationReadmission>;
   /** Record source text before any observation is returned to an agent. */
   recordAgentObservation?: (pageId: string, url: string, text: string) => void;
   /**
@@ -107,7 +125,11 @@ export interface PageServiceDeps {
    * handles the dialog; `leave` keeps it open for a parked suspension or
    * the human. Absent → the driver dismisses.
    */
-  decideDialog?: (input: { pageId: string; type: string; message: string }) => Promise<"accept" | "dismiss" | "leave" | undefined>;
+  decideDialog?: (input: {
+    pageId: string;
+    type: string;
+    message: string;
+  }) => Promise<"accept" | "dismiss" | "leave" | undefined>;
   /** Session storage, attachment, and workspace roots an `upload` step may read from. */
   uploadRoots?: (input: { taskId?: string; runId?: string; pageId?: string }) => string[];
   /** Session storage dir downloads save into (S4) — waiters resolve a real path. */

@@ -6,9 +6,13 @@ import { SaveConversationTask } from "./SaveConversationTask";
 
 vi.mock("../store", () => ({
   call: vi.fn(),
-  useStore: (select: (state: unknown) => unknown) => select({
-    layout: { spaces: [{ id: "personal", workspaceId: "workspace", name: "Personal" }], activeSpaceId: "personal" },
-  }),
+  useStore: (select: (state: unknown) => unknown) =>
+    select({
+      layout: {
+        spaces: [{ id: "personal", workspaceId: "workspace", name: "Personal" }],
+        activeSpaceId: "personal",
+      },
+    }),
 }));
 
 it("only opens task setup on request and retains the objective when cancelled", () => {
@@ -17,7 +21,11 @@ it("only opens task setup on request and retains the objective when cancelled", 
   const root = createRoot(container);
   const onSaved = vi.fn();
   try {
-    act(() => root.render(<SaveConversationTask chatId="chat" runId="run" goal="Summarize this page" onSaved={onSaved} />));
+    act(() =>
+      root.render(
+        <SaveConversationTask chatId="chat" runId="run" goal="Summarize this page" onSaved={onSaved} />,
+      ),
+    );
     expect(container.querySelector("form")).toBeNull();
     expect(container.textContent).toBe("Save as task");
     act(() => container.querySelector<HTMLButtonElement>("button")!.click());

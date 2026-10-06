@@ -26,16 +26,21 @@ export function SearchEngineSetting({
 }) {
   const windowId = bridge.windowId,
     privateMode = bridge.privateMode;
-  const identity = useMemo(() => ([value, windowId, privateMode]), [value, windowId, privateMode]);
+  const identity = useMemo(() => [value, windowId, privateMode], [value, windowId, privateMode]);
   const initial = { identity, draft: value, custom: !ENGINES.some((engine) => engine.url === value) };
   const [editing, setEditing] = useState(initial);
   const { draft, custom } = editing.identity === identity ? editing : initial;
   const edit = useCallback(
-    (change: Partial<Pick<typeof initial, "draft" | "custom">> | ((active: typeof initial) => Partial<Pick<typeof initial, "draft" | "custom">>)) =>
+    (
+      change:
+        | Partial<Pick<typeof initial, "draft" | "custom">>
+        | ((active: typeof initial) => Partial<Pick<typeof initial, "draft" | "custom">>),
+    ) =>
       setEditing((previous) => {
-        const active = previous.identity === identity
-          ? previous
-          : { identity, draft: value, custom: !ENGINES.some((engine) => engine.url === value) };
+        const active =
+          previous.identity === identity
+            ? previous
+            : { identity, draft: value, custom: !ENGINES.some((engine) => engine.url === value) };
         return { ...active, ...(typeof change === "function" ? change(active) : change) };
       }),
     [identity, value],
@@ -44,7 +49,11 @@ export function SearchEngineSetting({
   useLayoutEffect(() => {
     draftRef.current = draft;
   }, [draft]);
-  const [getOwner,current,busy,error,fail,clearFailure,perform] = useSettingsSaveOwner(identity,windowId,privateMode);
+  const [getOwner, current, busy, error, fail, clearFailure, perform] = useSettingsSaveOwner(
+    identity,
+    windowId,
+    privateMode,
+  );
   const save = useCallback(
     (next: string) => {
       const original = getOwner(),
@@ -56,9 +65,16 @@ export function SearchEngineSetting({
         fail(original, SEARCH_ENGINE_TEMPLATE_ERROR);
         return false;
       }
-      return perform(original, savedDraft, draftRef, () => onSave(template), () => {
-        edit({ draft: template, custom: !ENGINES.some((engine) => engine.url === template) });
-      }, "The search engine wasn’t saved. Try again.");
+      return perform(
+        original,
+        savedDraft,
+        draftRef,
+        () => onSave(template),
+        () => {
+          edit({ draft: template, custom: !ENGINES.some((engine) => engine.url === template) });
+        },
+        "The search engine wasn’t saved. Try again.",
+      );
     },
     [getOwner, current, onSave, edit, fail, perform],
   );

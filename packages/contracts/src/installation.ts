@@ -33,17 +33,32 @@ export function resolveNativeUserDataDir(source: AuxEnvironment = process.env, u
   return join(userHome, "Library", "Application Support", "Aux");
 }
 
-export interface NativeProfile { id: string; name: string; archived: boolean; current: boolean }
+export interface NativeProfile {
+  id: string;
+  name: string;
+  archived: boolean;
+  current: boolean;
+}
 
 /** Discovery reads only the native Profile names and directory identifiers. */
 export function listNativeProfiles(userDataDir = resolveNativeUserDataDir()): NativeProfile[] {
-  let state: { profile?: { last_used?: string; info_cache?: Record<string, { name?: string; is_omitted?: boolean }> } };
-  try { state = JSON.parse(readFileSync(join(userDataDir, "Local State"), "utf8")); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+  let state: {
+    profile?: { last_used?: string; info_cache?: Record<string, { name?: string; is_omitted?: boolean }> };
+  };
+  try {
+    state = JSON.parse(readFileSync(join(userDataDir, "Local State"), "utf8"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
   return Object.entries(state.profile?.info_cache ?? {})
     .filter(([id]) => /^(Default|Profile \d+)$/.test(id))
-    .map(([id, info]) => ({ id, name: typeof info.name === "string" ? info.name : id,
-      archived: info.is_omitted === true, current: id === (state.profile?.last_used ?? "Default") }))
+    .map(([id, info]) => ({
+      id,
+      name: typeof info.name === "string" ? info.name : id,
+      archived: info.is_omitted === true,
+      current: id === (state.profile?.last_used ?? "Default"),
+    }))
     .sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
 }
 
@@ -54,10 +69,22 @@ export function resolveRuntimeDescriptor(source: AuxEnvironment = process.env): 
   const userDataDir = resolveNativeUserDataDir(env);
   const profiles = listNativeProfiles(userDataDir);
   const selector = env.profile ?? env.AUX_BROWSER_PROFILE_ID;
-  const matches = selector ? profiles.filter(profile => profile.id === selector || profile.name.toLowerCase() === selector.toLowerCase()) : [];
-  if (matches.length > 1) throw new Error(`Ambiguous Profile ${selector}: ${matches.map(profile => `${profile.name} (${profile.id})`).join(", ")}`);
-  if (selector && !matches.length && !/^(Default|Profile \d+)$/.test(selector)) throw new Error(`Unknown Profile: ${selector}`);
-  const profile = matches[0]?.id ?? selector ?? profiles.find(profile => profile.current && !profile.archived)?.id ?? "Default";
+  const matches = selector
+    ? profiles.filter(
+        (profile) => profile.id === selector || profile.name.toLowerCase() === selector.toLowerCase(),
+      )
+    : [];
+  if (matches.length > 1)
+    throw new Error(
+      `Ambiguous Profile ${selector}: ${matches.map((profile) => `${profile.name} (${profile.id})`).join(", ")}`,
+    );
+  if (selector && !matches.length && !/^(Default|Profile \d+)$/.test(selector))
+    throw new Error(`Unknown Profile: ${selector}`);
+  const profile =
+    matches[0]?.id ??
+    selector ??
+    profiles.find((profile) => profile.current && !profile.archived)?.id ??
+    "Default";
   return join(userDataDir, profile, "Aux Runtime Data", "runtime.json");
 }
 

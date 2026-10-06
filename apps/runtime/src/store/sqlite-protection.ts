@@ -11,10 +11,18 @@ const IDENTITY_OVERRIDES: Readonly<Record<string, readonly string[]>> = {
   task_evidence: ["evidence_id"],
   criterion_reviews: ["review_id"],
 };
-export const protectedSqliteIdentity = (table: string, info: readonly { name: string; pk: number }[]): readonly string[] =>
-  IDENTITY_OVERRIDES[table] ?? info.filter(item => item.pk > 0).sort((a, b) => a.pk - b.pk).map(item => item.name);
+export const protectedSqliteIdentity = (
+  table: string,
+  info: readonly { name: string; pk: number }[],
+): readonly string[] =>
+  IDENTITY_OVERRIDES[table] ??
+  info
+    .filter((item) => item.pk > 0)
+    .sort((a, b) => a.pk - b.pk)
+    .map((item) => item.name);
 /** Event stream identity and tracing counters have SQL arithmetic readers. All other KV values are protected. */
-export const protectedKvKey = (key: string): boolean => key !== "meta:eventStreamId" && !key.startsWith("counter:");
+export const protectedKvKey = (key: string): boolean =>
+  key !== "meta:eventStreamId" && !key.startsWith("counter:");
 type Secrets = Pick<NativeBridge, "readSecret" | "storeSecret"> & {
   profileStorageRoot?: (args: { version: 1 }) => Promise<{ value: string }>;
   profileStorageFactor?: (args: { version: 1; purpose: "sqlite" }) => Promise<{ value: string }>;
@@ -33,7 +41,15 @@ export const SENSITIVE_SQLITE_COLUMNS: Readonly<Record<string, readonly string[]
   conversations: ["title"],
   steps: ["inputs", "expected", "outcome"],
   results: ["source_url", "values_json", "evidence", "error"],
-  programs: ["name", "description", "site_key", "parameters", "steps_json", "preconditions", "postconditions"],
+  programs: [
+    "name",
+    "description",
+    "site_key",
+    "parameters",
+    "steps_json",
+    "preconditions",
+    "postconditions",
+  ],
   artifacts: ["path", "media_type"],
   model_calls: ["provider_metadata", "error"],
   events: ["payload"],
@@ -98,40 +114,57 @@ export const SENSITIVE_SQLITE_COLUMNS: Readonly<Record<string, readonly string[]
 
 /** AAD binds every value to its Profile, table, row and column. */
 export class SqliteColumnCipher {
-  private constructor(private readonly protectedStore: ProtectedStore, private readonly key: Buffer) {}
+  private constructor(
+    private readonly protectedStore: ProtectedStore,
+    private readonly key: Buffer,
+  ) {}
 
   static async create(secrets: Secrets, profileId: string, hasEncryptedRows: boolean) {
     const factorName = `sqlite_factor_v1_${createHash("sha256").update(profileId).digest("hex").slice(0, 24)}`;
     let value = (await secrets.readSecret(factorName)).value;
     if (!value) {
-      if (hasEncryptedRows) throw new Error("The protected database factor is missing. Restore its OS credential store or use reviewed recovery.");
-      if (!secrets.profileStorageFactor) throw new Error("Atomic protected database factor creation is unavailable.");
+      if (hasEncryptedRows)
+        throw new Error(
+          "The protected database factor is missing. Restore its OS credential store or use reviewed recovery.",
+        );
+      if (!secrets.profileStorageFactor)
+        throw new Error("Atomic protected database factor creation is unavailable.");
       const created = (await secrets.profileStorageFactor({ version: 1, purpose: "sqlite" })).value;
       value = (await secrets.readSecret(factorName)).value;
       if (value !== created) throw new Error("The protected database factor could not be confirmed.");
     }
     const factor = Buffer.from(value, "base64");
-    if (factor.length !== 32 || factor.toString("base64") !== value) throw new Error("The protected database factor is invalid.");
+    if (factor.length !== 32 || factor.toString("base64") !== value)
+      throw new Error("The protected database factor is invalid.");
     const protectedStore = new ProtectedStore(secrets, profileId);
     const key = await protectedStore.generationKey("runtime-sqlite", factor, !hasEncryptedRows);
     return new SqliteColumnCipher(protectedStore, key);
   }
 
   encrypt(table: string, rowId: string | number, column: string, value: string): string {
-    if (!NAME.test(table) || !NAME.test(column) || !String(rowId)) throw new Error("Protected database field identity is invalid.");
-    return PREFIX + this.protectedStore.seal(this.key, "runtime-sqlite", `${table}/${rowId}/${column}`, Buffer.from(value));
+    if (!NAME.test(table) || !NAME.test(column) || !String(rowId))
+      throw new Error("Protected database field identity is invalid.");
+    return (
+      PREFIX +
+      this.protectedStore.seal(this.key, "runtime-sqlite", `${table}/${rowId}/${column}`, Buffer.from(value))
+    );
   }
 
   decrypt(table: string, rowId: string | number, column: string, value: string): string {
-    if (!value.startsWith(PREFIX)) throw new Error("Protected database field is plaintext or has an unknown version.");
-    return this.protectedStore.open(this.key, "runtime-sqlite", `${table}/${rowId}/${column}`,
-      value.slice(PREFIX.length)).toString("utf8");
+    if (!value.startsWith(PREFIX))
+      throw new Error("Protected database field is plaintext or has an unknown version.");
+    return this.protectedStore
+      .open(this.key, "runtime-sqlite", `${table}/${rowId}/${column}`, value.slice(PREFIX.length))
+      .toString("utf8");
   }
 
-  isEncrypted(value: string) { return value.startsWith(PREFIX); }
+  isEncrypted(value: string) {
+    return value.startsWith(PREFIX);
+  }
 
   exactLookup(table: string, column: string, value: string): string {
-    if (!NAME.test(table) || !NAME.test(column)) throw new Error("Protected database lookup identity is invalid.");
+    if (!NAME.test(table) || !NAME.test(column))
+      throw new Error("Protected database lookup identity is invalid.");
     return `auxidx:v1:${createHmac("sha256", this.key).update(`sqlite-exact:v1\0${table}\0${column}\0${value}`).digest("hex")}`;
   }
 }
@@ -143,22 +176,32 @@ export function migrateCalendarConnections(db: DatabaseSync, cipher: SqliteColum
   const marker = "protected_sqlite_v1:calendar_connections";
   const plan = JSON.stringify({ columns, lookup: "account_key_lookup:auxidx:v1" });
   // Durable markers replace boot scans; protected adapters authenticate each read.
-  const completed = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(marker) as { value: string } | undefined;
+  const completed = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(marker) as
+    { value: string } | undefined;
   if (completed) {
-    if (completed.value !== plan) throw new Error("Protected Calendar inventory changed without a new migration version.");
+    if (completed.value !== plan)
+      throw new Error("Protected Calendar inventory changed without a new migration version.");
     return 0;
   }
   let changed = 0;
   db.exec("BEGIN IMMEDIATE");
   try {
-    const marked = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(marker) as { value: string } | undefined;
+    const marked = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(marker) as
+      { value: string } | undefined;
     if (marked && marked.value !== plan)
       throw new Error("Protected Calendar inventory changed without a new migration version.");
-    const rows = db.prepare("SELECT connection_id,account_key,account_key_lookup,label,scopes FROM calendar_connections")
-      .all() as { connection_id: string; account_key: string; account_key_lookup: string | null; label: string; scopes: string }[];
+    const rows = db
+      .prepare("SELECT connection_id,account_key,account_key_lookup,label,scopes FROM calendar_connections")
+      .all() as {
+      connection_id: string;
+      account_key: string;
+      account_key_lookup: string | null;
+      label: string;
+      scopes: string;
+    }[];
     for (const row of rows) {
       const id = JSON.stringify([row.connection_id]);
-      const values = columns.map(column => {
+      const values = columns.map((column) => {
         const value = row[column];
         if (typeof value !== "string") throw new Error("Protected Calendar metadata is invalid.");
         if (cipher.isEncrypted(value)) return cipher.decrypt(table, id, column, value);
@@ -167,18 +210,24 @@ export function migrateCalendarConnections(db: DatabaseSync, cipher: SqliteColum
         return value;
       });
       const lookup = cipher.exactLookup(table, "account_key", values[0]!);
-      if (row.account_key_lookup !== null && row.account_key_lookup !== lookup &&
-          !(row.account_key_lookup === values[0] && !cipher.isEncrypted(row.account_key)))
+      if (
+        row.account_key_lookup !== null &&
+        row.account_key_lookup !== lookup &&
+        !(row.account_key_lookup === values[0] && !cipher.isEncrypted(row.account_key))
+      )
         throw new Error("Protected Calendar account lookup does not match its authenticated account.");
       if (marked && row.account_key_lookup !== lookup)
         throw new Error("Protected Calendar account lookup is missing or changed.");
-      const sealed = columns.map((column, index) => cipher.isEncrypted(row[column]) ? row[column] :
-        cipher.encrypt(table, id, column, values[index]!));
-      db.prepare("UPDATE calendar_connections SET account_key=?,account_key_lookup=?,label=?,scopes=? WHERE connection_id=?")
-        .run(sealed[0]!, lookup, sealed[1]!, sealed[2]!, row.connection_id);
+      const sealed = columns.map((column, index) =>
+        cipher.isEncrypted(row[column]) ? row[column] : cipher.encrypt(table, id, column, values[index]!),
+      );
+      db.prepare(
+        "UPDATE calendar_connections SET account_key=?,account_key_lookup=?,label=?,scopes=? WHERE connection_id=?",
+      ).run(sealed[0]!, lookup, sealed[1]!, sealed[2]!, row.connection_id);
     }
-    db.prepare("INSERT INTO aux_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
-      .run(marker, plan);
+    db.prepare(
+      "INSERT INTO aux_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+    ).run(marker, plan);
     db.exec("COMMIT");
   } catch (error) {
     if (db.isTransaction) db.exec("ROLLBACK");
@@ -191,37 +240,44 @@ export function migrateCalendarConnections(db: DatabaseSync, cipher: SqliteColum
 export function migrateSensitiveTable(db: DatabaseSync, cipher: SqliteColumnCipher, table: string): number {
   if (table === "kv") throw new Error("KV requires its filtered migration plan.");
   const columns = SENSITIVE_SQLITE_COLUMNS[table] ?? [];
-  if (!NAME.test(table) || !columns.length || columns.some(column => !NAME.test(column)))
+  if (!NAME.test(table) || !columns.length || columns.some((column) => !NAME.test(column)))
     throw new Error("Protected database table or column is not registered.");
   const info = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];
-  const present = new Set(info.map(item => item.name));
-  if (columns.some(column => !present.has(column))) throw new Error("Protected database schema does not match the migration plan.");
+  const present = new Set(info.map((item) => item.name));
+  if (columns.some((column) => !present.has(column)))
+    throw new Error("Protected database schema does not match the migration plan.");
   const identity = protectedSqliteIdentity(table, info);
-  if (!identity.length || identity.some(column => columns.includes(column)))
+  if (!identity.length || identity.some((column) => columns.includes(column)))
     throw new Error("Protected database primary keys need an explicit stable identity migration.");
   if (db.prepare("SELECT 1 FROM sqlite_schema WHERE tbl_name=? AND type='trigger' LIMIT 1").get(table))
     throw new Error("Protected database triggers need an explicit query adaptation before migration.");
   const marker = `protected_sqlite_v1:${table}`;
   const plan = IDENTITY_OVERRIDES[table] ? JSON.stringify({ columns, identity }) : JSON.stringify(columns);
   // Durable markers replace boot scans; protected adapters authenticate each read.
-  const completed = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(marker) as { value: string } | undefined;
+  const completed = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(marker) as
+    { value: string } | undefined;
   if (completed) {
-    if (completed.value !== plan) throw new Error("Protected database column inventory changed without a new migration version.");
+    if (completed.value !== plan)
+      throw new Error("Protected database column inventory changed without a new migration version.");
     return 0;
   }
   let changed = 0;
   db.exec("BEGIN IMMEDIATE");
   try {
-    const marked = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(marker) as { value: string } | undefined;
+    const marked = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(marker) as
+      { value: string } | undefined;
     if (marked && marked.value !== plan)
       throw new Error("Protected database column inventory changed without a new migration version.");
-    const rows = db.prepare(`SELECT rowid AS aux_rowid, ${[...new Set([...identity, ...columns])].join(", ")} FROM ${table}`).all() as
-      (Record<string, unknown> & { aux_rowid: number })[];
+    const rows = db
+      .prepare(
+        `SELECT rowid AS aux_rowid, ${[...new Set([...identity, ...columns])].join(", ")} FROM ${table}`,
+      )
+      .all() as (Record<string, unknown> & { aux_rowid: number })[];
     for (const row of rows) {
-      const recordId = JSON.stringify(identity.map(column => row[column]));
-      const updates = columns.filter(column => row[column] !== null && row[column] !== undefined);
+      const recordId = JSON.stringify(identity.map((column) => row[column]));
+      const updates = columns.filter((column) => row[column] !== null && row[column] !== undefined);
       if (!updates.length) continue;
-      const values = updates.map(column => {
+      const values = updates.map((column) => {
         const value = row[column];
         if (typeof value !== "string") throw new Error("Protected database field is not text.");
         if (cipher.isEncrypted(value)) {
@@ -235,11 +291,13 @@ export function migrateSensitiveTable(db: DatabaseSync, cipher: SqliteColumnCiph
           throw new Error("Protected database field could not be verified.");
         return encrypted;
       });
-      db.prepare(`UPDATE ${table} SET ${updates.map(column => `${column}=?`).join(", ")} WHERE rowid=?`)
-        .run(...values, row.aux_rowid);
+      db.prepare(
+        `UPDATE ${table} SET ${updates.map((column) => `${column}=?`).join(", ")} WHERE rowid=?`,
+      ).run(...values, row.aux_rowid);
     }
-    db.prepare("INSERT INTO aux_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
-      .run(marker, plan);
+    db.prepare(
+      "INSERT INTO aux_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+    ).run(marker, plan);
     db.exec("COMMIT");
   } catch (error) {
     if (db.isTransaction) db.exec("ROLLBACK");
@@ -251,20 +309,28 @@ export function migrateSensitiveTable(db: DatabaseSync, cipher: SqliteColumnCiph
 /** Transactionally seal every KV value except the two explicitly retained operational families. */
 export function migrateSensitiveKv(db: DatabaseSync, cipher: SqliteColumnCipher): number {
   // Durable markers replace boot scans; protected adapters authenticate each read.
-  const completed = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(KV_MARKER) as { value: string } | undefined;
+  const completed = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(KV_MARKER) as
+    { value: string } | undefined;
   if (completed) {
-    if (completed.value !== KV_PLAN) throw new Error("Protected KV inventory changed without a new migration version.");
+    if (completed.value !== KV_PLAN)
+      throw new Error("Protected KV inventory changed without a new migration version.");
     return 0;
   }
   let changed = 0;
   db.exec("BEGIN IMMEDIATE");
   try {
-    const marked = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(KV_MARKER) as { value: string } | undefined;
-    if (marked && marked.value !== KV_PLAN) throw new Error("Protected KV inventory changed without a new migration version.");
-    const rows = db.prepare("SELECT key,value FROM kv ORDER BY key").all() as { key: string; value: string }[];
+    const marked = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(KV_MARKER) as
+      { value: string } | undefined;
+    if (marked && marked.value !== KV_PLAN)
+      throw new Error("Protected KV inventory changed without a new migration version.");
+    const rows = db.prepare("SELECT key,value FROM kv ORDER BY key").all() as {
+      key: string;
+      value: string;
+    }[];
     for (const row of rows) {
       if (!protectedKvKey(row.key)) {
-        if (cipher.isEncrypted(row.value)) throw new Error("Operational KV value unexpectedly uses a protected envelope.");
+        if (cipher.isEncrypted(row.value))
+          throw new Error("Operational KV value unexpectedly uses a protected envelope.");
         continue;
       }
       const id = JSON.stringify([row.key]);
@@ -279,8 +345,9 @@ export function migrateSensitiveKv(db: DatabaseSync, cipher: SqliteColumnCipher)
       db.prepare("UPDATE kv SET value=? WHERE key=?").run(encrypted, row.key);
       changed++;
     }
-    db.prepare("INSERT INTO aux_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
-      .run(KV_MARKER, KV_PLAN);
+    db.prepare(
+      "INSERT INTO aux_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+    ).run(KV_MARKER, KV_PLAN);
     db.exec("COMMIT");
   } catch (error) {
     if (db.isTransaction) db.exec("ROLLBACK");

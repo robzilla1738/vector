@@ -177,13 +177,20 @@ it("revoking the actual effect read grant while capture awaits withholds its res
   ).rejects.toMatchObject({ code: "permission_denied" });
 });
 
-it.each(["https://read.test", "https://READ.TEST/"])("a stored exact-origin read Block for %s cannot be missed by URL spelling", async origin => {
-  const f = fixture();
-  await f.service.begin("run", [f.ref], []);
-  const store = new OriginPolicyStore(new Repo(f.db));
-  store.set({ expectedRevision: 0, rules: [{ origin, access: "allow", effects: { read: "deny" } }] });
-  f.setRules(store.list().rules);
-  let captures = 0;
-  await expect(f.service.use("run", "a", "read", async () => { captures++; })).rejects.toMatchObject({ code: "permission_denied" });
-  expect(captures).toBe(0);
-});
+it.each(["https://read.test", "https://READ.TEST/"])(
+  "a stored exact-origin read Block for %s cannot be missed by URL spelling",
+  async (origin) => {
+    const f = fixture();
+    await f.service.begin("run", [f.ref], []);
+    const store = new OriginPolicyStore(new Repo(f.db));
+    store.set({ expectedRevision: 0, rules: [{ origin, access: "allow", effects: { read: "deny" } }] });
+    f.setRules(store.list().rules);
+    let captures = 0;
+    await expect(
+      f.service.use("run", "a", "read", async () => {
+        captures++;
+      }),
+    ).rejects.toMatchObject({ code: "permission_denied" });
+    expect(captures).toBe(0);
+  },
+);

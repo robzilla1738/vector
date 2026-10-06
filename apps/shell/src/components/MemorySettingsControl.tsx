@@ -3,9 +3,7 @@ import { bridge } from "../bridge";
 import { errToast } from "../store";
 import { executeCommand } from "../commands";
 import { registerScopedControl } from "../scoped-control-commands";
-import {
-  nativeButtonTypeProps as auxNativeButtonTypeProps,
-} from "../ui/native-attribute-props";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 
 export function MemorySettingsControl({
   command,

@@ -37,7 +37,8 @@ export function NativePreferenceControl<T extends Preference>({
     read,
     write,
   });
-  const command = `toggle-${kind}`, retry = `retry-${kind}`;
+  const command = `toggle-${kind}`,
+    retry = `retry-${kind}`;
   const [controlRef, run] = usePreferenceCommand<HTMLInputElement>(command, scopeId, () => {
     if (!value || !owner.owns(value) || value.managed || !writable(value) || busy)
       return Promise.reject(new Error("Choose the current unmanaged preference control."));

@@ -14,27 +14,55 @@ describe("separate browser host registry", () => {
     const capabilities = BrowserHostMethods.capabilities.result;
     expect(RuntimeHostMethods["native.capabilities"].result).toBe(capabilities);
     const descriptor = jsonSchema(capabilities).properties!.nativeAppearanceFileChannel;
-    expect(createHash("sha256").update(JSON.stringify(descriptor)).digest("hex"))
-      .toBe("bed49294c7e5f04acf53bd53c1ab49a2b694ae8432274731dae77d0945081283");
+    expect(createHash("sha256").update(JSON.stringify(descriptor)).digest("hex")).toBe(
+      "bed49294c7e5f04acf53bd53c1ab49a2b694ae8432274731dae77d0945081283",
+    );
     const original = { buildId: "original-build", sourceCommit: "a".repeat(40), methods: [] };
     const channel = {
-      producer: "aux-native-appearance-file-channel", version: 1, pid: 733,
-      processUuid: "1".repeat(32), processStartMachTicks: "100", buildId: "original-build",
-      sourceCommit: "a".repeat(40), nonce: "2".repeat(32), basename: "native-appearance-channel.jsonl",
-      rootDevice: "1", rootInode: "2", profileName: "Default", profileDevice: "1", profileInode: "3",
-      fileDevice: "1", fileInode: "4", publicKeySpkiHex: "b".repeat(88), headerSha256: "c".repeat(64),
+      producer: "aux-native-appearance-file-channel",
+      version: 1,
+      pid: 733,
+      processUuid: "1".repeat(32),
+      processStartMachTicks: "100",
+      buildId: "original-build",
+      sourceCommit: "a".repeat(40),
+      nonce: "2".repeat(32),
+      basename: "native-appearance-channel.jsonl",
+      rootDevice: "1",
+      rootInode: "2",
+      profileName: "Default",
+      profileDevice: "1",
+      profileInode: "3",
+      fileDevice: "1",
+      fileInode: "4",
+      publicKeySpkiHex: "b".repeat(88),
+      headerSha256: "c".repeat(64),
     };
     expect(capabilities.parse(original)).toEqual(original);
-    expect(capabilities.parse({ ...original, nativeAppearanceFileChannel: channel }))
-      .toEqual({ ...original, nativeAppearanceFileChannel: channel });
+    expect(capabilities.parse({ ...original, nativeAppearanceFileChannel: channel })).toEqual({
+      ...original,
+      nativeAppearanceFileChannel: channel,
+    });
     for (const change of [
-      { producer: "foreign" }, { processUuid: "0".repeat(32) }, { processStartMachTicks: "18446744073709551616" },
-      { pid: 2147483648 }, { basename: "foreign.jsonl" }, { nonce: "2".repeat(31) }, { unexpected: true },
-    ]) expect(capabilities.safeParse({ ...original, nativeAppearanceFileChannel: { ...channel, ...change } }).success).toBe(false);
+      { producer: "foreign" },
+      { processUuid: "0".repeat(32) },
+      { processStartMachTicks: "18446744073709551616" },
+      { pid: 2147483648 },
+      { basename: "foreign.jsonl" },
+      { nonce: "2".repeat(31) },
+      { unexpected: true },
+    ])
+      expect(
+        capabilities.safeParse({ ...original, nativeAppearanceFileChannel: { ...channel, ...change } })
+          .success,
+      ).toBe(false);
   });
 
   it("combines the exact browser and runtime entries without aliases or replacements", () => {
-    expect(Object.keys(HostMethods)).toEqual([...Object.keys(BrowserHostMethods), ...Object.keys(RuntimeHostMethods)]);
+    expect(Object.keys(HostMethods)).toEqual([
+      ...Object.keys(BrowserHostMethods),
+      ...Object.keys(RuntimeHostMethods),
+    ]);
     for (const [id, spec] of Object.entries(BrowserHostMethods)) {
       expect(spec.owner).toBe("browser");
       expect(spec.trusted).toBe("aux-webui");
@@ -53,6 +81,6 @@ describe("separate browser host registry", () => {
     expect(source).toContain('from "@aux/contracts/browser-host-methods"');
     expect(source).not.toContain('from "@aux/contracts/host-methods"');
     expect(source).not.toContain("runtime-host-methods");
-    expect(Object.keys(BrowserHostMethods).some(id => id.startsWith("native."))).toBe(false);
+    expect(Object.keys(BrowserHostMethods).some((id) => id.startsWith("native."))).toBe(false);
   });
 });

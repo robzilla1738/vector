@@ -2,7 +2,13 @@ import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
-import type { Hook, HookInvocation, OutboundMcpGrant, OutboundMcpServer, WorkspaceFolder } from "@aux/contracts";
+import type {
+  Hook,
+  HookInvocation,
+  OutboundMcpGrant,
+  OutboundMcpServer,
+  WorkspaceFolder,
+} from "@aux/contracts";
 import { call } from "../store";
 import { staticGrowProps as auxClassGrowProps } from "../ui/class-props";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
@@ -23,7 +29,8 @@ async function loadHooks(workspaceId: string): Promise<{ hooks: Hook[]; choices:
         !grant.consumedAt &&
         grant.scope.kind === "workspace" &&
         grant.scope.workspaceId === workspaceId
-      ) choices.push({ grant, server });
+      )
+        choices.push({ grant, server });
     }
   }
   return { hooks, choices };
@@ -111,70 +118,118 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
         before approving it; revoking its grant, folder, or Hook stops future calls.
       </p>
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
-      {handlerType === "mcp_tool" && !choices.length && !error && <p {...staticHintProps}>No standing MCP tool grants in this Space. Create one in MCP &amp; Connectors.</p>}
-      <label>Handler
-        <select aria-label="Hook handler" value={handlerType} onChange={event => setHandlerType(event.target.value as "mcp_tool" | "command")}>
+      {handlerType === "mcp_tool" && !choices.length && !error && (
+        <p {...staticHintProps}>
+          No standing MCP tool grants in this Space. Create one in MCP &amp; Connectors.
+        </p>
+      )}
+      <label>
+        Handler
+        <select
+          aria-label="Hook handler"
+          value={handlerType}
+          onChange={(event) => setHandlerType(event.target.value as "mcp_tool" | "command")}
+        >
           <option value="mcp_tool">Granted MCP tool</option>
           <option value="command">Sandboxed command</option>
         </select>
       </label>
-      <label>Run event
-        <select aria-label="Hook run event" value={hookEvent} onChange={event => setHookEvent(event.target.value as "run.start" | "run.end")}>
+      <label>
+        Run event
+        <select
+          aria-label="Hook run event"
+          value={hookEvent}
+          onChange={(event) => setHookEvent(event.target.value as "run.start" | "run.end")}
+        >
           <option value="run.start">Run starts</option>
           <option value="run.end">Run ends</option>
         </select>
       </label>
-      {handlerType === "mcp_tool" && <label>
-        Granted MCP tool
-        <select
-          aria-label="Hook MCP tool grant"
-          value={grantId}
-          onChange={(event) => setGrantId(event.target.value)}
-        >
-          <option value="">Choose a standing Space grant</option>
-          {choices.map(({ grant, server }) => (
-            <option key={grant.grantId} value={grant.grantId}>
-              {server.name} · {grant.toolName}
-            </option>
-          ))}
-        </select>
-      </label>}
-      {handlerType === "mcp_tool" && <label>
-        Tool arguments as JSON
-        <textarea
-          aria-label="Hook tool arguments"
-          rows={3}
-          value={argumentsText}
-          onChange={(event) => setArgumentsText(event.target.value)}
-        />
-      </label>}
-      {handlerType === "command" && <>
-        <label>Reviewed writable folder
-          <select aria-label="Hook command folder" value={workdir} onChange={event => setWorkdir(event.target.value)}>
-            <option value="">Choose a bound folder</option>
-            {folders.filter(item => item.access === "readWrite" && !item.archivedAt).map(item =>
-              <option key={item.folderId} value={item.path}>{item.path}</option>)}
+      {handlerType === "mcp_tool" && (
+        <label>
+          Granted MCP tool
+          <select
+            aria-label="Hook MCP tool grant"
+            value={grantId}
+            onChange={(event) => setGrantId(event.target.value)}
+          >
+            <option value="">Choose a standing Space grant</option>
+            {choices.map(({ grant, server }) => (
+              <option key={grant.grantId} value={grant.grantId}>
+                {server.name} · {grant.toolName}
+              </option>
+            ))}
           </select>
         </label>
-        <label>Command
-          <textarea aria-label="Hook command" rows={2} maxLength={8000} value={command}
-            onChange={event => setCommand(event.target.value)} />
+      )}
+      {handlerType === "mcp_tool" && (
+        <label>
+          Tool arguments as JSON
+          <textarea
+            aria-label="Hook tool arguments"
+            rows={3}
+            value={argumentsText}
+            onChange={(event) => setArgumentsText(event.target.value)}
+          />
         </label>
-        <p {...staticHintProps}>The exact command runs without network access inside this folder and Aux's sandbox. Archive the folder or revoke the Hook to stop future runs.</p>
-      </>}
+      )}
+      {handlerType === "command" && (
+        <>
+          <label>
+            Reviewed writable folder
+            <select
+              aria-label="Hook command folder"
+              value={workdir}
+              onChange={(event) => setWorkdir(event.target.value)}
+            >
+              <option value="">Choose a bound folder</option>
+              {folders
+                .filter((item) => item.access === "readWrite" && !item.archivedAt)
+                .map((item) => (
+                  <option key={item.folderId} value={item.path}>
+                    {item.path}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            Command
+            <textarea
+              aria-label="Hook command"
+              rows={2}
+              maxLength={8000}
+              value={command}
+              onChange={(event) => setCommand(event.target.value)}
+            />
+          </label>
+          <p {...staticHintProps}>
+            The exact command runs without network access inside this folder and Aux's sandbox. Archive the
+            folder or revoke the Hook to stop future runs.
+          </p>
+        </>
+      )}
       <button
         {...smallButtonProps}
-        disabled={busy || handlerType === "mcp_tool" && (!chosen || !argumentsValue || argumentsText.length > 64_000)
-          || handlerType === "command" && (!command.trim() || !workdir)}
+        disabled={
+          busy ||
+          (handlerType === "mcp_tool" && (!chosen || !argumentsValue || argumentsText.length > 64_000)) ||
+          (handlerType === "command" && (!command.trim() || !workdir))
+        }
         onClick={() =>
           void act(async () => {
             const hook = await call("hooks.register", {
               workspaceId,
               event: hookEvent,
-              handler: handlerType === "command"
-                ? { type: "command", command: command.trim(), workdir }
-                : { type: "mcp_tool", serverId: chosen!.server.serverId, grantId: chosen!.grant.grantId,
-                    toolName: chosen!.grant.toolName, arguments: argumentsValue },
+              handler:
+                handlerType === "command"
+                  ? { type: "command", command: command.trim(), workdir }
+                  : {
+                      type: "mcp_tool",
+                      serverId: chosen!.server.serverId,
+                      grantId: chosen!.grant.grantId,
+                      toolName: chosen!.grant.toolName,
+                      arguments: argumentsValue,
+                    },
             });
             setSelectedId(hook.hookId);
           })
@@ -224,10 +279,16 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
               </p>
             </>
           )}
-          {selected.handler.type === "command" && <>
-            <p>Working folder <code>{selected.handler.workdir}</code></p>
-            <p>Command <code>{selected.handler.command}</code></p>
-          </>}
+          {selected.handler.type === "command" && (
+            <>
+              <p>
+                Working folder <code>{selected.handler.workdir}</code>
+              </p>
+              <p>
+                Command <code>{selected.handler.command}</code>
+              </p>
+            </>
+          )}
           <div {...staticRowProps}>
             {selected.trust === "untrusted" && (
               <button

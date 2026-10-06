@@ -14,14 +14,23 @@ export function startNativeAppearanceObserver(host: Pick<AuxBridge, "appearanceS
 
 /** The private child getter has no public bridge member or caller selector. */
 export function startNativePipAppearanceObserver(read: () => Promise<unknown>) {
-  return observeNativeAppearance(read, new Set([
-    "unavailable: PiP appearance shell changed",
-    "unavailable: PiP appearance owner is unavailable",
-  ]), "unavailable: PiP appearance owner changed or is absent");
+  return observeNativeAppearance(
+    read,
+    new Set([
+      "unavailable: PiP appearance shell changed",
+      "unavailable: PiP appearance owner is unavailable",
+    ]),
+    "unavailable: PiP appearance owner changed or is absent",
+  );
 }
 
-function observeNativeAppearance(read: () => Promise<unknown>, transient: ReadonlySet<string>, absent?: string) {
-  let live = true, failures = 0;
+function observeNativeAppearance(
+  read: () => Promise<unknown>,
+  transient: ReadonlySet<string>,
+  absent?: string,
+) {
+  let live = true,
+    failures = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const sample = async () => {
     if (!live) return;
@@ -31,12 +40,21 @@ function observeNativeAppearance(read: () => Promise<unknown>, transient: Readon
     } catch (error) {
       // Retry only actual native stability refusals. Every missing observation
       // still fails capture; authorization, schema and emission limits stop us.
-      if (!(error instanceof Error) || (error.message !== absent && (!transient.has(error.message) || ++failures >= 20))) {
+      if (
+        !(error instanceof Error) ||
+        (error.message !== absent && (!transient.has(error.message) || ++failures >= 20))
+      ) {
         live = false;
       }
     }
-    if (live) timer = setTimeout(() => { void sample(); }, 500);
+    if (live)
+      timer = setTimeout(() => {
+        void sample();
+      }, 500);
   };
   void sample();
-  return () => { live = false; clearTimeout(timer); };
+  return () => {
+    live = false;
+    clearTimeout(timer);
+  };
 }

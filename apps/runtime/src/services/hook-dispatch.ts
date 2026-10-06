@@ -24,7 +24,7 @@ export function installRunEndHooks(events: EventBus, hooks: HookService, execute
       workspaceId: run.config.contextWorkspaceId,
       event: `run.${phase}` as "run.start" | "run.end",
       runId: run.runId,
-      at: phase === "end" ? run.endedAt ?? event.ts : run.createdAt ?? event.ts,
+      at: phase === "end" ? (run.endedAt ?? event.ts) : (run.createdAt ?? event.ts),
     };
     void hooks.dispatch(context, execute).catch(() => undefined);
   });

@@ -92,8 +92,9 @@ beforeAll(() => {
     set: () => ({ ok: true as const }),
   } as unknown as SettingsService;
   const artifacts = new ArtifactStore(dir, repo, events);
-  const turnMentions = fixtureTurnMentions(pageId => pages.get(pageId));
-  const runs = new RunService({ turnMentions,
+  const turnMentions = fixtureTurnMentions((pageId) => pages.get(pageId));
+  const runs = new RunService({
+    turnMentions,
     repo,
     events,
     pages,
@@ -105,9 +106,13 @@ beforeAll(() => {
   });
   // Bookmark handlers use the native BookmarkModel; keep its fixture separate
   // from the runtime repository so tests exercise the current routing.
-  const nativeBookmarks = new Map<string, { nodeId: string; url: string; title: string;
-    createdAt: number; folderPath: string[] }>();
-  const services: Services = { safetyAuthority: fixtureSafetyAuthority(repo), turnMentions,
+  const nativeBookmarks = new Map<
+    string,
+    { nodeId: string; url: string; title: string; createdAt: number; folderPath: string[] }
+  >();
+  const services: Services = {
+    safetyAuthority: fixtureSafetyAuthority(repo),
+    turnMentions,
     pages,
     sets,
     runs,
@@ -120,14 +125,23 @@ beforeAll(() => {
       bookmarksInvoke: async (method, raw) => {
         const params = raw as { url?: string; title?: string; folderPath?: string[] };
         switch (method) {
-          case "bookmarks.list": return [...nativeBookmarks.values()];
+          case "bookmarks.list":
+            return [...nativeBookmarks.values()];
           case "bookmarks.add": {
-            nativeBookmarks.set(params.url!, { nodeId: String(nativeBookmarks.size + 1), url: params.url!,
-              title: params.title ?? "", createdAt: Date.now(), folderPath: params.folderPath ?? [] });
+            nativeBookmarks.set(params.url!, {
+              nodeId: String(nativeBookmarks.size + 1),
+              url: params.url!,
+              title: params.title ?? "",
+              createdAt: Date.now(),
+              folderPath: params.folderPath ?? [],
+            });
             return { ok: true };
           }
-          case "bookmarks.remove": nativeBookmarks.delete(params.url!); return { ok: true };
-          default: throw new Error(`Unsupported native bookmark fixture method: ${method}`);
+          case "bookmarks.remove":
+            nativeBookmarks.delete(params.url!);
+            return { ok: true };
+          default:
+            throw new Error(`Unsupported native bookmark fixture method: ${method}`);
         }
       },
       // Schema boundary fixture has no registered native run family. The
@@ -136,7 +150,9 @@ beforeAll(() => {
         if (runId !== "run_x") throw new Error("No native run fixture for this identity");
         return { accepted: true as const };
       },
-      permissionRetire: async () => { throw new Error("This fixture does not support native permission retirement"); },
+      permissionRetire: async () => {
+        throw new Error("This fixture does not support native permission retirement");
+      },
       tabCommand: async () => ({ commandId: "", status: "applied" as const, catalogVersion: 0 }),
       focusPage: async () => ({ ok: true }),
       stopPage: async () => ({ ok: true }),

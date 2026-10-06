@@ -49,7 +49,9 @@ const page = (pageId: string, runId?: string, windowId = bridge.windowId): PageT
 
 beforeEach(() => {
   // jsdom has no layout; model the mounted visible controls explicitly.
-  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 30 }] as unknown as DOMRectList);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
+    { width: 100, height: 30 },
+  ] as unknown as DOMRectList);
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.spyOn(bridge, "overlay").mockResolvedValue(true);
   vi.spyOn(bridge, "invoke").mockRejectedValue(new Error("Reveal must not issue a runtime control RPC"));

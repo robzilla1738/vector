@@ -221,32 +221,79 @@ it("shows active original failed reload diagnostics and retains original rejecti
 });
 it("preserves original recovery DOM order, attributes and registered actual button owners across all states", async () => {
   const cases = [
-    { error: page.navigationError, status: "visible", labels: ["Try again", "Edit address", "Go back"], ids: ["retry-page-recovery", "edit-page-recovery-address", "back-page-recovery"], classes: ["btn primary", "btn", "btn"] },
-    { error: { url: "https://fixture.test/", code: -107, message: "ERR_SSL_PROTOCOL_ERROR", upgradedFrom: "http://fixture.test/" }, status: "visible", labels: ["Try again", "Edit address", "Go back", "Continue over HTTP"], ids: ["retry-page-recovery", "edit-page-recovery-address", "back-page-recovery", "continue-page-over-http"], classes: ["btn primary", "btn", "btn", "btn"] },
-    { error: { url: "https://fixture.test/", code: -202, message: "ERR_CERT_AUTHORITY_INVALID" }, status: "visible", labels: ["Try again", "Edit address", "Go back", "Proceed anyway (unsafe)"], ids: ["retry-page-recovery", "edit-page-recovery-address", "back-page-recovery", "proceed-page-certificate"], classes: ["btn primary", "btn", "btn", "btn ghost"] },
-    { error: undefined, status: "crashed", labels: ["Reload", "Edit address", "Go back"], ids: ["retry-page-recovery", "edit-page-recovery-address", "back-page-recovery"], classes: ["btn primary", "btn", "btn"] },
+    {
+      error: page.navigationError,
+      status: "visible",
+      labels: ["Try again", "Edit address", "Go back"],
+      ids: ["retry-page-recovery", "edit-page-recovery-address", "back-page-recovery"],
+      classes: ["btn primary", "btn", "btn"],
+    },
+    {
+      error: {
+        url: "https://fixture.test/",
+        code: -107,
+        message: "ERR_SSL_PROTOCOL_ERROR",
+        upgradedFrom: "http://fixture.test/",
+      },
+      status: "visible",
+      labels: ["Try again", "Edit address", "Go back", "Continue over HTTP"],
+      ids: [
+        "retry-page-recovery",
+        "edit-page-recovery-address",
+        "back-page-recovery",
+        "continue-page-over-http",
+      ],
+      classes: ["btn primary", "btn", "btn", "btn"],
+    },
+    {
+      error: { url: "https://fixture.test/", code: -202, message: "ERR_CERT_AUTHORITY_INVALID" },
+      status: "visible",
+      labels: ["Try again", "Edit address", "Go back", "Proceed anyway (unsafe)"],
+      ids: [
+        "retry-page-recovery",
+        "edit-page-recovery-address",
+        "back-page-recovery",
+        "proceed-page-certificate",
+      ],
+      classes: ["btn primary", "btn", "btn", "btn ghost"],
+    },
+    {
+      error: undefined,
+      status: "crashed",
+      labels: ["Reload", "Edit address", "Go back"],
+      ids: ["retry-page-recovery", "edit-page-recovery-address", "back-page-recovery"],
+      classes: ["btn primary", "btn", "btn"],
+    },
   ];
   for (const row of cases) {
     page = { ...page, navigationError: row.error, viewStatus: row.status } as PageTarget;
     state.pages = [page];
     await render();
     const controls = [...host.querySelectorAll<HTMLButtonElement>(".empty-actions > button")];
-    expect(controls.map(control => control.textContent)).toEqual(row.labels);
-    expect(controls.map(control => control.dataset.commandId)).toEqual(row.ids);
-    expect(controls.map(control => control.className)).toEqual(row.classes);
-    expect(controls.every(control => !control.disabled)).toBe(true);
-    expect(controls.every(control => control.parentElement?.className === "empty-actions")).toBe(true);
+    expect(controls.map((control) => control.textContent)).toEqual(row.labels);
+    expect(controls.map((control) => control.dataset.commandId)).toEqual(row.ids);
+    expect(controls.map((control) => control.className)).toEqual(row.classes);
+    expect(controls.every((control) => !control.disabled)).toBe(true);
+    expect(controls.every((control) => control.parentElement?.className === "empty-actions")).toBe(true);
     expect(host.querySelectorAll("summary")).toHaveLength(row.error ? 1 : 0);
     await click("Edit address");
   }
   expect(focus).toHaveBeenCalledTimes(cases.length);
 });
 it("keeps the original focused button DOM and disabled state through an actual held Retry completion", async () => {
-  const response=held<unknown>();rpc.mockReturnValue(response.promise);
-  await render();const original=button("Try again");original.focus();
-  await act(async()=>{original.click();});
-  expect(button("Trying…")).toBe(original);expect(document.activeElement).toBe(original);
-  expect(original.disabled).toBe(true);expect(button("Edit address").disabled).toBe(false);
-  await act(async()=>response.resolve({actual:"original ack"}));
-  expect(button("Try again")).toBe(original);expect(original.disabled).toBe(false);
+  const response = held<unknown>();
+  rpc.mockReturnValue(response.promise);
+  await render();
+  const original = button("Try again");
+  original.focus();
+  await act(async () => {
+    original.click();
+  });
+  expect(button("Trying…")).toBe(original);
+  expect(document.activeElement).toBe(original);
+  expect(original.disabled).toBe(true);
+  expect(button("Edit address").disabled).toBe(false);
+  await act(async () => response.resolve({ actual: "original ack" }));
+  expect(button("Try again")).toBe(original);
+  expect(original.disabled).toBe(false);
 });

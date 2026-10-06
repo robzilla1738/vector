@@ -8,12 +8,22 @@ import { collectSettingsFields } from "../search";
 
 const call = vi.hoisted(() => vi.fn());
 
-vi.mock("../../bridge", () => ({ bridge: { windowId: "models-fixture", windowKind: "normal", privateMode: false }, inNativeHost: false, inMock: true }));
+vi.mock("../../bridge", () => ({
+  bridge: { windowId: "models-fixture", windowKind: "normal", privateMode: false },
+  inNativeHost: false,
+  inMock: true,
+}));
 vi.mock("../../commands", async () => {
   const { invokeScopedControl } = await import("../../scoped-control-commands");
-  return { executeCommand: (command: string, context: Parameters<typeof invokeScopedControl>[1]) => {
-    try { return Promise.resolve(invokeScopedControl(command, context)); } catch (reason) { return Promise.reject(reason); }
-  } };
+  return {
+    executeCommand: (command: string, context: Parameters<typeof invokeScopedControl>[1]) => {
+      try {
+        return Promise.resolve(invokeScopedControl(command, context));
+      } catch (reason) {
+        return Promise.reject(reason);
+      }
+    },
+  };
 });
 vi.mock("../../store", () => ({ call }));
 let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
@@ -73,7 +83,8 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
-  vi.restoreAllMocks(); vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 const button = (label: string) =>
   [...document.querySelectorAll<HTMLButtonElement>("button")].find(
@@ -88,7 +99,8 @@ async function chooseAction(label: string) {
 
 it("shows only masked connection status and performs explicit disconnect/reconnect without a request", async () => {
   await act(async () => root.render(<Fixture />));
-  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
+  expect(call).toHaveBeenCalledWith("models.list");
+  call.mockClear();
   expect(call).not.toHaveBeenCalled();
   expect(save).not.toHaveBeenCalled();
   expect(collectSettingsFields(host).map((field) => field.label)).toEqual(
@@ -106,7 +118,8 @@ it("shows only masked connection status and performs explicit disconnect/reconne
 
 it("selects the exact provider and focuses its empty key editor for reauthentication", async () => {
   await act(async () => root.render(<Fixture />));
-  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
+  expect(call).toHaveBeenCalledWith("models.list");
+  call.mockClear();
   await menu("Anthropic");
   await chooseAction("Reauthenticate");
   expect(save).toHaveBeenCalledWith({ modelProvider: "anthropic" });
@@ -119,7 +132,8 @@ it("selects the exact provider and focuses its empty key editor for reauthentica
 
 it("keeps a failed credential replacement editable and does not claim success", async () => {
   await act(async () => root.render(<Fixture />));
-  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
+  expect(call).toHaveBeenCalledWith("models.list");
+  call.mockClear();
   save.mockRejectedValueOnce(new Error("Synthetic storage failure"));
   const key = host.querySelector<HTMLInputElement>('[aria-label="Provider API key"]')!;
   await act(async () => {
@@ -134,7 +148,8 @@ it("keeps a failed credential replacement editable and does not claim success", 
 
 it("requires confirmation to remove a saved key and combines removal with disconnect", async () => {
   await act(async () => root.render(<Fixture />));
-  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
+  expect(call).toHaveBeenCalledWith("models.list");
+  call.mockClear();
   await menu();
   await chooseAction("Remove saved key");
   expect(save).not.toHaveBeenCalled();
@@ -153,7 +168,8 @@ it("requires confirmation to remove a saved key and combines removal with discon
 
 it("saves the exact image selection or Off without a provider request and displays the spend-cap limit", async () => {
   await act(async () => root.render(<Fixture />));
-  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
+  expect(call).toHaveBeenCalledWith("models.list");
+  call.mockClear();
   const select = host.querySelector<HTMLSelectElement>('[aria-label="Image-generation model"]')!;
   expect(select.value).toBe("off");
   await act(async () => {

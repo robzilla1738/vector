@@ -57,5 +57,7 @@ it("decays a candidate across query changes with the real pick-origin bonuses", 
     expect(bar.uses).toBe(2);
     expect(store.list()).toHaveLength(1);
     expect(store.record("link", "https://example.com/", "history", "link").frequency).toBe(3.5);
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 });

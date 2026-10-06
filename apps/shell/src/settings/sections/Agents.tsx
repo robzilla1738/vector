@@ -3,9 +3,7 @@ import { executeCommand } from "../../commands";
 import { useFeature } from "../../use-feature";
 import { SiteRulesTable } from "../../features/trust/SiteRulesTable";
 import { SettingsField, SettingsSection } from "../primitives";
-import {
-  nativeButtonTypeProps as auxNativeButtonTypeProps,
-} from "../../ui/native-attribute-props";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../../ui/native-attribute-props";
 import { nativeGroupRoleProps } from "../../ui/native-attribute-props";
 
 export function AgentsSettings({
@@ -24,13 +22,20 @@ export function AgentsSettings({
         label="What the agent may do"
         hint="These are the permissions used when you start a run. Turn Write off for read-only work. Navigation and Evaluate require separate grants. Page content and models cannot add permissions."
       >
-        <div className="seg wrap" {...nativeGroupRoleProps} aria-label="Agent effect grants" data-testid="effect-grants">
-          {([
-            ["effect:read", "Read", true],
-            ["effect:write", "Write", false],
-            ["effect:egress", "Navigate", false],
-            ["effect:destructive", "Evaluate", false],
-          ] as const).map(([key, label, locked]) => {
+        <div
+          className="seg wrap"
+          {...nativeGroupRoleProps}
+          aria-label="Agent effect grants"
+          data-testid="effect-grants"
+        >
+          {(
+            [
+              ["effect:read", "Read", true],
+              ["effect:write", "Write", false],
+              ["effect:egress", "Navigate", false],
+              ["effect:destructive", "Evaluate", false],
+            ] as const
+          ).map(([key, label, locked]) => {
             const on = grants.includes(key) || grants.includes("effect:*");
             return (
               <button
@@ -42,11 +47,13 @@ export function AgentsSettings({
                 data-command-id="set-agent-effect-grants"
                 onClick={() => {
                   if (locked) return;
-                  const next = new Set(grants.filter(grant => grant !== "effect:*"));
+                  const next = new Set(grants.filter((grant) => grant !== "effect:*"));
                   next.add("effect:read");
                   if (on) next.delete(key);
                   else next.add(key);
-                  void executeCommand("set-agent-effect-grants", { payload: { effectGrants: [...next] } }).catch(errToast);
+                  void executeCommand("set-agent-effect-grants", {
+                    payload: { effectGrants: [...next] },
+                  }).catch(errToast);
                 }}
               >
                 {label}

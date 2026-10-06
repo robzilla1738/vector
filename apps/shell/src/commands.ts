@@ -36,18 +36,30 @@ const defaultSwitcher = createTabSwitcher();
 const takingPageControl = new Map<string, Promise<unknown>>();
 function controlledPage(st: StoreState, { payload }: CommandContext, returning: boolean): string {
   const pageId = payload && "pageId" in payload ? payload.pageId : st.activePageId;
-  const page = st.pages.find(item => item.pageId === pageId);
-  if (!page || page.pageId !== st.activePageId ||
-      !(returning ? page.controller === "human" : page.controller === "agent" || page.controller === "external") ||
-      ["detached", "crashed"].includes(page.viewStatus ?? ""))
+  const page = st.pages.find((item) => item.pageId === pageId);
+  if (
+    !page ||
+    page.pageId !== st.activePageId ||
+    !(returning
+      ? page.controller === "human"
+      : page.controller === "agent" || page.controller === "external") ||
+    ["detached", "crashed"].includes(page.viewStatus ?? "")
+  )
     throw new Error("The selected page changed. Refresh before changing control.");
   return page.pageId;
 }
 
 function featureCommands<const T extends readonly ShellCommandId[]>(...ids: T) {
-  return Object.fromEntries(ids.map<[ShellCommandId, CommandAction]>(id => [id, () => {
-    throw new Error(`${COMMANDS.find(command => command.id === id)?.label ?? id} is unavailable in this window`);
-  }])) as { [K in T[number]]: CommandAction };
+  return Object.fromEntries(
+    ids.map<[ShellCommandId, CommandAction]>((id) => [
+      id,
+      () => {
+        throw new Error(
+          `${COMMANDS.find((command) => command.id === id)?.label ?? id} is unavailable in this window`,
+        );
+      },
+    ]),
+  ) as { [K in T[number]]: CommandAction };
 }
 function findAgain(st: StoreState, forward: boolean) {
   if (st.overlay === "reader") {
@@ -94,10 +106,19 @@ function bookmarkAll(st: StoreState) {
   );
 }
 export const COMMAND_ACTIONS = {
-  ...Object.fromEntries(SCOPED_COMMANDS.map(({ id }) => [id, (_state: StoreState, context: CommandContext) => invokeScopedControl(id, context)])) as Record<(typeof SCOPED_COMMANDS)[number]["id"], CommandAction>,
+  ...(Object.fromEntries(
+    SCOPED_COMMANDS.map(({ id }) => [
+      id,
+      (_state: StoreState, context: CommandContext) => invokeScopedControl(id, context),
+    ]),
+  ) as Record<(typeof SCOPED_COMMANDS)[number]["id"], CommandAction>),
 
-
-  ...Object.fromEntries(RUN_CONTROL_COMMANDS.map(id => [id, (_state: StoreState, context: CommandContext) => invokeRunControlCommand(id, context)])) as Record<(typeof RUN_CONTROL_COMMANDS)[number], CommandAction>,
+  ...(Object.fromEntries(
+    RUN_CONTROL_COMMANDS.map((id) => [
+      id,
+      (_state: StoreState, context: CommandContext) => invokeRunControlCommand(id, context),
+    ]),
+  ) as Record<(typeof RUN_CONTROL_COMMANDS)[number], CommandAction>),
   ...featureCommands(
     "set-site-agent-access",
     "delete-site-agent-rule",
@@ -204,16 +225,20 @@ export const COMMAND_ACTIONS = {
     "show-archived-tabs",
   ),
   "approve-agent-action": (_st, { payload }) => {
-    if (!payload || !("approvalId" in payload) || !("turnId" in payload)) throw new Error("This approval is unavailable.");
+    if (!payload || !("approvalId" in payload) || !("turnId" in payload))
+      throw new Error("This approval is unavailable.");
     return decideAgentAction(payload, "accept");
   },
   "deny-agent-action": (_st, { payload }) => {
     if (!payload || !("turnId" in payload)) throw new Error("This approval is unavailable.");
-    return "approvalId" in payload ? decideAgentAction(payload, "decline") : dismissAgentHandoff(payload.turnId);
+    return "approvalId" in payload
+      ? decideAgentAction(payload, "decline")
+      : dismissAgentHandoff(payload.turnId);
   },
   "take-over-agent-action": (st, { payload }) => {
-    if (!payload || !("pageId" in payload) || !("turnId" in payload)) throw new Error("The requested page is unavailable.");
-    return takeOverAgentAction(payload, id => st.activate(id));
+    if (!payload || !("pageId" in payload) || !("turnId" in payload))
+      throw new Error("The requested page is unavailable.");
+    return takeOverAgentAction(payload, (id) => st.activate(id));
   },
   "return-agent-control": (st, context) => st.returnControl(controlledPage(st, context, true)),
   "take-page-control": (st, context) => {
@@ -228,10 +253,10 @@ export const COMMAND_ACTIONS = {
   ...COMMAND_SURFACE_ACTIONS,
   "command-switch-space": (st, context) => {
     const spaceId = context.payload && "spaceId" in context.payload ? context.payload.spaceId : undefined;
-    if (!spaceId || !st.layout.spaces.some(space => space.id === spaceId)) throw new Error("The Space is no longer available.");
+    if (!spaceId || !st.layout.spaces.some((space) => space.id === spaceId))
+      throw new Error("The Space is no longer available.");
     return st.switchSpace(spaceId);
   },
-
 
   "mute-tab": (st, context) => {
     const pageId = context.payload && "pageId" in context.payload ? context.payload.pageId : st.activePageId;
@@ -253,9 +278,15 @@ export const COMMAND_ACTIONS = {
     const page = st.pages.find((page) => page.pageId === st.activePageId);
     if (page) return navigator.clipboard.writeText(page.url).then(() => st.toast("Link copied"));
   },
-  "new-chat": st => { st.openConversation(null); st.focusCommandBar("hero"); },
-  "open-chat-history": st => { st.openConversation(null); useStore.setState({ conversationId: "history" }); },
-  "open-tasks": st => st.setOverlay("tasks"),
+  "new-chat": (st) => {
+    st.openConversation(null);
+    st.focusCommandBar("hero");
+  },
+  "open-chat-history": (st) => {
+    st.openConversation(null);
+    useStore.setState({ conversationId: "history" });
+  },
+  "open-tasks": (st) => st.setOverlay("tasks"),
   "quick-ask": () => bridge.quickAsk("open"),
 
   "new-tab": () => openCommandSurface({ mode: "new-tab" }),
@@ -345,10 +376,11 @@ export const COMMAND_ACTIONS = {
 } satisfies Record<ShellCommandId, CommandAction>;
 
 const executor = commandExecutor<CommandContext>((id, context) => {
-  const command = COMMANDS.find(command => command.id === id);
+  const command = COMMANDS.find((command) => command.id === id);
   if (!command) return undefined;
   const state = context.state ?? useStore.getState();
-  if ((command as CommandDef).windows && !(command as CommandDef).windows!.includes(bridge.windowKind)) return undefined;
+  if ((command as CommandDef).windows && !(command as CommandDef).windows!.includes(bridge.windowKind))
+    return undefined;
   if (command.handler === "native") return () => bridge.dispatchCommand(command.id);
   return () => {
     const feature = runFeatureCommand(id, state, context);

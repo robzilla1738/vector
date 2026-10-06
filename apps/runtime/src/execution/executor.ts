@@ -34,15 +34,12 @@ export interface ExecContext {
   /** control-flow interpreter hooks (Program.nodes) */
   onEmit?: (label: string | undefined, value: unknown) => void;
   onNode?: (info: { kind: string; id: string; detail?: string }) => void;
-  observe?: (req: {
-    scope?: ObservationScope;
-    subtreeRef?: string;
-  }) => Promise<unknown>;
+  observe?: (req: { scope?: ObservationScope; subtreeRef?: string }) => Promise<unknown>;
   callOperation?: (name: string, args: Record<string, unknown>) => Promise<unknown>;
   checkpoint?: (name: string, env: Record<string, unknown>) => void;
-  loadCheckpoint?: (name: string) =>
-    | { inputs?: Record<string, unknown>; vars?: Record<string, unknown>; emitted?: unknown[] }
-    | undefined;
+  loadCheckpoint?: (
+    name: string,
+  ) => { inputs?: Record<string, unknown>; vars?: Record<string, unknown>; emitted?: unknown[] } | undefined;
   /**
    * Trusted-source escape hatch: enables the `evaluate` op, `expression`
    * wait/expect conditions, and interpreter `{eval:}` expressions. Defaults
@@ -65,8 +62,20 @@ export interface ExecContext {
   navigateAndReadmit?: (url: string, timeoutMs?: number) => Promise<DriverPage>;
   /** Roots an `upload` step may read files from — session storage, attachments, workspace roots. */
   uploadRoots?: string[];
-  safety?: { turnId?: string; threadId?: string; turnToolCallCount?: number;
-    steps?: Record<string, { approvalId?: string; review?: FinalReviewArtifact; sensitiveData?: boolean; restrictedRetry?: boolean }> };
+  safety?: {
+    turnId?: string;
+    threadId?: string;
+    turnToolCallCount?: number;
+    steps?: Record<
+      string,
+      {
+        approvalId?: string;
+        review?: FinalReviewArtifact;
+        sensitiveData?: boolean;
+        restrictedRetry?: boolean;
+      }
+    >;
+  };
   /** saved task that authorized this run, used to scope vault grants */
   taskId?: string;
   /** Saved task revision that authorized this direct program. */
@@ -80,7 +89,12 @@ export interface ExecContext {
   /** Durable intent created by the caller for every consequential program step. */
   journalIntentId?: string;
   /** Chromium's Profile password manager handles selection, approval, and fill. */
-  fillSavedPassword?: (request: { pageId: string; expectedUrl: string; passwordSelector: string; usernameSelector?: string }) => Promise<{ status: "filled" | "unavailable" | "target_changed" | "permission_denied" | "cancelled" }>;
+  fillSavedPassword?: (request: {
+    pageId: string;
+    expectedUrl: string;
+    passwordSelector: string;
+    usernameSelector?: string;
+  }) => Promise<{ status: "filled" | "unavailable" | "target_changed" | "permission_denied" | "cancelled" }>;
   pageOrigin?: string;
 }
 
@@ -103,11 +117,14 @@ function assertEvalAllowed(step: Step, allowEval: boolean) {
   const usesExpression = (c: Condition | undefined) => c?.kind === "expression";
   if (
     step.op === "evaluate" ||
-    step.op === "navigate" && isActiveScriptUrl(step.url) ||
+    (step.op === "navigate" && isActiveScriptUrl(step.url)) ||
     (step.op === "waitFor" && usesExpression(step.condition)) ||
     (step.expect ?? []).some((c) => usesExpression(c as Condition))
   ) {
-    throw new AuxError("invalid_params", `step ${step.id}: page JS (evaluate/expression) is disabled for this program source`);
+    throw new AuxError(
+      "invalid_params",
+      `step ${step.id}: page JS (evaluate/expression) is disabled for this program source`,
+    );
   }
 }
 
@@ -120,19 +137,35 @@ function assertEvalAllowed(step: Step, allowEval: boolean) {
  */
 const RETRYABLE_RESOLUTION_CODES = new Set(["target_detached"]);
 
-async function runStep(page: DriverPage, s: Step, ctx: ExecContext = {}): Promise<Record<string, unknown> | undefined> {
+async function runStep(
+  page: DriverPage,
+  s: Step,
+  ctx: ExecContext = {},
+): Promise<Record<string, unknown> | undefined> {
   switch (s.op) {
-    case "navigate": return void (await (ctx.navigate ? ctx.navigate(s.url, s.timeoutMs) : page.navigate(s.url, s.timeoutMs)));
-    case "back": return void (await page.back(s.timeoutMs));
-    case "forward": return void (await page.forward(s.timeoutMs));
-    case "reload": return void (await page.reload(s.timeoutMs));
-    case "stop": return void (await page.stop());
-    case "click": return void (await page.click(s.target, s.button, s.timeoutMs));
-    case "dblclick": return void (await page.dblclick(s.target, s.timeoutMs));
-    case "hover": return void (await page.hover(s.target, s.timeoutMs));
-    case "fill": return void (await page.fill(s.target, s.value, s.timeoutMs));
+    case "navigate":
+      return void (await (ctx.navigate
+        ? ctx.navigate(s.url, s.timeoutMs)
+        : page.navigate(s.url, s.timeoutMs)));
+    case "back":
+      return void (await page.back(s.timeoutMs));
+    case "forward":
+      return void (await page.forward(s.timeoutMs));
+    case "reload":
+      return void (await page.reload(s.timeoutMs));
+    case "stop":
+      return void (await page.stop());
+    case "click":
+      return void (await page.click(s.target, s.button, s.timeoutMs));
+    case "dblclick":
+      return void (await page.dblclick(s.target, s.timeoutMs));
+    case "hover":
+      return void (await page.hover(s.target, s.timeoutMs));
+    case "fill":
+      return void (await page.fill(s.target, s.value, s.timeoutMs));
     case "fillCredential": {
-      if (!ctx.fillSavedPassword) throw new AuxError("backend_unavailable", "The browser password manager is unavailable.");
+      if (!ctx.fillSavedPassword)
+        throw new AuxError("backend_unavailable", "The browser password manager is unavailable.");
       const result = await ctx.fillSavedPassword({
         pageId: page.identity.pageId,
         expectedUrl: page.url(),
@@ -140,46 +173,70 @@ async function runStep(page: DriverPage, s: Step, ctx: ExecContext = {}): Promis
         ...(s.usernameSelector ? { usernameSelector: s.usernameSelector } : {}),
       });
       if (result.status === "filled") return { detail: "Saved password filled after browser approval" };
-      if (result.status === "target_changed") throw new AuxError("conflict", "The active login page changed during password fill.");
-      if (result.status === "unavailable") throw new AuxError("needs_input", "No saved password is available for this site.");
-      if (result.status === "permission_denied") throw new AuxError("permission_denied", "The browser denied password fill on this page.");
+      if (result.status === "target_changed")
+        throw new AuxError("conflict", "The active login page changed during password fill.");
+      if (result.status === "unavailable")
+        throw new AuxError("needs_input", "No saved password is available for this site.");
+      if (result.status === "permission_denied")
+        throw new AuxError("permission_denied", "The browser denied password fill on this page.");
       throw new AuxError("needs_input", "Password fill was not approved in the browser.");
     }
-    case "type": return void (await page.typeText(s.target, s.value, s.delayMs, s.timeoutMs));
-    case "press": return void (await page.press(s.key, s.target, s.timeoutMs));
-    case "check": return void (await page.check(s.target, s.timeoutMs));
-    case "uncheck": return void (await page.uncheck(s.target, s.timeoutMs));
-    case "select": return void (await page.select(s.target, s.value, s.timeoutMs));
-    case "scroll": return void (await page.scroll({ target: s.target, direction: s.direction, amount: s.amount }));
-    case "dragTo": return void (await page.dragTo(s.target, s.to, s.timeoutMs));
-    case "clickPoint": return void (await page.clickPoint(s.x, s.y, s.button));
+    case "type":
+      return void (await page.typeText(s.target, s.value, s.delayMs, s.timeoutMs));
+    case "press":
+      return void (await page.press(s.key, s.target, s.timeoutMs));
+    case "check":
+      return void (await page.check(s.target, s.timeoutMs));
+    case "uncheck":
+      return void (await page.uncheck(s.target, s.timeoutMs));
+    case "select":
+      return void (await page.select(s.target, s.value, s.timeoutMs));
+    case "scroll":
+      return void (await page.scroll({ target: s.target, direction: s.direction, amount: s.amount }));
+    case "dragTo":
+      return void (await page.dragTo(s.target, s.to, s.timeoutMs));
+    case "clickPoint":
+      return void (await page.clickPoint(s.x, s.y, s.button));
     case "upload": {
       // Files leave the machine toward a page — only session storage,
       // attachments, and task workspace roots are readable.
-      const roots = (ctx.uploadRoots ?? []).map(root => resolve(root));
+      const roots = (ctx.uploadRoots ?? []).map((root) => resolve(root));
       for (const file of s.files) {
         const path = resolve(file);
-        const inside = roots.some(root => path === root || path.startsWith(root.endsWith(sep) ? root : root + sep));
-        if (!inside) throw new AuxError("permission_denied",
-          `Uploads are limited to session storage, attachments, and workspace roots: ${file}`);
+        const inside = roots.some(
+          (root) => path === root || path.startsWith(root.endsWith(sep) ? root : root + sep),
+        );
+        if (!inside)
+          throw new AuxError(
+            "permission_denied",
+            `Uploads are limited to session storage, attachments, and workspace roots: ${file}`,
+          );
       }
       return void (await page.uploadFiles(s.target, s.files, s.timeoutMs));
     }
     case "waitFor": {
       const res = await page.waitFor(s.condition);
-      if (!res.ok) throw new AuxError("condition_timeout", res.detail ?? `condition ${s.condition.kind} failed`);
+      if (!res.ok)
+        throw new AuxError("condition_timeout", res.detail ?? `condition ${s.condition.kind} failed`);
       return { detail: res.detail };
     }
     case "screenshot": {
       const shot = await page.screenshot({ fullPage: s.fullPage });
-      return { screenshot: shot.buffer, width: shot.width, height: shot.height, label: s.artifact ?? "screenshot" };
+      return {
+        screenshot: shot.buffer,
+        width: shot.width,
+        height: shot.height,
+        label: s.artifact ?? "screenshot",
+      };
     }
-    case "extract": return { extracted: await page.extract(s.fields) };
+    case "extract":
+      return { extracted: await page.extract(s.fields) };
     case "expectDownload": {
       const res = await page.waitForDownload(s.timeoutMs ?? 30_000);
       return { downloaded: res.suggestedFilename, path: res.path };
     }
-    case "dialog": return void (await page.handleDialog(s.action, s.promptText));
+    case "dialog":
+      return void (await page.handleDialog(s.action, s.promptText));
     case "collectScroll": {
       const res = await page.collectScroll({
         item: s.item,
@@ -197,9 +254,10 @@ async function runStep(page: DriverPage, s: Step, ctx: ExecContext = {}): Promis
       // `as` binds the return into extracted — the full JSON value, not the
       // 300-char detail preview (session-request impls ride on this). The
       // runner nests this map under `as` itself, so return it unkeyed.
-      const ex = value !== null && typeof value === "object" && !Array.isArray(value)
-        ? (value as Record<string, unknown>)
-        : { value };
+      const ex =
+        value !== null && typeof value === "object" && !Array.isArray(value)
+          ? (value as Record<string, unknown>)
+          : { value };
       return { value, extracted: ex };
     }
   }
@@ -238,26 +296,39 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         throw new AuxError("invalid_params", `step ${step.id}: use select for a select control`);
       ctx.checkValid?.();
       dispatched = true;
-      const detail = step.op === "navigate" && ctx.navigateAndReadmit
-        ? await (async () => {
-            const original = page;
-            const replacement = await ctx.navigateAndReadmit!(step.url, step.timeoutMs);
-            if (ctx.signal?.aborted) throw new AuxError("cancelled", "Navigation was cancelled before admitting its new attachment.");
-            if (replacement === original || !replacement.isAttached()
-              || replacement.identity.pageId !== original.identity.pageId
-              || replacement.identity.backend !== original.identity.backend)
-              throw new AuxError("ref_stale", "Navigation did not produce a fresh attachment for this same page.");
-            ctx.checkValid?.();
-            page = replacement;
-            return undefined;
-          })()
-        : await runStep(page, step, ctx).catch(async (e) => {
-        const code = e instanceof AuxError ? e.code : undefined;
-        if (!code || !RETRYABLE_RESOLUTION_CODES.has(code) || ctx.signal?.aborted) throw e;
-        await page.waitFor({ kind: "settled", policy: "interactive" }).catch(() => ({ ok: false, timedOut: false }));
-        ctx.checkValid?.();
-        return runStep(page, step, ctx);
-      });
+      const detail =
+        step.op === "navigate" && ctx.navigateAndReadmit
+          ? await (async () => {
+              const original = page;
+              const replacement = await ctx.navigateAndReadmit!(step.url, step.timeoutMs);
+              if (ctx.signal?.aborted)
+                throw new AuxError(
+                  "cancelled",
+                  "Navigation was cancelled before admitting its new attachment.",
+                );
+              if (
+                replacement === original ||
+                !replacement.isAttached() ||
+                replacement.identity.pageId !== original.identity.pageId ||
+                replacement.identity.backend !== original.identity.backend
+              )
+                throw new AuxError(
+                  "ref_stale",
+                  "Navigation did not produce a fresh attachment for this same page.",
+                );
+              ctx.checkValid?.();
+              page = replacement;
+              return undefined;
+            })()
+          : await runStep(page, step, ctx).catch(async (e) => {
+              const code = e instanceof AuxError ? e.code : undefined;
+              if (!code || !RETRYABLE_RESOLUTION_CODES.has(code) || ctx.signal?.aborted) throw e;
+              await page
+                .waitFor({ kind: "settled", policy: "interactive" })
+                .catch(() => ({ ok: false, timedOut: false }));
+              ctx.checkValid?.();
+              return runStep(page, step, ctx);
+            });
       // verify post-conditions
       if (step.expect) {
         for (const cond of step.expect as Condition[]) {
@@ -267,13 +338,22 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         }
       }
       ctx.checkValid?.();
-      const after = before && page.fieldState && pageUrl === page.url() && beforeEpoch ===
-        pageDocumentEpoch(page) && "target" in step && step.target
-        ? await page.fieldState(String(step.target)).catch(() => undefined) : undefined;
+      const after =
+        before &&
+        page.fieldState &&
+        pageUrl === page.url() &&
+        beforeEpoch === pageDocumentEpoch(page) &&
+        "target" in step &&
+        step.target
+          ? await page.fieldState(String(step.target)).catch(() => undefined)
+          : undefined;
       const postconditions = (step.expect as Condition[] | undefined) ?? [];
       const navigationObserved = mutating && actionUrl !== undefined && page.url() !== actionUrl;
-      const setterObserved = mutating && before !== undefined && after !== undefined
-        && JSON.stringify(before) !== JSON.stringify(after);
+      const setterObserved =
+        mutating &&
+        before !== undefined &&
+        after !== undefined &&
+        JSON.stringify(before) !== JSON.stringify(after);
       const observed = postconditions.length > 0 || navigationObserved || setterObserved;
       const outcome: StepOutcome = {
         stepId: step.id,
@@ -289,7 +369,11 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         receipt: {
           observed: postconditions.length
             ? `postconditions satisfied: ${postconditions.map((condition) => condition.kind).join(", ")}`
-            : navigationObserved ? "page URL changed after action" : setterObserved ? "control value changed after action" : undefined,
+            : navigationObserved
+              ? "page URL changed after action"
+              : setterObserved
+                ? "control value changed after action"
+                : undefined,
           // A DOM condition proves browser state. Only explicit backend or
           // network evidence may claim remote business-system confirmation.
           remoteConfirmed: false,
@@ -311,7 +395,11 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
           extracted[key] = outcome.extracted;
         }
         if (d["screenshot"] instanceof Buffer && ctx.onArtifact) {
-          const id = ctx.onArtifact(String(d["label"] ?? "screenshot"), d["screenshot"] as Buffer, "image/png");
+          const id = ctx.onArtifact(
+            String(d["label"] ?? "screenshot"),
+            d["screenshot"] as Buffer,
+            "image/png",
+          );
           if (id) artifactIds.push(id);
         }
         if (d["downloaded"]) outcome.detail = `downloaded ${d["downloaded"]}`;
@@ -326,8 +414,12 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
       // A failed postcondition must remain a failed step, but it must not
       // erase independent evidence that the dispatched action navigated.
       // In particular, a Save button can disappear after a successful save.
-      const navigationObserved = dispatched && code === "condition_timeout" && mutating
-        && actionUrl !== undefined && page.url() !== actionUrl;
+      const navigationObserved =
+        dispatched &&
+        code === "condition_timeout" &&
+        mutating &&
+        actionUrl !== undefined &&
+        page.url() !== actionUrl;
       return {
         stepId: step.id,
         op: step.op,
@@ -338,12 +430,28 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         ...(authorization ? { authorization } : {}),
         ...(before ? { before } : {}),
         ...(pageUrl ? { pageUrl } : {}),
-        ...(navigationObserved ? { effect: "observed" as const, receipt: {
-          observed: "page URL changed after action", remoteConfirmed: false,
-          uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false,
-        } } : takenOver ? { effect: "uncertain" as const, receipt: {
-          remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: true,
-        } } : {}),
+        ...(navigationObserved
+          ? {
+              effect: "observed" as const,
+              receipt: {
+                observed: "page URL changed after action",
+                remoteConfirmed: false,
+                uncertain: false,
+                unconfirmed: false,
+                dispatchedBeforeTakeover: false,
+              },
+            }
+          : takenOver
+            ? {
+                effect: "uncertain" as const,
+                receipt: {
+                  remoteConfirmed: false,
+                  uncertain: true,
+                  unconfirmed: false,
+                  dispatchedBeforeTakeover: true,
+                },
+              }
+            : {}),
       };
     }
   };
@@ -380,7 +488,9 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
       if (trigOutcome.status === "failed" && !trigger.optional) {
         emit(trigOutcome, trigger);
         cancelWait();
-        return { early: { status: ctx.signal?.aborted ? "cancelled" : "failed", error: trigOutcome.error?.message } };
+        return {
+          early: { status: ctx.signal?.aborted ? "cancelled" : "failed", error: trigOutcome.error?.message },
+        };
       }
       let dlOutcome: StepOutcome;
       try {
@@ -411,7 +521,10 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
           status: "failed",
           startedAt: dlStarted,
           durationMs: Date.now() - dlStarted,
-          error: { code: e instanceof AuxError ? e.code : "step_failed", message: e instanceof Error ? e.message : String(e) },
+          error: {
+            code: e instanceof AuxError ? e.code : "step_failed",
+            message: e instanceof Error ? e.message : String(e),
+          },
         };
       }
       emit(trigOutcome, trigger);
@@ -490,7 +603,10 @@ export async function executeProgram(
             status: "failed",
             startedAt: Date.now(),
             durationMs: 0,
-            error: { code: "invalid_params", message: "expectDownload must precede the step that triggers the download" },
+            error: {
+              code: "invalid_params",
+              message: "expectDownload must precede the step that triggers the download",
+            },
           },
           step,
         );
@@ -498,13 +614,25 @@ export async function executeProgram(
       }
       const { early } = await runner.runDownloadPair(step, trigger, emit);
       i++;
-      if (early) return { status: early.status, steps: outcomes, extracted: hasKeys(runner.extracted), error: early.error };
+      if (early)
+        return {
+          status: early.status,
+          steps: outcomes,
+          extracted: hasKeys(runner.extracted),
+          error: early.error,
+        };
       continue;
     }
     const outcome = await runner.runOne(step);
     emit(outcome, step);
     const early = runner.failedUnlessOptional(outcome, step);
-    if (early) return { status: early.status, steps: outcomes, extracted: hasKeys(runner.extracted), error: early.error };
+    if (early)
+      return {
+        status: early.status,
+        steps: outcomes,
+        extracted: hasKeys(runner.extracted),
+        error: early.error,
+      };
   }
   return {
     status: ctx.signal?.aborted ? "cancelled" : "completed",
@@ -523,6 +651,8 @@ export async function downloadExtract(filename: string, path?: string): Promise<
     if ((await stat(path)).size > 64 * 1024) return out;
     const text = await readFile(path, "utf8");
     if (!text.includes("\0")) out.text = text;
-  } catch { /* file moved or unreadable — filename is still the receipt */ }
+  } catch {
+    /* file moved or unreadable — filename is still the receipt */
+  }
   return out;
 }

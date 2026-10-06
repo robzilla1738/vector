@@ -54,9 +54,11 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
   }, [workspaceId]);
 
   useEffect(() => {
-    if (!goals.some(goal => ["starting", "active"].includes(goal.status))) return;
+    if (!goals.some((goal) => ["starting", "active"].includes(goal.status))) return;
     const timer = window.setInterval(() => {
-      void call("goals.list", { workspaceId, limit: 100 }).then(setGoals).catch(() => {});
+      void call("goals.list", { workspaceId, limit: 100 })
+        .then(setGoals)
+        .catch(() => {});
     }, 3_000);
     return () => window.clearInterval(timer);
   }, [workspaceId, goals]);
@@ -83,8 +85,11 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
     (!cost.trim() || maxCostUsd !== undefined) &&
     (!minutes.trim() || Number.isInteger(deadlineMinutes)) &&
     (maxTokens !== undefined || maxCostUsd !== undefined || deadlineMinutes !== undefined);
-  const unfinishedHere = !!chatId && goals.some(goal => goal.chatId === chatId &&
-    !["completed", "failed", "cancelled"].includes(goal.status));
+  const unfinishedHere =
+    !!chatId &&
+    goals.some(
+      (goal) => goal.chatId === chatId && !["completed", "failed", "cancelled"].includes(goal.status),
+    );
 
   return (
     <section className="field goals-panel" aria-label="Goals">
@@ -93,7 +98,11 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
         <button {...smallButtonProps} onClick={() => void act(async () => {})} disabled={busy}>
           Refresh
         </button>
-        <button {...smallButtonProps} onClick={() => setShowForm((value) => !value)} disabled={unfinishedHere}>
+        <button
+          {...smallButtonProps}
+          onClick={() => setShowForm((value) => !value)}
+          disabled={unfinishedHere}
+        >
           {showForm ? "Close" : "New Goal"}
         </button>
       </div>
@@ -102,7 +111,13 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
         Aux reserves the prompt, tool descriptions and maximum output before each model call. Clear the cost
         limit for a local model without a price. You can pause or cancel at any time.
       </p>
-      {chatId && <p {...staticHintProps}>{unfinishedHere ? "Finish or cancel this conversation’s current Goal before creating another." : "New Goals belong to the current conversation."}</p>}
+      {chatId && (
+        <p {...staticHintProps}>
+          {unfinishedHere
+            ? "Finish or cancel this conversation’s current Goal before creating another."
+            : "New Goals belong to the current conversation."}
+        </p>
+      )}
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
       {showForm && (
         <div className="goals-form">
@@ -184,9 +199,18 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
             <strong {...auxClassGrowProps}>{goal.objective}</strong>
             <span className="work-status">{goal.status.replaceAll("_", " ")}</span>
           </div>
-          {goal.chatId && <p {...staticHintProps}>{goal.chatId === chatId ? "Current conversation" : "Conversation Goal"}</p>}
+          {goal.chatId && (
+            <p {...staticHintProps}>
+              {goal.chatId === chatId ? "Current conversation" : "Conversation Goal"}
+            </p>
+          )}
           {goal.status === "blocked" && goal.blocker && <p {...staticHintProps}>Blocked: {goal.blocker}</p>}
-          {goal.status === "needs_input" && <p {...staticHintProps}>This Goal needs your review. A stopped model call or run may have had an effect or a charge; Aux will not resume it automatically.</p>}
+          {goal.status === "needs_input" && (
+            <p {...staticHintProps}>
+              This Goal needs your review. A stopped model call or run may have had an effect or a charge; Aux
+              will not resume it automatically.
+            </p>
+          )}
           <p {...staticHintProps}>
             {goal.usedTokens.toLocaleString()} / {goal.budget.maxTokens?.toLocaleString() ?? "unlimited"}{" "}
             tokens
@@ -201,11 +225,13 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
               <> · {Math.round(goal.budget.deadlineMs / 60_000)} minute limit</>
             )}
           </p>
-          {!!(goal.reservedTokens || goal.reservedCostUsd) && <p {...staticHintProps}>
-            Held capacity: {(goal.reservedTokens ?? 0).toLocaleString()} tokens
-            {goal.budget.maxCostUsd !== undefined && <> · ${(goal.reservedCostUsd ?? 0).toFixed(2)}</>}
-            . This includes in-flight or uncertain calls and is not confirmed provider usage.
-          </p>}
+          {!!(goal.reservedTokens || goal.reservedCostUsd) && (
+            <p {...staticHintProps}>
+              Held capacity: {(goal.reservedTokens ?? 0).toLocaleString()} tokens
+              {goal.budget.maxCostUsd !== undefined && <> · ${(goal.reservedCostUsd ?? 0).toFixed(2)}</>}.
+              This includes in-flight or uncertain calls and is not confirmed provider usage.
+            </p>
+          )}
           <div {...staticRowProps}>
             {goal.status === "draft" && (
               <button
@@ -236,7 +262,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
                 Resume
               </button>
             )}
-          {(cancellable.has(goal.status) || goal.status === "draft") && (
+            {(cancellable.has(goal.status) || goal.status === "draft") && (
               <button
                 {...smallButtonProps}
                 disabled={busy}

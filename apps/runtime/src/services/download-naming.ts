@@ -198,9 +198,11 @@ export class DownloadNamingService {
       )
         return { status: "skipped", reason: "excluded" };
       const settingsIdentity = JSON.stringify(settings);
-      const settingsCurrent = () => settingsIdentity === JSON.stringify(
-        DownloadNamingSettingsSchema.parse(this.settings.get("downloadNaming") ?? DEFAULT_DOWNLOAD_NAMING),
-      );
+      const settingsCurrent = () =>
+        settingsIdentity ===
+        JSON.stringify(
+          DownloadNamingSettingsSchema.parse(this.settings.get("downloadNaming") ?? DEFAULT_DOWNLOAD_NAMING),
+        );
       let stem = downloadTemplate(info, settings.template);
       if (settings.useAi) {
         const controller = new AbortController();

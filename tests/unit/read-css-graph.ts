@@ -6,6 +6,8 @@ export function readCssGraph(path: string, seen = new Set<string>()): string {
   const file = resolve(path);
   if (seen.has(file)) return "";
   seen.add(file);
-  return readFileSync(file, "utf8").replace(/@import\s+["'](\.[^"']+)["'];/g, (_statement, relative: string) =>
-    readCssGraph(resolve(dirname(file), relative), seen));
+  return readFileSync(file, "utf8").replace(
+    /@import\s+["'](\.[^"']+)["'];/g,
+    (_statement, relative: string) => readCssGraph(resolve(dirname(file), relative), seen),
+  );
 }

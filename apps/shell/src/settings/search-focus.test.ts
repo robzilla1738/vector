@@ -2,16 +2,26 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { focusSettingsDestination } from "./search-focus";
 
-afterEach(() => { vi.useRealTimers(); document.body.replaceChildren(); });
+afterEach(() => {
+  vi.useRealTimers();
+  document.body.replaceChildren();
+});
 
 it("waits for a routed field, focuses it, and clears its three-flash marker", async () => {
   vi.useFakeTimers();
   const root = document.createElement("div");
   root.innerHTML = "<section></section>";
   document.body.append(root);
-  const focus = focusSettingsDestination(root, {
-    category: "Appearance", label: "Sidebar appearance", description: "", target: "Sidebar appearance",
-  }, new AbortController().signal);
+  const focus = focusSettingsDestination(
+    root,
+    {
+      category: "Appearance",
+      label: "Sidebar appearance",
+      description: "",
+      target: "Sidebar appearance",
+    },
+    new AbortController().signal,
+  );
   const target = document.createElement("div");
   target.dataset.setting = "Sidebar appearance";
   root.querySelector("section")!.append(target);

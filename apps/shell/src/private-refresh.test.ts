@@ -4,7 +4,11 @@ import { bridge } from "./bridge";
 import { useStore } from "./store";
 
 const initial = useStore.getState();
-afterEach(() => { vi.restoreAllMocks(); bridge.privateMode = false; useStore.setState(initial, true); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  bridge.privateMode = false;
+  useStore.setState(initial, true);
+});
 
 it("refreshes native tabs in Private mode without contacting the unavailable runtime", async () => {
   bridge.privateMode = true;

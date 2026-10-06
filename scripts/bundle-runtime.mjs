@@ -60,11 +60,15 @@ export async function bundleRuntime(rtOut, target) {
   // QuickJS's async release variant loads its WASM beside the esbuild chunk at
   // runtime. esbuild bundles the loader JS but does not copy that sibling file.
   const quickjsRequire = createRequire(runtimeRequire.resolve("quickjs-emscripten/package.json"));
-  const quickjsVariant = dirname(quickjsRequire.resolve("@jitl/quickjs-wasmfile-release-asyncify/package.json"));
+  const quickjsVariant = dirname(
+    quickjsRequire.resolve("@jitl/quickjs-wasmfile-release-asyncify/package.json"),
+  );
   const quickjsWasm = readFileSync(join(quickjsVariant, "dist", "emscripten-module.wasm"));
   await WebAssembly.compile(quickjsWasm);
-  copyFileSync(join(quickjsVariant, "dist", "emscripten-module.wasm"),
-    join(rtOut, "dist", "chunks", "emscripten-module.wasm"));
+  copyFileSync(
+    join(quickjsVariant, "dist", "emscripten-module.wasm"),
+    join(rtOut, "dist", "chunks", "emscripten-module.wasm"),
+  );
 
   const playwrightDir = dirname(
     createRequire(join(root, "packages/chromium-driver/package.json")).resolve(

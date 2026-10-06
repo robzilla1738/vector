@@ -14,11 +14,16 @@ it("uses shell history while Settings is open without a guest page", async () =>
   const root = createRoot(container);
   try {
     await act(async () => root.render(<NavigationButtons settingsRoute />));
-    const button = (label: string) => container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
+    const button = (label: string) =>
+      container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
     expect(button("Back").disabled).toBe(false);
     expect(button("Forward").disabled).toBe(false);
     expect(button("Reload").disabled).toBe(false);
-    await act(async () => { button("Back").click(); button("Forward").click(); button("Reload").click(); });
+    await act(async () => {
+      button("Back").click();
+      button("Forward").click();
+      button("Reload").click();
+    });
     expect(back).toHaveBeenCalledOnce();
     expect(forward).toHaveBeenCalledOnce();
     expect(refresh).toHaveBeenCalledOnce();

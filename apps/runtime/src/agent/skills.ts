@@ -148,8 +148,13 @@ export function tryReuseSkill(
   if (!guardsHold(obs, url, match.preconditions, documentEpoch)) {
     return { skipped: `skill ${match.id} guards failed` };
   }
-  const unbound = rebindSteps(match.program.steps ?? [], obs, match.preconditions)
-    .find((st) => "target" in st && typeof st.target === "string" && /^r\d+$/.test(st.target) && !obs.elements.some((e) => e.ref === st.target));
+  const unbound = rebindSteps(match.program.steps ?? [], obs, match.preconditions).find(
+    (st) =>
+      "target" in st &&
+      typeof st.target === "string" &&
+      /^r\d+$/.test(st.target) &&
+      !obs.elements.some((e) => e.ref === st.target),
+  );
   if (unbound) return { skipped: `skill ${match.id} has a ref that cannot be rebound on this page` };
   return { skill: match, reason: match.evidence };
 }

@@ -24,13 +24,17 @@ import { RoutineSchedule, routineScheduleSummary, type CalendarTriggerAccounts }
 import { SkillMetadata } from "./SkillMetadata";
 import { SkillReplayPanel } from "./SkillReplayPanel";
 import { staticGhostButtonProps as auxClassGhostButtonProps } from "../ui/class-props";
-import { nativeAlertRoleProps, nativeStatusRoleProps, nativeCheckboxTypeProps } from "../ui/native-attribute-props";
+import {
+  nativeAlertRoleProps,
+  nativeStatusRoleProps,
+  nativeCheckboxTypeProps,
+} from "../ui/native-attribute-props";
 
 export function Routines({ workspaceId, task }: { workspaceId: string; task?: Task }) {
   const currentPageUrl = useStore(
     (state) => state.pages.find((page) => page.pageId === state.activePageId)?.url,
   );
-  const currentPageId = useStore(state => state.activePageId);
+  const currentPageId = useStore((state) => state.activePageId);
   const savedScan = useStore((state) => state.settings.routineSuggestionScan);
   const scanMode = savedScan === "off" || savedScan === "five-minutes" ? savedScan : "context";
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -110,12 +114,18 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       if (event.type !== "routine.updated") return;
       const routine = event.payload.routine as Routine | undefined;
       if (routine?.workspaceId !== workspaceId) return;
-      setRoutines((items) => items.some((item) => item.routineId === routine.routineId)
-        ? items.map((item) => item.routineId === routine.routineId &&
-          routine.revision >= item.revision ? routine : item)
-        : [routine, ...items]);
-      setSelected((current) => current?.routine.routineId === routine.routineId &&
-        routine.revision >= current.routine.revision ? { ...current, routine } : current);
+      setRoutines((items) =>
+        items.some((item) => item.routineId === routine.routineId)
+          ? items.map((item) =>
+              item.routineId === routine.routineId && routine.revision >= item.revision ? routine : item,
+            )
+          : [routine, ...items],
+      );
+      setSelected((current) =>
+        current?.routine.routineId === routine.routineId && routine.revision >= current.routine.revision
+          ? { ...current, routine }
+          : current,
+      );
     });
     return off;
   }, [workspaceId]);
@@ -133,9 +143,15 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       .catch((reason) => {
         if (active) setActivationSourceError(errorMessage(reason));
       });
-    return () => { active = false; };
-  }, [selected?.routine.routineId, selected?.routine.revision, selected?.routine.sourceTaskId,
-    selected?.routine.activationReview]);
+    return () => {
+      active = false;
+    };
+  }, [
+    selected?.routine.routineId,
+    selected?.routine.revision,
+    selected?.routine.sourceTaskId,
+    selected?.routine.activationReview,
+  ]);
   useEffect(() => {
     const routine = selected?.routine;
     if (!routine) return;
@@ -206,9 +222,16 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         workspaceId,
         ...(task?.objective ? { text: task.objective.slice(0, 4000) } : {}),
         ...(currentPageUrl && currentPageUrl.length <= 2048 ? { pageUrl: currentPageUrl } : {}),
-      }).then((items) => { if (active) setSuggestions(items); })
-        .catch(() => { if (active) setSuggestions([]); })
-        .finally(() => { pending = false; });
+      })
+        .then((items) => {
+          if (active) setSuggestions(items);
+        })
+        .catch(() => {
+          if (active) setSuggestions([]);
+        })
+        .finally(() => {
+          pending = false;
+        });
     };
     scan();
     const timer = scanMode === "five-minutes" ? window.setInterval(scan, 5 * 60_000) : undefined;
@@ -271,27 +294,43 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         ? calendarAccounts
         : { status: "loading", choices: [] };
   const reviewRoutine = selected?.routine;
-  const reviewTask = activationSource && reviewRoutine &&
+  const reviewTask =
+    activationSource &&
+    reviewRoutine &&
     activationSource.routineId === reviewRoutine.routineId &&
-    activationSource.task.taskId === reviewRoutine.sourceTaskId ? activationSource.task : null;
-  const criteriaMatch = !!reviewRoutine && !!reviewTask &&
+    activationSource.task.taskId === reviewRoutine.sourceTaskId
+      ? activationSource.task
+      : null;
+  const criteriaMatch =
+    !!reviewRoutine &&
+    !!reviewTask &&
     reviewRoutine.successCriteria.length === reviewTask.criteria.length &&
     reviewRoutine.successCriteria.every((criterion, index) => {
       const taskCriterion = reviewTask.criteria[index];
-      return taskCriterion?.criterionId === criterion.criterionId &&
+      return (
+        taskCriterion?.criterionId === criterion.criterionId &&
         taskCriterion.description === criterion.description &&
-        taskCriterion.verification === criterion.verification;
+        taskCriterion.verification === criterion.verification
+      );
     });
-  const activationBlock = !reviewRoutine?.sourceTaskId ? "Bind a saved task below." :
-    activationSourceError ? `Source task could not be loaded. ${activationSourceError}` :
-    !reviewTask ? "Checking the source task…" :
-    reviewTask.state !== "open" ? "Restore the source task before activation." :
-    reviewTask.revision !== reviewRoutine.sourceTaskRevision ?
-      "The source task changed. Sync this Skill in Skill definition and outcome below." :
-    !criteriaMatch ? "Use the source task criteria in Skill definition and outcome below, then save." :
-    (reviewRoutine.activationReview === "imported" || reviewRoutine.activationReview === "run_result") &&
-      (reviewRoutine.replay?.state !== "tested" || reviewRoutine.replay.testedRevision !== reviewRoutine.revision)
-      ? "Prepare and pass the current replay test below before activation." : "";
+  const activationBlock = !reviewRoutine?.sourceTaskId
+    ? "Bind a saved task below."
+    : activationSourceError
+      ? `Source task could not be loaded. ${activationSourceError}`
+      : !reviewTask
+        ? "Checking the source task…"
+        : reviewTask.state !== "open"
+          ? "Restore the source task before activation."
+          : reviewTask.revision !== reviewRoutine.sourceTaskRevision
+            ? "The source task changed. Sync this Skill in Skill definition and outcome below."
+            : !criteriaMatch
+              ? "Use the source task criteria in Skill definition and outcome below, then save."
+              : (reviewRoutine.activationReview === "imported" ||
+                    reviewRoutine.activationReview === "run_result") &&
+                  (reviewRoutine.replay?.state !== "tested" ||
+                    reviewRoutine.replay.testedRevision !== reviewRoutine.revision)
+                ? "Prepare and pass the current replay test below before activation."
+                : "";
   return (
     <section className="routines-section" aria-label="Skills" aria-busy={loading || busy}>
       <div className="routines-heading">
@@ -603,28 +642,48 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             <div {...staticFieldProps} {...nativeStatusRoleProps}>
               <strong>Review before activation</strong>
               <span {...staticHintProps}>
-                {selected.routine.activationReview === "imported" ? "Imported Skill" :
-                  selected.routine.activationReview === "untrusted_task" ? "Skill based on an external or saved-conversation task" :
-                    "Skill saved from a run result"}
-                {" "}may contain page or tool instructions. Check the objective, source task, trigger, resources,
+                {selected.routine.activationReview === "imported"
+                  ? "Imported Skill"
+                  : selected.routine.activationReview === "untrusted_task"
+                    ? "Skill based on an external or saved-conversation task"
+                    : "Skill saved from a run result"}{" "}
+                may contain page or tool instructions. Check the objective, source task, trigger, resources,
                 and model spend cap. It stays paused until you activate this exact revision.
               </span>
               {activationBlock && <span {...staticHintProps}>{activationBlock}</span>}
               {activationReview === `${selected.routine.routineId}:${selected.routine.revision}` ? (
                 <div {...staticRowProps}>
-                  <button {...smallButtonProps} disabled={busy || !!activationBlock}
-                    onClick={() => void action(async () => {
-                      const reviewed = selected.routine;
-                      await call("routines.update", { routineId: reviewed.routineId,
-                        expectedRevision: reviewed.revision, paused: false, activationReviewed: true });
-                      setActivationReview("");
-                      await refresh(reviewed.routineId);
-                    })}>Activate reviewed Skill</button>
-                  <button {...smallGhostButtonProps} onClick={() => setActivationReview("")}>Cancel</button>
+                  <button
+                    {...smallButtonProps}
+                    disabled={busy || !!activationBlock}
+                    onClick={() =>
+                      void action(async () => {
+                        const reviewed = selected.routine;
+                        await call("routines.update", {
+                          routineId: reviewed.routineId,
+                          expectedRevision: reviewed.revision,
+                          paused: false,
+                          activationReviewed: true,
+                        });
+                        setActivationReview("");
+                        await refresh(reviewed.routineId);
+                      })
+                    }
+                  >
+                    Activate reviewed Skill
+                  </button>
+                  <button {...smallGhostButtonProps} onClick={() => setActivationReview("")}>
+                    Cancel
+                  </button>
                 </div>
               ) : (
-                <button {...smallButtonProps} disabled={busy || !!activationBlock}
-                  onClick={() => setActivationReview(`${selected.routine.routineId}:${selected.routine.revision}`)}>
+                <button
+                  {...smallButtonProps}
+                  disabled={busy || !!activationBlock}
+                  onClick={() =>
+                    setActivationReview(`${selected.routine.routineId}:${selected.routine.revision}`)
+                  }
+                >
                   Review activation
                 </button>
               )}
@@ -673,9 +732,13 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               })
             }
           />
-          <SkillReplayPanel key={`${selected.routine.routineId}-replay:${selected.routine.revision}`}
-            routine={selected.routine} pageId={currentPageId} disabled={busy || !!selected.routine.archivedAt}
-            onChanged={() => refresh(selected.routine.routineId)}/>
+          <SkillReplayPanel
+            key={`${selected.routine.routineId}-replay:${selected.routine.revision}`}
+            routine={selected.routine}
+            pageId={currentPageId}
+            disabled={busy || !!selected.routine.archivedAt}
+            onChanged={() => refresh(selected.routine.routineId)}
+          />
           <RoutineRunControls
             key={`${selected.routine.routineId}-run:${selected.routine.revision}`}
             routine={selected.routine}
@@ -700,7 +763,11 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
           <div {...staticRowProps}>
             <button
               {...smallButtonProps}
-              disabled={busy || !!selected.routine.activationReview || (selected.routine.paused && !selected.routine.sourceTaskId)}
+              disabled={
+                busy ||
+                !!selected.routine.activationReview ||
+                (selected.routine.paused && !selected.routine.sourceTaskId)
+              }
               onClick={() =>
                 void action(async () => {
                   await call("routines.pause", {
@@ -712,7 +779,11 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
                 })
               }
             >
-              {selected.routine.activationReview ? "Review above to activate" : selected.routine.paused ? "Resume" : "Pause"}
+              {selected.routine.activationReview
+                ? "Review above to activate"
+                : selected.routine.paused
+                  ? "Resume"
+                  : "Pause"}
             </button>
             <button
               {...smallGhostButtonProps}
@@ -1394,7 +1465,9 @@ function RoutineCalendarGrants({
         This Skill can read only the Calendar grants selected here and still active on its saved task. New
         task grants are not added automatically.
       </p>
-      {!routine.sourceTaskId && <p {...staticHintProps}>Bind a saved task before selecting Calendar accounts.</p>}
+      {!routine.sourceTaskId && (
+        <p {...staticHintProps}>Bind a saved task before selecting Calendar accounts.</p>
+      )}
       {error && (
         <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           Calendar grants could not be loaded. {error}

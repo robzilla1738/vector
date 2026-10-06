@@ -9,7 +9,12 @@ export function observedCategory(step: Step, target: ObservedActionTarget): Effe
   const tokens = [target.autocomplete, ...fields.map((field) => field.autocomplete)].join(" ").toLowerCase();
   if (/\bnew-password\b/.test(tokens)) return "password_change";
   if (/\bone-time-code\b/.test(tokens)) return "two_factor";
-  if (step.op === "fillCredential" || target.type === "password" || /\b(?:current-password|username)\b/.test(target.autocomplete)) return "credential";
+  if (
+    step.op === "fillCredential" ||
+    target.type === "password" ||
+    /\b(?:current-password|username)\b/.test(target.autocomplete)
+  )
+    return "credential";
   if (/\bcc-(?:number|csc|exp|exp-month|exp-year)\b/.test(tokens)) return "payment";
   // These labels may escalate any ordinary interaction, but never lower its tier.
   const name = target.name.trim().toLowerCase();

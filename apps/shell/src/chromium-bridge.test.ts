@@ -17,41 +17,71 @@ function fakeWindow(url: string, port?: ChromiumHostPort) {
 }
 
 describe("Chromium Aux shell bridge", () => {
-  it.each(["normal", "private", "little", "quick-ask"] as const)("preserves the native %s window identity", (windowKind) => {
-    const target = fakeWindow("chrome://aux/", {
-      host: "chromium-fork", windowId: "win-1", profileId: "profile-1", platform: "darwin",
-      privateMode: windowKind === "private", windowKind,
-      request: vi.fn(async () => true), subscribe: vi.fn(() => () => {}),
-    });
-    expect(installChromiumBridge(target)).toBe(true);
-    expect((target.aux as unknown as {windowKind: string}).windowKind).toBe(windowKind);
-    expect(target.aux).not.toHaveProperty("quickAskMode");
-  });
+  it.each(["normal", "private", "little", "quick-ask"] as const)(
+    "preserves the native %s window identity",
+    (windowKind) => {
+      const target = fakeWindow("chrome://aux/", {
+        host: "chromium-fork",
+        windowId: "win-1",
+        profileId: "profile-1",
+        platform: "darwin",
+        privateMode: windowKind === "private",
+        windowKind,
+        request: vi.fn(async () => true),
+        subscribe: vi.fn(() => () => {}),
+      });
+      expect(installChromiumBridge(target)).toBe(true);
+      expect((target.aux as unknown as { windowKind: string }).windowKind).toBe(windowKind);
+      expect(target.aux).not.toHaveProperty("quickAskMode");
+    },
+  );
 
   it("sends rebound native window chords while reserving their original menu chords", async () => {
     const request = vi.fn(async () => true);
     const target = fakeWindow("chrome://aux/", {
-      host: "chromium-fork", windowId: "win-1", profileId: "profile-1", platform: "darwin", privateMode: false, windowKind: "normal",
-      request, subscribe: vi.fn(() => () => {}),
+      host: "chromium-fork",
+      windowId: "win-1",
+      profileId: "profile-1",
+      platform: "darwin",
+      privateMode: false,
+      windowKind: "normal",
+      request,
+      subscribe: vi.fn(() => () => {}),
     });
     installChromiumBridge(target);
-    const aux = target.aux as unknown as { setShortcutOverrides(value: Record<string, unknown>): Promise<boolean> };
+    const aux = target.aux as unknown as {
+      setShortcutOverrides(value: Record<string, unknown>): Promise<boolean>;
+    };
     await aux.setShortcutOverrides({ "new-window": [{ key: "F12", ctrl: true, alt: true }] });
-    const [method, args] = request.mock.calls[0]! as unknown as [string, Array<Array<Record<string, unknown>>>];
+    const [method, args] = request.mock.calls[0]! as unknown as [
+      string,
+      Array<Array<Record<string, unknown>>>,
+    ];
     expect(method).toBe("setShortcuts");
     const rows = args[0]!;
-    expect(rows).toContainEqual(expect.objectContaining({ commandId: "new-window", key: "F12", ctrl: true, alt: true }));
-    expect(rows).toContainEqual(expect.objectContaining({ commandId: "", key: "n", meta: true, shift: false }));
-    expect(rows).not.toContainEqual(expect.objectContaining({ commandId: "new-window", key: "n", meta: true }));
+    expect(rows).toContainEqual(
+      expect.objectContaining({ commandId: "new-window", key: "F12", ctrl: true, alt: true }),
+    );
+    expect(rows).toContainEqual(
+      expect.objectContaining({ commandId: "", key: "n", meta: true, shift: false }),
+    );
+    expect(rows).not.toContainEqual(
+      expect.objectContaining({ commandId: "new-window", key: "n", meta: true }),
+    );
     expect(rows.length).toBeLessThanOrEqual(512);
   });
   it("preserves missing native capabilities even when runtime reports on", async () => {
     const request = vi.fn(async () => ({ version: 1, featureStages: { spaces: "on", memory: "on" } }));
     const target = fakeWindow("chrome://aux/", {
-      host: "chromium-fork", windowId: "win-1", profileId: "ordinary",
-      platform: "darwin", privateMode: false, windowKind: "normal",
+      host: "chromium-fork",
+      windowId: "win-1",
+      profileId: "ordinary",
+      platform: "darwin",
+      privateMode: false,
+      windowKind: "normal",
       featureStages: { spaces: "off", memory: "off" },
-      request, subscribe: vi.fn(() => () => {}),
+      request,
+      subscribe: vi.fn(() => () => {}),
     });
     installChromiumBridge(target);
     expect(chromiumFeatureStages(target)).toEqual({ spaces: "off", memory: "off" });
@@ -63,7 +93,8 @@ describe("Chromium Aux shell bridge", () => {
       windowId: "win-1",
       profileId: "profile-1",
       platform: "darwin",
-      privateMode: false, windowKind: "normal",
+      privateMode: false,
+      windowKind: "normal",
       featureStages: { extensions: "on" },
       request: vi.fn(async () => null),
       subscribe: vi.fn(() => () => {}),
@@ -77,7 +108,10 @@ describe("Chromium Aux shell bridge", () => {
 
   it("routes native commands and event subscriptions through the host port", async () => {
     const request = vi.fn(async (method: string) =>
-      method === "resolveSearch" ? "https://search.test/?q=aux" : { commandId: "cmd-1", status: "applied", catalogVersion: 1, pageId: "page-1" });
+      method === "resolveSearch"
+        ? "https://search.test/?q=aux"
+        : { commandId: "cmd-1", status: "applied", catalogVersion: 1, pageId: "page-1" },
+    );
     const unsubscribe = vi.fn();
     const subscribe = vi.fn((_event: string, _callback: (...args: unknown[]) => void) => unsubscribe);
     const target = fakeWindow("chrome://aux/", {
@@ -85,7 +119,8 @@ describe("Chromium Aux shell bridge", () => {
       windowId: "win-1",
       profileId: "profile-1",
       platform: "darwin",
-      privateMode: false, windowKind: "normal",
+      privateMode: false,
+      windowKind: "normal",
       featureStages: { extensions: "on", searchEngines: "on" },
       request,
       subscribe,
@@ -94,7 +129,12 @@ describe("Chromium Aux shell bridge", () => {
     expect(target.aux?.windowId).toBe("win-1");
     expect(target.auxHostProof?.host).toBe("chromium-fork");
     const command = { kind: "open", url: "https://example.test/" };
-    expect(await target.aux?.tabCommand(command)).toEqual({ commandId: "cmd-1", status: "applied", catalogVersion: 1, pageId: "page-1" });
+    expect(await target.aux?.tabCommand(command)).toEqual({
+      commandId: "cmd-1",
+      status: "applied",
+      catalogVersion: 1,
+      pageId: "page-1",
+    });
     expect(request).toHaveBeenCalledWith("tabCommand", [command]);
     const callback = vi.fn();
     target.aux?.onTabsPatch(callback)();
@@ -114,14 +154,25 @@ describe("Chromium Aux shell bridge", () => {
     const request = vi.fn(async (method: string) =>
       method === "showExtensionAction" || method === "removeExtension"
         ? true
-        : { key: "abcdefghijklmnopabcdefghijklmnop", id: "abcdefghijklmnopabcdefghijklmnop", name: "Fixture", version: "1.0.0", permissions: [], enabled: true, loaded: true, managed: false, source: "store" },
+        : {
+            key: "abcdefghijklmnopabcdefghijklmnop",
+            id: "abcdefghijklmnopabcdefghijklmnop",
+            name: "Fixture",
+            version: "1.0.0",
+            permissions: [],
+            enabled: true,
+            loaded: true,
+            managed: false,
+            source: "store",
+          },
     );
     const target = fakeWindow("chrome://aux/", {
       host: "chromium-fork",
       windowId: "win-1",
       profileId: "profile-1",
       platform: "darwin",
-      privateMode: false, windowKind: "normal",
+      privateMode: false,
+      windowKind: "normal",
       featureStages: { extensions: "on" },
       request,
       subscribe: vi.fn(() => () => {}),
@@ -156,7 +207,8 @@ describe("Chromium Aux shell bridge", () => {
       windowId: "win-1",
       profileId: "profile-1",
       platform: "darwin",
-      privateMode: false, windowKind: "normal",
+      privateMode: false,
+      windowKind: "normal",
       request,
       subscribe: vi.fn(() => () => {}),
     });
@@ -182,15 +234,85 @@ it("builds the move-tab destinations from the Profile catalog without hidden age
       { windowId: "empty", activePageId: null, order: [] },
     ],
     tabs: [
-      { pageId: "a", windowId: "current", url: "https://a.test/", title: "Current", loading: false, muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, runtimeOwned: false, generation: 1, createdAt: 0, lastActiveAt: 0 },
-      { pageId: "b", windowId: "other", url: "https://b.test/", title: "Other window", loading: false, muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, runtimeOwned: false, generation: 1, createdAt: 0, lastActiveAt: 0 },
-      { pageId: "agent", windowId: "other", url: "https://c.test/", title: "Agent", runtimeOwned: true, loading: false, muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, generation: 1, createdAt: 0, lastActiveAt: 0 },
-      { pageId: "popup", windowId: "other", url: "https://d.test/", title: "Popup", popup: true, loading: false, muted: false, audible: false, canGoBack: false, canGoForward: false, crashed: false, runtimeOwned: false, generation: 1, createdAt: 0, lastActiveAt: 0 },
+      {
+        pageId: "a",
+        windowId: "current",
+        url: "https://a.test/",
+        title: "Current",
+        loading: false,
+        muted: false,
+        audible: false,
+        canGoBack: false,
+        canGoForward: false,
+        popup: false,
+        crashed: false,
+        runtimeOwned: false,
+        generation: 1,
+        createdAt: 0,
+        lastActiveAt: 0,
+      },
+      {
+        pageId: "b",
+        windowId: "other",
+        url: "https://b.test/",
+        title: "Other window",
+        loading: false,
+        muted: false,
+        audible: false,
+        canGoBack: false,
+        canGoForward: false,
+        popup: false,
+        crashed: false,
+        runtimeOwned: false,
+        generation: 1,
+        createdAt: 0,
+        lastActiveAt: 0,
+      },
+      {
+        pageId: "agent",
+        windowId: "other",
+        url: "https://c.test/",
+        title: "Agent",
+        runtimeOwned: true,
+        loading: false,
+        muted: false,
+        audible: false,
+        canGoBack: false,
+        canGoForward: false,
+        popup: false,
+        crashed: false,
+        generation: 1,
+        createdAt: 0,
+        lastActiveAt: 0,
+      },
+      {
+        pageId: "popup",
+        windowId: "other",
+        url: "https://d.test/",
+        title: "Popup",
+        popup: true,
+        loading: false,
+        muted: false,
+        audible: false,
+        canGoBack: false,
+        canGoForward: false,
+        crashed: false,
+        runtimeOwned: false,
+        generation: 1,
+        createdAt: 0,
+        lastActiveAt: 0,
+      },
     ],
   }));
   const target = fakeWindow("chrome://aux/", {
-    host: "chromium-fork", windowId: "current", profileId: "profile-1",
-    platform: "darwin", privateMode: false, windowKind: "normal", request, subscribe: vi.fn(() => () => {}),
+    host: "chromium-fork",
+    windowId: "current",
+    profileId: "profile-1",
+    platform: "darwin",
+    privateMode: false,
+    windowKind: "normal",
+    request,
+    subscribe: vi.fn(() => () => {}),
   });
   installChromiumBridge(target);
   expect(await target.aux!.windows()).toEqual([
@@ -203,8 +325,14 @@ it("builds the move-tab destinations from the Profile catalog without hidden age
 it("registers the shared native shortcut bindings and reserves disabled defaults", async () => {
   const request = vi.fn(async () => true);
   const target = fakeWindow("chrome://aux/", {
-    host: "chromium-fork", windowId: "current", profileId: "profile-1",
-    platform: "darwin", privateMode: false, windowKind: "normal", request, subscribe: vi.fn(() => () => {}),
+    host: "chromium-fork",
+    windowId: "current",
+    profileId: "profile-1",
+    platform: "darwin",
+    privateMode: false,
+    windowKind: "normal",
+    request,
+    subscribe: vi.fn(() => () => {}),
   });
   installChromiumBridge(target);
   await target.aux!.setShortcutOverrides({
@@ -214,11 +342,14 @@ it("registers the shared native shortcut bindings and reserves disabled defaults
   const [method, args] = request.mock.calls[0] as unknown as [string, [Array<Record<string, unknown>>]];
   expect(method).toBe("setShortcuts");
   const bindings = args[0];
-  const chord = (key: string, shift = false, ctrl = false) => bindings.filter(row => row.key === key && row.meta && row.shift === shift && row.ctrl === ctrl && !row.alt);
+  const chord = (key: string, shift = false, ctrl = false) =>
+    bindings.filter(
+      (row) => row.key === key && row.meta && row.shift === shift && row.ctrl === ctrl && !row.alt,
+    );
   expect(chord("k").at(-1)?.commandId).toBe("");
   expect(chord("k", true).at(-1)?.commandId).toBe("palette");
   expect(chord("s").at(-1)?.commandId).toBe("");
-  expect(bindings.some(row => row.key === "left" && row.alt && !row.meta)).toBe(false);
+  expect(bindings.some((row) => row.key === "left" && row.alt && !row.meta)).toBe(false);
   expect(chord("p").at(-1)?.commandId).toBe("print");
   expect(chord("p", false, true).at(-1)?.commandId).toBe("picture-in-picture");
   expect(chord("k", true).at(-1)?.focusShell).toBe(true);
@@ -227,11 +358,19 @@ it("registers the shared native shortcut bindings and reserves disabled defaults
 it("keeps the registry's first command when custom chords conflict", async () => {
   const request = vi.fn(async () => true);
   const target = fakeWindow("chrome://aux/", {
-    host: "chromium-fork", windowId: "current", profileId: "profile-1",
-    platform: "darwin", privateMode: false, windowKind: "normal", request, subscribe: vi.fn(() => () => {}),
+    host: "chromium-fork",
+    windowId: "current",
+    profileId: "profile-1",
+    platform: "darwin",
+    privateMode: false,
+    windowKind: "normal",
+    request,
+    subscribe: vi.fn(() => () => {}),
   });
   installChromiumBridge(target);
   await target.aux!.setShortcutOverrides({ sidebar: [{ key: "k", command: true }] });
   const bindings = (request.mock.calls[0] as unknown as [string, [Array<Record<string, unknown>>]])[1][0];
-  expect(bindings.filter(row => row.key === "k" && row.meta && !row.shift).at(-1)?.commandId).toBe("sidebar");
+  expect(bindings.filter((row) => row.key === "k" && row.meta && !row.shift).at(-1)?.commandId).toBe(
+    "sidebar",
+  );
 });

@@ -90,7 +90,9 @@ export function StartupSetting({ active }: { active: boolean }) {
   });
   if (bridge.privateMode)
     return (
-      <span {...staticHintProps}>Startup uses your regular Profile and cannot be changed in Private mode.</span>
+      <span {...staticHintProps}>
+        Startup uses your regular Profile and cannot be changed in Private mode.
+      </span>
     );
   if (!available) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
   if (!active || bridge.windowKind !== "normal") return null;

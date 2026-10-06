@@ -13,15 +13,25 @@ import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-prop
 export function DefaultBrowserSetting() {
   const privateMode = bridge.privateMode,
     windowId = bridge.windowId;
-  const identity = useMemo(() => ([privateMode, windowId]), [privateMode, windowId]);
+  const identity = useMemo(() => [privateMode, windowId], [privateMode, windowId]);
   const admitted = useCallback(() => inNativeHost && !bridge.privateMode, []);
-  const [getOwner, current, isDefault, busy, error, measure, perform, fail] = useSettingsStatusOwner<boolean>(identity, windowId, privateMode, admitted);
+  const [getOwner, current, isDefault, busy, error, measure, perform, fail] = useSettingsStatusOwner<boolean>(
+    identity,
+    windowId,
+    privateMode,
+    admitted,
+  );
   useEffect(() => {
     const original = getOwner();
     if (!current(original)) return;
     const read = () => {
       if (!current(original)) return;
-      measure(original, () => bridge.defaultBrowser(), (state) => state.isDefault, true);
+      measure(
+        original,
+        () => bridge.defaultBrowser(),
+        (state) => state.isDefault,
+        true,
+      );
     };
     read();
     // The OS dialog completes outside this window — re-check on return.
@@ -32,12 +42,19 @@ export function DefaultBrowserSetting() {
     const original = getOwner();
     if (!current(original) || original.pending || original.value !== false || isDefault !== false)
       throw new Error("Choose the current default browser control.");
-    return perform(original, () => bridge.setDefaultBrowser(), (state, original) => {
-      ++original.sequence;
-      if (!state.isDefault)
-        fail(original, "The system did not confirm the change. Check your default browser setting in System Settings.");
-      return state.isDefault;
-    });
+    return perform(
+      original,
+      () => bridge.setDefaultBrowser(),
+      (state, original) => {
+        ++original.sequence;
+        if (!state.isDefault)
+          fail(
+            original,
+            "The system did not confirm the change. Check your default browser setting in System Settings.",
+          );
+        return state.isDefault;
+      },
+    );
   }, [getOwner, current, isDefault, perform, fail]);
   const unregister = useRef<(() => void) | undefined>(undefined);
   const controlRef = useCallback(

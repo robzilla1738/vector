@@ -15,8 +15,10 @@ describe("Chromium host runtime channel", () => {
     let peer: Socket | null = null;
     let hello: Record<string, unknown> | null = null;
     let resolveResponse: (value: Record<string, unknown>) => void = () => {};
-    const response = new Promise<Record<string, unknown>>(resolve => { resolveResponse = resolve; });
-    const server = createServer(socket => {
+    const response = new Promise<Record<string, unknown>>((resolve) => {
+      resolveResponse = resolve;
+    });
+    const server = createServer((socket) => {
       peer = socket;
       socket.setEncoding("utf8");
       let buffer = "";
@@ -27,7 +29,9 @@ describe("Chromium host runtime channel", () => {
           buffer = buffer.slice(end + 1);
           if (frame.kind === "hello") {
             hello = frame;
-            socket.write(`${JSON.stringify({ kind: "hello-ack", protocol: AUX_HOST_PROTOCOL, nonce: frame.nonce })}\n`);
+            socket.write(
+              `${JSON.stringify({ kind: "hello-ack", protocol: AUX_HOST_PROTOCOL, nonce: frame.nonce })}\n`,
+            );
           } else if (frame.kind === "req") {
             const result = frame.method === "native.listPages" ? { pages: [] } : { ok: true };
             socket.write(`${JSON.stringify({ kind: "res", id: frame.id, result })}\n`);
@@ -37,7 +41,7 @@ describe("Chromium host runtime channel", () => {
         }
       });
     });
-    await new Promise<void>(resolve => server.listen(socketPath, resolve));
+    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
     let runtime: Awaited<ReturnType<typeof startRuntime>> | null = null;
     try {
       runtime = await startRuntime({
@@ -52,21 +56,29 @@ describe("Chromium host runtime channel", () => {
       });
       expect(hello).toMatchObject({ protocol: AUX_HOST_PROTOCOL, token });
       expect(peer).not.toBeNull();
-      peer!.write(`${JSON.stringify({
-        kind: "req", id: 900, method: "api.invoke",
-        params: { method: "runtime.describe", params: {}, desktopUser: true },
-      })}\n`);
+      peer!.write(
+        `${JSON.stringify({
+          kind: "req",
+          id: 900,
+          method: "api.invoke",
+          params: { method: "runtime.describe", params: {}, desktopUser: true },
+        })}\n`,
+      );
       const timeout = AbortSignal.timeout(5000);
       const result = await Promise.race([
         response,
-        new Promise<never>((_, reject) => timeout.addEventListener("abort", () => reject(new Error("runtime reply timed out")), { once: true })),
+        new Promise<never>((_, reject) =>
+          timeout.addEventListener("abort", () => reject(new Error("runtime reply timed out")), {
+            once: true,
+          }),
+        ),
       ]);
       expect(result.error).toBeUndefined();
       expect((result.result as { version?: number }).version).toBe(1);
     } finally {
       await runtime?.close();
       (peer as Socket | null)?.destroy();
-      await new Promise<void>(resolve => server.close(() => resolve()));
+      await new Promise<void>((resolve) => server.close(() => resolve()));
       rmSync(dir, { recursive: true, force: true });
     }
   }, 30_000);

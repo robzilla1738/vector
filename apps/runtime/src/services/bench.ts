@@ -31,10 +31,17 @@ export async function runBench(opts: {
   let chromiumVersion: string | undefined;
   try {
     const ua = await pages
-      .execute({ pageId: page.pageId, steps: [{ id: "ua", op: "evaluate", expression: "navigator.userAgent" }] }, { allowEval: true })
+      .execute(
+        { pageId: page.pageId, steps: [{ id: "ua", op: "evaluate", expression: "navigator.userAgent" }] },
+        { allowEval: true },
+      )
       .then((r) => {
         const d = r.steps[0]?.detail;
-        try { return d ? String(JSON.parse(d)) : ""; } catch { return String(d ?? ""); }
+        try {
+          return d ? String(JSON.parse(d)) : "";
+        } catch {
+          return String(d ?? "");
+        }
       })
       .catch(() => "");
     chromiumVersion = ua.match(/Chrome\/[\d.]+/)?.[0]?.replace("Chrome/", "");
@@ -46,10 +53,7 @@ export async function runBench(opts: {
       const btn = obs.content.elements.find((e) => e.role === "button" || e.role === "link");
       if (btn) {
         t = Date.now();
-        await pages.execute(
-          { pageId: page.pageId, steps: [{ id: "b1", op: "hover", target: btn.ref }] },
-          {},
-        );
+        await pages.execute({ pageId: page.pageId, steps: [{ id: "b1", op: "hover", target: btn.ref }] }, {});
         execTimes.push(Date.now() - t);
       }
     }

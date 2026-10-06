@@ -1,22 +1,114 @@
-.little-window { height: 100%; display: flex; flex-direction: column; position: relative; background: var(--bg-window); }
-.little-strip { height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 80px; -webkit-app-region: drag; }
-.little-strip :is(button, input, .cmdbar) { -webkit-app-region: no-drag; }
-.little-host { color: var(--ink-2); display: flex; gap: 4px; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.little-strip .cmdbar { flex: 1; min-width: 120px; }
-.little-page { flex: 1; min-height: 0; position: relative; overflow: hidden; }
-.little-page .page-surface { width: 100%; height: 100%; }
-.little-empty { height: 100%; display: grid; align-content: center; justify-items: center; padding: 32px; color: var(--ink-2); text-align: center; }
-.little-empty h1 { font-size: var(--fs-xl); color: var(--ink-0); }
-.little-spaces { width: 240px; max-height: calc(100dvh - 56px); overflow: auto; }
-.little-downloads { position: fixed; inset: 44px 12px auto auto; margin: 0; padding: 0; width: 280px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 56px); overflow: auto; }
-.little-downloads::backdrop { background: transparent; }
-.little-downloads .shelf { width: 100%; position: static; }
+.little-window {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--bg-window);
+}
+.little-strip {
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 80px;
+  -webkit-app-region: drag;
+}
+.little-strip :is(button, input, .cmdbar) {
+  -webkit-app-region: no-drag;
+}
+.little-host {
+  color: var(--ink-2);
+  display: flex;
+  gap: 4px;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.little-strip .cmdbar {
+  flex: 1;
+  min-width: 120px;
+}
+.little-page {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.little-page .page-surface {
+  width: 100%;
+  height: 100%;
+}
+.little-empty {
+  height: 100%;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  padding: 32px;
+  color: var(--ink-2);
+  text-align: center;
+}
+.little-empty h1 {
+  font-size: var(--fs-xl);
+  color: var(--ink-0);
+}
+.little-spaces {
+  width: 240px;
+  max-height: calc(100dvh - 56px);
+  overflow: auto;
+}
+.little-downloads {
+  position: fixed;
+  inset: 44px 12px auto auto;
+  margin: 0;
+  padding: 0;
+  width: 280px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 56px);
+  overflow: auto;
+}
+.little-downloads::backdrop {
+  background: transparent;
+}
+.little-downloads .shelf {
+  width: 100%;
+  position: static;
+}
 
-.little-downloads .shelf-head { flex-wrap: wrap; gap: 4px; height: auto; min-height: 28px; padding: 0; }
-.little-downloads .shelf-head .sp { display: none; }
-.little-downloads .download-tools { flex-direction: column; align-items: stretch; padding: 0 12px 12px; }
-.little-downloads .download-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
-.little-downloads .dl-row { grid-template-columns: 28px minmax(0, 1fr); padding: 8px 4px; }
-.little-downloads .dl-main { min-width: 0; }
-.little-downloads .dl-actions { grid-column: 1 / -1; justify-content: flex-start; max-width: 100%; }
-.little-downloads .dl-name { white-space: normal; overflow-wrap: anywhere; }
+.little-downloads .shelf-head {
+  flex-wrap: wrap;
+  gap: 4px;
+  height: auto;
+  min-height: 28px;
+  padding: 0;
+}
+.little-downloads .shelf-head .sp {
+  display: none;
+}
+.little-downloads .download-tools {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0 12px 12px;
+}
+.little-downloads .download-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.little-downloads .dl-row {
+  grid-template-columns: 28px minmax(0, 1fr);
+  padding: 8px 4px;
+}
+.little-downloads .dl-main {
+  min-width: 0;
+}
+.little-downloads .dl-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+  max-width: 100%;
+}
+.little-downloads .dl-name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

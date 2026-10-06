@@ -4,12 +4,15 @@ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { constructAwaitedOperation } from "./owned-operation-construction";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
 import { useEffect, useLayoutEffect, useMemo, useCallback, useState, type ReactNode } from "react";
-import { MEMORY_PASTE_MAX_BYTES, type MemoryPastePreview, type MemoryPasteStatus, type ShellCommandId,  } from "@aux/contracts";
+import {
+  MEMORY_PASTE_MAX_BYTES,
+  type MemoryPastePreview,
+  type MemoryPasteStatus,
+  type ShellCommandId,
+} from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
-
-
 
 class PasteOwner {
   readonly workspaceId: string | null;
@@ -98,13 +101,35 @@ function PasteControl({
   value?: string;
   className?: string;
 }) {
-  const [attach, run] = useMemoryElementControl(command, scopeId, element => {
-    if (!current()) throw new Error("The original Memory import controls changed.");
-    return action(element);
-  }, report);
-  if (kind === "checkbox") return memoryControlElement("input", { type: "checkbox", ref: attach, "data-command-id": command, checked, disabled, onChange: run });
-  if (kind === "select") return memoryControlElement("select", { ref: attach, "data-command-id": command, value, disabled, onChange: run }, children);
-  return memoryControlElement("button", { type: "button", ref: attach, "data-command-id": command, className, disabled, onClick: run }, children);
+  const [attach, run] = useMemoryElementControl(
+    command,
+    scopeId,
+    (element) => {
+      if (!current()) throw new Error("The original Memory import controls changed.");
+      return action(element);
+    },
+    report,
+  );
+  if (kind === "checkbox")
+    return memoryControlElement("input", {
+      type: "checkbox",
+      ref: attach,
+      "data-command-id": command,
+      checked,
+      disabled,
+      onChange: run,
+    });
+  if (kind === "select")
+    return memoryControlElement(
+      "select",
+      { ref: attach, "data-command-id": command, value, disabled, onChange: run },
+      children,
+    );
+  return memoryControlElement(
+    "button",
+    { type: "button", ref: attach, "data-command-id": command, className, disabled, onClick: run },
+    children,
+  );
 }
 /** Pasted drafts live only in this mounted form. Preview and commit are separate owner actions. */
 export function MemoryPasteImport({
@@ -204,12 +229,18 @@ export function MemoryPasteImport({
     setPendingState({ owner, operation: original });
     setError("");
     const valid = () => current() && draft.active;
-    return constructAwaitedOperation(() => action(destinationId, valid), value => value, undefined, () => {
-          if (owner.finish(original) && current())
-            setPendingState((currentPending) =>
-              currentPending?.operation === original ? null : currentPending,
-            );
-        }, valid);
+    return constructAwaitedOperation(
+      () => action(destinationId, valid),
+      (value) => value,
+      undefined,
+      () => {
+        if (owner.finish(original) && current())
+          setPendingState((currentPending) =>
+            currentPending?.operation === original ? null : currentPending,
+          );
+      },
+      valid,
+    );
   }
   const props = {
     scopeId: destinationId || "destination",

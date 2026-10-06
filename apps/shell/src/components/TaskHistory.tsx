@@ -198,7 +198,12 @@ function HistorySession({ taskId, onClose }: { taskId: string; onClose: () => vo
       {error && (
         <div role="alert">
           <p>{error}</p>
-          <PreferenceAction command="retry-task-history" scopeId={scopeId} {...smallButtonProps} invoke={load}>
+          <PreferenceAction
+            command="retry-task-history"
+            scopeId={scopeId}
+            {...smallButtonProps}
+            invoke={load}
+          >
             Retry history
           </PreferenceAction>
         </div>

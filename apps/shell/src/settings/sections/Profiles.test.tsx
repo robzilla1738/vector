@@ -11,9 +11,9 @@ it("indexes the routed Profile manager", async () => {
   const root = createRoot(container);
   try {
     await act(async () => root.render(<ProfilesSettings />));
-    expect(collectSettingsFields(container)).toEqual(expect.arrayContaining([
-      expect.objectContaining({ category: "Profiles", label: "Browser profiles" }),
-    ]));
+    expect(collectSettingsFields(container)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ category: "Profiles", label: "Browser profiles" })]),
+    );
   } finally {
     await act(async () => root.unmount());
     vi.unstubAllGlobals();

@@ -20,8 +20,7 @@ export function useExtensionActions(enabled: boolean) {
           }
         },
         (reason) => {
-          if (current && request === generation)
-            setError(errorMessage(reason));
+          if (current && request === generation) setError(errorMessage(reason));
         },
       );
     };

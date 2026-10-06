@@ -4,5 +4,7 @@ import { withRunAuthorityMutation } from "./overnight-authority.js";
 
 /** Retire queued native receipts before the actual shared cost ledger changes. */
 export async function saveAuthorizedModelCall(repo: Repo, call: ModelCall): Promise<void> {
-  await withRunAuthorityMutation(repo, async () => { repo.saveModelCall(call); });
+  await withRunAuthorityMutation(repo, async () => {
+    repo.saveModelCall(call);
+  });
 }

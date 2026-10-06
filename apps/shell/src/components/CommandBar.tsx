@@ -1,7 +1,5 @@
 import { errorMessage } from "../error-message";
-import {
-  smallGhostButtonProps as auxReserveSmallGhostButtonProps,
-} from "../ui/button-props";
+import { smallGhostButtonProps as auxReserveSmallGhostButtonProps } from "../ui/button-props";
 import { HomeEntryAction, runHomeEntry, useHomeEntryInput, useHomeEntryOwner } from "./HomeEntryControls";
 import { guardCommandCompletion } from "../command-completion";
 import { PreferenceAction } from "../settings/sections/preference-command";
@@ -37,7 +35,18 @@ import { useStore, call, errToast } from "../store";
 import { hostOf, tabLabel } from "../workspace";
 
 import { FavIcon } from "./SiteTile";
-import { shellIconAgent, shellIconAgentSm, shellIconAlert, shellIconCommand, shellIconGlobe, shellIconLock, shellIconOpen, shellIconSearch, shellIconSearchLg, shellIconSend } from "./icons";
+import {
+  shellIconAgent,
+  shellIconAgentSm,
+  shellIconAlert,
+  shellIconCommand,
+  shellIconGlobe,
+  shellIconLock,
+  shellIconOpen,
+  shellIconSearch,
+  shellIconSearchLg,
+  shellIconSend,
+} from "./icons";
 import { bridge, type BrowserExtension } from "../bridge";
 import { recentConversations } from "../conversations";
 import { rememberSiteControlsOpener } from "../site-controls-opener";
@@ -50,9 +59,7 @@ import { commandTabRows } from "./command-tab-rows";
 import { useFeature } from "../use-feature";
 import { openCommandSurface, type CommandSurfaceMode } from "../command-surface-state";
 import "./CommandBar.css";
-import {
-  nativeButtonTypeProps as auxNativeButtonTypeProps,
-} from "../ui/native-attribute-props";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 const askBreaker = new AskCircuitBreaker();
 let pendingAsk: Promise<Run | null> | null = null;
@@ -182,10 +189,14 @@ export function CommandBar({
   const val = queryState.value;
   const queryGeneration = queryState.generation;
   const setVal = useCallback((value: string) => {
-    setQueryState(current => current.value === value ? current : {
-      value,
-      generation: current.generation + Number(current.value.trim() !== value.trim()),
-    });
+    setQueryState((current) =>
+      current.value === value
+        ? current
+        : {
+            value,
+            generation: current.generation + Number(current.value.trim() !== value.trim()),
+          },
+    );
   }, []);
   const [scopePrefix, setScopePrefix] = useState<"@" | "/" | ">" | "?" | null>(initialPrefix);
   const [routeFlip, setRouteFlip] = useState<"search" | "ask" | null>(null);
@@ -254,17 +265,24 @@ export function CommandBar({
     const previous = entryMode;
     const request = ++entryModeRequest.current;
     setEntryModeState(next);
-    return guardCommandCompletion(call("settings.set", { homeEntryMode: next })
-      .then(value => {
-        if (homeCurrent()) {
-          try { localStorage.removeItem("aux.home.entry-mode.v1"); } catch { /* Optional legacy storage. */ }
-        }
-        return value;
-      })
-      .catch(error => {
-        if (homeCurrent() && entryModeRequest.current === request) setEntryModeState(previous);
-        throw error;
-      }), homeCurrent);
+    return guardCommandCompletion(
+      call("settings.set", { homeEntryMode: next })
+        .then((value) => {
+          if (homeCurrent()) {
+            try {
+              localStorage.removeItem("aux.home.entry-mode.v1");
+            } catch {
+              /* Optional legacy storage. */
+            }
+          }
+          return value;
+        })
+        .catch((error) => {
+          if (homeCurrent() && entryModeRequest.current === request) setEntryModeState(previous);
+          throw error;
+        }),
+      homeCurrent,
+    );
   };
   const [scopeFlip, setScopeFlip] = useState(false);
   const [historyResult, setHistoryResult] = useState<{ query: string; items: HistoryEntry[] }>({
@@ -481,10 +499,13 @@ export function CommandBar({
   useLayoutEffect(() => {
     if (!browserAutocomplete || !typedSomething || raw.length < 2) return;
     let live = true;
-    const current = () => live && bridge.windowId === autocompleteWindow &&
-      bridge.windowKind === autocompleteKind && bridge.privateMode === autocompletePrivate;
+    const current = () =>
+      live &&
+      bridge.windowId === autocompleteWindow &&
+      bridge.windowKind === autocompleteKind &&
+      bridge.privateMode === autocompletePrivate;
     void Promise.resolve()
-      .then(() => current() ? bridge.autocomplete(raw) : EMPTY_BROWSER)
+      .then(() => (current() ? bridge.autocomplete(raw) : EMPTY_BROWSER))
       .then((items) => {
         if (current()) setBrowserResult({ query: raw, generation: queryGeneration, items, error: null });
       })
@@ -500,16 +521,34 @@ export function CommandBar({
     return () => {
       live = false;
     };
-  }, [browserAutocomplete, typedSomething, raw, queryGeneration, intent.kind, autocompleteRetry, autocompleteWindow, autocompleteKind, autocompletePrivate]);
+  }, [
+    browserAutocomplete,
+    typedSomething,
+    raw,
+    queryGeneration,
+    intent.kind,
+    autocompleteRetry,
+    autocompleteWindow,
+    autocompleteKind,
+    autocompletePrivate,
+  ]);
   const currentBrowserResult = browserResult.query === raw && browserResult.generation === queryGeneration;
   const browserMatches = currentBrowserResult ? browserResult.items : EMPTY_BROWSER;
   const browserError = currentBrowserResult ? browserResult.error : null;
   const retriedBrowserResult = useRef<typeof browserResult | null>(null);
   const retryAutocomplete = () => {
-    if (retriedBrowserResult.current === browserResult || !editing || !browserError ||
-      !currentBrowserResult || !browserAutocomplete || !typedSomething || raw.length < 2 ||
-      bridge.windowId !== autocompleteWindow || bridge.windowKind !== autocompleteKind ||
-      bridge.privateMode !== autocompletePrivate)
+    if (
+      retriedBrowserResult.current === browserResult ||
+      !editing ||
+      !browserError ||
+      !currentBrowserResult ||
+      !browserAutocomplete ||
+      !typedSomething ||
+      raw.length < 2 ||
+      bridge.windowId !== autocompleteWindow ||
+      bridge.windowKind !== autocompleteKind ||
+      bridge.privateMode !== autocompletePrivate
+    )
       throw new Error("Choose the current browser suggestions Retry control.");
     retriedBrowserResult.current = browserResult;
     setAutocompleteRetry((value) => value + 1);
@@ -537,13 +576,13 @@ export function CommandBar({
 
   const [workStatus, setWorkStatus] = useState({ query: "", pending: 0, failed: false });
   const [workRetry, setWorkRetry] = useState(0);
-  const workSearch = (providerScope === "all" || providerScope === "work") && scopePrefix !== "@" && intent.kind !== "command";
+  const workSearch =
+    (providerScope === "all" || providerScope === "work") && scopePrefix !== "@" && intent.kind !== "command";
   const skillsEnabled = useFeature("automations");
   // Saved work joins after immediate local matches. Old responses never paint
   // a new query, and private browsing never queries the regular Profile.
   useEffect(() => {
-    if (bridge.privateMode || !typedSomething || raw.length < 2 || raw.length > 300 || !workSearch)
-      return;
+    if (bridge.privateMode || !typedSomething || raw.length < 2 || raw.length > 300 || !workSearch) return;
     let live = true;
     const timer = window.setTimeout(() => {
       const update = (patch: Partial<Omit<typeof workResult, "query">>) => {
@@ -554,10 +593,18 @@ export function CommandBar({
         }));
       };
       setWorkStatus({ query: raw, pending: skillsEnabled ? 3 : 2, failed: false });
-      const accept = <K extends keyof Omit<typeof workResult, "query">>(key: K, promise: Promise<(typeof workResult)[K]>) => {
-        void promise.then(value => update({ [key]: value })).catch(() => {
-          if (live) setWorkStatus(status => ({ ...status, failed: true }));
-        }).finally(() => { if (live) setWorkStatus(status => ({ ...status, pending: status.pending - 1 })); });
+      const accept = <K extends keyof Omit<typeof workResult, "query">>(
+        key: K,
+        promise: Promise<(typeof workResult)[K]>,
+      ) => {
+        void promise
+          .then((value) => update({ [key]: value }))
+          .catch(() => {
+            if (live) setWorkStatus((status) => ({ ...status, failed: true }));
+          })
+          .finally(() => {
+            if (live) setWorkStatus((status) => ({ ...status, pending: status.pending - 1 }));
+          });
       };
       accept("results", call("results.search", { query: raw, limit: 3 }));
       if (skillsEnabled) accept("skills", call("routines.list", { query: raw, limit: 3 }));
@@ -568,7 +615,8 @@ export function CommandBar({
       window.clearTimeout(timer);
     };
   }, [raw, typedSomething, workRetry, workSearch, skillsEnabled]);
-  const savedWork = workResult.query === raw ? { ...workResult, skills: skillsEnabled ? workResult.skills : [] } : null;
+  const savedWork =
+    workResult.query === raw ? { ...workResult, skills: skillsEnabled ? workResult.skills : [] } : null;
 
   // Remote suggestions — opt-in preference, never in private mode, and never
   // for probable private/intranet addresses or keyword-engine input.
@@ -946,7 +994,9 @@ export function CommandBar({
         row.section === providerScope ||
         (sites && ["suggest", "domains", "bookmarks", "history"].includes(row.section)) ||
         (providerScope === "work" &&
-          ["programs", "runs", "results", "skills", "chats", "tasks", "memory", "sets"].includes(row.section)),
+          ["programs", "runs", "results", "skills", "chats", "tasks", "memory", "sets"].includes(
+            row.section,
+          )),
     );
     return mergeCommandResults(browser, aux);
   }, [browserRows, rankedRows, rankQuery, raw, providerScope]);
@@ -957,17 +1007,36 @@ export function CommandBar({
         ...mergedRows.rows,
         ...(providerRows?.(raw) ?? []),
       ]).rows;
-    const supplemental = (providerRows?.(raw) ?? []).filter(row => providerScope === "all" || row.section === providerScope
-      || (providerScope === "work" && ["programs", "runs", "results", "skills", "chats", "tasks", "memory", "sets"].includes(row.section)));
-    return mergeCommandResults(providerScope === "all" ? intentRows : [], [...mergedRows.rows, ...supplemental]).rows;
+    const supplemental = (providerRows?.(raw) ?? []).filter(
+      (row) =>
+        providerScope === "all" ||
+        row.section === providerScope ||
+        (providerScope === "work" &&
+          ["programs", "runs", "results", "skills", "chats", "tasks", "memory", "sets"].includes(
+            row.section,
+          )),
+    );
+    return mergeCommandResults(providerScope === "all" ? intentRows : [], [
+      ...mergedRows.rows,
+      ...supplemental,
+    ]).rows;
   }, [typedSomething, intentRows, mergedRows, providerScope, intent, commandRows, providerRows, raw]);
 
   // The native fixture reads only generations and a fixed source label. These
   // are committed with the actual visible rows, never input echo or old results.
-  const resultSource = typedSomething && intent.kind === "command" && commandRows
-    && suggestions.some(row => "commandId" in row && !!row.commandId) ? "registry"
-    : typedSomething && browserAutocomplete && currentBrowserResult && !browserError
-      && suggestions.some(row => row.section === "history") ? "history" : undefined;
+  const resultSource =
+    typedSomething &&
+    intent.kind === "command" &&
+    commandRows &&
+    suggestions.some((row) => "commandId" in row && !!row.commandId)
+      ? "registry"
+      : typedSomething &&
+          browserAutocomplete &&
+          currentBrowserResult &&
+          !browserError &&
+          suggestions.some((row) => row.section === "history")
+        ? "history"
+        : undefined;
 
   const runSuggestion = async (suggestion: Suggestion) => {
     await suggestion.run();
@@ -1029,11 +1098,18 @@ export function CommandBar({
       setEditing(false);
     }
     const completion = setEntryMode(next);
-    requestAnimationFrame(() => { if (homeCurrent()) inputRef.current?.focus(); });
+    requestAnimationFrame(() => {
+      if (homeCurrent()) inputRef.current?.focus();
+    });
     return completion;
   };
 
-  const homeInputScope = useHomeEntryInput(inputRef, hero && entryMode === "search" && !bridge.privateMode, homeCurrent, () => switchEntryMode("ask"));
+  const homeInputScope = useHomeEntryInput(
+    inputRef,
+    hero && entryMode === "search" && !bridge.privateMode,
+    homeCurrent,
+    () => switchEntryMode("ask"),
+  );
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
@@ -1183,12 +1259,16 @@ export function CommandBar({
               {shellIconGlobe}
             </button>
           ) : (
-            <span className="cb-ico">{showIntent && intent.kind === "run" ? shellIconAgent : shellIconSearch}</span>
+            <span className="cb-ico">
+              {showIntent && intent.kind === "run" ? shellIconAgent : shellIconSearch}
+            </span>
           )
         ) : page && hasPage && !hero ? (
           <span className="cb-ico">{shellIconGlobe}</span>
         ) : (
-          <span className="cb-ico">{showIntent && intent.kind === "run" ? shellIconAgent : shellIconSearchLg}</span>
+          <span className="cb-ico">
+            {showIntent && intent.kind === "run" ? shellIconAgent : shellIconSearchLg}
+          </span>
         )}
         {hasPage && !editing && !hero && !compact && (
           <button
@@ -1391,7 +1471,9 @@ export function CommandBar({
           }}
           onMouseDown={(e) => e.preventDefault()}
         >
-          {(askBreaker.unavailable() || preferSearchOffer || (workSearch && workStatus.query === raw && (workStatus.pending > 0 || workStatus.failed))) && (
+          {(askBreaker.unavailable() ||
+            preferSearchOffer ||
+            (workSearch && workStatus.query === raw && (workStatus.pending > 0 || workStatus.failed))) && (
             <div className="cb-query-status">
               {askBreaker.unavailable() && typedSomething && (
                 <output className="cb-suggestion-privacy">Ask unavailable — searching</output>
@@ -1409,8 +1491,20 @@ export function CommandBar({
                   Prefer search?
                 </button>
               )}
-              {workSearch && workStatus.query === raw && workStatus.pending > 0 && <output className="cb-suggestion-privacy">Searching saved work…</output>}
-              {workSearch && workStatus.query === raw && workStatus.failed && <output className="cb-suggestion-privacy">Some saved work couldn’t be searched. <button {...auxReserveSmallGhostButtonProps} onClick={() => setWorkRetry(value => value + 1)}>Retry</button></output>}
+              {workSearch && workStatus.query === raw && workStatus.pending > 0 && (
+                <output className="cb-suggestion-privacy">Searching saved work…</output>
+              )}
+              {workSearch && workStatus.query === raw && workStatus.failed && (
+                <output className="cb-suggestion-privacy">
+                  Some saved work couldn’t be searched.{" "}
+                  <button
+                    {...auxReserveSmallGhostButtonProps}
+                    onClick={() => setWorkRetry((value) => value + 1)}
+                  >
+                    Retry
+                  </button>
+                </output>
+              )}
             </div>
           )}
           <div className="cb-provider-scopes" role="group" aria-label="Search providers">
@@ -1464,7 +1558,12 @@ export function CommandBar({
           {browserError && (
             <div className="cb-provider-error" {...nativeAlertRoleProps}>
               Browser suggestions couldn’t load. You can still search.
-              <PreferenceAction type="button" command="retry-browser-autocomplete" scopeId={listId} invoke={retryAutocomplete}>
+              <PreferenceAction
+                type="button"
+                command="retry-browser-autocomplete"
+                scopeId={listId}
+                invoke={retryAutocomplete}
+              >
                 Try again
               </PreferenceAction>
             </div>
@@ -1475,8 +1574,12 @@ export function CommandBar({
               edit the query.
             </p>
           )}
-          <div role="listbox" id={listId} data-command-results-source={resultSource}
-            data-command-results-generation={resultSource ? queryGeneration : undefined}>
+          <div
+            role="listbox"
+            id={listId}
+            data-command-results-source={resultSource}
+            data-command-results-generation={resultSource ? queryGeneration : undefined}
+          >
             {suggestions.map((s, i) => {
               const first = i === 0 || suggestions[i - 1]!.section !== s.section;
               return (
@@ -1489,8 +1592,18 @@ export function CommandBar({
                   {first && s.section !== "intent" && <div className="cb-section">{SECTION[s.section]}</div>}
                   <SearchResultRow
                     id={`${listId}-opt-${i}`}
-                    resultSource={resultSource && (resultSource === "registry" ? "commandId" in s : s.section === "history") ? resultSource : undefined}
-                    resultGeneration={resultSource && (resultSource === "registry" ? "commandId" in s : s.section === "history") ? queryGeneration : undefined}
+                    resultSource={
+                      resultSource &&
+                      (resultSource === "registry" ? "commandId" in s : s.section === "history")
+                        ? resultSource
+                        : undefined
+                    }
+                    resultGeneration={
+                      resultSource &&
+                      (resultSource === "registry" ? "commandId" in s : s.section === "history")
+                        ? queryGeneration
+                        : undefined
+                    }
                     selected={i === sel}
                     className={`cb-opt ${s.section}`}
                     title={s.title}

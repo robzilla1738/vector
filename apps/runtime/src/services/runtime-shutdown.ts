@@ -3,9 +3,15 @@ import { AuxError } from "@aux/contracts";
 /** Persists admission closure after the retirement barrier itself is released. */
 export class RuntimeShutdownAdmission {
   private shuttingDown = false;
-  beginShutdown(): void { this.shuttingDown = true; }
+  beginShutdown(): void {
+    this.shuttingDown = true;
+  }
   assertOpen(): void {
-    if (this.shuttingDown) throw new AuxError("permission_denied", "Browser permission authority is closed while the runtime shuts down.");
+    if (this.shuttingDown)
+      throw new AuxError(
+        "permission_denied",
+        "Browser permission authority is closed while the runtime shuts down.",
+      );
   }
 }
 
@@ -26,14 +32,23 @@ export function runtimeShutdown(deps: {
     if (shutdown) return shutdown;
     // Publish ownership before callbacks can re-enter shutdown.
     let resolve!: () => void, reject!: (error: unknown) => void;
-    shutdown = new Promise<void>((yes, no) => { resolve = yes; reject = no; });
+    shutdown = new Promise<void>((yes, no) => {
+      resolve = yes;
+      reject = no;
+    });
     void (async () => {
       const failures: unknown[] = [];
       const attempt = async (stage: string, action: () => void | Promise<void>) => {
-        try { await action(); return true; }
-        catch (error) {
+        try {
+          await action();
+          return true;
+        } catch (error) {
           failures.push(error);
-          try { deps.reportFailure(stage, error); } catch (auditError) { failures.push(auditError); }
+          try {
+            deps.reportFailure(stage, error);
+          } catch (auditError) {
+            failures.push(auditError);
+          }
           return false;
         }
       };
@@ -45,7 +60,8 @@ export function runtimeShutdown(deps: {
       if (retired) await attempt("run-interruption", deps.markInterrupted);
       await attempt("feature-stop", deps.stopFeatures);
       for (const cleanup of deps.cleanup) await attempt(cleanup.stage, cleanup.run);
-      if (failures.length) reject(new AggregateError(failures, "Runtime shutdown did not complete every authority boundary."));
+      if (failures.length)
+        reject(new AggregateError(failures, "Runtime shutdown did not complete every authority boundary."));
       else resolve();
     })();
     return shutdown;

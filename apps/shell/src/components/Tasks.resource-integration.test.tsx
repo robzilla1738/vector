@@ -28,7 +28,7 @@ vi.mock("../bridge", async (original) => {
   };
 });
 vi.mock("./TaskReceiptView", () => ({ TaskReceiptView: () => null }));
-vi.mock("../use-feature", () => ({useFeature:()=>true,featureStage:()=>"on"}));
+vi.mock("../use-feature", () => ({ useFeature: () => true, featureStage: () => "on" }));
 vi.mock("./CalendarTaskGrants", () => ({ CalendarTaskGrants: () => null }));
 vi.mock("./Routines", () => ({ Routines: () => null }));
 vi.mock("./Goals", () => ({ Goals: () => null }));
@@ -47,7 +47,15 @@ const task = TaskSchema.parse({
   state: "open",
   createdAt: 1,
   updatedAt: 1,
-  resources: [{resourceId:"source",kind:"url",locator:"https://example.com/ref",label:"Original reference",access:"reference"}],
+  resources: [
+    {
+      resourceId: "source",
+      kind: "url",
+      locator: "https://example.com/ref",
+      label: "Original reference",
+      access: "reference",
+    },
+  ],
 });
 const details = { task, revisions: [task], runs: [], children: [] };
 const receipt = TaskReceiptSchema.parse({
@@ -74,7 +82,9 @@ function held<T>() {
 let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
+    { width: 100 },
+  ] as unknown as DOMRectList);
   const storage = new Map<string, string>();
   vi.stubGlobal("localStorage", {
     getItem: (key: string) => storage.get(key) ?? null,
@@ -119,32 +129,68 @@ async function render() {
   expect(host.querySelector(".task-resources")).not.toBeNull();
 }
 
-const button=(text:string)=>[...host.querySelectorAll<HTMLButtonElement>(".task-resources button")].find(node=>node.textContent===text)!;
-it("actual Tasks parent readback closes acknowledged resource label editor with full new revision",async()=>{
- await render();await act(async()=>button("Rename").click());
- const input=host.querySelector<HTMLInputElement>('[aria-label="Resource label"]')!;
- const original=held<unknown>();let saved=task;
- state.call.mockImplementation(async(method:string,params:unknown)=>{
-  if(method==="tasks.update"){const p=params as {resources:typeof task.resources};saved={...task,revision:2,resources:p.resources};return original.promise;}
-  if(method==="tasks.get")return {...details,task:saved,revisions:[task,saved]};
-  if(method==="tasks.receipt")return {...receipt,taskRevision:saved.revision};
-  if(method==="tasks.list")return[saved];return {accepted:true};
- });
- const form=input.form!;await act(async()=>form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true})));
- expect(state.call).toHaveBeenCalledWith("tasks.update",{taskId:"original",expectedRevision:1,resources:task.resources});
- await act(async()=>original.resolve(saved));
- expect(host.querySelector('[aria-label="Resource label"]')).toBeNull();
- expect(host.querySelector(".task-resource strong")!.textContent).toBe(task.resources[0]!.label);
- expect(host.querySelector("fieldset")!.disabled).toBe(false);
+const button = (text: string) =>
+  [...host.querySelectorAll<HTMLButtonElement>(".task-resources button")].find(
+    (node) => node.textContent === text,
+  )!;
+it("actual Tasks parent readback closes acknowledged resource label editor with full new revision", async () => {
+  await render();
+  await act(async () => button("Rename").click());
+  const input = host.querySelector<HTMLInputElement>('[aria-label="Resource label"]')!;
+  const original = held<unknown>();
+  let saved = task;
+  state.call.mockImplementation(async (method: string, params: unknown) => {
+    if (method === "tasks.update") {
+      const p = params as { resources: typeof task.resources };
+      saved = { ...task, revision: 2, resources: p.resources };
+      return original.promise;
+    }
+    if (method === "tasks.get") return { ...details, task: saved, revisions: [task, saved] };
+    if (method === "tasks.receipt") return { ...receipt, taskRevision: saved.revision };
+    if (method === "tasks.list") return [saved];
+    return { accepted: true };
+  });
+  const form = input.form!;
+  await act(async () => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(state.call).toHaveBeenCalledWith("tasks.update", {
+    taskId: "original",
+    expectedRevision: 1,
+    resources: task.resources,
+  });
+  await act(async () => original.resolve(saved));
+  expect(host.querySelector('[aria-label="Resource label"]')).toBeNull();
+  expect(host.querySelector(".task-resource strong")!.textContent).toBe(task.resources[0]!.label);
+  expect(host.querySelector("fieldset")!.disabled).toBe(false);
 });
-it("actual resource URL submit keeps native normalized data and clears acknowledged draft after parent refresh",async()=>{
- await render();const input=host.querySelector<HTMLInputElement>('[aria-label="Resource URL"]')!;
- Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")!.set!.call(input,"https://example.com/new");await act(async()=>input.dispatchEvent(new Event("input",{bubbles:true})));
- let saved=task;state.call.mockImplementation(async(method:string,params:unknown)=>{
-  if(method==="tasks.update"){saved={...task,revision:2,resources:(params as {resources:typeof task.resources}).resources};return saved;}
-  if(method==="tasks.get")return {...details,task:saved};if(method==="tasks.receipt")return {...receipt,taskRevision:2};if(method==="tasks.list")return[saved];return {accepted:true};
- });
- await act(async()=>input.form!.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true})));
- expect(saved.resources).toHaveLength(2);expect(saved.resources[1]).toMatchObject({kind:"url",locator:"https://example.com/new",label:"example.com"});
- expect(input.isConnected).toBe(false);const fresh=host.querySelector<HTMLInputElement>('[aria-label="Resource URL"]')!;expect(fresh).not.toBe(input);expect(fresh.value).toBe("");expect(host.querySelector("fieldset")!.disabled).toBe(false);
+it("actual resource URL submit keeps native normalized data and clears acknowledged draft after parent refresh", async () => {
+  await render();
+  const input = host.querySelector<HTMLInputElement>('[aria-label="Resource URL"]')!;
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+    input,
+    "https://example.com/new",
+  );
+  await act(async () => input.dispatchEvent(new Event("input", { bubbles: true })));
+  let saved = task;
+  state.call.mockImplementation(async (method: string, params: unknown) => {
+    if (method === "tasks.update") {
+      saved = { ...task, revision: 2, resources: (params as { resources: typeof task.resources }).resources };
+      return saved;
+    }
+    if (method === "tasks.get") return { ...details, task: saved };
+    if (method === "tasks.receipt") return { ...receipt, taskRevision: 2 };
+    if (method === "tasks.list") return [saved];
+    return { accepted: true };
+  });
+  await act(async () => input.form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(saved.resources).toHaveLength(2);
+  expect(saved.resources[1]).toMatchObject({
+    kind: "url",
+    locator: "https://example.com/new",
+    label: "example.com",
+  });
+  expect(input.isConnected).toBe(false);
+  const fresh = host.querySelector<HTMLInputElement>('[aria-label="Resource URL"]')!;
+  expect(fresh).not.toBe(input);
+  expect(fresh.value).toBe("");
+  expect(host.querySelector("fieldset")!.disabled).toBe(false);
 });

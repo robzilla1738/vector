@@ -1,6 +1,14 @@
 import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, expect, it, vi } from "vitest";
-import { AuxError, EventTypes, memoryTransportPair, RpcChannel, type PageTarget, type EgressLease, NativePageTakeoverSchema } from "@aux/contracts";
+import {
+  AuxError,
+  EventTypes,
+  memoryTransportPair,
+  RpcChannel,
+  type PageTarget,
+  type EgressLease,
+  NativePageTakeoverSchema,
+} from "@aux/contracts";
 import { ApiServer, EventBus, openDb, Repo, RunService, SetService } from "@aux/runtime";
 import type { ArtifactStore, PageService, SettingsService } from "@aux/runtime";
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
@@ -28,7 +36,8 @@ afterEach(() => {
 async function fixture() {
   const repo = new Repo(openDb(":memory:")),
     events = new EventBus(repo);
-  const registry = new PageRegistry({ turnMentions: fixtureTurnMentions(pageId => repo.getPage(pageId)),
+  const registry = new PageRegistry({
+    turnMentions: fixtureTurnMentions((pageId) => repo.getPage(pageId)),
     repo,
     events,
     native: { available: () => false } as NativeBridge,
@@ -60,7 +69,10 @@ async function fixture() {
     takeoverFromNative: control.takeoverFromNative.bind(control),
   };
   const service = pages as PageService;
-  const runs = new RunService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => service.get(pageId)),
+  const runs = new RunService({
+    turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined =>
+      service.get(pageId),
+    ),
     repo,
     events,
     pages: service,
@@ -90,44 +102,120 @@ async function fixture() {
   const caller = new RpcChannel(native),
     channel = new RpcChannel(runtime),
     noteError = vi.fn();
-  let personControlled = false, controlGeneration = "native-generation";
+  let personControlled = false,
+    controlGeneration = "native-generation";
   let isolation: import("@aux/contracts").AgentPageIsolation | undefined = {
-    isolationId: "native-isolation", runId: "run", taskRevision: 0, inMemory: true, cookies: "empty",
+    isolationId: "native-isolation",
+    runId: "run",
+    taskRevision: 0,
+    inMemory: true,
+    cookies: "empty",
   };
   target.agentIsolation = isolation;
   const leases: EgressLease[] = [];
   const nativeBridge = Object.assign(new NullNativeBridge(), {
-    egressContext: vi.fn(async () => ({ profileId: "profile", tabId: target.pageId, frameId: "frame",
-      documentToken: "native-doc", sourceOrigin: "https://fixture.test", controlGeneration, personControlled, isolation })),
-    egressInstall: async ({ lease }: { lease: EgressLease }) => { leases.push(lease); return { accepted: true as const }; },
+    egressContext: vi.fn(async () => ({
+      profileId: "profile",
+      tabId: target.pageId,
+      frameId: "frame",
+      documentToken: "native-doc",
+      sourceOrigin: "https://fixture.test",
+      controlGeneration,
+      personControlled,
+      isolation,
+    })),
+    egressInstall: async ({ lease }: { lease: EgressLease }) => {
+      leases.push(lease);
+      return { accepted: true as const };
+    },
     egressRevoke: vi.fn(async () => ({ accepted: true as const })),
   });
-  const egress = new BrowserEgress({ runAncestry: runId => [runId], profileId: "profile", native: nativeBridge,
-    run: runId => { const run = repo.getRun(runId); return run ? { threadId: "run", taskRevision: 0 } : null; },
-    page: pages.get, ownsPage: (runId, pageId) => runId === "run" && pageId === target.pageId,
-    audit: () => {}, approve: async () => false,
+  const egress = new BrowserEgress({
+    runAncestry: (runId) => [runId],
+    profileId: "profile",
+    native: nativeBridge,
+    run: (runId) => {
+      const run = repo.getRun(runId);
+      return run ? { threadId: "run", taskRevision: 0 } : null;
+    },
+    page: pages.get,
+    ownsPage: (runId, pageId) => runId === "run" && pageId === target.pageId,
+    audit: () => {},
+    approve: async () => false,
   });
   cleanups.push(() => egress.close());
   await egress.acquire("run", target.pageId);
   const approvals = new ApprovalStore(repo.db);
-  const permissions = new NativePermissionController({ profileId: "profile", approvals, egress,
-    gate: new SafetyDispatchGate({ approvals, journal: new DecisionJournal(repo.db), managedRules: () => [], userRules: () => [], localCeiling: () => "ask", audit: () => {} }),
-    mentions: fixtureTurnMentions(id => registry.get(id)), page: pages.get, run: id => repo.getRun(id),
-    sourceCheck: () => () => {}, standingOnly: () => false, requiresTurn: () => true,
-    assertDispatch: async () => {}, overnightAuthority: () => null, retireReservation: async () => ({ accepted: true }),
+  const permissions = new NativePermissionController({
+    profileId: "profile",
+    approvals,
+    egress,
+    gate: new SafetyDispatchGate({
+      approvals,
+      journal: new DecisionJournal(repo.db),
+      managedRules: () => [],
+      userRules: () => [],
+      localCeiling: () => "ask",
+      audit: () => {},
+    }),
+    mentions: fixtureTurnMentions((id) => registry.get(id)),
+    page: pages.get,
+    run: (id) => repo.getRun(id),
+    sourceCheck: () => () => {},
+    standingOnly: () => false,
+    requiresTurn: () => true,
+    assertDispatch: async () => {},
+    overnightAuthority: () => null,
+    retireReservation: async () => ({ accepted: true }),
   });
-  const apply = (input: import("@aux/contracts").NativePageTakeover) => applyNativePageTakeover(input, {
-    egress, permissions, page: pages.get, takeover: (pageId, runId) => pages.takeoverFromNative(pageId, runId),
-    interrupt: async (pageId, runId) => { revoke(pageId); await handlePageTakeover(pageId, "human", repo, runs, runId); },
+  const apply = (input: import("@aux/contracts").NativePageTakeover) =>
+    applyNativePageTakeover(input, {
+      egress,
+      permissions,
+      page: pages.get,
+      takeover: (pageId, runId) => pages.takeoverFromNative(pageId, runId),
+      interrupt: async (pageId, runId) => {
+        revoke(pageId);
+        await handlePageTakeover(pageId, "human", repo, runs, runId);
+      },
+    });
+  const input = NativePageTakeoverSchema.parse({
+    phase: "installed",
+    lease: leases[0],
+    scope: {
+      profileId: "profile",
+      tabId: target.pageId,
+      frameId: "frame",
+      documentToken: "native-doc",
+      sourceOrigin: "https://fixture.test",
+      isolationId: "native-isolation",
+      runId: "run",
+      taskRevision: 0,
+      controlGeneration,
+      retiredControlGeneration: "person-generation",
+    },
   });
-  const input = NativePageTakeoverSchema.parse({ phase: "installed", lease: leases[0], scope: {
-    profileId: "profile", tabId: target.pageId, frameId: "frame", documentToken: "native-doc", sourceOrigin: "https://fixture.test",
-    isolationId: "native-isolation", runId: "run", taskRevision: 0, controlGeneration, retiredControlGeneration: "person-generation",
-  } });
-  personControlled = true; controlGeneration = "person-generation";
+  personControlled = true;
+  controlGeneration = "person-generation";
   registerNativeControlChannel(channel, apply, noteError);
-  const result = { repo, events, registry, target, pages, runs, revoke, caller, noteError, input, apply, nativeBridge, permissions,
-    ordinary: () => { isolation = undefined; personControlled = false; },
+  const result = {
+    repo,
+    events,
+    registry,
+    target,
+    pages,
+    runs,
+    revoke,
+    caller,
+    noteError,
+    input,
+    apply,
+    nativeBridge,
+    permissions,
+    ordinary: () => {
+      isolation = undefined;
+      personControlled = false;
+    },
   };
   repos.push(repo);
   return result;
@@ -175,12 +263,18 @@ it("keeps genuine ordinary owner browsing unheld and supports scoped external-co
   const ordinary = await fixture();
   ordinary.target.controller = "none";
   ordinary.ordinary();
-  await expect(ordinary.caller.call("view.takeover", ordinary.input)).rejects.toMatchObject({ code: "ref_stale" });
+  await expect(ordinary.caller.call("view.takeover", ordinary.input)).rejects.toMatchObject({
+    code: "ref_stale",
+  });
   expect(ordinary.target.controller).toBe("none");
   expect(ordinary.revoke).not.toHaveBeenCalled();
   const external = await fixture();
   external.target.controller = "external";
-  expect(await external.caller.call("view.takeover", external.input)).toMatchObject({ accepted: true, controller: "human", controllerEpoch: 5 });
+  expect(await external.caller.call("view.takeover", external.input)).toMatchObject({
+    accepted: true,
+    controller: "human",
+    controllerEpoch: 5,
+  });
 });
 
 it("uses the same exact-scope notification takeover through the same dispatcher and reports invalid notes", async () => {
@@ -193,19 +287,29 @@ it("uses the same exact-scope notification takeover through the same dispatcher 
   expect(f.revoke).toHaveBeenCalledTimes(1);
 });
 
-it.each([null, {}, { pageId: "controlled" }, { pageId: 1 }, { pageId: " " }, { pageId: "controlled", controller: "human" }])(
-  "refuses malformed identity %j before changing control",
-  async (params) => {
-    const f = await fixture();
-    await expect(f.caller.call("view.takeover", params)).rejects.toMatchObject({ code: "invalid_params" });
-    expect(f.target.controller).toBe("agent");
-    expect(f.revoke).not.toHaveBeenCalled();
-  },
-);
+it.each([
+  null,
+  {},
+  { pageId: "controlled" },
+  { pageId: 1 },
+  { pageId: " " },
+  { pageId: "controlled", controller: "human" },
+])("refuses malformed identity %j before changing control", async (params) => {
+  const f = await fixture();
+  await expect(f.caller.call("view.takeover", params)).rejects.toMatchObject({ code: "invalid_params" });
+  expect(f.target.controller).toBe("agent");
+  expect(f.revoke).not.toHaveBeenCalled();
+});
 
 it("rejects closed, external-backend and detached pages without a successful receipt", async () => {
   const f = await fixture();
-  await expect(f.caller.call("view.takeover", { ...f.input, scope: { ...f.input.scope, tabId: "closed" }, ...(f.input.phase === "installed" ? { lease: { ...f.input.lease, tabId: "closed" } } : {}) })).rejects.toMatchObject({
+  await expect(
+    f.caller.call("view.takeover", {
+      ...f.input,
+      scope: { ...f.input.scope, tabId: "closed" },
+      ...(f.input.phase === "installed" ? { lease: { ...f.input.lease, tabId: "closed" } } : {}),
+    }),
+  ).rejects.toMatchObject({
     code: "not_found",
   });
   f.target.backend = "chrome";
@@ -256,10 +360,15 @@ it("refuses view.takeover on the public bearer RPC before invoking any handler",
   }
 });
 
-
 it("interrupts only the original lease owner rather than another run that remembers the same page", async () => {
   const f = await fixture();
-  f.repo.saveRun({ runId: "other-run", goal: "Another conversation", status: "running", pageIds: ["controlled"], createdAt: 2 });
+  f.repo.saveRun({
+    runId: "other-run",
+    goal: "Another conversation",
+    status: "running",
+    pageIds: ["controlled"],
+    createdAt: 2,
+  });
   await expect(f.caller.call("view.takeover", f.input)).resolves.toMatchObject({ accepted: true });
   expect(f.repo.getRun("run")?.status).toBe("interrupted");
   expect(f.repo.getRun("other-run")?.status).toBe("running");
@@ -269,15 +378,31 @@ it("interrupts only the original lease owner rather than another run that rememb
 it("rejects a queued native receipt after same-URL document replacement without retiring its replacement", async () => {
   const f = await fixture();
   let release!: () => void, entered!: () => void;
-  const started = new Promise<void>(resolve => { entered = resolve; });
-  const hold = new Promise<void>(resolve => { release = resolve; });
-  const earlier = f.permissions.withAuthorityMutation(id => id === "unrelated", async () => { entered(); await hold; });
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const hold = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const earlier = f.permissions.withAuthorityMutation(
+    (id) => id === "unrelated",
+    async () => {
+      entered();
+      await hold;
+    },
+  );
   await started;
   let captured!: () => void;
-  const contextRead = new Promise<void>(resolve => { captured = resolve; });
+  const contextRead = new Promise<void>((resolve) => {
+    captured = resolve;
+  });
   const current = f.nativeBridge.egressContext.getMockImplementation()!;
-  f.nativeBridge.egressContext.mockImplementationOnce(async () => { const result = await current(); captured(); return result; });
-  const receipt = f.caller.call("view.takeover", f.input).catch(error => error);
+  f.nativeBridge.egressContext.mockImplementationOnce(async () => {
+    const result = await current();
+    captured();
+    return result;
+  });
+  const receipt = f.caller.call("view.takeover", f.input).catch((error) => error);
   await contextRead;
   f.target.documentEpoch++;
   release();

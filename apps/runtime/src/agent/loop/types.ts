@@ -56,8 +56,14 @@ export type LoopToolResult =
 /** Service surface a loop tool executes against. */
 export interface LoopToolDeps {
   /** Observe a page: the observation renderer's text becomes the tool output. */
-  observe?: (input: { pageId: string; scope?: import("@aux/contracts").ObservationScope; subtreeRef?: string }) => Promise<{
-    text: string; observationId: string; revision: number;
+  observe?: (input: {
+    pageId: string;
+    scope?: import("@aux/contracts").ObservationScope;
+    subtreeRef?: string;
+  }) => Promise<{
+    text: string;
+    observationId: string;
+    revision: number;
     /** Redacted visible document text, without duplicated control listings or browser title. */
     bodyText?: string;
     /** Headings that also occur in visible document text; hidden modal headings are excluded. */
@@ -73,19 +79,36 @@ export interface LoopToolDeps {
    * Cookie-free web fetch; the destination runs through decide() first —
    * an `ask` parks the loop on the suspension it creates.
    */
-  webFetch?: (url: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
-  webSearch?: (query: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
+  webFetch?: (
+    url: string,
+    ctx: { runId: string; threadId: string; turnId: string },
+  ) => Promise<LoopToolResult>;
+  webSearch?: (
+    query: string,
+    ctx: { runId: string; threadId: string; turnId: string },
+  ) => Promise<LoopToolResult>;
   /** The code-mode REPL: eval guest code against the persistent per-run session. */
-  repl?: (input: { code: string; deadlineMs?: number; yieldTimeMs?: number }, ctx: LoopToolContext) => Promise<LoopToolResult>;
+  repl?: (
+    input: { code: string; deadlineMs?: number; yieldTimeMs?: number },
+    ctx: LoopToolContext,
+  ) => Promise<LoopToolResult>;
   /** Fresh redacted, citable page state after a partial REPL failure. */
-  replProgress?: () => Promise<{ pageId: string; observationId: string; revision: number; text: string } | undefined>;
-  replWait?: (input: { cellId: string; yieldTimeMs?: number; terminate?: boolean }, ctx: LoopToolContext) => Promise<LoopToolResult>;
+  replProgress?: () => Promise<
+    { pageId: string; observationId: string; revision: number; text: string } | undefined
+  >;
+  replWait?: (
+    input: { cellId: string; yieldTimeMs?: number; terminate?: boolean },
+    ctx: LoopToolContext,
+  ) => Promise<LoopToolResult>;
   /** Recovery may read a labeled value only while a modal visibly occludes the background. */
   canRecoverDialogValue?: (label: string) => boolean;
   /** Explicit requested label from a goal that names a dialog-only value. */
   dialogAnswerLabel?: () => string | undefined;
   /** Auto-recall (06-Z): query content memory for the task — hits land as one durable user message. */
-  recall?: (query: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<{ title: string; url: string; text: string }[]>;
+  recall?: (
+    query: string,
+    ctx: { runId: string; threadId: string; turnId: string },
+  ) => Promise<{ title: string; url: string; text: string }[]>;
   /** Session/workspace file roots — fs tools stay inside them (S4 upload roots). */
   fsRoots?: () => string[];
   /** Confined file tools (read_file/write_file/edit_file) — the host enforces the root guard. */
@@ -93,12 +116,22 @@ export interface LoopToolDeps {
   fileWrite?: (path: string, content: string) => Promise<void>;
   /** `bash` under the seatbelt — network off by default; `{park}` propagates a gate ask. */
   bash?: (
-    input: { command: string; timeoutMs?: number; workdir?: string; network?: boolean;
-      requireEscalated?: boolean; justification?: string; prefixRule?: string },
+    input: {
+      command: string;
+      timeoutMs?: number;
+      workdir?: string;
+      network?: boolean;
+      requireEscalated?: boolean;
+      justification?: string;
+      prefixRule?: string;
+    },
     ctx: { runId: string; threadId: string; turnId: string },
   ) => Promise<LoopToolResult>;
   /** Browser-history search (06-X history_search). */
-  historySearch?: (query: string, limit: number) => Promise<{ url: string; title: string; pageId?: string; visitedAt: number }[]>;
+  historySearch?: (
+    query: string,
+    limit: number,
+  ) => Promise<{ url: string; title: string; pageId?: string; visitedAt: number }[]>;
   /** Protected page-memory search under the run's workspace policy (06-X memory_search). */
   memorySearch?: (
     query: string,
@@ -106,22 +139,42 @@ export interface LoopToolDeps {
   ) => Promise<{ title: string; url: string; text: string; capturedAt: number }[]>;
   /** Subagent cells (06-Y): spawn/wait/send/cancel for the manifest tools. */
   subagents?: {
-    spawnCell?: (input: { goal: string; profile?: string; pageIds?: string[] }, ctx: { runId: string; threadId: string; turnId: string }) => Promise<{ cellId: string }>;
-    waitCell?: (cellId: string, timeoutMs: number) => Promise<{ state: string; runId?: string; pending?: boolean; result?: unknown; error?: string }>;
+    spawnCell?: (
+      input: { goal: string; profile?: string; pageIds?: string[] },
+      ctx: { runId: string; threadId: string; turnId: string },
+    ) => Promise<{ cellId: string }>;
+    waitCell?: (
+      cellId: string,
+      timeoutMs: number,
+    ) => Promise<{ state: string; runId?: string; pending?: boolean; result?: unknown; error?: string }>;
     sendCell?: (cellId: string, text: string) => Promise<void>;
     cancelCell?: (cellId: string) => Promise<void>;
   };
   /** `routine_update` — recipient-scoped decide() first; `{park}` propagates the ask. */
   routineUpdate?: (
-    input: { routineId: string; title?: string; description?: string; objective?: string; trigger?: unknown; paused?: boolean; expectedRevision?: number },
+    input: {
+      routineId: string;
+      title?: string;
+      description?: string;
+      objective?: string;
+      trigger?: unknown;
+      paused?: boolean;
+      expectedRevision?: number;
+    },
     ctx: { runId: string; threadId: string; turnId: string },
   ) => Promise<LoopToolResult>;
   /** `notification` — a durable notice on the run's event stream. */
-  notify?: (input: { text: string }, ctx: { runId: string; threadId: string; turnId: string }) => Promise<void>;
+  notify?: (
+    input: { text: string },
+    ctx: { runId: string; threadId: string; turnId: string },
+  ) => Promise<void>;
   /** Persisted todo scratchpad (write_todos). */
   writeTodos?: (todos: string[]) => Promise<void> | void;
   /** Report the current Goal's limited model-owned status. */
-  goalUpdate?: (input: { status: "paused" | "blocked"; blocker?: string }, ctx: LoopToolContext) => Promise<{ status: string; remaining?: number }>;
+  goalUpdate?: (
+    input: { status: "paused" | "blocked"; blocker?: string },
+    ctx: LoopToolContext,
+  ) => Promise<{ status: string; remaining?: number }>;
   /**
    * Verification v2 — `submit_result` verify-and-finish. The host checks
    * every citation's quote against the cited snapshot's rendered text and
@@ -133,9 +186,11 @@ export interface LoopToolDeps {
     ctx: LoopToolContext,
   ) => Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; error: string }>;
   /** Settle one uncertain page write only from a newly observed effect line. */
-  reconcileAction?: (input: { intentId?: string; citation: ResultCitation; effect: string }) => Promise<
-    { ok: true; intentId: string; status: "confirmed" } | { ok: false; error: string }
-  >;
+  reconcileAction?: (input: {
+    intentId?: string;
+    citation: ResultCitation;
+    effect: string;
+  }) => Promise<{ ok: true; intentId: string; status: "confirmed" } | { ok: false; error: string }>;
 }
 
 /** Context a tool executes in: the run, its page, and the runtime surface. */
@@ -171,18 +226,21 @@ export interface LoopTool {
 export type LoopToolManifest = Record<string, LoopTool>;
 
 /** Construct a `tool`-role ModelMessage from tool results (SDK 7 shape). */
-export function toolResultsMessage(parts: Array<{ toolCallId: string; toolName: string; output: unknown }>): ModelMessage {
+export function toolResultsMessage(
+  parts: Array<{ toolCallId: string; toolName: string; output: unknown }>,
+): ModelMessage {
   return {
     role: "tool",
     content: parts.map((part) => ({
       type: "tool-result" as const,
       toolCallId: part.toolCallId,
       toolName: part.toolName,
-      output: part.output instanceof Error
-        ? ({ type: "error-text" as const, value: part.output.message })
-        : typeof part.output === "string"
-          ? ({ type: "text" as const, value: part.output })
-          : ({ type: "json" as const, value: (part.output ?? null) as never }),
+      output:
+        part.output instanceof Error
+          ? { type: "error-text" as const, value: part.output.message }
+          : typeof part.output === "string"
+            ? { type: "text" as const, value: part.output }
+            : { type: "json" as const, value: (part.output ?? null) as never },
     })),
   } as ModelMessage;
 }

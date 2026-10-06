@@ -35,18 +35,35 @@ const fakeFetch = (handler: (url: string, init?: RequestInit) => { status: numbe
     const out = handler(String(url), init as RequestInit);
     return new Response(JSON.stringify(out.body ?? {}), { status: out.status });
   }) as unknown as typeof fetch;
-const trustedPeer = (port: number, pid: number, schema = SCHEMA_VERSION - 1): RuntimeDescriptor =>
-  ({ port, pid, token: "peer-secret", instanceId: `instance-${pid}`,
-    startedAt: 1234, version: { schema } });
-const peerFetch = (peer: RuntimeDescriptor,
-  handler: (url: string, init?: RequestInit) => { status: number; body?: unknown }) =>
+const trustedPeer = (port: number, pid: number, schema = SCHEMA_VERSION - 1): RuntimeDescriptor => ({
+  port,
+  pid,
+  token: "peer-secret",
+  instanceId: `instance-${pid}`,
+  startedAt: 1234,
+  version: { schema },
+});
+const peerFetch = (
+  peer: RuntimeDescriptor,
+  handler: (url: string, init?: RequestInit) => { status: number; body?: unknown },
+) =>
   fakeFetch((url, init) => {
     if (url.includes("/internal/peer")) {
       const nonce = new URL(url).searchParams.get("nonce");
       if (init?.headers && (init.headers as Record<string, string>).authorization !== `Bearer ${peer.token}`)
         return { status: 401 };
-      return { status: 200, body: { service: "aux-runtime", nonce, instanceId: peer.instanceId,
-        pid: peer.pid, schema: peer.version?.schema, startedAt: peer.startedAt, ready: true } };
+      return {
+        status: 200,
+        body: {
+          service: "aux-runtime",
+          nonce,
+          instanceId: peer.instanceId,
+          pid: peer.pid,
+          schema: peer.version?.schema,
+          startedAt: peer.startedAt,
+          ready: true,
+        },
+      };
     }
     return handler(url, init);
   });
@@ -70,7 +87,8 @@ describe("runtime lifecycle (06-T)", () => {
   });
 
   it("refuses a world-readable or linked descriptor before using its token", () => {
-    const d = tmp(); const path = join(d, "runtime.json");
+    const d = tmp();
+    const path = join(d, "runtime.json");
     writePeer(d, trustedPeer(40401, 123));
     chmodSync(path, 0o644);
     expect(readRuntimeDescriptor(d)).toBeNull();
@@ -117,7 +135,9 @@ describe("runtime lifecycle (06-T)", () => {
       dataDir: d,
       ourSchema: SCHEMA_VERSION,
       kill,
-      alive: () => true, verify: async () => true, ownsPort: async () => true,
+      alive: () => true,
+      verify: async () => true,
+      ownsPort: async () => true,
       fetchImpl: peerFetch(peer, () => ({ status: 200 })),
     });
     expect(out.action).toBe("peer-serves");
@@ -126,14 +146,16 @@ describe("runtime lifecycle (06-T)", () => {
 
   it("takes over a strictly older idle peer", async () => {
     const d = tmp();
-    const peer = trustedPeer(40002, 4242); writePeer(d, peer);
+    const peer = trustedPeer(40002, 4242);
+    writePeer(d, peer);
     let peerAlive = true;
     const killed: string[] = [];
     const out = await resolvePortInUse({
       dataDir: d,
       ourSchema: SCHEMA_VERSION,
       alive: () => peerAlive,
-      verify: async () => true, ownsPort: async () => true,
+      verify: async () => true,
+      ownsPort: async () => true,
       kill: (_pid, signal) => {
         killed.push(signal);
         peerAlive = false;
@@ -150,7 +172,8 @@ describe("runtime lifecycle (06-T)", () => {
 
   it("defers rather than killing an older peer that stays busy past the idle wait", async () => {
     const d = tmp();
-    const peer = trustedPeer(40003, 4243); writePeer(d, peer);
+    const peer = trustedPeer(40003, 4243);
+    writePeer(d, peer);
     const kill = vi.fn();
     const out = await resolvePortInUse({
       dataDir: d,
@@ -158,7 +181,8 @@ describe("runtime lifecycle (06-T)", () => {
       idleWaitMs: 150,
       sleep: () => new Promise((r) => setTimeout(r, 10)),
       alive: () => true,
-      verify: async () => true, ownsPort: async () => true,
+      verify: async () => true,
+      ownsPort: async () => true,
       kill,
       log: () => {},
       fetchImpl: peerFetch(peer, (url) =>
@@ -184,8 +208,13 @@ describe("runtime lifecycle (06-T)", () => {
       if (url.pathname === "/internal/peer") {
         const nonce = url.searchParams.get("nonce");
         send(req.headers.authorization === `Bearer ${peer.token}` ? 200 : 401, {
-          service: "aux-runtime", nonce, instanceId: peer.instanceId, pid: peer.pid,
-          schema: peer.version?.schema, startedAt: peer.startedAt, ready: true,
+          service: "aux-runtime",
+          nonce,
+          instanceId: peer.instanceId,
+          pid: peer.pid,
+          schema: peer.version?.schema,
+          startedAt: peer.startedAt,
+          ready: true,
         });
         return;
       }
@@ -225,7 +254,8 @@ describe("runtime lifecycle (06-T)", () => {
 
   it("never kills a booting peer — a 503 health read waits out the idle window then defers", async () => {
     const d = tmp();
-    const peer = trustedPeer(40004, 4244); writePeer(d, peer);
+    const peer = trustedPeer(40004, 4244);
+    writePeer(d, peer);
     const kill = vi.fn();
     const out = await resolvePortInUse({
       dataDir: d,
@@ -233,7 +263,8 @@ describe("runtime lifecycle (06-T)", () => {
       idleWaitMs: 120,
       sleep: () => new Promise((r) => setTimeout(r, 10)),
       alive: () => true,
-      verify: async () => true, ownsPort: async () => true,
+      verify: async () => true,
+      ownsPort: async () => true,
       kill,
       // 503 = booting; runs.list also 503s → active unknown → wait → defer.
       fetchImpl: peerFetch(peer, () => ({ status: 503 })),
@@ -301,34 +332,76 @@ describe("runtime lifecycle (06-T)", () => {
   });
 
   it("refuses foreign, changed, or unverified older peers before any signal", async () => {
-    const d = tmp(); const peer = trustedPeer(40008, 4248); writePeer(d, peer);
+    const d = tmp();
+    const peer = trustedPeer(40008, 4248);
+    writePeer(d, peer);
     const kill = vi.fn();
-    const base = { dataDir: d, ourSchema: SCHEMA_VERSION, alive: () => true,
-      verify: async () => true, ownsPort: async () => true, kill };
-    const foreign = await resolvePortInUse({ ...base, fetchImpl: fakeFetch((url) =>
-      url.includes("/internal/peer") ? { status: 200, body: { service: "aux-runtime", nonce: "wrong" } }
-        : { status: 200 }) });
+    const base = {
+      dataDir: d,
+      ourSchema: SCHEMA_VERSION,
+      alive: () => true,
+      verify: async () => true,
+      ownsPort: async () => true,
+      kill,
+    };
+    const foreign = await resolvePortInUse({
+      ...base,
+      fetchImpl: fakeFetch((url) =>
+        url.includes("/internal/peer")
+          ? { status: 200, body: { service: "aux-runtime", nonce: "wrong" } }
+          : { status: 200 },
+      ),
+    });
     expect(foreign.action).toBe("defer");
-    expect((await resolvePortInUse({ ...base, boundPort: 40009,
-      fetchImpl: peerFetch(peer, () => ({ status: 200 })) })).action).toBe("defer");
-    expect((await resolvePortInUse({ ...base, ownsPort: async () => false,
-      fetchImpl: peerFetch(peer, () => ({ status: 200 })) })).action).toBe("defer");
-    expect((await resolvePortInUse({ ...base, verify: async () => false,
-      fetchImpl: peerFetch(peer, () => ({ status: 200 })) })).action).toBe("defer");
+    expect(
+      (
+        await resolvePortInUse({
+          ...base,
+          boundPort: 40009,
+          fetchImpl: peerFetch(peer, () => ({ status: 200 })),
+        })
+      ).action,
+    ).toBe("defer");
+    expect(
+      (
+        await resolvePortInUse({
+          ...base,
+          ownsPort: async () => false,
+          fetchImpl: peerFetch(peer, () => ({ status: 200 })),
+        })
+      ).action,
+    ).toBe("defer");
+    expect(
+      (
+        await resolvePortInUse({
+          ...base,
+          verify: async () => false,
+          fetchImpl: peerFetch(peer, () => ({ status: 200 })),
+        })
+      ).action,
+    ).toBe("defer");
     expect(kill).not.toHaveBeenCalled();
   });
 
   it("refuses an idle peer whose descriptor changes during review", async () => {
-    const d = tmp(); const peer = trustedPeer(40009, 4249); writePeer(d, peer);
-    const kill = vi.fn(); let calls = 0;
+    const d = tmp();
+    const peer = trustedPeer(40009, 4249);
+    writePeer(d, peer);
+    const kill = vi.fn();
+    let calls = 0;
     const fetchImpl = peerFetch(peer, (url) => {
-      if (url.endsWith("/rpc") && ++calls === 1)
-        writePeer(d, { ...peer, instanceId: "replacement" });
+      if (url.endsWith("/rpc") && ++calls === 1) writePeer(d, { ...peer, instanceId: "replacement" });
       return { status: 200, body: { result: [] } };
     });
-    const out = await resolvePortInUse({ dataDir: d, ourSchema: SCHEMA_VERSION,
-      alive: () => true, verify: async () => true, ownsPort: async () => true,
-      kill, fetchImpl });
+    const out = await resolvePortInUse({
+      dataDir: d,
+      ourSchema: SCHEMA_VERSION,
+      alive: () => true,
+      verify: async () => true,
+      ownsPort: async () => true,
+      kill,
+      fetchImpl,
+    });
     expect(out.action).toBe("defer");
     expect(kill).not.toHaveBeenCalled();
   });
@@ -363,8 +436,12 @@ describe("ApiServer readiness gate", () => {
   let port: number;
   beforeAll(async () => {
     const repo = new Repo(openDb(":memory:"));
-    server = new ApiServer({ token: "t", events: new EventBus(repo), invoke: async () => ({ ok: true }),
-      peerIdentity: { instanceId: "instance", pid: 99, schema: SCHEMA_VERSION, startedAt: 1234 } });
+    server = new ApiServer({
+      token: "t",
+      events: new EventBus(repo),
+      invoke: async () => ({ ok: true }),
+      peerIdentity: { instanceId: "instance", pid: 99, schema: SCHEMA_VERSION, startedAt: 1234 },
+    });
     port = await server.listen(0);
   });
   afterAll(async () => {
@@ -376,13 +453,21 @@ describe("ApiServer readiness gate", () => {
     expect(await peerOwnsPort(process.pid, port)).toBe(true);
     const nonce = "a".repeat(48);
     expect((await fetch(`${base}/internal/peer?nonce=${nonce}`)).status).toBe(401);
-    expect((await fetch(`${base}/internal/peer?nonce=bad`,
-      { headers: { authorization: "Bearer t" } })).status).toBe(400);
-    const proof = await fetch(`${base}/internal/peer?nonce=${nonce}`,
-      { headers: { authorization: "Bearer t" } });
+    expect(
+      (await fetch(`${base}/internal/peer?nonce=bad`, { headers: { authorization: "Bearer t" } })).status,
+    ).toBe(400);
+    const proof = await fetch(`${base}/internal/peer?nonce=${nonce}`, {
+      headers: { authorization: "Bearer t" },
+    });
     expect(proof.status).toBe(200);
-    expect(await proof.json()).toMatchObject({ service: "aux-runtime", instanceId: "instance",
-      nonce, pid: 99, schema: SCHEMA_VERSION, ready: false });
+    expect(await proof.json()).toMatchObject({
+      service: "aux-runtime",
+      instanceId: "instance",
+      nonce,
+      pid: 99,
+      schema: SCHEMA_VERSION,
+      ready: false,
+    });
     const health = await fetch(`${base}/health`);
     expect(health.status).toBe(503);
     expect(await health.json()).toMatchObject({ ok: false, ready: false });

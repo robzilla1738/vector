@@ -32,9 +32,7 @@ const tasks = existsSync(tasksPath)
       { id: "submit-name", goal: "Fill the name field with Ada and submit" },
     ];
 
-const sealed = createHash("sha256")
-  .update(JSON.stringify(tasks))
-  .digest("hex");
+const sealed = createHash("sha256").update(JSON.stringify(tasks)).digest("hex");
 
 const apiKey = process.env.AI_GATEWAY_API_KEY;
 const live = Boolean(apiKey);
@@ -73,7 +71,8 @@ function skipEvidence(reason, extra = {}) {
     tasks: tasks.map((t) => t.id),
     modelId: MODEL,
     artifact: { harness: "tests/held-out/run.mjs" },
-    notes: "Harness exists. Live rows and competitor rows are required when keys are present. Mock is not used.",
+    notes:
+      "Harness exists. Live rows and competitor rows are required when keys are present. Mock is not used.",
     ...extra,
   };
 }
@@ -97,7 +96,9 @@ const spendLedger = new SpendLedger();
 const forecastUsd = tasks.length * trials * 0.05;
 if (forecastUsd > spendLedger.summary().remainingUsd) {
   spendLedger.close();
-  throw new Error(`Held-out trials project $${forecastUsd.toFixed(4)} against the remaining AI Gateway program allocation`);
+  throw new Error(
+    `Held-out trials project $${forecastUsd.toFixed(4)} against the remaining AI Gateway program allocation`,
+  );
 }
 spendLedger.close();
 
@@ -174,7 +175,7 @@ async function startRuntimeFor(port) {
 async function tokensForRun(rpc, runId) {
   try {
     const events = await rpc("runs.events", { runId, limit: 2000 });
-    const list = Array.isArray(events) ? events : events.events ?? [];
+    const list = Array.isArray(events) ? events : (events.events ?? []);
     let total = 0;
     let wait = 0;
     for (const e of list) {
@@ -209,7 +210,14 @@ async function runTrial(rpc, task, url) {
       maxModelCalls: 8,
     });
     const runId = run.runId ?? run.id;
-    const terminal = new Set(["completed", "partially_completed", "failed", "cancelled", "interrupted", "needs_input"]);
+    const terminal = new Set([
+      "completed",
+      "partially_completed",
+      "failed",
+      "cancelled",
+      "interrupted",
+      "needs_input",
+    ]);
     let rec;
     for (;;) {
       rec = await rpc("runs.get", { runId });
@@ -222,10 +230,7 @@ async function runTrial(rpc, task, url) {
     const obs = await rpc("pages.observe", { pageId, format: "compact" }).catch(() => null);
     const text = observeText(obs);
     const resultText = `${JSON.stringify(r.result ?? {})} ${r.statusMessage ?? ""}`;
-    const verified =
-      task.id === "find-in-table"
-        ? /12\.50/.test(resultText)
-        : goldFor(task.id).test(text);
+    const verified = task.id === "find-in-table" ? /12\.50/.test(resultText) : goldFor(task.id).test(text);
     const usage = await tokensForRun(rpc, runId);
     return {
       taskId: task.id,
@@ -301,7 +306,17 @@ const evidence = {
   ci95: summary.modelWaitMs.ci95,
   verifiedSuccess: summary,
   artifact: { harness: "tests/held-out/run.mjs", model: MODEL },
-  notes: "Live Meta Muse Spark 1.3 Contributor via AI Gateway. Independent oracle is page observe vs gold regex. Mock is not used.",
+  notes:
+    "Live Meta Muse Spark 1.3 Contributor via AI Gateway. Independent oracle is page observe vs gold regex. Mock is not used.",
 };
 writeFileSync(outPath, `${JSON.stringify(evidence, null, 2)}\n`);
-console.log(JSON.stringify({ ok: true, skippedLive: false, out: outPath, sealedHash: sealed, verified: summary.verified, n: summary.n }));
+console.log(
+  JSON.stringify({
+    ok: true,
+    skippedLive: false,
+    out: outPath,
+    sealedHash: sealed,
+    verified: summary.verified,
+    n: summary.n,
+  }),
+);

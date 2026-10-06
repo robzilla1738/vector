@@ -3,13 +3,23 @@ import { describe, it, expect, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { applyMigrations, EventBus, executeProgram, openDb, Repo, RunCoordinator } from "@aux/runtime";
 import type { ModelClient } from "@aux/runtime";
-import type { DriverPage, } from "@aux/chromium-driver";
+import type { DriverPage } from "@aux/chromium-driver";
 import type { Observation } from "@aux/contracts";
 
 const memRepo = () => new Repo(openDb(":memory:"));
-const tab = (pageId: string, ordinal: number) => ({ pageId, ordinal, url: `http://x.test/${pageId}`, title: pageId, backend: "aux", active: ordinal === 0 });
+const tab = (pageId: string, ordinal: number) => ({
+  pageId,
+  ordinal,
+  url: `http://x.test/${pageId}`,
+  title: pageId,
+  backend: "aux",
+  active: ordinal === 0,
+});
 const seedPage = (r: Repo, pageId: string) =>
-  r.db.prepare("INSERT OR IGNORE INTO pages(page_id,backend,target_id,url,created_at,active_at) VALUES(?,?,?,?,?,?)")
+  r.db
+    .prepare(
+      "INSERT OR IGNORE INTO pages(page_id,backend,target_id,url,created_at,active_at) VALUES(?,?,?,?,?,?)",
+    )
     .run(pageId, "aux", `t-${pageId}`, `http://x.test/${pageId}`, 1, 1);
 
 describe("Repo.transaction (P1-9)", () => {
@@ -22,7 +32,9 @@ describe("Repo.transaction (P1-9)", () => {
     expect(() =>
       r.transaction(() => {
         r.db.prepare("DELETE FROM tabs").run();
-        r.db.prepare("INSERT INTO tabs(page_id,ordinal,url,title,backend,active) VALUES(?,?,?,?,?,?)").run("c", 0, "u", "t", "aux", 1);
+        r.db
+          .prepare("INSERT INTO tabs(page_id,ordinal,url,title,backend,active) VALUES(?,?,?,?,?,?)")
+          .run("c", 0, "u", "t", "aux", 1);
         throw new Error("crash between delete and inserts");
       }),
     ).toThrow(/crash/);
@@ -39,9 +51,25 @@ describe("Repo.transaction (P1-9)", () => {
 
   it("saveProgram upsert updates steps_json, site_key and parameters", () => {
     const r = memRepo();
-    const base = { programId: "pr1", name: "n", version: 1, siteKey: "a.test", parameters: [] as string[], stepsJson: "[]", useCount: 0, createdAt: 1 };
+    const base = {
+      programId: "pr1",
+      name: "n",
+      version: 1,
+      siteKey: "a.test",
+      parameters: [] as string[],
+      stepsJson: "[]",
+      useCount: 0,
+      createdAt: 1,
+    };
     r.saveProgram(base);
-    r.saveProgram({ ...base, version: 2, siteKey: "b.test", parameters: ["who"], stepsJson: '[{"id":"s1","op":"reload"}]', description: "d" });
+    r.saveProgram({
+      ...base,
+      version: 2,
+      siteKey: "b.test",
+      parameters: ["who"],
+      stepsJson: '[{"id":"s1","op":"reload"}]',
+      description: "d",
+    });
     const got = r.getProgram("pr1")!;
     expect(got.version).toBe(2);
     expect(got.siteKey).toBe("b.test");
@@ -69,12 +97,19 @@ describe("pages.execute allowEval spread order", () => {
       identity: { pageId: "p1", targetId: "t", backend: "aux" },
       isAttached: () => true,
       url: () => "http://x.test/",
-      evaluate: async (e: string) => { evals.push(e); return 1; },
+      evaluate: async (e: string) => {
+        evals.push(e);
+        return 1;
+      },
       setEvents: () => {},
     } as unknown as DriverPage;
     // executor default is false; the PageService applies `allowEval: ctx.allowEval ?? false` after the spread
     const ctx = { allowEval: undefined as boolean | undefined };
-    const res = await executeProgram(page, { pageId: "p1", steps: [{ id: "e", op: "evaluate", expression: "1" }] }, { ...ctx, allowEval: ctx.allowEval ?? false });
+    const res = await executeProgram(
+      page,
+      { pageId: "p1", steps: [{ id: "e", op: "evaluate", expression: "1" }] },
+      { ...ctx, allowEval: ctx.allowEval ?? false },
+    );
     expect(res.status).toBe("failed");
     expect(evals).toEqual([]);
   });
@@ -82,11 +117,26 @@ describe("pages.execute allowEval spread order", () => {
 
 const obs = (): Observation =>
   ({
-    pageId: "p1", documentEpoch: 1, revision: 1, observedAt: Date.now(), scope: "full",
+    pageId: "p1",
+    documentEpoch: 1,
+    revision: 1,
+    observedAt: Date.now(),
+    scope: "full",
     content: {
-      url: "http://x.test/", title: "x", viewport: { width: 1, height: 1, scale: 1 }, scroll: { y: 0, maxY: 0 }, frames: [],
-      text: "some page text here for the planner", headings: [], elements: [{ ref: "r1", tag: "button", frame: "main" }],
-      formFields: [], tables: [], links: [], dialogs: [], truncated: false, stats: { elementsTotal: 1, elementsShown: 1 },
+      url: "http://x.test/",
+      title: "x",
+      viewport: { width: 1, height: 1, scale: 1 },
+      scroll: { y: 0, maxY: 0 },
+      frames: [],
+      text: "some page text here for the planner",
+      headings: [],
+      elements: [{ ref: "r1", tag: "button", frame: "main" }],
+      formFields: [],
+      tables: [],
+      links: [],
+      dialogs: [],
+      truncated: false,
+      stats: { elementsTotal: 1, elementsShown: 1 },
     },
   }) as unknown as Observation;
 
@@ -99,15 +149,30 @@ describe("RunCoordinator.failActive (P1-10)", () => {
       generateStructured: (o) =>
         new Promise((_res, rej) => {
           seen = o.signal;
-          o.signal?.addEventListener("abort", () => rej(new DOMException("aborted", "AbortError")), { once: true });
+          o.signal?.addEventListener("abort", () => rej(new DOMException("aborted", "AbortError")), {
+            once: true,
+          });
         }),
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
     };
-    const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => fixturePage(pageId, obs().content.url, obs().documentEpoch)),
-      repo, events,
-      pages: { observe: vi.fn(async () => obs()), execute: vi.fn(), capture: vi.fn(), livePageIds: () => ["p1"], get: (pageId: string) => fixturePage(pageId, obs().content.url, obs().documentEpoch) } as never,
-      model: () => model, defaultModel: () => "m", recoveryModel: () => undefined, recordModelCall: () => {},
+    const coordinator = new RunCoordinator({
+      turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined =>
+        fixturePage(pageId, obs().content.url, obs().documentEpoch),
+      ),
+      repo,
+      events,
+      pages: {
+        observe: vi.fn(async () => obs()),
+        execute: vi.fn(),
+        capture: vi.fn(),
+        livePageIds: () => ["p1"],
+        get: (pageId: string) => fixturePage(pageId, obs().content.url, obs().documentEpoch),
+      } as never,
+      model: () => model,
+      defaultModel: () => "m",
+      recoveryModel: () => undefined,
+      recordModelCall: () => {},
       grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
     });
     const run = await coordinator.start({ goal: "g", pageIds: ["p1"] });

@@ -20,7 +20,9 @@ import {
 } from "@aux/runtime";
 
 const cleanup: (() => void)[] = [];
-afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
+afterEach(() => {
+  for (const fn of cleanup.splice(0).reverse()) fn();
+});
 
 function fixture() {
   const directory = mkdtempSync(join(tmpdir(), "aux-ctx-"));
@@ -46,7 +48,12 @@ const actStep = { steps: [{ id: "s1", op: "click", target: "r1" }] };
 
 const userTask: ModelMessage = { role: "user", content: "do the task" };
 const toolMsg = (id: string, output: unknown): ModelMessage =>
-  ({ role: "tool", content: [{ type: "tool-result", toolCallId: id, toolName: "act", output: { type: "json", value: output } }] }) as ModelMessage;
+  ({
+    role: "tool",
+    content: [
+      { type: "tool-result", toolCallId: id, toolName: "act", output: { type: "json", value: output } },
+    ],
+  }) as ModelMessage;
 
 describe("context management — pruneMedia", () => {
   it("replaces oversized data URLs anywhere in the output, keeps the rest", () => {
@@ -60,7 +67,9 @@ describe("context management — pruneMedia", () => {
   });
 
   it("leaves small data URLs and non-media strings alone", () => {
-    expect(pruneMedia({ s: "data:image/png;base64,abc", t: "x".repeat(50_000) })).toMatchObject({ s: "data:image/png;base64,abc" });
+    expect(pruneMedia({ s: "data:image/png;base64,abc", t: "x".repeat(50_000) })).toMatchObject({
+      s: "data:image/png;base64,abc",
+    });
   });
 });
 
@@ -105,36 +114,67 @@ describe("context management — compaction", () => {
 
   it("bounds a huge completed REPL call in the newest exchange and preserves pairing", () => {
     const code = "x".repeat(210_000);
-    const call = { role: "assistant", content: [{ type: "tool-call", toolCallId: "g1", toolName: "goal_program", input: { code } }] } as ModelMessage;
+    const call = {
+      role: "assistant",
+      content: [{ type: "tool-call", toolCallId: "g1", toolName: "goal_program", input: { code } }],
+    } as ModelMessage;
     const result = toolMsg("g1", { status: "failed", detail: "Inspect the current page" });
     const compacted = compactMessages([userTask, call, result]);
     expect(compacted).not.toBeNull();
     expect(JSON.stringify(compacted!.messages).length).toBeLessThan(TRANSCRIPT_COMPACT_BYTES);
     expect((compacted!.messages[1]!.content as Record<string, unknown>[])[0]).toMatchObject({
-      toolCallId: "g1", toolName: "goal_program", input: { compacted: true },
+      toolCallId: "g1",
+      toolName: "goal_program",
+      input: { compacted: true },
     });
     expect(compacted!.messages[2]).toEqual(result);
   });
 
   it("keeps an unanswered call intact when a process stopped before its result", () => {
-    const call = { role: "assistant", content: [{ type: "tool-call", toolCallId: "g1", toolName: "goal_program", input: { code: "x".repeat(210_000) } }] } as ModelMessage;
+    const call = {
+      role: "assistant",
+      content: [
+        {
+          type: "tool-call",
+          toolCallId: "g1",
+          toolName: "goal_program",
+          input: { code: "x".repeat(210_000) },
+        },
+      ],
+    } as ModelMessage;
     expect(compactMessages([userTask, call])).toBeNull();
   });
 
   it("drops oversized provider reasoning metadata from completed history", () => {
-    const reasoning = { type: "reasoning", text: "brief reasoning", providerOptions: { gateway: { signature: "s".repeat(22_000) } } };
+    const reasoning = {
+      type: "reasoning",
+      text: "brief reasoning",
+      providerOptions: { gateway: { signature: "s".repeat(22_000) } },
+    };
     const messages: ModelMessage[] = [userTask];
     for (let i = 0; i < 10; i++) {
-      messages.push({ role: "assistant", content: [reasoning, reasoning, reasoning,
-        { type: "tool-call", toolCallId: `r${i}`, toolName: "snapshot", input: {} }] } as ModelMessage);
+      messages.push({
+        role: "assistant",
+        content: [
+          reasoning,
+          reasoning,
+          reasoning,
+          { type: "tool-call", toolCallId: `r${i}`, toolName: "snapshot", input: {} },
+        ],
+      } as ModelMessage);
       messages.push(toolMsg(`r${i}`, { ok: true }));
     }
     expect(JSON.stringify(messages).length).toBeGreaterThan(TRANSCRIPT_COMPACT_BYTES);
     const compacted = compactMessages(messages);
     expect(compacted).not.toBeNull();
     expect(JSON.stringify(compacted!.messages).length).toBeLessThan(TRANSCRIPT_COMPACT_BYTES);
-    expect((compacted!.messages[1]!.content as Record<string, unknown>[])[0]).toEqual({ type: "reasoning", text: "brief reasoning" });
-    expect((compacted!.messages.at(-1)!.content as Record<string, unknown>[])[0]).toMatchObject({ toolCallId: "r9" });
+    expect((compacted!.messages[1]!.content as Record<string, unknown>[])[0]).toEqual({
+      type: "reasoning",
+      text: "brief reasoning",
+    });
+    expect((compacted!.messages.at(-1)!.content as Record<string, unknown>[])[0]).toMatchObject({
+      toolCallId: "r9",
+    });
   });
 });
 
@@ -167,7 +207,9 @@ describe("runAgentLoop — context integration", () => {
       { text: "done" },
     ]);
     const deps: LoopToolDeps = {
-      act: async () => ({ output: { shot: `data:image/png;base64,${"B".repeat(60_000)}`, extra: "e".repeat(10_000) } }),
+      act: async () => ({
+        output: { shot: `data:image/png;base64,${"B".repeat(60_000)}`, extra: "e".repeat(10_000) },
+      }),
     };
     const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model });
     expect(outcome).toMatchObject({ kind: "done" });
@@ -217,22 +259,35 @@ describe("runAgentLoop — context integration", () => {
     // a second invocation does not re-inject (messages.length > 1 now)
     let calls = 0;
     const again = await runAgentLoop({
-      ...baseOpts(transcript, { recall: async () => { calls++; return [{ title: "x", url: "y", text: "z" }]; } }),
+      ...baseOpts(transcript, {
+        recall: async () => {
+          calls++;
+          return [{ title: "x", url: "y", text: "z" }];
+        },
+      }),
       model: new MockModelClient().scriptToolSteps([{ text: "again" }]),
     });
     expect(again).toMatchObject({ kind: "done" });
     expect(calls).toBe(0);
-    expect(transcript.load("run-1").filter((m) => String(m.content).includes("Auto-recalled memory"))).toHaveLength(1);
+    expect(
+      transcript.load("run-1").filter((m) => String(m.content).includes("Auto-recalled memory")),
+    ).toHaveLength(1);
   });
 
   it("recall failure never blocks the run", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);
     const model = new MockModelClient().scriptToolSteps([{ text: "done" }]);
-    const deps: LoopToolDeps = { recall: async () => { throw new Error("memory down"); } };
+    const deps: LoopToolDeps = {
+      recall: async () => {
+        throw new Error("memory down");
+      },
+    };
     const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model });
     expect(outcome).toMatchObject({ kind: "done" });
-    expect(transcript.load("run-1").filter((m) => String(m.content).includes("Auto-recalled memory"))).toHaveLength(0);
+    expect(
+      transcript.load("run-1").filter((m) => String(m.content).includes("Auto-recalled memory")),
+    ).toHaveLength(0);
   });
 
   it("compacts an oversized transcript durably before the next model call", async () => {
@@ -240,7 +295,10 @@ describe("runAgentLoop — context integration", () => {
     transcript.append("run-1", [userTask]);
     // >192 KB of message history across 20 tool results
     for (let i = 0; i < 20; i++)
-      transcript.append("run-1", [{ role: "assistant", content: "ok" } as ModelMessage, toolMsg(`t${i}`, { blob: "y".repeat(11_000) })]);
+      transcript.append("run-1", [
+        { role: "assistant", content: "ok" } as ModelMessage,
+        toolMsg(`t${i}`, { blob: "y".repeat(11_000) }),
+      ]);
     expect(JSON.stringify(transcript.load("run-1")).length).toBeGreaterThan(TRANSCRIPT_COMPACT_BYTES);
     const model = new MockModelClient().scriptToolSteps([{ text: "done" }]);
     const outcome = await runAgentLoop({ ...baseOpts(transcript), model });
@@ -248,7 +306,9 @@ describe("runAgentLoop — context integration", () => {
     const reloaded = transcript.load("run-1");
     // task + newest tail verbatim; the compacted middle persists
     expect(reloaded[0]).toMatchObject({ content: "do the task" });
-    const anyCompacted = reloaded.some((m) => Array.isArray(m.content) && JSON.stringify(m.content).includes('"compacted":true'));
+    const anyCompacted = reloaded.some(
+      (m) => Array.isArray(m.content) && JSON.stringify(m.content).includes('"compacted":true'),
+    );
     expect(anyCompacted).toBe(true);
     const size = JSON.stringify(reloaded.slice(0, -1)).length; // before the final assistant message
     expect(size).toBeLessThan(TRANSCRIPT_COMPACT_BYTES + 20_000);

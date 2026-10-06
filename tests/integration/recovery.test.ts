@@ -33,7 +33,10 @@ describe("restart recovery", () => {
     const env = { ...process.env, AUX_DATA_DIR: dataDir, AUX_ELECTRON_CDP: "" };
 
     const rt1: RuntimeHandle = await startRuntime(env);
-    const page = await rt1.invoke("pages.open", { url: `${RECORDS}/records`, background: true }) as PageTarget;
+    const page = (await rt1.invoke("pages.open", {
+      url: `${RECORDS}/records`,
+      background: true,
+    })) as PageTarget;
     await rt1.close(); // graceful stop BEFORE the fake run exists — no shutdown marking
 
     // a real crash leaves a "running" row behind; insert one directly
@@ -49,24 +52,32 @@ describe("restart recovery", () => {
     repo.db.close();
 
     const rt2 = await startRuntime(env);
-    const { run } = await rt2.invoke("runs.get", { runId: "run-crashed" }) as { run: Run };
+    const { run } = (await rt2.invoke("runs.get", { runId: "run-crashed" })) as { run: Run };
     expect(run.status).toBe("interrupted");
 
-    await expect(rt2.invoke("runs.retry", { runId: "run-crashed" })).rejects.toThrow(/Reopen or choose a browser tab/i);
+    await expect(rt2.invoke("runs.retry", { runId: "run-crashed" })).rejects.toThrow(
+      /Reopen or choose a browser tab/i,
+    );
 
-    const replacement = await rt2.invoke("pages.open", { url: `${RECORDS}/records`, background: true }) as PageTarget;
-    const retried = await rt2.invoke("runs.retry", { runId: "run-crashed", pageId: replacement.pageId }) as Run;
+    const replacement = (await rt2.invoke("pages.open", {
+      url: `${RECORDS}/records`,
+      background: true,
+    })) as PageTarget;
+    const retried = (await rt2.invoke("runs.retry", {
+      runId: "run-crashed",
+      pageId: replacement.pageId,
+    })) as Run;
     expect(retried.goal).toBe(run.goal);
     expect(retried.pageIds).toEqual([replacement.pageId]);
     expect(retried.config?.chatId).toBe(run.runId);
     expect(retried.config?.retryOfRunId).toBe(run.runId);
     await expect(rt2.invoke("runs.retry", { runId: "run-crashed" })).rejects.toThrow(/newer turn/i);
 
-    const pages = await rt2.invoke("pages.list", { includeDetached: true }) as PageTarget[];
+    const pages = (await rt2.invoke("pages.list", { includeDetached: true })) as PageTarget[];
     const restored = pages.find((p) => p.pageId === page.pageId);
     expect(restored?.viewStatus).toBe("detached"); // persisted, not reattached
 
-    const history = await rt2.invoke("history.list", {}) as { url: string }[];
+    const history = (await rt2.invoke("history.list", {})) as { url: string }[];
     expect(history.some((h) => h.url.includes("/records"))).toBe(true);
 
     await rt2.close();

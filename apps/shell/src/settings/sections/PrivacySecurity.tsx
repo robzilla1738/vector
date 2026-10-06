@@ -11,16 +11,30 @@ export function PrivacySecuritySettings({ active }: { active: boolean }) {
   const httpsFirstAvailable = useFeature("httpsFirst");
   return (
     <SettingsSection name="Site permissions" title="Privacy & Security" hidden={!active}>
-      {httpsFirstAvailable && <SettingsField label="HTTPS-first" description="Try HTTPS before HTTP for eligible sites. Other Chromium security modes may still require HTTPS.">
-        <HttpsFirstSetting active={active} />
-      </SettingsField>}
-      <SettingsField label="Cookies" description="Block third-party cookies in the regular Profile. This can affect embedded sign-ins and widgets; existing cookies are kept.">
+      {httpsFirstAvailable && (
+        <SettingsField
+          label="HTTPS-first"
+          description="Try HTTPS before HTTP for eligible sites. Other Chromium security modes may still require HTTPS."
+        >
+          <HttpsFirstSetting active={active} />
+        </SettingsField>
+      )}
+      <SettingsField
+        label="Cookies"
+        description="Block third-party cookies in the regular Profile. This can affect embedded sign-ins and widgets; existing cookies are kept."
+      >
         <CookieControlsSetting active={active} />
       </SettingsField>
-      <SettingsField label="Crash reports" description="Choose whether Aux may upload future crash reports when this build has a configured destination.">
+      <SettingsField
+        label="Crash reports"
+        description="Choose whether Aux may upload future crash reports when this build has a configured destination."
+      >
         <CrashReportingSetting active={active} />
       </SettingsField>
-      <SettingsField label="Help improve Aux" description="Optional product usage analytics are not available in this build.">
+      <SettingsField
+        label="Help improve Aux"
+        description="Optional product usage analytics are not available in this build."
+      >
         <span {...staticHintProps}>Off</span>
       </SettingsField>
       <SitePermissions query="" />

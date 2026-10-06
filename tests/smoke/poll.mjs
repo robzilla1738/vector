@@ -4,7 +4,7 @@ export async function poll(page, predicate, argument, timeoutMs = 15000) {
   const deadline = Date.now() + timeoutMs;
   do {
     if (await page.evaluate(predicate, argument)) return;
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 50));
   } while (Date.now() < deadline);
   throw new Error(`Runtime condition did not become true within ${timeoutMs}ms: ${predicate}`);
 }

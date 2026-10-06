@@ -7,8 +7,8 @@ import { bridge } from "../bridge";
 import { makePage } from "../mock/fixtures";
 import { Library } from "./Library";
 
-vi.mock("../use-feature", async importOriginal => ({
-  ...await importOriginal<typeof import("../use-feature")>(),
+vi.mock("../use-feature", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../use-feature")>()),
   useFeature: () => true,
 }));
 
@@ -45,19 +45,40 @@ it("updates the changed bookmark row without losing its sibling or edit action",
   expect(host.textContent).not.toContain("Second bookmark");
   expect(host.textContent).toContain("First bookmark");
 
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Edit Renamed bookmark"]')!.click());
-  expect(host.querySelector<HTMLInputElement>('[aria-label="Bookmark title"]')?.value).toBe("Renamed bookmark");
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="Edit Renamed bookmark"]')!.click(),
+  );
+  expect(host.querySelector<HTMLInputElement>('[aria-label="Bookmark title"]')?.value).toBe(
+    "Renamed bookmark",
+  );
 });
 
 it("keeps reading-list controls current when one saved page changes", async () => {
-  const first = { nodeId: "reading-one", url: "https://example.com/one", title: "First reading page", folderPath: [], readingList: true };
-  const second = { nodeId: "reading-two", url: "https://example.com/two", title: "Second reading page", folderPath: [], readingList: true };
-  useStore.setState({ bookmarks: [first, second], pages: [makePage(0, { pageId: "reading-page", url: first.url })] });
+  const first = {
+    nodeId: "reading-one",
+    url: "https://example.com/one",
+    title: "First reading page",
+    folderPath: [],
+    readingList: true,
+  };
+  const second = {
+    nodeId: "reading-two",
+    url: "https://example.com/two",
+    title: "Second reading page",
+    folderPath: [],
+    readingList: true,
+  };
+  useStore.setState({
+    bookmarks: [first, second],
+    pages: [makePage(0, { pageId: "reading-page", url: first.url })],
+  });
   await act(async () => root.render(<Library initialView="reading" />));
   expect(host.querySelector('[aria-label="Mark First reading page read"]')).not.toBeNull();
   expect(host.querySelector('[aria-label="Save offline copy of First reading page"]')).not.toBeNull();
 
-  await act(async () => useStore.setState({ bookmarks: [{ ...first, readAt: Date.now(), offline: true }, second] }));
+  await act(async () =>
+    useStore.setState({ bookmarks: [{ ...first, readAt: Date.now(), offline: true }, second] }),
+  );
   expect(host.querySelector('[aria-label="Mark First reading page unread"]')).not.toBeNull();
   expect(host.querySelector('[aria-label="Refresh offline copy of First reading page"]')).not.toBeNull();
   expect(host.querySelector('[aria-label="Mark Second reading page read"]')).not.toBeNull();
@@ -66,7 +87,8 @@ it("keeps reading-list controls current when one saved page changes", async () =
 it("closes Library when a bookmark opens in Peek", async () => {
   const item = { nodeId: "peek", url: "https://example.com/story", title: "Story", folderPath: [] };
   useStore.setState({
-    bookmarks: [item], overlay: "bookmarks",
+    bookmarks: [item],
+    overlay: "bookmarks",
     openBackgroundTab: async (url, _space, _reuse, id) => {
       const page = makePage(0, { pageId: id!, url });
       useStore.setState({ pages: [page] });
@@ -79,9 +101,13 @@ it("closes Library when a bookmark opens in Peek", async () => {
   expect(useStore.getState().peekPageId).toMatch(/^p_peek_/);
 });
 
-
 it("returns focus to search and scrolls its own result panel when opening a folder", async () => {
-  const saved = { nodeId: "folder-bookmark", url: "https://example.com/story", title: "Story", folderPath: ["Notes"] };
+  const saved = {
+    nodeId: "folder-bookmark",
+    url: "https://example.com/story",
+    title: "Story",
+    folderPath: ["Notes"],
+  };
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "bookmarks.list") return [saved] as never;
     if (method === "bookmarks.folders.list") return [["Notes"]] as never;
@@ -89,7 +115,10 @@ it("returns focus to search and scrolls its own result panel when opening a fold
   });
   try {
     await act(async () => root.render(<Library />));
-    await act(async () => { vi.advanceTimersByTime(1); await Promise.resolve(); });
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+      await Promise.resolve();
+    });
     const panel = host.querySelector<HTMLElement>("#library-results")!;
     const scrollTo = vi.fn();
     panel.scrollTo = scrollTo;
@@ -97,6 +126,10 @@ it("returns focus to search and scrolls its own result panel when opening a fold
     expect(folder).toBeTruthy();
     await act(async () => folder.click());
     expect(scrollTo).toHaveBeenCalledExactlyOnceWith({ top: 0 });
-    expect(document.activeElement).toBe(host.querySelector<HTMLInputElement>('input[aria-label="Search bookmarks"]'));
-  } finally { invoke.mockRestore(); }
+    expect(document.activeElement).toBe(
+      host.querySelector<HTMLInputElement>('input[aria-label="Search bookmarks"]'),
+    );
+  } finally {
+    invoke.mockRestore();
+  }
 });

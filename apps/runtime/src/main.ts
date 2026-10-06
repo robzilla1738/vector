@@ -55,10 +55,7 @@ import {
   type Step,
 } from "@aux/contracts";
 import type { RpcChannel } from "@aux/contracts";
-import {
-  ManagedChromiumDriver,
-  type BrowserDriver,
-} from "@aux/chromium-driver";
+import { ManagedChromiumDriver, type BrowserDriver } from "@aux/chromium-driver";
 import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
 import { openDb, SCHEMA_VERSION } from "./store/db.js";
 import { prepareProtectedDatabase } from "./store/protected-startup.js";
@@ -178,8 +175,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let phaseStarted = bootStarted;
   const bootPhase = (phase: string) => {
     const at = performance.now();
-    process.stderr.write(`[runtime] boot ${JSON.stringify({ phase, durationMs: Math.round((at - phaseStarted) * 100) / 100,
-      elapsedMs: Math.round((at - bootStarted) * 100) / 100 })}\n`);
+    process.stderr.write(
+      `[runtime] boot ${JSON.stringify({
+        phase,
+        durationMs: Math.round((at - phaseStarted) * 100) / 100,
+        elapsedMs: Math.round((at - bootStarted) * 100) / 100,
+      })}\n`,
+    );
     phaseStarted = at;
   };
   const shutdownAdmission = new RuntimeShutdownAdmission();
@@ -191,7 +193,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const config = loadConfig(env);
   const developmentIdentity = developmentPeerIdentity();
   // Port 0 asks the kernel for a free port, so there is no incumbent to review.
-  if (config.apiPort !== 0 && await loopbackPortTaken(config.apiPort)) {
+  if (config.apiPort !== 0 && (await loopbackPortTaken(config.apiPort))) {
     await takeoverOrDecline(config.dataDir, config.apiPort, developmentIdentity);
   }
   await applyPendingRuntimeRestore(config.dataDir, config.dbPath, env.AUX_BROWSER_PROFILE_ID);
@@ -252,8 +254,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let agentConnections: AgentConnectionService | undefined;
   const disarmWatchdog = bootstrapWatchdog();
   const token = config.apiToken || randomUUID();
-  const peerIdentity = { instanceId: randomUUID(), pid: process.pid, schema: SCHEMA_VERSION,
-    startedAt: Date.now() };
+  const peerIdentity = {
+    instanceId: randomUUID(),
+    pid: process.pid,
+    schema: SCHEMA_VERSION,
+    startedAt: Date.now(),
+  };
   const api = new ApiServer({
     token,
     peerIdentity,
@@ -323,31 +329,38 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     audit: (event) => safetyAudit.record({ ...event }),
   };
   const safetyGate = new SafetyDispatchGate({
-        ...decideDeps,
-        suspensions,
-        onConfirmation: (confirmation) => events.emit("safety.confirmation", confirmation),
-        ...(env.AUX_HOST_SOCKET ? { judge: createGuardianJudge({
-          model: () => settings.model(),
-          modelId: () => settings.plannerModel(),
-          beforeCall: async runId => {
-            if (runId) { await checkNightShiftDispatch(repo, runId); budgets.assertWithin({ runId }); }
-          },
-          recordAttempt: async (attempt, modelId, error, runId) =>
-            saveAuthorizedModelCall(repo, {
-              ...(runId ? { runId } : {}),
-              callId: randomUUID(),
-              role: "guardian",
-              modelId,
-              durationMs: attempt.durationMs,
-              inputTokens: attempt.inputTokens,
-              outputTokens: attempt.outputTokens,
-              providerMetadata: attempt.providerMetadata,
-              ...modelCallCost(modelId, attempt),
-              ...(error ? { error } : {}),
-              createdAt: Date.now(),
-            }),
-        }) } : {}),
-      });
+    ...decideDeps,
+    suspensions,
+    onConfirmation: (confirmation) => events.emit("safety.confirmation", confirmation),
+    ...(env.AUX_HOST_SOCKET
+      ? {
+          judge: createGuardianJudge({
+            model: () => settings.model(),
+            modelId: () => settings.plannerModel(),
+            beforeCall: async (runId) => {
+              if (runId) {
+                await checkNightShiftDispatch(repo, runId);
+                budgets.assertWithin({ runId });
+              }
+            },
+            recordAttempt: async (attempt, modelId, error, runId) =>
+              saveAuthorizedModelCall(repo, {
+                ...(runId ? { runId } : {}),
+                callId: randomUUID(),
+                role: "guardian",
+                modelId,
+                durationMs: attempt.durationMs,
+                inputTokens: attempt.inputTokens,
+                outputTokens: attempt.outputTokens,
+                providerMetadata: attempt.providerMetadata,
+                ...modelCallCost(modelId, attempt),
+                ...(error ? { error } : {}),
+                createdAt: Date.now(),
+              }),
+          }),
+        }
+      : {}),
+  });
   /**
    * Runtime-side egress (operation session requests) goes through the same
    * decide() boundary as page effects. There is no approval UI mid-request,
@@ -459,8 +472,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   });
   channel?.onMethod("workbook.renderExport", (params) => {
     const request = params as { content?: unknown; format?: unknown };
-    if (typeof request?.content !== "string" ||
-        (request.format !== undefined && request.format !== "snapshot" && request.format !== "csv"))
+    if (
+      typeof request?.content !== "string" ||
+      (request.format !== undefined && request.format !== "snapshot" && request.format !== "csv")
+    )
       throw new Error("Invalid workbook export request");
     return renderWorkbookForNativeExport(request.content, request.format as "snapshot" | "csv" | undefined);
   });
@@ -469,17 +484,35 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // finish booting; calls wait on the invoker promise instead of failing.
   channel?.onMethod("api.invoke", (p) => {
     const { method, params, desktopUser, nativePersonResume, nativeRunResume } = p as {
-      method: string; params: unknown; desktopUser?: boolean; nativePersonResume?: unknown; nativeRunResume?: unknown;
+      method: string;
+      params: unknown;
+      desktopUser?: boolean;
+      nativePersonResume?: unknown;
+      nativeRunResume?: unknown;
     };
-    const receipt = method === "pages.resume" && desktopUser === true &&
-      typeof nativePersonResume === "string" && nativePersonResume.length > 0 && nativePersonResume.length <= 128
-      ? nativePersonResume : undefined;
-    const runReceipt = method === "runs.resume" && desktopUser === true &&
-      typeof nativeRunResume === "string" && nativeRunResume.length > 0 && nativeRunResume.length <= 128
-      ? nativeRunResume : undefined;
-    return invokerReady.then((fn) => fn(method, params, { external: desktopUser !== true,
-      ...(receipt ? { nativePersonResume: receipt } : {}),
-      ...(runReceipt ? { nativeRunResume: runReceipt } : {}) }));
+    const receipt =
+      method === "pages.resume" &&
+      desktopUser === true &&
+      typeof nativePersonResume === "string" &&
+      nativePersonResume.length > 0 &&
+      nativePersonResume.length <= 128
+        ? nativePersonResume
+        : undefined;
+    const runReceipt =
+      method === "runs.resume" &&
+      desktopUser === true &&
+      typeof nativeRunResume === "string" &&
+      nativeRunResume.length > 0 &&
+      nativeRunResume.length <= 128
+        ? nativeRunResume
+        : undefined;
+    return invokerReady.then((fn) =>
+      fn(method, params, {
+        external: desktopUser !== true,
+        ...(receipt ? { nativePersonResume: receipt } : {}),
+        ...(runReceipt ? { nativeRunResume: runReceipt } : {}),
+      }),
+    );
   });
   if (channel) registerDownloadNamingChannel(channel, invokerReady);
   await settings.initializeCredentials();
@@ -508,10 +541,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     };
   };
   let browserEgress: BrowserEgress | undefined;
-  const nativeCdp = env.AUX_HOST_SOCKET && channel ? await NativeCdpBroker.start(channel, (pageId, lease) => {
-    if (!browserEgress) throw new AuxError("permission_denied", "Browser authority is not initialized.");
-    return browserEgress.captureCdpAuthority(pageId, lease);
-  }) : null;
+  const nativeCdp =
+    env.AUX_HOST_SOCKET && channel
+      ? await NativeCdpBroker.start(channel, (pageId, lease) => {
+          if (!browserEgress)
+            throw new AuxError("permission_denied", "Browser authority is not initialized.");
+          return browserEgress.captureCdpAuthority(pageId, lease);
+        })
+      : null;
   let auxRecovery: ConnectionRecovery | undefined;
   const hostCdp = nativeCdp?.endpoint();
   let connectAuxDriver: (() => Promise<void>) | undefined;
@@ -573,7 +610,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let turnMentions!: TurnMentionService;
 
   const pages = new PageService({
-    get turnMentions() { return turnMentions; },
+    get turnMentions() {
+      return turnMentions;
+    },
     repo,
     profileId: env.AUX_BROWSER_PROFILE_ID,
     events,
@@ -587,7 +626,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     safetyGate,
     prepareAgentEgress: (runId, pageId) => browserEgress?.ensure(runId, pageId) ?? Promise.resolve(),
     retireCreatedPage: (runId, pageId) => {
-      if (!browserEgress) throw new AuxError("capability_unsupported", "Authenticated native cleanup is unavailable.");
+      if (!browserEgress)
+        throw new AuxError("capability_unsupported", "Authenticated native cleanup is unavailable.");
       return browserEgress.retireCreatorPage(runId, pageId);
     },
     navigateControlled: (input, registry) => {
@@ -737,40 +777,78 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   mkdirSync(hookScratch, { recursive: true });
   const authorizeHookCommand = (workdir: string, workspaceId: string) => {
     let actual: string;
-    try { actual = realpathSync(workdir); }
-    catch { throw new AuxError("permission_denied", "Hook working folder is unavailable."); }
+    try {
+      actual = realpathSync(workdir);
+    } catch {
+      throw new AuxError("permission_denied", "Hook working folder is unavailable.");
+    }
     if (!workspaceFolders.roots(workspaceId).write.includes(actual))
-      throw new AuxError("permission_denied", "Bind this exact writable folder to the Space before approving a command Hook.");
+      throw new AuxError(
+        "permission_denied",
+        "Bind this exact writable folder to the Space before approving a command Hook.",
+      );
     return actual;
   };
   const hooks = new HookService(repo, (handler, workspaceId) => {
-    if (handler.type === "command") { authorizeHookCommand(handler.workdir, workspaceId); return; }
-    if (handler.type !== "mcp_tool") throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
+    if (handler.type === "command") {
+      authorizeHookCommand(handler.workdir, workspaceId);
+      return;
+    }
+    if (handler.type !== "mcp_tool")
+      throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
     const server = outboundMcp.get(handler.serverId);
     const grant = outboundMcp.getGrant(handler.grantId);
-    if (server.state !== "approved" || server.workspaceId !== workspaceId ||
-      grant.serverId !== handler.serverId || grant.toolName !== handler.toolName ||
-      grant.scope.kind !== "workspace" || grant.scope.workspaceId !== workspaceId ||
-      grant.mode !== "standing" || grant.revokedAt || grant.consumedAt)
-      throw new AuxError("permission_denied", "Approve a standing Space grant for this exact MCP tool first.");
+    if (
+      server.state !== "approved" ||
+      server.workspaceId !== workspaceId ||
+      grant.serverId !== handler.serverId ||
+      grant.toolName !== handler.toolName ||
+      grant.scope.kind !== "workspace" ||
+      grant.scope.workspaceId !== workspaceId ||
+      grant.mode !== "standing" ||
+      grant.revokedAt ||
+      grant.consumedAt
+    )
+      throw new AuxError(
+        "permission_denied",
+        "Approve a standing Space grant for this exact MCP tool first.",
+      );
   });
   const hookExecutor: HookExecutor = async (handler, context, signal) => {
     if (signal.aborted) throw new AuxError("permission_denied", "Hook was revoked.");
     if (handler.type === "command") {
       const workdir = authorizeHookCommand(handler.workdir, context.workspaceId);
-      const seatbelt = new BashSeatbelt({ writableRoots: () => [config.artifactsDir, workdir],
-        readableRoots: () => [workdir], scratchDir: hookScratch,
-        extraDenyRead: () => [config.dataDir, "/private/var/db/dslocal", "/private/var/db/shadow", "/private/etc/sudoers"] });
-      const result = await seatbelt.run({ command: handler.command, workdir, signal },
-        { runId: context.runId ?? `hook:${context.eventId}`, threadId: context.runId ?? context.eventId,
-          turnId: context.eventId });
+      const seatbelt = new BashSeatbelt({
+        writableRoots: () => [config.artifactsDir, workdir],
+        readableRoots: () => [workdir],
+        scratchDir: hookScratch,
+        extraDenyRead: () => [
+          config.dataDir,
+          "/private/var/db/dslocal",
+          "/private/var/db/shadow",
+          "/private/etc/sudoers",
+        ],
+      });
+      const result = await seatbelt.run(
+        { command: handler.command, workdir, signal },
+        {
+          runId: context.runId ?? `hook:${context.eventId}`,
+          threadId: context.runId ?? context.eventId,
+          turnId: context.eventId,
+        },
+      );
       if ("park" in result || result.timedOut || result.exitCode !== 0 || signal.aborted)
         throw new AuxError("step_failed", "Command Hook did not complete successfully.");
       return;
     }
-    if (handler.type !== "mcp_tool") throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
-    const result = await outboundMcp.callTool(handler.grantId, handler.arguments ?? {},
-      { workspaceId: context.workspaceId }, signal);
+    if (handler.type !== "mcp_tool")
+      throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
+    const result = await outboundMcp.callTool(
+      handler.grantId,
+      handler.arguments ?? {},
+      { workspaceId: context.workspaceId },
+      signal,
+    );
     if (signal.aborted || result.status !== "completed" || result.isError)
       throw new AuxError("step_failed", "MCP hook tool did not complete successfully.");
   };
@@ -780,10 +858,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     repo,
     native,
     clientId: loopbackServicesUrl ? "aux-loopback-calendar-client" : env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
-    ...(loopbackServicesUrl ? { endpoints: {
-      auth: `${loopbackServicesUrl}calendar/auth`, token: `${loopbackServicesUrl}calendar/token`,
-      revoke: `${loopbackServicesUrl}calendar/revoke`, calendar: `${loopbackServicesUrl}calendar/v3`,
-    } } : {}),
+    ...(loopbackServicesUrl
+      ? {
+          endpoints: {
+            auth: `${loopbackServicesUrl}calendar/auth`,
+            token: `${loopbackServicesUrl}calendar/token`,
+            revoke: `${loopbackServicesUrl}calendar/revoke`,
+            calendar: `${loopbackServicesUrl}calendar/v3`,
+          },
+        }
+      : {}),
     profileId: env.AUX_BROWSER_PROFILE_ID,
     onChange: () => events.emit("settings.changed", { category: "calendar" }),
   });
@@ -794,7 +878,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     translateSteps,
     durableWrites,
     calendar,
-    authorizeConnector: (runId, connectorId, tool, dispatch) => turnMentions.useConnector(runId, connectorId, tool, dispatch),
+    authorizeConnector: (runId, connectorId, tool, dispatch) =>
+      turnMentions.useConnector(runId, connectorId, tool, dispatch),
     decideEgress,
     grants: () => settings.effectGrants(),
     egressAllowlist: () =>
@@ -819,31 +904,27 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   ) => {
     const run = repo.getRun(ctx.runId);
     const request = EffectRequestSchema.parse({
-        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-        scope: run?.config?.taskId
-          ? { kind: "task", id: run.config.taskId }
-          : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
-        actor: "builtin_agent",
-        effect: "egress",
-        category: "read",
-        action,
-        origin: dest.origin,
-        destination: dest.href.slice(0, 2048),
-        dataClasses: [],
-        provenance: "template",
-        invocationDigest: createHash("sha256")
-          .update(JSON.stringify(["loop.egress", dest.href, action]))
-          .digest("hex"),
-        turnId: ctx.runId,
-        threadId: ctx.threadId,
-        runId: ctx.runId,
-        requestedAt: Date.now(),
-      });
-    const decision = await decide(
-      request,
-      decideDeps,
-      { phase: "dispatch", headless },
-    );
+      profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+      scope: run?.config?.taskId
+        ? { kind: "task", id: run.config.taskId }
+        : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+      actor: "builtin_agent",
+      effect: "egress",
+      category: "read",
+      action,
+      origin: dest.origin,
+      destination: dest.href.slice(0, 2048),
+      dataClasses: [],
+      provenance: "template",
+      invocationDigest: createHash("sha256")
+        .update(JSON.stringify(["loop.egress", dest.href, action]))
+        .digest("hex"),
+      turnId: ctx.runId,
+      threadId: ctx.threadId,
+      runId: ctx.runId,
+      requestedAt: Date.now(),
+    });
+    const decision = await decide(request, decideDeps, { phase: "dispatch", headless });
     if (decision.status === "ask") safetyGate.park(request, request, decision.suspension);
     return decision;
   };
@@ -879,28 +960,24 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   ) => {
     const run = repo.getRun(ctx.runId);
     const request = EffectRequestSchema.parse({
-        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-        scope: run?.config?.taskId
-          ? { kind: "task", id: run.config.taskId }
-          : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
-        actor: "builtin_agent",
-        effect: "external_tool",
-        category: "external_tool",
-        action: input.action,
-        recipient: input.recipient,
-        dataClasses: [],
-        provenance: "template",
-        invocationDigest: createHash("sha256").update(JSON.stringify(input.digestParts)).digest("hex"),
-        turnId: ctx.runId,
-        threadId: ctx.threadId,
-        runId: ctx.runId,
-        requestedAt: Date.now(),
-      });
-    const decision = await decide(
-      request,
-      decideDeps,
-      { phase: "dispatch" },
-    );
+      profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+      scope: run?.config?.taskId
+        ? { kind: "task", id: run.config.taskId }
+        : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+      actor: "builtin_agent",
+      effect: "external_tool",
+      category: "external_tool",
+      action: input.action,
+      recipient: input.recipient,
+      dataClasses: [],
+      provenance: "template",
+      invocationDigest: createHash("sha256").update(JSON.stringify(input.digestParts)).digest("hex"),
+      turnId: ctx.runId,
+      threadId: ctx.threadId,
+      runId: ctx.runId,
+      requestedAt: Date.now(),
+    });
+    const decision = await decide(request, decideDeps, { phase: "dispatch" });
     if (decision.status === "ask") safetyGate.park(request, request, decision.suspension);
     return decision;
   };
@@ -923,7 +1000,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return "allow";
   };
   const agentLoop: AgentLoopHostDeps = {
-    workspaceContext: workspaceId => workspaceFolders.context(workspaceId),
+    workspaceContext: (workspaceId) => workspaceFolders.context(workspaceId),
     webFetch: async (url, ctx) => {
       const gated = await loopEgressGate(ctx, url, "agent.web.fetch");
       if ("park" in gated) return { park: gated.park };
@@ -980,23 +1057,45 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         const run = repo.getRun(ctx.runId);
         const request = EffectRequestSchema.parse({
           profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-          scope: run?.config?.taskId ? { kind: "task", id: run.config.taskId }
+          scope: run?.config?.taskId
+            ? { kind: "task", id: run.config.taskId }
             : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
-          actor: "code_mode", effect: "write", category: "interact", action: "agent.bookmark.add",
-          origin: url.origin, dataClasses: ["none"], provenance: "page",
-          invocationDigest: createHash("sha256").update(JSON.stringify([pageId, url.href, page.title])).digest("hex"),
-          turnId: ctx.runId, threadId: ctx.threadId, runId: ctx.runId, requestedAt: Date.now(),
+          actor: "code_mode",
+          effect: "write",
+          category: "interact",
+          action: "agent.bookmark.add",
+          origin: url.origin,
+          dataClasses: ["none"],
+          provenance: "page",
+          invocationDigest: createHash("sha256")
+            .update(JSON.stringify([pageId, url.href, page.title]))
+            .digest("hex"),
+          turnId: ctx.runId,
+          threadId: ctx.threadId,
+          runId: ctx.runId,
+          requestedAt: Date.now(),
         });
         const decision = await decide(request, decideDeps, { phase: "dispatch" });
         if (decision.status === "deny")
           throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
         if (decision.status === "ask") {
           safetyGate.park(request, request, decision.suspension);
-          return { park: { kind: decision.suspension.kind, instruction: decision.suspension.instruction,
-            ...(decision.suspension.approvalId ? { approvalId: decision.suspension.approvalId } : {}) } };
+          return {
+            park: {
+              kind: decision.suspension.kind,
+              instruction: decision.suspension.instruction,
+              ...(decision.suspension.approvalId ? { approvalId: decision.suspension.approvalId } : {}),
+            },
+          };
         }
-        return { output: await new BrowserBookmarkLedger(repo, native).save(ctx.runId, pageId,
-          url.href, page.title || url.hostname) };
+        return {
+          output: await new BrowserBookmarkLedger(repo, native).save(
+            ctx.runId,
+            pageId,
+            url.href,
+            page.title || url.hostname,
+          ),
+        };
       },
       // Authorize the intended target; native additionally inspects its exact
       // first navigation after blank-page binding without a duplicate prompt.
@@ -1057,8 +1156,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         }
         return outcome;
       },
-      fsRoots: (runId, access) => [config.artifactsDir, config.downloadsDir, config.previewsDir,
-        ...folderRootsForRun(runId, access)],
+      fsRoots: (runId, access) => [
+        config.artifactsDir,
+        config.downloadsDir,
+        config.previewsDir,
+        ...folderRootsForRun(runId, access),
+      ],
       outputDir: config.artifactsDir,
     },
   };
@@ -1070,69 +1173,123 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   if (env.AUX_HOST_SOCKET && env.AUX_BROWSER_PROFILE_ID) {
     browserEgress = new BrowserEgress({
-      runAncestry: runId => runAncestry(repo, runId, true),
+      runAncestry: (runId) => runAncestry(repo, runId, true),
       profileId: env.AUX_BROWSER_PROFILE_ID,
       native,
-      run: runId => {
+      run: (runId) => {
         const run = repo.getRun(runId);
         if (!run || !["queued", "running", "planning", "needs_input"].includes(run.status)) return null;
         if (run.config?.taskId) {
           try {
-            if (new TaskService(repo, events).get(run.config.taskId).revision !== run.config.taskRevision) return null;
-          } catch { return null; }
+            if (new TaskService(repo, events).get(run.config.taskId).revision !== run.config.taskRevision)
+              return null;
+          } catch {
+            return null;
+          }
         }
-        return { taskId: run.config?.taskId, taskRevision: run.config?.taskRevision ?? 0,
-          threadId: run.config?.chatId ?? run.runId };
+        return {
+          taskId: run.config?.taskId,
+          taskRevision: run.config?.taskRevision ?? 0,
+          threadId: run.config?.chatId ?? run.runId,
+        };
       },
-      page: pageId => pages.get(pageId),
+      page: (pageId) => pages.get(pageId),
       ownsPage: (runId, pageId) => pageClaims.activeForPage(pageId)?.runId === runId,
-      audit: (decision, evidence) => safetyAudit.record({ ...decision, ...evidence, kind: "browser_egress", requestKind: evidence.kind, at: Date.now() }),
+      audit: (decision, evidence) =>
+        safetyAudit.record({
+          ...decision,
+          ...evidence,
+          kind: "browser_egress",
+          requestKind: evidence.kind,
+          at: Date.now(),
+        }),
       approve: browserEgressApproval({
-        profileId: env.AUX_BROWSER_PROFILE_ID, decide: decideDeps, suspensions, events,
-        run: runId => repo.getRun(runId),
+        profileId: env.AUX_BROWSER_PROFILE_ID,
+        decide: decideDeps,
+        suspensions,
+        events,
+        run: (runId) => repo.getRun(runId),
         setStatus: (runId, status, message) => runs.coordinator.setStatus(runId, status, message),
       }),
     });
     installBrowserAuthority(repo, browserEgress);
-    channel!.onMethod("egress.request", params => browserEgress!.request(params));
-    events.subscribe(event => {
+    channel!.onMethod("egress.request", (params) => browserEgress!.request(params));
+    events.subscribe((event) => {
       const pageId = typeof event.payload.pageId === "string" ? event.payload.pageId : undefined;
-      if (pageId && [EventTypes.PageRemoved, EventTypes.PageTakeover, EventTypes.PageCrashed].includes(event.type as typeof EventTypes.PageRemoved))
+      if (
+        pageId &&
+        [EventTypes.PageRemoved, EventTypes.PageTakeover, EventTypes.PageCrashed].includes(
+          event.type as typeof EventTypes.PageRemoved,
+        )
+      )
         browserEgress!.revokePage(pageId);
-      if (event.type === EventTypes.PageUpdated && pageId && typeof event.payload.documentEpoch === "number") {
+      if (
+        event.type === EventTypes.PageUpdated &&
+        pageId &&
+        typeof event.payload.documentEpoch === "number"
+      ) {
         browserEgress!.revokePage(pageId);
         const runId = pageClaims.activeForPage(pageId)?.runId;
         if (runId) void browserEgress!.ensure(runId, pageId).catch(() => {});
       }
-      const changedRun = event.type === "run.updated" ? event.payload.run as { runId?: string; status?: string } | undefined : undefined;
+      const changedRun =
+        event.type === "run.updated"
+          ? (event.payload.run as { runId?: string; status?: string } | undefined)
+          : undefined;
       const runId = changedRun?.runId ?? event.runId;
-      const status = changedRun?.status ?? (event.type === EventTypes.RunStatus ? event.payload.status : undefined);
-      if (runId && typeof status === "string" && !["queued", "running", "planning", "needs_input"].includes(status)) {
+      const status =
+        changedRun?.status ?? (event.type === EventTypes.RunStatus ? event.payload.status : undefined);
+      if (
+        runId &&
+        typeof status === "string" &&
+        !["queued", "running", "planning", "needs_input"].includes(status)
+      ) {
         if (status === "paused") browserEgress!.suspendRun(runId);
         else browserEgress!.revokeRun(runId);
       }
     });
   }
   const mentionRoutines = new RoutineService(repo, events);
-  const mentionConnectors = new ConnectorCatalogService({ repo, tasks: new TaskService(repo, events), settings, calendar, mcp: outboundMcp });
+  const mentionConnectors = new ConnectorCatalogService({
+    repo,
+    tasks: new TaskService(repo, events),
+    settings,
+    calendar,
+    mcp: outboundMcp,
+  });
   turnMentions = new TurnMentionService({
-    prepareReadPage: pageId => pages.prepareReadPage(pageId),
-    authorizeRead: (runId, pageId, taskRead) => pages.authorizeAgentRead(runId, pageId, "page.read", taskRead),
-    page: pageId => {
-      try { return pages.get(pageId); }
-      catch (error) { if (error instanceof AuxError && error.code === "not_found") return undefined; throw error; }
+    prepareReadPage: (pageId) => pages.prepareReadPage(pageId),
+    authorizeRead: (runId, pageId, taskRead) =>
+      pages.authorizeAgentRead(runId, pageId, "page.read", taskRead),
+    page: (pageId) => {
+      try {
+        return pages.get(pageId);
+      } catch (error) {
+        if (error instanceof AuxError && error.code === "not_found") return undefined;
+        throw error;
+      }
     },
     organization: async () => {
-      if (!native.organizationSnapshot) throw new AuxError("backend_unavailable", "Profile source authority is unavailable.");
+      if (!native.organizationSnapshot)
+        throw new AuxError("backend_unavailable", "Profile source authority is unavailable.");
       return native.organizationSnapshot();
     },
-    routine: routineId => {
-      try { return mentionRoutines.get(routineId).routine; }
-      catch (error) { if (error instanceof AuxError && error.code === "not_found") return undefined; throw error; }
+    routine: (routineId) => {
+      try {
+        return mentionRoutines.get(routineId).routine;
+      } catch (error) {
+        if (error instanceof AuxError && error.code === "not_found") return undefined;
+        throw error;
+      }
     },
-    connectors: context => {
-      if (!context.workspaceId) throw new AuxError("permission_denied", "Connector mentions require a current Space.");
-      return mentionConnectors.list({ workspaceId: context.workspaceId, taskId: context.taskId, expectedRevision: context.taskRevision });
+    connectors: (context) => {
+      if (!context.workspaceId)
+        throw new AuxError("permission_denied", "Connector mentions require a current Space.");
+      return mentionConnectors.list({
+        workspaceId: context.workspaceId,
+        taskId: context.taskId,
+        expectedRevision: context.taskRevision,
+      });
     },
   });
   let nativePermissions: NativePermissionController | undefined;
@@ -1143,14 +1300,19 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       approvals,
       egress: browserEgress,
       mentions: turnMentions,
-      run: runId => repo.getRun(runId),
-      page: pageId => pages.get(pageId),
-      standingOnly: runId => !!overnightRoot(repo, runId),
-      assertDispatch: async runId => { await checkNightShiftDispatch(repo, runId); budgets.assertWithin({ runId }); },
-      overnightAuthority: runId => nightShiftEffectAuthority(repo, runId),
-      retireReservation: input => native.permissionRetire(input),
-      requiresTurn: (run, pageId) => run.config?.implementation !== "external-agent" ||
-        !!run.config?.mentions?.length || turnMentions.ownedPages(run.runId).includes(pageId),
+      run: (runId) => repo.getRun(runId),
+      page: (pageId) => pages.get(pageId),
+      standingOnly: (runId) => !!overnightRoot(repo, runId),
+      assertDispatch: async (runId) => {
+        await checkNightShiftDispatch(repo, runId);
+        budgets.assertWithin({ runId });
+      },
+      overnightAuthority: (runId) => nightShiftEffectAuthority(repo, runId),
+      retireReservation: (input) => native.permissionRetire(input),
+      requiresTurn: (run, pageId) =>
+        run.config?.implementation !== "external-agent" ||
+        !!run.config?.mentions?.length ||
+        turnMentions.ownedPages(run.runId).includes(pageId),
       sourceCheck: (runId, pageId) => {
         shutdownAdmission.assertOpen();
         const before = repo.getRun(runId);
@@ -1162,16 +1324,28 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           shutdownAdmission.assertOpen();
           const current = repo.getRun(runId);
           const currentClaim = pageClaims.activeForPage(pageId);
-          if (!before || !current || !claim || claim.runId !== runId ||
-              currentClaim?.claimId !== claim.claimId || currentClaim?.runId !== runId ||
-              current.config?.taskId !== taskId || current.config?.taskRevision !== taskRevision ||
-              current.config?.messageRevision !== before.config?.messageRevision ||
-              !["running", "planning", "needs_input"].includes(current.status))
+          if (
+            !before ||
+            !current ||
+            !claim ||
+            claim.runId !== runId ||
+            currentClaim?.claimId !== claim.claimId ||
+            currentClaim?.runId !== runId ||
+            current.config?.taskId !== taskId ||
+            current.config?.taskRevision !== taskRevision ||
+            current.config?.messageRevision !== before.config?.messageRevision ||
+            !["running", "planning", "needs_input"].includes(current.status)
+          )
             throw new AuxError("permission_denied", "This browser permission source claim changed.");
           if (taskId) {
             const currentTask = new TaskService(repo, events).get(taskId);
-            if (!task || task.revision !== taskRevision || currentTask.revision !== taskRevision ||
-                currentTask.state !== "open" || currentTask.sourceOrigin !== task.sourceOrigin)
+            if (
+              !task ||
+              task.revision !== taskRevision ||
+              currentTask.revision !== taskRevision ||
+              currentTask.state !== "open" ||
+              currentTask.sourceOrigin !== task.sourceOrigin
+            )
               throw new AuxError("permission_denied", "This browser permission task approval changed.");
           }
         };
@@ -1180,31 +1354,38 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       },
     });
     installOvernightAuthority(repo, nativePermissions);
-    channel.onMethod("permission.request", params => nativePermissions!.request(params));
-    channel.onMethod("permission.revalidate", params => nativePermissions!.revalidate(params));
-    channel.onMethod("permission.finalize", params => nativePermissions!.finalize(params));
-    channel.onMethod("permission.invalidate", params => {
-      const input = z.object({ batchId: z.string().min(1).max(160) }).strict().parse(params);
+    channel.onMethod("permission.request", (params) => nativePermissions!.request(params));
+    channel.onMethod("permission.revalidate", (params) => nativePermissions!.revalidate(params));
+    channel.onMethod("permission.finalize", (params) => nativePermissions!.finalize(params));
+    channel.onMethod("permission.invalidate", (params) => {
+      const input = z
+        .object({ batchId: z.string().min(1).max(160) })
+        .strict()
+        .parse(params);
       nativePermissions!.invalidate(input.batchId);
       return { batchId: input.batchId, decision: "deny" };
     });
   }
   const safetyAuthority = new SafetyAuthorityRevocation({
     profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-    runScope: runId => {
+    runScope: (runId) => {
       const run = repo.getRun(runId);
       if (!run) return undefined;
-      return run.config?.taskId ? { kind: "task", id: run.config.taskId }
+      return run.config?.taskId
+        ? { kind: "task", id: run.config.taskId }
         : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" };
     },
-    invalidate: matches => {
+    invalidate: (matches) => {
       nativePermissions?.invalidateAuthority(matches);
       return browserEgress ? browserEgress.invalidateAuthority(matches) : Promise.resolve();
     },
   });
   const runs = new RunService({
     turnMentions,
-    taskSource: taskId => { const task = new TaskService(repo, events).get(taskId); return { revision: task.revision, state: task.state, sourceOrigin: task.sourceOrigin }; },
+    taskSource: (taskId) => {
+      const task = new TaskService(repo, events).get(taskId);
+      return { revision: task.revision, state: task.state, sourceOrigin: task.sourceOrigin };
+    },
     repo,
     events,
     pages,
@@ -1226,9 +1407,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     browserEgress,
   });
   const goals = new GoalService(repo, runs, async () => settings.registryModels());
-  const commandEscalations = new CommandEscalationService(repo,
-    (workspaceId, workdir) => workspaceFolders.scopeDigest(workspaceId, workdir));
-  agentLoop.goalUpdate = async (input, ctx) => goals.report(ctx.runId, input.status, input.blocker, ctx.goalTurn);
+  const commandEscalations = new CommandEscalationService(repo, (workspaceId, workdir) =>
+    workspaceFolders.scopeDigest(workspaceId, workdir),
+  );
+  agentLoop.goalUpdate = async (input, ctx) =>
+    goals.report(ctx.runId, input.status, input.blocker, ctx.goalTurn);
   agentLoop.goalBudget = {
     reserve: (runId, request) => goals.reserveModelCall(runId, request),
     settle: (runId, reservationId, attempts) => goals.settleModelCall(runId, reservationId, attempts),
@@ -1276,9 +1459,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const bashScratch = join(config.artifactsDir, "bash-tmp");
   mkdirSync(bashScratch, { recursive: true });
   const bashSeatbelt = new BashSeatbelt({
-    writableRoots: ctx => [config.artifactsDir, config.downloadsDir, config.previewsDir,
-      ...folderRootsForRun(ctx?.runId, "write")],
-    readableRoots: ctx => folderRootsForRun(ctx?.runId, "read"),
+    writableRoots: (ctx) => [
+      config.artifactsDir,
+      config.downloadsDir,
+      config.previewsDir,
+      ...folderRootsForRun(ctx?.runId, "write"),
+    ],
+    readableRoots: (ctx) => folderRootsForRun(ctx?.runId, "read"),
     scratchDir: bashScratch,
     // Reads stay broad for tool usability, minus the runtime data dir (API
     // token, cookies, history DBs) and OS credential stores; /Users is denied
@@ -1299,14 +1486,21 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     escalationGate: async (input, ctx) => {
       const run = repo.getRun(ctx.runId);
       if (!run) throw new AuxError("not_found", "Escalated run does not exist.");
-      return commandEscalations.authorize({ ...input, runId: ctx.runId,
-        workspaceId: run.config?.contextWorkspaceId ?? "default" });
+      return commandEscalations.authorize({
+        ...input,
+        runId: ctx.runId,
+        workspaceId: run.config?.contextWorkspaceId ?? "default",
+      });
     },
     escalationRecheck: ({ workdir, scopeDigest, requestIds }, ctx) => {
       const run = repo.getRun(ctx.runId);
       if (!run) throw new AuxError("not_found", "Escalated run does not exist.");
-      commandEscalations.assertDispatch(run.config?.contextWorkspaceId ?? "default",
-        workdir, scopeDigest, requestIds);
+      commandEscalations.assertDispatch(
+        run.config?.contextWorkspaceId ?? "default",
+        workdir,
+        scopeDigest,
+        requestIds,
+      );
     },
   });
   agentLoop.bash = async (input, ctx) => {
@@ -1345,8 +1539,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       digestParts: ["agent.routine.update", input.routineId, expectedRevision, patch],
     });
     if (gated !== "allow") return gated;
-    if (repo.getRun(ctx.runId)?.config?.messageRevision !== messageRevision ||
-      mentionTurn && turnMentions.capture(ctx.runId) !== mentionTurn)
+    if (
+      repo.getRun(ctx.runId)?.config?.messageRevision !== messageRevision ||
+      (mentionTurn && turnMentions.capture(ctx.runId) !== mentionTurn)
+    )
       throw new AuxError("permission_denied", "This routine update belongs to a replaced person turn.");
     if (mentionTurn) requireMentionedSkill();
     const updated = await invoke(
@@ -1392,7 +1588,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     const pageId = e.payload.pageId;
     const controller = e.payload.controller;
     if (typeof pageId !== "string" || typeof controller !== "string") return;
-    void handlePageTakeover(pageId, controller, repo, runs).catch(error => console.error("[aux-runtime] page takeover retirement failed", error));
+    void handlePageTakeover(pageId, controller, repo, runs).catch((error) =>
+      console.error("[aux-runtime] page takeover retirement failed", error),
+    );
   });
 
   const cookies = new CookieService({ native });
@@ -1471,9 +1669,19 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   );
   if (channel) {
     registerNativeReceiptChannel(channel, repo, () => pages.list());
-    registerNativeSubagentWorkload(channel, { repo, runs, subagents, pages, tasks: new TaskService(repo, events) });
+    registerNativeSubagentWorkload(channel, {
+      repo,
+      runs,
+      subagents,
+      pages,
+      tasks: new TaskService(repo, events),
+    });
     registerNativeSubagentPreparation(channel, { repo, runs, pages, tasks: new TaskService(repo, events) });
-    registerNativeCommandRanking(channel, pages, new CommandRankingStore(repo, services.featureProfileId ?? "default"));
+    registerNativeCommandRanking(
+      channel,
+      pages,
+      new CommandRankingStore(repo, services.featureProfileId ?? "default"),
+    );
   }
   // Native notification/page-change/Calendar adapters submit provenance here;
   // external and scoped API clients cannot mint automation events.
@@ -1503,13 +1711,28 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const calendarScanAbort = new AbortController();
   let calendarScan: Promise<void> | undefined;
   const scanCalendar = () => {
-    if (!calendarAutomationAvailable || calendarScan || calendarScanAbort.signal.aborted || !calendar.list().available) return;
+    if (
+      !calendarAutomationAvailable ||
+      calendarScan ||
+      calendarScanAbort.signal.aborted ||
+      !calendar.list().available
+    )
+      return;
     const watches = pageChangeWatches.calendarWatches();
     if (!watches.length) return;
-    calendarScan = pollCalendarRoutines(watches, calendar, (event) =>
-      invoke("routines.ingestEvent", event, { external: false }), Date.now(), calendarScanAbort.signal)
-      .catch((error) => { if (!calendarScanAbort.signal.aborted) console.error("Calendar automation scan failed", error); })
-      .finally(() => { calendarScan = undefined; });
+    calendarScan = pollCalendarRoutines(
+      watches,
+      calendar,
+      (event) => invoke("routines.ingestEvent", event, { external: false }),
+      Date.now(),
+      calendarScanAbort.signal,
+    )
+      .catch((error) => {
+        if (!calendarScanAbort.signal.aborted) console.error("Calendar automation scan failed", error);
+      })
+      .finally(() => {
+        calendarScan = undefined;
+      });
   };
   void scanCalendar();
   const dueTimer = setInterval(() => {
@@ -1520,16 +1743,22 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   dueTimer.unref?.();
   // forward the event stream so the shell renderer can subscribe over IPC
   events.subscribe((e) => channel?.notify("event", e));
-  if (channel) registerNativeControlChannel(channel, input => {
-    if (!browserEgress || !nativePermissions)
-      throw new AuxError("permission_denied", "Native control retirement is unavailable.");
-    return applyNativePageTakeover(input, {
-      egress: browserEgress, permissions: nativePermissions,
-      page: pageId => pages.get(pageId),
-      takeover: (pageId, runId) => pages.takeoverFromNative(pageId, runId),
-      interrupt: (pageId, runId) => handlePageTakeover(pageId, "human", repo, runs, runId),
-    });
-  }, code => console.error("Native takeover notification failed", code));
+  if (channel)
+    registerNativeControlChannel(
+      channel,
+      (input) => {
+        if (!browserEgress || !nativePermissions)
+          throw new AuxError("permission_denied", "Native control retirement is unavailable.");
+        return applyNativePageTakeover(input, {
+          egress: browserEgress,
+          permissions: nativePermissions,
+          page: (pageId) => pages.get(pageId),
+          takeover: (pageId, runId) => pages.takeoverFromNative(pageId, runId),
+          interrupt: (pageId, runId) => handlePageTakeover(pageId, "human", repo, runs, runId),
+        });
+      },
+      (code) => console.error("Native takeover notification failed", code),
+    );
   channel?.onNotify((type, payload) => {
     const pl = (payload ?? {}) as Record<string, unknown>;
     const str = (v: unknown) => (v === undefined || v === null ? undefined : String(v));
@@ -1622,7 +1851,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let retentionTimer: NodeJS.Timeout;
   const retainWhenIdle = () => {
     if (closed) return;
-    if (repo.db.prepare("SELECT 1 FROM runs WHERE status IN ('queued','planning','running','paused','needs_input') LIMIT 1").get()) {
+    if (
+      repo.db
+        .prepare(
+          "SELECT 1 FROM runs WHERE status IN ('queued','planning','running','paused','needs_input') LIMIT 1",
+        )
+        .get()
+    ) {
       retentionTimer = setTimeout(retainWhenIdle, 5_000);
       retentionTimer.unref();
       return;
@@ -1651,7 +1886,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     contentPruning = true;
     try {
       const pruned = await contentMemory?.prune();
-      for (const workspaceId of pruned?.workspaceIds ?? []) await runs.redactForgottenArticleOutputs(workspaceId);
+      for (const workspaceId of pruned?.workspaceIds ?? [])
+        await runs.redactForgottenArticleOutputs(workspaceId);
       if (pruned?.workspaceIds.length) privacyCheckpoint.request();
     } catch (error) {
       console.error("Page-content memory cleanup failed", error);
@@ -1659,7 +1895,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       contentPruning = false;
     }
   };
-  const contentExpiry = setInterval(() => { void pruneContent(); }, 60_000);
+  const contentExpiry = setInterval(() => {
+    void pruneContent();
+  }, 60_000);
   memoryExpiry.unref();
   contentExpiry.unref();
   const shutdown = runtimeShutdown({
@@ -1675,35 +1913,99 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       process.off("uncaughtException", onUncaughtException);
     },
     retireAuthority: () => withRunAuthorityMutation(repo, async () => {}),
-    closeEgress: () => { browserEgress?.close(); },
-    disconnectAuthority: () => { hostSocket?.close(); },
+    closeEgress: () => {
+      browserEgress?.close();
+    },
+    disconnectAuthority: () => {
+      hostSocket?.close();
+    },
     stopMessages: () => runs.messages.stop(),
     markInterrupted: () => runs.coordinator.markInterrupted(),
     stopFeatures,
     reportFailure: (stage, error) => {
       console.error(`[aux-runtime] shutdown ${stage} failed:`, error);
-      safetyAudit.record({ kind: "runtime_shutdown", action: stage, status: "refused", reason: "Shutdown boundary was not acknowledged.", at: Date.now() });
+      safetyAudit.record({
+        kind: "runtime_shutdown",
+        action: stage,
+        status: "refused",
+        reason: "Shutdown boundary was not acknowledged.",
+        at: Date.now(),
+      });
     },
     cleanup: [
       { stage: "calendar-scan", run: () => calendarScan },
-      { stage: "content-memory", run: () => { contentMemory?.close(); } },
+      {
+        stage: "content-memory",
+        run: () => {
+          contentMemory?.close();
+        },
+      },
       { stage: "api", run: () => api.close() },
       { stage: "invocations", run: () => invoke.dispose() },
-      { stage: "aux-recovery", run: async () => { await auxRecovery?.stop(); } },
-      { stage: "aux-driver", run: async () => { await drivers.aux?.disconnect(); } },
-      { stage: "chrome-driver", run: async () => { await drivers.chrome?.disconnect(); } },
-      { stage: "native-cdp", run: async () => { await nativeCdp?.close(); } },
+      {
+        stage: "aux-recovery",
+        run: async () => {
+          await auxRecovery?.stop();
+        },
+      },
+      {
+        stage: "aux-driver",
+        run: async () => {
+          await drivers.aux?.disconnect();
+        },
+      },
+      {
+        stage: "chrome-driver",
+        run: async () => {
+          await drivers.chrome?.disconnect();
+        },
+      },
+      {
+        stage: "native-cdp",
+        run: async () => {
+          await nativeCdp?.close();
+        },
+      },
       { stage: "calendar", run: () => calendar.close() },
-      { stage: "mcp-oauth", run: () => { mcpOAuth.close(); } },
+      {
+        stage: "mcp-oauth",
+        run: () => {
+          mcpOAuth.close();
+        },
+      },
       { stage: "run-hooks", run: stopRunEndHooks },
-      { stage: "host-socket", run: () => { hostSocket?.close(); } },
-      { stage: "tracer", run: () => { tracer.close(); } },
+      {
+        stage: "host-socket",
+        run: () => {
+          hostSocket?.close();
+        },
+      },
+      {
+        stage: "tracer",
+        run: () => {
+          tracer.close();
+        },
+      },
       { stage: "privacy-checkpoint", run: () => privacyCheckpoint.close() },
       { stage: "repository", run: () => repo.close() },
     ],
   });
-  process.on("SIGTERM", () => void shutdown().then(() => process.exit(0), () => process.exit(1)));
-  process.on("SIGINT", () => void shutdown().then(() => process.exit(0), () => process.exit(1)));
+  process.on(
+    "SIGTERM",
+    () =>
+      void shutdown().then(
+        () => process.exit(0),
+        () => process.exit(1),
+      ),
+  );
+  process.on(
+    "SIGINT",
+    () =>
+      void shutdown().then(
+        () => process.exit(0),
+        () => process.exit(1),
+      ),
+  );
 
   // Process-level faults (P1-10). Node would otherwise exit on an unhandled
   // rejection, taking every tab and run with it and leaving runs 'running'
@@ -1734,14 +2036,21 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     } catch {
       /* best effort */
     }
-    void shutdown().then(() => process.exit(1), () => process.exit(1));
+    void shutdown().then(
+      () => process.exit(1),
+      () => process.exit(1),
+    );
   };
   process.on("unhandledRejection", onUnhandledRejection);
   process.on("uncaughtException", onUncaughtException);
   // The native host owns this helper. A closed authenticated socket means its
   // owner has exited; finish the journal and release the Profile database.
   hostSocket?.onClose?.(() => {
-    if (!closed) void shutdown().then(() => process.exit(0), () => process.exit(1));
+    if (!closed)
+      void shutdown().then(
+        () => process.exit(0),
+        () => process.exit(1),
+      );
   });
 
   // recover from an unclean stop: anything still "live" never completed.

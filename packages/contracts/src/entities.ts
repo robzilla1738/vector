@@ -23,7 +23,10 @@ export const PageTargetSchema = z.object({
   pageId: z.string(),
   anchor: z.boolean().optional(),
   windowKind: WindowKindSchema.optional(),
-  split: z.object({ id: z.string().min(1), index: z.number().int().min(0).max(1) }).strict().optional(),
+  split: z
+    .object({ id: z.string().min(1), index: z.number().int().min(0).max(1) })
+    .strict()
+    .optional(),
   /** Durable owner for human tabs; worker/borrowed pages may omit it. */
   windowId: z.string().min(1).optional(),
   backend: BackendSchema,
@@ -31,7 +34,10 @@ export const PageTargetSchema = z.object({
   sessionId: z.string().optional(),
   url: z.string(),
   title: z.string(),
-  themeColor: z.string().regex(/^#[0-9a-f]{6}$/).optional(),
+  themeColor: z
+    .string()
+    .regex(/^#[0-9a-f]{6}$/)
+    .optional(),
   /** A site-created blank document must remain visible instead of showing the new-tab surface. */
   showBlankDocument: z.boolean().optional(),
   favicon: z.string().optional(),
@@ -54,20 +60,25 @@ export const PageTargetSchema = z.object({
   canGoBack: z.boolean().optional(),
   canGoForward: z.boolean().optional(),
   error: z.string().optional(),
-  navigationError: z.object({ url: z.string(), code: z.number(), message: z.string(), upgradedFrom: z.string().optional() }).nullable().optional(),
+  navigationError: z
+    .object({ url: z.string(), code: z.number(), message: z.string(), upgradedFrom: z.string().optional() })
+    .nullable()
+    .optional(),
   /** Why this page was placed on its backend — e.g. `explicit-backend:<b>`. */
   routeReason: z.string().optional(),
 });
 export type PageTarget = z.infer<typeof PageTargetSchema>;
 
 /** A user-selected live page at the moment it was attached to a conversation. */
-export const PageContextRefSchema = z.object({
-  pageId: z.string().min(1).max(200),
-  url: z.string().min(1).max(8192),
-  documentEpoch: z.number().int().nonnegative(),
-  sessionId: z.string().max(200).optional(),
-  selectedAt: z.number().int().nonnegative().optional(),
-}).strict();
+export const PageContextRefSchema = z
+  .object({
+    pageId: z.string().min(1).max(200),
+    url: z.string().min(1).max(8192),
+    documentEpoch: z.number().int().nonnegative(),
+    sessionId: z.string().max(200).optional(),
+    selectedAt: z.number().int().nonnegative().optional(),
+  })
+  .strict();
 export type PageContextRef = z.infer<typeof PageContextRefSchema>;
 
 /** Metadata captured for one completed page response. Response bodies stay in the artifact store. */
@@ -107,7 +118,19 @@ export const RunStatusSchema = z.enum([
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
 export const RunFailureSchema = z.object({
-  category: z.enum(["configuration", "authentication", "quota", "rate_limit", "network", "timeout", "provider", "model_output", "capability", "permission", "unknown"]),
+  category: z.enum([
+    "configuration",
+    "authentication",
+    "quota",
+    "rate_limit",
+    "network",
+    "timeout",
+    "provider",
+    "model_output",
+    "capability",
+    "permission",
+    "unknown",
+  ]),
   /** Safe, user-facing summary. Provider response bodies are never stored here. */
   message: z.string(),
   retryable: z.boolean(),
@@ -156,7 +179,9 @@ export const RunSchema = z.object({
       /** IDs of removed generated artifacts, retained only to revoke later dependent turns. */
       revokedArtifactIds: z.array(z.string()).optional(),
       /** URL-only source receipts; these confer no restored native isolation authority. */
-      isolatedPageSources: z.array(z.object({ sourcePageId: z.string(), pageId: z.string(), url: z.string() }).strict()).optional(),
+      isolatedPageSources: z
+        .array(z.object({ sourcePageId: z.string(), pageId: z.string(), url: z.string() }).strict())
+        .optional(),
       /** Live pages explicitly selected for this turn; their identity was checked before launch. */
       contextPageRefs: z.array(PageContextRefSchema).max(9).optional(),
       mentions: MentionRefsSchema.optional(),
@@ -215,24 +240,26 @@ export const RunSchema = z.object({
 });
 export type Run = z.infer<typeof RunSchema>;
 
-export const RunMessageSchema = z.object({
-  messageId: z.string().min(1),
-  chatId: z.string().min(1),
-  targetRunId: z.string().min(1),
-  deliveryRunId: z.string().min(1),
-  mode: z.enum(["queue", "steer"]),
-  status: z.enum(["accepted", "delivering", "delivered", "needs_attention", "cancelled"]),
-  text: z.string().min(1).max(20_000),
-  pageIds: z.array(z.string().min(1)).max(9),
-  contextPageRefs: z.array(PageContextRefSchema).max(9),
-  mentions: MentionRefsSchema.optional(),
-  expectedRevision: z.number().int().nonnegative(),
-  /** This message supersedes an earlier message id (resend nonce chain). */
-  resendsNonce: z.string().min(1).optional(),
-  error: z.string().optional(),
-  createdAt: z.number().int().nonnegative(),
-  updatedAt: z.number().int().nonnegative(),
-}).strict();
+export const RunMessageSchema = z
+  .object({
+    messageId: z.string().min(1),
+    chatId: z.string().min(1),
+    targetRunId: z.string().min(1),
+    deliveryRunId: z.string().min(1),
+    mode: z.enum(["queue", "steer"]),
+    status: z.enum(["accepted", "delivering", "delivered", "needs_attention", "cancelled"]),
+    text: z.string().min(1).max(20_000),
+    pageIds: z.array(z.string().min(1)).max(9),
+    contextPageRefs: z.array(PageContextRefSchema).max(9),
+    mentions: MentionRefsSchema.optional(),
+    expectedRevision: z.number().int().nonnegative(),
+    /** This message supersedes an earlier message id (resend nonce chain). */
+    resendsNonce: z.string().min(1).optional(),
+    error: z.string().optional(),
+    createdAt: z.number().int().nonnegative(),
+    updatedAt: z.number().int().nonnegative(),
+  })
+  .strict();
 export type RunMessage = z.infer<typeof RunMessageSchema>;
 
 export const ConversationSummarySchema = z.object({
@@ -370,7 +397,10 @@ export type HistoryEntry = z.infer<typeof HistoryEntrySchema>;
 export const BookmarkFolderPathSchema = z.array(z.string().trim().min(1).max(200)).max(32);
 export const BookmarkSchema = z.object({
   /** Chromium BookmarkModel node identity, when available. */
-  nodeId: z.string().regex(/^[1-9]\d{0,18}$/).optional(),
+  nodeId: z
+    .string()
+    .regex(/^[1-9]\d{0,18}$/)
+    .optional(),
   folderPath: BookmarkFolderPathSchema.optional(),
   url: z.string(),
   title: z.string(),
@@ -407,7 +437,9 @@ export const DownloadSchema = z.object({
 export type Download = z.infer<typeof DownloadSchema>;
 
 export const PageQuickActionSchema = z.object({
-  pageId: z.string(), url: z.string(), title: z.string(),
+  pageId: z.string(),
+  url: z.string(),
+  title: z.string(),
   /** Routes a browser-originated menu action to its owning Aux window. */
   windowId: z.string().optional(),
   /** Main-frame URL at the moment the browser menu captured the selection. */
@@ -418,13 +450,16 @@ export const PageQuickActionSchema = z.object({
   sessionId: z.string().min(1).max(200).optional(),
   selectionActionId: z.string().min(1).max(80).optional(),
   action: z.enum(["ask", "explain", "summarize", "remember", "image"]),
-  selection: z.string().max(12000), truncated: z.boolean(),
+  selection: z.string().max(12000),
+  truncated: z.boolean(),
   /** Present only for image actions — a PNG snapshot captured from the page, or a capture error. */
-  image: z.object({
-    dataUrl: z.string().max(4_500_000).optional(),
-    srcURL: z.string().max(4096).optional(),
-    altText: z.string().max(600).optional(),
-    captureError: z.string().max(500).optional(),
-  }).optional(),
+  image: z
+    .object({
+      dataUrl: z.string().max(4_500_000).optional(),
+      srcURL: z.string().max(4096).optional(),
+      altText: z.string().max(600).optional(),
+      captureError: z.string().max(500).optional(),
+    })
+    .optional(),
 });
 export type PageQuickAction = z.infer<typeof PageQuickActionSchema>;

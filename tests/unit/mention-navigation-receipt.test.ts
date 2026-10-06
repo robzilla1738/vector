@@ -2,7 +2,17 @@ import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import { PlaywrightDriverPage, RefRegistry } from "@aux/chromium-driver";
 
-function fixture(options: { replace?: boolean; noLoader?: boolean; wrongFrame?: boolean; replaceAfterTree?: boolean; replaceDuringDetach?: boolean; hangCommand?: boolean; overflow?: boolean } = {}) {
+function fixture(
+  options: {
+    replace?: boolean;
+    noLoader?: boolean;
+    wrongFrame?: boolean;
+    replaceAfterTree?: boolean;
+    replaceDuringDetach?: boolean;
+    hangCommand?: boolean;
+    overflow?: boolean;
+  } = {},
+) {
   const frame = { url: () => "https://example.test/next" };
   const page = Object.assign(new EventEmitter(), {
     mainFrame: () => frame,
@@ -14,13 +24,19 @@ function fixture(options: { replace?: boolean; noLoader?: boolean; wrongFrame?: 
     detach: vi.fn(async () => {
       if (options.replaceDuringDetach) {
         page.emit("framenavigated", frame);
-        session.emit("Page.frameNavigated", { frame: { id: "main", loaderId: "human-loader", url: frame.url() } });
+        session.emit("Page.frameNavigated", {
+          frame: { id: "main", loaderId: "human-loader", url: frame.url() },
+        });
       }
     }),
     send: vi.fn(async (method: string) => {
       if (method === "Page.navigate") {
         if (options.hangCommand) await new Promise(() => {});
-        if (options.overflow) for (let index = 0; index < 9; index++) session.emit("Page.frameNavigated", { frame: { id: "main", loaderId: `early-${index}`, url: frame.url() } });
+        if (options.overflow)
+          for (let index = 0; index < 9; index++)
+            session.emit("Page.frameNavigated", {
+              frame: { id: "main", loaderId: `early-${index}`, url: frame.url() },
+            });
         page.emit("framenavigated", frame);
         // Deliberately before the ack to exercise the real producer's event buffer.
         session.emit("Page.frameNavigated", {
@@ -29,11 +45,22 @@ function fixture(options: { replace?: boolean; noLoader?: boolean; wrongFrame?: 
         return { frameId: "main", ...(options.noLoader ? {} : { loaderId: "command-loader" }) };
       }
       if (method === "Page.getFrameTree") {
-        const tree = { frameTree: { frame: { id: "main", loaderId: options.replace ? "human-loader" : "command-loader", url: frame.url() } } };
-        if (options.replaceAfterTree) queueMicrotask(() => {
-          page.emit("framenavigated", frame);
-          session.emit("Page.frameNavigated", { frame: { id: "main", loaderId: "human-loader", url: frame.url() } });
-        });
+        const tree = {
+          frameTree: {
+            frame: {
+              id: "main",
+              loaderId: options.replace ? "human-loader" : "command-loader",
+              url: frame.url(),
+            },
+          },
+        };
+        if (options.replaceAfterTree)
+          queueMicrotask(() => {
+            page.emit("framenavigated", frame);
+            session.emit("Page.frameNavigated", {
+              frame: { id: "main", loaderId: "human-loader", url: frame.url() },
+            });
+          });
         return tree;
       }
       return {};
@@ -80,14 +107,21 @@ describe("command-owned navigation receipts", () => {
   });
   it("refuses a command commit for another frame and closes the session", async () => {
     const f = fixture({ wrongFrame: true });
-    await expect(f.driver.navigateWithReceipt("https://example.test/next", 5)).rejects.toMatchObject({ code: "ref_stale" });
+    await expect(f.driver.navigateWithReceipt("https://example.test/next", 5)).rejects.toMatchObject({
+      code: "ref_stale",
+    });
     expect(f.session.detach).toHaveBeenCalledOnce();
   });
-  it.each(["replaceAfterTree", "replaceDuringDetach"] as const)("rejects same-URL replacement at %s instead of borrowing its new epoch", async option => {
-    const f = fixture({ [option]: true });
-    await expect(f.driver.navigateWithReceipt("https://example.test/next")).rejects.toThrow(/replaced|changed/);
-    expect(f.session.detach).toHaveBeenCalledOnce();
-  });
+  it.each(["replaceAfterTree", "replaceDuringDetach"] as const)(
+    "rejects same-URL replacement at %s instead of borrowing its new epoch",
+    async (option) => {
+      const f = fixture({ [option]: true });
+      await expect(f.driver.navigateWithReceipt("https://example.test/next")).rejects.toThrow(
+        /replaced|changed/,
+      );
+      expect(f.session.detach).toHaveBeenCalledOnce();
+    },
+  );
   it("bounds an unanswered navigation command and still closes the session", async () => {
     const f = fixture({ hangCommand: true });
     await expect(f.driver.navigateWithReceipt("https://example.test/next", 5)).rejects.toThrow(/deadline/);
@@ -98,5 +132,4 @@ describe("command-owned navigation receipts", () => {
     await expect(f.driver.navigateWithReceipt("https://example.test/next")).rejects.toThrow(/Too many/);
     expect(f.session.detach).toHaveBeenCalledOnce();
   });
-
 });

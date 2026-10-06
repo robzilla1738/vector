@@ -27,12 +27,18 @@ type NoteHandler = (type: string, payload: unknown) => void;
 
 export class RpcChannel {
   private nextId = 1;
-  private pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }>();
+  private pending = new Map<
+    number,
+    { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }
+  >();
   private handlers = new Map<string, Handler>();
   private noteHandlers: NoteHandler[] = [];
   private closed = false;
 
-  constructor(private transport: Transport, private label = "rpc") {
+  constructor(
+    private transport: Transport,
+    private label = "rpc",
+  ) {
     transport.onMessage((msg) => void this.onFrame(msg as Frame));
     transport.onClose?.(() => this.onClose());
   }
@@ -46,7 +52,8 @@ export class RpcChannel {
   }
 
   call<T = unknown>(method: string, params?: unknown, timeoutMs = 30_000): Promise<T> {
-    if (this.closed) return Promise.reject(new AuxError("backend_unavailable", `${this.label}: channel closed`));
+    if (this.closed)
+      return Promise.reject(new AuxError("backend_unavailable", `${this.label}: channel closed`));
     const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {

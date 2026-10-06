@@ -12,7 +12,11 @@ import {
   stageRuntimeRestore,
   stageListedRuntimeRestore,
 } from "../../services/runtime-backup.js";
-import { exportRecoveryPackage, inspectRecoveryPackage, stageRecoveryPackage } from "../../services/recovery-package.js";
+import {
+  exportRecoveryPackage,
+  inspectRecoveryPackage,
+  stageRecoveryPackage,
+} from "../../services/recovery-package.js";
 
 async function h_installation_createBackup(ctx: MethodCtx): Promise<unknown> {
   const { client, s } = ctx;
@@ -53,7 +57,12 @@ async function h_installation_stageListedRestore(ctx: MethodCtx): Promise<unknow
   const { client, params, s } = ctx;
   if (client.external || client.codeMode)
     throw new AuxError("permission_denied", "Restore the reviewed managed backup from Aux settings.");
-  return stageListedRuntimeRestore(s.settings.all().dataDir, params.name, params.expectedSha256, s.repo.columnCipher);
+  return stageListedRuntimeRestore(
+    s.settings.all().dataDir,
+    params.name,
+    params.expectedSha256,
+    s.repo.columnCipher,
+  );
 }
 async function h_installation_cancelRestore(ctx: MethodCtx): Promise<unknown> {
   const { client, s } = ctx;
@@ -69,20 +78,35 @@ async function h_installation_restoreStatus(ctx: MethodCtx): Promise<unknown> {
 async function h_installation_exportRecovery(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
   if (client.external || !s.native || !s.featureProfileId)
-    throw new AuxError("permission_denied", "Protected recovery is available only in the current Aux Profile.");
+    throw new AuxError(
+      "permission_denied",
+      "Protected recovery is available only in the current Aux Profile.",
+    );
   return exportRecoveryPackage(s.repo, s.native, s.settings.all().dataDir, s.featureProfileId, params.phrase);
 }
 async function h_installation_inspectRecovery(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
-  if (client.external || !s.featureProfileId) throw new AuxError("permission_denied", "Review recovery in Aux settings.");
+  if (client.external || !s.featureProfileId)
+    throw new AuxError("permission_denied", "Review recovery in Aux settings.");
   return inspectRecoveryPackage(params.path, params.phrase, s.featureProfileId);
 }
 async function h_installation_stageRecovery(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
   if (client.external || !s.native || !s.featureProfileId)
-    throw new AuxError("permission_denied", "Protected recovery is available only in the current Aux Profile.");
-  return stageRecoveryPackage(s.repo, s.native, s.settings.all().dataDir, s.featureProfileId,
-    params.path, params.phrase, params.expectedSha256, params.reviewToken);
+    throw new AuxError(
+      "permission_denied",
+      "Protected recovery is available only in the current Aux Profile.",
+    );
+  return stageRecoveryPackage(
+    s.repo,
+    s.native,
+    s.settings.all().dataDir,
+    s.featureProfileId,
+    params.path,
+    params.phrase,
+    params.expectedSha256,
+    params.reviewToken,
+  );
 }
 
 export const installationMethods: Partial<Record<MethodName, MethodHandler>> = {

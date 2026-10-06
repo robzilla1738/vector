@@ -6,7 +6,13 @@ const noPage = { hasPage: false, searchEngine: "https://duckduckgo.com/?q=%s" };
 
 describe("command bar intent — URLs navigate", () => {
   it("routes full URLs and bare domains to navigate, never the model", () => {
-    for (const v of ["https://example.com/path", "example.com", "localhost:4810/records", "127.0.0.1:3000", "docs.stripe.com/api"]) {
+    for (const v of [
+      "https://example.com/path",
+      "example.com",
+      "localhost:4810/records",
+      "127.0.0.1:3000",
+      "docs.stripe.com/api",
+    ]) {
       const i = detectIntent(v, ctx);
       expect(i.kind).toBe("navigate");
     }
@@ -17,7 +23,10 @@ describe("command bar intent — URLs navigate", () => {
 
   it("keeps about:/file:/view-source: schemes intact", () => {
     expect(detectIntent("about:blank", ctx)).toMatchObject({ kind: "navigate", url: "about:blank" });
-    expect(detectIntent("file:///tmp/x.html", ctx)).toMatchObject({ kind: "navigate", url: "file:///tmp/x.html" });
+    expect(detectIntent("file:///tmp/x.html", ctx)).toMatchObject({
+      kind: "navigate",
+      url: "file:///tmp/x.html",
+    });
     expect(detectIntent("view-source:https://a.com", ctx)).toMatchObject({ kind: "navigate" });
     expect(detectIntent("data:text/html,<b>x</b>", ctx)).toMatchObject({ kind: "navigate" });
     expect(detectIntent("chrome://version", ctx)).toMatchObject({ kind: "navigate" });
@@ -25,8 +34,15 @@ describe("command bar intent — URLs navigate", () => {
 
   it("classifies domain-like text, IPs, ports and IPv6 as navigation", () => {
     for (const v of [
-      "node.js", "docs.stripe.com/api?q=1", "localhost:8080", "192.168.1.1:8443/admin",
-      "[::1]:3000", "[2001:db8::1]/x", "münchen.de", "例え.jp", "xn--nxasmq6b.example",
+      "node.js",
+      "docs.stripe.com/api?q=1",
+      "localhost:8080",
+      "192.168.1.1:8443/admin",
+      "[::1]:3000",
+      "[2001:db8::1]/x",
+      "münchen.de",
+      "例え.jp",
+      "xn--nxasmq6b.example",
     ]) {
       expect(detectIntent(v, ctx).kind).toBe("navigate");
     }
@@ -35,8 +51,14 @@ describe("command bar intent — URLs navigate", () => {
 
   it("keeps ambiguous punctuation and non-English phrases as searches", () => {
     for (const v of [
-      "c++ move semantics", "a,b testing", "version 1.2 notes",
-      "qué tiempo hace", "今日の天気", "café menu", "(defun foo)", "100%",
+      "c++ move semantics",
+      "a,b testing",
+      "version 1.2 notes",
+      "qué tiempo hace",
+      "今日の天気",
+      "café menu",
+      "(defun foo)",
+      "100%",
     ]) {
       expect(detectIntent(v, ctx).kind).toBe("search");
     }
@@ -44,7 +66,8 @@ describe("command bar intent — URLs navigate", () => {
 
   it("pastes URLs verbatim — no re-encoding, no search detour", () => {
     expect(detectIntent("https://example.com/a%20b?x=1&y=2#frag", ctx)).toMatchObject({
-      kind: "navigate", url: "https://example.com/a%20b?x=1&y=2#frag",
+      kind: "navigate",
+      url: "https://example.com/a%20b?x=1&y=2#frag",
     });
   });
 });
@@ -52,13 +75,24 @@ describe("command bar intent — URLs navigate", () => {
 describe("command bar intent — keyword engines", () => {
   it("`kw terms` routes to that engine's search with its name on the chip", () => {
     const i = detectIntent("gh aux browser", ctx);
-    expect(i).toMatchObject({ kind: "search", engine: "GitHub", query: "aux browser", url: "https://github.com/search?q=aux%20browser" });
+    expect(i).toMatchObject({
+      kind: "search",
+      engine: "GitHub",
+      query: "aux browser",
+      url: "https://github.com/search?q=aux%20browser",
+    });
     expect(intentLabel(i)).toBe("GitHub");
   });
 
   it("user engines from settings override built-ins", () => {
-    const withCustom = { ...ctx, searchEngines: [{ keyword: "gh", name: "GHE", template: "https://ghe.corp/search?q=%s" }] };
-    expect(detectIntent("gh thing", withCustom)).toMatchObject({ engine: "GHE", url: "https://ghe.corp/search?q=thing" });
+    const withCustom = {
+      ...ctx,
+      searchEngines: [{ keyword: "gh", name: "GHE", template: "https://ghe.corp/search?q=%s" }],
+    };
+    expect(detectIntent("gh thing", withCustom)).toMatchObject({
+      engine: "GHE",
+      url: "https://ghe.corp/search?q=thing",
+    });
   });
 
   it("a bare keyword or unknown keyword stays a normal search", () => {
@@ -70,27 +104,43 @@ describe("command bar intent — keyword engines", () => {
 describe("command bar intent — search", () => {
   it("sends short noun phrases and questions to the search engine", () => {
     expect(detectIntent("open source browsers", ctx).kind).toBe("search");
-    expect(detectIntent("what is a page set", ctx)).toMatchObject({ kind: "run", goal: "what is a page set" });
+    expect(detectIntent("what is a page set", ctx)).toMatchObject({
+      kind: "run",
+      goal: "what is a page set",
+    });
     expect(detectIntent("weather tomorrow?", ctx).kind).toBe("search");
   });
 
   it("? forces search and strips the marker", () => {
-    expect(detectIntent("?summarise this page", ctx)).toMatchObject({ kind: "search", query: "summarise this page" });
+    expect(detectIntent("?summarise this page", ctx)).toMatchObject({
+      kind: "search",
+      query: "summarise this page",
+    });
   });
 
   it("'search for X' is a search, not a run", () => {
-    expect(detectIntent("search for aux browser", ctx)).toMatchObject({ kind: "search", query: "search for aux browser" });
-    expect(detectIntent("look up ResizeObserver", ctx)).toMatchObject({ kind: "search", query: "look up ResizeObserver" });
+    expect(detectIntent("search for aux browser", ctx)).toMatchObject({
+      kind: "search",
+      query: "search for aux browser",
+    });
+    expect(detectIntent("look up ResizeObserver", ctx)).toMatchObject({
+      kind: "search",
+      query: "look up ResizeObserver",
+    });
   });
 });
 
 describe("command bar intent — agent runs", () => {
   it("routes interrogatives and long prompts locally, with explicit preferences", () => {
-    for (const text of ["summarise the review comments", "book a table for two tonight", ]) {
-      for (const context of [ctx, noPage]) expect(detectIntent(text, context)).toMatchObject({ kind: "search", query: text });
+    for (const text of ["summarise the review comments", "book a table for two tonight"]) {
+      for (const context of [ctx, noPage])
+        expect(detectIntent(text, context)).toMatchObject({ kind: "search", query: text });
     }
     expect(detectIntent("what does this page say about refunds?", ctx).kind).toBe("run");
-    expect(detectIntent("one two three four five six seven eight", noPage)).toMatchObject({ kind: "run", scope: "new" });
+    expect(detectIntent("one two three four five six seven eight", noPage)).toMatchObject({
+      kind: "run",
+      scope: "new",
+    });
     expect(detectIntent("what is this", { ...ctx, routing: "prefer-search" }).kind).toBe("search");
     expect(detectIntent("short phrase", { ...ctx, routing: "prefer-chat" }).kind).toBe("run");
     expect(detectIntent("https://example.com", { ...ctx, routing: "prefer-chat" }).kind).toBe("navigate");
@@ -121,12 +171,20 @@ describe("intent chip labels", () => {
 it("opens the breaker only after three recent failures and expires after ten minutes", () => {
   let now = 0;
   const breaker = new AskCircuitBreaker(() => now);
-  breaker.failed(); breaker.failed(); expect(breaker.unavailable()).toBe(false);
-  breaker.failed(); expect(breaker.unavailable()).toBe(true);
-  now = 600_000; expect(breaker.unavailable()).toBe(false);
-  breaker.failed(); now += 600_001; breaker.failed(); breaker.failed();
+  breaker.failed();
+  breaker.failed();
+  expect(breaker.unavailable()).toBe(false);
+  breaker.failed();
+  expect(breaker.unavailable()).toBe(true);
+  now = 600_000;
+  expect(breaker.unavailable()).toBe(false);
+  breaker.failed();
+  now += 600_001;
+  breaker.failed();
+  breaker.failed();
   expect(breaker.unavailable()).toBe(false);
   expect(breaker.flipped("search")).toBe(false);
   expect(breaker.flipped("search")).toBe(true);
-  breaker.flipped("ask"); expect(breaker.flipped("search")).toBe(false);
+  breaker.flipped("ask");
+  expect(breaker.flipped("search")).toBe(false);
 });

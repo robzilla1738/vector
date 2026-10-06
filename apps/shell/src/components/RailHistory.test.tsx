@@ -11,7 +11,13 @@ import { RailHistory } from "./RailHistory";
 it("keeps live and recent sections in sync as a run completes", async () => {
   const original = useStore.getState();
   const live = makeRun({ runId: "live", goal: "Live fixture", pageIds: [], createdAt: 200 });
-  const past = makeRun({ runId: "past", goal: "Past fixture", status: "completed", pageIds: [], createdAt: 100 });
+  const past = makeRun({
+    runId: "past",
+    goal: "Past fixture",
+    status: "completed",
+    pageIds: [],
+    createdAt: 100,
+  });
   useStore.setState({ runs: [live, past], sets: [], members: [] });
   const host = document.createElement("div");
   document.body.append(host);

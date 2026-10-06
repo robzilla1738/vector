@@ -7,9 +7,7 @@ import { z } from "zod";
  */
 export const SelectorStrategySchema = z.object({
   /** e.g. role=button[name="Save"] — preferred when available. */
-  role: z
-    .object({ role: z.string(), name: z.string().optional() })
-    .optional(),
+  role: z.object({ role: z.string(), name: z.string().optional() }).optional(),
   testId: z.string().optional(),
   label: z.string().optional(),
   exact: z.boolean().optional(),
@@ -63,9 +61,7 @@ export const ElementRefSchema = z.object({
   description: z.string().optional(),
   /** expanded state names (Full only, engine) */
   states: z.array(z.string()).optional(),
-  rect: z
-    .object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() })
-    .optional(),
+  rect: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
   selector: SelectorStrategySchema.default({}),
 });
 export type ElementRef = z.infer<typeof ElementRefSchema>;

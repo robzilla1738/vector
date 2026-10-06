@@ -5,9 +5,11 @@ export function browserLinkUrl(value: string): string {
   try {
     const url = new URL(value);
     return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password ? url.href : "";
-  } catch { return ""; }
+  } catch {
+    return "";
+  }
 }
-export function backgroundLink(event: {metaKey: boolean; ctrlKey: boolean; button: number}) {
+export function backgroundLink(event: { metaKey: boolean; ctrlKey: boolean; button: number }) {
   return event.metaKey || event.ctrlKey || event.button === 1;
 }
 export async function openBrowserLink(value: string, background = false) {

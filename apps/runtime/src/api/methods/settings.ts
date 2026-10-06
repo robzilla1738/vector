@@ -21,8 +21,14 @@ async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
   if ((ctx.client.external || ctx.client.codeMode) && "downloadNaming" in patch)
     throw new AuxError("permission_denied", "Download naming must be changed in Aux Settings.");
   if ("originPolicies" in patch)
-    throw new AuxError("permission_denied", "Save agent site rules through the revision-checked Agent access controls.");
-  if ((ctx.client.external || ctx.client.codeMode) && ["originPolicies", "effectGrants", "safetyCeilings", "nightShift"].some(key => key in patch))
+    throw new AuxError(
+      "permission_denied",
+      "Save agent site rules through the revision-checked Agent access controls.",
+    );
+  if (
+    (ctx.client.external || ctx.client.codeMode) &&
+    ["originPolicies", "effectGrants", "safetyCeilings", "nightShift"].some((key) => key in patch)
+  )
     throw new AuxError("permission_denied", "Agent permissions must be changed in Aux Settings.");
   let searchEngine: string | undefined;
   let searchSuggestions: boolean | undefined;
@@ -71,6 +77,7 @@ export const settingsMethods: Partial<Record<MethodName, MethodHandler>> = {
 };
 
 async function h_usage_report(ctx: MethodCtx): Promise<unknown> {
-  if (ctx.client.external) throw new AuxError("permission_denied", "Usage details are available in Aux Settings.");
+  if (ctx.client.external)
+    throw new AuxError("permission_denied", "Usage details are available in Aux Settings.");
   return usageReport(ctx.s.repo.db, MethodSchemas["usage.report"].parse(ctx.params), Date.now(), ctx.s.repo);
 }

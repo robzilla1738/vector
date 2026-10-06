@@ -9,14 +9,16 @@ async function h_routines_list(ctx: MethodCtx): Promise<unknown> {
   if (method === "routines.replay.repair.propose") {
     if (client.external) {
       const routine = routines.get(params.routineId).routine;
-      if (!client.scope || !routine.sourceTaskId) throw new AuxError("permission_denied", "Repair proposals require a bound task connection.");
+      if (!client.scope || !routine.sourceTaskId)
+        throw new AuxError("permission_denied", "Repair proposals require a bound task connection.");
       ctx.requireScopedTask(client.scope, routine.sourceTaskId);
       ctx.requireScopedPage(client.scope, params.pageId, client.connectionId);
     }
     return routines.proposeReplayRepair(params, ctx.s.pages);
   }
   if (method === "routines.replay.repair.apply") {
-    if (client.external || client.codeMode) throw new AuxError("permission_denied", "Only the person can approve this target diff.");
+    if (client.external || client.codeMode)
+      throw new AuxError("permission_denied", "Only the person can approve this target diff.");
     return routines.applyReplayRepair(params, ctx.s.pages);
   }
   const routineRead =
@@ -36,7 +38,8 @@ async function h_routines_list(ctx: MethodCtx): Promise<unknown> {
   if (method === "routines.get") return routines.get(params.routineId);
   if (method === "routines.create") return routines.create(params);
   if (method === "routines.fromResult") return routines.fromResult(params);
-  if (method === "routines.replay.compileDemonstration") return routines.compileDemonstrationReplay(params, demoRecorder(ctx.s));
+  if (method === "routines.replay.compileDemonstration")
+    return routines.compileDemonstrationReplay(params, demoRecorder(ctx.s));
   if (method === "routines.replay.compile") return routines.compileReplay(params, ctx.s.pages);
   if (method === "routines.replay.test") return routines.testReplay(params, ctx.s.pages);
   if (method === "routines.replay.result") return routines.resultReplay(params);

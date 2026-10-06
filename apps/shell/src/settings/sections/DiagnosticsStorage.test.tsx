@@ -32,7 +32,9 @@ vi.mock("../../bridge", async (original) => ({
     exportDiagnostics: mocks.report,
     revealPath: mocks.reveal,
   },
-  get inMock() { return mocks.available; },
+  get inMock() {
+    return mocks.available;
+  },
   inNativeHost: false,
 }));
 import { GeneralSettings } from "./General";
@@ -333,10 +335,14 @@ it("refuses delivery and new dispatch when native capability disappears without 
     await open(host);
     button(host, "export-support-report").focus();
     let completion!: ReturnType<typeof executeCommand>;
-    await act(async () => { completion = executeCommand("export-support-report"); });
+    await act(async () => {
+      completion = executeCommand("export-support-report");
+    });
     mocks.available = false;
     host.querySelector("summary")!.focus();
-    await expect(executeCommand("toggle-diagnostics-storage")).rejects.toThrow("current diagnostics disclosure");
+    await expect(executeCommand("toggle-diagnostics-storage")).rejects.toThrow(
+      "current diagnostics disclosure",
+    );
     await act(async () => pending.resolve("/owned/actual-report.json"));
     expect(await completion).toBe("/owned/actual-report.json");
     expect(host.textContent).not.toContain("Support report saved.");

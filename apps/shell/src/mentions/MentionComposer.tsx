@@ -19,9 +19,7 @@ import {
   type MentionQuery,
 } from "./tokens";
 import "./mentions.css";
-import {
-  nativeButtonTypeProps as auxNativeButtonTypeProps,
-} from "../ui/native-attribute-props";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 
 export function MentionComposer({
   textareaRef,

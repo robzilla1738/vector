@@ -15,8 +15,10 @@ export const ShortcutBindingSchema: z.ZodType<ShortcutBinding> = z.object({
   platforms: z.array(z.string().min(1).max(16)).min(1).max(4).optional(),
 });
 
-export const ShortcutOverridesSchema: z.ZodType<ShortcutOverrides> = z.record(
-  z.string().min(1).max(64),
-  z.union([z.array(ShortcutBindingSchema).max(4), z.null()]),
-).refine(overrides => ["darwin", "win32", "linux"].every(platform => shortcutInventorySize(overrides, platform) <= 512),
-  "Shortcuts exceed the native limit of 512 reserved and active bindings.");
+export const ShortcutOverridesSchema: z.ZodType<ShortcutOverrides> = z
+  .record(z.string().min(1).max(64), z.union([z.array(ShortcutBindingSchema).max(4), z.null()]))
+  .refine(
+    (overrides) =>
+      ["darwin", "win32", "linux"].every((platform) => shortcutInventorySize(overrides, platform) <= 512),
+    "Shortcuts exceed the native limit of 512 reserved and active bindings.",
+  );

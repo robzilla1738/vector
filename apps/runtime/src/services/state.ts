@@ -11,17 +11,31 @@ type Row = Record<string, unknown>;
 function match(row: Row, where?: { field: string; op: string; value: unknown }[]): boolean {
   if (!where?.length) return true;
   return where.every((w) => {
-    const v = w.field.split(".").reduce<unknown>((o, k) => (o && typeof o === "object" ? (o as Row)[k] : undefined), row);
+    const v = w.field
+      .split(".")
+      .reduce<unknown>((o, k) => (o && typeof o === "object" ? (o as Row)[k] : undefined), row);
     switch (w.op) {
-      case "eq": return v === w.value || JSON.stringify(v) === JSON.stringify(w.value);
-      case "ne": return !(v === w.value || JSON.stringify(v) === JSON.stringify(w.value));
-      case "contains": return String(v ?? "").includes(String(w.value));
-      case "in": return Array.isArray(w.value) && (w.value as unknown[]).some((x) => x === v || JSON.stringify(x) === JSON.stringify(v));
-      case "gt": return Number(v) > Number(w.value);
-      case "gte": return Number(v) >= Number(w.value);
-      case "lt": return Number(v) < Number(w.value);
-      case "lte": return Number(v) <= Number(w.value);
-      default: return false;
+      case "eq":
+        return v === w.value || JSON.stringify(v) === JSON.stringify(w.value);
+      case "ne":
+        return !(v === w.value || JSON.stringify(v) === JSON.stringify(w.value));
+      case "contains":
+        return String(v ?? "").includes(String(w.value));
+      case "in":
+        return (
+          Array.isArray(w.value) &&
+          (w.value as unknown[]).some((x) => x === v || JSON.stringify(x) === JSON.stringify(v))
+        );
+      case "gt":
+        return Number(v) > Number(w.value);
+      case "gte":
+        return Number(v) >= Number(w.value);
+      case "lt":
+        return Number(v) < Number(w.value);
+      case "lte":
+        return Number(v) <= Number(w.value);
+      default:
+        return false;
     }
   });
 }
@@ -35,9 +49,7 @@ const project = (rows: Row[], select?: string[]): Row[] =>
  * answering "what do we already know" never needs inference or re-work.
  */
 export class StateService {
-  constructor(
-    private deps: { repo: Repo; pages: PageService; operations?: OperationService },
-  ) {}
+  constructor(private deps: { repo: Repo; pages: PageService; operations?: OperationService }) {}
 
   query(q: StateQuery): StateQueryResult {
     const { rows, explain } = this.load(q);
@@ -48,7 +60,9 @@ export class StateService {
     const lim = Math.min(q.limit ?? 500, 5000);
     const pageRows = filtered.slice(Math.max(start, 0), Math.max(start, 0) + lim);
     const truncated = Math.max(start, 0) + lim < filtered.length;
-    const nextCursor = truncated ? String(pageRows[pageRows.length - 1]?.["__cursor"] ?? filtered.length) : undefined;
+    const nextCursor = truncated
+      ? String(pageRows[pageRows.length - 1]?.["__cursor"] ?? filtered.length)
+      : undefined;
     const handle: DatasetHandle = {
       datasetId: `adhoc:${q.entity}`,
       source: `state.${q.entity}`,
@@ -74,7 +88,10 @@ export class StateService {
         const rows = pageIds.flatMap((pid) =>
           this.deps.repo.listResponses(pid, { since: q.scope?.runId ? undefined : undefined, limit: 1000 }),
         );
-        return { rows: rows as unknown as Row[], explain: `responses captured on ${pageIds.length || "all"} scoped page(s)` };
+        return {
+          rows: rows as unknown as Row[],
+          explain: `responses captured on ${pageIds.length || "all"} scoped page(s)`,
+        };
       }
       case "records": {
         const rows = this.deps.repo.listResults({ runId: q.scope?.runId }) as unknown as Row[];
@@ -85,12 +102,19 @@ export class StateService {
         const rows = pageIds.flatMap((pid) => {
           const observation = this.deps.pages.currentObservation(pid);
           if (!observation) return [];
-          return observation.content.formFields.map(field => ({ pageId: pid, revision: observation.revision, ...field }));
+          return observation.content.formFields.map((field) => ({
+            pageId: pid,
+            revision: observation.revision,
+            ...field,
+          }));
         });
         return { rows, explain: "form controls from current in-process observations" };
       }
       case "artifacts": {
-        const rows = this.deps.repo.listArtifacts({ runId: q.scope?.runId, pageId: q.scope?.pageIds?.[0] }) as unknown as Row[];
+        const rows = this.deps.repo.listArtifacts({
+          runId: q.scope?.runId,
+          pageId: q.scope?.pageIds?.[0],
+        }) as unknown as Row[];
         return { rows, explain: "captured artifacts" };
       }
       case "operations": {
@@ -98,7 +122,10 @@ export class StateService {
         return { rows, explain: "registered operations" };
       }
       case "datasets": {
-        const rows = this.deps.repo.listDatasets({ runId: q.scope?.runId, pageId: q.scope?.pageIds?.[0] }) as unknown as Row[];
+        const rows = this.deps.repo.listDatasets({
+          runId: q.scope?.runId,
+          pageId: q.scope?.pageIds?.[0],
+        }) as unknown as Row[];
         return { rows, explain: "materialized datasets" };
       }
       default:

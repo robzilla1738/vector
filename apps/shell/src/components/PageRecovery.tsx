@@ -7,7 +7,10 @@ import { navigationFailure } from "../navigation-failure";
 import { guardCommandCompletion } from "../command-completion";
 import { useScopedCommandControls } from "../scoped-command-controls";
 import { shellIconAlert, shellIconGlobe } from "./icons";
-import { staticPrimaryButtonProps as auxClassPrimaryButtonProps, staticGhostButtonProps as auxClassGhostButtonProps } from "../ui/class-props";
+import {
+  staticPrimaryButtonProps as auxClassPrimaryButtonProps,
+  staticGhostButtonProps as auxClassGhostButtonProps,
+} from "../ui/class-props";
 import { nativeStatusRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 type Owner = { active: boolean; pending: boolean; identity: object };
 /** UI ownership only; the original native navigation/interstitial producer authorizes recovery. */
@@ -17,7 +20,7 @@ export function PageRecovery({ page }: { page: PageTarget }) {
     kind = bridge.windowKind;
   const snapshot = JSON.stringify(page);
   const identity = useMemo(
-    () => ([snapshot, windowId, privateMode, kind]),
+    () => [snapshot, windowId, privateMode, kind],
     [snapshot, windowId, privateMode, kind],
   );
   const owner = useRef<Owner>({ active: false, pending: false, identity });
@@ -48,13 +51,12 @@ export function PageRecovery({ page }: { page: PageTarget }) {
       const state = useStore.getState();
       const matches = state.pages.filter((item) => item.pageId === page.pageId);
       const live = matches.length === 1 ? matches[0] : undefined;
-      const valid = (
+      const valid =
         !!live &&
         state.mode === "focus" &&
         state.activePageId === page.pageId &&
         live.windowId === windowId &&
-        JSON.stringify(live) === snapshot
-      );
+        JSON.stringify(live) === snapshot;
       if (!valid) original.active = false;
       return valid;
     },
@@ -150,11 +152,41 @@ export function PageRecovery({ page }: { page: PageTarget }) {
         <p>{description.detail}</p>
         <p className="navigation-error-address selectable">{error?.url ?? page.url}</p>
         <div className="empty-actions">
-          <RecoveryButton control={[publish, run, "retry", "retry-page-recovery", retry]} {...auxClassPrimaryButtonProps} disabled={busy !== null}>{busy === "reload" ? "Trying…" : crashed ? "Reload" : "Try again"}</RecoveryButton>
-          <RecoveryButton control={[publish, run, "address", "edit-page-recovery-address", editAddress]}>Edit address</RecoveryButton>
-          {page.canGoBack && <RecoveryButton control={[publish, run, "back", "back-page-recovery", back]} disabled={busy !== null}>{busy === "back" ? "Going back…" : "Go back"}</RecoveryButton>}
-          {httpFallback && <RecoveryButton control={[publish, run, "http", "continue-page-over-http", () => proceed(true)]} disabled={busy !== null}>{busy === "proceed" ? "Continuing…" : "Continue over HTTP"}</RecoveryButton>}
-          {insecure && <RecoveryButton control={[publish, run, "certificate", "proceed-page-certificate", () => proceed(false)]} {...auxClassGhostButtonProps} disabled={busy !== null}>{busy === "proceed" ? "Proceeding…" : "Proceed anyway (unsafe)"}</RecoveryButton>}
+          <RecoveryButton
+            control={[publish, run, "retry", "retry-page-recovery", retry]}
+            {...auxClassPrimaryButtonProps}
+            disabled={busy !== null}
+          >
+            {busy === "reload" ? "Trying…" : crashed ? "Reload" : "Try again"}
+          </RecoveryButton>
+          <RecoveryButton control={[publish, run, "address", "edit-page-recovery-address", editAddress]}>
+            Edit address
+          </RecoveryButton>
+          {page.canGoBack && (
+            <RecoveryButton
+              control={[publish, run, "back", "back-page-recovery", back]}
+              disabled={busy !== null}
+            >
+              {busy === "back" ? "Going back…" : "Go back"}
+            </RecoveryButton>
+          )}
+          {httpFallback && (
+            <RecoveryButton
+              control={[publish, run, "http", "continue-page-over-http", () => proceed(true)]}
+              disabled={busy !== null}
+            >
+              {busy === "proceed" ? "Continuing…" : "Continue over HTTP"}
+            </RecoveryButton>
+          )}
+          {insecure && (
+            <RecoveryButton
+              control={[publish, run, "certificate", "proceed-page-certificate", () => proceed(false)]}
+              {...auxClassGhostButtonProps}
+              disabled={busy !== null}
+            >
+              {busy === "proceed" ? "Proceeding…" : "Proceed anyway (unsafe)"}
+            </RecoveryButton>
+          )}
         </div>
         {actionError && <p {...nativeAlertRoleProps}>{actionError}</p>}
         {error && !crashed && (
@@ -182,9 +214,26 @@ export function PageRecovery({ page }: { page: PageTarget }) {
   );
 }
 
-function RecoveryButton({ control: [publish, run, key, command, invoke], children, className = "btn", disabled }: {
+function RecoveryButton({
+  control: [publish, run, key, command, invoke],
+  children,
+  className = "btn",
+  disabled,
+}: {
   control: [...ReturnType<typeof useScopedCommandControls>, string, string, () => unknown];
-  children: ReactNode; className?: string; disabled?: boolean;
+  children: ReactNode;
+  className?: string;
+  disabled?: boolean;
 }) {
-  return <button ref={element => publish(key, command, element, invoke)} data-command-id={command} className={className} disabled={disabled} onClick={event => run(command, event)}>{children}</button>;
+  return (
+    <button
+      ref={(element) => publish(key, command, element, invoke)}
+      data-command-id={command}
+      className={className}
+      disabled={disabled}
+      onClick={(event) => run(command, event)}
+    >
+      {children}
+    </button>
+  );
 }

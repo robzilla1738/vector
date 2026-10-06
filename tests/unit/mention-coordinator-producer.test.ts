@@ -9,19 +9,86 @@ import { openDb } from "../../apps/runtime/src/store/db.js";
 import { Repo } from "../../apps/runtime/src/store/repo.js";
 import { EventBus } from "../../apps/runtime/src/events.js";
 const databases: ReturnType<typeof openDb>[] = [];
-afterEach(() => { for (const db of databases.splice(0)) db.close(); });
+afterEach(() => {
+  for (const db of databases.splice(0)) db.close();
+});
 function fixture() {
-  const db = openDb(":memory:"); databases.push(db);
-  const repo = new Repo(db), events = new EventBus(repo);
-  const page = PageTargetSchema.parse({ pageId: "owned", backend: "aux", targetId: "target", windowId: "main", url: "https://owned.test/", title: "Owned", documentEpoch: 1, sessionId: "attached", lastRevision: 0, viewStatus: "visible", lifecycle: "live", controller: "agent", controllerEpoch: 0, ownedByRuntime: true, createdAt: 1, lastActiveAt: 1 });
-  const targets = new Map([[page.pageId, page], ["b", { ...page, pageId: "b", url: "https://owned.test/b", sessionId: "b-attachment", ownedByRuntime: false }]]);
+  const db = openDb(":memory:");
+  databases.push(db);
+  const repo = new Repo(db),
+    events = new EventBus(repo);
+  const page = PageTargetSchema.parse({
+    pageId: "owned",
+    backend: "aux",
+    targetId: "target",
+    windowId: "main",
+    url: "https://owned.test/",
+    title: "Owned",
+    documentEpoch: 1,
+    sessionId: "attached",
+    lastRevision: 0,
+    viewStatus: "visible",
+    lifecycle: "live",
+    controller: "agent",
+    controllerEpoch: 0,
+    ownedByRuntime: true,
+    createdAt: 1,
+    lastActiveAt: 1,
+  });
+  const targets = new Map([
+    [page.pageId, page],
+    [
+      "b",
+      { ...page, pageId: "b", url: "https://owned.test/b", sessionId: "b-attachment", ownedByRuntime: false },
+    ],
+  ]);
   const ownership = new PageOwnership();
-  const mentions = new TurnMentionService({ page: id => targets.get(id), organization: async () => ({ revision: 1, shared: null }), routine: () => undefined, connectors: () => ({ entries: [], access: [] }) });
-  const pages = new PageService({ repo, events, native: new NullNativeBridge(), drivers: () => ({ aux: null, chrome: null }), turnMentions: mentions });
-  vi.spyOn(pages, "get").mockImplementation(id => { const target = targets.get(id); if (!target) throw new Error("Missing fixture target"); return target; });
-  const coordinator = new RunCoordinator({ repo, events, pages, pageOwnership: ownership, turnMentions: mentions, model: () => null, defaultModel: () => "fixture", recoveryModel: () => undefined, recordModelCall: () => {} });
-  repo.saveRun({ runId: "run", goal: "Read fixture", status: "needs_input", pageIds: [], createdAt: 1, config: { chatId: "chat" } });
-  const ref = { kind: "tab" as const, pageId: page.pageId, title: page.title, url: page.url, documentEpoch: page.documentEpoch, sessionId: "attached", access: "read" as const };
+  const mentions = new TurnMentionService({
+    page: (id) => targets.get(id),
+    organization: async () => ({ revision: 1, shared: null }),
+    routine: () => undefined,
+    connectors: () => ({ entries: [], access: [] }),
+  });
+  const pages = new PageService({
+    repo,
+    events,
+    native: new NullNativeBridge(),
+    drivers: () => ({ aux: null, chrome: null }),
+    turnMentions: mentions,
+  });
+  vi.spyOn(pages, "get").mockImplementation((id) => {
+    const target = targets.get(id);
+    if (!target) throw new Error("Missing fixture target");
+    return target;
+  });
+  const coordinator = new RunCoordinator({
+    repo,
+    events,
+    pages,
+    pageOwnership: ownership,
+    turnMentions: mentions,
+    model: () => null,
+    defaultModel: () => "fixture",
+    recoveryModel: () => undefined,
+    recordModelCall: () => {},
+  });
+  repo.saveRun({
+    runId: "run",
+    goal: "Read fixture",
+    status: "needs_input",
+    pageIds: [],
+    createdAt: 1,
+    config: { chatId: "chat" },
+  });
+  const ref = {
+    kind: "tab" as const,
+    pageId: page.pageId,
+    title: page.title,
+    url: page.url,
+    documentEpoch: page.documentEpoch,
+    sessionId: "attached",
+    access: "read" as const,
+  };
   return { coordinator, mentions, repo, ref, ownership, targets };
 }
 it("only actual created pages survive an acknowledged steer and final completion retires them", async () => {
@@ -51,7 +118,11 @@ it("actual human answer saves validated refs and replaces the acknowledged gener
 it("a changed suspension cannot acknowledge or persist a replacement answer", async () => {
   const { coordinator, mentions, repo, ref } = fixture();
   await mentions.begin("run", [], []);
-  await expect(coordinator.answerWithMentions("run", "Read this", [ref], () => { throw new Error("Suspension changed"); })).rejects.toThrow("Suspension changed");
+  await expect(
+    coordinator.answerWithMentions("run", "Read this", [ref], () => {
+      throw new Error("Suspension changed");
+    }),
+  ).rejects.toThrow("Suspension changed");
   expect(repo.getRun("run")!.status).toBe("needs_input");
   expect(repo.getRun("run")!.config!.mentions).toBeUndefined();
   expect(coordinator.answers.has("run")).toBe(false);
@@ -98,7 +169,12 @@ it("a new turn ending while B's real lease is queued cannot retain the late-acqu
 
 it("actual running-loop termination releases its page lease and turn authority", async () => {
   const { coordinator, mentions, ownership, ref, repo } = fixture();
-  const run = await coordinator.start({ runId: "live-run", goal: "Read fixture", pageIds: [ref.pageId], mentions: [ref] });
+  const run = await coordinator.start({
+    runId: "live-run",
+    goal: "Read fixture",
+    pageIds: [ref.pageId],
+    mentions: [ref],
+  });
   await vi.waitFor(() => {
     expect(repo.getRun(run.runId)?.status).toBe("failed");
     expect(ownership.snapshot()).toEqual({});

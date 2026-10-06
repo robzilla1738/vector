@@ -1,4 +1,7 @@
-export interface UnreadBadge { text: string; label: string }
+export interface UnreadBadge {
+  text: string;
+  label: string;
+}
 
 /** Provider titles are display metadata; unread counts never change tab identity. */
 export function unreadBadge(title: string): UnreadBadge | null {

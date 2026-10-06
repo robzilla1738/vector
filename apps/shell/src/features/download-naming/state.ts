@@ -33,28 +33,32 @@ export function bootDownloadRenames() {
   void refreshDownloadRenames().catch(errToast);
   const off = bridge.onEvent((event) => {
     if (!live || !["download.renamed", "download.renameUndone"].includes(event.type)) return;
-    pending = pending.then(async () => {
-    if (!live || life !== generation) return;
-    if (event.type === "download.renamed") {
-      const { DownloadRenameReceiptSchema } = await import("@aux/contracts/download-naming");
-      if (!live || life !== generation) return;
-      const parsed = DownloadRenameReceiptSchema.safeParse(event.payload);
-      if (!parsed.success) return;
-      const receipt = parsed.data;
-      useDownloadRenames.setState((state) => ({
-        receipts: [receipt, ...state.receipts.filter((item) => item.downloadId !== receipt.downloadId)],
-      }));
-      toast(`Renamed to ${receipt.filename}`, "info", {
-        label: "Undo",
-        run: () => {
-          void executeCommand("undo-download-rename", { payload: { receiptId: receipt.receiptId } }).catch(
-            errToast,
-          );
-        },
+    pending = pending
+      .then(async () => {
+        if (!live || life !== generation) return;
+        if (event.type === "download.renamed") {
+          const { DownloadRenameReceiptSchema } = await import("@aux/contracts/download-naming");
+          if (!live || life !== generation) return;
+          const parsed = DownloadRenameReceiptSchema.safeParse(event.payload);
+          if (!parsed.success) return;
+          const receipt = parsed.data;
+          useDownloadRenames.setState((state) => ({
+            receipts: [receipt, ...state.receipts.filter((item) => item.downloadId !== receipt.downloadId)],
+          }));
+          toast(`Renamed to ${receipt.filename}`, "info", {
+            label: "Undo",
+            run: () => {
+              void executeCommand("undo-download-rename", {
+                payload: { receiptId: receipt.receiptId },
+              }).catch(errToast);
+            },
+          });
+        }
+        if (event.type === "download.renameUndone") await refreshDownloadRenames();
+      })
+      .catch((reason) => {
+        if (live && life === generation) errToast(reason);
       });
-    }
-    if (event.type === "download.renameUndone") await refreshDownloadRenames();
-    }).catch(reason => { if (live && life === generation) errToast(reason); });
   });
   return () => {
     live = false;

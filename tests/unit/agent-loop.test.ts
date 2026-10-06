@@ -23,7 +23,9 @@ import {
 import type { ModelMessage } from "@aux/runtime";
 
 const cleanup: (() => void)[] = [];
-afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
+afterEach(() => {
+  for (const fn of cleanup.splice(0).reverse()) fn();
+});
 
 function fixture() {
   const directory = mkdtempSync(join(tmpdir(), "aux-loop-"));
@@ -65,16 +67,29 @@ describe("TranscriptStore (S5)", () => {
     const { transcript, db } = fixture();
     transcript.append("r1", [userTask]);
     transcript.park("r1", {
-      toolCallId: "c1", toolName: "ask_user_question",
+      toolCallId: "c1",
+      toolName: "ask_user_question",
       suspension: { kind: "ask-user-question", instruction: "What color?" },
       pendingResults: [{ toolCallId: "c1", toolName: "ask_user_question", parked: true }],
     });
     expect(transcript.openPark("r1")?.toolCallId).toBe("c1");
-    expect(new TranscriptStore(db).openPark("r1")?.suspension).toEqual({ kind: "ask-user-question", instruction: "What color?" });
-    expect(() => transcript.park("r1", { toolCallId: "c2", toolName: "x", pendingResults: [] })).toThrow(/already has a parked/);
+    expect(new TranscriptStore(db).openPark("r1")?.suspension).toEqual({
+      kind: "ask-user-question",
+      instruction: "What color?",
+    });
+    expect(() => transcript.park("r1", { toolCallId: "c2", toolName: "x", pendingResults: [] })).toThrow(
+      /already has a parked/,
+    );
     const toolMessage: ModelMessage = {
       role: "tool",
-      content: [{ type: "tool-result", toolCallId: "c1", toolName: "ask_user_question", output: { type: "json", value: { answer: "yes" } } }],
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: "c1",
+          toolName: "ask_user_question",
+          output: { type: "json", value: { answer: "yes" } },
+        },
+      ],
     } as ModelMessage;
     transcript.resolvePark("r1", toolMessage);
     expect(transcript.openPark("r1")).toBeUndefined();
@@ -89,9 +104,20 @@ describe("runAgentLoop (S5)", () => {
     transcript.append("run-1", [userTask]);
     const act = vi.fn(async () => ({ output: { status: "completed" } }));
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [
-        { id: "click", op: "click", target: "r1" }, { id: "wait", op: "expectDownload" },
-      ] } }] },
+      {
+        toolCalls: [
+          {
+            toolCallId: "a1",
+            toolName: "act",
+            input: {
+              steps: [
+                { id: "click", op: "click", target: "r1" },
+                { id: "wait", op: "expectDownload" },
+              ],
+            },
+          },
+        ],
+      },
       { text: "The download was not triggered." },
     ]);
     await runAgentLoop({ ...baseOpts(transcript, { act }), model });
@@ -102,13 +128,28 @@ describe("runAgentLoop (S5)", () => {
   it("returns fresh citable progress when a first-turn script fails after changing the page", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);
-    const repl = vi.fn(async () => { throw new Error("Record link name was ambiguous"); });
-    const replProgress = vi.fn(async () => ({ pageId: "page-1", observationId: "obs-after-nav", revision: 2,
-      text: "url: http://x.test/records?page=2\nr10 link \"Record 15\" href=/records/rec-15" }));
+    const repl = vi.fn(async () => {
+      throw new Error("Record link name was ambiguous");
+    });
+    const replProgress = vi.fn(async () => ({
+      pageId: "page-1",
+      observationId: "obs-after-nav",
+      revision: 2,
+      text: 'url: http://x.test/records?page=2\nr10 link "Record 15" href=/records/rec-15',
+    }));
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
-        code: 'page.followLinkByName("2"); submitResult("done")', answerLabel: "",
-      } }] },
+      {
+        toolCalls: [
+          {
+            toolCallId: "g1",
+            toolName: "goal_program",
+            input: {
+              code: 'page.followLinkByName("2"); submitResult("done")',
+              answerLabel: "",
+            },
+          },
+        ],
+      },
       { text: "I am on page 2." },
     ]);
     await runAgentLoop({ ...baseOpts(transcript, { repl, replProgress }), model });
@@ -124,13 +165,28 @@ describe("runAgentLoop (S5)", () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: { code: 'submitResult("done")', answerLabel: "" } }] },
+      {
+        toolCalls: [
+          {
+            toolCallId: "g1",
+            toolName: "goal_program",
+            input: { code: 'submitResult("done")', answerLabel: "" },
+          },
+        ],
+      },
       { text: "The page could not be observed." },
     ]);
-    await runAgentLoop({ ...baseOpts(transcript, {
-      repl: async () => { throw new Error("original script failure"); },
-      replProgress: async () => { throw new Error("snapshot unavailable"); },
-    }), model });
+    await runAgentLoop({
+      ...baseOpts(transcript, {
+        repl: async () => {
+          throw new Error("original script failure");
+        },
+        replProgress: async () => {
+          throw new Error("snapshot unavailable");
+        },
+      }),
+      model,
+    });
     const toolResult = transcript.load("run-1").find((message) => message.role === "tool");
     expect(JSON.stringify(toolResult)).toContain("original script failure");
     expect(JSON.stringify(toolResult)).not.toContain("snapshot unavailable");
@@ -142,7 +198,15 @@ describe("runAgentLoop (S5)", () => {
     const repl = vi.fn(async () => ({ output: { running: true, cellId } }));
     const replWait = vi.fn(async () => ({ finish: { result: { report: "done" } } }));
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "c1", toolName: "repl", input: { code: "sleep(40); submitResult('done')", yieldTimeMs: 0 } }] },
+      {
+        toolCalls: [
+          {
+            toolCallId: "c1",
+            toolName: "repl",
+            input: { code: "sleep(40); submitResult('done')", yieldTimeMs: 0 },
+          },
+        ],
+      },
       { toolCalls: [{ toolCallId: "c2", toolName: "repl_wait", input: { cellId } }] },
     ]);
     const outcome = await runAgentLoop({ ...baseOpts(transcript, { repl, replWait }), model });
@@ -159,13 +223,27 @@ describe("runAgentLoop (S5)", () => {
     const model: NonNullable<AgentLoopOptions["model"]["toolCallStep"]> = async ({ tools }) => {
       seen.push(Object.keys(tools));
       turn++;
-      const toolCalls = turn === 1
-        ? [{ toolCallId: "g1", toolName: "goal_program", input: { code: "page.navigateMatching('rec-14')", answerLabel: "" } }]
-        : [{ toolCallId: "s1", toolName: "submit_result", input: { report: "fallback" } }];
+      const toolCalls =
+        turn === 1
+          ? [
+              {
+                toolCallId: "g1",
+                toolName: "goal_program",
+                input: { code: "page.navigateMatching('rec-14')", answerLabel: "" },
+              },
+            ]
+          : [{ toolCallId: "s1", toolName: "submit_result", input: { report: "fallback" } }];
       return { message: { role: "assistant", content: [] } as ModelMessage, toolCalls, durationMs: 0 };
     };
-    const result = await runAgentLoop({ ...baseOpts(transcript, { repl: async () => { throw new Error("should not execute incomplete program"); },
-      submitResult: async ({ report }) => ({ ok: true, result: { report } }) }), model: { toolCallStep: model } });
+    const result = await runAgentLoop({
+      ...baseOpts(transcript, {
+        repl: async () => {
+          throw new Error("should not execute incomplete program");
+        },
+        submitResult: async ({ report }) => ({ ok: true, result: { report } }),
+      }),
+      model: { toolCallStep: model },
+    });
     expect(result).toMatchObject({ kind: "done", text: "fallback" });
     expect(seen[0]).toEqual(["goal_program", "submit_result", "ask_user_question"]);
     expect(seen[1]).toContain("snapshot");
@@ -174,27 +252,55 @@ describe("runAgentLoop (S5)", () => {
 
   it("closes an unanswered call after a crash without replaying its effect", async () => {
     const { transcript, db } = fixture();
-    transcript.append("run-1", [userTask, {
-      role: "assistant",
-      content: [{ type: "tool-call", toolCallId: "write-1", toolName: "webfetch", input: { url: "https://example.com" } }],
-    } as ModelMessage]);
+    transcript.append("run-1", [
+      userTask,
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool-call",
+            toolCallId: "write-1",
+            toolName: "webfetch",
+            input: { url: "https://example.com" },
+          },
+        ],
+      } as ModelMessage,
+    ]);
     let executions = 0;
     let sawRecovery = false;
     const model: NonNullable<AgentLoopOptions["model"]["toolCallStep"]> = async ({ messages }) => {
-      sawRecovery = messages.some((message) => message.role === "tool" && JSON.stringify(message).includes("outcome is unknown"));
+      sawRecovery = messages.some(
+        (message) => message.role === "tool" && JSON.stringify(message).includes("outcome is unknown"),
+      );
       return {
-        message: { role: "assistant", content: [{ type: "text", text: "I need to inspect the state." }] } as ModelMessage,
-        toolCalls: [], text: "I need to inspect the state.", finishReason: "stop", durationMs: 0,
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "I need to inspect the state." }],
+        } as ModelMessage,
+        toolCalls: [],
+        text: "I need to inspect the state.",
+        finishReason: "stop",
+        durationMs: 0,
       };
     };
     const outcome = await runAgentLoop({
-      ...baseOpts(new TranscriptStore(db), { webFetch: async () => { executions++; return { output: "unexpected" }; } }),
+      ...baseOpts(new TranscriptStore(db), {
+        webFetch: async () => {
+          executions++;
+          return { output: "unexpected" };
+        },
+      }),
       model: { toolCallStep: model },
     });
     expect(outcome).toMatchObject({ kind: "done" });
     expect(sawRecovery).toBe(true);
     expect(executions).toBe(0);
-    expect(transcript.load("run-1").map((message) => message.role)).toEqual(["user", "assistant", "tool", "assistant"]);
+    expect(transcript.load("run-1").map((message) => message.role)).toEqual([
+      "user",
+      "assistant",
+      "tool",
+      "assistant",
+    ]);
   });
 
   it("ends the turn when the model answers with text", async () => {
@@ -214,7 +320,10 @@ describe("runAgentLoop (S5)", () => {
       { text: "fetched it" },
     ]);
     const deps: LoopToolDeps = {
-      webFetch: async (url) => { seen.url = url; return { output: { title: "Example" } }; },
+      webFetch: async (url) => {
+        seen.url = url;
+        return { output: { title: "Example" } };
+      },
     };
     const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model });
     expect(outcome).toMatchObject({ kind: "done", text: "fetched it" });
@@ -228,20 +337,33 @@ describe("runAgentLoop (S5)", () => {
     const { transcript } = fixture();
     const model = new MockModelClient().scriptToolSteps([
       {
-        toolCalls: [{
-          toolCallId: "f1",
-          toolName: "submit_result",
-          input: { report: "verified answer", citations: [{ pageId: "page-1", quote: "x" }], textProposal: "A reviewed draft." },
-        }],
+        toolCalls: [
+          {
+            toolCallId: "f1",
+            toolName: "submit_result",
+            input: {
+              report: "verified answer",
+              citations: [{ pageId: "page-1", quote: "x" }],
+              textProposal: "A reviewed draft.",
+            },
+          },
+        ],
       },
       { text: "unreached" },
     ]);
     const seen: unknown[] = [];
     const deps: LoopToolDeps = {
-      submitResult: async (input) => { seen.push(input); return { ok: true, result: { report: input.report, verified: true } }; },
+      submitResult: async (input) => {
+        seen.push(input);
+        return { ok: true, result: { report: input.report, verified: true } };
+      },
     };
     const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model });
-    expect(outcome).toMatchObject({ kind: "done", text: "verified answer", result: { report: "verified answer", verified: true } });
+    expect(outcome).toMatchObject({
+      kind: "done",
+      text: "verified answer",
+      result: { report: "verified answer", verified: true },
+    });
     expect(seen[0]).toMatchObject({ report: "verified answer", textProposal: "A reviewed draft." });
     // The terminal call's result is the honest {accepted:true} — pairing holds.
     const toolMsg = transcript.load("run-1").find((m) => m.role === "tool");
@@ -252,11 +374,13 @@ describe("runAgentLoop (S5)", () => {
     const { transcript } = fixture();
     const model = new MockModelClient().scriptToolSteps([
       {
-        toolCalls: [{
-          toolCallId: "f1",
-          toolName: "submit_result",
-          input: { report: "done", citations: [{ pageId: "page-1", quote: "fabricated" }] },
-        }],
+        toolCalls: [
+          {
+            toolCallId: "f1",
+            toolName: "submit_result",
+            input: { report: "done", citations: [{ pageId: "page-1", quote: "fabricated" }] },
+          },
+        ],
       },
       { text: "gave up the cite" },
     ]);
@@ -275,9 +399,14 @@ describe("runAgentLoop (S5)", () => {
       { toolCalls: [{ toolCallId: "b1", toolName: "webfetch", input: { url: "not-a-url" } }] },
       { text: "fixed" },
     ]);
-    const outcome = await runAgentLoop({ ...baseOpts(transcript, { webFetch: async () => ({ output: "unreached" }) }), model });
+    const outcome = await runAgentLoop({
+      ...baseOpts(transcript, { webFetch: async () => ({ output: "unreached" }) }),
+      model,
+    });
     expect(outcome).toMatchObject({ kind: "done" });
-    const result = (transcript.load("run-1")[1]!.content as unknown[])[0] as { output: { type: string; value: unknown } };
+    const result = (transcript.load("run-1")[1]!.content as unknown[])[0] as {
+      output: { type: string; value: unknown };
+    };
     expect(result.output.type).toBe("error-text");
     expect(String(result.output.value)).toMatch(/invalid|expected/i);
   });
@@ -290,23 +419,30 @@ describe("runAgentLoop (S5)", () => {
     ]);
     const outcome = await runAgentLoop({ ...baseOpts(transcript), model });
     expect(outcome).toMatchObject({ kind: "done" });
-    const result = (transcript.load("run-1")[1]!.content as unknown[])[0] as { output: { type: string; value: unknown } };
+    const result = (transcript.load("run-1")[1]!.content as unknown[])[0] as {
+      output: { type: string; value: unknown };
+    };
     expect(String(result.output.value)).toMatch(/Unknown tool/);
   });
 
   it("enforces requiresSoloCall on suspension tools", async () => {
     const { transcript } = fixture();
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [
-        { toolCallId: "a1", toolName: "ask_user_question", input: { question: "which?" } },
-        { toolCallId: "a2", toolName: "get_time", input: {} },
-      ] },
+      {
+        toolCalls: [
+          { toolCallId: "a1", toolName: "ask_user_question", input: { question: "which?" } },
+          { toolCallId: "a2", toolName: "get_time", input: {} },
+        ],
+      },
       { text: "ok" },
     ]);
     const outcome = await runAgentLoop({ ...baseOpts(transcript), model });
     expect(outcome).toMatchObject({ kind: "done" });
     expect(transcript.openPark("run-1")).toBeUndefined();
-    const results = transcript.load("run-1")[1]!.content as { toolCallId: string; output: { type: string; value: unknown } }[];
+    const results = transcript.load("run-1")[1]!.content as {
+      toolCallId: string;
+      output: { type: string; value: unknown };
+    }[];
     const solo = results.find((r) => r.toolCallId === "a1")!;
     expect(solo.output.type).toBe("error-text");
     expect(String(solo.output.value)).toMatch(/only tool call/);
@@ -317,11 +453,17 @@ describe("runAgentLoop (S5)", () => {
   it("parks on ask_user_question and resumes with the answer as the tool result", async () => {
     const { transcript, db } = fixture();
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "q1", toolName: "ask_user_question", input: { question: "blue or red?" } }] },
+      {
+        toolCalls: [{ toolCallId: "q1", toolName: "ask_user_question", input: { question: "blue or red?" } }],
+      },
       { text: "picked blue" },
     ]);
     const parked = await runAgentLoop({ ...baseOpts(transcript), model });
-    expect(parked).toMatchObject({ kind: "parked", toolCallId: "q1", park: { kind: "ask-user-question", instruction: "blue or red?" } });
+    expect(parked).toMatchObject({
+      kind: "parked",
+      toolCallId: "q1",
+      park: { kind: "ask-user-question", instruction: "blue or red?" },
+    });
     expect(transcript.openPark("run-1")).toMatchObject({ toolCallId: "q1" });
 
     // simulate restart: new store over the same db still finds the open park
@@ -330,7 +472,9 @@ describe("runAgentLoop (S5)", () => {
     const resumed = await resumeAgentLoop({ ...baseOpts(transcript), model }, "blue");
     expect(resumed).toMatchObject({ kind: "done", text: "picked blue" });
     const toolMessage = transcript.load("run-1").find((m) => m.role === "tool")!;
-    const part = (toolMessage.content as { toolCallId: string; output: { type: string; value: unknown } }[])[0]!;
+    const part = (
+      toolMessage.content as { toolCallId: string; output: { type: string; value: unknown } }[]
+    )[0]!;
     expect(part.toolCallId).toBe("q1");
     expect(part.output).toMatchObject({ type: "text", value: "blue" });
   });
@@ -350,7 +494,8 @@ describe("runAgentLoop (S5)", () => {
     ]);
     let calls = 0;
     const outcome = await runAgentLoop({
-      ...baseOpts(transcript), model,
+      ...baseOpts(transcript),
+      model,
       steerCheck: () => ++calls > 1, // first check pre-step passes, post-execution check steers
     });
     expect(outcome).toMatchObject({ kind: "steered" });
@@ -363,14 +508,20 @@ describe("runAgentLoop (S5)", () => {
     const { transcript } = fixture();
     const controller = new AbortController();
     controller.abort();
-    const outcome = await runAgentLoop({ ...baseOpts(transcript), model: new MockModelClient(), signal: controller.signal });
+    const outcome = await runAgentLoop({
+      ...baseOpts(transcript),
+      model: new MockModelClient(),
+      signal: controller.signal,
+    });
     expect(outcome).toMatchObject({ kind: "failed" });
   });
 
   it("executes leaked submit_result markup in the same model turn", async () => {
     const { transcript } = fixture();
     const model = new MockModelClient().scriptToolSteps([
-      { text: '<atem:function_calls><atem:invoke name="default.submit_result"><atem:parameter name="report">Jordan Lee</atem:parameter><atem:parameter name="citations">[{"observationId": "art_1", "quote": "Jordan Lee"}]</atem:parameter></atem:invoke></atem:function_calls>' },
+      {
+        text: '<atem:function_calls><atem:invoke name="default.submit_result"><atem:parameter name="report">Jordan Lee</atem:parameter><atem:parameter name="citations">[{"observationId": "art_1", "quote": "Jordan Lee"}]</atem:parameter></atem:invoke></atem:function_calls>',
+      },
       { text: "should not be called" },
     ]);
     const seen: unknown[] = [];
@@ -384,19 +535,25 @@ describe("runAgentLoop (S5)", () => {
       model,
     });
     expect(outcome).toMatchObject({ kind: "done", text: "Jordan Lee" });
-    expect(seen).toEqual([{ report: "Jordan Lee", citations: [{ observationId: "art_1", quote: "Jordan Lee" }] }]);
-    expect(transcript.load("run-1").some((m) => String(m.content).includes("should not be called"))).toBe(false);
+    expect(seen).toEqual([
+      { report: "Jordan Lee", citations: [{ observationId: "art_1", quote: "Jordan Lee" }] },
+    ]);
+    expect(transcript.load("run-1").some((m) => String(m.content).includes("should not be called"))).toBe(
+      false,
+    );
   });
 
   it("nudges when leaked markup is not a complete tool call", async () => {
     const { transcript } = fixture();
     const model = new MockModelClient().scriptToolSteps([
-      { text: '<atem:function_calls>not an invoke</atem:function_calls>' },
+      { text: "<atem:function_calls>not an invoke</atem:function_calls>" },
       { text: "real answer" },
     ]);
     const outcome = await runAgentLoop({ ...baseOpts(transcript), model });
     expect(outcome).toMatchObject({ kind: "done", text: "real answer" });
-    const nudge = transcript.load("run-1").find((m) => m.role === "user" && String(m.content).includes("function-call markup"));
+    const nudge = transcript
+      .load("run-1")
+      .find((m) => m.role === "user" && String(m.content).includes("function-call markup"));
     expect(nudge).toBeTruthy();
   });
 
@@ -405,7 +562,11 @@ describe("runAgentLoop (S5)", () => {
     const model = new MockModelClient().scriptToolSteps([{ text: "" }, { text: "42" }]);
     const outcome = await runAgentLoop({ ...baseOpts(transcript), model });
     expect(outcome).toMatchObject({ kind: "done", text: "42" });
-    expect(transcript.load("run-1").some((m) => m.role === "user" && String(m.content).includes("no tool call or answer"))).toBe(true);
+    expect(
+      transcript
+        .load("run-1")
+        .some((m) => m.role === "user" && String(m.content).includes("no tool call or answer")),
+    ).toBe(true);
   });
 
   it("runs the work in a turn before submit_result, even when submit is listed first", async () => {
@@ -422,8 +583,14 @@ describe("runAgentLoop (S5)", () => {
     ]);
     const outcome = await runAgentLoop({
       ...baseOpts(transcript, {
-        webFetch: async (url) => { order.push(`fetch:${url}`); return { output: { title: "Example" } }; },
-        submitResult: async (input) => { order.push(`submit:${input.report}`); return { ok: true, result: { report: input.report } }; },
+        webFetch: async (url) => {
+          order.push(`fetch:${url}`);
+          return { output: { title: "Example" } };
+        },
+        submitResult: async (input) => {
+          order.push(`submit:${input.report}`);
+          return { ok: true, result: { report: input.report } };
+        },
       }),
       model,
     });
@@ -434,14 +601,21 @@ describe("runAgentLoop (S5)", () => {
   it("pairs skipped calls when an accepted submit_result ends a multi-call turn", async () => {
     const { transcript } = fixture();
     let executions = 0;
-    const model = new MockModelClient().scriptToolSteps([{
-      toolCalls: [
-        { toolCallId: "s1", toolName: "submit_result", input: { report: "done" } },
-        { toolCallId: "s2", toolName: "submit_result", input: { report: "stale" } },
-      ],
-    }]);
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [
+          { toolCallId: "s1", toolName: "submit_result", input: { report: "done" } },
+          { toolCallId: "s2", toolName: "submit_result", input: { report: "stale" } },
+        ],
+      },
+    ]);
     const result = await runAgentLoop({
-      ...baseOpts(transcript, { submitResult: async () => { executions++; return { ok: true, result: { report: "done" } }; } }),
+      ...baseOpts(transcript, {
+        submitResult: async () => {
+          executions++;
+          return { ok: true, result: { report: "done" } };
+        },
+      }),
       model,
     });
     expect(result).toMatchObject({ kind: "done" });
@@ -474,7 +648,9 @@ describe("runAgentLoop (S5)", () => {
     const outcome = await runAgentLoop({
       ...baseOpts(transcript),
       model,
-      beforeModelCall: () => { throw new AuxError("permission_denied", "The user-set run budget is spent."); },
+      beforeModelCall: () => {
+        throw new AuxError("permission_denied", "The user-set run budget is spent.");
+      },
     });
     expect(outcome).toMatchObject({ kind: "failed", error: { code: "permission_denied" } });
     expect(transcript.count("run-1")).toBe(0); // no assistant step was billed or persisted
@@ -482,16 +658,27 @@ describe("runAgentLoop (S5)", () => {
 
   it("compacts an oversized recent tail durably before the next model call", async () => {
     const { transcript, db } = fixture();
-    transcript.append("run-1", [userTask, ...Array.from({ length: 10 }, (_, i) => ({
-      role: "user" as const, content: `${i}: ${"é".repeat(18_000)}`,
-    }))]);
+    transcript.append("run-1", [
+      userTask,
+      ...Array.from({ length: 10 }, (_, i) => ({
+        role: "user" as const,
+        content: `${i}: ${"é".repeat(18_000)}`,
+      })),
+    ]);
     let sentBytes = 0;
     const model: NonNullable<AgentLoopOptions["model"]["toolCallStep"]> = async ({ messages }) => {
       sentBytes = Buffer.byteLength(JSON.stringify(messages), "utf8");
-      return { message: { role: "assistant", content: "done" } as ModelMessage,
-        toolCalls: [], text: "done", durationMs: 0 };
+      return {
+        message: { role: "assistant", content: "done" } as ModelMessage,
+        toolCalls: [],
+        text: "done",
+        durationMs: 0,
+      };
     };
-    const outcome = await runAgentLoop({ ...baseOpts(new TranscriptStore(db)), model: { toolCallStep: model } });
+    const outcome = await runAgentLoop({
+      ...baseOpts(new TranscriptStore(db)),
+      model: { toolCallStep: model },
+    });
     expect(outcome).toMatchObject({ kind: "done" });
     expect(sentBytes).toBeLessThanOrEqual(192 * 1024);
     const persisted = new TranscriptStore(db).load("run-1");
@@ -503,10 +690,15 @@ describe("runAgentLoop (S5)", () => {
     const { transcript } = fixture();
     transcript.append("run-1", [{ role: "user", content: "x".repeat(200_000) }]);
     let calls = 0;
-    const outcome = await runAgentLoop({ ...baseOpts(transcript), model: { toolCallStep: async () => {
-      calls++;
-      throw new Error("unreachable");
-    } } });
+    const outcome = await runAgentLoop({
+      ...baseOpts(transcript),
+      model: {
+        toolCallStep: async () => {
+          calls++;
+          throw new Error("unreachable");
+        },
+      },
+    });
     expect(outcome).toMatchObject({ kind: "failed", error: { code: "model_error" } });
     expect(calls).toBe(0);
     expect(transcript.load("run-1")[0]!.content).toHaveLength(200_000);
@@ -551,20 +743,35 @@ import { EventBus, Repo, RunCoordinator } from "@aux/runtime";
 
 const pageObs = (): Observation =>
   ({
-    pageId: "p1", documentEpoch: 1, revision: 1, observedAt: Date.now(), scope: "full",
+    pageId: "p1",
+    documentEpoch: 1,
+    revision: 1,
+    observedAt: Date.now(),
+    scope: "full",
     content: {
-      url: "http://x.test/order", title: "Order",
-      viewport: { width: 1, height: 1, scale: 1 }, scroll: { y: 0, maxY: 0 },
-      frames: [], text: "Order page", headings: [],
+      url: "http://x.test/order",
+      title: "Order",
+      viewport: { width: 1, height: 1, scale: 1 },
+      scroll: { y: 0, maxY: 0 },
+      frames: [],
+      text: "Order page",
+      headings: [],
       elements: [{ ref: "r1", tag: "button", role: "button", name: "Save", frame: "main" }],
-      formFields: [], tables: [], links: [], dialogs: [], truncated: false,
+      formFields: [],
+      tables: [],
+      links: [],
+      dialogs: [],
+      truncated: false,
       stats: { elementsTotal: 1, elementsShown: 1 },
     },
   }) as unknown as Observation;
 
 function coordinatorHarness(
   model: MockModelClient,
-  execute?: (program: { steps: PlanStep[] }, ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void }) => { status: string; steps: StepOutcome[]; observation?: Observation },
+  execute?: (
+    program: { steps: PlanStep[] },
+    ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void },
+  ) => { status: string; steps: StepOutcome[]; observation?: Observation },
 ) {
   const db = openDb(":memory:");
   cleanup.push(() => db.close());
@@ -572,20 +779,43 @@ function coordinatorHarness(
   const events = new EventBus(repo);
   const pages = {
     observe: vi.fn(async () => pageObs()),
-    execute: vi.fn(async (program: { steps: PlanStep[] }, ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void }) =>
-      execute?.(program, ctx) ?? { status: "completed", steps: [] }),
+    execute: vi.fn(
+      async (
+        program: { steps: PlanStep[] },
+        ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void },
+      ) => execute?.(program, ctx) ?? { status: "completed", steps: [] },
+    ),
     livePageIds: () => ["p1"],
-    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/order", 1),  viewStatus: "visible", documentEpoch: 1, url: "http://x.test/order"  }),
+    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({
+      ...fixturePage(fixturePageId, "http://x.test/order", 1),
+      viewStatus: "visible",
+      documentEpoch: 1,
+      url: "http://x.test/order",
+    }),
   };
   const modelCalls: { role: string; modelId: string; error?: string }[] = [];
-  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
-    repo, events, pages: pages as never,
+  const coordinator = new RunCoordinator({
+    turnMentions: fixtureTurnMentions((pageId) => pages.get(pageId)),
+    repo,
+    events,
+    pages: pages as never,
     model: () => model,
     defaultModel: () => "test/agent",
     recoveryModel: () => undefined,
-    recordModelCall: (call: { runId: string; role: string; modelId: string; durationMs: number; error?: string }) => {
+    recordModelCall: (call: {
+      runId: string;
+      role: string;
+      modelId: string;
+      durationMs: number;
+      error?: string;
+    }) => {
       modelCalls.push(call);
-      repo.saveModelCall({ callId: randomUUID(), ...call, role: call.role as "agent", createdAt: Date.now() });
+      repo.saveModelCall({
+        callId: randomUUID(),
+        ...call,
+        role: call.role as "agent",
+        createdAt: Date.now(),
+      });
     },
     grants: ["effect:read", "effect:write", "effect:egress"],
   });
@@ -595,7 +825,8 @@ function coordinatorHarness(
 async function settle(repo: Repo, runId: string) {
   for (let i = 0; i < 400; i++) {
     const run = repo.getRun(runId)!;
-    if (["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(run.status)) return run;
+    if (["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(run.status))
+      return run;
     await new Promise((r) => setTimeout(r, 10));
   }
   throw new Error("run did not settle");
@@ -606,8 +837,10 @@ describe("runToolLoop (S5 host integration)", () => {
     const model = new MockModelClient().scriptToolSteps([{ text: "Complete page-free answer" }]);
     const nextStep = model.toolCallStep.bind(model);
     let release!: () => void;
-    const held = new Promise<void>(resolve => { release = resolve; });
-    model.toolCallStep = async opts => {
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    model.toolCallStep = async (opts) => {
       (opts as typeof opts & { onText?: (text: string) => void }).onText?.("Live page-free answer");
       await held;
       (opts as typeof opts & { onText?: (text: string) => void }).onText?.("Complete page-free answer");
@@ -616,118 +849,231 @@ describe("runToolLoop (S5 host integration)", () => {
     const h = coordinatorHarness(model);
     const run = await h.coordinator.start({ goal: "Chat without a page", pageIds: [], engine: "agent-loop" });
     try {
-      await vi.waitFor(() => expect(h.coordinator.deps.events.since(0).events.some(event =>
-        event.type === "run.answer.delta" && event.payload.text === "Live page-free answer")).toBe(true));
+      await vi.waitFor(() =>
+        expect(
+          h.coordinator.deps.events
+            .since(0)
+            .events.some(
+              (event) => event.type === "run.answer.delta" && event.payload.text === "Live page-free answer",
+            ),
+        ).toBe(true),
+      );
       expect(h.repo.getRun(run.runId)?.status).toBe("running");
       expect(h.pages.observe).not.toHaveBeenCalled();
       expect(h.pages.execute).not.toHaveBeenCalled();
-    } finally { release(); await settle(h.repo, run.runId); }
+    } finally {
+      release();
+      await settle(h.repo, run.runId);
+    }
     expect(h.repo.getRun(run.runId)?.result).toMatchObject({ report: "Complete page-free answer" });
-    expect(h.coordinator.deps.events.since(0).events.filter(event => event.type === "run.answer.delta").at(-1)?.payload)
-      .toMatchObject({ text: "Complete page-free answer", seq: 2 });
+    expect(
+      h.coordinator.deps.events
+        .since(0)
+        .events.filter((event) => event.type === "run.answer.delta")
+        .at(-1)?.payload,
+    ).toMatchObject({ text: "Complete page-free answer", seq: 2 });
   });
 
   it.each([
-    { target: "safe-host", status: "needs_input", gateCount: 1, calls: 1,
+    {
+      target: "safe-host",
+      status: "needs_input",
+      gateCount: 1,
+      calls: 1,
       checkEvidence: (evidence: { pending: unknown; park: unknown; row: unknown; transcript: string }) => {
         expect(evidence.pending).toMatchObject({ kind: "approval" });
         expect(evidence.park).toMatchObject({ toolCallId: "first-chat-open-real-url" });
         expect(evidence.row).toEqual({ n: 1 });
-      } },
-    { target: "private-address", status: "failed", gateCount: 0, calls: 3,
+      },
+    },
+    {
+      target: "private-address",
+      status: "failed",
+      gateCount: 0,
+      calls: 3,
       checkEvidence: (evidence: { pending: unknown; park: unknown; row: unknown; transcript: string }) => {
         expect(evidence.pending).toBeUndefined();
         expect(evidence.transcript).toContain("Web tools cannot contact a private or local network address.");
         expect(evidence.transcript).not.toContain("redeclaration");
-      } },
-  ])("enforces the actual page-free streamed REPL openTab boundary for $target", async ({ target, status, gateCount, calls, checkEvidence }) => {
-    const { createRequire } = await import("node:module");
-    const { createFixture } = await import("../support/fixture.mjs");
-    const { createModelFixture } = await import("../support/model-fixture.mjs");
-    const runtimeRequire = createRequire(new URL("../../apps/runtime/package.json", import.meta.url));
-    const { createOpenAI } = await import(runtimeRequire.resolve("@ai-sdk/openai"));
-    const { streamText } = await import(runtimeRequire.resolve("ai"));
-    const fixture = await createFixture();
-    const transport = createModelFixture(fixture);
-    const destination = target === "safe-host" ? "http://aux-recovery.fixture.test/first-chat/opened" : `${fixture.url}/first-chat/opened`;
-    const code = `const opened = openTab(${JSON.stringify(destination)}); display(opened); submitResult("Explicit tool destination opened.");`;
-    transport.respond(() => ({ tool_calls: [{ id: "first-chat-open-real-url", type: "function",
-      function: { name: "repl", arguments: JSON.stringify({ code }) } }] }));
-    try {
-      const provider = createOpenAI({ apiKey: "synthetic-loopback-only", baseURL: transport.endpoint });
-      const decoded = streamText({ model: provider.chat("fixture-model"), prompt: "Open synthetic destination",
-        maxRetries: 0, tools: { repl: { inputSchema: buildToolManifest().repl!.inputSchema } } });
-      for await (const _part of decoded.fullStream) { /* Consume the actual SDK transport before dispatch. */ }
-      const toolCalls = await decoded.toolCalls;
-      expect(toolCalls).toHaveLength(1);
-      expect(toolCalls[0]).toMatchObject({ toolCallId: "first-chat-open-real-url", toolName: "repl", input: { code } });
-      const model = new MockModelClient().scriptToolSteps([{ toolCalls }]);
-      const h = coordinatorHarness(model);
-      let gateCalls = 0;
-      h.coordinator.deps.agentLoop = { repl: { openTab: async (url, ctx) => {
-        expect(url).toBe(destination);
-        gateCalls++;
-        // Controlled gate response; no site grant or native consent is fabricated.
-        h.coordinator.suspensions.park({ runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId,
-          kind: "approval", request: { kind: "approval", approvalId: "ap-first-chat", instruction: "Approve this destination?", guidance: "Wait for actual person input." } });
-        return { park: { kind: "approval", approvalId: "ap-first-chat", instruction: "Approve this destination?" } };
-      } } };
-      const run = await h.coordinator.start({ goal: "Open the synthetic destination", pageIds: [],
-        engine: "agent-loop", maxModelCalls: 3 });
+      },
+    },
+  ])(
+    "enforces the actual page-free streamed REPL openTab boundary for $target",
+    async ({ target, status, gateCount, calls, checkEvidence }) => {
+      const { createRequire } = await import("node:module");
+      const { createFixture } = await import("../support/fixture.mjs");
+      const { createModelFixture } = await import("../support/model-fixture.mjs");
+      const runtimeRequire = createRequire(new URL("../../apps/runtime/package.json", import.meta.url));
+      const { createOpenAI } = await import(runtimeRequire.resolve("@ai-sdk/openai"));
+      const { streamText } = await import(runtimeRequire.resolve("ai"));
+      const fixture = await createFixture();
+      const transport = createModelFixture(fixture);
+      const destination =
+        target === "safe-host"
+          ? "http://aux-recovery.fixture.test/first-chat/opened"
+          : `${fixture.url}/first-chat/opened`;
+      const code = `const opened = openTab(${JSON.stringify(destination)}); display(opened); submitResult("Explicit tool destination opened.");`;
+      transport.respond(() => ({
+        tool_calls: [
+          {
+            id: "first-chat-open-real-url",
+            type: "function",
+            function: { name: "repl", arguments: JSON.stringify({ code }) },
+          },
+        ],
+      }));
       try {
-        await vi.waitFor(() => expect(["needs_input", "failed"]).toContain(h.repo.getRun(run.runId)?.status));
-        const transcript = new TranscriptStore(h.db).load(run.runId);
-        expect(h.repo.getRun(run.runId)?.pageIds).toEqual([]);
-        expect(h.pages.observe).not.toHaveBeenCalled();
-        expect(h.pages.execute).not.toHaveBeenCalled();
-        expect(h.repo.getRun(run.runId)?.status).toBe(status);
-        expect(gateCalls).toBe(gateCount);
-        expect(h.modelCalls).toHaveLength(calls);
-        checkEvidence({ pending: h.coordinator.suspensions.pending(run.runId),
-          park: new TranscriptStore(h.db).openPark(run.runId),
-          row: h.db.prepare("SELECT COUNT(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId),
-          transcript: JSON.stringify(transcript) });
-      } finally { await h.coordinator.cancel(run.runId); }
-    } finally { transport.close(); await fixture.close(); }
-  });
+        const provider = createOpenAI({ apiKey: "synthetic-loopback-only", baseURL: transport.endpoint });
+        const decoded = streamText({
+          model: provider.chat("fixture-model"),
+          prompt: "Open synthetic destination",
+          maxRetries: 0,
+          tools: { repl: { inputSchema: buildToolManifest().repl!.inputSchema } },
+        });
+        for await (const _part of decoded.fullStream) {
+          /* Consume the actual SDK transport before dispatch. */
+        }
+        const toolCalls = await decoded.toolCalls;
+        expect(toolCalls).toHaveLength(1);
+        expect(toolCalls[0]).toMatchObject({
+          toolCallId: "first-chat-open-real-url",
+          toolName: "repl",
+          input: { code },
+        });
+        const model = new MockModelClient().scriptToolSteps([{ toolCalls }]);
+        const h = coordinatorHarness(model);
+        let gateCalls = 0;
+        h.coordinator.deps.agentLoop = {
+          repl: {
+            openTab: async (url, ctx) => {
+              expect(url).toBe(destination);
+              gateCalls++;
+              // Controlled gate response; no site grant or native consent is fabricated.
+              h.coordinator.suspensions.park({
+                runId: ctx.runId,
+                threadId: ctx.threadId,
+                turnId: ctx.turnId,
+                kind: "approval",
+                request: {
+                  kind: "approval",
+                  approvalId: "ap-first-chat",
+                  instruction: "Approve this destination?",
+                  guidance: "Wait for actual person input.",
+                },
+              });
+              return {
+                park: {
+                  kind: "approval",
+                  approvalId: "ap-first-chat",
+                  instruction: "Approve this destination?",
+                },
+              };
+            },
+          },
+        };
+        const run = await h.coordinator.start({
+          goal: "Open the synthetic destination",
+          pageIds: [],
+          engine: "agent-loop",
+          maxModelCalls: 3,
+        });
+        try {
+          await vi.waitFor(() =>
+            expect(["needs_input", "failed"]).toContain(h.repo.getRun(run.runId)?.status),
+          );
+          const transcript = new TranscriptStore(h.db).load(run.runId);
+          expect(h.repo.getRun(run.runId)?.pageIds).toEqual([]);
+          expect(h.pages.observe).not.toHaveBeenCalled();
+          expect(h.pages.execute).not.toHaveBeenCalled();
+          expect(h.repo.getRun(run.runId)?.status).toBe(status);
+          expect(gateCalls).toBe(gateCount);
+          expect(h.modelCalls).toHaveLength(calls);
+          checkEvidence({
+            pending: h.coordinator.suspensions.pending(run.runId),
+            park: new TranscriptStore(h.db).openPark(run.runId),
+            row: h.db.prepare("SELECT COUNT(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId),
+            transcript: JSON.stringify(transcript),
+          });
+        } finally {
+          await h.coordinator.cancel(run.runId);
+        }
+      } finally {
+        transport.close();
+        await fixture.close();
+      }
+    },
+  );
 
   it("funds a real Goal turn and only completes on accepted submit_result", async () => {
-    const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{ toolCallId: "done",
-      toolName: "submit_result", input: { report: "Fixture result" } }] }]);
-    model.inputTokens = 20; model.outputTokens = 10;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "done", toolName: "submit_result", input: { report: "Fixture result" } }] },
+    ]);
+    model.inputTokens = 20;
+    model.outputTokens = 10;
     const h = coordinatorHarness(model);
     const space = new TaskService(h.repo, new EventBus(h.repo)).createWorkspace("Goal fixture");
-    const runs = { start: (input: { deliveryRunId: string; goal: string; pageIds: string[]; chatId?: string;
-      engine: "agent-loop"; maxTokens?: number; maxCostUsd?: number; deadlineMs?: number }) =>
-      h.coordinator.start({ runId: input.deliveryRunId, goal: input.goal, pageIds: input.pageIds,
-        chatId: input.chatId, engine: input.engine, maxTokens: input.maxTokens,
-        maxCostUsd: input.maxCostUsd, deadlineMs: input.deadlineMs }),
+    const runs = {
+      start: (input: {
+        deliveryRunId: string;
+        goal: string;
+        pageIds: string[];
+        chatId?: string;
+        engine: "agent-loop";
+        maxTokens?: number;
+        maxCostUsd?: number;
+        deadlineMs?: number;
+      }) =>
+        h.coordinator.start({
+          runId: input.deliveryRunId,
+          goal: input.goal,
+          pageIds: input.pageIds,
+          chatId: input.chatId,
+          engine: input.engine,
+          maxTokens: input.maxTokens,
+          maxCostUsd: input.maxCostUsd,
+          deadlineMs: input.deadlineMs,
+        }),
       pause: (runId: string) => h.coordinator.pause(runId),
       resume: (runId: string) => h.coordinator.resume(runId),
-      cancel: (runId: string) => h.coordinator.cancel(runId) } as unknown as ConstructorParameters<typeof GoalService>[1];
-    const goals = new GoalService(h.repo, runs, async () => [{ id: "test/agent", source: "configured",
-      inputUsdPerMTok: 1, outputUsdPerMTok: 1 }]);
-    h.coordinator.deps.agentLoop = { goalBudget: {
-      reserve: (runId, request) => goals.reserveModelCall(runId, request),
-      settle: (runId, reservationId, attempts) => goals.settleModelCall(runId, reservationId, attempts),
-    } };
-    const goal = goals.create({ workspaceId: space.workspaceId, chatId: "chat-goal",
-      objective: "Read fixture", budget: { maxTokens: 200_000, maxCostUsd: 1 } });
+      cancel: (runId: string) => h.coordinator.cancel(runId),
+    } as unknown as ConstructorParameters<typeof GoalService>[1];
+    const goals = new GoalService(h.repo, runs, async () => [
+      { id: "test/agent", source: "configured", inputUsdPerMTok: 1, outputUsdPerMTok: 1 },
+    ]);
+    h.coordinator.deps.agentLoop = {
+      goalBudget: {
+        reserve: (runId, request) => goals.reserveModelCall(runId, request),
+        settle: (runId, reservationId, attempts) => goals.settleModelCall(runId, reservationId, attempts),
+      },
+    };
+    const goal = goals.create({
+      workspaceId: space.workspaceId,
+      chatId: "chat-goal",
+      objective: "Read fixture",
+      budget: { maxTokens: 200_000, maxCostUsd: 1 },
+    });
     const started = await goals.start(goal.goalId, ["p1"]);
     const completed = await settle(h.repo, started.runId!);
     expect(completed).toMatchObject({ status: "completed", result: { report: "Fixture result" } });
-    expect(goals.get(goal.goalId)).toMatchObject({ status: "completed", usedTokens: 30,
-      reservedTokens: 0 });
+    expect(goals.get(goal.goalId)).toMatchObject({ status: "completed", usedTokens: 30, reservedTokens: 0 });
     expect(h.modelCalls).toHaveLength(1);
     model.scriptToolSteps([{ text: "I think it is done" }]);
-    const second = goals.create({ workspaceId: space.workspaceId, chatId: "chat-goal",
-      objective: "Need proof", budget: { maxTokens: 200_000 } });
+    const second = goals.create({
+      workspaceId: space.workspaceId,
+      chatId: "chat-goal",
+      objective: "Need proof",
+      budget: { maxTokens: 200_000 },
+    });
     const unverified = await goals.start(second.goalId, ["p1"]);
     expect((await settle(h.repo, unverified.runId!)).status).toBe("failed");
     expect(goals.get(second.goalId).status).toBe("failed");
     const before = h.modelCalls.length;
-    const tooSmall = goals.create({ workspaceId: space.workspaceId, chatId: "chat-goal",
-      objective: "x".repeat(10_000), budget: { maxTokens: 20_000 } });
+    const tooSmall = goals.create({
+      workspaceId: space.workspaceId,
+      chatId: "chat-goal",
+      objective: "x".repeat(10_000),
+      budget: { maxTokens: 20_000 },
+    });
     const rejected = await goals.start(tooSmall.goalId, ["p1"]);
     expect((await settle(h.repo, rejected.runId!)).error).toMatch(/token limit exhausted/);
     expect(h.modelCalls).toHaveLength(before);
@@ -737,120 +1083,234 @@ describe("runToolLoop (S5 host integration)", () => {
     const model = new MockModelClient().scriptToolSteps([{ text: "after takeover" }]);
     const nextStep = model.toolCallStep.bind(model);
     let started!: () => void;
-    const pending = new Promise<void>(resolve => { started = resolve; });
+    const pending = new Promise<void>((resolve) => {
+      started = resolve;
+    });
     let calls = 0;
-    model.toolCallStep = async opts => {
+    model.toolCallStep = async (opts) => {
       if (++calls === 1) {
         started();
-        await new Promise<void>((_resolve, reject) => (opts as typeof opts & { signal?: AbortSignal }).signal?.addEventListener("abort", () =>
-          reject(new AuxError("cancelled", "takeover interrupted this turn")), { once: true }));
+        await new Promise<void>((_resolve, reject) =>
+          (opts as typeof opts & { signal?: AbortSignal }).signal?.addEventListener(
+            "abort",
+            () => reject(new AuxError("cancelled", "takeover interrupted this turn")),
+            { once: true },
+          ),
+        );
         throw new Error("unreachable");
       }
       return nextStep(opts);
     };
     const h = coordinatorHarness(model);
-    const run = await h.coordinator.start({ goal: "read after owner", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "read after owner",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     await pending;
     await h.coordinator.pause(run.runId);
     h.coordinator.interruptForTakeover(run.runId);
-    await new Promise(resolve => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 20));
     expect(h.repo.getRun(run.runId)?.status).toBe("paused");
     await h.coordinator.resume(run.runId);
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "after takeover" });
     expect(h.pages.observe).toHaveBeenCalledTimes(2);
-    expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain("fresh page snapshot after takeover");
+    expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain(
+      "fresh page snapshot after takeover",
+    );
   });
   it.each([false, true])("selects an unchecked radio with a check receipt, batched=%s", async (batched) => {
-    const before = { ...pageObs(), content: { ...pageObs().content,
-      text: "Pro plan",
-      elements: [
-        { ref: "r2", tag: "input", role: "textbox", name: "Name", value: "", frame: "main" },
-        { ref: "r11", tag: "input", role: "radio", name: "Pro", checked: false, frame: "main" },
-      ],
-    } } as Observation;
-    const after = { ...before, revision: 2, content: { ...before.content,
-      elements: [{ ref: "r11", tag: "input", role: "radio", name: "Pro", checked: true, frame: "main" }],
-    } } as Observation;
+    const before = {
+      ...pageObs(),
+      content: {
+        ...pageObs().content,
+        text: "Pro plan",
+        elements: [
+          { ref: "r2", tag: "input", role: "textbox", name: "Name", value: "", frame: "main" },
+          { ref: "r11", tag: "input", role: "radio", name: "Pro", checked: false, frame: "main" },
+        ],
+      },
+    } as Observation;
+    const after = {
+      ...before,
+      revision: 2,
+      content: {
+        ...before.content,
+        elements: [{ ref: "r11", tag: "input", role: "radio", name: "Pro", checked: true, frame: "main" }],
+      },
+    } as Observation;
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [
-        ...(batched ? [{ id: "fill-name", op: "fill", target: "r2", value: "Morgan Vale" }] : []),
-        { id: "select-pro", op: "click", target: "r11" },
-      ] } }] },
+      {
+        toolCalls: [
+          {
+            toolCallId: "a1",
+            toolName: "act",
+            input: {
+              steps: [
+                ...(batched ? [{ id: "fill-name", op: "fill", target: "r2", value: "Morgan Vale" }] : []),
+                { id: "select-pro", op: "click", target: "r11" },
+              ],
+            },
+          },
+        ],
+      },
       { toolCalls: [{ toolCallId: "done", toolName: "submit_result", input: { report: "Pro selected" } }] },
     ]);
     const h = coordinatorHarness(model, (program, ctx) => {
-      const steps = program.steps.map((step) => ({ stepId: step.id, op: step.op,
-        status: "ok" as const, startedAt: 1, durationMs: 1, effect: "observed" as const,
+      const steps = program.steps.map((step) => ({
+        stepId: step.id,
+        op: step.op,
+        status: "ok" as const,
+        startedAt: 1,
+        durationMs: 1,
+        effect: "observed" as const,
         before: step.op === "fill" ? { value: "" } : { checked: false },
         after: step.op === "fill" ? { value: "Morgan Vale" } : { checked: true },
-        receipt: { observed: "control value changed after action", remoteConfirmed: false,
-          uncertain: false, dispatchedBeforeTakeover: false },
+        receipt: {
+          observed: "control value changed after action",
+          remoteConfirmed: false,
+          uncertain: false,
+          dispatchedBeforeTakeover: false,
+        },
       }));
       for (const [i, step] of program.steps.entries()) ctx?.onStep?.(steps[i]!, step);
       return { status: "completed", steps, observation: after };
     });
     h.pages.observe.mockResolvedValue(before);
-    const run = await h.coordinator.start({ goal: "Select Pro plan", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "Select Pro plan",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     await settle(h.repo, run.runId);
     expect(h.pages.execute).toHaveBeenCalledOnce();
-    expect(h.pages.execute.mock.calls[0]?.[0].steps.map((step) => step.op)).toEqual(batched ? ["fill", "check"] : ["check"]);
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual([{ status: "confirmed" }]);
+    expect(h.pages.execute.mock.calls[0]?.[0].steps.map((step) => step.op)).toEqual(
+      batched ? ["fill", "check"] : ["check"],
+    );
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual([
+      { status: "confirmed" },
+    ]);
   });
 
   it("rejects a redundant rich-text focus click before dispatch, then types directly", async () => {
-    const before = { ...pageObs(), content: { ...pageObs().content,
-      text: "Bio (rich text)",
-      elements: [{ ref: "r12", tag: "div", name: "Bio (rich text)", frame: "main" }],
-      formFields: [{ ref: "r12", label: "Bio (rich text)", value: "" }],
-    } } as Observation;
-    const after = { ...before, revision: 2, content: { ...before.content,
-      text: "Bio (rich text)\nDesign systems for teams",
-      formFields: [{ ref: "r12", label: "Bio (rich text)", value: "Design systems for teams" }],
-    } } as Observation;
+    const before = {
+      ...pageObs(),
+      content: {
+        ...pageObs().content,
+        text: "Bio (rich text)",
+        elements: [{ ref: "r12", tag: "div", name: "Bio (rich text)", frame: "main" }],
+        formFields: [{ ref: "r12", label: "Bio (rich text)", value: "" }],
+      },
+    } as Observation;
+    const after = {
+      ...before,
+      revision: 2,
+      content: {
+        ...before.content,
+        text: "Bio (rich text)\nDesign systems for teams",
+        formFields: [{ ref: "r12", label: "Bio (rich text)", value: "Design systems for teams" }],
+      },
+    } as Observation;
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "b1", toolName: "act", input: { steps: [
-        { id: "click", op: "click", target: "r12" },
-        { id: "type", op: "type", target: "r12", value: "Design systems for teams" },
-      ] } }] },
-      { toolCalls: [{ toolCallId: "b2", toolName: "act", input: { steps: [
-        { id: "type-only", op: "type", target: "r12", value: "Design systems for teams" },
-      ] } }] },
+      {
+        toolCalls: [
+          {
+            toolCallId: "b1",
+            toolName: "act",
+            input: {
+              steps: [
+                { id: "click", op: "click", target: "r12" },
+                { id: "type", op: "type", target: "r12", value: "Design systems for teams" },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "b2",
+            toolName: "act",
+            input: {
+              steps: [{ id: "type-only", op: "type", target: "r12", value: "Design systems for teams" }],
+            },
+          },
+        ],
+      },
       { toolCalls: [{ toolCallId: "done", toolName: "submit_result", input: { report: "Bio entered" } }] },
     ]);
     const h = coordinatorHarness(model, (program, ctx) => {
-      const steps = program.steps.map((step) => ({ stepId: step.id, op: step.op,
-        status: "ok" as const, startedAt: 1, durationMs: 1, effect: "observed" as const,
-        before: { value: "" }, after: { value: "Design systems for teams" },
-        receipt: { observed: "control value changed after action", remoteConfirmed: false,
-          uncertain: false, dispatchedBeforeTakeover: false },
+      const steps = program.steps.map((step) => ({
+        stepId: step.id,
+        op: step.op,
+        status: "ok" as const,
+        startedAt: 1,
+        durationMs: 1,
+        effect: "observed" as const,
+        before: { value: "" },
+        after: { value: "Design systems for teams" },
+        receipt: {
+          observed: "control value changed after action",
+          remoteConfirmed: false,
+          uncertain: false,
+          dispatchedBeforeTakeover: false,
+        },
       }));
       for (const [i, step] of program.steps.entries()) ctx?.onStep?.(steps[i]!, step);
       return { status: "completed", steps, observation: after };
     });
     h.pages.observe.mockResolvedValue(before);
-    const run = await h.coordinator.start({ goal: "Enter the bio", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "Enter the bio",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     await settle(h.repo, run.runId);
     expect(h.pages.execute).toHaveBeenCalledOnce();
     expect(h.pages.execute.mock.calls[0]?.[0].steps.map((step) => step.op)).toEqual(["type"]);
     expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain("no action was dispatched");
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual([{ status: "confirmed" }]);
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual([
+      { status: "confirmed" },
+    ]);
   });
 
   it("gives a goal program visible body text and headings without browser-title or element duplicates", async () => {
-    const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
-      code: 'var s=snapshot(); if(s.headings[0]!=="Record 15 — Alpha project") throw new Error("wrong heading"); if(s.bodyText.match(/Priya Patel/g).length!==1) throw new Error("duplicated owner"); submitResult(s.headings[0],[{observationId:s.observationId,quote:s.headings[0]}])',
-      answerLabel: "",
-    } }] }]);
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [
+          {
+            toolCallId: "g1",
+            toolName: "goal_program",
+            input: {
+              code: 'var s=snapshot(); if(s.headings[0]!=="Record 15 — Alpha project") throw new Error("wrong heading"); if(s.bodyText.match(/Priya Patel/g).length!==1) throw new Error("duplicated owner"); submitResult(s.headings[0],[{observationId:s.observationId,quote:s.headings[0]}])',
+              answerLabel: "",
+            },
+          },
+        ],
+      },
+    ]);
     const h = coordinatorHarness(model);
-    h.pages.observe.mockResolvedValue({ ...pageObs(), content: { ...pageObs().content,
-      title: "Record 15 — Alpha project — Records",
-      text: "Record 15 — Alpha project\nRecord 03\tPriya Patel\tapproved",
-      headings: ["Record 15 — Alpha project", "Hidden dialog title"],
-      elements: [{ ref: "r1", tag: "link", role: "link", name: "Priya Patel", frame: "main" }],
-    } } as Observation);
-    const run = await h.coordinator.start({ goal: "Report the exact record title", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    h.pages.observe.mockResolvedValue({
+      ...pageObs(),
+      content: {
+        ...pageObs().content,
+        title: "Record 15 — Alpha project — Records",
+        text: "Record 15 — Alpha project\nRecord 03\tPriya Patel\tapproved",
+        headings: ["Record 15 — Alpha project", "Hidden dialog title"],
+        elements: [{ ref: "r1", tag: "link", role: "link", name: "Priya Patel", frame: "main" }],
+      },
+    } as Observation);
+    const run = await h.coordinator.start({
+      goal: "Report the exact record title",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "Record 15 — Alpha project" });
@@ -859,44 +1319,94 @@ describe("runToolLoop (S5 host integration)", () => {
 
   it("rejects a site-suffixed browser title when the user requested the exact visible title", async () => {
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
-        code: 'submitResult("Record 15 — Alpha project — Records",[{pageId:"p1",revision:1,quote:"title: Record 15 — Alpha project — Records"}])',
-        answerLabel: "",
-      } }] },
-      { toolCalls: [{ toolCallId: "s1", toolName: "submit_result", input: { report: "Record 15 — Alpha project",
-        citations: [{ pageId: "p1", revision: 1, quote: "Record 15 — Alpha project" }] } }] },
+      {
+        toolCalls: [
+          {
+            toolCallId: "g1",
+            toolName: "goal_program",
+            input: {
+              code: 'submitResult("Record 15 — Alpha project — Records",[{pageId:"p1",revision:1,quote:"title: Record 15 — Alpha project — Records"}])',
+              answerLabel: "",
+            },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "s1",
+            toolName: "submit_result",
+            input: {
+              report: "Record 15 — Alpha project",
+              citations: [{ pageId: "p1", revision: 1, quote: "Record 15 — Alpha project" }],
+            },
+          },
+        ],
+      },
     ]);
     const h = coordinatorHarness(model);
-    h.pages.observe.mockResolvedValue({ ...pageObs(), content: { ...pageObs().content,
-      title: "Record 15 — Alpha project — Records", text: "Record 15 — Alpha project\nOwner: Alex Rivera",
-      headings: ["Record 15 — Alpha project"],
-    } } as Observation);
-    const run = await h.coordinator.start({ goal: "Open rec-15 and report its exact title", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    h.pages.observe.mockResolvedValue({
+      ...pageObs(),
+      content: {
+        ...pageObs().content,
+        title: "Record 15 — Alpha project — Records",
+        text: "Record 15 — Alpha project\nOwner: Alex Rivera",
+        headings: ["Record 15 — Alpha project"],
+      },
+    } as Observation);
+    const run = await h.coordinator.start({
+      goal: "Open rec-15 and report its exact title",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "Record 15 — Alpha project" });
     expect(h.modelCalls).toHaveLength(2);
-    expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain("browser title includes surrounding site text");
+    expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain(
+      "browser title includes surrounding site text",
+    );
   });
 
   it("persists failed failover attempts against the run budget without a tool replay", async () => {
     const model = new MockModelClient();
     model.toolCallStep = async () => {
       const error = new Error("provider unavailable");
-      Object.defineProperty(error, Symbol.for("aux.modelAttempts"), { value: [{
-        durationMs: 5, modelId: "test/fallback", inputTokens: 12,
-        error: "first route failed",
-      }, { durationMs: 7, modelId: "test/agent", inputTokens: 9, outputTokens: 2,
-        error: "final route failed" }] });
+      Object.defineProperty(error, Symbol.for("aux.modelAttempts"), {
+        value: [
+          {
+            durationMs: 5,
+            modelId: "test/fallback",
+            inputTokens: 12,
+            error: "first route failed",
+          },
+          {
+            durationMs: 7,
+            modelId: "test/agent",
+            inputTokens: 9,
+            outputTokens: 2,
+            error: "final route failed",
+          },
+        ],
+      });
       throw error;
     };
     const h = coordinatorHarness(model);
-    const run = await h.coordinator.start({ goal: "read", pageIds: ["p1"], chatId: "chat-1",
-      engine: "agent-loop", maxModelCalls: 2 });
+    const run = await h.coordinator.start({
+      goal: "read",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+      maxModelCalls: 2,
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("failed");
     expect(h.repo.listModelCalls(run.runId)).toHaveLength(2);
-    expect(h.repo.listModelCalls(run.runId).map((call) => call.modelId)).toEqual(["test/fallback", "test/agent"]);
+    expect(h.repo.listModelCalls(run.runId).map((call) => call.modelId)).toEqual([
+      "test/fallback",
+      "test/agent",
+    ]);
     expect(h.repo.listModelCalls(run.runId).every((call) => !!call.error)).toBe(true);
     expect(h.pages.execute).not.toHaveBeenCalled();
   });
@@ -907,49 +1417,127 @@ describe("runToolLoop (S5 host integration)", () => {
     model.toolCallStep = async () => {
       await h.coordinator.cancel(h.repo.listRuns()[0]!.runId);
       const error = new Error("provider cancelled after billed work");
-      Object.defineProperty(error, Symbol.for("aux.modelAttempts"), { value: [{ durationMs: 7,
-        modelId: "test/served", inputTokens: 9, outputTokens: 2,
-        providerMetadata: { gateway: { cost: "0.125" } }, error: "cancelled" }] });
+      Object.defineProperty(error, Symbol.for("aux.modelAttempts"), {
+        value: [
+          {
+            durationMs: 7,
+            modelId: "test/served",
+            inputTokens: 9,
+            outputTokens: 2,
+            providerMetadata: { gateway: { cost: "0.125" } },
+            error: "cancelled",
+          },
+        ],
+      });
       throw error;
     };
-    const run = await h.coordinator.start({ goal: "read", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "read",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     await vi.waitFor(() => expect(h.repo.listModelCalls(run.runId)).toHaveLength(1));
-    expect(h.repo.listModelCalls(run.runId)[0]).toMatchObject({ modelId: "test/served", inputTokens: 9, outputTokens: 2 });
+    expect(h.repo.listModelCalls(run.runId)[0]).toMatchObject({
+      modelId: "test/served",
+      inputTokens: 9,
+      outputTokens: 2,
+    });
     expect(h.repo.getRun(run.runId)?.status).toBe("cancelled");
     expect(h.pages.execute).not.toHaveBeenCalled();
   });
 
   it("finishes a corroborated record route and dialog in one goal-program model call", async () => {
-    let current = { ...pageObs(), content: { ...pageObs().content,
-      url: "http://x.test/records", text: "Records",
-      elements: [
-        { ref: "r1", tag: "a", role: "link", name: "Record 01", href: "/records/rec-01", frame: "main" },
-        { ref: "r2", tag: "a", role: "link", name: "Record 02", href: "/records/rec-02", frame: "main" },
-      ],
-    } } as Observation;
-    const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{
-      toolCallId: "g1", toolName: "goal_program", input: { code: 'page.navigateMatching("rec-14"); page.clickByName("Details", "button"); var s=snapshot(); var m=s.text.match(/Internal reference: ([^\\n]+)/); if(!m) throw new Error("label absent"); submitResult(m[1], [{observationId:s.observationId, quote:m[0]}])', answerLabel: "" },
-    }] }]);
+    let current = {
+      ...pageObs(),
+      content: {
+        ...pageObs().content,
+        url: "http://x.test/records",
+        text: "Records",
+        elements: [
+          { ref: "r1", tag: "a", role: "link", name: "Record 01", href: "/records/rec-01", frame: "main" },
+          { ref: "r2", tag: "a", role: "link", name: "Record 02", href: "/records/rec-02", frame: "main" },
+        ],
+      },
+    } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [
+          {
+            toolCallId: "g1",
+            toolName: "goal_program",
+            input: {
+              code: 'page.navigateMatching("rec-14"); page.clickByName("Details", "button"); var s=snapshot(); var m=s.text.match(/Internal reference: ([^\\n]+)/); if(!m) throw new Error("label absent"); submitResult(m[1], [{observationId:s.observationId, quote:m[0]}])',
+              answerLabel: "",
+            },
+          },
+        ],
+      },
+    ]);
     const h = coordinatorHarness(model);
     h.pages.observe.mockImplementation(async () => current);
-    h.pages.execute.mockImplementation(async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void;
-      journaled?: boolean; journalIntentId?: string }) => {
-      if (ctx?.journaled && !ctx.journalIntentId) throw new Error("A pre-journaled browser write requires its durable intent ID");
-      const op = program.steps[0]?.op;
-      current = op === "navigate"
-        ? { ...current, revision: 2, content: { ...current.content, url: "http://x.test/records/rec-14", text: "Record rec-14", elements: [
-          { ref: "r3", tag: "button", role: "button", name: "Details", frame: "main" },
-        ] } } as Observation
-        : { ...current, revision: 3, content: { ...current.content, text: "Internal ref rec-14.", elements: [
-          { ref: "r3", tag: "button", role: "button", name: "Details", frame: "main", occluded: true },
-          { ref: "r4", tag: "button", role: "button", name: "Close", frame: "main" },
-        ] } } as Observation;
-      const steps = program.steps.map((step) => ({ stepId: step.id, op: step.op, status: "ok" as const, startedAt: 1, durationMs: 1,
-        receipt: { remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false }, effect: "dispatched" as const }));
-      for (const [index, step] of program.steps.entries()) ctx?.onStep?.(steps[index]!, step);
-      return { status: "completed", steps, observation: current };
+    h.pages.execute.mockImplementation(
+      async (
+        program: { steps: PlanStep[] },
+        ctx?: {
+          onStep?: (o: StepOutcome, s: PlanStep) => void;
+          journaled?: boolean;
+          journalIntentId?: string;
+        },
+      ) => {
+        if (ctx?.journaled && !ctx.journalIntentId)
+          throw new Error("A pre-journaled browser write requires its durable intent ID");
+        const op = program.steps[0]?.op;
+        current =
+          op === "navigate"
+            ? ({
+                ...current,
+                revision: 2,
+                content: {
+                  ...current.content,
+                  url: "http://x.test/records/rec-14",
+                  text: "Record rec-14",
+                  elements: [{ ref: "r3", tag: "button", role: "button", name: "Details", frame: "main" }],
+                },
+              } as Observation)
+            : ({
+                ...current,
+                revision: 3,
+                content: {
+                  ...current.content,
+                  text: "Internal ref rec-14.",
+                  elements: [
+                    {
+                      ref: "r3",
+                      tag: "button",
+                      role: "button",
+                      name: "Details",
+                      frame: "main",
+                      occluded: true,
+                    },
+                    { ref: "r4", tag: "button", role: "button", name: "Close", frame: "main" },
+                  ],
+                },
+              } as Observation);
+        const steps = program.steps.map((step) => ({
+          stepId: step.id,
+          op: step.op,
+          status: "ok" as const,
+          startedAt: 1,
+          durationMs: 1,
+          receipt: { remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false },
+          effect: "dispatched" as const,
+        }));
+        for (const [index, step] of program.steps.entries()) ctx?.onStep?.(steps[index]!, step);
+        return { status: "completed", steps, observation: current };
+      },
+    );
+    const run = await h.coordinator.start({
+      goal: "Find rec-14, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
     });
-    const run = await h.coordinator.start({ goal: "Find rec-14, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "rec-14" });
@@ -958,76 +1546,189 @@ describe("runToolLoop (S5 host integration)", () => {
   });
   it("stops a goal program at its first uncertain action before the next click", async () => {
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
-        code: 'page.click("r1"); page.click("r1"); submitResult("saved")', answerLabel: "",
-      } }] },
+      {
+        toolCalls: [
+          {
+            toolCallId: "g1",
+            toolName: "goal_program",
+            input: {
+              code: 'page.click("r1"); page.click("r1"); submitResult("saved")',
+              answerLabel: "",
+            },
+          },
+        ],
+      },
       { text: "The click outcome is uncertain." },
     ]);
     const h = coordinatorHarness(model, (program, ctx) => {
-      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "failed" as const,
-        startedAt: 1, durationMs: 1, error: { code: "condition_timeout", message: "timed out" },
-        effect: "uncertain" as const, receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true },
+      const steps = program.steps.map((s) => ({
+        stepId: s.id,
+        op: s.op,
+        status: "failed" as const,
+        startedAt: 1,
+        durationMs: 1,
+        error: { code: "condition_timeout", message: "timed out" },
+        effect: "uncertain" as const,
+        receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true },
       }));
       for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
       return { status: "failed", steps };
     });
-    const run = await h.coordinator.start({ goal: "save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "save",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).not.toBe("completed");
     expect(h.pages.execute).toHaveBeenCalledOnce();
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "uncertain" });
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({
+      status: "uncertain",
+    });
     const transcript = new TranscriptStore(h.db).load(run.runId);
-    expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("Action outcome uncertain"))).toBe(true);
+    expect(
+      transcript.some(
+        (message) =>
+          message.role === "tool" && JSON.stringify(message.content).includes("Action outcome uncertain"),
+      ),
+    ).toBe(true);
   });
   it("explicitly navigates an observed same-origin pagination link without a write intent", async () => {
-    let current = { ...pageObs(), content: { ...pageObs().content,
-      url: "http://x.test/records", elements: [{ ref: "r17", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],
-    } } as Observation;
-    const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
-      code: 'page.followLinkByName("2"); const s = snapshot(); submitResult(s.text, [{observationId:s.observationId, quote:"url: http://x.test/records?page=2"}])', answerLabel: "",
-    } }] }]);
+    let current = {
+      ...pageObs(),
+      content: {
+        ...pageObs().content,
+        url: "http://x.test/records",
+        elements: [{ ref: "r17", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],
+      },
+    } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [
+          {
+            toolCallId: "g1",
+            toolName: "goal_program",
+            input: {
+              code: 'page.followLinkByName("2"); const s = snapshot(); submitResult(s.text, [{observationId:s.observationId, quote:"url: http://x.test/records?page=2"}])',
+              answerLabel: "",
+            },
+          },
+        ],
+      },
+    ]);
     const h = coordinatorHarness(model);
     h.pages.observe.mockImplementation(async () => current);
-    h.pages.execute.mockImplementation(async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void;
-      journaled?: boolean; journalIntentId?: string }) => {
-      if (ctx?.journaled && !ctx.journalIntentId) throw new Error("A pre-journaled browser write requires its durable intent ID");
-      current = { ...current, revision: 2, content: { ...current.content,
-        url: "http://x.test/records?page=2", text: "Page 2 records",
-      } } as Observation;
-      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const,
-        startedAt: 1, durationMs: 1 }));
-      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
-      return { status: "completed", steps, observation: current };
+    h.pages.execute.mockImplementation(
+      async (
+        program: { steps: PlanStep[] },
+        ctx?: {
+          onStep?: (o: StepOutcome, s: PlanStep) => void;
+          journaled?: boolean;
+          journalIntentId?: string;
+        },
+      ) => {
+        if (ctx?.journaled && !ctx.journalIntentId)
+          throw new Error("A pre-journaled browser write requires its durable intent ID");
+        current = {
+          ...current,
+          revision: 2,
+          content: { ...current.content, url: "http://x.test/records?page=2", text: "Page 2 records" },
+        } as Observation;
+        const steps = program.steps.map((s) => ({
+          stepId: s.id,
+          op: s.op,
+          status: "ok" as const,
+          startedAt: 1,
+          durationMs: 1,
+        }));
+        for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+        return { status: "completed", steps, observation: current };
+      },
+    );
+    const run = await h.coordinator.start({
+      goal: "open page 2",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
     });
-    const run = await h.coordinator.start({ goal: "open page 2", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
-    expect(h.pages.execute).toHaveBeenCalledWith(expect.objectContaining({ steps: [expect.objectContaining({ op: "navigate", url: "http://x.test/records?page=2" })] }), expect.anything(), expect.anything());
-    expect(h.db.prepare("SELECT count(*) AS n FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ n: 0 });
+    expect(h.pages.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        steps: [expect.objectContaining({ op: "navigate", url: "http://x.test/records?page=2" })],
+      }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(h.db.prepare("SELECT count(*) AS n FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({
+      n: 0,
+    });
   });
   it("shows the reached page after a later GoalProgram lookup fails", async () => {
-    let current = { ...pageObs(), content: { ...pageObs().content,
-      url: "http://x.test/records", elements: [{ ref: "r17", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],
-    } } as Observation;
+    let current = {
+      ...pageObs(),
+      content: {
+        ...pageObs().content,
+        url: "http://x.test/records",
+        elements: [{ ref: "r17", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],
+      },
+    } as Observation;
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
-        code: 'page.followLinkByName("2"); page.followLinkByName("Missing"); submitResult("done")', answerLabel: "",
-      } }] },
+      {
+        toolCalls: [
+          {
+            toolCallId: "g1",
+            toolName: "goal_program",
+            input: {
+              code: 'page.followLinkByName("2"); page.followLinkByName("Missing"); submitResult("done")',
+              answerLabel: "",
+            },
+          },
+        ],
+      },
       { text: "Page 2 reached; the remaining link needs inspection." },
     ]);
     const h = coordinatorHarness(model);
     h.pages.observe.mockImplementation(async () => current);
-    h.pages.execute.mockImplementation(async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
-      current = { ...current, revision: 2, content: { ...current.content,
-        url: "http://x.test/records?page=2", text: "Record 15", elements: [
-          { ref: "r10", tag: "a", role: "link", name: "Record 15", href: "/records/rec-15", frame: "main" },
-        ],
-      } } as Observation;
-      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1 }));
-      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
-      return { status: "completed", steps, observation: current };
+    h.pages.execute.mockImplementation(
+      async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
+        current = {
+          ...current,
+          revision: 2,
+          content: {
+            ...current.content,
+            url: "http://x.test/records?page=2",
+            text: "Record 15",
+            elements: [
+              {
+                ref: "r10",
+                tag: "a",
+                role: "link",
+                name: "Record 15",
+                href: "/records/rec-15",
+                frame: "main",
+              },
+            ],
+          },
+        } as Observation;
+        const steps = program.steps.map((s) => ({
+          stepId: s.id,
+          op: s.op,
+          status: "ok" as const,
+          startedAt: 1,
+          durationMs: 1,
+        }));
+        for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+        return { status: "completed", steps, observation: current };
+      },
+    );
+    const run = await h.coordinator.start({
+      goal: "find record 15",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
     });
-    const run = await h.coordinator.start({ goal: "find record 15", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     await settle(h.repo, run.runId);
     expect(h.pages.execute).toHaveBeenCalledOnce();
     const transcript = new TranscriptStore(h.db).load(run.runId);
@@ -1039,7 +1740,12 @@ describe("runToolLoop (S5 host integration)", () => {
   it("completes a text turn and seeds the task into the durable transcript", async () => {
     const model = new MockModelClient().scriptToolSteps([{ text: "ship it" }]);
     const h = coordinatorHarness(model);
-    const run = await h.coordinator.start({ goal: "read the page", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "read the page",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "ship it" });
@@ -1054,12 +1760,20 @@ describe("runToolLoop (S5 host integration)", () => {
 
   it("parks needs_input on ask_user_question and resumes with the answer", async () => {
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "q1", toolName: "ask_user_question", input: { question: "blue or red?" } }] },
+      {
+        toolCalls: [{ toolCallId: "q1", toolName: "ask_user_question", input: { question: "blue or red?" } }],
+      },
       { text: "blue it is" },
     ]);
     const h = coordinatorHarness(model);
-    const run = await h.coordinator.start({ goal: "pick", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
-    for (let i = 0; i < 400 && h.repo.getRun(run.runId)!.status !== "needs_input"; i++) await new Promise((r) => setTimeout(r, 10));
+    const run = await h.coordinator.start({
+      goal: "pick",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
+    for (let i = 0; i < 400 && h.repo.getRun(run.runId)!.status !== "needs_input"; i++)
+      await new Promise((r) => setTimeout(r, 10));
     expect(h.repo.getRun(run.runId)!.status).toBe("needs_input");
     const pending = h.coordinator.suspensions.pending(run.runId);
     expect(pending?.kind).toBe("ask-user-question");
@@ -1074,18 +1788,43 @@ describe("runToolLoop (S5 host integration)", () => {
 
   it("observes the page after a handoff and does not run the parked action again", async () => {
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
+      {
+        toolCalls: [
+          { toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } },
+        ],
+      },
       { text: "the person finished it" },
     ]);
     const h = coordinatorHarness(model, (_program, ctx) => {
       h.coordinator.suspensions.park({
-        runId: ctx?.runId ?? "", threadId: "chat-1", turnId: ctx?.runId ?? "", kind: "handoff",
+        runId: ctx?.runId ?? "",
+        threadId: "chat-1",
+        turnId: ctx?.runId ?? "",
+        kind: "handoff",
         request: { kind: "handoff", instruction: "Finish the code in the page.", guidance: "Wait." },
       });
-      return { status: "failed", steps: [{ stepId: "s1", op: "click", status: "failed", startedAt: 1, durationMs: 1, error: { code: "needs_input", message: "Finish the code in the page." } }] };
+      return {
+        status: "failed",
+        steps: [
+          {
+            stepId: "s1",
+            op: "click",
+            status: "failed",
+            startedAt: 1,
+            durationMs: 1,
+            error: { code: "needs_input", message: "Finish the code in the page." },
+          },
+        ],
+      };
     });
-    const run = await h.coordinator.start({ goal: "enter the code", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
-    for (let i = 0; i < 400 && h.repo.getRun(run.runId)!.status !== "needs_input"; i++) await new Promise((r) => setTimeout(r, 10));
+    const run = await h.coordinator.start({
+      goal: "enter the code",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
+    for (let i = 0; i < 400 && h.repo.getRun(run.runId)!.status !== "needs_input"; i++)
+      await new Promise((r) => setTimeout(r, 10));
     expect(h.repo.getRun(run.runId)!.status).toBe("needs_input");
     expect(h.coordinator.suspensions.pending(run.runId)?.kind).toBe("handoff");
     const observationsBefore = h.pages.observe.mock.calls.length;
@@ -1103,24 +1842,56 @@ describe("runToolLoop (S5 host integration)", () => {
 
   it("parks on a gate-created approval suspension inside act, not a second record", async () => {
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
+      {
+        toolCalls: [
+          { toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } },
+        ],
+      },
       { text: "approved and done" },
     ]);
     const h = coordinatorHarness(model, (_program, ctx) => {
       // What the real gate does on `ask`: park a typed suspension, fail the step needs_input.
       h.coordinator.suspensions.park({
-        runId: ctx?.runId ?? "", threadId: "chat-1", turnId: ctx?.runId ?? "", kind: "approval",
-        request: { kind: "approval", approvalId: "ap-9", instruction: "Approve the click?", guidance: "Wait." },
+        runId: ctx?.runId ?? "",
+        threadId: "chat-1",
+        turnId: ctx?.runId ?? "",
+        kind: "approval",
+        request: {
+          kind: "approval",
+          approvalId: "ap-9",
+          instruction: "Approve the click?",
+          guidance: "Wait.",
+        },
       });
-      return { status: "failed", steps: [{ stepId: "s1", op: "click", status: "failed", startedAt: 1, durationMs: 1, error: { code: "needs_input", message: "Approve the click?" } }] };
+      return {
+        status: "failed",
+        steps: [
+          {
+            stepId: "s1",
+            op: "click",
+            status: "failed",
+            startedAt: 1,
+            durationMs: 1,
+            error: { code: "needs_input", message: "Approve the click?" },
+          },
+        ],
+      };
     });
-    const run = await h.coordinator.start({ goal: "check out", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
-    for (let i = 0; i < 400 && h.repo.getRun(run.runId)!.status !== "needs_input"; i++) await new Promise((r) => setTimeout(r, 10));
+    const run = await h.coordinator.start({
+      goal: "check out",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
+    for (let i = 0; i < 400 && h.repo.getRun(run.runId)!.status !== "needs_input"; i++)
+      await new Promise((r) => setTimeout(r, 10));
     const pending = h.coordinator.suspensions.pending(run.runId);
     expect(h.repo.getRun(run.runId)!.status).toBe("needs_input");
     // The loop waited on the GATE's approval suspension — no second record.
     expect(pending?.kind).toBe("approval");
-    expect(h.db.prepare("SELECT COUNT(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId)).toEqual({ n: 1 });
+    expect(
+      h.db.prepare("SELECT COUNT(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId),
+    ).toEqual({ n: 1 });
     const resolved = h.coordinator.suspensions.resolveByApprovalId("ap-9", "answered");
     expect(resolved?.runId).toBe(run.runId);
     await h.coordinator.answer(run.runId, "The user approved.");
@@ -1135,22 +1906,46 @@ describe("runToolLoop (S5 host integration)", () => {
     ]);
     const h = coordinatorHarness(model, (program) => ({
       status: "completed",
-      steps: program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1 })),
+      steps: program.steps.map((s) => ({
+        stepId: s.id,
+        op: s.op,
+        status: "ok" as const,
+        startedAt: 1,
+        durationMs: 1,
+      })),
     }));
-    const run = await h.coordinator.start({ goal: "click the button", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "click the button",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(h.pages.execute).toHaveBeenCalled();
   });
 
   it("finishes a named page action and verified read in one model call", async () => {
-    const model = new MockModelClient().scriptToolSteps([{
-      toolCalls: [{ toolCallId: "r1", toolName: "repl", input: {
-        code: `page.clickByName("Save", "button"); const s = snapshot(); submitResult("Order page", [{ observationId: s.observationId, quote: "Order page" }])`,
-      } }],
-    }]);
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [
+          {
+            toolCallId: "r1",
+            toolName: "repl",
+            input: {
+              code: `page.clickByName("Save", "button"); const s = snapshot(); submitResult("Order page", [{ observationId: s.observationId, quote: "Order page" }])`,
+            },
+          },
+        ],
+      },
+    ]);
     const h = coordinatorHarness(model);
-    const run = await h.coordinator.start({ goal: "Report the page title", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "Report the page title",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "Order page" });
@@ -1162,24 +1957,36 @@ describe("runToolLoop (S5 host integration)", () => {
     const model = new MockModelClient().scriptToolSteps([
       { toolCalls: [{ toolCallId: "s1", toolName: "snapshot", input: {} }] },
       {
-        toolCalls: [{
-          toolCallId: "f1",
-          toolName: "submit_result",
-          input: {
-            report: "The order page is open.",
-            citations: [{ pageId: "p1", quote: "Order page" }],
+        toolCalls: [
+          {
+            toolCallId: "f1",
+            toolName: "submit_result",
+            input: {
+              report: "The order page is open.",
+              citations: [{ pageId: "p1", quote: "Order page" }],
+            },
           },
-        }],
+        ],
       },
     ]);
     const h = coordinatorHarness(model);
-    const run = await h.coordinator.start({ goal: "summarize the page", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "summarize the page",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
-    expect(final.result).toMatchObject({ report: "The order page is open.", citations: [{ pageId: "p1", quote: "Order page" }] });
+    expect(final.result).toMatchObject({
+      report: "The order page is open.",
+      citations: [{ pageId: "p1", quote: "Order page" }],
+    });
     // The terminal call's tool result persisted for transcript pairing.
     const transcript = new TranscriptStore(h.db).load(run.runId);
-    const toolMsg = transcript.find((m) => m.role === "tool" && JSON.stringify(m.content).includes("submit_result"));
+    const toolMsg = transcript.find(
+      (m) => m.role === "tool" && JSON.stringify(m.content).includes("submit_result"),
+    );
     expect(JSON.stringify(toolMsg?.content)).toMatch(/accepted/);
   });
 
@@ -1187,70 +1994,118 @@ describe("runToolLoop (S5 host integration)", () => {
     const model = new MockModelClient().scriptToolSteps([
       { toolCalls: [{ toolCallId: "s1", toolName: "snapshot", input: {} }] },
       {
-        toolCalls: [{
-          toolCallId: "f1",
-          toolName: "submit_result",
-          input: { report: "done", citations: [{ pageId: "p1", quote: "fabricated quote" }] },
-        }],
+        toolCalls: [
+          {
+            toolCallId: "f1",
+            toolName: "submit_result",
+            input: { report: "done", citations: [{ pageId: "p1", quote: "fabricated quote" }] },
+          },
+        ],
       },
       {
-        toolCalls: [{
-          toolCallId: "f2",
-          toolName: "submit_result",
-          input: { report: "done", citations: [{ pageId: "p1", quote: "Order page" }] },
-        }],
+        toolCalls: [
+          {
+            toolCallId: "f2",
+            toolName: "submit_result",
+            input: { report: "done", citations: [{ pageId: "p1", quote: "Order page" }] },
+          },
+        ],
       },
     ]);
     const h = coordinatorHarness(model);
-    const run = await h.coordinator.start({ goal: "summarize", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "summarize",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "done" });
     const transcript = new TranscriptStore(h.db).load(run.runId);
-    const rejected = transcript.find((m) => m.role === "tool" && JSON.stringify(m.content).includes("Unverifiable citations"));
+    const rejected = transcript.find(
+      (m) => m.role === "tool" && JSON.stringify(m.content).includes("Unverifiable citations"),
+    );
     expect(rejected).toBeTruthy();
   });
 
   it("marks a completed write unconfirmed until its effect is actually observed", async () => {
     const postObs = { ...pageObs(), revision: 2 } as Observation;
-    const execConfirmed = (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
-      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1 }));
+    const execConfirmed = (
+      program: { steps: PlanStep[] },
+      ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void },
+    ) => {
+      const steps = program.steps.map((s) => ({
+        stepId: s.id,
+        op: s.op,
+        status: "ok" as const,
+        startedAt: 1,
+        durationMs: 1,
+      }));
       for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
       return { status: "completed", steps, observation: postObs };
     };
     const cited = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
       {
-        toolCalls: [{
-          toolCallId: "f1",
-          toolName: "submit_result",
-          input: { report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Order page" }] },
-        }],
+        toolCalls: [
+          { toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "f1",
+            toolName: "submit_result",
+            input: { report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Order page" }] },
+          },
+        ],
       },
     ]);
     const h = coordinatorHarness(cited, execConfirmed);
-    const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "click save",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ unconfirmedWrites: ["s1"] });
 
     // The completed executor receipt confirms the write independently.
     const bare = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
       {
-        toolCalls: [{
-          toolCallId: "f1",
-          toolName: "submit_result",
-          input: { report: "clicked" },
-        }],
+        toolCalls: [
+          { toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "f1",
+            toolName: "submit_result",
+            input: { report: "clicked" },
+          },
+        ],
       },
     ]);
     const h2 = coordinatorHarness(bare, (program, ctx) => {
-      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1 }));
+      const steps = program.steps.map((s) => ({
+        stepId: s.id,
+        op: s.op,
+        status: "ok" as const,
+        startedAt: 1,
+        durationMs: 1,
+      }));
       for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
       return { status: "completed", steps };
     });
-    const run2 = await h2.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run2 = await h2.coordinator.start({
+      goal: "click save",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final2 = await settle(h2.repo, run2.runId);
     expect(final2.status).toBe("completed");
     expect(final2.result).toMatchObject({ unconfirmedWrites: ["s1"] });
@@ -1258,20 +2113,30 @@ describe("runToolLoop (S5 host integration)", () => {
 
   it("blocks submit_result while an uncertain dispatch is in the ledger", async () => {
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
       {
-        toolCalls: [{
-          toolCallId: "f1",
-          toolName: "submit_result",
-          input: { report: "done" },
-        }],
+        toolCalls: [
+          { toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "f1",
+            toolName: "submit_result",
+            input: { report: "done" },
+          },
+        ],
       },
       { text: "blocked" },
       { text: "still blocked" },
     ]);
     const h = coordinatorHarness(model, (program, ctx) => {
       const steps = program.steps.map((s) => ({
-        stepId: s.id, op: s.op, status: "failed" as const, startedAt: 1, durationMs: 1,
+        stepId: s.id,
+        op: s.op,
+        status: "failed" as const,
+        startedAt: 1,
+        durationMs: 1,
         error: { code: "condition_timeout", message: "timed out" },
         effect: "uncertain" as const,
         receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true },
@@ -1279,235 +2144,545 @@ describe("runToolLoop (S5 host integration)", () => {
       for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
       return { status: "failed", steps };
     });
-    const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "click save",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     const transcript = new TranscriptStore(h.db).load(run.runId);
     // submit_result rejected while the uncertain dispatch stood…
-    const rejected = transcript.find((m) => m.role === "tool" && JSON.stringify(m.content).includes("uncertain dispatch"));
+    const rejected = transcript.find(
+      (m) => m.role === "tool" && JSON.stringify(m.content).includes("uncertain dispatch"),
+    );
     expect(rejected).toBeTruthy();
     // …and it cannot claim success while the durable intent stays uncertain.
     expect(final.status).not.toBe("completed");
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "uncertain" });
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({
+      status: "uncertain",
+    });
   });
 
   it("rejects same-page boilerplate and reconciles only a new effect line", async () => {
     const postObs = { ...pageObs(), revision: 2 } as Observation;
     postObs.content.text = "Order page\nNotifications 1\nSaving...\nSaved";
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
       {
-        toolCalls: [{
-          toolCallId: "f1",
-          toolName: "submit_result",
-          input: { report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Order page" }] },
-        }],
+        toolCalls: [
+          { toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } },
+        ],
       },
-      { toolCalls: [{ toolCallId: "r1", toolName: "reconcile_action", input: {
-        citation: { pageId: "p1", revision: 2, quote: "Order page" }, effect: "Order page",
-      } }] },
-      { toolCalls: [{ toolCallId: "r3", toolName: "reconcile_action", input: {
-        citation: { pageId: "p1", revision: 2, quote: "Notifications 1" }, effect: "Notifications 1",
-      } }] },
-      { toolCalls: [{ toolCallId: "r4", toolName: "reconcile_action", input: {
-        citation: { pageId: "p1", revision: 2, quote: "Saving..." }, effect: "Saving...",
-      } }] },
-      { toolCalls: [{ toolCallId: "r2", toolName: "reconcile_action", input: {
-        citation: { pageId: "p1", revision: 2, quote: "Saved" }, effect: "Saved",
-      } }] },
-      { toolCalls: [{ toolCallId: "f2", toolName: "submit_result", input: {
-        report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Saved" }],
-      } }] },
+      {
+        toolCalls: [
+          {
+            toolCallId: "f1",
+            toolName: "submit_result",
+            input: { report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Order page" }] },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "r1",
+            toolName: "reconcile_action",
+            input: {
+              citation: { pageId: "p1", revision: 2, quote: "Order page" },
+              effect: "Order page",
+            },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "r3",
+            toolName: "reconcile_action",
+            input: {
+              citation: { pageId: "p1", revision: 2, quote: "Notifications 1" },
+              effect: "Notifications 1",
+            },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "r4",
+            toolName: "reconcile_action",
+            input: {
+              citation: { pageId: "p1", revision: 2, quote: "Saving..." },
+              effect: "Saving...",
+            },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "r2",
+            toolName: "reconcile_action",
+            input: {
+              citation: { pageId: "p1", revision: 2, quote: "Saved" },
+              effect: "Saved",
+            },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "f2",
+            toolName: "submit_result",
+            input: {
+              report: "clicked",
+              citations: [{ pageId: "p1", revision: 2, quote: "Saved" }],
+            },
+          },
+        ],
+      },
     ]);
     const h = coordinatorHarness(model, (program, ctx) => {
       const steps = program.steps.map((s) => ({
-        stepId: s.id, op: s.op, status: "failed" as const, startedAt: 1, durationMs: 1,
+        stepId: s.id,
+        op: s.op,
+        status: "failed" as const,
+        startedAt: 1,
+        durationMs: 1,
         error: { code: "condition_timeout", message: "timed out" },
         effect: "uncertain" as const,
-        receipt: { remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: false },
+        receipt: {
+          remoteConfirmed: false,
+          uncertain: true,
+          unconfirmed: false,
+          dispatchedBeforeTakeover: false,
+        },
       }));
       for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
       return { status: "failed", steps, observation: postObs };
     });
-    const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "click save",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "clicked" });
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "confirmed" });
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({
+      status: "confirmed",
+    });
     const transcript = new TranscriptStore(h.db).load(run.runId);
-    expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("already visible before"))).toBe(true);
-    expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("does not confirm the click completed"))).toBe(true);
+    expect(
+      transcript.some(
+        (message) =>
+          message.role === "tool" && JSON.stringify(message.content).includes("already visible before"),
+      ),
+    ).toBe(true);
+    expect(
+      transcript.some(
+        (message) =>
+          message.role === "tool" &&
+          JSON.stringify(message.content).includes("does not confirm the click completed"),
+      ),
+    ).toBe(true);
   });
 
   it.each([
     { modalOpen: true, headingVisibleBefore: false, shouldReconcile: true },
     { modalOpen: false, headingVisibleBefore: false, shouldReconcile: false },
     { modalOpen: true, headingVisibleBefore: true, shouldReconcile: false },
-  ])("reconciles Details only from a newly visible modal heading and content (%o)", async ({ modalOpen, headingVisibleBefore, shouldReconcile }) => {
-    const before = { ...pageObs(), content: { ...pageObs().content,
-      text: headingVisibleBefore ? "Record 15\nRecord details" : "Record 15",
-      // The heading index includes hidden dialogs even before they render.
-      headings: ["Record 15", "Record details"],
-      elements: [{ ref: "r5", tag: "button", role: "button", name: "Details…", frame: "main" }],
-    } } as Observation;
-    const after = { ...before, revision: 2, content: { ...before.content,
-      text: "Record 15\nRecord details\nCreated by the fixture seed. Internal ref rec-15.",
-      headings: ["Record 15", "Record details"],
-      elements: modalOpen ? [
-        { ref: "r5", tag: "button", role: "button", name: "Details…", frame: "main", occluded: true },
-        { ref: "r9", tag: "button", role: "button", name: "Close", frame: "main" },
-      ] : before.content.elements,
-    } } as Observation;
-    const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r5" }] } }] },
-      { toolCalls: [{ toolCallId: "r1", toolName: "reconcile_action", input: {
-        citation: { pageId: "p1", revision: 2, quote: "Created by the fixture seed. Internal ref rec-15." },
-        effect: "Opened the Record details dialog",
-      } }] },
-      { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "rec-15" } }] },
-      { text: "Cannot prove the dialog opened." },
-    ]);
-    const h = coordinatorHarness(model, (program, ctx) => {
-      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "failed" as const,
-        startedAt: 1, durationMs: 1, error: { code: "condition_timeout", message: "timed out" },
-        effect: "uncertain" as const, receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
-      }));
-      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
-      return { status: "failed", steps, observation: after };
-    });
-    h.pages.observe.mockImplementation(async () => before);
-    const run = await h.coordinator.start({ goal: "open Details and read internal ref", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
-    const final = await settle(h.repo, run.runId);
-    expect(final.status === "completed").toBe(shouldReconcile);
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: shouldReconcile ? "confirmed" : "uncertain" });
-  });
+  ])(
+    "reconciles Details only from a newly visible modal heading and content (%o)",
+    async ({ modalOpen, headingVisibleBefore, shouldReconcile }) => {
+      const before = {
+        ...pageObs(),
+        content: {
+          ...pageObs().content,
+          text: headingVisibleBefore ? "Record 15\nRecord details" : "Record 15",
+          // The heading index includes hidden dialogs even before they render.
+          headings: ["Record 15", "Record details"],
+          elements: [{ ref: "r5", tag: "button", role: "button", name: "Details…", frame: "main" }],
+        },
+      } as Observation;
+      const after = {
+        ...before,
+        revision: 2,
+        content: {
+          ...before.content,
+          text: "Record 15\nRecord details\nCreated by the fixture seed. Internal ref rec-15.",
+          headings: ["Record 15", "Record details"],
+          elements: modalOpen
+            ? [
+                { ref: "r5", tag: "button", role: "button", name: "Details…", frame: "main", occluded: true },
+                { ref: "r9", tag: "button", role: "button", name: "Close", frame: "main" },
+              ]
+            : before.content.elements,
+        },
+      } as Observation;
+      const model = new MockModelClient().scriptToolSteps([
+        {
+          toolCalls: [
+            {
+              toolCallId: "a1",
+              toolName: "act",
+              input: { steps: [{ id: "s1", op: "click", target: "r5" }] },
+            },
+          ],
+        },
+        {
+          toolCalls: [
+            {
+              toolCallId: "r1",
+              toolName: "reconcile_action",
+              input: {
+                citation: {
+                  pageId: "p1",
+                  revision: 2,
+                  quote: "Created by the fixture seed. Internal ref rec-15.",
+                },
+                effect: "Opened the Record details dialog",
+              },
+            },
+          ],
+        },
+        { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "rec-15" } }] },
+        { text: "Cannot prove the dialog opened." },
+      ]);
+      const h = coordinatorHarness(model, (program, ctx) => {
+        const steps = program.steps.map((s) => ({
+          stepId: s.id,
+          op: s.op,
+          status: "failed" as const,
+          startedAt: 1,
+          durationMs: 1,
+          error: { code: "condition_timeout", message: "timed out" },
+          effect: "uncertain" as const,
+          receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
+        }));
+        for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+        return { status: "failed", steps, observation: after };
+      });
+      h.pages.observe.mockImplementation(async () => before);
+      const run = await h.coordinator.start({
+        goal: "open Details and read internal ref",
+        pageIds: ["p1"],
+        chatId: "chat-1",
+        engine: "agent-loop",
+      });
+      const final = await settle(h.repo, run.runId);
+      expect(final.status === "completed").toBe(shouldReconcile);
+      expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({
+        status: shouldReconcile ? "confirmed" : "uncertain",
+      });
+    },
+  );
 
   it.each([
     { headingVisibleBefore: false, shouldReconcile: true },
     { headingVisibleBefore: true, shouldReconcile: false },
-  ])("reconciles Edit only when an inline form and its controls newly render (%o)", async ({ headingVisibleBefore, shouldReconcile }) => {
-    const before = { ...pageObs(), content: { ...pageObs().content,
-      text: headingVisibleBefore ? "Record 04\nEdit record" : "Record 04\nEdit record Details…",
-      headings: ["Record 04", "Edit record"],
-      elements: [{ ref: "r5", tag: "button", role: "button", name: "Edit record", frame: "main" }],
-    } } as Observation;
-    const after = { ...before, revision: 2, content: { ...before.content,
-      text: "Record 04\nEdit record\nTitle\nStatus\napproved\nSave record Cancel",
-    } } as Observation;
-    const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r5" }] } }] },
-      { toolCalls: [{ toolCallId: "r1", toolName: "reconcile_action", input: {
-        citation: { pageId: "p1", revision: 2, quote: "Save record Cancel" }, effect: "Edit record form opened",
-      } }] },
-      { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "edit opened" } }] },
-      { text: "Cannot prove the edit form opened." },
-    ]);
-    const h = coordinatorHarness(model, (program, ctx) => {
-      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "failed" as const,
-        startedAt: 1, durationMs: 1, error: { code: "condition_timeout", message: "timed out" },
-        effect: "uncertain" as const, receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
-      }));
-      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
-      return { status: "failed", steps, observation: after };
-    });
-    h.pages.observe.mockImplementation(async () => before);
-    const run = await h.coordinator.start({ goal: "open the edit form", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
-    const final = await settle(h.repo, run.runId);
-    expect(final.status === "completed").toBe(shouldReconcile);
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: shouldReconcile ? "confirmed" : "uncertain" });
-  });
+  ])(
+    "reconciles Edit only when an inline form and its controls newly render (%o)",
+    async ({ headingVisibleBefore, shouldReconcile }) => {
+      const before = {
+        ...pageObs(),
+        content: {
+          ...pageObs().content,
+          text: headingVisibleBefore ? "Record 04\nEdit record" : "Record 04\nEdit record Details…",
+          headings: ["Record 04", "Edit record"],
+          elements: [{ ref: "r5", tag: "button", role: "button", name: "Edit record", frame: "main" }],
+        },
+      } as Observation;
+      const after = {
+        ...before,
+        revision: 2,
+        content: {
+          ...before.content,
+          text: "Record 04\nEdit record\nTitle\nStatus\napproved\nSave record Cancel",
+        },
+      } as Observation;
+      const model = new MockModelClient().scriptToolSteps([
+        {
+          toolCalls: [
+            {
+              toolCallId: "a1",
+              toolName: "act",
+              input: { steps: [{ id: "s1", op: "click", target: "r5" }] },
+            },
+          ],
+        },
+        {
+          toolCalls: [
+            {
+              toolCallId: "r1",
+              toolName: "reconcile_action",
+              input: {
+                citation: { pageId: "p1", revision: 2, quote: "Save record Cancel" },
+                effect: "Edit record form opened",
+              },
+            },
+          ],
+        },
+        { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "edit opened" } }] },
+        { text: "Cannot prove the edit form opened." },
+      ]);
+      const h = coordinatorHarness(model, (program, ctx) => {
+        const steps = program.steps.map((s) => ({
+          stepId: s.id,
+          op: s.op,
+          status: "failed" as const,
+          startedAt: 1,
+          durationMs: 1,
+          error: { code: "condition_timeout", message: "timed out" },
+          effect: "uncertain" as const,
+          receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
+        }));
+        for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+        return { status: "failed", steps, observation: after };
+      });
+      h.pages.observe.mockImplementation(async () => before);
+      const run = await h.coordinator.start({
+        goal: "open the edit form",
+        pageIds: ["p1"],
+        chatId: "chat-1",
+        engine: "agent-loop",
+      });
+      const final = await settle(h.repo, run.runId);
+      expect(final.status === "completed").toBe(shouldReconcile);
+      expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({
+        status: shouldReconcile ? "confirmed" : "uncertain",
+      });
+    },
+  );
 
   it.each([
     { editTarget: true, formVisibleBefore: false, shouldSettle: true },
     { editTarget: false, formVisibleBefore: false, shouldSettle: false },
     { editTarget: true, formVisibleBefore: true, shouldSettle: false },
-  ])("settles one Edit click from a fresh same-page inline form transition (%o)", async ({ editTarget, formVisibleBefore, shouldSettle }) => {
-    const before = { ...pageObs(), content: { ...pageObs().content,
-      text: formVisibleBefore ? "Record 04\nEdit record\nSave record Cancel" : "Record 04\nEdit record Details…",
-      elements: [{ ref: "r4", tag: "button", role: "button", name: editTarget ? "Edit record" : "Details…", frame: "main" }],
-    } } as Observation;
-    const after = { ...before, revision: 2, observedAt: Date.now() + 10_000, content: { ...before.content,
-      text: "Record 04\nEdit record\nTitle\nStatus\nSave record Cancel",
-    } } as Observation;
-    const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r4" }] } }] },
-      { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "form opened" } }] },
-      { text: "The click remains uncertain." },
-    ]);
-    const h = coordinatorHarness(model, (program, ctx) => {
-      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const,
-        startedAt: 1, durationMs: 1, effect: "uncertain" as const,
-        receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
-      }));
-      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
-      return { status: "completed", steps, observation: after };
-    });
-    h.pages.observe.mockImplementation(async () => before);
-    const run = await h.coordinator.start({ goal: "open the edit form", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
-    const final = await settle(h.repo, run.runId);
-    expect(final.status === "completed").toBe(shouldSettle);
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: shouldSettle ? "confirmed" : "uncertain" });
-  });
+  ])(
+    "settles one Edit click from a fresh same-page inline form transition (%o)",
+    async ({ editTarget, formVisibleBefore, shouldSettle }) => {
+      const before = {
+        ...pageObs(),
+        content: {
+          ...pageObs().content,
+          text: formVisibleBefore
+            ? "Record 04\nEdit record\nSave record Cancel"
+            : "Record 04\nEdit record Details…",
+          elements: [
+            {
+              ref: "r4",
+              tag: "button",
+              role: "button",
+              name: editTarget ? "Edit record" : "Details…",
+              frame: "main",
+            },
+          ],
+        },
+      } as Observation;
+      const after = {
+        ...before,
+        revision: 2,
+        observedAt: Date.now() + 10_000,
+        content: { ...before.content, text: "Record 04\nEdit record\nTitle\nStatus\nSave record Cancel" },
+      } as Observation;
+      const model = new MockModelClient().scriptToolSteps([
+        {
+          toolCalls: [
+            {
+              toolCallId: "a1",
+              toolName: "act",
+              input: { steps: [{ id: "s1", op: "click", target: "r4" }] },
+            },
+          ],
+        },
+        { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "form opened" } }] },
+        { text: "The click remains uncertain." },
+      ]);
+      const h = coordinatorHarness(model, (program, ctx) => {
+        const steps = program.steps.map((s) => ({
+          stepId: s.id,
+          op: s.op,
+          status: "ok" as const,
+          startedAt: 1,
+          durationMs: 1,
+          effect: "uncertain" as const,
+          receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
+        }));
+        for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+        return { status: "completed", steps, observation: after };
+      });
+      h.pages.observe.mockImplementation(async () => before);
+      const run = await h.coordinator.start({
+        goal: "open the edit form",
+        pageIds: ["p1"],
+        chatId: "chat-1",
+        engine: "agent-loop",
+      });
+      const final = await settle(h.repo, run.runId);
+      expect(final.status === "completed").toBe(shouldSettle);
+      expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({
+        status: shouldSettle ? "confirmed" : "uncertain",
+      });
+    },
+  );
 
   it.each([
-    { control: "Create record", postOwner: "Priya Patel", postUrl: "http://x.test/records/rec-31", shouldSettle: true },
-    { control: "Other action", postOwner: "Priya Patel", postUrl: "http://x.test/records/rec-31", shouldSettle: false },
-    { control: "Create record", postOwner: "Morgan Diaz", postUrl: "http://x.test/records/rec-31", shouldSettle: false },
-    { control: "Create record", postOwner: "Priya Patel", postUrl: "http://other.test/records/rec-31", shouldSettle: false },
-  ])("settles Create only from a new matching same-origin record (%o)", async ({ control, postOwner, postUrl, shouldSettle }) => {
-    const before = { ...pageObs(), content: { ...pageObs().content,
-      url: "http://x.test/new", text: "New record\nTitle\nOwner\nStatus\nCreate record",
-      elements: [{ ref: "r7", tag: "button", role: "button", name: control, frame: "main" }],
-      formFields: [
-        { ref: "r4", label: "Title", type: "text", value: "Aux launch review" },
-        { ref: "r5", label: "Owner", type: "select", value: "Priya Patel" },
-        { ref: "r6", label: "Status", type: "select", value: "in review" },
-      ],
-    } } as Observation;
-    const after = { ...before, documentEpoch: 2, revision: 2, observedAt: Date.now() + 10_000,
-      content: { ...before.content, url: postUrl,
-        text: `Aux launch review\nOwner: ${postOwner}\nStatus: in review\nid=rec-31 · updated 2026-09-29`,
-        headings: ["Aux launch review"], formFields: [],
-      } } as Observation;
-    const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "create", op: "click", target: "r7" }] } }] },
-      { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "rec-31" } }] },
-      { text: "Creation cannot be verified." },
-    ]);
-    const h = coordinatorHarness(model, (program, ctx) => {
-      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const,
-        startedAt: 1, durationMs: 1, effect: "uncertain" as const,
-        receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
-      }));
-      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
-      return { status: "completed", steps, observation: after };
-    });
-    h.pages.observe.mockImplementation(async () => before);
-    const run = await h.coordinator.start({ goal: "create one matching record", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
-    const final = await settle(h.repo, run.runId);
-    expect(final.status === "completed").toBe(shouldSettle);
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: shouldSettle ? "confirmed" : "uncertain" });
-  });
+    {
+      control: "Create record",
+      postOwner: "Priya Patel",
+      postUrl: "http://x.test/records/rec-31",
+      shouldSettle: true,
+    },
+    {
+      control: "Other action",
+      postOwner: "Priya Patel",
+      postUrl: "http://x.test/records/rec-31",
+      shouldSettle: false,
+    },
+    {
+      control: "Create record",
+      postOwner: "Morgan Diaz",
+      postUrl: "http://x.test/records/rec-31",
+      shouldSettle: false,
+    },
+    {
+      control: "Create record",
+      postOwner: "Priya Patel",
+      postUrl: "http://other.test/records/rec-31",
+      shouldSettle: false,
+    },
+  ])(
+    "settles Create only from a new matching same-origin record (%o)",
+    async ({ control, postOwner, postUrl, shouldSettle }) => {
+      const before = {
+        ...pageObs(),
+        content: {
+          ...pageObs().content,
+          url: "http://x.test/new",
+          text: "New record\nTitle\nOwner\nStatus\nCreate record",
+          elements: [{ ref: "r7", tag: "button", role: "button", name: control, frame: "main" }],
+          formFields: [
+            { ref: "r4", label: "Title", type: "text", value: "Aux launch review" },
+            { ref: "r5", label: "Owner", type: "select", value: "Priya Patel" },
+            { ref: "r6", label: "Status", type: "select", value: "in review" },
+          ],
+        },
+      } as Observation;
+      const after = {
+        ...before,
+        documentEpoch: 2,
+        revision: 2,
+        observedAt: Date.now() + 10_000,
+        content: {
+          ...before.content,
+          url: postUrl,
+          text: `Aux launch review\nOwner: ${postOwner}\nStatus: in review\nid=rec-31 · updated 2026-09-29`,
+          headings: ["Aux launch review"],
+          formFields: [],
+        },
+      } as Observation;
+      const model = new MockModelClient().scriptToolSteps([
+        {
+          toolCalls: [
+            {
+              toolCallId: "a1",
+              toolName: "act",
+              input: { steps: [{ id: "create", op: "click", target: "r7" }] },
+            },
+          ],
+        },
+        { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "rec-31" } }] },
+        { text: "Creation cannot be verified." },
+      ]);
+      const h = coordinatorHarness(model, (program, ctx) => {
+        const steps = program.steps.map((s) => ({
+          stepId: s.id,
+          op: s.op,
+          status: "ok" as const,
+          startedAt: 1,
+          durationMs: 1,
+          effect: "uncertain" as const,
+          receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
+        }));
+        for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+        return { status: "completed", steps, observation: after };
+      });
+      h.pages.observe.mockImplementation(async () => before);
+      const run = await h.coordinator.start({
+        goal: "create one matching record",
+        pageIds: ["p1"],
+        chatId: "chat-1",
+        engine: "agent-loop",
+      });
+      const final = await settle(h.repo, run.runId);
+      expect(final.status === "completed").toBe(shouldSettle);
+      expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({
+        status: shouldSettle ? "confirmed" : "uncertain",
+      });
+    },
+  );
 
   it("reconciles an uncertain link click only from its recorded destination URL", async () => {
-    const before = { ...pageObs(), content: { ...pageObs().content,
-      url: "http://x.test/records", elements: [{ ref: "r2", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],
-    } } as Observation;
-    const after = { ...before, revision: 2, content: { ...before.content,
-      url: "http://x.test/records?page=2", text: "Record 15\nurl: http://x.test/records?page=3",
-    } } as Observation;
+    const before = {
+      ...pageObs(),
+      content: {
+        ...pageObs().content,
+        url: "http://x.test/records",
+        elements: [{ ref: "r2", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],
+      },
+    } as Observation;
+    const after = {
+      ...before,
+      revision: 2,
+      content: {
+        ...before.content,
+        url: "http://x.test/records?page=2",
+        text: "Record 15\nurl: http://x.test/records?page=3",
+      },
+    } as Observation;
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r2" }] } }] },
-      { toolCalls: [{ toolCallId: "r1", toolName: "reconcile_action", input: {
-        citation: { pageId: "p1", revision: 2, quote: "url: http://x.test/records?page=3" }, effect: "Navigated to page 3",
-      } }] },
-      { toolCalls: [{ toolCallId: "r2", toolName: "reconcile_action", input: {
-        citation: { pageId: "p1", revision: 2, quote: "url: http://x.test/records?page=2" }, effect: "Navigated to page 2",
-      } }] },
+      {
+        toolCalls: [
+          { toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r2" }] } },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "r1",
+            toolName: "reconcile_action",
+            input: {
+              citation: { pageId: "p1", revision: 2, quote: "url: http://x.test/records?page=3" },
+              effect: "Navigated to page 3",
+            },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "r2",
+            toolName: "reconcile_action",
+            input: {
+              citation: { pageId: "p1", revision: 2, quote: "url: http://x.test/records?page=2" },
+              effect: "Navigated to page 2",
+            },
+          },
+        ],
+      },
       { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "page 2" } }] },
     ]);
     const h = coordinatorHarness(model, (program, ctx) => {
-      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "failed" as const,
-        startedAt: 1, durationMs: 1, error: { code: "condition_timeout", message: "timed out" },
+      const steps = program.steps.map((s) => ({
+        stepId: s.id,
+        op: s.op,
+        status: "failed" as const,
+        startedAt: 1,
+        durationMs: 1,
+        error: { code: "condition_timeout", message: "timed out" },
         effect: "uncertain" as const,
         receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true },
       }));
@@ -1515,51 +2690,91 @@ describe("runToolLoop (S5 host integration)", () => {
       return { status: "failed", steps, observation: after };
     });
     h.pages.observe.mockImplementation(async () => before);
-    const run = await h.coordinator.start({ goal: "open page 2", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "open page 2",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "confirmed" });
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({
+      status: "confirmed",
+    });
     const transcript = new TranscriptStore(h.db).load(run.runId);
-    expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("Cite the observed page URL"))).toBe(true);
+    expect(
+      transcript.some(
+        (message) =>
+          message.role === "tool" && JSON.stringify(message.content).includes("Cite the observed page URL"),
+      ),
+    ).toBe(true);
   });
 
   it("does not settle an uncertain write from a post-dispatch page title alone", async () => {
     const postObs = { ...pageObs(), revision: 2 } as Observation;
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
       {
-        toolCalls: [{
-          toolCallId: "f1",
-          toolName: "submit_result",
-          input: { report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Order page" }] },
-        }],
+        toolCalls: [
+          { toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "f1",
+            toolName: "submit_result",
+            input: { report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Order page" }] },
+          },
+        ],
       },
     ]);
     const h = coordinatorHarness(model, (program, ctx) => {
       const steps = program.steps.map((s) => ({
-        stepId: s.id, op: s.op, status: "failed" as const, startedAt: 1, durationMs: 1,
+        stepId: s.id,
+        op: s.op,
+        status: "failed" as const,
+        startedAt: 1,
+        durationMs: 1,
         error: { code: "condition_timeout", message: "timed out" },
         effect: "uncertain" as const,
-        receipt: { remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: false },
+        receipt: {
+          remoteConfirmed: false,
+          uncertain: true,
+          unconfirmed: false,
+          dispatchedBeforeTakeover: false,
+        },
       }));
       for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
       return { status: "failed", steps, observation: postObs };
     });
-    const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "click save",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).not.toBe("completed");
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "uncertain" });
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({
+      status: "uncertain",
+    });
   });
 
   it("rehydrates the pending action summary from the durable ledger after restart", () => {
     const { db } = fixture();
     const first = new DurableWriteLedger(db);
-    const { intent } = first.begin({ runId: "run-1", pageId: "p1", documentEpoch: 1, signature: "click-save",
-      summary: { ops: ["click"], actionLabels: ["Save"], beforeLineHashes: ["pre-action-line-hash"] } });
+    const { intent } = first.begin({
+      runId: "run-1",
+      pageId: "p1",
+      documentEpoch: 1,
+      signature: "click-save",
+      summary: { ops: ["click"], actionLabels: ["Save"], beforeLineHashes: ["pre-action-line-hash"] },
+    });
     first.fail(intent.id);
     const restarted = new DurableWriteLedger(db);
     expect(restarted.getById(intent.id)).toMatchObject({
-      status: "uncertain", createdAt: expect.any(Number),
+      status: "uncertain",
+      createdAt: expect.any(Number),
       summary: { ops: ["click"], actionLabels: ["Save"], beforeLineHashes: ["pre-action-line-hash"] },
     });
     expect(restarted.unresolved("run-1")).toHaveLength(1);
@@ -1567,25 +2782,49 @@ describe("runToolLoop (S5 host integration)", () => {
 
   it("never counts navigation as an uncertain write", async () => {
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "n1", op: "navigate", url: "http://x.test/next" }] } }] },
       {
-        toolCalls: [{
-          toolCallId: "f1",
-          toolName: "submit_result",
-          input: { report: "navigated" },
-        }],
+        toolCalls: [
+          {
+            toolCallId: "a1",
+            toolName: "act",
+            input: { steps: [{ id: "n1", op: "navigate", url: "http://x.test/next" }] },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "f1",
+            toolName: "submit_result",
+            input: { report: "navigated" },
+          },
+        ],
       },
     ]);
     const h = coordinatorHarness(model, (program, ctx) => {
       const steps = program.steps.map((s) => ({
-        stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1,
+        stepId: s.id,
+        op: s.op,
+        status: "ok" as const,
+        startedAt: 1,
+        durationMs: 1,
         effect: "uncertain" as const,
-        receipt: { remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: false },
+        receipt: {
+          remoteConfirmed: false,
+          uncertain: true,
+          unconfirmed: false,
+          dispatchedBeforeTakeover: false,
+        },
       }));
       for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
       return { status: "completed", steps };
     });
-    const run = await h.coordinator.start({ goal: "go to the next page", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({
+      goal: "go to the next page",
+      pageIds: ["p1"],
+      chatId: "chat-1",
+      engine: "agent-loop",
+    });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "navigated" });

@@ -4,12 +4,29 @@
  * Model output cannot expand grants. Sensitive values become handles before
  * export. Denied egress stays denied.
  */
-const TOKEN_PREFIX = /^(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|gh[ousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16})$/;
+const TOKEN_PREFIX =
+  /^(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|gh[ousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16})$/;
 const JWT = /^eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*$/;
 const BEARER = /^(?:bearer|basic|token)\s+\S{8,}$/i;
 const SECRET_KEY_NAMES = new Set([
-  "password", "passwd", "passphrase", "secret", "clientsecret", "token", "accesstoken", "refreshtoken", "idtoken",
-  "authtoken", "sessiontoken", "apikey", "xapikey", "privatekey", "authorization", "proxyauthorization", "cookie", "setcookie",
+  "password",
+  "passwd",
+  "passphrase",
+  "secret",
+  "clientsecret",
+  "token",
+  "accesstoken",
+  "refreshtoken",
+  "idtoken",
+  "authtoken",
+  "sessiontoken",
+  "apikey",
+  "xapikey",
+  "privatekey",
+  "authorization",
+  "proxyauthorization",
+  "cookie",
+  "setcookie",
 ]);
 
 const normKey = (k: string) => k.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -38,7 +55,10 @@ export function redactForModel(value: unknown): unknown {
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = SECRET_KEY_NAMES.has(normKey(k)) && v != null && v !== "" ? `{handle:${hash(String(v))}}` : redactForModel(v);
+      out[k] =
+        SECRET_KEY_NAMES.has(normKey(k)) && v != null && v !== ""
+          ? `{handle:${hash(String(v))}}`
+          : redactForModel(v);
     }
     return out;
   }
@@ -55,7 +75,13 @@ export function agentMayEgress(url: string, allowlist: string[]): boolean {
   try {
     const u = new URL(url);
     const hostPort = `${u.hostname}:${u.port || (u.protocol === "https:" ? "443" : "80")}`;
-    return allowlist.some((p) => p === u.host || p === u.hostname || p === hostPort || (p.startsWith("*.") && u.hostname.endsWith(p.slice(1))));
+    return allowlist.some(
+      (p) =>
+        p === u.host ||
+        p === u.hostname ||
+        p === hostPort ||
+        (p.startsWith("*.") && u.hostname.endsWith(p.slice(1))),
+    );
   } catch {
     return false;
   }

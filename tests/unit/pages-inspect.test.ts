@@ -15,7 +15,13 @@ import {
   type Services,
 } from "@aux/runtime";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
-import { MethodSchemas, ResultSchemas, type Condition, type MethodName, type ObservationContent } from "@aux/contracts";
+import {
+  MethodSchemas,
+  ResultSchemas,
+  type Condition,
+  type MethodName,
+  type ObservationContent,
+} from "@aux/contracts";
 import type { SetService, RunService, ArtifactStore, SettingsService } from "@aux/runtime";
 import { PageOwnership } from "../../apps/runtime/src/scheduler/page-ownership.js";
 import { PNG } from "pngjs";
@@ -56,7 +62,10 @@ function fakeChromium() {
       url: () => current,
       title: async () => "Inspect",
       isAttached: () => attached,
-      navigate: async (u) => { current = u; rec(`navigate:${u}`); },
+      navigate: async (u) => {
+        current = u;
+        rec(`navigate:${u}`);
+      },
       back: async () => rec("back"),
       forward: async () => rec("forward"),
       reload: async () => rec("reload"),
@@ -112,7 +121,14 @@ function fakeChromium() {
     },
     attach: async (targetId, pageId) => makePage(targetId, pageId, targets.get(targetId) ?? "about:blank"),
   };
-  return { driver, calls, image, setCapture: (next: typeof capture) => { capture = next; } };
+  return {
+    driver,
+    calls,
+    image,
+    setCapture: (next: typeof capture) => {
+      capture = next;
+    },
+  };
 }
 
 function harness(grants: string[] = ["effect:read"]) {
@@ -121,9 +137,12 @@ function harness(grants: string[] = ["effect:read"]) {
   const chromium = fakeChromium();
   const drivers: DriverSet = { aux: chromium.driver, chrome: null };
   const responses = new ResponseStore({ repo, events, flushDelayMs: 0 });
-  const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
+  const pagesTurnMentions = fixtureTurnMentions(
+    (pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId),
+  );
   const native = new NullNativeBridge();
-  const pages = new PageService({ turnMentions: pagesTurnMentions,
+  const pages = new PageService({
+    turnMentions: pagesTurnMentions,
     repo,
     events,
     native,
@@ -138,7 +157,9 @@ describe("H2-C7 pages inspect RPCs", () => {
   it("rejects outdated, navigated and empty page captures", async () => {
     const { pages, chromium } = harness();
     const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
-    await expect(pages.capture(page.pageId, { expectedDocumentEpoch: page.documentEpoch + 1 })).rejects.toThrow("changed before capture");
+    await expect(
+      pages.capture(page.pageId, { expectedDocumentEpoch: page.documentEpoch + 1 }),
+    ).rejects.toThrow("changed before capture");
     expect((await pages.capture(page.pageId)).width).toBe(20);
     chromium.setCapture(async () => {
       await pages.navigate(page.pageId, "https://a.test/next");
@@ -154,9 +175,7 @@ describe("H2-C7 pages inspect RPCs", () => {
     const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
     const all = await pages.extract(page.pageId);
     expect(all.fields.title).toBe("Inspect");
-    expect(all.fields.formFields).toEqual([
-      expect.objectContaining({ name: "name", value: "Ada" }),
-    ]);
+    expect(all.fields.formFields).toEqual([expect.objectContaining({ name: "name", value: "Ada" })]);
     const named = await pages.extract(page.pageId, ["title", "r1", "Name"]);
     expect(named.fields.title).toBe("Inspect");
     expect(named.fields.r1).toEqual(expect.objectContaining({ ref: "r1", name: "Save" }));
@@ -205,9 +224,16 @@ describe("H2-C7 pages inspect RPCs", () => {
   it("MethodSchemas dispatch through makeInvoker", async () => {
     const { pages, repo, events, responses, turnMentions } = harness();
     const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
-    const invoke = makeInvoker({ safetyAuthority: fixtureSafetyAuthority(repo), turnMentions,
+    const invoke = makeInvoker({
+      safetyAuthority: fixtureSafetyAuthority(repo),
+      turnMentions,
       pages,
-      sets: { create: async () => ({}), get: () => ({}), list: () => [], results: () => [] } as unknown as SetService,
+      sets: {
+        create: async () => ({}),
+        get: () => ({}),
+        list: () => [],
+        results: () => [],
+      } as unknown as SetService,
       runs: {
         pageOwnership: new PageOwnership(),
         coordinator: { get: () => ({ runId: "r" }), list: () => [] },
@@ -220,7 +246,12 @@ describe("H2-C7 pages inspect RPCs", () => {
         runProgram: async () => ({}),
       } as unknown as RunService,
       artifacts: { list: () => [], read: () => ({}) } as unknown as ArtifactStore,
-      settings: { listModels: () => ({ models: [], source: "static" }), probe: async () => ({ ok: true, modelId: "m" }), all: () => ({}), set: () => ({ ok: true }) } as unknown as SettingsService,
+      settings: {
+        listModels: () => ({ models: [], source: "static" }),
+        probe: async () => ({ ok: true, modelId: "m" }),
+        all: () => ({}),
+        set: () => ({ ok: true }),
+      } as unknown as SettingsService,
       events,
       repo,
       responses,
@@ -235,9 +266,15 @@ describe("H2-C7 pages inspect RPCs", () => {
       ["pages.dialog", { pageId: page.pageId }],
       ["pages.network", { pageId: page.pageId }],
     ] as [MethodName, unknown][]) {
-      expect({ method, accepted: MethodSchemas[method].safeParse(params).success }).toEqual({ method, accepted: true });
+      expect({ method, accepted: MethodSchemas[method].safeParse(params).success }).toEqual({
+        method,
+        accepted: true,
+      });
       const result = await invoke(method, params);
-      expect({ method, result, accepted: ResultSchemas[method].safeParse(result).success }).toMatchObject({ method, accepted: true });
+      expect({ method, result, accepted: ResultSchemas[method].safeParse(result).success }).toMatchObject({
+        method,
+        accepted: true,
+      });
     }
   });
 });
@@ -247,16 +284,26 @@ describe("external page attachment lifecycle", () => {
     const { pages, chromium } = harness();
     const attach = chromium.driver.attach.bind(chromium.driver);
     let release!: () => void;
-    const gate = new Promise<void>(resolve => { release = resolve; });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     let disposed = false;
     chromium.driver.attach = async (marker, id) => {
       await gate;
       const page = await attach(marker, id);
       const dispose = page.dispose.bind(page);
-      page.dispose = async () => { disposed = true; await dispose(); };
+      page.dispose = async () => {
+        disposed = true;
+        await dispose();
+      };
       return page;
     };
-    const pending = pages.registerExternal({ pageId: "popup-race", marker: "popup-marker", url: "https://a.test/", backend: "aux" });
+    const pending = pages.registerExternal({
+      pageId: "popup-race",
+      marker: "popup-marker",
+      url: "https://a.test/",
+      backend: "aux",
+    });
     pages.onNativeRemoved("popup-race");
     release();
     await expect(pending).rejects.toMatchObject({ code: "not_found" });
@@ -265,7 +312,6 @@ describe("external page attachment lifecycle", () => {
   });
 });
 
-
 describe("native recorder PageService admission", () => {
   it("refuses an installed native backend without fixed recorder producers", async () => {
     const { pages, native, chromium, repo } = harness();
@@ -273,9 +319,13 @@ describe("native recorder PageService admission", () => {
       const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: false });
       const callsBefore = [...chromium.calls];
       vi.spyOn(native, "available").mockReturnValue(true);
-      await expect(pages.recorderObserver(page.pageId)).rejects.toMatchObject({ code: "backend_unavailable" });
+      await expect(pages.recorderObserver(page.pageId)).rejects.toMatchObject({
+        code: "backend_unavailable",
+      });
       expect(chromium.calls).toEqual(callsBefore);
-    } finally { repo.close(); }
+    } finally {
+      repo.close();
+    }
   });
 
   it("retains original native attachment authority and cleans only its receipt after detach", async () => {
@@ -283,7 +333,11 @@ describe("native recorder PageService admission", () => {
     const recorderId = "35120a93-910a-451a-bbbd-e1daf3368f60";
     const { createHash } = await import("node:crypto");
     const { RECORDER_SOURCE } = await import("@aux/chromium-driver");
-    const start = vi.fn(async () => ({ recorderId, documentGeneration: "1", producerSha256: createHash("sha256").update(RECORDER_SOURCE).digest("hex") }));
+    const start = vi.fn(async () => ({
+      recorderId,
+      documentGeneration: "1",
+      producerSha256: createHash("sha256").update(RECORDER_SOURCE).digest("hex"),
+    }));
     const drain = vi.fn(async () => ({ recorderId, documentGeneration: "1", events: [] }));
     const stop = vi.fn(async () => ({ stopped: true }));
     Object.assign(native, { recorderStart: start, recorderDrain: drain, recorderStop: stop });
@@ -291,12 +345,17 @@ describe("native recorder PageService admission", () => {
       const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: false });
       vi.spyOn(native, "available").mockReturnValue(true);
       const observer = await pages.recorderObserver(page.pageId);
-      await observer.start(() => {}, () => {});
+      await observer.start(
+        () => {},
+        () => {},
+      );
       expect(start).toHaveBeenCalledWith({ pageId: page.pageId });
       pages.onNativeRemoved(page.pageId, false);
       await observer.close();
       expect(stop).toHaveBeenCalledWith({ pageId: page.pageId, recorderId });
       expect(drain).not.toHaveBeenCalled();
-    } finally { repo.close(); }
+    } finally {
+      repo.close();
+    }
   });
 });

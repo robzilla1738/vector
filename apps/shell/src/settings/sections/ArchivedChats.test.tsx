@@ -24,7 +24,7 @@ it("pages archived chats and restores one without losing the remaining results",
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method, input) => {
     if (method === "conversations.list") {
       const params = input as { archived: boolean; limit: number; before?: { chatId: string } };
-      const start = params.before ? rows.findIndex(row => row.chatId === params.before!.chatId) + 1 : 0;
+      const start = params.before ? rows.findIndex((row) => row.chatId === params.before!.chatId) + 1 : 0;
       return rows.slice(start, start + params.limit) as never;
     }
     if (method === "conversations.archive") return { ...rows[0], archived: false } as never;
@@ -37,7 +37,11 @@ it("pages archived chats and restores one without losing the remaining results",
     await act(async () => vi.advanceTimersByTimeAsync(180));
     expect(invoke).toHaveBeenCalledWith("conversations.list", expect.objectContaining({ archived: true }));
     expect(container.querySelectorAll(".settings-archived-row")).toHaveLength(40);
-    await act(async () => [...container.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === "Load more")!.click());
+    await act(async () =>
+      [...container.querySelectorAll<HTMLButtonElement>("button")]
+        .find((button) => button.textContent === "Load more")!
+        .click(),
+    );
     expect(container.querySelectorAll(".settings-archived-row")).toHaveLength(41);
     await act(async () => container.querySelector<HTMLButtonElement>(".settings-archived-row .btn")!.click());
     expect(invoke).toHaveBeenCalledWith("conversations.archive", { chatId: "archive-0", archived: false });

@@ -10,6 +10,7 @@ describe("provider unread titles", () => {
     expect(unreadBadge("(99+) Inbox")?.text).toBe("99+");
   });
   it("ignores zero and incidental numbers", () => {
-    for (const title of ["(0) Inbox", "Project (3)", "3 Inbox", "*Slack", "Inbox"]) expect(unreadBadge(title)).toBeNull();
+    for (const title of ["(0) Inbox", "Project (3)", "3 Inbox", "*Slack", "Inbox"])
+      expect(unreadBadge(title)).toBeNull();
   });
 });

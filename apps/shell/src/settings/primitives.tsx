@@ -18,7 +18,7 @@ export function SettingsSection({
 }) {
   return (
     <section className={className || undefined} data-settings-section={name} hidden={hidden}>
-    <h2 {...auxClassDrawerSectionProps}>{title}</h2>
+      <h2 {...auxClassDrawerSectionProps}>{title}</h2>
       {children}
     </section>
   );

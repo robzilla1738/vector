@@ -48,13 +48,36 @@
   .onboarding-flow h1:focus {
     outline: none;
   }
-  .onboarding-flow nav { gap:var(--space-1); }
-  .onboarding-flow nav > button { width:28px; height:28px; min-height:28px; padding:0; border-radius:var(--r-pill); color:var(--ink-2); }
-  .onboarding-flow nav [aria-current="step"] { color:var(--ink-0); background:var(--bg-hover); }
-  .onboarding-flow nav > button:focus-visible { outline:2px solid var(--focus-line); outline-offset:2px; }
-  .onboarding-flow .eyebrow { font-size:var(--fs-xs); color:var(--ink-2); }
-  .onboarding-flow footer > button:first-child { margin-right:auto; }
-  .onboarding-flow footer > button:last-child { background:var(--accent); color:var(--accent-ink); }
+  .onboarding-flow nav {
+    gap: var(--space-1);
+  }
+  .onboarding-flow nav > button {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    padding: 0;
+    border-radius: var(--r-pill);
+    color: var(--ink-2);
+  }
+  .onboarding-flow nav [aria-current="step"] {
+    color: var(--ink-0);
+    background: var(--bg-hover);
+  }
+  .onboarding-flow nav > button:focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: 2px;
+  }
+  .onboarding-flow .eyebrow {
+    font-size: var(--fs-xs);
+    color: var(--ink-2);
+  }
+  .onboarding-flow footer > button:first-child {
+    margin-right: auto;
+  }
+  .onboarding-flow footer > button:last-child {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
   .onboarding-content {
     display: grid;
     gap: var(--space-3);
@@ -66,9 +89,9 @@
   .onboarding-content p {
     margin: 0;
     line-height: var(--lh-relaxed);
-    font-size:var(--fs-sm);
-    color:var(--ink-1);
-    overflow-wrap:anywhere;
+    font-size: var(--fs-sm);
+    color: var(--ink-1);
+    overflow-wrap: anywhere;
   }
   .onboarding-content label {
     display: flex;
@@ -104,7 +127,9 @@
     outline-offset: 2px;
     border-radius: var(--r-xs);
   }
-  .onboarding-details[open] > p { margin-top: var(--space-2); }
+  .onboarding-details[open] > p {
+    margin-top: var(--space-2);
+  }
   .onboarding-postcards {
     display: grid;
     gap: 12px;

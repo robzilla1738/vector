@@ -18,7 +18,12 @@ import { LanguagesSetting } from "./Languages";
 import { PictureInPictureSetting } from "./PictureInPicture";
 import { BackgroundRuntimeSetting } from "./BackgroundRuntime";
 import { useFeature } from "../../use-feature";
-import { memorySaverCyclesChanged, memorySaverCyclesKey, memorySaverSummary, readMemorySaverCycles } from "../../memory-saver-report";
+import {
+  memorySaverCyclesChanged,
+  memorySaverCyclesKey,
+  memorySaverSummary,
+  readMemorySaverCycles,
+} from "../../memory-saver-report";
 import { TaskAttentionSettings } from "../../agent/TaskAttentionSettings";
 import { RecoveryPackage } from "./RecoveryPackage";
 import { requestOnboardingReplay } from "../../onboarding/replay";
@@ -49,7 +54,7 @@ export function GeneralSettings({
   refreshVersion: number;
   onIndexChange: Dispatch<SetStateAction<number>>;
 }) {
-  const connected = useStore(state => state.connected);
+  const connected = useStore((state) => state.connected);
   const [backupOperation, setBackupOperation] = useState<object | null>(null);
   const tabLifecycleEnabled = useFeature("tabLifecycle");
   const [memoryCycles, setMemoryCycles] = useState(readMemorySaverCycles);
@@ -68,39 +73,66 @@ export function GeneralSettings({
     };
   }, []);
 
-
   return (
     <>
       <section data-settings-section="General" hidden={!active || searching || !!subview}>
         <SettingsGroup title="Browsing">
-          {tabLifecycleEnabled && !bridge.privateMode && <IndexedField compact label="Memory saver" hint="Sleep clean background tabs after they have been idle. Playing audio, unsaved work, captured media and agent work stay awake. Sleeping tabs reload when opened.">
-            <select aria-label="Memory saver" value={String(settings.memorySaverMinutes ?? 0)} onChange={event => void onSave({ memorySaverMinutes: Number(event.target.value) })}>
-              <option value="0">Off</option>
-              <option value="1">After 1 minute</option>
-              <option value="15">After 15 minutes</option>
-              <option value="30">After 30 minutes</option>
-              <option value="60">After 1 hour</option>
-            </select>
-            {memoryCycles.length > 0 && <small {...nativeStatusRoleProps} aria-label="Memory saver cycle report">
-              {memorySummary.slept} {memorySummary.slept === 1 ? "tab" : "tabs"} slept in the last {memoryCycles.length} cycles.
-              {memorySummary.measured > 0 ? ` About ${Math.round(memorySummary.estimatedSavedBytes / 1024 / 1024)} MB estimated at sleep time across ${memorySummary.measured} measured cycles; this is not current memory use.` : " Memory estimate unavailable."}
-            </small>}
-            {memoryCycles.length > 0 && <details><summary>Recent Memory saver cycles</summary><ul>
-              {memoryCycles.slice(0, 10).map((cycle, index) => <li key={`${cycle.at}:${cycle.pageId}:${index}`}>
-                {new Date(cycle.at).toLocaleString()} · {cycle.site || "Tab"} · {cycle.slept
-                  ? cycle.estimatedSavedBytes !== undefined
-                    ? `about ${(cycle.estimatedSavedBytes / 1024 / 1024).toFixed(1)} MB estimated saved`
-                    : "slept; estimate unavailable"
-                  : cycle.reason || "kept awake"}
-              </li>)}
-            </ul></details>}
-          </IndexedField>}
+          {tabLifecycleEnabled && !bridge.privateMode && (
+            <IndexedField
+              compact
+              label="Memory saver"
+              hint="Sleep clean background tabs after they have been idle. Playing audio, unsaved work, captured media and agent work stay awake. Sleeping tabs reload when opened."
+            >
+              <select
+                aria-label="Memory saver"
+                value={String(settings.memorySaverMinutes ?? 0)}
+                onChange={(event) => void onSave({ memorySaverMinutes: Number(event.target.value) })}
+              >
+                <option value="0">Off</option>
+                <option value="1">After 1 minute</option>
+                <option value="15">After 15 minutes</option>
+                <option value="30">After 30 minutes</option>
+                <option value="60">After 1 hour</option>
+              </select>
+              {memoryCycles.length > 0 && (
+                <small {...nativeStatusRoleProps} aria-label="Memory saver cycle report">
+                  {memorySummary.slept} {memorySummary.slept === 1 ? "tab" : "tabs"} slept in the last{" "}
+                  {memoryCycles.length} cycles.
+                  {memorySummary.measured > 0
+                    ? ` About ${Math.round(memorySummary.estimatedSavedBytes / 1024 / 1024)} MB estimated at sleep time across ${memorySummary.measured} measured cycles; this is not current memory use.`
+                    : " Memory estimate unavailable."}
+                </small>
+              )}
+              {memoryCycles.length > 0 && (
+                <details>
+                  <summary>Recent Memory saver cycles</summary>
+                  <ul>
+                    {memoryCycles.slice(0, 10).map((cycle, index) => (
+                      <li key={`${cycle.at}:${cycle.pageId}:${index}`}>
+                        {new Date(cycle.at).toLocaleString()} · {cycle.site || "Tab"} ·{" "}
+                        {cycle.slept
+                          ? cycle.estimatedSavedBytes !== undefined
+                            ? `about ${(cycle.estimatedSavedBytes / 1024 / 1024).toFixed(1)} MB estimated saved`
+                            : "slept; estimate unavailable"
+                          : cycle.reason || "kept awake"}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </IndexedField>
+          )}
           <IndexedField label="Default browser">
             <DefaultBrowserSetting />
           </IndexedField>
-          <IndexedField label="Set up Aux" hint="Replay import, model setup and your first chat. Saved work is kept.">
+          <IndexedField
+            label="Set up Aux"
+            hint="Replay import, model setup and your first chat. Saved work is kept."
+          >
             {active && connected && <SetupProgress />}
-            <button {...smallButtonProps} onClick={requestOnboardingReplay}>Replay setup</button>
+            <button {...smallButtonProps} onClick={requestOnboardingReplay}>
+              Replay setup
+            </button>
           </IndexedField>
 
           <IndexedField compact label="Search engine">
@@ -125,9 +157,16 @@ export function GeneralSettings({
             </select>
           </IndexedField>
 
-          <IndexedField compact label="Command routing" hint="Choose how plain text in the command surface starts. URLs always open directly.">
-            <select aria-label="Command routing" value={String(settings.commandRouting ?? "automatic")}
-              onChange={event => void onSave({ commandRouting: event.target.value })}>
+          <IndexedField
+            compact
+            label="Command routing"
+            hint="Choose how plain text in the command surface starts. URLs always open directly."
+          >
+            <select
+              aria-label="Command routing"
+              value={String(settings.commandRouting ?? "automatic")}
+              onChange={(event) => void onSave({ commandRouting: event.target.value })}
+            >
               <option value="automatic">Automatic</option>
               <option value="prefer-chat">Prefer Ask</option>
               <option value="prefer-search">Prefer Search</option>
@@ -167,7 +206,10 @@ export function GeneralSettings({
           >
             <ImportDataSetting />
           </IndexedField>
-          <IndexedField label="Download folder" hint="Choose where ordinary downloads are saved. Private downloads ask for a location each time.">
+          <IndexedField
+            label="Download folder"
+            hint="Choose where ordinary downloads are saved. Private downloads ask for a location each time."
+          >
             <DownloadFolderSetting active={active && !searching && !subview} />
           </IndexedField>
           <IndexedField label="About Aux" hint="Installed browser version and source revision.">
@@ -176,16 +218,28 @@ export function GeneralSettings({
           <IndexedField label="Spell check" hint="Check spelling as you type in websites and the browser.">
             <SpellCheckSetting active={active && !searching && !subview} />
           </IndexedField>
-          <IndexedField label="On startup" hint="Open a new tab, restore your previous session, or open chosen pages.">
+          <IndexedField
+            label="On startup"
+            hint="Open a new tab, restore your previous session, or open chosen pages."
+          >
             <StartupSetting active={active && !searching && !subview} />
           </IndexedField>
-          <IndexedField label="Languages" hint="Choose the languages websites receive in order of preference. The app language follows macOS.">
+          <IndexedField
+            label="Languages"
+            hint="Choose the languages websites receive in order of preference. The app language follows macOS."
+          >
             <LanguagesSetting active={active && !searching && !subview} />
           </IndexedField>
-          <IndexedField label="Automatic picture in picture" hint="Control whether sites may open floating video automatically. Manual picture in picture remains available.">
+          <IndexedField
+            label="Automatic picture in picture"
+            hint="Control whether sites may open floating video automatically. Manual picture in picture remains available."
+          >
             <PictureInPictureSetting active={active && !searching && !subview} />
           </IndexedField>
-          <IndexedField label="Keep Aux running in the background" hint="Let your Profile's runtime remain available after the last browser window closes. Quit Aux to stop it.">
+          <IndexedField
+            label="Keep Aux running in the background"
+            hint="Let your Profile's runtime remain available after the last browser window closes. Quit Aux to stop it."
+          >
             <BackgroundRuntimeSetting active={active && !searching && !subview} />
           </IndexedField>
         </SettingsGroup>
@@ -202,7 +256,11 @@ export function GeneralSettings({
             </button>
           </IndexedField>
 
-          <DiagnosticsStorage active={active && !searching && !subview} refreshVersion={refreshVersion} onIndexChange={onIndexChange} />
+          <DiagnosticsStorage
+            active={active && !searching && !subview}
+            refreshVersion={refreshVersion}
+            onIndexChange={onIndexChange}
+          />
         </SettingsGroup>
       </section>
       <section
@@ -236,17 +294,37 @@ export function GeneralSettings({
           label="Task data backup"
           hint="Backs up chats, tasks, Spaces, saved evidence, browsing records and preferences. New portable backups omit protected articles, selected-article answers, reports, and site grants. After Forget, older Aux-managed backups cannot be restored; create a fresh backup. Copies exported outside Aux remain under your control and cannot be revoked. Sign-ins, credentials, extensions, downloads, project files and cloud resources are not included. Chromium Cookies, Login Data, Web Data and other credential stores are never copied. Backups contain private content; keep them somewhere secure. Oldest complete backups are deleted after a new backup. Incomplete folders without a manifest are skipped. A process kill during backup leaves an incomplete folder that Aux ignores."
         >
-          <RestoreBackupControls active={active && !searching && subview === "Task data backup"} refreshVersion={refreshVersion} externalBusy={backupOperation !== null}
-            onOperation={(token, pending) => setBackupOperation(current => pending ? token : current === token ? null : current)}>
-            {restore => <>
-              <BackupSettings active={active && !searching && subview === "Task data backup"} refreshVersion={refreshVersion} externalBusy={backupOperation !== null} restorePending={restore.status.pending}
-                onOperation={(token, pending) => setBackupOperation(current => pending ? token : current === token ? null : current)}
-                attended={() => restore.actions} restore={(item, busy) => restore.listed(item, busy)} />
-              {restore.statusView}
-              <RecoveryPackage active={active && !searching && subview === "Task data backup"} refreshVersion={refreshVersion} pending={restore.status.pending} onStaged={restore.staged} />
-            </>}
+          <RestoreBackupControls
+            active={active && !searching && subview === "Task data backup"}
+            refreshVersion={refreshVersion}
+            externalBusy={backupOperation !== null}
+            onOperation={(token, pending) =>
+              setBackupOperation((current) => (pending ? token : current === token ? null : current))
+            }
+          >
+            {(restore) => (
+              <>
+                <BackupSettings
+                  active={active && !searching && subview === "Task data backup"}
+                  refreshVersion={refreshVersion}
+                  externalBusy={backupOperation !== null}
+                  restorePending={restore.status.pending}
+                  onOperation={(token, pending) =>
+                    setBackupOperation((current) => (pending ? token : current === token ? null : current))
+                  }
+                  attended={() => restore.actions}
+                  restore={(item, busy) => restore.listed(item, busy)}
+                />
+                {restore.statusView}
+                <RecoveryPackage
+                  active={active && !searching && subview === "Task data backup"}
+                  refreshVersion={refreshVersion}
+                  pending={restore.status.pending}
+                  onStaged={restore.staged}
+                />
+              </>
+            )}
           </RestoreBackupControls>
-
         </Field>
       </section>
     </>

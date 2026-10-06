@@ -10,7 +10,10 @@ describe("stage beside a menu", () => {
 
   it("keeps the rest of the page when a menu overlaps its left edge", () => {
     expect(stageAvoiding(stage, [{ x: 200, y: 420, width: 240, height: 260 }])).toEqual({
-      x: 440, y: 0, width: 840, height: 800,
+      x: 440,
+      y: 0,
+      width: 840,
+      height: 800,
     });
   });
 });

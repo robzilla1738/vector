@@ -22,9 +22,15 @@ it("has unique command IDs and exactly one shell action per shell command", () =
 });
 it("has bounded, conflict-free, safe defaults on every platform", () => {
   expect(SHORTCUTS).toHaveLength(COMMANDS.length);
-  const worst = Object.fromEntries(COMMANDS.map(command => [command.id,
-    Array.from({ length: 4 }, (_, index) => ({ key: `F${index + 1}`, ctrl: true }))]));
-  const fits = ["darwin", "win32", "linux"].every(platform => shortcutInventorySize(worst, platform) <= 512);
+  const worst = Object.fromEntries(
+    COMMANDS.map((command) => [
+      command.id,
+      Array.from({ length: 4 }, (_, index) => ({ key: `F${index + 1}`, ctrl: true })),
+    ]),
+  );
+  const fits = ["darwin", "win32", "linux"].every(
+    (platform) => shortcutInventorySize(worst, platform) <= 512,
+  );
   // Settings must refuse an inventory beyond the unchanged native row cap.
   expect(ShortcutOverridesSchema.safeParse(worst).success).toBe(fits);
   for (const platform of ["darwin", "win32", "linux"])
@@ -60,7 +66,11 @@ it("renders only registered command IDs and centralizes command entry points", a
       expect(ids.has(match[1] as (typeof COMMANDS)[number]["id"])).toBe(true);
     // URL-bearing navigation is a store data operation. Parameterless actions
     // and direct palette/sidebar intents must dispatch through commands.ts.
-    if (/\b(?:newTab|toggleSidebar)\(\s*\)|\bsetOverlay\(["']palette["']\)|onClick=\{toggleSidebar\}/.test(source))
+    if (
+      /\b(?:newTab|toggleSidebar)\(\s*\)|\bsetOverlay\(["']palette["']\)|onClick=\{toggleSidebar\}/.test(
+        source,
+      )
+    )
       violations.push(file.slice(root.length));
   }
   expect(violations).toEqual([]);

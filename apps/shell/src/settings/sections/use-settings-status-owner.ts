@@ -58,8 +58,7 @@ export function useSettingsStatusOwner<T>(
             if (reset) setFailure(null);
           }
         } catch (reason) {
-          if (current(original) && sequence === original.sequence)
-            fail(original, errorMessage(reason));
+          if (current(original) && sequence === original.sequence) fail(original, errorMessage(reason));
         }
       })();
     },

@@ -238,9 +238,11 @@ it("runs reviewed site notifications once and records stale delivery as missed",
 it("preflights a page-change watch against the exact task resource and current page epoch", () => {
   const f = fixture();
   const url = "https://example.com/pricing";
-  f.db.prepare(
-    "INSERT INTO pages(page_id,backend,target_id,url,title,epoch,created_at,active_at) VALUES(?,?,?,?,?,?,?,?)",
-  ).run("page-watch", "aux", "target-watch", url, "Fixture", 7, Date.now(), Date.now());
+  f.db
+    .prepare(
+      "INSERT INTO pages(page_id,backend,target_id,url,title,epoch,created_at,active_at) VALUES(?,?,?,?,?,?,?,?)",
+    )
+    .run("page-watch", "aux", "target-watch", url, "Fixture", 7, Date.now(), Date.now());
   const skill = f.routines.create({
     title: "Watch pricing",
     objective: "Inspect changes",
@@ -262,58 +264,118 @@ it("preflights a page-change watch against the exact task resource and current p
   expect(f.routines.pageChangeTarget("page-watch", url)).toBeNull();
 });
 
-it.each(["new document", "different tab"])("persists page-change authority and refuses %s after review and restart", async (change) => {
-  const dispatched = vi.fn(async () => ({ runId: "should-not-start" }));
-  const f = fixture(dispatched);
-  const url = "https://example.com/pricing";
-  f.db.prepare("INSERT INTO pages(page_id,backend,target_id,url,title,epoch,created_at,active_at) VALUES(?,?,?,?,?,?,?,?)")
-    .run("watched", "aux", "target", url, "Pricing", 3, Date.now(), Date.now());
-  const routine = f.routines.create({
-    title: "Watch pricing", objective: "Inspect changes", workspaceId: f.workspace.workspaceId,
-    sourceTaskId: f.task.taskId, parameters: [], siteOrigins: ["https://example.com"], accountLabels: [],
-    reviewRequired: true, consecutive: false,
-    trigger: { kind: "page_change", url, minimumIntervalMinutes: 5 }, paused: false,
-  });
-  const now = Date.now();
-  const event = { kind: "page_change" as const, eventId: "first", pageId: "watched", url,
-    documentEpoch: 3, contentSha256: "a".repeat(64), observedAt: now };
-  expect(await f.routines.ingestEvent(event, now)).toEqual([]);
-  const [waiting] = await f.routines.ingestEvent({ ...event, eventId: "changed",
-    contentSha256: "b".repeat(64) }, now);
-  expect(waiting).toMatchObject({ status: "needs_review", triggerPageId: "watched", triggerDocumentEpoch: 3 });
-  const restarted = new RoutineService(f.repo, f.events, dispatched);
-  expect(restarted.runs(routine.routineId)[0]).toMatchObject({ triggerPageId: "watched", triggerDocumentEpoch: 3 });
-  if (change === "new document") f.db.prepare("UPDATE pages SET epoch=4 WHERE page_id='watched'").run();
-  else {
-    f.db.prepare("UPDATE pages SET detached=1 WHERE page_id='watched'").run();
-    f.db.prepare("INSERT INTO pages(page_id,backend,target_id,url,title,epoch,created_at,active_at) VALUES(?,?,?,?,?,?,?,?)")
-      .run("replacement", "aux", "replacement-target", url, "Pricing", 3, Date.now(), Date.now());
-  }
-  const refused = await restarted.reconcile(waiting!.routineRunId, "applied", "Reviewed the change.");
-  expect(refused.status).toBe("failed");
-  expect(refused.reason).toMatch(/watched tab or document changed/i);
-  expect(dispatched).not.toHaveBeenCalled();
-});
+it.each(["new document", "different tab"])(
+  "persists page-change authority and refuses %s after review and restart",
+  async (change) => {
+    const dispatched = vi.fn(async () => ({ runId: "should-not-start" }));
+    const f = fixture(dispatched);
+    const url = "https://example.com/pricing";
+    f.db
+      .prepare(
+        "INSERT INTO pages(page_id,backend,target_id,url,title,epoch,created_at,active_at) VALUES(?,?,?,?,?,?,?,?)",
+      )
+      .run("watched", "aux", "target", url, "Pricing", 3, Date.now(), Date.now());
+    const routine = f.routines.create({
+      title: "Watch pricing",
+      objective: "Inspect changes",
+      workspaceId: f.workspace.workspaceId,
+      sourceTaskId: f.task.taskId,
+      parameters: [],
+      siteOrigins: ["https://example.com"],
+      accountLabels: [],
+      reviewRequired: true,
+      consecutive: false,
+      trigger: { kind: "page_change", url, minimumIntervalMinutes: 5 },
+      paused: false,
+    });
+    const now = Date.now();
+    const event = {
+      kind: "page_change" as const,
+      eventId: "first",
+      pageId: "watched",
+      url,
+      documentEpoch: 3,
+      contentSha256: "a".repeat(64),
+      observedAt: now,
+    };
+    expect(await f.routines.ingestEvent(event, now)).toEqual([]);
+    const [waiting] = await f.routines.ingestEvent(
+      { ...event, eventId: "changed", contentSha256: "b".repeat(64) },
+      now,
+    );
+    expect(waiting).toMatchObject({
+      status: "needs_review",
+      triggerPageId: "watched",
+      triggerDocumentEpoch: 3,
+    });
+    const restarted = new RoutineService(f.repo, f.events, dispatched);
+    expect(restarted.runs(routine.routineId)[0]).toMatchObject({
+      triggerPageId: "watched",
+      triggerDocumentEpoch: 3,
+    });
+    if (change === "new document") f.db.prepare("UPDATE pages SET epoch=4 WHERE page_id='watched'").run();
+    else {
+      f.db.prepare("UPDATE pages SET detached=1 WHERE page_id='watched'").run();
+      f.db
+        .prepare(
+          "INSERT INTO pages(page_id,backend,target_id,url,title,epoch,created_at,active_at) VALUES(?,?,?,?,?,?,?,?)",
+        )
+        .run("replacement", "aux", "replacement-target", url, "Pricing", 3, Date.now(), Date.now());
+    }
+    const refused = await restarted.reconcile(waiting!.routineRunId, "applied", "Reviewed the change.");
+    expect(refused.status).toBe("failed");
+    expect(refused.reason).toMatch(/watched tab or document changed/i);
+    expect(dispatched).not.toHaveBeenCalled();
+  },
+);
 
 it("passes the exact watched tab and epoch to immediate page-change work", async () => {
   const dispatched = vi.fn(async () => ({ runId: "run-page-change" }));
   const f = fixture(dispatched);
   const url = "https://example.com/pricing";
-  f.db.prepare("INSERT INTO pages(page_id,backend,target_id,url,title,epoch,created_at,active_at) VALUES(?,?,?,?,?,?,?,?)")
+  f.db
+    .prepare(
+      "INSERT INTO pages(page_id,backend,target_id,url,title,epoch,created_at,active_at) VALUES(?,?,?,?,?,?,?,?)",
+    )
     .run("watched-immediate", "aux", "target", url, "Pricing", 5, Date.now(), Date.now());
-  const routine = f.routines.create({ title: "Watch now", objective: "Inspect changes",
-    workspaceId: f.workspace.workspaceId, sourceTaskId: f.task.taskId, parameters: [],
-    siteOrigins: ["https://example.com"], accountLabels: [], reviewRequired: false,
-    consecutive: false, trigger: { kind: "page_change", url, minimumIntervalMinutes: 5 }, paused: false });
+  const routine = f.routines.create({
+    title: "Watch now",
+    objective: "Inspect changes",
+    workspaceId: f.workspace.workspaceId,
+    sourceTaskId: f.task.taskId,
+    parameters: [],
+    siteOrigins: ["https://example.com"],
+    accountLabels: [],
+    reviewRequired: false,
+    consecutive: false,
+    trigger: { kind: "page_change", url, minimumIntervalMinutes: 5 },
+    paused: false,
+  });
   const now = Date.now();
-  const event = { kind: "page_change" as const, eventId: "base", pageId: "watched-immediate", url,
-    documentEpoch: 5, contentSha256: "a".repeat(64), observedAt: now };
+  const event = {
+    kind: "page_change" as const,
+    eventId: "base",
+    pageId: "watched-immediate",
+    url,
+    documentEpoch: 5,
+    contentSha256: "a".repeat(64),
+    observedAt: now,
+  };
   expect(await f.routines.ingestEvent(event, now)).toEqual([]);
-  const [started] = await f.routines.ingestEvent({ ...event, eventId: "next",
-    contentSha256: "b".repeat(64) }, now);
-  expect(started).toMatchObject({ status: "running", triggerPageId: "watched-immediate", triggerDocumentEpoch: 5 });
-  expect(dispatched).toHaveBeenCalledWith(expect.objectContaining({ routineId: routine.routineId }), {},
-    { triggerPageId: "watched-immediate", triggerDocumentEpoch: 5 });
+  const [started] = await f.routines.ingestEvent(
+    { ...event, eventId: "next", contentSha256: "b".repeat(64) },
+    now,
+  );
+  expect(started).toMatchObject({
+    status: "running",
+    triggerPageId: "watched-immediate",
+    triggerDocumentEpoch: 5,
+  });
+  expect(dispatched).toHaveBeenCalledWith(
+    expect.objectContaining({ routineId: routine.routineId }),
+    {},
+    { triggerPageId: "watched-immediate", triggerDocumentEpoch: 5 },
+  );
 });
 
 it("builds parameterized routines from a saved task and versions edits", () => {
@@ -420,28 +482,59 @@ it("polls only an active task-granted Calendar Skill and delivers one reviewed o
   const f = fixture();
   const connectionId = "00000000-0000-4000-8000-000000000091";
   const grantId = "10000000-0000-4000-8000-000000000091";
-  f.repo.db.prepare(
-    "INSERT INTO calendar_connections(connection_id,provider,account_key,label,secret_name,scopes,state,created_at,updated_at) VALUES(?,'google',?,?,?,?, 'active',1,1)",
-  ).run(connectionId, "fixture@example.test", "Fixture", "calendar-fixture", "[]");
-  f.repo.db.prepare(
-    "INSERT INTO calendar_task_grants(grant_id,task_id,task_revision,connection_id,created_at) VALUES(?,?,?,?,1)",
-  ).run(grantId, f.task.taskId, f.task.revision, connectionId);
+  f.repo.db
+    .prepare(
+      "INSERT INTO calendar_connections(connection_id,provider,account_key,label,secret_name,scopes,state,created_at,updated_at) VALUES(?,'google',?,?,?,?, 'active',1,1)",
+    )
+    .run(connectionId, "fixture@example.test", "Fixture", "calendar-fixture", "[]");
+  f.repo.db
+    .prepare(
+      "INSERT INTO calendar_task_grants(grant_id,task_id,task_revision,connection_id,created_at) VALUES(?,?,?,?,1)",
+    )
+    .run(grantId, f.task.taskId, f.task.revision, connectionId);
   const skill = f.routines.create({
-    title: "Calendar review", objective: "Review the event", workspaceId: f.workspace.workspaceId,
-    sourceTaskId: f.task.taskId, sourceTaskRevision: f.task.revision,
-    parameters: [], siteOrigins: [], calendarGrantIds: [grantId], accountLabels: [],
-    reviewRequired: true, consecutive: false, paused: false,
+    title: "Calendar review",
+    objective: "Review the event",
+    workspaceId: f.workspace.workspaceId,
+    sourceTaskId: f.task.taskId,
+    sourceTaskRevision: f.task.revision,
+    parameters: [],
+    siteOrigins: [],
+    calendarGrantIds: [grantId],
+    accountLabels: [],
+    reviewRequired: true,
+    consecutive: false,
+    paused: false,
     trigger: { kind: "calendar_event", grantId, beforeMinutes: 10 },
   });
   const now = Date.now();
-  const source = { connectionId, accountKey: "fixture@example.test", calendarId: "fixture@example.test", fetchedAt: now };
-  const calendar = { taskEvents: vi.fn(async () => ({ events: [{
-    eventId: "event-1", title: "Private title must not be stored",
-    start: new Date(now + 10 * 60_000).toISOString(), end: new Date(now + 11 * 60_000).toISOString(), source,
-  }, {
-    eventId: "event-2", title: "Late event must not dispatch",
-    start: new Date(now + 7 * 60_000).toISOString(), end: new Date(now + 8 * 60_000).toISOString(), source,
-  }], fetchedAt: now })) };
+  const source = {
+    connectionId,
+    accountKey: "fixture@example.test",
+    calendarId: "fixture@example.test",
+    fetchedAt: now,
+  };
+  const calendar = {
+    taskEvents: vi.fn(async () => ({
+      events: [
+        {
+          eventId: "event-1",
+          title: "Private title must not be stored",
+          start: new Date(now + 10 * 60_000).toISOString(),
+          end: new Date(now + 11 * 60_000).toISOString(),
+          source,
+        },
+        {
+          eventId: "event-2",
+          title: "Late event must not dispatch",
+          start: new Date(now + 7 * 60_000).toISOString(),
+          end: new Date(now + 8 * 60_000).toISOString(),
+          source,
+        },
+      ],
+      fetchedAt: now,
+    })),
+  };
   const deliver = (event: Parameters<typeof f.routines.ingestEvent>[0]) => f.routines.ingestEvent(event, now);
   const watches = f.routines.calendarWatches();
   expect(watches).toEqual([{ taskId: f.task.taskId, grantId, beforeMinutes: 10 }]);
@@ -458,17 +551,34 @@ it("polls only an active task-granted Calendar Skill and delivers one reviewed o
 
 it("pauses unattended model Skills and honors read, Keep, and Don't ask choices", async () => {
   const f = fixture();
-  const skill = f.routines.fromResult({ taskId: f.task.taskId, title: "Unattended check",
-    trigger: { kind: "site_notification", origin: "https://example.com" }, reviewRequired: false });
+  const skill = f.routines.fromResult({
+    taskId: f.task.taskId,
+    title: "Unattended check",
+    trigger: { kind: "site_notification", origin: "https://example.com" },
+    reviewRequired: false,
+  });
   const now = Date.now();
   const insert = f.repo.db.prepare(`INSERT INTO routine_runs
     (routine_run_id,routine_id,revision,occurrence_id,occurrence_identity,status,run_id,parameters,created_at,ended_at)
     VALUES (?,?,?,?,?,'completed',?,'{}',?,?)`);
-  for (let i = 0; i < 3; i++) insert.run(`unread-${i}`, skill.routineId, skill.revision,
-    `occurrence-${i}`, `identity-${i}`, `model-run-${i}`, now + i * 60_000, now + i * 60_000);
-  f.repo.db.prepare(`INSERT INTO model_calls
+  for (let i = 0; i < 3; i++)
+    insert.run(
+      `unread-${i}`,
+      skill.routineId,
+      skill.revision,
+      `occurrence-${i}`,
+      `identity-${i}`,
+      `model-run-${i}`,
+      now + i * 60_000,
+      now + i * 60_000,
+    );
+  f.repo.db
+    .prepare(
+      `INSERT INTO model_calls
     (call_id,run_id,role,model_id,duration_ms,cost_usd,created_at)
-    VALUES ('presence-call','model-run-0','planner','fixture',1,0.01,?)`).run(now);
+    VALUES ('presence-call','model-run-0','planner','fixture',1,0.01,?)`,
+    )
+    .run(now);
   f.routines.markInboxRead("unread-0");
   const later = now + 25 * 60 * 60_000;
   await f.routines.due(later);
@@ -479,23 +589,46 @@ it("pauses unattended model Skills and honors read, Keep, and Don't ask choices"
   expect(paused).toMatchObject({ paused: true, pauseCause: "unread_results" });
   vi.useFakeTimers({ now: later + 2 * 60_000 });
   try {
-    const kept = f.routines.update({ routineId: skill.routineId, expectedRevision: paused.revision, paused: false });
+    const kept = f.routines.update({
+      routineId: skill.routineId,
+      expectedRevision: paused.revision,
+      paused: false,
+    });
     expect(kept.pauseCause).toBeUndefined();
     await f.routines.due(later + 3 * 60_000);
     expect(f.routines.get(skill.routineId).routine.paused).toBe(false);
-    const exempt = f.routines.update({ routineId: skill.routineId, expectedRevision: kept.revision,
-      presenceGuardExempt: true });
+    const exempt = f.routines.update({
+      routineId: skill.routineId,
+      expectedRevision: kept.revision,
+      presenceGuardExempt: true,
+    });
     expect(exempt.presenceGuardExempt).toBe(true);
-    expect(f.routines.exportRoutines([skill.routineId]).routines[0]).not.toHaveProperty("presenceGuardExempt");
-    for (let i = 3; i < 6; i++) insert.run(`unread-${i}`, skill.routineId, exempt.revision,
-      `occurrence-${i}`, `identity-${i}`, `model-run-${i}`,
-      later + 3 * 60_000 + i * 60_000, later + 3 * 60_000 + i * 60_000);
-    f.repo.db.prepare(`INSERT INTO model_calls
+    expect(f.routines.exportRoutines([skill.routineId]).routines[0]).not.toHaveProperty(
+      "presenceGuardExempt",
+    );
+    for (let i = 3; i < 6; i++)
+      insert.run(
+        `unread-${i}`,
+        skill.routineId,
+        exempt.revision,
+        `occurrence-${i}`,
+        `identity-${i}`,
+        `model-run-${i}`,
+        later + 3 * 60_000 + i * 60_000,
+        later + 3 * 60_000 + i * 60_000,
+      );
+    f.repo.db
+      .prepare(
+        `INSERT INTO model_calls
       (call_id,run_id,role,model_id,duration_ms,cost_usd,created_at)
-      VALUES ('presence-call-after','model-run-3','planner','fixture',1,0.01,?)`).run(later + 6 * 60_000);
+      VALUES ('presence-call-after','model-run-3','planner','fixture',1,0.01,?)`,
+      )
+      .run(later + 6 * 60_000);
     await f.routines.due(later + 28 * 60 * 60_000);
     expect(f.routines.get(skill.routineId).routine.paused).toBe(false);
-  } finally { vi.useRealTimers(); }
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it("shows criterion evidence only for the linked Skill run and marks it stale after a later task run", async () => {
@@ -599,98 +732,214 @@ it("rejects a source run from another saved task", () => {
 
 it("holds a run-derived Skill until an actual replay test and separate review", async () => {
   const f = fixture(async () => ({ runId: "new-run" }));
-  f.repo.saveRun({ runId: "source-run", goal: "Inspect page", status: "completed", pageIds: [],
-    createdAt: Date.now(), config: { taskId: f.task.taskId, taskRevision: f.task.revision } });
-  const skill = f.routines.fromResult({ taskId: f.task.taskId, runId: "source-run",
-    trigger: { kind: "monitor", timezone: "UTC", intervalMinutes: 60 } });
+  f.repo.saveRun({
+    runId: "source-run",
+    goal: "Inspect page",
+    status: "completed",
+    pageIds: [],
+    createdAt: Date.now(),
+    config: { taskId: f.task.taskId, taskRevision: f.task.revision },
+  });
+  const skill = f.routines.fromResult({
+    taskId: f.task.taskId,
+    runId: "source-run",
+    trigger: { kind: "monitor", timezone: "UTC", intervalMinutes: 60 },
+  });
   expect(skill).toMatchObject({ paused: true, activationReview: "run_result", sourceRunId: "source-run" });
   expect(f.routines.exportRoutines([skill.routineId]).routines[0]).not.toHaveProperty("activationReview");
-  expect(() => f.routines.pause(skill.routineId, skill.revision, false)).toThrow(/Test the current Skill replay/);
+  expect(() => f.routines.pause(skill.routineId, skill.revision, false)).toThrow(
+    /Test the current Skill replay/,
+  );
   expect(await f.routines.due()).toEqual([]);
-  const edited = f.routines.update({ routineId: skill.routineId, expectedRevision: skill.revision,
-    objective: "Review the source before recurring work" });
-  expect(() => f.routines.update({ routineId: edited.routineId, expectedRevision: skill.revision,
-    paused: false, activationReviewed: true })).toThrow(/changed/i);
-  expect(() => f.routines.update({ routineId: edited.routineId, expectedRevision: edited.revision,
-    paused: false, activationReviewed: true, objective: "Unreviewed change" })).toThrow(/Test the current Skill replay/);
-  expect(() => f.routines.update({ routineId: edited.routineId, expectedRevision: edited.revision,
-    paused: false, activationReviewed: true })).toThrow(/Test the current Skill replay/);
-  const retargeted = f.routines.update({ routineId: edited.routineId, expectedRevision: edited.revision,
-    sourceRunId: "source-run" });
+  const edited = f.routines.update({
+    routineId: skill.routineId,
+    expectedRevision: skill.revision,
+    objective: "Review the source before recurring work",
+  });
+  expect(() =>
+    f.routines.update({
+      routineId: edited.routineId,
+      expectedRevision: skill.revision,
+      paused: false,
+      activationReviewed: true,
+    }),
+  ).toThrow(/changed/i);
+  expect(() =>
+    f.routines.update({
+      routineId: edited.routineId,
+      expectedRevision: edited.revision,
+      paused: false,
+      activationReviewed: true,
+      objective: "Unreviewed change",
+    }),
+  ).toThrow(/Test the current Skill replay/);
+  expect(() =>
+    f.routines.update({
+      routineId: edited.routineId,
+      expectedRevision: edited.revision,
+      paused: false,
+      activationReviewed: true,
+    }),
+  ).toThrow(/Test the current Skill replay/);
+  const retargeted = f.routines.update({
+    routineId: edited.routineId,
+    expectedRevision: edited.revision,
+    sourceRunId: "source-run",
+  });
   expect(retargeted.paused).toBe(true);
-  f.repo.saveRun({ runId: "later-run", goal: "Inspect another page", status: "completed", pageIds: [],
-    createdAt: Date.now(), config: { taskId: f.task.taskId, taskRevision: f.task.revision } });
-  const newlyDerived = f.routines.update({ routineId: retargeted.routineId,
-    expectedRevision: retargeted.revision, sourceRunId: "later-run" });
+  f.repo.saveRun({
+    runId: "later-run",
+    goal: "Inspect another page",
+    status: "completed",
+    pageIds: [],
+    createdAt: Date.now(),
+    config: { taskId: f.task.taskId, taskRevision: f.task.revision },
+  });
+  const newlyDerived = f.routines.update({
+    routineId: retargeted.routineId,
+    expectedRevision: retargeted.revision,
+    sourceRunId: "later-run",
+  });
   expect(newlyDerived).toMatchObject({ paused: true, activationReview: "run_result" });
 });
 
 it("keeps externally authored task text from activating a Skill before review", async () => {
   const f = fixture();
-  const external = f.tasks.create({ workspaceId: f.workspace.workspaceId,
-    title: "External suggestion", objective: "Run this every hour",
-    criteria: [{ criterionId: "check", description: "Check it", verification: "manual" }] }, "external");
+  const external = f.tasks.create(
+    {
+      workspaceId: f.workspace.workspaceId,
+      title: "External suggestion",
+      objective: "Run this every hour",
+      criteria: [{ criterionId: "check", description: "Check it", verification: "manual" }],
+    },
+    "external",
+  );
   expect(external.sourceOrigin).toBe("external");
-  const skill = f.routines.create({ title: external.title, objective: external.objective,
-    workspaceId: external.workspaceId, sourceTaskId: external.taskId,
-    parameters: [], siteOrigins: [], accountLabels: [], successCriteria: external.criteria,
-    reviewRequired: true, consecutive: false,
-    trigger: { kind: "monitor", timezone: "UTC", intervalMinutes: 60 }, paused: false });
+  const skill = f.routines.create({
+    title: external.title,
+    objective: external.objective,
+    workspaceId: external.workspaceId,
+    sourceTaskId: external.taskId,
+    parameters: [],
+    siteOrigins: [],
+    accountLabels: [],
+    successCriteria: external.criteria,
+    reviewRequired: true,
+    consecutive: false,
+    trigger: { kind: "monitor", timezone: "UTC", intervalMinutes: 60 },
+    paused: false,
+  });
   expect(skill).toMatchObject({ paused: true, activationReview: "untrusted_task" });
   expect(() => f.routines.pause(skill.routineId, skill.revision, false)).toThrow(/Review this imported/);
-  const ready = f.routines.update({ routineId: skill.routineId, expectedRevision: skill.revision,
-    paused: false, activationReviewed: true });
+  const ready = f.routines.update({
+    routineId: skill.routineId,
+    expectedRevision: skill.revision,
+    paused: false,
+    activationReviewed: true,
+  });
   expect(ready.paused).toBe(false);
-  const revisedTask = f.tasks.update({ taskId: external.taskId, expectedRevision: external.revision,
-    objective: "Updated external suggestion" });
+  const revisedTask = f.tasks.update({
+    taskId: external.taskId,
+    expectedRevision: external.revision,
+    objective: "Updated external suggestion",
+  });
   const autoPaused = f.routines.get(ready.routineId).routine;
   expect(autoPaused).toMatchObject({ paused: true, activationReview: "untrusted_task" });
-  const reattached = f.routines.update({ routineId: ready.routineId, expectedRevision: autoPaused.revision,
-    sourceTaskRevision: revisedTask.revision });
+  const reattached = f.routines.update({
+    routineId: ready.routineId,
+    expectedRevision: autoPaused.revision,
+    sourceTaskRevision: revisedTask.revision,
+  });
   expect(reattached).toMatchObject({ paused: true, activationReview: "untrusted_task" });
 });
 
 it("pauses a ready Skill when an external client edits its desktop-authored task", () => {
   const f = fixture();
-  const created = f.routines.create({ title: "Desktop Skill", objective: f.task.objective,
-    workspaceId: f.workspace.workspaceId, sourceTaskId: f.task.taskId,
-    successCriteria: f.task.criteria, parameters: [], siteOrigins: [], accountLabels: [],
-    reviewRequired: true, consecutive: false, trigger: { kind: "monitor", timezone: "UTC", intervalMinutes: 60 },
-    paused: false });
+  const created = f.routines.create({
+    title: "Desktop Skill",
+    objective: f.task.objective,
+    workspaceId: f.workspace.workspaceId,
+    sourceTaskId: f.task.taskId,
+    successCriteria: f.task.criteria,
+    parameters: [],
+    siteOrigins: [],
+    accountLabels: [],
+    reviewRequired: true,
+    consecutive: false,
+    trigger: { kind: "monitor", timezone: "UTC", intervalMinutes: 60 },
+    paused: false,
+  });
   expect(created).toMatchObject({ paused: false, activationReview: undefined });
-  const edited = f.tasks.update({ taskId: f.task.taskId, expectedRevision: f.task.revision,
-    objective: "Externally revised objective" }, "external");
+  const edited = f.tasks.update(
+    { taskId: f.task.taskId, expectedRevision: f.task.revision, objective: "Externally revised objective" },
+    "external",
+  );
   expect(edited.sourceOrigin).toBe("external");
   const paused = f.routines.get(created.routineId).routine;
-  expect(paused).toMatchObject({ paused: true, activationReview: "untrusted_task",
-    sourceTaskRevision: f.task.revision });
-  expect(() => f.routines.update({ routineId: paused.routineId, expectedRevision: paused.revision,
-    paused: false, activationReviewed: true })).toThrow(/source task changed/i);
-  const synced = f.routines.update({ routineId: paused.routineId, expectedRevision: paused.revision,
-    sourceTaskRevision: edited.revision });
-  const ready = f.routines.update({ routineId: synced.routineId, expectedRevision: synced.revision,
-    paused: false, activationReviewed: true });
+  expect(paused).toMatchObject({
+    paused: true,
+    activationReview: "untrusted_task",
+    sourceTaskRevision: f.task.revision,
+  });
+  expect(() =>
+    f.routines.update({
+      routineId: paused.routineId,
+      expectedRevision: paused.revision,
+      paused: false,
+      activationReviewed: true,
+    }),
+  ).toThrow(/source task changed/i);
+  const synced = f.routines.update({
+    routineId: paused.routineId,
+    expectedRevision: paused.revision,
+    sourceTaskRevision: edited.revision,
+  });
+  const ready = f.routines.update({
+    routineId: synced.routineId,
+    expectedRevision: synced.revision,
+    paused: false,
+    activationReviewed: true,
+  });
   expect(ready).toMatchObject({ paused: false, activationReview: undefined });
   const later = { ...edited, revision: edited.revision + 1, objective: "Edited before restart" };
-  f.repo.db.prepare("UPDATE tasks SET revision=?,json=? WHERE task_id=?")
+  f.repo.db
+    .prepare("UPDATE tasks SET revision=?,json=? WHERE task_id=?")
     .run(later.revision, JSON.stringify(later), edited.taskId);
   const restarted = new RoutineService(f.repo, f.events);
   expect(restarted.get(ready.routineId).routine).toMatchObject({
-    paused: true, activationReview: "untrusted_task" });
+    paused: true,
+    activationReview: "untrusted_task",
+  });
 });
 
 it("re-reviews legacy saved-conversation tasks without an origin marker", () => {
   const f = fixture();
-  const skill = f.routines.create({ title: "Saved conversation Skill", objective: f.task.objective,
-    workspaceId: f.workspace.workspaceId, sourceTaskId: f.task.taskId,
-    successCriteria: f.task.criteria, parameters: [], siteOrigins: [], accountLabels: [],
-    reviewRequired: true, consecutive: false, trigger: { kind: "manual" }, paused: false });
-  f.repo.db.prepare("UPDATE tasks SET json=? WHERE task_id=?")
+  const skill = f.routines.create({
+    title: "Saved conversation Skill",
+    objective: f.task.objective,
+    workspaceId: f.workspace.workspaceId,
+    sourceTaskId: f.task.taskId,
+    successCriteria: f.task.criteria,
+    parameters: [],
+    siteOrigins: [],
+    accountLabels: [],
+    reviewRequired: true,
+    consecutive: false,
+    trigger: { kind: "manual" },
+    paused: false,
+  });
+  f.repo.db
+    .prepare("UPDATE tasks SET json=? WHERE task_id=?")
     .run(JSON.stringify({ ...f.task, conversationId: "legacy-chat" }), f.task.taskId);
-  f.tasks.update({ taskId: f.task.taskId, expectedRevision: f.task.revision,
-    objective: "Legacy conversation updated" });
+  f.tasks.update({
+    taskId: f.task.taskId,
+    expectedRevision: f.task.revision,
+    objective: "Legacy conversation updated",
+  });
   expect(f.routines.get(skill.routineId).routine).toMatchObject({
-    paused: true, activationReview: "untrusted_task" });
+    paused: true,
+    activationReview: "untrusted_task",
+  });
 });
 
 it("holds a Skill dispatch orphaned by restart until a person reconciles it", async () => {
@@ -947,7 +1196,9 @@ it("catches up a missed schedule once when opted in and still holds writes for r
   expect(caughtUp.reason).toMatch(/Caught up once after 4 missed scheduled occurrences/);
   expect(started).toEqual([]);
   expect(await f.routines.due(now)).toEqual([]);
-  expect((await f.routines.reconcile(caughtUp.routineRunId, "applied", "Reviewed in Aux.")).status).toBe("running");
+  expect((await f.routines.reconcile(caughtUp.routineRunId, "applied", "Reviewed in Aux.")).status).toBe(
+    "running",
+  );
   expect(started).toEqual(["Daily reviewed report"]);
 });
 
@@ -971,8 +1222,9 @@ it("prioritizes a currently due schedule over catch-up", async () => {
     routine.trigger as Extract<typeof routine.trigger, { kind: "schedule" }>,
     Date.now() + 60_000,
   );
-  const runs = (await f.routines.due(first + 24 * 60 * 60_000))
-    .filter((run) => run.routineId === routine.routineId);
+  const runs = (await f.routines.due(first + 24 * 60 * 60_000)).filter(
+    (run) => run.routineId === routine.routineId,
+  );
   expect(runs.map((run) => run.status)).toEqual(["missed", "needs_review"]);
   expect(runs[1]?.reason).not.toMatch(/Caught up once/);
 });
@@ -1030,9 +1282,19 @@ it("gives the repeated fall DST minute one occurrence identity", () => {
 });
 
 it("skips a nonexistent spring time and selects only the first fall time", () => {
-  const spring = { kind: "schedule" as const, timezone: "America/New_York", hour: 2, minute: 30, days: [0, 1, 2, 3, 4, 5, 6] };
-  expect(nextScheduledTime(spring, Date.parse("2026-03-08T06:00:00Z"))).toBe(Date.parse("2026-03-09T06:30:00Z"));
-  expect(previousScheduledTime(spring, Date.parse("2026-03-08T08:00:00Z"))).toBe(Date.parse("2026-03-07T07:30:00Z"));
+  const spring = {
+    kind: "schedule" as const,
+    timezone: "America/New_York",
+    hour: 2,
+    minute: 30,
+    days: [0, 1, 2, 3, 4, 5, 6],
+  };
+  expect(nextScheduledTime(spring, Date.parse("2026-03-08T06:00:00Z"))).toBe(
+    Date.parse("2026-03-09T06:30:00Z"),
+  );
+  expect(previousScheduledTime(spring, Date.parse("2026-03-08T08:00:00Z"))).toBe(
+    Date.parse("2026-03-07T07:30:00Z"),
+  );
   const fall = { ...spring, hour: 1 };
   const first = Date.parse("2026-11-01T05:30:00Z");
   expect(nextScheduledTime(fall, Date.parse("2026-11-01T04:00:00Z"))).toBe(first);
@@ -1045,9 +1307,15 @@ it("records one missed fall-back occurrence when Aux opens during the repeated h
   try {
     const f = fixture(async () => ({ runId: "unexpected" }));
     const routine = f.routines.create({
-      title: "Sunday review", objective: "Review", workspaceId: f.workspace.workspaceId,
-      sourceTaskId: f.task.taskId, parameters: [], siteOrigins: [], accountLabels: [],
-      reviewRequired: true, consecutive: false,
+      title: "Sunday review",
+      objective: "Review",
+      workspaceId: f.workspace.workspaceId,
+      sourceTaskId: f.task.taskId,
+      parameters: [],
+      siteOrigins: [],
+      accountLabels: [],
+      reviewRequired: true,
+      consecutive: false,
       trigger: { kind: "schedule", timezone: "America/New_York", hour: 1, minute: 30, days: [0] },
       paused: false,
     });
@@ -1081,21 +1349,42 @@ it("pauses an automated Skill after three consecutive failed runs", async () => 
 
 it("does not dispatch another funded occurrence after its Skill spend cap is reached", async () => {
   let starts = 0;
-  const f = fixture(async () => { starts++; return { runId: `run-${starts}` }; });
-  const routine = f.routines.create({ title: "Capped Skill", objective: "Check the saved task",
-    workspaceId: f.workspace.workspaceId, sourceTaskId: f.task.taskId,
-    parameters: [], siteOrigins: [], accountLabels: [], reviewRequired: false,
+  const f = fixture(async () => {
+    starts++;
+    return { runId: `run-${starts}` };
+  });
+  const routine = f.routines.create({
+    title: "Capped Skill",
+    objective: "Check the saved task",
+    workspaceId: f.workspace.workspaceId,
+    sourceTaskId: f.task.taskId,
+    parameters: [],
+    siteOrigins: [],
+    accountLabels: [],
+    reviewRequired: false,
     consecutive: false,
-    spendCapUsd: 0.01, trigger: { kind: "schedule", timezone: "UTC", hour: 9,
-      minute: 0, days: [0, 1, 2, 3, 4, 5, 6] }, paused: false });
-  f.repo.db.prepare(`INSERT INTO routine_runs
+    spendCapUsd: 0.01,
+    trigger: { kind: "schedule", timezone: "UTC", hour: 9, minute: 0, days: [0, 1, 2, 3, 4, 5, 6] },
+    paused: false,
+  });
+  f.repo.db
+    .prepare(
+      `INSERT INTO routine_runs
     (routine_run_id,routine_id,revision,status,run_id,parameters,created_at,ended_at)
-    VALUES (?,?,?,'completed','prior-funded-run','{}',?,?)`)
+    VALUES (?,?,?,'completed','prior-funded-run','{}',?,?)`,
+    )
     .run("prior-funded-occurrence", routine.routineId, routine.revision, Date.now(), Date.now());
-  f.repo.db.prepare(`INSERT INTO model_calls
+  f.repo.db
+    .prepare(
+      `INSERT INTO model_calls
     (call_id,run_id,role,model_id,duration_ms,cost_usd,created_at)
-    VALUES ('capped-call','prior-funded-run','planner','fixture',1,0.01,?)`).run(Date.now());
-  const when = nextScheduledTime(routine.trigger as Extract<typeof routine.trigger, { kind: "schedule" }>, Date.now());
+    VALUES ('capped-call','prior-funded-run','planner','fixture',1,0.01,?)`,
+    )
+    .run(Date.now());
+  const when = nextScheduledTime(
+    routine.trigger as Extract<typeof routine.trigger, { kind: "schedule" }>,
+    Date.now(),
+  );
   const result = (await f.routines.due(when))[0];
   expect(result).toMatchObject({ status: "missed", routineId: routine.routineId });
   expect(result?.reason).toMatch(/model spend cap/);
@@ -1269,25 +1558,69 @@ it("imports an inactive definition without local task authority or its schedule"
     expectedRevision: routine.revision,
     sourceTaskId: f.task.taskId,
   });
-  expect(() => f.routines.pause(bound.routineId, bound.revision, false)).toThrow(/Test the current Skill replay/);
-  expect(() => f.routines.update({ routineId: bound.routineId, expectedRevision: bound.revision,
-    paused: false, activationReviewed: true })).toThrow(/Test the current Skill replay/);
-  const mismatched = f.routines.update({ routineId: bound.routineId, expectedRevision: bound.revision,
-    successCriteria: [{ criterionId: "wrong", description: "Wrong check", verification: "manual" }] });
-  expect(() => f.routines.update({ routineId: mismatched.routineId, expectedRevision: mismatched.revision,
-    paused: false, activationReviewed: true })).toThrow(/Test the current Skill replay/);
-  const synced = f.routines.update({ routineId: mismatched.routineId, expectedRevision: mismatched.revision,
-    successCriteria: f.task.criteria, sourceTaskRevision: f.task.revision });
-  const revisedTask = f.tasks.update({ taskId: f.task.taskId, expectedRevision: f.task.revision,
-    objective: "Compare the next vendors" });
-  expect(() => f.routines.update({ routineId: synced.routineId, expectedRevision: synced.revision,
-    paused: false, activationReviewed: true })).toThrow(/Test the current Skill replay/);
-  const resynced = f.routines.update({ routineId: synced.routineId, expectedRevision: synced.revision,
-    sourceTaskRevision: revisedTask.revision });
-  expect(() => f.routines.update({ routineId: resynced.routineId, expectedRevision: resynced.revision,
-    paused: false, activationReviewed: true })).toThrow(/Test the current Skill replay/);
-  await expect(f.routines.run({ routineId: resynced.routineId, expectedRevision: resynced.revision,
-    parameters: { topic: "hosting" } })).rejects.toThrow(/Resume/);
+  expect(() => f.routines.pause(bound.routineId, bound.revision, false)).toThrow(
+    /Test the current Skill replay/,
+  );
+  expect(() =>
+    f.routines.update({
+      routineId: bound.routineId,
+      expectedRevision: bound.revision,
+      paused: false,
+      activationReviewed: true,
+    }),
+  ).toThrow(/Test the current Skill replay/);
+  const mismatched = f.routines.update({
+    routineId: bound.routineId,
+    expectedRevision: bound.revision,
+    successCriteria: [{ criterionId: "wrong", description: "Wrong check", verification: "manual" }],
+  });
+  expect(() =>
+    f.routines.update({
+      routineId: mismatched.routineId,
+      expectedRevision: mismatched.revision,
+      paused: false,
+      activationReviewed: true,
+    }),
+  ).toThrow(/Test the current Skill replay/);
+  const synced = f.routines.update({
+    routineId: mismatched.routineId,
+    expectedRevision: mismatched.revision,
+    successCriteria: f.task.criteria,
+    sourceTaskRevision: f.task.revision,
+  });
+  const revisedTask = f.tasks.update({
+    taskId: f.task.taskId,
+    expectedRevision: f.task.revision,
+    objective: "Compare the next vendors",
+  });
+  expect(() =>
+    f.routines.update({
+      routineId: synced.routineId,
+      expectedRevision: synced.revision,
+      paused: false,
+      activationReviewed: true,
+    }),
+  ).toThrow(/Test the current Skill replay/);
+  const resynced = f.routines.update({
+    routineId: synced.routineId,
+    expectedRevision: synced.revision,
+    sourceTaskRevision: revisedTask.revision,
+  });
+  expect(() =>
+    f.routines.update({
+      routineId: resynced.routineId,
+      expectedRevision: resynced.revision,
+      paused: false,
+      activationReviewed: true,
+    }),
+  ).toThrow(/Test the current Skill replay/);
+  await expect(
+    f.routines.run({
+      routineId: resynced.routineId,
+      expectedRevision: resynced.revision,
+      parameters: { topic: "hosting" },
+    }),
+  ).rejects.toThrow(/Resume/);
   expect(started).toEqual([]);
 });
 

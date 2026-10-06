@@ -21,7 +21,8 @@ export class AnswerDeltaEmitter {
 
   push(text: string | undefined): void {
     if (text === undefined) return;
-    const preview = text.length > ANSWER_DELTA_PREVIEW_CHARS ? text.slice(0, ANSWER_DELTA_PREVIEW_CHARS) + TRUNCATED : text;
+    const preview =
+      text.length > ANSWER_DELTA_PREVIEW_CHARS ? text.slice(0, ANSWER_DELTA_PREVIEW_CHARS) + TRUNCATED : text;
     if (preview === this.latest) return;
     this.latest = preview;
     const wait = this.lastAt + this.intervalMs - Date.now();
@@ -40,6 +41,16 @@ export class AnswerDeltaEmitter {
     const delta = this.latest.startsWith(this.sent) ? this.latest.slice(this.sent.length) : this.latest;
     this.sent = this.latest;
     this.lastAt = Date.now();
-    this.events.emit(EventTypes.RunAnswerDelta, { runId: this.runId, text: this.latest, delta, seq: ++this.seq, replace: delta === this.latest && this.seq > 1 }, this.runId);
+    this.events.emit(
+      EventTypes.RunAnswerDelta,
+      {
+        runId: this.runId,
+        text: this.latest,
+        delta,
+        seq: ++this.seq,
+        replace: delta === this.latest && this.seq > 1,
+      },
+      this.runId,
+    );
   }
 }

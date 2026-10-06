@@ -6,17 +6,19 @@ import { dotEnvCandidates, loadDotEnv, parseDotEnv } from "@aux/runtime";
 
 describe("minimal .env loader", () => {
   it("parses KEY=value with comments, export prefix and quotes", () => {
-    const parsed = parseDotEnv([
-      "# comment",
-      "",
-      "AI_GATEWAY_API_KEY=abc123",
-      "export AUX_PLANNER_MODEL=openai/gpt-5",
-      'QUOTED="line1\\nline2 # not a comment"',
-      "SINGLE='keep # this'",
-      "TRAILING=value # comment",
-      "not a valid line",
-      "EMPTY=",
-    ].join("\n"));
+    const parsed = parseDotEnv(
+      [
+        "# comment",
+        "",
+        "AI_GATEWAY_API_KEY=abc123",
+        "export AUX_PLANNER_MODEL=openai/gpt-5",
+        'QUOTED="line1\\nline2 # not a comment"',
+        "SINGLE='keep # this'",
+        "TRAILING=value # comment",
+        "not a valid line",
+        "EMPTY=",
+      ].join("\n"),
+    );
     expect(parsed).toEqual({
       AI_GATEWAY_API_KEY: "abc123",
       AUX_PLANNER_MODEL: "openai/gpt-5",
@@ -36,7 +38,11 @@ describe("minimal .env loader", () => {
     writeFileSync(join(root, "cwd.env"), "B=from-cwd\nC=from-cwd\nD=from-cwd\n");
     try {
       const env = { A: undefined, D: "real" } as NodeJS.ProcessEnv;
-      const merged = loadDotEnv(env, [join(root, "data.env"), join(root, "cwd.env"), join(root, "missing.env")]);
+      const merged = loadDotEnv(env, [
+        join(root, "data.env"),
+        join(root, "cwd.env"),
+        join(root, "missing.env"),
+      ]);
       expect(merged.A).toBe("from-data");
       expect(merged.B).toBe("from-data"); // first file wins among files
       expect(merged.C).toBe("from-cwd");

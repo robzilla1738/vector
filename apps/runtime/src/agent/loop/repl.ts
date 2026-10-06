@@ -2,7 +2,13 @@ import { newAsyncContext, type QuickJSAsyncContext, type QuickJSHandle } from "q
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { AuxError, InlineAssistTextSchema, PlanStepSchema, ResultCitationSchema, type ResultCitation } from "@aux/contracts";
+import {
+  AuxError,
+  InlineAssistTextSchema,
+  PlanStepSchema,
+  ResultCitationSchema,
+  type ResultCitation,
+} from "@aux/contracts";
 import { z } from "zod";
 import type { LoopPark, LoopToolResult } from "./types.js";
 
@@ -55,9 +61,7 @@ export interface ReplHostDeps {
   /** Infer one route from exact same-origin links or two sibling record links. */
   findRoute?(pageId: string, targetId: string): Promise<{ url: string }>;
   /** Capture plus the last observation's ref geometry — the annotation data (pixel overlays land with native support). */
-  capture(
-    pageId: string,
-  ): Promise<{
+  capture(pageId: string): Promise<{
     dataUrl?: string;
     width: number;
     height: number;
@@ -71,15 +75,20 @@ export interface ReplHostDeps {
   fsRead(path: string): Promise<string>;
   fsWrite(path: string, content: string): Promise<void>;
   /** Same verified terminal path as the submit_result tool. */
-  submitResult?(input: { report: string; citations?: ResultCitation[]; textProposal?: string }): Promise<
-    { ok: true; result: Record<string, unknown> } | { ok: false; error: string }
-  >;
+  submitResult?(input: {
+    report: string;
+    citations?: ResultCitation[];
+    textProposal?: string;
+  }): Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; error: string }>;
   /** `{park}` when a write-annotated tool is waiting on the person. */
   webmcp?(pageId: string, action: unknown): Promise<unknown>;
   /** Subagent cells (06-Y): spawn under this run's group, then wait/send/stop. */
   spawnCell?(input: { goal: string; profile?: string; pageIds?: string[] }): Promise<{ cellId: string }>;
   /** Yield until the cell reaches a terminal state or the remaining deadline lapses. */
-  waitCell?(cellId: string, timeoutMs: number): Promise<{ state: string; runId?: string; pending?: boolean; result?: unknown; error?: string }>;
+  waitCell?(
+    cellId: string,
+    timeoutMs: number,
+  ): Promise<{ state: string; runId?: string; pending?: boolean; result?: unknown; error?: string }>;
   /** Steer a running cell with new instructions. */
   sendCell?(cellId: string, text: string): Promise<void>;
   cancelCell?(cellId: string): Promise<void>;
@@ -118,7 +127,8 @@ function checkSource(code: string): void {
  * calls, outside strings and comments, so a script remains synchronous.
  */
 function normalizeBridgeAwaits(code: string): string {
-  const bridgeCall = /^(?:page\.[A-Za-z]+|snapshot|annotatedScreenshot|tabs|openTab|closeTab|display|sleep|fetch|spawn|wait|send|stop|submitResult|fs\.(?:readFile|writeFile))\s*\(/;
+  const bridgeCall =
+    /^(?:page\.[A-Za-z]+|snapshot|annotatedScreenshot|tabs|openTab|closeTab|display|sleep|fetch|spawn|wait|send|stop|submitResult|fs\.(?:readFile|writeFile))\s*\(/;
   let output = "";
   let i = 0;
   let quote = "";
@@ -126,8 +136,9 @@ function normalizeBridgeAwaits(code: string): string {
     const char = code[i]!;
     if (quote) {
       output += char;
-      if (char === "\\") { output += code[++i] ?? ""; }
-      else if (char === quote) quote = "";
+      if (char === "\\") {
+        output += code[++i] ?? "";
+      } else if (char === quote) quote = "";
       i++;
       continue;
     }
@@ -145,11 +156,23 @@ function normalizeBridgeAwaits(code: string): string {
       i = next;
       continue;
     }
-    if (char === "'" || char === '"' || char === "`") { quote = char; output += char; i++; continue; }
-    if (code.startsWith("await", i) && (i === 0 || !/[\w$]/.test(code[i - 1]!)) && !/[\w$]/.test(code[i + 5] ?? "")) {
+    if (char === "'" || char === '"' || char === "`") {
+      quote = char;
+      output += char;
+      i++;
+      continue;
+    }
+    if (
+      code.startsWith("await", i) &&
+      (i === 0 || !/[\w$]/.test(code[i - 1]!)) &&
+      !/[\w$]/.test(code[i + 5] ?? "")
+    ) {
       let next = i + 5;
       while (/\s/.test(code[next] ?? "")) next++;
-      if (bridgeCall.test(code.slice(next))) { i = next; continue; }
+      if (bridgeCall.test(code.slice(next))) {
+        i = next;
+        continue;
+      }
     }
     output += char;
     i++;
@@ -166,17 +189,44 @@ function topLevelLexicals(code: string): string[] {
     const char = code[i]!;
     if (quote) {
       if (char === "\\") i += 2;
-      else { if (char === quote) quote = ""; i++; }
+      else {
+        if (char === quote) quote = "";
+        i++;
+      }
       continue;
     }
-    if (code.startsWith("//", i)) { const end = code.indexOf("\n", i); i = end < 0 ? code.length : end; continue; }
-    if (code.startsWith("/*", i)) { const end = code.indexOf("*/", i + 2); i = end < 0 ? code.length : end + 2; continue; }
-    if (char === "'" || char === '"' || char === "`") { quote = char; i++; continue; }
-    if (char === "{") { depth++; i++; continue; }
-    if (char === "}") { depth = Math.max(0, depth - 1); i++; continue; }
+    if (code.startsWith("//", i)) {
+      const end = code.indexOf("\n", i);
+      i = end < 0 ? code.length : end;
+      continue;
+    }
+    if (code.startsWith("/*", i)) {
+      const end = code.indexOf("*/", i + 2);
+      i = end < 0 ? code.length : end + 2;
+      continue;
+    }
+    if (char === "'" || char === '"' || char === "`") {
+      quote = char;
+      i++;
+      continue;
+    }
+    if (char === "{") {
+      depth++;
+      i++;
+      continue;
+    }
+    if (char === "}") {
+      depth = Math.max(0, depth - 1);
+      i++;
+      continue;
+    }
     if (depth === 0 && (i === 0 || !/[\w$]/.test(code[i - 1]!))) {
       const declaration = /^(?:let|const)\s+([A-Za-z_$][\w$]*)\b/.exec(code.slice(i));
-      if (declaration) { names.push(declaration[1]!); i += declaration[0].length; continue; }
+      if (declaration) {
+        names.push(declaration[1]!);
+        i += declaration[0].length;
+        continue;
+      }
     }
     i++;
   }
@@ -351,7 +401,9 @@ delete globalThis.__aux_call;
 // Actual eval lifetime also covers aborted/detached sessions awaiting a bridge.
 // Empty eligible-cell inventory must never attest idle before this finally runs.
 const executingSessions = new Set<ReplSession>();
-export function executingReplSessionCount(): number { return executingSessions.size; }
+export function executingReplSessionCount(): number {
+  return executingSessions.size;
+}
 
 class ReplSession {
   private queue: Promise<void> = Promise.resolve();
@@ -425,7 +477,9 @@ class ReplSession {
         }),
       );
     if (this.finished)
-      return fail(new AuxError("conflict", "This verified result ended the run; no further REPL effects are allowed."));
+      return fail(
+        new AuxError("conflict", "This verified result ended the run; no further REPL effects are allowed."),
+      );
     if (this.cancelled || Date.now() >= this.deadline || this.deps.signal?.aborted)
       return fail(new AuxError("cancelled", "REPL deadline or run abort reached."));
     try {
@@ -443,7 +497,8 @@ class ReplSession {
         case "closeTab":
           return ok(await this.deps.closeTab(String(parsed.pageId ?? "")));
         case "bookmark": {
-          if (!this.deps.bookmark) throw new AuxError("capability_unsupported", "Bookmarking is unavailable in this run.");
+          if (!this.deps.bookmark)
+            throw new AuxError("capability_unsupported", "Bookmarking is unavailable in this run.");
           const result = await this.deps.bookmark(String(parsed.pageId ?? ""));
           if ("park" in result) return fail("bookmark needs a decision", { park: result.park });
           if ("finish" in result) return ok(result.finish.result);
@@ -460,9 +515,16 @@ class ReplSession {
           );
         case "findRef":
           if (!this.deps.findRef)
-            return fail(new AuxError("capability_unsupported", "Named control lookup is unavailable in this run."));
-          return ok(await this.deps.findRef(String(parsed.pageId ?? ""), String(parsed.name ?? ""),
-            parsed.role === undefined ? undefined : String(parsed.role)));
+            return fail(
+              new AuxError("capability_unsupported", "Named control lookup is unavailable in this run."),
+            );
+          return ok(
+            await this.deps.findRef(
+              String(parsed.pageId ?? ""),
+              String(parsed.name ?? ""),
+              parsed.role === undefined ? undefined : String(parsed.role),
+            ),
+          );
         case "findRoute":
           if (!this.deps.findRoute)
             return fail(new AuxError("capability_unsupported", "Route matching is unavailable in this run."));
@@ -487,9 +549,19 @@ class ReplSession {
             const refusal = ["skipped", "rejected", "denied"].find((key) => typeof action[key] === "string");
             if (refusal) return fail(new AuxError("conflict", `Action ${refusal}: ${action[refusal]}`));
             if (Array.isArray(action.uncertainIntentIds) && action.uncertainIntentIds.length)
-              return fail(new AuxError("conflict", `Action outcome uncertain (${action.uncertainIntentIds.join(", ")}); reconcile before another action.`));
+              return fail(
+                new AuxError(
+                  "conflict",
+                  `Action outcome uncertain (${action.uncertainIntentIds.join(", ")}); reconcile before another action.`,
+                ),
+              );
             if (typeof action.status === "string" && action.status !== "completed")
-              return fail(new AuxError("conflict", `Action ${action.status}: ${String(action.error ?? "inspect step outcomes before continuing")}`));
+              return fail(
+                new AuxError(
+                  "conflict",
+                  `Action ${action.status}: ${String(action.error ?? "inspect step outcomes before continuing")}`,
+                ),
+              );
           }
           return ok(result.output);
         }
@@ -512,12 +584,16 @@ class ReplSession {
           return ok(await this.deps.fsWrite(String(parsed.path ?? ""), String(parsed.content ?? "")));
         case "submitResult": {
           if (!this.deps.submitResult)
-            return fail(new AuxError("capability_unsupported", "Verified completion is unavailable in this run."));
-          const input = z.object({
-            report: z.string().min(1).max(64_000),
-            citations: z.array(ResultCitationSchema).max(32).optional(),
-            textProposal: InlineAssistTextSchema.optional(),
-          }).parse(parsed);
+            return fail(
+              new AuxError("capability_unsupported", "Verified completion is unavailable in this run."),
+            );
+          const input = z
+            .object({
+              report: z.string().min(1).max(64_000),
+              citations: z.array(ResultCitationSchema).max(32).optional(),
+              textProposal: InlineAssistTextSchema.optional(),
+            })
+            .parse(parsed);
           const result = await this.deps.submitResult(input);
           if (!result.ok) return fail(new AuxError("invalid_params", result.error));
           this.finished = result.result;
@@ -534,29 +610,43 @@ class ReplSession {
         }
         case "spawnCell": {
           if (!this.deps.spawnCell)
-            return fail(new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."));
-          const spec = (parsed && typeof parsed === "object" ? parsed : {}) as { goal?: unknown; profile?: unknown; pageIds?: unknown };
-          return ok(await this.deps.spawnCell({
-            goal: String(spec.goal ?? ""),
-            ...(typeof spec.profile === "string" ? { profile: spec.profile } : {}),
-            ...(Array.isArray(spec.pageIds) ? { pageIds: spec.pageIds.map(String) } : {}),
-          }));
+            return fail(
+              new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."),
+            );
+          const spec = (parsed && typeof parsed === "object" ? parsed : {}) as {
+            goal?: unknown;
+            profile?: unknown;
+            pageIds?: unknown;
+          };
+          return ok(
+            await this.deps.spawnCell({
+              goal: String(spec.goal ?? ""),
+              ...(typeof spec.profile === "string" ? { profile: spec.profile } : {}),
+              ...(Array.isArray(spec.pageIds) ? { pageIds: spec.pageIds.map(String) } : {}),
+            }),
+          );
         }
         case "waitCell": {
           if (!this.deps.waitCell)
-            return fail(new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."));
+            return fail(
+              new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."),
+            );
           const remaining = Math.max(0, this.deadline - Date.now());
           const ms = Math.min(Math.max(0, Number(parsed.ms) || 0), remaining);
           return ok(await this.deps.waitCell(String(parsed.cellId ?? ""), ms));
         }
         case "sendCell": {
           if (!this.deps.sendCell)
-            return fail(new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."));
+            return fail(
+              new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."),
+            );
           return ok(await this.deps.sendCell(String(parsed.cellId ?? ""), String(parsed.text ?? "")));
         }
         case "cancelCell": {
           if (!this.deps.cancelCell)
-            return fail(new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."));
+            return fail(
+              new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."),
+            );
           return ok(await this.deps.cancelCell(String(parsed.cellId ?? "")));
         }
         default:
@@ -597,7 +687,11 @@ class ReplSession {
       // allocated its top-level bindings. Remember those before unwrapping errors.
       if (!scoped) for (const name of declared) this.lexicals.add(name);
       if (this.finished) {
-        try { this.context.unwrapResult(result).dispose(); } catch { /* accepted result is already terminal */ }
+        try {
+          this.context.unwrapResult(result).dispose();
+        } catch {
+          /* accepted result is already terminal */
+        }
         return { finish: { result: this.finished } };
       }
       const valueHandle = this.context.unwrapResult(result); // guest exceptions throw here (park marker included)
@@ -672,14 +766,23 @@ class ReplSession {
     this.context.dispose();
   }
 
-  cancel() { this.cancelled = true; }
+  cancel() {
+    this.cancelled = true;
+  }
 }
 
 /** Persistent REPL sessions keyed by run — one QuickJS context each. */
 export class ReplPool {
   private sessions = new Map<string, ReplSession>();
-  private cells = new Map<string, { runId: string; completion: Promise<{ value?: LoopToolResult; error?: unknown }>;
-    settled: boolean; terminated: boolean }>();
+  private cells = new Map<
+    string,
+    {
+      runId: string;
+      completion: Promise<{ value?: LoopToolResult; error?: unknown }>;
+      settled: boolean;
+      terminated: boolean;
+    }
+  >();
 
   private dispose(runId: string) {
     const session = this.sessions.get(runId);
@@ -730,29 +833,54 @@ export class ReplPool {
       this.sessions.set(deps.runId, session);
     }
     if (this.cells.size && [...this.cells.values()].some((cell) => cell.runId === deps.runId))
-      throw new AuxError("conflict", "A REPL cell is still open; use repl_wait before starting another script.");
+      throw new AuxError(
+        "conflict",
+        "A REPL cell is still open; use repl_wait before starting another script.",
+      );
     if (opts?.yieldTimeMs === undefined) return session.eval(code, opts?.deadlineMs);
     const id = randomUUID();
-    const cell = { runId: deps.runId, completion: Promise.resolve({} as { value?: LoopToolResult; error?: unknown }),
-      settled: false, terminated: false };
-    cell.completion = session.eval(code, opts.deadlineMs).then(
-      (value) => ({ value }), (error) => ({ error }),
-    ).then((result) => { cell.settled = true; return result; });
+    const cell = {
+      runId: deps.runId,
+      completion: Promise.resolve({} as { value?: LoopToolResult; error?: unknown }),
+      settled: false,
+      terminated: false,
+    };
+    cell.completion = session
+      .eval(code, opts.deadlineMs)
+      .then(
+        (value) => ({ value }),
+        (error) => ({ error }),
+      )
+      .then((result) => {
+        cell.settled = true;
+        return result;
+      });
     this.cells.set(id, cell);
     const outcome = await this.wait(deps.runId, id, opts.yieldTimeMs);
     return outcome;
   }
 
-  async wait(runId: string, cellId: string, yieldTimeMs = 30_000, terminate = false): Promise<LoopToolResult> {
+  async wait(
+    runId: string,
+    cellId: string,
+    yieldTimeMs = 30_000,
+    terminate = false,
+  ): Promise<LoopToolResult> {
     const cell = this.cells.get(cellId);
-    if (!cell || cell.runId !== runId) throw new AuxError("not_found", "No REPL cell with that ID belongs to this run.");
+    if (!cell || cell.runId !== runId)
+      throw new AuxError("not_found", "No REPL cell with that ID belongs to this run.");
     if (terminate && !cell.settled) {
       cell.terminated = true;
       this.sessions.get(runId)?.cancel();
     }
     if (cell.terminated && !cell.settled) return { output: { cellId, terminated: true } };
     let timerId: ReturnType<typeof setTimeout>;
-    const timer = new Promise<undefined>((resolve) => { timerId = setTimeout(() => resolve(undefined), Math.max(0, Math.min(yieldTimeMs, REPL_MAX_DEADLINE_MS))); });
+    const timer = new Promise<undefined>((resolve) => {
+      timerId = setTimeout(
+        () => resolve(undefined),
+        Math.max(0, Math.min(yieldTimeMs, REPL_MAX_DEADLINE_MS)),
+      );
+    });
     const result = await Promise.race([cell.completion, timer]);
     clearTimeout(timerId!);
     if (!result) return { output: { cellId, running: true } };

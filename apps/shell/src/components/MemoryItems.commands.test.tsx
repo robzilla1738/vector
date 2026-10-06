@@ -395,19 +395,29 @@ it("same-revision changed incoming memory retires old pending delivery and prese
 it("retired external draft keeps the original rejected save identity and newer draft", async () => {
   await mount();
   button("Add note").focus();
-  await act(async()=>button("Add note").click());
-  const input=host.querySelector<HTMLTextAreaElement>("textarea")!;
-  await text(input,"Original draft");
+  await act(async () => button("Add note").click());
+  const input = host.querySelector<HTMLTextAreaElement>("textarea")!;
+  await text(input, "Original draft");
   input.focus();
-  let reject!: (reason:unknown)=>void;
-  mocks.call.mockImplementation(()=>new Promise((_,fail)=>{reject=fail;}));
-  let completion!:Promise<unknown>;
-  await act(async()=>{completion=invokeScopedControl("save-memory-note") as Promise<unknown>;});
-  const original=new Error("Original backend rejection");
-  const refusal=expect(completion).rejects.toBe(original);
-  const newer={content:JSON.stringify({itemId:"new",content:"External newer draft",sourceUrl:"",expires:""}),revision:1};
-  await act(async()=>useMemoryDrafts.getState().write("item:wa",newer));
-  await act(async()=>reject(original));
+  let reject!: (reason: unknown) => void;
+  mocks.call.mockImplementation(
+    () =>
+      new Promise((_, fail) => {
+        reject = fail;
+      }),
+  );
+  let completion!: Promise<unknown>;
+  await act(async () => {
+    completion = invokeScopedControl("save-memory-note") as Promise<unknown>;
+  });
+  const original = new Error("Original backend rejection");
+  const refusal = expect(completion).rejects.toBe(original);
+  const newer = {
+    content: JSON.stringify({ itemId: "new", content: "External newer draft", sourceUrl: "", expires: "" }),
+    revision: 1,
+  };
+  await act(async () => useMemoryDrafts.getState().write("item:wa", newer));
+  await act(async () => reject(original));
   await refusal;
   expect(useMemoryDrafts.getState().drafts["item:wa"]).toBe(newer);
   expect(mocks.errors).not.toHaveBeenCalled();

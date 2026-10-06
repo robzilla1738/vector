@@ -254,7 +254,9 @@ it("fresh focus read synchronously retires readiness before React commits disabl
 
 it("reports a synchronous initial read failure and retries through the original focus recheck", async () => {
   const reason = new Error("Original initial OS transport <complete diagnostic>");
-  mocks.read.mockImplementationOnce(() => { throw reason; });
+  mocks.read.mockImplementationOnce(() => {
+    throw reason;
+  });
   await mount();
   expect(host.textContent).toContain(reason.message);
   expect(host.querySelector("complete")).toBeNull();
@@ -270,7 +272,12 @@ it("reports a synchronous initial read failure and retries through the original 
 
 it("retires the original initial-read rejection across window ABA and removes focus retry on unmount", async () => {
   let reject!: (reason: unknown) => void;
-  mocks.read.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  mocks.read.mockImplementationOnce(
+    () =>
+      new Promise((_resolve, fail) => {
+        reject = fail;
+      }),
+  );
   await mount();
   mocks.windowId = "replacement";
   await mount();

@@ -41,7 +41,16 @@ export const McpStepInputSchema = z.object({
   delayMs: z.number().int().nonnegative().optional(),
   credentialRef: z.string().optional(),
   condition: FlatCondition.optional(),
-  fields: z.array(z.object({ name: z.string(), selector: z.string().optional(), attribute: z.string().optional(), all: z.boolean().optional() })).optional(),
+  fields: z
+    .array(
+      z.object({
+        name: z.string(),
+        selector: z.string().optional(),
+        attribute: z.string().optional(),
+        all: z.boolean().optional(),
+      }),
+    )
+    .optional(),
   as: z.string().optional(),
   item: z.string().optional(),
   container: z.string().optional(),
@@ -60,7 +69,9 @@ export const McpStepInputSchema = z.object({
 });
 
 /** Validate flat tool input against the planner vocabulary; returns the first problem as text. */
-export function parseMcpSteps(steps: unknown): { steps: z.infer<typeof McpStepSchema>[] } | { error: string } {
+export function parseMcpSteps(
+  steps: unknown,
+): { steps: z.infer<typeof McpStepSchema>[] } | { error: string } {
   const parsed = z.array(McpStepSchema).safeParse(steps);
   if (parsed.success) return { steps: parsed.data };
   const issue = parsed.error.issues[0];
@@ -70,7 +81,14 @@ export function parseMcpSteps(steps: unknown): { steps: z.infer<typeof McpStepSc
 type ExecuteSummary = {
   status?: string;
   error?: string;
-  steps?: { stepId: string; op: string; status: string; durationMs?: number; detail?: string; error?: { code?: string; message?: string } }[];
+  steps?: {
+    stepId: string;
+    op: string;
+    status: string;
+    durationMs?: number;
+    detail?: string;
+    error?: { code?: string; message?: string };
+  }[];
   extracted?: unknown;
   [key: string]: unknown;
 };
@@ -78,7 +96,9 @@ type ExecuteSummary = {
 /** One line per step instead of pretty-printed JSON. */
 export function summarizeExecute(result: ExecuteSummary): string {
   const { status, error, steps = [], extracted, observation: _observation, ...rest } = result;
-  const lines = [`${status ?? "unknown"} (${steps.length} step${steps.length === 1 ? "" : "s"})${error ? ` — ${error}` : ""}`];
+  const lines = [
+    `${status ?? "unknown"} (${steps.length} step${steps.length === 1 ? "" : "s"})${error ? ` — ${error}` : ""}`,
+  ];
   for (const s of steps) {
     let line = `${s.stepId} ${s.op} ${s.status}${s.durationMs !== undefined ? ` ${s.durationMs}ms` : ""}`;
     if (s.detail) line += ` — ${s.detail.slice(0, 300)}`;

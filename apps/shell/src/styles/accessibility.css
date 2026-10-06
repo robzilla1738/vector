@@ -1,56 +1,213 @@
 @layer overrides {
-@media (prefers-reduced-transparency: reduce) {
-  .toolbar, .rail-inner, .command-surface, .aux-observation-dialog { backdrop-filter: none; background: var(--bg-1); }
-  .app.native-host .main-col.has-page > .toolbar::before { display: none; }
-}
-@media (prefers-reduced-transparency: reduce) { :root .sidebar { background: var(--sb-bg); backdrop-filter: none; } }
-@media (prefers-reduced-transparency: reduce) { .history-menu { -webkit-backdrop-filter: none; } }
-@media (prefers-reduced-transparency: reduce) { :root .app-body { background: var(--sb-bg); backdrop-filter: none; } }
-@media (prefers-reduced-motion: reduce) { .sidebar, .sidebar-reveal::after { transition: none; } }
-@media (prefers-reduced-motion: reduce) { .quick-ask-panel { animation:none; } .quick-ask .composer-frame { transition:none; } }
-@media (prefers-reduced-motion:reduce) { .split-divider > span { transition:none; } }
-@media (prefers-reduced-motion: reduce) {
-  .toolbar > :is(.cmdbar, .tb-left, .tb-right) { transform: none; transition: none; }
-  .app.native-host .main-col.has-page > .toolbar { transform: none; transition: none; }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .menu, .history-menu, .cb-pop, .sb-more-menu { background: var(--surface-menu); backdrop-filter: none; -webkit-backdrop-filter: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .icon-btn:not(:disabled):active, .btn:not(:disabled):active { scale: 1; }
-}
-@media (prefers-reduced-transparency: reduce) {
-  :root[data-sidebar-appearance="translucent"] .app-body { background: var(--sb-bg); backdrop-filter: none; }
-  :root[data-sidebar-appearance="translucent"] .main-col,
-  :root[data-sidebar-appearance="translucent"] .settings-page,
-  :root[data-sidebar-appearance="translucent"] .tasks-page { background: var(--bg-0); }
-}
-@media (forced-colors: active) {
-  :root { --ink-0: CanvasText; --ink-1: CanvasText; --ink-2: GrayText; --bg-0: Canvas; --bg-1: Canvas; --bg-2: Canvas; --sb-bg: Canvas; --line: CanvasText; --focus-line: Highlight; }
-  .app, .app-body, .sidebar, .chat-sidebar, .rail, .main-col, .toolbar, .menu, .cb-pop, .command-surface, .aux-native-dialog, .stage-card { background: Canvas; color: CanvasText; backdrop-filter: none; box-shadow: none; }
-  :is(.sidebar, .chat-sidebar, .rail, .menu, .cb-pop, .command-surface, .aux-native-dialog, .stage-card) { border: 1px solid CanvasText; }
-  :is(.tab-row.active, .horizontal-tab:has([data-active="true"]), .horizontal-tab.empty, .menu-item.on, .cb-opt.sel) { outline: 2px solid Highlight; outline-offset: -2px; }
-  :is(button, input, select, textarea, [role="tab"], [role="button"], summary):focus-visible { outline: 2px solid Highlight; outline-offset: -2px; box-shadow: none; }
-  :is(.cb-provider-scopes button[aria-pressed="true"], .swatch[aria-checked="true"], .swatch[aria-pressed="true"]) { outline: 2px solid Highlight; outline-offset: -2px; }
-  .horizontal-tab:has([data-active="true"])::before, .horizontal-tab:has([data-active="true"])::after { display: none; }
-  .aux-native-dialog::backdrop { background: Canvas; opacity: .65; }
-  .space-dot, .live-dot { background: Highlight; forced-color-adjust: none; }
-  .ui-scroll-area { mask-image:none; }
-  .ui-tooltip, .ui-surface, .anchored-panel, .toast { background:Canvas; color:CanvasText; border:1px solid CanvasText; box-shadow:none; }
-  input.ui-switch { forced-color-adjust:none; background:Canvas; border:1px solid ButtonText; }
-  input.ui-switch::after { background:ButtonText; }
-  input.ui-switch:checked { background:Highlight; border-color:Highlight; }
-  input.ui-switch:checked::after { background:HighlightText; }
-  .ui-radio-card:has(> input:checked) { outline:2px solid Highlight; outline-offset:2px; }
-}
-@media (forced-colors: none) {
-  :is(.horizontal-tab-select, .horizontal-group-chip, .horizontal-profile, .sidebar .space-switch, .aux-native-dialog button, .aux-native-dialog input, .cb-provider-scopes button):focus-visible { outline: 2px solid var(--focus-line); outline-offset: -2px; box-shadow: none; }
-}
+  @media (prefers-reduced-transparency: reduce) {
+    .toolbar,
+    .rail-inner,
+    .command-surface,
+    .aux-observation-dialog {
+      backdrop-filter: none;
+      background: var(--bg-1);
+    }
+    .app.native-host .main-col.has-page > .toolbar::before {
+      display: none;
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    :root .sidebar {
+      background: var(--sb-bg);
+      backdrop-filter: none;
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .history-menu {
+      -webkit-backdrop-filter: none;
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    :root .app-body {
+      background: var(--sb-bg);
+      backdrop-filter: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar,
+    .sidebar-reveal::after {
+      transition: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .quick-ask-panel {
+      animation: none;
+    }
+    .quick-ask .composer-frame {
+      transition: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .split-divider > span {
+      transition: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .toolbar > :is(.cmdbar, .tb-left, .tb-right) {
+      transform: none;
+      transition: none;
+    }
+    .app.native-host .main-col.has-page > .toolbar {
+      transform: none;
+      transition: none;
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .menu,
+    .history-menu,
+    .cb-pop,
+    .sb-more-menu {
+      background: var(--surface-menu);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .icon-btn:not(:disabled):active,
+    .btn:not(:disabled):active {
+      scale: 1;
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    :root[data-sidebar-appearance="translucent"] .app-body {
+      background: var(--sb-bg);
+      backdrop-filter: none;
+    }
+    :root[data-sidebar-appearance="translucent"] .main-col,
+    :root[data-sidebar-appearance="translucent"] .settings-page,
+    :root[data-sidebar-appearance="translucent"] .tasks-page {
+      background: var(--bg-0);
+    }
+  }
+  @media (forced-colors: active) {
+    :root {
+      --ink-0: CanvasText;
+      --ink-1: CanvasText;
+      --ink-2: GrayText;
+      --bg-0: Canvas;
+      --bg-1: Canvas;
+      --bg-2: Canvas;
+      --sb-bg: Canvas;
+      --line: CanvasText;
+      --focus-line: Highlight;
+    }
+    .app,
+    .app-body,
+    .sidebar,
+    .chat-sidebar,
+    .rail,
+    .main-col,
+    .toolbar,
+    .menu,
+    .cb-pop,
+    .command-surface,
+    .aux-native-dialog,
+    .stage-card {
+      background: Canvas;
+      color: CanvasText;
+      backdrop-filter: none;
+      box-shadow: none;
+    }
+    :is(.sidebar, .chat-sidebar, .rail, .menu, .cb-pop, .command-surface, .aux-native-dialog, .stage-card) {
+      border: 1px solid CanvasText;
+    }
+    :is(
+      .tab-row.active,
+      .horizontal-tab:has([data-active="true"]),
+      .horizontal-tab.empty,
+      .menu-item.on,
+      .cb-opt.sel
+    ) {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+    :is(button, input, select, textarea, [role="tab"], [role="button"], summary):focus-visible {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+      box-shadow: none;
+    }
+    :is(
+      .cb-provider-scopes button[aria-pressed="true"],
+      .swatch[aria-checked="true"],
+      .swatch[aria-pressed="true"]
+    ) {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+    .horizontal-tab:has([data-active="true"])::before,
+    .horizontal-tab:has([data-active="true"])::after {
+      display: none;
+    }
+    .aux-native-dialog::backdrop {
+      background: Canvas;
+      opacity: 0.65;
+    }
+    .space-dot,
+    .live-dot {
+      background: Highlight;
+      forced-color-adjust: none;
+    }
+    .ui-scroll-area {
+      mask-image: none;
+    }
+    .ui-tooltip,
+    .ui-surface,
+    .anchored-panel,
+    .toast {
+      background: Canvas;
+      color: CanvasText;
+      border: 1px solid CanvasText;
+      box-shadow: none;
+    }
+    input.ui-switch {
+      forced-color-adjust: none;
+      background: Canvas;
+      border: 1px solid ButtonText;
+    }
+    input.ui-switch::after {
+      background: ButtonText;
+    }
+    input.ui-switch:checked {
+      background: Highlight;
+      border-color: Highlight;
+    }
+    input.ui-switch:checked::after {
+      background: HighlightText;
+    }
+    .ui-radio-card:has(> input:checked) {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
+  }
+  @media (forced-colors: none) {
+    :is(
+      .horizontal-tab-select,
+      .horizontal-group-chip,
+      .horizontal-profile,
+      .sidebar .space-switch,
+      .aux-native-dialog button,
+      .aux-native-dialog input,
+      .cb-provider-scopes button
+    ):focus-visible {
+      outline: 2px solid var(--focus-line);
+      outline-offset: -2px;
+      box-shadow: none;
+    }
+  }
 } /* @layer overrides */
 
 @layer overrides {
   @media (prefers-reduced-motion: reduce) {
-    .aux-dialog-surface, .ui-skeleton, .ui-tooltip, .spin, .drawer-loading .spin {
+    .aux-dialog-surface,
+    .ui-skeleton,
+    .ui-tooltip,
+    .spin,
+    .drawer-loading .spin {
       animation: none;
       transition: none;
     }

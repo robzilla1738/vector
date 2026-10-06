@@ -28,8 +28,9 @@ const lines = [
   "",
   "| API path | RPC method | Layer | Docs | SDK | MCP | CLI | Code |",
   "| --- | --- | --- | --- | --- | --- | --- | --- |",
-  ...AgentApiManifest.map(item => {
-    const yes = surface => supportedAgentApi({ surface }).some(entry => entry.path === item.path) ? "yes" : "—";
+  ...AgentApiManifest.map((item) => {
+    const yes = (surface) =>
+      supportedAgentApi({ surface }).some((entry) => entry.path === item.path) ? "yes" : "—";
     return `| \`aux.${item.path}\` | \`${item.method}\` | ${item.layer} | ${item.documented} | ${yes("sdk")} | ${yes("mcp")} | ${yes("cli")} | ${yes("code")} |`;
   }),
   "",

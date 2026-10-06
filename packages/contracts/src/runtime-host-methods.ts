@@ -1,23 +1,72 @@
-import { NativeCdpCatalogSchema, NativeCdpAttachSchema, NativeCdpAttachedSchema, NativeCdpDispatchSchema, NativeCdpStartNavigationSchema, NativeCdpNavigationStartedSchema, NativeCdpNavigationRequestSchema, NativeCdpNavigationReceiptSchema } from "./native-cdp.js";
-import { NativeRecorderStartSchema, NativeRecorderReceiptSchema, NativeRecorderStartedSchema, NativeRecorderDrainSchema, NativeRecorderStoppedSchema } from "./native-recorder.js";
+import {
+  NativeCdpCatalogSchema,
+  NativeCdpAttachSchema,
+  NativeCdpAttachedSchema,
+  NativeCdpDispatchSchema,
+  NativeCdpStartNavigationSchema,
+  NativeCdpNavigationStartedSchema,
+  NativeCdpNavigationRequestSchema,
+  NativeCdpNavigationReceiptSchema,
+} from "./native-cdp.js";
+import {
+  NativeRecorderStartSchema,
+  NativeRecorderReceiptSchema,
+  NativeRecorderStartedSchema,
+  NativeRecorderDrainSchema,
+  NativeRecorderStoppedSchema,
+} from "./native-recorder.js";
 import { z } from "zod";
-import { NativePersonCaptureParamsSchema, NativePersonCaptureReceiptSchema } from "./native-person-capture.js";
-import { NativePersonReadParamsSchema, NativePersonReadReceiptSchema, NativePersonReadContextParamsSchema, NativePersonReadContextSchema } from "./native-person-read.js";
+import {
+  NativePersonCaptureParamsSchema,
+  NativePersonCaptureReceiptSchema,
+} from "./native-person-capture.js";
+import {
+  NativePersonReadParamsSchema,
+  NativePersonReadReceiptSchema,
+  NativePersonReadContextParamsSchema,
+  NativePersonReadContextSchema,
+} from "./native-person-read.js";
 import { LiveFolderSchema } from "./live-folders.js";
 import { NativeMethods } from "./bridge.js";
 import { CredentialHandoffRequestSchema, CredentialHandoffResultSchema } from "./safety.js";
 import { WebmcpCallResultSchema, WebmcpToolSchema } from "./webmcp.js";
 import { ZapStylesheetInstallSchema, ZapInstallReceiptSchema } from "./zap.js";
 import type { AuxFeature } from "./aux-features.js";
-import { RenameDownloadSchema, DownloadCompletedNativeSchema, DownloadRenameReceiptSchema } from "./download-naming.js";
+import {
+  RenameDownloadSchema,
+  DownloadCompletedNativeSchema,
+  DownloadRenameReceiptSchema,
+} from "./download-naming.js";
 import { PowerActivitySchema } from "./night-shift.js";
-import { NativeCreatorClosedSchema, NativeCreatorCleanupProofSchema, NativeCreatorCleanupParamsSchema, NativeCreatorCloseParamsSchema, AgentPageCreateSchema, AgentPageCreatedSchema, EgressContextRequestSchema, EgressContextSchema, EgressInstallSchema, EgressRevokeSchema } from "./egress.js";
+import {
+  NativeCreatorClosedSchema,
+  NativeCreatorCleanupProofSchema,
+  NativeCreatorCleanupParamsSchema,
+  NativeCreatorCloseParamsSchema,
+  AgentPageCreateSchema,
+  AgentPageCreatedSchema,
+  EgressContextRequestSchema,
+  EgressContextSchema,
+  EgressInstallSchema,
+  EgressRevokeSchema,
+} from "./egress.js";
 import { ProfileOrganizationSnapshotSchema } from "./organization.js";
 import { TabCommandEnvelopeSchema, TabCommandAckSchema } from "./tabs.js";
 import { HostCapabilitiesSchema } from "./host-capabilities.js";
 
-const runtime = <A extends z.ZodType, R extends z.ZodType>(feature: AuxFeature | "core", args: A, result: R) =>
-  ({ owner: "runtime", feature, profileScoped: true, trusted: "authenticated-runtime", args, result } as const);
+const runtime = <A extends z.ZodType, R extends z.ZodType>(
+  feature: AuxFeature | "core",
+  args: A,
+  result: R,
+) =>
+  ({
+    owner: "runtime",
+    feature,
+    profileScoped: true,
+    trusted: "authenticated-runtime",
+    args,
+    result,
+  }) as const;
 const bool = z.boolean();
 const str = z.string();
 const number = z.number();
@@ -26,98 +75,344 @@ const ok = z.object({ ok: bool }).strict();
 const accepted = z.object({ accepted: z.literal(true) }).strict();
 const pageId = z.object({ pageId: str }).strict();
 const contentGuard = z.object({ pageId: str, expectedUrl: str, navigationId: number }).strict().optional();
-const contentBase = z.object({ profileId: str, generation: number, allowedSiteHosts: z.array(str),
-  enabled: bool, siteGuard: contentGuard }).strict();
+const contentBase = z
+  .object({
+    profileId: str,
+    generation: number,
+    allowedSiteHosts: z.array(str),
+    enabled: bool,
+    siteGuard: contentGuard,
+  })
+  .strict();
 const cosmeticRule = z.object({ domains: z.array(str), selector: str }).strict();
-const nativePage = z.object({ pageId: str, windowId: str.optional(), marker: str, url: str,
-  title: str, active: bool, showBlankDocument: bool.optional(), cdpTargetId: str.optional() }).strict();
+const nativePage = z
+  .object({
+    pageId: str,
+    windowId: str.optional(),
+    marker: str,
+    url: str,
+    title: str,
+    active: bool,
+    showBlankDocument: bool.optional(),
+    cdpTargetId: str.optional(),
+  })
+  .strict();
 
 /** Methods admitted only from the authenticated runtime connection. */
 export const RuntimeHostMethods = {
-  "native.contentBlockBegin": runtime("contentBlocking", contentBase.extend({ hostsDigest: str, hostCount: number }), accepted),
-  "native.contentBlockAppend": runtime("contentBlocking", z.object({ profileId: str, generation: number,
-    offset: number, hosts: z.array(str) }).strict(), accepted),
-  "native.contentBlockCommit": runtime("contentBlocking", z.object({ profileId: str, generation: number,
-    hostsDigest: str }).strict(), z.object({ backend: z.enum(["subresource_filter", "declarative_net_request"]),
-    generation: number, hostsDigest: str, installedRules: number }).strict()),
-  "native.cosmeticBegin": runtime("contentBlocking", contentBase.extend({ rulesDigest: str, ruleCount: number }), accepted),
-  "native.cosmeticAppend": runtime("contentBlocking", z.object({ profileId: str, generation: number,
-    offset: number, rules: z.array(cosmeticRule) }).strict(), accepted),
-  "native.cosmeticCommit": runtime("contentBlocking", z.object({ profileId: str, generation: number,
-    rulesDigest: str }).strict(), z.object({ backend: z.literal("isolated_world_stylesheet"), profileId: str,
-    private: bool, generation: number, rulesDigest: str, installedRules: number,
-    phase: z.literal("document_start"), futureDocuments: z.literal(true) }).strict()),
-  "native.organizationSnapshot": runtime("tabMentions", z.object({}).strict(), ProfileOrganizationSnapshotSchema),
-  "native.bookmarksInvoke": runtime("core", z.object({ method: str, params: z.unknown() }).strict(), z.unknown()),
-  "native.liveFolderSources": runtime("liveFolders", z.object({}).strict(), z.array(z.object({ id: str.min(1).max(200), live: LiveFolderSchema }).strict()).max(1000)),
+  "native.contentBlockBegin": runtime(
+    "contentBlocking",
+    contentBase.extend({ hostsDigest: str, hostCount: number }),
+    accepted,
+  ),
+  "native.contentBlockAppend": runtime(
+    "contentBlocking",
+    z.object({ profileId: str, generation: number, offset: number, hosts: z.array(str) }).strict(),
+    accepted,
+  ),
+  "native.contentBlockCommit": runtime(
+    "contentBlocking",
+    z.object({ profileId: str, generation: number, hostsDigest: str }).strict(),
+    z
+      .object({
+        backend: z.enum(["subresource_filter", "declarative_net_request"]),
+        generation: number,
+        hostsDigest: str,
+        installedRules: number,
+      })
+      .strict(),
+  ),
+  "native.cosmeticBegin": runtime(
+    "contentBlocking",
+    contentBase.extend({ rulesDigest: str, ruleCount: number }),
+    accepted,
+  ),
+  "native.cosmeticAppend": runtime(
+    "contentBlocking",
+    z.object({ profileId: str, generation: number, offset: number, rules: z.array(cosmeticRule) }).strict(),
+    accepted,
+  ),
+  "native.cosmeticCommit": runtime(
+    "contentBlocking",
+    z.object({ profileId: str, generation: number, rulesDigest: str }).strict(),
+    z
+      .object({
+        backend: z.literal("isolated_world_stylesheet"),
+        profileId: str,
+        private: bool,
+        generation: number,
+        rulesDigest: str,
+        installedRules: number,
+        phase: z.literal("document_start"),
+        futureDocuments: z.literal(true),
+      })
+      .strict(),
+  ),
+  "native.organizationSnapshot": runtime(
+    "tabMentions",
+    z.object({}).strict(),
+    ProfileOrganizationSnapshotSchema,
+  ),
+  "native.bookmarksInvoke": runtime(
+    "core",
+    z.object({ method: str, params: z.unknown() }).strict(),
+    z.unknown(),
+  ),
+  "native.liveFolderSources": runtime(
+    "liveFolders",
+    z.object({}).strict(),
+    z.array(z.object({ id: str.min(1).max(200), live: LiveFolderSchema }).strict()).max(1000),
+  ),
   "native.capabilities": runtime("core", z.object({}).strict(), HostCapabilitiesSchema),
-  "native.downloadRenameReceipts": runtime("smartDownloadNames", z.object({}).strict(), z.array(DownloadRenameReceiptSchema).max(1000)),
-  "native.downloadNamingCandidate": runtime("smartDownloadNames", z.object({ downloadId: str.min(1).max(200) }).strict(), DownloadCompletedNativeSchema.nullable()),
-  "native.undoDownloadRename": runtime("smartDownloadNames", z.object({ receiptId: str.min(1).max(200) }).strict(), z.object({ status: z.enum(["restored", "conflict", "expired"]), filename: str.max(255).optional() }).strict()),
-  "native.downloadPreviewText": runtime("smartDownloadNames", z.object({ downloadId: str }).strict(), z.object({ text: str.max(2048) }).strict()),
-  "native.renameDownload": runtime("smartDownloadNames", RenameDownloadSchema,
-    z.object({ renamed: bool, filename: str, receiptId: str.optional(), reason: str.optional() }).strict()),
-  "native.powerRelease": runtime("overnightReview", z.object({}).strict(), z.object({ active: z.literal(false) }).strict()),
-  "native.powerStatus": runtime("overnightReview", z.object({}).strict(), z.object({ onAC: bool, backgroundEnabled: bool, active: bool, loginItem: z.enum(["unavailable", "not_registered", "enabled", "requires_approval", "not_found"]) }).strict()),
-  "native.powerActivity": runtime("overnightReview", PowerActivitySchema, z.object({ active: bool, reason: str.optional() }).strict()),
-  "native.creatorCleanupProof": runtime("core", NativeCreatorCleanupParamsSchema, NativeCreatorCleanupProofSchema),
+  "native.downloadRenameReceipts": runtime(
+    "smartDownloadNames",
+    z.object({}).strict(),
+    z.array(DownloadRenameReceiptSchema).max(1000),
+  ),
+  "native.downloadNamingCandidate": runtime(
+    "smartDownloadNames",
+    z.object({ downloadId: str.min(1).max(200) }).strict(),
+    DownloadCompletedNativeSchema.nullable(),
+  ),
+  "native.undoDownloadRename": runtime(
+    "smartDownloadNames",
+    z.object({ receiptId: str.min(1).max(200) }).strict(),
+    z
+      .object({ status: z.enum(["restored", "conflict", "expired"]), filename: str.max(255).optional() })
+      .strict(),
+  ),
+  "native.downloadPreviewText": runtime(
+    "smartDownloadNames",
+    z.object({ downloadId: str }).strict(),
+    z.object({ text: str.max(2048) }).strict(),
+  ),
+  "native.renameDownload": runtime(
+    "smartDownloadNames",
+    RenameDownloadSchema,
+    z.object({ renamed: bool, filename: str, receiptId: str.optional(), reason: str.optional() }).strict(),
+  ),
+  "native.powerRelease": runtime(
+    "overnightReview",
+    z.object({}).strict(),
+    z.object({ active: z.literal(false) }).strict(),
+  ),
+  "native.powerStatus": runtime(
+    "overnightReview",
+    z.object({}).strict(),
+    z
+      .object({
+        onAC: bool,
+        backgroundEnabled: bool,
+        active: bool,
+        loginItem: z.enum(["unavailable", "not_registered", "enabled", "requires_approval", "not_found"]),
+      })
+      .strict(),
+  ),
+  "native.powerActivity": runtime(
+    "overnightReview",
+    PowerActivitySchema,
+    z.object({ active: bool, reason: str.optional() }).strict(),
+  ),
+  "native.creatorCleanupProof": runtime(
+    "core",
+    NativeCreatorCleanupParamsSchema,
+    NativeCreatorCleanupProofSchema,
+  ),
   "native.closeCreatedPage": runtime("core", NativeCreatorCloseParamsSchema, NativeCreatorClosedSchema),
   "native.createAgentPage": runtime("core", AgentPageCreateSchema, AgentPageCreatedSchema),
-  "native.recorderStart": runtime("demonstrationSkills", NativeRecorderStartSchema, NativeRecorderStartedSchema),
-  "native.recorderDrain": runtime("demonstrationSkills", NativeRecorderReceiptSchema, NativeRecorderDrainSchema),
-  "native.recorderStop": runtime("demonstrationSkills", NativeRecorderReceiptSchema, NativeRecorderStoppedSchema),
-  "native.egressRunTerminal": runtime("core", z.object({ runId: str.min(1).max(160) }).strict(), z.object({ accepted: z.literal(true) }).strict()),
-  "native.egressCheckRunResume": runtime("core", z.object({ runId: str.min(1).max(160) }).strict(), z.object({ accepted: z.literal(true) }).strict()),
-  "native.egressResumeRun": runtime("core", z.object({ runId: str.min(1).max(160), ticketId: str.min(1).max(128) }).strict(), z.object({ accepted: z.literal(true) }).strict()),
-  "native.egressResumePerson": runtime("core", z.object({ pageId: str, ticketId: str.min(1).max(128) }).strict(), z.object({ accepted: z.literal(true), context: EgressContextSchema, expiresAt: z.number().int().positive().safe() }).strict()),
+  "native.recorderStart": runtime(
+    "demonstrationSkills",
+    NativeRecorderStartSchema,
+    NativeRecorderStartedSchema,
+  ),
+  "native.recorderDrain": runtime(
+    "demonstrationSkills",
+    NativeRecorderReceiptSchema,
+    NativeRecorderDrainSchema,
+  ),
+  "native.recorderStop": runtime(
+    "demonstrationSkills",
+    NativeRecorderReceiptSchema,
+    NativeRecorderStoppedSchema,
+  ),
+  "native.egressRunTerminal": runtime(
+    "core",
+    z.object({ runId: str.min(1).max(160) }).strict(),
+    z.object({ accepted: z.literal(true) }).strict(),
+  ),
+  "native.egressCheckRunResume": runtime(
+    "core",
+    z.object({ runId: str.min(1).max(160) }).strict(),
+    z.object({ accepted: z.literal(true) }).strict(),
+  ),
+  "native.egressResumeRun": runtime(
+    "core",
+    z.object({ runId: str.min(1).max(160), ticketId: str.min(1).max(128) }).strict(),
+    z.object({ accepted: z.literal(true) }).strict(),
+  ),
+  "native.egressResumePerson": runtime(
+    "core",
+    z.object({ pageId: str, ticketId: str.min(1).max(128) }).strict(),
+    z
+      .object({
+        accepted: z.literal(true),
+        context: EgressContextSchema,
+        expiresAt: z.number().int().positive().safe(),
+      })
+      .strict(),
+  ),
   "native.egressContext": runtime("core", EgressContextRequestSchema, EgressContextSchema),
   "native.egressInstall": runtime("core", EgressInstallSchema, accepted),
-  "native.permissionRetire": runtime("core", z.object({ tabId: z.string().min(1).max(160), batchId: z.string().min(1).max(160), reservationId: z.string().uuid() }).strict(), accepted),
+  "native.permissionRetire": runtime(
+    "core",
+    z
+      .object({
+        tabId: z.string().min(1).max(160),
+        batchId: z.string().min(1).max(160),
+        reservationId: z.string().uuid(),
+      })
+      .strict(),
+    accepted,
+  ),
   "native.egressRevoke": runtime("core", EgressRevokeSchema, accepted),
   "native.personCapture": runtime("core", NativePersonCaptureParamsSchema, NativePersonCaptureReceiptSchema),
-  "native.personReadContext": runtime("core", NativePersonReadContextParamsSchema, NativePersonReadContextSchema),
+  "native.personReadContext": runtime(
+    "core",
+    NativePersonReadContextParamsSchema,
+    NativePersonReadContextSchema,
+  ),
   "native.personRead": runtime("core", NativePersonReadParamsSchema, NativePersonReadReceiptSchema),
-  "native.historyClear": runtime("core", z.object({ since: number.optional(), before: number.optional() }).strict(), z.object({ removed: number }).strict()),
-  "native.historyImport": runtime("core", z.object({ visits: z.array(z.object({
-    url: str, title: z.string().max(1000), visitedAt: z.number().int().nonnegative(),
-  }).strict()).min(1).max(500) }).strict(), z.object({ added: z.number().int(), skipped: z.number().int() }).strict()),
-  "native.historyRemove": runtime("core", z.object({ url: str, visitedAt: number,
-    expectedTitle: z.string().max(4096).optional() }).strict(), z.object({ removed: bool }).strict()),
+  "native.historyClear": runtime(
+    "core",
+    z.object({ since: number.optional(), before: number.optional() }).strict(),
+    z.object({ removed: number }).strict(),
+  ),
+  "native.historyImport": runtime(
+    "core",
+    z
+      .object({
+        visits: z
+          .array(
+            z
+              .object({
+                url: str,
+                title: z.string().max(1000),
+                visitedAt: z.number().int().nonnegative(),
+              })
+              .strict(),
+          )
+          .min(1)
+          .max(500),
+      })
+      .strict(),
+    z.object({ added: z.number().int(), skipped: z.number().int() }).strict(),
+  ),
+  "native.historyRemove": runtime(
+    "core",
+    z.object({ url: str, visitedAt: number, expectedTitle: z.string().max(4096).optional() }).strict(),
+    z.object({ removed: bool }).strict(),
+  ),
   "native.searchEngineGet": runtime("searchEngines", z.object({}).strict(), str),
   "native.searchEngineSet": runtime("searchEngines", z.object({ template: str }).strict(), bool),
   "native.searchSuggestionsGet": runtime("searchEngines", z.object({}).strict(), bool),
   "native.searchSuggestionsSet": runtime("searchEngines", z.object({ enabled: bool }).strict(), bool),
-  "native.zapInstallStylesheet": runtime("zapAndUserCss", ZapStylesheetInstallSchema, ZapInstallReceiptSchema),
-  "native.listPages": runtime("core", z.object({}).strict(), z.object({ pages: z.array(nativePage) }).strict()),
+  "native.zapInstallStylesheet": runtime(
+    "zapAndUserCss",
+    ZapStylesheetInstallSchema,
+    ZapInstallReceiptSchema,
+  ),
+  "native.listPages": runtime(
+    "core",
+    z.object({}).strict(),
+    z.object({ pages: z.array(nativePage) }).strict(),
+  ),
   "native.tabCommand": runtime("core", TabCommandEnvelopeSchema, TabCommandAckSchema),
-  "native.movePage": runtime("core", NativeMethods["native.movePage"], z.object({ windowId: str,
-    sourceActivePageId: nullableString, activePageId: nullableString.optional() }).strict()),
+  "native.movePage": runtime(
+    "core",
+    NativeMethods["native.movePage"],
+    z
+      .object({ windowId: str, sourceActivePageId: nullableString, activePageId: nullableString.optional() })
+      .strict(),
+  ),
   "native.focusPage": runtime("core", pageId, ok),
   "native.recoverPage": runtime("core", NativeMethods["native.recoverPage"], ok),
   "native.stopPage": runtime("core", pageId, ok),
   "native.acquireStage": runtime("core", NativeMethods["native.acquireStage"], ok),
   "native.releaseStage": runtime("core", pageId, ok),
-  "native.findInPage": runtime("core", NativeMethods["native.findInPage"], z.object({ matches: number, activeMatch: number.optional() }).strict()),
+  "native.findInPage": runtime(
+    "core",
+    NativeMethods["native.findInPage"],
+    z.object({ matches: number, activeMatch: number.optional() }).strict(),
+  ),
   "native.stopFind": runtime("core", NativeMethods["native.stopFind"], ok),
-  "native.setZoom": runtime("pageZoom", NativeMethods["native.setZoom"], z.object({ level: number }).strict()),
-  "native.setCookies": runtime("core", NativeMethods["native.setCookies"], z.object({ ok: bool, count: number }).strict()),
-  "native.storeSecret": runtime("vault", NativeMethods["native.storeSecret"], z.object({ ok: z.literal(true) }).strict()),
-  "native.readSecret": runtime("vault", NativeMethods["native.readSecret"], z.object({ value: str.optional() }).strict()),
-  "native.profileStorageRoot": runtime("core", z.object({ version: z.literal(1) }).strict(),
-    z.object({ value: str }).strict()),
-  "native.profileStorageFactor": runtime("core", z.object({ version: z.literal(1), purpose: z.literal("sqlite") }).strict(),
-    z.object({ value: str }).strict()),
-  "native.recoveryOwnerAuth": runtime("core", z.object({ version: z.literal(1),
-    purpose: z.enum(["export", "restore"]) }).strict(), z.object({ approved: z.literal(true) }).strict()),
-  "native.captureReadablePage": runtime("reader", NativeMethods["native.captureReadablePage"], z.object({ url: str, title: str, text: str }).strict()),
-  "native.fillSavedPassword": runtime("passwordManager", CredentialHandoffRequestSchema, CredentialHandoffResultSchema),
+  "native.setZoom": runtime(
+    "pageZoom",
+    NativeMethods["native.setZoom"],
+    z.object({ level: number }).strict(),
+  ),
+  "native.setCookies": runtime(
+    "core",
+    NativeMethods["native.setCookies"],
+    z.object({ ok: bool, count: number }).strict(),
+  ),
+  "native.storeSecret": runtime(
+    "vault",
+    NativeMethods["native.storeSecret"],
+    z.object({ ok: z.literal(true) }).strict(),
+  ),
+  "native.readSecret": runtime(
+    "vault",
+    NativeMethods["native.readSecret"],
+    z.object({ value: str.optional() }).strict(),
+  ),
+  "native.profileStorageRoot": runtime(
+    "core",
+    z.object({ version: z.literal(1) }).strict(),
+    z.object({ value: str }).strict(),
+  ),
+  "native.profileStorageFactor": runtime(
+    "core",
+    z.object({ version: z.literal(1), purpose: z.literal("sqlite") }).strict(),
+    z.object({ value: str }).strict(),
+  ),
+  "native.recoveryOwnerAuth": runtime(
+    "core",
+    z.object({ version: z.literal(1), purpose: z.enum(["export", "restore"]) }).strict(),
+    z.object({ approved: z.literal(true) }).strict(),
+  ),
+  "native.captureReadablePage": runtime(
+    "reader",
+    NativeMethods["native.captureReadablePage"],
+    z.object({ url: str, title: str, text: str }).strict(),
+  ),
+  "native.fillSavedPassword": runtime(
+    "passwordManager",
+    CredentialHandoffRequestSchema,
+    CredentialHandoffResultSchema,
+  ),
   "native.cdpReset": runtime("fourLayerTabApi", z.object({}).strict(), z.unknown()),
   "native.cdpCatalog": runtime("fourLayerTabApi", z.object({}).strict(), NativeCdpCatalogSchema),
   "native.cdpAttach": runtime("fourLayerTabApi", NativeCdpAttachSchema, NativeCdpAttachedSchema),
-  "native.cdpStartNavigation": runtime("fourLayerTabApi", NativeCdpStartNavigationSchema, NativeCdpNavigationStartedSchema),
-  "native.cdpTakeNavigationReceipt": runtime("fourLayerTabApi", NativeCdpNavigationRequestSchema, NativeCdpNavigationReceiptSchema),
+  "native.cdpStartNavigation": runtime(
+    "fourLayerTabApi",
+    NativeCdpStartNavigationSchema,
+    NativeCdpNavigationStartedSchema,
+  ),
+  "native.cdpTakeNavigationReceipt": runtime(
+    "fourLayerTabApi",
+    NativeCdpNavigationRequestSchema,
+    NativeCdpNavigationReceiptSchema,
+  ),
   "native.cdpDispatch": runtime("fourLayerTabApi", NativeCdpDispatchSchema, z.unknown()),
   "native.cdpVersion": runtime("fourLayerTabApi", z.object({}).strict(), z.object({ version: str }).strict()),
-  "native.webmcpList": runtime("core", z.object({ pageId: str }).strict(), z.object({ tools: z.array(WebmcpToolSchema) }).strict()),
-  "native.webmcpCall": runtime("core", z.object({ pageId: str, name: str, input: str }).strict(), WebmcpCallResultSchema),
+  "native.webmcpList": runtime(
+    "core",
+    z.object({ pageId: str }).strict(),
+    z.object({ tools: z.array(WebmcpToolSchema) }).strict(),
+  ),
+  "native.webmcpCall": runtime(
+    "core",
+    z.object({ pageId: str, name: str, input: str }).strict(),
+    WebmcpCallResultSchema,
+  ),
 } as const;

@@ -25,7 +25,11 @@ it("denies an expired or revoked scoped bearer and leaves an unknown bearer unau
     criteria: [{ criterionId: "c", description: "Read", verification: "manual" }],
   });
   const connections = new AgentConnectionService(repo);
-  const sessions = new ExternalSessionService(repo, events, fixtureTurnMentions((pageId: string) => repo.getPage(pageId)));
+  const sessions = new ExternalSessionService(
+    repo,
+    events,
+    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)),
+  );
   const invoke = makeInvoker({
     repo,
     events,
@@ -53,7 +57,7 @@ it("denies an expired or revoked scoped bearer and leaves an unknown bearer unau
       },
       body: JSON.stringify({ id: 1, method, params }),
     });
-    const body = await response.json() as { result?: unknown; error?: { code?: string } };
+    const body = (await response.json()) as { result?: unknown; error?: { code?: string } };
     return { status: response.status, body };
   };
   const scope = { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId };
@@ -75,10 +79,9 @@ it("denies an expired or revoked scoped bearer and leaves an unknown bearer unau
       expiresAt: Date.now() + 60_000,
     });
     expect((await rpc(expiring.token, "pages.list")).status).toBe(200);
-    repo.db.prepare("UPDATE agent_connections SET expires_at=? WHERE connection_id=?").run(
-      Date.now() - 1,
-      expiring.connection.connectionId,
-    );
+    repo.db
+      .prepare("UPDATE agent_connections SET expires_at=? WHERE connection_id=?")
+      .run(Date.now() - 1, expiring.connection.connectionId);
     const expired = await rpc(expiring.token, "pages.list");
     expect(expired.status).toBe(200);
     expect(expired.body.error?.code).toBe("permission_denied");

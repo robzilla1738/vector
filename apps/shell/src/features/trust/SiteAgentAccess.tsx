@@ -60,8 +60,7 @@ export function SiteAgentAccess({
         setLoaded({ origin, revision, snapshot: rules, grants: saved });
         setFailure(null);
       })().catch((reason) => {
-        if (live && serial.current === request)
-          setFailure({ origin, message: errorMessage(reason) });
+        if (live && serial.current === request) setFailure({ origin, message: errorMessage(reason) });
       });
     return () => {
       live = false;
@@ -76,8 +75,7 @@ export function SiteAgentAccess({
     try {
       await work();
     } catch (reason) {
-      if (serial.current === request)
-        setFailure({ origin, message: errorMessage(reason) });
+      if (serial.current === request) setFailure({ origin, message: errorMessage(reason) });
     } finally {
       pending.current = false;
       setBusy(false);

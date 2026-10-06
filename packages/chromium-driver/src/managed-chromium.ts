@@ -19,20 +19,24 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
 
   private readonly trustedPages?: () => Promise<TrustedAuxPage[]>;
 
-  constructor(endpoint: string, deps: {
-    connectOverCDP?: (endpoint: string, opts: { timeout: number }) => Promise<Browser>;
-    trustedPages?: () => Promise<TrustedAuxPage[]>;
-  } = {}) {
+  constructor(
+    endpoint: string,
+    deps: {
+      connectOverCDP?: (endpoint: string, opts: { timeout: number }) => Promise<Browser>;
+      trustedPages?: () => Promise<TrustedAuxPage[]>;
+    } = {},
+  ) {
     super(endpoint, deps);
     this.trustedPages = deps.trustedPages;
   }
 
   private async trusted(pageId: string, marker: string): Promise<TrustedAuxPage | undefined> {
-    const page = (await this.trustedPages?.())?.find(page => page.pageId === pageId && page.marker === marker);
+    const page = (await this.trustedPages?.())?.find(
+      (page) => page.pageId === pageId && page.marker === marker,
+    );
     // The native broker deliberately excludes browser-internal documents.
     // Reject them before waiting for a target that can never be exposed.
-    if (page?.url && this.endpoint.startsWith("ws+unix://") &&
-        !/^(https?:|about:blank$)/.test(page.url)) {
+    if (page?.url && this.endpoint.startsWith("ws+unix://") && !/^(https?:|about:blank$)/.test(page.url)) {
       throw new AuxError("permission_denied", "Browser-internal pages are not available to automation.");
     }
     return page;
@@ -41,18 +45,26 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
   override async listTargets(): Promise<DiscoveredTarget[]> {
     const targets = await super.listTargets();
     if (!this.trustedPages) return targets;
-    const allowed = new Set((await this.trustedPages()).map(page => page.marker));
-    return targets.filter(target => allowed.has(target.targetId));
+    const allowed = new Set((await this.trustedPages()).map((page) => page.marker));
+    return targets.filter((target) => allowed.has(target.targetId));
   }
 
-  override async attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string; initialDocumentEpoch?: number }): Promise<DriverPage> {
+  override async attach(
+    targetId: string,
+    pageId: string,
+    hint?: { cdpTargetId?: string; initialDocumentEpoch?: number },
+  ): Promise<DriverPage> {
     if (this.trustedPages) {
       const page = await this.trusted(pageId, targetId);
       if (!page) throw new AuxError("target_detached", "This tab is no longer owned by Aux.");
       // A hint supplied by another process cannot redirect the attach to a
       // different native view. Main's registry is the source of target IDs.
-      hint = { ...(page.cdpTargetId ? { cdpTargetId: page.cdpTargetId } : {}),
-        ...(hint?.initialDocumentEpoch !== undefined ? { initialDocumentEpoch: hint.initialDocumentEpoch } : {}) };
+      hint = {
+        ...(page.cdpTargetId ? { cdpTargetId: page.cdpTargetId } : {}),
+        ...(hint?.initialDocumentEpoch !== undefined
+          ? { initialDocumentEpoch: hint.initialDocumentEpoch }
+          : {}),
+      };
     }
     return super.attach(targetId, pageId, hint);
   }
@@ -61,41 +73,55 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
     if (this.trustedPages && this.endpoint.startsWith("ws+unix://")) {
       const cdpId = await this.cdpTargetId(page);
       if (!cdpId) return null;
-      return (await this.trustedPages()).find(p => p.cdpTargetId === cdpId)?.marker ?? null;
+      return (await this.trustedPages()).find((p) => p.cdpTargetId === cdpId)?.marker ?? null;
     }
     return this.markerOf(page, AUX_MARKER_GLOBAL);
   }
 
   async recoverPage(targetId: string, pageId: string, documentEpoch = 0) {
     const trusted = this.trustedPages ? await this.trusted(pageId, targetId) : undefined;
-    if (this.trustedPages && !trusted) throw new AuxError("target_detached", "This tab is no longer owned by Aux.");
+    if (this.trustedPages && !trusted)
+      throw new AuxError("target_detached", "This tab is no longer owned by Aux.");
     // The internal broker permits one runtime connection. Session restore
     // already has a fresh connection, so attach the new native view there.
     if (this.endpoint.startsWith("ws+unix://") || this.endpoint.includes("/aux-cdp/"))
       return this.attach(targetId, pageId, { initialDocumentEpoch: documentEpoch });
     // Playwright retains the crashed flag on its old Page proxy. A fresh CDP
     // connection observes the recovered renderer without disturbing other tabs.
-    const browser = await this.connectOverCDP(this.endpoint, { timeout: 15_000 }).catch(error => {
-      if (this.endpoint.includes("/aux-cdp/")) throw new AuxError("backend_unavailable", "Internal browser recovery connection failed");
+    const browser = await this.connectOverCDP(this.endpoint, { timeout: 15_000 }).catch((error) => {
+      if (this.endpoint.includes("/aux-cdp/"))
+        throw new AuxError("backend_unavailable", "Internal browser recovery connection failed");
       throw error;
     });
     try {
-      for (const context of browser.contexts()) for (const page of context.pages()) {
-        if (trusted?.cdpTargetId) {
-          const session = await context.newCDPSession(page).catch(() => null);
-          if (!session) continue;
-          const info = await session.send("Target.getTargetInfo").catch(() => null) as { targetInfo?: { targetId?: string } } | null;
-          await session.detach().catch(() => {});
-          if (info?.targetInfo?.targetId !== trusted.cdpTargetId) continue;
+      for (const context of browser.contexts())
+        for (const page of context.pages()) {
+          if (trusted?.cdpTargetId) {
+            const session = await context.newCDPSession(page).catch(() => null);
+            if (!session) continue;
+            const info = (await session.send("Target.getTargetInfo").catch(() => null)) as {
+              targetInfo?: { targetId?: string };
+            } | null;
+            await session.detach().catch(() => {});
+            if (info?.targetInfo?.targetId !== trusted.cdpTargetId) continue;
+          }
+          if ((await this.markerOf(page, AUX_MARKER_GLOBAL)) !== targetId) continue;
+          const { PlaywrightDriverPage } = await import("./playwright-page.js");
+          this.refs.clear(pageId);
+          const driver = new PlaywrightDriverPage({
+            page,
+            context,
+            identity: { pageId, targetId, backend: this.backend },
+            refs: this.refs,
+            initialDocumentEpoch: documentEpoch,
+          });
+          return this.trackDirect(targetId, browser, page, driver);
         }
-        if (await this.markerOf(page, AUX_MARKER_GLOBAL) !== targetId) continue;
-        const { PlaywrightDriverPage } = await import("./playwright-page.js");
-        this.refs.clear(pageId);
-        const driver = new PlaywrightDriverPage({ page, context, identity: { pageId, targetId, backend: this.backend }, refs: this.refs, initialDocumentEpoch: documentEpoch });
-        return this.trackDirect(targetId, browser, page, driver);
-      }
       throw new Error("Recovered tab could not be identified on the browser connection");
-    } catch (error) { await browser.close().catch(() => {}); throw error; }
+    } catch (error) {
+      await browser.close().catch(() => {});
+      throw error;
+    }
   }
 
   /** attachDirect fallback matches by marker too — /json/list only has ids. */

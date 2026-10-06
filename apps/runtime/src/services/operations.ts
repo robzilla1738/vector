@@ -113,7 +113,12 @@ export class OperationService {
       grants?: GrantSource;
       durableWrites?: DurableWriteLedger;
       calendar?: CalendarConnectionService;
-      authorizeConnector?<T>(runId: string, connectorId: string, tool: string, dispatch: () => Promise<T>): Promise<T>;
+      authorizeConnector?<T>(
+        runId: string,
+        connectorId: string,
+        tool: string,
+        dispatch: () => Promise<T>,
+      ): Promise<T>;
     },
   ) {}
 
@@ -208,9 +213,15 @@ export class OperationService {
       const read = () => calendar.taskEvents(input, opts.signal);
       if (run?.config?.mentions?.length && !this.deps.authorizeConnector)
         throw new AuxError("capability_unsupported", "Connector turn authority is unavailable.");
-      const result = opts.runId && run?.config?.mentions?.length
-        ? await this.deps.authorizeConnector!(opts.runId, `calendar:${grant.connectionId}`, "events.list", read)
-        : await read();
+      const result =
+        opts.runId && run?.config?.mentions?.length
+          ? await this.deps.authorizeConnector!(
+              opts.runId,
+              `calendar:${grant.connectionId}`,
+              "events.list",
+              read,
+            )
+          : await read();
       if (opts.signal?.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
       record("completed", undefined, "observed", Date.now());
       this.deps.events.emit("operation.invoked", {

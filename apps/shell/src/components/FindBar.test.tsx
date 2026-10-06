@@ -11,14 +11,24 @@ it("returns focus to the owned conversation scroll after closing Find", async ()
   vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
   const initial = useStore.getState();
   useStore.setState({ mode: "conversation", overlay: "find", findText: "" });
-  const host = document.createElement("div"); document.body.append(host);
+  const host = document.createElement("div");
+  document.body.append(host);
   const root = createRoot(host);
   const scroll = createRef<HTMLDivElement>();
   try {
-    await act(async () => root.render(<><div ref={scroll} tabIndex={-1} data-find-surface="conversation"/><FindBar returnFocusRef={scroll}/></>));
+    await act(async () =>
+      root.render(
+        <>
+          <div ref={scroll} tabIndex={-1} data-find-surface="conversation" />
+          <FindBar returnFocusRef={scroll} />
+        </>,
+      ),
+    );
     const input = host.querySelector<HTMLInputElement>('[aria-label="Find in conversation"]')!;
     expect(document.activeElement).toBe(input);
-    await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    await act(async () =>
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
+    );
     expect(document.activeElement).toBe(scroll.current);
   } finally {
     await act(async () => root.unmount());

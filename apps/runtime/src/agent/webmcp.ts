@@ -85,7 +85,9 @@ export async function runWebmcp(
         origin,
         dataClasses: [],
         provenance: "page",
-        invocationDigest: createHash("sha256").update(JSON.stringify([request.pageId, tool.name, input])).digest("hex"),
+        invocationDigest: createHash("sha256")
+          .update(JSON.stringify([request.pageId, tool.name, input]))
+          .digest("hex"),
         turnId: actor.turnId,
         threadId: actor.threadId,
         ...(actor.runId ? { runId: actor.runId } : {}),

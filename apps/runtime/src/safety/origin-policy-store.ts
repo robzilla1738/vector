@@ -5,7 +5,10 @@ import type { Repo } from "../store/repo.js";
 export class OriginPolicyStore {
   constructor(private readonly repo: Repo) {}
   list() {
-    return OriginPoliciesSnapshotSchema.parse({ revision: this.repo.getSetting("originPoliciesRevision") ?? 0, rules: this.repo.getSetting("originPolicies") ?? [] });
+    return OriginPoliciesSnapshotSchema.parse({
+      revision: this.repo.getSetting("originPoliciesRevision") ?? 0,
+      rules: this.repo.getSetting("originPolicies") ?? [],
+    });
   }
   set(raw: unknown) {
     const request = SetOriginPoliciesSchema.parse(raw);
@@ -13,12 +16,18 @@ export class OriginPolicyStore {
     try {
       const current = this.list();
       if (request.expectedRevision !== current.revision)
-        throw new AuxError("conflict", "Agent access changed in another window. Reload the site rules before saving.");
+        throw new AuxError(
+          "conflict",
+          "Agent access changed in another window. Reload the site rules before saving.",
+        );
       const next = { rules: request.rules, revision: current.revision + 1 };
       this.repo.setSetting("originPolicies", next.rules);
       this.repo.setSetting("originPoliciesRevision", next.revision);
       this.repo.db.exec("COMMIT");
       return next;
-    } catch (error) { this.repo.db.exec("ROLLBACK"); throw error; }
+    } catch (error) {
+      this.repo.db.exec("ROLLBACK");
+      throw error;
+    }
   }
 }

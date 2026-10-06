@@ -1,10 +1,19 @@
 import type { DownloadNamingNative, CompletedDownload } from "./services/download-naming.js";
 import {
-  NativeCreatorClosedSchema, NativeCreatorCleanupProofSchema, NativeCreatorCleanupParamsSchema, NativeCreatorCloseParamsSchema, type NativeCreatorCleanupProof,
+  NativeCreatorClosedSchema,
+  NativeCreatorCleanupProofSchema,
+  NativeCreatorCleanupParamsSchema,
+  NativeCreatorCloseParamsSchema,
+  type NativeCreatorCleanupProof,
   ProfileOrganizationSnapshotSchema,
-  NativeRecorderStartedSchema, NativeRecorderDrainSchema, NativeRecorderStoppedSchema,
-  HostMethods, NativePersonCaptureParamsSchema, NativePersonCaptureReceiptSchema,
-  type NativePersonCaptureParams, type NativePersonCaptureReceipt,
+  NativeRecorderStartedSchema,
+  NativeRecorderDrainSchema,
+  NativeRecorderStoppedSchema,
+  HostMethods,
+  NativePersonCaptureParamsSchema,
+  NativePersonCaptureReceiptSchema,
+  type NativePersonCaptureParams,
+  type NativePersonCaptureReceipt,
   type HostMethodResult,
   type ProfileOrganizationSnapshot,
   AuxError,
@@ -99,21 +108,44 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   personRead?(input: { pageId: string; request: PersonReadRequest }): Promise<NativePersonReadReceipt>;
   powerRelease?(): Promise<HostMethodResult<"native.powerRelease">>;
   powerStatus?(): Promise<HostMethodResult<"native.powerStatus">>;
-  powerActivity?(input: { reason: string; durationSec: number }): Promise<HostMethodResult<"native.powerActivity">>;
+  powerActivity?(input: {
+    reason: string;
+    durationSec: number;
+  }): Promise<HostMethodResult<"native.powerActivity">>;
   organizationSnapshot?(): Promise<ProfileOrganizationSnapshot>;
   recorderStart?(input: { pageId: string }): Promise<HostMethodResult<"native.recorderStart">>;
-  recorderDrain?(input: { pageId: string; recorderId: string }): Promise<HostMethodResult<"native.recorderDrain">>;
-  recorderStop?(input: { pageId: string; recorderId: string }): Promise<HostMethodResult<"native.recorderStop">>;
+  recorderDrain?(input: {
+    pageId: string;
+    recorderId: string;
+  }): Promise<HostMethodResult<"native.recorderDrain">>;
+  recorderStop?(input: {
+    pageId: string;
+    recorderId: string;
+  }): Promise<HostMethodResult<"native.recorderStop">>;
   createAgentPage?(input: AgentPageCreate): Promise<AgentPageCreated>;
   creatorCleanupProof?(input: { pageId: string; creationId: string }): Promise<NativeCreatorCleanupProof>;
   closeCreatedPage?(input: { proof: NativeCreatorCleanupProof }): Promise<{ closed: true }>;
   egressRunTerminal?(input: { runId: string }): Promise<HostMethodResult<"native.egressRunTerminal">>;
   egressCheckRunResume?(input: { runId: string }): Promise<HostMethodResult<"native.egressCheckRunResume">>;
-  egressResumeRun?(input: { runId: string; ticketId: string }): Promise<HostMethodResult<"native.egressResumeRun">>;
-  egressResumePerson?(input: { pageId: string; ticketId: string }): Promise<HostMethodResult<"native.egressResumePerson">>;
+  egressResumeRun?(input: {
+    runId: string;
+    ticketId: string;
+  }): Promise<HostMethodResult<"native.egressResumeRun">>;
+  egressResumePerson?(input: {
+    pageId: string;
+    ticketId: string;
+  }): Promise<HostMethodResult<"native.egressResumePerson">>;
   egressContext?(input: { tabId: string; expectedUrl: string }): Promise<EgressContext>;
-  egressInstall?(input: { lease: EgressLease; expectedUrl: string; navigationTransitionId?: string }): Promise<{ accepted: true }>;
-  permissionRetire(input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }>;
+  egressInstall?(input: {
+    lease: EgressLease;
+    expectedUrl: string;
+    navigationTransitionId?: string;
+  }): Promise<{ accepted: true }>;
+  permissionRetire(input: {
+    tabId: string;
+    batchId: string;
+    reservationId: string;
+  }): Promise<{ accepted: true }>;
   egressRevoke?(input: { lease: EgressLease }): Promise<{ accepted: true }>;
   capabilities?(): Promise<HostCapabilities>;
   /** Chromium BookmarkModel owns the tree; the runtime only keeps offline article bodies. */
@@ -126,7 +158,9 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   cosmeticCommit?(request: CosmeticCommit): Promise<ChromiumCookieBannerReceipt>;
   /** Chromium HistoryService owns writes once a native history projection is active. */
   historyClear?(range: { since?: number; before?: number }): Promise<{ removed: number }>;
-  historyImport?(visits: { url: string; title: string; visitedAt: number }[]): Promise<{ added: number; skipped: number }>;
+  historyImport?(
+    visits: { url: string; title: string; visitedAt: number }[],
+  ): Promise<{ added: number; skipped: number }>;
   historyRemove?(url: string, visitedAt: number, expectedTitle?: string): Promise<{ removed: boolean }>;
   /** The Chromium Profile's TemplateURLService is the selected engine authority. */
   searchEngineGet?(): Promise<string>;
@@ -208,63 +242,117 @@ export class ChannelNativeBridge implements NativeBridge {
   async recorderStart(input: { pageId: string }): Promise<HostMethodResult<"native.recorderStart">> {
     return NativeRecorderStartedSchema.parse(await this.channel.call("native.recorderStart", input));
   }
-  async recorderDrain(input: { pageId: string; recorderId: string }): Promise<HostMethodResult<"native.recorderDrain">> {
+  async recorderDrain(input: {
+    pageId: string;
+    recorderId: string;
+  }): Promise<HostMethodResult<"native.recorderDrain">> {
     return NativeRecorderDrainSchema.parse(await this.channel.call("native.recorderDrain", input));
   }
-  async recorderStop(input: { pageId: string; recorderId: string }): Promise<HostMethodResult<"native.recorderStop">> {
+  async recorderStop(input: {
+    pageId: string;
+    recorderId: string;
+  }): Promise<HostMethodResult<"native.recorderStop">> {
     return NativeRecorderStoppedSchema.parse(await this.channel.call("native.recorderStop", input));
   }
-  async creatorCleanupProof(input: { pageId: string; creationId: string }): Promise<NativeCreatorCleanupProof> {
-    return NativeCreatorCleanupProofSchema.parse(await this.channel.call(
-      "native.creatorCleanupProof", NativeCreatorCleanupParamsSchema.parse(input)));
+  async creatorCleanupProof(input: {
+    pageId: string;
+    creationId: string;
+  }): Promise<NativeCreatorCleanupProof> {
+    return NativeCreatorCleanupProofSchema.parse(
+      await this.channel.call("native.creatorCleanupProof", NativeCreatorCleanupParamsSchema.parse(input)),
+    );
   }
   async closeCreatedPage(input: { proof: NativeCreatorCleanupProof }): Promise<{ closed: true }> {
-    return NativeCreatorClosedSchema.parse(await this.channel.call(
-      "native.closeCreatedPage", NativeCreatorCloseParamsSchema.parse(input), 55_000));
+    return NativeCreatorClosedSchema.parse(
+      await this.channel.call("native.closeCreatedPage", NativeCreatorCloseParamsSchema.parse(input), 55_000),
+    );
   }
   async createAgentPage(input: AgentPageCreate): Promise<AgentPageCreated> {
     return AgentPageCreatedSchema.parse(await this.channel.call("native.createAgentPage", input, 55_000));
   }
   async egressRunTerminal(input: { runId: string }): Promise<HostMethodResult<"native.egressRunTerminal">> {
-    return HostMethods["native.egressRunTerminal"].result.parse(await this.channel.call("native.egressRunTerminal", input));
+    return HostMethods["native.egressRunTerminal"].result.parse(
+      await this.channel.call("native.egressRunTerminal", input),
+    );
   }
-  async egressCheckRunResume(input: { runId: string }): Promise<HostMethodResult<"native.egressCheckRunResume">> {
-    return HostMethods["native.egressCheckRunResume"].result.parse(await this.channel.call("native.egressCheckRunResume", input));
+  async egressCheckRunResume(input: {
+    runId: string;
+  }): Promise<HostMethodResult<"native.egressCheckRunResume">> {
+    return HostMethods["native.egressCheckRunResume"].result.parse(
+      await this.channel.call("native.egressCheckRunResume", input),
+    );
   }
-  async egressResumeRun(input: { runId: string; ticketId: string }): Promise<HostMethodResult<"native.egressResumeRun">> {
-    return HostMethods["native.egressResumeRun"].result.parse(await this.channel.call("native.egressResumeRun", input));
+  async egressResumeRun(input: {
+    runId: string;
+    ticketId: string;
+  }): Promise<HostMethodResult<"native.egressResumeRun">> {
+    return HostMethods["native.egressResumeRun"].result.parse(
+      await this.channel.call("native.egressResumeRun", input),
+    );
   }
-  async egressResumePerson(input: { pageId: string; ticketId: string }): Promise<HostMethodResult<"native.egressResumePerson">> {
-    return HostMethods["native.egressResumePerson"].result.parse(await this.channel.call("native.egressResumePerson", input));
+  async egressResumePerson(input: {
+    pageId: string;
+    ticketId: string;
+  }): Promise<HostMethodResult<"native.egressResumePerson">> {
+    return HostMethods["native.egressResumePerson"].result.parse(
+      await this.channel.call("native.egressResumePerson", input),
+    );
   }
   async egressContext(input: { tabId: string; expectedUrl: string }): Promise<EgressContext> {
     return EgressContextSchema.parse(await this.channel.call("native.egressContext", input));
   }
-  egressInstall(input: { lease: EgressLease; expectedUrl: string; navigationTransitionId?: string }): Promise<{ accepted: true }> {
+  egressInstall(input: {
+    lease: EgressLease;
+    expectedUrl: string;
+    navigationTransitionId?: string;
+  }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressInstall", input);
   }
-  permissionRetire(input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }> {
+  permissionRetire(input: {
+    tabId: string;
+    batchId: string;
+    reservationId: string;
+  }): Promise<{ accepted: true }> {
     return this.channel.call("native.permissionRetire", input);
   }
   egressRevoke(input: { lease: EgressLease }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressRevoke", input);
   }
   async personCapture(input: NativePersonCaptureParams): Promise<NativePersonCaptureReceipt> {
-    return NativePersonCaptureReceiptSchema.parse(await this.channel.call("native.personCapture", NativePersonCaptureParamsSchema.parse(input)));
+    return NativePersonCaptureReceiptSchema.parse(
+      await this.channel.call("native.personCapture", NativePersonCaptureParamsSchema.parse(input)),
+    );
   }
   async personReadContext(pageId: string): Promise<NativePersonReadContext> {
-    return NativePersonReadContextSchema.parse(await this.channel.call(
-      "native.personReadContext", NativePersonReadContextParamsSchema.parse({ pageId })));
+    return NativePersonReadContextSchema.parse(
+      await this.channel.call(
+        "native.personReadContext",
+        NativePersonReadContextParamsSchema.parse({ pageId }),
+      ),
+    );
   }
   async personRead(input: { pageId: string; request: PersonReadRequest }): Promise<NativePersonReadReceipt> {
-    return NativePersonReadReceiptSchema.parse(await this.channel.call(
-      "native.personRead", NativePersonReadParamsSchema.parse(input)));
+    return NativePersonReadReceiptSchema.parse(
+      await this.channel.call("native.personRead", NativePersonReadParamsSchema.parse(input)),
+    );
   }
-  async powerRelease() { return HostMethods["native.powerRelease"].result.parse(await this.channel.call("native.powerRelease", {})); }
-  async powerStatus() { return HostMethods["native.powerStatus"].result.parse(await this.channel.call("native.powerStatus", {})); }
-  async powerActivity(input: { reason: string; durationSec: number }) { return HostMethods["native.powerActivity"].result.parse(await this.channel.call("native.powerActivity", input)); }
+  async powerRelease() {
+    return HostMethods["native.powerRelease"].result.parse(
+      await this.channel.call("native.powerRelease", {}),
+    );
+  }
+  async powerStatus() {
+    return HostMethods["native.powerStatus"].result.parse(await this.channel.call("native.powerStatus", {}));
+  }
+  async powerActivity(input: { reason: string; durationSec: number }) {
+    return HostMethods["native.powerActivity"].result.parse(
+      await this.channel.call("native.powerActivity", input),
+    );
+  }
   async organizationSnapshot(): Promise<ProfileOrganizationSnapshot> {
-    return ProfileOrganizationSnapshotSchema.parse(await this.channel.call("native.organizationSnapshot", {}));
+    return ProfileOrganizationSnapshotSchema.parse(
+      await this.channel.call("native.organizationSnapshot", {}),
+    );
   }
   async capabilities(): Promise<HostCapabilities> {
     return HostCapabilitiesSchema.parse(await this.channel.call("native.capabilities", {}));
@@ -300,8 +388,11 @@ export class ChannelNativeBridge implements NativeBridge {
     return this.channel.call<{ added: number; skipped: number }>("native.historyImport", { visits });
   }
   historyRemove(url: string, visitedAt: number, expectedTitle?: string) {
-    return this.channel.call<{ removed: boolean }>("native.historyRemove", { url, visitedAt,
-      ...(expectedTitle === undefined ? {} : { expectedTitle }) });
+    return this.channel.call<{ removed: boolean }>("native.historyRemove", {
+      url,
+      visitedAt,
+      ...(expectedTitle === undefined ? {} : { expectedTitle }),
+    });
   }
   searchEngineGet() {
     return this.channel.call<string>("native.searchEngineGet", {});
@@ -319,10 +410,16 @@ export class ChannelNativeBridge implements NativeBridge {
     return ZapInstallReceiptSchema.parse(await this.channel.call("native.zapInstallStylesheet", request));
   }
   async webmcpList(pageId: string) {
-    return { tools: WebmcpToolSchema.array().parse((await this.channel.call<{ tools: unknown }>("native.webmcpList", { pageId })).tools) };
+    return {
+      tools: WebmcpToolSchema.array().parse(
+        (await this.channel.call<{ tools: unknown }>("native.webmcpList", { pageId })).tools,
+      ),
+    };
   }
   async webmcpCall(pageId: string, name: string, input: string) {
-    return WebmcpCallResultSchema.parse(await this.channel.call("native.webmcpCall", { pageId, name, input }));
+    return WebmcpCallResultSchema.parse(
+      await this.channel.call("native.webmcpCall", { pageId, name, input }),
+    );
   }
   listPages() {
     return this.channel.call<{
@@ -381,13 +478,35 @@ export class ChannelNativeBridge implements NativeBridge {
   setCookies(cookies: unknown[]) {
     return this.channel.call<{ ok: boolean; count: number }>("native.setCookies", { cookies });
   }
-  downloadRenameReceipts() { return this.channel.call<import("./services/download-naming.js").RenameReceipt[]>("native.downloadRenameReceipts", {}); }
-  downloadNamingCandidate(downloadId: string) { return this.channel.call<CompletedDownload | null>("native.downloadNamingCandidate", { downloadId }); }
-  downloadPreviewText(downloadId: string) { return this.channel.call<{ text: string }>("native.downloadPreviewText", { downloadId }); }
-  renameDownload(input: Parameters<DownloadNamingNative["renameDownload"]>[0]) { return this.channel.call<Awaited<ReturnType<DownloadNamingNative["renameDownload"]>>>("native.renameDownload", input); }
-  undoDownloadRename(receiptId: string) { return this.channel.call<Awaited<ReturnType<DownloadNamingNative["undoDownloadRename"]>>>("native.undoDownloadRename", { receiptId }); }
+  downloadRenameReceipts() {
+    return this.channel.call<import("./services/download-naming.js").RenameReceipt[]>(
+      "native.downloadRenameReceipts",
+      {},
+    );
+  }
+  downloadNamingCandidate(downloadId: string) {
+    return this.channel.call<CompletedDownload | null>("native.downloadNamingCandidate", { downloadId });
+  }
+  downloadPreviewText(downloadId: string) {
+    return this.channel.call<{ text: string }>("native.downloadPreviewText", { downloadId });
+  }
+  renameDownload(input: Parameters<DownloadNamingNative["renameDownload"]>[0]) {
+    return this.channel.call<Awaited<ReturnType<DownloadNamingNative["renameDownload"]>>>(
+      "native.renameDownload",
+      input,
+    );
+  }
+  undoDownloadRename(receiptId: string) {
+    return this.channel.call<Awaited<ReturnType<DownloadNamingNative["undoDownloadRename"]>>>(
+      "native.undoDownloadRename",
+      { receiptId },
+    );
+  }
   liveFolderSources() {
-    return this.channel.call<{ id: string; live: import("@aux/contracts").LiveFolder }[]>("native.liveFolderSources", {});
+    return this.channel.call<{ id: string; live: import("@aux/contracts").LiveFolder }[]>(
+      "native.liveFolderSources",
+      {},
+    );
   }
   storeSecret(name: string, value: string) {
     return this.channel.call<{ ok: true }>("native.storeSecret", { name, value });
@@ -425,7 +544,11 @@ export class ChannelNativeBridge implements NativeBridge {
 }
 
 export class NullNativeBridge implements NativeBridge {
-  async permissionRetire(_input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }> {
+  async permissionRetire(_input: {
+    tabId: string;
+    batchId: string;
+    reservationId: string;
+  }): Promise<{ accepted: true }> {
     throw new AuxError("backend_unavailable", "Native permission retirement is unavailable.");
   }
   available() {

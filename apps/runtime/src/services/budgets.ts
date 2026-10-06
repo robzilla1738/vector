@@ -45,7 +45,9 @@ export class BudgetsService {
   configureNightShift(status: (runId: string) => BudgetStatus[]) {
     if (this.nightShift) throw new AuxError("conflict", "Night shift budgets are already installed.");
     this.nightShift = status;
-    return () => { if (this.nightShift === status) this.nightShift = undefined; };
+    return () => {
+      if (this.nightShift === status) this.nightShift = undefined;
+    };
   }
   constructor(
     private readonly db: DatabaseSync,
@@ -64,12 +66,17 @@ export class BudgetsService {
 
   /** Missing reported/priceable usage is unresolved, never a zero-cost bill. */
   runCostComplete(runId: string): boolean {
-    return !this.db.prepare("SELECT 1 FROM model_calls WHERE run_id=? AND cost_usd IS NULL LIMIT 1").get(runId);
+    return !this.db
+      .prepare("SELECT 1 FROM model_calls WHERE run_id=? AND cost_usd IS NULL LIMIT 1")
+      .get(runId);
   }
 
   /** All model-call cost across every run since local midnight. */
   spentDayUsd(now = Date.now()): number {
-    return this.sum("SELECT COALESCE(SUM(cost_usd),0) s FROM model_calls WHERE created_at>=?", dayStartMs(now));
+    return this.sum(
+      "SELECT COALESCE(SUM(cost_usd),0) s FROM model_calls WHERE created_at>=?",
+      dayStartMs(now),
+    );
   }
 
   /** Model-call cost across every run this routine ever launched. */
@@ -82,9 +89,8 @@ export class BudgetsService {
 
   /** The routine that launched this run, when it is a routine occurrence. */
   routineForRun(runId: string): string | undefined {
-    const row = this.db
-      .prepare("SELECT routine_id FROM routine_runs WHERE run_id=? LIMIT 1")
-      .get(runId) as { routine_id: string } | undefined;
+    const row = this.db.prepare("SELECT routine_id FROM routine_runs WHERE run_id=? LIMIT 1").get(runId) as
+      { routine_id: string } | undefined;
     return row?.routine_id;
   }
 
@@ -93,11 +99,27 @@ export class BudgetsService {
     const out: BudgetStatus[] = [];
     const push = (s: Omit<BudgetStatus, "remainingUsd" | "exceeded">) => {
       const remaining = s.limitUsd === undefined ? undefined : Math.max(0, s.limitUsd - s.spentUsd);
-      out.push({ ...s, remainingUsd: remaining, exceeded: s.limitUsd !== undefined && s.spentUsd >= s.limitUsd });
+      out.push({
+        ...s,
+        remainingUsd: remaining,
+        exceeded: s.limitUsd !== undefined && s.spentUsd >= s.limitUsd,
+      });
     };
-    if (scope.runId) push({ scope: "run", scopeId: scope.runId, limitUsd: positive(limits.runUsd), spentUsd: this.spentRunUsd(scope.runId) });
+    if (scope.runId)
+      push({
+        scope: "run",
+        scopeId: scope.runId,
+        limitUsd: positive(limits.runUsd),
+        spentUsd: this.spentRunUsd(scope.runId),
+      });
     push({ scope: "day", limitUsd: positive(limits.dayUsd), spentUsd: this.spentDayUsd(now) });
-    if (scope.routineId) push({ scope: "routine", scopeId: scope.routineId, limitUsd: positive(limits.routineUsd), spentUsd: this.spentRoutineUsd(scope.routineId) });
+    if (scope.routineId)
+      push({
+        scope: "routine",
+        scopeId: scope.routineId,
+        limitUsd: positive(limits.routineUsd),
+        spentUsd: this.spentRoutineUsd(scope.routineId),
+      });
     if (scope.runId && this.nightShift) out.push(...this.nightShift(scope.runId));
     return out;
   }
@@ -108,12 +130,19 @@ export class BudgetsService {
    * step, so concurrent runs can overshoot by at most one in-flight call.
    */
   assertWithin(scope: { runId: string; routineId?: string }, now = Date.now()): void {
-    const over = this.status({ runId: scope.runId, routineId: scope.routineId ?? this.routineForRun(scope.runId) }, now).find(
-      (s) => s.exceeded,
-    );
+    const over = this.status(
+      { runId: scope.runId, routineId: scope.routineId ?? this.routineForRun(scope.runId) },
+      now,
+    ).find((s) => s.exceeded);
     if (!over) return;
     const label =
-      over.scope === "run" ? "this run" : over.scope === "day" ? "today" : over.scope === "nightShift" ? `overnight scope ${over.scopeId}` : `routine ${over.scopeId}`;
+      over.scope === "run"
+        ? "this run"
+        : over.scope === "day"
+          ? "today"
+          : over.scope === "nightShift"
+            ? `overnight scope ${over.scopeId}`
+            : `routine ${over.scopeId}`;
     throw new AuxError(
       "permission_denied",
       `The user-set ${over.scope} budget of $${over.limitUsd!.toFixed(2)} is spent for ${label} ($${over.spentUsd.toFixed(2)}). Raise the budget in Settings or start a new scope.`,

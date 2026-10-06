@@ -11,7 +11,9 @@ import type {
   PageSet,
   PageTarget,
   ResultRecord,
-  Run, RunMessage, ConversationSummary,
+  Run,
+  RunMessage,
+  ConversationSummary,
   SavedProgram,
   SetMember,
   StepRecord,
@@ -26,12 +28,23 @@ import { protectedKvKey } from "./sqlite-protection.js";
 const now = () => Date.now();
 const J = JSON.stringify;
 const P = <T>(s: string | null | undefined, fb: T): T => (s ? (JSON.parse(s) as T) : fb);
-const RUN_LOOKUP_KEYS = ["chatId", "taskId", "taskRevision", "implementation", "externalConnectionId",
-  "contextWorkspaceId", "contextMemoryRevoked", "contextImageArtifactIds"] as const;
+const RUN_LOOKUP_KEYS = [
+  "chatId",
+  "taskId",
+  "taskRevision",
+  "implementation",
+  "externalConnectionId",
+  "contextWorkspaceId",
+  "contextMemoryRevoked",
+  "contextImageArtifactIds",
+] as const;
 const runLookupConfig = (config: Run["config"]): string => {
   const source = (config ?? {}) as Record<string, unknown>;
-  return J(Object.fromEntries(RUN_LOOKUP_KEYS.filter(key => source[key] !== undefined)
-    .map(key => [key, source[key]])));
+  return J(
+    Object.fromEntries(
+      RUN_LOOKUP_KEYS.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),
+    ),
+  );
 };
 
 /**
@@ -55,51 +68,95 @@ export class Repo {
   private deferred = new Map<string, { write: () => void; late: boolean }>();
   private flushTimer: NodeJS.Immediate | null = null;
 
-  constructor(readonly db: DatabaseSync, readonly columnCipher?: SqliteColumnCipher) {}
-  requireChromiumHistory() { this.chromiumHistoryRequired = true; }
+  constructor(
+    readonly db: DatabaseSync,
+    readonly columnCipher?: SqliteColumnCipher,
+  ) {}
+  requireChromiumHistory() {
+    this.chromiumHistoryRequired = true;
+  }
 
-  private protectField(table: string, id: string | number, column: string, value: string | null): string | null {
-    return value === null || !this.columnCipher ? value
+  private protectField(
+    table: string,
+    id: string | number,
+    column: string,
+    value: string | null,
+  ): string | null {
+    return value === null || !this.columnCipher
+      ? value
       : this.columnCipher.encrypt(table, JSON.stringify([id]), column, value);
   }
 
-  private revealField(table: string, id: string | number, column: string, value: string | null): string | null {
-    return value === null || !this.columnCipher ? value
+  private revealField(
+    table: string,
+    id: string | number,
+    column: string,
+    value: string | null,
+  ): string | null {
+    return value === null || !this.columnCipher
+      ? value
       : this.columnCipher.decrypt(table, JSON.stringify([id]), column, value);
   }
 
-  protectRecordField(table: string, identity: readonly (string | number)[], column: string, value: string): string {
-    return this.columnCipher ? this.columnCipher.encrypt(table, JSON.stringify(identity), column, value) : value;
+  protectRecordField(
+    table: string,
+    identity: readonly (string | number)[],
+    column: string,
+    value: string,
+  ): string {
+    return this.columnCipher
+      ? this.columnCipher.encrypt(table, JSON.stringify(identity), column, value)
+      : value;
   }
 
-  revealRecordField(table: string, identity: readonly (string | number)[], column: string, value: string): string {
-    return this.columnCipher ? this.columnCipher.decrypt(table, JSON.stringify(identity), column, value) : value;
+  revealRecordField(
+    table: string,
+    identity: readonly (string | number)[],
+    column: string,
+    value: string,
+  ): string {
+    return this.columnCipher
+      ? this.columnCipher.decrypt(table, JSON.stringify(identity), column, value)
+      : value;
   }
 
   exactRecordLookup(table: string, column: string, value: string): string {
     return this.columnCipher ? this.columnCipher.exactLookup(table, column, value) : value;
   }
 
-  getWorkspace(workspaceId: string): {workspaceId:string;name:string;createdAt:number} | undefined {
-    const row = this.q("SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces WHERE workspace_id=?")
-      .get(workspaceId) as {workspaceId:string;name:string;createdAt:number} | undefined;
-    return row ? { ...row, name: this.revealRecordField("workspaces", [workspaceId], "name", row.name) } : undefined;
+  getWorkspace(workspaceId: string): { workspaceId: string; name: string; createdAt: number } | undefined {
+    const row = this.q(
+      "SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces WHERE workspace_id=?",
+    ).get(workspaceId) as { workspaceId: string; name: string; createdAt: number } | undefined;
+    return row
+      ? { ...row, name: this.revealRecordField("workspaces", [workspaceId], "name", row.name) }
+      : undefined;
   }
 
-  listWorkspaces(): {workspaceId:string;name:string;createdAt:number}[] {
-    return (this.q("SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces ORDER BY created_at,workspace_id")
-      .all() as {workspaceId:string;name:string;createdAt:number}[])
-      .map(row => ({ ...row, name: this.revealRecordField("workspaces", [row.workspaceId], "name", row.name) }));
+  listWorkspaces(): { workspaceId: string; name: string; createdAt: number }[] {
+    return (
+      this.q(
+        "SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces ORDER BY created_at,workspace_id",
+      ).all() as { workspaceId: string; name: string; createdAt: number }[]
+    ).map((row) => ({
+      ...row,
+      name: this.revealRecordField("workspaces", [row.workspaceId], "name", row.name),
+    }));
   }
 
   insertWorkspace(workspaceId: string, name: string, createdAt: number): void {
-    this.q("INSERT INTO workspaces VALUES(?,?,?)")
-      .run(workspaceId, this.protectRecordField("workspaces", [workspaceId], "name", name), createdAt);
+    this.q("INSERT INTO workspaces VALUES(?,?,?)").run(
+      workspaceId,
+      this.protectRecordField("workspaces", [workspaceId], "name", name),
+      createdAt,
+    );
   }
 
   renameWorkspace(workspaceId: string, name: string): void {
-    this.q("UPDATE workspaces SET name=? WHERE workspace_id=?")
-      .run(this.protectRecordField("workspaces", [workspaceId], "name", name), workspaceId);
+    this.q("UPDATE workspaces SET name=? WHERE workspace_id=?").run(
+      this.protectRecordField("workspaces", [workspaceId], "name", name),
+      workspaceId,
+    );
   }
 
   taskJson(taskId: string, raw: string): string {
@@ -111,9 +168,10 @@ export class Repo {
   }
 
   saveTaskLookup(taskId: string, conversationId?: string, sourceOrigin?: string): void {
-    this.q(`INSERT INTO task_lookup(task_id,conversation_id,source_origin) VALUES(?,?,?)
-      ON CONFLICT(task_id) DO UPDATE SET conversation_id=excluded.conversation_id,source_origin=excluded.source_origin`)
-      .run(taskId, conversationId ?? null, sourceOrigin ?? null);
+    this.q(
+      `INSERT INTO task_lookup(task_id,conversation_id,source_origin) VALUES(?,?,?)
+      ON CONFLICT(task_id) DO UPDATE SET conversation_id=excluded.conversation_id,source_origin=excluded.source_origin`,
+    ).run(taskId, conversationId ?? null, sourceOrigin ?? null);
   }
 
   private getKvJson<T>(key: string): T | undefined {
@@ -126,15 +184,21 @@ export class Repo {
   private setKvJson(key: string, value: unknown): void {
     const raw = J(value);
     if (typeof raw !== "string") throw new Error("KV value must be JSON serializable.");
-    kvSet(this.db, key, this.columnCipher && protectedKvKey(key)
-      ? this.protectField("kv", key, "value", raw)! : raw);
+    kvSet(
+      this.db,
+      key,
+      this.columnCipher && protectedKvKey(key) ? this.protectField("kv", key, "value", raw)! : raw,
+    );
   }
 
   /** Enumerate keys only; values remain behind the protected settings reader. */
   settingKeys(prefix: string): string[] {
     const full = `setting:${prefix}`;
-    return (this.q("SELECT key FROM kv WHERE substr(key,1,length(?))=? ORDER BY key").all(full, full) as { key: string }[])
-      .map(row => row.key.slice("setting:".length));
+    return (
+      this.q("SELECT key FROM kv WHERE substr(key,1,length(?))=? ORDER BY key").all(full, full) as {
+        key: string;
+      }[]
+    ).map((row) => row.key.slice("setting:".length));
   }
 
   /** Prepared once per SQL text; SQLite re-prepares a cached statement itself after a schema change. */
@@ -238,32 +302,31 @@ export class Repo {
   // ---- pages / targets ----
   upsertPage(p: PageTarget) {
     this.q(
-        `INSERT INTO pages(page_id,backend,target_id,session_id,url,title,favicon,epoch,revision,view_status,controller,owned,created_at,active_at,detached,json)
+      `INSERT INTO pages(page_id,backend,target_id,session_id,url,title,favicon,epoch,revision,view_status,controller,owned,created_at,active_at,detached,json)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(page_id) DO UPDATE SET backend=excluded.backend,target_id=excluded.target_id,
            session_id=excluded.session_id,url=excluded.url,title=excluded.title,favicon=excluded.favicon,
            epoch=excluded.epoch,revision=excluded.revision,view_status=excluded.view_status,
            controller=excluded.controller,owned=excluded.owned,active_at=excluded.active_at,
            detached=excluded.detached,json=excluded.json`,
-      )
-      .run(
-        p.pageId,
-        p.backend,
-        p.targetId,
-        p.sessionId ?? null,
-        p.url,
-        p.title,
-        p.favicon ?? null,
-        p.documentEpoch,
-        p.lastRevision,
-        p.viewStatus,
-        p.controller,
-        p.ownedByRuntime ? 1 : 0,
-        p.createdAt,
-        p.lastActiveAt,
-        p.viewStatus === "detached" ? 1 : 0,
-        J(p),
-      );
+    ).run(
+      p.pageId,
+      p.backend,
+      p.targetId,
+      p.sessionId ?? null,
+      p.url,
+      p.title,
+      p.favicon ?? null,
+      p.documentEpoch,
+      p.lastRevision,
+      p.viewStatus,
+      p.controller,
+      p.ownedByRuntime ? 1 : 0,
+      p.createdAt,
+      p.lastActiveAt,
+      p.viewStatus === "detached" ? 1 : 0,
+      J(p),
+    );
   }
   /** Coalesced upsert — the row reflects the page object as it is at flush time. */
   deferPage(p: PageTarget) {
@@ -281,7 +344,9 @@ export class Repo {
            json=json_set(json,'$.viewStatus','detached','$.controller','none')
          WHERE view_status<>'detached' OR controller<>'none' OR detached<>1`,
       ).run();
-      this.q("DELETE FROM pages WHERE owned=1 AND active_at<? AND page_id NOT IN (SELECT page_id FROM tabs)").run(now() - retainOwnedMs);
+      this.q(
+        "DELETE FROM pages WHERE owned=1 AND active_at<? AND page_id NOT IN (SELECT page_id FROM tabs)",
+      ).run(now() - retainOwnedMs);
     });
   }
   getPage(pageId: string): PageTarget | undefined {
@@ -312,7 +377,17 @@ export class Repo {
   }
 
   // ---- tabs (restart persistence) ----
-  saveTabs(tabs: { pageId: string; windowId?: string; ordinal: number; url: string; title: string; backend: string; active: boolean }[]) {
+  saveTabs(
+    tabs: {
+      pageId: string;
+      windowId?: string;
+      ordinal: number;
+      url: string;
+      title: string;
+      backend: string;
+      active: boolean;
+    }[],
+  ) {
     const del = this.q("DELETE FROM tabs");
     const ins = this.q(
       "INSERT INTO tabs(page_id,window_id,ordinal,url,title,backend,active) VALUES(?,?,?,?,?,?,?)",
@@ -320,7 +395,8 @@ export class Repo {
     // atomic: a crash between the delete and the inserts must not lose the restore list
     this.transaction(() => {
       del.run();
-      for (const t of tabs) ins.run(t.pageId, t.windowId ?? "main", t.ordinal, t.url, t.title, t.backend, t.active ? 1 : 0);
+      for (const t of tabs)
+        ins.run(t.pageId, t.windowId ?? "main", t.ordinal, t.url, t.title, t.backend, t.active ? 1 : 0);
     });
   }
   loadTabs() {
@@ -339,10 +415,9 @@ export class Repo {
   // ---- sessions ----
   upsertSession(s: BrowserSession) {
     this.q(
-        `INSERT INTO sessions(session_id,backend,label,status,detail,updated_at) VALUES(?,?,?,?,?,?)
+      `INSERT INTO sessions(session_id,backend,label,status,detail,updated_at) VALUES(?,?,?,?,?,?)
          ON CONFLICT(session_id) DO UPDATE SET status=excluded.status,detail=excluded.detail,updated_at=excluded.updated_at,label=excluded.label`,
-      )
-      .run(s.sessionId, s.backend, s.label, s.status, s.detail ?? null, now());
+    ).run(s.sessionId, s.backend, s.label, s.status, s.detail ?? null, now());
   }
   listSessions(): BrowserSession[] {
     return (this.q("SELECT * FROM sessions ORDER BY updated_at DESC").all() as any[]).map((r) => ({
@@ -357,12 +432,17 @@ export class Repo {
   // ---- sets ----
   saveSet(s: PageSet) {
     this.q(
-        `INSERT INTO page_sets(set_id,name,source,member_ids,result_schema,program_id,created_at) VALUES(?,?,?,?,?,?,?)
+      `INSERT INTO page_sets(set_id,name,source,member_ids,result_schema,program_id,created_at) VALUES(?,?,?,?,?,?,?)
          ON CONFLICT(set_id) DO UPDATE SET name=excluded.name,member_ids=excluded.member_ids,result_schema=excluded.result_schema,program_id=excluded.program_id`,
-      )
-      .run(s.setId, this.protectField("page_sets", s.setId, "name", s.name), s.source, J(s.memberIds),
-        this.protectField("page_sets", s.setId, "result_schema", s.resultSchema ? J(s.resultSchema) : null),
-        s.programId ?? null, s.createdAt);
+    ).run(
+      s.setId,
+      this.protectField("page_sets", s.setId, "name", s.name),
+      s.source,
+      J(s.memberIds),
+      this.protectField("page_sets", s.setId, "result_schema", s.resultSchema ? J(s.resultSchema) : null),
+      s.programId ?? null,
+      s.createdAt,
+    );
   }
   getSet(setId: string): PageSet | undefined {
     const r = this.q("SELECT * FROM page_sets WHERE set_id=?").get(setId) as any;
@@ -372,7 +452,10 @@ export class Repo {
       name: this.revealField("page_sets", r.set_id, "name", r.name)!,
       source: r.source,
       memberIds: P(r.member_ids, []),
-      resultSchema: P(this.revealField("page_sets", r.set_id, "result_schema", r.result_schema), undefined as never),
+      resultSchema: P(
+        this.revealField("page_sets", r.set_id, "result_schema", r.result_schema),
+        undefined as never,
+      ),
       programId: r.program_id ?? undefined,
       createdAt: r.created_at,
     };
@@ -383,26 +466,52 @@ export class Repo {
       name: this.revealField("page_sets", r.set_id, "name", r.name)!,
       source: r.source,
       memberIds: P(r.member_ids, []),
-      resultSchema: P(this.revealField("page_sets", r.set_id, "result_schema", r.result_schema), undefined as never),
+      resultSchema: P(
+        this.revealField("page_sets", r.set_id, "result_schema", r.result_schema),
+        undefined as never,
+      ),
       programId: r.program_id ?? undefined,
       createdAt: r.created_at,
     }));
   }
   saveMember(m: SetMember) {
     this.q(
-        `INSERT INTO set_members(member_id,set_id,ordinal,url,record_key,label,page_id,status,result_id,error)
+      `INSERT INTO set_members(member_id,set_id,ordinal,url,record_key,label,page_id,status,result_id,error)
          VALUES(?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(member_id) DO UPDATE SET page_id=excluded.page_id,status=excluded.status,result_id=excluded.result_id,error=excluded.error`,
-      )
-      .run(m.memberId, m.setId, m.ordinal,
-        this.protectField("set_members", m.memberId, "url", m.url ?? null),
-        this.protectField("set_members", m.memberId, "record_key", m.recordKey ?? null),
-        this.protectField("set_members", m.memberId, "label", m.label ?? null),
-        m.pageId ?? null, m.status, m.resultId ?? null,
-        this.protectField("set_members", m.memberId, "error", m.error ?? null));
+    ).run(
+      m.memberId,
+      m.setId,
+      m.ordinal,
+      this.protectField("set_members", m.memberId, "url", m.url ?? null),
+      this.protectField("set_members", m.memberId, "record_key", m.recordKey ?? null),
+      this.protectField("set_members", m.memberId, "label", m.label ?? null),
+      m.pageId ?? null,
+      m.status,
+      m.resultId ?? null,
+      this.protectField("set_members", m.memberId, "error", m.error ?? null),
+    );
   }
   listMembers(setId: string): SetMember[] {
-    return (this.q("SELECT * FROM set_members WHERE set_id=? ORDER BY ordinal").all(setId) as any[]).map((r) => ({
+    return (this.q("SELECT * FROM set_members WHERE set_id=? ORDER BY ordinal").all(setId) as any[]).map(
+      (r) => ({
+        memberId: r.member_id,
+        setId: r.set_id,
+        ordinal: r.ordinal,
+        url: this.revealField("set_members", r.member_id, "url", r.url) ?? undefined,
+        recordKey: this.revealField("set_members", r.member_id, "record_key", r.record_key) ?? undefined,
+        label: this.revealField("set_members", r.member_id, "label", r.label) ?? undefined,
+        pageId: r.page_id ?? undefined,
+        status: r.status,
+        resultId: r.result_id ?? undefined,
+        error: this.revealField("set_members", r.member_id, "error", r.error) ?? undefined,
+      }),
+    );
+  }
+  getMember(memberId: string): SetMember | undefined {
+    const r = this.q("SELECT * FROM set_members WHERE member_id=?").get(memberId) as any;
+    if (!r) return undefined;
+    return {
       memberId: r.member_id,
       setId: r.set_id,
       ordinal: r.ordinal,
@@ -412,18 +521,6 @@ export class Repo {
       pageId: r.page_id ?? undefined,
       status: r.status,
       resultId: r.result_id ?? undefined,
-      error: this.revealField("set_members", r.member_id, "error", r.error) ?? undefined,
-    }));
-  }
-  getMember(memberId: string): SetMember | undefined {
-    const r = this.q("SELECT * FROM set_members WHERE member_id=?").get(memberId) as any;
-    if (!r) return undefined;
-    return {
-      memberId: r.member_id, setId: r.set_id, ordinal: r.ordinal,
-      url: this.revealField("set_members", r.member_id, "url", r.url) ?? undefined,
-      recordKey: this.revealField("set_members", r.member_id, "record_key", r.record_key) ?? undefined,
-      label: this.revealField("set_members", r.member_id, "label", r.label) ?? undefined,
-      pageId: r.page_id ?? undefined, status: r.status, resultId: r.result_id ?? undefined,
       error: this.revealField("set_members", r.member_id, "error", r.error) ?? undefined,
     };
   }
@@ -435,27 +532,50 @@ export class Repo {
         `INSERT INTO runs(run_id,goal,status,page_ids,set_id,config,status_message,result,error,failure,started_at,ended_at,created_at)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(run_id) DO UPDATE SET status=excluded.status,page_ids=excluded.page_ids,config=excluded.config,status_message=excluded.status_message,result=excluded.result,error=excluded.error,failure=excluded.failure,started_at=excluded.started_at,ended_at=excluded.ended_at`,
-      ).run(r.runId,
-        this.protectField("runs", r.runId, "goal", r.goal), r.status, J(r.pageIds), r.setId ?? null,
+      ).run(
+        r.runId,
+        this.protectField("runs", r.runId, "goal", r.goal),
+        r.status,
+        J(r.pageIds),
+        r.setId ?? null,
         this.protectField("runs", r.runId, "config", r.config ? J(r.config) : null),
         this.protectField("runs", r.runId, "status_message", r.statusMessage ?? null),
         this.protectField("runs", r.runId, "result", r.result ? J(r.result) : null),
         this.protectField("runs", r.runId, "error", r.error ?? null),
         this.protectField("runs", r.runId, "failure", r.failure ? J(r.failure) : null),
-        r.startedAt ?? null, r.endedAt ?? null, r.createdAt);
-      this.q(`INSERT INTO run_lookup(run_id,config) VALUES(?,?)
-        ON CONFLICT(run_id) DO UPDATE SET config=excluded.config`).run(r.runId, runLookupConfig(r.config));
+        r.startedAt ?? null,
+        r.endedAt ?? null,
+        r.createdAt,
+      );
+      this.q(
+        `INSERT INTO run_lookup(run_id,config) VALUES(?,?)
+        ON CONFLICT(run_id) DO UPDATE SET config=excluded.config`,
+      ).run(r.runId, runLookupConfig(r.config));
       const chatId = r.config?.chatId ?? r.runId;
-      const taskRow = r.config?.taskId ? this.q("SELECT json FROM tasks WHERE task_id=?").get(r.config.taskId) as { json: string } | undefined : undefined;
+      const taskRow = r.config?.taskId
+        ? (this.q("SELECT json FROM tasks WHERE task_id=?").get(r.config.taskId) as
+            { json: string } | undefined)
+        : undefined;
       let title = r.goal.slice(0, 160);
       if (taskRow) {
         const taskJson = this.taskJson(r.config!.taskId!, taskRow.json);
-        try { title = String((JSON.parse(taskJson) as { title?: string }).title || title).slice(0, 160); } catch { /* retain run goal */ }
+        try {
+          title = String((JSON.parse(taskJson) as { title?: string }).title || title).slice(0, 160);
+        } catch {
+          /* retain run goal */
+        }
       }
-      this.q(`INSERT INTO conversations(chat_id,title,archived,created_at,updated_at) VALUES(?,?,0,?,?)
+      this.q(
+        `INSERT INTO conversations(chat_id,title,archived,created_at,updated_at) VALUES(?,?,0,?,?)
         ON CONFLICT(chat_id) DO UPDATE SET title=CASE WHEN ? THEN excluded.title ELSE conversations.title END,
-          updated_at=max(conversations.updated_at,excluded.updated_at)`)
-        .run(chatId, this.protectField("conversations", chatId, "title", title), r.createdAt, r.createdAt, r.config?.taskId ? 1 : 0);
+          updated_at=max(conversations.updated_at,excluded.updated_at)`,
+      ).run(
+        chatId,
+        this.protectField("conversations", chatId, "title", title),
+        r.createdAt,
+        r.createdAt,
+        r.config?.taskId ? 1 : 0,
+      );
     });
   }
   getRun(runId: string): Run | undefined {
@@ -463,13 +583,24 @@ export class Repo {
     return r ? this.rowToRun(r) : undefined;
   }
   activeConversationRun(chatId: string): Run | undefined {
-    const row = this.q(`SELECT r.* FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
+    const row = this.q(
+      `SELECT r.* FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
       WHERE json_extract(l.config,'$.chatId')=?
       AND r.status IN ('queued','planning','running','paused','needs_input')
-      ORDER BY r.created_at DESC,r.run_id DESC LIMIT 1`).get(chatId) as Record<string, unknown> | undefined;
+      ORDER BY r.created_at DESC,r.run_id DESC LIMIT 1`,
+    ).get(chatId) as Record<string, unknown> | undefined;
     return row ? this.rowToRun(row) : undefined;
   }
-  listRuns(limit = 50, options: { before?: { createdAt: number; runId: string }; chatId?: string; query?: string; groupByChat?: boolean; includeArchived?: boolean } = {}): Run[] {
+  listRuns(
+    limit = 50,
+    options: {
+      before?: { createdAt: number; runId: string };
+      chatId?: string;
+      query?: string;
+      groupByChat?: boolean;
+      includeArchived?: boolean;
+    } = {},
+  ): Run[] {
     const term = options.query?.trim().toLocaleLowerCase();
     if (term) {
       const matching: Run[] = [];
@@ -498,24 +629,37 @@ export class Repo {
     const where: string[] = [];
     const values: (string | number)[] = [];
     if (options.groupByChat) where.push("chat_rank = 1");
-    if (options.chatId) { where.push("chat_key = ?"); values.push(options.chatId); }
-    if (!options.chatId && !options.includeArchived) where.push("chat_key NOT IN (SELECT chat_id FROM conversations WHERE archived=1)");
+    if (options.chatId) {
+      where.push("chat_key = ?");
+      values.push(options.chatId);
+    }
+    if (!options.chatId && !options.includeArchived)
+      where.push("chat_key NOT IN (SELECT chat_id FROM conversations WHERE archived=1)");
     if (options.before) {
       where.push("(created_at < ? OR (created_at = ? AND run_id < ?))");
       values.push(options.before.createdAt, options.before.createdAt, options.before.runId);
     }
-    return (this.q(`WITH keyed AS (
+    return (
+      this.q(
+        `WITH keyed AS (
       SELECT r.*, coalesce(json_extract(l.config, '$.chatId'), r.run_id) AS chat_key
       FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
     ), ranked AS (
       SELECT *, row_number() OVER (PARTITION BY chat_key ORDER BY created_at DESC, run_id DESC) AS chat_rank FROM keyed
     ) SELECT * FROM ${options.groupByChat ? "ranked" : "keyed"}
       ${where.length ? "WHERE " + where.join(" AND ") : ""}
-      ORDER BY created_at DESC, run_id DESC LIMIT ?`).all(...values, limit) as any[]).map(r => this.rowToRun(r));
+      ORDER BY created_at DESC, run_id DESC LIMIT ?`,
+      ).all(...values, limit) as any[]
+    ).map((r) => this.rowToRun(r));
   }
 
   private rowToRunMessage(row: Record<string, unknown>): RunMessage {
-    const mentions = this.revealField("run_messages", row.message_id as string, "mentions", row.mentions as string);
+    const mentions = this.revealField(
+      "run_messages",
+      row.message_id as string,
+      "mentions",
+      row.mentions as string,
+    );
     if (mentions === null) throw new Error("The run message mention snapshot is unavailable.");
     return {
       messageId: row.message_id as string,
@@ -526,91 +670,154 @@ export class Repo {
       status: row.status as RunMessage["status"],
       text: this.revealField("run_messages", row.message_id as string, "text", row.text as string)!,
       pageIds: P(row.page_ids as string, [] as string[]),
-      contextPageRefs: P(this.revealField("run_messages", row.message_id as string,
-        "context_page_refs", row.context_page_refs as string), [] as RunMessage["contextPageRefs"]),
+      contextPageRefs: P(
+        this.revealField(
+          "run_messages",
+          row.message_id as string,
+          "context_page_refs",
+          row.context_page_refs as string,
+        ),
+        [] as RunMessage["contextPageRefs"],
+      ),
       mentions: MentionRefsSchema.parse(JSON.parse(mentions)),
       expectedRevision: row.expected_revision as number,
       ...(row.resends_nonce ? { resendsNonce: row.resends_nonce as string } : {}),
-      ...(row.error ? { error: this.revealField("run_messages", row.message_id as string,
-        "error", row.error as string)! } : {}),
+      ...(row.error
+        ? { error: this.revealField("run_messages", row.message_id as string, "error", row.error as string)! }
+        : {}),
       createdAt: row.created_at as number,
       updatedAt: row.updated_at as number,
     };
   }
 
   insertRunMessage(message: RunMessage): RunMessage {
-    this.q(`INSERT OR IGNORE INTO run_messages(message_id,chat_id,target_run_id,delivery_run_id,mode,status,text,page_ids,context_page_refs,mentions,expected_revision,resends_nonce,error,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(message.messageId, message.chatId, message.targetRunId, message.deliveryRunId,
-      message.mode, message.status,
+    this.q(
+      `INSERT OR IGNORE INTO run_messages(message_id,chat_id,target_run_id,delivery_run_id,mode,status,text,page_ids,context_page_refs,mentions,expected_revision,resends_nonce,error,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    ).run(
+      message.messageId,
+      message.chatId,
+      message.targetRunId,
+      message.deliveryRunId,
+      message.mode,
+      message.status,
       this.protectField("run_messages", message.messageId, "text", message.text),
       J(message.pageIds),
       this.protectField("run_messages", message.messageId, "context_page_refs", J(message.contextPageRefs)),
       this.protectField("run_messages", message.messageId, "mentions", J(message.mentions ?? [])),
-      message.expectedRevision, message.resendsNonce ?? null,
+      message.expectedRevision,
+      message.resendsNonce ?? null,
       this.protectField("run_messages", message.messageId, "error", message.error ?? null),
-      message.createdAt, message.updatedAt);
+      message.createdAt,
+      message.updatedAt,
+    );
     return this.getRunMessage(message.messageId)!;
   }
 
   getRunMessage(messageId: string): RunMessage | undefined {
-    const row = this.q("SELECT * FROM run_messages WHERE message_id=?").get(messageId) as Record<string, unknown> | undefined;
+    const row = this.q("SELECT * FROM run_messages WHERE message_id=?").get(messageId) as
+      Record<string, unknown> | undefined;
     return row ? this.rowToRunMessage(row) : undefined;
   }
 
   listRunMessages(chatId: string): RunMessage[] {
-    return (this.q("SELECT * FROM run_messages WHERE chat_id=? ORDER BY created_at,message_id").all(chatId) as Record<string, unknown>[])
-      .map(row => this.rowToRunMessage(row));
+    return (
+      this.q("SELECT * FROM run_messages WHERE chat_id=? ORDER BY created_at,message_id").all(
+        chatId,
+      ) as Record<string, unknown>[]
+    ).map((row) => this.rowToRunMessage(row));
   }
 
   listRunSteers(runId: string): RunMessage[] {
-    return (this.q("SELECT * FROM run_messages WHERE target_run_id=? AND mode='steer' AND status='delivered' ORDER BY created_at,message_id").all(runId) as Record<string, unknown>[])
-      .map(row => this.rowToRunMessage(row));
+    return (
+      this.q(
+        "SELECT * FROM run_messages WHERE target_run_id=? AND mode='steer' AND status='delivered' ORDER BY created_at,message_id",
+      ).all(runId) as Record<string, unknown>[]
+    ).map((row) => this.rowToRunMessage(row));
   }
 
   pendingRunMessageChats(): string[] {
-    return (this.q("SELECT DISTINCT chat_id FROM run_messages WHERE status IN ('accepted','delivering','needs_attention')").all() as { chat_id: string }[])
-      .map(row => row.chat_id);
+    return (
+      this.q(
+        "SELECT DISTINCT chat_id FROM run_messages WHERE status IN ('accepted','delivering','needs_attention')",
+      ).all() as { chat_id: string }[]
+    ).map((row) => row.chat_id);
   }
 
   pendingRunMessageCount(chatId: string): number {
-    return (this.q("SELECT count(*) AS count FROM run_messages WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention')")
-      .get(chatId) as { count: number }).count;
+    return (
+      this.q(
+        "SELECT count(*) AS count FROM run_messages WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention')",
+      ).get(chatId) as { count: number }
+    ).count;
   }
 
   cancelPendingRunMessages(chatId: string): RunMessage[] {
-    return (this.q(`UPDATE run_messages SET status='cancelled',error=NULL,updated_at=?
+    return (
+      this.q(
+        `UPDATE run_messages SET status='cancelled',error=NULL,updated_at=?
       WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention')
-      AND delivery_run_id NOT IN (SELECT run_id FROM runs) RETURNING *`).all(now(), chatId) as Record<string, unknown>[])
-      .map(row => this.rowToRunMessage(row));
+      AND delivery_run_id NOT IN (SELECT run_id FROM runs) RETURNING *`,
+      ).all(now(), chatId) as Record<string, unknown>[]
+    ).map((row) => this.rowToRunMessage(row));
   }
 
   nextRunMessage(chatId: string): RunMessage | undefined {
-    const row = this.q("SELECT * FROM run_messages WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention') ORDER BY created_at,message_id LIMIT 1").get(chatId) as Record<string, unknown> | undefined;
+    const row = this.q(
+      "SELECT * FROM run_messages WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention') ORDER BY created_at,message_id LIMIT 1",
+    ).get(chatId) as Record<string, unknown> | undefined;
     return row ? this.rowToRunMessage(row) : undefined;
   }
 
   updateRunMessage(messageId: string, status: RunMessage["status"], error?: string): RunMessage {
-    this.q("UPDATE run_messages SET status=?,error=?,updated_at=? WHERE message_id=?")
-      .run(status, this.protectField("run_messages", messageId, "error", error ?? null), now(), messageId);
+    this.q("UPDATE run_messages SET status=?,error=?,updated_at=? WHERE message_id=?").run(
+      status,
+      this.protectField("run_messages", messageId, "error", error ?? null),
+      now(),
+      messageId,
+    );
     const message = this.getRunMessage(messageId);
     if (!message) throw new AuxError("not_found", "Conversation message not found.");
     return message;
   }
 
-  listConversations(limit = 40, options: { workspaceId?: string; before?: { updatedAt: number; chatId: string }; query?: string; archived?: boolean } = {}): ConversationSummary[] {
+  listConversations(
+    limit = 40,
+    options: {
+      workspaceId?: string;
+      before?: { updatedAt: number; chatId: string };
+      query?: string;
+      archived?: boolean;
+    } = {},
+  ): ConversationSummary[] {
     const term = options.query?.trim().toLocaleLowerCase();
     if (term || options.workspaceId !== undefined) {
       const matches: ConversationSummary[] = [];
       let before = options.before;
       while (matches.length < limit) {
-        const batch = this.listConversations(256, { ...options, query: undefined, workspaceId: undefined, before });
+        const batch = this.listConversations(256, {
+          ...options,
+          query: undefined,
+          workspaceId: undefined,
+          before,
+        });
         if (!batch.length) break;
         for (const conversation of batch) {
-          if (options.workspaceId !== undefined &&
-            this.getSetting<string>(`conversationWorkspace:${conversation.chatId}`) !== options.workspaceId) continue;
+          if (
+            options.workspaceId !== undefined &&
+            this.getSetting<string>(`conversationWorkspace:${conversation.chatId}`) !== options.workspaceId
+          )
+            continue;
           const runs = term ? this.conversationRuns(conversation.chatId) : [];
-          if (!term || conversation.title.toLocaleLowerCase().includes(term) || runs.some(run =>
-            `${run.goal} ${run.statusMessage ?? ""} ${run.result?.answer ?? ""}`.toLocaleLowerCase().includes(term)))
+          if (
+            !term ||
+            conversation.title.toLocaleLowerCase().includes(term) ||
+            runs.some((run) =>
+              `${run.goal} ${run.statusMessage ?? ""} ${run.result?.answer ?? ""}`
+                .toLocaleLowerCase()
+                .includes(term),
+            )
+          )
             matches.push(conversation);
           if (matches.length >= limit) break;
         }
@@ -626,31 +833,53 @@ export class Repo {
       where.push("(c.updated_at<? OR (c.updated_at=? AND c.chat_id<?))");
       values.push(options.before.updatedAt, options.before.updatedAt, options.before.chatId);
     }
-    const rows = this.q(`SELECT c.*, (
+    const rows = this.q(
+      `SELECT c.*, (
       SELECT r.run_id FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
       WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=c.chat_id
       ORDER BY r.created_at DESC,r.run_id DESC LIMIT 1) latest_run_id,
       (SELECT count(*) FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
         WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=c.chat_id) turn_count
-      FROM conversations c WHERE ${where.join(" AND ")} ORDER BY c.updated_at DESC,c.chat_id DESC LIMIT ?`).all(...values, limit) as any[];
-    return rows.flatMap(row => {
+      FROM conversations c WHERE ${where.join(" AND ")} ORDER BY c.updated_at DESC,c.chat_id DESC LIMIT ?`,
+    ).all(...values, limit) as any[];
+    return rows.flatMap((row) => {
       const latestRun = this.getRun(row.latest_run_id);
-      return latestRun ? [{ chatId: row.chat_id, taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id), title: this.revealField("conversations", row.chat_id, "title", row.title)!, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: row.turn_count, latestRun }] : [];
+      return latestRun
+        ? [
+            {
+              chatId: row.chat_id,
+              taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id),
+              title: this.revealField("conversations", row.chat_id, "title", row.title)!,
+              archived: !!row.archived,
+              createdAt: row.created_at,
+              updatedAt: row.updated_at,
+              turnCount: row.turn_count,
+              latestRun,
+            },
+          ]
+        : [];
     });
   }
 
-  preparedConversations(): {chatId:string;title:string;attachmentCount:number;updatedAt:number}[] {
-    const prepared = new Map<string, {chatId:string;title:string;attachmentCount:number;updatedAt:number}>();
+  preparedConversations(): { chatId: string; title: string; attachmentCount: number; updatedAt: number }[] {
+    const prepared = new Map<
+      string,
+      { chatId: string; title: string; attachmentCount: number; updatedAt: number }
+    >();
     for (const prefix of ["conversationAttachments:", "conversationImages:"]) {
       for (const key of this.settingKeys(prefix)) {
         const chatId = key.slice(prefix.length);
         let snapshots: unknown;
-        try { snapshots = this.getSetting<unknown>(key); }
-        catch (error) { if (error instanceof SyntaxError) continue; throw error; }
+        try {
+          snapshots = this.getSetting<unknown>(key);
+        } catch (error) {
+          if (error instanceof SyntaxError) continue;
+          throw error;
+        }
         if (!Array.isArray(snapshots)) continue;
         for (const item of snapshots) {
           if (!item || typeof item !== "object") continue;
-          const snapshot = item as {filename?: unknown;removed?: unknown;createdAt?: unknown};
+          const snapshot = item as { filename?: unknown; removed?: unknown; createdAt?: unknown };
           if (typeof snapshot.filename !== "string" || snapshot.removed) continue;
           const createdAt = typeof snapshot.createdAt === "number" ? snapshot.createdAt : 0;
           const current = prepared.get(chatId);
@@ -658,24 +887,40 @@ export class Repo {
             current.attachmentCount++;
             if (snapshot.filename < current.title) current.title = snapshot.filename;
             current.updatedAt = Math.max(current.updatedAt, createdAt);
-          } else prepared.set(chatId, { chatId, title: snapshot.filename, attachmentCount: 1, updatedAt: createdAt });
+          } else
+            prepared.set(chatId, {
+              chatId,
+              title: snapshot.filename,
+              attachmentCount: 1,
+              updatedAt: createdAt,
+            });
         }
       }
     }
-    return [...prepared.values()].filter(item => !this.q(`SELECT 1 FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
-      WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=? LIMIT 1`).get(item.chatId))
-      .sort((a,b) => b.updatedAt-a.updatedAt || b.chatId.localeCompare(a.chatId));
+    return [...prepared.values()]
+      .filter(
+        (item) =>
+          !this.q(
+            `SELECT 1 FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
+      WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=? LIMIT 1`,
+          ).get(item.chatId),
+      )
+      .sort((a, b) => b.updatedAt - a.updatedAt || b.chatId.localeCompare(a.chatId));
   }
 
   getConversation(chatId: string): ConversationSummary | undefined {
     return this.listConversationById(chatId);
   }
   getConversationTitle(chatId: string): string | undefined {
-    const row = this.q("SELECT title FROM conversations WHERE chat_id=?").get(chatId) as { title: string } | undefined;
+    const row = this.q("SELECT title FROM conversations WHERE chat_id=?").get(chatId) as
+      { title: string } | undefined;
     return row ? this.revealField("conversations", chatId, "title", row.title)! : undefined;
   }
   taskForConversation(chatId: string): string | undefined {
-    return (this.q("SELECT task_id FROM task_lookup WHERE conversation_id=? LIMIT 1").get(chatId) as { task_id: string } | undefined)?.task_id;
+    return (
+      this.q("SELECT task_id FROM task_lookup WHERE conversation_id=? LIMIT 1").get(chatId) as
+        { task_id: string } | undefined
+    )?.task_id;
   }
 
   private listConversationById(chatId: string): ConversationSummary | undefined {
@@ -683,7 +928,18 @@ export class Repo {
     if (!row) return undefined;
     const turns = this.listRuns(500, { chatId });
     const latestRun = turns[0];
-    return latestRun ? { chatId, taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id), title: this.revealField("conversations", chatId, "title", row.title)!, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: turns.length, latestRun } : undefined;
+    return latestRun
+      ? {
+          chatId,
+          taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id),
+          title: this.revealField("conversations", chatId, "title", row.title)!,
+          archived: !!row.archived,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          turnCount: turns.length,
+          latestRun,
+        }
+      : undefined;
   }
 
   renameConversation(chatId: string, title: string): ConversationSummary | undefined {
@@ -692,7 +948,10 @@ export class Repo {
   }
 
   setConversationTitle(chatId: string, title: string): void {
-    this.q("UPDATE conversations SET title=? WHERE chat_id=?").run(this.protectField("conversations", chatId, "title", title), chatId);
+    this.q("UPDATE conversations SET title=? WHERE chat_id=?").run(
+      this.protectField("conversations", chatId, "title", title),
+      chatId,
+    );
   }
 
   archiveConversation(chatId: string, archived: boolean): ConversationSummary | undefined {
@@ -701,30 +960,59 @@ export class Repo {
   }
 
   conversationRuns(chatId: string): Run[] {
-    return (this.q(`SELECT r.* FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
+    return (
+      this.q(
+        `SELECT r.* FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
       WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=?
-      ORDER BY r.created_at DESC,r.run_id DESC`).all(chatId) as any[]).map(row => this.rowToRun(row));
+      ORDER BY r.created_at DESC,r.run_id DESC`,
+      ).all(chatId) as any[]
+    ).map((row) => this.rowToRun(row));
   }
 
   deleteConversation(chatId: string): { deletedRuns: number; artifactPaths: string[] } {
     const owned = `SELECT r.run_id FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
       WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=?`;
-    const runIds = (this.q(owned).all(chatId) as {run_id:string}[]).map(row => row.run_id);
-    const artifactPaths = (this.q(`SELECT path FROM artifacts WHERE run_id IN (${owned})`).all(chatId) as { path: string }[]).map(row => row.path);
-    const images = this.getSetting<{artifactId:string}[]>(`conversationImages:${chatId}`) ?? [];
-    for (const image of images) { const artifact=this.getArtifact(image.artifactId); if(artifact)artifactPaths.push(artifact.path); }
+    const runIds = (this.q(owned).all(chatId) as { run_id: string }[]).map((row) => row.run_id);
+    const artifactPaths = (
+      this.q(`SELECT path FROM artifacts WHERE run_id IN (${owned})`).all(chatId) as { path: string }[]
+    ).map((row) => row.path);
+    const images = this.getSetting<{ artifactId: string }[]>(`conversationImages:${chatId}`) ?? [];
+    for (const image of images) {
+      const artifact = this.getArtifact(image.artifactId);
+      if (artifact) artifactPaths.push(artifact.path);
+    }
     this.transaction(() => {
       for (const image of images) this.q("DELETE FROM artifacts WHERE artifact_id=?").run(image.artifactId);
       this.q("DELETE FROM kv WHERE key=?").run(`setting:conversationImages:${chatId}`);
-      this.q(`DELETE FROM result_versions WHERE artifact_id IN (SELECT artifact_id FROM artifacts WHERE run_id IN (${owned}))`).run(chatId);
-      this.q(`DELETE FROM operation_reconciliations WHERE invocation_id IN (SELECT invocation_id FROM operation_invocations WHERE run_id IN (${owned}))`).run(chatId);
-      for (const table of ["action_intents", "operation_invocations", "response_metadata", "datasets", "spans", "events", "model_calls", "artifacts", "results", "steps"])
+      this.q(
+        `DELETE FROM result_versions WHERE artifact_id IN (SELECT artifact_id FROM artifacts WHERE run_id IN (${owned}))`,
+      ).run(chatId);
+      this.q(
+        `DELETE FROM operation_reconciliations WHERE invocation_id IN (SELECT invocation_id FROM operation_invocations WHERE run_id IN (${owned}))`,
+      ).run(chatId);
+      for (const table of [
+        "action_intents",
+        "operation_invocations",
+        "response_metadata",
+        "datasets",
+        "spans",
+        "events",
+        "model_calls",
+        "artifacts",
+        "results",
+        "steps",
+      ])
         this.q(`DELETE FROM ${table} WHERE run_id IN (${owned})`).run(chatId);
       for (const runId of runIds) {
         const prefix = `ckpt:run:${runId}:`.replace(/[\\%_]/g, "\\$&");
         this.q("DELETE FROM kv WHERE key LIKE ? ESCAPE '\\'").run(`${prefix}%`);
       }
-      for (const key of ["conversationContext", "conversationAttachments", "conversationArtifacts", "conversationWorkspace"])
+      for (const key of [
+        "conversationContext",
+        "conversationAttachments",
+        "conversationArtifacts",
+        "conversationWorkspace",
+      ])
         this.q("DELETE FROM kv WHERE key=?").run(`setting:${key}:${chatId}`);
       this.q(`DELETE FROM runs WHERE run_id IN (${owned})`).run(chatId);
       this.q("DELETE FROM conversations WHERE chat_id=?").run(chatId);
@@ -733,48 +1021,74 @@ export class Repo {
   }
   private rowToRun(r: any): Run {
     return {
-      runId: r.run_id, goal: this.revealField("runs", r.run_id, "goal", r.goal)!,
-      status: r.status, pageIds: P(r.page_ids, []),
+      runId: r.run_id,
+      goal: this.revealField("runs", r.run_id, "goal", r.goal)!,
+      status: r.status,
+      pageIds: P(r.page_ids, []),
       setId: r.set_id ?? undefined,
       config: P(this.revealField("runs", r.run_id, "config", r.config), undefined as never),
       statusMessage: this.revealField("runs", r.run_id, "status_message", r.status_message) ?? undefined,
       result: P(this.revealField("runs", r.run_id, "result", r.result), undefined as never),
       error: this.revealField("runs", r.run_id, "error", r.error) ?? undefined,
       failure: P(this.revealField("runs", r.run_id, "failure", r.failure), undefined as never),
-      startedAt: r.started_at ?? undefined, endedAt: r.ended_at ?? undefined,
+      startedAt: r.started_at ?? undefined,
+      endedAt: r.ended_at ?? undefined,
       createdAt: r.created_at,
     };
   }
   saveStep(s: StepRecord) {
     this.q(
-        `INSERT INTO steps(step_id,run_id,page_id,op,inputs,expected,outcome,started_at) VALUES(?,?,?,?,?,?,?,?)
+      `INSERT INTO steps(step_id,run_id,page_id,op,inputs,expected,outcome,started_at) VALUES(?,?,?,?,?,?,?,?)
          ON CONFLICT(step_id) DO UPDATE SET outcome=excluded.outcome`,
-      )
-      .run(s.stepId, s.runId, s.pageId ?? null, s.op,
-        this.protectField("steps", s.stepId, "inputs", s.inputs ? J(s.inputs) : null),
-        this.protectField("steps", s.stepId, "expected", s.expected ?? null),
-        this.protectField("steps", s.stepId, "outcome", s.outcome ? J(s.outcome) : null), s.startedAt);
+    ).run(
+      s.stepId,
+      s.runId,
+      s.pageId ?? null,
+      s.op,
+      this.protectField("steps", s.stepId, "inputs", s.inputs ? J(s.inputs) : null),
+      this.protectField("steps", s.stepId, "expected", s.expected ?? null),
+      this.protectField("steps", s.stepId, "outcome", s.outcome ? J(s.outcome) : null),
+      s.startedAt,
+    );
   }
   private stepFromRow(r: Record<string, unknown>): StepRecord {
     return {
-      stepId: r.step_id as string, runId: r.run_id as string, pageId: (r.page_id as string | null) ?? undefined, op: r.op as string,
-      inputs: P(this.revealField("steps", r.step_id as string, "inputs", r.inputs as string | null), undefined as never),
-      expected: this.revealField("steps", r.step_id as string, "expected", r.expected as string | null) ?? undefined,
-      outcome: P(this.revealField("steps", r.step_id as string, "outcome", r.outcome as string | null), undefined as never),
+      stepId: r.step_id as string,
+      runId: r.run_id as string,
+      pageId: (r.page_id as string | null) ?? undefined,
+      op: r.op as string,
+      inputs: P(
+        this.revealField("steps", r.step_id as string, "inputs", r.inputs as string | null),
+        undefined as never,
+      ),
+      expected:
+        this.revealField("steps", r.step_id as string, "expected", r.expected as string | null) ?? undefined,
+      outcome: P(
+        this.revealField("steps", r.step_id as string, "outcome", r.outcome as string | null),
+        undefined as never,
+      ),
       startedAt: r.started_at as number,
     };
   }
   listSteps(runId: string): StepRecord[] {
     this.flush();
-    return (this.q("SELECT * FROM steps WHERE run_id=? ORDER BY started_at,rowid").all(runId) as Record<string, unknown>[]).map(r => this.stepFromRow(r));
+    return (
+      this.q("SELECT * FROM steps WHERE run_id=? ORDER BY started_at,rowid").all(runId) as Record<
+        string,
+        unknown
+      >[]
+    ).map((r) => this.stepFromRow(r));
   }
   downloadStep(downloadId: string): StepRecord | undefined {
     if (this.columnCipher) {
       let before: number | undefined;
       for (;;) {
-        const rows = this.q(`SELECT rowid AS aux_rowid,* FROM steps WHERE op='download'
-          ${before === undefined ? "" : "AND rowid<?"} ORDER BY rowid DESC LIMIT 256`)
-          .all(...(before === undefined ? [] : [before])) as (Record<string, unknown> & { aux_rowid: number })[];
+        const rows = this.q(
+          `SELECT rowid AS aux_rowid,* FROM steps WHERE op='download'
+          ${before === undefined ? "" : "AND rowid<?"} ORDER BY rowid DESC LIMIT 256`,
+        ).all(...(before === undefined ? [] : [before])) as (Record<string, unknown> & {
+          aux_rowid: number;
+        })[];
         for (const row of rows) {
           const step = this.stepFromRow(row);
           if (step.inputs?.downloadId === downloadId) return step;
@@ -783,52 +1097,82 @@ export class Repo {
         before = rows.at(-1)!.aux_rowid;
       }
     }
-    const row = this.q("SELECT * FROM steps WHERE op='download' AND json_extract(inputs,'$.downloadId')=? ORDER BY rowid DESC LIMIT 1")
-      .get(downloadId) as Record<string, unknown> | undefined;
+    const row = this.q(
+      "SELECT * FROM steps WHERE op='download' AND json_extract(inputs,'$.downloadId')=? ORDER BY rowid DESC LIMIT 1",
+    ).get(downloadId) as Record<string, unknown> | undefined;
     return row ? this.stepFromRow(row) : undefined;
   }
   listStepsByOpForRuns(runIds: readonly string[], op: string): StepRecord[] {
     if (!runIds.length) return [];
     this.flush();
-    return (this.q("SELECT * FROM steps WHERE op=? AND run_id IN (SELECT value FROM json_each(?)) ORDER BY started_at,step_id")
-      .all(op, J(runIds)) as Record<string, unknown>[]).map(r => this.stepFromRow(r));
+    return (
+      this.q(
+        "SELECT * FROM steps WHERE op=? AND run_id IN (SELECT value FROM json_each(?)) ORDER BY started_at,step_id",
+      ).all(op, J(runIds)) as Record<string, unknown>[]
+    ).map((r) => this.stepFromRow(r));
   }
   saveResult(r: ResultRecord) {
     this.q(
-        `INSERT INTO results(result_id,run_id,member_id,page_id,source_url,values_json,evidence,observed_at,status,error)
+      `INSERT INTO results(result_id,run_id,member_id,page_id,source_url,values_json,evidence,observed_at,status,error)
          VALUES(?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(result_id) DO UPDATE SET values_json=excluded.values_json,evidence=excluded.evidence,status=excluded.status,error=excluded.error`,
-      )
-      .run(r.resultId, r.runId ?? null, r.memberId ?? null, r.pageId ?? null,
-        this.protectField("results", r.resultId, "source_url", r.sourceUrl),
-        this.protectField("results", r.resultId, "values_json", J(r.values)),
-        this.protectField("results", r.resultId, "evidence", r.evidence ? J(r.evidence) : null),
-        r.observedAt, r.status, this.protectField("results", r.resultId, "error", r.error ?? null));
+    ).run(
+      r.resultId,
+      r.runId ?? null,
+      r.memberId ?? null,
+      r.pageId ?? null,
+      this.protectField("results", r.resultId, "source_url", r.sourceUrl),
+      this.protectField("results", r.resultId, "values_json", J(r.values)),
+      this.protectField("results", r.resultId, "evidence", r.evidence ? J(r.evidence) : null),
+      r.observedAt,
+      r.status,
+      this.protectField("results", r.resultId, "error", r.error ?? null),
+    );
   }
   getResult(resultId: string): ResultRecord | undefined {
     const r = this.q("SELECT * FROM results WHERE result_id=?").get(resultId) as any;
     return r ? this.rowToResult(r) : undefined;
   }
-  listResults(filter: { runId?: string; memberId?: string; setId?: string; status?: string }): ResultRecord[] {
+  listResults(filter: {
+    runId?: string;
+    memberId?: string;
+    setId?: string;
+    status?: string;
+  }): ResultRecord[] {
     let sql = "SELECT r.* FROM results r";
     const args: unknown[] = [];
     if (filter.setId) sql += " JOIN set_members m ON m.result_id = r.result_id";
     sql += " WHERE 1=1";
-    if (filter.runId) { sql += " AND r.run_id=?"; args.push(filter.runId); }
-    if (filter.memberId) { sql += " AND r.member_id=?"; args.push(filter.memberId); }
-    if (filter.setId) { sql += " AND m.set_id=?"; args.push(filter.setId); }
-    if (filter.status) { sql += " AND r.status=?"; args.push(filter.status); }
+    if (filter.runId) {
+      sql += " AND r.run_id=?";
+      args.push(filter.runId);
+    }
+    if (filter.memberId) {
+      sql += " AND r.member_id=?";
+      args.push(filter.memberId);
+    }
+    if (filter.setId) {
+      sql += " AND m.set_id=?";
+      args.push(filter.setId);
+    }
+    if (filter.status) {
+      sql += " AND r.status=?";
+      args.push(filter.status);
+    }
     sql += " ORDER BY r.observed_at";
     return (this.q(sql).all(...(args as never[])) as any[]).map((r) => this.rowToResult(r));
   }
   private rowToResult(r: any): ResultRecord {
     return {
-      resultId: r.result_id, runId: r.run_id ?? undefined, memberId: r.member_id ?? undefined,
+      resultId: r.result_id,
+      runId: r.run_id ?? undefined,
+      memberId: r.member_id ?? undefined,
       pageId: r.page_id ?? undefined,
       sourceUrl: this.revealField("results", r.result_id, "source_url", r.source_url)!,
       values: P(this.revealField("results", r.result_id, "values_json", r.values_json), {}),
       evidence: P(this.revealField("results", r.result_id, "evidence", r.evidence), undefined as never),
-      observedAt: r.observed_at, status: r.status,
+      observedAt: r.observed_at,
+      status: r.status,
       error: this.revealField("results", r.result_id, "error", r.error) ?? undefined,
     };
   }
@@ -836,29 +1180,45 @@ export class Repo {
   // ---- programs ----
   saveProgram(p: SavedProgram) {
     this.q(
-        `INSERT INTO programs(program_id,name,description,version,site_key,parameters,steps_json,preconditions,postconditions,use_count,last_used_at,created_at)
+      `INSERT INTO programs(program_id,name,description,version,site_key,parameters,steps_json,preconditions,postconditions,use_count,last_used_at,created_at)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(program_id) DO UPDATE SET name=excluded.name,description=excluded.description,version=excluded.version,
            site_key=excluded.site_key,parameters=excluded.parameters,steps_json=excluded.steps_json,
            preconditions=excluded.preconditions,postconditions=excluded.postconditions,
            use_count=excluded.use_count,last_used_at=excluded.last_used_at`,
-      )
-      .run(p.programId,
-        this.protectField("programs", p.programId, "name", p.name),
-        this.protectField("programs", p.programId, "description", p.description ?? null),
-        p.version, this.protectField("programs", p.programId, "site_key", p.siteKey),
-        this.protectField("programs", p.programId, "parameters", J(p.parameters)),
-        this.protectField("programs", p.programId, "steps_json", p.stepsJson),
-        this.protectField("programs", p.programId, "preconditions", p.preconditions ? J(p.preconditions) : null),
-        this.protectField("programs", p.programId, "postconditions", p.postconditions ? J(p.postconditions) : null),
-        p.useCount, p.lastUsedAt ?? null, p.createdAt);
+    ).run(
+      p.programId,
+      this.protectField("programs", p.programId, "name", p.name),
+      this.protectField("programs", p.programId, "description", p.description ?? null),
+      p.version,
+      this.protectField("programs", p.programId, "site_key", p.siteKey),
+      this.protectField("programs", p.programId, "parameters", J(p.parameters)),
+      this.protectField("programs", p.programId, "steps_json", p.stepsJson),
+      this.protectField(
+        "programs",
+        p.programId,
+        "preconditions",
+        p.preconditions ? J(p.preconditions) : null,
+      ),
+      this.protectField(
+        "programs",
+        p.programId,
+        "postconditions",
+        p.postconditions ? J(p.postconditions) : null,
+      ),
+      p.useCount,
+      p.lastUsedAt ?? null,
+      p.createdAt,
+    );
   }
   getProgram(programId: string): SavedProgram | undefined {
     const r = this.q("SELECT * FROM programs WHERE program_id=?").get(programId) as any;
     return r ? this.rowToProgram(r) : undefined;
   }
   listPrograms(): SavedProgram[] {
-    return (this.q("SELECT * FROM programs ORDER BY created_at DESC").all() as any[]).map((r) => this.rowToProgram(r));
+    return (this.q("SELECT * FROM programs ORDER BY created_at DESC").all() as any[]).map((r) =>
+      this.rowToProgram(r),
+    );
   }
   deleteProgram(programId: string) {
     this.q("DELETE FROM programs WHERE program_id=?").run(programId);
@@ -872,16 +1232,34 @@ export class Repo {
       siteKey: this.revealField("programs", r.program_id, "site_key", r.site_key)!,
       parameters: P(this.revealField("programs", r.program_id, "parameters", r.parameters), []),
       stepsJson: this.revealField("programs", r.program_id, "steps_json", r.steps_json)!,
-      preconditions: P(this.revealField("programs", r.program_id, "preconditions", r.preconditions), undefined as never),
-      postconditions: P(this.revealField("programs", r.program_id, "postconditions", r.postconditions), undefined as never),
-      useCount: r.use_count, lastUsedAt: r.last_used_at ?? undefined, createdAt: r.created_at,
+      preconditions: P(
+        this.revealField("programs", r.program_id, "preconditions", r.preconditions),
+        undefined as never,
+      ),
+      postconditions: P(
+        this.revealField("programs", r.program_id, "postconditions", r.postconditions),
+        undefined as never,
+      ),
+      useCount: r.use_count,
+      lastUsedAt: r.last_used_at ?? undefined,
+      createdAt: r.created_at,
     };
   }
 
   // ---- artifacts / model calls ----
   saveArtifact(a: Artifact) {
-    this.q("INSERT INTO artifacts(artifact_id,run_id,page_id,path,media_type,size,status,created_at) VALUES(?,?,?,?,?,?,?,?)")
-      .run(a.artifactId, a.runId ?? null, a.pageId ?? null, a.path, a.mediaType, a.size, a.status, a.createdAt);
+    this.q(
+      "INSERT INTO artifacts(artifact_id,run_id,page_id,path,media_type,size,status,created_at) VALUES(?,?,?,?,?,?,?,?)",
+    ).run(
+      a.artifactId,
+      a.runId ?? null,
+      a.pageId ?? null,
+      a.path,
+      a.mediaType,
+      a.size,
+      a.status,
+      a.createdAt,
+    );
   }
   getArtifact(artifactId: string): Artifact | undefined {
     const r = this.q("SELECT * FROM artifacts WHERE artifact_id=?").get(artifactId) as any;
@@ -890,35 +1268,74 @@ export class Repo {
   listArtifacts(filter: { runId?: string; pageId?: string }): Artifact[] {
     let sql = "SELECT * FROM artifacts WHERE 1=1";
     const args: string[] = [];
-    if (filter.runId) { sql += " AND run_id=?"; args.push(filter.runId); }
-    if (filter.pageId) { sql += " AND page_id=?"; args.push(filter.pageId); }
+    if (filter.runId) {
+      sql += " AND run_id=?";
+      args.push(filter.runId);
+    }
+    if (filter.pageId) {
+      sql += " AND page_id=?";
+      args.push(filter.pageId);
+    }
     return (this.q(sql + " ORDER BY created_at").all(...args) as any[]).map((r) => this.rowToArtifact(r));
   }
   private rowToArtifact(r: any): Artifact {
-    return { artifactId: r.artifact_id, runId: r.run_id ?? undefined, pageId: r.page_id ?? undefined, path: r.path, mediaType: r.media_type, size: r.size, status: r.status, createdAt: r.created_at };
+    return {
+      artifactId: r.artifact_id,
+      runId: r.run_id ?? undefined,
+      pageId: r.page_id ?? undefined,
+      path: r.path,
+      mediaType: r.media_type,
+      size: r.size,
+      status: r.status,
+      createdAt: r.created_at,
+    };
   }
   saveModelCall(c: ModelCall) {
     this.q(
-        `INSERT INTO model_calls(call_id,run_id,role,model_id,provider_metadata,duration_ms,input_tokens,output_tokens,cost_usd,cost_estimated,error,created_at)
+      `INSERT INTO model_calls(call_id,run_id,role,model_id,provider_metadata,duration_ms,input_tokens,output_tokens,cost_usd,cost_estimated,error,created_at)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
-      )
-      .run(c.callId, c.runId ?? null, c.role, c.modelId,
-        this.protectField("model_calls", c.callId, "provider_metadata", c.providerMetadata ? J(c.providerMetadata) : null),
-        c.durationMs, c.inputTokens ?? null, c.outputTokens ?? null, c.costUsd ?? null,
-        c.costEstimated ? 1 : 0, this.protectField("model_calls", c.callId, "error", c.error ?? null), c.createdAt);
+    ).run(
+      c.callId,
+      c.runId ?? null,
+      c.role,
+      c.modelId,
+      this.protectField(
+        "model_calls",
+        c.callId,
+        "provider_metadata",
+        c.providerMetadata ? J(c.providerMetadata) : null,
+      ),
+      c.durationMs,
+      c.inputTokens ?? null,
+      c.outputTokens ?? null,
+      c.costUsd ?? null,
+      c.costEstimated ? 1 : 0,
+      this.protectField("model_calls", c.callId, "error", c.error ?? null),
+      c.createdAt,
+    );
   }
   listModelCalls(runId: string): ModelCall[] {
-    return (this.q("SELECT * FROM model_calls WHERE run_id=? ORDER BY created_at").all(runId) as any[]).map((r) => {
-      return {
-        callId: r.call_id, runId: r.run_id ?? undefined, role: r.role, modelId: r.model_id,
-        providerMetadata: P(this.revealField("model_calls", r.call_id, "provider_metadata", r.provider_metadata), undefined as never),
-        durationMs: r.duration_ms,
-        inputTokens: r.input_tokens ?? undefined, outputTokens: r.output_tokens ?? undefined,
-        costUsd: r.cost_usd ?? undefined, costEstimated: !!r.cost_estimated,
-        error: this.revealField("model_calls", r.call_id, "error", r.error) ?? undefined,
-        createdAt: r.created_at,
-      };
-    });
+    return (this.q("SELECT * FROM model_calls WHERE run_id=? ORDER BY created_at").all(runId) as any[]).map(
+      (r) => {
+        return {
+          callId: r.call_id,
+          runId: r.run_id ?? undefined,
+          role: r.role,
+          modelId: r.model_id,
+          providerMetadata: P(
+            this.revealField("model_calls", r.call_id, "provider_metadata", r.provider_metadata),
+            undefined as never,
+          ),
+          durationMs: r.duration_ms,
+          inputTokens: r.input_tokens ?? undefined,
+          outputTokens: r.output_tokens ?? undefined,
+          costUsd: r.cost_usd ?? undefined,
+          costEstimated: !!r.cost_estimated,
+          error: this.revealField("model_calls", r.call_id, "error", r.error) ?? undefined,
+          createdAt: r.created_at,
+        };
+      },
+    );
   }
 
   // ---- events ----
@@ -944,23 +1361,42 @@ export class Repo {
     return r.s ?? undefined;
   }
   appendEvent(e: Omit<AuxEvent, "seq" | "streamId">): number {
-    const seq = this.columnCipher ? this.transaction(() => {
-      const info = this.q("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)")
-        .run(e.runId ?? null, e.type, "", e.ts);
-      const id = Number(info.lastInsertRowid);
-      this.q("UPDATE events SET payload=? WHERE seq=?")
-        .run(this.protectField("events", id, "payload", J(e.payload)), id);
-      return id;
-    }) : Number(this.q("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)")
-      .run(e.runId ?? null, e.type, J(e.payload), e.ts).lastInsertRowid);
+    const seq = this.columnCipher
+      ? this.transaction(() => {
+          const info = this.q("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)").run(
+            e.runId ?? null,
+            e.type,
+            "",
+            e.ts,
+          );
+          const id = Number(info.lastInsertRowid);
+          this.q("UPDATE events SET payload=? WHERE seq=?").run(
+            this.protectField("events", id, "payload", J(e.payload)),
+            id,
+          );
+          return id;
+        })
+      : Number(
+          this.q("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)").run(
+            e.runId ?? null,
+            e.type,
+            J(e.payload),
+            e.ts,
+          ).lastInsertRowid,
+        );
     if (seq % 64 === 0) this.pruneEvents();
     return seq;
   }
   /** Deferred append with a caller-assigned seq (the EventBus numbers events in memory). */
   queueEvent(e: AuxEvent) {
     this.defer(`event:${e.seq}`, () => {
-      this.q("INSERT INTO events(seq,run_id,type,payload,ts) VALUES(?,?,?,?,?)")
-        .run(e.seq, e.runId ?? null, e.type, this.protectField("events", e.seq, "payload", J(e.payload)), e.ts);
+      this.q("INSERT INTO events(seq,run_id,type,payload,ts) VALUES(?,?,?,?,?)").run(
+        e.seq,
+        e.runId ?? null,
+        e.type,
+        this.protectField("events", e.seq, "payload", J(e.payload)),
+        e.ts,
+      );
       if (e.seq % 64 === 0) this.pruneEvents();
     });
   }
@@ -972,8 +1408,16 @@ export class Repo {
   pruneRetention(maxAgeMs = 30 * 24 * 60 * 60 * 1000, limit = 5_000): number {
     const cutoff = now() - maxAgeMs;
     let removed = 0;
-    for (const [table, column] of [["spans", "started_at"], ["response_metadata", "started_at"], ["steps", "started_at"]] as const)
-      removed += Number(this.q(`DELETE FROM ${table} WHERE rowid IN (SELECT rowid FROM ${table} WHERE ${column}<? LIMIT ?)`).run(cutoff, limit).changes);
+    for (const [table, column] of [
+      ["spans", "started_at"],
+      ["response_metadata", "started_at"],
+      ["steps", "started_at"],
+    ] as const)
+      removed += Number(
+        this.q(
+          `DELETE FROM ${table} WHERE rowid IN (SELECT rowid FROM ${table} WHERE ${column}<? LIMIT ?)`,
+        ).run(cutoff, limit).changes,
+      );
     return removed;
   }
   /** Drop events older than `maxAgeMs` (default 7 days, plan A22). */
@@ -990,7 +1434,12 @@ export class Repo {
    * floor (`sinceSeq` 0 is a fresh read, never a gap). On success every
    * event carries the current `streamId`.
    */
-  eventsSince(sinceSeq: number, limit = 500, runId?: string, expectedStreamId?: string): { streamId: string; events: AuxEvent[]; lastSeq: number; resync?: true } {
+  eventsSince(
+    sinceSeq: number,
+    limit = 500,
+    runId?: string,
+    expectedStreamId?: string,
+  ): { streamId: string; events: AuxEvent[]; lastSeq: number; resync?: true } {
     this.flush();
     const streamId = this.streamId();
     const lastSeq = this.lastSeq();
@@ -1002,10 +1451,20 @@ export class Repo {
       if (first !== undefined && sinceSeq + 1 < first) return resync;
     }
     const rows = runId
-      ? (this.q("SELECT * FROM events WHERE seq>? AND run_id=? ORDER BY seq LIMIT ?").all(sinceSeq, runId, limit) as any[])
+      ? (this.q("SELECT * FROM events WHERE seq>? AND run_id=? ORDER BY seq LIMIT ?").all(
+          sinceSeq,
+          runId,
+          limit,
+        ) as any[])
       : (this.q("SELECT * FROM events WHERE seq>? ORDER BY seq LIMIT ?").all(sinceSeq, limit) as any[]);
-    const events = rows.map((r) => ({ seq: r.seq, streamId, runId: r.run_id ?? undefined, type: r.type,
-      payload: P(this.revealField("events", r.seq, "payload", r.payload), {}), ts: r.ts }));
+    const events = rows.map((r) => ({
+      seq: r.seq,
+      streamId,
+      runId: r.run_id ?? undefined,
+      type: r.type,
+      payload: P(this.revealField("events", r.seq, "payload", r.payload), {}),
+      ts: r.ts,
+    }));
     return { streamId, events, lastSeq: events.length ? events[events.length - 1]!.seq : sinceSeq };
   }
   lastSeq(): number {
@@ -1023,7 +1482,8 @@ export class Repo {
     return !!this.getSetting("historyProjection:cursor");
   }
   importHistory(rows: { url: string; title: string; visitedAt: number }[]) {
-    if (this.nativeHistoryAuthoritative()) throw new AuxError("permission_denied", "Import browsing history through Chromium HistoryService.");
+    if (this.nativeHistoryAuthoritative())
+      throw new AuxError("permission_denied", "Import browsing history through Chromium HistoryService.");
     return this.transaction(() => {
       const insert = this.q("INSERT OR IGNORE INTO history(url,title,page_id,visited_at) VALUES(?,?,NULL,?)");
       let added = 0;
@@ -1036,20 +1496,34 @@ export class Repo {
   }
   addHistory(url: string, title: string, pageId?: string) {
     if (this.nativeHistoryAuthoritative()) return;
-    this.q("INSERT OR REPLACE INTO history(url,title,page_id,visited_at) VALUES(?,?,?,?)").run(url, title, pageId ?? null, now());
+    this.q("INSERT OR REPLACE INTO history(url,title,page_id,visited_at) VALUES(?,?,?,?)").run(
+      url,
+      title,
+      pageId ?? null,
+      now(),
+    );
   }
   /** A page visit: the same URL within `withinMs` updates the recent row's title instead of adding one. */
   recordVisit(url: string, title: string, pageId?: string, withinMs = 30_000) {
     if (this.nativeHistoryAuthoritative()) return;
-    const recent = this.q("UPDATE history SET title=?,page_id=coalesce(?,page_id) WHERE url=? AND visited_at>=?").run(title, pageId ?? null, url, now() - withinMs);
+    const recent = this.q(
+      "UPDATE history SET title=?,page_id=coalesce(?,page_id) WHERE url=? AND visited_at>=?",
+    ).run(title, pageId ?? null, url, now() - withinMs);
     if (!Number(recent.changes)) this.addHistory(url, title, pageId);
   }
-  listHistory(query?: string, limit = 100, options: { since?: number; before?: { visitedAt: number; url: string } } = {}): HistoryEntry[] {
+  listHistory(
+    query?: string,
+    limit = 100,
+    options: { since?: number; before?: { visitedAt: number; url: string } } = {},
+  ): HistoryEntry[] {
     // `filters` qualify columns explicitly so the same clauses work on the
     // bare table and the FTS join (`h.` prefix would break the former).
     const filters: string[] = [];
     const values: (string | number)[] = [];
-    if (options.since !== undefined) { filters.push("visited_at >= ?"); values.push(options.since); }
+    if (options.since !== undefined) {
+      filters.push("visited_at >= ?");
+      values.push(options.since);
+    }
     if (options.before) {
       filters.push("(visited_at < ? OR (visited_at = ? AND url < ?))");
       values.push(options.before.visitedAt, options.before.visitedAt, options.before.url);
@@ -1061,10 +1535,14 @@ export class Repo {
     const match = query && ftsMatch(query);
     if (match) {
       try {
-        rows.push(...this.q(
-          `SELECT history.* FROM history_fts JOIN history ON history.rowid = history_fts.rowid WHERE history_fts MATCH ? ${where} ORDER BY history.visited_at DESC, history.url DESC LIMIT ?`,
-        ).all(match, ...values, limit) as any[]);
-      } catch { /* FTS unavailable or bad query syntax — LIKE covers below */ }
+        rows.push(
+          ...(this.q(
+            `SELECT history.* FROM history_fts JOIN history ON history.rowid = history_fts.rowid WHERE history_fts MATCH ? ${where} ORDER BY history.visited_at DESC, history.url DESC LIMIT ?`,
+          ).all(match, ...values, limit) as any[]),
+        );
+      } catch {
+        /* FTS unavailable or bad query syntax — LIKE covers below */
+      }
     }
     if (query && rows.length < limit) {
       const seen = new Set(rows.map((r) => `${r.url}${r.visited_at}`));
@@ -1075,14 +1553,24 @@ export class Repo {
       for (const row of likeRows) {
         if (rows.length >= limit) break;
         const key = `${row.url}${row.visited_at}`;
-        if (!seen.has(key)) { seen.add(key); rows.push(row); }
+        if (!seen.has(key)) {
+          seen.add(key);
+          rows.push(row);
+        }
       }
       rows.sort((a, b) => b.visited_at - a.visited_at || (a.url < b.url ? -1 : 1));
     }
     if (!query) {
-      rows.push(...this.q(`SELECT * FROM history WHERE 1=1 ${where} ORDER BY visited_at DESC, url DESC LIMIT ?`).all(...values, limit) as any[]);
+      rows.push(
+        ...(this.q(`SELECT * FROM history WHERE 1=1 ${where} ORDER BY visited_at DESC, url DESC LIMIT ?`).all(
+          ...values,
+          limit,
+        ) as any[]),
+      );
     }
-    return rows.slice(0, limit).map((r) => ({ url: r.url, title: r.title, pageId: r.page_id ?? undefined, visitedAt: r.visited_at }));
+    return rows
+      .slice(0, limit)
+      .map((r) => ({ url: r.url, title: r.title, pageId: r.page_id ?? undefined, visitedAt: r.visited_at }));
   }
   removeHistory(url: string, visitedAt: number): boolean {
     return this.q("DELETE FROM history WHERE url=? AND visited_at=?").run(url, visitedAt).changes > 0;
@@ -1090,26 +1578,52 @@ export class Repo {
   countHistory(range: { since?: number; before?: number } = {}): number {
     const clauses: string[] = [];
     const values: number[] = [];
-    if (range.since !== undefined) { clauses.push("visited_at >= ?"); values.push(range.since); }
-    if (range.before !== undefined) { clauses.push("visited_at < ?"); values.push(range.before); }
-    const row = this.q(`SELECT COUNT(*) AS count FROM history ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}`).get(...values) as { count: number };
+    if (range.since !== undefined) {
+      clauses.push("visited_at >= ?");
+      values.push(range.since);
+    }
+    if (range.before !== undefined) {
+      clauses.push("visited_at < ?");
+      values.push(range.before);
+    }
+    const row = this.q(
+      `SELECT COUNT(*) AS count FROM history ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}`,
+    ).get(...values) as { count: number };
     return row.count;
   }
   clearHistory(range: { since?: number; before?: number } = {}): number {
     const clauses: string[] = [];
     const values: number[] = [];
-    if (range.since !== undefined) { clauses.push("visited_at >= ?"); values.push(range.since); }
-    if (range.before !== undefined) { clauses.push("visited_at < ?"); values.push(range.before); }
-    return Number(this.q(`DELETE FROM history ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}`).run(...values).changes);
+    if (range.since !== undefined) {
+      clauses.push("visited_at >= ?");
+      values.push(range.since);
+    }
+    if (range.before !== undefined) {
+      clauses.push("visited_at < ?");
+      values.push(range.before);
+    }
+    return Number(
+      this.q(`DELETE FROM history ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}`).run(...values)
+        .changes,
+    );
   }
   addBookmark(url: string, title: string, folderPath?: string[], readingList?: boolean) {
     this.transaction(() => {
       if (folderPath) this.createBookmarkFolder(folderPath);
-      this.q(`INSERT INTO bookmarks(url,title,created_at,folder_path,reading_list) VALUES(?,?,?,?,?)
+      this.q(
+        `INSERT INTO bookmarks(url,title,created_at,folder_path,reading_list) VALUES(?,?,?,?,?)
         ON CONFLICT(url) DO UPDATE SET title=excluded.title,
           folder_path=CASE WHEN ? THEN excluded.folder_path ELSE bookmarks.folder_path END,
-          reading_list=CASE WHEN ? THEN excluded.reading_list ELSE bookmarks.reading_list END`)
-        .run(url, title, now(), J(folderPath ?? []), readingList ? 1 : 0, folderPath === undefined ? 0 : 1, readingList === undefined ? 0 : 1);
+          reading_list=CASE WHEN ? THEN excluded.reading_list ELSE bookmarks.reading_list END`,
+      ).run(
+        url,
+        title,
+        now(),
+        J(folderPath ?? []),
+        readingList ? 1 : 0,
+        folderPath === undefined ? 0 : 1,
+        readingList === undefined ? 0 : 1,
+      );
     });
   }
   /** Toggle the reading-list flag; creates the bookmark when the URL is not saved yet. */
@@ -1118,84 +1632,144 @@ export class Repo {
       const existing = this.q("SELECT 1 FROM bookmarks WHERE url=?").get(url);
       if (!existing) {
         if (!readingList) return;
-        if (title === undefined) throw new Error("A title is required to save this page to the reading list.");
-        this.q("INSERT INTO bookmarks(url,title,created_at,reading_list) VALUES(?,?,?,1)").run(url, title, now());
+        if (title === undefined)
+          throw new Error("A title is required to save this page to the reading list.");
+        this.q("INSERT INTO bookmarks(url,title,created_at,reading_list) VALUES(?,?,?,1)").run(
+          url,
+          title,
+          now(),
+        );
         return;
       }
       // Leaving the list also clears read progress so a re-add starts fresh.
-      this.q("UPDATE bookmarks SET reading_list=?, read_at=CASE WHEN ? THEN read_at ELSE NULL END WHERE url=?").run(readingList ? 1 : 0, readingList ? 1 : 0, url);
+      this.q(
+        "UPDATE bookmarks SET reading_list=?, read_at=CASE WHEN ? THEN read_at ELSE NULL END WHERE url=?",
+      ).run(readingList ? 1 : 0, readingList ? 1 : 0, url);
       if (!readingList) this.q("DELETE FROM bookmark_articles WHERE url=?").run(url);
     });
   }
   markBookmarkRead(url: string, read: boolean) {
-    if (!this.q("UPDATE bookmarks SET read_at=? WHERE url=? AND reading_list=1").run(read ? now() : null, url).changes)
+    if (
+      !this.q("UPDATE bookmarks SET read_at=? WHERE url=? AND reading_list=1").run(read ? now() : null, url)
+        .changes
+    )
       throw new Error("This page is not on the reading list.");
   }
   saveBookmarkArticle(url: string, json: string) {
-    this.q("INSERT INTO bookmark_articles(url,json,saved_at) VALUES(?,?,?) ON CONFLICT(url) DO UPDATE SET json=excluded.json,saved_at=excluded.saved_at").run(url, json, now());
+    this.q(
+      "INSERT INTO bookmark_articles(url,json,saved_at) VALUES(?,?,?) ON CONFLICT(url) DO UPDATE SET json=excluded.json,saved_at=excluded.saved_at",
+    ).run(url, json, now());
   }
   getBookmarkArticle(url: string): { article: string; savedAt: number } | null {
-    const row = this.q("SELECT json,saved_at FROM bookmark_articles WHERE url=?").get(url) as { json: string; saved_at: number } | undefined;
+    const row = this.q("SELECT json,saved_at FROM bookmark_articles WHERE url=?").get(url) as
+      { json: string; saved_at: number } | undefined;
     return row ? { article: row.json, savedAt: row.saved_at } : null;
   }
   deleteBookmarkArticle(url: string) {
     this.q("DELETE FROM bookmark_articles WHERE url=?").run(url);
   }
   moveBookmarkArticle(previousUrl: string, nextUrl: string) {
-    if (previousUrl !== nextUrl) this.q("UPDATE bookmark_articles SET url=? WHERE url=?").run(nextUrl, previousUrl);
+    if (previousUrl !== nextUrl)
+      this.q("UPDATE bookmark_articles SET url=? WHERE url=?").run(nextUrl, previousUrl);
   }
-  updateBookmark(input: { originalUrl: string; url: string; title: string; folderPath?: string[]; expected: { title: string; folderPath?: string[] } }) {
+  updateBookmark(input: {
+    originalUrl: string;
+    url: string;
+    title: string;
+    folderPath?: string[];
+    expected: { title: string; folderPath?: string[] };
+  }) {
     this.transaction(() => {
-      const previous = this.listBookmarks().find(item => item.url === input.originalUrl);
+      const previous = this.listBookmarks().find((item) => item.url === input.originalUrl);
       if (!previous) throw new Error("This bookmark was removed. Save it again to create a new bookmark.");
-      if (previous.title !== input.expected.title || J(previous.folderPath ?? []) !== J(input.expected.folderPath ?? [])) throw new Error("This bookmark changed in another window. Cancel editing and reopen it to use the latest version.");
-      if (input.url !== input.originalUrl && this.q("SELECT 1 FROM bookmarks WHERE url=?").get(input.url)) throw new Error("That address is already bookmarked. Both bookmarks have been kept.");
+      if (
+        previous.title !== input.expected.title ||
+        J(previous.folderPath ?? []) !== J(input.expected.folderPath ?? [])
+      )
+        throw new Error(
+          "This bookmark changed in another window. Cancel editing and reopen it to use the latest version.",
+        );
+      if (input.url !== input.originalUrl && this.q("SELECT 1 FROM bookmarks WHERE url=?").get(input.url))
+        throw new Error("That address is already bookmarked. Both bookmarks have been kept.");
       const folder = input.folderPath ?? previous.folderPath ?? [];
       this.createBookmarkFolder(folder);
-      this.q("UPDATE bookmarks SET url=?,title=?,folder_path=? WHERE url=?").run(input.url, input.title, J(folder), input.originalUrl);
+      this.q("UPDATE bookmarks SET url=?,title=?,folder_path=? WHERE url=?").run(
+        input.url,
+        input.title,
+        J(folder),
+        input.originalUrl,
+      );
       this.q("UPDATE bookmark_articles SET url=? WHERE url=?").run(input.url, input.originalUrl);
     });
   }
-  moveBookmarks(input: { bookmarks: {url:string;folderPath:string[]}[]; folderPath:string[]; createFolder?:boolean }) {
+  moveBookmarks(input: {
+    bookmarks: { url: string; folderPath: string[] }[];
+    folderPath: string[];
+    createFolder?: boolean;
+  }) {
     return this.transaction(() => {
-      const existing = new Map(this.listBookmarks().map(item => [item.url, item]));
-      const selected = [...new Map(input.bookmarks.map(item => [item.url, item])).values()];
+      const existing = new Map(this.listBookmarks().map((item) => [item.url, item]));
+      const selected = [...new Map(input.bookmarks.map((item) => [item.url, item])).values()];
       for (const item of selected) {
         const current = existing.get(item.url);
-        if (!current || J(current.folderPath ?? []) !== J(item.folderPath)) throw new Error("A selected bookmark was moved or removed in another window. Select the bookmarks again; nothing was moved.");
+        if (!current || J(current.folderPath ?? []) !== J(item.folderPath))
+          throw new Error(
+            "A selected bookmark was moved or removed in another window. Select the bookmarks again; nothing was moved.",
+          );
       }
       if (input.createFolder) {
         const paths = this.bookmarkFolders();
-        if (!input.folderPath.length || paths.some(path => J(path) === J(input.folderPath))) throw new Error("A folder with this name already exists. Choose another name.");
+        if (!input.folderPath.length || paths.some((path) => J(path) === J(input.folderPath)))
+          throw new Error("A folder with this name already exists. Choose another name.");
         const parent = input.folderPath.slice(0, -1);
-        if (parent.length && !paths.some(path => J(path) === J(parent))) throw new Error("The parent folder no longer exists. Choose another folder.");
+        if (parent.length && !paths.some((path) => J(path) === J(parent)))
+          throw new Error("The parent folder no longer exists. Choose another folder.");
         this.createBookmarkFolder(input.folderPath);
       }
-      if (input.folderPath.length && !this.bookmarkFolders().some(path => J(path) === J(input.folderPath))) throw new Error("The destination folder no longer exists. Choose another folder.");
+      if (input.folderPath.length && !this.bookmarkFolders().some((path) => J(path) === J(input.folderPath)))
+        throw new Error("The destination folder no longer exists. Choose another folder.");
       const update = this.q("UPDATE bookmarks SET folder_path=? WHERE url=?");
       let moved = 0;
-      for (const item of selected) if (J(item.folderPath) !== J(input.folderPath)) {
-        update.run(J(input.folderPath), item.url); moved++;
-      }
+      for (const item of selected)
+        if (J(item.folderPath) !== J(input.folderPath)) {
+          update.run(J(input.folderPath), item.url);
+          moved++;
+        }
       return { moved };
     });
   }
-  saveBookmarkFolder(name:string, bookmarks:{url:string;title:string}[]) {
+  saveBookmarkFolder(name: string, bookmarks: { url: string; title: string }[]) {
     return this.transaction(() => {
-      if (this.bookmarkFolders().some(path => path.length === 1 && path[0] === name)) throw new Error("A bookmark folder already has this name. Choose a different name to keep this collection separate.");
-      const existing=new Set(this.listBookmarks().map(item=>item.url));
-      if(bookmarks.every(item=>existing.has(item.url)))throw new Error("These pages are already bookmarked. Find them in Library to organize their folders.");
-      return this.importBookmarks(bookmarks.map(item => ({...item,folderPath:[name]})),[[name]]);
+      if (this.bookmarkFolders().some((path) => path.length === 1 && path[0] === name))
+        throw new Error(
+          "A bookmark folder already has this name. Choose a different name to keep this collection separate.",
+        );
+      const existing = new Set(this.listBookmarks().map((item) => item.url));
+      if (bookmarks.every((item) => existing.has(item.url)))
+        throw new Error(
+          "These pages are already bookmarked. Find them in Library to organize their folders.",
+        );
+      return this.importBookmarks(
+        bookmarks.map((item) => ({ ...item, folderPath: [name] })),
+        [[name]],
+      );
     });
   }
-  importBookmarks(bookmarks: { url: string; title: string; folderPath?: string[] }[], folders: string[][] = []) {
+  importBookmarks(
+    bookmarks: { url: string; title: string; folderPath?: string[] }[],
+    folders: string[][] = [],
+  ) {
     return this.transaction(() => {
       for (const path of folders) this.createBookmarkFolder(path);
-      const insert = this.q("INSERT OR IGNORE INTO bookmarks(url,title,created_at,folder_path) VALUES(?,?,?,?)");
+      const insert = this.q(
+        "INSERT OR IGNORE INTO bookmarks(url,title,created_at,folder_path) VALUES(?,?,?,?)",
+      );
       let added = 0;
       for (const bookmark of bookmarks) {
         this.createBookmarkFolder(bookmark.folderPath ?? []);
-        added += Number(insert.run(bookmark.url, bookmark.title, now(), J(bookmark.folderPath ?? [])).changes);
+        added += Number(
+          insert.run(bookmark.url, bookmark.title, now(), J(bookmark.folderPath ?? [])).changes,
+        );
       }
       return { added, skipped: bookmarks.length - added };
     });
@@ -1206,19 +1780,39 @@ export class Repo {
       this.q("DELETE FROM bookmarks WHERE url=?").run(url);
     });
   }
-  removeBookmarkIfUnchanged(url: string, title: string, createdAt: number, folderPath: string[], readingList: boolean): boolean {
+  removeBookmarkIfUnchanged(
+    url: string,
+    title: string,
+    createdAt: number,
+    folderPath: string[],
+    readingList: boolean,
+  ): boolean {
     return this.transaction(() => {
-      const removed = this.q("DELETE FROM bookmarks WHERE url=? AND title=? AND created_at=? AND folder_path=? AND reading_list=?")
-        .run(url, title, createdAt, J(folderPath), Number(readingList)).changes;
+      const removed = this.q(
+        "DELETE FROM bookmarks WHERE url=? AND title=? AND created_at=? AND folder_path=? AND reading_list=?",
+      ).run(url, title, createdAt, J(folderPath), Number(readingList)).changes;
       if (removed) this.q("DELETE FROM bookmark_articles WHERE url=?").run(url);
       return removed === 1;
     });
   }
   listBookmarks(): Bookmark[] {
-    const rows = this.q("SELECT url,title,created_at,folder_path,reading_list,read_at FROM bookmarks ORDER BY created_at DESC").all() as { url: string; title: string; created_at: number; folder_path: string; reading_list: number; read_at: number | null }[];
-    const offline = new Set((this.q("SELECT url FROM bookmark_articles").all() as { url: string }[]).map(row => row.url));
-    return rows.map(row => ({
-      url: row.url, title: row.title, createdAt: row.created_at,
+    const rows = this.q(
+      "SELECT url,title,created_at,folder_path,reading_list,read_at FROM bookmarks ORDER BY created_at DESC",
+    ).all() as {
+      url: string;
+      title: string;
+      created_at: number;
+      folder_path: string;
+      reading_list: number;
+      read_at: number | null;
+    }[];
+    const offline = new Set(
+      (this.q("SELECT url FROM bookmark_articles").all() as { url: string }[]).map((row) => row.url),
+    );
+    return rows.map((row) => ({
+      url: row.url,
+      title: row.title,
+      createdAt: row.created_at,
       ...(row.folder_path !== "[]" ? { folderPath: JSON.parse(row.folder_path) as string[] } : {}),
       ...(row.reading_list ? { readingList: true } : {}),
       ...(row.read_at != null ? { readAt: row.read_at } : {}),
@@ -1227,7 +1821,7 @@ export class Repo {
   }
   bookmarkFolders(): string[][] {
     const rows = this.q("SELECT path FROM bookmark_folders ORDER BY path").all() as { path: string }[];
-    return rows.map(row => JSON.parse(row.path) as string[]);
+    return rows.map((row) => JSON.parse(row.path) as string[]);
   }
   createBookmarkFolder(path: string[]): string[][] {
     return this.transaction(() => {
@@ -1240,23 +1834,35 @@ export class Repo {
     return this.transaction(() => {
       const key = J(path);
       const replacement = [...path.slice(0, -1), name];
-      if (!this.q("SELECT 1 FROM bookmark_folders WHERE path=?").get(key)) throw new AuxError("not_found", "This bookmark folder no longer exists.");
+      if (!this.q("SELECT 1 FROM bookmark_folders WHERE path=?").get(key))
+        throw new AuxError("not_found", "This bookmark folder no longer exists.");
       if (key === J(replacement)) return this.bookmarkFolders();
-      if (this.q("SELECT 1 FROM bookmark_folders WHERE path=?").get(J(replacement))) throw new AuxError("conflict", "A folder with this name already exists here.");
-      const descendants = (candidate: string[]) => candidate.length >= path.length && path.every((part, index) => candidate[index] === part);
+      if (this.q("SELECT 1 FROM bookmark_folders WHERE path=?").get(J(replacement)))
+        throw new AuxError("conflict", "A folder with this name already exists here.");
+      const descendants = (candidate: string[]) =>
+        candidate.length >= path.length && path.every((part, index) => candidate[index] === part);
       const updateFolder = this.q("UPDATE bookmark_folders SET path=? WHERE path=?");
-      for (const folder of this.bookmarkFolders().filter(descendants)) updateFolder.run(J([...replacement, ...folder.slice(path.length)]), J(folder));
+      for (const folder of this.bookmarkFolders().filter(descendants))
+        updateFolder.run(J([...replacement, ...folder.slice(path.length)]), J(folder));
       const updateBookmark = this.q("UPDATE bookmarks SET folder_path=? WHERE url=?");
       for (const bookmark of this.listBookmarks()) {
-        if (bookmark.folderPath && descendants(bookmark.folderPath)) updateBookmark.run(J([...replacement, ...bookmark.folderPath.slice(path.length)]), bookmark.url);
+        if (bookmark.folderPath && descendants(bookmark.folderPath))
+          updateBookmark.run(J([...replacement, ...bookmark.folderPath.slice(path.length)]), bookmark.url);
       }
       return this.bookmarkFolders();
     });
   }
   removeBookmarkFolder(path: string[]): string[][] {
-    const descendants = (candidate: string[]) => candidate.length >= path.length && path.every((part, index) => candidate[index] === part);
-    if (this.bookmarkFolders().some(folder => folder.length > path.length && descendants(folder)) || this.listBookmarks().some(bookmark => descendants(bookmark.folderPath ?? []))) {
-      throw new AuxError("conflict", "Move this folder’s bookmarks and remove its subfolders before deleting it.");
+    const descendants = (candidate: string[]) =>
+      candidate.length >= path.length && path.every((part, index) => candidate[index] === part);
+    if (
+      this.bookmarkFolders().some((folder) => folder.length > path.length && descendants(folder)) ||
+      this.listBookmarks().some((bookmark) => descendants(bookmark.folderPath ?? []))
+    ) {
+      throw new AuxError(
+        "conflict",
+        "Move this folder’s bookmarks and remove its subfolders before deleting it.",
+      );
     }
     this.q("DELETE FROM bookmark_folders WHERE path=?").run(J(path));
     return this.bookmarkFolders();
@@ -1274,37 +1880,53 @@ export class Repo {
     endedAt?: number;
   }) {
     this.q(
-        `INSERT INTO downloads(id,page_id,filename,path,state,size,total_bytes,started_at,ended_at) VALUES(?,?,?,?,?,?,?,?,?)
+      `INSERT INTO downloads(id,page_id,filename,path,state,size,total_bytes,started_at,ended_at) VALUES(?,?,?,?,?,?,?,?,?)
          ON CONFLICT(id) DO UPDATE SET filename=excluded.filename,path=excluded.path,state=excluded.state,size=excluded.size,total_bytes=excluded.total_bytes,ended_at=excluded.ended_at`,
-      )
-      .run(d.id, d.pageId ?? null, d.filename, d.path, d.state, d.size, d.totalBytes ?? null, d.startedAt, d.endedAt ?? null);
-    if(d.sourceUrl)this.setKvJson(`download-source:${d.id}`, d.sourceUrl);
+    ).run(
+      d.id,
+      d.pageId ?? null,
+      d.filename,
+      d.path,
+      d.state,
+      d.size,
+      d.totalBytes ?? null,
+      d.startedAt,
+      d.endedAt ?? null,
+    );
+    if (d.sourceUrl) this.setKvJson(`download-source:${d.id}`, d.sourceUrl);
   }
   /** Removes inactive history records only; downloaded files are never touched. */
   removeFinishedDownloads(ids: string[]): string[] {
     return this.transaction(() => {
-      const removed: string[]=[];
-      const remove=this.q("DELETE FROM downloads WHERE id=? AND state IN ('completed','cancelled','interrupted')");
-      const removeSource=this.q("DELETE FROM kv WHERE key=?");
-      for(const id of new Set(ids)) {
-        if(remove.run(id).changes) { removeSource.run(`download-source:${id}`);removed.push(id); }
+      const removed: string[] = [];
+      const remove = this.q(
+        "DELETE FROM downloads WHERE id=? AND state IN ('completed','cancelled','interrupted')",
+      );
+      const removeSource = this.q("DELETE FROM kv WHERE key=?");
+      for (const id of new Set(ids)) {
+        if (remove.run(id).changes) {
+          removeSource.run(`download-source:${id}`);
+          removed.push(id);
+        }
       }
       return removed;
     });
   }
   listDownloads(limit = 100): Download[] {
-    return (this.q("SELECT * FROM downloads ORDER BY started_at DESC LIMIT ?").all(limit) as any[]).map((r) => ({
-      id: r.id,
-      sourceUrl: this.getKvJson<string>(`download-source:${r.id}`) ?? undefined,
-      pageId: r.page_id ?? undefined,
-      filename: r.filename,
-      path: r.path,
-      state: r.state,
-      size: r.size,
-      totalBytes: r.total_bytes ?? undefined,
-      startedAt: r.started_at,
-      endedAt: r.ended_at ?? undefined,
-    }));
+    return (this.q("SELECT * FROM downloads ORDER BY started_at DESC LIMIT ?").all(limit) as any[]).map(
+      (r) => ({
+        id: r.id,
+        sourceUrl: this.getKvJson<string>(`download-source:${r.id}`) ?? undefined,
+        pageId: r.page_id ?? undefined,
+        filename: r.filename,
+        path: r.path,
+        state: r.state,
+        size: r.size,
+        totalBytes: r.total_bytes ?? undefined,
+        startedAt: r.started_at,
+        endedAt: r.ended_at ?? undefined,
+      }),
+    );
   }
 
   // ---- settings ----
@@ -1341,22 +1963,29 @@ export class Repo {
     runId?: string;
   }) {
     this.q(
-        `INSERT INTO response_metadata(request_id,page_id,url,method,status,content_type,started_at,ended_at,duration_ms,body_artifact_id,body_bytes,truncated,run_id,session_id,document_epoch,document_url)
+      `INSERT INTO response_metadata(request_id,page_id,url,method,status,content_type,started_at,ended_at,duration_ms,body_artifact_id,body_bytes,truncated,run_id,session_id,document_epoch,document_url)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(request_id) DO UPDATE SET status=excluded.status,ended_at=excluded.ended_at,
            duration_ms=excluded.duration_ms,body_artifact_id=excluded.body_artifact_id,
            body_bytes=excluded.body_bytes,truncated=excluded.truncated`,
-      )
-      .run(
-        r.requestId, r.pageId,
-        this.protectField("response_metadata", r.requestId, "url", r.url),
-        this.protectField("response_metadata", r.requestId, "method", r.method),
-        r.status ?? null,
-        this.protectField("response_metadata", r.requestId, "content_type", r.contentType ?? null),
-        r.startedAt, r.endedAt ?? null, r.durationMs ?? null, r.bodyArtifactId ?? null,
-        r.bodyBytes ?? null, r.truncated ?? 0, r.runId ?? null, r.sessionId ?? null, r.documentEpoch ?? null,
-        this.protectField("response_metadata", r.requestId, "document_url", r.documentUrl ?? null),
-      );
+    ).run(
+      r.requestId,
+      r.pageId,
+      this.protectField("response_metadata", r.requestId, "url", r.url),
+      this.protectField("response_metadata", r.requestId, "method", r.method),
+      r.status ?? null,
+      this.protectField("response_metadata", r.requestId, "content_type", r.contentType ?? null),
+      r.startedAt,
+      r.endedAt ?? null,
+      r.durationMs ?? null,
+      r.bodyArtifactId ?? null,
+      r.bodyBytes ?? null,
+      r.truncated ?? 0,
+      r.runId ?? null,
+      r.sessionId ?? null,
+      r.documentEpoch ?? null,
+      this.protectField("response_metadata", r.requestId, "document_url", r.documentUrl ?? null),
+    );
   }
   getResponse(requestId: string) {
     const r = this.q("SELECT * FROM response_metadata WHERE request_id=?").get(requestId) as any;
@@ -1368,18 +1997,27 @@ export class Repo {
     const since = opts?.since;
     const includes = opts?.urlIncludes?.toLowerCase();
     if (!includes) {
-      return (this.q(`SELECT * FROM response_metadata WHERE page_id=? ${since ? "AND started_at>=?" : ""}
-        ORDER BY started_at DESC, request_id DESC LIMIT ?`)
-        .all(...([pageId, ...(since ? [since] : []), limit] as any[])) as any[])
-        .map(row => this.responseRow(row));
+      return (
+        this.q(
+          `SELECT * FROM response_metadata WHERE page_id=? ${since ? "AND started_at>=?" : ""}
+        ORDER BY started_at DESC, request_id DESC LIMIT ?`,
+        ).all(...([pageId, ...(since ? [since] : []), limit] as any[])) as any[]
+      ).map((row) => this.responseRow(row));
     }
     const matches: ReturnType<Repo["responseRow"]>[] = [];
     let cursor: { started_at: number; request_id: string } | undefined;
     while (matches.length < limit) {
-      const rows = this.q(`SELECT * FROM response_metadata WHERE page_id=? ${since ? "AND started_at>=?" : ""}
+      const rows = this.q(
+        `SELECT * FROM response_metadata WHERE page_id=? ${since ? "AND started_at>=?" : ""}
         ${cursor ? "AND (started_at<? OR (started_at=? AND request_id<?))" : ""}
-        ORDER BY started_at DESC, request_id DESC LIMIT 256`)
-        .all(...([pageId, ...(since ? [since] : []), ...(cursor ? [cursor.started_at, cursor.started_at, cursor.request_id] : [])] as any[])) as any[];
+        ORDER BY started_at DESC, request_id DESC LIMIT 256`,
+      ).all(
+        ...([
+          pageId,
+          ...(since ? [since] : []),
+          ...(cursor ? [cursor.started_at, cursor.started_at, cursor.request_id] : []),
+        ] as any[]),
+      ) as any[];
       if (!rows.length) break;
       for (const row of rows) {
         const response = this.responseRow(row);
@@ -1397,12 +2035,14 @@ export class Repo {
       requestId: r.request_id as string,
       sessionId: r.session_id ?? undefined,
       documentEpoch: r.document_epoch ?? undefined,
-      documentUrl: this.revealField("response_metadata", r.request_id, "document_url", r.document_url) ?? undefined,
+      documentUrl:
+        this.revealField("response_metadata", r.request_id, "document_url", r.document_url) ?? undefined,
       pageId: r.page_id as string,
       url: this.revealField("response_metadata", r.request_id, "url", r.url)!,
       method: this.revealField("response_metadata", r.request_id, "method", r.method)!,
       status: r.status ?? undefined,
-      contentType: this.revealField("response_metadata", r.request_id, "content_type", r.content_type) ?? undefined,
+      contentType:
+        this.revealField("response_metadata", r.request_id, "content_type", r.content_type) ?? undefined,
       startedAt: r.started_at as number,
       endedAt: r.ended_at ?? undefined,
       durationMs: r.duration_ms ?? undefined,
@@ -1424,15 +2064,20 @@ export class Repo {
     provenance?: string;
   }) {
     this.q(
-        `INSERT INTO datasets(dataset_id,run_id,page_id,source,schema_json,row_count,values_json,provenance,created_at)
+      `INSERT INTO datasets(dataset_id,run_id,page_id,source,schema_json,row_count,values_json,provenance,created_at)
          VALUES(?,?,?,?,?,?,?,?,?)
          ON CONFLICT(dataset_id) DO UPDATE SET values_json=excluded.values_json,row_count=excluded.row_count,stale=0`,
-      )
-      .run(d.datasetId, d.runId ?? null, d.pageId ?? null,
-        this.protectField("datasets", d.datasetId, "source", d.source),
-        this.protectField("datasets", d.datasetId, "schema_json", J(d.schema ?? [])),
-        d.rows.length, this.protectField("datasets", d.datasetId, "values_json", J(d.rows)),
-        this.protectField("datasets", d.datasetId, "provenance", d.provenance ?? null), now());
+    ).run(
+      d.datasetId,
+      d.runId ?? null,
+      d.pageId ?? null,
+      this.protectField("datasets", d.datasetId, "source", d.source),
+      this.protectField("datasets", d.datasetId, "schema_json", J(d.schema ?? [])),
+      d.rows.length,
+      this.protectField("datasets", d.datasetId, "values_json", J(d.rows)),
+      this.protectField("datasets", d.datasetId, "provenance", d.provenance ?? null),
+      now(),
+    );
   }
   getDataset(datasetId: string) {
     const r = this.q("SELECT * FROM datasets WHERE dataset_id=?").get(datasetId) as any;
@@ -1440,9 +2085,10 @@ export class Repo {
   }
   listDatasets(filter?: { runId?: string; pageId?: string }) {
     const rows = this.q(
-        `SELECT * FROM datasets WHERE 1=1 ${filter?.runId ? "AND run_id=?" : ""} ${filter?.pageId ? "AND page_id=?" : ""} ORDER BY created_at DESC`,
-      )
-      .all(...([...(filter?.runId ? [filter.runId] : []), ...(filter?.pageId ? [filter.pageId] : [])] as any[])) as any[];
+      `SELECT * FROM datasets WHERE 1=1 ${filter?.runId ? "AND run_id=?" : ""} ${filter?.pageId ? "AND page_id=?" : ""} ORDER BY created_at DESC`,
+    ).all(
+      ...([...(filter?.runId ? [filter.runId] : []), ...(filter?.pageId ? [filter.pageId] : [])] as any[]),
+    ) as any[];
     return rows.map((r) => this.datasetRow(r));
   }
   markDatasetsStale(pageId: string) {
@@ -1475,16 +2121,23 @@ export class Repo {
     guards?: unknown;
   }) {
     this.q(
-        `INSERT INTO operations(operation_id,site_key,name,description,input_schema,output_schema,effect_class,guards,created_at,updated_at)
+      `INSERT INTO operations(operation_id,site_key,name,description,input_schema,output_schema,effect_class,guards,created_at,updated_at)
          VALUES(?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(site_key,name) DO UPDATE SET description=excluded.description,
            input_schema=excluded.input_schema,output_schema=excluded.output_schema,
            effect_class=excluded.effect_class,guards=excluded.guards,updated_at=excluded.updated_at`,
-      )
-      .run(
-        o.operationId, o.siteKey, o.name, o.description ?? null, J(o.inputSchema ?? {}),
-        J(o.outputSchema ?? {}), o.effectClass ?? "read", J(o.guards ?? {}), now(), now(),
-      );
+    ).run(
+      o.operationId,
+      o.siteKey,
+      o.name,
+      o.description ?? null,
+      J(o.inputSchema ?? {}),
+      J(o.outputSchema ?? {}),
+      o.effectClass ?? "read",
+      J(o.guards ?? {}),
+      now(),
+      now(),
+    );
   }
   getOperation(siteKey: string, name: string) {
     const r = this.q("SELECT * FROM operations WHERE site_key=? AND name=?").get(siteKey, name) as any;
@@ -1495,9 +2148,11 @@ export class Repo {
     return r ? this.operationRow(r) : undefined;
   }
   listOperations(siteKey?: string) {
-    const rows = (siteKey
-      ? this.q("SELECT * FROM operations WHERE site_key=? ORDER BY name").all(siteKey)
-      : this.q("SELECT * FROM operations ORDER BY site_key, name").all()) as any[];
+    const rows = (
+      siteKey
+        ? this.q("SELECT * FROM operations WHERE site_key=? ORDER BY name").all(siteKey)
+        : this.q("SELECT * FROM operations ORDER BY site_key, name").all()
+    ) as any[];
     return rows.map((r) => this.operationRow(r));
   }
   private operationRow(r: any) {
@@ -1524,20 +2179,29 @@ export class Repo {
     stats?: unknown;
   }) {
     this.q(
-        `INSERT INTO operation_implementations(impl_id,operation_id,kind,executable,state,evidence,stats,created_at,updated_at)
+      `INSERT INTO operation_implementations(impl_id,operation_id,kind,executable,state,evidence,stats,created_at,updated_at)
          VALUES(?,?,?,?,?,?,?,?,?)
          ON CONFLICT(impl_id) DO UPDATE SET executable=excluded.executable,state=excluded.state,
            evidence=excluded.evidence,stats=excluded.stats,updated_at=excluded.updated_at`,
-      )
-      .run(i.implId, i.operationId, i.kind,
-        this.protectField("operation_implementations", i.implId, "executable", i.executable),
-        i.state ?? "candidate",
-        this.protectField("operation_implementations", i.implId, "evidence", J(i.evidence ?? [])),
-        this.protectField("operation_implementations", i.implId, "stats", J(i.stats ?? {})), now(), now());
+    ).run(
+      i.implId,
+      i.operationId,
+      i.kind,
+      this.protectField("operation_implementations", i.implId, "executable", i.executable),
+      i.state ?? "candidate",
+      this.protectField("operation_implementations", i.implId, "evidence", J(i.evidence ?? [])),
+      this.protectField("operation_implementations", i.implId, "stats", J(i.stats ?? {})),
+      now(),
+      now(),
+    );
   }
   setImplState(implId: string, state: string, evidence?: unknown) {
-    this.q("UPDATE operation_implementations SET state=?, evidence=?, updated_at=? WHERE impl_id=?")
-      .run(state, this.protectField("operation_implementations", implId, "evidence", J(evidence ?? [])), now(), implId);
+    this.q("UPDATE operation_implementations SET state=?, evidence=?, updated_at=? WHERE impl_id=?").run(
+      state,
+      this.protectField("operation_implementations", implId, "evidence", J(evidence ?? [])),
+      now(),
+      implId,
+    );
   }
   deleteImpl(implId: string) {
     this.q("DELETE FROM operation_implementations WHERE impl_id=?").run(implId);
@@ -1547,28 +2211,52 @@ export class Repo {
     this.q("DELETE FROM operations WHERE operation_id=?").run(operationId);
   }
   listImplementations(operationId: string, state?: string) {
-    const rows = (state
-      ? this.q("SELECT * FROM operation_implementations WHERE operation_id=? AND state=? ORDER BY created_at").all(operationId, state)
-      : this.q("SELECT * FROM operation_implementations WHERE operation_id=? ORDER BY created_at").all(operationId)) as any[];
+    const rows = (
+      state
+        ? this.q(
+            "SELECT * FROM operation_implementations WHERE operation_id=? AND state=? ORDER BY created_at",
+          ).all(operationId, state)
+        : this.q("SELECT * FROM operation_implementations WHERE operation_id=? ORDER BY created_at").all(
+            operationId,
+          )
+    ) as any[];
     return rows.map((r) => ({
       implId: r.impl_id as string,
       operationId: r.operation_id as string,
       kind: r.kind as string,
       executable: this.revealField("operation_implementations", r.impl_id, "executable", r.executable)!,
       state: r.state as string,
-      evidence: P<any[]>(this.revealField("operation_implementations", r.impl_id, "evidence", r.evidence), []),
+      evidence: P<any[]>(
+        this.revealField("operation_implementations", r.impl_id, "evidence", r.evidence),
+        [],
+      ),
       stats: P(this.revealField("operation_implementations", r.impl_id, "stats", r.stats), {}),
       createdAt: r.created_at as number,
       updatedAt: r.updated_at as number,
     }));
   }
 
-  saveOperationReconciliation(input: { invocationId: string; taskId: string; taskRevision: number;
-    outcome: "applied" | "not_applied"; evidenceId: string; note: string; recordedAt: number }): void {
-    this.q(`INSERT INTO operation_reconciliations(invocation_id,task_id,task_revision,outcome,evidence_id,note,recorded_at)
-      VALUES(?,?,?,?,?,?,?)`).run(input.invocationId, input.taskId, input.taskRevision, input.outcome,
-      input.evidenceId, this.protectField("operation_reconciliations", input.invocationId, "note", input.note),
-      input.recordedAt);
+  saveOperationReconciliation(input: {
+    invocationId: string;
+    taskId: string;
+    taskRevision: number;
+    outcome: "applied" | "not_applied";
+    evidenceId: string;
+    note: string;
+    recordedAt: number;
+  }): void {
+    this.q(
+      `INSERT INTO operation_reconciliations(invocation_id,task_id,task_revision,outcome,evidence_id,note,recorded_at)
+      VALUES(?,?,?,?,?,?,?)`,
+    ).run(
+      input.invocationId,
+      input.taskId,
+      input.taskRevision,
+      input.outcome,
+      input.evidenceId,
+      this.protectField("operation_reconciliations", input.invocationId, "note", input.note),
+      input.recordedAt,
+    );
   }
   saveInvocation(v: {
     invocationId: string;
@@ -1585,17 +2273,31 @@ export class Repo {
     error?: string;
   }) {
     this.q(
-        `INSERT INTO operation_invocations(invocation_id,operation_id,impl_id,run_id,request_key,inputs,status,effect_outcome,route_reason,started_at,ended_at,error)
+      `INSERT INTO operation_invocations(invocation_id,operation_id,impl_id,run_id,request_key,inputs,status,effect_outcome,route_reason,started_at,ended_at,error)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(invocation_id) DO UPDATE SET status=excluded.status, effect_outcome=excluded.effect_outcome,
            ended_at=excluded.ended_at, error=excluded.error, impl_id=excluded.impl_id, route_reason=excluded.route_reason`,
-      )
-      .run(
-        v.invocationId, v.operationId, v.implId ?? null, v.runId ?? null, v.requestKey ?? null, J(v.inputs ?? {}),
-        v.status, v.effectOutcome ?? "unknown", v.routeReason ?? null, v.startedAt, v.endedAt ?? null, v.error ?? null,
-      );
-    if (v.runId && this.q(`SELECT 1 FROM run_lookup WHERE run_id=?
-      AND json_extract(config,'$.contextMemoryRevoked')=1`).get(v.runId))
+    ).run(
+      v.invocationId,
+      v.operationId,
+      v.implId ?? null,
+      v.runId ?? null,
+      v.requestKey ?? null,
+      J(v.inputs ?? {}),
+      v.status,
+      v.effectOutcome ?? "unknown",
+      v.routeReason ?? null,
+      v.startedAt,
+      v.endedAt ?? null,
+      v.error ?? null,
+    );
+    if (
+      v.runId &&
+      this.q(
+        `SELECT 1 FROM run_lookup WHERE run_id=?
+      AND json_extract(config,'$.contextMemoryRevoked')=1`,
+      ).get(v.runId)
+    )
       redactSettledRunInvocations(this.db, v.runId);
   }
 
@@ -1621,13 +2323,15 @@ export class Repo {
   /** §17.3 — invocations still 'running' at startup were interrupted mid-flight;
    *  their effect outcome stays 'unknown' until reconciled. */
   markRunningInvocationsInterrupted() {
-    this.q(`UPDATE operation_invocations SET status='interrupted', ended_at=? WHERE status='running'`)
-      .run(Date.now());
+    this.q(`UPDATE operation_invocations SET status='interrupted', ended_at=? WHERE status='running'`).run(
+      Date.now(),
+    );
   }
 
   findInvocationByRequest(requestKey: string, operationId: string) {
-    const row = this.q(`SELECT invocation_id FROM operation_invocations WHERE request_key=? AND operation_id=?`)
-      .get(requestKey, operationId) as { invocation_id: string } | undefined;
+    const row = this.q(
+      `SELECT invocation_id FROM operation_invocations WHERE request_key=? AND operation_id=?`,
+    ).get(requestKey, operationId) as { invocation_id: string } | undefined;
     return row ? this.getInvocation(row.invocation_id) : null;
   }
 
@@ -1638,8 +2342,11 @@ export class Repo {
     this.setKvJson(`ckpt:${pageId}:${name}`, { ...env, savedAt: Date.now() });
   }
   loadCheckpoint(pageId: string, name: string) {
-    return this.getKvJson<{ inputs?: Record<string, unknown>; vars?: Record<string, unknown>; emitted?: unknown[]; savedAt?: number }>(
-      `ckpt:${pageId}:${name}`,
-    );
+    return this.getKvJson<{
+      inputs?: Record<string, unknown>;
+      vars?: Record<string, unknown>;
+      emitted?: unknown[];
+      savedAt?: number;
+    }>(`ckpt:${pageId}:${name}`);
   }
 }

@@ -1,10 +1,48 @@
 @layer components {
-  .toasts { position: fixed; left: 50%; top: var(--space-2); z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--space-2); pointer-events: none; max-width: min(360px, calc(100vw - 2 * var(--space-3))); transform: translateX(-50%); }
-  .toast { pointer-events: auto; display: inline-flex; align-items: center; gap: var(--space-2); background: var(--bg-1); border-radius: var(--r-3xl); padding: var(--space-2) var(--space-3); font-size: var(--fs-sm); box-shadow: var(--shadow-pop), var(--line-inset); color: var(--ink-0); }
-  .toast .toast-text { min-width: 0; overflow-wrap: anywhere; }
-  .toast svg { color: var(--ok); flex: none; }
-  .toast .toast-dismiss { margin-right: calc(-1 * var(--space-1)); }
-  .toast .toast-dismiss svg { color: var(--ink-2); }
-  .toast.error svg { color: var(--err); }
-  .toast.error { box-shadow: var(--shadow-pop), inset 0 0 0 1px var(--err-line); }
+  .toasts {
+    position: fixed;
+    left: 50%;
+    top: var(--space-2);
+    z-index: var(--z-toast);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    pointer-events: none;
+    max-width: min(360px, calc(100vw - 2 * var(--space-3)));
+    transform: translateX(-50%);
+  }
+  .toast {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    background: var(--bg-1);
+    border-radius: var(--r-3xl);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--fs-sm);
+    box-shadow: var(--shadow-pop), var(--line-inset);
+    color: var(--ink-0);
+  }
+  .toast .toast-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .toast svg {
+    color: var(--ok);
+    flex: none;
+  }
+  .toast .toast-dismiss {
+    margin-right: calc(-1 * var(--space-1));
+  }
+  .toast .toast-dismiss svg {
+    color: var(--ink-2);
+  }
+  .toast.error svg {
+    color: var(--err);
+  }
+  .toast.error {
+    box-shadow:
+      var(--shadow-pop),
+      inset 0 0 0 1px var(--err-line);
+  }
 }

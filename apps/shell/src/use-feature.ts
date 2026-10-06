@@ -5,6 +5,6 @@ import { useStore } from "./store";
 export { featureAvailable, featureStage, featureVisible } from "./feature-availability";
 
 export function useFeature(feature: AuxFeature): boolean {
-  const overrides = useStore(state => state.settings.featureOverrides as FeatureOverride | undefined);
+  const overrides = useStore((state) => state.settings.featureOverrides as FeatureOverride | undefined);
   return featureVisible(feature, overrides);
 }

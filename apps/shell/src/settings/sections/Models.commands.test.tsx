@@ -305,19 +305,28 @@ it("retiring the native review window cancels only its original removal and neve
 
 it("a retired role save does not disable a newly active role or clear its pending work", async () => {
   const completions: ((ack: boolean) => void)[] = [];
-  const save = vi.fn(() => new Promise<boolean>(resolve => completions.push(resolve)));
-  const mount = (active: boolean) => root.render(<ModelsSettings active={active} settings={settings} onSave={save} />);
-  const roleButton = () => host.querySelector<HTMLInputElement>('[aria-label="Fast model ID"]')!.parentElement!
-    .querySelector<HTMLButtonElement>('[data-command-id="save-model-role"]')!;
+  const save = vi.fn(() => new Promise<boolean>((resolve) => completions.push(resolve)));
+  const mount = (active: boolean) =>
+    root.render(<ModelsSettings active={active} settings={settings} onSave={save} />);
+  const roleButton = () =>
+    host
+      .querySelector<HTMLInputElement>('[aria-label="Fast model ID"]')!
+      .parentElement!.querySelector<HTMLButtonElement>('[data-command-id="save-model-role"]')!;
   await act(async () => mount(true));
   let original!: Promise<boolean>;
-  await act(async () => { roleButton().focus(); original = invokeScopedControl("save-model-role") as Promise<boolean>; });
+  await act(async () => {
+    roleButton().focus();
+    original = invokeScopedControl("save-model-role") as Promise<boolean>;
+  });
   expect(roleButton().disabled).toBe(true);
   await act(async () => mount(false));
   await act(async () => mount(true));
   expect(roleButton().disabled).toBe(false);
   let fresh!: Promise<boolean>;
-  await act(async () => { roleButton().focus(); fresh = invokeScopedControl("save-model-role") as Promise<boolean>; });
+  await act(async () => {
+    roleButton().focus();
+    fresh = invokeScopedControl("save-model-role") as Promise<boolean>;
+  });
   expect(save).toHaveBeenCalledTimes(2);
   await act(async () => completions[0]!(true));
   await expect(original).resolves.toBe(true);

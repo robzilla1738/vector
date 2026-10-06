@@ -71,23 +71,38 @@ test("takeover report accepts a symlinked workspace path and refuses replacement
   }
 });
 
-test("packaging rejects a browser that would use Chromium or Electron profile storage", { skip: process.platform !== "darwin" }, () => {
-  const directory = mkdtempSync(resolve(tmpdir(), "aux-profile-sign-test-"));
-  try {
-    const contents = resolve(directory, "Aux.app/Contents");
-    mkdirSync(contents, { recursive: true });
-    for (const productDir of ["", "Chromium", "Aux Browser Profile", "Aux"]) {
-      writeFileSync(resolve(contents, "Info.plist"), `<?xml version="1.0"?><plist version="1.0"><dict>
+test(
+  "packaging rejects a browser that would use Chromium or Electron profile storage",
+  { skip: process.platform !== "darwin" },
+  () => {
+    const directory = mkdtempSync(resolve(tmpdir(), "aux-profile-sign-test-"));
+    try {
+      const contents = resolve(directory, "Aux.app/Contents");
+      mkdirSync(contents, { recursive: true });
+      for (const productDir of ["", "Chromium", "Aux Browser Profile", "Aux"]) {
+        writeFileSync(
+          resolve(contents, "Info.plist"),
+          `<?xml version="1.0"?><plist version="1.0"><dict>
         <key>CFBundleIdentifier</key><string>dev.aux.browser</string>
         ${productDir ? `<key>CrProductDirName</key><string>${productDir}</string>` : ""}
-      </dict></plist>`);
-      const result = invoke("scripts/chromium-sign.mjs", ["--input", directory, "--output", resolve(directory, "output")]);
-      assert.equal(result.status, 0, result.stderr);
-      const plan = JSON.parse(result.stdout);
-      assert.equal(plan.blockers.some(blocker => blocker.includes("profile directory")), productDir !== "Aux");
-      assert.equal(existsSync(resolve(directory, "output")), false);
+      </dict></plist>`,
+        );
+        const result = invoke("scripts/chromium-sign.mjs", [
+          "--input",
+          directory,
+          "--output",
+          resolve(directory, "output"),
+        ]);
+        assert.equal(result.status, 0, result.stderr);
+        const plan = JSON.parse(result.stdout);
+        assert.equal(
+          plan.blockers.some((blocker) => blocker.includes("profile directory")),
+          productDir !== "Aux",
+        );
+        assert.equal(existsSync(resolve(directory, "output")), false);
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
     }
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
-});
+  },
+);

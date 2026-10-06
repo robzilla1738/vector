@@ -19,7 +19,11 @@ let dataDir: string;
 
 const invoke = <T>(m: string, p?: unknown) => rt.invoke(m, p ?? {}) as Promise<T>;
 
-async function fixtureState(): Promise<{ edits: { fields: Record<string, string> }[]; downloads: { file: string }[]; records: { id: string; title: string }[] }> {
+async function fixtureState(): Promise<{
+  edits: { fields: Record<string, string> }[];
+  downloads: { file: string }[];
+  records: { id: string; title: string }[];
+}> {
   const r = await fetch(`${RECORDS}/api/state`);
   return (await r.json()) as never;
 }
@@ -51,12 +55,17 @@ describe("pages", () => {
     expect(page.pageId).toBeTruthy();
     expect(page.backend).toBe("aux");
 
-    const obs = await invoke<{ content: ObservationContent; revision: number; documentEpoch: number }>("pages.observe", { pageId: page.pageId });
+    const obs = await invoke<{ content: ObservationContent; revision: number; documentEpoch: number }>(
+      "pages.observe",
+      { pageId: page.pageId },
+    );
     expect(obs.content.url).toContain("/records");
     expect(obs.revision).toBeGreaterThan(0);
     expect(obs.content.elements.length).toBeGreaterThan(3);
     expect(obs.content.tables.length).toBeGreaterThanOrEqual(1);
-    const applyRef = obs.content.elements.find((e) => /apply filter/i.test(e.name ?? "") || /apply-filter/.test(e.selector?.css ?? ""));
+    const applyRef = obs.content.elements.find(
+      (e) => /apply filter/i.test(e.name ?? "") || /apply-filter/.test(e.selector?.css ?? ""),
+    );
     expect(applyRef, "filter button ref").toBeTruthy();
 
     // execute a typed program: filter to "approved" and extract titles
@@ -86,7 +95,10 @@ describe("pages", () => {
   }, 60_000);
 
   it("edits a record through the UI and the server records the truth", async () => {
-    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records/rec-03`, background: true });
+    const page = await invoke<PageTarget>("pages.open", {
+      url: `${RECORDS}/records/rec-03`,
+      background: true,
+    });
     const before = await fixtureState();
     const res = await invoke<ProgramResult>("pages.execute", {
       program: {
@@ -109,7 +121,15 @@ describe("pages", () => {
 
   it("captures screenshots and stores artifacts", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
-    const shot = await invoke<{ dataUrl?: string; artifactId?: string; width: number; imageWidth: number; imageHeight: number; documentEpoch: number; viewport: { width: number; height: number; scale: number } }>("pages.capture", {
+    const shot = await invoke<{
+      dataUrl?: string;
+      artifactId?: string;
+      width: number;
+      imageWidth: number;
+      imageHeight: number;
+      documentEpoch: number;
+      viewport: { width: number; height: number; scale: number };
+    }>("pages.capture", {
       pageId: page.pageId,
       format: "artifact",
     });
@@ -117,22 +137,40 @@ describe("pages", () => {
     expect(Math.max(shot.imageWidth, shot.imageHeight)).toBeLessThanOrEqual(1568);
     expect(shot.imageWidth * shot.imageHeight).toBeLessThanOrEqual(1_150_000);
     expect(shot.documentEpoch).toBeGreaterThanOrEqual(page.documentEpoch);
-    const list = await invoke<{ artifactId: string; mediaType: string }[]>("artifacts.list", { pageId: page.pageId });
+    const list = await invoke<{ artifactId: string; mediaType: string }[]>("artifacts.list", {
+      pageId: page.pageId,
+    });
     expect(list.some((a) => a.artifactId === shot.artifactId)).toBe(true);
-    const read = await invoke<{ dataBase64: string; artifact: { mediaType: string } }>("artifacts.read", { artifactId: shot.artifactId });
+    const read = await invoke<{ dataBase64: string; artifact: { mediaType: string } }>("artifacts.read", {
+      artifactId: shot.artifactId,
+    });
     expect(read.dataBase64.length).toBeGreaterThan(100);
   }, 60_000);
 
   it("provides read-only element queries and refuses pixel actions after viewport drift", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
-    const read = await invoke<{ value: unknown }>("pages.read", { pageId: page.pageId, query: { kind: "count", selector: "#records-table tbody tr" } });
+    const read = await invoke<{ value: unknown }>("pages.read", {
+      pageId: page.pageId,
+      query: { kind: "count", selector: "#records-table tbody tr" },
+    });
     expect(read.value).toBe(10);
     const html = await invoke<{ text: string }>("pages.accessibilityHtml", { pageId: page.pageId });
     expect(html.text).toContain("<page ");
     expect(html.text).toContain("ref=");
-    const shot = await invoke<{ documentEpoch: number; viewport: { width: number; height: number; scale: number } }>("pages.capture", { pageId: page.pageId, format: "artifact" });
-    await expect(invoke("pages.cuaExecute", { program: { pageId: page.pageId, documentEpoch: shot.documentEpoch,
-      steps: [{ id: "click", op: "clickPoint", x: 10, y: 10 }] }, expectedViewport: { ...shot.viewport, width: shot.viewport.width + 1 } })).rejects.toThrow(/viewport changed/);
+    const shot = await invoke<{
+      documentEpoch: number;
+      viewport: { width: number; height: number; scale: number };
+    }>("pages.capture", { pageId: page.pageId, format: "artifact" });
+    await expect(
+      invoke("pages.cuaExecute", {
+        program: {
+          pageId: page.pageId,
+          documentEpoch: shot.documentEpoch,
+          steps: [{ id: "click", op: "clickPoint", x: 10, y: 10 }],
+        },
+        expectedViewport: { ...shot.viewport, width: shot.viewport.width + 1 },
+      }),
+    ).rejects.toThrow(/viewport changed/);
   }, 60_000);
 
   it("reference invalidation: stale refs fail after navigation", async () => {
@@ -143,18 +181,28 @@ describe("pages", () => {
     await invoke("pages.navigate", { pageId: page.pageId, url: `${RECORDS}/new` });
     // Preflight rejects the stale ref before dispatch, so it cannot click a
     // different node in the new document.
-    await expect(invoke<ProgramResult>("pages.execute", {
-      program: { pageId: page.pageId, steps: [{ id: "s1", op: "click", target: anyRef! }] },
-    })).rejects.toThrow(/unknown or stale|re-observe/i);
+    await expect(
+      invoke<ProgramResult>("pages.execute", {
+        program: { pageId: page.pageId, steps: [{ id: "s1", op: "click", target: anyRef! }] },
+      }),
+    ).rejects.toThrow(/unknown or stale|re-observe/i);
   }, 60_000);
 
   it("compact observation is well under the full JSON and carries usable refs", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
-    const full = await invoke<{ content: ObservationContent; revision: number }>("pages.observe", { pageId: page.pageId });
-    const compact = await invoke<{ observation: { pageId: string; url: string; title: string; revision: number; text: string; refs: { ref: string; role?: string; name?: string }[] } }>(
-      "pages.observe",
-      { pageId: page.pageId, format: "compact" },
-    );
+    const full = await invoke<{ content: ObservationContent; revision: number }>("pages.observe", {
+      pageId: page.pageId,
+    });
+    const compact = await invoke<{
+      observation: {
+        pageId: string;
+        url: string;
+        title: string;
+        revision: number;
+        text: string;
+        refs: { ref: string; role?: string; name?: string }[];
+      };
+    }>("pages.observe", { pageId: page.pageId, format: "compact" });
     const fullBytes = JSON.stringify(full).length;
     const compactBytes = JSON.stringify(compact).length;
     // MCP path: the tool emitted the pretty-printed full JSON before and emits
@@ -186,7 +234,9 @@ describe("pages", () => {
 
   it("pages.execute returnObservation returns the post-action state in one round trip", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
-    const res = await invoke<ProgramResult & { observation?: { pageId: string; url: string; text: string; refs: unknown[] } }>("pages.execute", {
+    const res = await invoke<
+      ProgramResult & { observation?: { pageId: string; url: string; text: string; refs: unknown[] } }
+    >("pages.execute", {
       program: {
         pageId: page.pageId,
         steps: [
@@ -203,10 +253,13 @@ describe("pages", () => {
     expect(res.observation?.url).toContain("status=approved");
     expect(res.observation?.refs.length).toBeGreaterThan(3);
     // full format is the plain Observation
-    const full = await invoke<ProgramResult & { observation?: { content?: ObservationContent } }>("pages.execute", {
-      program: { pageId: page.pageId, steps: [{ id: "r1", op: "reload" }] },
-      returnObservation: { format: "full", scope: "forms" },
-    });
+    const full = await invoke<ProgramResult & { observation?: { content?: ObservationContent } }>(
+      "pages.execute",
+      {
+        program: { pageId: page.pageId, steps: [{ id: "r1", op: "reload" }] },
+        returnObservation: { format: "full", scope: "forms" },
+      },
+    );
     expect(full.observation?.content?.formFields.length).toBeGreaterThan(0);
     // without returnObservation the result shape is unchanged
     const plain = await invoke<Record<string, unknown>>("pages.execute", {
@@ -218,7 +271,8 @@ describe("pages", () => {
   it("refs resolve to the exact observed node even after the DOM shifts, and fall back when it is gone (A7)", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/new`, background: true });
     const obs = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
-    const isTitle = (e: ObservationContent["elements"][number]) => e.tag === "input" && /title/i.test(e.name ?? "");
+    const isTitle = (e: ObservationContent["elements"][number]) =>
+      e.tag === "input" && /title/i.test(e.name ?? "");
     const title = obs.content.elements.find(isTitle)!;
     expect(title).toBeTruthy();
     // insert a decoy input before the target: a positional css path now points
@@ -244,7 +298,16 @@ describe("pages", () => {
     expect(after.content.formFields.find((f) => f.name === "decoy")?.value ?? "").toBe("");
     // restore the id for the second scenario
     await invoke("pages.execute", {
-      program: { pageId: page.pageId, steps: [{ id: "e2", op: "evaluate", expression: `(() => { document.querySelector('input[name=title]').id = "n-title"; return 1; })()` }] },
+      program: {
+        pageId: page.pageId,
+        steps: [
+          {
+            id: "e2",
+            op: "evaluate",
+            expression: `(() => { document.querySelector('input[name=title]').id = "n-title"; return 1; })()`,
+          },
+        ],
+      },
       allowEval: true,
     });
     // the node is replaced (framework re-render): the handle is gone, the
@@ -266,7 +329,9 @@ describe("pages", () => {
       allowEval: true,
     });
     const after2 = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
-    expect(after2.content.formFields.find((f) => f.name === "title" || f.label === "Title")?.value).toBe("fallback node");
+    expect(after2.content.formFields.find((f) => f.name === "title" || f.label === "Title")?.value).toBe(
+      "fallback node",
+    );
   }, 60_000);
 
   it("observation carries select options, focus, offscreen and occlusion; subtree scope accepts a ref (A10)", async () => {
@@ -298,27 +363,50 @@ describe("pages", () => {
     const obs = await invoke<Obs>("pages.observe", { pageId: page.pageId });
     const status = obs.content.elements.find((e) => e.tag === "select" && /status/i.test(e.name ?? ""))!;
     expect(status.options).toEqual(expect.arrayContaining(["draft", "in progress", "approved"]));
-    expect(obs.content.elements.find((e) => e.tag === "input" && /title/i.test(e.name ?? ""))?.focused).toBe(true);
+    expect(obs.content.elements.find((e) => e.tag === "input" && /title/i.test(e.name ?? ""))?.focused).toBe(
+      true,
+    );
     expect(obs.content.elements.find((e) => e.name === "Far away")?.offscreen).toBe(true);
-    const covered = obs.content.elements.find((e) => e.tag === "button" && e.name !== "Far away" && e.occluded);
+    const covered = obs.content.elements.find(
+      (e) => e.tag === "button" && e.name !== "Far away" && e.occluded,
+    );
     expect(covered, "the covered submit button is marked occluded").toBeTruthy();
     // the compact rendering carries the same signals for the model
-    const compact = await invoke<{ observation: { text: string } }>("pages.observe", { pageId: page.pageId, format: "compact" });
+    const compact = await invoke<{ observation: { text: string } }>("pages.observe", {
+      pageId: page.pageId,
+      format: "compact",
+    });
     expect(compact.observation.text).toMatch(/options=\[.*"approved".*\]/);
     expect(compact.observation.text).toContain(" occluded");
     expect(compact.observation.text).toContain(" offscreen");
     // subtree scope: a css target, and a ref (which used to go straight into querySelector)
-    const sub = await invoke<Obs>("pages.observe", { pageId: page.pageId, scope: "subtree", subtreeRef: "css:form" });
+    const sub = await invoke<Obs>("pages.observe", {
+      pageId: page.pageId,
+      scope: "subtree",
+      subtreeRef: "css:form",
+    });
     expect(sub.content.elements.length).toBeGreaterThan(0);
     expect(sub.content.elements.every((e) => e.name !== "Far away")).toBe(true);
-    const byRef = await invoke<Obs>("pages.observe", { pageId: page.pageId, scope: "subtree", subtreeRef: status.ref });
+    const byRef = await invoke<Obs>("pages.observe", {
+      pageId: page.pageId,
+      scope: "subtree",
+      subtreeRef: status.ref,
+    });
     expect(byRef.content.elements.every((e) => e.name !== "Far away")).toBe(true);
-    await expect(invoke("pages.observe", { pageId: page.pageId, scope: "subtree", subtreeRef: "r99999" })).rejects.toThrow(/stale|unknown/);
+    await expect(
+      invoke("pages.observe", { pageId: page.pageId, scope: "subtree", subtreeRef: "r99999" }),
+    ).rejects.toThrow(/stale|unknown/);
   }, 60_000);
 
   it("observation cache: an unchanged page is served from cache; typing or navigating invalidates it (A6)", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/new`, background: true });
-    type Obs = { observationId: string; revision: number; cached?: boolean; changesSince?: string[]; content: ObservationContent };
+    type Obs = {
+      observationId: string;
+      revision: number;
+      cached?: boolean;
+      changesSince?: string[];
+      content: ObservationContent;
+    };
     const first = await invoke<Obs>("pages.observe", { pageId: page.pageId });
     expect(first.cached).toBeUndefined();
     const second = await invoke<Obs>("pages.observe", { pageId: page.pageId });
@@ -330,14 +418,22 @@ describe("pages", () => {
     expect(forms.cached).toBeUndefined();
     // a form value change is invisible to a MutationObserver but must miss the cache
     await invoke("pages.execute", {
-      program: { pageId: page.pageId, steps: [{ id: "f", op: "fill", target: "css:#n-title", value: "Cache probe" }] },
+      program: {
+        pageId: page.pageId,
+        steps: [{ id: "f", op: "fill", target: "css:#n-title", value: "Cache probe" }],
+      },
     });
     const third = await invoke<Obs>("pages.observe", { pageId: page.pageId });
     expect(third.cached).toBeUndefined();
     expect(third.revision).toBeGreaterThan(first.revision);
     expect(third.content.formFields.some((f) => f.value === "Cache probe")).toBe(true);
     // sinceRevision diffs against the revision the caller last saw, not just the previous one
-    const since = await invoke<Obs>("pages.observe", { pageId: page.pageId, scope: "full", sinceRevision: first.revision, maxElements: 119 });
+    const since = await invoke<Obs>("pages.observe", {
+      pageId: page.pageId,
+      scope: "full",
+      sinceRevision: first.revision,
+      maxElements: 119,
+    });
     expect(since.changesSince?.some((c) => c.includes("Cache probe"))).toBe(true);
     // navigation changes the epoch: no stale hit
     await invoke("pages.navigate", { pageId: page.pageId, url: `${RECORDS}/records` });
@@ -371,7 +467,10 @@ describe("pages", () => {
   }, 60_000);
 
   it("settled is bounded: a slow in-flight request times out at the deadline, not later", async () => {
-    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records/rec-01`, background: true });
+    const page = await invoke<PageTarget>("pages.open", {
+      url: `${RECORDS}/records/rec-01`,
+      background: true,
+    });
     const res = await invoke<ProgramResult>("pages.execute", {
       program: {
         pageId: page.pageId,
@@ -394,7 +493,10 @@ describe("pages", () => {
     await invoke("pages.navigate", { pageId: page.pageId, url: `${RECORDS}/records/rec-02` });
     const ms = Date.now() - t;
     expect(ms).toBeLessThan(3000);
-    const obs = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId, format: "full" });
+    const obs = await invoke<{ content: ObservationContent }>("pages.observe", {
+      pageId: page.pageId,
+      format: "full",
+    });
     expect(obs.content.url).toContain("rec-02");
     expect(obs.content.elements.length).toBeGreaterThan(0);
   }, 60_000);
@@ -405,19 +507,22 @@ describe("pages", () => {
     const res = await invoke<ProgramResult>("pages.execute", {
       program: {
         pageId: page.pageId,
-        steps: [{
-          id: "c1",
-          op: "collectScroll",
-          item: ".vrow",
-          container: "#vlist",
-          key: "data-key",
-          limit: 60,
-          as: "rows",
-        }],
+        steps: [
+          {
+            id: "c1",
+            op: "collectScroll",
+            item: ".vrow",
+            container: "#vlist",
+            key: "data-key",
+            limit: 60,
+            as: "rows",
+          },
+        ],
       },
     });
     expect(res.status).toBe("completed");
-    const rows = (res.extracted?.rows as { items: { text: string }[]; count: number } | undefined)?.items ?? [];
+    const rows =
+      (res.extracted?.rows as { items: { text: string }[]; count: number } | undefined)?.items ?? [];
     expect(rows.length).toBeGreaterThanOrEqual(60);
     const keys = new Set(rows.map((r) => r.text.split(" ")[0]));
     expect(keys.size).toBe(rows.length); // deduped, all unique
@@ -428,15 +533,17 @@ describe("pages", () => {
     const res = await invoke<ProgramResult>("pages.execute", {
       program: {
         pageId: page.pageId,
-        steps: [{
-          id: "c1",
-          op: "collectScroll",
-          item: ".irow",
-          container: "#infinite",
-          key: "data-key",
-          settleMs: 250, // fixture loads batches with ~120ms latency
-          as: "rows",
-        }],
+        steps: [
+          {
+            id: "c1",
+            op: "collectScroll",
+            item: ".irow",
+            container: "#infinite",
+            key: "data-key",
+            settleMs: 250, // fixture loads batches with ~120ms latency
+            as: "rows",
+          },
+        ],
       },
     });
     expect(res.status).toBe("completed");

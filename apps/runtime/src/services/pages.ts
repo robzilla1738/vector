@@ -54,35 +54,56 @@ export class PageService {
   }
 
   /** Actual agent read producer; person shell reads continue to use the ordinary page facade. */
-  async authorizeAgentRead(runId: string, pageId: string, action = "page.read", taskRead?: ValidatedTaskRead): Promise<() => void> {
+  async authorizeAgentRead(
+    runId: string,
+    pageId: string,
+    action = "page.read",
+    taskRead?: ValidatedTaskRead,
+  ): Promise<() => void> {
     const run = this.pages.deps.repo.getRun(runId);
     const page = this.pages.get(pageId);
     if (!run || !["queued", "running", "planning", "needs_input", "paused"].includes(run.status))
       throw new AuxError("permission_denied", "This agent read turn has ended.");
     if (!page.sessionId || page.viewStatus === "detached" || page.viewStatus === "crashed")
       throw new AuxError("target_detached", "The agent read attachment is unavailable.");
-    if (!this.pages.deps.safetyGate) throw new AuxError("capability_unsupported", "Site agent read policy is unavailable for this runtime.");
+    if (!this.pages.deps.safetyGate)
+      throw new AuxError("capability_unsupported", "Site agent read policy is unavailable for this runtime.");
     const taskId = run.config?.taskId;
     return this.pages.deps.safetyGate.checkRead({
-      action, origin: new URL(page.url).origin,
+      action,
+      origin: new URL(page.url).origin,
       document: { pageId, sessionId: page.sessionId, documentEpoch: page.documentEpoch, url: page.url },
       context: {
         taskRead,
         profileId: this.pages.deps.profileId ?? "default",
-        scope: taskId ? { kind: "task", id: taskId } : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" },
+        scope: taskId
+          ? { kind: "task", id: taskId }
+          : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" },
         actor: run.config?.implementation === "external-agent" ? "external_token" : "builtin_agent",
-        runId, pageId, turnId: runId, threadId: run.config?.chatId ?? runId, sessionId: page.sessionId,
+        runId,
+        pageId,
+        turnId: runId,
+        threadId: run.config?.chatId ?? runId,
+        sessionId: page.sessionId,
       },
     });
   }
 
   /** A captured cross-origin response retains its initiating page fence and its own actual site policy. */
-  async authorizeAgentResponseRead(runId: string, requestId: string, taskRead?: ValidatedTaskRead): Promise<() => void> {
+  async authorizeAgentResponseRead(
+    runId: string,
+    requestId: string,
+    taskRead?: ValidatedTaskRead,
+  ): Promise<() => void> {
     const record = this.pages.deps.repo.getResponse(requestId);
     if (!record) throw new AuxError("not_found", "The captured response is unavailable.");
     const page = this.pages.get(record.pageId);
-    if (!page.sessionId || record.sessionId !== page.sessionId || record.documentEpoch !== page.documentEpoch ||
-        record.documentUrl !== page.url)
+    if (
+      !page.sessionId ||
+      record.sessionId !== page.sessionId ||
+      record.documentEpoch !== page.documentEpoch ||
+      record.documentUrl !== page.url
+    )
       throw new AuxError("ref_stale", "This response belongs to another initiating document.");
     const pagePolicy = await this.authorizeAgentRead(runId, page.pageId, "responses.read", taskRead);
     const run = this.pages.deps.repo.getRun(runId);
@@ -90,14 +111,26 @@ export class PageService {
       throw new AuxError("permission_denied", "This response read turn has ended.");
     const taskId = run.config?.taskId;
     const responsePolicy = await this.pages.deps.safetyGate.checkRead({
-      action: "responses.read", origin: new URL(record.url).origin,
-      document: { pageId: page.pageId, sessionId: page.sessionId, documentEpoch: page.documentEpoch, url: page.url },
+      action: "responses.read",
+      origin: new URL(record.url).origin,
+      document: {
+        pageId: page.pageId,
+        sessionId: page.sessionId,
+        documentEpoch: page.documentEpoch,
+        url: page.url,
+      },
       context: {
         taskRead,
         profileId: this.pages.deps.profileId ?? "default",
-        scope: taskId ? { kind: "task", id: taskId } : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" },
+        scope: taskId
+          ? { kind: "task", id: taskId }
+          : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" },
         actor: run.config?.implementation === "external-agent" ? "external_token" : "builtin_agent",
-        runId, pageId: page.pageId, turnId: runId, threadId: run.config?.chatId ?? runId, sessionId: page.sessionId,
+        runId,
+        pageId: page.pageId,
+        turnId: runId,
+        threadId: run.config?.chatId ?? runId,
+        sessionId: page.sessionId,
       },
     });
     const check = () => {
@@ -105,9 +138,15 @@ export class PageService {
       responsePolicy();
       const current = this.pages.get(page.pageId);
       const saved = this.pages.deps.repo.getResponse(requestId);
-      if (current.sessionId !== page.sessionId || current.documentEpoch !== page.documentEpoch || current.url !== page.url ||
-          saved?.url !== record.url || saved.sessionId !== page.sessionId || saved.documentEpoch !== page.documentEpoch ||
-          saved.documentUrl !== page.url)
+      if (
+        current.sessionId !== page.sessionId ||
+        current.documentEpoch !== page.documentEpoch ||
+        current.url !== page.url ||
+        saved?.url !== record.url ||
+        saved.sessionId !== page.sessionId ||
+        saved.documentEpoch !== page.documentEpoch ||
+        saved.documentUrl !== page.url
+      )
         throw new AuxError("ref_stale", "The response or initiating attachment changed.");
     };
     check();
@@ -126,7 +165,9 @@ export class PageService {
     return this.pages.activeByWindow.get(windowId) ?? null;
   }
 
-  get isRestoringTabs() { return this.pages.restoring; }
+  get isRestoringTabs() {
+    return this.pages.restoring;
+  }
 
   list: PageRegistry["list"] = (...args) => this.pages.list(...args);
   get: PageRegistry["get"] = (...args) => this.pages.get(...args);
@@ -135,7 +176,8 @@ export class PageService {
 
   async recorderObserver(pageId: string) {
     const page = this.get(pageId);
-    if (page.ownedByRuntime || page.controller === "agent" || page.controller === "external") throw new AuxError("permission_denied", "Recording needs a person-controlled tab.");
+    if (page.ownedByRuntime || page.controller === "agent" || page.controller === "external")
+      throw new AuxError("permission_denied", "Recording needs a person-controlled tab.");
     const native = this.pages.deps.native;
     if (native.available()) {
       if (!native.recorderStart || !native.recorderDrain || !native.recorderStop)
@@ -145,15 +187,29 @@ export class PageService {
         const next = this.pages.live.get(pageId);
         // Native UUID/document receipts own capture; a driver session cannot
         // authorize this closed producer or substitute for native attachment.
-        return !this.pages.closing && !!originalPage && next === originalPage &&
-          next.target.backend === "aux" && !next.target.ownedByRuntime &&
-          next.target.controller !== "agent" && next.target.controller !== "external";
+        return (
+          !this.pages.closing &&
+          !!originalPage &&
+          next === originalPage &&
+          next.target.backend === "aux" &&
+          !next.target.ownedByRuntime &&
+          next.target.controller !== "agent" &&
+          next.target.controller !== "external"
+        );
       };
-      return new NativeRecorderObserver({ start: native.recorderStart.bind(native),
-        drain: native.recorderDrain.bind(native), stop: native.recorderStop.bind(native) }, pageId, current);
+      return new NativeRecorderObserver(
+        {
+          start: native.recorderStart.bind(native),
+          drain: native.recorderDrain.bind(native),
+          stop: native.recorderStop.bind(native),
+        },
+        pageId,
+        current,
+      );
     }
     const driver = this.pages.driverPageLenient(pageId);
-    if (!driver.openRecorderObserver) throw new AuxError("feature_unavailable", "This page cannot record demonstrations.");
+    if (!driver.openRecorderObserver)
+      throw new AuxError("feature_unavailable", "This page cannot record demonstrations.");
     return driver.openRecorderObserver();
   }
 
@@ -170,14 +226,18 @@ export class PageService {
   recoveryTabs: TabSessionRestore["recoveryTabs"] = (...args) => this.restore.recoveryTabs(...args);
 
   /** Hide a tab that still had a renderer until this process has loaded it again. */
-  restoredTabShown(pageId: string, lifecycle: "live" | "placeholder" | "frozen" | "discarded" | undefined): boolean {
+  restoredTabShown(
+    pageId: string,
+    lifecycle: "live" | "placeholder" | "frozen" | "discarded" | undefined,
+  ): boolean {
     if (!this.pages.awakeOnRestore.has(pageId)) return true;
     return lifecycle !== "placeholder" && lifecycle !== "discarded";
   }
   retryRestore: TabSessionRestore["retryRestore"] = (...args) => this.restore.retryRestore(...args);
 
   activate: ActivationPolicy["activate"] = (...args) => this.activation.activate(...args);
-  onNativeWindowFocused: ActivationPolicy["onNativeWindowFocused"] = (...args) => this.activation.onNativeWindowFocused(...args);
+  onNativeWindowFocused: ActivationPolicy["onNativeWindowFocused"] = (...args) =>
+    this.activation.onNativeWindowFocused(...args);
 
   closeCreated(original: import("@aux/contracts").PageTarget, runId: string): Promise<void> {
     return this.pages.closeCreator(original, runId);
@@ -195,9 +255,14 @@ export class PageService {
 
   execute: ProgramExecutor["execute"] = (...args) => this.executor.execute(...args);
   /** Owner-requested local form restore, serialized with agent commands on this page. */
-  undoFormChange(input: { pageId: string; target: string; url: string; documentEpoch: number;
+  undoFormChange(input: {
+    pageId: string;
+    target: string;
+    url: string;
+    documentEpoch: number;
     before: { value?: string; checked?: boolean; selected?: string };
-    after: { value?: string; checked?: boolean; selected?: string } }): Promise<void> {
+    after: { value?: string; checked?: boolean; selected?: string };
+  }): Promise<void> {
     return this.lanes.enqueue(input.pageId, async () => {
       const page = this.pages.get(input.pageId);
       const driver = this.pages.driverPageLenient(input.pageId);
@@ -205,19 +270,29 @@ export class PageService {
         throw new AuxError("conflict", "The page changed; the recorded form edit cannot be undone safely");
       if (!driver.fieldState) throw new AuxError("backend_unavailable", "Form state is unavailable");
       const same = (left: Record<string, unknown> | undefined, right: Record<string, unknown>) =>
-        !!left && Object.keys(right).length === 1 && Object.keys(left).length === 1 &&
-        Object.keys(right).every(key => left[key] === right[key]);
+        !!left &&
+        Object.keys(right).length === 1 &&
+        Object.keys(left).length === 1 &&
+        Object.keys(right).every((key) => left[key] === right[key]);
       const live = await driver.fieldState(input.target);
-      if (!same(live, input.after)) throw new AuxError("conflict", "The form changed since this run; reload the receipt and review it");
+      if (!same(live, input.after))
+        throw new AuxError("conflict", "The form changed since this run; reload the receipt and review it");
       if (typeof input.before.value === "string") await driver.fill(input.target, input.before.value);
       else if (typeof input.before.checked === "boolean") {
         if (input.before.checked) await driver.check(input.target);
         else await driver.uncheck(input.target);
-      } else if (typeof input.before.selected === "string") await driver.select(input.target, input.before.selected.split("|"));
+      } else if (typeof input.before.selected === "string")
+        await driver.select(input.target, input.before.selected.split("|"));
       else throw new AuxError("invalid_params", "No restorable prior form state was recorded");
-      if (page.documentEpoch !== input.documentEpoch || driver.url() !== input.url ||
-        !same(await driver.fieldState(input.target), input.before))
-        throw new AuxError("conflict", "The page changed during restore; inspect the form before trying again");
+      if (
+        page.documentEpoch !== input.documentEpoch ||
+        driver.url() !== input.url ||
+        !same(await driver.fieldState(input.target), input.before)
+      )
+        throw new AuxError(
+          "conflict",
+          "The page changed during restore; inspect the form before trying again",
+        );
     });
   }
   /** Close an unused tab created by a completed model run. Foreground/taken-over tabs require human review. */
@@ -227,8 +302,12 @@ export class PageService {
       if (!page.ownedByRuntime) throw new AuxError("conflict", "This tab is no longer run-owned");
       if (page.url !== expected.url || page.documentEpoch !== expected.documentEpoch)
         throw new AuxError("conflict", "This tab navigated after the run opened it");
-      if (this.pages.activeId === pageId || this.pages.activeByWindow.get(page.windowId ?? "main") === pageId ||
-        !["background", "hidden"].includes(page.viewStatus) || page.controller !== "none")
+      if (
+        this.pages.activeId === pageId ||
+        this.pages.activeByWindow.get(page.windowId ?? "main") === pageId ||
+        !["background", "hidden"].includes(page.viewStatus) ||
+        page.controller !== "none"
+      )
         throw new AuxError("conflict", "This tab was taken over or activated");
       const closed = await this.navigation.close(pageId);
       if (!closed.ok) throw new AuxError("conflict", "The browser did not close this run-owned tab");
@@ -237,13 +316,15 @@ export class PageService {
   waitFor: ProgramExecutor["waitFor"] = (...args) => this.executor.waitFor(...args);
 
   takeover: ControlAuthority["takeover"] = (...args) => this.control.takeover(...args);
-  takeoverFromNative: ControlAuthority["takeoverFromNative"] = (...args) => this.control.takeoverFromNative(...args);
+  takeoverFromNative: ControlAuthority["takeoverFromNative"] = (...args) =>
+    this.control.takeoverFromNative(...args);
   resume: ControlAuthority["resume"] = (...args) => this.control.resume(...args);
   releaseAgent: ControlAuthority["releaseAgent"] = (...args) => this.control.releaseAgent(...args);
 
   pickElement: PageDiagnostics["pickElement"] = (...args) => this.diagnostics.pickElement(...args);
   pickZap: PageDiagnostics["pickZap"] = (...args) => this.diagnostics.pickZap(...args);
-  countZapMatches: PageDiagnostics["countZapMatches"] = (...args) => this.diagnostics.countZapMatches(...args);
+  countZapMatches: PageDiagnostics["countZapMatches"] = (...args) =>
+    this.diagnostics.countZapMatches(...args);
   applyUserCss: PageDiagnostics["applyUserCss"] = (...args) => this.diagnostics.applyUserCss(...args);
   console: PageDiagnostics["console"] = (...args) => this.diagnostics.console(...args);
   dialog: PageDiagnostics["dialog"] = (...args) => this.diagnostics.dialog(...args);
@@ -265,13 +346,18 @@ export class PageService {
 
   syncCatalog: NativeViewSync["syncCatalog"] = (...args) => this.nativeSync.syncCatalog(...args);
   onNativeRemoved: NativeViewSync["onNativeRemoved"] = (...args) => this.nativeSync.onNativeRemoved(...args);
-  onNativeNavigated: NativeViewSync["onNativeNavigated"] = (...args) => this.nativeSync.onNativeNavigated(...args);
-  onNativeNavigationError: NativeViewSync["onNativeNavigationError"] = (...args) => this.nativeSync.onNativeNavigationError(...args);
+  onNativeNavigated: NativeViewSync["onNativeNavigated"] = (...args) =>
+    this.nativeSync.onNativeNavigated(...args);
+  onNativeNavigationError: NativeViewSync["onNativeNavigationError"] = (...args) =>
+    this.nativeSync.onNativeNavigationError(...args);
   onNativeCrashed: NativeViewSync["onNativeCrashed"] = (...args) => this.nativeSync.onNativeCrashed(...args);
   onNativeTitle: NativeViewSync["onNativeTitle"] = (...args) => this.nativeSync.onNativeTitle(...args);
   onNativeFavicon: NativeViewSync["onNativeFavicon"] = (...args) => this.nativeSync.onNativeFavicon(...args);
-  onNativeNavState: NativeViewSync["onNativeNavState"] = (...args) => this.nativeSync.onNativeNavState(...args);
+  onNativeNavState: NativeViewSync["onNativeNavState"] = (...args) =>
+    this.nativeSync.onNativeNavState(...args);
   onNativeLoading: NativeViewSync["onNativeLoading"] = (...args) => this.nativeSync.onNativeLoading(...args);
-  onNativeDownloadStarted: NativeViewSync["onNativeDownloadStarted"] = (...args) => this.nativeSync.onNativeDownloadStarted(...args);
-  onNativeDownload: NativeViewSync["onNativeDownload"] = (...args) => this.nativeSync.onNativeDownload(...args);
+  onNativeDownloadStarted: NativeViewSync["onNativeDownloadStarted"] = (...args) =>
+    this.nativeSync.onNativeDownloadStarted(...args);
+  onNativeDownload: NativeViewSync["onNativeDownload"] = (...args) =>
+    this.nativeSync.onNativeDownload(...args);
 }

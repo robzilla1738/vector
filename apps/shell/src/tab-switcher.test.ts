@@ -19,7 +19,18 @@ describe("tab switcher order", () => {
     expect(next(tabs, "red", 1, "recently-used", 1000)).toBe("plain");
     expect(next(tabs, "plain", 1, "recently-used", 1100)).toBe("blue");
     expect(next(tabs, "blue", -1, "recently-used", 1200)).toBe("plain");
-    expect(next(tabs.map(tab => ({ ...tab, lastActiveAt: tab.pageId === "blue" ? 50 : tab.pageId === "plain" ? 40 : 30 })), "plain", 1, "recently-used", 3000)).toBe("red");
+    expect(
+      next(
+        tabs.map((tab) => ({
+          ...tab,
+          lastActiveAt: tab.pageId === "blue" ? 50 : tab.pageId === "plain" ? 40 : 30,
+        })),
+        "plain",
+        1,
+        "recently-used",
+        3000,
+      ),
+    ).toBe("red");
   });
 
   it("restarts the sequence after a tab closes or selection changes", () => {

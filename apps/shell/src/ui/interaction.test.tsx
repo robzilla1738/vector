@@ -306,14 +306,23 @@ it("Toast stays paused until both keyboard focus and pointer hover leave", async
 
 it("action Toast keeps its reviewed action available for ten seconds", async () => {
   vi.useFakeTimers();
-  const dismiss = vi.fn(), run = vi.fn();
-  await act(async () => root.render(<Toast id={2} text="Archived tabs" kind="info" action={{ label: "Undo", run }} onDismiss={dismiss} />));
-  await act(async () => { await vi.advanceTimersByTimeAsync(9000); });
+  const dismiss = vi.fn(),
+    run = vi.fn();
+  await act(async () =>
+    root.render(
+      <Toast id={2} text="Archived tabs" kind="info" action={{ label: "Undo", run }} onDismiss={dismiss} />,
+    ),
+  );
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(9000);
+  });
   expect(dismiss).not.toHaveBeenCalled();
-  const undo = [...host.querySelectorAll("button")].find(button => button.textContent === "Undo")!;
+  const undo = [...host.querySelectorAll("button")].find((button) => button.textContent === "Undo")!;
   await act(async () => undo.click());
   expect(run).toHaveBeenCalledOnce();
-  await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
   expect(dismiss).toHaveBeenCalledWith(2);
 });
 

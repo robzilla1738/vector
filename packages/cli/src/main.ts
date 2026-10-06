@@ -39,7 +39,26 @@ function parseFlags(argv: string[]): { args: string[]; flags: Record<string, str
       const k = separator < 0 ? text : text.slice(0, separator);
       const v = separator < 0 ? undefined : text.slice(separator + 1);
       if (v !== undefined) flags[k!] = v;
-      else if (!["json", "little", "new-window", "background", "wait", "rpc", "chrome", "all", "follow", "artifact", "raw", "archived", "revoked"].includes(k!) && i + 1 < argv.length && !argv[i + 1]!.startsWith("--")) flags[k!] = argv[++i]!;
+      else if (
+        ![
+          "json",
+          "little",
+          "new-window",
+          "background",
+          "wait",
+          "rpc",
+          "chrome",
+          "all",
+          "follow",
+          "artifact",
+          "raw",
+          "archived",
+          "revoked",
+        ].includes(k!) &&
+        i + 1 < argv.length &&
+        !argv[i + 1]!.startsWith("--")
+      )
+        flags[k!] = argv[++i]!;
       else flags[k!] = true;
     } else args.push(a);
   }
@@ -129,7 +148,11 @@ async function main() {
       if (args[0] !== "list") fail("usage: aux profiles list [--json]", 2);
       const profiles = await profileListing();
       if (flags.json) out(profiles);
-      else for (const profile of profiles) process.stdout.write(`${profile.name} (${profile.id})${profile.running ? " · running" : ""}${profile.archived ? " · archived" : ""}\n`);
+      else
+        for (const profile of profiles)
+          process.stdout.write(
+            `${profile.name} (${profile.id})${profile.running ? " · running" : ""}${profile.archived ? " · archived" : ""}\n`,
+          );
       return;
     }
 
@@ -137,8 +160,18 @@ async function main() {
       const url = args[0];
       if (!url) fail("usage: aux open <url> [--profile id|name] [--space id|name] [--wait]", 2);
       if (!flags.rpc) {
-        if (flags.profile === true || flags.space === true) fail("--profile and --space require an ID or name.", 2);
-        out(await openUrl(url!, { profile: typeof flags.profile === "string" ? flags.profile : undefined, space: typeof flags.space === "string" ? flags.space : undefined, little: !!flags.little, newWindow: !!flags["new-window"], background: !!flags.background, wait: !!flags.wait }));
+        if (flags.profile === true || flags.space === true)
+          fail("--profile and --space require an ID or name.", 2);
+        out(
+          await openUrl(url!, {
+            profile: typeof flags.profile === "string" ? flags.profile : undefined,
+            space: typeof flags.space === "string" ? flags.space : undefined,
+            little: !!flags.little,
+            newWindow: !!flags["new-window"],
+            background: !!flags.background,
+            wait: !!flags.wait,
+          }),
+        );
         return;
       }
       out(
@@ -313,8 +346,7 @@ async function main() {
       if (sub === "open-live") out(await rpc("chrome.openLive", { pageId: args[1] }));
       else if (sub === "import-cookies")
         out(await rpc("chrome.importCookies", { source: flags.source ?? "auto" }));
-      else
-        fail("usage: auxctl chrome open-live <pageId>|import-cookies [--source auto|profile]");
+      else fail("usage: auxctl chrome open-live <pageId>|import-cookies [--source auto|profile]");
       return;
     }
 

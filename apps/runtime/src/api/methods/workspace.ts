@@ -8,20 +8,34 @@ async function h_workspace_get(ctx: MethodCtx): Promise<unknown> {
     : s.pages.list();
   // A tab that still had a renderer stays out of this snapshot until reload.
   // Showing the session-restore placeholder would report it as sleeping.
-  const livePages = scope ? listed : listed.filter((page) => s.pages.restoredTabShown(page.pageId, page.lifecycle));
+  const livePages = scope
+    ? listed
+    : listed.filter((page) => s.pages.restoredTabShown(page.pageId, page.lifecycle));
   // Saved tabs without a native target belong in the owner's strip. They are
   // presentation placeholders; pages.list and scoped clients remain live only.
-  const pages = scope ? livePages : [
-    ...livePages,
-    ...s.pages.recoveryTabs().flatMap((tab) => {
-      if (listed.some((page) => page.pageId === tab.pageId)) return [];
-      if (!s.pages.restoredTabShown(tab.pageId, "placeholder")) return [];
-      const previous = s.repo.getPage(tab.pageId);
-      return previous ? [{ ...previous, url: tab.url, title: tab.title,
-        windowId: tab.windowId, lifecycle: "placeholder" as const,
-        viewStatus: "hidden" as const, loading: false }] : [];
-    }),
-  ];
+  const pages = scope
+    ? livePages
+    : [
+        ...livePages,
+        ...s.pages.recoveryTabs().flatMap((tab) => {
+          if (listed.some((page) => page.pageId === tab.pageId)) return [];
+          if (!s.pages.restoredTabShown(tab.pageId, "placeholder")) return [];
+          const previous = s.repo.getPage(tab.pageId);
+          return previous
+            ? [
+                {
+                  ...previous,
+                  url: tab.url,
+                  title: tab.title,
+                  windowId: tab.windowId,
+                  lifecycle: "placeholder" as const,
+                  viewStatus: "hidden" as const,
+                  loading: false,
+                },
+              ]
+            : [];
+        }),
+      ];
   const taskIds = scope ? new Set(scopedTasks(scope).map((task) => task.taskId)) : null;
   const runs = s.runs.coordinator
     .list(50)

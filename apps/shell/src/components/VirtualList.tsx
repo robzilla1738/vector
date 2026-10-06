@@ -34,7 +34,9 @@ export function VirtualList<T>({
   const measure = useCallback(() => {
     const el = ref.current;
     if (!el) return;
-    const headerH = (el.firstElementChild as HTMLElement | null)?.dataset.header ? (el.firstElementChild as HTMLElement).offsetHeight : 0;
+    const headerH = (el.firstElementChild as HTMLElement | null)?.dataset.header
+      ? (el.firstElementChild as HTMLElement).offsetHeight
+      : 0;
     const top = Math.max(0, el.scrollTop - headerH);
     const start = Math.max(0, Math.floor(top / rowHeight) - overscan);
     const visible = Math.ceil(el.clientHeight / rowHeight) + overscan * 2;
@@ -61,7 +63,10 @@ export function VirtualList<T>({
         {slice.map((item, i) => {
           const index = range.start + i;
           return (
-            <div key={keyOf(item, index)} style={{ position: "absolute", top: index * rowHeight, left: 0, right: 0, height: rowHeight }}>
+            <div
+              key={keyOf(item, index)}
+              style={{ position: "absolute", top: index * rowHeight, left: 0, right: 0, height: rowHeight }}
+            >
               {renderRow(item, index)}
             </div>
           );

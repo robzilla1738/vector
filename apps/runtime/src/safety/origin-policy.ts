@@ -13,11 +13,13 @@ export interface OriginPolicyDecision {
   origin: string;
   effect: Effect;
 }
-export interface OriginPolicyAudit extends OriginPolicyDecision { at: number; action: string }
+export interface OriginPolicyAudit extends OriginPolicyDecision {
+  at: number;
+  action: string;
+}
 
 const ACCESS_RANK: Record<OriginAccess, number> = { deny: 0, ask: 1, allow: 2 };
 const CONFIRM_RANK = { handoff: 0, action: 1, preapprovable: 2, none: 3 } as const;
-
 
 function ruleAccess(rule: OriginRule | undefined, effect: Effect): OriginAccess | undefined {
   if (!rule) return undefined;
@@ -25,7 +27,12 @@ function ruleAccess(rule: OriginRule | undefined, effect: Effect): OriginAccess 
   return rule.effects?.[effect] ?? rule.access;
 }
 
-function mostRestrictive<T extends string>(a: T | undefined, b: T | undefined, rank: Record<T, number>, fallback: T): T {
+function mostRestrictive<T extends string>(
+  a: T | undefined,
+  b: T | undefined,
+  rank: Record<T, number>,
+  fallback: T,
+): T {
   if (!a && !b) return fallback;
   if (!a) return b!;
   if (!b) return a;
@@ -52,12 +59,19 @@ export function evaluateOriginPolicy(input: {
   now?: number;
 }): OriginPolicyDecision {
   const normalized = exactOrigin(input.url);
-  const matching = (rules?: readonly OriginRule[]) => normalized
-    ? rules?.map(rule => OriginRuleSchema.parse(rule)).filter(rule => exactOrigin(rule.origin) === normalized) ?? [] : [];
+  const matching = (rules?: readonly OriginRule[]) =>
+    normalized
+      ? (rules
+          ?.map((rule) => OriginRuleSchema.parse(rule))
+          .filter((rule) => exactOrigin(rule.origin) === normalized) ?? [])
+      : [];
   const managed = matching(input.managed);
   const user = matching(input.user);
-  const accessFor = (rules: readonly OriginRule[]) => rules.reduce<OriginAccess | undefined>(
-    (current, rule) => mostRestrictive(current, ruleAccess(rule, input.effect), ACCESS_RANK, "deny"), undefined);
+  const accessFor = (rules: readonly OriginRule[]) =>
+    rules.reduce<OriginAccess | undefined>(
+      (current, rule) => mostRestrictive(current, ruleAccess(rule, input.effect), ACCESS_RANK, "deny"),
+      undefined,
+    );
   const managedAccess = accessFor(managed);
   const requestedUserAccess = accessFor(user);
   const consequential = input.effect === "destructive" || input.effect === "credential";
@@ -65,23 +79,44 @@ export function evaluateOriginPolicy(input: {
   const access = normalized
     ? mostRestrictive(managedAccess, userAccess, ACCESS_RANK, defaultAccessFor(input.effect))
     : "deny";
-  const source: PolicySource = managedAccess && (!userAccess || ACCESS_RANK[managedAccess] <= ACCESS_RANK[userAccess])
-    ? "managed" : userAccess ? "user" : "default";
+  const source: PolicySource =
+    managedAccess && (!userAccess || ACCESS_RANK[managedAccess] <= ACCESS_RANK[userAccess])
+      ? "managed"
+      : userAccess
+        ? "user"
+        : "default";
   const all = [...managed, ...user];
-  const requestedConfirmation = all.reduce<OriginPolicyDecision["confirmation"] | undefined>(
-    (current, rule) => rule.confirmation === undefined ? current
-      : mostRestrictive(current, rule.confirmation, CONFIRM_RANK, "action"), undefined) ?? "action";
+  const requestedConfirmation =
+    all.reduce<OriginPolicyDecision["confirmation"] | undefined>(
+      (current, rule) =>
+        rule.confirmation === undefined
+          ? current
+          : mostRestrictive(current, rule.confirmation, CONFIRM_RANK, "action"),
+      undefined,
+    ) ?? "action";
   const decision: OriginPolicyDecision = {
     access,
     confirmation: consequential
       ? mostRestrictive(requestedConfirmation, "action", CONFIRM_RANK, "action")
       : requestedConfirmation,
-    approvalLifetime: all.some(rule => rule.approvalLifetime === "turn") ? "turn"
-      : all.some(rule => rule.approvalLifetime === "thread") ? "thread" : "turn",
-    grantLifetime: all.some(rule => rule.grantLifetime === "session") ? "session"
-      : all.some(rule => rule.grantLifetime === "always") ? "always" : "session",
+    approvalLifetime: all.some((rule) => rule.approvalLifetime === "turn")
+      ? "turn"
+      : all.some((rule) => rule.approvalLifetime === "thread")
+        ? "thread"
+        : "turn",
+    grantLifetime: all.some((rule) => rule.grantLifetime === "session")
+      ? "session"
+      : all.some((rule) => rule.grantLifetime === "always")
+        ? "always"
+        : "session",
     source,
-    reason: !normalized ? "invalid_origin" : !managedAccess && !userAccess ? "no_matching_rule" : access === "deny" ? "explicit_deny" : "matched_rule",
+    reason: !normalized
+      ? "invalid_origin"
+      : !managedAccess && !userAccess
+        ? "no_matching_rule"
+        : access === "deny"
+          ? "explicit_deny"
+          : "matched_rule",
     origin: normalized ?? "invalid",
     effect: input.effect,
   };

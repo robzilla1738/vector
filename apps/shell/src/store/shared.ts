@@ -11,10 +11,17 @@ let eventSeq = 0;
 let eventStreamId: string | undefined;
 export const lastEventSeq = () => eventSeq;
 export const eventStream = () => eventStreamId;
-export const noteEventSeq = (seq: number) => { if (seq > eventSeq) eventSeq = seq; };
-export const noteStream = (streamId: string | undefined) => { if (streamId) eventStreamId = streamId; };
+export const noteEventSeq = (seq: number) => {
+  if (seq > eventSeq) eventSeq = seq;
+};
+export const noteStream = (streamId: string | undefined) => {
+  if (streamId) eventStreamId = streamId;
+};
 /** Drop the cursor — the next workspace.get snapshot re-anchors it. */
-export const resetEventStream = () => { eventSeq = 0; eventStreamId = undefined; };
+export const resetEventStream = () => {
+  eventSeq = 0;
+  eventStreamId = undefined;
+};
 export const pageRevisions = new Map<string, number>();
 export const answerSeq = new Map<string, number>();
 /** Tabs this window removed ahead of main's confirmation — late upserts must not resurrect them. */
@@ -35,13 +42,23 @@ export const forgetPreview = (pageId: string) => {
 };
 
 /** IPC delivers fresh objects every time — small records compare by content. */
-export const sameValue = (a: unknown, b: unknown) => a === b || (!!a && !!b && typeof a === "object" && typeof b === "object" && JSON.stringify(a) === JSON.stringify(b));
+export const sameValue = (a: unknown, b: unknown) =>
+  a === b ||
+  (!!a && !!b && typeof a === "object" && typeof b === "object" && JSON.stringify(a) === JSON.stringify(b));
 
 /** Shallow-merge fields into one page; the same state when nothing changes. */
-export function patchPage<S extends { pages: PageTarget[] }>(st: S, pageId: string, fields: Partial<PageTarget>): S | { pages: PageTarget[] } {
+export function patchPage<S extends { pages: PageTarget[] }>(
+  st: S,
+  pageId: string,
+  fields: Partial<PageTarget>,
+): S | { pages: PageTarget[] } {
   const index = st.pages.findIndex((p) => p.pageId === pageId);
   const page = index >= 0 ? st.pages[index]! : undefined;
-  if (!page || Object.entries(fields).every(([key, value]) => sameValue(page[key as keyof PageTarget], value))) return st;
+  if (
+    !page ||
+    Object.entries(fields).every(([key, value]) => sameValue(page[key as keyof PageTarget], value))
+  )
+    return st;
   return { pages: st.pages.with(index, { ...page, ...fields }) };
 }
 
@@ -93,7 +110,8 @@ export const pageFromTab = (tab: TabRecord): PageTarget => ({
  */
 export const mergeTabInto = (page: PageTarget, tab: TabRecord): PageTarget => {
   const merged = mergedTab(page, tab);
-  for (const key in merged) if (!sameValue(merged[key as keyof PageTarget], page[key as keyof PageTarget])) return merged;
+  for (const key in merged)
+    if (!sameValue(merged[key as keyof PageTarget], page[key as keyof PageTarget])) return merged;
   return page;
 };
 export const mergedTab = (page: PageTarget, tab: TabRecord): PageTarget => ({
@@ -119,7 +137,17 @@ export const mergedTab = (page: PageTarget, tab: TabRecord): PageTarget => ({
 
 /** Push the window's strip order to the catalog — the window op echo converges the rest. */
 export const syncCatalogOrder = (order: string[], pages: PageTarget[], catalogVersion: number) =>
-  void bridge.tabCommand({ kind: "reorder", order: order.filter(id => pages.some(page => page.pageId === id && (page.windowId ?? "main") === bridge.windowId)) }, catalogVersion).catch(() => {});
+  void bridge
+    .tabCommand(
+      {
+        kind: "reorder",
+        order: order.filter((id) =>
+          pages.some((page) => page.pageId === id && (page.windowId ?? "main") === bridge.windowId),
+        ),
+      },
+      catalogVersion,
+    )
+    .catch(() => {});
 
 /**
  * Everything a removal touches — shared by the runtime `page.removed` event
@@ -129,29 +157,49 @@ export const syncCatalogOrder = (order: string[], pages: PageTarget[], catalogVe
 export function applyRemoval(st: Workspace, id: string, activeHint: string | null) {
   const group = closingGroups.get(id);
   closingGroups.delete(id);
-  const gone = st.pages.find(p => p.pageId === id);
-  const closedTabs = gone && isTab(gone) && !id.startsWith("p_peek_") && gone.url && gone.url !== "about:blank" &&
-    !st.layout.archivedTabs?.some(entry => entry.pageId === id) && !st.closedTabs.some(tab => tab.pageId === id)
-    ? [...st.closedTabs, {
-      pageId: gone.pageId, url: gone.url, title: gone.title,
-      spaceId: st.layout.tabSpace[id] ?? st.layout.activeSpaceId,
-      folderId: st.layout.tabFolder[id], index: Math.max(0, st.layout.order.indexOf(id)),
-      closedAt: Date.now(), wasActive: st.activePageId === id, ...group,
-    }].slice(-CLOSED_TAB_LIMIT) : st.closedTabs;
+  const gone = st.pages.find((p) => p.pageId === id);
+  const closedTabs =
+    gone &&
+    isTab(gone) &&
+    !id.startsWith("p_peek_") &&
+    gone.url &&
+    gone.url !== "about:blank" &&
+    !st.layout.archivedTabs?.some((entry) => entry.pageId === id) &&
+    !st.closedTabs.some((tab) => tab.pageId === id)
+      ? [
+          ...st.closedTabs,
+          {
+            pageId: gone.pageId,
+            url: gone.url,
+            title: gone.title,
+            spaceId: st.layout.tabSpace[id] ?? st.layout.activeSpaceId,
+            folderId: st.layout.tabFolder[id],
+            index: Math.max(0, st.layout.order.indexOf(id)),
+            closedAt: Date.now(),
+            wasActive: st.activePageId === id,
+            ...group,
+          },
+        ].slice(-CLOSED_TAB_LIMIT)
+      : st.closedTabs;
   if (closedTabs !== st.closedTabs) persistClosedTabs(closedTabs);
   const previewVersion = forgetPreview(id) ? st.previewVersion + 1 : st.previewVersion;
   const zoomLevels = { ...st.zoomLevels };
   delete zoomLevels[id];
-  const pages = st.pages.filter(p => p.pageId !== id);
+  const pages = st.pages.filter((p) => p.pageId !== id);
   // closing the active tab focuses its neighbour, like every browser
   let activePageId = st.activePageId;
   let activateNext: string | undefined;
   if (activePageId === id) {
-    if (activeHint && pages.some(page => page.pageId === activeHint && st.layout.tabSpace[activeHint] === st.layout.activeSpaceId)) {
+    if (
+      activeHint &&
+      pages.some(
+        (page) => page.pageId === activeHint && st.layout.tabSpace[activeHint] === st.layout.activeSpaceId,
+      )
+    ) {
       activePageId = activeHint;
     } else {
-      const visible = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId).map(page => page.pageId);
-      const order = visible.filter(pageId => pageId !== id);
+      const visible = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId).map((page) => page.pageId);
+      const order = visible.filter((pageId) => pageId !== id);
       const idx = visible.indexOf(id);
       activePageId = order[Math.min(Math.max(idx, 0), order.length - 1)] ?? order[order.length - 1] ?? null;
       activateNext = activePageId ?? undefined;
@@ -160,7 +208,15 @@ export function applyRemoval(st: Workspace, id: string, activeHint: string | nul
   const layout = withSyncedOrder(st.layout, pages, st.pendingRestoreIds);
   persistLayout(layout);
   return {
-    next: { pages, closedTabs, previewVersion, zoomLevels, layout, splitPageId: splitForPage(layout, pages, activePageId), activePageId },
+    next: {
+      pages,
+      closedTabs,
+      previewVersion,
+      zoomLevels,
+      layout,
+      splitPageId: splitForPage(layout, pages, activePageId),
+      activePageId,
+    },
     activateNext,
   };
 }
@@ -172,4 +228,4 @@ export function decodeBase64Json<T>(b64: string): T {
   return JSON.parse(new TextDecoder().decode(bytes)) as T;
 }
 
-export const closingGroups = new Map<string, {groupId: string; index: number; wasActive: boolean}>();
+export const closingGroups = new Map<string, { groupId: string; index: number; wasActive: boolean }>();

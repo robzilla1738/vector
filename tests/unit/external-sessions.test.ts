@@ -44,9 +44,17 @@ it("gives one scoped connection one session run, then a new run after that one e
     scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId },
     expiresAt: Date.now() + 60 * 60_000,
   });
-  const client = { external: true as const, connectionId: created.connection.connectionId, scope: created.connection.scope };
+  const client = {
+    external: true as const,
+    connectionId: created.connection.connectionId,
+    scope: created.connection.scope,
+  };
   const executed: { runId?: string }[] = [];
-  const sessions = new ExternalSessionService(repo, events, fixtureTurnMentions((pageId: string) => repo.getPage(pageId)));
+  const sessions = new ExternalSessionService(
+    repo,
+    events,
+    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)),
+  );
   const invoke = sessionInvoker(repo, events, connections, sessions, executed);
 
   await invoke("pages.list", {}, client);
@@ -55,37 +63,55 @@ it("gives one scoped connection one session run, then a new run after that one e
   expect(first.map((run) => run.status)).toEqual(["running"]);
   const runId = first[0]!.runId;
 
-  const resumed = new ExternalSessionService(repo, events, fixtureTurnMentions((pageId: string) => repo.getPage(pageId)));
+  const resumed = new ExternalSessionService(
+    repo,
+    events,
+    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)),
+  );
   const resumeInvoke = sessionInvoker(repo, events, connections, resumed, executed);
   await resumeInvoke("pages.list", {}, client);
   expect(thread(repo, created.connection.connectionId).map((run) => run.runId)).toEqual([runId]);
 
-  await invoke("pages.execute", {
-    program: { pageId: "p1", steps: [{ id: "s", op: "click", target: "r1" }] },
-    taskId: task.taskId,
-    expectedRevision: task.revision,
-  }, client);
+  await invoke(
+    "pages.execute",
+    {
+      program: { pageId: "p1", steps: [{ id: "s", op: "click", target: "r1" }] },
+      taskId: task.taskId,
+      expectedRevision: task.revision,
+    },
+    client,
+  );
   expect(repo.getRun(runId)?.pageIds).toEqual(["p1"]);
   expect(executed.at(-1)?.runId).toBe(runId);
   expect(repo.listSteps(runId)).toMatchObject([{ op: "pages.execute", outcome: { status: "ok" } }]);
   expect(repo.listSteps(runId)[0]?.inputs).toBeUndefined();
 
-  await expect(invoke("agent.web.fetch", {
-    taskId: task.taskId,
-    expectedRevision: task.revision,
-    url: "https://example.com/fixture",
-  }, client)).rejects.toMatchObject({ code: "permission_denied" });
-  expect(repo.listSteps(runId).map(step => [step.op, step.outcome?.status])).toEqual([
-    ["pages.execute", "ok"], ["agent.web.fetch", "failed"],
+  await expect(
+    invoke(
+      "agent.web.fetch",
+      {
+        taskId: task.taskId,
+        expectedRevision: task.revision,
+        url: "https://example.com/fixture",
+      },
+      client,
+    ),
+  ).rejects.toMatchObject({ code: "permission_denied" });
+  expect(repo.listSteps(runId).map((step) => [step.op, step.outcome?.status])).toEqual([
+    ["pages.execute", "ok"],
+    ["agent.web.fetch", "failed"],
   ]);
   expect(JSON.stringify(repo.listSteps(runId))).not.toContain("https://example.com/fixture");
   const anchored = decisions(repo).filter((row) => row.request.runId === runId);
-  const approval = anchored.find((row) => row.decision.status === "ask" && row.decision.suspension?.approvalId);
+  const approval = anchored.find(
+    (row) => row.decision.status === "ask" && row.decision.suspension?.approvalId,
+  );
   const approvalId = approval?.decision.suspension?.approvalId;
   if (!approval || !approvalId) throw new Error("expected an approval anchored to the session run");
   expect(approval.request).toMatchObject({ runId, action: "agent.web.fetch" });
-  expect(repo.db.prepare("SELECT approval_id FROM safety_approval_requests WHERE approval_id=?").get(approvalId))
-    .toMatchObject({ approval_id: approvalId });
+  expect(
+    repo.db.prepare("SELECT approval_id FROM safety_approval_requests WHERE approval_id=?").get(approvalId),
+  ).toMatchObject({ approval_id: approvalId });
 
   sessions.sweepIdle(Date.now());
   expect(repo.getRun(runId)?.status).toBe("running");
@@ -99,7 +125,11 @@ it("gives one scoped connection one session run, then a new run after that one e
   const nextId = continued.find((run) => run.status === "running")!.runId;
   expect(nextId).not.toBe(runId);
 
-  await invoke("agentConnections.revoke", { connectionId: created.connection.connectionId }, { external: false });
+  await invoke(
+    "agentConnections.revoke",
+    { connectionId: created.connection.connectionId },
+    { external: false },
+  );
   expect(repo.getRun(nextId)).toMatchObject({ status: "cancelled", statusMessage: "Connection revoked" });
   await expect(invoke("pages.list", {}, client)).rejects.toMatchObject({ code: "permission_denied" });
   expect(thread(repo, created.connection.connectionId).some((run) => run.status === "running")).toBe(false);
@@ -117,7 +147,9 @@ it("gives one scoped connection one session run, then a new run after that one e
   };
   await invoke("pages.list", {}, expiringClient);
   const expiredId = thread(repo, expiring.connection.connectionId)[0]!.runId;
-  repo.db.prepare("UPDATE agent_connections SET expires_at=? WHERE connection_id=?").run(Date.now() - 1, expiring.connection.connectionId);
+  repo.db
+    .prepare("UPDATE agent_connections SET expires_at=? WHERE connection_id=?")
+    .run(Date.now() - 1, expiring.connection.connectionId);
   await expect(invoke("pages.list", {}, expiringClient)).rejects.toMatchObject({ code: "permission_denied" });
   expect(repo.getRun(expiredId)).toMatchObject({ status: "completed", statusMessage: "Connection expired" });
   expect(thread(repo, expiring.connection.connectionId).some((run) => run.status === "running")).toBe(false);
@@ -131,18 +163,29 @@ it("answers /health not-ready before bootstrap and ready after, on two boots", a
     const env = runtimeEnv(dataDir);
     let markEntered!: () => void;
     let release!: () => void;
-    const entered = new Promise<void>(resolve => { markEntered = resolve; });
-    const gate = new Promise<void>(resolve => { release = resolve; });
-    const initialize = SettingsService.prototype.initializeCredentials;
-    const bootstrap = vi.spyOn(SettingsService.prototype, "initializeCredentials").mockImplementation(async function (this: SettingsService) {
-      markEntered();
-      await gate;
-      await initialize.call(this);
+    const entered = new Promise<void>((resolve) => {
+      markEntered = resolve;
     });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const initialize = SettingsService.prototype.initializeCredentials;
+    const bootstrap = vi
+      .spyOn(SettingsService.prototype, "initializeCredentials")
+      .mockImplementation(async function (this: SettingsService) {
+        markEntered();
+        await gate;
+        await initialize.call(this);
+      });
     const pending = startRuntime(env);
     let handle: Awaited<ReturnType<typeof startRuntime>> | undefined;
     try {
-      await Promise.race([entered, pending.then(() => { throw new Error("Runtime bypassed the bootstrap readiness barrier"); })]);
+      await Promise.race([
+        entered,
+        pending.then(() => {
+          throw new Error("Runtime bypassed the bootstrap readiness barrier");
+        }),
+      ]);
       const port = await publishedPort(dataDir);
       const early = await fetch(`http://127.0.0.1:${port}/health`);
       const earlyBody = await early.json();
@@ -157,7 +200,11 @@ it("answers /health not-ready before bootstrap and ready after, on two boots", a
     } finally {
       release();
       handle ??= await pending.catch(() => undefined);
-      try { await handle?.close(); } finally { bootstrap.mockRestore(); }
+      try {
+        await handle?.close();
+      } finally {
+        bootstrap.mockRestore();
+      }
     }
   }
 });
@@ -176,26 +223,50 @@ it("lets the unscoped loopback owner mint and revoke connections and refuses a s
     criteria: [{ criterionId: "held", description: "Stay running", verification: "manual" }],
   });
   const connections = new AgentConnectionService(repo);
-  const sessions = new ExternalSessionService(repo, events, fixtureTurnMentions((pageId: string) => repo.getPage(pageId)));
+  const sessions = new ExternalSessionService(
+    repo,
+    events,
+    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)),
+  );
   const invoke = sessionInvoker(repo, events, connections, sessions, []);
   const scope = { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId };
   const params = { name: "Trust peer", client: "codex", scope };
-  const created = await invoke("agentConnections.create", params, { external: true }) as {
+  const created = (await invoke("agentConnections.create", params, { external: true })) as {
     connection: { connectionId: string; scope: typeof scope };
     token: string;
   };
   expect(created.token).toMatch(/^auxc_/);
-  const scoped = { external: true as const, connectionId: created.connection.connectionId, scope: created.connection.scope };
-  await expect(invoke("agentConnections.create", params, scoped)).rejects.toMatchObject({ code: "permission_denied" });
-  await expect(invoke("agentConnections.list", {}, scoped)).rejects.toMatchObject({ code: "permission_denied" });
-  await expect(invoke("agentConnections.revoke", { connectionId: created.connection.connectionId }, scoped)).rejects.toMatchObject({ code: "permission_denied" });
+  const scoped = {
+    external: true as const,
+    connectionId: created.connection.connectionId,
+    scope: created.connection.scope,
+  };
+  await expect(invoke("agentConnections.create", params, scoped)).rejects.toMatchObject({
+    code: "permission_denied",
+  });
+  await expect(invoke("agentConnections.list", {}, scoped)).rejects.toMatchObject({
+    code: "permission_denied",
+  });
+  await expect(
+    invoke("agentConnections.revoke", { connectionId: created.connection.connectionId }, scoped),
+  ).rejects.toMatchObject({ code: "permission_denied" });
   await invoke("pages.list", {}, scoped);
   expect(thread(repo, created.connection.connectionId).map((run) => run.status)).toEqual(["running"]);
-  await invoke("agentConnections.revoke", { connectionId: created.connection.connectionId }, { external: true });
+  await invoke(
+    "agentConnections.revoke",
+    { connectionId: created.connection.connectionId },
+    { external: true },
+  );
   expect(thread(repo, created.connection.connectionId).map((run) => run.status)).toEqual(["cancelled"]);
-  const listed = await invoke("agentConnections.list", {}, { external: true }) as Array<{ revokedAt?: number }>;
+  const listed = (await invoke("agentConnections.list", {}, { external: true })) as Array<{
+    revokedAt?: number;
+  }>;
   expect(listed[0]?.revokedAt).toEqual(expect.any(Number));
-  const settings = await invoke("agentConnections.create", { name: "Settings", client: "claude", scope }, { external: false }) as {
+  const settings = (await invoke(
+    "agentConnections.create",
+    { name: "Settings", client: "claude", scope },
+    { external: false },
+  )) as {
     token: string;
   };
   expect(settings.token).toMatch(/^auxc_/);
@@ -225,7 +296,7 @@ function sessionInvoker(
     safetyCeiling: () => "ask" as const,
   };
   return makeInvoker({
-    turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
+    turnMentions: fixtureTurnMentions((pageId) => pages.get(pageId)),
     repo,
     events,
     pages,
@@ -244,10 +315,14 @@ function decisions(repo: Repo): Array<{
   request: { runId?: string; action?: string };
   decision: { status?: string; suspension?: { approvalId?: string } };
 }> {
-  return (repo.db.prepare("SELECT request_json AS requestJson, decision_json AS decisionJson FROM safety_decisions").all() as {
-    requestJson: string;
-    decisionJson: string;
-  }[]).map((row) => ({ request: JSON.parse(row.requestJson), decision: JSON.parse(row.decisionJson) }));
+  return (
+    repo.db
+      .prepare("SELECT request_json AS requestJson, decision_json AS decisionJson FROM safety_decisions")
+      .all() as {
+      requestJson: string;
+      decisionJson: string;
+    }[]
+  ).map((row) => ({ request: JSON.parse(row.requestJson), decision: JSON.parse(row.decisionJson) }));
 }
 
 function runtimeEnv(dataDir: string): NodeJS.ProcessEnv {
@@ -259,7 +334,13 @@ function runtimeEnv(dataDir: string): NodeJS.ProcessEnv {
     AUX_API_PORT: "0",
     AUX_LOAD_DOTENV: "0",
   };
-  for (const key of ["AUX_HOST_SOCKET", "AUX_HOST_TOKEN", "AUX_BROWSER_PROFILE_ID", "AUX_INTERNAL_CDP", "AUX_RUNTIME_AUTOSTART"])
+  for (const key of [
+    "AUX_HOST_SOCKET",
+    "AUX_HOST_TOKEN",
+    "AUX_BROWSER_PROFILE_ID",
+    "AUX_INTERNAL_CDP",
+    "AUX_RUNTIME_AUTOSTART",
+  ])
     delete env[key];
   return env;
 }
@@ -268,7 +349,9 @@ async function publishedPort(dataDir: string): Promise<number> {
   const deadline = Date.now() + 8_000;
   while (Date.now() < deadline) {
     try {
-      const descriptor = JSON.parse(readFileSync(join(dataDir, "runtime.json"), "utf8")) as { port?: unknown };
+      const descriptor = JSON.parse(readFileSync(join(dataDir, "runtime.json"), "utf8")) as {
+        port?: unknown;
+      };
       if (typeof descriptor.port === "number") return descriptor.port;
     } catch {
       /* not published yet */

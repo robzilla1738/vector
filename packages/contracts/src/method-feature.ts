@@ -1,5 +1,10 @@
 import { RuntimeMethodFeatures } from "./runtime-method-features.generated.js";
-import { requireAuxFeature, type AuxFeature, type AuxFeatureHost, type AuxFeatureOverrides } from "./aux-features.js";
+import {
+  requireAuxFeature,
+  type AuxFeature,
+  type AuxFeatureHost,
+  type AuxFeatureOverrides,
+} from "./aux-features.js";
 
 export function auxFeatureForMethod(method: string): AuxFeature | undefined {
   return RuntimeMethodFeatures[method as keyof typeof RuntimeMethodFeatures];

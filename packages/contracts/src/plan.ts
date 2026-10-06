@@ -42,22 +42,26 @@ export const PlanChunkSchema = z.object({
 export type PlanChunk = z.infer<typeof PlanChunkSchema>;
 
 /** Built-in task runs may request one authorized provider read per turn. */
-export const TaskSourcePlanSchema = z.object({
-  status: z.literal("source"),
-  message: z.string().max(280),
-  notes: z.string().max(600).optional(),
-  sourceRequest: z.object({
-    kind: z.literal("calendar.events.list"),
-    grantId: z.string().uuid(),
-    timeMin: z.string().datetime({ offset: true }),
-    timeMax: z.string().datetime({ offset: true }),
-    limit: z.number().int().min(1).max(10).default(10),
-    pageToken: z.string().min(1).max(2048).optional(),
-  }).strict(),
-  steps: z.never().optional(),
-  pageId: z.never().optional(),
-  observationRequest: z.never().optional(),
-}).strict();
+export const TaskSourcePlanSchema = z
+  .object({
+    status: z.literal("source"),
+    message: z.string().max(280),
+    notes: z.string().max(600).optional(),
+    sourceRequest: z
+      .object({
+        kind: z.literal("calendar.events.list"),
+        grantId: z.string().uuid(),
+        timeMin: z.string().datetime({ offset: true }),
+        timeMax: z.string().datetime({ offset: true }),
+        limit: z.number().int().min(1).max(10).default(10),
+        pageToken: z.string().min(1).max(2048).optional(),
+      })
+      .strict(),
+    steps: z.never().optional(),
+    pageId: z.never().optional(),
+    observationRequest: z.never().optional(),
+  })
+  .strict();
 export const TaskPlanChunkSchema = z.union([PlanChunkSchema, TaskSourcePlanSchema]);
 export type TaskPlanChunk = z.infer<typeof TaskPlanChunkSchema>;
 
@@ -123,7 +127,9 @@ export const OperationGuardSchema = z.object({
   siteKey: z.string(),
   /** control fingerprints that must exist in a fresh observation */
   requiredControls: z
-    .array(z.object({ role: z.string().optional(), name: z.string().optional(), selector: z.string().optional() }))
+    .array(
+      z.object({ role: z.string().optional(), name: z.string().optional(), selector: z.string().optional() }),
+    )
     .optional(),
   /** url substring/regex that must match the live page */
   urlMatches: z.string().optional(),
@@ -172,7 +178,13 @@ export const InvocationSchema = z.object({
   inputs: z.record(z.string(), z.unknown()),
   status: z.enum(["queued", "running", "succeeded", "failed", "cancelled"]),
   /** §5.3 — invocation status and side-effect status are separate */
-  effectOutcome: z.enum(["not-dispatched", "confirmed-applied", "confirmed-not-applied", "unknown", "not-applicable"]),
+  effectOutcome: z.enum([
+    "not-dispatched",
+    "confirmed-applied",
+    "confirmed-not-applied",
+    "unknown",
+    "not-applicable",
+  ]),
   routeReason: z.string().optional(),
   startedAt: z.number(),
   endedAt: z.number().optional(),

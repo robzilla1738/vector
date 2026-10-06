@@ -11,7 +11,7 @@ export async function focusSettingsDestination(
     const section = root.querySelector<HTMLElement>(":scope > section:not([hidden])");
     const target = destination.target
       ? [...(section?.querySelectorAll<HTMLElement>("[data-setting]") ?? [])].find(
-          node => node.dataset.setting === destination.target,
+          (node) => node.dataset.setting === destination.target,
         )
       : section;
     if (target) {
@@ -26,8 +26,9 @@ export async function focusSettingsDestination(
       window.setTimeout(() => target.classList.remove("settings-search-focus"), 2250);
       return true;
     }
-    if (attempt < 39) await new Promise<void>(resolve => window.setTimeout(resolve, 50));
+    if (attempt < 39) await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
   }
-  if (!signal.aborted) root.querySelector<HTMLElement>(":scope > section:not([hidden])")?.scrollIntoView?.({ block: "start" });
+  if (!signal.aborted)
+    root.querySelector<HTMLElement>(":scope > section:not([hidden])")?.scrollIntoView?.({ block: "start" });
   return false;
 }

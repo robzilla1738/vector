@@ -26,7 +26,11 @@ export function FavIcon({
       const letter = hostLetter(url);
       if (letter) return <span className={`tile-letter ${className ?? ""}`.trim()}>{letter}</span>;
     }
-    return <span className={`tile-globe ${className ?? ""}`.trim()}>{size === "sm" ? shellIconGlobe : shellIconGlobeLg}</span>;
+    return (
+      <span className={`tile-globe ${className ?? ""}`.trim()}>
+        {size === "sm" ? shellIconGlobe : shellIconGlobeLg}
+      </span>
+    );
   }
   return (
     <img
@@ -43,7 +47,15 @@ export function FavIcon({
 }
 
 /** The face of a tile — favicon when it loads, otherwise a letter. Inline, so it can sit inside buttons. */
-export function TileFace({ url, favicon, size = "md" }: { url: string; favicon?: string; size?: "sm" | "md" | "lg" }) {
+export function TileFace({
+  url,
+  favicon,
+  size = "md",
+}: {
+  url: string;
+  favicon?: string;
+  size?: "sm" | "md" | "lg";
+}) {
   return (
     <span className={`tile-face ${size}`} aria-hidden>
       <FavIcon url={url} src={favicon} fallback="letter" size={size} />
@@ -78,9 +90,19 @@ export function SiteTile({
   const host = hostOf(url);
   const unread = unreadBadge(unreadTitle ?? "");
   return (
-    <button className={`site-tile ${size} ${active ? "active" : ""} ${label ? "labelled" : ""}`} title={title || host} aria-label={`${title || host}${unread ? `, ${unread.label}` : ""}`} onClick={onClick} {...rest}>
+    <button
+      className={`site-tile ${size} ${active ? "active" : ""} ${label ? "labelled" : ""}`}
+      title={title || host}
+      aria-label={`${title || host}${unread ? `, ${unread.label}` : ""}`}
+      onClick={onClick}
+      {...rest}
+    >
       <TileFace url={url} favicon={favicon} size={size} />
-      {unread && <span className="pin-unread" aria-hidden>{unread.text}</span>}
+      {unread && (
+        <span className="pin-unread" aria-hidden>
+          {unread.text}
+        </span>
+      )}
       {label && <span className="tile-label">{title || host}</span>}
     </button>
   );

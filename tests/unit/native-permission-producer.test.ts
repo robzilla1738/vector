@@ -15,7 +15,18 @@ import {
 import { TurnMentionService } from "../../apps/runtime/src/services/turn-mention-service.js";
 const cleanup: Array<() => void> = [];
 afterEach(() => cleanup.splice(0).forEach((dispose) => dispose()));
-async function fixture(readOnly = false, external = false, assertDispatch: (runId: string) => Promise<void> = async () => {}, runId = "run", overnightAuthority: (runId: string) => { windowEnd: number; requireAC: boolean } | null = () => null, retireReservation: (input: { tabId: string; batchId: string; reservationId: string }) => Promise<{ accepted: true }> = async () => ({ accepted: true })) {
+async function fixture(
+  readOnly = false,
+  external = false,
+  assertDispatch: (runId: string) => Promise<void> = async () => {},
+  runId = "run",
+  overnightAuthority: (runId: string) => { windowEnd: number; requireAC: boolean } | null = () => null,
+  retireReservation: (input: {
+    tabId: string;
+    batchId: string;
+    reservationId: string;
+  }) => Promise<{ accepted: true }> = async () => ({ accepted: true }),
+) {
   const db = openDb(":memory:");
   cleanup.push(() => db.close());
   const approvals = new ApprovalStore(db);
@@ -66,7 +77,9 @@ async function fixture(readOnly = false, external = false, assertDispatch: (runI
   const leases: EgressLease[] = [];
   const native = Object.assign(new NullNativeBridge(), {
     egressContext: async () => ({
-      controlGeneration: "fixture-native-generation", personControlled: false, profileId: "profile",
+      controlGeneration: "fixture-native-generation",
+      personControlled: false,
+      profileId: "profile",
       tabId: page.pageId,
       frameId: "process:frame",
       documentToken: "native-document",
@@ -87,7 +100,8 @@ async function fixture(readOnly = false, external = false, assertDispatch: (runI
     egressRevoke: async (_input: { lease: EgressLease }) => ({ accepted: true as const }),
   });
   let owns = true;
-  const egress = new BrowserEgress({ runAncestry: runId => [runId],
+  const egress = new BrowserEgress({
+    runAncestry: (runId) => [runId],
     profileId: "profile",
     native,
     run: () => ({ taskId: run.config?.taskId, taskRevision: run.config?.taskRevision ?? 0, threadId: "run" }),
@@ -191,7 +205,11 @@ it("native permissions park at the real gate and consume exact one-off consent o
     approvalId: expect.any(String),
   });
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
-  expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "allow", reservationId: expect.any(String) });
+  expect(await f.controller.request(f.request)).toEqual({
+    batchId: f.request.batchId,
+    decision: "allow",
+    reservationId: expect.any(String),
+  });
   expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "deny" });
   expect(f.mentions.ownedPages("run")).toEqual([]);
 });
@@ -199,7 +217,10 @@ it("an exact-origin permission grant still cannot bypass a subsequent read-only 
   const f = await fixture();
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: waiting.approvalId! }, "run");
-  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+  expect(await f.controller.request(f.request)).toMatchObject({
+    decision: "allow",
+    reservationId: expect.any(String),
+  });
   await f.mentions.begin(
     "run",
     [
@@ -259,7 +280,10 @@ it("a genuine no-mention external lease retains first-class permission authority
   const waiting = await f.controller.request(f.request);
   expect(waiting.decision).toBe("pending");
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
-  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+  expect(await f.controller.request(f.request)).toMatchObject({
+    decision: "allow",
+    reservationId: expect.any(String),
+  });
   expect(f.mentions.has("run")).toBe(false);
   expect(f.mentions.ownedPages("run")).toEqual([]);
 });
@@ -288,7 +312,10 @@ it.each([
       origin: "https://permission.test",
     });
     f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
-    expect(await f.controller.request(request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+    expect(await f.controller.request(request)).toMatchObject({
+      decision: "allow",
+      reservationId: expect.any(String),
+    });
     expect(await f.controller.request(request)).toMatchObject({ decision: "deny" });
   },
 );
@@ -306,18 +333,30 @@ it("an overnight native permission can use the exact current origin permission g
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: waiting.approvalId! }, "run");
   f.overnight();
-  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+  expect(await f.controller.request(f.request)).toMatchObject({
+    decision: "allow",
+    reservationId: expect.any(String),
+  });
 });
 
 function revocation(f: Awaited<ReturnType<typeof fixture>>) {
-  return new SafetyAuthorityRevocation({ profileId: "profile", runScope: () => ({ kind: "task", id: "task" }),
-    invalidate: matches => { f.controller.invalidateAuthority(matches); return f.egress.invalidateAuthority(matches); } });
+  return new SafetyAuthorityRevocation({
+    profileId: "profile",
+    runScope: () => ({ kind: "task", id: "task" }),
+    invalidate: (matches) => {
+      f.controller.invalidateAuthority(matches);
+      return f.egress.invalidateAuthority(matches);
+    },
+  });
 }
 it("a policy revoked after the allow reply retires the exact effect lease while preserving task ownership", async () => {
   const f = await fixture();
   const pending = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
-  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+  expect(await f.controller.request(f.request)).toMatchObject({
+    decision: "allow",
+    reservationId: expect.any(String),
+  });
   const nativeFinalCheck = f.egress.permissionAuthority(f.request);
   nativeFinalCheck();
   f.block();
@@ -332,20 +371,37 @@ it("revoking an origin grant retires a permission lease across scopes and cancel
   const f = await fixture();
   await f.controller.request(f.request);
   const currentAction = f.approvals.pending("run")[0]!.action;
-  const crossScopeId = f.approvals.issue({ ...currentAction, scope: { kind: "task", id: "different-task" },
-    turnId: "grant-run", threadId: "grant-thread" }, "turn");
+  const crossScopeId = f.approvals.issue(
+    {
+      ...currentAction,
+      scope: { kind: "task", id: "different-task" },
+      turnId: "grant-run",
+      threadId: "grant-thread",
+    },
+    "turn",
+  );
   f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: crossScopeId }, "grant-run");
   const grant = f.approvals.listGrants("profile")[0]!;
-  const otherId = f.approvals.issue({ ...currentAction, scope: { kind: "task", id: "other" },
-    origin: "https://unrelated.test", turnId: "other", threadId: "other" }, "turn");
-  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+  const otherId = f.approvals.issue(
+    {
+      ...currentAction,
+      scope: { kind: "task", id: "other" },
+      origin: "https://unrelated.test",
+      turnId: "other",
+      threadId: "other",
+    },
+    "turn",
+  );
+  expect(await f.controller.request(f.request)).toMatchObject({
+    decision: "allow",
+    reservationId: expect.any(String),
+  });
   const finalCheck = f.egress.permissionAuthority(f.request);
   f.approvals.revoke({ profileId: "profile", grantId: grant.grantId });
   await revocation(f).grants([grant]);
   expect(finalCheck).toThrow();
-  expect(f.approvals.pending("other").map(item => item.approvalId)).toContain(otherId);
+  expect(f.approvals.pending("other").map((item) => item.approvalId)).toContain(otherId);
 });
-
 
 it("immutable native retries retain one exact pending approval until person consent", async () => {
   const f = await fixture();
@@ -354,20 +410,31 @@ it("immutable native retries retain one exact pending approval until person cons
   expect(first).toMatchObject({ decision: "pending", approvalId: expect.any(String) });
   for (let retry = 0; retry < 3; retry++)
     expect(await f.controller.request(JSON.parse(serialized))).toEqual(first);
-  expect(f.approvals.pending("run").map(item => item.approvalId)).toEqual([first.approvalId]);
+  expect(f.approvals.pending("run").map((item) => item.approvalId)).toEqual([first.approvalId]);
   expect(JSON.stringify(f.request)).toBe(serialized);
   f.approvals.decideLocal({ decision: "accept", approvalId: first.approvalId! }, "run");
-  expect(await f.controller.request(JSON.parse(serialized))).toEqual({ batchId: f.request.batchId, decision: "allow", reservationId: expect.any(String) });
-  expect(await f.controller.request(JSON.parse(serialized))).toEqual({ batchId: f.request.batchId, decision: "deny" });
+  expect(await f.controller.request(JSON.parse(serialized))).toEqual({
+    batchId: f.request.batchId,
+    decision: "allow",
+    reservationId: expect.any(String),
+  });
+  expect(await f.controller.request(JSON.parse(serialized))).toEqual({
+    batchId: f.request.batchId,
+    decision: "deny",
+  });
 });
 
 it("simultaneous identical native requests share the real pending approval rather than competing IDs", async () => {
   const f = await fixture();
-  const responses = await Promise.all([f.controller.request(f.request), f.controller.request(f.request), f.controller.request(f.request)]);
+  const responses = await Promise.all([
+    f.controller.request(f.request),
+    f.controller.request(f.request),
+    f.controller.request(f.request),
+  ]);
   expect(responses[0]).toMatchObject({ decision: "pending", approvalId: expect.any(String) });
   expect(responses[1]).toEqual(responses[0]);
   expect(responses[2]).toEqual(responses[0]);
-  expect(f.approvals.pending("run").map(item => item.approvalId)).toEqual([responses[0]!.approvalId]);
+  expect(f.approvals.pending("run").map((item) => item.approvalId)).toEqual([responses[0]!.approvalId]);
   f.controller.invalidate(f.request.batchId);
   expect(f.approvals.pending("run")).toEqual([]);
   expect(await f.controller.request(f.request)).toMatchObject({ decision: "deny" });
@@ -379,51 +446,111 @@ it("a hidden overnight permission uses only its exact standing grant and remains
   f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: pending.approvalId! }, "run");
   f.page.viewStatus = "hidden";
   f.overnight();
-  expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "allow", reservationId: expect.any(String) });
+  expect(await f.controller.request(f.request)).toEqual({
+    batchId: f.request.batchId,
+    decision: "allow",
+    reservationId: expect.any(String),
+  });
   expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "deny" });
   expect(f.mentions.ownedPages("run")).toEqual([]);
 });
-
 
 it("a real closed overnight window denies a standing native permission before scheduler reconciliation", async () => {
   const { Repo } = await import("@aux/runtime");
   const { SqliteColumnCipher } = await import("../../apps/runtime/src/store/sqlite-protection.js");
   const { NightShiftService } = await import("../../apps/runtime/src/services/night-shift.js");
   const { BudgetsService } = await import("../../apps/runtime/src/services/budgets.js");
-  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
-  const { installNightShift, checkNightShiftDispatch, nightShiftEffectAuthority } = await import("../../apps/runtime/src/features/overnight-review/service.js");
+  const { installOvernightAuthority } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installNightShift, checkNightShiftDispatch, nightShiftEffectAuthority } =
+    await import("../../apps/runtime/src/features/overnight-review/service.js");
   const { createClock } = await import("@aux/contracts");
   const { randomBytes, createHash } = await import("node:crypto");
-  const db = openDb(":memory:"); cleanup.push(() => db.close());
+  const db = openDb(":memory:");
+  cleanup.push(() => db.close());
   const stored = new Map<string, string>();
-  const secret = (key: string) => { if (!stored.has(key)) stored.set(key, randomBytes(32).toString("base64")); return { value: stored.get(key)! }; };
-  const cipher = await SqliteColumnCipher.create({ readSecret: async key => ({ value: stored.get(key) }),
-    storeSecret: async (key, value) => { stored.set(key, value); return { ok: true }; },
-    profileStorageRoot: async () => secret(`aux_root_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`), profileStorageFactor: async () => secret(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`) }, "fixture", false);
+  const secret = (key: string) => {
+    if (!stored.has(key)) stored.set(key, randomBytes(32).toString("base64"));
+    return { value: stored.get(key)! };
+  };
+  const cipher = await SqliteColumnCipher.create(
+    {
+      readSecret: async (key) => ({ value: stored.get(key) }),
+      storeSecret: async (key, value) => {
+        stored.set(key, value);
+        return { ok: true };
+      },
+      profileStorageRoot: async () =>
+        secret(`aux_root_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`),
+      profileStorageFactor: async () =>
+        secret(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`),
+    },
+    "fixture",
+    false,
+  );
   const repo = new Repo(db, cipher);
   let now = new Date(2026, 9, 1, 1).getTime();
-  repo.setSetting("nightShift", { enabled: true, start: "00:00", end: "08:00", nightlyUsd: 2, perTaskUsd: 0.5, requireAC: true });
+  repo.setSetting("nightShift", {
+    enabled: true,
+    start: "00:00",
+    end: "08:00",
+    nightlyUsd: 2,
+    perTaskUsd: 0.5,
+    requireAC: true,
+  });
   let f: Awaited<ReturnType<typeof fixture>> | undefined;
-  const service = new NightShiftService(repo, { backgroundEnabled: () => true, onAC: async () => true,
-    releaseActivity: async () => {}, powerActivity: async () => ({ active: true }), cancel: () => {}, resume: async () => {},
-    consolidate: async () => {}, reindex: async () => {}, start: async (_payload, item, runId) => {
-      f = await fixture(false, true, id => checkNightShiftDispatch(repo, id), runId, id => nightShiftEffectAuthority(repo, id));
-      f.run.config = { ...f.run.config, nightShiftItemId: item.id };
-      repo.saveRun(f.run); f.overnight(); installOvernightAuthority(repo, f.controller); return runId;
-    } }, new BudgetsService(db, () => ({})), createClock(1, () => now));
-  const remove = installNightShift({ repo } as import("../../apps/runtime/src/api/methods/context.js").Services, service);
+  const service = new NightShiftService(
+    repo,
+    {
+      backgroundEnabled: () => true,
+      onAC: async () => true,
+      releaseActivity: async () => {},
+      powerActivity: async () => ({ active: true }),
+      cancel: () => {},
+      resume: async () => {},
+      consolidate: async () => {},
+      reindex: async () => {},
+      start: async (_payload, item, runId) => {
+        f = await fixture(
+          false,
+          true,
+          (id) => checkNightShiftDispatch(repo, id),
+          runId,
+          (id) => nightShiftEffectAuthority(repo, id),
+        );
+        f.run.config = { ...f.run.config, nightShiftItemId: item.id };
+        repo.saveRun(f.run);
+        f.overnight();
+        installOvernightAuthority(repo, f.controller);
+        return runId;
+      },
+    },
+    new BudgetsService(db, () => ({})),
+    createClock(1, () => now),
+  );
+  const remove = installNightShift(
+    { repo } as import("../../apps/runtime/src/api/methods/context.js").Services,
+    service,
+  );
   try {
     const item = service.queue({ payload: { kind: "goal", goalId: "fixture-goal" }, budgetUsd: 0.4 });
     await service.tick();
     const actual = f!;
     const pending = await actual.controller.request(actual.request);
     expect(pending.decision).toBe("pending");
-    actual.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: pending.approvalId! }, actual.run.runId);
+    actual.approvals.decideLocal(
+      { decision: "acceptForOrigin", approvalId: pending.approvalId! },
+      actual.run.runId,
+    );
     const authorized = await actual.controller.request(actual.request);
     expect(authorized).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
     const ticket = { batchId: actual.request.batchId, reservationId: authorized.reservationId! };
-    expect(await actual.controller.revalidate({ ...ticket, nonce: 1 })).toEqual({ ...ticket, nonce: 1, decision: "allow",
-      overnight: { windowEnd: new Date(2026, 9, 1, 8).getTime(), requireAC: true } });
+    expect(await actual.controller.revalidate({ ...ticket, nonce: 1 })).toEqual({
+      ...ticket,
+      nonce: 1,
+      decision: "allow",
+      overnight: { windowEnd: new Date(2026, 9, 1, 8).getTime(), requireAC: true },
+    });
     const next = { ...actual.request, batchId: "after-window" };
     now = new Date(2026, 9, 1, 8).getTime();
     expect(service.get(item.id).status).toBe("running");
@@ -447,20 +574,31 @@ it("a real closed overnight window denies a standing native permission before sc
     await service.tick();
     expect(service.get(item.id).status).toBe("needs_review");
     expect(await actual.controller.request(unanswered)).toEqual(waiting);
-  } finally { await remove(); }
+  } finally {
+    await remove();
+  }
 });
-
 
 it("fresh permission reservations revalidate the exact consent once without consuming another approval", async () => {
   let closed = false;
-  const f = await fixture(false, false, async () => { if (closed) throw new AuxError("permission_denied", "Window closed"); });
+  const f = await fixture(false, false, async () => {
+    if (closed) throw new AuxError("permission_denied", "Window closed");
+  });
   const pending = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
   const authorized = await f.controller.request(f.request);
   expect(authorized).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
   const ticket = { batchId: f.request.batchId, reservationId: authorized.reservationId! };
-  expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toEqual({ ...ticket, nonce: 1, decision: "allow" });
-  expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toEqual({ ...ticket, nonce: 1, decision: "deny" });
+  expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toEqual({
+    ...ticket,
+    nonce: 1,
+    decision: "allow",
+  });
+  expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toEqual({
+    ...ticket,
+    nonce: 1,
+    decision: "deny",
+  });
   expect(f.approvals.pending("run")).toEqual([]);
   expect(await f.controller.revalidate({ ...ticket, nonce: 2 })).toMatchObject({ decision: "allow" });
   closed = true;
@@ -474,13 +612,14 @@ it("exact native finalization prevents reservation replay and rejects a foreign 
   f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
   const authorized = await f.controller.request(f.request);
   const ticket = { batchId: f.request.batchId, reservationId: authorized.reservationId! };
-  expect(f.controller.finalize({ ...ticket, reservationId: "00000000-0000-4000-8000-000000000000" })).toEqual({ retired: false });
+  expect(f.controller.finalize({ ...ticket, reservationId: "00000000-0000-4000-8000-000000000000" })).toEqual(
+    { retired: false },
+  );
   expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toMatchObject({ decision: "allow" });
   expect(f.controller.finalize(ticket)).toEqual({ retired: true });
   expect(f.controller.finalize(ticket)).toEqual({ retired: false });
   expect(await f.controller.revalidate({ ...ticket, nonce: 2 })).toMatchObject({ decision: "deny" });
 });
-
 
 it("a real origin-policy retirement cancels an authorized reservation before fresh redemption", async () => {
   const f = await fixture();
@@ -497,7 +636,12 @@ it("a real origin-policy retirement cancels an authorized reservation before fre
 it("an authority replacement during real fresh authorization cannot publish an ALLOW receipt", async () => {
   let release: (() => void) | undefined;
   let held = false;
-  const f = await fixture(false, false, async () => { if (held) await new Promise<void>(resolve => { release = resolve; }); });
+  const f = await fixture(false, false, async () => {
+    if (held)
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+  });
   const pending = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
   const authorized = await f.controller.request(f.request);
@@ -505,105 +649,224 @@ it("an authority replacement during real fresh authorization cannot publish an A
   held = true;
   const fresh = f.controller.revalidate({ ...ticket, nonce: 1 });
   await Promise.resolve();
-  f.retire(); release!();
+  f.retire();
+  release!();
   expect(await fresh).toEqual({ ...ticket, nonce: 1, decision: "deny" });
   expect(f.controller.finalize(ticket)).toEqual({ retired: false });
 });
-
 
 it("central authority mutation awaits native exact-ticket retirement before changing ledger or settings", async () => {
   let acknowledge: (() => void) | undefined;
   let mutationDone = false;
   const calls: unknown[] = [];
-  const f = await fixture(false, false, async () => {}, "run", () => null, async input => {
-    calls.push(input); await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true };
-  });
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async (input) => {
+      calls.push(input);
+      await new Promise<void>((resolve) => {
+        acknowledge = resolve;
+      });
+      return { accepted: true };
+    },
+  );
   const pending = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
   const authorized = await f.controller.request(f.request);
   const ticket = { batchId: f.request.batchId, reservationId: authorized.reservationId! };
-  const mutation = f.controller.withAuthorityMutation(id => id === f.run.runId, async () => { mutationDone = true; });
+  const mutation = f.controller.withAuthorityMutation(
+    (id) => id === f.run.runId,
+    async () => {
+      mutationDone = true;
+    },
+  );
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(calls).toHaveLength(1)));
   expect(calls).toEqual([{ ...ticket, tabId: f.page.pageId }]);
   expect(mutationDone).toBe(false);
   expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toMatchObject({ decision: "deny" });
-  expect(await f.controller.request({ ...f.request, batchId: "during-mutation" })).toMatchObject({ decision: "deny" });
-  acknowledge!(); await mutation;
+  expect(await f.controller.request({ ...f.request, batchId: "during-mutation" })).toMatchObject({
+    decision: "deny",
+  });
+  acknowledge!();
+  await mutation;
   expect(mutationDone).toBe(true);
 });
 
 it("the actual shared model ledger waits for native retirement and budgets see its exact run-linked Guardian cost", async () => {
   const { Repo } = await import("@aux/runtime");
   const { SqliteColumnCipher } = await import("../../apps/runtime/src/store/sqlite-protection.js");
-  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installOvernightAuthority } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
   const { saveAuthorizedModelCall } = await import("../../apps/runtime/src/services/model-call-authority.js");
   const { BudgetsService } = await import("../../apps/runtime/src/services/budgets.js");
   const { randomBytes, createHash } = await import("node:crypto");
-  const db = openDb(":memory:"); cleanup.push(() => db.close());
+  const db = openDb(":memory:");
+  cleanup.push(() => db.close());
   const stored = new Map<string, string>();
-  const secret = (key: string) => { if (!stored.has(key)) stored.set(key, randomBytes(32).toString("base64")); return { value: stored.get(key)! }; };
-  const cipher = await SqliteColumnCipher.create({ readSecret: async key => ({ value: stored.get(key) }),
-    storeSecret: async (key, value) => { stored.set(key, value); return { ok: true }; },
-    profileStorageRoot: async () => secret(`aux_root_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`), profileStorageFactor: async () => secret(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`) }, "fixture", false);
+  const secret = (key: string) => {
+    if (!stored.has(key)) stored.set(key, randomBytes(32).toString("base64"));
+    return { value: stored.get(key)! };
+  };
+  const cipher = await SqliteColumnCipher.create(
+    {
+      readSecret: async (key) => ({ value: stored.get(key) }),
+      storeSecret: async (key, value) => {
+        stored.set(key, value);
+        return { ok: true };
+      },
+      profileStorageRoot: async () =>
+        secret(`aux_root_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`),
+      profileStorageFactor: async () =>
+        secret(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`),
+    },
+    "fixture",
+    false,
+  );
   const repo = new Repo(db, cipher);
   let acknowledge!: () => void;
-  const f = await fixture(false, false, async () => {}, "run", () => null, async () => {
-    await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true };
-  });
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async () => {
+      await new Promise<void>((resolve) => {
+        acknowledge = resolve;
+      });
+      return { accepted: true };
+    },
+  );
   repo.saveRun({ ...f.run, config: { ...f.run.config, nightShiftItemId: "owned-night-item" } });
   installOvernightAuthority(repo, f.controller);
   const pending = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
   const authorized = await f.controller.request(f.request);
   const ticket = { batchId: f.request.batchId, reservationId: authorized.reservationId! };
-  const write = saveAuthorizedModelCall(repo, { callId: "guardian-cost", runId: "run", role: "guardian", modelId: "actual-model", durationMs: 7, inputTokens: 12, outputTokens: 3, costUsd: 0.4, createdAt: Date.now() });
+  const write = saveAuthorizedModelCall(repo, {
+    callId: "guardian-cost",
+    runId: "run",
+    role: "guardian",
+    modelId: "actual-model",
+    durationMs: 7,
+    inputTokens: 12,
+    outputTokens: 3,
+    costUsd: 0.4,
+    createdAt: Date.now(),
+  });
   expect(repo.listModelCalls("run")).toEqual([]);
   expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toMatchObject({ decision: "deny" });
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
-  acknowledge(); await write;
-  expect(repo.listModelCalls("run")).toMatchObject([{ callId: "guardian-cost", role: "guardian", costUsd: 0.4 }]);
+  acknowledge();
+  await write;
+  expect(repo.listModelCalls("run")).toMatchObject([
+    { callId: "guardian-cost", role: "guardian", costUsd: 0.4 },
+  ]);
   const budgets = new BudgetsService(db, () => ({ runUsd: 0.3 }));
   expect(budgets.spentRunUsd("run")).toBe(0.4);
   expect(() => budgets.assertWithin({ runId: "run" })).toThrow(/budget/i);
   expect(repo.listModelCalls("other-run")).toEqual([]);
 });
 
-
 it("window reconciliation retires a native receipt before cancelling the run or changing its queue status", async () => {
   const { Repo } = await import("@aux/runtime");
   const { SqliteColumnCipher } = await import("../../apps/runtime/src/store/sqlite-protection.js");
   const { NightShiftService } = await import("../../apps/runtime/src/services/night-shift.js");
   const { BudgetsService } = await import("../../apps/runtime/src/services/budgets.js");
-  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
-  const { installNightShift, checkNightShiftDispatch, nightShiftEffectAuthority } = await import("../../apps/runtime/src/features/overnight-review/service.js");
+  const { installOvernightAuthority } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installNightShift, checkNightShiftDispatch, nightShiftEffectAuthority } =
+    await import("../../apps/runtime/src/features/overnight-review/service.js");
   const { createClock } = await import("@aux/contracts");
   const { randomBytes, createHash } = await import("node:crypto");
-  const db = openDb(":memory:"); cleanup.push(() => db.close());
+  const db = openDb(":memory:");
+  cleanup.push(() => db.close());
   const stored = new Map<string, string>();
-  const secret = (key: string) => { if (!stored.has(key)) stored.set(key, randomBytes(32).toString("base64")); return { value: stored.get(key)! }; };
-  const cipher = await SqliteColumnCipher.create({ readSecret: async key => ({ value: stored.get(key) }),
-    storeSecret: async (key, value) => { stored.set(key, value); return { ok: true }; },
-    profileStorageRoot: async () => secret(`aux_root_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`), profileStorageFactor: async () => secret(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`) }, "fixture", false);
+  const secret = (key: string) => {
+    if (!stored.has(key)) stored.set(key, randomBytes(32).toString("base64"));
+    return { value: stored.get(key)! };
+  };
+  const cipher = await SqliteColumnCipher.create(
+    {
+      readSecret: async (key) => ({ value: stored.get(key) }),
+      storeSecret: async (key, value) => {
+        stored.set(key, value);
+        return { ok: true };
+      },
+      profileStorageRoot: async () =>
+        secret(`aux_root_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`),
+      profileStorageFactor: async () =>
+        secret(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`),
+    },
+    "fixture",
+    false,
+  );
   const repo = new Repo(db, cipher);
   let now = new Date(2026, 9, 1, 1).getTime();
-  repo.setSetting("nightShift", { enabled: true, start: "00:00", end: "08:00", nightlyUsd: 2, perTaskUsd: 0.5, requireAC: true });
+  repo.setSetting("nightShift", {
+    enabled: true,
+    start: "00:00",
+    end: "08:00",
+    nightlyUsd: 2,
+    perTaskUsd: 0.5,
+    requireAC: true,
+  });
   let acknowledge!: () => void;
   const cancelled: string[] = [];
   let f: Awaited<ReturnType<typeof fixture>> | undefined;
-  const service = new NightShiftService(repo, { backgroundEnabled: () => true, onAC: async () => true,
-    releaseActivity: async () => {}, powerActivity: async () => ({ active: true }), cancel: runId => { cancelled.push(runId); }, resume: async () => {},
-    consolidate: async () => {}, reindex: async () => {}, start: async (_payload, item, runId) => {
-      f = await fixture(false, true, id => checkNightShiftDispatch(repo, id), runId, id => nightShiftEffectAuthority(repo, id), async () => { await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true }; });
-      f.run.config = { ...f.run.config, nightShiftItemId: item.id };
-      repo.saveRun(f.run); f.overnight(); installOvernightAuthority(repo, f.controller); return runId;
-    } }, new BudgetsService(db, () => ({})), createClock(1, () => now));
-  const remove = installNightShift({ repo } as import("../../apps/runtime/src/api/methods/context.js").Services, service);
+  const service = new NightShiftService(
+    repo,
+    {
+      backgroundEnabled: () => true,
+      onAC: async () => true,
+      releaseActivity: async () => {},
+      powerActivity: async () => ({ active: true }),
+      cancel: (runId) => {
+        cancelled.push(runId);
+      },
+      resume: async () => {},
+      consolidate: async () => {},
+      reindex: async () => {},
+      start: async (_payload, item, runId) => {
+        f = await fixture(
+          false,
+          true,
+          (id) => checkNightShiftDispatch(repo, id),
+          runId,
+          (id) => nightShiftEffectAuthority(repo, id),
+          async () => {
+            await new Promise<void>((resolve) => {
+              acknowledge = resolve;
+            });
+            return { accepted: true };
+          },
+        );
+        f.run.config = { ...f.run.config, nightShiftItemId: item.id };
+        repo.saveRun(f.run);
+        f.overnight();
+        installOvernightAuthority(repo, f.controller);
+        return runId;
+      },
+    },
+    new BudgetsService(db, () => ({})),
+    createClock(1, () => now),
+  );
+  const remove = installNightShift(
+    { repo } as import("../../apps/runtime/src/api/methods/context.js").Services,
+    service,
+  );
   try {
     const item = service.queue({ payload: { kind: "goal", goalId: "fixture-goal" }, budgetUsd: 0.4 });
     await service.tick();
     const actual = f!;
     const pending = await actual.controller.request(actual.request);
-    actual.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: pending.approvalId! }, actual.run.runId);
+    actual.approvals.decideLocal(
+      { decision: "acceptForOrigin", approvalId: pending.approvalId! },
+      actual.run.runId,
+    );
     const authorized = await actual.controller.request(actual.request);
     expect(authorized.decision).toBe("allow");
     now = new Date(2026, 9, 1, 8).getTime();
@@ -611,202 +874,503 @@ it("window reconciliation retires a native receipt before cancelling the run or 
     await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
     expect(cancelled).toEqual([]);
     expect(service.get(item.id).status).toBe("running");
-    expect(await actual.controller.revalidate({ batchId: actual.request.batchId, reservationId: authorized.reservationId!, nonce: 1 })).toMatchObject({ decision: "deny" });
-    acknowledge(); await reconcile;
+    expect(
+      await actual.controller.revalidate({
+        batchId: actual.request.batchId,
+        reservationId: authorized.reservationId!,
+        nonce: 1,
+      }),
+    ).toMatchObject({ decision: "deny" });
+    acknowledge();
+    await reconcile;
     expect(cancelled).toEqual([actual.run.runId]);
     expect(service.get(item.id).status).toBe("needs_review");
-  } finally { await remove(); }
+  } finally {
+    await remove();
+  }
 });
 
 it("an overlapping authority mutation cannot commit before the first exact native retirement ACK", async () => {
-  let acknowledge!: () => void; const effects: string[] = []; const retirements: unknown[] = [];
-  const f = await fixture(false, false, async () => {}, "run", () => null, async input => {
-    retirements.push(input); await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true };
-  });
+  let acknowledge!: () => void;
+  const effects: string[] = [];
+  const retirements: unknown[] = [];
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async (input) => {
+      retirements.push(input);
+      await new Promise<void>((resolve) => {
+        acknowledge = resolve;
+      });
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   const authorized = await f.controller.request(f.request);
-  const first = f.controller.withAuthorityMutation(id => id === "run", async () => { effects.push("first"); });
-  const second = f.controller.withAuthorityMutation(id => id === "run", async () => { effects.push("second"); });
+  const first = f.controller.withAuthorityMutation(
+    (id) => id === "run",
+    async () => {
+      effects.push("first");
+    },
+  );
+  const second = f.controller.withAuthorityMutation(
+    (id) => id === "run",
+    async () => {
+      effects.push("second");
+    },
+  );
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(retirements).toHaveLength(1)));
   expect(effects).toEqual([]);
-  expect(await f.controller.revalidate({ batchId: f.request.batchId, reservationId: authorized.reservationId!, nonce: 1 })).toMatchObject({ decision: "deny" });
-  acknowledge(); await Promise.all([first, second]);
-  expect(effects).toEqual(["first", "second"]); expect(retirements).toHaveLength(1);
+  expect(
+    await f.controller.revalidate({
+      batchId: f.request.batchId,
+      reservationId: authorized.reservationId!,
+      nonce: 1,
+    }),
+  ).toMatchObject({ decision: "deny" });
+  acknowledge();
+  await Promise.all([first, second]);
+  expect(effects).toEqual(["first", "second"]);
+  expect(retirements).toHaveLength(1);
 });
 
 it("a failed native ACK retains exact retirement debt and retry cannot mutate until that same receipt is acknowledged", async () => {
-  let fail = true; let acknowledge!: () => void; const receipts: unknown[] = []; let committed = false;
-  const f = await fixture(false, false, async () => {}, "run", () => null, async input => {
-    receipts.push(input); if (fail) throw new Error("Native channel refused retirement");
-    await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true };
-  });
+  let fail = true;
+  let acknowledge!: () => void;
+  const receipts: unknown[] = [];
+  let committed = false;
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async (input) => {
+      receipts.push(input);
+      if (fail) throw new Error("Native channel refused retirement");
+      await new Promise<void>((resolve) => {
+        acknowledge = resolve;
+      });
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   const authorized = await f.controller.request(f.request);
-  const mutation = async () => { committed = true; };
-  await expect(f.controller.withAuthorityMutation(id => id === "run", mutation)).rejects.toThrow("Native channel refused retirement");
+  const mutation = async () => {
+    committed = true;
+  };
+  await expect(f.controller.withAuthorityMutation((id) => id === "run", mutation)).rejects.toThrow(
+    "Native channel refused retirement",
+  );
   expect(committed).toBe(false);
-  expect(await f.controller.request({ ...f.request, batchId: "after-failed-retirement" })).toMatchObject({ decision: "deny" });
+  expect(await f.controller.request({ ...f.request, batchId: "after-failed-retirement" })).toMatchObject({
+    decision: "deny",
+  });
   fail = false;
-  const retry = f.controller.withAuthorityMutation(id => id === "run", mutation);
+  const retry = f.controller.withAuthorityMutation((id) => id === "run", mutation);
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(receipts).toHaveLength(2)));
-  expect(receipts[1]).toEqual(receipts[0]); expect(receipts[0]).toEqual({ tabId: f.page.pageId, batchId: f.request.batchId, reservationId: authorized.reservationId });
-  expect(committed).toBe(false); acknowledge(); await retry; expect(committed).toBe(true);
+  expect(receipts[1]).toEqual(receipts[0]);
+  expect(receipts[0]).toEqual({
+    tabId: f.page.pageId,
+    batchId: f.request.batchId,
+    reservationId: authorized.reservationId,
+  });
+  expect(committed).toBe(false);
+  acknowledge();
+  await retry;
+  expect(committed).toBe(true);
 });
 
 it("composed lifecycle mutations retire once and complete their nested transition without deadlock", async () => {
-  const calls: unknown[] = []; const transitions: string[] = [];
-  const f = await fixture(false, false, async () => {}, "run", () => null, async input => { calls.push(input); return { accepted: true }; });
+  const calls: unknown[] = [];
+  const transitions: string[] = [];
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async (input) => {
+      calls.push(input);
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   await f.controller.request(f.request);
   const matches = (id: string) => id === "run";
   await f.controller.withAuthorityMutation(matches, async () => {
     transitions.push("cancel");
-    await f.controller.withAuthorityMutation(matches, async () => { transitions.push("finish"); });
+    await f.controller.withAuthorityMutation(matches, async () => {
+      transitions.push("finish");
+    });
   });
-  expect(calls).toHaveLength(1); expect(transitions).toEqual(["cancel", "finish"]);
+  expect(calls).toHaveLength(1);
+  expect(transitions).toEqual(["cancel", "finish"]);
 });
 
 it("a delayed descendant cannot reuse a completed mutation context to bypass a later native ACK", async () => {
-  let retireCount = 0; let acknowledge!: () => void; const transitions: string[] = [];
-  const f = await fixture(false, false, async () => {}, "run", () => null, async () => {
-    if (++retireCount > 1) await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true };
-  });
+  let retireCount = 0;
+  let acknowledge!: () => void;
+  const transitions: string[] = [];
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async () => {
+      if (++retireCount > 1)
+        await new Promise<void>((resolve) => {
+          acknowledge = resolve;
+        });
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: waiting.approvalId! }, "run");
   await f.controller.request(f.request);
-  let releaseDescendant!: () => void; let descendant!: Promise<void>;
-  const ready = new Promise<void>(resolve => { releaseDescendant = resolve; });
+  let releaseDescendant!: () => void;
+  let descendant!: Promise<void>;
+  const ready = new Promise<void>((resolve) => {
+    releaseDescendant = resolve;
+  });
   const matches = (id: string) => id === "run";
   await f.controller.withAuthorityMutation(matches, async () => {
-    descendant = (async () => { await ready; await f.controller.withAuthorityMutation(matches, async () => { transitions.push("descendant"); }); })();
+    descendant = (async () => {
+      await ready;
+      await f.controller.withAuthorityMutation(matches, async () => {
+        transitions.push("descendant");
+      });
+    })();
   });
   const next = await f.controller.request({ ...f.request, batchId: "next-authorized-batch" });
   expect(next.decision).toBe("allow");
-  const external = f.controller.withAuthorityMutation(matches, async () => { transitions.push("external"); });
+  const external = f.controller.withAuthorityMutation(matches, async () => {
+    transitions.push("external");
+  });
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
-  releaseDescendant(); await Promise.resolve(); await Promise.resolve();
+  releaseDescendant();
+  await Promise.resolve();
+  await Promise.resolve();
   expect(transitions).toEqual([]);
-  acknowledge(); await Promise.all([external, descendant]);
-  expect(transitions).toEqual(["external", "descendant"]); expect(retireCount).toBe(2);
+  acknowledge();
+  await Promise.all([external, descendant]);
+  expect(transitions).toEqual(["external", "descendant"]);
+  expect(retireCount).toBe(2);
 });
 
 it("actual correction delivery cannot change revision or signal planning before native receipt retirement ACK", async () => {
   const { Repo, EventBus } = await import("@aux/runtime");
   const { RunMessageQueue } = await import("../../apps/runtime/src/services/run-messages.js");
-  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installOvernightAuthority } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
   let acknowledge!: () => void;
-  const f = await fixture(false, false, async () => {}, "run", () => null, async () => {
-    await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true };
-  });
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async () => {
+      await new Promise<void>((resolve) => {
+        acknowledge = resolve;
+      });
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   const authorized = await f.controller.request(f.request);
-  const repo = new Repo(f.db), events = new EventBus(repo);
+  const repo = new Repo(f.db),
+    events = new EventBus(repo);
   repo.saveRun({ ...f.run, config: { chatId: "person-chat", messageRevision: 0, contextPageRefs: [] } });
   installOvernightAuthority(repo, f.controller);
   let signals = 0;
-  const messages = new RunMessageQueue(repo, events, async () => { throw new Error("Correction must not start a new run"); }, () => true, () => { signals++; });
-  const correction = messages.steer({ messageId: "11111111-1111-4111-8111-111111111111", runId: "run", chatId: "person-chat", text: "Use the latest source", pageIds: ["tab"], contextPageRefs: [], expectedRevision: 0 });
+  const messages = new RunMessageQueue(
+    repo,
+    events,
+    async () => {
+      throw new Error("Correction must not start a new run");
+    },
+    () => true,
+    () => {
+      signals++;
+    },
+  );
+  const correction = messages.steer({
+    messageId: "11111111-1111-4111-8111-111111111111",
+    runId: "run",
+    chatId: "person-chat",
+    text: "Use the latest source",
+    pageIds: ["tab"],
+    contextPageRefs: [],
+    expectedRevision: 0,
+  });
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
   expect(repo.getRun("run")?.config?.messageRevision).toBe(0);
-  expect(repo.listRunSteers("run")).toEqual([]); expect(signals).toBe(0);
-  expect(await f.controller.revalidate({ batchId: f.request.batchId, reservationId: authorized.reservationId!, nonce: 1 })).toMatchObject({ decision: "deny" });
-  acknowledge(); await correction;
-  expect(repo.getRun("run")?.config?.messageRevision).toBe(1); expect(signals).toBe(1);
+  expect(repo.listRunSteers("run")).toEqual([]);
+  expect(signals).toBe(0);
+  expect(
+    await f.controller.revalidate({
+      batchId: f.request.batchId,
+      reservationId: authorized.reservationId!,
+      nonce: 1,
+    }),
+  ).toMatchObject({ decision: "deny" });
+  acknowledge();
+  await correction;
+  expect(repo.getRun("run")?.config?.messageRevision).toBe(1);
+  expect(signals).toBe(1);
   await messages.stop();
 });
 
 it("unauthorized policy and out-of-scope task mutations cannot retire a real foreground receipt", async () => {
   const { Repo } = await import("@aux/runtime");
-  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installOvernightAuthority } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
   const { memoryMethods } = await import("../../apps/runtime/src/api/methods/memory.js");
   const { workspacesMethods } = await import("../../apps/runtime/src/api/methods/workspaces.js");
   const { tasksMethods } = await import("../../apps/runtime/src/api/methods/tasks.js");
   let retirements = 0;
-  const f = await fixture(false, false, async () => {}, "run", () => null, async () => { retirements++; return { accepted: true }; });
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async () => {
+      retirements++;
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   const authorized = await f.controller.request(f.request);
-  const repo = new Repo(f.db); repo.saveRun(f.run); installOvernightAuthority(repo, f.controller);
+  const repo = new Repo(f.db);
+  repo.saveRun(f.run);
+  installOvernightAuthority(repo, f.controller);
   const base = { client: { external: true, codeMode: false }, params: {}, s: { repo } };
-  for (const method of ["memory.pipeline.setPolicy", "memory.pipeline.review", "memory.pipeline.revert", "memory.pipeline.forget"] as const)
-    await expect(memoryMethods[method]!({ ...base, method } as unknown as Parameters<NonNullable<typeof memoryMethods[typeof method]>>[0])).rejects.toMatchObject({ code: "permission_denied" });
-  for (const method of ["workspaces.memory.set", "workspaces.browsingMemory.set", "workspaces.browsingMemory.forget", "workspaces.contentMemory.setPolicy", "workspaces.contentMemory.forget", "commands.escalations.revoke"] as const)
-    await expect(workspacesMethods[method]!({ ...base, method } as unknown as Parameters<NonNullable<typeof workspacesMethods[typeof method]>>[0])).rejects.toMatchObject({ code: "permission_denied" });
-  await expect(tasksMethods["tasks.update"]!({ ...base, method: "tasks.update", params: { taskId: "task", resources: [{ access: "write" }] } } as unknown as Parameters<NonNullable<typeof tasksMethods["tasks.update"]>>[0])).rejects.toMatchObject({ code: "permission_denied" });
-  await expect(tasksMethods["tasks.replaceAgent"]!({ ...base, method: "tasks.replaceAgent", params: { taskId: "task", pageIds: ["outside"] }, scope: { kind: "task" }, requireScopedPage: () => { throw new AuxError("permission_denied", "Outside approved task scope"); } } as unknown as Parameters<NonNullable<typeof tasksMethods["tasks.replaceAgent"]>>[0])).rejects.toMatchObject({ code: "permission_denied" });
+  for (const method of [
+    "memory.pipeline.setPolicy",
+    "memory.pipeline.review",
+    "memory.pipeline.revert",
+    "memory.pipeline.forget",
+  ] as const)
+    await expect(
+      memoryMethods[method]!({ ...base, method } as unknown as Parameters<
+        NonNullable<(typeof memoryMethods)[typeof method]>
+      >[0]),
+    ).rejects.toMatchObject({ code: "permission_denied" });
+  for (const method of [
+    "workspaces.memory.set",
+    "workspaces.browsingMemory.set",
+    "workspaces.browsingMemory.forget",
+    "workspaces.contentMemory.setPolicy",
+    "workspaces.contentMemory.forget",
+    "commands.escalations.revoke",
+  ] as const)
+    await expect(
+      workspacesMethods[method]!({ ...base, method } as unknown as Parameters<
+        NonNullable<(typeof workspacesMethods)[typeof method]>
+      >[0]),
+    ).rejects.toMatchObject({ code: "permission_denied" });
+  await expect(
+    tasksMethods["tasks.update"]!({
+      ...base,
+      method: "tasks.update",
+      params: { taskId: "task", resources: [{ access: "write" }] },
+    } as unknown as Parameters<NonNullable<(typeof tasksMethods)["tasks.update"]>>[0]),
+  ).rejects.toMatchObject({ code: "permission_denied" });
+  await expect(
+    tasksMethods["tasks.replaceAgent"]!({
+      ...base,
+      method: "tasks.replaceAgent",
+      params: { taskId: "task", pageIds: ["outside"] },
+      scope: { kind: "task" },
+      requireScopedPage: () => {
+        throw new AuxError("permission_denied", "Outside approved task scope");
+      },
+    } as unknown as Parameters<NonNullable<(typeof tasksMethods)["tasks.replaceAgent"]>>[0]),
+  ).rejects.toMatchObject({ code: "permission_denied" });
   expect(retirements).toBe(0);
-  expect(await f.controller.revalidate({ batchId: f.request.batchId, reservationId: authorized.reservationId!, nonce: 1 })).toMatchObject({ decision: "allow" });
+  expect(
+    await f.controller.revalidate({
+      batchId: f.request.batchId,
+      reservationId: authorized.reservationId!,
+      nonce: 1,
+    }),
+  ).toMatchObject({ decision: "allow" });
 });
 
 it("queued interruption cannot resurrect a terminal run or overwrite its newer configuration after ACK", async () => {
   const { Repo, EventBus } = await import("@aux/runtime");
   const { RunCoordinator } = await import("../../apps/runtime/src/agent/coordinator.js");
-  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installOvernightAuthority } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
   const { fixtureTurnMentions } = await import("../fixtures/turn-mentions.js");
   let acknowledge!: () => void;
-  const f = await fixture(false, false, async () => {}, "run", () => null, async () => { await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true }; });
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async () => {
+      await new Promise<void>((resolve) => {
+        acknowledge = resolve;
+      });
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   await f.controller.request(f.request);
-  const repo = new Repo(f.db); repo.saveRun(f.run); installOvernightAuthority(repo, f.controller);
-  const coordinator = new RunCoordinator({ repo, events: new EventBus(repo), turnMentions: fixtureTurnMentions(() => f.page), pages: {} as never, model: () => null, defaultModel: () => "fixture", recoveryModel: () => undefined, grants: [], recordModelCall: () => {} });
-  const settle = f.controller.withAuthorityMutation(id => id === "run", async () => { repo.saveRun({ ...repo.getRun("run")!, status: "completed", config: { messageRevision: 9 }, result: { report: "Verified" } }); });
+  const repo = new Repo(f.db);
+  repo.saveRun(f.run);
+  installOvernightAuthority(repo, f.controller);
+  const coordinator = new RunCoordinator({
+    repo,
+    events: new EventBus(repo),
+    turnMentions: fixtureTurnMentions(() => f.page),
+    pages: {} as never,
+    model: () => null,
+    defaultModel: () => "fixture",
+    recoveryModel: () => undefined,
+    grants: [],
+    recordModelCall: () => {},
+  });
+  const settle = f.controller.withAuthorityMutation(
+    (id) => id === "run",
+    async () => {
+      repo.saveRun({
+        ...repo.getRun("run")!,
+        status: "completed",
+        config: { messageRevision: 9 },
+        result: { report: "Verified" },
+      });
+    },
+  );
   const interrupt = coordinator.markInterrupted();
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
-  acknowledge(); await Promise.all([settle, interrupt]);
-  expect(repo.getRun("run")).toMatchObject({ status: "completed", config: { messageRevision: 9 }, result: { report: "Verified" } });
+  acknowledge();
+  await Promise.all([settle, interrupt]);
+  expect(repo.getRun("run")).toMatchObject({
+    status: "completed",
+    config: { messageRevision: 9 },
+    result: { report: "Verified" },
+  });
 });
 
 it("a Goal report cannot persist pause metadata before exact native retirement acknowledgement", async () => {
   const { Repo, EventBus, TaskService } = await import("@aux/runtime");
   const { GoalService } = await import("../../apps/runtime/src/services/goals.js");
-  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installOvernightAuthority } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
   let acknowledge!: () => void;
-  const f = await fixture(false, false, async () => {}, "run", () => null, async () => { await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true }; });
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async () => {
+      await new Promise<void>((resolve) => {
+        acknowledge = resolve;
+      });
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   await f.controller.request(f.request);
-  const repo = new Repo(f.db); repo.saveRun(f.run); installOvernightAuthority(repo, f.controller);
+  const repo = new Repo(f.db);
+  repo.saveRun(f.run);
+  installOvernightAuthority(repo, f.controller);
   const workspace = new TaskService(repo, new EventBus(repo)).createWorkspace("Goal authority");
   const goals = new GoalService(repo, {
-    start: async () => { throw new Error("This existing Goal must not launch again"); },
-    pause: async runId => { const run = { ...repo.getRun(runId)!, status: "paused" as const }; repo.saveRun(run); return run; },
-    resume: async () => { throw new Error("Not resuming"); },
-    cancel: async () => { throw new Error("Not cancelling"); },
+    start: async () => {
+      throw new Error("This existing Goal must not launch again");
+    },
+    pause: async (runId) => {
+      const run = { ...repo.getRun(runId)!, status: "paused" as const };
+      repo.saveRun(run);
+      return run;
+    },
+    resume: async () => {
+      throw new Error("Not resuming");
+    },
+    cancel: async () => {
+      throw new Error("Not cancelling");
+    },
   });
-  const goal = goals.create({ workspaceId: workspace.workspaceId, objective: "Review", budget: { maxTokens: 1000 } });
+  const goal = goals.create({
+    workspaceId: workspace.workspaceId,
+    objective: "Review",
+    budget: { maxTokens: 1000 },
+  });
   repo.db.prepare("UPDATE goals SET run_id='run',status='active' WHERE goal_id=?").run(goal.goalId);
   const reporting = goals.report("run", "paused", undefined, 1);
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
   expect(goals.get(goal.goalId).lastBlockerTurn).toBeUndefined();
   expect(repo.getRun("run")?.status).toBe("running");
-  acknowledge(); expect(await reporting).toEqual({ status: "paused" });
+  acknowledge();
+  expect(await reporting).toEqual({ status: "paused" });
   expect(goals.get(goal.goalId)).toMatchObject({ status: "paused", lastBlockerTurn: 1 });
 });
 
-
 it("foreground Apply preserves a newer parked configuration written while native retirement is held", async () => {
   const { Repo, EventBus } = await import("@aux/runtime");
-  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installOvernightAuthority } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
   const { overnightRuntime } = await import("../../apps/runtime/src/features/overnight-review/runtime.js");
   let acknowledge!: () => void;
-  const f = await fixture(false, false, async () => {}, "run", () => null, async () => { await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true }; });
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async () => {
+      await new Promise<void>((resolve) => {
+        acknowledge = resolve;
+      });
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   await f.controller.request(f.request);
-  const repo = new Repo(f.db), events = new EventBus(repo);
-  repo.saveRun({ ...f.run, status: "needs_input", config: { ...f.run.config, nightShiftItemId: "person-item", messageRevision: 0 } });
+  const repo = new Repo(f.db),
+    events = new EventBus(repo);
+  repo.saveRun({
+    ...f.run,
+    status: "needs_input",
+    config: { ...f.run.config, nightShiftItemId: "person-item", messageRevision: 0 },
+  });
   installOvernightAuthority(repo, f.controller);
-  const runtime = overnightRuntime({ repo, events } as never, { status: async () => ({ onAC: true, backgroundEnabled: true }), release: async () => {}, activity: async () => ({ active: true }) });
-  const update = f.controller.withAuthorityMutation(id => id === "run", async () => { const run = repo.getRun("run")!; repo.saveRun({ ...run, config: { ...run.config, messageRevision: 9 } }); });
+  const runtime = overnightRuntime({ repo, events } as never, {
+    status: async () => ({ onAC: true, backgroundEnabled: true }),
+    release: async () => {},
+    activity: async () => ({ active: true }),
+  });
+  const update = f.controller.withAuthorityMutation(
+    (id) => id === "run",
+    async () => {
+      const run = repo.getRun("run")!;
+      repo.saveRun({ ...run, config: { ...run.config, messageRevision: 9 } });
+    },
+  );
   const applying = runtime.resume("run");
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
   expect(repo.getRun("run")?.config).toMatchObject({ nightShiftItemId: "person-item", messageRevision: 0 });
-  acknowledge(); await Promise.all([update, applying]);
+  acknowledge();
+  await Promise.all([update, applying]);
   expect(repo.getRun("run")?.config?.messageRevision).toBe(9);
   expect(repo.getRun("run")?.config).not.toHaveProperty("nightShiftItemId");
   expect(repo.getRun("run")?.status).toBe("needs_input");
@@ -816,32 +1380,83 @@ it("foreground Apply preserves a newer parked configuration written while native
 it("one runtime shutdown awaits every installed native receipt before egress close and run interruption", async () => {
   const { Repo, EventBus } = await import("@aux/runtime");
   const { RunCoordinator } = await import("../../apps/runtime/src/agent/coordinator.js");
-  const { installOvernightAuthority, withRunAuthorityMutation } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installOvernightAuthority, withRunAuthorityMutation } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
   const { runtimeShutdown } = await import("../../apps/runtime/src/services/runtime-shutdown.js");
   const { fixtureTurnMentions } = await import("../fixtures/turn-mentions.js");
   let acknowledge!: () => void;
-  const f = await fixture(false, false, async () => {}, "run", () => null, async () => { await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true }; });
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async () => {
+      await new Promise<void>((resolve) => {
+        acknowledge = resolve;
+      });
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   await f.controller.request(f.request);
-  const repo = new Repo(f.db); repo.saveRun(f.run); installOvernightAuthority(repo, f.controller);
-  const coordinator = new RunCoordinator({ repo, events: new EventBus(repo), turnMentions: fixtureTurnMentions(() => f.page), pages: {} as never, model: () => null, defaultModel: () => "fixture", recoveryModel: () => undefined, grants: [], recordModelCall: () => {} });
+  const repo = new Repo(f.db);
+  repo.saveRun(f.run);
+  installOvernightAuthority(repo, f.controller);
+  const coordinator = new RunCoordinator({
+    repo,
+    events: new EventBus(repo),
+    turnMentions: fixtureTurnMentions(() => f.page),
+    pages: {} as never,
+    model: () => null,
+    defaultModel: () => "fixture",
+    recoveryModel: () => undefined,
+    grants: [],
+    recordModelCall: () => {},
+  });
   const stages: string[] = [];
   const shutdown = runtimeShutdown({
-    quiesce: () => { stages.push("quiesce"); },
+    quiesce: () => {
+      stages.push("quiesce");
+    },
     retireAuthority: () => withRunAuthorityMutation(repo, async () => {}),
-    disconnectAuthority: () => { stages.push("disconnect"); },
-    closeEgress: () => { stages.push("egress"); f.egress.close(); },
-    stopMessages: async () => { stages.push("messages"); },
-    markInterrupted: async () => { await coordinator.markInterrupted(); stages.push("interrupted"); },
-    stopFeatures: async () => { stages.push("features"); },
-    cleanup: [{ stage: "cleanup", run: () => { stages.push("cleanup"); } }],
-    reportFailure: (_, error) => { throw error; },
+    disconnectAuthority: () => {
+      stages.push("disconnect");
+    },
+    closeEgress: () => {
+      stages.push("egress");
+      f.egress.close();
+    },
+    stopMessages: async () => {
+      stages.push("messages");
+    },
+    markInterrupted: async () => {
+      await coordinator.markInterrupted();
+      stages.push("interrupted");
+    },
+    stopFeatures: async () => {
+      stages.push("features");
+    },
+    cleanup: [
+      {
+        stage: "cleanup",
+        run: () => {
+          stages.push("cleanup");
+        },
+      },
+    ],
+    reportFailure: (_, error) => {
+      throw error;
+    },
   });
-  const first = shutdown(); expect(shutdown()).toBe(first);
+  const first = shutdown();
+  expect(shutdown()).toBe(first);
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
-  expect(stages).toEqual(["quiesce"]); expect(repo.getRun("run")?.status).toBe("running");
-  acknowledge(); await first;
+  expect(stages).toEqual(["quiesce"]);
+  expect(repo.getRun("run")?.status).toBe("running");
+  acknowledge();
+  await first;
   expect(stages).toEqual(["quiesce", "egress", "messages", "interrupted", "features", "cleanup"]);
   expect(repo.getRun("run")?.status).toBe("interrupted");
 });
@@ -852,31 +1467,56 @@ it("closed runtime admission still refuses a new native batch after the global r
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   await f.controller.request(f.request);
   f.admission.beginShutdown();
-  await f.controller.withAuthorityMutation(() => true, async () => {});
-  expect(await f.controller.request({ ...f.request, batchId: "queued-after-retirement" })).toMatchObject({ decision: "deny" });
+  await f.controller.withAuthorityMutation(
+    () => true,
+    async () => {},
+  );
+  expect(await f.controller.request({ ...f.request, batchId: "queued-after-retirement" })).toMatchObject({
+    decision: "deny",
+  });
   expect(f.approvals.pending("run")).toEqual([]);
   expect(f.run.status).toBe("running");
 });
 
-
 it("serializes lifecycle state changes behind the exact native browser retirement ACK", async () => {
   const { Repo } = await import("@aux/runtime");
-  const { installBrowserAuthority, installOvernightAuthority, withRunDispatchMutation } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installBrowserAuthority, installOvernightAuthority, withRunDispatchMutation } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
   const f = await fixture();
-  const repo = new Repo(f.db); repo.saveRun(f.run);
-  installOvernightAuthority(repo, f.controller); installBrowserAuthority(repo, f.egress);
+  const repo = new Repo(f.db);
+  repo.saveRun(f.run);
+  installOvernightAuthority(repo, f.controller);
+  installBrowserAuthority(repo, f.egress);
   const trace: string[] = [];
   let entered!: () => void;
-  const started = new Promise<void>(resolve => { entered = resolve; });
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
   let acknowledge!: (value: { accepted: true }) => void;
-  const ack = new Promise<{ accepted: true }>(resolve => { acknowledge = resolve; });
+  const ack = new Promise<{ accepted: true }>((resolve) => {
+    acknowledge = resolve;
+  });
   f.native.egressRevoke = async ({ lease }: { lease: EgressLease }) => {
     expect(lease.leaseId).toBe(f.request.leaseId);
-    trace.push("native-retire"); entered(); return ack;
+    trace.push("native-retire");
+    entered();
+    return ack;
   };
-  const first = withRunDispatchMutation(repo, async () => { trace.push("pause"); }, "run");
+  const first = withRunDispatchMutation(
+    repo,
+    async () => {
+      trace.push("pause");
+    },
+    "run",
+  );
   await started;
-  const second = withRunDispatchMutation(repo, async () => { trace.push("cancel"); }, "run");
+  const second = withRunDispatchMutation(
+    repo,
+    async () => {
+      trace.push("cancel");
+    },
+    "run",
+  );
   expect(trace).toEqual(["native-retire"]);
   acknowledge({ accepted: true });
   await Promise.all([first, second]);
@@ -885,22 +1525,47 @@ it("serializes lifecycle state changes behind the exact native browser retiremen
 
 it("retains a failed native browser retirement debt and requires its exact ACK on retry", async () => {
   const { Repo } = await import("@aux/runtime");
-  const { installBrowserAuthority, installOvernightAuthority, withRunDispatchMutation } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installBrowserAuthority, installOvernightAuthority, withRunDispatchMutation } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
   const f = await fixture();
-  const repo = new Repo(f.db); repo.saveRun(f.run);
-  installOvernightAuthority(repo, f.controller); installBrowserAuthority(repo, f.egress);
+  const repo = new Repo(f.db);
+  repo.saveRun(f.run);
+  installOvernightAuthority(repo, f.controller);
+  installBrowserAuthority(repo, f.egress);
   let mutations = 0;
-  f.native.egressRevoke = async () => { throw new Error("native retirement disconnected"); };
-  await expect(withRunDispatchMutation(repo, async () => { mutations++; }, "run")).rejects.toThrow("native retirement disconnected");
+  f.native.egressRevoke = async () => {
+    throw new Error("native retirement disconnected");
+  };
+  await expect(
+    withRunDispatchMutation(
+      repo,
+      async () => {
+        mutations++;
+      },
+      "run",
+    ),
+  ).rejects.toThrow("native retirement disconnected");
   expect(mutations).toBe(0);
   let entered!: () => void;
-  const started = new Promise<void>(resolve => { entered = resolve; });
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
   let acknowledge!: (value: { accepted: true }) => void;
-  const ack = new Promise<{ accepted: true }>(resolve => { acknowledge = resolve; });
+  const ack = new Promise<{ accepted: true }>((resolve) => {
+    acknowledge = resolve;
+  });
   f.native.egressRevoke = async ({ lease }: { lease: EgressLease }) => {
-    expect(lease.leaseId).toBe(f.request.leaseId); entered(); return ack;
+    expect(lease.leaseId).toBe(f.request.leaseId);
+    entered();
+    return ack;
   };
-  const retry = withRunDispatchMutation(repo, async () => { mutations++; }, "run");
+  const retry = withRunDispatchMutation(
+    repo,
+    async () => {
+      mutations++;
+    },
+    "run",
+  );
   await started;
   expect(mutations).toBe(0);
   acknowledge({ accepted: true });
@@ -910,14 +1575,31 @@ it("retains a failed native browser retirement debt and requires its exact ACK o
 
 it("does not retire a different run's browser lease or abort ordinary approval parking", async () => {
   const { Repo } = await import("@aux/runtime");
-  const { installBrowserAuthority, installOvernightAuthority, withRunAuthorityMutation, withRunDispatchMutation } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const {
+    installBrowserAuthority,
+    installOvernightAuthority,
+    withRunAuthorityMutation,
+    withRunDispatchMutation,
+  } = await import("../../apps/runtime/src/services/overnight-authority.js");
   const f = await fixture();
-  const repo = new Repo(f.db); repo.saveRun(f.run); repo.saveRun({ ...f.run, runId: "other" });
-  installOvernightAuthority(repo, f.controller); installBrowserAuthority(repo, f.egress);
+  const repo = new Repo(f.db);
+  repo.saveRun(f.run);
+  repo.saveRun({ ...f.run, runId: "other" });
+  installOvernightAuthority(repo, f.controller);
+  installBrowserAuthority(repo, f.egress);
   let retirements = 0;
-  f.native.egressRevoke = async () => { retirements++; return { accepted: true }; };
+  f.native.egressRevoke = async () => {
+    retirements++;
+    return { accepted: true };
+  };
   await withRunDispatchMutation(repo, async () => {}, "other");
-  await withRunAuthorityMutation(repo, async () => { repo.saveRun({ ...f.run, status: "needs_input" }); }, "run");
+  await withRunAuthorityMutation(
+    repo,
+    async () => {
+      repo.saveRun({ ...f.run, status: "needs_input" });
+    },
+    "run",
+  );
   expect(retirements).toBe(0);
   expect(() => f.egress.permissionAuthority(f.request)).not.toThrow();
   await withRunDispatchMutation(repo, async () => {}, "run");
@@ -925,34 +1607,58 @@ it("does not retire a different run's browser lease or abort ordinary approval p
   expect(() => f.egress.permissionAuthority(f.request)).toThrow("no current frame/document lease");
 });
 
-
 it("a queued native control rechecks its original document before retiring any receipt", async () => {
   let retirements = 0;
-  const f = await fixture(false, false, async () => {}, "run", () => null, async () => {
-    retirements++; return { accepted: true };
-  });
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async () => {
+      retirements++;
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow" });
   let release!: () => void;
   let entered = false;
-  const prior = f.controller.withAuthorityMutation(id => id === "unrelated", async () => {
-    entered = true; await new Promise<void>(resolve => { release = resolve; });
-  });
+  const prior = f.controller.withAuthorityMutation(
+    (id) => id === "unrelated",
+    async () => {
+      entered = true;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    },
+  );
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(entered).toBe(true)));
   const originalEpoch = f.page.documentEpoch;
   let checks = 0;
   let transitions = 0;
   const validate = async () => {
     checks++;
-    if (f.page.documentEpoch !== originalEpoch) throw new AuxError("ref_stale", "Original native document replaced");
+    if (f.page.documentEpoch !== originalEpoch)
+      throw new AuxError("ref_stale", "Original native document replaced");
   };
-  const input = f.controller.withValidatedAuthorityMutation(id => id === "run", validate, async () => { transitions++; });
-  const refused = input.catch(error => error);
+  const input = f.controller.withValidatedAuthorityMutation(
+    (id) => id === "run",
+    validate,
+    async () => {
+      transitions++;
+    },
+  );
+  const refused = input.catch((error) => error);
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(checks).toBe(1)));
   f.page.documentEpoch++;
-  release(); await prior;
-  await expect(refused).resolves.toMatchObject({ code: "ref_stale", message: "Original native document replaced" });
+  release();
+  await prior;
+  await expect(refused).resolves.toMatchObject({
+    code: "ref_stale",
+    message: "Original native document replaced",
+  });
   expect(checks).toBe(2);
   expect(retirements).toBe(0);
   expect(transitions).toBe(0);
@@ -961,44 +1667,88 @@ it("a queued native control rechecks its original document before retiring any r
 it("a native control rechecks after its original retirement ACK before changing control state", async () => {
   let acknowledge!: () => void;
   const receipts: unknown[] = [];
-  const f = await fixture(false, false, async () => {}, "run", () => null, async input => {
-    receipts.push(input); await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true };
-  });
+  const f = await fixture(
+    false,
+    false,
+    async () => {},
+    "run",
+    () => null,
+    async (input) => {
+      receipts.push(input);
+      await new Promise<void>((resolve) => {
+        acknowledge = resolve;
+      });
+      return { accepted: true };
+    },
+  );
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow" });
   const originalEpoch = f.page.documentEpoch;
   let transitions = 0;
-  const input = f.controller.withValidatedAuthorityMutation(id => id === "run", async () => {
-    if (f.page.documentEpoch !== originalEpoch) throw new AuxError("ref_stale", "Original native document replaced");
-  }, async () => { transitions++; });
-  const refused = input.catch(error => error);
+  const input = f.controller.withValidatedAuthorityMutation(
+    (id) => id === "run",
+    async () => {
+      if (f.page.documentEpoch !== originalEpoch)
+        throw new AuxError("ref_stale", "Original native document replaced");
+    },
+    async () => {
+      transitions++;
+    },
+  );
+  const refused = input.catch((error) => error);
   await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
   expect(receipts).toHaveLength(1);
   expect(transitions).toBe(0);
   f.page.documentEpoch++;
   acknowledge();
-  await expect(refused).resolves.toMatchObject({ code: "ref_stale", message: "Original native document replaced" });
+  await expect(refused).resolves.toMatchObject({
+    code: "ref_stale",
+    message: "Original native document replaced",
+  });
   expect(transitions).toBe(0);
 });
 
-
 it("terminal native registration retirement is produced only after a genuine terminal repository mutation and waits for its ACK", async () => {
   const { Repo } = await import("@aux/runtime");
-  const { installBrowserAuthority, installOvernightAuthority, withRunAuthorityMutation } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installBrowserAuthority, installOvernightAuthority, withRunAuthorityMutation } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
   const f = await fixture();
-  const repo = new Repo(f.db); repo.saveRun(f.run);
+  const repo = new Repo(f.db);
+  repo.saveRun(f.run);
   let release!: () => void;
-  const hold = new Promise<void>(resolve => { release = resolve; });
-  const terminal = vi.fn(async (_input: { runId: string }) => { await hold; return { accepted: true as const }; });
+  const hold = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const terminal = vi.fn(async (_input: { runId: string }) => {
+    await hold;
+    return { accepted: true as const };
+  });
   Object.assign(f.native, { egressRunTerminal: terminal });
-  installBrowserAuthority(repo, f.egress); installOvernightAuthority(repo, f.controller);
-  await withRunAuthorityMutation(repo, async () => { f.run.statusMessage = "Still working"; repo.saveRun(f.run); }, f.run.runId);
+  installBrowserAuthority(repo, f.egress);
+  installOvernightAuthority(repo, f.controller);
+  await withRunAuthorityMutation(
+    repo,
+    async () => {
+      f.run.statusMessage = "Still working";
+      repo.saveRun(f.run);
+    },
+    f.run.runId,
+  );
   expect(terminal).not.toHaveBeenCalled();
   let completed = false;
-  const pending = withRunAuthorityMutation(repo, async () => {
-    f.run.status = "completed"; repo.saveRun(f.run); return "original result";
-  }, f.run.runId).then(result => { completed = true; return result; });
+  const pending = withRunAuthorityMutation(
+    repo,
+    async () => {
+      f.run.status = "completed";
+      repo.saveRun(f.run);
+      return "original result";
+    },
+    f.run.runId,
+  ).then((result) => {
+    completed = true;
+    return result;
+  });
   await vi.waitFor(() => expect(terminal).toHaveBeenCalledExactlyOnceWith({ runId: f.run.runId }));
   expect(completed).toBe(false);
   expect(repo.getRun(f.run.runId)?.status).toBe("completed");
@@ -1007,15 +1757,27 @@ it("terminal native registration retirement is produced only after a genuine ter
 });
 it("a refused terminal registration ACK retains the original failure and the next genuine lifecycle call retries retirement", async () => {
   const { Repo } = await import("@aux/runtime");
-  const { installBrowserAuthority, installOvernightAuthority, withRunAuthorityMutation } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { installBrowserAuthority, installOvernightAuthority, withRunAuthorityMutation } =
+    await import("../../apps/runtime/src/services/overnight-authority.js");
   const f = await fixture();
-  const repo = new Repo(f.db); repo.saveRun(f.run);
+  const repo = new Repo(f.db);
+  repo.saveRun(f.run);
   const refusal = new AuxError("ref_stale", "Original native generation retired");
   const terminal = vi.fn(async (_input: { runId: string }) => ({ accepted: true as const }));
   terminal.mockRejectedValueOnce(refusal);
   Object.assign(f.native, { egressRunTerminal: terminal });
-  installBrowserAuthority(repo, f.egress); installOvernightAuthority(repo, f.controller);
-  await expect(withRunAuthorityMutation(repo, async () => { f.run.status = "completed"; repo.saveRun(f.run); }, f.run.runId)).rejects.toBe(refusal);
+  installBrowserAuthority(repo, f.egress);
+  installOvernightAuthority(repo, f.controller);
+  await expect(
+    withRunAuthorityMutation(
+      repo,
+      async () => {
+        f.run.status = "completed";
+        repo.saveRun(f.run);
+      },
+      f.run.runId,
+    ),
+  ).rejects.toBe(refusal);
   expect(repo.getRun(f.run.runId)?.status).toBe("completed");
   await withRunAuthorityMutation(repo, async () => {}, f.run.runId);
   expect(terminal).toHaveBeenCalledTimes(2);

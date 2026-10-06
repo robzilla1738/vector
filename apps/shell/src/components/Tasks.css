@@ -148,12 +148,31 @@
   .goals-item strong {
     overflow-wrap: anywhere;
   }
-  .hooks-panel, .hooks-review { display: grid; gap: var(--space-3); }
-  .hooks-panel > .row, .hooks-review .row { flex-wrap: wrap; }
-  .hooks-panel .hint, .hooks-review p { margin: 0; }
-  .hooks-panel label { display: grid; gap: var(--space-1); }
-  .hooks-review { padding: var(--space-3); border-radius: var(--r-lg); background: var(--surface-tertiary); }
-  .hooks-review code { overflow-wrap: anywhere; }
+  .hooks-panel,
+  .hooks-review {
+    display: grid;
+    gap: var(--space-3);
+  }
+  .hooks-panel > .row,
+  .hooks-review .row {
+    flex-wrap: wrap;
+  }
+  .hooks-panel .hint,
+  .hooks-review p {
+    margin: 0;
+  }
+  .hooks-panel label {
+    display: grid;
+    gap: var(--space-1);
+  }
+  .hooks-review {
+    padding: var(--space-3);
+    border-radius: var(--r-lg);
+    background: var(--surface-tertiary);
+  }
+  .hooks-review code {
+    overflow-wrap: anywhere;
+  }
   @container task-content (max-width: 520px) {
     .task-index-tools {
       flex-wrap: wrap;

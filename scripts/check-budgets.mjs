@@ -19,7 +19,9 @@ const failures = [];
 const report = (name, actual, limit, unit) => {
   const ok = actual <= limit;
   if (!ok) failures.push(name);
-  console.log(`${ok ? "ok  " : "WARN"} ${name.padEnd(28)} ${String(actual).padStart(9)} ${unit}  (budget ${limit} ${unit})`);
+  console.log(
+    `${ok ? "ok  " : "WARN"} ${name.padEnd(28)} ${String(actual).padStart(9)} ${unit}  (budget ${limit} ${unit})`,
+  );
 };
 
 if (mode === "bundle") {
@@ -47,11 +49,14 @@ if (mode === "bundle") {
   const kb = (n) => Math.round(n / 1024);
   const startupJs = [...js].reduce((n, f) => n + size(f), 0);
   const startupCss = [...css].reduce((n, f) => n + size(f), 0);
-  const allJs = readdirSync(join(dist, "assets")).filter((f) => f.endsWith(".js")).reduce((n, f) => n + size(`assets/${f}`), 0);
+  const allJs = readdirSync(join(dist, "assets"))
+    .filter((f) => f.endsWith(".js"))
+    .reduce((n, f) => n + size(`assets/${f}`), 0);
   report("renderer startup JS", kb(startupJs), budgets.bundle.startupJsKb, "KB");
   report("renderer startup CSS", kb(startupCss), budgets.bundle.startupCssKb, "KB");
   report("renderer total JS", kb(allJs), budgets.bundle.totalJsKb, "KB");
-  for (const f of [...js].sort((a, b) => size(b) - size(a))) console.log(`     ${String(kb(size(f))).padStart(5)} KB  ${f}`);
+  for (const f of [...js].sort((a, b) => size(b) - size(a)))
+    console.log(`     ${String(kb(size(f))).padStart(5)} KB  ${f}`);
 } else if (mode === "bench") {
   if (!arg) throw new Error("usage: check-budgets.mjs bench <report.json>");
   const bench = JSON.parse(readFileSync(resolve(arg), "utf8"));

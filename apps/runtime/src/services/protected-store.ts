@@ -10,7 +10,7 @@ const pendingRoots = new Map<string, Promise<string>>();
 const base64 = (bytes: Buffer) => bytes.toString("base64");
 const decode = (value: string, length?: number) => {
   const bytes = Buffer.from(value, "base64");
-  if (base64(bytes) !== value || length !== undefined && bytes.length !== length)
+  if (base64(bytes) !== value || (length !== undefined && bytes.length !== length))
     throw new Error("Protected data is invalid.");
   return bytes;
 };
@@ -36,7 +36,10 @@ export class ProtectedStore {
   private readonly rootName: string;
   private rootPromise?: Promise<Buffer>;
 
-  constructor(private readonly secrets: Secrets, private readonly profileId: string) {
+  constructor(
+    private readonly secrets: Secrets,
+    private readonly profileId: string,
+  ) {
     if (!profileId) throw new Error("Protected storage requires a Profile identity.");
     this.rootName = `aux_root_v1_${createHash("sha256").update(profileId).digest("hex").slice(0, 24)}`;
   }
@@ -45,7 +48,10 @@ export class ProtectedStore {
     this.rootPromise ??= (async () => {
       let saved = (await this.secrets.readSecret(this.rootName)).value;
       if (!saved) {
-        if (!create) throw new Error("The Profile storage root is unavailable. Restore its OS credential or use reviewed recovery.");
+        if (!create)
+          throw new Error(
+            "The Profile storage root is unavailable. Restore its OS credential or use reviewed recovery.",
+          );
         if (!this.secrets.profileStorageRoot)
           throw new Error("Atomic Profile storage root creation is unavailable in this host.");
         let pending = pendingRoots.get(this.rootName);
@@ -59,11 +65,17 @@ export class ProtectedStore {
           })();
           pendingRoots.set(this.rootName, pending);
         }
-        try { saved = await pending; }
-        finally { if (pendingRoots.get(this.rootName) === pending) pendingRoots.delete(this.rootName); }
+        try {
+          saved = await pending;
+        } finally {
+          if (pendingRoots.get(this.rootName) === pending) pendingRoots.delete(this.rootName);
+        }
       }
       return decode(saved, 32);
-    })().catch(error => { this.rootPromise = undefined; throw error; });
+    })().catch((error) => {
+      this.rootPromise = undefined;
+      throw error;
+    });
     return this.rootPromise;
   }
 
@@ -72,7 +84,9 @@ export class ProtectedStore {
     if (!/^[a-z][a-z0-9-]{1,40}$/.test(store) || factor.length !== 32)
       throw new Error("Protected store domain or generation factor is invalid.");
     const root = await this.root(createRoot);
-    const storeKey = Buffer.from(hkdfSync("sha256", root, Buffer.from(this.profileId), `aux/store/${store}/v1`, 32));
+    const storeKey = Buffer.from(
+      hkdfSync("sha256", root, Buffer.from(this.profileId), `aux/store/${store}/v1`, 32),
+    );
     return Buffer.from(hkdfSync("sha256", storeKey, factor, "aux/generation/v1", 32));
   }
 
@@ -80,16 +94,22 @@ export class ProtectedStore {
     if (key.length !== 32 || !record || !store) throw new Error("Protected record identity is invalid.");
     const aad = Buffer.from(`${this.profileId}\0${store}\0${record}\0v2`);
     const dataKey = randomBytes(32);
-    const envelope: Envelope = { version: 2,
+    const envelope: Envelope = {
+      version: 2,
       wrappedKey: seal(key, Buffer.concat([aad, Buffer.from("\0key")]), dataKey),
-      ciphertext: seal(dataKey, Buffer.concat([aad, Buffer.from("\0data")]), plaintext) };
+      ciphertext: seal(dataKey, Buffer.concat([aad, Buffer.from("\0data")]), plaintext),
+    };
     return JSON.stringify(envelope);
   }
 
   open(key: Buffer, store: string, record: string, encoded: string): Buffer {
     if (key.length !== 32 || !record || !store) throw new Error("Protected record identity is invalid.");
     const envelope = JSON.parse(encoded) as Partial<Envelope>;
-    if (envelope.version !== 2 || typeof envelope.wrappedKey !== "string" || typeof envelope.ciphertext !== "string")
+    if (
+      envelope.version !== 2 ||
+      typeof envelope.wrappedKey !== "string" ||
+      typeof envelope.ciphertext !== "string"
+    )
       throw new Error("Protected record format is invalid.");
     const aad = Buffer.from(`${this.profileId}\0${store}\0${record}\0v2`);
     const dataKey = open(key, Buffer.concat([aad, Buffer.from("\0key")]), envelope.wrappedKey);

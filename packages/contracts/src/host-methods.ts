@@ -3,7 +3,12 @@ import { BrowserHostMethods } from "./browser-host-methods.js";
 import { RuntimeHostMethods } from "./runtime-host-methods.js";
 
 export { HostCapabilitiesSchema, type HostCapabilities } from "./host-capabilities.js";
-export { HostEvents, type HostEventId, type HostEventPayload, type HostReaderNode } from "./browser-host-methods.js";
+export {
+  HostEvents,
+  type HostEventId,
+  type HostEventPayload,
+  type HostReaderNode,
+} from "./browser-host-methods.js";
 
 /** Complete authoritative manifest, retaining browser then runtime entry order. */
 export const HostMethods = { ...BrowserHostMethods, ...RuntimeHostMethods } as const;

@@ -7,8 +7,15 @@ import { OriginPoliciesSnapshotSchema, SetOriginPoliciesSchema } from "./agent-s
 
 const Id = z.string().min(1).max(200);
 const Folder = z.object({ folderId: Id }).strict();
-const Connection = z.object({ id: Id, name: z.string().min(1).max(200), login: z.string().max(200),
-  connected: z.boolean(), error: z.string().max(1000).optional() }).strict();
+const Connection = z
+  .object({
+    id: Id,
+    name: z.string().min(1).max(200),
+    login: z.string().max(200),
+    connected: z.boolean(),
+    error: z.string().max(1000).optional(),
+  })
+  .strict();
 const Ok = z.object({ ok: z.literal(true) }).strict();
 
 export const BrowserRuntimeMethodSchemas = {
@@ -16,7 +23,9 @@ export const BrowserRuntimeMethodSchemas = {
   "liveFolders.refresh": Folder,
   "liveFolders.markRead": Folder.extend({ itemId: Id }),
   "github.connections.list": z.object({}).strict(),
-  "github.connections.connect": z.object({ name: z.string().min(1).max(200), token: z.string().min(1).max(1000) }).strict(),
+  "github.connections.connect": z
+    .object({ name: z.string().min(1).max(200), token: z.string().min(1).max(1000) })
+    .strict(),
   "github.connections.revoke": z.object({ connectionId: Id }).strict(),
   "downloads.completedNative": DownloadCompletedNativeSchema,
   "downloads.renameReceipts": z.object({}).strict(),
@@ -43,9 +52,18 @@ export const BrowserRuntimeResultSchemas = {
   "github.connections.list": z.array(Connection).max(100),
   "github.connections.connect": Connection,
   "github.connections.revoke": Ok,
-  "downloads.completedNative": z.object({ status: z.enum(["skipped", "renamed", "failed"]), receiptId: Id.optional(), filename: z.string().max(255).optional(), reason: z.string().max(1000).optional() }).strict(),
+  "downloads.completedNative": z
+    .object({
+      status: z.enum(["skipped", "renamed", "failed"]),
+      receiptId: Id.optional(),
+      filename: z.string().max(255).optional(),
+      reason: z.string().max(1000).optional(),
+    })
+    .strict(),
   "downloads.renameReceipts": z.array(DownloadRenameReceiptSchema).max(1000),
-  "downloads.undoRename": z.object({ status: z.enum(["restored", "conflict", "expired"]), filename: z.string().max(255).optional() }).strict(),
+  "downloads.undoRename": z
+    .object({ status: z.enum(["restored", "conflict", "expired"]), filename: z.string().max(255).optional() })
+    .strict(),
   "safety.originPolicies.list": OriginPoliciesSnapshotSchema,
   "safety.originPolicies.set": OriginPoliciesSnapshotSchema,
   "recorder.get": DemonstrationSchema,
@@ -56,7 +74,16 @@ export const BrowserRuntimeResultSchemas = {
   "recorder.discard": Ok,
   "nightShift.propose": NightShiftItemSchema,
   "nightShift.queue": NightShiftItemSchema,
-  "nightShift.summary": z.object({ windowDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), done: z.number().int().nonnegative(), needsReview: z.number().int().nonnegative(), spentUsd: z.number().finite().nonnegative(), limitUsd: z.number().finite().positive(), costComplete: z.boolean() }).strict(),
+  "nightShift.summary": z
+    .object({
+      windowDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      done: z.number().int().nonnegative(),
+      needsReview: z.number().int().nonnegative(),
+      spentUsd: z.number().finite().nonnegative(),
+      limitUsd: z.number().finite().positive(),
+      costComplete: z.boolean(),
+    })
+    .strict(),
   "nightShift.list": z.array(NightShiftItemSchema).max(1000),
   "nightShift.review": NightShiftItemSchema,
 } as const;

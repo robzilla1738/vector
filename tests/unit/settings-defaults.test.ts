@@ -3,7 +3,15 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MethodSchemas, SearchEngineTemplateSchema } from "@aux/contracts";
-import { DEFAULT_MAX_MODEL_CALLS, DEFAULT_PLANNER_MODEL, openDb, Repo, SettingsService, USER_RUN_GRANTS, authorizeProgram } from "@aux/runtime";
+import {
+  DEFAULT_MAX_MODEL_CALLS,
+  DEFAULT_PLANNER_MODEL,
+  openDb,
+  Repo,
+  SettingsService,
+  USER_RUN_GRANTS,
+  authorizeProgram,
+} from "@aux/runtime";
 
 function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}) {
   const dir = mkdtempSync(join(tmpdir(), "aux-settings-"));
@@ -18,20 +26,41 @@ describe("settings defaults for a real test pass", () => {
   it("exposes saved layout and automation preferences in live and reopened snapshots", async () => {
     const { dir, repo, settings } = harness();
     try {
-      expect(settings.all()).toMatchObject({ toolbarAutoHide: true, minimalUi: false,
-        minimalUiAcknowledged: false, autoArchive: { acknowledged: false, bySpace: {} },
-        nightShift: { enabled: false, requireAC: true } });
-      const patch = MethodSchemas["settings.set"].parse({ toolbarAutoHide: false,
-        minimalUi: true, minimalUiAcknowledged: true,
+      expect(settings.all()).toMatchObject({
+        toolbarAutoHide: true,
+        minimalUi: false,
+        minimalUiAcknowledged: false,
+        autoArchive: { acknowledged: false, bySpace: {} },
+        nightShift: { enabled: false, requireAC: true },
+      });
+      const patch = MethodSchemas["settings.set"].parse({
+        toolbarAutoHide: false,
+        minimalUi: true,
+        minimalUiAcknowledged: true,
         autoArchive: { acknowledged: true, bySpace: { work: 24 } },
-        nightShift: { enabled: true, start: "01:00", end: "07:00", nightlyUsd: 3, perTaskUsd: 1, requireAC: true } });
+        nightShift: {
+          enabled: true,
+          start: "01:00",
+          end: "07:00",
+          nightlyUsd: 3,
+          perTaskUsd: 1,
+          requireAC: true,
+        },
+      });
       await settings.set(patch);
       expect(settings.all()).toMatchObject(patch);
       expect(new SettingsService(repo, join(dir, "settings.json"), {}).all()).toMatchObject(patch);
       const reopened = harness({}, JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")));
-      try { expect(reopened.settings.all()).toMatchObject(patch); }
-      finally { reopened.repo.db.close(); rmSync(reopened.dir, { recursive: true, force: true }); }
-    } finally { repo.db.close(); rmSync(dir, { recursive: true, force: true }); }
+      try {
+        expect(reopened.settings.all()).toMatchObject(patch);
+      } finally {
+        reopened.repo.db.close();
+        rmSync(reopened.dir, { recursive: true, force: true });
+      }
+    } finally {
+      repo.db.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
   it("persists the new-tab mode and rejects unsupported choices", async () => {
     const { dir, settings } = harness();
@@ -51,7 +80,9 @@ describe("settings defaults for a real test pass", () => {
       expect(settings.all().tabSwitcherOrder).toBe("sidebar");
       await settings.set(MethodSchemas["settings.set"].parse({ tabSwitcherOrder: "recently-used" }));
       expect(settings.all().tabSwitcherOrder).toBe("recently-used");
-      expect(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")).tabSwitcherOrder).toBe("recently-used");
+      expect(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")).tabSwitcherOrder).toBe(
+        "recently-used",
+      );
       expect(MethodSchemas["settings.set"].safeParse({ tabSwitcherOrder: "random" }).success).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -63,8 +94,12 @@ describe("settings defaults for a real test pass", () => {
       expect(settings.all().routineSuggestionScan).toBe("context");
       await settings.set(MethodSchemas["settings.set"].parse({ routineSuggestionScan: "five-minutes" }));
       expect(settings.all().routineSuggestionScan).toBe("five-minutes");
-      expect(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")).routineSuggestionScan).toBe("five-minutes");
-      expect(MethodSchemas["settings.set"].safeParse({ routineSuggestionScan: "hourly" }).success).toBe(false);
+      expect(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")).routineSuggestionScan).toBe(
+        "five-minutes",
+      );
+      expect(MethodSchemas["settings.set"].safeParse({ routineSuggestionScan: "hourly" }).success).toBe(
+        false,
+      );
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -72,7 +107,11 @@ describe("settings defaults for a real test pass", () => {
   it("persists native material, independent tint and content opacity", async () => {
     const { dir, settings } = harness();
     try {
-      expect(settings.all()).toMatchObject({ sidebarMaterial: "liquid-glass", sidebarTint: 0, contentOpacity: 95 });
+      expect(settings.all()).toMatchObject({
+        sidebarMaterial: "liquid-glass",
+        sidebarTint: 0,
+        contentOpacity: 95,
+      });
       const patch = { sidebarMaterial: "sidebar", sidebarTint: 20, contentOpacity: 100 } as const;
       await settings.set(MethodSchemas["settings.set"].parse(patch));
       expect(settings.all()).toMatchObject(patch);
@@ -95,20 +134,29 @@ describe("settings defaults for a real test pass", () => {
   });
 
   it("routes fast, standard, deep and visual calls with validated overrides", async () => {
-    const { dir, settings } = harness({}, { plannerModel: "fixture-standard", recoveryModel: "fixture-deep", visionModel: "fixture-visual" });
+    const { dir, settings } = harness(
+      {},
+      { plannerModel: "fixture-standard", recoveryModel: "fixture-deep", visionModel: "fixture-visual" },
+    );
     try {
       expect(settings.agentRoute("standard")).toEqual({ modelId: "fixture-standard", reasoning: "medium" });
       expect(settings.agentRoute("deep")).toEqual({ modelId: "fixture-deep", reasoning: "xhigh" });
       expect(settings.agentRoute("visual")).toEqual({ modelId: "fixture-visual", reasoning: "medium" });
       expect(settings.agentRoute("fast")).toEqual({ modelId: "fixture-standard", reasoning: "low" });
-      const patch = MethodSchemas["settings.set"].parse({ agentModelRoutes: { fast: { modelId: "fixture-fast", reasoning: "low" } } });
+      const patch = MethodSchemas["settings.set"].parse({
+        agentModelRoutes: { fast: { modelId: "fixture-fast", reasoning: "low" } },
+      });
       await settings.set(patch);
       expect(settings.agentRoute("fast").modelId).toBe("fixture-fast");
       expect(settings.all().agentModelRouteOverrides).toEqual(patch.agentModelRoutes);
       await settings.set(MethodSchemas["settings.set"].parse({ agentModelRoutes: {} }));
       expect(settings.all().agentModelRouteOverrides).toEqual({});
       expect(settings.agentRoute("fast")).toEqual({ modelId: "fixture-standard", reasoning: "low" });
-      expect(MethodSchemas["settings.set"].safeParse({ agentModelRoutes: { fast: { modelId: "x", reasoning: "unsupported" } } }).success).toBe(false);
+      expect(
+        MethodSchemas["settings.set"].safeParse({
+          agentModelRoutes: { fast: { modelId: "x", reasoning: "unsupported" } },
+        }).success,
+      ).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -152,11 +200,17 @@ describe("settings defaults for a real test pass", () => {
   it("validates and persists user spend caps, including clearing all caps", async () => {
     const { dir, settings } = harness();
     try {
-      const patch = MethodSchemas["settings.set"].parse({ budgets: { runUsd: 2.5, dayUsd: 10, routineUsd: 25 } });
+      const patch = MethodSchemas["settings.set"].parse({
+        budgets: { runUsd: 2.5, dayUsd: 10, routineUsd: 25 },
+      });
       await settings.set(patch);
       expect(settings.budgetLimits()).toEqual(patch.budgets);
       await settings.set(MethodSchemas["settings.set"].parse({ budgets: {} }));
-      expect(settings.budgetLimits()).toEqual({ runUsd: undefined, dayUsd: undefined, routineUsd: undefined });
+      expect(settings.budgetLimits()).toEqual({
+        runUsd: undefined,
+        dayUsd: undefined,
+        routineUsd: undefined,
+      });
       expect(MethodSchemas["settings.set"].safeParse({ budgets: { dayUsd: -1 } }).success).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -177,13 +231,8 @@ describe("settings defaults for a real test pass", () => {
   it("defaults effect grants to read-only and sanitizes settings.set", async () => {
     const { dir, settings } = harness();
     try {
-      expect(settings.effectGrants()).toEqual([
-        "effect:read",
-      ]);
-      expect(settings.effectGrantsForRun()).toEqual([
-        "effect:read",
-        "effect:write",
-      ]);
+      expect(settings.effectGrants()).toEqual(["effect:read"]);
+      expect(settings.effectGrantsForRun()).toEqual(["effect:read", "effect:write"]);
       expect(settings.all().effectGrants).toEqual(settings.effectGrantsForRun());
       await settings.set({ effectGrants: ["effect:write", "grant-from-model", "effect:*"] });
       expect(settings.effectGrants()).toEqual(["effect:write", "effect:*"]);
@@ -196,18 +245,26 @@ describe("settings defaults for a real test pass", () => {
       });
       expect(parsed.effectGrants).toEqual(["effect:read", "effect:write", "effect:egress"]);
       expect(authorizeProgram([{ id: "c", op: "click", target: "r1" }], USER_RUN_GRANTS).ok).toBe(true);
-      expect(authorizeProgram([{ id: "c", op: "click", target: "r1" }], settings.effectGrants()).ok).toBe(false);
-      const scopedEgress = [{ effect: "egress" as const, origin: "https://allowed.test", scope: "page", expiresAt: 0 }];
-      expect(authorizeProgram(
-        [{ id: "n", op: "navigate", url: "https://allowed.test/path" }],
-        scopedEgress,
-        "https://current.test",
-      ).ok).toBe(true);
-      expect(authorizeProgram(
-        [{ id: "n", op: "navigate", url: "https://other.test/path" }],
-        scopedEgress,
-        "https://allowed.test",
-      ).ok).toBe(false);
+      expect(authorizeProgram([{ id: "c", op: "click", target: "r1" }], settings.effectGrants()).ok).toBe(
+        false,
+      );
+      const scopedEgress = [
+        { effect: "egress" as const, origin: "https://allowed.test", scope: "page", expiresAt: 0 },
+      ];
+      expect(
+        authorizeProgram(
+          [{ id: "n", op: "navigate", url: "https://allowed.test/path" }],
+          scopedEgress,
+          "https://current.test",
+        ).ok,
+      ).toBe(true);
+      expect(
+        authorizeProgram(
+          [{ id: "n", op: "navigate", url: "https://other.test/path" }],
+          scopedEgress,
+          "https://allowed.test",
+        ).ok,
+      ).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -236,7 +293,13 @@ describe("settings defaults for a real test pass", () => {
       const result = await settings.probe("fixture-model");
       expect(result).toMatchObject({ ok: true, modelId: "fixture-model", latencyMs: 12, vision: true });
       const saved = repo.getSetting<Record<string, unknown>>("modelProbe");
-      expect(saved).toMatchObject({ provider: "gateway", modelId: "fixture-model", ok: true, latencyMs: 12, vision: true });
+      expect(saved).toMatchObject({
+        provider: "gateway",
+        modelId: "fixture-model",
+        ok: true,
+        latencyMs: 12,
+        vision: true,
+      });
       expect(JSON.stringify(saved)).not.toContain("key");
       await settings.set({ plannerModel: "different-model" });
       expect(repo.getSetting("modelProbe")).toBeUndefined();
@@ -246,13 +309,22 @@ describe("settings defaults for a real test pass", () => {
   });
 });
 
-
 describe("search engine URL templates", () => {
   it("accepts usable search destinations and rejects missing terms or unsafe URLs", () => {
     expect(SearchEngineTemplateSchema.safeParse(" https://search.example/search?q=%s ").success).toBe(true);
     expect(SearchEngineTemplateSchema.safeParse("http://localhost:8080/search/%s").success).toBe(true);
-    for (const url of ["https://search.example/", "javascript:alert('%s')", "file:///tmp/%s", "https://user:password@example.com/?q=%s", "https://%s.example.com/", "not a url %s"]) {
-      expect({ url, accepted: SearchEngineTemplateSchema.safeParse(url).success }).toEqual({ url, accepted: false });
+    for (const url of [
+      "https://search.example/",
+      "javascript:alert('%s')",
+      "file:///tmp/%s",
+      "https://user:password@example.com/?q=%s",
+      "https://%s.example.com/",
+      "not a url %s",
+    ]) {
+      expect({ url, accepted: SearchEngineTemplateSchema.safeParse(url).success }).toEqual({
+        url,
+        accepted: false,
+      });
     }
   });
 });

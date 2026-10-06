@@ -11,7 +11,8 @@ export async function commitTidyLayout(input: {
   flush(): Promise<void>;
   publish(layout: Layout): void;
 }): Promise<void> {
-  const changed = () => new Error("Tabs changed while saving this Tidy change. Review them before trying again.");
+  const changed = () =>
+    new Error("Tabs changed while saving this Tidy change. Review them before trying again.");
   if (input.current() !== input.before) throw changed();
   input.persist(input.after);
   try {

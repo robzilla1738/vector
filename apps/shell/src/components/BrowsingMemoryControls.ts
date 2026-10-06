@@ -1,11 +1,5 @@
 import { useMemoryCallbackControl } from "./memory-control-construction";
 
-
-
-
-
-
-
 export const BROWSING_MEMORY_COMMANDS = [
   "toggle-browsing-memory",
   "set-browsing-memory-retention",
@@ -27,5 +21,12 @@ export function useBrowsingMemoryControl(
   scopeId: string,
   invoke: (element: HTMLElement) => unknown,
 ) {
-  return useMemoryCallbackControl(command, scopeId, invoke, "Choose the current browsing memory control.", "Choose the original browsing memory control.", command === "retry-browsing-memory-load");
+  return useMemoryCallbackControl(
+    command,
+    scopeId,
+    invoke,
+    "Choose the current browsing memory control.",
+    "Choose the original browsing memory control.",
+    command === "retry-browsing-memory-load",
+  );
 }

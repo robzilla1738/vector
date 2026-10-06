@@ -19,16 +19,24 @@ export async function toggleMinimalUi() {
 export function useLayoutChrome() {
   const minimalUiFeature = useFeature("minimalUi");
   const layoutMotion = isNormalLayoutWindow() && minimalUiFeature;
-  const minimal = useStore(state => state.settings.minimalUi === true) && layoutMotion;
-  const sidebarWidth = useStore(state => state.sidebarWidth);
-  const autoHide = useStore(state => state.settings.toolbarAutoHide !== false);
+  const minimal = useStore((state) => state.settings.minimalUi === true) && layoutMotion;
+  const sidebarWidth = useStore((state) => state.sidebarWidth);
+  const autoHide = useStore((state) => state.settings.toolbarAutoHide !== false);
   return { minimal, autoHide, hideToolbar: minimal || autoHide, layoutMotion, sidebarWidth };
 }
 
 export function useWindowControls(minimal: boolean, toolbarRevealed: boolean) {
   useEffect(() => {
     if (!isNormalLayoutWindow() || featureStage("minimalUi") !== "on") return;
-    void bridge.windowControlsVisible(!minimal || toolbarRevealed).catch(error => useStore.getState().toast(String(error), "error"));
+    void bridge
+      .windowControlsVisible(!minimal || toolbarRevealed)
+      .catch((error) => useStore.getState().toast(String(error), "error"));
   }, [minimal, toolbarRevealed]);
-  useEffect(() => () => { if (isNormalLayoutWindow() && featureStage("minimalUi") === "on") void bridge.windowControlsVisible(true); }, []);
+  useEffect(
+    () => () => {
+      if (isNormalLayoutWindow() && featureStage("minimalUi") === "on")
+        void bridge.windowControlsVisible(true);
+    },
+    [],
+  );
 }

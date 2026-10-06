@@ -13,7 +13,9 @@ afterEach(async () => {
   vi.unstubAllEnvs();
   for (const server of servers.splice(0)) {
     server.closeAllConnections();
-    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
   }
   for (const dir of directories.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
@@ -34,25 +36,31 @@ it("does not repeat a mutation after a lost response and discovers the restarted
   vi.stubEnv("AUX_MCP_TOKEN", "scoped-token");
   resetDescriptorCache();
   let writes = 0;
-  const port = await listen(createServer((request) => {
-    request.resume();
-    request.on("end", () => {
-      writes++;
-      // The server committed the mutation, but no response reached the caller.
-      request.socket.destroy();
-    });
-  }));
+  const port = await listen(
+    createServer((request) => {
+      request.resume();
+      request.on("end", () => {
+        writes++;
+        // The server committed the mutation, but no response reached the caller.
+        request.socket.destroy();
+      });
+    }),
+  );
   writeFileSync(path, JSON.stringify({ port, token: "first", pid: process.pid }));
-  await expect(rpc("pages.navigate", { pageId: "page-1", url: "https://example.test/next" })).rejects.toThrow();
+  await expect(
+    rpc("pages.navigate", { pageId: "page-1", url: "https://example.test/next" }),
+  ).rejects.toThrow();
   expect(writes).toBe(1);
 
   let reads = 0;
-  const restartedPort = await listen(createServer((request, response) => {
-    expect(request.headers.authorization).toBe("Bearer scoped-token");
-    reads++;
-    response.setHeader("content-type", "application/json");
-    response.end(JSON.stringify({ result: [] }));
-  }));
+  const restartedPort = await listen(
+    createServer((request, response) => {
+      expect(request.headers.authorization).toBe("Bearer scoped-token");
+      reads++;
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify({ result: [] }));
+    }),
+  );
   writeFileSync(path, JSON.stringify({ port: restartedPort, token: "restarted", pid: process.pid }));
   await expect(rpc("pages.list")).resolves.toEqual([]);
   expect(reads).toBe(1);

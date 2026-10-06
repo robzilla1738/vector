@@ -9,9 +9,7 @@ import { authorizeProgram, type EffectClass, type GrantSource } from "./permissi
 
 export type CompileResult = { program: Program } | { rejected: string };
 export type DispatchPrep =
-  | { program: Program }
-  | { rejected: string }
-  | { denied: string; effect: EffectClass };
+  { program: Program } | { rejected: string } | { denied: string; effect: EffectClass };
 
 export type CompileActionOpts = {
   pageId: string;
@@ -57,7 +55,13 @@ export function compileAction(opts: CompileActionOpts): CompileResult {
   }
   const steps = rebindSteps(opts.steps, opts.observation, opts.guards ?? []);
   if (opts.guards?.length) {
-    const missing = steps.find((s) => "target" in s && typeof s.target === "string" && s.target.startsWith("r") && !opts.observation.elements.some((e) => e.ref === s.target));
+    const missing = steps.find(
+      (s) =>
+        "target" in s &&
+        typeof s.target === "string" &&
+        s.target.startsWith("r") &&
+        !opts.observation.elements.some((e) => e.ref === s.target),
+    );
     if (missing && "target" in missing) {
       return { rejected: `target ${String(missing.target)} could not be rebound on the current observation` };
     }
@@ -72,9 +76,7 @@ export function compileAction(opts: CompileActionOpts): CompileResult {
 }
 
 /** Compiler + privilege check used by streamed and finished dispatch (Gate F). */
-export function compileAndAuthorize(
-  opts: CompileActionOpts & { grants?: GrantSource },
-): DispatchPrep {
+export function compileAndAuthorize(opts: CompileActionOpts & { grants?: GrantSource }): DispatchPrep {
   const compiled = compileAction(opts);
   if ("rejected" in compiled) return compiled;
   let origin = "";

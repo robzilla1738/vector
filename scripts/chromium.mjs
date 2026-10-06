@@ -19,12 +19,20 @@ export function findChromium(env = process.env) {
     } catch {
       continue;
     }
-    for (const dir of entries.filter((d) => d.startsWith("chromium_headless_shell-")).sort().reverse()) {
+    for (const dir of entries
+      .filter((d) => d.startsWith("chromium_headless_shell-"))
+      .sort()
+      .reverse()) {
       const bin =
         process.platform === "win32"
           ? join(root, dir, "chrome-headless-shell-win64", "chrome-headless-shell.exe")
           : process.platform === "darwin"
-            ? join(root, dir, `chrome-headless-shell-mac-${process.arch === "arm64" ? "arm64" : "x64"}`, "chrome-headless-shell")
+            ? join(
+                root,
+                dir,
+                `chrome-headless-shell-mac-${process.arch === "arm64" ? "arm64" : "x64"}`,
+                "chrome-headless-shell",
+              )
             : join(root, dir, "chrome-headless-shell-linux64", "chrome-headless-shell");
       if (existsSync(bin)) return bin;
     }

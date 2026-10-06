@@ -1,4 +1,10 @@
-import { DownloadNamingSettingsSchema, DEFAULT_DOWNLOAD_NAMING, DEFAULT_NIGHT_SHIFT, NightShiftSettingsSchema, SettingsSetParams } from "@aux/contracts";
+import {
+  DownloadNamingSettingsSchema,
+  DEFAULT_DOWNLOAD_NAMING,
+  DEFAULT_NIGHT_SHIFT,
+  NightShiftSettingsSchema,
+  SettingsSetParams,
+} from "@aux/contracts";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
@@ -53,8 +59,10 @@ import { GatewayModelClient } from "../agent/gateway-client.js";
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
 
-export interface Settings extends Pick<z.infer<typeof SettingsSetParams>,
-  "toolbarAutoHide" | "minimalUi" | "minimalUiAcknowledged" | "autoArchive" | "nightShift"> {
+export interface Settings extends Pick<
+  z.infer<typeof SettingsSetParams>,
+  "toolbarAutoHide" | "minimalUi" | "minimalUiAcknowledged" | "autoArchive" | "nightShift"
+> {
   modelProvider?: ModelProvider;
   modelConnection?: { provider: ModelProvider; enabled: boolean };
   disabledModelProviders?: ModelProvider[];
@@ -234,12 +242,14 @@ export class SettingsService {
         modelProbe?.provider === this.modelProvider() && modelProbe.modelId === this.plannerModel()
           ? modelProbe
           : undefined,
-      modelConfigured: this.connectionEnabled(this.modelProvider()) && !!(
-        this.modelOverride ||
-        (this.plannerModel() &&
-          (this.selectedKey() || localCompatible) &&
-          (this.modelProvider() !== "openai-compatible" || this.compatibleEndpoint()))
-      ),
+      modelConfigured:
+        this.connectionEnabled(this.modelProvider()) &&
+        !!(
+          this.modelOverride ||
+          (this.plannerModel() &&
+            (this.selectedKey() || localCompatible) &&
+            (this.modelProvider() !== "openai-compatible" || this.compatibleEndpoint()))
+        ),
       plannerModel: this.plannerModel(),
       recoveryModel: this.recoveryModel(),
       visionModel: this.visionModel(),
@@ -256,8 +266,10 @@ export class SettingsService {
       commandRouting: (this.get("commandRouting") as Settings["commandRouting"]) ?? "automatic",
       searchEngines: (this.get("searchEngines") as Settings["searchEngines"]) ?? [],
       searchSuggestions: (this.get("searchSuggestions") as boolean | undefined) ?? false,
-      routineSuggestionScan: z.enum(["off", "context", "five-minutes"])
-        .catch("context").parse(this.get("routineSuggestionScan")),
+      routineSuggestionScan: z
+        .enum(["off", "context", "five-minutes"])
+        .catch("context")
+        .parse(this.get("routineSuggestionScan")),
       maxWorkers: this.maxWorkers(),
       perOrigin: this.perOrigin(),
       maxModelCalls: this.maxModelCalls(),
@@ -272,11 +284,17 @@ export class SettingsService {
       toolbarAutoHide: z.boolean().parse(this.get("toolbarAutoHide") ?? true),
       minimalUi: z.boolean().parse(this.get("minimalUi") ?? false),
       minimalUiAcknowledged: z.boolean().parse(this.get("minimalUiAcknowledged") ?? false),
-      autoArchive: SettingsSetParams.shape.autoArchive.parse(this.get("autoArchive") ?? { acknowledged: false, bySpace: {} }),
+      autoArchive: SettingsSetParams.shape.autoArchive.parse(
+        this.get("autoArchive") ?? { acknowledged: false, bySpace: {} },
+      ),
       nightShift: NightShiftSettingsSchema.parse(this.get("nightShift") ?? DEFAULT_NIGHT_SHIFT),
-      downloadNaming: DownloadNamingSettingsSchema.parse(this.get("downloadNaming") ?? DEFAULT_DOWNLOAD_NAMING),
-      memorySaverMinutes: z.union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)])
-        .catch(0).parse(this.get("memorySaverMinutes")),
+      downloadNaming: DownloadNamingSettingsSchema.parse(
+        this.get("downloadNaming") ?? DEFAULT_DOWNLOAD_NAMING,
+      ),
+      memorySaverMinutes: z
+        .union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)])
+        .catch(0)
+        .parse(this.get("memorySaverMinutes")),
       tabSwitcherOrder: (this.get("tabSwitcherOrder") as Settings["tabSwitcherOrder"]) ?? "sidebar",
       featureOverrides: SettingsSetParams.shape.featureOverrides.parse(this.get("featureOverrides") ?? {}),
       shortcutOverrides: (this.get("shortcutOverrides") as Settings["shortcutOverrides"]) ?? {},
@@ -328,12 +346,18 @@ export class SettingsService {
     if (next.selectionCapture !== undefined) {
       const selection = SelectionCaptureSettingsSchema.parse(next.selectionCapture);
       if (selection.revision !== this.selectionCapture().revision)
-        throw new AuxError("conflict", "Selection & Capture changed in another window. Reload the saved settings before trying again.");
+        throw new AuxError(
+          "conflict",
+          "Selection & Capture changed in another window. Reload the saved settings before trying again.",
+        );
       next.selectionCapture = { ...selection, revision: selection.revision + 1 };
     }
     if (next.selectionCapture !== undefined || next.shortcutOverrides !== undefined) {
-      const conflict = captureShortcutConflict(next.selectionCapture ?? this.selectionCapture(),
-        next.shortcutOverrides ?? this.get("shortcutOverrides") as ShortcutOverrides | undefined, process.platform);
+      const conflict = captureShortcutConflict(
+        next.selectionCapture ?? this.selectionCapture(),
+        next.shortcutOverrides ?? (this.get("shortcutOverrides") as ShortcutOverrides | undefined),
+        process.platform,
+      );
       if (conflict) throw new AuxError("conflict", conflict);
     }
     if (next.modelCredential && next.gatewayApiKey !== undefined)
@@ -366,7 +390,8 @@ export class SettingsService {
     if (next.modelConnection) {
       const change = ModelConnectionChangeSchema.parse(next.modelConnection);
       const disabled = new Set(ModelProviderSchema.array().parse(this.get("disabledModelProviders") ?? []));
-      if (change.enabled) disabled.delete(change.provider); else disabled.add(change.provider);
+      if (change.enabled) disabled.delete(change.provider);
+      else disabled.add(change.provider);
       next.disabledModelProviders = [...disabled];
       delete next.modelConnection;
     }
@@ -389,7 +414,8 @@ export class SettingsService {
       delete next.modelCredential;
     }
     if (next.agentModelRoutes !== undefined && selectedProvider !== "gateway") {
-      const current = this.get("providerAgentModelRoutes") as Settings["providerAgentModelRoutes"] | undefined;
+      const current = this.get("providerAgentModelRoutes") as
+        Settings["providerAgentModelRoutes"] | undefined;
       next.providerAgentModelRoutes = { ...current, [selectedProvider]: next.agentModelRoutes };
       delete next.agentModelRoutes;
     }
@@ -413,7 +439,10 @@ export class SettingsService {
     if (next.agentModelRoutes !== undefined)
       next.agentModelRoutes = AgentModelRoutesSettingSchema.parse(next.agentModelRoutes);
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
-    if (connectionChange) { this.connectionEpoch++; this.repo.deleteSetting("modelProbe"); }
+    if (connectionChange) {
+      this.connectionEpoch++;
+      this.repo.deleteSetting("modelProbe");
+    }
     for (const [k, v] of Object.entries(next)) {
       if (v === undefined) continue;
       if (k === "gatewayApiKey") continue;
@@ -467,9 +496,12 @@ export class SettingsService {
   /** Existing model choices remain the category defaults; explicit routes can tune model and effort. */
   private routeOverrides(): Settings["agentModelRoutes"] {
     const provider = this.modelProvider();
-    const stored = provider === "gateway"
-      ? this.get("agentModelRoutes")
-      : (this.get("providerAgentModelRoutes") as Settings["providerAgentModelRoutes"] | undefined)?.[provider];
+    const stored =
+      provider === "gateway"
+        ? this.get("agentModelRoutes")
+        : (this.get("providerAgentModelRoutes") as Settings["providerAgentModelRoutes"] | undefined)?.[
+            provider
+          ];
     const parsed = AgentModelRoutesSettingSchema.safeParse(stored);
     return parsed.success ? parsed.data : {};
   }
@@ -490,13 +522,18 @@ export class SettingsService {
    * keeps at least one alternate so a 429/5xx has somewhere to go.
    */
   agentRouteChain(category: AgentModelCategory): AgentModelRoute[] {
-    const stored = normalizeRouteChain(
-      this.routeOverrides()?.[category],
-    );
+    const stored = normalizeRouteChain(this.routeOverrides()?.[category]);
     const chain = stored.length ? stored : [this.routeBaseline(category)];
     const seen = new Set(chain.map((r) => r.modelId));
-    for (const fb of [this.routeBaseline(category), { modelId: LUNA_FAST_MODEL, reasoning: "low" as const }, agentModelRoute(category)]) {
-      if (!seen.has(fb.modelId)) { chain.push(fb); seen.add(fb.modelId); }
+    for (const fb of [
+      this.routeBaseline(category),
+      { modelId: LUNA_FAST_MODEL, reasoning: "low" as const },
+      agentModelRoute(category),
+    ]) {
+      if (!seen.has(fb.modelId)) {
+        chain.push(fb);
+        seen.add(fb.modelId);
+      }
     }
     return chain.slice(0, 4);
   }
@@ -513,7 +550,9 @@ export class SettingsService {
   }
   /** Snapshot + live-catalog merged capability list, refreshed by listModels(). */
   private mergedCatalog: readonly ModelCapability[] = MODEL_REGISTRY;
-  registryModels(): readonly ModelCapability[] { return this.mergedCatalog; }
+  registryModels(): readonly ModelCapability[] {
+    return this.mergedCatalog;
+  }
   /** S5 A/B gate: AUX_RUN_ENGINE selects the run engine — explicit opts still win. */
   runEngine(): "agent" | "agent-loop" | undefined {
     const v = this.env.AUX_RUN_ENGINE;
@@ -521,7 +560,10 @@ export class SettingsService {
   }
   budgetLimits(): { runUsd?: number; dayUsd?: number; routineUsd?: number } {
     const b = this.get("budgets") as Settings["budgets"] | undefined;
-    const pos = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : undefined; };
+    const pos = (v: unknown) => {
+      const n = Number(v);
+      return Number.isFinite(n) && n > 0 ? n : undefined;
+    };
     return { runUsd: pos(b?.runUsd), dayUsd: pos(b?.dayUsd), routineUsd: pos(b?.routineUsd) };
   }
   searchEngine(): string {
@@ -576,7 +618,8 @@ export class SettingsService {
       const configured = [
         ...new Set([this.plannerModel(), this.visionModel()].filter((value): value is string => !!value)),
       ].map((id) => ({ id, source: "configured" as const }));
-      if (provider !== "openai-compatible" || !this.connectionEnabled(provider)) return { models: configured, source: "configured" };
+      if (provider !== "openai-compatible" || !this.connectionEnabled(provider))
+        return { models: configured, source: "configured" };
       const endpoint = this.compatibleEndpoint();
       const key = this.selectedKey();
       if (!endpoint || (!key && !isLoopbackCompatibleEndpoint(endpoint)))
@@ -650,9 +693,14 @@ export class SettingsService {
   async probe(
     modelId?: string,
   ): Promise<{ ok: boolean; modelId: string; latencyMs?: number; vision?: boolean; error?: string }> {
-    const epoch = this.connectionEpoch, provider = this.modelProvider();
+    const epoch = this.connectionEpoch,
+      provider = this.modelProvider();
     const stale = () => epoch !== this.connectionEpoch || !this.connectionEnabled(provider);
-    const interrupted = () => ({ ok: false, modelId: modelId ?? this.plannerModel(), error: "Connection changed during the test. Review it and test again." });
+    const interrupted = () => ({
+      ok: false,
+      modelId: modelId ?? this.plannerModel(),
+      error: "Connection changed during the test. Review it and test again.",
+    });
     const m = this.model();
     const target = modelId ?? this.plannerModel();
     if (!m)
@@ -735,19 +783,28 @@ export class SettingsService {
   }
 
   connectionEnabled(provider: ModelProvider): boolean {
-    return !ModelProviderSchema.array().parse(this.get("disabledModelProviders") ?? []).includes(provider);
+    return !ModelProviderSchema.array()
+      .parse(this.get("disabledModelProviders") ?? [])
+      .includes(provider);
   }
   imageModel(): ImageModel | null {
     return ImageModelSchema.nullable().parse(this.get("imageModel") ?? null);
   }
   private connectionStatuses(): ModelConnectionStatus[] {
-    return ModelProviderSchema.options.map(provider => {
+    return ModelProviderSchema.options.map((provider) => {
       const saved = provider === "gateway" ? this.savedKey : this.directKeys[provider];
-      const environment = provider === "gateway" ? this.env.AI_GATEWAY_API_KEY : this.env[PROVIDER_ENV[provider]];
-      return ModelConnectionStatusSchema.parse({ provider, selected: provider === this.modelProvider(),
-        enabled: this.connectionEnabled(provider), credentialSource: saved ? "saved" : environment ? "environment" : "none",
-        credentialUnavailable: !!(provider === "gateway" ? this.credentialError : this.directErrors[provider]),
-        localEndpoint: provider === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint()),
+      const environment =
+        provider === "gateway" ? this.env.AI_GATEWAY_API_KEY : this.env[PROVIDER_ENV[provider]];
+      return ModelConnectionStatusSchema.parse({
+        provider,
+        selected: provider === this.modelProvider(),
+        enabled: this.connectionEnabled(provider),
+        credentialSource: saved ? "saved" : environment ? "environment" : "none",
+        credentialUnavailable: !!(provider === "gateway"
+          ? this.credentialError
+          : this.directErrors[provider]),
+        localEndpoint:
+          provider === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint()),
       });
     });
   }

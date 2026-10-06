@@ -1,4 +1,20 @@
-import type { AuxEvent, BrowserSession, BrowserSpace, CompactObservation, Download, PageSet, PageTarget, ResultRecord, Run, SavedProgram, SetMember, StepRecord, TabCatalogSnapshot, TabPatch, TabPlacement } from "@aux/contracts";
+import type {
+  AuxEvent,
+  BrowserSession,
+  BrowserSpace,
+  CompactObservation,
+  Download,
+  PageSet,
+  PageTarget,
+  ResultRecord,
+  Run,
+  SavedProgram,
+  SetMember,
+  StepRecord,
+  TabCatalogSnapshot,
+  TabPatch,
+  TabPlacement,
+} from "@aux/contracts";
 import type { SpaceTheme } from "@aux/contracts/spaces";
 import type { StateCreator } from "zustand";
 import type { ClosedTab } from "../closed-tabs";
@@ -8,10 +24,29 @@ import type { SidebarMode } from "../sidebar-mode";
 import type { Layout, Pin, SpaceColor } from "../workspace";
 
 export type Mode = "focus" | "overview" | "table" | "conversation";
-export type Overlay = null | "reader" | "command-surface" | "settings" | "find" | "downloads" | "inline-assist" | "history" | "clear-history" | "observe" | "tasks" | "bookmarks" | "site" | "zap" | "capture";
+export type Overlay =
+  | null
+  | "reader"
+  | "command-surface"
+  | "settings"
+  | "find"
+  | "downloads"
+  | "inline-assist"
+  | "history"
+  | "clear-history"
+  | "observe"
+  | "tasks"
+  | "bookmarks"
+  | "site"
+  | "zap"
+  | "capture";
 export type { SidebarMode } from "../sidebar-mode";
 export type CommandSlot = "sidebar" | "hero" | "toolbar";
-export type RailView = { kind: "home" } | { kind: "draft"; chatId: string } | { kind: "run"; runId: string } | { kind: "set"; setId: string };
+export type RailView =
+  | { kind: "home" }
+  | { kind: "draft"; chatId: string }
+  | { kind: "run"; runId: string }
+  | { kind: "set"; setId: string };
 
 export const LIVE_RUN = new Set(["queued", "planning", "running", "paused", "needs_input"]);
 export const isLive = (r: Pick<Run, "status">) => LIVE_RUN.has(r.status);
@@ -71,9 +106,9 @@ export interface Workspace {
   /** A page action waiting for the person at the browser. */
   confirmation: import("../features/trust/confirmation").TrustConfirmation | null;
   runAnswerDrafts: Record<string, RunAnswerDraft>;
-  setRunAnswerDraft(runId:string,question:string,text:string):void;
+  setRunAnswerDraft(runId: string, question: string, text: string): void;
   runAnswerPending: Record<string, boolean>;
-  retryingRuns: Record<string,boolean>;
+  retryingRuns: Record<string, boolean>;
   settings: Record<string, unknown>;
   agentDraft: string;
   setAgentDraft(text: string): void;
@@ -82,12 +117,25 @@ export interface Workspace {
   bookmarkPending: Record<string, boolean>;
   toggleBookmark(url: string, title: string): Promise<void>;
   toggleReadingList(url: string, title: string): Promise<void>;
-  bookmarks: { nodeId?: string; url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean }[];
+  bookmarks: {
+    nodeId?: string;
+    url: string;
+    title: string;
+    folderPath?: string[];
+    readingList?: boolean;
+    readAt?: number;
+    offline?: boolean;
+  }[];
   closedTabs: ClosedTab[];
   reopeningTab: boolean;
   downloads: Download[];
-  tabAudio: Record<string,{muted:boolean;audible:boolean;video?:boolean;pip?:boolean}>;
-  toasts: { id: number; text: string; kind: "info" | "error"; action?: { label: string; run(): void; secondary?: { label: string; run(): void } } }[];
+  tabAudio: Record<string, { muted: boolean; audible: boolean; video?: boolean; pip?: boolean }>;
+  toasts: {
+    id: number;
+    text: string;
+    kind: "info" | "error";
+    action?: { label: string; run(): void; secondary?: { label: string; run(): void } };
+  }[];
   dismissToast(id: number): void;
   vaultOffer: import("../bridge").VaultOffer | null;
   setVaultOffer(offer: Workspace["vaultOffer"]): void;
@@ -127,22 +175,54 @@ export interface Workspace {
   navigatePage(pageId: string, url: string): Promise<void>;
   find(text: string, findNext?: boolean, forward?: boolean): Promise<void>;
   zoomLevels: Record<string, number>;
-  zoomPage(pageId: string, options?: { level?: number; delta?: number; reset?: boolean; direction?: "in" | "out" }): Promise<void>;
+  zoomPage(
+    pageId: string,
+    options?: { level?: number; delta?: number; reset?: boolean; direction?: "in" | "out" },
+  ): Promise<void>;
   newTab(url?: string, reuseId?: string, index?: number): Promise<PageTarget | null>;
-  openBackgroundTab(url: string, spaceId: string, reuseExisting?: boolean, reuseId?: string, index?: number): Promise<PageTarget>;
+  openBackgroundTab(
+    url: string,
+    spaceId: string,
+    reuseExisting?: boolean,
+    reuseId?: string,
+    index?: number,
+  ): Promise<PageTarget>;
   closeTab(pageId: string): Promise<void>;
   duplicateTab(pageId: string): Promise<void>;
   closingTabs: boolean;
-  closeTabs(pageIds: string[], options?: { shouldStop?(): boolean; onClosed?(pageId: string, count: number): void }): Promise<boolean>;
+  closeTabs(
+    pageIds: string[],
+    options?: { shouldStop?(): boolean; onClosed?(pageId: string, count: number): void },
+  ): Promise<boolean>;
   reopenClosedTab(pageId?: string, group?: boolean): Promise<void>;
   /** `ownsDraft`: the caller owns draft recovery. `reveal: false`: it also owns presentation after the ACK. */
-  startRun(goal: string, opts?: { pageId?: string | null; pageIds?: string[]; contextPageRefs?: PageContextRef[]; mentions?: import("@aux/contracts").MentionRef[]; memorySource?: { workspaceId: string; memoryId: string }; scope?: "page" | "new"; chatId?: string; presentation?: "rail" | "conversation"; ownsDraft?: boolean; reveal?: boolean }): Promise<Run | null>;
+  startRun(
+    goal: string,
+    opts?: {
+      pageId?: string | null;
+      pageIds?: string[];
+      contextPageRefs?: PageContextRef[];
+      mentions?: import("@aux/contracts").MentionRef[];
+      memorySource?: { workspaceId: string; memoryId: string };
+      scope?: "page" | "new";
+      chatId?: string;
+      presentation?: "rail" | "conversation";
+      ownsDraft?: boolean;
+      reveal?: boolean;
+    },
+  ): Promise<Run | null>;
   /** Messages shown in the thread while their run is still being created. */
   pendingTurns: { id: string; chatId: string | null; goal: string; createdAt: number }[];
   /** Live answer text streamed by `run.answer.delta`, dropped once the run settles. */
   answerStreams: Record<string, string>;
   retryRun(runId: string, pageId?: string): Promise<Run | null>;
-  answerRun(runId: string, answer: string, displayedQuestion: string, expectedSuspensionId: string, mentions?: MentionRef[]): Promise<void>;
+  answerRun(
+    runId: string,
+    answer: string,
+    displayedQuestion: string,
+    expectedSuspensionId: string,
+    mentions?: MentionRef[],
+  ): Promise<void>;
   returnControl(pageId: string): Promise<void>;
   loadRun(runId: string): Promise<void>;
 
@@ -150,22 +230,36 @@ export interface Workspace {
   reorderTabs(spaceId: string, from: number, to: number): void;
   reorderGroup(spaceId: string, folderId: string | null, from: number, to: number): void;
   moveTabToSpace(pageId: string, spaceId: string): void;
-  moveTabs(pageIds: string[], spaceId: string, folderId?: string | { name: string } | null, beforeId?: string | null): void;
+  moveTabs(
+    pageIds: string[],
+    spaceId: string,
+    folderId?: string | { name: string } | null,
+    beforeId?: string | null,
+  ): void;
   setTabName(pageId: string, expectedUrl: string, name: string | null): void;
   moveTabToWindow(pageId: string, windowId?: string): Promise<void>;
   moveTabsToWindow(pageIds: string[], windowId?: string): Promise<void>;
   addSpace(name: string, color?: SpaceColor, grain?: number, theme?: SpaceTheme | null): Promise<void>;
-  editSpace(spaceId: string, name: string, color?: SpaceColor, grain?: number, theme?: SpaceTheme | null): Promise<void>;
+  editSpace(
+    spaceId: string,
+    name: string,
+    color?: SpaceColor,
+    grain?: number,
+    theme?: SpaceTheme | null,
+  ): Promise<void>;
   deleteSpace(spaceId: string): Promise<void>;
-  restoreSpace(spaceId: string, activate?:boolean): Promise<void>;
+  restoreSpace(spaceId: string, activate?: boolean): Promise<void>;
   syncBrowserSpaces(spaces: BrowserSpace[]): void;
-  refreshSpaces(valid?:()=>boolean): Promise<void>;
+  refreshSpaces(valid?: () => boolean): Promise<void>;
   switchSpace(spaceId: string): void;
   togglePin(pin: Pin, spaceId?: string): void;
   reorderPin(spaceId: string, url: string, beforeUrl: string | null): void;
   addFolder(name: string): string;
   renameFolder(folderId: string, name: string): void;
-  updateFolder(folderId: string, patch: { name?: string; color?: SpaceColor | null; emoji?: string | null }): void;
+  updateFolder(
+    folderId: string,
+    patch: { name?: string; color?: SpaceColor | null; emoji?: string | null },
+  ): void;
   deleteFolder(folderId: string): void;
   toggleFolder(folderId: string): void;
   moveTabToFolder(pageId: string, folderId: string | null): void;
@@ -185,16 +279,153 @@ export interface Workspace {
   /** Workspace placement relayed with a `move` — the destination window files
    *  the arriving tab into the Space/folder the source window chose. */
   applyTabsPlacement(payload: { pageId: string; windowId: string; placement: TabPlacement }): void;
-  resyncTabs(valid?:()=>boolean): Promise<void>;
-  toast(text: string, kind?: "info" | "error", action?: { label: string; run(): void; secondary?: { label: string; run(): void } }): void;
+  resyncTabs(valid?: () => boolean): Promise<void>;
+  toast(
+    text: string,
+    kind?: "info" | "error",
+    action?: { label: string; run(): void; secondary?: { label: string; run(): void } },
+  ): void;
   refresh(): Promise<void>;
   refreshResults(setId: string): Promise<void>;
 }
 
-export type UiKeys = "mode" | "setMode" | "narrow" | "setNarrow" | "overlay" | "setOverlay" | "skillSelection" | "readerFindOpen" | "settingsCategory" | "memoryWorkspaceId" | "railOpen" | "railView" | "toggleRail" | "openRail" | "setRailView" | "showConversationInRail" | "sidebar" | "setSidebar" | "toggleSidebar" | "sidebarPeek" | "tabPreviewOpen" | "peekPageId" | "setSidebarPeek" | "focusRequest" | "focusSlot" | "focusCommandBar" | "toast" | "toasts" | "dismissToast" | "findText" | "findMatches" | "find" | "zoomLevels" | "zoomPage" | "sidebarWidth" | "sidebarSections" | "toggleSidebarSection" | "railWidth" | "setSidebarWidth" | "setRailWidth" | "vaultOffer" | "setVaultOffer" | "translation" | "setTranslation" | "translationPending" | "setTranslationPending" | "resultPreview" | "inspectorObs" | "connected";
-export type DraftKeys = "conversationContexts" | "setConversationContext" | "conversationBrowserSources" | "setConversationBrowserSources" | "agentDraft" | "setAgentDraft" | "conversationDrafts" | "setConversationDraft" | "runAnswerDrafts" | "setRunAnswerDraft";
-export type BookmarkKeys = "bookmarks" | "bookmarkPending" | "toggleBookmark" | "toggleReadingList" | "downloads" | "applyDownload";
-export type LayoutKeys = "layout" | "tidyUndo" | "splitPageId" | "reorderTabs" | "reorderGroup" | "moveTabToSpace" | "moveTabs" | "setTabName" | "addSpace" | "editSpace" | "deleteSpace" | "restoreSpace" | "syncBrowserSpaces" | "refreshSpaces" | "switchSpace" | "togglePin" | "reorderPin" | "addFolder" | "renameFolder" | "updateFolder" | "deleteFolder" | "toggleFolder" | "moveTabToFolder";
-export type TabKeys = "pages" | "activePageId" | "closedTabs" | "reopeningTab" | "tabAudio" | "catalogVersion" | "applyTabsPatch" | "syncTabsSnapshot" | "applyTabsPlacement" | "resyncTabs" | "activate" | "navigatePage" | "newTab" | "openBackgroundTab" | "reopenClosedTab" | "duplicateTab" | "closingTabs" | "closeTabs" | "closeTab" | "moveTabToWindow" | "moveTabsToWindow" | "previewVersion" | "restoringTabs" | "pendingRestoreIds";
-export type RunKeys = "sets" | "members" | "runs" | "sessions" | "programs" | "conversationId" | "openConversation" | "openConversationDraft" | "activeSetId" | "results" | "steps" | "modelStats" | "observations" | "prompt" | "confirmation" | "runAnswerPending" | "retryingRuns" | "settings" | "pendingTurns" | "answerStreams" | "startRun" | "retryRun" | "answerRun" | "returnControl" | "loadRun" | "refreshResults";
+export type UiKeys =
+  | "mode"
+  | "setMode"
+  | "narrow"
+  | "setNarrow"
+  | "overlay"
+  | "setOverlay"
+  | "skillSelection"
+  | "readerFindOpen"
+  | "settingsCategory"
+  | "memoryWorkspaceId"
+  | "railOpen"
+  | "railView"
+  | "toggleRail"
+  | "openRail"
+  | "setRailView"
+  | "showConversationInRail"
+  | "sidebar"
+  | "setSidebar"
+  | "toggleSidebar"
+  | "sidebarPeek"
+  | "tabPreviewOpen"
+  | "peekPageId"
+  | "setSidebarPeek"
+  | "focusRequest"
+  | "focusSlot"
+  | "focusCommandBar"
+  | "toast"
+  | "toasts"
+  | "dismissToast"
+  | "findText"
+  | "findMatches"
+  | "find"
+  | "zoomLevels"
+  | "zoomPage"
+  | "sidebarWidth"
+  | "sidebarSections"
+  | "toggleSidebarSection"
+  | "railWidth"
+  | "setSidebarWidth"
+  | "setRailWidth"
+  | "vaultOffer"
+  | "setVaultOffer"
+  | "translation"
+  | "setTranslation"
+  | "translationPending"
+  | "setTranslationPending"
+  | "resultPreview"
+  | "inspectorObs"
+  | "connected";
+export type DraftKeys =
+  | "conversationContexts"
+  | "setConversationContext"
+  | "conversationBrowserSources"
+  | "setConversationBrowserSources"
+  | "agentDraft"
+  | "setAgentDraft"
+  | "conversationDrafts"
+  | "setConversationDraft"
+  | "runAnswerDrafts"
+  | "setRunAnswerDraft";
+export type BookmarkKeys =
+  "bookmarks" | "bookmarkPending" | "toggleBookmark" | "toggleReadingList" | "downloads" | "applyDownload";
+export type LayoutKeys =
+  | "layout"
+  | "tidyUndo"
+  | "splitPageId"
+  | "reorderTabs"
+  | "reorderGroup"
+  | "moveTabToSpace"
+  | "moveTabs"
+  | "setTabName"
+  | "addSpace"
+  | "editSpace"
+  | "deleteSpace"
+  | "restoreSpace"
+  | "syncBrowserSpaces"
+  | "refreshSpaces"
+  | "switchSpace"
+  | "togglePin"
+  | "reorderPin"
+  | "addFolder"
+  | "renameFolder"
+  | "updateFolder"
+  | "deleteFolder"
+  | "toggleFolder"
+  | "moveTabToFolder";
+export type TabKeys =
+  | "pages"
+  | "activePageId"
+  | "closedTabs"
+  | "reopeningTab"
+  | "tabAudio"
+  | "catalogVersion"
+  | "applyTabsPatch"
+  | "syncTabsSnapshot"
+  | "applyTabsPlacement"
+  | "resyncTabs"
+  | "activate"
+  | "navigatePage"
+  | "newTab"
+  | "openBackgroundTab"
+  | "reopenClosedTab"
+  | "duplicateTab"
+  | "closingTabs"
+  | "closeTabs"
+  | "closeTab"
+  | "moveTabToWindow"
+  | "moveTabsToWindow"
+  | "previewVersion"
+  | "restoringTabs"
+  | "pendingRestoreIds";
+export type RunKeys =
+  | "sets"
+  | "members"
+  | "runs"
+  | "sessions"
+  | "programs"
+  | "conversationId"
+  | "openConversation"
+  | "openConversationDraft"
+  | "activeSetId"
+  | "results"
+  | "steps"
+  | "modelStats"
+  | "observations"
+  | "prompt"
+  | "confirmation"
+  | "runAnswerPending"
+  | "retryingRuns"
+  | "settings"
+  | "pendingTurns"
+  | "answerStreams"
+  | "startRun"
+  | "retryRun"
+  | "answerRun"
+  | "returnControl"
+  | "loadRun"
+  | "refreshResults";
 export type Slice<K extends keyof Workspace> = StateCreator<Workspace, [], [], Pick<Workspace, K>>;

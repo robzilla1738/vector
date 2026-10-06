@@ -137,7 +137,9 @@ export function BackupSettings({
     onOperation(token, true);
     setPending(owner);
     setMessage(null);
-    return constructOperationChain(producer, async (value) => {
+    return constructOperationChain(
+      producer,
+      async (value) => {
         if (current()) publish(value);
         if (refresh && current())
           try {
@@ -150,14 +152,18 @@ export function BackupSettings({
               });
           }
         return value;
-      }, (reason) => {
+      },
+      (reason) => {
         if (current()) setMessage({ owner, text: errorMessage(reason) });
         throw reason;
-      }, () => {
+      },
+      () => {
         owner.finish();
         onOperation(token, false);
         if (current()) setPending(null);
-      }, current);
+      },
+      current,
+    );
   }
   const [retentionRef, retentionChange] = usePreferenceCommand<HTMLSelectElement>(
     "set-runtime-backup-retention",

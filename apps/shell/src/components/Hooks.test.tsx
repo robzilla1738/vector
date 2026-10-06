@@ -71,7 +71,8 @@ it("binds a selected run-start event to an exact standing Space grant and digest
       hook = { ...hook, trust: "approved" };
       return hook;
     }
-    if (method === "hooks.test") return { hookId, eventId: "manual:test", state: "completed", createdAt: Date.now() };
+    if (method === "hooks.test")
+      return { hookId, eventId: "manual:test", state: "completed", createdAt: Date.now() };
     if (method === "hooks.revoke") {
       hook = { ...hook, trust: "revoked" };
       return hook;
@@ -101,9 +102,12 @@ it("reviews a command Hook in an already bound writable Space folder", async () 
   rpc.mockImplementation(async (method: string, params: Record<string, unknown>) => {
     if (method === "hooks.list") return hook ? [hook] : [];
     if (method === "mcp.servers.list") return [];
-    if (method === "workspaces.folders.list") return [{ folderId: "folder-1", path: "/tmp/project",
-      access: "readWrite", workspaceId: "space-1" }];
-    if (method === "hooks.register") { hook = { hookId, ...params, handlerDigest: digest, trust: "untrusted" }; return hook; }
+    if (method === "workspaces.folders.list")
+      return [{ folderId: "folder-1", path: "/tmp/project", access: "readWrite", workspaceId: "space-1" }];
+    if (method === "hooks.register") {
+      hook = { hookId, ...params, handlerDigest: digest, trust: "untrusted" };
+      return hook;
+    }
     if (method === "hooks.invocations") return [];
     throw new Error(`Unexpected ${method}`);
   });
@@ -112,8 +116,11 @@ it("reviews a command Hook in an already bound writable Space folder", async () 
   await act(async () => change('select[aria-label="Hook command folder"]', "/tmp/project"));
   await act(async () => change('textarea[aria-label="Hook command"]', "pwd"));
   await act(async () => button("Save Hook for review").click());
-  expect(rpc).toHaveBeenCalledWith("hooks.register", { workspaceId: "space-1", event: "run.end",
-    handler: { type: "command", command: "pwd", workdir: "/tmp/project" } });
+  expect(rpc).toHaveBeenCalledWith("hooks.register", {
+    workspaceId: "space-1",
+    event: "run.end",
+    handler: { type: "command", command: "pwd", workdir: "/tmp/project" },
+  });
   expect(container.textContent).toContain("Command");
   expect(container.textContent).toContain("/tmp/project");
 });

@@ -22,9 +22,9 @@ it("preserves complete failed history diagnostics, focused Retry and original su
   bridge.windowId = "library-diagnostic-original";
   bridge.privateMode = false;
   bridge.windowKind = "normal";
-  const visible = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
-    { width: 100 },
-  ] as unknown as DOMRectList);
+  const visible = vi
+    .spyOn(HTMLElement.prototype, "getClientRects")
+    .mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
   let attempts = 0;
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "history.list") {

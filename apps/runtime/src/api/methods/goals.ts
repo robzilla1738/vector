@@ -4,7 +4,8 @@ import { AuxError } from "@aux/contracts";
 
 async function h_goals_create(ctx: MethodCtx): Promise<unknown> {
   const { client, goals, method, params } = ctx;
-  if (client.external || client.codeMode) throw new AuxError("permission_denied", "Goal budgets are managed in Aux.");
+  if (client.external || client.codeMode)
+    throw new AuxError("permission_denied", "Goal budgets are managed in Aux.");
   if (method === "goals.create") return goals.create(params);
   if (method === "goals.get") return goals.get(params.goalId);
   if (method === "goals.list") return goals.list(params.workspaceId, params.limit);
