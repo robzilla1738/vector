@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** One local build/launch owner. Children inherit the plain PID lock. */
-import { spawn } from "node:child_process";
+import { runCommand } from "./lib/run-command.mjs";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -52,21 +52,7 @@ function acquire() {
 }
 async function run(command, args, env = {}) {
   assertDevLock();
-  const child = spawn(command, args, { cwd: root, stdio: "inherit", env: { ...process.env, ...env } });
-  const stop = () => child.kill("SIGTERM");
-  process.on("SIGINT", stop);
-  process.on("SIGTERM", stop);
-  try {
-    await new Promise((ok, fail) => {
-      child.once("error", fail);
-      child.once("exit", (code, signal) =>
-        code === 0 ? ok() : fail(new Error(`${command} exited with ${signal ?? code}`)),
-      );
-    });
-  } finally {
-    process.off("SIGINT", stop);
-    process.off("SIGTERM", stop);
-  }
+  await runCommand(command, args, { cwd: root, env: { ...process.env, ...env } });
 }
 async function main() {
   const args = process.argv.slice(2);
