@@ -56,3 +56,4 @@ aux/0056-native-arc-sidebar.patch
 aux/0057-native-import-category-groups.patch
 aux/0058-native-import-tab-placement.patch
 aux/0059-native-chatgpt-account-ingress.patch
+aux/0060-native-owned-headless-runtime.patch
