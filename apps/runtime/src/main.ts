@@ -1939,6 +1939,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       try {
         const results = await Promise.allSettled([
           serviceContainer.peek("runs")?.close(),
+          import("./services/cloud-settings.js").then(({ closeCloudSettings }) => closeCloudSettings(repo)),
           serviceContainer.peek("blocking")?.close(),
           serviceContainer.peek("copilot")?.then((services) => services.close()),
         ]);

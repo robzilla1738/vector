@@ -93,3 +93,5 @@ export * from "./agent-policy.js";
 export { WaitingPhraseSchema } from "./utility.js";
 
 export { CloudResourceQuoteSchema, type CloudResourceQuote } from "./cloud-execution.js";
+
+export { CloudConfigureParamsSchema, CloudSettingsStatusSchema, type CloudConfigureParams, type CloudSettingsStatus } from "./cloud-execution.js";

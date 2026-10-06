@@ -1,3 +1,4 @@
+import { CloudConfigureParamsSchema, CloudSettingsStatusSchema } from "./cloud-execution.js";
 import {
   CopilotAttemptParams,
   CopilotAccountParams,
@@ -1693,6 +1694,9 @@ export const MethodSchemas = {
 
   "settings.get": SettingsGetParams,
   "settings.set": SettingsSetParams,
+  "settings.cloud.status": z.object({}).strict(),
+  "settings.cloud.configure": CloudConfigureParamsSchema,
+  "settings.cloud.clear": z.object({ expectedRevision: z.number().int().nonnegative() }).strict(),
   "usage.report": UsageReportParams,
   "command.ranking.list": z.object({}).strict(),
   "command.ranking.record": z
@@ -2508,6 +2512,9 @@ export const ResultSchemas = {
 
   "settings.get": z.record(z.string(), z.unknown()),
   "settings.set": z.object({ ok: z.boolean() }),
+  "settings.cloud.status": CloudSettingsStatusSchema,
+  "settings.cloud.configure": CloudSettingsStatusSchema,
+  "settings.cloud.clear": CloudSettingsStatusSchema,
   "usage.report": UsageReportResultSchema,
   "command.ranking.list": z.array(CommandRankingEntrySchema),
   "command.ranking.record": CommandRankingEntrySchema,

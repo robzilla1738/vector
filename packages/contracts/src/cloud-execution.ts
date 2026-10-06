@@ -32,3 +32,23 @@ export const CloudResourceQuoteSchema = z
   })
   .strict();
 export type CloudResourceQuote = z.infer<typeof CloudResourceQuoteSchema>;
+export const CloudConfigureParamsSchema = z
+  .object({
+    expectedRevision: z.number().int().nonnegative(),
+    token: z.string().min(1).max(8192).optional(),
+    teamId: z.string().min(1).max(200),
+    projectId: z.string().min(1).max(200),
+    quote: CloudResourceQuoteSchema.omit({ revision: true, accountDigest: true }),
+  })
+  .strict();
+export const CloudSettingsStatusSchema = z
+  .object({
+    configured: z.boolean(),
+    revision: z.number().int().nonnegative(),
+    teamId: z.string().max(200).optional(),
+    projectId: z.string().max(200).optional(),
+    quote: CloudResourceQuoteSchema.optional(),
+  })
+  .strict();
+export type CloudConfigureParams = z.infer<typeof CloudConfigureParamsSchema>;
+export type CloudSettingsStatus = z.infer<typeof CloudSettingsStatusSchema>;

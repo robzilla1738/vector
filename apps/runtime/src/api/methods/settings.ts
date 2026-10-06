@@ -1,3 +1,4 @@
+import { cloudSettingsFor } from "../../services/cloud-settings.js";
 import { withRunAuthorityMutation, withRunDispatchMutation } from "../../services/overnight-authority.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
@@ -65,9 +66,37 @@ async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
   return r;
 }
 
+function cloudSettings(ctx: MethodCtx) {
+  if (ctx.client.external || ctx.client.codeMode || !ctx.client.nativeTurnContext || !ctx.s.native)
+    throw new AuxError(
+      "permission_denied",
+      "Cloud accounts must be configured in the original Aux Settings window.",
+    );
+  return cloudSettingsFor(ctx.s.repo, ctx.s.native);
+}
+async function h_settings_cloud_status(ctx: MethodCtx): Promise<unknown> {
+  const service = cloudSettings(ctx);
+  return service.readStatus(ctx.client.nativeTurnContext!);
+}
+async function h_settings_cloud_configure(ctx: MethodCtx): Promise<unknown> {
+  return cloudSettings(ctx).configure(
+    MethodSchemas["settings.cloud.configure"].parse(ctx.params),
+    ctx.client.nativeTurnContext!,
+  );
+}
+async function h_settings_cloud_clear(ctx: MethodCtx): Promise<unknown> {
+  return cloudSettings(ctx).clear(
+    MethodSchemas["settings.cloud.clear"].parse(ctx.params).expectedRevision,
+    ctx.client.nativeTurnContext!,
+  );
+}
+
 export const settingsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "settings.get": h_settings_get,
   "settings.set": h_settings_set,
+  "settings.cloud.status": h_settings_cloud_status,
+  "settings.cloud.configure": h_settings_cloud_configure,
+  "settings.cloud.clear": h_settings_cloud_clear,
   "usage.report": h_usage_report,
 };
 
