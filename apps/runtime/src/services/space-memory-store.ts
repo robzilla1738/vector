@@ -1,3 +1,4 @@
+import { assertSpaceMemorySize } from "./space-memory-backup.js";
 import { withSecureDelete } from "../store/db.js";
 import { randomBytes, randomUUID } from "node:crypto";
 import { AuxError, MemoryPipelineInboxSchema, type MemoryClaim } from "@aux/contracts";
@@ -34,18 +35,21 @@ export class SpaceMemoryStore {
   }
 
   private rows(workspaceId: string) {
-    return this.repo.transaction(() => ({
-      files: this.repo.db
-        .prepare(
-          "SELECT name,generation,key_name,content FROM memory_files WHERE workspace_id=? ORDER BY name",
-        )
-        .all(workspaceId) as FileRow[],
-      history: this.repo.db
-        .prepare(
-          "SELECT revision_id,captured_at,generation,key_name,content FROM memory_history WHERE workspace_id=?",
-        )
-        .all(workspaceId) as HistoryRow[],
-    }));
+    return this.repo.transaction(() => {
+      assertSpaceMemorySize(this.repo.db, workspaceId);
+      return {
+        files: this.repo.db
+          .prepare(
+            "SELECT name,generation,key_name,content FROM memory_files WHERE workspace_id=? ORDER BY name",
+          )
+          .all(workspaceId) as FileRow[],
+        history: this.repo.db
+          .prepare(
+            "SELECT revision_id,captured_at,generation,key_name,content FROM memory_history WHERE workspace_id=?",
+          )
+          .all(workspaceId) as HistoryRow[],
+      };
+    });
   }
 
   generation(workspaceId: string): MemoryGeneration | null {
@@ -196,7 +200,7 @@ export class SpaceMemoryStore {
       32 * 1024 * 1024
     )
       throw new Error("Space memory exceeds the 32 MB reviewed size cap.");
-    const previous = this.rows(workspaceId);
+    let previous: ReturnType<SpaceMemoryStore["rows"]> | undefined;
     const priorFactor = prior ? (await this.secrets.readSecret(prior.keyName)).value : undefined;
     if (prior && !priorFactor) throw new Error("The prior Space memory key is unavailable.");
     let published = false;
@@ -231,6 +235,7 @@ export class SpaceMemoryStore {
       this.repo.transaction(() => {
         if (this.generation(workspaceId)?.generation !== prior?.generation)
           throw new AuxError("conflict", "Space memory changed while its generation was prepared.");
+        previous = this.rows(workspaceId);
         publish(fileRows, historyRows);
       });
       published = true;
@@ -255,7 +260,7 @@ export class SpaceMemoryStore {
         if (published)
           this.repo.transaction(() => {
             if (this.generation(workspaceId)?.generation === generation)
-              publish(previous.files, previous.history);
+              publish(previous!.files, previous!.history);
           });
         await this.secrets.storeSecret(keyName, "");
       }

@@ -659,3 +659,84 @@ it("rejects a recovery snapshot when Forget completes during generation authenti
     f.close();
   }
 });
+
+it("rejects oversized SQLite ciphertext before credential access or recovery allocation", async () => {
+  const f = fixture();
+  try {
+    f.pipeline.setPolicy(f.workspace.workspaceId, true);
+    f.db
+      .prepare(
+        "INSERT INTO memory_files(workspace_id,name,generation,key_name,content) VALUES(?,'claims.json.enc','invalid','invalid',zeroblob(?))",
+      )
+      .run(f.workspace.workspaceId, 32 * 1024 * 1024 + 1);
+    await expect(f.pipeline.inbox(f.workspace.workspaceId)).rejects.toThrow(/32 MB reviewed size cap/);
+    await expect(f.pipeline.ordinaryRestoreMemory()).rejects.toThrow(/32 MB reviewed size cap/);
+    expect(f.secrets.size).toBe(0);
+  } finally {
+    f.close();
+  }
+});
+
+it("restores the CAS generation when another writer publishes and rolls back during key preparation", async () => {
+  const { SpaceMemoryStore } = await import("../../apps/runtime/dist/services/space-memory-store.js");
+  const f = fixture();
+  try {
+    const id = f.workspace.workspaceId;
+    f.pipeline.setPolicy(id, true);
+    f.save("run-aba", "The original valid generation must survive both failed retirements.");
+    await f.pipeline.extractRun(id, "run-aba");
+    const originalInbox = await f.pipeline.inbox(id);
+    const ordinary = new SpaceMemoryStore(f.repo, f.native, "profile-one");
+    const state = await ordinary.read(id);
+    const prior = state.prior!;
+    const published = Promise.withResolvers<void>();
+    const releaseRetirement = Promise.withResolvers<void>();
+    const intervening = new SpaceMemoryStore(
+      f.repo,
+      {
+        ...f.native,
+        async storeSecret(name: string, value: string) {
+          if (name === prior.keyName && !value) {
+            published.resolve();
+            await releaseRetirement.promise;
+            throw new Error("Intervening retirement failed");
+          }
+          return f.native.storeSecret(name, value);
+        },
+      },
+      "profile-one",
+    );
+    const interveningFailure = intervening
+      .write(id, state.files, state.history, prior)
+      .catch((error) => error);
+    await published.promise;
+    let released = false;
+    const writer = new SpaceMemoryStore(
+      f.repo,
+      {
+        ...f.native,
+        async readSecret(name: string) {
+          if (name === prior.keyName && !released) {
+            released = true;
+            releaseRetirement.resolve();
+            expect(await interveningFailure).toMatchObject({ message: "Intervening retirement failed" });
+          }
+          return f.native.readSecret(name);
+        },
+        async storeSecret(name: string, value: string) {
+          if (name === prior.keyName && !value) throw new Error("Final retirement failed");
+          return f.native.storeSecret(name, value);
+        },
+      },
+      "profile-one",
+    );
+    await expect(writer.write(id, state.files, state.history, prior)).rejects.toThrow(
+      "Final retirement failed",
+    );
+    expect(ordinary.generation(id)).toEqual(prior);
+    expect(await f.pipeline.inbox(id)).toEqual(originalInbox);
+    expect([...f.secrets.keys()].filter((name) => name.startsWith("mem_"))).toEqual([prior.keyName]);
+  } finally {
+    f.close();
+  }
+});

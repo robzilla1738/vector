@@ -2,6 +2,24 @@ import { withSecureDelete } from "../store/db.js";
 import type { DatabaseSync } from "node:sqlite";
 import { digest } from "@aux/contracts/util/digest";
 
+const MAX_SPACE_MEMORY_BYTES = 32 * 1024 * 1024;
+
+/** Check SQLite lengths before materializing any ciphertext in JavaScript. */
+export function assertSpaceMemorySize(db: DatabaseSync, workspaceId?: string) {
+  const where = workspaceId === undefined ? "" : " WHERE workspace_id=?";
+  const bindings = workspaceId === undefined ? [] : [workspaceId, workspaceId];
+  const row = db
+    .prepare(
+      `SELECT COALESCE(SUM(bytes),0) AS bytes FROM (
+    SELECT length(CAST(content AS BLOB)) AS bytes FROM memory_files${where}
+    UNION ALL SELECT length(CAST(content AS BLOB)) AS bytes FROM memory_history${where}
+  )`,
+    )
+    .get(...bindings) as { bytes: number };
+  if (row.bytes > MAX_SPACE_MEMORY_BYTES)
+    throw new Error("Space memory exceeds the 32 MB reviewed size cap.");
+}
+
 export function omitSpaceMemory(db: DatabaseSync) {
   withSecureDelete(db, () => {
     db.prepare("DELETE FROM memory_files").run();
@@ -11,6 +29,7 @@ export function omitSpaceMemory(db: DatabaseSync) {
 
 /** Independent Space revision history, not an earlier ordinary backup's memory. */
 export function currentSpaceMemory(db: DatabaseSync) {
+  assertSpaceMemorySize(db);
   const files = db.prepare("SELECT * FROM memory_files ORDER BY workspace_id,name").all();
   const history = db.prepare("SELECT * FROM memory_history ORDER BY workspace_id,revision_id").all();
   const watermarks = db
