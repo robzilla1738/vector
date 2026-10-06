@@ -26,6 +26,7 @@ export interface FilterListStatus {
   backend: ChromiumContentBlockReceipt["backend"] | "unavailable";
   engineVersion?: ChromiumContentBlockReceipt["engineVersion"];
   cosmeticBackend: ChromiumContentBlockReceipt["cosmeticBackend"] | "unavailable";
+  compilationWarnings: ChromiumContentBlockReceipt["compilationWarnings"];
 }
 export interface BlockingState {
   generation: number;
@@ -151,6 +152,7 @@ export class FilterLists {
       backend: receipt?.backend ?? "unavailable",
       ...(receipt ? { engineVersion: receipt.engineVersion } : {}),
       cosmeticBackend: receipt?.cosmeticBackend ?? "unavailable",
+      compilationWarnings: receipt ? structuredClone(receipt.compilationWarnings) : [],
     };
   }
   addSource(state: BlockingState, name: string, rawUrl: string, kind: FilterSourceKind): void {

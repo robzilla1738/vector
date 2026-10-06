@@ -30,6 +30,14 @@ export interface ContentBlockSnapshot {
   allowedSiteHosts: readonly string[];
   enabled: boolean;
 }
+/** Native compiler diagnostics for an exact accepted source snapshot. */
+export interface FilterCompilationWarning {
+  sourceId: string;
+  sourceSha256: string;
+  rejectedCount: number;
+  diagnosticsSha256: string;
+  samples: { line: number; code: string; message: string }[];
+}
 export interface ChromiumContentBlockReceipt {
   backend: "ublock_origin";
   engineVersion: "9df989ecc483cd7ada4b195c47a0584ab2d97450";
@@ -38,6 +46,7 @@ export interface ChromiumContentBlockReceipt {
   generation: number;
   filterDigest: string;
   sourceHeaders: FilterSourceHeader[];
+  compilationWarnings: FilterCompilationWarning[];
   cosmeticBackend: "native_user_styles";
   phase: "document_start";
   futureDocuments: true;
@@ -65,7 +74,34 @@ export function assertContentBlockReceipt(
   receipt: ChromiumContentBlockReceipt,
 ): void {
   const count = (value: number) => Number.isSafeInteger(value) && value >= 0;
+  const warningIds = new Set<string>();
+  const invalidWarnings =
+    !Array.isArray(receipt.compilationWarnings) ||
+    receipt.compilationWarnings.length > 64 ||
+    receipt.compilationWarnings.some((warning) => {
+      const source = receipt.sourceHeaders.find((header) => header.id === warning.sourceId);
+      const duplicate = warningIds.has(warning.sourceId);
+      warningIds.add(warning.sourceId);
+      return (
+        duplicate ||
+        !/^[a-f0-9]{12}$/.test(warning.sourceId) ||
+        !source ||
+        !/^[a-f0-9]{64}$/.test(warning.sourceSha256) ||
+        warning.sourceSha256 !== source.sha256 ||
+        !count(warning.rejectedCount) ||
+        warning.rejectedCount === 0 ||
+        !/^[a-f0-9]{64}$/.test(warning.diagnosticsSha256) ||
+        !Array.isArray(warning.samples) ||
+        warning.samples.length > 8 ||
+        warning.samples.some((sample) =>
+          !count(sample.line) || sample.line === 0 ||
+          typeof sample.code !== "string" || !sample.code.length || sample.code.length > 64 ||
+          typeof sample.message !== "string" || !sample.message.length || sample.message.length > 512
+        )
+      );
+    });
   if (
+    invalidWarnings ||
     !snapshot.profileId ||
     !Number.isSafeInteger(snapshot.generation) ||
     snapshot.generation < 1 ||

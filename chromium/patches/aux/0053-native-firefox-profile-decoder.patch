@@ -592,7 +592,7 @@ index 000000000..85e38a784
 +         bool history, bool bookmarks, bool tabs) => (AuxFirefoxProfileResult result);
 +};
 diff --git a/chrome/utility/BUILD.gn b/chrome/utility/BUILD.gn
-index 500cbc7ed..3bdc809e8 100644
+index 500cbc7..1673288 100644
 --- a/chrome/utility/BUILD.gn
 +++ b/chrome/utility/BUILD.gn
 @@ -77,6 +77,20 @@ static_library("utility") {
@@ -610,7 +610,7 @@ index 500cbc7ed..3bdc809e8 100644
 +      "//chrome/common/importer:aux_firefox_profile",
 +      "//components/services/storage",
 +    ]
-+    frameworks = [ "Compression.framework" ]
++    libs = [ "compression" ]
 +  }
 +
    if (is_win) {

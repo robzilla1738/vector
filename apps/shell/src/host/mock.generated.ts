@@ -124,12 +124,14 @@ const RESULTS: Record<string, unknown> = {
   "filterLists": {
     "sources": [],
     "backend": "ublock_origin",
-    "cosmeticBackend": "native_user_styles"
+    "cosmeticBackend": "native_user_styles",
+    "compilationWarnings": []
   },
   "updateFilters": {
     "sources": [],
     "backend": "ublock_origin",
-    "cosmeticBackend": "native_user_styles"
+    "cosmeticBackend": "native_user_styles",
+    "compilationWarnings": []
   },
   "addFilterSource": [],
   "removeFilterSource": [],

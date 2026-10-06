@@ -16,6 +16,20 @@ export const FilterSourceHeaderSchema = z
     bytes: whole.max(MAX_FILTER_BYTES),
   })
   .strict();
+export const FilterCompilationWarningSchema = z
+  .object({
+    sourceId: z.string().regex(/^[a-f0-9]{12}$/),
+    sourceSha256: digest,
+    rejectedCount: whole.positive(),
+    diagnosticsSha256: digest,
+    samples: z.array(z.object({
+      line: whole.positive(),
+      code: z.string().min(1).max(64),
+      message: z.string().min(1).max(512),
+    }).strict()).max(8),
+  })
+  .strict();
+export const FilterCompilationWarningsSchema = z.array(FilterCompilationWarningSchema).max(64);
 export const ContentBlockReceiptSchema = z
   .object({
     backend: z.literal("ublock_origin"),
@@ -25,6 +39,7 @@ export const ContentBlockReceiptSchema = z
     generation: whole.positive(),
     filterDigest: digest,
     sourceHeaders: z.array(FilterSourceHeaderSchema).max(MAX_FILTER_SOURCES),
+    compilationWarnings: FilterCompilationWarningsSchema,
     cosmeticBackend: z.literal("native_user_styles"),
     phase: z.literal("document_start"),
     futureDocuments: z.literal(true),

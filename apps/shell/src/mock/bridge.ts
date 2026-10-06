@@ -2633,6 +2633,7 @@ export function installMockBridge(q: URLSearchParams) {
       networkRules: 0,
       cosmeticRules: 0,
       backend: "unavailable" as const,
+      compilationWarnings: [],
       cosmeticBackend: "unavailable" as const,
     }),
     updateFilters: async () => {

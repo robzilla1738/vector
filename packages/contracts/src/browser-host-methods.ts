@@ -1,3 +1,4 @@
+import { FilterCompilationWarningsSchema } from "./content-blocking-schema.js";
 import { z } from "zod";
 import { OrganizationCommitSchema, OrganizationSnapshotSchema } from "./organization.js";
 import {
@@ -90,6 +91,7 @@ const filterStatus = strictObject({
   backend: z.enum(["ublock_origin", "unavailable"]),
   engineVersion: z.literal("9df989ecc483cd7ada4b195c47a0584ab2d97450").optional(),
   cosmeticBackend: z.enum(["native_user_styles", "unavailable"]),
+  compilationWarnings: FilterCompilationWarningsSchema,
 });
 const extension = strictObject({
   key: str,

@@ -37,7 +37,7 @@ index 8af642f..6cabe23 100644
    const bool is_contextual_tasks_enabled =
        contextual_tasks::IsContextualTasksUIEnabled();
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
-index 9b24dbc..37dee4c 100644
+index 9b24dbc..4180c59 100644
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
 @@ -221,9 +221,10 @@
@@ -158,7 +158,18 @@ index 9b24dbc..37dee4c 100644
  #endif
    CreateAndAddChromeThrottlesForCommitWithoutUrlLoader(registry);
  }
-@@ -6694,6 +6773,16 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -5599,7 +5678,9 @@ ChromeContentBrowserClient::CreateCommitDeferringConditionsForNavigation(
+   std::vector<std::unique_ptr<content::CommitDeferringCondition>> conditions;
+ 
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+-  MaybeAddCondition(aux::MaybeCreateContentFilterCondition(*navigation_handle), &conditions);
++  MaybeAddCondition(aux::MaybeCreateContentFilterCondition(*navigation_handle,
++                                                         navigation_type),
++                    &conditions);
+   MaybeAddCondition(aux::MaybeCreateZapCondition(*navigation_handle),
+                     &conditions);
+ #endif
+@@ -6694,6 +6775,16 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
      network::mojom::URLLoaderFactoryOverridePtr* factory_override,
      scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
      bool is_for_network_service) {
@@ -175,7 +186,7 @@ index 9b24dbc..37dee4c 100644
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
    auto* web_request_api =
        extensions::BrowserContextKeyedAPIFactory<extensions::WebRequestAPI>::Get(
-@@ -6726,6 +6815,8 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -6726,6 +6817,8 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
        isolation_info, factory_builder);
  
  #if BUILDFLAG(ENABLE_AUX_SHELL)
@@ -184,7 +195,7 @@ index 9b24dbc..37dee4c 100644
    if (type == URLLoaderFactoryType::kNavigation ||
        type == URLLoaderFactoryType::kDocumentSubResource ||
        type == URLLoaderFactoryType::kWorkerMainResource ||
-@@ -6751,8 +6842,10 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -6751,8 +6844,10 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
      const bool trusted_internal_frame = type != URLLoaderFactoryType::kNavigation && frame &&
          frame->GetLastCommittedURL().SchemeIs(content::kChromeUIScheme) &&
          !request_initiator.GetURL().SchemeIsHTTPOrHTTPS();
@@ -197,7 +208,7 @@ index 9b24dbc..37dee4c 100644
    }
  #endif
  
-@@ -6820,6 +6913,11 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -6820,6 +6915,11 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
        type == URLLoaderFactoryType::kServiceWorkerScript ||
        type == URLLoaderFactoryType::kServiceWorkerSubResource,
        factory_builder, header_client);
@@ -209,7 +220,7 @@ index 9b24dbc..37dee4c 100644
  #endif
  }
  
-@@ -6907,48 +7005,105 @@ void ChromeContentBrowserClient::CheckWebSocketConnection(content::RenderFrameHo
+@@ -6907,48 +7007,105 @@ void ChromeContentBrowserClient::CheckWebSocketConnection(content::RenderFrameHo
      WebSocketConnectionCheck callback) {
  #if BUILDFLAG(ENABLE_AUX_SHELL)
    auto* process = content::RenderProcessHost::FromID(process_id);
@@ -223190,7 +223201,7 @@ index df24d37..0000000
 -}  // namespace aux
 -#endif
 diff --git a/chrome/browser/ui/aux/content_blocking_controller.cc b/chrome/browser/ui/aux/content_blocking_controller.cc
-index 8a83394..c57034c 100644
+index 8a83394..848a03a 100644
 --- a/chrome/browser/ui/aux/content_blocking_controller.cc
 +++ b/chrome/browser/ui/aux/content_blocking_controller.cc
 @@ -1,20 +1,25 @@
@@ -223361,7 +223372,7 @@ index 8a83394..c57034c 100644
  void ContentBlockingController::Load() {
    base::FilePath resources;
    if (!base::PathService::Get(chrome::DIR_RESOURCES, &resources)) {
-@@ -79,16 +202,113 @@ void ContentBlockingController::Load() {
+@@ -79,16 +202,116 @@ void ContentBlockingController::Load() {
        base::BindOnce([](base::WeakPtr<ContentBlockingController> owner,
            std::pair<std::shared_ptr<NativeFilterSnapshot>, std::string> loaded) {
          if (!owner) return;
@@ -223386,6 +223397,9 @@ index 8a83394..c57034c 100644
 +                  }
 +                  if (semantic && error.empty() &&
 +                      semantic->bridge().AcceptProfileConfiguration()) {
++                    snapshot->compilation_warnings =
++                        std::make_shared<const base::ListValue>(
++                            semantic->bridge().compilation_warnings().Clone());
 +                    owner->semantic_generation_ =
 +                        static_cast<uint64_t>(snapshot->generation);
 +                    owner->semantic_ = std::move(semantic);
@@ -223478,7 +223492,7 @@ index 8a83394..c57034c 100644
          }, weak_factory_.GetWeakPtr(), std::move(callback)));
      return;
    }
-@@ -109,7 +329,10 @@ void ContentBlockingController::OnExtensionLoaded(content::BrowserContext*, cons
+@@ -109,13 +332,20 @@ void ContentBlockingController::OnExtensionLoaded(content::BrowserContext*, cons
  }
  void ContentBlockingController::OnShutdown(extensions::ExtensionRegistry*) {
    registry_observation_.Reset();
@@ -223489,7 +223503,18 @@ index 8a83394..c57034c 100644
    snapshot_.reset(); load_finished_ = true; DrainReady();
  }
  void ContentBlockingController::State(Reply callback) {
-@@ -127,6 +350,10 @@ void ContentBlockingController::SyncPrivateRules() {
+   EnsureReady(base::BindOnce([](base::WeakPtr<ContentBlockingController> owner, Reply callback, bool ready) {
+     if (!owner || !ready || owner->profile_->IsOffTheRecord()) {
+-      std::move(callback).Run(std::nullopt, "Native content filter Profile is unavailable"); return;
++      std::move(callback).Run(
++          std::nullopt, owner && !owner->load_error_.empty()
++                            ? owner->load_error_
++                            : "Native content filter Profile is unavailable");
++      return;
+     }
+     base::DictValue state;
+     state.Set("profileId", owner->profile_->GetPath().BaseName().AsUTF8Unsafe()); state.Set("private", false);
+@@ -127,6 +357,10 @@ void ContentBlockingController::SyncPrivateRules() {
    if (!profile_->IsOffTheRecord()) return;
    auto* original = ForProfile(profile_->GetOriginalProfile());
    if (!original->snapshot_ || (snapshot_ && snapshot_->generation == original->snapshot_->generation)) return;
@@ -223500,7 +223525,7 @@ index 8a83394..c57034c 100644
    auto next = std::make_shared<NativeFilterSnapshot>(*original->snapshot_);
    for (const auto& [host, allowed] : private_site_overrides_) {
      auto position = std::lower_bound(next->allowed.begin(), next->allowed.end(), host);
-@@ -134,6 +361,11 @@ void ContentBlockingController::SyncPrivateRules() {
+@@ -134,6 +368,11 @@ void ContentBlockingController::SyncPrivateRules() {
      else if (!allowed && position != next->allowed.end() && *position == host) next->allowed.erase(position);
    }
    if (private_enabled_override_) next->enabled = *private_enabled_override_;
@@ -223512,7 +223537,7 @@ index 8a83394..c57034c 100644
    snapshot_ = std::move(next);
  }
  std::optional<base::DictValue> ContentBlockingController::Begin(
-@@ -206,6 +438,11 @@ std::optional<base::DictValue> ContentBlockingController::Append(
+@@ -206,6 +445,11 @@ std::optional<base::DictValue> ContentBlockingController::Append(
  }
  void ContentBlockingController::RetireConnection(uint64_t connection) {
    if (staging_ && staging_->connection == connection) staging_.reset();
@@ -223524,7 +223549,7 @@ index 8a83394..c57034c 100644
  }
  void ContentBlockingController::Commit(const base::DictValue& params, uint64_t connection,
      OwnerCurrent current, Reply callback) {
-@@ -223,114 +460,504 @@ void ContentBlockingController::Commit(const base::DictValue& params, uint64_t c
+@@ -223,114 +467,507 @@ void ContentBlockingController::Commit(const base::DictValue& params, uint64_t c
      std::move(callback).Run(std::nullopt, "Native filter resource directory is unavailable"); return;
    }
    commit_in_progress_ = true;
@@ -223655,6 +223680,9 @@ index 8a83394..c57034c 100644
 +                                  "Native filter manifest publication failed");
 +                              return;
 +                            }
++                            result.first->snapshot.compilation_warnings =
++                                std::make_shared<const base::ListValue>(
++                                    semantic->bridge().compilation_warnings().Clone());
 +                            owner->semantic_generation_ = static_cast<uint64_t>(
 +                                result.first->snapshot.generation);
 +                            owner->semantic_ = std::move(semantic);
@@ -224129,7 +224157,7 @@ index 8a83394..c57034c 100644
  }
  bool ContentBlockingController::SourceAlive(const ContentFilterSourceScope& source) const { return source.Alive(profile_); }
  void ContentBlockingController::NoteBlocked(const std::string& host) {
-@@ -352,18 +979,28 @@ std::vector<std::string> ContentBlockingController::allowed_hosts() { SyncPrivat
+@@ -352,18 +989,28 @@ std::vector<std::string> ContentBlockingController::allowed_hosts() { SyncPrivat
  bool ContentBlockingController::SetPrivateSiteAllowed(std::string_view host, bool allowed) {
    SyncPrivateRules();
    if (!profile_->IsOffTheRecord() || !snapshot_ || !IsAllowedSiteHost(host) ||
@@ -224161,7 +224189,7 @@ index 8a83394..c57034c 100644
  }
  }  // namespace aux
 diff --git a/chrome/browser/ui/aux/content_blocking_controller.h b/chrome/browser/ui/aux/content_blocking_controller.h
-index c0c97a7..ed7e16d 100644
+index c0c97a7..eeb021f 100644
 --- a/chrome/browser/ui/aux/content_blocking_controller.h
 +++ b/chrome/browser/ui/aux/content_blocking_controller.h
 @@ -7,6 +7,7 @@
@@ -224185,6 +224213,7 @@ index c0c97a7..ed7e16d 100644
 +#include "chrome/browser/ui/aux/semantic_filter_popup.h"
 +#include "chrome/browser/ui/aux/semantic_filter_trusted_headers.h"
 +#include "chrome/common/aux_cosmetic_filters.mojom.h"
++#include "content/public/browser/commit_deferring_condition.h"
 +#include "content/public/browser/frame_tree_node_id.h"
  #include "extensions/browser/extension_registry.h"
  #include "extensions/browser/extension_registry_observer.h"
@@ -224194,7 +224223,6 @@ index c0c97a7..ed7e16d 100644
 -namespace content { class CommitDeferringCondition; class NavigationHandle; class NavigationRequest; class RenderFrameHost; class WebContents; }
 +namespace content {
 +class NavigationThrottleRegistry;
-+class CommitDeferringCondition;
 +class NavigationHandle;
 +class NavigationRequest;
 +class RenderFrameHost;
@@ -224329,8 +224357,17 @@ index c0c97a7..ed7e16d 100644
    std::unique_ptr<Staging> staging_;
    std::vector<base::OnceCallback<void(bool)>> ready_callbacks_;
    bool load_finished_ = false;
+@@ -117,6 +187,7 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
+   base::WeakPtrFactory<ContentBlockingController> weak_factory_{this};
+ };
+ std::unique_ptr<content::CommitDeferringCondition> MaybeCreateContentFilterCondition(
+-    content::NavigationHandle& navigation);
++    content::NavigationHandle& navigation,
++    content::CommitDeferringCondition::NavigationType navigation_type);
+ }  // namespace aux
+ #endif
 diff --git a/chrome/browser/ui/aux/content_filter_documents.cc b/chrome/browser/ui/aux/content_filter_documents.cc
-index 0921e08..e571f1b 100644
+index 0921e08..37011d1 100644
 --- a/chrome/browser/ui/aux/content_filter_documents.cc
 +++ b/chrome/browser/ui/aux/content_filter_documents.cc
 @@ -1,13 +1,16 @@
@@ -224536,7 +224573,7 @@ index 0921e08..e571f1b 100644
    if (accepted && request->document) accepted = ContentFilterSourceScope::FrameDocumentLive(frame) &&
        content::RenderFrameHostImpl::From(frame)->GetDocumentToken() == request->document && frame->GetLastCommittedURL() == request->url;
    if (accepted) {
-@@ -178,20 +309,73 @@ void ContentBlockingController::RefreshCosmetic(base::OnceCallback<void(bool)> c
+@@ -178,23 +309,82 @@ void ContentBlockingController::RefreshCosmetic(base::OnceCallback<void(bool)> c
          }, pending));
    }
  }
@@ -224621,10 +224658,21 @@ index 0921e08..e571f1b 100644
 +          },
 +          current, std::move(callback)));
  }
- std::unique_ptr<content::CommitDeferringCondition> MaybeCreateContentFilterCondition(content::NavigationHandle& navigation) {
-   if (!navigation.GetURL().SchemeIsHTTPOrHTTPS() || navigation.IsSameDocument() || navigation.IsServedFromBackForwardCache() || navigation.IsPrerenderedPageActivation()) return nullptr;
+-std::unique_ptr<content::CommitDeferringCondition> MaybeCreateContentFilterCondition(content::NavigationHandle& navigation) {
+-  if (!navigation.GetURL().SchemeIsHTTPOrHTTPS() || navigation.IsSameDocument() || navigation.IsServedFromBackForwardCache() || navigation.IsPrerenderedPageActivation()) return nullptr;
++std::unique_ptr<content::CommitDeferringCondition> MaybeCreateContentFilterCondition(
++    content::NavigationHandle& navigation,
++    content::CommitDeferringCondition::NavigationType navigation_type) {
++  // Activation conditions register before NavigationRequest selects its prerender host.
++  // The browser's supplied navigation type is authoritative at this lifecycle point.
++  if (navigation_type == content::CommitDeferringCondition::NavigationType::kPrerenderedPageActivation ||
++      !navigation.GetURL().SchemeIsHTTPOrHTTPS() || navigation.IsSameDocument() ||
++      navigation.IsServedFromBackForwardCache()) return nullptr;
+   return std::make_unique<ContentFilterCommitCondition>(navigation);
+ }
+ }  // namespace aux
 diff --git a/chrome/browser/ui/aux/content_filter_network.cc b/chrome/browser/ui/aux/content_filter_network.cc
-index e236b44..c4044d4 100644
+index e236b44..85be0b7 100644
 --- a/chrome/browser/ui/aux/content_filter_network.cc
 +++ b/chrome/browser/ui/aux/content_filter_network.cc
 @@ -1,21 +1,27 @@
@@ -225263,7 +225311,7 @@ index e236b44..c4044d4 100644
    }
    base::WeakPtr<ContentBlockingController> owner_;
    const ContentFilterSourceScope scope_;
-@@ -175,23 +615,40 @@ class FilteredRequest final : public network::mojom::URLLoader, public network::
+@@ -175,23 +615,42 @@ class FilteredRequest final : public network::mojom::URLLoader, public network::
    mojo::Remote<network::mojom::URLLoaderClient> client_;
    mojo::Receiver<network::mojom::URLLoaderClient> client_receiver_{this};
    raw_ptr<Profile> profile_;
@@ -225299,18 +225347,28 @@ index e236b44..c4044d4 100644
 +      raw_ptr<Profile> profile,
 +      std::optional<ContentFilterSourceScope> scope,
 +      std::shared_ptr<SemanticLoaderRegistry> registry,
++      bool trusted_headers_available,
 +      base::SelfDeletingPassKey key)
 +      : SelfDeletingURLLoaderFactory(std::move(receiver), key),
 +        owner_(std::move(owner)),
 +        profile_(profile),
 +        scope_(std::move(scope)),
 +        target_(std::move(target)),
-+        registry_(std::move(registry)) {
++        registry_(std::move(registry)),
++        trusted_headers_available_(trusted_headers_available) {
      target_.set_disconnect_handler(base::BindOnce(&ContentFilterFactory::OnTargetError, base::Unretained(this)));
    }
    void CreateLoaderAndStart(mojo::PendingReceiver<network::mojom::URLLoader> loader, int32_t id, uint32_t options,
-@@ -203,52 +660,120 @@ class ContentFilterFactory final : public network::SelfDeletingURLLoaderFactory
-     if (!owner_ || !scope_ || !owner_->SourceAlive(*scope_) || pending_ >= 128) { Reject(std::move(client), net::ERR_ABORTED); return; }
+@@ -200,55 +659,132 @@ class ContentFilterFactory final : public network::SelfDeletingURLLoaderFactory
+     if (!request.url.SchemeIsHTTPOrHTTPS()) {
+       target_->CreateLoaderAndStart(std::move(loader), id, options, request, std::move(client), annotation); return;
+     }
+-    if (!owner_ || !scope_ || !owner_->SourceAlive(*scope_) || pending_ >= 128) { Reject(std::move(client), net::ERR_ABORTED); return; }
++    if (!trusted_headers_available_ || !owner_ || !scope_ ||
++        !owner_->SourceAlive(*scope_) || pending_ >= 128) {
++      Reject(std::move(client), net::ERR_ABORTED);
++      return;
++    }
      ++pending_;
      owner_->EnsureReady(base::BindOnce(&ContentFilterFactory::StartReady, weak_factory_.GetWeakPtr(),
 -        std::move(loader), id, options, request, std::move(client), annotation));
@@ -225426,6 +225484,7 @@ index e236b44..c4044d4 100644
    const std::optional<ContentFilterSourceScope> scope_;
    mojo::Remote<network::mojom::URLLoaderFactory> target_;
 +  std::shared_ptr<SemanticLoaderRegistry> registry_;
++  const bool trusted_headers_available_;
    size_t pending_ = 0;
    base::WeakPtrFactory<ContentFilterFactory> weak_factory_{this};
  };
@@ -225439,13 +225498,17 @@ index e236b44..c4044d4 100644
 +        header_client) {
    auto* owner = ForProfile(profile); if (!owner) return;
 +  auto registry = std::make_shared<SemanticLoaderRegistry>();
-+  *header_client = WrapSemanticFactoryHeaders(
-+      registry, owner->GetWeakPtr(), source, std::move(*header_client));
++  // Non-network factories can omit this endpoint. Their internal URLs still
++  // pass through; HTTP requires the original trusted-header inspection chain.
++  if (header_client) {
++    *header_client = WrapSemanticFactoryHeaders(
++        registry, owner->GetWeakPtr(), source, std::move(*header_client));
++  }
    auto [receiver, target] = builder.Append();
 -  base::MakeSelfDeleting<ContentFilterFactory>(std::move(receiver), std::move(target), owner->GetWeakPtr(), profile, std::move(source));
 +  base::MakeSelfDeleting<ContentFilterFactory>(
 +      std::move(receiver), std::move(target), owner->GetWeakPtr(), profile,
-+      std::move(source), std::move(registry));
++      std::move(source), std::move(registry), header_client != nullptr);
  }
  }  // namespace aux
 diff --git a/chrome/browser/ui/aux/content_filter_resources.cc b/chrome/browser/ui/aux/content_filter_resources.cc
@@ -225719,7 +225782,7 @@ index fd10e6b..a1e7753 100644
    const bool required_target_;
    mojo::Remote<network::mojom::TrustedHeaderClient> target_;
 diff --git a/chrome/browser/ui/aux/filter_snapshot_store.cc b/chrome/browser/ui/aux/filter_snapshot_store.cc
-index 0d3293d..953bd2b 100644
+index 0d3293d..3507cb9 100644
 --- a/chrome/browser/ui/aux/filter_snapshot_store.cc
 +++ b/chrome/browser/ui/aux/filter_snapshot_store.cc
 @@ -1,7 +1,9 @@
@@ -225740,7 +225803,7 @@ index 0d3293d..953bd2b 100644
  namespace aux {
  namespace {
  constexpr size_t kManifestBytes = 64 * 1024;
-@@ -26,23 +29,21 @@ std::optional<base::ListValue> Defaults() {
+@@ -26,23 +29,24 @@ std::optional<base::ListValue> Defaults() {
  }
  base::DictValue NativeFilterSnapshot::Receipt(std::string_view profile_id) const {
    base::DictValue value;
@@ -225768,13 +225831,16 @@ index 0d3293d..953bd2b 100644
    }
 -  value.Set("sourceStatistics", std::move(statistics)); return value;
 +  value.Set("sourceHeaders", std::move(headers));
++  value.Set("compilationWarnings", compilation_warnings
++                                      ? compilation_warnings->Clone()
++                                      : base::ListValue());
 +  return value;
  }
 +
  FilterSnapshotStore::FilterSnapshotStore(base::FilePath profile_path)
      : directory_(profile_path.AppendASCII("Aux Blocking Engine")) {}
  base::FilePath FilterSnapshotStore::Candidate(double generation) const {
-@@ -86,7 +87,6 @@ std::shared_ptr<NativeFilterSnapshot> FilterSnapshotStore::Load(
+@@ -86,7 +90,6 @@ std::shared_ptr<NativeFilterSnapshot> FilterSnapshotStore::Load(
      result->allowed.push_back(*host);
    }
    size_t total = 0;
@@ -225782,7 +225848,7 @@ index 0d3293d..953bd2b 100644
    for (const auto& value : *sources) {
      const auto* header = value.GetIfDict();
      if (!header) { *error = "Native filter source header is invalid"; return nullptr; }
-@@ -103,15 +103,16 @@ std::shared_ptr<NativeFilterSnapshot> FilterSnapshotStore::Load(
+@@ -103,15 +106,16 @@ std::shared_ptr<NativeFilterSnapshot> FilterSnapshotStore::Load(
        }
      }
      if (!source->LoadAndValidate(resources_dir, error)) return nullptr;
@@ -225803,15 +225869,16 @@ index 0d3293d..953bd2b 100644
  bool FilterSnapshotStore::Stage(const NativeFilterSnapshot& snapshot, std::string* error) const {
    if (!base::CreateDirectory(directory_) || !base::SetPosixFilePermissions(directory_, 0700)) {
 diff --git a/chrome/browser/ui/aux/filter_snapshot_store.h b/chrome/browser/ui/aux/filter_snapshot_store.h
-index 6e6db09..a21f3d0 100644
+index 6e6db09..068959e 100644
 --- a/chrome/browser/ui/aux/filter_snapshot_store.h
 +++ b/chrome/browser/ui/aux/filter_snapshot_store.h
-@@ -13,11 +13,10 @@ struct NativeFilterSnapshot {
+@@ -13,11 +13,11 @@ struct NativeFilterSnapshot {
    bool enabled = true;
    std::vector<std::string> allowed;
    std::vector<FilterSourceSnapshot> sources;
 -  std::shared_ptr<const AdblockSnapshot> engine;
    std::string digest;
++  std::shared_ptr<const base::ListValue> compilation_warnings;
    base::DictValue Receipt(std::string_view profile_id) const;
  };
 -// All I/O, parsing, Rust compilation and durable publication run on one
@@ -225820,10 +225887,10 @@ index 6e6db09..a21f3d0 100644
  class FilterSnapshotStore final {
   public:
 diff --git a/chrome/browser/ui/aux/filter_source_snapshot.cc b/chrome/browser/ui/aux/filter_source_snapshot.cc
-index 490272c..d39ba51 100644
+index 490272c..9d6a264 100644
 --- a/chrome/browser/ui/aux/filter_source_snapshot.cc
 +++ b/chrome/browser/ui/aux/filter_source_snapshot.cc
-@@ -95,12 +95,13 @@ base::DictValue FilterSourceSnapshot::Header() const {
+@@ -95,12 +95,21 @@ base::DictValue FilterSourceSnapshot::Header() const {
    value.Set("sha256", sha256); value.Set("bytes", static_cast<double>(bytes));
    return value;
  }
@@ -225838,11 +225905,19 @@ index 490272c..d39ba51 100644
 +         base::StartsWith(url,
 +                          "https://raw.githubusercontent.com/uBlockOrigin/"
 +                          "uAssets/master/filters/");
++}
++bool FilterSourceSnapshot::IsBuiltinCompilationSource() const {
++  // Builtin parser policy comes from the compiled source identity and format,
++  // not an RPC bundled marker. Maintained updates retain their own byte hash.
++  const auto canonical = MaintainedSource(*this);
++  const auto* canonical_kind = canonical ? canonical->FindString("kind") : nullptr;
++  return canonical_kind && *canonical_kind == kind &&
++         (kind == "adblock" || kind == "hosts");
  }
  std::string FilterPolicyDigest(const std::vector<FilterSourceSnapshot>& sources,
                                bool enabled, const std::vector<std::string>& allowed) {
 diff --git a/chrome/browser/ui/aux/filter_source_snapshot.h b/chrome/browser/ui/aux/filter_source_snapshot.h
-index feaec5d..187574c 100644
+index feaec5d..eacfbc1 100644
 --- a/chrome/browser/ui/aux/filter_source_snapshot.h
 +++ b/chrome/browser/ui/aux/filter_source_snapshot.h
 @@ -7,7 +7,6 @@
@@ -225853,12 +225928,13 @@ index feaec5d..187574c 100644
  namespace aux {
  struct FilterSourceSnapshot {
    std::string id;
-@@ -22,7 +21,7 @@ struct FilterSourceSnapshot {
+@@ -22,7 +21,8 @@ struct FilterSourceSnapshot {
    bool LoadAndValidate(const base::FilePath& resources_dir, std::string* error);
    bool Append(size_t offset, std::string_view chunk);
    base::DictValue Header() const;
 -  AdblockSnapshot::Source EngineSource() const;
 +  bool IsTrustedScriptletSource() const;
++  bool IsBuiltinCompilationSource() const;
  };
  std::string FilterPolicyDigest(const std::vector<FilterSourceSnapshot>& sources,
                                bool enabled, const std::vector<std::string>& allowed);
@@ -436407,10 +436483,10 @@ index 0000000..8762369
 +}
 diff --git a/chrome/browser/ui/aux/semantic/generate_resources.py b/chrome/browser/ui/aux/semantic/generate_resources.py
 new file mode 100644
-index 0000000..cf34c85
+index 0000000..08a9016
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic/generate_resources.py
-@@ -0,0 +1,191 @@
+@@ -0,0 +1,194 @@
 +#!/usr/bin/env python3
 +# Copyright 2026 The Aux Authors. BSD-3-Clause.
 +"""Embed only hash-verified pinned module bytes and explicit native adapters.
@@ -436543,7 +436619,10 @@ index 0000000..cf34c85
 +    if hashlib.sha256(data).hexdigest() != expected:
 +        raise ValueError('Pinned encoding source mismatch: ' + name)
 +import_map = {'imports': {'@exodus/bytes/': './encoding-upstream/bytes/',
-+                          './upstream/src/js/resources/': './js/resources/'}}
++                          './upstream/src/js/resources/': './js/resources/',
++                          './js/arglist-parser.js': './upstream/src/js/arglist-parser.js',
++                          './js/jsonpath.js': './upstream/src/js/jsonpath.js',
++                          './js/urlskip.js': './upstream/src/js/urlskip.js'}}
 +for source, target in encoding['browserAliases'].items():
 +    import_map['imports']['./encoding-upstream/bytes/' + source[2:]] = './encoding-upstream/bytes/' + target[2:]
 +for name in encoding['selectedModuleGraph']:
@@ -436972,7 +437051,7 @@ index 0000000..983e469
 +export { default } from '../../../native-environment.js';
 diff --git a/chrome/browser/ui/aux/semantic/native-entry.js b/chrome/browser/ui/aux/semantic/native-entry.js
 new file mode 100644
-index 0000000..92757ff
+index 0000000..f16f81d
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic/native-entry.js
 @@ -0,0 +1,50 @@
@@ -436990,9 +437069,9 @@ index 0000000..92757ff
 +try {
 +  compilation = await compileSnapshot({ ...snapshot, capabilities: { htmlTransform: snapshot.htmlTransform, scriptlets: snapshot.scriptlets } });
 +} catch (error) {
-+  compilation = { accepted: false, diagnostics: [{ code: 'compile', message: String(error).slice(0, 2048) }] };
++  compilation = { accepted: false, diagnostics: [{ code: 'compile', message: String(error).slice(0, 2048) }], warnings: [] };
 +}
-+bridge.reportCompilation(generation, compilation.accepted, JSON.stringify(compilation.diagnostics));
++bridge.reportCompilation(generation, compilation.accepted, JSON.stringify({ errors: compilation.diagnostics, warnings: compilation.warnings }));
 +if (compilation.accepted) {
 +  while (!retired) {
 +    const { request } = await bridge.next();
@@ -443521,10 +443600,10 @@ index 0000000..796fe55
 +}
 diff --git a/chrome/browser/ui/aux/semantic/semantic-adapter.js b/chrome/browser/ui/aux/semantic/semantic-adapter.js
 new file mode 100644
-index 0000000..9083bc4
+index 0000000..056aff3
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic/semantic-adapter.js
-@@ -0,0 +1,476 @@
+@@ -0,0 +1,508 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +import { scriptletEngine, compileScriptlet, documentScriptlets, trustedTokens } from './scriptlet-adapter.js';
 +import { drainDiagnostics, setNativeCapabilities, withContext } from './native-environment.js';
@@ -443615,6 +443694,7 @@ index 0000000..9083bc4
 +  setNativeCapabilities(capabilities);
 +  publicSuffixList.parse(boundedString(input.publicSuffixList, MAX_SOURCE_BYTES, 'Public suffix list'), (name) => new URL(`https://${name}/`).hostname);
 +  const errors = [];
++  const warnings = [];
 +  let bytes = 0;
 +  const writer = new CompiledListWriter();
 +  const compiler = snfe.createCompiler();
@@ -443628,6 +443708,32 @@ index 0000000..9083bc4
 +    bytes += encoder.encode(raw).byteLength;
 +    if (bytes > MAX_SNAPSHOT_BYTES) throw new Error('Snapshot byte bound exceeded');
 +    const name = boundedString(source.id, 256, 'Source id');
++    const builtin = source.builtinCompilation === true;
++    const sourceSha256 = boundedString(source.sha256, 64, 'Source digest');
++    if (!/^[a-f0-9]{64}$/.test(sourceSha256)) throw new Error('Invalid source digest');
++    let rejectedCount = 0;
++    let diagnosticBytes = 0;
++    const rejected = [];
++    const samples = [];
++    const rejectedLines = new Set();
++    const record = (entries, line, upstreamRejected = false) => {
++      if (!builtin || !upstreamRejected) { appendDiagnostics(errors, entries, name, line); return; }
++      // Match maintained storage.compileFilters: reject individual invalid
++      // rules in canonical builtins, with explicit source-bound accounting.
++      for (const entry of entries) {
++        const sample = { line, code: String(entry.code ?? entry.type ?? 'unsupported').slice(0, 64),
++          message: String(entry.message ?? entry.text).slice(0, 512) };
++        const serialized = JSON.stringify(sample);
++        diagnosticBytes += encoder.encode(serialized).byteLength;
++        if (diagnosticBytes > MAX_SNAPSHOT_BYTES) throw new Error('Rejected-rule diagnostic byte bound exceeded');
++        rejected.push(serialized);
++        if (!rejectedLines.has(line)) {
++          rejectedLines.add(line);
++          rejectedCount++;
++          if (samples.length < 8) samples.push(sample);
++        }
++      }
++    };
 +    writer.properties.set('name', name);
 +    const parser = new sfp.AstFilterParser({ maxTokenLength: snfe.MAX_TOKEN_LENGTH,
 +      trustedSource: source.nativeMaintained === true, trustedTokens, nativeCssHas, canFilterResponseBody: capabilities.htmlTransform });
@@ -443644,30 +443750,35 @@ index 0000000..9083bc4
 +      if (!line.trim()) continue;
 +      parser.parse(line);
 +      if (parser.hasError() || parser.isUnsupported()) {
-+        appendDiagnostics(errors, [{ code: 'parse', message: parser.result.error ?? `Rejected filter: ${line.slice(0, 1024)}` }], name, sourceLine); continue;
++        record([{ code: 'parse', message: parser.result.error ?? `Rejected filter: ${line.slice(0, 1024)}` }], sourceLine, true); continue;
 +      }
 +      if (parser.isComment()) continue;
 +      if (parser.isNetworkFilter()) {
 +        hasNetworkFilters = true;
-+        if (!compiler.compile(parser, writer)) appendDiagnostics(errors, [{ code: 'network', message: compiler.error ?? 'Network filter did not compile' }], name, sourceLine);
++        if (!compiler.compile(parser, writer)) record([{ code: 'network', message: compiler.error ?? 'Network filter did not compile' }], sourceLine, true);
 +      } else if (parser.isCosmeticFilter()) {
 +        try {
 +          if (parser.result.compiled?.startsWith('{')) validateProceduralTree(JSON.parse(parser.result.compiled));
 +          cosmetic.compile(parser, writer);
-+        } catch (error) { appendDiagnostics(errors, [{ code: 'procedural', message: String(error) }], name, sourceLine); }
++        } catch (error) { record([{ code: 'procedural', message: String(error) }], sourceLine); }
 +      }
 +      else if (parser.isHtmlFilter() && capabilities.htmlTransform) html.compile(parser, writer);
 +      else if (parser.isResponseheaderFilter()) responseHeaders.compile(parser, writer);
 +      else if (parser.isScriptletFilter() && capabilities.scriptlets) {
 +        try { compileScriptlet(parser, writer, source.nativeMaintained === true); }
-+        catch (error) { appendDiagnostics(errors, [{ code: 'scriptlet', message: String(error) }], name, sourceLine); }
++        catch (error) { record([{ code: 'scriptlet', message: String(error) }], sourceLine); }
 +      }
-+      else appendDiagnostics(errors, [{ code: 'adapter', message: 'This filter class has no complete native semantic adapter yet' }], name, sourceLine);
-+      appendDiagnostics(errors, drainDiagnostics().filter((item) => item.type === 'error'), name, sourceLine);
++      else record([{ code: 'adapter', message: 'This filter class has no complete native semantic adapter yet' }], sourceLine);
++      record(drainDiagnostics().filter((item) => item.type === 'error'), sourceLine, true);
++    }
++    if (rejectedCount) {
++      const digest = await crypto.subtle.digest('SHA-256', encoder.encode(rejected.join('\n')));
++      const diagnosticsSha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
++      warnings.push({ sourceId: name, sourceSha256, rejectedCount, diagnosticsSha256, samples });
 +    }
 +  }
 +  compiler.finish(writer);
-+  if (errors.length) return { generation, accepted: false, diagnostics: errors };
++  if (errors.length) return { generation, accepted: false, diagnostics: errors, warnings };
 +  const compiled = writer.toString();
 +  snfe.fromCompiled(new CompiledListReader(compiled)); snfe.freeze();
 +  cosmetic.fromCompiledContent(new CompiledListReader(compiled), {}); cosmetic.freeze();
@@ -443686,7 +443797,7 @@ index 0000000..9083bc4
 +  const resourceErrors = drainDiagnostics().filter((item) => item.type === 'error');
 +  if (resourceErrors.length) throw new Error('Maintained redirect resource initialization failed');
 +  ready = true;
-+  return { generation, accepted: true, diagnostics: [], sourceBytes: bytes };
++  return { generation, accepted: true, diagnostics: [], sourceBytes: bytes, warnings };
 +}
 +function context(input) {
 +  if (!ready || input.generation !== generation || !Number.isSafeInteger(input.id) || input.id < 1) throw new Error('Original semantic generation retired');
@@ -482760,10 +482871,10 @@ index 0000000..3f5cd0d
 +#endif
 diff --git a/chrome/browser/ui/aux/semantic_filter_bridge.cc b/chrome/browser/ui/aux/semantic_filter_bridge.cc
 new file mode 100644
-index 0000000..45aea06
+index 0000000..7089403
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic_filter_bridge.cc
-@@ -0,0 +1,305 @@
+@@ -0,0 +1,347 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +#include "chrome/browser/ui/aux/semantic_filter_bridge.h"
 +
@@ -482804,6 +482915,11 @@ index 0000000..45aea06
 +  CHECK(original_candidate_current_);
 +  CHECK(!generation_.empty());
 +  snapshot_->public_suffix_list = std::string(kSemanticPublicSuffixList);
++  for (const auto& source : snapshot_->sources) {
++    if (source->builtin_compilation) {
++      builtin_source_digests_.emplace(source->id, source->sha256);
++    }
++  }
 +}
 +SemanticFilterBridge::~SemanticFilterBridge() {
 +  Retire("Semantic snapshot retired");
@@ -482864,11 +482980,48 @@ index 0000000..45aea06
 +    return;
 +  }
 +  auto value = base::JSONReader::Read(diagnostics, base::JSON_PARSE_RFC);
-+  if (!value || !value->is_list() || value->GetList().size() > 128 ||
-+      (accepted && !value->GetList().empty())) {
++  const auto* envelope = value ? value->GetIfDict() : nullptr;
++  const auto* errors = envelope ? envelope->FindList("errors") : nullptr;
++  const auto* warnings = envelope ? envelope->FindList("warnings") : nullptr;
++  if (!envelope || envelope->size() != 2 || !errors || !warnings ||
++      errors->size() > 128 || warnings->size() > 64 ||
++      (accepted && !errors->empty())) {
 +    Retire("Malformed semantic compilation diagnostics");
 +    return;
 +  }
++  std::map<std::string, bool> observed;
++  for (const auto& entry : *warnings) {
++    const auto* warning = entry.GetIfDict();
++    const auto* source = warning ? warning->FindString("sourceId") : nullptr;
++    const auto* sha = warning ? warning->FindString("sourceSha256") : nullptr;
++    const auto* digest = warning ? warning->FindString("diagnosticsSha256") : nullptr;
++    const auto count = warning ? warning->FindInt("rejectedCount") : std::nullopt;
++    const auto* samples = warning ? warning->FindList("samples") : nullptr;
++    const auto original = source ? builtin_source_digests_.find(*source)
++                                 : builtin_source_digests_.end();
++    if (!warning || warning->size() != 5 || !source || !sha || !digest ||
++        original == builtin_source_digests_.end() || original->second != *sha ||
++        !count || *count <= 0 || !samples || samples->empty() ||
++        samples->size() > 8 || samples->size() > static_cast<size_t>(*count) ||
++        digest->size() != 64 ||
++        digest->find_first_not_of("0123456789abcdef") != std::string::npos ||
++        !observed.emplace(*source, true).second) {
++      Retire("Malformed maintained-source rejection receipt");
++      return;
++    }
++    for (const auto& sample_value : *samples) {
++      const auto* sample = sample_value.GetIfDict();
++      const auto line = sample ? sample->FindInt("line") : std::nullopt;
++      const auto* code = sample ? sample->FindString("code") : nullptr;
++      const auto* message = sample ? sample->FindString("message") : nullptr;
++      if (!sample || sample->size() != 3 || !line || *line <= 0 || !code ||
++          code->empty() || code->size() > 64 || !message || message->size() > 2048) {
++        Retire("Malformed maintained-source rejection sample");
++        return;
++      }
++    }
++  }
++  compilation_warnings_ = warnings->Clone();
 +  // Publication remains the native caller's original owner/configuration
 +  // acceptance plus durable rename. This callback grants no Profile authority.
 +  compiled_ = accepted;
@@ -483071,10 +483224,10 @@ index 0000000..45aea06
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/semantic_filter_bridge.h b/chrome/browser/ui/aux/semantic_filter_bridge.h
 new file mode 100644
-index 0000000..b728e76
+index 0000000..10a2695
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic_filter_bridge.h
-@@ -0,0 +1,100 @@
+@@ -0,0 +1,105 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +#ifndef CHROME_BROWSER_UI_AUX_SEMANTIC_FILTER_BRIDGE_H_
 +#define CHROME_BROWSER_UI_AUX_SEMANTIC_FILTER_BRIDGE_H_
@@ -483122,6 +483275,9 @@ index 0000000..b728e76
 +               Reply reply);
 +  void Retire(const std::string& reason);
 +  bool AcceptProfileConfiguration();
++  const base::ListValue& compilation_warnings() const {
++    return compilation_warnings_;
++  }
 +  base::WeakPtr<SemanticFilterBridge> GetWeakPtr() {
 +    return weak_factory_.GetWeakPtr();
 +  }
@@ -483170,6 +483326,8 @@ index 0000000..b728e76
 +  uint64_t next_retirement_id_ = 1;
 +  bool initialized_ = false;
 +  bool compiled_ = false;
++  std::map<std::string, std::string> builtin_source_digests_;
++  base::ListValue compilation_warnings_;
 +  bool retired_ = false;
 +  base::WeakPtrFactory<SemanticFilterBridge> weak_factory_{this};
 +};
@@ -485041,10 +485199,10 @@ index 0000000..36232f5
 +#endif
 diff --git a/chrome/browser/ui/aux/semantic_filter_snapshot.cc b/chrome/browser/ui/aux/semantic_filter_snapshot.cc
 new file mode 100644
-index 0000000..cde17ee
+index 0000000..db91944
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic_filter_snapshot.cc
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,59 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +#include "chrome/browser/ui/aux/semantic_filter_snapshot.h"
 +
@@ -485093,6 +485251,8 @@ index 0000000..cde17ee
 +    auto value = chrome::mojom::SemanticFilterSource::New();
 +    value->id = source.id;
 +    value->text = source.text;
++    value->sha256 = source.sha256;
++    value->builtin_compilation = source.IsBuiltinCompilationSource();
 +    // Existing canonical MaintainedSource identity determines trust. A display
 +    // name, RPC bundled marker or arbitrary downloaded scriptlet never does.
 +    value->native_maintained = source.IsTrustedScriptletSource();
@@ -485621,16 +485781,18 @@ index 0000000..cd2718f
 +#endif
 diff --git a/chrome/browser/ui/aux/semantic_filter_ui.cc b/chrome/browser/ui/aux/semantic_filter_ui.cc
 new file mode 100644
-index 0000000..3a23f4c
+index 0000000..dcce04a
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic_filter_ui.cc
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,84 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +#include "chrome/browser/ui/aux/semantic_filter_ui.h"
 +
 +#include <string>
 +#include <utility>
 +
++#include "base/functional/bind.h"
++#include "base/memory/ref_counted_memory.h"
 +#include "chrome/browser/ui/aux/semantic_filter_document.h"
 +#include "chrome/common/aux_semantic_filter_resources.h"
 +#include "content/public/browser/web_contents.h"
@@ -485649,6 +485811,31 @@ index 0000000..3a23f4c
 +  for (const auto& resource : kSemanticFilterResources) {
 +    source->SetResourcePathToResponse(resource.path, resource.content);
 +  }
++  // Generated response maps are an optional renderer-loading optimization.
++  // Serve the same exact immutable resources for real browser navigation and
++  // subresource requests without depending on that feature being enabled.
++  source->SetRequestFilter(
++      base::BindRepeating([](const std::string& path) {
++        for (const auto& resource : kSemanticFilterResources) {
++          if (resource.path == path) {
++            return true;
++          }
++        }
++        return false;
++      }),
++      base::BindRepeating(
++          [](const std::string& path,
++             content::WebUIDataSource::GotDataCallback callback) {
++            for (const auto& resource : kSemanticFilterResources) {
++              if (resource.path == path) {
++                std::move(callback).Run(
++                    base::MakeRefCounted<base::RefCountedString>(
++                        std::string(resource.content)));
++                return;
++              }
++            }
++            std::move(callback).Run(nullptr);
++          }));
 +  using Directive = network::mojom::CSPDirectiveName;
 +  source->OverrideContentSecurityPolicy(Directive::DefaultSrc,
 +                                        "default-src 'none';");
@@ -485859,10 +486046,10 @@ index 3fe5f33..135cbd5 100644
  };
 diff --git a/chrome/common/aux_semantic_filters.mojom b/chrome/common/aux_semantic_filters.mojom
 new file mode 100644
-index 0000000..da4a2ce
+index 0000000..eff635e
 --- /dev/null
 +++ b/chrome/common/aux_semantic_filters.mojom
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,57 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +module chrome.mojom;
 +
@@ -485873,6 +486060,10 @@ index 0000000..da4a2ce
 +  string id;
 +  string text;
 +  bool native_maintained;
++  // Canonical builtin source identity controls parser diagnostics separately
++  // from trusted scriptlet permissions. Hash binds the exact source bytes.
++  bool builtin_compilation;
++  string sha256;
 +};
 +struct SemanticFilterSnapshot {
 +  string generation;
@@ -793481,3 +793672,24 @@ index 5c71583..0936a4b 100644
  #include "chrome/browser/ui/aux/credential_fill.h"
  #include "chrome/browser/ui/aux/cookie_import.h"
  #include "chrome/browser/ui/aux/organization_store.h"
+diff --git a/content/browser/data_url_loader_factory.h b/content/browser/data_url_loader_factory.h
+index 9fa3c53..9572cfb 100644
+--- a/content/browser/data_url_loader_factory.h
++++ b/content/browser/data_url_loader_factory.h
+@@ -6,6 +6,7 @@
+ #define CONTENT_BROWSER_DATA_URL_LOADER_FACTORY_H_
+ 
+ #include "base/memory/self_deleting.h"
++#include "content/common/content_export.h"
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+ #include "services/network/public/cpp/self_deleting_url_loader_factory.h"
+@@ -26,7 +27,7 @@ class DataURLLoaderFactory : public network::SelfDeletingURLLoaderFactory {
+   // that might be larger than the GURL serialization limit. The factory will
+   // check that the passed in url to CreateLoaderAndStart either matches or is
+   // empty (because it was truncated).
+-  static mojo::PendingRemote<network::mojom::URLLoaderFactory>
++  static CONTENT_EXPORT mojo::PendingRemote<network::mojom::URLLoaderFactory>
+   CreateForOneSpecificUrl(const GURL& url);
+ 
+   // Initializes a factory with a GURL, which is useful if this factory will

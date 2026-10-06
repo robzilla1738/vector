@@ -96,6 +96,7 @@ function fixture(
           sha256,
           bytes,
         })),
+        compilationWarnings: [],
         cosmeticBackend: "native_user_styles",
         phase: "document_start",
         futureDocuments: true,

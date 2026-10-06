@@ -64,6 +64,7 @@ it("requires review before adding a source and lets the user pause it", async ()
   api.filterLists.mockImplementation(async () => ({
     sources,
     backend: "ublock_origin",
+    compilationWarnings: [],
     cosmeticBackend: "native_user_styles",
   }));
   api.addFilterSource.mockImplementation(async () => {
@@ -94,6 +95,7 @@ it("states native unavailability and disables filter mutations", async () => {
   api.filterLists.mockResolvedValue({
     sources: [],
     backend: "unavailable",
+    compilationWarnings: [],
     cosmeticBackend: "unavailable",
   });
   await act(async () => root.render(<FilterListManager />));
@@ -107,6 +109,7 @@ it("offers full Standard and Hosts formats with truthful native scope", async ()
   api.filterLists.mockResolvedValue({
     sources: [],
     backend: "ublock_origin",
+    compilationWarnings: [],
     cosmeticBackend: "native_user_styles",
   });
   api.addFilterSource.mockResolvedValue([]);

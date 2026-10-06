@@ -707,3 +707,27 @@ diff --git a/chrome/utility/aux/firefox_profile_decoder.cc b/chrome/utility/aux/
    std::move(callback).Run(std::move(result));
  }
  }  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_discovery.cc b/chrome/browser/ui/aux/browser_profile_discovery.cc
+index 708fd7f..8ee9e97 100644
+--- a/chrome/browser/ui/aux/browser_profile_discovery.cc
++++ b/chrome/browser/ui/aux/browser_profile_discovery.cc
+@@ -136,9 +136,16 @@ DiscoverBrowserProfiles(
+             base::PathExists(detail.path.AppendASCII("sessionstore-backups").AppendASCII("recovery.baklz4"))) categories.push_back("tabs");
+         if (base::PathExists(detail.path.AppendASCII("extensions.json"))) categories.push_back("extensions");
+         if (categories.empty()) continue;
+-        found.push_back({"firefox", "Firefox", profile_id,
+-            BrowserProfileBrand::kChrome, detail.path, std::move(*anchor),
+-            std::move(categories), std::nullopt, {}, true, registration});
++        found.push_back({
++            .source_id = "firefox",
++            .label = "Firefox",
++            .profile_id = profile_id,
++            .brand = BrowserProfileBrand::kChrome,
++            .path = detail.path,
++            .anchor = std::move(*anchor),
++            .categories = std::move(categories),
++            .firefox_profile = true,
++            .registration_anchor = registration});
+       }
+     }
+   }

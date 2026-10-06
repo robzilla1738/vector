@@ -68,11 +68,30 @@ describe("host-neutral content blocking policy", () => {
           bytes: source.bytes,
         },
       ],
+      compilationWarnings: [],
       cosmeticBackend: "native_user_styles" as const,
       phase: "document_start" as const,
       futureDocuments: true as const,
     };
     expect(() => assertContentBlockReceipt(snapshot, receipt)).not.toThrow();
+    const warning = {
+      sourceId: source.id,
+      sourceSha256: source.sha256,
+      rejectedCount: 1,
+      diagnosticsSha256: "d".repeat(64),
+      samples: [{ line: 2, code: "unsupported_filter", message: "Unsupported filter syntax" }],
+    };
+    expect(() =>
+      assertContentBlockReceipt(snapshot, { ...receipt, compilationWarnings: [warning] }),
+    ).not.toThrow();
+    for (const mismatched of [
+      { ...warning, sourceId: "e".repeat(12) },
+      { ...warning, sourceSha256: "f".repeat(64) },
+    ])
+      expect(() =>
+        assertContentBlockReceipt(snapshot, { ...receipt, compilationWarnings: [mismatched] }),
+      ).toThrow(/attest/);
+
     for (const changed of [
       { ...receipt, profileId: "different" },
       { ...receipt, generation: 2 },
@@ -126,6 +145,7 @@ describe("host-neutral content blocking policy", () => {
       generation: 1,
       filterDigest: snapshot.filterDigest,
       sourceHeaders: [],
+      compilationWarnings: [],
       cosmeticBackend: "native_user_styles" as const,
       phase: "document_start" as const,
       futureDocuments: true as const,

@@ -25,6 +25,9 @@ export function FilterListManager() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const selected = status?.sources.find((source) => source.id === selectedId);
+  const compilationWarning = status?.compilationWarnings.find(
+    (warning) => warning.sourceId === selected?.id && warning.sourceSha256 === selected?.meta?.sha256,
+  );
   const unavailable = status?.backend === "unavailable";
 
   const refresh = async () => {
@@ -113,6 +116,23 @@ export function FilterListManager() {
                 <p {...staticFieldErrorProps} {...nativeStatusRoleProps}>
                   Last update: {selected.meta.error}. The previous copy remains available.
                 </p>
+              )}
+              {compilationWarning && (
+                <section aria-label="Filter compilation warnings" {...nativeStatusRoleProps}>
+                  <p {...staticFieldErrorProps}>
+                    uBlock Origin rejected {compilationWarning.rejectedCount.toLocaleString()} rules
+                    from this exact source copy. Those rules are not applied.
+                  </p>
+                  {compilationWarning.samples.length > 0 && (
+                    <ul>
+                      {compilationWarning.samples.map((sample, index) => (
+                        <li key={`${sample.line}:${sample.code}:${index}`}>
+                          Line {sample.line}: {sample.message} ({sample.code})
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
               )}
               <div {...staticRowProps}>
                 <button

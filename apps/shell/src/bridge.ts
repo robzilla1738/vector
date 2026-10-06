@@ -330,6 +330,7 @@ const stub: AuxBridge = {
     networkRules: 0,
     cosmeticRules: 0,
     backend: "unavailable",
+    compilationWarnings: [],
     cosmeticBackend: "unavailable",
   }),
   updateFilters: unavailable("Filter updates require Aux desktop"),

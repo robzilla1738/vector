@@ -856,10 +856,10 @@ index 0000000..f4dfa59
 +#endif
 diff --git a/chrome/browser/ui/aux/owned_headless_launcher.cc b/chrome/browser/ui/aux/owned_headless_launcher.cc
 new file mode 100644
-index 0000000..18480e1
+index 0000000..2117d96
 --- /dev/null
 +++ b/chrome/browser/ui/aux/owned_headless_launcher.cc
-@@ -0,0 +1,134 @@
+@@ -0,0 +1,144 @@
 +// Copyright 2026 The Aux Authors
 +// Fixed private spawn protocol. This executable never accepts a shell command,
 +// alternate argv, port, PID, process group or renderer-supplied launch options.
@@ -870,6 +870,9 @@ index 0000000..18480e1
 +#include <unistd.h>
 +
 +#include <cerrno>
++#include <span>
++
++#include "base/compiler_specific.h"
 +
 +#include "chrome/browser/ui/aux/owned_headless_protocol.h"
 +extern char** environ;
@@ -948,7 +951,14 @@ index 0000000..18480e1
 +}
 +}  // namespace
 +int main(int argc, char** argv) {
-+  if (argc != 2 || !argv || !argv[1] || argv[1][0] != '/' ||
++  if (argc != 2 || !argv) {
++    Fail(EINVAL);
++  }
++  // The process entry ABI supplies argc initialized argv elements. Admit only
++  // the fixed two-element protocol before constructing its bounded view.
++  const auto process_arguments = UNSAFE_BUFFERS(std::span(argv, size_t{2}));
++  char* const runtime = process_arguments[1];
++  if (!runtime || *runtime != '/' ||
 +      getsid(0) != getpid() || getpgrp() != getpid()) {
 +    Fail(EINVAL);
 +  }
@@ -989,9 +999,9 @@ index 0000000..18480e1
 +  char auth_env[] = "AUX_COPILOT_TOKEN";
 +  char log[] = "--log-level";
 +  char none[] = "none";
-+  char* arguments[] = {argv[1], headless, host, loopback, no_update, no_login,
++  char* arguments[] = {runtime, headless, host, loopback, no_update, no_login,
 +                       auth,    auth_env, log,  none,     nullptr};
-+  execve(argv[1], arguments, environ);
++  execve(runtime, arguments, environ);
 +  Fail(errno);
 +}
 diff --git a/chrome/browser/ui/aux/owned_headless_protocol.h b/chrome/browser/ui/aux/owned_headless_protocol.h
