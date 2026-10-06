@@ -3,7 +3,7 @@ import { act, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { Popover } from "./popover";
-import { useNativeDialog } from "./native-dialog";
+import { useNativeDialog } from "./dialog";
 
 it("returns nested composer focus past a nonmodal education dialog without stealing newer focus", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);

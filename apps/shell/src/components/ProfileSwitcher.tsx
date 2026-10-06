@@ -3,7 +3,7 @@ import { bridge, inNativeHost, type BrowserProfile } from "../bridge";
 import { errToast } from "../store";
 import { orderedProfiles } from "../features/profiles/profile-order";
 import { SPACE_COLORS } from "../workspace";
-import { useConfirm } from "../ui/confirm";
+import { useConfirm } from "../ui/dialog";
 import {
   shellIconBookmark,
   shellIconChromeSm,

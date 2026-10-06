@@ -1,11 +1,24 @@
 import { GlassMaterial } from "../components/GlassMaterial";
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { createPortal } from "react-dom";
 import { moveMenuFocus } from "../keyboard-list";
 import { positionContextMenu } from "../position-context-menu";
 import { requestStageReport } from "../stage-obstruction";
 import { availableControls, availableForFocus } from "./focus";
-import { useNativeDialog } from "./native-dialog";
+import { acquireFloatingSidebarLock } from "../floating-sidebar";
+import { ownsFocus } from "./focus";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "./native-attribute-props";
+import { staticButtonProps as auxClassButtonProps } from "./class-props";
 import "./dialog.css";
 
 interface BaseProps {
@@ -28,11 +41,22 @@ export function Dialog({
   initialFocusRef,
   kind = "dialog",
   descriptionId,
-}: BaseProps & { kind?: "dialog" | "alertdialog"; descriptionId?: string }) {
-  const ref = useRef<HTMLDialogElement>(null);
+  dialogRef,
+  id,
+  dismissOnSurfaceClick = false,
+}: BaseProps & {
+  kind?: "dialog" | "alertdialog";
+  descriptionId?: string;
+  dialogRef?: RefObject<HTMLDialogElement | null>;
+  id?: string;
+  dismissOnSurfaceClick?: boolean;
+}) {
+  const internalRef = useRef<HTMLDialogElement>(null);
+  const ref = dialogRef ?? internalRef;
   useNativeDialog(true, ref, returnFocus, initialFocusRef);
   return createPortal(
     <dialog
+      id={id}
       ref={ref}
       tabIndex={-1}
       role={kind}
@@ -52,6 +76,10 @@ export function Dialog({
       }}
       onClick={(event) => {
         if (event.target !== event.currentTarget) return;
+        if (dismissOnSurfaceClick) {
+          onClose();
+          return;
+        }
         const rect = event.currentTarget.getBoundingClientRect();
         if (
           event.clientX < rect.left ||
@@ -189,4 +217,199 @@ function focusOutsideMenu(trigger: HTMLElement | null | undefined, direction: 1 
   const index = candidates.indexOf(trigger);
   const next = index >= 0 ? candidates[index + direction] : null;
   (next ?? trigger).focus({ preventScroll: true });
+}
+
+const ownedDialogs = new Set<HTMLDialogElement>();
+const topModal = () => {
+  // Fallback DOMs can expose dialog.open without implementing the native top layer.
+  // Only ask the selector engine for native modal state when it advertises support.
+  const nativeModalState =
+    typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("selector(:modal)");
+  if (
+    nativeModalState &&
+    [...document.querySelectorAll<HTMLDialogElement>("dialog:modal")].some((item) => !ownedDialogs.has(item))
+  )
+    return null;
+  return [...ownedDialogs].findLast((item) => item.open && item.isConnected);
+};
+
+/** One lifecycle for native top-layer dialogs, menus and popovers. */
+export function useNativeDialog(
+  open: boolean,
+  ref: RefObject<HTMLDialogElement | null>,
+  returnFocus?: RefObject<HTMLElement | null>,
+  initialFocus?: RefObject<HTMLElement | null>,
+) {
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return;
+    const dialog = ref.current;
+    const previous = document.activeElement;
+    const target = returnFocus?.current ?? (previous instanceof HTMLElement ? previous : null);
+    const unlock = acquireFloatingSidebarLock("keep-current");
+    if (!dialog.open) {
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+    }
+    ownedDialogs.add(dialog);
+    const focusInside = (node = availableControls(dialog)[0] ?? dialog) =>
+      node.focus({ preventScroll: true });
+    let focused = document.activeElement;
+    const preferred = initialFocus?.current;
+    if (preferred && dialog.contains(preferred) && availableForFocus(preferred)) {
+      focusInside(preferred);
+    } else if (
+      !(focused instanceof HTMLElement) ||
+      !dialog.contains(focused) ||
+      !availableForFocus(focused)
+    ) {
+      // Native showModal normally chooses this itself. The fallback also covers
+      // a dialog with no controls and hosts without native modal focus support.
+      focusInside();
+    }
+    focused = document.activeElement;
+    const rememberFocus = () => {
+      focused = document.activeElement;
+    };
+    dialog.addEventListener("focusin", rememberFocus);
+    const observer = new MutationObserver(() => {
+      if (
+        dialog.open &&
+        focused &&
+        !focused.isConnected &&
+        document.activeElement === document.body &&
+        topModal() === dialog
+      )
+        focusInside();
+    });
+    observer.observe(dialog, { childList: true, subtree: true });
+    requestStageReport();
+    return () => {
+      observer.disconnect();
+      dialog.removeEventListener("focusin", rememberFocus);
+      const ownedFocus = ownsFocus(dialog);
+      if (typeof dialog.close === "function") dialog.close();
+      else dialog.removeAttribute("open");
+      ownedDialogs.delete(dialog);
+      unlock();
+      // A newly opened overlay may already own focus. Closing this one must not
+      // pull focus back behind it; otherwise return to the explicit/live opener.
+      // Deletions clean up before sibling DOM updates (including disabled state).
+      // Restore after the commit, then re-check availability and newer focus ownership.
+      if (ownedFocus && target)
+        queueMicrotask(() => {
+          if (!availableForFocus(target)) return;
+          const active = document.activeElement;
+          if (active !== document.body && active !== target && !dialog.contains(active)) return;
+          const remaining = topModal();
+          if (remaining !== null && (!remaining || remaining.contains(target)))
+            target.focus({ preventScroll: true });
+        });
+      requestAnimationFrame(requestStageReport);
+    };
+  }, [open, ref, returnFocus, initialFocus]);
+}
+
+export type ConfirmControls = {
+  confirmControl?(node: HTMLButtonElement | null, settle: () => void): void;
+  cancelControl?(node: HTMLButtonElement | null, settle: () => void): void;
+  onConfirm?(event: React.MouseEvent<HTMLButtonElement>): void;
+  onCancel?(event: React.MouseEvent<HTMLButtonElement>): void;
+};
+
+export type ConfirmOptions = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  cancelLabel?: string;
+  danger?: boolean;
+};
+
+export function AlertDialog({
+  options,
+  onConfirm,
+  onCancel,
+  controls,
+}: {
+  options: ConfirmOptions;
+  onConfirm(): void;
+  onCancel(): void;
+  controls?: ConfirmControls;
+}) {
+  const descriptionId = useId();
+  const cancel = useRef<HTMLButtonElement>(null);
+  return (
+    <Dialog
+      label={options.title}
+      kind="alertdialog"
+      descriptionId={descriptionId}
+      initialFocusRef={cancel}
+      onClose={onCancel}
+      className="ui-alert-dialog"
+    >
+      <h3>{options.title}</h3>
+      <p id={descriptionId}>{options.description}</p>
+      <div className="ui-alert-actions">
+        <button
+          ref={(node) => {
+            cancel.current = node;
+            controls?.cancelControl?.(node, onCancel);
+          }}
+          {...auxNativeButtonTypeProps}
+          {...auxClassButtonProps}
+          onClick={(event) => (controls?.onCancel ? controls.onCancel(event) : onCancel())}
+        >
+          {options.cancelLabel ?? "Cancel"}
+        </button>
+        <button
+          ref={(node) => controls?.confirmControl?.(node, onConfirm)}
+          {...auxNativeButtonTypeProps}
+          className={`btn ${options.danger ? "danger" : "primary"}`}
+          onClick={(event) => (controls?.onConfirm ? controls.onConfirm(event) : onConfirm())}
+        >
+          {options.confirmLabel}
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
+/** A single pending decision, settled on either action or component unmount. */
+export function useConfirm(controls?: ConfirmControls) {
+  const [request, setRequest] = useState<{
+    options: ConfirmOptions;
+    resolve(accepted: boolean): void;
+  } | null>(null);
+  const pending = useRef<((accepted: boolean) => void) | null>(null);
+  useEffect(
+    () => () => {
+      pending.current?.(false);
+      pending.current = null;
+    },
+    [],
+  );
+  const confirm = useCallback((request: ConfirmOptions) => {
+    if (pending.current) return Promise.resolve(false);
+    return new Promise<boolean>((resolve) => {
+      pending.current = resolve;
+      setRequest({ options: request, resolve });
+    });
+  }, []);
+  const settle = (original: (accepted: boolean) => void, accepted: boolean) => {
+    if (pending.current !== original) return;
+    const resolve = original;
+    pending.current = null;
+    setRequest(null);
+    resolve?.(accepted);
+  };
+  return {
+    confirm,
+    confirmation: request && (
+      <AlertDialog
+        options={request.options}
+        controls={controls}
+        onConfirm={() => settle(request.resolve, true)}
+        onCancel={() => settle(request.resolve, false)}
+      />
+    ),
+  };
 }

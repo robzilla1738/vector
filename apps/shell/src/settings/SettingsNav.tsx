@@ -1,6 +1,5 @@
-import { staticIconButtonProps } from "../ui/class-props";
+import { SearchField } from "../ui";
 import type { RefObject } from "react";
-import { shellIconClose, shellIconSearch } from "../ui/icons";
 import { moveListFocus } from "../keyboard-list";
 import { SectionRail } from "./SectionRail";
 import type { ConnectionTab } from "./routes";
@@ -59,36 +58,24 @@ export function SettingsNav({
         );
       }}
     >
-      <div className="settings-search-box">
-        {shellIconSearch}
-        <input
-          ref={searchInput}
-          aria-label="Search settings"
-          placeholder="Search settings…"
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.nativeEvent.isComposing || !searching) return;
-            if (event.key === "ArrowDown" || event.key === "Enter") {
-              event.preventDefault();
-              event.stopPropagation();
-              firstSearchResult.current?.focus();
-            }
-          }}
-        />
-        {query && (
-          <button
-            {...staticIconButtonProps}
-            aria-label="Clear settings search"
-            onClick={() => {
-              onQueryChange("");
-              searchInput.current?.focus();
-            }}
-          >
-            {shellIconClose}
-          </button>
-        )}
-      </div>
+      <SearchField
+        className="settings-search-box"
+        controlRef={searchInput}
+        label="Search settings"
+        placeholder="Search settings…"
+        value={query}
+        clearLabel="Clear settings search"
+        onClear={() => onQueryChange("")}
+        onChange={(event) => onQueryChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing || !searching) return;
+          if (event.key === "ArrowDown" || event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+            firstSearchResult.current?.focus();
+          }
+        }}
+      />
       <SectionRail
         category={category}
         connectionTab={connectionTab}

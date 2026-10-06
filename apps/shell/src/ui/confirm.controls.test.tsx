@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { useConfirm } from "./confirm";
+import { useConfirm } from "./dialog";
 let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
 const result = vi.fn();
 function Fixture() {

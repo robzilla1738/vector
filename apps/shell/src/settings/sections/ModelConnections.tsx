@@ -8,7 +8,7 @@ import {
   type ModelConnectionStatus,
 } from "@aux/contracts";
 import { ActionMenu } from "../../ui";
-import { useConfirm } from "../../ui/confirm";
+import { useConfirm } from "../../ui/dialog";
 import { SettingsField } from "../primitives";
 import { usePreferenceCommand } from "./preference-command";
 import {

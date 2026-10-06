@@ -9,10 +9,9 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { createPortal } from "react-dom";
 import { positionAnchoredPopover } from "../position-context-menu";
 import { requestStageReport } from "../stage-obstruction";
-import { useNativeDialog } from "./native-dialog";
+import { Dialog } from "./dialog";
 import "./popover.css";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "./native-attribute-props";
 
@@ -49,7 +48,6 @@ export function Popover({
     },
     [triggerControl, activate],
   );
-  useNativeDialog(open && !disabled, panel, button, initialFocusRef);
   useEffect(() => {
     if (disabled) setOpen(false);
   }, [disabled]);
@@ -88,44 +86,20 @@ export function Popover({
       >
         {trigger}
       </button>
-      {open &&
-        !disabled &&
-        createPortal(
-          <dialog
-            id={id}
-            ref={panel}
-            tabIndex={-1}
-            aria-modal="true"
-            className="anchored-panel ctx-menu"
-            aria-label={label}
-            onKeyDown={(event) => {
-              if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing) return;
-              event.preventDefault();
-              event.stopPropagation();
-              close();
-            }}
-            onCancel={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              close();
-            }}
-            onClick={(event) => {
-              if (event.target !== event.currentTarget) return;
-              const rect = event.currentTarget.getBoundingClientRect();
-              if (
-                event.clientX < rect.left ||
-                event.clientX > rect.right ||
-                event.clientY < rect.top ||
-                event.clientY > rect.bottom
-              )
-                close();
-            }}
-          >
-            <GlassMaterial />
-            {children(close)}
-          </dialog>,
-          document.body,
-        )}
+      {open && !disabled && (
+        <Dialog
+          id={id}
+          dialogRef={panel}
+          returnFocus={button}
+          initialFocusRef={initialFocusRef}
+          className="anchored-panel ctx-menu"
+          label={label}
+          onClose={close}
+        >
+          <GlassMaterial />
+          {children(close)}
+        </Dialog>
+      )}
     </>
   );
 }

@@ -2,14 +2,14 @@
   .ui-kbd {
     display: inline-flex;
     align-items: center;
-    min-height: 20px;
+    height: 18px;
     padding: 0 var(--space-1);
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-exact-sm);
     background: var(--surface-secondary);
     color: var(--ink-2);
     font: inherit;
-    font-size: var(--fs-xs);
+    font-size: 11px;
     white-space: nowrap;
   }
   .ui-input-group {
@@ -609,5 +609,41 @@
     font-size: var(--fs-sm);
     color: var(--ink-2);
     cursor: pointer;
+  }
+}
+
+@layer overrides {
+  :is(.btn, .icon-btn)[data-control-size="24"] {
+    --kit-control-height: 24px;
+  }
+  :is(.btn, .icon-btn)[data-control-size="28"] {
+    --kit-control-height: 28px;
+  }
+  :is(.btn, .icon-btn)[data-control-size="32"] {
+    --kit-control-height: 32px;
+  }
+  :is(.btn, .icon-btn)[data-control-size="36"] {
+    --kit-control-height: 36px;
+  }
+  :is(.btn, .icon-btn)[data-control-size] {
+    height: var(--kit-control-height);
+    min-height: var(--kit-control-height);
+  }
+  .icon-btn[data-control-size] {
+    width: var(--kit-control-height);
+    min-width: var(--kit-control-height);
+  }
+  .ui-search-field {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+  .ui-search-field > input {
+    flex: 1;
+    min-width: 0;
+  }
+  .ui-search-field > input::-webkit-search-cancel-button {
+    appearance: none;
   }
 }

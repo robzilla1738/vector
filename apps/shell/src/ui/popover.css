@@ -43,6 +43,7 @@
     font-size: var(--fs-sm);
   }
   .anchored-panel::backdrop {
+    backdrop-filter: none;
     background: transparent;
   }
   .anchored-panel header {

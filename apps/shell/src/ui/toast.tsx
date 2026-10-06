@@ -1,3 +1,4 @@
+import { IconButton } from "./index";
 import { GlassMaterial } from "../components/GlassMaterial";
 import { useEffect, useState } from "react";
 import { shellIconAlert, shellIconCheck, shellIconClose } from "./icons";
@@ -51,13 +52,14 @@ export function Toast({
           {action.secondary.label}
         </button>
       )}
-      <button
-        className="icon-btn xs toast-dismiss"
-        aria-label="Dismiss notification"
+      <IconButton
+        className="toast-dismiss"
+        size={24}
+        label="Dismiss notification"
         onClick={() => onDismiss(id)}
       >
         {shellIconClose}
-      </button>
+      </IconButton>
     </div>
   );
 }

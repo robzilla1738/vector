@@ -2,8 +2,8 @@ import { staticFieldErrorProps, staticFieldProps } from "../../ui/class-props";
 import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
+import { Dialog } from "../../ui/dialog";
 import type {
   Routine,
   RoutineInboxItem,
@@ -36,7 +36,6 @@ function CreateAutomationDialog({
   onClose: () => void;
   onCreated: (routine: Routine) => void;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskId, setTaskId] = useState("");
   const [title, setTitle] = useState("");
@@ -45,11 +44,6 @@ function CreateAutomationDialog({
   const [error, setError] = useState("");
   const [calendar, setCalendar] = useState<CalendarTriggerAccounts>({ status: "loading", choices: [] });
 
-  useEffect(() => {
-    const node = dialog.current;
-    node?.showModal();
-    return () => node?.close();
-  }, []);
   useEffect(() => {
     let live = true;
     void call("tasks.list", { workspaceId, limit: 500 })
@@ -169,13 +163,11 @@ function CreateAutomationDialog({
     }
   }
 
-  return createPortal(
-    <dialog
-      ref={dialog}
+  return (
+    <Dialog
       className="automation-create-dialog"
-      aria-label="Create automation"
-      onCancel={(event) => {
-        event.preventDefault();
+      label="Create automation"
+      onClose={() => {
         if (!busy) onClose();
       }}
     >
@@ -244,8 +236,7 @@ function CreateAutomationDialog({
       <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={onClose} disabled={busy}>
         Cancel
       </button>
-    </dialog>,
-    document.body,
+    </Dialog>
   );
 }
 

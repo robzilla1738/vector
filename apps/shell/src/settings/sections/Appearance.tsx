@@ -1,4 +1,5 @@
-import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
+import { Button, Segmented } from "../../ui";
+import { smallGhostButtonProps } from "../../ui/button-props";
 import { useState } from "react";
 import type { ShortcutOverrides } from "@aux/contracts";
 import { LayoutChoice } from "../../components/LayoutChoice";
@@ -8,26 +9,6 @@ import { UI_FONT_SIZES, readUiFontSize, writeUiFontSize, type UiFontSize } from 
 import { SettingsField, SettingsSection } from "../primitives";
 import { DefaultPageZoomSetting } from "./DefaultPageZoom";
 import { SidebarOptions } from "./SidebarOptions";
-
-function activateRadioOnArrow(event: React.KeyboardEvent<HTMLDivElement>) {
-  if (event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return;
-  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
-  const radios = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')].filter(
-    (radio) => !radio.disabled,
-  );
-  const index = radios.indexOf(event.target as HTMLButtonElement);
-  if (index < 0 || !radios.length) return;
-  event.preventDefault();
-  const backwards = event.key === "ArrowLeft" || event.key === "ArrowUp";
-  const next =
-    event.key === "Home"
-      ? 0
-      : event.key === "End"
-        ? radios.length - 1
-        : (index + (backwards ? -1 : 1) + radios.length) % radios.length;
-  radios[next]?.focus();
-  radios[next]?.click();
-}
 
 export function AppearanceSettings({
   active,
@@ -45,20 +26,16 @@ export function AppearanceSettings({
   return (
     <SettingsSection name="Appearance" className="appearance-preferences" hidden={!active}>
       <SettingsField compact label="Theme" description="Use light, dark or the system appearance.">
-        <div className="seg" role="radiogroup" aria-label="Theme" onKeyDown={activateRadioOnArrow}>
-          {(["system", "dark", "light"] as const).map((t) => (
-            <button
-              key={t}
-              role="radio"
-              aria-checked={theme === t}
-              tabIndex={theme === t ? 0 : -1}
-              className={theme === t ? "on" : ""}
-              onClick={() => void set({ theme: t })}
-            >
-              {t === "system" ? "System" : t === "dark" ? "Dark" : "Light"}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="Theme"
+          value={theme}
+          onChange={(theme) => void set({ theme })}
+          items={[
+            { value: "system", label: "System" },
+            { value: "dark", label: "Dark" },
+            { value: "light", label: "Light" },
+          ]}
+        />
       </SettingsField>
 
       <SettingsField
@@ -66,23 +43,15 @@ export function AppearanceSettings({
         label="Interface text"
         hint="Shell type size only. Does not change website zoom or the html root font size."
       >
-        <div className="seg" role="radiogroup" aria-label="Interface text" onKeyDown={activateRadioOnArrow}>
-          {UI_FONT_SIZES.map((size) => (
-            <button
-              key={size}
-              role="radio"
-              aria-checked={uiFont === size}
-              tabIndex={uiFont === size ? 0 : -1}
-              className={uiFont === size ? "on" : ""}
-              onClick={() => {
-                writeUiFontSize(size);
-                setUiFont(size);
-              }}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="Interface text"
+          value={uiFont}
+          items={UI_FONT_SIZES.map((value) => ({ value, label: value }))}
+          onChange={(size) => {
+            writeUiFontSize(size);
+            setUiFont(size);
+          }}
+        />
       </SettingsField>
 
       <SettingsField
@@ -157,8 +126,8 @@ export function AppearanceSettings({
         label="Glass defaults"
         hint="Restore the native glass material, clear sidebar tint and 95% content opacity."
       >
-        <button
-          {...smallButtonProps}
+        <Button
+          size={28}
           onClick={() =>
             void set({
               sidebarAppearance: "translucent",
@@ -169,7 +138,7 @@ export function AppearanceSettings({
           }
         >
           Reset glass appearance
-        </button>
+        </Button>
       </SettingsField>
       <SettingsField
         compact

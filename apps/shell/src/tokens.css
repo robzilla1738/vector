@@ -200,8 +200,8 @@
     --mask-fade: rgb(0 0 0 / 35%);
     --shadow-overlay-tint: rgb(0 0 0 / 20%);
     --shadow-soft-overlay-tint: rgb(0 0 0 / 13%);
-    --confirmation-backdrop: rgb(0 0 0 / 15%);
-    --dialog-backdrop: rgb(0 0 0 / 25%);
+    --dialog-backdrop: rgb(0 0 0 / 15%);
+    --blur-dialog: 4px;
     --toolbar-glass-dark: rgb(23 23 23 / 18%);
     --toolbar-ink-dark: rgb(255 255 255 / 85%);
     --toolbar-glass-light: rgb(255 255 255 / 18%);

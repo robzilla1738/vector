@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import { useConfirm } from "./confirm";
+import { useConfirm } from "./dialog";
 
 it("retains a full long Profile title and every consent detail, with Cancel focus and Escape refusal", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -72,7 +72,7 @@ it("retains a full long Profile title and every consent detail, with Cancel focu
 });
 
 it("applies the supplied anywhere-wrapping recipe only to full confirmation title and description", () => {
-  const css = readFileSync(resolve(process.cwd(), "apps/shell/src/ui/confirm.css"), "utf8");
+  const css = readFileSync(resolve(process.cwd(), "apps/shell/src/ui/dialog.css"), "utf8");
   const selector = css.match(/([^{}]+)\{\s*overflow-wrap:\s*anywhere;\s*\}/)![1]!.trim();
   const dialog = document.createElement("div");
   dialog.className = "ui-alert-dialog";

@@ -16,7 +16,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
-import { shellIconClose, shellIconFolder, shellIconMore } from "./icons";
+import { shellIconClose, shellIconFolder, shellIconMore, shellIconSearch } from "./icons";
 import { Menu } from "./dialog";
 import "./ui.css";
 import {
@@ -49,14 +49,130 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: "default" | "primary" | "ghost" | "danger";
-  size?: "default" | "small";
+  size?: "default" | "small" | 24 | 28 | 32 | 36;
 }) {
   return (
     <button
       {...props}
       type={type}
+      data-control-size={typeof size === "number" ? size : size === "small" ? 24 : 32}
       className={`btn${tone === "default" ? "" : ` ${tone}`}${size === "small" ? " sm" : ""} ${className}`.trim()}
     />
+  );
+}
+
+export function IconButton({
+  label,
+  size = 32,
+  className = "",
+  controlRef,
+  type = "button",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  label: string;
+  size?: 24 | 28 | 32 | 36;
+  controlRef?: (node: HTMLButtonElement | null) => void;
+}) {
+  return (
+    <button
+      {...props}
+      ref={controlRef}
+      type={type}
+      aria-label={label}
+      data-control-size={size}
+      className={`icon-btn ${className}`.trim()}
+    />
+  );
+}
+
+export function SearchField({
+  label,
+  className = "",
+  controlRef,
+  onClear,
+  clearLabel = "Clear search",
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
+  label: string;
+  controlRef?: RefObject<HTMLInputElement | null>;
+  onClear(): void;
+  clearLabel?: string;
+}) {
+  return (
+    <div className={`ui-search-field ${className}`.trim()}>
+      {shellIconSearch}
+      <input {...props} ref={controlRef} type="search" aria-label={label} />
+      {String(props.value ?? "").length > 0 && (
+        <IconButton
+          label={clearLabel}
+          size={32}
+          onClick={() => {
+            onClear();
+            controlRef?.current?.focus();
+          }}
+        >
+          {shellIconClose}
+        </IconButton>
+      )}
+    </div>
+  );
+}
+
+export function Segmented<T extends string | number>({
+  label,
+  value,
+  onChange,
+  items,
+}: {
+  label: string;
+  value: T;
+  onChange(value: T): void;
+  items: readonly { value: T; label: ReactNode; disabled?: boolean }[];
+}) {
+  const enabled = items.filter((item) => !item.disabled);
+  const stop = enabled.some((item) => item.value === value) ? value : enabled[0]?.value;
+  return (
+    <div
+      className="seg"
+      role="radiogroup"
+      aria-label={label}
+      onKeyDown={(event) => {
+        if (event.nativeEvent.isComposing || event.altKey || event.metaKey || event.ctrlKey || event.shiftKey)
+          return;
+        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+        const radios = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')].filter(
+          (node) => !node.disabled,
+        );
+        const index = radios.indexOf(event.target as HTMLButtonElement);
+        if (index < 0 || !radios.length) return;
+        const rtl = getComputedStyle(event.currentTarget).direction === "rtl";
+        const backward = event.key === "ArrowUp" || event.key === (rtl ? "ArrowRight" : "ArrowLeft");
+        const next =
+          event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? radios.length - 1
+              : (index + (backward ? -1 : 1) + radios.length) % radios.length;
+        event.preventDefault();
+        radios[next]?.focus();
+        radios[next]?.click();
+      }}
+    >
+      {items.map((item) => (
+        <button
+          key={item.value}
+          type="button"
+          role="radio"
+          aria-checked={item.value === value}
+          tabIndex={item.value === stop ? 0 : -1}
+          disabled={item.disabled}
+          className={item.value === value ? "on" : ""}
+          onClick={() => onChange(item.value)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
   );
 }
 

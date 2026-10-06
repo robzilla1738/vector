@@ -2,10 +2,10 @@
 import { act, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { ActionMenu, ScrollArea, Tabs } from "./index";
+import { ActionMenu, ScrollArea, Tabs, Segmented } from "./index";
 import { Dialog, Menu } from "./dialog";
 import { Popover } from "./popover";
-import { useConfirm } from "./confirm";
+import { useConfirm } from "./dialog";
 import { Tooltip } from "./tooltip";
 import { Toast } from "./toast";
 
@@ -371,4 +371,32 @@ it("ScrollArea only fades overflowing edges and exposes overflow as a keyboard s
   });
   expect(scroll.dataset.fadeBottom).toBeUndefined();
   expect(scroll.dataset.fadeTop).toBe("true");
+});
+
+it("uses one radio tab stop and skips disabled segments while keeping selection and focus together", async () => {
+  function Options() {
+    const [value, setValue] = useState("light");
+    return (
+      <Segmented<string>
+        label="Theme"
+        value={value}
+        onChange={setValue}
+        items={[
+          { value: "light", label: "Light" },
+          { value: "system", label: "System", disabled: true },
+          { value: "dark", label: "Dark" },
+        ]}
+      />
+    );
+  }
+  await act(async () => root.render(<Options />));
+  const radios = host.querySelectorAll<HTMLButtonElement>('[role="radio"]');
+  radios[0]!.focus();
+  await act(async () => key(radios[0]!, "ArrowRight"));
+  expect(document.activeElement).toBe(radios[2]);
+  expect(radios[2]!.getAttribute("aria-checked")).toBe("true");
+  expect([...radios].filter((node) => node.tabIndex === 0)).toEqual([radios[2]]);
+  host.querySelector<HTMLElement>('[role="radiogroup"]')!.style.direction = "rtl";
+  await act(async () => key(radios[2]!, "ArrowRight"));
+  expect(document.activeElement).toBe(radios[0]);
 });

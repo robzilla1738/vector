@@ -12,8 +12,7 @@ import { executeCommand } from "../commands";
 import { registerScopedControl } from "../scoped-control-commands";
 import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
 import { errToast } from "../store";
-import { createPortal } from "react-dom";
-import { useNativeDialog } from "../ui/native-dialog";
+import { Dialog } from "../ui/dialog";
 import { useDismissable } from "../use-dismissable";
 import { DetailPane } from "../ui";
 import { shellIconOpen, shellIconResult } from "../ui/icons";
@@ -41,7 +40,6 @@ export function SupportingContent({
   const [wide, setWide] = useState(false);
   const [expanded, setExpanded] = useState(initiallyExpanded);
   const [width, setWidth] = useState(320);
-  const dialog = useRef<HTMLDialogElement>(null);
   const overlay = !wide && expanded;
   const scope = useId();
   const open = useRef<HTMLButtonElement>(null),
@@ -150,7 +148,6 @@ export function SupportingContent({
     if (!current || owned()) setExpanded(false);
   };
   useDismissable(overlay, collapse);
-  useNativeDialog(overlay, dialog);
   const pane = viewer ? (
     <div className="supporting-viewer">{children}</div>
   ) : (
@@ -187,25 +184,16 @@ export function SupportingContent({
           <span>{title}</span>
           {shellIconOpen}
         </button>
-        {overlay &&
-          createPortal(
-            <dialog
-              ref={dialog}
-              tabIndex={-1}
-              className="supporting-dialog ctx-menu"
-              aria-label={title}
-              onCancel={(event) => {
-                event.preventDefault();
-                collapse();
-              }}
-              onClick={(event) => {
-                if (event.target === event.currentTarget) collapse();
-              }}
-            >
-              {pane}
-            </dialog>,
-            document.body,
-          )}
+        {overlay && (
+          <Dialog
+            className="supporting-dialog ctx-menu"
+            label={title}
+            onClose={collapse}
+            dismissOnSurfaceClick
+          >
+            {pane}
+          </Dialog>
+        )}
       </>
     );
   return (

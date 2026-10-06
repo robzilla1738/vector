@@ -9,7 +9,7 @@ import { call, useStore } from "../../store";
 import { guardCommandCompletion } from "../../command-completion";
 import { executeCommand } from "../../commands";
 import { registerScopedControl } from "../../scoped-control-commands";
-import { useConfirm } from "../../ui/confirm";
+import { useConfirm } from "../../ui/dialog";
 import { SettingsField } from "../primitives";
 import { MemoryPasteImport } from "../../components/MemoryPasteImport";
 import { MemoryRecoveryNotice } from "../../components/MemoryRecoveryNotice";
