@@ -3,7 +3,7 @@
  * with in-memory transports for tests. Chromium owns native surfaces;
  * the runtime owns execution authority.
  */
-import { toErrorPayload, AuxError } from "./errors.js";
+import { toErrorPayload, AuxError, AUX_ERROR_REGISTRY, type AuxErrorCode } from "./errors.js";
 
 export interface Transport {
   send(msg: unknown): void;
@@ -95,7 +95,15 @@ export class RpcChannel {
       this.pending.delete(f.id);
       clearTimeout(p.timer);
       if (f.error) {
-        p.reject(new AuxError((f.error.code as never) ?? "internal", f.error.message, f.error.detail));
+        const known =
+          typeof f.error.code === "string" &&
+          Object.hasOwn(AUX_ERROR_REGISTRY, f.error.code) &&
+          typeof f.error.message === "string";
+        p.reject(
+          known
+            ? new AuxError(f.error.code as AuxErrorCode, f.error.message, f.error.detail)
+            : new AuxError("internal", `${this.label}: invalid error response`),
+        );
       } else {
         p.resolve(f.result);
       }

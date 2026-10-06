@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { RpcChannel, memoryTransportPair, AuxError } from "@aux/contracts";
+import { RpcChannel, memoryTransportPair, AuxError, errorAdvice } from "@aux/contracts";
 
 describe("RpcChannel", () => {
   it("round-trips calls both directions", async () => {
@@ -22,6 +22,43 @@ describe("RpcChannel", () => {
     await expect(a.call("boom")).rejects.toMatchObject({
       code: "not_found",
       message: "The requested item was not found.",
+    });
+  });
+
+  it("refuses an unknown native fault as a serializable internal error", async () => {
+    const [local, native] = memoryTransportPair();
+    const caller = new RpcChannel(local, "native");
+    native.onMessage((message) => {
+      const { id } = message as { id: number };
+      native.send({ kind: "res", id, error: { code: "forbidden", message: "Original owner retired" } });
+    });
+    const fault = await caller.call("native.originalOwner").catch((error: unknown) => error);
+    expect(fault).toBeInstanceOf(AuxError);
+    expect(() => (fault as AuxError).toJSON()).not.toThrow();
+    expect((fault as AuxError).toJSON()).toMatchObject({ code: "internal" });
+  });
+
+  it("preserves unconfirmed native completion without advising a repeat", async () => {
+    const [local, native] = memoryTransportPair();
+    const caller = new RpcChannel(local, "native");
+    native.onMessage((message) => {
+      const { id } = message as { id: number };
+      native.send({
+        kind: "res",
+        id,
+        error: { code: "operation_uncertain", message: "Native acknowledgement was lost" },
+      });
+    });
+    const fault = await caller.call("native.acceptedOperation").catch((error: unknown) => error);
+    expect(fault).toBeInstanceOf(AuxError);
+    expect((fault as AuxError).toJSON()).toMatchObject({
+      code: "operation_uncertain",
+      errorId: "AUX-E6003",
+      message: "The operation was sent, but its completion is unconfirmed.",
+    });
+    expect(errorAdvice((fault as AuxError).code)).toEqual({
+      retryable: false,
+      hint: "reconcile the original operation; do not repeat the request",
     });
   });
 

@@ -16,6 +16,7 @@ export type AuxErrorCode =
   | "conflict"
   | "permission_denied"
   | "assertion_failed"
+  | "operation_uncertain"
   | "operation_not_found"
   | "recovery_stale"
   | "internal";
@@ -248,6 +249,16 @@ export const AUX_ERROR_REGISTRY = {
     "Observe and report the unmet condition.",
     "The expected result was not observed.",
   ),
+  operation_uncertain: errorDefinition(
+    6003,
+    "operation",
+    false,
+    [],
+    "browser",
+    "Review the original operation's status before starting another action.",
+    "Do not repeat the request. Its effects may have been accepted; reconcile the original operation first.",
+    "The operation was sent, but its completion is unconfirmed.",
+  ),
   operation_not_found: errorDefinition(
     6002,
     "operation",
@@ -371,6 +382,8 @@ export function errorAdvice(code: AuxErrorCode): { retryable: boolean; hint: str
       return { retryable: false, hint: "this feature is not enabled for this browser Profile" };
     case "cancelled":
       return { retryable: false, hint: null };
+    case "operation_uncertain":
+      return { retryable: false, hint: "reconcile the original operation; do not repeat the request" };
     case "recovery_stale":
       return {
         retryable: false,
