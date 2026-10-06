@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -59,7 +60,7 @@ it("keeps a confirmed reset successful when refreshing permissions fails", async
 it("shows a failed website data clear without claiming the data was removed", async () => {
   const initial = useStore.getState();
   useStore.setState({
-    pages: [{ pageId: "site", url: "https://example.com/path", backend: "aux" }] as never,
+    pages: normalizePages([{ pageId: "site", url: "https://example.com/path", backend: "aux" }] as never),
   });
   vi.spyOn(bridge, "sitePermissions").mockResolvedValue({});
   vi.spyOn(bridge, "siteDataCount").mockResolvedValue({ domain: "example.com", cookies: 1 });
@@ -89,7 +90,7 @@ it("shows a failed website data clear without claiming the data was removed", as
 it("previews a site cookie count and lets the user cancel without deletion", async () => {
   const initial = useStore.getState();
   useStore.setState({
-    pages: [{ pageId: "site", url: "https://example.com/path", backend: "aux" }] as never,
+    pages: normalizePages([{ pageId: "site", url: "https://example.com/path", backend: "aux" }] as never),
   });
   vi.spyOn(bridge, "sitePermissions").mockResolvedValue({});
   vi.spyOn(bridge, "siteDataCount").mockResolvedValue({ domain: "example.com", cookies: 2 });

@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -48,7 +49,7 @@ beforeEach(() => {
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
     toasts: [],
@@ -153,7 +154,7 @@ it("routes mounted tray preview, choice, removal and preview close through their
     await executeCommand("remove-conversation-image");
   });
   expect(host.querySelector(".attachment-chip")).toBeNull();
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(useStore.getState().runs).toEqual([]);
 });
 it.each(["resolve", "reject"])(

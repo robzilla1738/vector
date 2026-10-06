@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -49,7 +50,7 @@ beforeEach(() => {
     runs: [],
     pendingTurns: [],
     toasts: [],
-    pages: [],
+    pages: normalizePages([]),
     conversationDrafts: {},
     layout: {
       ...initial.layout,

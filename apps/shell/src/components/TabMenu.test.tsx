@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -39,7 +40,7 @@ it("reviews and applies an AI tab label, then restores the page title", async ()
     controller: "none",
     ownedByRuntime: false,
   } as PageTarget;
-  useStore.setState({ layout: emptyLayout(), pages: [page], activePageId: page.pageId });
+  useStore.setState({ layout: emptyLayout(), pages: normalizePages([page]), activePageId: page.pageId });
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "agent.tabName.suggest")
       return {
@@ -102,7 +103,7 @@ it("moves focus from destination search to the first matching Space", async () =
   } as PageTarget;
   const layout = emptyLayout();
   layout.spaces.push({ ...layout.spaces[0]!, id: "other", name: "Other" });
-  useStore.setState({ layout, pages: [page], activePageId: page.pageId });
+  useStore.setState({ layout, pages: normalizePages([page]), activePageId: page.pageId });
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);

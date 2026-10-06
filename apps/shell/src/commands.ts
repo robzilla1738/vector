@@ -1,3 +1,4 @@
+import { orderedPages } from "./store/pages";
 import {
   COMMANDS,
   SCOPED_COMMANDS,
@@ -36,7 +37,7 @@ const defaultSwitcher = createTabSwitcher();
 const takingPageControl = new Map<string, Promise<unknown>>();
 function controlledPage(st: StoreState, { payload }: CommandContext, returning: boolean): string {
   const pageId = payload && "pageId" in payload ? payload.pageId : st.activePageId;
-  const page = st.pages.find((item) => item.pageId === pageId);
+  const page = st.pages.byId[pageId ?? ""];
   if (
     !page ||
     page.pageId !== st.activePageId ||
@@ -71,7 +72,7 @@ function findAgain(st: StoreState, forward: boolean) {
   if (st.findText) return st.find(st.findText, true, forward);
 }
 function activateOrdinal(st: StoreState, n: number) {
-  const tabs = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId);
+  const tabs = tabsInSpace(st.layout, orderedPages(st.pages), st.layout.activeSpaceId);
   const page = n === 9 ? tabs.at(-1) : tabs[n - 1];
   if (page) return st.activate(page.pageId);
 }
@@ -81,7 +82,7 @@ function switchSpaceOrdinal(st: StoreState, n: number) {
 }
 function cycleTab(st: StoreState, direction: 1 | -1, context: CommandContext) {
   const page = (context.tabSwitcher ?? defaultSwitcher)(
-    tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId),
+    tabsInSpace(st.layout, orderedPages(st.pages), st.layout.activeSpaceId),
     st.activePageId,
     direction,
     (st.settings.tabSwitcherOrder as TabSwitcherOrder | undefined) ?? "sidebar",
@@ -91,7 +92,7 @@ function cycleTab(st: StoreState, direction: 1 | -1, context: CommandContext) {
 function bookmarkAll(st: StoreState) {
   const bookmarks = [
     ...new Map(
-      st.pages
+      orderedPages(st.pages)
         .filter((page) => isTab(page) && bookmarkWebUrl(page.url))
         .map((page) => [page.url, { url: page.url, title: page.title.slice(0, 1000) }]),
     ).values(),
@@ -275,7 +276,7 @@ export const COMMAND_ACTIONS = {
   "space-8": (st) => switchSpaceOrdinal(st, 8),
   "space-9": (st) => switchSpaceOrdinal(st, 9),
   "copy-url": (st) => {
-    const page = st.pages.find((page) => page.pageId === st.activePageId);
+    const page = st.pages.byId[st.activePageId ?? ""];
     if (page) return navigator.clipboard.writeText(page.url).then(() => st.toast("Link copied"));
   },
   "new-chat": (st) => {
@@ -326,7 +327,7 @@ export const COMMAND_ACTIONS = {
   devtools: (st) => st.activePageId && bridge.devTools(st.activePageId),
   "inspect-element": (st) => st.activePageId && bridge.devTools(st.activePageId, "inspect"),
   "view-source": (st) => {
-    const p = st.pages.find((x) => x.pageId === st.activePageId);
+    const p = st.pages.byId[st.activePageId ?? ""];
     if (p?.url.startsWith("http")) void st.navigatePage(p.pageId, `view-source:${p.url}`).catch(errToast);
   },
   back: (st, context) =>
@@ -344,7 +345,7 @@ export const COMMAND_ACTIONS = {
   history: (st) => st.setOverlay("history"),
   downloads: (st) => st.setOverlay("downloads"),
   bookmark: (st) => {
-    const p = st.pages.find((x) => x.pageId === st.activePageId);
+    const p = st.pages.byId[st.activePageId ?? ""];
     if (!p || !isTab(p) || !bookmarkWebUrl(p.url)) return;
     void st.toggleBookmark(p.url, p.title).catch(errToast);
   },

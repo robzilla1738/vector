@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -29,7 +30,7 @@ beforeEach(() => {
   bridge.windowKind = "normal";
   bridge.privateMode = false;
   useStore.setState(
-    { ...initial, settings: { homeEntryMode: "search" }, pages: [], runs: [], toasts: [] },
+    { ...initial, settings: { homeEntryMode: "search" }, pages: normalizePages([]), runs: [], toasts: [] },
     true,
   );
   vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);

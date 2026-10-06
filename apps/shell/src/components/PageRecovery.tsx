@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { errorMessage } from "../error-message";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { PageTarget } from "@aux/contracts";
@@ -49,7 +50,7 @@ export function PageRecovery({ page }: { page: PageTarget }) {
         return false;
       }
       const state = useStore.getState();
-      const matches = state.pages.filter((item) => item.pageId === page.pageId);
+      const matches = orderedPages(state.pages).filter((item) => item.pageId === page.pageId);
       const live = matches.length === 1 ? matches[0] : undefined;
       const valid =
         !!live &&

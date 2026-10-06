@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { bridge } from "./bridge";
@@ -18,7 +19,7 @@ it("ignores out-of-order, previous-tab and closed-search responses; clearing sto
     overlay: "find",
     findText: "",
     findMatches: null,
-    pages: [{ pageId: "first", documentEpoch: 1 } as PageTarget],
+    pages: normalizePages([{ pageId: "first", documentEpoch: 1 } as PageTarget]),
   });
   const first = useStore.getState().find("order");
   const second = useStore.getState().find("paid");

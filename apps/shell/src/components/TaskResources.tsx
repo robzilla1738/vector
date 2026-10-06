@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { memo, useId, useLayoutEffect, useMemo, useRef, useState, type ButtonHTMLAttributes } from "react";
@@ -32,7 +33,7 @@ function pageIdentity(page: PageTarget) {
   ]);
 }
 function pageCurrent(page: PageTarget, identity: string) {
-  const matches = useStore.getState().pages.filter((item) => item.pageId === page.pageId);
+  const matches = orderedPages(useStore.getState().pages).filter((item) => item.pageId === page.pageId);
   return (
     matches.length === 1 &&
     !matches[0]!.ownedByRuntime &&
@@ -158,7 +159,7 @@ const ResourceRow = memo(function ResourceRow({
     scopeId = useId();
   const page = useStore((state) =>
     resource.kind === "page"
-      ? state.pages.find(
+      ? orderedPages(state.pages).find(
           (item) =>
             item.pageId === resource.locator && item.viewStatus !== "detached" && !item.ownedByRuntime,
         )
@@ -224,7 +225,7 @@ const ResourceRow = memo(function ResourceRow({
       }
     }
     if (!href) throw new Error("Choose the original resource URL.");
-    const existing = state.pages.find(
+    const existing = orderedPages(state.pages).find(
       (item) => item.url === href && !item.ownedByRuntime && item.viewStatus !== "detached",
     );
     const existingIdentity = existing ? pageIdentity(existing) : null;
@@ -349,7 +350,7 @@ export function TaskResources({
   attached: boolean;
   update: (resources: Resource[]) => Promise<boolean>;
 }) {
-  const activePage = useStore((state) => state.pages.find((page) => page.pageId === activePageId));
+  const activePage = useStore((state) => state.pages.byId[activePageId ?? ""]);
   const activeIdentity = activePage ? pageIdentity(activePage) : null;
   const connected = useStore((state) => state.connected),
     windowId = bridge.windowId,

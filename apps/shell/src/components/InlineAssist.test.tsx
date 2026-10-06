@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -45,7 +46,7 @@ it("cancels a late capture and discards its field text when the preference chang
     controller: "none",
     ownedByRuntime: false,
   } as PageTarget;
-  useStore.setState({ settings: {}, pages: [page], activePageId: page.pageId });
+  useStore.setState({ settings: {}, pages: normalizePages([page]), activePageId: page.pageId });
   let resolve!: (value: unknown) => void;
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation((method) =>
     method === "agent.inlineAssist.capture"
@@ -88,7 +89,7 @@ it("shows the source and a reviewed draft before applying text to the page", asy
     controller: "none",
     ownedByRuntime: false,
   } as PageTarget;
-  useStore.setState({ pages: [page], activePageId: page.pageId, overlay: "inline-assist" });
+  useStore.setState({ pages: normalizePages([page]), activePageId: page.pageId, overlay: "inline-assist" });
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "agent.inlineAssist.capture")
       return {

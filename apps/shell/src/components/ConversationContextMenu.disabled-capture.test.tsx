@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { act } from "react";
@@ -47,7 +48,7 @@ beforeEach(() => {
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
   });
@@ -126,7 +127,7 @@ it("distinguishes unavailable page capture from enabled attachments in the real 
   await act(async () => capture.click());
   expect(dialog.open).toBe(true);
   expect(input.value).toBe("Original page-free question");
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(bridge.invoke).not.toHaveBeenCalledWith("images.capture", expect.anything());
   await act(async () => dialog.dispatchEvent(new Event("cancel", { bubbles: false, cancelable: true })));
   expect(document.activeElement).toBe(opener);

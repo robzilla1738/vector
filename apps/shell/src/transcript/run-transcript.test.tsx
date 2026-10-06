@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -362,7 +363,7 @@ it("shows one failure explanation with recorded technical detail collapsed", asy
     ],
   };
   vi.spyOn(bridge, "invoke").mockResolvedValue({ run, steps: [], transcript: projection } as never);
-  useStore.setState({ runs: [run], steps: { [run.runId]: [] }, pages: [], prompt: null });
+  useStore.setState({ runs: [run], steps: { [run.runId]: [] }, pages: normalizePages([]), prompt: null });
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);

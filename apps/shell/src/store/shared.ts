@@ -1,3 +1,4 @@
+import { orderedPages, putPage, removePage, type PageCollection } from "./pages";
 import type { MethodName, MethodResult, RpcArgs, PageTarget, TabCommand, TabRecord } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { CLOSED_TAB_LIMIT } from "../closed-tabs";
@@ -47,19 +48,18 @@ export const sameValue = (a: unknown, b: unknown) =>
   (!!a && !!b && typeof a === "object" && typeof b === "object" && JSON.stringify(a) === JSON.stringify(b));
 
 /** Shallow-merge fields into one page; the same state when nothing changes. */
-export function patchPage<S extends { pages: PageTarget[] }>(
+export function patchPage<S extends { pages: PageCollection }>(
   st: S,
   pageId: string,
   fields: Partial<PageTarget>,
-): S | { pages: PageTarget[] } {
-  const index = st.pages.findIndex((p) => p.pageId === pageId);
-  const page = index >= 0 ? st.pages[index]! : undefined;
+): S | { pages: PageCollection } {
+  const page = st.pages.byId[pageId];
   if (
     !page ||
     Object.entries(fields).every(([key, value]) => sameValue(page[key as keyof PageTarget], value))
   )
     return st;
-  return { pages: st.pages.with(index, { ...page, ...fields }) };
+  return { pages: putPage(st.pages, { ...page, ...fields }) };
 }
 
 /** Typed runtime call — params and result follow the contracts' MethodSchemas/ResultSchemas. */
@@ -157,7 +157,7 @@ export const syncCatalogOrder = (order: string[], pages: PageTarget[], catalogVe
 export function applyRemoval(st: Workspace, id: string, activeHint: string | null) {
   const group = closingGroups.get(id);
   closingGroups.delete(id);
-  const gone = st.pages.find((p) => p.pageId === id);
+  const gone = st.pages.byId[id ?? ""];
   const closedTabs =
     gone &&
     isTab(gone) &&
@@ -185,7 +185,8 @@ export function applyRemoval(st: Workspace, id: string, activeHint: string | nul
   const previewVersion = forgetPreview(id) ? st.previewVersion + 1 : st.previewVersion;
   const zoomLevels = { ...st.zoomLevels };
   delete zoomLevels[id];
-  const pages = st.pages.filter((p) => p.pageId !== id);
+  const collection = removePage(st.pages, id);
+  const pages = orderedPages(collection);
   // closing the active tab focuses its neighbour, like every browser
   let activePageId = st.activePageId;
   let activateNext: string | undefined;
@@ -198,7 +199,9 @@ export function applyRemoval(st: Workspace, id: string, activeHint: string | nul
     ) {
       activePageId = activeHint;
     } else {
-      const visible = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId).map((page) => page.pageId);
+      const visible = tabsInSpace(st.layout, orderedPages(st.pages), st.layout.activeSpaceId).map(
+        (page) => page.pageId,
+      );
       const order = visible.filter((pageId) => pageId !== id);
       const idx = visible.indexOf(id);
       activePageId = order[Math.min(Math.max(idx, 0), order.length - 1)] ?? order[order.length - 1] ?? null;
@@ -209,7 +212,7 @@ export function applyRemoval(st: Workspace, id: string, activeHint: string | nul
   persistLayout(layout);
   return {
     next: {
-      pages,
+      pages: collection,
       closedTabs,
       previewVersion,
       zoomLevels,

@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -70,7 +71,7 @@ it("keeps reading-list controls current when one saved page changes", async () =
   };
   useStore.setState({
     bookmarks: [first, second],
-    pages: [makePage(0, { pageId: "reading-page", url: first.url })],
+    pages: normalizePages([makePage(0, { pageId: "reading-page", url: first.url })]),
   });
   await act(async () => root.render(<Library initialView="reading" />));
   expect(host.querySelector('[aria-label="Mark First reading page read"]')).not.toBeNull();
@@ -91,7 +92,7 @@ it("closes Library when a bookmark opens in Peek", async () => {
     overlay: "bookmarks",
     openBackgroundTab: async (url, _space, _reuse, id) => {
       const page = makePage(0, { pageId: id!, url });
-      useStore.setState({ pages: [page] });
+      useStore.setState({ pages: normalizePages([page]) });
       return page;
     },
   });

@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticSmallIconButtonProps, staticFieldInputProps, staticIconButtonProps } from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
@@ -142,7 +143,9 @@ const SavedPageRow = memo(function SavedPageRow({
   const item = useStore.getState().bookmarks[position];
   const offlinePage = useStore((state) =>
     view === "reading"
-      ? state.pages.find((page) => page.url === item?.url && page.backend === "aux" && !page.ownedByRuntime)
+      ? orderedPages(state.pages).find(
+          (page) => page.url === item?.url && page.backend === "aux" && !page.ownedByRuntime,
+        )
       : undefined,
   );
   if (!item || bookmarkKey(item) !== itemKey) return null;
@@ -247,11 +250,9 @@ const SavedPageRow = memo(function SavedPageRow({
                 aria-label={`${item.offline ? "Refresh" : "Save"} offline copy of ${title}`}
                 onClick={() =>
                   void action(async () => {
-                    const page = useStore
-                      .getState()
-                      .pages.find(
-                        (page) => page.url === item.url && page.backend === "aux" && !page.ownedByRuntime,
-                      );
+                    const page = orderedPages(useStore.getState().pages).find(
+                      (page) => page.url === item.url && page.backend === "aux" && !page.ownedByRuntime,
+                    );
                     if (!page) return;
                     const article = await readReaderArticle(page.pageId);
                     await call("bookmarks.offline.set", { url: item.url, article: JSON.stringify(article) });
@@ -421,7 +422,7 @@ export function Library({
     ),
   );
   const bookmarks = useStore.getState().bookmarks;
-  const active = useStore((s) => s.pages.find((page) => page.pageId === s.activePageId));
+  const active = useStore((s) => s.pages.byId[s.activePageId ?? ""]);
   const [view, setView] = useState<View>(initialView);
   const [query, setQuery] = useState("");
   const [folders, setFolders] = useState<string[][]>([]);
@@ -709,7 +710,7 @@ export function Library({
           });
           return;
         }
-        const existing = state.pages.find(
+        const existing = orderedPages(state.pages).find(
           (page) =>
             page.url === item.url &&
             !page.ownedByRuntime &&

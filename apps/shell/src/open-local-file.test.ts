@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import type { PageTarget } from "@aux/contracts";
@@ -21,11 +22,11 @@ it("opens the chosen file separately and preserves newer browsing during the dia
   const opened = { pageId: "file", url: "file:///tmp/report%23one.pdf" } as PageTarget;
   const activate = vi.fn();
   const open = vi.fn(async () => {
-    useStore.setState({ pages: [original, opened] });
+    useStore.setState({ pages: normalizePages([original, opened]) });
     return opened;
   });
   useStore.setState({
-    pages: [original],
+    pages: normalizePages([original]),
     activePageId: original.pageId,
     mode: "focus",
     overlay: null,

@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticSmallIconButtonProps, staticFieldErrorProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
@@ -21,7 +22,7 @@ export function RunControls({ runId, compact = false }: { runId: string; compact
   const run = useStore((state) => state.runs.find((item) => item.runId === runId));
   const pages = useStore(
     useShallow((state) =>
-      state.pages.filter(
+      orderedPages(state.pages).filter(
         (page) => run?.pageIds.includes(page.pageId) || page.agentIsolation?.runId === runId,
       ),
     ),
@@ -104,7 +105,7 @@ export function RunControls({ runId, compact = false }: { runId: string; compact
     commandRegistration.current = element
       ? registerRunControlCommands(element, runId, (command, originalEvent) => {
           const state = useStore.getState();
-          const currentPages = state.pages.filter(
+          const currentPages = orderedPages(state.pages).filter(
             (page) => run.pageIds.includes(page.pageId) || page.agentIsolation?.runId === runId,
           );
           if (

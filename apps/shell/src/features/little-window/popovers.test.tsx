@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -28,7 +29,7 @@ vi.mock("../../bridge", () => ({
 vi.mock("../../store", async () => {
   const { create } = await import("zustand");
   const useStore = create(() => ({
-    pages: [],
+    pages: normalizePages([] as never),
     activePageId: null,
     layout: { spaces: [] },
     downloads: [],
@@ -91,7 +92,12 @@ beforeEach(() => {
     createdAt: 1,
     lastActiveAt: 1,
   } as PageTarget;
-  useStore.setState({ pages: [page], activePageId: page.pageId, layout: emptyLayout(), downloads: [] });
+  useStore.setState({
+    pages: normalizePages([page]),
+    activePageId: page.pageId,
+    layout: emptyLayout(),
+    downloads: [],
+  });
 });
 afterEach(() => {
   HTMLElement.prototype.scrollIntoView = scrollIntoView;
@@ -255,10 +261,10 @@ it("publishes only committed Little selection/epoch revisions and fences a remou
     firstInstance = section.getAttribute("data-stage-instance");
     expect(Number(firstInstance)).toBeGreaterThan(0);
     expect(section.getAttribute("data-stage-selection-generation")).toBe("1");
-    const original = useStore.getState().pages[0]!;
-    await act(async () => useStore.setState({ pages: [{ ...original, title: "Renamed" }] }));
+    const original = orderedPages(useStore.getState().pages)[0]!;
+    await act(async () => useStore.setState({ pages: normalizePages([{ ...original, title: "Renamed" }]) }));
     expect(section.getAttribute("data-stage-selection-generation")).toBe("1");
-    await act(async () => useStore.setState({ pages: [{ ...original, documentEpoch: 2 }] }));
+    await act(async () => useStore.setState({ pages: normalizePages([{ ...original, documentEpoch: 2 }]) }));
     expect(section.getAttribute("data-stage-selection-generation")).toBe("2");
     await act(async () => useStore.setState({ activePageId: null }));
     expect(section.getAttribute("data-stage-selection-generation")).toBe("3");

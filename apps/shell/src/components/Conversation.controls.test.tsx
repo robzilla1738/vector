@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -39,7 +40,7 @@ beforeEach(() => {
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
     toasts: [],
@@ -120,7 +121,7 @@ it("retries genuine failed history through its registered original button", asyn
   await act(async () => retry.click());
   expect(attempts).toBe(2);
   expect(host.textContent).not.toContain("Original history failure");
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
 });
 it("retires a held history error across committed chat A to B to A", async () => {
   let reject!: (reason: Error) => void;
@@ -272,7 +273,7 @@ for (const heldMethod of ["runs.list", "conversations.images.get"] as const) {
       expect(host.textContent).not.toContain("Retired original async diagnostic");
       expect(host.textContent).toContain("Other original diagnostic");
       expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("Original retained question");
-      expect(useStore.getState().pages).toEqual([]);
+      expect(orderedPages(useStore.getState().pages)).toEqual([]);
       expect(useStore.getState().toasts).toEqual([]);
     } finally {
       bridge.windowId = original;
@@ -327,6 +328,6 @@ it("opens the original Home conversation through the scoped action while closing
   expect(useStore.getState().conversationId).toBe("a");
   expect(useStore.getState().mode).toBe("conversation");
   expect(useStore.getState().conversationDrafts["chat:a"]).toBe("Original Home reply");
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(vi.mocked(bridge.invoke).mock.calls.filter(([method]) => method === "runs.start")).toEqual([]);
 });

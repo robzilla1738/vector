@@ -1,3 +1,4 @@
+import { normalizePages } from "../../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -65,7 +66,7 @@ it("removes the native guest for a working remote card and restores the same gue
   fixture.enabled = true;
   fixture.resolve.mockResolvedValue("existing-native-content");
   fixture.state = {
-    pages: [page("local", "own"), page("remote", "other", "agent")],
+    pages: normalizePages([page("local", "own"), page("remote", "other", "agent")] as never),
     activePageId: "local",
     layout: emptyLayout(),
     mode: "focus",

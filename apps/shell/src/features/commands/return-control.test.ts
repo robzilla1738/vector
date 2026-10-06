@@ -1,3 +1,4 @@
+import { normalizePages } from "../../store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { COMMANDS, type PageTarget } from "@aux/contracts";
@@ -30,7 +31,7 @@ it("routes the remapped Return control chord to the original active person-held 
   vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
   const returnControl = vi.fn().mockResolvedValue(undefined);
   useStore.setState({
-    pages: [page],
+    pages: normalizePages([page]),
     activePageId: page.pageId,
     returnControl,
     settings: {
@@ -51,7 +52,7 @@ it("awaits the existing native Return control operation without granting authori
         acknowledge = resolve;
       }),
   );
-  useStore.setState({ pages: [page], activePageId: page.pageId, returnControl });
+  useStore.setState({ pages: normalizePages([page]), activePageId: page.pageId, returnControl });
   let completed = false;
   const operation = executeCommand("return-agent-control", { payload: { pageId: page.pageId } }).then(() => {
     completed = true;
@@ -73,7 +74,7 @@ it("refuses changed, missing, non-person and detached pages before the native op
     { pages: [{ ...page, viewStatus: "detached" as const }], activePageId: page.pageId },
     { pages: [{ ...page, viewStatus: "crashed" as const }], activePageId: page.pageId },
   ]) {
-    useStore.setState({ ...state, returnControl });
+    useStore.setState({ ...state, pages: normalizePages(state.pages), returnControl });
     await expect(
       executeCommand("return-agent-control", { payload: { pageId: page.pageId } }),
     ).rejects.toThrow(/selected page changed/);
@@ -90,7 +91,7 @@ it("registers Take control and suppresses duplicate pending native requests", as
         acknowledge = resolve;
       }),
   );
-  useStore.setState({ pages: [{ ...page, controller: "agent" }], activePageId: page.pageId });
+  useStore.setState({ pages: normalizePages([{ ...page, controller: "agent" }]), activePageId: page.pageId });
   const operation = executeCommand("take-page-control", { payload: { pageId: page.pageId } });
   let duplicateCompleted = false;
   const duplicate = executeCommand("take-page-control", { payload: { pageId: page.pageId } }).then(() => {
@@ -109,7 +110,7 @@ it("registers Take control and suppresses duplicate pending native requests", as
 it("refuses Take control of a missing or person-held page before native ingress", async () => {
   vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
   const invoke = vi.spyOn(bridge, "invoke");
-  useStore.setState({ pages: [page], activePageId: page.pageId });
+  useStore.setState({ pages: normalizePages([page]), activePageId: page.pageId });
   await expect(executeCommand("take-page-control")).rejects.toThrow(/selected page changed/);
   expect(invoke).not.toHaveBeenCalled();
 });
@@ -119,7 +120,10 @@ it("releases the pending Take control guard after the original native refusal", 
     .spyOn(bridge, "invoke")
     .mockRejectedValueOnce(new Error("Original native refusal"))
     .mockResolvedValue(page);
-  useStore.setState({ pages: [{ ...page, controller: "external" }], activePageId: page.pageId });
+  useStore.setState({
+    pages: normalizePages([{ ...page, controller: "external" }]),
+    activePageId: page.pageId,
+  });
   await expect(executeCommand("take-page-control")).rejects.toThrow("Original native refusal");
   await executeCommand("take-page-control");
   expect(invoke).toHaveBeenCalledTimes(2);

@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticMenuItemProps } from "../ui/class-props";
 import { useRef } from "react";
 import { Menu } from "../ui";
@@ -22,7 +23,7 @@ export function PinMenu({
   onClose: () => void;
 }) {
   const pinnedApps = useFeature("pinnedApps");
-  const page = useStore((state) => pinnedPage(pin, state.pages));
+  const page = useStore((state) => pinnedPage(pin, orderedPages(state.pages)));
   const pins = useStore((state) => state.layout.pins[spaceId]);
   const index = pins?.findIndex((item) => item.url === pin.url) ?? -1;
   const trigger = useRef(document.activeElement as HTMLElement | null);

@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -82,7 +83,7 @@ function source() {
   useStore.setState({
     runs: [run],
     steps: { [run.runId]: [] },
-    pages: [],
+    pages: normalizePages([] as never),
     connected: true,
     prompt: null,
     pendingTurns: [],

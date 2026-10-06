@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -23,7 +24,7 @@ afterEach(() => {
 it("shows local history while slower saved-work sources are still pending", async () => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   useStore.setState({
-    pages: [],
+    pages: normalizePages([] as never),
     activePageId: null,
     bookmarks: [],
     closedTabs: [],
@@ -76,7 +77,7 @@ it("shows local history while slower saved-work sources are still pending", asyn
 
 it("binds registered command rows to the current surface and query", async () => {
   useStore.setState({
-    pages: [],
+    pages: normalizePages([] as never),
     activePageId: null,
     bookmarks: [],
     closedTabs: [],

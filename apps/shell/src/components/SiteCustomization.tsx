@@ -25,7 +25,7 @@ function pageOrigin(url: string | null | undefined): string | null {
 }
 
 export function SiteCustomization() {
-  const page = useStore((state) => state.pages.find((item) => item.pageId === state.activePageId));
+  const page = useStore((state) => state.pages.byId[state.activePageId ?? ""]);
   const setOverlay = useStore((state) => state.setOverlay);
   const origin = pageOrigin(page?.url);
   const pageId = page?.pageId;
@@ -43,7 +43,7 @@ export function SiteCustomization() {
   const close = () => setOverlay(null);
   const isCurrent = () => {
     const state = useStore.getState();
-    const current = state.pages.find((item) => item.pageId === state.activePageId);
+    const current = state.pages.byId[state.activePageId ?? ""];
     return (
       state.overlay === "zap" &&
       current?.pageId === pageId &&

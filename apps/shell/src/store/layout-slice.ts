@@ -1,3 +1,4 @@
+import { orderedPages } from "./pages";
 import { normalizeTabName } from "@aux/contracts/tab-name-rule";
 import { bridge } from "../bridge";
 import { featureStage } from "../feature-availability";
@@ -35,9 +36,9 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
   // ---- layout ----
   reorderTabs: (spaceId, from, to) =>
     set((s) => {
-      const layout = reorderInSpace(s.layout, spaceId, from, to, s.pages);
+      const layout = reorderInSpace(s.layout, spaceId, from, to, orderedPages(s.pages));
       persistLayout(layout);
-      syncCatalogOrder(layout.order, s.pages, s.catalogVersion);
+      syncCatalogOrder(layout.order, orderedPages(s.pages), s.catalogVersion);
       return { layout };
     }),
   moveTabs: (pageIds, spaceId, folder, beforeId) => {
@@ -54,7 +55,7 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
       throw new Error("This folder is no longer available.");
     const ids = new Set(pageIds);
     const targets = [...ids].flatMap((id) => {
-      const page = state.pages.find((item) => item.pageId === id);
+      const page = state.pages.byId[id ?? ""];
       return page && !page.ownedByRuntime && page.viewStatus !== "detached" ? [page] : [];
     });
     let layout = state.layout;
@@ -85,19 +86,20 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
       state.activePageId &&
       targets.some((page) => page.pageId === state.activePageId) &&
       spaceId !== layout.activeSpaceId
-        ? (tabsInSpace(layout, state.pages, layout.activeSpaceId)[0]?.pageId ?? null)
+        ? (tabsInSpace(layout, orderedPages(state.pages), layout.activeSpaceId)[0]?.pageId ?? null)
         : state.activePageId;
     persistLayout(layout);
-    set({ layout, activePageId, splitPageId: splitForPage(layout, state.pages, activePageId) });
+    set({ layout, activePageId, splitPageId: splitForPage(layout, orderedPages(state.pages), activePageId) });
     if (!bridge.privateMode && featureStage("spaces") === "on")
       for (const page of targets) void bridge.bindTabSpace(page.pageId, spaceId).catch(errToast);
     if (activePageId && activePageId !== state.activePageId)
       void sendTabCommand(get, { kind: "activate", pageId: activePageId }).catch(errToast);
-    if (beforeId !== undefined) syncCatalogOrder(layout.order, state.pages, state.catalogVersion);
+    if (beforeId !== undefined)
+      syncCatalogOrder(layout.order, orderedPages(state.pages), state.catalogVersion);
   },
   setTabName: (pageId, expectedUrl, name) => {
     const state = get();
-    const page = state.pages.find((item) => item.pageId === pageId);
+    const page = state.pages.byId[pageId ?? ""];
     if (
       !page ||
       page.url !== expectedUrl ||
@@ -124,11 +126,11 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
       persistLayout(layout);
       const activePageId =
         s.activePageId === pageId && spaceId !== layout.activeSpaceId
-          ? (tabsInSpace(layout, s.pages, layout.activeSpaceId)[0]?.pageId ?? null)
+          ? (tabsInSpace(layout, orderedPages(s.pages), layout.activeSpaceId)[0]?.pageId ?? null)
           : s.activePageId;
       if (activePageId && activePageId !== s.activePageId)
         void sendTabCommand(get, { kind: "activate", pageId: activePageId }).catch(errToast);
-      return { layout, activePageId, splitPageId: splitForPage(layout, s.pages, activePageId) };
+      return { layout, activePageId, splitPageId: splitForPage(layout, orderedPages(s.pages), activePageId) };
     });
     if (!bridge.privateMode && featureStage("spaces") === "on")
       void bridge.bindTabSpace(pageId, spaceId).catch(errToast);
@@ -186,7 +188,7 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
   switchSpace: (spaceId) => {
     const state = get();
     let layout = setActiveSpace(rememberActiveTab(state.layout, state.activePageId), spaceId);
-    const tabs = tabsInSpace(layout, state.pages, layout.activeSpaceId);
+    const tabs = tabsInSpace(layout, orderedPages(state.pages), layout.activeSpaceId);
     const activePageId =
       tabs.find((page) => page.pageId === layout.activeTabs?.[layout.activeSpaceId])?.pageId ??
       tabs.find((page) => page.pageId === state.activePageId)?.pageId ??
@@ -197,7 +199,7 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
     set({
       layout,
       activePageId,
-      splitPageId: splitForPage(layout, state.pages, activePageId),
+      splitPageId: splitForPage(layout, orderedPages(state.pages), activePageId),
       mode: "focus",
       overlay: null,
     });
@@ -219,9 +221,9 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
     }),
   reorderGroup: (spaceId, folderId, from, to) =>
     set((s) => {
-      const layout = reorderGroup(s.layout, spaceId, folderId, from, to, s.pages);
+      const layout = reorderGroup(s.layout, spaceId, folderId, from, to, orderedPages(s.pages));
       persistLayout(layout);
-      syncCatalogOrder(layout.order, s.pages, s.catalogVersion);
+      syncCatalogOrder(layout.order, orderedPages(s.pages), s.catalogVersion);
       return { layout };
     }),
   addFolder: (name) => {

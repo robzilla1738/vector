@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -26,7 +27,7 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
     { width: 100, height: 30 },
   ] as unknown as DOMRectList);
-  useStore.setState({ pages, toasts: [] });
+  useStore.setState({ pages: normalizePages(pages), toasts: [] });
   sources.mockReset();
   host = document.createElement("div");
   document.body.append(host);
@@ -113,7 +114,7 @@ it("admits one operation synchronously when two choices are clicked before React
 it("a retired refresh cannot release the replacement refresh or replace another source", async () => {
   const prior = pages.map((page) => sourceRef(page));
   const current = pages.map((page) => ({ ...page, documentEpoch: 2, url: `${page.url}/updated` }));
-  useStore.setState({ pages: current });
+  useStore.setState({ pages: normalizePages(current) });
   const replies: ((value: typeof pages) => void)[] = [];
   vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "browser.recovery.list") return [];

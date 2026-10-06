@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -36,7 +37,7 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
     { width: 100 },
   ] as unknown as DOMRectList);
-  useStore.setState({ pages: [current], toasts: [] });
+  useStore.setState({ pages: normalizePages([current]), toasts: [] });
   sources.mockReset();
   host = document.createElement("div");
   document.body.append(host);

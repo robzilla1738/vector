@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -24,7 +25,7 @@ const mock = vi.hoisted(() => ({
   call: vi.fn(),
   state: {
     runs: [] as unknown[],
-    pages: [] as unknown[],
+    pages: { byId: {}, allIds: [] } as import("../store/pages").PageCollection,
     activePageId: "page",
     mode: "focus",
     overlay: null,
@@ -64,7 +65,9 @@ it("shows an inspectable takeover checkpoint and returns only the held page", as
       config: { checkpoint: { planBoundary: "paused", unresolvedEffects: ["intent"] } },
     },
   ];
-  mock.state.pages = [{ pageId: "page", controller: "human", viewStatus: "visible" }];
+  mock.state.pages = normalizePages([
+    { pageId: "page", controller: "human", viewStatus: "visible" },
+  ] as never);
   mock.call.mockResolvedValue({ pageId: "page", controller: "none" });
   const host = document.createElement("div");
   document.body.append(host);
@@ -105,7 +108,7 @@ it("keeps a stopped program checkpoint visible after the page is returned", asyn
       config: { checkpoint: { planBoundary: "takeover", unresolvedEffects: [] } },
     },
   ];
-  mock.state.pages = [{ pageId: "page", controller: "none", viewStatus: "visible" }];
+  mock.state.pages = normalizePages([{ pageId: "page", controller: "none", viewStatus: "visible" }] as never);
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
@@ -123,7 +126,7 @@ it("keeps a stopped program checkpoint visible after the page is returned", asyn
 it("explains separate sign-in and opens only this run’s controlled tab", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   mock.state.runs = [{ runId: "run", status: "running", pageIds: [] }];
-  mock.state.pages = [
+  mock.state.pages = normalizePages([
     { pageId: "owner", controller: "none", viewStatus: "visible" },
     { pageId: "other", controller: "none", viewStatus: "background", agentIsolation: { runId: "other" } },
     {
@@ -133,7 +136,7 @@ it("explains separate sign-in and opens only this run’s controlled tab", async
       viewStatus: "background",
       agentIsolation: { runId: "run" },
     },
-  ];
+  ] as never);
   mock.call.mockResolvedValue({ ok: true });
   const host = document.createElement("div");
   document.body.append(host);
@@ -159,7 +162,7 @@ it("explains separate sign-in and opens only this run’s controlled tab", async
 it("registered Stop supersedes an original pending pause without losing its control owner", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   mock.state.runs = [{ runId: "run", status: "running", pageIds: [] }];
-  mock.state.pages = [];
+  mock.state.pages = normalizePages([] as never);
   let finishPause!: (value: unknown) => void, finishStop!: (value: unknown) => void;
   mock.call.mockImplementation(
     (method) =>
@@ -191,7 +194,7 @@ it("registered Stop supersedes an original pending pause without losing its cont
 it("unmount retires registered run commands and cannot cancel a different run", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   mock.state.runs = [{ runId: "run", status: "running", pageIds: [] }];
-  mock.state.pages = [];
+  mock.state.pages = normalizePages([] as never);
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);

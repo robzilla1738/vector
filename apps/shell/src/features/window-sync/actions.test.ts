@@ -1,3 +1,4 @@
+import { normalizePages } from "../../store/pages";
 import { afterEach, expect, it, vi } from "vitest";
 import type { CommandContext } from "../registry";
 const host = vi.hoisted(() => ({ showTabWindow: vi.fn() }));
@@ -7,7 +8,7 @@ afterEach(() => vi.resetAllMocks());
 const current = (controller = "none", ownedByRuntime = false) =>
   ({
     activePageId: "selected",
-    pages: [
+    pages: normalizePages([
       {
         pageId: "selected",
         windowId: "owner",
@@ -16,7 +17,7 @@ const current = (controller = "none", ownedByRuntime = false) =>
         controller,
         ownedByRuntime,
       },
-    ],
+    ] as never),
     activate: vi.fn().mockResolvedValue(undefined),
   }) as unknown as CommandContext;
 it("uses the actual selected page for a remapped keyboard command and Show window never activates it", async () => {

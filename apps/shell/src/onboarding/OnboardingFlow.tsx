@@ -1,3 +1,4 @@
+import { useShallow } from "zustand/react/shallow";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { ModelDataDisclosure } from "./ModelDataDisclosure";
@@ -79,9 +80,10 @@ export function OnboardingFlow({
   const scroller = useRef<HTMLDivElement>(null);
   const connected = useStore((s) => s.connected);
   const settings = useStore((s) => s.settings),
-    pages = useStore((s) => s.pages),
-    layout = useStore((s) => s.layout);
-  const activeSpace = layout.spaces.find((space) => space.id === layout.activeSpaceId);
+    pages = useStore(
+      useShallow((s) => s.pages.allIds.map((id) => s.pages.byId[id]!).filter(availableOnboardingPage)),
+    );
+  const activeSpace = useStore((s) => s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId));
   const [recovery, setRecovery] = useState(false);
   const [restoreStatus, setRestoreStatus] = useState<"checking" | "ready" | "pending" | "unavailable">(
     "checking",
@@ -720,9 +722,7 @@ export function OnboardingFlow({
                                   throw new Error(
                                     "Recovery readiness changed. Resolve it before starting a chat.",
                                   );
-                                const livePage = useStore
-                                  .getState()
-                                  .pages.find((item) => item.pageId === reviewedPage?.pageId);
+                                const livePage = useStore.getState().pages.byId[reviewedPage?.pageId ?? ""];
                                 if (
                                   !livePage ||
                                   !availableOnboardingPage(livePage) ||

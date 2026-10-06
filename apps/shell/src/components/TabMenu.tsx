@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticMenuItemProps } from "../ui/class-props";
 import { errorMessage } from "../error-message";
 import { executeCommand } from "../commands";
@@ -58,7 +59,7 @@ export function TabMenu({
   const closing = useStore((state) => state.closingTabs);
   const activePageId = useStore((state) => state.activePageId);
   const splitPageId = useStore((state) => state.splitPageId);
-  const activePage = useStore((state) => state.pages.find((item) => item.pageId === activePageId));
+  const activePage = useStore((state) => state.pages.byId[activePageId ?? ""]);
   const tabSound = useStore((state) => state.tabAudio[page.pageId]);
   const ref = useRef<HTMLDialogElement>(null);
   const [moving, setMoving] = useState(false);
@@ -105,7 +106,7 @@ export function TabMenu({
     !memorySensitivityReason(page.url, page.title);
   const spaceTabIds = useStore(
     useShallow((state) => {
-      const raw = tabsInSpace(layout, state.pages, spaceId);
+      const raw = tabsInSpace(layout, orderedPages(state.pages), spaceId);
       return (horizontal ? groupedTabs(layout, raw) : raw).map((item) => item.pageId);
     }),
   );
@@ -159,7 +160,7 @@ export function TabMenu({
   async function closeRelated(following: boolean) {
     const state = useStore.getState();
     const currentSpace = state.layout.tabSpace[page.pageId] ?? state.layout.activeSpaceId;
-    const raw = tabsInSpace(state.layout, state.pages, currentSpace);
+    const raw = tabsInSpace(state.layout, orderedPages(state.pages), currentSpace);
     const tabs = horizontal ? groupedTabs(state.layout, raw) : raw;
     const index = tabs.findIndex((item) => item.pageId === page.pageId);
     if (index < 0) return;
@@ -206,7 +207,7 @@ export function TabMenu({
     const source = suggestion;
     action(() => {
       if (source) {
-        const current = useStore.getState().pages.find((item) => item.pageId === page.pageId);
+        const current = useStore.getState().pages.byId[page.pageId ?? ""];
         if (
           !current ||
           current.title !== source.sourceTitle ||
@@ -231,7 +232,7 @@ export function TabMenu({
         expectedDocumentEpoch: page.documentEpoch,
       });
       if (request !== nameRequest.current) return;
-      const current = useStore.getState().pages.find((item) => item.pageId === page.pageId);
+      const current = useStore.getState().pages.byId[page.pageId ?? ""];
       if (
         !current ||
         current.url !== result.sourceUrl ||

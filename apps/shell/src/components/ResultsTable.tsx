@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticIconButtonProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { runCommand } from "../commands";
@@ -95,7 +96,7 @@ const ResultRow = memo(function ResultRow({ id, keys }: { id: string; keys: stri
   if (!result) return null;
   const openSource = () => {
     const state = useStore.getState();
-    const existing = state.pages.find((page) => page.url === result.sourceUrl);
+    const existing = orderedPages(state.pages).find((page) => page.url === result.sourceUrl);
     if (existing) void state.activate(existing.pageId);
     else void state.newTab(result.sourceUrl);
   };

@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -61,7 +62,7 @@ let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   nativeFlag.value = true;
   useStore.setState({
-    pages: [{ ...page }],
+    pages: normalizePages([{ ...page }] as never),
     activePageId: "p1",
     bookmarks: [],
     closedTabs: [],
@@ -111,7 +112,10 @@ describe("CommandBar keyboard contract", () => {
 
   it("ArrowDown + Enter runs the highlighted suggestion, not the intent row", async () => {
     useStore.setState({
-      pages: [{ ...page }, { ...page, pageId: "p2", url: "https://gitlab.com/other", title: "GitLab other" }],
+      pages: normalizePages([
+        { ...page },
+        { ...page, pageId: "p2", url: "https://gitlab.com/other", title: "GitLab other" },
+      ] as never),
       bookmarks: [{ url: "https://github.blog/x", title: "GitHub blog", folderPath: [] }],
     } as never);
     const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue(ack);
@@ -288,26 +292,24 @@ describe("CommandBar keyboard contract", () => {
 
   it("keeps scoped pills keyboard reachable and records a chosen tab", async () => {
     useStore.setState({
-      pages: [
+      pages: normalizePages([
         { ...page },
         { ...page, pageId: "p2", title: "GitLab project", url: "https://gitlab.com/project" },
-      ],
+      ] as never),
     } as never);
-    const invoke = vi
-      .spyOn(bridge, "invoke")
-      .mockImplementation(async (method) =>
-        method === "command.ranking.list"
-          ? ([] as never)
-          : method === "command.ranking.record"
-            ? ({
-                query: "git",
-                candidateKey: "gitlab project\u0000gitlab.com",
-                source: "tabs",
-                uses: 1,
-                lastUsedAt: Date.now(),
-              } as never)
-            : ([] as never),
-      );
+    const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) =>
+      method === "command.ranking.list"
+        ? ([] as never)
+        : method === "command.ranking.record"
+          ? ({
+              query: "git",
+              candidateKey: "gitlab project\u0000gitlab.com",
+              source: "tabs",
+              uses: 1,
+              lastUsedAt: Date.now(),
+            } as never)
+          : ([] as never),
+    );
     const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue(ack);
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
@@ -357,7 +359,10 @@ describe("CommandBar keyboard contract", () => {
 
   it("opens a bookmarked page from its scope even when a matching tab is open", async () => {
     useStore.setState({
-      pages: [{ ...page }, { ...page, pageId: "p2", title: "Guide", url: "https://example.com/guide" }],
+      pages: normalizePages([
+        { ...page },
+        { ...page, pageId: "p2", title: "Guide", url: "https://example.com/guide" },
+      ] as never),
       bookmarks: [{ url: "https://example.com/guide", title: "Guide", folderPath: ["Reading"] }],
     } as never);
     const navigate = vi.spyOn(useStore.getState(), "navigatePage").mockResolvedValue(undefined);
@@ -493,21 +498,19 @@ it("scope markers become pills and empty Backspace clears the scope", async () =
 });
 
 it("records typed frecency only after navigation succeeds", async () => {
-  const invoke = vi
-    .spyOn(bridge, "invoke")
-    .mockImplementation(
-      async (method) =>
-        (method === "command.ranking.record"
-          ? {
-              query: "example.com/typed",
-              candidateKey: "https://example.com/typed",
-              source: "browser",
-              frequency: 2,
-              uses: 1,
-              lastUsedAt: Date.now(),
-            }
-          : []) as never,
-    );
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(
+    async (method) =>
+      (method === "command.ranking.record"
+        ? {
+            query: "example.com/typed",
+            candidateKey: "https://example.com/typed",
+            source: "browser",
+            frequency: 2,
+            uses: 1,
+            lastUsedAt: Date.now(),
+          }
+        : []) as never,
+  );
   const create = vi
     .spyOn(useStore.getState(), "newTab")
     .mockRejectedValueOnce(new Error("Native refusal"))

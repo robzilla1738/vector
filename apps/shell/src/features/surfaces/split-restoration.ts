@@ -13,7 +13,7 @@ export function restoreNativeSplits() {
       (group) => group.panes.length === 2 && group.panes.every(localSplitPage),
     );
     const missing = pairs.filter((group) => {
-      const pages = group.panes.map((id) => state.pages.find((page) => page.pageId === id)!);
+      const pages = group.panes.map((id) => state.pages.byId[id ?? ""]!);
       return pages.every((page) => !page.split);
     });
     if (!missing.length) return;

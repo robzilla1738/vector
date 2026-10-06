@@ -1,16 +1,18 @@
+import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { visibleSplitGroup } from "../features/surfaces/split-actions";
 import { runCommand } from "../commands";
 import { FavIcon } from "./SiteTile";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 export function SplitControls() {
-  const layout = useStore((state) => state.layout),
-    pageId = useStore((state) => state.activePageId);
-  const pages = useStore((state) => state.pages),
-    mode = useStore((state) => state.mode);
-  const group = visibleSplitGroup(layout, pageId);
+  const mode = useStore((state) => state.mode);
+  const group = useStore((state) => visibleSplitGroup(state.layout, state.activePageId));
+  const panes = useStore(
+    useShallow((state) =>
+      (group?.panes ?? []).flatMap((id) => (state.pages.byId[id] ? [state.pages.byId[id]!] : [])),
+    ),
+  );
   if (mode !== "focus" || !group) return null;
-  const panes = group.panes.map((id) => pages.find((page) => page.pageId === id)).filter((page) => !!page);
   return (
     <section className="sb-split-pair" aria-label="Split view">
       <span className="sb-split-pair-title">

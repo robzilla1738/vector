@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -48,7 +49,7 @@ beforeEach(() => {
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
     toasts: [],
@@ -149,7 +150,7 @@ it("reopens the same original image through the registered tray command after Es
         method === "conversations.images.remove",
     ),
   ).toBe(false);
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(useStore.getState().runs).toEqual([]);
 });
 it("retires the original pending read on an explicit reopen and rejects a detached original Preview", async () => {

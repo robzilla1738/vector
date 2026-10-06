@@ -1,3 +1,4 @@
+import { orderedPages } from "./store/pages";
 import { useOrganizationEditor } from "./features/organization-state";
 import { useFeature } from "./use-feature";
 import { useSurfaceCovering } from "./features/surfaces/drag-state";
@@ -437,18 +438,16 @@ export function App() {
               } catch {
                 /* Non-web selections remain explicit unsourced notes. */
               }
-              useMemoryDrafts
-                .getState()
-                .write(key, {
-                  revision: memory.revision,
-                  content: JSON.stringify({
-                    itemId: crypto.randomUUID(),
-                    content: action.selection,
-                    sourceUrl,
-                    expires: "",
-                    selectionTruncated: action.truncated,
-                  }),
-                });
+              useMemoryDrafts.getState().write(key, {
+                revision: memory.revision,
+                content: JSON.stringify({
+                  itemId: crypto.randomUUID(),
+                  content: action.selection,
+                  sourceUrl,
+                  expires: "",
+                  selectionTruncated: action.truncated,
+                }),
+              });
               if (useStore.getState().layout.activeSpaceId === space.id) openMemory();
               else toast(`Memory draft saved in ${space.name}. Open Memory settings to review it.`);
             })
@@ -461,7 +460,7 @@ export function App() {
             const state = useStore.getState();
             const prepared = prepareSelectionActionDraft({
               action,
-              pages: state.pages,
+              pages: orderedPages(state.pages),
               preferences: state.settings.selectionCapture,
               windowId: bridge.windowId,
               privateMode: bridge.privateMode,
@@ -525,11 +524,9 @@ export function App() {
   const horizontal = (settings.tabLayout ?? "horizontal") === "horizontal";
   const tabSwitcher = useRef(createTabSwitcher());
   const activePageId = useStore((s) => s.activePageId);
-  const activePageEpoch = useStore((s) => s.pages.find((p) => p.pageId === s.activePageId)?.documentEpoch);
+  const activePageEpoch = useStore((s) => s.pages.byId[s.activePageId ?? ""]?.documentEpoch);
   const activePage = useStore(
-    useShallow((s) =>
-      placementFields(s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined),
-    ),
+    useShallow((s) => placementFields(s.activePageId ? s.pages.byId[s.activePageId ?? ""] : undefined)),
   );
   const { minimal, hideToolbar, layoutMotion, sidebarWidth } = useLayoutChrome();
   const pageChrome =

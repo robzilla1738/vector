@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import type { PageTarget } from "@aux/contracts";
@@ -10,7 +11,7 @@ afterEach(() => {
 });
 it("ignores older zoom reads and values from a previous document", async () => {
   const page = { pageId: "page", url: "https://example.com/", documentEpoch: 1 } as PageTarget;
-  useStore.setState({ pages: [page], zoomLevels: {} });
+  useStore.setState({ pages: normalizePages([page]), zoomLevels: {} });
   const replies: ((value: unknown) => void)[] = [];
   vi.spyOn(bridge, "invoke").mockImplementation(() => new Promise((resolve) => replies.push(resolve)));
   const old = useStore.getState().zoomPage("page");
@@ -22,7 +23,7 @@ it("ignores older zoom reads and values from a previous document", async () => {
   expect(useStore.getState().zoomLevels.page).toBe(1);
   const navigating = useStore.getState().zoomPage("page");
   useStore.setState({
-    pages: [{ ...page, url: "https://other.example/", documentEpoch: 2 }],
+    pages: normalizePages([{ ...page, url: "https://other.example/", documentEpoch: 2 }]),
     zoomLevels: {},
   });
   replies[2]!({ level: 3 });
@@ -35,7 +36,7 @@ it("routes Private page zoom through the native window bridge", async () => {
   bridge.privateMode = true;
   try {
     const page = { pageId: "private-page", url: "https://example.com/", documentEpoch: 1 } as PageTarget;
-    useStore.setState({ pages: [page], zoomLevels: {} });
+    useStore.setState({ pages: normalizePages([page]), zoomLevels: {} });
     const native = vi.spyOn(bridge, "privatePageZoom").mockResolvedValue({ level: 1 });
     const runtime = vi.spyOn(bridge, "invoke");
     await useStore.getState().zoomPage(page.pageId, { direction: "in" });

@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -19,7 +20,7 @@ beforeEach(() => {
   root = createRoot(host);
   retry.mockClear();
   useStore.setState({
-    pages: [makePage(0, { pageId: "selected", title: "Selected website" })],
+    pages: normalizePages([makePage(0, { pageId: "selected", title: "Selected website" })]),
     runs: [
       {
         runId: "original",
@@ -79,7 +80,7 @@ function protectedContext() {
   });
   const copy = makePage(2, { pageId: "temporary", url: source.url, ownedByRuntime: true });
   useStore.setState((state) => ({
-    pages: [...state.pages, source, copy],
+    pages: normalizePages([...orderedPages(state.pages), source, copy]),
     runs: state.runs.map((run) => ({
       ...run,
       pageIds: [copy.pageId],
@@ -102,7 +103,9 @@ function protectedContext() {
 
 it("enables original-source retry after a temporary copy closes without selecting another website", async () => {
   const { copy } = protectedContext();
-  useStore.setState((state) => ({ pages: state.pages.filter((page) => page.pageId !== copy.pageId) }));
+  useStore.setState((state) => ({
+    pages: normalizePages(orderedPages(state.pages).filter((page) => page.pageId !== copy.pageId)),
+  }));
   await act(async () =>
     root.render(<RunPanel runId="original" conversation latest retryPageId="selected" controlsInComposer />),
   );
@@ -128,19 +131,21 @@ it.each([
   async (drift) => {
     const { source } = protectedContext();
     useStore.setState((state) => ({
-      pages: state.pages
-        .filter((page) => drift !== "closed" || page.pageId !== source.pageId)
-        .map((page) =>
-          page.pageId !== source.pageId
-            ? page
-            : {
-                ...page,
-                documentEpoch: drift === "document" ? page.documentEpoch + 1 : page.documentEpoch,
-                sessionId: drift === "session" ? "replacement-person-session" : page.sessionId,
-                url: drift === "url" ? "https://replacement.test/" : page.url,
-                ownedByRuntime: drift === "ownership" ? true : page.ownedByRuntime,
-              },
-        ),
+      pages: normalizePages(
+        orderedPages(state.pages)
+          .filter((page) => drift !== "closed" || page.pageId !== source.pageId)
+          .map((page) =>
+            page.pageId !== source.pageId
+              ? page
+              : {
+                  ...page,
+                  documentEpoch: drift === "document" ? page.documentEpoch + 1 : page.documentEpoch,
+                  sessionId: drift === "session" ? "replacement-person-session" : page.sessionId,
+                  url: drift === "url" ? "https://replacement.test/" : page.url,
+                  ownedByRuntime: drift === "ownership" ? true : page.ownedByRuntime,
+                },
+          ),
+      ),
       runs: state.runs.map((run) => ({
         ...run,
         config: {
@@ -165,13 +170,17 @@ it.each([
 
 it("updates original-source retry availability when its document changes after render", async () => {
   const { source, copy } = protectedContext();
-  useStore.setState((state) => ({ pages: state.pages.filter((page) => page.pageId !== copy.pageId) }));
+  useStore.setState((state) => ({
+    pages: normalizePages(orderedPages(state.pages).filter((page) => page.pageId !== copy.pageId)),
+  }));
   await act(async () => root.render(<RunPanel runId="original" conversation latest controlsInComposer />));
   expect(host.querySelector<HTMLButtonElement>('[aria-label="Retry this turn"]')!.disabled).toBe(false);
   await act(async () =>
     useStore.setState((state) => ({
-      pages: state.pages.map((page) =>
-        page.pageId === source.pageId ? { ...page, documentEpoch: page.documentEpoch + 1 } : page,
+      pages: normalizePages(
+        orderedPages(state.pages).map((page) =>
+          page.pageId === source.pageId ? { ...page, documentEpoch: page.documentEpoch + 1 } : page,
+        ),
       ),
     })),
   );
@@ -189,7 +198,7 @@ it("refuses a multi-source retry subset even when both old protected copies rema
   });
   const secondCopy = makePage(4, { pageId: "second-copy", ownedByRuntime: true, url: second.url });
   useStore.setState((state) => ({
-    pages: [...state.pages, secondCopy],
+    pages: normalizePages([...orderedPages(state.pages), secondCopy]),
     runs: state.runs.map((run) => ({
       ...run,
       pageIds: [...run.pageIds, secondCopy.pageId],
@@ -223,7 +232,7 @@ it("refuses a multi-source retry subset even when both old protected copies rema
 it("retains failure recovery against the original source after its temporary copy closes", async () => {
   const { copy } = protectedContext();
   useStore.setState((state) => ({
-    pages: state.pages.filter((page) => page.pageId !== copy.pageId),
+    pages: normalizePages(orderedPages(state.pages).filter((page) => page.pageId !== copy.pageId)),
     runs: state.runs.map((run) => ({
       ...run,
       failure: { category: "unknown", message: "The turn stopped", action: "retry", retryable: true },

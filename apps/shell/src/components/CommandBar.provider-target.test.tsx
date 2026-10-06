@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { act } from "react";
@@ -30,7 +31,7 @@ it("retains query and combobox focus when choosing a full provider label with th
   bridge.windowKind = "normal";
   bridge.privateMode = false;
   useStore.setState(
-    { ...initial, settings: { homeEntryMode: "search" }, pages: [], runs: [], toasts: [] },
+    { ...initial, settings: { homeEntryMode: "search" }, pages: normalizePages([]), runs: [], toasts: [] },
     true,
   );
   vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);

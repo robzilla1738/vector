@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -64,7 +65,7 @@ beforeEach(() => {
       ...initial,
       runs,
       steps: {},
-      pages,
+      pages: normalizePages(pages),
       layout,
       activePageId: pages[1]!.pageId,
       connected: true,
@@ -218,8 +219,10 @@ it.each(["chat", "document", "membership"])(
       await act(async () => {
         if (drift === "document")
           useStore.setState((state) => ({
-            pages: state.pages.map((page) =>
-              page.pageId === "page-1" ? { ...page, documentEpoch: page.documentEpoch! + 1 } : page,
+            pages: normalizePages(
+              orderedPages(state.pages).map((page) =>
+                page.pageId === "page-1" ? { ...page, documentEpoch: page.documentEpoch! + 1 } : page,
+              ),
             ),
           }));
         else
@@ -262,7 +265,9 @@ it("incidental page title publication keeps original pending activation usable",
   const original = await dispatch("activate-conversation-preview-page");
   await act(async () =>
     useStore.setState((state) => ({
-      pages: state.pages.map((page) => ({ ...page, title: `${page.title} refreshed` })),
+      pages: normalizePages(
+        orderedPages(state.pages).map((page) => ({ ...page, title: `${page.title} refreshed` })),
+      ),
     })),
   );
   await act(async () => {
@@ -295,12 +300,10 @@ it("current original click activation failure reports once", async () => {
 });
 it("real original activation may select the target before its rejected native ACK and still reports once", async () => {
   await render();
-  const tab = vi
-    .spyOn(bridge, "tabCommand")
-    .mockResolvedValue({
-      status: "rejected",
-      error: { message: "Original native activation refused" },
-    } as never);
+  const tab = vi.spyOn(bridge, "tabCommand").mockResolvedValue({
+    status: "rejected",
+    error: { message: "Original native activation refused" },
+  } as never);
   await open();
   await act(async () => action("activate-conversation-preview-page").click());
   expect(tab).toHaveBeenCalledWith({ kind: "activate", pageId: "page-1" }, undefined);

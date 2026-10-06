@@ -27,9 +27,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
   const key = useShortcutLabels();
   const sidebar = useStore((s) => s.sidebar);
   const horizontal = useStore((s) => (s.settings.tabLayout ?? "horizontal") === "horizontal");
-  const page = useStore((s) =>
-    s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined,
-  );
+  const page = useStore((s) => (s.activePageId ? s.pages.byId[s.activePageId ?? ""] : undefined));
   const settingsRoute = useStore((s) => s.overlay === "settings");
   const mode = useStore((s) => s.mode);
   const railOpen = useStore((s) => s.railOpen);

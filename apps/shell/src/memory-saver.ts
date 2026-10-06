@@ -1,3 +1,4 @@
+import { orderedPages } from "./store/pages";
 import { ownPages } from "./tab-window-transfer";
 import type { HostMethodResult, PageTarget } from "@aux/contracts";
 import { bridge, inNativeHost } from "./bridge";
@@ -80,7 +81,8 @@ export function installMemorySaver() {
   const schedule = () => {
     if (timer) clearTimeout(timer);
     if (stopped || running) return;
-    const next = nextMemorySaverAction(useStore.getState(), retryAfter);
+    const state = useStore.getState();
+    const next = nextMemorySaverAction({ ...state, pages: orderedPages(state.pages) }, retryAfter);
     if (!next) return;
     timer = setTimeout(
       async () => {
@@ -110,7 +112,7 @@ export function installMemorySaver() {
   };
   const unsubscribe = useStore.subscribe((state, previous) => {
     if (
-      state.pages !== previous.pages ||
+      orderedPages(state.pages) !== orderedPages(previous.pages) ||
       state.activePageId !== previous.activePageId ||
       state.layout !== previous.layout ||
       state.splitPageId !== previous.splitPageId ||

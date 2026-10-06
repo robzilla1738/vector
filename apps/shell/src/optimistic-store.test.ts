@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "./store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import type { AuxEvent, PageTarget, TabCommandAck } from "@aux/contracts";
@@ -34,7 +35,12 @@ function tabs(...ids: string[]) {
     order: ids,
     tabSpace: Object.fromEntries(ids.map((id) => [id, emptyLayout().activeSpaceId])),
   };
-  useStore.setState({ pages: ids.map(page), layout, activePageId: ids[0] ?? null, closedTabs: [] });
+  useStore.setState({
+    pages: normalizePages(ids.map(page)),
+    layout,
+    activePageId: ids[0] ?? null,
+    closedTabs: [],
+  });
   vi.spyOn(bridge, "overlay").mockResolvedValue(true);
 }
 
@@ -49,12 +55,14 @@ it("keeps layout and page identity when nothing changed", () => {
   expect(withSyncedOrder(layout, pages)).toBe(layout);
   expect(syncLayout(layout, pages)).toBe(layout);
   expect(syncOrder(layout.order, [page("b"), page("c")], ["a"])).toEqual(["a", "b", "c"]);
-  tabs("a");
+  tabs("a", "b");
   const before = useStore.getState().pages;
   patchPageFields("a", { title: "a" });
   expect(useStore.getState().pages).toBe(before);
   patchPageFields("a", { loading: true });
-  expect(useStore.getState().pages[0]?.loading).toBe(true);
+  expect(useStore.getState().pages.byId.a?.loading).toBe(true);
+  expect(useStore.getState().pages.byId.b).toBe(before.byId.b);
+  expect(useStore.getState().pages.allIds).toBe(before.allIds);
 });
 
 it("shows a new tab before main acknowledges it and removes it when the open is refused", async () => {
@@ -77,7 +85,7 @@ it("shows a new tab before main acknowledges it and removes it when the open is 
     error: { code: "unavailable", message: "No window" },
   } as TabCommandAck);
   expect(await opening).toBeNull();
-  expect(useStore.getState().pages.map((p) => p.pageId)).toEqual(["a"]);
+  expect(orderedPages(useStore.getState().pages).map((p) => p.pageId)).toEqual(["a"]);
   expect(useStore.getState().activePageId).toBe("a");
 });
 
@@ -92,10 +100,10 @@ it("removes a closed row immediately and restores it when the close is refused",
       }),
   );
   const closing = useStore.getState().closeTab("b");
-  expect(useStore.getState().pages.map((p) => p.pageId)).toEqual(["a", "c"]);
+  expect(orderedPages(useStore.getState().pages).map((p) => p.pageId)).toEqual(["a", "c"]);
   // A late catalog upsert for the closing tab must not bring the row back.
   useStore.getState().applyEvent(event("page.added", { page: page("b") }));
-  expect(useStore.getState().pages.map((p) => p.pageId)).toEqual(["a", "c"]);
+  expect(orderedPages(useStore.getState().pages).map((p) => p.pageId)).toEqual(["a", "c"]);
   finish({
     commandId: "",
     status: "rejected",
@@ -216,15 +224,13 @@ it("keeps actual native split and window ownership through full and partial runt
     anchor: false,
     split: { id: "native-split", index: 0 },
   };
-  useStore.setState({ pages: [native], catalogVersion: 7 });
-  useStore
-    .getState()
-    .applyEvent(
-      event("page.updated", {
-        page: { ...page("a"), title: "New title", windowId: "stale-other", controller: "agent" },
-      }),
-    );
-  expect(useStore.getState().pages[0]).toMatchObject({
+  useStore.setState({ pages: normalizePages([native]), catalogVersion: 7 });
+  useStore.getState().applyEvent(
+    event("page.updated", {
+      page: { ...page("a"), title: "New title", windowId: "stale-other", controller: "agent" },
+    }),
+  );
+  expect(orderedPages(useStore.getState().pages)[0]).toMatchObject({
     title: "New title",
     controller: "agent",
     windowId: "native-own",
@@ -235,7 +241,7 @@ it("keeps actual native split and window ownership through full and partial runt
     .applyEvent(
       event("page.updated", { pageId: "a", loading: true, windowId: "stale-other", split: undefined }),
     );
-  expect(useStore.getState().pages[0]).toMatchObject({
+  expect(orderedPages(useStore.getState().pages)[0]).toMatchObject({
     loading: true,
     windowId: "native-own",
     split: native.split,
@@ -247,5 +253,5 @@ it("accepts runtime placement before any native catalog is available", () => {
   useStore
     .getState()
     .applyEvent(event("page.updated", { page: { ...page("a"), windowId: "runtime-window" } }));
-  expect(useStore.getState().pages[0]?.windowId).toBe("runtime-window");
+  expect(orderedPages(useStore.getState().pages)[0]?.windowId).toBe("runtime-window");
 });

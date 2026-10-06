@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -62,7 +63,7 @@ beforeEach(() => {
       ...initial,
       runs,
       steps: {},
-      pages,
+      pages: normalizePages(pages),
       layout,
       activePageId: pages[1]!.pageId,
       connected: true,
@@ -126,7 +127,7 @@ function heldPreviews() {
 it("clears original page pixels while the new selected page preview is pending", async () => {
   const requests = heldPreviews();
   await render();
-  const [a, b] = useStore.getState().pages;
+  const [a, b] = orderedPages(useStore.getState().pages);
   await act(async () => requests[0]!.resolve(originalImage));
   const originalNode = image();
   expect(originalNode.hidden).toBe(false);
@@ -148,12 +149,14 @@ it("retires a held original document preview on same-page document change withou
   await render();
   const control = host.querySelector<HTMLButtonElement>(".conversation-preview-live")!;
   control.focus();
-  const original = useStore.getState().pages[0]!;
+  const original = orderedPages(useStore.getState().pages)[0]!;
   await act(async () =>
     useStore.setState({
-      pages: useStore
-        .getState()
-        .pages.map((page) => (page === original ? { ...page, documentEpoch: page.documentEpoch + 1 } : page)),
+      pages: normalizePages(
+        orderedPages(useStore.getState().pages).map((page) =>
+          page === original ? { ...page, documentEpoch: page.documentEpoch + 1 } : page,
+        ),
+      ),
     }),
   );
   expect(requests).toHaveLength(2);
@@ -172,12 +175,14 @@ it("removes already visible pixels on same-page document replacement and retains
   const requests = heldPreviews();
   await render();
   await act(async () => requests[0]!.resolve(originalImage));
-  const original = useStore.getState().pages[0]!;
+  const original = orderedPages(useStore.getState().pages)[0]!;
   await act(async () =>
     useStore.setState({
-      pages: useStore
-        .getState()
-        .pages.map((page) => (page === original ? { ...page, documentEpoch: page.documentEpoch + 1 } : page)),
+      pages: normalizePages(
+        orderedPages(useStore.getState().pages).map((page) =>
+          page === original ? { ...page, documentEpoch: page.documentEpoch + 1 } : page,
+        ),
+      ),
     }),
   );
   expect(image().hidden).toBe(true);

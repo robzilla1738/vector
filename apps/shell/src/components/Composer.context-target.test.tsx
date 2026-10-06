@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { act } from "react";
@@ -48,7 +49,7 @@ beforeEach(() => {
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
   });
@@ -100,7 +101,7 @@ it("keeps the page-free Add context opener's label, draft and modal focus at the
   const input = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="Reply to conversation"]')!,
     opener = host.querySelector<HTMLButtonElement>('.home-tools-trigger > button[aria-label="Add context"]')!;
   expect(input.value).toBe("Original page-free question");
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(getComputedStyle(opener).width).toBe("32px");
   expect(getComputedStyle(opener).height).toBe("32px");
   opener.focus();
@@ -112,7 +113,7 @@ it("keeps the page-free Add context opener's label, draft and modal focus at the
   await act(async () => dialog.dispatchEvent(new Event("cancel", { bubbles: false, cancelable: true })));
   expect(document.activeElement).toBe(opener);
   expect(input.value).toBe("Original page-free question");
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(bridge.startDictation).not.toHaveBeenCalled();
   const selector = readFileSync("apps/shell/src/components/Conversation.css", "utf8").match(
     /(\.new-chat-options [^{]+):hover \{/,

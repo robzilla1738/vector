@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -32,7 +33,12 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
     { width: 100 },
   ] as unknown as DOMRectList);
-  useStore.setState({ pages: [page], activePageId: page.pageId, splitPageId: null, toasts: [] });
+  useStore.setState({
+    pages: normalizePages([page]),
+    activePageId: page.pageId,
+    splitPageId: null,
+    toasts: [],
+  });
   sources.mockReset();
   primary.mockReset();
   host = document.createElement("div");
@@ -47,7 +53,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 it("actual registered Remove explicitly clears only the original closed stored source without native lookup", async () => {
-  useStore.setState({ pages: [] });
+  useStore.setState({ pages: normalizePages([]) });
   const rpc = vi.spyOn(bridge, "invoke");
   await act(async () =>
     root.render(
@@ -126,7 +132,7 @@ it("focused No context command preserves explicit page-free choice without nativ
 });
 it("original Current tab choice refuses active-page replacement in the same event turn", async () => {
   const foreign = { ...page, pageId: "foreign", sessionId: "foreign-session" };
-  useStore.setState({ pages: [page, foreign] });
+  useStore.setState({ pages: normalizePages([page, foreign]) });
   await act(async () => root.render(<BrowserContextPicker value="active" onChange={primary} />));
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Browser context"]')!.click());
   const choice = [
@@ -142,7 +148,7 @@ it("original Current tab choice refuses active-page replacement in the same even
 it("registered split selection binds original pair and retains unrelated conversation draft", async () => {
   const first = { ...page, pageId: "primary", sessionId: "primary-session" };
   useStore.setState({
-    pages: [first, page],
+    pages: normalizePages([first, page]),
     activePageId: first.pageId,
     splitPageId: page.pageId,
     conversationDrafts: { "chat:other": "Other original draft" },

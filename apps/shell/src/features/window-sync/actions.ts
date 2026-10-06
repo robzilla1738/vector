@@ -6,7 +6,7 @@ const target = (state: CommandContext, invocation: CommandInvocation) => {
     throw new Error("Choose a tab to use this command.");
   const id =
     invocation.payload && "pageId" in invocation.payload ? invocation.payload.pageId : state.activePageId;
-  const page = state.pages.find((item) => item.pageId === id);
+  const page = state.pages.byId[id ?? ""];
   if (!page) throw new Error("This tab is no longer available.");
   return page;
 };

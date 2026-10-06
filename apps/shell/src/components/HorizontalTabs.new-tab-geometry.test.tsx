@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -10,7 +11,7 @@ vi.mock("../commands", () => ({ runCommand: vi.fn() }));
 it("keeps the original registered New tab in its 28px hit area with the supplied 18px glyph", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const initial = useStore.getState();
-  useStore.setState({ pages: [], layout: { ...initial.layout, folders: [] } });
+  useStore.setState({ pages: normalizePages([]), layout: { ...initial.layout, folders: [] } });
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);

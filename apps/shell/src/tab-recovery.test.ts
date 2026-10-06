@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import type { PageTarget, TabCommand, TabCommandAck } from "@aux/contracts";
@@ -34,7 +35,13 @@ function setup() {
     folders: [{ id: "research", spaceId: "work", name: "Research", collapsed: false }],
     tabFolder: { middle: "research" },
   };
-  useStore.setState({ pages, layout, activePageId: "middle", closedTabs: [], reopeningTab: false });
+  useStore.setState({
+    pages: normalizePages(pages),
+    layout,
+    activePageId: "middle",
+    closedTabs: [],
+    reopeningTab: false,
+  });
   vi.spyOn(bridge, "overlay").mockResolvedValue(true);
   vi.spyOn(bridge, "invoke").mockResolvedValue({} as never);
   vi.spyOn(bridge, "bindTabSpace").mockImplementation(async (_pageId, spaceId) => ({
@@ -44,25 +51,25 @@ function setup() {
   return { pages, layout };
 }
 function close(pageId: string) {
-  useStore
-    .getState()
-    .applyEvent({
-      seq: Date.now(),
-      streamId: "test",
-      type: "page.removed",
-      ts: Date.now(),
-      payload: { pageId },
-    });
+  useStore.getState().applyEvent({
+    seq: Date.now(),
+    streamId: "test",
+    type: "page.removed",
+    ts: Date.now(),
+    payload: { pageId },
+  });
 }
 it("keeps a saved placeholder through catalog resync and restores it before selection", async () => {
   const { pages } = setup();
   useStore.setState({
-    pages: pages.map((page) => (page.pageId === "first" ? { ...page, lifecycle: "placeholder" } : page)),
+    pages: normalizePages(
+      pages.map((page) => (page.pageId === "first" ? { ...page, lifecycle: "placeholder" } : page)),
+    ),
     pendingRestoreIds: ["first"],
   });
   const snapshot = { version: 1, tabs: [], windows: [] };
   useStore.getState().syncTabsSnapshot(snapshot as never);
-  expect(useStore.getState().pages.some((page) => page.pageId === "first")).toBe(true);
+  expect(!!useStore.getState().pages.byId["first"]).toBe(true);
   const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ ok: true, pageId: "first" } as never);
   const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(async (command) => applied(command));
   await useStore.getState().activate("first");
@@ -108,13 +115,13 @@ it("reuses the closed tab id so main can restore its navigation history", async 
   expect(tabCommand.mock.calls.map(([command]) => command)).toContainEqual(
     expect.objectContaining({ kind: "open", pageId: "middle" }),
   );
-  expect(useStore.getState().pages.some((page) => page.pageId === "middle")).toBe(true);
+  expect(!!useStore.getState().pages.byId["middle"]).toBe(true);
 });
 it("does not focus a different space or recover invisible agent pages", () => {
   const { pages, layout } = setup();
   vi.spyOn(bridge, "tabCommand").mockImplementation(async (command) => applied(command));
   useStore.setState({
-    pages: [pages[0]!, pages[3]!, { ...pages[1]!, ownedByRuntime: true }],
+    pages: normalizePages([pages[0]!, pages[3]!, { ...pages[1]!, ownedByRuntime: true }]),
     layout: { ...layout, order: ["first", "other", "middle"] },
     activePageId: "first",
   });
@@ -167,24 +174,20 @@ it("restores placement without replacing a newer user selection", async () => {
     ownedByRuntime: false,
     viewStatus: "visible",
   } as PageTarget;
-  useStore
-    .getState()
-    .applyEvent({
-      seq: Date.now(),
-      streamId: "test",
-      type: "page.added",
-      ts: Date.now(),
-      payload: { page: restored },
-    });
-  useStore
-    .getState()
-    .applyEvent({
-      seq: Date.now() + 1,
-      streamId: "test",
-      type: "page.updated",
-      ts: Date.now(),
-      payload: { pageId: "restored", activePageId: "restored" },
-    });
+  useStore.getState().applyEvent({
+    seq: Date.now(),
+    streamId: "test",
+    type: "page.added",
+    ts: Date.now(),
+    payload: { page: restored },
+  });
+  useStore.getState().applyEvent({
+    seq: Date.now() + 1,
+    streamId: "test",
+    type: "page.updated",
+    ts: Date.now(),
+    payload: { pageId: "restored", activePageId: "restored" },
+  });
   await useStore.getState().activate("first");
   finish(applied({ kind: "open", url: "https://example.test/middle", activate: true }, "restored"));
   await opening;
@@ -210,29 +213,25 @@ it("does not overwrite later selection or live metadata when opening finishes", 
     ownedByRuntime: false,
     viewStatus: "visible",
   } as PageTarget;
-  useStore
-    .getState()
-    .applyEvent({
-      seq: Date.now(),
-      streamId: "test",
-      type: "page.added",
-      ts: Date.now(),
-      payload: { page: added },
-    });
-  useStore
-    .getState()
-    .applyEvent({
-      seq: Date.now() + 1,
-      streamId: "test",
-      type: "page.updated",
-      ts: Date.now(),
-      payload: { pageId: "slow", activePageId: "slow" },
-    });
+  useStore.getState().applyEvent({
+    seq: Date.now(),
+    streamId: "test",
+    type: "page.added",
+    ts: Date.now(),
+    payload: { page: added },
+  });
+  useStore.getState().applyEvent({
+    seq: Date.now() + 1,
+    streamId: "test",
+    type: "page.updated",
+    ts: Date.now(),
+    payload: { pageId: "slow", activePageId: "slow" },
+  });
   await useStore.getState().activate("first");
   finish(applied({ kind: "open", url: "https://example.test/slow", activate: true }, "slow"));
   await opening;
   expect(useStore.getState().activePageId).toBe("first");
-  expect(useStore.getState().pages.find((page) => page.pageId === "slow")?.title).toBe("Live title");
+  expect(useStore.getState().pages.byId["slow"]?.title).toBe("Live title");
 });
 it("does not resurrect a tab closed before its open response arrives", async () => {
   setup();
@@ -252,18 +251,16 @@ it("does not resurrect a tab closed before its open response arrives", async () 
     ownedByRuntime: false,
     viewStatus: "visible",
   } as PageTarget;
-  useStore
-    .getState()
-    .applyEvent({
-      seq: Date.now(),
-      streamId: "test",
-      type: "page.added",
-      ts: Date.now(),
-      payload: { page: added },
-    });
+  useStore.getState().applyEvent({
+    seq: Date.now(),
+    streamId: "test",
+    type: "page.added",
+    ts: Date.now(),
+    payload: { page: added },
+  });
   close("closing");
   finish(applied({ kind: "open", url: "https://example.test/slow", activate: true }, "closing"));
   await opening;
-  expect(useStore.getState().pages.some((page) => page.pageId === "closing")).toBe(false);
+  expect(!!useStore.getState().pages.byId["closing"]).toBe(false);
   expect(useStore.getState().activePageId).toBe("middle");
 });

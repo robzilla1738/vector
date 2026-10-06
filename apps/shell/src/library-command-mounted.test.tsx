@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -61,7 +62,7 @@ beforeEach(() => {
   bridge.privateMode = false;
   bridge.windowKind = "normal";
   useStore.setState({
-    pages: [],
+    pages: normalizePages([]),
     activePageId: null,
     overlay: null,
     sidebar: "hidden",
@@ -233,7 +234,7 @@ it.each([
     });
     useStore.setState({
       sidebar: "expanded",
-      pages: [page],
+      pages: normalizePages([page]),
       activePageId: page.pageId,
       bookmarkPending: {},
       toasts: [],
@@ -271,7 +272,7 @@ it.each([false, true])(
     const page = makePage(0, { url: "about:blank", title: "Blank", viewStatus: "visible" });
     useStore.setState({
       sidebar: "expanded",
-      pages: nonWeb ? [page] : [],
+      pages: normalizePages(nonWeb ? [page] : []),
       activePageId: nonWeb ? page.pageId : null,
     });
     const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue([]);

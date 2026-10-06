@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
@@ -28,7 +29,7 @@ export function SitePermissions({ query = "" }: { query?: string }) {
   const openSites = useStore(
     useShallow((state) => {
       const origins = new Set<string>();
-      return state.pages.flatMap((page) => {
+      return orderedPages(state.pages).flatMap((page) => {
         if (page.backend !== "aux" || !/^https?:/.test(page.url) || !URL.canParse(page.url)) return [];
         const origin = new URL(page.url).origin;
         if (origins.has(origin)) return [];

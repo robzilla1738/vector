@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -35,7 +36,7 @@ beforeEach(() => {
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
     toasts: [],
@@ -138,7 +139,7 @@ it("keeps the actual Conversation image operation alive through its own disabled
   expect(host.textContent).toContain("original-owned.png");
   expect(send().disabled).toBe(false);
   expect(host.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("Original page-free draft");
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(useStore.getState().runs).toEqual([]);
   expect(invoke.mock.calls.filter(([method]) => method === "conversations.images.add")).toHaveLength(1);
 });

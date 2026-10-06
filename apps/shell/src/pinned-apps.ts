@@ -1,3 +1,4 @@
+import { orderedPages } from "./store/pages";
 import type { PageTarget } from "@aux/contracts";
 import { flushLayout, useStore } from "./store";
 import { persistLayout } from "./store/persistence";
@@ -32,7 +33,7 @@ export async function updatePin(
 }
 
 export async function openPinnedApp(pin: Pin, spaceId: string) {
-  const current = pinnedPage(pin, useStore.getState().pages);
+  const current = pinnedPage(pin, orderedPages(useStore.getState().pages));
   if (current) return useStore.getState().activate(current.pageId);
   // Reuse the binding when a discarded pin needs materializing after a restart.
   const page = await useStore.getState().openBackgroundTab(pin.url, spaceId, false, pin.pageId);
@@ -43,7 +44,7 @@ export async function openPinnedApp(pin: Pin, spaceId: string) {
 }
 
 export async function resetPinnedApp(pin: Pin) {
-  const page = pinnedPage(pin, useStore.getState().pages);
+  const page = pinnedPage(pin, orderedPages(useStore.getState().pages));
   if (!page) throw new Error("Open this pinned app before resetting it.");
   await useStore.getState().navigatePage(page.pageId, pin.url);
 }

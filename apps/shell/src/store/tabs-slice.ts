@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "./pages";
 import { errorMessage } from "../error-message";
 import type { PageTarget, TabPlacement } from "@aux/contracts";
 import { newPageId } from "@aux/contracts/ids";
@@ -45,7 +46,7 @@ const tabPlacementFor = (
   );
   if (!space) return undefined;
   const folder = state.layout.folders.find((item) => item.id === state.layout.tabFolder[pageId]);
-  const page = state.pages.find((item) => item.pageId === pageId);
+  const page = state.pages.byId[pageId ?? ""];
   const tabName = state.layout.tabNames?.[pageId];
   return {
     space: {
@@ -99,7 +100,7 @@ function syncBatterySaverState(active: boolean | undefined) {
 }
 
 export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
-  pages: [],
+  pages: normalizePages([]),
   activePageId: null,
   previewVersion: 0,
   closedTabs: bridge.privateMode ? [] : readClosedTabs(storage, CLOSED_TABS_KEY),
@@ -124,7 +125,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         return {};
       }
       syncBatterySaverState(patch.batterySaverActive);
-      let pages = st.pages;
+      let pages = orderedPages(st.pages);
       let layout = st.layout;
       let layoutDirty = false;
       let closedTabs = st.closedTabs;
@@ -181,12 +182,21 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
           }
         } else if (op.op === "remove") {
           const applied = applyRemoval(
-            { ...st, pages, layout, closedTabs, previewVersion, zoomLevels, activePageId, splitPageId },
+            {
+              ...st,
+              pages: normalizePages(pages, st.pages),
+              layout,
+              closedTabs,
+              previewVersion,
+              zoomLevels,
+              activePageId,
+              splitPageId,
+            },
             op.pageId,
             null,
           );
-          ({ pages, closedTabs, previewVersion, zoomLevels, layout, activePageId, splitPageId } =
-            applied.next);
+          ({ closedTabs, previewVersion, zoomLevels, layout, activePageId, splitPageId } = applied.next);
+          pages = orderedPages(applied.next.pages);
           // No activateNext: a catalog remove is always followed by main's own
           // successor (a same-patch or focusPage window op) — commanding a local
           // neighbour pick races the runtime's return-target choice.
@@ -216,7 +226,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
       }
       if (layoutDirty) persistLayout(layout);
       return {
-        pages,
+        pages: normalizePages(pages, st.pages),
         layout,
         closedTabs,
         previewVersion,
@@ -239,12 +249,13 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         (tab) =>
           isLocal(pageFromTab(tab)) ||
           (shared && inSharedSidebar(pageFromTab(tab))) ||
-          (tab.runtimeOwned && st.pages.some((page) => page.pageId === tab.pageId && page.ownedByRuntime)),
+          (tab.runtimeOwned &&
+            orderedPages(st.pages).some((page) => page.pageId === tab.pageId && page.ownedByRuntime)),
       );
       const known = new Set(tabs.map((tab) => tab.pageId));
       // The catalog is authoritative for this window's human tab set; pages it
       // does not own (runtime workers, other windows) are left to the runtime.
-      const pages = st.pages.filter(
+      const pages = orderedPages(st.pages).filter(
         (page) => known.has(page.pageId) || st.pendingRestoreIds.includes(page.pageId) || page.ownedByRuntime,
       );
       for (const tab of tabs) {
@@ -275,7 +286,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
       persistLayout(layout);
       const activePageId = mine ? mine.activePageId : st.activePageId;
       return {
-        pages,
+        pages: normalizePages(pages, st.pages),
         layout,
         activePageId,
         splitPageId: splitForPage(layout, pages, activePageId),
@@ -287,7 +298,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
   applyTabsPlacement: ({ pageId, windowId, placement }) => {
     if (windowId !== bridge.windowId) return;
     set((s) => {
-      const page = s.pages.find((item) => item.pageId === pageId);
+      const page = s.pages.byId[pageId ?? ""];
       if (!page) return {};
       const space: Space = {
         id: placement.space.id,
@@ -346,7 +357,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         return;
       }
     }
-    const page = get().pages.find((item) => item.pageId === pageId);
+    const page = get().pages.byId[pageId ?? ""];
     const claim =
       page && !isLocal(page) && featureStage("windowSync") === "on" && bridge.windowKind === "normal";
     if (claim) {
@@ -383,7 +394,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     set({
       activePageId: pageId,
       mode: "focus",
-      splitPageId: splitForPage(get().layout, get().pages, pageId),
+      splitPageId: splitForPage(get().layout, orderedPages(get().pages), pageId),
     });
     if (!claim) await sendTabCommand(get, { kind: "activate", pageId });
   },
@@ -395,7 +406,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     try {
       await sendTabCommand(get, { kind: "navigate", pageId, url });
     } catch (reason) {
-      const page = get().pages.find((page) => page.pageId === pageId);
+      const page = get().pages.byId[pageId ?? ""];
       if (page?.navigationError?.url !== url) throw reason;
       // The native failure is already presented with retry/edit/back controls.
     }
@@ -404,22 +415,24 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
   newTab: async (url = "about:blank", reuseId?: string, index?: number) => {
     if (bridge.windowKind === "little") {
       const state = get();
-      const page = state.pages.find((item) => item.pageId === state.activePageId && isLocal(item));
+      const page = orderedPages(state.pages).find(
+        (item) => item.pageId === state.activePageId && isLocal(item),
+      );
       if (!page) throw new Error("Wait for this Little window to finish opening, then try again.");
       state.setOverlay(null);
       set({ mode: "focus" });
       await state.navigatePage(page.pageId, url);
       if (url === "about:blank") get().focusCommandBar("toolbar");
-      return get().pages.find((item) => item.pageId === page.pageId) ?? null;
+      return get().pages.byId[page.pageId ?? ""] ?? null;
     }
     // Optimistic: the row and the start page appear now under a renderer-minted
     // id that main adopts; a refused open removes the placeholder again.
     const pageId = reuseId ?? newPageId();
     const before = get();
-    const optimistic = !before.pages.some((page) => page.pageId === pageId);
-    const observed = new Set(before.pages.map((page) => page.pageId));
+    const optimistic = !!!before.pages.byId[pageId ?? ""];
+    const observed = new Set(orderedPages(before.pages).map((page) => page.pageId));
     const unsubscribe = api.subscribe((state) => {
-      for (const page of state.pages) observed.add(page.pageId);
+      for (const page of orderedPages(state.pages)) observed.add(page.pageId);
     });
     const stub = (id: string) =>
       pageFromTab({
@@ -443,18 +456,23 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
       if (!optimistic || !openingOptimistic.has(pageId)) return;
       openingOptimistic.delete(pageId);
       set((s) => {
-        const pages = s.pages.filter((page) => page.pageId !== pageId);
+        const pages = orderedPages(s.pages).filter((page) => page.pageId !== pageId);
         const layout = withSyncedOrder(s.layout, pages, s.pendingRestoreIds);
         persistLayout(layout);
         const activePageId = s.activePageId === pageId ? before.activePageId : s.activePageId;
-        return { pages, layout, activePageId, splitPageId: splitForPage(layout, pages, activePageId) };
+        return {
+          pages: normalizePages(pages, s.pages),
+          layout,
+          activePageId,
+          splitPageId: splitForPage(layout, pages, activePageId),
+        };
       });
     };
     get().setOverlay(null);
     if (optimistic) {
       openingOptimistic.add(pageId);
       set((s) => {
-        const pages = [...s.pages, stub(pageId)];
+        const pages = [...orderedPages(s.pages), stub(pageId)];
         const layout = assignSpace(
           withSyncedOrder(s.layout, pages, s.pendingRestoreIds),
           pageId,
@@ -462,7 +480,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         );
         persistLayout(layout);
         return {
-          pages,
+          pages: normalizePages(pages, s.pages),
           layout,
           activePageId: pageId,
           mode: "focus" as const,
@@ -484,9 +502,9 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         // Main chose its own id: retire the placeholder and file the real tab.
         dropPlaceholder();
         set((s) => {
-          const existing = s.pages.some((x) => x.pageId === confirmed);
+          const existing = !!s.pages.byId[confirmed ?? ""];
           if (!existing && observed.has(confirmed)) return {}; // Closed while the open response was pending.
-          const pages = existing ? s.pages : [...s.pages, stub(confirmed)];
+          const pages = existing ? orderedPages(s.pages) : [...orderedPages(s.pages), stub(confirmed)];
           const layout = assignSpace(
             withSyncedOrder(s.layout, pages, s.pendingRestoreIds),
             confirmed,
@@ -494,22 +512,18 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
           );
           persistLayout(layout);
           return {
-            pages,
+            pages: normalizePages(pages, s.pages),
             layout,
             ...(!existing ? { activePageId: confirmed, mode: "focus" as const, overlay: null } : {}),
           };
         });
         if (url === "about:blank" && get().activePageId === confirmed) get().focusCommandBar("hero");
       }
-      if (
-        !bridge.privateMode &&
-        featureStage("spaces") === "on" &&
-        get().pages.some((page) => page.pageId === confirmed)
-      )
+      if (!bridge.privateMode && featureStage("spaces") === "on" && !!get().pages.byId[confirmed ?? ""])
         void bridge
           .bindTabSpace(confirmed, get().layout.tabSpace[confirmed] ?? get().layout.activeSpaceId)
           .catch(errToast);
-      return get().pages.find((page) => page.pageId === confirmed) ?? null;
+      return get().pages.byId[confirmed ?? ""] ?? null;
     } catch (e) {
       dropPlaceholder();
       errToast(e);
@@ -523,7 +537,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
   openBackgroundTab: async (url, spaceId, reuseExisting = true, reuseId?: string, index?: number) => {
     if (!get().layout.spaces.some((space) => space.id === spaceId))
       throw new Error("This Space is no longer available.");
-    const existing = get().pages.find(
+    const existing = orderedPages(get().pages).find(
       (page) =>
         page.url === url &&
         isTab(page) &&
@@ -531,9 +545,9 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         get().layout.tabSpace[page.pageId] === spaceId,
     );
     if (reuseExisting && existing) return existing;
-    const observed = new Set(get().pages.map((page) => page.pageId));
+    const observed = new Set(orderedPages(get().pages).map((page) => page.pageId));
     const unsubscribe = api.subscribe((state) => {
-      for (const page of state.pages) observed.add(page.pageId);
+      for (const page of orderedPages(state.pages)) observed.add(page.pageId);
     });
     try {
       const ack = await bridge.tabCommand(
@@ -568,9 +582,9 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         lastActiveAt: Date.now(),
       });
       set((state) => {
-        const existing = state.pages.some((item) => item.pageId === pageId);
+        const existing = !!state.pages.byId[pageId ?? ""];
         if (!existing && observed.has(pageId)) return {};
-        const pages = existing ? state.pages : [...state.pages, stub];
+        const pages = existing ? orderedPages(state.pages) : [...orderedPages(state.pages), stub];
         // Preserve the requested destination even if the user switches Spaces while loading.
         const destination = [...state.layout.spaces, ...(state.layout.archivedSpaces ?? [])].some(
           (space) => space.id === spaceId,
@@ -583,11 +597,11 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
           tabSpace: { ...state.layout.tabSpace, [pageId]: destination },
         };
         persistLayout(layout);
-        return { pages, layout };
+        return { pages: normalizePages(pages, state.pages), layout };
       });
       if (!bridge.privateMode && featureStage("spaces") === "on")
         await bridge.bindTabSpace(pageId, get().layout.tabSpace[pageId] ?? spaceId);
-      return get().pages.find((item) => item.pageId === pageId) ?? stub;
+      return get().pages.byId[pageId ?? ""] ?? stub;
     } finally {
       unsubscribe();
     }
@@ -613,13 +627,13 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     // instead of at its recorded position.
     const awaitPage = (id: string) =>
       new Promise<boolean>((resolve) => {
-        if (get().pages.some((item) => item.pageId === id)) return resolve(true);
+        if (!!get().pages.byId[id ?? ""]) return resolve(true);
         const timer = setTimeout(() => {
           unsub();
           resolve(false);
         }, 3000);
         const unsub = api.subscribe((state) => {
-          if (state.pages.some((item) => item.pageId === id)) {
+          if (!!state.pages.byId[id ?? ""]) {
             clearTimeout(timer);
             unsub();
             resolve(true);
@@ -647,7 +661,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         if (!page && entry.pageId && (await awaitPage(entry.pageId))) {
           // The catalog acknowledged the open while its patch was still in
           // flight — the tab did land, it just wasn't visible yet.
-          page = get().pages.find((item) => item.pageId === entry.pageId) ?? null;
+          page = get().pages.byId[entry.pageId ?? ""] ?? null;
         }
         if (!page) return; // Keep the entry available if opening failed.
         lastOpened = page.pageId;
@@ -678,7 +692,11 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
           persistLayout(layout);
           const closedTabs = state.closedTabs.filter((tab) => tab !== entry);
           persistClosedTabs(closedTabs);
-          return { layout, closedTabs, splitPageId: splitForPage(layout, state.pages, state.activePageId) };
+          return {
+            layout,
+            closedTabs,
+            splitPageId: splitForPage(layout, orderedPages(state.pages), state.activePageId),
+          };
         });
       }
       // Reopen Closed Tab is a foreground command even when the tab was
@@ -689,7 +707,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         focus &&
         get().activePageId === selectionBefore &&
         get().layout.activeSpaceId === spaceBefore &&
-        get().pages.some((page) => page.pageId === focus)
+        !!get().pages.byId[focus ?? ""]
       )
         await get().activate(focus);
     } catch (error) {
@@ -701,14 +719,14 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
 
   duplicateTab: async (pageId) => {
     const original = get();
-    const source = original.pages.find((page) => page.pageId === pageId);
+    const source = original.pages.byId[pageId ?? ""];
     if (!source || !/^https?:/.test(source.url) || source.ownedByRuntime)
       throw new Error("This tab cannot be duplicated.");
     const spaceId = original.layout.tabSpace[pageId] ?? original.layout.activeSpaceId;
     const folderId = original.layout.tabFolder[pageId];
     const duplicate = await get().openBackgroundTab(source.url, spaceId, false);
     set((state) => {
-      if (!state.pages.some((page) => page.pageId === duplicate.pageId)) return {};
+      if (!!!state.pages.byId[duplicate.pageId ?? ""]) return {};
       let layout = state.layout;
       if (folderId && layout.folders.some((folder) => folder.id === folderId && folder.spaceId === spaceId))
         layout = assignFolder(layout, duplicate.pageId, folderId);
@@ -719,7 +737,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
       persistLayout(layout);
       return { layout };
     });
-    if (get().pages.some((page) => page.pageId === duplicate.pageId)) await get().activate(duplicate.pageId);
+    if (!!get().pages.byId[duplicate.pageId ?? ""]) await get().activate(duplicate.pageId);
   },
 
   closingTabs: false,
@@ -734,7 +752,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     try {
       for (const pageId of ids) {
         if (options?.shouldStop?.()) return false;
-        const page = get().pages.find((item) => item.pageId === pageId);
+        const page = get().pages.byId[pageId ?? ""];
         if (!page) continue;
         if (page.ownedByRuntime || page.controller === "agent" || page.controller === "external") {
           toast("Closing stopped. Take control of the remaining tab first.");
@@ -774,7 +792,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     // Optimistic: the row leaves now; main's remove op confirms, a refusal
     // (kept by beforeunload, agent-held) puts it back where it was.
     const before = get();
-    const page = before.pages.find((item) => item.pageId === pageId);
+    const page = before.pages.byId[pageId ?? ""];
     const optimistic =
       !!page &&
       isTab(page) &&
@@ -790,8 +808,8 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     } catch (e) {
       if (optimistic && page)
         set((st) => {
-          if (st.pages.some((item) => item.pageId === pageId)) return st;
-          const pages = [...st.pages, page];
+          if (!!st.pages.byId[pageId ?? ""]) return st;
+          const pages = [...orderedPages(st.pages), page];
           const order = st.layout.order.filter((id) => id !== pageId);
           order.splice(Math.max(0, Math.min(before.layout.order.indexOf(pageId), order.length)), 0, pageId);
           const layout = { ...st.layout, order };
@@ -803,7 +821,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
           const activePageId = before.activePageId === pageId ? pageId : st.activePageId;
           const zoom = before.zoomLevels[pageId];
           return {
-            pages,
+            pages: normalizePages(pages, st.pages),
             layout,
             closedTabs,
             activePageId,
@@ -818,7 +836,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
   },
 
   moveTabToWindow: async (pageId, windowId) => {
-    const page = get().pages.find((item) => item.pageId === pageId);
+    const page = get().pages.byId[pageId ?? ""];
     if (
       !page ||
       page.viewStatus === "detached" ||
@@ -844,7 +862,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
   moveTabsToWindow: async (pageIds, windowId) => {
     const state = get();
     const placements = [...new Set(pageIds)].map((pageId) => {
-      const page = state.pages.find((item) => item.pageId === pageId);
+      const page = state.pages.byId[pageId ?? ""];
       if (
         !page ||
         page.viewStatus === "detached" ||

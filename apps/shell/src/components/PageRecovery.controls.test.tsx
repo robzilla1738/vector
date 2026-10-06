@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -73,7 +74,12 @@ beforeEach(() => {
     canGoBack: true,
     navigationError: { url: "https://fixture.test/", code: -105, message: "ERR_NAME_NOT_RESOLVED" },
   };
-  state = { mode: "focus", pages: [page], activePageId: page.pageId, focusCommandBar: focus };
+  state = {
+    mode: "focus",
+    pages: normalizePages([page] as never),
+    activePageId: page.pageId,
+    focusCommandBar: focus,
+  };
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -107,7 +113,7 @@ it("keeps original full recovery and long URL diagnostics in controlled remappab
       message: "ERR_CERT_COMMON_NAME_INVALID <full diagnostic>",
     },
   };
-  state.pages = [page];
+  state.pages = normalizePages([page] as never);
   await render();
   const summary = host.querySelector("summary")!;
   expect(host.querySelector("details")!.open).toBe(false);
@@ -131,7 +137,7 @@ it("preserves separate original HTTP fallback/certificate producers and refuses 
       upgradedFrom: "http://fixture.test/",
     },
   };
-  state.pages = [page];
+  state.pages = normalizePages([page] as never);
   await render();
   await click("Continue over HTTP");
   expect(native.useHttp).toHaveBeenCalledWith("page", "http://fixture.test/");
@@ -142,7 +148,7 @@ it("preserves separate original HTTP fallback/certificate producers and refuses 
     documentEpoch: 2,
     navigationError: { url: "https://fixture.test/", code: -200, message: "ERR_CERT_AUTHORITY_INVALID" },
   };
-  state.pages = [page];
+  state.pages = normalizePages([page] as never);
   await render();
   await click("Proceed anyway (unsafe)");
   expect(native.proceedInsecure).toHaveBeenCalledWith("page", "https://fixture.test/");
@@ -159,7 +165,7 @@ it("reserves pending synchronously and delivers actual ACK without clearing a ne
     expect(() => invokeScopedControl("retry-page-recovery")).toThrow("current");
   });
   page = { ...page, documentEpoch: 2 };
-  state.pages = [page];
+  state.pages = normalizePages([page] as never);
   await render();
   const next = held<any>();
   rpc.mockReturnValueOnce(next.promise);
@@ -193,13 +199,13 @@ it("retains original failure and refuses old document/window ABA delivery", asyn
 it("refuses missing/duplicate/foreign/current-document changes before any producer dispatch", async () => {
   await render();
   button("Try again").focus();
-  state.pages = [{ ...page, documentEpoch: 9 }];
+  state.pages = normalizePages([{ ...page, documentEpoch: 9 }] as never);
   expect(() => invokeScopedControl("retry-page-recovery")).toThrow("current");
-  state.pages = [page, page];
+  state.pages = normalizePages([page, page] as never);
   expect(() => invokeScopedControl("retry-page-recovery")).toThrow("current");
-  state.pages = [{ ...page, windowId: "foreign" }];
+  state.pages = normalizePages([{ ...page, windowId: "foreign" }] as never);
   expect(() => invokeScopedControl("retry-page-recovery")).toThrow("current");
-  state.pages = [];
+  state.pages = normalizePages([] as never);
   expect(() => invokeScopedControl("retry-page-recovery")).toThrow("current");
   expect(rpc).not.toHaveBeenCalled();
   expect(native.useHttp).not.toHaveBeenCalled();
@@ -267,7 +273,7 @@ it("preserves original recovery DOM order, attributes and registered actual butt
   ];
   for (const row of cases) {
     page = { ...page, navigationError: row.error, viewStatus: row.status } as PageTarget;
-    state.pages = [page];
+    state.pages = normalizePages([page] as never);
     await render();
     const controls = [...host.querySelectorAll<HTMLButtonElement>(".empty-actions > button")];
     expect(controls.map((control) => control.textContent)).toEqual(row.labels);

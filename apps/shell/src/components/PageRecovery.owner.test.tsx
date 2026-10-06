@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -60,7 +61,7 @@ beforeEach(() => {
     navigationError: { url: "https://fixture.test/", code: -105, message: "ERR_NAME_NOT_RESOLVED" },
   };
   toast.mockReset();
-  useStore.setState({ mode: "focus", pages: [page], activePageId: page.pageId, toast });
+  useStore.setState({ mode: "focus", pages: normalizePages([page]), activePageId: page.pageId, toast });
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -94,10 +95,10 @@ it("keeps the original rejection but retires its presentation after observed liv
   });
   const reason = new Error("Original private producer diagnostic");
   const observed = completion.catch((error) => error);
-  useStore.setState({ pages: [{ ...page, documentEpoch: 2 }] });
+  useStore.setState({ pages: normalizePages([{ ...page, documentEpoch: 2 }]) });
   button("Edit address").focus();
   await expect(executeCommand("edit-page-recovery-address")).rejects.toThrow("current");
-  useStore.setState({ pages: [page] });
+  useStore.setState({ pages: normalizePages([page]) });
   await act(async () => response.reject(reason));
   expect(await observed).toBe(reason);
   expect(host.textContent).not.toContain(reason.message);
@@ -122,7 +123,7 @@ it("retains unknown ACK and a fresh action's busy state after original observed 
   await expect(executeCommand("edit-page-recovery-address")).rejects.toThrow("current");
   bridge.privateMode = false;
   page = { ...page, documentEpoch: 2 };
-  useStore.setState({ pages: [page] });
+  useStore.setState({ pages: normalizePages([page]) });
   await mount();
   await act(async () => button("Go back").click());
   const ack = { original: "truthful ACK" };

@@ -1,3 +1,4 @@
+import { orderedPages } from "./store/pages";
 import { measureOrganizationWork } from "./organization-performance";
 import type { Clock, HostMethodResult, PageTarget, TabCatalogSnapshot } from "@aux/contracts";
 import type { Layout } from "./workspace";
@@ -96,10 +97,12 @@ async function autoArchiveCycle() {
   const catalog = await bridge.tabsSnapshot();
   const settings = archiveSettings(state.settings.autoArchive);
   // This first pass selects bounded probe targets only. Every close still requires a native clean probe.
-  const probeStatuses = Object.fromEntries(state.pages.map((page) => [page.pageId, "clean" as const]));
+  const probeStatuses = Object.fromEntries(
+    orderedPages(state.pages).map((page) => [page.pageId, "clean" as const]),
+  );
   const probe = autoArchiveCandidates({
     layout: state.layout,
-    pages: state.pages,
+    pages: orderedPages(state.pages),
     catalog,
     settings,
     windowId: bridge.windowId,
@@ -111,7 +114,7 @@ async function autoArchiveCycle() {
   const current = useStore.getState();
   const chosen = autoArchiveCandidates({
     layout: current.layout,
-    pages: current.pages,
+    pages: orderedPages(current.pages),
     catalog: await bridge.tabsSnapshot(),
     settings: archiveSettings(current.settings.autoArchive),
     windowId: bridge.windowId,

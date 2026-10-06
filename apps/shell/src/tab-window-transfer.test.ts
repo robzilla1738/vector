@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import type { PageTarget, TabCommandAck } from "@aux/contracts";
@@ -22,7 +23,7 @@ function setup() {
     (pageId) =>
       ({ pageId, windowId: "main", url: "https://example.com", viewStatus: "visible" }) as PageTarget,
   );
-  useStore.setState({ layout, pages, activePageId: "one" });
+  useStore.setState({ layout, pages: normalizePages(pages), activePageId: "one" });
   return { pages, folder };
 }
 const ack = (windowId: string): TabCommandAck => ({
@@ -86,7 +87,9 @@ it("stops after an uncertain transfer without retrying or moving later tabs", as
 it("checks the entire selection for agent control before any transfer", async () => {
   const { pages } = setup();
   useStore.setState({
-    pages: pages.map((page) => (page.pageId === "two" ? { ...page, controller: "agent" } : page)),
+    pages: normalizePages(
+      pages.map((page) => (page.pageId === "two" ? { ...page, controller: "agent" } : page)),
+    ),
   });
   const tabCommand = vi.spyOn(bridge, "tabCommand");
   await expect(useStore.getState().moveTabsToWindow(["one", "two"], "existing")).rejects.toThrow(
@@ -97,7 +100,7 @@ it("checks the entire selection for agent control before any transfer", async ()
 it("files an arriving tab into the relayed space and folder", () => {
   const layout = emptyLayout();
   const pages = [{ pageId: "moved", windowId: "main", url: "https://example.com" } as PageTarget];
-  useStore.setState({ layout, pages });
+  useStore.setState({ layout, pages: normalizePages(pages) });
   useStore.getState().applyTabsPlacement({
     pageId: "moved",
     windowId: bridge.windowId,
@@ -137,26 +140,27 @@ it("carries a reviewed tab name to its destination only for the same URL", async
   expect(placement?.tabName).toEqual({ title: "Project brief", url: "https://example.com" });
   useStore.setState({
     layout: emptyLayout(),
-    pages: [{ pageId: "one", url: "https://example.com" } as PageTarget],
+    pages: normalizePages([{ pageId: "one", url: "https://example.com" } as PageTarget]),
   });
   useStore.getState().applyTabsPlacement({ pageId: "one", windowId: bridge.windowId, placement: placement! });
   expect(useStore.getState().layout.tabNames?.one?.title).toBe("Project brief");
   useStore.setState({
     layout: emptyLayout(),
-    pages: [{ pageId: "one", url: "https://changed.example" } as PageTarget],
+    pages: normalizePages([{ pageId: "one", url: "https://changed.example" } as PageTarget]),
   });
   useStore.getState().applyTabsPlacement({ pageId: "one", windowId: bridge.windowId, placement: placement! });
   expect(useStore.getState().layout.tabNames?.one).toBeUndefined();
 });
 it("ignores placement relayed for another window", () => {
   const layout = emptyLayout();
-  useStore.setState({ layout, pages: [{ pageId: "moved", url: "https://example.com" } as PageTarget] });
-  useStore
-    .getState()
-    .applyTabsPlacement({
-      pageId: "moved",
-      windowId: "other",
-      placement: { space: { id: "research", name: "Research", color: "violet" } },
-    });
+  useStore.setState({
+    layout,
+    pages: normalizePages([{ pageId: "moved", url: "https://example.com" } as PageTarget]),
+  });
+  useStore.getState().applyTabsPlacement({
+    pageId: "moved",
+    windowId: "other",
+    placement: { space: { id: "research", name: "Research", color: "violet" } },
+  });
   expect(useStore.getState().layout.spaces.some((space) => space.id === "research")).toBe(false);
 });

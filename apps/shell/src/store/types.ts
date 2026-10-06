@@ -22,6 +22,7 @@ import type { MentionRef, PageContextRef } from "@aux/contracts";
 import type { RunAnswerDraft } from "../run-answer-drafts";
 import type { SidebarMode } from "../sidebar-mode";
 import type { Layout, Pin, SpaceColor } from "../workspace";
+import type { PageCollection } from "./pages";
 
 export type Mode = "focus" | "overview" | "table" | "conversation";
 export type Overlay =
@@ -64,7 +65,7 @@ export interface RunModelStats {
 }
 
 export interface Workspace {
-  pages: PageTarget[];
+  pages: PageCollection;
   sets: PageSet[];
   members: SetMember[];
   runs: Run[];

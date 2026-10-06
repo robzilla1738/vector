@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -59,7 +60,7 @@ beforeEach(() => {
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
   });
@@ -156,7 +157,7 @@ it.each(["Tasks", "Library"] as const)(
     expect(input()).toBe(original);
     expect(document.activeElement).toBe(original);
     expect(original.value).toBe("Original page-free question");
-    expect(useStore.getState().pages).toEqual([]);
+    expect(orderedPages(useStore.getState().pages)).toEqual([]);
   },
 );
 it.each(["Tasks", "Library"] as const)("ordinary %s Close restores its original opener", async (surface) => {

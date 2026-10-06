@@ -1,3 +1,5 @@
+import { useTabLayout } from "../use-tab-layout";
+import { orderedPages } from "../store/pages";
 import { staticIconButtonProps } from "../ui/class-props";
 import { runCommand } from "../commands";
 import { windowTabHint } from "../tab-window-transfer";
@@ -54,7 +56,7 @@ const HorizontalTabControls = memo(function HorizontalTabControls({
   onMove: (id: string, direction: -1 | 1) => void;
   onTabNode: (id: string, node: HTMLButtonElement | null) => void;
 }) {
-  const page = useStore((state) => state.pages.find((tab) => tab.pageId === pageId));
+  const page = useStore((state) => state.pages.byId[pageId ?? ""]);
   if (!page) return null;
   const title = useStore((state) => tabLabel(state.layout, page));
   const windowHint = windowTabHint(page);
@@ -151,7 +153,7 @@ const HorizontalTabControls = memo(function HorizontalTabControls({
 
 export function HorizontalTabs() {
   const key = useShortcutLabels();
-  const layout = useStore((state) => state.layout);
+  const layout = useTabLayout();
   const pages = useTabMembership();
   const activePageId = useStore((state) => state.activePageId);
   const mode = useStore((state) => state.mode);
@@ -184,7 +186,7 @@ export function HorizontalTabs() {
       const rect = element.getBoundingClientRect();
       previewTimer.current = setTimeout(() => {
         previewTimer.current = null;
-        const page = useStore.getState().pages.find((tab) => tab.pageId === pageId);
+        const page = useStore.getState().pages.byId[pageId ?? ""];
         if (page) setPreview({ page, x: rect.left, y: rect.bottom });
       }, 450);
     },
@@ -222,7 +224,8 @@ export function HorizontalTabs() {
   }, []);
   const focusAfterClose = useCallback(() => {
     const state = useStore.getState();
-    const fallback = tabsInSpace(state.layout, state.pages, state.layout.activeSpaceId)[0]?.pageId;
+    const fallback = tabsInSpace(state.layout, orderedPages(state.pages), state.layout.activeSpaceId)[0]
+      ?.pageId;
     tabNodes.current.get(state.activePageId ?? fallback ?? "")?.focus();
   }, []);
   const selection = useTabSelection(tabs, layout.activeSpaceId, activePageId, focusAfterClose);
@@ -247,7 +250,11 @@ export function HorizontalTabs() {
         if (refocus)
           requestAnimationFrame(() => {
             const state = useStore.getState();
-            const fallback = tabsInSpace(state.layout, state.pages, state.layout.activeSpaceId)[0]?.pageId;
+            const fallback = tabsInSpace(
+              state.layout,
+              orderedPages(state.pages),
+              state.layout.activeSpaceId,
+            )[0]?.pageId;
             tabNodes.current.get(state.activePageId ?? fallback ?? "")?.focus();
           });
       })
@@ -265,7 +272,7 @@ export function HorizontalTabs() {
     [allTabs, layout],
   );
   const previewPage = useStore((state) =>
-    preview ? state.pages.find((page) => page.pageId === preview.page.pageId) : undefined,
+    preview ? state.pages.byId[preview.page.pageId ?? ""] : undefined,
   );
 
   return (
@@ -430,7 +437,7 @@ export function HorizontalTabs() {
                     }}
                     onContextMenu={(event) => {
                       event.preventDefault();
-                      const current = useStore.getState().pages.find((tab) => tab.pageId === page.pageId);
+                      const current = useStore.getState().pages.byId[page.pageId ?? ""];
                       if (current) onContext(current, event.clientX, event.clientY);
                     }}
                   >

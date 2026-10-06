@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -29,7 +30,7 @@ beforeEach(() => {
   useStore.setState({
     connected: true,
     settings: { modelConfigured: true },
-    pages: [],
+    pages: normalizePages([]),
     runs: [],
     pendingTurns: [],
     conversationId: "original",
@@ -95,7 +96,7 @@ it.each(["same", "new-draft", "other-chat"])(
     expect(details?.open ?? null).toBe(stayed ? false : null);
     expect(useStore.getState().pendingTurns).toEqual([]);
     expect(useStore.getState().runs).toEqual([]);
-    expect(useStore.getState().pages).toEqual([]);
+    expect(orderedPages(useStore.getState().pages)).toEqual([]);
     expect(useStore.getState().toasts).toEqual([]);
     expect(useStore.getState().conversationDrafts["chat:original"]).toBe(
       scenario === "new-draft" ? "New question" : "Original question",

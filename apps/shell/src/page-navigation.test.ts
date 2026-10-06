@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import type { PageTarget, TabCommand, TabCommandAck } from "@aux/contracts";
@@ -18,7 +19,7 @@ function setup() {
   );
   const layout = emptyLayout();
   useStore.setState({
-    pages,
+    pages: normalizePages(pages),
     layout: { ...layout, tabSpace: { first: layout.activeSpaceId, second: layout.activeSpaceId } },
     activePageId: "first",
     mode: "conversation",
@@ -43,13 +44,13 @@ it("reveals a failed destination from a conversation without refocusing it after
   expect(useStore.getState().mode).toBe("focus");
   await useStore.getState().activate("second");
   useStore.setState({
-    pages: [
+    pages: normalizePages([
       {
         ...pages[0]!,
         navigationError: { url: "https://offline.example/", code: -105, message: "Name not resolved" },
       },
       pages[1]!,
-    ],
+    ]),
   });
   fail(new Error("Navigation failed"));
   await navigating;

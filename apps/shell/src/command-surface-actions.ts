@@ -1,3 +1,4 @@
+import { orderedPages } from "./store/pages";
 import { bridge, inNativeHost } from "./bridge";
 import { call, useStore } from "./store";
 import { isTab } from "./workspace";
@@ -5,7 +6,7 @@ import { openCommandSurface } from "./command-surface-state";
 
 function personPage(webOnly = false) {
   const state = useStore.getState();
-  const page = state.pages.find((page) => page.pageId === state.activePageId);
+  const page = state.pages.byId[state.activePageId ?? ""];
   if (!page || !isTab(page) || (webOnly && !/^https?:\/\//.test(page.url)))
     throw new Error("Open an available web page first.");
   return page;
@@ -42,7 +43,7 @@ export const COMMAND_SURFACE_ACTIONS = {
     useStore.getState().setOverlay("inline-assist");
   },
   "command-collect-tabs": async () => {
-    const pages = useStore.getState().pages.filter(isTab);
+    const pages = orderedPages(useStore.getState().pages).filter(isTab);
     if (!pages.length) throw new Error("No open tabs to collect.");
     return call("sets.create", {
       name: `Tabs ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,

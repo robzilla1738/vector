@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -169,7 +170,7 @@ it("keeps selection keyboard input and registered whole-image reset before actua
 });
 it("refuses capture when original target ownership changes while the actual native reply is held", async () => {
   const page = makePage(0, { pageId: "original", url: "https://loopback.invalid/owned", documentEpoch: 3 });
-  useStore.setState({ pages: [page] });
+  useStore.setState({ pages: normalizePages([page]) });
   let complete!: (value: unknown) => void;
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(
     () =>
@@ -185,7 +186,7 @@ it("refuses capture when original target ownership changes while the actual nati
     fullPage: false,
     expectedDocumentEpoch: 3,
   });
-  useStore.setState({ pages: [{ ...page, targetId: "foreign-original-target" }] });
+  useStore.setState({ pages: normalizePages([{ ...page, targetId: "foreign-original-target" }]) });
   await act(async () => complete({ dataUrl: "data:image/png;base64,AA==" }));
   expect(host.querySelector(".capture-editor")).toBeNull();
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("page changed during capture");

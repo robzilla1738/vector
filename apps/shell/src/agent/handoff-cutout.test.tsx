@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -126,7 +127,7 @@ it("paints that hole for a pending handoff whose tool turn is not the run id", a
     title: "Checkout",
   });
   const original = useStore.getState();
-  useStore.setState({ runs: [run], pages: [page], activePageId: "page-1" });
+  useStore.setState({ runs: [run], pages: normalizePages([page]), activePageId: "page-1" });
   const host = document.createElement("div");
   document.body.append(host);
   let root: Root = createRoot(host);
@@ -153,7 +154,7 @@ it("paints that hole for a pending handoff whose tool turn is not the run id", a
     await paint(snap());
     expect(host.querySelector(".agent-handoff")?.getAttribute("data-cutout-y")).toBe("120");
     await act(async () => {
-      useStore.setState({ pages: [{ ...page, documentEpoch: 5 }] });
+      useStore.setState({ pages: normalizePages([{ ...page, documentEpoch: 5 }]) });
     });
     expect(host.querySelector(".agent-handoff")).toBeNull();
     expect(invoke.mock.calls.some(([method]) => method === "runs.get")).toBe(true);

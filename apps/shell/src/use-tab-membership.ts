@@ -11,9 +11,7 @@ export type TabMembership = Pick<PageTarget, "pageId"> & { viewStatus: "visible"
 export function useTabMembership(): TabMembership[] {
   const ids = useStore(
     useShallow((state) =>
-      state.pages
-        .filter((page) => isStripTab(page) && page.pageId !== state.peekPageId)
-        .map((page) => page.pageId),
+      state.pages.allIds.filter((id) => id !== state.peekPageId && isStripTab(state.pages.byId[id]!)),
     ),
   );
   return useMemo(

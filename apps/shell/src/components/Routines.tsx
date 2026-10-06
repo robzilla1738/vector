@@ -31,9 +31,7 @@ import {
 } from "../ui/native-attribute-props";
 
 export function Routines({ workspaceId, task }: { workspaceId: string; task?: Task }) {
-  const currentPageUrl = useStore(
-    (state) => state.pages.find((page) => page.pageId === state.activePageId)?.url,
-  );
+  const currentPageUrl = useStore((state) => state.pages.byId[state.activePageId ?? ""]?.url);
   const currentPageId = useStore((state) => state.activePageId);
   const savedScan = useStore((state) => state.settings.routineSuggestionScan);
   const scanMode = savedScan === "off" || savedScan === "five-minutes" ? savedScan : "context";

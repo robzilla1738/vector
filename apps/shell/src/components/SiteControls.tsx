@@ -40,7 +40,7 @@ function blockedRequestsLabel(count: number) {
 
 export function SiteControls() {
   const agentPermissions = useFeature("agentSitePermissions");
-  const page = useStore((state) => state.pages.find((page) => page.pageId === state.activePageId));
+  const page = useStore((state) => state.pages.byId[state.activePageId ?? ""]);
   const pageId = page?.pageId;
   const setOverlay = useStore((state) => state.setOverlay);
   const key = JSON.stringify([

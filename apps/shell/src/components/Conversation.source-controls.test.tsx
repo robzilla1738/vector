@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -64,7 +65,7 @@ beforeEach(() => {
       ...initial,
       runs,
       steps: {},
-      pages: [makePage(0, { url, documentEpoch: 7, windowId })],
+      pages: normalizePages([makePage(0, { url, documentEpoch: 7, windowId })]),
       activePageId: "page-1",
       connected: true,
       toasts: [],
@@ -196,7 +197,9 @@ it("recorded browser source reuses only exact original page URL/document and ret
   expect(activate).toHaveBeenCalledExactlyOnceWith("page-1");
 });
 it("changed live document opens original recorded URL in new tab without pretending it is current", async () => {
-  useStore.setState((state) => ({ pages: state.pages.map((page) => ({ ...page, documentEpoch: 8 })) }));
+  useStore.setState((state) => ({
+    pages: normalizePages(orderedPages(state.pages).map((page) => ({ ...page, documentEpoch: 8 }))),
+  }));
   await render();
   await select();
   const ack = makePage(2, { url, windowId });
@@ -444,7 +447,7 @@ it("hidden original source control and observed foreign-window click refuse with
   expect(bridge.openBrowserProfileUrl).not.toHaveBeenCalled();
 });
 it("original modifier citation keeps background navigation arguments and exact recorded URL", async () => {
-  useStore.setState({ pages: [] });
+  useStore.setState({ pages: normalizePages([]) });
   await render();
   const ack = makePage(2, { url, windowId });
   const background = vi.fn(async () => ack);

@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import type { PageTarget, TabCommandAck } from "@aux/contracts";
@@ -18,7 +19,7 @@ const rejected = (code: string): TabCommandAck => ({
   error: { code, message: code },
 });
 it("stops grouped closing when beforeunload cancels and releases the operation lock", async () => {
-  useStore.setState({ pages, closingTabs: false });
+  useStore.setState({ pages: normalizePages(pages), closingTabs: false });
   const tabCommand = vi
     .spyOn(bridge, "tabCommand")
     .mockResolvedValueOnce(applied("one") as never)
@@ -31,7 +32,7 @@ it("stops grouped closing when beforeunload cancels and releases the operation l
   expect(useStore.getState().closingTabs).toBe(false);
 });
 it("does not overlap close requests while a page waits for a response", async () => {
-  useStore.setState({ pages, closingTabs: false });
+  useStore.setState({ pages: normalizePages(pages), closingTabs: false });
   let finish!: (ack: TabCommandAck) => void;
   const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(
     () =>
@@ -51,7 +52,7 @@ it("restores a closed group in original order and activates its previous foregro
   const layout = emptyLayout();
   layout.order = ["one", "two", "three"];
   useStore.setState({
-    pages,
+    pages: normalizePages(pages),
     layout,
     closedTabs: [],
     activePageId: "one",
@@ -66,15 +67,13 @@ it("restores a closed group in original order and activates its previous foregro
   let eventSeq = lastEventSeq() + 1;
   const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(async (command: any) => {
     if (command.kind === "close") {
-      useStore
-        .getState()
-        .applyEvent({
-          type: "page.removed",
-          seq: eventSeq++,
-          streamId: "test",
-          ts: Date.now(),
-          payload: { pageId: command.pageId },
-        });
+      useStore.getState().applyEvent({
+        type: "page.removed",
+        seq: eventSeq++,
+        streamId: "test",
+        ts: Date.now(),
+        payload: { pageId: command.pageId },
+      });
       return applied(command.pageId) as never;
     }
     if (command.kind === "open")
@@ -82,11 +81,13 @@ it("restores a closed group in original order and activates its previous foregro
     return applied(command.pageId) as never;
   });
   useStore.setState({
-    pages: pages.map((page) => ({
-      ...page,
-      url: `https://example.com/${page.pageId === "two" ? "one" : page.pageId}`,
-      title: page.pageId,
-    })),
+    pages: normalizePages(
+      pages.map((page) => ({
+        ...page,
+        url: `https://example.com/${page.pageId === "two" ? "one" : page.pageId}`,
+        title: page.pageId,
+      })),
+    ),
   });
   await useStore.getState().closeTabs(["one", "three"]);
   expect(useStore.getState().closedTabs.map((tab) => tab.index)).toEqual([0, 2]);

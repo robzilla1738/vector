@@ -1,3 +1,4 @@
+import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { runCommand } from "../commands";
 import { localSplitPage } from "../features/surfaces/split-actions";
@@ -8,9 +9,15 @@ import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-
 import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 
 export function PictureInPictureMedia() {
-  const pages = useStore((state) => state.pages),
-    audio = useStore((state) => state.tabAudio);
-  const videos = pages.filter((page) => audio[page.pageId]?.video && localSplitPage(page.pageId));
+  const audio = useStore((state) => state.tabAudio);
+  const videos = useStore(
+    useShallow((state) =>
+      state.pages.allIds.flatMap((id) => {
+        const page = state.pages.byId[id]!;
+        return state.tabAudio[id]?.video && localSplitPage(id) ? [page] : [];
+      }),
+    ),
+  );
   if (!videos.length) return null;
   return (
     <section className="sidebar-media" aria-label="Media">

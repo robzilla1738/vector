@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -32,7 +33,7 @@ beforeEach(() => {
   useStore.setState({
     connected: true,
     settings: { modelConfigured: true },
-    pages: [],
+    pages: normalizePages([]),
     runs: [],
     pendingTurns: [],
     conversationId: "original",
@@ -88,7 +89,7 @@ it("keeps raw restored-history diagnostics in one closed Details panel, then ret
   expect(host.querySelector("details")).toBeNull();
   expect(host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')?.disabled).toBe(false);
   expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("Original question");
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(useStore.getState().runs).toEqual([]);
   expect(invoke.mock.calls.filter(([method]) => method === "runs.start")).toEqual([]);
 });
@@ -116,6 +117,6 @@ it("a fresh no-tab chat does not request history or present a transport error", 
   await act(async () => root.render(<Conversation chatId={null} />));
   expect(vi.mocked(bridge.invoke).mock.calls.filter(([method]) => method === "runs.list")).toEqual([]);
   expect(host.querySelector('[role="alert"]')).toBeNull();
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(useStore.getState().toasts).toEqual([]);
 });

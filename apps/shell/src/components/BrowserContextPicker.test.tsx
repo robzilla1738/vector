@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -40,11 +41,11 @@ it("offers website context and a page-free choice while an internal tab is activ
   const root = createRoot(host);
   useStore.setState({
     activePageId: "internal",
-    pages: [
+    pages: normalizePages([
       page("internal", "chrome://newtab"),
       page("blank", "about:blank"),
       page("website", "https://example.test/"),
-    ],
+    ]),
   });
   try {
     await act(async () => root.render(<BrowserContextPicker value="active" onChange={() => {}} />));
@@ -67,7 +68,10 @@ it("keeps a closed explicit selection actionable until the person removes or rep
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
-  useStore.setState({ activePageId: "website", pages: [page("website", "https://example.test/")] });
+  useStore.setState({
+    activePageId: "website",
+    pages: normalizePages([page("website", "https://example.test/")]),
+  });
   const selections: string[] = [];
   try {
     await act(async () =>

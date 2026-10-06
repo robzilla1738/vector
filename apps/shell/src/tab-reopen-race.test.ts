@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import type { PageTarget, TabCommand, TabCommandAck } from "@aux/contracts";
@@ -34,7 +35,13 @@ function setup() {
     folders: [{ id: "research", spaceId: "work", name: "Research", collapsed: false }],
     tabFolder: { middle: "research" },
   };
-  useStore.setState({ pages, layout, activePageId: "middle", closedTabs: [], reopeningTab: false });
+  useStore.setState({
+    pages: normalizePages(pages),
+    layout,
+    activePageId: "middle",
+    closedTabs: [],
+    reopeningTab: false,
+  });
   vi.spyOn(bridge, "overlay").mockResolvedValue(true);
   vi.spyOn(bridge, "invoke").mockResolvedValue({} as never);
   vi.spyOn(bridge, "bindTabSpace").mockImplementation(async (_pageId, spaceId) => ({
@@ -44,15 +51,13 @@ function setup() {
   return { pages, layout };
 }
 function close(pageId: string) {
-  useStore
-    .getState()
-    .applyEvent({
-      seq: Date.now(),
-      streamId: "test",
-      type: "page.removed",
-      ts: Date.now(),
-      payload: { pageId },
-    });
+  useStore.getState().applyEvent({
+    seq: Date.now(),
+    streamId: "test",
+    type: "page.removed",
+    ts: Date.now(),
+    payload: { pageId },
+  });
 }
 const pageOf = (pageId: string, url = "https://example.test/x"): PageTarget =>
   ({ pageId, title: "x", url, ownedByRuntime: false, viewStatus: "visible" }) as PageTarget;
@@ -68,24 +73,20 @@ it("restores position when the catalog patch lands after the open ack", async ()
   // only via the delayed patch.
   vi.spyOn(bridge, "tabCommand").mockImplementation(async (command) => {
     if (command.kind === "open") {
-      useStore
-        .getState()
-        .applyEvent({
-          seq: Date.now(),
-          streamId: "test",
-          type: "page.added",
-          ts: Date.now(),
-          payload: { page: pageOf(command.pageId!, command.url ?? "") },
-        });
-      useStore
-        .getState()
-        .applyEvent({
-          seq: Date.now(),
-          streamId: "test",
-          type: "page.removed",
-          ts: Date.now(),
-          payload: { pageId: command.pageId! },
-        });
+      useStore.getState().applyEvent({
+        seq: Date.now(),
+        streamId: "test",
+        type: "page.added",
+        ts: Date.now(),
+        payload: { page: pageOf(command.pageId!, command.url ?? "") },
+      });
+      useStore.getState().applyEvent({
+        seq: Date.now(),
+        streamId: "test",
+        type: "page.removed",
+        ts: Date.now(),
+        payload: { pageId: command.pageId! },
+      });
       return applied(command);
     }
     return applied(command);
@@ -95,15 +96,13 @@ it("restores position when the catalog patch lands after the open ack", async ()
   // The page's upsert patch arrives after the ack resolves.
   setTimeout(
     () =>
-      useStore
-        .getState()
-        .applyEvent({
-          seq: Date.now(),
-          streamId: "test",
-          type: "page.added",
-          ts: Date.now(),
-          payload: { page: pageOf("middle", "https://example.test/middle") },
-        }),
+      useStore.getState().applyEvent({
+        seq: Date.now(),
+        streamId: "test",
+        type: "page.added",
+        ts: Date.now(),
+        payload: { page: pageOf("middle", "https://example.test/middle") },
+      }),
     20,
   );
   await opening;

@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -75,7 +76,7 @@ beforeEach(() => {
   bridge.privateMode = false;
   bridge.windowKind = "normal";
   useStore.setState({
-    pages: [],
+    pages: normalizePages([]),
     activePageId: null,
     overlay: null,
     sidebar: "expanded",

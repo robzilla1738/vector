@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -54,7 +55,7 @@ beforeEach(() => {
       ...initial,
       runs,
       steps: {},
-      pages: [],
+      pages: normalizePages([]),
       connected: true,
       toasts: [],
       pendingTurns: [],
@@ -316,14 +317,14 @@ it("retired Reopen leaves the original authorized tab creation intact but cannot
   });
   const open = vi.spyOn(useStore.getState(), "openConversation"),
     original = await dispatch(true);
-  const created = useStore.getState().pages.find((page) => page.url === url)!;
+  const created = orderedPages(useStore.getState().pages).find((page) => page.url === url)!;
   expect(created).toBeDefined();
   await render("b");
   await act(async () => {
     pending[0]!.resolve({ status: "accepted", pageId: created.pageId });
     await original.completion;
   });
-  expect(useStore.getState().pages.some((page) => page.pageId === created.pageId)).toBe(true);
+  expect(!!useStore.getState().pages.byId[created.pageId ?? ""]).toBe(true);
   expect(open).not.toHaveBeenCalled();
   expect(useStore.getState().conversationContexts["chat:a"]).toBeUndefined();
   expect(useStore.getState().conversationDrafts["chat:b"]).toBe("Keep B draft");
@@ -348,7 +349,7 @@ it("Reopen retains original current and retired rejection identities and suppres
 });
 it("Reopen reuses an original usable person page without a duplicate open and remains callable disconnected", async () => {
   const page = makePage(0, { url, ownedByRuntime: false, viewStatus: "hidden" });
-  useStore.setState({ connected: false, pages: [page] });
+  useStore.setState({ connected: false, pages: normalizePages([page]) });
   await render();
   const newTab = vi.fn();
   useStore.setState({ newTab });

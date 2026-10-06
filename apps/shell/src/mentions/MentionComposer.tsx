@@ -1,3 +1,4 @@
+import { useShallow } from "zustand/react/shallow";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ConnectorCatalog, OrganizationSnapshot, Routine } from "@aux/contracts";
@@ -29,7 +30,7 @@ export function MentionComposer({
   composerId,
   workspaceId,
 }: ComposerPluginProps) {
-  const pages = useStore((state) => state.pages);
+  const pages = useStore(useShallow((state) => state.pages.allIds.map((id) => state.pages.byId[id]!)));
   const listId = useId();
   const [query, setQuery] = useState<MentionQuery | null>(null);
   const [anchor, setAnchor] = useState({ left: 0, top: 0 });

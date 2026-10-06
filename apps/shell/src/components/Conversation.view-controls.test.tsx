@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -46,7 +47,7 @@ beforeEach(() => {
       ...initial,
       runs,
       steps: {},
-      pages: [],
+      pages: normalizePages([]),
       connected: true,
       conversationId: "a",
       toasts: [],
@@ -361,7 +362,7 @@ it("focused remapped Continue retains the exact displayed chat and draft while d
 it("browser preview Show/Hide uses the original synchronous toggle without changing context", async () => {
   const page = makePage(0);
   useStore.setState({
-    pages: [page],
+    pages: normalizePages([page]),
     activePageId: page.pageId,
     conversationContexts: { "chat:a": page.pageId },
   });

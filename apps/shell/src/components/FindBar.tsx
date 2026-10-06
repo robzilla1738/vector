@@ -28,8 +28,8 @@ export function FindBar({
   const inShell = inReader || inConversation;
   const finder = inReader ? readerFinder : conversationFinder;
   const activePageId = useStore((s) => s.activePageId);
-  const epoch = useStore((s) => s.pages.find((page) => page.pageId === s.activePageId)?.documentEpoch);
-  const loading = useStore((s) => s.pages.find((page) => page.pageId === s.activePageId)?.loading);
+  const epoch = useStore((s) => s.pages.byId[s.activePageId ?? ""]?.documentEpoch);
+  const loading = useStore((s) => s.pages.byId[s.activePageId ?? ""]?.loading);
   const setOverlay = useStore((s) => s.setOverlay);
   const text = useStore((s) => s.findText);
   const res = useStore((s) => s.findMatches);

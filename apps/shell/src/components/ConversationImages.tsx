@@ -281,8 +281,7 @@ export function ConversationImages({
     });
   const pageCurrent = () => {
     if (!page) return false;
-    const matches = useStore.getState().pages.filter((item) => item.pageId === page.pageId);
-    const original = matches.length === 1 ? matches[0] : undefined;
+    const original = useStore.getState().pages.byId[page.pageId];
     return (
       !!original &&
       original.url === page.url &&
@@ -304,7 +303,7 @@ export function ConversationImages({
         expectedDocumentEpoch: page.documentEpoch,
       })) as { dataUrl: string };
       if (version !== request.current || !operationCurrent(owner)) return;
-      const current = useStore.getState().pages.find((item) => item.pageId === page.pageId);
+      const current = useStore.getState().pages.byId[page.pageId ?? ""];
       if (!current || !pageCurrent()) throw new Error("The page changed during capture. Capture it again.");
       if (onPage) {
         const state = useStore.getState();
@@ -313,7 +312,7 @@ export function ConversationImages({
         const size = await imageSize(result.dataUrl);
         if (version !== request.current || !operationCurrent(owner)) return;
         const visible = useStore.getState();
-        const visiblePage = visible.pages.find((item) => item.pageId === page.pageId);
+        const visiblePage = visible.pages.byId[page.pageId ?? ""];
         if (
           visible.mode !== "focus" ||
           visible.activePageId !== page.pageId ||

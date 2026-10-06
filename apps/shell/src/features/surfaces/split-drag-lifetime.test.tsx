@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -58,7 +59,7 @@ beforeEach(async () => {
   layout.tabSpace = { one: layout.activeSpaceId, two: layout.activeSpaceId, other: layout.activeSpaceId };
   useStore.setState(
     {
-      pages: [page("one"), page("two"), page("other")],
+      pages: normalizePages([page("one"), page("two"), page("other")] as never),
       activePageId: "one",
       mode: "focus",
       overlay: null,
@@ -97,15 +98,15 @@ it("keeps a mounted original drag across ordinary page updates and dispatches it
   await begin();
   await act(async () =>
     useStore.setState({
-      pages: useStore
-        .getState()
-        .pages.map((item) => ({
+      pages: normalizePages(
+        orderedPages(useStore.getState().pages).map((item) => ({
           ...item,
           title: `${item.title} refreshed`,
           lastRevision: 2,
           loading: false,
           viewStatus: "hidden",
         })),
+      ),
     }),
   );
   expect(getSurfaceState().dragging).toBe("two");
@@ -131,14 +132,14 @@ it.each([
   "permanently retires the original drag after %s changes, including observed ABA",
   async (_name, patch) => {
     await begin();
-    const original = useStore.getState().pages;
+    const original = orderedPages(useStore.getState().pages);
     await act(async () =>
       useStore.setState({
-        pages: original.map((item) => (item.pageId === "two" ? { ...item, ...patch } : item)),
+        pages: normalizePages(original.map((item) => (item.pageId === "two" ? { ...item, ...patch } : item))),
       }),
     );
     expect(getSurfaceState().dragging).toBeNull();
-    await act(async () => useStore.setState({ pages: original }));
+    await act(async () => useStore.setState({ pages: normalizePages(original) }));
     expect(node.querySelector("section")).toBeNull();
     expect(fixture.command).not.toHaveBeenCalled();
   },

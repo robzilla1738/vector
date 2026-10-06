@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -29,7 +30,12 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
     { width: 100, height: 32 },
   ] as unknown as DOMRectList);
-  useStore.setState({ pages, activePageId: "primary", splitPageId: "split", toasts: [] });
+  useStore.setState({
+    pages: normalizePages(pages),
+    activePageId: "primary",
+    splitPageId: "split",
+    toasts: [],
+  });
   sources.mockReset();
   primary.mockReset();
   host = document.createElement("div");

@@ -595,7 +595,7 @@ export function canSplitPage(page: PageTarget | undefined): boolean {
 
 /** Pair a preview with the current tab, or with another tab in the same Space. */
 export function previewSplit(
-  layout: Layout,
+  layout: Pick<Layout, "tabSpace">,
   pages: PageTarget[],
   pageId: string,
   activePageId: string | null,

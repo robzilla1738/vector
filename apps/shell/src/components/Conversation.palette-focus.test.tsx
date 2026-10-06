@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act, useRef, type ComponentProps } from "react";
 import { createRoot } from "react-dom/client";
@@ -59,7 +60,7 @@ beforeEach(() => {
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
   });
@@ -172,6 +173,6 @@ it.each([false, true])(
     expect(input).not.toBe(initialInput);
     expect(document.activeElement).toBe(input);
     expect(input.value).toBe("Original page-free question");
-    expect(useStore.getState().pages).toEqual([]);
+    expect(orderedPages(useStore.getState().pages)).toEqual([]);
   },
 );

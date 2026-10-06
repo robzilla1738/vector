@@ -50,7 +50,7 @@ export async function closePeekLink(): Promise<void> {
   if (!id) return;
   ++generation;
   await useStore.getState().closeTab(id);
-  if (!useStore.getState().pages.some((page) => page.pageId === id)) {
+  if (!!!useStore.getState().pages.byId[id ?? ""]) {
     useStore.setState({ peekPageId: null });
     remember(null);
   }
@@ -58,14 +58,14 @@ export async function closePeekLink(): Promise<void> {
 
 export async function promotePeekLink(): Promise<void> {
   const id = useStore.getState().peekPageId;
-  if (!id || !useStore.getState().pages.some((page) => page.pageId === id)) return;
+  if (!id || !!!useStore.getState().pages.byId[id ?? ""]) return;
   ++generation;
   useStore.setState({ peekPageId: null });
   remember(null);
   try {
     await useStore.getState().activate(id);
   } catch (error) {
-    if (useStore.getState().pages.some((page) => page.pageId === id)) {
+    if (!!useStore.getState().pages.byId[id ?? ""]) {
       useStore.setState({ peekPageId: id });
       remember(id);
     }
@@ -86,10 +86,10 @@ export function recoverPeekLink(): () => void {
   let closing = false;
   let timeout = 0;
   const check = (state: ReturnType<typeof useStore.getState>) => {
-    if (closing || !state.pages.some((page) => page.pageId === id)) return;
+    if (closing || !!!state.pages.byId[id ?? ""]) return;
     closing = true;
     void state.closeTab(id!).finally(() => {
-      if (!useStore.getState().pages.some((page) => page.pageId === id)) remember(null);
+      if (!!!useStore.getState().pages.byId[id ?? ""]) remember(null);
       window.clearTimeout(timeout);
       unsubscribe();
     });

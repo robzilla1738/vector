@@ -120,10 +120,8 @@ export function AgentOverlay({
     const run = runId ? state.runs.find((item) => item.runId === runId) : undefined;
     return run?.pageIds.includes(pageId) ? pageId : null;
   });
-  const documentEpoch = useStore(
-    (state) => state.pages.find((page) => page.pageId === trackedPageId)?.documentEpoch ?? null,
-  );
-  const url = useStore((state) => state.pages.find((page) => page.pageId === trackedPageId)?.url ?? null);
+  const documentEpoch = useStore((state) => state.pages.byId[trackedPageId ?? ""]?.documentEpoch ?? null);
+  const url = useStore((state) => state.pages.byId[trackedPageId ?? ""]?.url ?? null);
   const [handoffId, setHandoffId] = useState<string | null>(null);
   useEffect(() => {
     if (!runId) {

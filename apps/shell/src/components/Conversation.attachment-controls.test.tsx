@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -97,7 +98,7 @@ beforeEach(() => {
       ...initial,
       runs,
       steps: {},
-      pages: [makePage(0, { url, documentEpoch: 7, windowId })],
+      pages: normalizePages([makePage(0, { url, documentEpoch: 7, windowId })]),
       activePageId: "page-1",
       connected: true,
       toasts: [],

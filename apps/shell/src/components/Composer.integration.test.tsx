@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -76,7 +77,7 @@ it("keeps answers separate from follow-ups and preserves a typed draft when edit
   useStore.setState({
     runs: [run],
     steps: { [run.runId]: [] },
-    pages: [],
+    pages: normalizePages([] as never),
     connected: true,
     prompt: null,
     pendingTurns: [],
@@ -142,7 +143,7 @@ it("keeps an approval decision out of Answer mode across conversation layouts", 
   useStore.setState({
     runs: [run],
     steps: { [run.runId]: [] },
-    pages: [],
+    pages: normalizePages([] as never),
     connected: true,
     pendingTurns: [],
     conversationDrafts: { "chat:approval-chat": "Keep this follow-up" },
@@ -196,11 +197,11 @@ it("keeps an approval decision out of Answer mode across conversation layouts", 
 
 it("searches only available browser tabs and returns focus without silently changing scope", async () => {
   useStore.setState({
-    pages: [
+    pages: normalizePages([
       makePage(0, { pageId: "work", title: "Work notes", url: "https://example.com/work" }),
       makePage(0, { pageId: "private-agent", title: "Agent notes", ownedByRuntime: true }),
       makePage(0, { pageId: "crashed", title: "Broken notes", viewStatus: "crashed" }),
-    ],
+    ]),
     activePageId: "work",
   });
   const change = vi.fn();
@@ -220,8 +221,10 @@ it("searches only available browser tabs and returns focus without silently chan
   expect(change).not.toHaveBeenCalled();
   await act(async () =>
     useStore.setState((state) => ({
-      pages: state.pages.map((page) =>
-        page.pageId === "work" ? { ...page, title: "Work notes updated" } : page,
+      pages: normalizePages(
+        orderedPages(state.pages).map((page) =>
+          page.pageId === "work" ? { ...page, title: "Work notes updated" } : page,
+        ),
       ),
     })),
   );
@@ -235,7 +238,7 @@ it("searches only available browser tabs and returns focus without silently chan
 it("updates a selected source row when its tab changes without replacing the source", async () => {
   const active = makePage(0, { pageId: "active", title: "Active", url: "https://example.com/active" });
   const other = makePage(0, { pageId: "other", title: "Original title", url: "https://example.com/other" });
-  useStore.setState({ pages: [active, other], activePageId: active.pageId });
+  useStore.setState({ pages: normalizePages([active, other]), activePageId: active.pageId });
   const source = sourceRef(other);
   await act(async () =>
     root.render(
@@ -251,16 +254,20 @@ it("updates a selected source row when its tab changes without replacing the sou
   expect(host.textContent).toContain("Original title");
   await act(async () =>
     useStore.setState((state) => ({
-      pages: state.pages.map((page) =>
-        page.pageId === "other" ? { ...page, title: "Updated title" } : page,
+      pages: normalizePages(
+        orderedPages(state.pages).map((page) =>
+          page.pageId === "other" ? { ...page, title: "Updated title" } : page,
+        ),
       ),
     })),
   );
   expect(host.textContent).toContain("Updated title");
   await act(async () =>
     useStore.setState((state) => ({
-      pages: state.pages.map((page) =>
-        page.pageId === "other" ? { ...page, url: "https://example.com/changed" } : page,
+      pages: normalizePages(
+        orderedPages(state.pages).map((page) =>
+          page.pageId === "other" ? { ...page, url: "https://example.com/changed" } : page,
+        ),
       ),
     })),
   );
@@ -273,7 +280,7 @@ it("keeps home context controls behind plus and preserves the draft while toggli
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
   });
@@ -302,7 +309,7 @@ it("keeps full conversation context controls behind plus and preserves the draft
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
   });
@@ -337,7 +344,7 @@ it("does not adopt another conversation into home but restores a home-owned atta
     railOpen: false,
     runs: [],
     conversationDrafts: {},
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
   });
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
@@ -378,7 +385,7 @@ it("retries a completed page-free answer through its visible control without add
   useStore.setState({
     runs: [run],
     steps: { [run.runId]: [] },
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     pendingTurns: [],
     retryRun,
@@ -403,7 +410,7 @@ it("retries a completed page-free answer through its visible control without add
   expect(retry.disabled).toBe(false);
   await act(async () => retry.click());
   expect(retryRun).toHaveBeenCalledExactlyOnceWith(run.runId);
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
 });
 
 it("starts document attachment from the plus portal and retains a picker error and draft after it closes", async () => {
@@ -412,7 +419,7 @@ it("starts document attachment from the plus portal and retains a picker error a
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
     toasts: [],
@@ -452,13 +459,21 @@ it("focuses a fresh full-window chat without stealing focus on unrelated updates
     setItem: vi.fn(),
     removeItem: vi.fn(),
   });
-  useStore.setState({ conversationId: null, runs: [], pendingTurns: [], pages: [], connected: true });
+  useStore.setState({
+    conversationId: null,
+    runs: [],
+    pendingTurns: [],
+    pages: normalizePages([]),
+    connected: true,
+  });
   vi.spyOn(bridge, "invoke").mockResolvedValue({ workspace: null, memory: null });
   await act(async () => root.render(<Conversation chatId={null} />));
   const input = host.querySelector<HTMLTextAreaElement>('[aria-label="Reply to conversation"]')!;
   expect(document.activeElement).toBe(input);
   const context = host.querySelector<HTMLButtonElement>('[aria-label="Add context"]')!;
   context.focus();
-  await act(async () => useStore.setState({ pages: [makePage(0, { title: "Background tab changed" })] }));
+  await act(async () =>
+    useStore.setState({ pages: normalizePages([makePage(0, { title: "Background tab changed" })]) }),
+  );
   expect(document.activeElement).toBe(context);
 });

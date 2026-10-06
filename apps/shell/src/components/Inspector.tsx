@@ -18,10 +18,8 @@ export function Inspector() {
   const headingRef = useRef<HTMLElement>(null);
   const setOverlay = useStore((s) => s.setOverlay);
   const inspectorObs = useStore((s) => s.inspectorObs) as CompactObservation | null;
-  const page = useStore((s) =>
-    s.pages.find(
-      (p) => p.pageId === ((s.inspectorObs as CompactObservation | null)?.pageId ?? s.activePageId),
-    ),
+  const page = useStore(
+    (s) => s.pages.byId[(s.inspectorObs as CompactObservation | null)?.pageId ?? s.activePageId ?? ""],
   );
   const activePageId = (inspectorObs?.pageId ?? page?.pageId) || null;
   const [liveObs, setLiveObs] = useState<CompactObservation | null>(null);

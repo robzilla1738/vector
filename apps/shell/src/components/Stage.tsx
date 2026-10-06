@@ -1,3 +1,4 @@
+import { useShallow } from "zustand/react/shallow";
 import { useCommittedSurfaceWitness } from "../committed-surface-witness";
 import { useOrganizationEditor } from "../features/organization-state";
 import { useSyncExternalStore } from "react";
@@ -16,7 +17,7 @@ import { AgentOverlay } from "../agent/AgentOverlay";
 import { visibleSplitGroup } from "../features/surfaces/split-actions";
 import { useSurfaceState } from "../features/surfaces/drag-state";
 import { useFeature } from "../use-feature";
-import { isLocal, ownPages } from "../tab-window-transfer";
+import { isLocal } from "../tab-window-transfer";
 import { staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
 
 const StartPage = deferNamedSurface(() => import("./StartPage"), "StartPage", "New tab", true);
@@ -48,16 +49,14 @@ export const Stage = memo(
   >(function Stage({ composerRef, scrollRef }, ref) {
     const moved = useSyncExternalStore(observeMovedSelection, movedSelection);
     const enabled = useFeature("windowSync") && !bridge.privateMode;
-    const movedCovered = useStore(
-      (state) => enabled && !!moved && state.pages.some((page) => page.pageId === moved.pageId),
-    );
+    const movedCovered = useStore((state) => enabled && !!moved && !!state.pages.byId[moved.pageId ?? ""]);
     const localSelection = useStore((s) =>
-      s.activePageId ? ownPages(s.pages).find((p) => p.pageId === s.activePageId) : undefined,
+      s.activePageId && s.pages.byId[s.activePageId] && isLocal(s.pages.byId[s.activePageId]!)
+        ? s.pages.byId[s.activePageId]
+        : undefined,
     );
     const page = movedCovered ? undefined : localSelection;
     const mode = useStore((s) => s.mode);
-    const layout = useStore((s) => s.layout);
-    const pages = useStore((s) => s.pages);
     const splitting = useFeature("splitView");
     const surfaceState = useSurfaceState();
     const overlay = useStore((s) => s.overlay);
@@ -71,7 +70,14 @@ export const Stage = memo(
 
     const organizationCovered = !!useOrganizationEditor();
     const covered = organizationCovered || !!surfaceState.dragging || surfaceState.picker;
-    const splitGroup = splitting && page && mode === "focus" ? visibleSplitGroup(layout, page.pageId) : null;
+    const splitGroup = useStore((state) =>
+      splitting && page && mode === "focus" ? visibleSplitGroup(state.layout, page.pageId) : null,
+    );
+    const pages = useStore(
+      useShallow((state) =>
+        (splitGroup?.panes ?? []).flatMap((id) => (state.pages.byId[id] ? [state.pages.byId[id]!] : [])),
+      ),
+    );
     const selectedSplit =
       splitGroup &&
       splitGroup.panes.every((id) => {

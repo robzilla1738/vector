@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -72,7 +73,7 @@ beforeEach(() => {
       pendingRestoreIds: [],
       confirmation: null,
       runs: [makeRun({ runId: "run", status: "running", pageIds: ["controlled"] })],
-      pages: [page("owner"), page("another-run", "other"), page("controlled", "run")],
+      pages: normalizePages([page("owner"), page("another-run", "other"), page("controlled", "run")]),
     },
     true,
   );
@@ -116,7 +117,7 @@ it("reveals the exact isolated native surface from the task scrim without taking
     expect(node.querySelector("embed")?.getAttribute("aria-label")).toBe("controlled");
     expect(useStore.getState().pages).toBe(originalPages);
     expect(useStore.getState().runs).toBe(originalRuns);
-    expect(useStore.getState().pages.find((item) => item.pageId === "controlled")).toMatchObject({
+    expect(useStore.getState().pages.byId["controlled"]).toMatchObject({
       controller: "agent",
       controllerEpoch: 4,
     });
@@ -129,7 +130,7 @@ it("reveals the exact isolated native surface from the task scrim without taking
 
 it("does not substitute a different window’s isolated tab or an ordinary owner page", async () => {
   useStore.setState({
-    pages: [page("owner"), page("controlled", "run", "other-window"), page("other", "other")],
+    pages: normalizePages([page("owner"), page("controlled", "run", "other-window"), page("other", "other")]),
   });
   const node = document.createElement("div");
   document.body.append(node);
@@ -175,7 +176,7 @@ it("surfaces native activation refusal without silently taking control", async (
       "Open temporary tab wasn’t confirmed. Tab is not in this window",
     );
     expect(bridge.invoke).not.toHaveBeenCalled();
-    expect(useStore.getState().pages.find((item) => item.pageId === "controlled")?.controller).toBe("agent");
+    expect(useStore.getState().pages.byId["controlled"]?.controller).toBe("agent");
   } finally {
     await act(async () => root.unmount());
     node.remove();

@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -56,7 +57,10 @@ beforeEach(() => {
   bridge.windowId = "original-window";
   bridge.privateMode = false;
   bridge.windowKind = "normal";
-  useStore.setState({ ...initial, connected: false, pages: [page], activate, newTab, toasts: [] }, true);
+  useStore.setState(
+    { ...initial, connected: false, pages: normalizePages([page]), activate, newTab, toasts: [] },
+    true,
+  );
   update.mockReset().mockResolvedValue(true);
   activate.mockClear();
   newTab.mockClear();
@@ -145,7 +149,7 @@ it("focused URL resource returns original new-tab ACK and existing tab chooses o
   expect(await (await invoke("open-task-resource")).completion).toBe(page);
   expect(newTab).toHaveBeenCalledWith(task.resources[0]!.locator);
   const existing = { ...page, url: task.resources[0]!.locator };
-  await act(async () => useStore.setState({ pages: [existing] }));
+  await act(async () => useStore.setState({ pages: normalizePages([existing]) }));
   await (
     await invoke("open-task-resource")
   ).completion;
@@ -165,7 +169,7 @@ it("access selection and remove use original complete task resource snapshot", a
 it("registered Attach captures latest actual page and URL form preserves normalized producer", async () => {
   await render();
   const latest = { ...page, title: "Latest original page" };
-  await act(async () => useStore.setState({ pages: [latest] }));
+  await act(async () => useStore.setState({ pages: normalizePages([latest]) }));
   await (
     await invoke("attach-task-resource-page")
   ).completion;
@@ -258,7 +262,7 @@ it("archived and hidden controls refuse real dispatch without updates", async ()
 });
 it("original detached/duplicate page cannot dispatch attachment", async () => {
   await render();
-  await act(async () => useStore.setState({ pages: [page, { ...page }] }));
+  await act(async () => useStore.setState({ pages: normalizePages([page, { ...page }]) }));
   await expect((await invoke("attach-task-resource-page")).completion).rejects.toThrow(
     "original current tab",
   );
@@ -349,7 +353,9 @@ it("ordinary activation catalog visibility refresh retains active original failu
   activate.mockReturnValueOnce(old.promise);
   await act(async () => control("open-task-resource").click());
   await act(async () =>
-    useStore.setState({ pages: [{ ...page, viewStatus: "visible", title: "Refreshed display title" }] }),
+    useStore.setState({
+      pages: normalizePages([{ ...page, viewStatus: "visible", title: "Refreshed display title" }]),
+    }),
   );
   await act(async () => old.reject(reason));
   expect(useStore.getState().toasts.map((item) => item.text)).toContain(reason.message);
@@ -360,7 +366,9 @@ it("held original page error cannot publish after document epoch changes", async
     reason = new Error("retired original page failure");
   activate.mockReturnValueOnce(old.promise);
   await act(async () => control("open-task-resource").click());
-  await act(async () => useStore.setState({ pages: [{ ...page, documentEpoch: page.documentEpoch + 1 }] }));
+  await act(async () =>
+    useStore.setState({ pages: normalizePages([{ ...page, documentEpoch: page.documentEpoch + 1 }]) }),
+  );
   await act(async () => old.reject(reason));
   expect(useStore.getState().toasts).toEqual([]);
 });
@@ -372,8 +380,8 @@ it("held page document ABA permanently retires original presentation", async () 
   activate.mockReturnValueOnce(old.promise);
   await act(async () => control("open-task-resource").click());
   await act(async () => {
-    useStore.setState({ pages: [{ ...page, documentEpoch: page.documentEpoch + 1 }] });
-    useStore.setState({ pages: [page] });
+    useStore.setState({ pages: normalizePages([{ ...page, documentEpoch: page.documentEpoch + 1 }]) });
+    useStore.setState({ pages: normalizePages([page]) });
   });
   await act(async () => old.reject(reason));
   expect(useStore.getState().toasts).toEqual([]);

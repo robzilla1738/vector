@@ -1,3 +1,4 @@
+import { orderedPages, normalizePages, putPage } from "./pages";
 import { EFFECT_CATEGORIES, CONFIRMATION_LEVELS } from "@aux/contracts";
 import type {
   AuxEvent,
@@ -168,23 +169,20 @@ export const reducePageEvent: Reducer = (state, e) => {
       let next: Pick<Workspace, "pages" | "layout"> = state;
       const p = e.payload.page as PageTarget | undefined;
       if (p) {
-        const index = state.pages.findIndex((x) => x.pageId === p.pageId);
+        const previous = state.pages.byId[p.pageId];
         // An update to a known page never changes order or Space assignment.
-        if (index >= 0)
+        if (previous)
           next = {
             ...next,
-            pages: state.pages.with(
-              index,
-              retainNativeTabMetadata(state.pages[index]!, p, state.catalogVersion),
-            ),
+            pages: putPage(state.pages, retainNativeTabMetadata(previous, p, state.catalogVersion)),
           };
         else if (!closingOptimistic.has(p.pageId)) {
-          const pages = [...state.pages, p];
+          const pages = putPage(state.pages, p);
           next = {
             pages,
             layout: state.restoringTabs
               ? state.layout
-              : syncLayout(state.layout, pages, state.pendingRestoreIds),
+              : syncLayout(state.layout, orderedPages(pages), state.pendingRestoreIds),
           };
         }
       } else if (typeof e.payload.pageId === "string") {
@@ -193,10 +191,10 @@ export const reducePageEvent: Reducer = (state, e) => {
           Object.entries(patch).filter(([k]) => k !== "activePageId"),
         ) as Partial<PageTarget>;
         if (fields.viewStatus === "detached") {
-          const current = state.pages.find((page) => page.pageId === pageId);
+          const current = state.pages.byId[pageId ?? ""];
           fields.lifecycle = lifecycleForStrip(current?.lifecycle, fields.lifecycle, "detached");
         }
-        if (state.catalogVersion > 0 && state.pages.some((page) => page.pageId === pageId)) {
+        if (state.catalogVersion > 0 && !!state.pages.byId[pageId ?? ""]) {
           delete fields.windowId;
           delete fields.windowKind;
           delete fields.anchor;
@@ -211,18 +209,16 @@ export const reducePageEvent: Reducer = (state, e) => {
         pages: next.pages,
         layout,
         activePageId: ap,
-        splitPageId: splitForPage(layout, next.pages, ap),
+        splitPageId: splitForPage(layout, orderedPages(next.pages), ap),
       };
     }
     case "page.crashed": {
       const { pageId } = e.payload as { pageId: string };
-      return {
-        pages: state.pages.map((p) =>
-          p.pageId === pageId
-            ? { ...p, viewStatus: "crashed", loading: false, error: "The renderer process crashed." }
-            : p,
-        ),
-      };
+      return patchPage(state, pageId, {
+        viewStatus: "crashed",
+        loading: false,
+        error: "The renderer process crashed.",
+      });
     }
     case "page.loading": {
       const { pageId, loading } = e.payload as { pageId: string; loading: boolean };
@@ -355,7 +351,10 @@ export function eventEffects(e: AuxEvent, s: Workspace, set: Set, get: () => Wor
         folder?: Layout["folders"][number];
       };
       if (moved.toWindowId === bridge.windowId) {
-        const pages = [...s.pages.filter((page) => page.pageId !== moved.page.pageId), moved.page];
+        const pages = [
+          ...orderedPages(s.pages).filter((page) => page.pageId !== moved.page.pageId),
+          moved.page,
+        ];
         const destinationLayout = s.layout.spaces.some((space) => space.id === moved.spaceId)
           ? s.layout
           : {
@@ -377,14 +376,14 @@ export function eventEffects(e: AuxEvent, s: Workspace, set: Set, get: () => Wor
         layout = setActiveSpace(layout, layout.tabSpace[activePageId] ?? moved.spaceId);
         persistLayout(layout);
         set({
-          pages,
+          pages: normalizePages(pages, s.pages),
           layout,
           activePageId,
           ...(moved.activate !== false ? { splitPageId: null, mode: "focus" as const, overlay: null } : {}),
         });
         if (moved.activate !== false) void bridge.overlay(false);
       } else if (moved.fromWindowId === bridge.windowId) {
-        const pages = s.pages.filter((page) => page.pageId !== moved.page.pageId);
+        const pages = orderedPages(s.pages).filter((page) => page.pageId !== moved.page.pageId);
         const layout = withSyncedOrder(s.layout, pages, s.pendingRestoreIds);
         persistLayout(layout);
         const activePageId =
@@ -395,7 +394,12 @@ export function eventEffects(e: AuxEvent, s: Workspace, set: Set, get: () => Wor
               tabsInSpace(layout, pages, layout.activeSpaceId)[0]?.pageId ??
               null)
             : s.activePageId;
-        set({ pages, layout, activePageId, splitPageId: splitForPage(layout, pages, activePageId) });
+        set({
+          pages: normalizePages(pages, s.pages),
+          layout,
+          activePageId,
+          splitPageId: splitForPage(layout, pages, activePageId),
+        });
         if (activePageId && activePageId !== moved.sourceActivePageId)
           void sendTabCommand(get, { kind: "activate", pageId: activePageId }).catch(errToast);
       }

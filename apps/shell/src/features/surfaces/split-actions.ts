@@ -17,7 +17,7 @@ import {
 } from "../../workspace";
 
 export const localSplitPage = (pageId: string) => {
-  const page = useStore.getState().pages.find((page) => page.pageId === pageId);
+  const page = useStore.getState().pages.byId[pageId ?? ""];
   return page && isLocal(page) && !page.ownedByRuntime && page.controller === "none" && canSplitPage(page)
     ? page
     : undefined;

@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -16,7 +17,7 @@ beforeEach(() => {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  useStore.setState({ pages: [], activePageId: null, skillSelection: null });
+  useStore.setState({ pages: normalizePages([]), activePageId: null, skillSelection: null });
 });
 afterEach(async () => {
   await act(async () => root.unmount());

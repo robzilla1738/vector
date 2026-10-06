@@ -78,7 +78,7 @@ function readingPreferences() {
 export function ReaderView() {
   const canPeek = useFeature("peek");
   const findOpen = useStore((state) => state.readerFindOpen);
-  const page = useStore((state) => state.pages.find((page) => page.pageId === state.activePageId));
+  const page = useStore((state) => state.pages.byId[state.activePageId ?? ""]);
   const pageId = page?.pageId;
   const key = `${pageId}:${page?.documentEpoch}:${page?.url}`;
   const setOverlay = useStore((state) => state.setOverlay);

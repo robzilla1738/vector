@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 import { errorMessage } from "./error-message";
 import { create } from "zustand";
 import type { Download, PageTarget, SavedProgram, TabCommand } from "@aux/contracts";
@@ -116,7 +117,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
       }
       const { lastSeq, streamId, ...snapshot } = ws;
       snapshot.pages = snapshot.pages.map((page) => {
-        const current = get().pages.find((item) => item.pageId === page.pageId);
+        const current = get().pages.byId[page.pageId ?? ""];
         return current ? retainNativeTabMetadata(current, page, get().catalogVersion) : page;
       });
       noteStream(streamId);
@@ -155,6 +156,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
             : (tabsInSpace(layout, ws.pages, layout.activeSpaceId)[0]?.pageId ?? null);
         return {
           ...snapshot,
+          pages: normalizePages(snapshot.pages, s.pages),
           pendingRestoreIds,
           activePageId,
           splitPageId: splitForPage(layout, ws.pages, activePageId),

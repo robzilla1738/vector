@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -44,7 +45,7 @@ it("keeps a page resource current and attaches the latest active tab details", a
     resources: [{ resourceId: "source", kind: "page", locator: "page", label: "Source page" }],
   };
   const page = makePage(0, { pageId: "page", title: "First title", url: "https://example.com/first" });
-  useStore.setState({ pages: [page] });
+  useStore.setState({ pages: normalizePages([page]) });
   const update = vi.fn(async () => true);
   await act(async () =>
     root.render(<TaskResources task={task} activePageId="page" attached={false} update={update} />),
@@ -52,7 +53,9 @@ it("keeps a page resource current and attaches the latest active tab details", a
   expect(host.textContent).toContain("https://example.com/first");
 
   await act(async () =>
-    useStore.setState({ pages: [{ ...page, title: "Latest title", url: "https://example.com/latest" }] }),
+    useStore.setState({
+      pages: normalizePages([{ ...page, title: "Latest title", url: "https://example.com/latest" }]),
+    }),
   );
   expect(host.textContent).toContain("https://example.com/latest");
   expect(host.textContent).not.toContain("https://example.com/first");

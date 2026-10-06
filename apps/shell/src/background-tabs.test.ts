@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import type { TabCommandAck } from "@aux/contracts";
@@ -14,7 +15,7 @@ it("keeps the destination and current browsing state when a background open fini
     ],
     activeSpaceId: "work",
   };
-  useStore.setState({ layout, pages: [], activePageId: null, overlay: "bookmarks" });
+  useStore.setState({ layout, pages: normalizePages([]), activePageId: null, overlay: "bookmarks" });
   let finish!: (ack: TabCommandAck) => void;
   const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(
     async () =>

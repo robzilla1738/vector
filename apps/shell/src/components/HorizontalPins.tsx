@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticMenuItemProps } from "../ui/class-props";
 import { useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -21,7 +22,7 @@ export function HorizontalPins({
 }) {
   const tabs = useStore(
     useShallow((state) =>
-      tabsInSpace(state.layout, state.pages, spaceId).filter((page) =>
+      tabsInSpace(state.layout, orderedPages(state.pages), spaceId).filter((page) =>
         pins.some((pin) => pin.url === page.url),
       ),
     ),

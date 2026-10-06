@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -32,7 +33,7 @@ beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   original = useStore.getState();
   root = createRoot(document.createElement("div"));
-  useStore.setState({ pages: [], confirmation });
+  useStore.setState({ pages: normalizePages([]), confirmation });
   vi.spyOn(bridge, "overlay").mockResolvedValue(false);
   vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
 });
@@ -61,7 +62,7 @@ for (const stage of ["preview", "off"] as const) {
         decision: { decision, approvalId: confirmation.approvalId },
         expectedTurnId: confirmation.turnId,
       });
-      expect(useStore.getState().pages).toEqual([]);
+      expect(orderedPages(useStore.getState().pages)).toEqual([]);
       expect(useStore.getState().confirmation).toBeNull();
     },
   );

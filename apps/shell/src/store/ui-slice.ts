@@ -98,7 +98,7 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
   setSidebarPeek: (sidebarPeek) => set({ sidebarPeek }),
   focusCommandBar: (slot) => {
     const s = get();
-    const page = s.pages.find((p) => p.pageId === s.activePageId);
+    const page = s.pages.byId[s.activePageId ?? ""];
     const onStart = s.mode === "focus" && !s.overlay && !page?.showBlankDocument && isHomeAddress(page?.url);
     const requested = slot ?? (onStart ? "hero" : "toolbar");
     const resolved: CommandSlot = requested === "sidebar" ? "toolbar" : requested;
@@ -127,12 +127,12 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
   zoomPage: async (pageId, options = {}) => {
     const token = Symbol(pageId);
     zoomRequests.set(pageId, token);
-    const origin = get().pages.find((page) => page.pageId === pageId);
+    const origin = get().pages.byId[pageId ?? ""];
     try {
       const result = bridge.privateMode
         ? await bridge.privatePageZoom(pageId, options)
         : await call("pages.zoom", { pageId, ...options });
-      const page = get().pages.find((page) => page.pageId === pageId);
+      const page = get().pages.byId[pageId ?? ""];
       if (
         zoomRequests.get(pageId) === token &&
         page &&
@@ -159,7 +159,7 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
       return;
     }
     conversationFinder.clear();
-    const epoch = get().pages.find((page) => page.pageId === id)?.documentEpoch;
+    const epoch = get().pages.byId[id ?? ""]?.documentEpoch;
     set({ findText: text, findMatches: null });
     if (!id || !text) {
       if (id) await call("pages.stopFind", { pageId: id, action: "clear" });
@@ -172,7 +172,7 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
       get().overlay === "find" &&
       get().activePageId === id &&
       get().findText === text &&
-      get().pages.find((page) => page.pageId === id)?.documentEpoch === epoch
+      get().pages.byId[id ?? ""]?.documentEpoch === epoch
     )
       set({ findMatches: r });
   },

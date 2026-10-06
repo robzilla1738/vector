@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -32,7 +33,13 @@ it("previews AI Tidy folders, applies them once, and restores the exact layout o
         ownedByRuntime: false,
       }) as PageTarget,
   );
-  useStore.setState({ layout, tidyUndo: null, pages, activePageId: "p1", mode: "overview" });
+  useStore.setState({
+    layout,
+    tidyUndo: null,
+    pages: normalizePages(pages),
+    activePageId: "p1",
+    mode: "overview",
+  });
   vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "agent.tidy.propose")
@@ -84,7 +91,7 @@ it("moves focus by visible tab refs after tab removal and reorder", async () => 
       }) as PageTarget,
   );
   useStore.setState({
-    pages,
+    pages: normalizePages(pages),
     layout: { ...layout, order: ["p3", "p1", "p2"] },
     activePageId: "p3",
     mode: "overview",
@@ -107,7 +114,7 @@ it("moves focus by visible tab refs after tab removal and reorder", async () => 
     expect((document.activeElement as HTMLElement).dataset.pageId).toBe("p1");
     await act(async () =>
       useStore.setState({
-        pages: pages.filter((page) => page.pageId !== "p2"),
+        pages: normalizePages(pages.filter((page) => page.pageId !== "p2")),
         layout: { ...layout, order: ["p1", "p3"] },
       }),
     );

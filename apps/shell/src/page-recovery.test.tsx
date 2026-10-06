@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -10,7 +11,13 @@ let originalPage: PageTarget;
 vi.mock("./store", () => ({
   call: vi.fn(),
   errToast: vi.fn(),
-  useStore: { getState: () => ({ mode: "focus", pages: [originalPage], activePageId: originalPage.pageId }) },
+  useStore: {
+    getState: () => ({
+      mode: "focus",
+      pages: normalizePages([originalPage] as never),
+      activePageId: originalPage.pageId,
+    }),
+  },
 }));
 vi.mock("./commands", async () => {
   const { invokeScopedControl } = await import("./scoped-control-commands");

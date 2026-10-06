@@ -36,7 +36,7 @@ interface Domain {
 export interface CommandProviderInput {
   query: string;
   remote: { query: string; items: string[] };
-  tabs: Array<Store["pages"][number] & { id: string }>;
+  tabs: Array<NonNullable<Store["pages"]["byId"][string]> & { id: string }>;
   domains: Domain[];
   bookmarks: Array<Store["bookmarks"][number] & { id: string }>;
   closed: Array<Store["closedTabs"][number] & { id: string }>;
@@ -46,7 +46,7 @@ export interface CommandProviderInput {
   runs: Array<Run & { id: string; title: string }>;
   recentChats: Run[];
   savedWork: { results: SavedResult[]; skills: Routine[]; chats: ConversationSummary[] } | null;
-  page: Store["pages"][number] | undefined;
+  page: NonNullable<Store["pages"]["byId"][string]> | undefined;
   searchEngine: string | undefined;
   rankingEntries: CommandRankingEntry[];
   rankingOpenedAt?: number;

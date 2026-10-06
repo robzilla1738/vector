@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { COMMANDS, type CommandDef, type PreparedConversation, type FeatureOverride } from "@aux/contracts";
@@ -32,12 +33,12 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
   const activePageId = useStore((state) => state.activePageId);
   useStore(
     useShallow((state) =>
-      state.pages.map((page) =>
+      orderedPages(state.pages).map((page) =>
         JSON.stringify([page.pageId, page.url, page.title, page.backend, page.viewStatus]),
       ),
     ),
   );
-  const pages = useStore.getState().pages;
+  const pages = orderedPages(useStore.getState().pages);
   const activePage = pages.find((page) => page.pageId === activePageId);
   const returnEmbed =
     activePage &&
@@ -117,7 +118,7 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
       .then(() => {
         requestAnimationFrame(() => {
           const current = useStore.getState(),
-            page = current.pages.find((page) => page.pageId === current.activePageId);
+            page = current.pages.byId[current.activePageId ?? ""];
           if (
             current.overlay !== null ||
             !page ||

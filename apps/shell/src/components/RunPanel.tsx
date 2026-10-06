@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticSmallIconButtonProps, staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
@@ -334,7 +335,7 @@ export const RunPanel = memo(function RunPanel({
   const retryIds = run ? retrySourceIds(run) : [];
   const runPages = useStore(
     useShallow((s) =>
-      s.pages.filter(
+      orderedPages(s.pages).filter(
         (p) =>
           (run?.pageIds ?? []).includes(p.pageId) || retryIds?.includes(p.pageId) || p.pageId === retryPageId,
       ),

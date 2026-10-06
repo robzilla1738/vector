@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { readFileSync } from "node:fs";
@@ -19,7 +20,7 @@ beforeEach(() => {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  useStore.setState({ pages: [], activePageId: null });
+  useStore.setState({ pages: normalizePages([]), activePageId: null });
 });
 afterEach(async () => {
   await act(async () => root.unmount());
@@ -37,7 +38,7 @@ it("discloses the full original long title and URL without changing the selected
   const title = "Weekend museum visits and a relaxed dinner with friends and family";
   const url = "https://example.test/planning/a-long-path?original=weekend";
   const page = makePage(0, { pageId: "original-page", title, url });
-  useStore.setState({ pages: [page], activePageId: page.pageId });
+  useStore.setState({ pages: normalizePages([page]), activePageId: page.pageId });
   const changed = vi.fn();
   await act(async () => root.render(<BrowserContextPicker value="none" onChange={changed} />));
   const panel = await open();
@@ -56,11 +57,11 @@ it("discloses the full original long title and URL without changing the selected
   expect(changed).toHaveBeenCalledExactlyOnceWith(page.pageId);
   expect(document.querySelector('dialog[aria-label="Browser context"]')).toBeNull();
   expect(document.activeElement).toBe(host.querySelector('[aria-label="Browser context"]'));
-  expect(useStore.getState().pages[0]).toEqual(page);
+  expect(orderedPages(useStore.getState().pages)[0]).toEqual(page);
 });
 it("discloses the complete URL for an untitled page and preserves no-context selection", async () => {
   const url = "https://example.test/untitled/original";
-  useStore.setState({ pages: [makePage(0, { pageId: "untitled", title: "", url })] });
+  useStore.setState({ pages: normalizePages([makePage(0, { pageId: "untitled", title: "", url })]) });
   const changed = vi.fn();
   await act(async () => root.render(<BrowserContextPicker value="untitled" onChange={changed} />));
   const panel = await open(),
@@ -76,7 +77,7 @@ it("discloses the complete URL for an untitled page and preserves no-context sel
 });
 it("keeps unavailable and protected pages excluded and disabled controls closed", async () => {
   useStore.setState({
-    pages: [
+    pages: normalizePages([
       makePage(0, { pageId: "internal", title: "Internal", url: "chrome://settings" }),
       makePage(1, {
         pageId: "runtime",
@@ -84,7 +85,7 @@ it("keeps unavailable and protected pages excluded and disabled controls closed"
         url: "https://example.test/worker",
         ownedByRuntime: true,
       }),
-    ],
+    ]),
   });
   const changed = vi.fn();
   await act(async () => root.render(<BrowserContextPicker value="none" disabled onChange={changed} />));
@@ -130,7 +131,7 @@ it("updates genuine Current and Conversation availability while open and preserv
     url: "https://example.test/actual",
   });
   const changed = vi.fn();
-  useStore.setState({ pages: [page], activePageId: page.pageId });
+  useStore.setState({ pages: normalizePages([page]), activePageId: page.pageId });
   await act(async () =>
     root.render(<BrowserContextPicker value="linked" linkedPageId={page.pageId} onChange={changed} />),
   );
@@ -145,12 +146,12 @@ it("updates genuine Current and Conversation availability while open and preserv
     )!;
   expect(current().disabled).toBe(false);
   expect(linked().disabled).toBe(false);
-  await act(async () => useStore.setState({ pages: [], activePageId: null }));
+  await act(async () => useStore.setState({ pages: normalizePages([]), activePageId: null }));
   expect(current().disabled).toBe(true);
   expect(linked().disabled).toBe(true);
   await act(async () => current().click());
   expect(changed).not.toHaveBeenCalled();
-  await act(async () => useStore.setState({ pages: [page], activePageId: page.pageId }));
+  await act(async () => useStore.setState({ pages: normalizePages([page]), activePageId: page.pageId }));
   expect(linked().disabled).toBe(false);
   await act(async () => linked().click());
   expect(changed).toHaveBeenCalledExactlyOnceWith("linked");
@@ -197,7 +198,7 @@ it("keeps unavailable selected choices quiet and readable while enabled selectio
       title: "Planning",
       url: "https://example.test/planning",
     });
-    await act(async () => useStore.setState({ pages: [page], activePageId: page.pageId }));
+    await act(async () => useStore.setState({ pages: normalizePages([page]), activePageId: page.pageId }));
     expect(current().disabled).toBe(false);
     expect(current().matches(interactive.selectorText)).toBe(true);
     expect(current().matches(unavailable.selectorText)).toBe(false);

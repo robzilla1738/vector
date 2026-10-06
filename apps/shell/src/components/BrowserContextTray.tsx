@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticHintProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { memo, useLayoutEffect, useRef, useState } from "react";
@@ -34,7 +35,7 @@ const AdditionalTabChoice = memo(function AdditionalTabChoice({
   disabled: boolean;
   onToggle(pageId: string): unknown;
 }) {
-  const page = useStore((state) => state.pages.find((item) => item.pageId === pageId));
+  const page = useStore((state) => state.pages.byId[pageId ?? ""]);
   const choice = useRef<HTMLLabelElement>(null);
   const shortcut = useShortcutLabel("toggle-browser-source");
   useLayoutEffect(() => {
@@ -42,7 +43,7 @@ const AdditionalTabChoice = memo(function AdditionalTabChoice({
     if (!element || !page || disabled) return;
     const original = sourceRef(page);
     return registerScopedControl(element, "toggle-browser-source", pageId, () => {
-      const current = useStore.getState().pages.find((item) => item.pageId === pageId);
+      const current = useStore.getState().pages.byId[pageId ?? ""];
       if (!current || !availableSource(current) || sourceStatus(original, [current]) !== "current")
         throw new Error("This browser source changed. Choose its current tab again.");
       return onToggle(pageId);
@@ -89,8 +90,8 @@ const SourceChip = memo(function SourceChip({
   onRefresh(pageId: string): unknown;
   onRemove(pageId: string): void;
 }) {
-  const page = useStore((state) => state.pages.find((item) => item.pageId === source.pageId));
-  const status = useStore((state) => sourceStatus(source, state.pages));
+  const page = useStore((state) => state.pages.byId[source.pageId ?? ""]);
+  const status = useStore((state) => sourceStatus(source, orderedPages(state.pages)));
   const label = status === "missing" ? hostOf(source.url) : page?.title || hostOf(source.url);
   const updateShortcut = useShortcutLabel("update-browser-source");
   const removeShortcut = useShortcutLabel("remove-browser-source");
@@ -111,7 +112,7 @@ const SourceChip = memo(function SourceChip({
     if (!element || status !== "changed" || disabled || busy || !page || !availableSource(page)) return;
     const original = sourceRef(page);
     return registerScopedControl(element, "update-browser-source", source.pageId, () => {
-      const current = useStore.getState().pages.find((item) => item.pageId === original.pageId);
+      const current = useStore.getState().pages.byId[original.pageId ?? ""];
       if (!current || !availableSource(current) || sourceStatus(original, [current]) !== "current")
         throw new Error("This browser tab changed. Choose its current source again.");
       return onRefresh(source.pageId);
@@ -195,11 +196,13 @@ export function BrowserContextTray({
       scope.active = false;
     };
   }, [disabled, primary, linkedPageId, sourceScope]);
-  const primaryPage = useStore((state) => conversationPage(state.pages, primary, activePageId, linkedPageId));
+  const primaryPage = useStore((state) =>
+    conversationPage(orderedPages(state.pages), primary, activePageId, linkedPageId),
+  );
   const additionalSources = sources.filter((source) => source.pageId !== primaryPage?.pageId);
   const matchingIds = useStore(
     useShallow((state) =>
-      state.pages
+      orderedPages(state.pages)
         .filter(
           (page) =>
             availableSource(page, primaryPage?.pageId) &&
@@ -211,14 +214,14 @@ export function BrowserContextTray({
   const splitCompanionId =
     primaryPage && splitPageId ? (primaryPage.pageId === splitPageId ? activePageId : splitPageId) : null;
   const splitCompanion = useStore((state) =>
-    state.pages.find(
+    orderedPages(state.pages).find(
       (page) => page.pageId === splitCompanionId && availableSource(page, primaryPage?.pageId),
     ),
   );
   const liveSource = async (pageId: string, scope: { active: boolean }, expected?: PageContextRef) => {
     const pending = await call("browser.recovery.list", {});
     if (!scope.active) return null;
-    const original = useStore.getState().pages.find((page) => page.pageId === pageId);
+    const original = useStore.getState().pages.byId[pageId ?? ""];
     if (expected && (!original || sourceStatus(expected, [original]) !== "current"))
       throw new Error("This browser tab changed while updating. Choose its current source again.");
     let admitted = expected;
@@ -291,13 +294,13 @@ export function BrowserContextTray({
       errToast(new Error("Choose up to eight additional tabs."));
       return;
     }
-    const page = useStore
-      .getState()
-      .pages.find((page) => page.pageId === pageId && availableSource(page, primaryPage?.pageId));
+    const page = orderedPages(useStore.getState().pages).find(
+      (page) => page.pageId === pageId && availableSource(page, primaryPage?.pageId),
+    );
     if (page) return update(pageId, (source) => [...sources, source], sourceRef(page));
   };
   const refresh = (pageId: string) => {
-    const page = useStore.getState().pages.find((item) => item.pageId === pageId);
+    const page = useStore.getState().pages.byId[pageId ?? ""];
     if (page && availableConversationPage(page) && !page.loading)
       return update(
         pageId,
@@ -314,7 +317,7 @@ export function BrowserContextTray({
     const original = sourceRef(splitCompanion);
     return registerScopedControl(element, "toggle-browser-source", original.pageId, () => {
       const state = useStore.getState();
-      const current = state.pages.find((page) => page.pageId === original.pageId);
+      const current = state.pages.byId[original.pageId ?? ""];
       if (
         state.activePageId !== activePageId ||
         state.splitPageId !== splitPageId ||
@@ -334,7 +337,12 @@ export function BrowserContextTray({
           value={primary}
           onChange={(value) => {
             onPrimary(value);
-            const chosen = conversationPage(useStore.getState().pages, value, activePageId, linkedPageId);
+            const chosen = conversationPage(
+              orderedPages(useStore.getState().pages),
+              value,
+              activePageId,
+              linkedPageId,
+            );
             if (chosen && sources.some((source) => source.pageId === chosen.pageId))
               onSources(sources.filter((source) => source.pageId !== chosen.pageId));
           }}

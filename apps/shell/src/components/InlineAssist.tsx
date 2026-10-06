@@ -19,7 +19,7 @@ export function InlineAssist() {
   const enabled =
     useStore((s) => readSelectionCaptureSettings(s.settings.selectionCapture).inlineAssist) &&
     !bridge.privateMode;
-  const activePage = useStore((s) => s.pages.find((page) => page.pageId === s.activePageId));
+  const activePage = useStore((s) => s.pages.byId[s.activePageId ?? ""]);
   const setOverlay = useStore((s) => s.setOverlay);
   const initial = useRef(
     activePage

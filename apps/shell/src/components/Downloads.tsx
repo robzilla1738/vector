@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticSmallIconButtonProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
@@ -72,7 +73,7 @@ const DownloadRow = memo(function DownloadRow({
     state.receipts.find((item) => item.downloadId === id && item.expiresAt > Date.now()),
   );
   const sourcePage = useStore((state) =>
-    state.pages.find(
+    orderedPages(state.pages).find(
       (page) =>
         page.pageId === d?.pageId &&
         !page.ownedByRuntime &&

@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -37,7 +38,7 @@ beforeEach(() => {
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
     toasts: [],
@@ -95,7 +96,7 @@ it("retains image review and the page-free draft after actual plus-menu initiati
   expect(host.textContent).toContain("reference.png");
   expect(host.textContent).not.toContain("Preparing image…");
   expect(input.value).toBe("Keep this page-free question");
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(bridge.invoke).not.toHaveBeenCalledWith("conversations.images.add", expect.anything());
 });
 
@@ -133,7 +134,7 @@ it("does not apply a late image picker result to a different conversation", asyn
 
 it("does not add a pending browser source after the conversation becomes locked", async () => {
   const page = makePage(0, { pageId: "source", title: "Reference", url: "https://example.test/reference" });
-  useStore.setState({ pages: [page] });
+  useStore.setState({ pages: normalizePages([page]) });
   let resolve!: (value: (typeof page)[]) => void;
   vi.mocked(bridge.invoke).mockImplementation(async (method) => {
     if (method === "browser.recovery.list") return [];
@@ -163,7 +164,7 @@ it("does not add a pending browser source after the conversation becomes locked"
 
 it("retains a genuine pending selection through an equivalent source-array rerender", async () => {
   const page = makePage(0, { pageId: "source", title: "Reference", url: "https://example.test/reference" });
-  useStore.setState({ pages: [page] });
+  useStore.setState({ pages: normalizePages([page]) });
   let resolve!: (value: (typeof page)[]) => void;
   vi.mocked(bridge.invoke).mockImplementation(async (method) => {
     if (method === "browser.recovery.list") return [];
@@ -195,7 +196,7 @@ it("retains a genuine pending selection through an equivalent source-array reren
 
 it("does not retry recovery after a lock and unlock while its original list is pending", async () => {
   const page = makePage(0, { pageId: "source", title: "Reference", url: "https://example.test/reference" });
-  useStore.setState({ pages: [page] });
+  useStore.setState({ pages: normalizePages([page]) });
   let resolve!: (value: { pageId: string }[]) => void;
   vi.mocked(bridge.invoke).mockImplementation(async (method) => {
     if (method === "browser.recovery.list")
@@ -233,7 +234,7 @@ it.each([false, true])(
   async (returnToFirst) => {
     const page = makePage(0, { pageId: "source", title: "Reference", url: "https://example.test/reference" });
     useStore.setState({
-      pages: [page],
+      pages: normalizePages([page]),
       conversationContexts: { "chat:first": "none", "chat:second": "none" },
       conversationDrafts: { "chat:first": "First draft", "chat:second": "Second draft" },
     });
@@ -277,7 +278,7 @@ it("still retries a genuinely pending tab and selects its fresh live document", 
     documentEpoch: 1,
   });
   const after = { ...before, url: "https://example.test/after", documentEpoch: 2 };
-  useStore.setState({ pages: [before] });
+  useStore.setState({ pages: normalizePages([before]) });
   vi.mocked(bridge.invoke).mockImplementation(async (method) => {
     if (method === "browser.recovery.list")
       return [
@@ -380,6 +381,6 @@ it.each(["same", "new-draft", "other-chat"])(
     );
     expect(host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.disabled).toBe(false);
     expect(startRun.mock.calls[0]![1]).toMatchObject({ pageId: null, pageIds: [], scope: "new" });
-    expect(useStore.getState().pages).toEqual([]);
+    expect(orderedPages(useStore.getState().pages)).toEqual([]);
   },
 );

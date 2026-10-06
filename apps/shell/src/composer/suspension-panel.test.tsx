@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -56,7 +57,7 @@ async function mount(kind: SuspensionKind, onGet?: () => Suspension) {
   });
   useStore.setState({
     runs: [run],
-    pages: [],
+    pages: normalizePages([]),
     steps: { [run.runId]: [] },
     prompt: null,
     runAnswerDrafts: {},

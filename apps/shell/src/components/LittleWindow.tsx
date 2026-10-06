@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticSmallIconButtonProps, staticMenuItemProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -18,7 +19,9 @@ const PageSurface = lazy(() => import("./PageSurface").then((module) => ({ defau
 const Downloads = lazy(() => import("./Downloads").then((module) => ({ default: module.Downloads })));
 
 export function LittleWindow() {
-  const page = useStore((state) => ownPages(state.pages).find((item) => item.pageId === state.activePageId));
+  const page = useStore((state) =>
+    ownPages(orderedPages(state.pages)).find((item) => item.pageId === state.activePageId),
+  );
   const spaces = useStore((state) => state.layout.spaces);
   const [spacesReady, setSpacesReady] = useState(false);
   const [spaceError, setSpaceError] = useState("");

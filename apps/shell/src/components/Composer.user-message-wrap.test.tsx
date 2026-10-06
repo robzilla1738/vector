@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -32,7 +33,7 @@ beforeEach(() => {
   useStore.setState({
     connected: true,
     settings: { modelConfigured: true },
-    pages: [],
+    pages: normalizePages([]),
     runs: [],
     pendingTurns: [],
     conversationId: "original",
@@ -77,7 +78,7 @@ it("keeps the complete original pending user question and its narrow wrap rule w
   const message = host.querySelector<HTMLElement>(".conversation-turn.pending .user-message")!;
   expect(message.textContent).toBe(question);
   expect(useStore.getState().pendingTurns[0]?.goal).toBe(question);
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../styles/workspace.css"), "utf8");
   const rule = css.match(/^\s*\.user-message \{[^}]+\}/m)?.[0];
   expect(rule).toContain("max-width: min(78%, 420px)");
@@ -94,6 +95,6 @@ it("keeps the complete original pending user question and its narrow wrap rule w
   expect(useStore.getState().conversationDrafts["chat:original"]).toBe(question);
   expect(host.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe(question);
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("Your reply is kept.");
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(useStore.getState().runs).toEqual([]);
 });

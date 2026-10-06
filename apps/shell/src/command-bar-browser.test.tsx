@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -36,7 +37,7 @@ afterEach(async () => {
 
 it("requires the current native reply when a query returns to an earlier value", async () => {
   useStore.setState({
-    pages: [],
+    pages: normalizePages([] as never),
     activePageId: null,
     bookmarks: [],
     closedTabs: [],
@@ -82,7 +83,7 @@ it("requires the current native reply when a query returns to an earlier value",
 
 it("does not mark a failed native search as presented history", async () => {
   useStore.setState({
-    pages: [],
+    pages: normalizePages([] as never),
     activePageId: null,
     bookmarks: [],
     closedTabs: [],
@@ -123,7 +124,7 @@ it("does not mark a failed native search as presented history", async () => {
 
 it("preserves Chromium order while a scoped tab survives title-and-host dedup", async () => {
   useStore.setState({
-    pages: [
+    pages: normalizePages([
       { pageId: "current", url: "https://aux.example", title: "Aux", favicon: "", ownedByRuntime: false },
       {
         pageId: "tab",
@@ -132,7 +133,7 @@ it("preserves Chromium order while a scoped tab survives title-and-host dedup", 
         favicon: "",
         ownedByRuntime: false,
       },
-    ],
+    ] as never),
     activePageId: "current",
     bookmarks: [],
     closedTabs: [],
@@ -165,9 +166,9 @@ it("preserves Chromium order while a scoped tab survives title-and-host dedup", 
 
 it("opens a search through the current Profile provider", async () => {
   useStore.setState({
-    pages: [
+    pages: normalizePages([
       { pageId: "current", url: "https://aux.example", title: "Aux", favicon: "", ownedByRuntime: false },
-    ],
+    ] as never),
     activePageId: "current",
     bookmarks: [],
     closedTabs: [],
@@ -198,7 +199,9 @@ it.each(["chrome://version", "https://example.test/path"])(
   "opens %s directly from Home Search",
   async (url) => {
     useStore.setState({
-      pages: [{ pageId: "current", url: "about:blank", title: "New Tab", ownedByRuntime: false }],
+      pages: normalizePages([
+        { pageId: "current", url: "about:blank", title: "New Tab", ownedByRuntime: false },
+      ] as never),
       activePageId: "current",
       bookmarks: [],
       closedTabs: [],

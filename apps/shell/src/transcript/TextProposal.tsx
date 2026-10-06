@@ -18,7 +18,7 @@ export function TextProposal({
   proposal: Proposal;
   readOnly?: boolean;
 }) {
-  const page = useStore((state) => state.pages.find((item) => item.pageId === state.activePageId));
+  const page = useStore((state) => state.pages.byId[state.activePageId ?? ""]);
   const [capture, setCapture] = useState<InlineAssistCapture | null>(null);
   const [busy, setBusy] = useState(false);
   const [inserted, setInserted] = useState(false);
@@ -72,7 +72,7 @@ export function TextProposal({
         return;
       }
       const current = useStore.getState();
-      const active = current.pages.find((item) => item.pageId === current.activePageId);
+      const active = current.pages.byId[current.activePageId ?? ""];
       if (
         !active ||
         active.pageId !== captured.pageId ||

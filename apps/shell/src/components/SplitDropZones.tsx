@@ -1,5 +1,7 @@
+import { useShallow } from "zustand/react/shallow";
 import { useEffect, useRef, useState } from "react";
 import { TAB_DRAG_TYPE } from "../bookmark-drop";
+import { orderedPages } from "../store/pages";
 import { useStore } from "../store";
 import { runCommand } from "../commands";
 import { localSplitPage } from "../features/surfaces/split-actions";
@@ -145,12 +147,16 @@ export function SplitPicker() {
   const { picker } = useSurfaceState();
   const active = useStore((state) => state.activePageId),
     layout = useStore((state) => state.layout);
-  const pages = useStore((state) => state.pages).filter(
-    (page) =>
-      page.pageId !== active &&
-      localSplitPage(page.pageId) &&
-      active &&
-      addPane(layout, active, page.pageId, "right") !== layout,
+  const pages = useStore(
+    useShallow((state) =>
+      orderedPages(state.pages).filter(
+        (page) =>
+          page.pageId !== active &&
+          localSplitPage(page.pageId) &&
+          active &&
+          addPane(layout, active, page.pageId, "right") !== layout,
+      ),
+    ),
   );
   if (!picker) return null;
   return (

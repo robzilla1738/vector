@@ -4,7 +4,7 @@ import { toast, useStore } from "./store";
 
 export async function printCurrentPage(pageId: string | null) {
   const state = useStore.getState();
-  const page = state.pages.find((page) => page.pageId === pageId);
+  const page = state.pages.byId[pageId ?? ""];
   if (
     state.mode !== "focus" ||
     !page ||
@@ -16,7 +16,7 @@ export async function printCurrentPage(pageId: string | null) {
 }
 
 export async function savePagePdf(pageId: string | null) {
-  const page = useStore.getState().pages.find((page) => page.pageId === pageId);
+  const page = useStore.getState().pages.byId[pageId ?? ""];
   if (
     useStore.getState().mode !== "focus" ||
     !page ||

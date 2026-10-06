@@ -9,10 +9,10 @@ export async function openLocalFile(): Promise<void> {
   if (pending) return;
   pending = true;
   const origin = useStore.getState();
-  const document = origin.pages.find((page) => page.pageId === origin.activePageId);
+  const document = origin.pages.byId[origin.activePageId ?? ""];
   const unchanged = () => {
     const state = useStore.getState();
-    const page = state.pages.find((page) => page.pageId === origin.activePageId);
+    const page = state.pages.byId[origin.activePageId ?? ""];
     return (
       state.activePageId === origin.activePageId &&
       state.mode === origin.mode &&
@@ -31,7 +31,7 @@ export async function openLocalFile(): Promise<void> {
       ? origin.layout.activeSpaceId
       : state.layout.activeSpaceId;
     const page = await state.openBackgroundTab(localFileUrl(path), spaceId, false);
-    if (unchanged() && useStore.getState().pages.some((item) => item.pageId === page.pageId))
+    if (unchanged() && !!useStore.getState().pages.byId[page.pageId ?? ""])
       await useStore.getState().activate(page.pageId);
     else useStore.getState().toast("File opened in a background tab.");
   } finally {

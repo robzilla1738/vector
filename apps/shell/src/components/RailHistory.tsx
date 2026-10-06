@@ -55,7 +55,7 @@ function Ago({ ts }: { ts: number }) {
 /** Memoized so a ticking run only re-renders its own row. */
 const RunRow = memo(function RunRow({ runId }: { runId: string }) {
   const r = useStore((s) => s.runs.find((run) => run.runId === runId));
-  const page = useStore((s) => s.pages.find((p) => p.pageId === r?.pageIds[0]));
+  const page = useStore((s) => s.pages.byId[r?.pageIds[0] ?? ""]);
   if (!r) return null;
   const live = isLive(r);
   return (

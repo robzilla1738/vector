@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { memo, useState, useRef, useLayoutEffect, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { availableConversationPage } from "../conversation-page";
@@ -82,13 +83,17 @@ const BrowserContextChoice = memo(function BrowserContextChoice({
   onSelect(value: string): void;
   disabled: boolean;
 }) {
-  const page = useStore((state) => state.pages.find((item) => item.pageId === pageId && availablePage(item)));
+  const page = useStore((state) =>
+    state.pages.byId[pageId ?? ""] && availablePage(state.pages.byId[pageId ?? ""]!)
+      ? state.pages.byId[pageId ?? ""]
+      : undefined,
+  );
   if (!page) return null;
   return (
     <ContextChoice
       choice={pageId}
       page={page}
-      currentPage={() => useStore.getState().pages.find((item) => item.pageId === pageId)}
+      currentPage={() => useStore.getState().pages.byId[pageId ?? ""]}
       title={page.title ? `${page.title}\n${page.url}` : page.url}
       disabled={disabled}
       selected={value === pageId}
@@ -118,13 +123,19 @@ export function BrowserContextPicker({
   const activePageId = useStore((state) => state.activePageId);
   const [query, setQuery] = useState("");
   const active = useStore((state) =>
-    state.pages.find((page) => page.pageId === activePageId && availablePage(page)),
+    state.pages.byId[activePageId ?? ""] && availablePage(state.pages.byId[activePageId ?? ""]!)
+      ? state.pages.byId[activePageId ?? ""]
+      : undefined,
   );
   const linked = useStore((state) =>
-    state.pages.find((page) => page.pageId === linkedPageId && availablePage(page)),
+    state.pages.byId[linkedPageId ?? ""] && availablePage(state.pages.byId[linkedPageId ?? ""]!)
+      ? state.pages.byId[linkedPageId ?? ""]
+      : undefined,
   );
   const chosen = useStore((state) =>
-    state.pages.find((page) => page.pageId === value && availablePage(page)),
+    state.pages.byId[value ?? ""] && availablePage(state.pages.byId[value ?? ""]!)
+      ? state.pages.byId[value ?? ""]
+      : undefined,
   );
   const label =
     value === "none"
@@ -142,7 +153,7 @@ export function BrowserContextPicker({
           : chosen?.title || chosen?.url || "Selected tab unavailable — choose another";
   const matches = useStore(
     useShallow((state) =>
-      state.pages
+      orderedPages(state.pages)
         .filter(
           (page) =>
             availablePage(page) &&
@@ -178,7 +189,7 @@ export function BrowserContextPicker({
             currentPage={() => {
               const state = useStore.getState();
               const pageId = key === "active" ? state.activePageId : linkedPageId;
-              return state.pages.find((page) => page.pageId === pageId);
+              return state.pages.byId[pageId ?? ""];
             }}
             disabled={disabled || unavailable}
             title={subtitle ? `${title}\n${subtitle}` : title}

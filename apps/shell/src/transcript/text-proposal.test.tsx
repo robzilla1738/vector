@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -55,7 +56,12 @@ async function mount() {
     if (method === "agent.inlineAssist.cancel") return { cancelled: true } as never;
     return {} as never;
   });
-  useStore.setState({ runs: [run], pages: [page], activePageId: page.pageId, steps: { [run.runId]: [] } });
+  useStore.setState({
+    runs: [run],
+    pages: normalizePages([page]),
+    activePageId: page.pageId,
+    steps: { [run.runId]: [] },
+  });
   const host = document.createElement("div");
   const root = createRoot(host);
   await act(async () => root.render(<RunPanel runId={run.runId} conversation />));
@@ -94,7 +100,7 @@ it("disables Insert if the selected page drifts after review", async () => {
     const button = (name: string) =>
       [...view.host.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === name)!;
     await act(async () => button("Review Insert").click());
-    await act(async () => useStore.setState({ pages: [{ ...page, documentEpoch: 5 }] }));
+    await act(async () => useStore.setState({ pages: normalizePages([{ ...page, documentEpoch: 5 }]) }));
     expect(view.host.textContent).toContain("The page changed");
     expect(button("Insert text").disabled).toBe(true);
     expect(view.invoke.mock.calls.some(([method]) => method === "agent.inlineAssist.apply")).toBe(false);

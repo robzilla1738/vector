@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -34,7 +35,7 @@ beforeEach(() => {
   );
   Element.prototype.scrollIntoView ??= () => {};
   useStore.setState({
-    pages: [page],
+    pages: normalizePages([page] as never),
     activePageId: "p1",
     bookmarks: [],
     closedTabs: [],
@@ -90,7 +91,10 @@ it("renders only registered commands and awaits the supplied real dispatcher bou
 it("split provider rows carry registered split-add payloads, not ad hoc actions", async () => {
   const layout = useStore.getState().layout;
   useStore.setState({
-    pages: [page, { ...page, pageId: "p2", title: "Blue", url: "https://example.com/blue" }],
+    pages: normalizePages([
+      page,
+      { ...page, pageId: "p2", title: "Blue", url: "https://example.com/blue" },
+    ] as never),
     layout: { ...layout, tabSpace: { p1: layout.activeSpaceId, p2: layout.activeSpaceId } },
   } as never);
   const execute = vi.fn().mockResolvedValue(undefined);

@@ -76,10 +76,10 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     const g = goal.trim();
     if (!g) return null;
     const before = get();
-    const originPage = before.pages.find((page) => page.pageId === before.activePageId);
+    const originPage = before.pages.byId[before.activePageId ?? ""];
     const stayed = () => {
       const current = get();
-      const page = current.pages.find((page) => page.pageId === before.activePageId);
+      const page = current.pages.byId[before.activePageId ?? ""];
       return (
         current.mode === before.mode &&
         current.conversationId === before.conversationId &&

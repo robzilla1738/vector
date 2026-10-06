@@ -42,7 +42,7 @@ export const mount: FeatureMount = {
       await flushLayout();
     },
     "pin-tab": async (state) => {
-      const page = state.pages.find((page) => page.pageId === state.activePageId);
+      const page = state.pages.byId[state.activePageId ?? ""];
       if (
         !page ||
         !/^https?:\/\//.test(page.url) ||

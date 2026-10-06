@@ -13,7 +13,7 @@ import { nativePoliteLiveProps } from "../ui/native-attribute-props";
 
 export function MovedTabPlaceholder() {
   const moved = useSyncExternalStore(observeMovedSelection, movedSelection);
-  const page = useStore((state) => state.pages.find((item) => item.pageId === moved?.pageId));
+  const page = useStore((state) => state.pages.byId[moved?.pageId ?? ""]);
   const stage = document.querySelector(".stage-wrap");
   if (!moved || !page || !stage) return null;
   const working = !canClaim(page);

@@ -6,7 +6,7 @@ import { PageSurface } from "./PageSurface";
 import "./LinkPeek.css";
 
 export function LinkPeek() {
-  const page = useStore((state) => state.pages.find((item) => item.pageId === state.peekPageId));
+  const page = useStore((state) => state.pages.byId[state.peekPageId ?? ""]);
   const id = useStore((state) => state.peekPageId);
   const [busy, setBusy] = useState(false);
   const close = useRef<HTMLButtonElement>(null);

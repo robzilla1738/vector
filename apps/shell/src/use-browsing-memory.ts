@@ -7,7 +7,7 @@ import { call, useStore } from "./store";
 export function useBrowsingMemory() {
   const page = useStore(
     useShallow((state) => {
-      const page = state.pages.find((page) => page.pageId === state.activePageId);
+      const page = state.pages.byId[state.activePageId ?? ""];
       return (
         page && {
           pageId: page.pageId,

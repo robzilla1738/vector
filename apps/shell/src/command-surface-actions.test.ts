@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { COMMAND_SURFACE_ACTIONS } from "./command-surface-actions";
@@ -23,14 +24,14 @@ it("preserves the legacy palette action inventory with real registered producer 
   );
 });
 it("refuses saved personal-info dispatch when there is no current Aux page", async () => {
-  useStore.setState({ pages: [], activePageId: null } as never);
+  useStore.setState({ pages: normalizePages([] as never), activePageId: null } as never);
   const fill = vi.spyOn(bridge, "autofill");
   await expect(COMMAND_SURFACE_ACTIONS["command-autofill"]()).rejects.toThrow("Open an available web page");
   expect(fill).not.toHaveBeenCalled();
 });
 it("clears a rejected translation's pending state without claiming completion", async () => {
   useStore.setState({
-    pages: [
+    pages: normalizePages([
       {
         pageId: "page",
         url: "https://example.com",
@@ -39,7 +40,7 @@ it("clears a rejected translation's pending state without claiming completion", 
         viewStatus: "live",
         ownedByRuntime: false,
       },
-    ],
+    ] as never),
     activePageId: "page",
   } as never);
   vi.spyOn(bridge, "translatePage").mockRejectedValue(new Error("Native refusal"));

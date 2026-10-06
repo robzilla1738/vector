@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { expect, it, vi } from "vitest";
 import type { PageTarget } from "@aux/contracts";
@@ -34,7 +35,10 @@ vi.mock("./bridge", () => ({
   },
 }));
 vi.mock("./store", () => ({
-  useStore: { getState: () => harness.state, subscribe: () => () => {} },
+  useStore: {
+    getState: () => ({ ...harness.state, pages: normalizePages(harness.state.pages) }),
+    subscribe: () => () => {},
+  },
 }));
 vi.mock("./feature-availability", () => ({ featureStage: () => "on" }));
 

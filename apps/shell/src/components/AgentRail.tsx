@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticIconButtonProps } from "../ui/class-props";
 import { memo, useEffect, useRef, useState } from "react";
 import { useFeatureRailView } from "../features/registry";
@@ -49,7 +50,7 @@ export const AgentRail = memo(function AgentRail() {
   );
   const selectedPages = useStore(
     useShallow((s) =>
-      selectedRun ? s.pages.filter((page) => selectedRun.pageIds.includes(page.pageId)) : [],
+      selectedRun ? orderedPages(s.pages).filter((page) => selectedRun.pageIds.includes(page.pageId)) : [],
     ),
   );
   const [recentOpen, setRecentOpen] = useState(false);

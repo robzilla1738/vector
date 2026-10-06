@@ -1,3 +1,4 @@
+import { orderedPages } from "./store/pages";
 import { useEffect, useMemo, useRef } from "react";
 import { create } from "zustand";
 import { errToast, useStore } from "./store";
@@ -99,11 +100,11 @@ export function useTabSelection(
       pagesFor: (page: PageTarget) => {
         const { ids, eligible } = latest.current;
         if (!ids.includes(page.pageId)) return [page];
-        const pages = new Map(useStore.getState().pages.map((tab) => [tab.pageId, tab]));
+        const pages = useStore.getState().pages.byId;
         return eligible
           .filter((tab) => ids.includes(tab.pageId))
           .flatMap((tab) => {
-            const current = pages.get(tab.pageId);
+            const current = pages[tab.pageId];
             return current ? [current] : [];
           });
       },
@@ -119,7 +120,7 @@ export async function closeSelectedTabs() {
   const browser = useStore.getState();
   if (selection.space !== browser.layout.activeSpaceId) return false;
   const ids = selection.ids.filter((id) =>
-    browser.pages.some(
+    orderedPages(browser.pages).some(
       (page) => page.pageId === id && !page.ownedByRuntime && page.viewStatus !== "detached",
     ),
   );

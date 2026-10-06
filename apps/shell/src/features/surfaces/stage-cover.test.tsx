@@ -1,3 +1,4 @@
+import { normalizePages } from "../../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -62,7 +63,7 @@ it("keeps selected native split membership through drag and picker covers, resto
   layout.tabSpace = { one: layout.spaces[0]!.id, two: layout.spaces[0]!.id };
   layout.splitGroups = [{ id: "pair", panes: ["one", "two"], layout: "row", ratios: [0.5], focused: "one" }];
   fixture.state = {
-    pages: [page("one"), page("two")],
+    pages: normalizePages([page("one"), page("two")] as never),
     activePageId: "one",
     mode: "focus",
     layout,

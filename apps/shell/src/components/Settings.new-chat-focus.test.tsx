@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act, type ComponentType } from "react";
 import { createRoot } from "react-dom/client";
@@ -76,7 +77,7 @@ beforeEach(() => {
     railOpen: false,
     runs: [],
     pendingTurns: [],
-    pages: [],
+    pages: normalizePages([]),
     connected: true,
     conversationId: null,
   });
@@ -169,7 +170,7 @@ it("the actual New chat dispatcher focuses the retained composer after Settings 
   expect(useStore.getState().focusSlot).toBe("hero");
   expect(document.activeElement).toBe(original);
   expect(original.value).toBe("Original page-free question");
-  expect(useStore.getState().pages).toEqual([]);
+  expect(orderedPages(useStore.getState().pages)).toEqual([]);
 });
 it("ordinary Settings close restores its original opener without refocusing the covered chat", async () => {
   await mount();

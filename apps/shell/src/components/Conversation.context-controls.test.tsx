@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act, useCallback, useRef } from "react";
 import { createRoot } from "react-dom/client";
@@ -39,7 +40,7 @@ beforeEach(() => {
       ...initial,
       runs: [],
       steps: {},
-      pages: [page],
+      pages: normalizePages([page]),
       activePageId: page.pageId,
       connected: true,
       toasts: [],

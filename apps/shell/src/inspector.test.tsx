@@ -1,3 +1,4 @@
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -31,11 +32,13 @@ it("rejects late observations from a previous page and preserves a historical sn
   useStore.setState({
     activePageId: "first",
     inspectorObs: null,
-    pages: ["first", "second"].map((pageId) => ({
-      pageId,
-      title: pageId,
-      url: `https://${pageId}.example/`,
-    })),
+    pages: normalizePages(
+      ["first", "second"].map((pageId) => ({
+        pageId,
+        title: pageId,
+        url: `https://${pageId}.example/`,
+      })) as never,
+    ),
   } as never);
   const host = document.createElement("div");
   document.body.append(host);

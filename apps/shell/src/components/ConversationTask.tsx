@@ -93,7 +93,7 @@ export function ConversationTask({
     setBusy(true);
     setError("");
     const before = useStore.getState();
-    const origin = before.pages.find((item) => item.pageId === before.activePageId);
+    const origin = before.pages.byId[before.activePageId ?? ""];
     try {
       const spaceId =
         before.layout.spaces.find((space) => space.workspaceId === task.workspaceId)?.id ??
@@ -108,7 +108,7 @@ export function ConversationTask({
         runs: state.runs.some((item) => item.runId === run.runId) ? state.runs : [run, ...state.runs],
       }));
       const current = useStore.getState();
-      const currentPage = current.pages.find((item) => item.pageId === before.activePageId);
+      const currentPage = current.pages.byId[before.activePageId ?? ""];
       if (
         currentTask.current === taskId &&
         current.mode === before.mode &&

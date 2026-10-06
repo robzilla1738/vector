@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -36,7 +37,7 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
     { width: 100, height: 30 },
   ] as unknown as DOMRectList);
-  useStore.setState({ pages: [before], toasts: [] });
+  useStore.setState({ pages: normalizePages([before]), toasts: [] });
   onSources.mockReset();
   host = document.createElement("div");
   document.body.append(host);
@@ -136,7 +137,7 @@ it("external navigation while recovery list is held cannot trigger recovery", as
   await render();
   await select();
   await act(async () => {
-    useStore.setState({ pages: [{ ...before, documentEpoch: 9 }] });
+    useStore.setState({ pages: normalizePages([{ ...before, documentEpoch: 9 }]) });
     finish(pending());
   });
   expect(invoke.mock.calls.some(([method]) => method === "browser.recovery.retry")).toBe(false);

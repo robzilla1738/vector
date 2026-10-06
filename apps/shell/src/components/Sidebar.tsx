@@ -1,3 +1,5 @@
+import { useTabLayout } from "../use-tab-layout";
+import { orderedPages } from "../store/pages";
 import { staticMenuItemProps, staticIconButtonProps } from "../ui/class-props";
 import { ReturnControlButton } from "./ReturnControlButton";
 import { runCommand } from "../commands";
@@ -216,7 +218,7 @@ const TabRow = memo(function TabRow({
   onContext,
   onKeyMove,
 }: TabRowProps) {
-  const p = useStore((state) => state.pages.find((page) => page.pageId === pageId));
+  const p = useStore((state) => state.pages.byId[pageId ?? ""]);
   const key = useShortcutLabels();
   const preview = useSidebarTabPreview();
   const row = useRef<HTMLDivElement>(null);
@@ -697,7 +699,9 @@ const SidebarBookmarkRow = memo(function SidebarBookmarkRow({
   onOpen: OpenLink;
 }) {
   const bookmark = useStore((s) => s.bookmarks.find((item) => item.url === url));
-  const favicon = useStore((s) => s.pages.find((page) => page.url === url && page.favicon)?.favicon);
+  const favicon = useStore(
+    (s) => orderedPages(s.pages).find((page) => page.url === url && page.favicon)?.favicon,
+  );
   if (!bookmark) return null;
   return (
     <button
@@ -742,7 +746,7 @@ const SidebarBookmarks = memo(function SidebarBookmarks({
         setHover(false);
         const added = bookmarkTabsFromDrop(
           event.dataTransfer.getData(TAB_DRAG_TYPE),
-          useStore.getState().pages,
+          orderedPages(useStore.getState().pages),
         );
         onDropped();
         if (!added.length) {
@@ -800,11 +804,11 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const railOpenNow = useStore((s) => s.railOpen && s.overlay !== "settings");
   const sidebar = minimal ? "hidden" : sidebarPref;
   const peek = useStore((s) => s.sidebarPeek);
-  const layout = useStore((s) => s.layout);
+  const layout = useTabLayout();
   const pages = useTabMembership();
   /** 0 not saved · 1 bookmarked · 2 also on the reading list — for the active page. */
   const saved = useStore((s) => {
-    const url = s.pages.find((p) => p.pageId === s.activePageId)?.url;
+    const url = s.pages.byId[s.activePageId ?? ""]?.url;
     const b = url ? s.bookmarks.find((item) => item.url === url) : undefined;
     return b ? (b.readingList ? 2 : 1) : 0;
   });
@@ -859,18 +863,18 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const pins = layout.pins[space.id] ?? [];
   const pinnedIcons = useStore(
     useShallow((state) => {
-      const openTabs = tabsInSpace(state.layout, state.pages, space.id);
+      const openTabs = tabsInSpace(state.layout, orderedPages(state.pages), space.id);
       return pins.map((pin) => pinnedPage(pin, openTabs)?.favicon);
     }),
   );
   const pinnedTitles = useStore(
-    useShallow((state) => pins.map((pin) => pinnedPage(pin, state.pages)?.title)),
+    useShallow((state) => pins.map((pin) => pinnedPage(pin, orderedPages(state.pages))?.title)),
   );
   const visiblePins = pins.length > PIN_ROW_SIZE ? pins.slice(0, PIN_ROW_SIZE - 1) : pins;
   const overflowPins = pins.slice(visiblePins.length);
   const [activeUrl, activeController] = useStore(
     useShallow((s) => {
-      const current = s.pages.find((p) => p.pageId === activePageId);
+      const current = s.pages.byId[activePageId ?? ""];
       return [current?.url, current?.controller] as const;
     }),
   );
@@ -995,7 +999,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const onClose = useCallback((id: string) => void closeTab(id), [closeTab]);
   const onDragStart = useCallback(
     (folderId: string | null, index: number, pageId: string, e: React.DragEvent) => {
-      const page = useStore.getState().pages.find((tab) => tab.pageId === pageId);
+      const page = useStore.getState().pages.byId[pageId ?? ""];
       dragIds.current = page ? selection.pagesFor(page).map((tab) => tab.pageId) : [pageId];
       e.dataTransfer.effectAllowed = "copyMove";
       e.dataTransfer.setData("text/plain", dragIds.current.join("\n"));
@@ -1018,7 +1022,8 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
       setDrag((d) => {
         if (d.from < 0 || !d.pageId) return IDLE_DRAG;
         if (dragIds.current.length > 1) {
-          const { layout, pages } = useStore.getState();
+          const { layout, pages: collection } = useStore.getState();
+          const pages = orderedPages(collection);
           const group = folderId
             ? tabsInFolder(layout, pages, folderId)
             : unfiledTabs(layout, pages, space.id);
@@ -1049,7 +1054,8 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const onContext = useCallback((p: PageTarget, x: number, y: number) => setCtx({ p, x, y }), []);
   const onKeyMove = useCallback(
     (folderId: string | null, index: number, dir: -1 | 1) => {
-      const { layout, pages } = useStore.getState();
+      const { layout, pages: collection } = useStore.getState();
+      const pages = orderedPages(collection);
       const group = folderId ? tabsInFolder(layout, pages, folderId) : unfiledTabs(layout, pages, space.id);
       const to = dir === -1 ? index - 1 : index + 2;
       if (to < 0 || to > group.length) return;

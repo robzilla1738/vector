@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../../store/pages";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import type { PageTarget, TabRecord } from "@aux/contracts";
@@ -28,7 +29,7 @@ const tab = (pageId: string, windowId: string, fields = {}): TabRecord => ({
 function setup() {
   const layout = emptyLayout();
   useStore.setState({
-    pages: [],
+    pages: normalizePages([]),
     layout,
     activePageId: null,
     catalogVersion: 0,
@@ -39,24 +40,22 @@ function setup() {
 }
 it("keeps normal human tabs from every window and excludes special windows and anchors", () => {
   setup();
-  useStore
-    .getState()
-    .syncTabsSnapshot({
-      version: 1,
-      tabs: [
-        tab("a", bridge.windowId),
-        tab("b", "2"),
-        tab("little", "3", { windowKind: "little" }),
-        tab("anchor", bridge.windowId, { anchor: true }),
-      ],
-      windows: [{ windowId: bridge.windowId, order: ["a", "anchor"], activePageId: "a" }],
-    });
-  expect(useStore.getState().pages.map((page) => page.pageId)).toEqual(["a", "b"]);
+  useStore.getState().syncTabsSnapshot({
+    version: 1,
+    tabs: [
+      tab("a", bridge.windowId),
+      tab("b", "2"),
+      tab("little", "3", { windowKind: "little" }),
+      tab("anchor", bridge.windowId, { anchor: true }),
+    ],
+    windows: [{ windowId: bridge.windowId, order: ["a", "anchor"], activePageId: "a" }],
+  });
+  expect(orderedPages(useStore.getState().pages).map((page) => page.pageId)).toEqual(["a", "b"]);
   expect(useStore.getState().activePageId).toBe("a");
   useStore
     .getState()
     .applyTabsPatch({ baseVersion: 1, version: 2, ts: 1, ops: [{ op: "upsert", tab: tab("a", "2") }] });
-  expect(useStore.getState().pages.find((page) => page.pageId === "a")?.windowId).toBe("2");
+  expect(useStore.getState().pages.byId["a"]?.windowId).toBe("2");
   expect(useStore.getState().layout.order).toContain("a");
 });
 it("claims a remote row before changing local selection and never sends a stale owner activate", async () => {
@@ -68,16 +67,18 @@ it("claims a remote row before changing local selection and never sends a stale 
     ownedByRuntime: false,
     controller: "human",
   } as PageTarget;
-  useStore.setState({ pages: [page], activePageId: "before", layout: { ...layout, order: [page.pageId] } });
-  const command = vi
-    .spyOn(bridge, "tabCommand")
-    .mockResolvedValue({
-      commandId: "claim",
-      status: "applied",
-      catalogVersion: 2,
-      windowId: bridge.windowId,
-      pageId: page.pageId,
-    });
+  useStore.setState({
+    pages: normalizePages([page]),
+    activePageId: "before",
+    layout: { ...layout, order: [page.pageId] },
+  });
+  const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue({
+    commandId: "claim",
+    status: "applied",
+    catalogVersion: 2,
+    windowId: bridge.windowId,
+    pageId: page.pageId,
+  });
   await useStore.getState().activate(page.pageId);
   expect(command.mock.calls.map(([value]) => value)).toEqual([
     { kind: "claim", pageId: page.pageId, activate: true },
@@ -87,7 +88,7 @@ it("claims a remote row before changing local selection and never sends a stale 
 it("refused claims preserve the previous selection and active Space", async () => {
   const layout = setup();
   useStore.setState({
-    pages: [
+    pages: normalizePages([
       {
         pageId: "remote",
         windowId: "2",
@@ -95,7 +96,7 @@ it("refused claims preserve the previous selection and active Space", async () =
         ownedByRuntime: false,
         controller: "human",
       } as PageTarget,
-    ],
+    ]),
     activePageId: "before",
   });
   vi.spyOn(bridge, "tabCommand").mockResolvedValue({
@@ -117,11 +118,11 @@ it("shows controlled human rows without claiming them or changing the selected S
     ownedByRuntime: false,
     controller: "agent",
   } as PageTarget;
-  useStore.setState({ pages: [page], activePageId: "before" });
+  useStore.setState({ pages: normalizePages([page]), activePageId: "before" });
   const command = vi.spyOn(bridge, "tabCommand");
   await useStore.getState().activate(page.pageId);
   expect(command).not.toHaveBeenCalled();
-  expect(useStore.getState().pages).toContain(page);
+  expect(orderedPages(useStore.getState().pages)).toContain(page);
   expect(useStore.getState().activePageId).toBe("before");
   expect(useStore.getState().layout.activeSpaceId).toBe(layout.activeSpaceId);
 });
@@ -129,27 +130,25 @@ it("shows controlled human rows without claiming them or changing the selected S
 it("reconciles native metadata for existing workers without adding remote workers to human rows", () => {
   setup();
   useStore.setState({
-    pages: [
+    pages: normalizePages([
       {
         pageId: "worker",
         windowId: bridge.windowId,
         ownedByRuntime: true,
         viewStatus: "hidden",
       } as PageTarget,
-    ],
+    ]),
   });
-  useStore
-    .getState()
-    .syncTabsSnapshot({
-      version: 1,
-      tabs: [
-        tab("worker", bridge.windowId, { runtimeOwned: true, title: "Live worker" }),
-        tab("remote-worker", "2", { runtimeOwned: true }),
-      ],
-      windows: [],
-    });
-  expect(useStore.getState().pages.map((page) => page.pageId)).toEqual(["worker"]);
-  expect(useStore.getState().pages[0]?.title).toBe("Live worker");
+  useStore.getState().syncTabsSnapshot({
+    version: 1,
+    tabs: [
+      tab("worker", bridge.windowId, { runtimeOwned: true, title: "Live worker" }),
+      tab("remote-worker", "2", { runtimeOwned: true }),
+    ],
+    windows: [],
+  });
+  expect(orderedPages(useStore.getState().pages).map((page) => page.pageId)).toEqual(["worker"]);
+  expect(orderedPages(useStore.getState().pages)[0]?.title).toBe("Live worker");
   useStore.getState().applyTabsPatch({
     baseVersion: 1,
     version: 2,
@@ -162,8 +161,8 @@ it("reconciles native metadata for existing workers without adding remote worker
       { op: "upsert", tab: tab("remote-worker", "2", { runtimeOwned: true }) },
     ],
   });
-  expect(useStore.getState().pages.map((page) => page.pageId)).toEqual(["worker"]);
-  expect(useStore.getState().pages[0]).toMatchObject({
+  expect(orderedPages(useStore.getState().pages).map((page) => page.pageId)).toEqual(["worker"]);
+  expect(orderedPages(useStore.getState().pages)[0]).toMatchObject({
     windowId: bridge.windowId,
     title: "Worker updated",
     ownedByRuntime: true,
@@ -182,13 +181,18 @@ it("reuses the one live Little page for a new address and refuses missing local 
   } as PageTarget;
   const navigatePage = vi.fn().mockResolvedValue(undefined);
   const focusCommandBar = vi.fn();
-  useStore.setState({ pages: [current], activePageId: current.pageId, navigatePage, focusCommandBar });
+  useStore.setState({
+    pages: normalizePages([current]),
+    activePageId: current.pageId,
+    navigatePage,
+    focusCommandBar,
+  });
   const command = vi.spyOn(bridge, "tabCommand");
   expect(await useStore.getState().newTab()).toBe(current);
   expect(navigatePage).toHaveBeenCalledExactlyOnceWith("little", "about:blank");
   expect(focusCommandBar).toHaveBeenCalledExactlyOnceWith("toolbar");
   expect(command).not.toHaveBeenCalled();
-  useStore.setState({ pages: [{ ...current, windowId: "foreign" }] });
+  useStore.setState({ pages: normalizePages([{ ...current, windowId: "foreign" }]) });
   await expect(useStore.getState().newTab()).rejects.toThrow("finish opening");
   expect(navigatePage).toHaveBeenCalledTimes(1);
 });

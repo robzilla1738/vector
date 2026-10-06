@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { errorMessage } from "../error-message";
 import {
   ConversationSourceAction,
@@ -410,15 +411,15 @@ export function Conversation({
   // Digest re-renders on structure/navigation change only — loading/favicon churn doesn't.
   useStore(
     useShallow((s) =>
-      s.pages.map(
+      orderedPages(s.pages).map(
         (p) =>
           `${p.pageId}${p.documentEpoch}${p.url}${p.title}${p.ownedByRuntime ? 1 : 0}${p.viewStatus}${p.backend}${p.navigationError ? 1 : 0}${p.showBlankDocument ? 1 : 0}`,
       ),
     ),
   );
-  const pages = useStore.getState().pages;
+  const pages = orderedPages(useStore.getState().pages);
   const activePageId = useStore((s) => s.activePageId);
-  const layout = useStore((s) => s.layout);
+  const tabSpace = useStore((s) => s.layout.tabSpace);
   const connected = useStore((s) => s.connected);
   const focusRequest = useStore((s) => s.focusRequest);
   const seenFocusRequest = useRef(focusRequest);
@@ -820,16 +821,14 @@ export function Conversation({
             }
           }
           if (!current()) return;
-          const existing = useStore
-            .getState()
-            .pages.find(
-              (page) =>
-                page.pageId === source.pageId &&
-                page.url === source.url &&
-                page.documentEpoch === source.documentEpoch &&
-                !page.ownedByRuntime &&
-                !["crashed", "detached"].includes(page.viewStatus ?? ""),
-            );
+          const existing = orderedPages(useStore.getState().pages).find(
+            (page) =>
+              page.pageId === source.pageId &&
+              page.url === source.url &&
+              page.documentEpoch === source.documentEpoch &&
+              !page.ownedByRuntime &&
+              !["crashed", "detached"].includes(page.viewStatus ?? ""),
+          );
           if (existing) {
             if (!background) return await useStore.getState().activate(existing.pageId);
           } else if (background)
@@ -932,11 +931,11 @@ export function Conversation({
   );
   const selectedContext = conversationPage(pages, contextPage, activePageId, linked?.pageId);
   const splitPlan = selectedContext
-    ? previewSplit(layout, pages, selectedContext.pageId, activePageId)
+    ? previewSplit({ tabSpace }, pages, selectedContext.pageId, activePageId)
     : null;
   const previewLayoutIdentity = JSON.stringify([
-    selectedContext && layout.tabSpace[selectedContext.pageId],
-    layout.tabSpace,
+    selectedContext && tabSpace[selectedContext.pageId],
+    tabSpace,
   ]);
   const readPreviewPage = useCallback(() => {
     const state = useStore.getState();
@@ -946,7 +945,12 @@ export function Conversation({
       .filter((run) => (run.config?.chatId ?? run.runId) === id)
       .sort((a, b) => a.createdAt - b.createdAt)
       .at(-1);
-    const selected = conversationPage(state.pages, selection, state.activePageId, latest?.pageIds[0]);
+    const selected = conversationPage(
+      orderedPages(state.pages),
+      selection,
+      state.activePageId,
+      latest?.pageIds[0],
+    );
     if (
       JSON.stringify([selected && state.layout.tabSpace[selected.pageId], state.layout.tabSpace]) !==
       previewLayoutIdentity
@@ -1359,7 +1363,7 @@ export function Conversation({
           ),
         ];
         let primaryForRun = mentionedPageIds.length
-          ? useStore.getState().pages.find((page) => page.pageId === mentionedPageIds[0])
+          ? useStore.getState().pages.byId[mentionedPageIds[0] ?? ""]
           : selectedContext;
         if (selectedPageIds.length) {
           const pending = (await call("browser.recovery.list", {})).filter((tab) =>
@@ -1403,18 +1407,16 @@ export function Conversation({
         setText("");
         draftCleared = true;
         if (activeChat.current === id) scrolling.jumpToLatest();
-        const run = await useStore
-          .getState()
-          .startRun(text, {
-            chatId,
-            pageId: primaryForRun?.pageId ?? null,
-            pageIds,
-            contextPageRefs,
-            mentions,
-            scope: primaryForRun ? "page" : "new",
-            presentation: embedded && !home ? "rail" : "conversation",
-            ownsDraft: true,
-          });
+        const run = await useStore.getState().startRun(text, {
+          chatId,
+          pageId: primaryForRun?.pageId ?? null,
+          pageIds,
+          contextPageRefs,
+          mentions,
+          scope: primaryForRun ? "page" : "new",
+          presentation: embedded && !home ? "rail" : "conversation",
+          ownsDraft: true,
+        });
         if (run) {
           clearMentionDraft(composerId);
           try {
@@ -1867,13 +1869,13 @@ export function Conversation({
     setPreviewMenu(false);
     if (where === "tab") return guardCommandCompletion(useStore.getState().activate(pageId), previewCurrent);
     const state = useStore.getState();
-    const plan = previewSplit(state.layout, state.pages, pageId, state.activePageId);
+    const plan = previewSplit(state.layout, orderedPages(state.pages), pageId, state.activePageId);
     if (!plan) {
       toast("Open another tab in this Space to use split view.");
       return;
     }
-    const primary = previewPageIdentity(state.pages.find((page) => page.pageId === plan.primary));
-    const companion = previewPageIdentity(state.pages.find((page) => page.pageId === plan.companion));
+    const primary = previewPageIdentity(state.pages.byId[plan.primary ?? ""]);
+    const companion = previewPageIdentity(state.pages.byId[plan.companion ?? ""]);
     const spaceId = state.layout.tabSpace[plan.primary];
     const completion = state.activate(plan.primary).then((ack) => {
       const now = useStore.getState();
@@ -1882,9 +1884,10 @@ export function Conversation({
         now.activePageId === plan.primary &&
         now.layout.tabSpace[plan.primary] === spaceId &&
         now.layout.tabSpace[plan.companion] === spaceId &&
-        previewPageIdentity(now.pages.find((page) => page.pageId === plan.primary)) === primary &&
-        previewPageIdentity(now.pages.find((page) => page.pageId === plan.companion)) === companion &&
-        previewSplit(now.layout, now.pages, pageId, now.activePageId)?.companion === plan.companion
+        previewPageIdentity(now.pages.byId[plan.primary ?? ""]) === primary &&
+        previewPageIdentity(now.pages.byId[plan.companion ?? ""]) === companion &&
+        previewSplit(now.layout, orderedPages(now.pages), pageId, now.activePageId)?.companion ===
+          plan.companion
       )
         runCommand("split-add", { payload: { pageId: plan.companion } });
       return ack;

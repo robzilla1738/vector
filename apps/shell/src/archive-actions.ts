@@ -1,3 +1,4 @@
+import { orderedPages } from "./store/pages";
 import type { PageTarget } from "@aux/contracts";
 import type { ArchivedTab, Layout } from "./workspace";
 import { confirmArchiveClose, finishTabArchive, removeTabArchive, stageTabArchive } from "./tab-archive";
@@ -33,7 +34,7 @@ async function archivePagesTransaction(
   const initial = useStore.getState();
   if (initial.layout.archivedTabs?.some((entry) => entry.state === "pending"))
     throw new Error("Another archive batch is pending. Wait for its native close to be reconciled.");
-  const chosen = ids.map((id) => initial.pages.find((page) => page.pageId === id));
+  const chosen = ids.map((id) => initial.pages.byId[id ?? ""]);
   if (chosen.some((page) => !page)) throw new Error("A selected tab is no longer available.");
   const pages = chosen as PageTarget[];
   const checks = await bridge.tabsUnsavedWork(pages.map((page) => ({ pageId: page.pageId, url: page.url })));
@@ -48,7 +49,7 @@ async function archivePagesTransaction(
   };
   for (const selected of pages) {
     const state = useStore.getState();
-    const page = state.pages.find((item) => item.pageId === selected.pageId);
+    const page = state.pages.byId[selected.pageId ?? ""];
     if (!page || page.url !== selected.url)
       throw new Error("A selected tab changed. Review the remaining tabs.");
     const staged = stageTabArchive(state.layout, page, Date.now(), { ...options, batchId });
@@ -88,7 +89,7 @@ async function archivePagesTransaction(
           };
           const eligible = autoArchiveCandidates({
             layout,
-            pages: current.pages,
+            pages: orderedPages(current.pages),
             catalog,
             settings: archiveSettings(current.settings.autoArchive),
             windowId: bridge.windowId,
@@ -128,7 +129,7 @@ async function restoreArchivedTabTransaction(entry: ArchivedTab) {
     )
   )
     throw new Error("This archived tab has changed. Refresh the archive.");
-  const existing = state.pages.find((page) => page.pageId === entry.pageId);
+  const existing = state.pages.byId[entry.pageId ?? ""];
   if (existing && existing.url !== entry.url)
     throw new Error("The original tab ID now has a different page. Review it before restoring.");
   if (state.layout.archivedSpaces?.some((space) => space.id === entry.spaceId))
@@ -137,14 +138,14 @@ async function restoreArchivedTabTransaction(entry: ArchivedTab) {
     throw new Error("Restore this Space before reopening its archived tabs.");
   if (!existing) {
     await state.openBackgroundTab(entry.url, entry.spaceId, false, entry.pageId, entry.index);
-    if (!useStore.getState().pages.some((page) => page.pageId === entry.pageId)) {
+    if (!!!useStore.getState().pages.byId[entry.pageId ?? ""]) {
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           unsubscribe();
           reject(new Error("The native tab has not appeared. The archive remains available."));
         }, 3000);
         const unsubscribe = useStore.subscribe((current) => {
-          if (!current.pages.some((page) => page.pageId === entry.pageId)) return;
+          if (!!!current.pages.byId[entry.pageId ?? ""]) return;
           clearTimeout(timeout);
           unsubscribe();
           resolve();

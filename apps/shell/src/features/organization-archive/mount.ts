@@ -1,3 +1,4 @@
+import { orderedPages } from "../../store/pages";
 import type { FeatureMount } from "../registry";
 import { useStore } from "../../store";
 import { boundPin } from "../../pinned-apps";
@@ -16,7 +17,7 @@ export const mount: FeatureMount = {
         payload && "spaceId" in payload
           ? (payload.spaceId ?? state.layout.activeSpaceId)
           : state.layout.activeSpaceId;
-      const ids = unfiledTabs(state.layout, state.pages, spaceId)
+      const ids = unfiledTabs(state.layout, orderedPages(state.pages), spaceId)
         .filter((page) => !boundPin(state.layout, page.pageId))
         .map((page) => page.pageId);
       if (ids.length) await (await import("../../archive-actions")).archivePages(ids, { reason: "manual" });

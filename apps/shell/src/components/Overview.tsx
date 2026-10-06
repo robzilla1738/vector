@@ -1,3 +1,4 @@
+import { orderedPages } from "../store/pages";
 import { staticIconButtonProps, staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
@@ -37,7 +38,7 @@ export function Overview() {
   const archiveEnabled = useFeature("archive");
   const pages = useStore(
     useShallow((state) =>
-      state.pages.filter((page) => page.viewStatus !== "detached" && !page.ownedByRuntime),
+      orderedPages(state.pages).filter((page) => page.viewStatus !== "detached" && !page.ownedByRuntime),
     ),
   );
   const layout = useStore((state) => state.layout);
@@ -219,7 +220,7 @@ export function Overview() {
       for (const pageId of previewIds.split(",").filter(Boolean)) {
         if (cancelled) break;
         if (pagePreview(pageId) || captured.current.has(pageId)) continue;
-        const page = useStore.getState().pages.find((page) => page.pageId === pageId);
+        const page = useStore.getState().pages.byId[pageId ?? ""];
         if (!page || (page.backend !== "aux" && page.viewStatus !== "visible")) continue;
         captured.current.add(pageId);
         try {
@@ -447,7 +448,9 @@ export function Overview() {
                 );
                 const current = useStore.getState();
                 const eligible = visible.filter((page) =>
-                  current.pages.some((item) => item.pageId === page.pageId && item.url === page.url),
+                  orderedPages(current.pages).some(
+                    (item) => item.pageId === page.pageId && item.url === page.url,
+                  ),
                 );
                 const protectedNow = protectedDuplicateIds(eligible, current.layout, current.tabAudio);
                 for (const page of eligible)
@@ -504,7 +507,12 @@ export function Overview() {
               onClick={() =>
                 void act(async () => {
                   const state = useStore.getState();
-                  const applied = applyTidyProposal(state.layout, state.pages, tidy.spaceId, tidy.proposal);
+                  const applied = applyTidyProposal(
+                    state.layout,
+                    orderedPages(state.pages),
+                    tidy.spaceId,
+                    tidy.proposal,
+                  );
                   const receipt = tidyUndoRecord(state.layout, applied);
                   const after = { ...applied, tidyUndo: receipt };
                   await commitTidyLayout({
@@ -642,7 +650,7 @@ export function Overview() {
                   let changed = 0;
                   for (const page of audioSelection) {
                     const state = useStore.getState();
-                    const current = state.pages.find((item) => item.pageId === page.pageId);
+                    const current = state.pages.byId[page.pageId ?? ""];
                     if (!current || current.controller === "agent" || current.controller === "external")
                       throw new Error(
                         `Audio changed for ${changed} tabs. A remaining tab closed or changed control.`,
@@ -699,11 +707,9 @@ export function Overview() {
                     candidates.some(
                       (candidate) =>
                         checked[candidate.pageId] !== "clean" ||
-                        !useStore
-                          .getState()
-                          .pages.some(
-                            (page) => page.pageId === candidate.pageId && page.url === candidate.url,
-                          ),
+                        !orderedPages(useStore.getState().pages).some(
+                          (page) => page.pageId === candidate.pageId && page.url === candidate.url,
+                        ),
                     )
                   )
                     throw new Error(

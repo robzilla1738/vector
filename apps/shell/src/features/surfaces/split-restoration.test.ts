@@ -1,3 +1,4 @@
+import { normalizePages, orderedPages } from "../../store/pages";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { PageTarget } from "@aux/contracts";
 import { emptyLayout } from "../../workspace";
@@ -7,7 +8,7 @@ const fixture = vi.hoisted(() => ({
     restoringTabs: boolean;
     catalogVersion: number;
     layout: ReturnType<typeof emptyLayout>;
-    pages: PageTarget[];
+    pages: import("../../store/pages").PageCollection;
   },
   listeners: new Set<() => void>(),
   commit: vi.fn(async (..._args: unknown[]) => {}),
@@ -26,7 +27,7 @@ vi.mock("../../store", () => ({
 vi.mock("./split-actions", () => ({
   commitSplit: fixture.commit,
   localSplitPage: (id: string) =>
-    fixture.state.pages.find(
+    orderedPages(fixture.state.pages).find(
       (page) =>
         page.pageId === id && page.windowId === "own" && !page.ownedByRuntime && page.controller === "none",
     ),
@@ -52,8 +53,10 @@ beforeEach(() => {
     restoringTabs: false,
     catalogVersion: 1,
     layout,
-    pages: ["one", "two"].map(
-      (pageId) => ({ pageId, windowId: "own", controller: "none", ownedByRuntime: false }) as PageTarget,
+    pages: normalizePages(
+      ["one", "two"].map(
+        (pageId) => ({ pageId, windowId: "own", controller: "none", ownedByRuntime: false }) as PageTarget,
+      ) as never,
     ),
   };
 });
@@ -75,7 +78,7 @@ it("waits for actual restoration and native catalog before a single native recon
   expect(fixture.listeners.size).toBe(0);
 });
 it("retains a pair already restored by the native model", () => {
-  fixture.state.pages.forEach((page, index) => {
+  orderedPages(fixture.state.pages).forEach((page, index) => {
     page.split = { id: "native-pair", index };
   });
   const stop = restoreNativeSplits();
@@ -83,11 +86,11 @@ it("retains a pair already restored by the native model", () => {
   stop();
 });
 it("does not dispatch for foreign or runtime-owned members", () => {
-  fixture.state.pages[1]!.ownedByRuntime = true;
+  fixture.state.pages.byId[fixture.state.pages.allIds[1]!]!.ownedByRuntime = true;
   const stop = restoreNativeSplits();
   expect(fixture.commit).not.toHaveBeenCalled();
-  fixture.state.pages[1]!.ownedByRuntime = false;
-  fixture.state.pages[1]!.windowId = "other";
+  fixture.state.pages.byId[fixture.state.pages.allIds[1]!]!.ownedByRuntime = false;
+  fixture.state.pages.byId[fixture.state.pages.allIds[1]!]!.windowId = "other";
   publish();
   expect(fixture.commit).not.toHaveBeenCalled();
   stop();

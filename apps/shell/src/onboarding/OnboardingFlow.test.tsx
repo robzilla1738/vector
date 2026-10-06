@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { readFileSync } from "node:fs";
@@ -110,7 +111,7 @@ beforeEach(() => {
   workspace = {
     connected: true,
     settings: { modelConfigured: true },
-    pages: [source],
+    pages: normalizePages([source] as never),
     runs: [],
     layout: {
       activeSpaceId: "space",
@@ -257,7 +258,7 @@ it("clears the page review after navigation and refuses a postcard when recovery
   await choosePage();
   await act(async () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
   expect(button("Start this chat").disabled).toBe(true);
-  workspace.pages = [{ ...source, documentEpoch: 2 }];
+  workspace.pages = normalizePages([{ ...source, documentEpoch: 2 }] as never);
   await act(async () => root.render(<OnboardingFlow initialState={current} onClose={close} />));
   expect(document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.checked).toBe(false);
   expect(document.body.textContent).toContain("Recovery is staged");
@@ -428,7 +429,7 @@ it("requires recovery readiness and rechecks the selected window before first-ch
     },
     async () => ({ pending: false }),
     async () => {
-      workspace.pages = [{ ...source, windowId: "other-window" }];
+      workspace.pages = normalizePages([{ ...source, windowId: "other-window" }] as never);
       return { pending: false };
     },
   ];
@@ -453,12 +454,12 @@ it("requires recovery readiness and rechecks the selected window before first-ch
 });
 
 it("offers only idle owner pages in this window for explicit review", async () => {
-  workspace.pages = [
+  workspace.pages = normalizePages([
     source,
     { ...source, pageId: "other-window", windowId: "other" },
     { ...source, pageId: "loading", loading: true },
     { ...source, pageId: "agent", controller: "agent" },
-  ];
+  ] as never);
   await render(initial("postcard"));
   const select = [...document.querySelectorAll("select")].find((node) =>
     [...node.options].some((option) => option.value === source.pageId),

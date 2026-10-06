@@ -1,3 +1,4 @@
+import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { act } from "react";
@@ -14,7 +15,7 @@ it("keeps complete resource label, reference policy and rename cancellation whil
     { width: 100 },
   ] as unknown as DOMRectList);
   const initial = useStore.getState();
-  useStore.setState({ pages: [] });
+  useStore.setState({ pages: normalizePages([]) });
   const task = TaskSchema.parse({
     taskId: "original",
     workspaceId: "workspace",

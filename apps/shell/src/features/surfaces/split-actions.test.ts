@@ -1,8 +1,9 @@
+import { normalizePages, orderedPages, putPage } from "../../store/pages";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { PageTarget } from "@aux/contracts";
 import type { Layout } from "../../workspace";
 const fixture = vi.hoisted(() => ({
-  state: {} as { layout: Layout; pages: PageTarget[] },
+  state: {} as { layout: Layout; pages: import("../../store/pages").PageCollection },
   native: vi.fn(async (_command: unknown) => {}),
   persist: vi.fn(),
 }));
@@ -42,7 +43,7 @@ beforeEach(() => {
   const layout = emptyLayout();
   layout.tabSpace = { one: layout.spaces[0]!.id, two: layout.spaces[0]!.id };
   layout.splitGroups = [{ id: "pair", panes: ["one", "two"], layout: "row", ratios: [0.5], focused: "one" }];
-  fixture.state = { layout, pages: [page("one"), page("two")] };
+  fixture.state = { layout, pages: normalizePages([page("one"), page("two")] as never) };
 });
 it("persists and mirrors a divider release after its store preview already reached the final ratio", async () => {
   splitResize("one", 0, 0.62, false);
@@ -126,7 +127,10 @@ it("refuses restoration when its owner unmounts before queued native dispatch", 
 });
 it("refuses restoration for a persisted pair whose tab moved to another window", async () => {
   const layout = fixture.state.layout;
-  fixture.state.pages[1] = { ...fixture.state.pages[1]!, windowId: "other" };
+  fixture.state.pages.byId[fixture.state.pages.allIds[1]!] = {
+    ...fixture.state.pages.byId[fixture.state.pages.allIds[1]!]!,
+    windowId: "other",
+  };
   await expect(commitSplit(layout, layout, { ...layout, splitGroups: [] })).rejects.toThrow("tabs changed");
   expect(fixture.native).not.toHaveBeenCalled();
 });
@@ -147,7 +151,7 @@ it.each([
         { id: "pair", panes: ["one", "three"], layout: "row" as const, ratios: [0.7], focused: "one" },
       ],
     };
-    fixture.state.pages.push(page("three"));
+    fixture.state.pages = putPage(fixture.state.pages, page("three"));
     let entered!: () => void, release!: () => void;
     const rollbackEntered = new Promise<void>((resolve) => {
       entered = resolve;
@@ -168,9 +172,13 @@ it.each([
       [{ kind: "split", pageIds: ["one", "two"], layout: "row", ratio: 0.6 }],
       [{ kind: "unsplit", pageId: "one" }],
     ]);
-    fixture.state.pages = change
-      ? fixture.state.pages.map((value) => (value.pageId === "three" ? { ...value, ...change } : value))
-      : fixture.state.pages.filter((value) => value.pageId !== "three");
+    fixture.state.pages = normalizePages(
+      change
+        ? orderedPages(fixture.state.pages).map((value) =>
+            value.pageId === "three" ? { ...value, ...change } : value,
+          )
+        : (orderedPages(fixture.state.pages).filter((value) => value.pageId !== "three") as never),
+    );
     if (moveSpace)
       fixture.state.layout = {
         ...fixture.state.layout,
