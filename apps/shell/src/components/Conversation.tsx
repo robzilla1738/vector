@@ -1,3 +1,4 @@
+import { ModelRunChoice, type ModelRunSelection } from "../composer/ModelRunChoice";
 import type { ExecutionTarget } from "@aux/contracts/cloud-execution";
 import { BudgetPrompt } from "../features/budget/BudgetPrompt";
 import { orderedPages } from "../store/pages";
@@ -403,6 +404,8 @@ export function Conversation({
   const [executionChoices, setExecutionChoices] = useState<Record<string, ExecutionTarget>>({});
   const executionKey = id ?? "new";
   const executionTarget = executionChoices[executionKey] ?? "local";
+  const [modelChoices, setModelChoices] = useState<Record<string, ModelRunSelection>>({});
+  const modelChoice = modelChoices[executionKey] ?? {};
   const scrolling = useConversationScroll(id);
   useEffect(() => {
     if (id || embedded) return;
@@ -1106,6 +1109,7 @@ export function Conversation({
     const chatId = crypto.randomUUID();
     createdChat.current = chatId;
     setExecutionChoices((choices) => ({ ...choices, [chatId]: executionTarget }));
+    setModelChoices((choices) => ({ ...choices, [chatId]: modelChoice }));
     const text = readText();
     if (text) useStore.getState().setConversationDraft(chatId, text);
     useStore.getState().setConversationContext(chatId, contextPage);
@@ -1404,7 +1408,10 @@ export function Conversation({
         // Optimistic: the message leaves the composer and joins the thread now;
         // a failed start puts it back unless something new was typed meanwhile.
         const chatId = id ?? crypto.randomUUID();
-        if (!id) setExecutionChoices((choices) => ({ ...choices, [chatId]: executionTarget }));
+        if (!id) {
+          setExecutionChoices((choices) => ({ ...choices, [chatId]: executionTarget }));
+          setModelChoices((choices) => ({ ...choices, [chatId]: modelChoice }));
+        }
         if (!id) {
           useStore.getState().setConversationContext(chatId, contextPage);
           useStore.getState().setConversationBrowserSources(chatId, browserSources);
@@ -1433,6 +1440,7 @@ export function Conversation({
           presentation: embedded && !home ? "rail" : "conversation",
           ownsDraft: true,
           executionTarget,
+          ...modelChoice,
         });
         if (run) {
           clearMentionDraft(composerId);
@@ -2534,6 +2542,11 @@ export function Conversation({
                       </output>
                     )}
 
+                    {!live && (
+                      <ModelRunChoice value={modelChoice}
+                        disabled={archived || sending || answerPending || !connected}
+                        onChange={(value) => setModelChoices((choices) => ({ ...choices, [executionKey]: value }))} />
+                    )}
                     {!live && (
                       <label className="field">
                         Execution

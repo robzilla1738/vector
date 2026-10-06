@@ -131,6 +131,8 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
       const run = await call("runs.start", {
         goal: g,
         executionTarget: opts.executionTarget ?? "local",
+        ...(opts.modelId === undefined ? {} : { modelId: opts.modelId }),
+        ...(opts.reasoning === undefined ? {} : { reasoning: opts.reasoning }),
         pageIds,
         contextPageRefs: opts.contextPageRefs,
         mentions: opts.mentions,

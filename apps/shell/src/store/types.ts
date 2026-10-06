@@ -201,6 +201,8 @@ export interface Workspace {
     goal: string,
     opts?: {
       executionTarget?: import("@aux/contracts/cloud-execution").ExecutionTarget;
+      modelId?: string;
+      reasoning?: "low" | "medium" | "high";
       pageId?: string | null;
       pageIds?: string[];
       contextPageRefs?: PageContextRef[];
