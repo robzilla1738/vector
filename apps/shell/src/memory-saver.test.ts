@@ -89,6 +89,7 @@ it("schedules the oldest eligible background tab and respects native-safety pref
   );
   expect(nextMemorySaverAction({ ...state, restoringTabs: true }, new Map())).toBeNull();
   expect(nextMemorySaverAction({ ...state, settings: { memorySaverMinutes: 0 } }, new Map())).toBeNull();
+  expect(nextMemorySaverAction({ ...state, settings: {} }, new Map())?.dueAt).toBe(1_802_000);
 });
 
 it("leaves dirty and unknown pages awake and still schedules a page the unsaved map does not list", () => {
@@ -309,7 +310,7 @@ it("keeps a bounded report for this window when Profile storage rejects a write"
   }
 });
 
-it("protects only the bound keep-awake pin, even after URL drift", () => {
+it("protects bound pins regardless of keep-awake preference, even after URL drift", () => {
   const state = {
     layout: {
       pins: { work: [{ url: "https://original.test", title: "App", pageId: "kept", keepAwake: true }] },
@@ -324,5 +325,7 @@ it("protects only the bound keep-awake pin, even after URL drift", () => {
   };
   expect(nextMemorySaverAction(state, new Map())?.pageId).toBe("eligible");
   state.layout.pins.work[0]!.keepAwake = false;
+  expect(nextMemorySaverAction(state, new Map())?.pageId).toBe("eligible");
+  state.layout.pins.work[0]!.pageId = "unbound";
   expect(nextMemorySaverAction(state, new Map())?.pageId).toBe("kept");
 });

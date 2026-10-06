@@ -85,7 +85,7 @@ export function GeneralSettings({
             >
               <select
                 aria-label="Memory saver"
-                value={String(settings.memorySaverMinutes ?? 0)}
+                value={String(settings.memorySaverMinutes ?? 30)}
                 onChange={(event) => void onSave({ memorySaverMinutes: Number(event.target.value) })}
               >
                 <option value="0">Off</option>

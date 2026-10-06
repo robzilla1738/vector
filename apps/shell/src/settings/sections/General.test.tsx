@@ -54,6 +54,7 @@ it("keeps General fields indexed and opens an editor after extraction", async ()
       ]),
     );
     const saver = container.querySelector<HTMLSelectElement>('[aria-label="Memory saver"]')!;
+    expect(saver.value).toBe("30");
     await act(async () => {
       saver.value = "1";
       saver.dispatchEvent(new Event("change", { bubbles: true }));

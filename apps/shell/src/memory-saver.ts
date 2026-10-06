@@ -32,7 +32,7 @@ export function nextMemorySaverAction(
   retryAfter: ReadonlyMap<string, number>,
   unsaved: Readonly<UnsavedByPage> = {},
 ) {
-  const minutes = Number(state.settings.memorySaverMinutes ?? 0);
+  const minutes = Number(state.settings.memorySaverMinutes ?? 30);
   if (!state.connected || state.restoringTabs || ![1, 15, 30, 60].includes(minutes)) return null;
   const candidates = ownPages(state.pages).flatMap((page) => {
     if (
@@ -42,7 +42,7 @@ export function nextMemorySaverAction(
       page.pageId === state.activePageId ||
       page.pageId === state.splitPageId ||
       state.layout?.splitGroups?.some((group) => group.panes.includes(page.pageId)) ||
-      boundPin(state.layout, page.pageId)?.pin.keepAwake ||
+      boundPin(state.layout, page.pageId) ||
       page.controller !== "none" ||
       page.loading ||
       page.viewStatus === "crashed" ||
@@ -91,10 +91,7 @@ export function installMemorySaver() {
         try {
           const unsaved = await bridge.tabsUnsavedWork([{ pageId: next.pageId, url: next.url }]);
           // Dirty or unknown: do not sleep or record. `finally` still uses the quiet-period retry.
-          if (
-            unsavedKeepsAwake(next.pageId, unsaved) ||
-            boundPin(useStore.getState().layout, next.pageId)?.pin.keepAwake
-          )
+          if (unsavedKeepsAwake(next.pageId, unsaved) || boundPin(useStore.getState().layout, next.pageId))
             return;
           // The native method rechecks ownership, URL, focus, media, unsaved work, and all frames.
           const result = await bridge.tabSleep(next.pageId, next.url);
@@ -112,7 +109,7 @@ export function installMemorySaver() {
   };
   const unsubscribe = useStore.subscribe((state, previous) => {
     if (
-      orderedPages(state.pages) !== orderedPages(previous.pages) ||
+      state.pages !== previous.pages ||
       state.activePageId !== previous.activePageId ||
       state.layout !== previous.layout ||
       state.splitPageId !== previous.splitPageId ||
