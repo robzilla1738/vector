@@ -91,3 +91,5 @@ export * from "./native-cdp.js";
 export * from "./agent-policy.js";
 
 export { WaitingPhraseSchema } from "./utility.js";
+
+export { CloudResourceQuoteSchema, type CloudResourceQuote } from "./cloud-execution.js";

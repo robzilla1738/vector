@@ -2731,6 +2731,118 @@ it("switches the original cloud family to local only after cleanup ACK and live 
   }
 });
 
+async function originalCloudResourceReview() {
+  const h = harness();
+  const { VercelSandboxExecutor } =
+    await import("../../apps/runtime/dist/services/vercel-sandbox-executor.js");
+  const runId = "unsent-cloud-choice",
+    token = "66666666-6666-4666-8666-666666666666";
+  h.repo.saveRun({
+    runId,
+    goal: "Original cloud work",
+    pageIds: [],
+    status: "running",
+    createdAt: Date.now(),
+    config: { executionTarget: "cloud", nativeTurnContext: token },
+  });
+  const control = { abort: new AbortController(), paused: false };
+  h.runs.coordinator.controls.set(runId, control);
+  const create = vi.fn(async () => {
+    throw new Error("No SDK creation may dispatch before a verified envelope");
+  });
+  const authorizeCreate = vi.fn(async () => {});
+  const originalOwner = async () => {};
+  const executor = new VercelSandboxExecutor({
+    repo: h.repo,
+    funding: h.runs.funding,
+    configuration: async () => ({
+      token: "fixture-no-account-call",
+      teamId: "team_fixture",
+      projectId: "project_fixture",
+      quote: {
+        revision: 1,
+        accountDigest: "a".repeat(64),
+        region: "iad1",
+        vcpus: 2,
+        timeoutMs: 60000,
+        rateBasis: "account-contract",
+        rateSource: "https://vercel.com/docs/sandbox/pricing",
+        rates: { cpuUsdPerCoreHour: 1, memoryUsdPerGBHour: 1, outboundUsdPerGB: 1, creationUsd: 1 },
+      },
+    }),
+    assertOwner: originalOwner,
+    assertOriginal: originalOwner,
+    resourceScopes: () => [{ scope: "month", limitUsd: 3 }],
+    pauseForResourceFunding: (error, current) => h.runs.coordinator.pauseForResourceFunding(error, current),
+    authorizeCreate,
+    authorizeBash: async () => false,
+    create,
+  });
+  h.runs.coordinator.deps.agentLoop = {
+    cloudExecutor: {
+      selected: (id) => h.repo.getRun(id)?.config?.executionTarget === "cloud",
+      eval: executor.eval.bind(executor),
+      wait: executor.wait.bind(executor),
+      hasOpen: executor.hasOpen.bind(executor),
+      closeRun: executor.closeRun.bind(executor),
+    },
+  };
+  const originalAttempt = executor
+    .bash({ command: "printf not-dispatched", network: false }, { runId, threadId: runId, turnId: runId })
+    .catch((error: unknown) => error);
+  return { h, runId, token, control, executor, create, authorizeCreate, originalOwner, originalAttempt };
+}
+
+it("continues locally through the actual executor's provably unsent resource-review initializer", async () => {
+  const { h, runId, token, control, executor, create, authorizeCreate, originalOwner, originalAttempt } =
+    await originalCloudResourceReview();
+  try {
+    await vi.waitFor(() => expect(h.runs.coordinator.suspensions.pending(runId)).toBeDefined());
+    const suspensionId = h.runs.coordinator.suspensions.pending(runId)!.suspensionId;
+    await h.runs.useLocalExecution(runId, suspensionId, token, originalOwner);
+    expect(await originalAttempt).toMatchObject({ code: "cancelled" });
+    expect(h.repo.getRun(runId)).toMatchObject({ status: "running", config: { executionTarget: "local" } });
+    expect(h.runs.coordinator.suspensions.pending(runId)).toBeUndefined();
+    expect(create).not.toHaveBeenCalled();
+    expect(authorizeCreate).not.toHaveBeenCalled();
+    expect(h.repo.db.prepare("SELECT COUNT(*) AS n FROM execution_resources").get()).toMatchObject({ n: 0 });
+    await executor.closeRun(runId);
+  } finally {
+    control.abort.abort();
+    await originalAttempt;
+    h.repo.db.close();
+  }
+});
+
+it("retires and joins the actual pending cloud review before repository shutdown", async () => {
+  const { h, runId, control, executor, create, authorizeCreate, originalAttempt } =
+    await originalCloudResourceReview();
+  let closed = false;
+  try {
+    await vi.waitFor(() => expect(h.runs.coordinator.suspensions.pending(runId)).toBeDefined());
+    await h.runs.close();
+    await executor.close();
+    expect(await originalAttempt).toMatchObject({ code: "cancelled" });
+    expect(control.abort.signal.aborted).toBe(true);
+    expect(h.repo.getRun(runId)?.status).toBe("cancelled");
+    expect(h.runs.coordinator.suspensions.pending(runId)).toBeUndefined();
+    expect(h.runs.coordinator.controls.get(runId)?.resourceContinuation).toBeUndefined();
+    expect(h.repo.db.prepare("SELECT COUNT(*) AS n FROM execution_resources").get()).toMatchObject({ n: 0 });
+    expect(create).not.toHaveBeenCalled();
+    expect(authorizeCreate).not.toHaveBeenCalled();
+    h.repo.db.close();
+    closed = true;
+    // Real initializer/finally work is joined; reduction-only close has no late
+    // repository access after shutdown and cannot resurrect a provider request.
+    await executor.closeRun(runId);
+    await executor.close();
+  } finally {
+    control.abort.abort();
+    await originalAttempt;
+    if (!closed) h.repo.db.close();
+  }
+});
+
 it("joins an ordinary in-flight provider dispatch before repository shutdown", async () => {
   let entered!: () => void, release!: () => void;
   const dispatched = new Promise<void>((resolve) => {

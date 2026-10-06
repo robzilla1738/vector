@@ -151,8 +151,17 @@ export async function bundleRuntime(rtOut, target) {
       js: 'import { createRequire as auxCreateRequire } from "node:module"; const require = auxCreateRequire(import.meta.url);',
     },
   });
-  writeFileSync(join(dirname(rtOut), "runtime-meta.json"), JSON.stringify(runtimeBuild.metafile));
-  writeFileSync(join(rtOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices({...runtimeBuild.metafile.inputs, ...archiveNoticeInputs}));
+  // A self-contained reviewed REPL program is uploaded without SDK tokens or Profile data.
+  const cloudWorkerOut = join(rtOut, "dist", "cloud-repl");
+  const cloudWorkerBuild = await build({
+    entryPoints: [join(runtimeDir, "dist/services/cloud-repl-worker.js")],
+    outfile: join(cloudWorkerOut, "worker.mjs"), bundle: true, platform: "node",
+    format: "esm", target: "node24", minify: true, legalComments: "linked", metafile: true,
+    banner: {js:'import { createRequire as auxCreateRequire } from "node:module"; const require = auxCreateRequire(import.meta.url);'},
+  });
+  writeFileSync(join(cloudWorkerOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices(cloudWorkerBuild.metafile.inputs));
+  writeFileSync(join(dirname(rtOut), "runtime-meta.json"), JSON.stringify({ inputs: { ...runtimeBuild.metafile.inputs, ...cloudWorkerBuild.metafile.inputs }, outputs: { ...runtimeBuild.metafile.outputs, ...cloudWorkerBuild.metafile.outputs } }));
+  writeFileSync(join(rtOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices({...runtimeBuild.metafile.inputs, ...cloudWorkerBuild.metafile.inputs, ...archiveNoticeInputs}));
 
   // QuickJS's async release variant loads its WASM beside the esbuild chunk at
   // runtime. esbuild bundles the loader JS but does not copy that sibling file.
@@ -161,6 +170,7 @@ export async function bundleRuntime(rtOut, target) {
   );
   const quickjsWasm = readFileSync(join(quickjsVariant, "dist", "emscripten-module.wasm"));
   await WebAssembly.compile(quickjsWasm);
+  copyFileSync(join(quickjsVariant, "dist", "emscripten-module.wasm"), join(cloudWorkerOut, "emscripten-module.wasm"));
   copyFileSync(
     join(quickjsVariant, "dist", "emscripten-module.wasm"),
     join(rtOut, "dist", "chunks", "emscripten-module.wasm"),
