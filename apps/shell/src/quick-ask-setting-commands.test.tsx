@@ -40,7 +40,7 @@ vi.mock("./commands", async () => {
 });
 import { bridge } from "./bridge";
 import { invokeScopedControl } from "./scoped-control-commands";
-import { QuickAskSetting } from "./components/QuickAskSetting";
+import { QuickAskSettings } from "./settings/sections/QuickAsk";
 import { DefaultBrowserSetting } from "./components/DefaultBrowserSetting";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement, root: Root;
@@ -54,7 +54,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 async function mount() {
-  await act(async () => root.render(<QuickAskSetting />));
+  await act(async () => root.render(<QuickAskSettings active />));
 }
 const shortcut = () => host.querySelector<HTMLInputElement>("input")!;
 const retry = () => [...host.querySelectorAll("button")].find((b) => b.textContent === "Try again")!;
@@ -217,7 +217,7 @@ it("keeps the two measured owners independent during a real OS focus read and he
   await act(async () =>
     root.render(
       <>
-        <QuickAskSetting />
+        <QuickAskSettings active />
         <DefaultBrowserSetting />
       </>,
     ),

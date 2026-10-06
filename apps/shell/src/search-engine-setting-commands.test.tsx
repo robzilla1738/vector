@@ -29,7 +29,7 @@ vi.mock("./commands", async () => {
   };
 });
 import { invokeScopedControl } from "./scoped-control-commands";
-import { SearchEngineSetting } from "./components/SearchEngineSetting";
+import { SearchEngineSetting } from "./settings/search-engines";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement,
   root: Root,

@@ -7,8 +7,8 @@ vi.mock("./bridge", () => ({ bridge: { windowId: "original", privateMode: false 
 vi.mock("./store", () => ({ errToast: vi.fn() }));
 vi.mock("./commands", () => ({ executeCommand: vi.fn() }));
 import { invokeScopedControl } from "./scoped-control-commands";
-import { SearchEngineSetting } from "./components/SearchEngineSetting";
-import { SearchEnginesSetting } from "./components/SearchEnginesSetting";
+import { SearchEngineSetting } from "./settings/search-engines";
+import { SearchEnginesSetting } from "./settings/search-engines";
 it("keeps two actual Settings save owners independent through false and successful ACK", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as never);

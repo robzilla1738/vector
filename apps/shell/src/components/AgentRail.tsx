@@ -149,7 +149,7 @@ export const AgentRail = memo(function AgentRail() {
           </div>
         </div>
       )}
-      <ResizeHandle side="right" value={railWidth} min={300} max={620} reset={360} onResize={setRailWidth} />
+      <ResizeHandle side="right" value={railWidth} min={300} max={620} reset={400} onResize={setRailWidth} />
     </aside>
   );
 });

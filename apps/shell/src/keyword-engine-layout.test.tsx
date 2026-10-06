@@ -20,16 +20,15 @@ vi.mock("./commands", async () => {
     },
   };
 });
-import { SearchEnginesSetting } from "./components/SearchEnginesSetting";
+import { SearchEnginesSetting } from "./settings/search-engines";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const longName = "W".repeat(60),
   longUrl = `https://example.com/${"a".repeat(1000)}?q=%s`;
 const engine = { keyword: "long_keyword_123", name: longName, template: longUrl };
 let host: HTMLDivElement, root: Root, style: HTMLStyleElement;
-const settings = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "components/Settings.css"),
-  "utf8",
-);
+const settings = ["components/Settings.css", "settings/shell.css"]
+  .map((file) => readFileSync(join(dirname(fileURLToPath(import.meta.url)), file), "utf8"))
+  .join("\n");
 beforeEach(() => {
   mocks.save.mockReset().mockResolvedValue(true);
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
@@ -112,7 +111,7 @@ it("preserves existing focus, disabled, palette and preference recipes without n
     /\.settings-content :is\(input, select, textarea, \.btn\):focus-visible\s*\{[^}]*outline:\s*2px solid var\(--focus-line\)/,
   );
   expect(settings).toContain("@media (prefers-reduced-motion: reduce)");
-  expect(settings).toContain("@container settings-page (max-width: 680px)");
+  expect(settings).toContain("@container settings-page (width < 720px)");
 });
 it("keeps the genuine pending disabled control without lowering the original hit area", async () => {
   let resolve!: (value: boolean) => void;
