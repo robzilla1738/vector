@@ -419,6 +419,17 @@ CREATE TABLE memory_history(
   PRIMARY KEY(workspace_id,revision_id));
 CREATE INDEX idx_memory_history_workspace ON memory_history(workspace_id,captured_at,revision_id);
 
+-- Protected, bounded derivatives of opted-in browsing content.
+CREATE TABLE ai_result_cache(
+  cache_key TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+  profile_id TEXT NOT NULL,
+  ciphertext TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  accessed_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL);
+CREATE INDEX idx_ai_result_cache_profile_access ON ai_result_cache(profile_id,accessed_at,cache_key);
+
 -- @schema spend
 CREATE TABLE IF NOT EXISTS ai_spend(
         reservation_id TEXT PRIMARY KEY,
