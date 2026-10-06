@@ -33,12 +33,12 @@ function pageIdentity(page: PageTarget) {
   ]);
 }
 function pageCurrent(page: PageTarget, identity: string) {
-  const matches = orderedPages(useStore.getState().pages).filter((item) => item.pageId === page.pageId);
+  const current = useStore.getState().pages.byId[page.pageId];
   return (
-    matches.length === 1 &&
-    !matches[0]!.ownedByRuntime &&
-    matches[0]!.viewStatus !== "detached" &&
-    pageIdentity(matches[0]!) === identity
+    !!current &&
+    !current.ownedByRuntime &&
+    current.viewStatus !== "detached" &&
+    pageIdentity(current) === identity
   );
 }
 function retainPage(page: PageTarget, identity: string) {
@@ -157,14 +157,10 @@ const ResourceRow = memo(function ResourceRow({
     task.resources.find((item) => item.resourceId === resource.resourceId) === resource;
   const rename = useRef<HTMLButtonElement>(null),
     scopeId = useId();
-  const page = useStore((state) =>
-    resource.kind === "page"
-      ? orderedPages(state.pages).find(
-          (item) =>
-            item.pageId === resource.locator && item.viewStatus !== "detached" && !item.ownedByRuntime,
-        )
-      : undefined,
-  );
+  const page = useStore((state) => {
+    const target = resource.kind === "page" ? state.pages.byId[resource.locator] : undefined;
+    return target && target.viewStatus !== "detached" && !target.ownedByRuntime ? target : undefined;
+  });
   const originalPage = page ? pageIdentity(page) : null;
   const href = resource.kind === "url" ? resourceWebUrl(resource.locator) : null;
   const [formRef, save] = usePreferenceCommand<HTMLFormElement>(

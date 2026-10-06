@@ -260,9 +260,12 @@ it("archived and hidden controls refuse real dispatch without updates", async ()
   await expect((await invoke("remove-task-resource-reference")).completion).rejects.toThrow();
   expect(update).not.toHaveBeenCalled();
 });
-it("original detached/duplicate page cannot dispatch attachment", async () => {
+it.each([
+  { ...page, viewStatus: "detached" as const },
+  { ...page, ownedByRuntime: true },
+])("detached or worker page cannot dispatch attachment ($viewStatus, $ownedByRuntime)", async (target) => {
   await render();
-  await act(async () => useStore.setState({ pages: normalizePages([page, { ...page }]) }));
+  await act(async () => useStore.setState({ pages: normalizePages([target]) }));
   await expect((await invoke("attach-task-resource-page")).completion).rejects.toThrow(
     "original current tab",
   );
