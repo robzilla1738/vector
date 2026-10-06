@@ -21,7 +21,7 @@ export function fixtureEmptyOvernightAuthority(repo: Repo): void {
     if (!value) throw new AuxError("not_found", "No fixture native page");
     return value;
   };
-  const approvals = new ApprovalStore(repo.db, () => {}, repo.columnCipher);
+  const approvals = new ApprovalStore(repo.db);
   const egress = new BrowserEgress({
     runAncestry: (runId) => [runId],
     profileId: "fixture",
