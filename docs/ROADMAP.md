@@ -174,7 +174,7 @@ These replace the "frozen scope" paragraph in `AGENTS.md`.
 - **Per slice:**
   1. `npm run check`.
   2. For native changes: incremental dev build, then `node scripts/dev.mjs --temp-profile`, then click through the change.
-- **Next-round validation:** remaining native walkthroughs, phase-end `pnpm perf` (P1.8), and the 20-task smoke (P4.14) are deferred by the owner; they do not block this implementation wrap-up. Finish the active AuxFast build without restarting it.
+- **Next-round validation:** remaining native walkthroughs, phase-end `pnpm perf` (P1.8), and the 20-task smoke (P4.14) are deferred by the owner; they do not block this implementation wrap-up. The existing AuxFast build and runtime packaging have now completed successfully.
 - **Native:** one plain lock; never two builds at once. After P0.7, new native work is a new area patch in `chromium/patches/series`.
 - **Models:** real providers with the owner's keys are fine.
 
@@ -788,7 +788,7 @@ Then a first-chat postcard with 3 starter prompts, and a default-browser ask wit
 
 ## Deferred next-round validation (proportionate, local only)
 
-The owner has deferred remaining native walkthroughs, phase performance measurements, manual 20-task/provider acceptance, and detailed design comparisons to the next roadmap round so implementation can wrap up now. Source checks have passed; the active AuxFast build must still finish. The targets below are preserved for later validation, not claimed as passed or as empirical phase completion. The configured Gateway environment credential was rejected; live provider acceptance remains unverified. Owner OAuth registrations remain explicitly deferred.
+The owner has deferred remaining native walkthroughs, phase performance measurements, manual 20-task/provider acceptance, and detailed design comparisons to the next roadmap round so implementation can wrap up now. Source checks have passed, and the current AuxFast native build and runtime packaging have completed successfully. The targets below are preserved for later validation, not claimed as passed or as empirical phase completion. The configured Gateway environment credential was rejected; live provider acceptance remains unverified. Owner OAuth registrations remain explicitly deferred.
 
 - Do not repeat passing source checks for this wrap-up. Remaining native walkthroughs and provider-dependent acceptance are next-round work.
 - **P0 validation target:**
