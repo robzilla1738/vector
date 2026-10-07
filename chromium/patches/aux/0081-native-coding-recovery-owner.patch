@@ -1,0 +1,16 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1038,6 +1038,12 @@
+   if (api_method == "runs.start" || api_method == "runs.useLocalExecution" || api_method == "runs.retryCloudSetup" || api_method == "tasks.start" || api_method == "onboarding.start" ||
+       api_method == "runs.retry" || api_method == "runs.branch" ||
+       api_method == "runs.branch.list" ||
++      api_method == "runs.answer" || api_method == "runs.continueBudget" ||
++      api_method == "runs.retryModelSetup" ||
++      api_method == "coding.undo" || api_method == "coding.worktreeInspect" ||
++      api_method == "coding.worktreeArchive" ||
++      api_method == "packages.install" || api_method == "packages.remove" ||
++      api_method == "packages.defaults" ||
+       api_method == "agent.images.generate" || api_method == "agent.pageSummary" ||
+       api_method == "customization.css.propose" ||
+       api_method == "agent.utility.intent" || api_method == "agent.tidy.propose" ||
