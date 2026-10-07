@@ -1,3 +1,4 @@
+import { packagedNodeBootstrap } from "./packaged-node.js";
 import { randomUUID } from "node:crypto";
 import { chmodSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -19,6 +20,7 @@ export async function installCli(options: {
   const directory = join(home, ".local", "bin");
   const path = join(directory, "aux");
   const node = options.node ?? process.execPath;
+  const nodeBootstrap = packagedNodeBootstrap(node);
   const entry = options.entry ?? join(dirname(process.argv[1] ?? ""), "cli.js");
   for (const file of [node, entry]) {
     if (!lstatSync(file).isFile())
@@ -51,7 +53,7 @@ export async function installCli(options: {
       "conflict",
       "An existing aux command was left unchanged. Choose another name or remove it yourself.",
     );
-  const after = Buffer.from(`#!/bin/sh\n${marker}\nexec ${quote(node)} ${quote(entry)} "$@"\n`);
+  const after = Buffer.from(`#!/bin/sh\n${marker}\nexec ${[node, ...nodeBootstrap.args, entry].map(quote).join(" ")} "$@"\n`);
   const unchanged = (snapshot: typeof before) => {
     const current = read();
     return current === undefined

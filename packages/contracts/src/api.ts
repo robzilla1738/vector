@@ -195,6 +195,8 @@ import {
   ZapPickResultSchema,
   ZapRuleSchema,
   SiteCssSchema,
+  SiteCssProposalParamsSchema,
+  SiteCssProposalSchema,
   EffectiveSiteCssSchema,
 } from "./customization.js";
 import {
@@ -1595,6 +1597,7 @@ export const MethodSchemas = {
     })
     .strict(),
   "customization.zap.remove": z.object({ ruleId: z.string().uuid() }).strict(),
+  "customization.css.propose": SiteCssProposalParamsSchema,
   "customization.css.get": z.object({ origin: SiteOriginSchema }).strict(),
   "customization.css.set": z.object({ origin: SiteOriginSchema, css: SiteCssSchema.shape.css }).strict(),
   "customization.css.effective": z.object({ origin: SiteOriginSchema }).strict(),
@@ -2408,6 +2411,7 @@ export const ResultSchemas = {
   "customization.zap.list": z.array(ZapRuleSchema),
   "customization.zap.add": ZapRuleSchema,
   "customization.zap.remove": z.object({ removed: z.boolean() }),
+  "customization.css.propose": SiteCssProposalSchema,
   "customization.css.get": SiteCssSchema,
   "customization.css.set": SiteCssSchema,
   "customization.css.effective": EffectiveSiteCssSchema,

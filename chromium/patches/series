@@ -67,3 +67,5 @@ aux/0067-native-account-model-selection-ingress.patch
 aux/0068-native-onboarding-original-source.patch
 aux/0069-native-import-canonical-snapshot-output.patch
 aux/0070-native-session-page-adoption.patch
+aux/0071-native-runtime-icu-data.patch
+aux/0072-native-boost-proposal-ingress.patch

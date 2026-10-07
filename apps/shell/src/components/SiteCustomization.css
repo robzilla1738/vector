@@ -222,3 +222,13 @@
     }
   }
 }
+
+@layer components {
+  .zap-content .zap-css-instruction { min-height: 76px; font: inherit; }
+  .zap-css-proposal pre {
+    max-height: 220px; overflow: auto; padding: var(--space-3);
+    background: var(--bg-2); color: var(--ink-0); border: var(--hairline) solid var(--line);
+    border-radius: var(--r-control); font: 12px/1.5 ui-monospace, SFMono-Regular, monospace;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+}

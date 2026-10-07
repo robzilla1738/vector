@@ -134,6 +134,7 @@ export const RuntimeMethodFeatures = {
   "customization.zap.list": feature8,
   "customization.zap.add": feature8,
   "customization.zap.remove": feature8,
+  "customization.css.propose": feature8,
   "customization.css.get": feature8,
   "customization.css.set": feature8,
   "customization.css.effective": feature8,

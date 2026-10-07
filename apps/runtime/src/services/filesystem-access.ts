@@ -1,3 +1,4 @@
+import { packagedNodeBootstrap } from "./packaged-node.js";
 import { spawn } from "node:child_process";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -112,7 +113,8 @@ export class FilesystemAccessService {
     const policy = this.snapshot(runId);
     const target = requireFilesystemPath(policy, path, operation);
     const worker = fileURLToPath(new URL("./filesystem-worker.js", import.meta.url));
-    const bootstrapFiles = [worker, process.execPath];
+    const nodeBootstrap = packagedNodeBootstrap();
+    const bootstrapFiles = [worker, process.execPath, ...nodeBootstrap.files];
     for (let directory = dirname(worker); ; directory = dirname(directory)) {
       bootstrapFiles.push(join(directory, "package.json"));
       if (directory === dirname(directory)) break;
@@ -120,7 +122,7 @@ export class FilesystemAccessService {
     return new Promise((resolve, reject) => {
       const child = spawn(
         "/usr/bin/sandbox-exec",
-        ["-p", filesystemSeatbelt(policy, false, bootstrapFiles), process.execPath, worker],
+        ["-p", filesystemSeatbelt(policy, false, bootstrapFiles), process.execPath, ...nodeBootstrap.args, worker],
         {
           cwd: this.options.scratchDir,
           env: { PATH: "/usr/bin:/bin", HOME: this.options.scratchDir, TMPDIR: this.options.scratchDir },

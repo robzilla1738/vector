@@ -1,0 +1,12 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 9ad99d8..8094cf3 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1037,6 +1037,7 @@ void WebUIBrowserUI::Request(const std::string& method,
+   const auto& api_method = (*list)[0].GetString();
+   if (api_method == "runs.start" || api_method == "runs.useLocalExecution" || api_method == "runs.retryCloudSetup" || api_method == "tasks.start" || api_method == "onboarding.start" ||
+       api_method == "runs.retry" || api_method == "agent.images.generate" ||
++      api_method == "customization.css.propose" ||
+       api_method == "agent.utility.intent" || api_method == "agent.tidy.propose" ||
+       api_method == "agent.tabName.suggest" || api_method == "routines.skills.preview" || api_method == "routines.skills.import" || api_method == "import.preview" || api_method == "import.selectExport" || api_method == "import.extensions.review" || api_method == "import.selectWindow" || api_method == "import.exportStatus" ||
+       api_method == "import.cancelExport" || api_method == "import.run" ||

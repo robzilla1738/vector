@@ -6,13 +6,26 @@ import { copyFile, mkdir, readFile, rename, rm, stat } from "node:fs/promises";
 import { createWriteStream } from "node:fs";
 import { get } from "node:https";
 import { availableParallelism, homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
 import { assertDevLock } from "../scripts/dev.mjs";
 
 export const nodeVersion = "26.7.0";
 export const nodeLicenseName = "LICENSE_NODE.txt";
+export const nodeIcuDataName = "icudt78l.dat";
+export const nodeIcuDataSha256 = "ef9bbeee661fac0da8d642a38ad993461ae6b2afdd6877d64ca0e935463a2aad";
+export const nodeIcuDataBytes = 33_105_536;
+/** Full dataset from the same SHA-pinned Node source, not trimmed small-ICU output. */
+export async function nodeIcuData(executable) {
+  assertDevLock();
+  const data = join(dirname(executable), `node-v${nodeVersion}`, "deps", "icu-tmp", nodeIcuDataName);
+  const bytes = await readFile(data);
+  if (bytes.length !== nodeIcuDataBytes || createHash("sha256").update(bytes).digest("hex") !== nodeIcuDataSha256)
+    throw new Error("Pinned Node full ICU dataset is missing or changed");
+  return data;
+}
+
 const archiveName = `node-v${nodeVersion}.tar.xz`;
 const archiveSha256 = "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356";
 const configureArgs = ["--with-intl=small-icu", "--without-npm", "--enable-lto"];

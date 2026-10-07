@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ZapSitePolicySchema } from "./zap.js";
 
 export const SiteOriginSchema = z
   .string()
@@ -64,3 +65,21 @@ export type SiteCss = z.infer<typeof SiteCssSchema>;
 
 export const EffectiveSiteCssSchema = z.object({ origin: SiteOriginSchema, css: z.string().max(250_000) });
 export type EffectiveSiteCss = z.infer<typeof EffectiveSiteCssSchema>;
+
+/** A proposal carries no save/apply authority. */
+export const SiteCssProposalParamsSchema = z.object({
+  pageId: z.string().min(1),
+  expectedDocumentEpoch: z.number().int().nonnegative(),
+  instruction: z.string().trim().min(1).max(4000),
+  css: SiteCssSchema.shape.css,
+}).strict();
+export const SiteCssDraftSchema = z.object({
+  css: ZapSitePolicySchema.shape.userCss,
+  summary: z.string().trim().min(1).max(500),
+}).strict();
+export const SiteCssProposalSchema = SiteCssDraftSchema.extend({
+  pageId: z.string().min(1),
+  documentEpoch: z.number().int().nonnegative(),
+  origin: SiteOriginSchema,
+}).strict();
+export type SiteCssProposal = z.infer<typeof SiteCssProposalSchema>;

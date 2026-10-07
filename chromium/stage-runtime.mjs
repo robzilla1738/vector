@@ -17,7 +17,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { bundleRuntime } from "../scripts/bundle-runtime.mjs";
-import { ensureSlimNode, nodeVersion, nodeLicenseName } from "./slim-node.mjs";
+import { ensureSlimNode, nodeVersion, nodeLicenseName, nodeIcuData, nodeIcuDataName, nodeIcuDataSha256, nodeIcuDataBytes } from "./slim-node.mjs";
 
 import { assertDevLock } from "../scripts/dev.mjs";
 
@@ -64,6 +64,23 @@ try {
   run("pnpm", ["exec", "tsc", "-b", "tsconfig.json"]);
   const payload = join(staging, "aux-runtime");
   await bundleRuntime(payload, "node26");
+  const fullData = await nodeIcuData(node);
+  const icuDirectory = join(payload, "vendor", "icu");
+  mkdirSync(icuDirectory, { recursive: true });
+  copyFileSync(fullData, join(icuDirectory, nodeIcuDataName));
+  writeFileSync(join(icuDirectory, "identity.json"), JSON.stringify({ nodeVersion, icuVersion: 78, sha256: nodeIcuDataSha256, bytes: nodeIcuDataBytes }));
+  // Constructor success is insufficient: trimmed Node data crashes during iteration.
+  // Validate the same helper and actual staged dataset before replacing app resources.
+  run(node, [`--icu-data-dir=${icuDirectory}`, "--eval", `
+    if (process.versions.icu.split('.')[0] !== '78') throw new Error('Pinned ICU version mismatch');
+    for (const text of ['Synthetic memory recall greeting.', '漢字と日本語の記憶検索', 'ภาษาไทยสำหรับการค้นหา', 'Synthetic 😀 recall']) {
+      const parts = [...new Intl.Segmenter(undefined, { granularity: 'word' }).segment(text)];
+      if (parts.map(part => part.segment).join('') !== text || !parts.some(part => part.isWordLike)) throw new Error('Runtime word segmentation failed');
+      parts.filter(part => part.isWordLike).map(part => part.segment.toLocaleLowerCase());
+    }
+  `]);
+  console.log(`[runtime ICU] full data ${nodeIcuDataBytes} bytes (included in installed payload)`);
+
   copyFileSync(join(dirname(node), nodeLicenseName), join(payload, nodeLicenseName));
   writeFileSync(join(payload, "aux-runtime-identity.json"), `${JSON.stringify(productIdentity(root))}\n`);
   run(node, ["--check", join(payload, "dist", "main.js")]);

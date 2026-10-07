@@ -788,6 +788,8 @@ Then a first-chat postcard with 3 starter prompts, and a default-browser ask wit
 
 ## Verification (proportionate, local only)
 
+The packaged ICU crash correction passes integrated checks and the actual disposable native app reaches the model request. Live default-route acceptance is blocked by the rejected configured Gateway environment credential. Owner OAuth registrations remain explicitly deferred, and detailed Aside comparisons belong to the later design pass. Source checks and individual native witnesses do not replace the phase criteria below.
+
 - **Per slice:** `npm run check`, then for native work `node scripts/dev.mjs --temp-profile` and use the change.
 - **P0 done when:**
   - a populated dev Profile boots with runtime ready in under 1 s;

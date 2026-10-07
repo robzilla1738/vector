@@ -1,3 +1,4 @@
+import { packagedNodeBootstrap } from "./packaged-node.js";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { constants } from "node:fs";
 import {
@@ -550,7 +551,7 @@ export class CopilotRuntimeInstaller {
     // FD3 is the same already-SRI-verified held archive, not a pathname reopened by the worker.
     const child = spawn(
       process.execPath,
-      [this.deps.workerPath, payload, String(downloadBytes)],
+      [...packagedNodeBootstrap().args, this.deps.workerPath, payload, String(downloadBytes)],
       {
         env: {},
         stdio: ["ignore", "ignore", "ignore", archive.fd, "ipc"],

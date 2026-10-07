@@ -1,3 +1,4 @@
+import { packagedNodeBootstrap } from "./packaged-node.js";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -51,10 +52,11 @@ export async function nativeAgentClients() {
 export function nativeAgentConfig(connections: AgentConnectionService, input: unknown, dataDir: string) {
   const entry = join(dirname(process.argv[1] ?? ""), "mcp.js");
   if (!existsSync(entry)) throw new Error("The Aux MCP server is missing from this build");
+  const nodeBootstrap = packagedNodeBootstrap();
   const { connection, token } = connections.create(input);
   return {
     command: process.execPath,
-    args: [entry],
+    args: [...nodeBootstrap.args, entry],
     env: { AUX_DATA_DIR: dataDir, AUX_MCP_TOKEN: token, AUX_MCP_SCOPE_KIND: connection.scope.kind },
     connection,
   };

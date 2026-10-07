@@ -248,6 +248,7 @@ export const RuntimeMethodPolicy = {
   "customization.zap.list": { feature: "zapAndUserCss", auth: "aux-webui" },
   "customization.zap.add": { feature: "zapAndUserCss", auth: "aux-webui" },
   "customization.zap.remove": { feature: "zapAndUserCss", auth: "aux-webui" },
+  "customization.css.propose": { feature: "zapAndUserCss", auth: "aux-webui" },
   "customization.css.get": { feature: "zapAndUserCss", auth: "aux-webui" },
   "customization.css.set": { feature: "zapAndUserCss", auth: "aux-webui" },
   "customization.css.effective": { feature: "zapAndUserCss", auth: "aux-webui" },

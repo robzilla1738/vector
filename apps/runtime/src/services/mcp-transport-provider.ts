@@ -1,3 +1,4 @@
+import { packagedNodeBootstrap } from "./packaged-node.js";
 import { jsonDigest as digest, digest as bytesDigest } from "@aux/contracts/util/digest";
 import { access, realpath, rm, stat } from "node:fs/promises";
 import { constants } from "node:fs";
@@ -24,7 +25,7 @@ const forbiddenHost = (hostname: string) => {
 // the reviewed working directory, and the executable's installation. Network
 // and file writes remain denied by default. Values are passed as sandbox
 // parameters, never interpolated into the policy language.
-const localSeatbelt = (parentCount: number) => `(version 1)
+const localSeatbelt = (parentCount: number, bootstrapCount: number) => `(version 1)
 (deny default)
 (allow process*)
 (allow sysctl-read)
@@ -33,6 +34,7 @@ const localSeatbelt = (parentCount: number) => `(version 1)
   (subpath "/Library") (subpath "/dev") (subpath "/private/etc")
   (subpath "/opt/homebrew")
   ${Array.from({ length: parentCount }, (_, index) => `(literal (param "MCP_PARENT_${index}"))`).join(" ")}
+  ${Array.from({ length: bootstrapCount }, (_, index) => `(literal (param "MCP_BOOTSTRAP_${index}"))`).join(" ")}
   (subpath (param "MCP_WORKDIR")) (subpath (param "MCP_COMMAND_DIR")))`;
 
 function pathParents(path: string): string[] {
@@ -44,6 +46,7 @@ function pathParents(path: string): string[] {
 async function sandboxedStdio(
   source: { command: string; args: string[]; cwd: string },
   signal: AbortSignal,
+  bootstrapFiles: readonly string[] = [],
 ): Promise<Transport> {
   if (process.platform !== "darwin")
     throw new AuxError("backend_unavailable", "Sandboxed local MCP launch requires macOS.");
@@ -78,7 +81,7 @@ async function sandboxedStdio(
       }
     }),
   );
-  const parents = [...new Set([...pathParents(resolvedCwd), ...pathParents(resolvedCommand)])];
+  const parents = [...new Set([...pathParents(resolvedCwd), ...pathParents(resolvedCommand), ...bootstrapFiles.flatMap(pathParents)])];
   if (parents.length > 64)
     throw new AuxError("permission_denied", "MCP path nesting exceeds the sandbox limit.");
   // The SDK merges getDefaultEnvironment() under this object. Undefined replaces
@@ -95,8 +98,9 @@ async function sandboxedStdio(
       "-D",
       `MCP_COMMAND_DIR=${dirname(resolvedCommand)}`,
       ...parents.flatMap((parent, index) => ["-D", `MCP_PARENT_${index}=${parent}`]),
+      ...bootstrapFiles.flatMap((file, index) => ["-D", `MCP_BOOTSTRAP_${index}=${file}`]),
       "-p",
-      localSeatbelt(parents.length),
+      localSeatbelt(parents.length, bootstrapFiles.length),
       resolvedCommand,
       ...launchArgs,
     ],
@@ -188,9 +192,11 @@ export function createMcpTransportProvider(
       throw new AuxError("conflict", "Installed MCP bundle is missing or changed since approval.");
     const extracted = await extractMcpBundle(bundleBytes);
     try {
+      const nodeBootstrap = packagedNodeBootstrap();
       const transport = await sandboxedStdio(
-        { command: process.execPath, args: extracted.args, cwd: extracted.directory },
+        { command: process.execPath, args: [...nodeBootstrap.args, ...extracted.args], cwd: extracted.directory },
         signal,
+        nodeBootstrap.files,
       );
       const close = transport.close.bind(transport);
       transport.close = async () => {

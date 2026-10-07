@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { EventBus, makeInvoker, openDb, Repo, type PageService, type Services } from "@aux/runtime";
 import { SiteCustomization } from "../../apps/runtime/src/services/site-customization.js";
 
@@ -83,4 +83,65 @@ it("allows only the trusted Profile host to read or change site customization", 
   expect(
     await invoke("customization.css.apply", { pageId: "page", expectedDocumentEpoch: 3 }, trusted),
   ).toEqual({ applied: true, origin: "https://example.com" });
+});
+
+
+it("binds generated CSS to the original active page and rejects its retired response without saving", async () => {
+  const { customizationMethods } = await import("../../apps/runtime/dist/api/methods/customization.js");
+  const db = openDb(":memory:");
+  cleanup.push(() => db.close());
+  const customization = new SiteCustomization(db, "isolated-proposal-profile");
+  const origin = "https://example.com";
+  const saved = customization.setCss(origin, "main { color: navy; }");
+  const page = {
+    pageId: "original-page", windowId: "original-window", url: `${origin}/article`,
+    documentEpoch: 3, sessionId: "original-document", loading: false,
+    ownedByRuntime: false, controller: "none", viewStatus: "visible",
+  };
+  let activePageId = "another-page";
+  let dispatched!: () => void, release!: () => void;
+  const started = new Promise<void>((resolve) => { dispatched = resolve; });
+  const response = new Promise<void>((resolve) => { release = resolve; });
+  const operation = vi.fn(async (
+    input: { checkOwner(): Promise<void> },
+    work: (runId: string, signal: AbortSignal) => Promise<unknown>,
+  ) => {
+    await input.checkOwner();
+    return work("original-utility-run", new AbortController().signal);
+  });
+  const ctx = {
+    client: { external: false, codeMode: false, nativeTurnContext: "isolated-native-source" },
+    params: { pageId: page.pageId, expectedDocumentEpoch: 3,
+      instruction: "Make main text purple", css: saved.css },
+    customization,
+    decideEgress: async () => undefined,
+    s: {
+      pages: { get: () => page },
+      native: { turnSourceContext: async () => ({
+        windowId: page.windowId, activePageId, revision: 0, layout: null,
+      }) },
+      settings: { modelCacheGeneration: () => "original-model-generation",
+        utilityModel: async () => ({ kind: "network", modelId: "fixture/utility",
+          destination: "https://provider.fixture" }) },
+      runs: { generationOperation: operation,
+        utilityClient: (input: { authorize(): Promise<void> }) => ({
+          generateStructured: async () => {
+            await input.authorize(); dispatched(); await response;
+            return { object: { css: "main { color: purple; }", summary: "Purple main text." } };
+          },
+        }),
+      },
+    },
+  };
+  const propose = () => customizationMethods["customization.css.propose"]!(ctx as never);
+  await expect(propose()).rejects.toMatchObject({ code: "permission_denied" });
+  expect(operation).not.toHaveBeenCalled();
+  activePageId = page.pageId;
+  const pending = propose();
+  await started;
+  page.documentEpoch++;
+  release();
+  await expect(pending).rejects.toMatchObject({ code: "cancelled" });
+  expect(operation).toHaveBeenCalledOnce();
+  expect(customization.getCss(origin)).toEqual(saved);
 });

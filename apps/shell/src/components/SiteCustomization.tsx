@@ -2,7 +2,7 @@ import { staticIconButtonProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
-import type { SiteCss, ZapPickResult, ZapRule } from "@aux/contracts";
+import type { SiteCss, SiteCssProposal, ZapPickResult, ZapRule } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { siteControlsOpener } from "../site-controls-opener";
@@ -33,6 +33,9 @@ export function SiteCustomization() {
   const [rules, setRules] = useState<ZapRule[]>([]);
   const [css, setCss] = useState("");
   const [savedCss, setSavedCss] = useState("");
+  const [instruction, setInstruction] = useState("");
+  const [proposal, setProposal] = useState<SiteCssProposal>();
+  const proposalGeneration = useRef(0);
   const [pick, setPick] = useState<Extract<ZapPickResult, { picked: true }> | null>(null);
   const [selector, setSelector] = useState("");
   const [picking, setPicking] = useState(false);
@@ -65,6 +68,10 @@ export function SiteCustomization() {
   };
   useEffect(() => {
     let active = true;
+    proposalGeneration.current++;
+    setBusy(false);
+    setProposal(undefined);
+    setInstruction("");
     void bridge.overlay(true);
     if (origin)
       void Promise.all([
@@ -82,6 +89,7 @@ export function SiteCustomization() {
         });
     return () => {
       active = false;
+      proposalGeneration.current++;
     };
   }, [origin, pageId, epoch]);
 
@@ -152,6 +160,27 @@ export function SiteCustomization() {
       setError(errorMessage(reason));
     } finally {
       setBusy(false);
+    }
+  };
+  const proposeCss = async () => {
+    if (!pageId || epoch === undefined || !origin || busy || !instruction.trim() || !isCurrent()) return;
+    const request = ++proposalGeneration.current;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setProposal(undefined);
+    try {
+      const result = await call("customization.css.propose", {
+        pageId, expectedDocumentEpoch: epoch, instruction, css,
+      });
+      if (!isCurrent() || request !== proposalGeneration.current) return;
+      if (result.pageId !== pageId || result.documentEpoch !== epoch || result.origin !== origin)
+        throw new Error("The proposal belongs to a different website. Review this page again.");
+      setProposal(result);
+    } catch (reason) {
+      if (isCurrent() && request === proposalGeneration.current) setError(errorMessage(reason));
+    } finally {
+      if (request === proposalGeneration.current) setBusy(false);
     }
   };
   const saveCss = async () => {
@@ -293,13 +322,41 @@ export function SiteCustomization() {
                 CSS is saved for this website in your current Profile. Changes appear on the open page when
                 saved.
               </p>
+              <label className="zap-css-label" htmlFor="zap-css-instruction">Ask Aux for a Boost</label>
+              <textarea id="zap-css-instruction" className="zap-css-instruction"
+                value={instruction} disabled={busy} maxLength={4000}
+                onChange={(event) => setInstruction(event.target.value)}
+                placeholder="Describe the style change, including selectors if you know them." />
+              <p>Your instruction, current CSS and site origin go to your utility model. Page content is not read.</p>
+              <div className="zap-actions">
+                <button {...smallButtonProps} disabled={!origin || !pageId || epoch === undefined || busy || !instruction.trim()}
+                  onClick={() => void proposeCss()}>
+                  {busy ? "Working…" : "Generate proposal"}
+                </button>
+              </div>
+              {proposal && (
+                <section className="zap-css-proposal" aria-label="Review CSS proposal">
+                  <h3>Review the Boost</h3><p>{proposal.summary}</p>
+                  <pre><code>{proposal.css}</code></pre>
+                  <p>No changes have been saved or applied.</p>
+                  <div className="zap-actions">
+                    <button {...smallButtonProps} onClick={() => setProposal(undefined)}>Discard</button>
+                    <button {...auxClassButtonProps} disabled={busy} onClick={() => {
+                      if (!isCurrent()) return;
+                      setCss(proposal.css); setProposal(undefined);
+                      setNotice("Proposal added to the editor. Review it, then Save CSS to apply.");
+                    }}>Use in editor</button>
+                  </div>
+                </section>
+              )}
               <label className="zap-css-label" htmlFor="zap-css-editor">
                 Custom CSS
               </label>
               <textarea
                 id="zap-css-editor"
+                disabled={busy}
                 value={css}
-                onChange={(event) => setCss(event.target.value)}
+                onChange={(event) => { setCss(event.target.value); setProposal(undefined); }}
                 spellCheck={false}
                 maxLength={20_000}
                 placeholder="/* CSS for this site */"
