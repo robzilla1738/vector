@@ -575,3 +575,77 @@
     flex: none;
   }
 }
+
+@layer overrides {
+  .conversation-message-field {
+    background: var(--bg-hover);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .conversation-message-field:focus-within {
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+  .conversation .composer-footer-context {
+    align-items: center;
+    gap: 8px;
+  }
+  .conversation .new-chat-options {
+    align-items: center;
+    gap: 8px;
+  }
+  .chat-preferences {
+    align-items: center;
+    gap: 12px;
+  }
+  .chat-preferences > :is(select, button) {
+    min-height: 32px;
+    padding-inline: 8px;
+    font-size: var(--fs-sm);
+    color: var(--ink-2);
+  }
+  .conversation
+    :is(
+      .home-tools-trigger > button,
+      .new-chat-options > .dictation-trigger,
+      .composer-footer-context > .anchored-trigger,
+      .composer-send-actions > .dictation-trigger
+    ) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 8px;
+    border-radius: 50%;
+    corner-shape: round;
+    background: transparent;
+    color: var(--ink-2);
+  }
+  .conversation
+    :is(
+      .home-tools-trigger > button,
+      .new-chat-options > .dictation-trigger,
+      .composer-footer-context > .anchored-trigger,
+      .composer-send-actions > .dictation-trigger
+    ):not(:disabled):is(:hover, [aria-expanded="true"]) {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  .conversation
+    :is(.home-tools-trigger, .new-chat-options, .composer-footer-context, .composer-send-actions)
+    > button
+    svg {
+    width: 16px;
+    height: 16px;
+  }
+  .chat-run-menu .composer-run-options label {
+    min-height: 36px;
+    gap: 12px;
+    font-size: var(--fs-sm);
+  }
+  .chat-run-menu .composer-run-options select {
+    width: 156px;
+    max-width: 60%;
+  }
+}

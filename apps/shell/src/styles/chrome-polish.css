@@ -407,3 +407,31 @@
     }
   }
 }
+
+@layer overrides {
+  :root .app.tabs-vertical:not(.layout-expanded) .sidebar.peek {
+    background: color-mix(in srgb, var(--floating-sidebar-surface) 94%, transparent);
+    backdrop-filter: blur(20px) saturate(125%);
+    -webkit-backdrop-filter: blur(20px) saturate(125%);
+    border: var(--hairline) solid var(--line);
+    box-shadow: 0 12px 32px var(--shadow-tint);
+    border-radius: 14px;
+  }
+  :root .app.tabs-vertical:not(.layout-expanded) .sidebar.peek::before,
+  :root .app.tabs-vertical:not(.layout-expanded) .sidebar.peek::after {
+    content: none;
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    :root .app.tabs-vertical:not(.layout-expanded) .sidebar.peek {
+      background: var(--floating-sidebar-surface);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+  @media (forced-colors: active) {
+    :root .app.tabs-vertical:not(.layout-expanded) .sidebar.peek {
+      background: Canvas;
+      border-color: CanvasText;
+    }
+  }
+}

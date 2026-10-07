@@ -191,3 +191,31 @@
     }
   }
 }
+
+@layer components {
+  .cb-results-footer {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .cb-source-options[open] {
+    flex-basis: 100%;
+  }
+  .cb-source-options[open] .cb-provider-scopes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+    gap: 4px;
+    padding: 6px 4px;
+  }
+  .cb-source-options .cb-provider-scopes button {
+    border-radius: 7px;
+    text-align: left;
+    padding-inline: 10px;
+    width: 100%;
+  }
+  .cb-source-options .cb-ranking-toggle {
+    margin-left: 0;
+  }
+  .cb-source-options > summary {
+    font-size: var(--fs-xs);
+  }
+}

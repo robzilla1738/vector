@@ -6,7 +6,6 @@ const SidebarAddress = deferNamedSurface(
   true,
   true,
 );
-import { GlassMaterial } from "./GlassMaterial";
 import { useTabLayout } from "../use-tab-layout";
 import { orderedPages } from "../store/pages";
 import { staticMenuItemProps, staticIconButtonProps } from "../ui/class-props";
@@ -1474,7 +1473,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
         }
         aria-label="Sidebar"
       >
-        {sidebar !== "expanded" && <GlassMaterial tinted />}
         <div
           className="sidebar-content"
           inert={!sidebarVisible ? true : undefined}

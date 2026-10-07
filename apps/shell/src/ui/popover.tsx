@@ -1,4 +1,3 @@
-import { GlassMaterial } from "../components/GlassMaterial";
 import {
   useCallback,
   useEffect,
@@ -96,7 +95,6 @@ export function Popover({
           label={label}
           onClose={close}
         >
-          <GlassMaterial />
           {children(close)}
         </Dialog>
       )}
