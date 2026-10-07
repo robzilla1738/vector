@@ -93,6 +93,7 @@ while let line = readLine() {
       guard let chord = request["chord"] as? String else { throw NSError(domain: "Missing chord", code: 1) }
       switch chord {
       case "address": try key(37, flags: .maskCommand)
+      case "new-tab": try key(17, flags: .maskCommand)
       case "next-tab": try key(48, flags: .maskControl)
       case "escape": try key(53)
       case "return": try key(36)

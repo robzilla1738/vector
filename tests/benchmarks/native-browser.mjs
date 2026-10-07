@@ -92,7 +92,7 @@ function build(kind) {
   ]);
   const gn = [join(source, "buildtools/mac/gn"), join(source, "buildtools/mac-arm64/gn")].find(existsSync);
   assert.ok(gn, "The checkout's GN executable is required to resolve imported flags");
-  const resolvedArgs = command(gn, ["args", dirname(app), "--list", "--short"]);
+  const resolvedArgs = command(gn, ["args", dirname(app), "--list", "--short", `--root=${source}`]);
   const args = Object.fromEntries(
     resolvedArgs.split("\n").flatMap((line) => {
       const match = line.match(/^([a-z][a-z0-9_]*)\s*=\s*(.+)$/);
@@ -326,13 +326,6 @@ try {
         "original browser foreground ownership",
         async () => (await run.input.call("identity")).focused,
       );
-      if (build.kind === "aux")
-        run.shell = await until("original Aux shell target", () =>
-          run.browser
-            .contexts()
-            .flatMap((context) => context.pages())
-            .find((page) => page.url().startsWith("chrome://aux/")),
-        );
       return run;
     } catch (error) {
       run.input.close();
@@ -378,23 +371,31 @@ try {
       return after.count > before.count ? oneObservation(before, after, name) : null;
     });
   }
-  async function open(run, build, target) {
-    if (build.kind === "aux") {
-      const ack = await run.shell.evaluate(
-        (url) => window.aux.tabCommand({ kind: "open", url, activate: true }),
-        target,
-      );
-      assert.equal(ack.status, "applied");
-      await until("fixture tab load", () =>
-        run.shell.evaluate(
-          (url) => window.aux.tabsSnapshot().tabs.some((tab) => tab.url === url && !tab.loading),
-          target,
-        ),
-      );
-    } else {
-      const page = await run.browser.contexts()[0].newPage();
-      await page.goto(target, { waitUntil: "load" });
+  function ordinaryPages(run) {
+    const pages = run.browser.contexts().flatMap((context) => context.pages());
+    assert.ok(
+      pages.every((page) => ["about:blank", "chrome://newtab/", url].includes(page.url())),
+      "An unexpected nonfixture target entered the disposable workload",
+    );
+    return pages;
+  }
+  async function loadedFixturePages(run) {
+    const pages = ordinaryPages(run).filter((page) => page.url() === url);
+    for (const page of pages) {
+      await page.waitForLoadState("load");
+      assert.equal(page.url(), url, "The original fixture target changed during load");
     }
+    return pages;
+  }
+  async function open(run) {
+    const before = (await loadedFixturePages(run)).length;
+    await run.input.call("key", { chord: "new-tab" });
+    await run.input.call("text", { text: url });
+    await run.input.call("key", { chord: "return" });
+    await until(
+      "new native fixture tab load",
+      async () => (await loadedFixturePages(run)).length === before + 1,
+    );
   }
   function seedHistory(profile) {
     const history = join(profile, "Default/History");
@@ -439,12 +440,28 @@ try {
       const run = await launch(builds[kind], profile);
       try {
         if (kind === "aux") {
-          await run.shell.waitForFunction(() => typeof window.aux?.invoke === "function");
-          await run.shell.evaluate(async () => {
-            const setup = await window.aux.invoke("onboarding.get", {});
-            await window.aux.invoke("onboarding.update", { revision: setup.revision, action: "finish" });
-          });
+          console.log(
+            JSON.stringify({
+              event: "AUX_PERF_SETUP_REQUIRED",
+              pid: run.child.pid,
+              profile,
+              fixtureURL: url,
+              instruction:
+                "In this disposable Aux window, choose Finish later to finish setup, then use the native address bar to navigate to fixtureURL. Measurement waits for that ordinary page; the privileged shell stays hidden from CDP.",
+            }),
+          );
+          await until(
+            "manual disposable Aux setup and fixture navigation",
+            async () => (await loadedFixturePages(run)).length > 0,
+            600000,
+          );
+          console.log(JSON.stringify({ event: "AUX_PERF_SETUP_READY", pid: run.child.pid }));
+        } else {
+          const page = ordinaryPages(run)[0];
+          assert.ok(page, "Prepared stock browser needs an ordinary initial target");
+          await page.goto(url, { waitUntil: "load" });
         }
+        for (const page of ordinaryPages(run)) await page.goto("about:blank", { waitUntil: "load" });
       } finally {
         await close(run);
       }
@@ -473,37 +490,24 @@ try {
           await run.input.call("key", { chord: "return" });
           sample.coldInteractive = await observation(run, names.coldInteractive);
           sample.navigationInput = await observation(run, names.navigationInput);
-          for (let i = 1; i < 10; i++) await open(run, builds[kind], url);
-          if (kind === "aux") {
-            await run.shell.evaluate(async (fixtureUrl) => {
-              const snapshot = window.aux.tabsSnapshot();
-              for (const tab of snapshot.tabs) {
-                if (tab.url === fixtureUrl) continue;
-                if (!["about:blank", "chrome://newtab/"].includes(tab.url))
-                  throw new Error("An unexpected nonfixture tab entered the disposable workload");
-                const ack = await window.aux.tabCommand({ kind: "close", pageId: tab.pageId });
-                if (ack.status !== "applied")
-                  throw new Error("Nonfixture tab close lacked native acknowledgement");
-              }
-              const current = window.aux.tabsSnapshot().tabs;
-              if (current.length !== 10 || current.some((tab) => tab.url !== fixtureUrl || tab.loading))
-                throw new Error("The ten-tab native fixture workload is incomplete");
-            }, url);
-          } else {
-            const pages = run.browser.contexts()[0].pages();
-            assert.equal(pages.length, 10, "Stock must have exactly ten fixture tabs");
-            assert.ok(pages.every((page) => page.url() === url));
-            const windows = new Set();
-            for (const page of pages) {
-              const session = await run.browser.contexts()[0].newCDPSession(page);
-              try {
-                windows.add((await session.send("Browser.getWindowForTarget")).windowId);
-              } finally {
-                await session.detach();
-              }
+          await until(
+            "first native fixture tab load",
+            async () => (await loadedFixturePages(run)).length > 0,
+          );
+          for (let i = 1; i < 10; i++) await open(run);
+          for (const page of ordinaryPages(run)) if (page.url() !== url) await page.close();
+          const pages = await loadedFixturePages(run);
+          assert.equal(pages.length, 10, "The native workload must have exactly ten fixture tabs");
+          const windows = new Set();
+          for (const page of pages) {
+            const session = await page.context().newCDPSession(page);
+            try {
+              windows.add((await session.send("Browser.getWindowForTarget")).windowId);
+            } finally {
+              await session.detach();
             }
-            assert.equal(windows.size, 1, "All fixture tabs must belong to the original native window");
           }
+          assert.equal(windows.size, 1, "All fixture tabs must belong to the original native window");
           const beforeSwitch = await hist(run, names.tabSwitch);
           await run.input.call("key", { chord: "next-tab" });
           sample.tabSwitch = await observation(run, names.tabSwitch, beforeSwitch);

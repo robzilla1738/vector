@@ -1,8 +1,8 @@
 # Native performance comparison
 
 Run `pnpm perf` only at phase ends, after the Aux and stock native apps are built.
-The current v3 instrumentation and harness are under implementation; no new
-native performance result has been published.
+The current v3 instrumentation and harness are implemented; setup attempts have
+not yet produced a complete measured comparison.
 
 The comparison takes five paired runs and reports medians for cold launch,
 actual first presentation, launch to usable content, navigation input,
@@ -17,6 +17,15 @@ Profile. Setup and synthetic history preparation happen before timing and only
 after the preceding browser has acknowledged exit. OS caches are not flushed.
 The sample therefore measures a fresh process with a prepared Profile, rather
 than first-use setup or an OS hard-cold launch. No saved user Profile is used.
+
+Run with the Xcode developer directory used for the native builds, for example
+`DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer pnpm perf ...`. GN
+resolves flags against each supplied source root. During Aux preparation, the
+runner prints `AUX_PERF_SETUP_REQUIRED` with its disposable Profile, process ID
+and fixture URL. In that window, choose Finish later and navigate to the fixture
+using the native address bar. This happens before timing. The privileged Aux
+shell remains hidden from CDP; only ordinary fixture tabs are inspected. Leave
+the measured browser foreground and avoid other input until the run finishes.
 
 The disposable Local State explicitly enables the ordinary user-controlled
 remote-debugging listener and benchmark telemetry. The harness verifies that

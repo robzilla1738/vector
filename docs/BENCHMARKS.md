@@ -33,8 +33,10 @@ footprint and sizes in MB, Aux/stock pairs):
 
 <!-- native-perf-status:start -->
 
-No measured row has been added. The instrument and native presentation seam are
-being implemented and have not been executed against the completed v3 apps.
+No measured row has been added. Initial runs stopped during setup before collecting
+valid samples. The runner now resolves GN from the supplied checkout and prepares
+Aux through native UI without accessing its privileged shell over CDP. A complete
+paired measurement remains pending.
 <!-- native-perf-status:end -->
 
 See
