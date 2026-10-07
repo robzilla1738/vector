@@ -37,7 +37,7 @@ index 8af642f..6cabe23 100644
    const bool is_contextual_tasks_enabled =
        contextual_tasks::IsContextualTasksUIEnabled();
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
-index 9b24dbc..4180c59 100644
+index 9b24dbc..b866773 100644
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
 @@ -221,9 +221,10 @@
@@ -195,7 +195,28 @@ index 9b24dbc..4180c59 100644
    if (type == URLLoaderFactoryType::kNavigation ||
        type == URLLoaderFactoryType::kDocumentSubResource ||
        type == URLLoaderFactoryType::kWorkerMainResource ||
-@@ -6751,8 +6844,10 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -6742,17 +6835,26 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+       if (navigation && navigation->GetNavigationId() == *navigation_id)
+         source = aux::ContentFilterSourceScope::CaptureNavigation(profile, navigation->GetWeakPtr());
+     } else {
+-      source = aux::ContentFilterSourceScope::Capture(profile, frame, render_process_id,
+-          request_initiator, isolation_info,
+-          type == URLLoaderFactoryType::kWorkerMainResource || type == URLLoaderFactoryType::kWorkerSubResource ||
+-              type == URLLoaderFactoryType::kServiceWorkerScript || type == URLLoaderFactoryType::kServiceWorkerSubResource,
+-          owner->ProspectiveNavigation(navigation_id));
++      const auto prospective = owner->ProspectiveNavigation(
++          navigation_id,
++          type == URLLoaderFactoryType::kDocumentSubResource ? frame : nullptr);
++      // An ambiguous prepared document is refused, never recaptured as the
++      // previous committed document on a reused active RFH.
++      if (prospective.has_value()) {
++        source = aux::ContentFilterSourceScope::Capture(profile, frame, render_process_id,
++            request_initiator, isolation_info,
++            type == URLLoaderFactoryType::kWorkerMainResource || type == URLLoaderFactoryType::kWorkerSubResource ||
++                type == URLLoaderFactoryType::kServiceWorkerScript || type == URLLoaderFactoryType::kServiceWorkerSubResource,
++            *prospective);
++      }
+     }
      const bool trusted_internal_frame = type != URLLoaderFactoryType::kNavigation && frame &&
          frame->GetLastCommittedURL().SchemeIs(content::kChromeUIScheme) &&
          !request_initiator.GetURL().SchemeIsHTTPOrHTTPS();
@@ -208,7 +229,7 @@ index 9b24dbc..4180c59 100644
    }
  #endif
  
-@@ -6820,6 +6915,11 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -6820,6 +6922,11 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
        type == URLLoaderFactoryType::kServiceWorkerScript ||
        type == URLLoaderFactoryType::kServiceWorkerSubResource,
        factory_builder, header_client);
@@ -220,7 +241,7 @@ index 9b24dbc..4180c59 100644
  #endif
  }
  
-@@ -6907,48 +7007,105 @@ void ChromeContentBrowserClient::CheckWebSocketConnection(content::RenderFrameHo
+@@ -6907,48 +7014,105 @@ void ChromeContentBrowserClient::CheckWebSocketConnection(content::RenderFrameHo
      WebSocketConnectionCheck callback) {
  #if BUILDFLAG(ENABLE_AUX_SHELL)
    auto* process = content::RenderProcessHost::FromID(process_id);
@@ -224189,7 +224210,7 @@ index 8a83394..848a03a 100644
  }
  }  // namespace aux
 diff --git a/chrome/browser/ui/aux/content_blocking_controller.h b/chrome/browser/ui/aux/content_blocking_controller.h
-index c0c97a7..eeb021f 100644
+index c0c97a7..6256e42 100644
 --- a/chrome/browser/ui/aux/content_blocking_controller.h
 +++ b/chrome/browser/ui/aux/content_blocking_controller.h
 @@ -7,6 +7,7 @@
@@ -224263,9 +224284,17 @@ index c0c97a7..eeb021f 100644
    void State(Reply callback);
    std::optional<base::DictValue> Begin(const base::DictValue& params,
        uint64_t connection, std::string* error);
-@@ -53,11 +76,36 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
-   base::WeakPtr<content::NavigationRequest> ProspectiveNavigation(
-       std::optional<int64_t> navigation_id);
+@@ -50,14 +73,42 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
+   void FinishNavigation(content::NavigationHandle& navigation);
+   void PrepareNavigation(content::NavigationHandle& navigation,
+       base::OnceCallback<void(bool)> callback);
+-  base::WeakPtr<content::NavigationRequest> ProspectiveNavigation(
+-      std::optional<int64_t> navigation_id);
++  // nullopt refuses ambiguous original document authority; an empty weak
++  // pointer means no prospective navigation and permits committed capture.
++  std::optional<base::WeakPtr<content::NavigationRequest>> ProspectiveNavigation(
++      std::optional<int64_t> navigation_id,
++      content::RenderFrameHost* document_factory_frame);
    void RefreshCosmetic(base::OnceCallback<void(bool)> callback);
 -  bool GenericSelectorsForDocument(content::RenderFrameHost* frame,
 -      uint64_t generation, const std::vector<std::string>& classes,
@@ -224305,7 +224334,7 @@ index c0c97a7..eeb021f 100644
    bool SourceAlive(const ContentFilterSourceScope& source) const;
    bool enabled();
    bool IsAllowed(std::string_view site_host);
-@@ -69,6 +117,7 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
+@@ -69,6 +120,7 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
    bool SetPrivateEnabled(bool enabled);
    base::WeakPtr<ContentBlockingController> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
   private:
@@ -224313,7 +224342,7 @@ index c0c97a7..eeb021f 100644
    struct Staging {
      uint64_t connection = 0;
      NativeFilterSnapshot snapshot;
-@@ -82,15 +131,28 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
+@@ -82,15 +134,28 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
      GURL url;
      uint64_t generation;
      mojo::AssociatedRemote<chrome::mojom::AuxCosmeticAgent> remote;
@@ -224342,7 +224371,7 @@ index c0c97a7..eeb021f 100644
    void OnFrameResult(uint64_t id, bool accepted);
    std::map<uint64_t, std::unique_ptr<FrameRequest>> frame_requests_;
    uint64_t next_frame_request_ = 0;
-@@ -100,6 +162,14 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
+@@ -100,6 +165,14 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
    FilterSnapshotStore store_;
    scoped_refptr<base::SequencedTaskRunner> store_runner_;
    std::shared_ptr<const NativeFilterSnapshot> snapshot_;
@@ -224357,7 +224386,7 @@ index c0c97a7..eeb021f 100644
    std::unique_ptr<Staging> staging_;
    std::vector<base::OnceCallback<void(bool)>> ready_callbacks_;
    bool load_finished_ = false;
-@@ -117,6 +187,7 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
+@@ -117,6 +190,7 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
    base::WeakPtrFactory<ContentBlockingController> weak_factory_{this};
  };
  std::unique_ptr<content::CommitDeferringCondition> MaybeCreateContentFilterCondition(
@@ -224367,7 +224396,7 @@ index c0c97a7..eeb021f 100644
  }  // namespace aux
  #endif
 diff --git a/chrome/browser/ui/aux/content_filter_documents.cc b/chrome/browser/ui/aux/content_filter_documents.cc
-index 0921e08..37011d1 100644
+index 0921e08..4b5f824 100644
 --- a/chrome/browser/ui/aux/content_filter_documents.cc
 +++ b/chrome/browser/ui/aux/content_filter_documents.cc
 @@ -1,13 +1,16 @@
@@ -224388,7 +224417,49 @@ index 0921e08..37011d1 100644
  #include "chrome/browser/ui/aux/tab_catalog.h"
  #include "chrome/common/aux_cosmetic_filters.mojom.h"
  #include "content/browser/renderer_host/navigation_request.h"
-@@ -113,36 +116,164 @@ void ContentBlockingController::PrepareFrame(content::RenderFrameHost* frame,
+@@ -100,10 +103,37 @@ void ContentBlockingController::FinishNavigation(content::NavigationHandle& navi
+   if (found != documents_.end() && found->second.navigation == request->devtools_navigation_token() && found->second.url == navigation.GetURL())
+     found->second.document = content::RenderFrameHostImpl::From(frame)->GetDocumentToken();
+ }
+-base::WeakPtr<content::NavigationRequest> ContentBlockingController::ProspectiveNavigation(
+-    std::optional<int64_t> id) {
+-  if (!id) return {};
+-  auto found = prospective_.find(*id); return found == prospective_.end() ? base::WeakPtr<content::NavigationRequest>() : found->second;
++std::optional<base::WeakPtr<content::NavigationRequest>>
++ContentBlockingController::ProspectiveNavigation(
++    std::optional<int64_t> id,
++    content::RenderFrameHost* document_factory_frame) {
++  if (id) {
++    auto found = prospective_.find(*id);
++    return found == prospective_.end()
++               ? base::WeakPtr<content::NavigationRequest>()
++               : found->second;
++  }
++  if (!document_factory_frame) {
++    return base::WeakPtr<content::NavigationRequest>();
++  }
++  if (document_factory_frame->GetBrowserContext() != profile_) {
++    return std::nullopt;
++  }
++  // Only the native document-subresource ingress supplies this RFH. Its
++  // callback has no navigation ID; workers must not borrow their creator's
++  // prospective document. Resolve a unique already-prepared exact RFH owner.
++  base::WeakPtr<content::NavigationRequest> original;
++  for (const auto& entry : prospective_) {
++    if (!entry.second || !entry.second->HasRenderFrameHost() ||
++        entry.second->GetRenderFrameHost() != document_factory_frame) {
++      continue;
++    }
++    if (original) {
++      return std::nullopt;
++    }
++    original = entry.second;
++  }
++  return original;
+ }
+ void ContentBlockingController::PrepareFrame(content::RenderFrameHost* frame,
+     const std::optional<blink::DocumentToken>& document,
+@@ -113,36 +143,164 @@ void ContentBlockingController::PrepareFrame(content::RenderFrameHost* frame,
    const auto origin = ContentFilterResourceOrigin(profile_);
    if (!frame || frame->GetBrowserContext() != profile_ || !frame->IsRenderFrameLive() || !snapshot_ || !origin ||
        frame_requests_.size() >= 5000 || !url.SchemeIsHTTPOrHTTPS()) { std::move(callback).Run(false); return; }
@@ -224514,7 +224585,7 @@ index 0921e08..37011d1 100644
 +      semantic_->bridge(), profile_, input, ancestor_urls, current,
 +      base::BindOnce(&ContentBlockingController::OnSemanticFrameResult,
 +                     weak_factory_.GetWeakPtr(), id, current, enabled));
- }
++}
 +void ContentBlockingController::OnSemanticFrameResult(
 +    uint64_t id,
 +    OwnerCurrent current,
@@ -224555,7 +224626,7 @@ index 0921e08..37011d1 100644
 +      request.url.spec(), *encoded,
 +      base::BindOnce(&ContentBlockingController::OnFrameResult,
 +                     weak_factory_.GetWeakPtr(), id));
-+}
+ }
 +
  void ContentBlockingController::OnFrameResult(uint64_t id, bool accepted) {
    auto found = frame_requests_.find(id); if (found == frame_requests_.end()) return;
@@ -224573,7 +224644,7 @@ index 0921e08..37011d1 100644
    if (accepted && request->document) accepted = ContentFilterSourceScope::FrameDocumentLive(frame) &&
        content::RenderFrameHostImpl::From(frame)->GetDocumentToken() == request->document && frame->GetLastCommittedURL() == request->url;
    if (accepted) {
-@@ -178,23 +309,82 @@ void ContentBlockingController::RefreshCosmetic(base::OnceCallback<void(bool)> c
+@@ -178,23 +336,82 @@ void ContentBlockingController::RefreshCosmetic(base::OnceCallback<void(bool)> c
          }, pending));
    }
  }
@@ -225557,10 +225628,33 @@ index 99970cc..a178fcb 100644
  }
  #endif
 diff --git a/chrome/browser/ui/aux/content_filter_source_scope.cc b/chrome/browser/ui/aux/content_filter_source_scope.cc
-index d2c7a1d..6c3cb6f 100644
+index d2c7a1d..bf00194 100644
 --- a/chrome/browser/ui/aux/content_filter_source_scope.cc
 +++ b/chrome/browser/ui/aux/content_filter_source_scope.cc
-@@ -101,8 +101,11 @@ std::optional<ContentFilterSourceScope> ContentFilterSourceScope::CaptureNavigat
+@@ -57,16 +57,18 @@ std::optional<ContentFilterSourceScope> ContentFilterSourceScope::Capture(
+   if (frame) {
+     if (frame->GetBrowserContext() != profile || !frame->IsRenderFrameLive()) return std::nullopt;
+     scope.frame_ = frame->GetGlobalId();
+-    if (frame->GetLifecycleState() == content::RenderFrameHost::LifecycleState::kPendingCommit) {
+-      if (!prospective_navigation || prospective_navigation->GetRenderFrameHost() != frame ||
++    if (prospective_navigation) {
++      if (prospective_navigation->GetRenderFrameHost() != frame ||
+           !prospective_navigation->GetURL().SchemeIsHTTPOrHTTPS()) return std::nullopt;
+-      // A factory can be created before READY_TO_COMMIT. The original native
++      // A factory is created before renderer commit. The original native
+       // NavigationRequest owns the prospective frame; its shared binding is
+       // populated with the actual document only by the real commit observer.
+       scope.navigation_binding_ = NavigationSourceData::GetOrCreateForNavigationHandle(*prospective_navigation)->binding;
+       scope.prospective_navigation_ = std::move(prospective_navigation);
+     } else {
+-      if (!FrameDocumentLive(frame)) return std::nullopt;
++      if (frame->GetLifecycleState() ==
++              content::RenderFrameHost::LifecycleState::kPendingCommit ||
++          !FrameDocumentLive(frame)) return std::nullopt;
+       scope.document_ = content::RenderFrameHostImpl::From(frame)->GetDocumentToken();
+     }
+   }
+@@ -101,8 +103,11 @@ std::optional<ContentFilterSourceScope> ContentFilterSourceScope::CaptureNavigat
    auto* const previous = content::RenderFrameHost::FromID(navigation->GetPreviousRenderFrameHostId());
    if (previous && previous->GetBrowserContext() == profile && previous->GetLastCommittedURL().SchemeIsHTTPOrHTTPS())
      source = previous->GetLastCommittedURL();
@@ -225574,7 +225668,16 @@ index d2c7a1d..6c3cb6f 100644
    return scope;
  }
  bool ContentFilterSourceScope::Alive(Profile* profile) const {
-@@ -149,9 +152,13 @@ std::optional<ContentFilterSourceScope::RequestSource> ContentFilterSourceScope:
+@@ -141,7 +146,7 @@ std::optional<ContentFilterSourceScope::RequestSource> ContentFilterSourceScope:
+     auto* frame = content::RenderFrameHost::FromID(*frame_);
+     // Same-document history updates retain the actual DocumentToken. Capture
+     // the native committed URL for this new request; redirects keep this value.
+-    const GURL actual = frame->GetLifecycleState() == content::RenderFrameHost::LifecycleState::kPendingCommit
++    const GURL actual = navigation_binding_ && !navigation_binding_->document
+         ? prospective_navigation_->GetURL() : frame->GetLastCommittedURL();
+     // A worker factory may carry its creator frame while its native initiator
+     // is the worker origin. Do not falsely attribute those requests to the
+@@ -149,9 +154,13 @@ std::optional<ContentFilterSourceScope::RequestSource> ContentFilterSourceScope:
      if (actual.SchemeIsHTTPOrHTTPS() && (initiator_.opaque() || url::Origin::Create(actual) == initiator_)) source = actual;
    }
    std::string host;
