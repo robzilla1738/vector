@@ -60,6 +60,7 @@ export function saveImportReceipts(repo: Repo, jobs: ImportJobStatus[]): void {
       cancelled: job.cancelled,
       interrupted: job.interrupted,
       acknowledged: job.acknowledged,
+      nativeFailure: job.nativeFailure,
       nativeOperations: job.nativeOperations,
       selections: job.selections,
       startedAt: job.startedAt,

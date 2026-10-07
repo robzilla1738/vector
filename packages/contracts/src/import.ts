@@ -160,6 +160,12 @@ export const ImportJobStatusSchema = z.object({
   error: z.string().max(1000).optional(),
   interrupted: z.boolean().optional(),
   acknowledged: z.boolean().optional(),
+  nativeFailure: z.object({
+    phase: z.literal("begin"),
+    operationId: z.string().min(16).max(128),
+    code: z.string().min(1).max(64),
+    message: z.string().max(200).optional(),
+  }).strict().optional(),
   nativeOperations: z.array(ImportOperationSchema).max(12).optional(),
   selections: z.array(ImportSelectionSchema).max(12).optional(),
   startedAt: z.number().int().nonnegative().optional(),

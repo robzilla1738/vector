@@ -16,6 +16,24 @@ import { loadImportReceipts, saveImportReceipts, type ImportJob } from "./import
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
 
+const PUBLIC_BEGIN_REFUSALS = new Set([
+  "The original human import window retired",
+  "Exact original import categories are required",
+  "Exact original import parameters are required",
+  "This operation already belongs to another import selection.",
+  "Refresh the original browser import preview.",
+  "Choose each import category only once.",
+  "This category is not available in the original browser Profile.",
+  "Review every extension from the original source before importing.",
+  "Each original extension needs one exact reviewed choice.",
+  "The extension choice belongs to another source review.",
+  "Choose each valid Chrome Web Store counterpart only once.",
+  "Extension review requires the extensions category.",
+  "Join or cancel the current native import first.",
+  "Too many import receipts are retained in this native session.",
+  "The original destination Space is unavailable. Refresh before importing tabs."
+]);
+
 export interface ImportRunOptions {
   selections: ImportSelection[];
   acknowledgeInterruptedJobId?: string;
@@ -298,8 +316,9 @@ export class BrowserImporter {
     if (receipt.unknown) {
       op.state = "unknown";
       job.interrupted = true;
-      job.error =
-        "The native import receipt is unavailable. Some accepted items may already be imported; review before starting another import.";
+      job.error = job.nativeFailure
+        ? this.nativeFailureMessage(job)
+        : "The native import receipt is unavailable. Some accepted items may already be imported; review before starting another import.";
     } else {
       if (receipt.done === undefined || receipt.cancelled === undefined || !receipt.progress)
         throw new AuxError("conflict", "Native import completion was not confirmed.");
@@ -372,7 +391,13 @@ export class BrowserImporter {
       );
     }
   }
+  private nativeFailureMessage(job: ImportJob): string {
+    const failure = job.nativeFailure;
+    return `Native import begin failed (${failure?.code ?? "internal"})${failure?.message ? `: ${failure.message}` : "."} Completion still requires a native receipt; some accepted items may already exist.`;
+  }
   private async execute(job: ImportJob, handles: string[], token: string) {
+    let awaitingBegin = false;
+    let pendingOperationId: string | undefined;
     try {
       for (const [index, op] of (job.nativeOperations ?? []).entries()) {
         if (job.cancelled || this.closed || job.interrupted) {
@@ -384,6 +409,8 @@ export class BrowserImporter {
         this.checkpoint(job);
         const sourceHandle = handles[index];
         if (!sourceHandle) throw new AuxError("ref_stale", "The original browser source handle was lost.");
+        awaitingBegin = true;
+        pendingOperationId = op.operationId;
         const receipt = await this.bridge().begin({
           token,
           operationId: op.operationId,
@@ -391,12 +418,19 @@ export class BrowserImporter {
           categories: op.categories,
           extensionReview: job.selections?.[index]?.extensionReview ?? {},
         });
+        awaitingBegin = false;
         this.apply(job, op, receipt);
         if (op.state === "dispatched") await this.join(job, op, job.cancelled || this.closed);
       }
-    } catch {
+    } catch (error) {
       job.interrupted = true;
-      job.error =
+      if (awaitingBegin && pendingOperationId && error instanceof AuxError) {
+        job.nativeFailure = {
+          phase: "begin", operationId: pendingOperationId, code: error.code,
+          ...(PUBLIC_BEGIN_REFUSALS.has(error.message) ? { message: error.message } : {}),
+        };
+      }
+      job.error = job.nativeFailure ? this.nativeFailureMessage(job) :
         "Import completion was not confirmed. Retain this receipt and review its status before retrying.";
       this.checkpoint(job);
     }

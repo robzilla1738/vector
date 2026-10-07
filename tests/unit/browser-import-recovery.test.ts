@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { AuxError } from "@aux/contracts";
 import { BrowserImporter, Repo, openDb } from "@aux/runtime";
 import { NativeImportFixture, flushImport } from "../fixtures/native-browser-import.js";
 
@@ -189,4 +190,30 @@ it("a retired original window cannot dispatch a saved native snapshot", async ()
   } finally {
     f.db.close();
   }
+});
+
+it("retains a typed native Begin refusal across unknown Poll and restart without redispatching", async () => {
+  const f = fixture();
+  try {
+    f.native.browserImportBegin.mockRejectedValue(new AuxError("permission_denied",
+      "Refresh the original browser import preview."));
+    await f.importer.preview(f.native.token);
+    const { jobId } = await f.importer.start({ selections }, f.native.token);
+    await flushImport();
+    const status = await f.importer.status(jobId, f.native.token);
+    expect(status).toMatchObject({ done: false, interrupted: true,
+      nativeFailure: { phase: "begin", code: "permission_denied",
+        message: "Refresh the original browser import preview." },
+      nativeOperations: [{ state: "unknown" }], progress: [{ imported: 0 }],
+    });
+    expect(status.error).toContain("some accepted items may already exist");
+    const restored = new BrowserImporter({ repo: f.repo, native: f.native, emit: () => {} });
+    const receipt = await restored.status(jobId, f.native.token);
+    expect(receipt.nativeFailure).toEqual(status.nativeFailure);
+    expect(receipt.error).toContain("Refresh the original browser import preview.");
+    const durable = JSON.stringify(f.repo.getSetting("browser-import.receipts.v1"));
+    expect(durable).not.toContain(f.native.token);
+    expect(durable).not.toContain(f.native.sourceHandle);
+    expect(f.native.browserImportBegin).toHaveBeenCalledOnce();
+  } finally { f.db.close(); }
 });
