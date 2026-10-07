@@ -793,7 +793,7 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
     resources: [{ resourceId: "page", kind: "page", locator: opened.pageId, label: "Tab" }],
   });
   const connections = new AgentConnectionService(repo);
-  const sessions = new ExternalSessionService(repo, events, pagesTurnMentions);
+  const sessions = new ExternalSessionService(repo, events, pagesTurnMentions, async () => {});
   const gate = makeInvoker({
     repo,
     events,
@@ -962,7 +962,7 @@ it("lets the unscoped loopback owner navigate while an external program holds th
     resources: [{ resourceId: "page", kind: "page", locator: opened.pageId, label: "Tab" }],
   });
   const connections = new AgentConnectionService(repo);
-  const sessions = new ExternalSessionService(repo, events, pagesTurnMentions);
+  const sessions = new ExternalSessionService(repo, events, pagesTurnMentions, async () => {});
   const pageOwnership = new PageOwnership();
   const gate = makeInvoker({
     repo,

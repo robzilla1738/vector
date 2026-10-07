@@ -1,4 +1,4 @@
-import type { WorkspaceMemory } from "./tasks.js";
+import type { ContentMemoryPolicy, WorkspaceMemory } from "./tasks.js";
 import { textContextShares } from "./text-context.js";
 
 export function memoryOrigin(value: string): string {
@@ -43,4 +43,9 @@ export function workspaceMemoryText(
     .map((note, index) => note.slice(0, shares[index]))
     .filter(Boolean)
     .join("\n\n");
+}
+
+/** Only a fresh/default policy admits eligible HTTPS sites without a site list. */
+export function memoryOriginAllowed(policy: ContentMemoryPolicy, origin: string): boolean {
+  return policy.originScope === "safe-sites" || policy.allowedOrigins.includes(origin);
 }

@@ -172,13 +172,17 @@ it("keeps a human-held tab out of external page programs", async () => {
   expect(f.pageOwnership.snapshot().p1).toBeUndefined();
 });
 
-it("lets a scoped agent hand its authorized tab to a person without granting resume", async () => {
+it("keeps takeover human-only without granting scoped agents resume", async () => {
   const f = fixture();
   const client = { external: true, connectionId: "c1", scope: f.scope };
   await expect(f.invoke("pages.takeover", { pageId: "other" }, client)).rejects.toMatchObject({
     code: "permission_denied",
   });
-  await expect(f.invoke("pages.takeover", { pageId: "p1" }, client)).resolves.toMatchObject({
+  await expect(f.invoke("pages.takeover", { pageId: "p1" }, client)).rejects.toMatchObject({
+    code: "permission_denied",
+  });
+  expect(f.page.controller).not.toBe("human");
+  await expect(f.invoke("pages.takeover", { pageId: "p1" }, { external: false })).resolves.toMatchObject({
     controller: "human",
   });
   expect(f.page.controller).toBe("human");
@@ -363,7 +367,7 @@ it("binds scoped browser actions to the exact task, page, and revision", async (
   ).rejects.toMatchObject({ code: "permission_denied" });
   await expect(
     f.invoke("pages.navigate", { pageId: "p1", url: "https://example.com" }, client),
-  ).rejects.toMatchObject({ code: "permission_denied" });
+  ).rejects.toMatchObject({ code: "invalid_params" });
   await expect(
     f.invoke(
       "pages.execute",

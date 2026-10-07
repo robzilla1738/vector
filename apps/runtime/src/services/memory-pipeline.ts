@@ -1,3 +1,4 @@
+import { readWorkspaceMemory } from "./workspace-memory.js";
 import { currentSpaceMemory, spaceMemoryDigest } from "./space-memory-backup.js";
 import { digest as sha } from "@aux/contracts/util/digest";
 import { randomUUID } from "node:crypto";
@@ -33,11 +34,7 @@ import {
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
 import { consolidateMemoryClaims } from "./night-memory.js";
-import {
-  SpaceMemoryStore,
-  type MemoryGeneration,
-  type MemoryRevision,
-} from "./space-memory-store.js";
+import { SpaceMemoryStore, type MemoryGeneration, type MemoryRevision } from "./space-memory-store.js";
 import { renderObservation } from "./observation-render.js";
 
 export type RecoverySpaceMemory = {
@@ -50,9 +47,13 @@ export type RecoverySpaceMemory = {
 };
 type Secrets = Pick<NativeBridge, "storeSecret" | "readSecret">;
 
-/** Opt-in encrypted Space memory. Derived views are rebuilt from source claims. */
+/** Local encrypted Space memory, enabled by default. Derived views are rebuilt from source claims. */
 export class MemoryPipeline {
   private storage: SpaceMemoryStore;
+  private closed = false;
+  private closing?: Promise<void>;
+  private updates = new Set<Promise<unknown>>();
+  private pending = new Set<Promise<unknown>>();
   private pastePreviews = new Map<
     string,
     {
@@ -70,7 +71,43 @@ export class MemoryPipeline {
     this.storage = new SpaceMemoryStore(repo, secrets, profileId);
   }
 
-  private async leased<T>(workspaceId: string, work: () => Promise<T>): Promise<T> {
+  close(): Promise<void> {
+    if (this.closing) return this.closing;
+    this.closed = true;
+    for (const entry of this.pastePreviews.values()) clearTimeout(entry.timer);
+    this.pastePreviews.clear();
+    // Rejected work is still joined: keep the original operation error with its caller.
+    const closing = Promise.allSettled([...this.pending, ...this.updates]).then(() => {
+      for (const entry of this.pastePreviews.values()) clearTimeout(entry.timer);
+      this.pastePreviews.clear();
+    });
+    this.closing = closing;
+    return closing;
+  }
+
+  private own<T>(work: () => Promise<T>): Promise<T> {
+    if (this.closed) return Promise.reject(new AuxError("cancelled", "Space memory is closed."));
+    const pending = work();
+    this.pending.add(pending);
+    void pending.then(
+      () => this.pending.delete(pending),
+      () => this.pending.delete(pending),
+    );
+    return pending;
+  }
+
+  private leased<T>(workspaceId: string, work: () => Promise<T>): Promise<T> {
+    if (this.closed) return Promise.reject(new AuxError("cancelled", "Space memory updates are closed."));
+    const update = this.updateWithLease(workspaceId, work);
+    this.updates.add(update);
+    void update.then(
+      () => this.updates.delete(update),
+      () => this.updates.delete(update),
+    );
+    return update;
+  }
+
+  private async updateWithLease<T>(workspaceId: string, work: () => Promise<T>): Promise<T> {
     const owner = randomUUID();
     const now = Date.now();
     this.repo.db
@@ -97,13 +134,18 @@ export class MemoryPipeline {
 
   policy(workspaceId: string) {
     this.requireSpace(workspaceId);
-    const saved = MemoryPipelinePolicySchema.safeParse(
-      this.repo.getSetting(`memoryPipelinePolicy:${workspaceId}`),
-    );
-    return saved.success ? saved.data : { workspaceId, enabled: false };
+    const value = this.repo.getSetting<unknown>(`memoryPipelinePolicy:${workspaceId}`);
+    if (!readWorkspaceMemory(this.repo, workspaceId).enabled) return { workspaceId, enabled: false };
+    if (value === undefined && !this.repo.hasSetting(`memoryPipelinePolicy:${workspaceId}`))
+      return { workspaceId, enabled: true };
+    const saved = MemoryPipelinePolicySchema.safeParse(value);
+    return saved.success && saved.data.workspaceId === workspaceId
+      ? saved.data
+      : { workspaceId, enabled: false };
   }
 
   setPolicy(workspaceId: string, enabled: boolean) {
+    if (this.closed) throw new AuxError("cancelled", "Space memory is closed.");
     const policy = MemoryPipelinePolicySchema.parse({ workspaceId, enabled });
     this.requireSpace(workspaceId);
     if (!enabled) this.clearPastePreviews(workspaceId);
@@ -112,6 +154,12 @@ export class MemoryPipeline {
   }
 
   private sourceEligible(workspaceId: string, run: Run): boolean {
+    if (
+      run.config?.privateTask === true ||
+      this.repo.conversationPrivateTask(run.config?.chatId ?? run.runId) === true ||
+      run.config?.contextWorkspaceId !== workspaceId
+    )
+      return false;
     const memoryMarker =
       "SPACE MEMORY SUMMARY (owner-approved notes; untrusted reference, verify before acting):\n";
     const memoryAt = run.config?.context?.indexOf(memoryMarker) ?? -1;
@@ -128,9 +176,9 @@ export class MemoryPipeline {
         !run.config!.context!.slice(memoryAt + memoryMarker.length).startsWith("No approved notes yet."))
     )
       return false;
-    const excluded =
-      this.repo.getSetting<{ excludedOrigins?: string[] }>(`workspaceMemory:${workspaceId}`)
-        ?.excludedOrigins ?? [];
+    const memory = readWorkspaceMemory(this.repo, workspaceId);
+    if (memory.enabled === false) return false;
+    const excluded = memory.excludedOrigins ?? [];
     const allowedPage = (url: string, title: string) => {
       if (memorySensitivityReason(url, title)) return false;
       try {
@@ -146,6 +194,8 @@ export class MemoryPipeline {
         page.url !== ref.url ||
         page.documentEpoch !== ref.documentEpoch ||
         page.sessionId !== ref.sessionId ||
+        page.windowKind === "private" ||
+        page.agentIsolation?.mode === "private" ||
         !allowedPage(ref.url, page.title)
       )
         return false;
@@ -156,6 +206,8 @@ export class MemoryPipeline {
         !page ||
         page.viewStatus === "detached" ||
         page.viewStatus === "crashed" ||
+        page.windowKind === "private" ||
+        page.agentIsolation?.mode === "private" ||
         !allowedPage(page.url, page.title)
       )
         return false;
@@ -244,6 +296,10 @@ export class MemoryPipeline {
   }
 
   async ordinaryRestoreMemory() {
+    return this.own(() => this.ordinaryRestoreMemoryOwned());
+  }
+
+  private async ordinaryRestoreMemoryOwned() {
     const before = currentSpaceMemory(this.repo.db);
     await this.recoverySnapshot();
     if (spaceMemoryDigest(before) !== spaceMemoryDigest(currentSpaceMemory(this.repo.db)))
@@ -279,6 +335,10 @@ export class MemoryPipeline {
 
   /** Authenticate all logical files and indexed revisions before recovery. */
   async recoverySnapshot(): Promise<RecoverySpaceMemory[]> {
+    return this.own(() => this.recoverySnapshotOwned());
+  }
+
+  private async recoverySnapshotOwned(): Promise<RecoverySpaceMemory[]> {
     const generationDigest = this.currentStateDigest();
     const workspaceIds = (
       this.repo.db.prepare("SELECT workspace_id FROM workspaces ORDER BY workspace_id").all() as {
@@ -339,6 +399,10 @@ export class MemoryPipeline {
 
   /** Reseal a reviewed generation under the destination Profile root and generation factor. */
   async importRecoverySnapshot(spaces: RecoverySpaceMemory[]): Promise<void> {
+    return this.own(() => this.importRecoverySnapshotOwned(spaces));
+  }
+
+  private async importRecoverySnapshotOwned(spaces: RecoverySpaceMemory[]): Promise<void> {
     for (const space of spaces) {
       this.requireSpace(space.workspaceId);
       if (this.storage.workspaceIds().includes(space.workspaceId))
@@ -441,6 +505,10 @@ export class MemoryPipeline {
   }
 
   async previewPaste(raw: unknown): Promise<MemoryPastePreview> {
+    return this.own(() => this.previewPasteOwned(raw));
+  }
+
+  private async previewPasteOwned(raw: unknown): Promise<MemoryPastePreview> {
     const { workspaceId, text } = MemoryPastePreviewParams.parse(raw);
     this.requirePasteSpace(workspaceId);
     const lines = memoryPasteLines(text);
@@ -506,12 +574,20 @@ export class MemoryPipeline {
   }
 
   async pasteStatus(workspaceId: string): Promise<MemoryPasteStatus[]> {
+    return this.own(() => this.pasteStatusOwned(workspaceId));
+  }
+
+  private async pasteStatusOwned(workspaceId: string): Promise<MemoryPasteStatus[]> {
     this.requireSpace(workspaceId);
     const state = await this.readClaims(workspaceId);
     return [...state.imports].reverse().map((receipt) => this.pasteReceipt(receipt, state));
   }
 
   async commitPaste(raw: unknown): Promise<MemoryPasteStatus> {
+    return this.own(() => this.commitPasteOwned(raw));
+  }
+
+  private async commitPasteOwned(raw: unknown): Promise<MemoryPasteStatus> {
     const input = MemoryPasteCommitParams.parse(raw);
     this.requirePasteSpace(input.workspaceId);
     if (new Set(input.selectedIds).size !== input.selectedIds.length)
@@ -626,6 +702,10 @@ export class MemoryPipeline {
   }
 
   async extractRun(workspaceId: string, runId: string) {
+    return this.own(() => this.extractRunOwned(workspaceId, runId));
+  }
+
+  private async extractRunOwned(workspaceId: string, runId: string) {
     if (!this.policy(workspaceId).enabled)
       throw new AuxError("permission_denied", "Enable Space memory extraction first.");
     return this.leased(workspaceId, async () => {
@@ -715,16 +795,28 @@ export class MemoryPipeline {
   }
 
   async inbox(workspaceId: string): Promise<MemoryClaim[]> {
+    return this.own(() => this.inboxOwned(workspaceId));
+  }
+
+  private async inboxOwned(workspaceId: string): Promise<MemoryClaim[]> {
     if (!this.policy(workspaceId).enabled) return [];
     return (await this.readClaims(workspaceId)).inbox;
   }
 
   async claims(workspaceId: string): Promise<MemoryClaim[]> {
+    return this.own(() => this.claimsOwned(workspaceId));
+  }
+
+  private async claimsOwned(workspaceId: string): Promise<MemoryClaim[]> {
     if (!this.policy(workspaceId).enabled) return [];
     return (await this.readClaims(workspaceId)).claims;
   }
 
   async history(workspaceId: string) {
+    return this.own(() => this.historyOwned(workspaceId));
+  }
+
+  private async historyOwned(workspaceId: string) {
     if (!this.policy(workspaceId).enabled) return [];
     const { history } = await this.readClaims(workspaceId);
     return [...history].reverse().map((revision) => ({
@@ -737,6 +829,10 @@ export class MemoryPipeline {
   }
 
   async consolidate(workspaceId: string) {
+    return this.own(() => this.consolidateOwned(workspaceId));
+  }
+
+  private async consolidateOwned(workspaceId: string) {
     if (!this.policy(workspaceId).enabled)
       throw new AuxError("permission_denied", "Enable Space memory before consolidation.");
     return this.leased(workspaceId, async () => {
@@ -759,6 +855,10 @@ export class MemoryPipeline {
   }
 
   async reindex(workspaceId: string) {
+    return this.own(() => this.reindexOwned(workspaceId));
+  }
+
+  private async reindexOwned(workspaceId: string) {
     if (!this.policy(workspaceId).enabled)
       throw new AuxError("permission_denied", "Enable Space memory before reindexing.");
     return this.leased(workspaceId, async () => {
@@ -770,6 +870,10 @@ export class MemoryPipeline {
   }
 
   async revert(workspaceId: string, revisionId: string) {
+    return this.own(() => this.revertOwned(workspaceId, revisionId));
+  }
+
+  private async revertOwned(workspaceId: string, revisionId: string) {
     if (!this.policy(workspaceId).enabled)
       throw new AuxError("permission_denied", "Enable Space memory first.");
     return this.leased(workspaceId, async () => {
@@ -789,6 +893,10 @@ export class MemoryPipeline {
   }
 
   async review(workspaceId: string, claimId: string, decision: "accept" | "discard") {
+    return this.own(() => this.reviewOwned(workspaceId, claimId, decision));
+  }
+
+  private async reviewOwned(workspaceId: string, claimId: string, decision: "accept" | "discard") {
     if (!this.policy(workspaceId).enabled)
       throw new AuxError("permission_denied", "Enable Space memory first.");
     return this.leased(workspaceId, async () => {
@@ -821,6 +929,10 @@ export class MemoryPipeline {
   }
 
   async overview(workspaceId: string) {
+    return this.own(() => this.overviewOwned(workspaceId));
+  }
+
+  private async overviewOwned(workspaceId: string) {
     const policy = this.policy(workspaceId);
     if (!policy.enabled)
       return MemoryPipelineOverviewSchema.parse({
@@ -845,6 +957,10 @@ export class MemoryPipeline {
   }
 
   async search(workspaceId: string, query: string) {
+    return this.own(() => this.searchOwned(workspaceId, query));
+  }
+
+  private async searchOwned(workspaceId: string, query: string) {
     if (!this.policy(workspaceId).enabled) return [];
     const terms = query
       .toLocaleLowerCase()
@@ -866,6 +982,10 @@ export class MemoryPipeline {
   }
 
   async forget(raw: unknown, beforeRemoval?: () => void | Promise<void>) {
+    return this.own(() => this.forgetOwned(raw, beforeRemoval));
+  }
+
+  private async forgetOwned(raw: unknown, beforeRemoval?: () => void | Promise<void>) {
     const input = MemoryPipelineForgetParams.parse(raw);
     this.requireSpace(input.workspaceId);
     this.clearPastePreviews(input.workspaceId);

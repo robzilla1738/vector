@@ -474,7 +474,8 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const historySearch: LoopTool = {
-    description: "Search browser history by title/URL text — returns the most recent matching visits.",
+    description:
+      "Search eligible browser history by meaning using an installed local embedding model. Reports keyword fallback when local embeddings are unavailable.",
     byline: "Aux history",
     inputSchema: z.object({
       query: z.string().min(1).max(500),
@@ -485,9 +486,12 @@ export function buildToolManifest(): LoopToolManifest {
         .object({ query: z.string().min(1).max(500), limit: z.number().int().positive().max(50).optional() })
         .parse(raw);
       return {
-        output: {
-          entries: await need(ctx.deps.historySearch, "history_search")(input.query, input.limit ?? 10),
-        },
+        output: await need(ctx.deps.historySearch, "history_search")(input.query, input.limit ?? 10, {
+          runId: ctx.runId,
+          threadId: ctx.threadId,
+          turnId: ctx.turnId,
+          signal: ctx.signal,
+        }),
       };
     },
   };

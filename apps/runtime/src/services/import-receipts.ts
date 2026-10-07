@@ -22,18 +22,31 @@ export function loadImportReceipts(repo: Repo): ImportJob[] {
     const job = parsed.data;
     if (job.done) job.report = { jobId: job.jobId, cancelled: job.cancelled, results: job.progress };
     if (job.done) return [job];
-    job.done = true;
+    // A restart never proves a native backend joined or reverses accepted writes.
+    // Keep the saved operation identities for reduction-only native reconciliation.
     job.interrupted = true;
+    for (const op of job.nativeOperations ?? [])
+      if (op.state === "prepared") {
+        op.state = "joined";
+        job.cancelled = true;
+        for (const row of job.progress)
+          if (
+            row.source === op.sourceId &&
+            row.profileId === op.profileId &&
+            op.categories.includes(row.category)
+          )
+            row.state = "skipped";
+      }
     job.updatedAt = Date.now();
     job.revision++;
     job.error =
-      "Aux stopped before this import finished. Review the sources before retrying. Confirmed items remain available.";
-    job.progress = job.progress.map((entry) =>
-      entry.state === "running"
-        ? { ...entry, state: "error", detail: "Interrupted before this category finished." }
-        : entry,
-    );
-    job.report = { jobId: job.jobId, cancelled: job.cancelled, results: job.progress };
+      "Aux stopped before native import completion was confirmed. Some accepted items may already be imported.";
+    if (job.nativeOperations?.length && job.nativeOperations.every((op) => op.state === "joined")) {
+      job.done = true;
+      job.interrupted = false;
+      job.error = undefined;
+      job.report = { jobId: job.jobId, cancelled: job.cancelled, results: job.progress };
+    }
     return [job];
   });
 }
@@ -46,6 +59,8 @@ export function saveImportReceipts(repo: Repo, jobs: ImportJobStatus[]): void {
       done: job.done,
       cancelled: job.cancelled,
       interrupted: job.interrupted,
+      acknowledged: job.acknowledged,
+      nativeOperations: job.nativeOperations,
       selections: job.selections,
       startedAt: job.startedAt,
       updatedAt: job.updatedAt,
@@ -53,7 +68,7 @@ export function saveImportReceipts(repo: Repo, jobs: ImportJobStatus[]): void {
       // Reader/native errors can contain source paths or URLs. Persist generic
       // recovery guidance instead; never retain those raw diagnostics or data.
       error: job.error
-        ? "Import stopped before all selected categories completed. Refresh the preview and review a retry."
+        ? "Import completion was not confirmed. Some accepted items may already be imported; review before starting another import."
         : undefined,
       progress: job.progress.map(({ source, label, profileId, category, state, imported, skipped }) => ({
         source,

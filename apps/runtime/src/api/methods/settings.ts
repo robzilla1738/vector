@@ -19,6 +19,19 @@ async function h_settings_get(ctx: MethodCtx): Promise<unknown> {
 async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
   const patch = { ...params };
+  if (patch.copilotModelId !== undefined) {
+    if (
+      ctx.client.external ||
+      ctx.client.codeMode ||
+      !ctx.client.nativeTurnContext ||
+      Object.keys(patch).length !== 1
+    )
+      throw new AuxError("permission_denied", "Choose Copilot models in the original Aux Settings window.");
+    await s.settings.selectCopilotModel(patch.copilotModelId, ctx.client.nativeTurnContext);
+    s.events.emit(EventTypes.SettingsChanged, { settings: s.settings.all() });
+    return { ok: true };
+  }
+
   if ((ctx.client.external || ctx.client.codeMode) && "downloadNaming" in patch)
     throw new AuxError("permission_denied", "Download naming must be changed in Aux Settings.");
   if (

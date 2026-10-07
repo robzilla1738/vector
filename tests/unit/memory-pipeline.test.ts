@@ -54,10 +54,12 @@ function fixture() {
   };
 }
 
-it("extracts completed Space runs only after opt-in and exposes bounded progressive views", async () => {
+it("extracts completed Space runs by default while respecting explicit pause and exposes bounded progressive views", async () => {
   const f = fixture();
   try {
     f.save("run-one", "The blue fixture has three items.\n\nThe green fixture has four items.");
+    expect(f.pipeline.policy(f.workspace.workspaceId).enabled).toBe(true);
+    f.pipeline.setPolicy(f.workspace.workspaceId, false);
     await expect(f.pipeline.extractRun(f.workspace.workspaceId, "run-one")).rejects.toThrow(/Enable/);
     f.pipeline.setPolicy(f.workspace.workspaceId, true);
     expect((await f.pipeline.extractRun(f.workspace.workspaceId, "run-one")).extracted).toBe(2);
@@ -393,9 +395,14 @@ it("omits sensitive and excluded page sources before extraction", async () => {
     // source, even when its URL and title appear innocuous.
     expect(await f.pipeline.sources(f.workspace.workspaceId)).toEqual([]);
     await expect(f.pipeline.extractRun(f.workspace.workspaceId, "bank-run")).rejects.toThrow(/sensitive/);
-    f.repo.setSetting(`workspaceMemory:${f.workspace.workspaceId}`, {
-      excludedOrigins: ["https://example.test"],
-    });
+    new TaskService(f.repo, new EventBus(f.repo)).setWorkspaceMemory(
+      f.workspace.workspaceId,
+      0,
+      "",
+      true,
+      undefined,
+      ["https://example.test"],
+    );
     expect(await f.pipeline.sources(f.workspace.workspaceId)).toEqual([]);
     await expect(f.pipeline.extractRun(f.workspace.workspaceId, "article-run")).rejects.toThrow(/excluded/);
   } finally {
@@ -689,20 +696,13 @@ it("restores the CAS generation when another writer publishes and rolls back dur
     const ordinary = new SpaceMemoryStore(f.repo, f.native, "profile-one");
     const state = await ordinary.read(id);
     const prior = state.prior!;
-    let resolvePublished!: () => void;
-    const published = {
-      promise: new Promise<void>((resolve) => {
-        resolvePublished = resolve;
-      }),
-      resolve: () => resolvePublished(),
+    const deferred = () => {
+      let resolve!: () => void;
+      const promise = new Promise<void>((done) => { resolve = done; });
+      return { promise, resolve };
     };
-    let resolveReleaseRetirement!: () => void;
-    const releaseRetirement = {
-      promise: new Promise<void>((resolve) => {
-        resolveReleaseRetirement = resolve;
-      }),
-      resolve: () => resolveReleaseRetirement(),
-    };
+    const published = deferred();
+    const releaseRetirement = deferred();
     const intervening = new SpaceMemoryStore(
       f.repo,
       {
@@ -749,6 +749,75 @@ it("restores the CAS generation when another writer publishes and rolls back dur
     expect(await f.pipeline.inbox(id)).toEqual(originalInbox);
     expect([...f.secrets.keys()].filter((name) => name.startsWith("mem_"))).toEqual([prior.keyName]);
   } finally {
+    f.close();
+  }
+});
+
+it("does not extract a private chat into durable Space memory", async () => {
+  const f = fixture();
+  try {
+    f.repo.saveRun({
+      runId: "private-run",
+      goal: "Private research",
+      status: "completed",
+      pageIds: [],
+      config: { chatId: "private-chat", privateTask: true, contextWorkspaceId: f.workspace.workspaceId },
+      result: { report: "A completed private report must never become a saved note." },
+      createdAt: Date.now(),
+      endedAt: Date.now(),
+    });
+    await expect(f.pipeline.extractRun(f.workspace.workspaceId, "private-run")).rejects.toThrow();
+    expect(await f.pipeline.inbox(f.workspace.workspaceId)).toEqual([]);
+    expect(f.db.prepare("SELECT count(*) AS count FROM memory_files").get()?.count).toBe(0);
+  } finally {
+    f.close();
+  }
+});
+
+it("joins an accepted native memory-key write before shutdown and refuses new updates", async () => {
+  const f = fixture();
+  let release!: () => void;
+  let accepted!: () => void;
+  const acceptedWrite = new Promise<void>((resolve) => {
+    accepted = resolve;
+  });
+  const heldWrite = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const store = f.native.storeSecret.bind(f.native);
+  f.native.storeSecret = async (name, value) => {
+    if (value) {
+      accepted();
+      await heldWrite;
+    }
+    return store(name, value);
+  };
+  try {
+    f.save("held-memory-run", "The held native memory write contains a confirmed research finding.");
+    const extraction = f.pipeline.extractRun(f.workspace.workspaceId, "held-memory-run");
+    await acceptedWrite;
+    let closed = false;
+    const closing = f.pipeline.close();
+    expect(f.pipeline.close()).toBe(closing);
+    void closing.then(() => {
+      closed = true;
+    });
+    await Promise.resolve();
+    expect(closed).toBe(false);
+    await expect(f.pipeline.extractRun(f.workspace.workspaceId, "held-memory-run")).rejects.toMatchObject({
+      code: "cancelled",
+    });
+    expect(f.db.prepare("SELECT COUNT(*) AS count FROM memory_pipeline_leases").get()).toEqual({ count: 1 });
+    release();
+    expect(await extraction).toEqual({ extracted: 1 });
+    await closing;
+    expect(f.db.prepare("SELECT COUNT(*) AS count FROM memory_pipeline_leases").get()).toEqual({ count: 0 });
+    expect(f.db.prepare("SELECT run_id FROM memory_pipeline_watermarks").get()).toEqual({
+      run_id: "held-memory-run",
+    });
+  } finally {
+    release();
+    await f.pipeline.close();
     f.close();
   }
 });

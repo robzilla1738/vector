@@ -93,6 +93,7 @@ function ContentControl({
   checked,
   value,
   inputId,
+  ariaLabel,
 }: {
   command: ShellCommandId;
   scopeId: string;
@@ -103,7 +104,8 @@ function ContentControl({
   className?: string;
   kind?: "button" | "checkbox" | "select" | "summary";
   checked?: boolean;
-  value?: number;
+  value?: number | string;
+  ariaLabel?: string;
   inputId?: string;
 }) {
   const [attach, run] = useMemoryElementControl(
@@ -128,7 +130,7 @@ function ContentControl({
       "select",
       {
         id: inputId,
-        "aria-label": "Page-content retention",
+        "aria-label": ariaLabel ?? "Page-content retention",
         "data-command-id": command,
         ref: attach,
         disabled,
@@ -394,6 +396,8 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
     scope: ContentScope;
     items: ContentMemoryMatch[];
     complete: boolean;
+    message?: string;
+    mode?: "semantic" | "lexical";
   } | null>(null);
   const visibleMatches = searchState?.scope === queryScope ? searchState.items : [];
   const searching =
@@ -487,10 +491,19 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
     const term = query.trim();
     if (!term || !policy?.enabled || memory.enabled === false || bridge.privateMode) return;
     const timer = setTimeout(() => {
-      void call("workspaces.contentMemory.search", { workspaceId: queryScope.workspaceId, query: term })
+      void call("workspaces.contentMemory.semanticSearch", {
+        workspaceId: queryScope.workspaceId,
+        query: term,
+      })
         .then((value) => {
           if (queryScope.active && !bridge.privateMode && ownsWorkspace())
-            setSearchState({ scope: queryScope, items: value, complete: true });
+            setSearchState({
+              scope: queryScope,
+              items: value.matches,
+              complete: true,
+              message: value.message,
+              mode: value.mode,
+            });
         })
         .catch((reason) => {
           if (queryScope.active && !bridge.privateMode && ownsWorkspace()) {
@@ -545,16 +558,14 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
     if (!operation) return;
     return constructAwaitedOperation(
       () =>
-        useStore
-          .getState()
-          .startRun(question, {
-            ownsDraft: true,
-            reveal: false,
-            scope: "new",
-            chatId: crypto.randomUUID(),
-            presentation: "conversation",
-            memorySource: { workspaceId: memory.workspaceId, memoryId: document.memoryId },
-          }),
+        useStore.getState().startRun(question, {
+          ownsDraft: true,
+          reveal: false,
+          scope: "new",
+          chatId: crypto.randomUUID(),
+          presentation: "conversation",
+          memorySource: { workspaceId: memory.workspaceId, memoryId: document.memoryId },
+        }),
       (run) => {
         if (run && current() && questionScope.active) {
           setQuestion("");
@@ -567,6 +578,28 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
         finish(operation);
       },
       () => current() && questionScope.active,
+    );
+  }
+  const [localModels, setLocalModels] = useState<{
+    scope: ContentScope;
+    items: Array<{ modelId: string; digest: string }>;
+  } | null>(null);
+  const currentModels = localModels?.scope === scope ? localModels.items : [];
+  function detectModels() {
+    assertCurrent();
+    const operation = begin("models");
+    if (!operation) return;
+    return constructAwaitedOperation(
+      () => call("workspaces.contentMemory.embeddingModels", { workspaceId: memory.workspaceId }),
+      (items) => {
+        if (current()) setLocalModels({ scope, items });
+        return items;
+      },
+      undefined,
+      () => {
+        finish(operation);
+      },
+      current,
     );
   }
   function change(next: ContentMemoryPolicy) {
@@ -637,9 +670,9 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
     <section className="browsing-memory" aria-label="Page-content recall">
       <h4>Page-content recall</h4>
       <p {...staticHintProps}>
-        Use a tab’s “Remember article” action to save readable text in this Space. Aux only captures an active
-        HTTPS article after you confirm its site. Saved content stays protected on this device and expires
-        automatically.
+        Eligible readable HTTPS articles are remembered locally after you spend time on the tab. Sensitive
+        pages and private windows are excluded. You can pause capture or forget saved articles. Semantic
+        search uses an installed local embedding model; content stays on this device.
       </p>
       {needsFreshBackup && <MemoryRecoveryNotice possible={possiblyRemoved} />}
       {policy && (
@@ -659,7 +692,9 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
               Use remembered article content
               <small>
                 {policy.enabled
-                  ? "Search and capture are available for allowed sites."
+                  ? policy.originScope === "safe-sites"
+                    ? "Eligible HTTPS articles stay local. Sensitive and private pages are excluded."
+                    : "Search and capture are available for allowed sites."
                   : "Paused. Saved articles remain until they expire or you forget them."}
               </small>
             </span>
@@ -689,6 +724,48 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
               <option value={90}>90 days</option>
             </ContentControl>
           </label>
+          <div {...staticRowProps}>
+            <ContentControl
+              command="detect-content-memory-models"
+              scopeId={memory.workspaceId}
+              disabled={busy || !policy.enabled || memory.enabled === false}
+              onError={report}
+              action={detectModels}
+            >
+              Detect local embedding models
+            </ContentControl>
+            {localModels?.scope === scope && !currentModels.length && (
+              <span {...staticHintProps}>
+                No installed embedding-capable Ollama model detected. Search uses keyword matches.
+              </span>
+            )}
+          </div>
+          {!!currentModels.length && (
+            <label className="browsing-retention">
+              Local semantic model
+              <ContentControl
+                command="select-content-memory-model"
+                scopeId={memory.workspaceId}
+                kind="select"
+                ariaLabel="Local semantic model"
+                value={policy.semanticModelId ?? ""}
+                disabled={busy}
+                onError={report}
+                action={(value) => {
+                  if (value && !currentModels.some((model) => model.modelId === value))
+                    throw new Error("Choose a currently detected local embedding model.");
+                  return change({ ...policy, semanticModelId: value || undefined });
+                }}
+              >
+                <option value="">Automatic · installed embedding model</option>
+                {currentModels.map((model) => (
+                  <option key={model.modelId} value={model.modelId}>
+                    {model.modelId}
+                  </option>
+                ))}
+              </ContentControl>
+            </label>
+          )}
           <details open={sitesOpen}>
             <ContentControl
               command="toggle-content-memory-sites"
@@ -700,11 +777,14 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
                 setSitesOpen((value) => !value);
               }}
             >
-              Allowed sites · {policy.allowedOrigins.length}
+              {policy.originScope === "safe-sites"
+                ? "Eligible sites · sensitive pages excluded"
+                : `Allowed sites · ${policy.allowedOrigins.length}`}
             </ContentControl>
             <p {...staticHintProps}>
-              Only articles from these exact sites can be saved. Removing a site deletes its saved content
-              from this Space.
+              {policy.originScope === "safe-sites"
+                ? "Eligible HTTPS articles are remembered locally by default. Banking, health, login and private pages are excluded. Exclude additional sites in Space memory above."
+                : "Only articles from these exact sites can be saved. Removing a site deletes its saved content from this Space."}
             </p>
             <div className="browsing-memory-list">
               {policy.allowedOrigins.map((origin) => (
@@ -728,7 +808,7 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
                 </article>
               ))}
             </div>
-            {!policy.allowedOrigins.length && (
+            {policy.originScope !== "safe-sites" && !policy.allowedOrigins.length && (
               <p {...staticHintProps}>
                 No sites allowed yet. Confirm “Remember article” on an active tab to add one.
               </p>
@@ -742,6 +822,12 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
             onChange={(event) => setQuery(event.target.value)}
             disabled={!policy.enabled || memory.enabled === false}
           />
+          {searchState?.scope === queryScope && searchState.message && (
+            <p {...staticHintProps}>
+              {searchState.mode === "semantic" ? "Semantic search · " : "Keyword search · "}
+              {searchState.message}
+            </p>
+          )}
           {query.trim() && policy.enabled && !visibleMatches.length && (
             <p {...staticHintProps}>
               {searching ? "Searching remembered articles…" : "No matching remembered articles."}

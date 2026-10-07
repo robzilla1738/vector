@@ -36,7 +36,7 @@ export function makeInvoker(s: Services) {
       s.agentConnections &&
       !s.agentConnections.isLive({ external: true, connectionId: client.connectionId, scope })
     ) {
-      s.externalSessions?.sweepIdle();
+      await s.externalSessions?.sweepIdle();
       throw new AuxError(
         "permission_denied",
         "This external connection expired, was revoked, or changed scope.",
@@ -46,24 +46,18 @@ export function makeInvoker(s: Services) {
       if (method === "agent.js.run" || method === "agent.js.reset") {
         // The code-mode host calls this same invoker with the same client.
         // Each nested method is checked against the connection's scope.
-      } else if (
-        [
-          "pages.close",
-          "pages.moveToWindow",
-          "pages.navigate",
-          "pages.back",
-          "pages.forward",
-          "pages.reload",
-          "pages.stop",
-          "pages.resume",
-        ].includes(method) ||
-        (method === "pages.dialog" && params.action && params.action !== "list")
-      )
-        throw new AuxError("permission_denied", "Use a task-bound pages.execute program for browser actions");
-      if (method === "workspaces.create" || method === "pages.open" || method === "runs.start") {
-        throw new AuxError("permission_denied", "This scoped connection cannot expand its own authority");
       }
-      if (method === "tasks.create") {
+      if (method === "workspaces.create" || method === "pages.moveToWindow" || method === "pages.resume" || method === "pages.takeover")
+        throw new AuxError("permission_denied", "Browser organization and human control are managed in Aux.");
+      if (method === "pages.open" || method === "runs.start") {
+        if (!params.taskId || params.expectedRevision === undefined)
+          throw new AuxError("invalid_params", "Scoped creation requires taskId and expectedRevision.");
+        const task = deps.requireScopedTask(scope, params.taskId);
+        if (task.revision !== params.expectedRevision)
+          throw new AuxError("conflict", "Task revision changed before creating browser authority.");
+        for (const pageId of params.pageIds ?? (params.pageId ? [params.pageId] : []))
+          deps.requireScopedPage(scope, pageId, client.connectionId);
+      } else if (method === "tasks.create") {
         if (scope.kind === "workspace" || scope.kind === "session") {
           if (params.workspaceId !== scope.workspaceId)
             throw new AuxError(
@@ -116,10 +110,12 @@ export function makeInvoker(s: Services) {
         const pageId = typeof params.pageId === "string" ? params.pageId : params.program?.pageId;
         if (typeof pageId !== "string") throw new AuxError("permission_denied", "A scoped page is required");
         deps.requireScopedPage(scope, pageId, client.connectionId);
-        if (method === "pages.execute" || method === "pages.cuaExecute") {
+        if (["pages.execute", "pages.cuaExecute", "pages.close", "pages.navigate", "pages.back", "pages.forward", "pages.reload", "pages.stop"].includes(method) || (method === "pages.dialog" && params.action !== "list")) {
           if (typeof params.taskId !== "string" || typeof params.expectedRevision !== "number")
             throw new AuxError("invalid_params", "Scoped page programs require taskId and expectedRevision");
-          deps.requireScopedTask(scope, params.taskId);
+          const task = deps.requireScopedTask(scope, params.taskId);
+          if (task.revision !== params.expectedRevision)
+            throw new AuxError("conflict", "Task revision changed before using this page.");
         }
       } else if (method === "results.generate") {
         if (!params.taskId || !params.expectedRevision)
@@ -181,8 +177,11 @@ export function makeInvoker(s: Services) {
       ) {
         throw new AuxError("permission_denied", "This method is outside the connection's task scope");
       }
-      if (method === "tasks.start" && Array.isArray(params.pageIds))
-        for (const pageId of params.pageIds) deps.requireScopedPage(scope, pageId, client.connectionId);
+      if (method === "tasks.start" || method === "tasks.replaceAgent") {
+        if (params.contextMemoryIds?.length || params.mentions?.length || params.contextPageRefs?.length || params.defaultWorkspaceId || params.chatId || params.setId)
+          throw new AuxError("permission_denied", "External runs inherit only the reviewed task context and scoped attachments.");
+        for (const pageId of params.pageIds ?? (params.pageId ? [params.pageId] : [])) deps.requireScopedPage(scope, pageId, client.connectionId);
+      }
     }
 
     // S6.7 — a scoped connection's work lands on its first-class session run:
@@ -299,6 +298,9 @@ export function makeInvoker(s: Services) {
     }
 
     return tracked(async () => {
+      // Closing destroys the original attachment. Its handler proves exact creator ownership
+      // and waits for the native close ACK; a post-close document-read fence would be invalid.
+      if (scope && ctx.method === "pages.close") return METHODS[ctx.method](ctx);
       let target = pageToolTarget(ctx.method, params);
       if (externalRunId && ctx.method === "responses.body") {
         if (!s.responses) throw new AuxError("backend_unavailable", "Response capture is unavailable.");
@@ -400,6 +402,7 @@ export function makeInvoker(s: Services) {
   return Object.assign(invoke, {
     eventVisible: (scope: AgentConnectionScope, connectionId: string | undefined, event: AuxEvent) =>
       deps.eventVisible(scope, connectionId, event),
+    endConnection: (connectionId: string) => deps.endConnection(connectionId),
     dispose: () => deps.dispose(),
   });
 }

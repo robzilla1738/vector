@@ -18,6 +18,9 @@ export type CalendarTriggerAccounts = {
 
 export function routineScheduleSummary(trigger: RoutineTrigger): string {
   if (trigger.kind === "manual") return "On demand";
+  if (trigger.kind === "rrule") return `${trigger.rrule} · ${trigger.timezone}`;
+  if (trigger.kind === "heartbeat")
+    return `Heartbeat every ${trigger.intervalMinutes} minutes · ${trigger.timezone}`;
   if (trigger.kind === "monitor") return `Every ${trigger.intervalMinutes} minutes · ${trigger.timezone}`;
   if (trigger.kind === "site_notification") return `Site notification · ${trigger.origin}`;
   if (trigger.kind === "page_change") return `Page change · ${trigger.url}`;
@@ -53,7 +56,9 @@ export function RoutineSchedule({
       : "09:00",
   );
   const [days, setDays] = useState(trigger.kind === "schedule" ? trigger.days : [1, 2, 3, 4, 5]);
-  const [interval, setInterval] = useState(trigger.kind === "monitor" ? trigger.intervalMinutes : 60);
+  const [interval, setInterval] = useState(
+    trigger.kind === "monitor" || trigger.kind === "heartbeat" ? trigger.intervalMinutes : 60,
+  );
   const [site, setSite] = useState(
     trigger.kind === "site_notification" ? trigger.origin : trigger.kind === "page_change" ? trigger.url : "",
   );
@@ -65,10 +70,15 @@ export function RoutineSchedule({
   const [beforeMinutes, setBeforeMinutes] = useState(
     trigger.kind === "calendar_event" ? trigger.beforeMinutes : 0,
   );
-  const timezone =
-    trigger.kind === "schedule" || trigger.kind === "monitor"
-      ? trigger.timezone
-      : Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const [timezone, setTimezone] = useState(
+    "timezone" in trigger ? trigger.timezone : Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+  );
+  const [rrule, setRrule] = useState(
+    trigger.kind === "rrule" ? trigger.rrule : "FREQ=MONTHLY;BYDAY=MO;BYSETPOS=1",
+  );
+  const [startAt, setStartAt] = useState(
+    new Date(trigger.kind === "rrule" ? trigger.startAt : Date.now()).toISOString(),
+  );
   const selectedGrant = calendar?.choices.find((choice) => choice.grantId === grantId);
   const saveDisabled = (kind === "schedule" && !days.length) || (kind === "calendar_event" && !selectedGrant);
 
@@ -84,7 +94,8 @@ export function RoutineSchedule({
             days,
           })
         : "Choose a time and at least one day.";
-  if (kind === "monitor")
+  if (kind === "rrule") summary = `${rrule} · ${timezone}`;
+  if (kind === "monitor" || kind === "heartbeat")
     summary = Number.isFinite(interval)
       ? routineScheduleSummary({ kind, timezone, intervalMinutes: interval })
       : "Choose an interval.";
@@ -101,7 +112,13 @@ export function RoutineSchedule({
       onSubmit={(event) => {
         event.preventDefault();
         if (kind === "manual") return onSave({ kind });
-        if (kind === "monitor") return onSave({ kind, timezone, intervalMinutes: interval });
+        if (kind === "rrule") {
+          const at = Date.parse(startAt);
+          if (Number.isFinite(at)) onSave({ kind, timezone, startAt: at, rrule });
+          return;
+        }
+        if (kind === "monitor" || kind === "heartbeat")
+          return onSave({ kind, timezone, intervalMinutes: interval });
         if (kind === "schedule") {
           const [hour, minute] = time.split(":").map(Number);
           if (time && days.length) onSave({ kind, timezone, hour: hour!, minute: minute!, days });
@@ -133,6 +150,8 @@ export function RoutineSchedule({
           <select value={kind} onChange={(event) => setKind(event.target.value as RoutineTrigger["kind"])}>
             {mode === "edit" && <option value="manual">On demand</option>}
             <option value="schedule">Scheduled time</option>
+            <option value="rrule">Recurrence rule</option>
+            <option value="heartbeat">Heartbeat</option>
             <option value="monitor">Recurring monitor</option>
             <option value="site_notification">Site notification</option>
             <option value="page_change">Page change</option>
@@ -276,7 +295,33 @@ export function RoutineSchedule({
             </p>
           </>
         )}
-        {kind === "monitor" && (
+        {kind === "rrule" && (
+          <>
+            <label>
+              Recurrence rule
+              <input
+                required
+                value={rrule}
+                maxLength={2000}
+                onChange={(event) => setRrule(event.target.value)}
+              />
+            </label>
+            <label>
+              Start instant (ISO 8601, with UTC offset)
+              <input
+                required
+                value={startAt}
+                onChange={(event) => setStartAt(event.target.value)}
+                pattern=".*(Z|[+-][0-9]{2}:[0-9]{2})"
+              />
+            </label>
+            <p {...staticHintProps}>
+              Monthly and yearly schedules are supported. Missed-run catch-up considers the past 14 days, and
+              runs at most once on wake.
+            </p>
+          </>
+        )}
+        {(kind === "monitor" || kind === "heartbeat") && (
           <label>
             Every (minutes)
             <input
@@ -290,13 +335,19 @@ export function RoutineSchedule({
             />
           </label>
         )}
-        {(kind === "schedule" || kind === "monitor") && (
-          <p {...staticHintProps}>
-            {timezone} ·{" "}
-            {mode === "create"
-              ? "Saved task review criteria carry into this Skill."
-              : "Existing review requirements remain unchanged."}
-          </p>
+        {(kind === "schedule" || kind === "rrule" || kind === "monitor" || kind === "heartbeat") && (
+          <>
+            <label>
+              Time zone
+              <input required value={timezone} onChange={(event) => setTimezone(event.target.value)} />
+            </label>
+            <p {...staticHintProps}>
+              {timezone} ·{" "}
+              {mode === "create"
+                ? "Saved task review criteria carry into this Skill."
+                : "Existing review requirements remain unchanged."}
+            </p>
+          </>
         )}
         <output className="routine-schedule-summary" data-block>
           {summary}

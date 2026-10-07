@@ -12,7 +12,7 @@ import type { Repo } from "../store/repo.js";
 type Row = {
   connection_id: string;
   name: string;
-  client: "codex" | "claude";
+  client: AgentConnection["client"];
   scope_kind: "workspace" | "task" | "session";
   workspace_id: string;
   task_id: string | null;

@@ -16,7 +16,7 @@ type Installation = Awaited<ReturnType<typeof bridge.agentClients>>[number];
 
 export function ExternalAgents() {
   const [config, setConfig] = useState<Config | null>(null);
-  const [client, setClient] = useState<"codex" | "claude">("codex");
+  const [client, setClient] = useState<AgentConnection["client"]>("codex");
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [connections, setConnections] = useState<AgentConnection[]>([]);
@@ -73,17 +73,24 @@ export function ExternalAgents() {
     if (!availableTasks.some((task) => task.taskId === taskId)) setTaskId(availableTasks[0]?.taskId ?? "");
   }, [availableTasks, taskId]);
   useEffect(() => {
-    setName(client === "codex" ? "Codex task connection" : "Claude Code task connection");
+    setName(
+      `${client === "codex" ? "Codex" : client === "claude" ? "Claude Code" : "Cursor"} task connection`,
+    );
     setConfig(null);
   }, [client]);
 
   const snippet = !config
     ? ""
-    : client === "claude"
+    : client !== "codex"
       ? JSON.stringify(
           {
             mcpServers: {
-              "aux-browser": { type: "stdio", command: config.command, args: config.args, env: config.env },
+              "aux-browser": {
+                ...(client === "claude" ? { type: "stdio" } : {}),
+                command: config.command,
+                args: config.args,
+                env: config.env,
+              },
             },
           },
           null,
@@ -127,18 +134,46 @@ export function ExternalAgents() {
     }
   };
 
+  const connect = async () => {
+    setError("");
+    setMessage("");
+    setBusy(true);
+    setConfig(null);
+    try {
+      const scope: AgentConnectionScope =
+        scopeKind === "task" ? { kind: "task", workspaceId, taskId } : { kind: "workspace", workspaceId };
+      const result = (await bridge.invoke("agentConnections.install", {
+        name: name.trim(),
+        client,
+        scope,
+      })) as import("@aux/contracts").MethodResult<"agentConnections.install">;
+      await refresh();
+      setMessage(
+        `Connected. Configuration saved to ${result.configPath}; Aux skill installed at ${result.skillPath}. Restart the client to load it.`,
+      );
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <section className="field external-agents" aria-label="External agents">
+      <div {...auxClassDrawerSectionProps}>Developers</div>
       <CliInstallControl />
       <div {...auxClassDrawerSectionProps}>External agents</div>
       <p>
-        Connect Codex or Claude Code to one saved task or workspace through MCP. The client uses its own
+        Connect Codex, Claude Code or Cursor to one saved task or Space through MCP. The client uses its own
         account and model.
       </p>
       <div role="group" {...staticRowProps} aria-label="Detected agent clients">
         {installations.map((item) => (
           <span className="hint" key={item.client}>
-            <strong>{item.client === "codex" ? "Codex" : "Claude Code"}</strong> ·{" "}
+            <strong>
+              {item.client === "codex" ? "Codex" : item.client === "claude" ? "Claude Code" : "Cursor"}
+            </strong>{" "}
+            ·{" "}
             {item.installed
               ? (item.version ?? (item.error ? "version unavailable" : "installed"))
               : "not installed"}
@@ -146,10 +181,9 @@ export function ExternalAgents() {
         ))}
       </div>
       <span {...staticHintProps}>
-        The generated token can access only the selected task scope, its attached browser tabs and attached
-        Aux-managed checkouts. File changes, local commands, preview tabs and commits require native approval.
-        It cannot accept evidence, reconcile actions, create workspaces, or expand its own scope. Use the
-        client’s approval controls for its non-Aux tools.
+        The connection uses your current Aux agent mode within the selected task or Space and its granted file
+        roots. Stop and Take over are available in Tasks. Connecting saves its private MCP configuration and
+        an Aux skill in your user folder. Use the client’s approval controls for its other tools.
       </span>
       <details {...staticFieldProps}>
         <summary>Tools this token can call</summary>
@@ -193,14 +227,14 @@ export function ExternalAgents() {
         {!catalogGroups.length && <p {...staticHintProps}>No scoped tools match this filter.</p>}
       </details>
       <div className="seg" role="group" aria-label="Agent client">
-        {(["codex", "claude"] as const).map((value) => (
+        {(["codex", "claude", "cursor"] as const).map((value) => (
           <button
             key={value}
             className={client === value ? "on" : ""}
             aria-pressed={client === value}
             onClick={() => setClient(value)}
           >
-            {value === "codex" ? "Codex" : "Claude Code"}
+            {value === "codex" ? "Codex" : value === "claude" ? "Claude Code" : "Cursor"}
           </button>
         ))}
       </div>
@@ -273,9 +307,16 @@ export function ExternalAgents() {
           <button
             {...auxClassButtonProps}
             disabled={busy || !name.trim() || !workspaceId || (scopeKind === "task" && !taskId)}
+            onClick={() => void connect()}
+          >
+            Connect Aux to {client === "codex" ? "Codex" : client === "claude" ? "Claude Code" : "Cursor"}
+          </button>
+          <button
+            {...smallButtonProps}
+            disabled={busy || !name.trim() || !workspaceId || (scopeKind === "task" && !taskId)}
             onClick={() => void create()}
           >
-            Create scoped connection
+            Copy configuration manually
           </button>
         </>
       )}
@@ -285,7 +326,9 @@ export function ExternalAgents() {
           <span {...staticHintProps}>
             {client === "codex"
               ? "Merge this server entry into Codex config.toml."
-              : "Merge this server entry into your project .mcp.json or another supported Claude Code scope."}{" "}
+              : client === "claude"
+                ? "Merge this server entry into your project .mcp.json or another supported Claude Code scope."
+                : "Merge this server entry into ~/.cursor/mcp.json."}{" "}
             Keep existing entries. This token is shown once; create a replacement if it is lost.
           </span>
           <textarea
@@ -314,7 +357,9 @@ export function ExternalAgents() {
                 void bridge.openExternal(
                   client === "codex"
                     ? "https://developers.openai.com/codex/mcp"
-                    : "https://code.claude.com/docs/en/mcp",
+                    : client === "claude"
+                      ? "https://code.claude.com/docs/en/mcp"
+                      : "https://cursor.com/docs/context/mcp",
                 )
               }
             >
@@ -331,7 +376,12 @@ export function ExternalAgents() {
               <div className="external-agent-copy">
                 <strong>{connection.name}</strong>
                 <span {...staticHintProps}>
-                  {connection.client === "codex" ? "Codex" : "Claude Code"} · {connectionTarget(connection)}
+                  {connection.client === "codex"
+                    ? "Codex"
+                    : connection.client === "claude"
+                      ? "Claude Code"
+                      : "Cursor"}{" "}
+                  · {connectionTarget(connection)}
                   {connection.lastUsedAt
                     ? ` · used ${new Date(connection.lastUsedAt).toLocaleString()}`
                     : " · not used yet"}

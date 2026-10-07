@@ -36,17 +36,6 @@ export { summarizeModelUsage } from "./services/model-usage.js";
 export { CookieService, decryptValue, chromeEpochToUnix, mapSameSite } from "./services/cookies.js";
 export { BrowserImporter } from "./services/browser-import.js";
 export {
-  readArcSidebar,
-  readChromiumBookmarks,
-  readChromiumHistory,
-  readFirefoxBookmarks,
-  readFirefoxHistory,
-  readSafariBookmarks,
-  readSafariHistory,
-  snapshotSqlite,
-  listImportSources,
-} from "./services/import-sources.js";
-export {
   RunCoordinator,
   verifyResultCitations,
   markUnconfirmedWrites,
@@ -242,3 +231,5 @@ export { accountableUtilityModel } from "./services/utility-model.js";
 export { chatgptRequest, chatgptCompletionStream, chatgptModelClient } from "./agent/chatgpt-model.js";
 export { chatgptModels, parseChatgptModels } from "./services/chatgpt-catalog.js";
 export { ModelCatalogService, parseModelCatalog, discoverLocalModels } from "./services/model-catalog.js";
+
+export { installAgentClient } from "./services/agent-client-install.js";

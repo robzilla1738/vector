@@ -8,7 +8,7 @@ afterEach(() => {
   for (const db of databases.splice(0)) db.close();
 });
 
-function fixture() {
+function fixture(request?: typeof fetch) {
   const db = openDb(":memory:");
   databases.push(db);
   const repo = new Repo(db);
@@ -28,7 +28,7 @@ function fixture() {
     },
   };
   let now = 1_800_000_000_000;
-  const memory = new ContentMemoryStore(repo, native, "profile-one", () => now);
+  const memory = new ContentMemoryStore(repo, native, "profile-one", () => now, undefined, request);
   return {
     db,
     repo,
@@ -55,6 +55,15 @@ it("keeps page text and source paths encrypted while rebuilding search after a r
     title: "Deep browser research",
     text: "A practical browser can cite its research sources precisely.",
   };
+  expect(f.memory.policy(f.workspace.workspaceId)).toMatchObject({
+    enabled: true,
+    originScope: "safe-sites",
+  });
+  await f.memory.setPolicy(f.workspace.workspaceId, {
+    enabled: false,
+    retentionDays: 30,
+    allowedOrigins: [],
+  });
   await expect(f.memory.saveEligible(input)).rejects.toThrow(/Enable page-content recall/);
   await f.memory.setPolicy(f.workspace.workspaceId, {
     enabled: true,
@@ -97,12 +106,31 @@ it("rejects unsupported page-memory formats without rewriting rows or touching n
   const f = fixture();
   const workspaceId = f.workspace.workspaceId;
   await f.memory.setPolicy(workspaceId, {
-    enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"],
+    enabled: true,
+    retentionDays: 30,
+    allowedOrigins: ["https://example.test"],
   });
-  f.db.prepare(`INSERT INTO content_memory(memory_id,profile_id,workspace_id,source_key,origin,captured_at,expires_at,ciphertext)
-    VALUES(?,?,?,?,?,?,?,?)`).run("unsupported", "profile-one", workspaceId, "source", "https://example.test", f.now(), f.now() + 86400000, "v1:AAAA");
-  await expect(f.memory.search(workspaceId, "article")).rejects.toThrow("Unknown protected page-memory format");
-  expect(f.db.prepare("SELECT ciphertext FROM content_memory WHERE memory_id='unsupported'").get()).toMatchObject({ ciphertext: "v1:AAAA" });
+  f.db
+    .prepare(
+      `INSERT INTO content_memory(memory_id,profile_id,workspace_id,source_key,origin,captured_at,expires_at,ciphertext)
+    VALUES(?,?,?,?,?,?,?,?)`,
+    )
+    .run(
+      "unsupported",
+      "profile-one",
+      workspaceId,
+      "source",
+      "https://example.test",
+      f.now(),
+      f.now() + 86400000,
+      "v1:AAAA",
+    );
+  await expect(f.memory.search(workspaceId, "article")).rejects.toThrow(
+    "Unknown protected page-memory format",
+  );
+  expect(
+    f.db.prepare("SELECT ciphertext FROM content_memory WHERE memory_id='unsupported'").get(),
+  ).toMatchObject({ ciphertext: "v1:AAAA" });
   expect(f.secrets.size).toBe(0);
 });
 
@@ -293,7 +321,7 @@ it("denies Private, excluded, banking, health, and login pages before a readable
     { ...candidate, url: "https://example.test/login" },
   ])
     expect(() => f.memory.assertCaptureEligible(input)).toThrow(/Sensitive pages/);
-  f.repo.setSetting(`workspaceMemory:${workspaceId}`, { excludedOrigins: ["https://example.test"] });
+  f.tasks.setWorkspaceMemory(workspaceId, 0, "", true, undefined, ["https://example.test"]);
   expect(() => f.memory.assertCaptureEligible(candidate)).toThrow(/not eligible/);
   expect(f.db.prepare("SELECT count(*) AS n FROM content_memory").get()).toMatchObject({ n: 0 });
 });
@@ -516,4 +544,84 @@ it("does not return decrypted content after policy revocation during key access"
   });
   release();
   expect(await pending).toBeUndefined();
+});
+
+it("semantically recalls local synonyms with sealed derivative vectors and clearly marks unavailable-model fallback", async () => {
+  const digest = "a".repeat(64);
+  const calls: string[] = [];
+  const request: typeof fetch = async (input, init) => {
+    const path = new URL(String(input)).pathname;
+    calls.push(path);
+    if (path === "/api/tags") return Response.json({ models: [{ name: "local-embedding:latest", digest }] });
+    if (path === "/api/show") return Response.json({ capabilities: ["embedding"] });
+    if (path === "/api/embed") {
+      const text = (JSON.parse(String(init?.body)) as { input: string }).input;
+      return Response.json({
+        embeddings: [text.includes("car") || text.includes("vehicle") ? [1, 0] : [0, 1]],
+      });
+    }
+    throw new Error("Unexpected local route");
+  };
+  const f = fixture(request),
+    workspaceId = f.workspace.workspaceId;
+  const car = await f.memory.saveEligible({
+    workspaceId,
+    pageId: "car",
+    documentEpoch: 1,
+    url: "https://example.test/cars",
+    title: "Car transport",
+    text: "A car carries travelers across town.",
+  });
+  await f.memory.saveEligible({
+    workspaceId,
+    pageId: "tree",
+    documentEpoch: 1,
+    url: "https://example.test/trees",
+    title: "Tree canopy",
+    text: "Trees provide shade in parks.",
+  });
+  expect(await f.memory.search(workspaceId, "vehicle")).toEqual([]);
+  const semantic = await f.memory.semanticSearch(workspaceId, "vehicle");
+  expect(semantic.mode).toBe("semantic");
+  expect(semantic.matches[0]?.memoryId).toBe(car.memoryId);
+  const derivatives = f.db.prepare("SELECT ciphertext FROM ai_result_cache").all();
+  expect(derivatives).toHaveLength(2);
+  expect(JSON.stringify(derivatives)).not.toContain("Car transport");
+  expect(JSON.stringify(derivatives)).not.toContain("[1,0]");
+  expect(calls.every((path) => ["/api/tags", "/api/show", "/api/embed"].includes(path))).toBe(true);
+  await f.memory.forget(workspaceId, car.memoryId);
+  expect(f.db.prepare("SELECT count(*) AS count FROM ai_result_cache").get()?.count).toBe(0);
+  await f.memory.close();
+  const unavailable = new ContentMemoryStore(f.repo, f.native, "profile-one", f.now, undefined, async () => {
+    throw new Error("offline");
+  });
+  expect(await unavailable.semanticSearch(workspaceId, "Trees")).toMatchObject({
+    mode: "lexical",
+    message: expect.stringContaining("keyword"),
+    matches: [{ title: "Tree canopy" }],
+  });
+  await unavailable.close();
+});
+
+it("defaults to safe-site capture but preserves explicit off/listed policy and fails closed on malformed persisted policy", async () => {
+  const f = fixture(),
+    workspaceId = f.workspace.workspaceId;
+  expect(f.memory.policy(workspaceId)).toMatchObject({ enabled: true, originScope: "safe-sites" });
+  await f.memory.setPolicy(workspaceId, { enabled: true, retentionDays: 30, allowedOrigins: [] });
+  await expect(
+    f.memory.saveEligible({
+      workspaceId,
+      pageId: "p",
+      documentEpoch: 1,
+      url: "https://example.test/article",
+      title: "Article",
+      text: "Readable public text.",
+    }),
+  ).rejects.toThrow();
+  f.repo.setSetting(`contentMemoryPolicy:${workspaceId}`, {
+    enabled: true,
+    retentionDays: "invalid",
+    allowedOrigins: [],
+  });
+  expect(f.memory.policy(workspaceId).enabled).toBe(false);
 });

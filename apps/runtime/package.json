@@ -26,6 +26,7 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
+    "smol-toml": "1.9.0",
     "jose": "6.2.12",
     "@ai-sdk/anthropic": "4.0.48",
     "@ai-sdk/gateway": "4.0.75",
@@ -46,11 +47,13 @@
     "pngjs": "^7.0.0",
     "pptxgenjs": "4.0.1",
     "quickjs-emscripten-core": "0.31.0",
+    "rrule-temporal": "2.2.8",
     "tar": "7.5.22",
     "vega": "6.4.0",
     "vega-lite": "6.4.3",
     "ws": "8.21.3",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "yaml": "2.8.1"
   },
   "devDependencies": {
     "@types/node": "catalog:",
@@ -60,6 +63,7 @@
     "typescript": "catalog:"
   },
   "imports": {
+    "#rrule-temporal": "rrule-temporal",
     "#aux-copilot-install-worker": "./dist/services/copilot-install-worker.js"
   }
 }

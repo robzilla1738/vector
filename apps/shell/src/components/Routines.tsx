@@ -1,3 +1,4 @@
+import { SkillLibrary } from "./SkillLibrary";
 import { staticFieldProps, staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
@@ -410,6 +411,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
           </button>
         </div>
       </div>
+      <SkillLibrary workspaceId={workspaceId} onImported={refresh} />
       <details className="routine-safety">
         <summary>How Skills run safely</summary>
         <p {...staticHintProps}>

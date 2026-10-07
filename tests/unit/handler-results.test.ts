@@ -34,6 +34,7 @@ import {
 let dir: string;
 let invoke: ReturnType<typeof makeInvoker>;
 let repo: Repo;
+let fixtureTarget: PageTarget;
 let fixtureServices: Services;
 const executed: { program: Program; ctx: unknown }[] = [];
 const projectId = "11111111-1111-4111-8111-111111111111";
@@ -42,7 +43,7 @@ beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), "aux-handlers-"));
   repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
-  const page = {
+  const page = fixtureTarget = {
     pageId: "p1",
     backend: "aux",
     targetId: "t1",
@@ -355,10 +356,16 @@ describe("handler results conform to ResultSchemas", () => {
     };
     const other = (await invoke("workspaces.create", { name: "Other source" })) as { workspaceId: string };
     await invoke(
+      "workspaces.memory.set",
+      {workspaceId: workspace.workspaceId, expectedRevision: 0, content: "", enabled: true},
+      {external: false},
+    );
+    await invoke(
       "workspaces.browsingMemory.set",
       { workspaceId: workspace.workspaceId, policy: { enabled: true, retentionDays: 7 } },
       { external: false },
     );
+    Object.assign(fixtureTarget, {url: "https://x.test/", windowId: "fixture-window", windowKind: "normal", workspaceId: workspace.workspaceId});
     const recorded = (await invoke(
       "workspaces.browsingMemory.record",
       { workspaceId: workspace.workspaceId, pageId: "p1", expectedDocumentEpoch: 0 },
@@ -375,7 +382,7 @@ describe("handler results conform to ResultSchemas", () => {
       config: {
         contextWorkspaceId: workspace.workspaceId,
         contextBrowsingMemory: true,
-        context: `${marker}\nhttp://x.test/`,
+        context: `${marker}\nhttps://x.test/`,
       },
     });
     repo.saveRun({
@@ -412,9 +419,9 @@ describe("handler results conform to ResultSchemas", () => {
       "workspaces.memory.set",
       {
         workspaceId: workspace.workspaceId,
-        expectedRevision: 0,
+        expectedRevision: 1,
         content: "",
-        excludedOrigins: ["http://x.test"],
+        excludedOrigins: ["https://x.test"],
       },
       { external: false },
     );
@@ -656,7 +663,7 @@ describe("handler results conform to ResultSchemas", () => {
     });
     await expect(
       invoke("pages.open", { url: "https://outside.test", background: false, ownedByRuntime: false }, client),
-    ).rejects.toMatchObject({ code: "permission_denied" });
+    ).rejects.toMatchObject({ code: "invalid_params" });
     await expect(invoke("history.list", { limit: 10 }, client)).rejects.toMatchObject({
       code: "permission_denied",
     });

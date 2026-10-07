@@ -26,6 +26,8 @@ type ConnectionRow = {
  * terminal run starts a new run under the same `external:<id>` chat.
  */
 export class ExternalSessionService {
+  private retiring = new Map<string, Promise<void>>();
+  private closed = false;
   private active = new Map<string, string>();
   private lastActivity = new Map<string, number>();
 
@@ -33,6 +35,7 @@ export class ExternalSessionService {
     private repo: Repo,
     private events: EventBus,
     private turnMentions: import("./turn-mention-service.js").TurnMentionService,
+    private retireOwned: (connectionId: string, sessionRunId: string) => Promise<void>,
   ) {}
 
   private connectionRow(connectionId: string): ConnectionRow | undefined {
@@ -48,6 +51,7 @@ export class ExternalSessionService {
       .prepare(
         `SELECT run_id AS runId FROM runs
          WHERE json_extract((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id),'$.externalConnectionId')=?
+         AND json_extract((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id),'$.implementation')='external-agent'
          AND status IN (${ACTIVE_SQL}) ORDER BY created_at DESC LIMIT 1`,
       )
       .get(connectionId) as { runId: string } | undefined;
@@ -59,13 +63,14 @@ export class ExternalSessionService {
     client: { connectionId: string; scope: AgentConnectionScope },
     now = Date.now(),
   ): string | undefined {
+    if (this.closed || this.retiring.has(client.connectionId)) return undefined;
     const row = this.connectionRow(client.connectionId);
     if (!row || row.revoked_at !== null) {
-      this.end(client.connectionId, "cancelled", row ? "Connection revoked" : "Connection removed");
+      void this.end(client.connectionId, "cancelled", row ? "Connection revoked" : "Connection removed").catch(error => console.error("External authority retirement failed", error));
       return undefined;
     }
     if (row.expires_at !== null && row.expires_at <= now) {
-      this.end(client.connectionId, "completed", "Connection expired");
+      void this.end(client.connectionId, "completed", "Connection expired").catch(error => console.error("External authority retirement failed", error));
       return undefined;
     }
     this.lastActivity.set(client.connectionId, now);
@@ -76,11 +81,15 @@ export class ExternalSessionService {
     const cached = this.active.get(client.connectionId) ?? this.activeRunId(client.connectionId);
     if (cached) {
       const run = this.repo.getRun(cached);
+      if (run?.config?.externalRetirementPending) return undefined;
       if (run && ACTIVE.has(run.status) && run.config?.taskRevision === taskRevision) {
         this.active.set(client.connectionId, cached);
         return cached;
       }
-      if (run && ACTIVE.has(run.status)) this.end(client.connectionId, "cancelled", "Task revision changed");
+      if (run && ACTIVE.has(run.status)) {
+        void this.end(client.connectionId, "cancelled", "Task revision changed").catch(error => console.error("External authority retirement failed", error));
+        return undefined;
+      }
     }
     this.active.delete(client.connectionId);
     // A revision change starts fresh authority; the old run cannot transmit.
@@ -168,40 +177,59 @@ export class ExternalSessionService {
   }
 
   /** End the session run — revoked connections cancel, expired/idle complete. */
-  end(connectionId: string, status: "completed" | "cancelled", statusMessage?: string) {
+  end(connectionId: string, status: "completed" | "cancelled", statusMessage?: string): Promise<void> {
+    const pending = this.retiring.get(connectionId);
+    if (pending) return pending;
     const mapped = this.active.get(connectionId);
     this.active.delete(connectionId);
     this.lastActivity.delete(connectionId);
     const mappedRun = mapped ? this.repo.getRun(mapped) : undefined;
     const run = mappedRun && ACTIVE.has(mappedRun.status) ? mappedRun : this.liveRun(connectionId);
-    if (!run) return;
+    if (!run) return Promise.resolve();
+    // Immediate source retirement precedes any asynchronous native cancellation ACK.
     this.turnMentions.end(run.runId);
-    const updated: Run = {
-      ...run,
-      status,
-      endedAt: Date.now(),
-      ...(statusMessage ? { statusMessage } : {}),
-    };
-    this.repo.saveRun(updated);
-    this.events.emit("run.updated", { run: updated }, updated.runId);
+    const retiring: Run = {...run, config: {...run.config, externalRetirementPending: true}, status: "paused", statusMessage: "Retiring external connection authority"};
+    this.repo.saveRun(retiring);
+    this.events.emit("run.updated", {run: retiring}, run.runId);
+    const operation = (async () => {
+      try {
+        await this.retireOwned(connectionId, run.runId);
+        const updated: Run = {...retiring, status, endedAt: Date.now(), ...(statusMessage ? {statusMessage} : {})};
+        this.repo.saveRun(updated);
+        this.events.emit("run.updated", {run: updated}, run.runId);
+      } catch (error) {
+        const uncertain: Run = {...retiring, status: "needs_input", statusMessage: "Original external processes or tabs still await retirement acknowledgement"};
+        this.repo.saveRun(uncertain);
+        this.events.emit("run.updated", {run: uncertain}, run.runId);
+        throw error;
+      } finally { this.retiring.delete(connectionId); }
+    })();
+    this.retiring.set(connectionId, operation);
+    return operation;
+  }
+  async dispose(): Promise<void> {
+    this.closed = true;
+    const results = await Promise.allSettled([...new Set([...this.active.keys(), ...this.storedActiveIds()])].map(id => this.end(id, "cancelled", "Runtime closed")));
+    const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected").map(result => result.reason);
+    if (failures.length) throw new AggregateError(failures, "External connection retirement is incomplete.");
   }
 
   /** Driven by the 60 s sweep in main.ts — idle sessions complete, dead connections close out. */
-  sweepIdle(now = Date.now(), idleMs = EXTERNAL_SESSION_IDLE_MS) {
+  async sweepIdle(now = Date.now(), idleMs = EXTERNAL_SESSION_IDLE_MS) {
     const ids = new Set(this.active.keys());
     for (const connectionId of this.storedActiveIds()) ids.add(connectionId);
     for (const connectionId of ids) {
       const row = this.connectionRow(connectionId);
       if (!row || row.revoked_at !== null) {
-        this.end(connectionId, "cancelled", row ? "Connection revoked" : "Connection removed");
+        await this.end(connectionId, "cancelled", row ? "Connection revoked" : "Connection removed");
         continue;
       }
       if (row.expires_at !== null && row.expires_at <= now) {
-        this.end(connectionId, "completed", "Connection expired");
+        await this.end(connectionId, "completed", "Connection expired");
         continue;
       }
       const seen = this.lastActivity.get(connectionId);
-      if (seen !== undefined && now - seen >= idleMs) this.end(connectionId, "completed", "Session idle");
+      if (seen !== undefined && now - seen >= idleMs) await this.end(connectionId, "completed", "Session idle");
     }
   }
 

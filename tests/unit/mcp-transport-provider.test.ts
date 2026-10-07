@@ -382,7 +382,7 @@ it("lets a scoped agent call only a connected tool in its current Space and task
   const settings = new SettingsService(repo, join(directory, "settings.json"), {});
   const turnMentions = fixtureTurnMentions((pageId) => repo.getPage(pageId));
   const agentConnections = new AgentConnectionService(repo);
-  const externalSessions = new ExternalSessionService(repo, events, turnMentions);
+  const externalSessions = new ExternalSessionService(repo, events, turnMentions, async () => {});
   const scope = { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId };
   const created = agentConnections.create({ name: "MCP fixture", client: "codex", scope });
   const client = agentConnections.authorize(created.token)!;

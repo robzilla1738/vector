@@ -311,7 +311,7 @@ function scopedDispatch() {
     scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId },
   }).connection;
   const turnMentions = fixtureTurnMentions((pageId: string) => repo.getPage(pageId));
-  const externalSessions = new ExternalSessionService(repo, events, turnMentions);
+  const externalSessions = new ExternalSessionService(repo, events, turnMentions, async () => {});
   const pages = new PageService({
     repo,
     events,

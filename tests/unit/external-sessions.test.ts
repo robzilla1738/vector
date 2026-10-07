@@ -53,8 +53,7 @@ it("gives one scoped connection one session run, then a new run after that one e
   const sessions = new ExternalSessionService(
     repo,
     events,
-    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)),
-  );
+    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)), async () => {});
   const invoke = sessionInvoker(repo, events, connections, sessions, executed);
 
   await invoke("pages.list", {}, client);
@@ -66,8 +65,7 @@ it("gives one scoped connection one session run, then a new run after that one e
   const resumed = new ExternalSessionService(
     repo,
     events,
-    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)),
-  );
+    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)), async () => {});
   const resumeInvoke = sessionInvoker(repo, events, connections, resumed, executed);
   await resumeInvoke("pages.list", {}, client);
   expect(thread(repo, created.connection.connectionId).map((run) => run.runId)).toEqual([runId]);
@@ -112,9 +110,9 @@ it("gives one scoped connection one session run, then a new run after that one e
     repo.db.prepare("SELECT approval_id FROM safety_approval_requests WHERE approval_id=?").get(approvalId),
   ).toMatchObject({ approval_id: approvalId });
 
-  sessions.sweepIdle(Date.now());
+  await sessions.sweepIdle(Date.now());
   expect(repo.getRun(runId)?.status).toBe("needs_input");
-  sessions.sweepIdle(Date.now() + EXTERNAL_SESSION_IDLE_MS);
+  await sessions.sweepIdle(Date.now() + EXTERNAL_SESSION_IDLE_MS);
   expect(repo.getRun(runId)).toMatchObject({ status: "completed", statusMessage: "Session idle" });
 
   await invoke("pages.list", {}, client);
@@ -225,8 +223,7 @@ it("lets the unscoped loopback owner mint and revoke connections and refuses a s
   const sessions = new ExternalSessionService(
     repo,
     events,
-    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)),
-  );
+    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)), async () => {});
   const invoke = sessionInvoker(repo, events, connections, sessions, []);
   const scope = { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId };
   const params = { name: "Trust peer", client: "codex", scope };
@@ -361,3 +358,76 @@ async function publishedPort(dataDir: string): Promise<number> {
   }
   throw new Error("runtime.json was not published");
 }
+
+it("retires admission before cancellation ACK and retains failed original ownership for retry", async () => {
+  const db = openDb(":memory:");
+  cleanup.push(() => db.close());
+  const repo = new Repo(db), events = new EventBus(repo), tasks = new TaskService(repo, events);
+  const workspace = tasks.createWorkspace("Retirement");
+  const task = tasks.create({workspaceId: workspace.workspaceId, title: "Original", objective: "Original", criteria: [{criterionId: "c", description: "Done", verification: "manual"}]});
+  const connections = new AgentConnectionService(repo);
+  const connection = connections.create({name: "Claude", client: "claude", scope: {kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId}}).connection;
+  let reject: (reason: Error) => void = () => {};
+  const retire = vi.fn(() => new Promise<void>((_, fail) => {reject = fail;}));
+  const sessions = new ExternalSessionService(repo, events, fixtureTurnMentions(id => repo.getPage(id)), retire);
+  const owner = {connectionId: connection.connectionId, scope: connection.scope};
+  const runId = sessions.ensure(owner)!;
+  const ending = sessions.end(connection.connectionId, "cancelled");
+  expect(repo.getRun(runId)).toMatchObject({status: "paused", config: {externalRetirementPending: true}});
+  expect(sessions.ensure(owner)).toBeUndefined();
+  reject(new Error("native ACK missing"));
+  await expect(ending).rejects.toThrow("native ACK missing");
+  expect(repo.getRun(runId)?.status).toBe("needs_input");
+  expect(sessions.ensure(owner)).toBeUndefined();
+  retire.mockImplementationOnce(async () => {});
+  await sessions.end(connection.connectionId, "cancelled");
+  expect(repo.getRun(runId)?.status).toBe("cancelled");
+  expect(retire).toHaveBeenCalledTimes(2);
+});
+
+
+it("starts scoped runs with original task revision and connection ownership, never an unrelated attachment", async () => {
+  const db = openDb(":memory:");
+  cleanup.push(() => db.close());
+  const repo = new Repo(db), events = new EventBus(repo), tasks = new TaskService(repo, events);
+  const workspace = tasks.createWorkspace("Original");
+  const task = tasks.create({workspaceId: workspace.workspaceId, title: "Task", objective: "Original objective", criteria: [{criterionId: "c", description: "Done", verification: "manual"}], resources: [{resourceId: "p", kind: "page", locator: "approved", label: "Approved"}]});
+  const connections = new AgentConnectionService(repo);
+  const connection = connections.create({name: "Codex", client: "codex", scope: {kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId}}).connection;
+  repo.upsertPage(fixturePage("approved", "https://example.test/", 1));
+  const turnMentions = fixtureTurnMentions(id => repo.getPage(id));
+  const sessions = new ExternalSessionService(repo, events, turnMentions, async () => {});
+  const start = vi.fn(async (input: unknown) => input);
+  const invoke = makeInvoker({repo, events, turnMentions, tasks, pages: {get: (id: string) => repo.getPage(id)}, runs: {start}, settings: {agentPolicy: () => ({agentMode: "auto", agentPolicyRevision: 0, agentPolicies: []})}, agentConnections: connections, externalSessions: sessions} as unknown as Services);
+  const client = {external: true as const, connectionId: connection.connectionId, scope: connection.scope};
+  const input = {goal: "Review approved page", taskId: task.taskId, expectedRevision: task.revision, pageIds: ["approved"]};
+  await expect(invoke("runs.start", {...input, pageIds: ["unrelated"]}, client)).rejects.toMatchObject({code: "permission_denied"});
+  expect(start).not.toHaveBeenCalled();
+  await invoke("runs.start", input, client);
+  expect(start).toHaveBeenCalledWith(expect.objectContaining({taskId: task.taskId, taskRevision: task.revision, externalConnectionId: connection.connectionId, externalParentRunId: expect.any(String), pageIds: ["approved"]}));
+});
+
+it("joins external Stop after revoking its original token, without reopening the session", async () => {
+  const db = openDb(":memory:");
+  cleanup.push(() => db.close());
+  const repo = new Repo(db), events = new EventBus(repo), tasks = new TaskService(repo, events);
+  const workspace = tasks.createWorkspace("Stop");
+  const task = tasks.create({workspaceId: workspace.workspaceId, title: "Stop", objective: "Stop", criteria: [{criterionId: "c", description: "Done", verification: "manual"}]});
+  const connections = new AgentConnectionService(repo);
+  const created = connections.create({name: "Codex", client: "codex", scope: {kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId}});
+  let join!: () => void, entered!: () => void;
+  const retiring = new Promise<void>(resolve => { entered = resolve; });
+  const acknowledgement = new Promise<void>(resolve => { join = resolve; });
+  const sessions = new ExternalSessionService(repo, events, fixtureTurnMentions(id => repo.getPage(id)), async () => { entered(); await acknowledgement; });
+  const owner = {connectionId: created.connection.connectionId, scope: created.connection.scope};
+  const runId = sessions.ensure(owner)!;
+  const invoke = makeInvoker({repo, events, tasks, turnMentions: fixtureTurnMentions(id => repo.getPage(id)), agentConnections: connections, externalSessions: sessions, runs: {coordinator: {get: (id: string) => repo.getRun(id)}}, settings: {agentPolicy: () => ({agentMode: "auto", agentPolicyRevision: 0, agentPolicies: []})}} as unknown as Services);
+  const stopping = invoke("runs.cancel", {runId}, {external: false});
+  await retiring;
+  expect(connections.authorize(created.token)).toBeNull();
+  expect(sessions.ensure(owner)).toBeUndefined();
+  expect(repo.getRun(runId)?.status).toBe("paused");
+  join();
+  await expect(stopping).resolves.toMatchObject({runId, status: "cancelled"});
+  expect(sessions.ensure(owner)).toBeUndefined();
+});

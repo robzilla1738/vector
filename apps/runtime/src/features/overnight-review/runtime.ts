@@ -65,6 +65,8 @@ export function overnightRuntime(s: Services, power: NightPower): NightShiftRunt
             pageIds,
           });
           return { runId: run.runId, chatId: run.config?.chatId };
+        }, async (runId) => {
+          await s.runs.cancel(runId, "The original routine changed during launch.");
         }),
     });
   const d: { tasks: TaskService; routineService: RoutineService } = container.services;

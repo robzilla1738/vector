@@ -1,425 +1,482 @@
+import { BrowserImportSelections } from "./import-selection.js";
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import {
   AuxError,
-  type ImportCategoryPreview,
-  type ImportSourcePreview,
-  type ImportCategoryResult,
-  type ImportReport,
+  ImportExtensionReviewSchema,
+  ImportSelectionSchema,
+  type ImportExtensionReview,
+  type BrowserExportSource,
+  type BrowserExportFormat,
+  type ImportOperation,
   type ImportSelection,
+  type NativeBrowserImportDiscovery,
+  type NativeBrowserImportReceipt,
 } from "@aux/contracts";
 import { loadImportReceipts, saveImportReceipts, type ImportJob } from "./import-receipts.js";
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
-import {
-  listImportSources,
-  readArcSidebar,
-  readChromiumBookmarks,
-  readChromiumHistory,
-  readFirefoxBookmarks,
-  readFirefoxHistory,
-  readSafariBookmarks,
-  readSafariHistory,
-  sourceStoreSize,
-  type ImportCategory,
-  type ImportHistoryRow,
-  type ImportProfileRef,
-  type ImportSource,
-} from "./import-sources.js";
-import type { ImportedBookmark } from "./chrome-bookmarks.js";
-
-/**
- * Browser-data import jobs. Preview lists what each installed source can
- * offer; run executes the selected categories with a per-category
- * partial-result report — a source that fails or is skipped never blocks the
- * others. History streams through snapshot-copied SQLite in batches so a large
- * import stays cancellable; cancellation is checked between batches.
- */
 
 export interface ImportRunOptions {
   selections: ImportSelection[];
+  acknowledgeInterruptedJobId?: string;
 }
 
-const HISTORY_FILES: Record<string, string[]> = {
-  arc: ["History"],
-  safari: ["History.db"],
-  firefox: ["places.sqlite"],
-};
-
-function safeImportUrl(value: string): boolean {
-  if (value.length > 8192) return false;
-  try {
-    const url = new URL(value);
-    return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password;
-  } catch {
-    return false;
-  }
-}
-
+/** One human importer authority. Native code alone snapshots and writes browser data. */
 export class BrowserImporter {
-  private jobs = new Map<string, ImportJob>();
-
+  private readonly jobs = new Map<string, ImportJob>();
+  private readonly previews = new Map<string, NativeBrowserImportDiscovery>();
+  private readonly inFlight = new Map<string, Promise<void>>();
+  private closed = false;
+  private readonly extensionReviews = new Map<
+    string,
+    { token: string; handle: string; review: ImportExtensionReview }
+  >();
+  private readonly selections: BrowserImportSelections;
   constructor(
-    private deps: {
+    private readonly deps: {
       repo: Repo;
       native?: NativeBridge;
-      emit: (type: string, payload: Record<string, unknown>) => void;
-      /** Opens an imported tab URL in Aux. */
-      openTab?: (url: string, title: string) => Promise<void>;
-      /** Source discovery — injectable so tests never scan the real filesystem. */
-      sources?: () => ImportSource[];
+      emit(type: string, payload: Record<string, unknown>): void;
     },
   ) {
+    this.selections = new BrowserImportSelections({
+      native: deps.native,
+      owner: (token) => this.owner(token),
+      publish: (token, incoming) => this.publishSelection(token, incoming),
+    });
     for (const job of loadImportReceipts(deps.repo).reverse()) this.jobs.set(job.jobId, job);
-    if (this.jobs.size) this.persist();
   }
-
+  private bridge() {
+    const n = this.deps.native;
+    if (
+      !n?.browserImportDiscover ||
+      !n.browserImportBegin ||
+      !n.browserImportPoll ||
+      !n.browserImportCancel ||
+      !n.turnSourceContext
+    )
+      throw new AuxError("backend_unavailable", "Browser import requires the native Aux Profile.");
+    return {
+      discover: n.browserImportDiscover.bind(n),
+      begin: n.browserImportBegin.bind(n),
+      poll: n.browserImportPoll.bind(n),
+      cancel: n.browserImportCancel.bind(n),
+      owner: n.turnSourceContext.bind(n),
+    };
+  }
+  private async owner(token: string) {
+    if (this.closed) throw new AuxError("cancelled", "Browser import is closing.");
+    await this.bridge().owner(token);
+    if (this.closed) throw new AuxError("cancelled", "Browser import closed during owner validation.");
+  }
   private recentJobs() {
     return [...this.jobs.values()].reverse().slice(0, 5);
   }
-
-  private persist() {
-    saveImportReceipts(this.deps.repo, this.recentJobs());
-  }
-
-  private checkpoint(job: ImportJob, result?: ImportCategoryResult) {
-    if (result) {
-      const index = job.progress.findIndex(
-        (item) =>
-          item.source === result.source &&
-          item.profileId === result.profileId &&
-          item.category === result.category,
-      );
-      if (index < 0) job.progress.push(result);
-      else job.progress[index] = result;
-    }
-    job.updatedAt = Date.now();
-    job.revision++;
-    this.persist();
-    this.deps.emit("import.progress", { ...result, ...this.status(job.jobId) });
-  }
-
-  private createJob(selections: ImportSelection[]): ImportJob {
-    if ([...this.jobs.values()].some((job) => !job.done))
-      throw new AuxError(
-        "conflict",
-        "An import is already running in this Profile. Review its progress or cancel it first.",
-      );
-    const now = Math.max(Date.now(), (this.recentJobs()[0]?.startedAt ?? 0) + 1);
-    const job: ImportJob = {
-      jobId: `imp_${randomUUID().slice(0, 12)}`,
-      cancelled: false,
-      done: false,
-      selections: structuredClone(selections),
-      progress: [],
-      startedAt: now,
-      updatedAt: now,
-      revision: 0,
-    };
-    this.jobs.set(job.jobId, job);
-    for (const [id, stale] of this.jobs) {
-      if (this.jobs.size <= 5) break;
-      if (stale.done) this.jobs.delete(id);
-    }
-    try {
-      this.checkpoint(job);
-    } catch (error) {
-      this.jobs.delete(job.jobId);
-      throw error;
-    }
+  private job(jobId?: string) {
+    const job = jobId ? this.jobs.get(jobId) : this.recentJobs()[0];
+    if (!job) throw new AuxError("not_found", "No browser import with that identity.");
     return job;
   }
-
-  private bookmarkItems(
-    source: ImportSource,
-    profile: ImportProfileRef,
-  ): { items: ImportedBookmark[]; skipped: number } {
-    if (source.id === "safari") return { items: readSafariBookmarks(profile.dir), skipped: 0 };
-    if (source.id === "firefox") return { items: readFirefoxBookmarks(profile.dir), skipped: 0 };
-    const items = readChromiumBookmarks(profile.dir);
-    if (source.id === "arc" && source.hasSidebarMetadata) {
-      const sidebar = readArcSidebar(source.sidebarDir ?? profile.dir);
-      const seen = new Set(items.map((i) => i.url));
-      return {
-        items: [...items, ...sidebar.bookmarks.filter((i) => !seen.has(i.url))],
-        skipped: sidebar.skipped,
-      };
-    }
-    return { items, skipped: 0 };
+  private checkpoint(job: ImportJob) {
+    job.updatedAt = Date.now();
+    ++job.revision;
+    saveImportReceipts(this.deps.repo, this.recentJobs());
+    this.deps.emit("import.progress", structuredClone(job));
   }
-
-  private historyBatches(source: ImportSource, profile: ImportProfileRef): Generator<ImportHistoryRow[]> {
-    if (source.id === "safari") return readSafariHistory(profile.dir);
-    if (source.id === "firefox") return readFirefoxHistory(profile.dir);
-    return readChromiumHistory(profile.dir);
-  }
-
-  private sources(): ImportSource[] {
-    return this.deps.sources ? this.deps.sources() : listImportSources();
-  }
-
-  private previewCategories(source: ImportSource, profile: ImportProfileRef): ImportCategoryPreview[] {
-    const categories: ImportCategoryPreview[] = [];
-    const bookmarksFile =
-      source.id === "safari"
-        ? join(profile.dir, "Bookmarks.plist")
-        : source.id === "firefox"
-          ? join(profile.dir, "places.sqlite")
-          : join(profile.dir, "Bookmarks");
-    const bookmarkAvailable = existsSync(bookmarksFile) || !!source.hasSidebarMetadata;
-    let bookmarkCount: number | undefined;
-    if (bookmarkAvailable && source.id !== "firefox") {
-      try {
-        bookmarkCount = this.bookmarkItems(source, profile).items.length;
-      } catch {
-        /* count is a hint — availability still stands */
-      }
-    }
-    categories.push({
-      category: "bookmarks",
-      available: bookmarkAvailable,
-      count: bookmarkCount,
-      blocker: source.blocker,
-    });
-    const historyFiles = HISTORY_FILES[source.id] ?? ["History"];
-    const historyAvailable = historyFiles.some((f) => existsSync(join(profile.dir, f)));
-    categories.push({
-      category: "history",
-      available: historyAvailable,
-      bytes: historyAvailable ? sourceStoreSize(profile, historyFiles) : undefined,
-      blocker: source.blocker,
-    });
-    return categories;
-  }
-
-  async preview(): Promise<{ sources: ImportSourcePreview[]; recentJobs: ImportJob[] }> {
-    const sources: ImportSourcePreview[] = [];
-    for (const source of this.sources()) {
-      const profileCategories = source.profiles.map((profile) => ({
-        profileId: profile.id,
-        categories: this.previewCategories(source, profile),
-      }));
+  private publishSelection(token: string, incoming: NativeBrowserImportDiscovery) {
+    const old = this.previews.get(token) ?? { sources: [], snapshots: [] };
+    const pairs = new Set(incoming.snapshots.map((s) => `${s.sourceId}\0${s.profileId}`));
+    const snapshots = [
+      ...old.snapshots.filter((s) => !pairs.has(`${s.sourceId}\0${s.profileId}`)),
+      ...incoming.snapshots,
+    ];
+    const sources = old.sources.filter((s) => !incoming.sources.some((i) => i.id === s.id));
+    for (const source of incoming.sources) {
+      const previous = old.sources.find((s) => s.id === source.id);
+      const profileCategories = [
+        ...(previous?.profileCategories ?? []).filter((p) => !source.profiles.includes(p.profileId)),
+        ...source.profileCategories,
+      ];
       sources.push({
-        id: source.id,
-        label: source.label,
-        profiles: source.profiles.map((p) => p.id),
-        categories: profileCategories[0]?.categories ?? [],
+        ...source,
+        profiles: profileCategories.map((p) => p.profileId),
         profileCategories,
+        categories: source.categories.map(
+          (c) =>
+            profileCategories
+              .flatMap((p) => p.categories)
+              .find((entry) => entry.category === c.category && entry.available) ?? c,
+        ),
       });
     }
-    return { sources, recentJobs: structuredClone(this.recentJobs()) };
+    const merged = { sources, snapshots };
+    this.previews.set(token, merged);
+    return merged;
   }
-
-  private job(jobId: string): ImportJob {
-    const job = this.jobs.get(jobId);
-    if (!job) throw new AuxError("not_found", "No import with that id.");
-    return job;
+  async reviewExtensions(input: { sourceId: string; profileId: string }, token: string) {
+    await this.owner(token);
+    const preview = this.previews.get(token);
+    const snapshot = preview?.snapshots.find(
+      (s) => s.sourceId === input.sourceId && s.profileId === input.profileId,
+    );
+    const available = preview?.sources
+      .find((s) => s.id === input.sourceId)
+      ?.profileCategories.find((p) => p.profileId === input.profileId)
+      ?.categories.some((c) => c.category === "extensions" && c.available && !c.blocker);
+    const native = this.deps.native;
+    if (!snapshot || !available)
+      throw new AuxError("ref_stale", "Refresh the original extension source preview.");
+    if (!native?.browserImportExtensionReview)
+      throw new AuxError("backend_unavailable", "Extension review requires the native importer.");
+    const review = ImportExtensionReviewSchema.parse(
+      await native.browserImportExtensionReview({ token, sourceHandle: snapshot.sourceHandle }),
+    );
+    await this.owner(token);
+    if (this.previews.get(token) !== preview)
+      throw new AuxError("ref_stale", "The source preview changed during extension review.");
+    for (const [id, old] of this.extensionReviews)
+      if (old.token === token && old.handle === snapshot.sourceHandle) this.extensionReviews.delete(id);
+    this.extensionReviews.set(review.reviewId, { token, handle: snapshot.sourceHandle, review });
+    return review;
   }
-
-  status(jobId?: string): ImportJob {
-    const job = jobId ? this.job(jobId) : this.recentJobs()[0];
-    if (!job) throw new AuxError("not_found", "No previous browser import in this Profile.");
+  selectWindow(input: { sourceId: "safari" }, token: string) {
+    return this.selections.selectWindow(input, token);
+  }
+  selectExport(input: { sourceId: BrowserExportSource; format: BrowserExportFormat }, token: string) {
+    return this.selections.selectExport(input, token);
+  }
+  exportStatus(id: string, token: string) {
+    return this.selections.status(id, token);
+  }
+  cancelExport(id: string, token: string) {
+    return this.selections.status(id, token, true);
+  }
+  async preview(token: string) {
+    await this.owner(token);
+    for (const job of this.jobs.values()) if (!job.done && !job.acknowledged) await this.reconcile(job);
+    const preview = await this.bridge().discover(token);
+    if (this.closed) throw new AuxError("cancelled", "Browser preview closed.");
+    // Source handles are ephemeral native authority, never persisted in receipts.
+    this.previews.clear();
+    this.extensionReviews.clear();
+    this.previews.set(token, preview);
+    return { sources: preview.sources, recentJobs: structuredClone(this.recentJobs()) };
+  }
+  async status(jobId: string | undefined, token: string) {
+    await this.owner(token);
+    const job = this.job(jobId);
+    if (!job.done) await this.reconcile(job);
     return structuredClone(job);
   }
-
-  cancel(jobId: string) {
-    const job = this.job(jobId);
-    if (!job.done && !job.cancelled) {
-      job.cancelled = true;
-      this.checkpoint(job);
+  async start(opts: ImportRunOptions, token: string): Promise<{ jobId: string }> {
+    await this.owner(token);
+    const preview = this.previews.get(token);
+    if (!preview) throw new AuxError("ref_stale", "Refresh the browser preview in this Aux window.");
+    let acknowledged: ImportJob | undefined;
+    if (opts.acknowledgeInterruptedJobId) {
+      await this.owner(token);
+      const old = this.job(opts.acknowledgeInterruptedJobId);
+      await this.reconcile(old);
+      if (!old.interrupted || old.done || !old.nativeOperations?.some((op) => op.state === "unknown"))
+        throw new AuxError("conflict", "Only the exact interrupted native receipt can be acknowledged.");
+      acknowledged = old;
     }
-    return { ok: true };
-  }
-
-  /** A receipt is saved before work starts; restart never resumes writes. */
-  start(opts: ImportRunOptions): { jobId: string } {
-    const selections = this.resolveSelections(opts);
-    const job = this.createJob(opts.selections);
-    void this.execute(job, selections).catch((error) => {
-      // A receipt-write failure stops further categories. The last durable
-      // checkpoint will be interrupted after restart; keep this session honest.
-      job.done = true;
-      job.error = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
-      job.report = { jobId: job.jobId, cancelled: job.cancelled, results: job.progress };
-      job.revision++;
-      this.deps.emit("import.progress", this.status(job.jobId));
-    });
-    return { jobId: job.jobId };
-  }
-
-  async runNow(opts: ImportRunOptions): Promise<ImportReport> {
-    const selections = this.resolveSelections(opts);
-    const job = this.createJob(opts.selections);
-    return this.execute(job, selections);
-  }
-
-  private resolveSelections(
-    opts: ImportRunOptions,
-  ): { source?: ImportSource; profile?: ImportProfileRef; categories: ImportCategory[] }[] {
-    if (!opts.selections.length) throw new AuxError("invalid_params", "Choose at least one import source.");
-    const sources = new Map<string, ImportSource>(this.sources().map((source) => [source.id, source]));
-    const seen = new Set<string>();
-    return opts.selections.map((selection) => {
-      const key = `${selection.sourceId}:${selection.profileId ?? ""}`;
-      if (seen.has(key))
-        throw new AuxError("invalid_params", "Each browser Profile can be selected only once.");
-      seen.add(key);
-      const source = sources.get(selection.sourceId);
-      const profile = source?.profiles.find((item) => item.id === selection.profileId);
-      if (!source || !profile || source.blocker)
-        throw new AuxError(
-          "invalid_params",
-          "The selected browser Profile is unavailable. Refresh the import preview.",
-        );
-      const available = this.previewCategories(source, profile);
+    if ([...this.jobs.values()].some((job) => !job.done && !job.acknowledged && job !== acknowledged))
+      throw new AuxError("conflict", "Join, cancel, or explicitly review the interrupted import first.");
+    const identities = new Set<string>();
+    const selected = opts.selections.map((raw) => {
+      const choice = ImportSelectionSchema.parse(raw);
+      const source = preview.sources.find((item) => item.id === choice.sourceId);
+      const profileId = choice.profileId ?? (source?.profiles.length === 1 ? source.profiles[0] : undefined);
+      const snapshot = preview.snapshots.find(
+        (item) => item.sourceId === choice.sourceId && item.profileId === profileId,
+      );
+      const profile = source?.profileCategories.find((item) => item.profileId === profileId);
       if (
-        selection.categories.some(
-          (category) =>
-            category === "tabs" ||
-            !available.some((item) => item.category === category && item.available && !item.blocker),
+        !source ||
+        !snapshot ||
+        !profile ||
+        !profileId ||
+        choice.categories.some(
+          (category) => !profile.categories.some((item) => item.category === category && item.available),
         )
       )
         throw new AuxError(
-          "invalid_params",
-          "The selected import category is unavailable. Refresh the import preview.",
+          "ref_stale",
+          "Choose available categories from the original native browser preview.",
         );
-      return { source, profile, categories: selection.categories };
-    });
-  }
-
-  private async execute(
-    job: ImportJob,
-    selections: { source?: ImportSource; profile?: ImportProfileRef; categories: ImportCategory[] }[],
-  ): Promise<ImportReport> {
-    try {
-      for (const { source, profile, categories } of selections) {
-        if (job.cancelled) break;
-        if (!source || !profile) continue;
-        for (const category of ["bookmarks", "history"] as const) {
-          if (!categories.includes(category)) continue;
-          const result = await this.runCategory(job, source, profile, category);
-          this.checkpoint(job, result);
-          if (job.cancelled) break;
-        }
-        if (job.cancelled) break;
-      }
-    } catch (error) {
-      job.error = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
-    }
-    job.done = true;
-    job.report = { jobId: job.jobId, cancelled: job.cancelled, results: job.progress };
-    this.checkpoint(job);
-    return job.report;
-  }
-
-  private async runCategory(
-    job: ImportJob,
-    source: ImportSource,
-    profile: ImportProfileRef,
-    category: "bookmarks" | "history",
-  ): Promise<ImportCategoryResult> {
-    const base = {
-      source: source.id,
-      label: `${source.label} (${profile.id})`,
-      profileId: profile.id,
-      category,
-    };
-    let imported = 0,
-      skipped = 0;
-    const progress = () => this.checkpoint(job, { ...base, state: "running", imported, skipped });
-    if (source.blocker) return { ...base, state: "error", imported: 0, skipped: 0, detail: source.blocker };
-    try {
-      progress();
-      if (category === "bookmarks") {
-        const read = this.bookmarkItems(source, profile);
-        const items = read.items.filter((item) => safeImportUrl(item.url));
-        skipped = read.skipped + read.items.length - items.length;
-        if (!items.length && !source.hasSidebarMetadata) {
-          return { ...base, state: "skipped", imported: 0, skipped, detail: "Nothing to import." };
-        }
-        if (this.deps.native?.available()) {
-          if (!this.deps.native.bookmarksInvoke)
-            throw new AuxError("backend_unavailable", "Chromium bookmarks import is unavailable.");
-          for (let offset = 0; offset < items.length; offset += 500) {
-            if (job.cancelled) break;
-            const result = (await this.deps.native.bookmarksInvoke("bookmarks.import", {
-              bookmarks: items.slice(offset, offset + 500),
-            })) as { added: number; skipped: number };
-            imported += result.added;
-            skipped += result.skipped;
-            progress();
-          }
-        } else {
-          const result = this.deps.repo.importBookmarks(
-            items.map((i) => ({ url: i.url, title: i.title, folderPath: i.folderPath })),
-          );
-          imported = result.added;
-          skipped += result.skipped;
-          progress();
-          if (imported) this.deps.emit("bookmarks.changed", { bookmarks: this.deps.repo.listBookmarks() });
-        }
-        return {
-          ...base,
-          state: "done",
-          imported,
-          skipped,
-          detail: job.cancelled
-            ? "Stopped by cancel."
-            : items.length
-              ? `${items.length} found`
-              : "Nothing found",
-        };
-      }
-      for (const read of this.historyBatches(source, profile)) {
-        if (job.cancelled) break;
-        const batch = read
-          .filter(
-            (row) =>
-              safeImportUrl(row.url) &&
-              Number.isSafeInteger(row.visitedAt) &&
-              row.visitedAt >= 0 &&
-              row.visitedAt <= Date.now() + 86_400_000,
+      if (choice.categories.includes("extensions")) {
+        const selectedReview = choice.extensionReview;
+        const saved = selectedReview && this.extensionReviews.get(selectedReview.reviewId);
+        if (
+          !selectedReview ||
+          !saved ||
+          saved.token !== token ||
+          saved.handle !== snapshot.sourceHandle ||
+          selectedReview.choices.length !== saved.review.candidates.length ||
+          selectedReview.choices.some(
+            (c) => !saved.review.candidates.some((candidate) => candidate.candidateId === c.candidateId),
           )
-          .map((row) => ({ ...row, title: row.title.slice(0, 1000) }));
-        skipped += read.length - batch.length;
-        if (!batch.length) continue;
-        let r: { added: number; skipped: number };
-        if (this.deps.native?.available()) {
-          if (!this.deps.native.historyImport)
-            throw new AuxError("backend_unavailable", "Chromium history import is unavailable.");
-          r = await this.deps.native.historyImport(batch);
-        } else {
-          r = this.deps.repo.importHistory(batch);
-        }
-        imported += r.added;
-        skipped += r.skipped;
-        progress();
-        // Yield so cancel/status calls and other runtime work interleave —
-        // without this a large history import would hold the event loop.
-        await new Promise((resolve) => setImmediate(resolve));
+        )
+          throw new AuxError(
+            "ref_stale",
+            "Review every original extension, including skipped items, before import.",
+          );
       }
-      if (imported) this.deps.emit("history.changed", {});
+      const key = JSON.stringify([choice.sourceId, profileId]);
+      if (identities.has(key))
+        throw new AuxError("invalid_params", "Choose each original browser data group once.");
+      identities.add(key);
       return {
-        ...base,
-        state: imported + skipped ? "done" : "skipped",
-        imported,
-        skipped,
-        detail: job.cancelled
-          ? "Stopped by cancel."
-          : imported + skipped
-            ? `${imported + skipped} visits read`
-            : "No visits found",
+        choice: { ...choice, profileId },
+        snapshot,
+        label: profile.kind && profile.label ? profile.label : source.label,
       };
-    } catch (error) {
-      if (category === "history" && imported) this.deps.emit("history.changed", {});
-      return {
-        ...base,
-        state: "error",
-        imported,
-        skipped,
-        detail: (error instanceof Error ? error.message : String(error)).slice(0, 1000),
-      };
+    });
+    await this.owner(token);
+    const now = Math.max(Date.now(), (this.recentJobs()[0]?.startedAt ?? 0) + 1);
+    const job: ImportJob = {
+      jobId: `imp_${randomUUID()}`,
+      done: false,
+      cancelled: false,
+      selections: selected.map((item) => item.choice),
+      startedAt: now,
+      updatedAt: now,
+      revision: 0,
+      nativeOperations: selected.map(({ choice }) => ({
+        operationId: randomUUID(),
+        sourceId: choice.sourceId,
+        profileId: choice.profileId,
+        categories: choice.categories,
+        state: "prepared",
+      })),
+      progress: selected.flatMap(({ choice, label }) =>
+        choice.categories.map((category) => ({
+          source: choice.sourceId,
+          label,
+          profileId: choice.profileId,
+          category,
+          state: "running" as const,
+          imported: 0,
+          skipped: 0,
+        })),
+      ),
+    };
+    const originalJobs = new Map(this.jobs);
+    const previousAcknowledged = acknowledged?.acknowledged;
+    if (acknowledged) acknowledged.acknowledged = true;
+    for (const [id, old] of this.jobs) {
+      if (this.jobs.size < 5) break;
+      if (old.done || old.acknowledged) this.jobs.delete(id);
     }
+    if (this.jobs.size >= 5) throw new AuxError("conflict", "Resolve the retained browser imports first.");
+    this.jobs.set(job.jobId, job);
+    try {
+      this.checkpoint(job);
+    } catch (error) {
+      if (acknowledged) acknowledged.acknowledged = previousAcknowledged;
+      this.jobs.clear();
+      for (const [id, original] of originalJobs) this.jobs.set(id, original);
+      throw error;
+    }
+    const work = this.execute(
+      job,
+      selected.map((item) => item.snapshot.sourceHandle),
+      token,
+    );
+    this.inFlight.set(job.jobId, work);
+    void work
+      .finally(() => {
+        if (this.inFlight.get(job.jobId) === work) this.inFlight.delete(job.jobId);
+      })
+      .catch(() => {});
+    return { jobId: job.jobId };
+  }
+  private apply(job: ImportJob, op: ImportOperation, receipt: NativeBrowserImportReceipt) {
+    if (receipt.operationId !== op.operationId)
+      throw new AuxError("ref_stale", "Native import receipt identity changed.");
+    if (receipt.unknown) {
+      op.state = "unknown";
+      job.interrupted = true;
+      job.error =
+        "The native import receipt is unavailable. Some accepted items may already be imported; review before starting another import.";
+    } else {
+      if (receipt.done === undefined || receipt.cancelled === undefined || !receipt.progress)
+        throw new AuxError("conflict", "Native import completion was not confirmed.");
+      if (
+        receipt.progress.length !== op.categories.length ||
+        new Set(receipt.progress.map((item) => item.category)).size !== op.categories.length
+      )
+        throw new AuxError("conflict", "Native import category completion was incomplete.");
+      for (const result of receipt.progress) {
+        if (
+          result.source !== op.sourceId ||
+          result.profileId !== op.profileId ||
+          !op.categories.includes(result.category)
+        )
+          throw new AuxError("ref_stale", "Native import category identity changed.");
+        const index = job.progress.findIndex(
+          (item) =>
+            item.source === result.source &&
+            item.profileId === result.profileId &&
+            item.category === result.category,
+        );
+        if (index < 0) throw new AuxError("ref_stale", "Unexpected native import category receipt.");
+        // Counts and states come only from the joined native receipt. Keep the
+        // original human-reviewed display label; labels never grant authority.
+        job.progress[index] = { ...result, label: job.progress[index]!.label };
+      }
+      op.state = receipt.done ? "joined" : "dispatched";
+      job.cancelled ||= receipt.cancelled;
+      job.interrupted = job.nativeOperations?.some((item) => item.state === "unknown") ?? false;
+      if (receipt.error) job.error = receipt.error;
+    }
+    this.finish(job);
+    this.checkpoint(job);
+  }
+  private finish(job: ImportJob) {
+    if (job.nativeOperations?.length && job.nativeOperations.every((op) => op.state === "joined")) {
+      job.done = true;
+      job.interrupted = false;
+      job.report = { jobId: job.jobId, cancelled: job.cancelled, results: structuredClone(job.progress) };
+    }
+  }
+  private retirePrepared(job: ImportJob, op: ImportOperation) {
+    op.state = "joined";
+    for (const result of job.progress)
+      if (
+        result.source === op.sourceId &&
+        result.profileId === op.profileId &&
+        op.categories.includes(result.category)
+      ) {
+        result.state = "skipped";
+        result.detail = "Cancelled before native acceptance.";
+      }
+    this.finish(job);
+    this.checkpoint(job);
+  }
+  private async join(job: ImportJob, op: ImportOperation, cancel: boolean) {
+    this.apply(
+      job,
+      op,
+      await (cancel ? this.bridge().cancel(op.operationId) : this.bridge().poll(op.operationId)),
+    );
+    while (op.state === "dispatched") {
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+      this.apply(
+        job,
+        op,
+        await (job.cancelled || this.closed
+          ? this.bridge().cancel(op.operationId)
+          : this.bridge().poll(op.operationId)),
+      );
+    }
+  }
+  private async execute(job: ImportJob, handles: string[], token: string) {
+    try {
+      for (const [index, op] of (job.nativeOperations ?? []).entries()) {
+        if (job.cancelled || this.closed || job.interrupted) {
+          this.retirePrepared(job, op);
+          continue;
+        }
+        // Persist dispatch identity before the request; ambiguous responses never re-Begin.
+        op.state = "dispatched";
+        this.checkpoint(job);
+        const sourceHandle = handles[index];
+        if (!sourceHandle) throw new AuxError("ref_stale", "The original browser source handle was lost.");
+        const receipt = await this.bridge().begin({
+          token,
+          operationId: op.operationId,
+          sourceHandle,
+          categories: op.categories,
+          extensionReview: job.selections?.[index]?.extensionReview ?? {},
+        });
+        this.apply(job, op, receipt);
+        if (op.state === "dispatched") await this.join(job, op, job.cancelled || this.closed);
+      }
+    } catch {
+      job.interrupted = true;
+      job.error =
+        "Import completion was not confirmed. Retain this receipt and review its status before retrying.";
+      this.checkpoint(job);
+    }
+  }
+  private async reconcile(job: ImportJob) {
+    for (const op of job.nativeOperations ?? []) {
+      if (op.state === "dispatched" || op.state === "unknown")
+        this.apply(job, op, await this.bridge().poll(op.operationId));
+    }
+  }
+  private async signalCancellation(job: ImportJob) {
+    // Send reduction immediately, including while an accepted operation is
+    // sleeping between polls. The execution loop still owns its completion
+    // join; this acknowledgement does not finish or roll back destination work.
+    const results = await Promise.allSettled(
+      (job.nativeOperations ?? [])
+        .filter((op) => op.state === "dispatched" || op.state === "unknown")
+        .map((op) => this.bridge().cancel(op.operationId)),
+    );
+    const errors = results.flatMap((result) => (result.status === "rejected" ? [result.reason] : []));
+    if (errors.length) throw new AggregateError(errors, "Native import cancellation was not acknowledged.");
+  }
+  async cancel(jobId: string, token: string) {
+    await this.owner(token);
+    const job = this.job(jobId);
+    if (job.done) return { ok: true };
+    job.cancelled = true;
+    this.checkpoint(job);
+    await this.signalCancellation(job);
+    await this.inFlight.get(jobId);
+    for (const op of job.nativeOperations ?? []) {
+      if (op.state === "prepared") this.retirePrepared(job, op);
+      else if (op.state !== "joined") await this.join(job, op, true);
+    }
+    return { ok: job.done };
+  }
+  /** Reduction-only drain while the original authenticated native channel remains live. */
+  async close(): Promise<void> {
+    this.closed = true;
+    this.previews.clear();
+    this.extensionReviews.clear();
+    const failures: unknown[] = [];
+    try {
+      await this.selections.close();
+    } catch (error) {
+      failures.push(error);
+    }
+    for (const job of this.jobs.values())
+      if (!job.done && !job.acknowledged) {
+        job.cancelled = true;
+        try {
+          this.checkpoint(job);
+        } catch (error) {
+          failures.push(error);
+        }
+      }
+    for (const result of await Promise.allSettled(
+      [...this.jobs.values()]
+        .filter((job) => !job.done && !job.acknowledged)
+        .map((job) => this.signalCancellation(job)),
+    ))
+      if (result.status === "rejected") failures.push(result.reason);
+    for (const result of await Promise.allSettled(this.inFlight.values()))
+      if (result.status === "rejected") failures.push(result.reason);
+    for (const job of this.jobs.values())
+      if (!job.done && !job.acknowledged) {
+        for (const op of job.nativeOperations ?? []) {
+          try {
+            if (op.state === "prepared") this.retirePrepared(job, op);
+            else if (op.state !== "joined") await this.join(job, op, true);
+          } catch (error) {
+            failures.push(error);
+          }
+        }
+        if (!job.done)
+          failures.push(
+            new AuxError("needs_input", "An interrupted import retains unknown accepted effects."),
+          );
+      }
+    if (failures.length)
+      throw new AggregateError(failures, "Browser imports retain unknown accepted effects.");
   }
 }

@@ -1,167 +1,29 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { z } from "zod";
 import {
-  routineOccurrenceIdentity,
-  newRunId,
   AuxError,
   type Routine,
   type RoutineSuggestion,
-  type RoutineAlert,
-  type RoutineCompare,
   RoutineShareSchema,
-  RoutineRunOutcomeSchema,
   RoutineSourceEventSchema,
   RoutineSchema,
   type RoutineRun,
-  type RoutineRunOutcome,
-  type RoutineInboxItem,
   type RoutineSourceEvent,
   type RoutineShare,
   type RoutineTrigger,
-  type Run,
 } from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
-import type { TaskEvidenceService } from "./task-evidence.js";
-import { TaskService } from "./tasks.js";
-import { SkillReplayRepairs } from "./skill-repair.js";
+import { RoutineInbox, mapRoutineRunStatus } from "./routines/inbox.js";
+import { RoutineReplayService } from "./routines/replay.js";
 import { readSkillDocument, serializeSkillDocument } from "./skill-document.js";
-import type { DemoRecorder } from "./demo-recorder.js";
-import type { DemonstrationReview } from "./skill-replay.js";
-import {
-  bindSkillParameters,
-  compileSkillTrace,
-  compileDemonstration,
-  demonstrationReplayDigest,
-  skillReplayProofDigest,
-  replayDigest,
-  skillPageOrigin,
-  startSkillReplay,
-} from "./skill-replay.js";
-import type { PageService } from "./pages.js";
+import { skillReplayProofDigest } from "./skill-replay.js";
 
-function parseRoutine(row: {
-  json: string;
-  revision: number;
-  paused: number;
-  archived_at: number | null;
-  updated_at: number;
-  routine_id: string;
-  workspace_id: string;
-}): Routine {
-  const body = JSON.parse(row.json) as Omit<
-    Routine,
-    "routineId" | "revision" | "updatedAt" | "paused" | "archivedAt"
-  >;
-  return RoutineSchema.parse({
-    ...body,
-    routineId: row.routine_id,
-    workspaceId: row.workspace_id,
-    revision: row.revision,
-    paused: row.paused === 1,
-    archivedAt: row.archived_at ?? undefined,
-    updatedAt: row.updated_at,
-  });
-}
-
-function parseRun(row: Record<string, unknown>): RoutineRun {
-  return {
-    routineRunId: String(row.routine_run_id),
-    routineId: String(row.routine_id),
-    revision: Number(row.revision),
-    occurrenceId: row.occurrence_id ? String(row.occurrence_id) : undefined,
-    occurrenceIdentity: row.occurrence_identity ? String(row.occurrence_identity) : undefined,
-    triggerPageId: row.trigger_page_id ? String(row.trigger_page_id) : undefined,
-    triggerDocumentEpoch: row.trigger_document_epoch == null ? undefined : Number(row.trigger_document_epoch),
-    status: row.status as RoutineRun["status"],
-    reason: row.reason ? String(row.reason) : undefined,
-    chatId: row.chat_id ? String(row.chat_id) : undefined,
-    runId: row.run_id ? String(row.run_id) : undefined,
-    parameters: row.parameters ? (JSON.parse(String(row.parameters)) as Record<string, string>) : {},
-    startedAt: row.started_at == null ? undefined : Number(row.started_at),
-    endedAt: row.ended_at == null ? undefined : Number(row.ended_at),
-    createdAt: Number(row.created_at),
-  };
-}
-
-function weekdayInZone(at: number, timezone: string): number {
-  const day = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: timezone }).format(new Date(at));
-  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(day);
-}
-
-function hourMinuteInZone(at: number, timezone: string): { hour: number; minute: number } {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-    timeZone: timezone,
-  }).formatToParts(new Date(at));
-  return {
-    hour: Number(parts.find((part) => part.type === "hour")?.value ?? 0),
-    minute: Number(parts.find((part) => part.type === "minute")?.value ?? 0),
-  };
-}
-
-/** The first real instant owns a repeated wall-clock minute. */
-function firstWallClockMinute(at: number, timezone: string, hour: number, minute: number): boolean {
-  const offset = new Intl.DateTimeFormat("en-US", { timeZone: timezone, timeZoneName: "shortOffset" });
-  const offsetAt = (time: number) =>
-    offset.formatToParts(new Date(time)).find((part) => part.type === "timeZoneName")?.value;
-  if (offsetAt(at) === offsetAt(at - 180 * 60_000)) return true;
-  const date = new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: timezone,
-  });
-  const day = date.format(new Date(at));
-  for (let earlier = at - 60_000; earlier >= at - 180 * 60_000; earlier -= 60_000) {
-    if (date.format(new Date(earlier)) !== day) continue;
-    const wall = hourMinuteInZone(earlier, timezone);
-    if (wall.hour === hour && wall.minute === minute) return false;
-  }
-  return true;
-}
-
-export function nextScheduledTime(
-  trigger: Extract<RoutineTrigger, { kind: "schedule" }>,
-  from: number,
-): number {
-  for (let offset = 0; offset < 14 * 24 * 60; offset++) {
-    const candidate = from + offset * 60_000;
-    const day = weekdayInZone(candidate, trigger.timezone);
-    const { hour, minute } = hourMinuteInZone(candidate, trigger.timezone);
-    if (
-      trigger.days.includes(day) &&
-      hour === trigger.hour &&
-      minute === trigger.minute &&
-      firstWallClockMinute(candidate, trigger.timezone, hour, minute)
-    ) {
-      const occurrence = candidate - (candidate % 60_000);
-      if (occurrence >= from) return occurrence;
-    }
-  }
-  throw new AuxError("invalid_params", "Could not compute the next scheduled occurrence.");
-}
-
-export function previousScheduledTime(
-  trigger: Extract<RoutineTrigger, { kind: "schedule" }>,
-  from: number,
-): number {
-  for (let offset = 0; offset < 14 * 24 * 60; offset++) {
-    const candidate = from - offset * 60_000;
-    const day = weekdayInZone(candidate, trigger.timezone);
-    const { hour, minute } = hourMinuteInZone(candidate, trigger.timezone);
-    if (
-      trigger.days.includes(day) &&
-      hour === trigger.hour &&
-      minute === trigger.minute &&
-      firstWallClockMinute(candidate, trigger.timezone, hour, minute)
-    )
-      return candidate - (candidate % 60_000);
-  }
-  throw new AuxError("invalid_params", "Could not compute the previous scheduled occurrence.");
-}
+import { parseRoutine, parseRun } from "./routines/records.js";
+import { scanRoutineCandidates } from "./routines/suggestions.js";
+import { RoutineScheduler } from "./routines/scheduler.js";
+import { validateRecurrence } from "./routines/recurrence.js";
+export { nextScheduledTime, previousScheduledTime } from "./routines/recurrence.js";
 
 export class RoutineService {
   /** Only records present when this service starts can be abandoned dispatches. */
@@ -176,6 +38,7 @@ export class RoutineService {
     ) =>
       | Promise<{ chatId?: string; runId?: string } | { chatId?: string; runId?: string }>
       | { chatId?: string; runId?: string },
+    private stopWork?: (runId: string) => Promise<void> | void,
   ) {
     this.orphanedDispatches = new Set(
       (
@@ -343,41 +206,39 @@ export class RoutineService {
       .map(({ routine, reasons }) => ({ routineId: routine.routineId, title: routine.title, reasons }));
   }
 
+  private inboxService?: RoutineInbox;
+  private resultInbox(): RoutineInbox {
+    this.sync();
+    return (this.inboxService ??= new RoutineInbox(
+      this.repo,
+      (id) => this.routine(id),
+      (id) => this.runById(id),
+    ));
+  }
+  outcome(...args: Parameters<RoutineInbox["outcome"]>) {
+    return this.resultInbox().outcome(...args);
+  }
+  inbox(...args: Parameters<RoutineInbox["inbox"]>) {
+    return this.resultInbox().inbox(...args);
+  }
+  markInboxRead(...args: Parameters<RoutineInbox["markInboxRead"]>) {
+    return this.resultInbox().markInboxRead(...args);
+  }
+  alerts(...args: Parameters<RoutineInbox["alerts"]>) {
+    return this.resultInbox().alerts(...args);
+  }
+  compare(...args: Parameters<RoutineInbox["compare"]>) {
+    return this.resultInbox().compare(...args);
+  }
+
+  scan(input: { workspaceId: string; limit?: number }) {
+    this.requireWorkspace(input.workspaceId);
+    return scanRoutineCandidates(this.repo, input.workspaceId, input.limit);
+  }
+
   get(routineId: string): { routine: Routine; runs: RoutineRun[] } {
     const runs = this.runs(routineId);
     return { routine: this.routine(routineId), runs };
-  }
-
-  outcome(routineRunId: string, evidence: TaskEvidenceService): RoutineRunOutcome {
-    this.sync();
-    const run = this.runById(routineRunId);
-    const row = this.repo.db
-      .prepare("SELECT json FROM routine_revisions WHERE routine_id=? AND revision=?")
-      .get(run.routineId, run.revision) as { json: string } | undefined;
-    if (!row) throw new AuxError("not_found", "The saved Skill revision for this run is unavailable.");
-    const definition = RoutineSchema.parse(JSON.parse(row.json));
-    const result =
-      definition.sourceTaskId && definition.sourceTaskRevision
-        ? evidence.runCriteria(
-            definition.sourceTaskId,
-            definition.sourceTaskRevision,
-            run.runId,
-            definition.successCriteria,
-          )
-        : {
-            linkedRunFound: false,
-            criteria: definition.successCriteria.map((criterion) => ({
-              criterion,
-              status: "unverified" as const,
-              evidence: [],
-            })),
-          };
-    return RoutineRunOutcomeSchema.parse({
-      run,
-      sourceTaskId: definition.sourceTaskId,
-      sourceTaskRevision: definition.sourceTaskRevision,
-      ...result,
-    });
   }
 
   create(
@@ -418,7 +279,8 @@ export class RoutineService {
       calendarGrantIds: input.calendarGrantIds ?? [],
       autoInject: input.autoInject ?? { keywords: [], urls: [] },
       successCriteria: input.successCriteria ?? [],
-      reviewRequired: input.reviewRequired ?? input.trigger?.kind !== "monitor",
+      reviewRequired:
+        input.reviewRequired ?? !["monitor", "heartbeat"].includes(input.trigger?.kind ?? "manual"),
       consecutive: input.consecutive ?? false,
       presenceGuardExempt: input.presenceGuardExempt ?? false,
       activationReview,
@@ -498,317 +360,56 @@ export class RoutineService {
       paused: false,
       activationReview: run ? "run_result" : undefined,
       trigger: input.trigger ?? { kind: "manual" },
-      reviewRequired: input.reviewRequired ?? input.trigger?.kind !== "monitor",
+      reviewRequired:
+        input.reviewRequired ?? !["monitor", "heartbeat"].includes(input.trigger?.kind ?? "manual"),
     });
   }
 
   /** Save a bounded declarative trace; a compile never grants execution authority. */
+  private replayService?: RoutineReplayService;
+  private replay(): RoutineReplayService {
+    return (this.replayService ??= new RoutineReplayService(
+      this.repo,
+      this.events,
+      (id) => this.routine(id),
+      (id, workspace) => this.requireSourceTask(id, workspace),
+      (routine) => this.persist(routine),
+    ));
+  }
   compileReplay(
-    input: {
-      routineId: string;
-      expectedRevision: number;
-      sourceRunId: string;
-      pageId: string;
-      samples: Record<string, string>;
-    },
-    pages: PageService,
-  ): Routine {
-    const current = this.routine(input.routineId);
-    if (current.revision !== input.expectedRevision)
-      throw new AuxError("conflict", "This Skill changed. Refresh before preparing a replay.");
-    if (!current.sourceTaskId || !current.sourceTaskRevision || current.archivedAt)
-      throw new AuxError("conflict", "Bind an open saved task before preparing a replay.");
-    const sourceTask = this.requireSourceTask(current.sourceTaskId, current.workspaceId);
-    if (sourceTask.revision !== current.sourceTaskRevision)
-      throw new AuxError("conflict", "The source task changed. Sync it before preparing a replay.");
-    const run = this.repo.getRun(input.sourceRunId);
-    if (
-      !run ||
-      run.status !== "completed" ||
-      run.config?.taskId !== current.sourceTaskId ||
-      run.config?.taskRevision !== current.sourceTaskRevision ||
-      run.config?.contextWorkspaceId !== current.workspaceId ||
-      run.pageIds.length !== 1 ||
-      run.pageIds[0] !== input.pageId
-    )
-      throw new AuxError("conflict", "Choose a completed run from this exact saved task and page.");
-    if (
-      Object.keys(input.samples).length !== current.parameters.length ||
-      current.parameters.some((parameter) => !input.samples[parameter.name]) ||
-      Object.keys(input.samples).some(
-        (name) => !current.parameters.some((parameter) => parameter.name === name),
-      )
-    )
-      throw new AuxError("invalid_params", "Review a source value for every declared Skill parameter.");
-    const siteOrigin = skillPageOrigin(pages, input.pageId);
-    if (current.siteOrigins.length && !current.siteOrigins.includes(siteOrigin))
-      throw new AuxError("conflict", "The source page is outside this Skill's reviewed site scope.");
-    const records = this.repo.listSteps(run.runId);
-    if (records.some((record) => record.pageId !== input.pageId))
-      throw new AuxError("conflict", "The source run changed pages; record a single-page trace.");
-    const steps = compileSkillTrace(records, input.samples);
-    const next: Routine = RoutineSchema.parse({
-      ...current,
-      sourceRunId: run.runId,
-      paused: true,
-      activationReview: "run_result",
-      revision: current.revision + 1,
-      updatedAt: Date.now(),
-      replay: {
-        format: "aux-skill-replay@2",
-        sourceRunId: run.runId,
-        siteOrigin,
-        siteOrigins: [siteOrigin],
-        steps,
-        digest: replayDigest(run.runId, siteOrigin, steps),
-        state: "untested",
-      },
-    });
-    this.persist(next);
-    this.events.emit("routine.updated", { routine: next });
-    return next;
+    ...args: Parameters<RoutineReplayService["compileReplay"]>
+  ): ReturnType<RoutineReplayService["compileReplay"]> {
+    return this.replay().compileReplay(...args);
   }
-
   compileDemonstrationReplay(
-    input: { routineId: string; expectedRevision: number; recordingId: string; review: DemonstrationReview },
-    recorder: DemoRecorder,
-  ): Routine {
-    const current = this.routine(input.routineId);
-    if (
-      current.revision !== input.expectedRevision ||
-      current.archivedAt ||
-      !current.sourceTaskId ||
-      !current.sourceTaskRevision
-    )
-      throw new AuxError(
-        "conflict",
-        "Review an open saved task and current Skill revision before compiling.",
-      );
-    const task = this.requireSourceTask(current.sourceTaskId, current.workspaceId);
-    if (task.revision !== current.sourceTaskRevision)
-      throw new AuxError("conflict", "The source task changed before compilation.");
-    const demo = recorder.get(input.recordingId);
-    if (
-      !new TaskService(this.repo, this.events)
-        .get(current.sourceTaskId)
-        .resources.some((resource) => resource.kind === "page" && resource.locator === demo.pageId)
-    )
-      throw new AuxError(
-        "permission_denied",
-        "The recording tab is outside this saved task's reviewed resources.",
-      );
-    const declared = new Set(current.parameters.map((parameter) => parameter.name));
-    if (
-      input.review.inputs.some((value) => !declared.has(value.parameter)) ||
-      [...declared].some((name) => !input.review.inputs.some((value) => value.parameter === name))
-    )
-      throw new AuxError("invalid_params", "Review every declared parameter against its recorded field.");
-    const steps = compileDemonstration(demo, input.review, current.siteOrigins);
-    const initial = demo.steps.find((step) => step.kind === "navigate");
-    if (!initial || initial.kind !== "navigate")
-      throw new AuxError("conflict", "The recording has no initial site identity.");
-    const siteOrigin = new URL(initial.url).origin;
-    const next = RoutineSchema.parse({
-      ...current,
-      paused: true,
-      revision: current.revision + 1,
-      updatedAt: Date.now(),
-      replay: {
-        format: "aux-skill-replay@2",
-        sourceRecordingId: demo.id,
-        siteOrigin,
-        siteOrigins: current.siteOrigins,
-        steps,
-        digest: demonstrationReplayDigest(demo.id, current.siteOrigins, steps),
-        state: "untested",
-      },
-    });
-    this.persist(next);
-    this.events.emit("routine.updated", { routine: next });
-    return next;
+    ...args: Parameters<RoutineReplayService["compileDemonstrationReplay"]>
+  ): ReturnType<RoutineReplayService["compileDemonstrationReplay"]> {
+    return this.replay().compileDemonstrationReplay(...args);
   }
-
-  async proposeReplayRepair(
-    input: {
-      routineId: string;
-      expectedRevision: number;
-      pageId: string;
-      changes: { stepId: string; selector: string }[];
-    },
-    pages: PageService,
-  ) {
-    const current = this.routine(input.routineId);
-    if (
-      current.revision !== input.expectedRevision ||
-      current.archivedAt ||
-      !current.sourceTaskId ||
-      !current.sourceTaskRevision
-    )
-      throw new AuxError("conflict", "Review this Skill's current saved task before repair.");
-    const task = this.requireSourceTask(current.sourceTaskId, current.workspaceId);
-    if (
-      task.revision !== current.sourceTaskRevision ||
-      !new TaskService(this.repo, this.events)
-        .get(current.sourceTaskId)
-        .resources.some((resource) => resource.kind === "page" && resource.locator === input.pageId)
-    )
-      throw new AuxError(
-        "permission_denied",
-        "The repair tab is outside this Skill's current reviewed task.",
-      );
-    return new SkillReplayRepairs(this.repo).propose(current, input.pageId, input.changes, pages);
+  proposeReplayRepair(
+    ...args: Parameters<RoutineReplayService["proposeReplayRepair"]>
+  ): ReturnType<RoutineReplayService["proposeReplayRepair"]> {
+    return this.replay().proposeReplayRepair(...args);
   }
-  applyReplayRepair(input: { proposalId: string; expectedRevision: number }, pages: PageService): Routine {
-    const repairs = new SkillReplayRepairs(this.repo),
-      proposal = repairs.get(input.proposalId);
-    const current = this.routine(proposal.routineId);
-    if (
-      current.revision !== input.expectedRevision ||
-      current.archivedAt ||
-      !current.sourceTaskId ||
-      !current.sourceTaskRevision ||
-      this.requireSourceTask(current.sourceTaskId, current.workspaceId).revision !==
-        current.sourceTaskRevision
-    )
-      throw new AuxError("conflict", "The reviewed source task or Skill changed.");
-    const next = this.repo.transaction(() => {
-      const replay = repairs.apply(current, proposal.proposalId, pages);
-      const next = RoutineSchema.parse({
-        ...current,
-        replay,
-        paused: true,
-        activationReview: "run_result",
-        revision: current.revision + 1,
-        updatedAt: Date.now(),
-      });
-      this.persist(next);
-      return next;
-    });
-    this.events.emit("routine.updated", { routine: next });
-    return next;
+  applyReplayRepair(
+    ...args: Parameters<RoutineReplayService["applyReplayRepair"]>
+  ): ReturnType<RoutineReplayService["applyReplayRepair"]> {
+    return this.replay().applyReplayRepair(...args);
   }
-
   testReplay(
-    input: {
-      routineId: string;
-      expectedRevision: number;
-      pageId: string;
-      parameters: Record<string, string>;
-    },
-    pages: PageService,
-  ): { runId: string; revision: number } {
-    const current = this.routine(input.routineId);
-    if (
-      current.revision !== input.expectedRevision ||
-      !current.replay ||
-      current.replay.state === "testing" ||
-      current.replay.state === "needs_repair"
-    )
-      throw new AuxError("conflict", "This Skill replay changed or is already testing.");
-    if (current.archivedAt || !current.sourceTaskId || !current.sourceTaskRevision)
-      throw new AuxError("conflict", "Bind an open saved task before testing this Skill.");
-    if (
-      this.requireSourceTask(current.sourceTaskId, current.workspaceId).revision !==
-      current.sourceTaskRevision
-    )
-      throw new AuxError("conflict", "The source task changed. Repair this Skill before testing.");
-    if (
-      skillReplayProofDigest(current.replay) !== current.replay.digest ||
-      skillPageOrigin(pages, input.pageId) !== current.replay.siteOrigin
-    )
-      throw new AuxError("conflict", "The saved replay or selected site changed. Repair before testing.");
-    bindSkillParameters(
-      current.replay.steps,
-      input.parameters,
-      current.parameters.map((item) => item.name),
-    );
-    const runId = newRunId();
-    const next: Routine = RoutineSchema.parse({
-      ...current,
-      paused: true,
-      revision: current.revision + 1,
-      updatedAt: Date.now(),
-      replay: {
-        ...current.replay,
-        state: "testing",
-        testRunId: runId,
-        testRevision: current.revision + 1,
-        testedRevision: undefined,
-        testedAt: undefined,
-      },
-    });
-    this.repo.transaction(() => {
-      this.persist(next);
-      startSkillReplay({
-        repo: this.repo,
-        pages,
-        events: this.events,
-        routine: next,
-        pageId: input.pageId,
-        parameters: input.parameters,
-        deliveryRunId: runId,
-      });
-    });
-    this.events.emit("routine.updated", { routine: next });
-    return { runId, revision: next.revision };
+    ...args: Parameters<RoutineReplayService["testReplay"]>
+  ): ReturnType<RoutineReplayService["testReplay"]> {
+    return this.replay().testReplay(...args);
   }
-
-  /** The exact test run and every recorded step must prove the final oracle. */
-  resultReplay(input: { routineId: string; expectedRevision: number; runId: string }): Routine {
-    const current = this.routine(input.routineId);
-    const replay = current.replay;
-    if (
-      current.revision !== input.expectedRevision ||
-      !replay ||
-      replay.state !== "testing" ||
-      replay.testRunId !== input.runId ||
-      replay.testRevision !== current.revision ||
-      skillReplayProofDigest(replay) !== replay.digest
-    )
-      throw new AuxError("conflict", "This is not the pending test for the current Skill revision.");
-    const run = this.repo.getRun(input.runId);
-    if (
-      !run ||
-      !["completed", "failed", "cancelled", "interrupted"].includes(run.status) ||
-      run.config?.routeReason !== `skill-replay:${current.routineId}:${replay.digest}` ||
-      run.config.taskId !== current.sourceTaskId ||
-      run.config.taskRevision !== current.sourceTaskRevision ||
-      run.config.contextWorkspaceId !== current.workspaceId ||
-      run.pageIds.length !== 1
-    )
-      throw new AuxError("conflict", "Wait for this exact Skill test run to settle.");
-    const records = this.repo.listSteps(run.runId);
-    const passed =
-      run.status === "completed" &&
-      records.length === replay.steps.length &&
-      records.every(
-        (record, index) =>
-          record.pageId === run.pageIds[0] &&
-          record.op === replay.steps[index]?.op &&
-          record.outcome?.status === "ok" &&
-          !record.outcome?.receipt?.uncertain &&
-          !record.outcome?.receipt?.unconfirmed &&
-          record.outcome?.effect !== "uncertain",
-      );
-    const next: Routine = RoutineSchema.parse({
-      ...current,
-      paused: true,
-      revision: current.revision + 1,
-      updatedAt: Date.now(),
-      replay: {
-        ...replay,
-        state: passed ? "tested" : "needs_repair",
-        testedRevision: passed ? current.revision + 1 : undefined,
-        testedAt: passed ? Date.now() : undefined,
-      },
-    });
-    this.persist(next);
-    this.events.emit("routine.updated", { routine: next });
-    return next;
+  resultReplay(
+    ...args: Parameters<RoutineReplayService["resultReplay"]>
+  ): ReturnType<RoutineReplayService["resultReplay"]> {
+    return this.replay().resultReplay(...args);
   }
 
   update(
-    input: Partial<RoutineDefinition> & {
+    input: Omit<Partial<RoutineDefinition>, "spendCapUsd"> & {
+      spendCapUsd?: number | null;
       routineId: string;
       expectedRevision: number;
       activationReviewed?: boolean;
@@ -844,6 +445,7 @@ export class RoutineService {
     const next: Routine = {
       ...current,
       ...patch,
+      spendCapUsd: input.spendCapUsd === null ? undefined : (input.spendCapUsd ?? current.spendCapUsd),
       parameters: input.parameters ?? current.parameters,
       siteOrigins: input.siteOrigins ?? current.siteOrigins,
       accountLabels: input.accountLabels ?? current.accountLabels,
@@ -1057,7 +659,11 @@ export class RoutineService {
         "conflict",
         "The source task changed. Review and sync this Skill before running it.",
       );
-    if (!routine.replay && this.spentUsd(routine.routineId) >= (routine.spendCapUsd ?? 50)) {
+    if (
+      !routine.replay &&
+      routine.spendCapUsd !== undefined &&
+      this.spentUsd(routine.routineId) >= routine.spendCapUsd
+    ) {
       if (routine.trigger.kind !== "manual") {
         const paused = RoutineSchema.parse({
           ...routine,
@@ -1158,87 +764,23 @@ export class RoutineService {
     ).map(parseRun);
   }
 
-  async due(now = Date.now()): Promise<RoutineRun[]> {
-    this.sync();
-    this.pauseNeglected(now);
-    const created: RoutineRun[] = [];
-    for (const routine of this.list({ includeArchived: false, limit: 200 })) {
-      if (routine.paused || routine.trigger.kind === "manual") continue;
-      if (routine.trigger.kind === "schedule") {
-        const last = this.repo.db
-          .prepare(
-            "SELECT max(created_at) AS at FROM routine_runs WHERE routine_id=? AND occurrence_identity IS NOT NULL",
-          )
-          .get(routine.routineId) as { at: number | null };
-        const lowerBound = Math.max(
-          routine.createdAt,
-          routine.activatedAt ?? 0,
-          last.at ?? 0,
-          now - 14 * 24 * 60 * 60_000,
-        );
-        const pending: number[] = [];
-        let cursor = now;
-        for (let count = 0; count < 100; count++) {
-          const scheduledFor = previousScheduledTime(routine.trigger, cursor);
-          if (scheduledFor < lowerBound) break;
-          pending.push(scheduledFor);
-          cursor = scheduledFor - 60_000;
-        }
-        const pendingInOrder = pending.reverse();
-        const overdue = pendingInOrder.filter((scheduledFor) => now - scheduledFor > 90_000);
-        const catchUp =
-          routine.missedRunPolicy === "run_once_on_wake" &&
-          !pendingInOrder.some((scheduledFor) => Math.abs(now - scheduledFor) <= 90_000)
-            ? overdue.at(-1)
-            : undefined;
-        for (const scheduledFor of pendingInOrder) {
-          const identity = routineOccurrenceIdentity(
-            routine.routineId,
-            routine.trigger.timezone,
-            scheduledFor,
-          );
-          if (this.hasOccurrence(identity)) continue;
-          if (Math.abs(now - scheduledFor) <= 90_000 || scheduledFor === catchUp) {
-            const record = await this.startOccurrence(routine, identity, scheduledFor);
-            if (scheduledFor === catchUp && ["needs_review", "running"].includes(record.status)) {
-              record.reason = (
-                `Caught up once after ${overdue.length} missed scheduled occurrence${overdue.length === 1 ? "" : "s"}. ` +
-                (record.status === "needs_review" ? "Review before writes." : "")
-              ).trim();
-              this.updateRun(record);
-              this.events.emit("routine.updated", { routine, run: record });
-            }
-            created.push(record);
-          } else {
-            created.push(
-              this.recordMissed(
-                routine,
-                identity,
-                "Missed scheduled run. Consequential work was not started automatically.",
-              ),
-            );
-          }
-        }
-      } else if (routine.trigger.kind === "monitor") {
-        const identity = routineOccurrenceIdentity(
-          routine.routineId,
-          routine.trigger.timezone,
-          Math.floor(now / (routine.trigger.intervalMinutes * 60_000)) *
-            routine.trigger.intervalMinutes *
-            60_000,
-        );
-        if (this.hasOccurrence(identity)) continue;
-        const missed = this.recentMissedMonitors(routine.routineId);
-        const record = await this.startOccurrence(routine, identity, now);
-        if (missed > 0 && record.status !== "missed") {
-          record.reason = `Coalesced ${missed + 1} missed read-only checks into one run.`;
-          this.updateRun(record);
-          this.events.emit("routine.updated", { routine, run: record });
-        }
-        created.push(record);
-      }
-    }
-    return created;
+  private scheduler?: RoutineScheduler;
+  due(now = Date.now()): Promise<RoutineRun[]> {
+    return (this.scheduler ??= new RoutineScheduler({
+      repo: this.repo,
+      events: this.events,
+      list: () => this.list({ includeArchived: false, limit: 200 }),
+      sync: () => this.sync(),
+      pauseNeglected: (at) => this.pauseNeglected(at),
+      hasOccurrence: (identity) => this.hasOccurrence(identity),
+      startOccurrence: (routine, identity, at) => this.startOccurrence(routine, identity, at),
+      recordMissed: (routine, identity, reason) => this.recordMissed(routine, identity, reason),
+      recentMissed: (id) => this.recentMissedMonitors(id),
+      updateRun: (run) => this.updateRun(run),
+      pauseInvalid: (routine) => {
+        this.pause(routine.routineId, routine.revision, true);
+      },
+    })).due(now);
   }
 
   /** Authoritative watch scope and document epoch before native text extraction. */
@@ -1344,49 +886,6 @@ export class RoutineService {
     return created;
   }
 
-  /** One inbox row per automation occurrence, including completed results and missed fires. */
-  inbox(opts: { workspaceId?: string; limit?: number; unreadOnly?: boolean } = {}): RoutineInboxItem[] {
-    this.sync();
-    const limit = Math.min(100, Math.max(1, opts.limit ?? 50));
-    const rows = this.repo.db
-      .prepare(
-        `SELECT rr.*,r.workspace_id,coalesce(rev.json,r.json) AS routine_json,k.value AS read_at
-      FROM routine_runs rr JOIN routines r ON r.routine_id=rr.routine_id
-      LEFT JOIN routine_revisions rev ON rev.routine_id=rr.routine_id AND rev.revision=rr.revision
-      LEFT JOIN kv k ON k.key='setting:routineInboxRead:'||rr.routine_run_id
-      WHERE rr.occurrence_identity IS NOT NULL AND (? IS NULL OR r.workspace_id=?)
-        AND (?=0 OR k.value IS NULL)
-      ORDER BY rr.created_at DESC,rr.routine_run_id DESC LIMIT ?`,
-      )
-      .all(opts.workspaceId ?? null, opts.workspaceId ?? null, opts.unreadOnly ? 1 : 0, limit) as (Record<
-      string,
-      unknown
-    > & { workspace_id: string; routine_json: string; read_at: string | null })[];
-    return rows.map((row) => {
-      const definition = JSON.parse(row.routine_json) as { title: string; trigger: RoutineTrigger };
-      return {
-        run: parseRun(row),
-        title: definition.title,
-        workspaceId: row.workspace_id,
-        triggerKind: definition.trigger.kind,
-        ...(row.read_at
-          ? { readAt: this.repo.getSetting<number>(`routineInboxRead:${row.routine_run_id}`) }
-          : {}),
-      };
-    });
-  }
-
-  markInboxRead(routineRunId: string, now = Date.now()): { readAt: number } {
-    const row = this.repo.db
-      .prepare("SELECT 1 FROM routine_runs WHERE routine_run_id=? AND occurrence_identity IS NOT NULL")
-      .get(routineRunId);
-    if (!row) throw new AuxError("not_found", "That automation result was not found.");
-    const key = `routineInboxRead:${routineRunId}`;
-    const readAt = this.repo.getSetting<number>(key) ?? now;
-    this.repo.setSetting(key, readAt);
-    return { readAt };
-  }
-
   private eventMatches(routine: Routine, event: RoutineSourceEvent): boolean {
     if (routine.trigger.kind === "site_notification" && event.kind === "site_notification")
       return routine.trigger.origin === event.origin && routine.siteOrigins.includes(event.origin);
@@ -1480,6 +979,7 @@ export class RoutineService {
   }
 
   private requireTriggerAuthority(routine: Routine): void {
+    validateRecurrence(routine.trigger);
     if (routine.trigger.kind === "site_notification" && !routine.siteOrigins.includes(routine.trigger.origin))
       throw new AuxError(
         "permission_denied",
@@ -1526,75 +1026,20 @@ export class RoutineService {
     }
   }
 
-  alerts(limit = 30): RoutineAlert[] {
-    this.sync();
-    const rows = this.repo.db
-      .prepare(
-        `SELECT r.routine_run_id, r.routine_id, r.status, r.reason, r.created_at, t.json
-      FROM routine_runs r JOIN routines t ON t.routine_id=r.routine_id
-      WHERE (r.status IN ('missed','needs_review','uncertain','failed','waiting_input') OR r.reason LIKE 'Coalesced %' OR (r.status='completed' AND r.occurrence_id IS NOT NULL AND json_extract(t.json,'$.reviewRequired')=1))
-      ORDER BY r.created_at DESC LIMIT ?`,
-      )
-      .all(limit) as {
-      routine_run_id: string;
-      routine_id: string;
-      status: string;
-      reason: string | null;
-      created_at: number;
-      json: string;
-    }[];
-    return rows.map((row) => {
-      const routine = JSON.parse(row.json) as { title: string; trigger?: { kind?: string } };
-      return {
-        routineRunId: row.routine_run_id,
-        routineId: row.routine_id,
-        title: routine.title,
-        status: row.status as RoutineAlert["status"],
-        reason: row.reason ?? undefined,
-        triggerKind: (
-          ["schedule", "monitor", "site_notification", "page_change", "calendar_event"] as string[]
-        ).includes(routine.trigger?.kind ?? "")
-          ? (routine.trigger!.kind as RoutineAlert["triggerKind"])
-          : "manual",
-        createdAt: row.created_at,
-      };
-    });
-  }
-
-  compare(leftRunId: string, rightRunId: string): RoutineCompare {
-    this.sync();
-    const left = this.runById(leftRunId);
-    const right = this.runById(rightRunId);
-    if (left.routineId !== right.routineId)
-      throw new AuxError("conflict", "Compare two runs of the same routine.");
-    const routine = this.routine(left.routineId);
-    const sameOccurrence = !!left.occurrenceIdentity && left.occurrenceIdentity === right.occurrenceIdentity;
-    const sameParameters = JSON.stringify(left.parameters) === JSON.stringify(right.parameters);
-    const statusChanged = left.status !== right.status;
-    const summary = [
-      `${routine.title}: ${left.status.replaceAll("_", " ")} vs ${right.status.replaceAll("_", " ")}.`,
-      sameOccurrence ? "Same scheduled occurrence." : "Different occurrences.",
-      sameParameters ? "Parameters match." : "Parameters differ.",
-      "This comparison is a local status snapshot. It does not prove a business outcome.",
-    ].join(" ");
-    return {
-      routineId: routine.routineId,
-      title: routine.title,
-      left,
-      right,
-      sameOccurrence,
-      sameParameters,
-      statusChanged,
-      summary,
-    };
-  }
-
   private async dispatch(record: RoutineRun, routine: Routine): Promise<RoutineRun> {
     // Read-only monitor checks retry a transient dispatch once before failing.
-    const attempts = routine.trigger.kind === "monitor" ? 2 : 1;
+    const attempts = ["monitor", "heartbeat"].includes(routine.trigger.kind) ? 2 : 1;
     let retried = false;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
+        const current = this.routine(routine.routineId);
+        if (
+          current.archivedAt ||
+          (record.occurrenceIdentity && current.paused) ||
+          current.revision !== record.revision
+        )
+          throw new AuxError("conflict", "This routine changed or paused before dispatch.");
+        routine = current;
         if (record.revision !== routine.revision)
           throw new AuxError(
             "conflict",
@@ -1616,6 +1061,63 @@ export class RoutineService {
             triggerPageId: record.triggerPageId,
             triggerDocumentEpoch: record.triggerDocumentEpoch,
           })) ?? {};
+        const currentAfterStart = this.routine(routine.routineId);
+        let contextChanged = false;
+        try {
+          contextChanged =
+            this.requireSourceTask(routine.sourceTaskId, routine.workspaceId).revision !==
+            routine.sourceTaskRevision;
+          this.requireTriggerPage(currentAfterStart, record);
+        } catch {
+          contextChanged = true;
+        }
+        if (
+          contextChanged ||
+          currentAfterStart.revision !== record.revision ||
+          currentAfterStart.archivedAt ||
+          (record.occurrenceIdentity && currentAfterStart.paused)
+        ) {
+          // Link the real original run before waiting for its cancellation acknowledgement.
+          const linked = { ...record, runId: started.runId, chatId: started.chatId };
+          this.updateRun(linked);
+          if (started.runId) {
+            if (!this.stopWork) {
+              const uncertain = {
+                ...linked,
+                status: "uncertain" as const,
+                reason: "The routine changed during launch. Stop and review its original run.",
+                endedAt: Date.now(),
+              };
+              this.updateRun(uncertain);
+              this.events.emit("routine.updated", { routine: currentAfterStart, run: uncertain });
+              return uncertain;
+            }
+            try {
+              await this.stopWork(started.runId);
+            } catch {
+              const uncertain = {
+                ...linked,
+                status: "uncertain" as const,
+                reason: "Stopping the original routine run needs review; cancellation was not acknowledged.",
+                endedAt: Date.now(),
+              };
+              this.updateRun(uncertain);
+              this.events.emit("routine.updated", { routine: currentAfterStart, run: uncertain });
+              return uncertain;
+            }
+          }
+          const cancelled = {
+            ...linked,
+            status: "cancelled" as const,
+            reason: started.runId
+              ? "The routine changed during launch; its original run was stopped."
+              : "The routine changed before work began.",
+            endedAt: Date.now(),
+          };
+          this.updateRun(cancelled);
+          this.events.emit("routine.updated", { routine: currentAfterStart, run: cancelled });
+          return cancelled;
+        }
         const next: RoutineRun = {
           ...record,
           status: "running",
@@ -1686,7 +1188,7 @@ export class RoutineService {
       const record = parseRun(row);
       const run = this.repo.getRun(record.runId!);
       if (!run) continue;
-      const next = this.mapRunStatus(record, run);
+      const next = mapRoutineRunStatus(record, run);
       if (!next) continue;
       this.updateRun(next);
       const routine = this.routine(record.routineId);
@@ -1792,40 +1294,6 @@ export class RoutineService {
       };
       this.persist(paused);
       this.events.emit("routine.updated", { routine: paused });
-    }
-  }
-
-  private mapRunStatus(record: RoutineRun, run: Run): RoutineRun | undefined {
-    const endedAt = run.endedAt ?? Date.now();
-    switch (run.status) {
-      case "completed":
-        return {
-          ...record,
-          status: "completed",
-          reason: record.status === "waiting_input" ? undefined : record.reason,
-          endedAt,
-        };
-      case "partially_completed":
-        return {
-          ...record,
-          status: "completed",
-          reason: "The run partially completed — review its results.",
-          endedAt,
-        };
-      case "failed":
-        return { ...record, status: "failed", reason: run.statusMessage ?? "The run failed.", endedAt };
-      case "cancelled":
-        return { ...record, status: "cancelled", endedAt };
-      case "interrupted":
-        return { ...record, status: "failed", reason: "The run was interrupted by a restart.", endedAt };
-      case "needs_input":
-        return record.status === "waiting_input"
-          ? undefined
-          : { ...record, status: "waiting_input", reason: "The run is waiting for input." };
-      default:
-        return record.status === "waiting_input"
-          ? { ...record, status: "running", reason: undefined }
-          : undefined;
     }
   }
 

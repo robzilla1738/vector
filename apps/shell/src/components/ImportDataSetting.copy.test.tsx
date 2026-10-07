@@ -18,7 +18,7 @@ vi.mock("../bridge", () => ({
 }));
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-it("separates live-tab access from browser sources without discovering anything on disclosure", async () => {
+it("describes actual browser Profile import without discovering anything on disclosure", async () => {
   rpc.mockReset();
   rpc.mockRejectedValue(new Error("No prior import"));
   const host = document.createElement("div");
@@ -27,11 +27,11 @@ it("separates live-tab access from browser sources without discovering anything 
   try {
     await act(async () => root.render(<ImportDataSetting />));
     const copy = () => host.textContent!.replace(/\s+/g, " ");
-    expect(copy()).toContain("Chrome, Arc, Safari or Firefox. Live tabs require an attached Chrome.");
+    expect(copy()).toContain("Choose available data from detected browser Profiles.");
     expect(copy()).toContain("Nothing is imported until you confirm.");
-    expect(copy()).toContain("Passwords, cookies, extensions and agent permissions are not imported here.");
+    expect(copy()).toContain("Cookies and agent permissions are not copied.");
     const details = [...host.querySelectorAll("details")];
-    expect(details).toHaveLength(2);
+    expect(details).toHaveLength(3);
     expect(details.every((item) => !item.open)).toBe(true);
     const summary = details[1]!.querySelector("summary")!;
     await act(async () => {
@@ -41,11 +41,9 @@ it("separates live-tab access from browser sources without discovering anything 
     expect(document.activeElement).toBe(summary);
     expect(details[1]!.open).toBe(true);
     for (const fact of [
-      "does not ask for browser Keychain passwords",
-      "Aux may separately ask macOS to unlock its protected local storage",
-      "Check the app and purpose in that system prompt; you can cancel it",
-      "Review password transfers separately in Passwords & Autofill",
-      "Reading Safari data may require Full Disk Access",
+      "may ask macOS to unlock the source browser’s Safe Storage key",
+      "Check the app and purpose in the system prompt; you can cancel it",
+      "Keys and password text stay in the native browser",
     ])
       expect(copy()).toContain(fact);
     expect(rpc.mock.calls).toEqual([["import.status", {}]]);
@@ -90,10 +88,14 @@ it("keeps ongoing-job and partial-count warnings with explicit reviewed retry af
         });
     });
     const copy = host.textContent!.replace(/\s+/g, " ");
-    expect(copy).toContain("Import interrupted when Aux stopped. Confirmed items remain available.");
-    expect(copy).toContain("Review sources and select what to retry.");
-    expect(copy).toContain("Bookmarks and history merge safely; live tabs can open duplicates.");
-    expect(copy).toContain("Counts cover confirmed batches; an interrupted request may have added more.");
+    expect(copy).toContain(
+      "Native import completion is unknown. Some accepted items may already be imported.",
+    );
+    expect(copy).toContain("Review sources and select what to import next.");
+    expect(copy).toContain("A fresh import can add duplicates.");
+    expect(copy).toContain(
+      "Counts cover confirmed native completion; an interrupted request may have accepted more.",
+    );
     expect(
       [...host.querySelectorAll("button")].find((button) => button.textContent === "Review sources to retry")!
         .disabled,

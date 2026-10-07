@@ -1,3 +1,5 @@
+import type { CopilotSession } from "@github/copilot-sdk";
+import type { ModelCallSource } from "../agent/model-client.js";
 import { AuxError } from "@aux/contracts";
 import { isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -252,6 +254,31 @@ export class CopilotServices {
       await this.initializeAccounts();
       await this.checkOwner(owner);
       return this.runtime.catalog(accountId, owner, this.controller.signal);
+    });
+  }
+
+  inference<T>(
+    accountId: string,
+    source: ModelCallSource,
+    modelId: string,
+    signal: AbortSignal,
+    use: (session: CopilotSession, current: () => Promise<void>, signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    return this.operation(source.nativeTurnContext, async () => {
+      await source.checkOriginal();
+      await this.requireRuntime();
+      await this.initializeAccounts();
+      await source.checkOriginal();
+      return this.runtime.inference(
+        accountId,
+        source.nativeTurnContext,
+        AbortSignal.any([signal, this.controller.signal]),
+        async () => {
+          await source.checkOriginal();
+        },
+        modelId,
+        use,
+      );
     });
   }
 

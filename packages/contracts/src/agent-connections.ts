@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const AgentClientSchema = z.enum(["codex", "claude"]);
+export const AgentClientSchema = z.enum(["codex", "claude", "cursor"]);
 export const AgentConnectionScopeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("workspace"), workspaceId: z.string().min(1) }).strict(),
   z.object({ kind: z.literal("task"), workspaceId: z.string().min(1), taskId: z.string().min(1) }).strict(),

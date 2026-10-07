@@ -1,4 +1,18 @@
 import {
+  ImportExtensionReviewSchema,
+  type ImportExtensionReview,
+  type ImportExtensionSelection,
+  NativeBrowserImportSelectionSchema,
+  type NativeBrowserImportSelection,
+  type BrowserExportSource,
+  type BrowserExportFormat,
+  NativeBrowserImportDiscoverySchema,
+  NativeBrowserImportReceiptSchema,
+  type NativeBrowserImportDiscovery,
+  type NativeBrowserImportReceipt,
+  type ImportCategory,
+} from "@aux/contracts";
+import {
   NativeTerminalCloseParams,
   NativeTerminalInputParams,
   NativeTerminalListenersParams,
@@ -183,6 +197,31 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
     helperId?: string;
     reconcile?: true;
   }): Promise<CopilotNativeStopResult>;
+  browserImportSelectWindow?(input: {
+    token: string;
+    sourceId: "safari";
+  }): Promise<NativeBrowserImportSelection>;
+  browserImportSelectExport?(input: {
+    token: string;
+    sourceId: BrowserExportSource;
+    format: BrowserExportFormat;
+  }): Promise<NativeBrowserImportSelection>;
+  browserImportExportPoll?(selectionId: string): Promise<NativeBrowserImportSelection>;
+  browserImportExportCancel?(selectionId: string): Promise<NativeBrowserImportSelection>;
+  browserImportDiscover?(token: string): Promise<NativeBrowserImportDiscovery>;
+  browserImportExtensionReview?(input: {
+    token: string;
+    sourceHandle: string;
+  }): Promise<ImportExtensionReview>;
+  browserImportBegin?(input: {
+    token: string;
+    operationId: string;
+    sourceHandle: string;
+    categories: ImportCategory[];
+    extensionReview: ImportExtensionSelection | Record<string, never>;
+  }): Promise<NativeBrowserImportReceipt>;
+  browserImportPoll?(operationId: string): Promise<NativeBrowserImportReceipt>;
+  browserImportCancel?(operationId: string): Promise<NativeBrowserImportReceipt>;
   personCapture?(input: NativePersonCaptureParams): Promise<NativePersonCaptureReceipt>;
   personReadContext?(pageId: string): Promise<NativePersonReadContext>;
   personRead?(input: { pageId: string; request: PersonReadRequest }): Promise<NativePersonReadReceipt>;
@@ -522,6 +561,67 @@ export class ChannelNativeBridge implements NativeBridge {
   async powerActivity(input: { reason: string; durationSec: number }) {
     return HostMethods["native.powerActivity"].result.parse(
       await this.channel.call("native.powerActivity", input),
+    );
+  }
+  async browserImportSelectWindow(input: {
+    token: string;
+    sourceId: "safari";
+  }): Promise<NativeBrowserImportSelection> {
+    return NativeBrowserImportSelectionSchema.parse(
+      await this.channel.call("native.browserImportSelectWindow", input),
+    );
+  }
+  async browserImportSelectExport(input: {
+    token: string;
+    sourceId: BrowserExportSource;
+    format: BrowserExportFormat;
+  }): Promise<NativeBrowserImportSelection> {
+    return NativeBrowserImportSelectionSchema.parse(
+      await this.channel.call("native.browserImportSelectExport", input),
+    );
+  }
+  async browserImportExportPoll(selectionId: string): Promise<NativeBrowserImportSelection> {
+    return NativeBrowserImportSelectionSchema.parse(
+      await this.channel.call("native.browserImportExportPoll", { selectionId }),
+    );
+  }
+  async browserImportExportCancel(selectionId: string): Promise<NativeBrowserImportSelection> {
+    return NativeBrowserImportSelectionSchema.parse(
+      await this.channel.call("native.browserImportExportCancel", { selectionId }),
+    );
+  }
+  async browserImportDiscover(token: string): Promise<NativeBrowserImportDiscovery> {
+    return NativeBrowserImportDiscoverySchema.parse(
+      await this.channel.call("native.browserImportDiscover", { token }),
+    );
+  }
+  async browserImportExtensionReview(input: {
+    token: string;
+    sourceHandle: string;
+  }): Promise<ImportExtensionReview> {
+    return ImportExtensionReviewSchema.parse(
+      await this.channel.call("native.browserImportExtensionReview", input),
+    );
+  }
+  async browserImportBegin(input: {
+    token: string;
+    operationId: string;
+    sourceHandle: string;
+    categories: ImportCategory[];
+    extensionReview: ImportExtensionSelection | Record<string, never>;
+  }): Promise<NativeBrowserImportReceipt> {
+    return NativeBrowserImportReceiptSchema.parse(
+      await this.channel.call("native.browserImportBegin", input),
+    );
+  }
+  async browserImportPoll(operationId: string): Promise<NativeBrowserImportReceipt> {
+    return NativeBrowserImportReceiptSchema.parse(
+      await this.channel.call("native.browserImportPoll", { operationId }),
+    );
+  }
+  async browserImportCancel(operationId: string): Promise<NativeBrowserImportReceipt> {
+    return NativeBrowserImportReceiptSchema.parse(
+      await this.channel.call("native.browserImportCancel", { operationId }),
     );
   }
   async turnSourceContext(token: string): Promise<TurnSourceContext> {

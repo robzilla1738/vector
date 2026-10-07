@@ -58,6 +58,33 @@ export const RoutineTriggerSchema = z.discriminatedUnion("kind", [
         .max(24 * 60),
     })
     .strict(),
+  z
+    .object({
+      kind: z.literal("rrule"),
+      timezone,
+      startAt: z.number().int().nonnegative().max(8640000000000000),
+      rrule: z
+        .string()
+        .trim()
+        .min(1)
+        .max(2000)
+        .regex(
+          /^(?:RRULE:)?[A-Z]+=[A-Z0-9,+-]+(?:;[A-Z]+=[A-Z0-9,+-]+)*$/,
+          "Enter a single RFC 5545 recurrence rule",
+        ),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("heartbeat"),
+      timezone,
+      intervalMinutes: z
+        .number()
+        .int()
+        .min(5)
+        .max(24 * 60),
+    })
+    .strict(),
   z.object({ kind: z.literal("site_notification"), origin: siteOrigin }).strict(),
   z
     .object({
@@ -154,7 +181,7 @@ export const RoutineDefinitionSchema = z.object({
     .default([]),
   reviewRequired: z.boolean().default(true),
   consecutive: z.boolean().default(false),
-  spendCapUsd: z.number().positive().max(50).optional(),
+  spendCapUsd: z.number().positive().optional(),
   /** A person may exempt this Skill from the unread-results presence guard. */
   presenceGuardExempt: z.boolean().default(false),
   missedRunPolicy: z.enum(["record_only", "run_once_on_wake"]).default("record_only"),
@@ -184,6 +211,17 @@ export const RoutineSuggestionSchema = z.object({
     .min(1)
     .max(2),
 });
+/** Read-only evidence of repeated saved work, never an execution grant. */
+export const RoutineCandidateSchema = z.object({
+  taskId: text,
+  taskRevision: z.number().int().positive(),
+  runId: text,
+  title: text.max(200),
+  objective: text.max(20_000),
+  completedRuns: z.number().int().min(3),
+  lastCompletedAt: z.number().nonnegative(),
+});
+export type RoutineCandidate = z.infer<typeof RoutineCandidateSchema>;
 /** Thin plugin: a named bundle of existing capabilities (portable routines). */
 export const AuxPluginManifestSchema = z.object({
   format: z.literal("aux-plugin@1"),
@@ -349,6 +387,7 @@ export const RoutineRunOutcomeSchema = z.object({
 });
 export const RoutineCreateParams = RoutineDefinitionSchema;
 export const RoutineUpdateParams = RoutineDefinitionSchema.partial().extend({
+  spendCapUsd: z.number().positive().nullable().optional(),
   // A partial edit must not apply create-time defaults to omitted fields. In
   // particular, changing a trigger must never resume a paused Skill or clear
   // its reviewed task criteria and account grants.
@@ -395,6 +434,8 @@ export const RoutineAlertSchema = z.object({
     "manual",
     "schedule",
     "monitor",
+    "rrule",
+    "heartbeat",
     "site_notification",
     "page_change",
     "calendar_event",
@@ -409,6 +450,8 @@ export const RoutineInboxItemSchema = z.object({
     "manual",
     "schedule",
     "monitor",
+    "rrule",
+    "heartbeat",
     "site_notification",
     "page_change",
     "calendar_event",

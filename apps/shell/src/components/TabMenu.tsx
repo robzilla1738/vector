@@ -259,7 +259,7 @@ export function TabMenu({
       throw new Error("The selected Space changed. Open the tab menu and try again.");
     const origin = new URL(page.url).origin;
     const policy = await call("workspaces.contentMemory.policy", { workspaceId });
-    if (!policy.enabled || !policy.allowedOrigins.includes(origin)) {
+    if (!policy.enabled || (policy.originScope !== "safe-sites" && !policy.allowedOrigins.includes(origin))) {
       await call("workspaces.contentMemory.setPolicy", {
         workspaceId,
         policy: {

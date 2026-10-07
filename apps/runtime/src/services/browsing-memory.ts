@@ -6,9 +6,10 @@ import {
   type BrowsingMemoryPage,
   type BrowsingMemoryPolicy,
   type PageTarget,
-  type WorkspaceMemory,
 } from "@aux/contracts";
+import { memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
 import { memorySourceExcluded } from "@aux/contracts/memory-context";
+import { readWorkspaceMemory } from "./workspace-memory.js";
 import type { Repo } from "../store/repo.js";
 
 const policyKey = (id: string) => `browsingMemoryPolicy:${id}`;
@@ -17,7 +18,7 @@ const DAY = 86_400_000;
 const LIMIT = 200;
 export const BROWSING_CONTEXT_MARKER = "RECENT BROWSING IN THIS SPACE";
 
-/** Opt-in browsing metadata. Never reads page bodies, form values or credentials. */
+/** Local browsing metadata. Never reads page bodies, form values or credentials. */
 export class BrowsingMemory {
   constructor(
     private repo: Repo,
@@ -29,19 +30,23 @@ export class BrowsingMemory {
   }
   policy(workspaceId: string): BrowsingMemoryPolicy {
     this.requireSpace(workspaceId);
-    const parsed = BrowsingMemoryPolicySchema.safeParse(this.repo.getSetting(policyKey(workspaceId)));
+    const saved = this.repo.getSetting<unknown>(policyKey(workspaceId));
+    if (saved === undefined && !this.repo.hasSetting(policyKey(workspaceId)))
+      return { enabled: true, retentionDays: 7 };
+    const parsed = BrowsingMemoryPolicySchema.safeParse(saved);
     return parsed.success ? parsed.data : { enabled: false, retentionDays: 7 };
   }
   get(workspaceId: string) {
     const policy = this.policy(workspaceId),
       saved = this.repo.getSetting<unknown>(pagesKey(workspaceId));
-    const memory = this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`);
+    const memory = readWorkspaceMemory(this.repo, workspaceId);
     const cutoff = this.now() - policy.retentionDays * DAY;
     const pages = (Array.isArray(saved) ? saved : [])
       .flatMap((value) => {
         const parsed = BrowsingMemoryPageSchema.safeParse(value);
         return parsed.success &&
           parsed.data.lastVisitedAt > cutoff &&
+          !memorySensitivityReason(parsed.data.url, parsed.data.title) &&
           (!memory || !memorySourceExcluded(memory, parsed.data.url))
           ? [parsed.data]
           : [];
@@ -66,11 +71,16 @@ export class BrowsingMemory {
   }
   record(workspaceId: string, page: PageTarget, expectedDocumentEpoch: number) {
     const state = this.get(workspaceId);
-    const memory = this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`);
+    const memory = readWorkspaceMemory(this.repo, workspaceId);
     if (
       !state.policy.enabled ||
       memory?.enabled === false ||
       page.backend !== "aux" ||
+      !["normal", "little"].includes(page.windowKind ?? "") ||
+      page.workspaceId !== workspaceId ||
+      !page.windowId ||
+      !!page.agentIsolation ||
+      !!memorySensitivityReason(page.url, page.title) ||
       page.ownedByRuntime ||
       page.viewStatus !== "visible" ||
       page.loading ||
@@ -120,7 +130,7 @@ export class BrowsingMemory {
   }
   context(workspaceId: string): string {
     const state = this.get(workspaceId),
-      memory = this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`);
+      memory = readWorkspaceMemory(this.repo, workspaceId);
     if (!state.policy.enabled || memory?.enabled === false) return "";
     const pages = state.pages
       .filter((page) => !memory || !memorySourceExcluded(memory, page.url))

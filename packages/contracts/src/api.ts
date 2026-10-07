@@ -1,3 +1,5 @@
+import { SkillLibraryPreviewParams, SkillLibraryImportParams, SkillLibraryPreviewSchema } from "./skill-library.js";
+import { BrowserExportSourceSchema, BrowserExportFormatSchema, BrowserImportSelectionStatusSchema } from "./import.js";
 import {
   TerminalCloseParams,
   TerminalInputParams,
@@ -12,7 +14,7 @@ import {
   TerminalReadResultSchema,
   TerminalResizeParams,
   TerminalSessionSchema,
-  TerminalStartParams
+  TerminalStartParams,
 } from "./terminal.js";
 import {
   ProjectFilesParams,
@@ -292,7 +294,9 @@ export const PagesListParams = z.object({
   backend: BackendSchema.optional(),
   includeDetached: z.boolean().optional(),
 });
+const ScopedTaskBinding = { taskId: id.optional(), expectedRevision: z.number().int().positive().optional() };
 export const PagesOpenParams = z.object({
+  ...ScopedTaskBinding,
   url: z.string().min(1),
   /** Desktop shell owner. Ordinary API clients omit this. */
   windowId: z.string().min(1).optional(),
@@ -305,9 +309,9 @@ export const PagesOpenParams = z.object({
   /** chrome backend: attach an existing borrowed tab by CDP target id */
   targetId: z.string().optional(),
 });
-export const PagesCloseParams = z.object({ pageId: id });
+export const PagesCloseParams = z.object({ pageId: id, ...ScopedTaskBinding });
 export const PagesActivateParams = z.object({ pageId: id });
-export const PagesNavigateParams = z.object({ pageId: id, url: z.string().min(1) });
+export const PagesNavigateParams = z.object({ pageId: id, url: z.string().min(1), ...ScopedTaskBinding });
 export const PagesObserveParams = z
   .object({
     pageId: id,
@@ -439,6 +443,7 @@ export const PagesConsoleParams = z.object({
   limit: z.number().int().positive().max(1000).optional(),
 });
 export const PagesDialogParams = z.object({
+  ...ScopedTaskBinding,
   pageId: id,
   action: z.enum(["list", "accept", "dismiss"]).default("list"),
   promptText: z.string().optional(),
@@ -540,6 +545,7 @@ export const SetsResultsParams = z.object({
 
 /** runs.* */
 export const RunsStartParams = z.object({
+  ...ScopedTaskBinding,
   mentions: MentionRefsSchema.optional(),
   goal: z.string().min(1),
   pageId: z.string().optional(),
@@ -853,6 +859,7 @@ export const FileAccessSettingsSchema = z.object({
 export type FileAccessSettings = z.infer<typeof FileAccessSettingsSchema>;
 
 export const SettingsSetParams = z.object({
+  copilotModelId: z.string().min(1).max(300).nullable().optional(),
   fileAccessMode: FileAccessModeSchema.optional(),
   fileAccessRevision: z.number().int().nonnegative().optional(),
   agentMode: AgentModeSchema.optional(),
@@ -1161,7 +1168,13 @@ export const AgentTurnContextSchema = z.object({
   turnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
 });
 
-import { ImportJobStatusSchema, ImportSelectionSchema, ImportSourcePreviewSchema } from "./import.js";
+import {
+  ImportExtensionReviewParamsSchema,
+  ImportExtensionReviewSchema,
+  ImportJobStatusSchema,
+  ImportSelectionSchema,
+  ImportSourcePreviewSchema,
+} from "./import.js";
 export * from "./import.js";
 
 export const MethodSchemas = {
@@ -1255,6 +1268,10 @@ export const MethodSchemas = {
     expectedDocumentEpoch: z.number().int().nonnegative(),
     expectedUrl: z.string().url().max(8192),
   }),
+  "workspaces.contentMemory.semanticSearch": z
+    .object({ workspaceId: id, query: z.string().trim().min(1).max(200) })
+    .strict(),
+  "workspaces.contentMemory.embeddingModels": z.object({ workspaceId: id }).strict(),
   "workspaces.contentMemory.search": z.object({ workspaceId: id, query: z.string().trim().min(1).max(200) }),
   "workspaces.contentMemory.get": z.object({ workspaceId: id, memoryId: id }),
   "workspaces.contentMemory.forget": z.object({ workspaceId: id, memoryId: id.optional() }),
@@ -1410,6 +1427,8 @@ export const MethodSchemas = {
   "routines.compare": z.object({ leftRunId: id, rightRunId: id }).strict(),
   "routines.export": z.object({ routineIds: z.array(id).min(1).max(500).optional() }).strict(),
   "routines.exportSkill": z.object({ routineId: id }).strict(),
+  "routines.skills.preview": SkillLibraryPreviewParams,
+  "routines.skills.import": SkillLibraryImportParams,
   "routines.importSkill": z.object({ path: z.string().trim().min(1).max(4096), workspaceId: id }).strict(),
   "routines.import": z
     .object({
@@ -1448,6 +1467,7 @@ export const MethodSchemas = {
   "plugins.uninstall": z.object({ pluginId: id }).strict(),
   "agentConnections.list": z.object({}),
   "agentConnections.create": AgentConnectionCreateParams,
+  "agentConnections.install": AgentConnectionCreateParams,
   "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
   "developer.cli.install": z.object({}).strict(),
   "projects.files": ProjectFilesParams,
@@ -1673,16 +1693,21 @@ export const MethodSchemas = {
   "chrome.importCookies": z.object({
     source: z.enum(["auto", "profile"]).optional(),
   }),
-  "chrome.importBookmarks": z.object({
-    profile: z.string().trim().min(1).max(64).optional(),
-  }),
   "onboarding.get": z.object({}).strict(),
   "onboarding.update": OnboardingUpdateParamsSchema,
   "onboarding.start": OnboardingStartParamsSchema,
+  "import.extensions.review": ImportExtensionReviewParamsSchema,
+  "import.selectWindow": z.object({ sourceId: z.literal("safari") }).strict(),
+  "import.selectExport": z
+    .object({ sourceId: BrowserExportSourceSchema, format: BrowserExportFormatSchema })
+    .strict(),
+  "import.exportStatus": z.object({ selectionId: z.string().min(16).max(128) }).strict(),
+  "import.cancelExport": z.object({ selectionId: z.string().min(16).max(128) }).strict(),
   "import.preview": z.object({}),
   "import.run": z
     .object({
       selections: z.array(ImportSelectionSchema).min(1).max(12),
+      acknowledgeInterruptedJobId: z.string().min(1).max(64).optional(),
     })
     .strict(),
   "import.status": z.object({ jobId: z.string().min(1).max(64).optional() }),
@@ -1993,6 +2018,13 @@ export const ResultSchemas = {
     title: z.string(),
     url: z.string().url(),
   }),
+  "workspaces.contentMemory.semanticSearch": z.object({
+    mode: z.enum(["semantic", "lexical"]),
+    message: z.string().optional(),
+    modelId: z.string().optional(),
+    matches: z.array(ContentMemoryMatchSchema),
+  }),
+  "workspaces.contentMemory.embeddingModels": z.array(z.object({ modelId: z.string(), digest: z.string() })),
   "workspaces.contentMemory.search": z.array(ContentMemoryMatchSchema),
   "workspaces.contentMemory.get": ContentMemoryDocumentSchema.nullable(),
   "workspaces.contentMemory.forget": z.object({ forgotten: z.number().int().nonnegative() }),
@@ -2178,6 +2210,8 @@ export const ResultSchemas = {
   "routines.exportSkill": z
     .object({ filename: z.literal("SKILL.md"), content: z.string().max(64_000) })
     .strict(),
+  "routines.skills.preview": SkillLibraryPreviewSchema,
+  "routines.skills.import": z.object({ imported: z.number().int().nonnegative(), skipped: z.number().int().nonnegative(), routineIds: z.array(z.string()) }),
   "routines.importSkill": z
     .object({
       imported: z.number().int().nonnegative(),
@@ -2222,6 +2256,14 @@ export const ResultSchemas = {
   }),
   "agentConnections.list": z.array(AgentConnectionSchema),
   "agentConnections.create": z.object({ connection: AgentConnectionSchema, token: z.string().min(1) }),
+  "agentConnections.install": z
+    .object({
+      connection: AgentConnectionSchema,
+      configPath: z.string(),
+      skillPath: z.string(),
+      replacedConnectionId: z.string().uuid().optional(),
+    })
+    .strict(),
   "agentConnections.revoke": AgentConnectionSchema,
   "developer.cli.install": z.object({ path: z.string(), pathConfigured: z.boolean() }).strict(),
   "mcp.servers.register": OutboundMcpServerSchema,
@@ -2489,20 +2531,18 @@ export const ResultSchemas = {
     domains: z.number(),
     detail: z.string().optional(),
   }),
-  "chrome.importBookmarks": z.object({
-    ok: z.boolean(),
-    imported: z.number(),
-    skipped: z.number(),
-    profiles: z.array(z.string()),
-    detail: z.string(),
-  }),
-  "onboarding.get": OnboardingStateSchema,
-  "onboarding.update": OnboardingStateSchema,
-  "onboarding.start": z.object({ state: OnboardingStateSchema, run: RunSchema.nullable() }).strict(),
   "import.preview": z.object({
     sources: z.array(ImportSourcePreviewSchema),
     recentJobs: z.array(ImportJobStatusSchema).max(5).optional(),
   }),
+  "onboarding.get": OnboardingStateSchema,
+  "onboarding.update": OnboardingStateSchema,
+  "onboarding.start": z.object({ state: OnboardingStateSchema, run: RunSchema.nullable() }).strict(),
+  "import.extensions.review": ImportExtensionReviewSchema,
+  "import.selectWindow": z.object({ selectionId: z.string().min(16).max(128) }).strict(),
+  "import.selectExport": z.object({ selectionId: z.string().min(16).max(128) }).strict(),
+  "import.exportStatus": BrowserImportSelectionStatusSchema,
+  "import.cancelExport": BrowserImportSelectionStatusSchema,
   "import.run": z.object({ jobId: z.string() }),
   "import.status": ImportJobStatusSchema,
   "import.cancel": z.object({ ok: z.boolean() }),
@@ -2667,7 +2707,9 @@ export const ResultSchemas = {
 export type MethodParams<M extends MethodName> = z.input<(typeof MethodSchemas)[M]>;
 export type MethodResult<M extends MethodName> = z.output<(typeof ResultSchemas)[M]>;
 /** Request/response pair for every runtime API method — the typed IPC surface. */
-export type RpcMap = { [M in MethodName]: { params: MethodParams<M>; result: MethodResult<M> } };
+export type RpcMap = {
+  [M in MethodName]: { params: MethodParams<M>; result: MethodResult<M> };
+};
 /** Positional params for `call(method, ...params)`: optional when the method takes none. */
 export type RpcArgs<M extends MethodName> = {} extends RpcMap[M]["params"]
   ? [params?: RpcMap[M]["params"]]

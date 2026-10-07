@@ -16,17 +16,27 @@ import { call } from "../store";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Receipt = { state: "loading" | "none" | "unavailable" } | { state: "ready"; job: ImportJobStatus };
-const categories = { bookmarks: "Bookmarks", history: "History entries", tabs: "Open tabs" } as const;
+const categories = {
+  bookmarks: "Bookmarks",
+  history: "History entries",
+  tabs: "Open tabs",
+  passwords: "Passwords",
+  extensions: "Extensions",
+} as const;
 const browsers: Record<string, string> = {
   chrome: "Chrome",
   arc: "Arc",
   safari: "Safari",
   firefox: "Firefox",
-  "chrome-attached": "Attached Chrome",
+  edge: "Edge",
+  brave: "Brave",
+  dia: "Dia",
+  comet: "Comet",
+  atlas: "Atlas",
 };
 
 export function importReviewSummary(job: ImportJobStatus) {
-  const counts = { bookmarks: 0, history: 0, tabs: 0 };
+  const counts = { bookmarks: 0, history: 0, tabs: 0, passwords: 0, extensions: 0 };
   let skipped = 0;
   for (const row of job.progress) {
     counts[row.category] += row.imported;

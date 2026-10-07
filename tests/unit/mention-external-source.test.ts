@@ -79,7 +79,7 @@ function fixture() {
     routine: () => undefined,
     connectors: () => ({ entries: [], access: [] }),
   });
-  const externalSessions = new ExternalSessionService(repo, events, turnMentions);
+  const externalSessions = new ExternalSessionService(repo, events, turnMentions, async () => {});
   const agentConnections = new AgentConnectionService(repo);
   const connection = agentConnections.create({
     name: "Fixture agent",
@@ -90,7 +90,7 @@ function fixture() {
   const client = { external: true as const, connectionId: connection.connectionId, scope: connection.scope };
   let captures = 0,
     executions = 0,
-    duringCapture = () => {};
+    duringCapture: () => void | Promise<void> = () => {};
   const readPages = new PageService({
     repo,
     events,
@@ -118,7 +118,7 @@ function fixture() {
     list: () => [...targets.values()],
     capture: async () => {
       captures++;
-      duringCapture();
+      await duringCapture();
       return { dataUrl: "fixture-pixels" };
     },
     execute: async () => {
@@ -150,7 +150,7 @@ function fixture() {
     targets,
     captures: () => captures,
     executions: () => executions,
-    duringCapture: (hook: () => void) => {
+    duringCapture: (hook: () => void | Promise<void>) => {
       duringCapture = hook;
     },
     runId: () => repo.conversationRuns(`external:${connection.connectionId}`)[0]!.runId,
@@ -171,8 +171,8 @@ it("first-class external sessions retain actual approved resources without empty
 });
 it("current task revision changes withhold a pending resource capture", async () => {
   const f = fixture();
-  f.duringCapture(() => {
-    f.externalSessions.end(f.client.connectionId, "completed", "Person ended session");
+  f.duringCapture(async () => {
+    await f.externalSessions.end(f.client.connectionId, "completed", "Person ended session");
     f.tasks.update({ taskId: f.task.taskId, expectedRevision: 1, title: "Changed approval" });
   });
   await expect(f.invoke("pages.capture", { pageId: "a" }, f.client)).rejects.toMatchObject({

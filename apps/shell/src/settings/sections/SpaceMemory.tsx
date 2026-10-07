@@ -348,7 +348,7 @@ function SpaceMemoryContent({
   return (
     <SettingsField
       label="Space memory"
-      hint="Eligible completed runs produce encrypted notes for your review. Only accepted notes appear in later runs. Memory is off by default."
+      hint="Eligible completed runs produce encrypted notes for your review. Only accepted notes appear in later runs. Memory stays local and is on by default. Sensitive pages and private chats are excluded. Pause or forget it here."
     >
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
       <label htmlFor={enabledId}>

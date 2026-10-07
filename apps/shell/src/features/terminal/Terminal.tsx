@@ -105,7 +105,7 @@ export default function Terminal({
           } else timer = setTimeout(() => void poll(), 50);
         });
       } catch (reason) {
-        fail(reason);
+        if (current && !stopping && session === owned) fail(reason);
       }
     };
     const input = terminal.onData((data) => {

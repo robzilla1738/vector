@@ -82,6 +82,7 @@ export interface Services {
   repo: Repo;
   agentConnections?: AgentConnectionService;
   installCli?: (owner: string) => Promise<import("@aux/contracts").MethodResult<"developer.cli.install">>;
+  installAgentConnection?: (input: unknown, owner: string) => Promise<import("@aux/contracts").MethodResult<"agentConnections.install">>;
   /** S6.7 — scoped connections own first-class session runs. */
   externalSessions?: import("../../services/external-sessions.js").ExternalSessionService;
   mcpTransportProvider?: McpTransportProvider;
@@ -113,7 +114,7 @@ export interface Services {
 
 const browserImporters = new WeakMap<Services, BrowserImporter>();
 
-/** Lazily build the shared importer — it needs live driver/page handles, not config. */
+/** Native-only fallback for explicit fixtures; production supplies one lazy Profile importer. */
 export function browserImporter(s: Services): BrowserImporter {
   if (s.browserImport) return s.browserImport;
   const existing = browserImporters.get(s);
@@ -122,9 +123,6 @@ export function browserImporter(s: Services): BrowserImporter {
     repo: s.repo,
     native: s.native,
     emit: (type, payload) => s.events.emit(type, payload),
-    openTab: async (url) => {
-      await s.pages.open({ url, background: true, ownedByRuntime: false });
-    },
   });
   browserImporters.set(s, importer);
   return importer;
@@ -303,6 +301,8 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
           calendarGrantIds: routine.calendarGrantIds,
         });
         return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
+      }, async (runId) => {
+        await s.runs.cancel(runId, "The original routine changed during launch.");
       }),
     plugins: () => new PluginService(s.repo, d.routines),
     goals: () => s.goals ?? new GoalService(s.repo, s.runs),
@@ -702,6 +702,8 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     requireScopedPage,
     captureScopedPageSource,
     captureScopedTaskRead,
+    endConnection: (connectionId: string): Promise<void> =>
+      container.peek("turnTabs")?.endConnection(connectionId) ?? Promise.resolve(),
     dispose: () =>
       (disposal ??= (async () => {
         stopTracking();

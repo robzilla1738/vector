@@ -85,11 +85,13 @@ it("shows a stopped import as partial work rather than success", async () => {
       return {
         sources: [
           {
-            id: "chrome-attached",
-            label: "Attached Chrome",
-            profiles: [],
-            categories: [{ category: "tabs", available: true, count: 2 }],
-            profileCategories: [],
+            id: "chrome",
+            label: "Chrome",
+            profiles: ["Default"],
+            categories: [{ category: "bookmarks", available: true, count: 2 }],
+            profileCategories: [
+              { profileId: "Default", categories: [{ category: "bookmarks", available: true, count: 2 }] },
+            ],
           },
         ],
       };
@@ -101,9 +103,10 @@ it("shows a stopped import as partial work rather than success", async () => {
         cancelled: true,
         progress: [
           {
-            source: "chrome-attached",
-            label: "Attached Chrome",
-            category: "tabs",
+            source: "chrome",
+            label: "Chrome",
+            profileId: "Default",
+            category: "bookmarks",
             state: "done",
             imported: 1,
             skipped: 1,
@@ -257,11 +260,20 @@ it("keeps the active job on a progress read failure and reconciles after checkin
   }
 });
 
-it("requires a fresh unchecked four-browser review after interruption and explains Keychain exclusions", async () => {
+it("requires exact acknowledgement and a fresh unchecked native-source review after unknown completion", async () => {
   rpc.mockReset();
   const interrupted = receipt({
-    done: true,
+    done: false,
     interrupted: true,
+    nativeOperations: [
+      {
+        operationId: "original-operation-identity",
+        sourceId: "chrome",
+        profileId: "Reviewed",
+        categories: ["history"],
+        state: "unknown",
+      },
+    ],
     revision: 3,
     progress: [{ ...receipt().progress[0]!, state: "error", detail: "Interrupted" }],
   });
@@ -270,7 +282,7 @@ it("requires a fresh unchecked four-browser review after interruption and explai
       return params.jobId === "retry" ? receipt({ jobId: "retry", startedAt: 200 }) : interrupted;
     if (method === "import.preview")
       return {
-        sources: ["chrome", "arc", "safari", "firefox"].map((id) => ({
+        sources: ["chrome", "arc", "brave", "edge"].map((id) => ({
           id,
           label: id[0]!.toUpperCase() + id.slice(1),
           profiles: ["Reviewed"],
@@ -294,33 +306,36 @@ it("requires a fresh unchecked four-browser review after interruption and explai
     root = createRoot(host);
   try {
     await act(async () => root.render(<ImportDataSetting />));
-    expect(host.textContent).toContain("Import interrupted");
+    expect(host.textContent).toContain("Native import completion is unknown");
     expect(host.textContent).toContain("Keychain and macOS access");
-    expect(host.textContent).toContain("does not ask for browser Keychain passwords");
-    expect(host.textContent).toContain(
-      "Passwords, cookies, extensions and agent permissions are not imported here",
-    );
-    expect(host.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(host.textContent).toContain("may ask macOS to unlock the source browser’s Safe Storage key");
+    expect(host.textContent).toContain("Cookies and agent permissions are not copied");
+    const acknowledgement = host.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    expect(acknowledgement?.checked).toBe(false);
+    expect(rpc.mock.calls.some(([method]) => method === "import.run")).toBe(false);
+    await act(async () => acknowledgement!.click());
     await act(async () =>
       [...host.querySelectorAll("button")]
-        .find((button) => button.textContent === "Review sources to retry")!
+        .find((button) => button.textContent === "See what can be imported")!
         .click(),
     );
     const choices = [...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
-    expect(choices).toHaveLength(8);
-    expect(choices.every((item) => !item.checked)).toBe(true);
+    expect(choices).toHaveLength(9);
+    expect(choices[0]?.checked).toBe(true);
+    expect(choices.slice(1).every((item) => !item.checked)).toBe(true);
     expect(
       [...host.querySelectorAll("button")].find((button) => button.textContent?.startsWith("Import selected"))
         ?.disabled,
     ).toBe(true);
-    await act(async () => choices[5]!.click());
+    await act(async () => choices[6]!.click());
     await act(async () =>
       [...host.querySelectorAll("button")]
         .find((button) => button.textContent?.startsWith("Import selected"))!
         .click(),
     );
     expect(rpc).toHaveBeenCalledWith("import.run", {
-      selections: [{ sourceId: "safari", profileId: "Reviewed", categories: ["history"] }],
+      selections: [{ sourceId: "brave", profileId: "Reviewed", categories: ["history"] }],
+      acknowledgeInterruptedJobId: "recover",
     });
     expect(rpc.mock.calls.filter(([method]) => method === "import.run")).toHaveLength(1);
   } finally {
@@ -338,21 +353,24 @@ it("keeps import consent and exclusions visible with optional folder and system-
     const descriptions = [...host.querySelectorAll(":scope > .import-setting > p")];
     expect(descriptions).toHaveLength(2);
     expect(descriptions[0]!.textContent).toContain("Nothing is imported until you confirm.");
-    expect(descriptions[1]!.textContent).toContain(
-      "Passwords, cookies, extensions and agent permissions are not imported",
-    );
+    expect(descriptions[1]!.textContent).toContain("Cookies and agent permissions are not copied");
     const details = [...host.querySelectorAll("details")];
     expect(details.map((item) => item.querySelector("summary")!.textContent)).toEqual([
       "Folders and retries",
       "Keychain and macOS access",
+      "Choose a browser export",
     ]);
     expect(details.every((item) => !item.open)).toBe(true);
-    expect(details[0]!.textContent).toContain("Arc Spaces and pinned pages become bookmark folders");
-    expect(details[0]!.textContent).toContain("Existing bookmarks keep their titles and");
-    expect(details[0]!.textContent).toContain("history visits are skipped on retry");
-    expect(details[1]!.textContent).toContain("does not ask for browser Keychain passwords");
+    expect(details[0]!.textContent).toContain(
+      "Imported bookmark folders and pinned tabs retain their source structure",
+    );
+    expect(details[0]!.textContent).toContain("Existing bookmarks are not overwritten");
+    expect(details[0]!.textContent).toContain("A fresh import can add duplicate bookmarks or tabs");
+    expect(details[1]!.textContent).toContain(
+      "may ask macOS to unlock the source browser’s Safe Storage key",
+    );
     expect(details[1]!.textContent).toContain("you can cancel it");
-    expect(details[1]!.textContent).toContain("Full Disk Access");
+    expect(details[1]!.textContent).toContain("Keys and password text stay in the native browser");
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(rpc).toHaveBeenCalledWith("import.status", {});
     expect(host.querySelector('input[type="checkbox"]')).toBeNull();
@@ -426,5 +444,155 @@ it("does not publish an old cancellation failure into a newer import and keeps i
       reject(new Error("Original cleanup"));
       root.unmount();
     });
+  }
+});
+
+it("reviews extension counterparts per item and preserves unselected entries as explicit skips", async () => {
+  rpc.mockReset();
+  const selectedId = "11111111-1111-4111-8111-111111111111";
+  const skippedId = "22222222-2222-4222-8222-222222222222";
+  const reviewId = "33333333-3333-4333-8333-333333333333";
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "import.preview")
+      return {
+        sources: [
+          {
+            id: "firefox",
+            label: "Firefox",
+            profiles: ["Reviewed"],
+            categories: [{ category: "extensions", available: true }],
+            profileCategories: [
+              { profileId: "Reviewed", categories: [{ category: "extensions", available: true }] },
+            ],
+          },
+        ],
+      };
+    if (method === "import.extensions.review")
+      return {
+        reviewId,
+        candidates: [
+          {
+            candidateId: selectedId,
+            name: "Reader",
+            sourceIdentity: "reader@example.org",
+            kind: "firefox",
+            enabled: false,
+            detail: "Choose a counterpart.",
+          },
+          {
+            candidateId: skippedId,
+            name: "No counterpart",
+            sourceIdentity: "other@example.org",
+            kind: "unsupported",
+            detail: "No automatic transfer.",
+          },
+        ],
+      };
+    if (method === "import.run") return { jobId: "reviewed-import" };
+    if (method === "import.status") return { jobId: "reviewed-import", done: true, progress: [] };
+    throw new Error(`Unexpected ${method}`);
+  });
+  const host = document.createElement("div"),
+    root = createRoot(host);
+  try {
+    await act(async () => root.render(<ImportDataSetting />));
+    await act(async () => host.querySelector("button")!.click());
+    const button = (name: string) =>
+      [...host.querySelectorAll<HTMLButtonElement>("button")].find((entry) =>
+        entry.textContent?.startsWith(name),
+      )!;
+    await act(async () => host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+    expect(button("Import selected").disabled).toBe(true);
+    await act(async () => button("Review extensions").click());
+    expect(host.textContent).toContain("No counterpart");
+    const choices = [...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    await act(async () => choices[1]!.click());
+    expect(button("Import selected").disabled).toBe(true);
+    const input = host.querySelector<HTMLInputElement>(
+      '[aria-label="Chrome Web Store counterpart for Reader"]',
+    )!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        input,
+        `https://chromewebstore.google.com/detail/reader/${"a".repeat(32)}`,
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(button("Import selected").disabled).toBe(false);
+    await act(async () => button("Import selected").click());
+    expect(rpc).toHaveBeenCalledWith("import.run", {
+      selections: [
+        {
+          sourceId: "firefox",
+          profileId: "Reviewed",
+          categories: ["extensions"],
+          extensionReview: {
+            reviewId,
+            choices: [
+              { candidateId: selectedId, chromeWebStoreId: "a".repeat(32) },
+              { candidateId: skippedId, skip: true },
+            ],
+          },
+        },
+      ],
+    });
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
+
+it("retires displayed extension choices when a replacement export publishes a new source preview", async () => {
+  rpc.mockReset();
+  const source = {
+    id: "safari",
+    label: "Safari",
+    profiles: ["Safari export"],
+    categories: [{ category: "extensions", available: true }],
+    profileCategories: [
+      { profileId: "Safari export", categories: [{ category: "extensions", available: true }] },
+    ],
+  };
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "import.preview") return { sources: [source] };
+    if (method === "import.extensions.review")
+      return {
+        reviewId: "44444444-4444-4444-8444-444444444444",
+        candidates: [
+          {
+            candidateId: "55555555-5555-4555-8555-555555555555",
+            name: "Original source extension",
+            sourceIdentity: "app.TeamID",
+            kind: "safari",
+            detail: "Choose a counterpart.",
+          },
+        ],
+      };
+    if (method === "import.selectExport") return { selectionId: "replacement-export-selection" };
+    if (method === "import.exportStatus")
+      return { selectionId: "replacement-export-selection", unknown: false, done: true, sources: [source] };
+    if (method === "import.cancelExport")
+      return { selectionId: "replacement-export-selection", unknown: false, done: true };
+    throw new Error(`Unexpected ${method}`);
+  });
+  const host = document.createElement("div"),
+    root = createRoot(host);
+  const button = (label: string) =>
+    [...host.querySelectorAll<HTMLButtonElement>("button")].find((node) =>
+      node.textContent?.trim().startsWith(label),
+    )!;
+  try {
+    await act(async () => root.render(<ImportDataSetting />));
+    await act(async () => button("See what can be imported").click());
+    await act(async () => button("Review extensions").click());
+    expect(host.textContent).toContain("Original source extension");
+    await act(async () => button("Choose export file").click());
+    expect(rpc).toHaveBeenCalledWith("import.selectExport", { sourceId: "safari", format: "safari-archive" });
+    expect(host.textContent).not.toContain("Original source extension");
+    const category = host.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    await act(async () => category.click());
+    expect(button("Import selected").disabled).toBe(true);
+    expect(rpc.mock.calls.some(([method]) => method === "import.run")).toBe(false);
+  } finally {
+    await act(async () => root.unmount());
   }
 });

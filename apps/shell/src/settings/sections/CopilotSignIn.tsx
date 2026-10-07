@@ -48,7 +48,7 @@ export function CopilotSignIn() {
             setUserCode("");
             setModels([]);
             setNotice(
-              "GitHub account verified for catalog access. Aux agent inference is not enabled through Copilot.",
+              "GitHub account verified. Inspect its catalog and explicitly choose a model for Aux.",
             );
             await refresh(original);
           } else if (!["pending", "authenticating"].includes(status.phase)) {
@@ -131,12 +131,12 @@ export function CopilotSignIn() {
     }
   };
   const pending = ["starting", "pending", "authenticating"].includes(phase);
-  const busy = pending || ["installing", "catalog", "disconnecting"].includes(phase);
+  const busy = pending || ["installing", "catalog", "disconnecting", "selecting"].includes(phase);
   const ready = !!setup?.registrationConfigured && setup.runtimeInstalled && setup.runtimeSupported;
   return (
     <section aria-label="Copilot account setup">
       <h3>GitHub Copilot</h3>
-      <p>Inspect your account’s model catalog. This connection does not enable Copilot for Aux agent runs.</p>
+      <p>Choose an account-advertised model for Aux’s own tool loop. Copilot premium/quota charges have unresolved USD cost; finite money or unsupported output envelopes refuse before inference.</p>
       {!setup && !error && <p role="status">Checking Copilot setup…</p>}
       {setup && !setup.registrationConfigured && (
         <p role="status">
@@ -198,7 +198,7 @@ export function CopilotSignIn() {
         <div key={account.accountId}>
           <span>
             {account.login}
-            {account.selected ? " · selected for catalog" : " · saved"}
+            {account.selected ? " · selected account" : " · saved"}
             {!account.connected || account.needsReauthentication ? " · sign in again" : ""}
           </span>
           <PreferenceAction
@@ -248,10 +248,46 @@ export function CopilotSignIn() {
             <li key={model.id}>
               {model.name}
               {model.policy ? ` · ${model.policy}` : ""}
+              <PreferenceAction
+                command={`use-copilot-${model.id}`}
+                scopeId="models-copilot-accounts"
+                disabled={busy || !ready || model.policy === "disabled"}
+                invoke={() =>
+                  run("selecting", async (original) => {
+                    await call("settings.set", { copilotModelId: model.id });
+                    if (current(original)) {
+                      setNotice(
+                        `Using ${model.name} through this Copilot account. Premium/quota usage is accounted separately; USD cost is unresolved.`,
+                      );
+                      setPhase("idle");
+                    }
+                  })
+                }
+                {...smallGhostButtonProps}
+              >
+                Use model
+              </PreferenceAction>
             </li>
           ))}
         </ul>
       )}
+      <PreferenceAction
+        command="use-configured-api-model"
+        scopeId="models-copilot-accounts"
+        disabled={busy || !ready}
+        invoke={() =>
+          run("selecting", async (original) => {
+            await call("settings.set", { copilotModelId: null });
+            if (current(original)) {
+              setNotice("Using the configured API model connection.");
+              setPhase("idle");
+            }
+          })
+        }
+        {...smallGhostButtonProps}
+      >
+        Use configured API connection
+      </PreferenceAction>
       {notice && <p role="status">{notice}</p>}
       {error && <p role="alert">{error}</p>}
     </section>

@@ -482,7 +482,7 @@ it("keeps import confirmation, exclusions, keychain and retry disclosures with c
   expect(importer.querySelectorAll(":scope > p")).toHaveLength(2);
   expect(importer.textContent?.replace(/\s+/g, " ")).toContain("Nothing is imported until you confirm.");
   expect(importer.textContent?.replace(/\s+/g, " ")).toContain(
-    "Passwords, cookies, extensions and agent permissions are not imported here.",
+    "Passwords transfer inside the native browser. Extensions reinstall from the Chrome Web Store with their own permission prompts. Cookies and agent permissions are not copied.",
   );
   for (const text of ["Folders and retries", "Keychain and macOS access"]) {
     const summary = [...importer.querySelectorAll("summary")].find((item) => item.textContent === text)!;
@@ -490,12 +490,14 @@ it("keeps import confirmation, exclusions, keychain and retry disclosures with c
     await act(async () => summary.click());
     expect(summary.closest("details")!.open).toBe(true);
   }
-  expect(importer.textContent?.replace(/\s+/g, " ")).toContain("does not ask for browser Keychain passwords");
   expect(importer.textContent?.replace(/\s+/g, " ")).toContain(
-    "Reading Safari data may require Full Disk Access",
+    "Password or encrypted-tab import may ask macOS to unlock the source browser’s Safe Storage key.",
   );
   expect(importer.textContent?.replace(/\s+/g, " ")).toContain(
-    "Matching bookmark URLs and history visits are skipped on retry",
+    "Check the app and purpose in the system prompt; you can cancel it. Keys and password text stay in the native browser.",
+  );
+  expect(importer.textContent?.replace(/\s+/g, " ")).toContain(
+    "Existing bookmarks are not overwritten. A fresh import can add duplicate bookmarks or tabs.",
   );
   expect(document.body.textContent?.replace(/\s+/g, " ")).toContain(
     "Imports continue if you leave. Check progress here before retrying.",

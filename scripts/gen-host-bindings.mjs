@@ -155,6 +155,10 @@ function emitNode(schema, index) {
         add("const auto& hex = value.GetString();");
         add(`if (hex.size() != ${size}) return false;`);
         add("for (char c : hex) if (!((c >= 'a' && c <= 'f') || (c >= '0' && c <= '9'))) return false;");
+      } else if (schema.pattern === "^[a-p]{32}$") {
+        add("const auto& extension_id = value.GetString();");
+        add("if (extension_id.size() != 32) return false;");
+        add("for (char c : extension_id) if (c < 'a' || c > 'p') return false;");
       } else if (schema.pattern === "^[A-F0-9]{32}$") {
         add("const auto& token = value.GetString();");
         add("if (token.size() != 32 || token == std::string(32, '0')) return false;");
@@ -597,6 +601,15 @@ const nativeOnlyHostMethods = new Set([
   "native.copilotStart",
   "native.copilotEndpoint",
   "native.copilotStop",
+  "native.browserImportSelectWindow",
+  "native.browserImportSelectExport",
+  "native.browserImportExportPoll",
+  "native.browserImportExportCancel",
+  "native.browserImportDiscover",
+  "native.browserImportExtensionReview",
+  "native.browserImportBegin",
+  "native.browserImportPoll",
+  "native.browserImportCancel",
   "native.cdpReset",
   "native.cdpCatalog",
   "native.cdpAttach",

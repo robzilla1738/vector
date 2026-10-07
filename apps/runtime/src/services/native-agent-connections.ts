@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { AgentConnectionService } from "./agent-connections.js";
 
-type Client = "codex" | "claude";
+type Client = "codex" | "claude" | "cursor";
 
 function clientVersion(
   client: Client,
@@ -44,7 +44,7 @@ function clientVersion(
 }
 
 export async function nativeAgentClients() {
-  return Promise.all([clientVersion("codex"), clientVersion("claude")]);
+  return Promise.all([clientVersion("codex"), clientVersion("claude"), clientVersion("cursor")]);
 }
 
 /** The one-time token stays in the response; only its hash persists in Aux. */

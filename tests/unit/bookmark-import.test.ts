@@ -117,3 +117,25 @@ it("saves tab collections without merging named folders or relocating prior book
     db.close();
   }
 });
+
+it("deduplicates imported bookmark/history rows and preserves original visit timestamps", () => {
+  const db = openDb(":memory:"),
+    repo = new Repo(db);
+  try {
+    expect(
+      repo.importBookmarks([
+        { url: "https://x.example/", title: "X", folderPath: ["A"] },
+        { url: "https://x.example/", title: "X dup", folderPath: ["A"] },
+      ]),
+    ).toEqual({ added: 1, skipped: 1 });
+    expect(
+      repo.importHistory([
+        { url: "https://x.example/", title: "X", visitedAt: 1_700_000_000_000 },
+        { url: "https://x.example/", title: "X", visitedAt: 1_700_000_000_000 },
+      ]),
+    ).toEqual({ added: 1, skipped: 1 });
+    expect(repo.listHistory("x.example")[0]?.visitedAt).toBe(1_700_000_000_000);
+  } finally {
+    db.close();
+  }
+});

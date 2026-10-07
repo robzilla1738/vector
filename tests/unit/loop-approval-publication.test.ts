@@ -53,18 +53,42 @@ it("publishes actual page-free REPL openTab consent while retaining the parked d
     compatibleEndpoint: model.endpoint,
     plannerModel: model.model,
   });
+  // Observe the actual publication instead of racing cold SDK/REPL startup
+  // against vi.waitFor's unrelated one-second default.
+  const socket = new WebSocket(`ws://127.0.0.1:${runtime.port}/ws?token=${runtime.token}`);
+  cleanups.push(() => socket.close());
+  let published!: (runId: string) => void;
+  let publicationFailed!: (error: Error) => void;
+  const publication = new Promise<string>((resolve, reject) => {
+    published = resolve;
+    publicationFailed = reject;
+  });
+  socket.onmessage = (message) => {
+    const frame = JSON.parse(String(message.data)) as {
+      event?: { type: string; runId?: string; payload: { status?: string } };
+    };
+    if (frame.event?.type !== "run.status") return;
+    if (frame.event.payload.status === "needs_input") published(frame.event.runId!);
+    else if (["completed", "failed", "cancelled"].includes(frame.event.payload.status ?? ""))
+      publicationFailed(new Error(`Run terminated before consent: ${frame.event.payload.status}`));
+  };
+  await new Promise<void>((resolve, reject) => {
+    socket.onopen = () => resolve();
+    socket.onerror = () => reject(new Error("Consent event stream failed to connect"));
+  });
+  socket.onerror = () => publicationFailed(new Error("Consent event stream failed"));
+  socket.onclose = () => publicationFailed(new Error("Consent event stream closed before publication"));
   const run = (await runtime.invoke("runs.start", {
     goal: "Open the explicit synthetic destination",
     pageIds: [],
     maxModelCalls: 2,
   })) as { runId: string };
-  await vi.waitFor(async () => {
-    const actual = (await runtime.invoke("runs.get", { runId: run.runId })) as {
-      run: { status: string; pageIds: string[] };
-    };
-    expect(actual.run.status).toBe("needs_input");
-    expect(actual.run.pageIds).toEqual([]);
-  });
+  expect(await publication).toBe(run.runId);
+  const actual = (await runtime.invoke("runs.get", { runId: run.runId })) as {
+    run: { status: string; pageIds: string[] };
+  };
+  expect(actual.run.status).toBe("needs_input");
+  expect(actual.run.pageIds).toEqual([]);
   const events = (await runtime.invoke("events.since", { sinceSeq: 0, limit: 2000 })) as {
     events: { type: string; payload: Record<string, unknown> }[];
   };

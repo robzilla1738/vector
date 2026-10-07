@@ -1,4 +1,14 @@
 import {
+  BrowserExportSourceSchema,
+  BrowserExportFormatSchema,
+  ImportExtensionReviewSchema,
+  ImportExtensionSelectionSchema,
+  NativeBrowserImportSelectionSchema,
+  ImportCategorySchema,
+  NativeBrowserImportDiscoverySchema,
+  NativeBrowserImportReceiptSchema,
+} from "./import.js";
+import {
   NativeTerminalCloseParams,
   NativeTerminalInputParams,
   NativeTerminalListenersParams,
@@ -335,6 +345,65 @@ export const RuntimeHostMethods = {
     "core",
     z.object({ since: number.optional(), before: number.optional() }).strict(),
     z.object({ removed: number }).strict(),
+  ),
+  "native.browserImportSelectWindow": runtime(
+    "core",
+    z.object({ token: z.string().min(1).max(160), sourceId: z.literal("safari") }).strict(),
+    NativeBrowserImportSelectionSchema,
+  ),
+  "native.browserImportSelectExport": runtime(
+    "core",
+    z
+      .object({
+        token: z.string().min(1).max(160),
+        sourceId: BrowserExportSourceSchema,
+        format: BrowserExportFormatSchema,
+      })
+      .strict(),
+    NativeBrowserImportSelectionSchema,
+  ),
+  "native.browserImportExportPoll": runtime(
+    "core",
+    z.object({ selectionId: z.string().min(16).max(128) }).strict(),
+    NativeBrowserImportSelectionSchema,
+  ),
+  "native.browserImportExportCancel": runtime(
+    "core",
+    z.object({ selectionId: z.string().min(16).max(128) }).strict(),
+    NativeBrowserImportSelectionSchema,
+  ),
+  "native.browserImportDiscover": runtime(
+    "core",
+    z.object({ token: z.string().min(1).max(160) }).strict(),
+    NativeBrowserImportDiscoverySchema,
+  ),
+  "native.browserImportExtensionReview": runtime(
+    "core",
+    z.object({ token: z.string().min(1).max(160), sourceHandle: z.string().min(1).max(128) }).strict(),
+    ImportExtensionReviewSchema,
+  ),
+  "native.browserImportBegin": runtime(
+    "core",
+    z
+      .object({
+        token: z.string().min(1).max(160),
+        operationId: z.string().min(16).max(128),
+        sourceHandle: z.string().min(1).max(128),
+        categories: z.array(ImportCategorySchema).min(1).max(5),
+        extensionReview: z.union([ImportExtensionSelectionSchema, z.object({}).strict()]),
+      })
+      .strict(),
+    NativeBrowserImportReceiptSchema,
+  ),
+  "native.browserImportPoll": runtime(
+    "core",
+    z.object({ operationId: z.string().min(16).max(128) }).strict(),
+    NativeBrowserImportReceiptSchema,
+  ),
+  "native.browserImportCancel": runtime(
+    "core",
+    z.object({ operationId: z.string().min(16).max(128) }).strict(),
+    NativeBrowserImportReceiptSchema,
   ),
   "native.historyImport": runtime(
     "core",

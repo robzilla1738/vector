@@ -31,9 +31,18 @@ async function h_agentConnections_revoke(ctx: MethodCtx): Promise<unknown> {
     throw new AuxError("backend_unavailable", "Agent connection management is unavailable");
   const revoked = s.agentConnections.revoke(params.connectionId);
   // S6.7 — revoking the token ends its session run, same as a cancelled agent.
-  s.externalSessions?.end(params.connectionId, "cancelled", "Connection revoked");
+  await s.externalSessions?.end(params.connectionId, "cancelled", "Connection revoked");
   return revoked;
 }
+
+async function h_agentConnections_install(ctx: MethodCtx): Promise<unknown> {
+  if (ctx.client.external || !ctx.client.nativeTurnContext)
+    throw new AuxError("permission_denied", "Client setup requires its original Aux Settings window.");
+  if (!ctx.s.installAgentConnection)
+    throw new AuxError("backend_unavailable", "Client setup is unavailable in this build.");
+  return ctx.s.installAgentConnection(ctx.params, ctx.client.nativeTurnContext);
+}
+
 
 async function h_developer_cli_install(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external || ctx.client.codeMode || !ctx.client.nativeTurnContext)
@@ -47,5 +56,6 @@ export const agentConnectionsMethods: Partial<Record<MethodName, MethodHandler>>
   "agentConnections.list": h_agentConnections_list,
   "agentConnections.create": h_agentConnections_create,
   "agentConnections.revoke": h_agentConnections_revoke,
+  "agentConnections.install": h_agentConnections_install,
   "developer.cli.install": h_developer_cli_install,
 };

@@ -64,8 +64,9 @@ const selection = (p: Extract<MemoryPastePreview, { status: "ready" }>) => ({
 });
 
 it("previews locally without enabling Memory, writing files, calling Keychain or storing the original paste", async () => {
-  const f = fixture(),
-    p = await prepare(f);
+  const f = fixture();
+  f.pipeline.setPolicy(f.workspaceId, false);
+  const p = await prepare(f);
   expect(p.candidates).toHaveLength(2);
   expect(p.candidates.every((item) => !item.duplicate)).toBe(true);
   expect(f.pipeline.policy(f.workspaceId).enabled).toBe(false);

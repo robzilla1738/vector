@@ -61,7 +61,7 @@ beforeEach(() => {
   vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "workspaces.contentMemory.policy")
       return { enabled: true, retentionDays: 90, allowedOrigins: ["https://source.example"] };
-    if (method === "workspaces.contentMemory.search") return [item];
+    if (method === "workspaces.contentMemory.semanticSearch") return { mode: "lexical", matches: [item] };
     if (method === "workspaces.contentMemory.get") return { ...item, text: "Historical body" };
     throw new Error(`Unexpected ${method}`);
   });

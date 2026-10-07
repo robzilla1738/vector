@@ -668,6 +668,8 @@ export const COMMANDS = [
   ...GL(memoryControl, "-content-memory", " article", [
     ["toggle", "", "Toggle remembered", " use"],
     ["set", "-retention", "Set remembered", " retention"],
+    ["detect", "-models", "Detect local", " embedding models"],
+    ["select", "-model", "Choose local", " embedding model"],
     ["toggle", "-sites", "Toggle remembered", " sites"],
     ["remove", "-site", "Remove remembered", " site"],
     ["read", "", "Read remembered", ""],

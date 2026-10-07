@@ -32,6 +32,7 @@ import { parseLooseJson } from "./tools.js";
  */
 export interface AgentLoopOptions {
   model: Pick<ModelClient, "toolCallStep">;
+  modelSource?: import("../model-client.js").ModelCallSource;
   /** Actual provider text, published independently of complete tool dispatch. */
   onText?: (text: string) => void;
   afterModelCall?: () => void;
@@ -152,8 +153,14 @@ function unansweredToolCalls(messages: ModelMessage[]): LoopToolCall[] {
   const last = messages.at(-1);
   if (last?.role !== "assistant" || !Array.isArray(last.content)) return [];
   const calls = last.content.filter(
-    (part): part is { type: "tool-call"; toolCallId: string; toolName: string; input: unknown } =>
-      typeof part === "object" && part !== null && (part as { type?: string }).type === "tool-call",
+    (
+      part,
+    ): part is {
+      type: "tool-call";
+      toolCallId: string;
+      toolName: string;
+      input: unknown;
+    } => typeof part === "object" && part !== null && (part as { type?: string }).type === "tool-call",
   );
   return calls.map((part) => ({ toolCallId: part.toolCallId, toolName: part.toolName, input: part.input }));
 }
@@ -177,7 +184,10 @@ async function executeOne(
   ctx: LoopToolContext,
 ): Promise<LoopToolResult> {
   const tool = tools[toolName];
-  if (!tool) return { output: new AuxError("capability_unsupported", `Unknown tool: ${toolName}`) };
+  if (!tool)
+    return {
+      output: new AuxError("capability_unsupported", `Unknown tool: ${toolName}`),
+    };
   if (tool.requiresSoloCall && ctx.callCount > 1) {
     return {
       output: new AuxError(
@@ -261,7 +271,10 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
   const sdkTools = Object.fromEntries(
     Object.entries(tools).map(([name, tool]) => [
       name,
-      { description: `${tool.description}\n\n(${tool.byline})`, inputSchema: tool.inputSchema },
+      {
+        description: `${tool.description}\n\n(${tool.byline})`,
+        inputSchema: tool.inputSchema,
+      },
     ]),
   );
   // Auto-recall (06-Z): query content memory for the task once, durably. The
@@ -371,6 +384,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
         messages: requestMessages,
         tools: callTools,
         signal: opts.signal,
+        source: opts.modelSource,
         providerOptions: opts.providerOptions,
         sessionId: opts.threadId,
         maxOutputTokens: opts.maxOutputTokens,
@@ -445,7 +459,12 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       ...toolCalls.filter((call) => call.toolName !== "submit_result"),
       ...toolCalls.filter((call) => call.toolName === "submit_result"),
     ];
-    const results: { toolCallId: string; toolName: string; output?: unknown; parked?: boolean }[] = [];
+    const results: {
+      toolCallId: string;
+      toolName: string;
+      output?: unknown;
+      parked?: boolean;
+    }[] = [];
     let parked: { call: LoopToolCall; park: LoopPark } | undefined;
     let finished: Record<string, unknown> | undefined;
     for (const call of ordered) {

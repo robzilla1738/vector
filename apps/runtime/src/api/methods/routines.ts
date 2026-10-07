@@ -1,11 +1,28 @@
+import { SkillLibrary } from "../../services/skill-library.js";
 import { demoRecorder } from "../../features/demonstration/service.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError, RoutineShareEnvelopeSchema, RoutineShareSchema } from "@aux/contracts";
 import { readFile } from "node:fs/promises";
 
+const skillLibraries = new WeakMap<object, SkillLibrary>();
+
 async function h_routines_list(ctx: MethodCtx): Promise<unknown> {
   const { client, method, params, routines, taskEvidence } = ctx;
+  if (method === "routines.skills.preview" || method === "routines.skills.import") {
+    const token = client.nativeTurnContext;
+    if (client.external || client.codeMode || !token || !ctx.s.native?.turnSourceContext)
+      throw new AuxError("permission_denied", "Review Skills in the original Aux window.");
+    const owner = ctx.s.native.turnSourceContext.bind(ctx.s.native);
+    const check = async () => { await owner(token); };
+    let library = skillLibraries.get(routines);
+    if (!library) { library = new SkillLibrary(); skillLibraries.set(routines, library); }
+    if (method === "routines.skills.preview") return library.preview(params.source, token, check);
+    const shares = await library.selected(params.reviewId, params.skillIds, token, check);
+    await check();
+    return routines.importRoutines(shares, params.workspaceId);
+  }
+
   if (method === "routines.replay.repair.propose") {
     if (client.external) {
       const routine = routines.get(params.routineId).routine;
@@ -93,6 +110,8 @@ async function h_routines_list(ctx: MethodCtx): Promise<unknown> {
 
 export const routinesMethods: Partial<Record<MethodName, MethodHandler>> = {
   "routines.replay.compileDemonstration": h_routines_list,
+  "routines.skills.preview": h_routines_list,
+  "routines.skills.import": h_routines_list,
   "routines.list": h_routines_list,
   "routines.suggest": h_routines_list,
   "routines.get": h_routines_list,

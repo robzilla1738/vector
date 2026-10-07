@@ -1,3 +1,5 @@
+import { copilotModelClient } from "../agent/copilot-model.js";
+import { ModelCapabilitySchema } from "@aux/contracts/model-registry";
 import type { CopilotServices } from "./copilot-services.js";
 import type { CopilotAccount } from "./copilot-account.js";
 import { FoundationModelsClient, type UtilityRoute, type NetworkUtilityRoute } from "./foundation-models.js";
@@ -231,7 +233,7 @@ export class SettingsService {
     modelApiKey?: string;
     modelCredentialSource: string;
     modelCredentialError?: string;
-    modelAuthentication: "api-key" | "chatgpt";
+    modelAuthentication: "api-key" | "chatgpt" | "copilot";
     modelEndpoint: string;
     modelProbe?: ModelProbeRecord;
     agentModelRouteOverrides: Settings["agentModelRoutes"];
@@ -249,19 +251,24 @@ export class SettingsService {
           : undefined),
       localModelsOnly: this.localModelsOnly(),
       modelProvider: this.modelProvider(),
-      modelAuthentication:
-        this.modelProvider() === "openai" && this.activeChatgptAccount() ? "chatgpt" : "api-key",
+      modelAuthentication: this.copilotSelection()
+        ? "copilot"
+        : this.modelProvider() === "openai" && this.activeChatgptAccount()
+          ? "chatgpt"
+          : "api-key",
       modelConnections: this.connectionStatuses(),
       imageModel: this.imageModel(),
       compatibleEndpoint: this.compatibleEndpoint(),
-      modelApiKey:
-        this.modelProvider() === "openai" && this.activeChatgptAccount()
+      modelApiKey: this.hasCopilotSelection()
+        ? undefined
+        : this.modelProvider() === "openai" && this.activeChatgptAccount()
           ? undefined
           : this.selectedKey()
             ? "••••••••"
             : undefined,
-      modelCredentialSource:
-        this.modelProvider() === "openai" && this.activeChatgptAccount()
+      modelCredentialSource: this.hasCopilotSelection()
+        ? "saved"
+        : this.modelProvider() === "openai" && this.activeChatgptAccount()
           ? "saved"
           : this.modelProvider() === "gateway"
             ? this.savedKey
@@ -274,28 +281,34 @@ export class SettingsService {
               : this.selectedKey()
                 ? "environment"
                 : "none",
-      modelCredentialError:
-        this.modelProvider() === "openai" && this.activeChatgptAccount() && this.chatgptCredentialError
+      modelCredentialError: this.hasCopilotSelection()
+        ? this.copilotSelection()
+          ? undefined
+          : "Choose a model after signing in to Copilot again."
+        : this.modelProvider() === "openai" && this.activeChatgptAccount() && this.chatgptCredentialError
           ? "Sign in to ChatGPT again to unlock this account."
           : this.modelProvider() === "gateway"
             ? this.credentialError
             : this.directErrors[this.modelProvider()],
-      modelEndpoint: providerEndpoint(this.modelProvider(), this.compatibleEndpoint()),
+      modelEndpoint: this.copilotSelection()
+        ? "Account-bound Copilot endpoint"
+        : providerEndpoint(this.modelProvider(), this.compatibleEndpoint()),
       modelProbe:
         modelProbe?.provider === this.modelProvider() && modelProbe.modelId === this.plannerModel()
           ? modelProbe
           : undefined,
-      modelConfigured:
-        (!this.localModelsOnly() || localCompatible) &&
-        this.connectionEnabled(this.modelProvider()) &&
-        !!(
-          this.modelOverride ||
-          (this.plannerModel() &&
-            (this.selectedKey() ||
-              localCompatible ||
-              (this.modelProvider() === "openai" && this.chatgptConnected())) &&
-            (this.modelProvider() !== "openai-compatible" || this.compatibleEndpoint()))
-        ),
+      modelConfigured: this.hasCopilotSelection()
+        ? !!this.copilotSelection() && !this.localModelsOnly()
+        : (!this.localModelsOnly() || localCompatible) &&
+          this.connectionEnabled(this.modelProvider()) &&
+          !!(
+            this.modelOverride ||
+            (this.plannerModel() &&
+              (this.selectedKey() ||
+                localCompatible ||
+                (this.modelProvider() === "openai" && this.chatgptConnected())) &&
+              (this.modelProvider() !== "openai-compatible" || this.compatibleEndpoint()))
+          ),
       plannerModel: this.plannerModel(),
       recoveryModel: this.recoveryModel(),
       visionModel: this.visionModel(),
@@ -547,6 +560,7 @@ export class SettingsService {
       next.agentModelRoutes = AgentModelRoutesSettingSchema.parse(next.agentModelRoutes);
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
     if (connectionChange) {
+      this.repo.deleteSetting("copilotInferenceSelection");
       this.connectionEpoch++;
       this.catalogService?.invalidate();
       this.mergedCatalog = MODEL_REGISTRY;
@@ -603,6 +617,8 @@ export class SettingsService {
   }
 
   plannerModel(): string {
+    const copilot = this.copilotSelection();
+    if (this.hasCopilotSelection()) return copilot?.modelId ?? "";
     if (this.modelProvider() !== "gateway")
       return (
         this.profiles()[this.modelProvider()]?.plannerModel ??
@@ -637,6 +653,7 @@ export class SettingsService {
 
   private routeBaseline(category: AgentModelCategory): AgentModelRoute {
     const baseline = agentModelRoute(category);
+    if (this.hasCopilotSelection()) return { ...baseline, modelId: this.plannerModel() };
     if (this.modelProvider() !== "gateway") {
       const modelId =
         category === "visual"
@@ -661,6 +678,7 @@ export class SettingsService {
    * keeps at least one alternate so a 429/5xx has somewhere to go.
    */
   agentRouteChain(category: AgentModelCategory): AgentModelRoute[] {
+    if (this.hasCopilotSelection()) return [this.routeBaseline(category)];
     const stored = normalizeRouteChain(this.routeOverrides()?.[category]);
     const chain = stored.length ? stored : [this.routeBaseline(category)];
     const seen = new Set(chain.map((r) => r.modelId));
@@ -1151,6 +1169,86 @@ export class SettingsService {
       })),
     };
   }
+  private hasCopilotSelection(): boolean {
+    return this.repo.getSetting("copilotInferenceSelection") !== undefined;
+  }
+  private copilotSelection() {
+    const parsed = z
+      .object({
+        accountId: z.string().regex(/^[a-f0-9]{64}$/),
+        revision: z.string().uuid(),
+        modelId: z.string().min(1).max(300),
+        models: z.array(ModelCapabilitySchema).max(500),
+      })
+      .strict()
+      .safeParse(this.repo.getSetting("copilotInferenceSelection"));
+    if (
+      !parsed.success ||
+      parsed.data.accountId !== this.repo.getSetting("copilotActiveAccount") ||
+      parsed.data.revision !== this.copilotGeneration()
+    )
+      return undefined;
+    return parsed.data;
+  }
+  async selectCopilotModel(modelId: string | null, owner: string): Promise<void> {
+    const work = this.writes.then(async () => {
+      const service = await this.copilotForOwner(owner, true);
+      const accountId = this.repo.getSetting<string>("copilotActiveAccount");
+      const revision = this.copilotGeneration();
+      const modelGeneration = this.modelCacheGeneration();
+      const check = async () => {
+        await this.checkCopilotOwner(owner);
+        if (
+          this.localModelsOnly() ||
+          this.copilotGeneration() !== revision ||
+          this.modelCacheGeneration() !== modelGeneration ||
+          this.repo.getSetting("copilotActiveAccount") !== accountId
+        )
+          throw new AuxError("cancelled", "The original Copilot selection changed.");
+      };
+      await check();
+      let models: ModelCapability[] = [];
+      if (modelId !== null) {
+        if (!accountId)
+          throw new AuxError("needs_input", "Sign in to your registered Copilot application first.");
+        const catalog = await service.catalog(accountId, owner);
+        await check();
+        if (!catalog.some((model) => model.id === modelId && model.policy?.state !== "disabled"))
+          throw new AuxError("permission_denied", "Choose a model advertised for this account.");
+        models = catalog
+          .filter((model) => model.policy?.state !== "disabled")
+          .map((model): ModelCapability => ({
+            id: model.id,
+            name: model.name,
+            provider: "copilot",
+            source: "catalog",
+            billingKind: "subscription",
+            // A published model limit is not proof of an enforceable request envelope.
+            outputLimitSupported: false,
+            contextTokens: model.capabilities.limits.max_context_window_tokens,
+            maxOutputTokens: model.capabilities.limits.max_output_tokens,
+            modalities: model.capabilities.supports.vision ? ["text", "image"] : ["text"],
+            reasoning: model.capabilities.supports.reasoningEffort ? "supported" : "none",
+          }));
+        models = z.array(ModelCapabilitySchema).parse(models);
+      }
+      await check();
+      this.repo.transaction(() => {
+        if (modelId === null) this.repo.deleteSetting("copilotInferenceSelection");
+        else
+          this.repo.setSetting("copilotInferenceSelection", {
+            accountId,
+            revision,
+            modelId,
+            models,
+          });
+        this.repo.setSetting("modelCacheGeneration", randomUUID());
+      });
+      this.gatewayClient = null;
+    });
+    this.writes = work.catch(() => {});
+    await work;
+  }
   private authOwners = new Map<string, { windowId: string; activePageId: string | null }>();
   private auth(): ProviderAuthService {
     return (this.providerAuthService ??= new ProviderAuthService({
@@ -1257,6 +1355,8 @@ export class SettingsService {
       throw new AggregateError(failures, "Original model account cleanup remains unresolved.");
   }
   registryModels(): readonly ModelCapability[] {
+    const copilot = this.copilotSelection();
+    if (this.hasCopilotSelection()) return copilot?.models ?? [];
     if (this.modelProvider() === "openai" && this.activeChatgptAccount())
       return this.chatgptCatalog.length
         ? this.chatgptCatalog
@@ -1314,6 +1414,64 @@ export class SettingsService {
   }
 
   model(): ModelClient | null {
+    const copilot = this.copilotSelection();
+    if (this.hasCopilotSelection() && !copilot) return null;
+    if (copilot) {
+      if (this.localModelsOnly() || this.discoveryClosed || !this.copilotFactory) return null;
+      const generation = this.modelCacheGeneration();
+      const check = () => {
+        this.assertModelGeneration(generation);
+        const next = this.copilotSelection();
+        if (
+          !next ||
+          next.accountId !== copilot.accountId ||
+          next.revision !== copilot.revision ||
+          next.modelId !== copilot.modelId
+        )
+          throw new AuxError("cancelled", "The original Copilot account or model changed.");
+      };
+      return copilotModelClient(
+        {
+          inference: async (accountId, source, modelId, signal, use) => {
+            check();
+            await source.checkOriginal();
+            const service = await this.copilotForOwner(source.nativeTurnContext, true);
+            check();
+            await source.checkOriginal();
+            return service.inference(
+              accountId,
+              {
+                ...source,
+                checkOriginal: async () => {
+                  check();
+                  await source.checkOriginal();
+                  await this.checkCopilotOwner(source.nativeTurnContext);
+                  check();
+                },
+              },
+              modelId,
+              signal,
+              use,
+            );
+          },
+        },
+        copilot.accountId,
+        () => copilot.models,
+        async (source, destination) => {
+          check();
+          await source.checkOriginal();
+          await this.checkCopilotOwner(source.nativeTurnContext);
+          await source.authorizeDestination(destination);
+          if (new URL(destination).protocol !== "https:")
+            throw new AuxError(
+              "permission_denied",
+              "Copilot inference requires its original HTTPS endpoint.",
+            );
+          check();
+        },
+      );
+    }
+
     if (
       this.localModelsOnly() &&
       !(
@@ -1396,6 +1554,13 @@ export class SettingsService {
     source: "gateway" | "static" | "configured";
     localServers: LocalModelServer[];
   }> {
+    const copilot = this.copilotSelection();
+    if (this.hasCopilotSelection())
+      return {
+        models: !this.localModelsOnly() && copilot ? copilot.models : [],
+        source: "configured",
+        localServers: await this.localServers(),
+      };
     const provider = this.modelProvider();
     const chatgptId = provider === "openai" ? this.activeChatgptAccount() : undefined;
     if (chatgptId && !this.localModelsOnly() && this.connectionEnabled(provider)) {
@@ -1515,6 +1680,7 @@ export class SettingsService {
         destination: "https://ai-gateway.vercel.sh",
       };
     // A saved direct provider remains usable without a separate Gateway account.
+    if (this.hasCopilotSelection()) return null;
     const selected = this.model();
     return selected
       ? {

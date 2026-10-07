@@ -1,8 +1,8 @@
+import { parseDocument } from "yaml";
 import { lstat, readFile } from "node:fs/promises";
 import { AuxError, RoutineShareSchema, type RoutineShare } from "@aux/contracts";
 
 const MAX_BYTES = 64_000;
-const fields = new Set(["name", "description", "icon", "autoInject", "aux"]);
 
 /** A portable, human-readable SKILL.md. The Aux extension retains parameters and evidence criteria. */
 export function serializeSkillDocument(share: RoutineShare): string {
@@ -27,23 +27,34 @@ export function serializeSkillDocument(share: RoutineShare): string {
   return result;
 }
 
-/** Read only the bounded Aux document fields. Import is always paused and task-unbound. */
+/** Claude-compatible YAML; imported metadata cannot grant execution authority. */
 export function parseSkillDocument(markdown: string): RoutineShare {
   if (Buffer.byteLength(markdown) > MAX_BYTES)
     throw new AuxError("invalid_params", "The Skill document exceeds 64 KB.");
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n(?:\r?\n)?([\s\S]*)$/.exec(markdown);
   if (!match) throw new AuxError("invalid_params", "Skill document needs YAML frontmatter and an objective.");
-  const metadata: Record<string, unknown> = {};
-  for (const line of match[1]!.split(/\r?\n/)) {
-    const pair = /^([A-Za-z][A-Za-z0-9]*): (.+)$/.exec(line);
-    if (!pair || !fields.has(pair[1]!) || pair[1]! in metadata)
-      throw new AuxError("invalid_params", "Skill frontmatter contains an unsupported or duplicate field.");
-    try {
-      metadata[pair[1]!] = JSON.parse(pair[2]!);
-    } catch {
-      throw new AuxError("invalid_params", "Skill frontmatter fields must use JSON scalar or flow values.");
-    }
+  const document = parseDocument(match[1]!, { uniqueKeys: true, strict: true });
+  if (document.errors.length)
+    throw new AuxError(
+      "invalid_params",
+      "Skill frontmatter is not valid YAML.",
+    );
+  let value: unknown;
+  try {
+    value = document.toJS({ maxAliasCount: 0 });
+  } catch {
+    throw new AuxError(
+      "invalid_params",
+      "Skill frontmatter aliases are not supported.",
+    );
   }
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new AuxError(
+      "invalid_params",
+      "Skill frontmatter must be a mapping.",
+    );
+  // Claude metadata such as allowed-tools is descriptive, never an Aux grant.
+  const metadata = value as Record<string, unknown>;
   const aux = metadata.aux;
   if (aux !== undefined && (!aux || typeof aux !== "object" || Array.isArray(aux)))
     throw new AuxError("invalid_params", "Skill Aux metadata is invalid.");

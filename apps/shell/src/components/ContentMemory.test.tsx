@@ -39,20 +39,23 @@ it("does not display an article that finishes reading after switching Spaces", a
   vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "workspaces.contentMemory.policy")
       return { enabled: true, retentionDays: 30, allowedOrigins: ["https://source.example"] } as never;
-    if (method === "workspaces.contentMemory.search")
-      return [
-        {
-          profileId: "profile",
-          workspaceId: "first-space",
-          pageId: "source",
-          documentEpoch: 1,
-          memoryId: "article",
-          title: "Recorded article",
-          url: "https://source.example/article",
-          snippet: "Saved text",
-          capturedAt: 1,
-        },
-      ] as never;
+    if (method === "workspaces.contentMemory.semanticSearch")
+      return {
+        mode: "lexical",
+        matches: [
+          {
+            profileId: "profile",
+            workspaceId: "first-space",
+            pageId: "source",
+            documentEpoch: 1,
+            memoryId: "article",
+            title: "Recorded article",
+            url: "https://source.example/article",
+            snippet: "Saved text",
+            capturedAt: 1,
+          },
+        ],
+      } as never;
     if (method === "workspaces.contentMemory.get")
       return new Promise((resolve) => {
         finish = resolve;

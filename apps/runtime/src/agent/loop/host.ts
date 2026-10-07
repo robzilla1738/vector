@@ -42,6 +42,7 @@ import { toolResultsMessage, type LoopToolDeps, type LoopToolResult, type ModelM
  * steers into the transcript, and finishes the run.
  */
 export interface AgentLoopHostDeps {
+  authorizeModelDestination?: (runId: string, origin: string) => Promise<void>;
   cloudExecutor?: CloudReplExecutor & {
     selected(runId: string): boolean;
   };
@@ -55,7 +56,12 @@ export interface AgentLoopHostDeps {
     prompt: string;
     signal: AbortSignal;
     checkOwner: () => void;
-  }) => Promise<{ artifactId: string; mediaType: string; size: number; modelId: string }>;
+  }) => Promise<{
+    artifactId: string;
+    mediaType: string;
+    size: number;
+    modelId: string;
+  }>;
   /** decide()-gated web backends — main.ts builds them from AgentWebTools + decideDeps. */
   webFetch?: LoopToolDeps["webFetch"];
   webSearch?: LoopToolDeps["webSearch"];
@@ -262,7 +268,10 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
   /** Never substitute a different tab when an explicitly targeted attachment is unavailable. */
   const observePage = (
     pageId: string,
-    req: { scope?: import("@aux/contracts").ObservationScope; subtreeRef?: string },
+    req: {
+      scope?: import("@aux/contracts").ObservationScope;
+      subtreeRef?: string;
+    },
   ): Promise<Observation> => self.usePage(runId, pageId, "read", () => self.deps.pages.observe(pageId, req));
 
   /** Snapshot bookkeeping — every rendered observation gets a durable, citable handle. */
@@ -280,7 +289,10 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     obsTexts.set(`${obs.pageId}@${obs.revision}`, text);
     obsTexts.set(obs.pageId, text);
     obsMeta.set(observationId, { pageId: obs.pageId, revision: obs.revision });
-    obsMeta.set(`${obs.pageId}@${obs.revision}`, { pageId: obs.pageId, revision: obs.revision });
+    obsMeta.set(`${obs.pageId}@${obs.revision}`, {
+      pageId: obs.pageId,
+      revision: obs.revision,
+    });
     obsRecords.set(observationId, safeObs);
     obsRecords.set(`${obs.pageId}@${obs.revision}`, safeObs);
     obsAt.set(observationId, Date.now());
@@ -1022,7 +1034,31 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     fileRead: (path) => filesystem().readText(path, runId, signal),
     fileWrite: (path, content) => filesystem().writeText(path, content, runId, signal),
     bash: self.deps.agentLoop?.bash,
-    historySearch: self.deps.agentLoop?.historySearch,
+    historySearch: self.deps.agentLoop?.historySearch
+      ? async (query, limit, context) => {
+          const checkOwner = () => {
+            if (
+              signal.aborted ||
+              self.controls.get(runId) !== c ||
+              c.paused ||
+              context.runId !== runId ||
+              context.threadId !== threadId ||
+              context.turnId !== runId
+            )
+              throw new AuxError("cancelled", "The original history request lost its run authority.");
+            self.deps.checkRunSource?.(runId);
+            self.deps.turnMentions.skills(runId);
+          };
+          checkOwner();
+          const result = await self.deps.agentLoop!.historySearch!(query, limit, {
+            ...context,
+            signal,
+            checkOwner,
+          });
+          checkOwner();
+          return result;
+        }
+      : undefined,
     memorySearch: self.deps.agentLoop?.memorySearch,
     subagents: self.deps.agentLoop?.subagents,
     routineUpdate: self.deps.agentLoop?.routineUpdate,
@@ -1378,8 +1414,36 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       ]);
       skillTurn = currentSkillTurn;
     }
+    const originalToken = run.config?.nativeTurnContext;
     return {
       model,
+      ...(originalToken
+        ? {
+            modelSource: {
+              runId,
+              nativeTurnContext: originalToken,
+              authorizeDestination: async (origin: string) => {
+                if (!self.deps.agentLoop?.authorizeModelDestination)
+                  throw new AuxError(
+                    "capability_unsupported",
+                    "This host cannot admit the original Copilot destination.",
+                  );
+                await self.deps.agentLoop.authorizeModelDestination(runId, origin);
+              },
+              checkOriginal: () => {
+                if (
+                  signal.aborted ||
+                  self.controls.get(runId) !== c ||
+                  c.paused ||
+                  self.get(runId).config?.nativeTurnContext !== originalToken
+                )
+                  throw new AuxError("cancelled", "The original model source retired.");
+                self.deps.checkRunSource?.(runId);
+                self.deps.turnMentions.skills(runId);
+              },
+            },
+          }
+        : {}),
       onText: (text) => {
         if (!signal.aborted) answer.push(text);
       },
@@ -1853,7 +1917,10 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
             );
             return;
           }
-          if (goalRun) self.deps.repo.saveCheckpoint(`run:${runId}`, "goal_verified", { accepted: true });
+          if (goalRun)
+            self.deps.repo.saveCheckpoint(`run:${runId}`, "goal_verified", {
+              accepted: true,
+            });
           await self.finish(
             runId,
             "completed",

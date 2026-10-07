@@ -47,6 +47,8 @@ vi.mock("./MemoryRecoveryNotice", () => ({
 const ids = [
   "toggle-content-memory",
   "set-content-memory-retention",
+  "detect-content-memory-models",
+  "select-content-memory-model",
   "toggle-content-memory-sites",
   "remove-content-memory-site",
   "read-content-memory",
@@ -136,7 +138,7 @@ beforeEach(() => {
   mocks.toast.mockReset();
   mocks.call.mockImplementation(async (method, params) => {
     if (method === "workspaces.contentMemory.policy") return policy;
-    if (method === "workspaces.contentMemory.search") return [item];
+    if (method === "workspaces.contentMemory.semanticSearch") return { mode: "lexical", matches: [item] };
     if (method === "workspaces.contentMemory.get") return saved;
     if (method === "workspaces.contentMemory.setPolicy") return params.policy;
     if (method === "workspaces.contentMemory.forget") return { forgotten: 1 };
@@ -241,8 +243,8 @@ it("refuses foreign saved document and keeps original source checks", async () =
   mocks.call.mockImplementation(async (method) =>
     method === "workspaces.contentMemory.policy"
       ? policy
-      : method === "workspaces.contentMemory.search"
-        ? [item]
+      : method === "workspaces.contentMemory.semanticSearch"
+        ? { mode: "lexical", matches: [item] }
         : { ...saved, documentEpoch: 5 },
   );
   await render();
@@ -278,8 +280,8 @@ it("same workspace revision roundtrip cannot revive a held article read", async 
   mocks.call.mockImplementation(async (method) =>
     method === "workspaces.contentMemory.policy"
       ? policy
-      : method === "workspaces.contentMemory.search"
-        ? [item]
+      : method === "workspaces.contentMemory.semanticSearch"
+        ? { mode: "lexical", matches: [item] }
         : hold.promise,
   );
   await render();
@@ -375,8 +377,8 @@ it("query roundtrip cannot publish an old search result with the same item ID", 
     method === "workspaces.contentMemory.policy"
       ? policy
       : ++searches === 1
-        ? hold.promise
-        : [{ ...item, title: "Current article" }],
+        ? hold.promise.then((matches) => ({ mode: "lexical", matches }))
+        : { mode: "lexical", matches: [{ ...item, title: "Current article" }] },
   );
   await render();
   await search();
@@ -411,8 +413,8 @@ it("held read cannot revive across committed normal Private normal ownership", a
   mocks.call.mockImplementation(async (method) =>
     method === "workspaces.contentMemory.policy"
       ? policy
-      : method === "workspaces.contentMemory.search"
-        ? [item]
+      : method === "workspaces.contentMemory.semanticSearch"
+        ? { mode: "lexical", matches: [item] }
         : hold.promise,
   );
   await render();
@@ -430,8 +432,8 @@ it("a removed native Space retires original controls and held read before public
   mocks.call.mockImplementation(async (method) =>
     method === "workspaces.contentMemory.policy"
       ? policy
-      : method === "workspaces.contentMemory.search"
-        ? [item]
+      : method === "workspaces.contentMemory.semanticSearch"
+        ? { mode: "lexical", matches: [item] }
         : hold.promise,
   );
   await render();
@@ -565,4 +567,27 @@ it("live remapped policy failure preserves exact rejection reporting", async () 
   await act(async () => hold.reject(reason));
   expect(mocks.toast).toHaveBeenCalledExactlyOnceWith(reason);
   expect((control("toggle-content-memory") as HTMLInputElement).disabled).toBe(false);
+});
+
+it("discovers semantic models only on demand and stores an actually installed selection", async () => {
+  mocks.call.mockImplementation(async (method, params) => {
+    if (method === "workspaces.contentMemory.policy") return policy;
+    if (method === "workspaces.contentMemory.embeddingModels")
+      return [{ modelId: "installed-embedding:latest", digest: "a".repeat(64) }];
+    if (method === "workspaces.contentMemory.setPolicy") return params.policy;
+    throw new Error(`Unexpected ${method}`);
+  });
+  await render();
+  expect(mocks.call).toHaveBeenCalledTimes(1);
+  await click("detect-content-memory-models");
+  const select = control("select-content-memory-model") as HTMLSelectElement;
+  expect(select.options).toHaveLength(2);
+  await act(async () => {
+    select.value = "installed-embedding:latest";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(mocks.call).toHaveBeenLastCalledWith("workspaces.contentMemory.setPolicy", {
+    workspaceId: "space",
+    policy: { ...policy, semanticModelId: "installed-embedding:latest" },
+  });
 });

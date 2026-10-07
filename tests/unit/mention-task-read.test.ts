@@ -44,7 +44,7 @@ function fixture() {
     routine: () => undefined,
     connectors: () => ({ entries: [], access: [] }),
   });
-  const externalSessions = new ExternalSessionService(repo, events, turnMentions);
+  const externalSessions = new ExternalSessionService(repo, events, turnMentions, async () => {});
   const agentConnections = new AgentConnectionService(repo);
   const connection = agentConnections.create({
     name: "Fixture",
@@ -54,7 +54,7 @@ function fixture() {
   }).connection;
   const client = { external: true as const, connectionId: connection.connectionId, scope: connection.scope };
   let rules: AgentPolicySettings["agentPolicies"] = [],
-    duringCapture = () => {},
+    duringCapture: () => void | Promise<void> = () => {},
     captures = 0;
   const pages = new PageService({
     repo,
@@ -91,7 +91,7 @@ function fixture() {
   repo.upsertPage(page);
   pages.capture = async () => {
     captures++;
-    duringCapture();
+    await duringCapture();
     return {
       dataUrl: "data:image/png;base64,AA",
       width: 1,
@@ -131,7 +131,7 @@ function fixture() {
     client,
     turnMentions,
     captures: () => captures,
-    during: (callback: () => void) => {
+    during: (callback: () => void | Promise<void>) => {
       duringCapture = callback;
     },
     rules: (value: AgentPolicySettings["agentPolicies"]) => {
@@ -167,9 +167,9 @@ it.each(["revision", "resource", "ask", "block", "attachment"])(
   "a %s change during task capture withholds the result",
   async (change) => {
     const f = fixture();
-    f.during(() => {
+    f.during(async () => {
       if (change === "revision" || change === "resource")
-        f.externalSessions.end(f.client.connectionId, "completed", "Person revises approved task");
+        await f.externalSessions.end(f.client.connectionId, "completed", "Person revises approved task");
       if (change === "revision")
         f.tasks.update({ taskId: f.task.taskId, expectedRevision: 1, title: "Revised task" });
       if (change === "resource")

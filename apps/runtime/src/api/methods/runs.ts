@@ -7,6 +7,11 @@ import { projectRunTranscript } from "../../services/run-transcript.js";
 import { assertRunAnswerable, currentRunSuspension } from "../../services/run-suspension.js";
 
 async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
+  if (
+    ctx.params.executionTarget === "cloud" &&
+    (ctx.client.external || ctx.client.codeMode || !ctx.client.nativeTurnContext)
+  )
+    throw new AuxError("permission_denied", "Choose Run in cloud from the original Aux conversation.");
   if (ctx.client.external && ctx.params.mentions?.length)
     throw new AuxError("permission_denied", "Mention sources through the Aux composer.");
   const { client, params, s } = ctx;
@@ -17,6 +22,34 @@ async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
     );
   if (client.external && params.defaultWorkspaceId)
     throw new AuxError("permission_denied", "Conversation Space defaults are set through the Aux browser.");
+  if (ctx.scope) {
+    if (!ctx.externalRunId || !client.connectionId || !params.taskId || params.expectedRevision === undefined)
+      throw new AuxError("permission_denied", "A run requires its original external task session.");
+    if (params.setId || params.chatId || params.contextPageRefs?.length)
+      throw new AuxError(
+        "permission_denied",
+        "External runs use the saved task conversation and its authorized page sources.",
+      );
+    const { taskId, expectedRevision, goal, ...options } = MethodSchemas["runs.start"].parse(params);
+    const prepared = ctx.tasks.prepareRun(taskId!, expectedRevision!, options.context, ctx.externalRunId);
+    const pages =
+      options.pageIds ??
+      (options.pageId
+        ? [options.pageId]
+        : ctx.tasks
+            .get(taskId!)
+            .resources.filter((resource) => resource.kind === "page")
+            .map((resource) => resource.locator));
+    for (const pageId of pages) ctx.requireScopedPage(ctx.scope, pageId, client.connectionId);
+    return s.runs.start({
+      ...options,
+      ...prepared,
+      goal,
+      pageIds: pages,
+      externalConnectionId: client.connectionId,
+      externalParentRunId: ctx.externalRunId,
+    });
+  }
   return s.runs.start({
     ...MethodSchemas["runs.start"].parse(params),
     nativeTurnContext: client.nativeTurnContext,
@@ -95,6 +128,17 @@ async function h_runs_resume(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_runs_cancel(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
+  const original = s.repo.getRun(params.runId);
+  const connectionId = original?.config?.externalConnectionId;
+  if (connectionId) {
+    if (ctx.scope && ctx.client.connectionId !== connectionId)
+      throw new AuxError("permission_denied", "Stop requires this original external connection.");
+    if (!s.agentConnections || !s.externalSessions)
+      throw new AuxError("backend_unavailable", "Original external session retirement is unavailable.");
+    s.agentConnections.revoke(connectionId);
+    await s.externalSessions.end(connectionId, "cancelled", ctx.client.external ? "External session stopped" : "Stopped by user");
+    return s.runs.coordinator.get(params.runId);
+  }
   return s.runs.cancel(params.runId);
 }
 async function h_runs_continue_budget(ctx: MethodCtx): Promise<unknown> {

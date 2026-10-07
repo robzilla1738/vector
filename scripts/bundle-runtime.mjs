@@ -161,8 +161,30 @@ export async function bundleRuntime(rtOut, target) {
     banner: {js:'import { createRequire as auxCreateRequire } from "node:module"; const require = auxCreateRequire(import.meta.url);'},
   });
   writeFileSync(join(cloudWorkerOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices(cloudWorkerBuild.metafile.inputs));
-  writeFileSync(join(dirname(rtOut), "runtime-meta.json"), JSON.stringify({ inputs: { ...runtimeBuild.metafile.inputs, ...cloudWorkerBuild.metafile.inputs }, outputs: { ...runtimeBuild.metafile.outputs, ...cloudWorkerBuild.metafile.outputs } }));
-  writeFileSync(join(rtOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices({...runtimeBuild.metafile.inputs, ...cloudWorkerBuild.metafile.inputs, ...archiveNoticeInputs}));
+  // Recurrence validation is synchronous, but its official CJS entry loads only
+  // when a schedule is created/evaluated. Keep it outside the cold ESM graph.
+  const recurrenceEntry = runtimeRequire.resolve("rrule-temporal");
+  const recurrenceDir = dirname(dirname(recurrenceEntry));
+  const recurrenceOut = join(rtOut, "vendor", "rrule-temporal");
+  mkdirSync(recurrenceOut, { recursive: true });
+  const recurrenceBuild = await build({
+    entryPoints: [recurrenceEntry],
+    outfile: join(recurrenceOut, "index.cjs"),
+    bundle: true,
+    platform: "node",
+    format: "cjs",
+    target,
+    minify: true,
+    legalComments: "linked",
+    sourcemap: false,
+    metafile: true,
+  });
+  copyFileSync(join(recurrenceDir, "LICENSE"), join(recurrenceOut, "LICENSE"));
+  const recurrenceRequire = createRequire(join(recurrenceDir, "package.json"));
+  const temporalSpecDir = dirname(recurrenceRequire.resolve("temporal-spec"));
+  copyFileSync(join(temporalSpecDir, "LICENSE"), join(recurrenceOut, "TEMPORAL-SPEC-LICENSE"));
+  writeFileSync(join(dirname(rtOut), "runtime-meta.json"), JSON.stringify({ inputs: { ...runtimeBuild.metafile.inputs, ...cloudWorkerBuild.metafile.inputs, ...recurrenceBuild.metafile.inputs }, outputs: { ...runtimeBuild.metafile.outputs, ...cloudWorkerBuild.metafile.outputs, ...recurrenceBuild.metafile.outputs } }));
+  writeFileSync(join(rtOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices({...runtimeBuild.metafile.inputs, ...cloudWorkerBuild.metafile.inputs, ...recurrenceBuild.metafile.inputs, ...archiveNoticeInputs, ...recurrenceBuild.metafile.inputs}));
 
   // QuickJS's async release variant loads its WASM beside the esbuild chunk at
   // runtime. esbuild bundles the loader JS but does not copy that sibling file.
@@ -233,6 +255,7 @@ export async function bundleRuntime(rtOut, target) {
         private: true,
         type: "module",
         imports: {
+          "#rrule-temporal": "./vendor/rrule-temporal/index.cjs",
           "#playwright-core": "./vendor/playwright-core/index.mjs",
           "#resvg": "./vendor/resvg-js/index.js",
           "#aux-copilot-install-worker": "./dist/copilot-install-worker.js",

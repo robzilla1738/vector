@@ -126,7 +126,18 @@ export interface LoopToolDeps {
   historySearch?: (
     query: string,
     limit: number,
-  ) => Promise<{ url: string; title: string; pageId?: string; visitedAt: number }[]>;
+    context: {
+      runId: string;
+      threadId: string;
+      turnId: string;
+      signal?: AbortSignal;
+      checkOwner?: () => void;
+    },
+  ) => Promise<{
+    mode: "semantic" | "lexical";
+    message: string;
+    entries: { url: string; title: string; pageId?: string; visitedAt: number }[];
+  }>;
   /** Protected page-memory search under the run's workspace policy (06-X memory_search). */
   memorySearch?: (
     query: string,

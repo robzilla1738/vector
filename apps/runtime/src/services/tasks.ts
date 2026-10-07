@@ -384,11 +384,17 @@ export class TaskService {
     return task;
   }
 
-  prepareRun(taskId: string, expectedRevision: number, context?: string) {
+  prepareRun(taskId: string, expectedRevision: number, context?: string, externalSessionRunId?: string) {
     const task = this.get(taskId);
     this.requireRevision(task, expectedRevision);
     if (task.state === "archived") throw new AuxError("conflict", "Restore this task before starting a run");
-    this.requireIdle(taskId);
+    if (externalSessionRunId) {
+      const session = this.repo.getRun(externalSessionRunId);
+      if (!session || session.config?.implementation !== "external-agent" || !session.config.externalConnectionId ||
+          !["running", "needs_input"].includes(session.status))
+        throw new AuxError("permission_denied", "The original external session is unavailable.");
+    }
+    this.requireIdle(taskId, undefined, externalSessionRunId);
     this.requireResolved(taskId);
     const memory = this.workspaceMemory(task.workspaceId);
     return {
@@ -447,16 +453,16 @@ export class TaskService {
       throw new AuxError("conflict", "Task revision changed; refresh before continuing");
   }
 
-  private requireIdle(taskId: string, exceptImplementation?: string) {
+  private requireIdle(taskId: string, exceptImplementation?: string, exceptRunId?: string) {
     const except = exceptImplementation
       ? "AND coalesce(json_extract(l.config,'$.implementation'),'') != ?"
       : "";
     if (
       this.repo.db
         .prepare(
-          `SELECT 1 FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=? AND r.status IN ${ACTIVE_RUNS} ${except} LIMIT 1`,
+          `SELECT 1 FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=? AND r.status IN ${ACTIVE_RUNS} ${except} ${exceptRunId ? 'AND r.run_id != ?' : ''} LIMIT 1`,
         )
-        .get(...(exceptImplementation ? [taskId, exceptImplementation] : [taskId]))
+        .get(taskId, ...(exceptImplementation ? [exceptImplementation] : []), ...(exceptRunId ? [exceptRunId] : []))
     ) {
       throw new AuxError(
         "conflict",

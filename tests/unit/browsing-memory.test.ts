@@ -3,8 +3,11 @@ import { openDb, Repo, EventBus, TaskService } from "@aux/runtime";
 import { BrowsingMemory } from "../../apps/runtime/src/services/browsing-memory.js";
 import type { PageTarget } from "@aux/contracts";
 
-const page = (patch: Partial<PageTarget> = {}): PageTarget => ({
+const page = (workspaceId: string, patch: Partial<PageTarget> = {}): PageTarget => ({
   pageId: "p",
+  workspaceId,
+  windowId: "original-window",
+  windowKind: "normal",
   backend: "aux",
   targetId: "t",
   url: "https://example.com/article?session=private#section",
@@ -39,26 +42,33 @@ function fixture() {
   };
 }
 
-it("is opt-in, Space-scoped, and excludes agent/hidden/stale pages and query strings", () => {
+it("is enabled by default, Space-scoped, and excludes agent/hidden/stale pages and query strings", () => {
   const f = fixture();
   try {
-    expect(f.service.record(f.space.workspaceId, page(), 1).recorded).toBe(false);
+    expect(f.service.policy(f.space.workspaceId).enabled).toBe(true);
     f.service.setPolicy(f.space.workspaceId, { enabled: true, retentionDays: 7 });
     for (const patch of [
       { ownedByRuntime: true },
+      { windowKind: "private" as const },
+      { workspaceId: f.other.workspaceId },
+      { windowId: undefined },
       { controller: "agent" as const },
       { viewStatus: "hidden" as const },
       { loading: true },
     ])
-      expect(f.service.record(f.space.workspaceId, page(patch), 1).recorded).toBe(false);
-    expect(f.service.record(f.space.workspaceId, page(), 2).recorded).toBe(false);
-    expect(f.service.record(f.space.workspaceId, page(), 1).recorded).toBe(true);
+      expect(f.service.record(f.space.workspaceId, page(f.space.workspaceId, patch), 1).recorded).toBe(false);
+    expect(f.service.record(f.space.workspaceId, page(f.space.workspaceId), 2).recorded).toBe(false);
+    expect(f.service.record(f.space.workspaceId, page(f.space.workspaceId), 1).recorded).toBe(true);
     const saved = f.service.get(f.space.workspaceId).pages;
     expect(saved).toHaveLength(1);
     expect(saved[0]?.url).toBe("https://example.com/article");
     expect(f.service.get(f.other.workspaceId).pages).toEqual([]);
     expect(f.service.context(f.space.workspaceId)).toContain("page contents have not been read");
-    f.service.record(f.space.workspaceId, page({ url: "https://example.com/article?new=value" }), 1);
+    f.service.record(
+      f.space.workspaceId,
+      page(f.space.workspaceId, { url: "https://example.com/article?new=value" }),
+      1,
+    );
     expect(f.service.get(f.space.workspaceId).pages[0]?.memoryId).toBe(saved[0]?.memoryId);
   } finally {
     f.db.close();
@@ -69,14 +79,14 @@ it("erases excluded sites at policy change, rejects new visits, and preserves pa
   const f = fixture();
   try {
     f.service.setPolicy(f.space.workspaceId, { enabled: true, retentionDays: 7 });
-    f.service.record(f.space.workspaceId, page(), 1);
+    f.service.record(f.space.workspaceId, page(f.space.workspaceId), 1);
     f.tasks.setWorkspaceMemory(f.space.workspaceId, 0, "", true, undefined, ["https://example.com"]);
     expect(f.service.context(f.space.workspaceId)).toBe("");
-    expect(f.service.record(f.space.workspaceId, page(), 1).recorded).toBe(false);
+    expect(f.service.record(f.space.workspaceId, page(f.space.workspaceId), 1).recorded).toBe(false);
     expect(f.repo.getSetting(`browsingMemoryPages:${f.space.workspaceId}`)).toEqual([]);
     expect(f.service.get(f.space.workspaceId).pages).toHaveLength(0);
     f.tasks.setWorkspaceMemory(f.space.workspaceId, 1, "", true, undefined, []);
-    f.service.record(f.space.workspaceId, page(), 1);
+    f.service.record(f.space.workspaceId, page(f.space.workspaceId), 1);
     f.service.setPolicy(f.space.workspaceId, { enabled: false, retentionDays: 7 });
     expect(f.service.get(f.space.workspaceId).pages).toHaveLength(1);
     expect(f.service.context(f.space.workspaceId)).toBe("");
@@ -111,7 +121,7 @@ it("physically prunes expired records and forgets only the selected record or Sp
   try {
     for (const space of [f.space, f.other]) {
       f.service.setPolicy(space.workspaceId, { enabled: true, retentionDays: 7 });
-      f.service.record(space.workspaceId, page(), 1);
+      f.service.record(space.workspaceId, page(space.workspaceId), 1);
     }
     const id = f.service.get(f.space.workspaceId).pages[0]!.memoryId;
     expect(f.service.forget(f.space.workspaceId, id).pages).toEqual([]);
@@ -119,6 +129,52 @@ it("physically prunes expired records and forgets only the selected record or Sp
     f.advance(8 * 86_400_000);
     f.service.prune();
     expect(f.repo.getSetting(`browsingMemoryPages:${f.other.workspaceId}`)).toEqual([]);
+  } finally {
+    f.db.close();
+  }
+});
+
+it("keeps explicit pause and malformed stored policy disabled and rejects sensitive metadata", () => {
+  const f = fixture();
+  try {
+    expect(f.service.policy(f.space.workspaceId).enabled).toBe(true);
+    expect(
+      f.service.record(
+        f.space.workspaceId,
+        page(f.space.workspaceId, { url: "https://example.com/login", title: "Sign in" }),
+        1,
+      ).recorded,
+    ).toBe(false);
+    f.service.setPolicy(f.space.workspaceId, { enabled: false, retentionDays: 7 });
+    expect(f.service.record(f.space.workspaceId, page(f.space.workspaceId), 1).recorded).toBe(false);
+    f.repo.setSetting(`browsingMemoryPolicy:${f.other.workspaceId}`, { enabled: "yes", retentionDays: 7 });
+    expect(f.service.policy(f.other.workspaceId).enabled).toBe(false);
+  } finally {
+    f.db.close();
+  }
+});
+
+it("excludes sensitive provider roots even when metadata has a neutral title", () => {
+  const f = fixture();
+  try {
+    for (const url of [
+      "https://secure.chase.com/",
+      "https://my.1password.com/",
+      "https://central.mychart.org/",
+      "https://accounts.example.com/",
+    ])
+      expect(
+        f.service.record(f.space.workspaceId, page(f.space.workspaceId, { url, title: "Welcome" }), 1)
+          .recorded,
+      ).toBe(false);
+    expect(
+      f.service.record(
+        f.space.workspaceId,
+        page(f.space.workspaceId, { url: "https://chase.com.example.org/article", title: "Public article" }),
+        1,
+      ).recorded,
+    ).toBe(true);
+    expect(f.service.get(f.space.workspaceId).pages).toHaveLength(1);
   } finally {
     f.db.close();
   }

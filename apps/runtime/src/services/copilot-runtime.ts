@@ -14,7 +14,8 @@ import { lstat, mkdir, open, realpath, rm, type FileHandle } from "node:fs/promi
 import { createConnection } from "node:net";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import type { CopilotClient, ModelInfo } from "@github/copilot-sdk";
+import type { CopilotClient, ModelInfo, CopilotSession } from "@github/copilot-sdk";
+import { attemptsOf, withAttempts } from "../agent/model-client.js";
 import { AuxError } from "@aux/contracts";
 import { z } from "zod";
 import type { CopilotAccount, CopilotAccounts } from "./copilot-account.js";
@@ -63,7 +64,7 @@ interface Original {
   controller: AbortController;
   signal: AbortSignal;
   current: () => Promise<void>;
-  work: Promise<readonly ModelInfo[]>;
+  work: Promise<unknown>;
   sent: boolean;
   prepared: boolean;
   prepareSent: boolean;
@@ -234,12 +235,66 @@ export class CopilotRuntime {
     if (models.length === 0)
       throw new AuxError("permission_denied", "The selected account exposes no Copilot models.");
   }
+  async inference<T>(
+    accountId: string,
+    owner: string,
+    signal: AbortSignal,
+    checkOriginal: () => Promise<void>,
+    modelId: string,
+    use: (session: CopilotSession, current: () => Promise<void>, signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    this.admit();
+    await checkOriginal();
+    const lease = await this.deps.accounts.lease(accountId, signal);
+    await checkOriginal();
+    const current = async () => {
+      await checkOriginal();
+      this.deps.accounts.assertCurrent(accountId, lease.authorizationGeneration);
+      lease.signal.throwIfAborted();
+    };
+    return this.withOriginal(
+      lease,
+      owner,
+      AbortSignal.any([signal, lease.signal]),
+      current,
+      async (client, check, models, originalSignal) => {
+        if (!models.some((model) => model.id === modelId && model.policy?.state !== "disabled"))
+          throw new AuxError("permission_denied", "Choose a model advertised for this Copilot account.");
+        await check();
+        const session = await client.createSession({
+          model: modelId,
+          gitHubToken: lease.accessToken,
+          availableTools: [],
+          capi: { enableWebSocketResponses: false },
+          infiniteSessions: { enabled: false },
+          onPermissionRequest: () => ({ kind: "denied-by-rules", rules: [] }),
+        });
+        await check();
+        // No SDK send: Aux alone supplies history and dispatches admitted tools.
+        return use(session, check, originalSignal);
+      },
+    );
+  }
   private inspect(
     account: AccountAuthority,
     owner: string,
     signal: AbortSignal,
     current: () => Promise<void>,
   ): Promise<readonly ModelInfo[]> {
+    return this.withOriginal(account, owner, signal, current, async (_client, _check, models) => models);
+  }
+  private withOriginal<T>(
+    account: AccountAuthority,
+    owner: string,
+    signal: AbortSignal,
+    current: () => Promise<void>,
+    use: (
+      client: CopilotClient,
+      check: () => Promise<void>,
+      models: readonly ModelInfo[],
+      signal: AbortSignal,
+    ) => Promise<T>,
+  ): Promise<T> {
     this.admit();
     uuid.parse(owner);
     z.string()
@@ -279,19 +334,37 @@ export class CopilotRuntime {
       if (original.prepared) void this.joinNative(original).catch(() => {});
     };
     original.signal.addEventListener("abort", abort, { once: true });
-    original.work = Promise.resolve()
-      .then(() => this.run(original))
+    let failure: unknown;
+    const work = Promise.resolve()
+      .then(() => this.run(original, use))
       .catch((error) => {
+        failure = error;
         if (error instanceof AuxError) throw error;
         if (original.signal.aborted && !original.sdkCleanupPoisoned)
-          throw new AuxError("cancelled", "Original Copilot request retired.");
-        throw new AuxError("backend_unavailable", "Original Copilot setup or catalog request failed.");
+          throw withAttempts(
+            new AuxError("cancelled", "Original Copilot request retired."),
+            attemptsOf(error),
+          );
+        throw withAttempts(
+          new AuxError("backend_unavailable", "Original Copilot request failed."),
+          attemptsOf(error),
+        );
       })
       .finally(async () => {
         original.signal.removeEventListener("abort", abort);
-        await this.retireOriginal(original);
+        try {
+          await this.retireOriginal(original);
+        } catch (cleanup) {
+          if (failure !== undefined)
+            throw withAttempts(
+              new AggregateError([failure, cleanup], "Original Copilot request and cleanup failed."),
+              attemptsOf(failure),
+            );
+          throw cleanup;
+        }
       });
-    return original.work;
+    original.work = work;
+    return work;
   }
   private async check(o: Original) {
     if (this.closed || this.originals.get(o.requestId) !== o)
@@ -321,7 +394,15 @@ export class CopilotRuntime {
     uint64.parse(String(s.ino));
     return s;
   }
-  private async run(o: Original): Promise<readonly ModelInfo[]> {
+  private async run<T>(
+    o: Original,
+    use: (
+      client: CopilotClient,
+      check: () => Promise<void>,
+      models: readonly ModelInfo[],
+      signal: AbortSignal,
+    ) => Promise<T>,
+  ): Promise<T> {
     await this.check(o);
     const runtime = await this.deps.installer.status();
     await this.check(o);
@@ -472,7 +553,16 @@ export class CopilotRuntime {
     await sameEndpoint();
     await runtime.assertCurrent();
     await this.check(o);
-    return models;
+    return use(
+      o.client,
+      async () => {
+        await sameEndpoint();
+        await runtime.assertCurrent();
+        await this.check(o);
+      },
+      models,
+      o.signal,
+    );
   }
   private async joinNative(o: Original): Promise<void> {
     if (!o.prepared || o.joined) return;

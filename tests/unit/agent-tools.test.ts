@@ -121,7 +121,11 @@ describe("S5 manifest — bash / history / memory (06-X)", () => {
       historySearch: async (query, limit) => {
         seen.query = query;
         seen.limit = limit;
-        return [{ url: "https://a.dev", title: "A", visitedAt: 1 }];
+        return {
+          mode: "semantic",
+          message: "Local history matches.",
+          entries: [{ url: "https://a.dev", title: "A", visitedAt: 1 }],
+        };
       },
     };
     const out = (await manifest["history_search"]!.execute({ query: "a.dev", limit: 50 }, ctx(deps))) as {

@@ -104,16 +104,23 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
     }
     if (
       !result.enabled ||
+      (prior.originScope === "safe-sites" && result.originScope !== "safe-sites") ||
       result.retentionDays < prior.retentionDays ||
       prior.allowedOrigins.some((origin) => !result.allowedOrigins.includes(origin))
     )
       await revokeArticleRuns(params.workspaceId);
     await s.runs.redactForgottenArticleOutputs(params.workspaceId);
     s.checkpointDeletedData?.();
-    s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
+    s.events.emit("workspace.contentMemory.updated", {
+      workspaceId: params.workspaceId,
+      policyChanged: true,
+    });
     if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
     return result;
   }
+  if (method === "workspaces.contentMemory.embeddingModels") return store.embeddingModels(params.workspaceId);
+  if (method === "workspaces.contentMemory.semanticSearch")
+    return store.semanticSearch(params.workspaceId, params.query);
   if (method === "workspaces.contentMemory.search") return store.search(params.workspaceId, params.query);
   if (method === "workspaces.contentMemory.get") {
     const body = await store.get(params.workspaceId, params.memoryId);
@@ -145,13 +152,21 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
     if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
     return { forgotten };
   }
-  const page = s.pages.get(params.pageId);
+  const page = { ...s.pages.get(params.pageId) };
   if (!spaces.list().some((space) => space.workspaceId === params.workspaceId && !space.archived))
     throw new AuxError("permission_denied", "Choose an active Space for this article.");
   if (
     !s.native?.captureReadablePage ||
     page.backend !== "aux" ||
     page.ownedByRuntime ||
+    !!page.agentIsolation ||
+    !["normal", "little"].includes(page.windowKind ?? "") ||
+    page.workspaceId !== params.workspaceId ||
+    !page.windowId ||
+    page.viewStatus !== "visible" ||
+    page.loading ||
+    !!page.navigationError ||
+    !["none", "human"].includes(page.controller) ||
     page.documentEpoch !== params.expectedDocumentEpoch ||
     page.url !== params.expectedUrl
   )
@@ -166,7 +181,14 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
     current.sessionId !== page.sessionId ||
     current.url !== page.url ||
     current.backend !== "aux" ||
-    current.ownedByRuntime
+    current.ownedByRuntime ||
+    !!current.agentIsolation ||
+    current.windowKind !== page.windowKind ||
+    current.windowId !== page.windowId ||
+    current.workspaceId !== params.workspaceId ||
+    current.viewStatus !== "visible" ||
+    current.loading ||
+    !["none", "human"].includes(current.controller)
   )
     throw new AuxError("conflict", "The document changed during capture. Try again.");
   const saved = await store.saveEligible(
@@ -184,7 +206,14 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
         live.sessionId === page.sessionId &&
         live.url === page.url &&
         live.backend === "aux" &&
-        !live.ownedByRuntime
+        !live.ownedByRuntime &&
+        !live.agentIsolation &&
+        live.windowKind === page.windowKind &&
+        live.windowId === page.windowId &&
+        live.workspaceId === params.workspaceId &&
+        live.viewStatus === "visible" &&
+        !live.loading &&
+        ["none", "human"].includes(live.controller)
       );
     },
   );
@@ -267,6 +296,8 @@ export const workspacesMethods: Partial<Record<MethodName, MethodHandler>> = {
   "workspaces.contentMemory.policy": h_workspaces_contentMemory_policy,
   "workspaces.contentMemory.setPolicy": h_workspaces_contentMemory_policy,
   "workspaces.contentMemory.capture": h_workspaces_contentMemory_policy,
+  "workspaces.contentMemory.embeddingModels": h_workspaces_contentMemory_policy,
+  "workspaces.contentMemory.semanticSearch": h_workspaces_contentMemory_policy,
   "workspaces.contentMemory.search": h_workspaces_contentMemory_policy,
   "workspaces.contentMemory.get": h_workspaces_contentMemory_policy,
   "workspaces.contentMemory.forget": h_workspaces_contentMemory_policy,

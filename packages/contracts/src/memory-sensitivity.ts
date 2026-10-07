@@ -1,3 +1,16 @@
+const SENSITIVE_PROVIDER_ROOTS = [
+  "chase.com",
+  "bankofamerica.com",
+  "wellsfargo.com",
+  "citi.com",
+  "1password.com",
+  "bitwarden.com",
+  "lastpass.com",
+  "mychart.org",
+  "athenahealth.com",
+  "healow.com",
+] as const;
+
 /** Conservative metadata gate applied before any page text is captured for memory. */
 export function memorySensitivityReason(rawUrl: string, title = ""): string | undefined {
   let url: URL;
@@ -7,7 +20,11 @@ export function memorySensitivityReason(rawUrl: string, title = ""): string | un
     return "unrecognized page address";
   }
   if (url.protocol !== "https:" || url.username || url.password) return "non-secure or credentialed page";
-  const host = url.hostname.toLocaleLowerCase();
+  const host = url.hostname.toLocaleLowerCase().replace(/\.$/, "");
+  if (SENSITIVE_PROVIDER_ROOTS.some((root) => host === root || host.endsWith(`.${root}`)))
+    return "sensitive banking, credential, or health provider";
+  if (/(?:^|[.-])(?:accounts?|auth|oauth|login|signin|vault)(?:[.-]|$)/u.test(host))
+    return "login or account page";
   let path: string;
   try {
     path = decodeURIComponent(url.pathname).toLocaleLowerCase();
@@ -26,7 +43,9 @@ export function memorySensitivityReason(rawUrl: string, title = ""): string | un
     /(?:^|\/)(?:log[ -]?in|sign[ -]?in|auth|oauth|account|billing|checkout|payment|patient|medical|health|statements?)(?:\/|$|[._-])/u.test(
       path,
     ) ||
-    /\b(?:log[ -]?in|sign[ -]?in|password|verification code)\b/u.test(heading)
+    /\b(?:log[ -]?in|sign[ -]?in|password|verification code|my account|account settings|account dashboard)\b/u.test(
+      heading,
+    )
   )
     return "login or account page";
   return undefined;

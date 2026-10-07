@@ -1,3 +1,4 @@
+import { BrowserImporter } from "./services/browser-import.js";
 import { TerminalService } from "./services/terminals.js";
 import { registerNativeProjectPreview } from "./services/native-project-preview.js";
 import { ProjectsService } from "./services/projects.js";
@@ -236,6 +237,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let stopNativeProjectPreview: (() => void) | undefined;
   let cliInstallTail = Promise.resolve();
   const cliInstallWork = new Set<Promise<unknown>>();
+  const agentInstallWork = new Set<Promise<unknown>>();
   let stopNativeDeviceConfirmation: (() => void) | undefined;
   let stopRunEndHooks: (() => void) | undefined;
   type RuntimeServices = Services & {
@@ -645,7 +647,87 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       void work.finally(() => cliInstallWork.delete(work)).catch(() => {});
       return work;
     },
-    externalSessions: () => new ExternalSessionService(repo, events, runtimeServices.turnMentions),
+    installAgentConnection: () => (input, owner) => {
+      const work = Promise.resolve().then(async () => {
+      if (closed || !native?.turnSourceContext)
+        throw new AuxError("backend_unavailable", "Original client setup window is unavailable.");
+      const original = await native.turnSourceContext(owner);
+      if (closed) throw new AuxError("cancelled", "Original client setup window retired.");
+      const { installAgentClient } = await import("./services/agent-client-install.js");
+      const result = await installAgentClient(input, {
+        connections: runtimeServices.agentConnections,
+        dataDir: config.dataDir,
+        current: async () => {
+          if (closed) throw new AuxError("ref_stale", "Original client setup window retired.");
+          const current = await native.turnSourceContext!(owner);
+          if (closed || current.windowId !== original.windowId)
+            throw new AuxError("ref_stale", "Original client setup window changed.");
+        },
+      });
+      if (result.replacedConnectionId)
+        await runtimeServices.externalSessions.end(
+          result.replacedConnectionId,
+          "cancelled",
+          "Connection replaced",
+        );
+      return result;
+      });
+      agentInstallWork.add(work);
+      void work.finally(() => agentInstallWork.delete(work)).catch(() => {});
+      return work;
+    },
+    externalSessions: () =>
+      new ExternalSessionService(
+        repo,
+        events,
+        runtimeServices.turnMentions,
+        async (connectionId, sessionRunId) => {
+          const pending = runtimeServices.suspensions.pending(sessionRunId);
+          if (pending) runtimeServices.approvals.retireTurn(pending.turnId, pending.threadId);
+          runtimeServices.suspensions.resolveRun(sessionRunId, "cancelled");
+          const original = repo.getRun(sessionRunId);
+          runtimeServices.approvals.retireTurn(sessionRunId, original?.config?.chatId ?? sessionRunId);
+          const owned = repo.db
+            .prepare(
+              "SELECT run_id AS runId FROM run_lookup WHERE json_extract(config,'$.externalConnectionId')=?",
+            )
+            .all(connectionId) as { runId: string }[];
+          repo.transaction(() => {
+            for (const id of new Set(owned.flatMap(({ runId }) => lineageRuns(repo, runId)))) {
+              const run = repo.getRun(id);
+              if (!run) continue;
+              const suspension = runtimeServices.suspensions.pending(id);
+              if (suspension) runtimeServices.approvals.retireTurn(suspension.turnId, suspension.threadId);
+              runtimeServices.approvals.retireTurn(id, run.config?.chatId ?? id);
+              runtimeServices.suspensions.resolveRun(id, "cancelled");
+            }
+          });
+          const results = await Promise.allSettled(
+            owned
+              .filter(
+                ({ runId }) =>
+                  runId !== sessionRunId &&
+                  ["queued", "planning", "running", "paused", "needs_input"].includes(
+                    repo.getRun(runId)?.status ?? "",
+                  ),
+              )
+              .map(({ runId }) => runtimeServices.runs.cancel(runId, "Original external connection retired")),
+          );
+          const failures = results
+            .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+            .map((result) => result.reason);
+          try {
+            await invoke.endConnection(connectionId);
+          } catch (error) {
+            failures.push(error);
+          }
+          if (failures.length)
+            throw new AggregateError(
+              failures,
+              "Original external run or tab retirement awaits acknowledgement.",
+            );
+        },
+      ),
     pageChangeWatches: () => new RoutineService(repo, events),
     browsingMemory: () => new BrowsingMemory(repo),
     clock: () => runtimeClock,
@@ -671,7 +753,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         dir: config.benchmarksDir,
       }),
     routines: () => undefined,
-    browserImport: () => undefined,
+    browserImport: () => new BrowserImporter({ repo, native, emit: (type, payload) => events.emit(type, payload) }),
   });
   const runtimeServices: RuntimeServices = serviceContainer.services;
 
@@ -1183,6 +1265,62 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return "allow";
   };
   const agentLoop: AgentLoopHostDeps = {
+    authorizeModelDestination: async (runId, destination) => {
+      const original = repo.getRun(runId);
+      if (!original || original.status !== "running" || !original.config?.nativeTurnContext)
+        throw new AuxError("cancelled", "The original model run or window retired.");
+      const source = runtimeServices.turnMentions.capture(runId);
+      const config = JSON.stringify(original.config);
+      const threadId = original.config.chatId ?? runId;
+      const request = EffectRequestSchema.parse({
+        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+        scope: original.config.taskId
+          ? { kind: "task", id: original.config.taskId }
+          : {
+              kind: "workspace",
+              id: original.config.contextWorkspaceId ?? "default",
+            },
+        actor: "builtin_agent",
+        effect: "egress",
+        category: "external_tool",
+        action: "agent.model.copilot",
+        origin: destination,
+        destination,
+        dataClasses: [],
+        provenance: "template",
+        invocationDigest: createHash("sha256")
+          .update(
+            JSON.stringify([
+              runId,
+              original.goal,
+              config,
+              destination,
+              runtimeServices.settings.modelCacheGeneration(),
+            ]),
+          )
+          .digest("hex"),
+        turnId: runId,
+        threadId,
+        runId,
+        requestedAt: Date.now(),
+      });
+      await runtimeServices.safetyGate.checkTrustedEffect(request, {
+        profileId: request.profileId,
+        scope: request.scope,
+        actor: request.actor,
+        turnId: runId,
+        threadId,
+        runId,
+      });
+      const current = repo.getRun(runId);
+      if (
+        !current ||
+        current.status !== "running" ||
+        JSON.stringify(current.config) !== config ||
+        runtimeServices.turnMentions.capture(runId) !== source
+      )
+        throw new AuxError("cancelled", "The original model source changed during admission.");
+    },
     prepareWaitingPhrase: (input) =>
       runtimeServices.runs.prepareWaitingPhrase({
         ...input,
@@ -1267,8 +1405,37 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       return hits.map((hit) => ({ title: hit.title, url: hit.url, text: hit.snippet }));
     },
     // 06-X history_search / memory_search — the same projections the shell uses.
-    historySearch: async (query, limit) =>
-      repo.listHistory(query, Math.min(Math.max(1, Math.floor(limit)), 50)),
+    historySearch: async (query, limit, context) => {
+      if (!context.checkOwner || !context.signal)
+        throw new AuxError("permission_denied", "History search requires its original execution owner.");
+      const checkOwner = context.checkOwner;
+      checkOwner();
+      const original = repo.getRun(context.runId);
+      const workspaceId = original?.config?.contextWorkspaceId;
+      const permitted = () => {
+        checkOwner();
+        const current = repo.getRun(context.runId);
+        return (
+          !!workspaceId &&
+          current?.status === "running" &&
+          current.config?.contextWorkspaceId === workspaceId &&
+          !current.config?.privateTask &&
+          !repo.conversationPrivateTask(current.config?.chatId ?? current.runId) &&
+          runtimeServices.browsingMemory.policy(workspaceId).enabled
+        );
+      };
+      if (!permitted())
+        return {
+          mode: "lexical" as const,
+          message: "History recall is disabled for this original task or Space.",
+          entries: [],
+        };
+      const memory = runtimeServices.contentMemory;
+      if (!memory) throw new AuxError("capability_unsupported", "Local history recall is unavailable.");
+      return memory.semanticHistory(workspaceId!, query, limit, context.signal, () => {
+        if (!permitted()) throw new AuxError("cancelled", "The original history task or Space changed.");
+      });
+    },
     memorySearch: async (query, ctx) => {
       const ws = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
       if (!ws || !runtimeServices.contentMemory) return [];
@@ -1789,7 +1956,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   const takeoverRuns: Parameters<typeof handlePageTakeover>[3] = {
     cancel: (...args) => runtimeServices.runs.cancel(...args),
-    pauseForTakeover: (...args) => runtimeServices.runs.pauseForTakeover(...args),
+    pauseForTakeover: async (...args) => {
+      const original = repo.getRun(args[0]);
+      const connectionId = original?.config?.externalConnectionId;
+      if (!connectionId) return runtimeServices.runs.pauseForTakeover(...args);
+      runtimeServices.agentConnections.revoke(connectionId);
+      await runtimeServices.externalSessions.end(connectionId, "cancelled", "You took control of the external agent's page");
+      return runtimeServices.runs.coordinator.get(args[0]);
+    },
     resumeAfterTakeover: (...args) => runtimeServices.runs.resumeAfterTakeover(...args),
     interruptProgramForTakeover: (...args) => runtimeServices.runs.interruptProgramForTakeover(...args),
   };
@@ -1808,11 +1982,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   channel?.onMethod("agent.config", (params) =>
     nativeAgentConfig(runtimeServices.agentConnections!, params, config.dataDir),
   );
-  channel?.onMethod("agent.revoke", (params) => {
+  channel?.onMethod("agent.revoke", async (params) => {
     const connectionId = (params as { connectionId?: unknown })?.connectionId;
     if (typeof connectionId !== "string") throw new Error("Invalid connection identity");
     const revoked = runtimeServices.agentConnections!.revoke(connectionId);
-    runtimeServices.externalSessions.end(connectionId, "cancelled", "Connection revoked");
+    await runtimeServices.externalSessions.end(connectionId, "cancelled", "Connection revoked");
     return revoked;
   });
 
@@ -1877,9 +2051,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // readiness gate is the last step — callers were 503'd until now.
   invokeRef = invoke;
   resolveInvoker!(invoke);
-  const sweepExternalSessions = () => {
+  const sweepExternalSessions = async () => {
     try {
-      runtimeServices.externalSessions.sweepIdle();
+      await runtimeServices.externalSessions.sweepIdle();
     } catch (error) {
       console.error("External session sweep failed", error);
     }
@@ -1954,7 +2128,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       case "view.navigationError":
         return runtimeServices.pages.onNativeNavigationError(
           str(pl.pageId)!,
-          pl.error as { url: string; code: number; message: string; upgradedFrom?: string } | null,
+          pl.error as {
+            url: string;
+            code: number;
+            message: string;
+            upgradedFrom?: string;
+          } | null,
         );
       case "view.crashed":
         return runtimeServices.pages.onNativeCrashed(str(pl.pageId)!);
@@ -2127,6 +2306,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       try {
         const results = await Promise.allSettled([
           Promise.allSettled(cliInstallWork),
+          Promise.allSettled(agentInstallWork),
           (async () => {
             const failures: unknown[] = [];
             try {
@@ -2145,7 +2325,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           import("./services/cloud-settings.js").then(({ closeCloudSettings }) => closeCloudSettings(repo)),
           serviceContainer.peek("terminals")?.dispose(),
           serviceContainer.peek("projects")?.dispose(),
+          serviceContainer.peek("browserImport")?.close(),
+          serviceContainer.peek("externalSessions")?.dispose(),
           serviceContainer.peek("blocking")?.close(),
+          (async () => {
+            await serviceContainer.peek("memoryPipeline")?.close();
+            await serviceContainer.peek("contentMemory")?.close();
+          })(),
           serviceContainer.peek("copilot")?.then((services) => services.close()),
         ]);
         const failures = results
@@ -2183,9 +2369,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       { stage: "content-pruning", run: () => contentPruning },
       {
         stage: "content-memory",
-        run: () => {
-          serviceContainer.peek("contentMemory")?.close();
-        },
+        run: () => serviceContainer.peek("contentMemory")?.close(),
       },
       { stage: "model-discovery", run: () => serviceContainer.peek("settings")?.close() },
       { stage: "api", run: () => api.close() },

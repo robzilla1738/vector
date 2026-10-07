@@ -107,7 +107,11 @@ export function chatgptBillingReceipt<T extends ModelAttempt & { retries?: Model
 
 export function modelCallCost(
   modelId: string,
-  c: { inputTokens?: number; outputTokens?: number; providerMetadata?: Record<string, unknown> },
+  c: {
+    inputTokens?: number;
+    outputTokens?: number;
+    providerMetadata?: Record<string, unknown>;
+  },
 ): { costUsd?: number; costEstimated?: boolean } {
   if (c.providerMetadata && subscriptionReceipts.has(c.providerMetadata)) return {};
   const gateway = c.providerMetadata?.gateway as { cost?: unknown; marketCost?: unknown } | undefined;
@@ -118,6 +122,26 @@ export function modelCallCost(
   const estimate =
     c.inputTokens !== undefined || c.outputTokens !== undefined ? registryCostUsd(modelId, c) : undefined;
   return estimate === undefined ? {} : { costUsd: estimate, costEstimated: true };
+}
+
+/** Application-owned calling authority; never accepted from a provider response or settings UI. */
+export interface ModelCallSource {
+  runId: string;
+  nativeTurnContext: string;
+  checkOriginal: () => void | Promise<void>;
+  authorizeDestination: (origin: string) => Promise<void>;
+}
+
+/** Copilot premium/quota consumption is not a known API-dollar invoice. */
+export function copilotBillingReceipt<T extends ModelAttempt & { retries?: ModelAttempt[] }>(attempt: T): T {
+  const metadata = {
+    ...attempt.providerMetadata,
+    aux: { billing: "copilot-account" },
+  };
+  subscriptionReceipts.add(metadata);
+  attempt.providerMetadata = metadata;
+  for (const retry of attempt.retries ?? []) copilotBillingReceipt(retry);
+  return attempt;
 }
 
 /**
@@ -134,6 +158,7 @@ export interface ModelClient {
     imageDataUrls?: string[];
     schema: z.ZodType<T>;
     signal?: AbortSignal;
+    source?: ModelCallSource;
     /** Trusted admission immediately before a provider attempt, after SDK preflight. */
     beforeDispatch?: () => Promise<void>;
     maxOutputTokens?: number;
@@ -158,6 +183,7 @@ export interface ModelClient {
     imageDataUrls?: string[];
     schema: z.ZodType<T>;
     signal?: AbortSignal;
+    source?: ModelCallSource;
     maxOutputTokens?: number;
     maxAttempts?: number;
     reasoning?: "low" | "medium" | "high" | "xhigh";
@@ -173,6 +199,7 @@ export interface ModelClient {
     imageDataUrls?: string[];
     imageDataUrl?: string;
     signal?: AbortSignal;
+    source?: ModelCallSource;
     beforeDispatch?: () => Promise<void>;
     maxOutputTokens?: number;
     maxAttempts?: number;
@@ -196,6 +223,7 @@ export interface ModelClient {
     messages: ModelMessage[];
     tools: Record<string, { description?: string; inputSchema: z.ZodType }>;
     signal?: AbortSignal;
+    source?: ModelCallSource;
     providerOptions?: Record<string, Record<string, unknown>>;
     maxOutputTokens?: number;
     /** Funded calls reserve one exact provider attempt; suppress route failover. */
@@ -205,7 +233,14 @@ export interface ModelClient {
     sessionId?: string;
   }): Promise<ToolCallStepResult>;
 
-  listModels(): Promise<{ id: string; name?: string; inputUsdPerMTok?: number; outputUsdPerMTok?: number }[]>;
+  listModels(): Promise<
+    {
+      id: string;
+      name?: string;
+      inputUsdPerMTok?: number;
+      outputUsdPerMTok?: number;
+    }[]
+  >;
 }
 
 /** Static fallback list used until the Gateway catalog is reachable. */
