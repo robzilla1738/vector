@@ -1,7 +1,7 @@
 import { generatePageSummary } from "./page-summary.js";
 import type { PageDerivativeCache } from "./ai-result-cache.js";
 import type { PageSummaryResult } from "@aux/contracts/page-summary";
-import type { Observation } from "@aux/contracts";
+import type { ValidatedTaskRead, Observation } from "@aux/contracts";
 import { ConversationBranches } from "./conversation-branches.js";
 import { resourceFundingAccounting } from "./resource-accounting.js";
 import { ApprovalStore } from "../safety/approval.js";
@@ -199,7 +199,9 @@ export class RunService {
   readonly messages: RunMessageQueue;
   private setExecutor: SetExecutor;
   private pool: WorkerPool;
-  private imageSessions = new Map<string, { users: number; unregister: () => void }>();
+  private externalUtilitySessions = new Map<string, { users: number; unregister: () => void }>();
+  private externalUtilityOperations = new Map<string, Set<Promise<unknown>>>();
+  private retiringExternalUtilities = new Set<string>();
   private sharedCalls = new Map<string, Set<() => void>>();
   private sharedBudgetPauses = new Map<string, Promise<void>>();
   private setRunControls = new Map<string, SetRunControl>();
@@ -1499,14 +1501,29 @@ export class RunService {
     checkOwner: () => void | Promise<void>;
     authorize: (route: UtilityRoute) => Promise<void>;
     cache?: PageDerivativeCache;
+    externalSource?: { connectionId: string; taskRead: ValidatedTaskRead };
   }): Promise<PageSummaryResult> {
     const observation = structuredClone(input.observation);
     const { runId, focus, signal: requestSignal, checkOwner: checkOriginal, authorize, cache: originalCache } = input;
+    const externalSource = input.externalSource ? { connectionId: input.externalSource.connectionId, taskRead: { provenance: structuredClone(input.externalSource.taskRead.provenance), check: input.externalSource.taskRead.check } } : undefined;
     return this.ownOperation(async () => {
       const run = this.deps.repo.getRun(runId);
       const token = run?.config?.nativeTurnContext;
-      if (!run || run.status !== "running" || !token)
-        throw new AuxError("permission_denied", "Page summaries require their original active run and window.");
+      if (!run || run.status !== "running" || (!externalSource && !token))
+        throw new AuxError("permission_denied", "Page summaries require their original admitted execution.");
+      const checkExternal = () => {
+        if (!externalSource) return;
+        const current = this.deps.repo.getRun(runId);
+        const proof = externalSource.taskRead.provenance;
+        const page = this.deps.pages.get(observation.pageId);
+        if (current?.config?.implementation !== "external-agent" || current.config.externalConnectionId !== externalSource.connectionId ||
+            current.config.taskId !== proof.taskId || current.config.taskRevision !== proof.taskRevision ||
+            proof.pageId !== observation.pageId || proof.sessionId !== page.sessionId || proof.documentEpoch !== observation.documentEpoch)
+          throw new AuxError("permission_denied", "The original external summary task or document authority changed.");
+        this.checkExternalSource({ externalParentRunId: runId, externalConnectionId: externalSource.connectionId });
+        externalSource.taskRead.check();
+      };
+      checkExternal();
       const control = this.coordinator.controls.get(runId);
       if (!control || control.paused || control.abort.signal.aborted)
         throw new AuxError("cancelled", "The original summary execution retired.");
@@ -1520,6 +1537,7 @@ export class RunService {
         signal.throwIfAborted();
         await checkOriginal();
         signal.throwIfAborted();
+        checkExternal();
         const current = this.deps.repo.getRun(runId);
         if (this.closed || this.coordinator.controls.get(runId) !== control || control.paused || !current || current.status !== "running" ||
             JSON.stringify(current.config) !== config ||
@@ -1533,9 +1551,11 @@ export class RunService {
           throw new AuxError("conflict", "The captured summary document changed.");
       };
       await checkOwner();
-      // The original native overload preserves local route preference and its real availability.
-      // No no-token retry or summary-specific native purpose is invented.
-      const route = await this.deps.settings.utilityModel(token, checkOwner);
+      // Scoped external utility work has no native window grant. It selects only
+      // the explicit network/local-server route; this is never a native-failure fallback.
+      const route = externalSource
+        ? await this.deps.settings.utilityModel()
+        : token ? await this.deps.settings.utilityModel(token, checkOwner) : null;
       await checkOwner();
       if (!route) throw new AuxError("backend_unavailable", "No utility model is connected for this summary.");
       const model = this.utilityClient({
@@ -1543,7 +1563,7 @@ export class RunService {
         authorize: async () => { await checkOwner(); await authorize(route); await checkOwner(); },
       });
       const page = this.deps.pages.get(original.pageId);
-      const cache = run.config?.privateTask || page.windowKind !== "normal" || page.ownedByRuntime ||
+      const cache = externalSource || run.config?.privateTask || page.windowKind !== "normal" || page.ownedByRuntime ||
         page.controller === "agent" || page.controller === "external" ? undefined : originalCache;
       return generatePageSummary({
         observation: original, focus, model, modelId: route.modelId,
@@ -1638,37 +1658,80 @@ export class RunService {
     }
   }
 
-  /** Existing external session identity remains the owner; no synthetic image actor/run. */
-  imageSession<T>(runId: string, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
-    return this.ownOperation(() => this.imageSessionOwned(runId, operation));
+  /** A genuine scoped session owns each funded utility operation and its Stop join. */
+  externalUtilitySession<T>(runId: string, checkOwner: () => void, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    return this.ownOperation(() => {
+      if (this.retiringExternalUtilities.has(runId))
+        throw new AuxError("cancelled", "The original external utility session retired.");
+      const pending = this.externalUtilitySessionOwned(runId, checkOwner, operation);
+      const operations = this.externalUtilityOperations.get(runId) ?? new Set<Promise<unknown>>();
+      operations.add(pending);
+      this.externalUtilityOperations.set(runId, operations);
+      const release = () => {
+        operations.delete(pending);
+        if (!operations.size && this.externalUtilityOperations.get(runId) === operations)
+          this.externalUtilityOperations.delete(runId);
+      };
+      void pending.then(release, release);
+      return pending;
+    });
   }
 
-  private async imageSessionOwned<T>(
-    runId: string,
-    operation: (signal: AbortSignal) => Promise<T>,
-  ): Promise<T> {
+  private async externalUtilitySessionOwned<T>(runId: string, checkOwner: () => void, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    checkOwner();
+    if (this.closed || this.retiringExternalUtilities.has(runId))
+      throw new AuxError("cancelled", "The original external utility session retired.");
     const run = this.deps.repo.getRun(runId);
-    if (!run?.config?.externalConnectionId || run.status !== "running")
-      throw new AuxError("permission_denied", "The original external image session is unavailable.");
-    let ownership = this.imageSessions.get(runId);
+    if (!run?.config?.externalConnectionId || run.config.implementation !== "external-agent" || run.config.externalRetirementPending || run.status !== "running")
+      throw new AuxError("permission_denied", "The original external utility session is unavailable.");
+    this.checkExternalSource({ externalParentRunId: runId, externalConnectionId: run.config.externalConnectionId });
+    let ownership = this.externalUtilitySessions.get(runId);
     if (!ownership && !this.coordinator.controls.has(runId)) {
-      run.config = {
-        ...run.config,
-        maxModelCalls: run.config.maxModelCalls ?? this.deps.settings.maxModelCalls(),
-      };
+      run.config = { ...run.config, maxModelCalls: run.config.maxModelCalls ?? this.deps.settings.maxModelCalls() };
       this.deps.repo.saveRun(run);
-      ownership = { users: 0, unregister: this.coordinator.registerBatch(run) };
-      this.imageSessions.set(runId, ownership);
+      ownership = { users: 0, unregister: this.coordinator.registerBatch(run, "external") };
+      this.externalUtilitySessions.set(runId, ownership);
     }
     if (ownership) ownership.users++;
     try {
-      return await operation(this.coordinator.controls.get(runId)!.abort.signal);
+      checkOwner();
+      if (this.retiringExternalUtilities.has(runId)) throw new AuxError("cancelled", "The original external utility session retired.");
+      const control = this.coordinator.controls.get(runId);
+      if (!control || control.paused || control.abort.signal.aborted)
+        throw new AuxError("cancelled", "The original external utility control retired.");
+      const originalDispatch = control.dispatchAbort;
+      const signal = AbortSignal.any([control.abort.signal, ...(originalDispatch ? [originalDispatch.signal] : [])]);
+      signal.throwIfAborted();
+      const result = await operation(signal);
+      checkOwner();
+      signal.throwIfAborted();
+      if (this.coordinator.controls.get(runId) !== control || control.paused)
+        throw new AuxError("cancelled", "The original external utility control changed.");
+      return result;
     } finally {
       if (ownership && --ownership.users === 0) {
         ownership.unregister();
-        this.imageSessions.delete(runId);
+        this.externalUtilitySessions.delete(runId);
       }
     }
+  }
+
+  /** Retirement denies new dispatch immediately, then joins the actual original requests. */
+  async retireExternalUtilityOperations(runId: string): Promise<void> {
+    this.retiringExternalUtilities.add(runId);
+    this.coordinator.interruptForTakeover(runId);
+    this.coordinator.controls.get(runId)?.abort.abort(new AuxError("cancelled", "The original external utility session retired."));
+    const pending = this.externalUtilityOperations.get(runId);
+    // These are the actual complete network/local-server utility promises, including
+    // their funding settlement and finally blocks. Rejection is the original RPC's
+    // outcome, not evidence that its request remains live. There is no native
+    // Foundation resource or separate cleanup ACK on this explicit external route.
+    if (pending) await Promise.allSettled(pending);
+    const run = this.deps.repo.getRun(runId);
+    // A terminal/retiring durable source now prevents re-admission. During Stop's
+    // pre-terminal join gap the tombstone remains until cancel's final retirement.
+    if (run?.config?.externalRetirementPending || (run && TERMINAL_RUN_STATUSES.has(run.status)))
+      this.retiringExternalUtilities.delete(runId);
   }
 
   /** Actual run identity is injected by the host, never accepted from model arguments. */
@@ -3050,6 +3113,14 @@ export class RunService {
   }
 
   async cancel(runId: string, reason?: string): Promise<Run> {
+    const original = this.deps.repo.getRun(runId);
+    // Direct Stop fences this actual external session before any child join,
+    // including the case with no utility currently registered.
+    const externalRetirement = original?.config?.implementation === "external-agent"
+      ? this.retireExternalUtilityOperations(runId)
+      : undefined;
+    // Observe rejection while children join; the original promise is awaited below.
+    if (externalRetirement) void externalRetirement.catch(() => {});
     const setControl = this.setRunControls.get(runId);
     setControl?.beginCancellation();
     try {
@@ -3069,6 +3140,8 @@ export class RunService {
           .map((id) => this.cancel(id, reason)),
       );
       this.retirePendingAuthority(runId);
+      if (externalRetirement) await externalRetirement;
+      else if (this.externalUtilityOperations.has(runId)) await this.retireExternalUtilityOperations(runId);
       return await withRunDispatchMutation(
         this.deps.repo,
         async () => {
@@ -3090,6 +3163,9 @@ export class RunService {
       );
     } finally {
       setControl?.endCancellation();
+      const retired = this.deps.repo.getRun(runId);
+      if (retired && TERMINAL_RUN_STATUSES.has(retired.status))
+        this.retiringExternalUtilities.delete(runId);
     }
   }
 

@@ -140,6 +140,8 @@ export interface CoordinatorDeps {
 /** Run lifecycle and control; the agent loop itself lives in `runCoordinatorLoop`. */
 export class RunCoordinator {
   controls = new Map<string, RunControl>();
+  /** Exact trusted external utility participants own their pages through the API lease. */
+  private externalPageOwners = new WeakMap<RunControl, { runId: string; connectionId?: string; taskId?: string; taskRevision?: number }>();
   private executions = new Map<string, Promise<void>>();
   private closed = false;
   answers = new Map<string, string>();
@@ -354,7 +356,9 @@ export class RunCoordinator {
     return run;
   }
 
-  registerBatch(run: Run): () => void {
+  registerBatch(run: Run, pageOwner: "coordinator" | "external" = "coordinator"): () => void {
+    if (pageOwner === "external" && (run.config?.implementation !== "external-agent" || !run.config.externalConnectionId))
+      throw new AuxError("permission_denied", "External utility ownership requires its original external session.");
     if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
     const taskLease = run.config?.taskId ? `task:${run.config.taskId}` : undefined;
     if (taskLease) {
@@ -366,6 +370,7 @@ export class RunCoordinator {
       paused: false,
       dispatchAbort: new AbortController(),
     };
+    if (pageOwner === "external") this.externalPageOwners.set(control, { runId: run.runId, connectionId: run.config?.externalConnectionId, taskId: run.config?.taskId, taskRevision: run.config?.taskRevision });
     this.controls.set(run.runId, control);
     this.armDeadline(run.runId, control, run.config?.deadlineMs);
     return () => {
@@ -1375,6 +1380,18 @@ export class RunCoordinator {
     if (this.pageReleases.has(runId)) return;
     const control = this.controls.get(runId);
     if (!control) throw new AuxError("cancelled", "run has ended");
+    const external = this.externalPageOwners.get(control);
+    if (external) {
+      const run = this.get(runId);
+      if (control.abort.signal.aborted || run.config?.implementation !== "external-agent" ||
+          external.runId !== runId || run.config.externalConnectionId !== external.connectionId ||
+          run.config.taskId !== external.taskId || run.config.taskRevision !== external.taskRevision ||
+          run.config.externalRetirementPending || TERMINAL_STATUSES.has(run.status))
+        throw new AuxError("cancelled", "The original external utility participant retired.");
+      // The API holds and revalidates the exact external lease and task-read proof.
+      // Financial pause/Continue must not adopt those pages as coordinator-owned.
+      return;
+    }
     const releases: Array<() => void> = [];
     const opened: PageTarget[] = [];
     try {
@@ -1473,8 +1490,12 @@ export class RunCoordinator {
   }
 
   private releasePages(runId: string, suspend = false): void {
+    // Financial pause and retirement still fence the original run's network authority.
     if (suspend) this.deps.browserEgress?.suspendRun(runId);
     else this.deps.browserEgress?.revokeRun(runId);
+    const control = this.controls.get(runId);
+    // The API participant joins/releases its own external page claim.
+    if (control && this.externalPageOwners.has(control)) return;
     const release = this.pageReleases.get(runId);
     this.pageReleases.delete(runId);
     release?.();

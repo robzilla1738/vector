@@ -719,6 +719,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             .filter((result): result is PromiseRejectedResult => result.status === "rejected")
             .map((result) => result.reason);
           try {
+            await runtimeServices.runs.retireExternalUtilityOperations(sessionRunId);
+          } catch (error) {
+            failures.push(error);
+          }
+          try {
             await invoke.endConnection(connectionId);
           } catch (error) {
             failures.push(error);

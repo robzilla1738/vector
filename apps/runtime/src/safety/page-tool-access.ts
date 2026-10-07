@@ -46,6 +46,10 @@ export function pageToolTarget(
   method: MethodName,
   raw: unknown,
 ): { pageId: string; access: MentionAccess } | undefined {
+  if (method === "agent.pageSummary") {
+    const params = MethodSchemas["agent.pageSummary"].parse(raw);
+    return { pageId: params.pageId, access: "read" };
+  }
   if (method === "sites.read") {
     const params = MethodSchemas["sites.read"].parse(raw);
     return { pageId: params.pageId, access: "read" };

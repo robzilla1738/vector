@@ -173,6 +173,7 @@ export function makeInvoker(s: Services) {
           "runtime.describe",
           "events.since",
           "runs.events",
+          "agent.pageSummary",
         ].includes(method)
       ) {
         throw new AuxError("permission_denied", "This method is outside the connection's task scope");
