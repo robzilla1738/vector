@@ -214,8 +214,8 @@
     visibility: hidden;
     pointer-events: none;
     transition:
-      opacity var(--t-floating-out) var(--ease-in-out),
-      transform var(--t-floating-out) var(--ease-in-out),
+      opacity var(--t-floating-out) var(--ease-emphasized),
+      transform var(--t-floating-out) var(--ease-emphasized),
       visibility var(--t-none) var(--t-floating-out);
     -webkit-app-region: no-drag;
   }

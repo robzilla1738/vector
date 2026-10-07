@@ -184,6 +184,12 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).not.toMatch(/\.sb-pins\s*\{[^}]*repeat\(5/);
   });
 
+  it("keeps content painted during a left sidebar reveal and scopes the glass to the floating panel", () => {
+    expect(styles).not.toContain("html:is(.toolbar-stacked, .sidebar-peek)");
+    expectCss(styles).toContain("transform var(--t-floating-out) var(--ease-emphasized)");
+    expectCss(styles).not.toContain(".app.sidebar-peek.layout-hidden .main-col");
+  });
+
   it("keeps a loaded page flush and floats the address bar in from the top edge", () => {
     expectCss(styles).toContain(".app.native-host .main-col.has-page > .toolbar");
     expect(styles).toMatch(
@@ -204,7 +210,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
       ".app.native-host .main-col.toolbar-revealed.has-page > .toolbar :is(.tb-left, .cmdbar:not(.editing), .tb-right)",
     );
     expectCss(styles).toContain(
-      "html:is(.toolbar-stacked, .sidebar-peek) :is(.app, .app-body, .main-col, .main, .stage-wrap, .stage-card.has-page)",
+      "html.toolbar-stacked :is(.app, .app-body, .main-col, .main, .stage-wrap, .stage-card.has-page)",
     );
     expectCss(styles).toContain(
       ".app.native-host:is(.layout-hidden, .layout-rail) .main-col.has-page .stage-wrap > .findbar { padding-left: var(--traffic-inset); }",

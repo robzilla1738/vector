@@ -1208,7 +1208,7 @@
   }
   html.toolbar-stacked,
   html.toolbar-stacked body,
-  html:is(.toolbar-stacked, .sidebar-peek)
+  html.toolbar-stacked
     :is(.app, .app-body, .main-col, .main, .stage-wrap, .stage-card.has-page) {
     background: transparent;
     isolation: auto;
@@ -1520,7 +1520,7 @@
     box-shadow: none;
   }
 
-  /* Edge preview uses the same glass column as the open sidebar. It grows in the row; it does not pop a card over the page. */
+  /* Floating sidebar geometry and material are owned by chrome-polish.css. */
   .sidebar.peek {
     background: transparent;
     border: 0;
@@ -1538,10 +1538,6 @@
   .app.native-host .sidebar.expanded .sb-head.native-host,
   .app.native-host .sidebar.peek .sb-head.native-host {
     padding-left: var(--traffic-inset);
-  }
-  .app.sidebar-peek.layout-hidden .main-col,
-  .app.sidebar-peek.layout-rail .main-col {
-    border-radius: var(--r-xl);
   }
   :root .app.sidebar-peek .main-col.has-page,
   .app.sidebar-peek .stage-card.has-page {

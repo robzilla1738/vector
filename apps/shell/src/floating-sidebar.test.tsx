@@ -202,3 +202,41 @@ it("keeps a collapsed sidebar collapsed when a current-state lock overrides expa
     ),
   ).toBe(true);
 });
+
+it("bridges the edge-to-panel gap, cancels pending exits, and closes with expanded bookmark folders", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.useFakeTimers();
+  const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    act(() => useStore.setState({ sidebarPeek: false }));
+    act(() => root.render(createElement(FloatingPanel, { className: "sidebar" })));
+    const panel = container.querySelector("aside")!;
+    act(() => window.dispatchEvent(new MouseEvent("pointermove", {clientX: 4, clientY: 150})));
+    expect(useStore.getState().sidebarPeek).toBe(true);
+    act(() => window.dispatchEvent(new MouseEvent("pointermove", {clientX: 20, clientY: 150})));
+    act(() => vi.advanceTimersByTime(100));
+    expect(useStore.getState().sidebarPeek).toBe(true);
+    act(() => panel.dispatchEvent(new Event("pointerenter")));
+    act(() => vi.advanceTimersByTime(200));
+    expect(useStore.getState().sidebarPeek).toBe(true);
+    await act(async () => {
+      const folder = panel.querySelector("details")!;
+      folder.className = "sb-bookmark-folder";
+      folder.open = true;
+    });
+    act(() => panel.dispatchEvent(new Event("pointerleave")));
+    act(() => vi.advanceTimersByTime(119));
+    expect(useStore.getState().sidebarPeek).toBe(true);
+    act(() => vi.advanceTimersByTime(1));
+    expect(useStore.getState().sidebarPeek).toBe(false);
+  } finally {
+    act(() => root.unmount());
+    container.remove();
+    hasFocus.mockRestore();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});

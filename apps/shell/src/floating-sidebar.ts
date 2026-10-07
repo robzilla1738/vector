@@ -6,6 +6,7 @@ import type { SidebarMode } from "./sidebar-mode";
 export type SidebarLock = "force-collapse" | "keep-current" | "keep-expanded";
 export const SIDEBAR_EDGE_TRIGGER_PX = 6;
 export const SIDEBAR_EDGE_LEEWAY_PX = 8;
+export const SIDEBAR_EXIT_GRACE_MS = 120;
 export interface FloatingSidebarState {
   visible: boolean;
   frameActive: boolean;
@@ -73,7 +74,13 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
       focused: document.hasFocus() && node.contains(document.activeElement),
       locks: floatingSidebarLockCounts(),
     };
+    let exitTimer: ReturnType<typeof setTimeout> | undefined;
+    const cancelExit = () => {
+      clearTimeout(exitTimer);
+      exitTimer = undefined;
+    };
     const show = () => {
+      cancelExit();
       if (!floatingSidebarVisible({ ...state, edge: true })) return;
       if (!state.visible) {
         state.visible = true;
@@ -81,6 +88,7 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
       }
     };
     const hide = () => {
+      cancelExit();
       if (floatingSidebarVisible(state)) return;
       state.visible = false;
       useStore.getState().setSidebarPeek(false);
@@ -93,7 +101,10 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
         return;
       }
       if (floatingSidebarVisible(state)) show();
-      else hide();
+      else if (exitTimer === undefined) {
+        // Bridge the small inset between the native edge and the floating panel.
+        exitTimer = setTimeout(hide, SIDEBAR_EXIT_GRACE_MS);
+      }
     };
     const move = (event: PointerEvent) => {
       const edgeWidth = SIDEBAR_EDGE_TRIGGER_PX + (state.edge || state.visible ? SIDEBAR_EDGE_LEEWAY_PX : 0);
@@ -170,7 +181,7 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
       releaseDrag = null;
     };
     const syncDisclosures = () => {
-      const open = !!node.querySelector("details[open]");
+      const open = !!node.querySelector("details[open]:not(.sb-bookmark-folder)");
       if (open && !releaseDisclosure) releaseDisclosure = acquireFloatingSidebarLock("keep-current");
       if (!open && releaseDisclosure) {
         releaseDisclosure();
@@ -196,6 +207,7 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
     window.addEventListener("dragend", endDrag);
     window.addEventListener("drop", endDrag);
     return () => {
+      cancelExit();
       nativeEdge();
       disclosures.disconnect();
       listeners.delete(lockChanged);
