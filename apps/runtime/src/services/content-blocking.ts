@@ -17,12 +17,35 @@ import {
   type ContentBlockSnapshot,
   type ChromiumContentBlockReceipt,
   type FilterSourceKind,
+  type HostMethodResult,
+  AuxError,
+  toErrorPayload,
 } from "@aux/contracts";
 import type { NativeBridge, ContentBlockBegin } from "../native.js";
 type BlockingNativeBridge = Pick<
   NativeBridge,
-  "contentBlockState" | "contentBlockBegin" | "contentBlockAppend" | "contentBlockCommit"
+  | "capabilities"
+  | "contentBlockState"
+  | "contentBlockBegin"
+  | "contentBlockAppend"
+  | "contentBlockCommit"
+  | "contentBlockOperation"
 >;
+
+type ToggleResult = { trackerBlock: boolean; allowedHosts: string[] };
+interface ToggleWork {
+  readonly id: string;
+  readonly enabled: boolean;
+  work?: Promise<void>;
+  reconciliation?: Promise<void>;
+  prepared?: PreparedFilters;
+  controller?: AbortController;
+  joined: boolean;
+  retired: boolean;
+  result?: ToggleResult;
+  error?: ReturnType<typeof toErrorPayload>;
+  terminal: boolean;
+}
 
 /** One Profile snapshot owner. Configuration, cache and statistics publish only after exact native activation. */
 export class ContentBlockingService {
@@ -31,6 +54,8 @@ export class ContentBlockingService {
   private controller: AbortController | null = null;
   private closed = false;
   private cleanup: Promise<void> = Promise.resolve();
+  private readonly toggles = new Map<string, ToggleWork>();
+  private readonly releasedToggles = new Set<string>();
   constructor(
     dataDir: string,
     private readonly native: BlockingNativeBridge,
@@ -44,7 +69,10 @@ export class ContentBlockingService {
   }
   privacy() {
     const state = this.lists.current();
-    return { trackerBlock: state.enabled, allowedHosts: state.allowedSiteHosts };
+    return {
+      trackerBlock: state.enabled,
+      allowedHosts: state.allowedSiteHosts,
+    };
   }
   private snapshot(prepared: PreparedFilters): ContentBlockSnapshot {
     return {
@@ -66,22 +94,35 @@ export class ContentBlockingService {
   }
   private async currentReceipt(): Promise<ChromiumContentBlockReceipt | null> {
     if (!this.native.contentBlockState)
-      throw new Error("Chromium content filtering is unavailable in this browser build.");
-    return (await this.native.contentBlockState({ profileId: this.profileId })).receipt;
+      throw new Error(
+        "Chromium content filtering is unavailable in this browser build.",
+      );
+    return (await this.native.contentBlockState({ profileId: this.profileId }))
+      .receipt;
   }
   private async install(
     state: BlockingState,
     signal: AbortSignal,
     siteGuard?: ContentBlockBegin["siteGuard"],
+    toggle?: ToggleWork,
   ): Promise<void> {
-    if (!this.native.contentBlockBegin || !this.native.contentBlockAppend || !this.native.contentBlockCommit)
-      throw new Error("Chromium content filtering is unavailable in this browser build.");
+    if (
+      !this.native.contentBlockBegin ||
+      !this.native.contentBlockAppend ||
+      !this.native.contentBlockCommit
+    )
+      throw new Error(
+        "Chromium content filtering is unavailable in this browser build.",
+      );
     signal.throwIfAborted();
     const current = await this.currentReceipt();
     signal.throwIfAborted();
-    state.generation = await this.lists.reserveGeneration(current?.generation ?? 0);
+    state.generation = await this.lists.reserveGeneration(
+      current?.generation ?? 0,
+    );
     const prepared = await this.lists.prepare(state);
     const snapshot = this.snapshot(prepared);
+    if (toggle) toggle.prepared = prepared;
     // If the process exits after native ACK, boot recovers this exact candidate
     // using the native state receipt before publishing any different policy.
     await this.lists.stage(prepared);
@@ -90,10 +131,14 @@ export class ContentBlockingService {
       profileId: this.profileId,
       generation: snapshot.generation,
       filterDigest: snapshot.filterDigest,
-      sources: snapshot.sources.map(({ text, ...header }) => ({ ...header, bundled: text === undefined })),
+      sources: snapshot.sources.map(({ text, ...header }) => ({
+        ...header,
+        bundled: text === undefined,
+      })),
       enabled: snapshot.enabled,
       allowedSiteHosts: snapshot.allowedSiteHosts,
       ...(siteGuard ? { siteGuard } : {}),
+      ...(toggle ? { operationId: toggle.id } : {}),
     });
     for (const source of snapshot.sources) {
       if (source.text === undefined) continue;
@@ -127,6 +172,7 @@ export class ContentBlockingService {
       profileId: this.profileId,
       generation: snapshot.generation,
       filterDigest: snapshot.filterDigest,
+      ...(toggle ? { operationId: toggle.id } : {}),
     });
     assertContentBlockReceipt(snapshot, receipt);
     // Cancellation after actual commit cannot erase the saved native receipt.
@@ -138,9 +184,27 @@ export class ContentBlockingService {
         console.warn("Unable to collect inactive filter cache files", error);
       });
   }
-  private mutate<T>(work: (signal: AbortSignal) => Promise<T>): Promise<T> {
-    if (this.closed) return Promise.reject(new Error("Content filtering is closed."));
-    if (this.operation) return Promise.reject(new Error("A filter list operation is already running."));
+  private mutate<T>(
+    work: (signal: AbortSignal) => Promise<T>,
+    originalToggleId?: string,
+  ): Promise<T> {
+    if (this.closed)
+      return Promise.reject(new Error("Content filtering is closed."));
+    if (this.operation)
+      return Promise.reject(
+        new Error("A filter list operation is already running."),
+      );
+    if (
+      Array.from(this.toggles.values()).some(
+        (toggle) => !toggle.terminal && toggle.id !== originalToggleId,
+      )
+    )
+      return Promise.reject(
+        new AuxError(
+          "conflict",
+          "The original blocking transaction must join before another change.",
+        ),
+      );
     const controller = new AbortController();
     this.controller = controller;
     // Finish collection before a later candidate writes new immutable cache files.
@@ -163,7 +227,10 @@ export class ContentBlockingService {
         const prepared = await this.lists.prepare(pending),
           snapshot = this.snapshot(prepared),
           current = await this.currentReceipt();
-        if (current?.generation === snapshot.generation && current.filterDigest === snapshot.filterDigest) {
+        if (
+          current?.generation === snapshot.generation &&
+          current.filterDigest === snapshot.filterDigest
+        ) {
           assertContentBlockReceipt(snapshot, current);
           await this.lists.publish(prepared, current);
         }
@@ -174,15 +241,50 @@ export class ContentBlockingService {
   async close(): Promise<void> {
     this.closed = true;
     this.controller?.abort(new Error("Content filtering closed."));
+    for (const toggle of this.toggles.values()) {
+      toggle.retired = true;
+      toggle.controller?.abort(
+        new AuxError("cancelled", "Original blocking window retired."),
+      );
+    }
     await this.operation?.catch(() => {});
+    await Promise.allSettled(
+      Array.from(this.toggles.values(), (toggle) => toggle.work),
+    );
+    const failures: unknown[] = [];
+    for (const toggle of this.toggles.values()) {
+      try {
+        const status = await this.toggleStatus(toggle.id, true);
+        if (status.phase === "running" || status.phase === "uncertain")
+          throw new AuxError(
+            "operation_uncertain",
+            "Original blocking transaction has not joined.",
+          );
+      } catch (error) {
+        failures.push(error);
+      }
+    }
     await this.cleanup;
+    if (failures.length)
+      throw new AggregateError(
+        failures,
+        "Blocking transactions have not joined.",
+      );
+    this.toggles.clear();
+    this.releasedToggles.clear();
   }
   async maintain(): Promise<void> {
     if (this.closed || this.operation) return;
-    const enabled = this.lists.current().sources.filter((source) => source.enabled);
+    const enabled = this.lists
+      .current()
+      .sources.filter((source) => source.enabled);
     if (
       !enabled.length ||
-      enabled.every((source) => source.meta?.fetchedAt && Date.now() - source.meta.fetchedAt < 86_400_000)
+      enabled.every(
+        (source) =>
+          source.meta?.fetchedAt &&
+          Date.now() - source.meta.fetchedAt < 86_400_000,
+      )
     )
       return;
     await this.update();
@@ -195,7 +297,11 @@ export class ContentBlockingService {
       return this.status();
     });
   }
-  add(name: string, url: string, kind: FilterSourceKind = "adblock"): Promise<FilterSource[]> {
+  add(
+    name: string,
+    url: string,
+    kind: FilterSourceKind = "adblock",
+  ): Promise<FilterSource[]> {
     return this.mutate(async (signal) => {
       const state = this.lists.current();
       this.lists.addSource(state, name, url, kind);
@@ -223,6 +329,226 @@ export class ContentBlockingService {
       return this.status().sources;
     });
   }
+  private async nativeToggle(
+    id: string,
+    retire = false,
+  ): Promise<HostMethodResult<"native.contentBlockOperation">> {
+    if (!this.native.contentBlockOperation || !this.native.capabilities)
+      throw new AuxError(
+        "backend_unavailable",
+        "Native blocking transaction receipts are unavailable.",
+      );
+    const capabilities = await this.native.capabilities();
+    if (!capabilities.methods.includes("native.contentBlockOperation"))
+      throw new AuxError(
+        "capability_unsupported",
+        "Native blocking transaction receipts are unsupported.",
+      );
+    return this.native.contentBlockOperation({
+      profileId: this.profileId,
+      operationId: id,
+      ...(retire ? { retire: true } : {}),
+    });
+  }
+  /** Original operation IDs are issued only by the native human document. */
+  toggleStart(id: string, enabled: boolean) {
+    if (!/^[A-Fa-f0-9-]{32,64}$/.test(id))
+      throw new AuxError(
+        "invalid_params",
+        "Invalid blocking operation identity.",
+      );
+    if (this.releasedToggles.has(id))
+      throw new AuxError(
+        "ref_stale",
+        "Original blocking operation already joined.",
+      );
+    const existing = this.toggles.get(id);
+    if (existing) {
+      if (existing.enabled !== enabled)
+        throw new AuxError("conflict", "Original blocking choice changed.");
+      return { operationId: id };
+    }
+    if (this.closed)
+      throw new AuxError("cancelled", "Content filtering is closed.");
+    if (Array.from(this.toggles.values()).some((toggle) => !toggle.terminal))
+      throw new AuxError(
+        "conflict",
+        "The original blocking transaction must join before another change.",
+      );
+    const toggle: ToggleWork = {
+      id,
+      enabled,
+      joined: false,
+      retired: false,
+      terminal: false,
+    };
+    this.toggles.set(id, toggle);
+    // Publish the retained identity before any asynchronous work can dispatch.
+    toggle.work = Promise.resolve()
+      .then(() =>
+        this.mutate(async (signal) => {
+          toggle.controller = this.controller ?? undefined;
+          const original = await this.nativeToggle(id);
+          signal.throwIfAborted();
+          if (
+            toggle.retired ||
+            !original.current ||
+            original.enabled !== enabled
+          )
+            throw new AuxError(
+              "ref_stale",
+              "Original blocking window or choice retired.",
+            );
+          const state = this.lists.current();
+          state.enabled = enabled;
+          await this.install(state, signal, undefined, toggle);
+          toggle.result = this.privacy();
+          toggle.terminal = true;
+        }, id),
+      )
+      .catch((error) => {
+        toggle.error = toErrorPayload(error);
+      })
+      .finally(() => {
+        toggle.joined = true;
+      });
+    return { operationId: id };
+  }
+  async toggleStatus(
+    id: string,
+    retire = false,
+  ): Promise<
+    | { phase: "running" }
+    | {
+        phase: "completed";
+        result: ReturnType<ContentBlockingService["privacy"]>;
+      }
+    | {
+        phase: "failed" | "uncertain";
+        error: ReturnType<typeof toErrorPayload>;
+      }
+  > {
+    const toggle = this.toggles.get(id);
+    if (!toggle) {
+      if (!retire)
+        throw new AuxError(
+          "operation_uncertain",
+          "Original blocking operation receipt is unavailable.",
+        );
+      if (!/^[A-Fa-f0-9-]{32,64}$/.test(id))
+        throw new AuxError(
+          "invalid_params",
+          "Invalid blocking operation identity.",
+        );
+      // Retire before awaiting native readback. A queued original Start cannot
+      // create work after this exact reduction-only cancellation has joined.
+      this.releasedToggles.add(id);
+      const native = await this.nativeToggle(id, true);
+      if (native.phase === "failed")
+        return {
+          phase: "failed" as const,
+          error:
+            (native.error
+              ? toErrorPayload(
+                  new AuxError(native.error.code, native.error.message),
+                )
+              : undefined) ??
+            toErrorPayload(
+              new AuxError(
+                "cancelled",
+                "Original blocking change retired before dispatch.",
+              ),
+            ),
+        };
+      return {
+        phase: "uncertain" as const,
+        error: toErrorPayload(
+          new AuxError(
+            "operation_uncertain",
+            "Original blocking work has no retained runtime receipt.",
+          ),
+        ),
+      };
+    }
+    if (retire) {
+      toggle.retired = true;
+      toggle.controller?.abort(
+        new AuxError("cancelled", "Original blocking window retired."),
+      );
+    }
+    // Read/cancel is reduction-only and remains bound to the original ID after
+    // document retirement. An accepted native receipt is never undone.
+    let native: HostMethodResult<"native.contentBlockOperation">;
+    try {
+      native = await this.nativeToggle(id, retire);
+    } catch (error) {
+      return { phase: "uncertain" as const, error: toErrorPayload(error) };
+    }
+    if (native.enabled !== toggle.enabled)
+      throw new AuxError("conflict", "Original blocking receipt changed.");
+    if (!toggle.joined) return { phase: "running" as const };
+    if (toggle.result)
+      return { phase: "completed" as const, result: toggle.result };
+    if (native.phase === "completed" && native.receipt && toggle.prepared) {
+      const prepared = toggle.prepared;
+      const receipt = native.receipt;
+      toggle.reconciliation ??= (async () => {
+        assertContentBlockReceipt(this.snapshot(prepared), receipt);
+        await this.lists.publish(prepared, receipt);
+        toggle.result = this.privacy();
+        toggle.terminal = true;
+      })();
+      const reconciliation = toggle.reconciliation;
+      try {
+        await reconciliation;
+      } catch (error) {
+        if (toggle.reconciliation === reconciliation)
+          toggle.reconciliation = undefined;
+        throw error;
+      }
+      const result = toggle.result;
+      if (!result)
+        throw new AuxError(
+          "operation_uncertain",
+          "Original blocking publication has no completed result.",
+        );
+      return { phase: "completed" as const, result };
+    }
+    if (native.phase === "failed" || native.phase === "prepared") {
+      if (native.phase === "prepared" && !retire)
+        return this.toggleStatus(id, true);
+      toggle.terminal = true;
+      return {
+        phase: "failed" as const,
+        error:
+          toggle.error ??
+          (native.error
+            ? toErrorPayload(
+                new AuxError(native.error.code, native.error.message),
+              )
+            : undefined) ??
+          toErrorPayload(
+            new AuxError(
+              "cancelled",
+              "Original blocking change retired before acceptance.",
+            ),
+          ),
+      };
+    }
+    return { phase: "running" as const };
+  }
+  toggleRelease(id: string) {
+    if (this.releasedToggles.has(id)) return { accepted: true as const };
+    const toggle = this.toggles.get(id);
+    if (!toggle || !toggle.joined || !toggle.terminal)
+      throw new AuxError(
+        "operation_uncertain",
+        "Original blocking operation has not joined.",
+      );
+    this.toggles.delete(id);
+    this.releasedToggles.add(id);
+    return { accepted: true as const };
+  }
   setEnabled(enabled: boolean) {
     return this.mutate(async (signal) => {
       const state = this.lists.current();
@@ -231,24 +557,38 @@ export class ContentBlockingService {
       return this.privacy();
     });
   }
-  setSiteAllowed(hostname: string, allowed: boolean, siteGuard?: ContentBlockBegin["siteGuard"]) {
+  setSiteAllowed(
+    hostname: string,
+    allowed: boolean,
+    siteGuard?: ContentBlockBegin["siteGuard"],
+  ) {
     return this.mutate(async (signal) => {
       const host = hostname.toLowerCase();
-      if (!validSiteHost(host)) throw new Error("Choose an HTTP or HTTPS site.");
+      if (!validSiteHost(host))
+        throw new Error("Choose an HTTP or HTTPS site.");
       if (allowed || siteGuard) {
         let reviewed: URL;
         try {
           reviewed = new URL(siteGuard?.expectedUrl ?? "");
         } catch {
-          throw new Error("Review the original HTTP or HTTPS page before changing its site exception.");
+          throw new Error(
+            "Review the original HTTP or HTTPS page before changing its site exception.",
+          );
         }
-        if (!siteGuard || !["http:", "https:"].includes(reviewed.protocol) || reviewed.hostname !== host)
-          throw new Error("The site exception does not match the reviewed original page.");
+        if (
+          !siteGuard ||
+          !["http:", "https:"].includes(reviewed.protocol) ||
+          reviewed.hostname !== host
+        )
+          throw new Error(
+            "The site exception does not match the reviewed original page.",
+          );
       }
       const state = this.lists.current(),
         set = new Set(state.allowedSiteHosts);
       if (allowed) {
-        if (set.size >= 4096 && !set.has(host)) throw new Error("Too many site exceptions.");
+        if (set.size >= 4096 && !set.has(host))
+          throw new Error("Too many site exceptions.");
         set.add(host);
       } else set.delete(host);
       state.allowedSiteHosts = [...set].sort();
@@ -276,6 +616,14 @@ export class ContentBlockingService {
       return value;
     };
     switch (method) {
+      case "blocking.toggleStart":
+        return this.toggleStart(string("operationId"), boolean("enabled"));
+      case "blocking.toggleStatus":
+        return this.toggleStatus(string("operationId"));
+      case "blocking.toggleCancel":
+        return this.toggleStatus(string("operationId"), true);
+      case "blocking.toggleRelease":
+        return this.toggleRelease(string("operationId"));
       case "blocking.status":
         return this.status();
       case "blocking.privacy":
@@ -286,14 +634,14 @@ export class ContentBlockingService {
         return this.add(
           string("name"),
           string("url"),
-          object.kind === undefined ? "adblock" : (string("kind") as FilterSourceKind),
+          object.kind === undefined
+            ? "adblock"
+            : (string("kind") as FilterSourceKind),
         );
       case "blocking.remove":
         return this.remove(string("id"));
       case "blocking.setSourceEnabled":
         return this.setSourceEnabled(string("id"), boolean("enabled"));
-      case "blocking.setEnabled":
-        return this.setEnabled(boolean("enabled"));
       case "blocking.setSiteAllowed": {
         const guard = object.siteGuard;
         if (!guard || typeof guard !== "object" || Array.isArray(guard))
@@ -328,11 +676,19 @@ function validSiteHost(host: string) {
   }
 }
 
-async function fetchFilterText(url: string, etag?: string, signal?: AbortSignal) {
+async function fetchFilterText(
+  url: string,
+  etag?: string,
+  signal?: AbortSignal,
+) {
   const response = await publicHttpsText(new URL(filterSourceUrl(url)), {
     maxBytes: MAX_FILTER_BYTES,
     etag,
     signal,
   });
-  return { status: response.status, etag: response.etag, text: async () => response.text };
+  return {
+    status: response.status,
+    etag: response.etag,
+    text: async () => response.text,
+  };
 }

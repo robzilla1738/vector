@@ -176,12 +176,16 @@ function emitNode(schema, index) {
         add("for (char c : decimal) if (c < '0' || c > '9') return false;");
       } else if (schema.pattern === "^gho_[A-Za-z0-9_]{16,500}$") {
         add("const auto& token = value.GetString();");
-        add("if (token.size() < 20 || token.size() > 504 || !token.starts_with(\"gho_\")) return false;");
-        add("for (char c : std::string_view(token).substr(4)) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_')) return false;");
+        add('if (token.size() < 20 || token.size() > 504 || !token.starts_with("gho_")) return false;');
+        add(
+          "for (char c : std::string_view(token).substr(4)) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_')) return false;",
+        );
       } else if (schema.pattern === "^[A-Za-z0-9_-]{43}$") {
         add("const auto& token = value.GetString();");
         add("if (token.size() != 43) return false;");
-        add("for (char c : token) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) return false;");
+        add(
+          "for (char c : token) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) return false;",
+        );
       } else if (schema.pattern === "^[A-Za-z][\\w-]{0,63}$") {
         add("const auto& name = value.GetString();");
         add("const auto alpha = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); };");
@@ -574,6 +578,7 @@ const nativeOnlyHostMethods = new Set([
   "native.projectCancel",
   "native.turnSourceContext",
   "native.contentBlockState",
+  "native.contentBlockOperation",
   "native.contentBlockBegin",
   "native.contentBlockAppend",
   "native.contentBlockCommit",

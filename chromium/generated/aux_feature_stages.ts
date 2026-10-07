@@ -523,6 +523,7 @@ const requirements = {
       "removeFilterSource",
       "setFilterSourceEnabled",
       "native.contentBlockState",
+      "native.contentBlockOperation",
       "native.contentBlockBegin",
       "native.contentBlockAppend",
       "native.contentBlockCommit"

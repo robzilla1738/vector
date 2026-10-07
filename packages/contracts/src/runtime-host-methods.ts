@@ -19,6 +19,8 @@ import {
 } from "./projects.js";
 import { TurnSourceContextSchema } from "./turn-source-context.js";
 import {
+  ContentBlockOperationParams,
+  ContentBlockOperationSchema,
   ContentBlockBeginSchema,
   ContentBlockAppendSchema,
   ContentBlockCommitSchema,
@@ -153,6 +155,11 @@ export const RuntimeHostMethods = {
     "contentBlocking",
     z.object({ profileId: z.string().min(1).max(128) }).strict(),
     z.object({ receipt: ContentBlockReceiptSchema.nullable() }).strict(),
+  ),
+  "native.contentBlockOperation": runtime(
+    "contentBlocking",
+    ContentBlockOperationParams,
+    ContentBlockOperationSchema,
   ),
   "native.contentBlockBegin": runtime("contentBlocking", ContentBlockBeginSchema, accepted),
   "native.contentBlockAppend": runtime("contentBlocking", ContentBlockAppendSchema, accepted),

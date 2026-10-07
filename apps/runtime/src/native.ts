@@ -68,6 +68,7 @@ export interface ContentBlockBegin {
   sources: readonly (Omit<ContentBlockSource, "text"> & { bundled: boolean })[];
   allowedSiteHosts: readonly string[];
   enabled: boolean;
+  operationId?: string;
   siteGuard?: { pageId: string; expectedUrl: string; navigationId: number };
 }
 export interface ContentBlockAppend {
@@ -78,6 +79,7 @@ export interface ContentBlockAppend {
   text: string;
 }
 export interface ContentBlockCommit {
+  operationId?: string;
   profileId: string;
   generation: number;
   filterDigest: string;
@@ -197,6 +199,11 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   contentBlockState?(request: {
     profileId: string;
   }): Promise<{ receipt: ChromiumContentBlockReceipt | null }>;
+  contentBlockOperation?(request: {
+    profileId: string;
+    operationId: string;
+    retire?: true;
+  }): Promise<HostMethodResult<"native.contentBlockOperation">>;
   contentBlockBegin?(request: ContentBlockBegin): Promise<{ accepted: true }>;
   contentBlockAppend?(request: ContentBlockAppend): Promise<{ accepted: true }>;
   contentBlockCommit?(request: ContentBlockCommit): Promise<ChromiumContentBlockReceipt>;
@@ -477,6 +484,12 @@ export class ChannelNativeBridge implements NativeBridge {
   contentBlockState(request: { profileId: string }) {
     return this.channel.call<{ receipt: ChromiumContentBlockReceipt | null }>(
       "native.contentBlockState",
+      request,
+    );
+  }
+  contentBlockOperation(request: { profileId: string; operationId: string; retire?: true }) {
+    return this.channel.call<HostMethodResult<"native.contentBlockOperation">>(
+      "native.contentBlockOperation",
       request,
     );
   }

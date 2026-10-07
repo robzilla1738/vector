@@ -22,11 +22,17 @@ export const FilterCompilationWarningSchema = z
     sourceSha256: digest,
     rejectedCount: whole.positive(),
     diagnosticsSha256: digest,
-    samples: z.array(z.object({
-      line: whole.positive(),
-      code: z.string().min(1).max(64),
-      message: z.string().min(1).max(512),
-    }).strict()).max(8),
+    samples: z
+      .array(
+        z
+          .object({
+            line: whole.positive(),
+            code: z.string().min(1).max(64),
+            message: z.string().min(1).max(512),
+          })
+          .strict(),
+      )
+      .max(8),
   })
   .strict();
 export const FilterCompilationWarningsSchema = z.array(FilterCompilationWarningSchema).max(64);
@@ -45,16 +51,35 @@ export const ContentBlockReceiptSchema = z
     futureDocuments: z.literal(true),
   })
   .strict();
+const operationId = z.string().min(1).max(160);
+export const ContentBlockOperationParams = z
+  .object({
+    profileId: z.string().min(1).max(128),
+    operationId,
+    retire: z.literal(true).optional(),
+  })
+  .strict();
+export const ContentBlockOperationSchema = z
+  .object({
+    current: z.boolean(),
+    enabled: z.boolean(),
+    phase: z.enum(["prepared", "running", "completed", "failed"]),
+    receipt: ContentBlockReceiptSchema.optional(),
+    error: z
+      .object({ code: z.literal("conflict"), message: z.string().max(2048) })
+      .strict()
+      .optional(),
+  })
+  .strict();
 export const ContentBlockBeginSchema = z
   .object({
     profileId: z.string().min(1).max(128),
     generation: whole.positive(),
     filterDigest: digest,
-    sources: z
-      .array(FilterSourceHeaderSchema.extend({ bundled: z.boolean() }))
-      .max(MAX_FILTER_SOURCES),
+    sources: z.array(FilterSourceHeaderSchema.extend({ bundled: z.boolean() })).max(MAX_FILTER_SOURCES),
     allowedSiteHosts: z.array(z.string().min(1).max(253)).max(4096),
     enabled: z.boolean(),
+    operationId: operationId.optional(),
     siteGuard: z
       .object({
         pageId: z.string().min(1).max(128),
@@ -66,9 +91,7 @@ export const ContentBlockBeginSchema = z
   })
   .strict()
   .refine(
-    (value) =>
-      value.sources.reduce((total, source) => total + source.bytes, 0) <=
-      MAX_FILTER_SNAPSHOT_BYTES,
+    (value) => value.sources.reduce((total, source) => total + source.bytes, 0) <= MAX_FILTER_SNAPSHOT_BYTES,
     "Filter snapshot exceeds its byte limit",
   );
 export const ContentBlockAppendSchema = z
@@ -81,14 +104,14 @@ export const ContentBlockAppendSchema = z
       .string()
       .max(MAX_FILTER_CHUNK_BYTES)
       .refine(
-        (text) =>
-          new TextEncoder().encode(text).byteLength <= MAX_FILTER_CHUNK_BYTES,
+        (text) => new TextEncoder().encode(text).byteLength <= MAX_FILTER_CHUNK_BYTES,
         "Filter chunk exceeds its byte limit",
       ),
   })
   .strict();
 export const ContentBlockCommitSchema = z
   .object({
+    operationId: operationId.optional(),
     profileId: z.string().min(1).max(128),
     generation: whole.positive(),
     filterDigest: digest,

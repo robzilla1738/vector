@@ -49,6 +49,7 @@ it("validates stub results against the live manifest schemas", async () => {
       "native.copilotEndpoint",
       "native.copilotStop",
       "native.contentBlockState",
+      "native.contentBlockOperation",
       "native.contentBlockBegin",
       "native.contentBlockAppend",
       "native.contentBlockCommit",

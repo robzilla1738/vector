@@ -856,7 +856,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       "blocking.add",
       "blocking.remove",
       "blocking.setSourceEnabled",
-      "blocking.setEnabled",
+      "blocking.toggleStart",
+      "blocking.toggleStatus",
+      "blocking.toggleCancel",
+      "blocking.toggleRelease",
       "blocking.setSiteAllowed",
       "blocking.removeAllowedHost",
     ]) {
