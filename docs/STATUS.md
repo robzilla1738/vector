@@ -106,3 +106,5 @@ The packaged-runtime crash is repaired with the SHA-pinned full ICU78 dataset, p
 
 
 Generated Boost proposals now use the existing funded utility route with original active-page and window ownership. The user reviews complete validated CSS, chooses Use in editor, and separately saves it; stale page responses are rejected and existing stored CSS remains unchanged. Required integrated source checks pass; the native proposal walkthrough remains pending.
+
+Fork-self subagents now inherit an immutable completed SDK transcript prefix, including tool results, encrypted atomically with the new child run and its own task before dispatch. Pending tool steps are excluded; child page scope, funding and source authority stay independent. The source model is retained for genuine provider caching opportunities. Required integrated source checks pass; live cached-token acceptance remains blocked on the configured provider credential.

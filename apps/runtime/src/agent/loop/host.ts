@@ -112,7 +112,7 @@ export interface AgentLoopHostDeps {
 }
 
 /** The first transcript row: the task exactly as the user authored it. */
-function taskMessage(run: Run, folderContext = ""): ModelMessage {
+export function taskMessage(run: Run, folderContext = ""): ModelMessage {
   const parts = [
     `Task: ${run.goal}`,
     run.config?.instructions ? `Instructions (human-authored): ${run.config.instructions}` : "",

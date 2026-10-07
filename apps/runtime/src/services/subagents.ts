@@ -1,3 +1,5 @@
+import { TranscriptStore } from "../agent/loop/transcript.js";
+import type { ModelMessage } from "../agent/loop/types.js";
 import { resourceFundingAccounting } from "./resource-accounting.js";
 import { lineageRuns } from "./run-lineage.js";
 import { runRoot } from "./run-lineage.js";
@@ -273,6 +275,10 @@ export class SubagentService {
   }
 
   async spawn(raw: unknown): Promise<Subagent> {
+    return this.spawnOwned(raw, false);
+  }
+
+  private async spawnOwned(raw: unknown, fork: boolean): Promise<Subagent> {
     const input = SubagentSpawnParams.parse(raw);
     const group = this.group(input.groupId);
     if (group.state !== "active" || (group.deadlineAt > 0 && Date.now() >= group.deadlineAt))
@@ -303,6 +309,7 @@ export class SubagentService {
     const now = Date.now(),
       agentId = randomUUID(),
       childRunId = newRunId();
+    let forkTranscript: ModelMessage[] | undefined;
     this.repo.db.exec("BEGIN IMMEDIATE");
     try {
       if (
@@ -332,6 +339,8 @@ export class SubagentService {
         )
       )
         throw new AuxError("conflict", "A selected page is already leased to another run.");
+      if (fork)
+        forkTranscript = new TranscriptStore(this.repo.db, this.repo.columnCipher).forkPrefix(sourceRunId);
       const agent = SubagentSchema.parse({
         ...input,
         agentId,
@@ -355,6 +364,8 @@ export class SubagentService {
         throw new AuxError("conflict", "The subagent group closed before launch.");
       const run = await this.runs.start({
         deliveryRunId: childRunId,
+        forkTranscript,
+        ...(fork ? { modelId: source.config?.modelId } : {}),
         goal: input.goal,
         pageIds: input.pageIds,
         chatId: agentId,
@@ -396,7 +407,7 @@ export class SubagentService {
     const input = SubagentSpawnParams.extend({
       sourceRunId: SubagentSpawnParams.shape.sourceRunId.unwrap(),
     }).parse(raw);
-    return this.spawn(input);
+    return this.spawnOwned(input, true);
   }
 
   cellControls() {

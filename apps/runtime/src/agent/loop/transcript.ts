@@ -79,6 +79,26 @@ export class TranscriptStore {
     return rows.map((row) => this.decode<ModelMessage>(runId, row.seq, "message", row.message));
   }
 
+  /** Immutable SDK prefix ending before any unfinished source tool step. */
+  forkPrefix(runId: string): ModelMessage[] {
+    const messages = this.load(runId);
+    for (let index = 0; index < messages.length; index++) {
+      const message = messages[index]!;
+      if (message.role !== "assistant" || !Array.isArray(message.content)) continue;
+      const pending = new Set(
+        message.content.filter((part) => part.type === "tool-call").map((part) => part.toolCallId),
+      );
+      if (!pending.size) continue;
+      for (let resultIndex = index + 1; resultIndex < messages.length; resultIndex++) {
+        const result = messages[resultIndex]!;
+        if (result.role !== "tool") break;
+        for (const part of result.content) if (part.type === "tool-result") pending.delete(part.toolCallId);
+      }
+      if (pending.size) return messages.slice(0, index);
+    }
+    return messages;
+  }
+
   /** Message rows with their seqs — same order as `load`, so index i ↔ entries[i].seq. */
   entries(runId: string): { seq: number; message: ModelMessage }[] {
     const rows = this.db

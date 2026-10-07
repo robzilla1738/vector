@@ -1,3 +1,4 @@
+import { TranscriptStore, type ModelMessage } from "@aux/runtime";
 import {
   lineageRuns,
   overnightRoot,
@@ -201,8 +202,33 @@ it("releases unused reservations after completion and forks the exact saved cont
     });
     const done = f.repo.getRun(first.runId!)!;
     done.status = "completed";
+    done.config = { ...done.config, modelId: "fixture/source-model" };
     f.repo.saveRun(done);
     f.events.emit(EventTypes.RunUpdated, { run: done }, done.runId);
+    const transcript = new TranscriptStore(f.repo.db, f.repo.columnCipher);
+    const prefix: ModelMessage[] = [
+      { role: "user", content: "Original task" },
+      {
+        role: "assistant",
+        content: [{ type: "tool-call", toolCallId: "read", toolName: "snapshot", input: {} }],
+      },
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "read",
+            toolName: "snapshot",
+            output: { type: "json", value: { title: "Source" } },
+          },
+        ],
+      },
+    ];
+    const unfinished: ModelMessage = {
+      role: "assistant",
+      content: [{ type: "tool-call", toolCallId: "pending", toolName: "click", input: {} }],
+    };
+    transcript.append(first.runId!, [...prefix, unfinished]);
     const fork = await f.service.forkSelf({
       groupId: group.groupId,
       goal: "Follow one",
@@ -213,6 +239,24 @@ it("releases unused reservations after completion and forks the exact saved cont
       sourceRunId: first.runId,
     });
     expect(fork.sourceRunId).toBe(first.runId);
+    expect(f.starts.at(-1)?.modelId).toBe("fixture/source-model");
+    expect(f.starts.at(-1)?.forkTranscript).toEqual(prefix);
+    expect(f.starts.at(-1)?.pageIds).toEqual(["three"]);
+    transcript.append(first.runId!, [
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "pending",
+            toolName: "click",
+            output: { type: "json", value: { done: true } },
+          },
+        ],
+      },
+    ]);
+    expect(f.starts.at(-1)?.forkTranscript).toEqual(prefix);
+    expect(transcript.load(first.runId!)).toHaveLength(5);
     expect(f.starts.at(-1)?.context).toBe("Stable shared prompt prefix");
     expect(f.service.view(group.groupId)).toMatchObject({ usedTokens: 100, reservedTokens: 2000 });
     const message = await f.service.sendMessage(fork.agentId, fork.runId!, "Check the second source");

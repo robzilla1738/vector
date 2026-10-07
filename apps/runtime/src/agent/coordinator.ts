@@ -1,3 +1,5 @@
+import { TranscriptStore } from "./loop/transcript.js";
+import type { ModelMessage } from "./loop/types.js";
 import { CloudSetupUnavailable } from "../services/cloud-setup-unavailable.js";
 import { lineageRuns, runRoot } from "../services/run-lineage.js";
 import { resourceFundingAccounting } from "../services/resource-accounting.js";
@@ -31,7 +33,7 @@ import { ApprovalStore } from "../safety/approval.js";
 import { SuspensionStore } from "../safety/suspensions.js";
 import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
 import { PageOwnership } from "../scheduler/page-ownership.js";
-import { runToolLoop, type AgentLoopHostDeps } from "./loop/host.js";
+import { runToolLoop, taskMessage, type AgentLoopHostDeps } from "./loop/host.js";
 import { DEFAULT_MAX_MODEL_CALLS } from "./model-client.js";
 import { DEFAULT_MAX_STEPS, TERMINAL_STATUSES } from "./run-state.js";
 
@@ -173,6 +175,8 @@ export class RunCoordinator {
 
   async start(opts: {
     nightShiftItemId?: string;
+    /** Captured only by the authorized fork_self reservation; never persisted in Run.config. */
+    forkTranscript?: ModelMessage[];
     runId?: string;
     messageId?: string;
     goal: string;
@@ -280,7 +284,21 @@ export class RunCoordinator {
       },
       createdAt: Date.now(),
     };
-    this.deps.repo.saveRun(run);
+    this.deps.repo.transaction(() => {
+      this.deps.repo.saveRun(run);
+      if (opts.forkTranscript) {
+        const transcript = new TranscriptStore(this.deps.repo.db, this.deps.repo.columnCipher);
+        transcript.append(run.runId, [
+          ...opts.forkTranscript,
+          taskMessage(
+            run,
+            run.config?.contextWorkspaceId
+              ? this.deps.agentLoop?.workspaceContext?.(run.config.contextWorkspaceId)
+              : "",
+          ),
+        ]);
+      }
+    });
     if (opts.setMemberSource) {
       const source = opts.setMemberSource;
       this.deps.repo.db

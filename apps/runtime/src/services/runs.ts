@@ -2213,6 +2213,8 @@ export class RunService {
   }
 
   start(opts: {
+    /** Immutable completed SDK prefix from an authorized fork_self; internal only. */
+    forkTranscript?: import("../agent/loop/types.js").ModelMessage[];
     /** Stable delivery identity for a durable queued message; internal only. */
     deliveryRunId?: string;
     nightShiftItemId?: string;
@@ -2491,6 +2493,7 @@ export class RunService {
     return this.coordinator.start({
       ...opts,
       runId: opts.deliveryRunId,
+      forkTranscript: opts.forkTranscript,
       messageId: opts.queuedMessageId,
       pageIds,
       context,

@@ -837,6 +837,46 @@ async function settle(repo: Repo, runId: string) {
 }
 
 describe("runToolLoop (S5 host integration)", () => {
+  it("persists a fork prefix with its own task before the actual child SDK dispatch", async () => {
+    const model = new MockModelClient().scriptToolSteps([{ text: "Child findings" }]);
+    const nextStep = model.toolCallStep.bind(model);
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const entered = vi.fn((request: Parameters<typeof model.toolCallStep>[0]) => request);
+    model.toolCallStep = async (request) => {
+      entered(request);
+      await held;
+      return nextStep(request);
+    };
+    const h = coordinatorHarness(model);
+    const transcript = new TranscriptStore(h.db, h.repo.columnCipher);
+    const prefix: ModelMessage[] = [
+      { role: "user", content: "Original source task" },
+      { role: "assistant", content: [{ type: "tool-call", toolCallId: "source-read", toolName: "snapshot", input: {} }] },
+      { role: "tool", content: [{ type: "tool-result", toolCallId: "source-read", toolName: "snapshot", output: { type: "json", value: { title: "Source findings" } } }] },
+    ];
+    const run = await h.coordinator.start({
+      goal: "Follow the findings", pageIds: [], modelId: "test/source-model", forkTranscript: prefix,
+    });
+    try {
+      await vi.waitFor(() => expect(entered).toHaveBeenCalledOnce());
+      const persisted = new TranscriptStore(h.db, h.repo.columnCipher).load(run.runId);
+      expect(persisted.slice(0, prefix.length)).toEqual(prefix);
+      expect(persisted[prefix.length]).toEqual({ role: "user", content: "Task: Follow the findings" });
+      expect(entered.mock.calls[0]?.[0].messages.slice(0, prefix.length + 1)).toEqual(persisted);
+      expect(h.repo.getRun(run.runId)?.config?.modelId).toBe("test/source-model");
+      expect(h.repo.getRun(run.runId)?.config).not.toHaveProperty("forkTranscript");
+      expect(h.pages.execute).not.toHaveBeenCalled();
+      expect(h.pages.observe).not.toHaveBeenCalled();
+      expect(transcript.load(run.runId)).toEqual(persisted);
+    } finally {
+      release();
+      await settle(h.repo, run.runId);
+    }
+    expect(h.repo.getRun(run.runId)?.status).toBe("completed");
+    expect(h.pages.execute).not.toHaveBeenCalled();
+  });
+
   it("publishes a page-free live answer before completion through the existing answer event", async () => {
     const model = new MockModelClient().scriptToolSteps([{ text: "Complete page-free answer" }]);
     const nextStep = model.toolCallStep.bind(model);
