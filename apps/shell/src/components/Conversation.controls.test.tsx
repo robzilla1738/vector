@@ -79,6 +79,37 @@ function Details({
   capture?.(current);
   return <ConversationDetails current={current} text={text} />;
 }
+it("shows the new chat's reviewed project from the active Space and follows Space changes", async () => {
+  const layout = initial.layout;
+  useStore.setState({
+    layout: {
+      ...layout,
+      activeSpaceId: "personal",
+      spaces: [
+        { id: "personal", name: "Personal", color: "blue", grain: 0, workspaceId: "workspace-personal" },
+        { id: "research", name: "Research", color: "teal", grain: 0, workspaceId: "workspace-research" },
+      ],
+    },
+  });
+  const original = vi.mocked(bridge.invoke).getMockImplementation()!;
+  vi.mocked(bridge.invoke).mockImplementation(async (method, params) => {
+    if (method === "packages.list") return { packages: [], defaults: ["aux-core"] };
+    if (method === "workspaces.folders.list") {
+      const workspaceId = (params as { workspaceId: string }).workspaceId;
+      return [{ path: `/tmp/${workspaceId}`, access: "readWrite" }];
+    }
+    return original(method, params);
+  });
+  await act(async () => root.render(<Conversation chatId={null} embedded />));
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Model and run options"]')!.click());
+  const project = () => document.querySelector<HTMLSelectElement>('[aria-label="Coding project"]')!;
+  expect(project().value).toBe("/tmp/workspace-personal");
+  await act(async () => {
+    useStore.setState((state) => ({ layout: { ...state.layout, activeSpaceId: "research" } }));
+  });
+  expect(project().value).toBe("/tmp/workspace-research");
+  expect(bridge.invoke).toHaveBeenCalledWith("workspaces.folders.list", { workspaceId: "workspace-research" });
+});
 it("dispatches the original native disclosure once and supports its focused remapped action", async () => {
   await act(async () => root.render(<Details id="a" />));
   const summary = host.querySelector("summary")!;

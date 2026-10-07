@@ -8,6 +8,7 @@ const fixture = vi.hoisted(() => ({
   state: {} as Record<string, unknown>,
   visible: vi.fn(async () => {}),
   resolve: vi.fn(async (id: string) => `native-${id}`),
+  invoke: vi.fn(() => new Promise<never>(() => {})),
 }));
 vi.mock("../../bridge", () => ({
   inNativeHost: true,
@@ -18,12 +19,15 @@ vi.mock("../../bridge", () => ({
     privateMode: false,
     setStageVisible: fixture.visible,
     surfaceContentId: fixture.resolve,
+    invoke: fixture.invoke,
   },
 }));
 vi.mock("../../store", async () => {
   const { create } = await import("zustand");
   return { useStore: create(() => fixture.state), call: vi.fn(), tabCommand: vi.fn(), errToast: vi.fn() };
 });
+// A deferred agent surface must never become a prerequisite for ordinary browsing.
+vi.mock("../permissions/SuspensionPrompt", () => new Promise(() => {}));
 vi.mock("../../components/TranslationBar", () => ({ TranslationBar: () => null }));
 vi.mock("../../components/StartPage", () => ({ StartPage: () => null }));
 vi.mock("../../agent/AgentOverlay", () => ({ AgentOverlay: () => null }));
@@ -118,6 +122,54 @@ it("keeps selected native split membership through drag and picker covers, resto
     node.remove();
     setSurfaceState({ dragging: null, picker: false, edge: null });
     delete (window as Window & { auxChromiumHost?: unknown }).auxChromiumHost;
+    vi.unstubAllGlobals();
+  }
+});
+
+it("attaches a native page while the runtime and agent surface remain unresponsive, mounting review only for a real confirmation", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  const layout = emptyLayout();
+  useStore.setState(
+    {
+      pages: normalizePages([page("browser")]),
+      activePageId: "browser",
+      mode: "focus",
+      layout,
+      settings: {},
+      overlay: null,
+      confirmation: null,
+    } as never,
+    true,
+  );
+  fixture.resolve.mockClear();
+  fixture.invoke.mockClear();
+  // Leave a genuine runtime request unresolved for the whole render.
+  void fixture.invoke();
+  const node = document.createElement("div");
+  document.body.append(node);
+  const root = createRoot(node);
+  try {
+    await act(async () => root.render(<Stage />));
+    expect(node.querySelector("embed")?.getAttribute("data-content-id")).toBe("native-browser");
+    expect(fixture.resolve).toHaveBeenCalledWith("browser");
+    expect(node.querySelector('[role="dialog"]')).toBeNull();
+    expect(node.textContent).not.toContain("Opening pending action");
+    await act(async () => useStore.setState({ confirmation: { turnId: "held-run" } } as never));
+    expect(node.querySelector('[role="dialog"]')?.getAttribute("aria-label")).toBe("Pending action");
+    await act(async () => useStore.setState({ confirmation: null }));
+    expect(node.querySelector('[role="dialog"]')).toBeNull();
+    expect(node.querySelector("embed")?.getAttribute("data-content-id")).toBe("native-browser");
+  } finally {
+    await act(async () => root.unmount());
+    node.remove();
     vi.unstubAllGlobals();
   }
 });

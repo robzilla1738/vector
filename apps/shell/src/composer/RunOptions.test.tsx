@@ -88,3 +88,41 @@ it("captures a newchat private choice while existingchat mode stays immutable", 
   await mount();
   expect(useStore.getState().composerPreferences.new?.privateTask).toBe(true);
 });
+
+it("offers conversational capabilities while preserving an unsupported saved selection with an honest warning", async () => {
+  vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
+    if (method === "packages.list") return { packages: [], defaults: [] } as never;
+    if (method === "workspaces.folders.list") return [] as never;
+    return {
+      models: [
+        { id: "provider/chat", name: "Chat", modalities: ["text", "image"], streaming: true },
+        { id: "provider/new-local", name: "New local" },
+        { id: "provider/non-language", name: "Non-language", modalities: ["text"], streaming: false },
+        { id: "provider/image", name: "Image output", modalities: ["image"], streaming: true },
+        { id: "provider/audio", name: "Audio output", modalities: ["audio"], streaming: true },
+      ],
+    } as never;
+  });
+  useStore.setState({
+    composerPreferences: { new: { privateTask: false, modelId: "provider/non-language" } },
+  });
+  await mount();
+  await act(async () =>
+    host.querySelector<HTMLSelectElement>('select[aria-label="Composer model"]')!.focus(),
+  );
+  const model = host.querySelector<HTMLSelectElement>('select[aria-label="Composer model"]')!;
+  expect([...model.options].map((option) => option.value)).toEqual([
+    "",
+    "provider/non-language",
+    "provider/chat",
+    "provider/new-local",
+  ]);
+  expect(model.value).toBe("provider/non-language");
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain("not supported for chat");
+  expect(model.querySelector<HTMLOptionElement>('option[value="provider/non-language"]')?.disabled).toBe(
+    true,
+  );
+  select("Composer model", "provider/chat");
+  expect(useStore.getState().composerPreferences.new?.modelId).toBe("provider/chat");
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+});

@@ -795,7 +795,7 @@ Each schema carries a `byline` for the tool rail.
 
 1. **Welcome.**
 2. **Import.** Auto-detect Chrome, Arc, Safari, Firefox, Edge, Brave, Dia, Comet and Atlas, with progress per browser. Covers tabs, bookmarks, history, passwords and extensions, through the 0033 importer plus Chromium-profile importers.
-3. **AI.** Sign in with Vercel or OpenRouter, or pick a detected local model. Auto mode is preselected.
+3. **AI.** Sign in with Vercel or OpenRouter, or pick a detected local model. Ask first is preselected; Skip confirmation remains an explicit choice.
 4. **Look.** Vertical is preselected, with a live preview of both layouts.
 
 Then a first-chat postcard with 3 starter prompts, and a default-browser ask with a back-off cooldown. Rewrite `apps/shell/src/onboarding/OnboardingFlow.tsx`, which has 7 steps today.
@@ -827,7 +827,7 @@ Then a first-chat postcard with 3 starter prompts, and a default-browser ask wit
 
 ## Deferred next-round validation (proportionate, local only)
 
-The owner has deferred remaining native walkthroughs, phase performance measurements, manual 20-task/provider acceptance, and detailed design comparisons to the next roadmap round so implementation can wrap up now. Source checks have passed, and the current AuxFast native build and runtime packaging have completed successfully. The targets below are preserved for later validation, not claimed as passed or as empirical phase completion. The configured Gateway environment credential was rejected; live provider acceptance remains unverified. Owner OAuth registrations remain explicitly deferred.
+The owner has deferred remaining native walkthroughs, phase performance measurements, manual 20-task/provider acceptance, and detailed design comparisons to the next roadmap round so implementation can wrap up now. Source checks have passed, and the current AuxFast native build and runtime packaging have completed successfully. The targets below are preserved for later validation, not claimed as passed or as empirical phase completion. The inherited shell Gateway credential was rejected. The workspace configuration subsequently passed a small real-provider request; native end-to-end provider acceptance remains in progress. Owner OAuth registrations remain explicitly deferred.
 
 - Do not repeat passing source checks for this wrap-up. Remaining native walkthroughs and provider-dependent acceptance are next-round work.
 - **P0 validation target:**
@@ -852,4 +852,4 @@ The owner has deferred remaining native walkthroughs, phase performance measurem
 ## After approval
 
 1. Save this plan as `docs/ROADMAP.md` (P0.1).
-2. Update the auto-memory `aux-product-direction.md` with the locked decisions: vertical default, Auto mode semantics, real sessions, subscription sign-in with the terms gate, the dev surface rebuild, and the freedom principles (no CI, no gates, no qualification).
+2. Update the auto-memory `aux-product-direction.md` with the locked decisions: vertical and Ask first defaults, remembered Skip confirmation and Auto mode semantics, real sessions, subscription sign-in with the terms gate, the dev surface rebuild, and the freedom principles (no CI, no gates, no qualification).

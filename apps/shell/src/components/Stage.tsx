@@ -7,6 +7,7 @@ import { isHomeAddress, nativePageId } from "../chrome";
 import { PaneBoundary } from "./PaneBoundary";
 import { deferNamedSurface } from "./DeferredSurface";
 import { PageRecovery } from "./PageRecovery";
+import { PageSurface } from "./PageSurface";
 import { forwardRef, lazy, memo, Suspense, useEffect, useRef, useCallback, type RefObject } from "react";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
@@ -34,10 +35,6 @@ const TranslationBar = deferNamedSurface(
   true,
 );
 
-const PageSurface = lazy(async () => {
-  const module = await import("./PageSurface");
-  return { default: module.PageSurface };
-});
 const SplitStage = lazy(async () => {
   const module = await import("./SplitStage");
   return { default: module.SplitStage };
@@ -65,6 +62,7 @@ export const Stage = memo(
     const splitting = useFeature("splitView");
     const surfaceState = useSurfaceState();
     const overlay = useStore((s) => s.overlay);
+    const confirmation = useStore((s) => s.confirmation);
     const translating = useStore(
       (state) =>
         !!page && (state.translation?.pageId === page.pageId || state.translationPending === page.pageId),
@@ -193,11 +191,7 @@ export const Stage = memo(
           {mode === "focus" && page?.backend !== "chrome" && !hasUrl && page?.viewStatus !== "crashed" && (
             <StartPage />
           )}
-          {showingPage && page && !splitVisible && (
-            <Suspense fallback={<div className="stage-message">Opening page…</div>}>
-              <PageSurface page={page} />
-            </Suspense>
-          )}
+          {showingPage && page && !splitVisible && <PageSurface page={page} />}
           {showingPage && page && !splitVisible && <AgentOverlay pageId={page.pageId} />}
           {splitVisible && (
             <Suspense fallback={null}>
@@ -212,7 +206,7 @@ export const Stage = memo(
           {mode === "overview" && <Overview />}
           {mode === "table" && <ResultsTable />}
         </div>
-        {showingPage && !overlay && <SuspensionPrompt pill />}
+        {showingPage && !overlay && confirmation && <SuspensionPrompt pill />}
       </div>
     );
   }),

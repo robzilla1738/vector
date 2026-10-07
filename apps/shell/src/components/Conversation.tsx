@@ -454,6 +454,9 @@ export function Conversation({
   const activePageId = useStore((s) => s.activePageId);
   const tabSpace = useStore((s) => s.layout.tabSpace);
   const connected = useStore((s) => s.connected);
+  const draftWorkspaceId = useStore((s) =>
+    s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId)?.workspaceId,
+  );
   const focusRequest = useStore((s) => s.focusRequest);
   const seenFocusRequest = useRef(focusRequest);
   const conversationCurrent = useConversationOwner(id, connected);
@@ -1891,7 +1894,9 @@ export function Conversation({
         reasoning={draftPreferences?.reasoning}
       >
         <RunOptions
-          workspaceId={workspaceContext.workspace?.workspaceId}
+          workspaceId={
+            bridge.privateMode ? undefined : id ? workspaceContext.workspace?.workspaceId : draftWorkspaceId
+          }
           draftKey={composerPreferenceKey}
           privateTask={privateTask}
           privateTaskLocked={taskModeLocked}

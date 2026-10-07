@@ -2281,14 +2281,19 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
 
   const applySteers = async () => {
     const latest = self.get(runId);
-    const corrected = (latest.config?.messageRevision ?? 0) !== applied;
+    const corrected =
+      (latest.config?.messageRevision ?? 0) !== applied &&
+      self.deps.repo.listRunSteers(runId).length > steerCursor;
     const oldPark = corrected ? transcript.openPark(runId) : undefined;
     await self.deps.turnMentions.begin(runId, latest.config?.mentions ?? [], self.ownedPages(runId), {
       workspaceId: latest.config?.contextWorkspaceId,
       nativeTurnContext: latest.config?.nativeTurnContext,
       privateTask: latest.config?.privateTask,
       sourcePageIds:
-        latest.config?.setMemberSource || latest.config?.subagentProfile || latest.config?.privateTask
+        latest.config?.setMemberSource ||
+        latest.config?.projectRoot ||
+        latest.config?.subagentProfile ||
+        latest.config?.privateTask
           ? latest.pageIds
           : undefined,
       taskId: latest.config?.taskId,

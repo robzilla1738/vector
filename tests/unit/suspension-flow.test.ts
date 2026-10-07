@@ -475,3 +475,41 @@ it("restores a durable Cloud setup handoff only through reviewed local cleanup",
   await recovered.close();
   h.db.close();
 });
+
+it("starts and answers a page-free coding run without implicitly reading the native new tab", async () => {
+  const { TurnMentionService } = await import("../../apps/runtime/src/services/turn-mention-service.js");
+  const h = harness(scripted([tool("ask_user_question", { question: "Which file?" }), done()]), () => {
+    throw new Error("No browser effect authorized");
+  });
+  const prepareReadPage = vi.fn(async () => {
+    throw new Error("This page could not be read");
+  });
+  h.coordinator.deps.turnMentions = new TurnMentionService({
+    page: (id) => h.pages.get(id),
+    prepareReadPage,
+    organization: async () => ({ revision: 0, shared: null }),
+    routine: () => undefined,
+    connectors: () => ({ entries: [], access: [] }),
+    turnSourceContext: async () => ({
+      revision: 0,
+      layout: null,
+      windowId: "main",
+      activePageId: "native-newtab",
+    }),
+  });
+  const run = await h.coordinator.start({
+    goal: "Edit the project",
+    pageIds: [],
+    nativeTurnContext: "native-owner",
+    projectRoot: "/fixture/project",
+  });
+  expect((await waitForStatus(h.repo, run.runId, "needs_input")).status).toBe("needs_input");
+  expect(h.repo.getRun(run.runId)?.pageIds).toEqual([]);
+  await h.coordinator.answerWithMentions(run.runId, "README.md", [], () => {});
+  const completed = await settle(h.repo, run.runId);
+  expect(completed.status, JSON.stringify(completed)).toBe("completed");
+  expect(prepareReadPage).not.toHaveBeenCalled();
+  expect(h.pages.observe).not.toHaveBeenCalled();
+  await h.coordinator.close();
+  h.db.close();
+});

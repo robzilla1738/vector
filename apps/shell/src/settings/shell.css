@@ -164,6 +164,14 @@
   .settings-content .ui-setting-control > :is(input, select, button) {
     max-width: 100%;
   }
+  .settings-content .ui-setting-control .btn {
+    max-width: 100%;
+    min-height: var(--control-h);
+    height: auto;
+    padding-block: var(--space-1-5);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
   .settings-content [data-settings-field="Projects"] > .ui-setting-control {
     grid-column: 1 / -1;
     grid-row: 3;

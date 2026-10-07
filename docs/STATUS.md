@@ -38,6 +38,12 @@ Budget, model and cloud-resource reviews now restore through their dedicated Con
 
 The next integrated check passed typecheck/lint and **4,209 of 4,212 tests**; three failures were corrected. The mock-method inventory now includes model retry. Cloud close is idempotent after repository shutdown, and budget restart retains the accepted answer. The two recovery suites then passed **11/11**, the shutdown regression passed, and the UI/API/inventory checks passed **13/13**. Runtime dist has been rebuilt. Evidence: `/tmp/aux-restart-check.log`, `/tmp/aux-restart-ui-targeted.log` and the focused recovery logs. The recovery/native-glass build completed 30 steps in 12m07.41s. A disposable-profile walkthrough verified readable Liquid Glass in both appearances at 0% sidebar tint. Live-provider coding completion and comparative browser performance remain acceptance work.
 
+## Live-walkthrough corrections
+
+Project-only runs no longer implicitly read a blank browser tab. Accepted question answers remain pending tool results rather than being mistaken for steer corrections. New-chat options resolve the selected Space's project, and the model picker excludes known non-conversational catalog entries while preserving unknown configured models. Core native page rendering is eager; the deferred approval surface mounts only for a real confirmation. Long Settings buttons wrap within their control column.
+
+The integrated check passed typecheck, lint and **4,216 tests across 686 files**, with existing advisory warnings. Evidence: `/tmp/aux-coding-live-fixes-check.log`. The changed renderer is rebuilding into AuxFast; native coding/restart/undo and paused-runtime browsing still require the staged walkthrough.
+
 ## Native build and preview
 
 - Latest recovery/glass build: **30 steps in 12m07.41s**, `/tmp/aux-restart-native-build.log`. Runtime packaging was **11.95 MiB JavaScript / 18.53 MiB payload**, plus full ICU. The disposable preview retired normally and its launcher removed the temporary Profile. The workspace Gateway credential answered a small real-provider request successfully; the inherited shell credential was rejected. A native coding attempt exposed a page-free project admission bug before its first model call; correction and final restaging are in progress.

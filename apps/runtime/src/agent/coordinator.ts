@@ -1309,6 +1309,7 @@ export class RunCoordinator {
             privateTask: run.config?.privateTask,
             sourcePageIds:
               run.config?.setMemberSource ||
+              run.config?.projectRoot ||
               run.config?.subagentProfile ||
               (run.config?.privateTask && run.pageIds.length)
                 ? run.pageIds
@@ -1574,6 +1575,7 @@ export class RunCoordinator {
       privateTask: run.config?.privateTask,
       sourcePageIds:
         run.config?.setMemberSource ||
+        run.config?.projectRoot ||
         run.config?.externalParentRunId ||
         run.config?.subagentProfile ||
         (run.config?.privateTask && run.pageIds.length)

@@ -97,6 +97,12 @@ export function RunOptions({
   }, [requested, disabled, windowId, kind, privateMode, catalogGeneration, identity]);
   const catalogItems = catalog?.generation === identity ? catalog.models : [];
   const selected = catalogItems.find((model) => model.id === choice.modelId);
+  // Missing provider metadata does not blacklist a newly configured/local model.
+  // Explicit non-streaming/non-text catalog entries are not conversational routes.
+  const conversational = (model: ModelCapability) =>
+    model.streaming !== false && (model.modalities === undefined || model.modalities.includes("text"));
+  const chatModels = catalogItems.filter(conversational);
+  const unsupportedSelection = !!selected && !conversational(selected);
   function patch(value: Partial<typeof choice>) {
     if (
       disabled ||
@@ -124,22 +130,30 @@ export function RunOptions({
           onFocus={() => setRequested(true)}
           onChange={(event) => {
             const modelId = event.target.value || undefined;
-            const model = catalogItems.find((item) => item.id === modelId);
+            const model = chatModels.find((item) => item.id === modelId);
             if (modelId && !model) return;
             patch({ modelId, ...(model?.reasoning === "none" ? { reasoning: undefined } : {}) });
           }}
         >
           <option value="">Automatic</option>
-          {choice.modelId && !catalogItems.some((model) => model.id === choice.modelId) && (
-            <option value={choice.modelId}>{choice.modelId}</option>
+          {choice.modelId && !chatModels.some((model) => model.id === choice.modelId) && (
+            <option value={choice.modelId} disabled={unsupportedSelection}>
+              {selected?.name ?? choice.modelId}
+              {unsupportedSelection ? " · not supported for chat" : ""}
+            </option>
           )}
-          {catalogItems.map((model) => (
+          {chatModels.map((model) => (
             <option key={model.id} value={model.id}>
               {model.name ?? model.id}
             </option>
           ))}
         </select>
       </label>
+      {unsupportedSelection && (
+        <span role="alert">
+          This selected model is not supported for chat. Choose Automatic or a conversational model.
+        </span>
+      )}
       <label>
         Execution
         <select
