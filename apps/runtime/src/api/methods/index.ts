@@ -1,3 +1,4 @@
+import { terminalMethods } from "./terminal.js";
 import { projectMethods } from "./projects.js";
 import { onboardingMethods } from "./onboarding.js";
 import { liveFolderMethods } from "./live-folders.js";
@@ -88,6 +89,7 @@ export const METHODS: Record<MethodName, MethodHandler> = {
   ...sessionsMethods,
   ...chromeMethods,
   ...importMethods,
+  ...terminalMethods,
   ...projectMethods,
   ...onboardingMethods,
   ...translateMethods,

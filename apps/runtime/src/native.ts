@@ -1,3 +1,21 @@
+import {
+  NativeTerminalCloseParams,
+  NativeTerminalInputParams,
+  NativeTerminalListenersParams,
+  NativeTerminalPreviewCloseParams,
+  NativeTerminalPreviewParams,
+  NativeTerminalReadParams,
+  NativeTerminalResizeParams,
+  NativeTerminalStartParams,
+  TerminalInputResultSchema,
+  TerminalListenersSchema,
+  TerminalPreviewClosedSchema,
+  TerminalPreviewSchema,
+  TerminalReadResultSchema,
+  TerminalSessionSchema,
+  type TerminalSession,
+  type TerminalRead
+} from "@aux/contracts/terminal";
 import type { z } from "zod";
 import {
   ProjectFilesSchema,
@@ -111,6 +129,23 @@ import type {
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge extends Partial<DownloadNamingNative> {
+  terminalStart?(params: z.infer<typeof NativeTerminalStartParams>): Promise<TerminalSession>;
+  terminalRead?(params: z.infer<typeof NativeTerminalReadParams>): Promise<TerminalRead>;
+  terminalInput?(
+    params: z.infer<typeof NativeTerminalInputParams>,
+  ): Promise<z.infer<typeof TerminalInputResultSchema>>;
+  terminalResize?(params: z.infer<typeof NativeTerminalResizeParams>): Promise<TerminalSession>;
+  terminalClose?(params: z.infer<typeof NativeTerminalCloseParams>): Promise<TerminalSession>;
+  terminalListeners?(
+    params: z.infer<typeof NativeTerminalListenersParams>,
+  ): Promise<z.infer<typeof TerminalListenersSchema>>;
+  terminalPreview?(
+    params: z.infer<typeof NativeTerminalPreviewParams>,
+  ): Promise<z.infer<typeof TerminalPreviewSchema>>;
+  terminalPreviewClose?(
+    params: z.infer<typeof NativeTerminalPreviewCloseParams>,
+  ): Promise<z.infer<typeof TerminalPreviewClosedSchema>>;
+
   foundationModelsStatus?(input: {
     token: string;
   }): Promise<HostMethodResult<"native.foundationModelsStatus">>;
@@ -320,6 +355,47 @@ export class ChannelNativeBridge implements NativeBridge {
       await this.channel.call("native.projectCancel", NativeProjectCancelParams.parse(params)),
     );
   }
+  async terminalStart(params: z.infer<typeof NativeTerminalStartParams>) {
+    return TerminalSessionSchema.parse(
+      await this.channel.call("native.terminalStart", NativeTerminalStartParams.parse(params)),
+    );
+  }
+  async terminalRead(params: z.infer<typeof NativeTerminalReadParams>) {
+    return TerminalReadResultSchema.parse(
+      await this.channel.call("native.terminalRead", NativeTerminalReadParams.parse(params)),
+    );
+  }
+  async terminalInput(params: z.infer<typeof NativeTerminalInputParams>) {
+    return TerminalInputResultSchema.parse(
+      await this.channel.call("native.terminalInput", NativeTerminalInputParams.parse(params)),
+    );
+  }
+  async terminalResize(params: z.infer<typeof NativeTerminalResizeParams>) {
+    return TerminalSessionSchema.parse(
+      await this.channel.call("native.terminalResize", NativeTerminalResizeParams.parse(params)),
+    );
+  }
+  async terminalClose(params: z.infer<typeof NativeTerminalCloseParams>) {
+    return TerminalSessionSchema.parse(
+      await this.channel.call("native.terminalClose", NativeTerminalCloseParams.parse(params)),
+    );
+  }
+  async terminalListeners(params: z.infer<typeof NativeTerminalListenersParams>) {
+    return TerminalListenersSchema.parse(
+      await this.channel.call("native.terminalListeners", NativeTerminalListenersParams.parse(params)),
+    );
+  }
+  async terminalPreview(params: z.infer<typeof NativeTerminalPreviewParams>) {
+    return TerminalPreviewSchema.parse(
+      await this.channel.call("native.terminalPreview", NativeTerminalPreviewParams.parse(params)),
+    );
+  }
+  async terminalPreviewClose(params: z.infer<typeof NativeTerminalPreviewCloseParams>) {
+    return TerminalPreviewClosedSchema.parse(
+      await this.channel.call("native.terminalPreviewClose", NativeTerminalPreviewCloseParams.parse(params)),
+    );
+  }
+
   copilotStart(input: CopilotNativeStart): Promise<CopilotNativeStartResult> {
     return this.channel.call("native.copilotStart", input, 45_000);
   }

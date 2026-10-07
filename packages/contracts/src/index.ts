@@ -97,3 +97,5 @@ export { CloudResourceQuoteSchema, type CloudResourceQuote } from "./cloud-execu
 export { CloudConfigureParamsSchema, CloudSettingsStatusSchema, type CloudConfigureParams, type CloudSettingsStatus } from "./cloud-execution.js";
 
 export * from "./projects.js";
+
+export * from "./terminal.js";

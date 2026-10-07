@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { ProjectChanges, ProjectFile, ProjectFiles, WorkspaceFolder } from "@aux/contracts";
 import { call } from "../../store";
 import { errorMessage } from "../../error-message";
 import { smallButtonProps } from "../../ui/button-props";
+const Preview = lazy(() => import("./Preview"));
+const Terminal = lazy(() => import("../terminal/Terminal"));
 /** Project text stays in this local panel; opening a file never asks a model. */
 export default function Project({ folder, close }: { folder: WorkspaceFolder; close: () => void }) {
-  const [tab, setTab] = useState<"files" | "changes">("files");
+  const [tab, setTab] = useState<"files" | "changes" | "console" | "preview">("files");
+  const [terminalId, setTerminalId] = useState<string>();
+  const [consoleLoaded, setConsoleLoaded] = useState(false);
   const [path, setPath] = useState("");
   const [files, setFiles] = useState<ProjectFiles>();
   const [file, setFile] = useState<ProjectFile>();
@@ -20,10 +24,7 @@ export default function Project({ folder, close }: { folder: WorkspaceFolder; cl
     setError("");
     try {
       if (selected === "files") {
-        const result = await call("projects.files", {
-          ...input,
-          path: directory,
-        });
+        const result = await call("projects.files", { ...input, path: directory });
         if (generation.current === request) {
           setFiles(result);
           setFile(undefined);
@@ -67,7 +68,13 @@ export default function Project({ folder, close }: { folder: WorkspaceFolder; cl
         </button>
       </div>
       <div role="tablist" aria-label="Project views">
-        {(["files", "changes"] as const).map((view) => (
+        {(
+          [
+            "files",
+            "changes",
+            ...(folder.access === "readWrite" ? ["preview", "console"] : []),
+          ] as (typeof tab)[]
+        ).map((view) => (
           <button
             {...smallButtonProps}
             key={view}
@@ -78,10 +85,17 @@ export default function Project({ folder, close }: { folder: WorkspaceFolder; cl
               setTab(view);
               setError("");
               setBusy(false);
+              if (view === "console") setConsoleLoaded(true);
               if (view === "files" || view === "changes") void load(view);
             }}
           >
-            {view === "files" ? "Files" : "Changes"}
+            {view === "files"
+              ? "Files"
+              : view === "changes"
+                ? "Changes"
+                : view === "preview"
+                  ? "Preview"
+                  : "Console"}
           </button>
         ))}
       </div>
@@ -144,6 +158,25 @@ export default function Project({ folder, close }: { folder: WorkspaceFolder; cl
               {changes.truncated && <p>The diff exceeds the preview limit.</p>}
             </>
           )}
+        </div>
+      )}
+      {folder.access === "readWrite" && (
+        <div hidden={tab !== "preview"}>
+          <Suspense fallback={<p>Loading Preview…</p>}>
+            <Preview terminalId={terminalId} />
+          </Suspense>
+        </div>
+      )}
+      {consoleLoaded && (
+        <div hidden={tab !== "console"}>
+          <Suspense fallback={<p>Loading Console…</p>}>
+            <Terminal
+              workspaceId={folder.workspaceId}
+              folderId={folder.folderId}
+              path={folder.path}
+              onSession={setTerminalId}
+            />
+          </Suspense>
         </div>
       )}
     </section>

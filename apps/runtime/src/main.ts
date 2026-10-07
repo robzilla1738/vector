@@ -1,3 +1,5 @@
+import { TerminalService } from "./services/terminals.js";
+import { registerNativeProjectPreview } from "./services/native-project-preview.js";
 import { ProjectsService } from "./services/projects.js";
 import type { VercelSandboxExecutor } from "./services/vercel-sandbox-executor.js";
 import type { CloudExecutionContext } from "./services/cloud-execution.js";
@@ -231,12 +233,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   bootPhase("protection");
   const repo = new Repo(db, columnCipher);
   let closed = false;
+  let stopNativeProjectPreview: (() => void) | undefined;
   let cliInstallTail = Promise.resolve();
   const cliInstallWork = new Set<Promise<unknown>>();
   let stopNativeDeviceConfirmation: (() => void) | undefined;
   let stopRunEndHooks: (() => void) | undefined;
   type RuntimeServices = Services & {
     workspaceFolders: WorkspaceFolderService;
+    terminals: TerminalService;
     projects: ProjectsService;
     filesystem: FilesystemAccessService;
     settings: SettingsService;
@@ -283,6 +287,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   };
   const serviceContainer: ServiceContainer<RuntimeServices> = createServiceContainer<RuntimeServices>({
     workspaceFolders: () => new WorkspaceFolderService(repo, () => [config.dataDir]),
+    terminals: () => new TerminalService(native, runtimeServices.workspaceFolders),
     projects: () => new ProjectsService(native, runtimeServices.workspaceFolders, runtimeServices.filesystem),
     filesystem: () =>
       new FilesystemAccessService({
@@ -1763,6 +1768,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const services: Services = runtimeServices;
   const invoke = makeInvoker(services);
   const stopFeatures = await bootRuntimeFeatures(services, invoke);
+  if (channel) stopNativeProjectPreview = registerNativeProjectPreview(channel, { current: () => !closed, terminals: () => runtimeServices.terminals });
   // Authenticated Chromium host messages are internal; the loopback API still
   // denies these projection methods to external and scoped clients.
   channel?.onMethod("history.projectSnapshot", (params) =>
@@ -2052,6 +2058,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     quiesce: () => {
       shutdownAdmission.beginShutdown();
       closed = true;
+      stopNativeProjectPreview?.();
       stopNativeDeviceConfirmation?.();
       stopDeferred();
       clearInterval(filterTimer);
@@ -2084,6 +2091,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
               throw new AggregateError(failures, "Run and cloud resource cleanup awaits acknowledgement.");
           })(),
           import("./services/cloud-settings.js").then(({ closeCloudSettings }) => closeCloudSettings(repo)),
+          serviceContainer.peek("terminals")?.dispose(),
           serviceContainer.peek("projects")?.dispose(),
           serviceContainer.peek("blocking")?.close(),
           serviceContainer.peek("copilot")?.then((services) => services.close()),
@@ -2227,6 +2235,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // The native host owns this helper. A closed authenticated socket means its
   // owner has exited; finish the journal and release the Profile database.
   hostSocket?.onClose?.(() => {
+    stopNativeProjectPreview?.();
     stopNativeDeviceConfirmation?.();
     if (!closed)
       void shutdown().then(
