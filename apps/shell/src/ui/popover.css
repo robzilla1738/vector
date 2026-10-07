@@ -133,3 +133,20 @@
     background: var(--bg-hover);
   }
 }
+
+@layer overrides {
+  .anchored-panel .home-tools-menu > .context-choice {
+    gap: 10px;
+  }
+  .anchored-panel .home-tools-menu > .context-choice > .ci {
+    flex: 0 0 16px;
+    width: 16px;
+  }
+  .anchored-panel .home-tools-menu > .context-choice > span:not(.ci) {
+    flex: 1;
+    white-space: nowrap;
+  }
+  .anchored-panel .home-tools-menu button:disabled {
+    opacity: 0.45;
+  }
+}

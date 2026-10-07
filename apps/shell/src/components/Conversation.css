@@ -649,3 +649,15 @@
     max-width: 60%;
   }
 }
+
+@layer overrides {
+  .conversation :is(.new-chat-options, .composer-send-actions) > .dictation-trigger {
+    font-size: 0;
+    gap: 0;
+  }
+  .conversation :is(.new-chat-options, .composer-send-actions) > .dictation-trigger > svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+  }
+}
