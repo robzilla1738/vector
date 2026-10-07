@@ -174,7 +174,7 @@ These replace the "frozen scope" paragraph in `AGENTS.md`.
 - **Per slice:**
   1. `npm run check`.
   2. For native changes: incremental dev build, then `node scripts/dev.mjs --temp-profile`, then click through the change.
-- **At the end of each phase:** `pnpm perf` (P1.8), plus the 20-task smoke (P4.14) once P4 starts.
+- **Next-round validation:** remaining native walkthroughs, phase-end `pnpm perf` (P1.8), and the 20-task smoke (P4.14) are deferred by the owner; they do not block this implementation wrap-up. Finish the active AuxFast build without restarting it.
 - **Native:** one plain lock; never two builds at once. After P0.7, new native work is a new area patch in `chromium/patches/series`.
 - **Models:** real providers with the owner's keys are fine.
 
@@ -693,7 +693,7 @@ Each schema carries a `byline` for the tool rail.
 
 **P4.13 Notifications.** Three categories, an Aux-authored completion sound at 0.35 volume, and a Dock badge. No notification while the user is viewing that chat.
 
-**P4.14 Quality bar.** A 20-task smoke subset of `tests/benchmarks/tasks/manifest.json`, run manually at phase ends on the default routes, targeting pass@1 ≥ 90%. Fix the scorer first: a pass requires `status === "completed"` (`tests/benchmarks/tasks/run.mjs`).
+**P4.14 Quality bar (deferred next-round validation).** A 20-task smoke subset of `tests/benchmarks/tasks/manifest.json`, run manually at phase ends on the default routes, targeting pass@1 ≥ 90%. Fix the scorer first: a pass requires `status === "completed"` (`tests/benchmarks/tasks/run.mjs`).
 
 ---
 
@@ -717,7 +717,7 @@ Each schema carries a `byline` for the tool rail.
 - **Link routing** rules, and Profile/Space linking.
 
 **Content and extensions**
-- **Content blocking:** maintained uBlock Origin semantics with browser-owned network admission and document-scoped cosmetic/scriptlet execution. Default EasyList, EasyPrivacy and uBO lists, with a per-site toggle in the site chip. The maintained engine replaces the retired hosts-only and incomplete Rust implementations. Full syntax and actual network, body, cosmetic, scriptlet, popup and canonical-host behavior require native evidence before P5 acceptance.
+- **Content blocking:** maintained uBlock Origin semantics with browser-owned network admission and document-scoped cosmetic/scriptlet execution. Default EasyList, EasyPrivacy and uBO lists, with a per-site toggle in the site chip. The maintained engine replaces the retired hosts-only and incomplete Rust implementations. Full syntax and actual network, body, cosmetic, scriptlet, popup and canonical-host acceptance targets remain; the remaining native walkthroughs are deferred to next-round validation.
 - **Extensions:**
   - Web Store install on by default (0025);
   - pinning and an extensions menu like Aside's;
@@ -786,29 +786,29 @@ Then a first-chat postcard with 3 starter prompts, and a default-browser ask wit
 
 ---
 
-## Verification (proportionate, local only)
+## Deferred next-round validation (proportionate, local only)
 
-The packaged ICU crash correction passes integrated checks and the actual disposable native app reaches the model request. Live default-route acceptance is blocked by the rejected configured Gateway environment credential. Owner OAuth registrations remain explicitly deferred, and detailed Aside comparisons belong to the later design pass. Source checks and individual native witnesses do not replace the phase criteria below.
+The owner has deferred remaining native walkthroughs, phase performance measurements, manual 20-task/provider acceptance, and detailed design comparisons to the next roadmap round so implementation can wrap up now. Source checks have passed; the active AuxFast build must still finish. The targets below are preserved for later validation, not claimed as passed or as empirical phase completion. The configured Gateway environment credential was rejected; live provider acceptance remains unverified. Owner OAuth registrations remain explicitly deferred.
 
-- **Per slice:** `npm run check`, then for native work `node scripts/dev.mjs --temp-profile` and use the change.
-- **P0 done when:**
+- Do not repeat passing source checks for this wrap-up. Remaining native walkthroughs and provider-dependent acceptance are next-round work.
+- **P0 validation target:**
   - a populated dev Profile boots with runtime ready in under 1 s;
   - every built feature is visible;
   - no `.github` automation remains;
   - `npm run check` passes in under 60 s.
-- **P1 done when** `pnpm perf` meets the P1 targets against stock on the fast build. Record one row in `docs/BENCHMARKS.md`.
-- **P2 done when** the 12 Aside side-by-sides show no geometry or colour differences beyond branding.
-- **P3 done when:**
+- **P1 validation target:** `pnpm perf` meets the P1 targets against stock on the fast build. Record one row in `docs/BENCHMARKS.md`.
+- **P2 validation target:** the 12 Aside side-by-sides show no geometry or colour differences beyond branding.
+- **P3 validation target:**
   - in Auto, a fixture flow (search → open → fill → submit → send) runs with **zero prompts**;
   - a checkout asks for exactly **one Touch ID**;
   - a credential fill asks once per site and is silent afterwards;
   - a secret-exfiltration fixture is silently blocked and logged;
   - a 100-call run completes without hitting any cap.
-- **P4 done when:**
+- **P4 validation target:**
   - the 20-task smoke reaches pass@1 ≥ 90%;
   - more than 50% of tokens are cached on multi-turn runs;
   - an Ollama model works with Wi-Fi off.
-- **P5–P7 done when** a manual walkthrough of each feature works, and a fresh Profile reaches a completed first agent task within 2 minutes.
+- **P5–P7 validation target:** a manual walkthrough of each feature works, and a fresh Profile reaches a completed first agent task within 2 minutes.
 
 ## After approval
 
