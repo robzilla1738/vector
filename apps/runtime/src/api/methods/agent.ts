@@ -1,3 +1,6 @@
+import { memoryContentSensitivityReason } from "@aux/contracts/memory-sensitivity";
+import { PageSummaryParamsSchema } from "@aux/contracts/page-summary";
+import { redactObservation } from "../../agent/observation-redaction.js";
 import { createHash } from "node:crypto";
 import { pageDerivativeCache } from "../../services/ai-result-cache.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
@@ -11,6 +14,52 @@ import { UtilityIntentSchema } from "@aux/contracts/utility";
 import type { ModelClient } from "../../agent/model-client.js";
 import type { UtilityRoute } from "../../services/foundation-models.js";
 
+async function h_agent_pageSummary(ctx: MethodCtx): Promise<unknown> {
+  const { runId, pageId, focus } = PageSummaryParamsSchema.parse(ctx.params);
+  const { s, client } = ctx;
+  const run = s.repo.getRun(runId);
+  if (client.external && ctx.externalRunId !== runId)
+    throw new AuxError("permission_denied", "The summary belongs to a different agent session.");
+  const control = s.runs.coordinator.controls.get(runId);
+  if (!run || run.status !== "running")
+    throw new AuxError("conflict", "Page summaries require their original running task.");
+  if (!control)
+    throw new AuxError("capability_unsupported", "This run has no original admitted summary execution.");
+  if (control.paused || control.abort.signal.aborted)
+    throw new AuxError("cancelled", "The original summary execution retired.");
+  const originalToken = run.config?.nativeTurnContext;
+  const requestToken = client.nativeTurnContext;
+  const sourceContext = s.native?.turnSourceContext;
+  if (!originalToken || !requestToken || !sourceContext)
+    throw new AuxError("capability_unsupported", "Page summaries require an original native Aux window.");
+  if (ctx.scope) {
+    if (!run.config?.taskId) throw new AuxError("permission_denied", "A task-scoped summary requires its original task.");
+    ctx.requireScopedTask(ctx.scope, run.config.taskId);
+    ctx.requireScopedPage(ctx.scope, pageId, client.connectionId);
+  }
+  const original = await sourceContext(originalToken);
+  const checkOwner = async () => {
+    const currentRun = s.repo.getRun(runId);
+    if (control.abort.signal.aborted || s.runs.coordinator.controls.get(runId) !== control || control.paused || currentRun?.status !== "running")
+      throw new AuxError("cancelled", "The original summary task ended.");
+    const current = await sourceContext(requestToken);
+    const saved = await sourceContext(originalToken);
+    if (current.windowId !== original.windowId || saved.windowId !== original.windowId)
+      throw new AuxError("cancelled", "The original summary window changed.");
+    s.runs.coordinator.pageSourceCheck(runId, pageId)();
+  };
+  await checkOwner();
+  const observation = await s.runs.coordinator.usePage(runId, pageId, "read", () => s.pages.observe(pageId, {}));
+  await checkOwner();
+  return s.runs.summarizePage({ runId, observation: redactObservation(observation), focus, signal: control.abort.signal, checkOwner,
+    cache: pageDerivativeCache(s, [pageId]),
+    authorize: async (route) => {
+      await checkOwner();
+      if (route.kind !== "on-device") await ctx.decideEgress({ url: new URL(route.destination), action: "agent.pageSummary", dataClasses: memoryContentSensitivityReason(observation.content.text) ? ["sensitive"] : ["none"], provenance: "page", actor: client.external ? "external_token" : "user", taskId: run.config?.taskId, connectionId: client.connectionId, threadId: run.config?.chatId ?? runId, runId });
+      await checkOwner();
+    },
+  });
+}
 async function h_agent_tabs_list(ctx: MethodCtx): Promise<unknown> {
   if (!ctx.externalRunId)
     throw new AuxError("permission_denied", "A live authorized agent turn is required.");
@@ -467,6 +516,7 @@ export const agentMethods: Partial<Record<MethodName, MethodHandler>> = {
   "agent.inlineAssist.draft": h_agent_inlineAssist_draft,
   "agent.inlineAssist.apply": h_agent_inlineAssist_apply,
   "agent.inlineAssist.cancel": h_agent_inlineAssist_cancel,
+  "agent.pageSummary": h_agent_pageSummary,
   "agent.web.fetch": h_agent_web_fetch,
   "agent.web.search": h_agent_web_fetch,
   "agent.images.generate": h_agent_images_generate,

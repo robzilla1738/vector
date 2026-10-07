@@ -18,6 +18,7 @@ export const RuntimeMethodPolicy = {
   "agent.inlineAssist.draft": { feature: "inlineAssist", auth: "handler-guarded" },
   "agent.inlineAssist.apply": { feature: "inlineAssist", auth: "handler-guarded" },
   "agent.inlineAssist.cancel": { feature: "inlineAssist", auth: "handler-guarded" },
+  "agent.pageSummary": { feature: "core", auth: "handler-guarded" },
   "agent.web.fetch": { feature: "core", auth: "standard" },
   "agent.web.search": { feature: "core", auth: "standard" },
   "agent.images.generate": { feature: "core", auth: "standard" },

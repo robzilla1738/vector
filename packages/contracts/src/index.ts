@@ -99,3 +99,5 @@ export { CloudConfigureParamsSchema, CloudSettingsStatusSchema, type CloudConfig
 export * from "./projects.js";
 
 export * from "./terminal.js";
+
+export * from "./page-summary.js";

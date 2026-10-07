@@ -386,6 +386,8 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     runId?: string;
     actor?: import("@aux/contracts").EffectActor;
     invocationDigest?: string;
+    dataClasses?: import("@aux/contracts").EffectRequest["dataClasses"];
+    provenance?: import("@aux/contracts").EffectProvenance;
   }) => {
     const threadId = input.threadId ?? `rpc:${input.connectionId ?? "internal"}`;
     const request = EffectRequestSchema.parse({
@@ -404,8 +406,8 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
         action: input.action,
         origin: input.url.origin,
         destination: input.url.href.slice(0, 2048),
-        dataClasses: [],
-        provenance: "template",
+        dataClasses: input.dataClasses ?? [],
+        provenance: input.provenance ?? "template",
         invocationDigest: input.invocationDigest ?? createHash("sha256")
           .update(JSON.stringify([input.action, input.url.href]))
           .digest("hex"),

@@ -73,3 +73,4 @@ aux/0073-native-human-session-presentation.patch
 aux/0074-native-cosmetic-document-broker.patch
 aux/0075-native-task-completion-attention.patch
 aux/0076-native-conversation-branch-ingress.patch
+aux/0077-native-page-summary-ingress.patch

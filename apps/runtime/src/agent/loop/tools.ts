@@ -1,3 +1,4 @@
+import { PageSummaryInputSchema } from "@aux/contracts/page-summary";
 import { z } from "zod";
 import {
   AuxError,
@@ -768,6 +769,12 @@ export function buildToolManifest(): LoopToolManifest {
     write_file: writeFile,
     edit_file: editFile,
     bash,
+    page_summary: {
+      description: "Summarize a currently admitted page with verbatim evidence quotes and original document provenance. This does not complete the task.",
+      byline: "Aux page summary",
+      inputSchema: PageSummaryInputSchema,
+      execute: async (raw, ctx) => need(ctx.deps.pageSummary, "page_summary")(PageSummaryInputSchema.parse(raw)),
+    },
     history_search: historySearch,
     memory_search: memorySearch,
     subagent,

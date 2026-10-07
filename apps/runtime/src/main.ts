@@ -1,3 +1,5 @@
+import { memoryContentSensitivityReason } from "@aux/contracts/memory-sensitivity";
+import { pageDerivativeCache } from "./services/ai-result-cache.js";
 import { BrowserImporter } from "./services/browser-import.js";
 import { TerminalService } from "./services/terminals.js";
 import { registerNativeProjectPreview } from "./services/native-project-preview.js";
@@ -1348,6 +1350,64 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
               .update(
                 JSON.stringify([
                   "waiting",
+                  input.runId,
+                  run.goal,
+                  route.modelId,
+                  runtimeServices.settings.modelCacheGeneration(),
+                ]),
+              )
+              .digest("hex"),
+            turnId: input.runId,
+            threadId,
+            runId: input.runId,
+            requestedAt: Date.now(),
+          });
+          await runtimeServices.safetyGate.checkTrustedEffect(request, {
+            profileId: request.profileId,
+            scope: request.scope,
+            actor: request.actor,
+            turnId: input.runId,
+            threadId,
+            runId: input.runId,
+          });
+          input.checkOwner();
+        },
+      }),
+
+
+    summarizePage: (input) =>
+      runtimeServices.runs.summarizePage({
+        ...input,
+        cache: pageDerivativeCache({ repo, settings: runtimeServices.settings, pages: runtimeServices.pages, contentMemory: runtimeServices.contentMemory, native }, [input.observation.pageId]),
+        authorize: async (route) => {
+          input.checkOwner();
+          const run = repo.getRun(input.runId);
+          if (!run || run.status !== "running")
+            throw new AuxError("cancelled", "The original summary request ended.");
+          if (route.kind === "on-device") return;
+          const threadId = run.config?.chatId ?? input.runId;
+          const request = EffectRequestSchema.parse({
+            profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+            scope: run.config?.taskId
+              ? { kind: "task", id: run.config.taskId }
+              : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" },
+            actor: "builtin_agent",
+            effect: "egress",
+            category: "external_tool",
+            action: "agent.pageSummary",
+            origin: route.destination,
+            destination: route.destination,
+            dataClasses: memoryContentSensitivityReason(input.observation.content.text) ? ["sensitive"] : ["none"],
+            provenance: "page",
+            invocationDigest: createHash("sha256")
+              .update(
+                JSON.stringify([
+                  "page-summary",
+                  input.observation.pageId,
+                  input.observation.observationId,
+                  input.observation.documentEpoch,
+                  input.observation.revision,
+                  input.focus ?? "",
                   input.runId,
                   run.goal,
                   route.modelId,

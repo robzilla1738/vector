@@ -19,9 +19,11 @@ const sensitive = (text: string) =>
     text,
   );
 
+export type PageDerivativeCacheContext = Pick<Services, "repo" | "settings" | "pages" | "contentMemory" | "native">;
+
 /** Runtime-owned page/Space provenance, never caller-supplied permission to persist text. */
 export function pageDerivativeCache(
-  s: Services,
+  s: PageDerivativeCacheContext,
   pageIds: readonly string[],
 ): PageDerivativeCache | undefined {
   const store = s.contentMemory;

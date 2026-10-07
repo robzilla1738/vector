@@ -122,6 +122,7 @@ export interface LoopToolDeps {
     input: BashSeatbeltInput,
     ctx: { runId: string; threadId: string; turnId: string },
   ) => Promise<LoopToolResult>;
+  pageSummary?: (input: { pageId: string; focus?: string }) => Promise<LoopToolResult>;
   /** Browser-history search (06-X history_search). */
   historySearch?: (
     query: string,

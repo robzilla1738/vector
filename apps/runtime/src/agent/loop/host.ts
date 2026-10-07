@@ -46,6 +46,7 @@ export interface AgentLoopHostDeps {
   cloudExecutor?: CloudReplExecutor & {
     selected(runId: string): boolean;
   };
+  summarizePage?: (input: { runId: string; observation: Observation; focus?: string; signal: AbortSignal; checkOwner: () => void }) => Promise<import("@aux/contracts/page-summary").PageSummaryResult>;
   prepareWaitingPhrase?: (input: {
     runId: string;
     signal: AbortSignal;
@@ -285,6 +286,9 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     // and citation verification checks the text the model actually saw.
     const safeObs = redactObservation(obs);
     const text = renderObservation(safeObs);
+    obsTexts.set(obs.observationId, text);
+    obsMeta.set(obs.observationId, { pageId: obs.pageId, revision: obs.revision });
+    obsRecords.set(obs.observationId, safeObs);
     obsTexts.set(observationId, text);
     obsTexts.set(`${obs.pageId}@${obs.revision}`, text);
     obsTexts.set(obs.pageId, text);
@@ -415,6 +419,30 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
               ...(pending.request.approvalId ? { approvalId: pending.request.approvalId } : {}),
             },
           };
+        throw error;
+      }
+    },
+    pageSummary: async ({ pageId, focus }) => {
+      const summarize = self.deps.agentLoop?.summarizePage;
+      if (!summarize) throw new AuxError("capability_unsupported", "Page summaries are unavailable.");
+      const checkOwner = () => {
+        if (signal.aborted || self.controls.get(runId) !== c || c.paused)
+          throw new AuxError("cancelled", "The original summary run changed.");
+        self.deps.checkRunSource?.(runId);
+        self.pageSourceCheck(runId, pageId)();
+      };
+      checkOwner();
+      const observation = await observePage(pageId, {});
+      checkOwner();
+      recordObs(observation);
+      try {
+        const result = await summarize({ runId, observation: redactObservation(observation), focus, signal, checkOwner });
+        checkOwner();
+        return { output: result };
+      } catch (error) {
+        const pending = self.suspensions.pending(runId);
+        if (error instanceof AuxError && error.code === "needs_input" && pending)
+          return { park: { kind: pending.kind, instruction: pending.request.instruction ?? error.message, ...(pending.request.approvalId ? { approvalId: pending.request.approvalId } : {}) } };
         throw error;
       }
     },

@@ -1,3 +1,7 @@
+import { generatePageSummary } from "./page-summary.js";
+import type { PageDerivativeCache } from "./ai-result-cache.js";
+import type { PageSummaryResult } from "@aux/contracts/page-summary";
+import type { Observation } from "@aux/contracts";
 import { ConversationBranches } from "./conversation-branches.js";
 import { resourceFundingAccounting } from "./resource-accounting.js";
 import { ApprovalStore } from "../safety/approval.js";
@@ -1484,6 +1488,68 @@ export class RunService {
       };
       pending.add(release);
       return release;
+    });
+  }
+
+  summarizePage(input: {
+    runId: string;
+    observation: Observation;
+    focus?: string;
+    signal: AbortSignal;
+    checkOwner: () => void | Promise<void>;
+    authorize: (route: UtilityRoute) => Promise<void>;
+    cache?: PageDerivativeCache;
+  }): Promise<PageSummaryResult> {
+    const observation = structuredClone(input.observation);
+    const { runId, focus, signal: requestSignal, checkOwner: checkOriginal, authorize, cache: originalCache } = input;
+    return this.ownOperation(async () => {
+      const run = this.deps.repo.getRun(runId);
+      const token = run?.config?.nativeTurnContext;
+      if (!run || run.status !== "running" || !token)
+        throw new AuxError("permission_denied", "Page summaries require their original active run and window.");
+      const control = this.coordinator.controls.get(runId);
+      if (!control || control.paused || control.abort.signal.aborted)
+        throw new AuxError("cancelled", "The original summary execution retired.");
+      const signal = AbortSignal.any([requestSignal, control.abort.signal, ...(control.dispatchAbort ? [control.dispatchAbort.signal] : [])]);
+      const config = JSON.stringify(run.config);
+      const generation = this.deps.settings.modelCacheGeneration();
+      const policy = this.deps.settings.agentPolicy().agentPolicyRevision;
+      const original = observation;
+      const checkOwner = async () => {
+        if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
+        signal.throwIfAborted();
+        await checkOriginal();
+        signal.throwIfAborted();
+        const current = this.deps.repo.getRun(runId);
+        if (this.closed || this.coordinator.controls.get(runId) !== control || control.paused || !current || current.status !== "running" ||
+            JSON.stringify(current.config) !== config ||
+            this.deps.settings.modelCacheGeneration() !== generation ||
+            this.deps.settings.agentPolicy().agentPolicyRevision !== policy)
+          throw new AuxError("cancelled", "The original summary run, account or policy changed.");
+        this.checkSetSource(runId);
+        const page = this.deps.pages.get(original.pageId);
+        if (page.url !== original.content.url || page.title !== original.content.title || page.documentEpoch !== original.documentEpoch ||
+            page.viewStatus === "detached" || page.viewStatus === "crashed")
+          throw new AuxError("conflict", "The captured summary document changed.");
+      };
+      await checkOwner();
+      // The original native overload preserves local route preference and its real availability.
+      // No no-token retry or summary-specific native purpose is invented.
+      const route = await this.deps.settings.utilityModel(token, checkOwner);
+      await checkOwner();
+      if (!route) throw new AuxError("backend_unavailable", "No utility model is connected for this summary.");
+      const model = this.utilityClient({
+        runId: runId, route, signal, checkOwner,
+        authorize: async () => { await checkOwner(); await authorize(route); await checkOwner(); },
+      });
+      const page = this.deps.pages.get(original.pageId);
+      const cache = run.config?.privateTask || page.windowKind !== "normal" || page.ownedByRuntime ||
+        page.controller === "agent" || page.controller === "external" ? undefined : originalCache;
+      return generatePageSummary({
+        observation: original, focus, model, modelId: route.modelId,
+        routeIdentity: JSON.stringify([route.kind, route.modelId, route.kind === "network" ? route.destination : null, generation]),
+        checkOwner, cache,
+      });
     });
   }
 

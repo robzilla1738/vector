@@ -1,3 +1,4 @@
+import { PageSummaryParamsSchema, PageSummaryResultSchema } from "./page-summary.js";
 import { RemoteDebuggingStateSchema } from "./remote-debugging.js";
 import { SkillLibraryPreviewParams, SkillLibraryImportParams, SkillLibraryPreviewSchema } from "./skill-library.js";
 import { BrowserExportSourceSchema, BrowserExportFormatSchema, BrowserImportSelectionStatusSchema } from "./import.js";
@@ -1207,6 +1208,7 @@ export const MethodSchemas = {
   "agent.inlineAssist.draft": InlineAssistDraftParamsSchema,
   "agent.inlineAssist.apply": InlineAssistApplyParamsSchema,
   "agent.inlineAssist.cancel": InlineAssistCancelParamsSchema,
+  "agent.pageSummary": PageSummaryParamsSchema,
   "agent.web.fetch": AgentWebContextSchema.extend({ url: z.string().url().max(8192) }).strict(),
   "agent.web.search": AgentWebContextSchema.extend({ query: z.string().trim().min(1).max(500) }).strict(),
   "agent.images.generate": AgentWebContextSchema.extend({
@@ -1988,6 +1990,7 @@ export const ResultSchemas = {
   "agent.inlineAssist.draft": InlineAssistDraftSchema,
   "agent.inlineAssist.apply": InlineAssistApplySchema,
   "agent.inlineAssist.cancel": z.object({ cancelled: z.literal(true) }),
+  "agent.pageSummary": PageSummaryResultSchema,
   "agent.web.fetch": AgentWebPageSchema,
   "agent.web.search": AgentWebPageSchema,
   "agent.images.generate": z.object({
