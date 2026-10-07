@@ -628,6 +628,14 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     target: "Space memory",
   },
   {
+    category: "External agents",
+    label: "Aux command line",
+    description:
+      "Install the bundled aux launcher in ~/.local/bin. Existing commands owned by you stay unchanged.",
+    target: "Aux command line",
+    searchTerms: ["Developers", "CLI", "terminal", "aux open"],
+  },
+  {
     category: "Connections",
     label: "MCP servers",
     description: "",

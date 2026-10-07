@@ -230,6 +230,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   bootPhase("protection");
   const repo = new Repo(db, columnCipher);
   let closed = false;
+  let cliInstallTail = Promise.resolve();
+  const cliInstallWork = new Set<Promise<unknown>>();
   let stopNativeDeviceConfirmation: (() => void) | undefined;
   let stopRunEndHooks: (() => void) | undefined;
   type RuntimeServices = Services & {
@@ -613,6 +615,28 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     tasks: () => new TaskService(repo, events),
     cookies: () => new CookieService({ native }),
     agentConnections: () => new AgentConnectionService(repo),
+    installCli: () => (owner) => {
+      if (closed) return Promise.reject(new AuxError("cancelled", "CLI installation stopped."));
+      const work = cliInstallTail.then(async () => {
+        if (closed || !native?.turnSourceContext)
+          throw new AuxError("backend_unavailable", "Original CLI setup window is unavailable.");
+        const original = await native.turnSourceContext(owner);
+        if (closed) throw new AuxError("cancelled", "Original CLI setup window retired.");
+        const { installCli } = await import("./services/cli-install.js");
+        return installCli({
+          current: async () => {
+            if (closed) throw new AuxError("ref_stale", "Original CLI setup window retired.");
+            const current = await native.turnSourceContext!(owner);
+            if (closed || current.windowId !== original.windowId)
+              throw new AuxError("ref_stale", "Original CLI setup window changed or retired.");
+          },
+        });
+      });
+      cliInstallTail = work.then(() => undefined, () => undefined);
+      cliInstallWork.add(work);
+      void work.finally(() => cliInstallWork.delete(work)).catch(() => {});
+      return work;
+    },
     externalSessions: () => new ExternalSessionService(repo, events, runtimeServices.turnMentions),
     pageChangeWatches: () => new RoutineService(repo, events),
     browsingMemory: () => new BrowsingMemory(repo),
@@ -2037,6 +2061,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     retireAuthority: async () => {
       try {
         const results = await Promise.allSettled([
+          Promise.allSettled(cliInstallWork),
           (async () => {
             const failures: unknown[] = [];
             try {

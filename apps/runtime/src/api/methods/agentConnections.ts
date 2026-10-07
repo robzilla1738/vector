@@ -35,8 +35,17 @@ async function h_agentConnections_revoke(ctx: MethodCtx): Promise<unknown> {
   return revoked;
 }
 
+async function h_developer_cli_install(ctx: MethodCtx): Promise<unknown> {
+  if (ctx.client.external || ctx.client.codeMode || !ctx.client.nativeTurnContext)
+    throw new AuxError("permission_denied", "CLI installation requires its original Aux Settings window.");
+  if (!ctx.s.installCli)
+    throw new AuxError("backend_unavailable", "CLI installation is unavailable in this build.");
+  return ctx.s.installCli(ctx.client.nativeTurnContext);
+}
+
 export const agentConnectionsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "agentConnections.list": h_agentConnections_list,
   "agentConnections.create": h_agentConnections_create,
   "agentConnections.revoke": h_agentConnections_revoke,
+  "developer.cli.install": h_developer_cli_install,
 };

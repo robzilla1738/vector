@@ -79,6 +79,7 @@ export interface Services {
   events: EventBus;
   repo: Repo;
   agentConnections?: AgentConnectionService;
+  installCli?: (owner: string) => Promise<import("@aux/contracts").MethodResult<"developer.cli.install">>;
   /** S6.7 — scoped connections own first-class session runs. */
   externalSessions?: import("../../services/external-sessions.js").ExternalSessionService;
   mcpTransportProvider?: McpTransportProvider;

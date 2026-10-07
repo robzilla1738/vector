@@ -52,6 +52,7 @@ const UNMOCKED = [
   "bookmarks.offline.get",
   "bookmarks.offline.set",
   "bookmarks.readingList",
+  "developer.cli.install",
   "downloads.projectNative",
   "goals.cancel",
   "goals.create",

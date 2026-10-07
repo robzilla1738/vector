@@ -157,6 +157,7 @@ export const RuntimeMethodPolicy = {
   "agentConnections.list": { feature: "core", auth: "handler-guarded" },
   "agentConnections.create": { feature: "core", auth: "handler-guarded" },
   "agentConnections.revoke": { feature: "core", auth: "handler-guarded" },
+  "developer.cli.install": { feature: "core", auth: "aux-webui" },
   "mcp.servers.register": { feature: "core", auth: "standard" },
   "mcp.bundles.inspect": { feature: "core", auth: "standard" },
   "mcp.servers.list": { feature: "core", auth: "standard" },

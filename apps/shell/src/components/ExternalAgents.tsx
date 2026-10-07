@@ -1,3 +1,4 @@
+import { CliInstallControl } from "./CliInstallControl";
 import { staticFieldProps } from "../ui/class-props";
 import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
@@ -128,6 +129,7 @@ export function ExternalAgents() {
 
   return (
     <section className="field external-agents" aria-label="External agents">
+      <CliInstallControl />
       <div {...auxClassDrawerSectionProps}>External agents</div>
       <p>
         Connect Codex or Claude Code to one saved task or workspace through MCP. The client uses its own
