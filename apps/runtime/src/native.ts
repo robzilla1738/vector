@@ -243,6 +243,7 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
     recorderId: string;
   }): Promise<HostMethodResult<"native.recorderStop">>;
   createAgentPage?(input: AgentPageCreate): Promise<AgentPageCreated>;
+  adoptSessionPage?(input: z.infer<typeof HostMethods["native.adoptSessionPage"]["args"]>): Promise<HostMethodResult<"native.adoptSessionPage">>;
   creatorCleanupProof?(input: { pageId: string; creationId: string }): Promise<NativeCreatorCleanupProof>;
   closeCreatedPage?(input: { proof: NativeCreatorCleanupProof }): Promise<{ closed: true }>;
   egressRunTerminal?(input: { runId: string }): Promise<HostMethodResult<"native.egressRunTerminal">>;
@@ -483,6 +484,11 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   async createAgentPage(input: AgentPageCreate): Promise<AgentPageCreated> {
     return AgentPageCreatedSchema.parse(await this.channel.call("native.createAgentPage", input, 55_000));
+  }
+  async adoptSessionPage(input: z.infer<typeof HostMethods["native.adoptSessionPage"]["args"]>): Promise<HostMethodResult<"native.adoptSessionPage">> {
+    return HostMethods["native.adoptSessionPage"].result.parse(
+      await this.channel.call("native.adoptSessionPage", HostMethods["native.adoptSessionPage"].args.parse(input)),
+    );
   }
   async egressRunTerminal(input: { runId: string }): Promise<HostMethodResult<"native.egressRunTerminal">> {
     return HostMethods["native.egressRunTerminal"].result.parse(

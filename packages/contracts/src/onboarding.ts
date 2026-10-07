@@ -1,15 +1,10 @@
 import { z } from "zod";
 import { PageContextRefSchema } from "./entities.js";
 
-export const ONBOARDING_STEPS = [
-  "welcome",
-  "import",
-  "model",
-  "appearance",
-  "default",
-  "postcard",
-] as const;
-export const OnboardingStepSchema = z.enum(ONBOARDING_STEPS);
+/** The four setup screens. First chat and the default-browser offer are optional follow-ups. */
+export const ONBOARDING_STEPS = ["welcome", "import", "model", "appearance"] as const;
+export const ONBOARDING_STAGES = [...ONBOARDING_STEPS, "postcard", "default"] as const;
+export const OnboardingStepSchema = z.enum(ONBOARDING_STAGES);
 export const ONBOARDING_DISCLOSURE_VERSION = 1;
 export const DEFAULT_BROWSER_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 export const ONBOARDING_POSTCARDS = [
@@ -50,8 +45,8 @@ export const OnboardingStateSchema = z
     revision: z.number().int().nonnegative(),
     status: z.enum(["new", "active", "later", "complete"]),
     step: OnboardingStepSchema,
-    visited: z.array(OnboardingStepSchema).max(ONBOARDING_STEPS.length),
-    skipped: z.array(OnboardingStepSchema).max(ONBOARDING_STEPS.length),
+    visited: z.array(OnboardingStepSchema).max(ONBOARDING_STAGES.length),
+    skipped: z.array(OnboardingStepSchema).max(ONBOARDING_STAGES.length),
     disclosureVersion: z.number().int().nonnegative(),
     defaultBrowserPromptedAt: z.number().int().nonnegative().optional(),
     firstTask: OnboardingFirstTaskSchema.optional(),

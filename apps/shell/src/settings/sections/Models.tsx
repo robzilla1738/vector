@@ -557,7 +557,7 @@ export function ModelsSettings({
         return false;
       }
     })();
-  const connectionReady = connected && (hasKey || localCompatible);
+  const connectionReady = connected && (hasKey || localCompatible || (settings.modelAuthentication === "vercel" && settings.modelConfigured === true));
 
   return (
     <SettingsSection name="Models" title="AI model" hidden={!active}>
@@ -680,6 +680,8 @@ export function ModelsSettings({
                   ? "Using a process environment key. Change it in your launch environment."
                   : hasKey
                     ? "Key saved with OS encryption."
+                    : settings.modelAuthentication === "vercel"
+                      ? "Your Vercel team account is selected. Saving an AI Gateway key switches this route to that key."
                     : localCompatible
                       ? "Optional for localhost. Add a key only if your local server requires one."
                       : "No key configured. Saved keys require OS encryption."),

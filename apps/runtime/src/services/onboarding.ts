@@ -4,7 +4,7 @@ import {
   DEFAULT_BROWSER_COOLDOWN_MS,
   ONBOARDING_DISCLOSURE_VERSION,
   ONBOARDING_POSTCARDS,
-  ONBOARDING_STEPS,
+  ONBOARDING_STAGES,
   OnboardingStateSchema,
   type OnboardingState,
   type OnboardingStart,
@@ -15,6 +15,12 @@ import {
 import type { Repo } from "../store/repo.js";
 
 const KEY = "onboarding.state.v1";
+/** Trusted per-call native source; never renderer parameters or cached window authority. */
+export interface OnboardingRunSource {
+  nativeTurnContext: string;
+  windowId: string;
+  current(): Promise<void>;
+}
 interface Dependencies {
   repo: Repo;
   configured(): boolean;
@@ -27,6 +33,8 @@ interface Dependencies {
     pageIds: string[];
     contextPageRefs: OnboardingStart["page"][];
     maxModelCalls: number;
+    nativeTurnContext: string;
+    privateTask: true;
   }): Promise<Run>;
   now?: () => number;
 }
@@ -34,6 +42,7 @@ interface Dependencies {
 /** Profile-owned progress. Reads/replay never import, navigate or call a model. */
 export class OnboardingService {
   private inFlight: Promise<{ state: OnboardingState; run: Run | null }> | null = null;
+  private inFlightWindowId: string | null = null;
   constructor(private deps: Dependencies) {}
   private read(): OnboardingState {
     const raw = this.deps.repo.getSetting<unknown>(KEY);
@@ -66,7 +75,12 @@ export class OnboardingService {
     if (!first || this.inFlight) return state;
     const run = this.deps.repo.getRun(first.runId);
     if (run && first.status !== "started")
-      return this.save({ ...state, status: "complete", firstTask: { ...first, status: "started" } });
+      return this.save({
+        ...state,
+        status: "active",
+        step: "default",
+        firstTask: { ...first, status: "started" },
+      });
     if (!run && first.status === "pending" && !this.inFlight)
       return this.save({ ...state, firstTask: { ...first, status: "interrupted" } });
     if (!run && first.status === "started")
@@ -92,12 +106,12 @@ export class OnboardingService {
           visited: [...new Set([...state.visited, input.step])],
         });
       case "skip": {
-        const index = ONBOARDING_STEPS.indexOf(state.step);
+        const index = ONBOARDING_STAGES.indexOf(state.step);
         return this.save({
           ...state,
           skipped: [...new Set([...state.skipped, state.step])],
-          step: ONBOARDING_STEPS[Math.min(index + 1, ONBOARDING_STEPS.length - 1)]!,
-          status: index === ONBOARDING_STEPS.length - 1 ? "complete" : "active",
+          step: ONBOARDING_STAGES[Math.min(index + 1, ONBOARDING_STAGES.length - 1)]!,
+          status: index === ONBOARDING_STAGES.length - 1 ? "complete" : "active",
         });
       }
       case "later":
@@ -150,7 +164,8 @@ export class OnboardingService {
     return page;
   }
 
-  async start(input: OnboardingStart): Promise<{ state: OnboardingState; run: Run | null }> {
+  async start(input: OnboardingStart, source: OnboardingRunSource): Promise<{ state: OnboardingState; run: Run | null }> {
+    await source.current();
     // Stable server-minted delivery identity survives lost responses and runtime restarts.
     const state = this.read();
     if (state.firstTask && state.firstTask.postcardId !== input.postcardId)
@@ -158,7 +173,11 @@ export class OnboardingService {
         "conflict",
         "Setup already has a first chat. Open it or start a different chat outside setup.",
       );
-    if (this.inFlight) return this.inFlight;
+    if (this.inFlight) {
+      if (this.inFlightWindowId !== source.windowId)
+        throw new AuxError("conflict", "The first chat is starting in its original Aux window.");
+      return this.inFlight;
+    }
     if (state.firstTask) {
       const run = this.deps.repo.getRun(state.firstTask.runId);
       if (run) return { state: this.get(), run };
@@ -187,10 +206,12 @@ export class OnboardingService {
     };
     const pending = this.save({ ...state, firstTask: first });
     // Defer dispatch until inFlight is installed, including for synchronously throwing adapters.
+    this.inFlightWindowId = source.windowId;
     this.inFlight = Promise.resolve()
       .then(async () => {
         let identityMismatch = false;
         try {
+          await source.current();
           // Admission may have changed while the durable receipt was being reserved.
           this.reviewedPage(input.page);
           if (!this.deps.configured())
@@ -205,6 +226,8 @@ export class OnboardingService {
             pageIds: [page.pageId],
             contextPageRefs: [input.page],
             maxModelCalls: this.deps.maxModelCalls?.() ?? 0,
+            nativeTurnContext: source.nativeTurnContext,
+            privateTask: true,
           });
           if (run.runId !== first.runId) {
             identityMismatch = true;
@@ -214,7 +237,12 @@ export class OnboardingService {
             );
           }
           return {
-            state: this.save({ ...pending, status: "complete", firstTask: { ...first, status: "started" } }),
+            state: this.save({
+              ...pending,
+              status: "active",
+              step: "default",
+              firstTask: { ...first, status: "started" },
+            }),
             run,
           };
         } catch (error) {
@@ -223,7 +251,8 @@ export class OnboardingService {
             return {
               state: this.save({
                 ...pending,
-                status: "complete",
+                status: "active",
+                step: "default",
                 firstTask: { ...first, status: "started" },
               }),
               run,
@@ -237,6 +266,7 @@ export class OnboardingService {
       })
       .finally(() => {
         this.inFlight = null;
+        this.inFlightWindowId = null;
       });
     return this.inFlight;
   }

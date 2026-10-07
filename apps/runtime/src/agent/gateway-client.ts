@@ -226,6 +226,8 @@ export class GatewayModelClient implements ModelClient {
   private gateway: ReturnType<typeof createGateway> | undefined;
   private sdkPromise: Promise<typeof import("ai")> | undefined;
   private readonly apiKey: string;
+  private readonly gatewayFetch?: typeof fetch;
+  private readonly teamIdOrSlug?: string;
   private readonly directModel: boolean;
   private resolveModel: (id: string) => LanguageModel;
   private readonly streamIdleTimeoutMs: number;
@@ -241,6 +243,8 @@ export class GatewayModelClient implements ModelClient {
   constructor(
     apiKey: string,
     opts: {
+      gatewayFetch?: typeof fetch;
+      teamIdOrSlug?: string;
       streamIdleTimeoutMs?: number;
       only?: string[];
       model?: (id: string) => LanguageModel;
@@ -252,6 +256,8 @@ export class GatewayModelClient implements ModelClient {
   ) {
     if (!apiKey) throw new AuxError("invalid_params", "AI_GATEWAY_API_KEY is required");
     this.apiKey = apiKey;
+    this.gatewayFetch = opts.gatewayFetch;
+    this.teamIdOrSlug = opts.teamIdOrSlug;
     this.directModel = !!opts.model;
     this.resolveModel = opts.model ?? ((id: string) => this.gateway!(id));
     this.streamIdleTimeoutMs =
@@ -273,7 +279,7 @@ export class GatewayModelClient implements ModelClient {
       this.directModel ? undefined : import("@ai-sdk/gateway"),
     ])
       .then(([sdk, gateway]) => {
-        if (gateway) this.gateway = gateway.createGateway({ apiKey: this.apiKey });
+        if (gateway) this.gateway = gateway.createGateway({ apiKey: this.apiKey, fetch: this.gatewayFetch, teamIdOrSlug: this.teamIdOrSlug });
         return sdk;
       })
       .catch((error) => {

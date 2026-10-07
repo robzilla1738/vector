@@ -7,9 +7,9 @@ import { PreferenceAction } from "./preference-command";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 
 export function ProviderSignIn({ onConnected }: { onConnected(): Promise<unknown> }) {
-  const [provider, setProvider] = useState<"openrouter" | "chatgpt">("openrouter");
+  const [provider, setProvider] = useState<"openrouter" | "chatgpt" | "vercel">("openrouter");
   const [accounts, setAccounts] = useState<
-    Array<{ accountId: string; email?: string; selected: boolean; connected: boolean }>
+    Array<{ provider: "chatgpt" | "vercel"; accountId: string; email?: string; selected: boolean; connected: boolean }>
   >([]);
   const [notice, setNotice] = useState("");
   const [phase, setPhase] = useState("idle");
@@ -66,7 +66,7 @@ export function ProviderSignIn({ onConnected }: { onConnected(): Promise<unknown
       if (id) void call("models.auth.cancel", { attemptId: id }).catch(() => {});
     };
   }, []);
-  const start = async (nextProvider: "openrouter" | "chatgpt" = "openrouter", accountId?: string) => {
+  const start = async (nextProvider: "openrouter" | "chatgpt" | "vercel" = "openrouter", accountId?: string) => {
     const owner = original.current;
     if (!owner || receipt.current || starting.current) return;
     starting.current = owner;
@@ -135,6 +135,12 @@ export function ProviderSignIn({ onConnected }: { onConnected(): Promise<unknown
           Cancel
         </PreferenceAction>
       )}
+      <p>Use AI Gateway through your Vercel team. Gateway credits and usage charges apply.
+        Aux needs its own Sign in with Vercel registration and AI Gateway Use permission (currently private beta).</p>
+      <PreferenceAction command="connect-vercel-account" scopeId="models-vercel-sign-in"
+        invoke={() => start("vercel")} disabled={pending} {...smallButtonProps}>
+        {pending && provider === "vercel" ? "Waiting for Vercel…" : "Sign in with Vercel"}
+      </PreferenceAction>
       <p>
         Use eligible models from your ChatGPT plan. Aux receives no ChatGPT conversations. Plan limits and
         optional credits apply; image generation stays on its separate configured provider.
@@ -164,18 +170,18 @@ export function ProviderSignIn({ onConnected }: { onConnected(): Promise<unknown
         disabled={pending}
         {...smallGhostButtonProps}
       >
-        Saved ChatGPT accounts
+        Saved provider accounts
       </PreferenceAction>
       {accounts.map((account) => (
         <div key={account.accountId}>
           <span>
-            {account.email ?? "ChatGPT account"}
+            {account.email ?? (account.provider === "vercel" ? "Vercel account" : "ChatGPT account")}
             {account.selected && account.connected ? " · selected" : ""}
           </span>
           <PreferenceAction
             command={`use-chatgpt-${account.accountId}`}
             scopeId="models-chatgpt-accounts"
-            invoke={() => start("chatgpt", account.accountId)}
+            invoke={() => start(account.provider, account.accountId)}
             disabled={pending}
             {...smallGhostButtonProps}
           >
@@ -193,8 +199,8 @@ export function ProviderSignIn({ onConnected }: { onConnected(): Promise<unknown
                   if (original.current !== owner) return;
                   setNotice(
                     result.revocationConfirmed
-                      ? "Signed out of ChatGPT."
-                      : "Signed out locally. Remote revocation was not confirmed; you can disconnect Aux in ChatGPT Settings.",
+                      ? `Signed out of ${account.provider === "vercel" ? "Vercel" : "ChatGPT"}.`
+                      : `Signed out locally. Remote revocation was not confirmed; disconnect Aux in ${account.provider === "vercel" ? "Vercel" : "ChatGPT"} Settings.`,
                   );
                   const saved = await call("models.auth.accounts", {});
                   if (original.current !== owner) return;

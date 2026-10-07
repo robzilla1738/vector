@@ -20,6 +20,7 @@ import { AgentEgressGuard, type EgressAuditEvidence, type ProtectedClass } from 
 
 interface RunIdentity {
   privateTask?: boolean;
+  nativeTurnContext?: string;
   taskId?: string;
   taskRevision: number;
   threadId: string;
@@ -263,7 +264,7 @@ export class BrowserEgress {
         "capability_unsupported",
         "This browser cannot enforce agent transmission authority.",
       );
-    const native = EgressContextSchema.parse(
+    let native = EgressContextSchema.parse(
       await egressContext.call(this.deps.native, {
         tabId: pageId,
         expectedUrl: page.url,
@@ -276,6 +277,25 @@ export class BrowserEgress {
         "permission_denied",
         "The person holds this native document. Return control explicitly before running the task.",
       );
+    if (!native.isolation && !run.privateTask) {
+      if (!run.nativeTurnContext)
+        throw new AuxError("permission_denied", "An original native window is required to admit this session tab.");
+      if (!this.deps.native.adoptSessionPage)
+        throw new AuxError("capability_unsupported", "This browser cannot admit the original session tab.");
+      const ancestry = this.deps.runAncestry(runId);
+      if (ancestry[0] !== runId || !ancestry.length || ancestry.length > 32 ||
+          new Set(ancestry).size !== ancestry.length || native.profileId !== this.deps.profileId ||
+          native.tabId !== pageId || native.sourceOrigin !== new URL(page.url).origin)
+        throw new AuxError("permission_denied", "The original session source changed before admission.");
+      native = EgressContextSchema.parse(await this.deps.native.adoptSessionPage({
+        profileId: this.deps.profileId, runId, taskId: run.taskId,
+        taskRevision: run.taskRevision, ancestry, token: run.nativeTurnContext,
+        source: { tabId: pageId, expectedUrl: page.url, documentToken: native.documentToken },
+      }));
+      if (this.blocked(runId) || (this.authorityVersions.get(pageId) ?? 0) !== authorityVersion ||
+          JSON.stringify(this.deps.runAncestry(runId)) !== JSON.stringify(ancestry))
+        throw new AuxError("ref_stale", "Original session admission was retired.");
+    }
     const isolation = native.isolation;
     if (
       !isolation ||
@@ -298,6 +318,7 @@ export class BrowserEgress {
       currentRun.taskId !== run.taskId ||
       currentRun.taskRevision !== run.taskRevision ||
       !!currentRun.privateTask !== !!run.privateTask ||
+      currentRun.nativeTurnContext !== run.nativeTurnContext ||
       after.url !== page.url ||
       after.documentEpoch !== page.documentEpoch ||
       after.controller === "human" ||

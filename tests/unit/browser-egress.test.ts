@@ -587,10 +587,13 @@ describe("native browser egress authority", () => {
   });
 });
 
-it("refuses an ordinary owner tab and a different run namespace before native install", async () => {
+it("refuses a tab without original window admission and a different run namespace before native install", async () => {
   const f = fixture();
   f.setIsolation();
-  await expect(f.service.acquire("run", "tab")).rejects.toThrow("original browser storage mode");
+  await expect(f.service.acquire("run", "tab")).rejects.toMatchObject({
+    code: "permission_denied",
+    message: "An original native window is required to admit this session tab.",
+  });
   expect(f.native.egressInstall).not.toHaveBeenCalled();
   f.setIsolation({
     isolationId: "other",

@@ -35,7 +35,8 @@ export default function Terminal({
       stopped = false;
     let offset = 0,
       sequence = 0,
-      inputQueue = Promise.resolve();
+      pendingInput = "";
+    let inputWork: Promise<void> | undefined;
     const terminal = new Xterm({
       cursorBlink: true,
       scrollback: 2000,
@@ -58,6 +59,8 @@ export default function Terminal({
       if (stopped) return Promise.resolve();
       if (closing) return closing;
       stopping = true;
+      pendingInput = "";
+      const originalInput = inputWork;
       if (timer) clearTimeout(timer);
       closing = (async () => {
         const owned = session ?? (await started.catch(() => undefined));
@@ -68,6 +71,7 @@ export default function Terminal({
           if (session === owned) session = undefined;
           if (current) onSession?.(undefined);
         }
+        await originalInput;
         stopped = true;
         if (current) setRunning(false);
       })().finally(() => {
@@ -108,23 +112,40 @@ export default function Terminal({
         if (current && !stopping && session === owned) fail(reason);
       }
     };
+    const flushInput = (owned: TerminalSession) => {
+      if (inputWork) return;
+      inputWork = Promise.resolve()
+        .then(async () => {
+          while (current && !stopping && session === owned && pendingInput) {
+            let end = Math.min(16384, pendingInput.length);
+            if (end < pendingInput.length && /[\uD800-\uDBFF]/.test(pendingInput[end - 1]!)) end--;
+            const chunk = pendingInput.slice(0, end);
+            pendingInput = pendingInput.slice(end);
+            const sentSequence = sequence;
+            const ack = await call("terminal.input", {
+              terminalId: owned.terminalId,
+              sequence: sentSequence,
+              data: chunk,
+            });
+            if (!current || stopping || session !== owned) return;
+            if (ack.nextSequence !== sentSequence + 1)
+              throw new Error("Terminal input acknowledgement changed.");
+            sequence = ack.nextSequence;
+          }
+        })
+        .catch(fail)
+        .finally(() => {
+          inputWork = undefined;
+          if (current && !stopping && session === owned && pendingInput) flushInput(owned);
+        });
+    };
     const input = terminal.onData((data) => {
       const owned = session;
       if (!current || stopping || !owned) return;
-      for (let index = 0; index < data.length;) {
-        let end = Math.min(index + 16384, data.length);
-        if (end < data.length && /[\uD800-\uDBFF]/.test(data[end - 1]!)) end--;
-        const chunk = data.slice(index, end);
-        index = end;
-        inputQueue = inputQueue.then(async () => {
-          if (!current || stopping || session !== owned) return;
-          const ack = await call("terminal.input", { terminalId: owned.terminalId, sequence, data: chunk });
-          if (!current || stopping || session !== owned) return;
-          if (ack.nextSequence !== sequence + 1) throw new Error("Terminal input acknowledgement changed.");
-          sequence = ack.nextSequence;
-        });
-      }
-      void inputQueue.catch(fail);
+      // One original write stays in flight. Later characters join its next
+      // bounded chunk in order, rather than creating one RPC per character.
+      pendingInput += data;
+      flushInput(owned);
     });
     const resize = new ResizeObserver(() => {
       if (!current || stopping || !container.current?.clientWidth || !container.current.clientHeight) return;

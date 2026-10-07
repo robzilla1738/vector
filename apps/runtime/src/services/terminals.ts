@@ -30,6 +30,7 @@ type Owned = {
   launched: boolean;
   previews: Map<string, TerminalPreview | undefined>;
   retiringPreviews: Set<string>;
+  previewClosures: Map<string, Promise<{ closed: boolean }>>;
 };
 function executable(client: TerminalStart["client"]): string {
   const roots = [
@@ -55,6 +56,7 @@ function executable(client: TerminalStart["client"]): string {
 export class TerminalService {
   private sessions = new Map<string, Owned>();
   private closed = false;
+  private previewReceipts = new Map<string, { terminalId: string; token: string }>();
   private work = new Set<Promise<unknown>>();
   constructor(
     private native: TerminalNative | undefined,
@@ -90,7 +92,7 @@ export class TerminalService {
             token: owned.token,
           });
           if (stopped.state !== "closed") throw new Error("Terminal termination is not acknowledged.");
-          this.sessions.delete(owned.session.terminalId);
+          this.acknowledgeTerminalClosure(owned);
         } catch (cleanupError) {
           throw new AggregateError(
             [error, cleanupError],
@@ -122,6 +124,7 @@ export class TerminalService {
       launched: false,
       previews: new Map<string, TerminalPreview | undefined>(),
       retiringPreviews: new Set<string>(),
+      previewClosures: new Map(),
     };
     this.sessions.set(session.terminalId, owned);
     try {
@@ -266,17 +269,33 @@ export class TerminalService {
       this.folders.scopeDigest(owned.session.workspaceId, owned.cwd) === owned.rootDigest
     );
   }
-  closePreview(terminalId: string, previewId: string, token: string) {
-    return this.track(this.closePreviewOriginal(terminalId, previewId, token));
+  private acknowledgeTerminalClosure(owned: Owned) {
+    for (const previewId of owned.previews.keys())
+      this.previewReceipts.set(previewId, { terminalId: owned.session.terminalId, token: owned.token });
+    this.sessions.delete(owned.session.terminalId);
   }
-  private async closePreviewOriginal(terminalId: string, previewId: string, token: string) {
+  closePreview(terminalId: string, previewId: string, token: string) {
+    const receipt = this.previewReceipts.get(previewId);
+    if (receipt && receipt.terminalId === terminalId && receipt.token === token)
+      return Promise.resolve({ closed: true });
     const owned = this.owner(terminalId, token);
+    const pending = owned.previewClosures.get(previewId);
+    if (pending) return pending;
+    const work = this.track(this.closePreviewOriginal(terminalId, previewId, token, owned));
+    owned.previewClosures.set(previewId, work);
+    void work.catch(() => {
+      if (owned.previewClosures.get(previewId) === work) owned.previewClosures.delete(previewId);
+    });
+    return work;
+  }
+  private async closePreviewOriginal(terminalId: string, previewId: string, token: string, owned: Owned) {
     if (!owned.previews.has(previewId) || !this.native?.terminalPreviewClose)
       throw new AuxError("permission_denied", "Original Project Preview is unavailable.");
-    // Remove request authority synchronously, retaining cleanup identity until ACK.
+    // Retain original reduction identity and shared cleanup work until real ACK.
     owned.retiringPreviews.add(previewId);
     const result = await this.native.terminalPreviewClose({ terminalId, previewId, token });
     if (!result.closed) throw new AuxError("backend_unavailable", "Preview cleanup is not acknowledged.");
+    this.previewReceipts.set(previewId, { terminalId, token });
     owned.previews.delete(previewId);
     owned.retiringPreviews.delete(previewId);
     return result;
@@ -290,7 +309,7 @@ export class TerminalService {
     owned.session = result;
     if (result.state !== "closed")
       throw new AuxError("backend_unavailable", "The terminal process has not acknowledged termination.");
-    this.sessions.delete(terminalId);
+    this.acknowledgeTerminalClosure(owned);
     return result;
   }
   async dispose() {
@@ -308,7 +327,7 @@ export class TerminalService {
         });
         if (stopped.state !== "closed")
           throw new AuxError("backend_unavailable", "Terminal termination is not acknowledged.");
-        this.sessions.delete(owned.session.terminalId);
+        this.acknowledgeTerminalClosure(owned);
       }),
     );
     await Promise.allSettled(this.work);

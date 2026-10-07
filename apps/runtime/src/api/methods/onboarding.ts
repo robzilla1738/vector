@@ -28,12 +28,29 @@ async function h_onboarding_update(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_onboarding_start(ctx: MethodCtx): Promise<unknown> {
   const service = onboarding(ctx);
+  const token = ctx.client.nativeTurnContext;
+  const native = ctx.s.native;
+  const turnSourceContext = native?.turnSourceContext;
+  if (ctx.client.external || ctx.client.codeMode || !token || !turnSourceContext)
+    throw new AuxError("permission_denied", "Start the first chat in its original Aux window.");
+  const original = await turnSourceContext.call(native, token);
+  const current = async () => {
+    const owner = await turnSourceContext.call(native, token);
+    if (owner.windowId !== original.windowId)
+      throw new AuxError("permission_denied", "The original setup window changed.");
+  };
+  await current();
   if ((await runtimeRestoreStatus(ctx.s.settings.all().dataDir)).pending)
     throw new AuxError(
       "conflict",
       "Recovery is staged. Quit Aux normally and reopen before starting the first chat.",
     );
-  return service.start(MethodSchemas["onboarding.start"].parse(ctx.params));
+  await current();
+  const result = await service.start(MethodSchemas["onboarding.start"].parse(ctx.params), {
+    nativeTurnContext: token, windowId: original.windowId, current,
+  });
+  await current();
+  return result;
 }
 export const onboardingMethods: Partial<Record<MethodName, MethodHandler>> = {
   "onboarding.get": h_onboarding_get,

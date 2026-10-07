@@ -195,7 +195,8 @@ it("moves the step heading without scrolling the rail or footer out of the card"
   expect(scroller?.contains(button("3"))).toBe(false);
   expect(focus.mock.calls.every(([options]) => options?.preventScroll === true)).toBe(true);
   focus.mockClear();
-  await act(async () => button("6").click());
+  await act(async () => button("4").click());
+  await act(async () => button("Finish setup").click());
   expect(document.querySelector("h1")?.textContent).toBe("Start with one useful question");
   const tools = document.querySelector('[aria-label="Tools for this question"]');
   expect(tools?.getAttribute("role")).toBe("group");
@@ -207,7 +208,7 @@ it("moves the step heading without scrolling the rail or footer out of the card"
 
 it("shows data use before mounting model setup and makes no model request on acknowledgment", async () => {
   await render({ ...initial("model"), disclosureVersion: 0 });
-  expect(document.body.textContent).toContain("Meta use prompts and completions");
+  expect(document.body.textContent).toContain("selected page context and attached material");
   expect(rpc).not.toHaveBeenCalledWith("models.list", expect.anything());
   await act(async () => button("I’ve reviewed model data use").click());
   expect(rpc).toHaveBeenCalledWith("onboarding.update", { revision: 0, action: "disclosure" });
@@ -232,7 +233,7 @@ it("requires explicit exact-page review and dispatches a double-click once into 
       finish = resolve;
     });
     return {
-      state: { ...current, status: "complete" },
+      state: { ...current, status: "active", step: "default" },
       run: { runId: "first-run", config: { chatId: "first-chat" } },
     };
   });
@@ -254,7 +255,9 @@ it("requires explicit exact-page review and dispatches a double-click once into 
   });
   await act(async () => finish());
   expect(openConversation).toHaveBeenCalledWith("first-run");
-  expect(close).toHaveBeenCalledOnce();
+  expect(close).not.toHaveBeenCalled();
+  expect(document.body.textContent).toContain("Open links in Aux");
+  expect(document.querySelector('[aria-label="Setup steps"]')).toBeNull();
 });
 
 it("clears the page review after navigation and refuses a postcard when recovery is staged", async () => {

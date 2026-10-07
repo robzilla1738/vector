@@ -26,10 +26,10 @@ async function h_models_auth_cancel(ctx: MethodCtx): Promise<unknown> {
   return ctx.s.settings.cancelProviderAuth(ctx.params.attemptId, authOwner(ctx));
 }
 async function h_models_auth_accounts(ctx: MethodCtx): Promise<unknown> {
-  return ctx.s.settings.savedChatgptAccounts(authOwner(ctx));
+  return ctx.s.settings.savedProviderAccounts(authOwner(ctx));
 }
 async function h_models_auth_disconnect(ctx: MethodCtx): Promise<unknown> {
-  return ctx.s.settings.disconnectChatgptAccount(ctx.params.accountId, authOwner(ctx));
+  return ctx.s.settings.disconnectProviderAccount(ctx.params.accountId, authOwner(ctx));
 }
 async function h_models_copilot_setup(ctx: MethodCtx): Promise<unknown> {
   return ctx.s.settings.copilotSetup(authOwner(ctx));

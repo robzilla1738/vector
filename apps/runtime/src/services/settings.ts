@@ -1,3 +1,6 @@
+import { VercelAuthService } from "./vercel-auth.js";
+import { VercelAccounts, VercelRegistrationSchema, type VercelRegistration } from "./vercel-account.js";
+import { vercelModelClient } from "../agent/vercel-model.js";
 import { copilotModelClient } from "../agent/copilot-model.js";
 import { ModelCapabilitySchema } from "@aux/contracts/model-registry";
 import type { CopilotServices } from "./copilot-services.js";
@@ -210,6 +213,9 @@ export class SettingsService {
           "Saved credential is unavailable. Re-enter this provider's key in Settings.";
       }
     }
+    if (this.repo.getSetting("vercelHostId")) {
+      try { await this.vercelAccounts(); } catch { this.vercelCredentialError = true; }
+    }
     if (this.repo.getSetting("chatgptHostId")) {
       try {
         await this.chatgptAccounts();
@@ -233,7 +239,7 @@ export class SettingsService {
     modelApiKey?: string;
     modelCredentialSource: string;
     modelCredentialError?: string;
-    modelAuthentication: "api-key" | "chatgpt" | "copilot";
+    modelAuthentication: "api-key" | "chatgpt" | "copilot" | "vercel";
     modelEndpoint: string;
     modelProbe?: ModelProbeRecord;
     agentModelRouteOverrides: Settings["agentModelRoutes"];
@@ -255,18 +261,18 @@ export class SettingsService {
         ? "copilot"
         : this.modelProvider() === "openai" && this.activeChatgptAccount()
           ? "chatgpt"
-          : "api-key",
+          : this.modelProvider() === "gateway" && this.activeVercelAccount() ? "vercel" : "api-key",
       modelConnections: this.connectionStatuses(),
       imageModel: this.imageModel(),
       compatibleEndpoint: this.compatibleEndpoint(),
-      modelApiKey: this.hasCopilotSelection()
+      modelApiKey: this.hasCopilotSelection() || (this.modelProvider() === "gateway" && !!this.activeVercelAccount())
         ? undefined
         : this.modelProvider() === "openai" && this.activeChatgptAccount()
           ? undefined
           : this.selectedKey()
             ? "••••••••"
             : undefined,
-      modelCredentialSource: this.hasCopilotSelection()
+      modelCredentialSource: this.hasCopilotSelection() || (this.modelProvider() === "gateway" && !!this.activeVercelAccount())
         ? "saved"
         : this.modelProvider() === "openai" && this.activeChatgptAccount()
           ? "saved"
@@ -281,7 +287,9 @@ export class SettingsService {
               : this.selectedKey()
                 ? "environment"
                 : "none",
-      modelCredentialError: this.hasCopilotSelection()
+      modelCredentialError: this.modelProvider() === "gateway" && this.activeVercelAccount() && this.vercelCredentialError
+        ? "Sign in with Vercel again to unlock this account."
+        : this.hasCopilotSelection()
         ? this.copilotSelection()
           ? undefined
           : "Choose a model after signing in to Copilot again."
@@ -306,7 +314,8 @@ export class SettingsService {
             (this.plannerModel() &&
               (this.selectedKey() ||
                 localCompatible ||
-                (this.modelProvider() === "openai" && this.chatgptConnected())) &&
+                (this.modelProvider() === "openai" && this.chatgptConnected()) ||
+                (this.modelProvider() === "gateway" && this.vercelConnected())) &&
               (this.modelProvider() !== "openai-compatible" || this.compatibleEndpoint()))
           ),
       plannerModel: this.plannerModel(),
@@ -499,6 +508,7 @@ export class SettingsService {
     }
     if (connectionChange && !check) this.providerAuthService?.invalidate();
     if (connectionChange && !check) this.chatgptAuthService?.invalidate();
+    if (connectionChange && !check) this.vercelAuthService?.invalidate();
     const selectedProvider = ModelProviderSchema.parse(next.modelProvider ?? this.modelProvider());
     // Validate before touching OS credentials; a rejected setting must not partially rotate a key.
     if (next.imageModel !== undefined) next.imageModel = ImageModelSchema.nullable().parse(next.imageModel);
@@ -539,7 +549,9 @@ export class SettingsService {
       }
       delete next.modelCredential;
       if (provider === "openai") this.repo.setSetting("chatgptActiveAccount", null);
+      if (provider === "gateway") this.repo.setSetting("vercelActiveAccount", null);
     }
+    if (next.gatewayApiKey !== undefined) this.repo.setSetting("vercelActiveAccount", null);
     if (next.agentModelRoutes !== undefined && selectedProvider !== "gateway") {
       const current = this.get("providerAgentModelRoutes") as
         Settings["providerAgentModelRoutes"] | undefined;
@@ -737,6 +749,193 @@ export class SettingsService {
       }));
   }
   private providerAuthService?: ProviderAuthService;
+  private vercelAuthService?: VercelAuthService;
+  private vercelAccountService?: VercelAccounts;
+  private vercelAccountPending?: Promise<VercelAccounts>;
+  private vercelCredentialError = false;
+  private vercelRegistration(): VercelRegistration {
+    const parsed = VercelRegistrationSchema.safeParse({
+      clientId: this.env.AUX_VERCEL_CLIENT_ID,
+      redirectUri: this.env.AUX_VERCEL_REDIRECT_URI,
+      teamId: this.env.AUX_VERCEL_TEAM_ID,
+    });
+    if (!parsed.success) throw new AuxError("needs_input",
+      "Sign in with Vercel requires Aux's registered public client, exact loopback callback, and team. The Vercel app also needs the AI Gateway Use permission, currently in private beta.");
+    return parsed.data;
+  }
+  private activeVercelAccount(): string | undefined {
+    const id = this.repo.getSetting("vercelActiveAccount");
+    if (id === undefined || id === null) return undefined;
+    return z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .parse(id);
+  }
+  private vercelConnected(): boolean {
+    const id = this.activeVercelAccount();
+    if (!id || !this.vercelAccountService || this.discoveryClosed) return false;
+    return this.vercelAccountService
+      .summaries()
+      .some((account) => account.accountId === id && account.selected && account.connected);
+  }
+  private vercelAccounts(): Promise<VercelAccounts> {
+    if (this.vercelAccountService) return Promise.resolve(this.vercelAccountService);
+    if (this.vercelAccountPending) return this.vercelAccountPending;
+    if (this.discoveryClosed || !this.native?.available())
+      return Promise.reject(
+        new AuxError("permission_denied", "Vercel requires protected desktop credential storage."),
+      );
+    const saved = this.repo.getSetting("vercelHostId"),
+      hostId = saved === undefined ? randomUUID() : z.string().uuid().parse(saved);
+    if (saved === undefined) this.repo.setSetting("vercelHostId", hostId);
+    const accounts = new VercelAccounts(this.native, hostId);
+    this.vercelAccountPending = accounts.initialize().then(async () => {
+      if (this.discoveryClosed) {
+        await accounts.close();
+        throw new AuxError("cancelled", "Settings are closed.");
+      }
+      this.vercelAccountService = accounts;
+      this.vercelCredentialError = false;
+      return accounts;
+    });
+    return this.vercelAccountPending;
+  }
+  private async vercelAuth() {
+    if (this.vercelAuthService) return this.vercelAuthService;
+    const accounts = await this.vercelAccounts();
+    if (this.discoveryClosed) throw new AuxError("cancelled", "Vercel sign-in is closed.");
+    return (this.vercelAuthService ??= new VercelAuthService({
+      accounts,
+      registration: () => this.vercelRegistration(),
+      generation: () => this.modelCacheGeneration(),
+      checkOwner: async (token, requester) => {
+        const original = this.authOwners.get(token);
+        if (this.discoveryClosed || !original || !this.native?.turnSourceContext)
+          throw new AuxError("cancelled", "The original sign-in window is unavailable.");
+        const current = await this.native.turnSourceContext(token);
+        if (
+          this.discoveryClosed ||
+          current.windowId !== original.windowId ||
+          current.activePageId !== original.activePageId
+        )
+          throw new AuxError("cancelled", "The original sign-in document changed.");
+        if (requester) {
+          const asking = await this.native.turnSourceContext(requester);
+          if (this.discoveryClosed || asking.windowId !== original.windowId)
+            throw new AuxError("permission_denied", "Return to the original sign-in window.");
+        }
+      },
+      activate: async (account, check) => {
+        await check();
+        const task = this.writes.then(async () => {
+          await check();
+          if (this.discoveryClosed || this.localModelsOnly())
+            throw new AuxError("cancelled", "Vercel account acceptance retired.");
+          if (
+            this.repo.db
+              .prepare(
+                "SELECT 1 FROM runs WHERE status IN ('queued','planning','running','paused','needs_input') LIMIT 1",
+              )
+              .get()
+          )
+            throw new Error("Stop active runs before changing model connections.");
+          const generation = randomUUID();
+          const next = {
+            modelProvider: "gateway" as const,
+            disabledModelProviders: ModelProviderSchema.array()
+              .parse(this.get("disabledModelProviders") ?? [])
+              .filter((provider) => provider !== "gateway"),
+            copilotInferenceSelection: null,
+            vercelActiveAccount: account.accountId,
+            modelCacheGeneration: generation,
+          };
+          const keys = [...Object.keys(next), "modelProbe"];
+          const previous = new Map(keys.map((key) => [key, this.repo.getSetting<unknown>(key)]));
+          const previousFileSettings = this.fileSettings;
+          const updateFile = () => {
+            try {
+              if (this.fileSettings.gatewayApiKey === undefined)
+                writeFileSync(this.settingsPath, JSON.stringify(this.fileSettings, null, 2));
+            } catch {
+              // The transactional Profile settings remain authoritative.
+            }
+          };
+          // No await separates the final original-owner check from this acceptance commit.
+          this.repo.transaction(() => {
+            for (const [key, value] of Object.entries(next)) this.repo.setSetting(key, value);
+            this.repo.deleteSetting("modelProbe");
+          });
+          this.connectionEpoch++;
+          this.catalogService?.invalidate();
+          this.mergedCatalog = MODEL_REGISTRY;
+          this.gatewayClient = null;
+          this.fileSettings = {
+            ...this.fileSettings,
+            modelProvider: next.modelProvider,
+            disabledModelProviders: next.disabledModelProviders,
+          };
+          updateFile();
+          return {
+            generation,
+            rollback: async () => {
+              const reduction = this.writes.then(() => {
+                if (
+                  this.modelCacheGeneration() !== generation ||
+                  this.repo.getSetting("vercelActiveAccount") !== account.accountId
+                )
+                  throw new AuxError(
+                    "conflict",
+                    "A later model selection prevents original Vercel rollback.",
+                  );
+                this.repo.transaction(() => {
+                  for (const [key, value] of previous) {
+                    if (value === undefined) this.repo.deleteSetting(key);
+                    else this.repo.setSetting(key, value);
+                  }
+                });
+                this.connectionEpoch++;
+                this.catalogService?.invalidate();
+                this.mergedCatalog = MODEL_REGISTRY;
+                this.gatewayClient = null;
+                // Preserve unrelated preferences accepted while the owner check was pending.
+                for (const key of ["modelProvider", "disabledModelProviders"] as const) {
+                  if (previousFileSettings[key] === undefined) delete this.fileSettings[key];
+                  else
+                    Object.assign(this.fileSettings, {
+                      [key]: previousFileSettings[key],
+                    });
+                }
+                updateFile();
+              });
+              this.writes = reduction.catch(() => {});
+              await reduction;
+            },
+          };
+        });
+        this.writes = task.catch(() => {});
+        return task;
+      },
+    }));
+  }
+  private async closeVercelAccounts(): Promise<void> {
+    const failures: unknown[] = [];
+    try {
+      await this.vercelAuthService?.close();
+    } catch (error) {
+      failures.push(error);
+    }
+    try {
+      await this.vercelAccountPending;
+    } catch (error) {
+      if (!(error instanceof AuxError && error.code === "cancelled")) failures.push(error);
+    }
+    try {
+      await this.vercelAccountService?.close();
+    } catch (error) {
+      failures.push(error);
+    }
+    if (failures.length) throw new AggregateError(failures, "Vercel account cleanup remains unresolved.");
+  }
   private chatgptAuthService?: ChatgptAuthService;
   private chatgptAccountService?: ChatgptAccounts;
   private chatgptAccountPending?: Promise<ChatgptAccounts>;
@@ -807,13 +1006,37 @@ export class SettingsService {
     });
     return this.chatgptAccountPending;
   }
-  async savedChatgptAccounts(token: string) {
+  async savedProviderAccounts(token: string) {
     await this.checkAuthRequester(token);
-    if (!this.repo.getSetting("chatgptHostId")) return [];
-    return (await this.chatgptAccounts()).summaries();
+    const chatgpt = this.repo.getSetting("chatgptHostId") ? (await this.chatgptAccounts()).summaries() : [];
+    const vercel = this.repo.getSetting("vercelHostId") ? (await this.vercelAccounts()).summaries() : [];
+    return [...chatgpt.map(account => ({...account, selected: !this.hasCopilotSelection() && this.modelProvider() === "openai" && this.activeChatgptAccount() === account.accountId, provider: "chatgpt" as const})),
+      ...vercel.map(account => ({...account, selected: !this.hasCopilotSelection() && this.modelProvider() === "gateway" && this.activeVercelAccount() === account.accountId, provider: "vercel" as const}))];
   }
-  async disconnectChatgptAccount(id: string, token: string) {
+  async disconnectProviderAccount(id: string, token: string) {
     await this.checkAuthRequester(token);
+    if (this.repo.getSetting("vercelHostId")) {
+      const vault = await this.vercelAccounts();
+      if (vault.summaries().some(account => account.accountId === id)) {
+        const reduction = this.writes.then(async () => {
+          await this.checkAuthRequester(token);
+          if (this.activeVercelAccount() === id) {
+            this.repo.transaction(() => {
+              this.repo.setSetting("vercelActiveAccount", null);
+              const disabled = ModelProviderSchema.array().parse(this.get("disabledModelProviders") ?? []);
+              this.repo.setSetting("disabledModelProviders", [...new Set([...disabled, "gateway"])]);
+              this.repo.setSetting("modelCacheGeneration", randomUUID());
+            });
+            this.gatewayClient = null;
+            this.connectionEpoch++;
+          }
+        });
+        this.writes = reduction.catch(() => {});
+        await reduction;
+        const revocationConfirmed = await vault.disconnect(id, () => this.checkAuthRequester(token));
+        return {disconnected: true as const, revocationConfirmed};
+      }
+    }
     const accounts = await this.chatgptAccounts();
     if (this.activeChatgptAccount() === id) {
       const disable = this.writes.then(async () => {
@@ -1290,7 +1513,7 @@ export class SettingsService {
   }
   async startProviderAuth(
     token: string,
-    provider: "openrouter" | "chatgpt" = "openrouter",
+    provider: "openrouter" | "chatgpt" | "vercel" = "openrouter",
     accountId?: string,
   ) {
     if (this.discoveryClosed || this.localModelsOnly() || !this.native?.turnSourceContext)
@@ -1307,6 +1530,13 @@ export class SettingsService {
       while (this.authOwners.size >= 32) this.authOwners.delete(this.authOwners.keys().next().value!);
       this.authOwners.set(token, { windowId: original.windowId, activePageId: original.activePageId });
     }
+    if (provider === "vercel") {
+      this.vercelRegistration();
+      this.providerAuthService?.invalidate();
+      this.chatgptAuthService?.invalidate();
+      return (await this.vercelAuth()).start(token, accountId);
+    }
+    this.vercelAuthService?.invalidate();
     if (provider === "chatgpt") {
       this.providerAuthService?.invalidate();
       return (await this.chatgptAuth()).start(token, accountId);
@@ -1315,11 +1545,13 @@ export class SettingsService {
     return this.auth().start(token);
   }
   providerAuthStatus(id: string, token: string) {
+    if (this.vercelAuthService?.has(id)) return this.vercelAuthService.status(id, token);
     return this.chatgptAuthService?.has(id)
       ? this.chatgptAuthService.status(id, token)
       : this.auth().status(id, token);
   }
   cancelProviderAuth(id: string, token: string) {
+    if (this.vercelAuthService?.has(id)) return this.vercelAuthService.cancel(id, token);
     return this.chatgptAuthService?.has(id)
       ? this.chatgptAuthService.cancel(id, token)
       : this.auth().cancel(id, token);
@@ -1343,6 +1575,7 @@ export class SettingsService {
     } catch (error) {
       failures.push(error);
     }
+    try { await this.closeVercelAccounts(); } catch (error) { failures.push(error); }
     await this.chatgptCatalogPending?.catch(() => {});
     try {
       await this.writes;
@@ -1483,6 +1716,18 @@ export class SettingsService {
     if (!this.connectionEnabled(this.modelProvider())) return null;
     if (this.modelOverride) return this.modelOverride;
     const provider = this.modelProvider();
+    const vercelId = provider === "gateway" ? this.activeVercelAccount() : undefined;
+    if (vercelId) {
+      if (this.vercelCredentialError || !this.vercelConnected()) return null;
+      const generation = this.modelCacheGeneration();
+      return vercelModelClient(() => this.vercelAccounts(), vercelId, () => this.registryModels(), () => {
+        this.assertModelGeneration(generation);
+        if (this.activeVercelAccount() !== vercelId) throw new AuxError("cancelled", "The Vercel account changed.");
+      }, async source => {
+        // Capture the calling run's actual native document, never the sign-in window.
+        await this.checkAuthRequester(source.nativeTurnContext);
+      });
+    }
     const chatgptId = provider === "openai" ? this.activeChatgptAccount() : undefined;
     if (chatgptId) {
       if (
@@ -1812,8 +2057,9 @@ export class SettingsService {
   }
   private connectionStatuses(): ModelConnectionStatus[] {
     return ModelProviderSchema.options.map((provider) => {
+      const vercel = provider === "gateway" && this.activeVercelAccount();
       const subscription = provider === "openai" && this.activeChatgptAccount();
-      const saved = subscription || (provider === "gateway" ? this.savedKey : this.directKeys[provider]);
+      const saved = vercel || subscription || (provider === "gateway" ? this.savedKey : this.directKeys[provider]);
       const environment =
         provider === "gateway" ? this.env.AI_GATEWAY_API_KEY : this.env[PROVIDER_ENV[provider]];
       return ModelConnectionStatusSchema.parse({
@@ -1821,7 +2067,7 @@ export class SettingsService {
         selected: provider === this.modelProvider(),
         enabled: this.connectionEnabled(provider),
         credentialSource: saved ? "saved" : environment ? "environment" : "none",
-        credentialUnavailable: !!(subscription
+        credentialUnavailable: !!(vercel ? this.vercelCredentialError : subscription
           ? this.chatgptCredentialError
           : provider === "gateway"
             ? this.credentialError

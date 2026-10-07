@@ -113,6 +113,7 @@ import {
   NativeCreatorCleanupParamsSchema,
   NativeCreatorCloseParamsSchema,
   AgentPageCreateSchema,
+  SessionPageAdoptSchema,
   AgentPageCreatedSchema,
   EgressContextRequestSchema,
   EgressContextSchema,
@@ -279,6 +280,7 @@ export const RuntimeHostMethods = {
   ),
   "native.closeCreatedPage": runtime("core", NativeCreatorCloseParamsSchema, NativeCreatorClosedSchema),
   "native.createAgentPage": runtime("core", AgentPageCreateSchema, AgentPageCreatedSchema),
+  "native.adoptSessionPage": runtime("core", SessionPageAdoptSchema, EgressContextSchema),
   "native.recorderStart": runtime(
     "demonstrationSkills",
     NativeRecorderStartSchema,

@@ -1715,14 +1715,14 @@ export const MethodSchemas = {
   "chrome.openLive": ChromeOpenLiveParams,
   "models.auth.start": z
     .object({
-      provider: z.enum(["openrouter", "chatgpt"]),
+      provider: z.enum(["openrouter", "chatgpt", "vercel"]),
       accountId: z
         .string()
         .regex(/^[a-f0-9]{64}$/)
         .optional(),
     })
     .strict()
-    .refine((value) => value.provider === "chatgpt" || value.accountId === undefined),
+    .refine((value) => value.provider !== "openrouter" || value.accountId === undefined),
   "models.auth.status": z.object({ attemptId: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict(),
   "models.auth.cancel": z.object({ attemptId: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict(),
   "models.auth.accounts": z.object({}).strict(),
@@ -2550,7 +2550,7 @@ export const ResultSchemas = {
   "models.auth.start": z
     .object({
       attemptId: z.string(),
-      provider: z.enum(["openrouter", "chatgpt"]),
+      provider: z.enum(["openrouter", "chatgpt", "vercel"]),
       phase: z.enum(["pending", "authenticating", "connected", "cancelled", "expired", "failed"]),
       expiresAt: z.number().int().nonnegative(),
       authorizationUrl: z.string().url(),
@@ -2559,7 +2559,7 @@ export const ResultSchemas = {
   "models.auth.status": z
     .object({
       attemptId: z.string(),
-      provider: z.enum(["openrouter", "chatgpt"]),
+      provider: z.enum(["openrouter", "chatgpt", "vercel"]),
       phase: z.enum(["pending", "authenticating", "connected", "cancelled", "expired", "failed"]),
       expiresAt: z.number().int().nonnegative(),
     })
@@ -2567,7 +2567,7 @@ export const ResultSchemas = {
   "models.auth.cancel": z
     .object({
       attemptId: z.string(),
-      provider: z.enum(["openrouter", "chatgpt"]),
+      provider: z.enum(["openrouter", "chatgpt", "vercel"]),
       phase: z.enum(["pending", "authenticating", "connected", "cancelled", "expired", "failed"]),
       expiresAt: z.number().int().nonnegative(),
     })
@@ -2576,6 +2576,7 @@ export const ResultSchemas = {
     .array(
       z
         .object({
+          provider: z.enum(["chatgpt", "vercel"]),
           accountId: z.string().regex(/^[a-f0-9]{64}$/),
           email: z.string().max(500).optional(),
           selected: z.boolean(),
@@ -2583,7 +2584,7 @@ export const ResultSchemas = {
         })
         .strict(),
     )
-    .max(16),
+    .max(32),
   "models.auth.disconnect": z
     .object({ disconnected: z.literal(true), revocationConfirmed: z.boolean() })
     .strict(),

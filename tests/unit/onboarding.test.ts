@@ -8,6 +8,7 @@ import {
   MethodSchemas,
   ONBOARDING_POSTCARDS,
   ONBOARDING_STEPS,
+  ONBOARDING_STAGES,
   type PageTarget,
   type Run,
 } from "@aux/contracts";
@@ -90,23 +91,39 @@ function fixture(path = ":memory:") {
 }
 const acknowledge = (service: OnboardingService) =>
   service.update({ revision: service.get().revision, action: "disclosure" });
+const source = { nativeTurnContext: "isolated-onboarding-owner", windowId: "isolated-setup-window", current: async () => {} };
 const begin = (service: OnboardingService) =>
-  service.start({ revision: service.get().revision, postcardId: "understand", page: ref });
+  service.start({ revision: service.get().revision, postcardId: "understand", page: ref }, source);
+
+it("offers four optional setup screens before the first-chat and default-browser follow-ups", () => {
+  const f = fixture();
+  expect(ONBOARDING_STEPS).toEqual(["welcome", "import", "model", "appearance"]);
+  for (const step of ONBOARDING_STEPS) {
+    expect(f.service.get().step).toBe(step);
+    f.service.update({ revision: f.service.get().revision, action: "skip" });
+  }
+  expect(f.service.get()).toMatchObject({ status: "active", step: "postcard" });
+  f.service.update({ revision: f.service.get().revision, action: "skip" });
+  expect(f.service.get()).toMatchObject({ status: "active", step: "default" });
+  f.service.update({ revision: f.service.get().revision, action: "skip" });
+  expect(f.service.get().status).toBe("complete");
+  expect(f.start).not.toHaveBeenCalled();
+});
 
 it("persists every skip/replay in the Profile without importing or starting a run", () => {
   const dir = mkdtempSync(join(tmpdir(), "aux-onboarding-"));
   cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
   const path = join(dir, "profile.sqlite"),
     f = fixture(path);
-  for (const step of ONBOARDING_STEPS) {
+  for (const step of ONBOARDING_STAGES) {
     expect(f.service.get().step).toBe(step);
     f.service.update({ revision: f.service.get().revision, action: "skip" });
   }
-  expect(f.service.get()).toMatchObject({ status: "complete", skipped: [...ONBOARDING_STEPS] });
+  expect(f.service.get()).toMatchObject({ status: "complete", skipped: [...ONBOARDING_STAGES] });
   const restart = new OnboardingService({ ...f.deps, repo: fixture(path).repo });
   expect(restart.get()).toEqual(f.service.get());
   const replay = restart.update({ revision: restart.get().revision, action: "replay" });
-  expect(replay).toMatchObject({ status: "active", step: "welcome", skipped: [...ONBOARDING_STEPS] });
+  expect(replay).toMatchObject({ status: "active", step: "welcome", skipped: [...ONBOARDING_STAGES] });
   expect(f.start).not.toHaveBeenCalled();
   expect(fixture().service.get()).toMatchObject({ revision: 0, status: "new", skipped: [] });
 });
@@ -146,7 +163,7 @@ it("requires disclosure, a configured model and the exact reviewed live page bef
         revision: isolated.get().revision,
         postcardId: "understand",
         page: { ...ref, url: bad },
-      }),
+      }, source),
     ).rejects.toThrow(/page changed/);
   }
 });
@@ -168,9 +185,21 @@ it.each([
 it("rechecks source admission after receipt reservation and reuses that identity on reviewed retry", async () => {
   const f = fixture();
   acknowledge(f.service);
-  const pending = begin(f.service);
-  const firstId = f.service.get().firstTask!.runId;
+  let reserved!: () => void, release!: () => void;
+  const reservation = new Promise<void>((resolve) => { reserved = resolve; });
+  const admission = new Promise<void>((resolve) => { release = resolve; });
+  let checks = 0;
+  const original = {
+    ...source,
+    current: async () => {
+      if (++checks === 2) { reserved(); await admission; }
+    },
+  };
+  const pending = f.service.start({ revision: f.service.get().revision, postcardId: "understand", page: ref }, original);
+  await reservation;
+  const firstId = f.repo.getSetting<{ firstTask: { runId: string } }>("onboarding.state.v1")!.firstTask.runId;
   f.setPage({ controller: "agent" });
+  release();
   await expect(pending).rejects.toThrow(/page changed or is unavailable/);
   expect(f.start).not.toHaveBeenCalled();
   expect(f.service.get().firstTask).toMatchObject({ runId: firstId, status: "failed" });
@@ -188,11 +217,14 @@ it("uses a durable server-owned delivery ID, honors the lower configured budget 
     throw new Error("response lost");
   });
   const input = { revision: f.service.get().revision, postcardId: "understand" as const, page: ref };
-  const [a, b] = await Promise.all([f.service.start(input), f.service.start(input)]);
+  const [a, b] = await Promise.all([f.service.start(input, source), f.service.start(input, source)]);
   expect(a.run?.runId).toBe(b.run?.runId);
+  expect(a.state).toMatchObject({ status: "active", step: "default" });
   expect(f.start).toHaveBeenCalledTimes(1);
   expect(f.start.mock.calls[0]?.[0]).toMatchObject({
     maxModelCalls: 2,
+    nativeTurnContext: source.nativeTurnContext,
+    privateTask: true,
     goal: ONBOARDING_POSTCARDS[0].prompt,
     contextPageRefs: [ref],
     deliveryRunId: a.state.firstTask?.runId,
@@ -228,7 +260,7 @@ it("never recreates a removed first chat or substitutes a different postcard", a
   acknowledge(f.service);
   const first = await begin(f.service);
   await expect(
-    f.service.start({ revision: f.service.get().revision, postcardId: "plan", page: ref }),
+    f.service.start({ revision: f.service.get().revision, postcardId: "plan", page: ref }, source),
   ).rejects.toThrow(/already has/);
   f.repo.deleteConversation(first.state.firstTask!.chatId);
   expect(f.service.get().firstTask?.status).toBe("unavailable");
@@ -287,7 +319,7 @@ it("checks staged recovery on the server even when the renderer's status is stal
   acknowledge(f.service);
   await expect(
     onboardingMethods["onboarding.start"]!({
-      client: { external: false },
+      client: { external: false, nativeTurnContext: "isolated-recovery-owner" },
       params: {
         revision: f.service.get().revision,
         postcardId: "understand",
@@ -295,6 +327,7 @@ it("checks staged recovery on the server even when the renderer's status is stal
       },
       s: {
         repo: f.repo,
+        native: { turnSourceContext: async () => ({ windowId: "isolated-recovery-window" }) },
         settings: { all: () => ({ dataDir: dir, modelConfigured: true }) },
         pages: { get: () => page },
         runs: { start: f.start },

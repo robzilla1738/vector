@@ -58,15 +58,17 @@ export function importReviewSummary(job: ImportJobStatus) {
         ),
       ),
     ],
-    status: !job.done
-      ? job.cancelled
-        ? "Stopping after the current batch"
-        : "Import still running"
-      : job.interrupted
-        ? "Import interrupted"
-        : partial
-          ? "Import needs review"
-          : "Import finished",
+    status: job.nativeOperations?.some((operation) => operation.state === "unknown")
+      ? "Import completion unknown"
+      : !job.done
+        ? job.cancelled
+          ? "Stopping after the current batch"
+          : "Import still running"
+        : job.interrupted
+          ? "Import interrupted"
+          : partial
+            ? "Import needs review"
+            : "Import finished",
     needsReview: partial,
   };
 }
@@ -232,9 +234,9 @@ export function SetupReview({
       <div>
         <h3>Keychain and recovery</h3>
         <p>
-          Browser-data import does not request your browser’s Keychain passwords. Aux may ask macOS to unlock
-          its own protected Profile or save a model key. Check the app and purpose in that system prompt;
-          cancelling is allowed.
+          Password or encrypted-tab import may ask macOS to unlock the source browser’s Safe Storage key. Aux
+          may also ask macOS to unlock its own protected Profile or save a model key. Check the app and
+          purpose in the system prompt; you can cancel it. Keys and password text stay in the native browser.
         </p>
         <p>
           A recovery package and its phrase are separate from Keychain. Recovery is reviewed, authenticated

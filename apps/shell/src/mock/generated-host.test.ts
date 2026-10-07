@@ -77,6 +77,7 @@ it("validates stub results against the live manifest schemas", async () => {
       "native.cdpStartNavigation",
       "native.cdpTakeNavigationReceipt",
       "native.cdpDispatch",
+      "native.adoptSessionPage",
       "native.egressContext",
       "native.egressInstall",
       "native.egressRevoke",

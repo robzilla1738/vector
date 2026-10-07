@@ -9,6 +9,7 @@ import {
   ONBOARDING_DISCLOSURE_VERSION,
   ONBOARDING_POSTCARDS,
   ONBOARDING_STEPS,
+  ONBOARDING_STAGES,
   type ConnectorCatalog,
   type OnboardingState,
   type OnboardingUpdate,
@@ -101,7 +102,8 @@ export function OnboardingFlow({
   const [pageUrl, setPageUrl] = useState("");
   const [showMemoryImport, setShowMemoryImport] = useState(false);
   const step = state.step,
-    index = ONBOARDING_STEPS.indexOf(step);
+    index = ONBOARDING_STAGES.indexOf(step);
+  const setupIndex = ONBOARDING_STEPS.findIndex((item) => item === step);
   const agentPolicy = useMemo(
     () =>
       AgentPolicySettingsSchema.parse({
@@ -254,17 +256,17 @@ export function OnboardingFlow({
       return false;
     }
   }
-  function reveal(run: Run) {
+  function reveal(run: Run, finish = true) {
     useStore.setState((current) => ({
       runs: current.runs.some((item) => item.runId === run.runId) ? current.runs : [run, ...current.runs],
     }));
     useStore.getState().openConversation(run.runId);
-    onClose();
+    if (finish) onClose();
   }
   const first = state.firstTask;
   return (
     <Dialog
-      label="Set up Aux"
+      label={setupIndex >= 0 ? "Set up Aux" : "Start with Aux"}
       onClose={later}
       className="aux-dialog-surface onboarding-dialog"
       initialFocusRef={heading}
@@ -287,30 +289,32 @@ export function OnboardingFlow({
       >
         <header>
           <span className="eyebrow">
-            AUX · SETUP {index + 1} OF {ONBOARDING_STEPS.length}
+            {setupIndex >= 0 ? `AUX · SETUP ${setupIndex + 1} OF ${ONBOARDING_STEPS.length}` : "AUX · READY"}
           </span>
           <button {...smallGhostButtonProps} disabled={busy} onClick={later}>
             Finish later
           </button>
         </header>
-        <nav aria-label="Setup steps">
-          {ONBOARDING_STEPS.map((item, position) => (
-            <button
-              key={item}
-              {...smallGhostButtonProps}
-              disabled={busy || !connected}
-              aria-current={step === item ? "step" : undefined}
-              aria-label={`${position + 1}. ${item}${state.skipped.includes(item) ? ", skipped" : ""}`}
-              onClick={() =>
-                void work(async () => {
-                  await update("visit", item);
-                })
-              }
-            >
-              {position + 1}
-            </button>
-          ))}
-        </nav>
+        {setupIndex >= 0 && (
+          <nav aria-label="Setup steps">
+            {ONBOARDING_STEPS.map((item, position) => (
+              <button
+                key={item}
+                {...smallGhostButtonProps}
+                disabled={busy || !connected}
+                aria-current={step === item ? "step" : undefined}
+                aria-label={`${position + 1}. ${item}${state.skipped.includes(item) ? ", skipped" : ""}`}
+                onClick={() =>
+                  void work(async () => {
+                    await update("visit", item);
+                  })
+                }
+              >
+                {position + 1}
+              </button>
+            ))}
+          </nav>
+        )}
         <div className="onboarding-scroll" ref={scroller}>
           <h1 ref={heading} tabIndex={-1}>
             {TITLES[step]}
@@ -701,7 +705,7 @@ export function OnboardingFlow({
                                   page: reviewedPage!,
                                 });
                                 setState(result.state);
-                                if (result.run) reveal(result.run);
+                                if (result.run) reveal(result.run, result.state.status === "complete");
                               })
                             }
                           >
@@ -773,7 +777,7 @@ export function OnboardingFlow({
               })
             }
           >
-            {step === "postcard" ? "Finish without a chat" : "Skip this step"}
+            {step === "postcard" ? "Skip the first chat" : step === "default" ? "Not now" : "Skip this step"}
           </button>
           {index > 0 && (
             <button
@@ -781,7 +785,7 @@ export function OnboardingFlow({
               disabled={busy || !connected}
               onClick={() =>
                 void work(async () => {
-                  await update("visit", ONBOARDING_STEPS[index - 1]);
+                  await update("visit", ONBOARDING_STAGES[index - 1]);
                 })
               }
             >
@@ -793,14 +797,14 @@ export function OnboardingFlow({
             disabled={busy || !connected || restorePending}
             onClick={() =>
               void work(async () => {
-                if (index === ONBOARDING_STEPS.length - 1) {
+                if (index === ONBOARDING_STAGES.length - 1) {
                   await update("finish");
                   onClose();
-                } else await update("visit", ONBOARDING_STEPS[index + 1]);
+                } else await update("visit", ONBOARDING_STAGES[index + 1]);
               })
             }
           >
-            {index === ONBOARDING_STEPS.length - 1 ? "Finish setup" : "Continue"}
+            {step === "appearance" ? "Finish setup" : step === "default" ? "Done" : "Continue"}
           </button>
         </footer>
       </div>

@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { ModelDataDisclosure } from "./ModelDataDisclosure";
 
-it("shows all provider, cost and training disclosures before acknowledgment, retaining them afterward", () => {
+it("shows all provider routing, cost and credential disclosures before acknowledgment, retaining them afterward", () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
@@ -16,7 +16,8 @@ it("shows all provider, cost and training disclosures before acknowledgment, ret
     "attached material",
     "Usage may cost money",
     "OS credential store",
-    "Meta use prompts and completions",
+    "Gateway routes requests to that provider",
+    "BYOK uses your chosen provider account",
   ];
   for (const text of required) expect(container.textContent).toContain(text);
   const disclosure = [...container.querySelectorAll("p")].map((node) => node.textContent);

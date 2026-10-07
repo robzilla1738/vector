@@ -8,8 +8,10 @@ One SDK tool loop executes runs and Set members. Original run families own desce
 
 ## Models and accounts
 
-The default gateway and saved direct/local routes use the real model catalog. Protected subscription accounts retain original Profile ownership, generation-bound settings activation and rollback. Sign-in services own their actual callback listeners and pending starts; retirement joins them and retains uncertain protected writes until cleanup is confirmed. ChatGPT has a dedicated subscription transport. Copilot currently supplies setup, protected accounts and catalog eligibility; inference requires its own accepted native producer.
+The default gateway and saved direct/local routes use the real model catalog. Protected subscription accounts retain original Profile ownership, generation-bound settings activation and rollback. Sign-in services own their actual callback listeners and pending starts; retirement joins them and retains uncertain protected writes until cleanup is confirmed. ChatGPT has a dedicated subscription transport. Copilot selects an advertised account model explicitly and resolves its endpoint through the dedicated original-owned SDK session. Inference uses the maintained AI SDK transport with the original run authority and truthful subscription usage. Aux-owned OAuth registration and live account acceptance remain pending.
 
 ## State and authority
 
 Typed site policies, original document/storage mode, durable effect receipts and protected credential boundaries remain authoritative. Private tasks retain their separate storage choice. Recovery rebinds protected state to the destination Profile and revokes live recovered account/grant authority. The roadmap and status documents distinguish implemented source from live provider, native and phase acceptance.
+
+Local Memory retains installed-model embedding work and encrypted store operations through original-source retirement. Semantic history ranks eligible current-Space native history metadata and discloses lexical fallback. Native import selection owns immutable selected exports and actual category receipts; reviewed skill imports create paused, task-unbound routines. External agent APIs bind their scopes to exact task revisions, and client setup writes only reviewed configurations.

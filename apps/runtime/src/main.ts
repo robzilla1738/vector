@@ -1283,7 +1283,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         actor: "builtin_agent",
         effect: "egress",
         category: "external_tool",
-        action: "agent.model.copilot",
+        action: "agent.model.account",
         origin: destination,
         destination,
         dataClasses: [],
@@ -1591,6 +1591,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         }
         return {
           privateTask: run.config?.privateTask ?? false,
+          nativeTurnContext: run.config?.nativeTurnContext,
           taskId: run.config?.taskId,
           taskRevision: run.config?.taskRevision ?? 0,
           threadId: run.config?.chatId ?? run.runId,

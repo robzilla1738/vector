@@ -100,7 +100,11 @@ it("shows confirmed import counts and authority explanations using only the exis
   expect(host.textContent).toContain("4 confirmed");
   expect(host.textContent).toContain("7 confirmed");
   expect(host.textContent).toContain("2 skipped");
-  expect(host.textContent).toContain("does not request your browser’s Keychain passwords");
+  expect(host.textContent).toContain(
+    "Password or encrypted-tab import may ask macOS to unlock the source browser’s Safe Storage key",
+  );
+  expect(host.textContent).toContain("you can cancel it");
+  expect(host.textContent).toContain("Keys and password text stay in the native browser");
   expect(host.textContent).toContain("copies outside Aux cannot be revoked after Forget");
   expect(host.textContent).not.toContain("never-render-this-secret");
   await act(async () => button("Review browser import").click());
@@ -185,5 +189,63 @@ it("keeps recovery unavailability explicit and reconnects without automatic impo
   await render({ connected: true, recovery: "unavailable" });
   await act(async () => button("Check recovery readiness").click());
   expect(recovery).toHaveBeenCalledOnce();
+  expect(rpc.mock.calls).toEqual([["import.status", {}]]);
+});
+
+it("shows native password and extension counts while unknown completion stays in review", async () => {
+  const receipt: ImportJobStatus = {
+    ...job(),
+    done: false,
+    interrupted: true,
+    selections: [
+      {
+        sourceId: "chrome",
+        profileId: "Fixture",
+        categories: ["passwords", "extensions"],
+        extensionReview: {
+          reviewId: "10000000-0000-4000-8000-000000000001",
+          choices: [
+            { candidateId: "10000000-0000-4000-8000-000000000002", chromeWebStoreId: "a".repeat(32) },
+            { candidateId: "10000000-0000-4000-8000-000000000003", chromeWebStoreId: "b".repeat(32) },
+            { candidateId: "10000000-0000-4000-8000-000000000004", skip: true },
+          ],
+        },
+      },
+    ],
+    nativeOperations: [
+      {
+        operationId: "fixture-native-operation",
+        sourceId: "chrome",
+        profileId: "Fixture",
+        categories: ["passwords", "extensions"],
+        state: "unknown",
+      },
+    ],
+    progress: [
+      {
+        source: "chrome",
+        label: "Chrome",
+        profileId: "Fixture",
+        category: "passwords",
+        imported: 3,
+        skipped: 0,
+        state: "done",
+      },
+      {
+        source: "chrome",
+        label: "Chrome",
+        profileId: "Fixture",
+        category: "extensions",
+        imported: 2,
+        skipped: 1,
+        state: "error",
+      },
+    ],
+  };
+  rpc.mockResolvedValue(receipt);
+  await render();
+  expect(host.textContent).toContain("Passwords3 confirmed");
+  expect(host.textContent).toContain("Extensions2 confirmed");
+  expect(host.textContent).toContain("Import completion unknown");
   expect(rpc.mock.calls).toEqual([["import.status", {}]]);
 });

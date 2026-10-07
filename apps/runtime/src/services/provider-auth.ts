@@ -4,7 +4,7 @@ import { AuxError } from "@aux/contracts";
 
 export type ProviderAuthStatus = {
   attemptId: string;
-  provider: "openrouter" | "chatgpt";
+  provider: "openrouter" | "chatgpt" | "vercel";
   phase: "pending" | "authenticating" | "connected" | "cancelled" | "expired" | "failed";
   expiresAt: number;
 };

@@ -53,6 +53,16 @@ export const AgentPageCreateSchema = z
   })
   .strict();
 export type AgentPageCreate = z.infer<typeof AgentPageCreateSchema>;
+/** Borrow an existing Profile tab only through its original native window source. */
+export const SessionPageAdoptSchema = z.object({
+  profileId: id,
+  runId: id,
+  taskId: id.optional(),
+  taskRevision: z.number().int().nonnegative(),
+  ancestry: z.array(id).min(1).max(32),
+  token: id,
+  source: AgentPageSourceSchema,
+}).strict();
 export const AgentPageCreatedSchema = z
   .object({
     pageId: id,
