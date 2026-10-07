@@ -1,6 +1,8 @@
 # Aux architecture
 
-The pinned Node runtime requires complete matching ICU data for memory tokenization with `Intl.Segmenter`. Small-ICU's trimmed break-iterator data causes the observed native crash during automatic recall. The integrated packaging correction uses the official pinned ICU78 data, checks its digest before staging, and supplies a fixed app-bundle data path before Node initializes across runtime and packaged helper entrypoints. The isolated segmentation witness, required integrated source check and actual native runtime startup pass. Live first-task acceptance is blocked by the rejected configured Gateway credential.
+The pinned Node runtime requires complete matching ICU data for memory tokenization with `Intl.Segmenter`. Small-ICU's trimmed break-iterator data causes the observed native crash during automatic recall. The integrated packaging correction uses the official pinned ICU78 data, checks its digest before staging, and supplies a fixed app-bundle data path before Node initializes across runtime and packaged helper entrypoints. The isolated segmentation witness, required integrated source check and actual native runtime startup pass. Live first-task acceptance remains unverified and is deferred to the next roadmap round; the configured Gateway credential was rejected.
+
+The current AuxFast app is compiled and packaged through native area 0078, including the Project, Preview, import and maintained content-blocking adapters. Remaining native walkthroughs and phase acceptance are deferred to the next roadmap round.
 
 Aux uses Chromium as its only browser engine. Native browser controls and original Profile/document receipts provide the browser boundary. The local runtime exposes typed methods to the human renderer and structured agent interfaces; method capabilities describe available native implementations.
 

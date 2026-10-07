@@ -2,15 +2,18 @@
 
 Aux is a native Chromium browser with one shared execution runtime for its human interface, agent, CLI, SDK and MCP clients. It keeps browser sessions in the selected Profile and runtime state in that Profile’s Aux Runtime Data directory.
 
-Read the [roadmap](docs/ROADMAP.md) for the product direction, [status](docs/STATUS.md) for current implementation and validation, and [architecture](docs/architecture.md) for the native host design. Native build instructions are in [chromium/BUILDING.md](chromium/BUILDING.md).
+Read the [roadmap](docs/ROADMAP.md) for the product direction, [status](docs/STATUS.md) for current implementation and validation, and [architecture](docs/ARCHITECTURE.md) for the native host design. Native build instructions are in [chromium/BUILDING.md](chromium/BUILDING.md).
 
 ## Development
 
 ```bash
 pnpm install
 npm run check
+export AUX_CHROMIUM_SRC="$HOME/aux-chromium-product/chromium/src"
 node scripts/dev.mjs --temp-profile
 ```
+
+The completed current roadmap app is `~/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`, with its runtime packaged. See [native build instructions](chromium/BUILDING.md) for the distinction between that app and the incremental AuxDev workflow.
 
 The native launcher builds incrementally, stages the renderer and runtime, and opens Aux. Omit `--temp-profile` to use the persistent development Profile. `npm run dev` uses the same native launcher; `npm run dev:shell` opens the scripted renderer preview.
 

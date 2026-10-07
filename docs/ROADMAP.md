@@ -14,15 +14,17 @@
   - your extensions, memory, skills, routines, subagents, MCP and a real terminal.
 - **Unblocked development.** No CI, Actions, Dependabot, budget gates, evidence manifests or slot receipts. Typecheck, lint, fast tests, launch, look.
 
-## Context
+## Context (original audit, before v3 implementation)
 
 **Why this plan exists.** The owner asked for a full audit and a hand-off plan to make Aux the best AI browser. The plan must be fast, small, beautiful and frictionless, with no over-testing, CI or release work.
 
 **Sources**
 - The reference corpus is `~/AI Blueprints/01–07`: 01 Comet, 02 Muse, 03 ChatGPT/Codex, 04 Grok/Cursor, 05 Dia, **06 Aside** (the design to copy), 07 Arc.
-- The path the owner supplied, `~/aux-chromium-stock-measurement`, is the stock Chromium 154 checkout for the performance baseline. It has never been built.
+- The path the owner supplied, `~/aux-chromium-stock-measurement`, is the stock Chromium 154 checkout for the performance baseline. Its pinned StockFast build has now completed; comparative measurements remain deferred to the next round.
 
-**Audit findings: strong foundations, held back by gates and process**
+**Original audit findings: strong foundations, held back by gates and process**
+
+The table records the starting point. Current implementation and build evidence are in [STATUS.md](STATUS.md); the remaining validation targets are preserved below.
 
 | Area | Today |
 |---|---|
