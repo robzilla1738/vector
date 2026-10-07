@@ -1,4 +1,5 @@
 import { CliInstallControl } from "./CliInstallControl";
+import { RemoteDebugging } from "./RemoteDebugging";
 import { staticFieldProps } from "../ui/class-props";
 import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
@@ -161,6 +162,7 @@ export function ExternalAgents() {
   return (
     <section className="field external-agents" aria-label="External agents">
       <div {...auxClassDrawerSectionProps}>Developers</div>
+      <RemoteDebugging />
       <CliInstallControl />
       <div {...auxClassDrawerSectionProps}>External agents</div>
       <p>

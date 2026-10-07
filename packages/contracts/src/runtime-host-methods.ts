@@ -1,3 +1,4 @@
+import { RemoteDebuggingStateSchema } from "./remote-debugging.js";
 import {
   BrowserExportSourceSchema,
   BrowserExportFormatSchema,
@@ -186,6 +187,16 @@ export const RuntimeHostMethods = {
   "native.copilotStart": runtime("core", NativeCopilotStartParams, NativeCopilotStartSchema),
   "native.copilotEndpoint": runtime("core", NativeCopilotEndpointParams, NativeCopilotEndpointSchema),
   "native.copilotStop": runtime("core", NativeCopilotStopParams, NativeCopilotStoppedSchema),
+  "native.remoteDebuggingGet": runtime(
+    "core",
+    z.object({ token: z.string().uuid() }).strict(),
+    RemoteDebuggingStateSchema,
+  ),
+  "native.remoteDebuggingSet": runtime(
+    "core",
+    z.object({ token: z.string().uuid(), enabled: z.boolean() }).strict(),
+    RemoteDebuggingStateSchema,
+  ),
   "native.contentBlockState": runtime(
     "contentBlocking",
     z.object({ profileId: z.string().min(1).max(128) }).strict(),

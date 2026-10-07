@@ -70,3 +70,6 @@ aux/0070-native-session-page-adoption.patch
 aux/0071-native-runtime-icu-data.patch
 aux/0072-native-boost-proposal-ingress.patch
 aux/0073-native-human-session-presentation.patch
+aux/0074-native-cosmetic-document-broker.patch
+aux/0075-native-task-completion-attention.patch
+aux/0076-native-conversation-branch-ingress.patch

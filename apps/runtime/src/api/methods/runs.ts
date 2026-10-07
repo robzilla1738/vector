@@ -6,6 +6,33 @@ import { summarizeModelUsage } from "../../services/model-usage.js";
 import { projectRunTranscript } from "../../services/run-transcript.js";
 import { assertRunAnswerable, currentRunSuspension } from "../../services/run-suspension.js";
 
+async function branchOwner(ctx: MethodCtx) {
+  const token = ctx.client.nativeTurnContext, native = ctx.s.native;
+  const read = native?.turnSourceContext;
+  if (ctx.client.external || ctx.client.codeMode || !token || !read)
+    throw new AuxError("permission_denied", "Branch history from the original Aux window.");
+  const original = await read.call(native, token);
+  const current = async () => {
+    const owner = await read.call(native, token);
+    if (owner.windowId !== original.windowId)
+      throw new AuxError("permission_denied", "The original conversation window changed.");
+  };
+  return { windowId: original.windowId, current };
+}
+async function h_runs_branch(ctx: MethodCtx): Promise<unknown> {
+  const input = MethodSchemas["runs.branch"].parse(ctx.params);
+  const owner = await branchOwner(ctx);
+  return ctx.s.runs.branch(input.runId, input.mode, owner.windowId, owner.current);
+}
+
+async function h_runs_branch_list(ctx: MethodCtx): Promise<unknown> {
+  const owner = await branchOwner(ctx);
+  await owner.current();
+  const drafts = ctx.s.runs.branches.list();
+  await owner.current();
+  return drafts;
+}
+
 async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
   if (
     ctx.params.executionTarget === "cloud" &&
@@ -50,9 +77,19 @@ async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
       externalParentRunId: ctx.externalRunId,
     });
   }
+  const branch = params.chatId ? s.runs.branches.get(params.chatId) : undefined;
+  const owner = branch ? await branchOwner(ctx) : undefined;
+  const branchOriginal = owner ? async () => {
+    await owner.current();
+    const selectedPages = params.pageIds ?? (params.pageId ? [params.pageId] : []);
+    for (const pageId of selectedPages)
+      if (s.pages.get(pageId).windowId !== owner.windowId)
+        throw new AuxError("permission_denied", "Select tabs from this Aux window, or remove their context, before sending the draft.");
+  } : undefined;
   return s.runs.start({
     ...MethodSchemas["runs.start"].parse(params),
     nativeTurnContext: client.nativeTurnContext,
+    branchOriginal,
   });
 }
 async function h_runs_retry(ctx: MethodCtx): Promise<unknown> {
@@ -235,6 +272,8 @@ async function h_runs_events(ctx: MethodCtx): Promise<unknown> {
 export const runsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "runs.start": h_runs_start,
   "runs.retry": h_runs_retry,
+  "runs.branch": h_runs_branch,
+  "runs.branch.list": h_runs_branch_list,
   "runs.get": h_runs_get,
   "runs.list": h_runs_list,
   "runs.context.get": h_runs_context_get,

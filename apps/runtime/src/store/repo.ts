@@ -891,6 +891,13 @@ export class Repo {
       .sort((a, b) => b.updatedAt - a.updatedAt || b.chatId.localeCompare(a.chatId));
   }
 
+  /** Create an editable conversation without inventing an executed turn. */
+  createConversationDraft(chatId: string, title: string, privateTask: boolean): void {
+    const now = Date.now();
+    this.q("INSERT INTO conversations(chat_id,title,archived,private_task,created_at,updated_at) VALUES(?,?,0,?,?,?)")
+      .run(chatId, this.protectField("conversations", chatId, "title", title), privateTask ? 1 : 0, now, now);
+  }
+
   getConversation(chatId: string): ConversationSummary | undefined {
     return this.listConversationById(chatId);
   }
@@ -1003,9 +1010,11 @@ export class Repo {
         "conversationAttachments",
         "conversationArtifacts",
         "conversationWorkspace",
+        "conversationBranch",
       ])
         this.q("DELETE FROM kv WHERE key=?").run(`setting:${key}:${chatId}`);
       withSecureDelete(this.db, () => {
+        this.q("DELETE FROM run_transcript WHERE run_id=?").run(`conversation-branch:${chatId}`);
         this.q(`DELETE FROM run_transcript WHERE run_id IN (${owned})`).run(chatId);
         this.q(`DELETE FROM runs WHERE run_id IN (${owned})`).run(chatId);
         this.q("DELETE FROM conversations WHERE chat_id=?").run(chatId);

@@ -1,3 +1,5 @@
+import type { ResultSchemas } from "@aux/contracts";
+import type { z } from "zod";
 import {
   staticHintProps as auxReserveStaticHintProps,
   staticFieldErrorProps as auxReserveStaticFieldErrorProps,
@@ -27,6 +29,7 @@ export function ConversationDrafts({
   const drafts = useStore((state) => state.conversationDrafts);
   const [discarded, setDiscarded] = useState<{ id: string | null; text: string } | null>(null);
   const [prepared, setPrepared] = useState<PreparedConversation[]>([]);
+  const [branches, setBranches] = useState<z.infer<(typeof ResultSchemas)["runs.branch.list"]>>([]);
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,7 +56,7 @@ export function ConversationDrafts({
     };
     window.addEventListener("focus", update);
     const off = bridge.onEvent((event) => {
-      if (["conversation.context.changed", "conversation.deleted", "run.updated"].includes(event.type))
+      if (["conversation.context.changed", "conversation.changed", "conversation.deleted", "run.updated"].includes(event.type))
         update();
     });
     return () => {
@@ -65,6 +68,9 @@ export function ConversationDrafts({
   useEffect(() => {
     let live = true;
     setError("");
+    void call("runs.branch.list", {}).then((items) => {
+      if (live) setBranches(items);
+    }).catch(() => { /* Native original-window admission may be unavailable. */ });
     void call("conversations.prepared", {})
       .then((items) => {
         if (live) setPrepared(items);
@@ -79,6 +85,7 @@ export function ConversationDrafts({
   const entries = conversationDraftEntries(drafts, useStore.getState().runs, prepared).filter(
     (item) =>
       !exclude.includes(item.id ?? "") &&
+      !branches.some((branch) => branch.chatId === item.id) &&
       `${item.title} ${item.text}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
   );
   const shown = limit ? entries.slice(0, limit) : entries;
@@ -98,14 +105,15 @@ export function ConversationDrafts({
       setBusy(false);
     }
   };
-  if (!shown.length && !discarded && !error) return null;
+  const visibleBranches = branches.filter((item) => !exclude.includes(item.chatId) && (!query || (item.draftText || "Branched draft").toLocaleLowerCase().includes(query.toLocaleLowerCase()))).slice(0, limit);
+  if (!shown.length && !visibleBranches.length && !discarded && !error) return null;
   const setDraft = (id: string | null, text: string) =>
     id ? useStore.getState().setConversationDraft(id, text) : useStore.getState().setAgentDraft(text);
   return (
     <section className={`conversation-drafts${compact ? " compact-drafts" : ""}`} aria-label="Unsent drafts">
       <div className="drafts-heading">
         <h2>
-          Unsent drafts <span {...auxReserveStaticHintProps}>{entries.length}</span>
+          Unsent drafts <span {...auxReserveStaticHintProps}>{entries.length + visibleBranches.length}</span>
         </h2>
         <span {...auxReserveStaticHintProps}>Saved on this Mac</span>
       </div>
@@ -117,6 +125,23 @@ export function ConversationDrafts({
           </button>
         </p>
       )}
+      {visibleBranches.map((draft) => (
+        <div className="draft-row" key={draft.chatId}>
+          <button type="button" className="draft-open" disabled={!draft.available}
+            onClick={() => {
+              const state = useStore.getState();
+              if (!state.conversationDrafts[`chat:${draft.chatId}`]) state.setConversationDraft(draft.chatId, draft.draftText);
+              state.setConversationBrowserSources(draft.chatId, draft.contextPageRefs);
+              state.setConversationContext(draft.chatId, draft.contextPageRefs[0]?.pageId ?? "none");
+              state.openConversationDraft(draft.chatId);
+            }}>
+            <strong>{draft.available ? (draft.mode === "edit" ? "Edited draft" : "Branched draft") : "Draft source unavailable"}</strong>
+            <span>{draft.privateTask ? "Private · " : ""}History retained through the selected boundary</span>
+          </button>
+          <button {...auxReserveStaticSmallIconButtonProps} aria-label="Delete branched draft"
+            onClick={() => void call("conversations.delete", { chatId: draft.chatId }).then(() => setBranches((values) => values.filter((value) => value.chatId !== draft.chatId))).catch((reason) => setError(errorMessage(reason)))}>{shellIconTrash}</button>
+        </div>
+      ))}
       {shown.map((item) => (
         <div className="draft-row" key={item.key}>
           <button className="draft-open" onClick={() => useStore.getState().openConversationDraft(item.id)}>

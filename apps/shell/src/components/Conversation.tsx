@@ -76,6 +76,7 @@ import type {
   ConversationAttachment,
   ConversationArtifact,
   ConversationSource,
+  ConversationBranchMetadata,
   Run,
   RunMessage,
   Suspension,
@@ -599,10 +600,12 @@ export function Conversation({
   const [restoring, setRestoring] = useState<RecoveryOperation | null>(null);
   const metadataRequest = useRef(0);
   const [savedTitle, setSavedTitle] = useState("");
+  const [branchInfo, setBranchInfo] = useState<ConversationBranchMetadata | null>(null);
   useEffect(() => {
     let live = true;
     const version = ++metadataRequest.current;
     setSavedTitle("");
+    setBranchInfo(null);
     setArchived(false);
     if (id && id !== "history")
       void call("conversations.get", { chatId: id })
@@ -610,6 +613,17 @@ export function Conversation({
           if (live && version === metadataRequest.current) {
             setSavedTitle(value?.title ?? "");
             setArchived(value?.archived ?? false);
+            const branch = value && "kind" in value && value.kind === "branch-draft" ? value : null;
+            setBranchInfo(branch);
+            if (branch && id) {
+              const state = useStore.getState();
+              if (!Object.prototype.hasOwnProperty.call(state.conversationBrowserSources, browserSourcesKey(id))) {
+                state.setConversationBrowserSources(id, branch.contextPageRefs);
+                state.setConversationContext(id, branch.contextPageRefs[0]?.pageId ?? "none");
+              }
+              setModelChoices((choices) => choices[id] ? choices : ({ ...choices, [id]: { modelId: branch.modelId, reasoning: branch.reasoning } }));
+              setExecutionChoices((choices) => choices[id] ? choices : ({ ...choices, [id]: branch.executionTarget ?? "local" }));
+            }
           }
         })
         .catch(() => {});
@@ -1017,7 +1031,7 @@ export function Conversation({
     };
   }, [last?.runId, observations]);
   const live = !!last && isLive(last);
-  const boundTaskId = last?.config?.taskId ?? workspaceContext.taskId;
+  const boundTaskId = last?.config?.taskId ?? branchInfo?.taskId ?? workspaceContext.taskId;
   const taskBound = !!boundTaskId;
   useEffect(() => {
     let cancelled = false;
@@ -1530,6 +1544,32 @@ export function Conversation({
   const queueChange = useRef<QueueOperation | null>(null);
   const resendOf = useRef<string | null>(null);
   const [queueBusy, setQueueBusy] = useState<QueueOperation | null>(null);
+  type BranchOperation = { owner: typeof conversationCurrent };
+  const branchPending = useRef<BranchOperation | null>(null);
+  const [branching, setBranching] = useState<BranchOperation | null>(null);
+  const branchTurn = async (run: Run, mode: "branch" | "edit") => {
+    if (branchPending.current?.owner === conversationCurrent || !conversationCurrent() || run.status !== "completed") return;
+    const owner = conversationCurrent, attempt = { owner };
+    branchPending.current = attempt;
+    setBranching(attempt);
+    try {
+      const draft = await call("runs.branch", { runId: run.runId, mode });
+      if (!owner()) return;
+      const state = useStore.getState();
+      state.setConversationDraft(draft.chatId, draft.draftText);
+      setModelChoices((choices) => ({ ...choices, [draft.chatId]: { modelId: draft.modelId, reasoning: draft.reasoning } }));
+      setExecutionChoices((choices) => ({ ...choices, [draft.chatId]: draft.executionTarget ?? "local" }));
+      state.setConversationBrowserSources(draft.chatId, draft.contextPageRefs);
+      state.setConversationContext(draft.chatId, draft.contextPageRefs[0]?.pageId ?? "none");
+      state.openConversationDraft(draft.chatId);
+    } catch (error) {
+      if (owner()) errToast(error);
+    } finally {
+      if (branchPending.current === attempt) branchPending.current = null;
+      if (owner()) setBranching(null);
+    }
+  };
+
   const cancelQueued = (message: RunMessage, edit: boolean, current: () => boolean) => {
     if (!current() || queueChange.current?.owner === conversationCurrent || archived) return;
     const original = {
@@ -2173,6 +2213,13 @@ export function Conversation({
                   <p>Ask a question or give Aux a task in the browser.</p>
                 </div>
               )}
+              {branchInfo && !turns.length && (
+                <p role="status" className="hint">
+                  {branchInfo.privateTask ? "Private draft. " : ""}
+                  {branchInfo.mode === "edit" ? "History before the selected turn is retained. Edit the message, then send." : "History through the selected turn is retained. Write a new message to continue."}
+                  {!branchInfo.available && " The original source is unavailable; this draft cannot be sent."}
+                </p>
+              )}
               {turns.map((run) => (
                 <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}>
                   <time
@@ -2185,6 +2232,12 @@ export function Conversation({
                     })}
                   </time>
                   <div className="user-message">{run.goal}</div>
+                  {run.status === "completed" && !archived && !run.setId && !run.config?.subagentProfile && !run.config?.setMemberSource && (
+                    <div role="group" aria-label="Historical turn actions" className="conversation-turn-actions">
+                      <button type="button" disabled={!connected || branching?.owner === conversationCurrent} onClick={() => void branchTurn(run, "branch")}>Branch from here</button>
+                      <button type="button" disabled={!connected || branching?.owner === conversationCurrent} onClick={() => void branchTurn(run, "edit")}>Edit into new draft</button>
+                    </div>
+                  )}
                   {queuedMessages
                     .filter(
                       (message) =>

@@ -1,0 +1,71 @@
+diff --git a/chrome/renderer/aux_cosmetic_filter_agent.cc b/chrome/renderer/aux_cosmetic_filter_agent.cc
+index 05f2cf3..4144c3f 100644
+--- a/chrome/renderer/aux_cosmetic_filter_agent.cc
++++ b/chrome/renderer/aux_cosmetic_filter_agent.cc
+@@ -154,7 +154,15 @@ void AuxCosmeticFilterAgent::ApplyPrepared() {
+   if (run_scriptlets && !main_script.empty())
+     frame->ExecuteScript(Script("(()=>{const scriptletGlobals=" + *globals_json + ";\n" + main_script + "\n})();"));
+   if (!weak || !current_ || !Current(*current_)) return;
+-  render_frame()->GetBrowserInterfaceBroker().GetInterface(host_.BindNewPipeAndPassReceiver());
++  StartGenericLookup();
++}
++void AuxCosmeticFilterAgent::StartGenericLookup() {
++  if (in_bfcache_ || !current_ || !Current(*current_) ||
++      !broker_document_ || *broker_document_ != current_->document ||
++      host_.is_bound())
++    return;
++  render_frame()->GetBrowserInterfaceBroker().GetInterface(
++      host_.BindNewPipeAndPassReceiver());
+   generic_timer_.Start(FROM_HERE, base::Milliseconds(250), this,
+                        &AuxCosmeticFilterAgent::PollGenericTokens);
+ }
+@@ -220,14 +228,25 @@ void AuxCosmeticFilterAgent::Retire() {
+ }
+ void AuxCosmeticFilterAgent::WillCommitNewDocument(const blink::DocumentToken& document,
+     const base::UnguessableToken& navigation, const GURL& url) {
++  broker_document_.reset();
+   prepared_.reset();
+   if (prospective_ && prospective_->navigation == navigation && GURL(prospective_->url) == url)
+     prepared_ = Scope{document, prospective_->generation, prospective_->url, prospective_->json};
+   prospective_.reset();
+ }
+ void AuxCosmeticFilterAgent::DidCreateNewDocument() {
++  broker_document_.reset();
+   Retire(); scriptlet_document_.reset(); ApplyPrepared();
+ }
++void AuxCosmeticFilterAgent::DidCommitProvisionalLoad(ui::PageTransition) {
++  // RenderFrameImpl resets the broker AFTER DidCreateNewDocument, but BEFORE
++  // this callback. Requests on the preceding document pipe are discarded.
++  // Keep early cosmetics/scriptlets; request the host on its actual new pipe.
++  auto* frame = render_frame()->GetWebFrame();
++  if (!frame) return;
++  broker_document_ = frame->GetDocument().Token();
++  StartGenericLookup();
++}
+ void AuxCosmeticFilterAgent::DidSetPageLifecycleState(blink::BFCacheStateChange change) {
+   if (change == blink::BFCacheStateChange::kStoredToBFCache) {
+     semantic_document_.reset();
+diff --git a/chrome/renderer/aux_cosmetic_filter_agent.h b/chrome/renderer/aux_cosmetic_filter_agent.h
+index 7143805..a813686 100644
+--- a/chrome/renderer/aux_cosmetic_filter_agent.h
++++ b/chrome/renderer/aux_cosmetic_filter_agent.h
+@@ -28,9 +28,11 @@ class AuxCosmeticFilterAgent final : public content::RenderFrameObserver,
+   bool Current(const Scope& scope) const;
+   void ApplyPrepared();
+   void PollGenericTokens();
++  void StartGenericLookup();
+   void WillCommitNewDocument(const blink::DocumentToken& document,
+       const base::UnguessableToken& navigation, const GURL& url) override;
+   void DidCreateNewDocument() override;
++  void DidCommitProvisionalLoad(ui::PageTransition transition) override;
+   void DidSetPageLifecycleState(blink::BFCacheStateChange change) override;
+   void WillDetach(blink::DetachReason reason) override;
+   void OnDestruct() override;
+@@ -44,6 +46,7 @@ class AuxCosmeticFilterAgent final : public content::RenderFrameObserver,
+   mojo::AssociatedReceiverSet<mojom::AuxCosmeticAgent> receivers_;
+   mojo::Remote<mojom::AuxCosmeticHost> host_;
+   base::RepeatingTimer generic_timer_;
++  std::optional<blink::DocumentToken> broker_document_;
+   bool lookup_pending_ = false;
+   bool in_bfcache_ = false;
+   base::WeakPtrFactory<AuxCosmeticFilterAgent> weak_factory_{this};

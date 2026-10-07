@@ -1,3 +1,4 @@
+import { RemoteDebuggingStateSchema } from "./remote-debugging.js";
 import { SkillLibraryPreviewParams, SkillLibraryImportParams, SkillLibraryPreviewSchema } from "./skill-library.js";
 import { BrowserExportSourceSchema, BrowserExportFormatSchema, BrowserImportSelectionStatusSchema } from "./import.js";
 import {
@@ -641,6 +642,20 @@ export const ConversationContextEntrySchema = z.object({
   createdAt: z.number(),
   included: z.boolean(),
 });
+export const ConversationBranchDraftSchema = z.object({
+  chatId: id, sourceRunId: id, privateTask: z.boolean(), draftText: z.string(),
+  contextPageRefs: z.array(PageContextRefSchema),
+}).strict();
+
+export const ConversationBranchMetadataSchema = ConversationBranchDraftSchema.extend({
+  kind: z.literal("branch-draft"), title: z.string(), archived: z.literal(false),
+  mode: z.enum(["branch", "edit"]), available: z.boolean(),
+  taskId: id.optional(), taskRevision: z.number().int().positive().optional(),
+  modelId: z.string().optional(), reasoning: z.enum(["low", "medium", "high"]).optional(),
+  executionTarget: ExecutionTargetSchema.optional(),
+});
+export type ConversationBranchMetadata = z.infer<typeof ConversationBranchMetadataSchema>;
+
 export const ConversationContextSchema = z.object({
   chatId: id,
   historyEnabled: z.boolean(),
@@ -1613,6 +1628,8 @@ export const MethodSchemas = {
   "sets.results": SetsResultsParams,
   "runs.start": RunsStartParams,
   "runs.retry": RunsControlParams.extend({ pageId: id.optional() }),
+  "runs.branch": z.object({ runId: id, mode: z.enum(["branch", "edit"]) }).strict(),
+  "runs.branch.list": z.object({}).strict(),
   "runs.get": RunsGetParams,
   "runs.list": RunsListParams,
   "runs.context.get": RunsContextGetParams,
@@ -1767,6 +1784,8 @@ export const MethodSchemas = {
 
   "settings.get": SettingsGetParams,
   "settings.set": SettingsSetParams,
+  "settings.remoteDebugging.get": z.object({}).strict(),
+  "settings.remoteDebugging.set": z.object({ enabled: z.boolean() }).strict(),
   "settings.cloud.status": z.object({}).strict(),
   "settings.cloud.configure": CloudConfigureParamsSchema,
   "settings.cloud.clear": z.object({ expectedRevision: z.number().int().nonnegative() }).strict(),
@@ -2425,6 +2444,8 @@ export const ResultSchemas = {
   "sets.results": z.array(ResultRecordSchema),
   "runs.start": RunSchema,
   "runs.retry": RunSchema,
+  "runs.branch": ConversationBranchMetadataSchema,
+  "runs.branch.list": z.array(ConversationBranchMetadataSchema),
   "runs.get": z.object({
     run: RunSchema,
     steps: z.array(StepRecordSchema),
@@ -2438,7 +2459,7 @@ export const ResultSchemas = {
   "runs.context.set": ConversationContextSchema,
   "conversations.list": z.array(ConversationSummarySchema),
   "conversations.prepared": z.array(PreparedConversationSchema),
-  "conversations.get": ConversationSummarySchema.nullable(),
+  "conversations.get": z.union([ConversationSummarySchema, ConversationBranchMetadataSchema]).nullable(),
   "conversations.rename": ConversationSummarySchema,
   "conversations.archive": ConversationSummarySchema,
   "conversations.delete": z.object({ ok: z.literal(true), deletedRuns: z.number().int().nonnegative() }),
@@ -2617,6 +2638,8 @@ export const ResultSchemas = {
 
   "settings.get": z.record(z.string(), z.unknown()),
   "settings.set": z.object({ ok: z.boolean() }),
+  "settings.remoteDebugging.get": RemoteDebuggingStateSchema,
+  "settings.remoteDebugging.set": RemoteDebuggingStateSchema,
   "settings.cloud.status": CloudSettingsStatusSchema,
   "settings.cloud.configure": CloudSettingsStatusSchema,
   "settings.cloud.clear": CloudSettingsStatusSchema,

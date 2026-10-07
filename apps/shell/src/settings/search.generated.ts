@@ -303,6 +303,12 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Models",
+    label: "OpenRouter API key",
+    description: "",
+    target: "Model provider",
+  },
+  {
+    category: "Models",
     label: "OpenAI-compatible API key",
     description: "",
     target: "Model provider",
@@ -624,7 +630,7 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     category: "Memory",
     label: "Space memory",
     description:
-      "Eligible completed runs produce encrypted notes for your review. Only accepted notes appear in later runs. Memory is off by default.",
+      "Eligible completed runs produce encrypted notes for your review. Only accepted notes appear in later runs. Memory stays local and is on by default. Sensitive pages and private chats are excluded. Pause or forget it here.",
     target: "Space memory",
   },
   {
@@ -634,6 +640,14 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
       "Install the bundled aux launcher in ~/.local/bin. Existing commands owned by you stay unchanged.",
     target: "Aux command line",
     searchTerms: ["Developers", "CLI", "terminal", "aux open"],
+  },
+  {
+    category: "External agents",
+    label: "Remote debugging",
+    description:
+      "Allow Playwright, Puppeteer and other local CDP clients to control Aux through its loopback port. Off by default.",
+    target: "Remote debugging",
+    searchTerms: ["Developers", "CDP", "Playwright", "Puppeteer", "9222"],
   },
   {
     category: "Connections",

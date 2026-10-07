@@ -1,3 +1,4 @@
+import { RemoteDebuggingStateSchema, type RemoteDebuggingState } from "@aux/contracts/remote-debugging";
 import {
   ImportExtensionReviewSchema,
   type ImportExtensionReview,
@@ -291,6 +292,8 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   /** The Chromium Profile's TemplateURLService is the selected engine authority. */
   searchEngineGet?(): Promise<string>;
   searchEngineSet?(template: string): Promise<boolean>;
+  remoteDebuggingGet?(token: string): Promise<RemoteDebuggingState>;
+  remoteDebuggingSet?(token: string, enabled: boolean): Promise<RemoteDebuggingState>;
   searchSuggestionsGet?(): Promise<boolean>;
   searchSuggestionsSet?(enabled: boolean): Promise<boolean>;
   /** Install a Profile/site stylesheet before new documents, and report active-document application. */
@@ -567,6 +570,14 @@ export class ChannelNativeBridge implements NativeBridge {
   async powerActivity(input: { reason: string; durationSec: number }) {
     return HostMethods["native.powerActivity"].result.parse(
       await this.channel.call("native.powerActivity", input),
+    );
+  }
+  async remoteDebuggingGet(token: string): Promise<RemoteDebuggingState> {
+    return RemoteDebuggingStateSchema.parse(await this.channel.call("native.remoteDebuggingGet", { token }));
+  }
+  async remoteDebuggingSet(token: string, enabled: boolean): Promise<RemoteDebuggingState> {
+    return RemoteDebuggingStateSchema.parse(
+      await this.channel.call("native.remoteDebuggingSet", { token, enabled }),
     );
   }
   async browserImportSelectWindow(input: {

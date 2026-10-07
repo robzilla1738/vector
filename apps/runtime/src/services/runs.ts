@@ -1,3 +1,4 @@
+import { ConversationBranches } from "./conversation-branches.js";
 import { resourceFundingAccounting } from "./resource-accounting.js";
 import { ApprovalStore } from "../safety/approval.js";
 import { SuspensionStore } from "../safety/suspensions.js";
@@ -681,6 +682,7 @@ export class RunService {
       this.deps.events.emit("conversation.context.changed", { chatId: updated.config?.chatId ?? runId });
       redacted++;
     }
+    this.branches.purgeRevoked();
     return redacted;
   }
 
@@ -791,7 +793,7 @@ export class RunService {
   }
 
   conversation(chatId: string) {
-    return this.deps.repo.getConversation(chatId) ?? null;
+    return this.deps.repo.getConversation(chatId) ?? this.branches.info(chatId) ?? null;
   }
 
   renameConversation(chatId: string, title: string) {
@@ -831,7 +833,7 @@ export class RunService {
 
   deleteConversation(chatId: string) {
     const runs = this.deps.repo.conversationRuns(chatId);
-    if (!runs.length && !this.deps.repo.preparedConversations().some((draft) => draft.chatId === chatId))
+    if (!runs.length && !this.branches.get(chatId) && !this.deps.repo.preparedConversations().some((draft) => draft.chatId === chatId))
       throw new AuxError("not_found", "Conversation not found.");
     if (runs.some((run) => !TERMINAL_RUN_STATUSES.has(run.status)))
       throw new AuxError("conflict", "Stop or wait for this conversation before deleting it.");
@@ -859,6 +861,7 @@ export class RunService {
         "Reconcile this conversation's unresolved operation before deleting it.",
       );
     const deleted = this.deps.repo.deleteConversation(chatId);
+    this.branches.purgeRevoked();
     this.deps.events.emit("conversation.deleted", { chatId });
     this.deps.artifacts.removeFiles(deleted.artifactPaths);
     return { ok: true as const, deletedRuns: deleted.deletedRuns };
@@ -1016,6 +1019,16 @@ export class RunService {
   }
 
   readonly funding: RunFundingService;
+
+  get branches() { return new ConversationBranches(this.deps.repo); }
+
+  branch(runId: string, mode: "branch" | "edit", windowId: string, original: () => Promise<void>) {
+    return this.ownOperation(() => this.branches.create(runId, mode, windowId, async () => {
+      if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
+      await original();
+      if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
+    }));
+  }
 
   constructor(
     private deps: {
@@ -1872,6 +1885,11 @@ export class RunService {
   }
 
   private checkSetSource(runId: string): void {
+    for (const sourceId of this.deps.repo.getRun(runId)?.config?.branchSourceRunIds ?? []) {
+      const source = this.deps.repo.getRun(sourceId);
+      if (!source || source.config?.contextMemoryRevoked)
+        throw new AuxError("permission_denied", "A historical branch source was removed or forgotten.");
+    }
     for (const id of runAncestry(this.deps.repo, runId, true))
       this.checkExternalSource(this.deps.repo.getRun(id)?.config ?? {});
     const parent = assertSetMemberSource(this.deps.repo, runId, true);
@@ -2215,6 +2233,8 @@ export class RunService {
   start(opts: {
     /** Immutable completed SDK prefix from an authorized fork_self; internal only. */
     forkTranscript?: import("../agent/loop/types.js").ModelMessage[];
+    branchSourceRunIds?: string[];
+    branchOriginal?: () => Promise<void>;
     /** Stable delivery identity for a durable queued message; internal only. */
     deliveryRunId?: string;
     nightShiftItemId?: string;
@@ -2267,6 +2287,41 @@ export class RunService {
 
   private async startOwned(opts: Parameters<RunService["start"]>[0]): Promise<Run> {
     if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
+    const branch = opts.chatId ? this.branches.get(opts.chatId) : undefined;
+    const firstBranchTurn = !!branch && !this.deps.repo.listRuns(1, { chatId: opts.chatId! }).length;
+    const checkBranch = async () => {
+      if (!branch) return;
+      if (!opts.branchOriginal)
+        throw new AuxError("permission_denied", "Continue this branch from its original Aux window.");
+      await opts.branchOriginal();
+      this.branches.source(branch);
+      if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
+    };
+    if (branch) {
+      await checkBranch();
+      const source = this.branches.source(branch);
+      if (source.config?.taskId) {
+        const task = this.deps.taskSource?.(source.config.taskId);
+        if (!task || task.revision !== source.config.taskRevision || task.state !== "open")
+          throw new AuxError("ref_stale", "The original task revision changed. Review that task before continuing.");
+      }
+      opts = {
+        ...opts, taskId: source.config?.taskId, taskRevision: source.config?.taskRevision,
+        privateTask: source.config?.privateTask,
+        ...(firstBranchTurn ? {
+          forkTranscript: this.branches.prefix(opts.chatId!),
+          branchSourceRunIds: [...new Set([...branch.sourceRunIds, branch.sourceRunId])],
+          contextSnapshot: true, context: source.config?.context, instructions: source.config?.instructions,
+          contextRunIds: [...new Set([...(source.config?.contextRunIds ?? []), ...branch.sourceRunIds, branch.sourceRunId])], contextAttachmentIds: source.config?.contextAttachmentIds,
+          contextDocumentEvidence: source.config?.contextDocumentEvidence,
+          contextArtifactEvidence: source.config?.contextArtifactEvidence,
+          contextArtifactIds: source.config?.contextArtifactIds, contextSourceArtifactIds: source.config?.contextSourceArtifactIds,
+          contextImageArtifactIds: source.config?.contextImageArtifactIds, contextMemoryIds: source.config?.contextMemoryIds,
+          contextWorkspaceId: source.config?.contextWorkspaceId, contextWorkspaceRevision: source.config?.contextWorkspaceRevision,
+          contextBrowsingMemory: source.config?.contextBrowsingMemory,
+        } : {}),
+      };
+    }
     const savedPrivateTask = opts.chatId ? this.deps.repo.conversationPrivateTask(opts.chatId) : undefined;
     if (savedPrivateTask === false && opts.privateTask === true)
       throw new AuxError("conflict", "Start a new private chat to change this conversation’s privacy mode.");
@@ -2490,10 +2545,12 @@ export class RunService {
       }
     }
     this.checkExternalSource(opts);
+    await checkBranch();
     return this.coordinator.start({
       ...opts,
       runId: opts.deliveryRunId,
       forkTranscript: opts.forkTranscript,
+      branchSourceRunIds: opts.branchSourceRunIds,
       messageId: opts.queuedMessageId,
       pageIds,
       context,

@@ -610,6 +610,8 @@ const nativeOnlyHostMethods = new Set([
   "native.browserImportBegin",
   "native.browserImportPoll",
   "native.browserImportCancel",
+  "native.remoteDebuggingGet",
+  "native.remoteDebuggingSet",
   "native.cdpReset",
   "native.cdpCatalog",
   "native.cdpAttach",

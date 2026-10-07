@@ -177,6 +177,7 @@ export class RunCoordinator {
     nightShiftItemId?: string;
     /** Captured only by the authorized fork_self reservation; never persisted in Run.config. */
     forkTranscript?: ModelMessage[];
+    branchSourceRunIds?: string[];
     runId?: string;
     messageId?: string;
     goal: string;
@@ -280,6 +281,7 @@ export class RunCoordinator {
         subagentProfile: opts.subagentProfile,
         calendarGrantIds,
         retryOfRunId: opts.retryOfRunId,
+        branchSourceRunIds: opts.branchSourceRunIds,
         implementation: "agent-loop",
       },
       createdAt: Date.now(),

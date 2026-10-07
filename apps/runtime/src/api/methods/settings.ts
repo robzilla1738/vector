@@ -104,9 +104,36 @@ async function h_settings_cloud_clear(ctx: MethodCtx): Promise<unknown> {
   );
 }
 
+function remoteDebuggingOwner(ctx: MethodCtx): string {
+  if (ctx.client.external || ctx.client.codeMode || !ctx.client.nativeTurnContext)
+    throw new AuxError(
+      "permission_denied",
+      "Remote debugging must be changed in the original Aux Settings window.",
+    );
+  return ctx.client.nativeTurnContext;
+}
+async function h_settings_remoteDebugging_get(ctx: MethodCtx): Promise<unknown> {
+  const token = remoteDebuggingOwner(ctx);
+  MethodSchemas["settings.remoteDebugging.get"].parse(ctx.params);
+  if (!ctx.s.native?.remoteDebuggingGet)
+    throw new AuxError("backend_unavailable", "The native remote debugging listener is unavailable.");
+  return ctx.s.native.remoteDebuggingGet(token);
+}
+async function h_settings_remoteDebugging_set(ctx: MethodCtx): Promise<unknown> {
+  const token = remoteDebuggingOwner(ctx);
+  const { enabled } = MethodSchemas["settings.remoteDebugging.set"].parse(ctx.params);
+  if (!ctx.s.native?.remoteDebuggingSet)
+    throw new AuxError("backend_unavailable", "The native remote debugging listener is unavailable.");
+  // Native ingress revalidates this saved original window before mutation and
+  // its actual listener completion; no Settings-service flag substitutes for it.
+  return ctx.s.native.remoteDebuggingSet(token, enabled);
+}
+
 export const settingsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "settings.get": h_settings_get,
   "settings.set": h_settings_set,
+  "settings.remoteDebugging.get": h_settings_remoteDebugging_get,
+  "settings.remoteDebugging.set": h_settings_remoteDebugging_set,
   "settings.cloud.status": h_settings_cloud_status,
   "settings.cloud.configure": h_settings_cloud_configure,
   "settings.cloud.clear": h_settings_cloud_clear,

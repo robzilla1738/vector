@@ -243,6 +243,7 @@ export const RunSchema = z.object({
       calendarGrantIds: z.array(z.string().uuid()).max(20).optional(),
       /** terminal turn this run deliberately retries; used for audit and UI continuity */
       retryOfRunId: z.string().optional(),
+      branchSourceRunIds: z.array(z.string()).optional(),
       /** AUX-017 durable coordinator snapshot. */
       checkpoint: z
         .object({

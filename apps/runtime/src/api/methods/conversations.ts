@@ -35,6 +35,8 @@ async function h_conversations_images_remove(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_conversations_get(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
+  if (s.runs.branches.get(params.chatId) && (ctx.client.external || ctx.client.codeMode))
+    throw new AuxError("permission_denied", "Review the branch draft in its original Aux window.");
   return s.runs.conversation(params.chatId);
 }
 async function h_conversations_rename(ctx: MethodCtx): Promise<unknown> {
