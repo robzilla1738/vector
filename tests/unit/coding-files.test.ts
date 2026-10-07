@@ -293,3 +293,54 @@ it.runIf(process.platform === "darwin")(
     expect(full?.after[0]?.contentTruncated).toBe(false);
   },
 );
+
+it.runIf(process.platform === "darwin")(
+  "requires current native proof for completed-run Undo and preserves a later manual edit",
+  async () => {
+    const { codingMethods } = await import("../../apps/runtime/src/api/methods/coding.js");
+    const { service, project, repo, context } = fixture();
+    repo.saveRun({
+      runId: context.runId,
+      goal: "Edit code",
+      status: "running",
+      pageIds: [],
+      createdAt: Date.now(),
+    });
+    const path = join(project, "code.ts");
+    writeFileSync(path, "before\n");
+    const initial = await service.read({ path }, context);
+    const receipt = await service.applyChanges(
+      {
+        actionId: "change",
+        changes: [{ kind: "edit", path, expectedVersion: initial.version, content: "after\n" }],
+      },
+      context,
+    );
+    repo.saveRun({ ...repo.getRun(context.runId)!, status: "completed" });
+    const turnSourceContext = vi.fn(async () => ({ windowId: "native-owner" }));
+    const request = (token?: string) =>
+      ({
+        params: { runId: context.runId, actionId: "native-undo", receiptIds: [receipt.receiptId] },
+        client: { external: false, nativeTurnContext: token },
+        s: { repo, codingFiles: service, native: { turnSourceContext } },
+      }) as unknown as import("../../apps/runtime/src/api/methods/context.js").MethodCtx;
+    await expect(codingMethods["coding.undo"]!(request())).rejects.toMatchObject({
+      code: "permission_denied",
+    });
+    writeFileSync(path, "after\n// manual edit\n");
+    await expect(codingMethods["coding.undo"]!(request("native-token"))).rejects.toMatchObject({
+      code: "conflict",
+    });
+    expect(readFileSync(path, "utf8")).toBe("after\n// manual edit\n");
+    writeFileSync(path, "after\n");
+    const undo = vi.spyOn(service, "undo");
+    await codingMethods["coding.undo"]!(request("native-token"));
+    expect(undo).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ runId: context.runId, actor: "user", verifyOwner: expect.any(Function) }),
+    );
+    expect(turnSourceContext).toHaveBeenCalledTimes(3);
+    expect(readFileSync(path, "utf8")).toBe("before\n");
+    expect(service.changes(context.runId)).toHaveLength(2);
+  },
+);

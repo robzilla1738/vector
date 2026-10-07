@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { codingEffectRequest } from "../../apps/runtime/src/services/coding-authorization.js";
 import { createHash } from "node:crypto";
 import type { AgentPolicySettings, Step } from "@aux/contracts";
 import { openDb } from "../../apps/runtime/src/store/db.js";
@@ -21,13 +22,19 @@ afterEach(() => {
 const step: Step = { id: "s1", op: "click", target: "#buy" };
 const digest = createHash("sha256").update(JSON.stringify(step)).digest("hex");
 
-function fixture(settings: AgentPolicySettings = { agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }) {
+function fixture(
+  settings: AgentPolicySettings = { agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] },
+) {
   const db = openDb(":memory:");
   databases.push(db);
   const approvals = new ApprovalStore(db);
   const journal = new DecisionJournal(db);
   const deps: DecideDeps = {
-    approvals, journal, managedRules: () => [], agentPolicy: () => settings, audit: () => {},
+    approvals,
+    journal,
+    managedRules: () => [],
+    agentPolicy: () => settings,
+    audit: () => {},
   };
   const request = effectRequestForStep({
     step,
@@ -93,7 +100,9 @@ describe("S3 decide()", () => {
       evalRequest(),
       {
         ...deps,
-        managedRules: () => [{ origin: "https://shop.test/", effects: { destructive: "deny" }, access: "ask" }],
+        managedRules: () => [
+          { origin: "https://shop.test/", effects: { destructive: "deny" }, access: "ask" },
+        ],
       },
       { phase: "dispatch", trustedEval: true },
     );
@@ -134,11 +143,7 @@ describe("S3 decide()", () => {
         : { status: 200, contentType: "text/plain", body: "hello" };
     };
     const web = new AgentWebTools(async (url) => {
-      const decision = await decide(
-        egressRequest(url),
-        deps,
-        { phase: "dispatch", headless: true },
-      );
+      const decision = await decide(egressRequest(url), deps, { phase: "dispatch", headless: true });
       return decision.status === "allow";
     }, transport);
     const page = await web.fetch("https://first.test/start");
@@ -160,7 +165,14 @@ describe("S3 decide()", () => {
     const denied = new AgentWebTools(async (url) => {
       const decision = await decide(
         egressRequest(new URL(url.href.replace(url.hostname, "blocked.test"))),
-        { ...deps, agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [{ category: "read", site: "https://blocked.test", access: "block" }] }) },
+        {
+          ...deps,
+          agentPolicy: () => ({
+            agentMode: "auto",
+            agentPolicyRevision: 0,
+            agentPolicies: [{ category: "read", site: "https://blocked.test", access: "block" }],
+          }),
+        },
         { phase: "dispatch", headless: true },
       );
       return decision.status === "allow";
@@ -168,4 +180,53 @@ describe("S3 decide()", () => {
     await expect(denied.fetch("https://first.test/other")).rejects.toThrow(/not granted|permission/i);
     expect(hops).toHaveLength(2);
   });
+});
+
+it("admits coding command effects through the shared schema while retaining Bash Ask, Skip and block policies", async () => {
+  for (const mode of ["ask", "full"] as const) {
+    const { db, deps } = fixture({ agentMode: mode, agentPolicyRevision: 0, agentPolicies: [] });
+    for (const operation of ["foreground", "background", "stop"] as const) {
+      const request = codingEffectRequest({
+        profileId: "p1",
+        scope: { kind: "workspace", id: "project" },
+        actor: "builtin_agent",
+        effect: "external_tool",
+        category: "bash",
+        action: "agent.coding.bash",
+        recipient: "/project",
+        dataClasses: [],
+        provenance: "template",
+        invocationDigest: createHash("sha256").update(operation).digest("hex"),
+        turnId: "run",
+        threadId: "chat",
+        runId: "run",
+        requestedAt: 500,
+      });
+      expect(request.category).toBe("external_tool");
+      expect((await decide(request, deps, { phase: "dispatch", runId: "run" })).status).toBe(
+        mode === "ask" ? "ask" : "allow",
+      );
+      const blocked = await decide(
+        request,
+        {
+          ...deps,
+          agentPolicy: () => ({
+            agentMode: mode,
+            agentPolicyRevision: 1,
+            agentPolicies: [{ category: "bash", access: "block" }],
+          }),
+        },
+        { phase: "dispatch", runId: "run" },
+      );
+      expect(blocked.status).toBe("deny");
+    }
+    expect(decisions(db).map((decision) => decision.status)).toEqual([
+      mode === "ask" ? "ask" : "allow",
+      "deny",
+      mode === "ask" ? "ask" : "allow",
+      "deny",
+      mode === "ask" ? "ask" : "allow",
+      "deny",
+    ]);
+  }
 });

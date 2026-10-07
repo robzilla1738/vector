@@ -29,6 +29,7 @@ import { HookService, type HookExecutor } from "./services/hooks.js";
 import { installRunEndHooks } from "./services/hook-dispatch.js";
 import { WorkspaceFolderService } from "./services/workspace-folders.js";
 import { FilesystemAccessService } from "./services/filesystem-access.js";
+import { codingEffectRequest } from "./services/coding-authorization.js";
 import { requireFilesystemPath } from "./services/filesystem-policy.js";
 import { resolveNativeUserDataDir } from "@aux/contracts/installation";
 import { BrowserBookmarkLedger } from "./services/browser-bookmark-ledger.js";
@@ -1551,7 +1552,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         throw new AuxError("cancelled", "The original coding run is unavailable.");
     } else checkCodingOwner(runId);
     const run = repo.getRun(runId)!;
-    const request = EffectRequestSchema.parse({
+    const request = codingEffectRequest({
       profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
       scope: { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" },
       actor: actor ?? "builtin_agent",

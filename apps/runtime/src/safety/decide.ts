@@ -411,7 +411,14 @@ export async function decide(
       {
         kind: authorization.status === "touch_id" ? "touch-id" : "approval",
         approvalId: pendingId,
-        instruction: authorization.guidance,
+        instruction:
+          authorization.status === "touch_id"
+            ? authorization.guidance
+            : action.reviewedChanges?.length
+              ? "Review these file changes before Aux continues."
+              : (action.reviewedActions?.length ?? 0) > 1
+                ? "Review these actions before Aux continues."
+                : "Review this action before Aux continues.",
         guidance: ASK_GUIDANCE,
       },
       "approval",
