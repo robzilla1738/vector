@@ -21,7 +21,7 @@ The preserved integration also includes saved local/cloud run options, model fun
 
 The current coding slice adds trusted per-run modes and explicit run/site/global scopes, concrete browser/file/command review, per-action restart-safe journal settlement, governed search and versioned file batches, conflict-safe undo, supervised processes, QuickJS coding calls, declarative profiles and isolated coder worktrees. Aux Packages supply pinned skills and declarations to Aux's own loop. Commands retain honest outcome/log receipts; file undo does not promise to reverse arbitrary command effects. Partial worktree creation remains inspectable and explicitly archivable.
 
-Native area patches are recorded through 0079 in `chromium/patches/series`; 0079 replaces the foreign-agent terminal launcher with an ordinary user shell. The benchmark-only stock patch remains separate from the product series.
+Native area patches are recorded through 0080 in `chromium/patches/series`; 0079 replaces the foreign-agent terminal launcher with an ordinary user shell. 0080 keeps retained Liquid Glass materials aligned with the selected appearance and applies the native dark tint needed for readable sidebar text. The benchmark-only stock patch remains separate from the product series.
 
 ## Implementation quality follow-up
 
@@ -36,9 +36,11 @@ The plan audit found and corrected concrete integration gaps:
 
 Budget, model and cloud-resource reviews now restore through their dedicated Continue/retry actions. Explicit resume verifies the reopened native window, saved workspace and source pages before replacing its expired token. Accepted non-execution answers survive an intervening budget pause in the encrypted park record. Cloud recovery checks exact provider/session identity and stop acknowledgement; ambiguous creation keeps its funding held. Human answers are unavailable to code-mode and external callers, and setup reviews reject ordinary answers before context mutation.
 
-The next integrated check passed typecheck/lint and **4,209 of 4,212 tests**; three failures were corrected. The mock-method inventory now includes model retry. Cloud close is idempotent after repository shutdown, and budget restart retains the accepted answer. The two recovery suites then passed **11/11**, the shutdown regression passed, and the UI/API/inventory checks passed **13/13**. Runtime dist has been rebuilt. Evidence: `/tmp/aux-restart-check.log`, `/tmp/aux-restart-ui-targeted.log` and the focused recovery logs. The native build is in progress; live-provider completion, visual contrast after rebuilding and comparative browser performance remain acceptance work.
+The next integrated check passed typecheck/lint and **4,209 of 4,212 tests**; three failures were corrected. The mock-method inventory now includes model retry. Cloud close is idempotent after repository shutdown, and budget restart retains the accepted answer. The two recovery suites then passed **11/11**, the shutdown regression passed, and the UI/API/inventory checks passed **13/13**. Runtime dist has been rebuilt. Evidence: `/tmp/aux-restart-check.log`, `/tmp/aux-restart-ui-targeted.log` and the focused recovery logs. The recovery/native-glass build completed 30 steps in 12m07.41s. A disposable-profile walkthrough verified readable Liquid Glass in both appearances at 0% sidebar tint. Live-provider coding completion and comparative browser performance remain acceptance work.
 
 ## Native build and preview
+
+- Latest recovery/glass build: **30 steps in 12m07.41s**, `/tmp/aux-restart-native-build.log`. Runtime packaging was **11.95 MiB JavaScript / 18.53 MiB payload**, plus full ICU. The disposable preview retired normally and its launcher removed the temporary Profile. The workspace Gateway credential answered a small real-provider request successfully; the inherited shell credential was rejected. A native coding attempt exposed a page-free project admission bug before its first model call; correction and final restaging are in progress.
 
 - Chromium: **154.0.8037.98**; product checkout: `~/aux-chromium-product/chromium/src`.
 - Current app: `out/AuxFast/Aux.app` in that checkout. The coding native build completed **32 steps in 13m53.86s**, then staged the final runtime and launched with an explicit disposable Profile.
