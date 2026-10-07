@@ -7,8 +7,8 @@ export const NightShiftSettingsSchema = z
     enabled: z.boolean(),
     start: Time,
     end: Time,
-    nightlyUsd: z.number().finite().positive().max(1000),
-    perTaskUsd: z.number().finite().positive().max(1000),
+    nightlyUsd: z.number().finite().positive(),
+    perTaskUsd: z.number().finite().positive(),
     requireAC: z.boolean(),
   })
   .strict()
@@ -39,7 +39,7 @@ export const NightShiftPayloadSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("memory.reindex"), workspaceId: Id }).strict(),
 ]);
 export const NightShiftQueueSchema = z
-  .object({ payload: NightShiftPayloadSchema, budgetUsd: z.number().finite().positive().max(1000) })
+  .object({ payload: NightShiftPayloadSchema, budgetUsd: z.number().finite().positive() })
   .strict();
 export const NightShiftItemSchema = NightShiftQueueSchema.extend({
   id: Id,

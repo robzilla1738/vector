@@ -55,7 +55,12 @@ export class MockModelClient implements ModelClient {
     system: string;
     prompt: string;
     schema: z.ZodType<T>;
+    signal?: AbortSignal;
+    beforeDispatch?: () => Promise<void>;
   }): Promise<StructuredCallResult<T>> {
+    opts.signal?.throwIfAborted();
+    await opts.beforeDispatch?.();
+    opts.signal?.throwIfAborted();
     if (this.latencyMs) await new Promise((r) => setTimeout(r, this.latencyMs));
     this.calls.push({ modelId: opts.modelId, prompt: opts.prompt, system: opts.system });
     const handler = this.queue.length > 1 ? this.queue.shift()! : (this.queue[0] ?? this.fallback);
@@ -70,7 +75,13 @@ export class MockModelClient implements ModelClient {
     };
   }
 
-  async generateText(): Promise<TextCallResult> {
+  async generateText(opts: {
+    signal?: AbortSignal;
+    beforeDispatch?: () => Promise<void>;
+  }): Promise<TextCallResult> {
+    opts.signal?.throwIfAborted();
+    await opts.beforeDispatch?.();
+    opts.signal?.throwIfAborted();
     return { text: "mock", durationMs: this.latencyMs };
   }
 

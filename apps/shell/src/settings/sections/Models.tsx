@@ -1,10 +1,15 @@
-import { ProviderSignIn } from "./ProviderSignIn";
 import { staticFieldProps } from "../../ui/class-props";
 import { staticRowProps, staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
-import { MODEL_PROVIDER_NAMES, type ModelConnectionStatus, type ModelProvider } from "@aux/contracts";
+import {
+  MODEL_PROVIDER_NAMES,
+  type ModelConnectionStatus,
+  type ModelProvider,
+  type LocalModelServer,
+} from "@aux/contracts";
+import { ProviderSignIn } from "./ProviderSignIn";
 import { ModelConnections } from "./ModelConnections";
 import { PreferenceAction, usePreferenceCommand } from "./preference-command";
 import {
@@ -118,6 +123,7 @@ function ModelRoleField({
         >
           <option value="low">Low</option>
           <option value="medium">Medium</option>
+          <option value="high">High</option>
           <option value="xhigh">Extra high</option>
         </select>
         <PreferenceAction
@@ -208,6 +214,7 @@ export function ModelsSettings({
   const [endpointDraft, setEndpointDraft] = useState(String(settings.compatibleEndpoint ?? ""));
   const probeSequence = useRef(0);
   const [models, setModels] = useState<ModelEntry[]>([]);
+  const [localServers, setLocalServers] = useState<LocalModelServer[]>([]);
   const [modelsBusy, setModelsBusy] = useState(false);
   const modelsSequence = useRef(0);
   const [probe, setProbe] = useState<ProbeResult | null>(() => {
@@ -265,9 +272,14 @@ export function ModelsSettings({
     setModelsBusy(true);
     void call("models.list")
       .then((result) => {
-        if (owner.current() && sequence === modelsSequence.current) setModels(result.models);
+        if (owner.current() && sequence === modelsSequence.current) {
+          setModels(result.models);
+          setLocalServers(result.localServers ?? []);
+        }
       })
-      .catch(() => {})
+      .catch((error) => {
+        if (owner.current() && sequence === modelsSequence.current) setConnectionError(errorMessage(error));
+      })
       .finally(() => {
         if (owner.current() && sequence === modelsSequence.current) setModelsBusy(false);
       });
@@ -481,6 +493,7 @@ export function ModelsSettings({
         const result = await call("models.list");
         if (!owner.current() || sequence !== modelsSequence.current) return result;
         setModels(result.models);
+        setLocalServers(result.localServers ?? []);
         if (!result.models.length) setConnectionError("The endpoint returned no models.");
         return result;
       } catch (error) {
@@ -600,6 +613,54 @@ export function ModelsSettings({
         />
       </IndexedField>
       <IndexedField
+        label="Local model servers"
+        hint="Discovery checks only this computer. No credentials are sent."
+      >
+        <PreferenceAction
+          command="refresh-local-models"
+          scopeId={scopeId}
+          invoke={discoverModels}
+          disabled={modelsBusy || savingKey || probing || switchingProvider}
+          {...smallButtonProps}
+        >
+          {modelsBusy ? "Discovering…" : "Refresh models"}
+        </PreferenceAction>
+        {!modelsBusy && !localServers.length && (
+          <span {...staticHintProps}>No local model server found.</span>
+        )}
+        {localServers.map((server) => (
+          <div key={server.endpoint}>
+            <span>
+              {server.kind === "ollama"
+                ? "Ollama"
+                : server.kind === "lm-studio"
+                  ? "LM Studio"
+                  : "OpenAI-compatible"}{" "}
+              · {server.endpoint}
+            </span>
+            {server.models.map((model) => (
+              <PreferenceAction
+                key={model.id}
+                command="use-local-model"
+                scopeId={`${scopeId}:${server.endpoint}:${model.id}`}
+                {...smallButtonProps}
+                disabled={savingKey || probing || switchingProvider}
+                invoke={() =>
+                  set({
+                    modelProvider: "openai-compatible",
+                    compatibleEndpoint: server.endpoint,
+                    plannerModel: model.id,
+                    modelConnection: { provider: "openai-compatible", enabled: true },
+                  })
+                }
+              >
+                Use {model.name ?? model.id}
+              </PreferenceAction>
+            ))}
+          </div>
+        ))}
+      </IndexedField>
+      <IndexedField
         label="Model provider"
         hint="Switching providers changes where task context and screenshots are sent. Each provider keeps its own key and model choices; there is no automatic fallback to another provider."
       >
@@ -691,6 +752,12 @@ export function ModelsSettings({
         target="Model provider"
         hint={
           <>
+            {settings.modelAuthentication === "chatgpt" && (
+              <>
+                ChatGPT plan usage is selected. Saving an OpenAI API key switches this provider to separate
+                API billing.{" "}
+              </>
+            )}
             {!connected && <>This provider is disconnected. Saving a key does not reconnect it. </>}
             {String(
               settings.modelCredentialError ??

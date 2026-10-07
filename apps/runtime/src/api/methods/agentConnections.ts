@@ -43,7 +43,6 @@ async function h_agentConnections_install(ctx: MethodCtx): Promise<unknown> {
   return ctx.s.installAgentConnection(ctx.params, ctx.client.nativeTurnContext);
 }
 
-
 async function h_developer_cli_install(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external || ctx.client.codeMode || !ctx.client.nativeTurnContext)
     throw new AuxError("permission_denied", "CLI installation requires its original Aux Settings window.");

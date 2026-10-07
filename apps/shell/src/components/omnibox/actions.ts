@@ -2,6 +2,7 @@ import { useCallback, useLayoutEffect, useRef, type Dispatch, type SetStateActio
 import type { PageTarget, Run } from "@aux/contracts";
 import { AskCircuitBreaker, type Intent } from "../../intent";
 import { toUrl } from "../../chrome";
+
 import { bridge, inNativeHost } from "../../bridge";
 import { call, useStore } from "../../store";
 import { auxShellPathFromUrl } from "../../settings/routes";

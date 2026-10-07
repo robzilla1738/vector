@@ -1,5 +1,6 @@
-import { ModelRunChoice, type ModelRunSelection } from "../composer/ModelRunChoice";
-import type { ExecutionTarget } from "@aux/contracts/cloud-execution";
+import { shellIconMore } from "../ui/icons";
+import { RunOptions } from "../composer/RunOptions";
+import { ChatPreferences } from "../composer/ChatPreferences";
 import { BudgetPrompt } from "../features/budget/BudgetPrompt";
 import { orderedPages } from "../store/pages";
 import { errorMessage } from "../error-message";
@@ -206,6 +207,8 @@ const ComposerInput = memo(function ComposerInput({
   onSend,
   children,
   footer,
+  leading,
+  inlineControls,
   modes,
   textareaRef,
   workspaceId,
@@ -218,11 +221,16 @@ const ComposerInput = memo(function ComposerInput({
   sendDisabled: boolean;
   placeholder: string;
   maxLength?: number;
-  inputProps: Pick<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onPaste" | "onDragOver" | "onDrop">;
+  inputProps: Pick<
+    React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+    "onPaste" | "onDragOver" | "onDrop"
+  >;
   onChange(value: string): void;
   onSend(): void;
   children?: ReactNode;
   footer?: ReactNode;
+  leading?: ReactNode;
+  inlineControls?: ReactNode;
   modes?: ReactNode;
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
@@ -239,46 +247,63 @@ const ComposerInput = memo(function ComposerInput({
         onChange={onChange}
         disabled={disabled}
       />
-      <textarea
-        ref={inputRef}
-        {...inputProps}
-        maxLength={maxLength}
-        disabled={disabled}
-        aria-label="Reply to conversation"
-        placeholder={placeholder}
-        value={text}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
-            e.preventDefault();
-            onSend();
-          }
-        }}
-      />
+      <div className="conversation-message-field">
+        {leading}
+        <textarea
+          ref={inputRef}
+          {...inputProps}
+          maxLength={maxLength}
+          disabled={disabled}
+          aria-label="Reply to conversation"
+          placeholder={placeholder}
+          value={text}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey &&
+              !e.nativeEvent.isComposing &&
+              e.keyCode !== 229
+            ) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
+        />
+        {inlineControls}
+        <div className="composer-send-actions">
+          {children}
+          {(!inlineControls || text.trim()) && (
+            <button
+              {...auxReuseStaticIconButtonProps}
+              aria-label="Send message"
+              disabled={sendDisabled || !text.trim()}
+              onClick={onSend}
+            >
+              {shellIconSend}
+            </button>
+          )}
+        </div>
+      </div>
       <div className="composer-footer">
         <div className="composer-footer-context">
           {footer}
           {modes}
-          <FeatureComposer
-            slot="composerActions"
-            composerId={mentionComposerId(id, answerRunId)}
-            workspaceId={workspaceId}
-            textareaRef={inputRef}
-            value={text}
-            onChange={onChange}
-            disabled={disabled}
-          />
-        </div>
-        <div className="composer-send-actions">
-          {children}
-          <button
-            {...auxReuseStaticIconButtonProps}
-            aria-label="Send message"
-            disabled={sendDisabled || !text.trim()}
-            onClick={onSend}
-          >
-            {shellIconSend}
-          </button>
+          <Popover label="More chat actions" trigger={shellIconMore}>
+            {() => (
+              <div className="chat-run-menu">
+                <FeatureComposer
+                  slot="composerActions"
+                  composerId={mentionComposerId(id, answerRunId)}
+                  workspaceId={workspaceId}
+                  textareaRef={inputRef}
+                  value={text}
+                  onChange={onChange}
+                  disabled={disabled}
+                />
+              </div>
+            )}
+          </Popover>
         </div>
       </div>
     </div>
@@ -402,11 +427,6 @@ export function Conversation({
   useInteractiveComposer(home, textareaRef);
   const fullPageId = useStore((s) => s.conversationId);
   const id = chatId === undefined ? fullPageId : chatId;
-  const [executionChoices, setExecutionChoices] = useState<Record<string, ExecutionTarget>>({});
-  const executionKey = id ?? "new";
-  const executionTarget = executionChoices[executionKey] ?? "local";
-  const [modelChoices, setModelChoices] = useState<Record<string, ModelRunSelection>>({});
-  const modelChoice = modelChoices[executionKey] ?? {};
   const scrolling = useConversationScroll(id);
   useEffect(() => {
     if (id || embedded) return;
@@ -601,17 +621,32 @@ export function Conversation({
   const metadataRequest = useRef(0);
   const [savedTitle, setSavedTitle] = useState("");
   const [branchInfo, setBranchInfo] = useState<ConversationBranchMetadata | null>(null);
+  const [metadataRefresh, setMetadataRefresh] = useState(0);
+  const [taskModeError, setTaskModeError] = useState("");
+  const [taskMode, setTaskMode] = useState<{ id: typeof id; found: boolean; privateTask: boolean } | null>(
+    null,
+  );
+  const composerPreferenceKey = id ? draftKey(id) : "new";
+  const draftPreferences = useStore((state) => state.composerPreferences[composerPreferenceKey]);
+  const taskModeKnown = !id || taskMode?.id === id;
+  const taskModeLocked = !!id && (!taskModeKnown || !!taskMode?.found);
+  const privateTask =
+    taskMode && taskMode.id === id && taskMode.found
+      ? taskMode.privateTask
+      : (draftPreferences?.privateTask ?? false);
   useEffect(() => {
     let live = true;
     const version = ++metadataRequest.current;
     setSavedTitle("");
     setBranchInfo(null);
+    setTaskModeError("");
     setArchived(false);
     if (id && id !== "history")
       void call("conversations.get", { chatId: id })
         .then((value) => {
           if (live && version === metadataRequest.current) {
             setSavedTitle(value?.title ?? "");
+            setTaskMode({ id, found: !!value, privateTask: value?.privateTask ?? false });
             setArchived(value?.archived ?? false);
             const branch = value && "kind" in value && value.kind === "branch-draft" ? value : null;
             setBranchInfo(branch);
@@ -621,25 +656,30 @@ export function Conversation({
                 state.setConversationBrowserSources(id, branch.contextPageRefs);
                 state.setConversationContext(id, branch.contextPageRefs[0]?.pageId ?? "none");
               }
-              setModelChoices((choices) => choices[id] ? choices : ({ ...choices, [id]: { modelId: branch.modelId, reasoning: branch.reasoning } }));
-              setExecutionChoices((choices) => choices[id] ? choices : ({ ...choices, [id]: branch.executionTarget ?? "local" }));
+              if (!state.composerPreferences[draftKey(id)]) state.setComposerPreferences(draftKey(id), {
+                privateTask: branch.privateTask, modelId: branch.modelId, reasoning: branch.reasoning,
+                executionTarget: branch.executionTarget ?? "local",
+              });
             }
           }
         })
-        .catch(() => {});
+        .catch((reason) => {
+          if (live && version === metadataRequest.current) setTaskModeError(errorMessage(reason));
+        });
     return () => {
       live = false;
     };
-  }, [id]);
+  }, [id, metadataRefresh]);
   useEffect(
     () =>
       bridge.onEvent((event) => {
         if (event.type !== "conversation.changed" || event.payload.chatId !== id) return;
         ++metadataRequest.current;
+        if (!taskModeKnown) setMetadataRefresh((value) => value + 1);
         if (typeof event.payload.title === "string") setSavedTitle(event.payload.title);
         if (typeof event.payload.archived === "boolean") setArchived(event.payload.archived);
       }),
-    [id],
+    [id, taskModeKnown],
   );
   const restoreConversation = () => {
     if (!id || !conversationCurrent() || restorePending.current?.owner === conversationCurrent) return;
@@ -1122,8 +1162,6 @@ export function Conversation({
     if (id) return id;
     const chatId = crypto.randomUUID();
     createdChat.current = chatId;
-    setExecutionChoices((choices) => ({ ...choices, [chatId]: executionTarget }));
-    setModelChoices((choices) => ({ ...choices, [chatId]: modelChoice }));
     const text = readText();
     if (text) useStore.getState().setConversationDraft(chatId, text);
     useStore.getState().setConversationContext(chatId, contextPage);
@@ -1423,10 +1461,6 @@ export function Conversation({
         // a failed start puts it back unless something new was typed meanwhile.
         const chatId = id ?? crypto.randomUUID();
         if (!id) {
-          setExecutionChoices((choices) => ({ ...choices, [chatId]: executionTarget }));
-          setModelChoices((choices) => ({ ...choices, [chatId]: modelChoice }));
-        }
-        if (!id) {
           useStore.getState().setConversationContext(chatId, contextPage);
           useStore.getState().setConversationBrowserSources(chatId, browserSources);
         }
@@ -1444,7 +1478,14 @@ export function Conversation({
         setText("");
         draftCleared = true;
         if (activeChat.current === id) scrolling.jumpToLatest();
+        if (!taskModeKnown) throw new Error("The chat’s task mode is still loading. Your draft is kept.");
+        const preferences = useStore.getState().composerPreferences[composerPreferenceKey];
+        if (!id && preferences) useStore.getState().setComposerPreferences(draftKey(chatId), preferences);
         const run = await useStore.getState().startRun(text, {
+          privateTask,
+          executionTarget: preferences?.executionTarget,
+          modelId: preferences?.modelId,
+          reasoning: preferences?.reasoning,
           chatId,
           pageId: primaryForRun?.pageId ?? null,
           pageIds,
@@ -1453,10 +1494,14 @@ export function Conversation({
           scope: primaryForRun ? "page" : "new",
           presentation: embedded && !home ? "rail" : "conversation",
           ownsDraft: true,
-          executionTarget,
-          ...modelChoice,
         });
         if (run) {
+          if (id && !taskMode?.found && conversationCurrent()) {
+            setTaskMode(null);
+            setMetadataRefresh((value) => value + 1);
+          }
+          if (!id && useStore.getState().composerPreferences["new"] === preferences)
+            useStore.getState().setComposerPreferences("new", { privateTask: false });
           clearMentionDraft(composerId);
           try {
             localStorage.removeItem(PENDING_CHAT_KEY);
@@ -1557,8 +1602,10 @@ export function Conversation({
       if (!owner()) return;
       const state = useStore.getState();
       state.setConversationDraft(draft.chatId, draft.draftText);
-      setModelChoices((choices) => ({ ...choices, [draft.chatId]: { modelId: draft.modelId, reasoning: draft.reasoning } }));
-      setExecutionChoices((choices) => ({ ...choices, [draft.chatId]: draft.executionTarget ?? "local" }));
+      state.setComposerPreferences(draftKey(draft.chatId), {
+        privateTask: draft.privateTask, modelId: draft.modelId, reasoning: draft.reasoning,
+        executionTarget: draft.executionTarget ?? "local",
+      });
       state.setConversationBrowserSources(draft.chatId, draft.contextPageRefs);
       state.setConversationContext(draft.chatId, draft.contextPageRefs[0]?.pageId ?? "none");
       state.openConversationDraft(draft.chatId);
@@ -1780,50 +1827,67 @@ export function Conversation({
       disabled={contextLocked}
     />
   );
+  const composerContext = !taskBound && !answering && (
+    <span className="home-tools-trigger">
+      <Popover
+        label="Add context"
+        triggerControl={contextControls.triggerControl}
+        onTrigger={contextControls.onTrigger}
+        trigger={shellIconPlusSm}
+      >
+        {(close) => (
+          <div className="home-tools-menu">
+            <header>Add to your question</header>
+            <div
+              ref={setContextTools}
+              onClick={(event) => {
+                if ((event.target as HTMLElement).closest("button")) close();
+              }}
+            />
+            <div className="home-tools-context">{browserContextControls}</div>
+            {home && (
+              <HomeEntryAction
+                className="context-choice"
+                command="open-home-conversation"
+                current={conversationCurrent}
+                invoke={() => {
+                  close();
+                  useStore.getState().openConversationDraft(id ?? null);
+                }}
+              >
+                {shellIconOpen}
+                <span>Open full conversation</span>
+              </HomeEntryAction>
+            )}
+          </div>
+        )}
+      </Popover>
+    </span>
+  );
   const composerFooter = !taskBound && !answering && (
     <div className="new-chat-options">
-      {entryControls}
-      <span className="home-tools-trigger">
-        <Popover
-          label="Add context"
-          triggerControl={contextControls.triggerControl}
-          onTrigger={contextControls.onTrigger}
-          trigger={
-            <>
-              {shellIconPlusSm}
-              {!home && <span>Add context</span>}
-            </>
-          }
-        >
-          {(close) => (
-            <div className="home-tools-menu">
-              <header>Add to your question</header>
-              <div
-                ref={setContextTools}
-                onClick={(event) => {
-                  if ((event.target as HTMLElement).closest("button")) close();
-                }}
-              />
-              <div className="home-tools-context">{browserContextControls}</div>
-              {home && dictation}
-              {home && (
-                <HomeEntryAction
-                  className="context-choice"
-                  command="open-home-conversation"
-                  current={conversationCurrent}
-                  invoke={() => {
-                    close();
-                    useStore.getState().openConversationDraft(id ?? null);
-                  }}
-                >
-                  {shellIconOpen}
-                  <span>Open full conversation</span>
-                </HomeEntryAction>
-              )}
-            </div>
-          )}
-        </Popover>
-      </span>
+      {home ? composerContext : entryControls}
+      {taskModeError && (
+        <span role="alert">
+          Task mode unavailable.{" "}
+          <button type="button" onClick={() => setMetadataRefresh((value) => value + 1)}>
+            Retry
+          </button>
+        </span>
+      )}
+      <ChatPreferences
+        disabled={archived || sending || live || !taskModeKnown}
+        modelId={draftPreferences?.modelId}
+        reasoning={draftPreferences?.reasoning}
+      >
+        <RunOptions
+          draftKey={composerPreferenceKey}
+          privateTask={privateTask}
+          privateTaskLocked={taskModeLocked}
+          disabled={archived || sending || live || !taskModeKnown}
+        />
+      </ChatPreferences>
+      {home && dictation}
     </div>
   );
 
@@ -2209,8 +2273,7 @@ export function Conversation({
               {!turns.length && !historyLoading && !historyError && (
                 <div className="conversation-empty">
                   <AuxMark />
-                  <h1>What would you like to work on?</h1>
-                  <p>Ask a question or give Aux a task in the browser.</p>
+                  <span className="sr-only">Start a conversation with Aux</span>
                 </div>
               )}
               {branchInfo && !turns.length && (
@@ -2238,6 +2301,7 @@ export function Conversation({
                       <button type="button" disabled={!connected || branching?.owner === conversationCurrent} onClick={() => void branchTurn(run, "edit")}>Edit into new draft</button>
                     </div>
                   )}
+
                   {queuedMessages
                     .filter(
                       (message) =>
@@ -2595,28 +2659,6 @@ export function Conversation({
                       </output>
                     )}
 
-                    {!live && (
-                      <ModelRunChoice value={modelChoice}
-                        disabled={archived || sending || answerPending || !connected}
-                        onChange={(value) => setModelChoices((choices) => ({ ...choices, [executionKey]: value }))} />
-                    )}
-                    {!live && (
-                      <label className="field">
-                        Execution
-                        <select aria-label="Run execution" value={executionTarget}
-                          disabled={archived || sending || answerPending || !connected}
-                          onChange={(event) => {
-                            const target = event.target.value;
-                            if (target === "local" || target === "cloud")
-                              setExecutionChoices((choices) => ({ ...choices, [executionKey]: target }));
-                          }}>
-                          <option value="local">On this Mac</option>
-                          <option value="cloud">Run in cloud</option>
-                        </select>
-                        {executionTarget === "cloud" && <span className="hint">Bash and code run in your Vercel Sandbox account. Review Cloud account and resource rates in Settings → Workspaces. Model calls use your existing model connection.</span>}
-                      </label>
-                    )}
-
                     <ComposerInput
                       workspaceId={workspaceContext.workspace?.workspaceId}
                       id={id}
@@ -2637,12 +2679,13 @@ export function Conversation({
                               : selectedContext && selectedContext.url !== "about:blank"
                                 ? "Ask about this page…"
                                 : home
-                                  ? "Ask Aux…"
-                                  : "Ask Aux a question or give it a task…"
+                                  ? "Ask Aux a task, @ for context"
+                                  : "Reply, @ for context"
                       }
                       sendDisabled={
                         archived ||
                         !connected ||
+                        !taskModeKnown ||
                         sending ||
                         answerPending ||
                         (!answering &&
@@ -2657,6 +2700,8 @@ export function Conversation({
                       onChange={setText}
                       onSend={() => void send()}
                       footer={composerFooter}
+                      leading={home ? undefined : composerContext}
+                      inlineControls={home ? entryControls : undefined}
                       modes={composerModes}
                       textareaRef={textareaRef}
                     >

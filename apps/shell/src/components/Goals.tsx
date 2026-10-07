@@ -18,18 +18,18 @@ type Props = {
 
 const cancellable = new Set<Goal["status"]>(["active", "paused", "blocked", "needs_input"]);
 
-function positiveNumber(value: string, max: number): number | undefined {
+function positiveNumber(value: string): number | undefined {
   if (!value.trim()) return undefined;
   const number = Number(value);
-  return Number.isFinite(number) && number > 0 && number <= max ? number : undefined;
+  return Number.isFinite(number) && number > 0 ? number : undefined;
 }
 
 export function Goals({ workspaceId, chatId, activePageId, modelConfigured, openRun }: Props) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [objective, setObjective] = useState("");
-  const [tokens, setTokens] = useState("200000");
-  const [cost, setCost] = useState("1");
-  const [minutes, setMinutes] = useState("30");
+  const [tokens, setTokens] = useState("");
+  const [cost, setCost] = useState("");
+  const [minutes, setMinutes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -76,15 +76,15 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
     }
   }
 
-  const maxTokens = positiveNumber(tokens, 10_000_000);
-  const maxCostUsd = positiveNumber(cost, 50);
-  const deadlineMinutes = positiveNumber(minutes, 30 * 24 * 60);
+  const maxTokens = positiveNumber(tokens);
+  const maxCostUsd = positiveNumber(cost);
+  const deadlineMinutes = positiveNumber(minutes);
   const valid =
     !!objective.trim() &&
-    (!tokens.trim() || Number.isInteger(maxTokens)) &&
+    (!tokens.trim() || Number.isSafeInteger(maxTokens)) &&
     (!cost.trim() || maxCostUsd !== undefined) &&
-    (!minutes.trim() || Number.isInteger(deadlineMinutes)) &&
-    (maxTokens !== undefined || maxCostUsd !== undefined || deadlineMinutes !== undefined);
+    (!minutes.trim() ||
+      (Number.isSafeInteger(deadlineMinutes) && Number.isSafeInteger(deadlineMinutes! * 60_000)));
   const unfinishedHere =
     !!chatId &&
     goals.some(
@@ -130,6 +130,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
               rows={3}
             />
           </label>
+          <p {...staticHintProps}>Leave limits empty to continue until completion or Stop.</p>
           <div className="goals-limits">
             <label>
               Maximum tokens
@@ -137,7 +138,6 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
                 aria-label="Goal maximum tokens"
                 {...nativeNumberTypeProps}
                 min="1"
-                max="10000000"
                 step="1"
                 value={tokens}
                 onChange={(event) => setTokens(event.target.value)}
@@ -149,7 +149,6 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
                 aria-label="Goal maximum cost"
                 {...nativeNumberTypeProps}
                 min="0.01"
-                max="50"
                 step="0.01"
                 value={cost}
                 onChange={(event) => setCost(event.target.value)}
@@ -161,7 +160,6 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
                 aria-label="Goal time limit"
                 {...nativeNumberTypeProps}
                 min="1"
-                max="43200"
                 step="1"
                 value={minutes}
                 onChange={(event) => setMinutes(event.target.value)}

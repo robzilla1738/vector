@@ -52,7 +52,13 @@ export {
 } from "./agent/model-client.js";
 export type { ToolCallStepResult, ToolStepToolCall } from "./agent/model-client.js";
 export { GatewayModelClient, gatewayProviderOptions, isFailoverStatus } from "./agent/gateway-client.js";
-export { BudgetsService, dayStartMs, type BudgetLimits, type BudgetStatus } from "./services/budgets.js";
+export {
+  BudgetsService,
+  dayStartMs,
+  monthStartMs,
+  type BudgetLimits,
+  type BudgetStatus,
+} from "./services/budgets.js";
 export {
   SpendLedger,
   spendLedgerPath,
@@ -185,6 +191,13 @@ export {
   type OriginPolicyAudit,
 } from "./safety/origin-policy.js";
 export { ApprovalStore, type AuthorizationDecision } from "./safety/approval.js";
+export {
+  RunFundingService,
+  FundingBudgetError,
+  ResourceFundingUnavailable,
+  ResourceLimitsUnavailable,
+  ModelFundingUnavailable,
+} from "./services/run-funding.js";
 export { GoalService } from "./services/goals.js";
 export { HookService, type HookExecutor } from "./services/hooks.js";
 export { WorkspaceFolderService } from "./services/workspace-folders.js";
@@ -220,16 +233,25 @@ export { OnboardingService } from "./services/onboarding.js";
 
 export { listSafetyActivity } from "./services/safety-activity.js";
 
-export { RunFundingService, FundingBudgetError, ResourceFundingUnavailable, ResourceLimitsUnavailable, ModelFundingUnavailable } from "./services/run-funding.js";
-
-export { resourceFundingAccounting, type ResourceFundingAccounting } from "./services/resource-accounting.js";
-
 export { ProviderAuthService } from "./services/provider-auth.js";
 export { ChatgptAuthService } from "./services/chatgpt-auth.js";
 export { ChatgptAccounts, chatgptAccountId } from "./services/chatgpt-account.js";
 export { accountableUtilityModel } from "./services/utility-model.js";
-export { chatgptRequest, chatgptCompletionStream, chatgptModelClient } from "./agent/chatgpt-model.js";
-export { chatgptModels, parseChatgptModels } from "./services/chatgpt-catalog.js";
+export {
+  chatgptRequest,
+  chatgptCompletionStream,
+  chatgptModelClient,
+} from "./agent/chatgpt-model.js";
 export { ModelCatalogService, parseModelCatalog, discoverLocalModels } from "./services/model-catalog.js";
-
 export { installAgentClient } from "./services/agent-client-install.js";
+
+export { TerminalService } from "./services/terminals.js";
+
+export { installCli } from "./services/cli-install.js";
+
+export { resourceFundingAccounting, type ResourceFundingAccounting } from "./services/resource-accounting.js";
+export { ExecutionResourceLedger } from "./services/execution-resource-ledger.js";
+
+export { ProjectsService } from "./services/projects.js";
+
+export { chatgptModels, parseChatgptModels } from "./services/chatgpt-catalog.js";

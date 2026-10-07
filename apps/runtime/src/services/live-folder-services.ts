@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
 import { AuxError, LiveFolderItemSchema, type LiveFolderItem } from "@aux/contracts";
 import type { MethodCtx, Services } from "../api/methods/context.js";
-import { GithubConnectionService } from "./github-connection.js";
+import { GithubMcpSource } from "./github-mcp-source.js";
 import { LiveFolderService } from "./live-folders.js";
 
-const services = new WeakMap<Services, { github: GithubConnectionService; folders: LiveFolderService }>();
+const services = new WeakMap<Services, { github: GithubMcpSource; folders: LiveFolderService }>();
 
 async function routineRows(
-  ctx: Pick<MethodCtx, "s" | "routines">,
+  ctx: Pick<MethodCtx, "s" | "routines" | "outboundMcp">,
   routineId: string,
   signal: AbortSignal,
 ): Promise<LiveFolderItem[]> {
@@ -57,23 +57,22 @@ async function routineRows(
   }
 }
 
-export function liveFolderServices(ctx: Pick<MethodCtx, "s" | "routines">) {
+export function liveFolderServices(ctx: Pick<MethodCtx, "s" | "routines" | "outboundMcp">) {
   const existing = services.get(ctx.s);
   if (existing) return existing;
   if (!ctx.s.native) throw new AuxError("backend_unavailable", "Live folders require Aux desktop.");
-  const github = new GithubConnectionService({
-    repo: ctx.s.repo,
-    native: ctx.s.native,
-    endpoint: async () => (await ctx.s.nativeIdentity?.catch(() => undefined))?.loopbackServicesUrl,
-  });
+  const github = new GithubMcpSource(()=>ctx.outboundMcp);
   const folders = new LiveFolderService({
     repo: ctx.s.repo,
     github,
     calendar: ctx.s.calendar,
     sources: async () => {
-      if (!ctx.s.native?.liveFolderSources)
-        throw new AuxError("backend_unavailable", "Profile live folders are unavailable.");
-      return ctx.s.native.liveFolderSources();
+      if (!ctx.s.native?.organizationSnapshot)
+        throw new AuxError("backend_unavailable", "Profile organization is unavailable.");
+      const {shared}=await ctx.s.native.organizationSnapshot();
+      return (shared?.folders??[]).flatMap(folder=>folder.live?[{
+        id:folder.id,spaceId:folder.spaceId,live:folder.live,workspaceId:shared!.spaces.find(space=>space.id===folder.spaceId)?.workspaceId,
+      }]:[]);
     },
     routineItems: (id, signal) => routineRows(ctx, id, signal),
   });

@@ -28,7 +28,7 @@ const routes: readonly SettingsRoute[] = [
   { slug: "skills-plugins", category: "Connections", connectionTab: "Plugins" },
   { slug: "mcp-connectors", category: "Connections", connectionTab: "Services" },
   { slug: "memory", category: "Memory" },
-  { slug: "workspaces", category: "Workspaces" },
+  { slug: "projects", category: "Projects" },
   { slug: "developers-external-agents", category: "Connections", connectionTab: "Agents" },
   { slug: "extensions", category: "Extensions" },
 ];

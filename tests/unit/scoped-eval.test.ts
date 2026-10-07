@@ -1,4 +1,4 @@
-import type { AgentPolicySettings } from "@aux/contracts";
+import type {AgentPolicySettings} from "@aux/contracts";
 import { afterEach, expect, it } from "vitest";
 import {
   EventBus,
@@ -76,18 +76,11 @@ function fixture(
       return { status: "completed" };
     },
   };
-  let policy: AgentPolicySettings = {
-    agentMode: "auto",
-    agentPolicyRevision: 0,
-    agentPolicies: [
-      { category: "read", access: "block" },
-      { category: "navigate", access: "block" },
-      { category: "external_tool", access: "block" },
-    ],
-  };
+  let policy: AgentPolicySettings = {agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [{category: "read", access: "block"}, {category: "navigate", access: "block"}, {category: "external_tool", access: "block"}]};
   const settings = {
     agentPolicy: () => policy,
     searchEngine: () => "https://search.example.com/?q=%s",
+
     budgetLimits: () => ({}),
     imageModel: () => "openai/gpt-image-2" as const,
   };
@@ -108,9 +101,7 @@ function fixture(
     task,
     workspace,
     page,
-    allowTools: () => {
-      policy = { ...policy, agentPolicyRevision: policy.agentPolicyRevision + 1, agentPolicies: [] };
-    },
+    allowTools: () => {policy = {...policy, agentPolicyRevision: policy.agentPolicyRevision + 1, agentPolicies: []};},
     pageOwnership,
     operationCalls: () => operationCalls,
     scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId },
@@ -172,17 +163,13 @@ it("keeps a human-held tab out of external page programs", async () => {
   expect(f.pageOwnership.snapshot().p1).toBeUndefined();
 });
 
-it("keeps takeover human-only without granting scoped agents resume", async () => {
+it("lets a scoped agent hand its authorized tab to a person without granting resume", async () => {
   const f = fixture();
   const client = { external: true, connectionId: "c1", scope: f.scope };
   await expect(f.invoke("pages.takeover", { pageId: "other" }, client)).rejects.toMatchObject({
     code: "permission_denied",
   });
-  await expect(f.invoke("pages.takeover", { pageId: "p1" }, client)).rejects.toMatchObject({
-    code: "permission_denied",
-  });
-  expect(f.page.controller).not.toBe("human");
-  await expect(f.invoke("pages.takeover", { pageId: "p1" }, { external: false })).resolves.toMatchObject({
+  await expect(f.invoke("pages.takeover", { pageId: "p1" }, client)).resolves.toMatchObject({
     controller: "human",
   });
   expect(f.page.controller).toBe("human");
@@ -424,7 +411,7 @@ function eventFixture() {
     ],
   } as unknown as PageService;
   const settings = {
-    agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
+    agentPolicy: () => ({agentMode: "auto", agentPolicyRevision: 0, agentPolicies: []}),
     searchEngine: () => "",
   };
   const invoke = makeInvoker({ repo, events, pages, settings } as unknown as Services);

@@ -1,33 +1,5 @@
 import { PageSummaryParamsSchema, PageSummaryResultSchema } from "./page-summary.js";
-import { RemoteDebuggingStateSchema } from "./remote-debugging.js";
 import { SkillLibraryPreviewParams, SkillLibraryImportParams, SkillLibraryPreviewSchema } from "./skill-library.js";
-import { BrowserExportSourceSchema, BrowserExportFormatSchema, BrowserImportSelectionStatusSchema } from "./import.js";
-import {
-  TerminalCloseParams,
-  TerminalInputParams,
-  TerminalInputResultSchema,
-  TerminalListenersParams,
-  TerminalListenersSchema,
-  TerminalPreviewCloseParams,
-  TerminalPreviewClosedSchema,
-  TerminalPreviewParams,
-  TerminalPreviewSchema,
-  TerminalReadParams,
-  TerminalReadResultSchema,
-  TerminalResizeParams,
-  TerminalSessionSchema,
-  TerminalStartParams,
-} from "./terminal.js";
-import {
-  ProjectFilesParams,
-  ProjectFileParams,
-  ProjectChangesParams,
-  ProjectFilesSchema,
-  ProjectFileSchema,
-  ProjectChangesSchema,
-} from "./projects.js";
-import { UtilityIntentParamsSchema, UtilityIntentResultSchema } from "./utility.js";
-import { ExecutionTargetSchema, CloudConfigureParamsSchema, CloudSettingsStatusSchema } from "./cloud-execution.js";
 import {
   CopilotAttemptParams,
   CopilotAccountParams,
@@ -39,6 +11,41 @@ import {
   CopilotDisconnectedSchema,
   CopilotCatalogSchema,
 } from "./copilot-auth.js";
+import {
+  BrowserExportSourceSchema,
+  BrowserExportFormatSchema,
+  BrowserImportSelectionStatusSchema,
+} from "./import.js";
+import { RemoteDebuggingStateSchema } from "./remote-debugging.js";
+import {
+  ProjectFilesParams,
+  ProjectFileParams,
+  ProjectChangesParams,
+  ProjectFilesSchema,
+  ProjectFileSchema,
+  ProjectChangesSchema,
+} from "./projects.js";
+import {
+  ExecutionTargetSchema,
+  CloudConfigureParamsSchema,
+  CloudSettingsStatusSchema,
+} from "./cloud-execution.js";
+import {
+  TerminalListenersParams,
+  TerminalListenersSchema,
+  TerminalPreviewParams,
+  TerminalPreviewSchema,
+  TerminalPreviewCloseParams,
+  TerminalPreviewClosedSchema,
+  TerminalStartParams,
+  TerminalReadParams,
+  TerminalInputParams,
+  TerminalResizeParams,
+  TerminalCloseParams,
+  TerminalSessionSchema,
+  TerminalReadResultSchema,
+  TerminalInputResultSchema,
+} from "./terminal.js";
 import { SafetyActivityQuerySchema, SafetyActivityPageSchema } from "./safety-activity.js";
 import { AgentModeSchema, AgentPolicyOverrideSchema } from "./agent-policy.js";
 import { AUX_FEATURES, type AuxFeature } from "./aux-features.js";
@@ -130,6 +137,7 @@ import {
 import { EventSchema } from "./events.js";
 import { TidyProposalParamsSchema, TidyProposalSchema } from "./tidy.js";
 import { TabNameSuggestParamsSchema, TabNameSuggestionSchema } from "./tab-name.js";
+import { UtilityIntentParamsSchema, UtilityIntentResultSchema } from "./utility.js";
 import {
   InlineAssistApplyParamsSchema,
   InlineAssistApplySchema,
@@ -187,6 +195,8 @@ import {
   OutboundMcpRegisterParams,
   OutboundMcpToolToggleParams,
   OutboundMcpServerSchema,
+  McpOAuthClientSetupSchema,
+  McpOAuthRequirementsSchema,
   OutboundMcpToolSchema,
   OutboundMcpCallResultSchema,
   OutboundMcpBundleInspectionSchema,
@@ -260,6 +270,7 @@ import {
   RoutineShareEnvelopeSchema,
   RoutineShareSchema,
   RoutineSuggestionSchema,
+  RoutineCandidateSchema,
   RoutineUpdateParams,
   RoutineReplayCompileParams,
   RoutineReplayTestParams,
@@ -870,10 +881,12 @@ export const SidebarMaterialSchema = z.enum(["liquid-glass", "titlebar", "sideba
 export type SidebarMaterial = z.infer<typeof SidebarMaterialSchema>;
 
 export const FileAccessModeSchema = z.enum(["guard", "read-only", "full"]);
-export const FileAccessSettingsSchema = z.object({
-  fileAccessMode: FileAccessModeSchema.default("guard"),
-  fileAccessRevision: z.number().int().nonnegative().default(0),
-}).strict();
+export const FileAccessSettingsSchema = z
+  .object({
+    fileAccessMode: FileAccessModeSchema.default("guard"),
+    fileAccessRevision: z.number().int().nonnegative().default(0),
+  })
+  .strict();
 export type FileAccessSettings = z.infer<typeof FileAccessSettingsSchema>;
 
 export const SettingsSetParams = z.object({
@@ -889,8 +902,8 @@ export const SettingsSetParams = z.object({
   modelProvider: ModelProviderSchema.optional(),
   modelCredential: ModelCredentialSchema.optional(),
   modelConnection: ModelConnectionChangeSchema.optional(),
-  localModelsOnly: z.boolean().optional(),
   imageModel: ImageModelSchema.nullable().optional(),
+  localModelsOnly: z.boolean().optional(),
   compatibleEndpoint: z.string().trim().max(2048).optional(),
   gatewayApiKey: z.string().optional(),
   plannerModel: z.string().optional(),
@@ -1395,6 +1408,7 @@ export const MethodSchemas = {
   "hooks.invocations": z
     .object({ hookId: z.string().uuid(), limit: z.number().int().min(1).max(200).default(100) })
     .strict(),
+  "routines.scan": z.object({ workspaceId: id, limit: z.number().int().min(1).max(20).default(5) }).strict(),
   "routines.suggest": z
     .object({
       workspaceId: id.optional(),
@@ -1488,23 +1502,14 @@ export const MethodSchemas = {
   "agentConnections.list": z.object({}),
   "agentConnections.create": AgentConnectionCreateParams,
   "agentConnections.install": AgentConnectionCreateParams,
-  "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
   "developer.cli.install": z.object({}).strict(),
-  "projects.files": ProjectFilesParams,
-  "projects.file": ProjectFileParams,
-  "projects.changes": ProjectChangesParams,
-  "terminal.start": TerminalStartParams,
-  "terminal.read": TerminalReadParams,
-  "terminal.input": TerminalInputParams,
-  "terminal.resize": TerminalResizeParams,
-  "terminal.close": TerminalCloseParams,
-  "terminal.listeners": TerminalListenersParams,
-  "terminal.preview": TerminalPreviewParams,
-  "terminal.previewClose": TerminalPreviewCloseParams,
+  "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
   "mcp.servers.register": OutboundMcpRegisterParams,
   "mcp.bundles.inspect": z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
   "mcp.servers.list": z.object({ workspaceId: id }).strict(),
   "mcp.servers.revoke": z.object({ serverId: z.string().uuid() }).strict(),
+  "mcp.oauth.requirements": z.object({ serverId: z.string().uuid() }).strict(),
+  "mcp.oauth.configure": McpOAuthClientSetupSchema,
   "mcp.oauth.start": z.object({ serverId: z.string().uuid() }).strict(),
   "mcp.oauth.status": z.object({ serverId: z.string().uuid() }).strict(),
   "mcp.oauth.clear": z.object({ serverId: z.string().uuid() }).strict(),
@@ -1716,6 +1721,7 @@ export const MethodSchemas = {
   "chrome.importCookies": z.object({
     source: z.enum(["auto", "profile"]).optional(),
   }),
+
   "onboarding.get": z.object({}).strict(),
   "onboarding.update": OnboardingUpdateParamsSchema,
   "onboarding.start": OnboardingStartParamsSchema,
@@ -1736,6 +1742,17 @@ export const MethodSchemas = {
   "import.status": z.object({ jobId: z.string().min(1).max(64).optional() }),
   "import.cancel": z.object({ jobId: z.string().min(1).max(64) }),
   "chrome.openLive": ChromeOpenLiveParams,
+  "projects.files": ProjectFilesParams,
+  "projects.file": ProjectFileParams,
+  "projects.changes": ProjectChangesParams,
+  "terminal.start": TerminalStartParams,
+  "terminal.read": TerminalReadParams,
+  "terminal.input": TerminalInputParams,
+  "terminal.resize": TerminalResizeParams,
+  "terminal.close": TerminalCloseParams,
+  "terminal.listeners": TerminalListenersParams,
+  "terminal.preview": TerminalPreviewParams,
+  "terminal.previewClose": TerminalPreviewCloseParams,
   "models.auth.start": z
     .object({
       provider: z.enum(["openrouter", "chatgpt", "vercel"]),
@@ -1765,33 +1782,39 @@ export const MethodSchemas = {
       texts: z.array(z.string().max(4000)).min(1).max(400),
       target: z.string().min(2).max(40).optional(),
       context: z.string().max(200).optional(),
-      source: z.object({
-        pageId: z.string().min(1).max(200),
-        expectedUrl: z.string().max(8192),
-        expectedDocumentEpoch: z.number().int().nonnegative().optional(),
-      }).strict().optional(),
+      source: z
+        .object({
+          pageId: z.string().min(1).max(200),
+          expectedUrl: z.string().max(8192),
+          expectedDocumentEpoch: z.number().int().nonnegative().optional(),
+        })
+        .strict()
+        .optional(),
     })
     .strict(),
   "translate.text": z
     .object({
       text: z.string().min(1).max(12000),
       context: z.string().max(200).optional(),
-      source: z.object({
-        pageId: z.string().min(1).max(200),
-        expectedUrl: z.string().max(8192),
-        expectedDocumentEpoch: z.number().int().nonnegative().optional(),
-      }).strict().optional(),
+      source: z
+        .object({
+          pageId: z.string().min(1).max(200),
+          expectedUrl: z.string().max(8192),
+          expectedDocumentEpoch: z.number().int().nonnegative().optional(),
+        })
+        .strict()
+        .optional(),
       target: z.string().min(2).max(40).optional(),
     })
     .strict(),
 
-  "settings.get": SettingsGetParams,
-  "settings.set": SettingsSetParams,
   "settings.remoteDebugging.get": z.object({}).strict(),
   "settings.remoteDebugging.set": z.object({ enabled: z.boolean() }).strict(),
   "settings.cloud.status": z.object({}).strict(),
   "settings.cloud.configure": CloudConfigureParamsSchema,
   "settings.cloud.clear": z.object({ expectedRevision: z.number().int().nonnegative() }).strict(),
+  "settings.get": SettingsGetParams,
+  "settings.set": SettingsSetParams,
   "usage.report": UsageReportParams,
   "command.ranking.list": z.object({}).strict(),
   "command.ranking.record": z
@@ -1968,17 +1991,6 @@ export const MethodDefinitions = Object.fromEntries(
 
 /** Wire shapes for the result column — used for typing, validated server-side. */
 export const ResultSchemas = {
-  "projects.files": ProjectFilesSchema,
-  "projects.file": ProjectFileSchema,
-  "projects.changes": ProjectChangesSchema,
-  "terminal.start": TerminalSessionSchema,
-  "terminal.read": TerminalReadResultSchema,
-  "terminal.input": TerminalInputResultSchema,
-  "terminal.resize": TerminalSessionSchema,
-  "terminal.close": TerminalSessionSchema,
-  "terminal.listeners": TerminalListenersSchema,
-  "terminal.preview": TerminalPreviewSchema,
-  "terminal.previewClose": TerminalPreviewClosedSchema,
   ...BrowserRuntimeResultSchemas,
   "agent.tabs.list": z.array(z.object({ pageId: id, title: z.string(), url: z.string() }).strict()),
   "agent.js.run": AgentJsResult,
@@ -2209,6 +2221,7 @@ export const ResultSchemas = {
   "hooks.revoke": HookSchema,
   "hooks.test": HookInvocationSchema,
   "hooks.invocations": z.array(HookInvocationSchema),
+  "routines.scan": z.array(RoutineCandidateSchema),
   "routines.suggest": z.array(RoutineSuggestionSchema),
   "routines.get": z.object({ routine: RoutineSchema, runs: z.array(RoutineRunSchema) }),
   "routines.create": RoutineSchema,
@@ -2302,6 +2315,8 @@ export const ResultSchemas = {
       .object({ state: z.literal("authorization"), url: z.string().url(), expiresAt: z.number().int() })
       .strict(),
   ]),
+  "mcp.oauth.requirements": McpOAuthRequirementsSchema,
+  "mcp.oauth.configure": z.object({ configured: z.literal(true) }).strict(),
   "mcp.oauth.status": z.object({ connected: z.boolean(), expiresAt: z.number().int().optional() }).strict(),
   "mcp.oauth.clear": z.object({ connected: z.literal(false) }).strict(),
   "mcp.tools.list": z.array(OutboundMcpToolSchema),
@@ -2560,13 +2575,14 @@ export const ResultSchemas = {
     domains: z.number(),
     detail: z.string().optional(),
   }),
+
+  "onboarding.get": OnboardingStateSchema,
+  "onboarding.update": OnboardingStateSchema,
+  "onboarding.start": z.object({ state: OnboardingStateSchema, run: RunSchema.nullable() }).strict(),
   "import.preview": z.object({
     sources: z.array(ImportSourcePreviewSchema),
     recentJobs: z.array(ImportJobStatusSchema).max(5).optional(),
   }),
-  "onboarding.get": OnboardingStateSchema,
-  "onboarding.update": OnboardingStateSchema,
-  "onboarding.start": z.object({ state: OnboardingStateSchema, run: RunSchema.nullable() }).strict(),
   "import.extensions.review": ImportExtensionReviewSchema,
   "import.selectWindow": z.object({ selectionId: z.string().min(16).max(128) }).strict(),
   "import.selectExport": z.object({ selectionId: z.string().min(16).max(128) }).strict(),
@@ -2576,6 +2592,17 @@ export const ResultSchemas = {
   "import.status": ImportJobStatusSchema,
   "import.cancel": z.object({ ok: z.boolean() }),
   "chrome.openLive": z.object({ ok: z.boolean() }),
+  "projects.files": ProjectFilesSchema,
+  "projects.file": ProjectFileSchema,
+  "projects.changes": ProjectChangesSchema,
+  "terminal.start": TerminalSessionSchema,
+  "terminal.read": TerminalReadResultSchema,
+  "terminal.input": TerminalInputResultSchema,
+  "terminal.resize": TerminalSessionSchema,
+  "terminal.close": TerminalSessionSchema,
+  "terminal.listeners": TerminalListenersSchema,
+  "terminal.preview": TerminalPreviewSchema,
+  "terminal.previewClose": TerminalPreviewClosedSchema,
   "models.auth.start": z
     .object({
       attemptId: z.string(),
@@ -2640,13 +2667,13 @@ export const ResultSchemas = {
     error: z.string().optional(),
   }),
 
-  "settings.get": z.record(z.string(), z.unknown()),
-  "settings.set": z.object({ ok: z.boolean() }),
   "settings.remoteDebugging.get": RemoteDebuggingStateSchema,
   "settings.remoteDebugging.set": RemoteDebuggingStateSchema,
   "settings.cloud.status": CloudSettingsStatusSchema,
   "settings.cloud.configure": CloudSettingsStatusSchema,
   "settings.cloud.clear": CloudSettingsStatusSchema,
+  "settings.get": z.record(z.string(), z.unknown()),
+  "settings.set": z.object({ ok: z.boolean() }),
   "usage.report": UsageReportResultSchema,
   "command.ranking.list": z.array(CommandRankingEntrySchema),
   "command.ranking.record": CommandRankingEntrySchema,
@@ -2739,9 +2766,7 @@ export const ResultSchemas = {
 export type MethodParams<M extends MethodName> = z.input<(typeof MethodSchemas)[M]>;
 export type MethodResult<M extends MethodName> = z.output<(typeof ResultSchemas)[M]>;
 /** Request/response pair for every runtime API method — the typed IPC surface. */
-export type RpcMap = {
-  [M in MethodName]: { params: MethodParams<M>; result: MethodResult<M> };
-};
+export type RpcMap = { [M in MethodName]: { params: MethodParams<M>; result: MethodResult<M> } };
 /** Positional params for `call(method, ...params)`: optional when the method takes none. */
 export type RpcArgs<M extends MethodName> = {} extends RpcMap[M]["params"]
   ? [params?: RpcMap[M]["params"]]

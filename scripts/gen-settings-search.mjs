@@ -12,9 +12,10 @@ const sections = {
   PrivacySecurity: "Site permissions",
   PasswordsAutofill: "Passwords & Autofill",
   Models: "Models",
+  CloudExecution: "Models",
   UsageBudgets: "Usage & Budgets",
   Automations: "Automations",
-  Workspaces: "Workspaces",
+  Workspaces: "Projects",
   QuickAsk: "Quick Ask",
   SelectionCapture: "Selection & Capture",
   ArchivedChats: "Archived chats",
@@ -190,7 +191,6 @@ for (const [file, category] of Object.entries(components))
   scan(resolve(root, `components/${file}.tsx`), category, new Set());
 for (const [file, category, feature] of [
   ["features/apple-script/preference.tsx", "Advanced", "appleScript"],
-  ["components/GithubConnections.tsx", "Connections", "liveFolders"],
   ["settings/sections/LinkRouting.tsx", "Link Routing", "linkRouting"],
   ["features/morning-review/NightSettings.tsx", "Automations", "overnightReview"],
   ["features/download-naming/Settings.tsx", "Downloads", "smartDownloadNames"],

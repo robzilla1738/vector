@@ -4,6 +4,8 @@ import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { lazy, Suspense, useEffect, useState } from "react";
+const ProjectWorkspace = lazy(() => import("../../features/projects/Project"));
+const ProjectTerminal = lazy(() => import("../../features/terminal/Terminal"));
 import type {
   Workspace,
   WorkspaceFolder,
@@ -15,12 +17,11 @@ import { SettingsField, SettingsSection } from "../primitives";
 import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
 import { nativeAlertRoleProps, nativeGroupRoleProps } from "../../ui/native-attribute-props";
 
-const Project = lazy(() => import("../../features/projects/Project"));
-
 export function WorkspacesSettings({ active }: { active: boolean }) {
+  const [projectFolder, setProjectFolder] = useState<WorkspaceFolder | null>(null);
+  const [terminalFolder, setTerminalFolder] = useState<WorkspaceFolder | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState("");
-  const [projectFolder, setProjectFolder] = useState<WorkspaceFolder>();
   const [folders, setFolders] = useState<WorkspaceFolder[]>([]);
   const [path, setPath] = useState("");
   const [access, setAccess] = useState<WorkspaceFolderAccess>("read");
@@ -75,23 +76,24 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
   }
 
   return (
-    <SettingsSection name="Workspaces" title="Workspaces" hidden={!active}>
+    <SettingsSection name="Projects" title="Projects" hidden={!active}>
       <p {...staticHintProps}>
-        Bind local folders to a Space. Read access lets the agent inspect files; read and write access also
-        lets it change them. Network access stays off by default.
+        Add project folders to a Space. Read access lets the agent inspect files and instructions; read and
+        write access also lets it change them. Your agent mode controls network access.
       </p>
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
       <SettingsField
         label="Space"
-        hint="Folder access and AGENTS.md context apply only to runs in this Space."
+        hint="Project roots, AGENTS.md instructions and local .claude/skills apply only to runs in this Space."
       >
         <select
           aria-label="Folder Space"
           value={workspaceId}
           onChange={(event) => {
-            setProjectFolder(undefined);
             setWorkspaceId(event.target.value);
             setReview(null);
+            setTerminalFolder(null);
+            setProjectFolder(null);
             setFolders([]);
           }}
         >
@@ -113,6 +115,8 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
             onChange={(event) => {
               setPath(event.target.value);
               setReview(null);
+              setTerminalFolder(null);
+              setProjectFolder(null);
             }}
             placeholder="/Users/you/Projects/example"
           />
@@ -122,6 +126,8 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
             onChange={(event) => {
               setAccess(event.target.value as WorkspaceFolderAccess);
               setReview(null);
+              setTerminalFolder(null);
+              setProjectFolder(null);
             }}
           >
             <option value="read">Read only</option>
@@ -152,10 +158,12 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
           <p>
             Canonical path: <code>{review.path}</code>
           </p>
-          <p>
-            Review fingerprint: <code>{review.reviewDigest}</code>
-          </p>
           <p>AGENTS.md: {review.agentsPreview ? "present" : "none"}</p>
+          {review.skillsPath && (
+            <p>
+              Skills: <code>{review.skillsPath}</code>
+            </p>
+          )}
           {review.agentsPreview && <pre>{review.agentsPreview}</pre>}
           <button
             {...smallButtonProps}
@@ -170,6 +178,8 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
                 });
                 setFolders(await call("workspaces.folders.list", { workspaceId: review.workspaceId }));
                 setReview(null);
+                setTerminalFolder(null);
+                setProjectFolder(null);
                 setPath("");
               })
             }
@@ -179,11 +189,11 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
         </div>
       )}
       <SettingsField
-        label="Bound folders"
+        label="Projects"
         hint="Archiving immediately removes file and bash access. A changed folder or AGENTS.md pauses access until a fresh review."
       >
         {!folders.some((item) => !item.archivedAt) && (
-          <p {...staticHintProps}>No active folders in this Space.</p>
+          <p {...staticHintProps}>No active projects in this Space.</p>
         )}
         {folders
           .filter((item) => !item.archivedAt)
@@ -191,19 +201,33 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
             <div className="row" key={item.folderId}>
               <span {...auxClassGrowProps}>
                 <code>{item.path}</code> · {item.access === "read" ? "Read only" : "Read and write"}
+                {item.skillsPath && (
+                  <span>
+                    {" "}
+                    · Skills: <code>{item.skillsPath}</code>
+                  </span>
+                )}
                 {item.agentsChanged
                   ? " · Folder or AGENTS.md changed; access paused. Archive and review again."
                   : ""}
               </span>
-              <button {...smallButtonProps} disabled={busy || item.agentsChanged} onClick={() => setProjectFolder(item)}>
-                Open Project
-              </button>
+              {!item.agentsChanged && (
+                <button {...smallButtonProps} disabled={busy} onClick={() => setProjectFolder(item)}>
+                  Open Project
+                </button>
+              )}
+              {item.access === "readWrite" && !item.agentsChanged && (
+                <button {...smallButtonProps} disabled={busy} onClick={() => setTerminalFolder(item)}>
+                  Open Terminal
+                </button>
+              )}
               <button
                 {...smallButtonProps}
                 disabled={busy}
                 onClick={() =>
                   void act(async () => {
-                    if (projectFolder?.folderId === item.folderId) setProjectFolder(undefined);
+                    if (terminalFolder?.folderId === item.folderId) setTerminalFolder(null);
+                    if (projectFolder?.folderId === item.folderId) setProjectFolder(null);
                     await call("workspaces.folders.archive", { workspaceId, folderId: item.folderId });
                     setFolders(await call("workspaces.folders.list", { workspaceId }));
                   })
@@ -216,7 +240,21 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
       </SettingsField>
       {active && projectFolder && (
         <Suspense fallback={<p>Loading Project…</p>}>
-          <Project folder={projectFolder} close={() => setProjectFolder(undefined)} />
+          <ProjectWorkspace
+            key={projectFolder.folderId}
+            folder={projectFolder}
+            close={() => setProjectFolder(null)}
+          />
+        </Suspense>
+      )}
+      {active && terminalFolder && (
+        <Suspense fallback={<p>Loading Terminal…</p>}>
+          <ProjectTerminal
+            key={terminalFolder.folderId}
+            workspaceId={terminalFolder.workspaceId}
+            folderId={terminalFolder.folderId}
+            path={terminalFolder.path}
+          />
         </Suspense>
       )}
       {active && <CloudExecution />}

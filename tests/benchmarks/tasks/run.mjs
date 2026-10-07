@@ -157,6 +157,7 @@ if (has("validate")) {
     scoreAnswer({ owner: "Jordan Lee", extra: 1 }, { type: "object", value: { owner: "Jordan Lee" } }) === 1,
   );
   ok("scoring: failed run with correct answer fails", scoreRun("failed", 1, null) === 0);
+  ok("scoring: missing or unfinished run status fails", scoreRun(undefined, 1, null) === 0 && scoreRun("unfinished", 1, null) === 0);
   ok("scoring: completed run with correct answer passes", scoreRun("completed", 1, { pass: true }) === 1);
   ok(
     "Gateway authentication is not a task score",
@@ -380,7 +381,7 @@ try {
           }
           const answerScore = out.answer == null ? 0 : scoreAnswer(out.answer, task.expected);
           const oracle = task.oracle ? await checkTaskOracle(task.oracle) : null;
-          const status = out.status ?? (out.error ? "failed" : "completed");
+          const status = out.status ?? (out.error ? "failed" : "unfinished");
           const score = scoreRun(status, answerScore, oracle);
           const row = {
             id: task.id,
@@ -822,6 +823,7 @@ async function mcpAdapter(name, cfg) {
     const m = /FINAL ANSWER:\s*(.+)/is.exec(text);
     const usage = result.totalUsage ?? result.usage ?? {};
     return {
+      status: result.finishReason === "stop" ? "completed" : "unfinished",
       answer: m ? m[1].trim() : text.trim() || null,
       modelCalls: result.steps?.length ?? null,
       toolCalls: result.steps?.reduce((n, s) => n + (s.toolCalls?.length ?? 0), 0) ?? null,

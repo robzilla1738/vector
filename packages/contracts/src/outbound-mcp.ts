@@ -109,3 +109,63 @@ export type OutboundMcpTool = z.infer<typeof OutboundMcpToolSchema>;
 export type OutboundMcpCallResult = z.infer<typeof OutboundMcpCallResultSchema>;
 export type McpStdioLaunchPermit = z.infer<typeof McpStdioLaunchPermitSchema>;
 export type McpOAuthToken = z.infer<typeof McpOAuthTokenSchema>;
+
+/** Public endpoints owned by the provider; client credentials belong in the Profile Keychain. */
+export const OFFICIAL_MCP_CONNECTORS = [
+  {
+    id: "github",
+    name: "GitHub",
+    url: "https://api.githubcopilot.com/mcp/",
+    registrationUrl: "https://github.com/settings/developers",
+    help: "Register an Aux OAuth app with its exact loopback callback. GitHub requires your app's client ID and secret.",
+  },
+  {
+    id: "vercel",
+    name: "Vercel",
+    url: "https://mcp.vercel.com",
+    registrationUrl: "https://vercel.com/docs/agent-resources/vercel-mcp",
+    help: "Vercel requires an approved Aux client. Use the client registration issued to Aux after Vercel's review.",
+  },
+  {
+    id: "sentry",
+    name: "Sentry",
+    url: "https://mcp.sentry.dev/mcp",
+    registrationUrl: "https://mcp.sentry.dev/",
+    help: "Sentry supports automatic registration during sign-in.",
+  },
+] as const;
+export const McpOAuthClientSetupSchema = z
+  .object({
+    serverId: z.string().uuid(),
+    issuer: z.string().url().max(2048),
+    clientId: z.string().trim().min(1).max(2048),
+    clientSecret: z.string().min(1).max(8192).optional(),
+    redirectUrl: z
+      .string()
+      .url()
+      .max(2048)
+      .refine((value) => {
+        const url = new URL(value);
+        return (
+          url.protocol === "http:" &&
+          url.hostname === "127.0.0.1" &&
+          !!url.port &&
+          url.pathname === "/oauth/mcp" &&
+          !url.username &&
+          !url.password &&
+          !url.search &&
+          !url.hash
+        );
+      }, "Use an exact http://127.0.0.1:PORT/oauth/mcp callback."),
+  })
+  .strict();
+export const McpOAuthRequirementsSchema = z
+  .object({
+    issuer: z.string().url(),
+    authorizationUrl: z.string().url(),
+    automaticRegistration: z.boolean(),
+    configured: z.boolean(),
+    redirectUrl: z.string().url().optional(),
+  })
+  .strict();
+export type McpOAuthClientSetup = z.infer<typeof McpOAuthClientSetupSchema>;

@@ -1,40 +1,10 @@
-import { lookup } from "node:dns/promises";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
-import { BlockList, isIP } from "node:net";
+import { isIP } from "node:net";
+import { isPublicNetworkAddress, resolveNetworkAddress } from "../services/public-network.js";
 import { AuxError } from "@aux/contracts";
 
 const MAX_BYTES = 1_000_000;
-const DENIED = new BlockList();
-for (const [address, prefix] of [
-  ["0.0.0.0", 8],
-  ["10.0.0.0", 8],
-  ["100.64.0.0", 10],
-  ["127.0.0.0", 8],
-  ["169.254.0.0", 16],
-  ["172.16.0.0", 12],
-  ["192.0.0.0", 24],
-  ["192.0.2.0", 24],
-  ["192.168.0.0", 16],
-  ["198.18.0.0", 15],
-  ["198.51.100.0", 24],
-  ["203.0.113.0", 24],
-  ["224.0.0.0", 4],
-  ["240.0.0.0", 4],
-] as const)
-  DENIED.addSubnet(address, prefix, "ipv4");
-for (const [address, prefix] of [
-  ["::", 128],
-  ["::1", 128],
-  ["::ffff:0:0", 96],
-  ["fc00::", 7],
-  ["fe80::", 10],
-  ["2001::", 32],
-  ["2001:db8::", 32],
-  ["2002::", 16],
-  ["ff00::", 8],
-] as const)
-  DENIED.addSubnet(address, prefix, "ipv6");
 
 export type WebPage = {
   url: string;
@@ -62,7 +32,7 @@ export function permittedWebUrl(raw: string, allowPrivateNetwork = false): URL {
     !allowPrivateNetwork &&
     (literal === "localhost" ||
       literal.endsWith(".localhost") ||
-      (isIP(literal) && DENIED.check(literal, isIP(literal) === 4 ? "ipv4" : "ipv6")))
+      (isIP(literal) && !isPublicNetworkAddress(literal)))
   )
     throw new AuxError("permission_denied", "Web tools cannot contact a private or local network address.");
   url.hash = "";
@@ -71,14 +41,7 @@ export function permittedWebUrl(raw: string, allowPrivateNetwork = false): URL {
 
 /** DNS is pinned to a vetted address for each connection; redirects are checked independently. */
 export const nodeWebTransport: WebTransport = async (url, allowPrivateNetwork) => {
-  const address = await lookup(url.hostname.replace(/^\[|\]$/g, ""), { all: true, verbatim: true });
-  if (
-    !address.length ||
-    (!allowPrivateNetwork &&
-      address.some((item) => DENIED.check(item.address, item.family === 4 ? "ipv4" : "ipv6")))
-  )
-    throw new AuxError("permission_denied", "Web tools cannot contact a private or local network address.");
-  const chosen = address[0]!;
+  const chosen = await resolveNetworkAddress(url.hostname, allowPrivateNetwork);
   return new Promise((resolve, reject) => {
     const request = (url.protocol === "https:" ? httpsRequest : httpRequest)(
       url,

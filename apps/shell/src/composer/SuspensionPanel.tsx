@@ -44,8 +44,7 @@ export function SuspensionPanel({
     typed?.request.instruction ?? question ?? run.statusMessage ?? "Aux is waiting for your answer.";
   const kind = typed?.kind;
   const resourceHandoff =
-    kind === "handoff" &&
-    !!(typed?.request.resourceFunding || typed?.request.resourceLimits || typed?.request.cloudSetup);
+    kind === "handoff" && !!(typed?.request.resourceFunding || typed?.request.resourceLimits || typed?.request.cloudSetup);
   const canAnswer = kind === "ask-user-question" || (kind === "handoff" && !resourceHandoff);
   const text = draft?.question === instruction ? draft.text : "";
   const setText = (value: string) => useStore.getState().setRunAnswerDraft(run.runId, instruction, value);
@@ -102,10 +101,7 @@ export function SuspensionPanel({
     setBusy(true);
     setError("");
     try {
-      await call(retryCloud ? "runs.retryCloudSetup" : "runs.useLocalExecution", {
-        runId: run.runId,
-        suspensionId: typed.suspensionId,
-      });
+      await call(retryCloud ? "runs.retryCloudSetup" : "runs.useLocalExecution", { runId: run.runId, suspensionId: typed.suspensionId });
     } catch (reason) {
       setError(errorMessage(reason));
     } finally {

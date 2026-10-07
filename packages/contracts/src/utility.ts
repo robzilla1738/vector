@@ -10,7 +10,6 @@ export const UtilityIntentResultSchema = z
   })
   .strict();
 
-
 /** Generated presentation text confers no action or source authority. */
 export const WaitingPhraseSchema = z
   .string()

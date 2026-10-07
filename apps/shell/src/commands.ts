@@ -185,8 +185,6 @@ export const COMMAND_ACTIONS = {
     "make-live-folder",
     "refresh-live-folder",
     "open-live-folder-item",
-    "connect-github",
-    "revoke-github",
     "archive-restore",
     "archive-restore-all",
     "archive-delete",

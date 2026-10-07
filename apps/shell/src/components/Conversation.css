@@ -513,7 +513,8 @@
     color: inherit;
     text-overflow: ellipsis;
   }
-  .new-chat-options :is(button, select):not(:disabled):hover {
+  .new-chat-options :is(button, select):not(:disabled):hover,
+  .home-tools-trigger > button:not(:disabled):hover {
     background: var(--bg-hover);
     color: var(--ink-0);
   }
@@ -573,6 +574,136 @@
     height: 20px;
     border-radius: var(--r-xs);
     flex: none;
+  }
+}
+
+@layer components {
+  .conversation .composer-frame,
+  .conversation .composer-frame:focus-within {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+  .conversation-message-field {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 8px 10px 8px 16px;
+    border-radius: 28px;
+    background: var(--bg-hover);
+    box-shadow: inset 0 0 0 1px var(--line);
+    min-height: 52px;
+  }
+  .conversation-message-field:focus-within {
+    box-shadow: inset 0 0 0 1px var(--focus-line);
+  }
+  .conversation-message-field > textarea {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    min-height: 32px;
+    max-height: 240px;
+    field-sizing: content;
+    resize: none;
+    border: 0;
+    outline: none;
+    padding: 6px 0;
+    background: transparent;
+    color: var(--ink-0);
+    font: inherit;
+    line-height: 20px;
+    box-shadow: none;
+  }
+  .conversation-message-field .composer-send-actions {
+    align-self: flex-end;
+    min-height: 36px;
+  }
+  .conversation-message-field .dictation-trigger {
+    font-size: 0;
+    padding: 8px;
+  }
+  .conversation-message-field .dictation-trigger svg {
+    width: 18px;
+    height: 18px;
+  }
+  .conversation .composer-footer {
+    padding: 0 8px;
+  }
+  .chat-preferences {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .chat-preferences > select,
+  .chat-preferences > button {
+    min-height: 32px;
+    max-width: 100%;
+    border: 0;
+    background-color: transparent;
+    color: var(--ink-2);
+    box-shadow: none;
+    border-radius: 8px;
+    font-size: var(--fs-xs);
+  }
+  .chat-preferences > :is(select, button):hover {
+    background-color: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  .chat-run-menu {
+    padding: 8px;
+    width: 100%;
+  }
+  .chat-run-menu .composer-run-options {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .chat-run-menu .composer-run-options label {
+    justify-content: space-between;
+  }
+  .conversation .conversation-compose {
+    padding-bottom: 16px;
+  }
+  .conversation .home-tools-trigger {
+    order: -1;
+  }
+}
+@layer components {
+  .conversation-message-field > .home-tools-trigger {
+    align-self: flex-end;
+    flex: none;
+  }
+  .conversation-message-field .home-tools-trigger > button {
+    width: 32px;
+    height: 36px;
+    padding: 8px;
+    border-radius: 50%;
+  }
+  .conversation .composer-footer-context > .new-chat-options {
+    flex: 1;
+    width: auto;
+  }
+  .conversation .composer-footer-context > button {
+    width: 28px;
+    height: 32px;
+    border-radius: 8px;
+  }
+}
+@layer components {
+  .chat-preferences > select[data-mode="full"] {
+    color: var(--warning, #d99a4d);
+  }
+}
+@layer components {
+  .conversation .composer-footer-context {
+    align-items: flex-start;
+  }
+  .chat-preferences {
+    row-gap: 2px;
   }
 }
 

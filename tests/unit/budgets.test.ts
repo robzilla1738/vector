@@ -1,8 +1,9 @@
+import { setMemberSourceDigest } from "../../apps/runtime/src/services/set-member-lineage.js";
 import { budgetLineage } from "../fixtures/budget-lineage.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { BudgetsService, dayStartMs, openDb, Repo } from "@aux/runtime";
+import { BudgetsService, dayStartMs, monthStartMs, openDb, Repo } from "@aux/runtime";
 
 const databases: DatabaseSync[] = [];
 const db = () => {
@@ -39,6 +40,121 @@ const insertRoutineRun = (d: DatabaseSync, routineId: string, runId: string | nu
 };
 
 describe("BudgetsService", () => {
+  it("replaces only an inherited funded cap while preserving explicit Profile spend limits", () => {
+    const d = db();
+    const repo = new Repo(d);
+    repo.saveRun({
+      runId: "funded-run",
+      goal: "funded",
+      pageIds: [],
+      status: "running",
+      config: { maxCostUsd: 0.5 },
+      createdAt: Date.now(),
+    });
+    repo.saveModelCall(call("funded-run", 0.5));
+    let runUsd = 1;
+    const budgets = new BudgetsService(d, () => ({ runUsd, monthUsd: 5 }), budgetLineage(repo));
+    expect(() => budgets.assertWithin({ runId: "funded-run", requiredUsd: 0.1 })).toThrow("run budget");
+    expect(() =>
+      budgets.assertWithin({ runId: "funded-run", requiredUsd: 0.1, excludeRunLimit: true }),
+    ).not.toThrow();
+    runUsd = 0.5;
+    expect(() =>
+      budgets.assertWithin({ runId: "funded-run", requiredUsd: 0.1, excludeRunLimit: true }),
+    ).toThrow("run budget");
+  });
+
+  it("enforces the local month across attributed and unattributed recorded calls", () => {
+    const d = db();
+    const repo = new Repo(d);
+    const now = new Date(2026, 9, 6, 12).getTime();
+    const start = new Date(2026, 9, 1).getTime();
+    expect(monthStartMs(now)).toBe(start);
+    repo.saveModelCall(call(null, 4, start - 1));
+    repo.saveModelCall(call(null, 0.75, start));
+    repo.saveRun({
+      runId: "month-run",
+      goal: "monthly budget",
+      pageIds: [],
+      status: "running",
+      createdAt: now,
+      config: {},
+    });
+    repo.saveModelCall(call("month-run", 0.25, now));
+    const budgets = new BudgetsService(d, () => ({ monthUsd: 1.1 }), budgetLineage(repo));
+    expect(budgets.spentMonthUsd(now)).toBe(1);
+    expect(budgets.status({}, now).find((s) => s.scope === "month")).toMatchObject({
+      limitUsd: 1.1,
+      spentUsd: 1,
+      exceeded: false,
+    });
+    expect(() => budgets.assertWithin({ runId: "month-run", requiredUsd: 0.2 }, now)).toThrow("this month");
+    expect(() => budgets.assertWithin({ runId: "month-run", requiredUsd: 0.05 }, now)).not.toThrow();
+  });
+
+  it("charges completed descendants once to the original parent and routine after Set deletion", () => {
+    const repo = new Repo(db());
+    repo.saveRun({
+      runId: "parent",
+      goal: "Batch",
+      status: "completed",
+      pageIds: [],
+      createdAt: 1,
+      config: { maxCostUsd: 0.55 },
+    });
+    for (const [childId, parentId, memberId] of [
+      ["child", "parent", "one"],
+      ["grandchild", "child", "two"],
+    ]) {
+      const source = {
+        parentRunId: parentId!,
+        setId: "deleted-set",
+        memberId: memberId!,
+        url: "https://source.test/",
+      };
+      const sourceDigest = setMemberSourceDigest(source);
+      repo.saveRun({
+        runId: childId!,
+        goal: "Member",
+        status: "completed",
+        pageIds: [],
+        createdAt: 1,
+        config: { setMemberSource: { ...source, sourceDigest } },
+      });
+      repo.db
+        .prepare(
+          "INSERT INTO set_run_members(child_run_id,parent_run_id,set_id,member_id,source_digest,state,created_at,updated_at) VALUES(?,?,?,?,?,'completed',1,1)",
+        )
+        .run(childId!, parentId!, source.setId, source.memberId, sourceDigest);
+    }
+    repo.saveModelCall(call("parent", 0.1));
+    repo.saveModelCall(call("child", 0.2));
+    repo.saveModelCall(call("grandchild", 0.3));
+    repo.saveModelCall(call("unrelated", 1));
+    insertRoutineRun(repo.db, "routine", "parent");
+    insertRoutineRun(repo.db, "routine", "child");
+    const budgets = new BudgetsService(repo.db, () => ({ runUsd: 0.5 }), budgetLineage(repo));
+    const originalCap = new BudgetsService(repo.db, () => ({}), budgetLineage(repo));
+    expect(originalCap.status({ runId: "grandchild" })[0]).toMatchObject({
+      scopeId: "parent",
+      limitUsd: 0.55,
+      exceeded: true,
+    });
+    expect(() => originalCap.assertWithin({ runId: "grandchild" })).toThrow(/run budget/);
+    expect(budgets.status({ runId: "grandchild" })[0]?.limitUsd).toBe(0.5);
+    expect(budgets.spentRunUsd("grandchild")).toBeCloseTo(0.6);
+    expect(budgets.spentRoutineUsd("routine")).toBeCloseTo(0.6);
+    expect(budgets.routineForRun("grandchild")).toBe("routine");
+    expect(budgets.spentDayUsd()).toBeCloseTo(1.6);
+    expect(() => budgets.assertWithin({ runId: "grandchild" })).toThrow(/run budget/);
+    repo.saveModelCall({ ...call("grandchild", 0), costUsd: undefined });
+    expect(budgets.runCostComplete("parent")).toBe(false);
+    repo.db
+      .prepare("UPDATE set_run_members SET source_digest=? WHERE child_run_id='child'")
+      .run("0".repeat(64));
+    expect(() => budgets.spentRunUsd("parent")).toThrow(/provenance changed/);
+  });
+
   it("sums spend per run, per day, and per routine from the model_calls ledger", () => {
     const repo = new Repo(db());
     repo.saveModelCall(call("run-a", 0.1));

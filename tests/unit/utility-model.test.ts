@@ -146,3 +146,24 @@ it("never dispatches or invents a billed call after original ownership is retire
   expect(f.dispatch).not.toHaveBeenCalled();
   expect(f.repo.listModelCalls("original")).toEqual([]);
 });
+it("keeps an unknown provider attempt charged at its real conservative reservation", async () => {
+  const f = fixture();
+  f.fail();
+  await expect(f.model.generateStructured(f.request)).rejects.toThrow("Provider connection ended");
+  const calls = f.repo.listModelCalls("original");
+  expect(calls).toHaveLength(1);
+  expect(calls[0]!.costUsd).toBeGreaterThan(0);
+  expect(calls[0]).toMatchObject({
+    costEstimated: true,
+    error: expect.stringContaining("Provider connection ended"),
+  });
+});
+it("checks actual user spend before dispatch and leaves no false reservation on rejection", async () => {
+  const f = fixture();
+  await f.settings.set({ budgets: { dayUsd: 0.00000001 } });
+  await expect(f.model.generateStructured(f.request)).rejects.toMatchObject({ code: "permission_denied" });
+  expect(f.dispatch).not.toHaveBeenCalled();
+  expect(f.repo.listModelCalls("original")).toEqual([]);
+  expect(f.continueSpend).toHaveBeenCalledTimes(1);
+  expect(f.release).toHaveBeenCalledTimes(1);
+});

@@ -1,5 +1,6 @@
 import {
   InlineAssistTextSchema,
+  WaitingPhraseSchema,
   type Artifact,
   type Run,
   type RunTranscriptItem,
@@ -48,7 +49,10 @@ export function projectRunTranscript(
     items.push({
       kind: "waiting",
       state: run.status as keyof typeof WAITING_LABELS,
-      label: WAITING_LABELS[run.status as keyof typeof WAITING_LABELS],
+      label:
+        run.status === "running" && WaitingPhraseSchema.safeParse(run.config?.waitingPhrase).success
+          ? WaitingPhraseSchema.parse(run.config?.waitingPhrase)
+          : WAITING_LABELS[run.status as keyof typeof WAITING_LABELS],
     });
   const answer =
     typeof result?.report === "string"

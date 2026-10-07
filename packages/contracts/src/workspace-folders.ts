@@ -6,6 +6,8 @@ export const WorkspaceFolderReviewSchema = z.object({
   path: z.string().min(1).max(4096),
   access: WorkspaceFolderAccessSchema,
   agentsPreview: z.string().max(16_000),
+  /** Existing project-local Claude-compatible skills directory within this root. */
+  skillsPath: z.string().min(1).max(4096).optional(),
   agentsDigest: z.string().regex(/^[a-f0-9]{64}$/),
   reviewDigest: z.string().regex(/^[a-f0-9]{64}$/),
 });

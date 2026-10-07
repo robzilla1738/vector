@@ -1,9 +1,8 @@
-import { ProjectsService } from "../../apps/runtime/dist/services/projects.js";
 import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
-import { EventBus, Repo, TaskService, WorkspaceFolderService, openDb } from "@aux/runtime";
+import { EventBus, ProjectsService, Repo, TaskService, WorkspaceFolderService, openDb } from "@aux/runtime";
 import { FilesystemAccessService } from "../../apps/runtime/dist/services/filesystem-access.js";
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -40,12 +39,7 @@ function fixture() {
   const native: NonNullable<ConstructorParameters<typeof ProjectsService>[0]> = {
     turnSourceContext: async (token) => {
       if (token !== "original") throw new Error("Original window changed");
-      return {
-        windowId: "window",
-        activePageId: null,
-        revision: 0,
-        layout: null,
-      };
+      return { windowId: "window", activePageId: null, revision: 0, layout: null };
     },
     projectFiles: async () => ({ path: "", entries: [], truncated: false }),
     projectChanges: async () => ({ status: "", diff: "", truncated: false }),
@@ -61,11 +55,7 @@ function fixture() {
       expect(input.deniedRoots).toContain(realpathSync(protectedRoot));
       if (failedRead) throw new Error("Native worker outcome unavailable");
       if (changed) writeFileSync(join(path, "AGENTS.md"), "Changed review.");
-      return {
-        path: input.path,
-        text: readFileSync(join(path, input.path), "utf8"),
-        truncated: false,
-      };
+      return { path: input.path, text: readFileSync(join(path, input.path), "utf8"), truncated: false };
     },
     projectCancel: async () => {
       calls.push("close");
@@ -77,11 +67,7 @@ function fixture() {
     repo,
     native,
     service: new ProjectsService(native, folders, filesystem),
-    input: {
-      workspaceId: workspace.workspaceId,
-      folderId: folder.folderId,
-      path: "README.md",
-    },
+    input: { workspaceId: workspace.workspaceId, folderId: folder.folderId, path: "README.md" },
     calls,
     change: () => {
       changed = true;
@@ -98,9 +84,7 @@ it("pins read-only Project identity and refuses stale reviews without releasing 
   const f = fixture();
   await expect(f.service.file(f.input, "another-window")).rejects.toThrow(/Original window/);
   expect(f.calls).toEqual([]);
-  await expect(f.service.file(f.input, "original")).resolves.toMatchObject({
-    text: "Original file text",
-  });
+  await expect(f.service.file(f.input, "original")).resolves.toMatchObject({ text: "Original file text" });
   f.change();
   await expect(f.service.file(f.input, "original")).rejects.toThrow(/Project review/);
   expect(f.calls).toEqual(["read", "read"]);

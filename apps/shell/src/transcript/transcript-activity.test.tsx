@@ -112,6 +112,23 @@ describe("durable transcript activity", () => {
     expect(long.items.find((item) => item.kind === "error")).toMatchObject({ message: "x".repeat(1_000) });
   });
 
+  it("uses only validated utility copy for a running wait and retains owner-controlled states", () => {
+    const projected = projectRunTranscript(
+      run({ config: { waitingPhrase: "Finding a useful way forward" } }),
+      [],
+    );
+    expect(projected.items).toContainEqual({
+      kind: "waiting",
+      state: "running",
+      label: "Finding a useful way forward",
+    });
+    const paused = projectRunTranscript(
+      run({ status: "paused", config: { waitingPhrase: "Finding a useful way forward" } }),
+      [],
+    );
+    expect(paused.items).toContainEqual({ kind: "waiting", state: "paused", label: "Paused by the owner" });
+  });
+
   it("renders waiting, folded action counts and failure guidance accessibly", async () => {
     const host = document.createElement("div");
     const root = createRoot(host);

@@ -77,7 +77,7 @@ export const settingsDestinations: SettingsDestination[] = [
   entry("Models", "Max model turns per run", "Limit planner calls or keep working until finished."),
   entry("Connections", "GitHub token", "Connect repository access."),
   entry("Connections", "Connector access", "Review Calendar, GitHub and MCP access for a saved task."),
-  entry("Connections", "MCP servers", "Review server sources and grant individual tools."),
+  entry("Connections", "MCP servers", "Connect official services or add a server and choose its tools."),
   entry("Connections", "Google Calendar", "Connect and manage Calendar accounts."),
   entry("Connections", "Plugins", "Review installed and imported browser plugins."),
   entry("Connections", "Vercel token", "Connect deployment health, teams and projects."),

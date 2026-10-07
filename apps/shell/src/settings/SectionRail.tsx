@@ -82,7 +82,7 @@ const items: readonly RailItem[] = [
     gate: "services",
   },
   { label: "Memory", category: "Memory", group: "Agent", icon: shellIconChats, gate: "memory" },
-  { label: "Workspaces", category: "Workspaces", group: "Agent", icon: shellIconFolder },
+  { label: "Projects", category: "Projects", group: "Agent", icon: shellIconFolder },
   {
     label: "Automations",
     category: "Automations",

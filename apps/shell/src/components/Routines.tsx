@@ -15,6 +15,7 @@ import type {
   RoutineRun,
   RoutineRunOutcome,
   RoutineSuggestion,
+  RoutineCandidate,
   Task,
   VaultItem,
 } from "@aux/contracts";
@@ -39,6 +40,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [alerts, setAlerts] = useState<RoutineAlert[]>([]);
   const [suggestions, setSuggestions] = useState<RoutineSuggestion[]>([]);
+  const [candidates, setCandidates] = useState<RoutineCandidate[]>([]);
   const [inbox, setInbox] = useState<RoutineInboxItem[]>([]);
   const [comparison, setComparison] = useState<RoutineCompare | null>(null);
   const [selected, setSelected] = useState<{ routine: Routine; runs: RoutineRun[] } | null>(null);
@@ -212,21 +214,31 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   useEffect(() => {
     let active = true;
     setSuggestions([]);
-    if (scanMode === "off" || !workspaceId || (!task?.objective && !currentPageUrl)) return;
+    setCandidates([]);
+    if (scanMode === "off" || !workspaceId) return;
     let pending = false;
     const scan = () => {
       if (pending || document.visibilityState === "hidden") return;
       pending = true;
-      void call("routines.suggest", {
-        workspaceId,
-        ...(task?.objective ? { text: task.objective.slice(0, 4000) } : {}),
-        ...(currentPageUrl && currentPageUrl.length <= 2048 ? { pageUrl: currentPageUrl } : {}),
-      })
-        .then((items) => {
-          if (active) setSuggestions(items);
+      void Promise.all([
+        call("routines.scan", { workspaceId }),
+        call("routines.suggest", {
+          workspaceId,
+          ...(task?.objective ? { text: task.objective.slice(0, 4000) } : {}),
+          ...(currentPageUrl && currentPageUrl.length <= 2048 ? { pageUrl: currentPageUrl } : {}),
+        }),
+      ])
+        .then(([nextCandidates, items]) => {
+          if (active) {
+            setSuggestions(items);
+            setCandidates(nextCandidates);
+          }
         })
         .catch(() => {
-          if (active) setSuggestions([]);
+          if (active) {
+            setSuggestions([]);
+            setCandidates([]);
+          }
         })
         .finally(() => {
           pending = false;
@@ -427,8 +439,9 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         {inbox.length === 0 && <span {...staticHintProps}>No automatic runs yet.</span>}
         {inbox.map((item) => (
           <div className="routine-run hint" key={item.run.routineRunId}>
-            <strong>{item.title}</strong> · {item.run.status.replaceAll("_", " ")} ·{" "}
-            {item.triggerKind.replaceAll("_", " ")} · {new Date(item.run.createdAt).toLocaleString()}
+            <strong>{item.title}</strong> ·{" "}
+            {item.run.status === "waiting_input" ? "Needs your input" : item.run.status.replaceAll("_", " ")}{" "}
+            · {item.triggerKind.replaceAll("_", " ")} · {new Date(item.run.createdAt).toLocaleString()}
             {item.run.reason ? ` · ${item.run.reason}` : ""}
             <div {...staticRowProps}>
               <button
@@ -462,7 +475,9 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
           <span {...staticHintProps}>Local run records only. They do not prove a business outcome.</span>
           {alerts.map((alert) => (
             <div className="hint" key={alert.routineRunId}>
-              {alert.title} · {alert.status.replaceAll("_", " ")} · {alert.triggerKind}
+              {alert.title} ·{" "}
+              {alert.status === "waiting_input" ? "Needs your input" : alert.status.replaceAll("_", " ")} ·{" "}
+              {alert.triggerKind}
               {alert.reason ? ` · ${alert.reason}` : ""} · {new Date(alert.createdAt).toLocaleString()}
             </div>
           ))}
@@ -490,6 +505,34 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       )}
       {!selected && (
         <>
+          {candidates.length > 0 && (
+            <section {...staticFieldProps} aria-label="Repeated task suggestions">
+              <strong>Repeated work you could make a Skill</strong>
+              <p {...staticHintProps}>
+                These saved tasks completed at least three times. Review creates a paused Skill; it never
+                starts work automatically.
+              </p>
+              {candidates.map((candidate) => (
+                <button
+                  key={candidate.taskId}
+                  {...smallGhostButtonProps}
+                  disabled={busy}
+                  onClick={() =>
+                    void action(async () => {
+                      const routine = await call("routines.fromResult", {
+                        taskId: candidate.taskId,
+                        runId: candidate.runId,
+                        title: candidate.title,
+                      });
+                      await refresh(routine.routineId);
+                    })
+                  }
+                >
+                  {candidate.title} · {candidate.completedRuns} completed runs · Review
+                </button>
+              ))}
+            </section>
+          )}
           {suggestions.length > 0 && (
             <section {...staticFieldProps} aria-label="Suggested Skills">
               <strong>Suggested for this context</strong>
@@ -693,8 +736,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             {selected.routine.reviewRequired
               ? "Review required before writes."
               : "May run without extra review."}{" "}
-            {(selected.routine.trigger.kind === "schedule" || selected.routine.trigger.kind === "monitor") &&
-              `Timezone ${selected.routine.trigger.timezone}. `}
+            {"timezone" in selected.routine.trigger && `Timezone ${selected.routine.trigger.timezone}. `}
           </span>{" "}
           {!selected.routine.sourceTaskId && (
             <p {...staticHintProps}>
@@ -889,7 +931,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
           {!selected.runs.length && <p {...staticHintProps}>This Skill has not run yet.</p>}
           {selected.runs.map((run) => (
             <div className="routine-run hint" key={run.routineRunId}>
-              {run.status.replaceAll("_", " ")}
+              {run.status === "waiting_input" ? "Needs your input" : run.status.replaceAll("_", " ")}
               {run.reason ? ` · ${run.reason}` : ""} · {new Date(run.createdAt).toLocaleString()}
               <RoutineOutcome run={run} />
               {(run.status === "needs_review" || run.status === "uncertain") && (

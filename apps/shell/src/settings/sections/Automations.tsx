@@ -25,7 +25,7 @@ import {
   nativePoliteLiveProps,
 } from "../../ui/native-attribute-props";
 
-const effectiveCap = (routine: Routine) => routine.spendCapUsd ?? 50;
+const effectiveCap = (routine: Routine) => routine.spendCapUsd ?? "";
 
 function CreateAutomationDialog({
   workspaceId,
@@ -39,7 +39,7 @@ function CreateAutomationDialog({
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskId, setTaskId] = useState("");
   const [title, setTitle] = useState("");
-  const [cap, setCap] = useState("50");
+  const [cap, setCap] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [calendar, setCalendar] = useState<CalendarTriggerAccounts>({ status: "loading", choices: [] });
@@ -116,10 +116,10 @@ function CreateAutomationDialog({
 
   async function create(trigger: RoutineTrigger) {
     const task = tasks.find((item) => item.taskId === taskId);
-    const amount = Number(cap);
+    const amount = cap.trim() ? Number(cap) : undefined;
     if (!task) return setError("Choose a saved task in this Space.");
-    if (!Number.isFinite(amount) || amount <= 0 || amount > 50)
-      return setError("Enter a model spend cap above $0 and no more than $50.");
+    if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0))
+      return setError("Enter a positive model spend cap, or leave it blank for no additional cap.");
     if (trigger.kind === "manual") return setError("Choose a schedule or event trigger.");
     if (
       trigger.kind === "calendar_event" &&
@@ -150,7 +150,6 @@ function CreateAutomationDialog({
         siteOrigins: [...origins].slice(0, 20),
         ...(trigger.kind === "calendar_event" ? { calendarGrantIds: [trigger.grantId] } : {}),
         successCriteria: task.criteria,
-        reviewRequired: true,
         spendCapUsd: amount,
         trigger,
         paused: true,
@@ -203,12 +202,13 @@ function CreateAutomationDialog({
         />
       </label>
       <label>
-        Model spend cap (USD)
+        Model spend cap (USD, optional)
         <input
           aria-label="New automation model spend cap"
           {...nativeNumberTypeProps}
+          placeholder="No additional cap"
           min="0.01"
-          max="50"
+
           step="0.01"
           value={cap}
           onChange={(event) => setCap(event.target.value)}
@@ -336,7 +336,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
   async function changeRoutine(
     routine: Routine,
     patch: {
-      spendCapUsd?: number;
+      spendCapUsd?: number | null;
       paused?: boolean;
       missedRunPolicy?: Routine["missedRunPolicy"];
       presenceGuardExempt?: boolean;
@@ -505,26 +505,26 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                   event.preventDefault();
                   const input = event.currentTarget.elements.namedItem("spendCapUsd");
                   if (!(input instanceof HTMLInputElement)) return;
-                  const amount = Number(input.value);
-                  if (!Number.isFinite(amount) || amount <= 0 || amount > 50) {
-                    setError("Enter a model spend cap above $0 and no more than $50.");
+                  const amount = input.value.trim() ? Number(input.value) : undefined;
+                  if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0)) {
+                    setError("Enter a positive model spend cap, or leave it blank for no additional cap.");
                     return;
                   }
-                  void changeRoutine(routine, { spendCapUsd: amount });
+                  void changeRoutine(routine, { spendCapUsd: amount ?? null });
                 }}
               >
                 <label>
-                  Model spend cap (USD)
+                  Model spend cap (USD, optional)
                   <input
                     name="spendCapUsd"
                     aria-label={`${routine.title} model spend cap`}
                     {...nativeNumberTypeProps}
+                    placeholder="No additional cap"
                     min="0.01"
-                    max="50"
+
                     step="0.01"
                     defaultValue={effectiveCap(routine)}
                     disabled={!!busyId}
-                    required
                   />
                 </label>
                 <button {...smallButtonProps} type="submit" disabled={!!busyId}>

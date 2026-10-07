@@ -24,6 +24,7 @@ vi.mock("../../commands", async () => {
     },
   };
 });
+
 const copilotSetup = CopilotSetupSchema.parse({
   registrationConfigured: false,
   runtimeInstalled: false,

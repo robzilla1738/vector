@@ -1,5 +1,5 @@
-import { terminalMethods } from "./terminal.js";
 import { projectMethods } from "./projects.js";
+import { terminalMethods } from "./terminal.js";
 import { onboardingMethods } from "./onboarding.js";
 import { liveFolderMethods } from "./live-folders.js";
 import { downloadNamingMethods } from "./download-naming.js";
@@ -55,6 +55,8 @@ import type { MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 
 export const METHODS: Record<MethodName, MethodHandler> = {
+  ...projectMethods,
+  ...terminalMethods,
   ...liveFolderMethods,
   ...downloadNamingMethods,
   ...demonstrationMethods,
@@ -89,8 +91,6 @@ export const METHODS: Record<MethodName, MethodHandler> = {
   ...sessionsMethods,
   ...chromeMethods,
   ...importMethods,
-  ...terminalMethods,
-  ...projectMethods,
   ...onboardingMethods,
   ...translateMethods,
   ...modelsMethods,

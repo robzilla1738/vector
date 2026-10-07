@@ -52,6 +52,9 @@ it("applies Guard Home reads and bounded user writes while denying sensitive and
   expect(filesystemPermits(policy, join(f.home, "notes.txt"), "write")).toBe(false);
   expect(filesystemPermits(policy, join(f.home, "Documents", "notes.txt"), "write")).toBe(true);
   expect(filesystemPermits(policy, join(f.home, ".ssh", "id_ed25519"), "read")).toBe(false);
+  for (const config of [".codex/config.toml", ".codex/auth.json", ".claude.json", ".claude/.credentials.json", ".cursor/mcp.json"])
+    expect(filesystemPermits(policy, join(f.home, config), "read")).toBe(false);
+  expect(filesystemPermits(policy, join(f.home, ".agents", "skills", "aux", "SKILL.md"), "read")).toBe(true);
   expect(filesystemPermits(policy, join(f.data, "settings.json"), "read")).toBe(false);
   expect(filesystemPermits(policy, join(f.artifacts, "output.txt"), "write")).toBe(true);
 });

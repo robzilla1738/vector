@@ -3,7 +3,11 @@ import { act, useLayoutEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { Settings } from "./Settings";
-vi.mock("../use-feature", () => ({ useFeature: () => false, featureAvailable: () => false }));
+const features = vi.hoisted(() => ({ mcp: false }));
+vi.mock("../use-feature", () => ({
+  useFeature: (feature: string) => feature === "outboundMcp" && features.mcp,
+  featureAvailable: () => false,
+}));
 vi.mock("../bridge", () => ({ inNativeHost: false, bridge: { privateMode: false } }));
 vi.mock("../store", () => {
   const state = { settingsCategory: "Models", settings: {}, setOverlay: () => {} };
@@ -23,7 +27,9 @@ vi.mock("../features/registry", () => ({
 }));
 vi.mock("./MemorySettings", () => ({ MemorySettings: () => null }));
 vi.mock("./ExternalAgents", () => ({ ExternalAgents: () => null }));
-vi.mock("./PluginsPanel", () => ({ PluginsPanel: () => null }));
+vi.mock("./PluginsPanel", () => ({
+  PluginsPanel: () => <div data-testid="canonical-plugins">MCP setup</div>,
+}));
 vi.mock("./Extensions", () => ({ Extensions: () => null }));
 vi.mock("./VaultSettings", () => ({ VaultSettings: () => null }));
 vi.mock("./CalendarConnections", () => ({ CalendarConnections: () => null }));
@@ -88,6 +94,38 @@ it("shows feature-only Services in its own tab and preserves new-chat focus on S
     await act(async () => root.unmount());
     host.remove();
     opener.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("makes MCP available under Plugins without requiring Skills or a duplicate Services panel", async () => {
+  features.mcp = true;
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  window.history.replaceState(null, "", "/settings/connections/plugins");
+  try {
+    await act(async () => root.render(<Settings />));
+    const plugins = host.querySelector<HTMLButtonElement>('[id="connection-tab-Plugins"]');
+    expect(plugins).toBeTruthy();
+    await act(async () => plugins!.click());
+    expect(plugins!.getAttribute("aria-selected")).toBe("true");
+    expect(host.querySelectorAll('[data-testid="canonical-plugins"]')).toHaveLength(1);
+    expect(host.querySelector("#connection-mcp")).toBeNull();
+    expect(host.querySelector("#connection-panel-Plugins")?.hasAttribute("hidden")).toBe(false);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    features.mcp = false;
+    window.history.replaceState(null, "", "/");
     vi.unstubAllGlobals();
   }
 });

@@ -30,10 +30,19 @@ it("starts a page-free chat without opening a tab or displacing newer navigation
   });
   const pending = useStore
     .getState()
-    .startRun("Research this", { scope: "new", presentation: "conversation" });
+    .startRun("Research this", {
+      scope: "new",
+      presentation: "conversation",
+      privateTask: true,
+      modelId: "fixture/exact",
+      reasoning: "high",
+    });
   await Promise.resolve();
   expect(open).not.toHaveBeenCalled();
-  expect(bridge.invoke).toHaveBeenCalledWith("runs.start", expect.objectContaining({ pageIds: [] }));
+  expect(bridge.invoke).toHaveBeenCalledWith(
+    "runs.start",
+    expect.objectContaining({ pageIds: [], privateTask: true, modelId: "fixture/exact", reasoning: "high" }),
+  );
   useStore.setState({ overlay: "settings", agentDraft: "A newer draft" });
   finish(run);
   await pending;
@@ -49,4 +58,8 @@ it("opens the requested conversation when the originating view is unchanged", as
   useStore.setState({ openConversation: reveal, settings: { ...initial.settings, modelConfigured: true } });
   await useStore.getState().startRun("Question", { pageId: "page", presentation: "conversation" });
   expect(reveal).toHaveBeenCalledWith(run.runId);
+  expect(bridge.invoke).toHaveBeenCalledWith("runs.start", expect.objectContaining({ privateTask: false }));
+  const payload = vi.mocked(bridge.invoke).mock.calls[0]?.[1];
+  expect(payload).not.toHaveProperty("modelId");
+  expect(payload).not.toHaveProperty("reasoning");
 });

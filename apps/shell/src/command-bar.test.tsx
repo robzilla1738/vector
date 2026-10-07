@@ -716,3 +716,41 @@ it("hides retained routine results immediately when their trusted feature stage 
     featureWindow.auxChromiumHost = previousHost;
   }
 });
+
+it("keeps the exact selected native match through rapid streamed reordering, store updates and Return", async () => {
+  const alpha = {
+    id: "alpha",
+    index: 0,
+    type: "history" as const,
+    title: "Alpha",
+    url: "https://alpha.test/",
+  };
+  const beta = { id: "beta", index: 1, type: "history" as const, title: "Beta", url: "https://beta.test/" };
+  native = nativeOmniboxFixture([alpha, beta]);
+  await act(async () => root.render(<CommandBar surfaceMode="edit" seed="https://target.test/" />));
+  const input = host.querySelector("input")!;
+  await act(async () => key(input, "ArrowDown"));
+  expect(host.querySelector('[role="option"][aria-selected="true"]')?.textContent).toContain("Alpha");
+  const query = native.start.mock.calls.at(-1)![0];
+  await act(async () => {
+    native.emit({
+      queryId: query.queryId,
+      sequenceId: query.queryId + 1,
+      input: query.input,
+      done: false,
+      items: [
+        { ...beta, index: 0 },
+        { ...alpha, index: 1 },
+      ],
+    });
+    useStore.setState({ pages: normalizePages([{ ...page, title: "Current native title" }] as never) });
+  });
+  expect(host.querySelector('[role="option"][aria-selected="true"]')?.textContent).toContain("Alpha");
+  await act(async () => key(input, "Enter"));
+  expect(native.open).toHaveBeenCalledTimes(1);
+  expect(native.open).toHaveBeenCalledWith({
+    queryId: query.queryId,
+    match: { sequenceId: query.queryId + 1, index: 1, url: alpha.url },
+    disposition: "current-tab",
+  });
+});

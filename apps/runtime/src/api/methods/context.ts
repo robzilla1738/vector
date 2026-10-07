@@ -55,8 +55,7 @@ import type { MethodName } from "@aux/contracts";
 import type { McpOAuthService } from "../../services/mcp-oauth.js";
 
 export interface Services {
-  terminals?: import("../../services/terminals.js").TerminalService;
-  projects?: import("../../services/projects.js").ProjectsService;
+  turnTabs?: AgentTurnTabs;
   /** Advertise registered optional factories without constructing their services. */
   serviceAvailable?: (name: "responses" | "operations" | "state" | "tracer") => boolean;
   turnMentions: import("../../services/turn-mention-service.js").TurnMentionService;
@@ -82,7 +81,10 @@ export interface Services {
   repo: Repo;
   agentConnections?: AgentConnectionService;
   installCli?: (owner: string) => Promise<import("@aux/contracts").MethodResult<"developer.cli.install">>;
-  installAgentConnection?: (input: unknown, owner: string) => Promise<import("@aux/contracts").MethodResult<"agentConnections.install">>;
+  installAgentConnection?: (
+    input: unknown,
+    owner: string,
+  ) => Promise<import("@aux/contracts").MethodResult<"agentConnections.install">>;
   /** S6.7 — scoped connections own first-class session runs. */
   externalSessions?: import("../../services/external-sessions.js").ExternalSessionService;
   mcpTransportProvider?: McpTransportProvider;
@@ -91,6 +93,8 @@ export interface Services {
   hooks?: HookService;
   hookExecutor?: HookExecutor;
   workspaceFolders?: WorkspaceFolderService;
+  projects?: import("../../services/projects.js").ProjectsService;
+  terminals?: import("../../services/terminals.js").TerminalService;
   /** Shared with the agent loop's REPL cell surface — created once in main.ts. */
   subagents?: SubagentService;
   calendar?: CalendarConnectionService;
@@ -218,98 +222,115 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     translate: () => new TranslateService(s.settings),
     safetyAudit: () => s.safetyAudit ?? new SafetyAuditStore(s.repo.db),
     approvals: () =>
-      s.approvals ?? new ApprovalStore(s.repo.db, (event) => d.safetyAudit.record(event), (action) => s.settings.allowAgentSite(action), () => s.settings.agentPolicy()),
-    suspensions: () => s.suspensions ?? new SuspensionStore(s.repo.db, (event) => d.safetyAudit.record(event)),
+      s.approvals ??
+      new ApprovalStore(
+        s.repo.db,
+        (event) => d.safetyAudit.record(event),
+        (action) => s.settings.allowAgentSite(action),
+        () => s.settings.agentPolicy(),
+      ),
+    suspensions: () =>
+      s.suspensions ?? new SuspensionStore(s.repo.db, (event) => d.safetyAudit.record(event)),
     decisions: () => s.decisions ?? new DecisionJournal(s.repo.db),
-    safetyGate: () => s.safetyGate ?? new SafetyDispatchGate({
-      approvals: d.approvals, journal: d.decisions, suspensions: d.suspensions,
-      managedRules: () => OriginRuleSchema.array().parse(s.repo.getSetting("managedOriginPolicies") ?? []),
-      agentPolicy: () => s.settings.agentPolicy(),
-      audit: (event) => d.safetyAudit.record({ ...event }),
-      onConfirmation: (confirmation) => s.events.emit("safety.confirmation", confirmation),
-    }),
+    safetyGate: () =>
+      s.safetyGate ??
+      new SafetyDispatchGate({
+        approvals: d.approvals,
+        journal: d.decisions,
+        suspensions: d.suspensions,
+        managedRules: () => OriginRuleSchema.array().parse(s.repo.getSetting("managedOriginPolicies") ?? []),
+        agentPolicy: () => s.settings.agentPolicy(),
+        audit: (event) => d.safetyAudit.record({ ...event }),
+        onConfirmation: (confirmation) => s.events.emit("safety.confirmation", confirmation),
+      }),
     routines: () =>
       s.routines ??
-      new RoutineService(s.repo, s.events, async (routine, parameters, context) => {
-        if (!routine.sourceTaskId)
-          throw new AuxError(
-            "conflict",
-            "This routine has no saved task. Run it from a conversation in Aux.",
-          );
-        const details = d.tasks.details(routine.sourceTaskId);
-        const pageIds = details.task.resources
-          .filter((resource) => resource.kind === "page")
-          .map((resource) => resource.locator)
-          .filter((pageId) => {
-            try {
-              return s.pages.isAttached(pageId);
-            } catch {
-              return false;
-            }
+      new RoutineService(
+        s.repo,
+        s.events,
+        async (routine, parameters, context) => {
+          if (!routine.sourceTaskId)
+            throw new AuxError(
+              "conflict",
+              "This routine has no saved task. Run it from a conversation in Aux.",
+            );
+          const details = d.tasks.details(routine.sourceTaskId);
+          const pageIds = details.task.resources
+            .filter((resource) => resource.kind === "page")
+            .map((resource) => resource.locator)
+            .filter((pageId) => {
+              try {
+                return s.pages.isAttached(pageId);
+              } catch {
+                return false;
+              }
+            });
+          if (context?.triggerPageId) {
+            if (routine.trigger.kind !== "page_change" || context.triggerDocumentEpoch === undefined)
+              throw new AuxError("conflict", "The page-change occurrence lost its exact document binding.");
+            const triggerUrl = routine.trigger.url;
+            const inTask = details.task.resources.some(
+              (resource) =>
+                (resource.kind === "page" && resource.locator === context.triggerPageId) ||
+                (resource.kind === "url" && resource.locator === triggerUrl),
+            );
+            if (!inTask)
+              throw new AuxError("conflict", "The watched tab left the source task's reviewed scope.");
+            pageIds.splice(
+              0,
+              pageIds.length,
+              requireRoutineTriggerPage(
+                s.pages,
+                context.triggerPageId,
+                triggerUrl,
+                context.triggerDocumentEpoch,
+              ),
+            );
+          }
+          if (!pageIds.length)
+            throw new AuxError(
+              "conflict",
+              "Attach an open browser tab to the source task before this routine can run.",
+            );
+          if (routine.replay) {
+            const pageId = selectSkillReplayPage(s.pages, pageIds, routine.replay.siteOrigin);
+            const started = startSkillReplay({
+              repo: s.repo,
+              pages: s.pages,
+              events: s.events,
+              routine,
+              pageId,
+              parameters,
+              expectedDocumentEpoch: context?.triggerDocumentEpoch,
+            });
+            return { chatId: details.task.conversationId, runId: started.runId };
+          }
+          const prepared = d.tasks.prepareRun(routine.sourceTaskId, details.task.revision);
+          const run = await s.runs.start({
+            ...prepared,
+            goal: [
+              substituteRoutine(routine.objective, parameters),
+              routine.outputHint ? `Expected output: ${routine.outputHint}` : undefined,
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
+            pageIds,
+            accountLabels: routine.accountLabels.length ? routine.accountLabels : undefined,
+            calendarGrantIds: routine.calendarGrantIds,
           });
-        if (context?.triggerPageId) {
-          if (routine.trigger.kind !== "page_change" || context.triggerDocumentEpoch === undefined)
-            throw new AuxError("conflict", "The page-change occurrence lost its exact document binding.");
-          const triggerUrl = routine.trigger.url;
-          const inTask = details.task.resources.some(
-            (resource) =>
-              (resource.kind === "page" && resource.locator === context.triggerPageId) ||
-              (resource.kind === "url" && resource.locator === triggerUrl),
-          );
-          if (!inTask)
-            throw new AuxError("conflict", "The watched tab left the source task's reviewed scope.");
-          pageIds.splice(
-            0,
-            pageIds.length,
-            requireRoutineTriggerPage(
-              s.pages,
-              context.triggerPageId,
-              triggerUrl,
-              context.triggerDocumentEpoch,
-            ),
-          );
-        }
-        if (!pageIds.length)
-          throw new AuxError(
-            "conflict",
-            "Attach an open browser tab to the source task before this routine can run.",
-          );
-        if (routine.replay) {
-          const pageId = selectSkillReplayPage(s.pages, pageIds, routine.replay.siteOrigin);
-          const started = startSkillReplay({
-            repo: s.repo,
-            pages: s.pages,
-            events: s.events,
-            routine,
-            pageId,
-            parameters,
-            expectedDocumentEpoch: context?.triggerDocumentEpoch,
-          });
-          return { chatId: details.task.conversationId, runId: started.runId };
-        }
-        const prepared = d.tasks.prepareRun(routine.sourceTaskId, details.task.revision);
-        const run = await s.runs.start({
-          ...prepared,
-          goal: [
-            substituteRoutine(routine.objective, parameters),
-            routine.outputHint ? `Expected output: ${routine.outputHint}` : undefined,
-          ]
-            .filter(Boolean)
-            .join("\n\n"),
-          pageIds,
-          accountLabels: routine.accountLabels.length ? routine.accountLabels : undefined,
-          calendarGrantIds: routine.calendarGrantIds,
-        });
-        return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
-      }, async (runId) => {
-        await s.runs.cancel(runId, "The original routine changed during launch.");
-      }),
+          return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
+        },
+        async (runId) => {
+          await s.runs.cancel(runId, "The original routine changed during launch.");
+        },
+      ),
     plugins: () => new PluginService(s.repo, d.routines),
     goals: () => s.goals ?? new GoalService(s.repo, s.runs),
     hooks: () => s.hooks ?? new HookService(s.repo),
     workspaceFolders: () => s.workspaceFolders ?? new WorkspaceFolderService(s.repo),
     zap: () => s.zap ?? new ZapService(s.repo, s.native, s.featureProfileId ?? "default"),
     turnTabs: () =>
+      s.turnTabs ??
       new AgentTurnTabs(s.pages, (page) => {
         s.repo.upsertPage({ ...page, ownedByRuntime: false });
         page.ownedByRuntime = false;
@@ -391,36 +412,43 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
   }) => {
     const threadId = input.threadId ?? `rpc:${input.connectionId ?? "internal"}`;
     const request = EffectRequestSchema.parse({
-        profileId: s.featureProfileId ?? "default",
-        scope: input.taskId
-          ? { kind: "task" as const, id: input.taskId }
-          : { kind: "workspace" as const, id: "rpc" },
-        actor: input.actor ?? "external_token",
-        effect: "egress",
-        category:
-          input.action === "agent.web.fetch" || input.action === "agent.web.search"
-            ? "read"
-            : input.action === "agent.turn.open"
-              ? "navigate"
-              : "external_tool",
-        action: input.action,
-        origin: input.url.origin,
-        destination: input.url.href.slice(0, 2048),
-        dataClasses: input.dataClasses ?? [],
-        provenance: input.provenance ?? "template",
-        invocationDigest: input.invocationDigest ?? createHash("sha256")
+      profileId: s.featureProfileId ?? "default",
+      scope: input.taskId
+        ? { kind: "task" as const, id: input.taskId }
+        : { kind: "workspace" as const, id: "rpc" },
+      actor: input.actor ?? "external_token",
+      effect: "egress",
+      category:
+        input.action === "agent.web.fetch" || input.action === "agent.web.search"
+          ? "read"
+          : input.action === "agent.turn.open"
+            ? "navigate"
+            : "external_tool",
+      action: input.action,
+      origin: input.url.origin,
+      destination: input.url.href.slice(0, 2048),
+      dataClasses: input.dataClasses ?? [],
+      provenance: input.provenance ?? "template",
+      invocationDigest:
+        input.invocationDigest ??
+        createHash("sha256")
           .update(JSON.stringify([input.action, input.url.href]))
           .digest("hex"),
-        turnId: threadId,
-        threadId,
-        ...(input.runId ? { runId: input.runId } : {}),
-        requestedAt: Date.now(),
-      });
-    const authorizedBy = await d.safetyGate.checkTrustedEffect(request, {
-      profileId: request.profileId, scope: request.scope, actor: request.actor,
-      turnId: threadId, threadId, ...(input.runId ? { runId: input.runId } : {}),
+      turnId: threadId,
+      threadId,
+      ...(input.runId ? { runId: input.runId } : {}),
+      requestedAt: Date.now(),
     });
-    if (!authorizedBy) throw new AuxError("permission_denied", "This egress has no current policy authorization.");
+    const authorizedBy = await d.safetyGate.checkTrustedEffect(request, {
+      profileId: request.profileId,
+      scope: request.scope,
+      actor: request.actor,
+      turnId: threadId,
+      threadId,
+      ...(input.runId ? { runId: input.runId } : {}),
+    });
+    if (!authorizedBy)
+      throw new AuxError("permission_denied", "This egress has no current policy authorization.");
     return { status: "allow" as const, authorizedBy };
   };
   const substituteRoutine = (objective: string, parameters: Record<string, string>) =>
@@ -710,7 +738,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
       (disposal ??= (async () => {
         stopTracking();
         const turnTabs = container.peek("turnTabs");
-        if (turnTabs) {
+        if (turnTabs && !s.turnTabs) {
           turnTabs.dispose();
           await turnTabs.endAll();
         }

@@ -25,6 +25,8 @@ export function assertRunAnswerable(
     pending.suspensionId !== expectedSuspensionId
   )
     throw new AuxError("conflict", "The pending request changed. Review it before answering.");
+  if (pending.request.resourceFunding || pending.request.resourceLimits)
+    throw new AuxError("conflict", "Continue locally or stop the original cloud resource handoff.");
   if (pending.kind !== "ask-user-question" && pending.kind !== "handoff")
     throw new AuxError("conflict", "This request needs a decision in the approval prompt.");
 }

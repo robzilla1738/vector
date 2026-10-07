@@ -463,6 +463,19 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
   const task = tasks.get(params.taskId);
   if (task.revision !== params.expectedRevision)
     throw new AuxError("conflict", "Task revision changed; refresh it before opening a turn tab.");
+  const current = () => {
+    const live = tasks.get(task.taskId);
+    if (live.revision !== task.revision || live.state !== "open" || live.sourceOrigin !== task.sourceOrigin)
+      throw new AuxError("ref_stale", "The original task changed while creating its owned tab.");
+    if (ctx.scope && client.connectionId && s.agentConnections && !s.agentConnections.isLive({external: true, connectionId: client.connectionId, scope: ctx.scope}))
+      throw new AuxError("permission_denied", "The original connection retired while creating its tab.");
+    if (ctx.externalRunId) {
+      const owner = s.repo.getRun(ctx.externalRunId);
+      if (!owner || owner.status !== "running" || !owner.config || owner.config.externalConnectionId !== client.connectionId || owner.config.externalRetirementPending)
+        throw new AuxError("permission_denied", "The original external task turn retired.");
+    }
+  };
+  current();
   const url = permittedWebUrl(params.url);
   await decideEgress({
     url,
@@ -472,6 +485,7 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
     threadId: task.conversationId ?? `task:${params.taskId}`,
     runId: ctx.externalRunId,
   });
+  current();
   let release: (() => void) | undefined;
   let revoke: (() => void) | undefined;
   try {
@@ -481,6 +495,7 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
         taskId: task.taskId,
         taskRevision: task.revision,
       });
+    current();
     const opened = await turnTabs.open({
       connectionId: client.connectionId ?? (client.external ? "owner" : "internal"),
       taskId: params.taskId,
@@ -491,6 +506,7 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
       ...(ctx.externalRunId
         ? {
             beforeNavigate: async (page: import("@aux/contracts").PageTarget) => {
+              current();
               release = s.runs.pageOwnership.tryAcquire({
                 pageId: page.pageId,
                 actor: "external",
@@ -500,10 +516,16 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
               });
               if (client.connectionId) s.externalSessions?.notePage(client.connectionId, page.pageId);
               revoke = await s.runs.acquireBrowserEgress?.(ctx.externalRunId!, page.pageId, url.href);
+              current();
             },
           }
         : {}),
     });
+    try { current(); }
+    catch (error) {
+      await turnTabs.close(client.connectionId ?? (client.external ? "owner" : "internal"), task.taskId, opened.pageId);
+      throw error;
+    }
     if (ctx.externalRunId) s.turnMentions.created(ctx.externalRunId, opened.pageId);
     return opened;
   } finally {

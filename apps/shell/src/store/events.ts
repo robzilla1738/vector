@@ -454,6 +454,7 @@ export function eventEffects(e: AuxEvent, s: Workspace, set: Set, get: () => Wor
       const routine = e.payload.routine as { title?: string } | undefined;
       const title = routine?.title?.trim() || "Routine";
       if (run?.reason?.startsWith("Coalesced ")) s.toast(`${title}: ${run.reason}`);
+      else if (run?.status === "waiting_input") s.toast(`${title} needs your input.`);
       else if (run?.status === "needs_review") s.toast(`${title} is waiting for review before it writes.`);
       else if (run?.status === "missed")
         s.toast(run.reason ? `${title}: ${run.reason}` : `${title} missed a scheduled run.`);

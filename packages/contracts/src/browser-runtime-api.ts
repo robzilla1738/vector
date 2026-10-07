@@ -6,26 +6,12 @@ import { NightShiftQueueSchema, NightShiftItemSchema } from "./night-shift.js";
 
 const Id = z.string().min(1).max(200);
 const Folder = z.object({ folderId: Id }).strict();
-const Connection = z
-  .object({
-    id: Id,
-    name: z.string().min(1).max(200),
-    login: z.string().max(200),
-    connected: z.boolean(),
-    error: z.string().max(1000).optional(),
-  })
-  .strict();
 const Ok = z.object({ ok: z.literal(true) }).strict();
 
 export const BrowserRuntimeMethodSchemas = {
   "liveFolders.items": Folder,
   "liveFolders.refresh": Folder,
   "liveFolders.markRead": Folder.extend({ itemId: Id }),
-  "github.connections.list": z.object({}).strict(),
-  "github.connections.connect": z
-    .object({ name: z.string().min(1).max(200), token: z.string().min(1).max(1000) })
-    .strict(),
-  "github.connections.revoke": z.object({ connectionId: Id }).strict(),
   "downloads.completedNative": DownloadCompletedNativeSchema,
   "downloads.renameReceipts": z.object({}).strict(),
   "downloads.undoRename": z.object({ receiptId: Id }).strict(),
@@ -46,9 +32,6 @@ export const BrowserRuntimeResultSchemas = {
   "liveFolders.items": LiveFolderItemsSchema,
   "liveFolders.refresh": LiveFolderItemsSchema,
   "liveFolders.markRead": Ok,
-  "github.connections.list": z.array(Connection).max(100),
-  "github.connections.connect": Connection,
-  "github.connections.revoke": Ok,
   "downloads.completedNative": z
     .object({
       status: z.enum(["skipped", "renamed", "failed"]),
@@ -87,9 +70,6 @@ export const BrowserRuntimeMethodPolicy = {
   "liveFolders.items": { feature: "liveFolders", auth: "aux-webui" },
   "liveFolders.refresh": { feature: "liveFolders", auth: "aux-webui" },
   "liveFolders.markRead": { feature: "liveFolders", auth: "aux-webui" },
-  "github.connections.list": { feature: "liveFolders", auth: "aux-webui" },
-  "github.connections.connect": { feature: "liveFolders", auth: "aux-webui" },
-  "github.connections.revoke": { feature: "liveFolders", auth: "aux-webui" },
   "downloads.completedNative": { feature: "smartDownloadNames", auth: "handler-guarded" },
   "downloads.renameReceipts": { feature: "smartDownloadNames", auth: "aux-webui" },
   "downloads.undoRename": { feature: "smartDownloadNames", auth: "aux-webui" },

@@ -39,9 +39,6 @@ const VaultSettings = lazySection(async () => (await import("./VaultSettings")).
 const CalendarConnections = lazySection(
   async () => (await import("./CalendarConnections")).CalendarConnections,
 );
-const OutboundMcpSettings = lazySection(
-  async () => (await import("./OutboundMcpSettings")).OutboundMcpSettings,
-);
 const ReviewedConnectors = lazySection(async () => (await import("./ReviewedConnectors")).ReviewedConnectors);
 const AppearanceSettings = lazySection(
   async () => (await import("../settings/sections/Appearance")).AppearanceSettings,
@@ -90,9 +87,9 @@ const categoryDescriptions: Record<string, string> = {
   Appearance: "Make Aux feel at home, from tabs to text size.",
   "Passwords & Autofill": "Manage personal info and Chromium Profile passwords.",
   Memory: "Manage the context Aux remembers for your work.",
-  Workspaces: "Folders, agent instructions and file access by Space.",
+  Projects: "Project roots, skills and instructions by Space.",
   Connections: "Models, services and connected tools.",
-  "Usage & Budgets": "Model spending limits for runs, days and routines.",
+  "Usage & Budgets": "Model spending limits for runs, days, months and routines.",
   Automations: "Schedules, results and spending limits for Skills.",
   "Quick Ask": "Open a compact chat from Aux or any app.",
   "Selection & Capture": "Review selections, capture shortcuts, and writing assistance.",
@@ -127,8 +124,8 @@ export function Settings() {
     );
   const outboundMcpAvailable = useFeature("outboundMcp");
   const connectorsAvailable = useFeature("connectors");
+  const pluginsAvailable = skillsAvailable || outboundMcpAvailable;
   const servicesAvailable =
-    outboundMcpAvailable ||
     connectorsAvailable ||
     featureSettingsAvailable(
       "Connections",
@@ -147,7 +144,7 @@ export function Settings() {
     (route.category !== "Extensions" || extensionsAvailable) &&
     (route.category !== "Automations" || automationsAvailable) &&
     (route.connectionTab !== "Vault" || vaultAvailable) &&
-    (route.connectionTab !== "Plugins" || skillsAvailable) &&
+    (route.connectionTab !== "Plugins" || pluginsAvailable) &&
     (route.connectionTab !== "Services" || servicesAvailable);
   const [requestedRoute] = useState(() => settingsRouteFromPath(window.location.pathname));
   const initialRoute = requestedRoute && routeEnabled(requestedRoute) ? requestedRoute : null;
@@ -235,10 +232,10 @@ export function Settings() {
       ? (
           {
             Models: "Models",
-            Services: "MCP & Connectors",
+            Services: "Connected services",
             Agents: "Developers & External Agents",
             Vault: "Vault",
-            Plugins: "Skills & Plugins",
+            Plugins: "Skills & MCP",
           } as const
         )[connectionTab]
       : category === "Site permissions"
@@ -258,7 +255,7 @@ export function Settings() {
       (appleScriptAvailable || result.category !== "Advanced") &&
       (permissionsAvailable || result.category !== "Site permissions") &&
       (vaultAvailable || result.category !== "Vault") &&
-      (skillsAvailable || result.target !== "Plugins") &&
+      (pluginsAvailable || result.target !== "Plugins") &&
       (automationsAvailable || result.category !== "Automations") &&
       (connectorsAvailable || result.target !== "Google Calendar") &&
       (outboundMcpAvailable || result.target !== "MCP servers") &&
@@ -286,6 +283,10 @@ export function Settings() {
   const editorViews = useRef(new Map<string, HTMLElement>());
   const connectorSections = useRef(new Map<"calendar" | "mcp", HTMLDivElement>());
   const manageConnector = (kind: "calendar" | "mcp") => {
+    if (kind === "mcp") {
+      openCategory("Connections", "Plugins");
+      return;
+    }
     const target = connectorSections.current.get(kind);
     target?.scrollIntoView?.({ block: "start", behavior: "smooth" });
     target?.focus({ preventScroll: true });
@@ -450,7 +451,7 @@ export function Settings() {
               ...(servicesAvailable ? (["Services"] as const) : []),
               ...(vaultAvailable ? (["Vault"] as const) : []),
               "Agents",
-              ...(skillsAvailable ? (["Plugins"] as const) : []),
+              ...(pluginsAvailable ? (["Plugins"] as const) : []),
             ] as const
           ).map((tab) => (
             <button
@@ -500,7 +501,8 @@ export function Settings() {
                   onClick={() => {
                     openCategory(
                       result.category,
-                      result.category === "Connections" && result.target === "Plugins"
+                      result.category === "Connections" &&
+                        ["Plugins", "MCP servers"].includes(result.target ?? "")
                         ? "Plugins"
                         : undefined,
                     );
@@ -537,7 +539,7 @@ export function Settings() {
         <ModelsSettings active={visible("Models")} settings={settings} onSave={set} />
         <UsageBudgetsSettings active={visible("Usage & Budgets")} settings={settings} onSave={set} />
         {automationsFeatureAvailable && <AutomationsSettings active={visible("Automations")} />}
-        <WorkspacesSettings active={visible("Workspaces")} />
+        <WorkspacesSettings active={visible("Projects")} />
         <QuickAskSettings active={visible("Quick Ask")} />
         <SelectionCaptureSettings active={visible("Selection & Capture")} settings={settings} onSave={set} />
         <ArchivedChatsSettings active={visible("Archived chats")} />
@@ -564,18 +566,6 @@ export function Settings() {
                 </div>
               </>
             )}
-            {outboundMcpAvailable && (
-              <div
-                id="connection-mcp"
-                ref={(node) => {
-                  if (node) connectorSections.current.set("mcp", node);
-                  else connectorSections.current.delete("mcp");
-                }}
-                tabIndex={-1}
-              >
-                <OutboundMcpSettings active={visible("Connections")} />
-              </div>
-            )}
           </section>
         )}
         {vaultAvailable && (
@@ -598,7 +588,7 @@ export function Settings() {
         >
           <ExternalAgents active={visible("External agents")} />
         </section>
-        {skillsAvailable && (
+        {pluginsAvailable && (
           <section
             tabIndex={-1}
             id="connection-panel-Plugins"

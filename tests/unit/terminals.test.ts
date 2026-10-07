@@ -1,4 +1,3 @@
-import { TerminalService } from "../../apps/runtime/dist/services/terminals.js";
 import { mkdtempSync, mkdirSync, chmodSync, writeFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +6,7 @@ import {
   EventBus,
   Repo,
   TaskService,
+  TerminalService,
   WorkspaceFolderService,
   openDb,
   type NativeBridge,

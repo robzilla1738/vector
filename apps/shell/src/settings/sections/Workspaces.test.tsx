@@ -87,7 +87,7 @@ it("reviews exact folder access and AGENTS.md before grant, then archives it", a
   await act(async () => button("Review folder").click());
   expect(container.querySelector('[role="group"][aria-label="Folder access review"]')).not.toBeNull();
   expect(container.textContent).toContain("Local notes");
-  expect(container.textContent).toContain(digest);
+  expect(container.textContent).toContain(path);
   await act(async () => button("Grant reviewed folder access").click());
   expect(rpc).toHaveBeenCalledWith("workspaces.folders.add", {
     workspaceId,

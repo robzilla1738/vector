@@ -183,7 +183,7 @@ it("current task revision changes withhold a pending resource capture", async ()
 it("same-origin replacement documents and replacement attachments withhold resource captures", async () => {
   for (const change of ["document", "attachment"] as const) {
     const f = fixture();
-    f.duringCapture(() => {
+    f.duringCapture(async () => {
       const page = f.targets.get("a")!;
       f.targets.set(
         "a",

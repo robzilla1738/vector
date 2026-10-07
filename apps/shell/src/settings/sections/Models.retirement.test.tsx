@@ -23,6 +23,7 @@ vi.mock("../../commands", async () => {
     },
   };
 });
+
 const copilotSetup = CopilotSetupSchema.parse({
   registrationConfigured: false,
   runtimeInstalled: false,
@@ -45,7 +46,9 @@ beforeEach(() => {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  vi.mocked(call).mockReset().mockImplementation(async (method) => modelRead(method));
+  vi.mocked(call)
+    .mockReset()
+    .mockImplementation(async (method) => modelRead(method));
 });
 afterEach(async () => {
   await act(async () => root.unmount());
@@ -117,7 +120,11 @@ it.each(["success", "false-ack", "rejection"])(
 it("inactive roundtrip retires original probe without clearing a fresh pending connection test", async () => {
   const completions: { resolve(value: unknown): void; reject(reason: Error): void }[] = [];
   vi.mocked(call).mockImplementation((method) => {
-    if (method !== "models.probe") return Promise.resolve(modelRead(method));
+    if (method === "models.copilot.setup" || method === "models.copilot.accounts")
+      return Promise.resolve(modelRead(method));
+    if (method === "models.list") return Promise.resolve({ models: [] });
+    if (method === "settings.cloud.status") return Promise.resolve({ configured: false, revision: 0 });
+    if (method !== "models.probe") throw new Error(`Unexpected model producer ${method}`);
     return new Promise((resolve, reject) => completions.push({ resolve, reject }));
   });
   const props = { settings: settings("openai-compatible"), onSave: vi.fn(async () => true) };
@@ -127,6 +134,8 @@ it("inactive roundtrip retires original probe without clearing a fresh pending c
   await act(async () => root.render(<ModelsSettings active {...props} />));
   expect(button("Test connection").disabled).toBe(false);
   await act(async () => button("Test connection").click());
+  expect(completions).toHaveLength(2);
+  expect(vi.mocked(call).mock.calls.filter(([method]) => method === "models.probe")).toHaveLength(2);
   await act(async () => completions[0]!.reject(new Error("Original retired probe failure")));
   expect(host.textContent).not.toContain("Original retired probe failure");
   expect(button("Testing…").disabled).toBe(true);

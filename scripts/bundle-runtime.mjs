@@ -183,8 +183,15 @@ export async function bundleRuntime(rtOut, target) {
   const recurrenceRequire = createRequire(join(recurrenceDir, "package.json"));
   const temporalSpecDir = dirname(recurrenceRequire.resolve("temporal-spec"));
   copyFileSync(join(temporalSpecDir, "LICENSE"), join(recurrenceOut, "TEMPORAL-SPEC-LICENSE"));
-  writeFileSync(join(dirname(rtOut), "runtime-meta.json"), JSON.stringify({ inputs: { ...runtimeBuild.metafile.inputs, ...cloudWorkerBuild.metafile.inputs, ...recurrenceBuild.metafile.inputs }, outputs: { ...runtimeBuild.metafile.outputs, ...cloudWorkerBuild.metafile.outputs, ...recurrenceBuild.metafile.outputs } }));
-  writeFileSync(join(rtOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices({...runtimeBuild.metafile.inputs, ...cloudWorkerBuild.metafile.inputs, ...recurrenceBuild.metafile.inputs, ...archiveNoticeInputs, ...recurrenceBuild.metafile.inputs}));
+  writeFileSync(
+    join(dirname(rtOut), "runtime-meta.json"),
+    JSON.stringify({
+      inputs: { ...runtimeBuild.metafile.inputs, ...recurrenceBuild.metafile.inputs, ...cloudWorkerBuild.metafile.inputs },
+      outputs: { ...runtimeBuild.metafile.outputs, ...recurrenceBuild.metafile.outputs, ...cloudWorkerBuild.metafile.outputs },
+    }),
+  );
+
+  writeFileSync(join(rtOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices({...runtimeBuild.metafile.inputs,...cloudWorkerBuild.metafile.inputs,...recurrenceBuild.metafile.inputs,...archiveNoticeInputs}));
 
   // QuickJS's async release variant loads its WASM beside the esbuild chunk at
   // runtime. esbuild bundles the loader JS but does not copy that sibling file.
@@ -255,9 +262,9 @@ export async function bundleRuntime(rtOut, target) {
         private: true,
         type: "module",
         imports: {
-          "#rrule-temporal": "./vendor/rrule-temporal/index.cjs",
           "#playwright-core": "./vendor/playwright-core/index.mjs",
           "#resvg": "./vendor/resvg-js/index.js",
+          "#rrule-temporal": "./vendor/rrule-temporal/index.cjs",
           "#aux-copilot-install-worker": "./dist/copilot-install-worker.js",
         },
         dependencies: { "playwright-core": playwrightVersion },
@@ -294,7 +301,7 @@ export async function bundleRuntime(rtOut, target) {
   const size = {
     entryBytes: statSync(join(rtOut, "dist/main.js")).size,
     javascriptBytes: files
-      .filter((item) => /\.m?js$/.test(item.name))
+      .filter((item) => /\.(?:m|c)?js$/.test(item.name))
       .reduce((sum, item) => sum + item.bytes, 0),
     totalBytes: files.reduce((sum, item) => sum + item.bytes, 0),
     advisoryTargetBytes: 8 * 1024 * 1024,

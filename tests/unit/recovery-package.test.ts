@@ -199,11 +199,7 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   expect(exported.manifest).toMatchObject({ pageMemoryCount: 1, artifactIds: ["evidence"] });
   expect(exported.manifest.spaceMemory).toHaveLength(1);
   const managedBackup = await createRuntimeBackup(f.source, f.sourceDir);
-  const sourceMemory = new MemoryPipeline(
-    f.source,
-    f.sourceNative.bridge,
-    f.sourceId,
-  );
+  const sourceMemory = new MemoryPipeline(f.source, f.sourceNative.bridge, f.sourceId);
   await sourceMemory.forget({ workspaceId: f.space.workspaceId, all: true }, () => {
     advanceManagedRecoveryGeneration(f.sourceDir);
   });
@@ -288,11 +284,7 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   );
   const pages = new ContentMemoryStore(restored, f.targetNative.bridge, f.targetId);
   expect(await pages.search(f.space.workspaceId, "article memory")).toHaveLength(1);
-  const memory = new MemoryPipeline(
-    restored,
-    f.targetNative.bridge,
-    f.targetId,
-  );
+  const memory = new MemoryPipeline(restored, f.targetNative.bridge, f.targetId);
   expect(await memory.inbox(f.space.workspaceId)).toHaveLength(1);
   expect(
     f.targetNative.secrets.has(
@@ -323,11 +315,7 @@ it("keeps a copied phrase package restorable after Forget refuses the older mana
   const managedCopy = join(copyDir, "managed-copy");
   cpSync(managed.path, managedCopy, { recursive: true });
   const before = currentManagedRecoveryGeneration(f.sourceDir);
-  const pipeline = new MemoryPipeline(
-    f.source,
-    f.sourceNative.bridge,
-    f.sourceId,
-  );
+  const pipeline = new MemoryPipeline(f.source, f.sourceNative.bridge, f.sourceId);
   const forgotten = (await memoryMethods["memory.pipeline.forget"]!({
     client: { external: false, codeMode: false },
     method: "memory.pipeline.forget",
@@ -409,11 +397,7 @@ it("keeps a copied phrase package restorable after Forget refuses the older mana
   const cipher = await initializeFieldCodec(reopenedDb, f.targetNative.bridge, f.targetId);
   const restored = new Repo(reopenedDb, cipher);
   expect(restored.listWorkspaces()[0]?.name).toBe("Protected research space");
-  const memory = new MemoryPipeline(
-    restored,
-    f.targetNative.bridge,
-    f.targetId,
-  );
+  const memory = new MemoryPipeline(restored, f.targetNative.bridge, f.targetId);
   expect(await memory.inbox(f.space.workspaceId)).toHaveLength(1);
   restored.close();
 });
@@ -522,18 +506,29 @@ it("refuses a missing protected factor, a missing artifact and a nonempty destin
 it("ordinary backups omit retired memory and restore preserves current authenticated Space revisions", async () => {
   const f = await fixture();
   const memory = new MemoryPipeline(f.source, f.sourceNative.bridge, f.sourceId);
-  const unrelated = new TaskService(f.source, new EventBus(f.source)).createWorkspace("Unrelated backup name");
+  const unrelated = new TaskService(f.source, new EventBus(f.source)).createWorkspace(
+    "Unrelated backup name",
+  );
   const pages = new ContentMemoryStore(f.source, f.sourceNative.bridge, f.sourceId);
-  await pages.cachedDerivative({ workspaceId: f.space.workspaceId, signature: "naming-v1", eligible: () => true,
-    parse: (value) => String(value), compute: async () => "Research label" });
+  await pages.cachedDerivative({
+    workspaceId: f.space.workspaceId,
+    signature: "naming-v1",
+    eligible: () => true,
+    parse: (value) => String(value),
+    compute: async () => "Research label",
+  });
   const ordinary = await createRuntimeBackup(f.source, f.sourceDir);
-  f.source.db.prepare("UPDATE workspaces SET name='Current unrelated name' WHERE workspace_id=?").run(unrelated.workspaceId);
+  f.source.db
+    .prepare("UPDATE workspaces SET name='Current unrelated name' WHERE workspace_id=?")
+    .run(unrelated.workspaceId);
   const snapshot = new DatabaseSync(join(ordinary.path, "state.sqlite"), { readOnly: true });
   try {
     expect(snapshot.prepare("SELECT COUNT(*) AS n FROM ai_result_cache").get()?.n).toBe(0);
     expect(snapshot.prepare("SELECT COUNT(*) AS n FROM memory_files").get()?.n).toBe(0);
     expect(snapshot.prepare("SELECT COUNT(*) AS n FROM memory_history").get()?.n).toBe(0);
-  } finally { snapshot.close(); }
+  } finally {
+    snapshot.close();
+  }
   await memory.review(f.space.workspaceId, (await memory.inbox(f.space.workspaceId))[0]!.claimId, "accept");
   const current = f.source.db.prepare("SELECT * FROM memory_files ORDER BY name").all();
   await stageRuntimeRestore(f.sourceDir, ordinary.path, f.source.columnCipher, memory);
@@ -542,9 +537,12 @@ it("ordinary backups omit retired memory and restore preserves current authentic
   try {
     expect(restored.prepare("SELECT COUNT(*) AS n FROM ai_result_cache").get()?.n).toBe(0);
     expect(restored.prepare("SELECT * FROM memory_files ORDER BY name").all()).toEqual(current);
-    expect(restored.prepare("SELECT name FROM workspaces WHERE workspace_id=?").get(unrelated.workspaceId)?.name).toBe("Unrelated backup name");
+    expect(
+      restored.prepare("SELECT name FROM workspaces WHERE workspace_id=?").get(unrelated.workspaceId)?.name,
+    ).toBe("Unrelated backup name");
+  } finally {
+    restored.close();
   }
-  finally { restored.close(); }
 });
 
 it("refuses an ordinary staged restore after Space memory changes", async () => {
@@ -553,5 +551,7 @@ it("refuses an ordinary staged restore after Space memory changes", async () => 
   const ordinary = await createRuntimeBackup(f.source, f.sourceDir);
   await stageRuntimeRestore(f.sourceDir, ordinary.path, f.source.columnCipher, memory);
   await memory.review(f.space.workspaceId, (await memory.inbox(f.space.workspaceId))[0]!.claimId, "accept");
-  await expect(applyPendingRuntimeRestore(f.sourceDir, join(f.sourceDir, "state.sqlite"), f.sourceId)).rejects.toThrow(/Space memory changed/);
+  await expect(
+    applyPendingRuntimeRestore(f.sourceDir, join(f.sourceDir, "state.sqlite"), f.sourceId),
+  ).rejects.toThrow(/Space memory changed/);
 });

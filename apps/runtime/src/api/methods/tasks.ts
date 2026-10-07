@@ -70,14 +70,16 @@ async function retired_h_tasks_replaceAgent(ctx: MethodCtx): Promise<unknown> {
   const { params, s, tasks } = ctx;
   const details = tasks.details(params.taskId);
   for (const { run } of details.runs) {
-    if (["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
+    if (run.runId !== ctx.externalRunId && ["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
       await s.runs.cancel(run.runId);
   }
   const pageIds = params.pageIds ?? (params.pageId ? [params.pageId] : []);
   return s.runs.start({
-    ...tasks.prepareRun(params.taskId, params.expectedRevision, params.context),
+    ...tasks.prepareRun(params.taskId, params.expectedRevision, params.context, ctx.externalRunId),
+    ...(ctx.scope && ctx.client.connectionId ? {externalConnectionId: ctx.client.connectionId, externalParentRunId: ctx.externalRunId} : {}),
     pageIds,
     modelId: params.modelId,
+    nativeTurnContext: ctx.client.nativeTurnContext,
   });
 }
 async function h_tasks_recordEvidence(ctx: MethodCtx): Promise<unknown> {

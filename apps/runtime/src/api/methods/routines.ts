@@ -23,6 +23,7 @@ async function h_routines_list(ctx: MethodCtx): Promise<unknown> {
     return routines.importRoutines(shares, params.workspaceId);
   }
 
+
   if (method === "routines.replay.repair.propose") {
     if (client.external) {
       const routine = routines.get(params.routineId).routine;
@@ -50,6 +51,11 @@ async function h_routines_list(ctx: MethodCtx): Promise<unknown> {
     method === "routines.exportSkill";
   if (client.external && (client.scope || !routineRead))
     throw new AuxError("permission_denied", "Routines are managed in Aux.");
+  if (method === "routines.scan") {
+    if (client.external || client.codeMode)
+      throw new AuxError("permission_denied", "Review suggestions in Aux.");
+    return routines.scan(params);
+  }
   if (method === "routines.list") return routines.list(params);
   if (method === "routines.suggest") return routines.suggest(params);
   if (method === "routines.get") return routines.get(params.routineId);
@@ -113,6 +119,7 @@ export const routinesMethods: Partial<Record<MethodName, MethodHandler>> = {
   "routines.skills.preview": h_routines_list,
   "routines.skills.import": h_routines_list,
   "routines.list": h_routines_list,
+  "routines.scan": h_routines_list,
   "routines.suggest": h_routines_list,
   "routines.get": h_routines_list,
   "routines.create": h_routines_list,

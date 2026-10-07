@@ -313,7 +313,7 @@ export function PermissionsSettings({
         />
       </SettingsField>
       <SettingsField label="Local folders" hint="Review the folders shared with Aux in each Space.">
-        <button {...smallButtonProps} onClick={() => openSettings("Workspaces")}>
+        <button {...smallButtonProps} onClick={() => openSettings("Projects")}>
           Manage folders
         </button>
       </SettingsField>

@@ -88,3 +88,22 @@ it("retires a pending preflight when its view unmounts", async () => {
   await act(async () => resolve({ run, suspension: row }));
   expect(rpc.mock.calls.some(([method]) => method === "runs.continueBudget")).toBe(false);
 });
+
+it("raises only the exact funded owner and never removes a funded token limit", async () => {
+  const row = suspension();
+  row.request.budget = { reason: "tokens", limit: 1400, used: 100, requiredTokens: 1324,
+    funding: { kind: "goal", ownerId: "goal", runId: run.runId, budgetDigest: "a".repeat(64) } };
+  await mount(row);
+  expect(host.querySelector('input[type="checkbox"]')).toBeNull();
+  await go();
+  expect(rpc).toHaveBeenCalledWith("runs.continueBudget", { runId: run.runId, suspensionId: "budget-row", limits: { funding: { maxTokens: 2800 } } });
+});
+it("rejects a replaced funding revision even when the suspension identity is unchanged", async () => {
+  const row = suspension();
+  row.request.budget = { reason: "spend", limit: 1, used: 0.8,
+    funding: { kind: "subagent_group", ownerId: "group", runId: run.runId, budgetDigest: "a".repeat(64) } };
+  const replaced = { ...row, request: { ...row.request, budget: { ...row.request.budget, funding: { ...row.request.budget.funding!, budgetDigest: "b".repeat(64) } } } };
+  await mount(row, replaced);
+  await go();
+  expect(rpc.mock.calls.some(([method]) => method === "runs.continueBudget")).toBe(false);
+});

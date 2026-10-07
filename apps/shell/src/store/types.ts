@@ -113,6 +113,14 @@ export interface Workspace {
   settings: Record<string, unknown>;
   agentDraft: string;
   setAgentDraft(text: string): void;
+  composerPreferences: Record<
+    string,
+    { privateTask: boolean; executionTarget?: "local" | "cloud"; modelId?: string; reasoning?: "low" | "medium" | "high" }
+  >;
+  setComposerPreferences(
+    key: string,
+    value: { privateTask: boolean; executionTarget?: "local" | "cloud"; modelId?: string; reasoning?: "low" | "medium" | "high" },
+  ): void;
   conversationDrafts: Record<string, string>;
   setConversationDraft(id: string, text: string): void;
   bookmarkPending: Record<string, boolean>;
@@ -200,7 +208,8 @@ export interface Workspace {
   startRun(
     goal: string,
     opts?: {
-      executionTarget?: import("@aux/contracts/cloud-execution").ExecutionTarget;
+      privateTask?: boolean;
+      executionTarget?: "local" | "cloud";
       modelId?: string;
       reasoning?: "low" | "medium" | "high";
       pageId?: string | null;
@@ -350,6 +359,8 @@ export type DraftKeys =
   | "setConversationBrowserSources"
   | "agentDraft"
   | "setAgentDraft"
+  | "composerPreferences"
+  | "setComposerPreferences"
   | "conversationDrafts"
   | "setConversationDraft"
   | "runAnswerDrafts"

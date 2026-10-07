@@ -40,7 +40,7 @@ import { SCHEMA_VERSION } from "../store/db.js";
 import type { Repo } from "../store/repo.js";
 import { sanitizePortablePageRecall } from "@aux/contracts/portable-page-recall";
 import { ENCRYPTED_FIELDS, type FieldCodec } from "../store/field-codec.js";
-import { minimizedObservationArtifactBytes } from "./observation-artifact-migration.js";
+import { minimizedObservationArtifactBytes } from "./observation-artifact-minimization.js";
 import {
   assertManagedRecoveryGeneration,
   ensureManagedRecoveryGeneration,

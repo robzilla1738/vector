@@ -45,6 +45,7 @@ it("lists the runtime methods the renderer uses that the mock bridge does not im
 });
 
 const UNMOCKED = [
+  "agent.pageSummary",
   "agent.utility.intent",
   "agentConnections.install",
   "artifacts.list",
@@ -87,6 +88,8 @@ const UNMOCKED = [
   "installation.stageListedRestore",
   "installation.stageRecovery",
   "mcp.oauth.clear",
+  "mcp.oauth.configure",
+  "mcp.oauth.requirements",
   "mcp.oauth.start",
   "mcp.oauth.status",
   "memory.paste.commit",
@@ -135,6 +138,7 @@ const UNMOCKED = [
   "routines.replay.result",
   "routines.replay.test",
   "routines.run",
+  "routines.scan",
   "routines.skills.import",
   "routines.skills.preview",
   "routines.update",

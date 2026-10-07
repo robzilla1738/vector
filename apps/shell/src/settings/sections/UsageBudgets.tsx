@@ -10,7 +10,7 @@ import { SettingsField, SettingsSection } from "../primitives";
 import { usageReportCsv } from "../usage-csv";
 import { nativeNumberTypeProps, nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
-type Caps = { runUsd?: number; dayUsd?: number; routineUsd?: number };
+type Caps = { runUsd?: number; dayUsd?: number; monthUsd?: number; routineUsd?: number };
 const usd = (value: number) => `$${value.toFixed(value < 0.01 && value > 0 ? 4 : 2)}`;
 
 function UsageTable({
@@ -137,12 +137,12 @@ export function UsageBudgetsSettings({
     event.preventDefault();
     const values = new FormData(event.currentTarget);
     const next: Caps = {};
-    for (const key of ["runUsd", "dayUsd", "routineUsd"] as const) {
+    for (const key of ["runUsd", "dayUsd", "monthUsd", "routineUsd"] as const) {
       const text = String(values.get(key) ?? "").trim();
       if (!text) continue;
       const amount = Number(text);
-      if (!Number.isFinite(amount) || amount <= 0 || amount > 100_000) {
-        setCapError("Enter a positive USD amount up to 100,000, or leave the field empty for no cap.");
+      if (!Number.isFinite(amount) || amount <= 0) {
+        setCapError("Enter a positive USD amount, or leave the field empty for no cap.");
         return;
       }
       next[key] = amount;
@@ -170,7 +170,6 @@ export function UsageBudgetsSettings({
                 aria-label="Per run budget"
                 {...nativeNumberTypeProps}
                 min="0.01"
-                max="100000"
                 step="0.01"
                 defaultValue={caps.runUsd ?? ""}
               />
@@ -182,9 +181,19 @@ export function UsageBudgetsSettings({
                 aria-label="Per day budget"
                 {...nativeNumberTypeProps}
                 min="0.01"
-                max="100000"
                 step="0.01"
                 defaultValue={caps.dayUsd ?? ""}
+              />
+            </label>
+            <label>
+              Per month (USD)
+              <input
+                name="monthUsd"
+                aria-label="Per month budget"
+                {...nativeNumberTypeProps}
+                min="0.01"
+                step="0.01"
+                defaultValue={caps.monthUsd ?? ""}
               />
             </label>
             <label>
@@ -194,7 +203,6 @@ export function UsageBudgetsSettings({
                 aria-label="Per routine budget"
                 {...nativeNumberTypeProps}
                 min="0.01"
-                max="100000"
                 step="0.01"
                 defaultValue={caps.routineUsd ?? ""}
               />

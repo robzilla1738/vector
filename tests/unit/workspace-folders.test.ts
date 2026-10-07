@@ -26,6 +26,8 @@ it("binds a reviewed Space folder, pins AGENTS.md, and removes roots on archive"
   mkdirSync(userFolder);
   mkdirSync(protectedFolder);
   writeFileSync(join(userFolder, "AGENTS.md"), "Use the project style.");
+  const projectSkills = join(userFolder, ".claude", "skills");
+  mkdirSync(projectSkills, { recursive: true });
   const db = openDb(":memory:");
   try {
     const repo = new Repo(db);
@@ -34,12 +36,19 @@ it("binds a reviewed Space folder, pins AGENTS.md, and removes roots on archive"
     const review = service.inspect(workspace.workspaceId, userFolder, "read");
     expect(review.path).toBe(realpathSync(userFolder));
     expect(review.agentsPreview).toBe("Use the project style.");
+    expect(review.skillsPath).toBe(realpathSync(projectSkills));
     expect(() => service.add(workspace.workspaceId, userFolder, "readWrite", review.reviewDigest)).toThrow(
       /Review/,
     );
     const saved = service.add(workspace.workspaceId, userFolder, "read", review.reviewDigest);
     expect(service.roots(workspace.workspaceId)).toEqual({ read: [review.path], write: [] });
     expect(service.context(workspace.workspaceId)).toContain("Use the project style.");
+    expect(service.context(workspace.workspaceId)).toContain(realpathSync(projectSkills));
+    rmSync(projectSkills, { recursive: true });
+    symlinkSync(protectedFolder, projectSkills, "dir");
+    expect(service.list(workspace.workspaceId)[0]?.skillsPath).toBeUndefined();
+    expect(service.context(workspace.workspaceId)).not.toContain(realpathSync(protectedFolder));
+    expect(service.roots(workspace.workspaceId)).toEqual({ read: [review.path], write: [] });
     writeFileSync(join(userFolder, "AGENTS.md"), "Changed instructions.");
     expect(service.context(workspace.workspaceId)).toBe("");
     expect(service.roots(workspace.workspaceId)).toEqual({ read: [], write: [] });

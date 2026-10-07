@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { openDb, Repo, NullNativeBridge } from "@aux/runtime";
-import { GithubConnectionService } from "../../apps/runtime/dist/services/github-connection.js";
+import { openDb, Repo, OutboundMcpService } from "@aux/runtime";
+import { GithubMcpSource } from "../../apps/runtime/dist/services/github-mcp-source.js";
 import { LiveFolderService, feedItems } from "../../apps/runtime/dist/services/live-folders.js";
 import { liveFolderFetch } from "../../apps/runtime/dist/services/live-folder-fetch.js";
 import type { LiveFolder } from "@aux/contracts";
@@ -17,7 +17,7 @@ const fixture = (
   databases.push(db);
   const repo = new Repo(db);
   let sources = [{ id: "folder", live: source }];
-  const github = new GithubConnectionService({ repo, native: new NullNativeBridge() });
+  const github = new GithubMcpSource(()=>new OutboundMcpService(repo));
   const folders = new LiveFolderService({
     repo,
     github,

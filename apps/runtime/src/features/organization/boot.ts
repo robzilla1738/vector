@@ -8,6 +8,9 @@ export const boot: FeatureBoot["boot"] = (services, invoke) => {
   let fallback: ReturnType<typeof buildMethodDeps> | undefined;
   const context = {
     s: services,
+    get outboundMcp() {
+      return services.outboundMcp ?? (fallback ??= buildMethodDeps(services, invoke)).outboundMcp;
+    },
     get routines() {
       return services.routines ?? (fallback ??= buildMethodDeps(services, invoke)).routines;
     },

@@ -28,6 +28,11 @@ async function h_mcp_servers_register(ctx: MethodCtx): Promise<unknown> {
     if (server.source.kind !== "remote" || server.source.auth !== "oauth" || server.state !== "active")
       throw new AuxError("permission_denied", "Add this remote OAuth server before signing in.");
     const remote = server as typeof server & { source: { kind: "remote"; url: string; auth: "oauth" } };
+    if (method === "mcp.oauth.requirements") return s.mcpOAuth.requirements(remote);
+    if (method === "mcp.oauth.configure") {
+      outboundMcp.cancelActive(server.serverId);
+      return s.mcpOAuth.configure(remote, params);
+    }
     if (method === "mcp.oauth.start") return s.mcpOAuth.start(remote);
     if (method === "mcp.oauth.status") return s.mcpOAuth.status(remote);
     outboundMcp.cancelActive(server.serverId);
@@ -111,6 +116,8 @@ export const mcpMethods: Partial<Record<MethodName, MethodHandler>> = {
   "mcp.bundles.inspect": h_mcp_servers_register,
   "mcp.servers.list": h_mcp_servers_register,
   "mcp.servers.revoke": h_mcp_servers_register,
+  "mcp.oauth.requirements": h_mcp_servers_register,
+  "mcp.oauth.configure": h_mcp_servers_register,
   "mcp.oauth.start": h_mcp_servers_register,
   "mcp.oauth.status": h_mcp_servers_register,
   "mcp.oauth.clear": h_mcp_servers_register,

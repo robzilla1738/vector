@@ -754,3 +754,12 @@ it.each([
     expect(f.pages.livePageIds()).toEqual([row.pageId]);
   },
 );
+
+it("routes scoped direct navigation through the original task program and transmission lease", async () => {
+  const {invoke, trace, task, client} = scopedDispatch();
+  await expect(invoke("pages.navigate", {pageId: "p1", url: "https://recipient.test/", taskId: task.taskId, expectedRevision: task.revision}, client)).rejects.toThrow("driver failed");
+  expect(trace).toEqual(["bind", "dispatch", "revoke"]);
+  trace.length = 0;
+  await expect(invoke("pages.navigate", {pageId: "p1", url: "https://recipient.test/", taskId: task.taskId, expectedRevision: task.revision + 1}, client)).rejects.toMatchObject({code: "conflict"});
+  expect(trace).toEqual([]);
+});

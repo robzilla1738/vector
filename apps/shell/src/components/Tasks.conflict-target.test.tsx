@@ -81,6 +81,8 @@ it("keeps full saved conflict details reachable without applying or discarding t
         "routines.alerts",
         "routines.inbox",
         "routines.list",
+        "routines.scan",
+        "routines.suggest",
         "workspaces.folders.list",
       ].includes(method)
     )
@@ -136,6 +138,8 @@ it("keeps full saved conflict details reachable without applying or discarding t
         "routines.alerts",
         "routines.inbox",
         "routines.list",
+        "routines.scan",
+        "routines.suggest",
         "workspaces.folders.list",
         "tasks.get",
         "tasks.list",

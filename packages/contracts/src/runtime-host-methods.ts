@@ -1,30 +1,3 @@
-import { RemoteDebuggingStateSchema } from "./remote-debugging.js";
-import {
-  BrowserExportSourceSchema,
-  BrowserExportFormatSchema,
-  ImportExtensionReviewSchema,
-  ImportExtensionSelectionSchema,
-  NativeBrowserImportSelectionSchema,
-  ImportCategorySchema,
-  NativeBrowserImportDiscoverySchema,
-  NativeBrowserImportReceiptSchema,
-} from "./import.js";
-import {
-  NativeTerminalCloseParams,
-  NativeTerminalInputParams,
-  NativeTerminalListenersParams,
-  NativeTerminalPreviewCloseParams,
-  NativeTerminalPreviewParams,
-  NativeTerminalReadParams,
-  NativeTerminalResizeParams,
-  NativeTerminalStartParams,
-  TerminalInputResultSchema,
-  TerminalListenersSchema,
-  TerminalPreviewClosedSchema,
-  TerminalPreviewSchema,
-  TerminalReadResultSchema,
-  TerminalSessionSchema
-} from "./terminal.js";
 import {
   NativeFoundationStatusParams,
   NativeFoundationStatusSchema,
@@ -35,6 +8,25 @@ import {
   NativeFoundationCancelParams,
 } from "./native-foundation-models.js";
 import {
+  NativeCopilotStartParams,
+  NativeCopilotStartSchema,
+  NativeCopilotEndpointParams,
+  NativeCopilotEndpointSchema,
+  NativeCopilotStopParams,
+  NativeCopilotStoppedSchema,
+} from "./native-copilot.js";
+import {
+  BrowserExportSourceSchema,
+  BrowserExportFormatSchema,
+  ImportExtensionReviewSchema,
+  ImportExtensionSelectionSchema,
+  NativeBrowserImportSelectionSchema,
+  ImportCategorySchema,
+  NativeBrowserImportDiscoverySchema,
+  NativeBrowserImportReceiptSchema,
+} from "./import.js";
+import { RemoteDebuggingStateSchema } from "./remote-debugging.js";
+import {
   ProjectFilesSchema,
   ProjectFileSchema,
   ProjectChangesSchema,
@@ -44,7 +36,6 @@ import {
   NativeProjectCancelParams,
   NativeProjectClosedSchema,
 } from "./projects.js";
-import { TurnSourceContextSchema } from "./turn-source-context.js";
 import {
   ContentBlockOperationParams,
   ContentBlockOperationSchema,
@@ -54,13 +45,22 @@ import {
   ContentBlockReceiptSchema,
 } from "./content-blocking-schema.js";
 import {
-  NativeCopilotStartParams,
-  NativeCopilotStartSchema,
-  NativeCopilotEndpointParams,
-  NativeCopilotEndpointSchema,
-  NativeCopilotStopParams,
-  NativeCopilotStoppedSchema,
-} from "./native-copilot.js";
+  NativeTerminalListenersParams,
+  TerminalListenersSchema,
+  NativeTerminalPreviewParams,
+  TerminalPreviewSchema,
+  NativeTerminalPreviewCloseParams,
+  TerminalPreviewClosedSchema,
+  NativeTerminalStartParams,
+  NativeTerminalReadParams,
+  NativeTerminalInputParams,
+  NativeTerminalResizeParams,
+  NativeTerminalCloseParams,
+  TerminalSessionSchema,
+  TerminalReadResultSchema,
+  TerminalInputResultSchema,
+} from "./terminal.js";
+import { TurnSourceContextSchema } from "./turn-source-context.js";
 import {
   NativeCredentialContextParamsSchema,
   NativeCredentialContextSchema,
@@ -172,18 +172,6 @@ export const RuntimeHostMethods = {
     NativeFoundationCancelParams,
     NativeFoundationReceiptSchema,
   ),
-  "native.projectFiles": runtime("core", NativeProjectFilesParams, ProjectFilesSchema),
-  "native.projectFile": runtime("core", NativeProjectFileParams, ProjectFileSchema),
-  "native.projectChanges": runtime("core", NativeProjectChangesParams, ProjectChangesSchema),
-  "native.projectCancel": runtime("core", NativeProjectCancelParams, NativeProjectClosedSchema),
-  "native.terminalStart": runtime("core", NativeTerminalStartParams, TerminalSessionSchema),
-  "native.terminalRead": runtime("core", NativeTerminalReadParams, TerminalReadResultSchema),
-  "native.terminalInput": runtime("core", NativeTerminalInputParams, TerminalInputResultSchema),
-  "native.terminalResize": runtime("core", NativeTerminalResizeParams, TerminalSessionSchema),
-  "native.terminalClose": runtime("core", NativeTerminalCloseParams, TerminalSessionSchema),
-  "native.terminalListeners": runtime("core", NativeTerminalListenersParams, TerminalListenersSchema),
-  "native.terminalPreview": runtime("core", NativeTerminalPreviewParams, TerminalPreviewSchema),
-  "native.terminalPreviewClose": runtime("core", NativeTerminalPreviewCloseParams, TerminalPreviewClosedSchema),
   "native.copilotStart": runtime("core", NativeCopilotStartParams, NativeCopilotStartSchema),
   "native.copilotEndpoint": runtime("core", NativeCopilotEndpointParams, NativeCopilotEndpointSchema),
   "native.copilotStop": runtime("core", NativeCopilotStopParams, NativeCopilotStoppedSchema),
@@ -213,6 +201,22 @@ export const RuntimeHostMethods = {
     "contentBlocking",
     ContentBlockCommitSchema,
     ContentBlockReceiptSchema,
+  ),
+  "native.projectFiles": runtime("core", NativeProjectFilesParams, ProjectFilesSchema),
+  "native.projectFile": runtime("core", NativeProjectFileParams, ProjectFileSchema),
+  "native.projectChanges": runtime("core", NativeProjectChangesParams, ProjectChangesSchema),
+  "native.projectCancel": runtime("core", NativeProjectCancelParams, NativeProjectClosedSchema),
+  "native.terminalStart": runtime("core", NativeTerminalStartParams, TerminalSessionSchema),
+  "native.terminalRead": runtime("core", NativeTerminalReadParams, TerminalReadResultSchema),
+  "native.terminalInput": runtime("core", NativeTerminalInputParams, TerminalInputResultSchema),
+  "native.terminalResize": runtime("core", NativeTerminalResizeParams, TerminalSessionSchema),
+  "native.terminalClose": runtime("core", NativeTerminalCloseParams, TerminalSessionSchema),
+  "native.terminalListeners": runtime("core", NativeTerminalListenersParams, TerminalListenersSchema),
+  "native.terminalPreview": runtime("core", NativeTerminalPreviewParams, TerminalPreviewSchema),
+  "native.terminalPreviewClose": runtime(
+    "core",
+    NativeTerminalPreviewCloseParams,
+    TerminalPreviewClosedSchema,
   ),
   "native.turnSourceContext": runtime(
     "tabMentions",

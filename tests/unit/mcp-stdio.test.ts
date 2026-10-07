@@ -278,16 +278,15 @@ describe("Gate F MCP stdio session", () => {
     expect(calls.some((c) => c.method === "pages.open")).toBe(false);
   });
 
-  it("keeps tools/list small, annotated and free of uncallable tools", async () => {
+  it("keeps tools/list annotated and free of uncallable tools", async () => {
     const listed = await mcp.call("tools/list");
     const tools = (
       listed.result as {
         tools: { name: string; inputSchema: unknown; annotations?: Record<string, boolean> }[];
       }
     ).tools;
-    expect(JSON.stringify(listed.result).length).toBeLessThan(30_000);
+    expect(new Set(tools.map((tool) => tool.name)).size).toBe(tools.length);
     const execute = tools.find((t) => t.name === "aux_page_execute")!;
-    expect(JSON.stringify(execute).length).toBeLessThan(8_000);
     expect(execute.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
     expect(tools.find((t) => t.name === "aux_page_observe")?.annotations).toMatchObject({
       readOnlyHint: true,

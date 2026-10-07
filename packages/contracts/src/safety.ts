@@ -57,32 +57,39 @@ export const CredentialSelectorSchema = z
   );
 
 export const CredentialExpectedUrlSchema = z
-      .string()
-      .url()
-      .max(8192)
-      .refine((value) => {
-        try {
-          const url = new URL(value);
-          return url.protocol === "https:" && !url.username && !url.password && url.href === value;
-        } catch {
-          return false;
-        }
-      });
+  .string()
+  .url()
+  .max(8192)
+  .refine((value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password && url.href === value;
+    } catch {
+      return false;
+    }
+  });
 
-export const SavedCredentialTargetSchema = z.object({
-  pageId: id,
-  sessionId: id,
-  documentEpoch: z.number().int().nonnegative(),
-  expectedUrl: CredentialExpectedUrlSchema,
-  passwordSelector: CredentialSelectorSchema,
-  usernameSelector: CredentialSelectorSchema.optional(),
-  nativeContext: z.object({
-    documentToken: z.string().min(1).max(160),
-    windowId: z.string().min(1).max(160),
-    ownerIncarnation: z.string().min(1).max(160),
-    connectionGeneration: z.string().max(160).regex(/^[1-9][0-9]*$/),
-  }).strict(),
-}).strict();
+export const SavedCredentialTargetSchema = z
+  .object({
+    pageId: id,
+    sessionId: id,
+    documentEpoch: z.number().int().nonnegative(),
+    expectedUrl: CredentialExpectedUrlSchema,
+    passwordSelector: CredentialSelectorSchema,
+    usernameSelector: CredentialSelectorSchema.optional(),
+    nativeContext: z
+      .object({
+        documentToken: z.string().min(1).max(160),
+        windowId: z.string().min(1).max(160),
+        ownerIncarnation: z.string().min(1).max(160),
+        connectionGeneration: z
+          .string()
+          .max(160)
+          .regex(/^[1-9][0-9]*$/),
+      })
+      .strict(),
+  })
+  .strict();
 export type SavedCredentialTarget = z.infer<typeof SavedCredentialTargetSchema>;
 
 export const SafetyActionSchema = z

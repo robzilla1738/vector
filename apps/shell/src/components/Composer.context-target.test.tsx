@@ -116,7 +116,7 @@ it("keeps the page-free Add context opener's label, draft and modal focus at the
   expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(bridge.startDictation).not.toHaveBeenCalled();
   const selector = readFileSync("apps/shell/src/components/Conversation.css", "utf8").match(
-    /(\.new-chat-options [^{]+):hover \{/,
+    /(\.home-tools-trigger > button[^,{]+):hover \{/,
   )![1]!;
   expect(opener.matches(selector)).toBe(true);
   opener.disabled = true;

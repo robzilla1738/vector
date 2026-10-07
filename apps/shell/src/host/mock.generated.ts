@@ -7,7 +7,7 @@ import { HostMethods, HostEvents } from "@aux/contracts/host-methods";
 import { AuxError } from "@aux/contracts";
 import type { createHostClient } from "./client.generated";
 
-const NATIVE_ONLY = new Set(["native.terminalStart","native.terminalRead","native.terminalInput","native.terminalResize","native.terminalClose","native.terminalListeners","native.terminalPreview","native.terminalPreviewClose","native.projectFiles","native.projectFile","native.projectChanges","native.projectCancel","native.turnSourceContext","native.contentBlockState","native.contentBlockOperation","native.contentBlockBegin","native.contentBlockAppend","native.contentBlockCommit","native.foundationModelsStatus","native.foundationModelsStart","native.foundationModelsRead","native.foundationModelsCancel","native.copilotStart","native.copilotEndpoint","native.copilotStop","native.browserImportSelectWindow","native.browserImportSelectExport","native.browserImportExportPoll","native.browserImportExportCancel","native.browserImportDiscover","native.browserImportExtensionReview","native.browserImportBegin","native.browserImportPoll","native.browserImportCancel","native.remoteDebuggingGet","native.remoteDebuggingSet","native.cdpReset","native.cdpCatalog","native.cdpAttach","native.cdpStartNavigation","native.cdpTakeNavigationReceipt","native.cdpDispatch","native.adoptSessionPage","native.egressContext","native.egressInstall","native.egressRevoke","native.egressResumePerson","native.egressResumeRun","native.egressCheckRunResume","native.egressRunTerminal","native.createAgentPage","native.creatorCleanupProof","native.closeCreatedPage","native.recorderStart","native.recorderDrain","native.recorderStop","native.personRead","native.personReadContext","native.credentialContext","native.credentialAdmit","native.permissionRetire"]);
+const NATIVE_ONLY = new Set(["native.foundationModelsStatus","native.foundationModelsStart","native.foundationModelsRead","native.foundationModelsCancel","native.copilotStart","native.copilotEndpoint","native.copilotStop","native.browserImportSelectWindow","native.browserImportSelectExport","native.browserImportExportPoll","native.browserImportExportCancel","native.browserImportDiscover","native.browserImportExtensionReview","native.browserImportBegin","native.browserImportPoll","native.browserImportCancel","native.remoteDebuggingGet","native.remoteDebuggingSet","native.cdpReset","native.cdpCatalog","native.cdpAttach","native.cdpStartNavigation","native.cdpTakeNavigationReceipt","native.cdpDispatch","native.adoptSessionPage","native.egressContext","native.egressInstall","native.egressRevoke","native.egressResumePerson","native.egressResumeRun","native.egressCheckRunResume","native.egressRunTerminal","native.createAgentPage","native.creatorCleanupProof","native.closeCreatedPage","native.recorderStart","native.recorderDrain","native.recorderStop","native.personRead","native.personReadContext","native.credentialContext","native.projectFiles","native.projectFile","native.projectChanges","native.projectCancel","native.terminalStart","native.terminalRead","native.terminalInput","native.terminalResize","native.terminalClose","native.terminalListeners","native.terminalPreview","native.terminalPreviewClose","native.contentBlockState","native.contentBlockOperation","native.contentBlockBegin","native.contentBlockAppend","native.contentBlockCommit","native.credentialAdmit","native.permissionRetire"]);
 const RESULTS: Record<string, unknown> = {
   "capabilities": {
     "buildId": "mock-buildid",
@@ -473,6 +473,12 @@ const RESULTS: Record<string, unknown> = {
     "truncated": false
   },
   "showOriginal": 0,
+  "native.turnSourceContext": {
+    "revision": 0,
+    "layout": null,
+    "windowId": "a",
+    "activePageId": null
+  },
   "native.organizationSnapshot": {
     "revision": 0,
     "shared": null

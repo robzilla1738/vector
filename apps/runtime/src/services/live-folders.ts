@@ -1,10 +1,11 @@
 import { AuxError, LiveFolderItemsSchema, type LiveFolder, type LiveFolderItem } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { CalendarConnectionService } from "./calendar-connections.js";
-import type { GithubConnectionService } from "./github-connection.js";
+import type { GithubMcpSource } from "./github-mcp-source.js";
 import { liveFolderFetch } from "./live-folder-fetch.js";
 
-type Source = { id: string; live: LiveFolder };
+export type LiveFolderSource = { id: string; workspaceId?:string; spaceId?:string; live: LiveFolder };
+type Source=LiveFolderSource;
 type Cached = {
   folderId: string;
   items: LiveFolderItem[];
@@ -84,7 +85,7 @@ export class LiveFolderService {
     private readonly deps: {
       repo: Repo;
       sources: () => Promise<Source[]>;
-      github: GithubConnectionService;
+      github: GithubMcpSource;
       calendar?: CalendarConnectionService;
       routineItems: (routineId: string, signal: AbortSignal) => Promise<LiveFolderItem[]>;
       fetch?: typeof fetch;
@@ -100,7 +101,7 @@ export class LiveFolderService {
   private async sourceIdentity(folderId: string) {
     const source = (await this.deps.sources()).find((source) => source.id === folderId);
     if (!source) throw new AuxError("not_found", "This live folder is no longer available.");
-    return JSON.stringify(source.live);
+    return JSON.stringify(source);
   }
   async items(folderId: string) {
     const identity = await this.sourceIdentity(folderId);
@@ -136,11 +137,16 @@ export class LiveFolderService {
   private async refreshSource(folderId: string) {
     const source = (await this.deps.sources()).find((source) => source.id === folderId);
     if (!source) throw new AuxError("not_found", "This live folder is no longer available.");
-    const identity = JSON.stringify(source.live);
+    const identity = JSON.stringify(source);
     try {
       const live = source.live;
       let rows: LiveFolderItem[];
-      if (live.kind === "github") rows = await this.deps.github.items(live, this.lifetime.signal);
+      if (live.kind === "github") {
+        if(!source.workspaceId)throw new AuxError("needs_input","Link this folder’s original Space to a workspace before connecting GitHub.");
+        rows=await this.deps.github.items(live,source.workspaceId,async()=>{
+          if((await this.sourceIdentity(folderId))!==identity)throw new AuxError("ref_stale","The original live folder or Space changed.");
+        },this.lifetime.signal);
+      }
       else if (live.kind === "rss") {
         const url = new URL(live.config.url);
         rows = feedItems(
@@ -182,7 +188,7 @@ export class LiveFolderService {
       } else rows = await this.deps.routineItems(live.config.routineId, this.lifetime.signal);
       this.lifetime.signal.throwIfAborted();
       const current = (await this.deps.sources()).find((source) => source.id === folderId);
-      if (!current || JSON.stringify(current.live) !== identity)
+      if (!current || JSON.stringify(current) !== identity)
         throw new AuxError("cancelled", "This live folder changed during refresh.");
       // Re-read after the network await so a concurrent markRead cannot resurrect its dot.
       const latest = this.deps.repo.getSetting<Cached>(this.key(folderId));

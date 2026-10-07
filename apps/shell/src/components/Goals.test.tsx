@@ -38,7 +38,7 @@ function change(selector: string, value: string) {
   field.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-it("creates a bounded Goal and starts it only with the current tab and model ready", async () => {
+it("creates an unlimited Goal by default and starts it only with the current tab and model ready", async () => {
   let goal: Record<string, unknown> | undefined;
   rpc.mockImplementation(async (method: string, params: Record<string, unknown>) => {
     if (method === "goals.list") return goal ? [goal] : [];
@@ -78,7 +78,7 @@ it("creates a bounded Goal and starts it only with the current tab and model rea
   expect(rpc).toHaveBeenCalledWith("goals.create", {
     workspaceId: "space-1",
     objective: "Compare two reports",
-    budget: { maxTokens: 200000, maxCostUsd: 1, deadlineMs: 1_800_000 },
+    budget: {},
   });
   expect(button("Start on current tab").disabled).toBe(true);
   await act(async () =>
@@ -129,7 +129,7 @@ it("binds a new Goal to the current conversation and blocks a second unfinished 
     workspaceId: "space-1",
     chatId: "chat-1",
     objective: "Bounded conversation work",
-    budget: { maxTokens: 200000, maxCostUsd: 1, deadlineMs: 1_800_000 },
+    budget: {},
   });
   expect(button("New Goal").disabled).toBe(true);
   expect(container.textContent).toContain("Finish or cancel this conversation’s current Goal");

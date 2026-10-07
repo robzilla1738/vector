@@ -39,7 +39,13 @@ it("publishes actual page-free REPL openTab consent while retaining the parked d
   }));
   const dataDir = mkdtempSync(join(tmpdir(), "aux-loop-approval-"));
   cleanups.push(() => rmSync(dataDir, { recursive: true, force: true }));
-  writeFileSync(join(dataDir, "settings.json"), JSON.stringify({ agentMode: "ask", agentPolicies: [{ category: "read", site: new URL(destination).origin, access: "ask" }] }));
+  writeFileSync(
+    join(dataDir, "settings.json"),
+    JSON.stringify({
+      agentMode: "ask",
+      agentPolicies: [{ category: "read", site: new URL(destination).origin, access: "ask" }],
+    }),
+  );
   const runtime = await startRuntime({
     AUX_DATA_DIR: dataDir,
     AUX_STANDALONE: "0",
@@ -122,7 +128,11 @@ it("publishes one already-decided approval and consumes its acceptance only at e
     approvals,
     journal: new DecisionJournal(db),
     managedRules: () => [],
-    agentPolicy: () => ({ agentMode: "ask" as const, agentPolicyRevision: 0, agentPolicies: [{ category: "read" as const, access: "ask" as const }] }),
+    agentPolicy: () => ({
+      agentMode: "ask" as const,
+      agentPolicyRevision: 0,
+      agentPolicies: [{ category: "read" as const, access: "ask" as const }],
+    }),
     audit: () => {},
   };
   const gate = new SafetyDispatchGate({ ...deps, suspensions, onConfirmation });
@@ -157,7 +167,8 @@ it("publishes one already-decided approval and consumes its acceptance only at e
   approvals.decideLocal({ decision: "accept", approvalId: pending[0]!.approvalId }, request.turnId);
   suspensions.resolveByApprovalId(pending[0]!.approvalId, "answered");
   expect(await decide(request, deps, { phase: "preflight", headless: true })).toMatchObject({
-    status: "allow", authorizedBy: { authorizedBy: "approval", approvalId: pending[0]!.approvalId },
+    status: "allow",
+    authorizedBy: { authorizedBy: "approval", approvalId: pending[0]!.approvalId },
   });
   expect(
     await decide({ ...request, invocationDigest: "b".repeat(64) }, deps, { phase: "dispatch" }),

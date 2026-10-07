@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { installCli } from "../../apps/runtime/dist/services/cli-install.js";
+import { installCli } from "@aux/runtime";
 
 const homes: string[] = [];
 afterEach(() => homes.splice(0).forEach((home) => rmSync(home, { recursive: true, force: true })));

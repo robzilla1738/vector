@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { TurnSourceContextSchema, type TurnSourceContext } from "@aux/contracts/turn-source-context";
 import {
   RoutineSchema,
   type ConnectorCatalog,
@@ -74,8 +75,20 @@ function fixture() {
     ],
     access: [],
   };
+  let sourceContext = TurnSourceContextSchema.parse({
+    windowId: "main",
+    activePageId: "a",
+    revision: 1,
+    layout: {
+      shared: organization.shared,
+      window: { activeSpaceId: "space", activeTabs: { space: "a" }, splitRatio: 0.5 },
+    },
+  });
+  const prepareReadPage = vi.fn(async () => {});
   const service = new TurnMentionService({
     page: (id) => pages.get(id),
+    prepareReadPage,
+    turnSourceContext: async () => sourceContext,
     organization: async () => organization,
     routine: (id) => (id === "skill" ? routine : undefined),
     connectors: () => catalog,
@@ -83,6 +96,11 @@ function fixture() {
   return {
     service,
     pages,
+    prepareReadPage,
+    sourceContext: () => sourceContext,
+    setSourceContext: (value: TurnSourceContext) => {
+      sourceContext = value;
+    },
     setOrganization: (value: ProfileOrganizationSnapshot) => {
       organization = value;
     },
@@ -307,7 +325,7 @@ describe("Profile-owned turn mention service", () => {
         },
       ),
     ).toBe("approved resource");
-    expect(checks).toBe(3);
+    expect(checks).toBe(4);
     expect(f.service.ownedPages("run")).toEqual([]);
     expect(await f.service.require("run", "a", "read")).toMatchObject({ status: "unavailable" });
     await f.service.begin("run", [tab], []);
@@ -392,5 +410,67 @@ describe("Profile-owned turn mention service", () => {
         return "revoked result";
       }),
     ).rejects.toThrow(/connector changed/);
+  });
+});
+
+describe("original window default source reach", () => {
+  const nativeTurnContext = "11111111-1111-4111-8111-111111111111";
+  it("keeps actual active/current Space sources with only a skill mention", async () => {
+    const f = fixture(),
+      original = f.sourceContext();
+    if (!original.layout) throw new Error("Fixturelayout missing");
+    f.setSourceContext({
+      ...original,
+      layout: {
+        ...original.layout,
+        shared: { ...original.layout.shared, tabSpace: { a: "space", b: "space" } },
+      },
+    });
+    const refs = [{ kind: "skill" as const, routineId: "skill", revision: 1 }];
+    const started = await f.service.begin("run", refs, [], { nativeTurnContext });
+    expect(started.refs).toEqual(refs);
+    expect(f.service.hasPageSelection("run")).toBe(false);
+    expect(f.service.selectedPages("run")).toEqual(["a", "b"]);
+    expect(await f.service.require("run", "b", "read")).toEqual({ status: "available" });
+  });
+  it("keeps explicit read-only page selections narrower than defaults", async () => {
+    const f = fixture();
+    await f.service.begin("run", [tab], [], { nativeTurnContext });
+    expect(f.service.hasPageSelection("run")).toBe(true);
+    expect(f.service.selectedPages("run")).toEqual(["a"]);
+    expect(await f.service.require("run", "a", "act")).toMatchObject({ status: "unavailable" });
+    expect(await f.service.require("run", "b", "read")).toMatchObject({ status: "unavailable" });
+  });
+  it("invalidates borrowed default sources when the original window changes Space", async () => {
+    const f = fixture();
+    await f.service.begin("run", [], [], { nativeTurnContext });
+    const current = f.sourceContext();
+    if (!current.layout) throw new Error("Fixturelayout missing");
+    f.setSourceContext({
+      ...current,
+      layout: { ...current.layout, window: { ...current.layout.window, activeSpaceId: "other" } },
+    });
+    expect(await f.service.require("run", "a", "read")).toMatchObject({ status: "unavailable" });
+  });
+  it("resolves private source metadata without preparing or observing borrowed tabs", async () => {
+    const f = fixture();
+    await f.service.begin("run", [tab], [], { nativeTurnContext, privateTask: true });
+    expect(f.prepareReadPage).not.toHaveBeenCalled();
+    expect(f.service.sourcePages("run")).toMatchObject([{ pageId: "a", url: page.url }]);
+    expect(f.service.selectedPages("run")).toEqual([]);
+    expect(await f.service.require("run", "a", "read")).toMatchObject({ status: "unavailable" });
+    f.pages.set("clone", { ...page, pageId: "clone", sessionId: "private-clone", ownedByRuntime: true });
+    f.service.created("run", "clone");
+    expect(f.service.selectedPages("run")).toEqual(["clone"]);
+    expect(await f.service.require("run", "clone", "act")).toEqual({ status: "available" });
+  });
+  it("keeps a trusted child source binding narrow and retains exact document invalidation", async () => {
+    const f = fixture();
+    await f.service.begin("run", [], [], { nativeTurnContext, sourcePageIds: ["b"] });
+    expect(f.service.selectedPages("run")).toEqual(["b"]);
+    expect(await f.service.require("run", "a", "read")).toMatchObject({ status: "unavailable" });
+    const original = f.pages.get("b")!;
+    f.pages.set("b", { ...original, documentEpoch: original.documentEpoch + 1 });
+    expect(await f.service.require("run", "b", "read")).toMatchObject({ status: "unavailable" });
   });
 });

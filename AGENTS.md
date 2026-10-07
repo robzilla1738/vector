@@ -14,7 +14,7 @@ Renderer tests resolve `@aux/contracts` to source via the Vitest alias.
 
 ## Product direction
 
-Read `docs/ROADMAP.md` and `docs/STATUS.md`. The Aux v3 owner decisions supersede the previous frozen inspection scope. Chromium is the only engine. Vertical layout and Auto agent mode are defaults. Built features are on, with Labs opt-outs; method capabilities still determine what the host implements. Honour site policy, protect secrets, and keep Stop, Take over, durable effects and undo. Browser UI must remain usable while the runtime is unavailable.
+Read `docs/ROADMAP.md` and `docs/STATUS.md`. The Aux v3 owner decisions supersede the previous frozen inspection scope. Chromium is the only engine. Vertical layout and Ask first are defaults. The composer remembers Skip confirmation; Auto remains available in Settings. Built features are on, with Labs opt-outs; method capabilities still determine what the host implements. Honour site policy, protect secrets, and keep Stop, Take over, durable effects and undo. Browser UI must remain usable while the runtime is unavailable.
 
 ## Working rules
 

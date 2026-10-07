@@ -9,6 +9,8 @@ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./OutboundMcpSettings.css";
 import { useEffect, useState } from "react";
+import { OFFICIAL_MCP_CONNECTORS } from "@aux/contracts";
+import { McpOAuthSetup } from "./McpOAuthSetup";
 import type { OutboundMcpServer, OutboundMcpTool, Task, Workspace } from "@aux/contracts";
 import { McpToolAccess } from "../features/mcp/ToolAccess";
 import { bridge } from "../bridge";
@@ -348,6 +350,42 @@ export function OutboundMcpSettings() {
               ))}
             </select>
           </label>
+          <fieldset>
+            <legend>Official remote connections</legend>
+            {OFFICIAL_MCP_CONNECTORS.map((connector) => (
+              <div key={connector.id}>
+                <strong>{connector.name}</strong>
+                <p>{connector.help}</p>
+                <p>
+                  <code>{connector.url}</code>
+                </p>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setSourceKind("remote");
+                    setName(connector.name);
+                    setUrl(connector.url);
+                    setAuth("oauth");
+                    setMessage(`Review ${connector.name} below, then add it to this Space.`);
+                  }}
+                >
+                  Set up {connector.name}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    void action(async () => {
+                      await bridge.openExternal(connector.registrationUrl);
+                    })
+                  }
+                >
+                  Open {connector.name} registration guide
+                </button>
+              </div>
+            ))}
+          </fieldset>
           <fieldset className="field mcp-register">
             <legend>Add an MCP server</legend>
             <label>
@@ -524,6 +562,7 @@ export function OutboundMcpSettings() {
                 selectedServer.source.auth === "oauth" && (
                   <div {...staticFieldProps}>
                     <strong>OAuth authorization</strong>
+                    <McpOAuthSetup key={selectedServer.serverId} serverId={selectedServer.serverId} />
                     <p {...staticHintProps}>
                       {oauthStatus?.connected
                         ? `Connected in this Profile${oauthExpiry}.`

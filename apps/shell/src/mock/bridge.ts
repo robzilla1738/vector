@@ -11,7 +11,7 @@ import { workFixtures } from "./work";
 import { connectorFixtures } from "./connectors";
 import { steppedZoomLevel } from "@aux/contracts/page-zoom";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
-import { MODEL_REGISTRY, modelPickerEntries } from "@aux/contracts/model-registry";
+import { MODEL_REGISTRY } from "@aux/contracts/model-registry";
 import { workspaceMemoryText } from "@aux/contracts/memory-context";
 import { textContextShares } from "@aux/contracts/text-context";
 /**
@@ -691,7 +691,6 @@ export function installMockBridge(q: URLSearchParams) {
     () => work["tasks.list"](),
     scenario === "connectors",
   );
-  const githubAccounts = new Map<string, { id: string; name: string; login: string; connected: boolean }>();
   const liveFolderRows = new Map<string, import("@aux/contracts").LiveFolderItem[]>();
   const nativeTrustUnavailable: MockHandler = async () => {
     throw new AuxError(
@@ -701,21 +700,6 @@ export function installMockBridge(q: URLSearchParams) {
   };
   const handlers = {
     "safety.decisions.list": nativeTrustUnavailable,
-    "github.connections.list": async () => [...githubAccounts.values()],
-    "github.connections.connect": async (p: Record<string, unknown>) => {
-      const account = {
-        id: crypto.randomUUID(),
-        name: String(p.name),
-        login: "aux-preview",
-        connected: true,
-      };
-      githubAccounts.set(account.id, account);
-      return account;
-    },
-    "github.connections.revoke": async (p: Record<string, unknown>) => {
-      githubAccounts.delete(String(p.connectionId));
-      return { ok: true };
-    },
     "liveFolders.items": async (p: Record<string, unknown>) => ({
       folderId: String(p.folderId),
       items: liveFolderRows.get(String(p.folderId)) ?? [],
@@ -724,7 +708,7 @@ export function installMockBridge(q: URLSearchParams) {
       const folderId = String(p.folderId);
       const source = organization.layout?.shared.folders.find((folder) => folder.id === folderId)?.live;
       if (!source) throw new Error("Choose a live folder source first.");
-      if (source.kind === "github" && !githubAccounts.has(source.config.connectionId))
+      if (source.kind === "github")
         return {
           folderId,
           items: liveFolderRows.get(folderId) ?? [],
@@ -735,7 +719,7 @@ export function installMockBridge(q: URLSearchParams) {
           id: "preview-article",
           url: "https://example.com/article",
           title: "Research worth revisiting",
-          subtitle: source.kind === "github" ? "aux/browser #42" : "example.com",
+          subtitle: "example.com",
           unread: true,
           updatedAt: 0,
         },
@@ -1450,6 +1434,19 @@ export function installMockBridge(q: URLSearchParams) {
       }
       throw new Error("Document attachment not found.");
     },
+    "settings.remoteDebugging.get": async () => ({
+      available: false,
+      enabled: false,
+      managed: false,
+      allowed: false,
+      canChange: false,
+      state: "unavailable" as const,
+      address: null,
+      port: null,
+    }),
+    "settings.remoteDebugging.set": async () => {
+      throw new Error("Remote debugging requires the native Aux browser.");
+    },
     "settings.get": async () => {
       return { ...settings };
     },
@@ -1549,7 +1546,7 @@ export function installMockBridge(q: URLSearchParams) {
         .slice(0, Number(p.limit ?? 100));
     },
     "models.list": async () => {
-      return { models: modelPickerEntries(MODEL_REGISTRY), source: "static" };
+      return { models: [...MODEL_REGISTRY], source: "static", localServers: [] };
     },
     "models.probe": async (p) => {
       return {
@@ -1907,6 +1904,8 @@ export function installMockBridge(q: URLSearchParams) {
         config: {
           chatId: p.chatId as string | undefined,
           privateTask,
+          modelId: p.modelId as string | undefined,
+          reasoning: p.reasoning as "low" | "medium" | "high" | undefined,
         },
       };
       runs = [run, ...runs];

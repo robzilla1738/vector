@@ -1,21 +1,15 @@
 import { memoryContentSensitivityReason } from "@aux/contracts/memory-sensitivity";
 import { pageDerivativeCache } from "./services/ai-result-cache.js";
-import { BrowserImporter } from "./services/browser-import.js";
-import { TerminalService } from "./services/terminals.js";
-import { registerNativeProjectPreview } from "./services/native-project-preview.js";
-import { ProjectsService } from "./services/projects.js";
-import type { VercelSandboxExecutor } from "./services/vercel-sandbox-executor.js";
-import type { CloudExecutionContext } from "./services/cloud-execution.js";
-import type { CloudRunAdmission } from "./services/cloud-run-admission.js";
-import type { CopilotServices } from "./services/copilot-services.js";
+import { AgentTurnTabs } from "./agent/turn-tabs.js";
 import { deferRuntimeWork, isRuntimeIdle } from "./services/idle.js";
 import { markInterruptedRuns } from "./services/startup-recovery.js";
 import { createServiceContainer, type ServiceContainer } from "./services/container.js";
 import { navigateControlledPage } from "./services/pages/controlled-navigation.js";
 import { registerNativeSubagentWorkload } from "./services/native-subagent-workload.js";
+import { registerNativeProjectPreview } from "./services/native-project-preview.js";
 import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
 import { withRunAuthorityMutation } from "./services/overnight-authority.js";
-import { overnightRoot, runAncestry, runRoot, lineageRuns } from "./services/run-lineage.js";
+import { lineageRuns, overnightRoot, runAncestry, runRoot } from "./services/run-lineage.js";
 import { installBrowserAuthority, installOvernightAuthority } from "./services/overnight-authority.js";
 import { checkNightShiftDispatch, nightShiftEffectAuthority } from "./features/overnight-review/service.js";
 import { z } from "zod";
@@ -65,6 +59,7 @@ import {
   SubagentProfileSchema,
   ZapSnapshotParamsSchema,
   auxFeatureEnabled,
+  isElementRef,
   normalizeAuxEnvironment,
   type Step,
 } from "@aux/contracts";
@@ -105,6 +100,7 @@ import { artifactExportDescriptor, renderWorkbookForNativeExport } from "./servi
 import { applyPendingRuntimeRestore } from "./services/runtime-backup.js";
 import { CookieService } from "./services/cookies.js";
 import { SettingsService } from "./services/settings.js";
+import type { CopilotServices } from "./services/copilot-services.js";
 import { ResponseStore } from "./services/responses.js";
 import { OperationService } from "./services/operations.js";
 import { StateService } from "./services/state.js";
@@ -113,6 +109,12 @@ import { makeInvoker } from "./api/invoke.js";
 import { ApiServer } from "./api/server.js";
 import { AgentConnectionService } from "./services/agent-connections.js";
 import { nativeAgentClients, nativeAgentConfig } from "./services/native-agent-connections.js";
+import { TerminalService } from "./services/terminals.js";
+import { ProjectsService } from "./services/projects.js";
+import { BrowserImporter } from "./services/browser-import.js";
+import type { VercelSandboxExecutor } from "./services/vercel-sandbox-executor.js";
+import type { CloudExecutionContext } from "./services/cloud-execution.js";
+import type { CloudRunAdmission } from "./services/cloud-run-admission.js";
 import { ExternalSessionService } from "./services/external-sessions.js";
 import { CalendarConnectionService } from "./services/calendar-connections.js";
 import { pollCalendarRoutines } from "./services/calendar-routine-poll.js";
@@ -236,16 +238,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   bootPhase("protection");
   const repo = new Repo(db, columnCipher);
   let closed = false;
-  let stopNativeProjectPreview: (() => void) | undefined;
   let cliInstallTail = Promise.resolve();
   const cliInstallWork = new Set<Promise<unknown>>();
   const agentInstallWork = new Set<Promise<unknown>>();
   let stopNativeDeviceConfirmation: (() => void) | undefined;
+  let stopNativeProjectPreview: (() => void) | undefined;
   let stopRunEndHooks: (() => void) | undefined;
   type RuntimeServices = Services & {
     workspaceFolders: WorkspaceFolderService;
-    terminals: TerminalService;
-    projects: ProjectsService;
     filesystem: FilesystemAccessService;
     settings: SettingsService;
     copilot: Promise<CopilotServices>;
@@ -282,7 +282,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     bashSeatbelt: BashSeatbelt;
     cookies: CookieService;
     agentConnections: AgentConnectionService;
+    terminals: TerminalService;
+    projects: ProjectsService;
     externalSessions: ExternalSessionService;
+    turnTabs: AgentTurnTabs;
     pageChangeWatches: RoutineService;
     browsingMemory: BrowsingMemory;
     tasks: TaskService;
@@ -291,8 +294,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   };
   const serviceContainer: ServiceContainer<RuntimeServices> = createServiceContainer<RuntimeServices>({
     workspaceFolders: () => new WorkspaceFolderService(repo, () => [config.dataDir]),
-    terminals: () => new TerminalService(native, runtimeServices.workspaceFolders),
-    projects: () => new ProjectsService(native, runtimeServices.workspaceFolders, runtimeServices.filesystem),
     filesystem: () =>
       new FilesystemAccessService({
         internalRoots: [config.artifactsDir, config.downloadsDir, config.previewsDir],
@@ -482,8 +483,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         if (handler.type !== "mcp_tool")
           throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
         const server = runtimeServices.outboundMcp.get(handler.serverId);
-        if (server.state !== "active" || server.workspaceId !== workspaceId ||
-            !server.toolNames.includes(handler.toolName) || server.disabledTools.includes(handler.toolName))
+        if (
+          server.state !== "active" ||
+          server.workspaceId !== workspaceId ||
+          !server.toolNames.includes(handler.toolName) ||
+          server.disabledTools.includes(handler.toolName)
+        )
           throw new AuxError("permission_denied", "Connect this MCP server and enable its tool first.");
       }),
     calendar: () =>
@@ -509,6 +514,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         repo,
         events,
         pages: runtimeServices.pages,
+        translateSteps,
         durableWrites: runtimeServices.durableWrites,
         calendar: runtimeServices.calendar,
         authorizeConnector: (runId, connectorId, tool, dispatch) =>
@@ -549,6 +555,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             if (error instanceof AuxError && error.code === "not_found") return undefined;
             throw error;
           }
+        },
+        turnSourceContext: async (token) => {
+          if (!native.turnSourceContext)
+            throw new AuxError("backend_unavailable", "Original window source authority is unavailable.");
+          return native.turnSourceContext(token);
         },
         organization: async () => {
           if (!native.organizationSnapshot)
@@ -604,8 +615,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       stopRunEndHooks = installRunEndHooks(events, runtimeServices.hooks, hookExecutor);
       return runs;
     },
-    goals: () =>
-      new GoalService(repo, runtimeServices.runs),
+    goals: () => new GoalService(repo, runtimeServices.runs),
     subagents: () => new SubagentService(repo, events, runtimeServices.runs),
     bashSeatbelt: () =>
       new BashSeatbelt({
@@ -627,6 +637,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     tasks: () => new TaskService(repo, events),
     cookies: () => new CookieService({ native }),
     agentConnections: () => new AgentConnectionService(repo),
+    terminals: () => new TerminalService(native, runtimeServices.workspaceFolders),
+    projects: () => new ProjectsService(native, runtimeServices.workspaceFolders, runtimeServices.filesystem),
     installCli: () => (owner) => {
       if (closed) return Promise.reject(new AuxError("cancelled", "CLI installation stopped."));
       const work = cliInstallTail.then(async () => {
@@ -678,6 +690,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       void work.finally(() => agentInstallWork.delete(work)).catch(() => {});
       return work;
     },
+    turnTabs: () =>
+      new AgentTurnTabs(runtimeServices.pages, (page) => {
+        repo.upsertPage({ ...page, ownedByRuntime: false });
+        page.ownedByRuntime = false;
+        void runtimeServices.pages
+          .activate(page.pageId)
+          .catch((error) => console.error("Released task tab activation failed", error));
+      }),
     externalSessions: () =>
       new ExternalSessionService(
         repo,
@@ -760,7 +780,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         dir: config.benchmarksDir,
       }),
     routines: () => undefined,
-    browserImport: () => new BrowserImporter({ repo, native, emit: (type, payload) => events.emit(type, payload) }),
+    browserImport: () =>
+      new BrowserImporter({ repo, native, emit: (type, payload) => events.emit(type, payload) }),
   });
   const runtimeServices: RuntimeServices = serviceContainer.services;
 
@@ -1114,6 +1135,23 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     },
   });
 
+  const refLookup = (pageId: string, ref: string) =>
+    drivers.aux?.refEntry?.(pageId, ref) ?? drivers.chrome?.refEntry?.(pageId, ref);
+  const translateSteps = (pageId: string, steps: Step[]): Step[] =>
+    steps
+      .filter((s) => s.op !== "navigate")
+      .map((s) => {
+        if ("target" in s && typeof s.target === "string" && isElementRef(s.target)) {
+          const el = refLookup(pageId, s.target);
+          const sel = el?.selector;
+          if (sel?.role) {
+            return { ...s, target: `role=${sel.role.role}${sel.role.name ? `[name=${sel.role.name}]` : ""}` };
+          }
+          if (sel?.css) return { ...s, target: `css:${sel.css}` };
+        }
+        return s;
+      });
+
   const hookScratch = join(config.artifactsDir, "hook-tmp");
   mkdirSync(hookScratch, { recursive: true });
   const hookFilesystemPolicy = (workspaceId: string, runId?: string) => {
@@ -1378,8 +1416,54 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           input.checkOwner();
         },
       }),
-
-
+    generateImage: (input) =>
+      runtimeServices.runs.generateImage({
+        ...input,
+        authorize: async (runId) => {
+          input.checkOwner();
+          const run = repo.getRun(runId);
+          if (!run) throw new AuxError("cancelled", "The original image run ended.");
+          const threadId = run.config?.chatId ?? runId;
+          const request = EffectRequestSchema.parse({
+            profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+            scope: run.config?.taskId
+              ? { kind: "task", id: run.config.taskId }
+              : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" },
+            actor: "builtin_agent",
+            effect: "egress",
+            category: "external_tool",
+            action: "agent.images.generate",
+            origin: "https://ai-gateway.vercel.sh",
+            destination: "https://ai-gateway.vercel.sh/",
+            dataClasses: [],
+            provenance: "template",
+            invocationDigest: createHash("sha256")
+              .update(
+                JSON.stringify([
+                  "image-generation",
+                  runId,
+                  input.prompt,
+                  runtimeServices.settings.imageModel(),
+                  runtimeServices.settings.modelCacheGeneration(),
+                ]),
+              )
+              .digest("hex"),
+            turnId: runId,
+            threadId,
+            runId,
+            requestedAt: Date.now(),
+          });
+          await runtimeServices.safetyGate.checkTrustedEffect(request, {
+            profileId: request.profileId,
+            scope: request.scope,
+            actor: request.actor,
+            turnId: runId,
+            threadId,
+            runId,
+          });
+          input.checkOwner();
+        },
+      }),
     summarizePage: (input) =>
       runtimeServices.runs.summarizePage({
         ...input,
@@ -1836,7 +1920,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     cancelCell: (cellId) => runtimeServices.subagents.cellControls().cancelCell(cellId),
   };
 
-
   let cloudRuntime: Promise<{ executor: VercelSandboxExecutor; admission: CloudRunAdmission }> | undefined;
   let cloudExecutor: VercelSandboxExecutor | undefined;
   const getCloudRuntime = () => {
@@ -2014,9 +2097,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     void runtimeServices.memoryPipeline
       .extractRun(workspaceId, runId)
       .then((result) => {
-        if (result.extracted) events.emit("workspace.memory.updated", { workspaceId, runId });
+        if (!closed && result.extracted) events.emit("workspace.memory.updated", { workspaceId, runId });
       })
-      .catch(() => events.emit("memory.pipeline.failed", { workspaceId, runId }))
+      .catch(() => {
+        if (!closed) events.emit("memory.pipeline.failed", { workspaceId, runId });
+      })
       .finally(() => extractingRuns.delete(runId));
   });
 
@@ -2060,7 +2145,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const services: Services = runtimeServices;
   const invoke = makeInvoker(services);
   const stopFeatures = await bootRuntimeFeatures(services, invoke);
-  if (channel) stopNativeProjectPreview = registerNativeProjectPreview(channel, { current: () => !closed, terminals: () => runtimeServices.terminals });
   // Authenticated Chromium host messages are internal; the loopback API still
   // denies these projection methods to external and scoped clients.
   channel?.onMethod("history.projectSnapshot", (params) =>
@@ -2070,6 +2154,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     invoke("history.projectDelta", params, { external: false }),
   );
   if (channel) {
+    stopNativeProjectPreview = registerNativeProjectPreview(channel, {
+      current: () => !closed,
+      terminals: () => runtimeServices.terminals,
+    });
     stopNativeDeviceConfirmation = registerNativeDeviceConfirmation(channel, {
       get approvals() {
         return runtimeServices.approvals;
@@ -2194,12 +2282,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       case "view.navigationError":
         return runtimeServices.pages.onNativeNavigationError(
           str(pl.pageId)!,
-          pl.error as {
-            url: string;
-            code: number;
-            message: string;
-            upgradedFrom?: string;
-          } | null,
+          pl.error as { url: string; code: number; message: string; upgradedFrom?: string } | null,
         );
       case "view.crashed":
         return runtimeServices.pages.onNativeCrashed(str(pl.pageId)!);
@@ -2294,6 +2377,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const stopDeferred = deferRuntimeWork(
     () => !closed && isRuntimeIdle(repo),
     async () => {
+      void runtimeServices.settings.listModels().catch(() => {
+        if (!closed) process.stderr.write("[runtime] model catalog refresh unavailable\n");
+      });
       if (env.AUX_HOST_SOCKET) {
         void ensureBlocking()
           .then(() => {
@@ -2355,8 +2441,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     quiesce: () => {
       shutdownAdmission.beginShutdown();
       closed = true;
-      stopNativeProjectPreview?.();
       stopNativeDeviceConfirmation?.();
+      stopNativeProjectPreview?.();
       stopDeferred();
       clearInterval(filterTimer);
       clearInterval(memoryExpiry);
@@ -2373,6 +2459,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         const results = await Promise.allSettled([
           Promise.allSettled(cliInstallWork),
           Promise.allSettled(agentInstallWork),
+          serviceContainer.peek("blocking")?.close(),
+          serviceContainer.peek("terminals")?.dispose(),
+          serviceContainer.peek("projects")?.dispose(),
+          serviceContainer.peek("browserImport")?.close(),
+          (async () => {
+            await serviceContainer.peek("memoryPipeline")?.close();
+            await serviceContainer.peek("contentMemory")?.close();
+          })(),
+          serviceContainer.peek("copilot")?.then((services) => services.close()),
+          serviceContainer.peek("externalSessions")?.dispose(),
           (async () => {
             const failures: unknown[] = [];
             try {
@@ -2389,20 +2485,20 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
               throw new AggregateError(failures, "Run and cloud resource cleanup awaits acknowledgement.");
           })(),
           import("./services/cloud-settings.js").then(({ closeCloudSettings }) => closeCloudSettings(repo)),
-          serviceContainer.peek("terminals")?.dispose(),
-          serviceContainer.peek("projects")?.dispose(),
-          serviceContainer.peek("browserImport")?.close(),
-          serviceContainer.peek("externalSessions")?.dispose(),
-          serviceContainer.peek("blocking")?.close(),
-          (async () => {
-            await serviceContainer.peek("memoryPipeline")?.close();
-            await serviceContainer.peek("contentMemory")?.close();
-          })(),
-          serviceContainer.peek("copilot")?.then((services) => services.close()),
         ]);
         const failures = results
           .filter((result): result is PromiseRejectedResult => result.status === "rejected")
           .map((result) => result.reason);
+        const turnTabs = serviceContainer.peek("turnTabs");
+        if (turnTabs) {
+          try {
+            await turnTabs.endAll();
+          } catch (error) {
+            failures.push(error);
+          } finally {
+            turnTabs.dispose();
+          }
+        }
         if (failures.length)
           throw new AggregateError(failures, "Runtime process retirement awaits acknowledgement.");
       } finally {
@@ -2537,8 +2633,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // The native host owns this helper. A closed authenticated socket means its
   // owner has exited; finish the journal and release the Profile database.
   hostSocket?.onClose?.(() => {
-    stopNativeProjectPreview?.();
     stopNativeDeviceConfirmation?.();
+    stopNativeProjectPreview?.();
     if (!closed)
       void shutdown().then(
         () => process.exit(0),

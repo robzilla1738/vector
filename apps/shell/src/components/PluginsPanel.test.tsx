@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PluginsPanel } from "./PluginsPanel";
 
+vi.mock("../use-feature", () => ({ useFeature: () => false }));
+
 const rpc = vi.hoisted(() => vi.fn());
 const openDirectory = vi.hoisted(() => vi.fn());
 vi.mock("../bridge", () => ({

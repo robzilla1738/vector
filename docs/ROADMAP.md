@@ -6,7 +6,7 @@
 - **Beautiful.** It looks like Aside, pixel for pixel, while staying Aux: same vertical sidebar, 42 px toolbar, translucent glass, alpha typography and squircles, with the Aux name, mark and voice.
 - **Free:**
   - Every feature that exists is on. Nothing is hidden behind qualification gates.
-  - The agent works in your real, signed-in sites and only stops for **money** and **credentials**. Each stop is one Touch ID tap, and "Always allow" means always.
+  - The agent works in your real, signed-in sites with **Ask first** by default and a remembered **Skip confirmation** choice. Auto remains available with its money/credential confirmations; account-security handoffs still apply.
 - **Powerful AI:**
   - frontier models by default;
   - local models detected automatically;
@@ -70,7 +70,7 @@ The table records the starting point. Current implementation and build evidence 
 
 **Product**
 1. **On by default.** If a feature is built, it is visible. A Labs toggle is the only way to hide something.
-2. **Undo instead of confirm.** Replace confirmation dialogs with an action plus an undo toast. The only interruptions are money, credentials and account security.
+2. **Undo and mode-aware confirmation.** Preserve durable effects and undo. Ask first is the default; Auto and Full auto follow the selected policy, with money, credential and account-security handling as specified below.
 3. **"Always allow" is absolute.** No hidden floor overrides a user's choice. Hard denies exist only for secret exfiltration and for the agent editing its own permissions, and they are silent and logged.
 4. **No artificial ceilings.** Runs continue until the task is done, limited only by the user's own time and cost budgets, with a "Continue" button when a budget is reached.
 5. **Nothing waits on the runtime.** Browser UI, tabs, history, bookmarks and autocomplete are native and instant. AI surfaces stream in.
@@ -191,7 +191,7 @@ These replace the "frozen scope" paragraph in `AGENTS.md`.
   - `BROWSER-RUNTIME-PLAN.md`, `EXECUTION-BOARD.md`, `ROADMAP-EXECUTION-GRAPH.md`;
   - `HANDOFF*.md`, `INSPECTION-BUILD-HANDOFF.md`, `EVIDENCE.md`, `qualification.json`;
   - the per-lane handoffs.
-- Create `docs/STATUS.md` (short and current) and update `docs/architecture.md` to describe the native host only.
+- Create `docs/STATUS.md` (short and current) and update `docs/ARCHITECTURE.md` to describe the native host only.
 - Rewrite `AGENTS.md`:
   - keep the build/test gotcha;
   - replace the frozen scope, "preserve ownership/ack guards", PROVENANCE-per-value and evidence rules with §2 and §6;
@@ -415,9 +415,11 @@ These replace the "frozen scope" paragraph in `AGENTS.md`.
   - groups use the 7-colour trios;
   - insertion position and the bookmarks section are preferences.
 
+**October 7 implemented UI follow-up.** The latest sidebar/composer changes and native build evidence are recorded in [STATUS](STATUS.md). The owner moved the vertical address field into the sidebar (Arc-style placement), kept Home Search/Ask, requested separate pins/bookmarks and removed tab sorting. Compact chat menus use dark theme surfaces rather than the decorative white glass stack; exact Aside comparison remains pending.
+
 **P2.4 Toolbar (vertical mode)** (`Toolbar.tsx`, `NavigationButtons.tsx`)
 - 42 px tall (`--toolbar-h` 40 → 42). Back, Forward and Reload are 32×32 at y=5.
-- The location group is 34 px tall: a 24 px field, a 24 px search icon, radius 12.
+- Owner update, October 7: the vertical location field is a compact sidebar row, with suggestions on focus. The main toolbar retains navigation/actions; horizontal mode retains its toolbar address field.
 - On the right: Passwords, Extensions and Ask Aux, each 34×34.
 - A site chip for blocking and permissions. Auto-hide is optional.
 
@@ -448,7 +450,7 @@ These replace the "frozen scope" paragraph in `AGENTS.md`.
   7. a 0.12 s state layer.
 
   Modifiers `._alpha`, `._inset`, `._noTopGlow`, and `--rim-end-opacity`.
-- Use it on menus, popovers, tooltips, the hover card, the palette, toasts, the agent pill and the floating sidebar.
+- Use glass where composition remains readable. October 7 correction: anchored chat menus use the dark menu surface without the decorative white stack; the floating left sidebar uses one frosted theme surface. Do not restore layers that wash out these surfaces.
 - Delete `styles/surfaces.css:403-445` and the scattered blur values.
 
 **P2.8 Component kit** (`apps/shell/src/ui/`)

@@ -43,6 +43,15 @@ export class WorkspaceFolderService {
     }
   }
 
+  private skillsPath(root: string): string | undefined {
+    try {
+      const path = realpathSync(join(root, ".claude", "skills"));
+      return inside(path, root) && statSync(path).isDirectory() ? path : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   inspect(workspaceId: string, path: string, access: WorkspaceFolderAccess): WorkspaceFolderReview {
     this.stored(workspaceId);
     let canonical: string;
@@ -66,15 +75,16 @@ export class WorkspaceFolderService {
     )
       throw new AuxError("permission_denied", "This folder includes protected runtime data.");
     const agents = this.agents(canonical);
-    const identity = statSync(canonical);
+    const identity = statSync(canonical, { bigint: true });
     return WorkspaceFolderReviewSchema.parse({
       workspaceId,
       path: canonical,
       access,
       agentsPreview: agents.preview,
       agentsDigest: agents.digest,
+      skillsPath: this.skillsPath(canonical),
       reviewDigest: sha(
-        JSON.stringify([workspaceId, canonical, access, agents.digest, identity.dev, identity.ino]),
+        JSON.stringify([workspaceId, canonical, access, agents.digest, identity.dev.toString(), identity.ino.toString()]),
       ),
     });
   }
@@ -104,6 +114,7 @@ export class WorkspaceFolderService {
   list(workspaceId: string): WorkspaceFolder[] {
     return this.stored(workspaceId).map((folder) => ({
       ...folder,
+      skillsPath: this.current(folder) ? this.skillsPath(folder.path) : undefined,
       agentsChanged: !folder.archivedAt && !this.current(folder),
     }));
   }
@@ -142,8 +153,8 @@ export class WorkspaceFolderService {
       .sort((a, b) => b.path.length - a.path.length)[0];
     if (!folder)
       throw new AuxError("permission_denied", "Escalation needs a current reviewed folder in this Space.");
-    const root = statSync(folder.path);
-    const cwd = statSync(canonical);
+    const root = statSync(folder.path, { bigint: true });
+    const cwd = statSync(canonical, { bigint: true });
     if (!cwd.isDirectory())
       throw new AuxError("permission_denied", "Escalated working folder is unavailable.");
     return sha(
@@ -154,11 +165,11 @@ export class WorkspaceFolderService {
         folder.access,
         folder.reviewDigest,
         folder.agentsDigest,
-        root.dev,
-        root.ino,
+        root.dev.toString(),
+        root.ino.toString(),
         canonical,
-        cwd.dev,
-        cwd.ino,
+        cwd.dev.toString(),
+        cwd.ino.toString(),
       ]),
     );
   }
@@ -175,9 +186,18 @@ export class WorkspaceFolderService {
         }
         if (reviewed.digest !== folder.agentsDigest) return "";
         const text = reviewed.preview;
-        return text
-          ? `Folder ${folder.path} AGENTS.md (file-provided context; follow higher-priority instructions first):\n${text}`
-          : "";
+        const skills = this.skillsPath(folder.path);
+        return [
+          `Project root: ${folder.path}`,
+          skills
+            ? `Project skills: ${skills}. Inspect this directory and read a relevant SKILL.md when the task calls for it; this pointer does not authorize additional tools or destinations.`
+            : "",
+          text
+            ? `AGENTS.md (file-provided context; follow higher-priority instructions first):\n${text}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n");
       })
       .filter(Boolean)
       .join("\n\n")
@@ -187,7 +207,7 @@ export class WorkspaceFolderService {
   private current(folder: WorkspaceFolder): boolean {
     if (folder.archivedAt) return false;
     try {
-      const identity = lstatSync(folder.path);
+      const identity = lstatSync(folder.path, { bigint: true });
       return (
         realpathSync(folder.path) === folder.path &&
         identity.isDirectory() &&
@@ -197,8 +217,8 @@ export class WorkspaceFolderService {
             folder.path,
             folder.access,
             this.agents(folder.path).digest,
-            identity.dev,
-            identity.ino,
+            identity.dev.toString(),
+            identity.ino.toString(),
           ]),
         ) === folder.reviewDigest
       );

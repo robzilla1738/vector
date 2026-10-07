@@ -13,7 +13,7 @@ export AUX_CHROMIUM_SRC="$HOME/aux-chromium-product/chromium/src"
 node scripts/dev.mjs --temp-profile
 ```
 
-The completed current roadmap app is `~/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`, with its runtime packaged. See [native build instructions](chromium/BUILDING.md) for the distinction between that app and the incremental AuxDev workflow.
+The current native UI preview app is `~/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`, with its runtime packaged. See [native build instructions](chromium/BUILDING.md) for the distinction between that app and the incremental AuxDev workflow.
 
 The native launcher builds incrementally, stages the renderer and runtime, and opens Aux. Omit `--temp-profile` to use the persistent development Profile. `npm run dev` uses the same native launcher; `npm run dev:shell` opens the scripted renderer preview.
 

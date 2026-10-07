@@ -1,13 +1,8 @@
-import { lazy, createElement } from "react";
 import type { FeatureMount, CommandInvocation } from "../registry";
 import { call, useStore, flushLayout } from "../../store";
 import { persistLayout } from "../../store/persistence";
 import { showOrganizationEditor } from "../organization-state";
 import { OrganizationEditor } from "../organization-overlays";
-const GithubConnections = lazy(() =>
-  import("../../components/GithubConnections").then((module) => ({ default: module.GithubConnections })),
-);
-
 function folderId(invocation: CommandInvocation) {
   const payload = invocation.payload;
   if (
@@ -22,7 +17,6 @@ function folderId(invocation: CommandInvocation) {
 export const mount: FeatureMount = {
   feature: "liveFolders",
   overlays: [OrganizationEditor],
-  settingsSections: [{ category: "Connections", component: () => createElement(GithubConnections) }],
   commands: {
     "make-live-folder": (_state, invocation) =>
       showOrganizationEditor({ kind: "live-folder", folderId: folderId(invocation) }),
@@ -58,16 +52,6 @@ export const mount: FeatureMount = {
       await useStore.getState().activate(page.pageId);
       await call("liveFolders.markRead", { folderId: id, itemId: item.id });
     },
-    "connect-github": (_state, invocation) => {
-      const payload = invocation.payload;
-      if (!payload || !("token" in payload))
-        throw new Error("Paste a GitHub personal access token in Settings.");
-      return call("github.connections.connect", { name: payload.name, token: payload.token });
-    },
-    "revoke-github": (_state, invocation) => {
-      const payload = invocation.payload;
-      if (!payload || !("connectionId" in payload)) throw new Error("Choose a GitHub connection first.");
-      return call("github.connections.revoke", { connectionId: payload.connectionId });
-    },
+
   },
 };

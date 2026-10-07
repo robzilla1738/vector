@@ -1,5 +1,5 @@
-import type { ChromiumHostPort } from "../chromium-bridge";
 import { GlassMaterial } from "./GlassMaterial";
+import type { ChromiumHostPort } from "../chromium-bridge";
 import { orderedPages } from "../store/pages";
 import { takeFirstFrame } from "../first-frame";
 import { errorMessage } from "../error-message";
@@ -195,7 +195,7 @@ export function CommandBar({
     const timer = setTimeout(() => setBreakerVersion((value) => value + 1), askBreaker.retryAfter());
     return () => clearTimeout(timer);
   }, [breakerVersion]);
-  const [sel, setSel] = useState(0);
+  const [selection, setSelection] = useState({ query: "", id: null as string | null, index: 0 });
   const [providerScope, setProviderScope] = useState<ProviderScope>(initialPrefix === "@" ? "tabs" : "all");
   const extensionsFeature = useFeature("extensions");
   const extensionEnabled = !bridge.privateMode && extensionsFeature;
@@ -859,22 +859,24 @@ export function CommandBar({
     }
   };
 
-  // Selection is identity-stable: a re-ordered list keeps the same row
-  // highlighted instead of the same index pointing at a different action.
-  const selId = useRef<string | null>(null);
-  useEffect(() => {
-    selId.current = null;
-    setSel(0);
-  }, [raw]);
-  useEffect(() => {
-    setSel((value) => {
-      const keep = selId.current ? suggestions.findIndex((s) => s.id === selId.current) : -1;
-      return keep >= 0 ? keep : Math.min(value, Math.max(0, suggestions.length - 1));
-    });
-  }, [suggestions]);
-  useEffect(() => {
-    selId.current = suggestions[sel]?.id ?? null;
-  }, [sel, suggestions]);
+  // Streaming results can move a row while React commits unrelated store updates.
+  // Derive its position from the saved identity; never feed the old index back
+  // into another effect that can replace that identity during the same commit.
+  const selectedIndex =
+    selection.query === raw && selection.id ? suggestions.findIndex((row) => row.id === selection.id) : -1;
+  const sel =
+    selection.query !== raw
+      ? 0
+      : selectedIndex >= 0
+        ? selectedIndex
+        : Math.min(selection.index, Math.max(0, suggestions.length - 1));
+  const setSel = (next: number | ((current: number) => number)) => {
+    const index = Math.max(
+      0,
+      Math.min(typeof next === "function" ? next(sel) : next, Math.max(0, suggestions.length - 1)),
+    );
+    setSelection({ query: raw, id: suggestions[index]?.id ?? null, index });
+  };
   useEffect(() => {
     optionRefs.current.get(sel)?.scrollIntoView({ block: "nearest" });
   }, [sel]);

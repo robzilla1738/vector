@@ -1248,8 +1248,6 @@ export const COMMANDS = [
   C("make-live-folder", "Make live folder…", liveFolderControl),
   C("refresh-live-folder", "Refresh live folder", liveFolderControl),
   C("open-live-folder-item", "Open live folder item", liveFolderControl),
-  C("connect-github", "Connect GitHub", liveFolderControl),
-  C("revoke-github", "Disconnect GitHub", liveFolderControl),
   C("archive-restore", "Restore archived tab", archiveControl),
   C("archive-restore-all", "Restore all archived tabs", archiveBatchControl),
   C("archive-delete", "Delete archived tab", archiveControl),

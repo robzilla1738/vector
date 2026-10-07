@@ -3,9 +3,10 @@ import { normalizePages, orderedPages } from "../store/pages";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { COMMANDS } from "@aux/contracts";
+import { COMMANDS, type OrganizationSnapshot } from "@aux/contracts";
 import { bridge } from "../bridge";
-import { useStore } from "../store";
+import { flushLayout, useStore } from "../store";
+import { toOrganizationLayout } from "../store/organization-layout";
 import { executeCommand, dispatchShortcut } from "../commands";
 import { makePage, makeRun } from "../mock/fixtures";
 import { Conversation } from "./Conversation";
@@ -17,6 +18,10 @@ vi.mock("../bridge", async (importOriginal) => ({
 
 const initial = useStore.getState(),
   windowId = bridge.windowId;
+let organization: OrganizationSnapshot = {
+  revision: 0,
+  layout: toOrganizationLayout(initial.layout),
+};
 const scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
 let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
 beforeEach(() => {
@@ -77,6 +82,12 @@ beforeEach(() => {
     },
     true,
   );
+  vi.spyOn(bridge, "organizationSnapshot").mockImplementation(async () => structuredClone(organization));
+  vi.spyOn(bridge, "organizationCommit").mockImplementation(async (input) => {
+    if (input.expectedRevision !== organization.revision) throw new Error("Stale organization revision");
+    organization = { revision: organization.revision + 1, layout: structuredClone(input.layout) };
+    return structuredClone(organization);
+  });
   vi.spyOn(bridge, "onEvent").mockImplementation(() => () => {});
   vi.spyOn(bridge, "overlay").mockResolvedValue(false);
   vi.spyOn(bridge, "preview").mockResolvedValue(null);
@@ -103,7 +114,11 @@ beforeEach(() => {
   root = createRoot(host);
 });
 afterEach(async () => {
-  await act(async () => root.unmount());
+  await act(async () => {
+    root.unmount();
+    // Join the real split's queued Profile write before retiring this test's host.
+    await flushLayout();
+  });
   host.remove();
   useStore.setState(initial, true);
   bridge.windowId = windowId;

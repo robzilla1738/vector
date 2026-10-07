@@ -207,7 +207,7 @@ function rebindProfile(db: DatabaseSync, source: string, destination: string) {
   ])
     db.prepare(`UPDATE ${table} SET revoked_at=? WHERE revoked_at IS NULL`).run(at);
   db.prepare("UPDATE calendar_connections SET state='needs_reauth' WHERE revoked_at IS NULL").run();
-  db.prepare("UPDATE outbound_mcp_servers SET state='revoked' WHERE state='active'").run();
+  db.prepare("UPDATE outbound_mcp_servers SET state='revoked' WHERE state='approved'").run();
   db.prepare("UPDATE safety_approval_requests SET state='cancelled' WHERE state='pending'").run();
   db.prepare(
     "UPDATE safety_send_journal SET state='cancelled' WHERE state IN ('queued','offline','sending')",

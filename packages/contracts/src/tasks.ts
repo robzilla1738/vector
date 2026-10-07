@@ -516,7 +516,7 @@ export const WorkspaceBrowsingMemorySchema = z.object({
 export type BrowsingMemoryPolicy = z.infer<typeof BrowsingMemoryPolicySchema>;
 export type BrowsingMemoryPage = z.infer<typeof BrowsingMemoryPageSchema>;
 
-/** Page text stays local; explicit reviewed site lists remain restrictive. */
+/** Page text stays local; explicit legacy site lists remain restrictive. */
 export const ContentMemoryPolicySchema = z.object({
   originScope: z.enum(["safe-sites", "listed-sites"]).optional(),
   semanticModelId: z.string().trim().min(1).max(200).optional(),

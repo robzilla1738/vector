@@ -119,46 +119,48 @@ for (const provider of ["openai", "anthropic", "google"] as const) {
   });
 }
 
-it("uses an explicitly validated OpenAI-compatible chat endpoint", async () => {
-  const calls: { url: string; headers: Headers }[] = [];
-  const fakeFetch: typeof fetch = async (input, init) => {
-    calls.push({ url: String(input), headers: new Headers(init?.headers) });
-    expect(JSON.parse(String(init?.body)).stream).toBe(true);
-    return sse([
-      {
-        id: "chatcmpl_fixture",
-        object: "chat.completion.chunk",
-        created: 1,
-        model: "fixture-model",
-        choices: [{ index: 0, delta: { role: "assistant", content: '{"ok":true}' }, finish_reason: null }],
-      },
-      {
-        id: "chatcmpl_fixture",
-        object: "chat.completion.chunk",
-        created: 1,
-        model: "fixture-model",
-        choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
-        usage: { prompt_tokens: 4, completion_tokens: 5, total_tokens: 9 },
-      },
-    ]);
-  };
-  const model = directModelClient(
-    "openai-compatible",
-    "synthetic-local",
-    fakeFetch,
-    "http://127.0.0.1:11434/v1/",
-  );
-  const result = await model.generateStructured({
-    modelId: "fixture-model",
-    system: "Return JSON",
-    prompt: "Return ok true",
-    schema: z.object({ ok: z.boolean() }),
-  });
-  expect(result.object).toEqual({ ok: true });
-  expect(calls).toHaveLength(1);
-  expect(calls[0]!.url).toBe("http://127.0.0.1:11434/v1/chat/completions");
-  expect(calls[0]!.headers.get("authorization")).toBe("Bearer synthetic-local");
-});
+it.each(["openai-compatible", "openrouter"] as const)(
+  "%s uses its explicit chat endpoint",
+  async (provider) => {
+    const calls: { url: string; headers: Headers }[] = [];
+    const fakeFetch: typeof fetch = async (input, init) => {
+      calls.push({ url: String(input), headers: new Headers(init?.headers) });
+      expect(JSON.parse(String(init?.body)).stream).toBe(true);
+      return sse([
+        {
+          id: "chatcmpl_fixture",
+          object: "chat.completion.chunk",
+          created: 1,
+          model: "fixture-model",
+          choices: [{ index: 0, delta: { role: "assistant", content: '{"ok":true}' }, finish_reason: null }],
+        },
+        {
+          id: "chatcmpl_fixture",
+          object: "chat.completion.chunk",
+          created: 1,
+          model: "fixture-model",
+          choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+          usage: { prompt_tokens: 4, completion_tokens: 5, total_tokens: 9 },
+        },
+      ]);
+    };
+    const model = directModelClient(provider, "synthetic-local", fakeFetch, "http://127.0.0.1:11434/v1/");
+    const result = await model.generateStructured({
+      modelId: "fixture-model",
+      system: "Return JSON",
+      prompt: "Return ok true",
+      schema: z.object({ ok: z.boolean() }),
+    });
+    expect(result.object).toEqual({ ok: true });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.url).toBe(
+      provider === "openrouter"
+        ? "https://openrouter.ai/api/v1/chat/completions"
+        : "http://127.0.0.1:11434/v1/chat/completions",
+    );
+    expect(calls[0]!.headers.get("authorization")).toBe("Bearer synthetic-local");
+  },
+);
 
 it("permits local HTTP endpoints and requires HTTPS everywhere else", () => {
   expect(normalizeCompatibleEndpoint(" http://localhost:11434/v1/ ")).toBe("http://localhost:11434/v1");

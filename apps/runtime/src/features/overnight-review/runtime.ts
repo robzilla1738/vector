@@ -30,44 +30,49 @@ export function overnightRuntime(s: Services, power: NightPower): NightShiftRunt
     createServiceContainer<{ tasks: TaskService; routineService: RoutineService }>({
       tasks: () => new TaskService(s.repo, s.events),
       routineService: () =>
-        new RoutineService(s.repo, s.events, async (routine, parameters) => {
-          const authority = pending.get(routine.routineId);
-          if (!authority || !routine.sourceTaskId)
-            throw new AuxError("permission_denied", "This Skill has no person-queued overnight authority.");
-          const details = d.tasks.details(routine.sourceTaskId);
-          if (details.task.revision !== routine.sourceTaskRevision)
-            throw new AuxError("conflict", "The Skill task changed before overnight launch.");
-          const prepared = d.tasks.prepareRun(details.task.taskId, details.task.revision);
-          const pageIds = details.task.resources
-            .filter((resource) => resource.kind === "page")
-            .map((resource) => resource.locator)
-            .filter((id) => s.pages.isAttached(id));
-          if (!pageIds.length)
-            throw new AuxError("conflict", "Attach this Skill's reviewed task tabs before tonight.");
-          if (routine.replay) {
-            const pageId = selectSkillReplayPage(s.pages, pageIds, routine.replay.siteOrigin);
-            return startSkillReplay({
-              repo: s.repo,
-              pages: s.pages,
-              events: s.events,
-              routine,
-              pageId,
-              parameters,
+        new RoutineService(
+          s.repo,
+          s.events,
+          async (routine, parameters) => {
+            const authority = pending.get(routine.routineId);
+            if (!authority || !routine.sourceTaskId)
+              throw new AuxError("permission_denied", "This Skill has no person-queued overnight authority.");
+            const details = d.tasks.details(routine.sourceTaskId);
+            if (details.task.revision !== routine.sourceTaskRevision)
+              throw new AuxError("conflict", "The Skill task changed before overnight launch.");
+            const prepared = d.tasks.prepareRun(details.task.taskId, details.task.revision);
+            const pageIds = details.task.resources
+              .filter((resource) => resource.kind === "page")
+              .map((resource) => resource.locator)
+              .filter((id) => s.pages.isAttached(id));
+            if (!pageIds.length)
+              throw new AuxError("conflict", "Attach this Skill's reviewed task tabs before tonight.");
+            if (routine.replay) {
+              const pageId = selectSkillReplayPage(s.pages, pageIds, routine.replay.siteOrigin);
+              return startSkillReplay({
+                repo: s.repo,
+                pages: s.pages,
+                events: s.events,
+                routine,
+                pageId,
+                parameters,
+                deliveryRunId: authority.runId,
+                nightShiftItemId: authority.itemId,
+              });
+            }
+            const run = await s.runs.start({
+              ...prepared,
               deliveryRunId: authority.runId,
               nightShiftItemId: authority.itemId,
+              goal: substituteParameters(routine.objective, parameters),
+              pageIds,
             });
-          }
-          const run = await s.runs.start({
-            ...prepared,
-            deliveryRunId: authority.runId,
-            nightShiftItemId: authority.itemId,
-            goal: substituteParameters(routine.objective, parameters),
-            pageIds,
-          });
-          return { runId: run.runId, chatId: run.config?.chatId };
-        }, async (runId) => {
-          await s.runs.cancel(runId, "The original routine changed during launch.");
-        }),
+            return { runId: run.runId, chatId: run.config?.chatId };
+          },
+          async (runId) => {
+            await s.runs.cancel(runId, "The original routine changed during launch.");
+          },
+        ),
     });
   const d: { tasks: TaskService; routineService: RoutineService } = container.services;
 

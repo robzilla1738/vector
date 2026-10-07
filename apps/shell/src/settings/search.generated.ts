@@ -265,6 +265,19 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Models",
+    label: "Local models only",
+    description:
+      "Cloud model calls and image generation are disabled. Choose an available local model below.",
+    target: "Local models only",
+  },
+  {
+    category: "Models",
+    label: "Local model servers",
+    description: "Discovery checks only this computer. No credentials are sent.",
+    target: "Local model servers",
+  },
+  {
+    category: "Models",
     label: "Model provider",
     description:
       "Switching providers changes where task context and screenshots are sent. Each provider keeps its own key and model choices; there is no automatic fallback to another provider.",
@@ -355,6 +368,19 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     target: "Image-generation model",
   },
   {
+    category: "Models",
+    label: "Cloud account",
+    description: "",
+    target: "Cloud account",
+    searchTerms: ["Vercel", "Sandbox", "Run in cloud", "Bash", "REPL"],
+  },
+  {
+    category: "Models",
+    label: "Cloud resource rates",
+    description: "Review the rates and session limits for your own Vercel account before saving.",
+    target: "Cloud resource rates",
+  },
+  {
     category: "Usage & Budgets",
     label: "Spending caps",
     description:
@@ -393,34 +419,35 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     searchTerms: ["catch up", "coalesce", "inbox"],
   },
   {
-    category: "Workspaces",
+    category: "Projects",
     label: "Space",
-    description: "Folder access and AGENTS.md context apply only to runs in this Space.",
+    description:
+      "Project roots, AGENTS.md instructions and local .claude/skills apply only to runs in this Space.",
     target: "Space",
   },
   {
-    category: "Workspaces",
+    category: "Projects",
     label: "Local folder",
     description:
       "Choose an existing folder. Review its canonical path and AGENTS.md before granting access.",
     target: "Local folder",
   },
   {
-    category: "Workspaces",
-    label: "Bound folders",
+    category: "Projects",
+    label: "Projects",
     description:
       "Archiving immediately removes file and bash access. A changed folder or AGENTS.md pauses access until a fresh review.",
-    target: "Bound folders",
+    target: "Projects",
   },
   {
-    category: "Workspaces",
+    category: "Projects",
     label: "Cloud account",
     description: "",
     target: "Cloud account",
     searchTerms: ["Vercel", "Sandbox", "Run in cloud", "Bash", "REPL"],
   },
   {
-    category: "Workspaces",
+    category: "Projects",
     label: "Cloud resource rates",
     description: "Review the rates and session limits for your own Vercel account before saving.",
     target: "Cloud resource rates",

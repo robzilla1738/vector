@@ -14,6 +14,7 @@ const fixture = vi.hoisted(() => ({
 }));
 const call = vi.hoisted(() => vi.fn());
 vi.mock("../../bridge", () => ({ bridge: fixture, inNativeHost: false, inMock: true }));
+
 const copilotSetup = CopilotSetupSchema.parse({
   registrationConfigured: false,
   runtimeInstalled: false,
@@ -173,13 +174,25 @@ it("hidden/inactive and foreign focused owners cannot issue actual model produce
   button("Save key").focus();
   expect(() => invokeScopedControl("save-provider-model-key")).toThrow();
   expect(save).not.toHaveBeenCalled();
-  expect(call).not.toHaveBeenCalled();
+  expect(call.mock.calls.every(([method]) => method === "settings.cloud.status")).toBe(true);
+  expect(call.mock.calls.some(([method]) => method === "models.probe")).toBe(false);
   await act(async () => root.render(<ModelsSettings active settings={settings} onSave={save} />));
   const foreign = document.createElement("button");
   document.body.append(foreign);
   foreign.focus();
   expect(() => invokeScopedControl("save-provider-model-key")).toThrow();
   foreign.remove();
+  expect(save).not.toHaveBeenCalled();
+  expect(
+    call.mock.calls.every(
+      ([method]) =>
+        method === "settings.cloud.status" ||
+        method === "models.list" ||
+        method === "models.copilot.setup" ||
+        method === "models.copilot.accounts",
+    ),
+  ).toBe(true);
+  expect(call.mock.calls.some(([method]) => method === "models.probe")).toBe(false);
 });
 it("retired connection review cannot remove a saved key, while its original Cancel remains usable", async () => {
   const save = vi.fn(async () => true);

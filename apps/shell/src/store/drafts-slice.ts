@@ -64,6 +64,9 @@ export const createDraftsSlice: Slice<DraftKeys> = (set, get) => ({
     set({ agentDraft: text, conversationDrafts: drafts });
     draftWriter.write("draft", NEW_DRAFT_KEY, text);
   },
+  composerPreferences: {},
+  setComposerPreferences: (key, value) =>
+    set((state) => ({ composerPreferences: { ...state.composerPreferences, [key]: value } })),
   conversationDrafts: readConversationDrafts(storage),
   setConversationDraft: (id, text) => {
     const drafts = { ...get().conversationDrafts };

@@ -28,6 +28,7 @@ vi.mock("../../commands", async () => {
     },
   };
 });
+
 const copilotSetup = CopilotSetupSchema.parse({
   registrationConfigured: false,
   runtimeInstalled: false,
@@ -265,4 +266,44 @@ it("retires the old Undo after another connection action or section unmount", as
   await act(async () => root.render(null));
   await act(async () => currentUndo());
   expect(save).toHaveBeenCalledTimes(count);
+});
+
+it("chooses an actually discovered local server and persists local-only without a cloud model call", async () => {
+  call.mockImplementation(async (method: string) => {
+    if (method === "models.copilot.setup" || method === "models.copilot.accounts") return modelRead(method);
+    if (method === "settings.cloud.status") return { configured: false, revision: 0 };
+    if (method !== "models.list") throw new Error(`Unexpected model producer ${method}`);
+    return {
+      models: [],
+      localServers: [
+        {
+          kind: "ollama",
+          endpoint: "http://127.0.0.1:11434/v1",
+          models: [{ id: "actual-fixture-local", source: "catalog" }],
+        },
+      ],
+    };
+  });
+  await act(async () => root.render(<Fixture />));
+  await act(async () => button("Use actual-fixture-local")!.click());
+  expect(save).toHaveBeenCalledWith({
+    modelProvider: "openai-compatible",
+    compatibleEndpoint: "http://127.0.0.1:11434/v1",
+    plannerModel: "actual-fixture-local",
+    modelConnection: { provider: "openai-compatible", enabled: true },
+  });
+  const checkbox = host.querySelector<HTMLInputElement>('[aria-label="Local models only"]')!;
+  await act(async () => checkbox.click());
+  expect(save).toHaveBeenLastCalledWith({ localModelsOnly: true });
+  expect(checkbox.checked).toBe(true);
+  expect(
+    call.mock.calls.every(
+      ([method]) =>
+        method === "models.list" ||
+        method === "settings.cloud.status" ||
+        method === "models.copilot.setup" ||
+        method === "models.copilot.accounts",
+    ),
+  ).toBe(true);
+  expect(call.mock.calls.some(([method]) => method === "models.probe")).toBe(false);
 });

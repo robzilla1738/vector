@@ -174,3 +174,93 @@ it.each(["off", "replacement"])(
     expect(imageCall).not.toHaveBeenCalled();
   },
 );
+
+it("reserves user budget before dispatch and continues only the original image request with enough headroom", async () => {
+  const f = fixture();
+  await f.settings.set({ budgets: { dayUsd: 0.5 } });
+  imageCall.mockImplementation(async () => {
+    expect(f.budgets.spentDayUsd()).toBe(1);
+    return {
+      image: { uint8Array: PNG.sync.write(new PNG({ width: 1, height: 1 })), mediaType: "image/png" },
+      providerMetadata: { gateway: { cost: 0.04 } },
+    };
+  });
+  const pending = f.generate();
+  await vi.waitFor(() => expect(f.repo.listRuns()[0]?.status).toBe("needs_input"));
+  const run = f.repo.listRuns()[0]!;
+  const suspension = f.runs.coordinator.suspensions.pending(run.runId)!;
+  expect(suspension.request.budget).toMatchObject({ reason: "spend", used: 0, limit: 0.5, requiredUsd: 1 });
+  expect(imageCall).not.toHaveBeenCalled();
+  await f.settings.set({ budgets: { dayUsd: 0.75 } });
+  await expect(f.runs.coordinator.continueBudget(run.runId, suspension.suspensionId)).rejects.toMatchObject({
+    code: "permission_denied",
+  });
+  expect(f.runs.coordinator.suspensions.pending(run.runId)?.suspensionId).toBe(suspension.suspensionId);
+  await f.settings.set({ budgets: { dayUsd: 2 } });
+  await f.runs.coordinator.continueBudget(run.runId, suspension.suspensionId);
+  await pending;
+  expect(imageCall).toHaveBeenCalledTimes(1);
+  expect(f.budgets.spentRunUsd(run.runId)).toBe(0.04);
+  expect(f.budgets.spentDayUsd()).toBe(0.04);
+});
+
+it("retains the original estimated receipt after unknown usage and refuses stale-window artifact publication", async () => {
+  const f = fixture();
+  imageCall.mockImplementation(async () => {
+    f.retireOwner();
+    return {
+      image: { uint8Array: PNG.sync.write(new PNG({ width: 1, height: 1 })), mediaType: "image/png" },
+    };
+  });
+  await expect(f.generate()).rejects.toThrow(/window retired/);
+  expect(f.repo.db.prepare("SELECT cost_usd,cost_estimated FROM model_calls").get()).toMatchObject({
+    cost_usd: 1,
+    cost_estimated: 1,
+  });
+  expect(f.repo.db.prepare("SELECT count(*) n FROM artifacts").get()).toMatchObject({ n: 0 });
+});
+
+it("charges known invalid provider output honestly and never publishes it", async () => {
+  const f = fixture();
+  imageCall.mockResolvedValue({
+    image: { uint8Array: new Uint8Array([1, 2]), mediaType: "image/png" },
+    providerMetadata: { gateway: { cost: 0.06 } },
+  });
+  await expect(f.generate()).rejects.toThrow(/invalid image bytes/);
+  expect(f.budgets.spentDayUsd()).toBe(0.06);
+  expect(f.repo.db.prepare("SELECT cost_estimated FROM model_calls").get()).toMatchObject({
+    cost_estimated: 0,
+  });
+});
+
+it("cancels the actual in-flight image transport and retains unknown attempted spend", async () => {
+  const f = fixture();
+  imageCall.mockImplementation(async (request: { abortSignal: AbortSignal }) => {
+    return new Promise((_resolve, reject) => {
+      request.abortSignal.addEventListener("abort", () => reject(request.abortSignal.reason), { once: true });
+    });
+  });
+  const pending = f.generate();
+  const outcome = pending.catch((error: unknown) => error);
+  await vi.waitFor(() => expect(imageCall).toHaveBeenCalledTimes(1));
+  const run = f.repo.listRuns()[0]!;
+  await f.runs.cancel(run.runId);
+  expect(await outcome).toMatchObject({ code: "cancelled" });
+  expect(f.repo.getRun(run.runId)?.status).toBe("cancelled");
+  expect(f.budgets.spentRunUsd(run.runId)).toBe(1);
+  expect(f.repo.db.prepare("SELECT count(*) n FROM artifacts").get()).toMatchObject({ n: 0 });
+});
+
+it("settles the actual image receipt when it exceeds the estimate without inventing a price cap", async () => {
+  const f = fixture();
+  imageCall.mockResolvedValue({
+    image: { uint8Array: PNG.sync.write(new PNG({ width: 1, height: 1 })), mediaType: "image/png" },
+    providerMetadata: { gateway: { cost: 1.2 } },
+  });
+  const result = await f.generate();
+  expect(result).toMatchObject({ mediaType: "image/png" });
+  expect(f.budgets.spentDayUsd()).toBe(1.2);
+  expect(f.repo.db.prepare("SELECT cost_estimated FROM model_calls").get()).toMatchObject({
+    cost_estimated: 0,
+  });
+});

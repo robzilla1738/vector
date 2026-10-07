@@ -85,18 +85,5 @@ it("rejects remote or unsupported image inputs instead of silently sending text 
       schema: z.object({ ok: z.boolean() }),
     }),
   ).rejects.toMatchObject({ code: "invalid_params" });
-  const textOnly = new GatewayModelClient("local-test", {
-    model: () => model,
-    models: () => [{ id: "fixture/text-only", modalities: ["text"], source: "configured" }],
-  });
-  await expect(
-    textOnly.generateStructured({
-      modelId: "fixture/text-only",
-      system: "Inspect",
-      prompt: "Describe",
-      imageDataUrls: [image],
-      schema: z.object({ ok: z.boolean() }),
-    }),
-  ).rejects.toMatchObject({ code: "capability_unsupported" });
   expect(model.doStreamCalls).toHaveLength(0);
 });

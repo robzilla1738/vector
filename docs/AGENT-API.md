@@ -14,6 +14,8 @@ MCP keeps its default tool listing small: `aux_api_describe` returns the exact i
 
 ## Full model reference
 
+- aux.subagents.spawn_agent(params): Start a bounded child run on selected, unleased pages.
+- aux.subagents.send_message(params): Steer an active child through its durable message queue.
 - aux.tabs.list(params): List accessible tabs and their stable Aux page IDs.
 - aux.tabs.turn.open(params): Open a background tab owned by one task turn; duplicate URLs reuse that turn's tab.
 - aux.tabs.playwright.domSnapshot(params): Read a structured DOM snapshot and stable element refs.
@@ -23,10 +25,25 @@ MCP keeps its default tool listing small: `aux_api_describe` returns the exact i
 - aux.tabs.dom.observe(params): Observe Aux refs and current document epoch.
 - aux.tabs.dom.execute(params): Run a typed program through the guarded journal and grants.
 - aux.tabs.content.text(params): Read page text and headings.
+- aux.results.generate(params): Create or revise a bounded CSV, XLSX, DOCX, PPTX or chart result in the authorized task conversation, with immutable versions and file provenance.
 
 ## Lookup reference
 
+- aux.subagents.create_group(params): Create one budgeted group for an active parent run.
+- aux.subagents.spawn_agent(params): Start a bounded child run on selected, unleased pages.
+- aux.subagents.fork_self(params): Fork a child with the same saved context prefix for prompt reuse.
+- aux.subagents.send_message(params): Steer an active child through its durable message queue.
+- aux.subagents.get_group(params): Inspect child status and shared budget use.
+- aux.subagents.cancel(params): Cancel one child and release its active reservation.
+- aux.mcp.call_tool(params): Call an enabled MCP tool in the current Space and task revision.
+- aux.plugins.skills.read(params): Read one imported Skill's untrusted instructions under a reviewed, revocable task or Space grant.
 - aux.tabs.list(params): List accessible tabs and their stable Aux page IDs.
+- aux.tabs.navigate(params): Navigate an authorized task attachment through the agent policy and durable action ledger.
+- aux.tabs.back(params): Go back through a task-bound guarded browser action.
+- aux.tabs.forward(params): Go forward through a task-bound guarded browser action.
+- aux.tabs.reload(params): Reload an authorized task attachment through the dispatch guard.
+- aux.tabs.stop(params): Stop loading an authorized task attachment.
+- aux.runs.start(params): Start an Aux SDK run within the original connection and saved task revision.
 - aux.tabs.turn.open(params): Open a background tab owned by one task turn; duplicate URLs reuse that turn's tab.
 - aux.tabs.turn.end(params): Close every temporary tab owned by the task turn.
 - aux.tabs.clipboard.write(params): Write text to this task turn's virtual clipboard without changing the person's system clipboard.
@@ -44,6 +61,7 @@ MCP keeps its default tool listing small: `aux_api_describe` returns the exact i
 - aux.tabs.dialog(params): List browser dialogs. Scoped/code-mode responses use a guarded typed dialog step.
 - aux.tabs.handoff(params): Yield an authorized tab to its human owner and stop automated input.
 - aux.history.search(params): Search the derived browser history index.
+- aux.results.generate(params): Create or revise a bounded CSV, XLSX, DOCX, PPTX or chart result in the authorized task conversation, with immutable versions and file provenance.
 
 ## Transport availability
 
@@ -51,9 +69,23 @@ MCP keeps its default tool listing small: `aux_api_describe` returns the exact i
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `aux.js.run` | `agent.js.run` | management | model | yes | yes | yes | — |
 | `aux.js.reset` | `agent.js.reset` | management | lookup | yes | yes | yes | — |
+| `aux.subagents.create_group` | `subagents.createGroup` | management | lookup | yes | yes | yes | yes |
+| `aux.subagents.spawn_agent` | `subagents.spawn` | management | model | yes | yes | yes | yes |
+| `aux.subagents.fork_self` | `subagents.forkSelf` | management | lookup | yes | yes | yes | yes |
+| `aux.subagents.send_message` | `subagents.sendMessage` | management | model | yes | yes | yes | yes |
+| `aux.subagents.get_group` | `subagents.getGroup` | management | lookup | yes | yes | yes | yes |
+| `aux.subagents.cancel` | `subagents.cancel` | management | lookup | yes | yes | yes | yes |
+| `aux.mcp.call_tool` | `mcp.tools.call` | management | lookup | yes | yes | yes | yes |
+| `aux.plugins.skills.read` | `plugins.skills.read` | management | lookup | yes | yes | yes | yes |
 | `aux.tabs.list` | `pages.list` | management | included | yes | yes | yes | yes |
 | `aux.tabs.open` | `pages.open` | management | model | yes | yes | yes | — |
 | `aux.tabs.close` | `pages.close` | management | model | yes | yes | yes | — |
+| `aux.tabs.navigate` | `pages.navigate` | management | lookup | yes | yes | yes | yes |
+| `aux.tabs.back` | `pages.back` | management | lookup | yes | yes | yes | yes |
+| `aux.tabs.forward` | `pages.forward` | management | lookup | yes | yes | yes | yes |
+| `aux.tabs.reload` | `pages.reload` | management | lookup | yes | yes | yes | yes |
+| `aux.tabs.stop` | `pages.stop` | management | lookup | yes | yes | yes | yes |
+| `aux.runs.start` | `runs.start` | management | lookup | yes | yes | yes | yes |
 | `aux.tabs.turn.open` | `agent.turn.open` | management | model | yes | yes | yes | yes |
 | `aux.tabs.turn.end` | `agent.turn.end` | management | lookup | yes | yes | yes | yes |
 | `aux.tabs.clipboard.write` | `agent.turn.clipboard.write` | management | lookup | yes | yes | yes | yes |
@@ -81,6 +113,7 @@ MCP keeps its default tool listing small: `aux_api_describe` returns the exact i
 | `aux.history.search` | `history.list` | management | lookup | yes | yes | yes | yes |
 | `aux.web.fetch` | `agent.web.fetch` | web | lookup | yes | yes | yes | yes |
 | `aux.web.search` | `agent.web.search` | web | lookup | yes | yes | yes | yes |
+| `aux.results.generate` | `results.generate` | management | model | yes | yes | yes | yes |
 | `aux.images.generate` | `agent.images.generate` | image | lookup | yes | yes | yes | — |
 
 The AX layer requires an explicit `ax` capability and stays disabled until the accessibility benchmark supports enabling it. Pixel actions require a captured document epoch and viewport. Code mode has no Node, file system or raw DevTools handle; page writes re-enter the guarded RPC invoker.

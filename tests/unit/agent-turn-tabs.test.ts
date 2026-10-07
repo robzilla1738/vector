@@ -127,3 +127,19 @@ it("never reuses a same-URL turn tab from an older run or task revision", async 
     turns.dispose();
   }
 });
+
+it("closes only the original connection's tab and retains ownership until native ACK", async () => {
+  const page = {pageId: "owned", url: "https://example.test/", ownedByRuntime: true, controller: "none"} as PageTarget;
+  let acknowledged = false;
+  const pages = {open: async () => page, get: () => page, close: async () => ({ok: acknowledged})} as Pick<PageService, "open" | "get" | "close">;
+  const turns = new AgentTurnTabs(pages);
+  try {
+    await turns.open({connectionId: "original", taskId: "task", turnId: "turn", url: page.url});
+    await expect(turns.close("other", "task", page.pageId)).rejects.toMatchObject({code: "permission_denied"});
+    await expect(turns.endConnection("original")).rejects.toThrow("cleanup is incomplete");
+    expect(turns.owns("original", "task", page.pageId)).toBe(true);
+    acknowledged = true;
+    await turns.endConnection("original");
+    expect(turns.pageIds("original")).toEqual([]);
+  } finally { turns.dispose(); }
+});

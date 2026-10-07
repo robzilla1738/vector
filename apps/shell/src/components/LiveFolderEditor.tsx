@@ -15,6 +15,7 @@ import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export function LiveFolderEditor({ folderId, onClose }: { folderId: string; onClose: () => void }) {
   const folder = useStore((state) => state.layout.folders.find((folder) => folder.id === folderId));
+  const workspaceId=useStore(state=>state.layout.spaces.find(space=>space.id===folder?.spaceId)?.workspaceId);
   const [kind, setKind] = useState<LiveFolder["kind"]>(folder?.live?.kind ?? "rss");
   const [connectionId, setConnectionId] = useState(
     folder?.live && "connectionId" in folder.live.config ? folder.live.config.connectionId : "",
@@ -45,13 +46,10 @@ export function LiveFolderEditor({ folderId, onClose }: { folderId: string; onCl
     const load = async () => {
       try {
         if (kind === "github") {
-          const value = await call("github.connections.list");
-          if (live)
-            setAccounts(
-              value
-                .filter((account) => account.connected)
-                .map((account) => ({ id: account.id, name: account.name })),
-            );
+          if(!workspaceId)throw new Error("Link the original folder’s Space to a workspace before connecting GitHub.");
+          const value=await call("mcp.servers.list",{workspaceId});
+          if(live)setAccounts(value.filter(server=>server.state==="active"&&server.source.kind==="remote"&&server.source.auth==="oauth"&&server.source.url==="https://api.githubcopilot.com/mcp/")
+            .map(server=>({id:server.serverId,name:server.name})));
         }
         if (kind === "calendar") {
           const value = await call("calendar.connections.list");
@@ -74,7 +72,7 @@ export function LiveFolderEditor({ folderId, onClose }: { folderId: string; onCl
     return () => {
       live = false;
     };
-  }, [kind]);
+  }, [kind,workspaceId,folder?.spaceId]);
   const save = async () => {
     if (busy) return;
     setBusy(true);
@@ -159,7 +157,7 @@ export function LiveFolderEditor({ folderId, onClose }: { folderId: string; onCl
             ))}
           </select>
           {!accounts.length && (
-            <span {...staticHintProps}>Connect an account in Settings before adding this source.</span>
+            <span {...staticHintProps}>{kind === "github" ? "Connect the official GitHub OAuth service for this Space in Settings → Plugins." : "Connect an account in Settings before adding this source."}</span>
           )}
         </label>
       )}

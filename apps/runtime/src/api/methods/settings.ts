@@ -31,12 +31,18 @@ async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
     s.events.emit(EventTypes.SettingsChanged, { settings: s.settings.all() });
     return { ok: true };
   }
-
   if ((ctx.client.external || ctx.client.codeMode) && "downloadNaming" in patch)
     throw new AuxError("permission_denied", "Download naming must be changed in Aux Settings.");
   if (
     (ctx.client.external || ctx.client.codeMode) &&
-    ["agentMode", "agentPolicies", "agentPolicyRevision", "fileAccessMode", "fileAccessRevision", "nightShift"].some((key) => key in patch)
+    [
+      "agentMode",
+      "agentPolicies",
+      "agentPolicyRevision",
+      "fileAccessMode",
+      "fileAccessRevision",
+      "nightShift",
+    ].some((key) => key in patch)
   )
     throw new AuxError("permission_denied", "Agent permissions must be changed in Aux Settings.");
   let searchEngine: string | undefined;
@@ -65,7 +71,13 @@ async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
     }
   }
   const r = Object.keys(patch).length
-    ? await (patch.agentMode !== undefined || patch.agentPolicies !== undefined || patch.fileAccessMode !== undefined ? withRunDispatchMutation : withRunAuthorityMutation)(s.repo, () => s.settings.set(patch as never))
+    ? await (
+        patch.agentMode !== undefined ||
+          patch.agentPolicies !== undefined ||
+          patch.fileAccessMode !== undefined
+          ? withRunDispatchMutation
+          : withRunAuthorityMutation
+      )(s.repo, () => s.settings.set(patch as never))
     : { ok: true as const };
   // worker limits apply live — no restart needed
   s.runs.refreshPool();
@@ -130,13 +142,13 @@ async function h_settings_remoteDebugging_set(ctx: MethodCtx): Promise<unknown> 
 }
 
 export const settingsMethods: Partial<Record<MethodName, MethodHandler>> = {
-  "settings.get": h_settings_get,
-  "settings.set": h_settings_set,
   "settings.remoteDebugging.get": h_settings_remoteDebugging_get,
   "settings.remoteDebugging.set": h_settings_remoteDebugging_set,
   "settings.cloud.status": h_settings_cloud_status,
   "settings.cloud.configure": h_settings_cloud_configure,
   "settings.cloud.clear": h_settings_cloud_clear,
+  "settings.get": h_settings_get,
+  "settings.set": h_settings_set,
   "usage.report": h_usage_report,
 };
 

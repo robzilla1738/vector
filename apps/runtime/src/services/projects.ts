@@ -134,10 +134,7 @@ export class ProjectsService {
         throw error;
       }
       try {
-        const stopped = await this.native.projectCancel!({
-          operationId,
-          token,
-        });
+        const stopped = await this.native.projectCancel!({ operationId, token });
         if (!stopped.closed)
           throw new AuxError("backend_unavailable", "Project inspection termination is not acknowledged.");
         this.operations.delete(operationId);
@@ -151,23 +148,17 @@ export class ProjectsService {
     }
   }
   files(input: Project & { path: string }, token: string) {
-    return this.track(
-      this.perform(input, token, input.path, ({ sandboxProfile: _profile, ...context }) =>
-        this.native!.projectFiles!({ ...context, path: input.path }),
-      ),
-    );
+    return this.track(this.perform(input, token, input.path, ({ sandboxProfile: _profile, ...context }) =>
+      this.native!.projectFiles!({ ...context, path: input.path }),
+    ));
   }
   file(input: Project & { path: string }, token: string) {
-    return this.track(
-      this.perform(input, token, input.path, ({ sandboxProfile: _profile, ...context }) =>
-        this.native!.projectFile!({ ...context, path: input.path }),
-      ),
-    );
+    return this.track(this.perform(input, token, input.path, ({ sandboxProfile: _profile, ...context }) =>
+      this.native!.projectFile!({ ...context, path: input.path }),
+    ));
   }
   changes(input: Project, token: string) {
-    return this.track(
-      this.perform(input, token, undefined, (context) => this.native!.projectChanges!(context)),
-    );
+    return this.track(this.perform(input, token, undefined, (context) => this.native!.projectChanges!(context)));
   }
   async dispose() {
     this.closed = true;
@@ -175,10 +166,7 @@ export class ProjectsService {
       [...this.operations].map(async ([operationId, operation]) => {
         if (!operation.sent) return;
         const { token } = operation;
-        const stopped = await this.native!.projectCancel!({
-          operationId,
-          token,
-        });
+        const stopped = await this.native!.projectCancel!({ operationId, token });
         if (!stopped.closed)
           throw new AuxError("backend_unavailable", "Project inspection termination is not acknowledged.");
         this.operations.delete(operationId);

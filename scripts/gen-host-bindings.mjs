@@ -3,22 +3,48 @@
 import { createHash } from "node:crypto";
 import { hostNormalization, normalizationNodes } from "./host-normalization.mjs";
 import { spawnSync } from "node:child_process";
-import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import {
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+  mkdirSync,
+  existsSync,
+  mkdtempSync,
+  rmSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const check = process.argv.includes("--check");
-const build = spawnSync("pnpm", ["--filter", "@aux/contracts", "build"], { cwd: root, stdio: "inherit" });
-if (build.status !== 0) process.exit(build.status ?? 1);
-const { HostMethods, HostEvents } = await import(
-  join(root, "packages/contracts/dist/host-methods.js") + `?build=${Date.now()}`
-);
-const { MethodSchemas } = await import(join(root, "packages/contracts/dist/api.js") + `?build=${Date.now()}`);
-const { RuntimeMethodPolicy } = await import(
-  join(root, "packages/contracts/dist/runtime-method-policy.js") + `?build=${Date.now()}`
-);
+// Generate from source before compiling: deleting a method must not leave a
+// stale generated MethodName key blocking the generator's own bootstrap build.
+const manifestDirectory = mkdtempSync(join(root, "packages/contracts/.host-bindings-"));
+let manifest;
+try {
+  const { build } = createRequire(join(root, "apps/runtime/package.json"))("esbuild");
+  const path = join(manifestDirectory, "manifest.mjs");
+  await build({
+    stdin: {
+      contents: ["host-methods", "api", "runtime-method-policy", "feature-requirements"]
+        .map((name) => `export * from "./${name}.ts";`)
+        .join("\n"),
+      resolveDir: join(root, "packages/contracts/src"),
+      loader: "ts",
+    },
+    outfile: path,
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    packages: "external",
+    logLevel: "silent",
+  });
+  manifest = await import(pathToFileURL(path).href);
+} finally {
+  rmSync(manifestDirectory, { recursive: true, force: true });
+}
+const { HostMethods, HostEvents, MethodSchemas, RuntimeMethodPolicy, AUX_FEATURE_REQUIREMENTS } = manifest;
 const apiMethods = Object.keys(MethodSchemas);
 if (JSON.stringify(apiMethods) !== JSON.stringify(Object.keys(RuntimeMethodPolicy))) {
   throw new Error("Runtime method policy must list every MethodSchemas entry in order");
@@ -163,6 +189,10 @@ function emitNode(schema, index) {
         add("const auto& token = value.GetString();");
         add("if (token.size() != 32 || token == std::string(32, '0')) return false;");
         add("for (char c : token) if (!((c >= 'A' && c <= 'F') || (c >= '0' && c <= '9'))) return false;");
+      } else if (schema.pattern === "^[0-9]+$") {
+        add("const auto& decimal = value.GetString();");
+        add("if (decimal.empty()) return false;");
+        add("for (char c : decimal) if (c < '0' || c > '9') return false;");
       } else if (schema.pattern === "^[1-9][0-9]*$") {
         add("const auto& decimal = value.GetString();");
         add("if (decimal.empty() || decimal[0] < '1' || decimal[0] > '9') return false;");
@@ -174,22 +204,14 @@ function emitNode(schema, index) {
         );
         add("for (char c : navigation) if (c < '0' || c > '9') return false;");
         add('if (navigation.size() == 19 && navigation > "9223372036854775807") return false;');
-      } else if (schema.pattern === "^[0-9]+$") {
-        add("const auto& decimal = value.GetString();");
-        add("if (decimal.empty()) return false;");
-        add("for (char c : decimal) if (c < '0' || c > '9') return false;");
       } else if (schema.pattern === "^gho_[A-Za-z0-9_]{16,500}$") {
         add("const auto& token = value.GetString();");
-        add('if (token.size() < 20 || token.size() > 504 || !token.starts_with("gho_")) return false;');
-        add(
-          "for (char c : std::string_view(token).substr(4)) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_')) return false;",
-        );
+        add("if (token.size() < 20 || token.size() > 504 || !token.starts_with(\"gho_\")) return false;");
+        add("for (char c : std::string_view(token).substr(4)) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_')) return false;");
       } else if (schema.pattern === "^[A-Za-z0-9_-]{43}$") {
         add("const auto& token = value.GetString();");
         add("if (token.size() != 43) return false;");
-        add(
-          "for (char c : token) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) return false;",
-        );
+        add("for (char c : token) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) return false;");
       } else if (schema.pattern === "^[A-Za-z][\\w-]{0,63}$") {
         add("const auto& name = value.GetString();");
         add("const auto alpha = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); };");
@@ -314,9 +336,6 @@ export const hostValidation: HostValidation = {
 };
 `;
 const gn = `# Generated by scripts/gen-host-bindings.mjs. Do not edit.\nsource_set("methods") {\n  sources = [ "aux_host_methods.cc", "aux_host_methods.h" ]\n  deps = [ "//base", "//third_party/icu", "//url" ]\n}\n`;
-const { AUX_FEATURE_REQUIREMENTS } = await import(
-  join(root, "packages/contracts/dist/feature-requirements.js") + `?build=${Date.now()}`
-);
 const featureStages = `// Generated by scripts/gen-host-bindings.mjs. Do not edit.\nconst requirements = ${JSON.stringify(AUX_FEATURE_REQUIREMENTS, null, 2)} as const;\nconst runtimeMethods = ${JSON.stringify(apiMethods.filter((method) => RuntimeMethodPolicy[method].feature !== "core"))} as const;\nexport type FeatureStage = 'off' | 'on';\nexport function featureStagesFor(methods: readonly string[]): Record<keyof typeof requirements, FeatureStage> {\n  const implemented = new Set<string>([...methods, ...runtimeMethods]);\n  return Object.fromEntries(Object.entries(requirements).map(([feature, spec]) => {\n    if (!spec.requires.every(method => implemented.has(method))) return [feature, 'off'];\n    return [feature, 'on'];\n  })) as Record<keyof typeof requirements, FeatureStage>;\n}\n`;
 const authorizationHash = createHash("sha256").update(JSON.stringify(RuntimeMethodPolicy)).digest("hex");
 const authorization = `// Generated by scripts/gen-host-bindings.mjs. Do not edit.\nimport type { AuxFeature, MethodName, RuntimeAuthClass } from "@aux/contracts";\nexport const kAuthorizationHash = ${JSON.stringify(authorizationHash)};\nexport const RuntimeAuthorization = ${JSON.stringify(RuntimeMethodPolicy, null, 2)} as const satisfies Record<MethodName, { feature: AuxFeature | "core"; auth: RuntimeAuthClass }>;\n`;
@@ -576,24 +595,6 @@ function firstValid(schema, hint, depth) {
 }
 // A browser mock cannot issue native document, lease or effect receipts.
 const nativeOnlyHostMethods = new Set([
-  "native.terminalStart",
-  "native.terminalRead",
-  "native.terminalInput",
-  "native.terminalResize",
-  "native.terminalClose",
-  "native.terminalListeners",
-  "native.terminalPreview",
-  "native.terminalPreviewClose",
-  "native.projectFiles",
-  "native.projectFile",
-  "native.projectChanges",
-  "native.projectCancel",
-  "native.turnSourceContext",
-  "native.contentBlockState",
-  "native.contentBlockOperation",
-  "native.contentBlockBegin",
-  "native.contentBlockAppend",
-  "native.contentBlockCommit",
   "native.foundationModelsStatus",
   "native.foundationModelsStart",
   "native.foundationModelsRead",
@@ -635,6 +636,23 @@ const nativeOnlyHostMethods = new Set([
   "native.personRead",
   "native.personReadContext",
   "native.credentialContext",
+  "native.projectFiles",
+  "native.projectFile",
+  "native.projectChanges",
+  "native.projectCancel",
+  "native.terminalStart",
+  "native.terminalRead",
+  "native.terminalInput",
+  "native.terminalResize",
+  "native.terminalClose",
+  "native.terminalListeners",
+  "native.terminalPreview",
+  "native.terminalPreviewClose",
+  "native.contentBlockState",
+  "native.contentBlockOperation",
+  "native.contentBlockBegin",
+  "native.contentBlockAppend",
+  "native.contentBlockCommit",
   "native.credentialAdmit",
   "native.permissionRetire",
 ]);
@@ -727,6 +745,8 @@ for (const [relative, content] of outputs) {
     writeFileSync(path, content);
   }
 }
+const build = spawnSync("pnpm", ["--filter", "@aux/contracts", "build"], { cwd: root, stdio: "inherit" });
+if (build.status !== 0) process.exit(build.status ?? 1);
 console.log(
   `${check ? "Checked" : "Generated"} ${methods.length} host methods, ${events.length} events (${hash.slice(0, 12)})`,
 );

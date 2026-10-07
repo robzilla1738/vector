@@ -3,12 +3,19 @@ import { randomBytes } from "node:crypto";
 import { isIP } from "node:net";
 import {
   auth,
+  discoverOAuthServerInfo,
+  validateAuthorizationResponseIssuer,
   type OAuthClientProvider,
   type OAuthDiscoveryState,
   type StoredOAuthClientInformation,
   type StoredOAuthTokens,
 } from "@modelcontextprotocol/client";
-import { AuxError, type OutboundMcpServer } from "@aux/contracts";
+import {
+  AuxError,
+  McpOAuthClientSetupSchema,
+  type McpOAuthClientSetup,
+  type OutboundMcpServer,
+} from "@aux/contracts";
 import type { NativeBridge } from "../native.js";
 
 type RemoteServer = OutboundMcpServer & { source: { kind: "remote"; url: string; auth: "oauth" } };
@@ -20,6 +27,8 @@ type Saved = {
   tokens?: StoredOAuthTokens;
   expiresAt?: number;
   redirectUrl?: string;
+  issParameterSupported?: boolean;
+  ownClient?: { issuer: string; information: StoredOAuthClientInformation; redirectUrl: string };
 };
 type Pending = { server: Server; timer: NodeJS.Timeout; state: string; consumed: boolean };
 const lifetimeMs = 5 * 60_000;
@@ -50,6 +59,7 @@ export class McpOAuthService {
     private native: Pick<NativeBridge, "readSecret" | "storeSecret">,
     private networkFetch: typeof fetch = fetch,
     private runAuth: typeof auth = auth,
+    private discover: typeof discoverOAuthServerInfo = discoverOAuthServerInfo,
   ) {}
 
   private key(server: RemoteServer) {
@@ -92,15 +102,36 @@ export class McpOAuthService {
       if (this.writes.get(key) === current) this.writes.delete(key);
     }
   }
-  private readonly oauthFetch: typeof fetch = (input, init) => {
+  private readonly oauthFetch: typeof fetch = async (input, init) => {
     const url = publicHttps(input instanceof Request ? input.url : String(input));
     const signals = [init?.signal, input instanceof Request ? input.signal : undefined].filter(
       (value): value is AbortSignal => !!value,
     );
-    return this.networkFetch(url, {
+    const response = await this.networkFetch(url, {
       ...init,
       redirect: "error",
       signal: AbortSignal.any([...signals, AbortSignal.timeout(15_000)]),
+    });
+    // Discovery and token responses are small JSON documents, never unbounded server streams.
+    const reader = response.body?.getReader();
+    if (!reader) return response;
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        const next = await reader.read();
+        if (next.done) break;
+        size += next.value.byteLength;
+        if (size > 1_048_576) throw new AuxError("permission_denied", "MCP OAuth response is too large.");
+        chunks.push(next.value);
+      }
+    } finally {
+      await reader.cancel().catch(() => undefined);
+    }
+    return new Response(Buffer.concat(chunks), {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
     });
   };
 
@@ -123,7 +154,15 @@ export class McpOAuthService {
         application_type: "native",
       },
       state: () => expectedState ?? randomBytes(32).toString("base64url"),
-      clientInformation: (context) => (context ? saved.clients[context.issuer] : undefined),
+      clientInformation: (context) => {
+        if (!context) return undefined;
+        if (saved.ownClient) {
+          if (publicHttps(context.issuer).href.replace(/\/$/, "") !== saved.ownClient.issuer)
+            throw new AuxError("permission_denied", "The registered MCP client's issuer changed.");
+          return saved.ownClient.information;
+        }
+        return saved.clients[context.issuer];
+      },
       saveClientInformation: async (information, context) => {
         if (!active()) throw new AuxError("cancelled", "MCP authorization was cancelled.");
         if (!context) throw new AuxError("permission_denied", "MCP OAuth client has no issuer binding.");
@@ -162,15 +201,82 @@ export class McpOAuthService {
       },
       saveDiscoveryState: (value) => {
         discovery = value;
+        const issuer = publicHttps(
+          value.authorizationServerMetadata?.issuer ?? value.authorizationServerUrl,
+        ).href.replace(/\/$/, "");
+        if (saved.issuer && saved.issuer !== issuer)
+          throw new AuxError(
+            "permission_denied",
+            "MCP OAuth issuer changed. Disconnect and review the connection.",
+          );
+        saved.issuer = issuer;
+        saved.issParameterSupported =
+          value.authorizationServerMetadata?.authorization_response_iss_parameter_supported === true;
       },
       discoveryState: () => discovery,
-      validateResourceURL: async (serverUrl, resource) => {
-        const expected = publicHttps(serverUrl);
-        if (resource && new URL(resource).href !== expected.href)
-          throw new AuxError("permission_denied", "MCP OAuth resource changed during authorization.");
-        return expected;
-      },
     };
+  }
+
+  async requirements(server: RemoteServer) {
+    const generation = this.generations.get(this.key(server)) ?? 0;
+    const [info, saved] = await Promise.all([
+      this.discover(publicHttps(server.source.url), { fetchFn: this.oauthFetch }),
+      this.read(server),
+    ]);
+    if ((this.generations.get(this.key(server)) ?? 0) !== generation)
+      throw new AuxError("cancelled", "MCP connection changed during discovery.");
+    const metadata = info.authorizationServerMetadata;
+    if (!metadata || !metadata.code_challenge_methods_supported?.includes("S256"))
+      throw new AuxError("permission_denied", "This server has no verified S256 authorization metadata.");
+    const issuer = publicHttps(metadata.issuer).href.replace(/\/$/, "");
+    if (!metadata.token_endpoint || !metadata.authorization_endpoint)
+      throw new AuxError("permission_denied", "This issuer has no verified OAuth endpoints.");
+    publicHttps(metadata.token_endpoint);
+    const authorizationUrl = publicHttps(metadata.authorization_endpoint).href;
+    if (saved.issuer && issuer !== saved.issuer)
+      throw new AuxError("permission_denied", "MCP authorization issuer changed. Disconnect and review it.");
+    return {
+      issuer,
+      authorizationUrl,
+      automaticRegistration: Boolean(
+        metadata.registration_endpoint && publicHttps(metadata.registration_endpoint),
+      ),
+      configured: saved.ownClient?.issuer === issuer,
+      ...(saved.ownClient ? { redirectUrl: saved.ownClient.redirectUrl } : {}),
+    };
+  }
+
+  async configure(server: RemoteServer, input: McpOAuthClientSetup) {
+    const setup = McpOAuthClientSetupSchema.parse(input);
+    if (setup.serverId !== server.serverId)
+      throw new AuxError("permission_denied", "MCP client registration belongs to a different server.");
+    this.finishPending(server.serverId);
+    const key = this.key(server);
+    const generation = (this.generations.get(key) ?? 0) + 1;
+    this.generations.set(key, generation);
+    const requirements = await this.requirements(server);
+    if (setup.issuer !== requirements.issuer || (this.generations.get(key) ?? 0) !== generation)
+      throw new AuxError("permission_denied", "MCP client registration no longer matches this issuer.");
+    await this.save(
+      server,
+      {
+        serverId: server.serverId,
+        sourceDigest: server.sourceDigest,
+        issuer: requirements.issuer,
+        clients: {},
+        redirectUrl: setup.redirectUrl,
+        ownClient: {
+          issuer: requirements.issuer,
+          redirectUrl: setup.redirectUrl,
+          information: {
+            client_id: setup.clientId,
+            ...(setup.clientSecret ? { client_secret: setup.clientSecret } : {}),
+          },
+        },
+      },
+      generation,
+    );
+    return { configured: true as const };
   }
 
   async status(server: RemoteServer) {
@@ -217,7 +323,17 @@ export class McpOAuthService {
       pending.consumed = true;
       const code = url.searchParams.get("code");
       const issuer = url.searchParams.get("iss");
-      if (!code || url.searchParams.has("error") || !saved.issuer || issuer !== saved.issuer) {
+      let validIssuer = true;
+      try {
+        validateAuthorizationResponseIssuer({
+          iss: issuer ?? undefined,
+          expectedIssuer: saved.issuer,
+          issParameterSupported: saved.issParameterSupported ?? true,
+        });
+      } catch {
+        validIssuer = false;
+      }
+      if (!code || url.searchParams.has("error") || !saved.issuer || !validIssuer) {
         this.finishPending(server.serverId);
         response.writeHead(400).end("MCP authorization was not granted. Return to Aux.");
         return;
@@ -225,7 +341,7 @@ export class McpOAuthService {
       void this.runAuth(provider, {
         serverUrl: server.source.url,
         authorizationCode: code,
-        iss: issuer,
+        iss: issuer ?? undefined,
         fetchFn: this.oauthFetch,
       })
         .then((result) => {
@@ -255,7 +371,9 @@ export class McpOAuthService {
     });
     await new Promise<void>((resolve, reject) => {
       callback.once("error", reject);
-      callback.listen(0, "127.0.0.1", () => {
+      const configured = saved.ownClient?.redirectUrl;
+      if (configured) McpOAuthClientSetupSchema.shape.redirectUrl.parse(configured);
+      callback.listen(configured ? Number(new URL(configured).port) : 0, "127.0.0.1", () => {
         callback.off("error", reject);
         resolve();
       });

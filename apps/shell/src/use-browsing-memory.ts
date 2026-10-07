@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { bridge, inNativeHost } from "./bridge";
 import { call, useStore } from "./store";
@@ -31,15 +31,20 @@ export function useBrowsingMemory() {
   );
   const mode = useStore((state) => state.mode);
   const overlay = useStore((state) => state.overlay);
+  const captured = useRef<string | undefined>(undefined);
   const [revision, refresh] = useState(0);
   useEffect(
     () =>
       bridge.onEvent((event) => {
         if (
-          ["workspace.browsingMemory.updated", "workspace.memory.updated"].includes(event.type) &&
+          (["workspace.browsingMemory.updated", "workspace.memory.updated"].includes(event.type) ||
+            (event.type === "workspace.contentMemory.updated" && event.payload.policyChanged === true)) &&
           event.payload.workspaceId === workspaceId
-        )
+        ) {
+          if (event.type === "workspace.memory.updated" || event.payload.policyChanged === true)
+            captured.current = undefined;
           refresh((value) => value + 1);
+        }
       }),
     [workspaceId],
   );
@@ -58,9 +63,11 @@ export function useBrowsingMemory() {
       page.viewStatus !== "visible"
     )
       return;
+    const captureIdentity = JSON.stringify([workspaceId, page.pageId, page.documentEpoch, page.url]);
     let cancelled = false,
       recording = false,
-      recorded = false;
+      recorded = false,
+      captureAttempted = false;
     let interval: number | undefined;
     const record = async () => {
       if (cancelled || recording || recorded) return;
@@ -72,6 +79,20 @@ export function useBrowsingMemory() {
           expectedDocumentEpoch: page.documentEpoch,
         });
         recorded = result.recorded;
+        if (!cancelled && !captureAttempted && captured.current !== captureIdentity) {
+          captureAttempted = true;
+          captured.current = captureIdentity;
+          try {
+            await call("workspaces.contentMemory.capture", {
+              workspaceId,
+              pageId: page.pageId,
+              expectedDocumentEpoch: page.documentEpoch,
+              expectedUrl: page.url,
+            });
+          } catch {
+            /* Native foreground/private/readability and local policy gates may refuse capture. */
+          }
+        }
         if (recorded && interval !== undefined) window.clearInterval(interval);
       } catch {
         /* Reconnection or the next foreground check retries; never capture elsewhere. */
@@ -81,8 +102,8 @@ export function useBrowsingMemory() {
     };
     const timer = window.setTimeout(() => {
       void call("workspaces.browsingMemory.get", { workspaceId })
-        .then((state) => {
-          if (cancelled || !state.policy.enabled) return;
+        .then(() => {
+          if (cancelled) return;
           void record();
           interval = window.setInterval(() => void record(), 15_000);
         })

@@ -147,6 +147,42 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
 }
 
 describe("native browser egress authority", () => {
+  it("uses Profile sessions by default and refuses a private run adopting session storage", async () => {
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    f.setPrivateTask(true);
+    expect((await f.service.request(f.request("https://source.test/"))).decision.status).toBe("deny");
+    await expect(f.service.acquire("run", "tab")).rejects.toMatchObject({ code: "permission_denied" });
+    const privateRun = fixture();
+    privateRun.setPrivateTask(true);
+    await expect(privateRun.service.acquire("run", "tab")).rejects.toMatchObject({
+      code: "permission_denied",
+    });
+    privateRun.setIsolation({
+      isolationId: "private-run",
+      runId: "run",
+      taskId: "task",
+      taskRevision: 4,
+      mode: "private",
+      inMemory: true,
+      cookies: "empty",
+    });
+    await privateRun.service.acquire("run", "tab");
+    expect(privateRun.leases.at(-1)?.isolationId).toBe("private-run");
+  });
+
+  it("refuses a storage-mode change during native document verification", async () => {
+    const f = fixture();
+    const context = f.native.egressContext.getMockImplementation()!;
+    f.native.egressContext.mockImplementationOnce(async () => {
+      const result = await context();
+      f.setPrivateTask(true);
+      return result;
+    });
+    await expect(f.service.acquire("run", "tab")).rejects.toMatchObject({ code: "ref_stale" });
+    expect(f.leases).toHaveLength(0);
+  });
+
   it("installs only the one-use native navigation continuation and retains original protection", async () => {
     const f = fixture();
     await f.service.acquire("run", "tab");

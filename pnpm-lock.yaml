@@ -26,6 +26,9 @@ importers:
 
   .:
     devDependencies:
+      '@aux/filter-lists':
+        specifier: workspace:*
+        version: link:packages/filter-lists
       '@types/jsdom':
         specifier: 21.1.7
         version: 21.1.7

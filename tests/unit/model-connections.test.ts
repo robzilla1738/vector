@@ -190,3 +190,54 @@ it("refuses explicitly disabled image generation before egress or provider dispa
   expect(decideEgress).not.toHaveBeenCalled();
   expect(generator).not.toHaveBeenCalled();
 });
+
+it("local-only disables cloud requests without erasing saved connections and uses a detected utility model", async () => {
+  const f = fixture({ AI_GATEWAY_API_KEY: "synthetic-gateway-key" });
+  const request = vi
+    .fn<typeof fetch>()
+    .mockImplementation(async (url) =>
+      String(url).endsWith("/api/tags")
+        ? new Response(JSON.stringify({ models: [{ name: "detected-local-utility" }] }))
+        : new Response("", { status: 404 }),
+    );
+  vi.stubGlobal("fetch", request);
+  await f.settings.set({ localModelsOnly: true, imageModel: IMAGE_MODELS[0].id });
+  expect(f.settings.model()).toBeNull();
+  expect(f.settings.gatewayKey()).toBeUndefined();
+  expect(f.settings.imageModel()).toBeNull();
+  expect(f.settings.all().modelConfigured).toBe(false);
+  const utility = await f.settings.utilityModel();
+  expect(utility?.modelId).toBe("detected-local-utility");
+  expect(request).toHaveBeenCalledTimes(4);
+  await f.settings.set({
+    modelProvider: "openai-compatible",
+    compatibleEndpoint: "http://127.0.0.1:11434/v1",
+    plannerModel: "detected-local-utility",
+  });
+  expect(f.settings.model()).not.toBeNull();
+  await f.settings.set({ localModelsOnly: false });
+  expect(f.settings.gatewayKey()).toBe("synthetic-gateway-key");
+  expect(f.settings.imageModel()).toBe(IMAGE_MODELS[0].id);
+});
+
+it("refuses catalog results when the account changes while local discovery is still pending", async () => {
+  const f = fixture();
+  let respond!: (response: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      if (String(url).endsWith("/api/tags"))
+        return new Promise<Response>((resolve) => {
+          respond = resolve;
+        });
+      if (String(url).startsWith("https://ai-gateway.vercel.sh"))
+        return new Response(JSON.stringify({ data: [{ id: "catalog/original" }] }));
+      return new Response("", { status: 404 });
+    }),
+  );
+  const pending = f.settings.listModels();
+  await vi.waitFor(() => expect(f.repo.getSetting("modelCatalog:gateway")).toBeDefined());
+  await f.settings.set({ plannerModel: "new-account-choice" });
+  respond(new Response(JSON.stringify({ models: [] })));
+  await expect(pending).rejects.toMatchObject({ code: "cancelled" });
+});

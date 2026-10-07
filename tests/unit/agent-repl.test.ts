@@ -35,6 +35,18 @@ const out = (result: LoopToolResult) =>
   ("output" in result ? result.output : result) as Record<string, unknown>;
 
 describe("code-mode REPL", () => {
+  it("refreshes two-cell callbacks and cancellation while retaining the original run and context",async()=>{
+    const pool=new ReplPool();cleanup.push(()=>pool.disposeAll());
+    const first=new AbortController(),second=new AbortController();
+    const oldRead=vi.fn(async()=>"old-source"),newRead=vi.fn(async()=>"fresh-source");
+    expect(out(await pool.eval(deps({signal:first.signal,fsRead:oldRead}),"var savedValue=7; fs.readFile('file')")).value).toBe("old-source");
+    first.abort();
+    expect(out(await pool.eval(deps({signal:second.signal,fsRead:newRead}),"({savedValue, text:fs.readFile('file')})")).value).toEqual({savedValue:7,text:"fresh-source"});
+    expect(oldRead).toHaveBeenCalledOnce();expect(newRead).toHaveBeenCalledOnce();
+    second.abort();
+    await expect(pool.eval(deps({signal:second.signal}),"sleep(1)")).rejects.toMatchObject({code:"cancelled"});
+  });
+
   it("finishes a scripted read through the same verified result callback", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

@@ -14,7 +14,7 @@ vi.mock("ai", () => {
     }),
   };
 });
-vi.mock("../../apps/runtime/node_modules/@ai-sdk/gateway/dist/index.js", () => {
+vi.mock("@ai-sdk/gateway", () => {
   state.gatewayLoads++;
   return {
     createGateway: () => {

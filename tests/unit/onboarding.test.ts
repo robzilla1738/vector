@@ -185,21 +185,9 @@ it.each([
 it("rechecks source admission after receipt reservation and reuses that identity on reviewed retry", async () => {
   const f = fixture();
   acknowledge(f.service);
-  let reserved!: () => void, release!: () => void;
-  const reservation = new Promise<void>((resolve) => { reserved = resolve; });
-  const admission = new Promise<void>((resolve) => { release = resolve; });
-  let checks = 0;
-  const original = {
-    ...source,
-    current: async () => {
-      if (++checks === 2) { reserved(); await admission; }
-    },
-  };
-  const pending = f.service.start({ revision: f.service.get().revision, postcardId: "understand", page: ref }, original);
-  await reservation;
-  const firstId = f.repo.getSetting<{ firstTask: { runId: string } }>("onboarding.state.v1")!.firstTask.runId;
+  const pending = begin(f.service);
+  const firstId = f.service.get().firstTask!.runId;
   f.setPage({ controller: "agent" });
-  release();
   await expect(pending).rejects.toThrow(/page changed or is unavailable/);
   expect(f.start).not.toHaveBeenCalled();
   expect(f.service.get().firstTask).toMatchObject({ runId: firstId, status: "failed" });
@@ -319,7 +307,7 @@ it("checks staged recovery on the server even when the renderer's status is stal
   acknowledge(f.service);
   await expect(
     onboardingMethods["onboarding.start"]!({
-      client: { external: false, nativeTurnContext: "isolated-recovery-owner" },
+      client: { external: false },
       params: {
         revision: f.service.get().revision,
         postcardId: "understand",
@@ -327,7 +315,6 @@ it("checks staged recovery on the server even when the renderer's status is stal
       },
       s: {
         repo: f.repo,
-        native: { turnSourceContext: async () => ({ windowId: "isolated-recovery-window" }) },
         settings: { all: () => ({ dataDir: dir, modelConfigured: true }) },
         pages: { get: () => page },
         runs: { start: f.start },

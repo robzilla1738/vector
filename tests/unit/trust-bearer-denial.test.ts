@@ -28,7 +28,9 @@ it("denies an expired or revoked scoped bearer and leaves an unknown bearer unau
   const sessions = new ExternalSessionService(
     repo,
     events,
-    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)), async () => {});
+    fixtureTurnMentions((pageId: string) => repo.getPage(pageId)),
+   async () => {},
+  );
   const invoke = makeInvoker({
     repo,
     events,

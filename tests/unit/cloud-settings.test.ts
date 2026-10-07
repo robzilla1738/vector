@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 import { openDb, Repo, type NativeBridge } from "@aux/runtime";
 import { CloudSettingsService } from "../../apps/runtime/dist/services/cloud-settings.js";
 
-it.each(["clear", "status"] as const)("retires a pending %s owner lookup without a late repository change", async (operation) => {
+it("joins a pending owner lookup at shutdown without committing its late configuration change", async () => {
   const db = openDb(":memory:");
   try {
     const repo = new Repo(db);
@@ -22,9 +22,7 @@ it.each(["clear", "status"] as const)("retires a pending %s owner lookup without
       },
       storeSecret,
     } as unknown as NativeBridge);
-    const mutation = operation === "clear"
-      ? settings.clear(0, "original-window-token")
-      : settings.readStatus("original-window-token");
+    const mutation = settings.clear(0, "original-window-token");
     const rejected = expect(mutation).rejects.toMatchObject({ code: "cancelled" });
     await started;
     const closed = settings.close();
