@@ -1,43 +1,24 @@
-import { realpathSync } from "node:fs";
-import { dirname, resolve, sep } from "node:path";
+import {
+  canonicalFilePath,
+  filesystemPermits,
+  pathInside,
+  CODING_SECRET_PATTERN,
+  CODING_ENV_PATTERN,
+  CODING_ENV_EXAMPLE_PATTERN,
+} from "./filesystem-paths.js";
+export { canonicalFilePath, filesystemPermits, pathInside } from "./filesystem-paths.js";
 import { AuxError } from "@aux/contracts";
 
 export type FileAccessMode = "guard" | "read-only" | "full";
 export interface FilesystemPolicy {
   mode: FileAccessMode;
+  purpose?: "coding";
   revision: number;
   readRoots: string[];
   writeRoots: string[];
   deniedRoots: string[];
   protectedRoots: string[];
   internalRoots: string[];
-}
-export const pathInside = (path: string, root: string) =>
-  path === root || path.startsWith(root.endsWith(sep) ? root : root + sep);
-export function canonicalFilePath(path: string): string {
-  let ancestor = resolve(path);
-  const tail: string[] = [];
-  while (true) {
-    try {
-      return resolve(realpathSync(ancestor), ...tail);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      const parent = dirname(ancestor);
-      if (parent === ancestor) throw error;
-      tail.unshift(ancestor.slice(parent.length + (parent === sep ? 0 : 1)));
-      ancestor = parent;
-    }
-  }
-}
-export function filesystemPermits(policy: FilesystemPolicy, path: string, access: "read" | "write"): boolean {
-  const target = canonicalFilePath(path);
-  if (policy.deniedRoots.some((root) => pathInside(target, root))) return false;
-  if (
-    policy.protectedRoots.some((root) => pathInside(target, root)) &&
-    !policy.internalRoots.some((root) => pathInside(target, root))
-  )
-    return false;
-  return policy[access === "read" ? "readRoots" : "writeRoots"].some((root) => pathInside(target, root));
 }
 export function requireFilesystemPath(
   policy: FilesystemPolicy,
@@ -83,6 +64,12 @@ export function filesystemSeatbelt(
   }
   if (policy.deniedRoots.length)
     lines.push(`(deny file-read-data file-write* ${subpaths(policy.deniedRoots)})`);
+  if (policy.purpose === "coding") {
+    lines.push(`(deny file-read-data file-write* (regex ${literal(CODING_SECRET_PATTERN)}))`);
+    lines.push(
+      `(deny file-read-data file-write* (require-all (regex ${literal(CODING_ENV_PATTERN)}) (require-not (regex ${literal(CODING_ENV_EXAMPLE_PATTERN)}))))`,
+    );
+  }
   lines.push(network ? "(allow network-outbound)" : "(deny network-inbound network-outbound network-bind)");
   return lines.join("\n");
 }

@@ -72,9 +72,12 @@ function boundedOutput() {
 export class VercelSandboxExecutor implements CloudReplExecutor {
   private readonly resources = new Map<string, Promise<LiveResource>>();
   private readonly live = new Map<string, LiveResource>();
-  private readonly unsentReviews = new Map<string, {
-    pending: Promise<LiveResource>;
-  }>();
+  private readonly unsentReviews = new Map<
+    string,
+    {
+      pending: Promise<LiveResource>;
+    }
+  >();
   private readonly repls = new Map<string, CloudReplClient>();
   private readonly ledger: ExecutionResourceLedger;
   private closed = false;
@@ -479,49 +482,14 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       });
       this.repls.set(ctx.runId, repl);
     }
-    const cloudPath = (path: string) => {
-      const resolved = posix.resolve("/vercel/sandbox", path);
-      if (
-        !resolved.startsWith("/vercel/sandbox/") ||
-        resolved.split("/").some((part) => part.startsWith(".aux-repl-"))
-      )
-        throw new AuxError(
-          "permission_denied",
-          "Cloud file tools use the VM workspace, excluding the reviewed worker protocol.",
-        );
-      return resolved;
-    };
     const cloudDeps: ReplHostDeps = {
       ...deps,
-      fsRead: (path) =>
-        this.command(resource, deps.signal, async () => {
-          const stream = await resource.session.readFile({ path: cloudPath(path) }, { signal: deps.signal });
-          if (!stream) throw new AuxError("not_found", "The cloud workspace file is missing.");
-          const chunks: Buffer[] = [];
-          let size = 0;
-          try {
-            for await (const chunk of stream) {
-              const part = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-              size += part.length;
-              if (size > CLOUD_REPL_BYTES)
-                throw new AuxError("permission_denied", "Cloud file exceeds the supported size.");
-              chunks.push(part);
-            }
-          } finally {
-            if ("destroy" in stream && typeof stream.destroy === "function") stream.destroy();
-          }
-          await this.assertLive(resource, deps.signal);
-          return Buffer.concat(chunks).toString("utf8");
-        }),
-      fsWrite: (path, content) =>
-        this.command(resource, deps.signal, async () => {
-          if (Buffer.byteLength(content) > CLOUD_REPL_BYTES)
-            throw new AuxError("invalid_params", "Cloud file exceeds the supported size.");
-          const target = cloudPath(path);
-          await resource.session.mkDir(posix.dirname(target), { signal: deps.signal });
-          await resource.session.writeFiles([{ path: target, content }], { signal: deps.signal });
-          await this.assertLive(resource, deps.signal);
-        }),
+      codingTool: async () => {
+        throw new AuxError(
+          "capability_unsupported",
+          "Governed coding tools currently require local execution. Choose On this Mac for this coding run.",
+        );
+      },
     };
     return repl.eval(cloudDeps, code, opts);
   }
@@ -637,9 +605,12 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     const existing = this.live.get(runId);
     if (!pending && !existing) return;
     const review = this.unsentReviews.get(runId);
-    const unsettled = () => this.deps.repo.db.prepare(
-      "SELECT resource_id FROM execution_resources WHERE run_id=? AND state IN ('reserved','running') LIMIT 1",
-    ).get(runId);
+    const unsettled = () =>
+      this.deps.repo.db
+        .prepare(
+          "SELECT resource_id FROM execution_resources WHERE run_id=? AND state IN ('reserved','running') LIMIT 1",
+        )
+        .get(runId);
     if (!existing && review && review.pending === pending && !unsettled()) {
       // The saved creation remains parked and will always throw before dispatch.
       // No VM exists, no unknown provider request qualifies, and the original

@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { useStore } from "../../store";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { call, useStore } from "../../store";
 import { suspensionController } from "../../action-approval";
 import type { TrustConfirmation } from "../trust/confirmation";
 import { Button, Kbd } from "../../ui";
 import { GlassMaterial } from "../../components/GlassMaterial";
 import "./SuspensionPrompt.css";
+import { ActionReview } from "../coding/ActionReview";
+import { FileChanges } from "../coding/FileChanges";
+import { categoryLabels } from "./categories";
 
 export function SuspensionPrompt({ runId, pill = false }: { runId?: string; pill?: boolean }) {
   const request = useStore((state) => state.confirmation);
@@ -16,9 +19,34 @@ export function SuspensionPrompt({ runId, pill = false }: { runId?: string; pill
 function Prompt({ request, pill }: { request: TrustConfirmation; pill: boolean }) {
   const controller = suspensionController(request);
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
+  const [options, setOptions] = useState(false);
+  const [reviewedChanges, setReviewedChanges] =
+    useState<import("@aux/contracts").SafetyAction["reviewedChanges"]>();
+  const [reviewedActions, setReviewedActions] =
+    useState<import("@aux/contracts").SafetyAction["reviewedActions"]>();
+  const [reviewError, setReviewError] = useState("");
+  useEffect(() => {
+    if (!request.reviewedBatch) return;
+    let live = true;
+    void call("safety.approvals.pending", { threadId: request.threadId })
+      .then((pending) => {
+        if (!live || !controller.current()) return;
+        const saved = pending.find((item) => item.approvalId === request.approvalId);
+        if (!saved?.action.reviewedChanges && !saved?.action.reviewedActions)
+          throw new Error("These actions must be reviewed again.");
+        setReviewedChanges(saved.action.reviewedChanges);
+        setReviewedActions(saved.action.reviewedActions);
+      })
+      .catch((error) => {
+        if (live) setReviewError(error instanceof Error ? error.message : "Could not load reviewed changes.");
+      });
+    return () => {
+      live = false;
+    };
+  }, [controller, request]);
   const handoff = request.kind === "handoff";
   const decide = useCallback(
-    (action: "accept" | "acceptForOrigin" | "decline") => {
+    (action: "accept" | "acceptForOrigin" | "acceptForRun" | "acceptGlobally" | "decline") => {
       void controller.decide(action).catch(() => {});
     },
     [controller],
@@ -43,15 +71,22 @@ function Prompt({ request, pill }: { request: TrustConfirmation; pill: boolean }
         event.stopPropagation();
         if (handoff && request.pageId)
           void controller.takeover((pageId) => useStore.getState().activate(pageId)).catch(() => {});
-        else decide("accept");
+        else if (!request.reviewedBatch || reviewedChanges || reviewedActions) decide("accept");
       }
     };
     document.addEventListener("keydown", keyboard);
     return () => document.removeEventListener("keydown", keyboard);
-  }, [controller, handoff, request, decide]);
+  }, [controller, handoff, request, decide, reviewedChanges, reviewedActions]);
   const site = request.site ? new URL(request.site).host : "";
-  const confirmLabel = request.kind === "touch-id" ? "Confirm with Touch ID" : "Allow once";
-  const always = !handoff && !!request.approvalId && !!request.site;
+  const confirmLabel = request.reviewedBatch
+    ? reviewedActions
+      ? "Approve these actions"
+      : "Approve these changes"
+    : request.kind === "touch-id"
+      ? "Confirm with Touch ID"
+      : "Allow once";
+  const always = request.kind === "approval" && !!request.approvalId && !request.reviewedBatch;
+  const category = categoryLabels[request.policyCategory].toLowerCase();
   return (
     <section
       className={`suspension-prompt${pill ? " suspension-prompt-pill liquid-glass" : ""}`}
@@ -66,17 +101,39 @@ function Prompt({ request, pill }: { request: TrustConfirmation; pill: boolean }
         <p>{request.instruction}</p>
         {site && <span>{site}</span>}
       </div>
+      {reviewedChanges && <FileChanges changes={reviewedChanges} />}
+      {reviewedActions && <ActionReview actions={reviewedActions} />}
+      {reviewError && <p role="alert">{reviewError}</p>}
       {state.error && <p role="alert">{state.error}</p>}
       <div className="suspension-prompt-actions">
         {!handoff && (
-          <Button size={28} disabled={state.busy} onClick={() => decide("accept")}>
+          <Button
+            size={28}
+            disabled={state.busy || (request.reviewedBatch && !reviewedChanges && !reviewedActions)}
+            onClick={() => decide("accept")}
+          >
             {confirmLabel}
             <Kbd>⌘↵</Kbd>
           </Button>
         )}
         {always && (
+          <Button size={28} disabled={state.busy} onClick={() => setOptions(!options)}>
+            More options
+          </Button>
+        )}
+        {always && options && (
+          <Button size={28} disabled={state.busy} onClick={() => decide("acceptForRun")}>
+            Allow {category} for this run
+          </Button>
+        )}
+        {((always && options) || request.kind === "touch-id") && !!site && (
           <Button size={28} disabled={state.busy} onClick={() => decide("acceptForOrigin")}>
-            Always allow on {site}
+            Always allow {category} on {site}
+          </Button>
+        )}
+        {always && options && (
+          <Button size={28} disabled={state.busy} onClick={() => decide("acceptGlobally")}>
+            Always allow {category} everywhere
           </Button>
         )}
         <Button size={28} disabled={state.busy} onClick={() => decide("decline")}>

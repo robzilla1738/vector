@@ -1,3 +1,10 @@
+import { codingResumeSummary } from "./context.js";
+import { createHash } from "node:crypto";
+import { auxSkillInstructions } from "../../services/aux-packages.js";
+import type { CodingFilesService } from "../../services/coding-files.js";
+import type { CodingProcesses } from "../../services/coding-processes.js";
+import type { CodingFileChange } from "@aux/contracts/coding-files";
+import { codingToolManifest } from "./coding-tools.js";
 import type { CloudReplExecutor, CloudExecutionContext } from "../../services/cloud-execution.js";
 import { registerPerformanceReplPool } from "./performance-executions.js";
 import { FundingBudgetError, ModelFundingUnavailable } from "../../services/run-funding.js";
@@ -42,11 +49,30 @@ import { toolResultsMessage, type LoopToolDeps, type LoopToolResult, type ModelM
  * steers into the transcript, and finishes the run.
  */
 export interface AgentLoopHostDeps {
+  codingFiles?: CodingFilesService;
+  codingProcesses?: CodingProcesses;
+  coderWorktrees?: {
+    diff(cellId: string, context: { runId: string; actionId: string }): Promise<unknown>;
+    integrate(cellId: string, context: { runId: string; actionId: string }): Promise<unknown>;
+    inspectRecovery(cellId: string, context: { runId: string; actionId: string }): Promise<unknown>;
+    archiveRecovery(
+      cellId: string,
+      expectedDigest: string,
+      context: { runId: string; actionId: string },
+    ): Promise<unknown>;
+    retire(cellId: string, context: { runId: string; actionId: string }): Promise<unknown>;
+  };
   authorizeModelDestination?: (runId: string, origin: string) => Promise<void>;
   cloudExecutor?: CloudReplExecutor & {
     selected(runId: string): boolean;
   };
-  summarizePage?: (input: { runId: string; observation: Observation; focus?: string; signal: AbortSignal; checkOwner: () => void }) => Promise<import("@aux/contracts/page-summary").PageSummaryResult>;
+  summarizePage?: (input: {
+    runId: string;
+    observation: Observation;
+    focus?: string;
+    signal: AbortSignal;
+    checkOwner: () => void;
+  }) => Promise<import("@aux/contracts/page-summary").PageSummaryResult>;
   prepareWaitingPhrase?: (input: {
     runId: string;
     signal: AbortSignal;
@@ -95,7 +121,7 @@ export interface AgentLoopHostDeps {
   subagents?: {
     spawnCell?: (
       input: { goal: string; profile?: string; pageIds?: string[] },
-      ctx: { runId: string; threadId: string; turnId: string },
+      ctx: { runId: string; threadId: string; turnId: string; toolCallId?: string },
     ) => Promise<{ cellId: string }>;
     waitCell?: ReplHostDeps["waitCell"];
     sendCell?: ReplHostDeps["sendCell"];
@@ -436,13 +462,25 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       checkOwner();
       recordObs(observation);
       try {
-        const result = await summarize({ runId, observation: redactObservation(observation), focus, signal, checkOwner });
+        const result = await summarize({
+          runId,
+          observation: redactObservation(observation),
+          focus,
+          signal,
+          checkOwner,
+        });
         checkOwner();
         return { output: result };
       } catch (error) {
         const pending = self.suspensions.pending(runId);
         if (error instanceof AuxError && error.code === "needs_input" && pending)
-          return { park: { kind: pending.kind, instruction: pending.request.instruction ?? error.message, ...(pending.request.approvalId ? { approvalId: pending.request.approvalId } : {}) } };
+          return {
+            park: {
+              kind: pending.kind,
+              instruction: pending.request.instruction ?? error.message,
+              ...(pending.request.approvalId ? { approvalId: pending.request.approvalId } : {}),
+            },
+          };
         throw error;
       }
     },
@@ -450,7 +488,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       const obs = await observePage(pageId, { scope, subtreeRef });
       return recordObs(obs);
     },
-    act: async ({ pageId, steps }): Promise<LoopToolResult> => {
+    act: async ({ pageId, steps, actionId }): Promise<LoopToolResult> => {
       const maxSteps = self.get(runId).config?.maxSteps ?? 0;
       const used = self.deps.repo.listSteps(runId).length;
       if (maxSteps > 0 && used + steps.length > maxSteps) {
@@ -532,6 +570,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         },
         {
           runId,
+          actionId,
           pageId,
           steps,
           observation: obs.content,
@@ -760,21 +799,36 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       // An uncertain effect is settled only by reconcile_action, which checks
       // fresh evidence against the persisted pre-dispatch state.
       const unresolved = [
+        ...(self.deps.agentLoop?.codingFiles?.unresolvedIds(runId) ?? []),
+        ...(self.deps.agentLoop?.codingProcesses?.unresolved(runId).map((receipt) => receipt.processId) ??
+          []),
         ...(self.unresolvedByRun.get(runId) ?? []),
         ...self.durable.unresolved(runId).map((intent) => intent.id),
       ];
       if (unresolved.length)
         return {
           ok: false as const,
-          error: `${unresolved.length} uncertain dispatch(es) are recorded in the write ledger (${self.durable
-            .unresolved(runId)
-            .map((intent) => intent.id)
-            .join(
-              ", ",
-            )}) — use reconcile_action with a fresh snapshot proving the intended effect before submitting.`,
+          error: `${unresolved.length} uncertain dispatch(es) remain (${unresolved.join(", ")}). Use reconcile_action for page effects, reconcile_file for files, and process status/logs for commands before claiming completion.`,
         };
       const unconfirmed = markUnconfirmedWrites(outcomes);
       const result: Record<string, unknown> = { report };
+      const fileReceiptIds = self.deps.agentLoop?.codingFiles?.receiptIds(runId) ?? [];
+      const processReceiptIds = self.deps.agentLoop?.codingProcesses?.receiptIds(runId) ?? [];
+      if (fileReceiptIds.length) {
+        result.fileReceiptIds = fileReceiptIds;
+        result.fileReceiptCount = self.deps.agentLoop!.codingFiles!.count(runId);
+      }
+      if (processReceiptIds.length) result.processReceiptIds = processReceiptIds.slice(-32);
+      const interruptedCommands = self.deps.agentLoop?.codingProcesses?.interrupted(runId) ?? [];
+      if (interruptedCommands.length) {
+        result.report = `${report}\n\nSome command outcomes remain unknown because their original processes were interrupted. These commands are not evidence of success.`;
+        result.unconfirmedCommands = interruptedCommands.map(({ processId }) => ({
+          processId,
+          outcome: "unknown",
+          limitation:
+            "Reconciliation proves this interrupted command is no longer running. It does not prove success or reverse external effects.",
+        }));
+      }
       if (citations?.length) result.citations = citations;
       if (textProposal !== undefined) result.textProposal = textProposal;
       if (unconfirmed.length) result.unconfirmedWrites = unconfirmed;
@@ -1059,8 +1113,212 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     webSearch: self.deps.agentLoop?.webSearch,
     recall: self.deps.agentLoop?.recall,
     fsRoots: () => fsRoots("write"),
-    fileRead: (path) => filesystem().readText(path, runId, signal),
-    fileWrite: (path, content) => filesystem().writeText(path, content, runId, signal),
+    pendingPark: () => {
+      const pending = self.suspensions.pending(runId);
+      return pending
+        ? {
+            kind: pending.kind,
+            instruction: pending.request.instruction ?? "Review this action",
+            approvalId: pending.request.approvalId,
+          }
+        : undefined;
+    },
+    codingTool: async (name, raw, ctx) => {
+      const allowed = self.get(runId).config?.agentProfile?.tools;
+      if (allowed && !allowed.includes("*") && !allowed.includes(name))
+        throw new AuxError("permission_denied", `This agent profile does not permit ${name}.`);
+      if (name.startsWith("package_")) {
+        const input = codingToolManifest()[name]!.inputSchema.parse(raw) as { name: string };
+        const packages = self.get(runId).config?.auxPackages ?? [];
+        if (name === "package_skill") return { output: auxSkillInstructions(packages, input.name) };
+        const entries = packages.flatMap((pkg) =>
+          Object.entries(name === "package_template" ? pkg.manifest.templates : pkg.manifest.workflows).map(
+            ([name, value]) => ({ package: pkg.manifest.name, name, value }),
+          ),
+        );
+        const matches = entries.filter((entry) => entry.name === input.name);
+        if (matches.length !== 1)
+          throw new AuxError(
+            "not_found",
+            "Select one unambiguous template or workflow from this run's packages.",
+          );
+        return { output: matches[0] };
+      }
+      if (self.get(runId).config?.executionTarget === "cloud")
+        throw new AuxError(
+          "capability_unsupported",
+          "Coding filesystem and process tools require the local execution target.",
+        );
+      if (name.startsWith("coder_worktree_")) {
+        const input = codingToolManifest()[name]!.inputSchema.parse(raw) as {
+          cellId: string;
+          expectedDigest?: string;
+        };
+        const service = self.deps.agentLoop?.coderWorktrees;
+        if (!service)
+          throw new AuxError("capability_unsupported", "Coder worktree integration is unavailable.");
+        const context = { runId, actionId: `${runId}:${ctx.toolCallId ?? ctx.turnId}:${name}` };
+        if (name === "coder_worktree_recovery")
+          return { output: await service.inspectRecovery(input.cellId, context) };
+        if (name === "coder_worktree_archive")
+          return {
+            output: await service.archiveRecovery(input.cellId, String(input.expectedDigest), context),
+          };
+        if (name === "coder_worktree_diff") return { output: await service.diff(input.cellId, context) };
+        if (name === "coder_worktree_integrate")
+          return { output: await service.integrate(input.cellId, context) };
+        return { output: await service.retire(input.cellId, context) };
+      }
+      if (name === "bash") {
+        const input = buildToolManifest().bash!.inputSchema.parse(
+          raw,
+        ) as import("./bash.js").BashSeatbeltInput;
+        const execute = self.deps.agentLoop?.bash;
+        if (!execute) throw new AuxError("capability_unsupported", "Governed commands are unavailable.");
+        return execute(
+          { ...input, signal },
+          { runId, threadId, turnId: runId, actionId: `${runId}:${ctx.toolCallId ?? ctx.turnId}:bash` },
+        );
+      }
+      const definition = codingToolManifest()[name];
+      if (!definition) throw new AuxError("capability_unsupported", `Unknown coding tool: ${name}`);
+      const input = definition.inputSchema.parse(raw) as Record<string, unknown>;
+      const actionId = `${runId}:${ctx.toolCallId ?? ctx.turnId}:${name}`;
+      const checkOwner = () => {
+        if (signal.aborted || self.controls.get(runId) !== c || c.paused)
+          throw new AuxError("cancelled", "The original coding run lost its authority.");
+        self.deps.checkRunSource?.(runId);
+      };
+      const context = { runId, signal, checkOwner };
+      checkOwner();
+      const files = self.deps.agentLoop?.codingFiles;
+      const processes = self.deps.agentLoop?.codingProcesses;
+      if (name.startsWith("bg_") || name === "reconcile_process") {
+        if (!processes)
+          throw new AuxError("capability_unsupported", "Supervised coding processes are unavailable.");
+        if (name === "bg_start")
+          return {
+            output: await processes.start(input as { command: string; workdir?: string; network?: boolean }, {
+              runId,
+              threadId,
+              turnId: runId,
+              actionId,
+              signal,
+            }),
+          };
+        const processId = String(input.processId);
+        const processContext = { runId, threadId, turnId: runId, actionId, signal };
+        if (name === "reconcile_process")
+          return { output: await processes.reconcile(processId, processContext) };
+        const operation = name === "bg_status" ? "status" : name === "bg_logs" ? "logs" : "stop";
+        const fence = await processes.authorizeAccess(operation, processId, processContext);
+        let output: unknown;
+        if (name === "bg_status") output = processes.status(processId, runId);
+        else if (name === "bg_logs")
+          output = await processes.logs(processId, runId, input.cursor as number | undefined);
+        else output = await processes.stop(processId, runId);
+        fence();
+        return { output };
+      }
+      if (!files) throw new AuxError("capability_unsupported", "Governed coding files are unavailable.");
+      if (name === "read_file")
+        return {
+          output: await files.read(input as { path: string; startLine?: number; endLine?: number }, context),
+        };
+      if (name === "grep" || name === "glob")
+        return {
+          output: await files.search(
+            input as unknown as import("@aux/contracts/coding-files").CodingSearchRequest,
+            context,
+          ),
+        };
+      if (name === "list_directory") return { output: await files.list(String(input.path), context) };
+      if (name === "stat") return { output: await files.stat(String(input.path), context) };
+      const summary = (receipt: import("@aux/contracts/coding-files").CodingFileReceipt) => ({
+        receiptId: receipt.receiptId,
+        status: receipt.status,
+        fileOutcomes: receipt.fileOutcomes,
+        files: receipt.after.map(({ path, version }) => ({ path, version })),
+      });
+      if (name === "diff") {
+        const selected = input.receiptIds as string[] | undefined;
+        const receipts = selected ? files.changesByIds(runId, selected) : files.recentChanges(runId, 32);
+        const count = receipts.reduce((total, receipt) => total + receipt.after.length, 0);
+        const allowance = Math.max(1, Math.floor(16000 / Math.max(1, count * 2)));
+        return {
+          output: {
+            receiptCount: files.count(runId),
+            olderReceiptsOmitted: !selected && files.count(runId) > receipts.length,
+            receipts: receipts.map((receipt) => ({
+              ...summary(receipt),
+              diff: receipt.after.map((after) => {
+                const before = receipt.before.find((state) => state.path === after.path)?.content ?? "";
+                const next = after.content ?? "";
+                let index = 0;
+                while (index < Math.min(before.length, next.length) && before[index] === next[index]) index++;
+                const start = Math.max(0, index - 100);
+                return {
+                  path: after.path,
+                  binary: after.contentBase64 !== undefined,
+                  before: before.slice(start, start + allowance),
+                  after: next.slice(start, start + allowance),
+                  truncated: before.length > start + allowance || next.length > start + allowance,
+                };
+              }),
+            })),
+          },
+        };
+      }
+      if (name === "reconcile_file")
+        return { output: summary(await files.reconcile(String(input.receiptId), context)) };
+      if (name === "undo")
+        return {
+          output: (await files.undo({ actionId, receiptIds: input.receiptIds as string[] }, context)).map(
+            summary,
+          ),
+        };
+      let changes: CodingFileChange[];
+      if (name === "apply_changes") changes = input.changes as CodingFileChange[];
+      else if (name === "write_file")
+        changes = input.expectedVersion
+          ? [
+              {
+                kind: "edit",
+                path: String(input.path),
+                content: String(input.content),
+                expectedVersion: String(input.expectedVersion),
+              },
+            ]
+          : [{ kind: "create", path: String(input.path), content: String(input.content) }];
+      else {
+        const current = await files.read({ path: String(input.path) }, context);
+        if (current.version !== input.expectedVersion)
+          throw new AuxError("conflict", "File changed since it was read.");
+        const oldText = String(input.oldText),
+          newText = String(input.newText);
+        const count = current.content.split(oldText).length - 1;
+        if (!count || (!input.all && count !== 1))
+          throw new AuxError("conflict", "The edit text is absent or ambiguous; read the file again.");
+        changes = [
+          {
+            kind: "edit",
+            path: current.path,
+            expectedVersion: current.version,
+            content: input.all
+              ? current.content.split(oldText).join(newText)
+              : current.content.replace(oldText, newText),
+          },
+        ];
+      }
+      const receipt = await files.applyChanges({ actionId, changes }, context);
+      return {
+        output: {
+          receiptId: receipt.receiptId,
+          status: receipt.status,
+          files: receipt.after.map(({ path, version }) => ({ path, version })),
+        },
+      };
+    },
     bash: self.deps.agentLoop?.bash,
     historySearch: self.deps.agentLoop?.historySearch
       ? async (query, limit, context) => {
@@ -1265,8 +1523,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         );
       return fetchDep(url, { runId, threadId, turnId: runId });
     },
-    fsRead: (path) => filesystem().readText(path, runId, signal),
-    fsWrite: (path, content) => filesystem().writeText(path, content, runId, signal),
+
     submitResult: (input) =>
       deps.submitResult!(input, {
         runId,
@@ -1338,19 +1595,296 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       "The original cloud backend is unavailable. Choose local execution or review cloud configuration.",
     );
   const cloudContext: CloudExecutionContext = { runId, threadId, turnId: runId };
-  deps.repl = ({ code, deadlineMs, yieldTimeMs }) =>
-    cloudSelected()
-      ? cloud!.eval(cloudContext, replDeps, code, { pageId: activePageId, deadlineMs, yieldTimeMs })
-      : replPool.eval(replDeps, code, { pageId: activePageId, deadlineMs, yieldTimeMs });
+  let restoredRepl = false;
+  let restoringRepl = false;
+  deps.repl = async ({ code, deadlineMs, yieldTimeMs }, ctx) => {
+    if (!restoredRepl && !cloudSelected()) {
+      restoredRepl = true;
+      const cells = self.deps.repo.db
+        .prepare(
+          "SELECT tool_call_id,source,page_id FROM coding_repl_cells WHERE run_id=? AND status='completed' ORDER BY sequence",
+        )
+        .all(runId) as unknown as { tool_call_id: string; source: string; page_id: string | null }[];
+      restoringRepl = true;
+      try {
+        for (const cell of cells) {
+          const providerCallId = cell.tool_call_id.slice(0, cell.tool_call_id.lastIndexOf(":"));
+          if (providerCallId === ctx.toolCallId) continue;
+          const source = self.deps.repo.revealRecordField(
+            "coding_repl_cells",
+            [runId, cell.tool_call_id],
+            "source",
+            cell.source,
+          );
+          const result = await deps.repl!(
+            { code: source },
+            { ...ctx, toolCallId: providerCallId, pageId: cell.page_id ?? undefined },
+          );
+          if (
+            "park" in result ||
+            ("output" in result &&
+              result.output &&
+              typeof result.output === "object" &&
+              "error" in result.output)
+          )
+            throw new AuxError(
+              "recovery_stale",
+              "An earlier code cell could not be restored from its durable host responses. Inspect receipts and re-plan remaining work.",
+            );
+        }
+      } finally {
+        restoringRepl = false;
+      }
+    }
+    const toolCallId = `${ctx.toolCallId ?? `${runId}:repl:${ctx.goalTurn}`}:${createHash("sha256").update(code).digest("hex")}`;
+    if (!restoringRepl) {
+      const existing = self.deps.repo.db
+        .prepare("SELECT source FROM coding_repl_cells WHERE run_id=? AND tool_call_id=?")
+        .get(runId, toolCallId) as { source: string } | undefined;
+      if (
+        existing &&
+        self.deps.repo.revealRecordField(
+          "coding_repl_cells",
+          [runId, toolCallId],
+          "source",
+          existing.source,
+        ) !== code
+      )
+        throw new AuxError("conflict", "The resumed code differs from the durable cell source.");
+      const sequence = (
+        self.deps.repo.db
+          .prepare("SELECT COALESCE(MAX(sequence),-1)+1 AS sequence FROM coding_repl_cells WHERE run_id=?")
+          .get(runId) as { sequence: number }
+      ).sequence;
+      const source = self.deps.repo.protectRecordField(
+        "coding_repl_cells",
+        [runId, toolCallId],
+        "source",
+        code,
+      );
+      self.deps.repo.db
+        .prepare(
+          "INSERT INTO coding_repl_cells(run_id,tool_call_id,sequence,source,status,page_id) VALUES(?,?,?,?,?,?) ON CONFLICT(run_id,tool_call_id) DO UPDATE SET status='running'",
+        )
+        .run(runId, toolCallId, sequence, source, "running", ctx.pageId ?? activePageId ?? null);
+    }
+    const hostDeps: ReplHostDeps = {
+      ...replDeps,
+      step: (pageId, step, ordinal) =>
+        deps.act!({
+          pageId,
+          steps: [{ ...(step as import("@aux/contracts").Step), id: `${toolCallId}:host:${ordinal}:step` }],
+          actionId: `${runId}:${toolCallId}:host:${ordinal}:act`,
+        }),
+      spawnCell: async (input, ordinal) => {
+        const spawn = goalRun ? undefined : deps.subagents?.spawnCell;
+        if (!spawn) throw new AuxError("capability_unsupported", "Subagent cells are unavailable.");
+        return spawn(input, { runId, threadId, turnId: runId, toolCallId: `${toolCallId}:host:${ordinal}` });
+      },
+      allowHostCall: (name, params) => {
+        const tools = self.get(runId).config?.agentProfile?.tools;
+        const request =
+          name === "coding" || name === "codingTool"
+            ? (JSON.parse(params) as { name?: unknown } | unknown[])
+            : undefined;
+        const codingName = request
+          ? Array.isArray(request)
+            ? String(request[0])
+            : String(request.name)
+          : undefined;
+        const manifestName =
+          codingName ??
+          (
+            {
+              observe: "snapshot",
+              capture: "snapshot",
+              findRef: "snapshot",
+              findRoute: "snapshot",
+              tabs: "snapshot",
+              useTab: "snapshot",
+              openTab: "act",
+              closeTab: "act",
+              bookmark: "act",
+              webmcp: "act",
+              step: "act",
+              fetch: "webfetch",
+              spawnCell: "subagent",
+              waitCell: "subagent_wait",
+              sendCell: "subagent_send",
+              cancelCell: "subagent_stop",
+              submitResult: "submit_result",
+            } as Record<string, string>
+          )[name];
+        if (tools && !tools.includes("*") && manifestName && !tools.includes(manifestName))
+          throw new AuxError("permission_denied", `This agent profile does not permit ${manifestName}.`);
+      },
+      codingTool: async (name, input, ordinal) => {
+        try {
+          return await deps.codingTool!(name, input, { ...ctx, toolCallId: `${toolCallId}:host:${ordinal}` });
+        } catch (error) {
+          if (error instanceof AuxError && error.code === "needs_input") {
+            const park =
+              (error.detail as { park?: import("./types.js").LoopPark } | undefined)?.park ??
+              deps.pendingPark?.();
+            if (park) return { park };
+          }
+          throw error;
+        }
+      },
+      replay: async (name, params, ordinal, execute) => {
+        const signatureParams =
+          name === "step"
+            ? (() => {
+                const parsed = JSON.parse(params) as { step: Record<string, unknown> };
+                const { id: _id, ...step } = parsed.step;
+                return { ...parsed, step };
+              })()
+            : JSON.parse(params);
+        const signature = JSON.stringify([name, signatureParams]);
+        const existing = self.deps.repo.db
+          .prepare(
+            "SELECT signature,response FROM coding_repl_calls WHERE run_id=? AND tool_call_id=? AND ordinal=?",
+          )
+          .get(runId, toolCallId, ordinal) as { signature: string; response: string } | undefined;
+        if (existing) {
+          const recorded = self.deps.repo.revealRecordField(
+            "coding_repl_calls",
+            [runId, toolCallId, ordinal],
+            "signature",
+            existing.signature,
+          );
+          if (recorded !== signature)
+            throw new AuxError(
+              "conflict",
+              "The resumed code diverged from its recorded host calls; inspect receipts and re-plan remaining work.",
+            );
+          return self.deps.repo.revealRecordField(
+            "coding_repl_calls",
+            [runId, toolCallId, ordinal],
+            "response",
+            existing.response,
+          );
+        }
+        if (restoringRepl)
+          throw new AuxError(
+            "recovery_stale",
+            "An earlier code cell lacks a durable host response; inspect effects and re-plan its remaining work.",
+          );
+        const response = await execute();
+        const decoded = JSON.parse(response) as { ok?: boolean };
+        if (decoded.ok)
+          self.deps.repo.db
+            .prepare("INSERT INTO coding_repl_calls VALUES(?,?,?,?,?)")
+            .run(
+              runId,
+              toolCallId,
+              ordinal,
+              self.deps.repo.protectRecordField(
+                "coding_repl_calls",
+                [runId, toolCallId, ordinal],
+                "signature",
+                signature,
+              ),
+              self.deps.repo.protectRecordField(
+                "coding_repl_calls",
+                [runId, toolCallId, ordinal],
+                "response",
+                response,
+              ),
+            );
+        return response;
+      },
+    };
+    try {
+      const result = await (cloudSelected()
+        ? cloud!.eval(cloudContext, hostDeps, code, {
+            pageId: ctx.pageId ?? activePageId,
+            deadlineMs,
+            yieldTimeMs,
+          })
+        : replPool.eval(hostDeps, code, { pageId: ctx.pageId ?? activePageId, deadlineMs, yieldTimeMs }));
+      if (!restoringRepl) {
+        const output =
+          "output" in result && result.output && typeof result.output === "object"
+            ? (result.output as { running?: boolean; cellId?: string; error?: unknown })
+            : undefined;
+        const status =
+          "park" in result ? "parked" : output?.running ? "running" : output?.error ? "failed" : "completed";
+        self.deps.repo.db
+          .prepare("UPDATE coding_repl_cells SET status=?,cell_id=? WHERE run_id=? AND tool_call_id=?")
+          .run(status, output?.cellId ?? null, runId, toolCallId);
+      }
+      return result;
+    } catch (error) {
+      if (!restoringRepl)
+        self.deps.repo.db
+          .prepare("UPDATE coding_repl_cells SET status='failed' WHERE run_id=? AND tool_call_id=?")
+          .run(runId, toolCallId);
+      throw error;
+    }
+  };
   deps.replProgress = async () => {
     if (!activePageId) return undefined;
     const observed = recordObs(await observePage(activePageId, {}));
     return { pageId: activePageId, ...observed };
   };
-  deps.replWait = ({ cellId, yieldTimeMs, terminate }) =>
-    cloudSelected()
-      ? cloud!.wait(cloudContext, cellId, yieldTimeMs, terminate)
-      : replPool.wait(runId, cellId, yieldTimeMs, terminate);
+  deps.replWait = async ({ cellId, yieldTimeMs, terminate }, ctx) => {
+    const saved = self.deps.repo.db
+      .prepare(
+        "SELECT tool_call_id,source,page_id FROM coding_repl_cells WHERE run_id=? AND cell_id=? ORDER BY sequence DESC LIMIT 1",
+      )
+      .get(runId, cellId) as { tool_call_id: string; source: string; page_id: string | null } | undefined;
+    const original = saved
+      ? {
+          toolCallId: saved.tool_call_id.slice(0, saved.tool_call_id.lastIndexOf(":")),
+          code: self.deps.repo.revealRecordField(
+            "coding_repl_cells",
+            [runId, saved.tool_call_id],
+            "source",
+            saved.source,
+          ),
+          pageId: saved.page_id ?? undefined,
+        }
+      : undefined;
+    let result: LoopToolResult;
+    if (!cloudSelected() && !replPool.hasOpen(runId) && original && !terminate)
+      result = await deps.repl!(
+        { code: original.code, yieldTimeMs },
+        { ...ctx, toolCallId: original.toolCallId, pageId: original.pageId },
+      );
+    else
+      result = await (cloudSelected()
+        ? cloud!.wait(cloudContext, cellId, yieldTimeMs, terminate)
+        : replPool.wait(runId, cellId, yieldTimeMs, terminate));
+    if (saved) {
+      const output =
+        "output" in result && result.output && typeof result.output === "object"
+          ? (result.output as { running?: boolean; error?: unknown; terminated?: boolean; cellId?: string })
+          : undefined;
+      const status =
+        "park" in result
+          ? "parked"
+          : output?.running
+            ? "running"
+            : output?.error || output?.terminated
+              ? "failed"
+              : "completed";
+      self.deps.repo.db
+        .prepare("UPDATE coding_repl_cells SET status=?,cell_id=? WHERE run_id=? AND tool_call_id=?")
+        .run(status, output?.cellId ?? cellId, runId, saved.tool_call_id);
+    }
+    if ("park" in result && original)
+      return {
+        park: {
+          ...result.park,
+          detail: {
+            ...result.park.detail,
+            resumeCall: { toolName: "repl", toolCallId: original.toolCallId, input: { code: original.code } },
+          },
+        },
+      };
+    return result;
+  };
   deps.canRecoverDialogValue = (label) => {
     const obs = activePageId ? lastObs.get(activePageId) : undefined;
     const aliases = [label.toLowerCase(), label.toLowerCase().replace(/\breference\b/g, "ref")];
@@ -1400,6 +1934,19 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     }
   }
 
+  const codingChanges = self.deps.agentLoop?.codingFiles?.recentChanges(runId) ?? [];
+  const codingProcesses = self.deps.agentLoop?.codingProcesses?.recent(runId) ?? [];
+  if (codingChanges.length || codingProcesses.length)
+    transcript.append(runId, [
+      {
+        role: "user",
+        content: codingResumeSummary(
+          codingChanges,
+          codingProcesses,
+          self.deps.agentLoop?.codingFiles?.count(runId),
+        ),
+      },
+    ]);
   await self.setStatus(runId, "running", "Working…");
   const startedAt = run.startedAt ?? run.createdAt;
   self.deps.repo.saveRun({ ...self.get(runId), startedAt });
@@ -1477,12 +2024,20 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       },
       modelId: modelId(),
       reasoning: run.config?.reasoning,
+      hasProject: Boolean(
+        run.config?.projectRoot ||
+        run.config?.coderWorktree ||
+        run.config?.agentProfile?.workspace === "isolated",
+      ),
       tools: (() => {
         const manifest = buildToolManifest();
         if (!deps.goalUpdate) delete manifest.goal_update;
         if (goalRun)
           for (const name of ["subagent", "subagent_wait", "subagent_send", "subagent_stop"])
             delete manifest[name];
+        const allowed = self.get(runId).config?.agentProfile?.tools;
+        if (allowed && !allowed.includes("*"))
+          for (const name of Object.keys(manifest)) if (!allowed.includes(name)) delete manifest[name];
         return manifest;
       })(),
       transcript,
@@ -1494,6 +2049,26 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       maxSteps: modelCallLimit() === 0 ? 0 : Math.max(1, modelCallLimit() - modelCalls),
       steerCheck: steerPending,
       prepareModelMessages: async (messages) => {
+        const checkpoint = self.deps.repo.loadCheckpoint(`run:${runId}`, "loop_todos") as
+          { todos?: unknown } | undefined;
+        const todos = Array.isArray(checkpoint?.todos)
+          ? checkpoint.todos
+              .filter((todo): todo is string => typeof todo === "string")
+              .slice(0, 12)
+              .map((todo) => todo.slice(0, 280))
+          : [];
+        if (todos.length)
+          messages = [...messages, { role: "user", content: `Current durable plan:\n${todos.join("\n")}` }];
+        const files = self.deps.agentLoop?.codingFiles?.recentChanges(runId) ?? [];
+        const processes = self.deps.agentLoop?.codingProcesses?.recent(runId) ?? [];
+        if (files.length || processes.length)
+          messages = [
+            ...messages,
+            {
+              role: "user",
+              content: codingResumeSummary(files, processes, self.deps.agentLoop?.codingFiles?.count(runId)),
+            },
+          ];
         const original = self.get(runId);
         const ids = original.config?.contextMemoryIds ?? [];
         const imageIds = original.config?.contextImageArtifactIds ?? [];
@@ -1920,6 +2495,10 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           // give the model one chance to re-observe or re-dispatch, then stop.
           const unresolved = [
             ...new Set([
+              ...(self.deps.agentLoop?.codingFiles?.unresolvedIds(runId) ?? []),
+              ...(self.deps.agentLoop?.codingProcesses
+                ?.unresolved(runId)
+                .map((receipt) => receipt.processId) ?? []),
               ...(self.unresolvedByRun.get(runId) ?? []),
               ...self.durable.unresolved(runId).map((intent) => intent.id),
             ]),
@@ -1930,7 +2509,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
               transcript.append(runId, [
                 {
                   role: "user",
-                  content: `The write ledger still records an uncertain dispatch (${unresolved.join(", ")}). Take a fresh snapshot and use reconcile_action only if a new line proves the intended effect. Otherwise finish with a partial result; you cannot claim these actions completed.`,
+                  content: `The write ledger still records an uncertain dispatch (${unresolved.join(", ")}). Inspect fresh evidence and use reconcile_action for page effects or reconcile_file for file effects. Inspect process status and logs for commands. Do not repeat unresolved effects or claim they completed.`,
                 },
               ]);
               continue;
@@ -2028,6 +2607,12 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     releaseSharedCall?.();
     unregisterPerformanceRepl();
     replPool.disposeAll();
+    self.deps.repo.db
+      .prepare(
+        "UPDATE coding_repl_cells SET status='failed' WHERE run_id=? AND status IN ('running','parked')",
+      )
+      .run(runId);
+    await self.deps.agentLoop?.codingProcesses?.closeRun(runId);
     if (cloudWasSelected) await cloud!.closeRun(runId);
     for (const release of [...openedTabs.values()].reverse()) release();
     self.controls.delete(runId);

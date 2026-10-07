@@ -894,8 +894,9 @@ export class Repo {
   /** Create an editable conversation without inventing an executed turn. */
   createConversationDraft(chatId: string, title: string, privateTask: boolean): void {
     const now = Date.now();
-    this.q("INSERT INTO conversations(chat_id,title,archived,private_task,created_at,updated_at) VALUES(?,?,0,?,?,?)")
-      .run(chatId, this.protectField("conversations", chatId, "title", title), privateTask ? 1 : 0, now, now);
+    this.q(
+      "INSERT INTO conversations(chat_id,title,archived,private_task,created_at,updated_at) VALUES(?,?,0,?,?,?)",
+    ).run(chatId, this.protectField("conversations", chatId, "title", title), privateTask ? 1 : 0, now, now);
   }
 
   getConversation(chatId: string): ConversationSummary | undefined {
@@ -967,12 +968,24 @@ export class Repo {
     const artifactPaths = (
       this.q(`SELECT path FROM artifacts WHERE run_id IN (${owned})`).all(chatId) as { path: string }[]
     ).map((row) => row.path);
+    const processes = this.q(
+      `SELECT process_id,receipt FROM coding_process_receipts WHERE run_id IN (${owned})`,
+    ).all(chatId) as unknown as { process_id: string; receipt: string }[];
+    for (const process of processes) {
+      const receipt = JSON.parse(
+        this.revealRecordField("coding_process_receipts", [process.process_id], "receipt", process.receipt),
+      ) as import("@aux/contracts/coding-processes").CodingProcessReceipt;
+      artifactPaths.push(receipt.logPath);
+    }
     const images = this.getSetting<{ artifactId: string }[]>(`conversationImages:${chatId}`) ?? [];
     for (const image of images) {
       const artifact = this.getArtifact(image.artifactId);
       if (artifact) artifactPaths.push(artifact.path);
     }
     this.transaction(() => {
+      withSecureDelete(this.db, () =>
+        this.q(`DELETE FROM safety_approval_requests WHERE turn_id IN (${owned})`).run(chatId),
+      );
       for (const image of images) this.q("DELETE FROM artifacts WHERE artifact_id=?").run(image.artifactId);
       this.q("DELETE FROM kv WHERE key=?").run(`setting:conversationImages:${chatId}`);
       this.q(
@@ -982,6 +995,13 @@ export class Repo {
         `DELETE FROM operation_reconciliations WHERE invocation_id IN (SELECT invocation_id FROM operation_invocations WHERE run_id IN (${owned}))`,
       ).run(chatId);
       for (const table of [
+        "coder_worktree_receipts",
+        "coding_repl_calls",
+        "coding_repl_cells",
+        "coding_file_receipts",
+        "coding_process_receipts",
+        "safety_run_grants",
+        "safety_run_authority",
         "action_intents",
         "operation_invocations",
         "response_metadata",
@@ -993,7 +1013,7 @@ export class Repo {
         "results",
         "steps",
       ]) {
-        if (table === "model_calls") {
+        if (table === "model_calls" || table.startsWith("coding_") || table === "coder_worktree_receipts") {
           withSecureDelete(this.db, () =>
             this.q(`DELETE FROM ${table} WHERE run_id IN (${owned})`).run(chatId),
           );

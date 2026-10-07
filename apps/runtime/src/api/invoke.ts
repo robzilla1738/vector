@@ -47,7 +47,7 @@ export function makeInvoker(s: Services) {
         // The code-mode host calls this same invoker with the same client.
         // Each nested method is checked against the connection's scope.
       }
-      if (method === "workspaces.create" || method === "pages.moveToWindow" || method === "pages.resume" || method === "pages.takeover")
+      if (method === "workspaces.create" || method === "pages.moveToWindow" || method === "pages.resume")
         throw new AuxError("permission_denied", "Browser organization and human control are managed in Aux.");
       if (method === "pages.open" || method === "runs.start") {
         if (!params.taskId || params.expectedRevision === undefined)

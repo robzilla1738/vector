@@ -422,7 +422,7 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     category: "Projects",
     label: "Space",
     description:
-      "Project roots, AGENTS.md instructions and local .claude/skills apply only to runs in this Space.",
+      "Project roots and repository instructions apply only to runs in this Space. Aux Packages are selected per run.",
     target: "Space",
   },
   {

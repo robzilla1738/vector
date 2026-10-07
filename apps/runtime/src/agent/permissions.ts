@@ -3,7 +3,7 @@ import type { Effect, Step } from "@aux/contracts";
 export type EffectClass = Extract<Effect, "read" | "write" | "destructive" | "egress">;
 
 /** User-selected child profiles restrict capability independently of mode policy. */
-export function isReadOnlyProfile(profile: "explorer" | "read_only" | "default" | undefined): boolean {
+export function isReadOnlyProfile(profile: string | undefined): boolean {
   return profile === "explorer" || profile === "read_only";
 }
 

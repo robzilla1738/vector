@@ -25,7 +25,7 @@ export function ExternalAgents() {
   const [workspaceId, setWorkspaceId] = useState("");
   const [taskId, setTaskId] = useState("");
   const [scopeKind, setScopeKind] = useState<"workspace" | "task">("task");
-  const [name, setName] = useState("Codex task connection");
+  const [name, setName] = useState("TOML client task connection");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -75,7 +75,7 @@ export function ExternalAgents() {
   }, [availableTasks, taskId]);
   useEffect(() => {
     setName(
-      `${client === "codex" ? "Codex" : client === "claude" ? "Claude Code" : "Cursor"} task connection`,
+      `${client === "codex" ? "TOML client" : client === "claude" ? "JSON client" : "Editor client"} task connection`,
     );
     setConfig(null);
   }, [client]);
@@ -166,14 +166,14 @@ export function ExternalAgents() {
       <CliInstallControl />
       <div {...auxClassDrawerSectionProps}>External agents</div>
       <p>
-        Connect Codex, Claude Code or Cursor to one saved task or Space through MCP. The client uses its own
+        Connect compatible MCP clients to one saved task or Space through MCP. The client uses its own
         account and model.
       </p>
       <div role="group" {...staticRowProps} aria-label="Detected agent clients">
         {installations.map((item) => (
           <span className="hint" key={item.client}>
             <strong>
-              {item.client === "codex" ? "Codex" : item.client === "claude" ? "Claude Code" : "Cursor"}
+              {item.client === "codex" ? "TOML client" : item.client === "claude" ? "JSON client" : "Editor client"}
             </strong>{" "}
             ·{" "}
             {item.installed
@@ -236,7 +236,7 @@ export function ExternalAgents() {
             aria-pressed={client === value}
             onClick={() => setClient(value)}
           >
-            {value === "codex" ? "Codex" : value === "claude" ? "Claude Code" : "Cursor"}
+            {value === "codex" ? "TOML client" : value === "claude" ? "JSON client" : "Editor client"}
           </button>
         ))}
       </div>
@@ -311,7 +311,7 @@ export function ExternalAgents() {
             disabled={busy || !name.trim() || !workspaceId || (scopeKind === "task" && !taskId)}
             onClick={() => void connect()}
           >
-            Connect Aux to {client === "codex" ? "Codex" : client === "claude" ? "Claude Code" : "Cursor"}
+            Connect Aux to {client === "codex" ? "TOML client" : client === "claude" ? "JSON client" : "Editor client"}
           </button>
           <button
             {...smallButtonProps}
@@ -327,9 +327,9 @@ export function ExternalAgents() {
         <>
           <span {...staticHintProps}>
             {client === "codex"
-              ? "Merge this server entry into Codex config.toml."
+              ? "Merge this server entry into the client config.toml."
               : client === "claude"
-                ? "Merge this server entry into your project .mcp.json or another supported Claude Code scope."
+                ? "Merge this server entry into your project .mcp.json or another supported JSON client scope."
                 : "Merge this server entry into ~/.cursor/mcp.json."}{" "}
             Keep existing entries. This token is shown once; create a replacement if it is lost.
           </span>
@@ -379,10 +379,10 @@ export function ExternalAgents() {
                 <strong>{connection.name}</strong>
                 <span {...staticHintProps}>
                   {connection.client === "codex"
-                    ? "Codex"
+                    ? "TOML client"
                     : connection.client === "claude"
-                      ? "Claude Code"
-                      : "Cursor"}{" "}
+                      ? "JSON client"
+                      : "Editor client"}{" "}
                   · {connectionTarget(connection)}
                   {connection.lastUsedAt
                     ? ` · used ${new Date(connection.lastUsedAt).toLocaleString()}`

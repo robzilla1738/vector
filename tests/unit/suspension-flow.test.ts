@@ -1,5 +1,6 @@
 import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, expect, it, vi } from "vitest";
+import type { ExecContext } from "../../apps/runtime/src/execution/executor.js";
 import type { DatabaseSync } from "node:sqlite";
 import type { Observation, PlanStep, StepOutcome } from "@aux/contracts";
 import { EventBus, MockModelClient, openDb, Repo, RunCoordinator, type ModelClient } from "@aux/runtime";
@@ -79,12 +80,41 @@ function harness(
   const events = new EventBus(repo);
   const pages = {
     observe: vi.fn(async () => obs()),
-    execute: vi.fn(
-      async (
-        program: { steps: PlanStep[] },
-        ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void },
-      ) => onExecute(ctx?.runId ?? "", program.steps[0]),
-    ),
+    execute: vi.fn(async (program: { steps: PlanStep[] }, ctx: ExecContext = {}) => {
+      const step = program.steps[0]!;
+      const prior = db
+        .prepare(
+          "SELECT state FROM safety_suspensions WHERE run_id=? AND kind='approval' ORDER BY created_at DESC LIMIT 1",
+        )
+        .get(ctx.runId ?? "") as { state: string } | undefined;
+      if (prior && ["answered", "cancelled"].includes(prior.state)) {
+        const allowed = prior.state === "answered";
+        if (allowed) ctx.beforeDispatch?.(step);
+        const outcome: StepOutcome = {
+          stepId: step.id,
+          op: step.op,
+          status: allowed ? "ok" : "failed",
+          startedAt: 1,
+          durationMs: 1,
+          effect: allowed ? "observed" : "authorized",
+          ...(allowed
+            ? {
+                receipt: {
+                  observed: "Checkout click applied",
+                  remoteConfirmed: false,
+                  uncertain: false,
+                  unconfirmed: false,
+                  dispatchedBeforeTakeover: false,
+                },
+              }
+            : { error: { code: "permission_denied", message: "The person declined this action." } }),
+        };
+        ctx.settleStep?.(outcome, step);
+        ctx.onStep?.(outcome, step);
+        return { status: allowed ? "completed" : "failed", steps: [outcome] };
+      }
+      return onExecute(ctx.runId ?? "", step);
+    }),
     capture: vi.fn(async () => ({ dataUrl: undefined, width: 0, height: 0, scale: 1 })),
     livePageIds: () => ["p1"],
     get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({
@@ -103,7 +133,6 @@ function harness(
     defaultModel: () => "test/planner",
 
     recordModelCall: () => {},
-
   });
   return { db, repo, coordinator, pages };
 }
@@ -231,11 +260,16 @@ describe("gate ask → coordinator suspension flow", () => {
   });
 
   it("an explicit action-confirmation waits for the actual user's review", async () => {
-    const h = harness(scripted([
-      tool("snapshot"),
-      tool("request_action_confirmation", { summary: "Review the observed order page." }),
-      done(),
-    ]), () => { throw new Error("No page action was requested."); });
+    const h = harness(
+      scripted([
+        tool("snapshot"),
+        tool("request_action_confirmation", { summary: "Review the observed order page." }),
+        done(),
+      ]),
+      () => {
+        throw new Error("No page action was requested.");
+      },
+    );
     const run = await h.coordinator.start({ goal: "Review the order", pageIds: ["p1"], chatId: "chat-1" });
     expect((await waitForStatus(h.repo, run.runId, "needs_input")).status).toBe("needs_input");
     const pending = h.coordinator.suspensions.pending(run.runId)!;

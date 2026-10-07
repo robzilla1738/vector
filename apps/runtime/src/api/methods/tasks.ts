@@ -176,6 +176,8 @@ async function retired_h_tasks_archive(ctx: MethodCtx): Promise<unknown> {
   return tasks.archive(params.taskId, params.expectedRevision, params.archived);
 }
 async function h_tasks_start(ctx: MethodCtx): Promise<unknown> {
+  if (ctx.params.agentMode !== undefined && (ctx.client.external || ctx.client.codeMode))
+    throw new AuxError("permission_denied", "Choose this run’s mode through the Aux composer.");
   const { params, s, tasks } = ctx;
   const { taskId, expectedRevision, ...options } = params;
   return s.runs.start({ ...options, ...tasks.prepareRun(taskId, expectedRevision, options.context, ctx.externalRunId), nativeTurnContext: ctx.client.nativeTurnContext,

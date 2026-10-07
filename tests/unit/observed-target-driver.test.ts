@@ -4,19 +4,65 @@ import { PlaywrightDriverPage, RefRegistry } from "@aux/chromium-driver";
 
 function fixture(html: string) {
   document.body.innerHTML = html;
+  let frame: object;
+  const nodes = new Map<string, HTMLElement>();
+  const identities = new WeakMap<Element, number>();
+  let sequence = 0;
+  const handle = (element: HTMLElement) => ({
+    evaluate: async <T>(fn: (element: HTMLElement) => T) => fn(element),
+    ownerFrame: async () => frame,
+    dispose: async () => {},
+  });
   const locator = (selector: string) => ({
     count: async () => document.querySelectorAll(selector).length,
     filter() {
       return this;
     },
-    evaluate: async <T>(fn: (element: HTMLElement) => T) =>
-      fn(document.querySelector<HTMLElement>(selector)!),
+    elementHandle: async () => handle(document.querySelector<HTMLElement>(selector)!),
   });
-  const frame = { locator, url: () => location.href };
+  frame = { locator, url: () => location.href, parentFrame: () => null };
   const page = { on() {}, mainFrame: () => frame, locator, isClosed: () => false };
+  const context = {
+    newCDPSession: async () => ({
+      detach: async () => {},
+      send: async (method: string, args: Record<string, any> = {}) => {
+        if (method === "Page.getFrameTree") return { frameTree: { frame: { id: "main" } } };
+        if (method === "Page.createIsolatedWorld") return { executionContextId: 1 };
+        if (method === "Runtime.evaluate") {
+          const element = window.eval(args.expression) as HTMLElement;
+          const objectId = `node-${++sequence}`;
+          nodes.set(objectId, element);
+          return { result: { objectId } };
+        }
+        if (method === "DOM.describeNode") {
+          const element = nodes.get(args.objectId)!;
+          if (!identities.has(element)) identities.set(element, ++sequence);
+          return { node: { backendNodeId: identities.get(element) } };
+        }
+        if (method === "Runtime.callFunctionOn") {
+          const fn = window.eval(`(${args.functionDeclaration})`);
+          return {
+            result: {
+              value: fn.apply(
+                nodes.get(args.objectId),
+                (args.arguments ?? []).map((arg: any) =>
+                  arg.objectId ? nodes.get(arg.objectId) : arg.value,
+                ),
+              ),
+            },
+          };
+        }
+        if (method === "Runtime.releaseObject") {
+          nodes.delete(args.objectId);
+          return {};
+        }
+        throw new Error(`Unexpected CDP method ${method}`);
+      },
+    }),
+  };
   return new PlaywrightDriverPage({
     page: page as unknown as ConstructorParameters<typeof PlaywrightDriverPage>[0]["page"],
-    context: {} as ConstructorParameters<typeof PlaywrightDriverPage>[0]["context"],
+    context: context as unknown as ConstructorParameters<typeof PlaywrightDriverPage>[0]["context"],
     identity: { pageId: "a", targetId: "target", backend: "aux" },
     refs: new RefRegistry(),
   });
@@ -63,4 +109,18 @@ describe("resolved live action metadata", () => {
     );
     await expect(driver.actionTarget("#submit")).rejects.toThrow(/metadata bound/);
   });
+});
+
+it("binds a same-node href change while exposing only its safe destination origin", async () => {
+  const driver = fixture(
+    '<a id="link" href="https://example.test/first?token=synthetic-secret">Open record</a>',
+  );
+  const before = await driver.actionTarget("#link");
+  expect(before).toMatchObject({ name: "Open record", destination: "https://example.test" });
+  expect(JSON.stringify(before)).not.toContain("synthetic-secret");
+  document.querySelector<HTMLAnchorElement>("#link")!.href =
+    "https://example.test/second?token=another-secret";
+  const after = await driver.actionTarget("#link");
+  expect(after.nodeIdentity).toBe(before.nodeIdentity);
+  expect(after.stateDigest).not.toBe(before.stateDigest);
 });

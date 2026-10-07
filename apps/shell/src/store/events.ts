@@ -74,6 +74,7 @@ export const reduceRunEvent: Reducer = (state, e) => {
         policyCategory,
         site,
         amount,
+        reviewedBatch,
       } = e.payload;
       if (
         (approvalId !== undefined && typeof approvalId !== "string") ||
@@ -99,6 +100,7 @@ export const reduceRunEvent: Reducer = (state, e) => {
           ...(typeof approvalId === "string" ? { approvalId } : {}),
           kind: kind === "touch-id" ? "touch-id" : kind === "handoff" ? "handoff" : "approval",
           policyCategory,
+          ...(reviewedBatch === true ? { reviewedBatch: true } : {}),
           site,
           ...(typeof amount === "number" ? { amount } : {}),
           threadId,

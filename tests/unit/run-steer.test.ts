@@ -11,6 +11,7 @@ import {
   steerMessage,
 } from "@aux/runtime";
 import type { Observation, PlanStep, Run } from "@aux/contracts";
+import type { ExecContext } from "../../apps/runtime/src/execution/executor.js";
 import { RunMessageQueue } from "../../apps/runtime/src/services/run-messages.js";
 import { PageOwnership } from "../../apps/runtime/src/scheduler/page-ownership.js";
 
@@ -244,7 +245,8 @@ describe("run steering", () => {
     const writeGate = new Promise<void>((resolve) => {
       releaseWrite = resolve;
     });
-    const execute = vi.fn(async (_program: { steps: PlanStep[] }) => {
+    const execute = vi.fn(async (_program: { steps: PlanStep[] }, ctx: ExecContext) => {
+      ctx.beforeDispatch?.(_program.steps[0]!);
       await writeGate;
       throw new Error("connection lost after dispatch");
     });
@@ -274,7 +276,8 @@ describe("run steering", () => {
   });
 
   it("stops on an uncertain write even when no correction arrives", async () => {
-    const execute = vi.fn(async () => {
+    const execute = vi.fn(async (program: { steps: PlanStep[] }, ctx: ExecContext) => {
+      ctx.beforeDispatch?.(program.steps[0]!);
       throw new Error("connection lost after click");
     });
     let plannerCalls = 0;

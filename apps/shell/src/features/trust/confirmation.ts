@@ -1,5 +1,6 @@
 import type { AgentPolicyCategory, ConfirmationLevel, EffectCategory } from "@aux/contracts";
 export interface TrustConfirmation {
+  reviewedBatch?: boolean;
   approvalId?: string;
   kind: "approval" | "touch-id" | "handoff";
   policyCategory: AgentPolicyCategory;

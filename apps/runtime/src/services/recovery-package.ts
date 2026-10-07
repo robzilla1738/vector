@@ -123,6 +123,16 @@ function requireQuiescent(db: DatabaseSync) {
       )
       .get() ||
     db.prepare("SELECT 1 FROM action_intents WHERE status IN ('pending','uncertain') LIMIT 1").get() ||
+    db.prepare("SELECT 1 FROM coding_repl_cells WHERE status IN ('running','parked') LIMIT 1").get() ||
+    db.prepare("SELECT 1 FROM coding_file_receipts WHERE status IN ('pending','uncertain') LIMIT 1").get() ||
+    db
+      .prepare(
+        "SELECT 1 FROM coding_process_receipts WHERE state IN ('starting','running','uncertain') LIMIT 1",
+      )
+      .get() ||
+    db
+      .prepare("SELECT 1 FROM coder_worktree_receipts WHERE state IN ('pending','uncertain') LIMIT 1")
+      .get() ||
     db
       .prepare(
         "SELECT 1 FROM run_messages WHERE status IN ('accepted','delivering','needs_attention') LIMIT 1",

@@ -164,6 +164,16 @@
   .settings-content .ui-setting-control > :is(input, select, button) {
     max-width: 100%;
   }
+  .settings-content [data-settings-field="Projects"] > .ui-setting-control {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    max-width: none;
+    justify-self: stretch;
+    margin-top: 8px;
+  }
+  .settings-content [data-settings-field="Projects"] .row > .grow {
+    flex-basis: 100%;
+  }
   .settings-content .drawer-section + .field.ui-setting,
   .settings-content section > .field.ui-setting:first-child {
     border-start-start-radius: 14px;

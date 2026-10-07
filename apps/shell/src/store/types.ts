@@ -115,11 +115,11 @@ export interface Workspace {
   setAgentDraft(text: string): void;
   composerPreferences: Record<
     string,
-    { privateTask: boolean; executionTarget?: "local" | "cloud"; modelId?: string; reasoning?: "low" | "medium" | "high" }
+    { privateTask: boolean; executionTarget?: "local" | "cloud"; profile?: string; projectRoot?: string; packageNames?: string[]; modelId?: string; agentMode?: import("@aux/contracts").AgentMode; reasoning?: "low" | "medium" | "high" }
   >;
   setComposerPreferences(
     key: string,
-    value: { privateTask: boolean; executionTarget?: "local" | "cloud"; modelId?: string; reasoning?: "low" | "medium" | "high" },
+    value: { privateTask: boolean; executionTarget?: "local" | "cloud"; profile?: string; projectRoot?: string; packageNames?: string[]; modelId?: string; agentMode?: import("@aux/contracts").AgentMode; reasoning?: "low" | "medium" | "high" },
   ): void;
   conversationDrafts: Record<string, string>;
   setConversationDraft(id: string, text: string): void;
@@ -211,7 +211,8 @@ export interface Workspace {
       privateTask?: boolean;
       executionTarget?: "local" | "cloud";
       modelId?: string;
-      reasoning?: "low" | "medium" | "high";
+      profile?: string; projectRoot?: string; packageNames?: string[];
+      agentMode?: import("@aux/contracts").AgentMode; reasoning?: "low" | "medium" | "high";
       pageId?: string | null;
       pageIds?: string[];
       contextPageRefs?: PageContextRef[];

@@ -1,3 +1,6 @@
+import { narrowCostLimit, resolveAgentProfile } from "./agent-profiles.js";
+import { selectAuxPackages } from "./aux-packages.js";
+import type { CoderWorktree } from "@aux/contracts";
 import { TranscriptStore } from "../agent/loop/transcript.js";
 import type { ModelMessage } from "../agent/loop/types.js";
 import { resourceFundingAccounting } from "./resource-accounting.js";
@@ -11,6 +14,7 @@ import {
   newRunId,
   SubagentGroupCreateParams,
   SubagentGroupSchema,
+  CoderWorktreeRecoverySchema,
   SubagentSchema,
   SubagentSpawnParams,
   type Subagent,
@@ -23,6 +27,10 @@ import type { RunService } from "./runs.js";
 type GroupRow = { body: string; state: SubagentGroup["state"] };
 type AgentRow = { body: string; state: Subagent["state"]; run_id: string | null; ended_at: number | null };
 const ACTIVE = new Set<Subagent["state"]>(["starting", "running"]);
+const narrowerLimit = (parent: number | undefined, child: number | undefined) => {
+  const limits = [parent, child].filter((value): value is number => value !== undefined && value > 0);
+  return limits.length ? Math.min(...limits) : undefined;
+};
 const RUN_ACTIVE = new Set(["queued", "planning", "running", "paused", "needs_input"]);
 
 /** Child runs share one durable budget and the existing page-ownership coordinator. */
@@ -33,6 +41,9 @@ export class SubagentService {
     private repo: Repo,
     private events: EventBus,
     private runs: RunService,
+    private coding?: {
+      create(parentRoot: string, parentRunId: string, childRunId: string): Promise<CoderWorktree>;
+    },
   ) {
     void this.reconcile().catch((error) => console.error("[aux-runtime] subagent recovery failed", error));
     this.unsubscribe = events.subscribe((event) => {
@@ -67,11 +78,68 @@ export class SubagentService {
       .get(agentId) as AgentRow | undefined;
     if (!row) throw new AuxError("not_found", "Subagent does not exist.");
     return SubagentSchema.parse({
-      ...(JSON.parse(row.body) as Record<string, unknown>),
+      ...(JSON.parse(this.repo.revealRecordField("subagents", [agentId], "body", row.body)) as Record<
+        string,
+        unknown
+      >),
       state: row.state,
       ...(row.run_id ? { runId: row.run_id } : {}),
       endedAt: row.ended_at ?? undefined,
     });
+  }
+
+  worktreeFor(agentId: string, parentRunId: string): CoderWorktree {
+    const agent = this.agent(agentId);
+    if (this.group(agent.groupId).parentRunId !== parentRunId || !agent.worktree)
+      throw new AuxError("permission_denied", "This coding worktree does not belong to the parent run.");
+    if (ACTIVE.has(agent.state))
+      throw new AuxError(
+        "conflict",
+        "Wait for the coder to finish before inspecting or integrating its worktree.",
+      );
+    return agent.worktree;
+  }
+  updateWorktree(agentId: string, worktree: CoderWorktree): void {
+    const agent = this.agent(agentId);
+    this.repo.db
+      .prepare("UPDATE subagents SET body=? WHERE agent_id=?")
+      .run(
+        this.repo.protectRecordField("subagents", [agentId], "body", JSON.stringify({ ...agent, worktree })),
+        agentId,
+      );
+    if (agent.runId) {
+      const run = this.repo.getRun(agent.runId);
+      if (run) this.repo.saveRun({ ...run, config: { ...run.config, coderWorktree: worktree } });
+    }
+  }
+
+  listForParent(runId: string): Subagent[] {
+    const row = this.repo.db
+      .prepare("SELECT group_id FROM subagent_groups WHERE parent_run_id=?")
+      .get(runId) as { group_id: string } | undefined;
+    return row ? this.agents(row.group_id) : [];
+  }
+  recoveryFor(agentId: string, parentRunId: string) {
+    const agent = this.agent(agentId);
+    if (this.group(agent.groupId).parentRunId !== parentRunId || !agent.recovery)
+      throw new AuxError("permission_denied", "This recovery does not belong to the parent run.");
+    return agent.recovery;
+  }
+  updateRecovery(agentId: string, recovery: import("@aux/contracts").CoderWorktreeRecovery) {
+    const agent = this.agent(agentId);
+    this.repo.db
+      .prepare("UPDATE subagents SET body=?,state='interrupted' WHERE agent_id=?")
+      .run(
+        this.repo.protectRecordField("subagents", [agentId], "body", JSON.stringify({ ...agent, recovery })),
+        agentId,
+      );
+  }
+
+  groupForParent(runId: string): SubagentGroup | undefined {
+    const row = this.repo.db
+      .prepare("SELECT group_id FROM subagent_groups WHERE parent_run_id=? AND state='active'")
+      .get(runId) as { group_id: string } | undefined;
+    return row ? this.group(row.group_id) : undefined;
   }
 
   groupIdForAgent(agentId: string): string {
@@ -97,11 +165,19 @@ export class SubagentService {
     pending?: boolean;
     result?: Record<string, unknown>;
     error?: string;
+    recovery?: import("@aux/contracts").CoderWorktreeRecovery;
   }> {
     const deadline = Date.now() + Math.max(0, timeoutMs);
     while (true) {
       const agent = this.agent(agentId);
       const run = agent.runId ? this.repo.getRun(agent.runId) : undefined;
+      if (agent.recovery)
+        return {
+          state: "interrupted",
+          runId: agent.runId,
+          error: "Coder worktree creation needs recovery.",
+          recovery: agent.recovery,
+        };
       if (!ACTIVE.has(agent.state))
         return {
           state: agent.state,
@@ -274,11 +350,11 @@ export class SubagentService {
     );
   }
 
-  async spawn(raw: unknown): Promise<Subagent> {
-    return this.spawnOwned(raw, false);
+  async spawn(raw: unknown, actionId?: string): Promise<Subagent> {
+    return this.spawnOwned(raw, false, actionId);
   }
 
-  private async spawnOwned(raw: unknown, fork: boolean): Promise<Subagent> {
+  private async spawnOwned(raw: unknown, fork: boolean, actionId?: string): Promise<Subagent> {
     const input = SubagentSpawnParams.parse(raw);
     const group = this.group(input.groupId);
     if (group.state !== "active" || (group.deadlineAt > 0 && Date.now() >= group.deadlineAt))
@@ -306,67 +382,137 @@ export class SubagentService {
       throw new AuxError("permission_denied", "Fork source must belong to this group.");
     const source = this.repo.getRun(sourceRunId);
     if (!source) throw new AuxError("not_found", "Fork source run does not exist.");
+    const selectedProfile = resolveAgentProfile(input.profile, parent.config?.auxPackages);
+    // Dependencies must already belong to the parent’s pinned package selection.
+    selectAuxPackages(parent.config?.auxPackages ?? [], selectedProfile.packages);
+    const parentTools = parent.config?.agentProfile?.tools;
+    const tools =
+      !parentTools || parentTools.includes("*")
+        ? selectedProfile.tools
+        : selectedProfile.tools.includes("*")
+          ? parentTools
+          : selectedProfile.tools.filter((tool) => parentTools.includes(tool));
+    if (!tools.length)
+      throw new AuxError("permission_denied", "This profile has no tools within the parent's authority.");
+    const inheritedLimits = parent.config?.agentProfile?.limits;
+    const profile = {
+      ...selectedProfile,
+      tools,
+      limits: {
+        maxModelCalls: narrowerLimit(inheritedLimits?.maxModelCalls, selectedProfile.limits?.maxModelCalls),
+        maxCostUsd: narrowCostLimit(inheritedLimits?.maxCostUsd, selectedProfile.limits?.maxCostUsd),
+        deadlineMs: narrowerLimit(inheritedLimits?.deadlineMs, selectedProfile.limits?.deadlineMs),
+      },
+    };
+    if (!input.pageIds.length && !parent.config?.projectRoot)
+      throw new AuxError(
+        "invalid_params",
+        "Attach pages or a reviewed coding project before spawning an agent.",
+      );
+    if (profile.workspace === "isolated" && (!parent.config?.projectRoot || !this.coding))
+      throw new AuxError(
+        "capability_unsupported",
+        "An isolated profile requires an attached Git project and governed worktree support.",
+      );
+    const reserved = actionId
+      ? this.agents(group.groupId).find((agent) => agent.spawnActionId === actionId)
+      : undefined;
+    if (reserved && reserved.state !== "starting" && reserved.recovery?.state !== "incomplete")
+      return reserved;
     const now = Date.now(),
-      agentId = randomUUID(),
-      childRunId = newRunId();
+      agentId = reserved?.agentId ?? randomUUID(),
+      childRunId = reserved?.runId ?? newRunId();
     let forkTranscript: ModelMessage[] | undefined;
-    this.repo.db.exec("BEGIN IMMEDIATE");
-    try {
-      if (
-        this.group(group.groupId).state !== "active" ||
-        (group.deadlineAt > 0 && Date.now() >= group.deadlineAt) ||
-        !RUN_ACTIVE.has(this.repo.getRun(group.parentRunId)?.status ?? "missing")
-      )
-        throw new AuxError("conflict", "The parent or subagent group changed before reservation.");
-      if (this.runs.coordinator.suspensions.pending(rootId)?.kind === "budget")
-        throw new AuxError("conflict", "The parent budget paused before this agent's reservation.");
-      const view = this.view(group.groupId);
-      if (
-        (group.tokenBudget > 0 &&
-          (input.tokenAllocation === 0 ||
-            view.usedTokens + view.reservedTokens + input.tokenAllocation > group.tokenBudget)) ||
-        (group.costBudgetUsd > 0 &&
-          (input.costAllocationUsd === 0 ||
-            view.usedCostUsd + view.reservedCostUsd + input.costAllocationUsd > group.costBudgetUsd))
-      )
-        throw new AuxError("permission_denied", "This child exceeds the shared subagent budget.");
-      const pageOwners = this.runs.pageOwnership.snapshot();
-      if (
-        input.pageIds.some(
-          (pageId) =>
-            pageOwners[pageId] ||
-            view.agents.some((agent) => ACTIVE.has(agent.state) && agent.pageIds.includes(pageId)),
+    if (!reserved) {
+      this.repo.db.exec("BEGIN IMMEDIATE");
+      try {
+        if (
+          this.group(group.groupId).state !== "active" ||
+          (group.deadlineAt > 0 && Date.now() >= group.deadlineAt) ||
+          !RUN_ACTIVE.has(this.repo.getRun(group.parentRunId)?.status ?? "missing")
         )
-      )
-        throw new AuxError("conflict", "A selected page is already leased to another run.");
-      if (fork)
-        forkTranscript = new TranscriptStore(this.repo.db, this.repo.columnCipher).forkPrefix(sourceRunId);
-      const agent = SubagentSchema.parse({
-        ...input,
-        agentId,
-        sourceRunId,
-        state: "starting",
-        runId: childRunId,
-        createdAt: now,
-      });
-      this.repo.db
-        .prepare(
-          "INSERT INTO subagents(agent_id,group_id,reserved_run_id,state,body,created_at) VALUES(?,?,?,'starting',?,?)",
+          throw new AuxError("conflict", "The parent or subagent group changed before reservation.");
+        if (this.runs.coordinator.suspensions.pending(rootId)?.kind === "budget")
+          throw new AuxError("conflict", "The parent budget paused before this agent's reservation.");
+        const view = this.view(group.groupId);
+        if (
+          (group.tokenBudget > 0 &&
+            (input.tokenAllocation === 0 ||
+              view.usedTokens + view.reservedTokens + input.tokenAllocation > group.tokenBudget)) ||
+          (group.costBudgetUsd > 0 &&
+            (input.costAllocationUsd === 0 ||
+              view.usedCostUsd + view.reservedCostUsd + input.costAllocationUsd > group.costBudgetUsd))
         )
-        .run(agentId, group.groupId, childRunId, JSON.stringify(agent), now);
-      this.repo.db.exec("COMMIT");
-    } catch (error) {
-      this.repo.db.exec("ROLLBACK");
-      throw error;
+          throw new AuxError("permission_denied", "This child exceeds the shared subagent budget.");
+        const pageOwners = this.runs.pageOwnership.snapshot();
+        if (
+          input.pageIds.some(
+            (pageId) =>
+              pageOwners[pageId] ||
+              view.agents.some((agent) => ACTIVE.has(agent.state) && agent.pageIds.includes(pageId)),
+          )
+        )
+          throw new AuxError("conflict", "A selected page is already leased to another run.");
+        if (fork)
+          forkTranscript = new TranscriptStore(this.repo.db, this.repo.columnCipher).forkPrefix(sourceRunId);
+        const agent = SubagentSchema.parse({
+          ...input,
+          agentId,
+          sourceRunId,
+          spawnActionId: actionId,
+          state: "starting",
+          runId: childRunId,
+          createdAt: now,
+        });
+        this.repo.db
+          .prepare(
+            "INSERT INTO subagents(agent_id,group_id,reserved_run_id,state,body,created_at) VALUES(?,?,?,'starting',?,?)",
+          )
+          .run(
+            agentId,
+            group.groupId,
+            childRunId,
+            this.repo.protectRecordField("subagents", [agentId], "body", JSON.stringify(agent)),
+            now,
+          );
+        this.repo.db.exec("COMMIT");
+      } catch (error) {
+        this.repo.db.exec("ROLLBACK");
+        throw error;
+      }
     }
     try {
       if (this.group(group.groupId).state !== "active")
         throw new AuxError("conflict", "The subagent group closed before launch.");
+      const worktree =
+        profile.workspace === "isolated"
+          ? await this.coding!.create(parent.config!.projectRoot!, parent.runId, childRunId)
+          : undefined;
+      if (worktree) {
+        const agent = this.agent(agentId);
+        this.repo.db.prepare("UPDATE subagents SET state='starting' WHERE agent_id=?").run(agentId);
+        this.repo.db
+          .prepare("UPDATE subagents SET body=? WHERE agent_id=?")
+          .run(
+            this.repo.protectRecordField(
+              "subagents",
+              [agentId],
+              "body",
+              JSON.stringify({ ...agent, worktree, recovery: undefined }),
+            ),
+            agentId,
+          );
+      }
       const run = await this.runs.start({
         deliveryRunId: childRunId,
         forkTranscript,
         ...(fork ? { modelId: source.config?.modelId } : {}),
         goal: input.goal,
+        agentMode: parent.config?.agentMode,
+        agentProfile: profile,
+        auxPackages: parent.config?.auxPackages,
+        projectRoot: worktree?.root ?? parent.config?.projectRoot,
+        coderWorktree: worktree,
         pageIds: input.pageIds,
         chatId: agentId,
         contextWorkspaceId: group.workspaceId,
@@ -376,10 +522,21 @@ export class SubagentService {
         executionTarget: source.config?.executionTarget ?? "local",
         reasoning: source.config?.reasoning,
         contextSnapshot: true,
-        instructions: `Subagent profile: ${input.profile}. Work within your selected pages and report findings to the parent.`,
-        maxModelCalls: input.maxModelCalls,
-        deadlineMs: group.deadlineAt === 0 ? 0 : Math.max(1, group.deadlineAt - Date.now()),
-        maxCostUsd: input.costAllocationUsd > 0 ? input.costAllocationUsd : undefined,
+        maxModelCalls: profile.limits?.maxModelCalls
+          ? Math.min(input.maxModelCalls || Infinity, profile.limits.maxModelCalls)
+          : input.maxModelCalls,
+        deadlineMs: profile.limits?.deadlineMs
+          ? Math.min(
+              group.deadlineAt === 0 ? Infinity : Math.max(1, group.deadlineAt - Date.now()),
+              profile.limits.deadlineMs,
+            )
+          : group.deadlineAt === 0
+            ? 0
+            : Math.max(1, group.deadlineAt - Date.now()),
+        maxCostUsd: narrowCostLimit(
+          input.costAllocationUsd > 0 ? input.costAllocationUsd : undefined,
+          profile.limits?.maxCostUsd,
+        ),
         subagentProfile: input.profile,
       });
       const bound = this.repo.db
@@ -392,6 +549,19 @@ export class SubagentService {
       await this.reconcileRun(run.runId);
       return this.agent(agentId);
     } catch (error) {
+      if (
+        error instanceof AuxError &&
+        error.code === "operation_uncertain" &&
+        error.detail &&
+        typeof error.detail === "object" &&
+        "worktreeRecovery" in error.detail
+      ) {
+        const recovery = CoderWorktreeRecoverySchema.parse(error.detail.worktreeRecovery);
+        this.updateRecovery(agentId, recovery);
+        return this.agent(agentId);
+      }
+      if (error instanceof AuxError && (error.code === "needs_input" || error.code === "operation_uncertain"))
+        throw error;
       // start can create the run before a later launch step rejects. The stable
       // run ID lets us find and stop that child even when start itself throws.
       const launched = this.repo.getRun(childRunId);

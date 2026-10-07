@@ -1,7 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { accessSync, constants, realpathSync, statSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { AuxError } from "@aux/contracts";
 import { TerminalSessionSchema, type TerminalStart, type TerminalSession } from "@aux/contracts/terminal";
 import { TerminalPreviewParams, TerminalPreviewSchema, type TerminalPreview } from "@aux/contracts/terminal";
@@ -32,25 +30,13 @@ type Owned = {
   retiringPreviews: Set<string>;
   previewClosures: Map<string, Promise<{ closed: boolean }>>;
 };
-function executable(client: TerminalStart["client"]): string {
-  const roots = [
-    ...(process.env.PATH ?? "").split(":"),
-    join(homedir(), ".local", "bin"),
-    "/opt/homebrew/bin",
-    "/usr/local/bin",
-  ].filter(Boolean);
-  for (const root of roots)
-    try {
-      const path = realpathSync(join(root, client));
-      accessSync(path, constants.X_OK);
-      return path;
-    } catch {
-      /* Continue through the user's executable search path. */
-    }
-  throw new AuxError(
-    "backend_unavailable",
-    `Install ${client === "claude" ? "Claude Code" : "Codex"} and sign in with your own account first.`,
-  );
+function executable(): string {
+  const shell = process.env.SHELL ?? "/bin/zsh";
+  const path = realpathSync(shell);
+  if (!["/bin/zsh", "/bin/bash", "/bin/sh"].includes(path))
+    throw new AuxError("permission_denied", "Choose a system shell for the Aux terminal.");
+  accessSync(path, constants.X_OK);
+  return path;
 }
 /** Human terminal sessions are ephemeral and belong to one original native document. */
 export class TerminalService {
@@ -137,7 +123,7 @@ export class TerminalService {
         token,
         terminalId: session.terminalId,
         cwd: owned.cwd,
-        executable: executable(input.client),
+        executable: executable(),
         rootDevice: root.dev.toString(),
         rootInode: root.ino.toString(),
       };

@@ -391,8 +391,8 @@ export class SettingsService {
   }
 
   /** Trusted approval writer; called inside the same Repo transaction as consuming acceptance. */
-  allowAgentSite(action: SafetyAction): void {
-    if (!action.origin || action.recipient)
+  allowAgentSite(action: SafetyAction, scope: "site" | "global" = "site"): void {
+    if (scope === "site" && (!action.origin || action.recipient))
       throw new AuxError("invalid_params", "Choose an exact site for this permission.");
     const current = this.agentPolicy();
     if ((action.policyRevision ?? 0) !== current.agentPolicyRevision)
@@ -400,7 +400,7 @@ export class SettingsService {
     const category = agentPolicyCategoryFor(action.category ?? "external_tool", action.action);
     if (category === "account_security" || category === "captcha")
       throw new AuxError("permission_denied", "This action requires a person.");
-    const rule = { category, site: new URL(action.origin).origin, access: "allow" as const };
+    const rule = { category, ...(scope === "site" && action.origin ? { site: new URL(action.origin).origin } : {}), access: "allow" as const };
     const next = AgentPolicySettingsSchema.parse({
       ...current,
       agentPolicyRevision: current.agentPolicyRevision + 1,

@@ -1,0 +1,42 @@
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -1121,16 +1121,16 @@
+   }
+   if (method == "native.terminalStart") {
+     const auto* executable = params.FindString("executable"), *cwd = params.FindString("cwd"),
+-        *workspace = params.FindString("workspaceId"), *folder = params.FindString("folderId"), *client = params.FindString("client"), *device = params.FindString("rootDevice"), *inode = params.FindString("rootInode");
++        *workspace = params.FindString("workspaceId"), *folder = params.FindString("folderId"), *device = params.FindString("rootDevice"), *inode = params.FindString("rootInode");
+     const auto cols = params.FindInt("cols"), rows = params.FindInt("rows");
+-    if (params.size() != 11 || !device || !inode || session != native_terminals_.end() || !executable || !cwd || !workspace || workspace->empty() ||
+-        !folder || !base::Uuid::ParseLowercase(*folder).is_valid() || !client || (*client != "claude" && *client != "codex") ||
++    if (params.size() != 10 || !device || !inode || session != native_terminals_.end() || !executable || !cwd || !workspace || workspace->empty() ||
++        !folder || !base::Uuid::ParseLowercase(*folder).is_valid() ||
+         !cols || *cols < 2 || *cols > 500 || !rows || *rows < 1 || *rows > 300) { fail("Exact terminal launch is required"); return; }
+     if (native_terminals_.size() >= 64) std::erase_if(native_terminals_, [](const auto& entry) { return *entry.second->Session().FindString("state") == "closed"; });
+     if (native_terminals_.size() >= 64) { fail("Close an existing terminal first"); return; }
+     auto* frame = owner->second.document.AsRenderFrameHostIfValid();
+     auto terminal = std::make_unique<aux::NativeTerminal>(content::WebContents::FromRenderFrameHost(frame), owner->second.document, *token,
+-        base::DictValue().Set("terminalId", *id).Set("workspaceId", *workspace).Set("folderId", *folder).Set("client", *client).Set("cols", *cols).Set("rows", *rows).Set("state", "running"));
++        base::DictValue().Set("terminalId", *id).Set("workspaceId", *workspace).Set("folderId", *folder).Set("cols", *cols).Set("rows", *rows).Set("state", "running"));
+     std::string error;
+     if (!terminal->Start(*executable, *cwd, *device, *inode, &error)) { native_terminals_.emplace(*id, std::move(terminal)); fail(error); return; }
+     auto result = terminal->Session(); native_terminals_.emplace(*id, std::move(terminal));
+diff --git a/chrome/browser/ui/aux/native_terminal.cc b/chrome/browser/ui/aux/native_terminal.cc
+--- a/chrome/browser/ui/aux/native_terminal.cc
++++ b/chrome/browser/ui/aux/native_terminal.cc
+@@ -63,12 +63,8 @@
+ bool NativeTerminal::Current() const { return document_.AsRenderFrameHostIfValid() && web_contents(); }
+ base::DictValue NativeTerminal::Session() const { return session_.Clone(); }
+ bool NativeTerminal::Start(const std::string& executable, const std::string& cwd, const std::string& device, const std::string& inode, std::string* error) {
+-  // This original terminal must not adopt/reuse the user's shared Codex daemon.
+-  const auto* client = session_.FindString("client");
+-  const bool codex = client && *client == "codex";
+-  dedicated_descendants_ = codex;
+-  return StartCommand(executable, codex ? std::vector<std::string>{"--no-daemon"} : std::vector<std::string>{},
+-                      {}, cwd, device, inode, error);
++  dedicated_descendants_ = true;
++  return StartCommand(executable, {"-l"}, {}, cwd, device, inode, error);
+ }
+ bool NativeTerminal::StartCommand(const std::string& executable, const std::vector<std::string>& args,
+     const std::vector<std::string>& overrides, const std::string& cwd,

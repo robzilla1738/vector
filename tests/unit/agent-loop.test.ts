@@ -1,3 +1,4 @@
+import type { ExecContext } from "../../apps/runtime/src/execution/executor.js";
 import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { AuxError } from "@aux/contracts";
@@ -483,6 +484,62 @@ describe("runAgentLoop (S5)", () => {
     expect(part.output).toMatchObject({ type: "text", value: "blue" });
   });
 
+  it("resumes the exact governed call after restart and another decision without replaying prior calls", async () => {
+    const { transcript, db } = fixture();
+    let approval = 0,
+      writes = 0,
+      prior = 0;
+    const calls: string[] = [];
+    const deps: LoopToolDeps = {
+      codingTool: async (_name, input, context) => {
+        calls.push(context.toolCallId!);
+        if (approval < 2)
+          throw new AuxError("needs_input", "Review write", {
+            park: {
+              kind: "action-confirmation",
+              instruction: "Review write",
+              approvalId: `approval-${approval}`,
+            },
+          });
+        writes++;
+        return { output: { written: input } };
+      },
+    };
+    const options = baseOpts(transcript, deps);
+    options.tools.get_time!.execute = () => {
+      prior++;
+      return { output: { time: 1 } };
+    };
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [
+          { toolCallId: "prior", toolName: "get_time", input: {} },
+          {
+            toolCallId: "write",
+            toolName: "apply_changes",
+            input: { changes: [{ kind: "create", path: "/project/a", content: "x" }] },
+          },
+        ],
+      },
+      { text: "done" },
+    ]);
+    expect((await runAgentLoop({ ...options, model })).kind).toBe("parked");
+    approval = 1;
+    const reopened = new TranscriptStore(db);
+    expect((await resumeAgentLoop({ ...options, transcript: reopened, model }, "approved")).kind).toBe(
+      "parked",
+    );
+    approval = 2;
+    expect((await resumeAgentLoop({ ...options, transcript: reopened, model }, "approved")).kind).toBe(
+      "done",
+    );
+    expect(prior).toBe(1);
+    expect(writes).toBe(1);
+    expect(calls).toEqual(["write", "write", "write"]);
+    const results = reopened.load("run-1").filter((message) => message.role === "tool");
+    expect(results).toHaveLength(1);
+  });
+
   it("fails a resume when no park is open", async () => {
     const { transcript } = fixture();
     const model = new MockModelClient();
@@ -774,21 +831,49 @@ function coordinatorHarness(
   model: MockModelClient,
   execute?: (
     program: { steps: PlanStep[] },
-    ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void },
+    ctx?: ExecContext,
   ) => { status: string; steps: StepOutcome[]; observation?: Observation },
 ) {
   const db = openDb(":memory:");
   cleanup.push(() => db.close());
   const repo = new Repo(db);
   const events = new EventBus(repo);
+  const dispatch = vi.fn(
+    async (program: { steps: PlanStep[] }, ctx?: ExecContext) =>
+      execute?.(program, ctx) ?? { status: "completed", steps: [] },
+  );
   const pages = {
     observe: vi.fn(async () => pageObs()),
-    execute: vi.fn(
-      async (
-        program: { steps: PlanStep[] },
-        ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void },
-      ) => execute?.(program, ctx) ?? { status: "completed", steps: [] },
-    ),
+    execute: vi.fn(async (program: { steps: PlanStep[] }, ctx?: ExecContext) => {
+      const resumed: StepOutcome[] = [];
+      const steps = program.steps.filter((step) => {
+        const outcome = ctx?.resumeStep?.(step);
+        if (!outcome) return true;
+        resumed.push(outcome);
+        ctx?.onStep?.(outcome, step);
+        return false;
+      });
+      if (!steps.length && resumed.length) return { status: "completed", steps: resumed };
+      const emitted = new Set<string>();
+      // A mocked driver outcome is its dispatch boundary. Admission failures never dispatch;
+      // dispatched failures still begin and settle a real durable intent, as the executor does.
+      const emit: NonNullable<ExecContext["onStep"]> = (outcome, step) => {
+        if (emitted.has(step.id)) return;
+        emitted.add(step.id);
+        if (outcome.error?.code !== "needs_input") {
+          ctx?.beforeJournal?.();
+          ctx?.beforeDispatch?.(step);
+          ctx?.settleStep?.(outcome, step);
+        }
+        ctx?.onStep?.(outcome, step);
+      };
+      const result = await dispatch({ ...program, steps }, { ...ctx, onStep: emit });
+      for (const [index, outcome] of result.steps.entries()) {
+        const step = steps[index];
+        if (step) emit(outcome, step);
+      }
+      return { ...result, steps: [...resumed, ...result.steps] };
+    }),
     livePageIds: () => ["p1"],
     get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({
       ...fixturePage(fixturePageId, "http://x.test/order", 1),
@@ -821,9 +906,8 @@ function coordinatorHarness(
         createdAt: Date.now(),
       });
     },
-
   });
-  return { db, repo, coordinator, pages, modelCalls };
+  return { db, repo, coordinator, pages, dispatch, modelCalls };
 }
 
 async function settle(repo: Repo, runId: string) {
@@ -837,11 +921,34 @@ async function settle(repo: Repo, runId: string) {
 }
 
 describe("runToolLoop (S5 host integration)", () => {
+  it("restores the saved current plan as bounded harness context before the next model call", async () => {
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [
+          {
+            toolCallId: "plan",
+            toolName: "write_todos",
+            input: { todos: ["Update parser", "Check changed behavior"] },
+          },
+        ],
+      },
+      { text: "Plan saved" },
+    ]);
+    const calls = vi.spyOn(model, "toolCallStep");
+    const h = coordinatorHarness(model);
+    const run = await h.coordinator.start({ goal: "Update parser", pageIds: [], chatId: "chat-1" });
+    await settle(h.repo, run.runId);
+    expect(JSON.stringify(calls.mock.calls[1]?.[0])).toContain("Current durable plan:");
+    expect(JSON.stringify(calls.mock.calls[1]?.[0])).toContain("Update parser\\nCheck changed behavior");
+  });
+
   it("persists a fork prefix with its own task before the actual child SDK dispatch", async () => {
     const model = new MockModelClient().scriptToolSteps([{ text: "Child findings" }]);
     const nextStep = model.toolCallStep.bind(model);
     let release!: () => void;
-    const held = new Promise<void>((resolve) => { release = resolve; });
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     const entered = vi.fn((request: Parameters<typeof model.toolCallStep>[0]) => request);
     model.toolCallStep = async (request) => {
       entered(request);
@@ -852,11 +959,27 @@ describe("runToolLoop (S5 host integration)", () => {
     const transcript = new TranscriptStore(h.db, h.repo.columnCipher);
     const prefix: ModelMessage[] = [
       { role: "user", content: "Original source task" },
-      { role: "assistant", content: [{ type: "tool-call", toolCallId: "source-read", toolName: "snapshot", input: {} }] },
-      { role: "tool", content: [{ type: "tool-result", toolCallId: "source-read", toolName: "snapshot", output: { type: "json", value: { title: "Source findings" } } }] },
+      {
+        role: "assistant",
+        content: [{ type: "tool-call", toolCallId: "source-read", toolName: "snapshot", input: {} }],
+      },
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "source-read",
+            toolName: "snapshot",
+            output: { type: "json", value: { title: "Source findings" } },
+          },
+        ],
+      },
     ];
     const run = await h.coordinator.start({
-      goal: "Follow the findings", pageIds: [], modelId: "test/source-model", forkTranscript: prefix,
+      goal: "Follow the findings",
+      pageIds: [],
+      modelId: "test/source-model",
+      forkTranscript: prefix,
     });
     try {
       await vi.waitFor(() => expect(entered).toHaveBeenCalledOnce());
@@ -891,7 +1014,7 @@ describe("runToolLoop (S5 host integration)", () => {
       return nextStep(opts);
     };
     const h = coordinatorHarness(model);
-    const run = await h.coordinator.start({ goal: "Chat without a page", pageIds: [], });
+    const run = await h.coordinator.start({ goal: "Chat without a page", pageIds: [] });
     try {
       await vi.waitFor(() =>
         expect(
@@ -936,7 +1059,10 @@ describe("runToolLoop (S5 host integration)", () => {
       gateCount: 0,
       calls: 3,
       checkEvidence: (evidence: { pending: unknown; park: unknown; row: unknown; transcript: string }) => {
-        expect(evidence.pending).toMatchObject({ kind: "budget", request: { budget: { reason: "model_calls", limit: 3 } } });
+        expect(evidence.pending).toMatchObject({
+          kind: "budget",
+          request: { budget: { reason: "model_calls", limit: 3 } },
+        });
         expect(evidence.transcript).toContain("Web tools cannot contact a private or local network address.");
         expect(evidence.transcript).not.toContain("redeclaration");
       },
@@ -1077,9 +1203,11 @@ describe("runToolLoop (S5 host integration)", () => {
       cancel: (runId: string) => h.coordinator.cancel(runId),
     } as unknown as ConstructorParameters<typeof GoalService>[1];
     const goals = new GoalService(h.repo, runs);
-    h.coordinator.deps.funding = new RunFundingService(h.repo, resourceFundingAccounting(h.repo), async () => [
-      { id: "test/agent", source: "configured", inputUsdPerMTok: 1, outputUsdPerMTok: 1 },
-    ]);
+    h.coordinator.deps.funding = new RunFundingService(
+      h.repo,
+      resourceFundingAccounting(h.repo),
+      async () => [{ id: "test/agent", source: "configured", inputUsdPerMTok: 1, outputUsdPerMTok: 1 }],
+    );
     const goal = goals.create({
       workspaceId: space.workspaceId,
       chatId: "chat-goal",
@@ -1111,7 +1239,10 @@ describe("runToolLoop (S5 host integration)", () => {
     const rejected = await goals.start(tooSmall.goalId, ["p1"]);
     await vi.waitFor(() => expect(h.repo.getRun(rejected.runId!)?.status).toBe("needs_input"));
     expect(h.coordinator.suspensions.pending(rejected.runId!)).toMatchObject({
-      kind: "budget", request: { budget: { reason: "tokens", limit: 20_000, funding: { kind: "goal", ownerId: tooSmall.goalId } } },
+      kind: "budget",
+      request: {
+        budget: { reason: "tokens", limit: 20_000, funding: { kind: "goal", ownerId: tooSmall.goalId } },
+      },
     });
     expect(h.modelCalls).toHaveLength(before);
   });
@@ -1226,9 +1357,9 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.pages.execute.mock.calls[0]?.[0].steps.map((step) => step.op)).toEqual(
       batched ? ["fill", "check"] : ["check"],
     );
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual([
-      { status: "confirmed" },
-    ]);
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual(
+      Array.from({ length: batched ? 2 : 1 }, () => ({ status: "confirmed" })),
+    );
   });
 
   it("rejects a redundant rich-text focus click before dispatch, then types directly", async () => {
@@ -1506,16 +1637,23 @@ describe("runToolLoop (S5 host integration)", () => {
     ]);
     const h = coordinatorHarness(model);
     h.pages.observe.mockImplementation(async () => current);
-    h.pages.execute.mockImplementation(
+    h.dispatch.mockImplementation(
       async (
         program: { steps: PlanStep[] },
         ctx?: {
           onStep?: (o: StepOutcome, s: PlanStep) => void;
           journaled?: boolean;
           journalIntentId?: string;
+          journalPerStep?: boolean;
+          beforeDispatch?: unknown;
+          settleStep?: unknown;
         },
       ) => {
-        if (ctx?.journaled && !ctx.journalIntentId)
+        if (
+          ctx?.journaled &&
+          !ctx.journalIntentId &&
+          !(ctx.journalPerStep && ctx.beforeDispatch && ctx.settleStep)
+        )
           throw new Error("A pre-journaled browser write requires its durable intent ID");
         const op = program.steps[0]?.op;
         current =
@@ -1568,7 +1706,7 @@ describe("runToolLoop (S5 host integration)", () => {
       chatId: "chat-1",
     });
     const final = await settle(h.repo, run.runId);
-    expect(final.status).toBe("completed");
+    expect(final.status, final.error).toBe("completed");
     expect(final.result).toMatchObject({ report: "rec-14" });
     expect(h.modelCalls).toHaveLength(1);
     expect(h.pages.execute).toHaveBeenCalledTimes(2);
@@ -1647,16 +1785,23 @@ describe("runToolLoop (S5 host integration)", () => {
     ]);
     const h = coordinatorHarness(model);
     h.pages.observe.mockImplementation(async () => current);
-    h.pages.execute.mockImplementation(
+    h.dispatch.mockImplementation(
       async (
         program: { steps: PlanStep[] },
         ctx?: {
           onStep?: (o: StepOutcome, s: PlanStep) => void;
           journaled?: boolean;
           journalIntentId?: string;
+          journalPerStep?: boolean;
+          beforeDispatch?: unknown;
+          settleStep?: unknown;
         },
       ) => {
-        if (ctx?.journaled && !ctx.journalIntentId)
+        if (
+          ctx?.journaled &&
+          !ctx.journalIntentId &&
+          !(ctx.journalPerStep && ctx.beforeDispatch && ctx.settleStep)
+        )
           throw new Error("A pre-journaled browser write requires its durable intent ID");
         current = {
           ...current,
@@ -1718,7 +1863,7 @@ describe("runToolLoop (S5 host integration)", () => {
     ]);
     const h = coordinatorHarness(model);
     h.pages.observe.mockImplementation(async () => current);
-    h.pages.execute.mockImplementation(
+    h.dispatch.mockImplementation(
       async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
         current = {
           ...current,
@@ -1872,7 +2017,21 @@ describe("runToolLoop (S5 host integration)", () => {
       },
       { text: "approved and done" },
     ]);
-    const h = coordinatorHarness(model, (_program, ctx) => {
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const answered = h.db
+        .prepare("SELECT state FROM safety_suspensions WHERE run_id=? AND kind='approval'")
+        .get(ctx?.runId ?? "") as { state: string } | undefined;
+      if (answered?.state === "answered")
+        return {
+          status: "completed",
+          steps: program.steps.map((step) => ({
+            stepId: step.id,
+            op: step.op,
+            status: "ok" as const,
+            startedAt: 1,
+            durationMs: 1,
+          })),
+        };
       // What the real gate does on `ask`: park a typed suspension, fail the step needs_input.
       h.coordinator.suspensions.park({
         runId: ctx?.runId ?? "",
@@ -1914,11 +2073,23 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(
       h.db.prepare("SELECT COUNT(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId),
     ).toEqual({ n: 1 });
+    expect(h.db.prepare("SELECT count(*) AS n FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({
+      n: 0,
+    });
+    const reviewedSteps = h.pages.execute.mock.calls[0]![0].steps;
     const resolved = h.coordinator.suspensions.resolveByApprovalId("ap-9", "answered");
     expect(resolved?.runId).toBe(run.runId);
     await h.coordinator.answer(run.runId, "The user approved.");
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
+    expect(h.dispatch).toHaveBeenCalledTimes(2);
+    expect(h.pages.execute.mock.calls[1]![0].steps).toEqual(reviewedSteps);
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual([
+      { status: "confirmed" },
+    ]);
+    expect(
+      h.db.prepare("SELECT count(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId),
+    ).toEqual({ n: 1 });
   });
 
   it("runs code-mode page ops through the governed act path", async () => {
@@ -2087,7 +2258,9 @@ describe("runToolLoop (S5 host integration)", () => {
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
-    expect(final.result).toMatchObject({ unconfirmedWrites: ["s1"] });
+    expect(final.result).toMatchObject({
+      unconfirmedWrites: [h.pages.execute.mock.calls[0]![0].steps[0]!.id],
+    });
 
     // The completed executor receipt confirms the write independently.
     const bare = new MockModelClient().scriptToolSteps([
@@ -2124,7 +2297,9 @@ describe("runToolLoop (S5 host integration)", () => {
     });
     const final2 = await settle(h2.repo, run2.runId);
     expect(final2.status).toBe("completed");
-    expect(final2.result).toMatchObject({ unconfirmedWrites: ["s1"] });
+    expect(final2.result).toMatchObject({
+      unconfirmedWrites: [h2.pages.execute.mock.calls[0]![0].steps[0]!.id],
+    });
   });
 
   it("blocks submit_result while an uncertain dispatch is in the ledger", async () => {

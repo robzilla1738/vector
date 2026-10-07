@@ -2,7 +2,7 @@ import type { ObservationContent, Program, Step } from "@aux/contracts";
 import type { ExecContext } from "../execution/executor.js";
 import type { ExecuteResult, PageService } from "../services/pages.js";
 import { compileAndAuthorize } from "./action-compiler.js";
-import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "./durable.js";
+import { journalProgramSteps, stepSignature, type DurableWriteLedger } from "./durable.js";
 import { collectProgramSteps } from "../services/pages/executor.js";
 import type { SkillGuard } from "./skills.js";
 
@@ -14,6 +14,7 @@ export type GuardedDispatchDeps = {
 
 export type GuardedDispatchOpts = {
   runId: string;
+  actionId?: string;
   pageId: string;
   steps: Step[];
   observation: ObservationContent;
@@ -69,12 +70,17 @@ export async function guardedExecute(
   if (opts.isCurrent && !opts.isCurrent())
     return { kind: "rejected", reason: "The user corrected this run; re-plan before acting." };
   const program = { ...prepared.program, ...opts.program };
-  const write = beginConsequentialWrite(deps.durable, {
+  if (opts.actionId && program.steps)
+    program.steps = program.steps.map((step, index) => ({ ...step, id: `${opts.actionId}:step:${index}` }));
+  const journal = journalProgramSteps(deps.durable, {
     runId: opts.runId,
     pageId: opts.pageId,
-    documentEpoch: prepared.program.documentEpoch ?? opts.documentEpoch,
+    documentEpoch: opts.documentEpoch,
+    inputSignature: opts.actionId ? stepSignature(opts.steps.map(({ id, ...step }) => step)) : undefined,
     revision: opts.revision,
-    steps: collectProgramSteps(program),
+    actionId:
+      opts.actionId ??
+      `run:${opts.runId}:epoch:${opts.documentEpoch}:revision:${opts.revision ?? 0}:${stepSignature(collectProgramSteps(program))}`,
     beforeText: opts.beforeText,
     actionLabels: opts.actionLabels,
     expectedNavigationUrlHash: opts.expectedNavigationUrlHash,
@@ -83,17 +89,15 @@ export async function guardedExecute(
     taskId: opts.taskId,
     taskRevision: opts.taskRevision,
   });
-  if (write.skip) return { kind: "skipped", reason: write.reason! };
   const result = await deps.pages.execute(
     program,
     {
       ...opts.exec,
-      // Navigation has no durable write intent. Let the executor classify it
-      // normally instead of claiming a pre-journaled write without an ID.
-      ...(write.intentId ? { journaled: true, journalIntentId: write.intentId } : {}),
+      ...journal,
+      journaled: true,
+      journalPerStep: true,
     },
     opts.returnObservation ? { returnObservation: opts.returnObservation } : {},
   );
-  settleWrite(deps.durable, write.intentId, result);
   return { kind: "ran", result, program };
 }

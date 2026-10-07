@@ -41,12 +41,12 @@ it("writes category policies separately with the original revision", async () =>
     agentPolicyRevision: 7,
   });
 });
-it("requires the Full auto opt-in before saving mode", async () => {
+it("requires the Skip confirmation opt-in before saving mode", async () => {
   const save = vi.fn().mockResolvedValue(true);
   await act(async () => root.render(<PermissionsSettings active settings={settings} onSave={save} />));
   await act(async () =>
     [...host.querySelectorAll<HTMLButtonElement>('[role="radio"]')]
-      .find((button) => button.textContent === "Full auto")!
+      .find((button) => button.textContent === "Skip confirmation")!
       .click(),
   );
   expect(save).not.toHaveBeenCalled();

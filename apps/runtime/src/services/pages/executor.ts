@@ -1,3 +1,5 @@
+import type { SafetyDispatchGate } from "../../safety/dispatch.js";
+import type { AuthorizationProvenance } from "@aux/contracts";
 import { checkNightShiftDispatch } from "../../features/overnight-review/service.js";
 import {
   AuxError,
@@ -14,7 +16,7 @@ import {
   SavedCredentialTargetSchema,
   newStepId,
 } from "@aux/contracts";
-import { beginConsequentialWrite, settleWrite } from "../../agent/durable.js";
+import { settleWrite, journalProgramSteps, stepSignature } from "../../agent/durable.js";
 import { isReadOnlyProfile, authorizeProfileProgram, classifyStep } from "../../agent/permissions.js";
 import { type ExecContext, executeProgram } from "../../execution/executor.js";
 import { secureCredentialHandoff } from "../../safety/credential-handoff.js";
@@ -105,7 +107,7 @@ export class ProgramExecutor {
         let admittedDriver = lp.driver;
         let admittedSession = lp.target.sessionId;
         const expectedEpoch = lp.target.controllerEpoch;
-        const checkPolicy = this.pages.deps.safetyGate?.policyFence();
+        const checkPolicy = this.pages.deps.safetyGate?.policyFence(ctx.runId);
         const checkIncarnation = () => {
           checkPolicy?.();
           if (
@@ -122,6 +124,22 @@ export class ProgramExecutor {
             throw new AuxError("conflict", `page ${pageId} changed controller mid-run (takeover)`);
         };
         const allSteps = collectProgramSteps(program);
+        if (!ctx.journaled) {
+          ctx = {
+            ...ctx,
+            ...journalProgramSteps(this.pages.deps.durableWrites, {
+              runId: ctx.runId ?? `direct:${pageId}`,
+              pageId,
+              documentEpoch: lp.target.documentEpoch ?? 0,
+              revision: lp.target.lastRevision,
+              taskId: ctx.taskId ?? sourceRun?.config?.taskId,
+              taskRevision: ctx.taskRevision ?? sourceRun?.config?.taskRevision,
+              actionId: `program:${ctx.runId ?? "direct"}:${pageId}:${program.documentEpoch ?? lp.target.documentEpoch}:${lp.target.lastRevision ?? 0}:${stepSignature(allSteps)}`,
+            }),
+            journaled: true,
+            journalPerStep: true,
+          };
+        }
         let origin = "";
         try {
           origin = new URL(lp.driver.url()).origin;
@@ -140,6 +158,8 @@ export class ProgramExecutor {
         // any non-read step (including hover, scroll, and stop) takes transmission protection.
         if (ctx.runId && allSteps.some((step) => classifyStep(step.op) !== "read"))
           await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
+        let batchPreparation: Parameters<SafetyDispatchGate["check"]>[0][] | undefined;
+        let projectedSteps: Step[] = [];
         let credentialDispatch: { target: SavedCredentialTarget; policyRevision: number } | undefined;
         const authorize = async (
           step: Step,
@@ -148,6 +168,7 @@ export class ProgramExecutor {
         ) => {
           credentialDispatch = undefined;
           checkIncarnation();
+          if (phase === "preflight" && ctx.isStepApplied?.(step)) return;
           if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
           ctx.taskRead?.check();
           ctx.sourcePageCheck?.();
@@ -193,7 +214,7 @@ export class ProgramExecutor {
               const metadata = ctx.safety?.steps?.[step.id];
               const observedTarget =
                 targets.length === 1 && lp.driver!.actionTarget
-                  ? await lp.driver!.actionTarget(targets[0]!)
+                  ? await lp.driver!.actionTarget(targets[0]!, batchPreparation ? projectedSteps : undefined)
                   : undefined;
               checkIncarnation();
               if (lp.target.documentEpoch !== documentEpoch || liveOrigin() !== topOrigin)
@@ -235,7 +256,7 @@ export class ProgramExecutor {
                 });
               }
               const taskId = ctx.taskId ?? run?.config?.taskId;
-              const provenance = await this.pages.deps.safetyGate.check({
+              const safetyInput: Parameters<SafetyDispatchGate["check"]>[0] = {
                 step,
                 origin: destination,
                 phase,
@@ -254,6 +275,13 @@ export class ProgramExecutor {
                   turnId: ctx.runId ?? ctx.safety?.turnId ?? `direct:${pageId}`,
                   threadId: run?.config?.chatId ?? ctx.safety?.threadId ?? `page:${pageId}`,
                   sessionId: lp.target.sessionId ?? undefined,
+                  documentEpoch,
+                  checkOwner: () => {
+                    checkIncarnation();
+                    ctx.sourcePageCheck?.();
+                    if (ctx.signal?.aborted)
+                      throw new AuxError("cancelled", "The run stopped before this action.");
+                  },
                   approvalId: metadata?.approvalId,
                   review: metadata?.review,
                   turnToolCallCount: ctx.safety?.turnToolCallCount,
@@ -261,7 +289,10 @@ export class ProgramExecutor {
                   restrictedRetry: metadata?.restrictedRetry,
                   trustedEval: ctx.allowEval === true,
                 },
-              });
+              };
+              let provenance: AuthorizationProvenance | undefined;
+              if (batchPreparation) batchPreparation.push(safetyInput);
+              else provenance = await this.pages.deps.safetyGate.check(safetyInput);
               checkIncarnation();
               if (provenance) authorized = provenance;
               if (credentialTarget && phase === "dispatch")
@@ -303,38 +334,38 @@ export class ProgramExecutor {
         // Fail fast while the current document is knowable. A write can navigate
         // or replace a frame, so later steps are checked against live origins at
         // dispatch instead of the program's original top-level URL.
-        let projectedOrigin = origin;
+        const flatProgram = !program.nodes || program.nodes.every((node) => node.kind === "step");
+        if (ctx.runId && flatProgram && !ctx.allowEval && this.pages.deps.safetyGate && allSteps.length > 1) {
+          batchPreparation = [];
+          for (const step of allSteps) {
+            await authorize(step, origin, "preflight");
+            if (!ctx.isStepApplied?.(step)) projectedSteps.push(step);
+            if (["navigate", "back", "forward", "reload"].includes(step.op)) break;
+          }
+          const prepared = batchPreparation;
+          batchPreparation = undefined;
+          projectedSteps = [];
+          checkIncarnation();
+          if (ctx.signal?.aborted)
+            throw new AuxError("cancelled", "The run stopped before reviewing its actions.");
+          await this.pages.deps.safetyGate.prepareBatch(prepared);
+          checkIncarnation();
+        }
         for (const step of allSteps) {
-          await authorize(step, projectedOrigin, "preflight");
-          if (step.op === "navigate") {
-            try {
-              projectedOrigin = new URL(step.url, lp.driver.url()).origin;
-            } catch {
-              break;
-            }
-          } else if (classifyStep(step.op) !== "read") break;
+          await authorize(step, origin, "preflight");
+          if (["navigate", "back", "forward", "reload"].includes(step.op) || classifyStep(step.op) !== "read")
+            break;
         }
         ctx.beforeJournal?.();
         if (
           ctx.journaled &&
           !ctx.journalIntentId &&
+          !(ctx.journalPerStep && ctx.beforeDispatch && ctx.settleStep) &&
           this.pages.deps.durableWrites &&
           allSteps.some((step) => classifyStep(step.op) !== "read")
         )
           throw new AuxError("conflict", "A pre-journaled browser write requires its durable intent ID");
-        const journal = ctx.journaled
-          ? { skip: false as const, intentId: undefined as string | undefined }
-          : beginConsequentialWrite(this.pages.deps.durableWrites, {
-              runId: ctx.runId ?? `direct:${pageId}`,
-              pageId,
-              documentEpoch: lp.target.documentEpoch ?? 0,
-              revision: lp.target.lastRevision,
-              steps: allSteps,
-              taskId: ctx.taskId ?? run?.config?.taskId,
-              taskRevision: ctx.taskRevision ?? run?.config?.taskRevision,
-            });
-        if (journal.skip) throw new AuxError("conflict", journal.reason!);
-        ctx = { ...ctx, journaled: true };
+        const journal = { intentId: undefined as string | undefined };
         this.control.programInflight.add(pageId);
         try {
           lp.target.controller = ctx.runId
@@ -620,27 +651,6 @@ export class ProgramExecutor {
               },
             };
             result = await executeProgram(admittedDriver, program, execCtx);
-            if (
-              result.status === "failed" &&
-              result.steps.some(
-                (s) =>
-                  s.error?.code === "conflict" &&
-                  (s.error.message.includes("takeover") || s.error.message.includes("controller")),
-              )
-            ) {
-              for (const s of result.steps) {
-                if (s.status === "ok") {
-                  s.effect = "uncertain";
-                  s.receipt = {
-                    observed: s.detail,
-                    remoteConfirmed: false,
-                    uncertain: true,
-                    unconfirmed: false,
-                    dispatchedBeforeTakeover: true,
-                  };
-                }
-              }
-            }
             if (result.observation) {
               observation = this.observation.recordObservation(
                 pageId,

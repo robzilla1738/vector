@@ -34,6 +34,10 @@ async function h_runs_branch_list(ctx: MethodCtx): Promise<unknown> {
 }
 
 async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
+  if ((ctx.params.projectRoot || ctx.params.packageNames?.length || ctx.params.profile) && (ctx.client.external || ctx.client.codeMode))
+    throw new AuxError("permission_denied", "Choose coding profiles and packages through Aux.");
+  if (ctx.params.agentMode !== undefined && (ctx.client.external || ctx.client.codeMode))
+    throw new AuxError("permission_denied", "Choose this run’s mode through the Aux composer.");
   if (
     ctx.params.executionTarget === "cloud" &&
     (ctx.client.external || ctx.client.codeMode || !ctx.client.nativeTurnContext)

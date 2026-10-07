@@ -66,12 +66,21 @@ async function run(command, args, env = {}) {
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
-    console.log("Usage: node scripts/dev.mjs [--temp-profile] | -- command [args...]");
+    console.log("Usage: node scripts/dev.mjs [--temp-profile] [--flavor dev|fast] | -- command [args...]");
     return;
   }
   const commandIndex = args.indexOf("--");
-  if (commandIndex < 0 && args.some((arg) => arg !== "--temp-profile"))
-    throw new Error("Unknown dev option; use --help");
+  let flavor = "dev";
+  if (commandIndex < 0) {
+    for (let index = 0; index < args.length; index++) {
+      if (args[index] === "--temp-profile") continue;
+      if (args[index] === "--flavor" && ["dev", "fast"].includes(args[index + 1])) {
+        flavor = args[++index];
+        continue;
+      }
+      throw new Error("Unknown dev option; use --help");
+    }
+  }
   const inherited = process.env.AUX_DEV_LOCK_PID;
   const release = inherited ? (assertDevLock(), () => {}) : acquireDevLock();
   let temporary;
@@ -87,8 +96,8 @@ async function main() {
     await run(process.execPath, [typescriptCli, "-p", "apps/shell/tsconfig.json"]);
     await run("pnpm", ["--filter", "@aux/shell", "build"], { AUX_CHROMIUM_SHELL_BUILD: "1" });
     await run("node", ["chromium/stage-shell.mjs", "install"]);
-    await run("chromium/aux-chromium", ["build"]);
-    const app = join(source, "out/AuxDev/Aux.app");
+    await run("chromium/aux-chromium", ["build", "--flavor", flavor]);
+    const app = join(source, "out", flavor === "fast" ? "AuxFast" : "AuxDev", "Aux.app");
     await run("node", ["chromium/stage-runtime.mjs", app]);
     const profile = args.includes("--temp-profile")
       ? (temporary = mkdtempSync(join(tmpdir(), "aux-dev-")))

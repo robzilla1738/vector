@@ -1,3 +1,4 @@
+import { AuxPackages } from "./AuxPackages";
 import { useFeature } from "../use-feature";
 import { lazySection } from "../settings/LazySettingsSection";
 import { staticFieldErrorProps } from "../ui/class-props";
@@ -118,6 +119,7 @@ export function PluginsPanel() {
 
   return (
     <>
+      <AuxPackages />
       {outboundMcpAvailable && (
         <div data-setting="MCP servers" tabIndex={-1}>
           <OutboundMcpSettings active />
@@ -126,7 +128,7 @@ export function PluginsPanel() {
       <section className="plugin-review field" aria-label="Plugins">
         <div {...auxClassDrawerSectionProps}>Plugins</div>
         <p {...staticHintProps}>
-          Review a portable Aux bundle or Claude Code plugin folder before installing it into one Space.
+          Review a portable Aux bundle or compatible skill folder before installing it into one Space.
         </p>
         <div className="plugin-review-actions">
           <label>
@@ -155,7 +157,7 @@ export function PluginsPanel() {
             disabled={busy || !workspaceId}
             onClick={() => choose("directory")}
           >
-            Choose Claude Code folder…
+            Choose compatible folder…
           </button>
         </div>
         {inspection && (

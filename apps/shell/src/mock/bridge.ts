@@ -698,7 +698,23 @@ export function installMockBridge(q: URLSearchParams) {
       "Agent access and site permissions require Aux desktop. Open Aux to review or change access.",
     );
   };
+  const nativeCodingUnavailable: MockHandler = async () => {
+    throw new AuxError("capability_unsupported", "Coding runs and Aux Packages require the Aux runtime.");
+  };
   const handlers = {
+    "coding.activity": nativeCodingUnavailable,
+    "coding.worktreeInspect": nativeCodingUnavailable,
+    "coding.worktreeArchive": nativeCodingUnavailable,
+    "coding.changes": nativeCodingUnavailable,
+    "coding.undo": nativeCodingUnavailable,
+    "coding.processes": nativeCodingUnavailable,
+    "coding.logs": nativeCodingUnavailable,
+    "coding.stop": nativeCodingUnavailable,
+    "packages.list": nativeCodingUnavailable,
+    "packages.install": nativeCodingUnavailable,
+    "packages.remove": nativeCodingUnavailable,
+    "packages.defaults": nativeCodingUnavailable,
+    "safety.grants.revokeRun": nativeTrustUnavailable,
     "safety.decisions.list": nativeTrustUnavailable,
     "liveFolders.items": async (p: Record<string, unknown>) => ({
       folderId: String(p.folderId),

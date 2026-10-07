@@ -1,16 +1,14 @@
 import { z } from "zod";
 const id = z.string().uuid();
 const dimensions = { cols: z.number().int().min(2).max(500), rows: z.number().int().min(1).max(300) };
-export const TerminalClientSchema = z.enum(["claude", "codex"]);
 export const TerminalStartParams = z
-  .object({ workspaceId: z.string().min(1), folderId: id, client: TerminalClientSchema, ...dimensions })
+  .object({ workspaceId: z.string().min(1), folderId: id, ...dimensions })
   .strict();
 export const TerminalSessionSchema = z
   .object({
     terminalId: id,
     workspaceId: z.string().min(1),
     folderId: id,
-    client: TerminalClientSchema,
     state: z.enum(["running", "closing", "closed"]),
     ...dimensions,
   })

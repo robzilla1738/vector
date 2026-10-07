@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import schema from "./schema.generated.json" with { type: "json" };
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 const SCHEMA_IDENTITY = "aux-v3";
 
 /** Apply a fresh schema atomically, preserving the database on failure. */

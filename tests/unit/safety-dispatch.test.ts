@@ -1,7 +1,7 @@
 import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
-import { EventBus, NullNativeBridge, PageService, Repo, openDb } from "@aux/runtime";
+import { EventBus, NullNativeBridge, PageService, Repo, openDb, DurableWriteLedger } from "@aux/runtime";
 import type { BrowserDriver, DriverPage, DriverPageEvents } from "@aux/chromium-driver";
 import type { Step } from "@aux/contracts";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
@@ -13,11 +13,17 @@ afterEach(() => {
   for (const db of databases.splice(0)) db.close();
 });
 
-function fixture(prepareOrigin?: () => Promise<string>, initialAccess: "allow" | "ask" | "block" = "ask") {
+function fixture(
+  prepareOrigin?: () => Promise<string>,
+  initialAccess: "allow" | "ask" | "block" = "ask",
+  journal = false,
+  onNavigate?: (url: string) => void,
+) {
   const db = openDb(":memory:");
   databases.push(db);
   const repo = new Repo(db);
   const events = new EventBus(repo);
+  const durable = journal ? new DurableWriteLedger(db) : undefined;
   const approvals = new ApprovalStore(db);
   const calls: string[] = [];
   let current = "https://allowed.test/form";
@@ -28,7 +34,11 @@ function fixture(prepareOrigin?: () => Promise<string>, initialAccess: "allow" |
     approvals,
     journal: new DecisionJournal(db),
     managedRules: () => [],
-    agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [{ category: "click", access }] }),
+    agentPolicy: () => ({
+      agentMode: "auto",
+      agentPolicyRevision: 0,
+      agentPolicies: [{ category: "click", access }],
+    }),
     audit: () => {},
     onConfirmation: (value) => {
       if (!value.approvalId) throw new Error("Expected an actual approval");
@@ -50,6 +60,7 @@ function fixture(prepareOrigin?: () => Promise<string>, initialAccess: "allow" |
         isAttached: () => true,
         navigate: async (url: string) => {
           current = url;
+          onNavigate?.(url);
         },
         originForTarget: prepareOrigin,
         click: async () => {
@@ -89,8 +100,11 @@ function fixture(prepareOrigin?: () => Promise<string>, initialAccess: "allow" |
     drivers: () => ({ aux: driver, chrome: null }),
     profileId: "profile-1",
     safetyGate: gate,
+    durableWrites: durable,
   });
   return {
+    repo,
+    durable,
     pages,
     calls,
     approvals,
@@ -118,7 +132,11 @@ describe("B5 live dispatch gate", () => {
       approvals,
       journal: new DecisionJournal(db),
       managedRules: () => [],
-      agentPolicy: () => ({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [{ category: "click", access: "ask" }] }),
+      agentPolicy: () => ({
+        agentMode: "ask",
+        agentPolicyRevision: 0,
+        agentPolicies: [{ category: "click", access: "ask" }],
+      }),
       audit: () => {},
       onConfirmation: (confirmation) => {
         if (!confirmation.approvalId) throw new Error("Expected an actual approval");
@@ -171,7 +189,7 @@ describe("B5 live dispatch gate", () => {
       events: new EventBus(repo),
       native: new NullNativeBridge(),
       drivers: () => ({ aux: driver, chrome: null }),
-        profileId: "profile-1",
+      profileId: "profile-1",
       safetyGate: gate,
     });
     const page = await pages.open({ url: "https://shop.test/form", background: true, ownedByRuntime: true });
@@ -286,19 +304,126 @@ describe("B5 live dispatch gate", () => {
     expect(calls).toEqual([]);
   });
 
-  it.each(["policy", "document"] as const)("rechecks actual %s authority after asynchronous target-origin preparation", async (change) => {
-    let release!: () => void, entered!: () => void;
-    const pending = new Promise<void>((resolve) => { release = resolve; });
-    const preparing = new Promise<void>((resolve) => { entered = resolve; });
-    const f = fixture(async () => { entered(); await pending; return "https://allowed.test"; }, "allow");
-    const page = await f.pages.open({ url: "https://allowed.test/form", background: true, ownedByRuntime: true });
-    const dispatch = f.pages.execute({ pageId: page.pageId, steps: [{ id: "prepared", op: "click", target: "css:#submit" }] });
-    await preparing;
-    if (change === "policy") f.setAccess("block");
-    else f.navigateExternally("https://allowed.test/next-document", (f.pages.get(page.pageId).documentEpoch ?? 0) + 1);
-    release();
-    const result = await dispatch;
-    expect(f.calls).toEqual([]);
-    expect(result.steps[0]).toMatchObject({ status: "failed", error: { code: change === "policy" ? "permission_denied" : "ref_stale" } });
+  it.each(["policy", "document"] as const)(
+    "rechecks actual %s authority after asynchronous target-origin preparation",
+    async (change) => {
+      let release!: () => void, entered!: () => void;
+      const pending = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const preparing = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const f = fixture(async () => {
+        entered();
+        await pending;
+        return "https://allowed.test";
+      }, "allow");
+      const page = await f.pages.open({
+        url: "https://allowed.test/form",
+        background: true,
+        ownedByRuntime: true,
+      });
+      const dispatch = f.pages.execute({
+        pageId: page.pageId,
+        steps: [{ id: "prepared", op: "click", target: "css:#submit" }],
+      });
+      await preparing;
+      if (change === "policy") f.setAccess("block");
+      else
+        f.navigateExternally(
+          "https://allowed.test/next-document",
+          (f.pages.get(page.pageId).documentEpoch ?? 0) + 1,
+        );
+      release();
+      const result = await dispatch;
+      expect(f.calls).toEqual([]);
+      expect(result.steps[0]).toMatchObject({
+        status: "failed",
+        error: { code: change === "policy" ? "permission_denied" : "ref_stale" },
+      });
+    },
+  );
+});
+
+it("resumes an approved guarded batch without replaying its confirmed prefix and isolates uncertainty", async () => {
+  const { guardedExecute } = await import("../../apps/runtime/src/agent/guarded-dispatch.js");
+  const f = fixture(undefined, "ask", true);
+  const page = await f.pages.open({
+    url: "https://allowed.test/form",
+    background: true,
+    ownedByRuntime: true,
   });
+  f.repo.db
+    .prepare("INSERT INTO runs(run_id,goal,status,created_at) VALUES(?,?,?,?)")
+    .run("batch-run", "send", "running", 1);
+  const obs = (await f.pages.observe(page.pageId, { scope: "full" })).content;
+  const opts = {
+    runId: "batch-run",
+    actionId: "original-toolcall",
+    pageId: page.pageId,
+    steps: [
+      { id: "one", op: "click" as const, target: "css:#one" },
+      { id: "two", op: "click" as const, target: "css:#two" },
+    ],
+    observation: obs,
+    url: obs.url,
+    documentEpoch: page.documentEpoch ?? 0,
+    exec: { runId: "batch-run", sourcePageCheck: () => {} },
+  };
+  const dispatch = () => guardedExecute({ pages: f.pages, durable: f.durable }, opts);
+  await expect(dispatch()).rejects.toMatchObject({ code: "needs_input" });
+  expect(f.calls).toEqual([]);
+  expect(f.durable!.unresolved("batch-run")).toEqual([]);
+  expect(f.approvals.pending(`page:${page.pageId}`)[0]!.action.reviewedActions).toHaveLength(2);
+  f.approvals.decideLocal({ decision: "accept", approvalId: f.confirmations[0]! }, "batch-run");
+  const partial = await dispatch();
+  expect(partial.kind).toBe("ran");
+  expect(f.calls).toEqual(["click"]);
+  expect(f.repo.db.prepare("SELECT status FROM action_intents ORDER BY created_at").all()).toEqual([
+    { status: "confirmed" },
+  ]);
+  const pending = f.approvals.pending(`page:${page.pageId}`)[0]!;
+  f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId }, "batch-run");
+  const resumed = await dispatch();
+  expect(resumed.kind).toBe("ran");
+  expect(f.calls).toEqual(["click", "click"]);
+  const unresolved = f.durable!.unresolved("batch-run");
+  expect(unresolved).toHaveLength(1);
+  expect(unresolved[0]!.summary?.ops).toEqual(["click"]);
+  expect(unresolved[0]!.status).toBe("uncertain");
+  await expect(dispatch()).rejects.toMatchObject({ code: "conflict" });
+  expect(f.calls).toHaveLength(2);
+  const transitions = f.repo.db.prepare("SELECT intent_id,status FROM action_transitions ORDER BY seq").all();
+  expect(transitions.map((row) => row.status)).toEqual(["pending", "confirmed", "pending", "uncertain"]);
+});
+
+it("resolves a destination-only action after navigation instead of preflighting the old document", async () => {
+  let navigated = false;
+  const f = fixture(
+    async () => {
+      if (!navigated) throw new Error("Destination target does not exist in the source document");
+      return "https://allowed.test";
+    },
+    "allow",
+    false,
+    () => {
+      navigated = true;
+    },
+  );
+  const page = await f.pages.open({
+    url: "https://allowed.test/start",
+    background: true,
+    ownedByRuntime: true,
+  });
+  const result = await f.pages.execute({
+    pageId: page.pageId,
+    steps: [
+      { id: "navigate", op: "navigate", url: "https://allowed.test/destination" },
+      { id: "destination-action", op: "click", target: "css:#destination-only" },
+    ],
+  });
+  expect(result.status).toBe("completed");
+  expect(navigated).toBe(true);
+  expect(f.calls).toEqual(["click"]);
 });

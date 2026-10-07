@@ -15,6 +15,7 @@ import { parkAnswerOutput, toolResultsMessage } from "./types.js";
 import { TranscriptStore } from "./transcript.js";
 import { buildSystemPrompt } from "./prompt.js";
 import {
+  annotateToolFailure,
   budgetToolOutputs,
   compactMessages,
   pruneMedia,
@@ -79,6 +80,7 @@ export interface AgentLoopOptions {
   providerOptions?: Record<string, Record<string, unknown>>;
   /** Include the WebMCP conditional doc when this page has registered tools. */
   webmcp?: boolean;
+  hasProject?: boolean;
   maxOutputTokens?: number;
 }
 
@@ -197,9 +199,34 @@ async function executeOne(
     };
   }
   try {
-    return await tool.execute(call.input, ctx);
+    const result = await tool.execute(call.input, { ...ctx, toolCallId: call.toolCallId });
+    if ("park" in result && (result.park.approvalId || result.park.detail?.retryCall))
+      return {
+        park: {
+          ...result.park,
+          detail: {
+            ...result.park.detail,
+            execution: { input: call.input, callCount: ctx.callCount, goalTurn: ctx.goalTurn },
+          },
+        },
+      };
+    return "output" in result ? { ...result, output: annotateToolFailure(result.output) } : result;
   } catch (error) {
     if (ctx.signal?.aborted) throw error;
+    if (error instanceof AuxError && error.code === "needs_input") {
+      const detail = error.detail as { park?: LoopPark } | undefined;
+      const park = detail?.park ?? ctx.deps.pendingPark?.();
+      if (park)
+        return {
+          park: {
+            ...park,
+            detail: {
+              ...park.detail,
+              execution: { input: call.input, callCount: ctx.callCount, goalTurn: ctx.goalTurn },
+            },
+          },
+        };
+    }
     if (error instanceof MentionUnavailable) return { output: error.unavailable };
     return { output: error instanceof Error ? error : new Error(String(error)) };
   }
@@ -263,6 +290,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
   const system =
     opts.system ??
     buildSystemPrompt({
+      hasProject: opts.hasProject,
       hasPage: !!(typeof opts.pageId === "function" ? opts.pageId() : opts.pageId),
       webEnabled: !!(opts.deps.webFetch || opts.deps.webSearch),
       webmcp: opts.webmcp === true,
@@ -340,10 +368,27 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     try {
       requestMessages = opts.prepareModelMessages ? await opts.prepareModelMessages(messages) : messages;
       if (opts.signal?.aborted) throw new AuxError("cancelled", "Original model request authority changed.");
-      if (Buffer.byteLength(JSON.stringify(requestMessages.map((message) => message.role === "user" && Array.isArray(message.content)
-        ? { ...message, content: message.content.map((part) => part.type === "image" ? { type: "image", image: "[selected image]" } : part) }
-        : message)), "utf8") > TRANSCRIPT_COMPACT_BYTES)
-        throw new AuxError("model_error", "Selected source context exceeds the 192 KB request limit; no model call was made.");
+      if (
+        Buffer.byteLength(
+          JSON.stringify(
+            requestMessages.map((message) =>
+              message.role === "user" && Array.isArray(message.content)
+                ? {
+                    ...message,
+                    content: message.content.map((part) =>
+                      part.type === "image" ? { type: "image", image: "[selected image]" } : part,
+                    ),
+                  }
+                : message,
+            ),
+          ),
+          "utf8",
+        ) > TRANSCRIPT_COMPACT_BYTES
+      )
+        throw new AuxError(
+          "model_error",
+          "Selected source context exceeds the 192 KB request limit; no model call was made.",
+        );
       reservationId = await opts.beforeModelCall?.({
         modelId: opts.modelId,
         promptBytes: Buffer.byteLength(`${system}\n${JSON.stringify(requestMessages)}`, "utf8"),
@@ -372,7 +417,10 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     if (opts.signal?.aborted) {
       opts.onModelAdmissionCancelled?.(reservationId);
       opts.afterModelCall?.();
-      return { kind: "failed", error: new AuxError("cancelled", "Original model request authority changed before dispatch.") };
+      return {
+        kind: "failed",
+        error: new AuxError("cancelled", "Original model request authority changed before dispatch."),
+      };
     }
     let step;
     try {
@@ -391,8 +439,11 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
         maxAttempts: opts.maxAttempts,
       });
     } catch (error) {
-      try { await opts.onModelFailure?.({ index, error, reservationId }); }
-      finally { opts.afterModelCall?.(); }
+      try {
+        await opts.onModelFailure?.({ index, error, reservationId });
+      } finally {
+        opts.afterModelCall?.();
+      }
       if (opts.steerCheck?.()) return { kind: "steered" };
       return {
         kind: "failed",
@@ -414,8 +465,11 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     }
     messages.push(assistant);
     transcript.append(runId, [assistant]);
-    try { await opts.onStep?.({ index, step, reservationId }); }
-    finally { opts.afterModelCall?.(); }
+    try {
+      await opts.onStep?.({ index, step, reservationId });
+    } finally {
+      opts.afterModelCall?.();
+    }
 
     if (!toolCalls.length) {
       if (!step.text?.trim()) {
@@ -468,8 +522,14 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     let parked: { call: LoopToolCall; park: LoopPark } | undefined;
     let finished: Record<string, unknown> | undefined;
     for (const call of ordered) {
-      try { await opts.beforeToolCall?.(call); }
-      catch (error) { return { kind: "failed", error: error instanceof AuxError ? error : new AuxError("step_failed", String(error)) }; }
+      try {
+        await opts.beforeToolCall?.(call);
+      } catch (error) {
+        return {
+          kind: "failed",
+          error: error instanceof AuxError ? error : new AuxError("step_failed", String(error)),
+        };
+      }
       const result = await executeOne(call.toolName, call, tools, ctx);
       if ("park" in result) {
         parked = { call, park: result.park };
@@ -586,12 +646,68 @@ export async function resumeAgentLoop(opts: AgentLoopOptions, answer: unknown): 
       kind: "failed",
       error: new AuxError("not_found", "This run has no parked tool call to resume."),
     };
+  let resumedOutput = parkAnswerOutput(answer);
+  const execution = parked.suspension?.detail?.execution as
+    { input: unknown; callCount: number; goalTurn: number } | undefined;
+  if (execution) {
+    const ctx: LoopToolContext = {
+      runId,
+      threadId: opts.threadId,
+      turnId: opts.turnId ?? runId,
+      pageId: typeof opts.pageId === "function" ? opts.pageId() : opts.pageId,
+      signal: opts.signal,
+      callCount: execution.callCount,
+      goalTurn: execution.goalTurn,
+      deps: opts.deps,
+    };
+    const continuation = parked.suspension?.detail?.resumeCall as
+      { toolName: string; toolCallId: string; input: unknown } | undefined;
+    const result = await executeOne(
+      continuation?.toolName ?? parked.toolName,
+      {
+        toolCallId: continuation?.toolCallId ?? parked.toolCallId,
+        toolName: continuation?.toolName ?? parked.toolName,
+        input: continuation?.input ?? execution.input,
+      },
+      opts.tools,
+      ctx,
+    );
+    if ("park" in result) {
+      transcript.updatePark(runId, {
+        ...parked,
+        suspension: continuation
+          ? { ...result.park, detail: { ...result.park.detail, resumeCall: continuation } }
+          : result.park,
+      });
+      return { kind: "parked", park: result.park, toolCallId: parked.toolCallId };
+    }
+    resumedOutput = "finish" in result ? { accepted: true } : result.output;
+    opts.onToolCall?.(
+      {
+        toolCallId: continuation?.toolCallId ?? parked.toolCallId,
+        toolName: continuation?.toolName ?? parked.toolName,
+        input: continuation?.input ?? execution.input,
+      },
+      result,
+    );
+    if ("finish" in result) {
+      const message = toolResultsMessage(
+        parked.pendingResults.map((part) => ({
+          toolCallId: part.toolCallId,
+          toolName: part.toolName,
+          output: "parked" in part ? resumedOutput : part.output,
+        })),
+      );
+      transcript.resolvePark(runId, message);
+      return { kind: "done", text: String(result.finish.result.report ?? ""), result: result.finish.result };
+    }
+  }
   const message = toolResultsMessage(
-    parked.pendingResults.map((part) =>
-      "parked" in part
-        ? { toolCallId: part.toolCallId, toolName: part.toolName, output: parkAnswerOutput(answer) }
-        : { toolCallId: part.toolCallId, toolName: part.toolName, output: part.output },
-    ),
+    parked.pendingResults.map((part) => ({
+      toolCallId: part.toolCallId,
+      toolName: part.toolName,
+      output: "parked" in part ? resumedOutput : part.output,
+    })),
   );
   transcript.resolvePark(runId, message);
   return runAgentLoop(opts);

@@ -254,7 +254,9 @@ export class RunFundingService {
         throw new AuxError("permission_denied", "Subagent funding ownership is ambiguous.");
       if (!agents[0]) continue;
       const agentRow = agents[0],
-        agent = SubagentSchema.parse(JSON.parse(agentRow.body));
+        agent = SubagentSchema.parse(
+          JSON.parse(this.repo.revealRecordField("subagents", [agentRow.agent_id], "body", agentRow.body)),
+        );
       const groupRow = this.repo.db
         .prepare("SELECT parent_run_id,body,state FROM subagent_groups WHERE group_id=?")
         .get(agentRow.group_id) as { parent_run_id: string; body: string; state: string } | undefined;
@@ -908,10 +910,12 @@ export class RunFundingService {
       const cap = field === "maxTokens" ? group.tokenBudget : group.costBudgetUsd;
       if (cap > 0) {
         const siblings = this.repo.db
-          .prepare("SELECT body FROM subagents WHERE group_id=? AND agent_id<>?")
-          .all(group.groupId, owner.ownerId) as { body: string }[];
+          .prepare("SELECT agent_id,body FROM subagents WHERE group_id=? AND agent_id<>?")
+          .all(group.groupId, owner.ownerId) as { agent_id: string; body: string }[];
         const allocated = siblings.reduce((sum, row) => {
-          const sibling = SubagentSchema.parse(JSON.parse(row.body));
+          const sibling = SubagentSchema.parse(
+            JSON.parse(this.repo.revealRecordField("subagents", [row.agent_id], "body", row.body)),
+          );
           const runs = sibling.runId ? lineageRuns(this.repo, sibling.runId) : [];
           const calls = runs.flatMap((id) => this.repo.listModelCalls(id));
           const resource = this.resources.usage(runs, []);
@@ -940,7 +944,10 @@ export class RunFundingService {
       SubagentSchema.parse(body);
       this.repo.db
         .prepare("UPDATE subagents SET body=? WHERE agent_id=?")
-        .run(JSON.stringify(body), owner.ownerId);
+        .run(
+          this.repo.protectRecordField("subagents", [owner.ownerId], "body", JSON.stringify(body)),
+          owner.ownerId,
+        );
     } else {
       body[
         field === "maxTokens" ? "tokenBudget" : field === "maxCostUsd" ? "costBudgetUsd" : "timeBudgetMs"

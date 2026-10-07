@@ -25,8 +25,7 @@ function deps(overrides: Partial<ReplHostDeps> = {}): ReplHostDeps {
     }),
     step: async () => ({ output: { status: "completed", steps: [{ op: "click", status: "ok" }] } }),
     fetch: async (url) => ({ output: { url, text: "body" } }),
-    fsRead: async (path) => `read:${path}`,
-    fsWrite: async () => {},
+    codingTool: async (_name, input) => ({ output: `read:${(input as { path: string }).path}` }),
     ...overrides,
   };
 }
@@ -35,16 +34,76 @@ const out = (result: LoopToolResult) =>
   ("output" in result ? result.output : result) as Record<string, unknown>;
 
 describe("code-mode REPL", () => {
-  it("refreshes two-cell callbacks and cancellation while retaining the original run and context",async()=>{
-    const pool=new ReplPool();cleanup.push(()=>pool.disposeAll());
-    const first=new AbortController(),second=new AbortController();
-    const oldRead=vi.fn(async()=>"old-source"),newRead=vi.fn(async()=>"fresh-source");
-    expect(out(await pool.eval(deps({signal:first.signal,fsRead:oldRead}),"var savedValue=7; fs.readFile('file')")).value).toBe("old-source");
+  it("refreshes two-cell callbacks and cancellation while retaining the original run and context", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const first = new AbortController(),
+      second = new AbortController();
+    const oldRead = vi.fn(async () => "old-source"),
+      newRead = vi.fn(async () => "fresh-source");
+    expect(
+      out(
+        await pool.eval(
+          deps({ signal: first.signal, codingTool: async () => ({ output: await oldRead() }) }),
+          "var savedValue=7; fs.readFile('file')",
+        ),
+      ).value,
+    ).toBe("old-source");
     first.abort();
-    expect(out(await pool.eval(deps({signal:second.signal,fsRead:newRead}),"({savedValue, text:fs.readFile('file')})")).value).toEqual({savedValue:7,text:"fresh-source"});
-    expect(oldRead).toHaveBeenCalledOnce();expect(newRead).toHaveBeenCalledOnce();
+    expect(
+      out(
+        await pool.eval(
+          deps({ signal: second.signal, codingTool: async () => ({ output: await newRead() }) }),
+          "({savedValue, text:fs.readFile('file')})",
+        ),
+      ).value,
+    ).toEqual({ savedValue: 7, text: "fresh-source" });
+    expect(oldRead).toHaveBeenCalledOnce();
+    expect(newRead).toHaveBeenCalledOnce();
     second.abort();
-    await expect(pool.eval(deps({signal:second.signal}),"sleep(1)")).rejects.toMatchObject({code:"cancelled"});
+    await expect(pool.eval(deps({ signal: second.signal }), "sleep(1)")).rejects.toMatchObject({
+      code: "cancelled",
+    });
+  });
+
+  it("restores a parked coding script from recorded host calls without repeating confirmed writes", async () => {
+    const cache = new Map<number, { signature: string; response: string }>();
+    const replayed: Array<{ recorded: string; current: string }> = [];
+    let approved = false,
+      writes = 0;
+    const replay: NonNullable<ReplHostDeps["replay"]> = async (name, params, ordinal, execute) => {
+      const signature = JSON.stringify([name, params]);
+      const prior = cache.get(ordinal);
+      if (prior) {
+        replayed.push({ recorded: prior.signature, current: signature });
+        return prior.response;
+      }
+      const response = await execute();
+      if (JSON.parse(response).ok) cache.set(ordinal, { signature, response });
+      return response;
+    };
+    const codingTool: NonNullable<ReplHostDeps["codingTool"]> = async (name, raw) => {
+      if (name === "read_file") return { output: { content: "old", version: "version" } };
+      const input = raw as { path: string };
+      if (input.path.endsWith("b") && !approved)
+        return { park: { kind: "approval", approvalId: "write-b", instruction: "Allow second write" } };
+      writes++;
+      return { output: { receiptId: input.path, status: "confirmed" } };
+    };
+    const code =
+      "var readVersion=fs.readFile('/project/a').version; fs.writeFile('/project/a','first',readVersion); fs.writeFile('/project/b','second');";
+    const first = new ReplPool();
+    expect(await first.eval(deps({ codingTool, replay }), code)).toMatchObject({
+      park: { approvalId: "write-b" },
+    });
+    first.disposeAll();
+    approved = true;
+    const restarted = new ReplPool();
+    cleanup.push(() => restarted.disposeAll());
+    await restarted.eval(deps({ codingTool, replay }), code);
+    expect(writes).toBe(2);
+    expect(replayed).not.toHaveLength(0);
+    expect(replayed.map((item) => item.current)).toEqual(replayed.map((item) => item.recorded));
   });
 
   it("finishes a scripted read through the same verified result callback", async () => {
@@ -262,7 +321,11 @@ describe("code-mode REPL", () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
     const result = out(await pool.eval(deps({ step }), `page.click("r1")`, { pageId: "p1" }));
-    expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "click", target: "r1" }));
+    expect(step).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ op: "click", target: "r1" }),
+      expect.any(Number),
+    );
     expect(result.value).toMatchObject({ status: "completed" });
   });
 
@@ -338,7 +401,11 @@ describe("code-mode REPL", () => {
       { pageId: "p1" },
     );
     expect(findRef).toHaveBeenCalledWith("p1", "Record 15 — Alpha project", undefined);
-    expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "click", target: "r10" }));
+    expect(step).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ op: "click", target: "r10" }),
+      expect.any(Number),
+    );
   });
 
   it("follows a link only when navigation is explicitly requested", async () => {
@@ -353,8 +420,14 @@ describe("code-mode REPL", () => {
       1,
       "p1",
       expect.objectContaining({ op: "navigate", url: "http://x.test/records?page=2" }),
+      expect.any(Number),
     );
-    expect(step).toHaveBeenNthCalledWith(2, "p1", expect.objectContaining({ op: "click", target: "r17" }));
+    expect(step).toHaveBeenNthCalledWith(
+      2,
+      "p1",
+      expect.objectContaining({ op: "click", target: "r17" }),
+      expect.any(Number),
+    );
   });
 
   it("normalizes a copied rendered href before following a link", async () => {
@@ -371,6 +444,7 @@ describe("code-mode REPL", () => {
     expect(step).toHaveBeenCalledWith(
       "p1",
       expect.objectContaining({ op: "navigate", url: "http://x.test/records/rec-15" }),
+      expect.any(Number),
     );
   });
 
@@ -446,6 +520,7 @@ describe("code-mode REPL", () => {
     expect(step).toHaveBeenCalledWith(
       "p1",
       expect.objectContaining({ op: "navigate", url: "http://x.test/records/rec-14" }),
+      expect.any(Number),
     );
     const denied = vi.fn(async () => {
       throw new AuxError("invalid_params", "ambiguous route");
@@ -504,7 +579,11 @@ describe("code-mode REPL", () => {
     );
     expect(result.value).toBe("p2");
     // The page op after openTab targeted the new tab.
-    expect(step).toHaveBeenCalledWith("p2", expect.objectContaining({ op: "hover", target: "r9" }));
+    expect(step).toHaveBeenCalledWith(
+      "p2",
+      expect.objectContaining({ op: "hover", target: "r9" }),
+      expect.any(Number),
+    );
   });
 
   it("routes page.bookmark through the governed host for the current tab", async () => {
@@ -688,11 +767,14 @@ describe("code-mode REPL", () => {
       }),
     );
     expect(spawned.value).toEqual({ cellId: "cell-1" });
-    expect(spawnCell).toHaveBeenCalledWith({
-      goal: "find the pricing",
-      profile: "explorer",
-      pageIds: ["p1"],
-    });
+    expect(spawnCell).toHaveBeenCalledWith(
+      {
+        goal: "find the pricing",
+        profile: "explorer",
+        pageIds: ["p1"],
+      },
+      0,
+    );
     const waited = out(await pool.eval(d, `wait("cell-1")`, { pageId: "p1" }));
     expect(waited.value).toEqual({ state: "completed", runId: "run-cell", result: { answer: 7 } });
     await pool.eval(d, `send("cell-1", "also check taxes"); stop("cell-1")`, { pageId: "p1" });

@@ -260,3 +260,24 @@ it("retains a committed intent after actual SIGKILL following a remote write", a
     await closeServer();
   }
 });
+
+it("re-arms only an exactly identified proven undispatched action after fresh authorization", () => {
+  const f = fixture();
+  seedParents(f.db, action);
+  const first = f.ledger.begin(action);
+  f.ledger.abortUndispatched(first.intent.id, "Approval interrupted before dispatch");
+  expect(f.ledger.begin(action)).toMatchObject({ duplicate: true, intent: { status: "not_applied" } });
+  const retry = f.ledger.begin({ ...action, rearmNotApplied: true });
+  expect(retry).toMatchObject({ duplicate: false, intent: { id: first.intent.id, status: "pending" } });
+  f.ledger.fail(first.intent.id);
+  expect(f.ledger.begin({ ...action, rearmNotApplied: true })).toMatchObject({
+    duplicate: true,
+    intent: { id: first.intent.id, status: "uncertain" },
+  });
+  expect(
+    f.db
+      .prepare("SELECT status FROM action_transitions WHERE intent_id=? ORDER BY seq")
+      .all(first.intent.id)
+      .map((row) => row.status),
+  ).toEqual(["pending", "not_applied", "pending", "uncertain"]);
+});

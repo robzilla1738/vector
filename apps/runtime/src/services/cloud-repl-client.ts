@@ -117,6 +117,7 @@ export class CloudReplClient {
         const args = CloudReplCalls[rpc.method].parse(rpc.args);
         let response: { value?: unknown; error?: string };
         try {
+          deps.allowHostCall?.(rpc.method, JSON.stringify(args));
           const method = deps[rpc.method];
           if (typeof method !== "function")
             throw new AuxError("permission_denied", "This original run has no such callback.");

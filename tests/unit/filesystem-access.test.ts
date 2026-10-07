@@ -52,7 +52,13 @@ it("applies Guard Home reads and bounded user writes while denying sensitive and
   expect(filesystemPermits(policy, join(f.home, "notes.txt"), "write")).toBe(false);
   expect(filesystemPermits(policy, join(f.home, "Documents", "notes.txt"), "write")).toBe(true);
   expect(filesystemPermits(policy, join(f.home, ".ssh", "id_ed25519"), "read")).toBe(false);
-  for (const config of [".codex/config.toml", ".codex/auth.json", ".claude.json", ".claude/.credentials.json", ".cursor/mcp.json"])
+  for (const config of [
+    ".codex/config.toml",
+    ".codex/auth.json",
+    ".claude.json",
+    ".claude/.credentials.json",
+    ".cursor/mcp.json",
+  ])
     expect(filesystemPermits(policy, join(f.home, config), "read")).toBe(false);
   expect(filesystemPermits(policy, join(f.home, ".agents", "skills", "aux", "SKILL.md"), "read")).toBe(true);
   expect(filesystemPermits(policy, join(f.data, "settings.json"), "read")).toBe(false);
@@ -102,3 +108,22 @@ it.runIf(process.platform === "darwin")(
     });
   },
 );
+
+it("protects project credential files in coding policies even with Full file access", () => {
+  const f = fixture();
+  f.setMode("full");
+  const policy = f.service.codingPolicy();
+  for (const name of [
+    ".npmrc",
+    ".netrc",
+    ".pypirc",
+    ".git-credentials",
+    ".env.local",
+    ".codex/auth.json",
+    ".ssh/id_ed25519",
+  ])
+    expect(filesystemPermits(policy, join(f.external, "nested", name), "read")).toBe(false);
+  expect(filesystemPermits(policy, join(f.external, ".env.example"), "read")).toBe(true);
+  expect(filesystemPermits(policy, join(f.external, "secrets.ts"), "read")).toBe(true);
+  expect(filesystemSeatbelt(policy, false)).toContain("(require-not (regex");
+});

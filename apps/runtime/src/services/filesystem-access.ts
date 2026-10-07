@@ -18,6 +18,7 @@ export interface FilesystemAccessOptions {
   scratchDir: string;
   protectedRoots: string[];
   settings: () => { fileAccessMode?: FileAccessMode; fileAccessRevision?: number };
+  runPolicy?: (runId: string | undefined, policy: FilesystemPolicy) => FilesystemPolicy;
   reviewedRoots: (runId?: string) => { read: string[]; write: string[] };
 }
 const sensitiveLocations = [
@@ -76,7 +77,7 @@ export class FilesystemAccessService {
               .map((name) => join(home, name))
               .concat(reviewed.write)),
     ]);
-    return {
+    const policy: FilesystemPolicy = {
       mode,
       revision: settings.fileAccessRevision ?? 0,
       readRoots,
@@ -92,6 +93,16 @@ export class FilesystemAccessService {
         ...(mode === "full" ? [] : sensitiveLocations.map((name) => join(home, name))),
       ]),
     };
+    return this.options.runPolicy?.(runId, policy) ?? policy;
+  }
+  codingPolicy(runId?: string): FilesystemPolicy {
+    const policy = this.snapshot(runId);
+    const home = canonicalFilePath(this.options.homeDir ?? homedir());
+    return {
+      ...policy,
+      purpose: "coding",
+      deniedRoots: unique([...policy.deniedRoots, ...sensitiveLocations.map((name) => join(home, name))]),
+    };
   }
   roots(runId: string | undefined, access: "read" | "write"): string[] {
     return this.snapshot(runId)[access === "read" ? "readRoots" : "writeRoots"];
@@ -105,21 +116,36 @@ export class FilesystemAccessService {
   readUpload(path: string, runId?: string, signal?: AbortSignal): Promise<Buffer> {
     return this.execute("read", path, undefined, runId, signal);
   }
+  async coding<T>(request: Record<string, unknown>, runId?: string, signal?: AbortSignal): Promise<T> {
+    return JSON.parse(
+      (
+        await this.execute("coding", String(request.path ?? request.root), undefined, runId, signal, request)
+      ).toString("utf8"),
+    ) as T;
+  }
   private execute(
-    operation: "read" | "write",
+    operation: "read" | "write" | "coding",
     path: string,
     content: string | undefined,
     runId?: string,
     signal?: AbortSignal,
+    request?: Record<string, unknown>,
   ): Promise<Buffer> {
     if (process.platform !== "darwin")
       throw new AuxError("capability_unsupported", "Supervised file access requires the macOS sandbox.");
     if (signal?.aborted) throw new AuxError("cancelled", "File access was cancelled.");
-    const policy = this.snapshot(runId);
-    const target = requireFilesystemPath(policy, path, operation);
+    const policy = operation === "coding" ? this.codingPolicy(runId) : this.snapshot(runId);
+    const target = requireFilesystemPath(policy, path, operation === "write" ? "write" : "read");
     const worker = fileURLToPath(new URL("./filesystem-worker.js", import.meta.url));
     const nodeBootstrap = packagedNodeBootstrap();
-    const bootstrapFiles = [worker, process.execPath, ...nodeBootstrap.files];
+    const bootstrapFiles = [
+      worker,
+      join(dirname(worker), "coding-files-worker.js"),
+      join(dirname(worker), "coder-worktree-worker.js"),
+      join(dirname(worker), "filesystem-paths.js"),
+      process.execPath,
+      ...nodeBootstrap.files,
+    ];
     for (let directory = dirname(worker); ; directory = dirname(directory)) {
       bootstrapFiles.push(join(directory, "package.json"));
       if (directory === dirname(directory)) break;
@@ -127,7 +153,13 @@ export class FilesystemAccessService {
     return new Promise((resolve, reject) => {
       const child = spawn(
         "/usr/bin/sandbox-exec",
-        ["-p", filesystemSeatbelt(policy, false, bootstrapFiles), process.execPath, ...nodeBootstrap.args, worker],
+        [
+          "-p",
+          filesystemSeatbelt(policy, false, bootstrapFiles),
+          process.execPath,
+          ...nodeBootstrap.args,
+          worker,
+        ],
         {
           cwd: this.options.scratchDir,
           env: { PATH: "/usr/bin:/bin", HOME: this.options.scratchDir, TMPDIR: this.options.scratchDir },
@@ -144,14 +176,17 @@ export class FilesystemAccessService {
           reject(new AuxError("permission_denied", "Supervised file access failed."));
           return;
         }
-        if (JSON.stringify(this.snapshot(runId)) !== JSON.stringify(policy)) {
+        if (
+          JSON.stringify(operation === "coding" ? this.codingPolicy(runId) : this.snapshot(runId)) !==
+          JSON.stringify(policy)
+        ) {
           reject(new AuxError("ref_stale", "File permissions changed."));
           return;
         }
         resolve(Buffer.concat(output));
       });
       child.stdin.on("error", () => {});
-      child.stdin.end(JSON.stringify({ operation, path: target, content }));
+      child.stdin.end(JSON.stringify({ operation, path: target, content, request, policy }));
     });
   }
 }

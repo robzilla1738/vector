@@ -45,7 +45,6 @@ it("lists the runtime methods the renderer uses that the mock bridge does not im
 });
 
 const UNMOCKED = [
-  "agent.pageSummary",
   "agent.utility.intent",
   "agentConnections.install",
   "artifacts.list",
@@ -153,8 +152,6 @@ const UNMOCKED = [
   "settings.cloud.clear",
   "settings.cloud.configure",
   "settings.cloud.status",
-  "settings.remoteDebugging.get",
-  "settings.remoteDebugging.set",
   "tasks.captureEvidence",
   "tasks.create",
   "tasks.importDocumentEvidence",

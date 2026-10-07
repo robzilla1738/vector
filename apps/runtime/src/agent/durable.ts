@@ -1,5 +1,7 @@
 /** Persist intent before dispatch; uncertainty never authorizes a retry. */
 import { createHash, randomUUID } from "node:crypto";
+import { AuxError, type Step, type StepOutcome } from "@aux/contracts";
+import type { ExecContext } from "../execution/executor.js";
 import type { DatabaseSync } from "node:sqlite";
 import { openDb } from "../store/db.js";
 import { classifyStep } from "./permissions.js";
@@ -81,6 +83,7 @@ export class DurableWriteLedger {
     taskId?: string;
     taskRevision?: number;
     summary?: WriteIntent["summary"];
+    rearmNotApplied?: boolean;
   }): { intent: WriteIntent; duplicate: boolean } {
     const idempotencyKey = opts.logicalActionId
       ? createHash("sha256")
@@ -101,6 +104,23 @@ export class DurableWriteLedger {
         .get(idempotencyKey, opts.runId, opts.pageId, opts.taskId ?? null) as unknown as
         WriteIntent | undefined;
       if (existing) {
+        if (
+          existing.idempotencyKey === idempotencyKey &&
+          existing.status === "not_applied" &&
+          opts.rearmNotApplied
+        ) {
+          this.db
+            .prepare(
+              "UPDATE action_intents SET status='pending',evidence=NULL WHERE id=? AND status='not_applied'",
+            )
+            .run(existing.id);
+          this.db
+            .prepare("INSERT INTO action_transitions(intent_id,status,recorded_at,evidence) VALUES(?,?,?,?)")
+            .run(existing.id, "pending", Date.now(), "Fresh authorization after proven non-dispatch");
+          existing.status = "pending";
+          this.db.exec("COMMIT");
+          return { intent: withSummary(this.db, existing)!, duplicate: false };
+        }
         this.db.exec("COMMIT");
         return { intent: withSummary(this.db, existing)!, duplicate: true };
       }
@@ -125,8 +145,8 @@ export class DurableWriteLedger {
     }
   }
 
-  confirm(id: string): void {
-    this.transition(id, "confirmed");
+  confirm(id: string, evidence?: string): void {
+    this.transition(id, "confirmed", evidence);
   }
   // A failed browser response is not proof that the external effect failed.
   fail(id: string): void {
@@ -151,6 +171,20 @@ export class DurableWriteLedger {
       this.db.prepare(`${SELECT} WHERE idempotency_key=?`).get(idempotencyKey) as unknown as
         WriteIntent | undefined,
     );
+  }
+
+  confirmedReceipt(id: string): Pick<StepOutcome, "effect" | "receipt"> | undefined {
+    const row = this.db
+      .prepare(
+        "SELECT evidence FROM action_transitions WHERE intent_id=? AND status='confirmed' ORDER BY seq DESC LIMIT 1",
+      )
+      .get(id) as { evidence: string | null } | undefined;
+    if (!row?.evidence) return;
+    try {
+      const value = JSON.parse(row.evidence);
+      if (value && typeof value === "object" && value.stepId)
+        return { effect: value.effect, receipt: value.receipt };
+    } catch {}
   }
 
   getById(id: string): WriteIntent | undefined {
@@ -316,6 +350,7 @@ export interface WriteResultLike {
   steps?: Array<{
     op: string;
     status: string;
+    effect?: string;
     error?: { code: string; message?: string };
     receipt?: { observed?: string; uncertain?: boolean; dispatchedBeforeTakeover?: boolean };
   }>;
@@ -362,8 +397,15 @@ export function writeOutcome(result: WriteResultLike): {
     return { outcome: "uncertain" };
   }
   const dispatchedBefore = writes.slice(0, writes.indexOf(failed)).some((s) => s.status === "ok");
-  if (!dispatchedBefore && failed.error && PRE_DISPATCH_CODES.has(failed.error.code)) {
-    return { outcome: "not_applied", reason: `${failed.op} failed before dispatch: ${failed.error.code}` };
+  if (
+    !dispatchedBefore &&
+    (failed.effect === "authorized" ||
+      (failed.effect === undefined && failed.error && PRE_DISPATCH_CODES.has(failed.error.code)))
+  ) {
+    return {
+      outcome: "not_applied",
+      reason: `${failed.op} failed before dispatch: ${failed.error?.code ?? "not_dispatched"}`,
+    };
   }
   return { outcome: "uncertain" };
 }
@@ -382,6 +424,119 @@ export function settleWrite(
   else if (settled.outcome === "not_applied")
     ledger.abortUndispatched(intentId, settled.reason ?? "not dispatched");
   else ledger.fail(intentId);
+}
+
+/** Per-action transitions share the durable write ledger; no parent batch may hide a partial result. */
+export function journalProgramSteps(
+  ledger: DurableWriteLedger | undefined,
+  opts: {
+    runId: string;
+    pageId: string;
+    documentEpoch: number;
+    revision?: number;
+    actionId: string;
+    inputSignature?: string;
+    taskId?: string;
+    taskRevision?: number;
+    beforeText?: string;
+    actionLabels?: string[];
+    expectedNavigationUrlHash?: string;
+    modalWasOpen?: boolean;
+    beforeHeadingHashes?: string[];
+  },
+): Pick<ExecContext, "resumeStep" | "isStepApplied" | "beforeDispatch" | "settleStep"> {
+  const active = new Map<string, string>();
+  const occurrences = new Map<string, number>();
+  const current = new Map<string, number>();
+  const actionFor = (step: Step, occurrence: number) =>
+    `${opts.actionId}:${step.id}:${occurrence}:${opts.inputSignature ?? stepSignature([step])}`;
+  const keyFor = (step: Step, occurrence = 0) =>
+    createHash("sha256")
+      .update(JSON.stringify(["logical-action", actionFor(step, occurrence)]))
+      .digest("hex");
+  const priorFor = (step: Step, occurrence = 0) => {
+    const prior = ledger?.get(keyFor(step, occurrence));
+    if (prior?.status === "pending" || prior?.status === "uncertain")
+      throw new AuxError("conflict", `Action ${prior.id} is ${prior.status}; reconcile before dispatch.`);
+    return prior;
+  };
+  return {
+    isStepApplied(step) {
+      return isWriteIntentStep(step.op) && priorFor(step)?.status === "confirmed";
+    },
+    resumeStep(step) {
+      if (!ledger || !isWriteIntentStep(step.op)) return;
+      const occurrence = occurrences.get(step.id) ?? 0;
+      current.set(step.id, occurrence);
+      occurrences.set(step.id, occurrence + 1);
+      const prior = priorFor(step, occurrence);
+      if (prior?.status !== "confirmed") return;
+      return {
+        stepId: step.id,
+        op: step.op,
+        status: "ok",
+        startedAt: Date.now(),
+        durationMs: 0,
+        effect: "confirmed",
+        detail: `Already applied: durable action ${prior.id}; not dispatched again`,
+        ...ledger.confirmedReceipt(prior.id),
+      };
+    },
+    beforeDispatch(step) {
+      if (!ledger || !isWriteIntentStep(step.op)) return;
+      const signature = stepSignature([step]);
+      const began = ledger.begin({
+        ...opts,
+        signature,
+        logicalActionId: actionFor(step, current.get(step.id) ?? 0),
+        rearmNotApplied: true,
+        summary: {
+          ops: [step.op],
+          beforeLineHashes: (opts.beforeText ?? "").split("\n").filter(Boolean).map(observationLineHash),
+          actionLabels: opts.actionLabels,
+          expectedNavigationUrlHash: opts.expectedNavigationUrlHash,
+          modalWasOpen: opts.modalWasOpen,
+          beforeHeadingHashes: opts.beforeHeadingHashes,
+        },
+      });
+      if (began.duplicate)
+        throw new AuxError(
+          "conflict",
+          `Action ${began.intent.id} is ${began.intent.status}; reconcile before dispatch.`,
+        );
+      active.set(step.id, began.intent.id);
+    },
+    settleStep(outcome, step) {
+      const id = active.get(step.id);
+      if (!ledger || !id) return;
+      const result = writeOutcome({
+        status: outcome.status === "ok" ? "completed" : "failed",
+        steps: [outcome],
+      });
+      if (result.outcome === "confirmed")
+        ledger.confirm(
+          id,
+          JSON.stringify({
+            stepId: step.id,
+            op: step.op,
+            effect: outcome.effect,
+            receipt: outcome.receipt
+              ? {
+                  remoteConfirmed: outcome.receipt.remoteConfirmed,
+                  uncertain: outcome.receipt.uncertain,
+                  unconfirmed: outcome.receipt.unconfirmed,
+                  dispatchedBeforeTakeover: outcome.receipt.dispatchedBeforeTakeover,
+                  identity: outcome.receipt.identity,
+                }
+              : undefined,
+          }),
+        );
+      else if (result.outcome === "not_applied")
+        ledger.abortUndispatched(id, result.reason ?? "Not dispatched");
+      else ledger.fail(id);
+      active.delete(step.id);
+    },
+  };
 }
 
 /**

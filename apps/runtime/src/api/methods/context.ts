@@ -55,6 +55,7 @@ import type { MethodName } from "@aux/contracts";
 import type { McpOAuthService } from "../../services/mcp-oauth.js";
 
 export interface Services {
+  auxPackages?: import("../../services/aux-package-library.js").AuxPackageLibrary;
   turnTabs?: AgentTurnTabs;
   /** Advertise registered optional factories without constructing their services. */
   serviceAvailable?: (name: "responses" | "operations" | "state" | "tracer") => boolean;
@@ -93,6 +94,9 @@ export interface Services {
   hooks?: HookService;
   hookExecutor?: HookExecutor;
   workspaceFolders?: WorkspaceFolderService;
+  coderWorktrees?: import("../../services/coder-worktree-operations.js").CoderWorktreeOperations;
+  codingFiles?: import("../../services/coding-files.js").CodingFilesService;
+  codingProcesses?: import("../../services/coding-processes.js").CodingProcesses;
   projects?: import("../../services/projects.js").ProjectsService;
   terminals?: import("../../services/terminals.js").TerminalService;
   /** Shared with the agent loop's REPL cell surface — created once in main.ts. */
@@ -226,8 +230,10 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
       new ApprovalStore(
         s.repo.db,
         (event) => d.safetyAudit.record(event),
-        (action) => s.settings.allowAgentSite(action),
+        (action, scope) => s.settings.allowAgentSite(action, scope),
         () => s.settings.agentPolicy(),
+        (runId) => s.repo.getRun(runId),
+        s.repo,
       ),
     suspensions: () =>
       s.suspensions ?? new SuspensionStore(s.repo.db, (event) => d.safetyAudit.record(event)),

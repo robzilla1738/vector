@@ -744,7 +744,7 @@ export function ModelsSettings({
       {provider !== "openai-compatible" && (
         <span className="hint field">
           Destination: {String(settings.modelEndpoint ?? "Vercel AI Gateway")}. Enter a model ID available to
-          your account. Use the Agents tab for Codex or Claude Code.
+          your account. Use the Agents tab to connect an external MCP client.
         </span>
       )}
       <IndexedField

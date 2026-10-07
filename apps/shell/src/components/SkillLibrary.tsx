@@ -75,7 +75,7 @@ export function SkillLibrary({
   }
   return (
     <details className="routine-safety">
-      <summary>Aux skills and Claude Code imports</summary>
+      <summary>Aux skills and compatible imports</summary>
       <p>
         Review Aux-authored guidance or select files from ~/.claude/skills.
         Import never runs a script or grants access.

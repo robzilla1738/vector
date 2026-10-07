@@ -190,6 +190,7 @@ export class RunCoordinator {
     modelId?: string;
     reasoning?: "low" | "medium" | "high";
     privateTask?: boolean;
+    agentMode?: import("@aux/contracts").AgentMode;
     executionTarget?: "local" | "cloud";
     nativeTurnContext?: string;
     externalConnectionId?: string;
@@ -218,7 +219,11 @@ export class RunCoordinator {
     retryOfRunId?: string;
     /** routine-declared account boundary stamped on the run */
     accountLabels?: string[];
-    subagentProfile?: "explorer" | "read_only" | "default";
+    subagentProfile?: string;
+    agentProfile?: import("@aux/contracts").AgentProfile;
+    auxPackages?: import("@aux/contracts").AuxPackageSnapshot[];
+    projectRoot?: string;
+    coderWorktree?: import("@aux/contracts").CoderWorktree;
     calendarGrantIds?: string[];
   }): Promise<Run> {
     if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
@@ -250,6 +255,7 @@ export class RunCoordinator {
         modelId: opts.modelId,
         reasoning: opts.reasoning,
         privateTask: opts.privateTask ?? false,
+        agentMode: opts.agentMode,
         executionTarget: opts.executionTarget ?? "local",
         nativeTurnContext: opts.nativeTurnContext,
         externalConnectionId: opts.externalConnectionId,
@@ -281,6 +287,10 @@ export class RunCoordinator {
         taskRevision: opts.taskRevision,
         accountLabels: opts.accountLabels,
         subagentProfile: opts.subagentProfile,
+        agentProfile: opts.agentProfile,
+        auxPackages: opts.auxPackages,
+        projectRoot: opts.projectRoot,
+        coderWorktree: opts.coderWorktree,
         calendarGrantIds,
         retryOfRunId: opts.retryOfRunId,
         branchSourceRunIds: opts.branchSourceRunIds,
@@ -385,7 +395,7 @@ export class RunCoordinator {
 
   private retirePendingProofs(runId: string): void {
     const run = this.get(runId);
-    const approvals = this.deps.approvals ?? new ApprovalStore(this.deps.repo.db);
+    const approvals = this.deps.approvals ?? new ApprovalStore(this.deps.repo.db, undefined, undefined, undefined, (id) => this.deps.repo.getRun(id));
     this.deps.repo.transaction(() => {
       const pending = this.suspensions.pending(runId);
       if (pending) approvals.retireTurn(pending.turnId, pending.threadId);

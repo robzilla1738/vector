@@ -34,3 +34,37 @@ The native window supplies the glass underlay; the renderer keeps the primary pa
 Conversation shares its compact composer between Home Ask and full chat. ChatPreferences exposes the remembered confirmation policy and a Popover containing RunOptions; model, reasoning, execution target and private-task controls retain their existing authority checks. Ask first is the fresh-profile default, Skip confirmation selects Full auto, and Auto remains a Settings choice. Anchored popovers use Dialog focus containment and viewport-clamped placement with a dark theme surface; they deliberately omit the decorative GlassMaterial stack. Only the left sidebar has edge-hover reveal. Interactive controls are excluded from native window-drag regions.
 
 Current build/validation evidence and deferred acceptance live in [STATUS](STATUS.md); the roadmap describes targets rather than proof that every target has passed.
+
+## Governed coding and approval fluidity
+
+Aux’s tool loop owns coding execution. Trusted run configuration captures the
+effective mode, project, declarative profile and pinned Aux Packages. Profile
+tools and limits narrow parent authority. Durable run grants and current policy
+are rechecked at dispatch; exact reviewed batches retain content/action digests
+and observed versions. Broader grants remain separate choices.
+
+The filesystem worker implements bounded read/search and versioned file batches
+under granted roots and credential exclusions. Protected file receipts retain
+before/after content, binary/mode state and individual outcomes. Reconciliation
+observes current state without replay; undo checks recorded results before
+reversing effects. The change UI fetches metadata and lazily opens file diffs.
+
+CodingProcesses shares Bash Seatbelt and network admission. It owns detached
+process groups, bounded logs/artifacts, policy-revocation monitoring and cleanup
+barriers. Recovery never launches a duplicate command. Process reconciliation
+can establish an interrupted lifetime while retaining unknown command effects.
+Arbitrary commands have no universal file or external-effect undo guarantee.
+
+QuickJS filesystem/process APIs call these governed services without ambient
+Node, credential or raw-eval authority. Protected host-call results and cell
+sources support deterministic restart replay; transcript compaction does not
+redispatch completed effects. Local coding is supported first; cloud coding
+returns an explicit unsupported capability until its equivalent boundary exists.
+
+Coder cells use isolated Git worktrees with permitted dirty/untracked snapshots,
+binary assets and modes. Parent integration uses governed writes and captured
+parent versions. Incomplete snapshots and conflicts remain inspectable rather
+than being force-cleared. Aux Packages contain versioned declarative profiles,
+skills, templates and registered-tool workflows; shipped directories are agent
+write-protected, and package contents are pinned per run. Native terminals launch
+an ordinary shell independently of the Aux agent loop.

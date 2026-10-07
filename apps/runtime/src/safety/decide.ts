@@ -23,11 +23,8 @@ import {
 import { observedCategory, type ObservedActionTarget } from "./observed-target.js";
 import { classifyStep, isConsequential } from "../agent/permissions.js";
 import { ApprovalStore } from "./approval.js";
-import { agentPolicyCategoryFor, policyFor, type AgentPolicySettings } from "@aux/contracts";
-import {
-  exactOrigin,
-  type OriginPolicyAudit,
-} from "./origin-policy.js";
+import { agentPolicyCategoryFor, policyForCategories, type AgentPolicySettings } from "@aux/contracts";
+import { exactOrigin, type OriginPolicyAudit } from "./origin-policy.js";
 
 /** Refusal ids are registered in packages/contracts/src/refusals.ts. */
 export const REFUSAL = {
@@ -103,12 +100,17 @@ export interface DecideDeps {
   approvals: ApprovalStore;
   journal: DecisionJournal;
   managedRules: () => readonly OriginRule[];
-  agentPolicy: () => AgentPolicySettings;
+  agentPolicy: (runId?: string) => AgentPolicySettings;
   audit: (decision: OriginPolicyAudit | Record<string, unknown>) => void;
   now?: () => number;
 }
 
 export interface DecideContext {
+  trustedUserAction?: boolean;
+  runId?: string;
+  policyCategories?: import("@aux/contracts").AgentPolicyCategory[];
+  reviewedChanges?: import("@aux/contracts").SafetyAction["reviewedChanges"];
+  reviewedActions?: import("@aux/contracts").SafetyAction["reviewedActions"];
   taskRead?: ValidatedTaskRead;
   phase: "preflight" | "dispatch";
   sessionId?: string;
@@ -211,7 +213,9 @@ export function effectRequestForStep(input: {
     turnId: input.turnId,
     threadId: input.threadId,
     ...(input.runId ? { runId: input.runId } : {}),
-    ...(input.step.op === "fillCredential" && input.credentialTarget ? { credentialTarget: input.credentialTarget } : {}),
+    ...(input.step.op === "fillCredential" && input.credentialTarget
+      ? { credentialTarget: input.credentialTarget }
+      : {}),
     requestedAt: input.at ?? Date.now(),
   });
 }
@@ -226,6 +230,7 @@ export function actionFor(request: EffectRequest, normalizedOrigin?: string): Sa
     invocationDigest: request.invocationDigest,
     ...(normalizedOrigin ? { origin: `${normalizedOrigin}/` } : {}),
     ...(request.recipient ? { recipient: request.recipient } : {}),
+    runId: request.runId,
     turnId: request.turnId,
     threadId: request.threadId,
     requestedAt: request.requestedAt,
@@ -284,49 +289,134 @@ const ASK_GUIDANCE =
   "Pause this action and request approval from the user. Do not dispatch or retry while approval is pending.";
 
 /** Shared mode policy leads; a fresh decision is made at the actual dispatch boundary. */
-export async function decide(request: EffectRequest, deps: DecideDeps, context: DecideContext): Promise<Decision> {
+export async function decide(
+  request: EffectRequest,
+  deps: DecideDeps,
+  context: DecideContext,
+): Promise<Decision> {
   const at = deps.now?.() ?? Date.now();
   const parsed = EffectRequestSchema.parse(request);
   const exact = parsed.origin ? exactOrigin(parsed.origin) : null;
   if (parsed.origin && !exact)
-    return deny(deps.journal, parsed, REFUSAL.untrustedOrigin, "origin_resolver", "This action has no trustworthy HTTP(S) origin.", at);
+    return deny(
+      deps.journal,
+      parsed,
+      REFUSAL.untrustedOrigin,
+      "origin_resolver",
+      "This action has no trustworthy HTTP(S) origin.",
+      at,
+    );
   if (parsed.category === "evaluate" && context.trustedEval !== true)
-    return deny(deps.journal, parsed, REFUSAL.evaluateUnreachable, "origin_resolver", "Page JavaScript is not available to agent callers.", at);
-  if (parsed.actor !== "user" && /^(settings\.|safety\.(?:policies|grants)|agent\.policy)/.test(parsed.action))
-    return deny(deps.journal, parsed, REFUSAL.authorizationDenied, "managed_policy", "Agent permissions must be changed in Aux Settings.", at);
+    return deny(
+      deps.journal,
+      parsed,
+      REFUSAL.evaluateUnreachable,
+      "origin_resolver",
+      "Page JavaScript is not available to agent callers.",
+      at,
+    );
+  if (
+    parsed.actor !== "user" &&
+    /^(settings\.|safety\.(?:policies|grants)|agent\.policy)/.test(parsed.action)
+  )
+    return deny(
+      deps.journal,
+      parsed,
+      REFUSAL.authorizationDenied,
+      "managed_policy",
+      "Agent permissions must be changed in Aux Settings.",
+      at,
+    );
   const managed = exact ? deps.managedRules().filter((rule) => exactOrigin(rule.origin) === exact) : [];
   if (managed.some((rule) => rule.access === "deny" || rule.effects?.[parsed.effect] === "deny"))
     return deny(deps.journal, parsed, REFUSAL.originPolicyDenied, "managed_policy", DENIED_GUIDANCE, at);
   if (parsed.category === "evaluate")
-    return allow(deps.journal, parsed, { authorizedBy: "policy", policySource: "managed" }, "trusted_source", at);
+    return allow(
+      deps.journal,
+      parsed,
+      { authorizedBy: "policy", policySource: "managed" },
+      "trusted_source",
+      at,
+    );
 
-  const settings = deps.agentPolicy();
-  const category = parsed.dataClasses.includes("credential") ? "credentials" : agentPolicyCategoryFor(parsed.category, parsed.action);
-  const modePolicy = policyFor({ mode: settings.agentMode, category, site: exact ?? undefined, amount: parsed.amount, overrides: settings.agentPolicies });
+  const runId = context.runId;
+  const settings = deps.approvals.effectivePolicy(deps.agentPolicy(runId), runId);
+  const category = parsed.dataClasses.includes("credential")
+    ? "credentials"
+    : agentPolicyCategoryFor(parsed.category, parsed.action);
+  const modePolicy = policyForCategories({
+    mode: settings.agentMode,
+    categories: context.policyCategories ?? [category],
+    site: exact ?? undefined,
+    amount: parsed.amount,
+    overrides: settings.agentPolicies,
+  });
   const source = modePolicy.source === "user" ? "user_rule" : "default";
-  if (modePolicy.disposition === "block") return deny(deps.journal, parsed, REFUSAL.authorizationDenied, source, DENIED_GUIDANCE, at);
+  if (modePolicy.disposition === "block")
+    return deny(deps.journal, parsed, REFUSAL.authorizationDenied, source, DENIED_GUIDANCE, at);
   if (modePolicy.disposition === "handoff" || managed.some((rule) => rule.confirmation === "handoff"))
-    return ask(deps.journal, parsed, { kind: "handoff", instruction: "Complete this action directly in the site, then return to Aux.", guidance: ASK_GUIDANCE }, source, at);
+    return ask(
+      deps.journal,
+      parsed,
+      {
+        kind: "handoff",
+        instruction: "Complete this action directly in the site, then return to Aux.",
+        guidance: ASK_GUIDANCE,
+      },
+      source,
+      at,
+    );
+  const trustedUserAction =
+    context.trustedUserAction === true &&
+    parsed.actor === "user" &&
+    (context.policyCategories ?? [category]).every(
+      (value) => value === "file_write" || value === "file_delete",
+    );
   const action = SafetyActionSchema.parse({
     ...actionFor(parsed, exact ?? undefined),
+    runId,
+    runAuthorityRevision: deps.approvals.runAuthorityRevision(runId),
+    policyCategories: context.policyCategories,
+    reviewedChanges: context.reviewedChanges,
+    reviewedActions: context.reviewedActions,
     policyRevision: settings.agentPolicyRevision,
     category: category === "credentials" ? "credential" : parsed.category,
-    confirmation: modePolicy.disposition === "allow" ? "none" : "action",
+    confirmation: modePolicy.disposition === "allow" || trustedUserAction ? "none" : "action",
     ...(modePolicy.disposition === "touch_id" ? { authentication: "touch_id" } : {}),
   });
   const approvalId = context.approvalId ?? deps.approvals.acceptedFor(action, "turn", at);
-  const authorization = deps.approvals.authorize({ action, settings, approvalId, consume: context.phase === "dispatch", now: at });
-  if (authorization.status === "denied") return deny(deps.journal, parsed, REFUSAL.authorizationDenied, source, authorization.guidance, at);
+  const authorization = deps.approvals.authorize({
+    action,
+    settings,
+    trustedUserAction,
+    approvalId,
+    consume: context.phase === "dispatch",
+    now: at,
+  });
+  if (authorization.status === "denied")
+    return deny(deps.journal, parsed, REFUSAL.authorizationDenied, source, authorization.guidance, at);
   if (authorization.status === "handoff")
-    return ask(deps.journal, parsed, { kind: "handoff", instruction: authorization.guidance, guidance: ASK_GUIDANCE }, source, at);
+    return ask(
+      deps.journal,
+      parsed,
+      { kind: "handoff", instruction: authorization.guidance, guidance: ASK_GUIDANCE },
+      source,
+      at,
+    );
   if (authorization.status === "ask" || authorization.status === "touch_id") {
     const pendingId = deps.approvals.issue(action, "turn", at);
-    return ask(deps.journal, parsed, {
-      kind: authorization.status === "touch_id" ? "touch-id" : "approval",
-      approvalId: pendingId,
-      instruction: authorization.guidance,
-      guidance: ASK_GUIDANCE,
-    }, "approval", at);
+    return ask(
+      deps.journal,
+      parsed,
+      {
+        kind: authorization.status === "touch_id" ? "touch-id" : "approval",
+        approvalId: pendingId,
+        instruction: authorization.guidance,
+        guidance: ASK_GUIDANCE,
+      },
+      "approval",
+      at,
+    );
   }
   context.taskRead?.check();
   if (context.taskRead && parsed.effect === "read" && category === "read") {
@@ -335,7 +425,13 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
       throw new AuxError("permission_denied", "The read action belongs to another task source.");
     return allow(deps.journal, parsed, provenance, "task_resource", at);
   }
-  return allow(deps.journal, parsed, authorization.provenance, sourceForProvenance(authorization.provenance), at);
+  return allow(
+    deps.journal,
+    parsed,
+    authorization.provenance,
+    sourceForProvenance(authorization.provenance),
+    at,
+  );
 }
 
 function sourceForProvenance(provenance: AuthorizationProvenance): DecisionSource {

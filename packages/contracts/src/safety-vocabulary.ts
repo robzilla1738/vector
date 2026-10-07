@@ -1,5 +1,7 @@
 export const CONFIRMATION_LEVELS = ["handoff", "action", "preapprovable", "none"] as const;
 export const EFFECT_CATEGORIES = [
+  "file_write",
+  "file_delete",
   "read",
   "navigate",
   "input",

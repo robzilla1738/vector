@@ -24,8 +24,7 @@ function deps(runId: string, step: ReplHostDeps["step"], signal?: AbortSignal): 
     observe: async () => ({ text: "" }),
     capture: async () => ({ width: 1, height: 1, elements: [] }),
     fetch: async () => ({ output: {} }),
-    fsRead: async () => "",
-    fsWrite: async () => {},
+    codingTool: async () => ({ output: "" }),
   };
 }
 

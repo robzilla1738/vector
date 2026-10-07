@@ -36,12 +36,13 @@ function select(label: string, value: string) {
   });
 }
 it("loads only the actual catalog on demand and preserves Auto as absence", async () => {
-  const rpc = vi.spyOn(bridge, "invoke").mockResolvedValue({
-    models: [{ id: "fixture/exact", name: "Fixture model" }],
-    source: "configured",
-  } as never);
+  const rpc = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
+    if (method === "packages.list") return { packages: [], defaults: [] } as never;
+    if (method === "workspaces.folders.list") return [] as never;
+    return { models: [{ id: "fixture/exact", name: "Fixture model" }], source: "configured" } as never;
+  });
   await mount();
-  expect(rpc).not.toHaveBeenCalled();
+  expect(rpc).not.toHaveBeenCalledWith("models.list");
   await act(async () =>
     host.querySelector<HTMLSelectElement>('select[aria-label="Composer model"]')!.focus(),
   );

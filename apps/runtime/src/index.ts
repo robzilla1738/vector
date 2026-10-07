@@ -237,11 +237,7 @@ export { ProviderAuthService } from "./services/provider-auth.js";
 export { ChatgptAuthService } from "./services/chatgpt-auth.js";
 export { ChatgptAccounts, chatgptAccountId } from "./services/chatgpt-account.js";
 export { accountableUtilityModel } from "./services/utility-model.js";
-export {
-  chatgptRequest,
-  chatgptCompletionStream,
-  chatgptModelClient,
-} from "./agent/chatgpt-model.js";
+export { chatgptRequest, chatgptCompletionStream, chatgptModelClient } from "./agent/chatgpt-model.js";
 export { ModelCatalogService, parseModelCatalog, discoverLocalModels } from "./services/model-catalog.js";
 export { installAgentClient } from "./services/agent-client-install.js";
 
@@ -255,3 +251,10 @@ export { ExecutionResourceLedger } from "./services/execution-resource-ledger.js
 export { ProjectsService } from "./services/projects.js";
 
 export { chatgptModels, parseChatgptModels } from "./services/chatgpt-catalog.js";
+
+export { FilesystemAccessService } from "./services/filesystem-access.js";
+export { CodingFilesService } from "./services/coding-files.js";
+export { CoderWorktreeOperations } from "./services/coder-worktree-operations.js";
+export { startCoderWorktree, worktreeAuthority } from "./services/coder-worktree-runtime.js";
+
+export { createCoderWorktree } from "./services/coder-worktrees.js";

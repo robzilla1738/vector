@@ -1,3 +1,4 @@
+import { CodingRunActivity } from "../features/coding/CodingRunActivity";
 import { shellIconMore } from "../ui/icons";
 import { RunOptions } from "../composer/RunOptions";
 import { ChatPreferences } from "../composer/ChatPreferences";
@@ -1486,6 +1487,10 @@ export function Conversation({
           executionTarget: preferences?.executionTarget,
           modelId: preferences?.modelId,
           reasoning: preferences?.reasoning,
+          agentMode: preferences?.agentMode,
+          profile: preferences?.profile,
+          projectRoot: preferences?.projectRoot,
+          packageNames: preferences?.packageNames,
           chatId,
           pageId: primaryForRun?.pageId ?? null,
           pageIds,
@@ -1496,6 +1501,9 @@ export function Conversation({
           ownsDraft: true,
         });
         if (run) {
+          const latestPreferences = useStore.getState().composerPreferences[draftKey(chatId)];
+          if (latestPreferences?.agentMode !== undefined)
+            useStore.getState().setComposerPreferences(draftKey(chatId), { ...latestPreferences, agentMode: undefined });
           if (id && !taskMode?.found && conversationCurrent()) {
             setTaskMode(null);
             setMetadataRefresh((value) => value + 1);
@@ -1876,11 +1884,14 @@ export function Conversation({
         </span>
       )}
       <ChatPreferences
+        draftKey={composerPreferenceKey}
+        activeRunId={live ? last?.runId : undefined}
         disabled={archived || sending || live || !taskModeKnown}
         modelId={draftPreferences?.modelId}
         reasoning={draftPreferences?.reasoning}
       >
         <RunOptions
+          workspaceId={workspaceContext.workspace?.workspaceId}
           draftKey={composerPreferenceKey}
           privateTask={privateTask}
           privateTaskLocked={taskModeLocked}
@@ -2361,6 +2372,7 @@ export function Conversation({
                         ))}
                     </div>
                   )}
+                  {run.config?.projectRoot && <CodingRunActivity runId={run.runId} live={isLive(run)} />}
                   <RunImages runId={run.runId} />
                 </article>
               ))}

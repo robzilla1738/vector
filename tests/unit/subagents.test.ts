@@ -15,9 +15,9 @@ import {
   SubagentService,
   TaskService,
 } from "@aux/runtime";
-import { EventTypes, type Run } from "@aux/contracts";
+import { AuxPackageSnapshotSchema, EventTypes, type Run } from "@aux/contracts";
 
-function fixture() {
+function fixture(coding?: ConstructorParameters<typeof SubagentService>[3]) {
   const db = openDb(":memory:");
   const repo = new Repo(db),
     events = new EventBus(repo);
@@ -73,7 +73,7 @@ function fixture() {
       },
     },
   } as unknown as ConstructorParameters<typeof SubagentService>[2];
-  const service = new SubagentService(repo, events, runs);
+  const service = new SubagentService(repo, events, runs, coding);
   return {
     db,
     repo,
@@ -319,7 +319,10 @@ it("preserves funded child work for budget Continue and cancels when its parent 
     parent.status = "completed";
     f.repo.saveRun(parent);
     f.events.emit(EventTypes.RunUpdated, { run: parent }, parent.runId);
-    await vi.waitFor(() => {expect(f.cancelled).toContain(second.runId); expect(f.cancelled).toContain(child.runId);});
+    await vi.waitFor(() => {
+      expect(f.cancelled).toContain(second.runId);
+      expect(f.cancelled).toContain(child.runId);
+    });
     expect(f.service.view(group.groupId).group.state).toBe("closed");
   } finally {
     f.close();
@@ -675,6 +678,88 @@ it("keeps explicitly unlimited child budgets absent from the run cost cap", asyn
     expect(f.starts[0]).toMatchObject({ deadlineMs: 0, maxModelCalls: 0 });
     expect(f.starts[0]?.maxCostUsd).toBeUndefined();
     expect(f.service.view(group.groupId).group.deadlineAt).toBe(0);
+  } finally {
+    f.close();
+  }
+});
+
+it("isolates a package-authored coder while preserving shared browser profiles and parent authority", async () => {
+  const create = vi.fn(async (parentRoot: string, _parentRunId: string, childRunId: string) => ({
+    root: `/aux/worktrees/${childRunId}`,
+    parentRoot,
+    baseCommit: "synthetic",
+    snapshotDigest: "a".repeat(64),
+    integrated: false,
+  }));
+  const f = fixture({ create });
+  try {
+    f.parent.config = {
+      ...f.parent.config,
+      projectRoot: "/reviewed/project",
+      agentProfile: {
+        name: "parent",
+        prompt: "Parent",
+        tools: ["read_file", "apply_changes"],
+        packages: [],
+        workspace: "shared",
+      },
+      auxPackages: [
+        AuxPackageSnapshotSchema.parse({
+          manifest: {
+            schemaVersion: 1,
+            name: "project-coding",
+            version: "1.0.0",
+            profiles: [
+              {
+                name: "project-coder",
+                prompt: "Implement this project change.",
+                tools: ["read_file", "apply_changes", "bash"],
+                workspace: "isolated",
+                limits: { maxCostUsd: 0 },
+              },
+            ],
+          },
+          digest: "b".repeat(64),
+          skills: [],
+        }),
+      ],
+    };
+    f.repo.saveRun(f.parent);
+    const group = f.service.createGroup({
+      parentRunId: f.parent.runId,
+      tokenBudget: 0,
+      costBudgetUsd: 0,
+      timeBudgetMs: 0,
+    });
+    const child = await f.service.spawn({
+      groupId: group.groupId,
+      goal: "Independent code task",
+      tokenAllocation: 0,
+      costAllocationUsd: 0,
+      profile: "project-coder",
+      pageIds: [],
+    });
+    expect(create).toHaveBeenCalledWith("/reviewed/project", f.parent.runId, child.runId);
+    expect(f.starts[0]).toMatchObject({
+      projectRoot: child.worktree!.root,
+      coderWorktree: child.worktree,
+      agentProfile: { workspace: "isolated", tools: ["read_file", "apply_changes"] },
+      maxCostUsd: 0,
+    });
+    expect(f.repo.getRun(f.parent.runId)?.config?.projectRoot).toBe("/reviewed/project");
+    await f.service.spawn({
+      groupId: group.groupId,
+      goal: "Browser work",
+      tokenAllocation: 0,
+      costAllocationUsd: 0,
+      profile: "default",
+      pageIds: ["one"],
+    });
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(f.starts[1]).toMatchObject({
+      projectRoot: "/reviewed/project",
+      agentProfile: { workspace: "shared" },
+    });
   } finally {
     f.close();
   }

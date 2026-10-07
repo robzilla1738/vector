@@ -3,7 +3,7 @@ import { call, errToast, useStore } from "./store";
 import { errorMessage } from "./error-message";
 import type { TrustConfirmation } from "./features/trust/confirmation";
 
-type Decision = "accept" | "acceptForOrigin" | "decline";
+type Decision = "accept" | "acceptForOrigin" | "acceptForRun" | "acceptGlobally" | "decline";
 const controllers = new WeakMap<TrustConfirmation, SuspensionController>();
 /** Card, page pill and command shortcuts share one exact request and pending operation. */
 export class SuspensionController {
@@ -47,6 +47,8 @@ export class SuspensionController {
     if (this.state.busy) return;
     if (decision !== "decline" && this.request.kind === "handoff")
       throw new Error("This action requires you to take over.");
+    if (this.request.kind === "touch-id" && ["acceptForRun", "acceptGlobally"].includes(decision))
+      throw new Error("Use device confirmation for this action.");
     const approvalId = this.request.approvalId;
     if (!approvalId) {
       if (decision !== "decline") throw new Error("This approval is unavailable.");

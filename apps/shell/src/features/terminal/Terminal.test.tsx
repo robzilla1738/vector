@@ -58,7 +58,6 @@ it("joins a concurrent read failure to Stop and keeps Start disabled until the o
     terminalId: "terminal-original",
     workspaceId: "space",
     folderId: "folder",
-    client: "claude",
     cols: 80,
     rows: 24,
     state: "running",

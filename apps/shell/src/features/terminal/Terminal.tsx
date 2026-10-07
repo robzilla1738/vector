@@ -21,7 +21,6 @@ export default function Terminal({
 }) {
   const container = useRef<HTMLDivElement>(null);
   const close = useRef<() => Promise<void>>(async () => {});
-  const [client, setClient] = useState<"claude" | "codex">("claude");
   const [running, setRunning] = useState(false),
     [error, setError] = useState("");
   const [launch, setLaunch] = useState(0);
@@ -51,7 +50,6 @@ export default function Terminal({
     const started = call("terminal.start", {
       workspaceId,
       folderId,
-      client,
       cols: terminal.cols,
       rows: terminal.rows,
     });
@@ -186,19 +184,10 @@ export default function Terminal({
   return (
     <section className="aux-terminal" aria-label="Project Terminal">
       <p>
-        {path}. Uses your own {client === "claude" ? "Claude Code" : "Codex"} login. This local terminal can
-        run commands with your account's permissions.
+        {path}. A local shell for your project. Coding tasks run through Aux and retain their changes and
+        execution receipts.
       </p>
       <div className="aux-terminal-controls">
-        <select
-          aria-label="Terminal client"
-          value={client}
-          disabled={running}
-          onChange={(event) => setClient(event.target.value as "claude" | "codex")}
-        >
-          <option value="claude">Claude Code</option>
-          <option value="codex">Codex</option>
-        </select>
         <Button
           size={28}
           disabled={running}

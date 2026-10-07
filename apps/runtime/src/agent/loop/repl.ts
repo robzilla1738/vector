@@ -70,11 +70,12 @@ export interface ReplHostDeps {
     elements?: { ref: string; name?: string; rect?: { x: number; y: number; w: number; h: number } }[];
   }>;
   /** One PlanStep through the act dep — returns `{park}` on a gate `ask`. */
-  step(pageId: string, step: unknown): Promise<LoopToolResult>;
+  step(pageId: string, step: unknown, ordinal?: number): Promise<LoopToolResult>;
   /** Cookie-free fetch through decide() — returns `{park}` on `ask`. */
   fetch(url: string): Promise<LoopToolResult>;
-  fsRead(path: string): Promise<string>;
-  fsWrite(path: string, content: string): Promise<void>;
+  codingTool?(name: string, input: unknown, ordinal: number): Promise<LoopToolResult>;
+  replay?(name: string, params: string, ordinal: number, execute: () => Promise<string>): Promise<string>;
+  allowHostCall?(name: string, params: string): void;
   /** Same verified terminal path as the submit_result tool. */
   submitResult?(input: {
     report: string;
@@ -84,7 +85,10 @@ export interface ReplHostDeps {
   /** `{park}` when a write-annotated tool is waiting on the person. */
   webmcp?(pageId: string, action: unknown): Promise<unknown>;
   /** Subagent cells (06-Y): spawn under this run's group, then wait/send/stop. */
-  spawnCell?(input: { goal: string; profile?: string; pageIds?: string[] }): Promise<{ cellId: string }>;
+  spawnCell?(
+    input: { goal: string; profile?: string; pageIds?: string[] },
+    ordinal?: number,
+  ): Promise<{ cellId: string }>;
   /** Yield until the cell reaches a terminal state or the remaining deadline lapses. */
   waitCell?(
     cellId: string,
@@ -129,7 +133,7 @@ function checkSource(code: string): void {
  */
 function normalizeBridgeAwaits(code: string): string {
   const bridgeCall =
-    /^(?:page\.[A-Za-z]+|snapshot|annotatedScreenshot|tabs|openTab|closeTab|display|sleep|fetch|spawn|wait|send|stop|submitResult|fs\.(?:readFile|writeFile))\s*\(/;
+    /^(?:page\.[A-Za-z]+|snapshot|annotatedScreenshot|tabs|openTab|closeTab|display|sleep|fetch|spawn|wait|send|stop|submitResult|(?:fs|proc|coder)\.[A-Za-z]+)\s*\(/;
   let output = "";
   let i = 0;
   let quote = "";
@@ -381,8 +385,32 @@ const display = (value) => { __aux_displayed.push(value); return __aux_invoke("d
 const sleep = (ms) => __aux_invoke("sleep", { ms });
 const fetch = (url) => __aux_invoke("fetch", { url });
 const fs = Object.freeze({
-  readFile: (path) => __aux_invoke("fsRead", { path }),
-  writeFile: (path, content) => __aux_invoke("fsWrite", { path, content }),
+  readFile: (path, range) => __aux_invoke("coding", { name: "read_file", input: { path, ...(range || {}) } }),
+  writeFile: (path, content, expectedVersion) => __aux_invoke("coding", { name: "write_file", input: { path, content, expectedVersion } }),
+  editFile: (spec) => __aux_invoke("coding", { name: "edit_file", input: spec }),
+  grep: (spec) => __aux_invoke("coding", { name: "grep", input: spec }),
+  glob: (spec) => __aux_invoke("coding", { name: "glob", input: spec }),
+  list: (path) => __aux_invoke("coding", { name: "list_directory", input: {path} }),
+  stat: (path) => __aux_invoke("coding", { name: "stat", input: {path} }),
+  applyChanges: (changes) => __aux_invoke("coding", { name: "apply_changes", input: {changes} }),
+  diff: (receiptIds) => __aux_invoke("coding", { name: "diff", input: {receiptIds} }),
+  undo: (receiptIds) => __aux_invoke("coding", { name: "undo", input: {receiptIds} }),
+  reconcile: (receiptId) => __aux_invoke("coding", { name: "reconcile_file", input: {receiptId} }),
+});
+const proc = Object.freeze({
+  reconcile: (processId) => __aux_invoke("coding", {name:"reconcile_process", input:{processId}}),
+  run: (spec) => __aux_invoke("coding", {name:"bash", input:spec}),
+  start: (spec) => __aux_invoke("coding", {name:"bg_start", input:spec}),
+  status: (processId) => __aux_invoke("coding", {name:"bg_status", input:{processId}}),
+  logs: (processId, cursor) => __aux_invoke("coding", {name:"bg_logs", input:{processId,cursor}}),
+  stop: (processId) => __aux_invoke("coding", {name:"bg_stop", input:{processId}}),
+});
+const coder = Object.freeze({
+  diff: (cellId) => __aux_invoke("coding", {name:"coder_worktree_diff",input:{cellId}}),
+  integrate: (cellId) => __aux_invoke("coding", {name:"coder_worktree_integrate",input:{cellId}}),
+  retire: (cellId) => __aux_invoke("coding", {name:"coder_worktree_retire",input:{cellId}}),
+  recovery: (cellId) => __aux_invoke("coding", {name:"coder_worktree_recovery",input:{cellId}}),
+  archive: (cellId,expectedDigest) => __aux_invoke("coding", {name:"coder_worktree_archive",input:{cellId,expectedDigest}}),
 });
 const spawn = (spec) => __aux_invoke("spawnCell", spec);
 const wait = (cellId) => __aux_invoke("waitCell", { cellId, ms: 120000 });
@@ -460,10 +488,34 @@ class ReplSession {
   }
 
   /** Guest-side host calls — returns the JSON string `__aux_call` parses. */
+  private hostCallOrdinal = 0;
   private async dispatch(
     context: QuickJSAsyncContext,
     nameHandle: QuickJSHandle,
     paramsHandle: QuickJSHandle,
+  ) {
+    const ordinal = this.hostCallOrdinal++;
+    const name = context.getString(nameHandle),
+      params = context.getString(paramsHandle);
+    this.deps.allowHostCall?.(name, params);
+    const execute = async () => {
+      const handle = await this.executeDispatch(context, nameHandle, paramsHandle, ordinal);
+      try {
+        return context.getString(handle);
+      } finally {
+        handle.dispose();
+      }
+    };
+    const response = this.deps.replay
+      ? await this.deps.replay(name, params, ordinal, execute)
+      : await execute();
+    return context.newString(response);
+  }
+  private async executeDispatch(
+    context: QuickJSAsyncContext,
+    nameHandle: QuickJSHandle,
+    paramsHandle: QuickJSHandle,
+    ordinal: number,
   ) {
     const name = context.getString(nameHandle);
     const params = context.getString(paramsHandle);
@@ -541,7 +593,7 @@ class ReplSession {
         }
         case "step": {
           const step = PlanStepSchema.parse(parsed.step);
-          const result = await this.deps.step(String(parsed.pageId ?? ""), step);
+          const result = await this.deps.step(String(parsed.pageId ?? ""), step, ordinal);
           if ("park" in result) return fail("step needs a decision", { park: result.park });
           if ("finish" in result) return ok(result.finish.result);
           const output = result.output;
@@ -579,10 +631,14 @@ class ReplSession {
           await new Promise((resolve) => setTimeout(resolve, ms));
           return ok({ slept: ms });
         }
-        case "fsRead":
-          return ok(await this.deps.fsRead(String(parsed.path ?? "")));
-        case "fsWrite":
-          return ok(await this.deps.fsWrite(String(parsed.path ?? ""), String(parsed.content ?? "")));
+        case "coding": {
+          if (!this.deps.codingTool)
+            throw new AuxError("capability_unsupported", "Governed coding surfaces are unavailable.");
+          const result = await this.deps.codingTool(String(parsed.name), parsed.input, ordinal);
+          if ("park" in result) return fail("Coding operation requires a decision", { park: result.park });
+          if ("finish" in result) return ok(result.finish.result);
+          return ok(result.output);
+        }
         case "submitResult": {
           if (!this.deps.submitResult)
             return fail(
@@ -620,11 +676,14 @@ class ReplSession {
             pageIds?: unknown;
           };
           return ok(
-            await this.deps.spawnCell({
-              goal: String(spec.goal ?? ""),
-              ...(typeof spec.profile === "string" ? { profile: spec.profile } : {}),
-              ...(Array.isArray(spec.pageIds) ? { pageIds: spec.pageIds.map(String) } : {}),
-            }),
+            await this.deps.spawnCell(
+              {
+                goal: String(spec.goal ?? ""),
+                ...(typeof spec.profile === "string" ? { profile: spec.profile } : {}),
+                ...(Array.isArray(spec.pageIds) ? { pageIds: spec.pageIds.map(String) } : {}),
+              },
+              ordinal,
+            ),
           );
         }
         case "waitCell": {
@@ -658,8 +717,9 @@ class ReplSession {
     }
   }
 
-  async eval(code: string, deadlineMs?: number, deps=this.deps): Promise<LoopToolResult> {
-    if(deps.runId!==this.deps.runId)throw new AuxError("permission_denied","A REPL session cannot change its original run.");
+  async eval(code: string, deadlineMs?: number, deps = this.deps): Promise<LoopToolResult> {
+    if (deps.runId !== this.deps.runId)
+      throw new AuxError("permission_denied", "A REPL session cannot change its original run.");
     checkSource(code);
     code = normalizeBridgeAwaits(code);
     const declared = topLevelLexicals(code);
@@ -669,7 +729,8 @@ class ReplSession {
       release = resolve;
     });
     await previous;
-    this.deps=deps;
+    this.deps = deps;
+    this.hostCallOrdinal = 0;
     const scoped = declared.some((name) => this.lexicals.has(name));
     const source = scoped ? `{\n${code}\n}` : code;
     const started = Date.now();
@@ -840,7 +901,7 @@ export class ReplPool {
         "conflict",
         "A REPL cell is still open; use repl_wait before starting another script.",
       );
-    if (opts?.yieldTimeMs === undefined) return session.eval(code, opts?.deadlineMs,deps);
+    if (opts?.yieldTimeMs === undefined) return session.eval(code, opts?.deadlineMs, deps);
     const id = randomUUID();
     const cell = {
       runId: deps.runId,
@@ -849,7 +910,7 @@ export class ReplPool {
       terminated: false,
     };
     cell.completion = session
-      .eval(code, opts.deadlineMs,deps)
+      .eval(code, opts.deadlineMs, deps)
       .then(
         (value) => ({ value }),
         (error) => ({ error }),

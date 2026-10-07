@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { CoderWorktreeSchema, CoderWorktreeRecoverySchema } from "./coder-worktrees.js";
 
 const id = z.string().min(1);
-export const SubagentProfileSchema = z.enum(["explorer", "read_only", "default"]);
+export const SubagentProfileSchema = z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/);
 export const SubagentGroupCreateParams = z
   .object({
     parentRunId: id,
@@ -22,7 +23,7 @@ export const SubagentSpawnParams = z
     groupId: z.string().uuid(),
     goal: z.string().trim().min(1).max(10_000),
     profile: SubagentProfileSchema,
-    pageIds: z.array(id).min(1),
+    pageIds: z.array(id).default([]),
     tokenAllocation: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
     costAllocationUsd: z.number().nonnegative(),
     maxModelCalls: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).default(0),
@@ -34,8 +35,11 @@ export const SubagentSchema = SubagentSpawnParams.omit({ sourceRunId: true }).ex
   runId: id.optional(),
   state: z.enum(["starting", "running", "completed", "failed", "cancelled", "interrupted"]),
   sourceRunId: id,
+  spawnActionId: id.optional(),
   createdAt: z.number().int().positive(),
   endedAt: z.number().int().positive().optional(),
+  worktree: CoderWorktreeSchema.optional(),
+  recovery: CoderWorktreeRecoverySchema.optional(),
 });
 export const SubagentGroupViewSchema = z.object({
   group: SubagentGroupSchema,

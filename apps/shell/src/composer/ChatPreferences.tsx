@@ -1,21 +1,32 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { AgentPolicySettingsSchema } from "@aux/contracts/agent-policy";
-import { call, useStore } from "../store";
+import { call, errToast, useStore } from "../store";
 import { AgentModeControl } from "../features/permissions/AgentModeControl";
 import { shellIconDown } from "../ui/icons";
+import { errorMessage } from "../error-message";
 import { Popover } from "../ui/popover";
 
 export function ChatPreferences({
   children,
+  draftKey,
+  activeRunId,
   disabled,
   modelId,
   reasoning,
 }: {
   children: ReactNode;
+  draftKey: string;
+  activeRunId?: string;
   disabled: boolean;
   modelId?: string;
   reasoning?: string;
 }) {
+  const activeMode = useStore(
+    (state) => state.runs.find((run) => run.runId === activeRunId)?.config?.agentMode,
+  );
+  const preferences = useStore((state) => state.composerPreferences[draftKey]);
+  const [thisRunOnly, setThisRunOnly] = useState(false);
+  const temporary = thisRunOnly || preferences?.agentMode !== undefined;
   const settings = useStore((state) => state.settings);
   const connected = useStore((state) => state.connected);
   const policy = useMemo(
@@ -27,14 +38,24 @@ export function ChatPreferences({
       }),
     [settings.agentMode, settings.agentPolicies, settings.agentPolicyRevision],
   );
+  const effectiveMode = activeMode ?? preferences?.agentMode ?? policy.agentMode;
+  const temporaryMode = temporary || (activeMode !== undefined && activeMode !== policy.agentMode);
   return (
     <div className="chat-preferences">
       <AgentModeControl
         compact
         active={connected}
         disabled={disabled || !connected}
-        policy={policy}
+        temporary={temporaryMode}
+        policy={{ ...policy, agentMode: effectiveMode }}
         onSave={async (patch) => {
+          if (temporary) {
+            useStore.getState().setComposerPreferences(draftKey, {
+              ...(preferences ?? { privateTask: false }),
+              agentMode: patch.agentMode,
+            });
+            return true;
+          }
           try {
             await call("settings.set", patch);
             return true;
@@ -55,7 +76,48 @@ export function ChatPreferences({
           </>
         }
       >
-        {() => <div className="chat-run-menu">{children}</div>}
+        {() => (
+          <div className="chat-run-menu">
+            <label>
+              <input
+                type="checkbox"
+                checked={temporary}
+                disabled={disabled}
+                onChange={(event) => {
+                  setThisRunOnly(event.target.checked);
+                  if (!event.target.checked && preferences?.agentMode !== undefined)
+                    useStore
+                      .getState()
+                      .setComposerPreferences(draftKey, { ...preferences, agentMode: undefined });
+                }}
+              />
+              This run only
+            </label>
+            {temporaryMode && <span>Temporary confirmation mode</span>}
+            {activeRunId && (
+              <button
+                type="button"
+                disabled={!connected}
+                onClick={() => {
+                  const original = useStore.getState().confirmation;
+                  void call("safety.grants.revokeRun", { runId: activeRunId })
+                    .then(() => {
+                      if (
+                        original?.turnId === activeRunId &&
+                        ["approval", "touch-id"].includes(original.kind) &&
+                        useStore.getState().confirmation === original
+                      )
+                        useStore.setState({ confirmation: null });
+                    })
+                    .catch((error) => errToast(errorMessage(error)));
+                }}
+              >
+                Reset permissions for this run
+              </button>
+            )}
+            {children}
+          </div>
+        )}
       </Popover>
     </div>
   );

@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, chmodSync, writeFileSync, rmSync, statSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
@@ -20,14 +20,10 @@ afterEach(() => {
 function fixture(access: "read" | "readWrite" = "readWrite") {
   const root = mkdtempSync(join(tmpdir(), "aux-terminal-"));
   cleanup.push(() => rmSync(root, { recursive: true, force: true }));
-  const bin = join(root, "bin"),
-    project = join(root, "project");
-  mkdirSync(bin);
+  const project = join(root, "project");
   mkdirSync(project);
   writeFileSync(join(project, "AGENTS.md"), "Use project style.");
-  writeFileSync(join(bin, "claude"), "#!/bin/sh\nexit 0\n");
-  chmodSync(join(bin, "claude"), 0o755);
-  vi.stubEnv("PATH", bin);
+  vi.stubEnv("SHELL", "/bin/sh");
   const db = openDb(":memory:");
   cleanup.push(() => db.close());
   const repo = new Repo(db),
@@ -56,6 +52,7 @@ function fixture(access: "read" | "readWrite" = "readWrite") {
     terminalStart: async (input) => {
       const actual = statSync(project, { bigint: true });
       expect(input).toMatchObject({
+        executable: "/bin/sh",
         cwd: review.path,
         rootDevice: actual.dev.toString(),
         rootInode: actual.ino.toString(),
@@ -65,7 +62,6 @@ function fixture(access: "read" | "readWrite" = "readWrite") {
         terminalId: input.terminalId,
         workspaceId: input.workspaceId,
         folderId: input.folderId,
-        client: input.client,
         cols: input.cols,
         rows: input.rows,
         state: "running",
@@ -90,7 +86,7 @@ function fixture(access: "read" | "readWrite" = "readWrite") {
   const service = new TerminalService(native, folders);
   const start = () =>
     service.start(
-      { workspaceId: workspace.workspaceId, folderId: folder.folderId, client: "claude", cols: 80, rows: 24 },
+      { workspaceId: workspace.workspaceId, folderId: folder.folderId, cols: 80, rows: 24 },
       "original",
     );
   return {
@@ -163,7 +159,9 @@ it("retires a pending launch at shutdown without inventing a native process to c
   const rejected = expect(pending).rejects.toMatchObject({ code: "permission_denied" });
   await started;
   let joined = false;
-  const closing = f.service.dispose().then(() => { joined = true; });
+  const closing = f.service.dispose().then(() => {
+    joined = true;
+  });
   await Promise.resolve();
   expect(joined).toBe(false);
   expect(f.calls).toEqual([]);

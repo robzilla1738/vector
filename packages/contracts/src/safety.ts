@@ -92,6 +92,23 @@ export const SavedCredentialTargetSchema = z
   .strict();
 export type SavedCredentialTarget = z.infer<typeof SavedCredentialTargetSchema>;
 
+export const ReviewedFileChangesSchema = z
+  .array(
+    z
+      .object({
+        path: z.string().min(1),
+        before: z.string().nullable(),
+        after: z.string().nullable(),
+        kind: z.enum(["create", "edit", "delete"]).optional(),
+        binary: z.boolean().optional(),
+        beforeMode: z.number().int().optional(),
+        afterMode: z.number().int().optional(),
+      })
+      .strict(),
+  )
+  .min(1)
+  .max(200);
+
 export const SafetyActionSchema = z
   .object({
     profileId: id,
@@ -103,6 +120,24 @@ export const SafetyActionSchema = z
     authentication: z.literal("touch_id").optional(),
     credentialTarget: SavedCredentialTargetSchema.optional(),
     policyRevision: z.number().int().nonnegative().optional(),
+    runId: id.optional(),
+    runAuthorityRevision: z.number().int().nonnegative().optional(),
+    policyCategories: z.array(AgentPolicyCategorySchema).min(1).max(8).optional(),
+    reviewedChanges: ReviewedFileChangesSchema.optional(),
+    reviewedActions: z
+      .array(
+        z
+          .object({
+            action: z.string().min(1),
+            target: z.string(),
+            arguments: z.string(),
+            destination: z.string(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(400)
+      .optional(),
     amount: z.number().finite().nonnegative().optional(),
     invocationDigest: z.string().regex(/^[a-f0-9]{64}$/),
     origin: origin.optional(),
@@ -118,6 +153,8 @@ export type SafetyAction = z.infer<typeof SafetyActionSchema>;
 export const ApprovalDecisionSchema = z.discriminatedUnion("decision", [
   z.object({ decision: z.literal("accept"), approvalId: id }).strict(),
   z.object({ decision: z.literal("acceptForOrigin"), approvalId: id }).strict(),
+  z.object({ decision: z.literal("acceptForRun"), approvalId: id }).strict(),
+  z.object({ decision: z.literal("acceptGlobally"), approvalId: id }).strict(),
   z
     .object({
       decision: z.literal("acceptWithAmendment"),

@@ -1,3 +1,4 @@
+import { narrowProfileLimit, narrowCostLimit } from "./agent-profiles.js";
 import { generatePageSummary } from "./page-summary.js";
 import type { PageDerivativeCache } from "./ai-result-cache.js";
 import type { PageSummaryResult } from "@aux/contracts/page-summary";
@@ -662,8 +663,16 @@ export class RunService {
           "datasets",
           "spans",
           "response_metadata",
+          "coder_worktree_receipts",
+          "coding_repl_calls",
+          "coding_repl_cells",
+          "coding_file_receipts",
+          "coding_process_receipts",
+          "safety_run_grants",
+          "safety_run_authority",
         ])
           this.deps.repo.db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(runId);
+        this.deps.repo.db.prepare("DELETE FROM safety_approval_requests WHERE turn_id=?").run(runId);
         redactSettledRunInvocations(this.deps.repo.db, runId);
         this.deps.repo.saveRun({
           ...run,
@@ -839,7 +848,11 @@ export class RunService {
 
   deleteConversation(chatId: string) {
     const runs = this.deps.repo.conversationRuns(chatId);
-    if (!runs.length && !this.branches.get(chatId) && !this.deps.repo.preparedConversations().some((draft) => draft.chatId === chatId))
+    if (
+      !runs.length &&
+      !this.branches.get(chatId) &&
+      !this.deps.repo.preparedConversations().some((draft) => draft.chatId === chatId)
+    )
       throw new AuxError("not_found", "Conversation not found.");
     if (runs.some((run) => !TERMINAL_RUN_STATUSES.has(run.status)))
       throw new AuxError("conflict", "Stop or wait for this conversation before deleting it.");
@@ -856,6 +869,16 @@ export class RunService {
       .get(chatId);
     if (unresolved)
       throw new AuxError("conflict", "Reconcile this conversation's unresolved action before deleting it.");
+    const unresolvedCoding = this.deps.repo.db
+      .prepare(
+        `SELECT 1 FROM coding_file_receipts WHERE run_id IN (${owned}) AND status IN ('pending','uncertain') UNION ALL SELECT 1 FROM coding_process_receipts WHERE run_id IN (${owned}) AND state IN ('starting','running','uncertain') UNION ALL SELECT 1 FROM coder_worktree_receipts WHERE run_id IN (${owned}) AND state IN ('pending','uncertain') UNION ALL SELECT 1 FROM coding_repl_cells WHERE run_id IN (${owned}) AND status IN ('running','parked') LIMIT 1`,
+      )
+      .get(chatId, chatId, chatId, chatId);
+    if (unresolvedCoding)
+      throw new AuxError(
+        "conflict",
+        "Stop or reconcile this conversation’s coding effects before deleting it.",
+      );
     const unresolvedInvocation = this.deps.repo.db
       .prepare(
         `SELECT 1 FROM operation_invocations WHERE run_id IN (${owned}) AND (status IN ('running','interrupted') OR effect_outcome='unknown') LIMIT 1`,
@@ -1026,18 +1049,32 @@ export class RunService {
 
   readonly funding: RunFundingService;
 
-  get branches() { return new ConversationBranches(this.deps.repo); }
+  get branches() {
+    return new ConversationBranches(this.deps.repo);
+  }
 
   branch(runId: string, mode: "branch" | "edit", windowId: string, original: () => Promise<void>) {
-    return this.ownOperation(() => this.branches.create(runId, mode, windowId, async () => {
-      if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
-      await original();
-      if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
-    }));
+    return this.ownOperation(() =>
+      this.branches.create(runId, mode, windowId, async () => {
+        if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
+        await original();
+        if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
+      }),
+    );
   }
 
   constructor(
     private deps: {
+      resolveCodingContext?: (input: {
+        workspaceId?: string;
+        projectRoot?: string;
+        packageNames?: string[];
+        profile?: string;
+      }) => Promise<{
+        projectRoot?: string;
+        auxPackages: import("@aux/contracts").AuxPackageSnapshot[];
+        agentProfile?: import("@aux/contracts").AgentProfile;
+      }>;
       repo: Repo;
       events: EventBus;
       pages: PageService;
@@ -1339,6 +1376,7 @@ export class RunService {
       pageIds: [],
       config: {
         implementation: `${input.kind}-generation`,
+        agentMode: this.deps.settings.agentPolicy().agentMode,
         nativeTurnContext: input.nativeTurnContext,
         taskId: task?.taskId,
         taskRevision: task?.revision,
@@ -1443,12 +1481,12 @@ export class RunService {
         }
         const rows = this.deps.repo.db
           .prepare(
-            `SELECT a.body,g.body AS group_body FROM subagents a
+            `SELECT a.agent_id,a.body,g.body AS group_body FROM subagents a
           JOIN subagent_groups g ON g.group_id=a.group_id WHERE a.run_id=? OR a.reserved_run_id=?`,
           )
-          .all(id, id) as { body: string; group_body: string }[];
+          .all(id, id) as { agent_id:string;body: string; group_body: string }[];
         for (const row of rows) {
-          const a = SubagentSchema.parse(JSON.parse(row.body));
+          const a = SubagentSchema.parse(JSON.parse(this.deps.repo.revealRecordField("subagents",[row.agent_id],"body",row.body)));
           const g = SubagentGroupSchema.parse(JSON.parse(row.group_body));
           if (
             a.tokenAllocation > 0 ||
@@ -1504,8 +1542,23 @@ export class RunService {
     externalSource?: { connectionId: string; taskRead: ValidatedTaskRead };
   }): Promise<PageSummaryResult> {
     const observation = structuredClone(input.observation);
-    const { runId, focus, signal: requestSignal, checkOwner: checkOriginal, authorize, cache: originalCache } = input;
-    const externalSource = input.externalSource ? { connectionId: input.externalSource.connectionId, taskRead: { provenance: structuredClone(input.externalSource.taskRead.provenance), check: input.externalSource.taskRead.check } } : undefined;
+    const {
+      runId,
+      focus,
+      signal: requestSignal,
+      checkOwner: checkOriginal,
+      authorize,
+      cache: originalCache,
+    } = input;
+    const externalSource = input.externalSource
+      ? {
+          connectionId: input.externalSource.connectionId,
+          taskRead: {
+            provenance: structuredClone(input.externalSource.taskRead.provenance),
+            check: input.externalSource.taskRead.check,
+          },
+        }
+      : undefined;
     return this.ownOperation(async () => {
       const run = this.deps.repo.getRun(runId);
       const token = run?.config?.nativeTurnContext;
@@ -1516,18 +1569,34 @@ export class RunService {
         const current = this.deps.repo.getRun(runId);
         const proof = externalSource.taskRead.provenance;
         const page = this.deps.pages.get(observation.pageId);
-        if (current?.config?.implementation !== "external-agent" || current.config.externalConnectionId !== externalSource.connectionId ||
-            current.config.taskId !== proof.taskId || current.config.taskRevision !== proof.taskRevision ||
-            proof.pageId !== observation.pageId || proof.sessionId !== page.sessionId || proof.documentEpoch !== observation.documentEpoch)
-          throw new AuxError("permission_denied", "The original external summary task or document authority changed.");
-        this.checkExternalSource({ externalParentRunId: runId, externalConnectionId: externalSource.connectionId });
+        if (
+          current?.config?.implementation !== "external-agent" ||
+          current.config.externalConnectionId !== externalSource.connectionId ||
+          current.config.taskId !== proof.taskId ||
+          current.config.taskRevision !== proof.taskRevision ||
+          proof.pageId !== observation.pageId ||
+          proof.sessionId !== page.sessionId ||
+          proof.documentEpoch !== observation.documentEpoch
+        )
+          throw new AuxError(
+            "permission_denied",
+            "The original external summary task or document authority changed.",
+          );
+        this.checkExternalSource({
+          externalParentRunId: runId,
+          externalConnectionId: externalSource.connectionId,
+        });
         externalSource.taskRead.check();
       };
       checkExternal();
       const control = this.coordinator.controls.get(runId);
       if (!control || control.paused || control.abort.signal.aborted)
         throw new AuxError("cancelled", "The original summary execution retired.");
-      const signal = AbortSignal.any([requestSignal, control.abort.signal, ...(control.dispatchAbort ? [control.dispatchAbort.signal] : [])]);
+      const signal = AbortSignal.any([
+        requestSignal,
+        control.abort.signal,
+        ...(control.dispatchAbort ? [control.dispatchAbort.signal] : []),
+      ]);
       const config = JSON.stringify(run.config);
       const generation = this.deps.settings.modelCacheGeneration();
       const policy = this.deps.settings.agentPolicy().agentPolicyRevision;
@@ -1539,15 +1608,26 @@ export class RunService {
         signal.throwIfAborted();
         checkExternal();
         const current = this.deps.repo.getRun(runId);
-        if (this.closed || this.coordinator.controls.get(runId) !== control || control.paused || !current || current.status !== "running" ||
-            JSON.stringify(current.config) !== config ||
-            this.deps.settings.modelCacheGeneration() !== generation ||
-            this.deps.settings.agentPolicy().agentPolicyRevision !== policy)
+        if (
+          this.closed ||
+          this.coordinator.controls.get(runId) !== control ||
+          control.paused ||
+          !current ||
+          current.status !== "running" ||
+          JSON.stringify(current.config) !== config ||
+          this.deps.settings.modelCacheGeneration() !== generation ||
+          this.deps.settings.agentPolicy().agentPolicyRevision !== policy
+        )
           throw new AuxError("cancelled", "The original summary run, account or policy changed.");
         this.checkSetSource(runId);
         const page = this.deps.pages.get(original.pageId);
-        if (page.url !== original.content.url || page.title !== original.content.title || page.documentEpoch !== original.documentEpoch ||
-            page.viewStatus === "detached" || page.viewStatus === "crashed")
+        if (
+          page.url !== original.content.url ||
+          page.title !== original.content.title ||
+          page.documentEpoch !== original.documentEpoch ||
+          page.viewStatus === "detached" ||
+          page.viewStatus === "crashed"
+        )
           throw new AuxError("conflict", "The captured summary document changed.");
       };
       await checkOwner();
@@ -1555,20 +1635,46 @@ export class RunService {
       // the explicit network/local-server route; this is never a native-failure fallback.
       const route = externalSource
         ? await this.deps.settings.utilityModel()
-        : token ? await this.deps.settings.utilityModel(token, checkOwner) : null;
+        : token
+          ? await this.deps.settings.utilityModel(token, checkOwner)
+          : null;
       await checkOwner();
-      if (!route) throw new AuxError("backend_unavailable", "No utility model is connected for this summary.");
+      if (!route)
+        throw new AuxError("backend_unavailable", "No utility model is connected for this summary.");
       const model = this.utilityClient({
-        runId: runId, route, signal, checkOwner,
-        authorize: async () => { await checkOwner(); await authorize(route); await checkOwner(); },
+        runId: runId,
+        route,
+        signal,
+        checkOwner,
+        authorize: async () => {
+          await checkOwner();
+          await authorize(route);
+          await checkOwner();
+        },
       });
       const page = this.deps.pages.get(original.pageId);
-      const cache = externalSource || run.config?.privateTask || page.windowKind !== "normal" || page.ownedByRuntime ||
-        page.controller === "agent" || page.controller === "external" ? undefined : originalCache;
+      const cache =
+        externalSource ||
+        run.config?.privateTask ||
+        page.windowKind !== "normal" ||
+        page.ownedByRuntime ||
+        page.controller === "agent" ||
+        page.controller === "external"
+          ? undefined
+          : originalCache;
       return generatePageSummary({
-        observation: original, focus, model, modelId: route.modelId,
-        routeIdentity: JSON.stringify([route.kind, route.modelId, route.kind === "network" ? route.destination : null, generation]),
-        checkOwner, cache,
+        observation: original,
+        focus,
+        model,
+        modelId: route.modelId,
+        routeIdentity: JSON.stringify([
+          route.kind,
+          route.modelId,
+          route.kind === "network" ? route.destination : null,
+          generation,
+        ]),
+        checkOwner,
+        cache,
       });
     });
   }
@@ -1659,7 +1765,11 @@ export class RunService {
   }
 
   /** A genuine scoped session owns each funded utility operation and its Stop join. */
-  externalUtilitySession<T>(runId: string, checkOwner: () => void, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  externalUtilitySession<T>(
+    runId: string,
+    checkOwner: () => void,
+    operation: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
     return this.ownOperation(() => {
       if (this.retiringExternalUtilities.has(runId))
         throw new AuxError("cancelled", "The original external utility session retired.");
@@ -1677,17 +1787,32 @@ export class RunService {
     });
   }
 
-  private async externalUtilitySessionOwned<T>(runId: string, checkOwner: () => void, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  private async externalUtilitySessionOwned<T>(
+    runId: string,
+    checkOwner: () => void,
+    operation: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
     checkOwner();
     if (this.closed || this.retiringExternalUtilities.has(runId))
       throw new AuxError("cancelled", "The original external utility session retired.");
     const run = this.deps.repo.getRun(runId);
-    if (!run?.config?.externalConnectionId || run.config.implementation !== "external-agent" || run.config.externalRetirementPending || run.status !== "running")
+    if (
+      !run?.config?.externalConnectionId ||
+      run.config.implementation !== "external-agent" ||
+      run.config.externalRetirementPending ||
+      run.status !== "running"
+    )
       throw new AuxError("permission_denied", "The original external utility session is unavailable.");
-    this.checkExternalSource({ externalParentRunId: runId, externalConnectionId: run.config.externalConnectionId });
+    this.checkExternalSource({
+      externalParentRunId: runId,
+      externalConnectionId: run.config.externalConnectionId,
+    });
     let ownership = this.externalUtilitySessions.get(runId);
     if (!ownership && !this.coordinator.controls.has(runId)) {
-      run.config = { ...run.config, maxModelCalls: run.config.maxModelCalls ?? this.deps.settings.maxModelCalls() };
+      run.config = {
+        ...run.config,
+        maxModelCalls: run.config.maxModelCalls ?? this.deps.settings.maxModelCalls(),
+      };
       this.deps.repo.saveRun(run);
       ownership = { users: 0, unregister: this.coordinator.registerBatch(run, "external") };
       this.externalUtilitySessions.set(runId, ownership);
@@ -1695,12 +1820,16 @@ export class RunService {
     if (ownership) ownership.users++;
     try {
       checkOwner();
-      if (this.retiringExternalUtilities.has(runId)) throw new AuxError("cancelled", "The original external utility session retired.");
+      if (this.retiringExternalUtilities.has(runId))
+        throw new AuxError("cancelled", "The original external utility session retired.");
       const control = this.coordinator.controls.get(runId);
       if (!control || control.paused || control.abort.signal.aborted)
         throw new AuxError("cancelled", "The original external utility control retired.");
       const originalDispatch = control.dispatchAbort;
-      const signal = AbortSignal.any([control.abort.signal, ...(originalDispatch ? [originalDispatch.signal] : [])]);
+      const signal = AbortSignal.any([
+        control.abort.signal,
+        ...(originalDispatch ? [originalDispatch.signal] : []),
+      ]);
       signal.throwIfAborted();
       const result = await operation(signal);
       checkOwner();
@@ -1720,7 +1849,9 @@ export class RunService {
   async retireExternalUtilityOperations(runId: string): Promise<void> {
     this.retiringExternalUtilities.add(runId);
     this.coordinator.interruptForTakeover(runId);
-    this.coordinator.controls.get(runId)?.abort.abort(new AuxError("cancelled", "The original external utility session retired."));
+    this.coordinator.controls
+      .get(runId)
+      ?.abort.abort(new AuxError("cancelled", "The original external utility session retired."));
     const pending = this.externalUtilityOperations.get(runId);
     // These are the actual complete network/local-server utility promises, including
     // their funding settlement and finally blocks. Rejection is the original RPC's
@@ -2071,6 +2202,7 @@ export class RunService {
       modelId: ctx.modelId ?? parent.config?.modelId,
       reasoning: parent.config?.reasoning,
       privateTask: parent.config?.privateTask,
+      agentMode: parent.config?.agentMode,
       executionTarget: parent.config?.executionTarget,
       setMemberSource: { ...original, sourceDigest: setMemberSourceDigest(original) },
       nativeTurnContext: parent.config?.nativeTurnContext,
@@ -2378,6 +2510,7 @@ export class RunService {
     modelId?: string;
     reasoning?: "low" | "medium" | "high";
     privateTask?: boolean;
+    agentMode?: import("@aux/contracts").AgentMode;
     executionTarget?: "local" | "cloud";
     nativeTurnContext?: string;
     externalConnectionId?: string;
@@ -2408,7 +2541,13 @@ export class RunService {
     retryOfRunId?: string;
     /** routine-declared account boundary stamped on the run */
     accountLabels?: string[];
-    subagentProfile?: "explorer" | "read_only" | "default";
+    subagentProfile?: string;
+    agentProfile?: import("@aux/contracts").AgentProfile;
+    auxPackages?: import("@aux/contracts").AuxPackageSnapshot[];
+    projectRoot?: string;
+    packageNames?: string[];
+    profile?: string;
+    coderWorktree?: import("@aux/contracts").CoderWorktree;
     calendarGrantIds?: string[];
   }): Promise<Run> {
     return this.ownOperation(() => this.startOwned(opts));
@@ -2432,23 +2571,42 @@ export class RunService {
       if (source.config?.taskId) {
         const task = this.deps.taskSource?.(source.config.taskId);
         if (!task || task.revision !== source.config.taskRevision || task.state !== "open")
-          throw new AuxError("ref_stale", "The original task revision changed. Review that task before continuing.");
+          throw new AuxError(
+            "ref_stale",
+            "The original task revision changed. Review that task before continuing.",
+          );
       }
       opts = {
-        ...opts, taskId: source.config?.taskId, taskRevision: source.config?.taskRevision,
+        ...opts,
+        taskId: source.config?.taskId,
+        taskRevision: source.config?.taskRevision,
         privateTask: source.config?.privateTask,
-        ...(firstBranchTurn ? {
-          forkTranscript: this.branches.prefix(opts.chatId!),
-          branchSourceRunIds: [...new Set([...branch.sourceRunIds, branch.sourceRunId])],
-          contextSnapshot: true, context: source.config?.context, instructions: source.config?.instructions,
-          contextRunIds: [...new Set([...(source.config?.contextRunIds ?? []), ...branch.sourceRunIds, branch.sourceRunId])], contextAttachmentIds: source.config?.contextAttachmentIds,
-          contextDocumentEvidence: source.config?.contextDocumentEvidence,
-          contextArtifactEvidence: source.config?.contextArtifactEvidence,
-          contextArtifactIds: source.config?.contextArtifactIds, contextSourceArtifactIds: source.config?.contextSourceArtifactIds,
-          contextImageArtifactIds: source.config?.contextImageArtifactIds, contextMemoryIds: source.config?.contextMemoryIds,
-          contextWorkspaceId: source.config?.contextWorkspaceId, contextWorkspaceRevision: source.config?.contextWorkspaceRevision,
-          contextBrowsingMemory: source.config?.contextBrowsingMemory,
-        } : {}),
+        ...(firstBranchTurn
+          ? {
+              forkTranscript: this.branches.prefix(opts.chatId!),
+              branchSourceRunIds: [...new Set([...branch.sourceRunIds, branch.sourceRunId])],
+              contextSnapshot: true,
+              context: source.config?.context,
+              instructions: source.config?.instructions,
+              contextRunIds: [
+                ...new Set([
+                  ...(source.config?.contextRunIds ?? []),
+                  ...branch.sourceRunIds,
+                  branch.sourceRunId,
+                ]),
+              ],
+              contextAttachmentIds: source.config?.contextAttachmentIds,
+              contextDocumentEvidence: source.config?.contextDocumentEvidence,
+              contextArtifactEvidence: source.config?.contextArtifactEvidence,
+              contextArtifactIds: source.config?.contextArtifactIds,
+              contextSourceArtifactIds: source.config?.contextSourceArtifactIds,
+              contextImageArtifactIds: source.config?.contextImageArtifactIds,
+              contextMemoryIds: source.config?.contextMemoryIds,
+              contextWorkspaceId: source.config?.contextWorkspaceId,
+              contextWorkspaceRevision: source.config?.contextWorkspaceRevision,
+              contextBrowsingMemory: source.config?.contextBrowsingMemory,
+            }
+          : {}),
       };
     }
     const savedPrivateTask = opts.chatId ? this.deps.repo.conversationPrivateTask(opts.chatId) : undefined;
@@ -2601,6 +2759,35 @@ export class RunService {
       ? opts.contextWorkspaceRevision
       : (inherited?.workspaceRevision ?? opts.contextWorkspaceRevision);
     const contextBrowsingMemory = opts.contextSnapshot ? opts.contextBrowsingMemory : !!inherited?.browsing;
+    const coding = opts.contextSnapshot
+      ? undefined
+      : await this.deps.resolveCodingContext?.({
+          workspaceId: contextWorkspaceId,
+          projectRoot: opts.projectRoot,
+          packageNames: opts.packageNames,
+          profile: opts.profile,
+        });
+    const selectedProfile = opts.agentProfile ?? coding?.agentProfile;
+    opts = {
+      ...opts,
+      maxModelCalls: narrowProfileLimit(
+        opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
+        selectedProfile?.limits?.maxModelCalls,
+      ),
+      maxCostUsd: narrowCostLimit(opts.maxCostUsd, selectedProfile?.limits?.maxCostUsd),
+      deadlineMs: narrowProfileLimit(opts.deadlineMs, selectedProfile?.limits?.deadlineMs),
+    };
+    const profileInstructions =
+      selectedProfile && !(opts.contextSnapshot && instructions?.startsWith(selectedProfile.prompt))
+        ? selectedProfile.prompt
+        : undefined;
+    const runInstructions = budgetSections(
+      [
+        { text: profileInstructions, priority: 1 },
+        { text: instructions, priority: 0 },
+      ],
+      INSTRUCTION_CHARS,
+    );
     const pageIds = opts.pageIds ?? (opts.pageId ? [opts.pageId] : []);
     if (opts.contextPageRefs?.length) {
       const allowed = new Set(pageIds);
@@ -2647,7 +2834,11 @@ export class RunService {
             modelId: opts.modelId,
             reasoning: opts.reasoning,
             privateTask: opts.privateTask,
+            agentMode: opts.agentMode ?? this.deps.settings.agentPolicy().agentMode,
             executionTarget: opts.executionTarget,
+            agentProfile: selectedProfile,
+            auxPackages: opts.auxPackages ?? coding?.auxPackages,
+            projectRoot: opts.projectRoot ?? coding?.projectRoot,
             chatId: opts.chatId,
             nativeTurnContext: opts.nativeTurnContext,
             externalConnectionId: opts.externalConnectionId,
@@ -2655,7 +2846,7 @@ export class RunService {
             maxSteps: opts.maxSteps,
             ...runLimits,
             context,
-            instructions,
+            instructions: runInstructions,
             contextWorkspaceId,
             contextWorkspaceRevision,
             taskId: opts.taskId,
@@ -2678,12 +2869,13 @@ export class RunService {
     return this.coordinator.start({
       ...opts,
       runId: opts.deliveryRunId,
+      agentMode: opts.agentMode ?? this.deps.settings.agentPolicy().agentMode,
       forkTranscript: opts.forkTranscript,
       branchSourceRunIds: opts.branchSourceRunIds,
       messageId: opts.queuedMessageId,
       pageIds,
       context,
-      instructions,
+      instructions: runInstructions,
       contextRunIds,
       contextAttachmentIds,
       contextDocumentEvidence,
@@ -2699,6 +2891,10 @@ export class RunService {
       contextBrowsingMemory,
       accountLabels: opts.accountLabels,
       subagentProfile: opts.subagentProfile,
+      agentProfile: selectedProfile,
+      auxPackages: opts.auxPackages ?? coding?.auxPackages,
+      projectRoot: opts.projectRoot ?? coding?.projectRoot,
+      coderWorktree: opts.coderWorktree,
       calendarGrantIds: opts.calendarGrantIds,
       maxModelCalls: opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
     });
@@ -2818,6 +3014,11 @@ export class RunService {
       mentions: prior.config?.mentions,
       modelId: prior.config?.modelId,
       reasoning: prior.config?.reasoning,
+      agentProfile: prior.config?.agentProfile,
+      auxPackages: prior.config?.auxPackages,
+      projectRoot: prior.config?.projectRoot,
+      coderWorktree: prior.config?.coderWorktree,
+      subagentProfile: prior.config?.subagentProfile,
       privateTask: prior.config?.privateTask,
       executionTarget: prior.config?.executionTarget,
       nativeTurnContext,
@@ -3116,9 +3317,10 @@ export class RunService {
     const original = this.deps.repo.getRun(runId);
     // Direct Stop fences this actual external session before any child join,
     // including the case with no utility currently registered.
-    const externalRetirement = original?.config?.implementation === "external-agent"
-      ? this.retireExternalUtilityOperations(runId)
-      : undefined;
+    const externalRetirement =
+      original?.config?.implementation === "external-agent"
+        ? this.retireExternalUtilityOperations(runId)
+        : undefined;
     // Observe rejection while children join; the original promise is awaited below.
     if (externalRetirement) void externalRetirement.catch(() => {});
     const setControl = this.setRunControls.get(runId);
@@ -3164,15 +3366,18 @@ export class RunService {
     } finally {
       setControl?.endCancellation();
       const retired = this.deps.repo.getRun(runId);
-      if (retired && TERMINAL_RUN_STATUSES.has(retired.status))
-        this.retiringExternalUtilities.delete(runId);
+      if (retired && TERMINAL_RUN_STATUSES.has(retired.status)) this.retiringExternalUtilities.delete(runId);
     }
   }
 
   private retirePendingAuthority(runId: string): void {
     const run = this.deps.repo.getRun(runId);
     if (!run) throw new AuxError("not_found", `no run ${runId}`);
-    const approvals = this.deps.approvals ?? new ApprovalStore(this.deps.repo.db);
+    const approvals =
+      this.deps.approvals ??
+      new ApprovalStore(this.deps.repo.db, undefined, undefined, undefined, (id) =>
+        this.deps.repo.getRun(id),
+      );
     const suspensions = this.deps.suspensions ?? new SuspensionStore(this.deps.repo.db);
     this.deps.repo.transaction(() => {
       const pending = suspensions.pending(runId);
@@ -3281,7 +3486,11 @@ export class RunService {
       goal: `program ${saved.name}`,
       status: "running",
       pageIds: [opts.pageId],
-      config: { implementation: "program", routeReason: `saved program ${saved.name}` },
+      config: {
+        implementation: "program",
+        routeReason: `saved program ${saved.name}`,
+        agentMode: this.deps.settings.agentPolicy().agentMode,
+      },
       createdAt: Date.now(),
       startedAt: Date.now(),
       statusMessage: `Running ${saved.name}`,

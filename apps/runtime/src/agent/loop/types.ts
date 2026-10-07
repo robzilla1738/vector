@@ -31,8 +31,8 @@ export interface LoopStep {
 
 /**
  * A tool's execute may return output, or `park` the run: the loop stops,
- * the host records a typed suspension, and the parked call's eventual tool
- * result IS the resolution (approval answer, user answer, …).
+ * the host records a typed suspension, and questions resolve with their answer; approvals replay only the exact
+ * parked call and resolve with its actual governed execution result.
  */
 export interface LoopPark {
   kind: SuspensionKind;
@@ -56,7 +56,9 @@ export type LoopToolResult =
 
 /** Service surface a loop tool executes against. */
 export interface LoopToolDeps {
-  calendarEvents?: (input: Omit<import("@aux/contracts").CalendarTaskEventsQuery, "taskId">) => Promise<LoopToolResult>;
+  calendarEvents?: (
+    input: Omit<import("@aux/contracts").CalendarTaskEventsQuery, "taskId">,
+  ) => Promise<LoopToolResult>;
   generateImage?: (input: { prompt: string }) => Promise<LoopToolResult>;
   /** Observe a page: the observation renderer's text becomes the tool output. */
   observe?: (input: {
@@ -77,7 +79,11 @@ export interface LoopToolDeps {
    * Returns LoopToolResult so a safety `ask` raised inside the gate can
    * park the loop on the suspension it already created.
    */
-  act?: (input: { pageId: string; steps: import("@aux/contracts").Step[] }) => Promise<LoopToolResult>;
+  act?: (input: {
+    actionId?: string;
+    pageId: string;
+    steps: import("@aux/contracts").Step[];
+  }) => Promise<LoopToolResult>;
   /**
    * Cookie-free web fetch; the destination runs through decide() first —
    * an `ask` parks the loop on the suspension it creates.
@@ -114,13 +120,12 @@ export interface LoopToolDeps {
   ) => Promise<{ title: string; url: string; text: string }[]>;
   /** Session/workspace file roots — fs tools stay inside them (S4 upload roots). */
   fsRoots?: () => string[];
-  /** Confined file tools (read_file/write_file/edit_file) — the host enforces the root guard. */
-  fileRead?: (path: string) => Promise<string>;
-  fileWrite?: (path: string, content: string) => Promise<void>;
+  pendingPark?: () => LoopPark | undefined;
+  codingTool?: (name: string, input: unknown, ctx: LoopToolContext) => Promise<LoopToolResult>;
   /** `bash` under current permissions; `{park}` propagates an Ask-mode network request. */
   bash?: (
     input: BashSeatbeltInput,
-    ctx: { runId: string; threadId: string; turnId: string },
+    ctx: { runId: string; threadId: string; turnId: string; actionId?: string; toolCallId?: string },
   ) => Promise<LoopToolResult>;
   pageSummary?: (input: { pageId: string; focus?: string }) => Promise<LoopToolResult>;
   /** Browser-history search (06-X history_search). */
@@ -148,7 +153,7 @@ export interface LoopToolDeps {
   subagents?: {
     spawnCell?: (
       input: { goal: string; profile?: string; pageIds?: string[] },
-      ctx: { runId: string; threadId: string; turnId: string },
+      ctx: { runId: string; threadId: string; turnId: string; toolCallId?: string },
     ) => Promise<{ cellId: string }>;
     waitCell?: (
       cellId: string,
@@ -189,7 +194,12 @@ export interface LoopToolDeps {
    * it can re-cite and retry.
    */
   submitResult?: (
-    input: { report: string; citations?: ResultCitation[]; textProposal?: string; generatedFiles?: import("@aux/contracts").CompletedGeneratedFile[] },
+    input: {
+      report: string;
+      citations?: ResultCitation[];
+      textProposal?: string;
+      generatedFiles?: import("@aux/contracts").CompletedGeneratedFile[];
+    },
     ctx: LoopToolContext,
   ) => Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; error: string }>;
   /** Settle one uncertain page write only from a newly observed effect line. */
@@ -203,6 +213,8 @@ export interface LoopToolDeps {
 /** Context a tool executes in: the run, its page, and the runtime surface. */
 export interface LoopToolContext {
   runId: string;
+  /** Stable provider call identity, reused on approval resume. */
+  toolCallId?: string;
   /** Active page when a run claims one; page tools require it. */
   pageId?: string;
   threadId: string;

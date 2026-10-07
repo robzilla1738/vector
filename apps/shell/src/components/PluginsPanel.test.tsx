@@ -68,7 +68,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("reviews Claude Code components, binds install to the digest, and shows zero authority", async () => {
+it("reviews compatible components, binds install to the digest, and shows zero authority", async () => {
   let installed = false;
   openDirectory.mockResolvedValue("/synthetic/research-kit");
   rpc.mockImplementation(async (method: string, params: Record<string, unknown>) => {
@@ -96,7 +96,7 @@ it("reviews Claude Code components, binds install to the digest, and shows zero 
   });
   await act(async () => root.render(<PluginsPanel />));
   await flush();
-  await act(async () => button("Choose Claude Code folder…").click());
+  await act(async () => button("Choose compatible folder…").click());
   await flush();
   expect(container.textContent).toContain("Nothing runs or connects on import.");
   expect(container.textContent).toContain("PostToolUse");

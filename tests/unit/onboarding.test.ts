@@ -91,7 +91,11 @@ function fixture(path = ":memory:") {
 }
 const acknowledge = (service: OnboardingService) =>
   service.update({ revision: service.get().revision, action: "disclosure" });
-const source = { nativeTurnContext: "isolated-onboarding-owner", windowId: "isolated-setup-window", current: async () => {} };
+const source = {
+  nativeTurnContext: "isolated-onboarding-owner",
+  windowId: "isolated-setup-window",
+  current: async () => {},
+};
 const begin = (service: OnboardingService) =>
   service.start({ revision: service.get().revision, postcardId: "understand", page: ref }, source);
 
@@ -159,11 +163,14 @@ it("requires disclosure, a configured model and the exact reviewed live page bef
   for (const bad of ["about:blank", "file:///private/source", "https://user:pass@example.com"]) {
     const isolated = new OnboardingService({ ...f.deps, page: () => ({ ...page, url: bad }) });
     await expect(
-      isolated.start({
-        revision: isolated.get().revision,
-        postcardId: "understand",
-        page: { ...ref, url: bad },
-      }, source),
+      isolated.start(
+        {
+          revision: isolated.get().revision,
+          postcardId: "understand",
+          page: { ...ref, url: bad },
+        },
+        source,
+      ),
     ).rejects.toThrow(/page changed/);
   }
 });
@@ -186,6 +193,7 @@ it("rechecks source admission after receipt reservation and reuses that identity
   const f = fixture();
   acknowledge(f.service);
   const pending = begin(f.service);
+  await Promise.resolve();
   const firstId = f.service.get().firstTask!.runId;
   f.setPage({ controller: "agent" });
   await expect(pending).rejects.toThrow(/page changed or is unavailable/);
@@ -307,7 +315,7 @@ it("checks staged recovery on the server even when the renderer's status is stal
   acknowledge(f.service);
   await expect(
     onboardingMethods["onboarding.start"]!({
-      client: { external: false },
+      client: { external: false, nativeTurnContext: source.nativeTurnContext },
       params: {
         revision: f.service.get().revision,
         postcardId: "understand",
@@ -318,6 +326,7 @@ it("checks staged recovery on the server even when the renderer's status is stal
         settings: { all: () => ({ dataDir: dir, modelConfigured: true }) },
         pages: { get: () => page },
         runs: { start: f.start },
+        native: { turnSourceContext: async () => ({ windowId: source.windowId }) },
       },
     } as never),
   ).rejects.toThrow(/Recovery is staged/);

@@ -84,7 +84,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
       <SettingsField
         label="Space"
-        hint="Project roots, AGENTS.md instructions and local .claude/skills apply only to runs in this Space."
+        hint="Project roots and repository instructions apply only to runs in this Space. Aux Packages are selected per run."
       >
         <select
           aria-label="Folder Space"

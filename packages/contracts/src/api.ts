@@ -1,3 +1,4 @@
+import { CodingRunParams, CodingChangesParams, CodingUndoParams, CodingProcessParams, CodingLogsParams, CodingFileReceiptSchema, CodingProcessViewSchema, CodingLogsSchema } from "./coding-api.js";
 import { PageSummaryParamsSchema, PageSummaryResultSchema } from "./page-summary.js";
 import { SkillLibraryPreviewParams, SkillLibraryImportParams, SkillLibraryPreviewSchema } from "./skill-library.js";
 import {
@@ -47,6 +48,7 @@ import {
   TerminalInputResultSchema,
 } from "./terminal.js";
 import { SafetyActivityQuerySchema, SafetyActivityPageSchema } from "./safety-activity.js";
+import { AuxPackageLibrarySchema } from "./aux-packages.js";
 import { AgentModeSchema, AgentPolicyOverrideSchema } from "./agent-policy.js";
 import { AUX_FEATURES, type AuxFeature } from "./aux-features.js";
 import { DownloadNamingSettingsSchema } from "./download-naming.js";
@@ -86,6 +88,7 @@ import {
 } from "./zap.js";
 import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
 import { z } from "zod";
+import { CoderRecoveryInspectionSchema } from "./coder-worktrees.js";
 import { AutofillProfileSchema } from "./autofill.js";
 export { AutofillProfileSchema, type AutofillProfile } from "./autofill.js";
 import {
@@ -560,6 +563,10 @@ export const SetsResultsParams = z.object({
 
 /** runs.* */
 export const RunsStartParams = z.object({
+  projectRoot: z.string().min(1).max(4096).optional(),
+  packageNames: z.array(z.string().min(1).max(128)).max(32).optional(),
+  profile: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/).optional(),
+  agentMode: AgentModeSchema.optional(),
   ...ScopedTaskBinding,
   mentions: MentionRefsSchema.optional(),
   goal: z.string().min(1),
@@ -1706,6 +1713,19 @@ export const MethodSchemas = {
   "runs.messages.list": z.object({ chatId: id }),
   "runs.messageStatus": z.object({ nonce: id }),
   "safety.decisions.list": SafetyActivityQuerySchema,
+  "packages.list": z.object({}).strict(),
+  "packages.install": z.object({path:z.string().min(1).max(4096)}).strict(),
+  "packages.remove": z.object({name:z.string().min(1).max(128)}).strict(),
+  "packages.defaults": z.object({names:z.array(z.string().min(1).max(128)).max(32)}).strict(),
+  "coding.activity": CodingRunParams,
+  "coding.worktreeInspect": z.object({runId:id,cellId:id}).strict(),
+  "coding.worktreeArchive": z.object({runId:id,cellId:id,expectedDigest:z.string().regex(/^[a-f0-9]{64}$/),actionId:z.string().min(1)}).strict(),
+  "coding.changes": CodingChangesParams,
+  "coding.undo": CodingUndoParams,
+  "coding.processes": CodingRunParams,
+  "coding.logs": CodingLogsParams,
+  "coding.stop": CodingProcessParams,
+  "safety.grants.revokeRun": z.object({ runId: id }).strict(),
   "safety.approvals.pending": z.object({ threadId: id }),
   "safety.approvals.decide": z.object({ decision: ApprovalDecisionSchema, expectedTurnId: id }).strict(),
   "runs.message.cancel": z.object({ messageId: id }),
@@ -2545,6 +2565,19 @@ export const ResultSchemas = {
   "safety.decisions.list": SafetyActivityPageSchema,
   "safety.approvals.pending": z.array(PendingApprovalSchema),
   "safety.approvals.decide": z.object({ ok: z.literal(true) }),
+  "safety.grants.revokeRun": z.object({ ok: z.literal(true) }),
+  "packages.list": AuxPackageLibrarySchema,
+  "packages.install": AuxPackageLibrarySchema,
+  "packages.remove": AuxPackageLibrarySchema,
+  "packages.defaults": AuxPackageLibrarySchema,
+  "coding.activity": z.object({ fileRevision: z.string(), processes: z.array(CodingProcessViewSchema), agents:z.array(SubagentSchema) }).strict(),
+  "coding.worktreeInspect": CoderRecoveryInspectionSchema,
+  "coding.worktreeArchive": CoderRecoveryInspectionSchema,
+  "coding.changes": z.array(CodingFileReceiptSchema),
+  "coding.undo": z.array(CodingFileReceiptSchema),
+  "coding.processes": z.array(CodingProcessViewSchema),
+  "coding.logs": CodingLogsSchema,
+  "coding.stop": CodingProcessViewSchema,
   "runs.message.cancel": RunMessageSchema,
   "runs.events": z.object({
     streamId: z.string(),

@@ -1,22 +1,8 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 import { buildToolManifest, type LoopToolContext, type LoopToolDeps } from "@aux/runtime";
-
-const cleanup: (() => void)[] = [];
-afterEach(() => {
-  for (const fn of cleanup.splice(0).reverse()) fn();
-});
 
 function ctx(deps: LoopToolDeps, extra: Partial<LoopToolContext> = {}): LoopToolContext {
   return { runId: "run-1", threadId: "chat-1", turnId: "run-1", callCount: 1, goalTurn: 1, deps, ...extra };
-}
-
-function rootsFixture() {
-  const root = mkdtempSync(join(tmpdir(), "aux-tools-"));
-  cleanup.push(() => rmSync(root, { recursive: true, force: true }));
-  return root;
 }
 
 const manifest = buildToolManifest();
@@ -46,59 +32,37 @@ it("limits model Goal updates to pause or blocker reports and forwards the durab
   );
 });
 
-describe("S5 manifest — file tools (06-X)", () => {
-  const deps = (root: string): LoopToolDeps => ({
-    fileRead: async (path) => {
-      if (!path.startsWith(root)) throw Object.assign(new Error("outside"), { code: "permission_denied" });
-      return readFileSync(path, "utf8");
-    },
-    fileWrite: async (path, content) => {
-      if (!path.startsWith(root)) throw Object.assign(new Error("outside"), { code: "permission_denied" });
-      writeFileSync(path, content);
-    },
-  });
-
-  it("read_file reads inside roots and stays dep-gated otherwise", async () => {
-    const root = rootsFixture();
-    writeFileSync(join(root, "a.txt"), "hello");
-    const out = await manifest["read_file"]!.execute({ path: join(root, "a.txt") }, ctx(deps(root)));
-    expect(out).toEqual({ output: "hello" });
-    await expect(manifest["read_file"]!.execute({ path: "/etc/passwd" }, ctx({}))).rejects.toThrow(
-      /not available/,
+describe("governed coding manifest", () => {
+  it("forwards ranged reads and versioned writes to the shared governed boundary", async () => {
+    const calls: unknown[] = [];
+    const deps: LoopToolDeps = {
+      codingTool: async (name, input, context) => {
+        calls.push({ name, input, toolCallId: context.toolCallId });
+        return { output: { accepted: true } };
+      },
+    };
+    await manifest.read_file!.execute(
+      { path: "/project/a.ts", startLine: 4, endLine: 8 },
+      ctx(deps, { toolCallId: "read-1" }),
     );
-  });
-
-  it("write_file writes and read_file round-trips", async () => {
-    const root = rootsFixture();
-    const file = join(root, "note.md");
-    await manifest["write_file"]!.execute({ path: file, content: "line" }, ctx(deps(root)));
-    expect(readFileSync(file, "utf8")).toBe("line");
-    const denied = await Promise.resolve(
-      manifest["write_file"]!.execute({ path: "/tmp/outside.txt", content: "x" }, ctx(deps(root))),
-    ).then(
-      () => "wrote",
-      (error: { code?: string }) => error.code,
+    await manifest.edit_file!.execute(
+      { path: "/project/a.ts", oldText: "old", newText: "new", expectedVersion: "version" },
+      ctx(deps, { toolCallId: "edit-1" }),
     );
-    expect(denied).toBe("permission_denied");
-  });
-
-  it("edit_file requires a unique match unless all is set", async () => {
-    const root = rootsFixture();
-    const file = join(root, "b.txt");
-    writeFileSync(file, "one two two");
-    const c = ctx(deps(root));
+    expect(calls).toEqual([
+      { name: "read_file", input: { path: "/project/a.ts", startLine: 4, endLine: 8 }, toolCallId: "read-1" },
+      {
+        name: "edit_file",
+        input: { path: "/project/a.ts", oldText: "old", newText: "new", expectedVersion: "version" },
+        toolCallId: "edit-1",
+      },
+    ]);
     await expect(
-      manifest["edit_file"]!.execute({ path: file, oldText: "two", newText: "x" }, c),
-    ).rejects.toThrow(/2 times/);
-    const out = await manifest["edit_file"]!.execute(
-      { path: file, oldText: "two", newText: "x", all: true },
-      c,
+      manifest.edit_file!.execute({ path: "/project/a.ts", oldText: "old", newText: "new" }, ctx(deps)),
+    ).rejects.toThrow();
+    await expect(manifest.read_file!.execute({ path: "/project/a.ts" }, ctx({}))).rejects.toThrow(
+      /unavailable/,
     );
-    expect(out).toEqual({ output: { edited: file, replacements: 2 } });
-    expect(readFileSync(file, "utf8")).toBe("one x x");
-    await expect(
-      manifest["edit_file"]!.execute({ path: file, oldText: "gone", newText: "x" }, c),
-    ).rejects.toThrow(/not in the file/);
   });
 });
 
@@ -121,7 +85,11 @@ describe("S5 manifest — bash / history / memory (06-X)", () => {
       historySearch: async (query, limit) => {
         seen.query = query;
         seen.limit = limit;
-        return { mode: "semantic", message: "Local history matches.", entries: [{ url: "https://a.dev", title: "A", visitedAt: 1 }] };
+        return {
+          mode: "semantic",
+          message: "Local history matches.",
+          entries: [{ url: "https://a.dev", title: "A", visitedAt: 1 }],
+        };
       },
     };
     const out = (await manifest["history_search"]!.execute({ query: "a.dev", limit: 50 }, ctx(deps))) as {

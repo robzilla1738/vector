@@ -32,7 +32,11 @@ it("launches with sandbox-exec and a confined environment", async () => {
     file: "/usr/bin/sandbox-exec",
     opts: {
       cwd: realpathSync(f.root),
-      env: { HOME: f.root, TMPDIR: f.root, PATH: "/usr/bin:/bin:/usr/sbin:/sbin" },
+      env: {
+        HOME: realpathSync(f.root),
+        TMPDIR: realpathSync(f.root),
+        PATH: `${realpathSync(f.root)}/node_modules/.bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin`,
+      },
     },
   });
   expect(f.calls[0]!.args.slice(-3)).toEqual(["/bin/sh", "-c", "echo hi"]);

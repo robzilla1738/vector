@@ -28,36 +28,39 @@ export function serializeSkillDocument(share: RoutineShare): string {
 }
 
 /** Claude-compatible YAML; imported metadata cannot grant execution authority. */
-export function parseSkillDocument(markdown: string): RoutineShare {
+export function parseSkillDocument(
+  markdown: string,
+  reportUnsupported?: (fields: string[]) => void,
+): RoutineShare {
   if (Buffer.byteLength(markdown) > MAX_BYTES)
     throw new AuxError("invalid_params", "The Skill document exceeds 64 KB.");
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n(?:\r?\n)?([\s\S]*)$/.exec(markdown);
   if (!match) throw new AuxError("invalid_params", "Skill document needs YAML frontmatter and an objective.");
   const document = parseDocument(match[1]!, { uniqueKeys: true, strict: true });
-  if (document.errors.length)
-    throw new AuxError(
-      "invalid_params",
-      "Skill frontmatter is not valid YAML.",
-    );
+  if (document.errors.length) throw new AuxError("invalid_params", "Skill frontmatter is not valid YAML.");
   let value: unknown;
   try {
     value = document.toJS({ maxAliasCount: 0 });
   } catch {
-    throw new AuxError(
-      "invalid_params",
-      "Skill frontmatter aliases are not supported.",
-    );
+    throw new AuxError("invalid_params", "Skill frontmatter aliases are not supported.");
   }
   if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new AuxError(
-      "invalid_params",
-      "Skill frontmatter must be a mapping.",
-    );
+    throw new AuxError("invalid_params", "Skill frontmatter must be a mapping.");
   // Claude metadata such as allowed-tools is descriptive, never an Aux grant.
   const metadata = value as Record<string, unknown>;
   const aux = metadata.aux;
   if (aux !== undefined && (!aux || typeof aux !== "object" || Array.isArray(aux)))
     throw new AuxError("invalid_params", "Skill Aux metadata is invalid.");
+  const supported = new Set(["name", "description", "icon", "autoInject", "aux"]);
+  const auxSupported = new Set(["parameters", "siteOrigins", "outputHint", "successCriteria"]);
+  reportUnsupported?.(
+    [
+      ...Object.keys(metadata).filter((key) => !supported.has(key)),
+      ...Object.keys((aux as Record<string, unknown> | undefined) ?? {})
+        .filter((key) => !auxSupported.has(key))
+        .map((key) => `aux.${key}`),
+    ].sort(),
+  );
   const objective = match[2]!.trim();
   const parsed = RoutineShareSchema.safeParse({
     ...(aux as Record<string, unknown> | undefined),

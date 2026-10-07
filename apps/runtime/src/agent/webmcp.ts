@@ -98,10 +98,20 @@ export async function runWebmcp(
       ...(actor.runId ? { runId: actor.runId } : {}),
       requestedAt: Date.now(),
     });
-    const policy = JSON.stringify([deps.managedRules(), deps.agentPolicy()]);
-    const decision = await decide(effectRequest, deps, { phase: "dispatch" });
+    const policy = JSON.stringify([
+      deps.managedRules(),
+      deps.agentPolicy(actor.runId),
+      deps.approvals.runAuthorityRevision(actor.runId),
+    ]);
+    const decision = await decide(effectRequest, deps, { phase: "dispatch", runId: actor.runId });
     current();
-    if (JSON.stringify([deps.managedRules(), deps.agentPolicy()]) !== policy)
+    if (
+      JSON.stringify([
+        deps.managedRules(),
+        deps.agentPolicy(actor.runId),
+        deps.approvals.runAuthorityRevision(actor.runId),
+      ]) !== policy
+    )
       throw new AuxError("permission_denied", "Agent policy changed before this site tool could run.");
     if (decision.status === "deny") {
       throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });

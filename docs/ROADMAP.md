@@ -14,6 +14,41 @@
   - your extensions, memory, skills, routines, subagents, MCP and a real terminal.
 - **Unblocked development.** No CI, Actions, Dependabot, budget gates, evidence manifests or slot receipts. Typecheck, lint, fast tests, launch, look.
 
+## October 7 addition: approval fluidity and Aux-owned coding
+
+The owner’s current plan adds temporary per-run modes; explicit once/run/site/global
+scopes; exact concrete batch approval; declarative coder profiles; governed local
+search, file batches and conflict-safe undo; supervised foreground/background
+processes; governed QuickJS filesystem/process orchestration; durable restart
+replay; context diagnostics; and Aux Packages. These extend the existing Aux
+loop rather than embedding pi or Claude Code, including through a subprocess.
+
+The shared boundary is `decide()` → journal → dispatch or durable suspension.
+Full skips ordinary confirmation; Ask reviews consequential work. Protected
+paths, site policy, revocation, ownership and raw-evaluate denial remain. A
+batch approval binds the displayed actions and content, not silent category
+permission. Broader scopes stay explicit. Child profiles cannot expand parent
+authority; independent coders use isolated worktrees and integrate through
+version-checked parent file writes.
+
+Undo covers governed file changes, preserving later user edits. Arbitrary
+commands retain receipts and logs but do not promise universal rollback.
+Interrupted command reconciliation proves process termination without claiming
+its unknown effects succeeded. Packages are pinned declarative context and
+registered-tool workflows, never permission grants or executable harnesses.
+
+Implementation order: effective policy/scopes → search/files/exact batch review
+→ supervised processes/code-mode/restart → coder worktrees → context/packages/chat
+integration. Continue browser polish on the existing native controls; browsing
+must remain usable while the runtime is unavailable or busy. Source presence is
+not delivery evidence: current integrated/native evidence lives in STATUS.
+
+Verification stays lean: rebuild runtime dist before tests, focused tests for
+new effect/authority semantics, one `npm run check` per integrated slice and a
+changed-flow native walkthrough with a disposable Profile. No new e2e framework,
+screenshot suite or benchmark campaign. Scheduled phase acceptance remains
+separate from this implementation pass.
+
 ## Context (original audit, before v3 implementation)
 
 **Why this plan exists.** The owner asked for a full audit and a hand-off plan to make Aux the best AI browser. The plan must be fast, small, beautiful and frictionless, with no over-testing, CI or release work.
@@ -51,7 +86,7 @@ The table records the starting point. Current implementation and build evidence 
    - In Auto, the agent reads, navigates, fills, submits, sends and deletes freely.
    - Auto pauses only for **money** and **credentials**. **Account-security** changes are handed to the user.
    - Users can "Always allow" per site.
-   - Settings also offers **Ask first** and **Full auto**.
+   - Settings also offers **Ask first** and **Skip confirmation**.
 3. **Browser auth means both:**
    - (a) the agent uses the user's **real signed-in sessions** by default;
    - (b) **sign in with an AI subscription or account** through OAuth instead of API keys.
@@ -71,7 +106,7 @@ The table records the starting point. Current implementation and build evidence 
 **Product**
 1. **On by default.** If a feature is built, it is visible. A Labs toggle is the only way to hide something.
 2. **Undo and mode-aware confirmation.** Preserve durable effects and undo. Ask first is the default; Auto and Full auto follow the selected policy, with money, credential and account-security handling as specified below.
-3. **"Always allow" is absolute.** No hidden floor overrides a user's choice. Hard denies exist only for secret exfiltration and for the agent editing its own permissions, and they are silent and logged.
+3. **Scope choices are explicit.** Grants cover their displayed run, site or category scope. Protected paths, managed site blocks, secret/self-permission protections and account-security/captcha handoff still apply.
 4. **No artificial ceilings.** Runs continue until the task is done, limited only by the user's own time and cost budgets, with a "Continue" button when a budget is reached.
 5. **Nothing waits on the runtime.** Browser UI, tabs, history, bookmarks and autocomplete are native and instant. AI surfaces stream in.
 6. **The user's world is available.** That means real sessions, extensions, files under granted roots, the terminal, local models, and private windows with ephemeral AI.
@@ -154,10 +189,10 @@ The table records the starting point. Current implementation and build evidence 
 | **P0 Reset** | Product fully on; saved Profile boots; dev loop free of gates; dead code and 175 harness patches gone |
 | **P1 Speed and size** | Fast build (ThinLTO+PGO, codecs) measured against stock; app ≤ stock + 90 MB; instant first frame; native command bar with prerender |
 | **P2 Aside design** | Vertical default; exact tokens, glass, sidebar, toolbar, Home, Settings, chat; one component kit |
-| **P3 Free agent** | Auto mode; real sessions; Touch ID for money and credentials only; no ceilings |
+| **P3 Free agent** | Ask first default; explicit Skip confirmation and Auto; real sessions; no artificial ceilings |
 | **P4 AI** | One tool loop; frontier defaults; local and sign-in providers; streaming typed transcript; memory, skills, routines, subagents, WebMCP |
 | **P5 Browsing power** | Unified ⌘K/T/L, Quick Ask, Lasso, capture, Clean Tabs, PiP, full adblock, extensions everywhere |
-| **P6 Dev and cloud** | Projects workspace, Sandbox executor, official MCP connectors, terminal with the user's Claude Code and Codex |
+| **P6 Dev and cloud** | Projects workspace, Sandbox executor, official MCP connectors, ordinary terminal and Aux-owned coding harness |
 | **P7 Onboarding** | Four skippable screens, importers for every major browser, first task in under 2 minutes |
 
 Run P0 first. P1 and P2 can run in parallel: P1 is native, runtime and build; P2 is the shell. P3 and P4 follow, sharing the contracts. P5–P7 come after P4.
@@ -334,7 +369,7 @@ These replace the "frozen scope" paragraph in `AGENTS.md`.
 - **Memory saver:** discard after 30 min idle by default; pinned, audible and agent-active tabs are exempt.
 - **Runtime per Profile:** measure the cost of one Node process per Profile, and consolidate to one runtime with Profile contexts if multiple Profiles are common.
 
-**P1.6 Data layer: fresh schema v1**
+**P1.6 Data layer: fresh schema v2**
 - **One schema file.** Replace the v1→v30 chain in `store/db.ts` with one `store/schema.sql`. Move the tables created in constructors into it: `safety/decide.ts:58`, `approval.ts:31`, `agent/durable.ts`, `loop/transcript.ts`, `store/spend-ledger.ts` and others. Delete the migration steps and `VACUUM INTO`.
 - **Pragmas.** WAL with `synchronous=NORMAL`; `secure_delete` only on the secrets and memory tables.
 - **Encryption.** AES-GCM at write time only for memory content, transcripts and token metadata. Secrets stay in the Keychain. Delete the 40-table adapter inventory and all boot scans (`store/sqlite-protection.ts`, `protected-startup.ts`).
@@ -650,7 +685,7 @@ Each schema carries a `byline` for the tool rail.
     - **Sign in with Vercel** → AI Gateway (the default, zero-key path);
     - **OpenRouter** (official PKCE);
     - **GitHub Copilot** (device flow);
-    - **ChatGPT and Claude subscriptions:** confirm each provider's current terms allow third-party clients before enabling. Otherwise use the compliant path: the user's own Codex or Claude Code inside Aux's terminal, connected to Aux through MCP (P6).
+    - **ChatGPT and Claude subscriptions:** confirm each provider's current terms allow third-party clients before enabling. Otherwise keep the unsupported subscription path unavailable and use a supported provider. Aux does not embed a foreign agent runtime.
 - **Budgets.**
   - User budgets per day or month on the Usage page.
   - Estimate-based reservations.
@@ -748,10 +783,10 @@ Each schema carries a `byline` for the tool rail.
 - **GitHub, Vercel and Sentry** are their official remote MCP servers, using OAuth and pre-listed in Settings › Plugins. Fold `services/github-connection.ts` into this.
 
 **Terminal and external agents**
-- **Terminal** (xterm, lazy) runs the user's own Claude Code or Codex with their own login.
+- **Terminal** (xterm, lazy) runs the user’s ordinary shell. Coding work runs in Aux’s own governed agent loop.
 - **Settings › Developers:**
   - install the `aux` CLI and add `aux open <url> [--profile]`;
-  - one-click "Connect Aux to Claude Code / Codex / Cursor", which writes the Aux MCP server into their configs and installs an Aux skill pointer.
+  - optional external-client setup writes the Aux MCP server into the selected client’s configuration. It is interoperability, not Aux’s coding harness.
 - **External agent sessions** (via `aux-mcp`) appear in Tasks with the same presence, Stop and Take over. Their tokens get the full API under P3 policy (`api/invoke.ts:41-56`).
 
 ---

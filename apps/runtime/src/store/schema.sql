@@ -160,7 +160,27 @@ CREATE TABLE safety_approval_requests(
   lifetime TEXT NOT NULL CHECK(lifetime IN ('turn','thread')), expires_at INTEGER NOT NULL,
   state TEXT NOT NULL CHECK(state IN ('pending','accepted','declined','cancelled','consumed')),
   decision TEXT, created_at INTEGER NOT NULL, decided_at INTEGER);
+CREATE TABLE safety_approval_batch_members(approval_id TEXT NOT NULL REFERENCES safety_approval_requests(approval_id) ON DELETE CASCADE,fingerprint TEXT NOT NULL,consumed_at INTEGER,PRIMARY KEY(approval_id,fingerprint));
+CREATE TABLE coding_repl_cells(run_id TEXT NOT NULL,tool_call_id TEXT NOT NULL,sequence INTEGER NOT NULL,source TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN ('running','parked','completed','failed')),page_id TEXT,cell_id TEXT,PRIMARY KEY(run_id,tool_call_id));
 CREATE INDEX idx_safety_approvals_turn ON safety_approval_requests(turn_id,state);
+CREATE TABLE coder_worktree_receipts(action_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','confirmed','uncertain')),body TEXT NOT NULL);
+CREATE TABLE coding_repl_calls(run_id TEXT NOT NULL,tool_call_id TEXT NOT NULL,ordinal INTEGER NOT NULL,signature TEXT NOT NULL,response TEXT NOT NULL,PRIMARY KEY(run_id,tool_call_id,ordinal));
+CREATE TABLE coding_file_receipts(
+  receipt_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, action_id TEXT NOT NULL, created_at INTEGER NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('pending','confirmed','partially_applied','uncertain','not_applied')),
+  receipt TEXT NOT NULL, summary TEXT NOT NULL, UNIQUE(run_id,action_id));
+CREATE INDEX coding_file_receipts_run ON coding_file_receipts(run_id,created_at);
+CREATE INDEX coding_file_receipts_status ON coding_file_receipts(run_id,status,created_at);
+CREATE TABLE coding_process_receipts(
+  process_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, action_id TEXT NOT NULL,
+  state TEXT NOT NULL CHECK(state IN ('starting','running','completed','failed','stopped','interrupted','uncertain')),
+  receipt TEXT NOT NULL, UNIQUE(run_id,action_id));
+CREATE TABLE safety_run_authority(run_id TEXT PRIMARY KEY, revision INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE safety_run_grants(
+  grant_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, profile_id TEXT NOT NULL,
+  category TEXT NOT NULL, origin TEXT, policy_revision INTEGER NOT NULL,
+  authority_revision INTEGER NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER);
+CREATE INDEX idx_safety_run_grants ON safety_run_grants(run_id,category,revoked_at);
 CREATE TABLE safety_send_journal(
   nonce TEXT PRIMARY KEY, thread_id TEXT NOT NULL, turn_id TEXT NOT NULL, text TEXT NOT NULL,
   digest TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','offline','sending','accepted','acknowledged','parked','failed','cancelled')),

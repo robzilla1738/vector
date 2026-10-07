@@ -17,18 +17,40 @@ import { runWebmcp, webmcpTurn } from "../../agent/webmcp.js";
 async function scopedPageStep(ctx: MethodCtx, step: Step): Promise<void> {
   const { params, client, s, tasks } = ctx;
   if (!params.taskId || params.expectedRevision === undefined)
-    throw new AuxError("invalid_params", "A task ID and current revision are required for this browser action.");
-  tasks.preparePageAccess(params.taskId, params.expectedRevision, params.pageId, true,
-    !!client.connectionId && ctx.turnTabs.owns(client.connectionId, params.taskId, params.pageId));
+    throw new AuxError(
+      "invalid_params",
+      "A task ID and current revision are required for this browser action.",
+    );
+  tasks.preparePageAccess(
+    params.taskId,
+    params.expectedRevision,
+    params.pageId,
+    true,
+    !!client.connectionId && ctx.turnTabs.owns(client.connectionId, params.taskId, params.pageId),
+  );
   const page = s.pages.get(params.pageId);
   if (!page.sessionId || ["detached", "crashed"].includes(page.viewStatus))
     throw new AuxError("target_detached", "The original task attachment is unavailable.");
-  const result = ProgramResultSchema.parse(await ctx.invoke("pages.execute", {
-    taskId: params.taskId, expectedRevision: params.expectedRevision,
-    program: { pageId: page.pageId, documentEpoch: page.documentEpoch, steps: [{...step, id: `external_${randomUUID()}`}] },
-  }, client));
+  const result = ProgramResultSchema.parse(
+    await ctx.invoke(
+      "pages.execute",
+      {
+        taskId: params.taskId,
+        expectedRevision: params.expectedRevision,
+        program: {
+          pageId: page.pageId,
+          documentEpoch: page.documentEpoch,
+          steps: [{ ...step, id: `external_${randomUUID()}` }],
+        },
+      },
+      client,
+    ),
+  );
   if (result.status !== "completed")
-    throw new AuxError(result.steps.some(step => step.error?.code === "needs_input") ? "needs_input" : "conflict", result.error ?? "The browser action was not confirmed. Observe the task page before retrying.");
+    throw new AuxError(
+      result.steps.some((step) => step.error?.code === "needs_input") ? "needs_input" : "conflict",
+      result.error ?? "The browser action was not confirmed. Observe the task page before retrying.",
+    );
 }
 
 async function h_pages_list(ctx: MethodCtx): Promise<unknown> {
@@ -46,18 +68,36 @@ async function h_pages_open(ctx: MethodCtx): Promise<unknown> {
   if (ctx.scope) {
     if (!ctx.externalRunId || !params.taskId || params.expectedRevision === undefined)
       throw new AuxError("permission_denied", "Opening a scoped tab requires its original live task turn.");
-    if (params.windowId || params.targetId || params.backend && params.backend !== "aux" || params.activate)
-      throw new AuxError("permission_denied", "Scoped tabs are created in their task-owned native attachment.");
-    return ctx.invoke("agent.turn.open", {taskId: params.taskId, expectedRevision: params.expectedRevision,
-      turnId: ctx.externalRunId, url: params.url}, ctx.client);
+    if (params.windowId || params.targetId || (params.backend && params.backend !== "aux") || params.activate)
+      throw new AuxError(
+        "permission_denied",
+        "Scoped tabs are created in their task-owned native attachment.",
+      );
+    return ctx.invoke(
+      "agent.turn.open",
+      {
+        taskId: params.taskId,
+        expectedRevision: params.expectedRevision,
+        turnId: ctx.externalRunId,
+        url: params.url,
+      },
+      ctx.client,
+    );
   }
   return s.pages.open(params as never);
 }
 async function h_pages_close(ctx: MethodCtx): Promise<unknown> {
   const { params, s, withExternalPage } = ctx;
   if (ctx.scope) {
-    if (!ctx.client.connectionId || !params.taskId || !ctx.turnTabs.owns(ctx.client.connectionId, params.taskId, params.pageId))
-      throw new AuxError("permission_denied", "Only a tab created by this original connection can be closed.");
+    if (
+      !ctx.client.connectionId ||
+      !params.taskId ||
+      !ctx.turnTabs.owns(ctx.client.connectionId, params.taskId, params.pageId)
+    )
+      throw new AuxError(
+        "permission_denied",
+        "Only a tab created by this original connection can be closed.",
+      );
     return ctx.turnTabs.close(ctx.client.connectionId, params.taskId, params.pageId);
   }
   return withExternalPage(params.pageId, () => s.pages.close(params.pageId));
@@ -95,7 +135,7 @@ async function h_pages_activate(ctx: MethodCtx): Promise<unknown> {
 async function h_pages_navigate(ctx: MethodCtx): Promise<unknown> {
   const { params, s, withExternalPage } = ctx;
   if (ctx.scope) {
-    await scopedPageStep(ctx, {id: "external-navigate", op: "navigate", url: params.url});
+    await scopedPageStep(ctx, { id: "external-navigate", op: "navigate", url: params.url });
     return s.pages.get(params.pageId);
   }
   return withExternalPage(params.pageId, () => s.pages.navigate(params.pageId, params["url" as never]));
@@ -103,7 +143,7 @@ async function h_pages_navigate(ctx: MethodCtx): Promise<unknown> {
 async function h_pages_back(ctx: MethodCtx): Promise<unknown> {
   const { params, s, withExternalPage } = ctx;
   if (ctx.scope) {
-    await scopedPageStep(ctx, {id: "external-back", op: "back"});
+    await scopedPageStep(ctx, { id: "external-back", op: "back" });
     return s.pages.get(params.pageId);
   }
   return withExternalPage(params.pageId, () => s.pages.back(params.pageId));
@@ -111,7 +151,7 @@ async function h_pages_back(ctx: MethodCtx): Promise<unknown> {
 async function h_pages_forward(ctx: MethodCtx): Promise<unknown> {
   const { params, s, withExternalPage } = ctx;
   if (ctx.scope) {
-    await scopedPageStep(ctx, {id: "external-forward", op: "forward"});
+    await scopedPageStep(ctx, { id: "external-forward", op: "forward" });
     return s.pages.get(params.pageId);
   }
   return withExternalPage(params.pageId, () => s.pages.forward(params.pageId));
@@ -119,7 +159,7 @@ async function h_pages_forward(ctx: MethodCtx): Promise<unknown> {
 async function h_pages_reload(ctx: MethodCtx): Promise<unknown> {
   const { params, s, withExternalPage } = ctx;
   if (ctx.scope) {
-    await scopedPageStep(ctx, {id: "external-reload", op: "reload"});
+    await scopedPageStep(ctx, { id: "external-reload", op: "reload" });
     return s.pages.get(params.pageId);
   }
   return withExternalPage(params.pageId, () => s.pages.reload(params.pageId));
@@ -127,7 +167,7 @@ async function h_pages_reload(ctx: MethodCtx): Promise<unknown> {
 async function h_pages_stop(ctx: MethodCtx): Promise<unknown> {
   const { params, s, withExternalPage } = ctx;
   if (ctx.scope) {
-    await scopedPageStep(ctx, {id: "external-stop", op: "stop"});
+    await scopedPageStep(ctx, { id: "external-stop", op: "stop" });
     return s.pages.get(params.pageId);
   }
   return withExternalPage(params.pageId, () => s.pages.stop(params.pageId));
@@ -247,7 +287,12 @@ async function h_pages_webmcp(ctx: MethodCtx): Promise<unknown> {
   const snapshot = { sessionId: page.sessionId, documentEpoch: page.documentEpoch, url: page.url };
   const current = () => {
     const live = s.pages.get(request.pageId);
-    if (live.sessionId !== snapshot.sessionId || live.documentEpoch !== snapshot.documentEpoch || live.url !== snapshot.url || ["detached", "crashed"].includes(live.viewStatus))
+    if (
+      live.sessionId !== snapshot.sessionId ||
+      live.documentEpoch !== snapshot.documentEpoch ||
+      live.url !== snapshot.url ||
+      ["detached", "crashed"].includes(live.viewStatus)
+    )
       throw new AuxError("ref_stale", "This page changed while authorizing its site tool. Observe it again.");
   };
   let origin = "";
@@ -280,11 +325,21 @@ async function h_pages_webmcp(ctx: MethodCtx): Promise<unknown> {
       current,
     );
     if (outcome.status === "ask") {
-      ctx.safetyGate.park(outcome.request, {
-        turnId: outcome.request.turnId, threadId: outcome.request.threadId,
-        ...(outcome.request.runId ? { runId: outcome.request.runId } : {}), pageId: request.pageId,
-      }, outcome.suspension, origin);
-      throw new AuxError("needs_input", outcome.instruction, { suspensionKind: outcome.suspension.kind, requestId: outcome.approvalId });
+      ctx.safetyGate.park(
+        outcome.request,
+        {
+          turnId: outcome.request.turnId,
+          threadId: outcome.request.threadId,
+          ...(outcome.request.runId ? { runId: outcome.request.runId } : {}),
+          pageId: request.pageId,
+        },
+        outcome.suspension,
+        origin,
+      );
+      throw new AuxError("needs_input", outcome.instruction, {
+        suspensionKind: outcome.suspension.kind,
+        requestId: outcome.approvalId,
+      });
     }
     if (outcome.status === "tools") return { op: "tools", tools: outcome.tools };
     return { op: "call", result: outcome.result, success: outcome.success };
@@ -375,7 +430,12 @@ async function h_pages_dialog(ctx: MethodCtx): Promise<unknown> {
   const { params, s, withExternalPage } = ctx;
   const p = params as { pageId: string; action?: "list" | "accept" | "dismiss"; promptText?: string };
   if (ctx.scope && p.action && p.action !== "list") {
-    await scopedPageStep(ctx, {id: "external-dialog", op: "dialog", action: p.action, promptText: p.promptText});
+    await scopedPageStep(ctx, {
+      id: "external-dialog",
+      op: "dialog",
+      action: p.action,
+      promptText: p.promptText,
+    });
     return s.pages.dialog(p.pageId, "list");
   }
   return p.action && p.action !== "list"
@@ -423,23 +483,41 @@ async function h_pages_zoom(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_pages_takeover(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
-  if (ctx.scope || ctx.client.codeMode) throw new AuxError("permission_denied", "Human takeover is managed in Aux.");
-  const active = s.repo.db.prepare("SELECT run_id AS runId FROM runs WHERE status IN ('queued','planning','running','paused','needs_input')").all() as {runId: string}[];
-  const connections = new Set(active.flatMap(({runId}) => {
-    const run = s.repo.getRun(runId);
-    return run?.pageIds.includes(params.pageId) && run.config?.externalConnectionId ? [run.config.externalConnectionId] : [];
-  }));
+  if (ctx.client.codeMode) throw new AuxError("permission_denied", "Human takeover is managed in Aux.");
+  if (ctx.scope) ctx.requireScopedPage(ctx.scope, params.pageId, ctx.client.connectionId);
+  const active = s.repo.db
+    .prepare(
+      "SELECT run_id AS runId FROM runs WHERE status IN ('queued','planning','running','paused','needs_input')",
+    )
+    .all() as { runId: string }[];
+  const connections = new Set(
+    active.flatMap(({ runId }) => {
+      const run = s.repo.getRun(runId);
+      return run?.pageIds.includes(params.pageId) && run.config?.externalConnectionId
+        ? [run.config.externalConnectionId]
+        : [];
+    }),
+  );
   if (connections.size && (!s.agentConnections || !s.externalSessions))
     throw new AuxError("backend_unavailable", "Original external takeover retirement is unavailable.");
   await s.pages.takeover(params.pageId);
-  const retirements = await Promise.allSettled([...connections].map(async connectionId => {
-    if (!s.agentConnections || !s.externalSessions)
-      throw new AuxError("backend_unavailable", "Original external takeover retirement is unavailable.");
-    s.agentConnections.revoke(connectionId);
-    await s.externalSessions.end(connectionId, "cancelled", "You took control of the external agent's page");
-  }));
-  const failures = retirements.filter((result): result is PromiseRejectedResult => result.status === "rejected").map(result => result.reason);
-  if (failures.length) throw new AggregateError(failures, "External takeover retirement awaits acknowledgement.");
+  const retirements = await Promise.allSettled(
+    [...connections].map(async (connectionId) => {
+      if (!s.agentConnections || !s.externalSessions)
+        throw new AuxError("backend_unavailable", "Original external takeover retirement is unavailable.");
+      s.agentConnections.revoke(connectionId);
+      await s.externalSessions.end(
+        connectionId,
+        "cancelled",
+        "You took control of the external agent's page",
+      );
+    }),
+  );
+  const failures = retirements
+    .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+    .map((result) => result.reason);
+  if (failures.length)
+    throw new AggregateError(failures, "External takeover retirement awaits acknowledgement.");
   return s.pages.get(params.pageId);
 }
 async function h_pages_pickElement(ctx: MethodCtx): Promise<unknown> {

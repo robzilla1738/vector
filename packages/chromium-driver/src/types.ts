@@ -1,4 +1,11 @@
-import type { Backend, Condition, ElementRef, ObservationContent, ObservationRequest } from "@aux/contracts";
+import type {
+  Backend,
+  Step,
+  Condition,
+  ElementRef,
+  ObservationContent,
+  ObservationRequest,
+} from "@aux/contracts";
 
 export interface PageIdentity {
   /** Aux page id assigned by the target registry. */
@@ -68,6 +75,10 @@ export interface WaitOutcome {
  * objects escape this interface into the runtime.
  */
 export interface ObservedActionTarget {
+  nodeIdentity?: string;
+  stateDigest?: string;
+  /** Safe origin of the resolved link destination; private full URL remains digest-only. */
+  destination?: string;
   origin: string;
   tag: string;
   type: string;
@@ -121,7 +132,7 @@ export interface DriverPage {
    * controls report "{redacted}", never the raw value.
    */
   /** Metadata only: no credential values are read. Resolves the live target in its frame. */
-  actionTarget?(target: string): Promise<ObservedActionTarget>;
+  actionTarget?(target: string, projectedSteps?: readonly Step[]): Promise<ObservedActionTarget>;
   fieldState?(target: string): Promise<Record<string, unknown> | undefined>;
   scroll(opts: {
     target?: string;

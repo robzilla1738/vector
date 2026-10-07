@@ -99,3 +99,11 @@ export * from "./cloud-execution.js";
 export * from "./projects.js";
 
 export * from "./page-summary.js";
+
+export * from "./agent-profiles.js";
+export * from "./aux-packages.js";
+export * from "./coder-worktrees.js";
+export * from "./coding-files.js";
+export * from "./coding-processes.js";
+
+export * from "./coding-api.js";

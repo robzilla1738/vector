@@ -11,10 +11,12 @@ export function AgentModeControl({
   disabled = false,
   policy,
   onSave,
+  temporary = false,
 }: {
   active: boolean;
   compact?: boolean;
   disabled?: boolean;
+  temporary?: boolean;
   policy: AgentPolicySettings;
   onSave(patch: { agentMode: AgentMode; agentPolicyRevision: number }): Promise<boolean>;
 }) {
@@ -49,10 +51,10 @@ export function AgentModeControl({
     if (
       mode === "full" &&
       !(await confirm({
-        title: compact ? "Skip confirmation?" : "Use Full auto?",
+        title: "Skip confirmation?",
         description:
           "Aux can make payments and use credentials without asking or Touch ID. Account security and CAPTCHA still require you to take over.",
-        confirmLabel: compact ? "Skip confirmation" : "Use Full auto",
+        confirmLabel: "Skip confirmation",
         cancelLabel: "Keep current mode",
       }))
     )
@@ -79,7 +81,7 @@ export function AgentModeControl({
         <select
           data-mode={policy.agentMode}
           aria-label="Confirmation mode"
-          title="Remembered for future chats"
+          title={temporary ? "This run only" : "Remembered for future chats"}
           disabled={disabled || busy}
           value={policy.agentMode}
           onChange={(event) => void change(event.target.value as AgentMode)}
@@ -96,7 +98,7 @@ export function AgentModeControl({
           items={[
             { value: "auto", label: "Auto", disabled: disabled || busy },
             { value: "ask", label: "Ask first", disabled: disabled || busy },
-            { value: "full", label: "Full auto", disabled: disabled || busy },
+            { value: "full", label: "Skip confirmation", disabled: disabled || busy },
           ]}
         />
       )}

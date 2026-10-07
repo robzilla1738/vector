@@ -77,7 +77,11 @@ export class BashSeatbelt {
     private readonly opts: {
       filesystemPolicy: (ctx?: { runId: string; threadId: string; turnId: string }) => FilesystemPolicy;
       scratchDir: string;
-      networkDefault?: () => boolean;
+      directoriesForRun?: (ctx: { runId: string; threadId: string; turnId: string }) => {
+        scratchDir: string;
+        workdir: string;
+      };
+      networkDefault?: (ctx?: { runId: string; threadId: string; turnId: string }) => boolean;
       networkGate?: BashGate;
       runner?: BashRunner;
       platform?: string;
@@ -103,17 +107,36 @@ export class BashSeatbelt {
     input: BashSeatbeltInput,
     ctx: { runId: string; threadId: string; turnId: string },
   ): Promise<BashSeatbeltResult | { park: LoopPark }> {
+    const prepared = await this.prepare(input, ctx);
+    if ("park" in prepared) return prepared;
+    const result = await this.runner()(prepared.file, prepared.args, {
+      ...prepared.options,
+      signal: input.signal,
+    });
+    return this.clip(result);
+  }
+
+  async prepare(
+    input: BashSeatbeltInput,
+    ctx: { runId: string; threadId: string; turnId: string },
+    admission?: "command_authorized" | "background_authorized",
+  ) {
     const command = input.command?.trim() ?? "";
     if (!command || Buffer.byteLength(command, "utf8") > MAX_COMMAND_BYTES)
       throw new AuxError("invalid_params", `command must be 1 to ${MAX_COMMAND_BYTES} bytes.`);
     const policy = this.opts.filesystemPolicy(ctx);
-    const cwd = requireFilesystemPath(policy, input.workdir ?? this.opts.scratchDir, "read");
+    const directories = this.opts.directoriesForRun?.(ctx) ?? {
+      scratchDir: this.opts.scratchDir,
+      workdir: this.opts.scratchDir,
+    };
+    const scratchDir = requireFilesystemPath(policy, directories.scratchDir, "read");
+    const cwd = requireFilesystemPath(policy, input.workdir ?? directories.workdir, "read");
     if (!statSync(cwd).isDirectory())
       throw new AuxError("permission_denied", "Bash workdir must be a granted directory.");
     const timeoutMs = Math.min(Math.max(1_000, Math.floor(input.timeoutMs ?? 30_000)), MAX_TIMEOUT_MS);
-    const defaultNetwork = this.opts.networkDefault?.() ?? false;
+    const defaultNetwork = this.opts.networkDefault?.(ctx) ?? false;
     const network = input.network ?? defaultNetwork;
-    if (network && !defaultNetwork) {
+    if (network && !defaultNetwork && admission === undefined) {
       if (!this.opts.networkGate)
         throw new AuxError("capability_unsupported", "Network permission is unavailable.");
       const verdict = await this.opts.networkGate(command, ctx);
@@ -122,19 +145,31 @@ export class BashSeatbelt {
     }
     if (
       JSON.stringify(this.opts.filesystemPolicy(ctx)) !== JSON.stringify(policy) ||
-      (defaultNetwork && !this.opts.networkDefault?.())
+      (defaultNetwork && !this.opts.networkDefault?.(ctx))
     )
       throw new AuxError("ref_stale", "Permissions changed before command dispatch.");
-    const run = this.runner();
-    const args = ["-p", filesystemSeatbelt(policy, network), "/bin/sh", "-c", command];
+    this.runner();
+    const sandbox =
+      filesystemSeatbelt(policy, network) +
+      (admission === "background_authorized"
+        ? '\n(allow network-inbound network-bind (local ip "localhost:*"))'
+        : "");
+    const args = ["-p", sandbox, "/bin/sh", "-c", command];
     const env = {
-      PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
-      TMPDIR: this.opts.scratchDir,
-      HOME: this.opts.scratchDir,
+      PATH: `${cwd}/node_modules/.bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin`,
+      TMPDIR: scratchDir,
+      HOME: scratchDir,
       LANG: "en_US.UTF-8",
     };
-    const result = await run(SANDBOX_EXEC, args, { cwd, env, timeoutMs, signal: input.signal });
-    return this.clip(result);
+    const check = () => {
+      input.signal?.throwIfAborted();
+      if (
+        JSON.stringify(this.opts.filesystemPolicy(ctx)) !== JSON.stringify(policy) ||
+        (defaultNetwork && !this.opts.networkDefault?.(ctx))
+      )
+        throw new AuxError("ref_stale", "Permissions changed before command dispatch.");
+    };
+    return { file: SANDBOX_EXEC, args, options: { cwd, env, timeoutMs }, policy, check };
   }
 
   private clip(result: {

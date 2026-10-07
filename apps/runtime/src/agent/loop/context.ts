@@ -1,3 +1,5 @@
+import type { CodingFileReceipt } from "@aux/contracts/coding-files";
+import type { CodingProcessReceipt } from "@aux/contracts/coding-processes";
 import type { ModelMessage } from "./types.js";
 
 /**
@@ -59,12 +61,184 @@ export function pruneMedia(value: unknown, depth = 0): unknown {
   return value;
 }
 
+const READ_TOOLS = new Set([
+  "get_time",
+  "snapshot",
+  "read_file",
+  "grep",
+  "glob",
+  "list_directory",
+  "stat",
+  "diff",
+  "bg_status",
+  "bg_logs",
+  "history_search",
+  "memory_search",
+  "websearch",
+  "webfetch",
+  "package_skill",
+  "package_template",
+  "package_workflow",
+  "coder_worktree_diff",
+]);
+const evidenceFields = [
+  "receiptId",
+  "receiptIds",
+  "fileReceiptIds",
+  "processReceiptIds",
+  "processId",
+  "artifactId",
+  "artifactIds",
+  "cellId",
+  "intentId",
+  "uncertainIntentIds",
+  "status",
+  "state",
+  "exitCode",
+  "timedOut",
+  "fileOutcomes",
+  "diagnostic",
+];
+function retainedEvidence(output: unknown): Record<string, unknown> {
+  if (!output || typeof output !== "object" || Array.isArray(output)) return {};
+  const object = output as Record<string, unknown>;
+  if (object.type === "json") return retainedEvidence(object.value);
+  const evidence: Record<string, unknown> = {};
+  for (const name of evidenceFields) {
+    const value = object[name];
+    if (typeof value === "string") evidence[name] = value.slice(0, 512);
+    else if (typeof value === "number" || typeof value === "boolean" || value === null)
+      evidence[name] = value;
+    else if (Array.isArray(value))
+      evidence[name] = value.slice(0, 16).map((item) =>
+        typeof item === "string"
+          ? item.slice(0, 512)
+          : item && typeof item === "object"
+            ? {
+                path: String((item as { path?: unknown }).path ?? "").slice(-512),
+                status: String((item as { status?: unknown }).status ?? "").slice(0, 64),
+              }
+            : item,
+      );
+    else if (name === "diagnostic" && value && typeof value === "object") {
+      const diagnostic = value as Record<string, unknown>;
+      evidence[name] = {
+        exitCode: diagnostic.exitCode,
+        timedOut: diagnostic.timedOut,
+        excerpt: String(diagnostic.excerpt ?? "").slice(-4096),
+        processId: String(diagnostic.processId ?? "").slice(0, 512),
+        artifactId: String(diagnostic.artifactId ?? "").slice(0, 512),
+      };
+    }
+  }
+  return evidence;
+}
+function recoveryHint(toolName?: string): string {
+  return toolName && READ_TOOLS.has(toolName)
+    ? "Read this content again with a narrower query if needed."
+    : "Do not repeat this action to recover its output. Inspect its durable receipt, diff, or process logs; reconcile uncertain effects before further writes.";
+}
+export function annotateToolFailure(output: unknown, depth = 0): unknown {
+  if (depth > 3) return output;
+  if (!output || typeof output !== "object" || Array.isArray(output) || output instanceof Error)
+    return output;
+  const value = output as Record<string, unknown>;
+  if (value.value && typeof value.value === "object")
+    return { ...value, value: annotateToolFailure(value.value, depth + 1) };
+  if (!(typeof value.exitCode === "number" && value.exitCode !== 0) && !value.timedOut) return output;
+  const text = [value.stderr, value.stdout]
+    .filter((item): item is string => typeof item === "string")
+    .join("\n");
+  return {
+    ...value,
+    diagnostic: {
+      exitCode: value.exitCode,
+      timedOut: value.timedOut ?? false,
+      excerpt: text.slice(-4096),
+      artifactId: value.artifactId,
+      processId: value.processId,
+      guidance:
+        "Inspect the failure and make a focused repair before retrying. Full output remains in the command artifact or process logs.",
+    },
+  };
+}
+export function codingResumeSummary(
+  files: CodingFileReceipt[],
+  processes: CodingProcessReceipt[],
+  totalFileReceipts = files.length,
+): string {
+  const summary: {
+    note: string;
+    fileCount: number;
+    recentProcessReceiptCount: number;
+    recentFileReceiptCount: number;
+    files: unknown[];
+    processes: unknown[];
+  } = {
+    note: "Durable coding state: confirmed effects must not be replayed. Use diff, reconcile_file, reconcile_process, bg_status and bg_logs to inspect results or resolve uncertainty. Interrupted commands have unknown outcomes and are never proof of success.",
+    fileCount: totalFileReceipts,
+    recentFileReceiptCount: files.length,
+    recentProcessReceiptCount: processes.length,
+    files: [],
+    processes: [],
+  };
+  for (const process of processes.slice(-12).reverse()) {
+    summary.processes.push({
+      processId: process.processId,
+      state: process.state,
+      exitCode: process.exitCode,
+      artifactId: process.artifactId,
+      diagnostic:
+        process.exitCode !== undefined && process.exitCode !== 0
+          ? {
+              excerpt: [process.stderr, process.stdout].filter(Boolean).join("\n").slice(-2048),
+              guidance: "Inspect the command failure before retrying; use process logs for full output.",
+            }
+          : undefined,
+    });
+    if (bytes(summary) > 8192) {
+      summary.processes.pop();
+      break;
+    }
+  }
+  for (const receipt of files.slice(-12).reverse()) {
+    const entry = {
+      receiptId: receipt.receiptId,
+      status: receipt.status,
+      fileOutcomes: receipt.fileOutcomes?.slice(0, 8),
+      changedFileCount: receipt.after.length,
+      changes: receipt.after.slice(0, 6).map((after) => {
+        const before = receipt.before.find((state) => state.path === after.path)?.content ?? "";
+        const content = after.content ?? "";
+        let offset = 0;
+        while (offset < Math.min(before.length, content.length) && before[offset] === content[offset])
+          offset++;
+        const start = Math.max(0, offset - 60);
+        return {
+          path: after.path.slice(-512),
+          pathTruncated: after.path.length > 512,
+          version: after.version,
+          binary: after.contentBase64 !== undefined,
+          before: before.slice(start, start + 180),
+          after: content.slice(start, start + 180),
+        };
+      }),
+    };
+    summary.files.push(entry);
+    if (bytes(summary) > 8192) {
+      summary.files.pop();
+      break;
+    }
+  }
+  return JSON.stringify(summary);
+}
+
 /**
  * The per-turn tool budget: results keep their slot but oversize outputs
  * shrink to a marker once the running total passes the cap. The smallest
  * outputs are kept verbatim — statuses and ids stay visible to the model.
  */
-export function budgetToolOutputs<T extends { output?: unknown }>(results: T[]): T[] {
+export function budgetToolOutputs<T extends { output?: unknown; toolName?: string }>(results: T[]): T[] {
   let spent = 0;
   return results.map((result) => {
     if (!("output" in result)) return result;
@@ -79,7 +253,8 @@ export function budgetToolOutputs<T extends { output?: unknown }>(results: T[]):
       output: {
         truncated: true,
         bytes: size,
-        note: "Tool output exceeded this step's 40 KB tool budget. Re-issue the call with a narrower query, or read the spilled artifact if one was written.",
+        evidence: retainedEvidence(result.output),
+        note: recoveryHint(result.toolName),
       },
     };
   });
@@ -106,7 +281,8 @@ function compactPart(part: MessagePart): MessagePart {
         value: {
           compacted: true,
           bytes: bytes(part.output),
-          hint: "This tool result was compacted — re-issue the call if you still need its content.",
+          evidence: retainedEvidence(part.output),
+          hint: recoveryHint(typeof part.toolName === "string" ? part.toolName : undefined),
         },
       },
     };

@@ -21,7 +21,9 @@ type EdgeRow = {
 };
 
 function edge(repo: Repo, row: EdgeRow) {
-  const agent = SubagentSchema.parse(JSON.parse(row.body));
+  const agent = SubagentSchema.parse(
+    JSON.parse(repo.revealRecordField("subagents", [row.agent_id], "body", row.body)),
+  );
   const group = SubagentGroupSchema.parse(JSON.parse(row.group_body));
   if (
     agent.agentId !== row.agent_id ||
@@ -36,9 +38,7 @@ function edge(repo: Repo, row: EdgeRow) {
   return {
     runId: row.reserved_run_id,
     parentRunId: group.parentRunId,
-    active:
-      row.group_state === "active" &&
-      ["starting", "running"].includes(row.state),
+    active: row.group_state === "active" && ["starting", "running"].includes(row.state),
   };
 }
 
@@ -53,7 +53,8 @@ export function runAncestry(repo: Repo, runId: string, requireActive = false): s
       .prepare(`${EDGE_SELECT} WHERE a.run_id=? OR a.reserved_run_id=? LIMIT 2`)
       .all(current, current) as EdgeRow[];
     const setParent = assertSetMemberSource(repo, current, requireActive);
-    if (rows.length + (setParent ? 1 : 0) > 1) throw new AuxError("permission_denied", "Run lineage is ambiguous.");
+    if (rows.length + (setParent ? 1 : 0) > 1)
+      throw new AuxError("permission_denied", "Run lineage is ambiguous.");
     if (setParent) {
       if (requireActive && !ACTIVE.has(repo.getRun(setParent)?.status ?? "missing"))
         throw new AuxError("permission_denied", "The parent Set run is no longer active.");
@@ -96,12 +97,16 @@ export function lineageRuns(repo: Repo, runId: string): string[] {
         .all(parentRunId, remaining + 1) as EdgeRow[];
       if (rows.length > remaining)
         throw new AuxError("permission_denied", "Run descendants exceed their bounded authority limit.");
-      const setRows = repo.db.prepare("SELECT child_run_id FROM set_run_members WHERE parent_run_id=? LIMIT ?")
+      const setRows = repo.db
+        .prepare("SELECT child_run_id FROM set_run_members WHERE parent_run_id=? LIMIT ?")
         .all(parentRunId, remaining + 1) as { child_run_id: string }[];
       if (rows.length + setRows.length > remaining)
         throw new AuxError("permission_denied", "Run descendants exceed their bounded authority limit.");
       for (const row of setRows) {
-        if (assertSetMemberSource(repo, row.child_run_id, false) !== parentRunId || result.has(row.child_run_id))
+        if (
+          assertSetMemberSource(repo, row.child_run_id, false) !== parentRunId ||
+          result.has(row.child_run_id)
+        )
           throw new AuxError("permission_denied", "Run lineage contains ambiguous membership.");
         runRoot(repo, row.child_run_id);
         result.add(row.child_run_id);

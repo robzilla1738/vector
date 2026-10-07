@@ -10,13 +10,20 @@ type Secrets = Pick<NativeBridge, "readSecret" | "storeSecret"> & {
   profileStorageFactor?: (args: { version: 1; purpose: "sqlite" }) => Promise<{ value: string }>;
 };
 
-/** Only transcript content and account/token metadata use this codec. Memory owns its generation keys. */
+/** Runtime content and account metadata use this codec. Memory owns its generation keys. */
 export const ENCRYPTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  subagents: ["body"],
   runs: ["goal", "config", "status_message", "result", "error", "failure"],
   run_messages: ["text", "context_page_refs", "mentions", "error"],
   run_transcript: ["message", "park"],
   conversations: ["title"],
   safety_send_journal: ["text"],
+  safety_approval_requests: ["action_json"],
+  coding_file_receipts: ["receipt", "summary"],
+  coding_process_receipts: ["receipt"],
+  coding_repl_calls: ["signature", "response"],
+  coding_repl_cells: ["source"],
+  coder_worktree_receipts: ["body"],
   model_calls: ["provider_metadata"],
   calendar_connections: ["account_key", "label", "secret_name", "scopes"],
 };

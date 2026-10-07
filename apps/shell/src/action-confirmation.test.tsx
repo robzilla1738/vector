@@ -62,6 +62,7 @@ it("shares one pending decision between composer card and page pill without movi
     );
     expect(host.querySelector("dialog")).toBeNull();
     expect(document.activeElement).toBe(input);
+    await act(async () => button("More options").click());
     await act(async () => {
       button("Allow once").click();
       button("Always allow").click();

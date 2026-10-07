@@ -1,7 +1,9 @@
+import { codingToolManifest } from "./coding-tools.js";
 import { PageSummaryInputSchema } from "@aux/contracts/page-summary";
 import { z } from "zod";
 import {
   AuxError,
+  SubagentProfileSchema,
   CalendarTaskEventsInputSchema,
   InlineAssistTextSchema,
   ObservationScopeSchema,
@@ -132,7 +134,14 @@ export function buildToolManifest(): LoopToolManifest {
           "expectDownload must immediately precede its trigger; no page action was dispatched. Reissue one batch with expectDownload before the click.",
         );
       // The dep returns LoopToolResult — a safety `ask` may park the loop.
-      return need(ctx.deps.act, "act")({ pageId: ctx.pageId, steps: input.steps });
+      return need(
+        ctx.deps.act,
+        "act",
+      )({
+        pageId: ctx.pageId,
+        steps: input.steps,
+        actionId: `${ctx.runId}:${ctx.toolCallId ?? ctx.turnId}:act`,
+      });
     },
   };
 
@@ -286,7 +295,7 @@ export function buildToolManifest(): LoopToolManifest {
 
   const goalProgram: LoopTool = {
     description:
-      "Optional verified page workflow. Write one synchronous-looking JavaScript script that performs the whole task and calls submitResult(report, citations) or page.submitLabeledValue(label) after inspecting live evidence. Supply answerLabel with the requested field label (or empty string for non-labeled answers); for a requested dialog-only value set answerScope to dialog. If the script's own extraction fails after opening a visible modal, a unique labeled value in that modal may complete via the same verifier. For pagination or a route link, use page.followLinkByName(name): it resolves one observed same-origin href and navigates the current tab without firing click handlers. Use page.clickByName(name, role?) when click behavior is required, such as a button, download, or new-tab link. page.navigateMatching(targetId) resolves a unique same-origin route only when observed sibling links support it. All named lookups fail on ambiguity; actions still pass decide() and the durable write ledger. On other ambiguity, throw rather than guess; ordinary tools are available on the next turn.",
+      "Verified browser or coding workflow. Use governed fs/proc APIs for coding; each effect keeps its own receipt. Write one synchronous-looking JavaScript script that performs the whole task and calls submitResult(report, citations) or page.submitLabeledValue(label) after inspecting live evidence. Supply answerLabel with the requested field label (or empty string for non-labeled answers); for a requested dialog-only value set answerScope to dialog. If the script's own extraction fails after opening a visible modal, a unique labeled value in that modal may complete via the same verifier. For pagination or a route link, use page.followLinkByName(name): it resolves one observed same-origin href and navigates the current tab without firing click handlers. Use page.clickByName(name, role?) when click behavior is required, such as a button, download, or new-tab link. page.navigateMatching(targetId) resolves a unique same-origin route only when observed sibling links support it. All named lookups fail on ambiguity; actions still pass decide() and the durable write ledger. On other ambiguity, throw rather than guess; ordinary tools are available on the next turn.",
     byline: "Aux first-turn goal program — governed REPL with verified finish",
     inputSchema: z.object({
       code: z
@@ -297,7 +306,8 @@ export function buildToolManifest(): LoopToolManifest {
       answerLabel: z
         .string()
         .max(160)
-        .describe("Requested visible field label, or empty when the answer is not a labeled value."),
+        .default("")
+        .describe("Optional requested visible field label; omit for coding results."),
       answerScope: z.enum(["dialog"]).optional(),
       deadlineMs: z.number().int().positive().optional(),
     }),
@@ -305,7 +315,7 @@ export function buildToolManifest(): LoopToolManifest {
       const input = z
         .object({
           code: z.string().min(1).max(64_000),
-          answerLabel: z.string().max(160),
+          answerLabel: z.string().max(160).default(""),
           answerScope: z.enum(["dialog"]).optional(),
           deadlineMs: z.number().int().positive().optional(),
         })
@@ -375,70 +385,6 @@ export function buildToolManifest(): LoopToolManifest {
     execute: () => ({ output: { iso: new Date().toISOString(), unixMs: Date.now() } }),
   };
 
-  const readFile: LoopTool = {
-    description: "Read a UTF-8 text file inside the session roots (artifacts, downloads, workspace).",
-    byline: "Aux confined fs",
-    inputSchema: z.object({ path: z.string().min(1).max(4_096) }),
-    execute: async (raw, ctx) => {
-      const { path } = z.object({ path: z.string().min(1).max(4_096) }).parse(raw);
-      return { output: await need(ctx.deps.fileRead, "read_file")(path) };
-    },
-  };
-
-  const writeFile: LoopTool = {
-    description: "Write a UTF-8 text file inside the session roots, creating parent directories.",
-    byline: "Aux confined fs",
-    inputSchema: z.object({
-      path: z.string().min(1).max(4_096),
-      content: z.string().max(1_000_000),
-    }),
-    execute: async (raw, ctx) => {
-      const input = z
-        .object({ path: z.string().min(1).max(4_096), content: z.string().max(1_000_000) })
-        .parse(raw);
-      await need(ctx.deps.fileWrite, "write_file")(input.path, input.content);
-      return { output: { written: input.path } };
-    },
-  };
-
-  const editFile: LoopTool = {
-    description:
-      "Replace text in a file inside the session roots. `oldText` must occur exactly once unless `all` is set; " +
-      "fail honestly when it is absent or ambiguous so the edit can be re-read and retried.",
-    byline: "Aux confined fs",
-    inputSchema: z.object({
-      path: z.string().min(1).max(4_096),
-      oldText: z.string().min(1).max(200_000),
-      newText: z.string().max(200_000),
-      all: z.boolean().optional().describe("Replace every occurrence instead of requiring exactly one."),
-    }),
-    execute: async (raw, ctx) => {
-      const input = z
-        .object({
-          path: z.string().min(1).max(4_096),
-          oldText: z.string().min(1).max(200_000),
-          newText: z.string().max(200_000),
-          all: z.boolean().optional(),
-        })
-        .parse(raw);
-      const read = need(ctx.deps.fileRead, "edit_file");
-      const write = need(ctx.deps.fileWrite, "edit_file");
-      const current = await read(input.path);
-      const occurrences = current.split(input.oldText).length - 1;
-      if (!occurrences) throw new AuxError("not_found", "oldText is not in the file — re-read it and retry.");
-      if (!input.all && occurrences > 1)
-        throw new AuxError(
-          "conflict",
-          `oldText occurs ${occurrences} times — quote more context or pass all: true.`,
-        );
-      const next = input.all
-        ? current.split(input.oldText).join(input.newText)
-        : current.replace(input.oldText, input.newText);
-      await write(input.path, next);
-      return { output: { edited: input.path, replacements: input.all ? occurrences : 1 } };
-    },
-  };
-
   const bash: LoopTool = {
     description:
       "Run a shell command inside the current file permissions. Auto and Full allow outbound network by default; Ask can request it with network:true. Commands always stay sandboxed. stdout/stderr are bounded to 64 KB and timeoutMs to 120000.",
@@ -466,11 +412,16 @@ export function buildToolManifest(): LoopToolManifest {
           network: z.boolean().optional(),
         })
         .parse(raw);
-      return need(ctx.deps.bash, "bash")({ ...input, signal: ctx.signal }, {
-        runId: ctx.runId,
-        threadId: ctx.threadId,
-        turnId: ctx.turnId,
-      });
+      return need(ctx.deps.bash, "bash")(
+        { ...input, signal: ctx.signal },
+        {
+          runId: ctx.runId,
+          threadId: ctx.threadId,
+          turnId: ctx.turnId,
+          actionId: `${ctx.runId}:${ctx.toolCallId ?? ctx.turnId}:bash`,
+          toolCallId: ctx.toolCallId,
+        },
+      );
     },
   };
 
@@ -524,7 +475,7 @@ export function buildToolManifest(): LoopToolManifest {
     byline: "Aux subagent cells",
     inputSchema: z.object({
       goal: z.string().min(1).max(8_000).describe("The cell's objective."),
-      profile: z.enum(["default", "explorer", "read_only"]).optional(),
+      profile: SubagentProfileSchema.optional(),
       pageIds: z
         .array(z.string().min(1).max(200))
         .max(8)
@@ -535,14 +486,21 @@ export function buildToolManifest(): LoopToolManifest {
       const input = z
         .object({
           goal: z.string().min(1).max(8_000),
-          profile: z.enum(["default", "explorer", "read_only"]).optional(),
+          profile: SubagentProfileSchema.optional(),
           pageIds: z.array(z.string().min(1).max(200)).max(8).optional(),
         })
         .parse(raw);
       const spawn = ctx.deps.subagents?.spawnCell;
       if (!spawn)
         throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
-      return { output: await spawn(input, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId }) };
+      return {
+        output: await spawn(input, {
+          runId: ctx.runId,
+          threadId: ctx.threadId,
+          turnId: ctx.turnId,
+          toolCallId: ctx.toolCallId,
+        }),
+      };
     },
   };
 
@@ -737,22 +695,28 @@ export function buildToolManifest(): LoopToolManifest {
     },
   };
 
-  const calendarInput = CalendarTaskEventsInputSchema.omit({ taskId: true }).refine(
-    (input) => { const span = Date.parse(input.timeMax) - Date.parse(input.timeMin); return span > 0 && span <= 31 * 24 * 60 * 60 * 1000; },
-    "Choose a calendar range of at most 31 days.",
-  );
+  const calendarInput = CalendarTaskEventsInputSchema.omit({ taskId: true }).refine((input) => {
+    const span = Date.parse(input.timeMax) - Date.parse(input.timeMin);
+    return span > 0 && span <= 31 * 24 * 60 * 60 * 1000;
+  }, "Choose a calendar range of at most 31 days.");
   return {
     calendar_events_list: {
-      description: "Read events from an account explicitly granted to this saved task. Use only a grantId listed in this run’s captured Calendar accounts; later grants do not expand this run.",
+      description:
+        "Read events from an account explicitly granted to this saved task. Use only a grantId listed in this run’s captured Calendar accounts; later grants do not expand this run.",
       byline: "Task-granted Calendar",
       inputSchema: calendarInput,
       execute: (raw, ctx) => need(ctx.deps.calendarEvents, "calendar_events_list")(calendarInput.parse(raw)),
     },
     image_generate: {
-      description: "Generate an image from a prompt and save its artifact in this conversation. Uses the original run’s model and spend budgets.",
+      description:
+        "Generate an image from a prompt and save its artifact in this conversation. Uses the original run’s model and spend budgets.",
       byline: "Aux image generation",
       inputSchema: z.object({ prompt: z.string().trim().min(1).max(4_000) }),
-      execute: async (raw, ctx) => need(ctx.deps.generateImage, "image_generate")(z.object({ prompt: z.string().trim().min(1).max(4_000) }).parse(raw)),
+      execute: async (raw, ctx) =>
+        need(
+          ctx.deps.generateImage,
+          "image_generate",
+        )(z.object({ prompt: z.string().trim().min(1).max(4_000) }).parse(raw)),
     },
     get_time: getTime,
     snapshot,
@@ -765,15 +729,15 @@ export function buildToolManifest(): LoopToolManifest {
     ask_user_question: askUserQuestion,
     request_action_confirmation: requestActionConfirmation,
     write_todos: writeTodos,
-    read_file: readFile,
-    write_file: writeFile,
-    edit_file: editFile,
+    ...codingToolManifest(),
     bash,
     page_summary: {
-      description: "Summarize a currently admitted page with verbatim evidence quotes and original document provenance. This does not complete the task.",
+      description:
+        "Summarize a currently admitted page with verbatim evidence quotes and original document provenance. This does not complete the task.",
       byline: "Aux page summary",
       inputSchema: PageSummaryInputSchema,
-      execute: async (raw, ctx) => need(ctx.deps.pageSummary, "page_summary")(PageSummaryInputSchema.parse(raw)),
+      execute: async (raw, ctx) =>
+        need(ctx.deps.pageSummary, "page_summary")(PageSummaryInputSchema.parse(raw)),
     },
     history_search: historySearch,
     memory_search: memorySearch,

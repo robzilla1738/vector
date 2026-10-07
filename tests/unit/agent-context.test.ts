@@ -1,3 +1,4 @@
+import { annotateToolFailure, codingResumeSummary } from "../../apps/runtime/dist/agent/loop/context.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -87,6 +88,68 @@ describe("context management — per-turn tool budget", () => {
     expect((bounded[2]!.output as unknown as Record<string, unknown>).bytes).toBeGreaterThan(0);
     expect(bounded).toHaveLength(3); // every call keeps its slot
   });
+});
+
+it("retains command failure evidence through output truncation without suggesting effect replay", () => {
+  const diagnostic = annotateToolFailure({
+    exitCode: 1,
+    stdout: "x".repeat(70000) + " assertion failed",
+    stderr: "test failure",
+    artifactId: "logs-1",
+    processId: "process-1",
+  });
+  const bounded = budgetToolOutputs([{ toolName: "bash", output: diagnostic }])[0]!.output as {
+    evidence: { artifactId: string; processId: string; exitCode: number; diagnostic: { excerpt: string } };
+    note: string;
+  };
+  expect(bounded.evidence).toMatchObject({ artifactId: "logs-1", processId: "process-1", exitCode: 1 });
+  expect(bounded.evidence.diagnostic.excerpt).toContain("assertion failed");
+  expect(bounded.evidence.diagnostic.excerpt.length).toBeLessThanOrEqual(4096);
+  expect(bounded.note).toContain("Do not repeat");
+  const messages = [
+    userTask,
+    toolMsg("effect", { receiptId: "file-receipt", status: "uncertain", content: "x".repeat(210000) }),
+    ...Array.from({ length: 10 }, (_, i) => toolMsg(String(i), "ok")),
+  ];
+  const compacted = compactMessages(messages)!;
+  const result = (
+    compacted.messages[1]!.content as unknown as { output: { value: { evidence: unknown; hint: string } } }[]
+  )[0]!.output.value;
+  expect(result.evidence).toEqual({ receiptId: "file-receipt", status: "uncertain" });
+  expect(result.hint).toContain("Do not repeat");
+});
+
+it("keeps resume diffs bounded and points to independent interrupted-command evidence", () => {
+  const files = Array.from({ length: 30 }, (_, i) => ({
+    receiptId: `receipt-${i}`,
+    actionId: `action-${i}`,
+    runId: "run",
+    createdAt: i,
+    status: "confirmed" as const,
+    before: [{ path: `/project/${i}`, content: "prefix".repeat(4000) + "old", version: "old" }],
+    after: [{ path: `/project/${i}`, content: "prefix".repeat(4000) + "new", version: "new" }],
+  }));
+  const processes = [
+    {
+      processId: "process",
+      runId: "run",
+      actionId: "command",
+      requestHash: "hash",
+      command: "test",
+      workdir: "/project",
+      startedAt: 0,
+      state: "interrupted" as const,
+      logPath: "/logs",
+      artifactId: "logs",
+      undoAvailable: false as const,
+    },
+  ];
+  const summary = codingResumeSummary(files, processes);
+  expect(Buffer.byteLength(summary)).toBeLessThanOrEqual(8192);
+  const parsed = JSON.parse(summary);
+  expect(parsed.fileCount).toBe(30);
+  expect(parsed.note).toContain("unknown outcomes");
+  expect(summary).toContain("new");
 });
 
 describe("context management — compaction", () => {

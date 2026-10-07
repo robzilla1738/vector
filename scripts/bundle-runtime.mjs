@@ -165,6 +165,7 @@ export async function bundleRuntime(rtOut, target) {
   // when a schedule is created/evaluated. Keep it outside the cold ESM graph.
   const recurrenceEntry = runtimeRequire.resolve("rrule-temporal");
   const recurrenceDir = dirname(dirname(recurrenceEntry));
+  cpSync(join(runtimeDir, "packages"), join(rtOut, "packages"), { recursive: true });
   const recurrenceOut = join(rtOut, "vendor", "rrule-temporal");
   mkdirSync(recurrenceOut, { recursive: true });
   const recurrenceBuild = await build({

@@ -35,6 +35,8 @@ export interface StepSafetyContext {
   credentialTarget?: SavedCredentialTarget;
   actor?: "builtin_agent" | "subagent" | "code_mode" | "external_token" | "user";
   sessionId?: string;
+  documentEpoch?: number;
+  checkOwner?: () => void;
   approvalId?: string;
   review?: FinalReviewArtifact;
   turnToolCallCount?: number;
@@ -67,6 +69,7 @@ export interface SafetyDispatchDeps {
     site: string;
     amount?: number;
     pageId?: string;
+    reviewedBatch?: boolean;
   }) => void;
 }
 
@@ -100,9 +103,111 @@ export class SafetyDispatchGate {
       ...(input.context.actor ? { actor: input.context.actor } : {}),
       observedTarget: input.context.observedTarget,
       credentialTarget: input.context.credentialTarget,
-      digest: createHash("sha256").update(JSON.stringify(input.step)).digest("hex"),
+      digest: createHash("sha256")
+        .update(
+          JSON.stringify([
+            input.step,
+            input.context.pageId,
+            input.context.sessionId,
+            input.context.documentEpoch,
+            input.context.observedTarget,
+          ]),
+        )
+        .digest("hex"),
     });
     return this.checkRequest(request, input.context, input.phase, input.origin);
+  }
+
+  async prepareBatch(inputs: Parameters<SafetyDispatchGate["check"]>[0][]): Promise<void> {
+    const identities = inputs.map((input) => JSON.stringify([input.step.id, input.origin]));
+    if (new Set(identities).size !== identities.length)
+      throw new AuxError("invalid_params", "Each reviewed action needs a distinct step ID.");
+    const needed: SafetyAction[] = [];
+    const summaries: NonNullable<SafetyAction["reviewedActions"]> = [];
+    let firstRequest: EffectRequest | undefined;
+    let firstContext: StepSafetyContext | undefined;
+    for (const input of inputs) {
+      input.context.checkOwner?.();
+      const request = effectRequestForStep({
+        step: input.step,
+        origin: input.origin,
+        profileId: input.context.profileId,
+        scope: input.context.scope,
+        turnId: input.context.turnId,
+        threadId: input.context.threadId,
+        runId: input.context.runId,
+        actor: input.context.actor,
+        observedTarget: input.context.observedTarget,
+        digest: createHash("sha256")
+          .update(
+            JSON.stringify([
+              input.step,
+              input.context.pageId,
+              input.context.sessionId,
+              input.context.documentEpoch,
+              input.context.observedTarget,
+            ]),
+          )
+          .digest("hex"),
+      });
+      const decision = await decide(
+        request,
+        { ...this.deps },
+        { phase: "preflight", runId: input.context.runId, taskRead: input.context.taskRead },
+      );
+      input.context.checkOwner?.();
+      if (decision.status === "deny") throw new AuxError("permission_denied", decision.guidance);
+      if (decision.status === "ask") {
+        if (decision.suspension.kind !== "approval" || !decision.suspension.approvalId) {
+          this.park(request, input.context, decision.suspension);
+          throw new AuxError("needs_input", decision.suspension.instruction, {
+            suspensionKind: decision.suspension.kind,
+            requestId: decision.suspension.approvalId,
+          });
+        }
+        const category = agentPolicyCategoryFor(request.category, request.action);
+        if (["submit", "send", "post"].includes(category) && !input.context.observedTarget?.form) {
+          if (needed.length) break;
+          this.park(request, input.context, {
+            ...decision.suspension,
+            instruction: "Review the draft and recipient on this page before allowing this action.",
+          });
+          throw new AuxError("needs_input", "Review this action on the page.", {
+            suspensionKind: "approval",
+            requestId: decision.suspension.approvalId,
+          });
+        }
+        const saved = this.deps.approvals
+          .pending(input.context.threadId)
+          .find((approval) => approval.approvalId === decision.suspension.approvalId);
+        if (!saved) throw new AuxError("conflict", "This action review changed.");
+        needed.push(saved.action);
+        firstRequest ??= request;
+        firstContext ??= input.context;
+      }
+      const { id, ...argumentsValue } = input.step;
+      summaries.push({
+        action: input.step.op,
+        target:
+          input.context.observedTarget?.name || ("target" in input.step ? String(input.step.target) : ""),
+        arguments: JSON.stringify(argumentsValue),
+        destination: input.context.observedTarget?.destination ?? input.origin,
+      });
+    }
+    if (!needed.length) return;
+    inputs.forEach((input) => input.context.checkOwner?.());
+    const approvalId = this.deps.approvals.issueBatch(needed, summaries);
+    const suspension: SuspensionRequest = {
+      kind: "approval",
+      approvalId,
+      instruction: "Review these actions before Aux continues.",
+      guidance: "Approve only the displayed actions; changed targets need another review.",
+    };
+    this.park(firstRequest!, firstContext!, suspension);
+    throw new AuxError("needs_input", suspension.instruction, {
+      suspensionKind: "approval",
+      requestId: approvalId,
+    });
   }
 
   /** Internal producer route; the authenticated native permission controller owns this request. */
@@ -205,6 +310,7 @@ export class SafetyDispatchGate {
         turnId: context.turnId,
         threadId: context.threadId,
         instruction: suspension.instruction,
+        ...(saved?.reviewedChanges || saved?.reviewedActions ? { reviewedBatch: true } : {}),
         kind:
           suspension.kind === "touch-id"
             ? "touch-id"
@@ -232,8 +338,9 @@ export class SafetyDispatchGate {
     }
   }
 
-  private policySnapshot(): string {
-    return JSON.stringify([this.deps.managedRules(), this.deps.agentPolicy()]);
+  private policySnapshot(runId?: string): string {
+    const policy = this.deps.approvals.effectivePolicy(this.deps.agentPolicy(runId), runId);
+    return JSON.stringify([this.deps.managedRules(), policy.agentMode, policy.agentPolicies]);
   }
 
   /** Synchronous live fence retained through action preparation and the final dispatch. */
@@ -241,10 +348,14 @@ export class SafetyDispatchGate {
     return this.deps.agentPolicy().agentPolicyRevision;
   }
 
-  policyFence(): () => void {
-    const snapshot = this.policySnapshot();
+  policyFence(runId?: string): () => void {
+    const snapshot = this.policySnapshot(runId);
+    const authorityRevision = this.deps.approvals.runAuthorityRevision(runId);
     return () => {
-      if (this.policySnapshot() !== snapshot)
+      if (
+        this.policySnapshot(runId) !== snapshot ||
+        this.deps.approvals.runAuthorityRevision(runId) !== authorityRevision
+      )
         throw new AuxError(
           "permission_denied",
           "Agent permissions changed while preparing this action. Retry against the current policy.",
@@ -258,6 +369,7 @@ export class SafetyDispatchGate {
     phase: "preflight" | "dispatch",
     origin: string,
   ): Promise<AuthorizationProvenance | undefined> {
+    context.checkOwner?.();
     const decision = await decide(
       request,
       {
@@ -269,6 +381,7 @@ export class SafetyDispatchGate {
       },
       {
         phase: phase,
+        runId: context.runId,
         taskRead: context.taskRead,
         ...(context.sessionId ? { sessionId: context.sessionId } : {}),
         ...(context.approvalId ? { approvalId: context.approvalId } : {}),
@@ -279,6 +392,7 @@ export class SafetyDispatchGate {
         trustedEval: context.trustedEval === true,
       },
     );
+    context.checkOwner?.();
     if (decision.status === "allow") return decision.authorizedBy;
     if (decision.status === "deny") {
       throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });

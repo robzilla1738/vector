@@ -27,6 +27,11 @@ function pageDocumentEpoch(page: DriverPage): number | undefined {
 
 export interface ExecContext {
   runId?: string;
+  resumeStep?: (step: Step) => StepOutcome | undefined;
+  isStepApplied?: (step: Step) => boolean;
+  beforeDispatch?: (step: Step) => void;
+  settleStep?: (outcome: StepOutcome, step: Step) => void;
+  journalPerStep?: boolean;
   signal?: AbortSignal;
   onStep?: (outcome: StepOutcome, step: Step) => void;
   /** artifacts captured during execution are reported here */
@@ -280,6 +285,8 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
     try {
       ctx.checkValid?.();
       assertEvalAllowed(step, ctx.allowEval ?? false);
+      const resumed = ctx.resumeStep?.(step);
+      if (resumed) return resumed;
       authorization = await ctx.authorizeStep?.(step);
       ctx.checkValid?.();
       if (SETTER_OPS.has(step.op) && page.fieldState && "target" in step && step.target) {
@@ -290,6 +297,8 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
       if ((step.op === "fill" || step.op === "type") && before && "selected" in before)
         throw new AuxError("invalid_params", `step ${step.id}: use select for a select control`);
       ctx.checkValid?.();
+      ctx.beforeJournal?.();
+      ctx.beforeDispatch?.(step);
       dispatched = true;
       const detail =
         step.op === "navigate" && ctx.navigateAndReadmit
@@ -425,6 +434,17 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         ...(authorization ? { authorization } : {}),
         ...(before ? { before } : {}),
         ...(pageUrl ? { pageUrl } : {}),
+        ...(!dispatched
+          ? { effect: "authorized" as const }
+          : {
+              effect: "uncertain" as const,
+              receipt: {
+                remoteConfirmed: false,
+                uncertain: true,
+                unconfirmed: false,
+                dispatchedBeforeTakeover: false,
+              },
+            }),
         ...(navigationObserved
           ? {
               effect: "observed" as const,
@@ -554,6 +574,7 @@ export async function executeProgram(
   const runner = makeStepRunner(page, ctx);
   const outcomes: StepOutcome[] = [];
   const emit = (o: StepOutcome, s: Step) => {
+    ctx.settleStep?.(o, s);
     outcomes.push(o);
     ctx.onStep?.(o, s);
   };

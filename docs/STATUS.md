@@ -17,28 +17,25 @@ Read [ROADMAP](ROADMAP.md) for owner decisions and remaining acceptance, [ARCHIT
 
 ## Implementation checkpoint
 
-The preserved integration also includes saved local/cloud run options, model funding and account tests, MCP OAuth registration UI/services, GitHub through MCP, scoped context/observation handling, runtime shutdown/ownership refinements, generated native method bindings, and native benchmark source/harness cleanup. These are source changes, not claims of live provider or benchmark acceptance. Native area patches are recorded through 0078 in `chromium/patches/series`; the benchmark-only stock patch is separate from that product series.
+The preserved integration also includes saved local/cloud run options, model funding and account tests, MCP OAuth registration UI/services, GitHub through MCP, scoped context/observation handling, runtime shutdown/ownership refinements, generated native method bindings, and native benchmark source/harness cleanup. These are source changes, not claims of live provider or benchmark acceptance.
+
+The current coding slice adds trusted per-run modes and explicit run/site/global scopes, concrete browser/file/command review, per-action restart-safe journal settlement, governed search and versioned file batches, conflict-safe undo, supervised processes, QuickJS coding calls, declarative profiles and isolated coder worktrees. Aux Packages supply pinned skills and declarations to Aux's own loop. Commands retain honest outcome/log receipts; file undo does not promise to reverse arbitrary command effects. Partial worktree creation remains inspectable and explicitly archivable.
+
+Native area patches are recorded through 0079 in `chromium/patches/series`; 0079 replaces the foreign-agent terminal launcher with an ordinary user shell. The benchmark-only stock patch remains separate from the product series.
 
 ## Native build and preview
 
 - Chromium: **154.0.8037.98**; product checkout: `~/aux-chromium-product/chromium/src`.
-- Current app: `out/AuxFast/Aux.app` in that checkout. The final UI build completed **29 steps in 17m10.88s**, then staged the runtime and launched successfully.
-- Runtime packaging: **11.81 MiB JavaScript**, **18.38 MiB payload**, plus **33,105,536 bytes full ICU**. Size targets remain advisory.
-- Evidence: `/tmp/aux-final-polish-build.log`. Temporary logs/screenshots are local diagnostics, not durable acceptance artifacts.
-- The disposable native preview was left open. Its launcher owns the normal Product dev lock until Aux quits and then removes only its temporary Profile. Check live process/lock ownership before building; never force-clear an active lock. No owner Profile was used.
-- Native inspection confirmed the dark context/model menus, compact Ask composer, readable microphone and one-line context action. Preview checks also covered mentions and secondary chat actions. Pixel-exact Aside parity, every hover/material condition, and complete native feature acceptance remain unverified.
+- Current app: `out/AuxFast/Aux.app` in that checkout. The coding native build completed **32 steps in 13m53.86s**, then staged the final runtime and launched with an explicit disposable Profile.
+- Runtime packaging: **11.93 MiB JavaScript**, **18.50 MiB payload**, plus **33,105,536 bytes full ICU**. Size targets remain advisory.
+- Evidence: `/tmp/aux-coding-native-preview.log`. Temporary logs/screenshots are local diagnostics, not durable acceptance artifacts.
+- Native inspection verified the shipped aux-core package in Settings and a normal project shell executing a command. Stop returned the terminal to its stopped state. The owned preview retired, its launcher released the normal lock, and its temporary Profile was removed. Final renderer restaging is in progress in `/tmp/aux-coding-final-native.log` after the lazy-diff and project-row layout changes.
+- Earlier inspection covered dark context/model menus, compact Ask composer, mentions and secondary chat actions. Pixel-exact Aside parity, every hover/material condition, and complete native/provider acceptance remain unverified. The preview tool initially resolved AuxDev rather than the intended AuxFast window; subsequent inspection bound the exact AuxFast app after verifying its disposable Profile argument.
 
 ## Validation and next work
 
-Fresh handoff `npm run check`: **typecheck passed, lint completed without errors, 4,160 tests passed and 4 failed across 678 files** (675 files passed). Runtime dist was rebuilt by the typecheck stage before tests. These are the same four failures observed before this handoff; this is not a fully green checkpoint:
+The assembled `npm run check` passed typecheck and lint, with **4,188 passing tests and one failure across 684 files**. The only failure was the new same-node link-drift test, added after compilation while the suite was running. A fresh final typecheck and lint passed; rebuilt focused tests also passed, including that driver check. The earlier four handoff failures and the coding integration failures were resolved. Prior focused reruns passed 121 loop/replay tests, 22 policy/driver/UI tests, and 27 worktree/Bash/handler/renderer tests. Runtime dist was rebuilt before those reruns. Raw integrated output is in `/tmp/aux-coding-integrated-check.log`; final source/focused logs are `/tmp/aux-coding-final-source.log` and `/tmp/aux-coding-final-focused.log`. The full suite was not repeated after the final audit changes; only affected checks were rerun.
 
-| File | Remaining failure |
-| --- | --- |
-| `tests/unit/mock-bridge-coverage.test.ts` | Expected missing-method inventory differs from the current runtime/renderer registry. |
-| `tests/unit/onboarding.test.ts` | Reviewed retry reads an undefined run ID. |
-| `tests/unit/onboarding.test.ts` | Staged-recovery fixture reaches a different admission error than expected. |
-| `tests/unit/scoped-eval.test.ts` | Scoped human handoff is denied by current authorization. |
-
-The next development session should resolve or explicitly account for these failures before claiming a green integrated check. Raw output is in `/tmp/aux-main-handoff-check.log`. Focused UI checks and the final native build passed during the UI pass. The generated [agent API reference](AGENT-API.md) has been refreshed from the current contracts.
+The final audit closed lazy file-diff retrieval, saved todo restoration, declarative custom coder isolation and link/navigation review boundaries. All **119 affected tests passed across seven suites** after a fresh rebuild. The generated [agent API reference](AGENT-API.md) tracks the final contracts. Final renderer staging is pending; source and native evidence do not establish a successful live-provider coding task.
 
 The owner previously deferred broad acceptance to the next roadmap round. Still pending: detailed Aside comparison across window sizes and both appearances, manual 20-task/default-provider smoke, offline models and provider/OAuth acceptance, native import/extension/filter walkthroughs, and paired native performance measurements. Preserve Stop, Take over, durable effects/undo, site policy and secret protections while continuing development. Browser controls must remain usable when the runtime is unavailable.

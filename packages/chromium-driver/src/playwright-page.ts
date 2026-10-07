@@ -1,7 +1,8 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { extractElements } from "./extract-script.js";
 import type {
   BrowserContext,
+  CDPSession,
   ConsoleMessage,
   Dialog,
   Download,
@@ -16,6 +17,7 @@ import {
   AuxError,
   normalizeAuxEnvironment,
   type Condition,
+  type Step,
   type ElementRef,
   type FrameInfo,
   type ObservationContent,
@@ -906,8 +908,166 @@ export class PlaywrightDriverPage implements DriverPage {
       timeout: timeoutMs,
     });
   }
-  /** Before-state for setter steps (S4): value/checked/selected, redacted for protected controls. */
-  async actionTarget(target: string): Promise<ObservedActionTarget> {
+  /** Private node/form evidence for a concrete action review. Protected field values are never read. */
+  private async actionSnapshot(
+    handle: ElementHandle<HTMLElement | SVGElement>,
+    projectedSteps: readonly Step[] = [],
+  ): Promise<{ nodeIdentity: string; stateDigest: string }> {
+    const owner = await handle.ownerFrame();
+    if (!owner) throw new AuxError("ref_stale", "The action target lost its document.");
+    const sessions = new Map<Frame, CDPSession>();
+    const frameIds = new Map<Frame, string>();
+    const nodePath = (element: Element): string[] => {
+      if (!element.isConnected) throw new Error("The reviewed target detached.");
+      const roots: string[] = [];
+      let parts: string[] = [];
+      let depth = 0;
+      for (let node: Element | null = element; node;) {
+        if (++depth > 128 || node.tagName.length > 128)
+          throw new Error("Action target path exceeds its review bound.");
+        const parent: Element | null = node.parentElement;
+        let index = 1;
+        for (let sibling = node.previousElementSibling; sibling; sibling = sibling.previousElementSibling)
+          if (++index > 8192) throw new Error("Action target siblings exceed its review bound.");
+        parts.unshift(`${node.tagName.toLowerCase()}:nth-child(${index})`);
+        if (parent) {
+          node = parent;
+          continue;
+        }
+        roots.unshift(parts.join(" > "));
+        parts = [];
+        const root = node.getRootNode();
+        node = root instanceof ShadowRoot ? root.host : null;
+      }
+      return roots;
+    };
+    const sessionFor = async (frame: Frame): Promise<CDPSession> => {
+      let session = sessions.get(frame);
+      if (!session) {
+        try {
+          session = await this.context.newCDPSession(frame);
+        } catch (error) {
+          const parent = frame.parentFrame();
+          if (
+            !(error instanceof Error) ||
+            !error.message.includes("does not have a separate CDP session") ||
+            !parent
+          )
+            throw error;
+          session = await sessionFor(parent);
+        }
+        sessions.set(frame, session);
+      }
+      return session;
+    };
+    const remoteNode = async (frame: Frame, frameId: string, path: string[]) => {
+      const session = await sessionFor(frame);
+      const { executionContextId } = await session.send("Page.createIsolatedWorld", {
+        frameId,
+        worldName: "aux-action-review",
+      });
+      const expression = `${JSON.stringify(path)}.reduce((root,selector,index,selectors)=>{const node=root?.querySelector(selector);return index===selectors.length-1?node:node?.shadowRoot;},document)`;
+      const remote = await session.send("Runtime.evaluate", {
+        expression,
+        contextId: executionContextId,
+        returnByValue: false,
+      });
+      if (!remote.result.objectId)
+        throw new AuxError("ref_stale", "The reviewed target changed while resolving its identity.");
+      return { session, objectId: remote.result.objectId };
+    };
+    const frameIdFor = async (frame: Frame): Promise<string> => {
+      const cached = frameIds.get(frame);
+      if (cached) return cached;
+      const parent = frame.parentFrame();
+      let frameId: string;
+      if (!parent) frameId = (await (await sessionFor(frame)).send("Page.getFrameTree")).frameTree.frame.id;
+      else {
+        const frameElement = await frame.frameElement();
+        try {
+          const target = await remoteNode(
+            parent,
+            await frameIdFor(parent),
+            await frameElement.evaluate(nodePath),
+          );
+          const described = await target.session.send("DOM.describeNode", { objectId: target.objectId });
+          await target.session.send("Runtime.releaseObject", { objectId: target.objectId });
+          if (!described.node.frameId) throw new AuxError("ref_stale", "The reviewed target frame changed.");
+          frameId = described.node.frameId;
+        } finally {
+          await frameElement.dispose();
+        }
+      }
+      frameIds.set(frame, frameId);
+      return frameId;
+    };
+    try {
+      const frameId = await frameIdFor(owner);
+      const remote = await remoteNode(owner, frameId, await handle.evaluate(nodePath));
+      const described = await remote.session.send("DOM.describeNode", { objectId: remote.objectId });
+      const projectedArguments: { objectId?: string; value?: unknown }[] = [];
+      for (const step of projectedSteps) {
+        if (step.op !== "fill" && step.op !== "check" && step.op !== "uncheck" && step.op !== "select")
+          continue;
+        const target = await this.resolveActionable(step.target);
+        const field = isHandle(target) ? target : await target.elementHandle();
+        if (!field) throw new AuxError("ref_stale", "A planned field no longer exists.");
+        try {
+          if ((await field.ownerFrame()) !== owner) continue;
+          const projected = await remoteNode(owner, frameId, await field.evaluate(nodePath));
+          projectedArguments.push(
+            { objectId: projected.objectId },
+            { value: { op: step.op, value: "value" in step ? step.value : undefined } },
+          );
+        } finally {
+          if (!isHandle(target)) await field.dispose();
+        }
+      }
+      const formState = await remote.session.send("Runtime.callFunctionOn", {
+        objectId: remote.objectId,
+        returnByValue: true,
+        arguments: projectedArguments,
+        functionDeclaration: `function(){
+          const projected=new Map();for(let i=0;i<arguments.length;i+=2)projected.set(arguments[i],arguments[i+1]);let size=0;
+          const form=this.form??this.closest('form');const rich=form?form.querySelectorAll('[contenteditable]'):[];
+          if(form&&form.elements.length+rich.length>128)throw new Error('Action form exceeds its review bound.');
+          const fields=form?[...form.elements,...rich]:[this];
+          if(fields.length>128)throw new Error('Action form exceeds its review bound.');
+          const attributes=['href','formaction','formmethod','target','type','role','aria-label'].map(name=>{const value=this.getAttribute(name)??'';if(value.length>8192)throw new Error('Action attribute exceeds its review bound.');return [name,value];});
+          const href=typeof this.href==='string'?this.href:'';if(href.length>8192)throw new Error('Action destination exceeds its review bound.');
+          size=JSON.stringify(attributes).length+href.length;
+          const rows=fields.map(field=>{
+            const type=String(field.type??'').toLowerCase(),autocomplete=String(field.autocomplete??'').toLowerCase();
+            const sensitive=type==='password'||type==='hidden'||/(?:password|one-time-code|cc-)/.test(autocomplete)||/(?:password|credential|token|secret|api.?key|credit.?card|card.?number|security.?code|cvv|cvc|payment|bank.?account|routing)/i.test(field.name??'');
+            const planned=projected.get(field),name=String(field.name??'');
+            if(field.tagName==='SELECT'&&field.selectedOptions.length>128)throw new Error('Action selection exceeds its review bound.');
+            const labels=planned?.op==='select'?(Array.isArray(planned.value)?planned.value:[planned.value]):null;
+            if(labels&&field.tagName!=='SELECT')throw new Error('Projected selection is not representable.');
+            const selection=sensitive?null:labels?labels.map(label=>{const option=[...field.options].find(option=>option.label===label);if(!option)throw new Error('Projected option changed.');return option.value;}):field.tagName==='SELECT'?[...field.selectedOptions].map(option=>option.value):null;
+            if(selection)selection.sort();
+            const value=sensitive?'[protected]':planned?.op==='fill'?String(planned.value):selection?String(selection[0]??''):String(field.value??(field.isContentEditable?field.textContent:''));
+            const checked=planned?.op==='check'?true:planned?.op==='uncheck'?false:field.checked??null;
+            const row=[name,type,autocomplete,value,checked,selection];
+            if(name.length>512||type.length>128||autocomplete.length>512||(size+=JSON.stringify(row).length)>65536)throw new Error('Action state exceeds its review bound.');
+            return row;
+          });
+          const state=JSON.stringify({href,attributes,disabled:!!this.disabled,fields:rows});
+          if(state.length>65536)throw new Error('Action state exceeds its review bound.');return state;
+        }`,
+      });
+      await remote.session.send("Runtime.releaseObject", { objectId: remote.objectId });
+      if (formState.exceptionDetails || typeof formState.result.value !== "string")
+        throw new AuxError("ref_stale", "The target form could not be reviewed safely.");
+      return {
+        nodeIdentity: `${frameId}:${described.node.backendNodeId}`,
+        stateDigest: createHash("sha256").update(formState.result.value).digest("hex"),
+      };
+    } finally {
+      await Promise.all([...new Set(sessions.values())].map((session) => session.detach()));
+    }
+  }
+
+  async actionTarget(target: string, projectedSteps?: readonly Step[]): Promise<ObservedActionTarget> {
     const metadata = (el: HTMLElement | SVGElement): ObservedActionTarget => {
       const boundedAttribute = (node: Element, attribute: string) => {
         const value = node.getAttribute(attribute) ?? "";
@@ -935,7 +1095,7 @@ export class PlaywrightDriverPage implements DriverPage {
         tag === "button" || (tag === "input" && /^(submit|button)$/.test(type))
           ? boundedAttribute(el, "aria-label")
           : "";
-      if (tag === "button" && !name) {
+      if ((tag === "button" || tag === "a") && !name) {
         const walker = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
         let count = 0;
         for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -947,6 +1107,13 @@ export class PlaywrightDriverPage implements DriverPage {
             name += node.textContent ?? "";
           if (name.length > 512) throw new Error("This button caption exceeds the action metadata bound.");
         }
+      }
+      let destination: string | undefined;
+      if (tag === "a" && el.hasAttribute("href")) {
+        const href = (el as HTMLAnchorElement).href;
+        if (href.length > 8192) throw new Error("Action destination exceeds its review bound.");
+        const url = new URL(href, el.ownerDocument.baseURI);
+        if (["http:", "https:"].includes(url.protocol)) destination = url.origin;
       }
       const challenge = el.ownerDocument.querySelector(
         'iframe[src*="recaptcha"], iframe[src*="hcaptcha"], [name="g-recaptcha-response"], [name="h-captcha-response"]',
@@ -967,14 +1134,21 @@ export class PlaywrightDriverPage implements DriverPage {
         type,
         autocomplete: boundedAttribute(el, "autocomplete").toLowerCase(),
         name: name.trim(),
+        ...(destination ? { destination } : {}),
         ...(form && action && method ? { form: { action, method, fields } } : {}),
         ...(challenge ? { challenge } : {}),
       };
     };
     const locator = await this.resolveActionable(target);
-    return (locator as { evaluate: (fn: typeof metadata) => Promise<ObservedActionTarget> }).evaluate(
-      metadata,
-    );
+    const handle = isHandle(locator) ? locator : await locator.elementHandle();
+    if (!handle) throw new AuxError("ref_stale", "The action target is no longer available.");
+    try {
+      const observed = await handle.evaluate(metadata);
+      const snapshot = await this.actionSnapshot(handle, projectedSteps);
+      return { ...observed, ...snapshot };
+    } finally {
+      if (!isHandle(locator)) await handle.dispose();
+    }
   }
   async fieldState(target: string): Promise<Record<string, unknown> | undefined> {
     const w = await this.worldRef(target);

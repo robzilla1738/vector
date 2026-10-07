@@ -139,6 +139,20 @@ export class TranscriptStore {
       .run(runId, seq, this.encode(runId, seq, "park", parked), at);
   }
 
+  updatePark(runId: string, parked: ParkedCall): void {
+    const row = this.db
+      .prepare("SELECT seq,park FROM run_transcript WHERE run_id=? AND kind='park' ORDER BY seq DESC LIMIT 1")
+      .get(runId) as { seq: number; park: string } | undefined;
+    if (!row || !this.openPark(runId)) throw new Error("No open parked call to update");
+    const current = this.decode<ParkedCall>(runId, row.seq, "park", row.park);
+    if (current.toolCallId !== parked.toolCallId) throw new Error("Cannot replace another parked call");
+    withSecureDelete(this.db, () =>
+      this.db
+        .prepare("UPDATE run_transcript SET park=? WHERE run_id=? AND seq=?")
+        .run(this.encode(runId, row.seq, "park", parked), runId, row.seq),
+    );
+  }
+
   openPark(runId: string): ParkedCall | undefined {
     const row = this.db
       .prepare(

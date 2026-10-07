@@ -14,6 +14,8 @@ export const categoryLabels: Record<AgentPolicyCategory, string> = {
   delete: "Delete",
   install: "Install",
   upload: "Upload",
+  file_write: "Write files",
+  file_delete: "Delete files",
   bash: "Shell commands",
   mcp: "MCP tools",
   external_tool: "External tools",

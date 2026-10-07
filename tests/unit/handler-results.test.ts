@@ -43,7 +43,7 @@ beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), "aux-handlers-"));
   repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
-  const page = fixtureTarget = {
+  const page = (fixtureTarget = {
     pageId: "p1",
     backend: "aux",
     targetId: "t1",
@@ -57,7 +57,7 @@ beforeAll(() => {
     ownedByRuntime: false,
     createdAt: Date.now(),
     lastActiveAt: Date.now(),
-  } as PageTarget;
+  } as PageTarget);
   const pages = {
     list: () => [page],
     isRestoringTabs: false,
@@ -82,6 +82,7 @@ beforeAll(() => {
   } as unknown as PageService;
   const sets = new SetService(repo, events, pages);
   const settings = {
+    agentPolicy: () => ({ agentMode: "ask" }),
     maxWorkers: () => 2,
     perOrigin: () => 2,
     maxModelCalls: () => 8,
@@ -357,15 +358,20 @@ describe("handler results conform to ResultSchemas", () => {
     const other = (await invoke("workspaces.create", { name: "Other source" })) as { workspaceId: string };
     await invoke(
       "workspaces.memory.set",
-      {workspaceId: workspace.workspaceId, expectedRevision: 0, content: "", enabled: true},
-      {external: false},
+      { workspaceId: workspace.workspaceId, expectedRevision: 0, content: "", enabled: true },
+      { external: false },
     );
     await invoke(
       "workspaces.browsingMemory.set",
       { workspaceId: workspace.workspaceId, policy: { enabled: true, retentionDays: 7 } },
       { external: false },
     );
-    Object.assign(fixtureTarget, {url: "https://x.test/", windowId: "fixture-window", windowKind: "normal", workspaceId: workspace.workspaceId});
+    Object.assign(fixtureTarget, {
+      url: "https://x.test/",
+      windowId: "fixture-window",
+      windowKind: "normal",
+      workspaceId: workspace.workspaceId,
+    });
     const recorded = (await invoke(
       "workspaces.browsingMemory.record",
       { workspaceId: workspace.workspaceId, pageId: "p1", expectedDocumentEpoch: 0 },
@@ -529,7 +535,7 @@ describe("handler results conform to ResultSchemas", () => {
     });
     await call("runs.list", { limit: 10 });
     await call("runs.pause", { runId: "run_x" });
-    await expect(invoke("runs.resume", { runId: "run_x" })).rejects.toMatchObject({code: "conflict"});
+    await expect(invoke("runs.resume", { runId: "run_x" })).rejects.toMatchObject({ code: "conflict" });
     await call("runs.cancel", { runId: "run_x" });
     await call("runs.events", { sinceSeq: 0, limit: 50 });
     await call("events.since", { sinceSeq: 0, limit: 50 });

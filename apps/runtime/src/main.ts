@@ -1,3 +1,4 @@
+import { coderWorktreePolicy } from "./services/coder-worktree-policy.js";
 import { memoryContentSensitivityReason } from "@aux/contracts/memory-sensitivity";
 import { pageDerivativeCache } from "./services/ai-result-cache.js";
 import { AgentTurnTabs } from "./agent/turn-tabs.js";
@@ -90,6 +91,18 @@ import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
 import { TaskService } from "./services/tasks.js";
 import { GoalService } from "./services/goals.js";
+import { buildToolManifest } from "./agent/loop/tools.js";
+import { resolveAgentProfile } from "./services/agent-profiles.js";
+import { AuxPackageLibrary } from "./services/aux-package-library.js";
+import { shippedAuxPackageDirectories } from "./services/shipped-aux-packages.js";
+import { CoderWorktreeOperations } from "./services/coder-worktree-operations.js";
+import { worktreeAuthority, startCoderWorktree } from "./services/coder-worktree-runtime.js";
+import {
+  CodingFilesService,
+  type CodingFileAuthorization,
+  type CodingFileContext,
+} from "./services/coding-files.js";
+import { CodingProcesses } from "./services/coding-processes.js";
 import { SubagentService } from "./services/subagents.js";
 import { BudgetsService } from "./services/budgets.js";
 import { handlePageTakeover } from "./services/page-takeover.js";
@@ -247,6 +260,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   type RuntimeServices = Services & {
     workspaceFolders: WorkspaceFolderService;
     filesystem: FilesystemAccessService;
+    coderWorktrees: CoderWorktreeOperations;
+    auxPackages: AuxPackageLibrary;
+    codingFiles: CodingFilesService;
+    codingProcesses: CodingProcesses;
     settings: SettingsService;
     copilot: Promise<CopilotServices>;
     durableWrites: DurableWriteLedger;
@@ -296,6 +313,28 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     workspaceFolders: () => new WorkspaceFolderService(repo, () => [config.dataDir]),
     filesystem: () =>
       new FilesystemAccessService({
+        runPolicy: (runId, policy) => {
+          const worktree = runId ? repo.getRun(runId)?.config?.coderWorktree : undefined;
+          const shippedPackages = [
+            ...shippedAuxPackageDirectories(),
+            ...(repo.getSetting<{ path: string; shipped?: boolean }[]>("auxPackageDirectories") ?? []),
+          ]
+            .filter((item) => item.shipped)
+            .map((item) => item.path);
+          const metadataRoots = runId
+            ? folderRootsForRun(runId, "read").map((root) => join(root, ".git"))
+            : [];
+          policy = {
+            ...policy,
+            protectedRoots: [...policy.protectedRoots, ...shippedPackages],
+            deniedRoots: [...policy.deniedRoots, ...metadataRoots],
+          };
+          if (!worktree) return policy;
+          return coderWorktreePolicy(policy, worktree, {
+            scratch: join(bashScratch, runId!),
+            artifacts: join(config.artifactsDir, runId!),
+          });
+        },
         internalRoots: [config.artifactsDir, config.downloadsDir, config.previewsDir],
         scratchDir: bashScratch,
         protectedRoots: [config.dataDir, resolveNativeUserDataDir(env)],
@@ -337,8 +376,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       new ApprovalStore(
         repo.db,
         (event) => runtimeServices.safetyAudit.record(event),
-        (action) => runtimeServices.settings.allowAgentSite(action),
+        (action, scope) => runtimeServices.settings.allowAgentSite(action, scope),
         () => runtimeServices.settings.agentPolicy(),
+        (runId) => repo.getRun(runId),
+        repo,
       ),
     suspensions: () => new SuspensionStore(repo.db, (event) => runtimeServices.safetyAudit.record(event)),
     pageClaims: () => new PageClaimStore(repo.db),
@@ -586,6 +627,22 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       }),
     runs: () => {
       const runs = new RunService({
+        resolveCodingContext: async (input) => {
+          const roots = input.workspaceId
+            ? runtimeServices.workspaceFolders.roots(input.workspaceId).write
+            : [];
+          const projectRoot = input.projectRoot ?? (roots.length === 1 ? roots[0] : undefined);
+          if (projectRoot && !roots.includes(projectRoot))
+            throw new AuxError("permission_denied", "Choose a reviewed read/write project in this Space.");
+          const selected = input.packageNames ?? runtimeServices.auxPackages.defaults();
+          let auxPackages = await runtimeServices.auxPackages.resolve(selected);
+          const agentProfile = input.profile ? resolveAgentProfile(input.profile, auxPackages) : undefined;
+          const extraPackages = (agentProfile?.packages ?? []).filter((name) => !selected.includes(name));
+          auxPackages = [...auxPackages, ...(await runtimeServices.auxPackages.resolve(extraPackages))];
+          if (agentProfile?.workspace === "isolated" && !projectRoot)
+            throw new AuxError("invalid_params", "Attach a coding project before starting a coder.");
+          return { projectRoot, auxPackages, agentProfile };
+        },
         approvals: runtimeServices.approvals,
         suspensions: runtimeServices.suspensions,
         turnMentions: runtimeServices.turnMentions,
@@ -616,12 +673,162 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       return runs;
     },
     goals: () => new GoalService(repo, runtimeServices.runs),
-    subagents: () => new SubagentService(repo, events, runtimeServices.runs),
+    coderWorktrees: () =>
+      new CoderWorktreeOperations(runtimeServices.subagents, runtimeServices.codingFiles, (context) =>
+        worktreeAuthority({
+          repo,
+          filesystem: runtimeServices.filesystem,
+          directory: join(config.artifactsDir, "coder-worktrees"),
+          projectRoot: repo.getRun(context.runId)?.config?.projectRoot,
+          runId: context.runId,
+          checkOriginal: context.original,
+          checkOwner: () => {
+            if (context.actor !== "user") checkCodingOwner(context.runId);
+            else if (closed || !repo.getRun(context.runId))
+              throw new AuxError("cancelled", "The original coding run is unavailable.");
+          },
+          authorize: async (actionId, details) => {
+            await context.original?.();
+            const destructive =
+              details[0] === "coder_worktree_archive" || details[0] === "coder_worktree_retire";
+            const input = details[1] as {
+              root: string;
+              digest?: string;
+              fileCount?: number;
+              files?: { path: string; contentBase64: string | null; mode?: number; version: string | null }[];
+            };
+            const before = input.files?.map((file) => {
+              const bytes =
+                file.contentBase64 === null ? undefined : Buffer.from(file.contentBase64, "base64");
+              const text = bytes?.toString("utf8");
+              const binary =
+                bytes !== undefined &&
+                text !== undefined &&
+                (text.includes("\0") || !Buffer.from(text).equals(bytes));
+              return {
+                path: join(input.root, file.path),
+                content: binary ? null : (text ?? null),
+                contentBase64: binary ? file.contentBase64! : undefined,
+                mode: file.mode,
+                version: file.version,
+              };
+            }) ?? [
+              {
+                path: input.root,
+                content: `Aux-owned worktree. Snapshot ${input.digest ?? ""}`,
+                version: input.digest ?? actionId,
+              },
+            ];
+            const review: CodingFileAuthorization | undefined = destructive
+              ? {
+                  category: "file_delete",
+                  actionId,
+                  paths: before.map((file) => file.path),
+                  before,
+                  after: before.map((file) => ({ path: file.path, content: null, version: null })),
+                }
+              : undefined;
+            return authorizeCodingAction(
+              context.runId,
+              destructive ? "file_delete" : details[0] === "coder_worktree_inspect" ? "read" : "file_write",
+              actionId,
+              details,
+              review,
+              context.actor,
+            );
+          },
+        }),
+      ),
+    auxPackages: () =>
+      new AuxPackageLibrary(repo, runtimeServices.filesystem, new Set(Object.keys(buildToolManifest()))),
+    codingFiles: () => new CodingFilesService(repo, runtimeServices.filesystem, authorizeCodingFiles),
+    codingProcesses: () =>
+      new CodingProcesses({
+        repo,
+        artifacts: runtimeServices.artifacts,
+        seatbelt: runtimeServices.bashSeatbelt,
+        directory: join(config.artifactsDir, "processes"),
+        authorize: async (input, context) => {
+          const workdir =
+            input.workdir ??
+            repo.getRun(context.runId)?.config?.projectRoot ??
+            join(bashScratch, context.runId);
+          const network =
+            input.network ??
+            runtimeServices.approvals.effectivePolicy(runtimeServices.settings.agentPolicy(), context.runId)
+              .agentMode !== "ask";
+          return authorizeCodingAction(
+            context.runId,
+            "bash",
+            context.actionId,
+            [input.command, workdir, network],
+            undefined,
+            undefined,
+            [
+              {
+                action: "bash",
+                target: workdir,
+                arguments: input.command,
+                destination: network ? "network allowed" : "network blocked",
+              },
+            ],
+          );
+        },
+        authorizeAccess: (operation, processId, context) =>
+          authorizeCodingAction(
+            context.runId,
+            operation === "stop" ? "bash" : "read",
+            context.actionId,
+            [operation, processId],
+            undefined,
+            undefined,
+            operation === "stop"
+              ? [
+                  {
+                    action: "stop process",
+                    target: processId,
+                    arguments: "Stop this run-owned process",
+                    destination: "local process",
+                  },
+                ]
+              : undefined,
+          ),
+        checkOwner: (context) => {
+          checkCodingOwner(context.runId);
+          if (repo.getRun(context.runId)?.config?.executionTarget === "cloud")
+            throw new AuxError("capability_unsupported", "Local processes are unavailable in a cloud run.");
+        },
+        authorityFence: (context) => runtimeServices.safetyGate.policyFence(context.runId),
+      }),
+    subagents: () =>
+      new SubagentService(repo, events, runtimeServices.runs, {
+        create: (parentRoot, parentRunId, childRunId) =>
+          startCoderWorktree(
+            {
+              repo,
+              filesystem: runtimeServices.filesystem,
+              directory: join(config.artifactsDir, "coder-worktrees"),
+              projectRoot: parentRoot,
+              runId: parentRunId,
+              checkOwner: () => checkCodingOwner(parentRunId),
+              authorize: (actionId, details) =>
+                authorizeCodingAction(parentRunId, "file_write", actionId, details),
+            },
+            parentRoot,
+            childRunId,
+          ),
+      }),
     bashSeatbelt: () =>
       new BashSeatbelt({
-        filesystemPolicy: (ctx) => runtimeServices.filesystem.snapshot(ctx?.runId),
-        networkDefault: () => runtimeServices.settings.agentPolicy().agentMode !== "ask",
+        filesystemPolicy: (ctx) => runtimeServices.filesystem.codingPolicy(ctx?.runId),
+        networkDefault: (ctx) =>
+          runtimeServices.approvals.effectivePolicy(runtimeServices.settings.agentPolicy(), ctx?.runId)
+            .agentMode !== "ask",
         scratchDir: bashScratch,
+        directoriesForRun: (ctx) => ({
+          scratchDir: join(bashScratch, ctx.runId),
+          workdir: repo.getRun(ctx.runId)?.config?.projectRoot ?? join(bashScratch, ctx.runId),
+        }),
         networkGate: (command, ctx) =>
           recipientGate(ctx, {
             action: "agent.bash.network",
@@ -656,35 +863,38 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           },
         });
       });
-      cliInstallTail = work.then(() => undefined, () => undefined);
+      cliInstallTail = work.then(
+        () => undefined,
+        () => undefined,
+      );
       cliInstallWork.add(work);
       void work.finally(() => cliInstallWork.delete(work)).catch(() => {});
       return work;
     },
     installAgentConnection: () => (input, owner) => {
       const work = Promise.resolve().then(async () => {
-      if (closed || !native?.turnSourceContext)
-        throw new AuxError("backend_unavailable", "Original client setup window is unavailable.");
-      const original = await native.turnSourceContext(owner);
-      if (closed) throw new AuxError("cancelled", "Original client setup window retired.");
-      const { installAgentClient } = await import("./services/agent-client-install.js");
-      const result = await installAgentClient(input, {
-        connections: runtimeServices.agentConnections,
-        dataDir: config.dataDir,
-        current: async () => {
-          if (closed) throw new AuxError("ref_stale", "Original client setup window retired.");
-          const current = await native.turnSourceContext!(owner);
-          if (closed || current.windowId !== original.windowId)
-            throw new AuxError("ref_stale", "Original client setup window changed.");
-        },
-      });
-      if (result.replacedConnectionId)
-        await runtimeServices.externalSessions.end(
-          result.replacedConnectionId,
-          "cancelled",
-          "Connection replaced",
-        );
-      return result;
+        if (closed || !native?.turnSourceContext)
+          throw new AuxError("backend_unavailable", "Original client setup window is unavailable.");
+        const original = await native.turnSourceContext(owner);
+        if (closed) throw new AuxError("cancelled", "Original client setup window retired.");
+        const { installAgentClient } = await import("./services/agent-client-install.js");
+        const result = await installAgentClient(input, {
+          connections: runtimeServices.agentConnections,
+          dataDir: config.dataDir,
+          current: async () => {
+            if (closed) throw new AuxError("ref_stale", "Original client setup window retired.");
+            const current = await native.turnSourceContext!(owner);
+            if (closed || current.windowId !== original.windowId)
+              throw new AuxError("ref_stale", "Original client setup window changed.");
+          },
+        });
+        if (result.replacedConnectionId)
+          await runtimeServices.externalSessions.end(
+            result.replacedConnectionId,
+            "cancelled",
+            "Connection replaced",
+          );
+        return result;
       });
       agentInstallWork.add(work);
       void work.finally(() => agentInstallWork.delete(work)).catch(() => {});
@@ -1172,7 +1382,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const workdir = handler.workdir;
       const seatbelt = new BashSeatbelt({
         filesystemPolicy: () => hookFilesystemPolicy(context.workspaceId, context.runId),
-        networkDefault: () => runtimeServices.settings.agentPolicy().agentMode !== "ask",
+        networkDefault: (ctx) =>
+          runtimeServices.approvals.effectivePolicy(runtimeServices.settings.agentPolicy(), ctx?.runId)
+            .agentMode !== "ask",
         scratchDir: hookScratch,
       });
       const result = await seatbelt.run(
@@ -1236,7 +1448,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       runId: ctx.runId,
       requestedAt: Date.now(),
     });
-    const decision = await decide(request, decideDeps, { phase: "dispatch", headless });
+    const decision = await decide(request, decideDeps, { phase: "dispatch", headless, runId: ctx.runId });
     if (decision.status === "ask") runtimeServices.safetyGate.park(request, request, decision.suspension);
     return decision;
   };
@@ -1287,7 +1499,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       runId: ctx.runId,
       requestedAt: Date.now(),
     });
-    const decision = await decide(request, decideDeps, { phase: "dispatch" });
+    const decision = await decide(request, decideDeps, { phase: "dispatch", runId: ctx.runId });
     if (decision.status === "ask") runtimeServices.safetyGate.park(request, request, decision.suspension);
     return decision;
   };
@@ -1309,7 +1521,115 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     }
     return "allow";
   };
+  const checkCodingOwner = (runId: string) => {
+    const run = repo.getRun(runId);
+    if (closed || !run || !["running", "planning", "needs_input"].includes(run.status))
+      throw new AuxError("cancelled", "The original coding run retired.");
+    if (
+      runtimeServices.suspensions.pending(runId)?.kind === "budget" ||
+      runtimeServices.suspensions.pending(runRoot(repo, runId, true))?.kind === "budget"
+    )
+      throw new AuxError("permission_denied", "Continue the current budget before running coding processes.");
+  };
+  const authorizeCodingAction = async (
+    runId: string,
+    category: "read" | "file_write" | "file_delete" | "bash",
+    actionId: string,
+    details: unknown[],
+    review?: CodingFileAuthorization,
+    actor?: "user",
+    reviewedActions?: import("@aux/contracts").SafetyAction["reviewedActions"],
+  ) => {
+    if (actor === "user") {
+      if (closed || !repo.getRun(runId))
+        throw new AuxError("cancelled", "The original coding run is unavailable.");
+    } else checkCodingOwner(runId);
+    const run = repo.getRun(runId)!;
+    const request = EffectRequestSchema.parse({
+      profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+      scope: { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" },
+      actor: actor ?? "builtin_agent",
+      effect:
+        category === "read"
+          ? "read"
+          : category === "file_delete" || review?.categories?.includes("file_delete")
+            ? "destructive"
+            : category === "file_write"
+              ? "write"
+              : "external_tool",
+      category,
+      action: `agent.coding.${category}`,
+      recipient: run.config?.projectRoot ?? "filesystem",
+      dataClasses: [],
+      provenance: actor === "user" ? "user" : "template",
+      invocationDigest: createHash("sha256")
+        .update(JSON.stringify([actionId, ...details]))
+        .digest("hex"),
+      turnId: runId,
+      threadId: run.config?.chatId ?? runId,
+      runId,
+      requestedAt: Date.now(),
+    });
+    const decision = await decide(request, decideDeps, {
+      phase: "dispatch",
+      runId,
+      trustedUserAction: actor === "user",
+      policyCategories: review?.categories,
+      reviewedActions,
+      reviewedChanges: review?.before?.map((before) => {
+        const after = review.after?.find((after) => after.path === before.path);
+        return {
+          path: before.path,
+          before: before.content,
+          after: after?.content ?? null,
+          kind:
+            after?.version === null
+              ? ("delete" as const)
+              : before.version === null
+                ? ("create" as const)
+                : ("edit" as const),
+          beforeMode: before.mode,
+          afterMode: after?.mode,
+          binary: before.contentBase64 !== undefined || after?.contentBase64 !== undefined,
+        };
+      }),
+    });
+    if (decision.status === "deny") throw new AuxError("permission_denied", decision.guidance);
+    if (decision.status === "ask") {
+      runtimeServices.safetyGate.park(request, request, decision.suspension);
+      throw new AuxError("needs_input", decision.suspension.instruction, {
+        park: {
+          kind: decision.suspension.kind,
+          instruction: decision.suspension.instruction,
+          approvalId: decision.suspension.approvalId,
+        },
+      });
+    }
+    if (actor !== "user") checkCodingOwner(runId);
+    return runtimeServices.safetyGate.policyFence(runId);
+  };
+  const authorizeCodingFiles = (request: CodingFileAuthorization, context: CodingFileContext) => {
+    if (repo.getRun(context.runId)?.config?.executionTarget === "cloud")
+      throw new AuxError("capability_unsupported", "Local coding files are unavailable in a cloud run.");
+    return authorizeCodingAction(
+      context.runId,
+      request.category,
+      request.actionId,
+      [request.paths, request.before, request.after],
+      request,
+      context.actor,
+    );
+  };
   const agentLoop: AgentLoopHostDeps = {
+    get coderWorktrees() {
+      return runtimeServices.coderWorktrees;
+    },
+    get codingFiles() {
+      return runtimeServices.codingFiles;
+    },
+    get codingProcesses() {
+      return runtimeServices.codingProcesses;
+    },
     authorizeModelDestination: async (runId, destination) => {
       const original = repo.getRun(runId);
       if (!original || original.status !== "running" || !original.config?.nativeTurnContext)
@@ -1467,7 +1787,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     summarizePage: (input) =>
       runtimeServices.runs.summarizePage({
         ...input,
-        cache: pageDerivativeCache({ repo, settings: runtimeServices.settings, pages: runtimeServices.pages, contentMemory: runtimeServices.contentMemory, native }, [input.observation.pageId]),
+        cache: pageDerivativeCache(
+          {
+            repo,
+            settings: runtimeServices.settings,
+            pages: runtimeServices.pages,
+            contentMemory: runtimeServices.contentMemory,
+            native,
+          },
+          [input.observation.pageId],
+        ),
         authorize: async (route) => {
           input.checkOwner();
           const run = repo.getRun(input.runId);
@@ -1486,7 +1815,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             action: "agent.pageSummary",
             origin: route.destination,
             destination: route.destination,
-            dataClasses: memoryContentSensitivityReason(input.observation.content.text) ? ["sensitive"] : ["none"],
+            dataClasses: memoryContentSensitivityReason(input.observation.content.text)
+              ? ["sensitive"]
+              : ["none"],
             provenance: "page",
             invocationDigest: createHash("sha256")
               .update(
@@ -1520,7 +1851,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           input.checkOwner();
         },
       }),
-
 
     workspaceContext: (workspaceId) => runtimeServices.workspaceFolders.context(workspaceId),
     webFetch: async (url, ctx) => {
@@ -1890,7 +2220,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     spawnCell: async (input, ctx) => {
       const run = repo.getRun(ctx.runId);
       if (!run) throw new AuxError("not_found", "The parent run does not exist.");
-      let groupId = replGroups.get(ctx.runId);
+      let groupId = replGroups.get(ctx.runId) ?? runtimeServices.subagents.groupForParent(ctx.runId)?.groupId;
       if (!groupId) {
         const group = runtimeServices.subagents.createGroup({
           parentRunId: ctx.runId,
@@ -1902,18 +2232,20 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         replGroups.set(ctx.runId, groupId);
       }
       const profile = SubagentProfileSchema.safeParse(input.profile ?? "default");
-      if (!profile.success)
-        throw new AuxError("invalid_params", "profile must be explorer, read_only or default.");
-      const agent = await runtimeServices.subagents.spawn({
-        groupId,
-        goal: input.goal,
-        profile: profile.data,
-        pageIds: input.pageIds?.length ? input.pageIds : run.pageIds,
-        tokenAllocation: 0,
-        costAllocationUsd: 0,
-        maxModelCalls: 0,
-      });
-      return { cellId: agent.agentId };
+      if (!profile.success) throw new AuxError("invalid_params", "Choose an Aux agent profile name.");
+      const agent = await runtimeServices.subagents.spawn(
+        {
+          groupId,
+          goal: input.goal,
+          profile: profile.data,
+          pageIds: input.pageIds?.length ? input.pageIds : run.pageIds,
+          tokenAllocation: 0,
+          costAllocationUsd: 0,
+          maxModelCalls: 0,
+        },
+        ctx.toolCallId,
+      );
+      return { cellId: agent.agentId, state: agent.state, recovery: agent.recovery };
     },
     waitCell: (cellId, timeoutMs) => runtimeServices.subagents.cellControls().waitCell(cellId, timeoutMs),
     sendCell: (cellId, text) => runtimeServices.subagents.cellControls().sendCell(cellId, text),
@@ -1973,20 +2305,33 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         authorizeCreate: (ctx, quote, quoteDigest) => admission.authorizeCreate(ctx, quote, quoteDigest),
         authorizeBash: async (ctx, input) => {
           await owner(ctx);
-          const before = JSON.stringify(runtimeServices.settings.agentPolicy());
-          const defaultNetwork = runtimeServices.settings.agentPolicy().agentMode !== "ask";
+          const fence = runtimeServices.safetyGate.policyFence(ctx.runId);
+          const defaultNetwork =
+            runtimeServices.approvals.effectivePolicy(runtimeServices.settings.agentPolicy(), ctx.runId)
+              .agentMode !== "ask";
           const network = input.network ?? defaultNetwork;
-          if (network && !defaultNetwork) {
-            const verdict = await recipientGate(ctx, {
-              action: "agent.bash.network",
-              recipient: "process:network",
-              digestParts: ["agent.bash.network", input.command],
-            });
-            if (verdict !== "allow") return verdict;
+          try {
+            await authorizeCodingAction(
+              ctx.runId,
+              "bash",
+              createHash("sha256")
+                .update(JSON.stringify([ctx, input]))
+                .digest("hex"),
+              [input.command, input.workdir, network],
+            );
+          } catch (error) {
+            if (
+              error instanceof AuxError &&
+              error.code === "needs_input" &&
+              error.detail &&
+              typeof error.detail === "object" &&
+              "park" in error.detail
+            )
+              return { park: error.detail.park as LoopPark };
+            throw error;
           }
           await owner(ctx);
-          if (JSON.stringify(runtimeServices.settings.agentPolicy()) !== before)
-            throw new AuxError("ref_stale", "Permissions changed before cloud command dispatch.");
+          fence();
           return network;
         },
       });
@@ -2017,7 +2362,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     const result =
       repo.getRun(ctx.runId)?.config?.executionTarget === "cloud"
         ? await (await getCloudRuntime()).executor.bash(input, ctx)
-        : await runtimeServices.bashSeatbelt.run(input, ctx);
+        : await runtimeServices.codingProcesses.run(input, {
+            ...ctx,
+            signal: input.signal,
+            actionId:
+              ctx.actionId ??
+              ctx.toolCallId ??
+              createHash("sha256")
+                .update(JSON.stringify([ctx.runId, input]))
+                .digest("hex"),
+          });
     return "park" in result ? result : { output: result };
   };
   // 06-X routine_update: a model-proposed automation change confirms with the
@@ -2073,6 +2427,18 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     if (closed || event.type !== EventTypes.RunUpdated) return;
     const run = event.payload.run;
     if (
+      run &&
+      typeof run === "object" &&
+      "runId" in run &&
+      typeof run.runId === "string" &&
+      "status" in run &&
+      ["completed", "failed", "cancelled"].includes(String(run.status))
+    )
+      void serviceContainer
+        .peek("codingProcesses")
+        ?.closeRun(run.runId)
+        .catch((error) => console.error("[aux-runtime] coding process cleanup failed", error));
+    if (
       !run ||
       typeof run !== "object" ||
       !("status" in run) ||
@@ -2112,7 +2478,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const connectionId = original?.config?.externalConnectionId;
       if (!connectionId) return runtimeServices.runs.pauseForTakeover(...args);
       runtimeServices.agentConnections.revoke(connectionId);
-      await runtimeServices.externalSessions.end(connectionId, "cancelled", "You took control of the external agent's page");
+      await runtimeServices.externalSessions.end(
+        connectionId,
+        "cancelled",
+        "You took control of the external agent's page",
+      );
       return runtimeServices.runs.coordinator.get(args[0]);
     },
     resumeAfterTakeover: (...args) => runtimeServices.runs.resumeAfterTakeover(...args),
@@ -2388,7 +2758,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           .catch((error: unknown) => {
             const diagnostic = {
               code: error instanceof AuxError ? error.code : "internal",
-              message: error instanceof Error ? error.message.slice(0, 512) : "Unknown initialization failure",
+              message:
+                error instanceof Error ? error.message.slice(0, 512) : "Unknown initialization failure",
             };
             process.stderr.write(`[runtime] content blocking unavailable ${JSON.stringify(diagnostic)}\n`);
           });
@@ -2461,6 +2832,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           Promise.allSettled(agentInstallWork),
           serviceContainer.peek("blocking")?.close(),
           serviceContainer.peek("terminals")?.dispose(),
+          serviceContainer.peek("codingProcesses")?.close(),
           serviceContainer.peek("projects")?.dispose(),
           serviceContainer.peek("browserImport")?.close(),
           (async () => {

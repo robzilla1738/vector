@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { AgentProfileSchema } from "./agent-profiles.js";
+import { AuxPackageSnapshotSchema } from "./aux-packages.js";
+import { CoderWorktreeSchema } from "./coder-worktrees.js";
+import { AgentModeSchema } from "./agent-policy.js";
 import { ExecutionTargetSchema } from "./cloud-execution.js";
 import { WaitingPhraseSchema } from "./utility.js";
 import { MentionRefsSchema } from "./mentions.js";
@@ -154,6 +158,7 @@ export const RunSchema = z.object({
       nightShiftItemId: z.string().uuid().optional(),
       /** Signed-out isolated task tabs, captured when the task starts. Distinct from private windows. */
       privateTask: z.boolean().optional(),
+      agentMode: AgentModeSchema.optional(),
       executionTarget: ExecutionTargetSchema.optional(),
       nativeTurnContext: z.string().uuid().optional(),
       setMemberSource: z
@@ -238,7 +243,11 @@ export const RunSchema = z.object({
       /** routine-declared account boundary — when non-empty, only vault grants with a matching accountLabel are visible to this run */
       accountLabels: z.array(z.string().min(1).max(120)).max(20).optional(),
       /** Child agent policy; runtime execution enforces read-only profiles. */
-      subagentProfile: z.enum(["explorer", "read_only", "default"]).optional(),
+      subagentProfile: z.string().optional(),
+      agentProfile: AgentProfileSchema.optional(),
+      auxPackages: z.array(AuxPackageSnapshotSchema).optional(),
+      projectRoot: z.string().optional(),
+      coderWorktree: CoderWorktreeSchema.optional(),
       /** Pinned provider authority for this turn, even when empty. Only these exact Calendar grants may be used. */
       calendarGrantIds: z.array(z.string().uuid()).max(20).optional(),
       /** terminal turn this run deliberately retries; used for audit and UI continuity */

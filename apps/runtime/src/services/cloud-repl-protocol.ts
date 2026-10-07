@@ -14,10 +14,9 @@ export const CloudReplCalls = {
   findRef: z.tuple([page, text, text.optional()]),
   findRoute: z.tuple([page, text]),
   capture: z.tuple([page]),
-  step: z.tuple([page, PlanStepSchema]),
+  step: z.tuple([page, PlanStepSchema, z.number().int().nonnegative().optional()]),
   fetch: z.tuple([text]),
-  fsRead: z.tuple([text]),
-  fsWrite: z.tuple([text, z.string().max(CLOUD_REPL_BYTES)]),
+  codingTool: z.tuple([text, z.unknown(), z.number().int().nonnegative()]),
   submitResult: z.tuple([
     z
       .object({
