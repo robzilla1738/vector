@@ -1,0 +1,15 @@
+is_debug = false
+is_official_build = true
+is_component_build = false
+use_thin_lto = true
+chrome_pgo_phase = 2
+symbol_level = 1
+enable_dsyms = true
+enable_stripping = true
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
+enable_widevine = true
+dcheck_always_on = false
+target_cpu = "arm64"
+enable_aux_shell = true
+aux_test_hooks = false

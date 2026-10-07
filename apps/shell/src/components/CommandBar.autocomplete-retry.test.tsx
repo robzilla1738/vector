@@ -3,7 +3,7 @@ import { normalizePages } from "../store/pages";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { bridge } from "../bridge";
+import { bridge, type OmniboxResult } from "../bridge";
 import { useStore } from "../store";
 import { executeCommand } from "../commands";
 import { COMMANDS } from "@aux/contracts";
@@ -143,4 +143,42 @@ it("does not publish original suggestions after its native window retires", asyn
   await act(async () => fail(new Error("Retired protected failure")));
   expect(retry()).toBeNull();
   expect(host.textContent).not.toContain("Retired protected failure");
+});
+
+it("acknowledges only committed current native rows to an opted-in native benchmark", async () => {
+  const performanceCommit = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal("auxChromiumHost", { performanceCommit });
+  let receive: ((result: OmniboxResult) => void) | undefined;
+  vi.spyOn(bridge, "onOmniboxResult").mockImplementation((callback) => {
+    receive = callback;
+    return () => {};
+  });
+  vi.mocked(bridge["omnibox.start"]).mockResolvedValue(true);
+  await query("native fixture");
+  const request = vi.mocked(bridge["omnibox.start"]).mock.calls.at(-1)![0];
+  const result: OmniboxResult = {
+    queryId: request.queryId,
+    sequenceId: 1,
+    input: request.input,
+    done: true,
+    items: [
+      {
+        id: "original-history",
+        index: 0,
+        type: "history",
+        title: "Original native fixture",
+        url: "http://127.0.0.1:9000/aux-native-perf/fixture",
+      },
+    ],
+  };
+  expect(performanceCommit).not.toHaveBeenCalled();
+  await act(async () => receive?.({ ...result, queryId: request.queryId + 1 }));
+  expect(performanceCommit).not.toHaveBeenCalled();
+  await act(async () => receive?.({ ...result, items: [] }));
+  expect(performanceCommit).not.toHaveBeenCalled();
+  await act(async () => receive?.(result));
+  expect(host.textContent).toContain("Original native fixture");
+  expect(performanceCommit).toHaveBeenCalledExactlyOnceWith(request.queryId);
+  await act(async () => receive?.({ ...result, sequenceId: 2 }));
+  expect(performanceCommit).toHaveBeenCalledTimes(1);
 });

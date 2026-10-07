@@ -107,6 +107,7 @@ export function useNativeOmnibox(enabled: boolean, query: string, generation: nu
     [isCurrent, snapshot.queryId, sameOwner],
   );
   return {
+    queryId: isCurrent ? snapshot.queryId : 0,
     items: isCurrent ? snapshot.items : empty,
     error: isCurrent ? snapshot.error : null,
     current: isCurrent,

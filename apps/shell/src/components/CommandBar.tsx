@@ -1,3 +1,4 @@
+import type { ChromiumHostPort } from "../chromium-bridge";
 import { GlassMaterial } from "./GlassMaterial";
 import { orderedPages } from "../store/pages";
 import { takeFirstFrame } from "../first-frame";
@@ -770,6 +771,29 @@ export function CommandBar({
     providerRows,
     raw,
   ]);
+
+  // Disposable benchmark only: acknowledge a real current native suggestion
+  // after its DOM row is committed. Native owns input time, original document,
+  // renderer frame submission and successful compositor presentation feedback.
+  const performanceQuery = useRef(0);
+  useLayoutEffect(() => {
+    const port = (window as Window & { auxChromiumHost?: ChromiumHostPort }).auxChromiumHost;
+    if (
+      !port?.performanceCommit ||
+      !editing ||
+      !currentBrowserResult ||
+      browserError ||
+      nativeOmnibox.queryId <= performanceQuery.current
+    )
+      return;
+    const index = suggestions.findIndex(
+      (row) => row.section === "browser" && browserMatches.some((match) => row.id === `browser-${match.id}`),
+    );
+    const node = optionRefs.current.get(index);
+    if (!node?.isConnected || node.getClientRects().length === 0) return;
+    performanceQuery.current = nativeOmnibox.queryId;
+    void port.performanceCommit(nativeOmnibox.queryId).catch(() => {});
+  }, [editing, currentBrowserResult, browserError, nativeOmnibox.queryId, suggestions, browserMatches]);
 
   // The native fixture reads only generations and a fixed source label. These
   // are committed with the actual visible rows, never input echo or old results.

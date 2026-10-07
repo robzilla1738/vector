@@ -295,6 +295,7 @@ export const COMMANDS = [
     ["edit-provider-", "s", "Edit provider ", "s"],
   ]),
   S("reauthenticate-model-provider", "Edit provider key", modelControl),
+  S("set-local-models-only", "Use only local models", modelControl),
   ...singleScopedRows(modelControl, "model", "model", [
     ["toggle-", "-provider-connection", "Connect or disconnect ", " provider"],
     ["remove-saved-", "-key", "Review saved ", " key removal"],

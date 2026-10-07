@@ -20,36 +20,43 @@ function alive(pid) {
     return error.code === "EPERM";
   }
 }
-export function assertDevLock() {
-  const pid = Number(process.env.AUX_DEV_LOCK_PID);
-  const owner = JSON.parse(readFileSync(join(lock, "owner.json"), "utf8"));
+function assertLock(path, pid) {
+  const owner = JSON.parse(readFileSync(join(path, "owner.json"), "utf8"));
   if (owner.pid !== pid || !alive(pid)) throw new Error("Native staging requires the dev lock");
 }
-function acquire() {
-  mkdirSync(join(source, "out"), { recursive: true });
+export function assertDevLock() {
+  assertLock(lock, Number(process.env.AUX_DEV_LOCK_PID));
+}
+export function acquireDevLock(sourceDirectory = source) {
+  const acquisitionSource = resolve(sourceDirectory);
+  const acquisitionLock = join(acquisitionSource, "out", ".aux-dev-lock");
+  mkdirSync(join(acquisitionSource, "out"), { recursive: true });
   try {
-    mkdirSync(lock);
+    mkdirSync(acquisitionLock);
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
-    const owner = JSON.parse(readFileSync(join(lock, "owner.json"), "utf8"));
+    const owner = JSON.parse(readFileSync(join(acquisitionLock, "owner.json"), "utf8"));
     if (alive(owner.pid)) throw new Error(`Native build is already owned by PID ${owner.pid}`);
-    const reclaim = `${lock}.reclaim`;
+    const reclaim = `${acquisitionLock}.reclaim`;
     mkdirSync(reclaim);
     try {
-      const current = JSON.parse(readFileSync(join(lock, "owner.json"), "utf8"));
+      const current = JSON.parse(readFileSync(join(acquisitionLock, "owner.json"), "utf8"));
       if (current.pid !== owner.pid || alive(current.pid))
         throw new Error("Native lock changed during reclaim");
-      rmSync(lock, { recursive: true });
-      mkdirSync(lock);
+      rmSync(acquisitionLock, { recursive: true });
+      mkdirSync(acquisitionLock);
     } finally {
       rmSync(reclaim, { recursive: true });
     }
   }
-  writeFileSync(join(lock, "owner.json"), JSON.stringify({ pid: process.pid }), { flag: "wx", mode: 0o600 });
+  writeFileSync(join(acquisitionLock, "owner.json"), JSON.stringify({ pid: process.pid }), {
+    flag: "wx",
+    mode: 0o600,
+  });
   process.env.AUX_DEV_LOCK_PID = String(process.pid);
   return () => {
-    assertDevLock();
-    rmSync(lock, { recursive: true });
+    assertLock(acquisitionLock, process.pid);
+    rmSync(acquisitionLock, { recursive: true });
   };
 }
 async function run(command, args, env = {}) {
@@ -66,7 +73,7 @@ async function main() {
   if (commandIndex < 0 && args.some((arg) => arg !== "--temp-profile"))
     throw new Error("Unknown dev option; use --help");
   const inherited = process.env.AUX_DEV_LOCK_PID;
-  const release = inherited ? (assertDevLock(), () => {}) : acquire();
+  const release = inherited ? (assertDevLock(), () => {}) : acquireDevLock();
   let temporary;
   try {
     if (commandIndex >= 0) {

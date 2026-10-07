@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 from pathlib import Path
@@ -65,6 +66,35 @@ def presetup() -> None:
     print(f"free bytes: {shutil.disk_usage(SRC.parent if SRC.parent.exists() else Path.home()).free}")
 
 
+def require_pgo_checkout(config: Path) -> None:
+    # Existing configuration is owner-authored; never replace its solutions,
+    # cache settings or other custom_vars with gclient config defaults.
+    guidance = (f"Enable checkout_pgo_profiles=True in the src solution's "
+                f"custom_vars in {config}, preserving the existing configuration, "
+                "then run setup again.")
+    try:
+        tree = ast.parse(config.read_text())
+        assignments = [node for node in tree.body
+                       if isinstance(node, ast.Assign)
+                       and any(isinstance(target, ast.Name)
+                               and target.id == "solutions" for target in node.targets)]
+        if len(assignments) != 1:
+            raise ValueError("Expected one literal solutions assignment")
+        solutions = ast.literal_eval(assignments[0].value)
+        if not isinstance(solutions, list):
+            raise ValueError("Expected literal solutions list")
+        source = [solution for solution in solutions
+                  if isinstance(solution, dict) and solution.get("name") == "src"]
+        if len(source) != 1:
+            raise ValueError("Expected one src solution")
+        custom_vars = source[0].get("custom_vars", {})
+        if (not isinstance(custom_vars, dict)
+                or custom_vars.get("checkout_pgo_profiles") is not True):
+            raise ValueError("PGO checkout is not enabled")
+    except (OSError, SyntaxError, ValueError, TypeError) as error:
+        raise SystemExit(f"{guidance} ({error})") from error
+
+
 def setup() -> None:
     presetup()
     parent = SRC.parent
@@ -79,9 +109,12 @@ def setup() -> None:
     run("git", "checkout", "--detach", REVISION, cwd=SRC)
     gclient_root = SRC.parent
     if not (gclient_root / ".gclient").exists():
-        run("gclient", "config", "https://chromium.googlesource.com/chromium/src.git", cwd=gclient_root)
-    run("gclient", "sync", "--no-history", "--shallow", "-j", "8",
+        run("gclient", "config", "--custom-var", "checkout_pgo_profiles=True",
+            "https://chromium.googlesource.com/chromium/src.git", cwd=gclient_root)
+    require_pgo_checkout(gclient_root / ".gclient")
+    run("gclient", "sync", "--no-history", "--shallow", "--nohooks", "-j", "8",
         "--revision", f"src@{REVISION}", cwd=gclient_root)
+    run("gclient", "runhooks", cwd=gclient_root)
     assert_revision()
 
 
@@ -110,19 +143,30 @@ def pop() -> None:
     assert_clean()
 
 
+def output_dir(flavor: str) -> Path:
+    return SRC / "out" / {"dev": "AuxDev", "fast": "AuxFast", "release": "AuxRelease"}[flavor]
+
+
 def configure(flavor: str) -> None:
     assert_revision()
-    output = SRC / "out" / ("AuxDev" if flavor == "dev" else "AuxRelease")
+    if not ENV.get("AUX_DEV_LOCK_PID"):
+        run("node", str(REPO / "scripts/dev.mjs"), "--", sys.executable,
+            str(ROOT / "aux-chromium"), "configure", "--flavor", flavor, cwd=REPO)
+        return
+    stage_shell_owner()
+    output = output_dir(flavor)
     output.mkdir(parents=True, exist_ok=True)
     args = (ROOT / f"flags.{flavor}.gn").read_text()
     (output / "args.gn").write_text(args)
+    if flavor == "release":
+        shutil.copyfile(ROOT / "flags.fast.gn", output / "flags.fast.gn")
     run("gn", "gen", str(output), cwd=SRC)
     print(output)
 
 
 def build(flavor: str) -> None:
     assert_revision()
-    output = SRC / "out" / ("AuxDev" if flavor == "dev" else "AuxRelease")
+    output = output_dir(flavor)
     if not (output / "build.ninja").exists():
         raise SystemExit("Run configure first")
     # Keep staging and incremental compilation under the same dev lock.
@@ -135,7 +179,7 @@ def build(flavor: str) -> None:
 
 
 def run_app(flavor: str, profile: Path | None) -> None:
-    output = SRC / "out" / ("AuxDev" if flavor == "dev" else "AuxRelease")
+    output = output_dir(flavor)
     app = output / "Aux.app"
     if not app.exists():
         raise SystemExit(f"Missing {app}; build first")
@@ -219,7 +263,7 @@ def stage_shell() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("setup", "presetup", "configure", "build", "run", "push", "pop", "refresh", "validate", "sanity", "format", "stage-shell"))
-    parser.add_argument("--flavor", choices=("dev", "release"), default="dev")
+    parser.add_argument("--flavor", choices=("dev", "fast", "release"), default="dev")
     parser.add_argument("--profile", type=Path)
     parser.add_argument("--patch", help="destination relative to chromium/patches")
     parser.add_argument("paths", nargs="*")

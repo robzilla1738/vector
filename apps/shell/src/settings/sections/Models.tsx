@@ -492,6 +492,11 @@ export function ModelsSettings({
       }
     });
 
+  const [localOnlyRef, setLocalOnly] = usePreferenceCommand<HTMLInputElement>(
+    "set-local-models-only",
+    scopeId,
+    (original) => set({ localModelsOnly: original.checked }),
+  );
   const [providerRef, selectProvider] = usePreferenceCommand<HTMLSelectElement>(
     "select-model-provider",
     scopeId,
@@ -580,6 +585,20 @@ export function ModelsSettings({
         onEdit={editConnection}
       />
       {active && settings.localModelsOnly !== true && <ProviderSignIn onConnected={() => set({})} />}
+      <IndexedField
+        label="Local models only"
+        hint="Cloud model calls and image generation are disabled. Choose an available local model below."
+      >
+        <input
+          type="checkbox"
+          aria-label="Local models only"
+          checked={settings.localModelsOnly === true}
+          disabled={savingKey || probing || switchingProvider}
+          ref={localOnlyRef}
+          data-command-id="set-local-models-only"
+          onChange={setLocalOnly}
+        />
+      </IndexedField>
       <IndexedField
         label="Model provider"
         hint="Switching providers changes where task context and screenshots are sent. Each provider keeps its own key and model choices; there is no automatic fallback to another provider."

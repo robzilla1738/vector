@@ -1,7 +1,1 @@
-is_debug = false
-is_component_build = false
-is_official_build = true
-symbol_level = 0
-use_thin_lto = false
-chrome_pgo_phase = 0
-enable_aux_shell = true
+import("flags.fast.gn")

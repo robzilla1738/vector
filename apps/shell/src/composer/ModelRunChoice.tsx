@@ -18,6 +18,7 @@ export function ModelRunChoice({
   disabled: boolean;
   onChange(value: ModelRunSelection): void;
 }) {
+  const localOnly = useStore((state) => state.settings.localModelsOnly === true);
   const [requested, setRequested] = useState(false);
   const [catalog, setCatalog] = useState<{
     generation: string;
@@ -75,6 +76,7 @@ export function ModelRunChoice({
     JSON.stringify(useStore.getState().settings) === generation;
   return (
     <div className="row">
+      {localOnly && <span className="chip" aria-label="Local models only">Local only</span>}
       <label className="field">
         Model
         <select

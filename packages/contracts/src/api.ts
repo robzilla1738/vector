@@ -888,6 +888,7 @@ export const SettingsSetParams = z.object({
   modelProvider: ModelProviderSchema.optional(),
   modelCredential: ModelCredentialSchema.optional(),
   modelConnection: ModelConnectionChangeSchema.optional(),
+  localModelsOnly: z.boolean().optional(),
   imageModel: ImageModelSchema.nullable().optional(),
   compatibleEndpoint: z.string().trim().max(2048).optional(),
   gatewayApiKey: z.string().optional(),

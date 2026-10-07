@@ -1,42 +1,54 @@
-// Section 8 native Chromium UMA bench. Public CDP is enabled only in the
-// disposable Aux benchmark flavor; the release GN flag remains false.
+// Phase-end Aux/stock comparison. All clocks are native presentation clocks;
+// CDP transports histograms and prepares disposable state, never input timing.
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import {
-  createReadStream,
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
+  readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { arch, release as osRelease } from "node:os";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { arch, release as osRelease, tmpdir } from "node:os";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { createInterface } from "node:readline";
+import { DatabaseSync } from "node:sqlite";
 import { setTimeout as delay } from "node:timers/promises";
-import { histogram, metric, oneObservation } from "./native-histograms.mjs";
+import { histogram, oneObservation } from "./native-histograms.mjs";
+import { acquireDevLock } from "../../scripts/dev.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const firstPaintName = "Startup.BrowserWindow.FirstPaint";
-const switchName = "Browser.Tabs.TotalSwitchDuration3";
-const value = (name) => {
-  const index = process.argv.indexOf(name);
-  return index < 0 ? undefined : process.argv[index + 1];
+const option = (name) => {
+  const at = process.argv.indexOf(name);
+  return at < 0 ? undefined : process.argv[at + 1];
+};
+const names = {
+  coldLaunch: "AuxPerf.WindowShown",
+  firstFrame: "AuxPerf.FirstFrame",
+  coldInteractive: "AuxPerf.ColdLaunchToUsableContent",
+  navigationInput: "AuxPerf.NavigationInputToPresented",
+  tabSwitch: "AuxPerf.TabSwitchInputToPresented",
+  commandBar: "AuxPerf.CommandBarInputToPresented",
 };
 if (process.argv.includes("--plan")) {
   console.log(
     JSON.stringify(
       {
         command:
-          "node tests/benchmarks/native-browser.mjs --aux-app /absolute/AuxBench/Aux.app --stock-app /absolute/StockBench/Chromium.app --aux-source /absolute/patched/src --stock-source /absolute/tagged/src [--trials 20] [--output /absolute/new/directory]",
-        metrics: [firstPaintName, switchName],
+          "pnpm perf --aux-app /absolute/Aux.app --stock-app /absolute/Chromium.app --aux-source /absolute/patched/src --stock-source /absolute/stock/src [--output /absolute/new/report]",
+        runs: 5,
+        metrics: names,
         controls:
-          "Same-tag Chromium source and matching critical GN args; Aux benchmark flavor requires aux_allow_remote_debugging_for_tests=true. A disposable Local State opt-in is written for this run only. Release defaults and signer are untouched.",
-        limitations:
-          "UMA startup measures Chromium FirstPaint, not Aux interaction readiness. Tab switch histogram is input-to-presented-frame; variants and stock/Aux target composition are retained in raw metadata. An OS hard-cold cache is not enforced.",
+          "Same pinned Chromium VERSION and resolved fast flags; AC power; prepared disposable Profiles; 50,000 synthetic history entries; 10 idle fixture tabs; identical native instrumentation; no OS cache flush.",
+        status: "Measures only after native instrumentation is compiled in both apps.",
       },
       null,
       2,
@@ -44,342 +56,567 @@ if (process.argv.includes("--plan")) {
   );
   process.exit(0);
 }
-if (process.platform !== "darwin") throw new Error("Native macOS Aux and stock Chromium apps are required.");
-const required = ["--aux-app", "--stock-app", "--aux-source", "--stock-source"];
-for (const name of required)
-  if (!value(name) || !isAbsolute(value(name))) throw new Error(`${name} requires an absolute path`);
-const trials = Number(value("--trials") ?? 20);
-if (!Number.isSafeInteger(trials) || trials < 20 || trials > 200)
-  throw new Error("Use 20–200 trials per host and metric");
+assert.equal(process.platform, "darwin", "Native macOS apps are required");
+for (const name of ["--aux-app", "--stock-app", "--aux-source", "--stock-source"])
+  assert.ok(isAbsolute(option(name) ?? ""), `${name} requires an absolute path`);
+const command = (program, args, timeout = 15000) =>
+  execFileSync(program, args, { encoding: "utf8", timeout }).trim();
 const output = resolve(
-  value("--output") ??
-    join(root, "release/test-artifacts", `native-bench-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`),
+  option("--output") ?? join(root, "release/test-artifacts", `native-perf-${Date.now()}`),
 );
-assert.ok(!existsSync(output), "Use a new output directory; existing benchmark data is never overwritten");
+assert.ok(!existsSync(output), "Use a new report directory");
+assert.ok(!/[\r\n]/.test(output), "Report paths cannot contain line breaks");
+mkdirSync(output, { recursive: true });
+const helperBinary = join(output, "native-perf");
 const { chromium } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
-
-const command = (program, args, cwd, timeout = 15_000) =>
-  execFileSync(program, args, { cwd, encoding: "utf8", timeout }).trim();
-const git = (cwd, ...args) => command("git", args, cwd);
-const plist = (app, key) =>
-  command("/usr/libexec/PlistBuddy", ["-c", `Print :${key}`, join(app, "Contents/Info.plist")]);
-const sha256 = async (path) => {
-  const hash = createHash("sha256");
-  for await (const chunk of createReadStream(path)) hash.update(chunk);
-  return hash.digest("hex");
-};
-function gnArgs(text) {
-  return Object.fromEntries(
-    text.split("\n").flatMap((line) => {
-      const match = line.match(/^\s*([a-z][a-z0-9_]*)\s*=\s*([^#]+?)\s*(?:#.*)?$/);
+const critical = [
+  "is_debug",
+  "is_official_build",
+  "is_component_build",
+  "use_thin_lto",
+  "chrome_pgo_phase",
+  "symbol_level",
+  "dcheck_always_on",
+  "target_cpu",
+  "proprietary_codecs",
+  "ffmpeg_branding",
+  "enable_widevine",
+];
+function build(kind) {
+  const app = option(`--${kind}-app`),
+    source = option(`--${kind}-source`);
+  const executable = command("/usr/libexec/PlistBuddy", [
+    "-c",
+    "Print :CFBundleExecutable",
+    join(app, "Contents/Info.plist"),
+  ]);
+  const gn = [join(source, "buildtools/mac/gn"), join(source, "buildtools/mac-arm64/gn")].find(existsSync);
+  assert.ok(gn, "The checkout's GN executable is required to resolve imported flags");
+  const resolvedArgs = command(gn, ["args", dirname(app), "--list", "--short"]);
+  const args = Object.fromEntries(
+    resolvedArgs.split("\n").flatMap((line) => {
+      const match = line.match(/^([a-z][a-z0-9_]*)\s*=\s*(.+)$/);
       return match ? [[match[1], match[2].trim()]] : [];
     }),
   );
-}
-async function buildMetadata(kind, appArg, sourceArg) {
-  const app = resolve(appArg);
-  const source = resolve(sourceArg);
-  const executable = plist(app, "CFBundleExecutable");
-  const binary = join(app, "Contents/MacOS", executable);
-  const argsPath = join(dirname(app), "args.gn");
-  assert.ok(
-    existsSync(binary) && existsSync(argsPath),
-    `${kind}: app binary and adjacent args.gn are required`,
-  );
-  const argsText = readFileSync(argsPath, "utf8");
-  const args = gnArgs(argsText);
-  const revision = git(source, "rev-parse", "HEAD");
-  assert.equal(git(source, "status", "--porcelain"), "", `${kind}: source checkout must be clean`);
   const version = readFileSync(join(source, "chrome/VERSION"), "utf8");
+  const bundleVersion = command("/usr/libexec/PlistBuddy", [
+    "-c",
+    "Print :CFBundleShortVersionString",
+    join(app, "Contents/Info.plist"),
+  ]);
+  const versionParts = Object.fromEntries(
+    version
+      .trim()
+      .split("\n")
+      .map((line) => line.split("=")),
+  );
+  assert.equal(
+    bundleVersion,
+    ["MAJOR", "MINOR", "BUILD", "PATCH"].map((key) => versionParts[key]).join("."),
+    "Actual app bundle must match the pinned source VERSION",
+  );
   return {
     kind,
     app,
-    binary,
     source,
-    revision,
+    bundleVersion,
+    binary: join(app, "Contents/MacOS", executable),
     version,
+    revision: command("git", ["-C", source, "rev-parse", "HEAD"]),
     args,
-    argsPath,
-    argsSha256: createHash("sha256").update(argsText).digest("hex"),
-    binarySha256: await sha256(binary),
-    bundleId: plist(app, "CFBundleIdentifier"),
-    bundleVersion: plist(app, "CFBundleShortVersionString"),
-    executable,
-    versionOutput: command(binary, ["--version"]),
+    resolvedArgs,
   };
 }
-
-const aux = await buildMetadata("aux", value("--aux-app"), value("--aux-source"));
-const stock = await buildMetadata("stock", value("--stock-app"), value("--stock-source"));
-assert.equal(basename(aux.app), "Aux.app");
-assert.equal(aux.bundleId, "dev.aux.browser");
-assert.equal(aux.args.enable_aux_shell, "true", "Aux must have the real shell");
-assert.equal(
-  aux.args.aux_allow_remote_debugging_for_tests,
-  "true",
-  "Use only a benchmark Aux build with explicit test debugging",
-);
-assert.notEqual(stock.args.enable_aux_shell, "true", "Stock control cannot contain the Aux shell");
-assert.notEqual(
-  stock.args.aux_allow_remote_debugging_for_tests,
-  "true",
-  "Stock control should use standard Chromium debugging",
-);
-assert.equal(aux.version, stock.version, "Both apps must use the same Chromium VERSION");
-const tag = git(stock.source, "describe", "--tags", "--exact-match", stock.revision);
-assert.ok(tag, "Stock source must be at an exact Chromium tag");
-assert.equal(
-  git(aux.source, "merge-base", aux.revision, stock.revision),
-  stock.revision,
-  "Aux must descend from the exact stock control tag",
-);
-for (const key of ["target_cpu", "is_debug", "is_component_build", "is_official_build"]) {
-  assert.equal(
-    aux.args[key] ?? "<default>",
-    stock.args[key] ?? "<default>",
-    `${key} must match between builds`,
-  );
-}
-assert.equal(aux.args.is_debug, "false", "Use optimized non-debug builds");
-assert.equal(aux.args.is_component_build, "false", "Use comparable static builds");
-const power = command("pmset", ["-g", "batt"]);
-assert.match(power, /Now drawing from 'AC Power'/, "Section 8 native qualification requires AC power");
-mkdirSync(output, { recursive: true });
-const helper = join(output, "native-window");
-command("xcrun", ["swiftc", join(root, "tests/host/native-window.swift"), "-o", helper], undefined, 120_000);
-const report = {
-  schema: 1,
-  status: "running",
-  startedAt: new Date().toISOString(),
-  method: {
-    startup: firstPaintName,
-    tabSwitch: switchName,
-    units: "ms",
-    trials,
-    launchFlags: [
-      "--remote-debugging-port=0",
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--use-mock-keychain",
-      "--password-store=basic",
-    ],
-    startupProfile: "fresh for every launch; OS file cache not flushed",
-    tabSwitchInput:
-      "Control-Tab via PID-scoped CoreGraphics, four warm-up switches, one UMA count delta per sample",
-    tabSwitchOrder: ["aux", "stock"],
-    debugging: "Aux test GN flag plus disposable Local State opt-in; never a release build",
-    limitations: [
-      "FirstPaint is not interactive-shell-ready time",
-      "OS file cache and thermal state are not controlled",
-      "Display refresh is recorded as unverified",
-      "Source-to-binary provenance is declared by build paths and hashes, not a reproducible build attestation",
-    ],
-  },
-  machine: {
-    platform: process.platform,
-    arch: arch(),
-    osRelease: osRelease(),
-    model: command("sysctl", ["-n", "hw.model"]),
-    power,
-    refreshRate: "not verified by this harness",
-  },
-  sameTag: tag,
-  builds: { aux, stock },
-  raw: { aux: { startup: [], tabSwitch: [] }, stock: { startup: [], tabSwitch: [] } },
-  summaries: {},
-  errors: [],
-};
-let fixture;
-let origin;
-
-function seedBenchmarkPref(profile) {
-  // Chromium's dotted Local State key devtools.remote_debugging.allowed.
-  // The production Aux build still rejects remote debugging at compile time.
-  writeFileSync(
-    join(profile, "Local State"),
-    JSON.stringify({ devtools: { remote_debugging: { allowed: true } } }),
-    { mode: 0o600 },
-  );
-}
-async function until(label, check, timeoutMs = 30_000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const result = await check();
-    if (result) return result;
-    await delay(50);
-  }
-  throw new Error(`Timed out waiting for ${label}`);
-}
-async function hist(session, name) {
-  return histogram(await session.send("Browser.getHistograms", { query: name, delta: false }), name);
-}
-async function launch(build) {
-  const profile = mkdtempSync("/tmp/aux-uma-bench-");
-  if (build.kind === "aux") seedBenchmarkPref(profile);
-  const child = spawn(
-    build.binary,
-    [
-      `--user-data-dir=${profile}`,
-      "--remote-debugging-port=0",
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--use-mock-keychain",
-      "--password-store=basic",
-    ],
-    { cwd: profile, env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"] },
-  );
-  let stderr = "";
-  child.stderr.on("data", (chunk) => {
-    stderr = (stderr + String(chunk)).slice(-2000);
-  });
-  try {
-    const port = await until(`${build.kind} DevToolsActivePort`, () => {
-      if (child.exitCode !== null) throw new Error(`${build.kind} exited during launch: ${stderr}`);
-      const file = join(profile, "DevToolsActivePort");
-      if (!existsSync(file)) return null;
-      const value = Number(readFileSync(file, "utf8").split("\n")[0]);
-      return Number.isSafeInteger(value) && value > 0 ? value : null;
-    });
-    const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`, { timeout: 15_000 });
-    const session = await browser.newBrowserCDPSession();
-    return { profile, child, browser, session, stderr: () => stderr };
-  } catch (error) {
-    child.kill("SIGKILL");
-    rmSync(profile, { recursive: true, force: true });
-    throw error;
-  }
-}
-async function close(run) {
-  await run.browser.close().catch(() => {});
-  if (run.child.exitCode === null) {
-    run.child.kill("SIGTERM");
-    await Promise.race([new Promise((resolveExit) => run.child.once("exit", resolveExit)), delay(5000)]);
-    if (run.child.exitCode === null) {
-      run.child.kill("SIGKILL");
-      await Promise.race([new Promise((resolveExit) => run.child.once("exit", resolveExit)), delay(5000)]);
-    }
-  }
-  rmSync(run.profile, { recursive: true, force: true });
-}
-async function startupTrial(build) {
-  const run = await launch(build);
-  try {
-    const first = await until(`${build.kind} ${firstPaintName}`, async () => {
-      const current = await hist(run.session, firstPaintName);
-      return current.count >= 1 ? current : null;
-    });
-    return { durationMs: oneObservation({ count: 0, sum: 0 }, first, firstPaintName), histogram: first };
-  } finally {
-    await close(run);
-  }
-}
-async function prepareTabs(run, build) {
-  const urls = [`${origin}/red`, `${origin}/blue`];
-  if (build.kind === "aux") {
-    const shell = await until("Aux shell CDP target", () =>
-      run.browser
-        .contexts()
-        .flatMap((context) => context.pages())
-        .find((page) => page.url().startsWith("chrome://aux/")),
-    );
-    await shell.waitForFunction(() => typeof window.aux?.tabCommand === "function");
-    for (const url of urls) {
-      const ack = await shell.evaluate(
-        (target) => window.aux.tabCommand({ kind: "open", url: target, activate: true }),
-        url,
-      );
-      assert.equal(ack.status, "applied", `Aux failed to open ${url}`);
-    }
-    await shell.waitForFunction(
-      (expected) =>
-        expected.every((url) =>
-          window.aux.tabsSnapshot().tabs.some((tab) => tab.url === url && !tab.loading),
-        ),
-      urls,
-    );
-  } else {
-    const context = run.browser.contexts()[0];
-    assert.ok(context, "Stock Chromium has no browser context");
-    const pages = [];
-    for (const url of urls) {
-      const page = await context.newPage();
-      await page.goto(url, { waitUntil: "load" });
-      pages.push(page);
-    }
-    const ids = await Promise.all(
-      pages.map(async (page) => {
-        const session = await context.newCDPSession(page);
-        const result = await session.send("Browser.getWindowForTarget");
-        await session.detach();
-        return result.windowId;
-      }),
-    );
-    assert.equal(ids[0], ids[1], "Stock fixture pages must be tabs of one window");
-  }
-}
-async function tabSwitchTrials(build) {
-  const run = await launch(build);
-  try {
-    await prepareTabs(run, build);
-    command(helper, ["activate", String(run.child.pid)]);
-    const switchOnce = async () => {
-      const before = await hist(run.session, switchName);
-      command(helper, ["next-tab", String(run.child.pid)]);
-      const after = await until(
-        `${build.kind} presented tab-switch UMA`,
-        async () => {
-          const current = await hist(run.session, switchName);
-          return current.count > before.count ? current : null;
-        },
-        10_000,
-      );
-      return { durationMs: oneObservation(before, after, switchName), before, after };
-    };
-    for (let warmup = 0; warmup < 4; warmup++) await switchOnce();
-    for (let trial = 0; trial < trials; trial++) {
-      const sample = await switchOnce();
-      report.raw[build.kind].tabSwitch.push({ trial: trial + 1, ...sample });
-      console.log(`${build.kind} tab switch ${trial + 1}/${trials}: ${sample.durationMs} ms`);
-    }
-  } finally {
-    await close(run);
-  }
-}
-
+const releases = [];
 try {
-  fixture = createServer((request, response) => {
-    const color = request.url?.includes("blue") ? "#164b72" : "#7c344b";
-    response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+  // Reuse the existing one-owner lock, retaining each exact source independently.
+  // Canonical sorted order avoids opposing Aux/stock acquisition order.
+  for (const source of [
+    ...new Set(["aux", "stock"].map((kind) => realpathSync(option(`--${kind}-source`)))),
+  ].sort())
+    releases.push(acquireDevLock(source));
+  const builds = { aux: build("aux"), stock: build("stock") };
+  assert.equal(builds.aux.version, builds.stock.version, "Chromium VERSION must match");
+  for (const key of critical) {
+    assert.ok(builds.aux.args[key] !== undefined, `Missing resolved flag ${key}`);
+    assert.equal(builds.aux.args[key], builds.stock.args[key], `Resolved ${key} must match`);
+  }
+  assert.equal(builds.aux.args.enable_aux_shell, "true");
+  assert.notEqual(builds.stock.args.enable_aux_shell, "true");
+  for (const kind of ["aux", "stock"]) {
+    const args = builds[kind].args;
+    for (const [key, value] of Object.entries({
+      is_debug: "false",
+      is_official_build: "true",
+      is_component_build: "false",
+      use_thin_lto: "true",
+      chrome_pgo_phase: "2",
+      dcheck_always_on: "false",
+      target_cpu: '"arm64"',
+    }))
+      assert.equal(args[key], value, `${kind}: use flags.fast.gn`);
+    assert.notEqual(args.aux_test_hooks, "true", "No test-hook build is permitted");
+  }
+  const power = command("pmset", ["-g", "batt"]);
+  assert.match(power, /Now drawing from 'AC Power'/, "Use AC power");
+  command(
+    "xcrun",
+    ["swiftc", "-O", join(import.meta.dirname, "native-perf.swift"), "-o", helperBinary],
+    120000,
+  );
+  const report = {
+    schema: 3,
+    status: "incomplete",
+    at: new Date().toISOString(),
+    machine: { arch: arch(), osRelease: osRelease(), model: command("sysctl", ["-n", "hw.model"]), power },
+    builds,
+    method: {
+      runs: 5,
+      historyEntries: 50000,
+      idleTabs: 10,
+      profile: "fresh process; clone of prepared disposable Profile",
+      osCaches: "not flushed",
+      buildProvenance:
+        "declared source/output paths and actual bundle VERSION; not a reproducible-build attestation",
+      presentation: "native-confirmed conservative presentation bound",
+      footprint:
+        "sum of original process-tree kernel physical footprints; shared pages can be counted more than once",
+      coldInteractive:
+        "original kernel process birth to real input-served fixture presentation, including launch/dyld/probe overhead",
+      coldClock: "native original kernel process-birth Mach ticks",
+    },
+    raw: { aux: [], stock: [] },
+    medians: {},
+    errors: [],
+  };
+  const save = () => writeFileSync(join(output, "report.json"), JSON.stringify(report, null, 2));
+  const temporary = mkdtempSync(join(tmpdir(), "aux-native-perf-"));
+  const nonce = randomUUID();
+  const fixture = createServer((request, response) => {
+    if (!request.url?.startsWith(`/aux-native-perf/${nonce}`)) {
+      response.writeHead(404).end();
+      return;
+    }
+    response.writeHead(200, { "Content-Type": "text/html", "Cache-Control": "no-store" });
     response.end(
-      `<!doctype html><title>Native benchmark ${color}</title><style>html,body{margin:0;height:100%;background:${color}}</style>`,
+      `<!doctype html><title>Aux native performance fixture</title><body style="background:#efe6cf;color:#182017;font:24px system-ui"><h1>Original input reached this fixture</h1><p>Disposable synthetic browser workload ${nonce}</p></body>`,
     );
   });
-  await new Promise((resolveListen) => fixture.listen(0, "127.0.0.1", resolveListen));
-  origin = `http://127.0.0.1:${fixture.address().port}`;
-  for (let trial = 0; trial < trials; trial++) {
-    const order = trial % 2 ? [stock, aux] : [aux, stock];
-    for (const build of order) {
-      const sample = await startupTrial(build);
-      report.raw[build.kind].startup.push({ trial: trial + 1, ...sample });
-      console.log(`${build.kind} startup ${trial + 1}/${trials}: ${sample.durationMs} ms`);
+  await new Promise((resolve) => fixture.listen(0, "127.0.0.1", resolve));
+  const url = `http://127.0.0.1:${fixture.address().port}/aux-native-perf/${nonce}`;
+  async function until(label, check, milliseconds = 20000) {
+    const end = Date.now() + milliseconds;
+    while (Date.now() < end) {
+      const result = await check();
+      if (result !== null && result !== undefined && result !== false) return result;
+      await delay(25);
+    }
+    throw new Error(`No actual ${label} within ${milliseconds} ms`);
+  }
+  function helper(pid) {
+    const child = spawn(helperBinary, [String(pid)], { stdio: ["pipe", "pipe", "inherit"] });
+    const pending = new Map();
+    let next = 0;
+    createInterface({ input: child.stdout }).on("line", (line) => {
+      const result = JSON.parse(line);
+      const item = pending.get(result.id);
+      if (!item) return;
+      pending.delete(result.id);
+      clearTimeout(item.timer);
+      if (Object.hasOwn(result, "result")) item.resolve(result.result);
+      else item.reject(new Error(result.error));
+    });
+    child.once("exit", () => {
+      for (const item of pending.values()) {
+        clearTimeout(item.timer);
+        item.reject(new Error("Original PID input helper exited"));
+      }
+      pending.clear();
+    });
+    return {
+      close: () => child.stdin.end(),
+      call: (command, args = {}) =>
+        new Promise((resolve, reject) => {
+          const id = ++next;
+          const timer = setTimeout(() => {
+            pending.delete(id);
+            reject(new Error("Native helper did not acknowledge"));
+          }, 5000);
+          pending.set(id, { resolve, reject, timer });
+          child.stdin.write(`${JSON.stringify({ id, command, ...args })}\n`);
+        }),
+    };
+  }
+  function localState(profile) {
+    const path = join(profile, "Local State");
+    const state = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {};
+    state.devtools ??= {};
+    state.devtools.remote_debugging ??= {};
+    Object.assign(state.devtools.remote_debugging, { allowed: true, "user-enabled": true });
+    state.performance = { native_benchmark: true, native_benchmark_fixture_url: url };
+    writeFileSync(path, JSON.stringify(state), { mode: 0o600 });
+  }
+  function ownedPort(pid, kind, profile) {
+    let sockets;
+    try {
+      sockets = command("/usr/sbin/lsof", [
+        "-nP",
+        "-a",
+        "-p",
+        String(pid),
+        "-iTCP",
+        "-sTCP:LISTEN",
+        "-F",
+        "n",
+      ]);
+    } catch {
+      return null;
+    }
+    const ports = sockets.split("\n").flatMap((line) => {
+      const match = line.match(/^n127\.0\.0\.1:(\d+)$/);
+      return match ? [Number(match[1])] : [];
+    });
+    if (kind === "aux") return ports.includes(9222) ? 9222 : null;
+    const path = join(profile, "DevToolsActivePort");
+    if (!existsSync(path)) return null;
+    const port = Number(readFileSync(path, "utf8").split("\n")[0]);
+    return ports.includes(port) ? port : null;
+  }
+  async function launch(build, profile) {
+    localState(profile);
+    const child = spawn(
+      build.binary,
+      [
+        `--user-data-dir=${profile}`,
+        "--remote-debugging-port=0",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--use-mock-keychain",
+        "--password-store=basic",
+        "about:blank",
+      ],
+      { env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"] },
+    );
+    let stderr = "";
+    child.stderr.on("data", (data) => {
+      stderr = (stderr + data).slice(-8000);
+    });
+    const exited = new Promise((resolve) => child.once("exit", (code, signal) => resolve({ code, signal })));
+    const live = () => {
+      if (child.exitCode !== null || child.signalCode !== null)
+        throw new Error(`Original ${build.kind} exited: ${stderr}`);
+    };
+    const run = { child, exited, profile, input: helper(child.pid), browser: null };
+    try {
+      const port = await until("original browser-owned loopback listener", () => {
+        live();
+        return ownedPort(child.pid, build.kind, profile);
+      });
+      run.browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+      run.session = await run.browser.newBrowserCDPSession();
+      const identity = await run.input.call("identity");
+      assert.equal(
+        identity.accessibility,
+        true,
+        "PID-scoped input requires existing Accessibility permission",
+      );
+      await run.input.call("activate");
+      await until(
+        "original browser foreground ownership",
+        async () => (await run.input.call("identity")).focused,
+      );
+      if (build.kind === "aux")
+        run.shell = await until("original Aux shell target", () =>
+          run.browser
+            .contexts()
+            .flatMap((context) => context.pages())
+            .find((page) => page.url().startsWith("chrome://aux/")),
+        );
+      return run;
+    } catch (error) {
+      run.input.close();
+      child.kill("SIGTERM");
+      await Promise.race([
+        exited,
+        delay(10000).then(() => {
+          throw new Error("Failed launch cleanup lacked actual browser exit acknowledgement");
+        }),
+      ]);
+      throw error;
     }
   }
-  await tabSwitchTrials(aux);
-  await tabSwitchTrials(stock);
-  for (const kind of ["aux", "stock"])
-    report.summaries[kind] = {
-      startup: metric(report.raw[kind].startup.map((sample) => sample.durationMs)),
-      tabSwitch: metric(report.raw[kind].tabSwitch.map((sample) => sample.durationMs)),
+  async function close(run) {
+    let transportError;
+    try {
+      await run.session.send("Browser.close");
+    } catch (error) {
+      transportError = error;
+    }
+    const acknowledgement = await Promise.race([
+      run.exited,
+      delay(15000).then(() => {
+        throw new Error(
+          `Original browser did not acknowledge exit; Profile retained${transportError ? `: ${transportError}` : ""}`,
+        );
+      }),
+    ]);
+    run.input.close();
+    assert.equal(acknowledgement.code, 0, "Native shutdown failed; retain the disposable Profile");
+    assert.equal(
+      acknowledgement.signal,
+      null,
+      "Native shutdown was interrupted; retain the disposable Profile",
+    );
+  }
+
+  const hist = async (run, name) =>
+    histogram(await run.session.send("Browser.getHistograms", { query: name, delta: false }), name);
+  async function observation(run, name, before = { count: 0, sum: 0 }) {
+    return until(name, async () => {
+      const after = await hist(run, name);
+      return after.count > before.count ? oneObservation(before, after, name) : null;
+    });
+  }
+  async function open(run, build, target) {
+    if (build.kind === "aux") {
+      const ack = await run.shell.evaluate(
+        (url) => window.aux.tabCommand({ kind: "open", url, activate: true }),
+        target,
+      );
+      assert.equal(ack.status, "applied");
+      await until("fixture tab load", () =>
+        run.shell.evaluate(
+          (url) => window.aux.tabsSnapshot().tabs.some((tab) => tab.url === url && !tab.loading),
+          target,
+        ),
+      );
+    } else {
+      const page = await run.browser.contexts()[0].newPage();
+      await page.goto(target, { waitUntil: "load" });
+    }
+  }
+  function seedHistory(profile) {
+    const history = join(profile, "Default/History");
+    assert.ok(existsSync(history), "Prepared browser must have created its actual History schema");
+    const db = new DatabaseSync(history);
+    try {
+      db.exec("BEGIN");
+      const insert = db.prepare(
+        "INSERT INTO urls(url,title,visit_count,typed_count,last_visit_time,hidden) VALUES(?,?,1,1,?,0)",
+      );
+      const visit = db.prepare(
+        "INSERT INTO visits(url,visit_time,from_visit,transition,incremented_omnibox_typed_score,opener_visit,originator_cache_guid,originator_visit_id,originator_from_visit,originator_opener_visit) VALUES(?,?,0,1,1,0,'',0,0,0)",
+      );
+      const chromeTime = BigInt(Date.now()) * 1000n + 11644473600000000n;
+      for (let i = 0; i < 50000; i++) {
+        const time = chromeTime - BigInt(i);
+        const inserted = insert.run(`${url}?history=${i}`, `Native fixture history ${i}`, time);
+        visit.run(inserted.lastInsertRowid, time);
+      }
+      assert.equal(
+        Number(
+          db.prepare("SELECT count(*) AS count FROM urls WHERE url LIKE ?").get(`${url}?history=%`).count,
+        ),
+        50000,
+      );
+      db.exec("COMMIT; PRAGMA wal_checkpoint(TRUNCATE)");
+    } finally {
+      db.close();
+    }
+  }
+  function bytes(path) {
+    return readdirSync(path, { withFileTypes: true }).reduce((sum, item) => {
+      const child = join(path, item.name);
+      return sum + (item.isDirectory() ? bytes(child) : item.isFile() ? statSync(child).size : 0);
+    }, 0);
+  }
+  const templates = {};
+  try {
+    for (const kind of ["aux", "stock"]) {
+      const profile = join(temporary, `${kind}-prepared`);
+      mkdirSync(profile);
+      const run = await launch(builds[kind], profile);
+      try {
+        if (kind === "aux") {
+          await run.shell.waitForFunction(() => typeof window.aux?.invoke === "function");
+          await run.shell.evaluate(async () => {
+            const setup = await window.aux.invoke("onboarding.get", {});
+            await window.aux.invoke("onboarding.update", { revision: setup.revision, action: "finish" });
+          });
+        }
+      } finally {
+        await close(run);
+      }
+      seedHistory(profile);
+      templates[kind] = profile;
+    }
+    for (let pair = 0; pair < 5; pair++) {
+      // Alternate order so a single host does not always inherit the warmer caches.
+      for (const kind of pair % 2 ? ["stock", "aux"] : ["aux", "stock"]) {
+        const profile = join(temporary, `${kind}-${pair}`);
+        cpSync(templates[kind], profile, { recursive: true });
+        const powerBefore = command("pmset", ["-g", "batt"]);
+        assert.match(powerBefore, /Now drawing from 'AC Power'/, "Every sample requires mains power");
+        const run = await launch(builds[kind], profile);
+        try {
+          const sample = {
+            pair,
+            powerBefore,
+            pid: run.child.pid,
+            identity: await run.input.call("identity"),
+            coldLaunch: await observation(run, names.coldLaunch),
+            firstFrame: await observation(run, names.firstFrame),
+          };
+          await run.input.call("key", { chord: "address" });
+          await run.input.call("text", { text: url });
+          await run.input.call("key", { chord: "return" });
+          sample.coldInteractive = await observation(run, names.coldInteractive);
+          sample.navigationInput = await observation(run, names.navigationInput);
+          for (let i = 1; i < 10; i++) await open(run, builds[kind], url);
+          if (kind === "aux") {
+            await run.shell.evaluate(async (fixtureUrl) => {
+              const snapshot = window.aux.tabsSnapshot();
+              for (const tab of snapshot.tabs) {
+                if (tab.url === fixtureUrl) continue;
+                if (!["about:blank", "chrome://newtab/"].includes(tab.url))
+                  throw new Error("An unexpected nonfixture tab entered the disposable workload");
+                const ack = await window.aux.tabCommand({ kind: "close", pageId: tab.pageId });
+                if (ack.status !== "applied")
+                  throw new Error("Nonfixture tab close lacked native acknowledgement");
+              }
+              const current = window.aux.tabsSnapshot().tabs;
+              if (current.length !== 10 || current.some((tab) => tab.url !== fixtureUrl || tab.loading))
+                throw new Error("The ten-tab native fixture workload is incomplete");
+            }, url);
+          } else {
+            const pages = run.browser.contexts()[0].pages();
+            assert.equal(pages.length, 10, "Stock must have exactly ten fixture tabs");
+            assert.ok(pages.every((page) => page.url() === url));
+            const windows = new Set();
+            for (const page of pages) {
+              const session = await run.browser.contexts()[0].newCDPSession(page);
+              try {
+                windows.add((await session.send("Browser.getWindowForTarget")).windowId);
+              } finally {
+                await session.detach();
+              }
+            }
+            assert.equal(windows.size, 1, "All fixture tabs must belong to the original native window");
+          }
+          const beforeSwitch = await hist(run, names.tabSwitch);
+          await run.input.call("key", { chord: "next-tab" });
+          sample.tabSwitch = await observation(run, names.tabSwitch, beforeSwitch);
+          await run.input.call("key", { chord: "address" });
+          const beforeQuery = await hist(run, names.commandBar);
+          await run.input.call("text", { text: "native fixture" });
+          sample.commandBar = await observation(run, names.commandBar, beforeQuery);
+          await run.input.call("key", { chord: "escape" });
+          await delay(2000); // Fixed idle workload settling, not a readiness metric.
+          const processRows = command("ps", ["-axo", "pid=,ppid="])
+            .split("\n")
+            .map((line) => line.trim().split(/\s+/).map(Number));
+          const descendants = new Set([run.child.pid]);
+          let changed = true;
+          while (changed) {
+            changed = false;
+            for (const [pid, parent] of processRows)
+              if (descendants.has(parent) && !descendants.has(pid)) {
+                descendants.add(pid);
+                changed = true;
+              }
+          }
+          sample.memory = await run.input.call("memory", { pids: [...descendants] });
+          sample.powerAfter = command("pmset", ["-g", "batt"]);
+          assert.match(
+            sample.powerAfter,
+            /Now drawing from 'AC Power'/,
+            "Every completed sample requires mains power",
+          );
+          report.raw[kind].push(sample);
+          save();
+        } finally {
+          await close(run);
+          rmSync(profile, { recursive: true });
+        }
+      }
+    }
+    const median = (values) => [...values].sort((a, b) => a - b)[2];
+    for (const kind of ["aux", "stock"]) {
+      assert.equal(report.raw[kind].length, 5);
+      report.medians[kind] = Object.fromEntries(
+        Object.keys(names).map((name) => [name, median(report.raw[kind].map((sample) => sample[name]))]),
+      );
+      report.medians[kind].appBytes = bytes(builds[kind].app);
+      const node = join(builds[kind].app, "Contents/Helpers/Aux Runtime");
+      if (kind === "aux") assert.ok(existsSync(node), "The actual packaged Aux Runtime helper is required");
+      report.medians[kind].nodeBytes = existsSync(node) ? statSync(node).size : null;
+      report.medians[kind].physicalFootprintBytes = median(
+        report.raw[kind].map((sample) =>
+          sample.memory.processes.reduce((sum, row) => {
+            assert.ok(Number.isSafeInteger(row.physicalFootprintBytes));
+            return sum + row.physicalFootprintBytes;
+          }, 0),
+        ),
+      );
+    }
+    report.status = "complete";
+    save();
+    const pair = (name) => ["aux", "stock"].map((kind) => report.medians[kind][name].toFixed(1)).join(" / ");
+    const mb = (name) =>
+      ["aux", "stock"]
+        .map((kind) =>
+          report.medians[kind][name] === null ? "—" : (report.medians[kind][name] / 1000000).toFixed(1),
+        )
+        .join(" / ");
+    const rawTarget = join(output, "report.json");
+    const rawLink = /\s/.test(rawTarget) ? `<${rawTarget}>` : rawTarget;
+    const row = `| ${report.at.slice(0, 10)} / ${builds.aux.revision.slice(0, 9)} / AC | ${pair("coldLaunch")} | ${pair("firstFrame")} | ${pair("coldInteractive")} | ${pair("navigationInput")} | ${pair("tabSwitch")} | ${pair("commandBar")} | ${mb("physicalFootprintBytes")} | ${mb("appBytes")} / Node ${mb("nodeBytes")} | 5 | [raw report](${rawLink}) |`;
+    writeFileSync(join(output, "benchmark-row.md"), `${row}\n`);
+    const benchmarksPath = join(root, "docs/BENCHMARKS.md");
+    let benchmarks = readFileSync(benchmarksPath, "utf8");
+    assert.ok(existsSync(rawTarget), "The completed raw report must exist before publication");
+    assert.ok(!benchmarks.includes(rawTarget), "This exact completed report already has a row");
+    const tableStart = benchmarks.indexOf("<!-- native-perf-table:start -->");
+    const tableEnd = benchmarks.indexOf("<!-- native-perf-table:end -->", tableStart);
+    assert.ok(tableStart >= 0 && tableEnd > tableStart, "The current benchmark table marker is required");
+    benchmarks = benchmarks.slice(0, tableEnd).trimEnd() + `\n${row}\n\n` + benchmarks.slice(tableEnd);
+    const updateBlock = (name, content) => {
+      const begin = `<!-- native-perf-${name}:start -->`,
+        end = `<!-- native-perf-${name}:end -->`;
+      const first = benchmarks.indexOf(begin),
+        last = benchmarks.indexOf(end, first);
+      assert.ok(first >= 0 && last > first, `The benchmark ${name} marker is required`);
+      benchmarks = benchmarks.slice(0, first + begin.length) + `\n\n${content}\n\n` + benchmarks.slice(last);
     };
-  report.status = "complete";
-} catch (error) {
-  report.status = "failed";
-  report.errors.push(String(error));
-  process.exitCode = 1;
+    updateBlock(
+      "summary",
+      "Completed native comparisons appear below. Each row reports actual measurements; it does not imply that every performance target passed.",
+    );
+    updateBlock(
+      "status",
+      "Every published row retains five paired raw samples and its actual build, power and method metadata. Source changes, unit checks and missing signals cannot establish a performance pass.",
+    );
+    writeFileSync(benchmarksPath, benchmarks);
+
+    console.log(`${row}\nRaw report: ${join(output, "report.json")}`);
+  } catch (error) {
+    report.errors.push(String(error.stack ?? error));
+    save();
+    throw error;
+  } finally {
+    await new Promise((resolve) => fixture.close(resolve));
+    if (report.status === "complete") rmSync(temporary, { recursive: true });
+  }
 } finally {
-  report.completedAt = new Date().toISOString();
-  writeFileSync(join(output, "manifest.json"), `${JSON.stringify(report, null, 2)}\n`);
-  fixture?.closeAllConnections();
-  if (fixture) await new Promise((resolveClose) => fixture.close(resolveClose));
-  console.log(`Native UMA benchmark ${report.status}; raw report: ${join(output, "manifest.json")}`);
+  const failures = [];
+  for (const release of releases.reverse()) {
+    try {
+      release();
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+  if (failures.length)
+    throw new AggregateError(failures, "Original performance source locks could not be released");
 }

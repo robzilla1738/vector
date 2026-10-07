@@ -20,6 +20,8 @@ export interface ChromiumHostPort {
   readonly privateMode: boolean;
   readonly windowKind: "normal" | "private" | "little" | "quick-ask";
   readonly testClockScale?: number;
+  /** Present only in an explicitly enabled disposable native benchmark. */
+  readonly performanceCommit?: (queryId: number) => Promise<void>;
   readonly featureStages?: AuxFeatureOverrides;
   request(method: string, args: unknown[]): Promise<unknown>;
   subscribe(event: string, callback: (payload: unknown) => void): () => void;
