@@ -1,3 +1,4 @@
+import { UtilityIntentParamsSchema, UtilityIntentResultSchema } from "./utility.js";
 import { ExecutionTargetSchema, CloudConfigureParamsSchema, CloudSettingsStatusSchema } from "./cloud-execution.js";
 import {
   CopilotAttemptParams,
@@ -1144,6 +1145,7 @@ export const MethodSchemas = {
   "agent.tabs.list": z.object({ taskId: id, expectedRevision: z.number().int().positive() }).strict(),
   "agent.js.run": AgentJsRunParams,
   "agent.js.reset": AgentJsResetParams,
+  "agent.utility.intent": UtilityIntentParamsSchema,
   "agent.tidy.propose": TidyProposalParamsSchema,
   "agent.tabName.suggest": TabNameSuggestParamsSchema,
   "agent.inlineAssist.capture": InlineAssistCaptureParamsSchema,
@@ -1885,6 +1887,7 @@ export const ResultSchemas = {
   "agent.tabs.list": z.array(z.object({ pageId: id, title: z.string(), url: z.string() }).strict()),
   "agent.js.run": AgentJsResult,
   "agent.js.reset": z.object({ reset: z.literal(true) }),
+  "agent.utility.intent": UtilityIntentResultSchema,
   "agent.tidy.propose": TidyProposalSchema,
   "agent.tabName.suggest": TabNameSuggestionSchema,
   "agent.inlineAssist.capture": InlineAssistCaptureSchema,

@@ -11,6 +11,7 @@ export const RuntimeMethodPolicy = {
   "agent.tabs.list": { feature: "tabMentions", auth: "handler-guarded" },
   "agent.js.run": { feature: "core", auth: "standard" },
   "agent.js.reset": { feature: "core", auth: "standard" },
+  "agent.utility.intent": { feature: "core", auth: "aux-webui" },
   "agent.tidy.propose": { feature: "aiTidy", auth: "handler-guarded" },
   "agent.tabName.suggest": { feature: "aiTabNaming", auth: "handler-guarded" },
   "agent.inlineAssist.capture": { feature: "inlineAssist", auth: "handler-guarded" },
