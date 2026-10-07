@@ -17,7 +17,7 @@ const coordination = [
   "repl_wait",
   "goal_program",
 ];
-const files = ["read_file", "grep", "glob", "list_directory", "stat", "diff"];
+const files = ["coding_state", "read_file", "grep", "glob", "list_directory", "stat", "diff"];
 export const BUILTIN_AGENT_PROFILES: AgentProfile[] = [
   {
     name: "default",
@@ -98,4 +98,12 @@ export function narrowCostLimit(
 ): number | undefined {
   if (declared === undefined) return configured;
   return configured === undefined ? declared : Math.min(configured, declared);
+}
+
+export function subagentPageScope(
+  profile: AgentProfile,
+  pageIds: string[] | undefined,
+  parentPageIds: string[],
+): string[] {
+  return pageIds ?? (profile.workspace === "isolated" ? [] : parentPageIds);
 }

@@ -1,7 +1,7 @@
 import { coderWorktreePolicy } from "../../apps/runtime/src/services/coder-worktree-policy.js";
 import { filesystemPermits } from "../../apps/runtime/src/services/filesystem-paths.js";
 import { CoderWorktreeRecoverySchema } from "@aux/contracts";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mkdtemp, mkdir, writeFile, readFile, chmod, stat, rm, realpath } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -13,6 +13,7 @@ import {
   FilesystemAccessService,
   CodingFilesService,
   startCoderWorktree,
+  recoverCoderWorktree,
   worktreeAuthority,
   CoderWorktreeOperations,
   createCoderWorktree,
@@ -141,6 +142,10 @@ describe.skipIf(process.platform !== "darwin")("supervised coder worktrees", () 
       let recovery = CoderWorktreeRecoverySchema.parse(
         (failure as { detail: { worktreeRecovery: unknown } }).detail.worktreeRecovery,
       );
+      db.prepare("UPDATE coder_worktree_receipts SET state='pending' WHERE action_id=?").run(
+        recovery.actionId,
+      );
+      expect(recoverCoderWorktree(repo, options.directory, "parent", "interrupted-child")).toEqual(recovery);
       const recovering = new CoderWorktreeOperations(
         {
           worktreeFor: () => worktree,
@@ -176,9 +181,54 @@ describe.skipIf(process.platform !== "darwin")("supervised coder worktrees", () 
       expect(archived.state).toBe("archived");
       expect(await readFile(join(archived.root, "source.txt"), "utf8")).toBe("preserved later change\n");
       await expect(stat(recovery.root)).rejects.toMatchObject({ code: "ENOENT" });
+      worktree = await startCoderWorktree(options, project, "batched-child");
+      await Promise.all(
+        Array.from({ length: 101 }, (_, index) =>
+          writeFile(join(worktree.root, `batch-${String(index).padStart(3, "0")}.txt`), `change ${index}\n`),
+        ),
+      );
+      const realCoding = filesystem.coding.bind(filesystem);
+      let interrupt = true;
+      const dispatch = vi.spyOn(filesystem, "coding").mockImplementation(async (request, ...args) => {
+        if (interrupt && request.kind === "apply" && (request.after as unknown[]).length === 100) {
+          interrupt = false;
+          await realCoding(
+            {
+              ...request,
+              before: [(request.before as unknown[])[0]],
+              after: [(request.after as unknown[])[0]],
+            },
+            ...args,
+          );
+          throw new Error("Lost worker after the first confirmed file");
+        }
+        return realCoding(request, ...args);
+      });
+      const partial = await operations.integrate("cell", { runId: "parent", actionId: "batch-partial" });
+      expect(partial.integrated).toBe(false);
+      expect(partial.receipt?.status).toBe("uncertain");
+      const reconciled = await files.reconcile(partial.receipt!.receiptId, { runId: "parent" });
+      expect(reconciled.status).toBe("partially_applied");
+      const recovered = await operations.integrate("cell", { runId: "parent", actionId: "batch-recovery" });
+      expect(recovered.integrated).toBe(true);
+      expect(recovered.receipt?.after).toHaveLength(100);
+      expect(await readFile(join(project, "batch-000.txt"), "utf8")).toBe("change 0\n");
+      expect(await readFile(join(project, "batch-100.txt"), "utf8")).toBe("change 100\n");
+      dispatch.mockRestore();
+      await Promise.all(
+        Array.from({ length: 101 }, (_, index) =>
+          writeFile(join(worktree.root, `more-${index}.txt`), "another change\n"),
+        ),
+      );
+      const large = await operations.integrate("cell", { runId: "parent", actionId: "large-batch" });
+      expect(large.integrated).toBe(true);
+      expect(large.receipts.slice(-2).map((receipt) => receipt.after.length)).toEqual([100, 1]);
+      expect(new Set(worktree.integrationBatches!.map((batch) => batch.actionId)).size).toBe(
+        worktree.integrationBatches!.length,
+      );
     } finally {
       db.close();
       await rm(root, { recursive: true, force: true });
     }
-  }, 30_000);
+  }, 60_000);
 });

@@ -385,6 +385,7 @@ const display = (value) => { __aux_displayed.push(value); return __aux_invoke("d
 const sleep = (ms) => __aux_invoke("sleep", { ms });
 const fetch = (url) => __aux_invoke("fetch", { url });
 const fs = Object.freeze({
+  state: (spec) => __aux_invoke("coding", { name: "coding_state", input: spec || {} }),
   readFile: (path, range) => __aux_invoke("coding", { name: "read_file", input: { path, ...(range || {}) } }),
   writeFile: (path, content, expectedVersion) => __aux_invoke("coding", { name: "write_file", input: { path, content, expectedVersion } }),
   editFile: (spec) => __aux_invoke("coding", { name: "edit_file", input: spec }),
@@ -634,9 +635,62 @@ class ReplSession {
         case "coding": {
           if (!this.deps.codingTool)
             throw new AuxError("capability_unsupported", "Governed coding surfaces are unavailable.");
-          const result = await this.deps.codingTool(String(parsed.name), parsed.input, ordinal);
+          const name = String(parsed.name);
+          const result = await this.deps.codingTool(name, parsed.input, ordinal);
           if ("park" in result) return fail("Coding operation requires a decision", { park: result.park });
           if ("finish" in result) return ok(result.finish.result);
+          // Inspection and reconciliation can honestly return uncertainty. A mutation
+          // may not turn that response into a successful replay or advance this cell.
+          if (
+            (name === "bash" || name === "bg_start") &&
+            result.output &&
+            typeof result.output === "object"
+          ) {
+            const process = result.output as { state?: unknown; processId?: unknown };
+            if (["starting", "uncertain", "interrupted"].includes(String(process.state)))
+              return fail(
+                new AuxError(
+                  "operation_uncertain",
+                  `Command ${String(process.processId ?? "unknown").slice(0, 200)} has an unknown outcome (${String(process.state)}). Inspect logs and reconcile before continuing.`,
+                ),
+              );
+          }
+          const mutations = new Set([
+            "write_file",
+            "edit_file",
+            "apply_changes",
+            "undo",
+            "coder_worktree_integrate",
+          ]);
+          if (mutations.has(name)) {
+            const outputs = Array.isArray(result.output) ? result.output : [result.output];
+            const receipts = outputs.flatMap((value) => {
+              if (!value || typeof value !== "object") return [];
+              const nested = "receipt" in value ? value.receipt : undefined;
+              return [value, ...(Array.isArray(nested) ? nested : nested ? [nested] : [])];
+            });
+            const unsettled = receipts.find(
+              (value) =>
+                value &&
+                typeof value === "object" &&
+                "status" in value &&
+                ["pending", "uncertain", "partially_applied", "not_applied"].includes(String(value.status)),
+            );
+            if (unsettled) {
+              const status = String((unsettled as { status: unknown }).status);
+              const id = String((unsettled as { receiptId?: unknown }).receiptId ?? "unknown receipt").slice(
+                0,
+                200,
+              );
+              const unknown = status === "pending" || status === "uncertain";
+              return fail(
+                new AuxError(
+                  unknown ? "operation_uncertain" : "conflict",
+                  `Coding mutation ${id} is ${status}. ${unknown ? "Reconcile unknown outcomes" : "Inspect the settled per-file outcomes and plan only remaining changes"} before continuing.`,
+                ),
+              );
+            }
+          }
           return ok(result.output);
         }
         case "submitResult": {

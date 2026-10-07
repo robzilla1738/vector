@@ -105,13 +105,14 @@ it.runIf(process.platform === "darwin")(
   },
 );
 
-it.runIf(process.platform === "darwin")(
-  "reconciles a lost execution response after restart without redispatch",
-  async () => {
+it.runIf(process.platform === "darwin").each([true, false])(
+  "reconciles a lost execution response after restart without redispatch (applied=%s)",
+  async (applied) => {
     const { service, project, context, repo, access } = fixture();
     const path = join(project, "receipt.ts");
     const execute = access.coding.bind(access);
     const lost = vi.spyOn(access, "coding").mockImplementation(async (request, runId, signal) => {
+      if (request.kind === "apply" && !applied) throw new Error("Lost worker before dispatch");
       const result = await execute(request, runId, signal);
       if (request.kind === "apply") throw new Error("Lost response after dispatch");
       return result;
@@ -126,7 +127,9 @@ it.runIf(process.platform === "darwin")(
     const restarted = new CodingFilesService(repo, access, async () => {});
     const receipt = restarted.changes(context.runId)[0]!;
     expect(receipt.status).toBe("uncertain");
-    expect((await restarted.reconcile(receipt.receiptId, context)).status).toBe("confirmed");
+    expect((await restarted.reconcile(receipt.receiptId, context)).status).toBe(
+      applied ? "confirmed" : "not_applied",
+    );
     expect(
       (
         await restarted.applyChanges(
@@ -135,7 +138,8 @@ it.runIf(process.platform === "darwin")(
         )
       ).receiptId,
     ).toBe(receipt.receiptId);
-    expect(readFileSync(path, "utf8")).toBe("completed");
+    const contents = applied ? readFileSync(path, "utf8") : (await restarted.stat(path, context)).kind;
+    expect(contents).toBe(applied ? "completed" : "missing");
   },
 );
 

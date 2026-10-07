@@ -15,7 +15,7 @@ import {
   SubagentService,
   TaskService,
 } from "@aux/runtime";
-import { AuxPackageSnapshotSchema, EventTypes, type Run } from "@aux/contracts";
+import { AuxError, AuxPackageSnapshotSchema, EventTypes, type Run } from "@aux/contracts";
 
 function fixture(coding?: ConstructorParameters<typeof SubagentService>[3]) {
   const db = openDb(":memory:");
@@ -761,6 +761,70 @@ it("isolates a package-authored coder while preserving shared browser profiles a
       agentProfile: { workspace: "shared" },
     });
   } finally {
+    f.close();
+  }
+});
+
+it("preserves the original parked group and restores a crash-time worktree handle without replay", async () => {
+  const create = vi.fn(async () => {
+    throw new AuxError("needs_input", "Review this isolated worktree.");
+  });
+  const f = fixture({ create });
+  let restored: SubagentService | undefined;
+  try {
+    f.parent.config = { ...f.parent.config, projectRoot: "/reviewed/project" };
+    f.repo.saveRun(f.parent);
+    const group = f.service.createGroup({
+      parentRunId: f.parent.runId,
+      tokenBudget: 0,
+      costBudgetUsd: 0,
+      timeBudgetMs: 0,
+    });
+    const input = {
+      groupId: group.groupId,
+      goal: "Coding cell",
+      profile: "coder",
+      pageIds: [],
+      tokenAllocation: 0,
+      costAllocationUsd: 0,
+    };
+    await expect(f.service.spawn(input, "original-spawn")).rejects.toMatchObject({ code: "needs_input" });
+    const original = f.service.view(group.groupId).agents[0]!;
+    f.service.close();
+    f.parent.status = "interrupted";
+    f.repo.saveRun(f.parent);
+    const recovery = {
+      actionId: "durable-intent",
+      root: `/aux/worktrees/${original.runId}`,
+      parentRoot: "/reviewed/project",
+      baseCommit: "synthetic",
+      snapshotDigest: "a".repeat(64),
+      state: "incomplete" as const,
+    };
+    const recover = vi.fn(() => recovery);
+    const resumeCreate = vi.fn(async () => ({
+      root: recovery.root,
+      parentRoot: recovery.parentRoot,
+      baseCommit: recovery.baseCommit,
+      snapshotDigest: recovery.snapshotDigest,
+      integrated: false,
+    }));
+    restored = new SubagentService(f.repo, f.events, f.runs, { create: resumeCreate, recover });
+    await vi.waitFor(() => expect(restored!.view(group.groupId).agents[0]?.recovery).toEqual(recovery));
+    expect(resumeCreate).not.toHaveBeenCalled();
+    expect(recover).toHaveBeenCalledWith(f.parent.runId, original.runId);
+    f.parent.status = "running";
+    f.repo.saveRun(f.parent);
+    expect(
+      restored.createGroup({ parentRunId: f.parent.runId, tokenBudget: 0, costBudgetUsd: 0, timeBudgetMs: 0 })
+        .groupId,
+    ).toBe(group.groupId);
+    const resumed = await restored.spawn(input, "original-spawn");
+    expect(resumed.agentId).toBe(original.agentId);
+    expect(resumed.runId).toBe(original.runId);
+    expect(restored.view(group.groupId).agents).toHaveLength(1);
+  } finally {
+    restored?.close();
     f.close();
   }
 });

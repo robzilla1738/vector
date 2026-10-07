@@ -3,7 +3,7 @@ import { memoryContentSensitivityReason } from "@aux/contracts/memory-sensitivit
 import { pageDerivativeCache } from "./services/ai-result-cache.js";
 import { AgentTurnTabs } from "./agent/turn-tabs.js";
 import { deferRuntimeWork, isRuntimeIdle } from "./services/idle.js";
-import { markInterruptedRuns } from "./services/startup-recovery.js";
+import { markInterruptedRuns, activeRunIds } from "./services/startup-recovery.js";
 import { createServiceContainer, type ServiceContainer } from "./services/container.js";
 import { navigateControlledPage } from "./services/pages/controlled-navigation.js";
 import { registerNativeSubagentWorkload } from "./services/native-subagent-workload.js";
@@ -92,11 +92,15 @@ import { RunService } from "./services/runs.js";
 import { TaskService } from "./services/tasks.js";
 import { GoalService } from "./services/goals.js";
 import { buildToolManifest } from "./agent/loop/tools.js";
-import { resolveAgentProfile } from "./services/agent-profiles.js";
+import { resolveAgentProfile, subagentPageScope } from "./services/agent-profiles.js";
 import { AuxPackageLibrary } from "./services/aux-package-library.js";
 import { shippedAuxPackageDirectories } from "./services/shipped-aux-packages.js";
 import { CoderWorktreeOperations } from "./services/coder-worktree-operations.js";
-import { worktreeAuthority, startCoderWorktree } from "./services/coder-worktree-runtime.js";
+import {
+  worktreeAuthority,
+  startCoderWorktree,
+  recoverCoderWorktree,
+} from "./services/coder-worktree-runtime.js";
 import {
   CodingFilesService,
   type CodingFileAuthorization,
@@ -802,6 +806,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       }),
     subagents: () =>
       new SubagentService(repo, events, runtimeServices.runs, {
+        recover: (parentRunId, childRunId) =>
+          recoverCoderWorktree(repo, join(config.artifactsDir, "coder-worktrees"), parentRunId, childRunId),
         create: (parentRoot, parentRunId, childRunId) =>
           startCoderWorktree(
             {
@@ -2238,7 +2244,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           groupId,
           goal: input.goal,
           profile: profile.data,
-          pageIds: input.pageIds?.length ? input.pageIds : run.pageIds,
+          pageIds: subagentPageScope(
+            resolveAgentProfile(profile.data, run.config?.auxPackages),
+            input.pageIds,
+            run.pageIds,
+          ),
           tokenAllocation: 0,
           costAllocationUsd: 0,
           maxModelCalls: 0,
@@ -3021,12 +3031,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   repo.markRunningInvocationsInterrupted();
   // Suspensions parked by runs that did not survive the restart expire; a
   // still-parked suspension belongs to a resumable run and resurfaces for UI.
-  const liveRunIds = new Set(
-    repo
-      .listRuns(200)
-      .filter((run) => ["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
-      .map((run) => run.runId),
-  );
+  const liveRunIds = new Set(activeRunIds(repo));
   runtimeServices.suspensions.expireOrphans(liveRunIds);
   // The same for durable page claims: a dead run cannot still own a tab.
   runtimeServices.pageClaims.releaseOrphans(liveRunIds);

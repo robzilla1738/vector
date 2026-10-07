@@ -9,6 +9,7 @@ import {
   profileAllowsTool,
   narrowProfileLimit,
   narrowCostLimit,
+  subagentPageScope,
 } from "../../apps/runtime/src/services/agent-profiles.js";
 
 describe("Aux packages and profiles", () => {
@@ -70,6 +71,11 @@ describe("Aux packages and profiles", () => {
   it("declares a coder subset and retains read-only profiles", () => {
     const coder = resolveAgentProfile("coder");
     expect(coder.workspace).toBe("isolated");
+    expect(subagentPageScope(coder, undefined, ["owned-parent-page"])).toEqual([]);
+    expect(subagentPageScope(resolveAgentProfile("default"), [], ["owned-parent-page"])).toEqual([]);
+    expect(subagentPageScope(resolveAgentProfile("default"), undefined, ["owned-parent-page"])).toEqual([
+      "owned-parent-page",
+    ]);
     expect(resolveAgentProfile("default").workspace).toBe("shared");
     expect(profileAllowsTool(coder, "apply_changes")).toBe(true);
     expect(profileAllowsTool(coder, "act")).toBe(false);

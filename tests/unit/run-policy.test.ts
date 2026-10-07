@@ -116,67 +116,70 @@ it("journals an explicit user undo while respecting category blocks", async () =
     await decide(request, f.deps, { phase: "dispatch", runId: "run", trustedUserAction: true }),
   ).toMatchObject({ status: "deny" });
 });
-it("redeems each concrete browser action once without approving target drift or a late reply", async () => {
-  const { SafetyDispatchGate } = await import("../../apps/runtime/src/safety/dispatch.js");
-  const f = fixture("ask", "ask");
-  const gate = new SafetyDispatchGate(f.deps);
-  const context = {
-    profileId: "profile",
-    scope: f.request.scope,
-    turnId: "run",
-    runId: "run",
-    threadId: "chat",
-    pageId: "page",
-    sessionId: "session",
-    documentEpoch: 1,
-  };
-  const inputs = ["one", "two"].map((id) => ({
-    step: { id, op: "click" as const, target: `#${id}` },
-    origin: "https://example.test",
-    phase: "preflight" as const,
-    context: {
-      ...context,
-      observedTarget: {
-        origin: "https://example.test",
-        tag: "button",
-        type: "button",
-        autocomplete: "",
-        name: "Send",
-        nodeIdentity: id,
-        stateDigest: "a",
-        form: { action: "https://example.test/send", method: "post", fields: [] },
-      },
-    },
-  }));
-  await expect(gate.prepareBatch(inputs)).rejects.toMatchObject({ code: "needs_input" });
-  const [pending] = f.approvals.pending("chat");
-  expect(pending!.action.reviewedActions).toHaveLength(2);
-  expect(() =>
-    f.approvals.decideLocal({ decision: "acceptForRun", approvalId: pending!.approvalId }, "run"),
-  ).toThrow(/displayed batch/);
-  f.approvals.decideLocal({ decision: "accept", approvalId: pending!.approvalId }, "run");
-  await expect(gate.check({ ...inputs[0]!, phase: "dispatch" })).resolves.toMatchObject({
-    authorizedBy: "approval",
-  });
-  await expect(
-    gate.check({
-      ...inputs[1]!,
-      phase: "dispatch",
+it.each(["cancelled", "interrupted"] as const)(
+  "redeems each concrete browser action once without approving target drift or a late reply after %s",
+  async (status) => {
+    const { SafetyDispatchGate } = await import("../../apps/runtime/src/safety/dispatch.js");
+    const f = fixture("ask", "ask");
+    const gate = new SafetyDispatchGate(f.deps);
+    const context = {
+      profileId: "profile",
+      scope: f.request.scope,
+      turnId: "run",
+      runId: "run",
+      threadId: "chat",
+      pageId: "page",
+      sessionId: "session",
+      documentEpoch: 1,
+    };
+    const inputs = ["one", "two"].map((id) => ({
+      step: { id, op: "click" as const, target: `#${id}` },
+      origin: "https://example.test",
+      phase: "preflight" as const,
       context: {
-        ...inputs[1]!.context,
-        observedTarget: { ...inputs[1]!.context.observedTarget, stateDigest: "changed" },
+        ...context,
+        observedTarget: {
+          origin: "https://example.test",
+          tag: "button",
+          type: "button",
+          autocomplete: "",
+          name: "Send",
+          nodeIdentity: id,
+          stateDigest: "a",
+          form: { action: "https://example.test/send", method: "post", fields: [] },
+        },
       },
-    }),
-  ).rejects.toMatchObject({ code: "needs_input" });
-  await expect(gate.check({ ...inputs[1]!, phase: "dispatch" })).resolves.toMatchObject({
-    authorizedBy: "approval",
-  });
-  await expect(gate.check({ ...inputs[0]!, phase: "dispatch" })).rejects.toMatchObject({
-    code: "needs_input",
-  });
-  const [late] = f.approvals.pending("chat");
-  f.run.status = "cancelled";
-  expect(() => f.approvals.decideLocal({ decision: "accept", approvalId: late!.approvalId }, "run")).toThrow(
-    /ended/,
-  );
-});
+    }));
+    await expect(gate.prepareBatch(inputs)).rejects.toMatchObject({ code: "needs_input" });
+    const [pending] = f.approvals.pending("chat");
+    expect(pending!.action.reviewedActions).toHaveLength(2);
+    expect(() =>
+      f.approvals.decideLocal({ decision: "acceptForRun", approvalId: pending!.approvalId }, "run"),
+    ).toThrow(/displayed batch/);
+    f.approvals.decideLocal({ decision: "accept", approvalId: pending!.approvalId }, "run");
+    await expect(gate.check({ ...inputs[0]!, phase: "dispatch" })).resolves.toMatchObject({
+      authorizedBy: "approval",
+    });
+    await expect(
+      gate.check({
+        ...inputs[1]!,
+        phase: "dispatch",
+        context: {
+          ...inputs[1]!.context,
+          observedTarget: { ...inputs[1]!.context.observedTarget, stateDigest: "changed" },
+        },
+      }),
+    ).rejects.toMatchObject({ code: "needs_input" });
+    await expect(gate.check({ ...inputs[1]!, phase: "dispatch" })).resolves.toMatchObject({
+      authorizedBy: "approval",
+    });
+    await expect(gate.check({ ...inputs[0]!, phase: "dispatch" })).rejects.toMatchObject({
+      code: "needs_input",
+    });
+    const [late] = f.approvals.pending("chat");
+    f.run.status = status;
+    expect(() =>
+      f.approvals.decideLocal({ decision: "accept", approvalId: late!.approvalId }, "run"),
+    ).toThrow(/ended/);
+  },
+);

@@ -49,6 +49,16 @@ export class CodingFilesService {
     if (context.signal?.aborted) throw new AuxError("cancelled", "File operation was cancelled.");
     context.checkOwner?.();
   }
+  async authorizeInspection(context: CodingFileContext, actionId: string): Promise<() => void> {
+    this.boundary(context);
+    const fence = await this.authorize({ category: "read", actionId, paths: [] }, context);
+    const check = () => {
+      this.boundary(context);
+      fence?.();
+    };
+    check();
+    return check;
+  }
   private async readState(path: string, context: CodingFileContext): Promise<CodingFileState> {
     this.boundary(context);
     return this.filesystem.coding({ kind: "read", path }, context.runId, context.signal);
@@ -65,11 +75,13 @@ export class CodingFilesService {
     request: { path: string; startLine?: number; endLine?: number },
     context: CodingFileContext,
   ): Promise<CodingFileSnapshot> {
-    await this.authorize(
+    const fence = await this.authorize(
       { category: "read", actionId: `read:${request.path}`, paths: [request.path] },
       context,
     );
     const state = await this.readState(request.path, context);
+    this.boundary(context);
+    fence?.();
     if (state.version === null) throw new AuxError("not_found", "File does not exist.");
     if (state.content === null)
       throw new AuxError(
@@ -90,25 +102,76 @@ export class CodingFilesService {
     return { path: state.path, content, version: state.version };
   }
   async search(request: CodingSearchRequest, context: CodingFileContext): Promise<CodingSearchResult> {
-    await this.authorize(
+    const fence = await this.authorize(
       { category: "read", actionId: `search:${request.root}`, paths: [request.root] },
       context,
     );
     this.boundary(context);
-    return this.filesystem.coding({ kind: "search", ...request }, context.runId, context.signal);
+    const result = await this.filesystem.coding<CodingSearchResult>(
+      { kind: "search", ...request },
+      context.runId,
+      context.signal,
+    );
+    this.boundary(context);
+    fence?.();
+    return result;
   }
   async list(
     path: string,
     context: CodingFileContext,
   ): Promise<{ path: string; kind: "file" | "directory" }[]> {
-    await this.authorize({ category: "read", actionId: `list:${path}`, paths: [path] }, context);
+    const fence = await this.authorize(
+      { category: "read", actionId: `list:${path}`, paths: [path] },
+      context,
+    );
     this.boundary(context);
-    return this.filesystem.coding({ kind: "list", path }, context.runId, context.signal);
+    const result = await this.filesystem.coding<{ path: string; kind: "file" | "directory" }[]>(
+      { kind: "list", path },
+      context.runId,
+      context.signal,
+    );
+    this.boundary(context);
+    fence?.();
+    return result;
   }
   async stat(path: string, context: CodingFileContext): Promise<CodingFileStat> {
-    await this.authorize({ category: "read", actionId: `stat:${path}`, paths: [path] }, context);
+    const fence = await this.authorize(
+      { category: "read", actionId: `stat:${path}`, paths: [path] },
+      context,
+    );
     this.boundary(context);
-    return this.filesystem.coding({ kind: "stat", path }, context.runId, context.signal);
+    const result = await this.filesystem.coding<CodingFileStat>(
+      { kind: "stat", path },
+      context.runId,
+      context.signal,
+    );
+    this.boundary(context);
+    fence?.();
+    return result;
+  }
+  async versions(
+    paths: string[],
+    context: CodingFileContext,
+  ): Promise<{ path: string; version: string | null }[]> {
+    if (!paths.length) return [];
+    this.boundary(context);
+    const fence = await this.authorize({ category: "read", actionId: "file-versions", paths }, context);
+    const versions: { path: string; version: string | null }[] = [];
+    for (let offset = 0; offset < paths.length; offset += 100) {
+      this.boundary(context);
+      fence?.();
+      const batch = paths.slice(offset, offset + 100);
+      versions.push(
+        ...(await this.filesystem.coding<{ path: string; version: string | null }[]>(
+          { kind: "versions", path: batch[0], paths: batch },
+          context.runId,
+          context.signal,
+        )),
+      );
+    }
+    this.boundary(context);
+    fence?.();
+    return versions;
   }
   private save(receipt: CodingFileReceipt): void {
     const protectedJson = this.repo.protectRecordField(
@@ -192,6 +255,21 @@ export class CodingFilesService {
       },
     ];
   }
+  recentChangeViews(runId: string, limit = 12): CodingFileReceipt[] {
+    const rows = this.repo.db
+      .prepare(
+        "SELECT receipt_id,summary FROM coding_file_receipts WHERE run_id=? ORDER BY created_at DESC,rowid DESC LIMIT ?",
+      )
+      .all(runId, limit) as { receipt_id: string; summary: string }[];
+    return rows
+      .reverse()
+      .map(
+        (row) =>
+          JSON.parse(
+            this.repo.revealRecordField("coding_file_receipts", [row.receipt_id], "summary", row.summary),
+          ) as CodingFileReceipt,
+      );
+  }
   recentChanges(runId: string, limit = 12): CodingFileReceipt[] {
     const rows = this.repo.db
       .prepare(
@@ -247,7 +325,7 @@ export class CodingFilesService {
       throw new AuxError("not_found", "A selected file receipt does not belong to this run.");
     return rows.map((row) => this.load(row));
   }
-  private getByAction(runId: string, actionId: string): CodingFileReceipt | undefined {
+  receiptForAction(runId: string, actionId: string): CodingFileReceipt | undefined {
     const row = this.repo.db
       .prepare("SELECT receipt_id,receipt FROM coding_file_receipts WHERE run_id=? AND action_id=?")
       .get(runId, actionId) as { receipt_id: string; receipt: string } | undefined;
@@ -268,11 +346,11 @@ export class CodingFilesService {
       throw new AuxError("invalid_params", "A stable action ID and 1–100 file changes are required.");
     return this.serialize(async () => {
       const requestHash = version(JSON.stringify(request.changes));
-      const existing = this.getByAction(context.runId, request.actionId);
+      const existing = this.receiptForAction(context.runId, request.actionId);
       if (existing) {
         if (existing.requestHash !== requestHash)
           throw new AuxError("conflict", "The action ID was already used for different file changes.");
-        if (existing.status === "confirmed" || existing.status === "partially_applied") return existing;
+        if (["confirmed", "partially_applied", "not_applied"].includes(existing.status)) return existing;
         throw new AuxError("operation_uncertain", "Reconcile the existing file action before retrying.");
       }
       const policy = this.filesystem.codingPolicy(context.runId);
@@ -440,12 +518,14 @@ export class CodingFilesService {
   }
   async reconcile(receiptId: string, context: CodingFileContext): Promise<CodingFileReceipt> {
     return this.serialize(async () => {
+      const check = await this.authorizeInspection(context, `reconcile:${receiptId}`);
       const receipt = this.get(receiptId, context.runId);
       if (receipt.status !== "pending" && receipt.status !== "uncertain") return receipt;
       const actual = await this.readStates(
         receipt.after.map((state) => state.path),
         context,
       );
+      check();
       if (actual.every((state, index) => state.version === receipt.after[index]!.version))
         receipt.status = "confirmed";
       else if (
@@ -491,7 +571,7 @@ export class CodingFilesService {
       const receipts = this.changesByIds(context.runId, request.receiptIds);
       for (const original of receipts) {
         const actionId = `${request.actionId}:${original.receiptId}`;
-        const existing = this.getByAction(context.runId, actionId);
+        const existing = this.receiptForAction(context.runId, actionId);
         if (existing?.status === "confirmed") {
           completed.push(existing);
           continue;

@@ -24,14 +24,22 @@ type OwnedProcess = { runId: string; stopped: Promise<void>; stop: (reason?: "ti
 
 async function processIdentity(pid: number): Promise<string | undefined> {
   try {
-    const result = await execute(
-      "/bin/ps",
-      ["-p", String(pid), "-o", "lstart=", "-o", "pgid=", "-o", "command="],
-      { encoding: "utf8" },
-    );
+    const result = await execute("/bin/ps", ["-p", String(pid), "-o", "lstart=", "-o", "pgid="], {
+      encoding: "utf8",
+    });
     return result.stdout.trim() || undefined;
   } catch (error) {
     if (typeof (error as NodeJS.ErrnoException).code === "number") return undefined;
+    throw error;
+  }
+}
+
+async function processHasMarker(pid: number, processId: string): Promise<boolean> {
+  try {
+    const result = await execute("/bin/ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" });
+    return result.stdout.includes(`aux-process:${processId}`);
+  } catch (error) {
+    if (typeof (error as NodeJS.ErrnoException).code === "number") return false;
     throw error;
   }
 }
@@ -229,15 +237,16 @@ export class CodingProcesses {
     this.save(receipt);
     const args = [
       ...prepared.args.slice(0, -1),
-      `${input.command}\n_aux_status=$?\nexit "$_aux_status"`,
+      `IFS= read -r _aux_ready || exit 125\n[ "$_aux_ready" = "${processId}" ] || exit 125\n${input.command}\n_aux_status=$?\nexit "$_aux_status"`,
       `aux-process:${processId}`,
     ];
     const child = spawn(prepared.file, args, {
       cwd: prepared.options.cwd,
       env: prepared.options.env,
       detached: true,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
     });
+    child.stdin?.on("error", () => {});
     let bytes = 0;
     let writing: Promise<unknown> = Promise.resolve();
     let logError: unknown;
@@ -367,9 +376,18 @@ export class CodingProcesses {
       });
       receipt.pid = child.pid;
       receipt.identity = child.pid ? await processIdentity(child.pid) : undefined;
+      if (!receipt.identity)
+        throw new AuxError(
+          "backend_unavailable",
+          "Process ownership could not be recorded before command release.",
+        );
       if (receipt.state === "starting") receipt.state = "running";
       this.save(receipt);
       this.check(context);
+      prepared.check();
+      checkAuthority?.();
+      admissionFence?.();
+      child.stdin?.end(`${processId}\n`);
       return receipt;
     } catch (error) {
       abort();
@@ -401,7 +419,16 @@ export class CodingProcesses {
   async run(
     input: BashSeatbeltInput,
     context: CodingProcessContext,
-  ): Promise<BashSeatbeltResult & { processId: string; artifactId?: string }> {
+  ): Promise<
+    BashSeatbeltResult & {
+      processId: string;
+      artifactId?: string;
+      command: string;
+      workdir: string;
+      state: CodingProcessReceipt["state"];
+      signal?: string | null;
+    }
+  > {
     const receipt = await this.start(
       { command: input.command, workdir: input.workdir, network: input.network },
       context,
@@ -422,6 +449,10 @@ export class CodingProcesses {
     const current = this.status(receipt.processId, context.runId);
     const logs = await this.logs(receipt.processId, context.runId);
     return {
+      command: current.command,
+      workdir: current.workdir,
+      state: current.state,
+      signal: current.signal,
       stdout: current.stdout ?? "",
       stderr: current.stderr ?? "",
       exitCode: current.exitCode ?? null,
@@ -469,14 +500,15 @@ export class CodingProcesses {
   }
   private async recover(): Promise<void> {
     const rows = this.options.repo.db
-      .prepare("SELECT process_id,receipt FROM coding_process_receipts")
+      .prepare("SELECT process_id,receipt FROM coding_process_receipts WHERE state IN ('starting','running')")
       .all() as unknown as { process_id: string; receipt: string }[];
     for (const row of rows) {
       const receipt = this.decode(row);
       if (!["starting", "running"].includes(receipt.state)) continue;
       let pid = receipt.pid;
       const actual = pid ? await processIdentity(pid) : undefined;
-      if (!actual || !actual.includes(`aux-process:${receipt.processId}`)) {
+      const matchesRecorded = !!actual && !!receipt.identity && actual === receipt.identity;
+      if (!matchesRecorded && (!pid || !(await processHasMarker(pid, receipt.processId)))) {
         const result = await execute("/bin/ps", ["-axo", "pid=,pgid=,command="], { encoding: "utf8" });
         const line = result.stdout
           .split("\n")
@@ -488,7 +520,7 @@ export class CodingProcesses {
         pid &&
         (receipt.identity
           ? (await processIdentity(pid)) === receipt.identity
-          : (await processIdentity(pid))?.includes(`aux-process:${receipt.processId}`))
+          : await processHasMarker(pid, receipt.processId))
       ) {
         try {
           process.kill(-pid, "SIGKILL");
@@ -499,7 +531,8 @@ export class CodingProcesses {
           if (!(await processIdentity(pid))) break;
           await new Promise((resolve) => setTimeout(resolve, 10));
         }
-        if ((await processIdentity(pid))?.includes(`aux-process:${receipt.processId}`))
+        const remaining = await processIdentity(pid);
+        if (remaining && (remaining === receipt.identity || (await processHasMarker(pid, receipt.processId))))
           throw new AuxError("backend_unavailable", "Recovered process termination is not acknowledged.");
       }
       receipt.state = "uncertain";

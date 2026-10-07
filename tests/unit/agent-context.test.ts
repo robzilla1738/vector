@@ -377,3 +377,33 @@ describe("runAgentLoop — context integration", () => {
     expect(size).toBeLessThan(TRANSCRIPT_COMPACT_BYTES + 20_000);
   });
 });
+
+it("retains bounded unresolved references beyond the recent receipts and diagnoses stopped commands", () => {
+  const unresolved = {
+    total: 85,
+    receipts: [{ kind: "file", receiptId: "old-uncertain", state: "uncertain" }],
+    nextOffset: 1,
+    omittedCount: 84,
+  };
+  const summary = JSON.parse(codingResumeSummary([], [], 100, unresolved));
+  expect(summary.unresolved).toEqual(unresolved);
+  expect(summary.note).toContain("coding_state");
+  const result = annotateToolFailure({
+    command: "npm test",
+    workdir: "/project",
+    state: "stopped",
+    signal: "SIGKILL",
+    exitCode: null,
+    stderr: "Interrupted test",
+  });
+  expect(result).toMatchObject({
+    diagnostic: {
+      command: "npm test",
+      workdir: "/project",
+      state: "stopped",
+      signal: "SIGKILL",
+      exitCode: null,
+      excerpt: "Interrupted test",
+    },
+  });
+});

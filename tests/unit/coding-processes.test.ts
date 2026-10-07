@@ -2,6 +2,8 @@ import { mkdtempSync, mkdirSync, realpathSync, rmSync, readFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { openDb } from "../../apps/runtime/dist/store/db.js";
 import { Repo } from "../../apps/runtime/dist/store/repo.js";
 import { CodingProcesses } from "../../apps/runtime/dist/services/coding-processes.js";
@@ -62,6 +64,13 @@ it.runIf(process.platform === "darwin")(
     const timeoutContext = { ...context, actionId: "timeout" };
     const interrupted = await service.run(timeout, timeoutContext);
     expect(interrupted.timedOut).toBe(true);
+    expect(interrupted).toMatchObject({
+      command: "sleep 60",
+      workdir: project,
+      state: "stopped",
+      exitCode: null,
+    });
+    expect(interrupted.signal).toBeTruthy();
     expect(await service.run(timeout, timeoutContext)).toEqual(interrupted);
   },
 );
@@ -102,5 +111,45 @@ it.runIf(process.platform === "darwin")(
     expect(await service.reconcile(receipt.processId, { ...context, actionId: "reconcile" })).toEqual(
       reconciled,
     );
+  },
+);
+
+it.runIf(process.platform === "darwin")(
+  "records stable ownership before delayed exec and reaps the original group after restart",
+  async () => {
+    const { service, repo, project, context } = fixture();
+    const receipt = await service.start(
+      { command: "/bin/sleep 0.2; exec /bin/sleep 60", workdir: project, network: false },
+      context,
+    );
+    const execute = promisify(execFile);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const command = (
+      await execute("/bin/ps", ["-p", String(receipt.pid), "-o", "command="], { encoding: "utf8" })
+    ).stdout.trim();
+    const stable = (
+      await execute("/bin/ps", ["-p", String(receipt.pid), "-o", "lstart=", "-o", "pgid="], {
+        encoding: "utf8",
+      })
+    ).stdout.trim();
+    expect(command).not.toContain(`aux-process:${receipt.processId}`);
+    expect(stable).toBe(receipt.identity);
+    const recovered = new CodingProcesses({
+      repo,
+      directory: join(project, "recovery-logs"),
+      seatbelt: new BashSeatbelt({
+        filesystemPolicy: () => fixtureFilesystemPolicy([project]),
+        scratchDir: project,
+      }),
+      authorize: async () => {},
+      checkOwner: () => {},
+    });
+    try {
+      await recovered.authorizeAccess("status", receipt.processId, context);
+      expect(recovered.status(receipt.processId, context.runId).state).toBe("uncertain");
+      expect(() => process.kill(receipt.pid!, 0)).toThrow();
+    } finally {
+      await recovered.close();
+    }
   },
 );

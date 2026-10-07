@@ -3,7 +3,7 @@ import type { WorktreeFile } from "./coder-worktree-worker.js";
 import { createHash, randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { lstat, mkdir, open, readdir, rename, unlink } from "node:fs/promises";
-import { dirname, join, matchesGlob, relative } from "node:path";
+import { basename, dirname, join, matchesGlob, relative } from "node:path";
 import type { CodingFileState, CodingSearchRequest, CodingSearchResult } from "@aux/contracts/coding-files";
 import type { FilesystemPolicy } from "./filesystem-policy.js";
 
@@ -54,24 +54,51 @@ async function search(policy: FilesystemPolicy, request: CodingSearchRequest): P
   const expression = request.query && request.regex ? new RegExp(request.query) : undefined;
   let count = 0,
     stopped = false;
-  async function visit(directory: string, inherited: { base: string; pattern: string; negate: boolean }[]) {
-    let ignores = inherited;
+  type IgnoreRule = {
+    base: string;
+    pattern: string;
+    negate: boolean;
+    anchored: boolean;
+    directoryOnly: boolean;
+  };
+  async function rulesFor(directory: string): Promise<IgnoreRule[]> {
     const ignorePath = join(directory, ".gitignore");
-    if (filesystemPermits(policy, ignorePath, "read")) {
-      const state = await fileState(ignorePath);
-      if (state.content)
-        ignores = [
-          ...inherited,
-          ...state.content
-            .split(/\r?\n/)
-            .filter((line) => line && !line.startsWith("#"))
-            .map((line) => ({
-              base: directory,
-              pattern: line.replace(/^!/, "").replace(/^\//, ""),
-              negate: line.startsWith("!"),
-            })),
-        ];
+    if (!filesystemPermits(policy, ignorePath, "read")) return [];
+    const state = await fileState(ignorePath);
+    return (state.content ?? "")
+      .split(/\r?\n/)
+      .filter((line) => line && !line.startsWith("#"))
+      .flatMap((line) => {
+        const raw = line.replace(/^!/, "");
+        const pattern = raw.replace(/^\//, "").replace(/\/$/, "");
+        return pattern
+          ? [
+              {
+                base: directory,
+                pattern,
+                negate: line.startsWith("!"),
+                anchored: raw.startsWith("/"),
+                directoryOnly: raw.endsWith("/"),
+              },
+            ]
+          : [];
+      });
+  }
+  function ignored(path: string, directory: boolean, rules: IgnoreRule[]): boolean {
+    let value = ["node_modules", ".cache"].includes(basename(path));
+    for (const rule of rules) {
+      if (rule.directoryOnly && !directory) continue;
+      const name = relative(rule.base, path).replaceAll("\\", "/");
+      if (
+        matchesGlob(name, rule.pattern) ||
+        (!rule.anchored && !rule.pattern.includes("/") && matchesGlob(basename(path), rule.pattern))
+      )
+        value = !rule.negate;
     }
+    return value;
+  }
+  async function visit(directory: string, inherited: IgnoreRule[]) {
+    const ignores = [...inherited, ...(await rulesFor(directory))];
     const entries = (await readdir(directory, { withFileTypes: true })).sort((a, b) =>
       a.name.localeCompare(b.name),
     );
@@ -80,14 +107,7 @@ async function search(policy: FilesystemPolicy, request: CodingSearchRequest): P
       const path = join(directory, entry.name);
       if (entry.isSymbolicLink() || entry.name === ".git" || !filesystemPermits(policy, path, "read"))
         continue;
-      let ignored = ["node_modules", ".cache"].includes(entry.name);
-      for (const rule of ignores) {
-        const name = relative(rule.base, path).replaceAll("\\", "/");
-        const pattern = rule.pattern.replace(/\/$/, "");
-        if (matchesGlob(name, pattern) || (!pattern.includes("/") && matchesGlob(entry.name, pattern)))
-          ignored = !rule.negate;
-      }
-      if (ignored) continue;
+      if (ignored(path, entry.isDirectory(), ignores)) continue;
       if (entry.isDirectory()) {
         await visit(path, ignores);
         continue;
@@ -124,7 +144,32 @@ async function search(policy: FilesystemPolicy, request: CodingSearchRequest): P
     }
     result.matches.push(match);
   }
-  await visit(root, []);
+  // Inherit only permitted ancestor rules. A Git marker bounds this repository;
+  // no marker contents or siblings are read while finding that boundary.
+  const ancestry = [root];
+  let directory = root;
+  for (let depth = 0; ; depth++) {
+    if (depth >= 128) throw new Error("Search ancestry exceeds the supported depth");
+    try {
+      await lstat(join(directory, ".git"));
+      break;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EACCES" || code === "EPERM") break;
+      if (code !== "ENOENT") throw error;
+    }
+    const parent = dirname(directory);
+    if (parent === directory || !filesystemPermits(policy, parent, "read")) break;
+    ancestry.push(parent);
+    directory = parent;
+  }
+  ancestry.reverse();
+  let inherited: IgnoreRule[] = [];
+  for (let index = 0; index < ancestry.length - 1; index++) {
+    inherited = [...inherited, ...(await rulesFor(ancestry[index]!))];
+    if (ignored(ancestry[index + 1]!, true, inherited)) return result;
+  }
+  await visit(root, inherited);
   return result;
 }
 export async function executeCodingFileRequest(
@@ -166,6 +211,15 @@ export async function executeCodingFileRequest(
     }
   }
   if (request.kind === "read") return fileState(path);
+  if (request.kind === "versions") {
+    const paths = request.paths as string[];
+    return Promise.all(
+      paths.map(async (target) => {
+        const state = await fileState(requireFilesystemPath(policy, target, "read"));
+        return { path: state.path, version: state.version };
+      }),
+    );
+  }
   if (request.kind === "snapshots") {
     const paths = request.paths as string[];
     return Promise.all(paths.map((target) => fileState(requireFilesystemPath(policy, target, "read"))));
@@ -196,19 +250,22 @@ export async function executeCodingFileRequest(
       mode,
     );
     try {
-      await file.chmod(mode);
-      await file.writeFile(
-        state.contentBase64 !== undefined ? Buffer.from(state.contentBase64, "base64") : state.content!,
-        "utf8",
-      );
-      await file.sync();
-    } finally {
-      await file.close();
-    }
-    try {
+      try {
+        await file.chmod(mode);
+        await file.writeFile(
+          state.contentBase64 !== undefined ? Buffer.from(state.contentBase64, "base64") : state.content!,
+          "utf8",
+        );
+        await file.sync();
+      } finally {
+        await file.close();
+      }
+      // Writing and syncing the temporary file can yield to an editor or another process.
+      if ((await fileState(target)).version !== expected.version)
+        throw new Error("File changed while preparing the write");
       await rename(temporary, target);
     } catch (error) {
-      await unlink(temporary);
+      await unlink(temporary).catch(() => undefined);
       throw error;
     }
   }

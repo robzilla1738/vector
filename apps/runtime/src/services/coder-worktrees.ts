@@ -92,7 +92,11 @@ export async function createCoderWorktree(
     },
   );
 }
-export async function coderWorktreeChanges(worktree: CoderWorktree, authority: WorktreeAuthority) {
+export async function coderWorktreeChanges(
+  worktree: CoderWorktree,
+  authority: WorktreeAuthority,
+  previouslyIntegratedPaths: string[] = [],
+) {
   const baselineFile = await authority.read(join(worktree.root, ".aux-coder-baseline.json"));
   if (!baselineFile) throw new AuxError("conflict", "The coder snapshot baseline is unavailable.");
   const baseline = CoderBaselineSchema.parse(JSON.parse(baselineFile.bytes.toString("utf8"))).files;
@@ -103,15 +107,24 @@ export async function coderWorktreeChanges(worktree: CoderWorktree, authority: W
     .filter((path) => path && path !== ".aux-coder-baseline.json");
   const originals = new Map(baseline.map((entry) => [entry.path, entry]));
   const changes = [];
-  const files = await authority.snapshot(worktree.root, [...new Set([...paths, ...originals.keys()])]);
+  const files = await authority.snapshot(worktree.root, [
+    ...new Set([...paths, ...originals.keys(), ...previouslyIntegratedPaths]),
+  ]);
   for (const current of files) {
     const path = current.path;
     if (forbidden.test(path)) continue;
     const bytes = current.contentBase64 === null ? undefined : Buffer.from(current.contentBase64, "base64");
     const hash = bytes ? createHash("sha256").update(bytes).update(String(current.mode)).digest("hex") : null;
     const original = originals.get(path);
-    if (hash !== (original?.hash ?? null))
-      changes.push({ path, expectedParentVersion: original?.version, bytes, mode: current.mode, hash });
+    if (hash !== (original?.hash ?? null) || previouslyIntegratedPaths.includes(path))
+      changes.push({
+        path,
+        expectedParentVersion: original?.version,
+        desiredVersion: current.version,
+        bytes,
+        mode: current.mode,
+        hash,
+      });
   }
   return changes;
 }

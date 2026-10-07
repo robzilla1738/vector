@@ -6,6 +6,17 @@ export const CoderWorktreeSchema = z
     baseCommit: z.string().min(1),
     snapshotDigest: z.string().regex(/^[a-f0-9]{64}$/),
     integrated: z.boolean(),
+    integrationBatches: z
+      .array(
+        z
+          .object({
+            actionId: z.string().min(1),
+            digest: z.string().regex(/^[a-f0-9]{64}$/),
+            paths: z.array(z.string()),
+          })
+          .strict(),
+      )
+      .optional(),
     integratedDigest: z
       .string()
       .regex(/^[a-f0-9]{64}$/)

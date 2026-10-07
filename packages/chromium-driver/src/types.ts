@@ -133,6 +133,8 @@ export interface DriverPage {
    */
   /** Metadata only: no credential values are read. Resolves the live target in its frame. */
   actionTarget?(target: string, projectedSteps?: readonly Step[]): Promise<ObservedActionTarget>;
+  /** Runtime-only dispatch admission pins the reviewed DOM node for the actual primitive. */
+  withActionTarget?<T>(target: string, proof: ObservedActionTarget, execute: () => Promise<T>): Promise<T>;
   fieldState?(target: string): Promise<Record<string, unknown> | undefined>;
   scroll(opts: {
     target?: string;

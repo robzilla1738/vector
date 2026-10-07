@@ -14,12 +14,12 @@ export function CodingRunActivity({ runId, live }: { runId: string; live: boolea
   const [busy, setBusy] = useState(false);
   const undoRequest = useRef<{ actionId: string; receiptIds: string[] } | null>(null);
   const generation = useRef(0);
-  const loading = useRef(false);
+  const loading = useRef<number | null>(null);
   const fileRevision = useRef("");
   const refresh = useCallback(async () => {
-    if (loading.current) return;
-    loading.current = true;
     const request = generation.current;
+    if (loading.current === request) return;
+    loading.current = request;
     try {
       const activity = await call("coding.activity", { runId });
       if (request !== generation.current) return;
@@ -31,8 +31,11 @@ export function CodingRunActivity({ runId, live }: { runId: string; live: boolea
         setReceipts(changes);
         fileRevision.current = activity.fileRevision;
       }
+      setError("");
+    } catch (reason) {
+      if (request === generation.current) throw reason;
     } finally {
-      loading.current = false;
+      if (loading.current === request) loading.current = null;
     }
   }, [runId]);
   useEffect(() => {

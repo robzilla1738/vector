@@ -301,3 +301,84 @@ describe("gate ask → coordinator suspension flow", () => {
     h.db.close();
   });
 });
+
+it("preserves a genuinely parked run across graceful restart, history limits and current native authority", async () => {
+  const { markInterruptedRuns, activeRunIds } =
+    await import("../../apps/runtime/src/services/startup-recovery.js");
+  const { TranscriptStore } = await import("../../apps/runtime/src/agent/loop/transcript.js");
+  const { TurnMentionService } = await import("../../apps/runtime/src/services/turn-mention-service.js");
+  const h = harness(
+    scripted([tool("snapshot"), tool("ask_user_question", { question: "Continue?" })]),
+    () => {
+      throw new Error("This review authorizes no browser effect");
+    },
+  );
+  let ownerAvailable = true;
+  const nativeSource = vi.fn(async (token: string) => {
+    if (!ownerAvailable) throw new Error("Original native window unavailable");
+    expect(token).toBe("owner-token");
+    return { revision: 0, layout: null, windowId: "main", activePageId: "p1" };
+  });
+  h.coordinator.deps.turnMentions = new TurnMentionService({
+    page: (id) => h.pages.get(id),
+    organization: async () => ({ revision: 0, shared: null }),
+    routine: () => undefined,
+    connectors: () => ({ entries: [], access: [] }),
+    turnSourceContext: nativeSource,
+  });
+  const run = await h.coordinator.start({
+    goal: "Review the order",
+    pageIds: ["p1"],
+    chatId: "restart-chat",
+    nativeTurnContext: "owner-token",
+  });
+  await waitForStatus(h.repo, run.runId, "needs_input");
+  const suspension = h.coordinator.suspensions.pending(run.runId)!;
+  const transcript = new TranscriptStore(h.db);
+  expect(transcript.openPark(run.runId)).toBeDefined();
+  await h.coordinator.close();
+  expect(h.coordinator.suspensions.pending(run.runId)?.suspensionId).toBe(suspension.suspensionId);
+  h.db
+    .prepare(
+      "INSERT INTO conversations(chat_id,title,archived,created_at,updated_at,private_task) VALUES(?,?,1,0,0,0)",
+    )
+    .run("archived-active", "Archived");
+  h.repo.saveRun({
+    runId: "old-active",
+    goal: "Interrupted work",
+    status: "running",
+    pageIds: [],
+    createdAt: 0,
+    config: { chatId: "archived-active" },
+  });
+  for (let index = 0; index < 205; index++)
+    h.repo.saveRun({
+      runId: `history-${index}`,
+      goal: "History",
+      status: "completed",
+      pageIds: [],
+      createdAt: Date.now() + index,
+    });
+  await markInterruptedRuns(h.repo);
+  const continuedModel = scripted([tool("snapshot"), done()]);
+  const recovered = new RunCoordinator({ ...h.coordinator.deps, model: () => continuedModel });
+  recovered.suspensions.expireOrphans(new Set(activeRunIds(h.repo)));
+  expect(h.repo.getRun(run.runId)?.status).toBe("needs_input");
+  expect(h.repo.getRun("old-active")?.status).toBe("interrupted");
+  expect(recovered.controls.has(run.runId)).toBe(false);
+  ownerAvailable = false;
+  nativeSource.mockClear();
+  await expect(recovered.answerWithMentions(run.runId, "Continue", [], () => {})).rejects.toThrow(
+    /native window/,
+  );
+  expect(recovered.controls.has(run.runId)).toBe(false);
+  ownerAvailable = true;
+  await recovered.answerWithMentions(run.runId, "Continue", [], () => {});
+  expect(recovered.controls.has(run.runId)).toBe(true);
+  expect((await settle(h.repo, run.runId)).status).toBe("completed");
+  expect(nativeSource.mock.calls.length).toBeGreaterThanOrEqual(3);
+  expect(transcript.openPark(run.runId)).toBeUndefined();
+  expect(h.pages.execute).not.toHaveBeenCalled();
+  await recovered.close();
+  h.db.close();
+});

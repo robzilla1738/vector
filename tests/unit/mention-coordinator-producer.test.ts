@@ -105,6 +105,7 @@ it("only actual created pages survive an acknowledged steer and final completion
 });
 it("actual human answer saves validated refs and replaces the acknowledged generation", async () => {
   const { coordinator, mentions, repo, ref } = fixture();
+  const retire = coordinator.registerBatch(repo.getRun("run")!);
   await mentions.begin("run", [], []);
   const old = mentions.capture("run");
   const answer = await coordinator.answerWithMentions("run", "Read this", [ref], () => {});
@@ -114,6 +115,7 @@ it("actual human answer saves validated refs and replaces the acknowledged gener
   await expect(mentions.assert("run", "owned", "read", old)).rejects.toThrow("turn changed");
   expect(await mentions.require("run", "owned", "read")).toEqual({ status: "available" });
   expect(await mentions.require("run", "owned", "act")).toMatchObject({ status: "unavailable" });
+  retire();
 });
 it("a changed suspension cannot acknowledge or persist a replacement answer", async () => {
   const { coordinator, mentions, repo, ref } = fixture();

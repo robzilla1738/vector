@@ -160,6 +160,8 @@ export class ProgramExecutor {
           await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
         let batchPreparation: Parameters<SafetyDispatchGate["check"]>[0][] | undefined;
         let projectedSteps: Step[] = [];
+        let dispatchTarget:
+          { target: string; proof: import("@aux/chromium-driver").ObservedActionTarget } | undefined;
         let credentialDispatch: { target: SavedCredentialTarget; policyRevision: number } | undefined;
         const authorize = async (
           step: Step,
@@ -167,6 +169,7 @@ export class ProgramExecutor {
           phase: "preflight" | "dispatch" = "dispatch",
         ) => {
           credentialDispatch = undefined;
+          dispatchTarget = undefined;
           checkIncarnation();
           if (phase === "preflight" && ctx.isStepApplied?.(step)) return;
           if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
@@ -295,6 +298,8 @@ export class ProgramExecutor {
               else provenance = await this.pages.deps.safetyGate.check(safetyInput);
               checkIncarnation();
               if (provenance) authorized = provenance;
+              if (phase === "dispatch" && observedTarget && targets.length === 1)
+                dispatchTarget = { target: targets[0]!, proof: observedTarget };
               if (credentialTarget && phase === "dispatch")
                 credentialDispatch = {
                   target: credentialTarget,
@@ -505,6 +510,13 @@ export class ProgramExecutor {
                 ctx.checkValid?.();
               },
               authorizeStep: (step) => authorize(step),
+              dispatchStep: async (_step, execute) => {
+                const admission = dispatchTarget;
+                dispatchTarget = undefined;
+                if (admission && admittedDriver.withActionTarget)
+                  return admittedDriver.withActionTarget(admission.target, admission.proof, execute);
+                return execute();
+              },
               navigateAndReadmit:
                 ctx.runId && lp.target.backend === "aux" && this.pages.deps.native.available()
                   ? async (url) => {

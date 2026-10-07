@@ -61,6 +61,8 @@ export interface ExecContext {
   taskRead?: ValidatedTaskRead;
   /** Recheck live target origin and current grants immediately before dispatch. */
   authorizeStep?: (step: Step) => Promise<AuthorizationProvenance | void>;
+  /** Trusted final target admission after all asynchronous preparation. */
+  dispatchStep?: <T>(step: Step, execute: () => Promise<T>) => Promise<T>;
   navigate?: (url: string, timeoutMs?: number) => Promise<void>;
   /** Private native navigation producer: returns only after original receipt,
    * retirement and fresh native attachment/install ACKs. Never tool input. */
@@ -297,11 +299,12 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
       if ((step.op === "fill" || step.op === "type") && before && "selected" in before)
         throw new AuxError("invalid_params", `step ${step.id}: use select for a select control`);
       ctx.checkValid?.();
-      ctx.beforeJournal?.();
-      ctx.beforeDispatch?.(step);
-      dispatched = true;
-      const detail =
-        step.op === "navigate" && ctx.navigateAndReadmit
+      const dispatch = async () => {
+        ctx.checkValid?.();
+        ctx.beforeJournal?.();
+        ctx.beforeDispatch?.(step);
+        dispatched = true;
+        return step.op === "navigate" && ctx.navigateAndReadmit
           ? await (async () => {
               const original = page;
               const replacement = await ctx.navigateAndReadmit!(step.url, step.timeoutMs);
@@ -333,6 +336,8 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
               ctx.checkValid?.();
               return runStep(page, step, ctx);
             });
+      };
+      const detail = ctx.dispatchStep ? await ctx.dispatchStep(step, dispatch) : await dispatch();
       // verify post-conditions
       if (step.expect) {
         for (const cond of step.expect as Condition[]) {
@@ -414,6 +419,12 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
       return outcome;
     } catch (e) {
       const code = e instanceof AuxError ? e.code : "step_failed";
+      if (
+        e instanceof AuxError &&
+        e.code === "ref_stale" &&
+        (e.detail as { browserInputDispatched?: boolean } | undefined)?.browserInputDispatched === false
+      )
+        dispatched = false;
       const takenOver = dispatched && code === "conflict" && isConsequential(step.op);
       // A failed postcondition must remain a failed step, but it must not
       // erase independent evidence that the dispatched action navigated.

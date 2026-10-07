@@ -113,6 +113,10 @@ export class PlaywrightDriverPage implements DriverPage {
   private capture: ResponseCaptureOptions;
   /** Resolves to null when the page cannot host the isolated world (test doubles, exotic targets). */
   private world: Promise<AuxWorld | null>;
+  private admittedTargets = new Map<
+    string,
+    { handle: ElementHandle<HTMLElement | SVGElement>; proof: ObservedActionTarget }
+  >();
   private requests: RequestTracker;
   /** Lowest ref number a new node may take — page-wide across frames, reset per document. */
   private refCounter = 1;
@@ -727,6 +731,11 @@ export class PlaywrightDriverPage implements DriverPage {
    * produces `target_detached`.
    */
   private async resolveActionable(target: string): Promise<Actionable> {
+    const admitted = this.admittedTargets.get(target);
+    if (admitted) {
+      await this.assertActionTarget(admitted.handle, admitted.proof);
+      return admitted.handle;
+    }
     await this.navigationCommitted();
     const parsed = parseTarget(target);
     if (parsed.kind === "ref") {
@@ -784,6 +793,7 @@ export class PlaywrightDriverPage implements DriverPage {
     button: "left" | "right" | "middle" | "none",
     clicks: number,
   ): Promise<boolean> {
+    if (this.admittedTargets.has(target)) return false;
     const w = await this.worldRef(target);
     if (!w) return false;
     const point = await bounded(
@@ -824,6 +834,7 @@ export class PlaywrightDriverPage implements DriverPage {
 
   /** Focus (and for fill, select) the ref's node in the world; true when keyboard input may follow. */
   private async rawFocus(target: string, fill: boolean): Promise<AuxWorld | null> {
+    if (this.admittedTargets.has(target)) return null;
     const w = await this.worldRef(target);
     if (!w) return null;
     const r = await bounded(w.world.call<string>(`__aux.focus(${w.ref}, ${fill})`), FRAME_PROBE_MS);
@@ -1051,7 +1062,8 @@ export class PlaywrightDriverPage implements DriverPage {
             if(name.length>512||type.length>128||autocomplete.length>512||(size+=JSON.stringify(row).length)>65536)throw new Error('Action state exceeds its review bound.');
             return row;
           });
-          const state=JSON.stringify({href,attributes,disabled:!!this.disabled,fields:rows});
+          const action=String(form?.action??''),method=String(form?.method??'');if(action.length>8192)throw new Error('Action destination exceeds its review bound.');
+          const state=JSON.stringify({href,attributes,action,method,disabled:!!this.disabled,fields:rows});
           if(state.length>65536)throw new Error('Action state exceeds its review bound.');return state;
         }`,
       });
@@ -1148,6 +1160,43 @@ export class PlaywrightDriverPage implements DriverPage {
       return { ...observed, ...snapshot };
     } finally {
       if (!isHandle(locator)) await handle.dispose();
+    }
+  }
+  private async assertActionTarget(
+    handle: ElementHandle<HTMLElement | SVGElement>,
+    proof: ObservedActionTarget,
+  ): Promise<void> {
+    try {
+      const fresh = await this.actionSnapshot(handle);
+      if (fresh.nodeIdentity !== proof.nodeIdentity || fresh.stateDigest !== proof.stateDigest)
+        throw new Error("The reviewed browser target changed before dispatch.");
+    } catch (error) {
+      throw new AuxError(
+        "ref_stale",
+        `${error instanceof Error ? error.message : "The reviewed target could not be validated."} Review it again.`,
+        { browserInputDispatched: false },
+      );
+    }
+  }
+  async withActionTarget<T>(
+    target: string,
+    proof: ObservedActionTarget,
+    execute: () => Promise<T>,
+  ): Promise<T> {
+    if (!proof.nodeIdentity || !proof.stateDigest)
+      throw new AuxError("permission_denied", "This browser action has no reviewed target proof.");
+    if (this.admittedTargets.has(target))
+      throw new AuxError("conflict", "This browser target is already admitted.");
+    const resolved = await this.resolveActionable(target);
+    const handle = isHandle(resolved) ? resolved : await resolved.elementHandle();
+    if (!handle) throw new AuxError("ref_stale", "The reviewed browser target disappeared.");
+    try {
+      await this.assertActionTarget(handle, proof);
+      this.admittedTargets.set(target, { handle, proof });
+      return await execute();
+    } finally {
+      this.admittedTargets.delete(target);
+      if (!isHandle(resolved)) await handle.dispose();
     }
   }
   async fieldState(target: string): Promise<Record<string, unknown> | undefined> {

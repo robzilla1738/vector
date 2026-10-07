@@ -14,7 +14,13 @@ export type CoderWorktreeContext = {
 type Context = CoderWorktreeContext;
 const changeDigest = (changes: Awaited<ReturnType<typeof coderWorktreeChanges>>) =>
   createHash("sha256")
-    .update(JSON.stringify(changes.map(({ path, hash, mode }) => ({ path, hash, mode }))))
+    .update(
+      JSON.stringify(
+        changes
+          .map(({ path, hash, mode }) => ({ path, hash, mode }))
+          .sort((left, right) => left.path.localeCompare(right.path)),
+      ),
+    )
     .digest("hex");
 export class CoderWorktreeOperations {
   constructor(
@@ -130,7 +136,13 @@ export class CoderWorktreeOperations {
   }
   async diff(cellId: string, context: Context) {
     const worktree = this.subagents.worktreeFor(cellId, context.runId);
-    const changes = await coderWorktreeChanges(worktree, this.authority(context));
+    const changes = await coderWorktreeChanges(
+      worktree,
+      this.authority(context),
+      worktree.integrationBatches?.flatMap((batch) =>
+        batch.paths.map((path) => relative(worktree.parentRoot, path)),
+      ),
+    );
     return {
       cellId,
       baseCommit: worktree.baseCommit,
@@ -152,47 +164,141 @@ export class CoderWorktreeOperations {
     };
   }
   async integrate(cellId: string, context: Context) {
-    const worktree = this.subagents.worktreeFor(cellId, context.runId);
-    const changes = await coderWorktreeChanges(worktree, this.authority(context));
-    const requested: CodingFileChange[] = changes.map((change) => {
-      const path = join(worktree.parentRoot, change.path);
-      if (!change.bytes) {
-        if (!change.expectedParentVersion)
-          throw new AuxError("conflict", "The deleted file was absent from the original snapshot.");
-        return { kind: "delete", path, expectedVersion: change.expectedParentVersion };
-      }
-      const content = change.bytes.toString("base64"),
-        encoding = "base64" as const,
-        mode = change.mode;
-      return change.expectedParentVersion
-        ? { kind: "edit", path, expectedVersion: change.expectedParentVersion, content, encoding, mode }
-        : { kind: "create", path, content, encoding, mode };
-    });
-    const receipts = requested.length
-      ? await this.files.applyChanges(
-          { actionId: context.actionId, changes: requested },
-          { runId: context.runId },
+    let worktree = this.subagents.worktreeFor(cellId, context.runId);
+    const changes = (
+      await coderWorktreeChanges(
+        worktree,
+        this.authority(context),
+        worktree.integrationBatches?.flatMap((batch) =>
+          batch.paths.map((path) => relative(worktree.parentRoot, path)),
+        ),
+      )
+    ).sort((left, right) => left.path.localeCompare(right.path));
+    const batches = [...(worktree.integrationBatches ?? [])];
+    const receipts = batches
+      .map((batch) => this.files.receiptForAction(context.runId, batch.actionId))
+      .filter((receipt): receipt is NonNullable<typeof receipt> => receipt !== undefined);
+    const confirmed = new Map<string, string | null>();
+    for (const receipt of receipts) {
+      if (receipt.status === "pending" || receipt.status === "uncertain")
+        return {
+          cellId,
+          integrated: false,
+          receipt,
+          receipts,
+          recovery:
+            "Reconcile this receipt with reconcile_file before continuing the preserved worktree integration.",
+        };
+      if (receipt.status !== "confirmed" && receipt.status !== "partially_applied") continue;
+      for (const after of receipt.after) {
+        if (
+          receipt.status === "confirmed" ||
+          receipt.fileOutcomes?.some(
+            (outcome) => outcome.path === after.path && outcome.status === "confirmed",
+          )
         )
-      : undefined;
-    if (receipts && receipts.status !== "confirmed")
-      return {
-        cellId,
-        integrated: false,
-        receipt: receipts,
-        recovery:
-          "Inspect current parent files, reconcile_file using this receiptId, then integrate only the remaining changed files. The child worktree is retained.",
-      };
+          confirmed.set(after.path, after.version);
+      }
+    }
+    const currentVersions = new Map(
+      (await this.files.versions([...confirmed.keys()], { runId: context.runId })).map((state) => [
+        state.path,
+        state.version,
+      ]),
+    );
+    const requested: CodingFileChange[] = [];
+    for (const change of changes) {
+      const path = join(worktree.parentRoot, change.path);
+      let expectedVersion = change.expectedParentVersion;
+      if (confirmed.has(path)) {
+        const recorded = confirmed.get(path)!;
+        if (currentVersions.get(path) !== recorded)
+          throw new AuxError(
+            "conflict",
+            "A previously integrated parent file changed. Review it before continuing.",
+          );
+        if (change.desiredVersion === recorded) continue;
+        expectedVersion = recorded ?? undefined;
+      }
+      if (!change.bytes) {
+        // A new file reverted in the child before its batch applied has no
+        // parent effect to undo. Confirmed creations use their recorded version.
+        if (!expectedVersion && !confirmed.has(path)) continue;
+        if (!expectedVersion)
+          throw new AuxError("conflict", "The deleted file was absent from the original snapshot.");
+        requested.push({ kind: "delete", path, expectedVersion });
+      } else {
+        const content = change.bytes.toString("base64"),
+          encoding = "base64" as const,
+          mode = change.mode;
+        requested.push(
+          expectedVersion
+            ? { kind: "edit", path, expectedVersion, content, encoding, mode }
+            : { kind: "create", path, content, encoding, mode },
+        );
+      }
+    }
+    // Every batch has its own exact approval and durable identity. A parked or
+    // interrupted call resumes its matching batch without replaying prior writes.
+    for (let offset = 0; offset < requested.length; offset += 100) {
+      const batch = requested.slice(offset, offset + 100);
+      const digest = createHash("sha256").update(JSON.stringify(batch)).digest("hex");
+      const preserved = batches.find(
+        (entry) => entry.digest === digest && !this.files.receiptForAction(context.runId, entry.actionId),
+      );
+      const actionId =
+        preserved?.actionId ?? `${context.actionId}:batch:${offset / 100}:${digest.slice(0, 16)}`;
+      if (!preserved) {
+        batches.push({ actionId, digest, paths: batch.map((change) => change.path) });
+        worktree = { ...worktree, integrated: false, integrationBatches: batches };
+        this.subagents.updateWorktree(cellId, worktree);
+      }
+      let receipt;
+      try {
+        receipt = await this.files.applyChanges({ actionId, changes: batch }, { runId: context.runId });
+      } catch (error) {
+        if (error instanceof AuxError && error.code === "needs_input") throw error;
+        receipt = this.files.receiptForAction(context.runId, actionId);
+        if (!receipt) throw error;
+        receipts.push(receipt);
+        return {
+          cellId,
+          integrated: false,
+          receipt,
+          receipts,
+          recovery:
+            "Reconcile this receipt with reconcile_file. Confirmed earlier batches are preserved; integration will review only remaining changes.",
+        };
+      }
+      receipts.push(receipt);
+      if (receipt.status !== "confirmed")
+        return {
+          cellId,
+          integrated: false,
+          receipt,
+          receipts,
+          recovery:
+            "Reconcile this receipt with reconcile_file, then call coder_worktree_integrate again. Aux verifies already confirmed files and reviews only remaining changes.",
+        };
+    }
     this.subagents.updateWorktree(cellId, {
       ...worktree,
       integrated: true,
       integratedDigest: changeDigest(changes),
+      integrationBatches: batches,
     });
-    return { cellId, integrated: true, receipt: receipts };
+    return { cellId, integrated: true, receipt: receipts.at(-1), receipts };
   }
   async retire(cellId: string, context: Context) {
     const worktree = this.subagents.worktreeFor(cellId, context.runId);
     const authority = this.authority(context);
-    const changes = await coderWorktreeChanges(worktree, authority);
+    const changes = await coderWorktreeChanges(
+      worktree,
+      authority,
+      worktree.integrationBatches?.flatMap((batch) =>
+        batch.paths.map((path) => relative(worktree.parentRoot, path)),
+      ),
+    );
     if (!worktree.integrated || worktree.integratedDigest !== changeDigest(changes))
       throw new AuxError("conflict", "Integrate the current worktree changes before retiring it.");
     return { cellId, retired: await retireCoderWorktree(worktree, authority) };

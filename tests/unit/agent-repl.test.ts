@@ -345,6 +345,48 @@ describe("code-mode REPL", () => {
     }
   });
 
+  it("refuses successful replay and later writes after unresolved mutations while allowing inspection", async () => {
+    for (const status of ["uncertain", "pending", "partially_applied", "not_applied"]) {
+      const pool = new ReplPool();
+      cleanup.push(() => pool.disposeAll());
+      const cached: unknown[] = [];
+      const codingTool = vi.fn(async () => ({ output: { receiptId: "receipt-original", status } }));
+      const replay: NonNullable<ReplHostDeps["replay"]> = async (_name, _params, _ordinal, execute) => {
+        const response = await execute();
+        if (JSON.parse(response).ok) cached.push(response);
+        return response;
+      };
+      await expect(
+        pool.eval(
+          deps({ codingTool, replay }),
+          "fs.writeFile('/project/a','one'); fs.writeFile('/project/b','two');",
+        ),
+      ).rejects.toThrow(/Coding mutation receipt-original/);
+      expect(codingTool).toHaveBeenCalledOnce();
+      expect(cached).toHaveLength(0);
+      await pool.eval(
+        deps({ codingTool, replay }),
+        "fs.reconcile('receipt-original'); fs.diff(['receipt-original']);",
+      );
+      expect(codingTool).toHaveBeenCalledTimes(3);
+      expect(cached).toHaveLength(2);
+    }
+  });
+
+  it("keeps unknown command outcomes inspectable without advancing a coding workflow", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const codingTool = vi.fn(async () => ({
+      output: { processId: "bg-original", state: "interrupted", exitCode: null },
+    }));
+    await expect(
+      pool.eval(deps({ codingTool }), "proc.run({command:'npm test'}); fs.writeFile('/project/a','two');"),
+    ).rejects.toThrow(/unknown outcome/);
+    expect(codingTool).toHaveBeenCalledOnce();
+    await pool.eval(deps({ codingTool }), "proc.reconcile('bg-original');");
+    expect(codingTool).toHaveBeenCalledTimes(2);
+  });
+
   it("yields a long script and resumes its result from the same cell", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

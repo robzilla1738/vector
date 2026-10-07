@@ -124,7 +124,10 @@ export class ApprovalStore {
 
   private runIsActive(runId: string): boolean {
     const run = this.resolveRun?.(runId);
-    return !!run && !["completed", "partially_completed", "cancelled", "failed"].includes(run.status);
+    return (
+      !!run &&
+      !["completed", "partially_completed", "cancelled", "failed", "interrupted"].includes(run.status)
+    );
   }
 
   issue(actionInput: SafetyAction, lifetime: "turn" | "thread", now = Date.now()): string {

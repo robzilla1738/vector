@@ -123,6 +123,10 @@ function retainedEvidence(output: unknown): Record<string, unknown> {
     else if (name === "diagnostic" && value && typeof value === "object") {
       const diagnostic = value as Record<string, unknown>;
       evidence[name] = {
+        command: String(diagnostic.command ?? "").slice(0, 2048),
+        workdir: String(diagnostic.workdir ?? "").slice(0, 512),
+        state: diagnostic.state,
+        signal: diagnostic.signal,
         exitCode: diagnostic.exitCode,
         timedOut: diagnostic.timedOut,
         excerpt: String(diagnostic.excerpt ?? "").slice(-4096),
@@ -145,13 +149,23 @@ export function annotateToolFailure(output: unknown, depth = 0): unknown {
   const value = output as Record<string, unknown>;
   if (value.value && typeof value.value === "object")
     return { ...value, value: annotateToolFailure(value.value, depth + 1) };
-  if (!(typeof value.exitCode === "number" && value.exitCode !== 0) && !value.timedOut) return output;
+  if (
+    !(typeof value.exitCode === "number" && value.exitCode !== 0) &&
+    !value.timedOut &&
+    !["failed", "stopped", "interrupted", "uncertain"].includes(String(value.state)) &&
+    !value.signal
+  )
+    return output;
   const text = [value.stderr, value.stdout]
     .filter((item): item is string => typeof item === "string")
     .join("\n");
   return {
     ...value,
     diagnostic: {
+      command: String(value.command ?? "").slice(0, 8192),
+      workdir: String(value.workdir ?? "").slice(0, 4096),
+      state: value.state,
+      signal: value.signal,
       exitCode: value.exitCode,
       timedOut: value.timedOut ?? false,
       excerpt: text.slice(-4096),
@@ -166,16 +180,24 @@ export function codingResumeSummary(
   files: CodingFileReceipt[],
   processes: CodingProcessReceipt[],
   totalFileReceipts = files.length,
+  unresolved?: {
+    total: number;
+    receipts: { kind: string; receiptId: string; state: string }[];
+    nextOffset?: number;
+    omittedCount?: number;
+  },
 ): string {
   const summary: {
     note: string;
+    unresolved?: typeof unresolved;
     fileCount: number;
     recentProcessReceiptCount: number;
     recentFileReceiptCount: number;
     files: unknown[];
     processes: unknown[];
   } = {
-    note: "Durable coding state: confirmed effects must not be replayed. Use diff, reconcile_file, reconcile_process, bg_status and bg_logs to inspect results or resolve uncertainty. Interrupted commands have unknown outcomes and are never proof of success.",
+    note: "Durable coding state: confirmed effects must not be replayed. Use coding_state to page through all unresolved receipt references (nextOffset indicates omitted entries). Use diff, reconcile_file, reconcile_process, bg_status and bg_logs to inspect results or resolve uncertainty. Interrupted commands have unknown outcomes and are never proof of success.",
+    unresolved,
     fileCount: totalFileReceipts,
     recentFileReceiptCount: files.length,
     recentProcessReceiptCount: processes.length,
@@ -185,11 +207,16 @@ export function codingResumeSummary(
   for (const process of processes.slice(-12).reverse()) {
     summary.processes.push({
       processId: process.processId,
+      command: process.command.slice(0, 1024),
+      workdir: process.workdir.slice(0, 512),
+      signal: process.signal,
       state: process.state,
       exitCode: process.exitCode,
       artifactId: process.artifactId,
       diagnostic:
-        process.exitCode !== undefined && process.exitCode !== 0
+        (process.exitCode !== undefined && process.exitCode !== 0) ||
+        !!process.timedOut ||
+        ["failed", "stopped", "interrupted"].includes(process.state)
           ? {
               excerpt: [process.stderr, process.stdout].filter(Boolean).join("\n").slice(-2048),
               guidance: "Inspect the command failure before retrying; use process logs for full output.",

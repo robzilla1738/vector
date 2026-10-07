@@ -255,6 +255,10 @@ export { chatgptModels, parseChatgptModels } from "./services/chatgpt-catalog.js
 export { FilesystemAccessService } from "./services/filesystem-access.js";
 export { CodingFilesService } from "./services/coding-files.js";
 export { CoderWorktreeOperations } from "./services/coder-worktree-operations.js";
-export { startCoderWorktree, worktreeAuthority } from "./services/coder-worktree-runtime.js";
+export {
+  startCoderWorktree,
+  worktreeAuthority,
+  recoverCoderWorktree,
+} from "./services/coder-worktree-runtime.js";
 
 export { createCoderWorktree } from "./services/coder-worktrees.js";

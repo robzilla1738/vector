@@ -12,6 +12,10 @@ function fixture(html: string) {
     evaluate: async <T>(fn: (element: HTMLElement) => T) => fn(element),
     ownerFrame: async () => frame,
     dispose: async () => {},
+    click: async () => {
+      if (!element.isConnected) throw new Error("Pinned element detached");
+      element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    },
   });
   const locator = (selector: string) => ({
     count: async () => document.querySelectorAll(selector).length,
@@ -123,4 +127,32 @@ it("binds a same-node href change while exposing only its safe destination origi
   const after = await driver.actionTarget("#link");
   expect(after.nodeIdentity).toBe(before.nodeIdentity);
   expect(after.stateDigest).not.toBe(before.stateDigest);
+});
+
+it("revalidates an awaited target and dispatches only the admitted node", async () => {
+  const driver = fixture('<a id="link" href="https://example.test/first">Open</a>');
+  const proof = await driver.actionTarget("#link");
+  document.querySelector<HTMLAnchorElement>("#link")!.href = "https://example.test/changed";
+  let dispatched = false;
+  await expect(
+    driver.withActionTarget("#link", proof, async () => {
+      dispatched = true;
+    }),
+  ).rejects.toMatchObject({ code: "ref_stale" });
+  expect(dispatched).toBe(false);
+  const fresh = await driver.actionTarget("#link");
+  let replacementClicked = false;
+  await expect(
+    driver.withActionTarget("#link", fresh, async () => {
+      const replacement = document.createElement("a");
+      replacement.id = "link";
+      replacement.href = "https://example.test/changed";
+      replacement.addEventListener("click", () => {
+        replacementClicked = true;
+      });
+      document.querySelector("#link")!.replaceWith(replacement);
+      await driver.click("#link");
+    }),
+  ).rejects.toThrow(/detached/);
+  expect(replacementClicked).toBe(false);
 });

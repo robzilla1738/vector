@@ -1221,6 +1221,13 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         return { output };
       }
       if (!files) throw new AuxError("capability_unsupported", "Governed coding files are unavailable.");
+      if (name === "coding_state") {
+        const fence = await files.authorizeInspection(context, actionId);
+        const output = unresolvedCodingState(Number(input.offset ?? 0), Number(input.limit ?? 32));
+        checkOwner();
+        fence();
+        return { output };
+      }
       if (name === "read_file")
         return {
           output: await files.read(input as { path: string; startLine?: number; endLine?: number }, context),
@@ -1241,33 +1248,35 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         files: receipt.after.map(({ path, version }) => ({ path, version })),
       });
       if (name === "diff") {
+        const fence = await files.authorizeInspection(context, actionId);
         const selected = input.receiptIds as string[] | undefined;
         const receipts = selected ? files.changesByIds(runId, selected) : files.recentChanges(runId, 32);
         const count = receipts.reduce((total, receipt) => total + receipt.after.length, 0);
         const allowance = Math.max(1, Math.floor(16000 / Math.max(1, count * 2)));
-        return {
-          output: {
-            receiptCount: files.count(runId),
-            olderReceiptsOmitted: !selected && files.count(runId) > receipts.length,
-            receipts: receipts.map((receipt) => ({
-              ...summary(receipt),
-              diff: receipt.after.map((after) => {
-                const before = receipt.before.find((state) => state.path === after.path)?.content ?? "";
-                const next = after.content ?? "";
-                let index = 0;
-                while (index < Math.min(before.length, next.length) && before[index] === next[index]) index++;
-                const start = Math.max(0, index - 100);
-                return {
-                  path: after.path,
-                  binary: after.contentBase64 !== undefined,
-                  before: before.slice(start, start + allowance),
-                  after: next.slice(start, start + allowance),
-                  truncated: before.length > start + allowance || next.length > start + allowance,
-                };
-              }),
-            })),
-          },
+        const output = {
+          receiptCount: files.count(runId),
+          olderReceiptsOmitted: !selected && files.count(runId) > receipts.length,
+          receipts: receipts.map((receipt) => ({
+            ...summary(receipt),
+            diff: receipt.after.map((after) => {
+              const before = receipt.before.find((state) => state.path === after.path)?.content ?? "";
+              const next = after.content ?? "";
+              let index = 0;
+              while (index < Math.min(before.length, next.length) && before[index] === next[index]) index++;
+              const start = Math.max(0, index - 100);
+              return {
+                path: after.path,
+                binary: after.contentBase64 !== undefined,
+                before: before.slice(start, start + allowance),
+                after: next.slice(start, start + allowance),
+                truncated: before.length > start + allowance || next.length > start + allowance,
+              };
+            }),
+          })),
         };
+        checkOwner();
+        fence();
+        return { output };
       }
       if (name === "reconcile_file")
         return { output: summary(await files.reconcile(String(input.receiptId), context)) };
@@ -1934,9 +1943,35 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     }
   }
 
-  const codingChanges = self.deps.agentLoop?.codingFiles?.recentChanges(runId) ?? [];
+  function unresolvedCodingState(offset = 0, limit = 32) {
+    if (
+      !Number.isSafeInteger(offset) ||
+      offset < 0 ||
+      !Number.isSafeInteger(limit) ||
+      limit < 1 ||
+      limit > 32
+    )
+      throw new AuxError("invalid_params", "Use a nonnegative state offset and limit from 1 to 32.");
+    const query =
+      "SELECT 'file' AS kind, receipt_id AS receiptId, status AS state FROM coding_file_receipts WHERE run_id=? AND status IN ('pending','uncertain') UNION ALL SELECT 'process' AS kind, process_id AS receiptId, state FROM coding_process_receipts WHERE run_id=? AND state IN ('starting','uncertain')";
+    const total = (
+      self.deps.repo.db.prepare(`SELECT COUNT(*) AS total FROM (${query})`).get(runId, runId) as {
+        total: number;
+      }
+    ).total;
+    const receipts = self.deps.repo.db
+      .prepare(`${query} ORDER BY kind,receiptId LIMIT ? OFFSET ?`)
+      .all(runId, runId, limit, offset) as { kind: string; receiptId: string; state: string }[];
+    return {
+      total,
+      receipts,
+      omittedCount: Math.max(0, total - receipts.length),
+      ...(offset + receipts.length < total ? { nextOffset: offset + receipts.length } : {}),
+    };
+  }
+  const codingChanges = self.deps.agentLoop?.codingFiles?.recentChangeViews(runId) ?? [];
   const codingProcesses = self.deps.agentLoop?.codingProcesses?.recent(runId) ?? [];
-  if (codingChanges.length || codingProcesses.length)
+  if (codingChanges.length || codingProcesses.length || unresolvedCodingState().total)
     transcript.append(runId, [
       {
         role: "user",
@@ -1944,6 +1979,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           codingChanges,
           codingProcesses,
           self.deps.agentLoop?.codingFiles?.count(runId),
+          unresolvedCodingState(),
         ),
       },
     ]);
@@ -2059,14 +2095,19 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           : [];
         if (todos.length)
           messages = [...messages, { role: "user", content: `Current durable plan:\n${todos.join("\n")}` }];
-        const files = self.deps.agentLoop?.codingFiles?.recentChanges(runId) ?? [];
+        const files = self.deps.agentLoop?.codingFiles?.recentChangeViews(runId) ?? [];
         const processes = self.deps.agentLoop?.codingProcesses?.recent(runId) ?? [];
-        if (files.length || processes.length)
+        if (files.length || processes.length || unresolvedCodingState().total)
           messages = [
             ...messages,
             {
               role: "user",
-              content: codingResumeSummary(files, processes, self.deps.agentLoop?.codingFiles?.count(runId)),
+              content: codingResumeSummary(
+                files,
+                processes,
+                self.deps.agentLoop?.codingFiles?.count(runId),
+                unresolvedCodingState(),
+              ),
             },
           ];
         const original = self.get(runId);
@@ -2381,7 +2422,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           );
           const raw = await self.waitForAnswer(c, runId);
           if (signal.aborted || c.abort.signal.aborted) {
-            self.suspensions.resolve(suspension.suspensionId, "cancelled");
+            if (!c.preserveParkOnShutdown) self.suspensions.resolve(suspension.suspensionId, "cancelled");
             if (
               !c.abort.signal.aborted &&
               (c.takeoverInterrupted || c.deadlineHit || c.budgetInterrupted || steerPending())
@@ -2561,7 +2602,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           );
           const raw = await self.waitForAnswer(c, runId);
           if (signal.aborted || c.abort.signal.aborted) {
-            self.suspensions.resolve(suspension.suspensionId, "cancelled");
+            if (!c.preserveParkOnShutdown) self.suspensions.resolve(suspension.suspensionId, "cancelled");
             if (
               !c.abort.signal.aborted &&
               (c.takeoverInterrupted || c.deadlineHit || c.budgetInterrupted || steerPending())

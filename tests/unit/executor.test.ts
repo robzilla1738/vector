@@ -483,3 +483,36 @@ describe("executeProgram", () => {
     expect(res.steps.every((s) => s.status === "skipped")).toBe(true);
   });
 });
+
+it("validates the final target after awaited field reads before journaling or input", async () => {
+  const { page, calls } = fakePage();
+  let changed = false,
+    journaled = false;
+  page.fieldState = async () => {
+    await Promise.resolve();
+    changed = true;
+    return { value: "old" };
+  };
+  const result = await executeProgram(
+    page,
+    { pageId: "p1", steps: [{ id: "fill", op: "fill", target: "#field", value: "new" }] },
+    {
+      authorizeStep: async () => ({ authorizedBy: "approval", approvalId: "exact" }),
+      beforeDispatch: () => {
+        journaled = true;
+      },
+      dispatchStep: async (_step, execute) => {
+        if (changed) throw new AuxError("ref_stale", "Reviewed field changed");
+        return execute();
+      },
+    },
+  );
+  expect(result.steps[0]).toMatchObject({
+    status: "failed",
+    effect: "authorized",
+    error: { code: "ref_stale" },
+  });
+  expect(journaled).toBe(false);
+  expect(calls).toEqual([]);
+  expect(writeOutcome(result).outcome).toBe("not_applied");
+});

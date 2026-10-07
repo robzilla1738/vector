@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { AuxError } from "@aux/contracts";
+import { AuxError, CoderWorktreeRecoverySchema } from "@aux/contracts";
 import type { WorktreeFile } from "./coder-worktree-worker.js";
 import type { CodingFileState } from "@aux/contracts/coding-files";
 import type { Repo } from "../store/repo.js";
@@ -285,4 +285,19 @@ export async function startCoderWorktree(
   identity: string,
 ) {
   return createCoderWorktree(root, worktreeAuthority(options), identity);
+}
+
+/** Restore only the protected receipt handle; startup never copies or removes files. */
+export function recoverCoderWorktree(repo: Repo, directory: string, parentRunId: string, childRunId: string) {
+  const root = join(directory, childRunId);
+  const actionId = createHash("sha256")
+    .update(JSON.stringify(["coder_worktree_create", root]))
+    .digest("hex");
+  const row = repo.db
+    .prepare("SELECT run_id,body FROM coder_worktree_receipts WHERE action_id=?")
+    .get(actionId) as { run_id: string; body: string } | undefined;
+  if (!row || row.run_id !== parentRunId) return undefined;
+  const saved = JSON.parse(repo.revealRecordField("coder_worktree_receipts", [actionId], "body", row.body));
+  if (saved.operation !== "coder_worktree_create" || saved.input.root !== root) return undefined;
+  return CoderWorktreeRecoverySchema.parse({ ...saved.input, actionId, state: "incomplete" });
 }

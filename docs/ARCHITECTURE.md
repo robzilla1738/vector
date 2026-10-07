@@ -21,7 +21,7 @@ The runtime’s services coordinate agent execution, snapshots, policy decisions
 
 The loopback API uses a bearer token stored in the Profile runtime directory. CLI and MCP are clients of the same runtime policy rather than alternate authorities. Secrets are held by native secret storage; stored sensitive values currently use protected SQLite adapters.
 
-The agent uses one SDK tool loop. Execution chooses the saved local or cloud target for the original turn; cloud SDK loading is deferred until that target is used. Resource admission uses the original run family, usage limits and reviewed account quote before a money decision. Provider stop acknowledgements settle retained resource receipts; ambiguous creation or cleanup stays unresolved. A typed resource handoff can switch the original family to local execution only after original-window proof and cleanup of every family resource. A provably unsent review retains its exact creation promise but cannot dispatch after the handoff. Shutdown synchronously retires active run proofs, controls and Set schedulers, then joins their original execution tasks and pending review continuations before closing cloud resources and the repository. Accepted leased Space-memory updates join their actual native key writes, durable watermark and lease release before repository closure; closing admission cannot abort an accepted write halfway through publication. Secrets remain in native credential storage.
+Aux owns the agent loop; provider SDKs supply model transport rather than an embedded foreign agent runtime. Execution chooses the saved local or cloud target for the original turn; cloud SDK loading is deferred until that target is used. Resource admission uses the original run family, usage limits and reviewed account quote before a money decision. Provider stop acknowledgements settle retained resource receipts; ambiguous creation or cleanup stays unresolved. A typed resource handoff can switch the original family to local execution only after original-window proof and cleanup of every family resource. A provably unsent review retains its exact creation promise but cannot dispatch after the handoff. Shutdown synchronously retires active run proofs, controls and Set schedulers, then joins their original execution tasks and pending review continuations before closing cloud resources and the repository. Accepted leased Space-memory updates join their actual native key writes, durable watermark and lease release before repository closure; closing admission cannot abort an accepted write halfway through publication. Secrets remain in native credential storage.
 
 Projects combine read-only Files/Changes with a reviewed terminal and native Preview. The runtime checks the original window and granted directory identity. Native listeners and isolated guest surfaces require real process/socket ownership and cleanup acknowledgements. Preview admission is internal to the authenticated native bridge, with a synchronous retirement fence at runtime shutdown. The native adapters are compiled and packaged in the current AuxFast app through area 0078. Remaining native walkthroughs are deferred to the next roadmap round.
 
@@ -41,29 +41,37 @@ Aux’s tool loop owns coding execution. Trusted run configuration captures the
 effective mode, project, declarative profile and pinned Aux Packages. Profile
 tools and limits narrow parent authority. Durable run grants and current policy
 are rechecked at dispatch; exact reviewed batches retain content/action digests
-and observed versions. Broader grants remain separate choices.
+and observed versions. Browser dispatch revalidates and holds the reviewed element after asynchronous preparation. Broader grants remain separate choices; interrupted runs cannot accept new grants.
 
 The filesystem worker implements bounded read/search and versioned file batches
 under granted roots and credential exclusions. Protected file receipts retain
 before/after content, binary/mode state and individual outcomes. Reconciliation
 observes current state without replay; undo checks recorded results before
-reversing effects. The change UI fetches metadata and lazily opens file diffs.
+reversing effects. Temporary writes recheck the original version before replacement. Search inherits permitted project ignore rules when narrowed to a subdirectory. The change UI fetches metadata and lazily opens file diffs, with a final refresh independent of older in-flight requests.
 
 CodingProcesses shares Bash Seatbelt and network admission. It owns detached
 process groups, bounded logs/artifacts, policy-revocation monitoring and cleanup
-barriers. Recovery never launches a duplicate command. Process reconciliation
+barriers. A launch handshake persists process birth/group identity before command execution; restart cleanup checks that stable identity even when shell exec changes its command text. Recovery never launches a duplicate command. Process reconciliation
 can establish an interrupted lifetime while retaining unknown command effects.
 Arbitrary commands have no universal file or external-effect undo guarantee.
 
 QuickJS filesystem/process APIs call these governed services without ambient
 Node, credential or raw-eval authority. Protected host-call results and cell
 sources support deterministic restart replay; transcript compaction does not
-redispatch completed effects. Local coding is supported first; cloud coding
+redispatch completed effects. Unknown mutation outcomes halt the cell instead of entering its successful replay cache. Bounded coding_state / fs.state pages expose unresolved receipts beyond recent context; failure diagnostics include stopped commands. Local coding is supported first; cloud coding
 returns an explicit unsupported capability until its equivalent boundary exists.
+
+Ordinary durable tool suspensions survive crash recovery and normal shutdown.
+Shutdown aborts controls and retires executable approval proofs while retaining
+the parked call. A trusted answer restores the original Aux loop and rechecks
+current native source authority; an earlier action approval is refreshed before
+dispatch. Stop still cancels the parked work. Budget and cloud-resource handoffs
+require their dedicated continuation and are not reconstructed by this ordinary
+parked-call recovery path.
 
 Coder cells use isolated Git worktrees with permitted dirty/untracked snapshots,
 binary assets and modes. Parent integration uses governed writes and captured
-parent versions. Incomplete snapshots and conflicts remain inspectable rather
+parent versions, with stable review batches of at most 100 file changes. Continuing a partial integration verifies previously confirmed results in bounded worker batches and reviews only the remainder. Incomplete snapshots and conflicts remain inspectable rather
 than being force-cleared. Aux Packages contain versioned declarative profiles,
 skills, templates and registered-tool workflows; shipped directories are agent
 write-protected, and package contents are pinned per run. Native terminals launch

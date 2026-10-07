@@ -9,7 +9,12 @@ import {
   ModelFundingUnavailable,
   ResourceLimitsUnavailable,
 } from "../services/run-funding.js";
-import { markInterruptedRuns } from "../services/startup-recovery.js";
+import {
+  markInterruptedRuns,
+  activeRunIds,
+  recoverablePark,
+  retireParkedProofs,
+} from "../services/startup-recovery.js";
 import { closeCreatedPage } from "../services/close-created-page.js";
 import { browserContextPage } from "../services/browser-context-page.js";
 import { withRunAuthorityMutation, withRunDispatchMutation } from "../services/overnight-authority.js";
@@ -43,6 +48,7 @@ export interface RunControl {
   abort: AbortController;
   paused: boolean;
   dispatchAbort?: AbortController;
+  preserveParkOnShutdown?: boolean;
   takeoverInterrupted?: boolean;
   budgetInterrupted?: boolean;
   interruptPlanning?: () => void;
@@ -141,7 +147,10 @@ export interface CoordinatorDeps {
 export class RunCoordinator {
   controls = new Map<string, RunControl>();
   /** Exact trusted external utility participants own their pages through the API lease. */
-  private externalPageOwners = new WeakMap<RunControl, { runId: string; connectionId?: string; taskId?: string; taskRevision?: number }>();
+  private externalPageOwners = new WeakMap<
+    RunControl,
+    { runId: string; connectionId?: string; taskId?: string; taskRevision?: number }
+  >();
   private executions = new Map<string, Promise<void>>();
   private closed = false;
   answers = new Map<string, string>();
@@ -331,6 +340,12 @@ export class RunCoordinator {
         );
     }
     this.deps.events.emit(EventTypes.RunUpdated, { run }, run.runId);
+    this.launchRun(run);
+    return run;
+  }
+
+  /** Reuse the normal loop only after a trusted request restores a durable parked call. */
+  private launchRun(run: Run): void {
     const runLease = `run:${run.runId}`;
     this.leases.acquire(runLease, this.leaseOwner);
     this.heldLeases.add(runLease);
@@ -340,7 +355,7 @@ export class RunCoordinator {
       dispatchAbort: new AbortController(),
       span: this.deps.tracer?.start("run", {
         runId: run.runId,
-        attrs: { goal: opts.goal.slice(0, 120), pages: opts.pageIds.length, modelId: opts.modelId },
+        attrs: { goal: run.goal.slice(0, 120), pages: run.pageIds.length, modelId: run.config?.modelId },
       }),
     };
     this.armDeadline(run.runId, control, run.config?.deadlineMs);
@@ -363,12 +378,17 @@ export class RunCoordinator {
       });
     this.executions.set(run.runId, execution);
     void execution;
-    return run;
   }
 
   registerBatch(run: Run, pageOwner: "coordinator" | "external" = "coordinator"): () => void {
-    if (pageOwner === "external" && (run.config?.implementation !== "external-agent" || !run.config.externalConnectionId))
-      throw new AuxError("permission_denied", "External utility ownership requires its original external session.");
+    if (
+      pageOwner === "external" &&
+      (run.config?.implementation !== "external-agent" || !run.config.externalConnectionId)
+    )
+      throw new AuxError(
+        "permission_denied",
+        "External utility ownership requires its original external session.",
+      );
     if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
     const taskLease = run.config?.taskId ? `task:${run.config.taskId}` : undefined;
     if (taskLease) {
@@ -380,7 +400,13 @@ export class RunCoordinator {
       paused: false,
       dispatchAbort: new AbortController(),
     };
-    if (pageOwner === "external") this.externalPageOwners.set(control, { runId: run.runId, connectionId: run.config?.externalConnectionId, taskId: run.config?.taskId, taskRevision: run.config?.taskRevision });
+    if (pageOwner === "external")
+      this.externalPageOwners.set(control, {
+        runId: run.runId,
+        connectionId: run.config?.externalConnectionId,
+        taskId: run.config?.taskId,
+        taskRevision: run.config?.taskRevision,
+      });
     this.controls.set(run.runId, control);
     this.armDeadline(run.runId, control, run.config?.deadlineMs);
     return () => {
@@ -395,7 +421,11 @@ export class RunCoordinator {
 
   private retirePendingProofs(runId: string): void {
     const run = this.get(runId);
-    const approvals = this.deps.approvals ?? new ApprovalStore(this.deps.repo.db, undefined, undefined, undefined, (id) => this.deps.repo.getRun(id));
+    const approvals =
+      this.deps.approvals ??
+      new ApprovalStore(this.deps.repo.db, undefined, undefined, undefined, (id) =>
+        this.deps.repo.getRun(id),
+      );
     this.deps.repo.transaction(() => {
       const pending = this.suspensions.pending(runId);
       if (pending) approvals.retireTurn(pending.turnId, pending.threadId);
@@ -568,6 +598,7 @@ export class RunCoordinator {
     // Revoke every original control and proof before yielding to cleanup ACKs.
     for (const id of ids) {
       const control = this.controls.get(id);
+      if (control && recoverablePark(this.deps.repo, id)) control.preserveParkOnShutdown = true;
       control?.abort.abort();
       control?.dispatchAbort?.abort();
       if (control?.deadlineTimer) clearTimeout(control.deadlineTimer);
@@ -577,7 +608,10 @@ export class RunCoordinator {
     const proofFailures: unknown[] = [];
     for (const id of ids) {
       try {
-        if (this.deps.repo.getRun(id)) this.retirePendingProofs(id);
+        if (this.deps.repo.getRun(id)) {
+          if (this.controls.get(id)?.preserveParkOnShutdown) retireParkedProofs(this.deps.repo, id);
+          else this.retirePendingProofs(id);
+        }
       } catch (error) {
         proofFailures.push(error);
       }
@@ -594,6 +628,10 @@ export class RunCoordinator {
         ),
       ];
       if (failures.length) throw new AggregateError(failures, "Run execution shutdown did not complete.");
+      for (const key of this.heldLeases) this.leases.release(key, this.leaseOwner);
+      this.heldLeases.clear();
+      this.controls.clear();
+      this.answers.clear();
     });
   }
 
@@ -902,13 +940,48 @@ export class RunCoordinator {
     this.releasePages(runId, true);
   }
 
+  private rehydrateParkedRun(runId: string): void {
+    if (this.controls.has(runId)) return;
+    const run = this.get(runId);
+    const parked = new TranscriptStore(this.deps.repo.db, this.deps.repo.columnCipher).openPark(runId);
+    if (this.closed || run.status !== "needs_input" || run.config?.implementation !== "agent-loop" || !parked)
+      throw new AuxError("conflict", "The original run has no recoverable parked call.");
+    const pending = this.suspensions.pending(runId);
+    if (
+      pending &&
+      (pending.kind === "budget" ||
+        pending.request.resourceFunding ||
+        pending.request.resourceLimits ||
+        pending.request.cloudSetup ||
+        pending.request.modelLimits)
+    )
+      throw new AuxError("conflict", "This suspension requires its original dedicated continuation.");
+    this.deps.checkRunSource?.(runId);
+    const taskLease = run.config?.taskId ? `task:${run.config.taskId}` : undefined;
+    if (taskLease) {
+      this.leases.acquire(taskLease, this.leaseOwner);
+      this.heldLeases.add(taskLease);
+    }
+    try {
+      this.launchRun(run);
+    } catch (error) {
+      if (taskLease) {
+        this.leases.release(taskLease, this.leaseOwner);
+        this.heldLeases.delete(taskLease);
+      }
+      throw error;
+    }
+  }
+
   async resume(runId: string): Promise<Run> {
+    if (this.suspensions.pending(runId)?.kind === "budget")
+      throw new AuxError("conflict", "Use Continue on the current budget request.");
+    if (!this.controls.has(runId)) this.rehydrateParkedRun(runId);
     const c = this.controls.get(runId);
     const run = this.get(runId);
     if (!c || c.abort.signal.aborted)
       throw new AuxError("conflict", "The original run control is unavailable.");
-    if (this.suspensions.pending(runId)?.kind === "budget")
-      throw new AuxError("conflict", "Use Continue on the current budget request.");
+
     if (c?.paused) {
       c.paused = false;
       c.budgetInterrupted = false;
@@ -1098,6 +1171,16 @@ export class RunCoordinator {
           );
         if (pending?.kind === "budget")
           throw new AuxError("conflict", "Use Continue on the current budget request.");
+        if (!this.controls.has(runId)) {
+          this.answers.set(runId, answer);
+          try {
+            this.rehydrateParkedRun(runId);
+          } catch (error) {
+            this.answers.delete(runId);
+            throw error;
+          }
+          return this.get(runId);
+        }
         const c = this.controls.get(runId);
         const run = this.get(runId);
         if (run.status === "needs_input") await this.setStatus(runId, "running", `Answer received`);
@@ -1393,10 +1476,16 @@ export class RunCoordinator {
     const external = this.externalPageOwners.get(control);
     if (external) {
       const run = this.get(runId);
-      if (control.abort.signal.aborted || run.config?.implementation !== "external-agent" ||
-          external.runId !== runId || run.config.externalConnectionId !== external.connectionId ||
-          run.config.taskId !== external.taskId || run.config.taskRevision !== external.taskRevision ||
-          run.config.externalRetirementPending || TERMINAL_STATUSES.has(run.status))
+      if (
+        control.abort.signal.aborted ||
+        run.config?.implementation !== "external-agent" ||
+        external.runId !== runId ||
+        run.config.externalConnectionId !== external.connectionId ||
+        run.config.taskId !== external.taskId ||
+        run.config.taskRevision !== external.taskRevision ||
+        run.config.externalRetirementPending ||
+        TERMINAL_STATUSES.has(run.status)
+      )
         throw new AuxError("cancelled", "The original external utility participant retired.");
       // The API holds and revalidates the exact external lease and task-read proof.
       // Financial pause/Continue must not adopt those pages as coordinator-owned.
@@ -1536,8 +1625,8 @@ export class RunCoordinator {
 
   async failActive(reason: string): Promise<string[]> {
     const failed: string[] = [];
-    for (const run of this.deps.repo.listRuns(200)) {
-      if (!["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) continue;
+    for (const runId of activeRunIds(this.deps.repo)) {
+      const run = this.get(runId);
       const c = this.controls.get(run.runId);
       if (c) {
         c.abort.abort();

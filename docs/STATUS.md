@@ -23,6 +23,19 @@ The current coding slice adds trusted per-run modes and explicit run/site/global
 
 Native area patches are recorded through 0079 in `chromium/patches/series`; 0079 replaces the foreign-agent terminal launcher with an ordinary user shell. The benchmark-only stock patch remains separate from the product series.
 
+## Implementation quality follow-up
+
+The plan audit found and corrected concrete integration gaps:
+
+- Exact browser actions now revalidate and hold the reviewed element after asynchronous preparation, including form destination state. Interrupted runs cannot accept late wider permission grants.
+- Ordinary durable tool suspensions survive crash recovery and graceful shutdown. Shutdown retires executable approvals, preserves the original parked call, and refreshes action review after a trusted continuation rechecks native source authority. Normal Stop still cancels. Startup recovery includes archived and older active runs beyond the previous 200-row history window.
+- Isolated coders do not implicitly inherit browser tabs. Original groups and receipt-bound worktree recovery survive interruption. Integration persists exact batches of at most 100 changes and can complete a reconciled partial batch while preserving confirmed files and detecting later parent edits. Batched version reads avoid one worker process per file.
+- Process launch waits until birth/group identity is durably recorded. Cleanup survives shell `exec` changing command text; stopped command diagnostics include command, workdir, state and signal.
+- QuickJS stops at uncertain mutations without caching success. Bounded `coding_state` / `fs.state` references retain older unresolved outcomes beyond recent context. Metadata-only summaries avoid loading complete before-images on every continuation; diff and reconciliation use read admission.
+- Narrow searches inherit permitted project ignores. File replacement detects edits during temporary-file preparation and cleans failed temporary writes. Settled not-applied receipts remain honest and do not redispatch. The activity panel refreshes final results even when an older request remains in flight.
+
+Dedicated budget and cloud-resource handoffs still require their original continuation machinery and become interrupted after restart; this ordinary parked-call recovery does not claim to reconstruct them. Comparative browser performance, live-provider completion and visual parity remain separate acceptance work. The packaged AuxFast app below reflects the preceding native checkpoint; these follow-up runtime/renderer fixes have not been restaged into it.
+
 ## Native build and preview
 
 - Chromium: **154.0.8037.98**; product checkout: `~/aux-chromium-product/chromium/src`.
@@ -34,8 +47,8 @@ Native area patches are recorded through 0079 in `chromium/patches/series`; 0079
 
 ## Validation and next work
 
-The assembled `npm run check` passed typecheck and lint, with **4,188 passing tests and one failure across 684 files**. The only failure was the new same-node link-drift test, added after compilation while the suite was running. A fresh final typecheck and lint passed; rebuilt focused tests also passed, including that driver check. The earlier four handoff failures and the coding integration failures were resolved. Prior focused reruns passed 121 loop/replay tests, 22 policy/driver/UI tests, and 27 worktree/Bash/handler/renderer tests. Runtime dist was rebuilt before those reruns. Raw integrated output is in `/tmp/aux-coding-integrated-check.log`; final source/focused logs are `/tmp/aux-coding-final-source.log` and `/tmp/aux-coding-final-focused.log`. The full suite was not repeated after the final audit changes; only affected checks were rerun.
+Runtime dist was rebuilt before the quality-audit tests. Typecheck and lint passed (existing advisory warnings remain). One full unit/renderer suite ran **4,207 tests across 686 files: 4,205 passed and two fixture failures**. Both were corrected: the REPL fixture now uses a process ID without a denied source word, and the live-answer fixture registers its real coordinator control. The two affected files then passed **52/52 tests**. No production source changed after the full run, and the broad suite was not repeated. The new final-refresh renderer regression also passed independently.
 
-The final audit closed lazy file-diff retrieval, saved todo restoration, declarative custom coder isolation and link/navigation review boundaries. All **119 affected tests passed across seven suites** after a fresh rebuild. The generated [agent API reference](AGENT-API.md) tracks the final contracts. The implementation is committed locally as `81068a0d1`; source and native evidence do not establish a successful live-provider coding task.
+The full run passed the new graceful restart/native-authority, historical active-run recovery, reviewed-target drift, late-approval, partial/large worktree integration, process exec/cleanup, file preparation conflict, and inherited-ignore checks. Local logs are `/tmp/aux-coding-quality-check.log` (typecheck/check), `/tmp/aux-coding-quality-lint.log`, `/tmp/aux-coding-quality-tests.log`, and `/tmp/aux-coding-quality-targeted.log`. The original source/native implementation checkpoint is `81068a0d1`; this follow-up is committed separately. Neither checkpoint establishes a successful live-provider coding task or competitor parity.
 
 The owner previously deferred broad acceptance to the next roadmap round. Still pending: detailed Aside comparison across window sizes and both appearances, manual 20-task/default-provider smoke, offline models and provider/OAuth acceptance, native import/extension/filter walkthroughs, and paired native performance measurements. Preserve Stop, Take over, durable effects/undo, site policy and secret protections while continuing development. Browser controls must remain usable when the runtime is unavailable.

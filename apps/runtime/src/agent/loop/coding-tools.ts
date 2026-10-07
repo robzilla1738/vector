@@ -32,6 +32,14 @@ export function codingToolManifest(): LoopToolManifest {
     limit: z.number().int().positive().max(500).optional(),
   };
   const definitions = {
+    coding_state: {
+      description:
+        "Inspect paginated unresolved file/process receipt references, including older effects omitted from current context. No bodies are retrieved.",
+      schema: z.object({
+        offset: z.number().int().nonnegative().default(0),
+        limit: z.number().int().positive().max(32).default(32),
+      }),
+    },
     coder_worktree_recovery: {
       description: "Inspect the exact contents of an incomplete coder worktree before recovery or archival.",
       schema: z.object({ cellId: z.string().min(1).max(200) }),

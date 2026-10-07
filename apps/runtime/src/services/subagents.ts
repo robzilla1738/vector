@@ -43,6 +43,10 @@ export class SubagentService {
     private runs: RunService,
     private coding?: {
       create(parentRoot: string, parentRunId: string, childRunId: string): Promise<CoderWorktree>;
+      recover?(
+        parentRunId: string,
+        childRunId: string,
+      ): import("@aux/contracts").CoderWorktreeRecovery | undefined;
     },
   ) {
     void this.reconcile().catch((error) => console.error("[aux-runtime] subagent recovery failed", error));
@@ -219,6 +223,23 @@ export class SubagentService {
     if (this.repo.db.prepare("SELECT 1 FROM subagents WHERE run_id=?").get(parent.runId))
       throw new AuxError("permission_denied", "Nested subagent groups are unavailable.");
     const workspaceId = this.workspaceOf(parent.runId);
+    const existing = this.repo.db
+      .prepare("SELECT group_id FROM subagent_groups WHERE parent_run_id=?")
+      .get(parent.runId) as { group_id: string } | undefined;
+    if (existing) {
+      const group = this.group(existing.group_id);
+      if (group.workspaceId !== workspaceId || (group.deadlineAt > 0 && group.deadlineAt <= Date.now()))
+        throw new AuxError("conflict", "The original subagent group no longer matches this run.");
+      if (
+        group.tokenBudget !== input.tokenBudget ||
+        group.costBudgetUsd !== input.costBudgetUsd ||
+        group.timeBudgetMs !== input.timeBudgetMs
+      )
+        throw new AuxError("conflict", "Resume the original subagent group without changing its budgets.");
+      if (group.state === "closed")
+        this.repo.db.prepare("UPDATE subagent_groups SET state='active' WHERE group_id=?").run(group.groupId);
+      return { ...group, state: "active" };
+    }
     const now = Date.now();
     const group = SubagentGroupSchema.parse({
       ...input,
@@ -285,7 +306,10 @@ export class SubagentService {
     const parentGroup = this.repo.db
       .prepare("SELECT group_id FROM subagent_groups WHERE parent_run_id=? AND state='active'")
       .get(runId) as { group_id: string } | undefined;
-    if (parentGroup && !RUN_ACTIVE.has(this.repo.getRun(runId)?.status ?? "missing")) {
+    if (
+      parentGroup &&
+      ![...RUN_ACTIVE, "interrupted"].includes(this.repo.getRun(runId)?.status ?? "missing")
+    ) {
       await this.closeGroup(parentGroup.group_id);
       return;
     }
@@ -317,10 +341,22 @@ export class SubagentService {
           .prepare("UPDATE subagents SET run_id=? WHERE agent_id=? AND run_id IS NULL")
           .run(reservedRunId, row.agent_id);
         await this.reconcileRun(reservedRunId);
-      } else
-        this.repo.db
-          .prepare("UPDATE subagents SET state='interrupted',ended_at=? WHERE agent_id=?")
-          .run(Date.now(), row.agent_id);
+      } else {
+        const agent = this.agent(row.agent_id);
+        const group = this.group(agent.groupId);
+        const recovery = reservedRunId ? this.coding?.recover?.(group.parentRunId, reservedRunId) : undefined;
+        if (recovery) this.updateRecovery(row.agent_id, recovery);
+        else if (
+          agent.state === "starting" &&
+          group.state === "active" &&
+          this.runs.coordinator.suspensions.pending(group.parentRunId)
+        )
+          continue; // Reservation parked before worktree dispatch stays exact and reusable.
+        else
+          this.repo.db
+            .prepare("UPDATE subagents SET state='interrupted',ended_at=? WHERE agent_id=?")
+            .run(Date.now(), row.agent_id);
+      }
     }
   }
 
