@@ -55,6 +55,7 @@ import type { MethodName } from "@aux/contracts";
 import type { McpOAuthService } from "../../services/mcp-oauth.js";
 
 export interface Services {
+  projects?: import("../../services/projects.js").ProjectsService;
   /** Advertise registered optional factories without constructing their services. */
   serviceAvailable?: (name: "responses" | "operations" | "state" | "tracer") => boolean;
   turnMentions: import("../../services/turn-mention-service.js").TurnMentionService;

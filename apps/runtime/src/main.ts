@@ -1,3 +1,4 @@
+import { ProjectsService } from "./services/projects.js";
 import type { VercelSandboxExecutor } from "./services/vercel-sandbox-executor.js";
 import type { CloudExecutionContext } from "./services/cloud-execution.js";
 import type { CloudRunAdmission } from "./services/cloud-run-admission.js";
@@ -236,6 +237,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let stopRunEndHooks: (() => void) | undefined;
   type RuntimeServices = Services & {
     workspaceFolders: WorkspaceFolderService;
+    projects: ProjectsService;
     filesystem: FilesystemAccessService;
     settings: SettingsService;
     copilot: Promise<CopilotServices>;
@@ -281,6 +283,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   };
   const serviceContainer: ServiceContainer<RuntimeServices> = createServiceContainer<RuntimeServices>({
     workspaceFolders: () => new WorkspaceFolderService(repo, () => [config.dataDir]),
+    projects: () => new ProjectsService(native, runtimeServices.workspaceFolders, runtimeServices.filesystem),
     filesystem: () =>
       new FilesystemAccessService({
         internalRoots: [config.artifactsDir, config.downloadsDir, config.previewsDir],
@@ -2078,6 +2081,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
               throw new AggregateError(failures, "Run and cloud resource cleanup awaits acknowledgement.");
           })(),
           import("./services/cloud-settings.js").then(({ closeCloudSettings }) => closeCloudSettings(repo)),
+          serviceContainer.peek("projects")?.dispose(),
           serviceContainer.peek("blocking")?.close(),
           serviceContainer.peek("copilot")?.then((services) => services.close()),
         ]);

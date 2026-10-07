@@ -3,7 +3,7 @@ import { staticFieldProps } from "../../ui/class-props";
 import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type {
   Workspace,
   WorkspaceFolder,
@@ -15,9 +15,12 @@ import { SettingsField, SettingsSection } from "../primitives";
 import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
 import { nativeAlertRoleProps, nativeGroupRoleProps } from "../../ui/native-attribute-props";
 
+const Project = lazy(() => import("../../features/projects/Project"));
+
 export function WorkspacesSettings({ active }: { active: boolean }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState("");
+  const [projectFolder, setProjectFolder] = useState<WorkspaceFolder>();
   const [folders, setFolders] = useState<WorkspaceFolder[]>([]);
   const [path, setPath] = useState("");
   const [access, setAccess] = useState<WorkspaceFolderAccess>("read");
@@ -86,6 +89,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
           aria-label="Folder Space"
           value={workspaceId}
           onChange={(event) => {
+            setProjectFolder(undefined);
             setWorkspaceId(event.target.value);
             setReview(null);
             setFolders([]);
@@ -191,11 +195,15 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
                   ? " · Folder or AGENTS.md changed; access paused. Archive and review again."
                   : ""}
               </span>
+              <button {...smallButtonProps} disabled={busy || item.agentsChanged} onClick={() => setProjectFolder(item)}>
+                Open Project
+              </button>
               <button
                 {...smallButtonProps}
                 disabled={busy}
                 onClick={() =>
                   void act(async () => {
+                    if (projectFolder?.folderId === item.folderId) setProjectFolder(undefined);
                     await call("workspaces.folders.archive", { workspaceId, folderId: item.folderId });
                     setFolders(await call("workspaces.folders.list", { workspaceId }));
                   })
@@ -206,6 +214,11 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
             </div>
           ))}
       </SettingsField>
+      {active && projectFolder && (
+        <Suspense fallback={<p>Loading Project…</p>}>
+          <Project folder={projectFolder} close={() => setProjectFolder(undefined)} />
+        </Suspense>
+      )}
       {active && <CloudExecution />}
     </SettingsSection>
   );

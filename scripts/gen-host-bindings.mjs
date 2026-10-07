@@ -170,6 +170,10 @@ function emitNode(schema, index) {
         );
         add("for (char c : navigation) if (c < '0' || c > '9') return false;");
         add('if (navigation.size() == 19 && navigation > "9223372036854775807") return false;');
+      } else if (schema.pattern === "^[0-9]+$") {
+        add("const auto& decimal = value.GetString();");
+        add("if (decimal.empty()) return false;");
+        add("for (char c : decimal) if (c < '0' || c > '9') return false;");
       } else if (schema.pattern === "^gho_[A-Za-z0-9_]{16,500}$") {
         add("const auto& token = value.GetString();");
         add("if (token.size() < 20 || token.size() > 504 || !token.starts_with(\"gho_\")) return false;");
@@ -564,6 +568,10 @@ function firstValid(schema, hint, depth) {
 }
 // A browser mock cannot issue native document, lease or effect receipts.
 const nativeOnlyHostMethods = new Set([
+  "native.projectFiles",
+  "native.projectFile",
+  "native.projectChanges",
+  "native.projectCancel",
   "native.turnSourceContext",
   "native.contentBlockState",
   "native.contentBlockBegin",

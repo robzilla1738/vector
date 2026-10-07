@@ -1,3 +1,14 @@
+import type { z } from "zod";
+import {
+  ProjectFilesSchema,
+  ProjectFileSchema,
+  ProjectChangesSchema,
+  NativeProjectFilesParams,
+  NativeProjectFileParams,
+  NativeProjectChangesParams,
+  NativeProjectCancelParams,
+  NativeProjectClosedSchema,
+} from "@aux/contracts/projects";
 import { TurnSourceContextSchema, type TurnSourceContext } from "@aux/contracts/turn-source-context";
 import type { DownloadNamingNative, CompletedDownload } from "./services/download-naming.js";
 import {
@@ -98,6 +109,17 @@ import type {
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge extends Partial<DownloadNamingNative> {
+  projectFiles?(
+    params: z.infer<typeof NativeProjectFilesParams>,
+  ): Promise<z.infer<typeof ProjectFilesSchema>>;
+  projectFile?(params: z.infer<typeof NativeProjectFileParams>): Promise<z.infer<typeof ProjectFileSchema>>;
+  projectChanges?(
+    params: z.infer<typeof NativeProjectChangesParams>,
+  ): Promise<z.infer<typeof ProjectChangesSchema>>;
+  projectCancel?(
+    params: z.infer<typeof NativeProjectCancelParams>,
+  ): Promise<z.infer<typeof NativeProjectClosedSchema>>;
+
   copilotStart?(input: CopilotNativeStart): Promise<CopilotNativeStartResult>;
   copilotEndpoint?(input: {
     token: string;
@@ -253,6 +275,26 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
 
 export class ChannelNativeBridge implements NativeBridge {
   constructor(private channel: RpcChannel) {}
+  async projectFiles(params: z.infer<typeof NativeProjectFilesParams>) {
+    return ProjectFilesSchema.parse(
+      await this.channel.call("native.projectFiles", NativeProjectFilesParams.parse(params)),
+    );
+  }
+  async projectFile(params: z.infer<typeof NativeProjectFileParams>) {
+    return ProjectFileSchema.parse(
+      await this.channel.call("native.projectFile", NativeProjectFileParams.parse(params)),
+    );
+  }
+  async projectChanges(params: z.infer<typeof NativeProjectChangesParams>) {
+    return ProjectChangesSchema.parse(
+      await this.channel.call("native.projectChanges", NativeProjectChangesParams.parse(params)),
+    );
+  }
+  async projectCancel(params: z.infer<typeof NativeProjectCancelParams>) {
+    return NativeProjectClosedSchema.parse(
+      await this.channel.call("native.projectCancel", NativeProjectCancelParams.parse(params)),
+    );
+  }
   copilotStart(input: CopilotNativeStart): Promise<CopilotNativeStartResult> {
     return this.channel.call("native.copilotStart", input, 45_000);
   }

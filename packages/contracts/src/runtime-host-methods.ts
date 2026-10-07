@@ -1,3 +1,13 @@
+import {
+  ProjectFilesSchema,
+  ProjectFileSchema,
+  ProjectChangesSchema,
+  NativeProjectFilesParams,
+  NativeProjectFileParams,
+  NativeProjectChangesParams,
+  NativeProjectCancelParams,
+  NativeProjectClosedSchema,
+} from "./projects.js";
 import { TurnSourceContextSchema } from "./turn-source-context.js";
 import {
   ContentBlockBeginSchema,
@@ -111,6 +121,10 @@ const nativePage = z
 
 /** Methods admitted only from the authenticated runtime connection. */
 export const RuntimeHostMethods = {
+  "native.projectFiles": runtime("core", NativeProjectFilesParams, ProjectFilesSchema),
+  "native.projectFile": runtime("core", NativeProjectFileParams, ProjectFileSchema),
+  "native.projectChanges": runtime("core", NativeProjectChangesParams, ProjectChangesSchema),
+  "native.projectCancel": runtime("core", NativeProjectCancelParams, NativeProjectClosedSchema),
   "native.copilotStart": runtime("core", NativeCopilotStartParams, NativeCopilotStartSchema),
   "native.copilotEndpoint": runtime("core", NativeCopilotEndpointParams, NativeCopilotEndpointSchema),
   "native.copilotStop": runtime("core", NativeCopilotStopParams, NativeCopilotStoppedSchema),

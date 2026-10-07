@@ -1,3 +1,11 @@
+import {
+  ProjectFilesParams,
+  ProjectFileParams,
+  ProjectChangesParams,
+  ProjectFilesSchema,
+  ProjectFileSchema,
+  ProjectChangesSchema,
+} from "./projects.js";
 import { UtilityIntentParamsSchema, UtilityIntentResultSchema } from "./utility.js";
 import { ExecutionTargetSchema, CloudConfigureParamsSchema, CloudSettingsStatusSchema } from "./cloud-execution.js";
 import {
@@ -1426,6 +1434,9 @@ export const MethodSchemas = {
   "agentConnections.create": AgentConnectionCreateParams,
   "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
   "developer.cli.install": z.object({}).strict(),
+  "projects.files": ProjectFilesParams,
+  "projects.file": ProjectFileParams,
+  "projects.changes": ProjectChangesParams,
   "mcp.servers.register": OutboundMcpRegisterParams,
   "mcp.bundles.inspect": z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
   "mcp.servers.list": z.object({ workspaceId: id }).strict(),
@@ -1883,6 +1894,9 @@ export const MethodDefinitions = Object.fromEntries(
 
 /** Wire shapes for the result column — used for typing, validated server-side. */
 export const ResultSchemas = {
+  "projects.files": ProjectFilesSchema,
+  "projects.file": ProjectFileSchema,
+  "projects.changes": ProjectChangesSchema,
   ...BrowserRuntimeResultSchemas,
   "agent.tabs.list": z.array(z.object({ pageId: id, title: z.string(), url: z.string() }).strict()),
   "agent.js.run": AgentJsResult,
