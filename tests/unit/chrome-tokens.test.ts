@@ -142,7 +142,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
       "--window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);",
     );
     expectCss(styles).toContain(
-      ':root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek) { background: var(--navigation-glass-tint); }',
+      ':root[data-sidebar-appearance="translucent"] .sidebar.expanded { background: var(--window-glass-tint); }',
     );
     expectCss(styles).toContain(":is(.chat-sidebar, .rail)");
     expect(tokens).toMatch(/--surface-menu:\s*var\(--bg-2\)/);

@@ -690,7 +690,8 @@
     color: var(--sb-ink-0);
     -webkit-app-region: drag;
     transition: width var(--t-slow) var(--ease-out);
-    border-radius: var(--r-xl);
+    /* Docked glass runs to the window edge; only floating panels round themselves. */
+    border-radius: 0;
   }
   .toolbar {
     display: flex;
@@ -1212,19 +1213,17 @@
     background: transparent;
     isolation: auto;
   }
-  /* Navigation needs a backed material when a native page is behind the strip.
-   Apply that backing once on the panel; rows retain the captured alpha states. */
+  /* Docked panels share the native window material. Only overlays need a
+   separate backing to remain readable above a web page. */
   :root[data-sidebar-appearance="translucent"] {
     --window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);
     --floating-glass-tint: color-mix(in srgb, var(--floating-sidebar-surface) 95%, transparent);
-    --navigation-glass-tint: color-mix(
-      in srgb,
-      var(--floating-sidebar-surface) max(95%, var(--sidebar-tint, 0%)),
-      transparent
-    );
   }
-  :root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek) {
-    background: var(--navigation-glass-tint);
+  :root[data-sidebar-appearance="translucent"] .sidebar.expanded {
+    background: var(--window-glass-tint);
+  }
+  :root[data-sidebar-appearance="translucent"] .sidebar.peek {
+    background: var(--floating-glass-tint);
   }
   @media (prefers-reduced-transparency: reduce) {
     :root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek) {
@@ -1234,11 +1233,6 @@
   :root[data-sidebar-appearance="translucent"] :is(.chat-sidebar, .rail),
   :root[data-sidebar-appearance="translucent"] .app.native-host .horizontal-tabs-row {
     background: var(--window-glass-tint);
-  }
-  /* Chat surfaces use the captured 06 muted panel treatment. Keep the native
-   tab strip translucent; reading surfaces need a backing over vivid wallpaper. */
-  :root[data-sidebar-appearance="translucent"] .app :is(.chat-sidebar, .rail) {
-    background: color-mix(in srgb, var(--sb-bg) max(85%, var(--sidebar-tint, 0%)), transparent);
   }
   .chat-sidebar {
     border-right: var(--hairline) solid var(--line);
