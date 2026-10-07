@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index db59803..90d316c 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1041,7 +1041,7 @@ void WebUIBrowserUI::Request(const std::string& method,
+       api_method == "agent.tabName.suggest" || api_method == "routines.skills.preview" || api_method == "routines.skills.import" || api_method == "import.preview" || api_method == "import.selectExport" || api_method == "import.extensions.review" || api_method == "import.selectWindow" || api_method == "import.exportStatus" ||
+       api_method == "import.cancelExport" || api_method == "import.run" ||
+         api_method == "import.status" || api_method == "import.cancel" ||
+-        api_method == "models.auth.start" ||
++        api_method == "settings.set" || api_method == "models.auth.start" ||
+       api_method == "models.auth.status" || api_method == "models.auth.cancel" ||
+       api_method == "models.auth.accounts" || api_method == "models.auth.disconnect" ||
+       api_method == "models.copilot.setup" || api_method == "models.copilot.install" ||

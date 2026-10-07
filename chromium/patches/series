@@ -61,3 +61,6 @@ aux/0061-native-copilot-owner-binding.patch
 aux/0062-native-foundation-models.patch
 aux/0063-native-filter-toggle-receipts.patch
 aux/0064-native-terminal-owned-descendants.patch
+aux/0065-native-preview-bound-receiver.patch
+aux/0066-native-skills-review-ingress.patch
+aux/0067-native-account-model-selection-ingress.patch
