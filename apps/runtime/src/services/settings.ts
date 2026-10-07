@@ -384,7 +384,7 @@ export class SettingsService {
 
   agentPolicy(): AgentPolicySettings {
     return AgentPolicySettingsSchema.parse({
-      agentMode: this.get("agentMode") ?? "auto",
+      agentMode: this.get("agentMode") ?? "ask",
       agentPolicyRevision: this.get("agentPolicyRevision") ?? 0,
       agentPolicies: this.get("agentPolicies") ?? [],
     });

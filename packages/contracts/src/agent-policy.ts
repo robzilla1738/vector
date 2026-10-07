@@ -16,7 +16,7 @@ export const AgentPolicyOverrideSchema = z.object({
   amountLimit: z.number().finite().nonnegative().optional(),
 }).strict().refine((rule) => rule.amountLimit === undefined || rule.category === "money", "Amount limits apply only to money.");
 export const AgentPolicySettingsSchema = z.object({
-  agentMode: AgentModeSchema.default("auto"),
+  agentMode: AgentModeSchema.default("ask"),
   agentPolicyRevision: z.number().int().nonnegative().default(0),
   agentPolicies: z.array(AgentPolicyOverrideSchema).max(1000).default([]),
 }).strict().superRefine((settings, context) => {

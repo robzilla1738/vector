@@ -47,9 +47,9 @@ The table records the starting point. Current implementation and build evidence 
 ## 1. Locked owner decisions (do not re-ask)
 
 1. **Vertical layout is the default,** an exact copy of Aside: a unified sidebar (Bookmarks, Chats, Tabs), a 42 px toolbar, and floating collapse with expand-on-hover. Horizontal is an option on the same state.
-2. **Auto mode is the default.**
-   - The agent reads, navigates, fills, submits, sends and deletes freely.
-   - It pauses only for **money** and **credentials**. **Account-security** changes are handed to the user.
+2. **Ask first is the default (owner update, October 7).** The chat composer offers a remembered Skip confirmation choice using Full auto. Existing saved mode choices are preserved. Auto remains available in Settings.
+   - In Auto, the agent reads, navigates, fills, submits, sends and deletes freely.
+   - Auto pauses only for **money** and **credentials**. **Account-security** changes are handed to the user.
    - Users can "Always allow" per site.
    - Settings also offers **Ask first** and **Full auto**.
 3. **Browser auth means both:**
@@ -493,13 +493,13 @@ These replace the "frozen scope" paragraph in `AGENTS.md`.
 
 ---
 
-## Phase 3: Free agent (Auto by default)
+## Phase 3: Free agent (Ask first default; remembered mode choice)
 
 **P3.1 Policy** (new `packages/contracts/src/agent-policy.ts`)
-- `agentMode: "auto" | "ask" | "full"`, default `"auto"`.
+- `agentMode: "auto" | "ask" | "full"`, default `"ask"`.
 - Per-site, per-category overrides: Allow / Ask / Block. "Always allow" from any prompt writes here and is honoured absolutely.
 
-| Category | Auto (default) | Ask first | Full auto |
+| Category | Auto | Ask first (default) | Full auto |
 |---|---|---|---|
 | read, navigate, input, click, scroll, dialog, download, tabs | allow | allow | allow |
 | submit, send, post, delete, install, upload, bash, MCP and external tools | allow | ask (can be always-allowed) | allow |
@@ -545,7 +545,7 @@ These replace the "frozen scope" paragraph in `AGENTS.md`.
 - Replaces `components/ActionConfirmation.tsx`.
 
 **P3.6 Settings › Permissions**
-- The mode (Auto by default), a per-category table, and per-site grants with revoke.
+- The mode (Ask first by default), a per-category table, and per-site grants with revoke.
 - An activity log from `safety_decisions`, with undo for browser-local effects.
 - File roots: **Guard** by default — read your home folder except sensitive locations (`~/.ssh`, Keychains, browser Profile directories, password stores); write to Documents, Downloads, Desktop and Projects. Read-only and Full are the alternatives.
 - MCP tool toggles.

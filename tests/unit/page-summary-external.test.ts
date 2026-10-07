@@ -128,6 +128,7 @@ it("funds scoped external summaries on the original session and joins a held dis
     join(directory, "settings.json"),
     {},
   );
+  await settings.set({ agentMode: "auto", agentPolicyRevision: 0 });
   const safety = new SafetyDispatchGate({
     approvals: new ApprovalStore(repo.db),
     journal: new DecisionJournal(repo.db),

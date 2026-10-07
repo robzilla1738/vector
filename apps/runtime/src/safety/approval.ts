@@ -54,7 +54,7 @@ export class ApprovalStore {
     private readonly db: DatabaseSync,
     private readonly audit: (event: Record<string, unknown>) => void = () => {},
     private readonly persistSitePolicy?: (action: SafetyAction) => void,
-    private readonly currentPolicy: () => AgentPolicySettings = () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
+    private readonly currentPolicy: () => AgentPolicySettings = () => ({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] }),
   ) {}
 
   issue(actionInput: SafetyAction, lifetime: "turn" | "thread", now = Date.now()): string {

@@ -380,6 +380,7 @@ it("lets a scoped agent call only a connected tool in its current Space and task
   await service.listTools(server.serverId);
   const directory = mkdtempSync(join(tmpdir(), "aux-scoped-mcp-policy-"));
   const settings = new SettingsService(repo, join(directory, "settings.json"), {});
+  await settings.set({ agentMode: "auto", agentPolicyRevision: 0 });
   const turnMentions = fixtureTurnMentions((pageId) => repo.getPage(pageId));
   const agentConnections = new AgentConnectionService(repo);
   const externalSessions = new ExternalSessionService(repo, events, turnMentions, async () => {});

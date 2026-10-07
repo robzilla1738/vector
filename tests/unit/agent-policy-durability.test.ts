@@ -14,14 +14,14 @@ it("keeps one durable policy revision across windows and refuses stale overwrite
   const create = fixture(),
     a = create(),
     b = create();
-  expect(a.agentPolicy()).toEqual({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] });
+  expect(a.agentPolicy()).toEqual({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] });
   const policies = [{ category: "send" as const, site: "https://example.test", access: "ask" as const }];
   await a.set({ agentPolicies: policies, agentPolicyRevision: 0 });
   await expect(b.set({ agentPolicies: [], agentPolicyRevision: 0 })).rejects.toMatchObject({
     code: "conflict",
   });
   expect(create().agentPolicy()).toEqual({
-    agentMode: "auto",
+    agentMode: "ask",
     agentPolicyRevision: 1,
     agentPolicies: policies,
   });
@@ -39,5 +39,13 @@ it("refuses malformed and duplicate site/category policies before changing durab
   ).rejects.toThrow();
   const rule = { category: "read" as const, site: "https://example.test", access: "allow" as const };
   await expect(settings.set({ agentPolicies: [rule, rule], agentPolicyRevision: 0 })).rejects.toThrow();
-  expect(settings.agentPolicy()).toEqual({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] });
+  expect(settings.agentPolicy()).toEqual({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] });
+});
+
+it("remembers Skip confirmation across settings service recreation", async () => {
+  const create = fixture();
+  await create().set({ agentMode: "full", agentPolicyRevision: 0 });
+  expect(create().agentPolicy().agentMode).toBe("full");
+  await create().set({ agentMode: "ask", agentPolicyRevision: 1 });
+  expect(create().agentPolicy().agentMode).toBe("ask");
 });

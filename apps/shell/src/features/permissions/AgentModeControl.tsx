@@ -7,11 +7,13 @@ import { useConfirm } from "../../ui/dialog";
 /** Setup and Settings share the real mode choice and its explicit Full auto opt-in. */
 export function AgentModeControl({
   active,
+  compact = false,
   disabled = false,
   policy,
   onSave,
 }: {
   active: boolean;
+  compact?: boolean;
   disabled?: boolean;
   policy: AgentPolicySettings;
   onSave(patch: { agentMode: AgentMode; agentPolicyRevision: number }): Promise<boolean>;
@@ -47,10 +49,10 @@ export function AgentModeControl({
     if (
       mode === "full" &&
       !(await confirm({
-        title: "Use Full auto?",
+        title: compact ? "Skip confirmation?" : "Use Full auto?",
         description:
           "Aux can make payments and use credentials without asking or Touch ID. Account security and CAPTCHA still require you to take over.",
-        confirmLabel: "Use Full auto",
+        confirmLabel: compact ? "Skip confirmation" : "Use Full auto",
         cancelLabel: "Keep current mode",
       }))
     )
@@ -73,16 +75,31 @@ export function AgentModeControl({
   }
   return (
     <>
-      <Segmented<AgentMode>
-        label="Agent mode"
-        value={policy.agentMode}
-        onChange={(mode) => void change(mode)}
-        items={[
-          { value: "auto", label: "Auto", disabled: disabled || busy },
-          { value: "ask", label: "Ask first", disabled: disabled || busy },
-          { value: "full", label: "Full auto", disabled: disabled || busy },
-        ]}
-      />
+      {compact ? (
+        <select
+          data-mode={policy.agentMode}
+          aria-label="Confirmation mode"
+          title="Remembered for future chats"
+          disabled={disabled || busy}
+          value={policy.agentMode}
+          onChange={(event) => void change(event.target.value as AgentMode)}
+        >
+          <option value="ask">Ask first</option>
+          <option value="full">Skip confirmation</option>
+          {policy.agentMode === "auto" && <option value="auto">Auto</option>}
+        </select>
+      ) : (
+        <Segmented<AgentMode>
+          label="Agent mode"
+          value={policy.agentMode}
+          onChange={(mode) => void change(mode)}
+          items={[
+            { value: "auto", label: "Auto", disabled: disabled || busy },
+            { value: "ask", label: "Ask first", disabled: disabled || busy },
+            { value: "full", label: "Full auto", disabled: disabled || busy },
+          ]}
+        />
+      )}
       {error && <p role="alert">{error}</p>}
       {confirmation}
     </>

@@ -221,11 +221,11 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
-  it("defaults to Auto and Guard and persists each permission with its own revision", async () => {
+  it("defaults to Ask first and Guard and persists each permission with its own revision", async () => {
     const { dir, repo, settings } = harness();
     try {
       expect(settings.agentPolicy()).toEqual({
-        agentMode: "auto",
+        agentMode: "ask",
         agentPolicyRevision: 0,
         agentPolicies: [],
       });

@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
 import { AgentPolicySettingsSchema, policyFor } from "@aux/contracts";
 
-it("defaults to Auto and uses the same ordinary, consequential, device-auth and handoff policy in each mode", () => {
-  expect(AgentPolicySettingsSchema.parse({}).agentMode).toBe("auto");
+it("defaults to Ask first and uses the same ordinary, consequential, device-auth and handoff policy in each mode", () => {
+  expect(AgentPolicySettingsSchema.parse({}).agentMode).toBe("ask");
   for (const mode of ["auto", "ask", "full"] as const) {
     expect(policyFor({ mode, category: "click" }).disposition).toBe("allow");
     expect(policyFor({ mode, category: "send" }).disposition).toBe(mode === "ask" ? "ask" : "allow");
