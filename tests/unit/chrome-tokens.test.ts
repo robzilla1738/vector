@@ -177,9 +177,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
   });
 
   it("keeps pinned tiles in two generous columns without growing into square cards", () => {
-    expect(styles).toMatch(
-      /\.sb-pins\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/,
-    );
+    expect(styles).toMatch(/\.sb-pins\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
     expect(styles).toMatch(/\.sb-pins \.tile-face\s*\{[^}]*height:\s*44px;[^}]*aspect-ratio:\s*auto/);
     expect(styles).not.toMatch(/\.sb-pins\s*\{[^}]*repeat\(5/);
   });
@@ -259,13 +257,28 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).not.toMatch(/inset\s+0\s+-2px\s+0\s+var\(--ok\)/);
   });
 
-  it("keeps the horizontal toolbar out of the window drag region", () => {
-    expect(styles).toMatch(
+  it("keeps blank chrome draggable while controls keep their pointer targets", () => {
+    expectCss(styles).toContain(`.app.native-host :is(.sidebar, .toolbar, .rail-head) {
+      -webkit-app-region: drag;
+    }`);
+    expect(styles).not.toMatch(/\.app\.native-host \.sidebar\s*\{[^}]*-webkit-app-region:\s*no-drag/);
+    expect(styles).not.toMatch(
       /\.app\.native-host\.tabs-horizontal \.horizontal-chrome > \.toolbar\s*\{[^}]*-webkit-app-region:\s*no-drag/,
     );
-    expect(styles).not.toMatch(
-      /\.app\.native-host\.tabs-horizontal \.horizontal-chrome > \.toolbar :is\(\.tb-left, \.cmdbar, \.tb-right\)\s*\{[^}]*-webkit-app-region:\s*no-drag/,
-    );
+    const chromeControls =
+      styles.match(
+        /\.app\.native-host\s+:is\(\.sidebar, \.toolbar, \.rail-head\)\s+:is\([\s\S]*?\)\s*\{[^}]*-webkit-app-region:\s*no-drag/,
+      )?.[0] ?? "";
+    for (const target of [
+      "button",
+      "input",
+      "select",
+      "summary",
+      '[draggable="true"]',
+      '[role="separator"]',
+    ]) {
+      expect(chromeControls).toContain(target);
+    }
     expect(styles).toMatch(/\.horizontal-tabs-row\s*\{[^}]*-webkit-app-region:\s*drag/);
   });
 

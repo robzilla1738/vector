@@ -180,14 +180,6 @@
     -webkit-app-region: no-drag;
   }
 
-  /* Horizontal mode keeps this toolbar on screen. Its own drag rect was still
-   under the Return chip after the clusters opted out, so AppKit dragged the
-   window instead of delivering the click. The tab strip remains the drag
-   surface. The bar already paints --chrome-surface, so it needs no tint. */
-  .app.native-host.tabs-horizontal .horizontal-chrome > .toolbar {
-    -webkit-app-region: no-drag;
-  }
-
   /* Only the collapsed sidebar previews above a stationary page. */
   .app.tabs-vertical:not(.layout-expanded) .sidebar,
   .app.native-host.tabs-vertical:not(.layout-expanded) .sidebar.fully-hidden,
@@ -217,7 +209,7 @@
       opacity var(--t-floating-out) var(--ease-emphasized),
       transform var(--t-floating-out) var(--ease-emphasized),
       visibility var(--t-none) var(--t-floating-out);
-    -webkit-app-region: no-drag;
+    -webkit-app-region: drag;
   }
   .app.tabs-vertical:not(.layout-expanded) .sidebar.peek,
   .app.native-host.tabs-vertical:not(.layout-expanded) .sidebar.fully-hidden.peek,
@@ -332,18 +324,28 @@
     background: var(--native-material-thin-plane);
   }
 
-  /* Native drag regions must not inherit the toolbar's animated transform. */
-  .native-toolbar-drag {
-    position: absolute;
-    top: 0;
-    height: var(--toolbar-h);
-    z-index: var(--z-panel);
-    -webkit-app-region: no-drag;
-    background: var(--native-material-thin-plane);
+  /* Let Chromium's native hit testing move blank chrome. Controls subtract
+     their own bounds; never opt an entire interactive container out. */
+  .app.native-host :is(.sidebar, .toolbar, .rail-head) {
+    -webkit-app-region: drag;
   }
-
-  /* Blank sidebar chrome uses the same captured drag as the revealed toolbar. */
-  .app.native-host .sidebar {
+  .app.native-host
+    :is(.sidebar, .toolbar, .rail-head)
+    :is(
+      button,
+      a,
+      input,
+      textarea,
+      select,
+      summary,
+      [role="button"],
+      [role="tab"],
+      [role="slider"],
+      [role="separator"],
+      [contenteditable="true"],
+      [draggable="true"],
+      [tabindex]:not([tabindex="-1"])
+    ) {
     -webkit-app-region: no-drag;
   }
 }
