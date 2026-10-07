@@ -85,22 +85,22 @@ it("keeps original Search focus/action and selected Ask inert while retaining th
   }
 });
 
-it("uses the compact minimum hit height at every supported type scale without changing type or padding", () => {
+it("uses the compact minimum hit height at every supported type scale with readable type and wider horizontal padding", () => {
   const source = (path: string) => readFileSync(resolve(process.cwd(), "apps/shell/src", path), "utf8");
   const css = source("components/HomeAsk.css"),
     tokens = source("tokens.css"),
     reset = source("styles/reset.css");
   const rule = css.match(/\.home-composer-mode button\s*\{([^}]+)\}/)![1]!;
-  expect(rule).toMatch(/font-size:\s*var\(--fs-xs\)/);
-  expect(rule).toMatch(/padding:\s*var\(--space-1\)\s+var\(--space-2\)/);
-  expect(tokens).toContain("--fs-xs: calc(var(--ui-font-size) - 2px)");
+  expect(rule).toMatch(/font-size:\s*var\(--fs-sm\)/);
+  expect(rule).toMatch(/padding:\s*var\(--space-1\)\s+var\(--space-3\)/);
+  expect(tokens).toContain("--fs-sm: calc(var(--ui-font-size) - 1px)");
   expect(reset).toContain("line-height: var(--lh-normal)");
   const hit = Number(tokens.match(/--hit:\s*(\d+)px/)![1]);
   const padding = Number(tokens.match(/--space-1:\s*(\d+)px/)![1]);
   const line = Number(tokens.match(/--lh-normal:\s*([\d.]+)/)![1]);
   const minimum = /min-height:\s*var\(--hit\)/.test(rule) ? hit : 0;
   // Source box model only: jsdom does not supply native paint or hit-test geometry.
-  expect(UI_FONT_SIZES.map((size) => Math.max(minimum, (size - 2) * line + padding * 2))).toEqual([
+  expect(UI_FONT_SIZES.map((size) => Math.max(minimum, (size - 1) * line + padding * 2))).toEqual([
     32, 32, 32,
   ]);
 });

@@ -43,20 +43,49 @@
   .home-ask .conversation-home .new-chat-options {
     gap: var(--space-2);
   }
-  .home-ask .conversation-home .conversation-input > textarea {
-    min-height: 44px;
-    padding: var(--space-2);
+  .home-ask .conversation-message-field {
+    min-height: 56px;
+    padding: 8px 10px 8px 20px;
+    gap: 8px;
+    border-radius: 28px;
   }
+  .home-ask .conversation-message-field > textarea {
+    min-height: 36px;
+    padding-block: 8px;
+  }
+  .home-ask .conversation-message-field > .composer-send-actions:empty {
+    display: none;
+  }
+  .home-ask .conversation-home .composer-footer {
+    padding: 0 8px;
+  }
+  .home-ask .new-chat-options > .home-tools-trigger {
+    flex: none;
+  }
+  .home-ask .new-chat-options > .dictation-trigger {
+    font-size: 0;
+    padding: 8px;
+  }
+  .home-ask .new-chat-options > .dictation-trigger svg {
+    width: 18px;
+    height: 18px;
+  }
+
   .home-composer-mode {
+    flex: none;
+    align-self: flex-end;
+    background: var(--bg-0);
+    padding: 3px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     gap: var(--space-1);
   }
   .home-composer-mode button {
     min-height: var(--hit);
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--r-pill);
-    font-size: var(--fs-xs);
+    padding: var(--space-1) var(--space-3);
+    border-radius: 9px;
+    font-size: var(--fs-sm);
     color: var(--ink-2);
   }
   .home-composer-mode button[aria-pressed="true"] {
