@@ -9,6 +9,7 @@ import { proposeTabTidy } from "../../agent/tidy.js";
 import { suggestTabName } from "../../agent/tab-name.js";
 import { UtilityIntentSchema } from "@aux/contracts/utility";
 import type { ModelClient } from "../../agent/model-client.js";
+import type { UtilityRoute } from "../../services/foundation-models.js";
 
 async function h_agent_tabs_list(ctx: MethodCtx): Promise<unknown> {
   if (!ctx.externalRunId)
@@ -33,7 +34,7 @@ async function h_agent_js_reset(ctx: MethodCtx): Promise<unknown> {
 async function desktopUtility<T>(
   ctx: MethodCtx,
   input: { text: string; action: string; pageIds?: string[] },
-  operation: (model: ModelClient, modelId: string) => Promise<T>,
+  operation: (model: ModelClient, modelId: string, route: UtilityRoute) => Promise<T>,
 ): Promise<T> {
   const { client, s } = ctx;
   if (client.external || !client.nativeTurnContext || !s.native?.turnSourceContext)
@@ -55,10 +56,7 @@ async function desktopUtility<T>(
         throw new AuxError("cancelled", "A selected utility source changed.");
     }
   };
-  const route =
-    input.action === "agent.tidy.propose"
-      ? await s.settings.utilityModel()
-      : await s.settings.utilityModel(token, checkOwner);
+  const route = await s.settings.utilityModel(token, checkOwner);
   if (!route)
     throw new AuxError("backend_unavailable", "Connect a model in Settings before requesting a suggestion.");
   await checkOwner();
@@ -97,7 +95,7 @@ async function desktopUtility<T>(
                   })
                   .then(() => {}),
         });
-        const result = await operation(model, route.modelId);
+        const result = await operation(model, route.modelId, route);
         await checkOwner();
         return result;
       },
@@ -146,13 +144,14 @@ async function h_agent_tidy_propose(ctx: MethodCtx): Promise<unknown> {
   const proposal = await desktopUtility(
     ctx,
     { text: "Suggest folders for selected tabs", action: "agent.tidy.propose", pageIds: params.pageIds },
-    (model, modelId) =>
+    (model, modelId, route) =>
       proposeTabTidy(
         params,
         s.pages.list(),
         model,
         { modelId, reasoning: "low" },
         pageDerivativeCache(s, params.pageIds),
+        route.kind === "on-device" ? 1_024 : 1_200,
       ),
   );
   s.events.emit("agent.tidy.proposed", {

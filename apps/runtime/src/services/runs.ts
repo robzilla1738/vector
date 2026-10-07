@@ -6,6 +6,7 @@ import { browserContextPage } from "./browser-context-page.js";
 import { withRunAuthorityMutation, withRunDispatchMutation } from "./overnight-authority.js";
 import { AgentImageTools, IMAGE_RESERVATION_USD } from "../agent/image-tools.js";
 import { accountableUtilityModel } from "./utility-model.js";
+import type { UtilityRoute } from "./foundation-models.js";
 import { WaitingPhraseSchema, GoalSchema, SubagentSchema, SubagentGroupSchema } from "@aux/contracts";
 import { z } from "zod";
 import { SpendLedger } from "../store/spend-ledger.js";
@@ -1477,7 +1478,7 @@ export class RunService {
     runId: string;
     signal: AbortSignal;
     checkOwner: () => void | Promise<void>;
-    authorize: (route: { modelId: string; destination: string }) => Promise<void>;
+    authorize: (route: UtilityRoute) => Promise<void>;
   }): Promise<void> {
     return this.ownOperation(() => this.prepareWaitingPhraseOwned(input));
   }
@@ -1493,14 +1494,34 @@ export class RunService {
       await input.checkOwner();
       const run = this.deps.repo.getRun(input.runId);
       if (!run || run.status !== "running") return;
-      const route = await this.deps.settings.utilityModel();
+      const token = run.config?.nativeTurnContext;
+      const checkOwner = async () => {
+        input.signal.throwIfAborted();
+        await input.checkOwner();
+        input.signal.throwIfAborted();
+        const current = this.deps.repo.getRun(input.runId);
+        if (!current || current.status !== "running" || current.config?.nativeTurnContext !== token)
+          throw new AuxError("cancelled", "The original waiting request changed.");
+      };
+      const route = token
+        ? await this.deps.settings.utilityModel(token, checkOwner)
+        : await this.deps.settings.utilityModel();
       if (!route) return;
+      await checkOwner();
       const model = this.utilityClient({
         ...input,
+        checkOwner,
         route,
         bestEffort: true,
         authorize: async () => {
           // Optional wording never requests a separate approval; Ask/block keeps the ordinary label.
+          await checkOwner();
+          if (route.kind === "on-device") {
+            // Local inference has no egress destination. Its original native
+            // task and common family ledger still own admission/cancellation.
+            await input.authorize(route);
+            return;
+          }
           const policy = this.deps.settings.agentPolicy();
           const { policyFor } = await import("@aux/contracts/agent-policy");
           if (

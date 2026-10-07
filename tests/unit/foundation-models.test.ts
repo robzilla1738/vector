@@ -6,6 +6,8 @@ import {
   type NativeFoundationStart,
 } from "@aux/contracts/native-foundation-models";
 import { NullNativeBridge } from "../../apps/runtime/src/native.js";
+import { proposeTabTidy } from "../../apps/runtime/src/agent/tidy.js";
+import type { PageTarget } from "@aux/contracts";
 import { FoundationModelsClient } from "../../apps/runtime/src/services/foundation-models.js";
 
 it("joins the original task after close even while its execution ACK is still pending", async () => {
@@ -186,4 +188,63 @@ it("retains and retries only the original cleanup after transient cancellation A
       }),
   ).rejects.toBeInstanceOf(AuxError);
   expect(attempts).toBe(3);
+});
+
+it("makes a bounded on-device Tidy proposal without disclosing selected tab paths", async () => {
+  const token = "11111111-1111-4111-8111-111111111111";
+  const taskId = "original-tidy-task";
+  let originalRequest: string | undefined;
+  let joined = false;
+  class Native extends NullNativeBridge {
+    async foundationModelsStart(input: NativeFoundationStart) {
+      if ("prepare" in input) {
+        originalRequest = input.requestId;
+        return { requestId: input.requestId, taskId, state: "prepared" as const, joined: true };
+      }
+      expect(input).toMatchObject({ token, requestId: originalRequest, taskId, maxResponseTokens: 1_024 });
+      expect(input.prompt).toContain("https://example.com");
+      expect(input.prompt).not.toContain("/private/");
+      expect(input.prompt).not.toContain("secret-query");
+      return { requestId: input.requestId, taskId, state: "started" as const, joined: false };
+    }
+    async foundationModelsRead(input: { token: string; requestId: string; taskId: string }) {
+      expect(input).toMatchObject({ token, requestId: originalRequest, taskId });
+      return {
+        requestId: input.requestId,
+        taskId,
+        state: "completed" as const,
+        joined: true,
+        text: JSON.stringify({ groups: [{ name: "Reading", pageIds: ["p1", "p2"] }] }),
+      };
+    }
+    async foundationModelsCancel(input: NativeFoundationCancel) {
+      expect(input).toMatchObject({ token, requestId: originalRequest, taskId });
+      joined = true;
+      return { requestId: input.requestId, taskId, state: "cancelled" as const, joined: true };
+    }
+  }
+  const client = new FoundationModelsClient(new Native());
+  const pages = [1, 2, 3].map(
+    (index) =>
+      ({
+        pageId: `p${index}`,
+        url: `https://example.com/private/${index}?secret-query`,
+        title: `Research ${index}`,
+        controller: "human",
+        viewStatus: "visible",
+        ownedByRuntime: false,
+      }) as PageTarget,
+  );
+  const proposal = await proposeTabTidy(
+    { pageIds: pages.map((page) => page.pageId) },
+    pages,
+    client.route(token, async () => {}).model,
+    { modelId: FOUNDATION_MODEL_ID, reasoning: "low" },
+    undefined,
+    1_024,
+  );
+  expect(proposal.groups).toEqual([{ name: "Reading", pageIds: ["p1", "p2"] }]);
+  expect(proposal.pages).toHaveLength(3);
+  expect(joined).toBe(true);
+  await client.close();
 });
