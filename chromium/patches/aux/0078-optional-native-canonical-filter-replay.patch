@@ -1,0 +1,20 @@
+diff --git a/chrome/browser/ui/aux/semantic/semantic-adapter.js b/chrome/browser/ui/aux/semantic/semantic-adapter.js
+index c95cb73..0e55089 100644
+--- a/chrome/browser/ui/aux/semantic/semantic-adapter.js
++++ b/chrome/browser/ui/aux/semantic/semantic-adapter.js
+@@ -249,9 +249,13 @@ function checkCanonicalConnection(input) {
+   // Default root-document exclusion can be decided from actual native request
+   // kind/source without inventing a canonical answer for an unknown resolver.
+   if (input.type === 'main_frame' || original.hostname === (source?.hostname ?? original.hostname)) return addressed;
++  if (receipt.queryHost === null && receipt.canonicalName === null) {
++    // Maintained Firefox DNS failure/no canonical result leaves the original
++    // decision intact. Absence is unavailable metadata, never no-CNAME proof.
++    return addressed;
++  }
+   if (receipt.queryHost === null || receipt.canonicalName === null) {
+-    // Absence does not prove the queried hostname was the actual DNS owner.
+-    throw new Error('Original selected DNS canonical-name proof unavailable');
++    throw new Error('Incomplete original selected DNS canonical-name proof');
+   }
+   const queryHost = boundedString(receipt.queryHost, 253, 'Original DNS query');
+   const canonicalName = boundedString(receipt.canonicalName, 253, 'Original DNS owner');
