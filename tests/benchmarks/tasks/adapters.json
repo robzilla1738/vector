@@ -1,11 +1,8 @@
 {
   "$comment": "Browser tool surfaces the task harness can drive. `aux` uses the runtime's own agent loop (runs.start). Every `mcp` adapter is driven by the SAME generic tool-calling loop and the SAME model (tests/benchmarks/tasks/run.mjs), so differences between rows come from the browser and its tool surface, not from the agent. `command` is spawned as an MCP stdio server; `env` is merged over process.env; `requires` lists binaries that must be on PATH or the adapter reports not-installed.",
   "adapters": {
-    "aux": { "kind": "runtime" },
-    "aux-loop": {
-      "kind": "runtime",
-      "env": { "AUX_RUN_ENGINE": "agent-loop" },
-      "note": "Aux's S5 durable tool-call loop (agent-loop engine) — the A/B-gate counterpart to aux (planner). Same model, same corpus; the gate compares pass@1, model calls and spend before planner.ts can be deleted."
+    "aux": {
+      "kind": "runtime"
     },
     "aux-mcp": {
       "kind": "mcp",
@@ -21,7 +18,7 @@
       "scoped": true,
       "codeMode": true,
       "onlyTools": ["aux_js", "aux_js_reset", "aux_pages_list"],
-      "note": "QuickJS code mode through the same scoped runtime and model loop; compare against aux planner on fixture tasks without changing the model."
+      "note": "QuickJS code mode through the same scoped runtime and model loop; compare fixture tasks without changing the model."
     },
     "playwright-mcp": {
       "kind": "mcp",

@@ -14,7 +14,17 @@ pnpm bench:tasks --suite assistantbench --adapter aux,playwright-mcp --limit 10
 pnpm bench:tasks --list-adapters
 ```
 
-Needs `AI_GATEWAY_API_KEY` in `.env`. Reports: `tests/benchmarks/reports/tasks-*.json`.
+Standalone runtime/MCP runs need `AI_GATEWAY_API_KEY` in `.env`. Aux uses its current default model route unless `--model` is explicit; there is no obsolete benchmark model pin. Reports: `tests/benchmarks/reports/tasks-*.json`.
+
+For the roadmap's manual 20-task smoke against the staged native app, first open a disposable Profile with `node scripts/dev.mjs --temp-profile`, configure the supported provider in Aux, then run:
+
+```bash
+pnpm bench:tasks --suite local --adapter aux --limit 20 --trials 1 --timeout 300000 --native-runtime-file /absolute/temporary/Profile/Aux\ Runtime\ Data/runtime.json
+```
+
+The descriptor must be owner-only and under an OS temporary directory. Its token is never printed. The runner verifies the original runtime peer, prints each fixture URL and exact goal, and waits for a newly submitted native chat run. Navigate and submit through Aux, and review Ask cards there; no action is automatically approved or started by the runner. `needs_input` keeps waiting. Select the configured default route in the composer; a model choice in the native UI remains authoritative. The runner records actual model events and cache usage, completed status, and the independent effect oracle. It does not open the native Profile database or shut down the app. On timeout it cancels only the matched task and requires acknowledgement before proceeding; lost peer/cancellation stops the report. This is real native fixture acceptance, not real-site or competitor-parity evidence. Native durable receipts remain inspectable in Aux; this manual report does not claim complete ledger attribution.
+
+The general benchmark default remains three trials. Use `--trials 1` for this 20-task pass@1 smoke.
 
 ## Suites
 

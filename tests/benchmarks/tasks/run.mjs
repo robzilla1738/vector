@@ -29,10 +29,20 @@
  * Needs AI_GATEWAY_API_KEY (root .env is loaded). Reports land in
  * tests/benchmarks/reports/tasks-<suite>-<timestamp>.json.
  */
+import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createGateway } from "@ai-sdk/gateway";
@@ -70,15 +80,19 @@ const only = flag("only", null);
 const timeoutMs = Number(
   flag("timeout", suiteName === "local" || suiteName === "heldout" ? "180000" : "900000"),
 );
-const modelId = flag("model", process.env.AUX_PLANNER_MODEL || "meta/muse-spark-1.3-contributor");
-const authorizedFixtureModel = "meta/muse-spark-1.3-contributor";
+const explicitModel = flag("model", null);
+const nativeRuntimeFile = flag("native-runtime-file", null);
+let modelId = explicitModel;
+let nativeRuntime;
+if (nativeRuntimeFile && (adapterNames.length !== 1 || adapterNames[0] !== "aux"))
+  throw new Error("Native manual smoke supports only --adapter aux.");
 // runtime adapter: product default budget unless --max-steps is given; MCP loops keep a 40-step cap
 const maxStepsFlag = flag("max-steps", null);
 const maxToolSteps = Number(maxStepsFlag ?? "40");
 const trials = Math.max(1, Number(flag("trials", "3")) || 1);
 
 const gatewayKeyConflict = loadDotEnv(join(repoRoot, ".env"));
-if (gatewayKeyConflict && !has("validate") && !has("list-adapters")) {
+if (gatewayKeyConflict && !nativeRuntimeFile && !has("validate") && !has("list-adapters")) {
   console.error(
     "AI_GATEWAY_API_KEY from the shell differs from the ignored .env value; unset the inherited key or reconcile the two before a paid benchmark.",
   );
@@ -157,7 +171,10 @@ if (has("validate")) {
     scoreAnswer({ owner: "Jordan Lee", extra: 1 }, { type: "object", value: { owner: "Jordan Lee" } }) === 1,
   );
   ok("scoring: failed run with correct answer fails", scoreRun("failed", 1, null) === 0);
-  ok("scoring: missing or unfinished run status fails", scoreRun(undefined, 1, null) === 0 && scoreRun("unfinished", 1, null) === 0);
+  ok(
+    "scoring: missing or unfinished run status fails",
+    scoreRun(undefined, 1, null) === 0 && scoreRun("unfinished", 1, null) === 0,
+  );
   ok("scoring: completed run with correct answer passes", scoreRun("completed", 1, { pass: true }) === 1);
   ok(
     "Gateway authentication is not a task score",
@@ -230,14 +247,32 @@ if (has("validate")) {
   process.exit(failed ? 1 : 0);
 }
 
-if (!process.env.AI_GATEWAY_API_KEY) {
+if (!nativeRuntimeFile && !process.env.AI_GATEWAY_API_KEY) {
   console.error("AI_GATEWAY_API_KEY is not set (put it in .env); task runs need a planner model.");
   process.exit(2);
 }
-if (modelId !== authorizedFixtureModel) {
-  console.error(`This fixture benchmark key is authorized only for ${authorizedFixtureModel}.`);
-  process.exit(2);
+if (nativeRuntimeFile) {
+  nativeRuntime = await attachNativeRuntime(nativeRuntimeFile);
+  const settings = await nativeRuntime.rpc("settings.get");
+  modelId ??= settings.plannerModel ?? settings.agentModelRoutes?.standard?.modelId;
+  if (explicitModel && explicitModel !== settings.plannerModel)
+    throw new Error(
+      "Select the requested model in the native Aux composer/Settings before manual smoke; the runner does not override the UI route.",
+    );
+} else if (!modelId) {
+  const { openDb, Repo, SettingsService } = await import(pathToFileURL(runtimeEntry).href);
+  const db = openDb(":memory:");
+  try {
+    modelId = new SettingsService(
+      new Repo(db),
+      join(tmpdir(), `aux-default-route-${randomUUID()}.json`),
+      process.env,
+    ).plannerModel();
+  } finally {
+    db.close();
+  }
 }
+if (!modelId) throw new Error("No configured Aux model route; choose a supported model before smoke.");
 
 // ---- suite ------------------------------------------------------------------
 let suite;
@@ -268,11 +303,14 @@ const spendLedger = new SpendLedger();
 const ledgerBefore = spendLedger.summary();
 // A run-level forecast is a planning check; each actual Gateway request is
 // reserved separately by the runtime client or MCP model middleware below.
-const forecastUsd = Number(flag("projected-usd", String(tasks.length * trials * adapterNames.length * 0.05)));
+const forecastUsd = nativeRuntimeFile
+  ? 0
+  : Number(flag("projected-usd", String(tasks.length * trials * adapterNames.length * 0.05)));
 if (
-  !Number.isFinite(forecastUsd) ||
-  (tasks.length && forecastUsd <= 0) ||
-  forecastUsd > spendLedger.summary().remainingUsd
+  !nativeRuntimeFile &&
+  (!Number.isFinite(forecastUsd) ||
+    (tasks.length && forecastUsd <= 0) ||
+    forecastUsd > spendLedger.summary().remainingUsd)
 ) {
   throw new Error(
     `Task benchmark exceeds the remaining AI Gateway program allocation (${spendLedger.summary().remainingUsd.toFixed(4)} USD)`,
@@ -283,6 +321,12 @@ if (
 const report = {
   suite: suite.suite,
   model: modelId,
+  manualNative: !!nativeRuntimeFile,
+  modelSelection: explicitModel
+    ? "explicit"
+    : nativeRuntimeFile
+      ? "native configured route"
+      : "Aux default route",
   startedAt: new Date().toISOString(),
   gitSha: sha(repoRoot),
   timeoutMs,
@@ -299,7 +343,9 @@ const report = {
     forecastUsd,
     before: ledgerBefore,
     after: null,
-    attribution: "shared-ledger window; concurrent calls from other processes may be included",
+    attribution: nativeRuntimeFile
+      ? "Native runtime budgets govern spending; this runner makes no model calls. Shared benchmark ledger is not native-run spend."
+      : "shared-ledger window; concurrent calls from other processes may be included",
   },
   valid: true,
   complete: false,
@@ -333,7 +379,11 @@ try {
     console.log(
       `\n== ${name} (${cfg.kind}) — ${tasks.length} task(s) × ${trials} trial(s), model ${modelId}`,
     );
-    const adapter = cfg.kind === "runtime" ? await runtimeAdapter(name, cfg) : await mcpAdapter(name, cfg);
+    const adapter = nativeRuntimeFile
+      ? nativeManualAdapter(nativeRuntime)
+      : cfg.kind === "runtime"
+        ? await runtimeAdapter(name, cfg)
+        : await mcpAdapter(name, cfg);
     const rows = [];
     const adapterLedgerBefore = spendLedger.summary();
     report.adapters[name] = {
@@ -349,8 +399,9 @@ try {
       runTasks: for (let trial = 1; trial <= trials; trial++)
         for (const task of tasks) {
           if (
+            !nativeRuntimeFile &&
             spendLedger.summary().remainingUsd <
-            projectedModelCostUsd(modelId, estimatedPromptTokens(task.goal, task.url), 8192)
+              projectedModelCostUsd(modelId, estimatedPromptTokens(task.goal, task.url), 8192)
           )
             throw new Error("Task benchmark stopped at the AI Gateway program spend cap");
           // a write task must not leak state into the next task or trial
@@ -358,8 +409,13 @@ try {
           const t0 = performance.now();
           let out;
           try {
-            out = await withTimeout(adapter.run(task), timeoutMs);
+            out = nativeRuntimeFile
+              ? await adapter.run(task)
+              : await withTimeout(adapter.run(task), timeoutMs);
           } catch (e) {
+            // A lost native peer or unacknowledged cancellation cannot safely reset
+            // fixture state while the original user-owned task may still run.
+            if (nativeRuntimeFile) throw e;
             out = { answer: null, error: String(e?.message ?? e) };
           }
           const wallMs = Math.round(performance.now() - t0);
@@ -401,6 +457,10 @@ try {
           };
           rows.push(row);
           saveReport();
+          if (nativeRuntimeFile)
+            console.log(
+              `AUX_SMOKE ${JSON.stringify({ taskId: task.id, state: "scored", trial, score, status, runId: out.runId, reportPath: outPath })}`,
+            );
           console.log(
             `${score ? "PASS" : "FAIL"} ${task.id.padEnd(22)} t${trial} ${String(wallMs).padStart(7)} ms  calls=${out.modelCalls ?? "?"}  tokens=${out.tokens ?? "?"}  answer=${JSON.stringify(out.answer)?.slice(0, 80)}${out.message ? `  message=${String(out.message).slice(0, 160)}` : ""}${oracle && !oracle.pass ? `  oracle=${oracle.reason}` : ""}${out.error ? `  error=${out.error.slice(0, 120)}` : ""}`,
           );
@@ -531,20 +591,174 @@ async function adapterAvailability(name, cfg) {
   return { ok: true };
 }
 
-/** Starts a runtime and drives runs.start. cfg.env merges over process.env (e.g. AUX_RUN_ENGINE for the A/B gate). */
+/** Starts a disposable runtime and drives Aux's own loop through runs.start. */
 async function startRuntimeFor(cfg = {}) {
   const { startRuntime } = await import(pathToFileURL(runtimeEntry).href);
   const dataDir = mkdtempSync(join(tmpdir(), "aux-tasks-"));
+  const runtimeEnv = { ...process.env, ...cfg.env };
+  delete runtimeEnv.AUX_BENCH_MODEL_PIN;
+  delete runtimeEnv.AUX_RUN_ENGINE;
   const rt = await startRuntime({
-    ...process.env,
-    ...cfg.env,
+    ...runtimeEnv,
     AUX_DATA_DIR: dataDir,
     AUX_ELECTRON_CDP: "",
     AUX_API_TOKEN: "tasks",
-    AUX_PLANNER_MODEL: modelId,
-    AUX_BENCH_MODEL_PIN: modelId,
+    ...(explicitModel ? { AUX_PLANNER_MODEL: explicitModel } : {}),
   });
   return { rt, dataDir };
+}
+
+async function attachNativeRuntime(file) {
+  if (!isAbsolute(file))
+    throw new Error("--native-runtime-file requires an absolute disposable runtime descriptor path.");
+  const path = realpathSync(file);
+  const temporaryRoots = [...new Set([realpathSync(tmpdir()), realpathSync("/tmp")])];
+  if (!temporaryRoots.some((root) => path.startsWith(`${root}${sep}`)))
+    throw new Error("Native smoke attaches only to disposable Profiles under an OS temporary directory.");
+  const stat = statSync(path);
+  if (!stat.isFile() || (process.getuid && stat.uid !== process.getuid()) || stat.mode & 0o077)
+    throw new Error("Native runtime descriptor must be an owner-only regular file.");
+  let descriptor;
+  try {
+    descriptor = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    throw new Error("Invalid native runtime descriptor JSON.");
+  }
+  if (
+    !Number.isSafeInteger(descriptor.port) ||
+    descriptor.port < 1 ||
+    descriptor.port > 65535 ||
+    typeof descriptor.token !== "string" ||
+    !descriptor.token ||
+    typeof descriptor.instanceId !== "string"
+  )
+    throw new Error("Invalid native runtime descriptor.");
+  const endpoint = `http://127.0.0.1:${descriptor.port}`;
+  const headers = { Authorization: `Bearer ${descriptor.token}`, "Content-Type": "application/json" };
+  async function verifyPeer() {
+    const nonce = randomUUID().replaceAll("-", "");
+    const response = await fetch(`${endpoint}/internal/peer?nonce=${nonce}`, {
+      headers,
+      signal: AbortSignal.timeout(10000),
+    });
+    const peer = await response.json();
+    if (
+      !response.ok ||
+      peer.nonce !== nonce ||
+      peer.instanceId !== descriptor.instanceId ||
+      peer.pid !== descriptor.pid ||
+      !peer.ready
+    )
+      throw new Error("Original disposable native runtime is unavailable or changed.");
+  }
+  await verifyPeer();
+  return {
+    async rpc(method, params = {}) {
+      if (
+        !["settings.get", "runs.list", "runs.get", "runs.events", "runs.cancel", "pages.list"].includes(
+          method,
+        )
+      )
+        throw new Error("Manual smoke only inspects native runs and cancels its original timed-out task.");
+      await verifyPeer();
+      const response = await fetch(`${endpoint}/rpc`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ method, params }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const body = await response.json();
+      if (!response.ok || body.error)
+        throw new Error(`Native smoke RPC ${method}: ${body.error?.code ?? response.status}`);
+      return body.result;
+    },
+  };
+}
+function nativeManualAdapter(runtime) {
+  const rpc = runtime.rpc;
+  return {
+    async run(task) {
+      const submittedAfter = Date.now();
+      const previous = await rpc("runs.list", { limit: 500 });
+      const previousIds = new Set(
+        (Array.isArray(previous) ? previous : (previous.runs ?? [])).map((run) => run.runId),
+      );
+      console.log(
+        `\nMANUAL ${task.id}\nNavigate the original Aux window to ${task.url}\nSend this exact goal in Aux chat using the configured route, then review Ask cards there:\n${task.goal}\nWaiting for the new native run; the runner never starts or approves it.`,
+      );
+      console.log(
+        `AUX_SMOKE ${JSON.stringify({ taskId: task.id, state: "awaiting_submission", url: task.url, goal: task.goal, configuredModel: modelId })}`,
+      );
+      const deadline = Date.now() + timeoutMs - 2000;
+      let runId, lastStatus;
+      while (Date.now() < deadline) {
+        if (!runId) {
+          const response = await rpc("runs.list", { limit: 500 });
+          const runs = Array.isArray(response) ? response : (response.runs ?? []);
+          const matching = runs.filter(
+            (run) => !previousIds.has(run.runId) && run.goal === task.goal && run.createdAt >= submittedAfter,
+          );
+          if (matching.length > 1)
+            throw new Error(
+              "More than one new native run matches this task; inspect the original runs before retrying.",
+            );
+          runId = matching[0]?.runId;
+        }
+        if (runId) {
+          const response = await rpc("runs.get", { runId });
+          const run = response.run ?? response;
+          if (run.status !== lastStatus) {
+            console.log(
+              `Native run ${runId}: ${run.status}${run.status === "needs_input" ? " — review in Aux; no automatic approval" : ""}`,
+            );
+            console.log(`AUX_SMOKE ${JSON.stringify({ taskId: task.id, runId, state: run.status })}`);
+            lastStatus = run.status;
+          }
+          if (["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(run.status))
+            return {
+              answer: run.result == null ? null : extractAnswer(run.result),
+              status: run.status,
+              message: run.statusMessage,
+              error: run.error,
+              runId,
+              engine: run.config?.implementation,
+              requestedRuntimeModel: run.config?.modelId ?? modelId,
+              modelCalls: run.config?.modelCalls ?? null,
+              ...(await metricsForRun(rpc, runId)),
+              durableIntents: null,
+              receiptAttribution:
+                "Native durable receipts remain in Aux; independent fixture effects and completed status determine this manual smoke score.",
+              backend: "native manual",
+            };
+        }
+        await sleep(250);
+      }
+      if (runId) {
+        await rpc("runs.cancel", { runId });
+        for (let attempt = 0; attempt < 40; attempt++) {
+          const response = await rpc("runs.get", { runId });
+          const run = response.run ?? response;
+          if (["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(run.status))
+            return {
+              status: run.status,
+              answer: run.result == null ? null : extractAnswer(run.result),
+              runId,
+              error: "Manual task timed out; original native run cancellation acknowledged.",
+            };
+          await sleep(250);
+        }
+        throw new Error(
+          "Manual task timeout cancellation was not acknowledged; stop before resetting fixtures.",
+        );
+      }
+      return {
+        status: "unfinished",
+        answer: null,
+        error: "No matching new native run was submitted before the manual deadline.",
+      };
+    },
+    async close() {},
+  };
 }
 
 async function runtimeAdapter(_name, cfg = {}) {
@@ -630,14 +844,20 @@ async function metricsForRun(rpc, runId) {
   try {
     const events = await rpc("runs.events", { runId, limit: 2000 });
     const list = Array.isArray(events) ? events : (events.events ?? []);
-    let total = 0;
+    let total = 0,
+      inputTokens = 0,
+      cachedInputTokens = 0;
     let suspensions = 0;
     let takeovers = 0;
     let ledgerDuplicates = 0;
     const attribution = modelAttribution(list);
     for (const e of list) {
       const p = e.payload ?? {};
-      if (e.type === "model.call") total += (p.inputTokens ?? 0) + (p.outputTokens ?? 0);
+      if (e.type === "model.call") {
+        total += (p.inputTokens ?? 0) + (p.outputTokens ?? 0);
+        inputTokens += p.inputTokens ?? 0;
+        cachedInputTokens += p.cachedInputTokens ?? 0;
+      }
       if (e.type === "run.status" && p.status === "needs_input") suspensions++;
       if (e.type === "page.takeover") takeovers++;
       if (e.type === "step.finished" && /No new action was executed/.test(JSON.stringify(p.error ?? "")))
@@ -645,6 +865,9 @@ async function metricsForRun(rpc, runId) {
     }
     return {
       tokens: total || null,
+      inputTokens: inputTokens || null,
+      cachedInputTokens,
+      cachedInputRatio: inputTokens ? cachedInputTokens / inputTokens : null,
       suspensions,
       interventions: suspensions + takeovers,
       ledgerDuplicates,
