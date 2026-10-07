@@ -554,3 +554,65 @@
     background: var(--sb-hover);
   }
 }
+
+@layer components {
+  .sidebar-address {
+    flex: none;
+    min-width: 0;
+    margin: 0 var(--space-2) var(--space-3);
+    position: relative;
+    z-index: var(--z-panel);
+    -webkit-app-region: no-drag;
+  }
+  .sidebar-address .cmdbar.compact {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: 38px;
+    border-radius: var(--r-md);
+    background: var(--sb-field);
+    box-shadow: var(--line-inset);
+  }
+  .sidebar-address .cmdbar.compact .cb-pop {
+    width: 100%;
+    min-width: 0;
+    right: 0;
+    border-radius: var(--r-md);
+  }
+  .sidebar-address .search-result-row {
+    padding-inline: var(--space-2);
+    gap: var(--space-2);
+  }
+  .sidebar-address .search-result-detail,
+  .sidebar-address .cb-tab-action,
+  .sidebar-address .cb-chip {
+    display: none;
+  }
+  .sidebar-address .cb-results-footer {
+    flex-wrap: wrap;
+  }
+}
+
+@layer overrides {
+  :root .sidebar-address .cmdbar.compact .cb-pop {
+    background: var(--bg-1);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    animation: omnibox-reveal 160ms var(--ease-out) both;
+  }
+  .sidebar-address .cb-pop::before,
+  .sidebar-address .cb-pop::after {
+    content: none;
+  }
+  .sidebar-address .cb-search-keys {
+    display: none;
+  }
+  .sidebar-address .cb-source-options > summary {
+    white-space: nowrap;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root .sidebar-address .cmdbar.compact .cb-pop {
+      animation: none;
+    }
+  }
+}

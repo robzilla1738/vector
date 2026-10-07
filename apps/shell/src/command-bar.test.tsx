@@ -85,6 +85,20 @@ afterEach(async () => {
 const settle = () => act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
 describe("CommandBar keyboard contract", () => {
+  it("reveals the URL dropdown on focus before suggestions arrive and dismisses on Escape", async () => {
+    await act(async () => root.render(<CommandBar compact />));
+    const input = host.querySelector("input")!;
+    expect(host.querySelector(".cb-pop")).toBeNull();
+    await act(async () => input.focus());
+    expect(host.querySelector(".cb-pop")).not.toBeNull();
+    expect(input.getAttribute("aria-expanded")).toBe("true");
+    expect(host.textContent).toContain("Search the web, enter an address, or find an open tab.");
+    await act(async () => key(input, "Escape"));
+    await settle();
+    expect(host.querySelector(".cb-pop")).toBeNull();
+    expect(input.getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("Escape blurs the field", async () => {
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;

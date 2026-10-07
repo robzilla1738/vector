@@ -102,6 +102,9 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
     const onStart = s.mode === "focus" && !s.overlay && !page?.showBlankDocument && isHomeAddress(page?.url);
     const requested = slot ?? (onStart ? "hero" : "toolbar");
     const resolved: CommandSlot = requested === "sidebar" ? "toolbar" : requested;
+    if (resolved === "toolbar" && (s.settings.tabLayout ?? "vertical") === "vertical") {
+      set({ sidebar: "expanded", sidebarPeek: false });
+    }
     set((st) => ({ focusRequest: st.focusRequest + 1, focusSlot: resolved }));
   },
 

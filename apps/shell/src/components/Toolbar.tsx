@@ -85,7 +85,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
         </div>
       </div>
 
-      <CommandBar compact />
+      {horizontal && <CommandBar compact />}
       {!horizontal && (
         <div className="toolbar-drag-space" title="Drag to move window" {...auxNativeAriaHiddenProps} />
       )}

@@ -741,7 +741,13 @@ export function CommandBar({
     return mergeCommandResults(browser, aux);
   }, [browserRows, rankedRows, rankQuery, raw, providerScope]);
   const suggestions = useMemo(() => {
-    if (!typedSomething) return browserRows;
+    if (!typedSomething)
+      return mergeCommandResults(
+        browserRows,
+        !raw && (providerScope === "all" || providerScope === "tabs")
+          ? commandTabRows("", tabCandidates.filter((tab) => tab.pageId !== activePageId), activate)
+          : [],
+      ).rows;
     if (intent.kind === "command" && commandRows)
       return mergeCommandResults(commandRows(intent.query), [
         ...mergedRows.rows,
@@ -762,6 +768,9 @@ export function CommandBar({
     ]).rows;
   }, [
     typedSomething,
+    tabCandidates,
+    activePageId,
+    activate,
     browserRows,
     intentRows,
     mergedRows,
@@ -1114,10 +1123,10 @@ export function CommandBar({
               : "Address, search, and agent prompt"
           }
           data-command-value-generation={queryGeneration}
-          aria-expanded={suggestions.length > 0}
+          aria-expanded={editing}
           aria-haspopup="listbox"
           aria-autocomplete="list"
-          aria-controls={suggestions.length > 0 ? listId : undefined}
+          aria-controls={editing ? listId : undefined}
           aria-activedescendant={suggestions[sel] ? `${listId}-opt-${sel}` : undefined}
           aria-busy={submitting || undefined}
           aria-keyshortcuts="Alt+1 Alt+2 Alt+3 Alt+4 Alt+5 Alt+6 Alt+7 Alt+8"
@@ -1243,9 +1252,10 @@ export function CommandBar({
                 : "Search"}
         </span>
       )}
-      {(typedSomething || browserError || browserMatches.length > 0) && (
+      {editing && (
         <OmniboxResults
           popup={popup}
+          idle={!typedSomething}
           privateMode={bridge.privateMode}
           extensionEnabled={extensionEnabled}
           providerScope={providerScope}

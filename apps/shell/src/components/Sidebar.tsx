@@ -1,3 +1,11 @@
+import { deferNamedSurface } from "./DeferredSurface";
+const SidebarAddress = deferNamedSurface(
+  () => import("./CommandBar"),
+  "CommandBar",
+  "Address field",
+  true,
+  true,
+);
 import { GlassMaterial } from "./GlassMaterial";
 import { useTabLayout } from "../use-tab-layout";
 import { orderedPages } from "../store/pages";
@@ -1040,6 +1048,9 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
         >
           {shellIconSidebarClose}
         </button>
+      </div>
+      <div className="sidebar-address">
+        <SidebarAddress compact />
       </div>
       <FeatureSlots slot="sidebarItems" />
       <div

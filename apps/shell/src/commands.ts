@@ -333,7 +333,15 @@ export const COMMAND_ACTIONS = {
     (context.settingsRoute ?? st.overlay === "settings")
       ? window.history.forward()
       : st.activePageId && tabCommand({ kind: "forward", pageId: st.activePageId }).catch(errToast),
-  "open-address": () => openCommandSurface({ mode: "edit" }),
+  "open-address": () => {
+    const state = useStore.getState();
+    if ((state.settings.tabLayout ?? "vertical") === "horizontal") {
+      openCommandSurface({ mode: "edit" });
+    } else {
+      state.setOverlay(null);
+      state.focusCommandBar("toolbar");
+    }
+  },
   palette: (st) =>
     st.overlay === "command-surface" ? closeCommandSurface() : openCommandSurface({ mode: "command" }),
   settings: (st) => (bridge.privateMode ? undefined : st.setOverlay("settings")),

@@ -69,6 +69,7 @@ type Props = {
   onOptionRef: (index: number, element: HTMLDivElement | null) => void;
   commandQuery: boolean;
   query: string;
+  idle?: boolean;
   rankingDetails: ReactNode;
 };
 
@@ -105,8 +106,9 @@ export function OmniboxResults(p: Props) {
       )}
       {p.suggestions.length === 0 && (
         <p className="cb-empty">
-          No {p.providerScope === "all" ? "results" : p.providerScope} matches. Choose another provider or
-          edit the query.
+          {p.idle
+            ? "Search the web, enter an address, or find an open tab."
+            : `No ${p.providerScope === "all" ? "results" : p.providerScope} matches. Choose another provider or edit the query.`}
         </p>
       )}
       <div
