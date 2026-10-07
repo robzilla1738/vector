@@ -256,6 +256,13 @@ export function App() {
   const sidebarCovering = (floatingSidebar || peekCovering) && nativeShowing;
   const surfaceCovered = useSurfaceCovering();
   const surfaceCovering = useFeature("splitView") && surfaceCovered && nativeShowing;
+  const nativeOverlayCovering =
+    inNativeHost &&
+    nativeShowing &&
+    (organizationCovered || toolbarReveal.covering || tabPreviewOpen || sidebarCovering || surfaceCovering);
+  // Never expose the desktop behind shell-owned Home, chat, or Settings,
+  // including the first frame after leaving a live native page.
+  const clearNativeBackdrop = nativeShowing && toolbarHole;
   const connected = useStore((s) => s.connected);
   const spaceColor = useStore(
     (s) =>
@@ -273,8 +280,7 @@ export function App() {
 
   // Raise the shell over the native page before the bar animates.
   useEffect(() => {
-    const covering =
-      organizationCovered || toolbarReveal.covering || tabPreviewOpen || sidebarCovering || surfaceCovering;
+    const covering = nativeOverlayCovering;
     let active = true;
     queueMicrotask(() => {
       if (!active) return;
@@ -284,15 +290,15 @@ export function App() {
     return () => {
       active = false;
     };
-  }, [organizationCovered, toolbarReveal.covering, tabPreviewOpen, sidebarCovering, surfaceCovering]);
+  }, [nativeOverlayCovering]);
 
   useShellAppearance(settings, spaceColor);
   // The window background clears with the shell layers, so <html> carries the same state before paint.
   useLayoutEffect(() => {
     const root = document.documentElement.classList;
-    root.toggle("toolbar-stacked", toolbarHole);
+    root.toggle("toolbar-stacked", clearNativeBackdrop);
     root.toggle("sidebar-peek", sidebarPeek);
-  }, [toolbarHole, sidebarPeek]);
+  }, [clearNativeBackdrop, sidebarPeek]);
 
   useMockRailScenario();
   useNarrowLayout();
@@ -303,12 +309,7 @@ export function App() {
   useShellShortcuts(findInput);
   usePageOffers();
 
-  if (
-    inNativeHost &&
-    (organizationCovered || toolbarReveal.covering || tabPreviewOpen || sidebarCovering || surfaceCovering) &&
-    !toolbarHole
-  )
-    setToolbarHole(true);
+  if (nativeOverlayCovering && !toolbarHole) setToolbarHole(true);
   if (bridge.windowKind === "little") return <LittleWindow />;
   if (quickAsk) return <QuickAsk onExpand={expandQuickAsk} />;
   const sidebarToggle = (
@@ -325,7 +326,7 @@ export function App() {
   );
   return (
     <div
-      className={`app ${layoutMotion ? "layout-motion" : ""} ${minimal ? "minimal-ui" : ""} ${!hideToolbar ? "toolbar-persistent" : ""} ${toolbarReveal.revealed ? "layout-toolbar-revealed" : ""} tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${toolbarHole ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
+      className={`app ${layoutMotion ? "layout-motion" : ""} ${minimal ? "minimal-ui" : ""} ${!hideToolbar ? "toolbar-persistent" : ""} ${toolbarReveal.revealed ? "layout-toolbar-revealed" : ""} tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${clearNativeBackdrop ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
       style={
         {
           "--sb-w": `${sidebarWidth}px`,

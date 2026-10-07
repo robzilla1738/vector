@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { PageTarget } from "@aux/contracts";
 import { bridge } from "../bridge";
+import { isHomeAddress } from "../chrome";
 import { useStore } from "../store";
 import { TabCardCaption } from "./TabCardCaption";
 
@@ -33,7 +34,7 @@ export function TabPreview({ page, x, y }: { page: PageTarget; x: number; y: num
   useEffect(() => {
     let live = true;
     setImage(null);
-    if (page.url !== "about:blank")
+    if (!isHomeAddress(page.url) || page.showBlankDocument === true)
       void bridge
         .preview(page.pageId)
         .then((value) => {
@@ -43,10 +44,10 @@ export function TabPreview({ page, x, y }: { page: PageTarget; x: number; y: num
     return () => {
       live = false;
     };
-  }, [page.pageId, page.url]);
+  }, [page.pageId, page.url, page.showBlankDocument]);
   return createPortal(
     <div ref={card} className="menu tab-preview" role="tooltip" style={position}>
-      {page.url !== "about:blank" && (
+      {(!isHomeAddress(page.url) || page.showBlankDocument === true) && (
         <div className="tab-preview-image">{image && <img src={image} alt="" />}</div>
       )}
       <TabCardCaption page={page} />

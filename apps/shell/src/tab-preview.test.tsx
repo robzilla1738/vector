@@ -55,3 +55,15 @@ it("shows a native thumbnail after tab hover and dismisses it on leave", async (
   await act(async () => tab.dispatchEvent(new MouseEvent("mouseout", { bubbles: true })));
   expect(document.querySelector(".tab-preview")).toBeNull();
 });
+
+it.each(["about:blank", "chrome://newtab/", "chrome://new-tab-page/"])(
+  "shows a caption without a blank screenshot for %s",
+  async (url) => {
+    const preview = vi.spyOn(bridge, "preview");
+    root = createRoot(host);
+    await act(async () => root.render(<TabPreview page={{ ...page, url }} x={20} y={20} />));
+    expect(document.querySelector(".tab-preview-image")).toBeNull();
+    expect(document.querySelector(".tab-preview")?.textContent).toContain("New Tab");
+    expect(preview).not.toHaveBeenCalled();
+  },
+);
