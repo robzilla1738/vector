@@ -60,7 +60,7 @@
 @layer components {
   .sidebar .sidebar-section {
     border: 0;
-    padding-bottom: var(--space-2);
+    padding-bottom: var(--space-3);
   }
   .sidebar .sidebar-section.fill {
     padding-bottom: 0;
@@ -194,6 +194,8 @@
     font-size: var(--fs-xs);
     font-weight: var(--fw-medium);
     line-height: 16px;
+    height: 36px;
+    min-height: 36px;
   }
   .sidebar .sidebar-section-heading:hover,
   .sidebar .sidebar-section-heading:focus-visible {
@@ -446,59 +448,109 @@
     flex: 1;
     min-width: 0;
   }
-  .sidebar .sb-tab-sort {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-1);
-    flex: none;
-    height: 28px;
-    padding: 0 var(--space-1-5);
-    border: 0;
-    border-radius: var(--sidebar-row-radius);
-    background: transparent;
+}
+
+@layer components {
+  .sb-pin-hint {
+    grid-column: 1 / -1;
+    padding: var(--space-3) var(--space-2);
+    text-align: center;
     color: var(--sb-ink-2);
     font-size: var(--fs-xs);
-    white-space: nowrap;
-    -webkit-app-region: no-drag;
+    border: var(--hairline) dashed var(--line);
+    border-radius: var(--r-lg);
   }
-  .sidebar .sb-tab-sort > .ci {
-    width: 14px;
-    height: 14px;
-    flex: none;
+  .sb-pins.drop .sb-pin-hint,
+  .sb-pins.drop .tile-face {
+    background: var(--sb-field);
+    outline: 1px solid var(--focus-line);
   }
-  .sidebar .sb-tab-sort:hover {
+  .sb-bookmark-folder > summary {
+    cursor: default;
+    padding: var(--space-2);
+    color: var(--sb-ink-1);
+  }
+  .sb-bookmark-folder > div {
+    padding-left: var(--space-2);
+  }
+  .sb-bookmark-create {
+    display: flex;
+    gap: var(--space-1);
+    padding: var(--space-2);
+  }
+  .sb-bookmark-create input {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@layer components {
+  .sidebar .sb-pins {
+    padding-bottom: var(--space-3);
+  }
+  .sidebar .sb-pins .site-tile:active .tile-face {
+    transform: scale(0.98);
+  }
+  .sidebar .sb-pins .site-tile:focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: 2px;
+  }
+  .sidebar .sb-link {
+    margin-block: 2px;
+  }
+  .sb-bookmark-folder > summary {
+    border-radius: var(--r-lg);
+    transition: background-color var(--t-fast) var(--ease-out);
+  }
+  .sb-bookmark-folder > summary:is(:hover, :focus-visible) {
     background: var(--sb-hover);
     color: var(--sb-ink-0);
   }
-  .sidebar .sb-tab-sort[aria-pressed="true"] {
-    background: var(--sb-field);
+  .sb-bookmark-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-1);
+    padding: 0 var(--space-2);
+  }
+  .sb-bookmark-actions .icon-btn {
+    width: 28px;
+    height: 28px;
+    color: var(--sb-ink-2);
+  }
+  .sb-bookmark-actions .icon-btn:hover {
+    background: var(--sb-hover);
     color: var(--sb-ink-0);
   }
-  .sidebar .sb-tab-sort:focus-visible {
-    outline: 2px solid var(--focus-line);
-    outline-offset: -2px;
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar .sb-pins .site-tile:active .tile-face {
+      transform: none;
+    }
   }
-  @container sidebar (width < 180px) {
-    .sidebar .sb-tab-sort {
-      width: 28px;
-      padding: 0;
-    }
-    .sidebar .sb-tab-sort > span:not(.ci) {
-      display: none;
-    }
-    .sidebar .sb-tab-tools {
-      justify-content: space-between;
-    }
-    .sidebar .sb-tab-tools > .tab-new {
-      flex: none;
-      width: 28px;
-      padding: 0;
-      justify-content: center;
-      gap: 0;
-    }
-    .sidebar .sb-tab-tools > .tab-new > .tab-title {
-      display: none;
-    }
+}
+
+@layer components {
+  .sb-bookmark-actions:has(form) {
+    display: block;
+  }
+  .sb-bookmark-actions:has(form) > .icon-btn {
+    display: none;
+  }
+  .sb-bookmark-create {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .sb-bookmark-create input {
+    grid-column: 1 / -1;
+    padding: var(--space-2);
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--sb-field);
+  }
+  .sb-bookmark-create button {
+    min-height: 28px;
+    border-radius: var(--r-md);
+  }
+  .sb-bookmark-create button:hover {
+    background: var(--sb-hover);
   }
 }

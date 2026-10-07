@@ -1,3 +1,4 @@
+import { bookmarkWebUrl } from "../bookmark-files";
 import { orderedPages } from "../store/pages";
 import { staticMenuItemProps } from "../ui/class-props";
 import { errorMessage } from "../error-message";
@@ -114,6 +115,7 @@ export function TabMenu({
   const folders = layout.folders.filter((folder) => folder.spaceId === spaceId);
   const currentFolder = layout.tabFolder[page.pageId];
   const hasFolder = selectedPages.some((item) => !!layout.tabFolder[item.pageId]);
+  const bookmarked = useStore((state) => state.bookmarks.some((item) => item.url === page.url));
   const pinned = isPinned(layout, spaceId, page.url);
   const web = /^https?:/.test(page.url);
   const matches = (text: string) => text.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
@@ -597,14 +599,26 @@ export function TabMenu({
                       action(() =>
                         useStore
                           .getState()
-                          .togglePin({ url: page.url, title: page.title || hostOf(page.url) }, spaceId),
+                          .togglePin(
+                            { url: page.url, title: page.title || hostOf(page.url), pageId: page.pageId },
+                            spaceId,
+                          ),
                       )
                     }
                   >
                     {shellIconPin}
-                    <span {...auxClassTextProps}>{pinned ? "Unpin" : "Pin to space"}</span>
+                    <span {...auxClassTextProps}>{pinned ? "Unpin tab" : "Pin tab"}</span>
                   </button>
                 </>
+              )}
+              {!bulk && !bridge.privateMode && bookmarkWebUrl(page.url) && (
+                <button
+                  {...staticMenuItemProps}
+                  {...nativeMenuItemRoleProps}
+                  onClick={() => action(() => useStore.getState().toggleBookmark(page.url, page.title))}
+                >
+                  <span {...auxClassTextProps}>{bookmarked ? "Remove bookmark" : "Bookmark tab"}</span>
+                </button>
               )}
               {rememberable && (
                 <button

@@ -1502,11 +1502,6 @@
   .user-message {
     corner-shape: round;
   }
-  .sb-bookmarks.drop .sb-bookmarks-empty,
-  .sb-bookmarks.drop .sb-bookmark-list {
-    background: var(--bg-hover);
-    border-radius: var(--r-lg);
-  }
   .sidebar .tab-list {
     padding-inline: var(--space-2);
     gap: var(--space-0);

@@ -128,7 +128,7 @@ it("Sidebar More Library closes its real mounted menu and reaches the registered
   expect(more.getAttribute("aria-expanded")).toBe("false");
   expect(document.querySelector('[role="menuitem"][aria-label="Library"]')).toBeNull();
 });
-it("bookmark Show all invokes the genuine command without changing saved bookmarks", async () => {
+it("bookmark management invokes the genuine command without changing saved bookmarks", async () => {
   const bookmarks = Array.from({ length: 5 }, (_, i) => ({
     url: `https://example.test/saved/${i}`,
     title: `Saved ${i}`,
@@ -138,7 +138,7 @@ it("bookmark Show all invokes the genuine command without changing saved bookmar
   const run = vi.spyOn(commands, "runCommand");
   await act(async () => root.render(<Sidebar />));
   const rows = [...host.querySelectorAll<HTMLButtonElement>("button")].filter(
-    (node) => node.textContent === "Show all 5",
+    (node) => node.getAttribute("aria-label") === "Manage bookmarks",
   );
   expect(rows).toHaveLength(1);
   expect(rows[0]!.dataset.commandId).toBe("command-bookmarks");

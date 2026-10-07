@@ -1,8 +1,6 @@
 import { GlassMaterial } from "./GlassMaterial";
-import { hintNavigation } from "../navigation-preload";
 import { useTabLayout } from "../use-tab-layout";
 import { orderedPages } from "../store/pages";
-import { storage } from "../store/persistence";
 import { staticMenuItemProps, staticIconButtonProps } from "../ui/class-props";
 import { ReturnControlButton } from "./ReturnControlButton";
 import { runCommand } from "../commands";
@@ -28,9 +26,8 @@ import { useShallow } from "zustand/react/shallow";
 import type { PageTarget, ShellCommandId } from "@aux/contracts";
 import type { SpaceTheme } from "@aux/contracts/spaces";
 import { bridge, inNativeHost } from "../bridge";
-import { useStore, call, errToast, toast } from "../store";
+import { useStore, errToast } from "../store";
 import {
-  PIN_ROW_SIZE,
   SPACE_COLORS,
   foldersInSpace,
   hostOf,
@@ -45,7 +42,9 @@ import {
   type SpaceColor,
 } from "../workspace";
 
-import { bookmarkTabsFromDrop, TAB_DRAG_TYPE } from "../bookmark-drop";
+import { TAB_DRAG_TYPE } from "../tab-drag";
+import { bookmarkWebUrl } from "../bookmark-files";
+import { SidebarBookmarks } from "./SidebarBookmarks";
 import { moveListFocus } from "../keyboard-list";
 import { ResizeHandle } from "./ResizeHandle";
 import { SidebarSection } from "./SidebarSection";
@@ -695,102 +694,6 @@ const FOLDER_EMOJIS = ["", "📁", "⭐", "🔖", "📌", "🧭", "🧪", "🎯"
 
 /** Rows beyond this render only inside the scroll window. */
 const VIRTUAL_TABS = 60;
-/** The sidebar previews the newest bookmarks; the Library holds the rest. */
-const SIDEBAR_BOOKMARKS = 4;
-
-type OpenLink = (link: Pin, event: React.MouseEvent) => void;
-
-const SidebarBookmarkRow = memo(function SidebarBookmarkRow({
-  url,
-  onOpen,
-}: {
-  url: string;
-  onOpen: OpenLink;
-}) {
-  const bookmark = useStore((s) => s.bookmarks.find((item) => item.url === url));
-  const favicon = useStore(
-    (s) => orderedPages(s.pages).find((page) => page.url === url && page.favicon)?.favicon,
-  );
-  if (!bookmark) return null;
-  return (
-    <button
-      className="sb-link"
-      title={bookmark.title || bookmark.url}
-      onPointerEnter={() => hintNavigation(bookmark.url)}
-      onFocus={() => hintNavigation(bookmark.url)}
-      onClick={(event) => onOpen(bookmark, event)}
-      onAuxClick={(event) => onOpen(bookmark, event)}
-    >
-      <FavIcon url={bookmark.url} src={favicon} />
-      <span>{bookmark.title || hostOf(bookmark.url)}</span>
-    </button>
-  );
-});
-
-const SidebarBookmarks = memo(function SidebarBookmarks({
-  onOpen,
-  onDropped,
-}: {
-  onOpen: OpenLink;
-  onDropped(): void;
-}) {
-  const shownUrls = useStore(
-    useShallow((s) => s.bookmarks.slice(0, SIDEBAR_BOOKMARKS).map((bookmark) => bookmark.url)),
-  );
-  const bookmarkCount = useStore((s) => s.bookmarks.length);
-  const [hover, setHover] = useState(false);
-  return (
-    <div
-      className={`sb-bookmarks${hover ? " drop" : ""}`}
-      onDragOver={(event) => {
-        if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "copy";
-        setHover(true);
-      }}
-      onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node)) setHover(false);
-      }}
-      onDrop={(event) => {
-        if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return;
-        event.preventDefault();
-        setHover(false);
-        const added = bookmarkTabsFromDrop(
-          event.dataTransfer.getData(TAB_DRAG_TYPE),
-          orderedPages(useStore.getState().pages),
-        );
-        onDropped();
-        if (!added.length) {
-          toast("Only web tabs can be bookmarked");
-          return;
-        }
-        void Promise.all(added.map((tab) => call("bookmarks.add", tab)))
-          .then(() => toast(added.length === 1 ? "Bookmarked" : `Bookmarked ${added.length} tabs`))
-          .catch(errToast);
-      }}
-    >
-      {bookmarkCount ? (
-        <div className="sb-bookmark-list">
-          {shownUrls.map((url) => (
-            <SidebarBookmarkRow key={url} url={url} onOpen={onOpen} />
-          ))}
-          {bookmarkCount > shownUrls.length && (
-            <button
-              className="sb-link sb-show-all"
-              data-command-id="command-bookmarks"
-              onClick={() => runCommand("command-bookmarks")}
-            >
-              Show all {bookmarkCount}
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="sb-bookmarks-empty">Drag tabs here to bookmark</div>
-      )}
-    </div>
-  );
-});
-
 const SidebarChatSection = memo(function SidebarChatSection() {
   return (
     <div className="sb-chats">
@@ -817,31 +720,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const peek = useStore((s) => s.sidebarPeek);
   const layout = useTabLayout();
   const pages = useTabMembership();
-  const [recentFirst, setRecentFirst] = useState(() => {
-    try {
-      return storage?.getItem("aux.sidebar-tab-order") === "recently-used";
-    } catch {
-      return false;
-    }
-  });
-  const lastActive = useStore(
-    useShallow((state) => {
-      const times: Record<string, number> = {};
-      if (recentFirst)
-        for (const page of pages) {
-          const actual = state.pages.byId[page.pageId];
-          if (actual) times[page.pageId] = actual.lastActiveAt;
-        }
-      return times;
-    }),
-  );
-  const sortTabs = useCallback(
-    (items: TabMembership[]) =>
-      recentFirst
-        ? [...items].sort((a, b) => (lastActive[b.pageId] ?? 0) - (lastActive[a.pageId] ?? 0))
-        : items,
-    [recentFirst, lastActive],
-  );
   /** 0 not saved · 1 bookmarked · 2 also on the reading list — for the active page. */
   const saved = useStore((s) => {
     const url = s.pages.byId[s.activePageId ?? ""]?.url;
@@ -872,17 +750,19 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const tabs = useMemo(() => tabsInSpace(layout, pages, space.id), [layout, pages, space.id]);
   const folders = useMemo(() => foldersInSpace(layout, space.id), [layout, space.id]);
   const loose = useMemo(
-    () => sortTabs(unfiledTabs(layout, pages, space.id).filter((page) => !boundPin(layout, page.pageId))),
-    [layout, pages, space.id, sortTabs],
+    () => unfiledTabs(layout, pages, space.id).filter((page) => !boundPin(layout, page.pageId)),
+    [layout, pages, space.id],
   );
   const visibleTabs = useMemo(
     () => [
       ...folders.flatMap((folder) =>
-        folder.collapsed ? [] : sortTabs(tabsInFolder(layout, pages, folder.id)),
+        folder.collapsed
+          ? []
+          : tabsInFolder(layout, pages, folder.id).filter((page) => !boundPin(layout, page.pageId)),
       ),
       ...loose,
     ],
-    [folders, layout, pages, loose, sortTabs],
+    [folders, layout, pages, loose],
   );
   const focusablePageId = visibleTabs.some((tab) => tab.pageId === activePageId)
     ? activePageId
@@ -908,7 +788,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const pinnedTitles = useStore(
     useShallow((state) => pins.map((pin) => pinnedPage(pin, orderedPages(state.pages))?.title)),
   );
-  const visiblePins = pins.length > PIN_ROW_SIZE ? pins.slice(0, PIN_ROW_SIZE - 1) : pins;
+  const visiblePins = pins.length > 4 ? pins.slice(0, 3) : pins;
   const overflowPins = pins.slice(visiblePins.length);
   const [activeUrl, activeController] = useStore(
     useShallow((s) => {
@@ -956,6 +836,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const [editing, setEditing] = useState<Space | null | "new">(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const pinDrag = useRef<{ url: string; spaceId: string } | null>(null);
+  const [pinTrayHover, setPinTrayHover] = useState(false);
   const [pinDrop, setPinDrop] = useState<string | null>(null);
   const dragIds = useRef<string[]>([]);
   const [drag, setDrag] = useState(IDLE_DRAG);
@@ -986,6 +867,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
       },
       onDragLeave: () => setPinDrop(null),
       onDrop: (event: React.DragEvent) => {
+        if (event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return;
         event.preventDefault();
         event.stopPropagation();
         const moving = pinDrag.current;
@@ -1088,7 +970,10 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
     },
     [moveTabToFolder, space.id],
   );
-  const onDragEnd = useCallback(() => setDrag(IDLE_DRAG), []);
+  const onDragEnd = useCallback(() => {
+    setDrag(IDLE_DRAG);
+    setPinTrayHover(false);
+  }, []);
   const onContext = useCallback((p: PageTarget, x: number, y: number) => setCtx({ p, x, y }), []);
   const onKeyMove = useCallback(
     (folderId: string | null, index: number, dir: -1 | 1) => {
@@ -1107,10 +992,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
     moveListFocus(e, '[role="tab"]');
   };
   const selectedIds = new Set(selection.ids);
-  const onBookmarkDrop = useCallback(() => {
-    dragIds.current = [];
-    setDrag(IDLE_DRAG);
-  }, []);
   // Long unfiled lists render only the rows near the viewport; a drag in
   // flight renders everything so its source row never unmounts.
   const tabScroller = useRef<HTMLDivElement>(null);
@@ -1128,7 +1009,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
       folderId={folderId}
       active={p.pageId === activePageId && mode === "focus"}
       focusable={p.pageId === focusablePageId}
-      reorderable={!recentFirst}
+      reorderable
       dragging={drag.folderId === folderId && drag.from === index}
       dropBefore={
         drag.folderId === folderId && drag.to === index && drag.from !== index && drag.from !== index - 1
@@ -1161,67 +1042,94 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
         </button>
       </div>
       <FeatureSlots slot="sidebarItems" />
-      {pins.length > 0 && (
-        <div className="sb-pins" role="group" aria-label="Pinned sites">
-          {visiblePins.map((b, index) => (
-            <SiteTile
-              {...pinDragProps(b)}
-              key={b.url}
-              url={b.url}
-              title={b.title}
-              favicon={pinnedIcons[index]}
-              unreadTitle={pinnedTitles[index]}
-              active={activePageId === b.pageId}
+      <div
+        className={`sb-pins${pinTrayHover ? " drop" : ""}`}
+        role="group"
+        aria-label="Pinned tabs"
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          setPinTrayHover(true);
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node)) setPinTrayHover(false);
+        }}
+        onDrop={(event) => {
+          if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setPinTrayHover(false);
+          const ids = new Set(event.dataTransfer.getData(TAB_DRAG_TYPE).split("\n"));
+          const state = useStore.getState();
+          for (const page of tabsInSpace(state.layout, orderedPages(state.pages), space.id)) {
+            if (!ids.has(page.pageId) || !bookmarkWebUrl(page.url)) continue;
+            if (!useStore.getState().layout.pins[space.id]?.some((pin) => pin.url === page.url))
+              state.togglePin({ url: page.url, title: page.title, pageId: page.pageId }, space.id);
+          }
+          dragIds.current = [];
+          setDrag(IDLE_DRAG);
+        }}
+      >
+        {!pins.length && <span className="sb-pin-hint">Drag tabs here to pin</span>}
+        {visiblePins.map((b, index) => (
+          <SiteTile
+            {...pinDragProps(b)}
+            key={b.url}
+            url={b.url}
+            title={b.title}
+            favicon={pinnedIcons[index]}
+            unreadTitle={pinnedTitles[index]}
+            active={activePageId === b.pageId}
+            aria-haspopup="menu"
+            onClick={(event) => openPin(b, event)}
+            onAuxClick={(event) => openPin(b, event)}
+            onKeyDown={(event) => pinKey(b, event)}
+            onContextMenu={(event) => pinMenu(b, event)}
+          />
+        ))}
+        {overflowPins.length > 0 && (
+          <div className="pin-overflow">
+            <button
+              ref={pinOverflowTrigger}
+              {...auxNativeButtonTypeProps}
+              aria-label={`${overflowPins.length} more pinned tabs`}
+              title="More pinned tabs"
               aria-haspopup="menu"
-              onClick={(event) => openPin(b, event)}
-              onAuxClick={(event) => openPin(b, event)}
-              onKeyDown={(event) => pinKey(b, event)}
-              onContextMenu={(event) => pinMenu(b, event)}
-            />
-          ))}
-          {overflowPins.length > 0 && (
-            <div className="pin-overflow">
-              <button
-                ref={pinOverflowTrigger}
-                {...auxNativeButtonTypeProps}
-                aria-label={`${overflowPins.length} more pinned sites`}
-                title="More pinned sites"
-                aria-haspopup="menu"
-                aria-expanded={pinOverflowOpen}
-                onClick={() => setPinOverflowOpen((value) => !value)}
+              aria-expanded={pinOverflowOpen}
+              onClick={() => setPinOverflowOpen((value) => !value)}
+            >
+              +{overflowPins.length}
+            </button>
+            {pinOverflowOpen && (
+              <Menu
+                className="menu sidebar-native-menu pin-overflow-menu"
+                label="More pinned tabs"
+                anchor={pinOverflowTrigger}
+                returnFocus={pinOverflowTrigger}
+                onClose={() => setPinOverflowOpen(false)}
               >
-                +{overflowPins.length}
-              </button>
-              {pinOverflowOpen && (
-                <Menu
-                  className="menu sidebar-native-menu pin-overflow-menu"
-                  label="More pinned sites"
-                  anchor={pinOverflowTrigger}
-                  returnFocus={pinOverflowTrigger}
-                  onClose={() => setPinOverflowOpen(false)}
-                >
-                  {overflowPins.map((pin) => (
-                    <button
-                      {...pinDragProps(pin)}
-                      className="menu-item"
-                      role="menuitem"
-                      key={pin.url}
-                      title={pin.url}
-                      onClick={(event) => openPin(pin, event)}
-                      onAuxClick={(event) => openPin(pin, event)}
-                      onKeyDown={(event) => pinKey(pin, event)}
-                      onContextMenu={(event) => pinMenu(pin, event)}
-                    >
-                      <span className="menu-ico">{shellIconPin}</span>
-                      <span {...auxClassTextProps}>{pin.title || hostOf(pin.url)}</span>
-                    </button>
-                  ))}
-                </Menu>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+                {overflowPins.map((pin) => (
+                  <button
+                    {...pinDragProps(pin)}
+                    className="menu-item"
+                    role="menuitem"
+                    key={pin.url}
+                    title={pin.url}
+                    onClick={(event) => openPin(pin, event)}
+                    onAuxClick={(event) => openPin(pin, event)}
+                    onKeyDown={(event) => pinKey(pin, event)}
+                    onContextMenu={(event) => pinMenu(pin, event)}
+                  >
+                    <span className="menu-ico">{shellIconPin}</span>
+                    <span {...auxClassTextProps}>{pin.title || hostOf(pin.url)}</span>
+                  </button>
+                ))}
+              </Menu>
+            )}
+          </div>
+        )}
+      </div>
 
       {!bridge.privateMode && (
         <SidebarSection
@@ -1229,7 +1137,13 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
           open={sections.bookmarks}
           onToggle={() => toggleSection("bookmarks")}
         >
-          <SidebarBookmarks onOpen={openPin} onDropped={onBookmarkDrop} />
+          <SidebarBookmarks
+            onOpen={(link, event) => {
+              if (event.type === "auxclick" && event.button !== 1) return;
+              event.preventDefault();
+              void openBrowserLink(link.url, backgroundLink(event)).catch(errToast);
+            }}
+          />
         </SidebarSection>
       )}
       {!bridge.privateMode && (
@@ -1260,32 +1174,9 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                 onDrop={(e) => onDrop(null, e)}
                 onDragEnd={onDragEnd}
               />
-              <button
-                className="sb-tab-sort"
-                aria-label="Sort tabs by last used"
-                aria-pressed={recentFirst}
-                title={
-                  recentFirst
-                    ? "Last used first. Turn off to reorder tabs manually."
-                    : "Sort tabs by last used"
-                }
-                onClick={() => {
-                  const next = !recentFirst;
-                  setDrag(IDLE_DRAG);
-                  setRecentFirst(next);
-                  try {
-                    storage?.setItem("aux.sidebar-tab-order", next ? "recently-used" : "manual");
-                  } catch {
-                    toast("Tab order changed for this window; the preference could not be saved.");
-                  }
-                }}
-              >
-                {shellIconClock}
-                <span>Last used</span>
-              </button>
             </div>
             {folders.map((f) => {
-              const kids = sortTabs(tabsInFolder(layout, pages, f.id));
+              const kids = tabsInFolder(layout, pages, f.id).filter((page) => !boundPin(layout, page.pageId));
               return (
                 <div
                   key={f.id}

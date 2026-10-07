@@ -27,7 +27,7 @@ import {
   shellIconPerson,
   shellIconPlus,
 } from "../ui/icons";
-import { TAB_DRAG_TYPE } from "../bookmark-drop";
+import { TAB_DRAG_TYPE } from "../tab-drag";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { useTabMembership } from "../use-tab-membership";
 

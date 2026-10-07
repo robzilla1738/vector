@@ -176,11 +176,11 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).toMatch(/\.sidebar-section-body\.open\s*\{[^}]*grid-template-rows:\s*1fr/);
   });
 
-  it("lets pinned tiles fill their row without growing into square cards", () => {
+  it("keeps pinned tiles in two generous columns without growing into square cards", () => {
     expect(styles).toMatch(
-      /\.sb-pins\s*\{[^}]*grid-auto-flow:\s*column;[^}]*grid-auto-columns:\s*minmax\(0, 1fr\)/,
+      /\.sb-pins\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/,
     );
-    expect(styles).toMatch(/\.sb-pins \.tile-face\s*\{[^}]*height:\s*40px;[^}]*aspect-ratio:\s*auto/);
+    expect(styles).toMatch(/\.sb-pins \.tile-face\s*\{[^}]*height:\s*44px;[^}]*aspect-ratio:\s*auto/);
     expect(styles).not.toMatch(/\.sb-pins\s*\{[^}]*repeat\(5/);
   });
 

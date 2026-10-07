@@ -12,7 +12,7 @@ vi.mock("../../store", async () => {
 });
 vi.mock("../../commands", () => ({ runCommand: fixture.command }));
 import { SplitDropZones } from "../../components/SplitDropZones";
-import { TAB_DRAG_TYPE } from "../../bookmark-drop";
+import { TAB_DRAG_TYPE } from "../../tab-drag";
 import { useStore } from "../../store";
 import { emptyLayout } from "../../workspace";
 import { getSurfaceState, setSurfaceState } from "./drag-state";

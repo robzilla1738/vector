@@ -124,3 +124,42 @@ it("moves focus from destination search to the first matching Space", async () =
     await act(async () => root.unmount());
   }
 });
+
+it("bookmarks the right-clicked tab rather than the active tab without pinning it", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
+  const original = useStore.getState();
+  const page = {
+    pageId: "bookmark-target",
+    url: "https://example.com/saved",
+    title: "Saved tab",
+    viewStatus: "visible",
+    ownedByRuntime: false,
+  } as PageTarget;
+  const toggleBookmark = vi.fn().mockResolvedValue(undefined);
+  const togglePin = vi.fn();
+  useStore.setState({
+    layout: emptyLayout(),
+    pages: normalizePages([page]),
+    activePageId: "another-tab",
+    bookmarks: [],
+    toggleBookmark,
+    togglePin,
+  });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<TabMenu page={page} x={0} y={0} onClose={() => {}} />));
+    const button = [...document.querySelectorAll<HTMLButtonElement>("button")].find(
+      (item) => item.textContent === "Bookmark tab",
+    )!;
+    expect(button).toBeTruthy();
+    await act(async () => button.click());
+    expect(toggleBookmark).toHaveBeenCalledWith(page.url, page.title);
+    expect(togglePin).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => root.unmount());
+    useStore.setState(original, true);
+  }
+});

@@ -1,6 +1,6 @@
 import { useShallow } from "zustand/react/shallow";
 import { useEffect, useRef, useState } from "react";
-import { TAB_DRAG_TYPE } from "../bookmark-drop";
+import { TAB_DRAG_TYPE } from "../tab-drag";
 import { orderedPages } from "../store/pages";
 import { useStore } from "../store";
 import { runCommand } from "../commands";

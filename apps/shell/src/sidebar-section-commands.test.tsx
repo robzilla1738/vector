@@ -274,3 +274,71 @@ it.each(["toggle-sidebar-section", "toggle-sidebar-spaces"])(
     expect(chooser().getAttribute("aria-expanded")).toBe("false");
   },
 );
+
+it("pins dropped tabs once, keeps bookmarks separate, and ignores the retired sort preference", async () => {
+  const spaceId = original.layout.activeSpaceId;
+  const pages = [
+    {
+      pageId: "pin-a",
+      url: "https://example.com",
+      title: "Example",
+      viewStatus: "visible",
+      ownedByRuntime: false,
+      lastActiveAt: 1,
+    },
+    {
+      pageId: "pin-b",
+      url: "https://example.com",
+      title: "Duplicate",
+      viewStatus: "visible",
+      ownedByRuntime: false,
+      lastActiveAt: 5,
+    },
+    {
+      pageId: "pin-internal",
+      url: "chrome://newtab",
+      title: "New Tab",
+      viewStatus: "visible",
+      ownedByRuntime: false,
+      lastActiveAt: 10,
+    },
+  ] as import("@aux/contracts").PageTarget[];
+  persisted.values.set("aux.sidebar-tab-order", "recently-used");
+  useStore.setState({
+    layout: {
+      ...original.layout,
+      activeSpaceId: spaceId,
+      pins: {},
+      folders: [],
+      order: pages.map((p) => p.pageId),
+      tabSpace: {},
+    },
+    pages: normalizePages(pages),
+    connected: false,
+  });
+  await mount();
+  expect(host.textContent).not.toContain("Last used");
+  expect([...host.querySelectorAll('[role="tab"]')].map((node) => node.textContent)).toEqual([
+    expect.stringContaining("Example"),
+    expect.stringContaining("Duplicate"),
+    expect.stringContaining("New Tab"),
+  ]);
+  const drop = () => {
+    const event = new Event("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", {
+      value: {
+        types: ["application/x-aux-tabs"],
+        getData: () => "pin-a\npin-b\npin-internal",
+      },
+    });
+    host.querySelector('[aria-label="Pinned tabs"]')!.dispatchEvent(event);
+  };
+  await act(async () => drop());
+  expect(useStore.getState().layout.pins[spaceId]).toEqual([
+    { url: "https://example.com", title: "Example", pageId: "pin-a" },
+  ]);
+  expect(useStore.getState().bookmarks).toEqual([]);
+  await act(async () => drop());
+  expect(useStore.getState().layout.pins[spaceId]).toHaveLength(1);
+  expect(host.querySelectorAll('[role="tab"]')).toHaveLength(2);
+});

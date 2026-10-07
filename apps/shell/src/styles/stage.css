@@ -295,11 +295,6 @@
     border-radius: var(--sidebar-row-radius);
     padding-inline: var(--space-3);
   }
-  .app .sidebar .sb-pins .tile-face {
-    height: var(--control-h-lg);
-    min-height: var(--control-h-lg);
-    border-radius: var(--sidebar-row-radius);
-  }
   .app :is(.sidebar, .chat-sidebar) .resize-handle.left {
     right: 0;
     width: var(--sidebar-resize-handle);
