@@ -4,7 +4,7 @@
     align-items: center;
     gap: var(--space-1);
     padding: var(--space-2) var(--space-3);
-    border-bottom: var(--hairline) solid var(--line);
+    flex-wrap: wrap;
     overflow-x: auto;
   }
   .cb-provider-scopes button {
@@ -75,11 +75,97 @@
     justify-content: flex-end;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
-    border-top: var(--hairline) solid var(--line);
+
     color: var(--ink-2);
     font-size: var(--fs-xs);
   }
   .cb-search-keys kbd {
     color: var(--ink-0);
+  }
+
+  .cb-results-footer {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .cb-results-footer .cb-search-keys {
+    flex: none;
+  }
+  .cb-source-options {
+    flex: 1;
+    min-width: 0;
+    margin: 4px 0 0 4px;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+  .cb-source-options > summary {
+    width: fit-content;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 8px;
+  }
+  .cb-source-options > summary:hover {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  .cb-source-options > summary:focus-visible {
+    outline: 2px solid var(--focus-line);
+  }
+  .cb-source-options .cb-provider-scopes {
+    padding: 8px 0;
+  }
+  .cb-pop .search-result-row {
+    min-height: 44px;
+    padding: 8px 12px;
+    gap: 12px;
+    border-radius: 10px;
+  }
+  .cb-pop .search-result-icon {
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    color: var(--ink-2);
+  }
+  .cb-pop .search-result-icon img {
+    width: 22px;
+    height: 22px;
+  }
+  .cb-pop .search-result-detail {
+    max-width: 30%;
+    font-size: var(--fs-xs);
+  }
+  .cb-pop .cb-opt.intent.sel {
+    background: var(--bg-hover);
+  }
+  .cb-pop .cb-opt.intent .search-result-icon {
+    background: transparent;
+    color: var(--ink-2);
+  }
+  .cb-tab-action {
+    padding: 4px 9px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    color: var(--ink-1);
+    font-size: var(--fs-xs);
+    white-space: nowrap;
+  }
+  .cb-pop .cb-search-keys {
+    padding-block: 4px;
+    opacity: 0.7;
+  }
+  @media (max-width: 600px) {
+    .cb-pop .search-result-copy {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 2px;
+    }
+    .cb-pop .search-result-detail {
+      max-width: 100%;
+    }
+    .cb-tab-action {
+      max-width: 100px;
+      white-space: normal;
+      text-align: center;
+    }
   }
 }

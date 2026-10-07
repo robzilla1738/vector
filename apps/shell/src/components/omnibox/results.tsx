@@ -84,31 +84,7 @@ export function OmniboxResults(p: Props) {
       onMouseDown={(event) => event.preventDefault()}
     >
       {p.status}
-      <div className="cb-provider-scopes" role="group" aria-label="Search providers">
-        {PROVIDER_SCOPES.filter((scope) => scope !== "extensions" || p.extensionEnabled).map((scope) => (
-          <button
-            key={scope}
-            {...nativeButtonTypeProps}
-            aria-pressed={p.providerScope === scope}
-            title={`Alt+${PROVIDER_SCOPES.indexOf(scope) + 1}`}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => p.onScope(scope)}
-          >
-            {scopes[scope]}
-          </button>
-        ))}
-        {!p.privateMode && (
-          <button
-            {...nativeButtonTypeProps}
-            className="cb-ranking-toggle"
-            aria-expanded={p.rankingOpen}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={p.onRankingToggle}
-          >
-            Ranking
-          </button>
-        )}
-      </div>
+
       {p.searchSuggestions && (
         <p className="cb-suggestion-privacy">
           Search suggestions may be sent to your configured search provider.
@@ -155,9 +131,19 @@ export function OmniboxResults(p: Props) {
                 p.commandQuery && "commandId" in suggestion ? String(suggestion.commandId) : undefined
               }
             >
-              {first && suggestion.section !== "intent" && (
-                <div className="cb-section">{sections[suggestion.section]}</div>
-              )}
+              {first &&
+                ![
+                  "intent",
+                  "browser",
+                  "suggest",
+                  "tabs",
+                  "domains",
+                  "bookmarks",
+                  "closed",
+                  "history",
+                ].includes(suggestion.section) && (
+                  <div className="cb-section">{sections[suggestion.section]}</div>
+                )}
               <SearchResultRow
                 id={`${p.listId}-opt-${index}`}
                 resultSource={source}
@@ -172,7 +158,9 @@ export function OmniboxResults(p: Props) {
                 onHover={() => p.onHover(index)}
                 onSelect={() => p.onSelect(suggestion)}
                 trailing={
-                  suggestion.hint === "↵" ? (
+                  suggestion.section === "tabs" ? (
+                    <span className="cb-tab-action">Switch to this tab</span>
+                  ) : suggestion.hint === "↵" ? (
                     <span className="cb-go" aria-hidden="true">
                       {shellIconSend}
                     </span>
@@ -186,13 +174,43 @@ export function OmniboxResults(p: Props) {
         })}
       </div>
       {p.rankingDetails}
-      <div className="cb-search-keys">
-        <span>
-          <kbd>Enter</kbd> choose
-        </span>
-        <span>
-          <kbd>Esc</kbd> {p.providerScope === "all" ? "close" : "all results"}
-        </span>
+      <div className="cb-results-footer">
+        <details className="cb-source-options">
+          <summary>{p.providerScope === "all" ? "All sources" : scopes[p.providerScope]}</summary>
+          <div className="cb-provider-scopes" role="group" aria-label="Search providers">
+            {PROVIDER_SCOPES.filter((scope) => scope !== "extensions" || p.extensionEnabled).map((scope) => (
+              <button
+                key={scope}
+                {...nativeButtonTypeProps}
+                aria-pressed={p.providerScope === scope}
+                title={`Alt+${PROVIDER_SCOPES.indexOf(scope) + 1}`}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => p.onScope(scope)}
+              >
+                {scopes[scope]}
+              </button>
+            ))}
+            {!p.privateMode && (
+              <button
+                {...nativeButtonTypeProps}
+                className="cb-ranking-toggle"
+                aria-expanded={p.rankingOpen}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={p.onRankingToggle}
+              >
+                Ranking
+              </button>
+            )}
+          </div>
+        </details>
+        <div className="cb-search-keys">
+          <span>
+            <kbd>Enter</kbd> choose
+          </span>
+          <span>
+            <kbd>Esc</kbd> {p.providerScope === "all" ? "close" : "all results"}
+          </span>
+        </div>
       </div>
     </div>
   );

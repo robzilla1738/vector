@@ -20,6 +20,9 @@
     box-shadow: var(--shadow-pop), var(--line-inset);
   }
   .command-surface .cmdbar {
+    min-height: 48px;
+    border-radius: 16px;
+    padding-inline: 14px;
     width: 100%;
   }
   .command-surface .cb-pop {
@@ -27,34 +30,12 @@
     right: 0;
     width: 100%;
   }
-  .command-surface .search-result-row {
-    min-height: 32px;
-    height: 32px;
-    padding: 4px 12px;
-    border-radius: 16px;
-    font-size: 14px;
-    transition: background var(--t-material-state, 120ms) var(--ease-in-out);
-  }
-  .command-surface .search-result-icon .ci {
-    width: 20px;
-    height: 20px;
-  }
-  .command-surface .search-result-icon {
-    width: 20px;
-    height: 20px;
-    border-radius: var(--r-sm);
-  }
-  .command-surface .search-result-icon :is(img, svg),
-  .command-surface .search-result-icon .site-tile .tile-face {
-    width: 20px;
-    height: 20px;
-  }
   .command-surface {
     animation: command-surface-appear var(--t-popup, 82ms) var(--ease-in-out) both;
   }
   .command-surface .cmdbar:has(input:focus-visible) {
-    outline: 2px solid var(--focus-line);
-    outline-offset: -2px;
+    outline: 1px solid var(--focus-line);
+    outline-offset: -1px;
   }
   .command-surface .cmdbar input:focus-visible {
     outline: none;

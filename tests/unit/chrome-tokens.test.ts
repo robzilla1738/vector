@@ -313,10 +313,11 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   it("draws the search suggestion enter mark as the circular accent send control and leaves other hints as text keys", () => {
     const results = readFileSync("apps/shell/src/components/omnibox/results.tsx", "utf8");
     expect(results).toMatch(
-      /trailing=\{\s*suggestion\.hint === "↵"\s*\?\s*\(\s*<span className="cb-go" aria-hidden="true">/,
+      /suggestion\.hint === "↵"\s*\?\s*\(\s*<span className="cb-go" aria-hidden="true">/,
     );
     expect(commandBar).toContain('hint: "Ask"');
     expect(commandTabRows).toContain('hint: "Switch to tab"');
+    expect(results).toContain('<span className="cb-tab-action">Switch to this tab</span>');
     expectCss(styles).toContain(
       ".cb-go { display: grid; place-items: center; width: var(--control-h); height: var(--control-h); flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }",
     );
