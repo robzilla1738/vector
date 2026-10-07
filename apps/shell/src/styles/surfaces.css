@@ -1237,9 +1237,6 @@
   .chat-sidebar {
     border-right: var(--hairline) solid var(--line);
   }
-  .rail.open {
-    border-left: var(--hairline) solid var(--line);
-  }
   :root[data-sidebar-appearance="translucent"] .stage-card:not(.has-page) {
     background: transparent;
   }
