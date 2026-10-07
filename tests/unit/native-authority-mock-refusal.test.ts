@@ -3,6 +3,10 @@ import { NativeRecorderStartedSchema, NativeCdpNavigationReceiptSchema } from "@
 import { createMockHost } from "../../apps/shell/src/host/mock.generated.js";
 
 it.each([
+  "native.foundationModelsStatus",
+  "native.foundationModelsStart",
+  "native.foundationModelsRead",
+  "native.foundationModelsCancel",
   "native.cdpReset",
   "native.cdpCatalog",
   "native.cdpAttach",

@@ -109,6 +109,20 @@ import type {
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge extends Partial<DownloadNamingNative> {
+  foundationModelsStatus?(input: {
+    token: string;
+  }): Promise<HostMethodResult<"native.foundationModelsStatus">>;
+  foundationModelsStart?(
+    input: import("@aux/contracts/native-foundation-models").NativeFoundationStart,
+  ): Promise<HostMethodResult<"native.foundationModelsStart">>;
+  foundationModelsRead?(input: {
+    token: string;
+    requestId: string;
+    taskId: string;
+  }): Promise<HostMethodResult<"native.foundationModelsRead">>;
+  foundationModelsCancel?(
+    input: import("@aux/contracts/native-foundation-models").NativeFoundationCancel,
+  ): Promise<HostMethodResult<"native.foundationModelsCancel">>;
   projectFiles?(
     params: z.infer<typeof NativeProjectFilesParams>,
   ): Promise<z.infer<typeof ProjectFilesSchema>>;
@@ -269,7 +283,11 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
     pageId: string,
     windowId?: string,
     activate?: boolean,
-  ): Promise<{ windowId: string; sourceActivePageId: string | null; activePageId?: string | null }>;
+  ): Promise<{
+    windowId: string;
+    sourceActivePageId: string | null;
+    activePageId?: string | null;
+  }>;
   available(): boolean;
 }
 
@@ -430,6 +448,28 @@ export class ChannelNativeBridge implements NativeBridge {
     return ProfileOrganizationSnapshotSchema.parse(
       await this.channel.call("native.organizationSnapshot", {}),
     );
+  }
+  foundationModelsStatus(input: {
+    token: string;
+  }): Promise<HostMethodResult<"native.foundationModelsStatus">> {
+    return this.channel.call("native.foundationModelsStatus", input, 45_000);
+  }
+  foundationModelsStart(
+    input: import("@aux/contracts/native-foundation-models").NativeFoundationStart,
+  ): Promise<HostMethodResult<"native.foundationModelsStart">> {
+    return this.channel.call("native.foundationModelsStart", input, 45_000);
+  }
+  foundationModelsRead(input: {
+    token: string;
+    requestId: string;
+    taskId: string;
+  }): Promise<HostMethodResult<"native.foundationModelsRead">> {
+    return this.channel.call("native.foundationModelsRead", input, 45_000);
+  }
+  foundationModelsCancel(
+    input: import("@aux/contracts/native-foundation-models").NativeFoundationCancel,
+  ): Promise<HostMethodResult<"native.foundationModelsCancel">> {
+    return this.channel.call("native.foundationModelsCancel", input, 45_000);
   }
   async capabilities(): Promise<HostCapabilities> {
     return HostCapabilitiesSchema.parse(await this.channel.call("native.capabilities", {}));
@@ -693,7 +733,11 @@ export class NullNativeBridge implements NativeBridge {
   async readSecret() {
     return { value: undefined as string | undefined };
   }
-  async captureReadablePage(): Promise<{ url: string; title: string; text: string }> {
+  async captureReadablePage(): Promise<{
+    url: string;
+    title: string;
+    text: string;
+  }> {
     throw new Error("Page-content capture requires the Aux desktop app.");
   }
 }

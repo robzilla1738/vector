@@ -386,7 +386,7 @@ export const SuspensionRequestSchema = z
         runId: id,
         modelId: z.string().min(1).max(500),
         reasons: z
-          .array(z.enum(["output-bound", "monetary-bound"]))
+          .array(z.enum(["output-bound", "monetary-bound", "usage-unavailable"]))
           .min(1)
           .max(2),
         digest: z.string().regex(/^[a-f0-9]{64}$/),

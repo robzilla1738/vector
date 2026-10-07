@@ -549,6 +549,20 @@ export function CommandBar({
     surfaceMode,
     browserAutocomplete,
     nativeOmnibox,
+    committedInput: {
+      text: raw,
+      generation: queryGeneration,
+      classify:
+        !hero &&
+        !bridge.privateMode &&
+        routing === "automatic" &&
+        !scopePrefix &&
+        !/^[/>?@]/.test(raw) &&
+        !routeFlip &&
+        !scopeFlip &&
+        !askBreaker.unavailable() &&
+        (baseIntent.kind === "run" || (baseIntent.kind === "search" && !baseIntent.engine)),
+    },
     setBreakerVersion,
   });
 

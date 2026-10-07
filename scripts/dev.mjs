@@ -3,10 +3,12 @@
 import { runCommand } from "./lib/run-command.mjs";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
+import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(import.meta.dirname, "..");
+const typescriptCli = createRequire(import.meta.url).resolve("typescript/bin/tsc");
 const source = resolve(process.env.AUX_CHROMIUM_SRC ?? join(homedir(), "aux-chromium-stable/chromium/src"));
 const lock = join(source, "out", ".aux-dev-lock");
 function alive(pid) {
@@ -74,8 +76,8 @@ async function main() {
       return;
     }
     await run("node", ["scripts/gen-runtime-schema.mjs"]);
-    await run("npx", ["tsc", "-b"]);
-    await run("npx", ["tsc", "-p", "apps/shell/tsconfig.json"]);
+    await run(process.execPath, [typescriptCli, "-b"]);
+    await run(process.execPath, [typescriptCli, "-p", "apps/shell/tsconfig.json"]);
     await run("pnpm", ["--filter", "@aux/shell", "build"], { AUX_CHROMIUM_SHELL_BUILD: "1" });
     await run("node", ["chromium/stage-shell.mjs", "install"]);
     await run("chromium/aux-chromium", ["build"]);

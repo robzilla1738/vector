@@ -10,7 +10,12 @@ import { withRunAuthorityMutation } from "./overnight-authority.js";
 import { RunFundingService, ModelFundingUnavailable } from "./run-funding.js";
 
 type Route = NonNullable<Awaited<ReturnType<SettingsService["utilityModel"]>>>;
-type Request = { modelId: string; system?: string; prompt: string; maxOutputTokens?: number };
+type Request = {
+  modelId: string;
+  system?: string;
+  prompt: string;
+  maxOutputTokens?: number;
+};
 
 /** Cache misses enter the original run ledger; the SDK owns the global transport ledger. */
 export function accountableUtilityModel(input: {
@@ -59,14 +64,17 @@ export function accountableUtilityModel(input: {
       }
       throw error;
     }
-    const projected = subscription
-      ? undefined
-      : projectedModelCostUsd(
-          request.modelId,
-          estimatedPromptTokens(request.system ?? "", request.prompt),
-          request.maxOutputTokens ?? 128,
-          [...MODEL_REGISTRY, ...input.settings.registryModels()],
-        );
+    const onDevice = input.route.kind === "on-device";
+    const projected = onDevice
+      ? 0
+      : subscription
+        ? undefined
+        : projectedModelCostUsd(
+            request.modelId,
+            estimatedPromptTokens(request.system ?? "", request.prompt),
+            request.maxOutputTokens ?? 128,
+            [...MODEL_REGISTRY, ...input.settings.registryModels()],
+          );
     if (projected === undefined && input.bestEffort)
       throw new AuxError(
         "backend_unavailable",
@@ -115,13 +123,20 @@ export function accountableUtilityModel(input: {
                   providerMetadata: {
                     aux: {
                       kind: "utility_generation",
-                      provider: input.route.provider,
-                      destination: input.route.destination,
+                      ...(input.route.kind === "network"
+                        ? {
+                            provider: input.route.provider,
+                            destination: input.route.destination,
+                          }
+                        : {
+                            backend: "apple-foundation-models",
+                            transport: "on-device",
+                          }),
                     },
                   },
                   durationMs: 0,
                   costUsd: estimate,
-                  costEstimated: true,
+                  costEstimated: !onDevice,
                   createdAt: Date.now(),
                 });
               });
@@ -149,8 +164,8 @@ export function accountableUtilityModel(input: {
         if (callId) {
           const cost = receipt ? modelCallCost(receipt.modelId ?? request.modelId, receipt) : {};
           const settled = {
-            costUsd: cost.costUsd ?? estimate,
-            costEstimated: cost.costEstimated ?? true,
+            costUsd: onDevice ? 0 : (cost.costUsd ?? estimate),
+            costEstimated: onDevice ? false : (cost.costEstimated ?? true),
             durationMs: receipt?.durationMs ?? Date.now() - started,
             inputTokens: receipt?.inputTokens,
             outputTokens: receipt?.outputTokens,

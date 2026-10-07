@@ -3,11 +3,7 @@ import { pageDerivativeCache } from "../../services/ai-result-cache.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AgentWebTools, permittedWebUrl } from "../../agent/web-tools.js";
-import {
-  AuxError,
-  InlineAssistApplyParamsSchema,
-  InlineAssistTextSchema,
-} from "@aux/contracts";
+import { AuxError, InlineAssistApplyParamsSchema, InlineAssistTextSchema } from "@aux/contracts";
 import { policyFor } from "@aux/contracts";
 import { proposeTabTidy } from "../../agent/tidy.js";
 import { suggestTabName } from "../../agent/tab-name.js";
@@ -59,47 +55,58 @@ async function desktopUtility<T>(
         throw new AuxError("cancelled", "A selected utility source changed.");
     }
   };
-  const route = await s.settings.utilityModel();
+  const route =
+    input.action === "agent.tidy.propose"
+      ? await s.settings.utilityModel()
+      : await s.settings.utilityModel(token, checkOwner);
   if (!route)
     throw new AuxError("backend_unavailable", "Connect a model in Settings before requesting a suggestion.");
   await checkOwner();
-  return s.runs.generationOperation(
-    { kind: "utility", prompt: input.text, nativeTurnContext: token, checkOwner },
-    async (runId, signal) => {
-      const model = s.runs.utilityClient({
-        runId,
-        route,
-        signal,
-        checkOwner,
-        authorize: () =>
-          ctx
-            .decideEgress({
-              url: new URL(route.destination),
-              action: input.action,
-              connectionId: client.connectionId,
-              runId,
-              threadId: runId,
-              actor: "user",
-              invocationDigest: createHash("sha256")
-                .update(
-                  JSON.stringify([
-                    input.action,
+  return s.runs
+    .generationOperation(
+      { kind: "utility", prompt: input.text, nativeTurnContext: token, checkOwner },
+      async (runId, signal) => {
+        const model = s.runs.utilityClient({
+          runId,
+          route,
+          signal,
+          checkOwner,
+          authorize: () =>
+            route.kind === "on-device"
+              ? checkOwner()
+              : ctx
+                  .decideEgress({
+                    url: new URL(route.destination),
+                    action: input.action,
+                    connectionId: client.connectionId,
                     runId,
-                    input.text,
-                    selected,
-                    route.modelId,
-                    s.settings.modelCacheGeneration(),
-                  ]),
-                )
-                .digest("hex"),
-            })
-            .then(() => {}),
-      });
-      const result = await operation(model, route.modelId);
+                    threadId: runId,
+                    actor: "user",
+                    invocationDigest: createHash("sha256")
+                      .update(
+                        JSON.stringify([
+                          input.action,
+                          runId,
+                          input.text,
+                          selected,
+                          route.modelId,
+                          s.settings.modelCacheGeneration(),
+                        ]),
+                      )
+                      .digest("hex"),
+                  })
+                  .then(() => {}),
+        });
+        const result = await operation(model, route.modelId);
+        await checkOwner();
+        return result;
+      },
+    )
+    .catch(async (error) => {
+      // Even unavailable advisory output must remain bound to its original source.
       await checkOwner();
-      return result;
-    },
-  );
+      throw error;
+    });
 }
 
 async function h_agent_utility_intent(ctx: MethodCtx): Promise<unknown> {
@@ -124,7 +131,11 @@ async function h_agent_utility_intent(ctx: MethodCtx): Promise<unknown> {
     return { ...result.object, source: "model" };
   } catch (error) {
     // Classification is advisory. A stale owner is never turned into a new action.
-    if (error instanceof AuxError && ["cancelled", "conflict", "permission_denied"].includes(error.code))
+    if (error instanceof AggregateError) throw error;
+    if (
+      error instanceof AuxError &&
+      ["cancelled", "conflict", "permission_denied", "ref_stale"].includes(error.code)
+    )
       throw error;
     return { kind: null, source: "unavailable" };
   }

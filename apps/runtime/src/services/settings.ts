@@ -1,5 +1,6 @@
 import type { CopilotServices } from "./copilot-services.js";
 import type { CopilotAccount } from "./copilot-account.js";
+import { FoundationModelsClient, type UtilityRoute, type NetworkUtilityRoute } from "./foundation-models.js";
 import { CopilotRegistrationSchema, type CopilotRegistration } from "./copilot-protocol.js";
 import { randomUUID } from "node:crypto";
 import {
@@ -94,7 +95,12 @@ export interface Settings extends Pick<
   agentModelRoutes?: Partial<Record<AgentModelCategory, AgentModelRoute | AgentModelRoute[]>>;
   providerAgentModelRoutes?: Partial<Record<ModelProvider, Settings["agentModelRoutes"]>>;
   /** User budgets in USD (D11): per run, per local day, per routine lifetime. Unset = unlimited. */
-  budgets?: { runUsd?: number; dayUsd?: number; monthUsd?: number; routineUsd?: number };
+  budgets?: {
+    runUsd?: number;
+    dayUsd?: number;
+    monthUsd?: number;
+    routineUsd?: number;
+  };
   searchEngine?: string;
   homeEntryMode?: "search" | "ask";
   commandRouting?: "automatic" | "prefer-chat" | "prefer-search";
@@ -159,6 +165,7 @@ export class SettingsService {
   private gatewayClient: ModelClient | null = null;
   private fileSettings: Settings = {};
   private native: NativeBridge | null = null;
+  private foundationModels: FoundationModelsClient | undefined;
   private savedKey: string | undefined;
   private directKeys: Partial<Record<ModelProvider, string>> = {};
   private directErrors: Partial<Record<ModelProvider, string>> = {};
@@ -1153,7 +1160,11 @@ export class SettingsService {
         if (this.discoveryClosed || !original || !this.native?.turnSourceContext)
           throw new AuxError("cancelled", "The original sign-in window is unavailable.");
         const current = await this.native.turnSourceContext(token);
-        if (this.discoveryClosed || current.windowId !== original.windowId || current.activePageId !== original.activePageId)
+        if (
+          this.discoveryClosed ||
+          current.windowId !== original.windowId ||
+          current.activePageId !== original.activePageId
+        )
           throw new AuxError("cancelled", "The original sign-in window changed.");
         if (requester) {
           const requesting = await this.native.turnSourceContext(requester);
@@ -1220,6 +1231,11 @@ export class SettingsService {
     this.chatgptCatalogController.abort();
     const failures: unknown[] = [];
     try {
+      await this.foundationModels?.close();
+    } catch (error) {
+      failures.push(error);
+    }
+    try {
       await this.providerAuthService?.close();
     } catch (error) {
       failures.push(error);
@@ -1262,7 +1278,12 @@ export class SettingsService {
     }
     return this.mergedCatalog;
   }
-  budgetLimits(): { runUsd?: number; dayUsd?: number; monthUsd?: number; routineUsd?: number } {
+  budgetLimits(): {
+    runUsd?: number;
+    dayUsd?: number;
+    monthUsd?: number;
+    routineUsd?: number;
+  } {
     const b = this.get("budgets") as Settings["budgets"] | undefined;
     const pos = (v: unknown) => {
       const n = Number(v);
@@ -1444,21 +1465,30 @@ export class SettingsService {
   }
 
   /** Utility requests prefer discovered local models without changing the user's agent route. */
-  async utilityModel(): Promise<{
-    model: ModelClient;
-    modelId: string;
-    provider: ModelProvider;
-    destination: string;
-  } | null> {
+  utilityModel(): Promise<NetworkUtilityRoute | null>;
+  utilityModel(nativeTurnContext: string, checkOwner: () => Promise<void>): Promise<UtilityRoute | null>;
+  async utilityModel(
+    nativeTurnContext?: string,
+    checkOwner?: () => Promise<void>,
+  ): Promise<UtilityRoute | null> {
     if (this.discoveryClosed) throw new AuxError("cancelled", "Model discovery is closed.");
     if (this.modelOverride)
       return {
+        kind: "network",
         model: this.modelOverride,
         modelId: this.agentRoute("fast").modelId,
         provider: this.modelProvider(),
         destination: new URL(providerEndpoint(this.modelProvider(), this.compatibleEndpoint())).origin,
       };
     const generation = this.modelCacheGeneration();
+    if (nativeTurnContext && checkOwner && this.native) {
+      this.foundationModels ??= new FoundationModelsClient(this.native);
+      if (await this.foundationModels.available(nativeTurnContext)) {
+        this.assertModelGeneration(generation);
+        return this.foundationModels.route(nativeTurnContext, checkOwner);
+      }
+      this.assertModelGeneration(generation);
+    }
     const local = await this.localServers();
     this.assertModelGeneration(generation);
     const server = this.connectionEnabled("openai-compatible")
@@ -1466,6 +1496,7 @@ export class SettingsService {
       : undefined;
     if (server)
       return {
+        kind: "network",
         model: directModelClient("openai-compatible", "aux-local", undefined, server.endpoint),
         modelId: server.models[0]!.id,
         provider: "openai-compatible",
@@ -1475,7 +1506,10 @@ export class SettingsService {
     const key = this.gatewayKey();
     if (key)
       return {
-        model: new GatewayModelClient(key, { models: () => this.registryModels() }),
+        kind: "network",
+        model: new GatewayModelClient(key, {
+          models: () => this.registryModels(),
+        }),
         modelId: DEFAULT_UTILITY_MODEL_ID,
         provider: "gateway",
         destination: "https://ai-gateway.vercel.sh",
@@ -1484,6 +1518,7 @@ export class SettingsService {
     const selected = this.model();
     return selected
       ? {
+          kind: "network",
           model: selected,
           modelId: this.plannerModel(),
           provider: this.modelProvider(),
@@ -1503,9 +1538,13 @@ export class SettingsService {
   }
 
   /** Tiny structured-output + optional screenshot-understanding probe. */
-  async probe(
-    modelId?: string,
-  ): Promise<{ ok: boolean; modelId: string; latencyMs?: number; vision?: boolean; error?: string }> {
+  async probe(modelId?: string): Promise<{
+    ok: boolean;
+    modelId: string;
+    latencyMs?: number;
+    vision?: boolean;
+    error?: string;
+  }> {
     const epoch = this.connectionEpoch,
       provider = this.modelProvider();
     const stale = () => epoch !== this.connectionEpoch || !this.connectionEnabled(provider);

@@ -86,6 +86,7 @@ function fixture() {
     },
     runId: "original",
     route: {
+      kind: "network",
       model: transport,
       modelId: DEFAULT_UTILITY_MODEL_ID,
       provider: "gateway",

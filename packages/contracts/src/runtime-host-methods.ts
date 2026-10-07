@@ -1,4 +1,13 @@
 import {
+  NativeFoundationStatusParams,
+  NativeFoundationStatusSchema,
+  NativeFoundationStartParams,
+  NativeFoundationReceiptSchema,
+  NativeFoundationReadParams,
+  NativeFoundationReadSchema,
+  NativeFoundationCancelParams,
+} from "./native-foundation-models.js";
+import {
   ProjectFilesSchema,
   ProjectFileSchema,
   ProjectChangesSchema,
@@ -121,6 +130,18 @@ const nativePage = z
 
 /** Methods admitted only from the authenticated runtime connection. */
 export const RuntimeHostMethods = {
+  "native.foundationModelsStatus": runtime(
+    "core",
+    NativeFoundationStatusParams,
+    NativeFoundationStatusSchema,
+  ),
+  "native.foundationModelsStart": runtime("core", NativeFoundationStartParams, NativeFoundationReceiptSchema),
+  "native.foundationModelsRead": runtime("core", NativeFoundationReadParams, NativeFoundationReadSchema),
+  "native.foundationModelsCancel": runtime(
+    "core",
+    NativeFoundationCancelParams,
+    NativeFoundationReceiptSchema,
+  ),
   "native.projectFiles": runtime("core", NativeProjectFilesParams, ProjectFilesSchema),
   "native.projectFile": runtime("core", NativeProjectFileParams, ProjectFileSchema),
   "native.projectChanges": runtime("core", NativeProjectChangesParams, ProjectChangesSchema),

@@ -45,6 +45,7 @@ it("lists the runtime methods the renderer uses that the mock bridge does not im
 });
 
 const UNMOCKED = [
+  "agent.utility.intent",
   "artifacts.list",
   "bookmarks.folders.remove",
   "bookmarks.folders.rename",

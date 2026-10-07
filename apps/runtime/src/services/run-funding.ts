@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { FOUNDATION_MODEL_ID } from "@aux/contracts/native-foundation-models";
 import {
   AuxError,
   GoalSchema,
@@ -121,13 +122,13 @@ export class ModelFundingUnavailable extends AuxError {
     readonly proof: {
       runId: string;
       modelId: string;
-      reasons: ("output-bound" | "monetary-bound")[];
+      reasons: ("output-bound" | "monetary-bound" | "usage-unavailable")[];
       digest: string;
     },
   ) {
     super(
       "needs_input",
-      "This ChatGPT plan route cannot enforce the original output-token or monetary envelope. Stop this run and choose a model connection that supports its limits.",
+      "This model route cannot account for the original token or monetary envelope. Stop this run and choose a model connection that supports its limits.",
       { suspensionKind: "handoff" },
     );
   }
@@ -155,7 +156,11 @@ export class RunFundingService {
       !limits.some((limit) => limit.scope === "run" && limit.limitUsd <= rootLimit)
     )
       limits.push({ scope: "run", scopeId: rootId, limitUsd: rootLimit });
-    const reasons: ("output-bound" | "monetary-bound")[] = [];
+    const reasons: ("output-bound" | "monetary-bound" | "usage-unavailable")[] = [];
+    // This on-device route bounds its response but Apple exposes no complete
+    // inference usage receipt. Token-funded owners cannot admit unknown usage.
+    if (modelId === FOUNDATION_MODEL_ID && owners.some((owner) => owner.limits.maxTokens !== undefined))
+      reasons.push("usage-unavailable");
     if (model?.billingKind === "subscription") {
       if (
         model.outputLimitSupported === false &&
@@ -529,9 +534,10 @@ export class RunFundingService {
     if (!reservationId) return;
     // Accounting survives retirement; invoice ownership does not require a live dispatch lease.
     runAncestry(this.repo, runId);
-    const receipt = this.repo.getSetting<{ runId: string; ownerKeys: string[] }>(
-      `fundingReservation:${reservationId}`,
-    );
+    const receipt = this.repo.getSetting<{
+      runId: string;
+      ownerKeys: string[];
+    }>(`fundingReservation:${reservationId}`);
     if (!receipt || receipt.runId !== runId)
       throw new AuxError("permission_denied", "The original funding receipt is unavailable.");
     this.repo.transaction(() => {
@@ -602,9 +608,10 @@ export class RunFundingService {
   cancelUnsent(runId: string, reservationId: string | undefined): void {
     if (!reservationId) return;
     this.repo.transaction(() => {
-      const receipt = this.repo.getSetting<{ runId: string; ownerKeys: string[] }>(
-        `fundingReservation:${reservationId}`,
-      );
+      const receipt = this.repo.getSetting<{
+        runId: string;
+        ownerKeys: string[];
+      }>(`fundingReservation:${reservationId}`);
       if (!receipt || receipt.runId !== runId)
         throw new AuxError("permission_denied", "Original unsent funding receipt is unavailable.");
       for (const ownerKey of receipt.ownerKeys) {
