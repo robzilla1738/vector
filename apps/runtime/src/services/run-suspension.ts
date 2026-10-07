@@ -25,6 +25,10 @@ export function assertRunAnswerable(
     pending.suspensionId !== expectedSuspensionId
   )
     throw new AuxError("conflict", "The pending request changed. Review it before answering.");
+  if (pending.request.cloudSetup)
+    throw new AuxError("conflict", "Retry Cloud setup using its review action.");
+  if (pending.request.modelLimits)
+    throw new AuxError("conflict", "Retry model setup using its review action.");
   if (pending.request.resourceFunding || pending.request.resourceLimits)
     throw new AuxError("conflict", "Continue locally or stop the original cloud resource handoff.");
   if (pending.kind !== "ask-user-question" && pending.kind !== "handoff")

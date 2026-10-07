@@ -145,6 +145,7 @@ const UNMOCKED = [
   "runs.branch.list",
   "runs.continueBudget",
   "runs.retryCloudSetup",
+  "runs.retryModelSetup",
   "runs.steer",
   "runs.useLocalExecution",
   "safety.approvals.decide",

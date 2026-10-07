@@ -152,6 +152,7 @@ export class RunCoordinator {
     { runId: string; connectionId?: string; taskId?: string; taskRevision?: number }
   >();
   private executions = new Map<string, Promise<void>>();
+  private restoredDecisions = new Set<string>();
   private closed = false;
   answers = new Map<string, string>();
   private createdPages = new Map<string, Set<string>>();
@@ -652,6 +653,9 @@ export class RunCoordinator {
     return withRunAuthorityMutation(
       this.deps.repo,
       async () => {
+        await originalOwner();
+        await this.restoreDecisionControl(runId, suspensionId);
+        const restored = this.restoredDecisions.has(runId);
         const control = this.controls.get(runId);
         const waiter = control?.resourceWaiter;
         const pending = this.suspensions.pending(runId);
@@ -660,14 +664,13 @@ export class RunCoordinator {
           runRoot(this.deps.repo, runId, true) !== runId ||
           !control ||
           control.abort.signal.aborted ||
-          !waiter ||
-          waiter.suspensionId !== suspensionId ||
+          (!restored && waiter?.suspensionId !== suspensionId) ||
           pending?.suspensionId !== suspensionId ||
           pending.kind !== "handoff" ||
           (!pending.request.resourceFunding &&
             !pending.request.resourceLimits &&
             !pending.request.cloudSetup) ||
-          (target === "cloud" && (!pending.request.cloudSetup || !waiter.retryReady)) ||
+          (target === "cloud" && (!pending.request.cloudSetup || (!restored && !waiter?.retryReady))) ||
           root.status !== "needs_input" ||
           root.config?.executionTarget !== "cloud"
         )
@@ -676,10 +679,16 @@ export class RunCoordinator {
         const snapshots = family.map((id) => ({ id, config: JSON.stringify(this.get(id).config) }));
         const validate = async () => {
           await originalOwner();
-          await waiter.validate();
+          if (restored)
+            await this.deps.agentLoop?.cloudExecutor?.recoverReview?.(
+              { runId, threadId: root.config?.chatId ?? runId, turnId: runId },
+              pending.request,
+              target,
+            );
+          else await waiter!.validate();
           if (
             control.abort.signal.aborted ||
-            control.resourceWaiter !== waiter ||
+            (!restored && control.resourceWaiter !== waiter) ||
             this.get(runId).status !== "needs_input" ||
             this.suspensions.pending(runId)?.suspensionId !== suspensionId ||
             JSON.stringify(lineageRuns(this.deps.repo, runId)) !== JSON.stringify(family) ||
@@ -689,13 +698,14 @@ export class RunCoordinator {
         };
         await validate();
         const cloud = this.deps.agentLoop?.cloudExecutor;
-        if (!cloud) throw new AuxError("capability_unsupported", "Original cloud cleanup is unavailable.");
+        if (!cloud || (restored && !cloud.recoverReview))
+          throw new AuxError("capability_unsupported", "Original cloud cleanup is unavailable.");
         // Cleanup is real even when the request was refused before starting a VM.
         // Any ambiguous stop keeps the cloud mode, handoff and funding holds intact.
         for (const id of family) await cloud.closeRun(id);
         await validate();
         if (target === "cloud") {
-          await waiter.retryReady!();
+          if (!restored) await waiter!.retryReady!();
           await validate();
         }
         this.deps.repo.transaction(() => {
@@ -722,7 +732,8 @@ export class RunCoordinator {
           runId,
         );
         this.deps.events.emit(EventTypes.RunUpdated, { run: this.get(runId) }, runId);
-        waiter.resolve();
+        if (restored) this.startRestoredDecision(runId);
+        else waiter!.resolve();
         return this.get(runId);
       },
       runId,
@@ -816,6 +827,7 @@ export class RunCoordinator {
       deadlineMs?: number;
       funding?: import("../services/run-funding.js").FundingLimits;
     },
+    originalOwner?: () => Promise<void>,
   ): Promise<Run> {
     const original = this.suspensions.pending(runId);
     if (
@@ -828,6 +840,12 @@ export class RunCoordinator {
     return withRunAuthorityMutation(
       this.deps.repo,
       async () => {
+        if (!this.controls.has(runId) || this.restoredDecisions.has(runId)) {
+          if (this.get(runId).config?.nativeTurnContext && !originalOwner)
+            throw new AuxError("permission_denied", "Continue this restored budget from Aux.");
+          await originalOwner?.();
+          await this.restoreDecisionControl(runId, suspensionId);
+        }
         await this.deps.checkBudget?.({
           runId,
           requiredUsd: original.request.budget!.requiredUsd,
@@ -843,11 +861,15 @@ export class RunCoordinator {
           control.abort.signal.aborted ||
           control.paused ||
           run.status !== "needs_input" ||
-          control.budgetWaiter?.suspensionId !== suspensionId ||
+          (!this.restoredDecisions.has(runId) && control.budgetWaiter?.suspensionId !== suspensionId) ||
           current?.suspensionId !== suspensionId ||
           JSON.stringify(current) !== JSON.stringify(original)
         )
           throw new AuxError("conflict", "The original budget request is no longer pending.");
+        await originalOwner?.();
+        this.deps.checkRunSource?.(runId);
+        if (this.suspensions.pending(runId)?.suspensionId !== suspensionId || control.abort.signal.aborted)
+          throw new AuxError("ref_stale", "The budget request changed during validation.");
         const budget = original.request.budget!;
         const field =
           budget.reason === "model_calls"
@@ -898,7 +920,8 @@ export class RunCoordinator {
           runId,
         );
         control.budgetInterrupted = false;
-        waiter.resolve();
+        if (this.restoredDecisions.has(runId)) this.startRestoredDecision(runId);
+        else waiter!.resolve();
         return run;
       },
       runId,
@@ -938,6 +961,164 @@ export class RunCoordinator {
     c.dispatchAbort?.abort(BUDGET_INTERRUPTION);
     c.answerWaiter?.resolve("");
     this.releasePages(runId, true);
+  }
+
+  async bindRestartOwner(
+    runId: string,
+    suspensionId: string,
+    token: string,
+    currentOwner: () => Promise<void>,
+  ): Promise<void> {
+    if (this.controls.has(runId) && !this.restoredDecisions.has(runId)) {
+      if (this.get(runId).config?.nativeTurnContext !== token)
+        throw new AuxError("permission_denied", "The original Aux owner changed.");
+      await currentOwner();
+      return;
+    }
+    const pending = recoverablePark(this.deps.repo, runId),
+      run = this.get(runId),
+      snapshot = JSON.stringify(run);
+    if (this.closed || !token || pending?.suspensionId !== suspensionId)
+      throw new AuxError("ref_stale", "The original parked request changed.");
+    await currentOwner();
+    const source = await this.deps.turnMentions.begin(
+      runId,
+      run.config?.mentions ?? [],
+      this.ownedPages(runId),
+      {
+        nativeTurnContext: token,
+        workspaceId: run.config?.contextWorkspaceId,
+        privateTask: run.config?.privateTask,
+        sourcePageIds: run.pageIds,
+        taskId: run.config?.taskId,
+        taskRevision: run.config?.taskRevision,
+      },
+    );
+    try {
+      await this.deps.turnMentions.assertRestartOwner(runId);
+      await currentOwner();
+      if (
+        this.deps.turnMentions.capture(runId) !== source.token ||
+        this.closed ||
+        (this.controls.has(runId) && !this.restoredDecisions.has(runId)) ||
+        JSON.stringify(this.get(runId)) !== snapshot ||
+        this.suspensions.pending(runId)?.suspensionId !== suspensionId
+      )
+        throw new AuxError("ref_stale", "The original parked run changed during owner binding.");
+      run.config = { ...run.config, nativeTurnContext: token };
+      this.deps.repo.saveRun(run);
+    } catch (error) {
+      this.deps.turnMentions.endIfCurrent(runId, source.token);
+      throw error;
+    }
+  }
+
+  private async restoreDecisionControl(runId: string, suspensionId: string): Promise<void> {
+    if (this.controls.has(runId)) return;
+    const run = this.get(runId),
+      pending = recoverablePark(this.deps.repo, runId),
+      snapshot = JSON.stringify(run);
+    if (this.closed || pending?.suspensionId !== suspensionId)
+      throw new AuxError("ref_stale", "The durable continuation is unavailable.");
+    this.deps.checkRunSource?.(runId);
+    await this.deps.turnMentions.begin(runId, run.config?.mentions ?? [], this.ownedPages(runId), {
+      nativeTurnContext: run.config?.nativeTurnContext,
+      workspaceId: run.config?.contextWorkspaceId,
+      privateTask: run.config?.privateTask,
+      sourcePageIds: run.pageIds,
+      taskId: run.config?.taskId,
+      taskRevision: run.config?.taskRevision,
+    });
+    if (this.controls.has(runId)) return;
+    if (
+      this.closed ||
+      JSON.stringify(this.get(runId)) !== snapshot ||
+      this.suspensions.pending(runId)?.suspensionId !== suspensionId
+    )
+      throw new AuxError("ref_stale", "The durable continuation changed during source validation.");
+    const keys = [`run:${runId}`, ...(run.config?.taskId ? [`task:${run.config.taskId}`] : [])];
+    const acquired: string[] = [];
+    try {
+      for (const key of keys) {
+        this.leases.acquire(key, this.leaseOwner);
+        this.heldLeases.add(key);
+        acquired.push(key);
+      }
+    } catch (error) {
+      for (const key of acquired) {
+        this.leases.release(key, this.leaseOwner);
+        this.heldLeases.delete(key);
+      }
+      throw error;
+    }
+    this.controls.set(runId, {
+      abort: new AbortController(),
+      dispatchAbort: new AbortController(),
+      paused: false,
+    });
+    this.restoredDecisions.add(runId);
+  }
+
+  private startRestoredDecision(runId: string): void {
+    const control = this.controls.get(runId);
+    if (!this.restoredDecisions.delete(runId) || !control || control.abort.signal.aborted)
+      throw new AuxError("cancelled", "The restored continuation stopped.");
+    if (control.deadlineTimer) clearTimeout(control.deadlineTimer);
+    this.controls.delete(runId);
+    this.launchRun(this.get(runId));
+  }
+
+  async retryModelSetup(
+    runId: string,
+    suspensionId: string,
+    originalOwner: () => Promise<void>,
+  ): Promise<Run> {
+    return withRunAuthorityMutation(
+      this.deps.repo,
+      async () => {
+        await originalOwner();
+        await this.restoreDecisionControl(runId, suspensionId);
+        const pending = this.suspensions.pending(runId),
+          run = this.get(runId),
+          config = JSON.stringify(run.config);
+        const proof = pending?.request.modelLimits;
+        const reviewedRun = proof && this.deps.repo.getRun(proof.runId);
+        if (
+          pending?.suspensionId !== suspensionId ||
+          !proof ||
+          !lineageRuns(this.deps.repo, runId).includes(proof.runId) ||
+          !reviewedRun ||
+          (reviewedRun.config?.modelId ?? this.deps.defaultModel()) !== proof.modelId ||
+          !this.deps.funding
+        )
+          throw new AuxError("ref_stale", "The original model review changed.");
+        await this.deps.funding.assertModelAdmission(proof.runId, proof.modelId);
+        await originalOwner();
+        this.deps.checkRunSource?.(runId);
+        if (
+          JSON.stringify(this.get(runId).config) !== config ||
+          JSON.stringify(this.deps.repo.getRun(proof.runId)?.config) !== JSON.stringify(reviewedRun.config) ||
+          this.suspensions.pending(runId)?.suspensionId !== suspensionId
+        )
+          throw new AuxError("ref_stale", "The original model review changed during validation.");
+        const control = this.controls.get(runId);
+        const restored = this.restoredDecisions.has(runId);
+        if (
+          !control ||
+          control.abort.signal.aborted ||
+          (!restored && control.resourceWaiter?.suspensionId !== suspensionId)
+        )
+          throw new AuxError("ref_stale", "The original model continuation changed.");
+        this.suspensions.resolve(suspensionId, "answered");
+        run.status = "running";
+        run.statusMessage = "Retrying the reviewed model route";
+        this.deps.repo.saveRun(run);
+        if (restored) this.startRestoredDecision(runId);
+        else control.resourceWaiter!.resolve();
+        return this.get(runId);
+      },
+      runId,
+    );
   }
 
   private rehydrateParkedRun(runId: string): void {

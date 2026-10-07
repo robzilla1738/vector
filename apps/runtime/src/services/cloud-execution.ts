@@ -24,4 +24,9 @@ export interface CloudReplExecutor {
   ): Promise<LoopToolResult>;
   hasOpen(runId: string): boolean;
   closeRun(runId: string): Promise<void>;
+  recoverReview?(
+    ctx: CloudExecutionContext,
+    request: import("@aux/contracts").Suspension["request"],
+    target: "local" | "cloud",
+  ): Promise<void>;
 }

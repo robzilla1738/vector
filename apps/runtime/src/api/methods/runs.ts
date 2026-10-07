@@ -186,7 +186,19 @@ async function h_runs_continue_budget(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external || ctx.client.codeMode)
     throw new AuxError("permission_denied", "Review and continue budgets through the Aux window.");
   const p = MethodSchemas["runs.continueBudget"].parse(ctx.params);
-  return ctx.s.runs.continueBudget(p.runId, p.suspensionId, p.limits);
+  const token = ctx.client.nativeTurnContext;
+  const native = ctx.s.native;
+  return ctx.s.runs.continueBudget(
+    p.runId,
+    p.suspensionId,
+    p.limits,
+    token,
+    token && native?.turnSourceContext
+      ? async () => {
+          await native.turnSourceContext!(token);
+        }
+      : undefined,
+  );
 }
 async function h_runs_use_local_execution(ctx: MethodCtx): Promise<unknown> {
   const token = ctx.client.nativeTurnContext;
@@ -212,13 +224,34 @@ async function h_runs_retry_cloud_setup(ctx: MethodCtx): Promise<unknown> {
     await native.turnSourceContext!(token);
   });
 }
+async function h_runs_retry_model_setup(ctx: MethodCtx): Promise<unknown> {
+  const token = ctx.client.nativeTurnContext;
+  if (ctx.client.external || ctx.client.codeMode || !token)
+    throw new AuxError("permission_denied", "Retry model setup from the original Aux window.");
+  const p = MethodSchemas["runs.retryModelSetup"].parse(ctx.params);
+  const native = ctx.s.native;
+  if (!native?.turnSourceContext)
+    throw new AuxError("capability_unsupported", "Original Aux window authority is unavailable.");
+  return ctx.s.runs.retryModelSetup(p.runId, p.suspensionId, token, async () => {
+    await native.turnSourceContext!(token);
+  });
+}
 async function h_runs_answer(ctx: MethodCtx): Promise<unknown> {
   const { client, params: p, s, suspensions } = ctx;
-  if (client.external)
+  if (client.external || client.codeMode)
     throw new AuxError("permission_denied", "Answers and mentions must come from the Aux composer.");
   const run = s.runs.coordinator.get(p.runId);
   const pending = suspensions.pending(p.runId);
   assertRunAnswerable(run, pending, p.expectedSuspensionId);
+  if (!s.runs.coordinator.controls.has(p.runId)) {
+    const token = client.nativeTurnContext;
+    const native = s.native;
+    if (client.codeMode || !token || !native?.turnSourceContext || !pending)
+      throw new AuxError("permission_denied", "Resume this request from the Aux window.");
+    await s.runs.coordinator.bindRestartOwner(p.runId, pending.suspensionId, token, async () => {
+      await native.turnSourceContext!(token);
+    });
+  }
   return s.runs.coordinator.answerWithMentions(p.runId, p.answer, p.mentions ?? [], () => {
     assertRunAnswerable(
       s.runs.coordinator.get(p.runId),
@@ -289,6 +322,7 @@ export const runsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "runs.continueBudget": h_runs_continue_budget,
   "runs.useLocalExecution": h_runs_use_local_execution,
   "runs.retryCloudSetup": h_runs_retry_cloud_setup,
+  "runs.retryModelSetup": h_runs_retry_model_setup,
   "runs.queue": h_runs_queue,
   "runs.steer": h_runs_steer,
   "runs.messages.list": h_runs_messages_list,

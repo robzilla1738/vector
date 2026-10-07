@@ -1,3 +1,4 @@
+import { recoverablePark } from "./startup-recovery.js";
 import { narrowProfileLimit, narrowCostLimit } from "./agent-profiles.js";
 import { generatePageSummary } from "./page-summary.js";
 import type { PageDerivativeCache } from "./ai-result-cache.js";
@@ -1484,9 +1485,11 @@ export class RunService {
             `SELECT a.agent_id,a.body,g.body AS group_body FROM subagents a
           JOIN subagent_groups g ON g.group_id=a.group_id WHERE a.run_id=? OR a.reserved_run_id=?`,
           )
-          .all(id, id) as { agent_id:string;body: string; group_body: string }[];
+          .all(id, id) as { agent_id: string; body: string; group_body: string }[];
         for (const row of rows) {
-          const a = SubagentSchema.parse(JSON.parse(this.deps.repo.revealRecordField("subagents",[row.agent_id],"body",row.body)));
+          const a = SubagentSchema.parse(
+            JSON.parse(this.deps.repo.revealRecordField("subagents", [row.agent_id], "body", row.body)),
+          );
           const g = SubagentGroupSchema.parse(JSON.parse(row.group_body));
           if (
             a.tokenAllocation > 0 ||
@@ -3176,8 +3179,14 @@ export class RunService {
       deadlineMs?: number;
       funding?: import("./run-funding.js").FundingLimits;
     },
+    token?: string,
+    originalOwner?: () => Promise<void>,
   ): Promise<Run> {
-    return this.coordinator.continueBudget(runId, suspensionId, limits);
+    return (async () => {
+      if (token && originalOwner)
+        await this.coordinator.bindRestartOwner(runId, suspensionId, token, originalOwner);
+      return this.coordinator.continueBudget(runId, suspensionId, limits, originalOwner);
+    })();
   }
 
   close(): Promise<void> {
@@ -3188,6 +3197,7 @@ export class RunService {
     // Stop queued members and all current dispatches synchronously. Joining the
     // real scheduler/loop promises leaves no late repository work after close.
     for (const control of this.setRunControls.values()) control.cancel();
+    const preserved = new Set(active.filter((id) => !!recoverablePark(this.deps.repo, id)));
     const retirement = this.coordinator.close();
     const roots = new Set<string>();
     const lineageFailures: unknown[] = [];
@@ -3202,7 +3212,9 @@ export class RunService {
     }
     this.closing = Promise.allSettled([
       retirement,
-      ...[...roots].map((root) => this.cancel(root, "Runtime closed.")),
+      ...[...roots]
+        .filter((root) => !preserved.has(root))
+        .map((root) => this.cancel(root, "Runtime closed.")),
       ...schedulers,
       ...[...this.ownedOperations].map((pending) =>
         pending.catch((error) => {
@@ -3237,6 +3249,7 @@ export class RunService {
     token: string,
     originalOwner: () => Promise<void>,
   ): Promise<Run> {
+    await this.coordinator.bindRestartOwner(runId, suspensionId, token, originalOwner);
     const original = this.coordinator.get(runId);
     if (!token || original.config?.nativeTurnContext !== token)
       throw new AuxError("permission_denied", "Continue locally from the original Aux window.");
@@ -3253,6 +3266,7 @@ export class RunService {
     token: string,
     originalOwner: () => Promise<void>,
   ): Promise<Run> {
+    await this.coordinator.bindRestartOwner(runId, suspensionId, token, originalOwner);
     if (!token || this.coordinator.get(runId).config?.nativeTurnContext !== token)
       throw new AuxError("permission_denied", "Retry Cloud setup from the original Aux window.");
     return this.coordinator.retryCloudSetup(runId, suspensionId, async () => {
@@ -3260,6 +3274,16 @@ export class RunService {
         throw new AuxError("permission_denied", "The original Aux window changed.");
       await originalOwner();
     });
+  }
+
+  async retryModelSetup(
+    runId: string,
+    suspensionId: string,
+    token: string,
+    originalOwner: () => Promise<void>,
+  ): Promise<Run> {
+    await this.coordinator.bindRestartOwner(runId, suspensionId, token, originalOwner);
+    return this.coordinator.retryModelSetup(runId, suspensionId, originalOwner);
   }
 
   async resume(runId: string): Promise<Run> {

@@ -108,7 +108,8 @@ export class TurnMentionService {
               if (memberSpace === spaceId) defaults.add(pageId);
         }
       }
-      for (const pageId of defaults) if (browserContextPage(() => this.deps.page(pageId))) selected.add(pageId);
+      for (const pageId of defaults)
+        if (browserContextPage(() => this.deps.page(pageId))) selected.add(pageId);
       if (this.deps.prepareReadPage && selected.size && !context.privateTask) {
         await Promise.all([...selected].map((pageId) => this.deps.prepareReadPage!(pageId)));
         if (this.starts.get(runId) !== token)
@@ -214,6 +215,27 @@ export class TurnMentionService {
   hasPageSelection(runId: string): boolean {
     return this.turns.get(runId)?.authority.hasPageSelection(runId) ?? false;
   }
+  async assertRestartOwner(runId: string): Promise<void> {
+    const active = await this.refresh(runId);
+    if (!active) throw new MentionUnavailable("The restored native source changed.");
+    const source = active.currentSourceContext;
+    if (!source) throw new MentionUnavailable("A current native Aux owner is required.");
+    const workspace = active.context.workspaceId;
+    const selected = source.layout?.window.activeSpaceId;
+    if (
+      workspace &&
+      !source.layout?.shared.spaces.some(
+        (space) => space.id === selected && !space.archived && space.workspaceId === workspace,
+      )
+    )
+      throw new MentionUnavailable("Continue from the original workspace.");
+    for (const pageId of active.context.sourcePageIds ?? []) {
+      const page = this.deps.page(pageId);
+      if (page?.windowId && page.windowId !== source.windowId)
+        throw new MentionUnavailable("The original source pages belong to another Aux window.");
+    }
+  }
+
   private async sourceContext(token: string) {
     if (!this.deps.turnSourceContext)
       throw new MentionUnavailable("Original window source authority is unavailable.");

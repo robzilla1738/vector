@@ -44,8 +44,10 @@ export function SuspensionPanel({
     typed?.request.instruction ?? question ?? run.statusMessage ?? "Aux is waiting for your answer.";
   const kind = typed?.kind;
   const resourceHandoff =
-    kind === "handoff" && !!(typed?.request.resourceFunding || typed?.request.resourceLimits || typed?.request.cloudSetup);
-  const canAnswer = kind === "ask-user-question" || (kind === "handoff" && !resourceHandoff);
+    kind === "handoff" &&
+    !!(typed?.request.resourceFunding || typed?.request.resourceLimits || typed?.request.cloudSetup);
+  const modelHandoff = kind === "handoff" && !!typed?.request.modelLimits;
+  const canAnswer = kind === "ask-user-question" || (kind === "handoff" && !resourceHandoff && !modelHandoff);
   const text = draft?.question === instruction ? draft.text : "";
   const setText = (value: string) => useStore.getState().setRunAnswerDraft(run.runId, instruction, value);
 
@@ -95,13 +97,16 @@ export function SuspensionPanel({
     }
   }
 
-  async function useLocalExecution(retryCloud = false) {
-    if (!resourceHandoff || !typed || !hydrated || readOnly || busy || sending.current) return;
+  async function resumeSetup(
+    method: "runs.retryCloudSetup" | "runs.useLocalExecution" | "runs.retryModelSetup",
+  ) {
+    if ((!resourceHandoff && !modelHandoff) || !typed || !hydrated || readOnly || busy || sending.current)
+      return;
     sending.current = true;
     setBusy(true);
     setError("");
     try {
-      await call(retryCloud ? "runs.retryCloudSetup" : "runs.useLocalExecution", { runId: run.runId, suspensionId: typed.suspensionId });
+      await call(method, { runId: run.runId, suspensionId: typed.suspensionId });
     } catch (reason) {
       setError(errorMessage(reason));
     } finally {
@@ -135,23 +140,32 @@ export function SuspensionPanel({
       {(kind === "approval" || kind === "action-confirmation") && (
         <p {...staticHintProps}>Review the approval prompt. Aux will wait for your decision.</p>
       )}
-      {kind === "handoff" && !resourceHandoff && (
+      {kind === "handoff" && !resourceHandoff && !modelHandoff && (
         <p {...staticHintProps}>Use the page, return control, then tell Aux when you’re done.</p>
       )}
       {typed?.request.cloudSetup && (
         <button
           className="btn primary sm"
           disabled={readOnly || !hydrated || busy || answerPending}
-          onClick={() => void useLocalExecution(true)}
+          onClick={() => void resumeSetup("runs.retryCloudSetup")}
         >
           {busy ? "Checking Cloud setup…" : "Retry Cloud setup"}
+        </button>
+      )}
+      {modelHandoff && (
+        <button
+          className="btn primary sm"
+          disabled={readOnly || !hydrated || busy || answerPending}
+          onClick={() => void resumeSetup("runs.retryModelSetup")}
+        >
+          {busy ? "Checking model setup…" : "Retry model setup"}
         </button>
       )}
       {resourceHandoff && (
         <button
           className="btn primary sm"
           disabled={readOnly || !hydrated || busy || answerPending}
-          onClick={() => void useLocalExecution()}
+          onClick={() => void resumeSetup("runs.useLocalExecution")}
         >
           {busy ? "Stopping cloud execution…" : "Continue locally"}
         </button>
@@ -190,7 +204,7 @@ export function SuspensionPanel({
       {error && (
         <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error}
-          {!resourceHandoff && " Your answer is kept."}
+          {canAnswer && " Your answer is kept."}
         </p>
       )}
     </section>

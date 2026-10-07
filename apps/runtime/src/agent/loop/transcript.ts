@@ -23,6 +23,8 @@ export interface ParkedCall {
   toolName: string;
   /** Typed suspension needed to reconstruct the pending question on restart. */
   suspension?: LoopPark;
+  /** Accepted question/handoff answer awaiting consumption; never executable approval authority. */
+  acceptedAnswer?: unknown;
   /**
    * Every call of the step in order: real outputs for executed calls, a
    * `parked` slot for the suspended call, and honest "interrupted" outputs

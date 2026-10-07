@@ -314,9 +314,10 @@ it("preserves a genuinely parked run across graceful restart, history limits and
     },
   );
   let ownerAvailable = true;
+  let currentToken = "owner-token";
   const nativeSource = vi.fn(async (token: string) => {
     if (!ownerAvailable) throw new Error("Original native window unavailable");
-    expect(token).toBe("owner-token");
+    expect(token).toBe(currentToken);
     return { revision: 0, layout: null, windowId: "main", activePageId: "p1" };
   });
   h.coordinator.deps.turnMentions = new TurnMentionService({
@@ -373,12 +374,104 @@ it("preserves a genuinely parked run across graceful restart, history limits and
   );
   expect(recovered.controls.has(run.runId)).toBe(false);
   ownerAvailable = true;
+  currentToken = "fresh-native-token";
+  await recovered.bindRestartOwner(run.runId, suspension.suspensionId, currentToken, async () => {
+    await nativeSource(currentToken);
+  });
+  expect(h.repo.getRun(run.runId)?.config?.nativeTurnContext).toBe(currentToken);
+  expect(h.repo.getRun(run.runId)?.config?.chatId).toBe("restart-chat");
   await recovered.answerWithMentions(run.runId, "Continue", [], () => {});
   expect(recovered.controls.has(run.runId)).toBe(true);
   expect((await settle(h.repo, run.runId)).status).toBe("completed");
   expect(nativeSource.mock.calls.length).toBeGreaterThanOrEqual(3);
   expect(transcript.openPark(run.runId)).toBeUndefined();
   expect(h.pages.execute).not.toHaveBeenCalled();
+  await recovered.close();
+  h.db.close();
+});
+
+it("restores the original budget Continue after graceful shutdown without launching before review", async () => {
+  const h = harness(scripted([tool("ask_user_question", { question: "Details?" })]), () => {
+    throw new Error("No effect authorized");
+  });
+  const run = await h.coordinator.start({ goal: "Gather details", pageIds: ["p1"], maxModelCalls: 1 });
+  await waitForStatus(h.repo, run.runId, "needs_input");
+  await h.coordinator.answer(run.runId, "The details");
+  await vi.waitFor(() => expect(h.coordinator.suspensions.pending(run.runId)?.kind).toBe("budget"));
+  const pending = h.coordinator.suspensions.pending(run.runId)!;
+  await h.coordinator.close();
+  const { markInterruptedRuns } = await import("../../apps/runtime/src/services/startup-recovery.js");
+  await markInterruptedRuns(h.repo);
+  const model = scripted([done()]);
+  const invoke = vi.spyOn(model, "toolCallStep");
+  const recovered = new RunCoordinator({ ...h.coordinator.deps, model: () => model });
+  expect(h.repo.getRun(run.runId)?.status).toBe("needs_input");
+  await expect(recovered.continueBudget(run.runId, pending.suspensionId)).rejects.toMatchObject({
+    code: "conflict",
+  });
+  expect(invoke).not.toHaveBeenCalled();
+  await recovered.continueBudget(run.runId, pending.suspensionId, { maxModelCalls: 2 });
+  expect((await settle(h.repo, run.runId)).status).toBe("completed");
+  expect(invoke).toHaveBeenCalledOnce();
+  await recovered.close();
+  h.db.close();
+});
+
+it("restores a durable Cloud setup handoff only through reviewed local cleanup", async () => {
+  const h = harness(scripted([done()]), () => {
+    throw new Error("No effect authorized");
+  });
+  const runId = "parked-cloud";
+  h.repo.saveRun({
+    runId,
+    goal: "Review Cloud setup",
+    status: "needs_input",
+    pageIds: ["p1"],
+    createdAt: Date.now(),
+    config: { implementation: "agent-loop", executionTarget: "cloud", chatId: "cloud-chat" },
+  });
+  const originalDigest = (await import("node:crypto"))
+    .createHash("sha256")
+    .update(JSON.stringify({ runId, threadId: "cloud-chat", turnId: runId }))
+    .digest("hex");
+  const pending = h.coordinator.suspensions.park({
+    runId,
+    turnId: runId,
+    threadId: "cloud-chat",
+    kind: "handoff",
+    request: {
+      kind: "handoff",
+      cloudSetup: { runId, originalDigest },
+      instruction: "Configure Cloud",
+      guidance: "Continue locally after original cleanup.",
+    },
+  });
+  const { markInterruptedRuns } = await import("../../apps/runtime/src/services/startup-recovery.js");
+  await markInterruptedRuns(h.repo);
+  const closeRun = vi.fn(async () => {}),
+    recoverReview = vi.fn(async () => {});
+  const recovered = new RunCoordinator({
+    ...h.coordinator.deps,
+    agentLoop: {
+      cloudExecutor: {
+        closeRun,
+        recoverReview,
+        selected: () => false,
+        hasOpen: () => false,
+        eval: vi.fn(),
+        wait: vi.fn(),
+      },
+    },
+  });
+  await recovered.useLocalExecution(runId, pending.suspensionId, async () => {});
+  expect(recoverReview).toHaveBeenCalledWith(
+    { runId, threadId: "cloud-chat", turnId: runId },
+    expect.objectContaining({ cloudSetup: { runId, originalDigest } }),
+    "local",
+  );
+  expect(closeRun).toHaveBeenCalledWith(runId);
+  expect(h.repo.getRun(runId)?.config?.executionTarget).toBe("local");
+  expect((await settle(h.repo, runId)).status).toBe("completed");
   await recovered.close();
   h.db.close();
 });

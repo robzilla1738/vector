@@ -33,7 +33,7 @@ import { runAgentLoop, resumeAgentLoop, type AgentLoopOptions, type AgentLoopOut
 import { ReplPool, type ReplHostDeps, type ReplTab } from "./repl.js";
 import type { WebmcpOutcome } from "../webmcp.js";
 import { permittedWebUrl } from "../web-tools.js";
-import { TranscriptStore } from "./transcript.js";
+import { TranscriptStore, type ParkedCall } from "./transcript.js";
 import { recordRunTabChange } from "../../services/browser-change-ledger.js";
 import { buildToolManifest } from "./tools.js";
 import { hydrateSelectedArticles } from "./memory-context.js";
@@ -2328,8 +2328,20 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
 
   try {
     let resumeAnswer: unknown;
-    let hasResume = false;
-    let freshHandoff = false;
+    const restoredPark = transcript.openPark(runId);
+    const ordinaryAnswer = (parked: ParkedCall | undefined) =>
+      !!parked?.suspension &&
+      ["ask-user-question", "handoff"].includes(parked.suspension.kind) &&
+      !parked.suspension.approvalId &&
+      !parked.suspension.detail?.execution;
+    let hasResume = restoredPark?.acceptedAnswer !== undefined && ordinaryAnswer(restoredPark);
+    if (hasResume) resumeAnswer = restoredPark!.acceptedAnswer;
+    const preserveAnswer = (value: unknown) => {
+      const parked = transcript.openPark(runId);
+      if (parked && ordinaryAnswer(parked))
+        transcript.updatePark(runId, { ...parked, acceptedAnswer: value });
+    };
+    let freshHandoff = hasResume && restoredPark?.suspension?.kind === "handoff";
     while (true) {
       try {
         if (c.deadlineHit) {
@@ -2433,6 +2445,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           self.suspensions.resolve(suspension.suspensionId, "answered");
           freshHandoff = suspension.kind === "handoff";
           resumeAnswer = raw.trim() ? raw : { resolved: true };
+          preserveAnswer(resumeAnswer);
           hasResume = true;
         }
         const maxModelCalls = modelCallLimit();
@@ -2613,6 +2626,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           self.suspensions.resolve(suspension.suspensionId, "answered");
           freshHandoff = suspension.kind === "handoff";
           resumeAnswer = raw.trim() ? raw : { resolved: true };
+          preserveAnswer(resumeAnswer);
           hasResume = true;
           continue;
         }

@@ -2361,6 +2361,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     wait: async (ctx, cellId, yieldTimeMs, terminate) =>
       (await getCloudRuntime()).executor.wait(ctx, cellId, yieldTimeMs, terminate),
     hasOpen: (runId) => cloudExecutor?.hasOpen(runId) ?? false,
+    recoverReview: async (ctx, request, target) => {
+      const { executor, admission } = await getCloudRuntime();
+      await admission.restoreOriginal(ctx);
+      return executor.recoverReview(ctx, request, target);
+    },
     closeRun: async (runId) => {
       if (!cloudRuntime) return;
       const { executor, admission } = await cloudRuntime;

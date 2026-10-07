@@ -39,8 +39,15 @@ export class CloudRunAdmission {
     await this.check(ctx, true);
   }
 
-  private async check(ctx: CloudExecutionContext, originalOnly: boolean): Promise<void> {
-    if (originalOnly && !this.owners.has(ctx.runId))
+  async restoreOriginal(ctx: CloudExecutionContext): Promise<void> {
+    const run = this.deps.repo.getRun(ctx.runId);
+    if (run?.status !== "needs_input")
+      throw new AuxError("ref_stale", "The original cloud review is no longer parked.");
+    await this.check(ctx, true, true);
+  }
+
+  private async check(ctx: CloudExecutionContext, originalOnly: boolean, restoring = false): Promise<void> {
+    if (originalOnly && !restoring && !this.owners.has(ctx.runId))
       throw new AuxError("ref_stale", "The original cloud admission is unavailable.");
     const read = () => {
       const run = this.deps.repo.getRun(ctx.runId);

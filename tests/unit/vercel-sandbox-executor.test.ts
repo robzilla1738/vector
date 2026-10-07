@@ -157,3 +157,23 @@ it("parks finite ordinary caps before consuming money approval or creating a VM"
   expect(f.create).not.toHaveBeenCalled();
   expect(f.repo.db.prepare("SELECT count(*) AS n FROM execution_resources").get()?.n).toBe(0);
 });
+
+it("reconciles the persisted original VM after executor restart without creating or resuming another session", async () => {
+  const f = fixture();
+  const original = new VercelSandboxExecutor(f.deps);
+  await original.bash({ command: "printf local", network: false }, f.ctx);
+  const sandbox = await f.create.mock.results[0]!.value;
+  const get = vi.fn(async () => sandbox);
+  const recovered = new VercelSandboxExecutor({ ...f.deps, get });
+  f.stop.mockRejectedValueOnce(new Error("Provider ACK unavailable"));
+  await expect(recovered.closeRun(f.ctx.runId)).rejects.toThrow("ACK unavailable");
+  expect(f.repo.db.prepare("SELECT state FROM execution_resources").get()?.state).toBe("running");
+  await recovered.closeRun(f.ctx.runId);
+  expect(get).toHaveBeenCalledWith(expect.objectContaining({ name: sandbox.name, resume: false }));
+  expect(f.create).toHaveBeenCalledOnce();
+  expect(f.forbidden).not.toHaveBeenCalled();
+  expect(f.repo.db.prepare("SELECT state,stop_ack FROM execution_resources").get()).toMatchObject({
+    state: "settled",
+    stop_ack: 1,
+  });
+});

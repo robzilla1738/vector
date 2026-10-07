@@ -17,17 +17,16 @@ export function activeRunIds(repo: Repo): string[] {
 export function recoverablePark(repo: Repo, runId: string) {
   const run = repo.getRun(runId),
     pending = new SuspensionStore(repo.db).pending(runId);
+  if (run?.status !== "needs_input" || run.config?.implementation !== "agent-loop" || !pending) return;
+  if (pending.kind === "budget" && pending.request.budget) return pending;
   if (
-    run?.status !== "needs_input" ||
-    run.config?.implementation !== "agent-loop" ||
-    !pending ||
-    pending.kind === "budget" ||
-    pending.request.resourceFunding ||
-    pending.request.resourceLimits ||
-    pending.request.cloudSetup ||
-    pending.request.modelLimits
+    pending.kind === "handoff" &&
+    (pending.request.resourceFunding ||
+      pending.request.resourceLimits ||
+      pending.request.cloudSetup ||
+      pending.request.modelLimits)
   )
-    return;
+    return pending;
   if (new TranscriptStore(repo.db, repo.columnCipher).openPark(runId)) return pending;
 }
 

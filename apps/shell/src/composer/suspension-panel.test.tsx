@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Suspension, SuspensionKind } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { RunPanel } from "../components/RunPanel";
+import { SuspensionPanel } from "./SuspensionPanel";
 import { makeRun } from "../mock/fixtures";
 import { useStore } from "../store";
 
@@ -182,5 +183,35 @@ it("keeps Stop reachable during a suspension and sends it once", async () => {
     expect(view.invoke.mock.calls.filter(([method]) => method === "runs.cancel")).toHaveLength(1);
   } finally {
     await view.unmount();
+  }
+});
+
+it("retries the pending model setup without treating it as a completed browser handoff", async () => {
+  const suspension = pending("handoff");
+  suspension.request.modelLimits = {
+    runId: run.runId,
+    modelId: "fixture-model",
+    reasons: ["output-bound"],
+    digest: "a".repeat(64),
+  };
+  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue(run as never);
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<SuspensionPanel run={run} suspension={suspension} hydrated />));
+    expect(host.textContent).not.toContain("I’m done, continue");
+    expect(host.textContent).not.toContain("Use the page");
+    const retry = [...host.querySelectorAll("button")].find(
+      (button) => button.textContent === "Retry model setup",
+    )!;
+    await act(async () => {
+      retry.click();
+      retry.click();
+    });
+    expect(invoke.mock.calls).toEqual([["runs.retryModelSetup", { runId: run.runId, suspensionId: "s1" }]]);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
   }
 });

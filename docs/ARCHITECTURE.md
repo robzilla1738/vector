@@ -65,9 +65,16 @@ Ordinary durable tool suspensions survive crash recovery and normal shutdown.
 Shutdown aborts controls and retires executable approval proofs while retaining
 the parked call. A trusted answer restores the original Aux loop and rechecks
 current native source authority; an earlier action approval is refreshed before
-dispatch. Stop still cancels the parked work. Budget and cloud-resource handoffs
-require their dedicated continuation and are not reconstructed by this ordinary
-parked-call recovery path.
+dispatch. Stop still cancels the parked work. Budget, model and cloud-resource
+reviews also survive restart through their dedicated Continue/retry actions.
+Explicit resume binds the reopened native window to the unchanged run and
+rechecks its workspace and source pages; expired native tokens are not reused.
+Accepted non-execution answers remain encrypted with the parked call if a budget
+pause occurs before consumption. Original cloud resources require exact provider
+session identity and stop acknowledgement before local continuation releases
+funding. Unknown creation outcomes remain unresolved and never trigger duplicate
+creation. Model retry rechecks the same reviewed model's admission bounds.
+Only trusted Aux UI can answer human questions or resume these reviews.
 
 Coder cells use isolated Git worktrees with permitted dirty/untracked snapshots,
 binary assets and modes. Parent integration uses governed writes and captured

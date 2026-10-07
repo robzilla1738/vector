@@ -8,7 +8,7 @@ import type { LoopToolResult, LoopPark } from "../agent/loop/types.js";
 import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import { Writable } from "node:stream";
-import { AuxError, type ResourceLimitsReview } from "@aux/contracts";
+import { AuxError, type Suspension, type ResourceLimitsReview } from "@aux/contracts";
 import { ResourceFundingUnavailable, ResourceLimitsUnavailable } from "./run-funding.js";
 import type { Sandbox, Session } from "@vercel/sandbox";
 import type { Repo } from "../store/repo.js";
@@ -23,6 +23,7 @@ import {
 } from "./cloud-resource-quote.js";
 
 export interface CloudFunding {
+  assertResourceOwner?(error: ResourceFundingUnavailable): void;
   reserveResource(
     runId: string,
     input: { resourceId: string; estimatedCostUsd?: number },
@@ -81,6 +82,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
   private readonly repls = new Map<string, CloudReplClient>();
   private readonly ledger: ExecutionResourceLedger;
   private closed = false;
+  private retired = false;
   constructor(
     private readonly deps: {
       repo: Repo;
@@ -108,6 +110,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       ): Promise<boolean | { park: LoopPark }>;
       /** Lazy public SDK factory; seam permits protocol-faithful local fixtures without paid calls. */
       create?: typeof Sandbox.create;
+      get?: typeof Sandbox.get;
       workerAssets?: () => Promise<{ program: Buffer; wasm: Buffer; notices?: Buffer }>;
       now?: () => number;
     },
@@ -600,10 +603,133 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     resource.closing = closing;
     return closing;
   }
+  async recoverReview(
+    ctx: CloudExecutionContext,
+    request: Suspension["request"],
+    target: "local" | "cloud",
+  ): Promise<void> {
+    await this.deps.assertOriginal(ctx);
+    if (request.resourceFunding) {
+      if (!this.deps.funding.assertResourceOwner)
+        throw new AuxError("capability_unsupported", "Original resource funding validation is unavailable.");
+      this.deps.funding.assertResourceOwner(
+        new ResourceFundingUnavailable(request.resourceFunding.runId, request.resourceFunding),
+      );
+    }
+    const proof = request.cloudSetup ?? request.resourceLimits;
+    if (proof) {
+      const run = this.deps.repo.getRun(proof.runId);
+      if (
+        !run ||
+        createHash("sha256")
+          .update(
+            JSON.stringify({
+              runId: run.runId,
+              threadId: run.config?.chatId ?? run.runId,
+              turnId: run.runId,
+            }),
+          )
+          .digest("hex") !== proof.originalDigest
+      )
+        throw new AuxError("ref_stale", "The original resource review identity changed.");
+    }
+    if (request.resourceLimits) {
+      if (
+        JSON.stringify(this.deps.resourceScopes(request.resourceLimits.runId)) !==
+        JSON.stringify(request.resourceLimits.scopes)
+      )
+        throw new AuxError("ref_stale", "Original usage limits changed during recovery.");
+    }
+    if (target === "cloud") {
+      if (!request.cloudSetup)
+        throw new AuxError("permission_denied", "This review permits local execution only.");
+      const quote = CloudResourceQuoteSchema.parse((await this.deps.configuration()).quote);
+      const digest = cloudQuoteIdentity(quote).digest;
+      await this.deps.assertOriginal(ctx);
+      if (cloudQuoteIdentity((await this.deps.configuration()).quote).digest !== digest)
+        throw new AuxError("ref_stale", "Cloud configuration changed during retry.");
+    }
+    await this.deps.assertOriginal(ctx);
+  }
+
+  private async recoverResources(runId: string): Promise<void> {
+    const rows = this.deps.repo.db
+      .prepare("SELECT * FROM execution_resources WHERE run_id=? AND state IN ('reserved','running')")
+      .all(runId) as {
+      resource_id: string;
+      state: string;
+      started_at: number | null;
+      sandbox_id: string | null;
+      session_id: string | null;
+      quote_json: string;
+      quote_digest: string;
+    }[];
+    for (const row of rows) {
+      const reservation = this.deps.repo
+        .settingKeys("fundingReservation:")
+        .find((key) => {
+          const hold = this.deps.repo.getSetting<{ runId: string; resourceId: string }>(key);
+          return hold?.runId === runId && hold.resourceId === row.resource_id;
+        })
+        ?.slice("fundingReservation:".length);
+      if (row.state === "reserved" && row.started_at === null && !row.sandbox_id) {
+        this.deps.repo.transaction(() => {
+          this.deps.funding.cancelResourceUnsent(runId, reservation, row.resource_id);
+          this.ledger.cancelUnsent(row.resource_id, runId);
+        });
+        continue;
+      }
+      if (!row.sandbox_id || !row.session_id)
+        throw new AuxError(
+          "needs_input",
+          "The provider outcome is unknown. Original resource funding remains held until an exact stop acknowledgement is available.",
+          { resourceId: row.resource_id },
+        );
+      const configuration = await this.deps.configuration();
+      const quote = CloudResourceQuoteSchema.parse(JSON.parse(row.quote_json));
+      if (quote.accountDigest !== configuration.quote.accountDigest)
+        throw new AuxError("needs_input", "Restore the original Cloud account to reconcile its resource.");
+      const get = this.deps.get ?? (await import("@vercel/sandbox")).Sandbox.get;
+      const sandbox = await get({
+        name: row.sandbox_id,
+        token: configuration.token,
+        teamId: configuration.teamId,
+        projectId: configuration.projectId,
+        resume: false,
+        signal: AbortSignal.timeout(30_000),
+      });
+      const session = sandbox.currentSession();
+      if (session.sessionId !== row.session_id)
+        throw new AuxError(
+          "needs_input",
+          "The provider session changed. An unrelated VM will not be stopped.",
+          { resourceId: row.resource_id },
+        );
+      const run = this.deps.repo.getRun(runId)!;
+      await this.closeResource({
+        resourceId: row.resource_id,
+        reservationId: reservation,
+        ctx: { runId, threadId: run.config?.chatId ?? runId, turnId: runId },
+        sandbox,
+        session,
+        commands: Promise.resolve(),
+        quote,
+        quoteDigest: row.quote_digest,
+        expiresAt: 0,
+        ready: false,
+        contractualConfiguration: false,
+      });
+    }
+  }
+
   async closeRun(runId: string): Promise<void> {
     const pending = this.resources.get(runId);
     const existing = this.live.get(runId);
-    if (!pending && !existing) return;
+    if (!pending && !existing) {
+      if (this.retired) return;
+      await this.recoverResources(runId);
+      return;
+    }
     const review = this.unsentReviews.get(runId);
     const unsettled = () =>
       this.deps.repo.db
@@ -633,9 +759,17 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     this.live.delete(runId);
   }
   async close(): Promise<void> {
+    if (this.retired) return;
     this.closed = true;
+    const persisted = (
+      this.deps.repo.db
+        .prepare("SELECT DISTINCT run_id FROM execution_resources WHERE state IN ('reserved','running')")
+        .all() as { run_id: string }[]
+    ).map((row) => row.run_id);
     const results = await Promise.allSettled(
-      [...new Set([...this.resources.keys(), ...this.live.keys()])].map((id) => this.closeRun(id)),
+      [...new Set([...this.resources.keys(), ...this.live.keys(), ...persisted])].map((id) =>
+        this.closeRun(id),
+      ),
     );
     const failures = results.filter(
       (result): result is PromiseRejectedResult => result.status === "rejected",
@@ -645,5 +779,6 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         failures.map((result) => result.reason),
         "Cloud resources retain uncertain cleanup receipts.",
       );
+    this.retired = true;
   }
 }
