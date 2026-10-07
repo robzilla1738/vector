@@ -1,0 +1,590 @@
+diff --git a/chrome/browser/ui/aux/content_blocking_controller.cc b/chrome/browser/ui/aux/content_blocking_controller.cc
+index 848a03a..b7403be 100644
+--- a/chrome/browser/ui/aux/content_blocking_controller.cc
++++ b/chrome/browser/ui/aux/content_blocking_controller.cc
+@@ -375,6 +375,85 @@ void ContentBlockingController::SyncPrivateRules() {
+   }
+   snapshot_ = std::move(next);
+ }
++ContentBlockingController::ToggleOperation::ToggleOperation() = default;
++ContentBlockingController::ToggleOperation::~ToggleOperation() = default;
++std::optional<std::string> ContentBlockingController::RegisterToggleOperation(
++    content::RenderFrameHost *frame, bool enabled) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!frame || frame->GetBrowserContext() != profile_ ||
++      profile_->IsOffTheRecord() || !frame->IsActive() ||
++      !frame->IsRenderFrameLive() ||
++      !frame->GetLastCommittedURL().SchemeIs("chrome") ||
++      frame->GetLastCommittedURL().host() != "aux")
++    return std::nullopt;
++  auto operation = std::make_unique<ToggleOperation>();
++  operation->document = frame->GetWeakDocumentPtr();
++  operation->enabled = enabled;
++  auto id = base::UnguessableToken::Create().ToString();
++  toggle_operations_.emplace(id, std::move(operation));
++  return id;
++}
++bool ContentBlockingController::ToggleOperationCurrent(const std::string &id) {
++  const auto found = toggle_operations_.find(id);
++  if (found == toggle_operations_.end() || found->second->retired)
++    return false;
++  auto *frame = found->second->document.AsRenderFrameHostIfValid();
++  return frame && frame->IsActive() && frame->IsRenderFrameLive() &&
++         frame->GetBrowserContext() == profile_;
++}
++void ContentBlockingController::RetireToggleOperation(const std::string &id) {
++  auto found = toggle_operations_.find(id);
++  if (found == toggle_operations_.end())
++    return;
++  auto &operation = *found->second;
++  operation.retired = true;
++  if (operation.phase == "prepared") {
++    if (staging_ && staging_->operation_id == id)
++      staging_.reset();
++    operation.phase = "failed";
++    operation.error = "Original filter toggle document retired";
++  }
++  // Running work reaches its real callback before becoming terminal. An
++  // already accepted durable publication is never undone by later retirement.
++}
++bool ContentBlockingController::ReleaseToggleOperation(const std::string &id) {
++  auto found = toggle_operations_.find(id);
++  if (found == toggle_operations_.end() ||
++      (found->second->phase != "completed" && found->second->phase != "failed"))
++    return false;
++  toggle_operations_.erase(found);
++  return true;
++}
++std::optional<base::DictValue>
++ContentBlockingController::ReadToggleOperation(const std::string &id) {
++  auto found = toggle_operations_.find(id);
++  if (found == toggle_operations_.end())
++    return std::nullopt;
++  auto &operation = *found->second;
++  base::DictValue result;
++  result.Set("current", ToggleOperationCurrent(id));
++  result.Set("enabled", operation.enabled);
++  result.Set("phase", operation.phase);
++  if (operation.receipt)
++    result.Set("receipt", operation.receipt->Clone());
++  if (!operation.error.empty())
++    result.Set("error", base::DictValue()
++                            .Set("code", "conflict")
++                            .Set("message", operation.error));
++  return result;
++}
++void ContentBlockingController::CompleteToggleOperation(
++    const std::string &id, const std::optional<base::DictValue> &receipt,
++    const std::string &error) {
++  auto found = toggle_operations_.find(id);
++  if (found == toggle_operations_.end())
++    return;
++  auto &operation = *found->second;
++  operation.phase = receipt ? "completed" : "failed";
++  operation.receipt =
++      receipt ? std::make_optional(receipt->Clone()) : std::nullopt;
++  operation.error = receipt ? std::string() : error.substr(0, 2048);
++}
+ std::optional<base::DictValue> ContentBlockingController::Begin(
+     const base::DictValue& params, uint64_t connection, std::string* error) {
+   const auto* profile = params.FindString("profileId");
+@@ -387,7 +466,25 @@ std::optional<base::DictValue> ContentBlockingController::Begin(
+       !profile || *profile != profile_->GetPath().BaseName().AsUTF8Unsafe() || !ValidGeneration(generation) ||
+       *generation <= snapshot_->generation || !digest || !enabled || !allowed || allowed->size() > kMaxAllowed ||
+       !headers || headers->size() > 20) { *error = "Invalid native filter snapshot header"; return std::nullopt; }
++  const auto *operation_id = params.FindString("operationId");
++  if ((params.contains("operationId") && !operation_id) ||
++      (!operation_id && *enabled != snapshot_->enabled)) {
++    *error = "Original human filter toggle operation is required";
++    return std::nullopt;
++  }
++  if (operation_id) {
++    auto found = toggle_operations_.find(*operation_id);
++    if (found == toggle_operations_.end() ||
++        !ToggleOperationCurrent(*operation_id) ||
++        found->second->phase != "prepared" ||
++        found->second->enabled != *enabled || found->second->connection != 0) {
++      *error = "Original filter toggle operation changed";
++      return std::nullopt;
++    }
++  }
+   auto staged = std::make_unique<Staging>(); staged->connection = connection;
++  if (operation_id)
++    staged->operation_id = *operation_id;
+   staged->snapshot.generation = *generation; staged->snapshot.enabled = *enabled; staged->snapshot.digest = *digest;
+   for (const auto& value : *allowed) {
+     const auto* host = value.GetIfString();
+@@ -423,6 +520,12 @@ std::optional<base::DictValue> ContentBlockingController::Begin(
+   if (FilterPolicyDigest(staged->snapshot.sources, *enabled, staged->snapshot.allowed) != *digest) {
+     *error = "Native filter policy digest mismatch"; return std::nullopt;
+   }
++  if (operation_id) {
++    auto &operation = *toggle_operations_.at(*operation_id);
++    operation.connection = connection;
++    operation.generation = *generation;
++    operation.digest = *digest;
++  }
+   staging_ = std::move(staged); return Accepted();
+ }
+ std::optional<base::DictValue> ContentBlockingController::Append(
+@@ -444,6 +547,10 @@ std::optional<base::DictValue> ContentBlockingController::Append(
+   return Accepted();
+ }
+ void ContentBlockingController::RetireConnection(uint64_t connection) {
++  for (auto &[id, operation] : toggle_operations_) {
++    if (operation->connection == connection)
++      RetireToggleOperation(id);
++  }
+   if (staging_ && staging_->connection == connection) staging_.reset();
+   if (connection && semantic_candidate_connection_ == connection &&
+       pending_semantic_) {
+@@ -453,6 +560,43 @@ void ContentBlockingController::RetireConnection(uint64_t connection) {
+ }
+ void ContentBlockingController::Commit(const base::DictValue& params, uint64_t connection,
+     OwnerCurrent current, Reply callback) {
++  const auto *operation_id = params.FindString("operationId");
++  if (operation_id) {
++    auto found = toggle_operations_.find(*operation_id);
++    if (found == toggle_operations_.end() ||
++        found->second->phase != "prepared" ||
++        !ToggleOperationCurrent(*operation_id) || !staging_ ||
++        staging_->operation_id != *operation_id ||
++        found->second->connection != connection ||
++        found->second->generation != staging_->snapshot.generation ||
++        found->second->digest != staging_->snapshot.digest) {
++      std::move(callback).Run(std::nullopt,
++                              "Original filter toggle operation changed");
++      return;
++    }
++    found->second->phase = "running";
++    current = base::BindRepeating(
++        [](base::WeakPtr<ContentBlockingController> owner, std::string id,
++           OwnerCurrent ipc_current) {
++          return owner && ipc_current.Run() &&
++                 owner->ToggleOperationCurrent(id);
++        },
++        GetWeakPtr(), *operation_id, std::move(current));
++    callback = base::BindOnce(
++        [](base::WeakPtr<ContentBlockingController> owner, std::string id,
++           Reply reply, std::optional<base::DictValue> result,
++           std::string error) {
++          if (owner)
++            owner->CompleteToggleOperation(id, result, error);
++          std::move(reply).Run(std::move(result), std::move(error));
++        },
++        GetWeakPtr(), *operation_id, std::move(callback));
++  } else if (params.contains("operationId") ||
++             (staging_ && staging_->operation_id)) {
++    std::move(callback).Run(std::nullopt,
++                            "Original filter toggle operation is required");
++    return;
++  }
+   const auto* profile = params.FindString("profileId");
+   const auto generation = params.FindDouble("generation");
+   const auto* digest = params.FindString("filterDigest");
+@@ -518,18 +662,21 @@ void ContentBlockingController::Commit(const base::DictValue& params, uint64_t c
+                           owner->snapshot_->generation) {
+                     if (owner) {
+                       owner->commit_in_progress_ = false;
+-                      owner->store_runner_->PostTask(
++                      owner->store_runner_->PostTaskAndReply(
+                           FROM_HERE,
+                           base::BindOnce(
+                               [](FilterSnapshotStore store, double generation) {
+                                 store.Discard(generation);
+                               },
+-                              store, staged.snapshot.generation));
++                              store, staged.snapshot.generation),
++                          base::BindOnce(std::move(callback), std::nullopt,
++                                         result.second.empty()
++                                             ? "Content blocking page changed"
++                                             : std::move(result.second)));
++                    } else {
++                      std::move(callback).Run(
++                          std::nullopt, "Original filter Profile retired");
+                     }
+-                    std::move(callback).Run(
+-                        std::nullopt, result.second.empty()
+-                                          ? "Content blocking page changed"
+-                                          : std::move(result.second));
+                     return;
+                   }
+                   // This final UI check accepts an immutable Profile
+@@ -543,15 +690,15 @@ void ContentBlockingController::Commit(const base::DictValue& params, uint64_t c
+                   if (!keep_alive ||
+                       !semantic->bridge().AcceptProfileConfiguration()) {
+                     owner->commit_in_progress_ = false;
+-                    owner->store_runner_->PostTask(
++                    owner->store_runner_->PostTaskAndReply(
+                         FROM_HERE,
+                         base::BindOnce(
+                             [](FilterSnapshotStore store, double generation) {
+                               store.Discard(generation);
+                             },
+-                            store, staged.snapshot.generation));
+-                    std::move(callback).Run(
+-                        std::nullopt, "Native filter Profile is retiring");
++                            store, staged.snapshot.generation),
++                        base::BindOnce(std::move(callback), std::nullopt,
++                                       "Native filter Profile is retiring"));
+                     return;
+                   }
+                   owner->store_runner_->PostTaskAndReplyWithResult(
+diff --git a/chrome/browser/ui/aux/content_blocking_controller.h b/chrome/browser/ui/aux/content_blocking_controller.h
+index 6256e42..6048908 100644
+--- a/chrome/browser/ui/aux/content_blocking_controller.h
++++ b/chrome/browser/ui/aux/content_blocking_controller.h
+@@ -62,6 +62,14 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
+                               base::WeakPtr<SemanticFilterBridge>,
+                               CaptureSemanticHeaderRequest,
+                               GURL)> callback);
++  // IDs are minted only from the actual Aux document. Terminal readback is
++  // reduction-only and survives that document's retirement or a lost RPC ACK.
++  std::optional<std::string>
++  RegisterToggleOperation(content::RenderFrameHost *frame, bool enabled);
++  bool ToggleOperationCurrent(const std::string &id);
++  void RetireToggleOperation(const std::string &id);
++  bool ReleaseToggleOperation(const std::string &id);
++  std::optional<base::DictValue> ReadToggleOperation(const std::string &id);
+   void State(Reply callback);
+   std::optional<base::DictValue> Begin(const base::DictValue& params,
+       uint64_t connection, std::string* error);
+@@ -121,8 +129,26 @@ class ContentBlockingController final : public base::SupportsUserData::Data,
+   base::WeakPtr<ContentBlockingController> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
+  private:
+   std::unique_ptr<SemanticPopupRegistry> popups_;
++  struct ToggleOperation {
++    ToggleOperation();
++    ~ToggleOperation();
++    content::WeakDocumentPtr document;
++    bool enabled = false;
++    bool retired = false;
++    std::string phase = "prepared";
++    uint64_t connection = 0;
++    double generation = 0;
++    std::string digest;
++    std::optional<base::DictValue> receipt;
++    std::string error;
++  };
++  void CompleteToggleOperation(const std::string &id,
++                               const std::optional<base::DictValue> &receipt,
++                               const std::string &error);
++  std::map<std::string, std::unique_ptr<ToggleOperation>> toggle_operations_;
+   struct Staging {
+     uint64_t connection = 0;
++    std::optional<std::string> operation_id;
+     NativeFilterSnapshot snapshot;
+     std::optional<base::DictValue> guard;
+     std::optional<blink::DocumentToken> document;
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index d1e15f3..2ef5b01 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -124,8 +124,12 @@ AuxMethodRegistry::AuxMethodRegistry() {
+                     "native.searchSuggestionsGet", "native.searchSuggestionsSet",
+                     "native.bookmarksInvoke", "native.organizationSnapshot", "native.turnSourceContext", "native.remoteDebuggingGet", "native.liveFolderSources"});
+   register_runtime(AuxRuntimeMethodGroup::kBlocking,
+-                   {"native.permissionRetire", "native.egressResumePerson", "native.egressResumeRun", "native.egressCheckRunResume", "native.egressRunTerminal", "native.egressContext", "native.egressInstall", "native.egressRevoke",
+-                    "native.contentBlockBegin", "native.contentBlockAppend"});
++                   {"native.permissionRetire", "native.egressResumePerson",
++                    "native.egressResumeRun", "native.egressCheckRunResume",
++                    "native.egressRunTerminal", "native.egressContext",
++                    "native.egressInstall", "native.egressRevoke",
++                    "native.contentBlockBegin", "native.contentBlockAppend",
++                    "native.contentBlockOperation"});
+   register_runtime(AuxRuntimeMethodGroup::kPower, {"native.powerActivity", "native.powerStatus", "native.powerRelease"});
+   register_runtime(AuxRuntimeMethodGroup::kCdp,
+                    {"native.cdpReset", "native.cdpCatalog", "native.cdpStartNavigation", "native.cdpDispatch", "native.cdpVersion"});
+diff --git a/chrome/browser/ui/aux/methods/native_blocking_methods.cc b/chrome/browser/ui/aux/methods/native_blocking_methods.cc
+index fd4ca43..1adbebe 100644
+--- a/chrome/browser/ui/aux/methods/native_blocking_methods.cc
++++ b/chrome/browser/ui/aux/methods/native_blocking_methods.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 The Aux Authors. BSD-3-Clause.
+ #include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/profiles/profile.h"
+ #include <utility>
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/zap_controller.h"
+@@ -23,6 +24,24 @@ base::DictValue AuxRuntimeHost::HandleNativeBlockingCall(const std::string& meth
+   auto* owner = aux::ContentBlockingController::ForProfile(profile_);
+   if (!owner) return NativeFault("backend_unavailable", "Native filter Profile is unavailable");
+   native_content_blocker_ = owner->GetWeakPtr();
++  if (method == "native.contentBlockOperation") {
++    const auto *profile = params.FindString("profileId");
++    const auto *id = params.FindString("operationId");
++    const auto retire = params.FindBool("retire");
++    if (!profile || *profile != profile_->GetPath().BaseName().AsUTF8Unsafe() ||
++        !id || id->empty() || id->size() > 160 ||
++        params.size() != (retire.has_value() ? 3u : 2u) ||
++        (retire.has_value() && !*retire))
++      return NativeFault("invalid_params",
++                         "Exact original filter operation is required");
++    if (retire == true)
++      owner->RetireToggleOperation(*id);
++    auto operation = owner->ReadToggleOperation(*id);
++    return operation ? NativeResult(base::Value(std::move(*operation)))
++                     : NativeFault(
++                           "operation_uncertain",
++                           "Original filter operation receipt is unavailable");
++  }
+   std::string error;
+   auto result = method == "native.contentBlockBegin"
+       ? owner->Begin(params, connection_generation, &error)
+diff --git a/chrome/browser/ui/aux/methods/blocking_methods.cc b/chrome/browser/ui/aux/methods/blocking_methods.cc
+index 1f76184..d41c3db 100644
+--- a/chrome/browser/ui/aux/methods/blocking_methods.cc
++++ b/chrome/browser/ui/aux/methods/blocking_methods.cc
+@@ -13,6 +13,11 @@
+ #include "base/functional/bind.h"
+ #include "base/memory/ref_counted_memory.h"
+ #include "base/task/thread_pool.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/time/time.h"
++#include "base/memory/ref_counted.h"
++#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
++#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "chrome/browser/shell_integration.h"
+ #include "printing/buildflags/buildflags.h"
+ #include "content/public/browser/host_zoom_map.h"
+@@ -127,6 +132,186 @@
+ #include <set>
+ 
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++namespace {
++// One original human request owns the accepted runtime work. Short status calls
++// join that same identity; they never recreate an ambiguous mutation.
++class BlockingToggleWork final : public base::RefCounted<BlockingToggleWork> {
++ public:
++  BlockingToggleWork(base::WeakPtr<AuxRuntimeHost> host,
++                     base::WeakPtr<aux::ContentBlockingController> blocker,
++                     std::unique_ptr<ScopedProfileKeepAlive> keep_alive,
++                     std::string operation, bool enabled,
++                     base::RepeatingCallback<bool()> current,
++                     aux::mojom::ShellHost::RequestCallback callback)
++      : host_(std::move(host)), blocker_(std::move(blocker)),
++        keep_alive_(std::move(keep_alive)), operation_(std::move(operation)),
++        enabled_(enabled), current_(std::move(current)),
++        callback_(std::move(callback)) {}
++  void Start() {
++    if (!host_ || !current_.Run()) {
++      retiring_ = true;
++      Poll();
++      return;
++    }
++    base::DictValue params;
++    params.Set("operationId", operation_);
++    params.Set("enabled", enabled_);
++    host_->CallInternal("blocking.toggleStart", *base::WriteJson(params),
++        base::BindOnce(&BlockingToggleWork::Started, base::WrapRefCounted(this)));
++  }
++ private:
++  friend class base::RefCounted<BlockingToggleWork>;
++  ~BlockingToggleWork() = default;
++  void Started(AuxRuntimeHost::Response response) {
++    if (!response.ok) {
++      retiring_ = true;
++    } else {
++      auto result = base::JSONReader::ReadDict(response.result_json,
++                                              base::JSON_PARSE_RFC);
++      const auto* operation = result ? result->FindString("operationId") : nullptr;
++      if (!operation || *operation != operation_) {
++        retiring_ = true;
++      }
++    }
++    Poll();
++  }
++  void Poll() {
++    if (!blocker_ || !keep_alive_->profile()) {
++      Finish(false, "", "operation_uncertain",
++             "Original blocking Profile receipt is unavailable");
++      return;
++    }
++    if (!current_.Run()) retiring_ = true;
++    if (retiring_) blocker_->RetireToggleOperation(operation_);
++    if (!host_) {
++      JoinedWithoutRuntime("Original blocking runtime disconnected");
++      return;
++    }
++    base::DictValue params;
++    params.Set("operationId", operation_);
++    host_->CallInternal(retiring_ ? "blocking.toggleCancel" : "blocking.toggleStatus",
++        *base::WriteJson(params),
++        base::BindOnce(&BlockingToggleWork::Status, base::WrapRefCounted(this)));
++  }
++  void Again() {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++        FROM_HERE, base::BindOnce(&BlockingToggleWork::Poll,
++                                 base::WrapRefCounted(this)),
++        base::Milliseconds(250));
++  }
++  void JoinedWithoutRuntime(std::string message) {
++    // Lost runtime ACK is not a joined effect. Keep the original native work
++    // until its real terminal receipt is available, then surface uncertainty.
++    // A timed-out Start can still be queued in the original runtime. Join its
++    // exact reduction-only retirement/tombstone before releasing native proof.
++    if (host_) {
++      retiring_ = true;
++      blocker_->RetireToggleOperation(operation_);
++      Again();
++      return;
++    }
++    const auto native = blocker_->ReadToggleOperation(operation_);
++    const auto* phase = native ? native->FindString("phase") : nullptr;
++    if (phase && (*phase == "completed" || *phase == "failed")) {
++      if (!blocker_->ReleaseToggleOperation(operation_)) { Again(); return; }
++      Finish(false, "", "operation_uncertain", std::move(message));
++    } else {
++      retiring_ = true;
++      blocker_->RetireToggleOperation(operation_);
++      Again();
++    }
++  }
++  void Status(AuxRuntimeHost::Response response) {
++    if (!response.ok) {
++      JoinedWithoutRuntime(response.error_message);
++      return;
++    }
++    auto result = base::JSONReader::ReadDict(response.result_json,
++                                            base::JSON_PARSE_RFC);
++    const auto* phase = result ? result->FindString("phase") : nullptr;
++    if (!phase) {
++      JoinedWithoutRuntime("Invalid original blocking work receipt");
++      return;
++    }
++    if (*phase == "running") { Again(); return; }
++    if (*phase == "uncertain") {
++      const auto* error = result->FindDict("error");
++      JoinedWithoutRuntime(error && error->FindString("message")
++          ? *error->FindString("message") : "Original blocking completion is uncertain");
++      return;
++    }
++    if (*phase != "completed" && *phase != "failed") {
++      JoinedWithoutRuntime("Invalid original blocking terminal phase");
++      return;
++    }
++    terminal_ = std::move(*result);
++    base::DictValue params;
++    params.Set("operationId", operation_);
++    host_->CallInternal("blocking.toggleRelease", *base::WriteJson(params),
++        base::BindOnce(&BlockingToggleWork::Released, base::WrapRefCounted(this)));
++  }
++  void Released(AuxRuntimeHost::Response response) {
++    if (!response.ok) {
++      // Work already joined, but runtime retention cleanup has not ACKed.
++      // Preserve the native receipt until the same release succeeds.
++      if (!host_) { JoinedWithoutRuntime(response.error_message); return; }
++      base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++          FROM_HERE, base::BindOnce(
++              [](scoped_refptr<BlockingToggleWork> original) {
++                base::DictValue params;
++                params.Set("operationId", original->operation_);
++                if (!original->host_) {
++                  original->JoinedWithoutRuntime("Original blocking runtime disconnected");
++                  return;
++                }
++                original->host_->CallInternal("blocking.toggleRelease",
++                    *base::WriteJson(params),
++                    base::BindOnce(&BlockingToggleWork::Released, original));
++              }, base::WrapRefCounted(this)), base::Milliseconds(250));
++      return;
++    }
++    if (!blocker_ || !blocker_->ReleaseToggleOperation(operation_)) {
++      JoinedWithoutRuntime("Original native blocking work has not joined");
++      return;
++    }
++    if (!current_.Run()) {
++      Finish(false, "", "ref_stale", "Original blocking window retired");
++      return;
++    }
++    if (terminal_.FindString("phase") && *terminal_.FindString("phase") == "completed") {
++      auto* result = terminal_.FindDict("result");
++      const auto enabled = result ? result->FindBool("trackerBlock") : std::nullopt;
++      if (!result || !enabled || *enabled != enabled_) {
++        Finish(false, "", "operation_uncertain", "Original blocking result changed");
++        return;
++      }
++      if (!blocker_) {
++        Finish(false, "", "operation_uncertain", "Original blocking Profile retired");
++        return;
++      }
++      result->Set("blocked", blocker_->blocked_count());
++      Finish(true, *base::WriteJson(*result), "", "");
++      return;
++    }
++    const auto* error = terminal_.FindDict("error");
++    Finish(false, "", error && error->FindString("code") ? *error->FindString("code") : "cancelled",
++           error && error->FindString("message") ? *error->FindString("message") : "Original blocking work retired");
++  }
++  void Finish(bool ok, std::string result, std::string code, std::string message) {
++    if (callback_) std::move(callback_).Run(ok, result, code, message);
++    keep_alive_.reset();
++  }
++  base::WeakPtr<AuxRuntimeHost> host_;
++  base::WeakPtr<aux::ContentBlockingController> blocker_;
++  std::unique_ptr<ScopedProfileKeepAlive> keep_alive_;
++  const std::string operation_;
++  const bool enabled_;
++  base::RepeatingCallback<bool()> current_;
++  aux::mojom::ShellHost::RequestCallback callback_;
++  bool retiring_ = false;
++  base::DictValue terminal_;
++};
++}  // namespace
+ void WebUIBrowserUI::HandleAuxBlockingRequest(
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+@@ -223,6 +408,37 @@ void WebUIBrowserUI::HandleAuxBlockingRequest(
+                               "Private windows use temporary site exceptions");
+       return;
+     }
++    if (method == "setTrackerBlock") {
++      if (list->size() != 1 || !(*list)[0].is_bool()) {
++        std::move(callback).Run(false, "", "invalid_params", "Invalid blocking preference");
++        return;
++      }
++      auto* blocker = aux::ContentBlockingController::ForProfile(browser_->GetProfile());
++      auto* frame = web_ui()->GetWebContents()->GetPrimaryMainFrame();
++      const auto operation = blocker->RegisterToggleOperation(frame, (*list)[0].GetBool());
++      auto keep_alive = ScopedProfileKeepAlive::TryAcquire(
++          browser_->GetProfile(), ProfileKeepAliveOrigin::kAuxContentFilterCommit);
++      if (!operation || !keep_alive) {
++        if (operation) {
++          blocker->RetireToggleOperation(*operation);
++          blocker->ReleaseToggleOperation(*operation);
++        }
++        std::move(callback).Run(false, "", "ref_stale", "Original blocking window is unavailable");
++        return;
++      }
++      const auto document = frame->GetWeakDocumentPtr();
++      auto current = base::BindRepeating(
++          [](base::WeakPtr<WebUIBrowserUI> owner, content::WeakDocumentPtr document) {
++            auto* frame = document.AsRenderFrameHostIfValid();
++            return frame && owner && owner->IsAuthorizedAuxDocument() &&
++                frame == owner->web_ui()->GetWebContents()->GetPrimaryMainFrame();
++          }, weak_factory_.GetWeakPtr(), document);
++      base::MakeRefCounted<BlockingToggleWork>(
++          AuxRuntimeHost::ForProfile(browser_->GetProfile())->GetWeakPtr(),
++          blocker->GetWeakPtr(), std::move(keep_alive), *operation,
++          (*list)[0].GetBool(), std::move(current), std::move(callback))->Start();
++      return;
++    }
+     const char* internal = nullptr;
+     base::DictValue params;
+     if (method == "filterLists" || method == "privacy" ||
+@@ -235,14 +451,7 @@ void WebUIBrowserUI::HandleAuxBlockingRequest(
+       internal = method == "filterLists" ? "blocking.status"
+                  : method == "privacy"   ? "blocking.privacy"
+                                          : "blocking.update";
+-    } else if (method == "setTrackerBlock") {
+-      if (list->size() != 1 || !(*list)[0].is_bool()) {
+-        std::move(callback).Run(false, "", "invalid_argument",
+-                                "Invalid blocking preference");
+-        return;
+-      }
+-      params.Set("enabled", (*list)[0].GetBool());
+-      internal = "blocking.setEnabled";
++
+     } else if (method == "addFilterSource") {
+       if (list->size() < 2 || list->size() > 3 || !(*list)[0].is_string() ||
+           !(*list)[1].is_string() ||

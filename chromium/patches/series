@@ -59,3 +59,5 @@ aux/0059-native-chatgpt-account-ingress.patch
 aux/0060-native-owned-headless-runtime.patch
 aux/0061-native-copilot-owner-binding.patch
 aux/0062-native-foundation-models.patch
+aux/0063-native-filter-toggle-receipts.patch
+aux/0064-native-terminal-owned-descendants.patch
