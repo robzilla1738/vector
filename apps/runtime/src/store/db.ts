@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import schema from "./schema.generated.json" with { type: "json" };
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 const SCHEMA_IDENTITY = "aux-v3";
 
 /** Apply a fresh schema atomically, preserving the database on failure. */
@@ -32,7 +32,7 @@ export function openDb(path: string): DatabaseSync {
         new Error(
           `This database is incompatible with Aux v3 schema ${SCHEMA_VERSION}. The file was preserved unchanged; choose a fresh AUX_DATA_DIR.`,
         );
-      if (version !== SCHEMA_VERSION) throw incompatible();
+      if (version !== 2 && version !== SCHEMA_VERSION) throw incompatible();
       const hasMarker = Boolean(
         db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='aux_meta'").get(),
       );
@@ -46,8 +46,9 @@ export function openDb(path: string): DatabaseSync {
         throw incompatible();
       }
       if (identity !== SCHEMA_IDENTITY) throw incompatible();
+      if (version === 2) applySchema(db, [schema.run_starts, `PRAGMA user_version=${SCHEMA_VERSION}`]);
     } else {
-      applySchema(db, [schema.profile, `PRAGMA user_version=${SCHEMA_VERSION}`]);
+      applySchema(db, [schema.profile, schema.run_starts, `PRAGMA user_version=${SCHEMA_VERSION}`]);
     }
     if (path !== ":memory:") chmodSync(path, 0o600);
     db.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA secure_delete=OFF");

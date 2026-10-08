@@ -120,10 +120,9 @@ it("removes a closed row immediately and restores it when the close is refused",
 it("shows a sent message at once and returns it to the composer if the run cannot start", async () => {
   let fail!: (error: Error) => void;
   vi.spyOn(bridge, "invoke").mockImplementation(
-    () =>
-      new Promise((_resolve, reject) => {
-        fail = reject;
-      }),
+    (method) => method === "runs.start"
+      ? new Promise((_resolve, reject) => { fail = reject; })
+      : Promise.reject(new Error("Runtime unavailable")),
   );
   useStore.setState({ activePageId: "p", settings: { modelConfigured: true } });
   const starting = useStore
@@ -131,6 +130,7 @@ it("shows a sent message at once and returns it to the composer if the run canno
     .startRun("Summarize", { chatId: "chat", pageId: "p", ownsDraft: true });
   expect(useStore.getState().pendingTurns).toMatchObject([{ chatId: "chat", goal: "Summarize" }]);
   const error = new Error("offline");
+  await Promise.resolve();
   fail(error);
   await expect(starting).rejects.toBe(error);
   expect(useStore.getState().pendingTurns).toEqual([]);

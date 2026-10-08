@@ -27,7 +27,7 @@ export default function HomeAsk({
   const ownCurrent = useHomeEntryOwner(!!onSearch);
   const searchCurrent = current ?? ownCurrent;
   const [chatId, setChatId] = useState(() =>
-    useStore.getState().agentDraft.trim()
+    bridge.privateMode || useStore.getState().agentDraft.trim()
       ? null
       : readPendingConversation(
           typeof localStorage === "undefined" ? null : localStorage,
@@ -125,10 +125,10 @@ export default function HomeAsk({
             home
             composerRef={composer}
             chatId={chatId}
-            onChatCreated={(id) => {
+            onChatCreated={(id, temporary) => {
               setChatId(id);
               try {
-                localStorage.setItem(HOME_DRAFT_CHAT_KEY, id);
+                if (!temporary) localStorage.setItem(HOME_DRAFT_CHAT_KEY, id);
               } catch {
                 /* The mounted composer still owns this draft. */
               }

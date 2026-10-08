@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { withSecureDelete, openDb, PrivacyCheckpoint, SCHEMA_VERSION } from "@aux/runtime";
+import { withSecureDelete, openDb, PrivacyCheckpoint, Repo, SCHEMA_VERSION } from "@aux/runtime";
 
 const directories: string[] = [];
 const connections: DatabaseSync[] = [];
@@ -189,6 +189,23 @@ describe("fresh schema", () => {
     const reopened = track(openDb(path));
     expect((reopened.prepare("SELECT value FROM kv").get() as { value: string }).value).toBe("retained");
     expect(readdirSync(directory).filter((name) => !name.startsWith("state.sqlite"))).toEqual([]);
+  });
+
+  it("adds first-send receipts to a v2 Profile without rewriting its saved chat or settings", () => {
+    const { path } = fixture();
+    const previous = track(openDb(path)), repo = new Repo(previous);
+    repo.saveRun({ runId: "saved-run", goal: "Saved question", status: "completed", pageIds: [], createdAt: 42, config: { chatId: "saved-chat" } });
+    repo.setSetting("owner-choice", "preserved");
+    previous.exec("DROP TABLE run_start_receipts; PRAGMA user_version=2");
+    const savedRun = previous.prepare("SELECT * FROM runs").get();
+    const savedChat = previous.prepare("SELECT * FROM conversations").get();
+    previous.close();
+    const upgraded = track(openDb(path));
+    expect(version(upgraded)).toBe(SCHEMA_VERSION);
+    expect(upgraded.prepare("SELECT * FROM runs").get()).toEqual(savedRun);
+    expect(upgraded.prepare("SELECT * FROM conversations").get()).toEqual(savedChat);
+    expect(new Repo(upgraded).getSetting("owner-choice")).toBe("preserved");
+    expect(upgraded.prepare("SELECT count(*) AS n FROM run_start_receipts").get()).toEqual({ n: 0 });
   });
 
   it("enforces foreign keys on owned child rows and cascades deletes", () => {

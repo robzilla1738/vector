@@ -506,6 +506,10 @@ export class Repo {
 
   saveRun(r: Run) {
     this.transaction(() => {
+      const start = this.q("SELECT state FROM run_start_receipts WHERE run_id=?").get(r.runId);
+      if (start?.state === "abandoned")
+        throw new AuxError("cancelled", "This send was abandoned before its run was accepted.");
+      if (start) this.q("UPDATE run_start_receipts SET state='accepted' WHERE run_id=?").run(r.runId);
       const savedPrivateTask = this.conversationPrivateTask(r.config?.chatId ?? r.runId);
       if (savedPrivateTask === false && r.config?.privateTask === true)
         throw new AuxError("conflict", "This conversation’s privacy mode is immutable.");

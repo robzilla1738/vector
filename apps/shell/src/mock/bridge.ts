@@ -1,5 +1,6 @@
 import {
   AuxError,
+  MethodSchemas,
   GenerateResultParamsSchema,
   GeneratedResultSpecSchema,
   type GeneratedResult,
@@ -257,6 +258,7 @@ export function installMockBridge(q: URLSearchParams) {
       : Array.from({ length: tabCount }, (_, i) => makePage(i));
   let activePageId: string | null = pages[4]?.pageId ?? pages[0]?.pageId ?? null;
   const withRun = ["run", "takeover", "needs-input"].includes(scenario);
+  const startRequests = new Map<string, { signature: string; runId: string | null }>();
   let runs: Run[] = [...PAST_RUNS];
   const resultFormat = q.get("resultFormat") ?? "markdown";
   const resultFixture = {
@@ -1896,6 +1898,15 @@ export function installMockBridge(q: URLSearchParams) {
         .slice(0, Number(p.limit ?? 50));
     },
     "runs.start": async (p) => {
+      const request = MethodSchemas["runs.start"].parse(p);
+      const receipt = request.requestId ? startRequests.get(request.requestId) : undefined;
+      if (receipt) {
+        if (receipt.signature !== JSON.stringify(request)) throw new Error("This send belongs to its original message.");
+        if (!receipt.runId) throw new Error("This send was recovered without starting.");
+        const accepted = runs.find((run) => run.runId === receipt.runId);
+        if (!accepted) throw new Error("The original chat was removed.");
+        return accepted;
+      }
       const id = `run-${Math.random().toString(36).slice(2, 6)}`;
       const chatId = (p.chatId as string | undefined) ?? id;
       const existing = chatMetadata.get(chatId);
@@ -1924,11 +1935,23 @@ export function installMockBridge(q: URLSearchParams) {
           reasoning: p.reasoning as "low" | "medium" | "high" | undefined,
         },
       };
+      if (request.requestId) startRequests.set(request.requestId, { signature: JSON.stringify(request), runId: id });
       runs = [run, ...runs];
       emit("run.status", { run }, id);
       steps[id] = [];
       void scriptRun(id);
       return run;
+    },
+    "runs.reconcileStart": async (p) => {
+      const request = MethodSchemas["runs.reconcileStart"].parse(p);
+      const receipt = startRequests.get(request.requestId);
+      if (receipt && receipt.signature !== JSON.stringify(request)) throw new Error("This send belongs to its original message.");
+      if (!receipt || !receipt.runId) {
+        startRequests.set(request.requestId, { signature: JSON.stringify(request), runId: null });
+        return { status: "not_started", run: null };
+      }
+      const run = runs.find((item) => item.runId === receipt.runId);
+      return run ? { status: "accepted", run } : { status: "removed", run: null };
     },
     "runs.retry": async (p) => {
       const prior = runs.find((r) => r.runId === p.runId);

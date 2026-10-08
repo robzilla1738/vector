@@ -1,3 +1,4 @@
+import { RunStartReceipts, type RunStartRequest } from "./run-start-receipts.js";
 import { recoverablePark } from "./startup-recovery.js";
 import { narrowProfileLimit, narrowCostLimit } from "./agent-profiles.js";
 import { generatePageSummary } from "./page-summary.js";
@@ -210,6 +211,7 @@ export class RunService {
   private setExecutions = new Map<string, Promise<void>>();
   private closing?: Promise<void>;
   private closed = false;
+  private readonly startReceipts: RunStartReceipts;
   private ownedOperations = new Set<Promise<unknown>>();
 
   private ownOperation<T>(operation: () => Promise<T>): Promise<T> {
@@ -1111,6 +1113,7 @@ export class RunService {
       };
     },
   ) {
+    this.startReceipts = new RunStartReceipts(deps.repo);
     this.images = new ConversationImages(deps.repo, deps.artifacts, (chatId) =>
       deps.events.emit("conversation.context.changed", { chatId }),
     );
@@ -2495,6 +2498,8 @@ export class RunService {
   }
 
   start(opts: {
+    /** Authenticated local first-send identity, never an external/tool parameter. */
+    startRequest?: RunStartRequest;
     /** Immutable completed SDK prefix from an authorized fork_self; internal only. */
     forkTranscript?: import("../agent/loop/types.js").ModelMessage[];
     branchSourceRunIds?: string[];
@@ -2553,7 +2558,21 @@ export class RunService {
     coderWorktree?: import("@aux/contracts").CoderWorktree;
     calendarGrantIds?: string[];
   }): Promise<Run> {
-    return this.ownOperation(() => this.startOwned(opts));
+    return this.ownOperation(() =>
+      opts.startRequest
+        ? this.startReceipts.start(opts.startRequest, this.privateTaskForStart(opts), (runId) =>
+            this.startOwned({ ...opts, deliveryRunId: runId }),
+          )
+        : this.startOwned(opts),
+    );
+  }
+
+  private privateTaskForStart(opts: { chatId?: string; privateTask?: boolean }): boolean {
+    return opts.privateTask === true || (!!opts.chatId && this.deps.repo.conversationPrivateTask(opts.chatId) === true);
+  }
+
+  reconcileStart(opts: Parameters<RunService["start"]>[0] & { startRequest: RunStartRequest }) {
+    return this.ownOperation(() => this.startReceipts.reconcile(opts.startRequest, this.privateTaskForStart(opts)));
   }
 
   private async startOwned(opts: Parameters<RunService["start"]>[0]): Promise<Run> {
@@ -2792,6 +2811,8 @@ export class RunService {
       INSTRUCTION_CHARS,
     );
     const pageIds = opts.pageIds ?? (opts.pageId ? [opts.pageId] : []);
+    await opts.startRequest?.current();
+    await checkBranch();
     if (opts.contextPageRefs?.length) {
       const allowed = new Set(pageIds);
       const seen = new Set<string>();
@@ -2802,6 +2823,9 @@ export class RunService {
         const page = browserContextPage(() => this.deps.pages.get(ref.pageId));
         if (
           page.ownedByRuntime ||
+          (opts.startRequest &&
+            (page.windowId !== opts.startRequest.windowId || page.loading ||
+              page.controller === "agent" || page.controller === "external")) ||
           page.viewStatus === "detached" ||
           page.viewStatus === "crashed" ||
           page.documentEpoch !== ref.documentEpoch ||
@@ -2868,7 +2892,6 @@ export class RunService {
       }
     }
     this.checkExternalSource(opts);
-    await checkBranch();
     return this.coordinator.start({
       ...opts,
       runId: opts.deliveryRunId,
@@ -3227,6 +3250,7 @@ export class RunService {
       ),
       this.messages.stop(),
     ]).then((settled) => {
+      this.startReceipts.clearTemporary();
       const failures = [
         ...lineageFailures,
         ...settled.flatMap((result) =>

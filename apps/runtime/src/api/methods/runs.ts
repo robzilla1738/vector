@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import type { MethodCtx, MethodHandler } from "./context.js";
-import type { MethodName } from "@aux/contracts";
+import type { MethodName, MethodParams } from "@aux/contracts";
 import { AuxError, MethodSchemas, HostMethods } from "@aux/contracts";
 import { lineageRuns } from "../../services/run-lineage.js";
 import { summarizeModelUsage } from "../../services/model-usage.js";
@@ -33,7 +34,40 @@ async function h_runs_branch_list(ctx: MethodCtx): Promise<unknown> {
   return drafts;
 }
 
+async function startRequest(ctx: MethodCtx, input: MethodParams<"runs.start">) {
+  if (!input.requestId || !input.chatId) throw new AuxError("invalid_params", "A recoverable send needs its original conversation identity.");
+  if (input.setId) throw new AuxError("invalid_params", "Composer sends belong to a single conversation.");
+  const pages = input.pageIds ?? (input.pageId ? [input.pageId] : []);
+  if (pages.some((pageId) => !input.contextPageRefs?.some((ref) => ref.pageId === pageId)))
+    throw new AuxError("invalid_params", "A recoverable send needs the exact selected tab identities.");
+  const token = ctx.client.nativeTurnContext, native = ctx.s.native;
+  const read = native?.turnSourceContext;
+  if (ctx.client.external || ctx.client.codeMode || !token || !read)
+    throw new AuxError("permission_denied", "Recover this send in its original Aux window.");
+  const original = await read.call(native, token);
+  const { requestId, ...message } = input;
+  return {
+    requestId,
+    windowId: original.windowId,
+    chatId: input.chatId,
+    digest: createHash("sha256").update(JSON.stringify(message)).digest("hex"),
+    current: async () => {
+      const current = await read.call(native, token);
+      if (current.windowId !== original.windowId)
+        throw new AuxError("permission_denied", "The original Aux window changed.");
+    },
+  };
+}
+
+async function h_runs_reconcile_start(ctx: MethodCtx): Promise<unknown> {
+  const input = MethodSchemas["runs.reconcileStart"].parse(ctx.params);
+  const request = await startRequest(ctx, input);
+  return ctx.s.runs.reconcileStart({ ...input, startRequest: request });
+}
+
 async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
+  const parsed = MethodSchemas["runs.start"].parse(ctx.params);
+  const request = parsed.requestId ? await startRequest(ctx, parsed) : undefined;
   if ((ctx.params.projectRoot || ctx.params.packageNames?.length || ctx.params.profile) && (ctx.client.external || ctx.client.codeMode))
     throw new AuxError("permission_denied", "Choose coding profiles and packages through Aux.");
   if (ctx.params.agentMode !== undefined && (ctx.client.external || ctx.client.codeMode))
@@ -91,7 +125,8 @@ async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
         throw new AuxError("permission_denied", "Select tabs from this Aux window, or remove their context, before sending the draft.");
   } : undefined;
   return s.runs.start({
-    ...MethodSchemas["runs.start"].parse(params),
+    ...parsed,
+    startRequest: request,
     nativeTurnContext: client.nativeTurnContext,
     branchOriginal,
   });
@@ -308,6 +343,7 @@ async function h_runs_events(ctx: MethodCtx): Promise<unknown> {
 
 export const runsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "runs.start": h_runs_start,
+  "runs.reconcileStart": h_runs_reconcile_start,
   "runs.retry": h_runs_retry,
   "runs.branch": h_runs_branch,
   "runs.branch.list": h_runs_branch_list,

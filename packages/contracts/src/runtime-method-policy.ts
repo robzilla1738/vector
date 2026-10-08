@@ -254,6 +254,7 @@ export const RuntimeMethodPolicy = {
   "sets.map": { feature: "subagents", auth: "standard" },
   "sets.results": { feature: "subagents", auth: "standard" },
   "runs.start": { feature: "core", auth: "handler-guarded" },
+  "runs.reconcileStart": { feature: "core", auth: "aux-webui" },
   "runs.retry": { feature: "core", auth: "handler-guarded" },
   "runs.branch": { feature: "core", auth: "aux-webui" },
   "runs.branch.list": { feature: "core", auth: "aux-webui" },

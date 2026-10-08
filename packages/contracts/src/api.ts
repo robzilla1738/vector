@@ -566,6 +566,8 @@ export const SetsResultsParams = z.object({
 
 /** runs.* */
 export const RunsStartParams = z.object({
+  /** Original native composer delivery; the runtime still owns its run ID. */
+  requestId: z.string().uuid().optional(),
   projectRoot: z.string().min(1).max(4096).optional(),
   packageNames: z.array(z.string().min(1).max(128)).max(32).optional(),
   profile: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/).optional(),
@@ -1266,7 +1268,7 @@ export const MethodSchemas = {
     expectedRevision: z.number().int().positive(),
     archived: z.boolean(),
   }),
-  "tasks.start": RunsStartParams.omit({ goal: true, setId: true }).extend({
+  "tasks.start": RunsStartParams.omit({ goal: true, setId: true, requestId: true }).extend({
     taskId: id,
     expectedRevision: z.number().int().positive(),
   }),
@@ -1568,6 +1570,7 @@ export const MethodSchemas = {
   "sets.map": SetsMapParams,
   "sets.results": SetsResultsParams,
   "runs.start": RunsStartParams,
+  "runs.reconcileStart": RunsStartParams.required({ requestId: true }),
   "runs.retry": RunsControlParams.extend({ pageId: id.optional() }),
   "runs.branch": z.object({ runId: id, mode: z.enum(["branch", "edit"]) }).strict(),
   "runs.branch.list": z.object({}).strict(),
@@ -2369,6 +2372,10 @@ export const ResultSchemas = {
   "sets.map": z.object({ runId: z.string() }),
   "sets.results": z.array(ResultRecordSchema),
   "runs.start": RunSchema,
+  "runs.reconcileStart": z.discriminatedUnion("status", [
+    z.object({ status: z.literal("accepted"), run: RunSchema }).strict(),
+    z.object({ status: z.enum(["not_started", "removed"]), run: z.null() }).strict(),
+  ]),
   "runs.retry": RunSchema,
   "runs.branch": ConversationBranchMetadataSchema,
   "runs.branch.list": z.array(ConversationBranchMetadataSchema),

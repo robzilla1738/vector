@@ -28,15 +28,13 @@ it("starts a page-free chat without opening a tab or displacing newer navigation
     agentDraft: "Research this",
     settings: { ...initial.settings, modelConfigured: true },
   });
-  const pending = useStore
-    .getState()
-    .startRun("Research this", {
-      scope: "new",
-      presentation: "conversation",
-      privateTask: true,
-      modelId: "fixture/exact",
-      reasoning: "high",
-    });
+  const pending = useStore.getState().startRun("Research this", {
+    scope: "new",
+    presentation: "conversation",
+    privateTask: true,
+    modelId: "fixture/exact",
+    reasoning: "high",
+  });
   await Promise.resolve();
   expect(open).not.toHaveBeenCalled();
   expect(bridge.invoke).toHaveBeenCalledWith(
@@ -62,4 +60,77 @@ it("opens the requested conversation when the originating view is unchanged", as
   const payload = vi.mocked(bridge.invoke).mock.calls[0]?.[1];
   expect(payload).not.toHaveProperty("modelId");
   expect(payload).not.toHaveProperty("reasoning");
+});
+
+it("recovers the original accepted chat on reconnect while keeping an edited draft unsent", async () => {
+  const chatId = crypto.randomUUID(),
+    accepted = makeRun({ runId: "lost-ack", config: { chatId } });
+  const invoke = vi.spyOn(bridge, "invoke").mockRejectedValue(new Error("Connection lost"));
+  const reveal = vi.fn();
+  useStore.setState({
+    settings: { modelConfigured: true },
+    conversationId: chatId,
+    openConversation: reveal,
+    conversationDrafts: {},
+  });
+  await expect(
+    useStore.getState().startRun("Original question", { chatId, scope: "new", ownsDraft: true }),
+  ).rejects.toThrow("Connection lost");
+  const original = invoke.mock.calls[0]![1];
+  useStore.getState().setConversationDraft(chatId, "Edited while disconnected");
+  invoke.mockReset().mockResolvedValue({ status: "accepted", run: accepted });
+  await useStore.getState().recoverRunStart(chatId);
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("runs.reconcileStart", original);
+  expect(useStore.getState().conversationDrafts[`chat:${chatId}`]).toBe("Edited while disconnected");
+  expect(reveal).toHaveBeenCalledExactlyOnceWith(accepted.runId);
+  expect(useStore.getState().runs).toContain(accepted);
+});
+
+it("keeps a temporary caller's failed send draft in memory even outside the composer", async () => {
+  const chatId = crypto.randomUUID();
+  const writes = vi.spyOn(Storage.prototype, "setItem");
+  vi.spyOn(bridge, "invoke").mockRejectedValue(new Error("Runtime unavailable"));
+  useStore.setState({
+    settings: { modelConfigured: true },
+    agentDraft: "",
+    conversationDrafts: {},
+    composerPreferences: {},
+  });
+  await useStore
+    .getState()
+    .startRun("Temporary request sentinel", { chatId, privateTask: true, scope: "new" });
+  expect(useStore.getState().agentDraft).toBe("Temporary request sentinel");
+  expect(writes.mock.calls.flat().join(" ")).not.toContain("Temporary request sentinel");
+});
+
+it("conversation deletion scrubs a pending request and a late reply cannot reopen the deleted chat", async () => {
+  const chatId = crypto.randomUUID(),
+    removed = makeRun({ runId: "removed-run", config: { chatId } });
+  let finish!: (value: unknown) => void;
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  useStore.setState({ settings: { modelConfigured: true }, conversationId: chatId, conversationDrafts: {} });
+  const pending = useStore
+    .getState()
+    .startRun("Deleted message sentinel", { chatId, scope: "new", ownsDraft: true });
+  await Promise.resolve();
+  useStore
+    .getState()
+    .applyEvent({
+      type: "conversation.deleted",
+      payload: { chatId },
+      seq: 1,
+      streamId: "delete-test",
+      ts: 1,
+    });
+  expect(localStorage.getItem(`aux.pending-run-start.v1:${chatId}`)).toBe('{"removed":true}');
+  finish(removed);
+  await expect(pending).rejects.toThrow(/removed/);
+  expect(useStore.getState().runs.some((run) => run.runId === removed.runId)).toBe(false);
+  expect(useStore.getState().conversationDrafts[`chat:${chatId}`]).toBeUndefined();
+  expect(invoke).toHaveBeenCalledOnce();
 });

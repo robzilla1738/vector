@@ -34,7 +34,7 @@ afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
-async function stagedFixture() {
+async function stagedFixture(version = 3) {
   const dataDir = mkdtempSync(join(tmpdir(), "aux-restore-"));
   directories.push(dataDir);
   const dbPath = join(dataDir, "aux-state.sqlite");
@@ -51,6 +51,7 @@ async function stagedFixture() {
     status: "complete",
     createdAt: Date.now(),
   });
+  if (version === 2) original.db.exec("DROP TABLE run_start_receipts; PRAGMA user_version=2");
   const backup = await createRuntimeBackup(original, dataDir);
   original.close();
   const changed = new Repo(openDb(dbPath));
@@ -82,6 +83,19 @@ it("applies a staged restore before the next database open and preserves the pre
   expect(status).toMatchObject({ pending: false, lastAppliedAt: expect.any(Number) });
   expect(existsSync(join(dataDir, "pending-runtime-restore.json"))).toBe(false);
   expect(await applyPendingRuntimeRestore(dataDir, dbPath)).toEqual({ applied: false });
+});
+
+it("restores a valid v2 backup and upgrades it only on the next database open", async () => {
+  const { dataDir, dbPath, artifactPath } = await stagedFixture(2);
+  expect((await applyPendingRuntimeRestore(dataDir, dbPath)).applied).toBe(true);
+  const staged = new DatabaseSync(dbPath, { readOnly: true });
+  expect(staged.prepare("PRAGMA user_version").get()).toEqual({ user_version: 2 });
+  staged.close();
+  const restored = new Repo(openDb(dbPath));
+  expect(restored.getSetting("restore-marker")).toBe("before");
+  expect(restored.getArtifact("restore-fixture")?.path).toBe(artifactPath);
+  expect(restored.db.prepare("SELECT count(*) AS n FROM run_start_receipts").get()).toEqual({ n: 0 });
+  restored.close();
 });
 
 it("sanitizes protected article recall and authenticates the same Profile before restore staging", async () => {

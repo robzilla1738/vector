@@ -7,9 +7,9 @@ export function generateRuntimeSchema({ check = false } = {}) {
   const directory = new URL("../apps/runtime/src/store/", import.meta.url);
   const source = readFileSync(new URL("schema.sql", directory), "utf8");
   const sections = {};
-  const markers = [...source.matchAll(/^-- @schema (profile|spend)\s*$/gm)];
-  if (markers.length !== 2 || markers[0][1] !== "profile" || markers[1][1] !== "spend")
-    throw new Error("Runtime schema must contain one profile section followed by one spend section.");
+  const markers = [...source.matchAll(/^-- @schema (profile|run_starts|spend)\s*$/gm)];
+  if (markers.map((marker) => marker[1]).join(",") !== "profile,run_starts,spend")
+    throw new Error("Runtime schema must contain profile, run_starts and spend sections in order.");
   for (let i = 0; i < markers.length; i++) {
     const marker = markers[i];
     sections[marker[1]] = source.slice(marker.index + marker[0].length, markers[i + 1]?.index).trim() + "\n";

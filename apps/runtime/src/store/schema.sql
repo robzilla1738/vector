@@ -480,6 +480,12 @@ CREATE TABLE execution_resources (
 );
 CREATE INDEX execution_resources_run ON execution_resources(run_id, created_at, resource_id);
 
+-- @schema run_starts
+CREATE TABLE run_start_receipts(
+  request_id TEXT PRIMARY KEY, digest TEXT NOT NULL CHECK(length(digest)=64),
+  window_id TEXT NOT NULL, chat_id TEXT NOT NULL, run_id TEXT NOT NULL UNIQUE,
+  state TEXT NOT NULL CHECK(state IN ('reserved','accepted','abandoned')));
+
 -- @schema spend
 CREATE TABLE IF NOT EXISTS ai_spend(
         reservation_id TEXT PRIMARY KEY,

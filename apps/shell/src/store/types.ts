@@ -225,6 +225,8 @@ export interface Workspace {
       reveal?: boolean;
     },
   ): Promise<Run | null>;
+  /** Reconcile an interrupted first send without dispatching a task. */
+  recoverRunStart(chatId?: string | null): Promise<void>;
   /** Messages shown in the thread while their run is still being created. */
   pendingTurns: { id: string; chatId: string | null; goal: string; createdAt: number }[];
   /** Live answer text streamed by `run.answer.delta`, dropped once the run settles. */
@@ -439,6 +441,7 @@ export type RunKeys =
   | "pendingTurns"
   | "answerStreams"
   | "startRun"
+  | "recoverRunStart"
   | "retryRun"
   | "answerRun"
   | "returnControl"

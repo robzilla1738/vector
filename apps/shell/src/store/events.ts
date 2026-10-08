@@ -1,4 +1,5 @@
 import { hasNativeBookmarkAuthority } from "../native-bookmark-observer";
+import { removeRunStart } from "../run-start-attempts";
 import { isAgentPolicyCategory, isPolicySite } from "../features/permissions/categories";
 import { orderedPages, normalizePages, putPage } from "./pages";
 import { EFFECT_CATEGORIES, CONFIRMATION_LEVELS } from "@aux/contracts";
@@ -316,6 +317,7 @@ export function eventEffects(e: AuxEvent, s: Workspace, set: Set, get: () => Wor
     case "conversation.deleted": {
       const chatId = e.payload.chatId;
       if (typeof chatId !== "string") break;
+      if (!removeRunStart(chatId)) toast("A pending message could not be removed from this browser.", "error");
       const removed = new Set(
         s.runs.filter((run) => (run.config?.chatId ?? run.runId) === chatId).map((run) => run.runId),
       );

@@ -1,3 +1,4 @@
+import { isRunStartRemoved, readStartAttempt } from "../run-start-attempts";
 import { CodingRunActivity } from "../features/coding/CodingRunActivity";
 import { shellIconMore } from "../ui/icons";
 import { RunOptions } from "../composer/RunOptions";
@@ -419,7 +420,7 @@ export function Conversation({
   embedded?: boolean;
   home?: boolean;
   entryControls?: ReactNode;
-  onChatCreated?: (chatId: string) => void;
+  onChatCreated?: (chatId: string, temporary: boolean) => void;
   composerRef?: RefObject<HTMLTextAreaElement | null>;
   findReturnRef?: RefObject<HTMLDivElement | null>;
 } = {}) {
@@ -430,7 +431,7 @@ export function Conversation({
   const id = chatId === undefined ? fullPageId : chatId;
   const scrolling = useConversationScroll(id);
   useEffect(() => {
-    if (id || embedded) return;
+    if (id || embedded || bridge.privateMode) return;
     const pending = readPendingConversation(typeof localStorage === "undefined" ? null : localStorage);
     if (pending) useStore.setState({ conversationId: pending });
   }, [id, embedded]);
@@ -454,6 +455,9 @@ export function Conversation({
   const activePageId = useStore((s) => s.activePageId);
   const tabSpace = useStore((s) => s.layout.tabSpace);
   const connected = useStore((s) => s.connected);
+  useEffect(() => {
+    if (connected) void useStore.getState().recoverRunStart(id);
+  }, [connected, id]);
   const draftWorkspaceId = useStore((s) =>
     s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId)?.workspaceId,
   );
@@ -654,16 +658,15 @@ export function Conversation({
             setArchived(value?.archived ?? false);
             const branch = value && "kind" in value && value.kind === "branch-draft" ? value : null;
             setBranchInfo(branch);
-            if (branch && id) {
-              const state = useStore.getState();
-              if (!Object.prototype.hasOwnProperty.call(state.conversationBrowserSources, browserSourcesKey(id))) {
-                state.setConversationBrowserSources(id, branch.contextPageRefs);
-                state.setConversationContext(id, branch.contextPageRefs[0]?.pageId ?? "none");
-              }
-              if (!state.composerPreferences[draftKey(id)]) state.setComposerPreferences(draftKey(id), {
-                privateTask: branch.privateTask, modelId: branch.modelId, reasoning: branch.reasoning,
-                executionTarget: branch.executionTarget ?? "local",
-              });
+            const state = useStore.getState();
+            if (value) state.setComposerPreferences(draftKey(id), {
+              ...(branch ? { modelId: branch.modelId, reasoning: branch.reasoning, executionTarget: branch.executionTarget ?? "local" } : {}),
+              ...state.composerPreferences[draftKey(id)],
+              privateTask: value.privateTask ?? false,
+            });
+            if (branch && !Object.prototype.hasOwnProperty.call(state.conversationBrowserSources, browserSourcesKey(id))) {
+              state.setConversationBrowserSources(id, branch.contextPageRefs);
+              state.setConversationContext(id, branch.contextPageRefs[0]?.pageId ?? "none");
             }
           }
         })
@@ -1166,17 +1169,19 @@ export function Conversation({
     if (id) return id;
     const chatId = crypto.randomUUID();
     createdChat.current = chatId;
+    const preferences = useStore.getState().composerPreferences["new"];
+    if (preferences) useStore.getState().setComposerPreferences(draftKey(chatId), preferences);
     const text = readText();
     if (text) useStore.getState().setConversationDraft(chatId, text);
     useStore.getState().setConversationContext(chatId, contextPage);
     useStore.getState().setConversationBrowserSources(chatId, browserSources);
     useStore.getState().setAgentDraft("");
     try {
-      localStorage.setItem(PENDING_CHAT_KEY, chatId);
+      if (!privateTask && !bridge.privateMode) localStorage.setItem(PENDING_CHAT_KEY, chatId);
     } catch {
       /* in-window state still works */
     }
-    if (onChatCreated) onChatCreated(chatId);
+    if (onChatCreated) onChatCreated(chatId, privateTask || bridge.privateMode);
     else useStore.setState({ conversationId: chatId });
     return chatId;
   };
@@ -1374,10 +1379,14 @@ export function Conversation({
     setSendError("");
     setSendErrorDetails("");
     let draftCleared = false;
+    let sentChatId = id;
     const restoreDraft = () => {
-      if (!draftCleared || readText()) return;
-      if (id) useStore.getState().setConversationDraft(id, text);
-      else useStore.getState().setAgentDraft(text);
+      if (isRunStartRemoved(sentChatId ?? "new")) return;
+      const state = useStore.getState();
+      const draft = sentChatId ? state.conversationDrafts[draftKey(sentChatId)] : state.agentDraft;
+      if (!draftCleared || draft) return;
+      if (sentChatId) state.setConversationDraft(sentChatId, text);
+      else state.setAgentDraft(text);
     };
     try {
       const mentions = await submittedMentions(composerId, text);
@@ -1463,11 +1472,8 @@ export function Conversation({
         }
         // Optimistic: the message leaves the composer and joins the thread now;
         // a failed start puts it back unless something new was typed meanwhile.
-        const chatId = id ?? crypto.randomUUID();
-        if (!id) {
-          useStore.getState().setConversationContext(chatId, contextPage);
-          useStore.getState().setConversationBrowserSources(chatId, browserSources);
-        }
+        const chatId = ensureChatId();
+        sentChatId = chatId;
         const pageIds = selectedPageIds;
         const contextPageRefs = [
           ...(primaryForRun
@@ -1479,12 +1485,11 @@ export function Conversation({
           ...browserSources.filter((source) => source.pageId !== primaryForRun?.pageId),
         ].filter((source) => pageIds.includes(source.pageId));
         setSendingChat(chatId);
-        setText("");
+        useStore.getState().setConversationDraft(chatId, "");
         draftCleared = true;
         if (activeChat.current === id) scrolling.jumpToLatest();
         if (!taskModeKnown) throw new Error("The chat’s task mode is still loading. Your draft is kept.");
         const preferences = useStore.getState().composerPreferences[composerPreferenceKey];
-        if (!id && preferences) useStore.getState().setComposerPreferences(draftKey(chatId), preferences);
         const run = await useStore.getState().startRun(text, {
           privateTask,
           executionTarget: preferences?.executionTarget,
@@ -1504,19 +1509,21 @@ export function Conversation({
           ownsDraft: true,
         });
         if (run) {
+          const hasUnsentDraft = !!useStore.getState().conversationDrafts[draftKey(chatId)];
           const latestPreferences = useStore.getState().composerPreferences[draftKey(chatId)];
-          if (latestPreferences?.agentMode !== undefined)
+          if (!hasUnsentDraft && latestPreferences?.agentMode !== undefined)
             useStore.getState().setComposerPreferences(draftKey(chatId), { ...latestPreferences, agentMode: undefined });
-          if (id && !taskMode?.found && conversationCurrent()) {
-            setTaskMode(null);
+          if ((!id || !taskMode?.found) && (activeChat.current === id || activeChat.current === chatId)) {
+            setTaskMode({ id: chatId, found: true, privateTask: run.config?.privateTask ?? privateTask });
             setMetadataRefresh((value) => value + 1);
           }
           if (!id && useStore.getState().composerPreferences["new"] === preferences)
             useStore.getState().setComposerPreferences("new", { privateTask: false });
-          clearMentionDraft(composerId);
+          if (!hasUnsentDraft) clearMentionDraft(composerId);
           try {
-            localStorage.removeItem(PENDING_CHAT_KEY);
-            if (localStorage.getItem(HOME_DRAFT_CHAT_KEY) === chatId)
+            if (!hasUnsentDraft && localStorage.getItem(PENDING_CHAT_KEY) === chatId)
+              localStorage.removeItem(PENDING_CHAT_KEY);
+            if (!hasUnsentDraft && localStorage.getItem(HOME_DRAFT_CHAT_KEY) === chatId)
               localStorage.removeItem(HOME_DRAFT_CHAT_KEY);
           } catch {
             /* storage is optional */
@@ -1530,12 +1537,14 @@ export function Conversation({
       }
     } catch (error) {
       restoreDraft();
-      if (activeChat.current === id) {
+      if (activeChat.current === id || activeChat.current === sentChatId) {
         const detail = errorMessage(error);
         const staleSource = (error as { code?: string } | null)?.code === "ref_stale" || detail.startsWith("ref_stale:");
-        setSendError(staleSource
-          ? "Open the source tab and wait for it to load, then return here and send your reply again."
-          : "Your message couldn’t be sent. Try sending it again.");
+        setSendError(readStartAttempt(sentChatId ?? "new")
+          ? "Aux couldn’t confirm whether your message was sent. Send again to check its status."
+          : staleSource
+            ? "Open the source tab and wait for it to load, then return here and send your reply again."
+            : "Your message couldn’t be sent. Try sending it again.");
         setSendErrorDetails(detail);
       }
     } finally {

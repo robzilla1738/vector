@@ -1,3 +1,11 @@
+import {
+  RemovedRunStartError,
+  deliverRunStart,
+  isRunStartRemoved,
+  readStartAttempt,
+  reconcileStartAttempt,
+} from "../run-start-attempts";
+import { sourceRef } from "../browser-context-sources";
 import type { ModelCall, Run } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { PENDING_CHAT_KEY, draftKey } from "../conversation-drafts";
@@ -46,7 +54,8 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
   },
   openConversationDraft: (chatId) => {
     try {
-      if (chatId) storage?.setItem(PENDING_CHAT_KEY, chatId);
+      if (chatId && !bridge.privateMode && !get().composerPreferences[draftKey(chatId)]?.privateTask)
+        storage?.setItem(PENDING_CHAT_KEY, chatId);
       else storage?.removeItem(PENDING_CHAT_KEY);
     } catch {
       /* Drafts remain available in this window. */
@@ -76,6 +85,21 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     const g = goal.trim();
     if (!g) return null;
     const before = get();
+    const privateTask =
+      bridge.privateMode ||
+      (opts.privateTask ??
+        before.composerPreferences[opts.chatId ? draftKey(opts.chatId) : "new"]?.privateTask ??
+        false);
+    const keepDraft = (chatId?: string) => {
+      if (isRunStartRemoved(chatId ?? "new")) return;
+      if (privateTask) {
+        set((state) => ({
+          conversationDrafts: { ...state.conversationDrafts, [chatId ? draftKey(chatId) : "new"]: g },
+          ...(chatId ? {} : { agentDraft: g }),
+        }));
+      } else if (chatId) get().setConversationDraft(chatId, g);
+      else get().setAgentDraft(g);
+    };
     const originPage = before.pages.byId[before.activePageId ?? ""];
     const stayed = () => {
       const current = get();
@@ -100,10 +124,9 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
       if (opts.ownsDraft) return;
       if ((existingChat || hasChatDraft) && opts.chatId) {
         const key = draftKey(opts.chatId);
-        if (get().conversationDrafts[key] === before.conversationDrafts[key])
-          get().setConversationDraft(opts.chatId, g);
-      } else if (get().agentDraft === before.agentDraft) get().setAgentDraft(g);
-      else get().setConversationDraft(opts.chatId ?? crypto.randomUUID(), g);
+        if (get().conversationDrafts[key] === before.conversationDrafts[key]) keepDraft(opts.chatId);
+      } else if (get().agentDraft === before.agentDraft) keepDraft();
+      else keepDraft(opts.chatId ?? crypto.randomUUID());
     };
     if (before.settings.modelConfigured === false) {
       preserveDraft();
@@ -128,18 +151,25 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
       const n = Number(before.settings.maxModelCalls);
       const budget = Number.isInteger(n) && n > 0 ? n : 0;
       const pageIds = [...new Set([...(pageId ? [pageId] : []), ...(opts.pageIds ?? [])])];
-      const run = await call("runs.start", {
+      const contextPageRefs = pageIds
+        .map(
+          (id) =>
+            opts.contextPageRefs?.find((ref) => ref.pageId === id) ??
+            (before.pages.byId[id] ? sourceRef(before.pages.byId[id]!) : undefined),
+        )
+        .filter((ref) => ref !== undefined);
+      const delivery = await deliverRunStart(opts.chatId ?? "new", {
         goal: g,
-        privateTask: opts.privateTask ?? false,
+        privateTask,
         executionTarget: opts.executionTarget ?? "local",
         ...(opts.modelId === undefined ? {} : { modelId: opts.modelId }),
         ...(opts.reasoning === undefined ? {} : { reasoning: opts.reasoning }),
         ...(opts.agentMode === undefined ? {} : { agentMode: opts.agentMode }),
-        ...(opts.profile ? {profile:opts.profile}:{}),
-        ...(opts.projectRoot ? {projectRoot:opts.projectRoot}:{}),
-        ...(opts.packageNames ? {packageNames:opts.packageNames}:{}),
+        ...(opts.profile ? { profile: opts.profile } : {}),
+        ...(opts.projectRoot ? { projectRoot: opts.projectRoot } : {}),
+        ...(opts.packageNames ? { packageNames: opts.packageNames } : {}),
         pageIds,
-        contextPageRefs: opts.contextPageRefs,
+        contextPageRefs,
         mentions: opts.mentions,
         contextMemoryIds: opts.memorySource ? [opts.memorySource.memoryId] : undefined,
         maxModelCalls: budget,
@@ -149,23 +179,107 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
           : (opts.memorySource?.workspaceId ??
             before.layout.spaces.find((space) => space.id === before.layout.activeSpaceId)?.workspaceId),
       });
+      const run = delivery.run;
+      if (delivery.changed) {
+        const draft = opts.chatId ? get().conversationDrafts[draftKey(opts.chatId)] : get().agentDraft;
+        if (!draft) keepDraft(opts.chatId);
+      }
       const reveal = stayed();
       settle((state) =>
         state.runs.some((item) => item.runId === run.runId) ? state.runs : [run, ...state.runs],
       );
-      if (!opts.ownsDraft && !existingChat && !hasChatDraft && get().agentDraft === before.agentDraft)
+      if (
+        !delivery.changed &&
+        !opts.ownsDraft &&
+        !existingChat &&
+        !hasChatDraft &&
+        get().agentDraft === before.agentDraft
+      )
         get().setAgentDraft("");
       if (opts.reveal !== false && reveal) {
         if (opts.presentation === "conversation") get().openConversation(run.runId);
         else set({ railOpen: true, railView: { kind: "run", runId: run.runId } });
-      } else if (opts.reveal !== false) toast("Started in the background. Find it in Chats.");
+      } else if (opts.reveal !== false)
+        toast(
+          delivery.recovered
+            ? "Recovered your message. Find it in Chats."
+            : "Started in the background. Find it in Chats.",
+        );
       return run;
     } catch (error) {
       settle();
-      preserveDraft();
+      if (!(error instanceof RemovedRunStartError)) preserveDraft();
       if (opts.ownsDraft) throw error;
+      if (error instanceof RemovedRunStartError) return null;
+      if (isRunStartRemoved(opts.chatId ?? "new")) return null;
       errToast(error);
       return null;
+    }
+  },
+
+  recoverRunStart: async (chatId) => {
+    const key = chatId ?? "new";
+    const attempt = readStartAttempt(key);
+    if (!attempt) return;
+    const before = get();
+    const restore = () => {
+      if (isRunStartRemoved(key) || isRunStartRemoved(attempt.request.chatId ?? key)) return;
+      const draft = chatId ? get().conversationDrafts[draftKey(chatId)] : get().agentDraft;
+      if (draft?.trim()) return;
+      if (attempt.request.privateTask) {
+        set((state) =>
+          chatId
+            ? {
+                conversationDrafts: { ...state.conversationDrafts, [draftKey(chatId)]: attempt.request.goal },
+              }
+            : { agentDraft: attempt.request.goal },
+        );
+        return;
+      }
+      if (chatId) get().setConversationDraft(chatId, attempt.request.goal);
+      else get().setAgentDraft(attempt.request.goal);
+      get().setConversationBrowserSources(chatId ?? null, attempt.request.contextPageRefs ?? []);
+      get().setConversationContext(chatId ?? null, attempt.request.pageIds?.[0] ?? "");
+      get().setComposerPreferences(chatId ? draftKey(chatId) : "new", {
+        privateTask: false,
+        executionTarget: attempt.request.executionTarget,
+        modelId: attempt.request.modelId,
+        reasoning: attempt.request.reasoning,
+        agentMode: attempt.request.agentMode,
+        profile: attempt.request.profile,
+        projectRoot: attempt.request.projectRoot,
+        packageNames: attempt.request.packageNames,
+      });
+    };
+    try {
+      const recovered = await reconcileStartAttempt(key);
+      if (!recovered) return;
+      if (recovered.result.status !== "accepted") {
+        restore();
+        if (recovered.result.status === "removed")
+          toast("The original chat was removed. Start a new chat to send this draft.");
+        return;
+      }
+      const run = recovered.result.run;
+      set((state) => ({
+        runs: state.runs.some((item) => item.runId === run.runId) ? state.runs : [run, ...state.runs],
+      }));
+      const draft = chatId ? get().conversationDrafts[draftKey(chatId)] : get().agentDraft;
+      if (draft === attempt.request.goal) {
+        if (chatId) get().setConversationDraft(chatId, "");
+        else get().setAgentDraft("");
+      }
+      const current = get();
+      if (
+        current.mode === before.mode &&
+        current.conversationId === before.conversationId &&
+        current.activePageId === before.activePageId &&
+        current.railView === before.railView
+      )
+        current.openConversation(run.runId);
+    } catch {
+      restore();
+      toast("Aux is still checking whether your message was sent. Your draft is kept.", "error");
     }
   },
 

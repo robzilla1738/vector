@@ -5,11 +5,15 @@ import { createRoot } from "react-dom/client";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
+import { PENDING_CHAT_KEY } from "../conversation-drafts";
+import { draftWriter } from "../store/persistence";
 import { Conversation } from "./Conversation";
 let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
 const initial = useStore.getState();
 const originalScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
 beforeEach(() => {
+  draftWriter.flush();
+  localStorage.clear();
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal(
     "ResizeObserver",
@@ -51,6 +55,8 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
+  draftWriter.flush();
+  localStorage.clear();
   useStore.setState(initial, true);
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -122,3 +128,30 @@ it("ordinary store caller retains null, toast and its owned draft recovery", asy
   expect(useStore.getState().toasts).toHaveLength(1);
   expect(useStore.getState().conversationDrafts["chat:original"]).toBe("Ordinary question");
 });
+
+it.each([false, true])(
+  "keeps a first chat's identity and send error after assigning its chat (temporary=%s)",
+  async (temporary) => {
+    useStore.setState({ conversationId: null, agentDraft: "First question", conversationDrafts: {} });
+    useStore.getState().setComposerPreferences("new", { privateTask: temporary });
+    const writes = vi.spyOn(Storage.prototype, "setItem");
+    const invoke = vi.mocked(bridge.invoke),
+      fallback = invoke.getMockImplementation()!;
+    invoke.mockImplementation(async (method, params) => {
+      if (method === "conversations.get") return null;
+      if (method === "runs.start") throw new Error("Model unavailable");
+      if (method === "runs.reconcileStart") return { status: "not_started", run: null };
+      return fallback(method, params);
+    });
+    await act(async () => root.render(<Conversation />));
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.click());
+    const assigned = useStore.getState().conversationId;
+    expect(assigned).toBeTruthy();
+    expect(useStore.getState().conversationDrafts[`chat:${assigned}`]).toBe("First question");
+    draftWriter.flush();
+    expect(writes.mock.calls.flat().join(" ").includes("First question")).toBe(!temporary);
+    expect(localStorage.getItem(PENDING_CHAT_KEY)).toBe(temporary ? null : assigned);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("Your message couldn’t be sent");
+    expect(invoke.mock.calls.filter(([method]) => method === "runs.start")).toHaveLength(1);
+  },
+);
