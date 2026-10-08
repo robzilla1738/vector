@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { AuxError, type Run, type ConversationBranchMetadata } from "@aux/contracts";
 import { z } from "zod";
 import { TranscriptStore } from "../agent/loop/transcript.js";
+import { projectLegacyRecall } from "../agent/loop/legacy-recall.js";
 import type { Repo } from "../store/repo.js";
 
 const metadataSchema = z.object({
@@ -74,7 +75,7 @@ export class ConversationBranches {
     };
     this.source(metadata);
     const transcript = new TranscriptStore(this.repo.db, this.repo.columnCipher);
-    const prefix = retained.flatMap((run) => transcript.forkPrefix(run.runId));
+    const prefix = retained.flatMap((run) => transcript.forkPrefix(run.runId, this.repo));
     await current();
     this.source(metadata);
     const chatId = randomUUID();
@@ -158,6 +159,7 @@ export class ConversationBranches {
     const metadata = this.get(chatId);
     if (!metadata) return undefined;
     this.source(metadata);
-    return new TranscriptStore(this.repo.db, this.repo.columnCipher).load(transcriptKey(chatId));
+    const transcript = new TranscriptStore(this.repo.db, this.repo.columnCipher);
+    return projectLegacyRecall(this.repo, transcript, transcriptKey(chatId));
   }
 }

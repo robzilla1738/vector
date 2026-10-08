@@ -505,7 +505,10 @@ export class SubagentService {
         )
           throw new AuxError("conflict", "A selected page is already leased to another run.");
         if (fork)
-          forkTranscript = new TranscriptStore(this.repo.db, this.repo.columnCipher).forkPrefix(sourceRunId);
+          forkTranscript = new TranscriptStore(this.repo.db, this.repo.columnCipher).forkPrefix(
+            sourceRunId,
+            this.repo,
+          );
         const agent = SubagentSchema.parse({
           ...input,
           agentId,

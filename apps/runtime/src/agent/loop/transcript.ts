@@ -2,6 +2,8 @@ import type { FieldCodec } from "../../store/field-codec.js";
 import { withSecureDelete } from "../../store/db.js";
 import type { DatabaseSync } from "node:sqlite";
 import type { LoopPark, ModelMessage } from "./types.js";
+import type { Repo } from "../../store/repo.js";
+import { projectLegacyRecall } from "./legacy-recall.js";
 
 /**
  * Durable transcript rows: every model-visible message a run consumes or
@@ -82,9 +84,10 @@ export class TranscriptStore {
     return rows.map((row) => this.decode<ModelMessage>(runId, row.seq, "message", row.message));
   }
 
-  /** Immutable SDK prefix ending before any unfinished source tool step. */
-  forkPrefix(runId: string): ModelMessage[] {
-    const messages = this.load(runId);
+  /** Raw immutable prefix, retaining source seqs for exact historical lineage proof. */
+  forkEntries(runId: string): { seq: number; message: ModelMessage }[] {
+    const entries = this.entries(runId);
+    const messages = entries.map((entry) => entry.message);
     for (let index = 0; index < messages.length; index++) {
       const message = messages[index]!;
       if (message.role !== "assistant" || !Array.isArray(message.content)) continue;
@@ -97,9 +100,19 @@ export class TranscriptStore {
         if (result.role !== "tool") break;
         for (const part of result.content) if (part.type === "tool-result") pending.delete(part.toolCallId);
       }
-      if (pending.size) return messages.slice(0, index);
+      if (pending.size) return entries.slice(0, index);
     }
-    return messages;
+    return entries;
+  }
+
+  /** A new fork never copies durable legacy recall into another model context. */
+  forkPrefix(runId: string, repo: Repo): ModelMessage[] {
+    return projectLegacyRecall(
+      repo,
+      this,
+      runId,
+      this.forkEntries(runId).map((entry) => entry.message),
+    );
   }
 
   /** Message rows with their seqs — same order as `load`, so index i ↔ entries[i].seq. */
