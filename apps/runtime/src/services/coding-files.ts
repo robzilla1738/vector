@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { AuxError } from "@aux/contracts";
 import type {
   CodingFileChange,
+  CloudCodingIdentity,
   CodingFileReceipt,
   CodingFileSnapshot,
   CodingFileState,
@@ -10,8 +11,17 @@ import type {
   CodingSearchResult,
 } from "@aux/contracts/coding-files";
 import type { Repo } from "../store/repo.js";
-import type { FilesystemAccessService } from "./filesystem-access.js";
-import { requireFilesystemPath } from "./filesystem-policy.js";
+
+export interface CodingFileBackend {
+  readonly execution?: CloudCodingIdentity;
+  requirePath(path: string, access: "read" | "write", runId?: string): string;
+  coding<T>(
+    request: Record<string, unknown>,
+    runId?: string,
+    signal?: AbortSignal,
+    beforeDispatch?: () => void,
+  ): Promise<T>;
+}
 
 export interface CodingFileContext {
   runId: string;
@@ -42,7 +52,7 @@ export class CodingFilesService {
   private queue: Promise<unknown> = Promise.resolve();
   constructor(
     private readonly repo: Repo,
-    private readonly filesystem: FilesystemAccessService,
+    private readonly filesystem: CodingFileBackend,
     private readonly authorize: AuthorizeCodingFiles,
   ) {}
   private boundary(context: CodingFileContext): void {
@@ -348,20 +358,20 @@ export class CodingFilesService {
       const requestHash = version(JSON.stringify(request.changes));
       const existing = this.receiptForAction(context.runId, request.actionId);
       if (existing) {
+        this.assertExecution(existing);
         if (existing.requestHash !== requestHash)
           throw new AuxError("conflict", "The action ID was already used for different file changes.");
         if (["confirmed", "partially_applied", "not_applied"].includes(existing.status)) return existing;
         throw new AuxError("operation_uncertain", "Reconcile the existing file action before retrying.");
       }
-      const policy = this.filesystem.codingPolicy(context.runId);
       const paths = new Set<string>();
       const changes = request.changes.map((change) => {
-        const path = requireFilesystemPath(policy, change.path, "write");
+        const path = this.filesystem.requirePath(change.path, "write", context.runId);
         if (paths.has(path))
           throw new AuxError("invalid_params", "Each path may occur only once in a batch.");
         paths.add(path);
         if (change.kind !== "move") return { ...change, path };
-        const destination = requireFilesystemPath(policy, change.destination, "write");
+        const destination = this.filesystem.requirePath(change.destination, "write", context.runId);
         if (paths.has(destination))
           throw new AuxError("invalid_params", "Each path may occur only once in a batch.");
         paths.add(destination);
@@ -468,8 +478,7 @@ export class CodingFilesService {
       context,
     );
     this.boundary(context);
-    const policy = this.filesystem.codingPolicy(context.runId);
-    for (const state of before) requireFilesystemPath(policy, state.path, "write");
+    for (const state of before) this.filesystem.requirePath(state.path, "write", context.runId);
     const current = await this.readStates(
       before.map((state) => state.path),
       context,
@@ -482,6 +491,7 @@ export class CodingFilesService {
     this.boundary(context);
     checkAuthority?.();
     const receipt: CodingFileReceipt = {
+      ...(this.filesystem.execution ? { execution: { ...this.filesystem.execution } } : {}),
       receiptId: randomUUID(),
       actionId,
       runId: context.runId,
@@ -499,6 +509,10 @@ export class CodingFilesService {
         { kind: "apply", path: before[0]!.path, before, after },
         context.runId,
         context.signal,
+        () => {
+          this.boundary(context);
+          checkAuthority?.();
+        },
       );
       receipt.status = "confirmed";
       receipt.fileOutcomes = after.map((state) => ({ path: state.path, status: "confirmed" }));
@@ -520,6 +534,7 @@ export class CodingFilesService {
     return this.serialize(async () => {
       const check = await this.authorizeInspection(context, `reconcile:${receiptId}`);
       const receipt = this.get(receiptId, context.runId);
+      this.assertExecution(receipt);
       if (receipt.status !== "pending" && receipt.status !== "uncertain") return receipt;
       const actual = await this.readStates(
         receipt.after.map((state) => state.path),
@@ -569,10 +584,12 @@ export class CodingFilesService {
           "A stable action ID and distinct file receipt IDs are required.",
         );
       const receipts = this.changesByIds(context.runId, request.receiptIds);
+      for (const receipt of receipts) this.assertExecution(receipt);
       for (const original of receipts) {
         const actionId = `${request.actionId}:${original.receiptId}`;
         const existing = this.receiptForAction(context.runId, actionId);
         if (existing?.status === "confirmed") {
+          this.assertExecution(existing);
           completed.push(existing);
           continue;
         }
@@ -598,6 +615,18 @@ export class CodingFilesService {
       }
       return completed;
     });
+  }
+  private assertExecution(receipt: CodingFileReceipt): void {
+    const original = receipt.execution,
+      current = this.filesystem.execution;
+    if (
+      original?.backend !== current?.backend ||
+      original?.resourceId !== current?.resourceId ||
+      original?.sandboxName !== current?.sandboxName ||
+      original?.sessionId !== current?.sessionId ||
+      original?.root !== current?.root
+    )
+      throw new AuxError("ref_stale", "This file receipt belongs to a different execution session.");
   }
   private serialize<T>(operation: () => Promise<T>): Promise<T> {
     const pending = this.queue.then(operation);

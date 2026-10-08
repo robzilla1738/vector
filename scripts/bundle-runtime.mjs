@@ -152,6 +152,14 @@ export async function bundleRuntime(rtOut, target) {
       js: 'import { createRequire as auxCreateRequire } from "node:module"; const require = auxCreateRequire(import.meta.url);',
     },
   });
+  // File effects reuse the governed worker; only this program and request envelopes enter the VM.
+  const cloudFilesBuild = await build({
+    entryPoints: [join(runtimeDir, "dist/services/cloud-files-entry.js")],
+    outfile: join(rtOut, "dist", "cloud-files", "worker.mjs"), bundle: true, platform: "node",
+    format: "esm", target: "node24", minify: true, legalComments: "none", metafile: true,
+  });
+  if (Object.values(cloudFilesBuild.metafile.outputs).some((output) => output.bytes > 96 * 1024))
+    throw new Error("Cloud file worker exceeds its immutable command argument bound");
   // A self-contained reviewed REPL program is uploaded without SDK tokens or Profile data.
   const cloudWorkerOut = join(rtOut, "dist", "cloud-repl");
   const cloudWorkerBuild = await build({
@@ -187,12 +195,12 @@ export async function bundleRuntime(rtOut, target) {
   writeFileSync(
     join(dirname(rtOut), "runtime-meta.json"),
     JSON.stringify({
-      inputs: { ...runtimeBuild.metafile.inputs, ...recurrenceBuild.metafile.inputs, ...cloudWorkerBuild.metafile.inputs },
-      outputs: { ...runtimeBuild.metafile.outputs, ...recurrenceBuild.metafile.outputs, ...cloudWorkerBuild.metafile.outputs },
+      inputs: { ...runtimeBuild.metafile.inputs, ...cloudFilesBuild.metafile.inputs, ...recurrenceBuild.metafile.inputs, ...cloudWorkerBuild.metafile.inputs },
+      outputs: { ...runtimeBuild.metafile.outputs, ...cloudFilesBuild.metafile.outputs, ...recurrenceBuild.metafile.outputs, ...cloudWorkerBuild.metafile.outputs },
     }),
   );
 
-  writeFileSync(join(rtOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices({...runtimeBuild.metafile.inputs,...cloudWorkerBuild.metafile.inputs,...recurrenceBuild.metafile.inputs,...archiveNoticeInputs}));
+  writeFileSync(join(rtOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices({...runtimeBuild.metafile.inputs,...cloudFilesBuild.metafile.inputs,...cloudWorkerBuild.metafile.inputs,...recurrenceBuild.metafile.inputs,...archiveNoticeInputs}));
 
   // QuickJS's async release variant loads its WASM beside the esbuild chunk at
   // runtime. esbuild bundles the loader JS but does not copy that sibling file.

@@ -95,7 +95,7 @@ function fixture() {
     authorizeBash: async () => false,
     create,
   };
-  return { ctx, repo, create, stop, forbidden, order, authorizeCreate, deps };
+  return { ctx, repo, create, stop, forbidden, order, authorizeCreate, deps, session, runCommand };
 }
 it("retires a provably unsent money park and admits the fresh original attempt", async () => {
   const f = fixture();
@@ -176,4 +176,67 @@ it("reconciles the persisted original VM after executor restart without creating
     state: "settled",
     stop_ack: 1,
   });
+});
+
+it("requires file governance before acquiring a paid VM", async () => {
+  const f = fixture(),
+    executor = new VercelSandboxExecutor(f.deps);
+  await expect(executor.files(f.ctx)).rejects.toMatchObject({ code: "capability_unsupported" });
+  expect(f.create).not.toHaveBeenCalled();
+});
+it("binds governed files to the captured Session and rechecks the effect fence after transport preparation", async () => {
+  const f = fixture();
+  const envelopes = new Map<string, Record<string, unknown>>();
+  let retired = false;
+  const calls: Record<string, unknown>[] = [];
+  Object.assign(f.session, {
+    writeFiles: async (files: { path: string; content: Buffer }[]) => {
+      for (const file of files) {
+        const request = JSON.parse(file.content.toString());
+        envelopes.set(file.path, request);
+        if (request.kind === "apply") retired = true;
+      }
+    },
+    runCommand: async (input: { args: string[]; stdout: { write(value: string): void } }) => {
+      const request = envelopes.get(input.args.at(-2)!)!;
+      calls.push(request);
+      expect(input.args.slice(0, 3)).toEqual(["--input-type=module", "-e", "// immutable reviewed program"]);
+      const value =
+        request.kind === "snapshots"
+          ? (request.paths as string[]).map((path) => ({ path, version: null, content: null }))
+          : null;
+      input.stdout.write(JSON.stringify({ value }));
+      return { exitCode: 0 };
+    },
+  });
+  const authorizeFiles = vi.fn(async (..._args: unknown[]) => () => {
+    if (retired) throw new AuxError("ref_stale", "Source retired");
+  });
+  const executor = new VercelSandboxExecutor({
+    ...f.deps,
+    authorizeFiles,
+    fileWorkerProgram: async () => Buffer.from("// immutable reviewed program"),
+  });
+  const files = await executor.files(f.ctx);
+  await expect(
+    files.applyChanges(
+      {
+        actionId: "write",
+        changes: [{ kind: "create", path: "/vercel/sandbox/project/code.ts", content: "new" }],
+      },
+      { runId: f.ctx.runId },
+    ),
+  ).rejects.toMatchObject({ code: "operation_uncertain" });
+  expect(calls.map((call) => call.kind)).toEqual(["snapshots", "snapshots"]);
+  expect(files.changes(f.ctx.runId)[0]).toMatchObject({
+    status: "uncertain",
+    execution: { sessionId: "original-session", backend: "cloud" },
+  });
+  expect(authorizeFiles.mock.calls[0]?.[2]).toMatchObject({
+    backend: "cloud",
+    sessionId: "original-session",
+    root: "/vercel/sandbox/project",
+  });
+  expect(f.forbidden).not.toHaveBeenCalled();
+  await executor.closeRun(f.ctx.runId);
 });

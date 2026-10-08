@@ -1,3 +1,7 @@
+import { CloudFileBackend } from "./cloud-files.js";
+import { CodingFilesService, type CodingFileAuthorization, type CodingFileContext } from "./coding-files.js";
+import type { CloudCodingIdentity } from "@aux/contracts/coding-files";
+import { CLOUD_PROJECT_ROOT, CLOUD_FILE_BYTES, CLOUD_FILE_PROGRAM_BYTES } from "./cloud-files-protocol.js";
 import { CloudSetupUnavailable } from "./cloud-setup-unavailable.js";
 import type { CloudExecutionContext, CloudReplExecutor } from "./cloud-execution.js";
 import { readFile } from "node:fs/promises";
@@ -5,7 +9,7 @@ import { CloudReplClient } from "./cloud-repl-client.js";
 import { CLOUD_REPL_BYTES } from "./cloud-repl-protocol.js";
 import type { ReplHostDeps } from "../agent/loop/repl.js";
 import type { LoopToolResult, LoopPark } from "../agent/loop/types.js";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { posix } from "node:path";
 import { Writable } from "node:stream";
 import { AuxError, type Suspension, type ResourceLimitsReview } from "@aux/contracts";
@@ -51,18 +55,19 @@ interface LiveResource {
   contractualConfiguration: boolean;
   finalReceipt?: Awaited<ReturnType<Session["stop"]>>["session"];
   closing?: Promise<void>;
+  files?: CodingFilesService;
 }
 const OUTPUT_BYTES = 64 * 1024;
-function boundedOutput() {
+function boundedOutput(limit = OUTPUT_BYTES) {
   let bytes = 0,
     truncated = false;
   const chunks: Buffer[] = [];
   const stream = new Writable({
     write(chunk: Buffer, _encoding, done) {
-      const room = Math.max(0, OUTPUT_BYTES - bytes);
+      const room = Math.max(0, limit - bytes);
       if (room) chunks.push(Buffer.from(chunk.subarray(0, room)));
       bytes += chunk.length;
-      if (bytes > OUTPUT_BYTES) truncated = true;
+      if (bytes > limit) truncated = true;
       done();
     },
   });
@@ -108,6 +113,13 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         ctx: CloudExecutionContext,
         input: BashSeatbeltInput,
       ): Promise<boolean | { park: LoopPark }>;
+      /** Exact remote identity joins the existing file effect decision and durable journal. */
+      authorizeFiles?(
+        request: CodingFileAuthorization,
+        context: CodingFileContext,
+        identity: CloudCodingIdentity,
+      ): Promise<void | (() => void)>;
+      fileWorkerProgram?: () => Promise<Buffer>;
       /** Lazy public SDK factory; seam permits protocol-faithful local fixtures without paid calls. */
       create?: typeof Sandbox.create;
       get?: typeof Sandbox.get;
@@ -389,6 +401,76 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         truncated: stdout.truncated() || stderr.truncated(),
       };
     });
+  }
+
+  async files(ctx: CloudExecutionContext, signal?: AbortSignal): Promise<CodingFilesService> {
+    const authorize = this.deps.authorizeFiles;
+    if (!authorize) throw new AuxError("capability_unsupported", "Cloud file authorization is unavailable.");
+    const resource = await this.acquire(ctx, signal);
+    if (resource.files) return resource.files;
+    const identity: CloudCodingIdentity = {
+      backend: "cloud",
+      resourceId: resource.resourceId,
+      sandboxName: resource.sandbox.name,
+      sessionId: resource.session.sessionId,
+      root: CLOUD_PROJECT_ROOT,
+    };
+    const backend = new CloudFileBackend(ctx.runId, identity, (request, commandSignal, beforeDispatch) =>
+      this.command(resource, commandSignal, async () => {
+        const content = Buffer.from(JSON.stringify(request));
+        if (content.length > CLOUD_FILE_BYTES)
+          throw new AuxError(
+            "invalid_params",
+            "Use smaller cloud file batches; this request exceeds 32 MiB.",
+          );
+        const program = await (this.deps.fileWorkerProgram?.() ??
+          readFile(new URL("../cloud-files/worker.mjs", import.meta.url)));
+        if (program.length > CLOUD_FILE_PROGRAM_BYTES || program.includes(0))
+          throw new AuxError(
+            "permission_denied",
+            "The packaged cloud file worker exceeds its reviewed bound.",
+          );
+        await this.assertLive(resource, commandSignal);
+        const path = `/vercel/sandbox/.aux-files-${randomUUID()}.json`;
+        await resource.session.writeFiles([{ path, content }], { signal: commandSignal });
+        await this.assertLive(resource, commandSignal);
+        const stdout = boundedOutput(CLOUD_FILE_BYTES),
+          stderr = boundedOutput();
+        beforeDispatch?.();
+        const result = await resource.session.runCommand({
+          cmd: "node",
+          args: [
+            "--input-type=module",
+            "-e",
+            program.toString("utf8"),
+            "--",
+            path,
+            createHash("sha256").update(content).digest("hex"),
+          ],
+          cwd: "/vercel/sandbox",
+          signal: commandSignal,
+          timeoutMs: Math.max(1, Math.min(30_000, resource.expiresAt - this.now())),
+          stdout: stdout.stream,
+          stderr: stderr.stream,
+        });
+        await this.assertLive(resource, commandSignal);
+        if (result.exitCode !== 0 || stdout.truncated())
+          throw new AuxError(
+            "conflict",
+            stderr.value() || "Cloud file execution did not return a bounded result.",
+          );
+        return (JSON.parse(stdout.value()) as { value: unknown }).value;
+      }),
+    );
+    resource.files = new CodingFilesService(this.deps.repo, backend, async (request, context) => {
+      if (context.runId !== ctx.runId)
+        throw new AuxError("ref_stale", "Cloud files belong to the original run.");
+      await this.assertLive(resource, context.signal);
+      const fence = await authorize(request, context, { ...identity });
+      await this.assertLive(resource, context.signal);
+      return fence;
+    });
+    return resource.files;
   }
 
   async eval(

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CloudCodingIdentitySchema } from "./coding-files.js";
 const id = z.string().trim().min(1).max(200);
 export const CodingRunParams = z.object({ runId: id }).strict();
 export const CodingChangesParams = CodingRunParams.extend({
@@ -23,6 +24,7 @@ export const CodingFileStateSchema = z
   .strict();
 export const CodingFileReceiptSchema = z
   .object({
+    execution: CloudCodingIdentitySchema.optional(),
     receiptId: id,
     actionId: id,
     runId: id,

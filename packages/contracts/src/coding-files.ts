@@ -1,3 +1,14 @@
+import { z } from "zod";
+export const CloudCodingIdentitySchema = z
+  .object({
+    backend: z.literal("cloud"),
+    resourceId: z.string().min(1),
+    sandboxName: z.string().min(1),
+    sessionId: z.string().min(1),
+    root: z.string().min(1),
+  })
+  .strict();
+export type CloudCodingIdentity = z.infer<typeof CloudCodingIdentitySchema>;
 export interface CodingFileSnapshot {
   path: string;
   content: string;
@@ -24,6 +35,8 @@ export interface CodingFileState {
   version: string | null;
 }
 export interface CodingFileReceipt {
+  /** Absent only for local execution; remote receipts remain bound to their original session. */
+  execution?: CloudCodingIdentity;
   receiptId: string;
   actionId: string;
   runId: string;

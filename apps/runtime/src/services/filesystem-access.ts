@@ -116,10 +116,26 @@ export class FilesystemAccessService {
   readUpload(path: string, runId?: string, signal?: AbortSignal): Promise<Buffer> {
     return this.execute("read", path, undefined, runId, signal);
   }
-  async coding<T>(request: Record<string, unknown>, runId?: string, signal?: AbortSignal): Promise<T> {
+  requirePath(path: string, access: "read" | "write", runId?: string): string {
+    return requireFilesystemPath(this.codingPolicy(runId), path, access);
+  }
+  async coding<T>(
+    request: Record<string, unknown>,
+    runId?: string,
+    signal?: AbortSignal,
+    beforeDispatch?: () => void,
+  ): Promise<T> {
     return JSON.parse(
       (
-        await this.execute("coding", String(request.path ?? request.root), undefined, runId, signal, request)
+        await this.execute(
+          "coding",
+          String(request.path ?? request.root),
+          undefined,
+          runId,
+          signal,
+          request,
+          beforeDispatch,
+        )
       ).toString("utf8"),
     ) as T;
   }
@@ -130,6 +146,7 @@ export class FilesystemAccessService {
     runId?: string,
     signal?: AbortSignal,
     request?: Record<string, unknown>,
+    beforeDispatch?: () => void,
   ): Promise<Buffer> {
     if (process.platform !== "darwin")
       throw new AuxError("capability_unsupported", "Supervised file access requires the macOS sandbox.");
@@ -151,6 +168,7 @@ export class FilesystemAccessService {
       if (directory === dirname(directory)) break;
     }
     return new Promise((resolve, reject) => {
+      beforeDispatch?.();
       const child = spawn(
         "/usr/bin/sandbox-exec",
         [
