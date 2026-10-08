@@ -2370,6 +2370,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     browserEgress = new BrowserEgress({
       runAncestry: (runId) => runAncestry(repo, runId, true),
       profileId: env.AUX_BROWSER_PROFILE_ID,
+      privateSessionId: privateSession?.id,
       native,
       run: (runId) => {
         const run = repo.getRun(runId);

@@ -63,6 +63,8 @@ interface ActivePage {
 
 export interface BrowserEgressDeps {
   profileId: string;
+  /** Original authenticated OTR owner; its default partition is already private. */
+  privateSessionId?: string;
   native: NativeBridge;
   run(runId: string): RunIdentity | null;
   page(pageId: string): PageIdentity;
@@ -115,6 +117,8 @@ export class BrowserEgress {
   private closed = false;
 
   constructor(private readonly deps: BrowserEgressDeps) {
+    if (deps.privateSessionId !== undefined && deps.profileId !== `private:${deps.privateSessionId}`)
+      throw new AuxError("permission_denied", "The original private Profile identity does not match.");
     this.now = deps.now ?? Date.now;
     this.guard = new AgentEgressGuard({
       now: this.now,
@@ -148,8 +152,12 @@ export class BrowserEgress {
     }
   }
 
+  private modeForRun(run: RunIdentity | null | undefined): AgentPageIsolation["mode"] {
+    return run?.privateTask && !this.deps.privateSessionId ? "private" : "session";
+  }
+
   private retainRunMode(runId: string, run: RunIdentity): AgentPageIsolation["mode"] {
-    const mode = run.privateTask ? "private" : "session";
+    const mode = this.modeForRun(run);
     const original = this.runModes.get(runId);
     if (original && original !== mode)
       throw new AuxError("permission_denied", "The run’s original browser storage mode changed.");
@@ -304,7 +312,7 @@ export class BrowserEgress {
         "permission_denied",
         "The person holds this native document. Return control explicitly before running the task.",
       );
-    if (!native.isolation && !run.privateTask) {
+    if (!native.isolation && this.modeForRun(run) === "session") {
       if (!run.nativeTurnContext)
         throw new AuxError(
           "permission_denied",
@@ -365,7 +373,7 @@ export class BrowserEgress {
       isolation.runId !== runId ||
       isolation.taskId !== run.taskId ||
       isolation.taskRevision !== run.taskRevision ||
-      isolation.mode !== (run.privateTask ? "private" : "session") ||
+      isolation.mode !== this.modeForRun(run) ||
       (page.agentIsolation && page.agentIsolation.mode !== isolation.mode) ||
       (page.agentIsolation?.isolationId && page.agentIsolation.isolationId !== isolation.isolationId)
     )
@@ -607,7 +615,7 @@ export class BrowserEgress {
           isolation.taskId !== run.taskId ||
           isolation.taskRevision !== run.taskRevision ||
           isolation.mode !== original.mode ||
-          isolation.mode !== (run.privateTask ? "private" : "session")
+          isolation.mode !== this.modeForRun(run)
         )
           throw new AuxError(
             "ref_stale",
@@ -761,7 +769,7 @@ export class BrowserEgress {
       !!run &&
       run.taskId === active.lease.taskId &&
       run.taskRevision === active.lease.taskRevision &&
-      active.mode === (run.privateTask ? "private" : "session") &&
+      active.mode === this.modeForRun(run) &&
       (!page.agentIsolation || page.agentIsolation.mode === active.mode) &&
       page.url === active.url &&
       page.documentEpoch === active.epoch
@@ -867,7 +875,7 @@ export class BrowserEgress {
       scope.profileId !== this.deps.profileId ||
       run.taskId !== scope.taskId ||
       run.taskRevision !== scope.taskRevision ||
-      this.runModes.get(scope.runId) !== (run.privateTask ? "private" : "session") ||
+      this.runModes.get(scope.runId) !== this.modeForRun(run) ||
       !this.deps.ownsPage(scope.runId, scope.tabId)
     )
       reject();
@@ -875,7 +883,7 @@ export class BrowserEgress {
       if (
         !active ||
         active.runId !== scope.runId ||
-        active.mode !== (run?.privateTask ? "private" : "session") ||
+        active.mode !== this.modeForRun(run) ||
         active.lease.leaseId !== input.lease.leaseId ||
         (
           [
@@ -964,7 +972,7 @@ export class BrowserEgress {
         native.isolation.runId !== scope.runId ||
         native.isolation.taskId !== scope.taskId ||
         native.isolation.taskRevision !== scope.taskRevision ||
-        native.isolation.mode !== (run?.privateTask ? "private" : "session")
+        native.isolation.mode !== this.modeForRun(run)
       )
         reject();
     };

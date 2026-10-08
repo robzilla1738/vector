@@ -46,7 +46,7 @@ function fixture(
   const consent = vi.fn(approve);
   const native = Object.assign(new NullNativeBridge(), {
     egressContext: vi.fn(async () => ({
-      profileId: "profile",
+      profileId: overrides.profileId ?? "profile",
       tabId: "tab",
       controlGeneration,
       personControlled,
@@ -648,54 +648,69 @@ it("refuses a tab without original window admission and a different run namespac
   expect(f.native.egressInstall).not.toHaveBeenCalled();
 });
 
-it("publishes borrowed readers only after native install and retires them only after terminal acknowledgement", async () => {
-  const admitted = vi.fn(
-    async (_input: Parameters<NonNullable<BrowserEgressDeps["admitSessionPage"]>>[0]) => {},
+it.each([undefined, "b830f4d9-629c-40e1-93a4-f9e981c8a8d3"])(
+  "publishes original Profile session readers only after native install and terminal ACK (%s)",
+  async (privateSessionId) => {
+    const admitted = vi.fn(
+      async (_input: Parameters<NonNullable<BrowserEgressDeps["admitSessionPage"]>>[0]) => {},
+    );
+    const retired = vi.fn(async () => {});
+    const f = fixture(undefined, {
+      profileId: privateSessionId ? `private:${privateSessionId}` : "profile",
+      privateSessionId,
+      run: () => ({
+        privateTask: !!privateSessionId,
+        taskId: "task",
+        taskRevision: 4,
+        threadId: "thread",
+        nativeTurnContext: "original-window",
+      }),
+      admitSessionPage: admitted,
+      retireSessionPage: retired,
+      prepareSessionPage: async () => {},
+      page: () => ({
+        url: "https://source.test/page",
+        documentEpoch: 3,
+        controller: "none",
+        sessionId: "selected-source",
+      }),
+    });
+    const original = (await f.native.egressContext()).isolation!;
+    f.setIsolation();
+    const terminal = vi.fn(async () => ({ accepted: true as const }));
+    Object.assign(f.native, {
+      adoptSessionPage: vi.fn(async () => {
+        f.setIsolation(original);
+        return f.native.egressContext();
+      }),
+      egressRunTerminal: terminal,
+    });
+    f.native.egressInstall.mockResolvedValueOnce({ accepted: false } as never);
+    await expect(f.service.acquire("run", "tab")).rejects.toMatchObject({ code: "permission_denied" });
+    expect(admitted).not.toHaveBeenCalled();
+    await f.service.acquire("run", "tab");
+    expect(admitted).toHaveBeenCalledOnce();
+    expect(admitted.mock.calls[0]![0].current()).toBe(true);
+    expect((await f.service.request(f.request("https://source.test/"))).decision.status).toBe("allow");
+    Object.assign(f.native, { createAgentPage: vi.fn() });
+    expect((await f.service.creationScope("run")).mode).toBe("session");
+    f.service.suspendRun("run");
+    expect(admitted.mock.calls[0]![0].current()).toBe(false);
+    expect(retired).not.toHaveBeenCalled();
+    terminal.mockRejectedValueOnce(new Error("Native retirement ACK lost"));
+    await expect(f.service.retireTerminalRegistrations(["run"])).rejects.toThrow("ACK lost");
+    expect(retired).not.toHaveBeenCalled();
+    await f.service.retireTerminalRegistrations(["run"]);
+    expect(retired).toHaveBeenCalledExactlyOnceWith("tab", original);
+    await f.service.retireTerminalRegistrations(["run"]);
+    expect(retired).toHaveBeenCalledOnce();
+  },
+);
+
+it("refuses a private session identity attached to another Profile", () => {
+  expect(() => fixture(undefined, { privateSessionId: "b830f4d9-629c-40e1-93a4-f9e981c8a8d3" })).toThrow(
+    "original private Profile identity",
   );
-  const retired = vi.fn(async () => {});
-  const f = fixture(undefined, {
-    run: () => ({
-      taskId: "task",
-      taskRevision: 4,
-      threadId: "thread",
-      nativeTurnContext: "original-window",
-    }),
-    admitSessionPage: admitted,
-    retireSessionPage: retired,
-    prepareSessionPage: async () => {},
-    page: () => ({
-      url: "https://source.test/page",
-      documentEpoch: 3,
-      controller: "none",
-      sessionId: "selected-source",
-    }),
-  });
-  const original = (await f.native.egressContext()).isolation!;
-  f.setIsolation();
-  const terminal = vi.fn(async () => ({ accepted: true as const }));
-  Object.assign(f.native, {
-    adoptSessionPage: vi.fn(async () => {
-      f.setIsolation(original);
-      return f.native.egressContext();
-    }),
-    egressRunTerminal: terminal,
-  });
-  f.native.egressInstall.mockResolvedValueOnce({ accepted: false } as never);
-  await expect(f.service.acquire("run", "tab")).rejects.toMatchObject({ code: "permission_denied" });
-  expect(admitted).not.toHaveBeenCalled();
-  await f.service.acquire("run", "tab");
-  expect(admitted).toHaveBeenCalledOnce();
-  expect(admitted.mock.calls[0]![0].current()).toBe(true);
-  f.service.suspendRun("run");
-  expect(admitted.mock.calls[0]![0].current()).toBe(false);
-  expect(retired).not.toHaveBeenCalled();
-  terminal.mockRejectedValueOnce(new Error("Native retirement ACK lost"));
-  await expect(f.service.retireTerminalRegistrations(["run"])).rejects.toThrow("ACK lost");
-  expect(retired).not.toHaveBeenCalled();
-  await f.service.retireTerminalRegistrations(["run"]);
-  expect(retired).toHaveBeenCalledExactlyOnceWith("tab", original);
-  await f.service.retireTerminalRegistrations(["run"]);
-  expect(retired).toHaveBeenCalledOnce();
 });
 
 it("refuses same-URL source replacement discovered between native context and borrowed admission", async () => {
@@ -1034,23 +1049,30 @@ function nativeInput(f: ReturnType<typeof fixture>) {
   return input;
 }
 
-it("validates original native person retirement before and after exact browser ACK", async () => {
-  const f = fixture();
-  await f.service.acquire("run", "tab");
-  const validation = f.service.nativeTakeoverValidation(nativeInput(f));
-  await expect(validation.validate()).rejects.toThrow("original native input");
-  f.nativeTakeover();
-  await validation.validate();
-  await f.service.withAuthorityMutation(
-    (id) => id === "run",
-    async () => {
-      await validation.validateRetired();
-      f.takeover();
-    },
-  );
-  expect(f.native.egressRevoke).toHaveBeenCalledWith({ lease: f.leases[0]! });
-  expect((await f.service.request(f.request("https://source.test/"))).decision.status).toBe("deny");
-});
+it.each([undefined, "b830f4d9-629c-40e1-93a4-f9e981c8a8d3"])(
+  "validates original native person retirement before and after exact browser ACK (%s)",
+  async (privateSessionId) => {
+    const f = fixture(undefined, {
+      profileId: privateSessionId ? `private:${privateSessionId}` : "profile",
+      privateSessionId,
+    });
+    if (privateSessionId) f.setPrivateTask(true);
+    await f.service.acquire("run", "tab");
+    const validation = f.service.nativeTakeoverValidation(nativeInput(f));
+    await expect(validation.validate()).rejects.toThrow("original native input");
+    f.nativeTakeover();
+    await validation.validate();
+    await f.service.withAuthorityMutation(
+      (id) => id === "run",
+      async () => {
+        await validation.validateRetired();
+        f.takeover();
+      },
+    );
+    expect(f.native.egressRevoke).toHaveBeenCalledWith({ lease: f.leases[0]! });
+    expect((await f.service.request(f.request("https://source.test/"))).decision.status).toBe("deny");
+  },
+);
 
 it.each(["task", "same-url-document", "controller"])(
   "rejects original native input after %s changes while its fresh native check is held",
