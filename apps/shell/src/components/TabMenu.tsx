@@ -190,6 +190,43 @@ export function TabMenu({
     void Promise.resolve().then(work).catch(errToast);
   }
 
+  function liveSelection() {
+    const state = useStore.getState();
+    return selectedIds.flatMap((id) => {
+      const current = state.pages.byId[id];
+      return current && !current.ownedByRuntime && (!current.windowId || current.windowId === bridge.windowId)
+        ? [current]
+        : [];
+    });
+  }
+
+  async function reloadSelection() {
+    const targets = liveSelection();
+    let reloaded = 0;
+    let failure = "";
+    for (const target of targets) {
+      try {
+        await tabCommand({ kind: "reload", pageId: target.pageId });
+        ++reloaded;
+      } catch (error) {
+        failure ||= errorMessage(error);
+      }
+    }
+    if (failure) throw new Error(`Reloaded ${reloaded} of ${targets.length} tabs. ${failure}`);
+    toast(`Reloaded ${reloaded} tabs`);
+  }
+
+  function selectedLinks() {
+    return [
+      ...new Map(
+        liveSelection().flatMap((item) => {
+          const url = bookmarkWebUrl(item.url);
+          return url ? [[url, { url, title: (item.title || hostOf(url)).slice(0, 1000) }] as const] : [];
+        }),
+      ).values(),
+    ];
+  }
+
   function openNaming() {
     const saved = layout.tabNames?.[page.pageId];
     setNameDraft(saved?.url === page.url ? saved.title : "");
@@ -513,7 +550,50 @@ export function TabMenu({
         </>
       ) : (
         <>
-          {bulk && <div className="menu-label">{selectedIds.length} tabs selected</div>}
+          {bulk && (
+            <>
+              <div className="menu-label">{selectedIds.length} tabs selected</div>
+              <button className="menu-item" role="menuitem" onClick={() => action(reloadSelection)}>
+                {shellIconReloadSm}
+                <span {...auxClassTextProps}>Reload selected tabs</span>
+              </button>
+              <button
+                className="menu-item"
+                role="menuitem"
+                onClick={() =>
+                  action(async () => {
+                    const links = selectedLinks();
+                    if (!links.length) throw new Error("The selected tabs have no web addresses to copy.");
+                    await navigator.clipboard.writeText(links.map((item) => item.url).join("\n"));
+                    toast(`Copied ${links.length} links`);
+                  })
+                }
+              >
+                {shellIconCopy}
+                <span {...auxClassTextProps}>Copy selected links</span>
+              </button>
+              {!bridge.privateMode && (
+                <button
+                  className="menu-item"
+                  role="menuitem"
+                  onClick={() =>
+                    action(async () => {
+                      const bookmarks = selectedLinks();
+                      if (!bookmarks.length)
+                        throw new Error("The selected tabs have no web pages to bookmark.");
+                      const result = await call("bookmarks.import", { bookmarks });
+                      toast(
+                        `Added ${result.added} bookmarks${result.skipped ? ` · ${result.skipped} already saved` : ""}`,
+                      );
+                    })
+                  }
+                >
+                  <span {...auxClassTextProps}>Bookmark selected tabs</span>
+                </button>
+              )}
+              <div className="menu-sep" />
+            </>
+          )}
           {!bulk && (
             <>
               <button

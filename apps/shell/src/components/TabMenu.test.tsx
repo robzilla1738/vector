@@ -163,3 +163,57 @@ it("bookmarks the right-clicked tab rather than the active tab without pinning i
     useStore.setState(original, true);
   }
 });
+
+it("bulk bookmark and copy actions use live web tabs and deduplicate their addresses", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    callback(0);
+    return 1;
+  });
+  vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
+  const page = { pageId: "p1", url: "https://old.test/", title: "Old", ownedByRuntime: false } as PageTarget;
+  const duplicate = { ...page, pageId: "p2" };
+  const closed = { ...page, pageId: "closed", url: "https://closed.test/" };
+  const local = { ...page, pageId: "local", url: "chrome://settings/" };
+  useStore.setState({ layout: emptyLayout(), pages: normalizePages([page, duplicate, closed, local]) });
+  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ added: 1, skipped: 0 });
+  const writeText = vi.fn(async () => {});
+  Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const button = (text: string) =>
+    [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((node) =>
+      node.textContent?.includes(text),
+    )!;
+  try {
+    await act(async () =>
+      root.render(
+        <TabMenu
+          page={page}
+          selectedPages={[page, duplicate, closed, local]}
+          x={0}
+          y={0}
+          onClose={() => {}}
+        />,
+      ),
+    );
+    await act(async () =>
+      useStore.setState({
+        pages: normalizePages([
+          { ...page, url: "https://current.test/", title: "Current" },
+          { ...duplicate, url: "https://current.test/", title: "Current" },
+          local,
+        ]),
+      }),
+    );
+    await act(async () => button("Bookmark selected tabs").click());
+    expect(invoke).toHaveBeenCalledWith("bookmarks.import", {
+      bookmarks: [{ url: "https://current.test/", title: "Current" }],
+    });
+    await act(async () => button("Copy selected links").click());
+    expect(writeText).toHaveBeenCalledWith("https://current.test/");
+  } finally {
+    await act(async () => root.unmount());
+  }
+});

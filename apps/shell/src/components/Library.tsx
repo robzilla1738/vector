@@ -599,24 +599,28 @@ export function Library({
     if (view !== "bookmarks") return;
     let live = true;
     let revision = 0;
-    const unsubscribe = bridge.onEvent((event) => {
-      if (!readCurrent() || event.type !== "bookmarks.changed") return;
-      const current = ++revision;
+    const refreshFolders = () => {
+      const requested = ++revision;
       void call("bookmarks.folders.list")
         .then((paths) => {
-          if (!live || !readCurrent() || current !== revision) return;
+          if (!live || !readCurrent() || requested !== revision) return;
           setFolders(paths);
           setFolder((previous) =>
             paths.some((path) => JSON.stringify(path) === JSON.stringify(previous)) ? previous : [],
           );
         })
         .catch((reason) => {
-          if (live && readCurrent() && current === revision) setError(String(reason));
+          if (live && readCurrent() && requested === revision) setError(String(reason));
         });
+    };
+    // Native folder-only changes also publish a fresh bookmark snapshot.
+    const stop = useStore.subscribe((state, previous) => {
+      if (state.bookmarks !== previous.bookmarks) refreshFolders();
     });
+    refreshFolders();
     return () => {
       live = false;
-      unsubscribe();
+      stop();
     };
   }, [view, readCurrent]);
 
