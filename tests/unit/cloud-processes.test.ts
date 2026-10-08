@@ -173,3 +173,17 @@ it("retains VM retirement when a previously pending launch finally returns its c
   });
   expect(f.command.wait).not.toHaveBeenCalled();
 });
+
+it("returns cancelled foreground work promptly while failed Stop cleanup remains owned", async () => {
+  const f = fixture(),
+    controller = new AbortController();
+  f.command.kill.mockRejectedValueOnce(new Error("Provider unavailable"));
+  const pending = f.service.run({ command: "sleep 10" }, { ...f.context, signal: controller.signal });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  controller.abort();
+  await expect(pending).rejects.toMatchObject({ code: "cancelled" });
+  expect(f.transport.released).not.toHaveBeenCalled();
+  f.service.sessionStopped();
+  f.complete({ exitCode: 143 });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+});

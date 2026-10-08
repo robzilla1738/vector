@@ -435,18 +435,26 @@ export class CloudCodingProcesses extends CodingProcessLedger {
     );
     const owned = this.owned.get(receipt.processId);
     if (owned) {
-      const timer = setTimeout(
-        () => {
-          owned.receipt.timedOut = true;
-          void this.stop(receipt.processId, context.runId).catch(() => {});
-        },
-        Math.min(Math.max(input.timeoutMs ?? 30000, 1000), 120000),
-      );
-      timer.unref();
+      let timer: ReturnType<typeof setTimeout> | undefined, abort: (() => void) | undefined;
+      const deadline = new Promise<void>((resolve, reject) => {
+        timer = setTimeout(
+          () => {
+            owned.receipt.timedOut = true;
+            void this.stop(receipt.processId, context.runId).then(() => resolve(), reject);
+          },
+          Math.min(Math.max(input.timeoutMs ?? 30000, 1000), 120000),
+        );
+        timer.unref();
+        abort = () =>
+          reject(new AuxError("cancelled", "Cloud command stopped; original cleanup remains owned."));
+        context.signal?.addEventListener("abort", abort, { once: true });
+        if (context.signal?.aborted) abort();
+      });
       try {
-        await owned.finished;
+        await Promise.race([owned.finished, deadline]);
       } finally {
         clearTimeout(timer);
+        if (abort) context.signal?.removeEventListener("abort", abort);
       }
     }
     const current = this.status(receipt.processId, context.runId);
