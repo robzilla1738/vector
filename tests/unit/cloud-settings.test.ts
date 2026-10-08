@@ -96,3 +96,26 @@ it("leases configured Sandbox access from the original owner without copying cre
     normalDb.close();
   }
 });
+
+it("keeps malformed original Sandbox settings out of ordinary and private AI startup", async () => {
+  const normalDb = openDb(":memory:"),
+    privateDb = openDb(":memory:"),
+    repo = new Repo(normalDb);
+  repo.setSetting("cloudExecution", { malformed: "secret-sentinel" });
+  const normal = new CloudSettingsService(repo, {} as NativeBridge),
+    privateSettings = new CloudSettingsService(new Repo(privateDb), {} as NativeBridge);
+  try {
+    expect(normal.connectionRevision()).toMatch(/^[a-f0-9]{64}$/);
+    await privateSettings.attachPrivate((request) => normal.privateRequest(request));
+    expect(privateSettings.status().configured).toBe(false);
+    await expect(privateSettings.configuration()).rejects.toMatchObject({
+      code: "needs_input",
+      message: expect.stringContaining("original Sandbox configuration"),
+    });
+  } finally {
+    await privateSettings.close();
+    await normal.close();
+    privateDb.close();
+    normalDb.close();
+  }
+});

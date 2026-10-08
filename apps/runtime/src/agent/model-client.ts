@@ -6,6 +6,7 @@ import {
   MODEL_REGISTRY,
   modelPickerEntries,
   registryCostUsd,
+  type ModelCapability,
 } from "@aux/contracts/model-registry";
 
 /** Usage of one provider round trip. Every attempt a client makes is reported, including hidden retries. */
@@ -75,6 +76,22 @@ export function attemptsOf(error: unknown): ModelAttempt[] {
   );
 }
 
+const undispatchedErrors = new WeakSet<object>();
+/** Issued only by a transport that can prove it never dispatched this call. */
+export function markModelUndispatched<E>(error: E): E {
+  if (error && typeof error === "object") undispatchedErrors.add(error);
+  return error;
+}
+export function modelUndispatched(error: unknown, depth = 0): boolean {
+  if (!error || typeof error !== "object" || depth > 8) return false;
+  if (undispatchedErrors.has(error)) return true;
+  const wrapped = error as { cause?: unknown; errors?: unknown[] };
+  return (
+    modelUndispatched(wrapped.cause, depth + 1) ||
+    (!!wrapped.errors?.length && wrapped.errors.every((cause) => modelUndispatched(cause, depth + 1)))
+  );
+}
+
 /** Normalize SDK usage (v7 inputTokenDetails, older cachedInputTokens) into attempt fields. */
 export function usageFields(
   usage: unknown,
@@ -112,6 +129,7 @@ export function modelCallCost(
     outputTokens?: number;
     providerMetadata?: Record<string, unknown>;
   },
+  models?: readonly ModelCapability[],
 ): { costUsd?: number; costEstimated?: boolean } {
   if (c.providerMetadata && subscriptionReceipts.has(c.providerMetadata)) return {};
   const gateway = c.providerMetadata?.gateway as { cost?: unknown; marketCost?: unknown } | undefined;
@@ -120,7 +138,9 @@ export function modelCallCost(
     if (Number.isFinite(n) && n >= 0) return { costUsd: n, costEstimated: false };
   }
   const estimate =
-    c.inputTokens !== undefined || c.outputTokens !== undefined ? registryCostUsd(modelId, c) : undefined;
+    c.inputTokens !== undefined || c.outputTokens !== undefined
+      ? registryCostUsd(modelId, c, models)
+      : undefined;
   return estimate === undefined ? {} : { costUsd: estimate, costEstimated: true };
 }
 

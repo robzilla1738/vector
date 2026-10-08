@@ -45,23 +45,36 @@ export async function closeCloudSettings(repo: Repo): Promise<void> {
 export class CloudSettingsService {
   private writes: Promise<unknown> = Promise.resolve();
   private closed = false;
+  private inheritedError?: AuxError;
   private inherited?: {
     descriptor: PrivateCloudDescriptor;
     request(request: PrivateCloudRequest): Promise<PrivateCloudResult>;
   };
   async attachPrivate(request: (request: PrivateCloudRequest) => Promise<PrivateCloudResult>): Promise<void> {
-    const result = PrivateCloudResultSchema.parse(await request({ operation: "describe" }));
-    if (this.closed) throw new AuxError("cancelled", "Private Sandbox settings retired.");
-    if (result.operation !== "describe")
-      throw new AuxError("invalid_params", "Invalid original Sandbox descriptor.");
-    this.inherited = result.connection ? { descriptor: result.connection, request } : undefined;
+    try {
+      const result = PrivateCloudResultSchema.parse(await request({ operation: "describe" }));
+      if (this.closed) throw new AuxError("cancelled", "Private Sandbox settings retired.");
+      if (result.operation !== "describe")
+        throw new AuxError("invalid_params", "Invalid original Sandbox descriptor.");
+      this.inherited = result.connection ? { descriptor: result.connection, request } : undefined;
+      this.inheritedError = undefined;
+    } catch {
+      if (this.closed) throw new AuxError("cancelled", "Private Sandbox settings retired.");
+      this.inherited = undefined;
+      this.inheritedError = new AuxError(
+        "needs_input",
+        "The original Sandbox configuration is unavailable. Review its account and resource rates in Settings.",
+      );
+    }
   }
   invalidatePrivateConnection(): void {
     this.inherited = undefined;
   }
   connectionRevision(): string {
+    const row = this.repo.db.prepare("SELECT value FROM kv WHERE key=?").get(`setting:${setting}`) as
+      { value: string } | undefined;
     return createHash("sha256")
-      .update(JSON.stringify(this.record() ?? null))
+      .update(row?.value ?? "absent")
       .digest("hex");
   }
   async privateRequest(request: PrivateCloudRequest): Promise<PrivateCloudResult> {
@@ -185,6 +198,7 @@ export class CloudSettingsService {
   }
   async configuration(): Promise<CloudConfiguration> {
     if (this.closed) throw new AuxError("cancelled", "Cloud settings are closed.");
+    if (this.inheritedError) throw this.inheritedError;
     const inherited = this.inherited;
     if (inherited) {
       const result = PrivateCloudResultSchema.parse(
@@ -271,6 +285,7 @@ export class CloudSettingsService {
           if (previous && previous.secretName !== secretName) this.queueRetirement(previous.secretName);
         });
         this.inherited = undefined;
+        this.inheritedError = undefined;
         committed = true;
         await this.retireSecrets();
         return this.status();
@@ -298,6 +313,7 @@ export class CloudSettingsService {
         if (previous) this.queueRetirement(previous.secretName);
       });
       this.inherited = undefined;
+      this.inheritedError = undefined;
       await this.retireSecrets();
       return this.status();
     });

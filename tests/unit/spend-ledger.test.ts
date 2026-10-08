@@ -30,6 +30,19 @@ describe("AI Gateway program spend", () => {
     reopened.close();
   });
 
+  it("retains private amounts without a run, source or model identity", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "aux-private-spend-")), "ledger.sqlite");
+    const ledger = new SpendLedger(path, { AUX_PRIVATE_SESSION: "private-session" });
+    try {
+      const id = ledger.reserve("private-run-sentinel", "private-model-sentinel", 0.4);
+      ledger.settle(id, 0.25);
+      expect(ledger.summary().committedUsd).toBe(0.25);
+      expect(JSON.stringify(ledger.db.prepare("SELECT * FROM ai_spend").all())).not.toContain("sentinel");
+    } finally {
+      ledger.close();
+    }
+  });
+
   it("estimates actual input with catalog prices and permits unpriced models", () => {
     const estimated = (10_000 * 0.1 + 2048 * 0.2) / 1_000_000;
     expect(projectedModelCostUsd("meta/muse-spark-1.3-contributor", 10_000, 2048)).toBeLessThanOrEqual(

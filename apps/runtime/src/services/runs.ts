@@ -1085,6 +1085,7 @@ export class RunService {
         agentProfile?: import("@aux/contracts").AgentProfile;
       }>;
       repo: Repo;
+      accountBudget?: import("./private-budget.js").PrivateBudgetClient;
       events: EventBus;
       pages: PageService;
       sets: SetService;
@@ -1144,6 +1145,8 @@ export class RunService {
       (runId) => deps.budgets?.resourceFundingScopes(runId) ?? [],
     );
     this.coordinator = new RunCoordinator({
+      accountBudget: deps.accountBudget,
+      modelCatalog: () => deps.settings.registryModels(),
       repo: deps.repo,
       events: deps.events,
       pages: deps.pages,
@@ -1182,6 +1185,7 @@ export class RunService {
       model: () => deps.settings.model(),
       defaultModel: () => deps.settings.agentRoute("standard").modelId,
       checkBudget: async ({ runId, requiredUsd }) => {
+        await deps.accountBudget?.refresh();
         await checkNightShiftDispatch(deps.repo, runId);
         deps.budgets?.assertWithin({ runId, requiredUsd });
       },
@@ -1478,6 +1482,7 @@ export class RunService {
       events: this.deps.events,
       settings: this.deps.settings,
       budgets: this.deps.budgets,
+      accountBudget: this.deps.accountBudget,
       funding: this.funding,
       pauseFunding: (error) => this.coordinator.pauseForResourceFunding(error),
       checkOwner: async () => {
@@ -1492,7 +1497,7 @@ export class RunService {
       continueSpend: async (error, requiredUsd) => {
         const d = error.detail;
         if (
-          error.code !== "permission_denied" ||
+          !["permission_denied", "needs_input"].includes(error.code) ||
           !d ||
           typeof d !== "object" ||
           !("scope" in d) ||
@@ -1977,6 +1982,7 @@ export class RunService {
     let receiptRecorded = false;
     let toolkitStarted = false;
     let fundingReservation: string | undefined;
+    let accountBudgetId: string | undefined;
     const settle = async (receipt: {
       dispatched: boolean;
       costUsd: number;
@@ -1987,11 +1993,24 @@ export class RunService {
       if (!callId || receiptRecorded)
         throw new AuxError("conflict", "The original image receipt is unavailable.");
       await withRunAuthorityMutation(this.deps.repo, async () => {
-        if (receipt.dispatched) this.deps.repo.settleModelCall(callId!, input.runId, receipt);
+        if (receipt.dispatched)
+          this.deps.repo.settleModelCall(callId!, input.runId, {
+            ...receipt,
+            costUsd: receipt.costEstimated ? undefined : receipt.costUsd,
+          });
         else this.deps.repo.discardModelCallReservation(callId!, input.runId);
         if (receipt.dispatched) this.funding.settle(input.runId, fundingReservation, [], receipt);
         else this.funding.cancelUnsent(input.runId, fundingReservation);
       });
+      if (accountBudgetId) {
+        if (receipt.dispatched)
+          await this.deps.accountBudget?.settle(accountBudgetId, {
+            costUsd: receipt.costEstimated ? undefined : receipt.costUsd,
+            costEstimated: receipt.costEstimated,
+          });
+        else await this.deps.accountBudget?.cancel(accountBudgetId);
+        accountBudgetId = undefined;
+      }
       receiptRecorded = true;
       this.deps.events.emit(
         EventTypes.ModelCall,
@@ -2014,34 +2033,49 @@ export class RunService {
               estimatedCostUsd: IMAGE_RESERVATION_USD,
             });
             await checkOwner();
+            await this.deps.accountBudget?.refresh();
+            this.deps.budgets?.assertWithin({
+              runId: input.runId,
+              requiredUsd: IMAGE_RESERVATION_USD,
+              excludeRunLimit: this.funding.rootCostOwned(input.runId),
+            });
+            if (this.deps.accountBudget) {
+              accountBudgetId = newStepId();
+              await this.deps.accountBudget.reserve(accountBudgetId, "model", IMAGE_RESERVATION_USD);
+            }
+            await checkOwner();
             this.deps.repo.transaction(() => {
-              this.deps.budgets?.assertWithin({
-                runId: input.runId,
-                requiredUsd: IMAGE_RESERVATION_USD,
-                excludeRunLimit: this.funding.rootCostOwned(input.runId),
-              });
-              callId = newStepId();
-              this.deps.repo.saveModelCall({
-                callId,
-                runId: input.runId,
-                role: "agent",
-                modelId,
-                providerMetadata: {
-                  aux: {
-                    kind: "image_generation",
-                    provider: "gateway",
-                    destination: "https://ai-gateway.vercel.sh",
+              const invoiceId = newStepId();
+              callId = invoiceId;
+              const writeInvoice = () =>
+                this.deps.repo.saveModelCall({
+                  callId: invoiceId,
+                  runId: input.runId,
+                  role: "agent",
+                  modelId,
+                  providerMetadata: {
+                    aux: {
+                      kind: "image_generation",
+                      provider: "gateway",
+                      destination: "https://ai-gateway.vercel.sh",
+                    },
                   },
-                },
-                durationMs: 0,
-                costUsd: IMAGE_RESERVATION_USD,
-                costEstimated: true,
-                createdAt: Date.now(),
-              });
+                  durationMs: 0,
+                  costUsd: IMAGE_RESERVATION_USD,
+                  costEstimated: true,
+                  createdAt: Date.now(),
+                });
+              if (accountBudgetId && this.deps.accountBudget)
+                this.deps.accountBudget.record(accountBudgetId, writeInvoice);
+              else writeInvoice();
             });
           });
           break;
         } catch (error) {
+          if (accountBudgetId) {
+            await this.deps.accountBudget?.cancel(accountBudgetId);
+            accountBudgetId = undefined;
+          }
           this.funding.cancelUnsent(input.runId, fundingReservation);
           fundingReservation = undefined;
           if (error instanceof FundingBudgetError) {
@@ -2057,7 +2091,7 @@ export class RunService {
           const detail = error instanceof AuxError ? error.detail : undefined;
           if (
             !(error instanceof AuxError) ||
-            error.code !== "permission_denied" ||
+            !["permission_denied", "needs_input"].includes(error.code) ||
             !detail ||
             typeof detail !== "object" ||
             !("scope" in detail) ||
@@ -2098,16 +2132,13 @@ export class RunService {
         this.deps.artifacts,
         ledger,
         modelId,
-      ).generate(
-        input.prompt,
-        {
-          runId: input.runId,
-          taskId: run.config?.taskId,
-          signal,
-          checkOwner,
-          recordReceipt: settle,
-        },
-      );
+      ).generate(input.prompt, {
+        runId: input.runId,
+        taskId: run.config?.taskId,
+        signal,
+        checkOwner,
+        recordReceipt: settle,
+      });
     } catch (error) {
       // A refusal before AgentImageTools establishes dispatch has proved zero provider spend.
       if (callId && !receiptRecorded && !toolkitStarted)
@@ -2127,6 +2158,7 @@ export class RunService {
   }
 
   private async recordModelCall(input: {
+    accountBudgetId?: string;
     runId: string;
     role: "planner" | "repair" | "vision" | "probe" | "final" | "agent";
     modelId: string;
@@ -2137,10 +2169,10 @@ export class RunService {
     providerMetadata?: Record<string, unknown>;
     error?: string;
   }) {
-    const { cachedInputTokens, ...call } = input;
+    const { cachedInputTokens, accountBudgetId, ...call } = input;
     const c: Omit<ModelCall, "callId" | "createdAt"> & { runId: string } = {
       ...call,
-      ...modelCallCost(call.modelId, call),
+      ...modelCallCost(call.modelId, call, this.deps.settings.registryModels()),
       ...(cachedInputTokens
         ? { providerMetadata: { ...call.providerMetadata, usage: { cachedInputTokens } } }
         : {}),
@@ -2157,7 +2189,12 @@ export class RunService {
       ...c.providerMetadata,
       aux: { provider, ...(destination ? { destination } : {}) },
     };
-    await saveAuthorizedModelCall(this.deps.repo, { callId: newStepId(), ...c, createdAt: Date.now() });
+    const invoice = { callId: newStepId(), ...c, createdAt: Date.now() };
+    if (accountBudgetId && this.deps.accountBudget) {
+      await withRunAuthorityMutation(this.deps.repo, async () => {
+        this.deps.accountBudget!.record(accountBudgetId, () => this.deps.repo.saveModelCall(invoice));
+      });
+    } else await saveAuthorizedModelCall(this.deps.repo, invoice);
     this.deps.events.emit(EventTypes.ModelCall, c, c.runId);
     this.deps.tracer?.incr("model.calls");
     if (c.error) this.deps.tracer?.incr("model.errors");

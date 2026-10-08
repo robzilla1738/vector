@@ -70,6 +70,7 @@ export function openDb(path: string): DatabaseSync {
         `PRAGMA user_version=${SCHEMA_VERSION}`,
       ]);
     }
+    if (!financialTablesForDatabase(db).length) applySchema(db, [schema.private_spend]);
     if (path !== ":memory:") chmodSync(path, 0o600);
     db.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA secure_delete=OFF");
     return db;
@@ -120,4 +121,18 @@ export function kvGetJson<T>(db: DatabaseSync, key: string): T | undefined {
 }
 export function kvSetJson(db: DatabaseSync, key: string, value: unknown): void {
   kvSet(db, key, JSON.stringify(value));
+}
+
+/** Opaque account totals travel with backups; no private content is present in this public financial table. */
+export function financialTablesForDatabase(db: DatabaseSync): string[] {
+  if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='private_spend'").get()) return [];
+  const columns = db.prepare("PRAGMA table_info(private_spend)").all() as { name: string }[];
+  if (
+    columns
+      .map((column) => column.name)
+      .sort()
+      .join(",") !== "cost_estimated,cost_usd,created_at,kind,lease_id,reserved_usd,state"
+  )
+    throw new Error("The opaque account budget schema is invalid.");
+  return ["private_spend"];
 }

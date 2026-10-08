@@ -146,13 +146,13 @@ it("never dispatches or invents a billed call after original ownership is retire
   expect(f.dispatch).not.toHaveBeenCalled();
   expect(f.repo.listModelCalls("original")).toEqual([]);
 });
-it("keeps an unknown provider attempt charged at its real conservative reservation", async () => {
+it("retains an unresolved provider attempt without inventing an invoice", async () => {
   const f = fixture();
   f.fail();
   await expect(f.model.generateStructured(f.request)).rejects.toThrow("Provider connection ended");
   const calls = f.repo.listModelCalls("original");
   expect(calls).toHaveLength(1);
-  expect(calls[0]!.costUsd).toBeGreaterThan(0);
+  expect(calls[0]!.costUsd).toBeUndefined();
   expect(calls[0]).toMatchObject({
     costEstimated: true,
     error: expect.stringContaining("Provider connection ended"),

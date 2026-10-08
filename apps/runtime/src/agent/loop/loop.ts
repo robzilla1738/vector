@@ -1,7 +1,7 @@
 import { MentionUnavailable } from "../turn-mentions.js";
 import { AuxError } from "@aux/contracts";
 import { z } from "zod";
-import type { ModelClient, ToolCallStepResult } from "../model-client.js";
+import { modelUndispatched, type ModelClient, type ToolCallStepResult } from "../model-client.js";
 import type {
   LoopToolCall,
   LoopToolContext,
@@ -34,7 +34,7 @@ export interface AgentLoopOptions {
   /** Actual provider text, published independently of complete tool dispatch. */
   onText?: (text: string) => void;
   afterModelCall?: () => void;
-  onModelAdmissionCancelled?: (reservationId: string | undefined) => void;
+  onModelAdmissionCancelled?: (reservationId: string | undefined) => void | Promise<void>;
   prepareModelMessages?: (
     messages: ModelMessage[],
     budget: { remainingInputBytes(messages: ModelMessage[]): number },
@@ -466,7 +466,7 @@ async function runAgentLoopOwned(
     }
 
     if (opts.signal?.aborted) {
-      opts.onModelAdmissionCancelled?.(reservationId);
+      await opts.onModelAdmissionCancelled?.(reservationId);
       opts.afterModelCall?.();
       return {
         kind: "failed",
@@ -477,7 +477,7 @@ async function runAgentLoopOwned(
       if (recallMessage && recalled && !recalled.admit())
         requestMessages = requestMessages.filter((message) => message !== recallMessage);
     } catch (error) {
-      opts.onModelAdmissionCancelled?.(reservationId);
+      await opts.onModelAdmissionCancelled?.(reservationId);
       opts.afterModelCall?.();
       return {
         kind: "failed",
@@ -502,7 +502,8 @@ async function runAgentLoopOwned(
       });
     } catch (error) {
       try {
-        await opts.onModelFailure?.({ index, error, reservationId });
+        if (modelUndispatched(error)) await opts.onModelAdmissionCancelled?.(reservationId);
+        else await opts.onModelFailure?.({ index, error, reservationId });
       } finally {
         opts.afterModelCall?.();
       }

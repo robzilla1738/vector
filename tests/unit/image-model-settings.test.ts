@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { PNG } from "pngjs";
 import { IMAGE_MODELS } from "@aux/contracts";
 import { EventBus, openDb, Repo, SettingsService } from "@aux/runtime";
+import { PrivateBudgetOwner } from "../../apps/runtime/src/services/private-budget.js";
 import { ArtifactStore } from "../../apps/runtime/src/services/artifacts.js";
 import { SpendLedger } from "../../apps/runtime/src/store/spend-ledger.js";
 import { RunService } from "../../apps/runtime/src/services/runs.js";
@@ -28,9 +29,9 @@ vi.mock("ai", async (original) => ({
     return imageCall(input);
   },
 }));
-const dispose: (() => void)[] = [];
-afterEach(() => {
-  for (const fn of dispose.splice(0).reverse()) fn();
+const dispose: (() => void | Promise<void>)[] = [];
+afterEach(async () => {
+  for (const fn of dispose.splice(0).reverse()) await fn();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   imageCall.mockReset();
@@ -55,7 +56,10 @@ function fixture(env: NodeJS.ProcessEnv = { AI_GATEWAY_API_KEY: "synthetic-image
     drivers: () => ({ aux: null, chrome: null }),
   });
   const budgets = new BudgetsService(db, () => settings.budgetLimits(), budgetLineage(repo));
+  const owner = new PrivateBudgetOwner(repo, budgets),
+    accountBudget = owner.client();
   const runs = new RunService({
+    accountBudget,
     repo,
     events,
     artifacts,
@@ -80,7 +84,9 @@ function fixture(env: NodeJS.ProcessEnv = { AI_GATEWAY_API_KEY: "synthetic-image
     },
   };
   const decideEgress = vi.fn(async () => {});
-  dispose.push(() => {
+  dispose.push(async () => {
+    await accountBudget.close();
+    owner.close();
     repo.close();
     rmSync(dir, { recursive: true, force: true });
   });
@@ -216,7 +222,7 @@ it("reserves user budget before dispatch and continues only the original image r
   expect(f.budgets.spentDayUsd()).toBe(0.04);
 });
 
-it("retains the original estimated receipt after unknown usage and refuses stale-window artifact publication", async () => {
+it("retains unresolved accounting after unknown usage and refuses stale-window artifact publication", async () => {
   const f = fixture();
   imageCall.mockImplementation(async () => {
     f.retireOwner();
@@ -226,7 +232,7 @@ it("retains the original estimated receipt after unknown usage and refuses stale
   });
   await expect(f.generate()).rejects.toThrow(/window retired/);
   expect(f.repo.db.prepare("SELECT cost_usd,cost_estimated FROM model_calls").get()).toMatchObject({
-    cost_usd: 1,
+    cost_usd: null,
     cost_estimated: 1,
   });
   expect(f.repo.db.prepare("SELECT count(*) n FROM artifacts").get()).toMatchObject({ n: 0 });
@@ -259,7 +265,8 @@ it("cancels the actual in-flight image transport and retains unknown attempted s
   await f.runs.cancel(run.runId);
   expect(await outcome).toMatchObject({ code: "cancelled" });
   expect(f.repo.getRun(run.runId)?.status).toBe("cancelled");
-  expect(f.budgets.spentRunUsd(run.runId)).toBe(1);
+  expect(f.budgets.runCostComplete(run.runId)).toBe(false);
+  expect(f.budgets.status({}).find((window) => window.scope === "day")?.unpricedModelCalls).toBe(1);
   expect(f.repo.db.prepare("SELECT count(*) n FROM artifacts").get()).toMatchObject({ n: 0 });
 });
 

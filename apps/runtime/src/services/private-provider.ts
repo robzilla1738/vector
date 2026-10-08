@@ -16,7 +16,7 @@ import {
 import { z } from "zod";
 import type { PrivateCloudRequest, PrivateCloudResult } from "@aux/contracts/private-cloud";
 import type { PrivateBudgetRequest, PrivateBudgetResult } from "@aux/contracts/private-budget";
-import type { ModelClient, ModelCallSource } from "../agent/model-client.js";
+import { markModelUndispatched, type ModelClient, type ModelCallSource } from "../agent/model-client.js";
 import { directModelClient } from "../agent/direct-providers.js";
 import { GatewayModelClient } from "../agent/gateway-client.js";
 import { chatgptModelClient } from "../agent/chatgpt-model.js";
@@ -176,113 +176,134 @@ export class PrivateProviderConnection {
       options: { signal?: AbortSignal; source?: ModelCallSource },
       use: (client: ModelClient, signal: AbortSignal) => Promise<T>,
     ): Promise<T> => {
-      const signal = AbortSignal.any([this.controller.signal, ...(options.signal ? [options.signal] : [])]);
-      const current = async () => {
-        signal.throwIfAborted();
-        check();
-        await options.source?.checkOriginal();
-        signal.throwIfAborted();
-        check();
+      let dispatched = false;
+      const network: typeof fetch = (input, init) => {
+        dispatched = true;
+        return this.network(input, init);
       };
-      await current();
-      const credential = async () => {
-        await current();
-        const value = await this.credential(signal);
-        await current();
-        return value.accessToken;
-      };
-      const models = () => descriptor.models;
-      let client: ModelClient;
-      if (descriptor.authentication === "copilot") {
-        client = copilotModelClient(
-          {
-            inference: (accountId, source, modelId, originalSignal, use) =>
-              this.privateCopilot().inference(
-                accountId,
-                source.nativeTurnContext,
-                originalSignal,
-                async () => {
-                  await source.checkOriginal();
-                },
-                modelId,
-                use,
-              ),
-          },
-          descriptor.accountId!,
-          models,
-          async (source, destination) => {
-            await current();
-            await source.authorizeDestination(destination);
-            await current();
-          },
-          this.network,
-        );
-      } else if (descriptor.authentication === "chatgpt") {
-        client = chatgptModelClient(
-          { accessToken: credential },
-          descriptor.accountId!,
-          models,
-          async () => {
-            await current();
-            await options.source?.authorizeDestination(new URL(descriptor.endpoint).origin);
-            await current();
-          },
-          check,
-          this.network,
-        );
-      } else if (descriptor.authentication === "vercel") {
-        client = vercelModelClient(
-          async () => ({ account: () => ({ teamId: descriptor.teamId! }), accessToken: credential }),
-          descriptor.accountId!,
-          models,
-          check,
-          async () => current(),
-        );
-      } else {
-        const base = new URL(descriptor.endpoint);
-        const transport: typeof fetch = async (input, init) => {
-          const url = new URL(input instanceof Request ? input.url : String(input));
-          if (
-            url.origin !== base.origin ||
-            !(
-              url.pathname === base.pathname ||
-              url.pathname.startsWith(base.pathname.replace(/\/$/, "") + "/")
-            )
-          )
-            throw new AuxError(
-              "permission_denied",
-              "Private inference changed its configured provider destination.",
-            );
-          await current();
-          await options.source?.authorizeDestination(base.origin);
-          await current();
-          const key = await credential(),
-            headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
-          headers.delete("authorization");
-          headers.delete("x-api-key");
-          headers.delete("x-goog-api-key");
-          if (descriptor.provider === "anthropic") headers.set("x-api-key", key);
-          else if (descriptor.provider === "google") headers.set("x-goog-api-key", key);
-          else headers.set("authorization", `Bearer ${key}`);
-          return this.network(input, {
-            ...init,
-            headers,
-            redirect: "error",
-            signal: AbortSignal.any([
-              signal,
-              ...(init?.signal ? [init.signal] : []),
-              ...(input instanceof Request ? [input.signal] : []),
-            ]),
-          });
+      try {
+        const signal = AbortSignal.any([this.controller.signal, ...(options.signal ? [options.signal] : [])]);
+        const current = async () => {
+          signal.throwIfAborted();
+          check();
+          await options.source?.checkOriginal();
+          signal.throwIfAborted();
+          check();
         };
-        client =
-          descriptor.provider === "gateway"
-            ? new GatewayModelClient("aux-private-transport", { gatewayFetch: transport, models })
-            : directModelClient(descriptor.provider, "aux-private-transport", transport, descriptor.endpoint);
+        await current();
+        const credential = async () => {
+          await current();
+          const value = await this.credential(signal);
+          await current();
+          return value.accessToken;
+        };
+        const models = () => descriptor.models;
+        let client: ModelClient;
+        if (descriptor.authentication === "copilot") {
+          client = copilotModelClient(
+            {
+              inference: (accountId, source, modelId, originalSignal, use) =>
+                this.privateCopilot().inference(
+                  accountId,
+                  source.nativeTurnContext,
+                  originalSignal,
+                  async () => {
+                    await source.checkOriginal();
+                  },
+                  modelId,
+                  use,
+                ),
+            },
+            descriptor.accountId!,
+            models,
+            async (source, destination) => {
+              await current();
+              await source.authorizeDestination(destination);
+              await current();
+            },
+            network,
+          );
+        } else if (descriptor.authentication === "chatgpt") {
+          client = chatgptModelClient(
+            { accessToken: credential },
+            descriptor.accountId!,
+            models,
+            async () => {
+              await current();
+              await options.source?.authorizeDestination(new URL(descriptor.endpoint).origin);
+              await current();
+            },
+            check,
+            network,
+          );
+        } else if (descriptor.authentication === "vercel") {
+          client = vercelModelClient(
+            async () => ({ account: () => ({ teamId: descriptor.teamId! }), accessToken: credential }),
+            descriptor.accountId!,
+            models,
+            check,
+            async () => current(),
+            network,
+          );
+        } else {
+          const base = new URL(descriptor.endpoint);
+          const transport: typeof fetch = async (input, init) => {
+            try {
+              const url = new URL(input instanceof Request ? input.url : String(input));
+              if (
+                url.origin !== base.origin ||
+                !(
+                  url.pathname === base.pathname ||
+                  url.pathname.startsWith(base.pathname.replace(/\/$/, "") + "/")
+                )
+              )
+                throw new AuxError(
+                  "permission_denied",
+                  "Private inference changed its configured provider destination.",
+                );
+              await current();
+              await options.source?.authorizeDestination(base.origin);
+              await current();
+              const key = await credential(),
+                headers = new Headers(
+                  init?.headers ?? (input instanceof Request ? input.headers : undefined),
+                );
+              headers.delete("authorization");
+              headers.delete("x-api-key");
+              headers.delete("x-goog-api-key");
+              if (descriptor.provider === "anthropic") headers.set("x-api-key", key);
+              else if (descriptor.provider === "google") headers.set("x-goog-api-key", key);
+              else headers.set("authorization", `Bearer ${key}`);
+              return network(input, {
+                ...init,
+                headers,
+                redirect: "error",
+                signal: AbortSignal.any([
+                  signal,
+                  ...(init?.signal ? [init.signal] : []),
+                  ...(input instanceof Request ? [input.signal] : []),
+                ]),
+              });
+            } catch (error) {
+              throw dispatched ? error : markModelUndispatched(error);
+            }
+          };
+          client =
+            descriptor.provider === "gateway"
+              ? new GatewayModelClient("aux-private-transport", { gatewayFetch: transport, models })
+              : directModelClient(
+                  descriptor.provider,
+                  "aux-private-transport",
+                  transport,
+                  descriptor.endpoint,
+                );
+        }
+        const value = await use(client, signal);
+        await current();
+        return value;
+      } catch (error) {
+        throw dispatched ? error : markModelUndispatched(error);
       }
-      const value = await use(client, signal);
-      await current();
-      return value;
     };
     return {
       generateStructured: <T>(

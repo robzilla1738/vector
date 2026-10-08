@@ -1,3 +1,4 @@
+import { financialTablesForDatabase } from "../store/db.js";
 import { omitDerivedAndSpaceMemory } from "./space-memory-backup.js";
 import { digest as sha } from "@aux/contracts/util/digest";
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID, scryptSync } from "node:crypto";
@@ -80,7 +81,7 @@ async function requireOwnerAuth(native: NativeBridge, purpose: "export" | "resto
 /** Translate only selected fields in an explicit, authenticated cross-Profile recovery. */
 function recodeSnapshot(db: DatabaseSync, cipher: FieldCodec, direction: "encrypt" | "decrypt"): string[] {
   const fields = encryptedFieldsForDatabase(db);
-  const tables = Object.keys(fields);
+  const tables = [...Object.keys(fields), ...financialTablesForDatabase(db)];
   for (const [table, columns] of Object.entries(fields)) {
     const info = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];
     const identity = info
@@ -475,7 +476,7 @@ export async function stageRecoveryPackage(
     rebindProfile(db, manifest.sourceProfileId, profileId);
     if (
       JSON.stringify([...sourceTables].sort()) !==
-      JSON.stringify(Object.keys(encryptedFieldsForDatabase(db)).sort())
+      JSON.stringify([...Object.keys(encryptedFieldsForDatabase(db)), ...financialTablesForDatabase(db)].sort())
     )
       throw new Error("Recovery SQLite inventory is invalid.");
     recodeSnapshot(db, repo.columnCipher, "encrypt");

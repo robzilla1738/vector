@@ -76,6 +76,8 @@ const BUDGET_INTERRUPTION = Symbol("trusted run budget interruption");
 const TAKEOVER_INTERRUPTION = Symbol("trusted run takeover interruption");
 
 export interface CoordinatorDeps {
+  accountBudget?: import("../services/private-budget.js").PrivateBudgetClient;
+  modelCatalog?: () => readonly import("@aux/contracts/model-registry").ModelCapability[];
   onDeadline?: (runId: string) => void;
   prepareSources?: (run: Run, signal: AbortSignal) => Promise<void>;
   checkRunSource?: (runId: string) => void;
@@ -103,6 +105,7 @@ export interface CoordinatorDeps {
     excludeRunLimit?: boolean;
   }) => void | Promise<void>;
   recordModelCall: (c: {
+    accountBudgetId?: string;
     runId: string;
     role: "planner" | "repair" | "vision" | "probe" | "final" | "agent";
     modelId: string;

@@ -88,3 +88,37 @@ it("a private close during reservation releases only the still-undispatched leas
   await Promise.all([closing, failed]);
   expect(f.budgets.spentDayUsd()).toBe(0);
 });
+
+it("atomically replaces normal in-flight holds with invoices without granting a private sibling extra headroom", async () => {
+  const f = fixture(),
+    normal = f.owner.client(),
+    privateClient = f.client();
+  await normal.reserve("normal", "model", 0.7);
+  await expect(privateClient.reserve("private", "model", 0.4)).rejects.toMatchObject({
+    code: "permission_denied",
+  });
+  const invoice = {
+    callId: randomUUID(),
+    role: "agent" as const,
+    modelId: "ordinary",
+    durationMs: 1,
+    costUsd: 0.6,
+    createdAt: Date.now(),
+  };
+  expect(() =>
+    normal.record("normal", () => {
+      f.repo.saveModelCall(invoice);
+      throw new Error("rollback");
+    }),
+  ).toThrow("rollback");
+  expect(f.budgets.spentDayUsd()).toBeCloseTo(0.7);
+  normal.record("normal", () => f.repo.saveModelCall(invoice));
+  await normal.settle("normal", { costUsd: 0.6, costEstimated: false });
+  expect(f.budgets.spentDayUsd()).toBeCloseTo(0.6);
+  expect(f.db.prepare("SELECT * FROM private_spend").all()).toHaveLength(0);
+  await privateClient.reserve("private", "model", 0.4);
+  await expect(normal.reserve("normal-next", "model", 0.01)).rejects.toMatchObject({
+    code: "permission_denied",
+  });
+  await Promise.all([normal.close(), privateClient.close()]);
+});

@@ -1,3 +1,4 @@
+import type { PrivateBudgetClient } from "./private-budget.js";
 import { CloudPreviews } from "./cloud-previews.js";
 import { CloudListenerSchema, type CloudListener } from "@aux/contracts/cloud-preview";
 import type { CodingProcessReceipt } from "@aux/contracts/coding-processes";
@@ -51,6 +52,8 @@ export interface CloudConfiguration {
 interface LiveResource {
   resourceId: string;
   reservationId?: string;
+  accountBudgetId?: string;
+  receiptRecorded?: boolean;
   ctx: CloudExecutionContext;
   sandbox: Sandbox;
   session: Session;
@@ -107,6 +110,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       repo: Repo;
       configuration(): Promise<CloudConfiguration>;
       funding: CloudFunding;
+      accountBudget?: PrivateBudgetClient;
       /** Actual saved run, original native turn/source, live policy and money consent checks. */
       assertOwner(ctx: CloudExecutionContext, quote?: CloudResourceQuote): Promise<void>;
       /** Immutable original source remains valid while the exact family is parked. */
@@ -266,6 +270,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     // Load the SDK and prove funding/capability before consuming a money decision.
     const create = this.deps.create ?? (await import("@vercel/sandbox")).Sandbox.create;
     await this.deps.assertOwner(ctx, quote);
+    await this.deps.accountBudget?.refresh();
     const scopes = this.deps.resourceScopes(ctx.runId);
     const current = async () => {
       await this.deps.assertOriginal(ctx, quote);
@@ -316,11 +321,14 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     }
     const { resourceId, reservationId } = admitted;
     try {
+      // The SDK cannot establish a finite upper bill before creation. Unknown is never free.
+      await this.deps.accountBudget?.reserve(resourceId, "resource", undefined);
       await this.deps.authorizeCreate(ctx, quote, quoteDigest);
       await this.deps.assertOwner(ctx, quote);
       if (this.closed || signal?.aborted)
         throw new AuxError("cancelled", "Cloud execution stopped before provider dispatch.");
     } catch (error) {
+      await this.deps.accountBudget?.cancel(resourceId);
       this.deps.repo.transaction(() => {
         this.deps.funding.cancelResourceUnsent(ctx.runId, reservationId, resourceId);
         this.ledger.cancelUnsent(resourceId, ctx.runId);
@@ -347,6 +355,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     const resource: LiveResource = {
       resourceId,
       reservationId,
+      accountBudgetId: this.deps.accountBudget ? resourceId : undefined,
       ctx: { ...ctx },
       sandbox,
       session,
@@ -948,28 +957,52 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
           memoryMB: final.memory,
           outboundBytes: final.networkTransfer.egress,
         };
-      this.deps.repo.transaction(() => {
-        // Attachment can be retried after a late provider response failed its first local write.
-        this.ledger.attach(resource.resourceId, resource.ctx.runId, resource.sandbox.name, final.id);
-        this.ledger.settle({
-          resourceId: resource.resourceId,
-          runId: resource.ctx.runId,
-          sandboxId: resource.sandbox.name,
-          sessionId: final.id,
-          stoppedAt,
-          ...(usage
-            ? { usageJson: JSON.stringify(usage), costUsd: cloudMeteredCost(resource.quote, usage) }
-            : {}),
-          costEstimated:
-            !usage ||
-            !resource.contractualConfiguration ||
-            final.region !== resource.quote.region ||
-            final.vcpus !== resource.quote.vcpus ||
-            resource.quote.rateBasis !== "account-contract",
-        });
-        if (resource.reservationId)
-          this.deps.funding.settleResource(resource.ctx.runId, resource.reservationId, resource.resourceId);
-      });
+      const receipt = {
+        costUsd: usage ? cloudMeteredCost(resource.quote, usage) : undefined,
+        costEstimated:
+          !usage ||
+          !resource.contractualConfiguration ||
+          final.region !== resource.quote.region ||
+          final.vcpus !== resource.quote.vcpus ||
+          resource.quote.rateBasis !== "account-contract",
+      };
+      if (!resource.receiptRecorded) {
+        const writeReceipt = () =>
+          this.deps.repo.transaction(() => {
+            // Attachment can be retried after a late provider response failed its first local write.
+            this.ledger.attach(resource.resourceId, resource.ctx.runId, resource.sandbox.name, final.id);
+            this.ledger.settle({
+              resourceId: resource.resourceId,
+              runId: resource.ctx.runId,
+              sandboxId: resource.sandbox.name,
+              sessionId: final.id,
+              stoppedAt,
+              ...(usage
+                ? { usageJson: JSON.stringify(usage), costUsd: cloudMeteredCost(resource.quote, usage) }
+                : {}),
+              costEstimated:
+                !usage ||
+                !resource.contractualConfiguration ||
+                final.region !== resource.quote.region ||
+                final.vcpus !== resource.quote.vcpus ||
+                resource.quote.rateBasis !== "account-contract",
+            });
+            if (resource.reservationId)
+              this.deps.funding.settleResource(
+                resource.ctx.runId,
+                resource.reservationId,
+                resource.resourceId,
+              );
+          });
+        if (resource.accountBudgetId && this.deps.accountBudget)
+          this.deps.accountBudget.record(resource.accountBudgetId, writeReceipt);
+        else writeReceipt();
+        resource.receiptRecorded = true;
+      }
+      if (resource.accountBudgetId) {
+        await this.deps.accountBudget?.settle(resource.accountBudgetId, receipt);
+        resource.accountBudgetId = undefined;
+      }
     })().catch((error) => {
       if (resource.closing === closing) resource.closing = undefined;
       throw error;
@@ -1047,6 +1080,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         })
         ?.slice("fundingReservation:".length);
       if (row.state === "reserved" && row.started_at === null && !row.sandbox_id) {
+        await this.deps.accountBudget?.cancel(row.resource_id);
         this.deps.repo.transaction(() => {
           this.deps.funding.cancelResourceUnsent(runId, reservation, row.resource_id);
           this.ledger.cancelUnsent(row.resource_id, runId);

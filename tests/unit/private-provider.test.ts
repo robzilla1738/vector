@@ -1,3 +1,4 @@
+import { modelUndispatched } from "../../apps/runtime/dist/agent/model-client.js";
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -122,7 +123,13 @@ it("sends private content only to the actual provider and drops a credential ret
   await entering;
   await waiting.close();
   release({ operation: "credential", revision: descriptor.revision, accessToken: "late-key" });
-  await expect(pending).rejects.toThrow();
+  let refusal: unknown;
+  try {
+    await pending;
+  } catch (error) {
+    refusal = error;
+  }
+  expect(modelUndispatched(refusal)).toBe(true);
   expect(network).toHaveBeenCalledTimes(1);
 });
 it("refreshes the selected ChatGPT account only in the normal owner and exports no rotating refresh token", async () => {

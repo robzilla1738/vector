@@ -119,6 +119,7 @@ describe("fresh schema", () => {
       "programs",
       "artifacts",
       "model_calls",
+      "private_spend",
       "events",
       "history",
       "bookmarks",
@@ -194,8 +195,16 @@ describe("fresh schema", () => {
 
   it("adds first-send receipts to a v2 Profile without rewriting its saved chat or settings", () => {
     const { path } = fixture();
-    const previous = track(openDb(path)), repo = new Repo(previous);
-    repo.saveRun({ runId: "saved-run", goal: "Saved question", status: "completed", pageIds: [], createdAt: 42, config: { chatId: "saved-chat" } });
+    const previous = track(openDb(path)),
+      repo = new Repo(previous);
+    repo.saveRun({
+      runId: "saved-run",
+      goal: "Saved question",
+      status: "completed",
+      pageIds: [],
+      createdAt: 42,
+      config: { chatId: "saved-chat" },
+    });
     repo.setSetting("owner-choice", "preserved");
     previous.exec("DROP TABLE run_start_receipts; DROP TABLE coding_process_logs; PRAGMA user_version=2");
     const savedRun = previous.prepare("SELECT * FROM runs").get();
@@ -303,4 +312,14 @@ describe("fresh schema", () => {
     ).toThrow("failed mutation");
     expect(db.prepare("PRAGMA secure_delete").get()).toEqual({ secure_delete: 0 });
   });
+});
+
+it("adds opaque account receipts to an existing development schema4 Profile", () => {
+  const { path } = fixture();
+  const db = track(openDb(path));
+  db.exec("DROP TABLE private_spend");
+  db.close();
+  const reopened = track(openDb(path));
+  expect(version(reopened)).toBe(SCHEMA_VERSION);
+  expect(reopened.prepare("SELECT COUNT(*) n FROM private_spend").get()).toEqual({ n: 0 });
 });

@@ -14,6 +14,8 @@ import { extractJson } from "./json-text.js";
 import {
   attemptsOf,
   modelCallCost,
+  markModelUndispatched,
+  modelUndispatched,
   usageFields,
   withAttempts,
   type ModelAttempt,
@@ -386,6 +388,7 @@ export class GatewayModelClient implements ModelClient {
       if (reservation) this.spendLedger?.settle(reservation, cost.costUsd);
       return result;
     } catch (error) {
+      if (!dispatched) markModelUndispatched(error);
       const billed = error as { usage?: unknown; providerMetadata?: unknown };
       const cost = modelCallCost(modelId, {
         ...usageFields(billed?.usage),
@@ -395,7 +398,7 @@ export class GatewayModelClient implements ModelClient {
       if (reservation)
         this.spendLedger?.settle(
           reservation,
-          dispatched
+          dispatched && !modelUndispatched(error)
             ? (cost.costUsd ?? (known.length ? modelCallCost(modelId, known.at(-1)!).costUsd : undefined))
             : 0,
         );

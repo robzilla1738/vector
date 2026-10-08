@@ -1,6 +1,7 @@
+import { markModelUndispatched } from "../../apps/runtime/dist/agent/model-client.js";
 import type { ExecContext } from "../../apps/runtime/src/execution/executor.js";
 import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuxError } from "@aux/contracts";
 import { mkdtempSync, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -703,6 +704,37 @@ describe("runAgentLoop (S5)", () => {
     expect(outcome).toMatchObject({ kind: "failed" });
   });
 
+  it("releases admission after a proven credential refusal but retains ambiguous dispatch accounting", async () => {
+    const { transcript } = fixture();
+    const cancelled = vi.fn(async () => {}),
+      failed = vi.fn(async () => {});
+    const error = markModelUndispatched(new Error("Original credential retired"));
+    await runAgentLoop({
+      ...baseOpts(transcript),
+      model: {
+        toolCallStep: async () => {
+          throw error;
+        },
+      },
+      onModelAdmissionCancelled: cancelled,
+      onModelFailure: failed,
+    });
+    expect(cancelled).toHaveBeenCalledOnce();
+    expect(failed).not.toHaveBeenCalled();
+    await runAgentLoop({
+      ...baseOpts(transcript),
+      model: {
+        toolCallStep: async () => {
+          throw new Error("Network outcome unknown");
+        },
+      },
+      onModelAdmissionCancelled: cancelled,
+      onModelFailure: failed,
+    });
+    expect(failed).toHaveBeenCalledOnce();
+    expect(cancelled).toHaveBeenCalledOnce();
+  });
+
   it("beforeModelCall gates the step — a spent budget fails the run without billing a call", async () => {
     const { transcript } = fixture();
     const model = new MockModelClient().scriptToolSteps([{ text: "unreached" }]);
@@ -768,7 +800,6 @@ describe("TranscriptStore misc", () => {
 
 // ---------- runToolLoop: the coordinator host (engine "agent-loop") ----------
 
-import { vi } from "vitest";
 import type { Observation, PlanStep, StepOutcome } from "@aux/contracts";
 import { EventBus, Repo, RunCoordinator } from "@aux/runtime";
 

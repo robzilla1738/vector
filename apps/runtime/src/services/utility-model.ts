@@ -1,6 +1,12 @@
 import { AuxError, EventTypes, newStepId } from "@aux/contracts";
 import { MODEL_REGISTRY } from "@aux/contracts/model-registry";
-import { attemptsOf, modelCallCost, type ModelAttempt, type ModelClient } from "../agent/model-client.js";
+import {
+  attemptsOf,
+  modelCallCost,
+  modelUndispatched,
+  type ModelAttempt,
+  type ModelClient,
+} from "../agent/model-client.js";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 import type { BudgetsService } from "./budgets.js";
@@ -23,6 +29,7 @@ export function accountableUtilityModel(input: {
   events: EventBus;
   settings: SettingsService;
   budgets?: BudgetsService;
+  accountBudget?: import("./private-budget.js").PrivateBudgetClient;
   funding: RunFundingService;
   pauseFunding: (error: ModelFundingUnavailable) => Promise<void>;
   runId: string;
@@ -87,6 +94,8 @@ export function accountableUtilityModel(input: {
     await check();
     const release = await input.reserveCall();
     let callId: string | undefined;
+    const accountBudgetId = newStepId();
+    let accountReserved = false;
     let receipt: ModelAttempt | undefined;
     let failure: unknown;
     const started = Date.now();
@@ -112,38 +121,52 @@ export function accountableUtilityModel(input: {
           try {
             await withRunAuthorityMutation(input.repo, async () => {
               await check();
+              await input.accountBudget?.refresh();
+              input.budgets?.assertWithin({ runId: input.runId, requiredUsd: estimate });
+              if (input.accountBudget) {
+                accountReserved = true;
+                await input.accountBudget.reserve(accountBudgetId, "model", projected);
+              }
+              await check();
               input.repo.transaction(() => {
-                input.budgets?.assertWithin({ runId: input.runId, requiredUsd: estimate });
-                callId = newStepId();
-                input.repo.saveModelCall({
-                  callId,
-                  runId: input.runId,
-                  role: "agent",
-                  modelId: request.modelId,
-                  providerMetadata: {
-                    aux: {
-                      kind: "utility_generation",
-                      ...(input.route.kind === "network"
-                        ? {
-                            provider: input.route.provider,
-                            destination: input.route.destination,
-                          }
-                        : {
-                            backend: "apple-foundation-models",
-                            transport: "on-device",
-                          }),
+                const invoiceId = newStepId();
+                callId = invoiceId;
+                const writeInvoice = () =>
+                  input.repo.saveModelCall({
+                    callId: invoiceId,
+                    runId: input.runId,
+                    role: "agent",
+                    modelId: request.modelId,
+                    providerMetadata: {
+                      aux: {
+                        kind: "utility_generation",
+                        ...(input.route.kind === "network"
+                          ? {
+                              provider: input.route.provider,
+                              destination: input.route.destination,
+                            }
+                          : {
+                              backend: "apple-foundation-models",
+                              transport: "on-device",
+                            }),
+                      },
                     },
-                  },
-                  durationMs: 0,
-                  costUsd: estimate,
-                  costEstimated: !onDevice,
-                  createdAt: Date.now(),
-                });
+                    durationMs: 0,
+                    costUsd: estimate,
+                    costEstimated: !onDevice,
+                    createdAt: Date.now(),
+                  });
+                if (input.accountBudget) input.accountBudget.record(accountBudgetId, writeInvoice);
+                else writeInvoice();
               });
             });
             release(); // The durable reservation now accounts for this slot.
             return;
           } catch (error) {
+            if (accountReserved && !callId) {
+              await input.accountBudget?.cancel(accountBudgetId);
+              accountReserved = false;
+            }
             if (input.bestEffort || !(error instanceof AuxError)) throw error;
             if (estimate === undefined) throw error;
             await input.continueSpend(error, estimate);
@@ -161,10 +184,18 @@ export function accountableUtilityModel(input: {
       throw error;
     } finally {
       try {
-        if (callId) {
-          const cost = receipt ? modelCallCost(receipt.modelId ?? request.modelId, receipt) : {};
+        if (callId && modelUndispatched(failure)) {
+          await withRunAuthorityMutation(input.repo, async () =>
+            input.repo.discardModelCallReservation(callId!, input.runId),
+          );
+          if (accountReserved) await input.accountBudget?.cancel(accountBudgetId);
+          accountReserved = false;
+        } else if (callId) {
+          const cost = receipt
+            ? modelCallCost(receipt.modelId ?? request.modelId, receipt, input.settings.registryModels())
+            : {};
           const settled = {
-            costUsd: onDevice ? 0 : (cost.costUsd ?? estimate),
+            costUsd: onDevice ? 0 : cost.costUsd,
             costEstimated: onDevice ? false : (cost.costEstimated ?? true),
             durationMs: receipt?.durationMs ?? Date.now() - started,
             inputTokens: receipt?.inputTokens,
@@ -174,6 +205,11 @@ export function accountableUtilityModel(input: {
           await withRunAuthorityMutation(input.repo, async () =>
             input.repo.settleModelCall(callId!, input.runId, settled),
           );
+          if (accountReserved)
+            await input.accountBudget?.settle(accountBudgetId, {
+              costUsd: onDevice ? 0 : cost.costUsd,
+              costEstimated: onDevice ? false : (cost.costEstimated ?? true),
+            });
           input.events.emit(
             EventTypes.ModelCall,
             { runId: input.runId, callId, modelId: request.modelId, ...settled },
@@ -181,6 +217,7 @@ export function accountableUtilityModel(input: {
           );
         }
       } finally {
+        if (accountReserved && !callId) await input.accountBudget?.cancel(accountBudgetId);
         unsubscribe();
         release();
       }

@@ -1,5 +1,7 @@
+import { modelCallCost, type ModelAttempt } from "../model-client.js";
+import { projectedModelCostUsd } from "../../store/spend-ledger.js";
 import { codingResumeSummary } from "./context.js";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { auxSkillInstructions } from "../../services/aux-packages.js";
 import type { CodingFilesService } from "../../services/coding-files.js";
 import type { CodingProcesses } from "../../services/coding-processes.js";
@@ -2018,6 +2020,22 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     }
   }
   let releaseSharedCall: (() => void) | undefined;
+  let accountBudgetId: string | undefined;
+  const settleAccountBudget = async (attempts: ModelAttempt[]) => {
+    const id = accountBudgetId;
+    if (!id || !self.deps.accountBudget) return;
+    const costs = attempts.map((attempt) =>
+      modelCallCost(attempt.modelId ?? modelId(), attempt, self.deps.modelCatalog?.()),
+    );
+    await self.deps.accountBudget.settle(id, {
+      costUsd:
+        costs.length && costs.every((cost) => cost.costUsd !== undefined)
+          ? costs.reduce((sum, cost) => sum + cost.costUsd!, 0)
+          : undefined,
+      costEstimated: !costs.length || costs.some((cost) => cost.costEstimated ?? true),
+    });
+    accountBudgetId = undefined;
+  };
   const deferredContext: ModelMessage[] = [];
   const publishModelContext = (messages?: ModelMessage[]) => {
     if (transcript.openPark(runId)) return;
@@ -2220,8 +2238,48 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           await self.deps.funding?.assertModelAdmission(runId, request.modelId);
           await self.checkModelBudget(runId, self.deps.funding?.rootCostOwned(runId) ?? false);
           releaseSharedCall = await self.deps.reserveModelCall?.(runId);
+          if (self.deps.accountBudget) {
+            const id = randomUUID();
+            const estimated = projectedModelCostUsd(
+              request.modelId,
+              Math.max(1, Math.ceil((request.promptBytes + request.toolsBytes) / 3)),
+              request.maxOutputTokens,
+              self.deps.modelCatalog?.(),
+            );
+            accountBudgetId = id;
+            await self.deps.accountBudget.reserve(id, "model", estimated);
+          }
           return await self.deps.funding?.reserve(runId, request);
         } catch (error) {
+          if (accountBudgetId) {
+            await self.deps.accountBudget?.cancel(accountBudgetId);
+            accountBudgetId = undefined;
+          }
+          const detail = error instanceof AuxError ? error.detail : undefined;
+          if (
+            error instanceof AuxError &&
+            (error.code === "permission_denied" || error.code === "needs_input") &&
+            detail &&
+            typeof detail === "object" &&
+            "scope" in detail &&
+            "limitUsd" in detail &&
+            "spentUsd" in detail &&
+            typeof detail.limitUsd === "number" &&
+            typeof detail.spentUsd === "number"
+          ) {
+            releaseSharedCall?.();
+            releaseSharedCall = undefined;
+            await self.pauseForBudget(runId, {
+              reason: "spend",
+              scope: detail.scope as "day" | "month",
+              limit: detail.limitUsd,
+              used: detail.spentUsd,
+              ...("requiredUsd" in detail && typeof detail.requiredUsd === "number"
+                ? { requiredUsd: detail.requiredUsd }
+                : {}),
+            });
+            throw new AuxError("cancelled", "Account budget continuation requires a fresh admission.");
+          }
           releaseSharedCall?.();
           releaseSharedCall = undefined;
           if (error instanceof ModelFundingUnavailable) {
@@ -2243,9 +2301,18 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         releaseSharedCall?.();
         releaseSharedCall = undefined;
       },
-      onModelAdmissionCancelled: (reservationId) => self.deps.funding?.cancelUnsent(runId, reservationId),
+      onModelAdmissionCancelled: async (reservationId) => {
+        self.deps.funding?.cancelUnsent(runId, reservationId);
+        if (accountBudgetId) {
+          await self.deps.accountBudget?.cancel(accountBudgetId);
+          accountBudgetId = undefined;
+        }
+      },
       maxAttempts:
-        self.deps.funding?.has(runId) || modelCallLimit() > 0 || self.deps.sharedCallCap?.(runId)
+        self.deps.accountBudget ||
+        self.deps.funding?.has(runId) ||
+        modelCallLimit() > 0 ||
+        self.deps.sharedCallCap?.(runId)
           ? 1
           : undefined,
       onStep: async ({ step, reservationId }) => {
@@ -2265,6 +2332,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         }
         modelCalls++;
         await self.deps.recordModelCall({
+          accountBudgetId,
           runId,
           role: "agent",
           modelId: step.resolvedModelId ?? step.modelId ?? modelId(),
@@ -2283,16 +2351,21 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
             modelId: attempt.modelId ?? step.resolvedModelId ?? modelId(),
           })),
         );
+        await settleAccountBudget([
+          ...(step.retries ?? []),
+          { ...step, modelId: step.resolvedModelId ?? step.modelId ?? modelId() },
+        ]);
         self.deps.checkRunSource?.(runId);
       },
       onModelFailure: async ({ error, reservationId }) => {
         // Known provider attempts include the final failed request.
         const attempts = attemptsOf(error);
-        for (const attempt of attempts) {
+        for (const [index, attempt] of attempts.entries()) {
           modelCalls++;
           await self.deps.recordModelCall({
             runId,
             role: "agent",
+            accountBudgetId: index === attempts.length - 1 ? accountBudgetId : undefined,
             modelId: attempt.modelId ?? modelId(),
             durationMs: attempt.durationMs,
             inputTokens: attempt.inputTokens,
@@ -2307,6 +2380,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           await self.deps.recordModelCall({
             runId,
             role: "agent",
+            accountBudgetId,
             modelId: modelId(),
             durationMs: 0,
             error: error instanceof Error ? error.message : String(error),
@@ -2317,6 +2391,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           reservationId,
           attempts.map((attempt) => ({ ...attempt, modelId: attempt.modelId ?? modelId() })),
         );
+        await settleAccountBudget(attempts);
       },
       providerOptions: self.deps.agentLoop?.providerOptions,
       webmcp: pageExposesWebmcp,

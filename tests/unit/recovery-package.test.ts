@@ -176,6 +176,11 @@ async function fixture() {
 
 it("restores protected SQLite, page memory, Space memory and artifacts under the second Profile's own keys", async () => {
   const f = await fixture();
+  f.source.db
+    .prepare(
+      "INSERT INTO private_spend(lease_id,kind,created_at,cost_usd,cost_estimated,state) VALUES(?,?,?,?,?,?)",
+    )
+    .run("opaque-fixture", "model", 1, 0.75, 0, "settled");
   const phrase = "an original offline recovery phrase";
   const exported = await exportRecoveryPackage(
     f.source,
@@ -198,6 +203,7 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
     expect(bytes.includes(secret)).toBe(false);
   expect(exported.manifest).toMatchObject({ pageMemoryCount: 1, artifactIds: ["evidence"] });
   expect(exported.manifest.spaceMemory).toHaveLength(1);
+  expect(exported.manifest.sqliteTables).toContain("private_spend");
   const managedBackup = await createRuntimeBackup(f.source, f.sourceDir);
   const sourceMemory = new MemoryPipeline(f.source, f.sourceNative.bridge, f.sourceId);
   await sourceMemory.forget({ workspaceId: f.space.workspaceId, all: true }, () => {
@@ -266,6 +272,9 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const restored = new Repo(reopenedDb, cipher);
   expect(restored.listWorkspaces()[0]?.name).toBe("Protected research space");
   expect(restored.getRun("recovery-run")?.goal).toBe("Protected source goal");
+  expect(
+    reopenedDb.prepare("SELECT cost_usd FROM private_spend WHERE lease_id=?").get("opaque-fixture"),
+  ).toEqual({ cost_usd: 0.75 });
   expect(
     new GoalService(restored, {
       start: async () => {

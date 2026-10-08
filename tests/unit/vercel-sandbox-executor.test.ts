@@ -1,3 +1,6 @@
+import { BudgetsService } from "@aux/runtime";
+import { PrivateBudgetClient, PrivateBudgetOwner } from "../../apps/runtime/dist/services/private-budget.js";
+import { budgetLineage } from "../fixtures/budget-lineage.js";
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import type { ReplHostDeps } from "../../apps/runtime/dist/agent/loop/repl.js";
@@ -649,4 +652,28 @@ it("routes cloud REPL file/process callbacks through their original governed bac
   expect(f.get).not.toHaveBeenCalled();
   expect(f.forbidden).not.toHaveBeenCalled();
   await f.executor.closeRun(f.ctx.runId);
+});
+
+it("accounts private cloud resources anonymously and joins their original final receipt", async () => {
+  const f = fixture(),
+    ownerDb = openDb(":memory:"),
+    ownerRepo = new Repo(ownerDb);
+  const budgets = new BudgetsService(ownerDb, () => ({}), budgetLineage(ownerRepo));
+  const owner = new PrivateBudgetOwner(ownerRepo, budgets),
+    sessionId = randomUUID();
+  const client = new PrivateBudgetClient(async (request) => owner.request(sessionId, request));
+  const executor = new VercelSandboxExecutor({ ...f.deps, accountBudget: client });
+  try {
+    await executor.bash({ command: "printf private-sentinel", network: false }, f.ctx);
+    expect(ownerDb.prepare("SELECT state FROM private_spend").get()).toEqual({ state: "pending" });
+    expect(JSON.stringify(ownerDb.prepare("SELECT * FROM private_spend").all())).not.toContain(f.ctx.runId);
+    await executor.close();
+    expect(budgets.spentDayUsd()).toBeCloseTo(3 + 1 / 60);
+    expect(ownerDb.prepare("SELECT state FROM private_spend").get()).toEqual({ state: "settled" });
+  } finally {
+    await executor.close();
+    await client.close();
+    owner.close();
+    ownerDb.close();
+  }
 });

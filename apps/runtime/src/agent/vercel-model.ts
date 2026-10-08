@@ -3,12 +3,7 @@ import type { ModelCapability } from "@aux/contracts/model-registry";
 import type { z } from "zod";
 import type { VercelAccounts } from "../services/vercel-account.js";
 import { GatewayModelClient } from "./gateway-client.js";
-import {
-  withAttempts,
-  type ModelClient,
-  type ModelAttempt,
-  type ModelCallSource,
-} from "./model-client.js";
+import { withAttempts, type ModelClient, type ModelAttempt, type ModelCallSource } from "./model-client.js";
 
 /** Actual SIWV app token, carried by the maintained Gateway provider; normal Gateway invoices remain intact. */
 export function vercelModelClient(
@@ -17,6 +12,7 @@ export function vercelModelClient(
   models: () => readonly ModelCapability[],
   checkSelection: () => void,
   checkOwner: (source: ModelCallSource) => Promise<void>,
+  network: typeof fetch = fetch,
 ): ModelClient {
   async function call<T extends ModelAttempt & { retries?: ModelAttempt[] }>(
     options: { signal?: AbortSignal; source?: ModelCallSource },
@@ -43,20 +39,15 @@ export function vercelModelClient(
     const transport: typeof fetch = async (input, init) => {
       const url = new URL(input instanceof Request ? input.url : String(input));
       if (url.origin !== "https://ai-gateway.vercel.sh")
-        throw new AuxError(
-          "permission_denied",
-          "Vercel account inference changed its Gateway origin.",
-        );
+        throw new AuxError("permission_denied", "Vercel account inference changed its Gateway origin.");
       await current();
       await source.authorizeDestination(url.origin);
       await current();
       const token = await vault.accessToken(accountId, options.signal);
       await current();
-      const headers = new Headers(
-        init?.headers ?? (input instanceof Request ? input.headers : undefined),
-      );
+      const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
       headers.set("Authorization", `Bearer ${token}`);
-      const response = await fetch(input, {
+      const response = await network(input, {
         ...init,
         headers,
         redirect: "error",
@@ -98,8 +89,7 @@ export function vercelModelClient(
       await current();
       return completed;
     } catch (error) {
-      if (completed)
-        withAttempts(error, [...(completed.retries ?? []), completed]);
+      if (completed) withAttempts(error, [...(completed.retries ?? []), completed]);
       throw error;
     }
   }
@@ -114,10 +104,8 @@ export function vercelModelClient(
         schema: z.ZodType<T>;
       },
     ) => call(options, (client) => client.streamStructured<T>(options)),
-    generateText: (options) =>
-      call(options, (client) => client.generateText(options)),
-    toolCallStep: (options) =>
-      call(options, (client) => client.toolCallStep(options)),
+    generateText: (options) => call(options, (client) => client.generateText(options)),
+    toolCallStep: (options) => call(options, (client) => client.toolCallStep(options)),
     listModels: async () => models().map(({ id, name }) => ({ id, name })),
   };
 }

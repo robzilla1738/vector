@@ -36,7 +36,7 @@ import {
 } from "node:fs/promises";
 import { DatabaseSync, backup } from "node:sqlite";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { SCHEMA_VERSION } from "../store/db.js";
+import { SCHEMA_VERSION, financialTablesForDatabase } from "../store/db.js";
 import type { Repo } from "../store/repo.js";
 import { sanitizePortablePageRecall } from "@aux/contracts/portable-page-recall";
 import { encryptedFieldsForDatabase, type FieldCodec } from "../store/field-codec.js";
@@ -195,6 +195,7 @@ function validateDatabase(path: string) {
         .get()
     )
       throw new Error("The selected backup contains unsupported executable database schema.");
+    financialTablesForDatabase(db);
     return version;
   } finally {
     db.close();

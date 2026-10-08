@@ -493,6 +493,18 @@ CREATE TABLE coding_process_logs(
   byte_length INTEGER NOT NULL CHECK(byte_length BETWEEN 1 AND 65536),
   text TEXT NOT NULL, PRIMARY KEY(process_id,byte_offset));
 
+-- @schema private_spend
+CREATE TABLE IF NOT EXISTS private_spend (
+  lease_id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL CHECK(kind IN ('model','resource')),
+  created_at INTEGER NOT NULL,
+  reserved_usd REAL CHECK(reserved_usd IS NULL OR reserved_usd>=0),
+  cost_usd REAL CHECK(cost_usd IS NULL OR cost_usd>=0),
+  cost_estimated INTEGER NOT NULL DEFAULT 1 CHECK(cost_estimated IN (0,1)),
+  state TEXT NOT NULL CHECK(state IN ('pending','settled','unknown'))
+);
+CREATE INDEX IF NOT EXISTS private_spend_created ON private_spend(created_at);
+
 -- @schema spend
 CREATE TABLE IF NOT EXISTS ai_spend(
         reservation_id TEXT PRIMARY KEY,

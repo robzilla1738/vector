@@ -71,9 +71,11 @@ export interface SpendSummary {
 export class SpendLedger {
   readonly db: DatabaseSync;
   private readonly capUsd: number;
+  private readonly privateSession: boolean;
 
   constructor(path = spendLedgerPath(), env: NodeJS.ProcessEnv = process.env) {
     this.capUsd = spendCap(env);
+    this.privateSession = !!env.AUX_PRIVATE_SESSION;
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
     this.db.exec("PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL");
@@ -119,7 +121,13 @@ export class SpendLedger {
         .prepare(
           "INSERT INTO ai_spend(reservation_id,source,model_id,reserved_nanos,created_at) VALUES(?,?,?,?,?)",
         )
-        .run(id, source, modelId, amount, Date.now());
+        .run(
+          id,
+          this.privateSession ? "private" : source,
+          this.privateSession ? "private" : modelId,
+          amount,
+          Date.now(),
+        );
       this.db.exec("COMMIT");
       return id;
     } catch (error) {

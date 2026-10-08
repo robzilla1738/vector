@@ -26,11 +26,7 @@ export class PrivateBudgetOwner {
     private readonly repo: Repo,
     private readonly budgets: BudgetsService,
   ) {
-    repo.db.exec(`CREATE TABLE IF NOT EXISTS private_spend (
-      lease_id TEXT PRIMARY KEY, kind TEXT NOT NULL, created_at INTEGER NOT NULL,
-      reserved_usd REAL, cost_usd REAL, cost_estimated INTEGER NOT NULL DEFAULT 1,
-      state TEXT NOT NULL CHECK(state IN ('pending','settled','unknown'))
-    ); UPDATE private_spend SET state='unknown' WHERE state='pending';`);
+    repo.db.exec("UPDATE private_spend SET state='unknown' WHERE state='pending'");
     this.detach = budgets.configurePrivateSpend((after) => {
       const row = repo.db
         .prepare(
@@ -41,6 +37,20 @@ export class PrivateBudgetOwner {
         .get(after) as { cost: number; unknown: number };
       return { costUsd: row.cost, unknown: row.unknown };
     });
+  }
+  client(): PrivateBudgetClient {
+    const sessionId = randomUUID();
+    return new PrivateBudgetClient(
+      (request) => Promise.resolve(this.request(sessionId, request)),
+      (leaseId, write) =>
+        this.repo.transaction(() => {
+          if (this.owners.get(leaseId) !== sessionId)
+            throw new AuxError("permission_denied", "The original financial admission is unavailable.");
+          write();
+          this.repo.db.prepare("DELETE FROM private_spend WHERE lease_id=?").run(leaseId);
+          this.owners.delete(leaseId);
+        }),
+    );
   }
   close(): void {
     this.owners.clear();
@@ -135,10 +145,14 @@ export class PrivateBudgetOwner {
 /** Local IDs live only in the private runtime; the owner sees unrelated UUIDs and amounts. */
 export class PrivateBudgetClient {
   private readonly leases = new Map<string, { id: string; kind: "model" | "resource" }>();
+  private readonly recorded = new Set<string>();
   private windows: PrivateBudgetWindow[] = [];
   private closed = false;
   private readonly pending = new Set<Promise<unknown>>();
-  constructor(private readonly request: (request: PrivateBudgetRequest) => Promise<PrivateBudgetResult>) {}
+  constructor(
+    private readonly request: (request: PrivateBudgetRequest) => Promise<PrivateBudgetResult>,
+    private readonly normalInvoice?: (leaseId: string, write: () => void) => void,
+  ) {}
   snapshot(): readonly PrivateBudgetWindow[] {
     return this.windows;
   }
@@ -181,7 +195,20 @@ export class PrivateBudgetClient {
       throw new AuxError("cancelled", "Private financial admission retired.");
     }
   }
+  /** Normal invoices replace their pending aggregate atomically; private invoices stay in memory. */
+  record(localId: string, write: () => void): void {
+    if (!this.normalInvoice) {
+      write();
+      return;
+    }
+    const lease = this.leases.get(localId);
+    if (!lease) throw new AuxError("conflict", "The original pending financial admission is unavailable.");
+    this.normalInvoice(lease.id, write);
+    this.leases.delete(localId);
+    this.recorded.add(localId);
+  }
   async settle(localId: string, receipt: { costUsd?: number; costEstimated: boolean }): Promise<void> {
+    if (this.recorded.delete(localId)) return;
     const lease = this.leases.get(localId);
     if (!lease) throw new AuxError("conflict", "The private financial receipt is unavailable.");
     await this.call({ operation: "settle", leaseId: lease.id, ...receipt });
@@ -189,6 +216,7 @@ export class PrivateBudgetClient {
       this.leases.delete(localId);
   }
   async cancel(localId: string): Promise<void> {
+    if (this.recorded.delete(localId)) return;
     const lease = this.leases.get(localId);
     if (!lease) return;
     await this.call({ operation: "cancel", leaseId: lease.id });
@@ -199,5 +227,6 @@ export class PrivateBudgetClient {
     while (this.pending.size) await Promise.allSettled(this.pending);
     // Unjoined effects remain charged in the owner ledger, never guessed unsent on shutdown.
     this.leases.clear();
+    this.recorded.clear();
   }
 }
