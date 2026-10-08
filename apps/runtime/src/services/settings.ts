@@ -1,3 +1,5 @@
+import type { PrivateBudgetClient } from "./private-budget.js";
+import { estimatedPromptTokens, projectedModelCostUsd } from "../store/spend-ledger.js";
 import { PrivateProviderConnection } from "./private-provider.js";
 import {
   PrivateProviderDescriptorSchema,
@@ -67,6 +69,10 @@ import {
   DEFAULT_MAX_MODEL_CALLS,
   DEFAULT_AGENT_MODEL,
   modelCallBudget,
+  modelCallCost,
+  modelUndispatched,
+  attemptsOf,
+  type ModelAttempt,
   type ModelClient,
 } from "../agent/model-client.js";
 import {
@@ -174,6 +180,15 @@ export interface ModelProbeRecord {
 
 export class SettingsService {
   private connectionEpoch = 0;
+  private accountBudget?: PrivateBudgetClient;
+  private readonly probeController = new AbortController();
+  private readonly probes = new Set<Promise<unknown>>();
+  configureAccountBudget(client: PrivateBudgetClient): void {
+    if (this.accountBudget)
+      throw new AuxError("conflict", "Provider budget accounting is already configured.");
+    this.accountBudget = client;
+  }
+
   /** Test hook — inject a mock model instead of the real Gateway client. */
   modelOverride: ModelClient | null = null;
   private gatewayClient: ModelClient | null = null;
@@ -1983,6 +1998,7 @@ export class SettingsService {
   }
   async close(): Promise<void> {
     this.discoveryClosed = true;
+    this.probeController.abort();
     this.chatgptCatalogController.abort();
     const failures: unknown[] = [];
     try {
@@ -2012,6 +2028,7 @@ export class SettingsService {
       failures.push(error);
     }
     await this.chatgptCatalogPending?.catch(() => {});
+    await Promise.allSettled(this.probes);
     try {
       await this.writes;
     } catch (error) {
@@ -2409,7 +2426,16 @@ export class SettingsService {
   }
 
   /** Tiny structured-output + optional screenshot-understanding probe. */
-  async probe(modelId?: string): Promise<{
+  probe(modelId?: string) {
+    const work = this.probeOwned(modelId);
+    this.probes.add(work);
+    void work.then(
+      () => this.probes.delete(work),
+      () => this.probes.delete(work),
+    );
+    return work;
+  }
+  private async probeOwned(modelId?: string): Promise<{
     ok: boolean;
     modelId: string;
     latencyMs?: number;
@@ -2418,7 +2444,10 @@ export class SettingsService {
   }> {
     const epoch = this.connectionEpoch,
       provider = this.modelProvider();
-    const stale = () => epoch !== this.connectionEpoch || !this.connectionEnabled(provider);
+    const stale = () =>
+      this.probeController.signal.aborted ||
+      epoch !== this.connectionEpoch ||
+      !this.connectionEnabled(provider);
     const interrupted = () => ({
       ok: false,
       modelId: modelId ?? this.plannerModel(),
@@ -2432,16 +2461,79 @@ export class SettingsService {
         modelId: target,
         error: "Configure a provider connection and planner model in Settings first",
       };
+    const probeCall = async <T extends ModelAttempt>(
+      parts: unknown[],
+      maxOutputTokens: number,
+      invoke: (beforeDispatch: () => Promise<void>) => Promise<T>,
+    ): Promise<T> => {
+      const client = this.accountBudget;
+      if (!client)
+        return invoke(async () => {
+          this.probeController.signal.throwIfAborted();
+        });
+      const id = randomUUID(),
+        models = this.registryModels();
+      let admitted = false,
+        dispatched = false,
+        result: T | undefined,
+        failure: unknown;
+      try {
+        admitted = true;
+        await client.reserve(
+          id,
+          "model",
+          projectedModelCostUsd(target, estimatedPromptTokens(...parts), maxOutputTokens, models),
+        );
+        result = await invoke(async () => {
+          if (stale()) throw new AuxError("cancelled", "Connection changed before the probe.");
+          dispatched = true;
+        });
+        return result;
+      } catch (error) {
+        failure = error;
+        throw error;
+      } finally {
+        if (admitted) {
+          if (!dispatched || modelUndispatched(failure)) await client.cancel(id);
+          else {
+            const attempt = result ?? attemptsOf(failure).at(-1);
+            const cost = attempt ? modelCallCost(attempt.modelId ?? target, attempt, models) : {};
+            client.record(id, () =>
+              this.repo.saveModelCall({
+                callId: randomUUID(),
+                role: "probe",
+                modelId: attempt?.modelId ?? target,
+                durationMs: attempt?.durationMs ?? 0,
+                inputTokens: attempt?.inputTokens,
+                outputTokens: attempt?.outputTokens,
+                ...cost,
+                providerMetadata: { aux: { kind: "connection_probe" } },
+                createdAt: Date.now(),
+              }),
+            );
+            await client.settle(id, { ...cost, costEstimated: cost.costEstimated ?? true });
+          }
+        }
+      }
+    };
     try {
       const { z } = await import("zod");
-      const res = await m.generateStructured({
-        modelId: target,
-        system: "You answer probes with strict JSON.",
-        prompt: 'Return {"ok":true}',
-        schema: z.object({ ok: z.boolean() }),
-        // generous budget — reasoning models spend tokens thinking before emitting
-        maxOutputTokens: 1024,
-      });
+      const res = await probeCall(
+        ["You answer probes with strict JSON.", 'Return {"ok":true}'],
+        1024,
+        (beforeDispatch) =>
+          m.generateStructured({
+            beforeDispatch,
+            signal: this.probeController.signal,
+            maxAttempts: 1,
+            modelId: target,
+            system: "You answer probes with strict JSON.",
+            prompt: 'Return {"ok":true}',
+            schema: z.object({ ok: z.boolean() }),
+            // generous budget — reasoning models spend tokens thinking before emitting
+            maxOutputTokens: 1024,
+          }),
+      );
       if (stale()) return interrupted();
       const ok = res.object.ok === true;
       let vision: boolean | undefined;
@@ -2449,12 +2541,17 @@ export class SettingsService {
         // 1x1 png
         const png =
           "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
-        await m.generateText({
-          modelId: target,
-          prompt: "What color dominates this image? One word.",
-          imageDataUrl: png,
-          maxOutputTokens: 512,
-        });
+        await probeCall(["What color dominates this image? One word.", png], 512, (beforeDispatch) =>
+          m.generateText({
+            beforeDispatch,
+            signal: this.probeController.signal,
+            maxAttempts: 1,
+            modelId: target,
+            prompt: "What color dominates this image? One word.",
+            imageDataUrl: png,
+            maxOutputTokens: 512,
+          }),
+        );
         vision = true;
       } catch {
         vision = false;

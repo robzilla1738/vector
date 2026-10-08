@@ -1,3 +1,6 @@
+import { PrivateBudgetClient, PrivateBudgetOwner } from "../../apps/runtime/dist/services/private-budget.js";
+import { BudgetsService } from "@aux/runtime";
+import { budgetLineage } from "../fixtures/budget-lineage.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -277,4 +280,61 @@ it("loads the selected provider without reading unrelated credentials, and seria
   await f.settings.initializeCredentials(["openai"]);
   expect(f.native.readSecret.mock.calls.filter(([name]) => name === "modelKey-openai")).toHaveLength(1);
   expect(f.settings.all().modelCredentialSource).toBe("saved");
+});
+
+it("shares Settings probe admission with private spending and records each actual probe once", async () => {
+  const f = fixture(),
+    budgets = new BudgetsService(f.db, () => ({ dayUsd: 0.01 }), budgetLineage(f.repo));
+  const owner = new PrivateBudgetOwner(f.repo, budgets),
+    client = owner.client();
+  const privateClient = new PrivateBudgetClient(async (request) => owner.request("private-fixture", request));
+  f.settings.configureAccountBudget(client);
+  const structured = vi.fn(async (opts: { beforeDispatch?: () => Promise<void>; signal?: AbortSignal }) => {
+    await opts.beforeDispatch?.();
+    return { object: { ok: true }, durationMs: 1, providerMetadata: { gateway: { cost: 0.003 } } };
+  });
+  const text = vi.fn(async (opts: { beforeDispatch?: () => Promise<void> }) => {
+    await opts.beforeDispatch?.();
+    return { text: "white", durationMs: 1, providerMetadata: { gateway: { cost: 0.001 } } };
+  });
+  f.settings.modelOverride = {
+    generateStructured: structured,
+    generateText: text,
+    listModels: async () => [],
+  } as never;
+  try {
+    await privateClient.reserve("private-request", "model", 0.00999);
+    expect(await f.settings.probe("meta/muse-spark-1.3-contributor")).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("usage limit"),
+    });
+    expect(structured).not.toHaveBeenCalled();
+    await privateClient.cancel("private-request");
+    expect(await f.settings.probe("meta/muse-spark-1.3-contributor")).toMatchObject({
+      ok: true,
+      vision: true,
+    });
+    expect(structured).toHaveBeenCalledOnce();
+    expect(text).toHaveBeenCalledOnce();
+    expect(budgets.spentDayUsd()).toBeCloseTo(0.004);
+    expect(f.repo.db.prepare("SELECT COUNT(*) n FROM model_calls WHERE role='probe'").get()).toEqual({
+      n: 2,
+    });
+    structured.mockImplementationOnce(async (opts) => {
+      await opts.beforeDispatch?.();
+      return new Promise<never>((_resolve, reject) =>
+        opts.signal?.addEventListener("abort", () => reject(opts.signal?.reason), { once: true }),
+      );
+    });
+    const pending = f.settings.probe("meta/muse-spark-1.3-contributor");
+    await vi.waitFor(() => expect(structured).toHaveBeenCalledTimes(2));
+    await f.settings.close();
+    expect(await pending).toMatchObject({ ok: false, error: expect.stringContaining("Connection changed") });
+    expect(budgets.status({}).find((window) => window.scope === "day")?.unpricedModelCalls).toBe(1);
+  } finally {
+    await f.settings.close();
+    await client.close();
+    await privateClient.close();
+    owner.close();
+  }
 });
