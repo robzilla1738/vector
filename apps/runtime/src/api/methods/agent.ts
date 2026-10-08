@@ -134,10 +134,11 @@ async function h_agent_js_reset(ctx: MethodCtx): Promise<unknown> {
 }
 async function desktopUtility<T>(
   ctx: MethodCtx,
-  input: { text: string; action: string; pageIds?: string[] },
+  input: { text: string; action: string; pageIds?: string[]; signal?: AbortSignal; bestEffort?: boolean },
   operation: (model: ModelClient, modelId: string, route: UtilityRoute) => Promise<T>,
 ): Promise<T> {
   const { client, s } = ctx;
+  input.signal?.throwIfAborted();
   if (client.external || !client.nativeTurnContext || !s.native?.turnSourceContext)
     throw new AuxError("permission_denied", "Utility suggestions require their original Aux window.");
   const token = client.nativeTurnContext;
@@ -148,7 +149,9 @@ async function desktopUtility<T>(
     return { pageId: id, url: page.url, documentEpoch: page.documentEpoch, title: page.title };
   });
   const checkOwner = async () => {
+    input.signal?.throwIfAborted();
     const current = await s.native!.turnSourceContext!(token);
+    input.signal?.throwIfAborted();
     if (current.windowId !== original.windowId || current.activePageId !== original.activePageId)
       throw new AuxError("cancelled", "The original utility window or active tab changed.");
     for (const saved of selected) {
@@ -165,10 +168,13 @@ async function desktopUtility<T>(
     .generationOperation(
       { kind: "utility", prompt: input.text, nativeTurnContext: token, checkOwner },
       async (runId, signal) => {
+        const operationSignal = input.signal ? AbortSignal.any([signal, input.signal]) : signal;
+        operationSignal.throwIfAborted();
         const model = s.runs.utilityClient({
           runId,
           route,
-          signal,
+          signal: operationSignal,
+          bestEffort: input.bestEffort,
           checkOwner,
           authorize: () =>
             route.kind === "on-device"
@@ -215,7 +221,7 @@ async function h_agent_utility_intent(ctx: MethodCtx): Promise<unknown> {
   try {
     const result = await desktopUtility(
       ctx,
-      { text: ctx.params.text, action: "agent.utility.intent" },
+      { text: ctx.params.text, action: "agent.utility.intent", signal: AbortSignal.timeout(150), bestEffort: true },
       (model, modelId) =>
         model.generateStructured({
           modelId,

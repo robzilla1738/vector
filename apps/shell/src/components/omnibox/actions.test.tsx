@@ -25,6 +25,7 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   host?.remove();
   fake.call.mockReset();
+  vi.useRealTimers();
 });
 function fixture() {
   const startRun = vi.fn(async (): Promise<Run> => ({
@@ -34,7 +35,7 @@ function fixture() {
     pageIds: [],
     createdAt: Date.now(),
   }));
-  const newTab = vi.fn(async () => null);
+  const newTab = vi.fn(async () => ({ pageId: "new-page" }) as never);
   let execute: (intent: Intent, alt?: boolean, typed?: boolean) => Promise<void> = async () => {};
   function Harness({ text, generation }: { text: string; generation: number }) {
     const [, setBreakerVersion] = useState(0);
@@ -102,4 +103,27 @@ it("retires an awaited classification when the person edits the committed input"
   });
   expect(f.startRun).not.toHaveBeenCalled();
   expect(f.newTab).not.toHaveBeenCalled();
+});
+
+it("opens the native search fallback promptly and ignores late AI classification", async () => {
+  vi.useFakeTimers();
+  const f = fixture();
+  let resolve!: (value: { kind: "chat"; source: "model" }) => void;
+  fake.call.mockImplementation(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  await f.render("Summarize this page", 0);
+  const accepted = f.accept();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(150);
+    await accepted;
+  });
+  expect(f.newTab).toHaveBeenCalledOnce();
+  expect(f.startRun).not.toHaveBeenCalled();
+  await act(async () => resolve({ kind: "chat", source: "model" }));
+  expect(f.startRun).not.toHaveBeenCalled();
+  expect(f.newTab).toHaveBeenCalledOnce();
 });

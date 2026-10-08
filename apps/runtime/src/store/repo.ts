@@ -537,6 +537,9 @@ export class Repo {
         `INSERT INTO run_lookup(run_id,config) VALUES(?,?)
         ON CONFLICT(run_id) DO UPDATE SET config=excluded.config`,
       ).run(r.runId, runLookupConfig(r.config));
+      // Advisory browser copy/classification retains accounting and diagnostics,
+      // but never creates a conversation in the person's chat library.
+      if (r.config?.implementation === "utility-generation") return;
       const chatId = r.config?.chatId ?? r.runId;
       const taskRow = r.config?.taskId
         ? (this.q("SELECT json FROM tasks WHERE task_id=?").get(r.config.taskId) as

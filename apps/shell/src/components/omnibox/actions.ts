@@ -11,6 +11,22 @@ import type { useNativeOmnibox } from "./use-native-omnibox";
 
 export const askBreaker = new AskCircuitBreaker();
 let pendingAsk: Promise<Run | null> | null = null;
+const CLASSIFICATION_ALLOWANCE_MS = 150;
+
+async function classifyCommittedInput(text: string) {
+  if (inNativeHost && !useStore.getState().connected) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      call("agent.utility.intent", { text }).catch(() => null),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), CLASSIFICATION_ALLOWANCE_MS);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 type Workspace = ReturnType<typeof useStore.getState>;
 type Actions = {
   page?: PageTarget;
@@ -69,7 +85,7 @@ export function useOmniboxActions({
         !original.privateMode &&
         (i.kind === "run" || (i.kind === "search" && !i.engine))
       ) {
-        const result = await call("agent.utility.intent", { text: original.text }).catch(() => null);
+        const result = await classifyCommittedInput(original.text);
         if (
           !original.live ||
           owner.current !== original ||
@@ -132,6 +148,8 @@ export function useOmniboxActions({
             );
           let timer: ReturnType<typeof setTimeout> | undefined;
           try {
+            if (inNativeHost && !useStore.getState().connected)
+              throw new Error("Ask is reconnecting. Your prompt is kept; you can keep browsing.");
             if (useStore.getState().settings.modelConfigured === false)
               throw new Error("Ask is unavailable. Connect a model in Settings; your prompt is kept.");
             const request = hero

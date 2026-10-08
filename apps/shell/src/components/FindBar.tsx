@@ -5,7 +5,7 @@ import { errorMessage } from "../error-message";
 import "./FindBar.css";
 import { conversationFinder, readerFinder } from "../text-surface-find";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { useStore, call } from "../store";
+import { useStore } from "../store";
 import { shellIconClose, shellIconDown, shellIconFind, shellIconUp } from "../ui/icons";
 import { bridge } from "../bridge";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
@@ -90,7 +90,7 @@ export function FindBar({
       if (inConversation) clearConversationSearch();
       else finder.clear();
       if (!inShell && activePageId)
-        void call("pages.stopFind", { pageId: activePageId, action: "clear" }).catch(() => {});
+        void bridge.pageStopFind(activePageId, "clear").catch(() => {});
     };
   }, [activePageId, epoch, loading, search, inShell, inConversation, conversationId, finder]);
 
@@ -133,7 +133,7 @@ export function FindBar({
     else setOverlay(null);
     if (inShell) returnFocusRef?.current?.focus({ preventScroll: true });
     if (!inShell && activePageId)
-      await call("pages.stopFind", { pageId: activePageId, action: "clear" }).catch(() => {});
+      await bridge.pageStopFind(activePageId, "clear").catch(() => {});
   };
   const onChange = (v: string) => {
     ++request.current;

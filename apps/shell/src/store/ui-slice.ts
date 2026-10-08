@@ -4,7 +4,6 @@ import { isHomeAddress, isScrimOverlay } from "../chrome";
 import { nextSidebarMode, readSidebarMode, sidebarFocusSelector } from "../sidebar-mode";
 import { readerFinder } from "../text-surface-find";
 import { storage } from "./persistence";
-import { call } from "./shared";
 import type { CommandSlot, Slice, UiKeys } from "./types";
 
 let findSequence = 0;
@@ -133,9 +132,7 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
     zoomRequests.set(pageId, token);
     const origin = get().pages.byId[pageId ?? ""];
     try {
-      const result = bridge.privateMode
-        ? await bridge.privatePageZoom(pageId, options)
-        : await call("pages.zoom", { pageId, ...options });
+      const result = await bridge.pageZoom(pageId, options);
       const page = get().pages.byId[pageId ?? ""];
       if (
         zoomRequests.get(pageId) === token &&
@@ -168,10 +165,10 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
     const epoch = get().pages.byId[id ?? ""]?.documentEpoch;
     set({ findText: text, findMatches: null });
     if (!id || !text) {
-      if (id) await call("pages.stopFind", { pageId: id, action: "clear" });
+      if (id) await bridge.pageStopFind(id, "clear");
       return;
     }
-    const r = await call("pages.find", { pageId: id, text, findNext, forward });
+    const r = await bridge.pageFind(id, text, { findNext, forward });
     if (
       sequence === findSequence &&
       get().mode !== "conversation" &&

@@ -286,7 +286,7 @@ export const BrowserHostMethods = {
     tuple([freshOptional(str)]),
     z.array(strictObject({ origin: str, percentage: number })),
   ),
-  privatePageZoom: coreShell(
+  pageZoom: coreShell(
     tuple([
       str,
       strictObject({
@@ -298,6 +298,11 @@ export const BrowserHostMethods = {
     ]),
     strictObject({ level: number }),
   ),
+  pageFind: coreShell(
+    tuple([str, str.min(1).max(4096), strictObject({ findNext: bool, forward: bool })]),
+    strictObject({ matches: number.int().nonnegative(), activeMatch: freshOptional(number.int().positive()) }),
+  ),
+  pageStopFind: coreShell(tuple([str, z.enum(["clear", "keep"])]), strictObject({ ok: bool })),
   privacy: blockingShell(
     noArgs,
     strictObject({

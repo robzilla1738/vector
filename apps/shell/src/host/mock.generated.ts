@@ -115,8 +115,14 @@ const RESULTS: Record<string, unknown> = {
     "blockedCount": 0
   },
   "siteZoom": [],
-  "privatePageZoom": {
+  "pageZoom": {
     "level": 0
+  },
+  "pageFind": {
+    "matches": 0
+  },
+  "pageStopFind": {
+    "ok": false
   },
   "privacy": {
     "trackerBlock": false,

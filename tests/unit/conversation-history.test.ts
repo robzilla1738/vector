@@ -5,6 +5,32 @@ import { join } from "node:path";
 import { openDb } from "@aux/runtime/database";
 import { Repo } from "@aux/runtime/repository";
 
+it("keeps advisory utility accounting without adding browser searches to the chat library", () => {
+  const db = openDb(":memory:");
+  try {
+    const repo = new Repo(db);
+    repo.saveRun({
+      runId: "utility",
+      goal: "Find a website",
+      status: "failed",
+      pageIds: [],
+      config: { implementation: "utility-generation" },
+      createdAt: 20,
+    });
+    repo.saveRun({
+      runId: "chat",
+      goal: "Research a website",
+      status: "completed",
+      pageIds: [],
+      createdAt: 10,
+    });
+    expect(repo.getRun("utility")?.status).toBe("failed");
+    expect(repo.listConversations().map((chat) => chat.chatId)).toEqual(["chat"]);
+  } finally {
+    db.close();
+  }
+});
+
 it("finds old prompts across all saved history, groups complete chats and paginates tied timestamps", () => {
   const dir = mkdtempSync(join(tmpdir(), "aux-history-"));
   const db = openDb(join(dir, "state.sqlite"));

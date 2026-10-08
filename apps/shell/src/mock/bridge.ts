@@ -2729,9 +2729,9 @@ export function installMockBridge(q: URLSearchParams) {
       if (origin) for (const listener of zoomListeners) listener({});
       return [...sizes].map(([origin, percentage]) => ({ origin, percentage }));
     },
-    privatePageZoom: async () => {
-      throw new Error("Private page zoom requires Aux desktop");
-    },
+    pageZoom: (pageId, options) => handlers["pages.zoom"]({ pageId, ...options }),
+    pageFind: () => handlers["pages.find"](),
+    pageStopFind: () => handlers["pages.stopFind"](),
     sitePermissions: async () => ({}),
     clearSitePermission: async () => true,
     privacy: async () => ({ trackerBlock: true, blocked: 0, allowedHosts: [], httpsUpgrade: true }),

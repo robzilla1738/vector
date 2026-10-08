@@ -76,7 +76,7 @@ if (fixtureRegistration.test(nativeText)) {
 // The shell answers capabilities before registry lookup. Keep that special
 // dispatch tied to source evidence instead of counting it as a missing method.
 const dispatcherText = readFileSync(dispatcher, "utf8");
-if (/if \(method == "capabilities"\)[\s\S]*?registry\.Capabilities\(\)/.test(dispatcherText))
+if (/if \(method == "capabilities"\)[\s\S]*?auto capabilities = host->Capabilities\(\)/.test(dispatcherText))
   handled.add("capabilities");
 
 // Methods the aux_host bootstrap answers without the shell registry (e.g.

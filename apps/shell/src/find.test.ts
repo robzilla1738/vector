@@ -7,18 +7,15 @@ import type { PageTarget } from "@aux/contracts";
 afterEach(() => vi.restoreAllMocks());
 it("ignores out-of-order, previous-tab and closed-search responses; clearing stops native highlights", async () => {
   const responses: ((value: unknown) => void)[] = [];
-  const invoke = vi
-    .spyOn(bridge, "invoke")
-    .mockImplementation((method) =>
-      method === "pages.find"
-        ? new Promise((resolve) => responses.push(resolve))
-        : Promise.resolve({ ok: true }),
-    );
+  const invoke = vi.spyOn(bridge, "invoke");
+  vi.spyOn(bridge, "pageFind").mockImplementation(() => new Promise((resolve) => responses.push(resolve)));
+  const stop = vi.spyOn(bridge, "pageStopFind").mockResolvedValue({ ok: true });
   useStore.setState({
     activePageId: "first",
     overlay: "find",
     findText: "",
     findMatches: null,
+    connected: false,
     pages: normalizePages([{ pageId: "first", documentEpoch: 1 } as PageTarget]),
   });
   const first = useStore.getState().find("order");
@@ -39,5 +36,6 @@ it("ignores out-of-order, previous-tab and closed-search responses; clearing sto
   await closed;
   expect(useStore.getState().findMatches).toBeNull();
   await useStore.getState().find("");
-  expect(invoke).toHaveBeenLastCalledWith("pages.stopFind", { pageId: "second", action: "clear" });
+  expect(stop).toHaveBeenLastCalledWith("second", "clear");
+  expect(invoke).not.toHaveBeenCalled();
 });

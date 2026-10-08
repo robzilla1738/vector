@@ -1,0 +1,257 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -42,7 +42,7 @@
+     register_shell(AuxShellMethodGroup::kWindow, {"appearanceSnapshot"});
+ #endif
+   register_shell(AuxShellMethodGroup::kContent,
+-                 {"preview", "readArticle", "siteZoom", "privatePageZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
++                 {"preview", "readArticle", "siteZoom", "pageZoom", "pageFind", "pageStopFind", "siteInfo", "setSiteTrackers", "sitePermissions",
+                   "httpAuthRequests", "respondHttpAuth",
+                   "clearSitePermission", "clearSiteData", "siteDataCount",
+                   "browsingDataPreview", "clearBrowsingData", "httpsUpgrade",
+diff --git a/chrome/browser/ui/aux/native_find.h b/chrome/browser/ui/aux/native_find.h
+--- a/chrome/browser/ui/aux/native_find.h
++++ b/chrome/browser/ui/aux/native_find.h
+@@ -13,6 +13,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/values.h"
++#include "base/supports_user_data.h"
+ #include "components/find_in_page/find_result_observer.h"
+ 
+ class Profile;
+@@ -23,18 +24,23 @@
+ 
+ // Observes Chromium's actual find results. Pending results are tied to the
+ // owning Profile, page ID, document, and find request; stale replies fail.
+-class NativeFind final : public find_in_page::FindResultObserver {
++class NativeFind final : public find_in_page::FindResultObserver,
++                         public base::SupportsUserData::Data {
+  public:
+   using Reply = base::OnceCallback<void(base::DictValue)>;
++  static NativeFind* ForProfile(Profile* profile);
+   explicit NativeFind(Profile* profile);
+   ~NativeFind() override;
+-  void Find(const base::DictValue& params, Reply reply);
++  void Find(const base::DictValue& params, Reply reply, bool web_only,
++            const void* request_owner);
++  void CancelOwner(const void* request_owner);
+   base::DictValue Stop(const base::DictValue& params);
+ 
+  private:
+   struct Pending {
+     // Identity values only. A navigation may destroy either object before a
+     // delayed result or timeout; neither pointer is ever dereferenced.
++    uintptr_t request_owner;
+     uintptr_t contents;
+     uintptr_t document;
+     int request_id;
+diff --git a/chrome/browser/ui/aux/native_find.cc b/chrome/browser/ui/aux/native_find.cc
+--- a/chrome/browser/ui/aux/native_find.cc
++++ b/chrome/browser/ui/aux/native_find.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/aux/native_find.h"
+ 
+ #include <algorithm>
++#include <memory>
+ #include <utility>
+ #include <vector>
+ 
+@@ -22,6 +23,7 @@
+ 
+ namespace aux {
+ namespace {
++constexpr char kNativeFindKey = 0;
+ base::DictValue Fault(const char* code, const char* message) {
+   base::DictValue error;
+   error.Set("code", code);
+@@ -40,6 +42,15 @@
+ }
+ }  // namespace
+ 
++NativeFind* NativeFind::ForProfile(Profile* profile) {
++  auto* existing = static_cast<NativeFind*>(profile->GetUserData(&kNativeFindKey));
++  if (existing) return existing;
++  auto owned = std::make_unique<NativeFind>(profile);
++  auto* service = owned.get();
++  profile->SetUserData(&kNativeFindKey, std::move(owned));
++  return service;
++}
++
+ NativeFind::NativeFind(Profile* profile) : profile_(profile) {}
+ NativeFind::~NativeFind() {
+   for (auto& [helper, contents] : observed_) helper->RemoveObserver(this);
+@@ -56,20 +67,30 @@
+   std::move(reply).Run(std::move(result));
+ }
+ 
+-void NativeFind::Find(const base::DictValue& params, Reply reply) {
++void NativeFind::CancelOwner(const void* request_owner) {
++  std::vector<std::string> pending;
++  const auto identity = reinterpret_cast<uintptr_t>(request_owner);
++  for (const auto& [id, request] : pending_)
++    if (request.request_owner == identity) pending.push_back(id);
++  for (const auto& id : pending)
++    Finish(id, Fault("cancelled", "The original find owner retired"));
++}
++
++void NativeFind::Find(const base::DictValue& params, Reply reply,
++                      bool web_only, const void* request_owner) {
+   const std::string* page_id = params.FindString("pageId");
+   const std::string* text = params.FindString("text");
+   const auto forward = params.FindBool("forward");
+   const auto find_next = params.FindBool("findNext");
+   if (!page_id || !text || !forward || !find_next || text->empty() ||
+-      text->size() > 4096 || !base::IsStringUTF8(*text)) {
++      text->size() > 16384 || !base::IsStringUTF8(*text)) {
+     std::move(reply).Run(Fault("invalid_params", "Invalid find request"));
+     return;
+   }
+   auto* catalog = TabCatalog::GetForProfile(profile_);
+   content::WebContents* contents = catalog ? catalog->FindPage(*page_id) : nullptr;
+   if (!contents || contents->GetBrowserContext() != profile_ ||
+-      !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
++      (web_only && !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS())) {
+     std::move(reply).Run(Fault("not_found", "Page is not in this Profile"));
+     return;
+   }
+@@ -85,7 +106,8 @@
+   Finish(*page_id, Fault("conflict", "A newer find replaced this request"));
+   if (observed_.emplace(helper, contents).second) helper->AddObserver(this);
+   if (!*find_next) helper->StopFinding(find_in_page::SelectionAction::kClear);
+-  pending_.emplace(*page_id, Pending{reinterpret_cast<uintptr_t>(contents),
++  pending_.emplace(*page_id, Pending{reinterpret_cast<uintptr_t>(request_owner),
++                                     reinterpret_cast<uintptr_t>(contents),
+                                      reinterpret_cast<uintptr_t>(&contents->GetPrimaryPage()), 0,
+                                      std::move(reply)});
+   helper->StartFinding(base::UTF8ToUTF16(*text), *forward,
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -292,7 +292,7 @@
+   std::map<std::string, CredentialAdmission> credential_admissions_;
+   base::DictValue HandleCredentialAdmission(const base::DictValue& params, uint64_t generation);
+   std::unique_ptr<aux::CredentialFill> credential_fill_;
+-  std::unique_ptr<aux::NativeFind> native_find_;
++  raw_ptr<aux::NativeFind> native_find_ = nullptr;
+   std::unique_ptr<device_reauth::DeviceAuthenticator> recovery_authenticator_;
+   bool recovery_auth_pending_ = false;
+   struct StageLease {
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -215,7 +215,7 @@
+       private_session_id_(
+           profile->IsOffTheRecord() ? ProfileId(profile).substr(8) : "") {
+   profile_observation_.Observe(profile);
+-  native_find_ = std::make_unique<aux::NativeFind>(profile);
++  native_find_ = aux::NativeFind::ForProfile(profile);
+   worker_thread_ = std::make_unique<base::Thread>("AuxProfileRuntime");
+   base::Thread::Options worker_options;
+   worker_options.message_pump_type = base::MessagePumpType::IO;
+@@ -315,7 +315,8 @@
+     auto importer = std::move(browser_importer_);
+     importer->Close(base::BindOnce([](std::shared_ptr<aux::BrowserProfileImporter>) {}, importer));
+   }
+-  native_find_.reset();
++  native_find_->CancelOwner(this);
++  native_find_ = nullptr;
+   tab_catalog_subscription_ = {};
+   cdp_authority_subscription_ = {};
+   profile_library_.reset();
+@@ -2645,7 +2646,7 @@
+                                 base::DictValue reply) {
+                                state->reply = std::move(reply);
+                                state->ready.Signal();
+-                             }, state));
++                             }, state), true, owner.get());
+                          return;
+                        }
+                        if (owner && method == "native.remoteDebuggingSet") {
+diff --git a/chrome/browser/ui/aux/methods/content_methods.cc b/chrome/browser/ui/aux/methods/content_methods.cc
+--- a/chrome/browser/ui/aux/methods/content_methods.cc
++++ b/chrome/browser/ui/aux/methods/content_methods.cc
+@@ -57,6 +57,7 @@
+ #include "chrome/browser/ui/login/login_tab_helper.h"
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/dictation_mac.h"
++#include "chrome/browser/ui/aux/native_find.h"
+ #include "chrome/browser/ui/aux/extension_bridge.h"
+ #include "chrome/browser/ui/aux/runtime_host.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+@@ -1378,15 +1379,67 @@
+     std::move(callback).Run(true, "true", "", "");
+     return;
+   }
+-  if (method == "privatePageZoom") {
+-    if (!browser_->GetProfile()->IsOffTheRecord()) {
+-      std::move(callback).Run(false, "", "permission_denied",
+-                              "Private page zoom is only available in Private windows");
+-      return;
+-    }
++  if (method == "pageFind" || method == "pageStopFind") {
++    const bool find = method == "pageFind";
++    if (list->size() != (find ? 3u : 2u) || !(*list)[0].is_string() ||
++        !(*list)[1].is_string() || (find && !(*list)[2].is_dict())) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid page find request");
++      return;
++    }
++    const std::string page_id = (*list)[0].GetString();
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    BrowserWindowInterface* owner = nullptr;
++    auto* contents = catalog ? catalog->FindPage(page_id, &owner) : nullptr;
++    if (!contents || owner != browser_ || !contents->GetPrimaryMainFrame()) {
++      std::move(callback).Run(false, "", "not_found", "The page is no longer in this window");
++      return;
++    }
++    const auto original_document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++    auto reply = base::BindOnce(
++        [](base::WeakPtr<BrowserWindowInterface> window, std::string page_id,
++           content::WeakDocumentPtr document, RequestCallback callback,
++           base::DictValue response) {
++          auto* frame = document.AsRenderFrameHostIfValid();
++          auto* catalog = window ? aux::TabCatalog::GetForProfile(window->GetProfile()) : nullptr;
++          BrowserWindowInterface* owner = nullptr;
++          auto* page = catalog ? catalog->FindPage(page_id, &owner) : nullptr;
++          if (!window || !frame || !page || owner != window.get() ||
++              page->GetPrimaryMainFrame() != frame) {
++            std::move(callback).Run(false, "", "conflict", "The find document changed");
++            return;
++          }
++          if (const auto* error = response.FindDict("error")) {
++            const auto* code = error->FindString("code");
++            const auto* message = error->FindString("message");
++            std::move(callback).Run(false, "", code ? *code : "backend_unavailable",
++                                    message ? *message : "Page find is unavailable");
++            return;
++          }
++          const auto* result = response.FindDict("result");
++          const auto json = result ? base::WriteJson(*result) : std::nullopt;
++          std::move(callback).Run(json.has_value(), json.value_or(""),
++                                  json ? "" : "backend_unavailable",
++                                  json ? "" : "Invalid page find result");
++        }, browser_->GetWeakPtr(), page_id, original_document, std::move(callback));
++    auto* finder = aux::NativeFind::ForProfile(browser_->GetProfile());
++    base::DictValue params;
++    params.Set("pageId", page_id);
++    if (find) {
++      const auto& options = (*list)[2].GetDict();
++      params.Set("text", (*list)[1].GetString());
++      params.Set("findNext", options.FindBool("findNext").value_or(false));
++      params.Set("forward", options.FindBool("forward").value_or(true));
++      finder->Find(params, std::move(reply), false, browser_);
++    } else {
++      params.Set("action", (*list)[1].GetString());
++      std::move(reply).Run(finder->Stop(params));
++    }
++    return;
++  }
++  if (method == "pageZoom") {
+     if (list->size() != 2 || !(*list)[0].is_string() || !(*list)[1].is_dict()) {
+       std::move(callback).Run(false, "", "invalid_argument",
+-                              "Invalid Private page zoom request");
++                              "Invalid page zoom request");
+       return;
+     }
+     BrowserWindowInterface* owner = nullptr;
