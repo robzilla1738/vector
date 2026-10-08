@@ -1274,6 +1274,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   if (channel && hostSocket && !privateSession) {
     stopPrivateProviderBroker = registerPrivateProviderBroker(channel, {
       current: () => !closed && native.available(),
+      revision: () => runtimeServices.settings.privateProviderRevision(),
+      subscribe: (changed) => events.subscribe(() => changed()),
       request: (request) => runtimeServices.settings.privateProviderRequest(request),
     });
   }
@@ -2568,14 +2570,21 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         pauseForResourceFunding: (error, current) =>
           runtimeServices.runs.coordinator.pauseForResourceFunding(error, current),
         authorizeCreate: (ctx, quote, quoteDigest) => admission.authorizeCreate(ctx, quote, quoteDigest),
-        authorizePreview: async (input, context, process, listener) => {
-          await owner(context);
+        authorizePreview: async (input, context, process, listener, token) => {
+          shutdownAdmission.assertOpen();
+          if (!repo.getRun(context.runId) || !native.turnSourceContext)
+            throw new AuxError("permission_denied", "Open Preview from its original Aux window.");
+          const original = await native.turnSourceContext(token);
           const identity = process.execution;
           if (!identity || identity.backend !== "cloud") throw new AuxError("ref_stale", "Preview requires its original cloud process.");
           const fence = await authorizeCodingAction(context.runId, "read", `preview:${input.processId}:${input.port}`, [input, identity, listener], undefined, "user", undefined, identity);
-          await owner(context);
+          const current = await native.turnSourceContext(token);
+          if (current.windowId !== original.windowId)
+            throw new AuxError("permission_denied", "The original Preview window changed.");
           return () => {
-            checkCodingOwner(context.runId);
+            shutdownAdmission.assertOpen();
+            if (!repo.getRun(context.runId))
+              throw new AuxError("cancelled", "The original coding run is unavailable.");
             fence();
           };
         },
@@ -3018,6 +3027,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     const str = (v: unknown) => (v === undefined || v === null ? undefined : String(v));
     const truthy = (v: unknown) => v === true || v === "true";
     switch (type) {
+      case "privateProviderChanged":
+        if (privateSession && Object.keys(pl).length === 0) {
+          void runtimeServices.settings.invalidatePrivateProvider().catch(() => {
+            console.error("Private provider cleanup could not be confirmed.");
+          });
+          events.emit(EventTypes.SettingsChanged, { settings: runtimeServices.settings.all() });
+        }
+        return;
       case "view.navigated":
         return runtimeServices.pages.onNativeNavigated(str(pl.pageId)!, str(pl.url)!);
       case "view.titleChanged":
