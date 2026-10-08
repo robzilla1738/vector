@@ -1,0 +1,44 @@
+diff --git a/chrome/browser/ui/aux/methods/content_methods.cc b/chrome/browser/ui/aux/methods/content_methods.cc
+index 2973041..a78c2f4 100644
+--- a/chrome/browser/ui/aux/methods/content_methods.cc
++++ b/chrome/browser/ui/aux/methods/content_methods.cc
+@@ -1647,7 +1647,8 @@ void WebUIBrowserUI::HandleAuxContentRequest(
+           }, weak_factory_.GetWeakPtr(), browser_->GetWeakPtr(),
+           shell_frame->GetWeakDocumentPtr(), target_frame->GetWeakDocumentPtr(),
+           page_id, url, navigation_id);
+-      blocker->SetSiteAllowed(url.host(), allowed, current,
++      const std::string hostname(url.host());
++      blocker->SetSiteAllowed(hostname, allowed, current,
+           base::BindOnce(
+               [](aux::ContentBlockingController::OwnerCurrent current,
+                  std::string host, bool allowed, RequestCallback callback,
+@@ -1661,7 +1662,7 @@ void WebUIBrowserUI::HandleAuxContentRequest(
+                 result.Set("hostname", host);
+                 result.Set("allowed", allowed);
+                 std::move(callback).Run(true, *base::WriteJson(result), "", "");
+-              }, current, url.host(), allowed, std::move(callback)));
++              }, current, hostname, allowed, std::move(callback)));
+       return;
+     }
+     base::DictValue result;
+diff --git a/components/history/core/browser/history_database.cc b/components/history/core/browser/history_database.cc
+index 0b91abc..09fe35c 100644
+--- a/components/history/core/browser/history_database.cc
++++ b/components/history/core/browser/history_database.cc
+@@ -119,13 +119,13 @@ bool HistoryDatabase::GetVisibleVisitPage(
+   statement.BindInt(index, limit);
+   std::vector<URLResult> rows;
+   while (statement.Step()) {
+-    URLResult row(GURL(statement.ColumnString(0)));
++    URLResult row(GURL(statement.ColumnString(0)),
++                  base::Time::FromDeltaSinceWindowsEpoch(
++                      base::Microseconds(statement.ColumnInt64(2))));
+     if (!row.url().is_valid()) {
+       continue;
+     }
+     row.set_title(statement.ColumnString16(1));
+-    row.set_visit_time(base::Time::FromDeltaSinceWindowsEpoch(
+-        base::Microseconds(statement.ColumnInt64(2))));
+     rows.push_back(std::move(row));
+   }
+   if (!statement.Succeeded()) {
