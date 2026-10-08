@@ -1221,10 +1221,10 @@ index 57d0958..bd863c7 100644
  #endif
 diff --git a/chrome/services/aux_document/BUILD.gn b/chrome/services/aux_document/BUILD.gn
 new file mode 100644
-index 0000000..985824c
+index 0000000..e63476b
 --- /dev/null
 +++ b/chrome/services/aux_document/BUILD.gn
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,38 @@
 +# Copyright 2026 The Aux Authors
 +# Use of this source code is governed by a BSD-style license that can be
 +# found in the LICENSE file.
@@ -1242,6 +1242,7 @@ index 0000000..985824c
 +}
 +source_set("lib") {
 +  visibility = [ "//chrome/utility:*" ]
++  configs += [ "//pdf:pdfium_includes" ]
 +  sources = [
 +    "document_extractor.cc",
 +    "document_extractor.h",
