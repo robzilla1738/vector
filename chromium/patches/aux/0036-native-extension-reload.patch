@@ -1,0 +1,143 @@
+diff --git a/chrome/browser/ui/aux/extension_bridge.cc b/chrome/browser/ui/aux/extension_bridge.cc
+index 5aa6f44..96b53cd 100644
+--- a/chrome/browser/ui/aux/extension_bridge.cc
++++ b/chrome/browser/ui/aux/extension_bridge.cc
+@@ -12,7 +12,12 @@
+ #include "base/functional/bind.h"
+ #include "base/json/json_writer.h"
+ #include "base/memory/ref_counted.h"
++#include "base/memory/weak_ptr.h"
++#include "base/scoped_observation.h"
+ #include "base/strings/utf_string_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
+ #include "chrome/browser/extensions/updater/extension_updater.h"
+ #include "chrome/browser/extensions/updater/extension_updater_factory.h"
+ #include "chrome/browser/extensions/webstore_install_with_prompt.h"
+@@ -23,6 +28,8 @@
+ #include "extensions/browser/disable_reason.h"
+ #include "extensions/browser/extension_registrar.h"
+ #include "extensions/browser/extension_registry.h"
++#include "extensions/browser/extension_registry_observer.h"
++#include "extensions/browser/load_error_reporter.h"
+ #include "extensions/browser/unpacked_installer.h"
+ #include "extensions/browser/uninstall_reason.h"
+ #include "extensions/common/extension.h"
+@@ -90,6 +97,99 @@ base::DictValue Describe(const extensions::Extension& extension,
+   return item;
+ }
+ 
++class ExtensionReloadRequest final
++    : public extensions::ExtensionRegistryObserver,
++      public extensions::LoadErrorReporter::Observer {
++ public:
++  ExtensionReloadRequest(Profile* profile,
++                         const extensions::Extension& extension,
++                         Reply callback)
++      : profile_(profile->GetWeakPtr()),
++        id_(extension.id()),
++        path_(extension.path()),
++        callback_(std::move(callback)) {
++    registry_observation_.Observe(extensions::ExtensionRegistry::Get(profile));
++    error_observation_.Observe(extensions::LoadErrorReporter::GetInstance());
++  }
++
++  void Start(extensions::ExtensionRegistrar* registrar) {
++    timer_.Start(FROM_HERE, base::Seconds(15),
++                 base::BindOnce(&ExtensionReloadRequest::Timeout,
++                                weak_factory_.GetWeakPtr()));
++    // Installed extensions can finish synchronously; unpacked ones load files
++    // asynchronously. Both must be observed before the old entry is disabled.
++    registrar->ReloadExtensionWithQuietFailure(id_);
++  }
++
++  void OnExtensionLoaded(content::BrowserContext* context,
++                         const extensions::Extension* extension) override {
++    if (context != profile_.get() ||
++        (extension->id() != id_ && extension->path() != path_)) {
++      return;
++    }
++    if (extension->id() != id_ || extension->path() != path_) {
++      Error(TakeCallback(), "conflict",
++            "The extension identity changed during reload");
++      return;
++    }
++    auto result = Describe(*extension, *registry_observation_.GetSource());
++    Result(TakeCallback(), base::Value(std::move(result)));
++  }
++
++  void OnExtensionUninstalled(content::BrowserContext* context,
++                              const extensions::Extension* extension,
++                              extensions::UninstallReason reason) override {
++    if (context == profile_.get() && extension->id() == id_) {
++      Error(TakeCallback(), "conflict", "Extension was removed during reload");
++    }
++  }
++
++  void OnLoadFailure(content::BrowserContext* context,
++                     const base::FilePath& path,
++                     const std::u16string& error) override {
++    if (context == profile_.get() && path == path_) {
++      Error(TakeCallback(), "load_failed",
++            error.empty() ? "Extension could not be reloaded"
++                          : base::UTF16ToUTF8(error));
++    }
++  }
++
++  void OnShutdown(extensions::ExtensionRegistry* registry) override {
++    Error(TakeCallback(), "backend_unavailable",
++          "Extension service shut down during reload");
++  }
++
++ private:
++  void Timeout() {
++    Error(TakeCallback(), "timeout", "Extension reload did not finish");
++  }
++
++  Reply TakeCallback() {
++    timer_.Stop();
++    weak_factory_.InvalidateWeakPtrs();
++    registry_observation_.Reset();
++    error_observation_.Reset();
++    // Replies may reenter the registry. Retire observers first and keep this
++    // request alive until the current observer/registrar stack has returned.
++    base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(FROM_HERE,
++                                                                this);
++    return std::move(callback_);
++  }
++
++  const base::WeakPtr<Profile> profile_;
++  const std::string id_;
++  const base::FilePath path_;
++  Reply callback_;
++  base::ScopedObservation<extensions::ExtensionRegistry,
++                          extensions::ExtensionRegistryObserver>
++      registry_observation_{this};
++  base::ScopedObservation<extensions::LoadErrorReporter,
++                          extensions::LoadErrorReporter::Observer>
++      error_observation_{this};
++  base::OneShotTimer timer_;
++  base::WeakPtrFactory<ExtensionReloadRequest> weak_factory_{this};
++};
++
+ const std::string* OneId(const base::ListValue& args) {
+   return args.size() == 1 && args[0].is_string()
+              ? args[0].GetIfString()
+@@ -289,14 +389,8 @@ void ExtensionBridge::Handle(Profile* profile, BrowserWindowInterface* browser,
+       Error(std::move(callback), "conflict", "Enable the extension before reloading it");
+       return;
+     }
+-    registrar->ReloadExtension(*id);
+-    // Reload may replace the Extension object synchronously.
+-    extension = registry->GetInstalledExtension(*id);
+-    if (!extension) {
+-      Error(std::move(callback), "conflict", "Extension changed during reload");
+-      return;
+-    }
+-    Result(std::move(callback), base::Value(Describe(*extension, *registry)));
++    (new ExtensionReloadRequest(profile, *extension, std::move(callback)))
++        ->Start(registrar);
+     return;
+   }
+   if (method == "removeExtension") {
