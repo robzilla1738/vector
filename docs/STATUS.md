@@ -21,7 +21,7 @@ The October 7 approved plan is being implemented with three isolated workers and
 - The synthetic 300-turn chat workload now mounts eight initial detail panels instead of 300, makes 25 detail/image reads instead of about 900, and preserves focus/drafts. Deferred settled-turn bodies and whole-chat search/jump are integrated. These synthetic results do not establish native timings. Source selections retain more than 30 saved artifacts without truncation. Full conversation exports preserve rich answers, result details and delivered corrections.
 - Native area 0099 publishes real Space/workspace bindings from the authenticated runtime and keeps browser tab placement available without Node. Area 0100 identifies the original shell/runtime processes for physical-footprint measurement. Both are compiled. Native Space creation and its authentic runtime workspace adoption were observed with the runtime paused and resumed; formal role measurements remain pending. The original stock app already contains the same v3 timing instrumentation. Aux-only role telemetry does not require a stock rebuild.
 
-The latest integrated check on checksum-verified official Node 26.9 passed **4,446 tests across 720 files**, typecheck and lint. Runtime dist was rebuilt first. The affected recovery checks all passed separately, with 4.52 seconds of assertions versus 224.98 seconds in the preceding Node-26.7 run. A bare same-process diagnostic also reproduced the upstream Promise-completion defect: 26.7 waited for an unrelated wake callback, while 26.9 completed before it. Node 26.9 is now the source pin and recommended development version; ICU, build flags and the package API floor are preserved. The packaged runtime remains 26.7 until the active sole-owner build finishes staging. No timeout, worker-pool or production callback workaround is applied. The integrated test phase took **249.61 seconds under concurrent native build load**; this is not an uncontended development-check performance measurement, and the under-60-second target remains open. Evidence: `/tmp/aux-node269-model-routine-cloud-integrated-check.log`, `/tmp/aux-node269-affected-recovery.log` and `/tmp/aux-backup-node269-probe/RCA.md`. Passing unchanged suites are not repeated. Routine shutdown joins accepted launch receipts before repository closure; ten focused cases passed without unhandled database errors. Borrowed tab readers follow the acknowledged native task-session lifetime, including cold driver connection. Completed cloud servers retain their original Session, funding expiry, native window and Stop ownership. Result revisions have no version-20 wall; concurrent revisions receive distinct ordinals and deck source groups are labeled Sections.
+The latest integrated check on checksum-verified official Node 26.9 passed **4,446 tests across 720 files**, typecheck and lint. Runtime dist was rebuilt first. The affected recovery checks all passed separately, with 4.52 seconds of assertions versus 224.98 seconds in the preceding Node-26.7 run. A bare same-process diagnostic also reproduced the upstream Promise-completion defect: 26.7 waited for an unrelated wake callback, while 26.9 completed before it. Node 26.9 is now the source pin and recommended development version; ICU, build flags and the package API floor are preserved. The packaged runtime is now checksum-pinned slim Node 26.9; its owned disposable launch and normal cleanup completed. No timeout, worker-pool or production callback workaround is applied. The integrated test phase took **249.61 seconds under concurrent native build load**; this is not an uncontended development-check performance measurement, and the under-60-second target remains open. Evidence: `/tmp/aux-node269-model-routine-cloud-integrated-check.log`, `/tmp/aux-node269-affected-recovery.log` and `/tmp/aux-backup-node269-probe/RCA.md`. Passing unchanged suites are not repeated. Routine shutdown joins accepted launch receipts before repository closure; ten focused cases passed without unhandled database errors. Borrowed tab readers follow the acknowledged native task-session lifetime, including cold driver connection. Completed cloud servers retain their original Session, funding expiry, native window and Stop ownership. Result revisions have no version-20 wall; concurrent revisions receive distinct ordinals and deck source groups are labeled Sections.
 
 The performance harness records an immediate same-Profile warm relaunch, 100 native input samples per browser for p95 and original shell/runtime physical footprints. Available runtime boot marks include elapsed process time. No complete valid measurement report exists yet.
 
@@ -45,7 +45,7 @@ The sidebar now retains stable hooks when a tab retires, enables its private Cha
 
 Initial native catalog adoption preserves address drafts, and delayed private Home autofocus respects an earlier Cmd-L; 29 focused cases pass. The private composer now explains cloud request routing and ephemeral chat retention. Account-provider admission bypasses only the default redundant model review after managed/explicit policy, with original-owner checks and genuine parked model continuation; subscription acceptance remains pending.
 
-Native tracker exceptions use the browser’s durable blocking snapshot, with generation fences preserving human changes during downloaded-list updates; the replaced runtime toggle/polling path is deleted. The running 270-method picker accepts bounded UTF-8 text. The 272-method source now wires native PDF/DOCX/text extraction, strict import/read interfaces, one schema-5 protected DocumentSnapshots service, original-owner cursor binding, atomic publication, authenticated backup/recovery and bounded previews/retrieval. The dedicated byte-only PDFium/DOCX utility compiled successfully after reusing Chromium’s PDFium include configuration. Complete receipt export streams captured evidence through a native retained-file save claim; closing its original window retires pending preparation. The combined native app build and changed-flow observations remain pending. No binary extraction is inferred from filenames.
+Native tracker exceptions use the browser’s durable blocking snapshot, with generation fences preserving human changes during downloaded-list updates; the replaced runtime toggle/polling path is deleted. The running 270-method picker accepts bounded UTF-8 text. The 272-method source now wires native PDF/DOCX/text extraction, strict import/read interfaces, one schema-5 protected DocumentSnapshots service, original-owner cursor binding, atomic publication, authenticated backup/recovery and bounded previews/retrieval. The dedicated byte-only PDFium/DOCX utility compiled successfully after reusing Chromium’s PDFium include configuration. Complete receipt export streams captured evidence through a native retained-file save claim; closing its original window retires pending preparation. The combined native app compiled and launched. Actual DOCX import, paged preview and retained-composer observation are recorded below; PDF, receipt Save and extension reload observations remain pending. No binary extraction is inferred from filenames.
 
 ## Delivered behavior
 
@@ -75,7 +75,7 @@ The actual default provider used in these walkthroughs was `anthropic/claude-son
 
 Runtime dist was rebuilt before runtime tests. The earlier delivery check passed **4,218 tests across 686 files**, typecheck and lint, with existing advisory warnings (`/tmp/aux-final-owner-command-check.log`). Earlier integrated failures were fixed and rerun in their affected suites; passing suites were not repeatedly rerun. The subsequent reply/context fixes passed **40 focused tests**, including real SDK prompt conversion, native-source drift rejection and strict restored-source admission. Runtime dist was rebuilt and staged; touched-file lint passed. Evidence: `/tmp/aux-final-recovery-focused.log`, `/tmp/aux-final-recovery-mentions.log` and `/tmp/aux-final-recovery-lint.log`.
 
-Chromium is **154.0.8037.98**. The app path is `/Users/rcourson/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`. Its latest native build has **272 methods / 30 events**, `97d6daa5466e`, and awaits matched embedded-runtime staging before the owned disposable launch. The previous fully staged 270-method candidate used `289705b74098` and 198 renderer assets; its fresh runtime reached ready at **330.67 ms elapsed process time**. That is one earlier boot observation without a paired comparison, not timing for the new candidate. Runtime-only disposable launches verify the actual compiled ABI before staging. Earlier evidence: `/tmp/aux-native-library-filter-build-launch-api-repaired.log`.
+Chromium is **154.0.8037.98**. The app path is `/Users/rcourson/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`. Its latest native build has **272 methods / 30 events**, `97d6daa5466e`, and launched with matched slim Node 26.9. That fresh runtime reached ready at **526.06 ms elapsed process time**; this single diagnostic is not paired performance acceptance. The previous fully staged 270-method candidate used `289705b74098` and 198 renderer assets; its fresh runtime reached ready at **330.67 ms elapsed process time**. That is one earlier boot observation without a paired comparison, not timing for the new candidate. Runtime-only disposable launches verify the actual compiled ABI before staging. Earlier evidence: `/tmp/aux-native-library-filter-build-launch-api-repaired.log`.
 
 The latest 42-patch source checkpoint is consolidated into **32 disjoint area patches**, followed by the additive native API repairs. Replay from the pinned Chromium baseline reproduced all 850 native paths and exact aggregate bytes; comparison with the product source found zero content or executable-mode differences. This extends the earlier 100-to-32 consolidation. [Patch documentation](../chromium/patches/README.md) records the replay evidence. This consolidation adds no new native behavior or performance claim.
 
@@ -115,15 +115,23 @@ split view now retires divider pointer capture while preserving its native page
 connectors; five focused renderer cases pass, native observation remains open.
 
 The combined native 0033–0036 build succeeded in **33 steps / 30m40.20s** with
-**272 methods / 30 events**, `97d6daa5466e`. The same owned pipeline is now building
-the checksum-pinned slim Node 26.9 executable before runtime staging and launch.
-There is no GUI observation for this candidate yet. Later account, retained cloud
-refresh, split-drag and receipt-completion renderer slices plus the generated
-source-identity change need a subsequent combined staging/build. Source identity
-stamping now changes generated implementation bytes while preserving header
-bytes/timestamps; the real disposable staging proof passed. Neither the build
-duration nor the preserved-app size inventory is a performance acceptance pass.
-Evidence: `/tmp/aux-native-272-documents-export-extension-node269-build-launch.log`
+**272 methods / 30 events**, `97d6daa5466e`. The owned pipeline compiled and staged
+checksum-pinned slim Node 26.9, then launched in a disposable Profile. Native
+DOCX import and its saved preview showed the heading and table value 73; Next
+section reached the late ORCHID-7319 / 42,860-unit fact, header/footer and
+MAPLE-4826 footnote beyond the first 128 KiB. Previous returned to the first
+section. Closing the preview or cancelling a subsequent picker retained the
+attachment and unsent composer draft. Normal menu Quit exited 0 and removed the
+Profile and plain lock. This establishes the changed DOCX flow only; no provider
+call, full-chat connector, PDF/text/malformed batch, receipt Save or extension
+reload acceptance is inferred.
+
+Later account, retained cloud refresh, split-drag, receipt-completion, early-Enter,
+image Save and citation renderer slices plus the generated source-identity change
+need the next combined staging/build. Source identity stamping now changes
+implementation bytes while preserving header bytes/timestamps; the disposable
+staging proof passed. Build duration and app inventories are not performance
+acceptance. Evidence: `/tmp/aux-native-272-documents-export-extension-node269-build-launch.log`
 and `/tmp/aux-host-identity-proof.json`.
 
 Area 0037 and matching stock instrumentation now measure warm-window creation,
@@ -134,7 +142,7 @@ original process and additional window, proves subsequent ordinary address input
 and closes only that new window. Role observation ends after the completed
 one-window memory snapshot. Eight focused measurement/target cases, Swift source
 typecheck, two renderer readiness cases and shell TypeScript passed. The new
-instrumentation is source-only and is not in the active 272-method build. No
+instrumentation is source-only and is not in the observed 272-method build. No
 performance report or target pass is claimed. The preserved stock app's missing
 object inputs need rebuilding before equivalent new measurements can run.
 
@@ -151,6 +159,15 @@ previews are explicit, and oversized images avoid unsupported message reads.
 Image and office-result exports offer Reveal for the exact acknowledged
 destination, bound to their original artifact/view and native/runtime owner.
 Three focused affected cases and shell TypeScript passed, with no lint errors.
-These renderer slices await combined staging. Verified document citations and
-protected continuation provenance are being implemented in isolated worktrees;
-they are not integrated or observed yet.
+These renderer slices await combined staging.
+
+Verified saved-document citations are integrated in source. The successful model
+step retains only protected source-relative admission recipes; continuation reads
+only an actually cited segment and rechecks its immutable capture and excerpt
+digest. Typed document citations cannot reconcile browser effects. Public Run
+responses and events exclude the internal recipes before event journaling. A
+citation opens the exact server-bound saved section, with literal quote
+highlighting at its matching locator and honest relative section navigation.
+Seven focused runtime cases, one physical reopened-journal/API projection case,
+one affected viewer case, TypeScript and touched lint passed. The consolidated
+integration check is running once; native citation observation remains pending.
