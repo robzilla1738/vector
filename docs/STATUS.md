@@ -137,3 +137,20 @@ typecheck, two renderer readiness cases and shell TypeScript passed. The new
 instrumentation is source-only and is not in the active 272-method build. No
 performance report or target pass is claimed. The preserved stock app's missing
 object inputs need rebuilding before equivalent new measurements can run.
+
+Early Enter now has a lightweight startup handoff into the normal Search/Ask
+handlers. It preserves the original prompt and newer unsent typing separately,
+waits for the exact native search acknowledgement, and retires on source changes.
+Failed Search preserves newer visible text with explicit original-text recovery;
+ordinary Send no longer clears a draft edited during its awaits. Focused checks,
+shell TypeScript and touched lint passed; native startup observation remains open.
+
+All completed generated images now retain native Save access, including images
+too large for inline preview. Small previews remain lazy; larger supported
+previews are explicit, and oversized images avoid unsupported message reads.
+Image and office-result exports offer Reveal for the exact acknowledged
+destination, bound to their original artifact/view and native/runtime owner.
+Three focused affected cases and shell TypeScript passed, with no lint errors.
+These renderer slices await combined staging. Verified document citations and
+protected continuation provenance are being implemented in isolated worktrees;
+they are not integrated or observed yet.
