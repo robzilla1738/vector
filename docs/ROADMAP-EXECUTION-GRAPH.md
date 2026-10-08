@@ -13,7 +13,7 @@ ownership, secret protection, durable effects and conflict-safe undo remain.
 Execution was authorized on October 7, 2026. The source baseline is clean local
 main at `62f3626c8d0b50880452e928c3e24ba0277f4d2e`. The integrated native candidate is
 Chromium 154.0.8037.98 in `~/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`,
-with the native tree through the frozen 42-area source checkpoint consolidated into 32 equivalent areas. The 270-method/30-event candidate compiled in 47 steps / 10m59.84s with additive native API repairs in area 0033. History, Space creation, download Reveal/dismissal, tracker exceptions and Save as PDF worked with the runtime paused. The retained-page fix for full-chat connector retirement is integrated in source and awaits native observation. A source-backed first answer and runtime-unavailable Find/Zoom now work in a disposable Profile. A real private source-backed answer and Stop now work; last-window closure retires the worker and its temporary data. Broader provider, takeover and workflow acceptance remain. Existing delivery observations live in STATUS.
+with the native tree through the frozen 42-area source checkpoint consolidated into 32 equivalent areas. The latest combined areas 0033–0036 compiled in 33 steps / 30m40.20s with 272 methods / 30 events, `97d6daa5466e`; the same owned pipeline is compiling the checksum-pinned slim Node 26.9 runtime before staging and disposable launch. That candidate has no GUI observation yet. Earlier 270-method observations established History, Space creation/adoption, download Reveal/dismissal, tracker exceptions and Save as PDF with the runtime paused. The retained-page fix for full-chat connector retirement is staged in the new candidate and awaits native observation. A source-backed first answer, runtime-unavailable Find/Zoom, private answer/Stop and last-private-window retirement have earlier observations. Broader provider, takeover and workflow acceptance remain. Existing delivery observations live in STATUS.
 There is no complete current performance comparison. Source presence and previous
 unit checks do not establish native performance or competitor parity.
 
@@ -280,7 +280,17 @@ Text batch selection does not supply PDF/DOCX ingestion. Frozen typed extraction
 and import/read interfaces and schema-5 protected complete document snapshots
 are integrated. The dedicated byte-only PDFium/DOCX utility has compiled successfully. Original
 native capture adapters, shared snapshot services, bounded preview/retrieval and
-streamed native receipt Save are integrated in source; their combined app build
-and changed-flow observation remain pending. Whole-flow
+streamed native receipt Save are integrated in source. Their combined native app
+compiled; embedded runtime staging and changed-flow observation remain pending.
+The latest integrated Node-26.9 check passed 4,446 tests across 720 files,
+typecheck and lint after rebuilding runtime dist. Focused checks cover subsequent
+renderer slices; unchanged passing suites are not repeatedly run.
+
+Current parallel work closes early Enter handoff before React controls mount and
+adds genuine warm-window controls readiness and paired display-frame intervals
+to the existing native benchmark. Warm process relaunch is diagnostic only;
+missing warm-window or frame-interval evidence remains unavailable. First static
+paint is not interactive readiness. The benchmark target summary is advisory and
+requires complete measurements before accepting a target. Whole-flow
 acceptance, physical Take over, paired performance and the manual 20-task smoke
 remain open. No phase completion or competitor-parity claim is made.
