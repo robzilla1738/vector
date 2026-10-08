@@ -191,19 +191,19 @@ items explicit; do not shrink the objective to a finished subset.
 - N6 live/captured collections, exact capture refs, monotonic recapture identity,
   paged metadata UI and remaining model input-budget projection are integrated.
   Long-chat rendering/full-chat search and artifact selection retention are active.
-- N7 identity-bound native folder controls are area0091. Area0094 completes native
+- N7 identity-bound native folder controls are area 0091. Area 0094 completes native
   bookmark entry identities, nonweb opens and native export; it remains a worker
   slice. Runtime-independent tab-to-Space binding is a concrete follow-up.
-- N8 actual OTR session ownership is area0093, with Node in-memory storage and
-  enabled Ask/rail. Areas0091–0093 compiled and are linking under the sole builder.
+- N8 actual OTR session ownership is area 0093, with Node in-memory storage and
+  enabled Ask/rail. Areas 0091–0093 compiled and are linking under the sole builder.
   Last-private-window cleanup, no normal retention and real route observation are
   unproved. Stored direct/Gateway credentials work by design; environment/OAuth
   credentials require the original refresh/credential owner broker.
 - N10 cloud files/process supervision and host routing are integrated. Native
   preview, human Changes/Logs/Stop routing and actual paid cloud acceptance remain.
-- Latest integrated check passed typecheck/lint and4,277 tests; one OS-dependent
+- Latest integrated check passed typecheck/lint and 4,277 tests; one OS-dependent
   Stop expectation was repaired and its three affected tests passed. The private
-  slice passed440 affected tests after old scope/fixture expectations were repaired.
+  slice passed 440 affected tests after old scope/fixture expectations were repaired.
   Passing unchanged suites are not repeated. Evidence paths are in STATUS.
-- No complete paired performance report, manual20-task smoke, five workflow
+- No complete paired performance report, manual 20-task smoke, five workflow
   acceptance or final design comparison exists. No phase or parity claim is made.

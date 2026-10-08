@@ -1,6 +1,6 @@
 # Aux architecture
 
-The pinned Node runtime requires complete matching ICU data for memory tokenization with `Intl.Segmenter`. Small-ICU's trimmed break-iterator data causes the observed native crash during automatic recall. The integrated packaging correction uses the official pinned ICU78 data, checks its digest before staging, and supplies a fixed app-bundle data path before Node initializes across runtime and packaged helper entrypoints. The isolated segmentation witness, required integrated source check and actual native runtime startup pass. Live first-task acceptance remains unverified and is deferred to the next roadmap round; the configured Gateway credential was rejected.
+The pinned Node runtime requires complete matching ICU data for memory tokenization with `Intl.Segmenter`. Packaging supplies official pinned ICU78 data through a fixed app-bundle path before Node initializes. The earlier small-ICU crash is resolved. Current delivery and acceptance evidence belongs in [STATUS](STATUS.md); the competitive execution remains active.
 
 Aux is a Chromium browser with a trusted `chrome://aux/` React shell and a per-Profile Node runtime. Chromium owns windows, WebContents, tabs, navigation, browser sessions, extensions, history, bookmarks, permissions and the native glass underlay. The shell places page surfaces through SurfaceEmbed and invokes the native host through its packaged Mojo bootstrap.
 
@@ -25,7 +25,13 @@ Aux owns the agent loop; provider SDKs supply model transport rather than an emb
 
 Projects combine read-only Files/Changes with a reviewed terminal and native Preview. The runtime checks the original window and granted directory identity. Native listeners and isolated guest surfaces require real process/socket ownership and cleanup acknowledgements. Preview admission is internal to the authenticated native bridge, with a synchronous retirement fence at runtime shutdown. The native adapters are compiled and packaged in the current AuxFast app through area 0086. Remaining native walkthroughs are deferred to the next roadmap round.
 
-The legacy JSON planner, Electron migration and standalone drivers have been removed. Backup exports minimize observation artifacts to their retained evidence format; that privacy transformation is separate from database compatibility. Implementation for this roadmap round is consolidated in the current AuxFast app. [ROADMAP.md](ROADMAP.md) preserves the next-round validation targets; [STATUS.md](STATUS.md) records completed delivery and deferred acceptance.
+The legacy JSON planner, Electron migration and standalone drivers have been removed. Backup exports minimize observation artifacts to retained evidence. [ROADMAP](ROADMAP.md) and [the execution graph](ROADMAP-EXECUTION-GRAPH.md) define the active work; [STATUS](STATUS.md) distinguishes integrated source from built and observed native behavior.
+
+Native socket events replace periodic bridge polling. Chromium owns background tab discarding and native bookmark identities, so human browser controls do not require Node. Model context is a bounded projection of the complete durable transcript. Exact capture references bind selected saved articles; relevant excerpts use the remaining provider input budget after required plans, receipts and images. Automatic recall warms cooperatively and enters only ephemeral provider messages. It does not append plaintext recall into the durable transcript.
+
+Private AI belongs to the actual Chromium off-the-record Profile. Authenticated native capability proof admits its UUID, in-memory SQLite and owner-only temporary files. The native Profile owns worker retirement and temporary cleanup; its existing private tabs retain signed-in sessions and exact document authority. Normal Temporary tasks remain isolated signed-out tabs. Stored provider API keys are read narrowly from the original Profile; environment and OAuth account adoption still need a shared credential/refresh broker. This source design has not yet passed the native lifecycle walkthrough.
+
+Cloud coding captures the original VM, Session and command identities. Local and cloud file/process receipts share the encrypted ledger; remote receipts never become local PIDs or filesystem paths. Uncertain dispatch cannot replay, and background commands retain network policy until confirmed retirement. Cloud preview and human coding control integration remain active.
 
 ## Browser chrome and chat surfaces
 
