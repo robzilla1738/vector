@@ -3,6 +3,7 @@ import type { CodingFileReceipt, CodingProcessView, Subagent, CoderRecoveryInspe
 import { call } from "../../store";
 import { errorMessage } from "../../error-message";
 import { FileChanges } from "./FileChanges";
+import { CloudProcessPreview } from "./CloudProcessPreview";
 import "./CodingRunActivity.css";
 
 export function CodingRunActivity({ runId, live }: { runId: string; live: boolean }) {
@@ -185,6 +186,11 @@ function Process({ process, refresh }: { process: CodingProcessView; refresh: ()
         {process.state === "interrupted" ? "Interrupted · outcome unknown" : process.state}
         {process.exitCode !== undefined && process.exitCode !== null ? ` · exit ${process.exitCode}` : ""}
       </p>
+      {process.execution?.backend === "cloud" && (
+        <p className="coding-cloud-identity">
+          Cloud · {process.execution.sandboxName} · <code>{process.execution.resourceId}</code>
+        </p>
+      )}
       <button type="button" onClick={() => void loadLogs()}>
         Read new output
       </button>
@@ -198,6 +204,7 @@ function Process({ process, refresh }: { process: CodingProcessView; refresh: ()
       )}
       {error && <p role="alert">{error}</p>}
       {logs && <pre className="coding-process-log">{logs}</pre>}
+      {process.execution?.backend === "cloud" && <CloudProcessPreview process={process} />}
     </section>
   );
 }
