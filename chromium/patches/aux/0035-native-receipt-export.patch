@@ -1,0 +1,694 @@
+diff --git a/chrome/browser/ui/aux/methods/health_methods.cc b/chrome/browser/ui/aux/methods/health_methods.cc
+index 74e1e1d..51c5df1 100644
+--- a/chrome/browser/ui/aux/methods/health_methods.cc
++++ b/chrome/browser/ui/aux/methods/health_methods.cc
+@@ -64,7 +64,7 @@ void WebUIBrowserUI::HandleAuxHealthRequest(
+       return;
+     }
+     BeginAuxGeneratedSave("Aux-support-report.json", *content + "\n",
+-                          base::FilePath(), 0, std::move(callback));
++                          {}, 0, std::move(callback));
+     return;
+   }
+   std::move(callback).Run(false, "", "not_found", "Unknown health method");
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+index 9f455a3..42f1d44 100644
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -1019,70 +1019,85 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+                               "Invalid document export request");
+       return;
+     }
+-    runtime->CallInternal(
+-        workbook ? "workbook.renderExport" : "artifact.exportDescriptor",
+-        *json,
+-        base::BindOnce(
+-            [](base::WeakPtr<WebUIBrowserUI> self, bool workbook,
+-               std::string filename, RequestCallback callback,
+-               AuxRuntimeHost::Response response) {
+-              if (!self) return;
+-              if (!self->IsAuthorizedAuxDocument()) {
+-                std::move(callback).Run(false, "", "forbidden",
+-                                        "Aux shell is no longer active");
+-                return;
+-              }
+-              if (!response.ok) {
+-                std::move(callback).Run(false, "", response.error_code,
+-                                        response.error_message);
+-                return;
+-              }
+-              auto value = base::JSONReader::Read(response.result_json,
+-                                                  base::JSON_PARSE_RFC);
+-              if (!value || !value->is_dict()) {
+-                std::move(callback).Run(false, "", "internal",
+-                                        "Invalid runtime export descriptor");
+-                return;
+-              }
+-              const auto& data = value->GetDict();
+-              const auto size = data.FindInt("size");
+-              if (!size || *size < 0) {
+-                std::move(callback).Run(false, "", "internal",
+-                                        "Invalid export size");
+-                return;
+-              }
+-              if (workbook) {
+-                const auto* name = data.FindString("filename");
+-                const auto* encoded = data.FindString("dataBase64");
+-                std::string bytes;
+-                if (!name || (*name != "workbook.xlsx" &&
+-                              *name != "results.xlsx") ||
+-                    !encoded || encoded->size() > 14 * 1024 * 1024 ||
+-                    !base::Base64Decode(*encoded, &bytes) ||
+-                    bytes.size() != static_cast<size_t>(*size) ||
+-                    bytes.size() > 10 * 1024 * 1024) {
+-                  std::move(callback).Run(false, "", "internal",
+-                                          "Invalid workbook export");
+-                  return;
+-                }
+-                self->BeginAuxGeneratedSave(*name, std::move(bytes),
+-                                            base::FilePath(), 0,
+-                                            std::move(callback));
+-              } else {
+-                const auto* path = data.FindString("path");
+-                if (!path || path->empty()) {
+-                  std::move(callback).Run(false, "", "internal",
+-                                          "Invalid artifact path");
+-                  return;
+-                }
+-                self->BeginAuxGeneratedSave(
+-                    std::move(filename), std::string(),
+-                    base::FilePath::FromUTF8Unsafe(*path), *size,
+-                    std::move(callback));
+-              }
+-            },
+-            weak_factory_.GetWeakPtr(), workbook, std::move(filename),
+-            std::move(callback)));
++    const auto document = web_ui()->GetRenderFrameHost()->GetWeakDocumentPtr();
++    auto current = base::BindRepeating(
++        [](base::WeakPtr<WebUIBrowserUI> self,
++           base::WeakPtr<BrowserWindowInterface> window,
++           content::WeakDocumentPtr document) {
++          return self && window && self->browser_ == window.get() &&
++                 document.AsRenderFrameHostIfValid() ==
++                     self->web_ui()->GetRenderFrameHost() &&
++                 self->IsAuthorizedAuxDocument();
++        }, weak_factory_.GetWeakPtr(), browser_->GetWeakPtr(), document);
++    auto completed = base::BindOnce(
++        [](base::WeakPtr<WebUIBrowserUI> self,
++           base::RepeatingCallback<bool()> current, bool workbook,
++           std::string filename, RequestCallback callback,
++           AuxRuntimeHost::Response response, base::FilePath root,
++           base::ScopedClosureRunner release) {
++          if (!current.Run()) {
++            std::move(callback).Run(false, "", "ref_stale",
++                                    "Original export window is unavailable");
++            return;
++          }
++          if (!response.ok) {
++            std::move(callback).Run(false, "", response.error_code,
++                                    response.error_message);
++            return;
++          }
++          auto data = base::JSONReader::ReadDict(response.result_json,
++                                                base::JSON_PARSE_RFC);
++          const auto size = data ? data->FindDouble("size") : std::nullopt;
++          if (!size || !std::isfinite(*size) || *size < 0 ||
++              *size > 9007199254740991.0 || std::trunc(*size) != *size) {
++            std::move(callback).Run(false, "", "internal", "Invalid export size");
++            return;
++          }
++          if (workbook) {
++            const auto* name = data->FindString("filename");
++            const auto* encoded = data->FindString("dataBase64");
++            std::string bytes;
++            if (!name || (*name != "workbook.xlsx" && *name != "results.xlsx") ||
++                !encoded || encoded->size() > 14 * 1024 * 1024 ||
++                !base::Base64Decode(*encoded, &bytes) ||
++                bytes.size() != static_cast<size_t>(*size) ||
++                bytes.size() > 10 * 1024 * 1024) {
++              std::move(callback).Run(false, "", "internal",
++                                      "Invalid workbook export");
++              return;
++            }
++            self->BeginAuxGeneratedSave(*name, std::move(bytes), {}, 0,
++                                        std::move(callback));
++            return;
++          }
++          const auto* path = data->FindString("path");
++          const auto* digest = data->FindString("sha256");
++          if (!path || path->empty() || root.empty() ||
++              (data->contains("claimId") && !digest) ||
++              (digest && (digest->size() != 64 ||
++                  digest->find_first_not_of("0123456789abcdef") !=
++                      std::string::npos))) {
++            std::move(callback).Run(false, "", "internal",
++                                    "Invalid artifact descriptor");
++            return;
++          }
++          self->BeginAuxArtifactSave(
++              std::move(filename), std::move(root),
++              base::FilePath::FromUTF8Unsafe(*path), static_cast<int64_t>(*size),
++              digest ? *digest : std::string(), std::move(release),
++              std::move(current), std::move(callback));
++        }, weak_factory_.GetWeakPtr(), std::move(current), workbook,
++        std::move(filename), std::move(callback));
++    if (workbook) {
++      runtime->CallInternal("workbook.renderExport", *json, base::BindOnce(
++          [](decltype(completed) completed, AuxRuntimeHost::Response response) {
++            std::move(completed).Run(std::move(response), {}, {});
++          }, std::move(completed)));
++    } else {
++      runtime->ExportArtifactFromWindow(browser_->GetWeakPtr(), document,
++                                        (*list)[0].GetString(),
++                                        std::move(completed));
++    }
+     return;
+   }
+   if (method == "agentConfig" || method == "agentConnections" ||
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index 6dcddc0..763a487 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -373,26 +373,112 @@ bool AuxRuntimeHost::RemoteDebuggingOwnerCurrent(const std::string& token,
+   return found != turn_contexts_.end() && found->second.generation == connection &&
+       TurnContextCurrent(found->second);
+ }
+-void AuxRuntimeHost::CallApiFromWindow(base::WeakPtr<BrowserWindowInterface> window,
+-    content::WeakDocumentPtr document, std::string method,
+-    std::string params_json, ResponseCallback callback) {
+-  // One opaque capability per live original document, never a renderer window ID.
+-  std::erase_if(turn_contexts_, [this](const auto& entry) { return !TurnContextCurrent(entry.second); });
+-  TurnContextOwner original{std::move(window), std::move(document), admitted_native_generation_};
++base::expected<std::string, AuxRuntimeHost::Response>
++AuxRuntimeHost::RegisterTurnContext(
++    base::WeakPtr<BrowserWindowInterface> window,
++    content::WeakDocumentPtr document) {
++  // Prepare and claim share one opaque capability per original live document.
++  std::erase_if(turn_contexts_, [this](const auto& entry) {
++    return !TurnContextCurrent(entry.second);
++  });
++  TurnContextOwner original{std::move(window), std::move(document),
++                            admitted_native_generation_};
+   if (!TurnContextCurrent(original)) {
+-    std::move(callback).Run({false, "", "ref_stale", "Original turn window is unavailable"}); return;
++    return base::unexpected(Response{false, "", "ref_stale",
++                                     "Original turn window is unavailable"});
+   }
+-  std::string key;
+-  for (const auto& [token, owner] : turn_contexts_)
++  for (const auto& [token, owner] : turn_contexts_) {
+     if (owner.window.get() == original.window.get() &&
+-        owner.document.AsRenderFrameHostIfValid() == original.document.AsRenderFrameHostIfValid()) { key = token; break; }
+-  if (key.empty()) {
+-    if (turn_contexts_.size() >= 64) { std::move(callback).Run({false, "", "backend_unavailable", "Too many original turn windows"}); return; }
+-    key = base::Uuid::GenerateRandomV4().AsLowercaseString();
+-    turn_contexts_.emplace(key, std::move(original));
++        owner.document.AsRenderFrameHostIfValid() ==
++            original.document.AsRenderFrameHostIfValid()) {
++      return token;
++    }
++  }
++  if (turn_contexts_.size() >= 64) {
++    return base::unexpected(Response{false, "", "backend_unavailable",
++                                     "Too many original turn windows"});
+   }
+-  CallApi(std::move(method), std::move(params_json), std::move(callback), std::move(key));
++  auto token = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  turn_contexts_.emplace(token, std::move(original));
++  return token;
+ }
++
++void AuxRuntimeHost::CallApiFromWindow(
++    base::WeakPtr<BrowserWindowInterface> window,
++    content::WeakDocumentPtr document, std::string method,
++    std::string params_json, ResponseCallback callback) {
++  auto token = RegisterTurnContext(std::move(window), std::move(document));
++  if (!token.has_value()) {
++    std::move(callback).Run(std::move(token.error()));
++    return;
++  }
++  CallApi(std::move(method), std::move(params_json), std::move(callback),
++          std::move(*token));
++}
++
++void AuxRuntimeHost::ExportArtifactFromWindow(
++    base::WeakPtr<BrowserWindowInterface> window,
++    content::WeakDocumentPtr document, std::string artifact_id,
++    base::OnceCallback<void(Response, base::FilePath,
++                            base::ScopedClosureRunner)> callback) {
++  auto token = RegisterTurnContext(std::move(window), std::move(document));
++  if (!token.has_value()) {
++    std::move(callback).Run(std::move(token.error()), {}, {});
++    return;
++  }
++  const auto generation = admitted_native_generation_;
++  base::FilePath root = profile_->IsOffTheRecord()
++      ? (private_runtime_directory_ ? private_runtime_directory_->GetPath()
++                                    : base::FilePath())
++      : profile_->GetPath();
++  if (root.empty()) {
++    std::move(callback).Run(
++        {false, "", "ref_stale", "Original artifact storage is unavailable"},
++        {}, {});
++    return;
++  }
++  root = root.Append("Aux Runtime Data").Append("artifacts");
++  const auto claim = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  base::DictValue request;
++  request.Set("artifactId", std::move(artifact_id));
++  request.Set("token", *token);
++  request.Set("claimId", claim);
++  const auto json = *base::WriteJson(request);
++  base::ScopedClosureRunner release(base::BindOnce(
++      [](base::WeakPtr<AuxRuntimeHost> host, uint64_t generation,
++         std::string request) {
++        // A retired document may release its own claim, but never a new worker's.
++        if (host && host->DeviceConfirmationConnectionCurrent(generation)) {
++          host->CallInternal("artifact.exportRelease", std::move(request),
++                             base::DoNothing());
++        }
++      }, weak_factory_.GetWeakPtr(), generation, json));
++  CallInternal("artifact.exportDescriptor", json, base::BindOnce(
++      [](base::WeakPtr<AuxRuntimeHost> host, std::string token,
++         uint64_t generation, std::string claim, base::FilePath root,
++         base::ScopedClosureRunner release,
++         base::OnceCallback<void(Response, base::FilePath,
++                                 base::ScopedClosureRunner)> callback,
++         Response response) {
++        if (!host || !host->RemoteDebuggingOwnerCurrent(token, generation)) {
++          response = {false, "", "ref_stale",
++                      "Original export window is unavailable"};
++        }
++        if (response.ok) {
++          auto data = base::JSONReader::ReadDict(response.result_json,
++                                                base::JSON_PARSE_RFC);
++          const auto* returned_claim = data ? data->FindString("claimId") : nullptr;
++          if (data && data->contains("claimId") &&
++              (!returned_claim || *returned_claim != claim)) {
++            response = {false, "", "ref_stale", "Original export claim changed"};
++          }
++        }
++        std::move(callback).Run(std::move(response), std::move(root),
++                                std::move(release));
++      }, weak_factory_.GetWeakPtr(), *token, generation, claim, std::move(root),
++      std::move(release), std::move(callback)));
++}
++
+ void AuxRuntimeHost::CallApi(std::string method,
+                              std::string params_json,
+                              ResponseCallback callback, std::string turn_context) {
+@@ -3357,7 +3443,8 @@ void AuxRuntimeHost::Worker::CallRequest(
+        method == "installation.stageRestore");
+   const bool document_import =
+       desktop_api && (method == "conversations.attachments.import" ||
+-                      method == "tasks.importDocumentEvidence");
++                      method == "tasks.importDocumentEvidence" ||
++                      method == "tasks.exportReceipt");
+   if (pending_requests_.size() >= 256) {
+     std::move(callback).Run({false, "", "backend_unavailable", "Too many pending runtime requests"});
+     return;
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 4636a1e..db88220 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -30,6 +30,7 @@
+ #include "base/threading/sequence_bound.h"
+ #include "base/threading/thread.h"
+ #include "base/time/time.h"
++#include "base/types/expected.h"
+ #include "base/timer/timer.h"
+ #include "base/unguessable_token.h"
+ #include "base/values.h"
+@@ -110,6 +111,12 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+   void CallApiFromWindow(base::WeakPtr<BrowserWindowInterface> window,
+       content::WeakDocumentPtr document, std::string method,
+       std::string params_json, ResponseCallback callback);
++  void ExportArtifactFromWindow(
++      base::WeakPtr<BrowserWindowInterface> window,
++      content::WeakDocumentPtr document,
++      std::string artifact_id,
++      base::OnceCallback<void(Response, base::FilePath,
++                              base::ScopedClosureRunner)> callback);
+   // Authenticated host-only RPC, never exposed to WebUI or agents.
+   void CallInternal(std::string method,
+                     std::string params_json,
+@@ -398,6 +405,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+   void RetireEvidenceReads(uint64_t generation);
+   std::map<std::string, TurnContextOwner> turn_contexts_;
+   bool TurnContextCurrent(const TurnContextOwner& owner) const;
++  base::expected<std::string, Response> RegisterTurnContext(
++      base::WeakPtr<BrowserWindowInterface> window,
++      content::WeakDocumentPtr document);
+   bool RemoteDebuggingOwnerCurrent(const std::string& token, uint64_t connection) const;
+   std::string native_person_connection_id_;
+   bool shutting_down_ = false;
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index a05620c..9e54e41 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -7,15 +7,19 @@
+ #include "ui/views/controls/menu/menu_model_adapter.h"
+ #include "ui/views/controls/menu/menu_runner.h"
+ 
++#include <algorithm>
++#include <array>
+ #include <cmath>
+ #include <utility>
+ #include <variant>
+ 
++#include "base/containers/span.h"
+ #include "base/files/file_util.h"
+ #include "base/base64.h"
+ #include "base/functional/bind.h"
+ #include "base/memory/ref_counted_memory.h"
+ #include "base/task/thread_pool.h"
++#include "base/task/sequenced_task_runner.h"
+ #include "base/timer/timer.h"
+ #include "chrome/browser/shell_integration.h"
+ #include "printing/buildflags/buildflags.h"
+@@ -31,6 +35,7 @@
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "crypto/hash.h"
+ #include "chrome/browser/devtools/devtools_window.h"
+ #include "chrome/browser/download/download_prefs.h"
+ #include "chrome/browser/ui/aux/evidence_documents.h"
+@@ -152,25 +157,65 @@ bool WriteAuxText(const base::FilePath& destination, std::string content) {
+   return false;
+ }
+ 
+-bool CopyAuxArtifact(const base::FilePath& root,
+-                     const base::FilePath& source,
+-                     int64_t expected_size,
+-                     const base::FilePath& destination) {
+-  const base::FilePath real_root = base::MakeAbsoluteFilePath(root);
+-  const base::FilePath real_source = base::MakeAbsoluteFilePath(source);
+-  const auto size = base::GetFileSize(real_source);
++std::shared_ptr<base::File> OpenAuxArtifact(const base::FilePath& root,
++                                          const base::FilePath& source,
++                                          int64_t expected_size) {
++  const auto real_root = base::MakeAbsoluteFilePath(root);
++  const auto real_source = base::MakeAbsoluteFilePath(source);
+   if (real_root.empty() || real_source.empty() ||
+-      !real_root.IsParent(real_source) ||
+-      !size || *size != expected_size)
++      !real_root.IsParent(real_source)) {
++    return {};
++  }
++  // The dialog retains this descriptor across unlink; even cancellation closes
++  // it on a blocking sequence rather than the UI sequence.
++  auto file = std::shared_ptr<base::File>(
++      new base::File(real_source, base::File::FLAG_OPEN | base::File::FLAG_READ |
++                                      base::File::FLAG_NO_FOLLOW),
++      base::OnTaskRunnerDeleter(base::ThreadPool::CreateSequencedTaskRunner(
++          {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN})));
++  base::File::Info info;
++  if (!file->IsValid() || !file->GetInfo(&info) || info.is_directory ||
++      info.size != expected_size) {
++    return {};
++  }
++  return file;
++}
++
++bool CopyAuxArtifact(std::shared_ptr<base::File> source, int64_t expected_size,
++                     const std::string& expected_sha256,
++                     const base::FilePath& destination) {
++  if (!source || !source->IsValid() || source->GetLength() != expected_size)
+     return false;
+   base::FilePath temporary;
+   if (!base::CreateTemporaryFileInDir(destination.DirName(), &temporary))
+     return false;
+-  std::optional<int64_t> copied_size;
+-  if (base::CopyFile(real_source, temporary) &&
+-      (copied_size = base::GetFileSize(temporary)) &&
+-      *copied_size == expected_size &&
+-      base::ReplaceFile(temporary, destination, nullptr))
++  bool copied = false;
++  {
++    base::File output(temporary, base::File::FLAG_OPEN | base::File::FLAG_WRITE);
++    crypto::hash::Hasher hash(crypto::hash::kSha256);
++    std::array<uint8_t, 64 * 1024> buffer;
++    int64_t remaining = expected_size;
++    while (output.IsValid() && remaining > 0) {
++      auto bytes = source->ReadAtCurrentPos(base::span(buffer).first(
++          static_cast<size_t>(std::min<int64_t>(remaining, buffer.size()))));
++      if (!bytes || !*bytes)
++        break;
++      const auto chunk = base::span(buffer).first(*bytes);
++      auto written = output.WriteAtCurrentPos(chunk);
++      if (!written || *written != *bytes)
++        break;
++      hash.Update(chunk);
++      remaining -= *bytes;
++    }
++    std::array<uint8_t, crypto::hash::kSha256Size> digest;
++    hash.Finish(digest);
++    copied = output.IsValid() && remaining == 0 &&
++             source->GetLength() == expected_size &&
++             output.GetLength() == expected_size &&
++             (expected_sha256.empty() ||
++              base::HexEncodeLower(digest) == expected_sha256);
++  }
++  if (copied && base::ReplaceFile(temporary, destination, nullptr))
+     return true;
+   base::DeleteFile(temporary);
+   return false;
+@@ -411,6 +456,7 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
+ 
+ WebUIBrowserUI::~WebUIBrowserUI() {
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++  RetireAuxArtifactSave();
+   if (open_file_dialog_)
+     open_file_dialog_->ListenerDestroyed();
+ #endif
+@@ -447,9 +493,12 @@ bool WebUIBrowserUI::DispatchAuxShortcut(const std::string& command_id, bool foc
+ 
+ void WebUIBrowserUI::BeginAuxGeneratedSave(std::string filename,
+                                            std::string content,
+-                                           base::FilePath source,
++                                           std::shared_ptr<base::File> source,
+                                            int64_t source_size,
+-                                           RequestCallback callback) {
++                                           RequestCallback callback,
++                                           base::ScopedClosureRunner release,
++                                           base::RepeatingCallback<bool()> current,
++                                           std::string source_sha256) {
+   if (open_file_dialog_) {
+     std::move(callback).Run(false, "", "conflict", "A file dialog is already open");
+     return;
+@@ -467,6 +516,9 @@ void WebUIBrowserUI::BeginAuxGeneratedSave(std::string filename,
+   save_file_content_ = std::move(content);
+   save_file_source_ = std::move(source);
+   save_file_source_size_ = source_size;
++  save_file_source_sha256_ = std::move(source_sha256);
++  save_file_release_ = std::move(release);
++  save_file_current_ = std::move(current);
+   open_file_dialog_->SelectFile(
+       ui::SelectFileDialog::SELECT_SAVEAS_FILE, std::u16string(),
+       browser_->GetProfile()->last_selected_directory().Append(
+@@ -475,6 +527,59 @@ void WebUIBrowserUI::BeginAuxGeneratedSave(std::string filename,
+       browser_->GetWindow()->GetNativeWindow());
+ }
+ 
++void WebUIBrowserUI::BeginAuxArtifactSave(
++    std::string filename, base::FilePath root, base::FilePath source,
++    int64_t source_size, std::string source_sha256,
++    base::ScopedClosureRunner release, base::RepeatingCallback<bool()> current,
++    RequestCallback callback) {
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce(&OpenAuxArtifact, std::move(root), std::move(source),
++                     source_size),
++      base::BindOnce(
++          [](base::WeakPtr<WebUIBrowserUI> self, std::string filename,
++             int64_t size, std::string sha256, base::ScopedClosureRunner release,
++             base::RepeatingCallback<bool()> current, RequestCallback callback,
++             std::shared_ptr<base::File> source) {
++            if (!self || !current.Run()) {
++              std::move(callback).Run(false, "", "ref_stale",
++                                      "Original export window is unavailable");
++              return;
++            }
++            if (!source) {
++              std::move(callback).Run(false, "", "io_error",
++                                      "The original export file is unavailable");
++              return;
++            }
++            self->BeginAuxGeneratedSave(
++                std::move(filename), {}, std::move(source), size,
++                std::move(callback), std::move(release), std::move(current),
++                std::move(sha256));
++          }, weak_factory_.GetWeakPtr(), std::move(filename), source_size,
++          std::move(source_sha256), std::move(release), std::move(current),
++          std::move(callback)));
++}
++
++void WebUIBrowserUI::RetireAuxArtifactSave() {
++  if (!save_file_release_)
++    return;
++  auto release = std::move(save_file_release_);
++  auto callback = std::move(file_dialog_callback_);
++  auto dialog = std::move(open_file_dialog_);
++  file_dialog_purpose_ = FileDialogPurpose::kNone;
++  save_file_source_.reset();
++  save_file_source_size_ = 0;
++  save_file_source_sha256_.clear();
++  save_file_current_.Reset();
++  if (dialog)
++    dialog->ListenerDestroyed();
++  release.RunAndReset();
++  if (callback) {
++    std::move(callback).Run(false, "", "ref_stale",
++                            "Original export window is unavailable");
++  }
++}
++
+ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+                                   int index) {
+   if (file_dialog_purpose_ == FileDialogPurpose::kEvidenceDocuments) {
+@@ -487,8 +592,16 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+       std::exchange(file_dialog_purpose_, FileDialogPurpose::kNone);
+   std::string save_content = std::move(save_file_content_);
+   std::string transfer_passphrase = std::move(password_transfer_passphrase_);
+-  base::FilePath save_source = std::move(save_file_source_);
+-  int64_t save_source_size = std::exchange(save_file_source_size_, 0);
++  auto save_source = std::move(save_file_source_);
++  const int64_t save_source_size = std::exchange(save_file_source_size_, 0);
++  auto save_sha256 = std::exchange(save_file_source_sha256_, {});
++  auto save_release = std::move(save_file_release_);
++  auto save_current = std::move(save_file_current_);
++  if (save_current && !save_current.Run()) {
++    std::move(callback).Run(false, "", "ref_stale",
++                            "Original export window is unavailable");
++    return;
++  }
+   std::string save_pdf_page_id = std::exchange(save_pdf_page_id_, {});
+   auto save_pdf_document =
+       std::exchange(save_pdf_document_, content::WeakDocumentPtr());
+@@ -587,18 +700,17 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+     return;
+   }
+   if (purpose == FileDialogPurpose::kSaveFile) {
+-    const base::FilePath artifact_root = browser_->GetProfile()->GetPath()
+-        .Append("Aux Runtime Data").Append("artifacts");
+     base::ThreadPool::PostTaskAndReplyWithResult(
+-        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+-        save_source.empty()
+-            ? base::BindOnce(&WriteAuxText, selected_path,
+-                             std::move(save_content))
+-            : base::BindOnce(&CopyAuxArtifact, artifact_root,
+-                             std::move(save_source), save_source_size,
+-                             selected_path),
++        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
++                    base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
++        save_source
++            ? base::BindOnce(&CopyAuxArtifact, std::move(save_source),
++                             save_source_size, std::move(save_sha256), selected_path)
++            : base::BindOnce(&WriteAuxText, selected_path, std::move(save_content)),
+         base::BindOnce(
+-            [](RequestCallback callback, base::FilePath destination, bool saved) {
++            [](RequestCallback callback, base::FilePath destination,
++               base::ScopedClosureRunner release, bool saved) {
++              release.RunAndReset();
+               if (!saved) {
+                 std::move(callback).Run(false, "", "io_error", "The file could not be saved");
+                 return;
+@@ -608,7 +720,7 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+                                       json ? "" : "io_error",
+                                       json ? "" : "The file path could not be returned");
+             },
+-            std::move(callback), selected_path));
++            std::move(callback), selected_path, std::move(save_release)));
+     return;
+   }
+   if (purpose == FileDialogPurpose::kEvidenceImage) {
+@@ -864,8 +976,12 @@ void WebUIBrowserUI::FileSelectionCanceled() {
+   file_dialog_purpose_ = FileDialogPurpose::kNone;
+   save_file_content_.clear();
+   password_transfer_passphrase_.clear();
+-  save_file_source_.clear();
++  save_file_source_.reset();
+   save_file_source_size_ = 0;
++  save_file_source_sha256_.clear();
++  save_file_current_.Reset();
++  auto release = std::move(save_file_release_);
++  release.RunAndReset();
+   save_pdf_page_id_.clear();
+   save_pdf_document_ = {};
+   if (purpose == FileDialogPurpose::kEvidenceDocuments) {
+@@ -887,6 +1003,7 @@ void WebUIBrowserUI::FileSelectionCanceled() {
+ void WebUIBrowserUI::CreateShellHost(
+     mojo::PendingReceiver<aux::mojom::ShellHost> host,
+     mojo::PendingRemote<aux::mojom::ShellHostClient> client) {
++  RetireAuxArtifactSave();
+   if (dictation_) {
+     dictation_->CancelAll();
+   }
+@@ -907,6 +1024,7 @@ void WebUIBrowserUI::CreateShellHost(
+             ui->dictation_->CancelAll();
+           }
+           if (ui) {
++            ui->RetireAuxArtifactSave();
+             ui->shell_host_receiver_.reset();
+             ui->shell_host_client_.reset();
+           }
+@@ -1219,7 +1337,8 @@ void WebUIBrowserUI::Request(const std::string& method,
+           std::move(callback));
+   const auto& api_method = (*list)[0].GetString();
+   if (api_method == "conversations.attachments.import" ||
+-      api_method == "tasks.importDocumentEvidence") {
++      api_method == "tasks.importDocumentEvidence" ||
++      api_method == "tasks.exportReceipt") {
+     host->CallApiFromWindow(
+         browser_->GetWeakPtr(),
+         web_ui()->GetRenderFrameHost()->GetWeakDocumentPtr(), api_method,
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index bd863c7..e7566b1 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -15,6 +15,8 @@
+ 
+ #include "base/callback_list.h"
+ #include "base/files/file_path.h"
++#include "base/files/file.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/memory/weak_ptr.h"
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+@@ -250,9 +252,21 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+   bool EvidenceDocumentsCurrent(const std::string& selection_id) const;
+   void BeginAuxGeneratedSave(std::string filename,
+                              std::string content,
+-                             base::FilePath source,
++                             std::shared_ptr<base::File> source,
+                              int64_t source_size,
+-                             RequestCallback callback);
++                             RequestCallback callback,
++                             base::ScopedClosureRunner release = {},
++                             base::RepeatingCallback<bool()> current = {},
++                             std::string source_sha256 = {});
++  void BeginAuxArtifactSave(std::string filename,
++                            base::FilePath root,
++                            base::FilePath source,
++                            int64_t source_size,
++                            std::string source_sha256,
++                            base::ScopedClosureRunner release,
++                            base::RepeatingCallback<bool()> current,
++                            RequestCallback callback);
++  void RetireAuxArtifactSave();
+   bool IsAuthorizedAuxDocument() const;
+ #endif
+ 
+@@ -342,7 +356,10 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+       password_export_authenticator_;
+   bool password_export_auth_pending_ = false;
+   std::string save_file_content_;
+-  base::FilePath save_file_source_;
++  std::shared_ptr<base::File> save_file_source_;
++  std::string save_file_source_sha256_;
++  base::ScopedClosureRunner save_file_release_;
++  base::RepeatingCallback<bool()> save_file_current_;
+   int64_t save_file_source_size_ = 0;
+   std::string save_pdf_page_id_;
+   content::WeakDocumentPtr save_pdf_document_;
