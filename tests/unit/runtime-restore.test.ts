@@ -1,5 +1,4 @@
 import { ConversationDocuments } from "../../apps/runtime/src/services/conversation-documents.js";
-import { documentBodyKey } from "@aux/contracts/document-storage";
 import { afterEach, expect, it } from "vitest";
 import { createHash, randomBytes } from "node:crypto";
 import {
@@ -169,6 +168,7 @@ it("sanitizes protected article recall and authenticates the same Profile before
   expect(backupBytes.includes("private source paragraph")).toBe(false);
   expect(backupBytes.includes("retained.txt")).toBe(true);
   expect(backupBytes.includes("Protected body tail")).toBe(false);
+  expect(backupBytes.includes("Opening text")).toBe(false);
   expect(backupBytes.includes("private evidence")).toBe(true);
   repo.close();
   await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(/original Profile key/);
@@ -186,6 +186,7 @@ it("sanitizes protected article recall and authenticates the same Profile before
       )
       .get(),
   ).toMatchObject({ revoked: 1 });
+  expect(new ConversationDocuments(restored).list("chat").attachments[0]!.excerpt).toContain("Opening text");
   expect(new ConversationDocuments(restored).readReference(reference).content).toContain(
     "Protected body tail",
   );
@@ -197,8 +198,8 @@ it("sanitizes protected article recall and authenticates the same Profile before
   const backupDbPath = join(backup.path, "state.sqlite");
   const tampered = new DatabaseSync(backupDbPath);
   tampered
-    .prepare("UPDATE kv SET value=? WHERE key=?")
-    .run(JSON.stringify("auxenc:v3:tampered"), `setting:${documentBodyKey("chat", reference.attachmentId)}`);
+    .prepare("UPDATE kv SET value=json_set(value,'$[0].excerptCiphertext',?) WHERE key=?")
+    .run("auxenc:v3:tampered", "setting:conversationAttachments:chat");
   tampered.close();
   const manifestPath = join(backup.path, "manifest.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {

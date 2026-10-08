@@ -1,4 +1,8 @@
-import { DOCUMENT_BODY_PREFIX } from "@aux/contracts/document-storage";
+import {
+  DOCUMENT_BODY_PREFIX,
+  DOCUMENT_COLLECTION_PREFIX,
+  documentExcerptIdentity,
+} from "@aux/contracts/document-storage";
 import {
   currentSpaceMemory,
   omitDerivedAndSpaceMemory,
@@ -176,6 +180,24 @@ function authenticateProtectedCopy(db: DatabaseSync, cipher?: FieldCodec) {
     const value: unknown = JSON.parse(body.value);
     if (typeof value !== "string") throw new Error("The backup contains an invalid document body.");
     cipher.decrypt("kv", JSON.stringify([body.key]), "value", value);
+  }
+  const collectionPrefix = `setting:${DOCUMENT_COLLECTION_PREFIX}`;
+  const collections = db
+    .prepare("SELECT key,value FROM kv WHERE substr(key,1,length(?))=?")
+    .all(collectionPrefix, collectionPrefix) as { key: string; value: string }[];
+  for (const collection of collections) {
+    const records: unknown = JSON.parse(collection.value);
+    if (!Array.isArray(records)) throw new Error("The backup contains an invalid document collection.");
+    for (const record of records) {
+      if (!record || typeof record !== "object" || !("excerptCiphertext" in record)) continue;
+      if (typeof record.attachmentId !== "string" || typeof record.excerptCiphertext !== "string")
+        throw new Error("The backup contains an invalid protected document preview.");
+      const identity = documentExcerptIdentity(
+        collection.key.slice(collectionPrefix.length),
+        record.attachmentId,
+      );
+      cipher.decrypt("kv", JSON.stringify(identity), "excerpt", record.excerptCiphertext);
+    }
   }
 }
 

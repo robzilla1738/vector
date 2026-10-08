@@ -22,6 +22,12 @@ it("converts every old inline record once and lists/toggles without decrypting p
     repo.setSetting("conversationAttachments:chat", originals);
     const collection = documents.list("chat");
     expect(collection.attachments).toHaveLength(30);
+    expect(collection.attachments[0]!.excerpt).toBe(
+      originals[0]!.content.replace(/\s+/g, " ").slice(0, 1000),
+    );
+    const stored = JSON.stringify(repo.db.prepare("SELECT value FROM kv").all());
+    expect(stored).not.toContain("Opening text");
+    expect(stored).not.toContain("Confidential tail");
     expect(
       repo.getSetting<object[]>("conversationAttachments:chat")?.every((record) => !("content" in record)),
     ).toBe(true);
@@ -29,13 +35,28 @@ it("converts every old inline record once and lists/toggles without decrypting p
     const references = documents.references("chat");
     documents.update("chat", references[0]!.attachmentId, { included: false });
     expect(documents.list("chat").attachments).toHaveLength(30);
-    expect(read).not.toHaveBeenCalled();
+    expect(read.mock.calls).toHaveLength(30);
+    expect(read.mock.calls.every((args) => args[2] === "excerpt")).toBe(true);
     expect(documents.readReference(references[29]!).content).toBe(originals[29]!.content);
-    expect(read).toHaveBeenCalledTimes(1);
+    expect(read.mock.calls.filter((args) => args[2] === "value")).toHaveLength(1);
     const body = repo.getSetting<string>(documentBodyKey("chat", "doc-29"))!;
     expect(body).not.toContain("Confidential tail");
     repo.setSetting(documentBodyKey("chat", "doc-28"), body);
     expect(() => documents.readReference(references[28]!)).toThrow();
+    // The former metadata shape is converted once, preserving its exact preview and immutable body.
+    documents.add({ chatId: "metadata", filename: "protected.txt", content: "Original preview text" });
+    const original = documents.list("metadata").attachments[0]!;
+    const savedRecord = repo.getSetting<Record<string, unknown>[]>("conversationAttachments:metadata")![0]!;
+    const { excerptCiphertext, ...metadata } = savedRecord;
+    const bodyBefore = repo.getSetting(documentBodyKey("metadata", original.attachmentId));
+    repo.setSetting("conversationAttachments:metadata", [{ ...metadata, excerpt: original.excerpt }]);
+    expect(documents.list("metadata").attachments[0]!.excerpt).toBe(original.excerpt);
+    expect(repo.getSetting(documentBodyKey("metadata", original.attachmentId))).toBe(bodyBefore);
+    const converted = repo.getSetting<Record<string, unknown>[]>("conversationAttachments:metadata")![0]!;
+    expect(converted).not.toHaveProperty("excerpt");
+    expect(JSON.stringify(converted)).not.toContain("Original preview text");
+    repo.setSetting("conversationAttachments:metadata", [{ ...converted, attachmentId: "foreign" }]);
+    expect(() => documents.list("metadata")).toThrow();
     // An invalid collection is preserved, never silently filtered during conversion.
     const invalid = [...originals, { attachmentId: "broken" }];
     repo.setSetting("conversationAttachments:invalid", invalid);

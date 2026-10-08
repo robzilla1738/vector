@@ -7,16 +7,20 @@ import {
   newStepId,
   type AttachmentReference,
 } from "@aux/contracts";
-import { documentBodyKey as bodyKey } from "@aux/contracts/document-storage";
+import {
+  documentBodyKey as bodyKey,
+  documentCollectionKey as collectionKey,
+  documentExcerptIdentity,
+} from "@aux/contracts/document-storage";
 import { withSecureDelete } from "../store/db.js";
 import type { Repo } from "../store/repo.js";
 
-const collectionKey = (chatId: string) => `conversationAttachments:${chatId}`;
 const hash = (content: string) => createHash("sha256").update(content).digest("hex");
-const RecordSchema = ConversationAttachmentSchema.extend({
+const PlainRecordSchema = ConversationAttachmentSchema.extend({
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
   removed: z.boolean().optional(),
 });
+const RecordSchema = PlainRecordSchema.omit({ excerpt: true }).extend({ excerptCiphertext: z.string() });
 type DocumentRecord = z.infer<typeof RecordSchema>;
 const InlineSchema = ConversationAttachmentSchema.omit({ excerpt: true, byteLength: true }).extend({
   content: z.string(),
@@ -26,6 +30,15 @@ const InlineSchema = ConversationAttachmentSchema.omit({ excerpt: true, byteLeng
 /** Immutable, individually protected bodies; listing/toggling reads metadata only. */
 export class ConversationDocuments {
   constructor(private readonly repo: Repo) {}
+
+  private sealExcerpt(chatId: string, attachmentId: string, excerpt: string) {
+    return this.repo.protectRecordField(
+      "kv",
+      documentExcerptIdentity(chatId, attachmentId),
+      "excerpt",
+      excerpt,
+    );
+  }
 
   private saveBody(chatId: string, attachmentId: string, content: string) {
     const key = bodyKey(chatId, attachmentId);
@@ -49,7 +62,11 @@ export class ConversationDocuments {
       const records = parsed.data.map(({ content, ...item }) => ({
         ...item,
         byteLength: Buffer.byteLength(content),
-        excerpt: documentSnapshotExcerpt(item.filename, content),
+        excerptCiphertext: this.sealExcerpt(
+          chatId,
+          item.attachmentId,
+          documentSnapshotExcerpt(item.filename, content),
+        ),
         sha256: hash(content),
       }));
       this.repo.transaction(() =>
@@ -64,6 +81,26 @@ export class ConversationDocuments {
       );
       return records;
     }
+    // Metadata created before preview protection is sealed once without reading or changing its body.
+    if (Array.isArray(saved) && saved.some((item) => item && typeof item === "object" && "excerpt" in item)) {
+      const parsed = z.array(PlainRecordSchema).safeParse(saved);
+      if (
+        !parsed.success ||
+        new Set(parsed.data.map((item) => item.attachmentId)).size !== parsed.data.length
+      )
+        throw new AuxError(
+          "conflict",
+          "The saved document collection is invalid and was preserved unchanged.",
+        );
+      const records = parsed.data.map(({ excerpt, ...item }) => ({
+        ...item,
+        excerptCiphertext: this.sealExcerpt(chatId, item.attachmentId, excerpt),
+      }));
+      this.repo.transaction(() =>
+        withSecureDelete(this.repo.db, () => this.repo.setSetting(collectionKey(chatId), records)),
+      );
+      return records;
+    }
     return z.array(RecordSchema).parse(saved);
   }
 
@@ -72,7 +109,15 @@ export class ConversationDocuments {
       chatId,
       attachments: this.records(chatId)
         .filter((item) => !item.removed)
-        .map(({ sha256, removed, ...item }) => item),
+        .map(({ sha256, removed, excerptCiphertext, ...item }) => ({
+          ...item,
+          excerpt: this.repo.revealRecordField(
+            "kv",
+            documentExcerptIdentity(chatId, item.attachmentId),
+            "excerpt",
+            excerptCiphertext,
+          ),
+        })),
     };
   }
 
@@ -124,11 +169,16 @@ export class ConversationDocuments {
     if (byteLength > 512 * 1024 || content.includes("\0"))
       throw new AuxError("invalid_params", "Use a UTF-8 text document up to 512 KB.");
     const records = this.records(chatId);
+    const attachmentId = newStepId();
     const item = RecordSchema.parse({
       ...source,
-      attachmentId: newStepId(),
+      attachmentId,
       byteLength,
-      excerpt: documentSnapshotExcerpt(source.filename, content),
+      excerptCiphertext: this.sealExcerpt(
+        chatId,
+        attachmentId,
+        documentSnapshotExcerpt(source.filename, content),
+      ),
       createdAt: Date.now(),
       included: true,
       sha256: hash(content),
