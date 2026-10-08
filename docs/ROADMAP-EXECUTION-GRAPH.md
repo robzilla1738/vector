@@ -68,10 +68,10 @@ No node is complete merely because a worker returns a commit.
 | N3   | active     | Four skippable setup stages; optional recovery/import receipts out of first-task path; normal composer and signed-in context; durable start identity; Ask/remembered Skip/temporary mode consistent; no redundant completion confirmations; truthful available providers, local discovery and OpenRouter PKCE; actionable unavailable registration paths; correct image copy. Fresh Profile completes first task within two minutes.                                                                                                                | Shell + provider owner; N0, N2 acceptance     |
 | N4   | active     | Up to four independent safe reads overlap; dependent effects, suspension and terminal completion ordered; deterministic pairing/receipts; cancellation through DNS/redirects/body/extraction and absolute deadline; native search preference authority; public page-free research children; stable capability-derived manifests and cached schemas; model-aware working context separate from durable history, preserving constraints/decisions/sources/effects; compact browser observation/action batching/strategy changes.                      | Runtime worker + integrator wiring; N0        |
 | N5   | active     | Cancellable idle incremental encrypted indexes/embeddings; batch identity validation; lexical results immediately, semantic refinement; active-Space recall prewarm with 150 ms initial allowance and late safe-boundary recall; no plaintext sensitive FTS; version/reuse indexes; pause/forget/revocation removes all derivatives; visible editable provenance.                                                                                                                                                                                   | Retrieval owner; N0                           |
-| N6   | planned    | One live/captured source model across tabs/groups/Spaces/files/mentions; native refresh at Send, pinned captures and retained drafts; paginated source collections replace unrelated count walls; relevant retrieval instead of eager entire pages; compact source pills/previews/optional diagnostics; extracted transcript/composer/context responsibilities; normalized projections; large-chat profile followed by justified bounded rendering; whole-conversation search/jump/history segment; stable drafts/selection/scroll/focus/streaming. | Conversation owner; N4, N5 acceptance         |
+| N6   | active     | One live/captured source model across tabs/groups/Spaces/files/mentions; native refresh at Send, pinned captures and retained drafts; paginated source collections replace unrelated count walls; relevant retrieval instead of eager entire pages; compact source pills/previews/optional diagnostics; extracted transcript/composer/context responsibilities; normalized projections; large-chat profile followed by justified bounded rendering; whole-conversation search/jump/history segment; stable drafts/selection/scroll/focus/streaming. | Conversation owner; N4, N5 acceptance         |
 | N7   | active     | Native bookmark context actions/nesting/open-folder/DnD/keyboard/Undo; remove runtime gates from browser controls; predictable bulk tabs/reopen/pins/splits/Profile-Space switching; background AI never steals focus; restore/sleep-wake/external links/downloads/uploads/PDF-print/reader/PiP/media/clipboard; actual blocking/site exceptions/Store installs/popups/side panels/native messaging.                                                                                                                                                | Browser owner; N1                             |
 | N8   | active     | Native off-the-record session owns ephemeral AI; in-memory chats/recall/logs, temporary artifacts outside normal Profile; last private window closure cancels/clears; explicit exports remain; no normal memory/history indexing; available local/cloud route with concise truthful cloud indicator; Ask/rail enabled only with implemented lifecycle.                                                                                                                                                                                              | Private-runtime owner; N6                     |
-| N9   | planned    | Five excellent journeys: cited multi-source report/table; selection explain/rewrite/translate/insert/Undo; signed-in multi-site task alongside human browsing; local files to document/sheet/deck/image; project change/run/preview/review/Undo. Useful source/copy/export/reveal/continue actions; website path and supported connectors; routine continuation and quiet notifications; reuse existing skills/packages/providers.                                                                                                                  | Workflow owner; N0, N6 acceptance             |
+| N9   | active     | Five excellent journeys: cited multi-source report/table; selection explain/rewrite/translate/insert/Undo; signed-in multi-site task alongside human browsing; local files to document/sheet/deck/image; project change/run/preview/review/Undo. Useful source/copy/export/reveal/continue actions; website path and supported connectors; routine continuation and quiet notifications; reuse existing skills/packages/providers.                                                                                                                  | Workflow owner; N0, N6 acceptance             |
 | N10  | active     | Aux owns execution; complete local Files/Changes/terminal/preview/coder worktree integration; CLI/MCP/SDK same supported capabilities/presence/Stop/Take over; cloud provision/execute/preview/stop/recovery without duplicates, governed file/process parity before cloud coding exposure; local coding default; connector account/reconnect/error quality; declarative pinned packages.                                                                                                                                                           | Developer-runtime owner; N4                   |
 | N11  | continuous | Delete replaced onboarding/search/context/presentation paths; extract touched bootstrap/provider/retrieval/dispatch responsibilities; final native area patch consolidation in disposable replay work; preserve checkouts/caches/lock; current docs and mock capability accuracy; remove obsolete implementation tests while keeping effect/recovery guarantees; local Chromium/dependency maintenance.                                                                                                                                             | Each node + integrator final assembly         |
 | F    | planned    | Entire requirements audit, integrated build, focused native workflow observations, valid performance report, required manual 20-task smoke, selected Aside look checks, current evidence/docs and explicit external prerequisites.                                                                                                                                                                                                                                                                                                                  | Integrator; all nodes integrated              |
@@ -176,34 +176,49 @@ Completion requires every explicit requirement above to be implemented,
 integrated and proved at its proper scope. Leave incomplete or externally blocked
 items explicit; do not shrink the objective to a finished subset.
 
-### Current implementation handoff — October 7, late evening
+### Current implementation handoff — October 8
 
-- N1 areas 0087–0090 compiled and launched. Native folder Rename/Undo, Settings
-  and memory-saver settings worked while the exact runtime was paused. Chromium
-  proactively discarded a clean background tab and restored it on activation.
-  Sleeping-state publication, protected-tab cases and measured targets remain open.
-- N2 material/Quick Ask notifications and N3 four-step optional setup are integrated.
-  Ordinary Send now uses durable UUID reconciliation. Its native lost-ACK/restart
-  walkthrough and selected Aside comparisons remain pending.
-- N4 prepared reads and route-aware working context are integrated. N5 indexes and
-  cooperative embedding prewarm are integrated; automatic recall is ephemeral at
-  provider boundaries. Historical durable recall retention remains unresolved.
-- N6 live/captured collections, exact capture refs, monotonic recapture identity,
-  paged metadata UI and remaining model input-budget projection are integrated.
-  Long-chat rendering/full-chat search and artifact selection retention are active.
-- N7 identity-bound native folder controls are area 0091. Area 0094 completes native
-  bookmark entry identities, nonweb opens and native export; it remains a worker
-  slice. Runtime-independent tab-to-Space binding is a concrete follow-up.
-- N8 actual OTR session ownership is area 0093, with Node in-memory storage and
-  enabled Ask/rail. Areas 0091–0093 compiled and are linking under the sole builder.
-  Last-private-window cleanup, no normal retention and real route observation are
-  unproved. Stored direct/Gateway credentials work by design; environment/OAuth
-  credentials require the original refresh/credential owner broker.
-- N10 cloud files/process supervision and host routing are integrated. Native
-  preview, human Changes/Logs/Stop routing and actual paid cloud acceptance remain.
-- Latest integrated check passed typecheck/lint and 4,277 tests; one OS-dependent
-  Stop expectation was repaired and its three affected tests passed. The private
-  slice passed 440 affected tests after old scope/fixture expectations were repaired.
-  Passing unchanged suites are not repeated. Evidence paths are in STATUS.
-- No complete paired performance report, manual 20-task smoke, five workflow
-  acceptance or final design comparison exists. No phase or parity claim is made.
+- Areas 0087–0093 launched in disposable Profiles. Native bookmark folder
+  Rename/Undo, Settings and memory saving worked with the exact runtime paused;
+  a clean tab discarded and restored. Cmd+T then Cmd+L navigation was observed.
+- Areas 0094–0097 compiled/linked in 39 steps / 18m08.01s. Native bookmark
+  entries/nonweb opens/export, sleeping-state publication, cloud Preview and
+  private startup diagnostics await their changed-flow walkthrough. The matching
+  current renderer/runtime has not yet been staged in that candidate.
+- N2 shared material and four-stage optional setup are integrated. Ordinary Send
+  has durable UUID reconciliation. A submitted native turn survived a deliberate
+  runtime pause but then failed source reading; successful delivery/lost-ACK and
+  selected Aside comparisons remain pending.
+- N4 overlapping prepared reads and model-capacity working context are integrated.
+  N5 encrypted cooperative index/embedding preparation is integrated; automatic
+  recall is ephemeral. Indexed Forget retires derivatives, but unprovenanceable
+  copies in legacy transcripts can remain. Human history is not heuristically
+  erased; historical-continuation retention remains explicit.
+- N6 live/captured collections, stable recapture identity, metadata pagination and
+  model input-budget projection are integrated. Long-chat deferral/search/jump
+  and retained artifact selection are integrated. The synthetic 300-turn workload
+  improved initial detail panels from 300 to eight; native timing is unproved.
+  Complete rich chat export is integrated. Rich Word and typed artifact revision
+  controls plus routine continuation are in progress.
+- N7 authenticated Space/workspace publication is area 0099; native tab placement
+  remains usable without Node. It awaits the next product build and observation.
+- N8 private AI startup failed in the preceding candidate. Persistence-dependent
+  feature admission was repaired in source. Area 0098/original credential broker
+  now inherit selected direct/Gateway/OAuth access and abort private transports
+  on original connection retirement. No private prompts/refresh tokens cross
+  that broker. Area 0101 supplies opaque budget and Sandbox realms; accounting
+  integration, real private AI and last-window cleanup remain pending.
+- N10 cloud files/processes, human Changes/Logs/Stop/Undo and native Preview are
+  integrated. Encrypted log chunks replace repeated whole-log decryption. Human
+  controls retain original native-window/VM/Session checks after agent dispatch
+  ends. Cloud code-mode parity is being completed. Actual cloud workflow
+  acceptance remains pending.
+- Latest integrated check passed typecheck/lint and 4,242 tests, with 33 failures
+  repaired in the affected authority/registry and shell suites. New coherent
+  private/cloud/document slices have focused checks; the combined check waits
+  for frozen shared interfaces. Evidence and exact limitations are in STATUS.
+- Area 0100 adds original shell/runtime role measurement; stock's additive patch
+  applied, but its missing object cache triggered a full rebuild, stopped normally
+  before the next Aux build. No valid paired performance report, native 20-task
+  smoke, five workflow acceptance or final design comparison exists. No phase or
+  competitor-parity claim is made.
