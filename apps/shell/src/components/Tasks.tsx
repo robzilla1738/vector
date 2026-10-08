@@ -223,7 +223,8 @@ export function Tasks() {
     setError("");
     try {
       await call(method, ...params);
-      if (owner.current()) {
+      // Document batches refresh once their lazy preview sequence ends.
+      if (owner.current() && method !== "tasks.importDocumentEvidence") {
         try {
           await refresh(original.taskId, true, owner.current);
         } catch (reason) {

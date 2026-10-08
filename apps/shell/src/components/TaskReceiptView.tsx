@@ -2,6 +2,7 @@ import { staticFieldProps } from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
+import { SelectedDocuments, isFileLocalDocumentError } from "../document-selection";
 import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
 import {
   useCallback,
@@ -71,7 +72,26 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
     filename: string;
     content: string;
     owner: ReceiptReadOwner;
+    batch: DocumentBatch;
+    index: number;
   } | null>(null);
+  type DocumentBatch = {
+    documents: SelectedDocuments;
+    owner: ReceiptReadOwner;
+    criterionId: string;
+    saved: number;
+  };
+  const documentBatch = useRef<DocumentBatch | null>(null);
+  useLayoutEffect(
+    () => () => {
+      const batch = documentBatch.current;
+      if (batch?.owner === readOwner) {
+        documentBatch.current = null;
+        void batch.documents.release();
+      }
+    },
+    [readOwner],
+  );
   const [importSlot, setImportSlot] = useState<{ owner: ReceiptReadOwner; token: object } | null>(null);
   const importSlotRef = useRef(importSlot);
   useLayoutEffect(() => {
@@ -79,8 +99,13 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
   }, [importSlot]);
   const importing = importSlot?.owner === readOwner;
   const visibleDocument = document?.owner === readOwner ? document : null;
-  const [importStatus, setImportStatus] = useState<{ owner: ReceiptReadOwner; message: string } | null>(null);
-  const importError = importStatus?.owner === readOwner ? importStatus.message : "";
+  const [importStatus, setImportStatus] = useState<{
+    owner: ReceiptReadOwner;
+    message: string;
+    finished?: boolean;
+  } | null>(null);
+  const importError =
+    importStatus && (importStatus.owner === readOwner || importStatus.finished) ? importStatus.message : "";
   const setImportError = (message: string) => setImportStatus({ owner: readOwner, message });
   function beginImport() {
     if (!readOwner.current() || importSlotRef.current?.owner === readOwner)
@@ -95,16 +120,72 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
     importSlotRef.current = null;
     if (readOwner.current()) setImportSlot(null);
   }
+  const batchCurrent = (batch: DocumentBatch) =>
+    documentBatch.current === batch && batch.owner.current() && !batch.documents.released;
+  async function closeDocuments(batch: DocumentBatch) {
+    if (documentBatch.current === batch) {
+      documentBatch.current = null;
+      if (batch.owner.current()) setDocument(null);
+    }
+    await batch.documents.release();
+    if (batch.saved && batch.owner.current()) {
+      // Completed batch failures remain visible after its own receipt refresh.
+      setImportStatus((status) => (status?.owner === batch.owner ? { ...status, finished: true } : status));
+      batch.saved = 0;
+      try {
+        await onChanged?.();
+      } catch {
+        if (batch.owner.current())
+          setImportError("Documents were saved, but the receipt could not be refreshed.");
+      }
+    }
+  }
+  async function previewDocument(batch: DocumentBatch, first: number) {
+    for (let index = first; index < batch.documents.count && batchCurrent(batch); index++) {
+      try {
+        const file = await batch.documents.read(index);
+        if (batchCurrent(batch))
+          setDocument({ ...file, criterionId: batch.criterionId, owner: batch.owner, batch, index });
+        return;
+      } catch (reason) {
+        if (!batchCurrent(batch)) return;
+        setImportStatus((previous) => ({
+          owner: readOwner,
+          message: [
+            previous?.owner === readOwner ? previous.message : "",
+            `Document ${index + 1}: ${errorMessage(reason)}`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        }));
+        if (!isFileLocalDocumentError(reason)) break;
+      }
+    }
+    await closeDocuments(batch);
+  }
   async function pickDocument(criterionId: string, current: () => boolean) {
     const slot = beginImport();
     setImportError("");
     try {
-      const picked = await bridge.pickEvidenceDocument();
-      if (current() && picked) setDocument({ ...picked, criterionId, owner: readOwner });
+      const picked = await bridge.pickEvidenceDocuments();
+      if (picked) {
+        const documents = new SelectedDocuments(picked);
+        if (!current()) await documents.release();
+        else {
+          const previous = documentBatch.current;
+          if (previous) await closeDocuments(previous);
+          if (!current()) {
+            await documents.release();
+            return picked;
+          }
+          const batch = { documents, criterionId, owner: readOwner, saved: 0 };
+          documentBatch.current = batch;
+          await previewDocument(batch, 0);
+        }
+      }
       return picked;
     } catch (reason) {
-      if (current())
-        setImportError(errorMessage(reason).replace(/^Error invoking remote method [^:]+: Error: /, ""));
+      if (current()) setImportError(errorMessage(reason));
       throw reason;
     } finally {
       finishImport(slot);
@@ -113,7 +194,7 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
   async function saveDocument(current: () => boolean) {
     const original = visibleDocument,
       producer = submit;
-    if (!original || !producer || !editable || !current())
+    if (!original || !producer || !editable || !current() || !batchCurrent(original.batch))
       throw new Error("Choose the original document preview.");
     const slot = beginImport();
     try {
@@ -124,7 +205,14 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
         filename: original.filename,
         content: original.content,
       });
-      if (current() && result) setDocument(null);
+      const batch = documentBatch.current;
+      if (result && batch === original.batch) {
+        batch.saved++;
+        if (current() && batchCurrent(batch)) {
+          setDocument(null);
+          await previewDocument(original.batch, original.index + 1);
+        }
+      }
       return result;
     } catch (reason) {
       if (current()) setImportError(errorMessage(reason));
@@ -554,12 +642,15 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
                     disabled={active || importing || !!visibleDocument}
                     invoke={(current) => pickDocument(criterion.criterionId, current)}
                   >
-                    Import document
+                    Import documents
                   </ReceiptEditAction>
                 </div>
                 {visibleDocument?.criterionId === criterion.criterionId && (
                   <section className="document-preview field" aria-label="Document preview">
                     <strong>{visibleDocument.filename}</strong>
+                    <span {...staticHintProps}>
+                      Document {visibleDocument.index + 1} of {visibleDocument.batch.documents.count}
+                    </span>
                     <span {...staticHintProps}>
                       {new TextEncoder().encode(visibleDocument.content).length.toLocaleString()} bytes of
                       saved text · Up to 512 KB
@@ -582,11 +673,29 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
                         Save document evidence
                       </ReceiptEditAction>
                       <ReceiptEditAction
+                        command="skip-task-receipt-document"
+                        owner={readOwner}
+                        valid={originalDraft("document", document)}
+                        {...smallButtonProps}
+                        disabled={importing}
+                        invoke={async () => {
+                          const slot = beginImport();
+                          setDocument(null);
+                          try {
+                            await previewDocument(visibleDocument.batch, visibleDocument.index + 1);
+                          } finally {
+                            finishImport(slot);
+                          }
+                        }}
+                      >
+                        Skip document
+                      </ReceiptEditAction>
+                      <ReceiptEditAction
                         command="cancel-task-receipt-document"
                         owner={readOwner}
                         {...smallButtonProps}
                         disabled={importing}
-                        invoke={() => setDocument(null)}
+                        invoke={() => closeDocuments(visibleDocument.batch)}
                       >
                         Cancel import
                       </ReceiptEditAction>

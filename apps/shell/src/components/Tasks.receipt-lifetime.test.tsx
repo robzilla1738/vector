@@ -7,7 +7,10 @@ const state = vi.hoisted(() => ({
   call: vi.fn(),
   privateMode: false,
   windowId: "one",
-  props: null as null | { submit: (method: string, ...params: unknown[]) => Promise<boolean> },
+  props: null as null | {
+    submit: (method: string, ...params: unknown[]) => Promise<boolean>;
+    onChanged: () => Promise<void>;
+  },
 }));
 vi.mock("../store", async (original) => ({
   ...(await original<typeof import("../store")>()),
@@ -145,6 +148,33 @@ it("refreshes actual current task after original mutation ACK", async () => {
     "tasks.list",
   ]);
   expect(host.querySelector("fieldset")!.disabled).toBe(false);
+});
+it("keeps document batch identity across saves and refreshes when its receipt sequence ends", async () => {
+  await render();
+  const before = state.call.mock.calls.length;
+  for (const filename of ["first.txt", "second.txt"]) {
+    await act(async () => {
+      expect(
+        await state.props!.submit("tasks.importDocumentEvidence", {
+          taskId: "original",
+          expectedRevision: 1,
+          criterionId: "criterion",
+          filename,
+          content: filename,
+        }),
+      ).toBe(true);
+    });
+  }
+  expect(state.call.mock.calls.slice(before).map((row) => row[0])).toEqual([
+    "tasks.importDocumentEvidence",
+    "tasks.importDocumentEvidence",
+  ]);
+  await act(async () => state.props!.onChanged());
+  expect(state.call.mock.calls.slice(before + 2).map((row) => row[0])).toEqual([
+    "tasks.get",
+    "tasks.receipt",
+    "tasks.list",
+  ]);
 });
 it("retains acknowledged write despite follow-up read failure", async () => {
   await render();

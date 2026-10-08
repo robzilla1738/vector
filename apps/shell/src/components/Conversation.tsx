@@ -130,6 +130,7 @@ import {
   nativeButtonTypeProps as auxReuseNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
 import { smallButtonProps as auxReuseSmallButtonProps } from "../ui/button-props";
+import { useDocumentImport } from "./use-document-import";
 
 const NO_SOURCES: ConversationSource[] = [];
 
@@ -1862,32 +1863,21 @@ export function Conversation({
     },
   };
   const [contextTools, setContextTools] = useState<HTMLDivElement | null>(null);
-  const attachDocument = async () => {
-    if (contextLocked || documentBusy.current || attachmentSaving) return;
-    documentBusy.current = true;
-    setAttachmentSaving(true);
-    try {
-      const picked = await bridge.pickEvidenceDocument();
-      if (!picked) return;
-      if (activeChat.current !== id) return;
-      const target = ensureChatId();
-      activeChat.current = target;
-      const result = await call("conversations.attachments.add", {
-        chatId: target,
-        filename: picked.filename,
-        content: picked.content,
-      });
-      if (activeChat.current === target) {
-        setAttachments(result.attachments);
-        setContextRefresh((value) => value + 1);
-      }
-    } catch (error) {
-      errToast(error);
-    } finally {
-      documentBusy.current = false;
-      setAttachmentSaving(false);
-    }
-  };
+  const documentImport = useDocumentImport({
+    chatId: id,
+    privateTask,
+    disabled: contextLocked,
+    busy: documentBusy.current || attachmentSaving,
+    ensureChatId,
+    onBusy: (busy) => {
+      documentBusy.current = busy;
+      setAttachmentSaving(busy);
+    },
+    onChange: (attachments) => {
+      setAttachments(attachments);
+      setContextRefresh((value) => value + 1);
+    },
+  });
   const newChat =
     !embedded && !turns.length && !pendingTurns.length && !historyLoading && !historyError && !taskBound;
   useEffect(() => {
@@ -1924,7 +1914,7 @@ export function Conversation({
       images={images}
       disabled={contextLocked || attachmentSaving}
       ensureChatId={ensureChatId}
-      onDocument={() => void attachDocument()}
+      onDocument={() => void documentImport.start()}
       onBusy={(busy) => setImageOperations((count) => Math.max(0, count + (busy ? 1 : -1)))}
       onChange={(chatId, value) => {
         if (activeChat.current === chatId) {
@@ -2705,6 +2695,50 @@ export function Conversation({
                     </button>
                   )}
                   <AttachmentTray items={attachmentItems} disabled={contextLocked} busy={attachmentSaving} />
+                  {documentImport.progress && (
+                    <section className="conversation-sources" aria-label="Document import">
+                      <div className="row">
+                        <output>
+                          {documentImport.progress.busy
+                            ? documentImport.progress.count
+                              ? `Attaching document ${documentImport.progress.index} of ${documentImport.progress.count}…`
+                              : "Choosing documents…"
+                            : `Attached ${documentImport.progress.attached} of ${documentImport.progress.count} documents.`}
+                        </output>
+                        <ConversationAttachmentAction
+                          command="cancel-conversation-document-import"
+                          current={documentImport.current}
+                          invoke={documentImport.cancel}
+                          {...auxReuseSmallButtonProps}
+                        >
+                          {documentImport.progress.busy ? "Cancel" : "Dismiss"}
+                        </ConversationAttachmentAction>
+                      </div>
+                      {documentImport.progress.errors.length > 0 && (
+                        <details>
+                          <summary>
+                            {documentImport.progress.errors.length} documents could not be attached
+                          </summary>
+                          <SourceCollection
+                            items={documentImport.progress.errors}
+                            pageSize={6}
+                            label="Document import errors"
+                          >
+                            {(errors) =>
+                              errors.map((error, index) => (
+                                <p role="alert" key={index}>
+                                  {error}
+                                </p>
+                              ))
+                            }
+                          </SourceCollection>
+                          <p className="hint">
+                            Other attached documents are kept. Fix these files and choose Attach again.
+                          </p>
+                        </details>
+                      )}
+                    </section>
+                  )}
                   {unavailableArtifacts.length > 0 && (
                     <section aria-label="Unavailable selected results" className="conversation-sources">
                       <p role="alert">

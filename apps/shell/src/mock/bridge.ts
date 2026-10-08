@@ -118,6 +118,7 @@ export function installMockBridge(q: URLSearchParams) {
   const customCss = new Map<string, { css: string; updatedAt: number }>();
   let zapRules: ZapRule[] = [];
   let rankingChoices: CommandRankingEntry[] = [];
+  let documentSelection: string | null = null;
   let organization: OrganizationSnapshot = { revision: 0, layout: null };
   const organizationListeners = new Set<(revision: number) => void>();
   let history = [...HISTORY];
@@ -2524,12 +2525,22 @@ export function installMockBridge(q: URLSearchParams) {
       ctx.fillRect(70, 180, 660, 230);
       return { filename: "sample-image.png", dataUrl: canvas.toDataURL("image/png") };
     },
-    pickEvidenceDocument: async () => ({
-      filename: "project-brief.md",
-      content:
-        "# Project brief\n\nUse a calm cobalt accent and keep browser controls minimal.\n\n" +
-        "Reference notes for the attached project.\n".repeat(180),
-    }),
+    pickEvidenceDocuments: async () => ({ selectionId: (documentSelection = crypto.randomUUID()), count: 1 }),
+    readEvidenceDocument: async (selectionId, index) => {
+      if (selectionId !== documentSelection)
+        throw new AuxError("ref_stale", "This document selection was closed.");
+      if (index !== 0) throw new Error("invalid_argument: This file is not in the selected collection.");
+      return {
+        filename: "project-brief.md",
+        content:
+          "# Project brief\n\nUse a calm cobalt accent and keep browser controls minimal.\n\n" +
+          "Reference notes for the attached project.\n".repeat(180),
+      };
+    },
+    releaseEvidenceDocuments: async (selectionId) => {
+      if (documentSelection === selectionId) documentSelection = null;
+      return undefined;
+    },
     agentConfig: async (input) => ({
       command: "/Applications/Aux.app/Contents/MacOS/Aux",
       args: ["/mock/aux-mcp.mjs"],

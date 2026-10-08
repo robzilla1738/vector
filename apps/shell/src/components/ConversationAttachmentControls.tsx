@@ -7,6 +7,7 @@ import { errToast } from "../store";
 import { nativeCheckboxTypeProps as auxReuseNativeCheckboxTypeProps } from "../ui/native-attribute-props";
 
 type AttachmentCommand =
+  | "cancel-conversation-document-import"
   | "preview-conversation-document"
   | "toggle-conversation-document"
   | "remove-conversation-document"

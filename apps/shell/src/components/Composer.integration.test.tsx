@@ -425,7 +425,7 @@ it("starts document attachment from the plus portal and retains a picker error a
     toasts: [],
   });
   let rejectPick!: (reason: Error) => void;
-  const pick = vi.spyOn(bridge, "pickEvidenceDocument").mockImplementation(
+  const pick = vi.spyOn(bridge, "pickEvidenceDocuments").mockImplementation(
     () =>
       new Promise((_resolve, reject) => {
         rejectPick = reject;

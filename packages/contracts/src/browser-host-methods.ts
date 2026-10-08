@@ -577,7 +577,15 @@ export const BrowserHostMethods = {
   saveStoredArtifact: documentArtifactsShell(tuple([str, str]), nullableString),
   openPluginDirectory: shell("skills", noArgs, nullableString),
   pickEvidenceImage: conversationShell(noArgs, strictObject({ filename: str, dataUrl: str }).nullable()),
-  pickEvidenceDocument: conversationShell(noArgs, strictObject({ filename: str, content: str }).nullable()),
+  pickEvidenceDocuments: conversationShell(
+    noArgs,
+    strictObject({ selectionId: str.min(1).max(200), count: number.int().positive() }).nullable(),
+  ),
+  readEvidenceDocument: conversationShell(
+    tuple([str.min(1).max(200), number.int().nonnegative()]),
+    strictObject({ filename: str, content: str }),
+  ),
+  releaseEvidenceDocuments: conversationShell(tuple([str.min(1).max(200)]), noResult),
   // External agents
   agentConfig: inboundAgentsShell(
     tuple([AgentConnectionCreateParams]),
