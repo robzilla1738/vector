@@ -5,6 +5,7 @@ import { AgentModeControl } from "../features/permissions/AgentModeControl";
 import { shellIconDown } from "../ui/icons";
 import { errorMessage } from "../error-message";
 import { Popover } from "../ui/popover";
+import { bridge } from "../bridge";
 
 export function ChatPreferences({
   children,
@@ -119,6 +120,21 @@ export function ChatPreferences({
           </div>
         )}
       </Popover>
+      {bridge.privateMode && (
+        <span
+          className="private-ai-disclosure"
+          title={
+            "Chats disappear when the last private window closes." +
+            (settings.localModelsOnly === true
+              ? " AI requests use local models only."
+              : " Cloud providers handle requests under their own retention policies.")
+          }
+        >
+          {settings.localModelsOnly === true
+            ? "Private · Local models only. Chats stay in this private session."
+            : "Cloud models send requests to their provider; chats stay in this private session."}
+        </span>
+      )}
     </div>
   );
 }

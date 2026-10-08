@@ -267,14 +267,7 @@ export function RunOptions({
           <option value="high">High</option>
         </select>
       </label>
-      {bridge.privateMode ? (
-        <span
-          className="chip"
-          title="Chats stay in this private session and disappear when its last window closes."
-        >
-          Private session · {localOnly ? "local models" : "configured AI provider"}
-        </span>
-      ) : (
+      {!bridge.privateMode && (
         <label
           title={
             privateTaskLocked
