@@ -1,3 +1,4 @@
+import { RoutineRunLink } from "./RoutineRunLink";
 import { SkillLibrary } from "./SkillLibrary";
 import { staticFieldProps, staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
@@ -933,6 +934,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             <div className="routine-run hint" key={run.routineRunId}>
               {run.status === "waiting_input" ? "Needs your input" : run.status.replaceAll("_", " ")}
               {run.reason ? ` · ${run.reason}` : ""} · {new Date(run.createdAt).toLocaleString()}
+              <RoutineRunLink key={`${run.routineRunId}:${run.runId}:${run.chatId}`} run={run} />
               <RoutineOutcome run={run} />
               {(run.status === "needs_review" || run.status === "uncertain") && (
                 <RoutineRunReview
