@@ -32,6 +32,7 @@ vi.mock("../store", () => ({
   useStore: { getState: () => host.state },
 }));
 import { useDocumentImport } from "./use-document-import";
+import { makeDocumentRead } from "../mock/fixtures";
 function held<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((done) => {
@@ -71,14 +72,13 @@ beforeEach(async () => {
   host.windowId = "window";
   host.privateMode = false;
   host.pick.mockReset().mockResolvedValue({ selectionId: "selection", count: 30 });
-  host.read.mockReset().mockImplementation(async (_selection, index) => ({
-    filename: `${index}.txt`,
-    content: `body ${index}`,
-  }));
+  host.read
+    .mockReset()
+    .mockImplementation(async (_selection, index) => makeDocumentRead(`body ${index}`, `${index}.txt`));
   host.release.mockReset().mockResolvedValue(undefined);
   host.call
     .mockReset()
-    .mockImplementation(async (_method, input) => ({ attachments: [{ attachmentId: input.filename }] }));
+    .mockImplementation(async (_method, input) => ({ attachments: [{ attachmentId: String(input.index) }] }));
   element = document.createElement("div");
   document.body.append(element);
   root = createRoot(element);
@@ -91,12 +91,12 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 it("imports thirty selected files sequentially into its new chat, keeping valid files after one read fails", async () => {
-  const firstRead = held<{ filename: string; content: string }>(),
+  const firstRead = held<ReturnType<typeof makeDocumentRead>>(),
     firstSave = held<{ attachments: [] }>();
   host.read.mockImplementation(async (_selection, index) => {
     if (index === 0) return firstRead.promise;
-    if (index === 9) throw new Error("invalid_argument: bad.txt: could not read UTF-8 text up to 2 MiB");
-    return { filename: `${index}.txt`, content: `body ${index}` };
+    if (index === 9) return { kind: "unreadable", filename: "bad.pdf", reason: "encrypted" };
+    return makeDocumentRead(`body ${index}`, `${index}.txt`);
   });
   host.call.mockReturnValueOnce(firstSave.promise);
   let completion!: Promise<void>;
@@ -106,12 +106,14 @@ it("imports thirty selected files sequentially into its new chat, keeping valid 
   expect(host.read).toHaveBeenCalledExactlyOnceWith("selection", 0);
   expect(host.call).not.toHaveBeenCalled();
   await render("allocated-chat");
-  await act(async () => firstRead.resolve({ filename: "0.txt", content: "body 0" }));
+  await act(async () => firstRead.resolve(makeDocumentRead("body 0", "0.txt")));
   expect(host.read).toHaveBeenCalledTimes(1);
-  expect(host.call).toHaveBeenCalledExactlyOnceWith("conversations.attachments.add", {
+  expect(host.call).toHaveBeenCalledExactlyOnceWith("conversations.attachments.import", {
     chatId: "allocated-chat",
-    filename: "0.txt",
-    content: "body 0",
+    selectionId: "selection",
+    index: 0,
+    snapshotId: makeDocumentRead().document.snapshotId,
+    sourceSha256: makeDocumentRead().document.sourceSha256,
   });
   await act(async () => {
     firstSave.resolve({ attachments: [] });
@@ -121,7 +123,7 @@ it("imports thirty selected files sequentially into its new chat, keeping valid 
   expect(host.call).toHaveBeenCalledTimes(29);
   expect(host.call.mock.calls.every(([, input]) => input.chatId === "allocated-chat")).toBe(true);
   expect(actions.progress).toMatchObject({ count: 30, attached: 29, busy: false });
-  expect(actions.progress?.errors).toEqual([expect.stringContaining("bad.txt")]);
+  expect(actions.progress?.errors).toEqual([expect.stringContaining("bad.pdf")]);
   expect(changed).toHaveBeenCalledTimes(29);
   expect(host.release).toHaveBeenCalledExactlyOnceWith("selection");
 });
@@ -145,7 +147,7 @@ it("cancel keeps an accepted in-flight file and never reads the next selected fi
 });
 it("retires a held read across chat ABA and releases a late picker without clearing the fresh import", async () => {
   const oldPick = held<{ selectionId: string; count: number }>(),
-    freshRead = held<{ filename: string; content: string }>();
+    freshRead = held<ReturnType<typeof makeDocumentRead>>();
   host.pick.mockReturnValueOnce(oldPick.promise).mockResolvedValueOnce({ selectionId: "fresh", count: 1 });
   host.read.mockReturnValueOnce(freshRead.promise);
   await render("chat");
@@ -168,7 +170,7 @@ it("retires a held read across chat ABA and releases a late picker without clear
   await render("other");
   await render("chat");
   await act(async () => {
-    freshRead.resolve({ filename: "retired.txt", content: "not for the new chat" });
+    freshRead.resolve(makeDocumentRead("not for the new chat", "retired.txt"));
     await fresh;
   });
   expect(host.call).not.toHaveBeenCalled();

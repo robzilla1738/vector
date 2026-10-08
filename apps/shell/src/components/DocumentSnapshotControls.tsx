@@ -3,6 +3,8 @@ import { usePreferenceCommand, dispatchScopedControlInput } from "../settings/se
 import { guardCommandCompletion } from "../command-completion";
 import { errToast } from "../store";
 type DocumentCommand =
+  | "previous-document-section"
+  | "next-document-section"
   | "retry-conversation-document-read"
   | "toggle-conversation-document-details"
   | "close-conversation-document-preview";

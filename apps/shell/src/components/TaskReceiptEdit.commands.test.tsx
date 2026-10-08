@@ -41,6 +41,7 @@ vi.mock("../store", async (original) => ({
   call: hostState.read,
 }));
 import { TaskReceiptView } from "./TaskReceiptView";
+import { makeDocumentRead, makeDocumentPage } from "../mock/fixtures";
 import { executeCommand, dispatchShortcut } from "../commands";
 import { useStore } from "../store";
 const initial = useStore.getState();
@@ -111,7 +112,7 @@ beforeEach(() => {
   hostState.kind = "normal";
   receipt = sample();
   hostState.pick.mockReset().mockResolvedValue({ selectionId: "selection", count: 1 });
-  hostState.readDocument.mockReset().mockResolvedValue({ filename: "owned.txt", content: "owned content" });
+  hostState.readDocument.mockReset().mockResolvedValue(makeDocumentRead("owned content", "owned.txt"));
   hostState.releaseDocuments.mockReset().mockResolvedValue(undefined);
   hostState.submit.mockReset().mockResolvedValue(true);
   hostState.changed.mockReset().mockResolvedValue(undefined);
@@ -197,16 +198,18 @@ it("preserves owned chooser ACK, local preview and explicit document confirmatio
     taskId: "original-task",
     expectedRevision: 1,
     criterionId: "criterion",
-    filename: "owned.txt",
-    content: "owned content",
+    selectionId: "selection",
+    index: 0,
+    snapshotId: makeDocumentRead().document.snapshotId,
+    sourceSha256: makeDocumentRead().document.sourceSha256,
   });
   expect(host.querySelector('[aria-label="Document preview"]')).toBeNull();
 });
 it("previews one selected document at a time and refreshes only after accepted saves finish", async () => {
   hostState.pick.mockResolvedValue({ selectionId: "batch", count: 3 });
   hostState.readDocument.mockImplementation(async (_selection, index) => {
-    if (index === 1) throw new Error("invalid_argument: bad.txt: could not read UTF-8 text up to 2 MiB");
-    return { filename: `${index}.txt`, content: `content ${index}` };
+    if (index === 1) return { kind: "unreadable", filename: "bad.pdf", reason: "encrypted" };
+    return makeDocumentRead(`content ${index}`, `${index}.txt`);
   });
   await render();
   await run("import-task-receipt-document");
@@ -216,14 +219,14 @@ it("previews one selected document at a time and refreshes only after accepted s
   expect(hostState.changed).not.toHaveBeenCalled();
   expect(hostState.submit).toHaveBeenCalledTimes(1);
   expect(hostState.readDocument).toHaveBeenCalledTimes(3);
-  expect(host.textContent).toContain("bad.txt");
+  expect(host.textContent).toContain("bad.pdf");
   expect(host.textContent).toContain("Document 3 of 3");
   await run("save-task-receipt-document");
   expect(hostState.submit).toHaveBeenCalledTimes(2);
   expect(hostState.changed).toHaveBeenCalledOnce();
   expect(hostState.releaseDocuments).toHaveBeenCalledExactlyOnceWith("batch");
   await render({ ...receipt, generatedAt: 2 });
-  expect(host.textContent).toContain("bad.txt");
+  expect(host.textContent).toContain("bad.pdf");
 });
 it("explicitly skips a preview and releases remaining files when cancelled", async () => {
   hostState.pick.mockResolvedValue({ selectionId: "batch", count: 3 });
@@ -431,4 +434,105 @@ it("remaps current evidence selection without recursive DOM click", async () => 
   expect(input.checked).toBe(true);
   expect(clicks).not.toHaveBeenCalled();
   expect(hostState.submit).not.toHaveBeenCalled();
+});
+
+it("pages an immutable native preview and saves its exact identity without uploading text", async () => {
+  const first = {
+    ...makeDocumentRead("First PDF text", "misleading.txt"),
+    nextCursor: "second",
+    completed: undefined,
+  };
+  first.document = { ...first.document, format: "pdf", pageCount: 2 };
+  first.chunk = {
+    index: 0,
+    segments: [{ locator: { kind: "pdf", page: 1, block: 1, offset: 0 }, text: "First PDF text" }],
+  };
+  const second = {
+    ...makeDocumentRead("Second PDF text", "misleading.txt"),
+    document: first.document,
+    chunk: {
+      index: 1,
+      segments: [
+        { locator: { kind: "pdf" as const, page: 2, block: 1, offset: 0 }, text: "Second PDF text" },
+      ],
+    },
+  };
+  hostState.readDocument.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+  await render();
+  await run("import-task-receipt-document");
+  expect(hostState.readDocument).toHaveBeenCalledTimes(1);
+  expect(host.textContent).toContain("PDF text · 2 pages");
+  await run("next-document-section");
+  expect(hostState.readDocument).toHaveBeenLastCalledWith("selection", 0, "second");
+  expect(host.textContent).toContain("Page 2 · block 1");
+  await run("save-task-receipt-document");
+  expect(hostState.submit).toHaveBeenCalledExactlyOnceWith("tasks.importDocumentEvidence", {
+    taskId: "original-task",
+    expectedRevision: 1,
+    criterionId: "criterion",
+    selectionId: "selection",
+    index: 0,
+    snapshotId: first.document.snapshotId,
+    sourceSha256: first.document.sourceSha256,
+  });
+});
+
+it("reads saved document text only on request using its original evidence revision", async () => {
+  receipt = sample(2);
+  const record = receipt.criteria[0]!.evidence[0]!.record;
+  const page = makeDocumentPage("Original saved section", "original.pdf");
+  record.taskRevision = 1;
+  record.document = { document: page.document, completed: page.completed, sha256: page.sha256 };
+  delete record.snapshot;
+  hostState.read.mockResolvedValue(page);
+  await render(receipt);
+  expect(hostState.read).not.toHaveBeenCalled();
+  await run("toggle-task-receipt-snapshot");
+  expect(hostState.read).toHaveBeenCalledExactlyOnceWith("tasks.readDocumentEvidence", {
+    taskId: "original-task",
+    expectedRevision: 1,
+    evidenceId: record.evidenceId,
+    sha256: page.sha256,
+    cursor: undefined,
+  });
+  expect(host.textContent).toContain("Original saved section");
+  expect(host.textContent).toContain("Captured UTF-8 text");
+  expect(host.textContent).not.toContain("PDF text");
+});
+
+it("ends the selection when native ownership is lost during section paging", async () => {
+  const first = { ...makeDocumentRead("First section"), nextCursor: "second", completed: undefined };
+  hostState.readDocument
+    .mockResolvedValueOnce(first)
+    .mockRejectedValueOnce(new Error("ref_stale: Original selection retired"));
+  await render();
+  await run("import-task-receipt-document");
+  await run("next-document-section");
+  expect(host.querySelector('[aria-label="Document preview"]')).toBeNull();
+  expect(host.textContent).toContain("Original selection retired");
+  expect(hostState.releaseDocuments).toHaveBeenCalledExactlyOnceWith("selection");
+  expect(hostState.submit).not.toHaveBeenCalled();
+});
+
+it("releases an in-flight task import and refreshes a late accepted Save without advancing the batch", async () => {
+  const saved = held<boolean>();
+  hostState.submit.mockReturnValueOnce(saved.promise);
+  hostState.pick.mockResolvedValue({ selectionId: "selection", count: 3 });
+  await render();
+  await run("import-task-receipt-document");
+  let save!: Promise<unknown>;
+  await act(async () => {
+    control("save-task-receipt-document").focus();
+    save = executeCommand("save-task-receipt-document");
+  });
+  await run("cancel-task-receipt-document");
+  expect(hostState.releaseDocuments).toHaveBeenCalledExactlyOnceWith("selection");
+  expect(hostState.changed).not.toHaveBeenCalled();
+  await act(async () => {
+    saved.resolve(true);
+    await save;
+  });
+  expect(hostState.changed).toHaveBeenCalledOnce();
+  expect(hostState.readDocument).toHaveBeenCalledTimes(1);
+  expect(host.querySelector('[aria-label="Document preview"]')).toBeNull();
 });

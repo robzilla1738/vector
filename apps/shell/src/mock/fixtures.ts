@@ -502,3 +502,38 @@ export const SIDEBAR_TABS: Site[] = [
 ];
 
 export const BOOKMARKS = PIN_SITES.map((s) => ({ url: s.url, title: s.title }));
+
+/** Small immutable document shapes for component fixtures; hashes are synthetic. */
+export function makeDocumentRead(
+  content = "Original captured text",
+  filename = "document.txt",
+): Extract<import("@aux/contracts/document-intake").DocumentReadResult, { kind: "chunk" }> {
+  return {
+    kind: "chunk",
+    document: {
+      snapshotId: "11111111-1111-4111-8111-111111111111",
+      filename,
+      format: "text",
+      sourceSha256: "a".repeat(64),
+      sourceBytes: new TextEncoder().encode(content).length,
+      extractorVersion: "aux-document-v1",
+      warnings: [],
+    },
+    chunk: {
+      index: 0,
+      segments: content ? [{ locator: { kind: "text", line: 1, offset: 0 }, text: content }] : [],
+    },
+    completed: {
+      textSha256: "b".repeat(64),
+      textBytes: new TextEncoder().encode(content).length,
+      segmentCount: content ? 1 : 0,
+    },
+  };
+}
+export function makeDocumentPage(
+  content?: string,
+  filename?: string,
+): import("@aux/contracts/document-snapshot").SavedDocumentPage {
+  const { document, chunk, completed } = makeDocumentRead(content, filename);
+  return { document, chunk, completed: completed!, sha256: "c".repeat(64) };
+}

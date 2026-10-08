@@ -2,20 +2,18 @@ import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConversationAttachment } from "@aux/contracts";
+import type { SavedDocumentPage } from "@aux/contracts/document-snapshot";
 import { call, useStore } from "../store";
 import { useConversationOwner } from "./ConversationControls";
 import { useConversationAttachmentOwner } from "./ConversationAttachmentControls";
 import { DocumentSnapshotControl } from "./DocumentSnapshotControls";
 import { shellIconClose } from "../ui/icons";
-import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
+import { DocumentPages } from "./DocumentPages";
 import { ViewerFrame } from "./ViewerFrame";
 import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
-type Snapshot = {
-  attachment: ConversationAttachment;
-  content: string;
-};
+type Snapshot = SavedDocumentPage & { attachment: ConversationAttachment };
 
 /** Inspect the immutable source; model excerpts are selected when each request is prepared. */
 export function DocumentSnapshot({
@@ -37,12 +35,15 @@ export function DocumentSnapshot({
   const current = useCallback(() => referenceCurrent(reference), [referenceCurrent, reference]);
   const published = useRef<{ snapshot: Snapshot; current: () => boolean } | null>(null);
   const recordCurrent = useConversationAttachmentOwner(current, snapshot ? [snapshot.attachment] : []);
-  const loadedCurrent = () =>
-    !!snapshot &&
-    snapshot.attachment.attachmentId === attachmentId &&
-    published.current?.snapshot === snapshot &&
-    published.current.current === current &&
-    recordCurrent(snapshot.attachment);
+  const loadedCurrent = useCallback(
+    () =>
+      !!snapshot &&
+      snapshot.attachment.attachmentId === attachmentId &&
+      published.current?.snapshot === snapshot &&
+      published.current.current === current &&
+      recordCurrent(snapshot.attachment),
+    [snapshot, attachmentId, current, recordCurrent],
+  );
 
   useEffect(() => {
     let live = true;
@@ -107,10 +108,17 @@ export function DocumentSnapshot({
                 : "Excluded from new replies"}
             </span>
           </div>
-          <DocumentContent
-            key={attachmentId}
-            filename={snapshot.attachment.filename}
-            content={snapshot.content}
+          <DocumentPages
+            initial={snapshot}
+            current={loadedCurrent}
+            read={(cursor) =>
+              call("conversations.attachments.read", {
+                chatId,
+                attachmentId,
+                sha256: snapshot.sha256,
+                cursor,
+              })
+            }
           />
           <details className="snapshot-details">
             <DocumentSnapshotControl
@@ -129,7 +137,8 @@ export function DocumentSnapshot({
               Removing this snapshot stops its use in new turns. Earlier turns and retries keep their original
               snapshot until you delete its source chat.
             </p>
-            <DocumentExtractionNote filename={snapshot.attachment.filename} />
+            <p {...staticHintProps}>This snapshot stores captured text and source references.</p>
+            <p className="snapshot-source">Source SHA-256: {snapshot.document.sourceSha256}</p>
             {snapshot.attachment.sourceUrl && (
               <p className="snapshot-source">
                 {snapshot.attachment.sourceUrl}

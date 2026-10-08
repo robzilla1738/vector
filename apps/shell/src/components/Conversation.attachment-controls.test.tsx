@@ -12,7 +12,7 @@ import {
 import { bridge, type BrowserProfile } from "../bridge";
 import { useStore } from "../store";
 import { executeCommand, dispatchShortcut } from "../commands";
-import { makePage, makeRun } from "../mock/fixtures";
+import { makePage, makeRun, makeDocumentPage } from "../mock/fixtures";
 import { Conversation } from "./Conversation";
 
 const initial = useStore.getState(),
@@ -129,7 +129,7 @@ beforeEach(() => {
     if (method === "conversations.images.get") return { images: [] };
     if (method === "conversations.attachments.get") return { attachments: chat === "a" ? documents : [] };
     if (method === "conversations.attachments.read")
-      return { attachment: documents[0], content: "Original text" };
+      return { attachment: documents[0], ...makeDocumentPage("Original text") };
     if (method === "results.read") return { ...artifacts[0], chatId: "a", content: "Original result" };
     if (method === "conversations.sources.get") return { sources: chat === "a" ? sources : [] };
     if (method === "runs.context.get") return { entries: [], historyEnabled: true };
@@ -384,5 +384,8 @@ it("hidden preview and detached original element cannot gain mutation authority"
 });
 it("five metadata rows remain normal scoped and remappable", () => {
   for (const id of ["preview-conversation-document", toggle, remove, "preview-conversation-result", result])
-    expect(COMMANDS.find((row) => row.id === id)).toMatchObject({ palette: false, windows: ["normal", "private"] });
+    expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
+      palette: false,
+      windows: ["normal", "private"],
+    });
 });

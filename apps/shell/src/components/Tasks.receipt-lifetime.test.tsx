@@ -5,6 +5,10 @@ import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { TaskSchema, TaskReceiptSchema } from "@aux/contracts";
 const state = vi.hoisted(() => ({
   call: vi.fn(),
+  pick: vi.fn(),
+  readDocument: vi.fn(),
+  releaseDocuments: vi.fn(),
+  realReceipt: false,
   privateMode: false,
   windowId: "one",
   props: null as null | {
@@ -22,6 +26,9 @@ vi.mock("../bridge", async (original) => {
     ...actual,
     bridge: {
       ...actual.bridge,
+      pickEvidenceDocuments: state.pick,
+      readEvidenceDocument: state.readDocument,
+      releaseEvidenceDocuments: state.releaseDocuments,
       get privateMode() {
         return state.privateMode;
       },
@@ -31,18 +38,22 @@ vi.mock("../bridge", async (original) => {
     },
   };
 });
-vi.mock("./TaskReceiptView", () => ({
-  TaskReceiptView: (props: typeof state.props) => {
-    state.props = props;
-    return <div>Receipt probe</div>;
-  },
-}));
+vi.mock("./TaskReceiptView", async (original) => {
+  const actual = await original<typeof import("./TaskReceiptView")>();
+  return {
+    TaskReceiptView: (props: React.ComponentProps<typeof actual.TaskReceiptView>) => {
+      state.props = props as typeof state.props;
+      return state.realReceipt ? <actual.TaskReceiptView {...props} /> : <div>Receipt probe</div>;
+    },
+  };
+});
 vi.mock("./TaskResources", () => ({ TaskResources: () => null }));
 vi.mock("./CalendarTaskGrants", () => ({ CalendarTaskGrants: () => null }));
 vi.mock("./Routines", () => ({ Routines: () => null }));
 vi.mock("./Goals", () => ({ Goals: () => null }));
 vi.mock("./Hooks", () => ({ Hooks: () => null }));
 import { Tasks } from "./Tasks";
+import { makeDocumentRead } from "../mock/fixtures";
 import { useStore } from "../store";
 Object.defineProperty(HTMLElement.prototype, "scrollTo", { configurable: true, value: vi.fn() });
 const initial = useStore.getState();
@@ -92,6 +103,10 @@ beforeEach(() => {
   state.privateMode = false;
   state.windowId = "one";
   state.props = null;
+  state.realReceipt = false;
+  state.pick.mockReset().mockResolvedValue({ selectionId: "selection", count: 1 });
+  state.readDocument.mockReset().mockResolvedValue(makeDocumentRead());
+  state.releaseDocuments.mockReset().mockResolvedValue(undefined);
   state.call
     .mockReset()
     .mockImplementation(async (method: string) =>
@@ -119,6 +134,7 @@ afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   useStore.setState(initial, true);
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 async function render() {
@@ -152,15 +168,17 @@ it("refreshes actual current task after original mutation ACK", async () => {
 it("keeps document batch identity across saves and refreshes when its receipt sequence ends", async () => {
   await render();
   const before = state.call.mock.calls.length;
-  for (const filename of ["first.txt", "second.txt"]) {
+  for (const index of [0, 1]) {
     await act(async () => {
       expect(
         await state.props!.submit("tasks.importDocumentEvidence", {
           taskId: "original",
           expectedRevision: 1,
           criterionId: "criterion",
-          filename,
-          content: filename,
+          selectionId: "11111111-1111-4111-8111-111111111111",
+          index,
+          snapshotId: "22222222-2222-4222-8222-222222222222",
+          sourceSha256: "a".repeat(64),
         }),
       ).toBe(true);
     });
@@ -249,4 +267,37 @@ it("does not publish fulfilled original readback after window retirement", async
   await act(async () => pending.resolve({ ...details, task: { ...task, title: "Retired readback" } }));
   expect(await completion).toBe(true);
   expect(host.textContent).not.toContain("Retired readback");
+});
+
+it("keeps the actual task import Cancel enabled while saving and refreshes an accepted late result", async () => {
+  state.realReceipt = true;
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+  const pending = held<unknown>();
+  const actualReceipt = TaskReceiptSchema.parse({
+    ...receipt,
+    criteria: [{ criterion: task.criteria[0], status: "unverified", evidence: [] }],
+  });
+  state.call.mockImplementation(async (method: string) => {
+    if (method === "tasks.importDocumentEvidence") return pending.promise;
+    if (method === "tasks.receipt") return actualReceipt;
+    if (method === "tasks.get") return details;
+    if (method === "tasks.list") return [task];
+    throw new Error(`Unexpected ${method}`);
+  });
+  await render();
+  const button = (id: string) => host.querySelector<HTMLButtonElement>(`[data-command-id="${id}"]`)!;
+  await act(async () => button("import-task-receipt-document").click());
+  await act(async () => button("save-task-receipt-document").click());
+  expect(button("cancel-task-receipt-document").matches(":disabled")).toBe(false);
+  await expect(submit()).rejects.toThrow("current receipt action");
+  await act(async () => button("cancel-task-receipt-document").click());
+  expect(state.releaseDocuments).toHaveBeenCalledExactlyOnceWith("selection");
+  const before = state.call.mock.calls.length;
+  await act(async () => pending.resolve({ accepted: true }));
+  expect(state.call.mock.calls.slice(before).map(([method]) => method)).toEqual([
+    "tasks.get",
+    "tasks.receipt",
+    "tasks.list",
+  ]);
+  expect(host.querySelector('[aria-label="Document preview"]')).toBeNull();
 });

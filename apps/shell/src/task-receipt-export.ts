@@ -87,14 +87,29 @@ export function taskReceiptMarkdown(receipt: TaskReceipt, includeSnapshots = fal
         lines.push(`Document epoch: ${record.source.documentEpoch}`);
       if (record.source.observationRevision !== undefined)
         lines.push(`Observation revision: ${record.source.observationRevision}`);
-      if (record.source.filename)
+      if (record.source.filename && !record.document)
         lines.push(
           `Document: ${text(record.source.filename)}`,
           `Saved bytes: ${record.source.byteLength}`,
           `SHA-256: ${record.source.sha256}`,
           "Saved local snapshot; original file changes are not tracked. The fingerprint identifies saved bytes, not the truth of document claims.",
         );
-      if (record.snapshot) {
+      if (record.document) {
+        const { document, completed, sha256 } = record.document;
+        lines.push(
+          `Document: ${text(document.filename)} · Captured format: ${document.format}`,
+          `Source: ${document.sourceBytes} bytes · SHA-256: ${document.sourceSha256}`,
+          `Captured text: ${completed.textBytes} bytes · Located text SHA-256: ${completed.textSha256}`,
+          `Snapshot SHA-256: ${sha256}`,
+          "Captured text snapshot; the original file is not stored or monitored. Fingerprints identify the source and snapshot, not the truth of document claims.",
+          "Document text is stored separately and is not included in this export. Open its saved preview in Aux to read it.",
+          ...document.warnings.map(
+            (warning) =>
+              `Extraction note: ${warning.count} ${warning.code.replaceAll("_", " ")}${warning.firstPage ? `; first page ${warning.firstPage}` : ""}${warning.story ? `; ${warning.story}` : ""}.`,
+          ),
+        );
+      }
+      if (record.snapshot && !record.document) {
         const label =
           record.kind === "command_snapshot"
             ? "Saved command and output"

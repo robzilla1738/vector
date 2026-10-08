@@ -219,7 +219,7 @@ export function Tasks() {
       throw new Error("Choose this task’s current receipt action.");
     const slot = { owner, token: {} };
     receiptPending.current = slot;
-    setBusy(true);
+    if (method !== "tasks.importDocumentEvidence") setBusy(true);
     setError("");
     try {
       await call(method, ...params);
@@ -239,7 +239,7 @@ export function Tasks() {
     } finally {
       if (receiptPending.current === slot) {
         receiptPending.current = null;
-        if (owner.current()) setBusy(false);
+        if (owner.current() && method !== "tasks.importDocumentEvidence") setBusy(false);
       }
     }
   }

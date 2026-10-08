@@ -3,7 +3,7 @@ import type { ConversationAttachment } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
 import { errorMessage } from "../error-message";
-import { SelectedDocuments, isFileLocalDocumentError } from "../document-selection";
+import { SelectedDocuments, isFileLocalDocumentError, documentReadFailure } from "../document-selection";
 
 type Progress = {
   owner: Batch;
@@ -131,8 +131,18 @@ export function useDocumentImport(options: Options) {
         try {
           const file = await batch.documents.read(index);
           if (!current(batch) || batch.cancelled) break;
-          filename = file.filename;
-          const result = await call("conversations.attachments.add", { chatId: batch.chatId, ...file });
+          if (file.kind === "unreadable") {
+            errors.push(`${file.filename}: ${documentReadFailure(file.reason)}`);
+            continue;
+          }
+          filename = file.document.filename;
+          const result = await call("conversations.attachments.import", {
+            chatId: batch.chatId,
+            selectionId: picked.selectionId,
+            index,
+            snapshotId: file.document.snapshotId,
+            sourceSha256: file.document.sourceSha256,
+          });
           if (!current(batch)) break;
           attached++;
           latest.current.onChange(result.attachments);

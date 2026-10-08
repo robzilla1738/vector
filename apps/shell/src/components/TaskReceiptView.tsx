@@ -2,8 +2,11 @@ import { staticFieldProps } from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
-import { SelectedDocuments, isFileLocalDocumentError } from "../document-selection";
-import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
+import { SelectedDocuments, isFileLocalDocumentError, documentReadFailure } from "../document-selection";
+import { DocumentContent } from "./DocumentContent";
+import { DocumentPages } from "./DocumentPages";
+import type { DocumentReadResult } from "@aux/contracts/document-intake";
+import type { SavedDocumentPage } from "@aux/contracts/document-snapshot";
 import {
   useCallback,
   useId,
@@ -69,8 +72,7 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
     receipt.currentTaskRevision !== undefined && receipt.currentTaskRevision !== receipt.taskRevision;
   const [document, setDocument] = useState<{
     criterionId: string;
-    filename: string;
-    content: string;
+    preview: Extract<DocumentReadResult, { kind: "chunk" }>;
     owner: ReceiptReadOwner;
     batch: DocumentBatch;
     index: number;
@@ -82,6 +84,7 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
     saved: number;
   };
   const documentBatch = useRef<DocumentBatch | null>(null);
+  const [readingDocument, setReadingDocument] = useState(false);
   useLayoutEffect(
     () => () => {
       const batch = documentBatch.current;
@@ -125,7 +128,10 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
   async function closeDocuments(batch: DocumentBatch) {
     if (documentBatch.current === batch) {
       documentBatch.current = null;
-      if (batch.owner.current()) setDocument(null);
+      if (batch.owner.current()) {
+        setDocument(null);
+        setReadingDocument(false);
+      }
     }
     await batch.documents.release();
     if (batch.saved && batch.owner.current()) {
@@ -144,8 +150,20 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
     for (let index = first; index < batch.documents.count && batchCurrent(batch); index++) {
       try {
         const file = await batch.documents.read(index);
-        if (batchCurrent(batch))
-          setDocument({ ...file, criterionId: batch.criterionId, owner: batch.owner, batch, index });
+        if (!batchCurrent(batch)) return;
+        if (file.kind === "unreadable") {
+          setImportStatus((previous) => ({
+            owner: readOwner,
+            message: [
+              previous?.owner === readOwner ? previous.message : "",
+              `${file.filename}: ${documentReadFailure(file.reason)}`,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          }));
+          continue;
+        }
+        setDocument({ preview: file, criterionId: batch.criterionId, owner: batch.owner, batch, index });
         return;
       } catch (reason) {
         if (!batchCurrent(batch)) return;
@@ -193,8 +211,17 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
   }
   async function saveDocument(current: () => boolean) {
     const original = visibleDocument,
-      producer = submit;
-    if (!original || !producer || !editable || !current() || !batchCurrent(original.batch))
+      producer = submit,
+      batch = documentBatch.current;
+    if (
+      !original ||
+      !batch ||
+      batch !== original.batch ||
+      !producer ||
+      !editable ||
+      !current() ||
+      !batchCurrent(batch)
+    )
       throw new Error("Choose the original document preview.");
     const slot = beginImport();
     try {
@@ -202,16 +229,17 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
         taskId: receipt.taskId,
         expectedRevision: receipt.taskRevision,
         criterionId: original.criterionId,
-        filename: original.filename,
-        content: original.content,
+        selectionId: original.batch.documents.selection.selectionId,
+        index: original.index,
+        snapshotId: original.preview.document.snapshotId,
+        sourceSha256: original.preview.document.sourceSha256,
       });
-      const batch = documentBatch.current;
-      if (result && batch === original.batch) {
+      if (result && batch.owner.current()) {
         batch.saved++;
         if (current() && batchCurrent(batch)) {
           setDocument(null);
-          await previewDocument(original.batch, original.index + 1);
-        }
+          await previewDocument(batch, original.index + 1);
+        } else if (batch.documents.released) await closeDocuments(batch);
       }
       return result;
     } catch (reason) {
@@ -525,8 +553,10 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
                 {record.kind === "document_snapshot" && (
                   <div className="document-source hint">
                     <span>
-                      {record.source.filename} · {record.source.byteLength?.toLocaleString()} bytes · Saved
-                      local copy; original changes are not tracked.
+                      {record.source.filename} · {record.source.byteLength?.toLocaleString()} bytes
+                      {record.document
+                        ? " of captured text · Original file is not stored or monitored."
+                        : " · Saved local copy; original changes are not tracked."}
                     </span>
                     <ReceiptDisclosure
                       owner={readOwner}
@@ -534,10 +564,24 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
                       command="toggle-task-receipt-fingerprint"
                       title="Snapshot fingerprint"
                     >
-                      <code>{record.source.sha256}</code>
-                      <span>
-                        SHA-256 identifies these saved bytes; it does not verify the document’s claims.
-                      </span>
+                      {record.document ? (
+                        <>
+                          <code>Source bytes: {record.document.document.sourceSha256}</code>
+                          <code>Located text: {record.document.completed.textSha256}</code>
+                          <code>Snapshot: {record.document.sha256}</code>
+                          <span>
+                            These fingerprints identify the source bytes and captured snapshot; they do not
+                            verify the document’s claims.
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <code>{record.source.sha256}</code>
+                          <span>
+                            SHA-256 identifies these saved bytes; it does not verify the document’s claims.
+                          </span>
+                        </>
+                      )}
                     </ReceiptDisclosure>
                   </div>
                 )}
@@ -572,7 +616,14 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
                     </ReceiptDisclosure>
                   </div>
                 )}
-                {record.snapshot && (
+                {record.document && (
+                  <ReceiptDocument
+                    key={`${readOwner.generatedAt}:${record.document.sha256}`}
+                    owner={readOwner}
+                    record={record}
+                  />
+                )}
+                {record.snapshot && !record.document && (
                   <ReceiptDisclosure
                     owner={readOwner}
                     record={record}
@@ -585,8 +636,7 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
                           : "Captured page text"
                     }
                   >
-                    <DocumentExtractionNote filename={record.snapshot.title} />
-                    <DocumentContent filename={record.snapshot.title} content={record.snapshot.text} />
+                    <DocumentContent content={record.snapshot.text} />
                   </ReceiptDisclosure>
                 )}
               </div>
@@ -647,19 +697,25 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
                 </div>
                 {visibleDocument?.criterionId === criterion.criterionId && (
                   <section className="document-preview field" aria-label="Document preview">
-                    <strong>{visibleDocument.filename}</strong>
+                    <strong>{visibleDocument.preview.document.filename}</strong>
                     <span {...staticHintProps}>
                       Document {visibleDocument.index + 1} of {visibleDocument.batch.documents.count}
                     </span>
+                    <SelectedDocumentPreview
+                      preview={visibleDocument.preview}
+                      documents={visibleDocument.batch.documents}
+                      index={visibleDocument.index}
+                      owner={readOwner}
+                      onBusy={setReadingDocument}
+                      onReadFailure={async (reason) => {
+                        if (!batchCurrent(visibleDocument.batch)) return;
+                        setImportError(errorMessage(reason));
+                        if (!isFileLocalDocumentError(reason)) await closeDocuments(visibleDocument.batch);
+                      }}
+                    />
                     <span {...staticHintProps}>
-                      {new TextEncoder().encode(visibleDocument.content).length.toLocaleString()} bytes of
-                      saved text · Up to 512 KB
-                    </span>
-                    <DocumentExtractionNote filename={visibleDocument.filename} />
-                    <DocumentContent filename={visibleDocument.filename} content={visibleDocument.content} />
-                    <span {...staticHintProps}>
-                      Save a local copy as evidence for this criterion. Importing does not send the text to a
-                      model. The original file will not be monitored.
+                      Save a captured text snapshot as evidence for this criterion. Importing does not send
+                      the text to a model. The original file is not stored or monitored.
                     </span>
                     <div {...staticRowProps}>
                       <ReceiptEditAction
@@ -667,7 +723,7 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
                         owner={readOwner}
                         valid={originalDraft("document", document)}
                         {...smallButtonProps}
-                        disabled={importing || active}
+                        disabled={importing || readingDocument || active}
                         invoke={saveDocument}
                       >
                         Save document evidence
@@ -677,7 +733,7 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
                         owner={readOwner}
                         valid={originalDraft("document", document)}
                         {...smallButtonProps}
-                        disabled={importing}
+                        disabled={importing || readingDocument}
                         invoke={async () => {
                           const slot = beginImport();
                           setDocument(null);
@@ -694,7 +750,6 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
                         command="cancel-task-receipt-document"
                         owner={readOwner}
                         {...smallButtonProps}
-                        disabled={importing}
                         invoke={() => closeDocuments(visibleDocument.batch)}
                       >
                         Cancel import
@@ -1429,7 +1484,8 @@ function ReceiptExportControls({ owner }: { owner: ReceiptReadOwner }) {
       </label>
       <span {...staticHintProps}>
         Exports objective, evidence summaries and sources, reviews, unresolved actions, run history and
-        recorded usage. Page, document and command text is optional.
+        recorded usage. Inline captured text is optional. Paged document snapshots are referenced; open their
+        saved preview to read the text.
       </span>
       {visible.message && <output data-block>{visible.message}</output>}
       {visible.error && <p role="alert">{visible.error}</p>}
@@ -1441,7 +1497,9 @@ function useReceiptRecordCurrent(owner: ReceiptReadOwner, record: ReceiptEvidenc
     const evidenceId = record.evidenceId,
       source = record.source,
       snapshot = record.snapshot,
-      sha256 = source.sha256;
+      sha256 = source.sha256,
+      document = record.document,
+      documentSha256 = document?.sha256;
     const cloud = source.cloudArtifacts,
       artifacts = cloud?.map((item) => ({
         item,
@@ -1458,6 +1516,8 @@ function useReceiptRecordCurrent(owner: ReceiptReadOwner, record: ReceiptEvidenc
       record.source === source &&
       record.snapshot === snapshot &&
       source.sha256 === sha256 &&
+      record.document === document &&
+      document?.sha256 === documentSha256 &&
       snapshot?.title === snapshotTitle &&
       snapshot?.text === snapshotText &&
       source.cloudArtifacts === cloud &&
@@ -1473,6 +1533,88 @@ function useReceiptRecordCurrent(owner: ReceiptReadOwner, record: ReceiptEvidenc
         ));
   }, [owner, record]);
 }
+
+function SelectedDocumentPreview({
+  preview,
+  documents,
+  index,
+  owner,
+  onBusy,
+  onReadFailure,
+}: {
+  preview: Extract<DocumentReadResult, { kind: "chunk" }>;
+  documents: SelectedDocuments;
+  index: number;
+  owner: ReceiptReadOwner;
+  onBusy(busy: boolean): void;
+  onReadFailure(reason: unknown): Promise<void>;
+}) {
+  const current = useCallback(() => owner.current() && !documents.released, [owner, documents]);
+  return (
+    <DocumentPages
+      initial={preview}
+      current={current}
+      onBusy={onBusy}
+      read={async (cursor) => {
+        const result = await documents.read(index, cursor).catch(async (reason) => {
+          if (current()) await onReadFailure(reason);
+          throw reason;
+        });
+        if (result.kind === "unreadable") throw new Error(documentReadFailure(result.reason));
+        return result;
+      }}
+    />
+  );
+}
+function ReceiptDocument({ owner, record }: { owner: ReceiptReadOwner; record: ReceiptEvidence }) {
+  const current = useReceiptRecordCurrent(owner, record);
+  const [state, setState] = useState<{
+    current: () => boolean;
+    page?: SavedDocumentPage;
+    busy: boolean;
+    error: string;
+  } | null>(null);
+  const view = state?.current === current ? state : null;
+  const request = useRef<object | null>(null);
+  const read = (cursor?: string) =>
+    call("tasks.readDocumentEvidence", {
+      taskId: owner.taskId,
+      expectedRevision: record.taskRevision,
+      evidenceId: record.evidenceId,
+      sha256: record.document!.sha256,
+      cursor,
+    });
+  async function open() {
+    if (!current() || view?.busy) return;
+    const token = {};
+    request.current = token;
+    setState({ current, busy: true, error: "" });
+    try {
+      const page = await read();
+      if (current() && request.current === token) setState({ current, page, busy: false, error: "" });
+    } catch (reason) {
+      if (current() && request.current === token)
+        setState({ current, busy: false, error: errorMessage(reason) });
+    }
+  }
+  return (
+    <div>
+      <ReceiptEditAction
+        owner={owner}
+        command="toggle-task-receipt-snapshot"
+        valid={current}
+        {...smallButtonProps}
+        disabled={view?.busy}
+        invoke={() => (view?.page ? setState(null) : open())}
+      >
+        {view?.busy ? "Loading document…" : view?.page ? "Close saved document" : "View saved document"}
+      </ReceiptEditAction>
+      {view?.error && <p role="alert">{view.error}</p>}
+      {view?.page && <DocumentPages initial={view.page} current={current} read={read} />}
+    </div>
+  );
+}
+
 function ReceiptArtifactSave({
   owner,
   record,

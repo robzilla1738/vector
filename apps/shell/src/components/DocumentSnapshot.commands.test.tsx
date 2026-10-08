@@ -7,14 +7,13 @@ import { bridge } from "../bridge";
 import { useStore } from "../store";
 import { executeCommand, dispatchShortcut } from "../commands";
 import { DocumentSnapshot } from "./DocumentSnapshot";
+import { makeDocumentPage } from "../mock/fixtures";
+import type { SavedDocumentPage } from "@aux/contracts/document-snapshot";
 const initial = useStore.getState(),
   windowId = bridge.windowId;
 let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
 const close = vi.fn();
-type ReadSnapshot = {
-  attachment: ConversationAttachment;
-  content: string;
-};
+type ReadSnapshot = SavedDocumentPage & { attachment: ConversationAttachment };
 const snapshot = (id = "one", content = "Original full snapshot text"): ReadSnapshot => ({
   attachment: {
     attachmentId: id,
@@ -24,7 +23,7 @@ const snapshot = (id = "one", content = "Original full snapshot text"): ReadSnap
     createdAt: 1,
     byteLength: content.length,
   },
-  content,
+  ...makeDocumentPage(content, "Original document.txt"),
 });
 let reads: {
   params: unknown;
@@ -173,7 +172,7 @@ it("excluded snapshot accurately describes future context without promising fixe
   value.attachment.included = false;
   await act(async () => reads[0]!.resolve(value));
   expect(host.textContent).toContain("Excluded from new replies");
-  expect(host.textContent).toContain(value.content);
+  expect(host.textContent).toContain(value.chunk.segments[0]!.text);
 });
 it("hidden/unfocused controls refuse original close or display mutation", async () => {
   await ready();
@@ -244,4 +243,42 @@ it("refused original summary pointer prevents browser default disclosure after o
   node.focus();
   await expect(executeCommand(details)).rejects.toThrow();
   expect(useStore.getState().toasts).toEqual([]);
+});
+
+it("loads only requested immutable sections and replays Previous with the accepted manifest", async () => {
+  await render();
+  const first = { ...snapshot(), nextCursor: "second" };
+  await act(async () => reads[0]!.resolve(first));
+  expect(reads).toHaveLength(1);
+  await command("next-document-section");
+  expect(reads[1]!.params).toEqual({
+    chatId: "a",
+    attachmentId: "one",
+    sha256: first.sha256,
+    cursor: "second",
+  });
+  const second = {
+    ...snapshot("one", "Last located section"),
+    chunk: {
+      index: 1,
+      segments: [{ locator: { kind: "text" as const, line: 50, offset: 0 }, text: "Last located section" }],
+    },
+  };
+  await act(async () => reads[1]!.resolve(second));
+  expect(host.textContent).toContain("Last located section");
+  expect(host.textContent).toContain("Line 50");
+  expect(host.textContent).not.toContain("Original full snapshot text");
+  await command("previous-document-section");
+  expect(reads[2]!.params).toEqual({
+    chatId: "a",
+    attachmentId: "one",
+    sha256: first.sha256,
+    cursor: undefined,
+  });
+  await act(async () => reads[2]!.resolve(first));
+  expect(host.textContent).toContain("Original full snapshot text");
+  await command("next-document-section");
+  await render("other");
+  await act(async () => reads[3]!.resolve(second));
+  expect(host.textContent).not.toContain("Last located section");
 });

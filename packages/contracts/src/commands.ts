@@ -376,6 +376,10 @@ export const COMMANDS = [
     ["toggle-", "-document-details", "Toggle document snapshot details", ""],
     ["close-", "-document-preview", "Close document snapshot preview", ""],
   ]),
+  ...singleScopedRows(privateConversationControl, "document-section", "document section", [
+    ["previous-", "", "Previous ", ""],
+    ["next-", "", "Next ", ""],
+  ]),
   ...singleScopedRows(privateConversationControl, "-generated-result", " generated result", [
     ["close", "-preview", "Close", " preview"],
     ["toggle", "-source", "Toggle", " source"],
