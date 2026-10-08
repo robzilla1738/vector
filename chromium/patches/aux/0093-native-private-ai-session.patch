@@ -247,28 +247,20 @@ index 49e4bf3..8de01a3 100644
    auto* frame = context.document.AsRenderFrameHostIfValid();
    if (state == pages_.end() || !frame ||
 diff --git a/chrome/browser/ui/aux/methods/native_library_methods.cc b/chrome/browser/ui/aux/methods/native_library_methods.cc
-index b49d9d5..ba61c03 100644
+index b49d9d5..eaf6879 100644
 --- a/chrome/browser/ui/aux/methods/native_library_methods.cc
 +++ b/chrome/browser/ui/aux/methods/native_library_methods.cc
-@@ -133,8 +133,15 @@ base::DictValue AuxRuntimeHost::HandleNativeLibraryCall(
+@@ -133,8 +133,7 @@ base::DictValue AuxRuntimeHost::HandleNativeLibraryCall(
      return NativeResult(base::Value(std::move(sources)));
    }
    if (method == "native.capabilities") {
 -    return NativeResult(base::Value(
 -        aux::AuxMethodRegistry::Get().Capabilities()));
-+    auto capabilities = aux::AuxMethodRegistry::Get().Capabilities();
-+    if (profile_->IsOffTheRecord()) {
-+      capabilities.Set("privateSession",
-+                       base::DictValue().Set("id", private_session_id_));
-+      capabilities.FindList("methods")->EraseIf([](const base::Value& method) {
-+        return !SupportsPrivateMethod(method.GetString());
-+      });
-+    }
-+    return NativeResult(base::Value(std::move(capabilities)));
++    return NativeResult(base::Value(Capabilities()));
    }
    if (method == "native.searchEngineGet") {
      const auto url_template = aux::ProfileSearchEngine::CurrentTemplate(profile_);
-@@ -195,7 +202,7 @@ base::DictValue AuxRuntimeHost::HandleNativeLibraryCall(
+@@ -195,7 +194,7 @@ base::DictValue AuxRuntimeHost::HandleNativeLibraryCall(
      if (!bookmark_method || !bookmark_params) {
        return NativeFault("invalid_params", "Invalid bookmark request");
      }
@@ -320,7 +312,7 @@ index e0e342f..1f2b9e7 100644
      return std::nullopt;
    const bool keyboard = event.type == NSEventTypeKeyDown ||
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
-index 4dcf76a..b6e909f 100644
+index 4dcf76a..ab806f6 100644
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
 @@ -28,6 +28,7 @@
@@ -366,7 +358,7 @@ index 4dcf76a..b6e909f 100644
      auto created = std::unique_ptr<AuxRuntimeHost>(new AuxRuntimeHost(profile));
      host = created.get();
      profile->SetUserData(&kAuxRuntimeHostKey, std::move(created));
-@@ -153,8 +168,44 @@ AuxRuntimeHost* AuxRuntimeHost::ForProfile(Profile* profile) {
+@@ -153,8 +168,58 @@ AuxRuntimeHost* AuxRuntimeHost::ForProfile(Profile* profile) {
    return host;
  }
  
@@ -383,9 +375,12 @@ index 4dcf76a..b6e909f 100644
 +  }
 +  return identity->id;
 +}
-+
+ 
+-AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
 +bool AuxRuntimeHost::SupportsPrivateMethod(std::string_view method) {
-+  return !method.starts_with("native.foundationModels") &&
++  return method != "bookmarksInvoke" && method != "onBookmarksChanged" &&
++         method != "organizationSnapshot" && method != "organizationCommit" &&
++         !method.starts_with("native.foundationModels") &&
 +         !method.starts_with("native.copilot") &&
 +         !method.starts_with("native.browserImport") &&
 +         !method.starts_with("native.recorder") &&
@@ -402,8 +397,19 @@ index 4dcf76a..b6e909f 100644
 +         method != "native.profileStorageFactor" &&
 +         method != "native.recoveryOwnerAuth";
 +}
- 
--AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
++
++base::DictValue AuxRuntimeHost::Capabilities() const {
++  auto capabilities = aux::AuxMethodRegistry::Get().Capabilities();
++  if (!private_session_id_.empty()) {
++    capabilities.Set("privateSession",
++                     base::DictValue().Set("id", private_session_id_));
++    capabilities.FindList("methods")->EraseIf([](const base::Value& method) {
++      return !SupportsPrivateMethod(method.GetString());
++    });
++  }
++  return capabilities;
++}
++
 +AuxRuntimeHost::AuxRuntimeHost(Profile* profile)
 +    : profile_(profile),
 +      private_session_id_(
@@ -412,7 +418,7 @@ index 4dcf76a..b6e909f 100644
    native_find_ = std::make_unique<aux::NativeFind>(profile);
    worker_thread_ = std::make_unique<base::Thread>("AuxProfileRuntime");
    base::Thread::Options worker_options;
-@@ -166,47 +217,48 @@ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
+@@ -166,47 +231,48 @@ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
        base::BindRepeating(&AuxRuntimeHost::OnCdpNavigationState,
                           weak_factory_.GetWeakPtr()));
    worker_.emplace(worker_thread_->task_runner(),
@@ -499,7 +505,7 @@ index 4dcf76a..b6e909f 100644
    if (auto* catalog = aux::TabCatalog::GetForProfile(profile_)) {
      tab_catalog_subscription_ = catalog->ObserveChanges(base::BindRepeating(
          [](base::WeakPtr<AuxRuntimeHost> host, const std::string& patch_json) {
-@@ -224,11 +276,25 @@ base::DictValue AuxRuntimeHost::CallBookmarksForUser(
+@@ -224,11 +290,25 @@ base::DictValue AuxRuntimeHost::CallBookmarksForUser(
      const std::string& method,
      const base::DictValue& params) {
    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
@@ -526,7 +532,7 @@ index 4dcf76a..b6e909f 100644
    NativeConnectionRetired(admitted_native_generation_);
    FailOwnerMutations();
    if (recovery_authenticator_ && recovery_auth_pending_)
-@@ -241,6 +307,10 @@ AuxRuntimeHost::~AuxRuntimeHost() {
+@@ -241,6 +321,10 @@ AuxRuntimeHost::~AuxRuntimeHost() {
      importer->Close(base::BindOnce([](std::shared_ptr<aux::BrowserProfileImporter>) {}, importer));
    }
    native_find_.reset();
@@ -537,7 +543,7 @@ index 4dcf76a..b6e909f 100644
    worker_.Reset();
    // Destroy the sequence-bound worker before quitting its thread, but join
    // off the UI sequence. Profile teardown must not block browser UI or violate
-@@ -255,12 +325,12 @@ AuxRuntimeHost::~AuxRuntimeHost() {
+@@ -255,12 +339,12 @@ AuxRuntimeHost::~AuxRuntimeHost() {
  bool AuxRuntimeHost::TurnContextCurrent(const TurnContextOwner& owner) const {
    auto* frame = owner.document.AsRenderFrameHostIfValid();
    auto* shell = frame ? WebUIBrowserWindow::FromWebShellWebContents(content::WebContents::FromRenderFrameHost(frame)) : nullptr;
@@ -556,7 +562,7 @@ index 4dcf76a..b6e909f 100644
  }
  bool AuxRuntimeHost::RemoteDebuggingOwnerCurrent(const std::string& token,
      uint64_t connection) const {
-@@ -399,7 +469,7 @@ void AuxRuntimeHost::CallApi(std::string method,
+@@ -399,7 +483,7 @@ void AuxRuntimeHost::CallApi(std::string method,
            response.error_code = "ref_stale";
            response.error_message = "The original Return control receipt expired or changed. Refresh the page.";
          }
@@ -565,7 +571,7 @@ index 4dcf76a..b6e909f 100644
            owner->profile_library_->OnRuntimeAvailable();
          std::move(callback).Run(std::move(response));
        }, weak_factory_.GetWeakPtr(), std::move(mutation_token), person_resume, run_release, std::move(callback)));
-@@ -1293,7 +1363,8 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+@@ -1293,7 +1377,8 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
    if (!weak || admitted_native_generation_) return;
    cdp_broker_->DetachAll();
    if (!weak || admitted_native_generation_) return;
@@ -575,7 +581,7 @@ index 4dcf76a..b6e909f 100644
    if (!weak || admitted_native_generation_) return;
    observers_.Notify("onRuntimeStatus", "{\"connected\":false}");
  }
-@@ -1671,12 +1742,23 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
+@@ -1671,12 +1756,23 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
      auto* window = found->second.window.get();
      const std::string window_id = base::NumberToString(window->GetSessionID().id());
      std::string error;
@@ -602,7 +608,7 @@ index 4dcf76a..b6e909f 100644
      snapshot->Set("windowId", window_id);
      auto* active = window->GetTabStripModel()->GetActiveWebContents();
      snapshot->Set("activePageId", active ? base::Value(aux::PageIdentity::GetOrCreate(profile_, active)) : base::Value());
-@@ -1731,9 +1813,10 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
+@@ -1731,9 +1827,10 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
      const auto* chain = params.FindList("ancestry");
      auto original = token ? turn_contexts_.find(*token) : turn_contexts_.end();
      if (!token || !source || !profile_id || !run_id || !chain ||
@@ -616,7 +622,7 @@ index 4dcf76a..b6e909f 100644
          !TurnContextCurrent(original->second))
        return NativeFault("permission_denied", "Exact original session window is required");
      const auto* tab_id = source->FindString("tabId");
-@@ -1843,17 +1926,40 @@ void AuxRuntimeHost::HandleRecoveryOwnerAuth(
+@@ -1843,17 +1940,40 @@ void AuxRuntimeHost::HandleRecoveryOwnerAuth(
  AuxRuntimeHost::Worker::Worker(
      base::FilePath profile_path,
      std::string profile_id,
@@ -662,7 +668,7 @@ index 4dcf76a..b6e909f 100644
  }
  
  bool AuxRuntimeHost::Worker::Connect(std::string* error) {
-@@ -1869,6 +1975,14 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
+@@ -1869,6 +1989,14 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
      *error = "Previous runtime transport cleanup is not acknowledged";
      return false;
    }
@@ -677,7 +683,7 @@ index 4dcf76a..b6e909f 100644
    if (!socket_directory_.CreateUniqueTempDirUnderPath(
            base::FilePath("/tmp"), "aux-runtime-") ||
        !IsOwnerOnlyDirectory(socket_directory_.GetPath())) {
-@@ -1944,14 +2058,37 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
+@@ -1944,14 +2072,37 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
    command.AppendArg("--icu-data-dir=" + icu_directory.value());
    command.AppendArgPath(entry);
    base::LaunchOptions options;
@@ -716,7 +722,7 @@ index 4dcf76a..b6e909f 100644
    process_ = base::LaunchProcess(command, options);
    if (!process_.IsValid()) {
      *error = "Cannot start the Aux Runtime helper";
-@@ -2072,6 +2209,9 @@ bool AuxRuntimeHost::Worker::Disconnect() {
+@@ -2072,6 +2223,9 @@ bool AuxRuntimeHost::Worker::Disconnect() {
    }
    const bool directory_removed = child_stopped && socket_removed &&
        (!socket_directory_.IsValid() || socket_directory_.Delete());
@@ -726,7 +732,7 @@ index 4dcf76a..b6e909f 100644
    token_.clear();
    read_buffer_.clear();
    auto pending = std::move(pending_requests_);
-@@ -2081,7 +2221,8 @@ bool AuxRuntimeHost::Worker::Disconnect() {
+@@ -2081,7 +2235,8 @@ bool AuxRuntimeHost::Worker::Disconnect() {
          {false, "", "operation_uncertain",
           "The runtime connection ended before this request was acknowledged"});
    }
@@ -736,7 +742,7 @@ index 4dcf76a..b6e909f 100644
  }
  
  bool AuxRuntimeHost::Worker::SendFrame(const std::string& frame) {
-@@ -2443,26 +2584,53 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
+@@ -2443,26 +2598,53 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
      fault.Set("code", "invalid_params");
      fault.Set("message", validation_error);
      reply.Set("error", std::move(fault));
@@ -801,7 +807,7 @@ index 4dcf76a..b6e909f 100644
      }
    } else if (native_method && native_params &&
 diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
-index cb4a51e..b35d890 100644
+index cb4a51e..840e627 100644
 --- a/chrome/browser/ui/aux/runtime_host.h
 +++ b/chrome/browser/ui/aux/runtime_host.h
 @@ -12,6 +12,7 @@
@@ -842,15 +848,16 @@ index cb4a51e..b35d890 100644
   public:
    struct Response {
      bool ok = false;
-@@ -77,6 +81,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+@@ -77,6 +81,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
    using ResponseCallback = base::OnceCallback<void(Response)>;
  
    static AuxRuntimeHost* ForProfile(Profile* profile);
 +  static std::string ProfileId(Profile* profile);
++  base::DictValue Capabilities() const;
    ~AuxRuntimeHost() override;
    base::WeakPtr<AuxRuntimeHost> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
    uint64_t DeviceConfirmationGeneration() const { return admitted_native_generation_; }
-@@ -115,13 +120,16 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+@@ -115,13 +121,16 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
        base::OnceCallback<void(base::DictValue)> callback);
  
   private:
@@ -869,7 +876,7 @@ index cb4a51e..b35d890 100644
      ~Worker();
      void CallApi(std::string method, std::string params_json,
                   std::string person_resume, ResponseCallback callback, std::string turn_context);
-@@ -165,6 +173,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+@@ -165,6 +174,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
  
      base::FilePath profile_path_;
      std::string profile_id_;
@@ -879,7 +886,7 @@ index cb4a51e..b35d890 100644
      scoped_refptr<base::SequencedTaskRunner> ui_runner_;
      base::WeakPtr<AuxRuntimeHost> owner_;
      base::ScopedTempDir socket_directory_;
-@@ -257,6 +268,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+@@ -257,6 +269,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
    void FailOwnerMutations();
  
    raw_ptr<Profile> profile_;
@@ -889,7 +896,7 @@ index cb4a51e..b35d890 100644
    base::SequenceBound<Worker> worker_;
    std::unique_ptr<aux::CdpBroker> cdp_broker_;
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-index 3596e5a..4b05e4d 100644
+index 3596e5a..b6ea600 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 @@ -832,14 +832,14 @@ void WebUIBrowserUI::GetIdentity(GetIdentityCallback callback) {
@@ -915,7 +922,22 @@ index 3596e5a..4b05e4d 100644
  }
  
  void WebUIBrowserUI::Request(const std::string& method,
-@@ -1001,11 +1001,6 @@ void WebUIBrowserUI::Request(const std::string& method,
+@@ -869,7 +869,13 @@ void WebUIBrowserUI::Request(const std::string& method,
+                               "Capabilities take no arguments");
+       return;
+     }
+-    auto capabilities = registry.Capabilities();
++    auto* host = AuxRuntimeHost::ForProfile(browser_->GetProfile());
++    if (!host) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "This browser Profile is closing");
++      return;
++    }
++    auto capabilities = host->Capabilities();
+     if (NativePerformance::Enabled()) capabilities.Set("nativePerformance", true);
+     std::move(callback).Run(true, *base::WriteJson(capabilities), "", "");
+     return;
+@@ -1001,11 +1007,6 @@ void WebUIBrowserUI::Request(const std::string& method,
                              "Unsupported Aux shell method: " + method);
      return;
    }
@@ -927,7 +949,7 @@ index 3596e5a..4b05e4d 100644
    if (!list || list->size() < 1 || list->size() > 2 ||
        !(*list)[0].is_string() || (*list)[0].GetString().empty() ||
        (*list)[0].GetString().size() > 128) {
-@@ -1024,7 +1019,7 @@ void WebUIBrowserUI::Request(const std::string& method,
+@@ -1024,7 +1025,7 @@ void WebUIBrowserUI::Request(const std::string& method,
    AuxRuntimeHost* host = AuxRuntimeHost::ForProfile(browser_->GetProfile());
    if (!host) {
      std::move(callback).Run(false, "", "forbidden",
