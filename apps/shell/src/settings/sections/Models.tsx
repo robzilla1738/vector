@@ -237,6 +237,8 @@ export function ModelsSettings({
       settings.plannerModel,
       settings.compatibleEndpoint,
       settings.modelApiKey,
+      settings.modelAuthentication,
+      settings.modelConfigured,
       settings.modelConnections,
     ]),
   );
@@ -575,20 +577,35 @@ export function ModelsSettings({
         return false;
       }
     })();
-  const connectionReady = connected && (hasKey || localCompatible || (settings.modelAuthentication === "vercel" && settings.modelConfigured === true));
+  const accountProvider =
+    settings.modelAuthentication === "chatgpt"
+      ? "ChatGPT"
+      : settings.modelAuthentication === "vercel"
+        ? "Vercel"
+        : settings.modelAuthentication === "copilot"
+          ? "GitHub Copilot"
+          : undefined;
+  const accountReady = !!accountProvider && settings.modelConfigured === true;
+  const connectionReady = connected && (accountProvider ? accountReady : hasKey || localCompatible);
 
   return (
     <SettingsSection name="Models" title="AI model" hidden={!active}>
       <output {...staticFieldProps} data-block>
         {!connected
           ? `${providerNames[provider]} is disconnected. Reconnect explicitly before making requests.`
-          : probe?.ok
-            ? `${providerNames[provider]} is ready.`
-            : localCompatible
-              ? "Local model endpoint configured. Save a model and test the connection before your first run."
-              : hasKey
-                ? `${providerNames[provider]} key configured. Save a model and test the connection before your first run.`
-                : "Agent setup needed. Browsing, saved tasks, and evidence review are available without a model."}
+          : accountProvider
+            ? accountReady
+              ? `${accountProvider} account configured. You can start chatting or test the connection.`
+              : String(
+                  settings.modelCredentialError ?? `Finish connecting ${accountProvider} and choose a model.`,
+                )
+            : probe?.ok
+              ? `${providerNames[provider]} is ready.`
+              : localCompatible
+                ? "Local model endpoint configured. Save a model to start chatting; you can also test the connection."
+                : hasKey
+                  ? `${providerNames[provider]} key configured. Save a model to start chatting; you can also test the connection.`
+                  : "Agent setup needed. Browsing, saved tasks, and evidence review are available without a model."}
       </output>
       <ModelConnections
         settings={settings}
@@ -766,11 +783,11 @@ export function ModelsSettings({
                   ? "Using a process environment key. Change it in your launch environment."
                   : hasKey
                     ? "Key saved with OS encryption."
-                    : settings.modelAuthentication === "vercel"
-                      ? "Your Vercel team account is selected. Saving an AI Gateway key switches this route to that key."
-                    : localCompatible
-                      ? "Optional for localhost. Add a key only if your local server requires one."
-                      : "No key configured. Saved keys require OS encryption."),
+                    : accountProvider
+                      ? `${accountProvider} account usage is selected. An API key is not required for this route.`
+                      : localCompatible
+                        ? "Optional for localhost. Add a key only if your local server requires one."
+                        : "No key configured. Saved keys require OS encryption."),
             )}
           </>
         }
@@ -790,9 +807,11 @@ export function ModelsSettings({
             placeholder={
               hasKey
                 ? "Key saved — enter a new key to replace"
-                : localCompatible
-                  ? "Optional for this local endpoint"
-                  : "Enter this provider’s API key"
+                : accountProvider
+                  ? "Optional — switch to API key billing"
+                  : localCompatible
+                    ? "Optional for this local endpoint"
+                    : "Enter this provider’s API key"
             }
             onChange={(e) => {
               probeSequence.current++;

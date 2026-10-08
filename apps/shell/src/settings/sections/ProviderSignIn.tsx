@@ -219,7 +219,7 @@ export function ProviderSignIn({ onConnected }: { onConnected(): Promise<unknown
         </div>
       ))}
       {phase === "connected" && (
-        <output>{provider === "chatgpt" ? "ChatGPT connected." : "OpenRouter connected."}</output>
+        <output>{{ chatgpt: "ChatGPT", vercel: "Vercel", openrouter: "OpenRouter" }[provider]} connected.</output>
       )}
       <CopilotSignIn />
       {notice && <p role="status">{notice}</p>}

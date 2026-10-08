@@ -72,6 +72,41 @@ async function typeKey(value: string) {
     keyField().dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
+it("tests the configured ChatGPT route without a key and retires its result when the account disconnects", async () => {
+  let resolve!: (result: { ok: boolean; modelId: string }) => void;
+  call.mockImplementation(async (method) =>
+    method === "models.probe"
+      ? new Promise((done) => { resolve = done; })
+      : modelRead(method),
+  );
+  const account = {
+    modelProvider: "openai",
+    modelAuthentication: "chatgpt",
+    modelConfigured: true,
+    plannerModel: "synthetic-account-model",
+  };
+  const save = vi.fn(async () => true);
+  await act(async () => root.render(<ModelsSettings active settings={account} onSave={save} />));
+  expect(button("Test connection").disabled).toBe(false);
+  expect(host.textContent).toContain("ChatGPT account configured.");
+  expect(host.textContent).not.toContain("No key configured.");
+  await act(async () => button("Test connection").click());
+  expect(call).toHaveBeenCalledWith("models.probe", { modelId: account.plannerModel });
+  await act(async () => root.render(
+    <ModelsSettings active settings={{
+      ...account,
+      modelConfigured: false,
+      modelApiKey: "••••••••",
+      modelCredentialError: "Sign in to ChatGPT again to unlock this account.",
+    }} onSave={save} />,
+  ));
+  expect(button("Test connection").disabled).toBe(true);
+  await act(async () => resolve({ ok: true, modelId: account.plannerModel }));
+  expect(host.textContent).toContain("Sign in to ChatGPT again");
+  expect(host.textContent).not.toContain("Connection tested");
+  expect(host.textContent).not.toContain("OpenAI is ready.");
+  expect(save).not.toHaveBeenCalled();
+});
 it("input Enter and remapped focused Save share one actual registration and original boolean ACK", async () => {
   const save = vi.fn(async () => true);
   await act(async () => root.render(<ModelsSettings active settings={settings} onSave={save} />));
