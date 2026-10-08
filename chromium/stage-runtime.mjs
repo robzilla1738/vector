@@ -29,10 +29,14 @@ import {
 } from "./slim-node.mjs";
 
 import { assertDevLock } from "../scripts/dev.mjs";
+import { assertCompiledRuntimeAbi } from "../scripts/lib/compiled-runtime-abi.mjs";
 
 import { productIdentity } from "../scripts/lib/product-identity.mjs";
 
 const root = resolve(import.meta.dirname, "..");
+const runtimeOnly = process.argv[3] === "--runtime-only";
+if (process.argv.length > 4 || (process.argv[3] && !runtimeOnly))
+  throw new Error("Usage: node chromium/stage-runtime.mjs [Aux.app] [--runtime-only]");
 const app = resolve(process.argv[2] ?? join(nativeSource, "out", nativeOutput[nativeFlavor], "Aux.app"));
 
 function run(command, args, cwd = root) {
@@ -55,6 +59,11 @@ const appRoot = realpathSync(app);
 if (!appRoot.endsWith("/Aux.app")) throw new Error("The target must be an Aux.app bundle");
 
 assertDevLock();
+if (runtimeOnly) {
+  run("node", ["scripts/gen-host-bindings.mjs", "--check"]);
+  assertCompiledRuntimeAbi(appRoot, join(root, "chromium/generated/aux_host_methods.h"));
+  console.log("Compiled native host ABI matches the current generated contracts.");
+}
 const node = await ensureSlimNode();
 const staging = mkdtempSync(join(tmpdir(), "aux-runtime-"));
 try {
@@ -62,7 +71,12 @@ try {
   if (version.status !== 0 || version.stdout.trim() !== `v${nodeVersion}`)
     throw new Error("Pinned Node executable failed version check");
 
-  run("pnpm", ["exec", "tsc", "-b", "tsconfig.json"]);
+  run("pnpm", [
+    "exec",
+    "tsc",
+    "-b",
+    ...(runtimeOnly ? ["apps/runtime", "packages/cli", "packages/mcp"] : ["tsconfig.json"]),
+  ]);
   const payload = join(staging, "aux-runtime");
   await bundleRuntime(payload, "node26");
   const fullData = await nodeIcuData(node);
