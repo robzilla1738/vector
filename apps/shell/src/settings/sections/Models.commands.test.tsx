@@ -138,6 +138,46 @@ it("uses live text compatibility in model choices without losing a custom ID or 
     plannerModel: "local/new", modelConnection: { provider: "openai-compatible", enabled: true },
   });
 });
+it("retires old account catalogs and probe ACKs through same-provider A to B to A transitions", async () => {
+  const catalogs: { resolve(result: { models: { id: string }[] }): void; reject(error: unknown): void }[] = [];
+  let finishProbe!: (result: { ok: boolean; modelId: string }) => void;
+  call.mockImplementation(async (method) => {
+    if (method === "models.list") return new Promise((resolve, reject) => catalogs.push({ resolve, reject }));
+    if (method === "models.probe") return new Promise((resolve) => { finishProbe = resolve; });
+    return modelRead(method);
+  });
+  const account = {
+    modelProvider: "openai", modelAuthentication: "chatgpt", modelConfigured: true,
+    plannerModel: "same-model-in-both-accounts",
+  };
+  const save = vi.fn(async () => true);
+  const render = (revision: string) => root.render(<ModelsSettings active settings={{
+    ...account, modelConnectionRevision: revision,
+  }} onSave={save} />);
+  const choices = () => [...host.querySelectorAll<HTMLOptionElement>("#agent-model-options option")]
+    .map((option) => option.value);
+  await act(async () => render("account-A-original"));
+  await act(async () => catalogs[0]!.resolve({ models: [{ id: "A-original-visible" }] }));
+  expect(choices()).toContain("A-original-visible");
+  await act(async () => button("Refresh models").click());
+  await act(async () => button("Test connection").click());
+  await act(async () => render("account-B"));
+  expect(choices()).not.toContain("A-original-visible");
+  await act(async () => render("account-A-returned"));
+  expect(catalogs).toHaveLength(4);
+  await act(async () => catalogs[3]!.resolve({ models: [{ id: "A-current-choice" }] }));
+  await act(async () => {
+    catalogs[1]!.resolve({ models: [{ id: "A-retired-choice" }] });
+    catalogs[2]!.reject(new Error("B-retired-error"));
+    finishProbe({ ok: true, modelId: account.plannerModel });
+  });
+  expect(choices()).toContain("A-current-choice");
+  expect(choices()).not.toContain("A-retired-choice");
+  expect(host.textContent).not.toContain("B-retired-error");
+  expect(host.textContent).not.toContain("Connection tested");
+  expect(button("Test connection").disabled).toBe(false);
+  expect(save).not.toHaveBeenCalled();
+});
 it("input Enter and remapped focused Save share one actual registration and original boolean ACK", async () => {
   const save = vi.fn(async () => true);
   await act(async () => root.render(<ModelsSettings active settings={settings} onSave={save} />));

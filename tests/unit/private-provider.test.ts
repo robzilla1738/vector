@@ -75,6 +75,7 @@ it("adopts the selected loaded environment connection without persisting its key
   const described = await normal.service.privateProviderRequest({ operation: "describe" });
   if (described.operation !== "describe" || !described.connection)
     throw new Error("Missing fixture connection");
+  expect(privateSettings.service.all().modelConnectionRevision).toBe(described.connection.revision);
   normal.repo.setSetting("modelCacheGeneration", randomUUID());
   await expect(
     normal.service.privateProviderRequest({

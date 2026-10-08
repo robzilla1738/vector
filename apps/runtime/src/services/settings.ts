@@ -640,6 +640,7 @@ export class SettingsService {
     modelCredentialSource: string;
     modelCredentialError?: string;
     modelAuthentication: "api-key" | "chatgpt" | "copilot" | "vercel";
+    modelConnectionRevision: string;
     modelEndpoint: string;
     modelProbe?: ModelProbeRecord;
     agentModelRouteOverrides: Settings["agentModelRoutes"];
@@ -664,6 +665,7 @@ export class SettingsService {
           : undefined),
       localModelsOnly: this.localModelsOnly(),
       modelProvider: this.modelProvider(),
+      modelConnectionRevision: this.inheritedProvider()?.descriptor.revision ?? this.modelCacheGeneration(),
       modelAuthentication:
         this.inheritedProvider()?.descriptor.authentication ??
         (this.copilotSelection()
@@ -2478,10 +2480,12 @@ export class SettingsService {
     error?: string;
   }> {
     const epoch = this.connectionEpoch,
+      generation = this.modelCacheGeneration(),
       provider = this.modelProvider();
     const stale = () =>
       this.probeController.signal.aborted ||
       epoch !== this.connectionEpoch ||
+      generation !== this.modelCacheGeneration() ||
       !this.connectionEnabled(provider);
     const interrupted = () => ({
       ok: false,

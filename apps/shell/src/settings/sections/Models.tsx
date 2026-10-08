@@ -212,8 +212,11 @@ export function ModelsSettings({
   const [modelDraft, setModelDraft] = useState(() => plannerModelSelection(settings, provider));
   const [endpointDraft, setEndpointDraft] = useState(String(settings.compatibleEndpoint ?? ""));
   const probeSequence = useRef(0);
-  const [models, setModels] = useState<ModelEntry[]>([]);
-  const [localServers, setLocalServers] = useState<LocalModelServer[]>([]);
+  const [catalog, setCatalog] = useState<{
+    owner: ModelControlOwner;
+    models: ModelEntry[];
+    localServers: LocalModelServer[];
+  } | null>(null);
   const [modelsBusy, setModelsBusy] = useState(false);
   const modelsSequence = useRef(0);
   const [probe, setProbe] = useState<ProbeResult | null>(() => {
@@ -225,9 +228,20 @@ export function ModelsSettings({
   useEffect(() => {
     const saved = settings.modelProbe as ProbeResult | undefined;
     setProbe(saved ? { ...saved, error: saved.ok ? undefined : "Last connection test failed" } : null);
-  }, [settings.modelProbe, provider]);
+  }, [settings.modelProbe, settings.modelConnectionRevision, provider]);
   const [probing, setProbing] = useState(false);
   const owner = useModelControlOwner(active, provider);
+  const catalogOwner = useModelControlOwner(
+    active,
+    JSON.stringify([
+      provider,
+      settings.compatibleEndpoint,
+      settings.modelApiKey,
+      settings.modelConnectionRevision,
+    ]),
+  );
+  const models = catalog?.owner === catalogOwner ? catalog.models : [];
+  const localServers = catalog?.owner === catalogOwner ? catalog.localServers : [];
   const windowOwner = useModelControlOwner(active, "model-window");
   const probeOwner = useModelControlOwner(
     active,
@@ -238,6 +252,7 @@ export function ModelsSettings({
       settings.modelApiKey,
       settings.modelAuthentication,
       settings.modelConfigured,
+      settings.modelConnectionRevision,
       settings.modelConnections,
     ]),
   );
@@ -267,27 +282,26 @@ export function ModelsSettings({
     (field === "key" ? keyInput.current : modelInput.current)?.focus();
   }, [provider, switchingProvider, windowOwner]);
   useEffect(() => {
-    if (!active || !owner.current()) return;
+    if (!catalogOwner.current()) return;
     const sequence = ++modelsSequence.current;
-    setModels([]);
+    setCatalog(null);
     setModelsBusy(true);
+    setConnectionError("");
     void call("models.list")
       .then((result) => {
-        if (owner.current() && sequence === modelsSequence.current) {
-          setModels(result.models);
-          setLocalServers(result.localServers ?? []);
-        }
+        if (catalogOwner.current() && sequence === modelsSequence.current)
+          setCatalog({ owner: catalogOwner, models: result.models, localServers: result.localServers ?? [] });
       })
       .catch((error) => {
-        if (owner.current() && sequence === modelsSequence.current) setConnectionError(errorMessage(error));
+        if (catalogOwner.current() && sequence === modelsSequence.current) setConnectionError(errorMessage(error));
       })
       .finally(() => {
-        if (owner.current() && sequence === modelsSequence.current) setModelsBusy(false);
+        if (catalogOwner.current() && sequence === modelsSequence.current) setModelsBusy(false);
       });
     return () => {
       ++modelsSequence.current;
     };
-  }, [active, provider, settings.compatibleEndpoint, settings.modelApiKey, owner]);
+  }, [catalogOwner]);
 
   const keyProvider = useRef(provider);
   useEffect(() => {
@@ -377,7 +391,6 @@ export function ModelsSettings({
           )
             return;
           setKey("");
-          setModels([]);
           setConnectionError("");
           focusRequest.current = { provider: target, field: focus, owner: windowOwner };
         } finally {
@@ -485,24 +498,23 @@ export function ModelsSettings({
     modelDraft,
   );
   const discoverModels = () =>
-    owner.completion(async () => {
-      if (modelsBusy || !owner.reserve("discovery")) throw new Error("Choose the current provider models.");
+    catalogOwner.completion(async () => {
+      if (modelsBusy || !catalogOwner.reserve("discovery")) throw new Error("Choose the current provider models.");
       const sequence = ++modelsSequence.current;
       setModelsBusy(true);
       setConnectionError("");
       try {
         const result = await call("models.list");
-        if (!owner.current() || sequence !== modelsSequence.current) return result;
-        setModels(result.models);
-        setLocalServers(result.localServers ?? []);
+        if (!catalogOwner.current() || sequence !== modelsSequence.current) return result;
+        setCatalog({ owner: catalogOwner, models: result.models, localServers: result.localServers ?? [] });
         if (!result.models.length) setConnectionError("The endpoint returned no models.");
         return result;
       } catch (error) {
-        if (owner.current() && sequence === modelsSequence.current) setConnectionError(errorMessage(error));
+        if (catalogOwner.current() && sequence === modelsSequence.current) setConnectionError(errorMessage(error));
         throw error;
       } finally {
-        owner.finish("discovery");
-        if (owner.current() && sequence === modelsSequence.current) setModelsBusy(false);
+        catalogOwner.finish("discovery");
+        if (catalogOwner.current() && sequence === modelsSequence.current) setModelsBusy(false);
       }
     });
 

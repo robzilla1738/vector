@@ -143,7 +143,7 @@ it("never reconnects or clears the old key after a credential-store failure", as
   expect(f.settings.gatewayKey()).toBeUndefined();
 });
 
-it("does not continue a stale probe or record success after disconnect", async () => {
+it.each(["disconnect", "account-generation"])("does not continue a stale probe or record success after %s", async (change) => {
   const f = fixture();
   let finish!: () => void;
   const vision = vi.fn();
@@ -159,11 +159,28 @@ it("does not continue a stale probe or record success after disconnect", async (
   } as never;
   const pending = f.settings.probe("fixture-model");
   await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
-  await f.settings.set({ modelConnection: { provider: "gateway", enabled: false } });
+  if (change === "disconnect")
+    await f.settings.set({ modelConnection: { provider: "gateway", enabled: false } });
+  else f.repo.setSetting("modelCacheGeneration", "replacement-account-generation");
   finish();
   expect(await pending).toMatchObject({ ok: false, error: expect.stringMatching(/Connection changed/) });
   expect(vision).not.toHaveBeenCalled();
   expect(f.repo.getSetting("modelProbe")).toBeUndefined();
+});
+
+it("exposes the existing nonsecret connection revision across masked-key A to B to A changes", async () => {
+  const f = fixture();
+  const revisions = [];
+  for (const key of ["synthetic-A", "synthetic-B", "synthetic-A"]) {
+    await f.settings.set({ modelProvider: "openai", plannerModel: "same-model", modelCredential: { provider: "openai", key } });
+    const current = f.settings.all();
+    expect(current.modelApiKey).toBe("••••••••");
+    expect(current.modelConnectionRevision).toBe(f.settings.modelCacheGeneration());
+    expect(JSON.stringify(current)).not.toContain(key);
+    revisions.push(current.modelConnectionRevision);
+  }
+  expect(new Set(revisions).size).toBe(3);
+  expect((await f.restart()).all().modelConnectionRevision).toBe(revisions[2]);
 });
 
 it("defaults to the verified image model and preserves an explicit Off choice", async () => {
