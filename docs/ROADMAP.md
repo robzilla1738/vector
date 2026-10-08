@@ -726,7 +726,7 @@ Each schema carries a `byline` for the tool rail.
 - RRULE schedules, event triggers and heartbeat mode.
 - Results go to "Needs your input" and notifications; add a suggestion scan.
 
-**P4.11 Subagents.** Up to 8, with profiles (default, explorer, read-only, `fork_self` for cache sharing). Interrupts cascade to children.
+**P4.11 Subagents.** Up to 8, with declarative profiles (default, explorer, read-only and coder). Coder children use governed isolated worktrees and integrate through version-checked parent writes. Profile tools and limits intersect parent authority. Interrupts cascade to children.
 
 **P4.12 WebMCP.** Turn on the Blink `WebMCP` runtime feature for non-private Profiles and expose page tools, including declarative form tools.
 
@@ -827,7 +827,7 @@ Then a first-chat postcard with 3 starter prompts, and a default-browser ask wit
 
 ## Deferred next-round validation (proportionate, local only)
 
-The owner has deferred remaining native walkthroughs, phase performance measurements, manual 20-task/provider acceptance, and detailed design comparisons to the next roadmap round so implementation can wrap up now. Source checks have passed, and the current AuxFast native build and runtime packaging have completed successfully. The targets below are preserved for later validation, not claimed as passed or as empirical phase completion. The inherited shell Gateway credential was rejected. The workspace configuration subsequently passed a small real-provider request; native end-to-end provider acceptance remains in progress. Owner OAuth registrations remain explicitly deferred.
+The owner has deferred remaining native walkthroughs, phase performance measurements, manual 20-task/provider acceptance, and detailed design comparisons to the next roadmap round so implementation can wrap up now. Source checks have passed, and the current AuxFast native build and runtime packaging have completed successfully. The targets below are preserved for later validation, not claimed as passed or as empirical phase completion. The inherited shell Gateway credential was rejected. The workspace configuration subsequently completed native coding, supervised command and browser question/answer walkthroughs; broad provider acceptance remains deferred. Owner OAuth registrations remain explicitly deferred.
 
 - Do not repeat passing source checks for this wrap-up. Remaining native walkthroughs and provider-dependent acceptance are next-round work.
 - **P0 validation target:**
