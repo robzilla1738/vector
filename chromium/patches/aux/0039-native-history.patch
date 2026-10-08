@@ -1,0 +1,759 @@
+diff --git a/chrome/browser/ui/aux/profile_library.cc b/chrome/browser/ui/aux/profile_library.cc
+--- a/chrome/browser/ui/aux/profile_library.cc
++++ b/chrome/browser/ui/aux/profile_library.cc
+@@ -11,6 +11,7 @@
+ #include <utility>
+ 
+ #include "base/functional/bind.h"
++#include "base/i18n/case_conversion.h"
+ #include "base/json/json_writer.h"
+ #include "base/location.h"
+ #include "base/strings/string_number_conversions.h"
+@@ -27,6 +28,8 @@
+ #include "components/bookmarks/browser/bookmark_utils.h"
+ #include "components/bookmarks/common/bookmark_metrics.h"
+ #include "components/bookmarks/common/bookmark_pref_names.h"
++#include "components/history/core/browser/history_database.h"
++#include "components/history/core/browser/history_db_task.h"
+ #include "components/history/core/browser/history_service.h"
+ #include "components/keyed_service/core/service_access_type.h"
+ #include "components/prefs/pref_service.h"
+@@ -158,6 +161,90 @@
+   return name && !name->empty() && name->size() <= 200;
+ }
+ 
++// One SQL page lives on the history sequence. A long text search yields to
++// other history work between pages and retains only the requested matches.
++class HistoryReadTask final : public history::HistoryDBTask {
++ public:
++  HistoryReadTask(const base::DictValue& params,
++                  std::optional<size_t> limit,
++                  base::OnceCallback<void(base::DictValue)> callback)
++      : limit_(limit), callback_(std::move(callback)) {
++    // Public identities are whole milliseconds; fractional range bounds must
++    // select the same identities as the runtime projection.
++    begin_ = base::Time::FromMillisecondsSinceUnixEpoch(
++        std::ceil(params.FindDouble("since").value_or(0)));
++    if (limit) {
++      if (const auto* cursor = params.FindDict("before")) {
++        const double at = *cursor->FindDouble("visitedAt");
++        before_ = std::make_pair(
++            base::Time::FromMillisecondsSinceUnixEpoch(std::ceil(at)),
++            at == std::floor(at) ? *cursor->FindString("url") : std::string());
++      }
++    } else if (const auto end = params.FindDouble("before")) {
++      end_ = base::Time::FromMillisecondsSinceUnixEpoch(std::ceil(*end));
++    }
++    if (const auto* query = params.FindString("query")) {
++      query_ = base::i18n::ToLower(base::UTF8ToUTF16(*query));
++    }
++  }
++  bool RunOnDBThread(history::HistoryBackend*,
++                     history::HistoryDatabase* db) override {
++    if (!db) {
++      return true;
++    }
++    if (!limit_) {
++      int64_t count = 0;
++      if (!db->CountVisibleVisitIdentities(begin_, end_, &count)) {
++        return true;
++      }
++      base::DictValue result;
++      result.Set("count", static_cast<double>(count));
++      result_ = Result(base::Value(std::move(result)));
++      return true;
++    }
++    history::QueryResults page;
++    if (!db->GetVisibleVisitPage(begin_, end_, before_, kHistoryBatchSize,
++                                 &page)) {
++      return true;
++    }
++    for (const auto& row : page) {
++      if (!query_.empty() &&
++          base::i18n::ToLower(row.title()).find(query_) ==
++              std::u16string::npos &&
++          base::i18n::ToLower(base::UTF8ToUTF16(row.url().spec()))
++                  .find(query_) == std::u16string::npos) {
++        continue;
++      }
++      matches_.Append(VisitValue(
++          row.url().spec(), base::UTF16ToUTF8(row.title().substr(0, 4096)),
++          row.visit_time().InMillisecondsSinceUnixEpoch()));
++      if (matches_.size() == *limit_) {
++        break;
++      }
++    }
++    if (matches_.size() == *limit_ || page.size() < kHistoryBatchSize) {
++      result_ = Result(base::Value(std::move(matches_)));
++      return true;
++    }
++    before_ =
++        std::make_pair(page.back().visit_time(), page.back().url().spec());
++    return false;
++  }
++  void DoneRunOnMainThread() override {
++    std::move(callback_).Run(std::move(result_));
++  }
++
++ private:
++  base::Time begin_, end_;
++  std::optional<std::pair<base::Time, std::string>> before_;
++  std::optional<size_t> limit_;
++  std::u16string query_;
++  base::ListValue matches_;
++  base::DictValue result_ =
++      Fault("backend_unavailable", "Chromium history could not be read");
++  base::OnceCallback<void(base::DictValue)> callback_;
++};
++
+ } // namespace
+ 
+ struct ProfileLibrary::RemovedBookmark {
+@@ -184,9 +271,14 @@
+   base::OnceCallback<void(base::DictValue)> reply;
+ };
+ 
+-ProfileLibrary::ProfileLibrary(Profile *profile, RuntimeCall call,
+-                               base::RepeatingClosure changed)
+-    : profile_(profile), call_(std::move(call)), changed_(std::move(changed)) {
++ProfileLibrary::ProfileLibrary(Profile* profile,
++                               RuntimeCall call,
++                               base::RepeatingClosure changed,
++                               base::RepeatingClosure history_changed)
++    : profile_(profile),
++      call_(std::move(call)),
++      changed_(std::move(changed)),
++      history_changed_(std::move(history_changed)) {
+   CHECK(profile && !profile->IsOffTheRecord());
+   history_ = HistoryServiceFactory::GetForProfile(
+       profile, ServiceAccessType::EXPLICIT_ACCESS);
+@@ -381,6 +473,7 @@
+   if (service != history_) {
+     return;
+   }
++  NotifyHistory();
+   const std::string url = info.url_row.url().spec();
+   const int64_t at = info.visit_row.visit_time.InMillisecondsSinceUnixEpoch();
+   if (url.empty() || url.size() > 8192 || at < 0) {
+@@ -399,6 +492,7 @@
+   if (service != history_) {
+     return;
+   }
++  NotifyHistory();
+   for (size_t offset = 0; offset < rows.size(); offset += kHistoryBatchSize) {
+     base::ListValue updates;
+     for (size_t index = offset;
+@@ -421,12 +515,14 @@
+ void ProfileLibrary::OnHistoryDeletions(history::HistoryService *service,
+                                         const history::DeletionInfo &) {
+   if (service == history_) {
++    NotifyHistory();
+     RefreshHistory(); // A deletion may identify visit IDs but not timestamps.
+   }
+ }
+ 
+ void ProfileLibrary::OnHistoryServiceLoaded(history::HistoryService *service) {
+   if (service == history_) {
++    NotifyHistory();
+     RefreshHistory();
+   }
+ }
+@@ -438,6 +534,23 @@
+     history_ = nullptr;
+     history_ready_ = false;
+   }
++}
++
++void ProfileLibrary::NotifyHistory() {
++  if (history_note_pending_) {
++    return;
++  }
++  history_note_pending_ = true;
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(
++                     [](base::WeakPtr<ProfileLibrary> self) {
++                       if (!self) {
++                         return;
++                       }
++                       self->history_note_pending_ = false;
++                       self->history_changed_.Run();
++                     },
++                     history_weak_factory_.GetWeakPtr()));
+ }
+ 
+ void ProfileLibrary::NotifyBookmarks() {
+@@ -1463,65 +1576,105 @@
+       &tracker_);
+ }
+ 
++void ProfileLibrary::HistoryCall(
++    const std::string& method,
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback,
++    base::RepeatingCallback<bool()> current) {
++  if (!history_ || !current.Run()) {
++    std::move(callback).Run(
++        Fault("ref_stale", "Original history window is unavailable"));
++    return;
++  }
++  if (method == "history.clear") {
++    ClearHistory(params, std::move(callback), std::move(current));
++    return;
++  }
++  if (method == "history.remove") {
++    RemoveVisit(params, std::move(callback), std::move(current));
++    return;
++  }
++  const bool list = method == "history.list";
++  if (!list && method != "history.count") {
++    std::move(callback).Run(
++        Fault("unsupported", "Unknown native history method"));
++    return;
++  }
++  history_->ScheduleDBTask(FROM_HERE,
++                           std::make_unique<HistoryReadTask>(
++                               params,
++                               list ? std::make_optional<size_t>(
++                                          params.FindInt("limit").value_or(100))
++                                    : std::nullopt,
++                               std::move(callback)),
++                           &tracker_);
++}
++
+ void ProfileLibrary::ClearHistory(
+-    const base::DictValue &params,
+-    base::OnceCallback<void(base::DictValue)> callback) {
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback,
++    base::RepeatingCallback<bool()> current) {
+   if (!history_) {
+     std::move(callback).Run(
+         Fault("backend_unavailable", "Chromium HistoryService is unavailable"));
+     return;
+   }
+-  const std::optional<double> since = params.FindDouble("since");
+-  const std::optional<double> before = params.FindDouble("before");
+-  if ((since && (*since < 0 || !std::isfinite(*since))) ||
+-      (before && (*before < 0 || !std::isfinite(*before)))) {
++  const auto since = params.FindDouble("since"),
++             before = params.FindDouble("before");
++  if ((since && (!std::isfinite(*since) || *since < 0)) ||
++      (before && (!std::isfinite(*before) || *before < 0)) ||
++      (since && before && *since > *before)) {
+     std::move(callback).Run(Fault("invalid_params", "Invalid history range"));
+     return;
+   }
+-  const base::Time begin = since ? base::Time::FromMillisecondsSinceUnixEpoch(
+-                                       static_cast<int64_t>(*since))
+-                                 : base::Time();
+-  const base::Time end = before ? base::Time::FromMillisecondsSinceUnixEpoch(
+-                                      static_cast<int64_t>(*before))
+-                                : base::Time();
+-  history::QueryOptions options;
+-  options.begin_time = begin;
+-  options.end_time = end;
+-  options.duplicate_policy = history::QueryOptions::KEEP_ALL_DUPLICATES;
+-  options.policy_for_404_visits = history::VisitQuery404sPolicy::kInclude404s;
+-  history_->QueryHistory(
+-      u"", options,
+-      base::BindOnce(
+-          [](base::WeakPtr<ProfileLibrary> self, base::Time begin,
+-             base::Time end,
+-             base::OnceCallback<void(base::DictValue)> callback,
+-             history::QueryResults rows) {
+-            if (!self || !self->history_) {
+-              std::move(callback).Run(
+-                  Fault("backend_unavailable", "HistoryService closed"));
+-              return;
+-            }
+-            const int count = static_cast<int>(rows.size());
+-            self->history_->ExpireHistoryBetween(
+-                {}, std::nullopt, begin, end, true,
+-                base::BindOnce(
+-                    [](base::OnceCallback<void(base::DictValue)> callback,
+-                       int count) {
+-                      base::DictValue result;
+-                      result.Set("removed", count);
+-                      std::move(callback).Run(
+-                          Result(base::Value(std::move(result))));
+-                    },
+-                    std::move(callback), count),
+-                &self->tracker_);
+-          },
+-          weak_factory_.GetWeakPtr(), begin, end, std::move(callback)),
++  const auto begin =
++      base::Time::FromMillisecondsSinceUnixEpoch(std::ceil(since.value_or(0)));
++  const auto end =
++      before ? base::Time::FromMillisecondsSinceUnixEpoch(std::ceil(*before))
++             : base::Time();
++  history_->ScheduleDBTask(
++      FROM_HERE,
++      std::make_unique<HistoryReadTask>(
++          params, std::nullopt,
++          base::BindOnce(
++              [](base::WeakPtr<ProfileLibrary> self, base::Time begin,
++                 base::Time end, base::RepeatingCallback<bool()> current,
++                 base::OnceCallback<void(base::DictValue)> callback,
++                 base::DictValue counted) {
++                if (!self || !self->history_ || (current && !current.Run())) {
++                  std::move(callback).Run(Fault(
++                      "ref_stale", "Original history owner is unavailable"));
++                  return;
++                }
++                const auto* result = counted.FindDict("result");
++                const auto count =
++                    result ? result->FindDouble("count") : std::nullopt;
++                if (!count) {
++                  std::move(callback).Run(std::move(counted));
++                  return;
++                }
++                self->history_->ExpireHistoryBetween(
++                    {}, std::nullopt, begin, end, true,
++                    base::BindOnce(
++                        [](base::OnceCallback<void(base::DictValue)> callback,
++                           double count) {
++                          base::DictValue result;
++                          result.Set("removed", count);
++                          std::move(callback).Run(
++                              Result(base::Value(std::move(result))));
++                        },
++                        std::move(callback), *count),
++                    &self->tracker_);
++              },
++              history_weak_factory_.GetWeakPtr(), begin, end,
++              std::move(current), std::move(callback))),
+       &tracker_);
+ }
+ 
+ void ProfileLibrary::RemoveVisit(
+-    const base::DictValue &params,
+-    base::OnceCallback<void(base::DictValue)> callback) {
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback,
++    base::RepeatingCallback<bool()> current) {
+   if (!history_) {
+     std::move(callback).Run(
+         Fault("backend_unavailable", "Chromium HistoryService is unavailable"));
+@@ -1534,8 +1687,13 @@
+     std::move(callback).Run(Fault("invalid_params", "Invalid history visit"));
+     return;
+   }
+-  const base::Time begin =
+-      base::Time::FromMillisecondsSinceUnixEpoch(static_cast<int64_t>(*at));
++  if (*at != std::floor(*at)) {
++    base::DictValue result;
++    result.Set("removed", false);
++    std::move(callback).Run(Result(base::Value(std::move(result))));
++    return;
++  }
++  const base::Time begin = base::Time::FromMillisecondsSinceUnixEpoch(*at);
+   const base::Time end = begin + base::Milliseconds(1);
+   history::QueryOptions options;
+   options.begin_time = begin;
+@@ -1547,6 +1705,7 @@
+       base::BindOnce(
+           [](base::WeakPtr<ProfileLibrary> self, GURL url, base::Time begin,
+              base::Time end, std::optional<std::string> expected_title,
++             base::RepeatingCallback<bool()> current,
+              base::OnceCallback<void(base::DictValue)> callback,
+              history::QueryResults rows) {
+             if (!self || !self->history_) {
+@@ -1554,16 +1713,29 @@
+                   Fault("backend_unavailable", "HistoryService closed"));
+               return;
+             }
++            if (current && !current.Run()) {
++              std::move(callback).Run(
++                  Fault("ref_stale", "Original history window is unavailable"));
++              return;
++            }
+             const int matching = std::count_if(
+-                rows.begin(), rows.end(), [&](const history::URLResult &row) {
+-                  return row.url() == url && row.visit_time() == begin;
++                rows.begin(), rows.end(), [&](const history::URLResult& row) {
++                  return row.url() == url &&
++                         row.visit_time().InMillisecondsSinceUnixEpoch() ==
++                             begin.InMillisecondsSinceUnixEpoch();
+                 });
+-            const bool found = matching == 1 &&
+-                std::any_of(rows.begin(), rows.end(), [&](const history::URLResult &row) {
+-                  return row.url() == url && row.visit_time() == begin &&
+-                         (!expected_title ||
+-                          base::UTF16ToUTF8(row.title()) == *expected_title);
+-                });
++            const bool found =
++                (expected_title ? matching == 1 : matching > 0) &&
++                std::any_of(
++                    rows.begin(), rows.end(),
++                    [&](const history::URLResult& row) {
++                      return row.url() == url &&
++                             row.visit_time().InMillisecondsSinceUnixEpoch() ==
++                                 begin.InMillisecondsSinceUnixEpoch() &&
++                             (!expected_title ||
++                              base::UTF16ToUTF8(row.title()) ==
++                                  *expected_title);
++                    });
+             if (!found) {
+               base::DictValue result;
+               result.Set("removed", false);
+@@ -1582,9 +1754,9 @@
+                     std::move(callback)),
+                 &self->tracker_);
+           },
+-          weak_factory_.GetWeakPtr(), GURL(*url), begin, end,
++          history_weak_factory_.GetWeakPtr(), GURL(*url), begin, end,
+           expected_title ? std::make_optional(*expected_title) : std::nullopt,
+-          std::move(callback)),
++          std::move(current), std::move(callback)),
+       &tracker_);
+ }
+ 
+diff --git a/chrome/browser/ui/aux/profile_library.h b/chrome/browser/ui/aux/profile_library.h
+--- a/chrome/browser/ui/aux/profile_library.h
++++ b/chrome/browser/ui/aux/profile_library.h
+@@ -50,8 +50,10 @@
+ public:
+   using RuntimeCall = base::RepeatingCallback<void(
+       std::string, std::string, base::OnceCallback<void(bool)>)>;
+-  ProfileLibrary(Profile *profile, RuntimeCall call,
+-                 base::RepeatingClosure changed);
++  ProfileLibrary(Profile* profile,
++                 RuntimeCall call,
++                 base::RepeatingClosure changed,
++                 base::RepeatingClosure history_changed);
+   ~ProfileLibrary() override;
+ 
+   void OnRuntimeAvailable();
+@@ -64,13 +66,19 @@
+       const std::vector<NativeBookmarkImportEntry>& entries,
+       std::map<size_t, base::Uuid>& accepted_folders,
+       base::RepeatingCallback<bool()> current);
+-  void ClearHistory(const base::DictValue &params,
+-                    base::OnceCallback<void(base::DictValue)> callback);
++  void HistoryCall(const std::string& method,
++                   const base::DictValue& params,
++                   base::OnceCallback<void(base::DictValue)> callback,
++                   base::RepeatingCallback<bool()> current);
++  void ClearHistory(const base::DictValue& params,
++                    base::OnceCallback<void(base::DictValue)> callback,
++                    base::RepeatingCallback<bool()> current = {});
+   void ImportHistory(const base::DictValue &params,
+                      base::OnceCallback<void(base::DictValue)> callback,
+                      base::RepeatingCallback<bool()> dispatch_guard = {});
+-  void RemoveVisit(const base::DictValue &params,
+-                   base::OnceCallback<void(base::DictValue)> callback);
++  void RemoveVisit(const base::DictValue& params,
++                   base::OnceCallback<void(base::DictValue)> callback,
++                   base::RepeatingCallback<bool()> current = {});
+ 
+   // history::HistoryServiceObserver:
+   void OnURLVisited(history::HistoryService *,
+@@ -109,6 +117,7 @@
+     int64_t visited_at;
+   };
+   void RefreshHistory();
++  void NotifyHistory();
+   void ImportHistoryNext(std::shared_ptr<HistoryImportState> state);
+   void OnHistoryQuery(history::QueryResults results);
+   void SendSnapshotBatch(size_t offset, size_t batch_index);
+@@ -135,6 +144,7 @@
+   raw_ptr<bookmarks::BookmarkModel> bookmarks_ = nullptr;
+   RuntimeCall call_;
+   base::RepeatingClosure changed_;
++  base::RepeatingClosure history_changed_;
+   base::CancelableTaskTracker tracker_;
+   bool runtime_available_ = false;
+   bool snapshotting_ = false;
+@@ -142,6 +152,7 @@
+   bool history_dirty_ = false;
+   bool delta_in_flight_ = false;
+   bool bookmark_note_pending_ = false;
++  bool history_note_pending_ = false;
+   std::string generation_;
+   uint64_t sequence_ = 0;
+   std::vector<Visit> snapshot_visits_;
+@@ -150,6 +161,7 @@
+   // Accepted import completion survives runtime-projection disconnect. Its
+   // final backend query still joins the original destination batch.
+   base::WeakPtrFactory<ProfileLibrary> import_weak_factory_{this};
++  base::WeakPtrFactory<ProfileLibrary> history_weak_factory_{this};
+   base::WeakPtrFactory<ProfileLibrary> weak_factory_{this};
+ };
+ 
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -179,6 +179,7 @@
+ 
+ bool AuxRuntimeHost::SupportsPrivateMethod(std::string_view method) {
+   return method != "bookmarksInvoke" && method != "onBookmarksChanged" &&
++         method != "historyInvoke" && method != "onHistoryChanged" &&
+          method != "organizationSnapshot" && method != "organizationCommit" &&
+          !method.starts_with("native.foundationModels") &&
+          method != "native.spaceBindingsSet" &&
+@@ -266,6 +267,13 @@
+                 host->worker_.AsyncCall(&Worker::SendBookmarkChanged);
+               }
+             },
++            weak_factory_.GetWeakPtr()),
++        base::BindRepeating(
++            [](base::WeakPtr<AuxRuntimeHost> host) {
++              if (host) {
++                host->observers_.Notify("onHistoryChanged", "{}");
++              }
++            },
+             weak_factory_.GetWeakPtr()));
+   }
+   if (auto* catalog = aux::TabCatalog::GetForProfile(profile_)) {
+@@ -289,6 +297,21 @@
+              ? profile_library_->BookmarkCall(method, params)
+              : NativeFault("forbidden",
+                            "Private windows do not persist bookmarks");
++}
++
++void AuxRuntimeHost::CallHistoryForUser(
++    const std::string& method,
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback,
++    base::RepeatingCallback<bool()> current) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!profile_library_) {
++    std::move(callback).Run(NativeFault(
++        "forbidden", "Private windows do not expose saved history"));
++    return;
++  }
++  profile_library_->HistoryCall(method, params, std::move(callback),
++                                std::move(current));
+ }
+ 
+ AuxRuntimeHost::~AuxRuntimeHost() {
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -96,6 +96,11 @@
+   // Native Profile library access for trusted browser UI; no runtime required.
+   base::DictValue CallBookmarksForUser(const std::string& method,
+                                        const base::DictValue& params);
++
++  void CallHistoryForUser(const std::string& method,
++                          const base::DictValue& params,
++                          base::OnceCallback<void(base::DictValue)> callback,
++                          base::RepeatingCallback<bool()> current);
+ 
+   base::DictValue CredentialContext(const base::DictValue& params, uint64_t generation);
+ 
+diff --git a/chrome/browser/ui/aux/methods/library_methods.cc b/chrome/browser/ui/aux/methods/library_methods.cc
+--- a/chrome/browser/ui/aux/methods/library_methods.cc
++++ b/chrome/browser/ui/aux/methods/library_methods.cc
+@@ -136,6 +136,67 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "historyInvoke") {
++    Profile* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Private windows do not expose saved history");
++      return;
++    }
++    const auto* request = args.size() == 1 ? args[0].GetIfDict() : nullptr;
++    const auto* history_method =
++        request ? request->FindString("method") : nullptr;
++    const auto* params = request ? request->FindDict("params") : nullptr;
++    if (!history_method || !params) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid history request");
++      return;
++    }
++    const auto document =
++        web_ui()->GetWebContents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++    auto current = base::BindRepeating(
++        [](base::WeakPtr<WebUIBrowserUI> owner,
++           content::WeakDocumentPtr document) {
++          auto* frame = document.AsRenderFrameHostIfValid();
++          return owner && frame && owner->IsAuthorizedAuxDocument() &&
++                 frame ==
++                     owner->web_ui()->GetWebContents()->GetPrimaryMainFrame();
++        },
++        weak_factory_.GetWeakPtr(), document);
++    AuxRuntimeHost::ForProfile(profile)->CallHistoryForUser(
++        *history_method, *params,
++        base::BindOnce(
++            [](std::string method, base::RepeatingCallback<bool()> current,
++               RequestCallback callback, base::DictValue response) {
++              if (!current.Run()) {
++                std::move(callback).Run(
++                    false, "", "ref_stale",
++                    "Original history window is unavailable");
++                return;
++              }
++              if (auto* result = response.Find("result")) {
++                if (method == "history.clear") {
++                  result->GetDict().Set("ok", true);
++                }
++                base::DictValue envelope;
++                envelope.Set("method", method);
++                envelope.Set("result", result->Clone());
++                std::move(callback).Run(true, *base::WriteJson(envelope), "",
++                                        "");
++                return;
++              }
++              const auto* error = response.FindDict("error");
++              const auto* code = error ? error->FindString("code") : nullptr;
++              const auto* message =
++                  error ? error->FindString("message") : nullptr;
++              std::move(callback).Run(
++                  false, "", code ? *code : "backend_unavailable",
++                  message ? *message : "Chromium history is unavailable");
++            },
++            *history_method, current, std::move(callback)),
++        current);
++    return;
++  }
+   if (method == "bookmarksInvoke") {
+     Profile* profile = browser_->GetProfile();
+     if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -95,7 +95,8 @@
+                   "extensionActions", "pinExtensionAction", "extensionCommands",
+                   "setExtensionCommandShortcut", "extensionSidePanel"});
+   register_shell(AuxShellMethodGroup::kLibrary,
+-                 {"organizationSnapshot", "organizationCommit", "bookmarksInvoke"});
++                 {"organizationSnapshot", "organizationCommit",
++                  "bookmarksInvoke", "historyInvoke"});
+   register_shell(AuxShellMethodGroup::kTabs,
+                  {"bindTabSpace", "migrateTabSpaces", "tabsSnapshot",
+                   "tabsSince", "tabCommand", "tabAudio", "tabsUnsavedWork", "tabSleep", "archiveTab"});
+diff --git a/components/history/core/browser/history_database.h b/components/history/core/browser/history_database.h
+--- a/components/history/core/browser/history_database.h
++++ b/components/history/core/browser/history_database.h
+@@ -6,6 +6,8 @@
+ #define COMPONENTS_HISTORY_CORE_BROWSER_HISTORY_DATABASE_H_
+ 
+ #include <memory>
++#include <optional>
++#include <string>
+ #include <unordered_map>
+ #include <utility>
+ #include <vector>
+@@ -256,6 +258,18 @@
+   // Returns the sub-database used for storing Sync metadata for History.
+   HistorySyncMetadataDatabase* GetHistoryMetadataDB();
+ 
++  // Browser history identity is (whole millisecond, URL), matching the
++  // presentation cursor. Work stays on the history sequence; no DB is exposed.
++  bool GetVisibleVisitPage(
++      base::Time begin,
++      base::Time end,
++      const std::optional<std::pair<base::Time, std::string>>& before,
++      int limit,
++      QueryResults* result);
++  bool CountVisibleVisitIdentities(base::Time begin,
++                                   base::Time end,
++                                   int64_t* count);
++
+   sql::Database& GetDBForTesting();
+ 
+  private:
+diff --git a/components/history/core/browser/history_database.cc b/components/history/core/browser/history_database.cc
+--- a/components/history/core/browser/history_database.cc
++++ b/components/history/core/browser/history_database.cc
+@@ -49,6 +49,27 @@
+ const char kDeleteForeignVisitsUntilId[] = "delete_foreign_visits_until_id";
+ const char kKnownToSyncVisitsExist[] = "known_to_sync_visits_exist";
+ 
++constexpr char kVisibleVisitIdentities[] =
++    " FROM visits v JOIN urls u ON u.id=v.url LEFT JOIN visit_source source ON "
++    "source.id=v.id "
++    "WHERE v.visit_time>=? AND v.visit_time<? "
++    "AND (v.transition & ?) != 0 AND (v.transition & ?) NOT IN (?,?,?) "
++    "AND length(u.url)>0 AND length(u.url)<=8192 "
++    "AND (source.source IS NULL OR source.source!=?) ";
++
++void BindVisibleVisitRange(sql::Statement& statement,
++                           base::Time begin,
++                           base::Time end) {
++  statement.BindTime(0, std::max(begin, base::Time::UnixEpoch()));
++  statement.BindTime(1, end.is_null() ? base::Time::Max() : end);
++  statement.BindInt(2, ui::PAGE_TRANSITION_CHAIN_END);
++  statement.BindInt(3, ui::PAGE_TRANSITION_CORE_MASK);
++  statement.BindInt(4, ui::PAGE_TRANSITION_AUTO_SUBFRAME);
++  statement.BindInt(5, ui::PAGE_TRANSITION_MANUAL_SUBFRAME);
++  statement.BindInt(6, ui::PAGE_TRANSITION_KEYWORD_GENERATED);
++  statement.BindInt(7, SOURCE_ACTOR);
++}
++
+ // Logs a migration failure to UMA and logging. The return value will be
+ // what to return from ::Init (to simplify the call sites). Migration failures
+ // are almost always fatal since the database can be in an inconsistent state.
+@@ -66,6 +87,68 @@
+ }
+ 
+ }  // namespace
++
++bool HistoryDatabase::GetVisibleVisitPage(
++    base::Time begin,
++    base::Time end,
++    const std::optional<std::pair<base::Time, std::string>>& before,
++    int limit,
++    QueryResults* result) {
++  std::string query = "SELECT u.url,u.title,(v.visit_time/1000)*1000";
++  query += kVisibleVisitIdentities;
++  if (before) {
++    query += "AND (v.visit_time/1000<? OR (v.visit_time/1000=? AND u.url<?)) ";
++    const base::Time cursor_end = before->first + base::Milliseconds(1);
++    if (end.is_null() || end > cursor_end) {
++      end = cursor_end;
++    }
++  }
++  query +=
++      "GROUP BY v.visit_time/1000,u.url ORDER BY v.visit_time/1000 DESC,u.url "
++      "DESC LIMIT ?";
++  sql::Statement statement(db_.GetUniqueStatement(base::cstring_view(query)));
++  BindVisibleVisitRange(statement, begin, end);
++  int index = 8;
++  if (before) {
++    const int64_t milliseconds =
++        before->first.ToDeltaSinceWindowsEpoch().InMilliseconds();
++    statement.BindInt64(index++, milliseconds);
++    statement.BindInt64(index++, milliseconds);
++    statement.BindString(index++, before->second);
++  }
++  statement.BindInt(index, limit);
++  std::vector<URLResult> rows;
++  while (statement.Step()) {
++    URLResult row(GURL(statement.ColumnString(0)));
++    if (!row.url().is_valid()) {
++      continue;
++    }
++    row.set_title(statement.ColumnString16(1));
++    row.set_visit_time(base::Time::FromDeltaSinceWindowsEpoch(
++        base::Microseconds(statement.ColumnInt64(2))));
++    rows.push_back(std::move(row));
++  }
++  if (!statement.Succeeded()) {
++    return false;
++  }
++  result->SetURLResults(std::move(rows));
++  return true;
++}
++
++bool HistoryDatabase::CountVisibleVisitIdentities(base::Time begin,
++                                                  base::Time end,
++                                                  int64_t* count) {
++  const std::string query = std::string("SELECT count(*) FROM (SELECT 1") +
++                            kVisibleVisitIdentities +
++                            "GROUP BY v.visit_time/1000,u.url)";
++  sql::Statement statement(db_.GetUniqueStatement(base::cstring_view(query)));
++  BindVisibleVisitRange(statement, begin, end);
++  if (!statement.Step()) {
++    return false;
++  }
++  *count = statement.ColumnInt64(0);
++  return statement.Succeeded();
++}
+ 
+ HistoryDatabase::HistoryDatabase(
+     DownloadInterruptReason download_interrupt_reason_none,

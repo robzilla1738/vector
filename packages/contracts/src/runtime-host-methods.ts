@@ -234,7 +234,7 @@ export const RuntimeHostMethods = {
     TurnSourceContextSchema,
   ),
   "native.organizationSnapshot": runtime(
-    "tabMentions",
+    "core",
     z.object({}).strict(),
     ProfileOrganizationSnapshotSchema,
   ),

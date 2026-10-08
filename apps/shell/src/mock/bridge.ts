@@ -965,45 +965,19 @@ export function installMockBridge(q: URLSearchParams) {
     "workspace.get": async () => {
       return workspace();
     },
-    "spaces.import": async (p) => {
-      for (const input of p.spaces as {
-        id: string;
-        name: string;
-        color: BrowserSpace["color"];
-        grain?: number;
-      }[]) {
-        if (!spaces.some((space) => space.id === input.id))
-          spaces.push({
-            ...input,
-            grain: input.grain ?? 0,
-            workspaceId: `workspace:${input.id}`,
-            archived: false,
-          });
-      }
-      return spaces;
-    },
     "spaces.list": async () => {
-      return spaces;
-    },
-    "spaces.create": async (p) => {
-      const id = crypto.randomUUID();
-      spaces = [
-        ...spaces,
-        {
-          id,
-          workspaceId: `workspace:${id}`,
-          name: String(p.name),
-          color: p.color as BrowserSpace["color"],
-          grain: Number(p.grain ?? 0),
-          archived: false,
-        },
-      ];
-      emit("spaces.updated", { spaces });
-      return spaces;
-    },
-    "spaces.update": async (p) => {
-      spaces = spaces.map((space) => (space.id === p.id ? ({ ...space, ...p } as BrowserSpace) : space));
-      emit("spaces.updated", { spaces });
+      if (organization.layout) {
+        const shared = organization.layout.shared;
+        spaces = [
+          ...shared.spaces.map((space) => ({ ...space, archived: false })),
+          ...shared.archivedSpaces.map((space) => ({ ...space, archived: true })),
+        ].map((space) => ({
+          ...space,
+          workspaceId:
+            spaces.find((known) => known.id === space.id)?.workspaceId ??
+            `mock-workspace:${crypto.randomUUID()}`,
+        }));
+      }
       return spaces;
     },
     "workspaces.browsingMemory.get": mockWorkspacesBrowsingMemoryGet,
@@ -2221,6 +2195,15 @@ export function installMockBridge(q: URLSearchParams) {
     setShortcutOverrides: async () => ({}),
     invoke: invoke as AuxBridge["invoke"],
     onEvent: (cb) => (eventListeners.add(cb), () => eventListeners.delete(cb)),
+    onHistoryChanged: (cb) => {
+      const listener: Listener<AuxEvent> = (event) => {
+        if (event.type === "history.changed") cb({});
+      };
+      eventListeners.add(listener);
+      return () => {
+        eventListeners.delete(listener);
+      };
+    },
     onRuntimeStatus: () => () => {},
     onShortcut: () => () => {},
     onToolbarEdge: () => () => {},

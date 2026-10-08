@@ -595,9 +595,8 @@ export function Library({
 
   useEffect(
     () =>
-      bridge.onEvent((event) => {
-        if (readCurrent() && event.type === "history.changed" && view === "history")
-          setRefresh((value) => value + 1);
+      bridge.onHistoryChanged(() => {
+        if (readCurrent() && view === "history") setRefresh((value) => value + 1);
       }),
     [view, readCurrent],
   );

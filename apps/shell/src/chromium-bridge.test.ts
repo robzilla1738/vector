@@ -501,3 +501,44 @@ it("keeps native download dismissal authoritative across held snapshots and late
     "downloadsSnapshot",
   ]);
 });
+
+it("serves typed History operations and change events without invoking the runtime", async () => {
+  const results = {
+    "history.list": [{ url: "https://history.example/", title: "Visit", visitedAt: 123 }],
+    "history.count": { count: 1 },
+    "history.remove": { removed: true },
+    "history.clear": { ok: true, removed: 1 },
+  };
+  const request = vi.fn(async (_method: string, args: unknown[]) => {
+    const operation = args[0] as { method: keyof typeof results };
+    return { method: operation.method, result: results[operation.method] };
+  });
+  const subscribe = vi.fn(() => () => {});
+  const target = fakeWindow("chrome://aux/", {
+    host: "chromium-fork",
+    windowId: "original",
+    profileId: "profile-1",
+    platform: "darwin",
+    privateMode: false,
+    windowKind: "normal",
+    request,
+    subscribe,
+  });
+  installChromiumBridge(target);
+  expect(
+    await target.aux!.invoke("history.list", {
+      limit: 100,
+      before: { visitedAt: 124, url: "https://z.example/" },
+    }),
+  ).toEqual(results["history.list"]);
+  expect(await target.aux!.invoke("history.count", { before: 124 })).toEqual({ count: 1 });
+  expect(
+    await target.aux!.invoke("history.remove", { url: "https://history.example/", visitedAt: 123 }),
+  ).toEqual({ removed: true });
+  expect(await target.aux!.invoke("history.clear", { before: 124 })).toEqual({ ok: true, removed: 1 });
+  expect(request.mock.calls.map(([method]) => method)).toEqual(Array(4).fill("historyInvoke"));
+  target.aux!.onHistoryChanged(() => {});
+  expect(subscribe).toHaveBeenCalledWith("onHistoryChanged", expect.any(Function));
+  request.mockResolvedValueOnce({ method: "history.remove", result: { removed: true } });
+  await expect(target.aux!.invoke("history.count", {})).rejects.toThrow(/does not match/);
+});

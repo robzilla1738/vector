@@ -1,5 +1,6 @@
 import { MemorySaverMinutesSchema, MemorySaverSettingsSchema } from "./memory-saver.js";
 import { NativeBookmarkRequestSchema, NativeBookmarkResultSchema } from "./bookmark-methods.js";
+import { NativeHistoryRequestSchema, NativeHistoryResultSchema } from "./history-methods.js";
 import { FilterCompilationWarningsSchema } from "./content-blocking-schema.js";
 import { z } from "zod";
 import { OrganizationCommitSchema, OrganizationSnapshotSchema } from "./organization.js";
@@ -227,6 +228,7 @@ export const BrowserHostMethods = {
   ),
   tabsSnapshot: coreShell(noArgs, TabCatalogSnapshotSchema),
   bookmarksInvoke: coreShell(tuple([NativeBookmarkRequestSchema]), NativeBookmarkResultSchema),
+  historyInvoke: coreShell(tuple([NativeHistoryRequestSchema]), NativeHistoryResultSchema),
   organizationSnapshot: spacesShell(noArgs, OrganizationSnapshotSchema),
   organizationCommit: spacesShell(tuple([OrganizationCommitSchema]), OrganizationSnapshotSchema),
   tabsSince: coreShell(
@@ -669,6 +671,7 @@ const coreEvent = eventFor("core"),
 export const HostEvents = {
   onEvent: coreEvent(EventSchema),
   onBookmarksChanged: coreEvent(z.array(BookmarkSchema)),
+  onHistoryChanged: coreEvent(strictObject({})),
   onOmniboxResult: event("commandBar", omniboxResult),
   onRunAttentionActivated: coreEvent(
     strictObject({ runId: freshTokenString(), identity: freshTokenString(), windowId: freshTokenString() }),

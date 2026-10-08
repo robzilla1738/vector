@@ -7,13 +7,14 @@ import { SpaceService } from "./spaces.js";
 export async function installNativeSpaceBindings(
   repo: Repo,
   events: EventBus,
-  native: Required<Pick<NativeBridge, "spaceBindingsSet">>,
+  native: Required<Pick<NativeBridge, "spaceBindingsSet" | "organizationSnapshot">>,
   onError: (error: unknown) => void,
 ): Promise<() => Promise<void>> {
   const spaces = new SpaceService(repo, events);
   let tail = Promise.resolve();
   const publish = () => {
     const work = tail.then(async () => {
+      spaces.reconcileNative(await native.organizationSnapshot());
       const workspaces = new Set(repo.listWorkspaces().map((workspace) => workspace.workspaceId));
       const bindings = spaces
         .list()

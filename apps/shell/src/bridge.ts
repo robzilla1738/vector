@@ -216,6 +216,8 @@ const stub: AuxBridge = {
   tabsUnsavedWork: async () => ({}),
   bookmarksInvoke: unavailable("Bookmarks require Aux desktop"),
   onBookmarksChanged: noop,
+  historyInvoke: unavailable("History requires Aux desktop"),
+  onHistoryChanged: noop,
   memorySaverGet: unavailable("Memory saver requires Aux desktop"),
   memorySaverSet: unavailable("Memory saver requires Aux desktop"),
   tabSleep: async () => ({ slept: false, reason: "Sleeping tabs requires Aux desktop" }),

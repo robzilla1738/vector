@@ -1,11 +1,19 @@
 import { randomUUID } from "node:crypto";
-import { BrowserSpaceSchema, AuxError, type BrowserSpace, type SpaceInput } from "@aux/contracts";
+import {
+  BrowserSpaceSchema,
+  AuxError,
+  type BrowserSpace,
+  type ProfileOrganizationSnapshot,
+} from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 
 const SPACE_KEY = "browserSpaces";
+const BINDINGS_KEY = "browserSpaceBindings";
+const REVISION_KEY = "browserSpacesNativeRevision";
+type Binding = { id: string; workspaceId: string };
 
-/** Browser organization and task context share identities, never name-based guesses. */
+/** Native presentation and runtime task scope share exact identities, never names. */
 export class SpaceService {
   constructor(
     private repo: Repo,
@@ -15,12 +23,10 @@ export class SpaceService {
   list(): BrowserSpace[] {
     const saved = BrowserSpaceSchema.array().parse(this.repo.getSetting(SPACE_KEY) ?? []);
     const workspaces = this.repo.listWorkspaces();
-    const mapped = new Set(saved.map((space) => space.workspaceId));
+    const bindings = this.repo.getSetting<Binding[]>(BINDINGS_KEY) ?? saved;
+    const mapped = new Set(bindings.map((space) => space.workspaceId));
     return [
-      ...saved.map((space) => ({
-        ...space,
-        name: workspaces.find((workspace) => workspace.workspaceId === space.workspaceId)?.name ?? space.name,
-      })),
+      ...saved.filter((space) => workspaces.some((workspace) => workspace.workspaceId === space.workspaceId)),
       ...workspaces
         .filter((workspace) => !mapped.has(workspace.workspaceId))
         .map((workspace) => ({
@@ -34,51 +40,50 @@ export class SpaceService {
     ];
   }
 
-  import(inputs: SpaceInput[]): BrowserSpace[] {
-    let changed = false;
+  /** Input comes only from the authenticated original Profile's organization snapshot. */
+  reconcileNative(snapshot: ProfileOrganizationSnapshot): BrowserSpace[] {
+    if (!snapshot.shared) return this.list();
+    const revision = this.repo.getSetting<number>(REVISION_KEY);
+    if (revision !== undefined && snapshot.revision < revision)
+      throw new AuxError("conflict", "Native Space organization changed. Refresh its workspace mappings.");
+    if (snapshot.revision === revision) {
+      const workspaces = new Set(this.repo.listWorkspaces().map((workspace) => workspace.workspaceId));
+      const saved = BrowserSpaceSchema.array().parse(this.repo.getSetting(SPACE_KEY) ?? []);
+      if (saved.every((space) => workspaces.has(space.workspaceId))) return this.list();
+    }
+    const presentation = [
+      ...snapshot.shared.spaces.map((space) => ({ ...space, archived: false })),
+      ...snapshot.shared.archivedSpaces.map((space) => ({ ...space, archived: true })),
+    ];
+    if (new Set(presentation.map((space) => space.id)).size !== presentation.length)
+      throw new AuxError("conflict", "Native Space identities are duplicated.");
     const spaces = this.repo.transaction(() => {
-      const spaces = this.list();
-      for (const input of inputs) {
-        if (spaces.some((space) => space.id === input.id)) continue;
-        const workspaceId = randomUUID();
-        this.repo.insertWorkspace(workspaceId, input.name, Date.now());
-        spaces.push({ ...input, workspaceId, archived: false });
-        changed = true;
-      }
+      const workspaces = new Set(this.repo.listWorkspaces().map((workspace) => workspace.workspaceId));
+      const saved = BrowserSpaceSchema.array().parse(this.repo.getSetting(SPACE_KEY) ?? []);
+      const retained = this.repo.getSetting<Binding[]>(BINDINGS_KEY) ?? saved;
+      const bindings = new Map(
+        retained
+          .filter((space) => workspaces.has(space.workspaceId))
+          .map((space) => [space.id, space.workspaceId]),
+      );
+      const unmapped = new Map(this.list().map((space) => [space.id, space.workspaceId]));
+      const spaces = presentation.map((space) => {
+        let workspaceId = bindings.get(space.id) ?? unmapped.get(space.id);
+        if (!workspaceId) {
+          workspaceId = randomUUID();
+          this.repo.insertWorkspace(workspaceId, space.name, Date.now());
+        } else this.repo.renameWorkspace(workspaceId, space.name);
+        bindings.set(space.id, workspaceId);
+        // A renderer may have written workspaceId into presentation; it cannot grant task authority.
+        return BrowserSpaceSchema.parse({ ...space, workspaceId });
+      });
       this.repo.setSetting(SPACE_KEY, spaces);
-      return spaces;
-    });
-    if (changed) this.events.emit("spaces.updated", { spaces });
-    return spaces;
-  }
-
-  create(
-    name: string,
-    color: BrowserSpace["color"],
-    grain = 0,
-    theme?: BrowserSpace["theme"],
-  ): BrowserSpace[] {
-    return this.import([{ id: `space-${randomUUID()}`, name, color, grain, ...(theme ? { theme } : {}) }]);
-  }
-
-  update(
-    id: string,
-    patch: Partial<Pick<BrowserSpace, "name" | "color" | "grain" | "archived">> & {
-      theme?: BrowserSpace["theme"] | null;
-    },
-  ): BrowserSpace[] {
-    const spaces = this.repo.transaction(() => {
-      const spaces = this.list();
-      const current = spaces.find((space) => space.id === id);
-      if (!current) throw new AuxError("not_found", "This space no longer exists.");
-      if (patch.archived && !current.archived && spaces.filter((space) => !space.archived).length === 1) {
-        throw new AuxError("conflict", "Keep at least one active space.");
-      }
-      Object.assign(current, patch);
-      if (patch.theme === null) delete current.theme;
-      if (patch.name) this.repo.renameWorkspace(current.workspaceId, patch.name);
-      this.repo.setSetting(SPACE_KEY, spaces);
-      return spaces;
+      this.repo.setSetting(
+        BINDINGS_KEY,
+        [...bindings].map(([id, workspaceId]) => ({ id, workspaceId })),
+      );
+      this.repo.setSetting(REVISION_KEY, snapshot.revision);
+      return this.list();
     });
     this.events.emit("spaces.updated", { spaces });
     return spaces;

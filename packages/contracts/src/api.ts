@@ -2,6 +2,8 @@ import { ConversationSearchParams, ConversationSearchResultSchema } from "./conv
 import { CapturedSourceSchema } from "./captured-source.js";
 import { MemorySaverMinutesSchema } from "./memory-saver.js";
 import { BookmarkMethodSchemas, BookmarkResultSchemas } from "./bookmark-methods.js";
+import { HistoryMethodSchemas, HistoryResultSchemas } from "./history-methods.js";
+export { HistoryListParams, HistoryRangeParams } from "./history-methods.js";
 export {
   BookmarkAddParams, BookmarkReadingListParams, BookmarkMarkReadParams,
   BookmarkOfflineSetParams, BookmarkOfflineGetParams, BookmarkUpdateParams, BookmarkRemoveParams,
@@ -130,7 +132,6 @@ import {
   BrowserSessionSchema,
   ConversationSummarySchema,
   DownloadSchema,
-  HistoryEntrySchema,
   ModelUsageSummarySchema,
   PageSetSchema,
   PageContextRefSchema,
@@ -291,13 +292,7 @@ import {
   PluginSkillReadParams,
   PluginSkillReadSchema,
 } from "./routines.js";
-import {
-  BrowserSpaceSchema,
-  SpaceInputSchema,
-  SpaceColorSchema,
-  SpaceGrainSchema,
-  SpaceThemeSchema,
-} from "./spaces.js";
+import { BrowserSpaceSchema } from "./spaces.js";
 import { GoalCreateParams, GoalSchema } from "./goals.js";
 import { HookCreateParams, HookInvocationSchema, HookSchema } from "./hooks.js";
 import {
@@ -1042,22 +1037,6 @@ export const UsageReportResultSchema = z.object({
 export type UsageReportResult = z.infer<typeof UsageReportResultSchema>;
 
 /** history/bookmarks */
-export const HistoryListParams = z.object({
-  query: z.string().max(1000).optional(),
-  limit: z.number().int().positive().max(500).default(100),
-  since: z.number().finite().nonnegative().optional(),
-  before: z.object({ visitedAt: z.number().finite().nonnegative(), url: z.string().min(1) }).optional(),
-});
-export const HistoryRangeParams = z
-  .object({
-    since: z.number().finite().nonnegative().optional(),
-    before: z.number().finite().nonnegative().optional(),
-  })
-  .strict()
-  .refine(
-    (value) => value.since === undefined || value.before === undefined || value.since <= value.before,
-    "History range must end after it starts",
-  );
 /** Chromium HistoryService is authoritative; these internal messages maintain a derived FTS index. */
 export const HistoryProjectionVisitSchema = z
   .object({
@@ -1200,21 +1179,6 @@ export const MethodSchemas = {
   "tasks.replaceAgent": TaskReplaceAgentParams,
   "workspaces.create": z.object({ name: z.string().trim().min(1).max(100) }),
   "spaces.list": z.object({}),
-  "spaces.import": z.object({ spaces: z.array(SpaceInputSchema).max(500) }),
-  "spaces.create": z.object({
-    name: z.string().trim().min(1).max(100),
-    color: SpaceColorSchema,
-    grain: SpaceGrainSchema.default(0),
-    theme: SpaceThemeSchema.optional(),
-  }),
-  "spaces.update": z.object({
-    id: id,
-    name: z.string().trim().min(1).max(100).optional(),
-    color: SpaceColorSchema.optional(),
-    grain: SpaceGrainSchema.optional(),
-    theme: SpaceThemeSchema.nullable().optional(),
-    archived: z.boolean().optional(),
-  }),
   "workspaces.list": z.object({}),
   "workspaces.folders.inspect": z
     .object({ workspaceId: id, path: z.string().min(1).max(4096), access: WorkspaceFolderAccessSchema })
@@ -1805,12 +1769,12 @@ export const MethodSchemas = {
   "command.ranking.clear": z.object({}).strict(),
   "browser.recovery.list": z.object({}),
   "browser.recovery.retry": z.object({ pageId: id }),
-  "history.list": HistoryListParams,
+  "history.list": HistoryMethodSchemas["history.list"],
   "history.projectSnapshot": HistoryProjectSnapshotParams,
   "history.projectDelta": HistoryProjectDeltaParams,
-  "history.count": HistoryRangeParams,
-  "history.clear": HistoryRangeParams,
-  "history.remove": z.object({ url: z.string().min(1), visitedAt: z.number().finite().nonnegative() }),
+  "history.count": HistoryMethodSchemas["history.count"],
+  "history.clear": HistoryMethodSchemas["history.clear"],
+  "history.remove": HistoryMethodSchemas["history.remove"],
   ...BookmarkMethodSchemas,
   "downloads.list": z.object({}),
   "downloads.projectNative": DownloadSchema.extend({
@@ -1974,9 +1938,6 @@ export const ResultSchemas = {
   "tasks.replaceAgent": RunSchema,
   "workspaces.create": WorkspaceSchema,
   "spaces.list": z.array(BrowserSpaceSchema),
-  "spaces.import": z.array(BrowserSpaceSchema),
-  "spaces.create": z.array(BrowserSpaceSchema),
-  "spaces.update": z.array(BrowserSpaceSchema),
   "workspaces.list": z.array(WorkspaceSchema),
   "workspaces.folders.inspect": WorkspaceFolderReviewSchema,
   "workspaces.folders.add": WorkspaceFolderSchema,
@@ -2661,16 +2622,13 @@ export const ResultSchemas = {
     page: PageTargetSchema,
     restored: z.boolean(),
   }),
-  "history.list": z.array(HistoryEntrySchema),
   "history.projectSnapshot": z.object({
     accepted: z.boolean(),
     committed: z.boolean(),
     nextBatchIndex: z.number().int().nonnegative(),
   }),
   "history.projectDelta": z.object({ accepted: z.boolean(), sequence: z.number().int().nonnegative() }),
-  "history.count": z.object({ count: z.number().int().nonnegative() }),
-  "history.clear": z.object({ ok: z.boolean(), removed: z.number().int().nonnegative() }),
-  "history.remove": z.object({ removed: z.boolean() }),
+  ...HistoryResultSchemas,
   ...BookmarkResultSchemas,
   "downloads.list": z.array(DownloadSchema),
   "downloads.projectNative": z.object({ accepted: z.boolean() }),
