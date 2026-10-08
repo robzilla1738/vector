@@ -63,7 +63,7 @@ index b7bd161..1852fb0 100644
    scoped_refptr<NativeCopilotSession> retained_;
    std::string helper_id_;
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
-index 9f79e34..316ea4a 100644
+index 9f79e34..3069728 100644
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
 @@ -113,12 +113,6 @@ struct PrivateRuntimeIdentity : public base::SupportsUserData::Data {
@@ -136,12 +136,25 @@ index 9f79e34..316ea4a 100644
    launch.working_directory = launch.private_home;
    launch.runtime_device = *runtime_device;
    launch.runtime_inode = *runtime_inode;
-@@ -1171,7 +1172,39 @@ void AuxRuntimeHost::HandleNativeCopilotCall(
+@@ -1171,7 +1172,52 @@ void AuxRuntimeHost::HandleNativeCopilotCall(
    launch.access_token = *access;
    launch.connection_token = *connection;
    start_record->Start(std::move(launch), std::move(profile_lease), admission,
 -                      std::move(callback));
 +                      private_runtime_directory_, std::move(callback));
++}
++
++void AuxRuntimeHost::InvalidatePrivateProviders() {
++  if (profile_->IsOffTheRecord()) return;
++  // Do not create a host or reconnect a retired private worker to send an invalidation.
++  for (auto* profile : profile_->GetAllOffTheRecordProfiles()) {
++    auto* host = static_cast<AuxRuntimeHost*>(profile->GetUserData(&kAuxRuntimeHostKey));
++    if (host && host->runtime_connected_ && !host->shutting_down_ &&
++        host->profile_->GetOriginalProfile() == profile_) {
++      host->worker_.AsyncCall(&Worker::SendPrivateProviderChanged)
++          .WithArgs(host->admitted_native_generation_);
++    }
++  }
 +}
 +
 +void AuxRuntimeHost::HandlePrivateProviderCall(const base::DictValue& params, uint64_t generation,
@@ -177,7 +190,15 @@ index 9f79e34..316ea4a 100644
  }
  
  void AuxRuntimeHost::HandleNativeCloudPreviewCall(
-@@ -1427,6 +1460,7 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+@@ -1414,6 +1460,7 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+   credential_admissions_.clear();
+   if (native_content_blocker_) native_content_blocker_->RetireConnection(generation);
+   native_content_blocker_.reset();
++  InvalidatePrivateProviders();
+   const auto retirement_weak = weak_factory_.GetWeakPtr();
+   RetireStageLeases();
+   if (!retirement_weak) return;
+@@ -1427,6 +1474,7 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
    native_projects_.clear();
    native_terminals_.clear();
    native_cloud_previews_.clear();
@@ -185,7 +206,7 @@ index 9f79e34..316ea4a 100644
    // Retire acceptance synchronously; blocking process/group join stays on the
    // separate BLOCK_SHUTDOWN sequence. Keep original unjoined debts in registry.
    for (const auto& [id, session] : native_copilots_) {
-@@ -2053,22 +2087,22 @@ AuxRuntimeHost::Worker::~Worker() {
+@@ -2053,22 +2101,22 @@ AuxRuntimeHost::Worker::~Worker() {
    base::ThreadPool::PostTask(
        FROM_HERE, {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
        base::BindOnce(
@@ -213,7 +234,7 @@ index 9f79e34..316ea4a 100644
            socket_directory_.Take()));
  }
  
-@@ -2086,10 +2120,16 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
+@@ -2086,10 +2134,16 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
      return false;
    }
    private_startup_phase_.clear();
@@ -232,7 +253,7 @@ index 9f79e34..316ea4a 100644
      *error = "Cannot create an owner-only private runtime directory";
      Disconnect();
      return false;
-@@ -2190,7 +2230,7 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
+@@ -2190,7 +2244,7 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
    options.environment["AUX_PRIVATE_SETTINGS_PATH"] = "";
    options.environment["AUX_DATA_DIR"] =
        (private_session_id_.empty() ? profile_path_
@@ -241,7 +262,7 @@ index 9f79e34..316ea4a 100644
            .Append("Aux Runtime Data")
            .value();
    if (!private_session_id_.empty()) {
-@@ -2286,7 +2326,7 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
+@@ -2286,7 +2340,7 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
      private_startup_phase_ = "connected";
    // Same sequenced UI endpoint: admission precedes every posted native request.
    ui_runner_->PostTask(FROM_HERE, base::BindOnce(
@@ -250,7 +271,7 @@ index 9f79e34..316ea4a 100644
    // Authentication may have read ahead into the first runtime request.
    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
        FROM_HERE, base::BindOnce(&Worker::DrainSocket, weak_factory_.GetWeakPtr()));
-@@ -2324,7 +2364,9 @@ bool AuxRuntimeHost::Worker::Disconnect() {
+@@ -2324,7 +2378,9 @@ bool AuxRuntimeHost::Worker::Disconnect() {
        (!socket_directory_.IsValid() || socket_directory_.Delete());
    const bool private_data_removed =
        child_stopped &&
@@ -261,7 +282,7 @@ index 9f79e34..316ea4a 100644
    token_.clear();
    read_buffer_.clear();
    auto pending = std::move(pending_requests_);
-@@ -2453,6 +2495,13 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+@@ -2453,6 +2509,13 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
                               }, state));
                           return;
                         }
@@ -275,7 +296,7 @@ index 9f79e34..316ea4a 100644
                         if (owner && (method == "native.cloudPreview" || method == "native.cloudPreviewClose")) {
                           owner->HandleNativeCloudPreviewCall(method, params, connection_generation,
                               base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
-@@ -2743,8 +2792,6 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
+@@ -2743,8 +2806,6 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
          if (!found->second.empty())
            value = found->second;
          read = true;
@@ -284,11 +305,53 @@ index 9f79e34..316ea4a 100644
        } else {
          read = true;
        }
+@@ -2821,6 +2882,15 @@ void AuxRuntimeHost::Worker::SendCdpMessage(uint64_t connection_generation,
+   }
+ }
+ 
++void AuxRuntimeHost::Worker::SendPrivateProviderChanged(uint64_t generation) {
++  if (connection_fd_ < 0 || !generation || generation != connection_generation_ ||
++      private_session_id_.empty()) return;
++  auto note = base::DictValue().Set("kind", "note")
++      .Set("type", "privateProviderChanged").Set("payload", base::DictValue());
++  const auto encoded = base::WriteJson(note);
++  if (!encoded || !SendFrame(*encoded)) Disconnect();
++}
++
+ void AuxRuntimeHost::Worker::SendCdpAuthorityChanged(uint64_t generation) {
+   if (connection_fd_ < 0 || !generation || generation != connection_generation_) return;
+   // A fixed invalidation hint is never authority. The runtime obtains a fresh
+@@ -2909,6 +2979,17 @@ void AuxRuntimeHost::Worker::SendNavigationError(std::string payload_json) {
+ void AuxRuntimeHost::Worker::ForwardNote(const base::DictValue& data) {
+   const std::string* type = data.FindString("type");
+   const base::Value* payload = data.Find("payload");
++  if (type && *type == "privateProviderChanged") {
++    const auto* message = payload ? payload->GetIfDict() : nullptr;
++    if (private_session_id_.empty() && data.size() == 3 && message && message->empty()) {
++      ui_runner_->PostTask(FROM_HERE, base::BindOnce(
++          [](base::WeakPtr<AuxRuntimeHost> owner, uint64_t generation) {
++            if (owner && owner->DeviceConfirmationConnectionCurrent(generation))
++              owner->InvalidatePrivateProviders();
++          }, owner_, connection_generation_));
++    }
++    return;
++  }
+   if (type && *type == "startupPhase") {
+     const auto* status = payload ? payload->GetIfDict() : nullptr;
+     const auto* phase = status ? status->FindString("phase") : nullptr;
 diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
-index f3ebd03..c5567ac 100644
+index f3ebd03..9b1582d 100644
 --- a/chrome/browser/ui/aux/runtime_host.h
 +++ b/chrome/browser/ui/aux/runtime_host.h
-@@ -177,7 +177,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+@@ -144,6 +144,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+                         std::string page_id,
+                         std::string message);
+     void SendCdpAuthorityChanged(uint64_t connection_generation);
++    void SendPrivateProviderChanged(uint64_t connection_generation);
+     void SendCdpNavigationState(uint64_t connection_generation,
+         std::string page_id, std::string attachment_id, int command_id,
+         std::string lease_id, bool ready);
+@@ -177,7 +178,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
      std::string profile_id_;
      std::string private_session_id_;
      std::string private_startup_phase_;
@@ -297,7 +360,7 @@ index f3ebd03..c5567ac 100644
      std::map<std::string, std::string> private_secrets_;
      scoped_refptr<base::SequencedTaskRunner> ui_runner_;
      base::WeakPtr<AuxRuntimeHost> owner_;
-@@ -240,7 +240,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+@@ -240,7 +241,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
    void OnCdpNavigationState(uint64_t connection_generation,
        const std::string& page_id, const std::string& attachment_id,
        int command_id, const std::string& lease_id, bool ready);
@@ -306,7 +369,7 @@ index f3ebd03..c5567ac 100644
    void NativeConnectionRetired(uint64_t generation);
    void HandleNativeCdpAttachment(
        const base::DictValue& params, uint64_t connection_generation,
-@@ -272,6 +272,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+@@ -272,6 +273,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
  
    raw_ptr<Profile> profile_;
    const std::string private_session_id_;
@@ -314,10 +377,11 @@ index f3ebd03..c5567ac 100644
    base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
    std::unique_ptr<base::Thread> worker_thread_;
    base::SequenceBound<Worker> worker_;
-@@ -323,6 +324,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+@@ -323,6 +325,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
    void HandleNativeTerminalCall(const std::string& method, const base::DictValue& params,
        uint64_t connection_generation, base::OnceCallback<void(base::DictValue)> callback);
    std::map<std::string, std::unique_ptr<aux::NativeTerminal>> native_terminals_;
++  void InvalidatePrivateProviders();
 +  void HandlePrivateProviderCall(const base::DictValue& params, uint64_t generation,
 +      base::OnceCallback<void(base::DictValue)> callback);
    void HandleNativeCloudPreviewCall(const std::string& method, const base::DictValue& params,

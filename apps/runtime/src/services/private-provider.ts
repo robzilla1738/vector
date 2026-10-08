@@ -21,13 +21,23 @@ import { vercelModelClient } from "../agent/vercel-model.js";
 
 /** Native-only channel. Its caller is the original normal Profile's authenticated host. */
 export function registerPrivateProviderBroker(
-  channel: Pick<RpcChannel, "onMethod">,
+  channel: Pick<RpcChannel, "onMethod" | "notify">,
   deps: {
     current(): boolean;
+    revision(): string;
+    subscribe(changed: () => void): () => void;
     request(request: PrivateProviderRequest): Promise<PrivateProviderResult>;
   },
 ) {
-  let closed = false;
+  let closed = false,
+    revision = deps.revision();
+  const unsubscribe = deps.subscribe(() => {
+    if (closed) return;
+    const next = deps.revision();
+    if (next === revision) return;
+    revision = next;
+    channel.notify("privateProviderChanged", {});
+  });
   const params = z.object({ sessionId: z.string().uuid(), request: PrivateProviderRequestSchema }).strict();
   channel.onMethod("provider.private", async (raw) => {
     const input = params.parse(raw);
@@ -38,6 +48,8 @@ export function registerPrivateProviderBroker(
   });
   return () => {
     closed = true;
+    unsubscribe();
+    channel.notify("privateProviderChanged", {});
   };
 }
 

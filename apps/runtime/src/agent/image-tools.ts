@@ -37,7 +37,7 @@ export class AgentImageTools {
   }
 
   static withGateway(
-    credential: (signal: AbortSignal) => Promise<{ apiKey: string; teamId?: string }>,
+    credential: (signal: AbortSignal) => Promise<{ apiKey: string; teamId?: string; signal?: AbortSignal }>,
     artifacts: ArtifactStore,
     ledger: SpendLedger,
     modelId: ImageModel,
@@ -68,11 +68,12 @@ export class AgentImageTools {
                 "permission_denied",
                 "Image generation changed its original Gateway destination.",
               );
-            let headers: Headers;
+            let headers: Headers, signal: AbortSignal;
             try {
               dispatch.signal.throwIfAborted();
               const access = await credential(dispatch.signal);
-              dispatch.signal.throwIfAborted();
+              signal = access.signal ? AbortSignal.any([dispatch.signal, access.signal]) : dispatch.signal;
+              signal.throwIfAborted();
               headers = new Headers(init.headers);
               headers.set("authorization", `Bearer ${access.apiKey}`);
               headers.delete("x-vercel-ai-gateway-team");
@@ -82,7 +83,7 @@ export class AgentImageTools {
               preDispatchFailure = error;
               throw error;
             }
-            return fetch(input, { ...init, headers, redirect: "error", signal: dispatch.signal });
+            return fetch(input, { ...init, headers, redirect: "error", signal });
           },
         });
         const result = await generateImage({

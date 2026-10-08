@@ -180,8 +180,10 @@ export class SettingsService {
   private privateProvider?: PrivateProviderConnection;
   private privateImage?: {
     descriptor: PrivateImageConnection;
+    controller: AbortController;
     request(request: PrivateProviderRequest): Promise<PrivateProviderResult>;
   };
+  private readonly privateRetirements = new Set<Promise<void>>();
   private fileSettings: Settings = {};
   private native: NativeBridge | null = null;
   private foundationModels: FoundationModelsClient | undefined;
@@ -221,8 +223,13 @@ export class SettingsService {
     if (this.discoveryClosed) throw new AuxError("cancelled", "Private settings retired.");
     if (result.operation !== "describe")
       throw new AuxError("invalid_params", "Invalid private connection descriptor.");
+    this.privateImage?.controller.abort();
     this.privateImage = result.imageConnection
-      ? { descriptor: PrivateImageConnectionSchema.parse(result.imageConnection), request }
+      ? {
+          descriptor: PrivateImageConnectionSchema.parse(result.imageConnection),
+          controller: new AbortController(),
+          request,
+        }
       : undefined;
     if (this.privateImage) this.repo.setSetting("imageModel", this.privateImage.descriptor.modelId);
     if (!result.connection) return;
@@ -361,7 +368,8 @@ export class SettingsService {
     return { operation: "credential", revision: request.revision, accessToken };
   }
 
-  private privateProviderRevision(): string {
+  /** Nonsecret selected-connection identity; catalog refreshes and access-token rotations do not change it. */
+  privateProviderRevision(): string {
     const copilot = this.copilotSelection(),
       provider = this.modelProvider();
     return [
@@ -439,6 +447,23 @@ export class SettingsService {
     });
   }
 
+  /** Native original-owner revocation aborts transports now; helper retirement is joined by close(). */
+  invalidatePrivateProvider(): Promise<void> {
+    this.privateImage?.controller.abort();
+    this.privateImage = undefined;
+    const provider = this.privateProvider;
+    this.privateProvider = undefined;
+    this.gatewayClient = null;
+    if (!provider) return Promise.resolve();
+    const retirement = provider.close();
+    this.privateRetirements.add(retirement);
+    void retirement.then(
+      () => this.privateRetirements.delete(retirement),
+      () => {},
+    );
+    return retirement;
+  }
+
   private privateImageRevision(): string {
     return (
       "image:" +
@@ -466,7 +491,7 @@ export class SettingsService {
   /** Resolve image access at dispatch. Only the original account owner rotates refresh credentials. */
   async gatewayImageCredential(
     signal?: AbortSignal,
-  ): Promise<{ apiKey: string; teamId?: string } | undefined> {
+  ): Promise<{ apiKey: string; teamId?: string; signal?: AbortSignal } | undefined> {
     const generation = this.modelCacheGeneration(),
       imageModel = this.imageModel(),
       inherited = this.privateImage;
@@ -492,7 +517,11 @@ export class SettingsService {
       current();
       if (result.operation !== "credential" || result.revision !== inherited.descriptor.revision)
         throw new AuxError("cancelled", "The original private image credential retired.");
-      return { apiKey: result.accessToken, teamId: inherited.descriptor.teamId };
+      return {
+        apiKey: result.accessToken,
+        teamId: inherited.descriptor.teamId,
+        signal: inherited.controller.signal,
+      };
     }
     await this.initializeCredentials(["gateway"]);
     current();
@@ -940,8 +969,10 @@ export class SettingsService {
     if (next.agentModelRoutes !== undefined)
       next.agentModelRoutes = AgentModelRoutesSettingSchema.parse(next.agentModelRoutes);
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
-    if (patch.gatewayApiKey !== undefined || patch.modelCredential?.provider === "gateway")
+    if (patch.gatewayApiKey !== undefined || patch.modelCredential?.provider === "gateway") {
+      this.privateImage?.controller.abort();
       this.privateImage = undefined;
+    }
     if (this.privateProvider && (patch.gatewayApiKey !== undefined || patch.modelCredential !== undefined)) {
       await this.privateProvider.close();
       this.privateProvider = undefined;
@@ -1955,7 +1986,8 @@ export class SettingsService {
     this.chatgptCatalogController.abort();
     const failures: unknown[] = [];
     try {
-      await this.privateProvider?.close();
+      await this.invalidatePrivateProvider();
+      await Promise.all(this.privateRetirements);
     } catch (error) {
       failures.push(error);
     }

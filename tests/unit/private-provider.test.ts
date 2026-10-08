@@ -214,21 +214,70 @@ it("rejects content or arbitrary account selectors at the host-only credential b
         release = resolve;
       }),
   );
+  let revision = "one",
+    changed = () => {};
+  const notify = vi.fn();
   const close = registerPrivateProviderBroker(
     {
+      notify,
       onMethod: (_name: string, fn: (input: unknown) => Promise<unknown>) => {
         handler = fn as typeof handler;
       },
     } as never,
-    { current: () => true, request },
+    {
+      current: () => true,
+      revision: () => revision,
+      subscribe: (fn) => {
+        changed = fn;
+        return () => {};
+      },
+      request,
+    },
   );
   await expect(
     handler({ sessionId: randomUUID(), request: { operation: "describe", prompt: "private" } }),
   ).rejects.toThrow();
   expect(request).not.toHaveBeenCalled();
+  changed();
+  expect(notify).not.toHaveBeenCalled();
+  revision = "two";
+  changed();
+  expect(notify).toHaveBeenCalledWith("privateProviderChanged", {});
   const pending = handler({ sessionId: randomUUID(), request: { operation: "describe" } });
   await Promise.resolve();
   close();
   release({ operation: "describe", connection: null });
   await expect(pending).rejects.toMatchObject({ code: "cancelled" });
+});
+
+it("aborts an already dispatched private provider stream on original-owner revocation", async () => {
+  const normal = settings({ OPENAI_API_KEY: "original-key" });
+  normal.repo.setSetting("modelProvider", "openai");
+  const privateSettings = settings({ AUX_PRIVATE_SESSION: randomUUID() });
+  let entered!: () => void, dispatchedSignal: AbortSignal | undefined;
+  const dispatch = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>(async (_input, init) => {
+      dispatchedSignal = init!.signal!;
+      entered();
+      return new Promise<Response>((_resolve, reject) => {
+        dispatchedSignal!.addEventListener("abort", () => reject(dispatchedSignal!.reason), { once: true });
+      });
+    }),
+  );
+  await privateSettings.service.attachPrivateProvider((request) =>
+    normal.service.privateProviderRequest(request),
+  );
+  const pending = privateSettings.service
+    .model()!
+    .generateText({ modelId: "gpt-5.4", prompt: "private stream" });
+  const stopped = expect(pending).rejects.toThrow();
+  await dispatch;
+  await privateSettings.service.invalidatePrivateProvider();
+  await stopped;
+  expect(dispatchedSignal?.aborted).toBe(true);
+  expect(privateSettings.service.all().modelConfigured).toBe(false);
 });
