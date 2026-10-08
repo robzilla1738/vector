@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index 8a15641..10a4a6e 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -180,6 +180,8 @@ std::string AuxRuntimeHost::ProfileId(Profile* profile) {
+ bool AuxRuntimeHost::SupportsPrivateMethod(std::string_view method) {
+   return method != "bookmarksInvoke" && method != "onBookmarksChanged" &&
+          method != "historyInvoke" && method != "onHistoryChanged" &&
++         method != "memorySaverGet" && method != "memorySaverSet" &&
++         method != "native.memorySaverGet" && method != "native.memorySaverSet" &&
+          method != "organizationSnapshot" && method != "organizationCommit" &&
+          !method.starts_with("native.foundationModels") &&
+          method != "native.spaceBindingsSet" &&
