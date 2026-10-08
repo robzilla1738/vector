@@ -161,17 +161,6 @@ export class GeneratedResults {
     if (!run || run.config?.contextMemoryRevoked || (run.config?.chatId ?? run.runId) !== chatId)
       throw new AuxError("not_found", "The source turn is unavailable.");
     const rootArtifactId = source?.rootArtifactId;
-    const latest = rootArtifactId
-      ? (this.repo.db
-          .prepare("SELECT max(revision) AS revision FROM result_versions WHERE root_artifact_id=?")
-          .get(rootArtifactId) as { revision: number | null })
-      : undefined;
-    const revision = (latest?.revision ?? 0) + 1;
-    if (revision > 20)
-      throw new AuxError(
-        "conflict",
-        "This result has reached its 20-version limit. Start a new result to continue.",
-      );
     const { buffer, preview: summary } =
       spec.kind === "pptx"
         ? await (await import("./presentation-result.js")).renderPresentation(spec)
@@ -186,6 +175,12 @@ export class GeneratedResults {
       { runId, label: name, mediaType: MEDIA[spec.kind], buffer },
       (saved) => {
         const root = rootArtifactId ?? saved.artifactId;
+        const latest = this.repo.db
+          .prepare("SELECT max(revision) AS revision FROM result_versions WHERE root_artifact_id=?")
+          .get(root) as { revision: number | null };
+        const revision = (latest.revision ?? 0) + 1;
+        if (!Number.isSafeInteger(revision) || revision < 1)
+          throw new AuxError("conflict", "This result's version history cannot advance safely.");
         this.repo.db
           .prepare(
             `INSERT INTO result_versions(artifact_id,root_artifact_id,parent_artifact_id,chat_id,revision,created_at) VALUES(?,?,?,?,?,?)`,

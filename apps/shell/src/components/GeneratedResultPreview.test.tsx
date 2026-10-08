@@ -41,11 +41,12 @@ const file = {
 const button = (label: string) =>
   [...host.querySelectorAll<HTMLButtonElement>("button")].find((element) => element.textContent === label)!;
 
-it("shows inert document preview, exports stored bytes, and saves same-chat revision", async () => {
+it("shows inert document preview, exports stored bytes, and keeps editing beyond version twenty", async () => {
+  const current = { ...file, revision: 20 };
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
-    if (method === "results.generated.get") return file;
-    if (method === "results.generated.versions") return [file];
-    if (method === "results.generate") return { ...file, artifactId: "artifact-b", revision: 2 };
+    if (method === "results.generated.get") return current;
+    if (method === "results.generated.versions") return [current];
+    if (method === "results.generate") return { ...file, artifactId: "artifact-b", revision: 21 };
     throw new Error(`Unexpected ${method}`);
   });
   const save = vi.spyOn(bridge, "saveStoredArtifact").mockResolvedValue("/tmp/report.docx");

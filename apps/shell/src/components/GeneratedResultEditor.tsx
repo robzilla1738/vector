@@ -197,11 +197,11 @@ export function GeneratedResultEditor({
             return (
               <details key={index} open={spec.slides.length === 1 ? true : undefined}>
                 <summary>
-                  Slide {index + 1}: {slide.title}
+                  Section {index + 1}: {slide.title}
                 </summary>
                 <fieldset disabled={disabled}>
                   <label {...staticFieldProps}>
-                    Slide title
+                    Section title
                     <input
                       value={slide.title}
                       maxLength={200}

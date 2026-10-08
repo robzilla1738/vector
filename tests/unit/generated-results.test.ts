@@ -102,6 +102,44 @@ it("creates safe CSV and parseable XLSX with same-chat version lineage", async (
         spec: { kind: "csv", table: { name: "S", rows: [["x"]] } },
       }),
     ).rejects.toThrow("unavailable");
+    let latest = revision;
+    for (let version = 3; version <= 21; version++)
+      latest = await results.generate({
+        chatId: "chat-1",
+        sourceArtifactId: latest.artifactId,
+        filename: "sales.csv",
+        spec: revision.spec,
+      });
+    expect(ResultSchemas["results.generate"].parse(latest).revision).toBe(21);
+    const siblings = await Promise.all(
+      ["Branch A", "Branch B"].map((name) =>
+        results.generate({
+          chatId: "chat-1",
+          sourceArtifactId: csv.artifactId,
+          filename: "sales.csv",
+          spec: { kind: "csv", table: { name, rows: [[name]] } },
+        }),
+      ),
+    );
+    expect(siblings.map((item) => item.revision).sort((a, b) => a - b)).toEqual([22, 23]);
+    for (const [index, sibling] of siblings.entries()) {
+      expect(sibling.parentArtifactId).toBe(csv.artifactId);
+      expect(sibling.rootArtifactId).toBe(csv.artifactId);
+      expect(bytes(files, sibling.artifactId).toString("utf8")).toContain(index ? "Branch B" : "Branch A");
+    }
+    expect(results.versions(latest.artifactId)).toHaveLength(23);
+    repo.db
+      .prepare("UPDATE result_versions SET revision=? WHERE artifact_id=?")
+      .run(Number.MAX_SAFE_INTEGER, latest.artifactId);
+    await expect(
+      results.generate({
+        chatId: "chat-1",
+        sourceArtifactId: latest.artifactId,
+        filename: "sales.csv",
+        spec: revision.spec,
+      }),
+    ).rejects.toThrow("version history cannot advance safely");
+    expect(results.versions(latest.artifactId)).toHaveLength(23);
     const xlsx = await results.generate({
       chatId: "chat-1",
       filename: "sales.xlsx",

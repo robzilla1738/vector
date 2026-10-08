@@ -75,7 +75,7 @@ export const GeneratedResultSchema = z.object({
   sha256: z.string().length(64),
   kind: z.enum(["csv", "xlsx", "docx", "pptx", "chart"]),
   spec: GeneratedResultSpecSchema,
-  revision: z.number().int().min(1).max(20),
+  revision: z.number().int().positive(),
   rootArtifactId: id,
   parentArtifactId: id,
   sourceRunId: id,

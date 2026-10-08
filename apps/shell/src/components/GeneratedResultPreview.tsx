@@ -124,7 +124,7 @@ export function GeneratedResultPreview({
       pending.current ||
       !loadedCurrent(result) ||
       (!revision && draft !== result.spec) ||
-      (revision && (contextDisabled || result.revision >= 20))
+      (revision && contextDisabled)
     )
       return;
     const original = result,
@@ -209,7 +209,7 @@ export function GeneratedResultPreview({
               current={() => loadedCurrent(result)}
               invoke={() => setEditing((value) => !value)}
               {...smallGhostButtonProps}
-              disabled={busy || contextDisabled || result.revision >= 20}
+              disabled={busy || contextDisabled}
               aria-pressed={editing}
             >
               {editing ? "Close editor" : "Revise"}
@@ -339,19 +339,22 @@ export function GeneratedResultPreview({
                   </details>
                 ))
               ) : result.spec.kind === "pptx" ? (
-                result.spec.slides.map((slide, index) => (
-                  <details key={index} open={index === 0}>
-                    <summary>
-                      Slide {index + 1}: {slide.title}
-                    </summary>
-                    <ul>
-                      {slide.bullets.map((bullet, item) => (
-                        <li key={item}>{bullet}</li>
-                      ))}
-                    </ul>
-                    {slide.notes && <p {...staticHintProps}>Notes: {slide.notes}</p>}
-                  </details>
-                ))
+                <>
+                  <p {...staticHintProps}>Each source section spans as many slides as its content needs.</p>
+                  {result.spec.slides.map((slide, index) => (
+                    <details key={index} open={index === 0}>
+                      <summary>
+                        Section {index + 1}: {slide.title}
+                      </summary>
+                      <ul>
+                        {slide.bullets.map((bullet, item) => (
+                          <li key={item}>{bullet}</li>
+                        ))}
+                      </ul>
+                      {slide.notes && <p {...staticHintProps}>Notes: {slide.notes}</p>}
+                    </details>
+                  ))}
+                </>
               ) : (
                 <ul>
                   {result.preview.lines.map((line, index) => (

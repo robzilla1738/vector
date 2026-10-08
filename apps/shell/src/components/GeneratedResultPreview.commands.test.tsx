@@ -284,7 +284,7 @@ it("hidden and Private controls never admit original callback or export", async 
   expect(exports).toEqual([]);
   expect(close).not.toHaveBeenCalled();
 });
-it("context disabled and original revision20 preserve original revise gate while allowing export", async () => {
+it("context disabled preserves the revise gate while allowing export", async () => {
   await render("a", "one", true);
   await act(async () => reads[0]!.pending.resolve(file("one", "a", 20)));
   expect(control(ids.toggle).disabled).toBe(true);
