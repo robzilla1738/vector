@@ -30,7 +30,11 @@ export function RunOptions({
   privateTaskLocked: boolean;
   disabled: boolean;
 }) {
-  const [projects, setProjects] = useState<{ path: string; label: string }[]>([]);
+  const [projectCatalog, setProjectCatalog] = useState<{
+    workspaceId?: string;
+    items: { path: string; label: string }[];
+  }>({ items: [] });
+  const projects = projectCatalog.workspaceId === workspaceId ? projectCatalog.items : [];
   const [packages, setPackages] = useState<{ name: string; version: string; profiles: { name: string }[] }[]>(
     [],
   );
@@ -43,17 +47,18 @@ export function RunOptions({
     ])
       .then(([folders, library]) => {
         if (!live) return;
-        setProjects(
-          folders
+        setProjectCatalog({
+          workspaceId,
+          items: folders
             .filter((folder) => folder.access === "readWrite" && !folder.archivedAt && !folder.agentsChanged)
             .map((folder) => ({ path: folder.path, label: folder.path.split("/").pop() ?? folder.path })),
-        );
+        });
         setPackages(library.packages);
         setPackageDefaults(library.defaults);
       })
       .catch((reason) => {
         if (live) {
-          setProjects([]);
+          setProjectCatalog({ workspaceId, items: [] });
           setPackages([]);
           setError(errorMessage(reason));
         }

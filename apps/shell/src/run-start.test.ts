@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { bridge } from "./bridge";
 import { useStore } from "./store";
 import { makeRun } from "./mock/fixtures";
+import { createSpace, emptyLayout } from "./workspace";
 const initial = useStore.getState();
 afterEach(() => {
   vi.restoreAllMocks();
@@ -118,19 +119,42 @@ it("conversation deletion scrubs a pending request and a late reply cannot reope
     .getState()
     .startRun("Deleted message sentinel", { chatId, scope: "new", ownsDraft: true });
   await Promise.resolve();
-  useStore
-    .getState()
-    .applyEvent({
-      type: "conversation.deleted",
-      payload: { chatId },
-      seq: 1,
-      streamId: "delete-test",
-      ts: 1,
-    });
+  useStore.getState().applyEvent({
+    type: "conversation.deleted",
+    payload: { chatId },
+    seq: 1,
+    streamId: "delete-test",
+    ts: 1,
+  });
   expect(localStorage.getItem(`aux.pending-run-start.v1:${chatId}`)).toBe('{"removed":true}');
   finish(removed);
   await expect(pending).rejects.toThrow(/removed/);
   expect(useStore.getState().runs.some((run) => run.runId === removed.runId)).toBe(false);
   expect(useStore.getState().conversationDrafts[`chat:${chatId}`]).toBeUndefined();
   expect(invoke).toHaveBeenCalledOnce();
+});
+
+it("sends from a fresh native Space without borrowing the previous workspace while mapping is pending", async () => {
+  const chatId = crypto.randomUUID();
+  const run = makeRun({ runId: "unmapped-space-send", config: { chatId } });
+  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue(run);
+  const previous = emptyLayout();
+  previous.spaces[0] = { ...previous.spaces[0]!, workspaceId: "previous-workspace" };
+  const layout = createSpace(previous, "Fresh native Space");
+  expect(layout.spaces.find((space) => space.id === layout.activeSpaceId)?.workspaceId).toBeUndefined();
+  useStore.setState({
+    layout,
+    conversationId: null,
+    settings: { modelConfigured: true },
+    composerPreferences: {},
+    runs: [makeRun({ config: { chatId: "old-chat", contextWorkspaceId: "previous-workspace" } })],
+  });
+  await expect(
+    useStore.getState().startRun("A new question", { chatId, scope: "new", reveal: false }),
+  ).resolves.toBe(run);
+  expect(invoke).toHaveBeenCalledOnce();
+  const [method, request] = invoke.mock.calls[0]!;
+  expect(method).toBe("runs.start");
+  expect((request as { defaultWorkspaceId?: string }).defaultWorkspaceId).toBeUndefined();
+  expect(request).toMatchObject({ goal: "A new question", chatId, pageIds: [] });
 });
