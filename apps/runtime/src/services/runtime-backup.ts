@@ -45,6 +45,7 @@ import { SCHEMA_VERSION, financialTablesForDatabase } from "../store/db.js";
 import type { Repo } from "../store/repo.js";
 import { sanitizePortablePageRecall } from "@aux/contracts/portable-page-recall";
 import { encryptedFieldsForDatabase, type FieldCodec } from "../store/field-codec.js";
+import { authenticateTaskEvidenceProtection } from "../store/task-evidence-protection.js";
 import { minimizedObservationArtifactBytes } from "./observation-artifact-minimization.js";
 import {
   assertManagedRecoveryGeneration,
@@ -143,6 +144,7 @@ function authenticateProtectedCopy(db: DatabaseSync, cipher?: FieldCodec) {
   if (!marker) return;
   if (!cipher)
     throw new Error("This encrypted backup requires the original Profile key or reviewed recovery.");
+  authenticateTaskEvidenceProtection(db, cipher);
   const proof = db.prepare("SELECT value FROM aux_meta WHERE key='portable_profile_proof_v3'").get() as
     { value: string } | undefined;
   if (

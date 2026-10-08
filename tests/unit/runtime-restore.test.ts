@@ -22,6 +22,9 @@ import {
   Repo,
   runtimeRestoreStatus,
   stageRuntimeRestore,
+  EventBus,
+  TaskService,
+  TaskEvidenceService,
 } from "@aux/runtime";
 import { initializeFieldCodec } from "../../apps/runtime/src/store/field-codec.js";
 import {
@@ -152,16 +155,25 @@ it("sanitizes protected article recall and authenticates the same Profile before
     sourceArtifactId: "unrelated",
   });
   const reference = documents.references("chat")[0]!;
-  db.prepare("INSERT INTO workspaces(workspace_id,name,created_at) VALUES('space','private space',1)").run();
+  const events = new EventBus(repo),
+    tasks = new TaskService(repo, events);
+  const space = tasks.createWorkspace("private space");
+  const task = tasks.create({
+    workspaceId: space.workspaceId,
+    title: "private task",
+    objective: "Review the document",
+    criteria: [{ criterionId: "criterion", description: "Document reviewed", verification: "manual" }],
+  });
+  const document = new TaskEvidenceService(repo, events).importDocument({
+    taskId: task.taskId,
+    expectedRevision: 1,
+    criterionId: "criterion",
+    filename: "evidence.txt",
+    content: "private evidence",
+  });
   db.prepare(
-    "INSERT INTO tasks(task_id,workspace_id,revision,state,updated_at,json) VALUES('task','space',1,'open',1,?)",
-  ).run(JSON.stringify({ title: "private task" }));
-  db.prepare(
-    "INSERT INTO task_evidence(evidence_id,task_id,task_revision,criterion_id,json) VALUES('evidence','task',1,'criterion',?)",
-  ).run(JSON.stringify({ note: "private evidence" }));
-  db.prepare(
-    "INSERT INTO criterion_reviews(review_id,task_id,task_revision,criterion_id,json) VALUES('review','task',1,'criterion',?)",
-  ).run(JSON.stringify({ note: "private review" }));
+    "INSERT INTO criterion_reviews(review_id,task_id,task_revision,criterion_id,json) VALUES('review',?,1,'criterion',?)",
+  ).run(task.taskId, JSON.stringify({ note: "private review" }));
 
   const backup = await createRuntimeBackup(repo, dataDir);
   const backupBytes = readFileSync(join(backup.path, "state.sqlite"));
@@ -169,7 +181,7 @@ it("sanitizes protected article recall and authenticates the same Profile before
   expect(backupBytes.includes("retained.txt")).toBe(true);
   expect(backupBytes.includes("Protected body tail")).toBe(false);
   expect(backupBytes.includes("Opening text")).toBe(false);
-  expect(backupBytes.includes("private evidence")).toBe(true);
+  expect(backupBytes.includes("private evidence")).toBe(false);
   repo.close();
   await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(/original Profile key/);
   expect(existsSync(join(dataDir, "pending-runtime-restore.json"))).toBe(false);
@@ -191,9 +203,13 @@ it("sanitizes protected article recall and authenticates the same Profile before
     "Protected body tail",
   );
   const evidence = restored.db
-    .prepare("SELECT json FROM task_evidence WHERE evidence_id='evidence'")
-    .get() as { json: string };
-  expect(JSON.parse(evidence.json)).toMatchObject({ note: "private evidence" });
+    .prepare("SELECT seq,json FROM task_evidence WHERE evidence_id=?")
+    .get(document.evidenceId) as { seq: number; json: string };
+  expect(
+    JSON.parse(restored.revealRecordField("task_evidence", [evidence.seq], "json", evidence.json)),
+  ).toMatchObject({
+    snapshot: { text: "private evidence" },
+  });
   restored.close();
   const backupDbPath = join(backup.path, "state.sqlite");
   const tampered = new DatabaseSync(backupDbPath);

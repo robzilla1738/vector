@@ -2,6 +2,7 @@ import { createHash, createHmac } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { NativeBridge } from "../native.js";
 import { ProtectedStore } from "../services/protected-store.js";
+import { protectLegacyTaskEvidence, taskEvidenceProtection } from "./task-evidence-protection.js";
 
 const PREFIX = "auxenc:v3:";
 const NAME = /^[a-z][a-z0-9_]*$/;
@@ -27,17 +28,22 @@ export const ENCRYPTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
   coder_worktree_receipts: ["body"],
   model_calls: ["provider_metadata"],
   calendar_connections: ["account_key", "label", "secret_name", "scopes"],
+  task_evidence: ["json"],
 };
 /** Restorable v2/v3 snapshots predate the separate encrypted process log table. */
 export function encryptedFieldsForDatabase(db: DatabaseSync): typeof ENCRYPTED_FIELDS {
   const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
   if (version !== 2 && version !== 3 && version !== 4)
     throw new Error("Unsupported encrypted database schema.");
-  return version < 4
-    ? Object.fromEntries(
-        Object.entries(ENCRYPTED_FIELDS).filter(([table]) => table !== "coding_process_logs"),
-      )
-    : ENCRYPTED_FIELDS;
+  const evidence = taskEvidenceProtection(db);
+  if (evidence && evidence.cursor !== null)
+    throw new Error("Task evidence protection must finish before backup or recovery.");
+  return Object.fromEntries(
+    Object.entries(ENCRYPTED_FIELDS).filter(
+      ([table]) =>
+        (version >= 4 || table !== "coding_process_logs") && (evidence || table !== "task_evidence"),
+    ),
+  );
 }
 
 export const encryptedField = (table: string, column: string): boolean =>
@@ -109,7 +115,7 @@ export class FieldCodec {
   }
 }
 
-/** Constant-time startup: fetch the Profile key, never inspect or rewrite stored rows. */
+/** Fetch the Profile key; completed evidence conversions take a constant-time proof check. */
 export async function initializeFieldCodec(
   db: DatabaseSync,
   native: Secrets,
@@ -119,5 +125,6 @@ export async function initializeFieldCodec(
   const initialized = !!db.prepare("SELECT 1 FROM aux_meta WHERE key='field_codec_v3'").get();
   const codec = await FieldCodec.create(native, profileId, !initialized);
   if (!initialized) db.prepare("INSERT INTO aux_meta(key,value) VALUES('field_codec_v3','1')").run();
+  await protectLegacyTaskEvidence(db, codec);
   return codec;
 }

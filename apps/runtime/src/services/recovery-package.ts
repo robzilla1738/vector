@@ -8,6 +8,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
 import { encryptedFieldsForDatabase, FieldCodec } from "../store/field-codec.js";
+import { recodeTaskEvidenceProtection } from "../store/task-evidence-protection.js";
 import { ContentMemoryStore, type RecoveryPageMemory } from "./content-memory.js";
 import { MemoryPipeline, type RecoverySpaceMemory } from "./memory-pipeline.js";
 
@@ -82,6 +83,7 @@ async function requireOwnerAuth(native: NativeBridge, purpose: "export" | "resto
 function recodeSnapshot(db: DatabaseSync, cipher: FieldCodec, direction: "encrypt" | "decrypt"): string[] {
   const fields = encryptedFieldsForDatabase(db);
   const tables = [...Object.keys(fields), ...financialTablesForDatabase(db)];
+  recodeTaskEvidenceProtection(db, cipher, direction);
   for (const [table, columns] of Object.entries(fields)) {
     const info = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];
     const identity = info
@@ -476,7 +478,9 @@ export async function stageRecoveryPackage(
     rebindProfile(db, manifest.sourceProfileId, profileId);
     if (
       JSON.stringify([...sourceTables].sort()) !==
-      JSON.stringify([...Object.keys(encryptedFieldsForDatabase(db)), ...financialTablesForDatabase(db)].sort())
+      JSON.stringify(
+        [...Object.keys(encryptedFieldsForDatabase(db)), ...financialTablesForDatabase(db)].sort(),
+      )
     )
       throw new Error("Recovery SQLite inventory is invalid.");
     recodeSnapshot(db, repo.columnCipher, "encrypt");

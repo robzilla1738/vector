@@ -35,7 +35,7 @@ import { isConsequential } from "../agent/permissions.js";
 import { BrowserGroupReceiptSchema } from "@aux/contracts/browser-group-receipt";
 
 type Actor = "desktop_user" | "external_client";
-type EvidenceRow = { seq: number; evidence_id: string; json: string };
+type EvidenceRow = { seq: number; evidence_id: string; criterion_id: string; json: string };
 const ACTIVE = new Set(["queued", "planning", "running", "paused", "needs_input"]);
 
 function eligibleUndoStep(step: StepRecord): boolean {
@@ -1021,28 +1021,38 @@ export class TaskEvidenceService {
     return (
       this.repo.db
         .prepare(
-          "SELECT seq,evidence_id,json FROM task_evidence WHERE task_id=? AND task_revision=? AND (? IS NULL OR criterion_id=?) ORDER BY seq",
+          "SELECT seq,evidence_id,criterion_id,json FROM task_evidence WHERE task_id=? AND task_revision=? AND (? IS NULL OR criterion_id=?) ORDER BY seq",
         )
         .all(taskId, revision, criterionId ?? null, criterionId ?? null) as EvidenceRow[]
-    ).map((row) => ({
-      seq: row.seq,
-      record: TaskEvidenceSchema.parse(JSON.parse(row.json)),
-    }));
+    ).map((row) => {
+      const record = TaskEvidenceSchema.parse(
+        JSON.parse(this.repo.revealRecordField("task_evidence", [row.seq], "json", row.json)),
+      );
+      if (
+        record.evidenceId !== row.evidence_id ||
+        record.taskId !== taskId ||
+        record.taskRevision !== revision ||
+        record.criterionId !== row.criterion_id
+      )
+        throw new AuxError("conflict", "The original task evidence identity does not match its stored row.");
+      return { seq: row.seq, record };
+    });
   }
 
   private saveEvidence(record: TaskEvidence): TaskEvidence {
     const validated = TaskEvidenceSchema.parse(record);
-    this.repo.db
-      .prepare(
-        "INSERT INTO task_evidence(evidence_id,task_id,task_revision,criterion_id,json) VALUES(?,?,?,?,?)",
-      )
-      .run(
-        validated.evidenceId,
-        validated.taskId,
-        validated.taskRevision,
-        validated.criterionId,
-        JSON.stringify(validated),
-      );
+    this.repo.transaction(() => {
+      const inserted = this.repo.db
+        .prepare(
+          "INSERT INTO task_evidence(evidence_id,task_id,task_revision,criterion_id,json) VALUES(?,?,?,?,'')",
+        )
+        .run(validated.evidenceId, validated.taskId, validated.taskRevision, validated.criterionId);
+      const seq = Number(inserted.lastInsertRowid);
+      if (!Number.isSafeInteger(seq)) throw new Error("Task evidence sequence exhausted.");
+      this.repo.db
+        .prepare("UPDATE task_evidence SET json=? WHERE seq=?")
+        .run(this.repo.protectRecordField("task_evidence", [seq], "json", JSON.stringify(validated)), seq);
+    });
     this.events.emit("task.evidence_recorded", {
       taskId: validated.taskId,
       evidenceId: validated.evidenceId,

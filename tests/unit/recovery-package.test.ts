@@ -14,7 +14,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
 import { AuxError, toErrorPayload } from "@aux/contracts";
-import { EventBus, GoalService, HookService, openDb, Repo, TaskService } from "@aux/runtime";
+import {
+  EventBus,
+  GoalService,
+  HookService,
+  openDb,
+  Repo,
+  TaskService,
+  TaskEvidenceService,
+} from "@aux/runtime";
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
 import { installationMethods } from "../../apps/runtime/src/api/methods/installation.js";
 import { memoryMethods } from "../../apps/runtime/src/api/methods/memory.js";
@@ -90,11 +98,18 @@ async function fixture() {
   const source = new Repo(sourceDb, sourceCipher);
   const tasks = new TaskService(source, new EventBus(source));
   const space = tasks.createWorkspace("Protected research space");
-  tasks.create({
+  const task = tasks.create({
     workspaceId: space.workspaceId,
     title: "Protected task",
     objective: "Check source",
     criteria: [{ criterionId: "check", description: "Protected", verification: "manual" }],
+  });
+  const evidence = new TaskEvidenceService(source, new EventBus(source)).importDocument({
+    taskId: task.taskId,
+    expectedRevision: 1,
+    criterionId: "check",
+    filename: "protected.txt",
+    content: "Protected task document evidence",
   });
   const goal = new GoalService(source, {
     start: async () => {
@@ -171,6 +186,7 @@ async function fixture() {
     space,
     goal,
     hook,
+    evidence,
   };
 }
 
@@ -199,11 +215,13 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
     "protected_recovery_tool",
     "Protected article memory",
     "Protected artifact evidence",
+    "Protected task document evidence",
   ])
     expect(bytes.includes(secret)).toBe(false);
   expect(exported.manifest).toMatchObject({ pageMemoryCount: 1, artifactIds: ["evidence"] });
   expect(exported.manifest.spaceMemory).toHaveLength(1);
   expect(exported.manifest.sqliteTables).toContain("private_spend");
+  expect(exported.manifest.sqliteTables).toContain("task_evidence");
   const managedBackup = await createRuntimeBackup(f.source, f.sourceDir);
   const sourceMemory = new MemoryPipeline(f.source, f.sourceNative.bridge, f.sourceId);
   await sourceMemory.forget({ workspaceId: f.space.workspaceId, all: true }, () => {
@@ -272,6 +290,15 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const restored = new Repo(reopenedDb, cipher);
   expect(restored.listWorkspaces()[0]?.name).toBe("Protected research space");
   expect(restored.getRun("recovery-run")?.goal).toBe("Protected source goal");
+  const restoredEvidence = reopenedDb
+    .prepare("SELECT seq,json FROM task_evidence WHERE evidence_id=?")
+    .get(f.evidence.evidenceId) as { seq: number; json: string };
+  expect(restoredEvidence.json).not.toContain("Protected task document evidence");
+  expect(
+    JSON.parse(
+      restored.revealRecordField("task_evidence", [restoredEvidence.seq], "json", restoredEvidence.json),
+    ),
+  ).toMatchObject({ snapshot: { text: "Protected task document evidence" } });
   expect(
     reopenedDb.prepare("SELECT cost_usd FROM private_spend WHERE lease_id=?").get("opaque-fixture"),
   ).toEqual({ cost_usd: 0.75 });
