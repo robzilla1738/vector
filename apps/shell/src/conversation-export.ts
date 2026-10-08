@@ -3,9 +3,13 @@ import type {
   ConversationAttachment,
   ConversationSource,
   Run,
+  RunMessage,
   Workspace,
   WorkspaceMemory,
 } from "@aux/contracts";
+
+import { conversationReply } from "@aux/contracts";
+import { visibleAnswerMarkdown } from "@aux/contracts/conversation-reply-text";
 
 const md = (value: unknown) =>
   String(value ?? "")
@@ -15,14 +19,18 @@ const md = (value: unknown) =>
     .replace(/[\\`*_{}[\]()#+!|]/g, "\\$&")
     .replace(/^([-=>])/gm, "\\$1");
 const iso = (value: number) => new Date(value).toISOString();
-const resultLines = (result: Record<string, unknown> | undefined): string[] => {
-  if (!result) return ["No structured result was recorded."];
-  return Object.entries(result)
-    .slice(0, 50)
-    .map(([key, value]) => {
-      const rendered = typeof value === "string" ? value : JSON.stringify(value);
-      return `- **${md(key.replaceAll("_", " "))}:** ${md(rendered.slice(0, 20_000))}`;
-    });
+const resultLines = (run: Run): string[] => {
+  const reply = conversationReply(run);
+  const lines = reply ? ["**Aux:**", "", visibleAnswerMarkdown(reply), ""] : [];
+  for (const [key, value] of Object.entries(run.result ?? {})) {
+    if (key === "textProposal" && run.status === "completed" && run.config?.implementation === "agent-loop")
+      continue;
+    if (typeof value === "string" && reply?.includes(value.trim())) continue;
+    const rendered =
+      typeof value === "string" ? visibleAnswerMarkdown(value) : md(JSON.stringify(value, null, 2));
+    lines.push(`**${md(key.replaceAll("_", " "))}:**`, "", rendered, "");
+  }
+  return lines;
 };
 
 /** Portable visible transcript. Hidden prompt context and local source paths are deliberately omitted. */
@@ -30,6 +38,7 @@ export function conversationMarkdown(input: {
   chatId: string;
   title: string;
   runs: Run[];
+  messages?: RunMessage[];
   attachments: ConversationAttachment[];
   artifacts: ConversationArtifact[];
   sources: ConversationSource[];
@@ -37,7 +46,7 @@ export function conversationMarkdown(input: {
   memory: WorkspaceMemory | null;
   generatedAt?: number;
 }): string {
-  const runs = [...input.runs].sort((a, b) => a.createdAt - b.createdAt);
+  const runs = [...input.runs].sort((a, b) => a.createdAt - b.createdAt || a.runId.localeCompare(b.runId));
   const lines = [
     "# Aux conversation",
     "",
@@ -65,7 +74,17 @@ export function conversationMarkdown(input: {
       "",
       `**Aux status:** ${md(run.status)}${run.statusMessage ? ` — ${md(run.statusMessage)}` : ""}`,
       "",
-      ...resultLines(run.result),
+      ...(input.messages ?? [])
+        .filter(
+          (message) =>
+            message.chatId === input.chatId &&
+            message.targetRunId === run.runId &&
+            message.mode === "steer" &&
+            message.status === "delivered",
+        )
+        .sort((a, b) => a.createdAt - b.createdAt || a.messageId.localeCompare(b.messageId))
+        .flatMap((message) => [`**You — changed task:** ${md(message.text)}`, ""]),
+      ...resultLines(run),
       "",
     );
     if (run.failure)

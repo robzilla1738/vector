@@ -146,6 +146,7 @@ it("Export retains the original filename, Markdown bytes, read arguments and act
     }),
   );
   expect(bridge.invoke).toHaveBeenCalledWith("runs.list", { chatId: "a", limit: 500 });
+  expect(bridge.invoke).toHaveBeenCalledWith("runs.messages.list", { chatId: "a", runIds: ["run-a"] });
   for (const method of [
     "conversations.attachments.get",
     "conversations.artifacts.get",
@@ -256,7 +257,10 @@ it("retirement after a full export page refuses the next pagination and every co
     vi
       .mocked(bridge.invoke)
       .mock.calls.slice(afterMount)
-      .filter(([method]) => method === "runs.list" || method.startsWith("conversations.")),
+      .filter(
+        ([method]) =>
+          method === "runs.list" || method === "runs.messages.list" || method.startsWith("conversations."),
+      ),
   ).toEqual([]);
   expect(baseline).toBeGreaterThan(0);
   expect(save).not.toHaveBeenCalled();
@@ -293,7 +297,7 @@ it("each context producer checks original admission even when the prior dispatch
     .mocked(bridge.invoke)
     .mock.calls.slice(baseline)
     .map(([method]) => method);
-  expect(dispatched).toEqual(["runs.list", "conversations.attachments.get"]);
+  expect(dispatched).toEqual(["runs.list", "runs.messages.list", "conversations.attachments.get"]);
   expect(save).not.toHaveBeenCalled();
   bridge.windowId = windowId;
 });

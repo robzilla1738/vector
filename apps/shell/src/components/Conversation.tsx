@@ -1434,11 +1434,17 @@ export function Conversation({
     const completion = (async () => {
       try {
         const all: Run[] = [];
+        const messages: RunMessage[] = [];
         let before: ReturnType<typeof cursor> | undefined;
         for (;;) {
           if (!current()) return;
           const page = await call("runs.list", { chatId, limit: 500, ...(before ? { before } : {}) });
+          if (!current()) return;
           all.push(...page);
+          if (page.length)
+            messages.push(
+              ...(await call("runs.messages.list", { chatId, runIds: page.map((run) => run.runId) })),
+            );
           if (page.length < 500) break;
           before = cursor(page[page.length - 1]!);
         }
@@ -1461,6 +1467,7 @@ export function Conversation({
           chatId,
           title,
           runs: all,
+          messages,
           attachments: documents.attachments,
           artifacts: generated.artifacts,
           sources: sourceList.sources,
