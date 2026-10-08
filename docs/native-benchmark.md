@@ -12,7 +12,8 @@ app bytes and bundled Node bytes. Each measured process also records 20 tab swit
 and 20 single-character omnibox queries, producing 100 samples per browser for p50/p95/max.
 After each fresh-process sample it relaunches the same disposable Profile and records
 the warm first frame. These observations remain separate from the prepared fresh-process
-samples. Available runtime boot marks are retained as diagnostics; missing marks do not
+samples and are warm-process-relaunch diagnostics, not evidence for the 120 ms
+warm-new-window target. Available runtime boot marks are retained as diagnostics; missing marks do not
 prove a runtime-startup target. Both source trees must have the same Chromium
 VERSION and the same critical resolved fast-build flags, with the Aux shell
 excluded from stock. Stock retains the same v3 timing histograms and presentation triggers. Aux area 0100 adds only its original shell-process witness; it is not installed in stock, whose BrowserView supplies no shell WebContents. This difference is recorded in the report: the binaries are not byte-identical. The witness runs after the first presentation timestamp is captured and cannot improve Aux's reported timing.
@@ -69,3 +70,12 @@ actual `Contents/Helpers/Aux Runtime` path. Missing or ambiguous roles leave the
 report incomplete. Stock role fields are not applicable, while its total uses
 the same collector. Role targets are reported explicitly in MiB; the shared-page
 caveat still applies to the total process-tree sum.
+
+The report also writes an advisory `target-summary.md`. Its target status does
+not change build or measurement exit semantics. Acceptance requires all five
+valid paired samples, all 100 intended input observations and the exact original
+process roles. Missing values remain unavailable; they are never zero or a
+passing subset. Shell/runtime role limits use MiB, while total overhead and
+stock-relative application size use decimal MB. Until genuine warm-window and
+display-interval observations are supplied, those two targets remain unavailable
+even when their related relaunch or tab-latency diagnostics are present.
