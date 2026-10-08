@@ -1,4 +1,11 @@
 import { z } from "zod";
+import {
+  BookmarkFolderChangeSchema,
+  BookmarkFolderChangeResultSchema,
+  BookmarkFolderSnapshotSchema,
+  BookmarkPlacementSchema,
+  BookmarkPlacementResultSchema,
+} from "./bookmark-folder-methods.js";
 import { BookmarkFolderPathSchema, BookmarkSchema } from "./entities.js";
 
 const WebBookmarkSchema = z.object({
@@ -151,7 +158,19 @@ export function isNativeBookmarkMethod(method: string): method is NativeBookmark
   );
 }
 
+const NativeFolderResultSchemas = {
+  "bookmarks.folders.snapshot": BookmarkFolderSnapshotSchema,
+  "bookmarks.folders.change": BookmarkFolderChangeResultSchema,
+  "bookmarks.folders.placeBookmark": BookmarkPlacementResultSchema,
+};
+const NativeResultSchemas = { ...BookmarkResultSchemas, ...NativeFolderResultSchemas };
+
 export const NativeBookmarkRequestSchema = z.discriminatedUnion("method", [
+  z
+    .object({ method: z.literal("bookmarks.folders.placeBookmark"), params: BookmarkPlacementSchema })
+    .strict(),
+  z.object({ method: z.literal("bookmarks.folders.snapshot"), params: z.object({}).strict() }).strict(),
+  z.object({ method: z.literal("bookmarks.folders.change"), params: BookmarkFolderChangeSchema }).strict(),
   z
     .object({
       method: z.literal("bookmarks.list"),
@@ -233,10 +252,13 @@ export const NativeBookmarkRequestSchema = z.discriminatedUnion("method", [
 ]);
 
 /** A method tag makes transport validation and output normalization unambiguous. */
-function bookmarkResponse<M extends NativeBookmarkMethod>(method: M) {
-  return z.object({ method: z.literal(method), result: BookmarkResultSchemas[method] }).strict();
+function bookmarkResponse<M extends keyof typeof NativeResultSchemas>(method: M) {
+  return z.object({ method: z.literal(method), result: NativeResultSchemas[method] }).strict();
 }
 export const NativeBookmarkResultSchema = z.discriminatedUnion("method", [
+  bookmarkResponse("bookmarks.folders.snapshot"),
+  bookmarkResponse("bookmarks.folders.change"),
+  bookmarkResponse("bookmarks.folders.placeBookmark"),
   bookmarkResponse("bookmarks.list"),
   bookmarkResponse("bookmarks.folders.list"),
   bookmarkResponse("bookmarks.folders.create"),

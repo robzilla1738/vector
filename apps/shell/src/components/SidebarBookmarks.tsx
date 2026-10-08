@@ -1,5 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Bookmark } from "@aux/contracts";
+import type {
+  BookmarkFolder,
+  BookmarkFolderChange,
+  BookmarkFolderSnapshot,
+  BookmarkPlacement,
+} from "@aux/contracts/bookmark-folder-methods";
+import {
+  bookmarkSource,
+  changeBookmarkFolder,
+  folderDestination,
+  folderDrop,
+  folderSource,
+  readBookmarkFolders,
+  placeBookmark,
+  type FolderDropPosition,
+} from "../bookmark-folders";
 import { bookmarkWebUrl } from "../bookmark-files";
 import { runCommand } from "../commands";
 import { hintNavigation } from "../navigation-preload";
@@ -10,51 +26,62 @@ import { FavIcon } from "./SiteTile";
 
 type SavedBookmark = ReturnType<typeof useStore.getState>["bookmarks"][number];
 type OpenLink = (link: Pick<Bookmark, "url" | "title">, event: React.MouseEvent) => void;
-type Target = { item: SavedBookmark } | { path: string[] };
+type Target = { item: SavedBookmark } | { folder: BookmarkFolder };
 type Editor =
-  | { mode: "create" | "rename"; path: string[]; name: string }
-  | { mode: "edit"; item: SavedBookmark; title: string; url: string; folder: string };
+  | { mode: "create"; folder: BookmarkFolder; name: string }
+  | { mode: "rename"; folder: BookmarkFolder; name: string }
+  | { mode: "move-folder"; folder: BookmarkFolder; destinationId: string }
+  | { mode: "move-bookmark"; source: BookmarkPlacement["source"]; destinationId: string }
+  | { mode: "edit"; item: SavedBookmark; title: string; url: string };
 const samePath = (left: string[], right: string[]) => JSON.stringify(left) === JSON.stringify(right);
-const inside = (path: string[], parent: string[]) => parent.every((part, index) => path[index] === part);
 
 export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
   const bookmarks = useStore((state) => state.bookmarks);
-  const [folders, setFolders] = useState<string[][]>([]);
+  const [snapshot, setSnapshot] = useState<BookmarkFolderSnapshot | null>(null);
+  const folders = snapshot?.folders ?? [];
+  const rootFolder = folders.find((folder) => folder.nodeId === snapshot?.rootId);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [dropTarget, setDropTarget] = useState<{ nodeId: string; position: FolderDropPosition } | null>(null);
   const nodes = useMemo(() => {
-    const indexed = new Map<string, { children: Set<string>; items: SavedBookmark[] }>();
-    const folder = (path: string[]) => {
-      for (let depth = 0; depth <= path.length; ++depth) {
-        const key = JSON.stringify(path.slice(0, depth));
-        let node = indexed.get(key);
-        if (!node) {
-          node = { children: new Set(), items: [] };
-          indexed.set(key, node);
-        }
-        if (depth < path.length) node.children.add(path[depth]!);
-      }
-      return indexed.get(JSON.stringify(path))!;
-    };
-    folder([]);
-    folders.forEach(folder);
-    for (const item of bookmarks) folder(item.folderPath ?? []).items.push(item);
+    const indexed = new Map<string, { children: BookmarkFolder[]; items: SavedBookmark[] }>();
+    const rootId = snapshot?.rootId ?? "";
+    indexed.set(rootId, { children: [], items: [] });
+    if (!snapshot) {
+      indexed.get(rootId)!.items = bookmarks;
+      return indexed;
+    }
+    const parentByItem = new Map<string, string>();
+    for (const folder of snapshot.folders) {
+      indexed.set(folder.nodeId, { children: [], items: [] });
+      for (const child of folder.childIds) parentByItem.set(child, folder.nodeId);
+    }
+    for (const folder of snapshot.folders) {
+      if (folder.nodeId === rootId) continue;
+      indexed.get(folder.parentId ?? rootId)?.children.push(folder);
+    }
+    for (const item of bookmarks) {
+      const parent = parentByItem.get(item.nodeId ?? "") ?? rootId;
+      indexed.get(parent)!.items.push(item);
+    }
     return indexed;
-  }, [folders, bookmarks]);
+  }, [snapshot, bookmarks]);
   const [menu, setMenu] = useState<{ target: Target; x: number; y: number } | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const trigger = useRef<HTMLElement | null>(null);
-  const dragged = useRef<SavedBookmark | null>(null);
+  const dragged = useRef<{ source: BookmarkPlacement["source"] } | { folder: BookmarkFolder } | null>(null);
+  const folderRequest = useRef(0);
   const pending = useRef(false);
   useEffect(() => {
     let live = true;
-    void call("bookmarks.folders.list", {})
-      .then((paths) => {
-        if (live) setFolders(paths);
+    const request = ++folderRequest.current;
+    void readBookmarkFolders()
+      .then((value) => {
+        if (live && request === folderRequest.current) setSnapshot(value);
       })
       .catch((reason) => {
-        if (live) errToast(reason);
+        if (live && request === folderRequest.current) errToast(reason);
       });
     return () => {
       live = false;
@@ -62,12 +89,23 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
   }, [bookmarks]);
 
   async function refresh() {
-    const [items, paths] = await Promise.all([
-      call("bookmarks.list", {}),
-      call("bookmarks.folders.list", {}),
-    ]);
-    useStore.setState({ bookmarks: items });
-    setFolders(paths);
+    useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
+  }
+
+  async function changeFolder(operation: BookmarkFolderChange, label: string) {
+    const request = ++folderRequest.current;
+    const result = await changeBookmarkFolder(operation);
+    if (request === folderRequest.current) setSnapshot(result.snapshot);
+    if (result.undo) {
+      const inverse = result.undo;
+      undo(label, async () => {
+        const request = ++folderRequest.current;
+        const restored = await changeBookmarkFolder(inverse);
+        if (request === folderRequest.current) setSnapshot(restored.snapshot);
+        await refresh();
+      });
+    }
+    await refresh();
   }
 
   function action(work: () => Promise<unknown>) {
@@ -102,42 +140,69 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
     setMenu({ target, x: rect.left, y: rect.bottom });
   }
 
-  async function move(item: SavedBookmark, folderPath: string[]) {
-    const previous = item.folderPath ?? [];
-    if (samePath(previous, folderPath)) return;
-    await call("bookmarks.move", {
-      bookmarks: [{ url: item.url, nodeId: item.nodeId, folderPath: previous }],
-      folderPath,
-    });
-    undo("Bookmark moved", async () => {
-      await call("bookmarks.move", {
-        bookmarks: [{ url: item.url, nodeId: item.nodeId, folderPath }],
-        folderPath: previous,
+  async function moveBookmark(operation: BookmarkPlacement) {
+    const request = ++folderRequest.current;
+    const result = await placeBookmark(operation);
+    if (request === folderRequest.current) setSnapshot(result.snapshot);
+    if (result.undo) {
+      const inverse = result.undo;
+      undo("Bookmark moved", async () => {
+        const request = ++folderRequest.current;
+        const restored = await placeBookmark(inverse);
+        if (request === folderRequest.current) setSnapshot(restored.snapshot);
+        await refresh();
       });
-      await refresh();
-    });
+    }
     await refresh();
   }
-  function drop(event: React.DragEvent, path: string[]) {
-    if (!dragged.current) return;
+  function dragPosition(event: React.DragEvent<HTMLElement>, folder: BookmarkFolder): FolderDropPosition {
+    if (dragged.current && "folder" in dragged.current && !folder.permanent) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      if (event.clientY < rect.top + rect.height / 3) return "before";
+      if (event.clientY > rect.bottom - rect.height / 3) return "after";
+    }
+    return "inside";
+  }
+  function dragOver(event: React.DragEvent<HTMLElement>, folder: BookmarkFolder) {
+    if (!dragged.current || !snapshot) return;
     event.preventDefault();
     event.stopPropagation();
-    const item = dragged.current;
+    const position = dragPosition(event, folder);
+    const allowed =
+      snapshot.editable &&
+      ("source" in dragged.current || folderDrop(dragged.current.folder, folder, position, snapshot));
+    event.dataTransfer.dropEffect = allowed ? "move" : "none";
+    setDropTarget(allowed ? { nodeId: folder.nodeId, position } : null);
+  }
+  function drop(event: React.DragEvent<HTMLElement>, folder: BookmarkFolder) {
+    const source = dragged.current;
+    if (!source || !snapshot) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const position = dragPosition(event, folder);
     dragged.current = null;
-    action(() => move(item, path));
+    setDropTarget(null);
+    if (!snapshot.editable) return;
+    if ("source" in source) {
+      action(() => moveBookmark({ source: source.source, destination: folderDestination(folder) }));
+      return;
+    }
+    const operation = folderDrop(source.folder, folder, position, snapshot);
+    if (operation) action(() => changeFolder(operation, "Folder moved"));
   }
-  function dragOver(event: React.DragEvent) {
-    if (!dragged.current) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.dataTransfer.dropEffect = "move";
+  function endDrag() {
+    dragged.current = null;
+    setDropTarget(null);
   }
-  async function openFolder(path: string[]) {
+  function folderItems(folder: BookmarkFolder): SavedBookmark[] {
+    const node = nodes.get(folder.nodeId);
+    return [...(node?.items ?? []), ...(node?.children.flatMap(folderItems) ?? [])];
+  }
+  async function openFolder(folder: BookmarkFolder) {
     const state = useStore.getState();
     const urls = [
       ...new Set(
-        state.bookmarks
-          .filter((item) => inside(item.folderPath ?? [], path))
+        folderItems(folder)
           .map((item) => bookmarkWebUrl(item.url))
           .filter((url): url is string => !!url),
       ),
@@ -204,14 +269,12 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
     setError("");
     try {
       if (editor.mode === "edit") {
-        const { item, title, url, folder } = editor;
-        const folderPath = JSON.parse(folder) as string[];
+        const { item, title, url } = editor;
         await call("bookmarks.update", {
           nodeId: item.nodeId,
           originalUrl: item.url,
           url,
           title,
-          folderPath,
           expected: { title: item.title, folderPath: item.folderPath ?? [] },
         });
         undo("Bookmark updated", async () => {
@@ -220,24 +283,31 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
             originalUrl: url,
             url: item.url,
             title: item.title,
-            folderPath: item.folderPath ?? [],
-            expected: { title: title.trim(), folderPath },
+            expected: { title: title.trim(), folderPath: item.folderPath ?? [] },
           });
           await refresh();
         });
-      } else if (editor.mode === "create") {
-        setFolders(await call("bookmarks.folders.create", { path: [...editor.path, editor.name.trim()] }));
+        await refresh();
+      } else if (editor.mode === "rename") {
+        await changeFolder(
+          { kind: "rename", source: folderSource(editor.folder), title: editor.name.trim() },
+          "Folder renamed",
+        );
       } else {
-        const previous = editor.path;
-        const next = [...previous.slice(0, -1), editor.name.trim()];
-        setFolders(await call("bookmarks.folders.rename", { path: previous, name: editor.name.trim() }));
-        undo("Folder renamed", async () => {
-          setFolders(await call("bookmarks.folders.rename", { path: next, name: previous.at(-1)! }));
-          await refresh();
-        });
+        const parentId = editor.mode === "create" ? editor.folder.nodeId : editor.destinationId;
+        const parent = folders.find((folder) => folder.nodeId === parentId);
+        if (!parent) throw new Error("The destination folder no longer exists.");
+        const destination = folderDestination(parent);
+        if (editor.mode === "create")
+          await changeFolder({ kind: "create", destination, title: editor.name.trim() }, "Folder created");
+        else if (editor.mode === "move-bookmark") await moveBookmark({ source: editor.source, destination });
+        else
+          await changeFolder(
+            { kind: "move", source: folderSource(editor.folder), destination },
+            "Folder moved",
+          );
       }
       setEditor(null);
-      await refresh().catch(errToast);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -246,17 +316,16 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
     }
   }
 
-  function tree(path: string[]): React.ReactNode {
-    const node = nodes.get(JSON.stringify(path));
+  function tree(nodeId: string): React.ReactNode {
+    const node = nodes.get(nodeId);
     return (
       <>
-        {[...(node?.children ?? [])].map((child) => {
-          const nested = [...path, child];
-          const key = JSON.stringify(nested);
+        {node?.children.map((child) => {
+          const key = child.nodeId;
           return (
             <details
               className="sb-bookmark-folder"
-              key={child}
+              key={key}
               open={expanded.has(key)}
               onToggle={(event) => {
                 const open = event.currentTarget.open;
@@ -270,21 +339,30 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
               }}
             >
               <summary
-                onContextMenu={(event) => context(event, { path: nested })}
+                onContextMenu={(event) => context(event, { folder: child })}
                 onKeyDown={(event) => {
-                  contextKey(event, { path: nested });
+                  contextKey(event, { folder: child });
                   if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
                     event.preventDefault();
                     (event.currentTarget.parentElement as HTMLDetailsElement).open =
                       event.key === "ArrowRight";
                   }
                 }}
-                onDragOver={dragOver}
-                onDrop={(event) => drop(event, nested)}
+                draggable={!child.permanent && !!snapshot?.editable}
+                onDragStart={(event) => {
+                  dragged.current = { folder: child };
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", child.title);
+                }}
+                onDragEnd={endDrag}
+                onDragOver={(event) => dragOver(event, child)}
+                onDragLeave={() => setDropTarget(null)}
+                data-folder-drop={dropTarget?.nodeId === child.nodeId ? dropTarget.position : undefined}
+                onDrop={(event) => drop(event, child)}
               >
-                {child}
+                {child.path.at(-1) || "Untitled folder"}
               </summary>
-              {expanded.has(key) && <div>{tree(nested)}</div>}
+              {expanded.has(key) && <div>{tree(key)}</div>}
             </details>
           );
         })}
@@ -299,15 +377,20 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
             onAuxClick={(event) => onOpen(item, event)}
             onContextMenu={(event) => context(event, { item })}
             onKeyDown={(event) => contextKey(event, { item })}
-            draggable
+            draggable={!!snapshot?.editable}
             onDragStart={(event) => {
-              dragged.current = item;
+              if (!snapshot) return;
+              try {
+                dragged.current = { source: bookmarkSource(item, snapshot) };
+              } catch (reason) {
+                event.preventDefault();
+                errToast(reason);
+                return;
+              }
               event.dataTransfer.effectAllowed = "move";
               event.dataTransfer.setData("text/uri-list", item.url);
             }}
-            onDragEnd={() => {
-              dragged.current = null;
-            }}
+            onDragEnd={endDrag}
           >
             <FavIcon url={item.url} />
             <span>{item.title || item.url}</span>
@@ -318,13 +401,25 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
   }
   const target = menu?.target;
   const item = target && "item" in target ? target.item : undefined;
-  const path = target && "path" in target ? target.path : undefined;
+  const folder = target && "folder" in target ? target.folder : undefined;
+  const siblings = folder?.parentId ? (nodes.get(folder.parentId)?.children ?? []) : [];
+  const siblingIndex = siblings.findIndex((item) => item.nodeId === folder?.nodeId);
+  function reorder(position: "before" | "after") {
+    const adjacent = siblings[siblingIndex + (position === "before" ? -1 : 1)];
+    if (!folder || !adjacent || !snapshot) return;
+    const operation = folderDrop(folder, adjacent, position, snapshot);
+    if (operation) action(() => changeFolder(operation, "Folder moved"));
+  }
   return (
     <div className="sb-bookmarks">
       <div
         className="sb-bookmark-list"
-        onDragOver={dragOver}
-        onDrop={(event) => drop(event, [])}
+        onDragOver={(event) => {
+          if (rootFolder) dragOver(event, rootFolder);
+        }}
+        onDrop={(event) => {
+          if (rootFolder) drop(event, rootFolder);
+        }}
         onKeyDown={(event) => {
           if (
             event.defaultPrevented ||
@@ -351,9 +446,9 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
           rows[next]?.scrollIntoView({ block: "nearest" });
         }}
       >
-        {tree([])}
+        {tree(snapshot?.rootId ?? "")}
       </div>
-      {!bookmarks.length && !folders.length && (
+      {!bookmarks.length && !folders.some((folder) => !folder.permanent) && (
         <div className="sb-bookmarks-empty">Right-click a tab to bookmark it</div>
       )}
       <div className="sb-bookmark-actions">
@@ -361,9 +456,11 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
           className="icon-btn"
           aria-label="New bookmark folder"
           title="New bookmark folder"
+          disabled={!snapshot?.editable || !rootFolder}
           onClick={(event) => {
+            if (!rootFolder) return;
             trigger.current = event.currentTarget;
-            edit({ mode: "create", path: [], name: "" });
+            edit({ mode: "create", folder: rootFolder, name: "" });
           }}
         >
           {shellIconPlus}
@@ -405,11 +502,26 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
                     item,
                     title: item.title,
                     url: item.url,
-                    folder: JSON.stringify(item.folderPath ?? []),
                   })
                 }
               >
-                Edit or move bookmark…
+                Edit bookmark…
+              </button>
+              <button
+                className="menu-item"
+                role="menuitem"
+                disabled={!snapshot?.editable}
+                onClick={() => {
+                  if (!snapshot) return;
+                  try {
+                    const source = bookmarkSource(item, snapshot);
+                    edit({ mode: "move-bookmark", source, destinationId: source.parentId });
+                  } catch (reason) {
+                    errToast(reason);
+                  }
+                }}
+              >
+                Move bookmark…
               </button>
               <button
                 className="menu-item"
@@ -423,48 +535,72 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
               </button>
             </>
           )}
-          {path && (
+          {folder && (
             <>
               <button
                 className="menu-item"
                 role="menuitem"
-                disabled={!bookmarks.some((item) => inside(item.folderPath ?? [], path))}
-                onClick={() => action(() => openFolder(path))}
+                disabled={!folderItems(folder).length}
+                onClick={() => action(() => openFolder(folder))}
               >
                 Open folder in background tabs
               </button>
               <button
                 className="menu-item"
                 role="menuitem"
-                onClick={() => edit({ mode: "create", path, name: "" })}
+                disabled={!snapshot?.editable}
+                onClick={() => edit({ mode: "create", folder, name: "" })}
               >
                 New folder here…
               </button>
-              <button
-                className="menu-item"
-                role="menuitem"
-                onClick={() => edit({ mode: "rename", path, name: path.at(-1)! })}
-              >
-                Rename folder…
-              </button>
-              <button
-                className="menu-item danger"
-                role="menuitem"
-                disabled={
-                  bookmarks.some((item) => inside(item.folderPath ?? [], path)) ||
-                  folders.some((folder) => folder.length > path.length && inside(folder, path))
-                }
-                onClick={() =>
-                  action(async () => {
-                    setFolders(await call("bookmarks.folders.remove", { path }));
-                    undo("Folder removed", async () => {
-                      setFolders(await call("bookmarks.folders.create", { path }));
-                    });
-                  })
-                }
-              >
-                Remove empty folder
-              </button>
+              {!folder.permanent && (
+                <>
+                  <button
+                    className="menu-item"
+                    role="menuitem"
+                    disabled={!snapshot?.editable}
+                    onClick={() => edit({ mode: "rename", folder, name: folder.title })}
+                  >
+                    Rename folder…
+                  </button>
+                  <button
+                    className="menu-item"
+                    role="menuitem"
+                    disabled={!snapshot?.editable}
+                    onClick={() => edit({ mode: "move-folder", folder, destinationId: folder.parentId! })}
+                  >
+                    Move folder…
+                  </button>
+                  <button
+                    className="menu-item"
+                    role="menuitem"
+                    disabled={!snapshot?.editable || siblingIndex <= 0}
+                    onClick={() => reorder("before")}
+                  >
+                    Move folder up
+                  </button>
+                  <button
+                    className="menu-item"
+                    role="menuitem"
+                    disabled={!snapshot?.editable || siblingIndex < 0 || siblingIndex === siblings.length - 1}
+                    onClick={() => reorder("after")}
+                  >
+                    Move folder down
+                  </button>
+                  <button
+                    className="menu-item danger"
+                    role="menuitem"
+                    disabled={!snapshot?.editable || !!folder.childIds.length}
+                    onClick={() =>
+                      action(() =>
+                        changeFolder({ kind: "remove", source: folderSource(folder) }, "Folder removed"),
+                      )
+                    }
+                  >
+                    Remove empty folder
+                  </button>
+                </>
+              )}
             </>
           )}
         </Menu>
@@ -476,7 +612,11 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
               ? "Edit bookmark"
               : editor.mode === "rename"
                 ? "Rename bookmark folder"
-                : "New bookmark folder"
+                : editor.mode === "move-folder"
+                  ? "Move bookmark folder"
+                  : editor.mode === "move-bookmark"
+                    ? "Move bookmark"
+                    : "New bookmark folder"
           }
           returnFocus={trigger}
           onClose={() => {
@@ -514,22 +654,28 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
                     onChange={(event) => setEditor({ ...editor, url: event.target.value })}
                   />
                 </label>
-                <label>
-                  Folder
-                  <select
-                    value={editor.folder}
-                    disabled={busy}
-                    onChange={(event) => setEditor({ ...editor, folder: event.target.value })}
-                  >
-                    <option value="[]">Bookmarks</option>
-                    {folders.map((folder) => (
-                      <option key={JSON.stringify(folder)} value={JSON.stringify(folder)}>
-                        {folder.join(" / ")}
+              </>
+            ) : editor.mode === "move-folder" || editor.mode === "move-bookmark" ? (
+              <label>
+                Move into
+                <select
+                  value={editor.destinationId}
+                  disabled={busy}
+                  onChange={(event) => setEditor({ ...editor, destinationId: event.target.value })}
+                >
+                  {folders
+                    .filter(
+                      (folder) =>
+                        editor.mode === "move-bookmark" ||
+                        (snapshot && folderDrop(editor.folder, folder, "inside", snapshot)),
+                    )
+                    .map((folder) => (
+                      <option key={folder.nodeId} value={folder.nodeId}>
+                        {folder.path.join(" / ") || "Bookmarks"}
                       </option>
                     ))}
-                  </select>
-                </label>
-              </>
+                </select>
+              </label>
             ) : (
               <label>
                 Folder name
@@ -554,7 +700,9 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
                   busy ||
                   (editor.mode === "edit"
                     ? !editor.title.trim() || !bookmarkWebUrl(editor.url)
-                    : !editor.name.trim())
+                    : editor.mode === "move-folder" || editor.mode === "move-bookmark"
+                      ? !editor.destinationId
+                      : !editor.name.trim())
                 }
               >
                 {busy ? "Saving…" : editor.mode === "create" ? "Create folder" : "Save"}
