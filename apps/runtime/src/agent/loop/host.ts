@@ -1,6 +1,7 @@
 import { modelCallCost, type ModelAttempt } from "../model-client.js";
 import { projectedModelCostUsd } from "../../store/spend-ledger.js";
 import { codingResumeSummary } from "./context.js";
+import { projectLegacyRecall } from "./legacy-recall.js";
 import { createHash, randomUUID } from "node:crypto";
 import { auxSkillInstructions } from "../../services/aux-packages.js";
 import type { CodingFilesService } from "../../services/coding-files.js";
@@ -2130,6 +2131,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       maxSteps: modelCallLimit() === 0 ? 0 : Math.max(1, modelCallLimit() - modelCalls),
       steerCheck: steerPending,
       prepareModelMessages: async (messages, budget) => {
+        messages = projectLegacyRecall(self.deps.repo, transcript, runId, messages);
         const human = messages.findLast((message) => message.role === "user");
         const query =
           (typeof human?.content === "string"

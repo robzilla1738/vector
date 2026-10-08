@@ -14,7 +14,7 @@ import { registerNativeProjectPreview } from "./services/native-project-preview.
 import { installNativeSpaceBindings } from "./services/native-space-bindings.js";
 import { registerPrivateProviderBroker } from "./services/private-provider.js";
 import { migrateCodingProcessLogs } from "./services/coding-process-logs.js";
-import { PrivateBudgetOwner } from "./services/private-budget.js";
+import { PrivateBudgetClient, PrivateBudgetOwner } from "./services/private-budget.js";
 import { cloudSettingsFor } from "./services/cloud-settings.js";
 import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
 import { withRunAuthorityMutation } from "./services/overnight-authority.js";
@@ -295,6 +295,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let stopNativeProjectPreview: (() => void) | undefined;
   let stopPrivateProviderBroker: (() => void) | undefined;
   let privateBudgetOwner: PrivateBudgetOwner | undefined;
+  let accountBudget: PrivateBudgetClient;
   let nativeSpaceBindings: Promise<(() => Promise<void>) | undefined> | undefined;
   let stopRunEndHooks: (() => void) | undefined;
   type RuntimeServices = Services & {
@@ -709,6 +710,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         durableWrites: runtimeServices.durableWrites,
         pageClaims: runtimeServices.pageClaims,
         budgets: runtimeServices.budgets,
+        accountBudget,
         agentLoop,
         browserEgress,
       });
@@ -789,7 +791,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       retainedFiles: (runId: string) => cloudExecutor?.retainedFiles(runId),
       retainedProcesses: (runId: string) => cloudExecutor?.retainedProcesses(runId),
       preview: (context, input, token, signal) => {
-        if (!cloudExecutor) throw new AuxError("ref_stale", "Start the original cloud command before opening its Preview.");
+        if (!cloudExecutor)
+          throw new AuxError("ref_stale", "Start the original cloud command before opening its Preview.");
         return cloudExecutor.preview(context, input, token, signal);
       },
       closePreview: (context, previewId, token) => {
@@ -1221,12 +1224,22 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         })
     : Promise.resolve(featureAvailabilityFor([]));
   if (!privateSession && nativeIdentity && native.spaceBindingsSet) {
-    nativeSpaceBindings = nativeIdentity.then((identity) => {
-      if (closed || !identity.methods.includes("native.spaceBindingsSet")) return;
-      return installNativeSpaceBindings(repo, events, { spaceBindingsSet: (input) => native.spaceBindingsSet!(input) }, (error) => {
-        console.error("Native Space publication failed", error instanceof AuxError ? error.code : "internal");
-      });
-    }).catch(() => undefined);
+    nativeSpaceBindings = nativeIdentity
+      .then((identity) => {
+        if (closed || !identity.methods.includes("native.spaceBindingsSet")) return;
+        return installNativeSpaceBindings(
+          repo,
+          events,
+          { spaceBindingsSet: (input) => native.spaceBindingsSet!(input) },
+          (error) => {
+            console.error(
+              "Native Space publication failed",
+              error instanceof AuxError ? error.code : "internal",
+            );
+          },
+        );
+      })
+      .catch(() => undefined);
   }
   let blockingBoot: Promise<void> | undefined;
   const ensureBlocking = () => {
@@ -1275,26 +1288,47 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   privateStartupPhase("services");
   runtimeServices.settings.attachCopilotServices(() => runtimeServices.copilot);
   const cloudSettings = cloudSettingsFor(repo, native);
-  if (!privateSession) privateBudgetOwner = new PrivateBudgetOwner(repo, runtimeServices.budgets);
-  if (channel && hostSocket && !privateSession) {
-    const budgetOwner = privateBudgetOwner!;
-    stopPrivateProviderBroker = registerPrivateProviderBroker(channel, {
-      current: () => !closed && native.available(),
-      revision: () => `${runtimeServices.settings.privateProviderRevision()}:${cloudSettings.connectionRevision()}`,
-      subscribe: (changed) => events.subscribe(() => changed()),
-      request: (request) => runtimeServices.settings.privateProviderRequest(request),
-      budgetRequest: (sessionId, request) => budgetOwner.request(sessionId, request),
-      cloudRequest: (request) => cloudSettings.privateRequest(request),
-    });
-  }
   if (privateSession) {
     if (!bootstrapIdentity?.methods.includes("native.privateProvider") || !native.privateProvider)
-      throw new AuxError("capability_unsupported", "This native build does not implement private provider access.");
-    await runtimeServices.settings.attachPrivateProvider((request) => native.privateProvider!(request), { native, dataDir: config.dataDir });
+      throw new AuxError(
+        "capability_unsupported",
+        "This native build does not implement private provider access.",
+      );
+    await runtimeServices.settings.attachPrivateProvider((request) => native.privateProvider!(request), {
+      native,
+      dataDir: config.dataDir,
+    });
     if (!native.privateCloud)
-      throw new AuxError("capability_unsupported", "This native build does not implement private Sandbox access.");
+      throw new AuxError(
+        "capability_unsupported",
+        "This native build does not implement private Sandbox access.",
+      );
     await cloudSettings.attachPrivate((request) => native.privateCloud!(request));
+    if (!native.privateBudget)
+      throw new AuxError(
+        "capability_unsupported",
+        "This native build does not implement private account usage.",
+      );
+    accountBudget = new PrivateBudgetClient((request) => native.privateBudget!(request));
+    runtimeServices.budgets.configureSharedWindows(() => accountBudget.snapshot());
+    await accountBudget.refresh();
+  } else {
+    const budgetOwner = new PrivateBudgetOwner(repo, runtimeServices.budgets);
+    privateBudgetOwner = budgetOwner;
+    accountBudget = budgetOwner.client();
+    if (channel && hostSocket) {
+      stopPrivateProviderBroker = registerPrivateProviderBroker(channel, {
+        current: () => !closed && native.available(),
+        revision: () =>
+          `${runtimeServices.settings.privateProviderRevision()}:${cloudSettings.connectionRevision()}`,
+        subscribe: (changed) => events.subscribe(() => changed()),
+        request: (request) => runtimeServices.settings.privateProviderRequest(request),
+        budgetRequest: (sessionId, request) => budgetOwner.request(sessionId, request),
+        cloudRequest: (request) => cloudSettings.privateRequest(request),
+      });
+    }
   }
+  runtimeServices.settings.configureAccountBudget(accountBudget);
 
   // These authenticated host-only methods prepare local files for native save dialogs.
   channel?.onMethod("artifact.exportDescriptor", (params) => {
@@ -2574,6 +2608,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         repo,
         native,
         funding: runtimeServices.runs.funding,
+        accountBudget,
         configuration: () => settings.cloudSettingsFor(repo, native).configuration(),
         assertOwner: (ctx) => owner(ctx),
         assertOriginal: (ctx) => owner(ctx, true),
@@ -2587,8 +2622,18 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             throw new AuxError("permission_denied", "Open Preview from its original Aux window.");
           const original = await native.turnSourceContext(token);
           const identity = process.execution;
-          if (!identity || identity.backend !== "cloud") throw new AuxError("ref_stale", "Preview requires its original cloud process.");
-          const fence = await authorizeCodingAction(context.runId, "read", `preview:${input.processId}:${input.port}`, [input, identity, listener], undefined, "user", undefined, identity);
+          if (!identity || identity.backend !== "cloud")
+            throw new AuxError("ref_stale", "Preview requires its original cloud process.");
+          const fence = await authorizeCodingAction(
+            context.runId,
+            "read",
+            `preview:${input.processId}:${input.port}`,
+            [input, identity, listener],
+            undefined,
+            "user",
+            undefined,
+            identity,
+          );
           const current = await native.turnSourceContext(token);
           if (current.windowId !== original.windowId)
             throw new AuxError("permission_denied", "The original Preview window changed.");
@@ -3329,6 +3374,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         run: () => serviceContainer.peek("contentMemory")?.close(),
       },
       { stage: "model-discovery", run: () => serviceContainer.peek("settings")?.close() },
+      { stage: "account-budget", run: () => accountBudget.close() },
       { stage: "private-budget-owner", run: () => privateBudgetOwner?.close() },
       { stage: "api", run: () => api.close() },
       { stage: "invocations", run: () => invoke.dispose() },
