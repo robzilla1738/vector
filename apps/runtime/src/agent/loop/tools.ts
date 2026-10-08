@@ -9,6 +9,7 @@ import {
   ObservationScopeSchema,
   PlanStepSchema,
   ResultCitationSchema,
+  BrowserResultCitationSchema,
   CompletedGeneratedFileSchema,
 } from "@aux/contracts";
 import type { LoopTool, LoopToolManifest, LoopToolContext, LoopToolResult } from "./types.js";
@@ -627,7 +628,7 @@ export function buildToolManifest(): LoopToolManifest {
     description:
       "Finish the run with the verified result. `report` is the final answer; `citations` ground it — each cites a " +
       "snapshot you observed (observationId, or pageId + revision) with a verbatim `quote` copied from that snapshot's " +
-      "text. The verifier checks every quote exists in the cited snapshot; an unverifiable citation rejects the call — " +
+      "text. For a selected document, use {kind: 'document', source, locator, quote} with the exact source and locator from its admitted excerpts. Quote only text actually included in a successful model request. The verifier checks every quote exists in the cited snapshot; an unverifiable citation rejects the call — " +
       "re-observe, fix the quote, and resubmit. Paraphrase around quotes is allowed. If a write is marked uncertain in " +
       "the write ledger, use reconcile_action with a fresh effect line before submitting. " +
       "It may share a turn with the act or repl that does the work; it runs after those calls. " +
@@ -674,7 +675,7 @@ export function buildToolManifest(): LoopToolManifest {
     inputSchema: z
       .object({
         intentId: z.string().optional(),
-        citation: ResultCitationSchema,
+        citation: BrowserResultCitationSchema,
         effect: z.string().min(1).max(500),
       })
       .strict(),
@@ -682,7 +683,7 @@ export function buildToolManifest(): LoopToolManifest {
       const input = z
         .object({
           intentId: z.string().optional(),
-          citation: ResultCitationSchema,
+          citation: BrowserResultCitationSchema,
           effect: z.string().min(1).max(500),
         })
         .strict()

@@ -229,7 +229,7 @@ export class MemoryPipeline {
     if (!citations.success || !citations.data.length) return false;
     if (citations.data.some((citation) => memoryContentSensitivityReason(citation.quote))) return false;
     return citations.data.every((citation) => {
-      if (!citation.observationId) return false;
+      if ("kind" in citation || !citation.observationId) return false;
       const artifact = this.repo.getArtifact(citation.observationId);
       if (
         !artifact ||

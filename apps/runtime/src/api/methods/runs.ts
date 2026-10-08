@@ -1,3 +1,4 @@
+import { presentRun } from "../../services/run-presentation.js";
 import { createHash } from "node:crypto";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName, MethodParams } from "@aux/contracts";
@@ -8,7 +9,8 @@ import { projectRunTranscript } from "../../services/run-transcript.js";
 import { assertRunAnswerable, currentRunSuspension } from "../../services/run-suspension.js";
 
 async function branchOwner(ctx: MethodCtx) {
-  const token = ctx.client.nativeTurnContext, native = ctx.s.native;
+  const token = ctx.client.nativeTurnContext,
+    native = ctx.s.native;
   const read = native?.turnSourceContext;
   if (ctx.client.external || ctx.client.codeMode || !token || !read)
     throw new AuxError("permission_denied", "Branch history from the original Aux window.");
@@ -35,12 +37,14 @@ async function h_runs_branch_list(ctx: MethodCtx): Promise<unknown> {
 }
 
 async function startRequest(ctx: MethodCtx, input: MethodParams<"runs.start">) {
-  if (!input.requestId || !input.chatId) throw new AuxError("invalid_params", "A recoverable send needs its original conversation identity.");
+  if (!input.requestId || !input.chatId)
+    throw new AuxError("invalid_params", "A recoverable send needs its original conversation identity.");
   if (input.setId) throw new AuxError("invalid_params", "Composer sends belong to a single conversation.");
   const pages = input.pageIds ?? (input.pageId ? [input.pageId] : []);
   if (pages.some((pageId) => !input.contextPageRefs?.some((ref) => ref.pageId === pageId)))
     throw new AuxError("invalid_params", "A recoverable send needs the exact selected tab identities.");
-  const token = ctx.client.nativeTurnContext, native = ctx.s.native;
+  const token = ctx.client.nativeTurnContext,
+    native = ctx.s.native;
   const read = native?.turnSourceContext;
   if (ctx.client.external || ctx.client.codeMode || !token || !read)
     throw new AuxError("permission_denied", "Recover this send in its original Aux window.");
@@ -62,13 +66,17 @@ async function startRequest(ctx: MethodCtx, input: MethodParams<"runs.start">) {
 async function h_runs_reconcile_start(ctx: MethodCtx): Promise<unknown> {
   const input = MethodSchemas["runs.reconcileStart"].parse(ctx.params);
   const request = await startRequest(ctx, input);
-  return ctx.s.runs.reconcileStart({ ...input, startRequest: request });
+  const result = await ctx.s.runs.reconcileStart({ ...input, startRequest: request });
+  return result.status === "accepted" ? { ...result, run: presentRun(result.run) } : result;
 }
 
 async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
   const parsed = MethodSchemas["runs.start"].parse(ctx.params);
   const request = parsed.requestId ? await startRequest(ctx, parsed) : undefined;
-  if ((ctx.params.projectRoot || ctx.params.packageNames?.length || ctx.params.profile) && (ctx.client.external || ctx.client.codeMode))
+  if (
+    (ctx.params.projectRoot || ctx.params.packageNames?.length || ctx.params.profile) &&
+    (ctx.client.external || ctx.client.codeMode)
+  )
     throw new AuxError("permission_denied", "Choose coding profiles and packages through Aux.");
   if (ctx.params.agentMode !== undefined && (ctx.client.external || ctx.client.codeMode))
     throw new AuxError("permission_denied", "Choose this run’s mode through the Aux composer.");
@@ -106,30 +114,39 @@ async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
             .resources.filter((resource) => resource.kind === "page")
             .map((resource) => resource.locator));
     for (const pageId of pages) ctx.requireScopedPage(ctx.scope, pageId, client.connectionId);
-    return s.runs.start({
-      ...options,
-      ...prepared,
-      goal,
-      pageIds: pages,
-      externalConnectionId: client.connectionId,
-      externalParentRunId: ctx.externalRunId,
-    });
+    return presentRun(
+      await s.runs.start({
+        ...options,
+        ...prepared,
+        goal,
+        pageIds: pages,
+        externalConnectionId: client.connectionId,
+        externalParentRunId: ctx.externalRunId,
+      }),
+    );
   }
   const branch = params.chatId ? s.runs.branches.get(params.chatId) : undefined;
   const owner = branch ? await branchOwner(ctx) : undefined;
-  const branchOriginal = owner ? async () => {
-    await owner.current();
-    const selectedPages = params.pageIds ?? (params.pageId ? [params.pageId] : []);
-    for (const pageId of selectedPages)
-      if (s.pages.get(pageId).windowId !== owner.windowId)
-        throw new AuxError("permission_denied", "Select tabs from this Aux window, or remove their context, before sending the draft.");
-  } : undefined;
-  return s.runs.start({
-    ...parsed,
-    startRequest: request,
-    nativeTurnContext: client.nativeTurnContext,
-    branchOriginal,
-  });
+  const branchOriginal = owner
+    ? async () => {
+        await owner.current();
+        const selectedPages = params.pageIds ?? (params.pageId ? [params.pageId] : []);
+        for (const pageId of selectedPages)
+          if (s.pages.get(pageId).windowId !== owner.windowId)
+            throw new AuxError(
+              "permission_denied",
+              "Select tabs from this Aux window, or remove their context, before sending the draft.",
+            );
+      }
+    : undefined;
+  return presentRun(
+    await s.runs.start({
+      ...parsed,
+      startRequest: request,
+      nativeTurnContext: client.nativeTurnContext,
+      branchOriginal,
+    }),
+  );
 }
 async function h_runs_retry(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
@@ -138,7 +155,7 @@ async function h_runs_retry(ctx: MethodCtx): Promise<unknown> {
       "permission_denied",
       "Protected article context can only be retried from the Aux window.",
     );
-  return s.runs.retry(params.runId, params.pageId, client.nativeTurnContext);
+  return presentRun(await s.runs.retry(params.runId, params.pageId, client.nativeTurnContext));
 }
 async function h_runs_get(ctx: MethodCtx): Promise<unknown> {
   const { params, s, suspensions } = ctx;
@@ -146,7 +163,7 @@ async function h_runs_get(ctx: MethodCtx): Promise<unknown> {
   const calls = lineageRuns(s.repo, run.runId).flatMap((runId) => s.repo.listModelCalls(runId));
   const steps = s.repo.listSteps(run.runId);
   return {
-    run,
+    run: presentRun(run),
     steps,
     modelCalls: calls.length,
     usage: summarizeModelUsage(calls),
@@ -158,9 +175,9 @@ async function h_runs_list(ctx: MethodCtx): Promise<unknown> {
   const { params, s, scope, scopedTasks } = ctx;
   const p = MethodSchemas["runs.list"].parse(params);
   const listed = s.runs.coordinator.list(p.limit, p);
-  if (!scope) return listed;
+  if (!scope) return listed.map(presentRun);
   const taskIds = new Set(scopedTasks(scope).map((task) => task.taskId));
-  return listed.filter((run) => !!run.config?.taskId && taskIds.has(run.config.taskId));
+  return listed.filter((run) => !!run.config?.taskId && taskIds.has(run.config.taskId)).map(presentRun);
 }
 async function h_runs_context_get(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
@@ -172,7 +189,7 @@ async function h_runs_context_set(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_runs_pause(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
-  return s.runs.pause(params.runId);
+  return presentRun(await s.runs.pause(params.runId));
 }
 async function h_runs_resume(ctx: MethodCtx): Promise<unknown> {
   const { params, s, client } = ctx;
@@ -200,7 +217,7 @@ async function h_runs_resume(ctx: MethodCtx): Promise<unknown> {
     if (JSON.stringify(s.runs.coordinator.get(original.runId)) !== JSON.stringify(original))
       throw new AuxError("ref_stale", "This run changed while checking its native control.");
   }
-  return s.runs.resume(params.runId);
+  return presentRun(await s.runs.resume(params.runId));
 }
 async function h_runs_cancel(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
@@ -212,10 +229,14 @@ async function h_runs_cancel(ctx: MethodCtx): Promise<unknown> {
     if (!s.agentConnections || !s.externalSessions)
       throw new AuxError("backend_unavailable", "Original external session retirement is unavailable.");
     s.agentConnections.revoke(connectionId);
-    await s.externalSessions.end(connectionId, "cancelled", ctx.client.external ? "External session stopped" : "Stopped by user");
-    return s.runs.coordinator.get(params.runId);
+    await s.externalSessions.end(
+      connectionId,
+      "cancelled",
+      ctx.client.external ? "External session stopped" : "Stopped by user",
+    );
+    return presentRun(s.runs.coordinator.get(params.runId));
   }
-  return s.runs.cancel(params.runId);
+  return presentRun(await s.runs.cancel(params.runId));
 }
 async function h_runs_continue_budget(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external || ctx.client.codeMode)
@@ -223,16 +244,18 @@ async function h_runs_continue_budget(ctx: MethodCtx): Promise<unknown> {
   const p = MethodSchemas["runs.continueBudget"].parse(ctx.params);
   const token = ctx.client.nativeTurnContext;
   const native = ctx.s.native;
-  return ctx.s.runs.continueBudget(
-    p.runId,
-    p.suspensionId,
-    p.limits,
-    token,
-    token && native?.turnSourceContext
-      ? async () => {
-          await native.turnSourceContext!(token);
-        }
-      : undefined,
+  return presentRun(
+    await ctx.s.runs.continueBudget(
+      p.runId,
+      p.suspensionId,
+      p.limits,
+      token,
+      token && native?.turnSourceContext
+        ? async () => {
+            await native.turnSourceContext!(token);
+          }
+        : undefined,
+    ),
   );
 }
 async function h_runs_use_local_execution(ctx: MethodCtx): Promise<unknown> {
@@ -243,9 +266,11 @@ async function h_runs_use_local_execution(ctx: MethodCtx): Promise<unknown> {
   const native = ctx.s.native;
   if (!native?.turnSourceContext)
     throw new AuxError("capability_unsupported", "Original Aux window authority is unavailable.");
-  return ctx.s.runs.useLocalExecution(p.runId, p.suspensionId, token, async () => {
-    await native.turnSourceContext!(token);
-  });
+  return presentRun(
+    await ctx.s.runs.useLocalExecution(p.runId, p.suspensionId, token, async () => {
+      await native.turnSourceContext!(token);
+    }),
+  );
 }
 async function h_runs_retry_cloud_setup(ctx: MethodCtx): Promise<unknown> {
   const token = ctx.client.nativeTurnContext;
@@ -255,9 +280,11 @@ async function h_runs_retry_cloud_setup(ctx: MethodCtx): Promise<unknown> {
   const native = ctx.s.native;
   if (!native?.turnSourceContext)
     throw new AuxError("capability_unsupported", "Original Aux window authority is unavailable.");
-  return ctx.s.runs.retryCloudSetup(p.runId, p.suspensionId, token, async () => {
-    await native.turnSourceContext!(token);
-  });
+  return presentRun(
+    await ctx.s.runs.retryCloudSetup(p.runId, p.suspensionId, token, async () => {
+      await native.turnSourceContext!(token);
+    }),
+  );
 }
 async function h_runs_retry_model_setup(ctx: MethodCtx): Promise<unknown> {
   const token = ctx.client.nativeTurnContext;
@@ -267,9 +294,11 @@ async function h_runs_retry_model_setup(ctx: MethodCtx): Promise<unknown> {
   const native = ctx.s.native;
   if (!native?.turnSourceContext)
     throw new AuxError("capability_unsupported", "Original Aux window authority is unavailable.");
-  return ctx.s.runs.retryModelSetup(p.runId, p.suspensionId, token, async () => {
-    await native.turnSourceContext!(token);
-  });
+  return presentRun(
+    await ctx.s.runs.retryModelSetup(p.runId, p.suspensionId, token, async () => {
+      await native.turnSourceContext!(token);
+    }),
+  );
 }
 async function h_runs_answer(ctx: MethodCtx): Promise<unknown> {
   const { client, params: p, s, suspensions } = ctx;
@@ -287,13 +316,15 @@ async function h_runs_answer(ctx: MethodCtx): Promise<unknown> {
       await native.turnSourceContext!(token);
     });
   }
-  return s.runs.coordinator.answerWithMentions(p.runId, p.answer, p.mentions ?? [], () => {
-    assertRunAnswerable(
-      s.runs.coordinator.get(p.runId),
-      suspensions.pending(p.runId),
-      p.expectedSuspensionId,
-    );
-  });
+  return presentRun(
+    await s.runs.coordinator.answerWithMentions(p.runId, p.answer, p.mentions ?? [], () => {
+      assertRunAnswerable(
+        s.runs.coordinator.get(p.runId),
+        suspensions.pending(p.runId),
+        p.expectedSuspensionId,
+      );
+    }),
+  );
 }
 async function h_runs_queue(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;

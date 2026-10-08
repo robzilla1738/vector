@@ -1,7 +1,7 @@
 import type { BashSeatbeltInput } from "./bash.js";
 import type { z } from "zod";
 import type { ModelMessage } from "ai";
-import type { ResultCitation, SuspensionKind } from "@aux/contracts";
+import type { BrowserResultCitation, ResultCitation, SuspensionKind } from "@aux/contracts";
 
 /**
  * The provider-agnostic message type is the SDK's `ModelMessage` — a
@@ -217,7 +217,7 @@ export interface LoopToolDeps {
   /** Settle one uncertain page write only from a newly observed effect line. */
   reconcileAction?: (input: {
     intentId?: string;
-    citation: ResultCitation;
+    citation: BrowserResultCitation;
     effect: string;
   }) => Promise<{ ok: true; intentId: string; status: "confirmed" } | { ok: false; error: string }>;
 }

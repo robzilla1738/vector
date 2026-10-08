@@ -1,3 +1,4 @@
+import { presentConversation, presentRun } from "../../services/run-presentation.js";
 import { nativeDocumentSource } from "./document-source.js";
 import { searchConversation } from "../../services/conversation-search.js";
 import type { MethodCtx, MethodHandler, Services } from "./context.js";
@@ -6,7 +7,7 @@ import { AuxError } from "@aux/contracts";
 
 async function h_conversations_list(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
-  return s.runs.conversations(params);
+  return s.runs.conversations(params).map(presentConversation);
 }
 async function h_conversations_prepared(ctx: MethodCtx): Promise<unknown> {
   const { client, s } = ctx;
@@ -39,7 +40,8 @@ async function h_conversations_get(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
   if (s.runs.branches.get(params.chatId) && (ctx.client.external || ctx.client.codeMode))
     throw new AuxError("permission_denied", "Review the branch draft in its original Aux window.");
-  return s.runs.conversation(params.chatId);
+  const conversation = s.runs.conversation(params.chatId);
+  return conversation && "latestRun" in conversation ? presentConversation(conversation) : conversation;
 }
 const searches = new WeakMap<Services["repo"], Map<string, AbortController>>();
 async function h_conversations_search(ctx: MethodCtx): Promise<unknown> {
@@ -60,15 +62,16 @@ async function h_conversations_search(ctx: MethodCtx): Promise<unknown> {
   }
 }
 async function h_conversations_turns(ctx: MethodCtx): Promise<unknown> {
-  return ctx.s.repo.conversationTurnWindow(ctx.params.chatId, ctx.params.runId);
+  const window = ctx.s.repo.conversationTurnWindow(ctx.params.chatId, ctx.params.runId);
+  return { ...window, runs: window.runs.map(presentRun) };
 }
 async function h_conversations_rename(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
-  return s.runs.renameConversation(params.chatId, params.title);
+  return presentConversation(s.runs.renameConversation(params.chatId, params.title));
 }
 async function h_conversations_archive(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
-  return s.runs.archiveConversation(params.chatId, params.archived);
+  return presentConversation(s.runs.archiveConversation(params.chatId, params.archived));
 }
 async function h_conversations_delete(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;

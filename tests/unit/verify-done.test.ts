@@ -50,6 +50,6 @@ describe("SDK result evidence", () => {
         ],
         snapshots,
       ),
-    ).toEqual({ unverified: [2, 4], missing: [3, 5] });
+    ).toEqual({ unverified: [2, 4], missing: [3, 5], documents: [] });
   });
 });

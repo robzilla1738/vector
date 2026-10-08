@@ -916,7 +916,9 @@ describe("conversation turn retry", () => {
       { query: "Decision Choose option B", maxBytes: 3000, signal: new AbortController().signal },
       () => {},
     );
-    const text = JSON.parse(String(evidence!.content).split("\n").slice(1).join("\n")).excerpts[0].text;
+    const text = JSON.parse(String(evidence!.message.content).split("\n").slice(1).join("\n"))
+      .excerpts[0].segments.map((segment: { text: string }) => segment.text)
+      .join("\n");
     expect(text).toContain('Sheet "Decision" (hidden)');
     expect(text).toContain('B3="Choose option B"');
     expect(text).not.toContain('"column":');
@@ -928,6 +930,58 @@ describe("conversation turn retry", () => {
     expect(run.config?.contextAttachmentRefs).toEqual(h.runs.documents.references("workbook-chat"));
     expect(run.config?.context).toBeUndefined();
     await untilTerminal(h.repo, run.runId);
+  });
+
+  it("persists only successful document admissions and verifies them after a later projection omits the excerpt", async () => {
+    const model = new MockModelClient();
+    const h = harness({ model });
+    await h.pages.open({ url: "https://example.com", background: true, ownedByRuntime: false });
+    h.runs.addAttachment({
+      chatId: "citation-chat",
+      filename: "decision.txt",
+      content: "The Zirconium decision is approved.",
+    });
+    const ref = h.runs.documents.references("citation-chat")[0]!;
+    const saved = h.runs.documents.read(ref.chatId, ref.attachmentId, ref.sha256);
+    const citation = {
+      kind: "document",
+      source: { ...ref, snapshotId: saved.document.snapshotId },
+      locator: saved.chunk.segments[0]!.locator,
+      quote: "The Zirconium decision is approved.",
+    };
+    model.scriptToolSteps([
+      { toolCalls: [{ toolCallId: "time", toolName: "get_time", input: {} }] },
+      {
+        toolCalls: [
+          {
+            toolCallId: "finish",
+            toolName: "submit_result",
+            input: { report: "Approved", citations: [citation] },
+          },
+        ],
+      },
+    ]);
+    const read = h.runs.documentEvidence.bind(h.runs);
+    let requests = 0;
+    vi.spyOn(h.runs, "documentEvidence").mockImplementation((run, options) =>
+      read(run, { ...options, maxBytes: ++requests === 1 ? 3000 : 400 }),
+    );
+    const run = await h.runs.start({ goal: "Zirconium decision", pageIds: ["p1"], chatId: "citation-chat" });
+    const final = await untilTerminal(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(requests).toBe(2);
+    expect(final.config?.documentAdmissions).toMatchObject({
+      version: 1,
+      runId: run.runId,
+      recipes: [{ source: citation.source }],
+    });
+    expect(JSON.stringify(final.config?.documentAdmissions)).not.toContain(citation.quote);
+    expect(final.result).toMatchObject({
+      citations: [citation],
+      documentCitationReceipts: [{ runId: run.runId, citation }],
+    });
+    await h.runs.close();
+    h.repo.close();
   });
 
   it("pins exact local-document references without persisting plaintext model excerpts", async () => {

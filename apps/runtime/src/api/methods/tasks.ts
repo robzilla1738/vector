@@ -1,3 +1,4 @@
+import { presentRun } from "../../services/run-presentation.js";
 import { nativeDocumentSource } from "./document-source.js";
 import { exportTaskReceipt } from "../../services/task-receipt-export.js";
 import { withTaskAuthorityMutation } from "../../services/overnight-authority.js";
@@ -87,17 +88,24 @@ async function retired_h_tasks_replaceAgent(ctx: MethodCtx): Promise<unknown> {
   const { params, s, tasks } = ctx;
   const details = tasks.details(params.taskId);
   for (const { run } of details.runs) {
-    if (run.runId !== ctx.externalRunId && ["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
+    if (
+      run.runId !== ctx.externalRunId &&
+      ["queued", "planning", "running", "paused", "needs_input"].includes(run.status)
+    )
       await s.runs.cancel(run.runId);
   }
   const pageIds = params.pageIds ?? (params.pageId ? [params.pageId] : []);
-  return s.runs.start({
-    ...tasks.prepareRun(params.taskId, params.expectedRevision, params.context, ctx.externalRunId),
-    ...(ctx.scope && ctx.client.connectionId ? {externalConnectionId: ctx.client.connectionId, externalParentRunId: ctx.externalRunId} : {}),
-    pageIds,
-    modelId: params.modelId,
-    nativeTurnContext: ctx.client.nativeTurnContext,
-  });
+  return presentRun(
+    await s.runs.start({
+      ...tasks.prepareRun(params.taskId, params.expectedRevision, params.context, ctx.externalRunId),
+      ...(ctx.scope && ctx.client.connectionId
+        ? { externalConnectionId: ctx.client.connectionId, externalParentRunId: ctx.externalRunId }
+        : {}),
+      pageIds,
+      modelId: params.modelId,
+      nativeTurnContext: ctx.client.nativeTurnContext,
+    }),
+  );
 }
 async function h_tasks_recordEvidence(ctx: MethodCtx): Promise<unknown> {
   const { client, params, taskEvidence } = ctx;
@@ -155,6 +163,7 @@ async function h_tasks_get(ctx: MethodCtx): Promise<unknown> {
   const details = tasks.details(params.taskId);
   return {
     ...details,
+    runs: details.runs.map((entry) => ({ ...entry, run: presentRun(entry.run) })),
     children: details.children.map((child) => ({
       ...child,
       receiptStatus: taskEvidence.receipt(child.task.taskId).status,
@@ -205,8 +214,16 @@ async function h_tasks_start(ctx: MethodCtx): Promise<unknown> {
     throw new AuxError("permission_denied", "Choose this run’s mode through the Aux composer.");
   const { params, s, tasks } = ctx;
   const { taskId, expectedRevision, ...options } = params;
-  return s.runs.start({ ...options, ...tasks.prepareRun(taskId, expectedRevision, options.context, ctx.externalRunId), nativeTurnContext: ctx.client.nativeTurnContext,
-    ...(ctx.scope && ctx.client.connectionId ? {externalConnectionId: ctx.client.connectionId, externalParentRunId: ctx.externalRunId} : {}) });
+  return presentRun(
+    await s.runs.start({
+      ...options,
+      ...tasks.prepareRun(taskId, expectedRevision, options.context, ctx.externalRunId),
+      nativeTurnContext: ctx.client.nativeTurnContext,
+      ...(ctx.scope && ctx.client.connectionId
+        ? { externalConnectionId: ctx.client.connectionId, externalParentRunId: ctx.externalRunId }
+        : {}),
+    }),
+  );
 }
 
 export const tasksMethods: Partial<Record<MethodName, MethodHandler>> = {

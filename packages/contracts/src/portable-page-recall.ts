@@ -77,6 +77,7 @@ export function redactedPageRecallConfig<T extends RecallConfig>(config: T, arti
     revokedArtifactIds: [...new Set([...(config.revokedArtifactIds ?? []), ...artifactIds])],
     contextDocumentEvidence: undefined,
     contextAttachmentRefs: undefined,
+    documentAdmissions: undefined,
     contextArtifactEvidence: undefined,
     contextArtifactIds: undefined,
     contextSourceArtifactIds: undefined,

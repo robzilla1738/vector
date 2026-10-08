@@ -99,7 +99,12 @@ export interface CoordinatorDeps {
   documentEvidence?: (
     run: Run,
     options: import("./loop/document-context.js").DocumentEvidenceOptions,
-  ) => Promise<import("ai").ModelMessage | undefined>;
+  ) => Promise<import("./loop/document-context.js").DocumentEvidence | undefined>;
+  restoreDocumentEvidence?: (
+    run: Run,
+    recipes: readonly import("@aux/contracts/document-citation").DocumentAdmissionRecipe[],
+    signal: AbortSignal,
+  ) => import("./loop/document-admissions.js").AdmittedDocumentExcerpt[];
   memoryReferences?: (run: Run, query?: string) => Promise<SelectedArticleReference[]>;
   defaultModel: () => string;
   /** Pre-call user-budget gate (D11): throws permission_denied when a scope is spent. */

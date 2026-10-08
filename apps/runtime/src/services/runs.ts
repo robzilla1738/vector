@@ -1,3 +1,5 @@
+import { documentCitationEvidence } from "../agent/loop/document-admissions.js";
+import type { DocumentAdmissionRecipe } from "@aux/contracts/document-citation";
 import { MEMORY_WINDOW } from "../safety/egress-projection.js";
 import { sameCapturedSource, type CapturedSource } from "@aux/contracts";
 import { collectSelectedArticles } from "../agent/loop/memory-context.js";
@@ -253,33 +255,41 @@ export class RunService {
   async documentEvidence(
     run: Run,
     options: DocumentEvidenceOptions,
-  ): Promise<import("ai").ModelMessage | undefined> {
+  ): Promise<import("../agent/loop/document-context.js").DocumentEvidence | undefined> {
     const refs = run.config?.contextAttachmentRefs ?? [];
-    const identity = JSON.stringify(refs);
-    return selectedDocumentEvidence(
-      refs,
+    return selectedDocumentEvidence(refs, this.documents, options, this.documentSourceCheck(run), (text) => {
+      if (!this.deps.browserEgress) return;
+      // The guard accepts bounded registrations; overlapping normalized windows retain every fingerprint.
+      const normalized = text.normalize("NFKC").toLowerCase().replace(/\s+/gu, " ");
+      const size = 16_000;
+      for (let at = 0; at + MEMORY_WINDOW <= normalized.length; at += size - MEMORY_WINDOW + 1)
+        this.deps.browserEgress.protect(run.runId, normalized.slice(at, at + size), "memory");
+    });
+  }
+
+  private documentSourceCheck(run: Run) {
+    const identity = JSON.stringify(run.config?.contextAttachmentRefs ?? []);
+    return () => {
+      const current = this.deps.repo.getRun(run.runId);
+      if (
+        this.closed ||
+        !current ||
+        !["running", "planning"].includes(current.status) ||
+        current.config?.contextMemoryRevoked ||
+        JSON.stringify(current.config?.contextAttachmentRefs ?? []) !== identity
+      )
+        throw new AuxError("cancelled", "The original document request is no longer active.");
+      this.checkSetSource(run.runId);
+    };
+  }
+
+  restoreDocumentEvidence(run: Run, recipes: readonly DocumentAdmissionRecipe[], signal: AbortSignal) {
+    return documentCitationEvidence(
+      run.config?.contextAttachmentRefs ?? [],
       this.documents,
-      options,
-      () => {
-        const current = this.deps.repo.getRun(run.runId);
-        if (
-          this.closed ||
-          !current ||
-          !["running", "planning"].includes(current.status) ||
-          current.config?.contextMemoryRevoked ||
-          JSON.stringify(current.config?.contextAttachmentRefs ?? []) !== identity
-        )
-          throw new AuxError("cancelled", "The original document request is no longer active.");
-        this.checkSetSource(run.runId);
-      },
-      (text) => {
-        if (!this.deps.browserEgress) return;
-        // The guard accepts bounded registrations; overlapping normalized windows retain every fingerprint.
-        const normalized = text.normalize("NFKC").toLowerCase().replace(/\s+/gu, " ");
-        const size = 16_000;
-        for (let at = 0; at + MEMORY_WINDOW <= normalized.length; at += size - MEMORY_WINDOW + 1)
-          this.deps.browserEgress.protect(run.runId, normalized.slice(at, at + size), "memory");
-      },
+      recipes,
+      signal,
+      this.documentSourceCheck(run),
     );
   }
 
@@ -1079,6 +1089,7 @@ export class RunService {
       taskSource: deps.taskSource,
       imageReferences: (run) => this.images.forRun(run),
       documentEvidence: (run, options) => this.documentEvidence(run, options),
+      restoreDocumentEvidence: (run, recipes, signal) => this.restoreDocumentEvidence(run, recipes, signal),
       memoryReferences: async (run, query) => {
         const refs = run.config?.contextMemoryRefs ?? [];
         if (!refs.length && run.config?.contextMemoryIds?.length)

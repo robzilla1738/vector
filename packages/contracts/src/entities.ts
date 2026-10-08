@@ -1,3 +1,4 @@
+import { DocumentAdmissionsSchema } from "./document-citation.js";
 import { CapturedSourceSchema } from "./captured-source.js";
 import { z } from "zod";
 import { AgentProfileSchema } from "./agent-profiles.js";
@@ -267,6 +268,8 @@ export const RunSchema = z.object({
       /** terminal turn this run deliberately retries; used for audit and UI continuity */
       retryOfRunId: z.string().optional(),
       branchSourceRunIds: z.array(z.string()).optional(),
+      /** Internal verified-source provenance; never accepted by public run creation. */
+      documentAdmissions: DocumentAdmissionsSchema.optional(),
       /** AUX-017 durable coordinator snapshot. */
       checkpoint: z
         .object({

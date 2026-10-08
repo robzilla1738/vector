@@ -1,3 +1,6 @@
+import { DocumentAdmissionsSchema } from "@aux/contracts/document-citation";
+import { documentAdmissionKey, type AdmittedDocumentExcerpt } from "./document-admissions.js";
+import type { DocumentEvidence } from "./document-context.js";
 import { modelCallCost, type ModelAttempt } from "../model-client.js";
 import { projectedModelCostUsd } from "../../store/spend-ledger.js";
 import { codingResumeSummary } from "./context.js";
@@ -262,6 +265,9 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
   const outcomes: StepOutcome[] = [];
   /** Verification v2 — rendered text of every observation the model saw, keyed by each citation handle it can use. */
   const obsTexts = new Map<string, string>();
+  const admittedDocuments = new Map<string, AdmittedDocumentExcerpt>();
+  let pendingDocuments: DocumentEvidence | undefined;
+  let documentAdmissionSignal: AbortSignal | undefined;
   /** Citation handle → snapshot identity — resolves which page/revision a cited handle points at. */
   const obsMeta = new Map<string, { pageId: string; revision: number }>();
   const obsRecords = new Map<string, Observation>();
@@ -790,8 +796,8 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     },
     submitResult: async ({ report, citations, textProposal, generatedFiles }) => {
       self.deps.checkRunSource?.(runId);
+      const check = verifyResultCitations(citations ?? [], obsTexts, admittedDocuments.values());
       if (citations?.length) {
-        const check = verifyResultCitations(citations, obsTexts);
         if (check.missing.length || check.unverified.length) {
           const problems = [
             ...check.missing.map((i) => `citation ${i + 1}: no snapshot found for the cited handle`),
@@ -799,7 +805,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           ];
           return {
             ok: false as const,
-            error: `Unverifiable citations — ${problems.join("; ")}. Re-observe and quote exactly.`,
+            error: `Unverifiable citations — ${problems.join("; ")}. Quote an admitted document excerpt or re-observe the browser source exactly.`,
           };
         }
       }
@@ -837,6 +843,8 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         }));
       }
       if (citations?.length) result.citations = citations;
+      if (check.documents.length)
+        result.documentCitationReceipts = check.documents.map((receipt) => ({ runId, ...receipt }));
       if (textProposal !== undefined) result.textProposal = textProposal;
       if (unconfirmed.length) result.unconfirmedWrites = unconfirmed;
       if (generatedFiles?.length) {
@@ -862,6 +870,14 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         result.generatedArtifacts = artifacts;
       }
       self.deps.checkRunSource?.(runId);
+      // Artifact writes can yield; a revoked/replaced source must not publish a verified result afterward.
+      const currentCitations = verifyResultCitations(citations ?? [], obsTexts, admittedDocuments.values());
+      if (currentCitations.missing.length || currentCitations.unverified.length)
+        return {
+          ok: false as const,
+          error:
+            "Cited evidence changed while storing the result. Read the original source again before submitting.",
+        };
       return { ok: true as const, result };
     },
     reconcileAction: async ({ intentId, citation, effect }) => {
@@ -2131,6 +2147,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       maxSteps: modelCallLimit() === 0 ? 0 : Math.max(1, modelCallLimit() - modelCalls),
       steerCheck: steerPending,
       prepareModelMessages: async (messages, budget) => {
+        pendingDocuments = undefined;
         messages = projectLegacyRecall(self.deps.repo, transcript, runId, messages);
         const human = messages.findLast((message) => message.role === "user");
         const query =
@@ -2169,6 +2186,18 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         const original = self.get(runId);
         const refs = original.config?.contextMemoryRefs ?? [];
         const documentRefs = original.config?.contextAttachmentRefs ?? [];
+        if (documentAdmissionSignal !== signal) {
+          admittedDocuments.clear();
+          const stored = original.config?.documentAdmissions;
+          if (stored) {
+            const admissions = DocumentAdmissionsSchema.parse(stored);
+            if (admissions.runId !== runId || !self.deps.restoreDocumentEvidence)
+              throw new AuxError("ref_stale", "The saved document admissions do not belong to this run.");
+            for (const excerpt of self.deps.restoreDocumentEvidence(original, admissions.recipes, signal))
+              admittedDocuments.set(documentAdmissionKey(excerpt.recipe), excerpt);
+          }
+          documentAdmissionSignal = signal;
+        }
         if (original.config?.contextMemoryIds?.length && !refs.length)
           throw new AuxError(
             "permission_denied",
@@ -2234,13 +2263,15 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
             signal,
           });
           checkSources();
-          if (evidence) base = [...base, evidence];
+          pendingDocuments = evidence;
+          if (evidence) base = [...base, evidence.message];
         }
         return hydrateSelectedArticles(base, references, refs.length, {
           query,
           maxBytes: budget.remainingInputBytes(base),
         });
       },
+      beforeModelDispatch: () => pendingDocuments?.admit(),
       beforeModelCall: async (request) => {
         self.deps.turnMentions.skills(runId);
         const limit = modelCallLimit();
@@ -2370,6 +2401,29 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           { ...step, modelId: step.resolvedModelId ?? step.modelId ?? modelId() },
         ]);
         self.deps.checkRunSource?.(runId);
+        if (!step.error && !signal.aborted && self.controls.get(runId) === c && !c.paused) {
+          let changed = false;
+          for (const excerpt of pendingDocuments?.excerpts ?? []) {
+            excerpt.checkCurrent();
+            const key = documentAdmissionKey(excerpt.recipe);
+            if (!admittedDocuments.has(key)) {
+              admittedDocuments.set(key, excerpt);
+              changed = true;
+            }
+          }
+          if (changed) {
+            const state = DocumentAdmissionsSchema.parse({
+              version: 1,
+              runId,
+              recipes: [...admittedDocuments.values()].map(({ recipe }) => recipe),
+            });
+            // Read the latest row and merge synchronously; cloud/checkpoint/Stop state is never overwritten by an old projection.
+            const latest = self.get(runId);
+            latest.config = { ...latest.config, documentAdmissions: state };
+            self.deps.repo.saveRun(latest);
+          }
+        }
+        pendingDocuments = undefined;
       },
       onModelFailure: async ({ error, reservationId }) => {
         // Known provider attempts include the final failed request.

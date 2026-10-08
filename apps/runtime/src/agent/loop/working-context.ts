@@ -50,6 +50,8 @@ const EVIDENCE_FIELDS = new Set([
   "revision",
   "title",
   "quote",
+  "locator",
+  "sha256",
   "status",
   "state",
   "exitCode",

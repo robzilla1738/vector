@@ -121,7 +121,7 @@ it("projects late relevant content from thirty retained sources within the actua
       { query: "zirconium decision", maxBytes: 2200, signal: new AbortController().signal },
       () => {},
     );
-    const content = String(message!.content);
+    const content = String(message!.message.content);
     expect(Buffer.byteLength(content)).toBeLessThanOrEqual(2200);
     expect(content).toContain("zirconium decision is approved");
     const payload = JSON.parse(content.slice(content.indexOf("\n") + 1));
@@ -136,7 +136,7 @@ it("projects late relevant content from thirty retained sources within the actua
       { query: "zirconium decision", maxBytes: 50000, signal: new AbortController().signal },
       () => {},
     );
-    const expanded = JSON.parse(String(full!.content).split("\n").slice(1).join("\n"));
+    const expanded = JSON.parse(String(full!.message.content).split("\n").slice(1).join("\n"));
     expect(expanded.includedCount).toBe(30);
   } finally {
     repo.close();

@@ -52,6 +52,7 @@ export const RunTranscriptItemSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("document-citation"),
     citation: DocumentResultCitationSchema,
+    cursor: z.string().min(1).max(200),
   }),
   z.object({
     kind: z.literal("artifact"),

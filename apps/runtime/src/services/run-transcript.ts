@@ -1,3 +1,10 @@
+import { documentSectionCursor } from "./document-snapshots.js";
+import {
+  DocumentResultCitationSchema,
+  DocumentCitationReceiptSchema,
+  DocumentAdmissionsSchema,
+  documentCitationKey,
+} from "@aux/contracts/document-citation";
 import {
   InlineAssistTextSchema,
   WaitingPhraseSchema,
@@ -89,8 +96,56 @@ export function projectRunTranscript(
   // S5 records citations only after exact quote verification. Other engines'
   // arbitrary result objects do not acquire that trust by using the same key.
   if (terminal && run.config?.implementation === "agent-loop" && Array.isArray(result?.citations)) {
+    const admissions = DocumentAdmissionsSchema.safeParse(run.config?.documentAdmissions);
+    const receipts = DocumentCitationReceiptSchema.array().max(32).safeParse(result.documentCitationReceipts);
     for (const value of result.citations.slice(0, 32)) {
       if (!value || typeof value !== "object") continue;
+      const document = DocumentResultCitationSchema.safeParse(value);
+      if (document.success) {
+        const citation = document.data;
+        const receipt =
+          receipts.success &&
+          receipts.data.find(
+            (receipt) =>
+              receipt.runId === run.runId &&
+              receipt.citation.quote === citation.quote &&
+              documentCitationKey(receipt.citation.source, receipt.citation.locator) ===
+                documentCitationKey(citation.source, citation.locator) &&
+              run.config?.contextAttachmentRefs?.some(
+                (reference) =>
+                  reference.chatId === citation.source.chatId &&
+                  reference.attachmentId === citation.source.attachmentId &&
+                  reference.sha256 === receipt.referenceSha256,
+              ),
+          );
+        const recipe =
+          receipt &&
+          admissions.success &&
+          admissions.data.runId === run.runId &&
+          admissions.data.recipes.find(
+            (recipe) =>
+              recipe.excerptSha256 === receipt.excerptSha256 &&
+              recipe.referenceSha256 === receipt.referenceSha256 &&
+              documentCitationKey(recipe.source, recipe.locator) ===
+                documentCitationKey(citation.source, citation.locator),
+          );
+        if (recipe)
+          items.push({
+            kind: "document-citation",
+            citation,
+            cursor: documentSectionCursor(
+              {
+                kind: "conversation",
+                ownerId: citation.source.chatId,
+                documentId: citation.source.attachmentId,
+              },
+              citation.source.snapshotId,
+              citation.source.sha256,
+              recipe.ordinal,
+            ),
+          });
+        continue;
+      }
       const citation = value as Record<string, unknown>;
       if (
         typeof citation.observationId !== "string" ||

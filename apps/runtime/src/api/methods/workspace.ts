@@ -1,3 +1,4 @@
+import { presentRun } from "../../services/run-presentation.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 
@@ -56,7 +57,7 @@ async function h_workspace_get(ctx: MethodCtx): Promise<unknown> {
     pages,
     sets: scope ? [] : s.sets.list(),
     members: scope ? [] : s.sets.list().flatMap((set) => s.repo.listMembers(set.setId)),
-    runs,
+    runs: runs.map(presentRun),
     sessions: scope ? [] : s.repo.listSessions(),
     activePageId: pages.some((page) => page.pageId === s.pages.activePageId) ? s.pages.activePageId : null,
     lastSeq: s.repo.lastSeq(),

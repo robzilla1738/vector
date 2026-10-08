@@ -57,6 +57,8 @@ export interface AgentLoopOptions {
   /** New steer pending → stop before the next model call (or after in-flight tools). */
   steerCheck?: () => boolean;
   /** Pre-call gate (D11 budgets): throws before the model step is billed. */
+  /** Synchronous original-source revalidation after asynchronous admission, immediately before dispatch. */
+  beforeModelDispatch?: () => void;
   beforeModelCall?: (request: {
     modelId: string;
     promptBytes: number;
@@ -485,6 +487,7 @@ async function runAgentLoopOwned(
     try {
       if (recallMessage && recalled && !recalled.admit())
         requestMessages = requestMessages.filter((message) => message !== recallMessage);
+      opts.beforeModelDispatch?.();
     } catch (error) {
       await opts.onModelAdmissionCancelled?.(reservationId);
       opts.afterModelCall?.();

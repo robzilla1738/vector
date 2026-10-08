@@ -1,4 +1,5 @@
-import type { AuxEvent } from "@aux/contracts";
+import { EventTypes, type AuxEvent, type Run } from "@aux/contracts";
+import { presentRun } from "./services/run-presentation.js";
 import type { Repo } from "./store/repo.js";
 
 type Listener = (e: AuxEvent) => void;
@@ -24,7 +25,10 @@ export class EventBus {
       streamId: this.streamId,
       runId,
       type,
-      payload,
+      payload:
+        type === EventTypes.RunUpdated && payload.run
+          ? { ...payload, run: presentRun(payload.run as Run) }
+          : payload,
       ts: Date.now(),
     };
     this.repo.queueEvent(ev);

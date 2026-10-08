@@ -1,4 +1,6 @@
-import type { ResultCitation, StepOutcome } from "@aux/contracts";
+import { documentCitationKey, type DocumentCitationReceipt } from "@aux/contracts/document-citation";
+import type { AdmittedDocumentExcerpt } from "./loop/document-admissions.js";
+import type { BrowserResultCitation, ResultCitation, StepOutcome } from "@aux/contracts";
 import { isConsequential } from "./permissions.js";
 
 /** Verification v2 — navigation family ops are never counted as writes. */
@@ -31,7 +33,7 @@ export function markUnconfirmedWrites(outcomes: StepOutcome[]): string[] {
 const normalizeQuote = (text: string) => text.replace(/\s+/g, " ").trim().toLowerCase();
 
 /** Explicit snapshot identities never fall back to a different document's text. */
-function citationKey(citation: ResultCitation): string | undefined {
+function citationKey(citation: BrowserResultCitation): string | undefined {
   if (citation.observationId) return citation.observationId;
   if (citation.pageId && citation.revision !== undefined) return `${citation.pageId}@${citation.revision}`;
   return citation.pageId;
@@ -46,10 +48,42 @@ function citationKey(citation: ResultCitation): string | undefined {
 export function verifyResultCitations(
   citations: ResultCitation[],
   snapshotTexts: ReadonlyMap<string, string>,
-): { unverified: number[]; missing: number[] } {
+  documents: Iterable<AdmittedDocumentExcerpt> = [],
+): { unverified: number[]; missing: number[]; documents: Omit<DocumentCitationReceipt, "runId">[] } {
   const unverified: number[] = [];
   const missing: number[] = [];
+  const verified: Omit<DocumentCitationReceipt, "runId">[] = [];
+  const admitted = [...documents];
   citations.forEach((citation, index) => {
+    if ("kind" in citation) {
+      const key = documentCitationKey(citation.source, citation.locator);
+      const candidates = admitted.filter(
+        (excerpt) => documentCitationKey(excerpt.recipe.source, excerpt.recipe.locator) === key,
+      );
+      if (!candidates.length) {
+        missing.push(index);
+        return;
+      }
+      // Document quotes preserve case and cannot cross the projection's elision marker.
+      const quote = citation.quote.replace(/\s+/g, " ").trim();
+      const excerpt = candidates.find((entry) =>
+        entry
+          .read()
+          .split("\n[…]\n")
+          .some((part) => part.replace(/\s+/g, " ").includes(quote)),
+      );
+      if (!excerpt) {
+        unverified.push(index);
+        return;
+      }
+      excerpt.checkCurrent();
+      verified.push({
+        citation,
+        referenceSha256: excerpt.recipe.referenceSha256,
+        excerptSha256: excerpt.recipe.excerptSha256,
+      });
+      return;
+    }
     const key = citationKey(citation);
     if (key === undefined || !snapshotTexts.has(key)) {
       missing.push(index);
@@ -58,5 +92,5 @@ export function verifyResultCitations(
     if (!normalizeQuote(snapshotTexts.get(key)!).includes(normalizeQuote(citation.quote)))
       unverified.push(index);
   });
-  return { unverified, missing };
+  return { unverified, missing, documents: verified };
 }

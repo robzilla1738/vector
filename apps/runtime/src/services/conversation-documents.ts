@@ -216,6 +216,15 @@ export class ConversationDocuments {
     );
   }
 
+  referenceSegment(reference: AttachmentReference, ordinal: number) {
+    this.referenceMetadata(reference);
+    return this.snapshots.readSegment(
+      owner(reference.chatId, reference.attachmentId),
+      reference.sha256,
+      ordinal,
+    );
+  }
+
   read(chatId: string, attachmentId: string, sha256?: string, cursor?: string) {
     const record = this.snapshot(chatId, attachmentId);
     if (record.removed) throw new AuxError("not_found", "Document attachment not found.");

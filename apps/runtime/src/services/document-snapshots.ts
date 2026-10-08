@@ -46,6 +46,19 @@ const identity = (owner: DocumentOwner, snapshotId: string) => [
   snapshotId,
 ];
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
+/** A bounded read position bound to the exact saved owner and immutable manifest. */
+export function documentSectionCursor(
+  owner: DocumentOwner,
+  snapshotId: string,
+  sha256: string,
+  ordinal: number,
+  chunkIndex = 0,
+): string {
+  return Buffer.from(
+    JSON.stringify([digest(JSON.stringify([...identity(owner, snapshotId), sha256])), ordinal, chunkIndex]),
+  ).toString("base64url");
+}
+
 const SnapshotRecordSchema = DocumentSnapshotSchema.extend({
   legacyTextSha256: z
     .string()
@@ -334,10 +347,24 @@ export class DocumentSnapshots {
       chunk: { index: chunkIndex, segments },
       ...(ordinal < snapshot.completed.segmentCount
         ? {
-            nextCursor: Buffer.from(JSON.stringify([binding, ordinal, chunkIndex + 1])).toString("base64url"),
+            nextCursor: documentSectionCursor(
+              owner,
+              snapshot.document.snapshotId,
+              sha256,
+              ordinal,
+              chunkIndex + 1,
+            ),
           }
         : {}),
     };
+  }
+
+  readSegment(owner: DocumentOwner, sha256: string, ordinal: number): DocumentSegment {
+    if (this.closed) throw new AuxError("cancelled", "Document reading was cancelled.");
+    const { snapshot, manifest } = this.original(owner, sha256);
+    if (!Number.isSafeInteger(ordinal) || ordinal < 0 || ordinal >= snapshot.completed.segmentCount)
+      throw new AuxError("ref_stale", "The cited document segment is unavailable.");
+    return this.segment(identity(owner, snapshot.document.snapshotId), ordinal, manifest);
   }
 
   async *segments(
