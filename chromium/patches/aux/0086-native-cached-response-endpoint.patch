@@ -1,0 +1,21 @@
+diff --git a/net/url_request/url_request_http_job.cc b/net/url_request/url_request_http_job.cc
+--- a/net/url_request/url_request_http_job.cc
++++ b/net/url_request/url_request_http_job.cc
+@@ -1295,8 +1295,15 @@
+       OnCallToDelegate(NetLogEventType::NETWORK_DELEGATE_HEADERS_RECEIVED);
+       preserve_fragment_on_redirect_url_ = std::nullopt;
+       IPEndPoint endpoint;
+-      if (transaction_) {
+-        transaction_->GetRemoteEndpoint(&endpoint);
++      if (transaction_ && !transaction_->GetRemoteEndpoint(&endpoint)) {
++        // A pure cache hit has no current network transaction. Retain the
++        // original response's persisted endpoint for trusted header owners.
++        const auto* response = transaction_->GetResponseInfo();
++        if (response && response->was_cached &&
++            (response->remote_endpoint.address().IsIPv4() ||
++             response->remote_endpoint.address().IsIPv6())) {
++          endpoint = response->remote_endpoint;
++        }
+       }
+ 
+       // ssl_info is not a reference because there's no way of avoiding copy

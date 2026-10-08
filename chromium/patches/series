@@ -82,3 +82,4 @@ aux/0082-native-returned-source-reader.patch
 aux/0083-native-restored-tab-activation.patch
 aux/0084-native-isolation-retirement-identity.patch
 aux/0085-native-resume-uncommitted-restoration.patch
+aux/0086-native-cached-response-endpoint.patch
