@@ -6,7 +6,7 @@ import { useStore } from "./store";
 import type { PageTarget } from "@aux/contracts";
 afterEach(() => vi.restoreAllMocks());
 it("ignores out-of-order, previous-tab and closed-search responses; clearing stops native highlights", async () => {
-  const responses: ((value: unknown) => void)[] = [];
+  const responses: ((value: { matches: number; activeMatch?: number }) => void)[] = [];
   const invoke = vi.spyOn(bridge, "invoke");
   vi.spyOn(bridge, "pageFind").mockImplementation(() => new Promise((resolve) => responses.push(resolve)));
   const stop = vi.spyOn(bridge, "pageStopFind").mockResolvedValue({ ok: true });

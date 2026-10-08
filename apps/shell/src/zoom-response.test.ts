@@ -12,7 +12,7 @@ afterEach(() => {
 it("ignores older zoom reads and values from a previous document", async () => {
   const page = { pageId: "page", url: "https://example.com/", documentEpoch: 1 } as PageTarget;
   useStore.setState({ pages: normalizePages([page]), zoomLevels: {} });
-  const replies: ((value: unknown) => void)[] = [];
+  const replies: ((value: { level: number }) => void)[] = [];
   vi.spyOn(bridge, "pageZoom").mockImplementation(() => new Promise((resolve) => replies.push(resolve)));
   const old = useStore.getState().zoomPage("page");
   const changed = useStore.getState().zoomPage("page", { direction: "in" });
