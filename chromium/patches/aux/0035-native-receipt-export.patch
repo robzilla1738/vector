@@ -166,10 +166,71 @@ index 9f455a3..42f1d44 100644
    }
    if (method == "agentConfig" || method == "agentConnections" ||
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
-index 6dcddc0..763a487 100644
+index 6dcddc0..9d531ec 100644
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
-@@ -373,26 +373,112 @@ bool AuxRuntimeHost::RemoteDebuggingOwnerCurrent(const std::string& token,
+@@ -94,6 +94,7 @@
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
+ #include "content/public/common/stop_find_action.h"
+ #include "content/public/common/url_constants.h"
+ #include "ui/base/base_window.h"
+@@ -144,6 +145,52 @@ bool IsOwnerOnlyDirectory(const base::FilePath& path) {
+ 
+ }  // namespace
+ 
++class AuxRuntimeHost::ArtifactExportOwner final
++    : public content::WebContentsObserver {
++ public:
++  ArtifactExportOwner(TurnContextOwner original, base::OnceClosure retire)
++      : content::WebContentsObserver(content::WebContents::FromRenderFrameHost(
++            original.document.AsRenderFrameHostIfValid())),
++        original_(std::move(original)),
++        retire_(std::move(retire)) {
++    window_closed_ = original_.window->RegisterBrowserDidClose(base::BindRepeating(
++        [](ArtifactExportOwner* owner, BrowserWindowInterface*) {
++          owner->Retire();
++        }, base::Unretained(this)));
++  }
++  ~ArtifactExportOwner() override { Retire(); }
++
++  uint64_t generation() const { return original_.generation; }
++  bool current() const {
++    auto* frame = original_.document.AsRenderFrameHostIfValid();
++    return retire_ && original_.window &&
++           !original_.window->IsDeleteScheduled() && web_contents() && frame &&
++           frame->IsActive() && frame->IsRenderFrameLive() &&
++           web_contents()->GetPrimaryMainFrame() == frame;
++  }
++  void Retire() {
++    auto retire = std::move(retire_);
++    Observe(nullptr);
++    window_closed_ = {};
++    if (retire)
++      std::move(retire).Run();
++  }
++
++ private:
++  void PrimaryPageChanged(content::Page&) override {
++    if (!current())
++      Retire();
++  }
++  void PrimaryMainFrameRenderProcessGone(base::TerminationStatus) override {
++    Retire();
++  }
++  void WebContentsDestroyed() override { Retire(); }
++
++  const TurnContextOwner original_;
++  base::OnceClosure retire_;
++  base::CallbackListSubscription window_closed_;
++};
++
+ AuxRuntimeHost* AuxRuntimeHost::ForProfile(Profile* profile) {
+   if (!profile || profile->IsGuestSession()) {
+     return nullptr;
+@@ -373,26 +420,145 @@ bool AuxRuntimeHost::RemoteDebuggingOwnerCurrent(const std::string& token,
    return found != turn_contexts_.end() && found->second.generation == connection &&
        TurnContextCurrent(found->second);
  }
@@ -186,6 +247,9 @@ index 6dcddc0..763a487 100644
 +  // Prepare and claim share one opaque capability per original live document.
 +  std::erase_if(turn_contexts_, [this](const auto& entry) {
 +    return !TurnContextCurrent(entry.second);
++  });
++  std::erase_if(artifact_export_owners_, [this](const auto& entry) {
++    return !turn_contexts_.contains(entry.first);
 +  });
 +  TurnContextOwner original{std::move(window), std::move(document),
 +                            admitted_native_generation_};
@@ -211,12 +275,11 @@ index 6dcddc0..763a487 100644
 +  if (turn_contexts_.size() >= 64) {
 +    return base::unexpected(Response{false, "", "backend_unavailable",
 +                                     "Too many original turn windows"});
-   }
--  CallApi(std::move(method), std::move(params_json), std::move(callback), std::move(key));
++  }
 +  auto token = base::Uuid::GenerateRandomV4().AsLowercaseString();
 +  turn_contexts_.emplace(token, std::move(original));
 +  return token;
- }
++}
 +
 +void AuxRuntimeHost::CallApiFromWindow(
 +    base::WeakPtr<BrowserWindowInterface> window,
@@ -226,6 +289,36 @@ index 6dcddc0..763a487 100644
 +  if (!token.has_value()) {
 +    std::move(callback).Run(std::move(token.error()));
 +    return;
++  }
++  if (method == "tasks.exportReceipt") {
++    const auto& original = turn_contexts_.at(*token);
++    auto* frame = original.document.AsRenderFrameHostIfValid();
++    if (!frame || !frame->IsActive() || !frame->IsRenderFrameLive() ||
++        original.window->IsDeleteScheduled()) {
++      std::move(callback).Run({false, "", "ref_stale",
++                               "Original export window is unavailable"});
++      return;
++    }
++    auto& owner = artifact_export_owners_[*token];
++    if (!owner) {
++      base::DictValue request;
++      request.Set("token", *token);
++      owner = std::make_unique<ArtifactExportOwner>(original, base::BindOnce(
++          [](base::WeakPtr<AuxRuntimeHost> host, uint64_t generation,
++             std::string request) {
++            if (host) {
++              host->worker_.AsyncCall(&Worker::CallInternalForGeneration)
++                  .WithArgs(generation, "artifact.exportOwnerRetire",
++                            std::move(request));
++            }
++          }, weak_factory_.GetWeakPtr(), original.generation,
++          *base::WriteJson(request)));
++    }
++    if (!owner->current()) {
++      std::move(callback).Run({false, "", "ref_stale",
++                               "Original export window has retired"});
++      return;
++    }
 +  }
 +  CallApi(std::move(method), std::move(params_json), std::move(callback),
 +          std::move(*token));
@@ -251,7 +344,8 @@ index 6dcddc0..763a487 100644
 +        {false, "", "ref_stale", "Original artifact storage is unavailable"},
 +        {}, {});
 +    return;
-+  }
+   }
+-  CallApi(std::move(method), std::move(params_json), std::move(callback), std::move(key));
 +  root = root.Append("Aux Runtime Data").Append("artifacts");
 +  const auto claim = base::Uuid::GenerateRandomV4().AsLowercaseString();
 +  base::DictValue request;
@@ -263,9 +357,9 @@ index 6dcddc0..763a487 100644
 +      [](base::WeakPtr<AuxRuntimeHost> host, uint64_t generation,
 +         std::string request) {
 +        // A retired document may release its own claim, but never a new worker's.
-+        if (host && host->DeviceConfirmationConnectionCurrent(generation)) {
-+          host->CallInternal("artifact.exportRelease", std::move(request),
-+                             base::DoNothing());
++        if (host) {
++          host->worker_.AsyncCall(&Worker::CallInternalForGeneration)
++              .WithArgs(generation, "artifact.exportRelease", std::move(request));
 +        }
 +      }, weak_factory_.GetWeakPtr(), generation, json));
 +  CallInternal("artifact.exportDescriptor", json, base::BindOnce(
@@ -292,23 +386,74 @@ index 6dcddc0..763a487 100644
 +                                std::move(release));
 +      }, weak_factory_.GetWeakPtr(), *token, generation, claim, std::move(root),
 +      std::move(release), std::move(callback)));
-+}
+ }
 +
  void AuxRuntimeHost::CallApi(std::string method,
                               std::string params_json,
                               ResponseCallback callback, std::string turn_context) {
-@@ -3357,7 +3443,8 @@ void AuxRuntimeHost::Worker::CallRequest(
+@@ -1556,6 +1722,21 @@ void AuxRuntimeHost::RetireStageLeases() {
+   }
+ }
+ 
++void AuxRuntimeHost::RetireArtifactExportOwners(uint64_t generation) {
++  std::vector<std::unique_ptr<ArtifactExportOwner>> retired;
++  for (auto it = artifact_export_owners_.begin();
++       it != artifact_export_owners_.end();) {
++    if (it->second->generation() == generation) {
++      retired.push_back(std::move(it->second));
++      it = artifact_export_owners_.erase(it);
++    } else {
++      ++it;
++    }
++  }
++  for (const auto& owner : retired)
++    owner->Retire();
++}
++
+ void AuxRuntimeHost::RetireEvidenceReads(uint64_t generation) {
+   std::vector<EvidenceReadOwner> retired;
+   for (auto it = evidence_read_owners_.begin();
+@@ -1598,6 +1779,7 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+     return;
+   retired_native_generation_ = std::max(retired_native_generation_, generation);
+   const auto evidence_retirement_weak = weak_factory_.GetWeakPtr();
++  RetireArtifactExportOwners(generation);
+   RetireEvidenceReads(generation);
+   if (!evidence_retirement_weak) {
+     return;
+@@ -3348,6 +3530,14 @@ void AuxRuntimeHost::Worker::CallInternal(
+   CallRequest(std::move(method), std::move(params_json), false, {}, std::move(callback));
+ }
+ 
++void AuxRuntimeHost::Worker::CallInternalForGeneration(
++    uint64_t generation, std::string method, std::string params_json) {
++  // Cleanup targets the original live child; never launch a replacement.
++  if (connection_fd_ < 0 || connection_generation_ != generation)
++    return;
++  CallInternal(std::move(method), std::move(params_json), base::DoNothing());
++}
++
+ void AuxRuntimeHost::Worker::CallRequest(
+     std::string method, std::string params_json, bool desktop_api,
+     std::string person_resume, ResponseCallback callback, std::string turn_context) {
+@@ -3357,8 +3547,13 @@ void AuxRuntimeHost::Worker::CallRequest(
         method == "installation.stageRestore");
    const bool document_import =
        desktop_api && (method == "conversations.attachments.import" ||
 -                      method == "tasks.importDocumentEvidence");
+-  if (pending_requests_.size() >= 256) {
 +                      method == "tasks.importDocumentEvidence" ||
 +                      method == "tasks.exportReceipt");
-   if (pending_requests_.size() >= 256) {
++  const bool artifact_cleanup = !desktop_api &&
++      (method == "artifact.exportOwnerRetire" ||
++       method == "artifact.exportRelease");
++  // Retirement must reach the child even when ordinary work fills admission.
++  if (pending_requests_.size() >= 256 && !artifact_cleanup) {
      std::move(callback).Run({false, "", "backend_unavailable", "Too many pending runtime requests"});
      return;
+   }
 diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
-index 4636a1e..db88220 100644
+index 4636a1e..7246def 100644
 --- a/chrome/browser/ui/aux/runtime_host.h
 +++ b/chrome/browser/ui/aux/runtime_host.h
 @@ -30,6 +30,7 @@
@@ -332,7 +477,26 @@ index 4636a1e..db88220 100644
    // Authenticated host-only RPC, never exposed to WebUI or agents.
    void CallInternal(std::string method,
                      std::string params_json,
-@@ -398,6 +405,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+@@ -142,6 +149,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+                  std::string person_resume, ResponseCallback callback, std::string turn_context);
+     void CallInternal(std::string method, std::string params_json,
+                       ResponseCallback callback);
++    void CallInternalForGeneration(uint64_t generation, std::string method,
++                                    std::string params_json);
+     void CallRequest(std::string method, std::string params_json,
+                      bool desktop_api, std::string person_resume,
+                      ResponseCallback callback, std::string turn_context = {});
+@@ -389,6 +398,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+     content::WeakDocumentPtr document;
+     uint64_t generation;
+   };
++  class ArtifactExportOwner;
++  std::map<std::string, std::unique_ptr<ArtifactExportOwner>> artifact_export_owners_;
++  void RetireArtifactExportOwners(uint64_t generation);
+   struct EvidenceReadOwner {
+     TurnContextOwner original;
+     std::string selection_id;
+@@ -398,6 +410,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
    void RetireEvidenceReads(uint64_t generation);
    std::map<std::string, TurnContextOwner> turn_contexts_;
    bool TurnContextCurrent(const TurnContextOwner& owner) const;
