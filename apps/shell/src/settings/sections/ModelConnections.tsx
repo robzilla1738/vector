@@ -2,6 +2,7 @@ import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import {
   IMAGE_MODELS,
+  DEFAULT_IMAGE_MODEL_ID,
   MODEL_PROVIDER_NAMES,
   ModelConnectionStatusSchema,
   ModelProviderSchema,
@@ -220,12 +221,14 @@ export function ModelConnections({
       </SettingsField>
       <SettingsField
         label="Image-generation model"
-        hint="Off until you choose a model. Images use the Gateway connection and send the image prompt to Google through Gateway, independently of your chat provider. Selecting a model makes no request. One image is requested with no model fallback; provider usage may be charged."
+        hint="Images use your Gateway connection independently of your chat provider. Aux uses the default image model unless you choose another or turn it off. Selecting a model makes no request."
       >
         <select
           aria-label="Image-generation model"
           disabled={disabled || busy || !parsed.success}
-          value={String(settings.imageModel ?? "off")}
+          value={String(
+            settings.imageModel === undefined ? DEFAULT_IMAGE_MODEL_ID : (settings.imageModel ?? "off"),
+          )}
           ref={imageRef}
           data-command-id="set-image-generation-model"
           onChange={chooseImage}
@@ -243,8 +246,8 @@ export function ModelConnections({
           </p>
         )}
         <p {...staticHintProps}>
-          Image generation is unavailable while a run, day or routine spend cap is set. Image spend is
-          recorded separately and is not yet included in Usage totals.
+          Image requests count toward your spending limits. Usage may be charged; image costs are estimated
+          when the provider does not return a price.
         </p>
       </SettingsField>
       {confirmation}

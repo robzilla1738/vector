@@ -71,7 +71,6 @@ export * from "./memory-paste.js";
 import {
   OnboardingStateSchema,
   OnboardingUpdateParamsSchema,
-  OnboardingStartParamsSchema,
 } from "./onboarding.js";
 export * from "./onboarding.js";
 import {
@@ -1745,7 +1744,6 @@ export const MethodSchemas = {
 
   "onboarding.get": z.object({}).strict(),
   "onboarding.update": OnboardingUpdateParamsSchema,
-  "onboarding.start": OnboardingStartParamsSchema,
   "import.extensions.review": ImportExtensionReviewParamsSchema,
   "import.selectWindow": z.object({ sourceId: z.literal("safari") }).strict(),
   "import.selectExport": z
@@ -2613,7 +2611,6 @@ export const ResultSchemas = {
 
   "onboarding.get": OnboardingStateSchema,
   "onboarding.update": OnboardingStateSchema,
-  "onboarding.start": z.object({ state: OnboardingStateSchema, run: RunSchema.nullable() }).strict(),
   "import.preview": z.object({
     sources: z.array(ImportSourcePreviewSchema),
     recentJobs: z.array(ImportJobStatusSchema).max(5).optional(),

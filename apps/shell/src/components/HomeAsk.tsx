@@ -6,6 +6,7 @@ import {
 import { HomeEntryAction, useHomeEntryOwner } from "./HomeEntryControls";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Conversation } from "./Conversation";
+import { OnboardingStarters } from "../onboarding/OnboardingStarters";
 import { HOME_DRAFT_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { bridge } from "../bridge";
 import { runCommand } from "../commands";
@@ -118,21 +119,32 @@ export default function HomeAsk({
           )}
         </div>
       ) : (
-        <Conversation
-          embedded
-          home
-          composerRef={composer}
-          chatId={chatId}
-          onChatCreated={(id) => {
-            setChatId(id);
-            try {
-              localStorage.setItem(HOME_DRAFT_CHAT_KEY, id);
-            } catch {
-              /* The mounted composer still owns this draft. */
-            }
-          }}
-          entryControls={controls}
-        />
+        <>
+          <Conversation
+            embedded
+            home
+            composerRef={composer}
+            chatId={chatId}
+            onChatCreated={(id) => {
+              setChatId(id);
+              try {
+                localStorage.setItem(HOME_DRAFT_CHAT_KEY, id);
+              } catch {
+                /* The mounted composer still owns this draft. */
+              }
+            }}
+            entryControls={controls}
+          />
+          <OnboardingStarters
+            chatId={chatId}
+            onChoose={(prompt) => {
+              const state = useStore.getState();
+              if (chatId) state.setConversationDraft(chatId, prompt);
+              else state.setAgentDraft(prompt);
+              composer.current?.focus();
+            }}
+          />
+        </>
       )}
     </div>
   );

@@ -119,7 +119,6 @@ const UNMOCKED = [
   "models.copilot.start",
   "models.copilot.status",
   "onboarding.get",
-  "onboarding.start",
   "onboarding.update",
   "pages.list",
   "pages.openLive",

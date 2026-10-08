@@ -3,7 +3,7 @@ import { CopilotSetupSchema } from "@aux/contracts/copilot-auth";
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { ModelProviderSchema, IMAGE_MODELS } from "@aux/contracts";
+import { ModelProviderSchema, IMAGE_MODELS, DEFAULT_IMAGE_MODEL_ID } from "@aux/contracts";
 import { ModelsSettings } from "./Models";
 import { collectSettingsFields } from "../search";
 
@@ -186,7 +186,7 @@ it("requires confirmation to remove a saved key and combines removal with discon
   });
 });
 
-it("saves the exact image selection or Off without a provider request and displays the spend-cap limit", async () => {
+it("saves the exact image selection or Off without a provider request and explains spending limits", async () => {
   await act(async () => root.render(<Fixture />));
   expect(call).toHaveBeenCalledWith("models.list");
   call.mockClear();
@@ -203,7 +203,15 @@ it("saves the exact image selection or Off without a provider request and displa
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
   expect(save).toHaveBeenLastCalledWith({ imageModel: null });
-  expect(host.textContent).toContain("unavailable while a run, day or routine spend cap is set");
+  expect(host.textContent).toContain("Image requests count toward your spending limits");
+});
+
+it("shows the catalog image default when no preference has been saved", async () => {
+  await act(async () => root.render(<Fixture patch={{ imageModel: undefined }} />));
+  expect(host.querySelector<HTMLSelectElement>('[aria-label="Image-generation model"]')!.value).toBe(
+    DEFAULT_IMAGE_MODEL_ID,
+  );
+  expect(save).not.toHaveBeenCalled();
 });
 
 it("does not expose unavailable provider management as functional controls", async () => {

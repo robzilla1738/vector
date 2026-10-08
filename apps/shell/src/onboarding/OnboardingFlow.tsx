@@ -1,25 +1,16 @@
-import { useShallow } from "zustand/react/shallow";
-import { staticHintProps, staticRowProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { ModelDataDisclosure } from "./ModelDataDisclosure";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AgentPolicySettingsSchema,
-  DEFAULT_BROWSER_COOLDOWN_MS,
-  ONBOARDING_DISCLOSURE_VERSION,
-  ONBOARDING_POSTCARDS,
   ONBOARDING_STEPS,
-  ONBOARDING_STAGES,
-  type ConnectorCatalog,
   type OnboardingState,
   type OnboardingUpdate,
-  type PageContextRef,
-  type PageTarget,
-  type Run,
 } from "@aux/contracts";
-import { bridge, inNativeHost } from "../bridge";
+import { inNativeHost } from "../bridge";
 import { call, useStore } from "../store";
-import { Badge, Dialog } from "../ui";
+import { Dialog } from "../ui";
 import { ImportDataSetting } from "../components/ImportDataSetting";
 import { LayoutChoice } from "../components/LayoutChoice";
 import { ModelsSettings } from "../settings/sections/Models";
@@ -27,45 +18,19 @@ import { RecoveryPackage } from "../settings/sections/RecoveryPackage";
 import { SPACE_COLORS, type SpaceColor } from "../workspace";
 import "./onboarding.css";
 import { PastedMemorySetup } from "./PastedMemorySetup";
-import { SetupReview } from "./SetupReview";
 import { AgentModeControl } from "../features/permissions/AgentModeControl";
 import {
   staticGhostButtonProps as auxClassGhostButtonProps,
   staticButtonProps as auxClassButtonProps,
 } from "../ui/class-props";
-import {
-  nativeCheckboxTypeProps,
-  nativeGroupRoleProps,
-  nativeAlertRoleProps,
-} from "../ui/native-attribute-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 const TITLES = {
   welcome: "Welcome to Aux",
   import: "Bring your bookmarks and history",
   model: "Choose your AI model",
   appearance: "Make Aux feel like yours",
-  default: "Open links in Aux",
-  postcard: "Start with one useful question",
 };
-export function availableOnboardingPage(page: PageTarget): boolean {
-  try {
-    const url = new URL(page.url);
-    return (
-      ["http:", "https:"].includes(url.protocol) &&
-      !url.username &&
-      !url.password &&
-      !page.ownedByRuntime &&
-      !page.loading &&
-      page.controller !== "agent" &&
-      page.controller !== "external" &&
-      page.windowId === bridge.windowId &&
-      !["detached", "crashed"].includes(page.viewStatus)
-    );
-  } catch {
-    return false;
-  }
-}
-
 export function OnboardingFlow({
   initialState,
   onClose,
@@ -80,10 +45,7 @@ export function OnboardingFlow({
   const heading = useRef<HTMLHeadingElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const connected = useStore((s) => s.connected);
-  const settings = useStore((s) => s.settings),
-    pages = useStore(
-      useShallow((s) => s.pages.allIds.map((id) => s.pages.byId[id]!).filter(availableOnboardingPage)),
-    );
+  const settings = useStore((s) => s.settings);
   const activeSpace = useStore((s) => s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId));
   const [recovery, setRecovery] = useState(false);
   const [restoreStatus, setRestoreStatus] = useState<"checking" | "ready" | "pending" | "unavailable">(
@@ -91,19 +53,9 @@ export function OnboardingFlow({
   );
   const restorePending = restoreStatus === "pending";
   const restoreGeneration = useRef(0);
-  const [isDefault, setIsDefault] = useState<boolean | null>(null);
-  const [catalogResult, setCatalogResult] = useState<{ workspaceId: string; value: ConnectorCatalog } | null>(
-    null,
-  );
-  const catalog = catalogResult?.workspaceId === activeSpace?.workspaceId ? catalogResult?.value : null;
-  const [openedAt] = useState(Date.now);
-  const [pageId, setPageId] = useState("");
-  const [reviewedPage, setReviewedPage] = useState<PageContextRef | null>(null);
-  const [pageUrl, setPageUrl] = useState("");
   const [showMemoryImport, setShowMemoryImport] = useState(false);
-  const step = state.step,
-    index = ONBOARDING_STAGES.indexOf(step);
-  const setupIndex = ONBOARDING_STEPS.findIndex((item) => item === step);
+  const step = state.step;
+  const index = ONBOARDING_STEPS.indexOf(step);
   const agentPolicy = useMemo(
     () =>
       AgentPolicySettingsSchema.parse({
@@ -113,22 +65,6 @@ export function OnboardingFlow({
       }),
     [settings.agentMode, settings.agentPolicies, settings.agentPolicyRevision],
   );
-  const page = pages.find((item) => item.pageId === pageId);
-  const pageReviewed =
-    !!page &&
-    !!reviewedPage &&
-    page.pageId === reviewedPage.pageId &&
-    page.documentEpoch === reviewedPage.documentEpoch &&
-    page.url === reviewedPage.url &&
-    page.sessionId === reviewedPage.sessionId &&
-    availableOnboardingPage(page);
-  const selectedPostcard = state.firstTask?.postcardId;
-  const ready =
-    settings.modelConfigured === true && state.disclosureVersion === ONBOARDING_DISCLOSURE_VERSION;
-  const cooldown =
-    state.defaultBrowserPromptedAt !== undefined &&
-    openedAt - state.defaultBrowserPromptedAt < DEFAULT_BROWSER_COOLDOWN_MS;
-
   useEffect(() => {
     // The dialog used to scroll this heading into view. On a long step that
     // parked the step rail on the backdrop, and a click there dismissed setup.
@@ -157,6 +93,7 @@ export function OnboardingFlow({
     restoreGeneration.current++;
   }, []);
   useEffect(() => {
+    if (!recovery || step !== "welcome") return;
     let live = true;
     void Promise.resolve().then(() => {
       if (live) return checkRecovery();
@@ -170,39 +107,7 @@ export function OnboardingFlow({
       invalidateRecovery();
       window.removeEventListener("focus", refresh);
     };
-  }, [checkRecovery, invalidateRecovery]);
-  useEffect(() => {
-    if (step !== "default" || !inNativeHost) return;
-    let live = true;
-    const read = () =>
-      void bridge
-        .defaultBrowser()
-        .then((value) => {
-          if (live) setIsDefault(value.isDefault);
-        })
-        .catch(() => {
-          if (live) setIsDefault(null);
-        });
-    read();
-    window.addEventListener("focus", read);
-    return () => {
-      live = false;
-      window.removeEventListener("focus", read);
-    };
-  }, [step]);
-  useEffect(() => {
-    if (step !== "postcard" || !activeSpace?.workspaceId) return;
-    let live = true;
-    const workspaceId = activeSpace.workspaceId;
-    void call("connectors.catalog", { workspaceId: activeSpace.workspaceId })
-      .then((value) => {
-        if (live) setCatalogResult({ workspaceId, value });
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [step, activeSpace?.workspaceId]);
+  }, [recovery, step, checkRecovery, invalidateRecovery]);
   async function work(action: () => Promise<void>) {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -256,17 +161,9 @@ export function OnboardingFlow({
       return false;
     }
   }
-  function reveal(run: Run, finish = true) {
-    useStore.setState((current) => ({
-      runs: current.runs.some((item) => item.runId === run.runId) ? current.runs : [run, ...current.runs],
-    }));
-    useStore.getState().openConversation(run.runId);
-    if (finish) onClose();
-  }
-  const first = state.firstTask;
   return (
     <Dialog
-      label={setupIndex >= 0 ? "Set up Aux" : "Start with Aux"}
+      label="Set up Aux"
       onClose={later}
       className="aux-dialog-surface onboarding-dialog"
       initialFocusRef={heading}
@@ -288,33 +185,29 @@ export function OnboardingFlow({
         }}
       >
         <header>
-          <span className="eyebrow">
-            {setupIndex >= 0 ? `AUX · SETUP ${setupIndex + 1} OF ${ONBOARDING_STEPS.length}` : "AUX · READY"}
-          </span>
+          <span className="eyebrow">{`AUX · SETUP ${index + 1} OF ${ONBOARDING_STEPS.length}`}</span>
           <button {...smallGhostButtonProps} disabled={busy} onClick={later}>
             Finish later
           </button>
         </header>
-        {setupIndex >= 0 && (
-          <nav aria-label="Setup steps">
-            {ONBOARDING_STEPS.map((item, position) => (
-              <button
-                key={item}
-                {...smallGhostButtonProps}
-                disabled={busy || !connected}
-                aria-current={step === item ? "step" : undefined}
-                aria-label={`${position + 1}. ${item}${state.skipped.includes(item) ? ", skipped" : ""}`}
-                onClick={() =>
-                  void work(async () => {
-                    await update("visit", item);
-                  })
-                }
-              >
-                {position + 1}
-              </button>
-            ))}
-          </nav>
-        )}
+        <nav aria-label="Setup steps">
+          {ONBOARDING_STEPS.map((item, position) => (
+            <button
+              key={item}
+              {...smallGhostButtonProps}
+              disabled={busy || !connected}
+              aria-current={step === item ? "step" : undefined}
+              aria-label={`${position + 1}. ${item}${state.skipped.includes(item) ? ", skipped" : ""}`}
+              onClick={() =>
+                void work(async () => {
+                  await update("visit", item);
+                })
+              }
+            >
+              {position + 1}
+            </button>
+          ))}
+        </nav>
         <div className="onboarding-scroll" ref={scroller}>
           <h1 ref={heading} tabIndex={-1}>
             {TITLES[step]}
@@ -368,23 +261,24 @@ export function OnboardingFlow({
             )}
             {step === "model" && (
               <>
-                <ModelDataDisclosure reviewed={state.disclosureVersion === ONBOARDING_DISCLOSURE_VERSION} />
-                <h3>How Aux acts</h3>
-                <p>
-                  Auto lets Aux work freely, with Touch ID for payments and the first credential use on a
-                  site. Ask first pauses consequential actions; Full auto acts without asking. Account
-                  security and CAPTCHA always need you to take over.
-                </p>
-                <AgentModeControl
-                  active={step === "model" && connected}
-                  disabled={busy}
-                  policy={agentPolicy}
-                  onSave={saveSettings}
-                />
-                <p {...staticHintProps}>
-                  Change categories, site rules, and file access later in Settings → Permissions. You can stop
-                  a task or take over at any time.
-                </p>
+                <ModelsSettings active settings={settings} onSave={saveSettings} />
+                <ModelDataDisclosure />
+                <details className="onboarding-details">
+                  <summary>How Aux acts</summary>
+                  <p>
+                    Ask first is the default. Choose Skip confirmation in the composer when you want Aux to
+                    continue without pausing. You can stop or take over at any time.
+                  </p>
+                  <AgentModeControl
+                    active={connected}
+                    disabled={busy}
+                    policy={agentPolicy}
+                    onSave={saveSettings}
+                  />
+                  <p {...staticHintProps}>
+                    Change categories, site rules, and file access in Settings → Permissions.
+                  </p>
+                </details>
                 <button
                   {...auxClassGhostButtonProps}
                   aria-expanded={showMemoryImport}
@@ -393,28 +287,6 @@ export function OnboardingFlow({
                   Import notes from another assistant
                 </button>
                 {showMemoryImport && <PastedMemorySetup />}
-
-                {state.disclosureVersion !== ONBOARDING_DISCLOSURE_VERSION ? (
-                  <button
-                    {...auxClassButtonProps}
-                    disabled={busy}
-                    onClick={() =>
-                      void work(async () => {
-                        await update("disclosure");
-                      })
-                    }
-                  >
-                    I’ve reviewed model data use
-                  </button>
-                ) : (
-                  <>
-                    <p {...staticHintProps}>
-                      A connection test sends a model request only when you choose Test. Setup itself makes no
-                      model call.
-                    </p>
-                    <ModelsSettings active settings={settings} onSave={saveSettings} />
-                  </>
-                )}
               </>
             )}
             {step === "appearance" && (
@@ -473,264 +345,6 @@ export function OnboardingFlow({
                 <p {...staticHintProps}>Your system’s reduced motion and contrast preferences still apply.</p>
               </>
             )}
-            {step === "default" && (
-              <>
-                <p>
-                  Make Aux the place links open from other apps. This is optional and does not change what you
-                  can use.
-                </p>
-                {isDefault === true ? (
-                  <p>Aux is your default browser.</p>
-                ) : (
-                  <button
-                    {...auxClassButtonProps}
-                    disabled={busy || !inNativeHost || cooldown || isDefault === null}
-                    onClick={() =>
-                      void work(async () => {
-                        await update("default-prompt");
-                        const value = await bridge.setDefaultBrowser();
-                        setIsDefault(value.isDefault);
-                        if (!value.isDefault)
-                          setError(
-                            "The system has not confirmed a change. You can check System Settings or continue setup.",
-                          );
-                      })
-                    }
-                  >
-                    Make Aux the default browser
-                  </button>
-                )}
-                {cooldown && (
-                  <p>
-                    Setup will wait seven days before offering another system prompt. You can change this in
-                    Settings at any time.
-                  </p>
-                )}
-                {!inNativeHost && <p>This choice is available in the native Aux app.</p>}
-              </>
-            )}
-            {step === "postcard" && (
-              <>
-                <p>
-                  Choose a page you want to understand. Aux will use a separate browsing session; the page’s
-                  address is copied, without its cookies or saved passwords.
-                </p>
-                <SetupReview
-                  connected={connected}
-                  settings={settings}
-                  state={state}
-                  recovery={restoreStatus}
-                  source={pageReviewed ? reviewedPage : null}
-                  onCheckRecovery={() => void checkRecovery()}
-                  onVisit={(next) => {
-                    void work(async () => {
-                      await update("visit", next);
-                    });
-                  }}
-                />
-                {first?.status === "started" ? (
-                  <button
-                    {...auxClassButtonProps}
-                    disabled={busy}
-                    onClick={() =>
-                      void work(async () => {
-                        const result = await call("runs.get", { runId: first.runId });
-                        reveal(result.run);
-                      })
-                    }
-                  >
-                    Open your first chat
-                  </button>
-                ) : first?.status === "unavailable" ? (
-                  <p>
-                    Your first setup chat is unavailable. Replay will not recreate it. Check Chats before
-                    starting anything again. Start a new chat from Aux whenever you’re ready.
-                  </p>
-                ) : (
-                  <>
-                    {!ready && (
-                      <p>
-                        Review model data use and configure a connection in step 3 before starting. You can
-                        skip this step and browse normally.
-                      </p>
-                    )}
-                    <label>
-                      Page to explore
-                      <input
-                        type="url"
-                        value={pageUrl}
-                        placeholder="https://example.com"
-                        disabled={busy}
-                        onChange={(event) => setPageUrl(event.target.value)}
-                      />
-                    </label>
-                    <button
-                      {...smallButtonProps}
-                      disabled={busy || !pageUrl.trim() || !activeSpace}
-                      onClick={() =>
-                        void work(async () => {
-                          const url = new URL(pageUrl.trim());
-                          if (!["http:", "https:"].includes(url.protocol) || url.username || url.password)
-                            throw new Error("Enter an HTTP or HTTPS page without embedded credentials.");
-                          const opened = await useStore
-                            .getState()
-                            .openBackgroundTab(url.href, activeSpace!.id, false);
-                          setPageId(opened.pageId);
-                          setReviewedPage(null);
-                        })
-                      }
-                    >
-                      Open page in background
-                    </button>
-                    <label>
-                      Reviewed source
-                      <select
-                        value={pageId}
-                        disabled={busy}
-                        onChange={(event) => {
-                          setPageId(event.target.value);
-                          setReviewedPage(null);
-                        }}
-                      >
-                        <option value="">Choose an available page</option>
-                        {pages.filter(availableOnboardingPage).map((item) => (
-                          <option key={item.pageId} value={item.pageId}>
-                            {item.title || item.url} — {item.url}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {page && availableOnboardingPage(page) && (
-                      <button
-                        {...smallGhostButtonProps}
-                        disabled={busy}
-                        onClick={() =>
-                          void work(async () => {
-                            await update("later");
-                            await useStore.getState().activate(page.pageId);
-                            onClose();
-                          })
-                        }
-                      >
-                        View selected page; finish setup later
-                      </button>
-                    )}
-                    {page && availableOnboardingPage(page) && (
-                      <label>
-                        <input
-                          {...nativeCheckboxTypeProps}
-                          checked={pageReviewed}
-                          disabled={busy}
-                          onChange={(event) =>
-                            setReviewedPage(
-                              event.target.checked
-                                ? {
-                                    pageId: page.pageId,
-                                    url: page.url,
-                                    documentEpoch: page.documentEpoch,
-                                    sessionId: page.sessionId,
-                                  }
-                                : null,
-                            )
-                          }
-                        />
-                        I’ve reviewed this page and want to send its context to the selected model.
-                      </label>
-                    )}
-                    {first && (
-                      <output>
-                        {first.status === "pending"
-                          ? "Starting your first chat. Check progress if the connection was interrupted."
-                          : "The first chat did not finish starting. Review the page and retry; Aux reuses the same delivery identity."}
-                      </output>
-                    )}
-                    <div className="onboarding-postcards">
-                      {ONBOARDING_POSTCARDS.filter(
-                        (card) => !selectedPostcard || card.id === selectedPostcard,
-                      ).map((card) => (
-                        <article key={card.id}>
-                          <h2>{card.question}</h2>
-                          <p>{card.prompt}</p>
-                          {/* chrome:// web UI fatals when aria-label is on a generic div. */}
-                          <div
-                            {...staticRowProps}
-                            {...nativeGroupRoleProps}
-                            aria-label="Tools for this question"
-                          >
-                            {card.tools.map((tool) => (
-                              <Badge key={tool} label={tool} />
-                            ))}
-                          </div>
-                          {card.id === "plan" &&
-                            catalog?.entries.some(
-                              (entry) => entry.kind === "calendar" && entry.state === "active",
-                            ) && (
-                              <p {...staticHintProps}>Calendar connected · task approval still required</p>
-                            )}
-                          {catalog?.entries.some(
-                            (entry) => entry.kind === "mcp" && entry.state === "active",
-                          ) && (
-                            <p {...staticHintProps}>MCP connected · manage enabled tools in Permissions</p>
-                          )}
-                          <button
-                            {...auxClassButtonProps}
-                            disabled={
-                              busy ||
-                              !connected ||
-                              restoreStatus !== "ready" ||
-                              !ready ||
-                              !pageReviewed ||
-                              first?.status === "pending"
-                            }
-                            onClick={() =>
-                              void work(async () => {
-                                if (!(await checkRecovery()))
-                                  throw new Error(
-                                    "Recovery readiness changed. Resolve it before starting a chat.",
-                                  );
-                                const livePage = useStore.getState().pages.byId[reviewedPage?.pageId ?? ""];
-                                if (
-                                  !livePage ||
-                                  !availableOnboardingPage(livePage) ||
-                                  livePage.url !== reviewedPage?.url ||
-                                  livePage.documentEpoch !== reviewedPage?.documentEpoch ||
-                                  livePage.sessionId !== reviewedPage?.sessionId
-                                )
-                                  throw new Error(
-                                    "The selected page changed during review. Review its current document before starting.",
-                                  );
-                                const result = await call("onboarding.start", {
-                                  revision: state.revision,
-                                  postcardId: card.id,
-                                  page: reviewedPage!,
-                                });
-                                setState(result.state);
-                                if (result.run) reveal(result.run, result.state.status === "complete");
-                              })
-                            }
-                          >
-                            {first ? "Retry this first chat" : "Start this chat"}
-                          </button>
-                        </article>
-                      ))}
-                    </div>
-                  </>
-                )}
-                {first?.status === "pending" && (
-                  <button
-                    {...smallButtonProps}
-                    disabled={busy}
-                    onClick={() =>
-                      void work(async () => {
-                        setState(await call("onboarding.get"));
-                      })
-                    }
-                  >
-                    Check chat progress
-                  </button>
-                )}
-              </>
-            )}
           </fieldset>
           {error && (
             <div {...nativeAlertRoleProps}>
@@ -748,15 +362,15 @@ export function OnboardingFlow({
               </button>
             </div>
           )}
-          {restoreStatus === "unavailable" && (
+          {step === "welcome" && recovery && restoreStatus === "unavailable" && (
             <p {...nativeAlertRoleProps}>
-              Recovery readiness is unavailable. New chat starts are blocked until it can be checked.{" "}
+              Recovery status is unavailable.{" "}
               <button
                 {...smallGhostButtonProps}
                 disabled={busy || !connected}
                 onClick={() => void checkRecovery()}
               >
-                Retry recovery check
+                Retry recovery
               </button>
             </p>
           )}
@@ -777,7 +391,7 @@ export function OnboardingFlow({
               })
             }
           >
-            {step === "postcard" ? "Skip the first chat" : step === "default" ? "Not now" : "Skip this step"}
+            Skip this step
           </button>
           {index > 0 && (
             <button
@@ -785,7 +399,7 @@ export function OnboardingFlow({
               disabled={busy || !connected}
               onClick={() =>
                 void work(async () => {
-                  await update("visit", ONBOARDING_STAGES[index - 1]);
+                  await update("visit", ONBOARDING_STEPS[index - 1]);
                 })
               }
             >
@@ -794,17 +408,17 @@ export function OnboardingFlow({
           )}
           <button
             {...auxClassButtonProps}
-            disabled={busy || !connected || restorePending}
+            disabled={busy || !connected}
             onClick={() =>
               void work(async () => {
-                if (index === ONBOARDING_STAGES.length - 1) {
+                if (index === ONBOARDING_STEPS.length - 1) {
                   await update("finish");
                   onClose();
-                } else await update("visit", ONBOARDING_STAGES[index + 1]);
+                } else await update("visit", ONBOARDING_STEPS[index + 1]);
               })
             }
           >
-            {step === "appearance" ? "Finish setup" : step === "default" ? "Done" : "Continue"}
+            {step === "appearance" ? "Finish setup" : "Continue"}
           </button>
         </footer>
       </div>

@@ -53,13 +53,12 @@ vi.mock("../store", () => ({
   }),
 }));
 const initial = (step: OnboardingState["step"]): OnboardingState => ({
-  version: 1,
+  version: 2,
   revision: 0,
   status: "active",
   step,
   visited: [],
   skipped: [],
-  disclosureVersion: 1,
 });
 const source: PageTarget = {
   pageId: "reviewed",
@@ -87,15 +86,6 @@ const button = (text: string) =>
 async function render(state: OnboardingState) {
   current = state;
   await act(async () => root.render(<OnboardingFlow initialState={state} onClose={close} />));
-}
-async function choosePage() {
-  const select = [...document.querySelectorAll("select")].find((node) =>
-    [...node.options].some((option) => option.value === source.pageId),
-  )!;
-  await act(async () => {
-    select.value = source.pageId;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
 }
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -127,9 +117,9 @@ beforeEach(() => {
       current = {
         ...current,
         revision: current.revision + 1,
-        ...(params.action === "disclosure" ? { disclosureVersion: 1 } : {}),
         ...(params.action === "replay" ? { status: "active", step: "welcome" } : {}),
         ...(params.action === "later" ? { status: "later" } : {}),
+        ...(params.action === "finish" ? { status: "complete" } : {}),
         ...(params.action === "visit" ? { step: params.step } : {}),
       };
       return current;
@@ -197,89 +187,39 @@ it("moves the step heading without scrolling the rail or footer out of the card"
   focus.mockClear();
   await act(async () => button("4").click());
   await act(async () => button("Finish setup").click());
-  expect(document.querySelector("h1")?.textContent).toBe("Start with one useful question");
-  const tools = document.querySelector('[aria-label="Tools for this question"]');
-  expect(tools?.getAttribute("role")).toBe("group");
-  expect(tools?.textContent).toContain("Read page");
-  expect(close).not.toHaveBeenCalled();
+  expect(current).toMatchObject({ status: "complete", step: "appearance" });
+  expect(close).toHaveBeenCalledOnce();
   expect(focus).toHaveBeenCalledWith({ preventScroll: true });
   focus.mockRestore();
 });
 
-it("shows data use before mounting model setup and makes no model request on acknowledgment", async () => {
-  await render({ ...initial("model"), disclosureVersion: 0 });
-  expect(document.body.textContent).toContain("selected page context and attached material");
-  expect(rpc).not.toHaveBeenCalledWith("models.list", expect.anything());
-  await act(async () => button("I’ve reviewed model data use").click());
-  expect(rpc).toHaveBeenCalledWith("onboarding.update", { revision: 0, action: "disclosure" });
-  expect(rpc.mock.calls.some(([method]) => method === "models.probe" || method === "onboarding.start")).toBe(
-    false,
-  );
-  expect(document.body.textContent).toContain("connection test sends a model request only");
+it("shows model setup immediately and keeps data use optional without sending a model request", async () => {
+  await render(initial("model"));
+  expect(
+    document.querySelector(".models-settings") ?? document.querySelector('[aria-label="Model provider"]'),
+  ).toBeTruthy();
+  expect(button("I’ve reviewed model data use")).toBeUndefined();
+  expect(document.querySelector("details summary")?.textContent).toBe("Model data use and costs");
+  expect(document.querySelector("details")?.open).toBe(false);
+  expect(rpc.mock.calls.some(([method]) => method === "models.probe" || method === "runs.start")).toBe(false);
+  expect(rpc).not.toHaveBeenCalledWith("installation.restoreStatus", {});
 });
 
-it("requires explicit exact-page review and dispatches a double-click once into the first chat", async () => {
-  await render(initial("postcard"));
-  expect(button("Start this chat").disabled).toBe(true);
-  await choosePage();
-  expect(button("Start this chat").disabled).toBe(true);
-  await act(async () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
-  expect(button("Start this chat").disabled).toBe(false);
-  let finish!: () => void;
+it("checks recovery only when opened and never blocks finishing setup", async () => {
   const previous = rpc.getMockImplementation()!;
   rpc.mockImplementation(async (method, params) => {
-    if (method !== "onboarding.start") return previous(method, params);
-    await new Promise<void>((resolve) => {
-      finish = resolve;
-    });
-    return {
-      state: { ...current, status: "active", step: "default" },
-      run: { runId: "first-run", config: { chatId: "first-chat" } },
-    };
-  });
-  const start = button("Start this chat");
-  await act(async () => {
-    start.click();
-    start.click();
-  });
-  expect(rpc.mock.calls.filter(([method]) => method === "onboarding.start")).toHaveLength(1);
-  expect(rpc).toHaveBeenCalledWith("onboarding.start", {
-    revision: 0,
-    postcardId: "understand",
-    page: {
-      pageId: source.pageId,
-      url: source.url,
-      documentEpoch: 1,
-      sessionId: "session",
-    },
-  });
-  await act(async () => finish());
-  expect(openConversation).toHaveBeenCalledWith("first-run");
-  expect(close).not.toHaveBeenCalled();
-  expect(document.body.textContent).toContain("Open links in Aux");
-  expect(document.querySelector('[aria-label="Setup steps"]')).toBeNull();
-});
-
-it("clears the page review after navigation and refuses a postcard when recovery is staged", async () => {
-  const previous = rpc.getMockImplementation()!;
-  rpc.mockImplementation(async (method, params) => {
-    if (method === "installation.restoreStatus") return { pending: true };
+    if (method === "installation.restoreStatus") throw new Error("Unavailable");
     return previous(method, params);
   });
-  await render(initial("postcard"));
-  await choosePage();
-  await act(async () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
-  expect(button("Start this chat").disabled).toBe(true);
-  workspace.pages = normalizePages([{ ...source, documentEpoch: 2 }] as never);
-  await act(async () => root.render(<OnboardingFlow initialState={current} onClose={close} />));
-  expect(document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.checked).toBe(false);
-  expect(document.body.textContent).toContain("Recovery is staged");
-});
-
-it("keeps cooldown on replay and never automatically invokes the native default-browser prompt", async () => {
-  await render({ ...initial("default"), defaultBrowserPromptedAt: Date.now() });
-  expect(button("Make Aux the default browser").disabled).toBe(true);
-  expect(native.setDefaultBrowser).not.toHaveBeenCalled();
+  await render(initial("welcome"));
+  expect(rpc).not.toHaveBeenCalledWith("installation.restoreStatus", {});
+  await act(async () => button("Recover an existing Aux Profile").click());
+  expect(rpc).toHaveBeenCalledWith("installation.restoreStatus", {});
+  expect(document.body.textContent).toContain("Recovery status is unavailable");
+  await act(async () => button("4").click());
+  expect(button("Finish setup").disabled).toBe(false);
+  await act(async () => button("Finish setup").click());
+  expect(close).toHaveBeenCalledOnce();
 });
 
 it("replays only through an explicit event and stays absent from private or disabled windows", async () => {
@@ -338,16 +278,6 @@ it("reuses four-browser review without discovering or importing on step entry", 
   expect(options.every((input) => !input.checked)).toBe(true);
   expect(document.body.textContent).toContain("Keychain");
   expect(rpc.mock.calls.some(([method]) => method === "import.run")).toBe(false);
-});
-
-it("lets the owner view the selected page before committing its context", async () => {
-  await render(initial("postcard"));
-  await choosePage();
-  await act(async () => button("View selected page; finish setup later").click());
-  expect(activate).toHaveBeenCalledWith(source.pageId);
-  expect(current).toMatchObject({ status: "later", step: "postcard" });
-  expect(close).toHaveBeenCalledOnce();
-  expect(rpc.mock.calls.some(([method]) => method === "onboarding.start")).toBe(false);
 });
 
 it("offers pasted Memory from the AI step without automatic capture or ingestion", async () => {
@@ -432,52 +362,6 @@ it.each(["quick-ask", "little"])(
     expect(rpc).not.toHaveBeenCalled();
   },
 );
-
-it("requires recovery readiness and rechecks the selected window before first-chat dispatch", async () => {
-  const previous = rpc.getMockImplementation()!;
-  const restores = [
-    async () => {
-      throw new Error("native status unavailable");
-    },
-    async () => ({ pending: false }),
-    async () => {
-      workspace.pages = normalizePages([{ ...source, windowId: "other-window" }] as never);
-      return { pending: false };
-    },
-  ];
-  rpc.mockImplementation(async (method, params) => {
-    if (method === "installation.restoreStatus") {
-      const next = restores.shift();
-      if (!next) throw new Error("unexpected restore status read");
-      return next();
-    }
-    return previous(method, params);
-  });
-  await render(initial("postcard"));
-  await choosePage();
-  await act(async () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
-  expect(button("Start this chat").disabled).toBe(true);
-  expect(document.body.textContent).toContain("Recovery readiness is unavailable");
-  await act(async () => button("Retry recovery check").click());
-  expect(button("Start this chat").disabled).toBe(false);
-  await act(async () => button("Start this chat").click());
-  expect(rpc.mock.calls.some(([method]) => method === "onboarding.start")).toBe(false);
-  expect(document.body.textContent).toContain("selected page changed during review");
-});
-
-it("offers only idle owner pages in this window for explicit review", async () => {
-  workspace.pages = normalizePages([
-    source,
-    { ...source, pageId: "other-window", windowId: "other" },
-    { ...source, pageId: "loading", loading: true },
-    { ...source, pageId: "agent", controller: "agent" },
-  ] as never);
-  await render(initial("postcard"));
-  const select = [...document.querySelectorAll("select")].find((node) =>
-    [...node.options].some((option) => option.value === source.pageId),
-  )!;
-  expect([...select.options].map((option) => option.value)).toEqual(["", source.pageId]);
-});
 
 it("keeps import confirmation, exclusions, keychain and retry disclosures with concise progress copy", async () => {
   await render(initial("import"));
@@ -564,7 +448,7 @@ it("offers the real Auto mode in the AI step and saves only the original policy 
   };
   await render(initial("model"));
   expect(document.querySelector('[aria-label="Agent mode"] [aria-checked="true"]')!.textContent).toBe("Auto");
-  expect(document.body.textContent).toContain("Touch ID for payments");
+  expect(document.body.textContent).toContain("Ask first is the default");
   expect(document.querySelector('button[aria-label*="permissions"]')).toBeNull();
   await act(async () =>
     [...document.querySelectorAll<HTMLButtonElement>('[aria-label="Agent mode"] [role="radio"]')]
@@ -572,7 +456,5 @@ it("offers the real Auto mode in the AI step and saves only the original policy 
       .click(),
   );
   expect(rpc).toHaveBeenCalledWith("settings.set", { agentMode: "ask", agentPolicyRevision: 8 });
-  expect(rpc.mock.calls.some(([method]) => method === "models.probe" || method === "onboarding.start")).toBe(
-    false,
-  );
+  expect(rpc.mock.calls.some(([method]) => method === "models.probe" || method === "runs.start")).toBe(false);
 });

@@ -3,23 +3,36 @@ import { act, type ReactNode, type RefObject } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { HOME_DRAFT_CHAT_KEY } from "../conversation-drafts";
+import { ONBOARDING_STARTERS, type PageTarget } from "@aux/contracts";
 
 const fixture = vi.hoisted(() => ({
   draft: "",
+  conversationDrafts: {} as Record<string, string>,
+  conversationContexts: {} as Record<string, string>,
+  conversationBrowserSources: {} as Record<string, import("@aux/contracts").PageContextRef[]>,
+  pages: { allIds: [] as string[], byId: {} as Record<string, PageTarget> },
+  runs: [] as unknown[],
+  setAgentDraft: vi.fn(),
+  setConversationDraft: vi.fn(),
+  setConversationContext: vi.fn(),
+  setConversationBrowserSources: vi.fn(),
   railOpen: false,
   focusRequest: 0,
   focusShell: vi.fn(),
   runCommand: vi.fn(),
   listeners: new Set<(event: { type: string; payload: { chatId: string } }) => void>(),
 }));
-vi.mock("../store", () => ({
-  errToast: vi.fn(),
-  useStore: Object.assign(
-    (select: (state: unknown) => unknown) =>
-      select({ railOpen: fixture.railOpen, focusRequest: fixture.focusRequest, connected: false }),
-    { getState: () => ({ agentDraft: fixture.draft, connected: false }) },
-  ),
-}));
+vi.mock("../store", () => {
+  const state = () => ({
+    ...fixture,
+    agentDraft: fixture.draft,
+    connected: false,
+  });
+  return {
+    errToast: vi.fn(),
+    useStore: Object.assign((select: (value: unknown) => unknown) => select(state()), { getState: state }),
+  };
+});
 vi.mock("../commands", async () => {
   const { invokeScopedControl } = await import("../scoped-control-commands");
   return {
@@ -79,6 +92,19 @@ beforeEach(() => {
     removeItem: (key: string) => storage.delete(key),
   });
   fixture.draft = "";
+  fixture.conversationDrafts = {};
+  fixture.conversationContexts = {};
+  fixture.conversationBrowserSources = {};
+  fixture.pages = { allIds: [], byId: {} };
+  fixture.runs = [];
+  fixture.setAgentDraft.mockReset().mockImplementation((text: string) => {
+    fixture.draft = text;
+  });
+  fixture.setConversationDraft.mockReset().mockImplementation((id: string, text: string) => {
+    fixture.conversationDrafts[`chat:${id}`] = text;
+  });
+  fixture.setConversationContext.mockReset();
+  fixture.setConversationBrowserSources.mockReset();
   fixture.railOpen = false;
   fixture.focusRequest = 0;
   fixture.listeners.clear();
@@ -195,4 +221,63 @@ it("preserves a newer home pointer written by another window when this chat is d
   });
   expect(currentChat()).toBe("new");
   expect(localStorage.getItem(HOME_DRAFT_CHAT_KEY)).toBe("newer-chat");
+});
+
+it("fills the normal composer without sending and preserves its durable draft target", async () => {
+  localStorage.setItem(HOME_DRAFT_CHAT_KEY, "first-draft");
+  await render();
+  const starter = container.querySelector<HTMLButtonElement>(".onboarding-starters button")!;
+  await act(async () => starter.click());
+  expect(fixture.setConversationDraft).toHaveBeenCalledWith("first-draft", ONBOARDING_STARTERS[0].prompt);
+  expect(fixture.setAgentDraft).not.toHaveBeenCalled();
+  expect(document.activeElement).toBe(container.querySelector("textarea"));
+  await render();
+  expect(container.querySelector(".onboarding-starters")).toBeNull();
+});
+
+it("prefills exact signed-in source context from this window without replacing a chosen source", async () => {
+  const source: PageTarget = {
+    pageId: "source",
+    windowId: "main",
+    backend: "aux",
+    targetId: "tab-source",
+    url: "https://example.com/article",
+    title: "Useful article",
+    documentEpoch: 7,
+    sessionId: "signed-in",
+    lastRevision: 0,
+    viewStatus: "visible",
+    controller: "none",
+    controllerEpoch: 0,
+    ownedByRuntime: false,
+    createdAt: 1,
+    lastActiveAt: 1,
+  };
+  const other = { ...source, pageId: "other", windowId: "other-window", lastActiveAt: 2 };
+  fixture.pages = {
+    allIds: [other.pageId, source.pageId],
+    byId: { [other.pageId]: other, [source.pageId]: source },
+  };
+  await render();
+  expect(container.querySelector(".onboarding-starters p")?.textContent).toContain("Useful article");
+  await act(async () => container.querySelector<HTMLButtonElement>(".onboarding-starters button")!.click());
+  expect(fixture.setAgentDraft).toHaveBeenCalledWith(ONBOARDING_STARTERS[0].prompt);
+  expect(fixture.setConversationContext).toHaveBeenCalledWith(null, source.pageId);
+  expect(fixture.setConversationBrowserSources).toHaveBeenCalledWith(null, [
+    {
+      pageId: source.pageId,
+      url: source.url,
+      documentEpoch: 7,
+      sessionId: "signed-in",
+      selectedAt: expect.any(Number),
+    },
+  ]);
+  fixture.draft = "";
+  fixture.conversationContexts = { new: source.pageId };
+  fixture.setConversationContext.mockClear();
+  fixture.setConversationBrowserSources.mockClear();
+  await render();
+  await act(async () => container.querySelector<HTMLButtonElement>(".onboarding-starters button")!.click());
+  expect(fixture.setConversationContext).not.toHaveBeenCalled();
+  expect(fixture.setConversationBrowserSources).not.toHaveBeenCalled();
 });

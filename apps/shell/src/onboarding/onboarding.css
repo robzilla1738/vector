@@ -130,58 +130,30 @@
   .onboarding-details[open] > p {
     margin-top: var(--space-2);
   }
-  .onboarding-postcards {
-    display: grid;
-    gap: 12px;
-  }
-  .onboarding-postcards article {
-    display: grid;
-    gap: 10px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    padding: 16px;
-  }
-  .onboarding-postcards h2 {
-    margin: 0;
-    font-size: 18px;
-  }
   .onboarding-flow footer {
     border-top: var(--hairline) solid var(--line);
     padding-top: 16px;
   }
-  .onboarding-review {
+  .onboarding-starters {
     display: grid;
-    gap: 16px;
-    padding: 16px;
-    border: 1px solid var(--line);
-    border-radius: 12px;
+    gap: var(--space-2);
+    min-width: 0;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+  }
+  .onboarding-starters p {
+    margin: 0;
     overflow-wrap: anywhere;
   }
-  .onboarding-review h2,
-  .onboarding-review h3 {
-    margin: 0 0 8px;
-  }
-  .onboarding-review h2 {
-    font-size: 18px;
-  }
-  .onboarding-review h3 {
-    font-size: 14px;
-  }
-  .onboarding-review .import-counts {
-    margin: 8px 0;
-    padding: 0;
-    list-style: none;
-  }
-  .onboarding-review .import-counts li {
+  .onboarding-starters > div {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--space-1);
   }
-  .onboarding-review .import-counts li span:first-child {
-    min-width: 120px;
-  }
-  .onboarding-review .row {
-    flex-wrap: wrap;
+  .onboarding-starters button {
+    white-space: normal;
+    text-align: left;
+    height: auto;
   }
   @media (max-width: 540px) {
     .onboarding-flow {

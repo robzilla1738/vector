@@ -331,7 +331,6 @@ export const RuntimeMethodPolicy = {
   "chrome.importCookies": { feature: "core", auth: "standard" },
   "onboarding.get": { feature: "core", auth: "aux-webui" },
   "onboarding.update": { feature: "core", auth: "aux-webui" },
-  "onboarding.start": { feature: "core", auth: "aux-webui" },
   "import.extensions.review": { feature: "core", auth: "aux-webui" },
   "import.selectWindow": { feature: "core", auth: "aux-webui" },
   "import.selectExport": { feature: "core", auth: "aux-webui" },
