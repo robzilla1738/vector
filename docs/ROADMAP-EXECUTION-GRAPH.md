@@ -220,12 +220,15 @@ items explicit; do not shrink the objective to a finished subset.
   controls retain original native-window/VM/Session checks after agent dispatch
   ends. Cloud code-mode uses the existing admission/receipt callbacks. Successful-task process retention now transfers monitor/Stop ownership before dispatch retirement and retains original funding expiry. Actual cloud workflow
   acceptance remains pending.
-- The latest integrated check passed typecheck/lint and 4,358 tests. Its one
-  remaining reconnect fixture now awaits the real protocol reply and passes its
-  focused rerun. Earlier isolation/restore/native-mock/export fixtures are repaired.
-  Borrowed-reader cold connection and retained cloud lifetime have focused checks.
-  Deck groups now say Sections and result editing has no version-20 wall; concurrent
-  revisions keep their chosen source with unique ordinals. Evidence is in STATUS.
+- The latest integrated check passed typecheck/lint and 4,367 tests across 708
+  passing files. Its five failures were confined to routine sweep timing/shutdown,
+  one disconnected missing-model fixture and an obsolete mock inventory test.
+  Shutdown now joins accepted routine launches before repository closure; ten
+  affected recurrence cases pass without unhandled errors. The command-bar
+  fixture is repaired and the inventory ratchet deleted. Passing suites are not
+  repeated. Borrowed-reader cold connection and retained cloud lifetime have
+  focused checks. Deck groups say Sections; result editing has no version-20 wall
+  and concurrent revisions receive unique ordinals. Evidence is in STATUS.
 - Area 0033 compiled in 33 steps / 16m02.15s. Closing a private window after
   loading a real HTTP page left normal browsing alive; normal exit retired the
   disposable Profile and lock. Private AI still failed because the native registry
@@ -247,3 +250,16 @@ items explicit; do not shrink the objective to a finished subset.
   recorded as an instrumentation difference, with no stock role metrics. No valid paired performance report, native 20-task
   smoke, five workflow acceptance or final design comparison exists. No phase or
   competitor-parity claim is made.
+
+## Final browser coverage follow-up
+
+The October 8 source audit found native downloads still reappearing after a
+runtime-only shelf deletion, Node-dependent history and Space editing, and PDF
+export that retained a tab but not its original document. The next integrated
+slice moves human history and download presentation directly to the browser,
+keeps all file bytes and resumable transfers, persists Space presentation without
+Node while attaching only authentic runtime workspace mappings, and fences PDF
+export to its original live document. These changes are prepared in isolated
+worker/scratch sources. They are not yet compiled or observed in the native app.
+The 0034–0036 candidate is currently linking; its input, first-task/private-AI and
+runtime-unavailable Find/Zoom observations precede staging this next slice.
