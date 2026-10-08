@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import type { Download } from "@aux/contracts";
-import { canDismissDownload, mergeDownloadSnapshot } from "./downloads";
+import { NativeDownloadCollection, canDismissDownload, mergeDownloadSnapshot } from "./downloads";
 
 const transfer: Download = {
   id: "transfer",
@@ -40,4 +40,25 @@ it("a removal event wins over both a held snapshot and an earlier live update", 
   expect(
     mergeDownloadSnapshot([transfer], [transfer], new Set([transfer.id]), new Set([transfer.id])),
   ).toEqual([]);
+});
+
+it("a genuine resumed item wins over a held completed snapshot and its delayed dismissal acknowledgement", () => {
+  const downloads = new NativeDownloadCollection();
+  const completed = { ...transfer, state: "completed" as const, canCancel: false };
+  downloads.receive(completed);
+  const snapshot = downloads.begin();
+  const dismissal = downloads.begin();
+  downloads.remove([completed.id]);
+  downloads.receive(completed);
+  expect(downloads.values()).toEqual([]);
+  const resumed = { ...transfer, size: 90, canResume: true };
+  downloads.receive(resumed);
+  downloads.remove([completed.id], dismissal);
+  expect(downloads.snapshot([completed], snapshot)).toEqual([resumed]);
+
+  const fresh = downloads.begin();
+  downloads.remove([completed.id]);
+  expect(downloads.snapshot([completed], fresh)).toEqual([]);
+  const authoritative = downloads.begin();
+  expect(downloads.snapshot([resumed], authoritative)).toEqual([resumed]);
 });

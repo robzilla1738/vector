@@ -488,9 +488,16 @@ it("keeps native download dismissal authoritative across held snapshots and late
   for (const callback of listeners.get("onDownloadsRemoved") ?? []) callback({ ids: [resumable.id] });
   finishSnapshot([resumable]);
   expect(await next).toEqual([]);
+  const resuming = aux.downloadsSnapshot();
+  const resumed = { ...item, state: "progressing" as const, canCancel: true, size: 90 };
+  for (const callback of listeners.get("onDownload") ?? []) callback(resumed);
+  finishSnapshot([item]);
+  expect(await resuming).toEqual([resumed]);
+  expect(update).toHaveBeenCalledExactlyOnceWith(resumed);
   expect(request.mock.calls.map(([method]) => method)).toEqual([
     "downloadsSnapshot",
     "dismissDownloads",
+    "downloadsSnapshot",
     "downloadsSnapshot",
   ]);
 });

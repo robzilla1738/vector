@@ -10,7 +10,7 @@ import type { AuxBridge } from "./bridge";
 import { requireAuxMethod } from "@aux/contracts/method-feature";
 import type { AuxFeatureOverrides } from "@aux/contracts/aux-features";
 import { MethodSchemas, type MethodName, type MethodResult, type RpcArgs } from "@aux/contracts/api";
-import { noteDismissedDownloads, visibleDownloads } from "./downloads";
+import { installNativeDownloadCollection } from "./downloads";
 import { createHostClient, type HostValidation } from "./host/client.generated";
 import { chromiumFeatureStages } from "./feature-stage-reconciliation";
 
@@ -62,13 +62,19 @@ export function installChromiumBridge(
     return false;
 
   const client = createHostClient(port, validation);
-  // Register before consumers: every snapshot and live callback sees the same
-  // native removal fence, including acknowledgements received in this window.
-  client.onDownloadsRemoved(({ ids }) => noteDismissedDownloads(ids));
-  const downloadsSnapshot = async () => visibleDownloads(await client.downloadsSnapshot());
+  const downloads = installNativeDownloadCollection();
+  // Observe before consumers so snapshots, acknowledgements and live rows
+  // share one native ordering, independent of the runtime receipt ledger.
+  client.onDownload((download) => downloads.receive(download));
+  client.onDownloadsRemoved(({ ids }) => downloads.remove(ids));
+  const downloadsSnapshot = async () => {
+    const requested = downloads.begin();
+    return downloads.snapshot(await client.downloadsSnapshot(), requested);
+  };
   const dismissDownloads: AuxBridge["dismissDownloads"] = async (ids) => {
+    const requested = downloads.begin();
     const result = await client.dismissDownloads(ids);
-    noteDismissedDownloads(result.removed);
+    downloads.remove(result.removed, requested);
     return result;
   };
   target.aux = {
@@ -77,7 +83,7 @@ export function installChromiumBridge(
     dismissDownloads,
     onDownload: (callback) =>
       client.onDownload((download) => {
-        if (visibleDownloads([download]).length) callback(download);
+        if (downloads.has(download.id)) callback(download);
       }),
     windowId: port.windowId,
     platform: port.platform,
