@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { ArtifactExports } from "./artifact-exports.js";
 import { mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
@@ -17,11 +18,14 @@ export interface ArtifactInput {
 
 /** Files live on disk under artifacts/<run-or-page>/; SQLite keeps refs. */
 export class ArtifactStore {
+  readonly exports: ArtifactExports;
   constructor(
     private dir: string,
     private repo: Repo,
     private events: EventBus,
-  ) {}
+  ) {
+    this.exports = new ArtifactExports(dir);
+  }
 
   private place(opts: ArtifactInput): { artifact: Artifact; dir: string } {
     const artifactId = newArtifactId();

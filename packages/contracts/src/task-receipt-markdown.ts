@@ -1,4 +1,4 @@
-import type { TaskReceipt } from "@aux/contracts";
+import type { TaskReceipt } from "./tasks.js";
 
 const status = {
   in_progress: "In progress",
@@ -7,13 +7,14 @@ const status = {
   not_met: "Criteria not met",
   needs_review: "Needs review",
 };
-const text = (value: string) =>
+export const receiptText = (value: string) =>
   value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/[\\`*_{}[\]()#+!|]/g, "\\$&")
     .replace(/^([-=>])/gm, "\\$1");
+const text = receiptText;
 const time = (value: number) => new Date(value).toISOString();
 
 /** Portable review snapshot. Untrusted evidence is text, never embedded HTML/images. */
@@ -102,7 +103,9 @@ export function taskReceiptMarkdown(receipt: TaskReceipt, includeSnapshots = fal
           `Captured text: ${completed.textBytes} bytes · Located text SHA-256: ${completed.textSha256}`,
           `Snapshot SHA-256: ${sha256}`,
           "Captured text snapshot; the original file is not stored or monitored. Fingerprints identify the source and snapshot, not the truth of document claims.",
-          "Document text is stored separately and is not included in this export. Open its saved preview in Aux to read it.",
+          includeSnapshots
+            ? "Complete captured text is included below under Document snapshots."
+            : "Captured document text omitted from this export.",
           ...document.warnings.map(
             (warning) =>
               `Extraction note: ${warning.count} ${warning.code.replaceAll("_", " ")}${warning.firstPage ? `; first page ${warning.firstPage}` : ""}${warning.story ? `; ${warning.story}` : ""}.`,

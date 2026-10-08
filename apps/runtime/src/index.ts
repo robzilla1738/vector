@@ -26,6 +26,7 @@ export { RunService, substituteParameters } from "./services/runs.js";
 export { makeInvoker, type Services } from "./api/invoke.js";
 export { SettingsService } from "./services/settings.js";
 export { ArtifactStore } from "./services/artifacts.js";
+export { exportTaskReceipt } from "./services/task-receipt-export.js";
 export {
   calendarConversationSourcesFromStep,
   conversationSourceFromArtifact,

@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { TaskReceiptSchema } from "@aux/contracts";
-import { taskReceiptMarkdown } from "./task-receipt-export";
+import { taskReceiptMarkdown } from "@aux/contracts/task-receipt-markdown";
 it("preserves uncertainty, provenance and stale evidence without embedding active content", () => {
   const receipt = TaskReceiptSchema.parse({
     taskId: "task-1",
