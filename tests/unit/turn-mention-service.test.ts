@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { TurnSourceContextSchema, type TurnSourceContext } from "@aux/contracts/turn-source-context";
 import {
+  AuxError,
   RoutineSchema,
   type ConnectorCatalog,
   type PageTarget,
@@ -84,7 +85,7 @@ function fixture() {
       window: { activeSpaceId: "space", activeTabs: { space: "a" }, splitRatio: 0.5 },
     },
   });
-  const prepareReadPage = vi.fn(async () => {});
+  const prepareReadPage = vi.fn(async (_pageId: string) => {});
   const service = new TurnMentionService({
     page: (id) => pages.get(id),
     prepareReadPage,
@@ -473,4 +474,22 @@ describe("original window default source reach", () => {
     f.pages.set("b", { ...original, documentEpoch: original.documentEpoch + 1 });
     expect(await f.service.require("run", "b", "read")).toMatchObject({ status: "unavailable" });
   });
+});
+
+it("omits an uncommitted implicit tab but keeps explicit and recovered sources strict", async () => {
+  const f = fixture();
+  const source = f.sourceContext();
+  f.setSourceContext({
+    ...source,
+    layout: { ...source.layout!, shared: { ...source.layout!.shared, tabSpace: { a: "space", b: "space" } } },
+  });
+  f.prepareReadPage.mockImplementation(async (id?: string) => {
+    if (id === "a") throw new AuxError("ref_stale", "Source tab is not loaded.");
+  });
+  await f.service.begin("run", [], [], { nativeTurnContext: "owner" });
+  expect(f.service.selectedPages("run")).toEqual(["b"]);
+  expect(f.service.unavailableImplicitPages("run")).toEqual(["a"]);
+  expect(await f.service.require("run", "a", "read")).toMatchObject({ status: "unavailable" });
+  await expect(f.service.begin("explicit", [tab], [], { nativeTurnContext: "owner" })).rejects.toMatchObject({ code: "ref_stale" });
+  await expect(f.service.begin("recovered", [], [], { nativeTurnContext: "owner", sourcePageIds: ["a"] })).rejects.toMatchObject({ code: "ref_stale" });
 });

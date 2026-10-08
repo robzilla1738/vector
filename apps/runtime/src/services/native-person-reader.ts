@@ -25,9 +25,14 @@ function assertIdentity(pageId: string, receipt: Pick<NativePersonReadContext, "
     throw new AuxError("backend_unavailable", "The native page reader does not match this runtime.");
 }
 export function parsePersonReadContext(pageId: string, raw: unknown): NativePersonReadContext {
-  const context = NativePersonReadContextSchema.parse(raw);
-  assertIdentity(pageId, context);
-  return context;
+  const parsed = NativePersonReadContextSchema.safeParse(raw);
+  if (!parsed.success) {
+    if (parsed.error.issues.every((issue) => issue.code === "invalid_format" && issue.path.length === 1 && issue.path[0] === "url"))
+      throw new AuxError("ref_stale", "Open the source tab and wait for it to load before continuing.");
+    throw new AuxError("backend_unavailable", "The native page reader returned an invalid document identity.");
+  }
+  assertIdentity(pageId, parsed.data);
+  return parsed.data;
 }
 export class NativePersonReader {
   constructor(private readonly transport: NativePersonReadTransport) {}

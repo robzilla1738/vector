@@ -1,3 +1,4 @@
+import { parsePersonReadContext } from "./services/native-person-reader.js";
 import {
   ImportExtensionReviewSchema,
   type ImportExtensionReview,
@@ -86,7 +87,6 @@ import {
   type EgressContext,
   type EgressLease,
   NativePersonReadContextParamsSchema,
-  NativePersonReadContextSchema,
   type NativePersonReadContext,
   NativePersonReadParamsSchema,
   NativePersonReadReceiptSchema,
@@ -481,7 +481,8 @@ export class ChannelNativeBridge implements NativeBridge {
     );
   }
   async personReadContext(pageId: string): Promise<NativePersonReadContext> {
-    return NativePersonReadContextSchema.parse(
+    return parsePersonReadContext(
+      pageId,
       await this.channel.call(
         "native.personReadContext",
         NativePersonReadContextParamsSchema.parse({ pageId }),

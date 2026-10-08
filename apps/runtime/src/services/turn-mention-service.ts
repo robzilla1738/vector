@@ -7,6 +7,7 @@ import {
 } from "./pages/controlled-navigation.js";
 import type { ValidatedTaskRead } from "@aux/contracts";
 import {
+  AuxError,
   MentionRefsSchema,
   type ConnectorCatalog,
   type MentionRef,
@@ -48,6 +49,7 @@ type Active = {
   sourceContext?: TurnSourceContext;
   currentSourceContext?: TurnSourceContext;
   defaultPageIds: Set<string>;
+  unavailableImplicitPages: string[];
 };
 
 /** Profile-owned, active-turn authority. Persisted refs are instructions to validate, never grants by themselves. */
@@ -110,8 +112,25 @@ export class TurnMentionService {
       }
       for (const pageId of defaults)
         if (browserContextPage(() => this.deps.page(pageId))) selected.add(pageId);
+      const unavailableImplicitPages: string[] = [];
       if (this.deps.prepareReadPage && selected.size && !context.privateTask) {
-        await Promise.all([...selected].map((pageId) => this.deps.prepareReadPage!(pageId)));
+        await Promise.all(
+          [...selected].map(async (pageId) => {
+            try {
+              await this.deps.prepareReadPage!(pageId);
+            } catch (error) {
+              if (
+                !hasPageSelection && !context.sourcePageIds && defaults.has(pageId) &&
+                error instanceof AuxError && error.code === "ref_stale"
+              ) {
+                defaults.delete(pageId);
+                unavailableImplicitPages.push(pageId);
+                return;
+              }
+              throw error;
+            }
+          }),
+        );
         if (this.starts.get(runId) !== token)
           throw new MentionUnavailable("This turn changed while preparing its sources.");
       }
@@ -153,6 +172,7 @@ export class TurnMentionService {
         sourceContext,
         currentSourceContext: sourceContext,
         defaultPageIds: defaults,
+        unavailableImplicitPages,
       };
       active.authority.begin(runId, refs, ownedPageIds, {
         defaultPages: [...defaults].map(this.page).filter((page): page is MentionPage => !!page),
@@ -215,6 +235,18 @@ export class TurnMentionService {
   hasPageSelection(runId: string): boolean {
     return this.turns.get(runId)?.authority.hasPageSelection(runId) ?? false;
   }
+  /** An answer may retain its unchanged selection without reopening a person reader under the run's lease. */
+  async revalidateSelection(runId: string): Promise<void> {
+    const active = await this.refresh(runId);
+    if (!active) throw new MentionUnavailable("The original answer source changed.");
+    for (const source of active.authority.sourcePages(runId)) {
+      if (!this.defaultScopeCurrent(active, source.pageId, runId))
+        throw new MentionUnavailable("The original window's selected source Space changed.");
+      const current = active.authority.require(runId, source.pageId, "read");
+      if (current.status === "unavailable") throw new MentionUnavailable(current.reason);
+    }
+  }
+
   async assertRestartOwner(runId: string): Promise<void> {
     const active = await this.refresh(runId);
     if (!active) throw new MentionUnavailable("The restored native source changed.");
@@ -240,6 +272,9 @@ export class TurnMentionService {
     if (!this.deps.turnSourceContext)
       throw new MentionUnavailable("Original window source authority is unavailable.");
     return this.deps.turnSourceContext(token);
+  }
+  unavailableImplicitPages(runId: string): readonly string[] {
+    return this.turns.get(runId)?.unavailableImplicitPages ?? [];
   }
   selectedPages(runId: string): string[] {
     return this.turns.get(runId)?.authority.selectedPages(runId) ?? [];

@@ -20,6 +20,7 @@ import { browserContextPage } from "../services/browser-context-page.js";
 import { withRunAuthorityMutation, withRunDispatchMutation } from "../services/overnight-authority.js";
 import {
   EventTypes,
+  MentionRefsSchema,
   newRunId,
   AuxError,
   type Observation,
@@ -1298,10 +1299,22 @@ export class RunCoordinator {
       this.deps.repo,
       async () => {
         const run = this.get(runId);
+        const validated = MentionRefsSchema.parse(mentions);
+        if (
+          this.deps.turnMentions.has(runId) &&
+          JSON.stringify(validated) === JSON.stringify(run.config?.mentions ?? [])
+        ) {
+          const original = JSON.stringify(run);
+          await this.deps.turnMentions.revalidateSelection(runId);
+          recheck();
+          if (JSON.stringify(this.get(runId)) !== original)
+            throw new AuxError("ref_stale", "The original answer changed during source validation.");
+          return this.answer(runId, answer);
+        }
         const owned = this.ownedPages(runId);
         return this.deps.turnMentions.acknowledge(
           runId,
-          mentions,
+          validated,
           owned,
           {
             workspaceId: run.config?.contextWorkspaceId,
@@ -1590,6 +1603,12 @@ export class RunCoordinator {
     } else if (run.config?.nativeTurnContext || this.deps.turnMentions.hasPageSelection(runId)) {
       run.pageIds = this.deps.turnMentions.selectedPages(runId);
       this.deps.repo.saveRun(run);
+    }
+    if (this.deps.turnMentions.unavailableImplicitPages(runId).length) {
+      const message = "Some browser tabs are still loading and were omitted from this run’s context. Open them before mentioning them.";
+      run.statusMessage = message;
+      this.deps.repo.saveRun(run);
+      this.deps.events.emit(EventTypes.RunStatus, { runId, status: run.status, message }, runId);
     }
     await this.acquirePages(runId);
     if (this.get(runId).config?.privateTask) {

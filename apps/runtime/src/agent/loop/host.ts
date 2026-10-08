@@ -2003,28 +2003,39 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     }
   }
   let releaseSharedCall: (() => void) | undefined;
-  const makeOpts = (): AgentLoopOptions => {
+  const deferredContext: ModelMessage[] = [];
+  const publishModelContext = (messages?: ModelMessage[]) => {
+    if (transcript.openPark(runId)) return;
+    if (deferredContext.length) {
+      const pending = deferredContext.splice(0);
+      transcript.append(runId, pending);
+      messages?.push(...pending);
+    }
     const currentSkillTurn = self.deps.turnMentions.capture(runId);
     const currentSkills = self.deps.turnMentions.skills(runId);
     if (currentSkillTurn !== skillTurn) {
-      transcript.append(runId, [
-        {
-          role: "user",
-          content:
-            "Current person-mentioned skills for this turn supersede all previous mention selections. No site, plugin or connector permission is implied:\n" +
-            JSON.stringify(
-              currentSkills.map((skill) => ({
-                routineId: skill.routineId,
-                revision: skill.revision,
-                title: skill.title,
-                objective: skill.objective,
-                description: skill.description,
-              })),
-            ),
-        },
-      ]);
+      const message: ModelMessage = {
+        role: "user",
+        content:
+          "Current person-mentioned skills for this turn supersede all previous mention selections. No site, plugin or connector permission is implied:\n" +
+          JSON.stringify(
+            currentSkills.map((skill) => ({
+              routineId: skill.routineId,
+              revision: skill.revision,
+              title: skill.title,
+              objective: skill.objective,
+              description: skill.description,
+            })),
+          ),
+      };
+      transcript.append(runId, [message]);
+      messages?.push(message);
       skillTurn = currentSkillTurn;
     }
+  };
+  const makeOpts = (): AgentLoopOptions => {
+    // A pending assistant tool call must receive its result before any user context.
+    publishModelContext();
     const originalToken = run.config?.nativeTurnContext;
     return {
       model,
@@ -2085,6 +2096,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       maxSteps: modelCallLimit() === 0 ? 0 : Math.max(1, modelCallLimit() - modelCalls),
       steerCheck: steerPending,
       prepareModelMessages: async (messages) => {
+        publishModelContext(messages);
         const checkpoint = self.deps.repo.loadCheckpoint(`run:${runId}`, "loop_todos") as
           { todos?: unknown } | undefined;
         const todos = Array.isArray(checkpoint?.todos)
@@ -2491,12 +2503,10 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
             );
             return;
           }
-          transcript.append(runId, [
-            {
-              role: "user",
-              content: `The person finished the handoff in the page. This is a fresh page snapshot:\n${fresh.text}\nDo not retry the action they just completed.`,
-            },
-          ]);
+          deferredContext.push({
+            role: "user",
+            content: `The person finished the handoff in the page. This is a fresh page snapshot:\n${fresh.text}\nDo not retry the action they just completed.`,
+          });
         }
         if ((self.get(runId).config?.messageRevision ?? 0) !== applied) {
           await applySteers();

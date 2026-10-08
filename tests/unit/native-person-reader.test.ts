@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 import { expect, it, vi } from "vitest";
 import { PERSON_OBSERVER_WRAPPED_SOURCE } from "@aux/chromium-driver";
-import { NativePersonReader } from "../../apps/runtime/dist/services/native-person-reader.js";
+import { NativePersonReader, parsePersonReadContext } from "../../apps/runtime/dist/services/native-person-reader.js";
 
 const pageId = randomUUID(),
   documentId = randomUUID(),
@@ -118,4 +118,15 @@ it("returns exact fixed extract fields and refuses an unsolicited result", async
   await expect(reader.extract(pageId, [{ name: "other", selector: "h1" }], () => true)).rejects.toMatchObject(
     { code: "backend_unavailable" },
   );
+});
+
+it("keeps a restored uncommitted document unavailable with an actionable retry", () => {
+  const context = { pageId, documentId, sessionId, producerSha256, url: "" };
+  expect(() => parsePersonReadContext(pageId, context)).toThrow(expect.objectContaining({
+    code: "ref_stale", message: "Open the source tab and wait for it to load before continuing.",
+  }));
+  expect(parsePersonReadContext(pageId, { ...context, url: "https://read.test/" }).url).toBe("https://read.test/");
+  expect(() => parsePersonReadContext(pageId, { ...context, documentId: "invalid" })).toThrow(expect.objectContaining({
+    code: "backend_unavailable",
+  }));
 });

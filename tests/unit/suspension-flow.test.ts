@@ -476,9 +476,30 @@ it("restores a durable Cloud setup handoff only through reviewed local cleanup",
   h.db.close();
 });
 
+async function validateSDKPrompt(messages: import("ai").ModelMessage[]) {
+  const { generateText } = await import("ai");
+  const { MockLanguageModelV3 } = await import("ai/test");
+  const provider = vi.fn(async () => {
+    throw new Error("Validated SDK provider boundary");
+  });
+  await expect(
+    generateText({ model: new MockLanguageModelV3({ doGenerate: provider }), messages, maxRetries: 0 }),
+  ).rejects.toThrow("Validated SDK provider boundary");
+  expect(provider).toHaveBeenCalledOnce();
+}
+
 it("starts and answers a page-free coding run without implicitly reading the native new tab", async () => {
   const { TurnMentionService } = await import("../../apps/runtime/src/services/turn-mention-service.js");
-  const h = harness(scripted([tool("ask_user_question", { question: "Which file?" }), done()]), () => {
+  const model = scripted([tool("ask_user_question", { question: "Which file?" }), done()]);
+  const step = model.toolCallStep!.bind(model);
+  let calls = 0;
+  model.toolCallStep = async (request) => {
+    if (++calls === 2) {
+      await validateSDKPrompt(request.messages);
+    }
+    return step(request);
+  };
+  const h = harness(model, () => {
     throw new Error("No browser effect authorized");
   });
   const prepareReadPage = vi.fn(async () => {
@@ -510,6 +531,121 @@ it("starts and answers a page-free coding run without implicitly reading the nat
   expect(completed.status, JSON.stringify(completed)).toBe("completed");
   expect(prepareReadPage).not.toHaveBeenCalled();
   expect(h.pages.observe).not.toHaveBeenCalled();
+  await h.coordinator.close();
+  h.db.close();
+});
+
+it("pairs a recovered handoff result before publishing its fresh page context to the SDK", async () => {
+  const { TranscriptStore } = await import("../../apps/runtime/src/agent/loop/transcript.js");
+  const model = scripted([done()]);
+  const step = model.toolCallStep!.bind(model);
+  model.toolCallStep = async (request) => {
+    await validateSDKPrompt(request.messages);
+    return step(request);
+  };
+  const h = harness(model, () => {
+    throw new Error("The person already completed this action");
+  });
+  const runId = "restored-page-handoff",
+    toolCallId = "original-handoff-question";
+  h.repo.saveRun({
+    runId,
+    goal: "Review the person's completed form",
+    status: "needs_input",
+    pageIds: ["p1"],
+    createdAt: Date.now(),
+    config: { implementation: "agent-loop" },
+  });
+  const transcript = new TranscriptStore(h.db);
+  transcript.append(runId, [
+    { role: "user", content: "Complete the form directly, then return." },
+    {
+      role: "assistant",
+      content: [
+        { type: "tool-call", toolCallId, toolName: "ask_user_question", input: { question: "Finished?" } },
+      ],
+    },
+  ]);
+  transcript.park(runId, {
+    toolCallId,
+    toolName: "ask_user_question",
+    suspension: { kind: "handoff", instruction: "Complete the form directly." },
+    pendingResults: [{ toolCallId, toolName: "ask_user_question", parked: true }],
+  });
+  h.coordinator.suspensions.park({
+    runId,
+    turnId: runId,
+    threadId: runId,
+    kind: "handoff",
+    request: {
+      kind: "handoff",
+      instruction: "Complete the form directly.",
+      guidance: "Wait for the person.",
+    },
+  });
+  await h.coordinator.answer(runId, "Done");
+  const completed = await settle(h.repo, runId);
+  expect(completed.status, JSON.stringify(completed)).toBe("completed");
+  expect(h.pages.observe).toHaveBeenCalled();
+  expect(h.pages.execute).not.toHaveBeenCalled();
+  await h.coordinator.close();
+  h.db.close();
+});
+
+it("answers an unchanged guarded browser selection using fresh source proof without reopening person read authority", async () => {
+  const { TurnMentionService } = await import("../../apps/runtime/src/services/turn-mention-service.js");
+  const model = scripted([tool("ask_user_question", { question: "Blue or red?" }), done()]);
+  const step = model.toolCallStep!.bind(model);
+  let calls = 0;
+  model.toolCallStep = async (request) => {
+    if (++calls === 2) await validateSDKPrompt(request.messages);
+    return step(request);
+  };
+  const h = harness(model, () => {
+    throw new Error("An answer authorizes no browser input");
+  });
+  let guarded = false,
+    windowId = "main",
+    epoch = 1;
+  const prepareReadPage = vi.fn(async () => {
+    if (guarded) throw new Error("Guarded pages cannot reopen person read authority");
+  });
+  const turns = new TurnMentionService({
+    page: (id) => ({ ...h.pages.get(id), documentEpoch: epoch }),
+    prepareReadPage,
+    organization: async () => ({ revision: 0, shared: null }),
+    routine: () => undefined,
+    connectors: () => ({ entries: [], access: [] }),
+    turnSourceContext: async () => ({ revision: 0, layout: null, windowId, activePageId: "p1" }),
+  });
+  h.coordinator.deps.turnMentions = turns;
+  const run = await h.coordinator.start({
+    goal: "Ask a color",
+    pageIds: [],
+    nativeTurnContext: "original-native",
+  });
+  expect((await waitForStatus(h.repo, run.runId, "needs_input")).status).toBe("needs_input");
+  expect(h.repo.getRun(run.runId)?.pageIds).toEqual(["p1"]);
+  const source = turns.capture(run.runId);
+  const reads = prepareReadPage.mock.calls.length;
+  guarded = true;
+  windowId = "another-window";
+  await expect(h.coordinator.answerWithMentions(run.runId, "Blue", [], () => {})).rejects.toThrow(
+    /source changed/,
+  );
+  windowId = "main";
+  epoch = 2;
+  await expect(h.coordinator.answerWithMentions(run.runId, "Blue", [], () => {})).rejects.toThrow(
+    /changed outside/,
+  );
+  expect(turns.capture(run.runId)).toBe(source);
+  epoch = 1;
+  await h.coordinator.answerWithMentions(run.runId, "Blue", [], () => {});
+  const completed = await settle(h.repo, run.runId);
+  expect(completed.status, JSON.stringify(completed)).toBe("completed");
+  expect(prepareReadPage).toHaveBeenCalledTimes(reads);
+  expect(h.pages.execute).not.toHaveBeenCalled();
+  expect(guarded).toBe(true);
   await h.coordinator.close();
   h.db.close();
 });
