@@ -67,7 +67,13 @@ import {
   NativeTerminalResizeParams,
   NativeTerminalCloseParams,
 } from "@aux/contracts/terminal";
-import type { z } from "zod";
+import { z } from "zod";
+import {
+  DocumentReadParamsSchema,
+  DocumentReadResultSchema,
+  type DocumentReadParams,
+  type DocumentReadResult,
+} from "@aux/contracts/document-intake";
 import { TurnSourceContextSchema, type TurnSourceContext } from "@aux/contracts/turn-source-context";
 import type { DownloadNamingNative, CompletedDownload } from "./services/download-naming.js";
 import {
@@ -166,6 +172,14 @@ import type {
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge extends Partial<DownloadNamingNative> {
+  evidenceDocumentRead?(
+    input: DocumentReadParams & { token: string },
+    signal?: AbortSignal,
+  ): Promise<DocumentReadResult>;
+  evidenceDocumentsRelease?(input: {
+    token: string;
+    selectionId: string;
+  }): Promise<{ ok: true }>;
   foundationModelsStatus?(input: {
     token: string;
   }): Promise<HostMethodResult<"native.foundationModelsStatus">>;
@@ -402,6 +416,48 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
 
 export class ChannelNativeBridge implements NativeBridge {
   constructor(private channel: RpcChannel) {}
+  async evidenceDocumentRead(
+    input: DocumentReadParams & { token: string },
+    signal?: AbortSignal,
+  ): Promise<DocumentReadResult> {
+    if (signal?.aborted) throw new AuxError("cancelled", "Document import was cancelled.");
+    const params = DocumentReadParamsSchema.extend({ token: z.string().min(1) }).strict().parse(input);
+    let retirement: Promise<{ ok: true }> | undefined;
+    const abort = () => {
+      retirement ??= this.evidenceDocumentsRelease({ token: params.token, selectionId: params.selectionId });
+      // The original read joins retirement below; attach now so a fast refusal is not unhandled.
+      void retirement.catch(() => {});
+    };
+    signal?.addEventListener("abort", abort, { once: true });
+    let failure: unknown;
+    try {
+      const result = DocumentReadResultSchema.parse(
+        await this.channel.call("native.evidenceDocumentRead", params, 70_000),
+      );
+      if (signal?.aborted) throw new AuxError("cancelled", "Document import was cancelled.");
+      return result;
+    } catch (error) {
+      failure = error;
+      throw error;
+    } finally {
+      signal?.removeEventListener("abort", abort);
+      if (retirement) {
+        try {
+          await retirement;
+        } catch (error) {
+          if (failure)
+            throw new AggregateError([failure, error], "Document capture retirement was not acknowledged.");
+          throw error;
+        }
+      }
+    }
+  }
+  async evidenceDocumentsRelease(input: { token: string; selectionId: string }): Promise<{ ok: true }> {
+    const params = z.object({ token: z.string().min(1), selectionId: z.string().uuid() }).strict().parse(input);
+    return z.object({ ok: z.literal(true) }).strict().parse(
+      await this.channel.call("native.evidenceDocumentsRelease", params),
+    );
+  }
   copilotStart(input: CopilotNativeStart): Promise<CopilotNativeStartResult> {
     return this.channel.call("native.copilotStart", input, 45_000);
   }
