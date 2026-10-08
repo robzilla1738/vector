@@ -147,6 +147,16 @@ export const RunFailureSchema = z.object({
 });
 export type RunFailure = z.infer<typeof RunFailureSchema>;
 
+/** Immutable document capture identity; the source chat is retained across branches. */
+export const AttachmentReferenceSchema = z
+  .object({
+    chatId: z.string().min(1),
+    attachmentId: z.string().min(1),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export type AttachmentReference = z.infer<typeof AttachmentReferenceSchema>;
+
 export const RunSchema = z.object({
   runId: z.string(),
   goal: z.string(),
@@ -190,8 +200,10 @@ export const RunSchema = z.object({
       instructions: z.string().optional(),
       /** exact prior turns used to assemble context, for provenance and inspection */
       contextRunIds: z.array(z.string()).optional(),
-      /** exact user-selected local document snapshots used for this turn */
+      /** Original historical inline document evidence; never resolved to a newer snapshot. */
       contextAttachmentIds: z.array(z.string()).optional(),
+      /** Selected immutable documents hydrated only within the active model request budget. */
+      contextAttachmentRefs: z.array(AttachmentReferenceSchema).optional(),
       /** Exact bounded document excerpt actually sent in this turn's prompt. */
       contextDocumentEvidence: z.string().max(20_000).optional(),
       /** Exact excerpt of a verified prior report included in this turn. */

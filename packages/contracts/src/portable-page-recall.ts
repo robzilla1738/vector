@@ -1,3 +1,4 @@
+import { documentBodyKey, documentBodyPrefix } from "./document-storage.js";
 import type { DatabaseSync } from "node:sqlite";
 import { sanitizeOperationInputSamples } from "./operation-input-stats.js";
 import { redactSettledRunInvocations } from "./forgotten-run-invocations.js";
@@ -15,6 +16,7 @@ type RecallConfig = {
   retryOfRunId?: string;
   context?: string;
   contextDocumentEvidence?: string;
+  contextAttachmentRefs?: { chatId: string; attachmentId: string; sha256: string }[];
   contextArtifactEvidence?: string;
 };
 
@@ -74,6 +76,7 @@ export function redactedPageRecallConfig<T extends RecallConfig>(config: T, arti
     context: undefined,
     revokedArtifactIds: [...new Set([...(config.revokedArtifactIds ?? []), ...artifactIds])],
     contextDocumentEvidence: undefined,
+    contextAttachmentRefs: undefined,
     contextArtifactEvidence: undefined,
     contextArtifactIds: undefined,
     contextSourceArtifactIds: undefined,
@@ -178,7 +181,7 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
         if (has("run_lookup"))
           db.prepare(
             `UPDATE run_lookup SET config=json_remove(
-          json_set(config,'$.contextMemoryRevoked',json('true')),'$.contextImageArtifactIds') WHERE run_id=?`,
+          json_set(config,'$.contextMemoryRevoked',json('true')),'$.contextImageArtifactIds','$.contextAttachmentRefs') WHERE run_id=?`,
           ).run(row.runId);
       }
     }
@@ -187,12 +190,16 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
         .prepare("SELECT key,value FROM kv WHERE key LIKE 'setting:conversationAttachments:%'")
         .all() as { key: string; value: string }[];
       for (const { key, value } of entries) {
+        const chatId = key.slice("setting:conversationAttachments:".length);
         let records: unknown;
         try {
           records = JSON.parse(value);
         } catch {
-          if (affectedChats.has(key.slice("setting:conversationAttachments:".length)))
+          if (affectedChats.has(chatId)) {
             db.prepare("DELETE FROM kv WHERE key=?").run(key);
+            const prefix = `setting:${documentBodyPrefix(chatId)}`;
+            db.prepare("DELETE FROM kv WHERE substr(key,1,length(?))=?").run(prefix, prefix);
+          }
           continue;
         }
         if (!Array.isArray(records)) continue;
@@ -203,8 +210,15 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
             typeof item.sourceArtifactId !== "string" ||
             !artifactIds.has(item.sourceArtifactId),
         );
-        if (kept.length !== records.length)
+        if (kept.length !== records.length) {
+          for (const item of records) {
+            if (!kept.includes(item) && typeof item?.attachmentId === "string")
+              db.prepare("DELETE FROM kv WHERE key=?").run(
+                `setting:${documentBodyKey(chatId, item.attachmentId)}`,
+              );
+          }
           db.prepare("UPDATE kv SET value=? WHERE key=?").run(JSON.stringify(kept), key);
+        }
       }
     }
     if (has("content_memory")) db.prepare("DELETE FROM content_memory").run();

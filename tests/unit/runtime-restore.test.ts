@@ -1,3 +1,5 @@
+import { ConversationDocuments } from "../../apps/runtime/src/services/conversation-documents.js";
+import { documentBodyKey } from "@aux/contracts/document-storage";
 import { afterEach, expect, it } from "vitest";
 import { createHash, randomBytes } from "node:crypto";
 import {
@@ -143,9 +145,14 @@ it("sanitizes protected article recall and authenticates the same Profile before
     result: { answer: "private answer" },
     createdAt: 1,
   });
-  repo.setSetting("conversationAttachments:chat", [
-    { sourceArtifactId: "unrelated", filename: "retained.txt" },
-  ]);
+  const documents = new ConversationDocuments(repo);
+  documents.add({
+    chatId: "chat",
+    filename: "retained.txt",
+    content: "Opening text ".repeat(100) + "Protected body tail",
+    sourceArtifactId: "unrelated",
+  });
+  const reference = documents.references("chat")[0]!;
   db.prepare("INSERT INTO workspaces(workspace_id,name,created_at) VALUES('space','private space',1)").run();
   db.prepare(
     "INSERT INTO tasks(task_id,workspace_id,revision,state,updated_at,json) VALUES('task','space',1,'open',1,?)",
@@ -161,6 +168,7 @@ it("sanitizes protected article recall and authenticates the same Profile before
   const backupBytes = readFileSync(join(backup.path, "state.sqlite"));
   expect(backupBytes.includes("private source paragraph")).toBe(false);
   expect(backupBytes.includes("retained.txt")).toBe(true);
+  expect(backupBytes.includes("Protected body tail")).toBe(false);
   expect(backupBytes.includes("private evidence")).toBe(true);
   repo.close();
   await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(/original Profile key/);
@@ -178,9 +186,9 @@ it("sanitizes protected article recall and authenticates the same Profile before
       )
       .get(),
   ).toMatchObject({ revoked: 1 });
-  expect(restored.getSetting("conversationAttachments:chat")).toEqual([
-    { sourceArtifactId: "unrelated", filename: "retained.txt" },
-  ]);
+  expect(new ConversationDocuments(restored).readReference(reference).content).toContain(
+    "Protected body tail",
+  );
   const evidence = restored.db
     .prepare("SELECT json FROM task_evidence WHERE evidence_id='evidence'")
     .get() as { json: string };
@@ -189,8 +197,8 @@ it("sanitizes protected article recall and authenticates the same Profile before
   const backupDbPath = join(backup.path, "state.sqlite");
   const tampered = new DatabaseSync(backupDbPath);
   tampered
-    .prepare("UPDATE aux_meta SET value='auxenc:v3:tampered' WHERE key='portable_profile_proof_v3'")
-    .run();
+    .prepare("UPDATE kv SET value=? WHERE key=?")
+    .run(JSON.stringify("auxenc:v3:tampered"), `setting:${documentBodyKey("chat", reference.attachmentId)}`);
   tampered.close();
   const manifestPath = join(backup.path, "manifest.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {

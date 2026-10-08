@@ -1,3 +1,4 @@
+import { DOCUMENT_BODY_PREFIX } from "@aux/contracts/document-storage";
 import {
   currentSpaceMemory,
   omitDerivedAndSpaceMemory,
@@ -166,6 +167,15 @@ function authenticateProtectedCopy(db: DatabaseSync, cipher?: FieldCodec) {
         cipher.decrypt(table, id, column, value);
       }
     }
+  }
+  const prefix = `setting:${DOCUMENT_BODY_PREFIX}`;
+  const bodies = db
+    .prepare("SELECT key,value FROM kv WHERE substr(key,1,length(?))=?")
+    .all(prefix, prefix) as { key: string; value: string }[];
+  for (const body of bodies) {
+    const value: unknown = JSON.parse(body.value);
+    if (typeof value !== "string") throw new Error("The backup contains an invalid document body.");
+    cipher.decrypt("kv", JSON.stringify([body.key]), "value", value);
   }
 }
 

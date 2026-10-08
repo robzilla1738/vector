@@ -372,7 +372,6 @@ export const COMMANDS = [
   ]),
   ...singleScopedRows(privateConversationControl, "conversation", "", [
     ["retry-", "-document-read", "Retry document snapshot read", ""],
-    ["toggle-", "-document-text", "Show included or full document snapshot text", ""],
     ["toggle-", "-document-details", "Toggle document snapshot details", ""],
     ["close-", "-document-preview", "Close document snapshot preview", ""],
   ]),

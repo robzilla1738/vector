@@ -2442,9 +2442,6 @@ export const ResultSchemas = {
   "conversations.attachments.read": z.object({
     attachment: ConversationAttachmentSchema,
     content: z.string(),
-    contextCharacters: z.number().int().nonnegative(),
-    contextText: z.string().optional(),
-    contextTotalCharacters: z.number().int().nonnegative().optional(),
   }),
   "conversations.attachments.add": ConversationAttachmentsSchema,
   "conversations.attachments.page": ConversationAttachmentsSchema,

@@ -96,6 +96,10 @@ export interface CoordinatorDeps {
   pages: PageService;
   model: () => ModelClient | null;
   imageReferences?: (run: Run) => string[];
+  documentEvidence?: (
+    run: Run,
+    options: import("./loop/document-context.js").DocumentEvidenceOptions,
+  ) => Promise<import("ai").ModelMessage | undefined>;
   memoryReferences?: (run: Run, query?: string) => Promise<SelectedArticleReference[]>;
   defaultModel: () => string;
   /** Pre-call user-budget gate (D11): throws permission_denied when a scope is spent. */
@@ -219,6 +223,7 @@ export class RunCoordinator {
     instructions?: string;
     contextRunIds?: string[];
     contextAttachmentIds?: string[];
+    contextAttachmentRefs?: import("@aux/contracts").AttachmentReference[];
     contextDocumentEvidence?: string;
     contextArtifactEvidence?: string;
     contextArtifactIds?: string[];
@@ -284,6 +289,7 @@ export class RunCoordinator {
         instructions: opts.instructions,
         contextRunIds: opts.contextRunIds,
         contextAttachmentIds: opts.contextAttachmentIds,
+        contextAttachmentRefs: opts.contextAttachmentRefs,
         contextDocumentEvidence: opts.contextDocumentEvidence,
         contextArtifactEvidence: opts.contextArtifactEvidence,
         contextArtifactIds: opts.contextArtifactIds,

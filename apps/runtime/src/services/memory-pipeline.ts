@@ -166,6 +166,7 @@ export class MemoryPipeline {
     if (
       run.config?.contextMemoryIds?.length ||
       run.config?.contextAttachmentIds?.length ||
+      run.config?.contextAttachmentRefs?.length ||
       run.config?.contextImageArtifactIds?.length ||
       run.config?.contextRunIds?.length ||
       run.config?.contextArtifactIds?.length ||

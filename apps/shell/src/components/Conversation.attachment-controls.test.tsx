@@ -129,7 +129,7 @@ beforeEach(() => {
     if (method === "conversations.images.get") return { images: [] };
     if (method === "conversations.attachments.get") return { attachments: chat === "a" ? documents : [] };
     if (method === "conversations.attachments.read")
-      return { attachment: documents[0], content: "Original text", contextCharacters: 12 };
+      return { attachment: documents[0], content: "Original text" };
     if (method === "results.read") return { ...artifacts[0], chatId: "a", content: "Original result" };
     if (method === "conversations.sources.get") return { sources: chat === "a" ? sources : [] };
     if (method === "runs.context.get") return { entries: [], historyEnabled: true };

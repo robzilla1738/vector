@@ -15,7 +15,6 @@ import { steppedZoomLevel } from "@aux/contracts/page-zoom";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { MODEL_REGISTRY } from "@aux/contracts/model-registry";
 import { workspaceMemoryText } from "@aux/contracts/memory-context";
-import { textContextShares } from "@aux/contracts/text-context";
 /**
  * Scripted AuxBridge for `vite --mode mock`. Runs the whole shell in a
  * plain browser without the native host or runtime — for visual review, screenshot
@@ -1464,7 +1463,6 @@ export function installMockBridge(q: URLSearchParams) {
       if (!page) throw new Error("This tab is no longer available.");
       const chatId = String(p.chatId),
         items = documents.get(chatId) ?? [];
-      if (items.length >= 5) throw new Error("Remove a snapshot before adding another.");
       const content = `Page: ${page.title}\nSource: ${page.url}\n\nMock page text for reviewing page attachments.`;
       items.push({
         attachmentId: crypto.randomUUID(),
@@ -1499,19 +1497,13 @@ export function installMockBridge(q: URLSearchParams) {
     "conversations.attachments.remove": mockConversationsAttachmentsToggle,
     "conversations.attachments.read": async (p) => {
       const items = documents.get(String(p.chatId)) ?? [];
-      const shares = textContextShares(
-        items.map((item) => (item.included ? item.content.length : 0)),
-        6000,
-      );
-      for (const [index, item] of items.entries()) {
-        const contextCharacters = shares[index]!;
+      for (const item of items) {
         if (item.attachmentId === p.attachmentId)
           return {
             attachment: documentList(String(p.chatId)).attachments.find(
               (entry) => entry.attachmentId === item.attachmentId,
             ),
             content: item.content,
-            contextCharacters,
           };
       }
       throw new Error("Document attachment not found.");
@@ -1965,7 +1957,8 @@ export function installMockBridge(q: URLSearchParams) {
       const request = MethodSchemas["runs.start"].parse(p);
       const receipt = request.requestId ? startRequests.get(request.requestId) : undefined;
       if (receipt) {
-        if (receipt.signature !== JSON.stringify(request)) throw new Error("This send belongs to its original message.");
+        if (receipt.signature !== JSON.stringify(request))
+          throw new Error("This send belongs to its original message.");
         if (!receipt.runId) throw new Error("This send was recovered without starting.");
         const accepted = runs.find((run) => run.runId === receipt.runId);
         if (!accepted) throw new Error("The original chat was removed.");
@@ -1999,7 +1992,8 @@ export function installMockBridge(q: URLSearchParams) {
           reasoning: p.reasoning as "low" | "medium" | "high" | undefined,
         },
       };
-      if (request.requestId) startRequests.set(request.requestId, { signature: JSON.stringify(request), runId: id });
+      if (request.requestId)
+        startRequests.set(request.requestId, { signature: JSON.stringify(request), runId: id });
       runs = [run, ...runs];
       emit("run.status", { run }, id);
       steps[id] = [];
@@ -2009,7 +2003,8 @@ export function installMockBridge(q: URLSearchParams) {
     "runs.reconcileStart": async (p) => {
       const request = MethodSchemas["runs.reconcileStart"].parse(p);
       const receipt = startRequests.get(request.requestId);
-      if (receipt && receipt.signature !== JSON.stringify(request)) throw new Error("This send belongs to its original message.");
+      if (receipt && receipt.signature !== JSON.stringify(request))
+        throw new Error("This send belongs to its original message.");
       if (!receipt || !receipt.runId) {
         startRequests.set(request.requestId, { signature: JSON.stringify(request), runId: null });
         return { status: "not_started", run: null };

@@ -14,9 +14,6 @@ const close = vi.fn();
 type ReadSnapshot = {
   attachment: ConversationAttachment;
   content: string;
-  contextCharacters: number;
-  contextText?: string;
-  contextTotalCharacters?: number;
 };
 const snapshot = (id = "one", content = "Original full snapshot text"): ReadSnapshot => ({
   attachment: {
@@ -28,9 +25,6 @@ const snapshot = (id = "one", content = "Original full snapshot text"): ReadSnap
     byteLength: content.length,
   },
   content,
-  contextCharacters: 8,
-  contextText: content.slice(0, 8),
-  contextTotalCharacters: content.length,
 });
 let reads: {
   params: unknown;
@@ -78,8 +72,7 @@ async function command(id: string) {
   });
   return { result };
 }
-const text = "toggle-conversation-document-text",
-  details = "toggle-conversation-document-details",
+const details = "toggle-conversation-document-details",
   retry = "retry-conversation-document-read",
   closeId = "close-conversation-document-preview";
 it("actual original read/filename/scope/source disclosure and full text remain intact", async () => {
@@ -87,18 +80,14 @@ it("actual original read/filename/scope/source disclosure and full text remain i
   expect(reads[0]!.params).toEqual({ chatId: "a", attachmentId: "one" });
   expect(host.textContent).toContain("Original document.txt");
   expect(host.textContent).toContain("Original full snapshot text");
-  await command(text);
-  expect(host.querySelector('pre[aria-label="Included document text"]')?.textContent).toBe("Original");
-  expect(control(text).getAttribute("aria-pressed")).toBe("true");
-  await command(text);
-  expect(host.querySelector('pre[aria-label="Included document text"]')).toBeNull();
+  expect(host.textContent).toContain("relevant excerpts are chosen within the model’s available context");
   const pointer = new MouseEvent("click", { bubbles: true, cancelable: true });
   await act(async () => {
     expect(control(details).dispatchEvent(pointer)).toBe(false);
   });
   expect(pointer.defaultPrevented).toBe(true);
   expect(host.querySelector<HTMLDetailsElement>("details")!.open).toBe(true);
-  expect(host.textContent).toContain("Earlier turns and retries keep the text they used");
+  expect(host.textContent).toContain("Earlier turns and retries keep their original");
 });
 it("retry actual producer keeps error identity text and resolves fresh original request", async () => {
   await render();
@@ -163,12 +152,11 @@ it("committed disconnected→connected→disconnected renews exact read and refu
   expect(host.textContent).toContain("Latest source after renewal");
   expect(host.querySelector('[role="alert"]')).toBeNull();
 });
-it("focused remaps use actual loaded summary and included-text controls", async () => {
+it("focused remap uses the actual loaded summary control", async () => {
   useStore.setState({
     settings: {
       shortcutOverrides: {
         [details]: [{ key: "j", command: true, alt: true }],
-        [text]: [{ key: "k", command: true, alt: true }],
       },
     },
   });
@@ -178,20 +166,14 @@ it("focused remaps use actual loaded summary and included-text controls", async 
     expect(dispatchShortcut({ key: "j", meta: true, alt: true, shift: false })).toBe(true);
   });
   expect(host.querySelector<HTMLDetailsElement>("details")!.open).toBe(true);
-  await act(async () => {
-    control(text).focus();
-    expect(dispatchShortcut({ key: "k", meta: true, alt: true, shift: false })).toBe(true);
-  });
-  expect(host.querySelector('pre[aria-label="Included document text"]')).not.toBeNull();
 });
-it("full included reference hides text-scope control exactly as original", async () => {
+it("excluded snapshot accurately describes future context without promising fixed excerpts", async () => {
   await render();
   const value = snapshot();
-  value.contextCharacters = value.content.length;
-  delete value.contextText;
+  value.attachment.included = false;
   await act(async () => reads[0]!.resolve(value));
-  expect(control(text)).toBeNull();
-  expect(host.textContent).toContain("Entire text reference included in new replies");
+  expect(host.textContent).toContain("Excluded from new replies");
+  expect(host.textContent).toContain(value.content);
 });
 it("hidden/unfocused controls refuse original close or display mutation", async () => {
   await ready();
@@ -199,11 +181,11 @@ it("hidden/unfocused controls refuse original close or display mutation", async 
   control(closeId).focus();
   await expect(executeCommand(closeId)).rejects.toThrow();
   host.focus();
-  await expect(executeCommand(text)).rejects.toThrow();
+  await expect(executeCommand(details)).rejects.toThrow();
   expect(close).not.toHaveBeenCalled();
 });
-it("all four actions remain original normal scoped controls", () => {
-  for (const id of [text, details, retry, closeId])
+it("all remaining actions remain original normal scoped controls", () => {
+  for (const id of [details, retry, closeId])
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
       windows: ["normal", "private"],
       palette: false,

@@ -1,3 +1,4 @@
+import { documentBodyPrefix } from "@aux/contracts/document-storage";
 import { MentionRefsSchema } from "@aux/contracts";
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync, StatementSync } from "node:sqlite";
@@ -36,6 +37,7 @@ const RUN_LOOKUP_KEYS = [
   "contextWorkspaceId",
   "contextMemoryRevoked",
   "contextImageArtifactIds",
+  "contextAttachmentRefs",
 ] as const;
 const runLookupConfig = (config: Run["config"]): string => {
   const source = (config ?? {}) as Record<string, unknown>;
@@ -1021,6 +1023,7 @@ export class Repo {
       if (receipt.logPath) artifactPaths.push(receipt.logPath);
     }
     const images = this.getSetting<{ artifactId: string }[]>(`conversationImages:${chatId}`) ?? [];
+    const documentKeys = this.settingKeys(documentBodyPrefix(chatId));
     for (const image of images) {
       const artifact = this.getArtifact(image.artifactId);
       if (artifact) artifactPaths.push(artifact.path);
@@ -1077,6 +1080,7 @@ export class Repo {
       ])
         this.q("DELETE FROM kv WHERE key=?").run(`setting:${key}:${chatId}`);
       withSecureDelete(this.db, () => {
+        for (const key of documentKeys) this.deleteSetting(key);
         this.q("DELETE FROM run_transcript WHERE run_id=?").run(`conversation-branch:${chatId}`);
         this.q(`DELETE FROM run_transcript WHERE run_id IN (${owned})`).run(chatId);
         this.q(`DELETE FROM runs WHERE run_id IN (${owned})`).run(chatId);

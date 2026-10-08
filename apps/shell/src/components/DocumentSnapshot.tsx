@@ -1,5 +1,5 @@
 import { staticHintProps } from "../ui/class-props";
-import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+import { smallButtonProps } from "../ui/button-props";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConversationAttachment } from "@aux/contracts";
 import { call, useStore } from "../store";
@@ -15,12 +15,9 @@ import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 type Snapshot = {
   attachment: ConversationAttachment;
   content: string;
-  contextCharacters: number;
-  contextText?: string;
-  contextTotalCharacters?: number;
 };
 
-/** Inspect the stored snapshot, including the exact reference text available to the next turn. */
+/** Inspect the immutable source; model excerpts are selected when each request is prepared. */
 export function DocumentSnapshot({
   chatId,
   attachmentId,
@@ -33,7 +30,6 @@ export function DocumentSnapshot({
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
-  const [includedOnly, setIncludedOnly] = useState(false);
   const connected = useStore((state) => state.connected),
     chatCurrent = useConversationOwner(chatId, connected);
   const reference = useMemo(() => ({ attachmentId }), [attachmentId]),
@@ -52,7 +48,6 @@ export function DocumentSnapshot({
     let live = true;
     setSnapshot(null);
     setError("");
-    setIncludedOnly(false);
     if (!current()) return;
     void call("conversations.attachments.read", { chatId, attachmentId })
       .then((value) => {
@@ -107,37 +102,16 @@ export function DocumentSnapshot({
         <>
           <div className="document-snapshot-scope">
             <span>
-              {!snapshot.attachment.included
-                ? "Excluded from new replies"
-                : snapshot.contextCharacters === (snapshot.contextTotalCharacters ?? snapshot.content.length)
-                  ? "Entire text reference included in new replies"
-                  : `${snapshot.contextCharacters.toLocaleString()} of ${(snapshot.contextTotalCharacters ?? snapshot.content.length).toLocaleString()} characters included · shared context limit`}
+              {snapshot.attachment.included
+                ? "Selected for new replies · relevant excerpts are chosen within the model’s available context"
+                : "Excluded from new replies"}
             </span>
-            {snapshot.contextCharacters > 0 &&
-              (snapshot.contextText !== undefined ||
-                snapshot.contextCharacters < snapshot.content.length) && (
-                <DocumentSnapshotControl
-                  {...smallGhostButtonProps}
-                  aria-pressed={includedOnly}
-                  command="toggle-conversation-document-text"
-                  current={loadedCurrent}
-                  invoke={() => setIncludedOnly((value) => !value)}
-                >
-                  {includedOnly ? "Show full snapshot" : "Show included text"}
-                </DocumentSnapshotControl>
-              )}
           </div>
-          {includedOnly ? (
-            <pre role="group" tabIndex={0} aria-label="Included document text">
-              {snapshot.contextText ?? snapshot.content.slice(0, snapshot.contextCharacters)}
-            </pre>
-          ) : (
-            <DocumentContent
-              key={attachmentId}
-              filename={snapshot.attachment.filename}
-              content={snapshot.content}
-            />
-          )}
+          <DocumentContent
+            key={attachmentId}
+            filename={snapshot.attachment.filename}
+            content={snapshot.content}
+          />
           <details className="snapshot-details">
             <DocumentSnapshotControl
               summary
@@ -152,8 +126,8 @@ export function DocumentSnapshot({
               {snapshot.attachment.sourceUrl ? "page" : "file"} are not synced.
             </p>
             <p {...staticHintProps}>
-              Removing this snapshot stops its use in new turns. Earlier turns and retries keep the text they
-              used until you delete the chat.
+              Removing this snapshot stops its use in new turns. Earlier turns and retries keep their original
+              snapshot until you delete its source chat.
             </p>
             <DocumentExtractionNote filename={snapshot.attachment.filename} />
             {snapshot.attachment.sourceUrl && (

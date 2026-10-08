@@ -16,7 +16,7 @@ const terms = (query: string) =>
     (term) =>
       !["the", "and", "that", "this", "with", "from", "about", "what", "which", "please"].includes(term),
   );
-const relevance = (text: string, query: string) => {
+export const sourceRelevance = (text: string, query: string) => {
   const lower = text.toLocaleLowerCase();
   return terms(query).reduce((score, term) => score + (lower.includes(term) ? 1 : 0), 0);
 };
@@ -27,7 +27,7 @@ export function selectedArticleExcerpt(text: string, query: string, maxChars = A
   const windows: { start: number; text: string; score: number }[] = [];
   for (let start = 0; start < text.length; start += 1_080) {
     const excerpt = text.slice(start, start + 1_200);
-    windows.push({ start, text: excerpt, score: relevance(excerpt, query) });
+    windows.push({ start, text: excerpt, score: sourceRelevance(excerpt, query) });
   }
   const selected = windows
     .sort((a, b) => b.score - a.score || a.start - b.start)
@@ -102,7 +102,7 @@ export function hydrateSelectedArticles(
     .map((reference, index) => ({
       reference,
       index,
-      score: relevance(`${reference.title} ${reference.text}`, options.query ?? ""),
+      score: sourceRelevance(`${reference.title} ${reference.text}`, options.query ?? ""),
     }))
     .sort((a, b) => b.score - a.score || a.index - b.index);
   const candidates = ranked.filter(({ reference }) => reference.text);

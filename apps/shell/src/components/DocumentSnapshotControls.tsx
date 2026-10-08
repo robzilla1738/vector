@@ -4,7 +4,6 @@ import { guardCommandCompletion } from "../command-completion";
 import { errToast } from "../store";
 type DocumentCommand =
   | "retry-conversation-document-read"
-  | "toggle-conversation-document-text"
   | "toggle-conversation-document-details"
   | "close-conversation-document-preview";
 export function DocumentSnapshotControl({

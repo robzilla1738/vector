@@ -285,7 +285,14 @@ it("releases unused reservations after completion and forks the exact saved cont
     });
     const done = f.repo.getRun(first.runId!)!;
     done.status = "completed";
-    done.config = { ...done.config, modelId: "fixture/source-model" };
+    done.config = {
+      ...done.config,
+      modelId: "fixture/source-model",
+      contextAttachmentRefs: [
+        { chatId: "original-chat", attachmentId: "original-document", sha256: "a".repeat(64) },
+      ],
+      contextSourceArtifactIds: ["original-result"],
+    };
     f.repo.saveRun(done);
     f.events.emit(EventTypes.RunUpdated, { run: done }, done.runId);
     const transcript = new TranscriptStore(f.repo.db, f.repo.columnCipher);
@@ -323,6 +330,8 @@ it("releases unused reservations after completion and forks the exact saved cont
     });
     expect(fork.sourceRunId).toBe(first.runId);
     expect(f.starts.at(-1)?.modelId).toBe("fixture/source-model");
+    expect(f.starts.at(-1)?.contextAttachmentRefs).toEqual(done.config.contextAttachmentRefs);
+    expect(f.starts.at(-1)?.contextSourceArtifactIds).toEqual(["original-result"]);
     expect(f.starts.at(-1)?.forkTranscript).toEqual(prefix);
     expect(f.starts.at(-1)?.pageIds).toEqual(["three"]);
     transcript.append(first.runId!, [

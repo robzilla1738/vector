@@ -1,4 +1,4 @@
-import { WorkbookSnapshotSchema, textContextShares } from "@aux/contracts";
+import { WorkbookSnapshotSchema } from "@aux/contracts";
 
 function columnLabel(column: number): string {
   let result = "";
@@ -28,21 +28,4 @@ export function documentReference(filename: string, content: string): string[] {
     }
   }
   return [content];
-}
-
-/** Give every sheet a share so a long first sheet cannot silently hide later sheets. */
-export function boundedDocumentReference(sections: string[], budget: number): string {
-  if (budget <= 0) return "";
-  // Extremely broad workbooks still need readable sheet headers, not thousands of initials.
-  const selected = sections.slice(0, Math.max(1, Math.floor(budget / 160)));
-  const separatorBudget = Math.max(0, selected.length - 1) * 2;
-  const shares = textContextShares(
-    selected.map((section) => section.length),
-    Math.max(0, budget - separatorBudget),
-  );
-  return selected
-    .map((section, index) => section.slice(0, shares[index]))
-    .filter(Boolean)
-    .join("\n\n")
-    .slice(0, budget);
 }
