@@ -27,6 +27,8 @@ import type { NativeBridge } from "../../apps/runtime/src/native.js";
 import { installationMethods } from "../../apps/runtime/src/api/methods/installation.js";
 import { memoryMethods } from "../../apps/runtime/src/api/methods/memory.js";
 import { initializeFieldCodec } from "../../apps/runtime/src/store/field-codec.js";
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
+import { saveDocumentSnapshot } from "../support/document-snapshot.js";
 import { ContentMemoryStore } from "../../apps/runtime/src/services/content-memory.js";
 import { MemoryPipeline } from "../../apps/runtime/src/services/memory-pipeline.js";
 import {
@@ -96,6 +98,7 @@ async function fixture() {
   const sourceDb = openDb(join(sourceDir, "state.sqlite"));
   const sourceCipher = await initializeFieldCodec(sourceDb, sourceNative.bridge, sourceId);
   const source = new Repo(sourceDb, sourceCipher);
+  const segmented = await saveDocumentSnapshot(source);
   const tasks = new TaskService(source, new EventBus(source));
   const space = tasks.createWorkspace("Protected research space");
   const task = tasks.create({
@@ -187,6 +190,7 @@ async function fixture() {
     goal,
     hook,
     evidence,
+    segmented,
   };
 }
 
@@ -288,6 +292,10 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const reopenedDb = openDb(join(f.targetDir, "state.sqlite"));
   const cipher = await initializeFieldCodec(reopenedDb, f.targetNative.bridge, f.targetId);
   const restored = new Repo(reopenedDb, cipher);
+  expect(
+    new DocumentSnapshots(restored).read(f.segmented.owner, f.segmented.snapshot.sha256).chunk.segments[0]
+      ?.text,
+  ).toBe("Protected segmented document");
   expect(restored.listWorkspaces()[0]?.name).toBe("Protected research space");
   expect(restored.getRun("recovery-run")?.goal).toBe("Protected source goal");
   const restoredEvidence = reopenedDb

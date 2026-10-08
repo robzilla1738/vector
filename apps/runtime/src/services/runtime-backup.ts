@@ -41,7 +41,12 @@ import {
 } from "node:fs/promises";
 import { DatabaseSync, backup } from "node:sqlite";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { SCHEMA_VERSION, financialTablesForDatabase } from "../store/db.js";
+import {
+  SCHEMA_VERSION,
+  financialTablesForDatabase,
+  documentTablesForDatabase,
+  discardIncompleteDocumentSnapshots,
+} from "../store/db.js";
 import type { Repo } from "../store/repo.js";
 import { sanitizePortablePageRecall } from "@aux/contracts/portable-page-recall";
 import { encryptedFieldsForDatabase, type FieldCodec } from "../store/field-codec.js";
@@ -207,7 +212,7 @@ function validateDatabase(path: string) {
   const db = new DatabaseSync(path, { readOnly: true });
   try {
     const version = (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
-    if (version !== 2 && version !== 3 && version !== SCHEMA_VERSION)
+    if (![2, 3, 4, SCHEMA_VERSION].includes(version))
       throw new Error(`This backup uses unsupported database schema ${version}.`);
     if (
       !db.prepare("SELECT 1 FROM sqlite_schema WHERE name='aux_meta'").get() ||
@@ -230,6 +235,7 @@ function validateDatabase(path: string) {
     )
       throw new Error("The selected backup contains unsupported executable database schema.");
     financialTablesForDatabase(db);
+    documentTablesForDatabase(db);
     return version;
   } finally {
     db.close();
@@ -347,6 +353,7 @@ export async function createRuntimeBackup(
     await chmod(database, 0o600);
     const sanitized = new DatabaseSync(database);
     try {
+      discardIncompleteDocumentSnapshots(sanitized);
       authenticateProtectedCopy(sanitized, repo.columnCipher);
       omitDerivedAndSpaceMemory(sanitized);
       sanitized.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
@@ -752,6 +759,7 @@ async function stageRuntimeRestoreSource(
     let omittedArtifacts: Set<string>;
     let artifactRows: Map<string, { pageId: string | null; mediaType: string; path: string }>;
     try {
+      discardIncompleteDocumentSnapshots(staged);
       authenticateProtectedCopy(staged, cipher);
       if (preservedMemory) retainSpaceMemory(staged, preservedMemory);
       else omitDerivedAndSpaceMemory(staged);

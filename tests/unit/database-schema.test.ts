@@ -206,7 +206,9 @@ describe("fresh schema", () => {
       config: { chatId: "saved-chat" },
     });
     repo.setSetting("owner-choice", "preserved");
-    previous.exec("DROP TABLE run_start_receipts; DROP TABLE coding_process_logs; PRAGMA user_version=2");
+    previous.exec(
+      "DROP TABLE run_start_receipts; DROP TABLE coding_process_logs; DROP TABLE document_segments; DROP TABLE document_snapshots; PRAGMA user_version=2",
+    );
     const savedRun = previous.prepare("SELECT * FROM runs").get();
     const savedChat = previous.prepare("SELECT * FROM conversations").get();
     previous.close();
@@ -317,9 +319,12 @@ describe("fresh schema", () => {
 it("adds opaque account receipts to an existing development schema4 Profile", () => {
   const { path } = fixture();
   const db = track(openDb(path));
-  db.exec("DROP TABLE private_spend");
+  db.exec(
+    "DROP TABLE private_spend; DROP TABLE document_segments; DROP TABLE document_snapshots; PRAGMA user_version=4",
+  );
   db.close();
   const reopened = track(openDb(path));
   expect(version(reopened)).toBe(SCHEMA_VERSION);
   expect(reopened.prepare("SELECT COUNT(*) n FROM private_spend").get()).toEqual({ n: 0 });
+  expect(reopened.prepare("SELECT COUNT(*) n FROM document_snapshots").get()).toEqual({ n: 0 });
 });

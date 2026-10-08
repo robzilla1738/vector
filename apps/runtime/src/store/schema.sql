@@ -505,6 +505,31 @@ CREATE TABLE IF NOT EXISTS private_spend (
 );
 CREATE INDEX IF NOT EXISTS private_spend_created ON private_spend(created_at);
 
+-- @schema documents
+CREATE TABLE document_snapshots(
+  owner_kind TEXT NOT NULL CHECK(owner_kind IN ('conversation','task')),
+  owner_id TEXT NOT NULL,
+  document_id TEXT NOT NULL,
+  snapshot_id TEXT NOT NULL,
+  state TEXT NOT NULL CHECK(state IN ('staging','published')),
+  manifest TEXT,
+  PRIMARY KEY(owner_kind,owner_id,document_id,snapshot_id),
+  UNIQUE(owner_kind,owner_id,document_id),
+  CHECK((state='staging' AND manifest IS NULL) OR (state='published' AND manifest IS NOT NULL))
+);
+CREATE INDEX document_snapshot_staging ON document_snapshots(state) WHERE state='staging';
+CREATE TABLE document_segments(
+  owner_kind TEXT NOT NULL,
+  owner_id TEXT NOT NULL,
+  document_id TEXT NOT NULL,
+  snapshot_id TEXT NOT NULL,
+  ordinal INTEGER NOT NULL CHECK(ordinal>=0),
+  json TEXT NOT NULL,
+  PRIMARY KEY(owner_kind,owner_id,document_id,snapshot_id,ordinal),
+  FOREIGN KEY(owner_kind,owner_id,document_id,snapshot_id)
+    REFERENCES document_snapshots(owner_kind,owner_id,document_id,snapshot_id) ON DELETE CASCADE
+);
+
 -- @schema spend
 CREATE TABLE IF NOT EXISTS ai_spend(
         reservation_id TEXT PRIMARY KEY,

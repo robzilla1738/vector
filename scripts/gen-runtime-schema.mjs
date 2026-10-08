@@ -7,10 +7,15 @@ export function generateRuntimeSchema({ check = false } = {}) {
   const directory = new URL("../apps/runtime/src/store/", import.meta.url);
   const source = readFileSync(new URL("schema.sql", directory), "utf8");
   const sections = {};
-  const markers = [...source.matchAll(/^-- @schema (profile|run_starts|process_logs|private_spend|spend)\s*$/gm)];
-  if (markers.map((marker) => marker[1]).join(",") !== "profile,run_starts,process_logs,private_spend,spend")
+  const markers = [
+    ...source.matchAll(/^-- @schema (profile|run_starts|process_logs|private_spend|documents|spend)\s*$/gm),
+  ];
+  if (
+    markers.map((marker) => marker[1]).join(",") !==
+    "profile,run_starts,process_logs,private_spend,documents,spend"
+  )
     throw new Error(
-      "Runtime schema must contain profile, run_starts, process_logs, private_spend and spend sections in order.",
+      "Runtime schema must contain profile, run_starts, process_logs, private_spend, documents and spend sections in order.",
     );
   for (let i = 0; i < markers.length; i++) {
     const marker = markers[i];

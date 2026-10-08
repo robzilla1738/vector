@@ -32,6 +32,8 @@ import {
   currentManagedRecoveryGeneration,
 } from "../../apps/runtime/src/services/managed-recovery-generation.js";
 import { issueFreshManagedBackup } from "../../apps/runtime/src/services/runtime-backup.js";
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
+import { saveDocumentSnapshot } from "../support/document-snapshot.js";
 
 const directories: string[] = [];
 afterEach(() => {
@@ -60,6 +62,8 @@ async function stagedFixture(version = 3) {
       DROP TABLE run_start_receipts;
       DROP TABLE coding_process_logs;
       DROP TABLE private_spend;
+      DROP TABLE document_segments;
+      DROP TABLE document_snapshots;
       PRAGMA user_version=2;
     `);
   const backup = await createRuntimeBackup(original, dataDir);
@@ -155,6 +159,7 @@ it("sanitizes protected article recall and authenticates the same Profile before
     sourceArtifactId: "unrelated",
   });
   const reference = documents.references("chat")[0]!;
+  const segmented = await saveDocumentSnapshot(repo);
   const events = new EventBus(repo),
     tasks = new TaskService(repo, events);
   const space = tasks.createWorkspace("private space");
@@ -182,6 +187,8 @@ it("sanitizes protected article recall and authenticates the same Profile before
   expect(backupBytes.includes("Protected body tail")).toBe(false);
   expect(backupBytes.includes("Opening text")).toBe(false);
   expect(backupBytes.includes("private evidence")).toBe(false);
+  expect(backupBytes.includes("Protected segmented document")).toBe(false);
+  expect(backupBytes.includes("Protected filename.txt")).toBe(false);
   repo.close();
   await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(/original Profile key/);
   expect(existsSync(join(dataDir, "pending-runtime-restore.json"))).toBe(false);
@@ -189,6 +196,9 @@ it("sanitizes protected article recall and authenticates the same Profile before
   const applied = await applyPendingRuntimeRestore(dataDir, dbPath);
   expect(applied.applied).toBe(true);
   const restored = new Repo(openDb(dbPath), cipher);
+  expect(
+    new DocumentSnapshots(restored).read(segmented.owner, segmented.snapshot.sha256).chunk.segments[0]?.text,
+  ).toBe("Protected segmented document");
   expect(restored.getRun("article")?.config?.contextMemoryRevoked).toBe(true);
   expect(restored.getRun("article")?.config?.context).toBeUndefined();
   expect(

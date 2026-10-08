@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import schema from "./schema.generated.json" with { type: "json" };
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 const SCHEMA_IDENTITY = "aux-v3";
 
 /** Apply a fresh schema atomically, preserving the database on failure. */
@@ -32,7 +32,7 @@ export function openDb(path: string): DatabaseSync {
         new Error(
           `This database is incompatible with Aux v3 schema ${SCHEMA_VERSION}. The file was preserved unchanged; choose a fresh AUX_DATA_DIR.`,
         );
-      if (version !== 2 && version !== 3 && version !== SCHEMA_VERSION) throw incompatible();
+      if (![2, 3, 4, SCHEMA_VERSION].includes(version)) throw incompatible();
       const hasMarker = Boolean(
         db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='aux_meta'").get(),
       );
@@ -46,7 +46,14 @@ export function openDb(path: string): DatabaseSync {
         throw incompatible();
       }
       if (identity !== SCHEMA_IDENTITY) throw incompatible();
-      if (version < SCHEMA_VERSION) {
+      if (
+        version < 5 &&
+        db
+          .prepare("SELECT 1 FROM sqlite_schema WHERE name IN ('document_snapshots','document_segments')")
+          .get()
+      )
+        throw incompatible();
+      if (version < 4) {
         if (db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='coding_process_logs'").get())
           throw incompatible();
         const statements = [
@@ -60,19 +67,25 @@ export function openDb(path: string): DatabaseSync {
             throw incompatible();
           statements.unshift(schema.run_starts);
         }
-        applySchema(db, [...statements, `PRAGMA user_version=${SCHEMA_VERSION}`]);
+        applySchema(db, [...statements, "PRAGMA user_version=4"]);
+      }
+      if (version < 5) {
+        applySchema(db, [schema.documents, "PRAGMA user_version=5"]);
       }
     } else {
       applySchema(db, [
         schema.profile,
         schema.run_starts,
         schema.process_logs,
+        schema.documents,
         `PRAGMA user_version=${SCHEMA_VERSION}`,
       ]);
     }
     if (!financialTablesForDatabase(db).length) applySchema(db, [schema.private_spend]);
     if (path !== ":memory:") chmodSync(path, 0o600);
     db.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA secure_delete=OFF");
+    // A prior process never published these imports; no plaintext needs to be read to retire them.
+    discardIncompleteDocumentSnapshots(db);
     return db;
   } catch (error) {
     db.close();
@@ -135,4 +148,36 @@ export function financialTablesForDatabase(db: DatabaseSync): string[] {
   )
     throw new Error("The opaque account budget schema is invalid.");
   return ["private_spend"];
+}
+
+export function documentTablesForDatabase(db: DatabaseSync): string[] {
+  const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
+  const tables = ["document_snapshots", "document_segments"];
+  const found = tables.filter((table) =>
+    db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table),
+  );
+  if (version < 5) {
+    if (found.length) throw new Error("Document tables do not match the historical database schema.");
+    return [];
+  }
+  if (version !== 5 || found.length !== tables.length)
+    throw new Error("The protected document schema is incomplete.");
+  const expected = [
+    "owner_kind:1,owner_id:2,document_id:3,snapshot_id:4,state:0,manifest:0",
+    "owner_kind:1,owner_id:2,document_id:3,snapshot_id:4,ordinal:5,json:0",
+  ];
+  for (const [index, table] of tables.entries()) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];
+    if (columns.map((column) => `${column.name}:${column.pk}`).join(",") !== expected[index])
+      throw new Error("The protected document row identity is invalid.");
+  }
+  return tables;
+}
+
+/** Snapshot copies may have foreign keys disabled; explicitly retire children before their staging manifest. */
+export function discardIncompleteDocumentSnapshots(db: DatabaseSync) {
+  if (!documentTablesForDatabase(db).length) return;
+  db.exec(`DELETE FROM document_segments WHERE (owner_kind,owner_id,document_id,snapshot_id) IN
+    (SELECT owner_kind,owner_id,document_id,snapshot_id FROM document_snapshots WHERE state='staging');
+    DELETE FROM document_snapshots WHERE state='staging'`);
 }
