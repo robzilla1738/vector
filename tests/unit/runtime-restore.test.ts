@@ -51,7 +51,13 @@ async function stagedFixture(version = 3) {
     status: "complete",
     createdAt: Date.now(),
   });
-  if (version === 2) original.db.exec("DROP TABLE run_start_receipts; PRAGMA user_version=2");
+  if (version === 2)
+    original.db.exec(`
+      DROP TABLE run_start_receipts;
+      DROP TABLE coding_process_logs;
+      DROP TABLE private_spend;
+      PRAGMA user_version=2;
+    `);
   const backup = await createRuntimeBackup(original, dataDir);
   original.close();
   const changed = new Repo(openDb(dbPath));
