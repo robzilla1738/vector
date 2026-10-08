@@ -31,6 +31,9 @@ it.each([
   "native.personRead",
   "native.personReadContext",
   "native.permissionRetire",
+  "native.cloudPreview",
+  "native.cloudPreviewClose",
+  "native.spaceBindingsSet",
 ] as const)("browser mock cannot manufacture %s native authority", async (name) => {
   const host = createMockHost();
   await expect(Reflect.apply(Reflect.get(host, name), host, [{}])).rejects.toMatchObject({

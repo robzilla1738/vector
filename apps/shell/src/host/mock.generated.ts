@@ -7,7 +7,7 @@ import { HostMethods, HostEvents } from "@aux/contracts/host-methods";
 import { AuxError } from "@aux/contracts";
 import type { createHostClient } from "./client.generated";
 
-const NATIVE_ONLY = new Set(["native.foundationModelsStatus","native.foundationModelsStart","native.foundationModelsRead","native.foundationModelsCancel","native.copilotStart","native.copilotEndpoint","native.copilotStop","native.browserImportSelectWindow","native.browserImportSelectExport","native.browserImportExportPoll","native.browserImportExportCancel","native.browserImportDiscover","native.browserImportExtensionReview","native.browserImportBegin","native.browserImportPoll","native.browserImportCancel","native.remoteDebuggingGet","native.remoteDebuggingSet","native.cdpReset","native.cdpCatalog","native.cdpAttach","native.cdpStartNavigation","native.cdpTakeNavigationReceipt","native.cdpDispatch","native.adoptSessionPage","native.egressContext","native.egressInstall","native.egressRevoke","native.egressResumePerson","native.egressResumeRun","native.egressCheckRunResume","native.egressRunTerminal","native.createAgentPage","native.creatorCleanupProof","native.closeCreatedPage","native.recorderStart","native.recorderDrain","native.recorderStop","native.personRead","native.personReadContext","native.credentialContext","native.projectFiles","native.projectFile","native.projectChanges","native.projectCancel","native.terminalStart","native.terminalRead","native.terminalInput","native.terminalResize","native.terminalClose","native.terminalListeners","native.terminalPreview","native.terminalPreviewClose","native.contentBlockState","native.contentBlockOperation","native.contentBlockBegin","native.contentBlockAppend","native.contentBlockCommit","native.credentialAdmit","native.permissionRetire"]);
+const NATIVE_ONLY = new Set(["native.foundationModelsStatus","native.foundationModelsStart","native.foundationModelsRead","native.foundationModelsCancel","native.copilotStart","native.copilotEndpoint","native.copilotStop","native.browserImportSelectWindow","native.browserImportSelectExport","native.browserImportExportPoll","native.browserImportExportCancel","native.browserImportDiscover","native.browserImportExtensionReview","native.browserImportBegin","native.browserImportPoll","native.browserImportCancel","native.remoteDebuggingGet","native.remoteDebuggingSet","native.cdpReset","native.cdpCatalog","native.cdpAttach","native.cdpStartNavigation","native.cdpTakeNavigationReceipt","native.cdpDispatch","native.adoptSessionPage","native.egressContext","native.egressInstall","native.egressRevoke","native.egressResumePerson","native.egressResumeRun","native.egressCheckRunResume","native.egressRunTerminal","native.createAgentPage","native.creatorCleanupProof","native.closeCreatedPage","native.recorderStart","native.recorderDrain","native.recorderStop","native.personRead","native.personReadContext","native.credentialContext","native.projectFiles","native.projectFile","native.projectChanges","native.projectCancel","native.terminalStart","native.terminalRead","native.terminalInput","native.terminalResize","native.terminalClose","native.terminalListeners","native.terminalPreview","native.terminalPreviewClose","native.cloudPreview","native.cloudPreviewClose","native.spaceBindingsSet","native.contentBlockState","native.contentBlockOperation","native.contentBlockBegin","native.contentBlockAppend","native.contentBlockCommit","native.credentialAdmit","native.permissionRetire"]);
 const RESULTS: Record<string, unknown> = {
   "capabilities": {
     "buildId": "mock-buildid",
@@ -491,15 +491,6 @@ const RESULTS: Record<string, unknown> = {
     "truncated": false
   },
   "showOriginal": 0,
-  "native.cloudPreview": {
-    "previewId": "00000000-0000-4000-8000-000000000000",
-    "processId": "00000000-0000-4000-8000-000000000000",
-    "contentId": "a",
-    "url": "https://example.com/"
-  },
-  "native.cloudPreviewClose": {
-    "closed": true
-  },
   "native.turnSourceContext": {
     "revision": 0,
     "layout": null,
@@ -588,9 +579,6 @@ const RESULTS: Record<string, unknown> = {
     "futureDocuments": true,
     "appliedAt": 0,
     "activeDocuments": []
-  },
-  "native.spaceBindingsSet": {
-    "accepted": true
   },
   "native.listPages": {
     "pages": []
