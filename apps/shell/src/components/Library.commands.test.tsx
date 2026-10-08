@@ -40,6 +40,24 @@ beforeEach(() => {
   bridge.privateMode = false;
   bridge.windowKind = "normal";
   vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
+  vi.spyOn(bridge, "bookmarksInvoke").mockResolvedValue({
+    method: "bookmarks.folders.snapshot",
+    result: {
+      rootId: "1",
+      editable: true,
+      folders: [
+        {
+          nodeId: "1",
+          parentId: null,
+          index: 0,
+          title: "Bookmarks",
+          path: [],
+          permanent: true,
+          childIds: [],
+        },
+      ],
+    },
+  });
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -220,9 +238,12 @@ it("held older visits after view transition cannot overwrite new history or pend
   await command(ids.more);
   await command(ids.view, host.querySelector<HTMLElement>("#library-bookmarks")!);
   await tick();
+  expect(bridge.bookmarksInvoke).toHaveBeenCalledWith({ method: "bookmarks.folders.snapshot", params: {} });
+  expect(host.querySelector('[aria-busy="true"]')).toBeNull();
   await act(async () => resolve(visits("Retired", 1)));
   expect(host.textContent).not.toContain("Retired 0");
   expect(host.querySelector('[aria-label="Search bookmarks"]')).not.toBeNull();
+  expect(host.querySelector('[aria-busy="true"]')).toBeNull();
   expect(host.querySelector('[role="alert"]')).toBeNull();
 });
 it("queued read refuses retired owner before producing native request", async () => {

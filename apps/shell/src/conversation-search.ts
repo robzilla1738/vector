@@ -1,5 +1,5 @@
 import type { MethodResult } from "@aux/contracts";
-import { call } from "./store/shared";
+import { call } from "./store";
 import { conversationFinder } from "./text-surface-find";
 
 type Hit = NonNullable<MethodResult<"conversations.search">["match"]>;
