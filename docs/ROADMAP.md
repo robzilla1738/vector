@@ -1,5 +1,14 @@
 # Aux v3: the fast, free, powerful AI browser
 
+**October 8 local checkpoint:** the owner requested wrapping up and stopping further
+testing. Completed work is committed on local main; execution is paused with
+remaining acceptance preserved in [STATUS](STATUS.md) and the
+[execution graph](ROADMAP-EXECUTION-GRAPH.md). Built app: 272 methods / 30 events,
+areas 0033–0037 and Node 26.9. Current source: 273 methods / 30 events, including
+registered/applied but uncompiled icon compression and native image Copy. No
+additional build, benchmark or test campaign is scheduled by this wrap-up.
+
+
 ## North star: what Aux feels like after this plan
 
 - **Instant.** Aux opens as fast as stock Chromium, typing in the command bar paints the same frame, and pages prerender before Enter.

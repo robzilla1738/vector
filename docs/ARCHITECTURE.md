@@ -1,6 +1,6 @@
 # Aux architecture
 
-The pinned Node runtime requires complete matching ICU data for memory tokenization with `Intl.Segmenter`. Packaging supplies official pinned ICU78 data through a fixed app-bundle path before Node initializes. The earlier small-ICU crash is resolved. Current delivery and acceptance evidence belongs in [STATUS](STATUS.md); the competitive execution remains active.
+The pinned Node runtime requires complete matching ICU data for memory tokenization with `Intl.Segmenter`. Packaging supplies official pinned ICU78 data through a fixed app-bundle path before Node initializes. The earlier small-ICU crash is resolved. Current delivery and acceptance evidence belongs in [STATUS](STATUS.md); the competitive execution is paused at the owner’s October 8 wrap-up request, with remaining acceptance recorded.
 
 Aux is a Chromium browser with a trusted `chrome://aux/` React shell and a per-Profile Node runtime. Chromium owns windows, WebContents, tabs, navigation, browser sessions, extensions, history, bookmarks, permissions and the native glass underlay. The shell places page surfaces through SurfaceEmbed and invokes the native host through its packaged Mojo bootstrap.
 
@@ -25,7 +25,7 @@ Aux owns the agent loop; provider SDKs supply model transport rather than an emb
 
 Projects combine read-only Files/Changes with a reviewed terminal and native Preview. The runtime checks the original window and granted directory identity. Native listeners and isolated guest surfaces require real process/socket ownership and cleanup acknowledgements. Preview admission is internal to the authenticated native bridge, with a synchronous retirement fence at runtime shutdown. Native area 0096 adds cloud Preview with original VM/process/listener proof. Human Preview and Undo use the retained original Session and actual native window independently of agent dispatch; they never create or resume a VM. Successful completion transfers a background server's monitor and cancellation ownership before dispatch retires. Retention commits only with durable completion and keeps the original funding expiry; Stop, window retirement, policy/account changes and unknown process outcomes close the original Session. Native capability publication must register the concrete asynchronous handler, and Preview must receive the original native window context. The frozen pre-consolidation area 0034 repaired omissions in those registrations and routes. The runtime-only launcher checks the compiled ABI before staging runtime changes. Actual cloud acceptance remains separate from source checks and compilation.
 
-The legacy JSON planner, Electron migration and standalone drivers have been removed. Backup exports minimize observation artifacts to retained evidence. [ROADMAP](ROADMAP.md) and [the execution graph](ROADMAP-EXECUTION-GRAPH.md) define the active work; [STATUS](STATUS.md) distinguishes integrated source from built and observed native behavior.
+The legacy JSON planner, Electron migration and standalone drivers have been removed. Backup exports minimize observation artifacts to retained evidence. [ROADMAP](ROADMAP.md) and [the execution graph](ROADMAP-EXECUTION-GRAPH.md) preserve the remaining work; [STATUS](STATUS.md) distinguishes integrated source from built and observed native behavior.
 
 Native socket events replace periodic bridge polling. Chromium owns background tab discarding and native bookmark identities, so human browser controls do not require Node. Model context is a bounded projection of the complete durable transcript. Exact capture references bind selected saved articles; relevant excerpts use the remaining provider input budget after required plans, receipts and images. Automatic recall warms cooperatively and enters only ephemeral provider messages. It does not append plaintext recall into the durable transcript.
 
@@ -37,7 +37,7 @@ Embedded tabs own their native input acknowledgement through their actual child 
 
 Private AI belongs to the actual Chromium off-the-record Profile. Authenticated native capability proof admits its UUID, in-memory SQLite and owner-only temporary files. The native Profile owns worker retirement and temporary cleanup; its existing private tabs retain signed-in sessions and exact document authority. Normal Temporary tasks remain isolated signed-out tabs. The authenticated native broker forwards only strict credential, budget and cloud realms to the original normal runtime. The selected provider descriptor and short-lived access lease inherit saved/environment/OAuth connections; refresh tokens and private content stay with their original owners. Original provider revocation aborts inherited private transports. Private daily/monthly costs use opaque aggregate leases without prompts, URLs, run IDs or provider identifiers. Basic private source-backed answer delivery, Stop and last-window retirement have passed a native walkthrough. Provider revocation, explicit export and shared-account/cloud acceptance remain separate pending flows.
 
-Cloud coding captures the original VM, Session and command identities. Local and cloud file/process receipts share the encrypted ledger; remote receipts never become local PIDs or filesystem paths. Uncertain dispatch cannot replay, and background commands retain network policy until confirmed retirement. Cloud Preview and human Changes/Logs/Stop/Undo routing are integrated. Process metadata contains bounded summaries; encrypted UTF-8 chunks supply cursor-based history without SDK access. Schema-4 startup conversion removes the replaced embedded log field atomically after original key admission. Cloud code-mode parity and actual cloud workflow acceptance remain active.
+Cloud coding captures the original VM, Session and command identities. Local and cloud file/process receipts share the encrypted ledger; remote receipts never become local PIDs or filesystem paths. Uncertain dispatch cannot replay, and background commands retain network policy until confirmed retirement. Cloud Preview and human Changes/Logs/Stop/Undo routing are integrated. Process metadata contains bounded summaries; encrypted UTF-8 chunks supply cursor-based history without SDK access. Schema-4 startup conversion removes the replaced embedded log field atomically after original key admission. Cloud code-mode parity and actual cloud workflow acceptance remain pending.
 
 ## Immutable documents and native receipt exports
 
@@ -64,6 +64,23 @@ and hash before destination replacement. Cancellation, original document/window
 retirement and runtime shutdown join writers and remove unclaimed files. Claimed
 files stay owned until native release. Startup scrubs only the runtime-owned export
 subdirectory. Explicitly saved destinations remain user files.
+
+Saved-document citations use a distinct typed source/locator/quote contract.
+Only excerpts admitted by successful model steps acquire protected source-relative
+recipes in encrypted run config; raw snippets are not copied there. Restart
+verification decrypts only the cited segment and validates its captured identity,
+span and digest. Public Run responses and activity events exclude these internal
+recipes before journaling. Verified transcript citations carry a server-created,
+owner/manifest-bound cursor that opens the exact saved section. Document citations
+cannot reconcile browser effects.
+
+Native stored-image Copy reuses the original artifact export claim without sending
+encoded bodies through the renderer. Original document/window proof, a retained
+file read, isolated decode and a clipboard sequence witness govern publication.
+It preserves a newer human clipboard, retains private-Profile provenance, and
+retires its exact decoder/claim on cancellation. Copy has its own precise native
+method capability and does not disable existing Save. This implementation is in
+source; the current built 272-method app predates it.
 
 ## Browser chrome and chat surfaces
 

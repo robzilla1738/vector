@@ -3,7 +3,9 @@
 Run `pnpm perf` only at phase ends, after the Aux and stock native apps are built.
 The schema-7 runner and matching window/presentation instrumentation are
 implemented. Aux area 0037 and stock area 0051 are applied in their preserved
-source trees; matching compilation and a complete comparison remain pending.
+source trees. Aux area 0037 is compiled; matching stock compilation and a complete
+comparison remain pending. Further measurement is paused at the owner’s October 8
+wrap-up request.
 
 The comparison takes five paired runs and reports medians for cold launch,
 actual first presentation, launch to usable content, navigation input,

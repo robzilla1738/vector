@@ -1,6 +1,24 @@
 # Building Aux locally
 
-Aux uses Chromium 154 on macOS arm64. The current product checkout is `~/aux-chromium-product/chromium/src`; the current preview app is `out/AuxFast/Aux.app`, with the frozen 42-area native checkpoint consolidated into 32 equivalent areas plus additive areas 0033–0036. The latest native build succeeded in 33 steps / 30m40.20s with **272 methods / 30 events**, `97d6daa5466e`, including native PDF/DOCX extraction, retained-file receipt Save and acknowledged extension reload. Its pinned slim Node 26.9 runtime was staged and launched successfully in a disposable Profile, then retired normally with exit 0. Native DOCX import and paged preview were observed. Later account/retained-process/split-drag/export-completion/early-Enter/image/citation renderer changes, native area 0037 and the source-identity header improvement need the next combined staging/build; they are not in this renderer snapshot. Current acceptance is in STATUS. The launcher and staging tools default to that product checkout and Fast output through `dev-defaults.json`. Set `AUX_CHROMIUM_SRC` to use another checkout, or `--flavor dev` for `out/AuxDev/Aux.app`. Preserve both existing checkouts and caches; do not reset them or run setup/push to change an applied build.
+Aux uses Chromium 154 on macOS arm64. The product checkout is
+`~/aux-chromium-product/chromium/src`; the built app is `out/AuxFast/Aux.app`.
+The latest build compiled native areas 0033–0037 in **44 steps / 26m07.40s** with
+**272 methods / 30 events**, `97d6daa5466e`, 200 renderer assets and slim Node 26.9.
+Its disposable preview retired normally with exit 0 and Profile/lock cleanup.
+Native DOCX/text/PDF batch intake and the preceding DOCX paged preview were
+observed; complete workflow and performance acceptance remain in STATUS.
+
+Local main and product source now include registered areas 0038–0039 for lossless
+icon compression and real native image Copy. Generated source has **273 methods /
+30 events**, `cce8203bcbd0`; these changes are **not compiled in the current app**.
+Use the ordinary combined launcher below when development resumes. Runtime-only
+staging refuses the old compiled ABI. No additional build was run during the
+owner-requested wrap-up.
+
+The launcher defaults to this preserved product checkout and Fast output through
+`dev-defaults.json`. Set `AUX_CHROMIUM_SRC` for another checkout, or `--flavor dev`
+for `out/AuxDev/Aux.app`. Preserve both checkouts and caches; do not reset them or
+run setup/push to change applied source.
 
 ```bash
 export AUX_CHROMIUM_SRC="$HOME/aux-chromium-product/chromium/src"

@@ -2,13 +2,21 @@
 
 ## Current local checkpoint
 
-Work is consolidated on local `main`. Nothing has been pushed; no hosted CI, signing, notarization or release has run. Aux remains under development. The approved competitive-browser execution is active in [the execution graph](ROADMAP-EXECUTION-GRAPH.md). Integrated source and the native candidate remain distinct from measured acceptance; competitor parity is not yet established.
+Work is consolidated on local `main`. Nothing has been pushed; no hosted CI, signing, notarization or release has run. Aux remains under development. The competitive-browser execution is paused at the owner’s October 8 wrap-up request; remaining work is preserved in [the execution graph](ROADMAP-EXECUTION-GRAPH.md). Integrated source and the native candidate remain distinct from measured acceptance; competitor parity is not yet established.
 
 Read the [fluidity and coding plan](AUX-FLUIDITY-PLAN.md) for the delivered scope, [ROADMAP](ROADMAP.md) for owner decisions and scheduled acceptance, [ARCHITECTURE](ARCHITECTURE.md) for system boundaries, and [native build instructions](../chromium/BUILDING.md) before starting another builder. Earlier chronological notes are [archived](archive/status-before-sidebar-polish-2026-10-07.md).
 
+## Final local checkpoint — owner wrap-up
+
+- **Source:** local `main` includes verified document citations and direct saved-section navigation, early Enter/draft preservation, full-size image Save/Reveal, real native image Copy, and lossless icon compression. Native areas 0038–0039 are registered in `chromium/patches/series` and applied to the preserved product source under the sole lock after the preview retired. Generated source has **273 methods / 30 events**, `cce8203bcbd0`.
+- **Built app:** the latest candidate compiled areas 0033–0037 in **44 steps / 26m07.40s**, with **272 methods / 30 events**, `97d6daa5466e`, 200 renderer assets and slim Node 26.9. It includes the citation, early-Enter, image Save/Reveal and window-measurement slices, but **does not include native image Copy or compressed icons**. Those require the next ordinary combined build; runtime-only staging cannot bridge the ABI difference.
+- **Observed:** one native four-file selection retained the valid DOCX, UTF-8 text and PDF attachments; the malformed DOCX was not imported. The earlier DOCX Next/Previous and late-fact preview evidence remains valid. No provider call, citation opening, office/image generation, full-chat workflow, receipt Save or clipboard acceptance was completed in this walkthrough. The owner took over the preview; automation stopped. The preview subsequently retired with launcher exit 0, and its disposable Profile and plain lock were removed normally.
+- **Checks:** the consolidated citation check passed typecheck/lint and 4,473 of 4,474 cases; its stale Run-returning mock was fixed and the four affected cases passed. Image Copy contracts/UI have focused TypeScript/lint and one affected UI case; native patches have exact replay and code review. No additional test suite or build was run after the owner’s wrap-up request.
+- **Remaining:** native compilation/clipboard acceptance for 0038–0039, source-to-office/image journeys, full-chat context, extension/export/cloud/provider walkthroughs, paired performance and the required manual 20-task smoke. The app-size target remains unmet; no phase or competitor-parity claim is made.
+
 ## Competitive-browser work in progress
 
-The October 7 approved plan is being implemented with three isolated workers and one integrator. Its acceptance work is active; the earlier owner deferral described below is historical and does not waive this plan's performance, design or workflow evidence.
+The October 7 approved plan was implemented with three isolated workers and one integrator. Completed slices are on local main. Further builds and acceptance work are paused; the earlier owner deferral described below is historical and does not waive this plan's performance, design or workflow evidence.
 
 - Optional setup now ends after four stages. Starters fill the ordinary composer with current native source identities. The separate first-task dispatcher was deleted.
 - Native areas 0087–0090 replace the polling bridge, add Profile-owned memory saving and expose bookmark controls/events without Node. The first candidate compiled in 96 steps / 11m46.78s. With its exact runtime paused, native bookmark folder Rename/Undo, Settings and memory-saver controls remained usable. Chromium proactively discarded a clean background tab; activation restored it. Area 0095 now publishes sleeping/wake state; its changed-flow observation remains pending.
@@ -25,7 +33,7 @@ The preceding integrated check on checksum-verified official Node 26.9 passed **
 
 The performance harness records an immediate same-Profile warm relaunch, 100 native input samples per browser for p95 and original shell/runtime physical footprints. Available runtime boot marks include elapsed process time. No complete valid measurement report exists yet.
 
-The coverage audit found ordinary Find/Zoom still depended on Node. Area 0036 moves them to the original browser window and one Profile-owned Find service; runtime retirement cancels its own pending requests without canceling human Find. The old private-only Zoom bridge is removed. Enter now executes the visible Ask/Search choice immediately. The committed-input AI classifier and its 150 ms wait have been removed from the browser path. Explicit utility classification remains available through the governed runtime API, with bounded cancellation and no chat-library entry. Runtime dist rebuilt and the preceding 17 affected tests passed; the immediate command-bar flow then passed 29 affected tests. The 267-method source ABI is `bb4454bd1568`; the native changes compiled, and Find/Zoom were observed with the exact disposable runtime paused. The latest immediate-Enter renderer still awaits staging.
+The coverage audit found ordinary Find/Zoom still depended on Node. Area 0036 moves them to the original browser window and one Profile-owned Find service; runtime retirement cancels its own pending requests without canceling human Find. The old private-only Zoom bridge is removed. Enter now executes the visible Ask/Search choice immediately. The committed-input AI classifier and its 150 ms wait have been removed from the browser path. Explicit utility classification remains available through the governed runtime API, with bounded cancellation and no chat-library entry. Runtime dist rebuilt and the preceding 17 affected tests passed; the immediate command-bar flow then passed 29 affected tests. The 267-method source ABI is `bb4454bd1568`; the native changes compiled, and Find/Zoom were observed with the exact disposable runtime paused. The immediate-Enter renderer is staged in the latest 272-method app; the early-startup walkthrough remains open.
 
 The final source coverage pass removed the separate five-document wall. Document collections keep all metadata and separately protected immutable bodies and previews. Validated old collections convert on first access; untouched historical inline collections have not been scanned at startup. New turns persist exact hash-bound references and prepare relevant ephemeral excerpts within the actual remaining model budget, shared with selected articles. Retry, branch, delegated work and Set runs preserve exact source identities; Remove, source-chat deletion, Forget and backup authentication have explicit handling. Skills and occurrence history now support keyset paging and complete server-side search/suggestions. Full Space export/import round-tripped 501 Skills. Scheduling cooperatively visits all eligible candidates while re-reading current definitions; older work is not skipped by a newest-200 limit. These source changes have focused checks; native document/routine workflows remain pending.
 
@@ -35,17 +43,17 @@ Private AI now completes a real source-backed answer through the configured Gate
 
 The native private Stop control cancelled an active research task. Two private windows shared one worker; closing one kept it alive, and closing the last retired it. After completed and cancelled turns, last-window closure exited the worker and removed `/tmp/aux-private-MmKI6f`; the normal browser stayed alive with an empty conversation list. Normal shutdown exited 0 and removed its disposable Profile and plain lock. These observations establish basic private answer/Stop/retirement, without proving every provider, export, streaming revocation or shared-budget/cloud flow. An attempted physical takeover during navigation could not target the retired accessibility element; it is not takeover evidence.
 
-The current native candidate compiled and linked in **47 steps / 10m59.84s**, with **270 methods / 30 events**, `289705b74098`. The consolidated 32 areas plus additive `0033-native-browser-api-repairs.patch` are built. Area 0033 repairs the pinned History constructor and keeps an owned hostname through the site-control callback. With its exact runtime paused, native History search and no-match state worked; a new Orchid Space retained native tab placement and acquired its authentic runtime mapping after resume. Download Reveal selected the saved file in Finder; dismissal survived Refresh after resume and kept the file. A native tracker exception persisted across resume. Native Save as PDF produced a real 176,171-byte PDF while Node was paused. These are changed-flow observations, without paired performance or phase acceptance.
+The earlier 270-method candidate compiled and linked in **47 steps / 10m59.84s**, with **270 methods / 30 events**, `289705b74098`. The consolidated 32 areas plus additive `0033-native-browser-api-repairs.patch` are built. Area 0033 repairs the pinned History constructor and keeps an owned hostname through the site-control callback. With its exact runtime paused, native History search and no-match state worked; a new Orchid Space retained native tab placement and acquired its authentic runtime mapping after resume. Download Reveal selected the saved file in Finder; dismissal survived Refresh after resume and kept the file. A native tracker exception persisted across resume. Native Save as PDF produced a real 176,171-byte PDF while Node was paused. These are changed-flow observations, without paired performance or phase acceptance.
 
 A single native selection retained **30 valid documents from 31 files**, reporting the invalid UTF-8 file separately. The provider correctly retrieved **847213 credits** from late in the 159,193-byte document 30 when asked in the side panel. The same question in full chat failed because covering the page destroyed its native input connector; Retry then rejected changed state. The source fix now retains the selected native WebContents layer through full chat, History and Settings while excluding covered pages from focus, input and visible timing witnesses. Normal navigation preserves the connector; actual owner retirement still destroys it. Six focused lifecycle tests pass; the full-chat fix awaits native observation. The candidate retired normally with exit 0, removing its disposable Profile and plain lock. Evidence: `/tmp/aux-native-library-filter-build-launch-api-repaired.log`.
 
 Task evidence now stores its complete JSON in authenticated ciphertext tied to the actual SQLite sequence, with original task/criterion identity checked on read. New inserts never write the plaintext body. Existing evidence converts once with authenticated resumable progress, secure deletion and WAL retirement before completion; subsequent starts check only the completion proof. Backup and cross-Profile recovery preserve authenticated inventory. Physical reopened-SQLite, migration, transplant rejection and protected restore checks pass. The slow backup fixture is callback-sensitive under Vitest: observed stage timings complete in 221 ms, while bare awaits can take tens of seconds. Standalone production backup takes 50–99 ms. A Node/Vitest scheduling interaction is suspected, not established; no production callback workaround, timeout increase or startup-improvement claim was introduced. Runtime dist was rebuilt on main.
 
-The sidebar now retains stable hooks when a tab retires, enables its private Chats disclosure and fetches only three rows for the compact chat preview. Private chat history reads its own ephemeral repository, fences late replies to the original private identity and avoids normal folder storage. Complete history remains available through All chats; preview folder counts no longer claim totals. Twenty-two relevant tests, shell TypeScript and touched lint pass. These latest renderer changes await the next staging step.
+The sidebar now retains stable hooks when a tab retires, enables its private Chats disclosure and fetches only three rows for the compact chat preview. Private chat history reads its own ephemeral repository, fences late replies to the original private identity and avoids normal folder storage. Complete history remains available through All chats; preview folder counts no longer claim totals. Twenty-two relevant tests, shell TypeScript and touched lint pass. These renderer changes are staged in the latest 272-method app.
 
 Initial native catalog adoption preserves address drafts, and delayed private Home autofocus respects an earlier Cmd-L; 29 focused cases pass. The private composer now explains cloud request routing and ephemeral chat retention. Account-provider admission bypasses only the default redundant model review after managed/explicit policy, with original-owner checks and genuine parked model continuation; subscription acceptance remains pending.
 
-Native tracker exceptions use the browser’s durable blocking snapshot, with generation fences preserving human changes during downloaded-list updates; the replaced runtime toggle/polling path is deleted. The running 270-method picker accepts bounded UTF-8 text. The 272-method source now wires native PDF/DOCX/text extraction, strict import/read interfaces, one schema-5 protected DocumentSnapshots service, original-owner cursor binding, atomic publication, authenticated backup/recovery and bounded previews/retrieval. The dedicated byte-only PDFium/DOCX utility compiled successfully after reusing Chromium’s PDFium include configuration. Complete receipt export streams captured evidence through a native retained-file save claim; closing its original window retires pending preparation. The combined native app compiled and launched. Actual DOCX import, paged preview and retained-composer observation are recorded below; PDF, receipt Save and extension reload observations remain pending. No binary extraction is inferred from filenames.
+Native tracker exceptions use the browser’s durable blocking snapshot, with generation fences preserving human changes during downloaded-list updates; the replaced runtime toggle/polling path is deleted. The earlier 270-method picker accepts bounded UTF-8 text. The 272-method source now wires native PDF/DOCX/text extraction, strict import/read interfaces, one schema-5 protected DocumentSnapshots service, original-owner cursor binding, atomic publication, authenticated backup/recovery and bounded previews/retrieval. The dedicated byte-only PDFium/DOCX utility compiled successfully after reusing Chromium’s PDFium include configuration. Complete receipt export streams captured evidence through a native retained-file save claim; closing its original window retires pending preparation. The combined native app compiled and launched. Actual DOCX import, paged preview and retained-composer observation are recorded below; PDF batch intake was observed subsequently; provider retrieval, receipt Save and extension reload observations remain pending. No binary extraction is inferred from filenames.
 
 ## Delivered behavior
 
@@ -75,7 +83,7 @@ The actual default provider used in these walkthroughs was `anthropic/claude-son
 
 Runtime dist was rebuilt before runtime tests. The earlier delivery check passed **4,218 tests across 686 files**, typecheck and lint, with existing advisory warnings (`/tmp/aux-final-owner-command-check.log`). Earlier integrated failures were fixed and rerun in their affected suites; passing suites were not repeatedly rerun. The subsequent reply/context fixes passed **40 focused tests**, including real SDK prompt conversion, native-source drift rejection and strict restored-source admission. Runtime dist was rebuilt and staged; touched-file lint passed. Evidence: `/tmp/aux-final-recovery-focused.log`, `/tmp/aux-final-recovery-mentions.log` and `/tmp/aux-final-recovery-lint.log`.
 
-Chromium is **154.0.8037.98**. The app path is `/Users/rcourson/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`. Its latest native build has **272 methods / 30 events**, `97d6daa5466e`, and launched with matched slim Node 26.9. That fresh runtime reached ready at **526.06 ms elapsed process time**; this single diagnostic is not paired performance acceptance. The previous fully staged 270-method candidate used `289705b74098` and 198 renderer assets; its fresh runtime reached ready at **330.67 ms elapsed process time**. That is one earlier boot observation without a paired comparison, not timing for the new candidate. Runtime-only disposable launches verify the actual compiled ABI before staging. Earlier evidence: `/tmp/aux-native-library-filter-build-launch-api-repaired.log`.
+Chromium is **154.0.8037.98**. The app path is `/Users/rcourson/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`. Its latest native build has **272 methods / 30 events**, `97d6daa5466e`, and launched with matched slim Node 26.9. The areas 0033–0037 candidate reached runtime ready at **1,095.27 ms elapsed process time**; the preceding areas 0033–0036 candidate recorded **526.06 ms**. These single diagnostics are not paired performance acceptance. The previous fully staged 270-method candidate used `289705b74098` and 198 renderer assets; its fresh runtime reached ready at **330.67 ms elapsed process time**. That is one earlier boot observation without a paired comparison, not timing for the new candidate. Runtime-only disposable launches verify the actual compiled ABI before staging. Earlier evidence: `/tmp/aux-native-library-filter-build-launch-api-repaired.log`.
 
 The latest 42-patch source checkpoint is consolidated into **32 disjoint area patches**, followed by the additive native API repairs. Replay from the pinned Chromium baseline reproduced all 850 native paths and exact aggregate bytes; comparison with the product source found zero content or executable-mode differences. This extends the earlier 100-to-32 consolidation. [Patch documentation](../chromium/patches/README.md) records the replay evidence. This consolidation adds no new native behavior or performance claim.
 
@@ -142,7 +150,7 @@ original process and additional window, proves subsequent ordinary address input
 and closes only that new window. Role observation ends after the completed
 one-window memory snapshot. Eight focused measurement/target cases, Swift source
 typecheck, two renderer readiness cases and shell TypeScript passed. The new
-instrumentation is source-only and is not in the observed 272-method build. No
+instrumentation is compiled in the latest 272-method build; measurements remain pending. No
 performance report or target pass is claimed. The preserved stock app's missing
 object inputs need rebuilding before equivalent new measurements can run.
 
@@ -159,7 +167,7 @@ previews are explicit, and oversized images avoid unsupported message reads.
 Image and office-result exports offer Reveal for the exact acknowledged
 destination, bound to their original artifact/view and native/runtime owner.
 Three focused affected cases and shell TypeScript passed, with no lint errors.
-These renderer slices await combined staging.
+These renderer slices are staged in the latest 272-method candidate; native result-export acceptance remains pending.
 
 Verified saved-document citations are integrated in source. The successful model
 step retains only protected source-relative admission recipes; continuation reads
@@ -177,8 +185,8 @@ pass. No production shim or broad repeat was added. Evidence:
 `/tmp/aux-document-citations-integrated-check.log` and
 `/tmp/aux-run-suspension-fixture.log`. Native citation observation remains pending.
 
-The next sole-owner combined build is active, staging 200 renderer assets and
-native area 0037 with the stable generated header. Both preserved source trees
+The sole-owner combined build completed with 200 renderer assets and native
+area 0037 with the stable generated header. Its owned preview retired normally. Both preserved source trees
 have their matching window/display-interval instrumentation applied; StockFast
 still needs its missing object outputs reconstructed before paired measurement.
 
@@ -187,6 +195,19 @@ file bytes against stock's 353,158,965: **161.68 decimal MB overhead**, above th
 90 MB target. Its staged Node 26.9 runtime is 130,976,821 bytes, including a
 78,979,712-byte executable and 33,105,536-byte full ICU data. Required Node and
 ICU already exceed 90 MB together; trivial cleanup cannot meet the target. No
-large duplicate runtime payload remains. A bounded lossless icon-compression
-slice is being prepared; startup code-cache changes await actual measurements.
+large duplicate runtime payload remains. The lossless icon-compression
+slice is integrated in source, saving 1,550,898 bytes across the three icon copies
+without changing image representations; it is not yet in the built app, and startup code-cache changes await actual measurements.
 This inventory is not a phase performance pass.
+
+
+Native image Copy is a human-WebUI-only method. It reuses the original retained
+artifact claim, reads and verifies bytes off the UI thread, and decodes through
+Chromium’s isolated image decoder without shrinking. It checks the original
+window/document and clipboard sequence before writing; a newer clipboard is
+preserved. Private copies retain native off-the-record provenance. Cancellation,
+replacement and the preparation deadline retire the decoder and exact claim.
+The gallery checks that precise method capability once, independently of Save,
+and reports Copy only after the native image acknowledgement. Source bounds are
+64 MiB encoded and Chromium’s 128 MiB decoded limit; larger originals retain Save.
+Native compilation and clipboard observation remain pending.

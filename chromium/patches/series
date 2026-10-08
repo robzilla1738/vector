@@ -35,3 +35,5 @@ aux/0034-native-document-extraction.patch
 aux/0035-native-receipt-export.patch
 aux/0036-native-extension-reload.patch
 aux/0037-native-window-performance.patch
+aux/0038-app-icon-compression.patch
+aux/0039-image-clipboard.patch

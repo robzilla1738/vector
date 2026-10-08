@@ -1,5 +1,21 @@
 # Aux competitive execution graph
 
+## Execution checkpoint — October 8 wrap-up
+
+The owner requested wrapping up, landing completed work on local main and stopping
+further testing. Execution is paused, with the full scope and unfinished acceptance
+preserved. All returned worker slices are integrated. No further test run, build,
+launch or benchmark is scheduled by this wrap-up.
+
+The latest 272-method app built in 44 steps / 26m07.40s with 200 renderer assets,
+Node 26.9, document citations, early Enter, full-size image Save and area 0037.
+Native DOCX/text/PDF batch intake was observed. The owner used the preview;
+automation stopped, then normal retirement exited 0 and removed its Profile/lock.
+Source now has 273 methods / 30 events (`cce8203bcbd0`): areas 0038–0039 add
+lossless icon compression and native image Copy. Both are registered and applied
+to product source, but uncompiled. Their TypeScript/focused UI/replay evidence
+is recorded in STATUS; no native clipboard or complete workflow pass is claimed.
+
 ## Outcome and baseline
 
 Implement the approved Mac daily-driver plan completely: frictionless human and
@@ -13,7 +29,7 @@ ownership, secret protection, durable effects and conflict-safe undo remain.
 Execution was authorized on October 7, 2026. The source baseline is clean local
 main at `62f3626c8d0b50880452e928c3e24ba0277f4d2e`. The integrated native candidate is
 Chromium 154.0.8037.98 in `~/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`,
-with the native tree through the frozen 42-area source checkpoint consolidated into 32 equivalent areas. The latest combined areas 0033–0036 compiled in 33 steps / 30m40.20s with 272 methods / 30 events, `97d6daa5466e`; the same owned pipeline staged checksum-pinned slim Node 26.9 and completed a disposable launch. DOCX import, Next/Previous preview and preserved attachment/draft were observed; normal Quit exited 0 and removed the Profile and plain lock. Earlier 270-method observations established History, Space creation/adoption, download Reveal/dismissal, tracker exceptions and Save as PDF with the runtime paused. The retained-page fix for full-chat connector retirement is staged in the new candidate and awaits native observation. A source-backed first answer, runtime-unavailable Find/Zoom, private answer/Stop and last-private-window retirement have earlier observations. Broader provider, takeover and workflow acceptance remain. Existing delivery observations live in STATUS.
+with the native tree through the frozen 42-area source checkpoint consolidated into 32 equivalent areas. The preceding combined areas 0033–0036 compiled in 33 steps / 30m40.20s with 272 methods / 30 events, `97d6daa5466e`; the same owned pipeline staged checksum-pinned slim Node 26.9 and completed a disposable launch. DOCX import, Next/Previous preview and preserved attachment/draft were observed; normal Quit exited 0 and removed the Profile and plain lock. Earlier 270-method observations established History, Space creation/adoption, download Reveal/dismissal, tracker exceptions and Save as PDF with the runtime paused. The retained-page fix for full-chat connector retirement is staged in the new candidate and awaits native observation. A source-backed first answer, runtime-unavailable Find/Zoom, private answer/Stop and last-private-window retirement have earlier observations. Broader provider, takeover and workflow acceptance remain. Existing delivery observations live in STATUS.
 There is no complete current performance comparison. Source presence and previous
 unit checks do not establish native performance or competitor parity.
 
@@ -245,7 +261,7 @@ items explicit; do not shrink the objective to a finished subset.
   unobserved. Runtime-only launches verify the compiled host ABI before staging.
   Enter executes the displayed Ask/Search choice immediately in source; the
   committed-input AI classifier was deleted and its focused checks pass. That
-  renderer change awaits staging. Explicit governed utility classification
+  renderer change is staged in the latest 272-method app. Explicit governed utility classification
   retains bounded provider cancellation.
 - Area 0100 adds original shell/runtime role measurement; stock's additive patch
   was retired after its missing object cache requested a full rebuild, stopped
@@ -282,21 +298,22 @@ are integrated. The dedicated byte-only PDFium/DOCX utility has compiled success
 native capture adapters, shared snapshot services, bounded preview/retrieval and
 streamed native receipt Save are integrated in source. Their combined native app
 compiled and launched with slim Node 26.9. Actual DOCX import and paged preview
-were observed; other document formats, full chat, exports and extension flows
-remain pending. The candidate retired normally with exit 0 and Profile cleanup.
+were observed; the subsequent build also retained native DOCX/text/PDF batch
+attachments. Full chat, provider retrieval, exports and extension flows remain pending. The candidate retired normally with exit 0 and Profile cleanup.
 The latest integrated Node-26.9 check passed 4,446 tests across 720 files,
 typecheck and lint after rebuilding runtime dist. The subsequent citation
 integration passed typecheck/lint and 4,473 of 4,474 tests; its sole stale mock
 was corrected to the actual Run-returning contract and all four affected cases
-pass. Unchanged suites are not repeated. The next combined build is active;
+pass. Unchanged suites are not repeated. The next combined build completed;
 actual current app overhead remains 161.68 decimal MB, above the 90 MB target.
 
 Integrated source closes early Enter handoff before React controls mount, keeps
 full-size image Save available, and verifies typed document citations against
 protected admitted source spans with direct saved-section opening. These slices
-await combined staging and native observation. Area 0037 adds genuine warm-window
+are staged in the latest 272-method app; their remaining native workflow
+observations are open. Area 0037 adds genuine warm-window
 controls readiness and paired display-frame intervals to the existing benchmark;
-its source is applied under the sole dev lock, with the sole-owner combined build active. Matching stock area 0051 is applied;
+its source is applied under the sole dev lock, with the sole-owner combined build completed. Matching stock area 0051 is applied;
 its missing compiled inputs remain to be rebuilt. Warm process relaunch is diagnostic only;
 missing warm-window or frame-interval evidence remains unavailable. First static
 paint is not interactive readiness. The benchmark target summary is advisory and
