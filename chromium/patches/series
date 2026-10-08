@@ -34,3 +34,4 @@ aux/0033-native-browser-api-repairs.patch
 aux/0034-native-document-extraction.patch
 aux/0035-native-receipt-export.patch
 aux/0036-native-extension-reload.patch
+aux/0037-native-window-performance.patch
