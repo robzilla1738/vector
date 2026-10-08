@@ -13,7 +13,7 @@ ownership, secret protection, durable effects and conflict-safe undo remain.
 Execution was authorized on October 7, 2026. The source baseline is clean local
 main at `62f3626c8d0b50880452e928c3e24ba0277f4d2e`. The integrated native candidate is
 Chromium 154.0.8037.98 in `~/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`,
-with the native tree through the frozen 42-area source checkpoint consolidated into 32 equivalent areas. The compiled candidate still contains the earlier 267-method ABI; the integrated 270-method candidate is rebuilding after an additive history-constructor correction. A source-backed first answer and runtime-unavailable Find/Zoom now work in a disposable Profile. A real private source-backed answer and Stop now work; last-window closure retires the worker and its temporary data. Broader provider, takeover and workflow acceptance remain. Existing delivery observations live in STATUS.
+with the native tree through the frozen 42-area source checkpoint consolidated into 32 equivalent areas. The 270-method/30-event candidate compiled in 47 steps / 10m59.84s with additive native API repairs in area 0033. History, Space creation, download Reveal/dismissal, tracker exceptions and Save as PDF worked with the runtime paused. The retained-page fix for full-chat connector retirement is integrated in source and awaits native observation. A source-backed first answer and runtime-unavailable Find/Zoom now work in a disposable Profile. A real private source-backed answer and Stop now work; last-window closure retires the worker and its temporary data. Broader provider, takeover and workflow acceptance remain. Existing delivery observations live in STATUS.
 There is no complete current performance comparison. Source presence and previous
 unit checks do not establish native performance or competitor parity.
 
@@ -227,11 +227,12 @@ items explicit; do not shrink the objective to a finished subset.
   still open. Passing unchanged suites are not repeated. Runtime dist was rebuilt.
   The current 270-method/30-event source ABI is `289705b74098`. Native History,
   download dismissal, Space presentation, PDF ownership, document batches and
-  tracker exception authority are integrated. The native rebuild stopped on a
-  History constructor error, repaired in additive area 0033; rebuilding is active.
+  tracker exception authority are integrated. The native candidate compiled in 47 steps / 10m59.84s after the
+  pinned constructor and hostname ownership repairs in additive area 0033.
+  Runtime-paused History/Space/download/filter/PDF flows were observed.
   The frozen 42-area checkpoint was replayed into 32 disjoint areas, matching all
-  850 native paths, bytes and executable modes. This proves source equivalence,
-  not compilation or native acceptance.
+  850 native paths, bytes and executable modes. This proves source equivalence; compilation and the
+  changed-flow observations are recorded separately in STATUS.
 - The frozen pre-consolidation areas 0033–0036 are compiled. The complete Mojo include allowed the
   combined candidate to build in 420 steps / 32m32.25s. The ordinary composer
   completed a real source-backed answer in a fresh disposable Profile within
@@ -266,13 +267,18 @@ live document. Blocking source updates preserve the browser’s current controls
 through source-generation checks. Replaced toggle polling is deleted.
 
 The frozen 42-area checkpoint was consolidated to 32 equivalent areas. Additive
-0033 corrects History result construction; its native rebuild is active. The
-compiled app still has 267 methods / 28 events. The source-backed first answer,
-runtime-paused Find/Zoom and basic private answer/Stop/retirement observations
-belong to that earlier candidate. History/Space/download/filter/document batch
-observations await the current build.
+0033 repairs History construction and site-control hostname ownership. The
+compiled app now has 270 methods / 30 events. Native History search, Space
+creation/adoption, download Reveal and persistent dismissal, tracker exceptions
+and Save as PDF worked with Node paused. A 31-file selection retained 30 valid
+text documents and separately reported the invalid one; a late document-30 fact
+was retrieved correctly in the side panel. Full chat exposed native connector
+retirement; the retained-page source fix awaits native observation. Cleanup
+exited 0 and removed the disposable Profile and plain lock.
 
-Text batch selection does not supply PDF/DOCX ingestion. A sandboxed byte-only
-utility, immutable extraction metadata, bounded chunks and protected complete
-text snapshots will replace inconsistent per-file bounds and filename-derived
-extraction claims before complete local-files workflow acceptance.
+Text batch selection does not supply PDF/DOCX ingestion. Frozen typed extraction
+and import/read interfaces and schema-5 protected complete document snapshots
+are integrated. A dedicated sandboxed byte-only utility, original native capture
+adapters and bounded preview/retrieval wiring remain in progress. Whole-flow
+acceptance, physical Take over, paired performance and the manual 20-task smoke
+remain open. No phase completion or competitor-parity claim is made.
