@@ -91,6 +91,7 @@ const requirements = {
       "migrateTabSpaces",
       "organizationSnapshot",
       "organizationCommit",
+      "native.spaceBindingsSet",
       "spaces.create",
       "spaces.update"
     ]

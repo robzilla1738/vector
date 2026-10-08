@@ -11,6 +11,7 @@ import { createServiceContainer, type ServiceContainer } from "./services/contai
 import { navigateControlledPage } from "./services/pages/controlled-navigation.js";
 import { registerNativeSubagentWorkload } from "./services/native-subagent-workload.js";
 import { registerNativeProjectPreview } from "./services/native-project-preview.js";
+import { installNativeSpaceBindings } from "./services/native-space-bindings.js";
 import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
 import { withRunAuthorityMutation } from "./services/overnight-authority.js";
 import { lineageRuns, overnightRoot, runAncestry, runRoot } from "./services/run-lineage.js";
@@ -287,6 +288,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const agentInstallWork = new Set<Promise<unknown>>();
   let stopNativeDeviceConfirmation: (() => void) | undefined;
   let stopNativeProjectPreview: (() => void) | undefined;
+  let nativeSpaceBindings: Promise<(() => Promise<void>) | undefined> | undefined;
   let stopRunEndHooks: (() => void) | undefined;
   type RuntimeServices = Services & {
     workspaceFolders: WorkspaceFolderService;
@@ -1211,6 +1213,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           return featureAvailabilityFor([]);
         })
     : Promise.resolve(featureAvailabilityFor([]));
+  if (!privateSession && nativeIdentity && native.spaceBindingsSet) {
+    nativeSpaceBindings = nativeIdentity.then((identity) => {
+      if (closed || !identity.methods.includes("native.spaceBindingsSet")) return;
+      return installNativeSpaceBindings(repo, events, { spaceBindingsSet: (input) => native.spaceBindingsSet!(input) }, (error) => {
+        console.error("Native Space publication failed", error instanceof AuxError ? error.code : "internal");
+      });
+    }).catch(() => undefined);
+  }
   let blockingBoot: Promise<void> | undefined;
   const ensureBlocking = () => {
     if (closed) throw new AuxError("cancelled", "Content filtering construction retired.");
@@ -3179,6 +3189,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     retireAuthority: async () => {
       try {
         const results = await Promise.allSettled([
+          nativeSpaceBindings?.then((stop) => stop?.()),
           Promise.allSettled(cliInstallWork),
           Promise.allSettled(agentInstallWork),
           serviceContainer.peek("blocking")?.close(),

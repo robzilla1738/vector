@@ -202,7 +202,7 @@ export const ConversationTurn = memo(function ConversationTurn({
                 ))}
             </div>
           )}
-          {run.config?.projectRoot && <CodingRunActivity runId={run.runId} live={isLive(run)} />}
+          {(run.config?.projectRoot || run.config?.executionTarget === "cloud") && <CodingRunActivity runId={run.runId} live={isLive(run)} />}
           <RunImages runId={run.runId} />
         </>
       ) : (

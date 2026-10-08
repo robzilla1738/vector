@@ -51,8 +51,7 @@ const RESULTS: Record<string, unknown> = {
     "catalogVersion": 0
   },
   "bindTabSpace": {
-    "spaceId": "mock-spaceid",
-    "workspaceId": "mock-workspaceid"
+    "spaceId": "mock-spaceid"
   },
   "migrateTabSpaces": {
     "migrated": 0
@@ -589,6 +588,9 @@ const RESULTS: Record<string, unknown> = {
     "futureDocuments": true,
     "appliedAt": 0,
     "activeDocuments": []
+  },
+  "native.spaceBindingsSet": {
+    "accepted": true
   },
   "native.listPages": {
     "pages": []
