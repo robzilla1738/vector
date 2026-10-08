@@ -20,6 +20,16 @@ export function openCommandSurface(request: {
   useStore.getState().setOverlay("command-surface");
   for (const listener of listeners) listener();
 }
+/** Cmd-L keeps an unfinished new tab instead of retargeting its existing page. */
+export function refocusNewTabSurface(): boolean {
+  if (current?.mode !== "new-tab" || useStore.getState().overlay !== "command-surface") return false;
+  const input = document.querySelector<HTMLInputElement>(
+    `[data-command-surface-sequence="${current.sequence}"] input`,
+  );
+  input?.focus();
+  input?.select();
+  return true;
+}
 export function closeCommandSurface(expectedSequence?: number): void {
   if (expectedSequence !== undefined && current?.sequence !== expectedSequence) return;
   current = null;

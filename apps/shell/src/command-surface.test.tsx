@@ -9,6 +9,7 @@ vi.mock("./feature-availability", async () => {
 });
 vi.mock("./use-feature", () => ({ featureStage: () => "on", useFeature: () => true }));
 import { COMMANDS, type CommandDef } from "@aux/contracts";
+import { COMMAND_ACTIONS } from "./commands";
 import { CommandSurface } from "./components/CommandSurface";
 import { bridge } from "./bridge";
 import { useStore } from "./store";
@@ -137,6 +138,17 @@ it("an old command completion cannot close a replacement surface request", () =>
   closeCommandSurface(0);
   expect(useStore.getState().overlay).toBe("command-surface");
 });
+
+it.each(["vertical", "horizontal"] as const)(
+  "Cmd-L preserves an unfinished new-tab destination in %s layout",
+  (tabLayout) => {
+    useStore.setState({ settings: { tabLayout } });
+    openCommandSurface({ mode: "new-tab" });
+    COMMAND_ACTIONS["open-address"]();
+    expect(useStore.getState().overlay).toBe("command-surface");
+    expect(useStore.getState().activePageId).toBe("p1");
+  },
+);
 
 it("opens command mode with registered rows before typing and declares supported window boundaries", async () => {
   await act(async () =>

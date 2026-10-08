@@ -9,7 +9,7 @@ import {
   type ShortcutOverrides,
 } from "@aux/contracts";
 import type { RefObject } from "react";
-import { openCommandSurface, closeCommandSurface } from "./command-surface-state";
+import { openCommandSurface, closeCommandSurface, refocusNewTabSurface } from "./command-surface-state";
 import { COMMAND_SURFACE_ACTIONS } from "./command-surface-actions";
 import { commandExecutor } from "./command-execution";
 import { invokeScopedControl } from "./scoped-control-commands";
@@ -332,6 +332,7 @@ export const COMMAND_ACTIONS = {
       ? window.history.forward()
       : st.activePageId && tabCommand({ kind: "forward", pageId: st.activePageId }).catch(errToast),
   "open-address": () => {
+    if (refocusNewTabSurface()) return;
     const state = useStore.getState();
     if ((state.settings.tabLayout ?? "vertical") === "horizontal") {
       openCommandSurface({ mode: "edit" });
