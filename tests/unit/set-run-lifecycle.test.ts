@@ -2754,6 +2754,8 @@ it("switches the original cloud family to local only after cleanup ACK and live 
           throw new Error("No provider dispatch expected");
         },
         hasOpen: () => false,
+        prepareFinish: async () => {},
+        finishRun: closeRun,
         closeRun,
       },
     };
@@ -2863,6 +2865,8 @@ async function originalCloudResourceReview() {
       eval: executor.eval.bind(executor),
       wait: executor.wait.bind(executor),
       hasOpen: executor.hasOpen.bind(executor),
+      prepareFinish: executor.prepareFinish.bind(executor),
+      finishRun: executor.finishRun.bind(executor),
       closeRun: executor.closeRun.bind(executor),
     },
   };

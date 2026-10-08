@@ -77,7 +77,7 @@ function fixture(proofSession = "original-session", initialOutput = "ready\n", c
     context,
     identity,
     transport,
-    authorize: async () => ({ network: false, check: () => {} }),
+    authorize: async () => ({ network: false, check: () => {}, checkPolicy: () => {} }),
     authorizeAccess: async () => () => {},
   };
   const service = new CloudCodingProcesses(options);

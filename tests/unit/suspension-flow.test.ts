@@ -454,6 +454,8 @@ it("restores a durable Cloud setup handoff only through reviewed local cleanup",
     ...h.coordinator.deps,
     agentLoop: {
       cloudExecutor: {
+        prepareFinish: async () => {},
+        finishRun: closeRun,
         closeRun,
         recoverReview,
         selected: () => false,

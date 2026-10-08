@@ -22,7 +22,7 @@ import { posix } from "node:path";
 import { Writable } from "node:stream";
 import { AuxError, type Suspension, type ResourceLimitsReview } from "@aux/contracts";
 import { ResourceFundingUnavailable, ResourceLimitsUnavailable } from "./run-funding.js";
-import type { Sandbox, Session } from "@vercel/sandbox";
+import type { Command, Sandbox, Session } from "@vercel/sandbox";
 import type { Repo } from "../store/repo.js";
 import type { BashSeatbeltInput, BashSeatbeltResult } from "../agent/loop/bash.js";
 import { ExecutionResourceLedger } from "./execution-resource-ledger.js";
@@ -72,6 +72,15 @@ interface LiveResource {
   previews?: CloudPreviews;
   exposedPorts: Set<number>;
   previewPorts: Promise<unknown>;
+  source?: { token: string; windowId: string };
+  replWorker?: Command;
+  completion?: {
+    phase: "preparing" | "retained";
+    cancellation: AbortSignal;
+    retire(): void;
+    expiry?: ReturnType<typeof setTimeout>;
+    checking?: Promise<void>;
+  };
 }
 const OUTPUT_BYTES = 64 * 1024;
 function boundedOutput(limit = OUTPUT_BYTES) {
@@ -198,6 +207,8 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     }
     if (!resource.ready)
       throw new AuxError("needs_input", "The original VM requires cleanup before further dispatch.");
+    if (resource.completion)
+      throw new AuxError("cancelled", "This cloud session has been handed to its original window.");
     if (resource.ctx.threadId !== ctx.threadId || resource.ctx.turnId !== ctx.turnId)
       throw new AuxError("ref_stale", "This cloud session belongs to the original turn.");
     await this.deps.assertOwner(ctx, resource.quote);
@@ -267,6 +278,11 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       );
     const { json, digest: quoteDigest } = cloudQuoteIdentity(quote);
     const originalDigest = createHash("sha256").update(JSON.stringify(ctx)).digest("hex");
+    const token = this.deps.repo.getRun(ctx.runId)?.config?.nativeTurnContext;
+    const source =
+      token && this.deps.native?.turnSourceContext
+        ? { token, windowId: (await this.deps.native.turnSourceContext(token)).windowId }
+        : undefined;
     // Load the SDK and prove funding/capability before consuming a money decision.
     const create = this.deps.create ?? (await import("@vercel/sandbox")).Sandbox.create;
     await this.deps.assertOwner(ctx, quote);
@@ -365,6 +381,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       previewPorts: Promise.resolve(),
       quote,
       quoteDigest,
+      source,
       expiresAt: Math.min(this.now() + quote.timeoutMs, sandbox.expiresAt?.getTime() ?? Infinity),
       ready: false,
       contractualConfiguration:
@@ -586,6 +603,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
           void resource.previews?.closeProcess(id).catch(() => {
             /* Retained previews retry retirement with the original VM. */
           });
+          if (resource.completion && !resource.processes?.hasRetainedServers()) resource.completion.retire();
         },
       },
     });
@@ -620,6 +638,11 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
           throw new AuxError("ref_stale", "The original cloud Preview session changed.");
       };
       exactSession();
+      if (resource.completion) {
+        if (token !== resource.source?.token)
+          throw new AuxError("permission_denied", "Open this server from its original Aux window.");
+        await this.assertCompletionOwner(resource, resource.completion);
+      }
       await this.assertAccount(resource, signal);
       await native.turnSourceContext!(token);
       exactSession();
@@ -639,31 +662,10 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         return receipt;
       },
       listeners: async (process, port, token, signal) => {
-        if (!process.execution?.supervisor || !process.execution.commandId)
-          throw new AuxError("ref_stale", "The server has no original process ownership proof.");
-        const program = await this.processProgram();
         await current(token, signal);
-        const stdout = boundedOutput(),
-          stderr = boundedOutput();
-        const result = await resource.session.runCommand({
-          cmd: "node",
-          args: [
-            "--input-type=module",
-            "-e",
-            program,
-            "--",
-            JSON.stringify({ kind: "listeners", supervisor: process.execution.supervisor, port }),
-          ],
-          cwd: "/vercel/sandbox",
-          signal,
-          timeoutMs: 5000,
-          stdout: stdout.stream,
-          stderr: stderr.stream,
-        });
+        const listeners = await this.listeners(resource, process, port, signal);
         await current(token, signal);
-        if (result.exitCode !== 0 || stdout.truncated())
-          throw new AuxError("ref_stale", stderr.value() || "The original cloud listener retired.");
-        return CloudListenerSchema.array().max(256).parse(JSON.parse(stdout.value()));
+        return listeners;
       },
       expose: (port, token, signal, fence) =>
         this.updatePreviewPort(resource, port, {
@@ -735,6 +737,39 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     })();
     return this.processWorker;
   }
+
+  private async listeners(
+    resource: LiveResource,
+    process: CodingProcessReceipt,
+    port?: number,
+    signal?: AbortSignal,
+  ): Promise<CloudListener[]> {
+    if (!process.execution?.supervisor || !process.execution.commandId)
+      throw new AuxError("ref_stale", "The server has no original process ownership proof.");
+    const program = await this.processProgram();
+    this.assertRetained(resource, signal);
+    const stdout = boundedOutput(),
+      stderr = boundedOutput();
+    const result = await resource.session.runCommand({
+      cmd: "node",
+      args: [
+        "--input-type=module",
+        "-e",
+        program,
+        "--",
+        JSON.stringify({ kind: "listeners", supervisor: process.execution.supervisor, port }),
+      ],
+      cwd: "/vercel/sandbox",
+      signal,
+      timeoutMs: Math.min(5000, Math.max(1, resource.expiresAt - this.now())),
+      stdout: stdout.stream,
+      stderr: stderr.stream,
+    });
+    this.assertRetained(resource, signal);
+    if (result.exitCode !== 0 || stdout.truncated())
+      throw new AuxError("ref_stale", stderr.value() || "The original cloud listener retired.");
+    return CloudListenerSchema.array().max(256).parse(JSON.parse(stdout.value()));
+  }
   private async network(resource: LiveResource, network: boolean, signal?: AbortSignal): Promise<void> {
     if ([...resource.networkLocks.values()].some((mode) => mode !== network))
       throw new AuxError(
@@ -803,6 +838,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
               timeoutMs: Math.max(1, resource.expiresAt - this.now()),
               signal: deps.signal,
             });
+            resource.replWorker = worker;
             void worker.wait().then(
               () => {
                 workerFailure = true;
@@ -873,6 +909,8 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
   }
   private async assertLive(resource: LiveResource, signal?: AbortSignal) {
     this.assertRetained(resource, signal);
+    if (resource.completion)
+      throw new AuxError("cancelled", "This cloud session has been handed to its original window.");
     await this.deps.assertOwner(resource.ctx, resource.quote);
     await this.assertAccount(resource, signal);
   }
@@ -943,6 +981,11 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       if (stoppedAt === undefined)
         throw new AuxError("needs_input", "The original VM stop receipt is incomplete.");
       resource.finalReceipt = final;
+      if (resource.completion) {
+        clearTimeout(resource.completion.expiry);
+        resource.completion.cancellation.removeEventListener("abort", resource.completion.retire);
+      }
+      resource.replWorker = undefined;
       resource.processes?.sessionStopped();
       await resource.previews?.closeAll();
       let usage: CloudMeteredUsage | undefined;
@@ -1130,6 +1173,137 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         ready: false,
         contractualConfiguration: false,
       });
+    }
+  }
+
+  /** Transfer only proven servers before coordinator.finish retires agent dispatch. */
+  async prepareFinish(runId: string, cancellation: AbortSignal): Promise<void> {
+    const resource = this.live.get(runId);
+    if (!resource?.processes || !resource.source || resource.completion) return;
+    await this.assertLive(resource, cancellation);
+    const owner: NonNullable<LiveResource["completion"]> = {
+      phase: "preparing",
+      cancellation,
+      retire: () => {
+        void this.closeRun(runId).catch(() => {
+          // The exact resource and its unsettled receipt remain owned for cleanup retry.
+        });
+      },
+    };
+    try {
+      // The REPL has no human owner after completion. Its detached command must
+      // retire even when independent, supervised background servers are retained.
+      await resource.commands;
+      if (resource.replWorker) {
+        const worker = resource.replWorker;
+        const signal = AbortSignal.timeout(5000);
+        await worker.kill("SIGTERM", { abortSignal: signal });
+        await worker.wait({ signal });
+        resource.replWorker = undefined;
+        this.repls.delete(runId);
+      }
+      const retained = await resource.processes.retainServers(
+        async (receipt, checkPolicy) => {
+          checkPolicy();
+          await this.assertCompletionOwner(resource, owner);
+          // This command interrogates kernel PID births, group membership and socket
+          // ownership inside this exact captured Session; a receipt alone is not proof.
+          if (!(await this.listeners(resource, receipt, undefined, cancellation)).length) return;
+          const execution = JSON.stringify(receipt.execution);
+          return async () => {
+            try {
+              checkPolicy();
+              if (receipt.state !== "running" || JSON.stringify(receipt.execution) !== execution)
+                throw new AuxError("ref_stale", "The original cloud server changed.");
+              await this.assertCompletionOwner(resource, owner);
+              checkPolicy();
+            } catch (error) {
+              owner.retire();
+              throw error;
+            }
+          };
+        },
+        () => {
+          this.checkCompletionOwner(resource, owner);
+          resource.completion = owner;
+          owner.expiry = setTimeout(owner.retire, Math.max(1, resource.expiresAt - this.now()));
+          owner.expiry.unref();
+          cancellation.addEventListener("abort", owner.retire, { once: true });
+          return owner.retire;
+        },
+      );
+      if (retained && !resource.processes.hasRetainedServers()) await this.closeRun(runId);
+    } catch (error) {
+      await this.closeRun(runId);
+      throw error;
+    }
+  }
+
+  private checkCompletionOwner(resource: LiveResource, owner: NonNullable<LiveResource["completion"]>): void {
+    this.assertRetained(resource, owner.cancellation);
+    const run = this.deps.repo.getRun(resource.ctx.runId);
+    if (
+      !resource.source ||
+      !run ||
+      run.config?.nativeTurnContext !== resource.source.token ||
+      (run.config?.chatId ?? run.runId) !== resource.ctx.threadId ||
+      !(owner.phase === "retained"
+        ? run.status === "completed"
+        : ["running", "planning", "completed"].includes(run.status)) ||
+      this.deps.resourceScopes(resource.ctx.runId).length ||
+      this.deps.accountBudget?.snapshot().some((window) => window.limitUsd !== undefined)
+    )
+      throw new AuxError("cancelled", "The original cloud server owner retired.");
+  }
+
+  private async assertCompletionOwner(
+    resource: LiveResource,
+    owner: NonNullable<LiveResource["completion"]>,
+  ): Promise<void> {
+    this.checkCompletionOwner(resource, owner);
+    if (!owner.checking) {
+      const proof = (async () => {
+        await this.assertAccount(resource, owner.cancellation);
+        await this.deps.accountBudget?.refresh();
+        const source = resource.source;
+        if (
+          !source ||
+          !this.deps.native?.turnSourceContext ||
+          (await this.deps.native.turnSourceContext(source.token)).windowId !== source.windowId
+        )
+          throw new AuxError("permission_denied", "The original cloud server window retired.");
+        this.checkCompletionOwner(resource, owner);
+      })();
+      owner.checking = proof;
+      void proof
+        .finally(() => {
+          if (owner.checking === proof) owner.checking = undefined;
+        })
+        .catch(() => {});
+    }
+    await owner.checking;
+    this.checkCompletionOwner(resource, owner);
+  }
+
+  /** A prepared handoff becomes human-owned only after durable successful completion. */
+  async finishRun(runId: string): Promise<void> {
+    const resource = this.live.get(runId),
+      owner = resource?.completion;
+    if (
+      !resource ||
+      !owner ||
+      this.deps.repo.getRun(runId)?.status !== "completed" ||
+      !resource.processes?.hasRetainedServers()
+    ) {
+      await this.closeRun(runId);
+      return;
+    }
+    try {
+      owner.phase = "retained";
+      await this.assertCompletionOwner(resource, owner);
+    } catch (error) {
+      await this.closeRun(runId);
+      throw error;
     }
   }
 

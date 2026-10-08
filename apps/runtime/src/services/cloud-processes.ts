@@ -24,6 +24,7 @@ import { requireCloudFilePath } from "./cloud-files-protocol.js";
 export interface CloudProcessAdmission {
   network: boolean;
   check(): void;
+  checkPolicy(): void;
 }
 export interface CloudProcessTransport {
   current(signal?: AbortSignal): Promise<void>;
@@ -64,6 +65,9 @@ type Owned = {
   cleanup(): void;
   flush(): void;
   requestStop(): void;
+  checkPolicy(): void;
+  retain(current: () => Promise<void>, retire: () => void): void;
+  retire?: () => void;
 };
 
 /** Captured Session commands share the local durable ledger; no provider lookup can resume a VM. */
@@ -349,17 +353,25 @@ export class CloudCodingProcesses extends CodingProcessLedger {
         }
       }
     })();
+    let current = async () => {
+      await this.options.transport.current(context.signal);
+      this.check(context);
+      admission.check();
+    };
     let checking = false,
       stopRequested = false;
     const monitor = setInterval(() => {
       if (checking) return;
       checking = true;
-      void this.options.transport
-        .current(context.signal)
+      const original = current;
+      void original()
+        .catch((error) => {
+          // A completed-task handoff can replace a dispatch check already in flight.
+          if (current !== original) return current();
+          throw error;
+        })
         .then(() => {
           if (pendingBytes) flush();
-          this.check(context);
-          admission.check();
         })
         .catch(() => this.stop(receipt.processId, context.runId))
         .catch(() => {})
@@ -410,10 +422,12 @@ export class CloudCodingProcesses extends CodingProcessLedger {
         receipt.state = "uncertain";
         cleanup();
         flush();
+        // Lost command ownership cannot leave a human-retained VM unmonitored.
+        owned.retire?.();
         throw error;
       });
     void finished.catch(() => {});
-    return {
+    const owned: Owned = {
       command,
       receipt,
       finished,
@@ -423,7 +437,66 @@ export class CloudCodingProcesses extends CodingProcessLedger {
       requestStop: () => {
         stopRequested = true;
       },
+      checkPolicy: admission.checkPolicy,
+      retain: (owner, retire) => {
+        current = owner;
+        context.signal?.removeEventListener("abort", abort);
+        owned.retire = retire;
+      },
     };
+    return owned;
+  }
+
+  async retainServers(
+    prepare: (
+      receipt: CodingProcessReceipt,
+      checkPolicy: () => void,
+    ) => Promise<(() => Promise<void>) | undefined>,
+    transfer: () => () => void,
+  ): Promise<number> {
+    await this.queue;
+    const prepared: { owned: Owned; current: () => Promise<void> }[] = [];
+    for (const owned of this.owned.values()) {
+      const receipt = owned.receipt;
+      if (owned.stopping || receipt.state !== "running" || !receipt.execution?.supervisor) continue;
+      this.assertExecution(receipt);
+      if (owned.command.cmdId !== receipt.execution.commandId) continue;
+      const current = await prepare(receipt, owned.checkPolicy);
+      if (current) prepared.push({ owned, current });
+    }
+    for (const { owned, current } of prepared) {
+      if (
+        owned.stopping ||
+        owned.receipt.state !== "running" ||
+        this.owned.get(owned.receipt.processId) !== owned
+      )
+        throw new AuxError("ref_stale", "The original cloud server retired during its handoff.");
+      await current();
+    }
+    if (!prepared.length) return 0;
+    // Recheck every command after the asynchronous proofs, then replace both owners
+    // in one turn before successful task completion can retire agent dispatch.
+    for (const { owned } of prepared)
+      if (
+        owned.stopping ||
+        owned.receipt.state !== "running" ||
+        this.owned.get(owned.receipt.processId) !== owned
+      )
+        throw new AuxError("ref_stale", "The original cloud server retired during its handoff.");
+    const retire = transfer();
+    for (const { owned, current } of prepared) owned.retain(current, retire);
+    await Promise.all(
+      [...this.owned.values()]
+        .filter((owned) => !owned.retire)
+        .map((owned) => this.stop(owned.receipt.processId, owned.receipt.runId)),
+    );
+    return prepared.length;
+  }
+
+  hasRetainedServers(): boolean {
+    return [...this.owned.values()].some(
+      (owned) => !!owned.retire && owned.receipt.state === "running" && !owned.stopping,
+    );
   }
   async logs(
     processId: string,

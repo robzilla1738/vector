@@ -2706,6 +2706,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
             self.deps.repo.saveCheckpoint(`run:${runId}`, "goal_verified", {
               accepted: true,
             });
+          if (cloudWasSelected) await cloud!.prepareFinish(runId, c.abort.signal);
           await self.finish(
             runId,
             "completed",
@@ -2792,7 +2793,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       )
       .run(runId);
     await self.deps.agentLoop?.codingProcesses?.closeRun(runId);
-    if (cloudWasSelected) await cloud!.closeRun(runId);
+    if (cloudWasSelected) await cloud!.finishRun(runId);
     for (const release of [...openedTabs.values()].reverse()) release();
     self.controls.delete(runId);
   }

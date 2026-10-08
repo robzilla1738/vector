@@ -248,19 +248,27 @@ it("binds governed files to the captured Session and rechecks the effect fence a
   expect(f.forbidden).not.toHaveBeenCalled();
   await executor.closeRun(f.ctx.runId);
 });
-it("keeps human Preview on the retained Session after dispatch pauses and preserves network cleanup", async () => {
-  vi.useFakeTimers();
+async function previewFixture() {
   const f = fixture();
   const token = randomUUID();
+  const dispatchAbort = new AbortController(),
+    cancellation = new AbortController();
+  f.repo.saveRun({
+    ...f.repo.getRun(f.ctx.runId)!,
+    config: { ...f.repo.getRun(f.ctx.runId)!.config, nativeTurnContext: token },
+  });
   let agentLive = true,
-    nativeLive = true;
+    nativeLive = true,
+    policyLive = true,
+    listening = true;
   const assertOwner = vi.fn(async () => {
-    if (!agentLive) throw new AuxError("cancelled", "Run dispatch paused.");
+    if (!agentLive || dispatchAbort.signal.aborted) throw new AuxError("cancelled", "Run dispatch paused.");
   });
   const authorizePreview = vi.fn(async () => () => {});
-  let complete!: (value: { exitCode: number }) => void;
-  const finished = new Promise<{ exitCode: number }>((resolve) => {
+  let complete!: (value: { exitCode: number }) => void, failCommand!: (error: Error) => void;
+  const finished = new Promise<{ exitCode: number }>((resolve, reject) => {
     complete = resolve;
+    failCommand = reject;
   });
   let processId = "";
   const command = {
@@ -294,7 +302,9 @@ it("keeps human Preview on the retained Session after dispatch pauses and preser
         return command;
       }
       if (input.args?.at(-1)?.includes('"kind":"listeners"'))
-        input.stdout!.write(JSON.stringify([{ pid: 12, startTicks: "3", fd: 4, inode: "123", port: 3000 }]));
+        input.stdout!.write(
+          JSON.stringify(listening ? [{ pid: 12, startTicks: "3", fd: 4, inode: "123", port: 3000 }] : []),
+        );
       return { exitCode: 0 };
     },
   );
@@ -306,6 +316,7 @@ it("keeps human Preview on the retained Session after dispatch pauses and preser
   const executor = new VercelSandboxExecutor({
     ...f.deps,
     processWorkerProgram: async () => Buffer.from("// immutable process worker"),
+    workerAssets: async () => ({ program: Buffer.from("// immutable REPL worker"), wasm: Buffer.alloc(1) }),
     assertOwner,
     native: {
       turnSourceContext: async (value) => {
@@ -326,26 +337,66 @@ it("keeps human Preview on the retained Session after dispatch pauses and preser
     },
     authorizePreview,
     authorizeBash: async () => true,
-    authorizeProcess: async () => ({ network: false, check: () => {} }),
+    authorizeProcess: async () => ({
+      network: false,
+      check: () => {},
+      checkPolicy: () => {
+        if (!policyLive) throw new AuxError("permission_denied", "Original command policy retired.");
+      },
+    }),
     authorizeProcessAccess: async () => () => {},
   });
   const processes = await executor.processes(f.ctx);
   const receipt = await processes.start(
     { command: "npm run dev", network: false },
-    { ...f.ctx, actionId: "server" },
+    { ...f.ctx, actionId: "server", signal: dispatchAbort.signal },
   );
+  const sandbox = await f.create.mock.results[0]!.value;
+  const ports = vi.fn(async (input: { ports: number[] }) => {
+    f.order.push(`ports:${input.ports.join(",")}`);
+  });
+  Object.assign(sandbox, { update: ports });
+  return {
+    ...f,
+    executor,
+    processes,
+    receipt,
+    token,
+    command,
+    dispatch,
+    ports,
+    assertOwner,
+    authorizePreview,
+    dispatchAbort,
+    cancellation,
+    agentLive: (value: boolean) => {
+      agentLive = value;
+    },
+    nativeLive: (value: boolean) => {
+      nativeLive = value;
+    },
+    retirePolicy: () => {
+      policyLive = false;
+    },
+    stopListening: () => {
+      listening = false;
+    },
+    complete,
+    failCommand,
+  };
+}
+
+it("keeps human Preview admission independent of dispatch and preserves network cleanup", async () => {
+  vi.useFakeTimers();
+  const f = await previewFixture();
+  const { executor, processes, receipt, token, dispatch, ports, assertOwner, authorizePreview } = f;
   await expect(
     executor.bash({ command: "curl https://example.com", network: true }, f.ctx),
   ).rejects.toMatchObject({ code: "conflict" });
   expect(dispatch).toHaveBeenCalledTimes(1);
   expect(f.order.filter((event) => event === "network-ack")).toHaveLength(1);
   expect(executor.retainedProcesses(f.ctx.runId)).toBe(processes);
-  const sandbox = await f.create.mock.results[0]!.value;
-  const ports = vi.fn(async (input: { ports: number[] }) => {
-    f.order.push(`ports:${input.ports.join(",")}`);
-  });
-  Object.assign(sandbox, { update: ports });
-  agentLive = false;
+  f.agentLive(false);
   assertOwner.mockClear();
   f.repo.saveRun({ ...f.repo.getRun(f.ctx.runId)!, status: "needs_input" });
   const preview = await executor.preview(f.ctx, { processId: receipt.processId, port: 3000 }, token);
@@ -359,10 +410,10 @@ it("keeps human Preview on the retained Session after dispatch pauses and preser
     token,
   );
   expect(f.create).toHaveBeenCalledOnce();
-  nativeLive = false;
+  f.nativeLive(false);
   expect(await executor.admitPreview(preview.previewId, token)).toBe(false);
-  nativeLive = true;
-  agentLive = true;
+  f.nativeLive(true);
+  f.agentLive(true);
   expect(preview.url).toBe("https://original.vercel.run/");
   expect(ports).toHaveBeenCalledWith({ ports: [3000] }, expect.any(Object));
   await processes.stop(receipt.processId, f.ctx.runId);
@@ -374,6 +425,117 @@ it("keeps human Preview on the retained Session after dispatch pauses and preser
   await executor.closeRun(f.ctx.runId);
   expect(executor.retainedProcesses(f.ctx.runId)).toBeUndefined();
 });
+
+it("hands a proven server to its original window before dispatch retirement, then permits the first human Preview after completion", async () => {
+  vi.useFakeTimers();
+  const f = await previewFixture();
+  const workerExited = Promise.withResolvers<{ exitCode: number }>();
+  const worker = {
+    cmdId: "original-repl-worker",
+    wait: () => workerExited.promise,
+    kill: vi.fn(async () => {
+      workerExited.resolve({ exitCode: 143 });
+    }),
+  };
+  let resultPath = "";
+  const originalCommand = f.session.runCommand.bind(f.session);
+  Object.assign(f.session, {
+    runCommand: async (input: Parameters<Session["runCommand"]>[0]) =>
+      input.args?.[0]?.endsWith("/worker.mjs") ? worker : originalCommand(input),
+    writeFiles: async (files: { path: string; content: Buffer }[]) => {
+      for (const file of files)
+        if (file.path.includes("/request-") && file.path.endsWith(".payload"))
+          resultPath = file.path.replace("/request-", "/result-").replace(".payload", ".json");
+    },
+    readFile: async ({ path }: { path: string }) =>
+      path === resultPath ? Readable.from([JSON.stringify({ value: { output: "ready" } })]) : null,
+  });
+  await expect(
+    f.executor.eval(f.ctx, { runId: f.ctx.runId } as unknown as ReplHostDeps, "1"),
+  ).resolves.toEqual({ output: "ready" });
+  // One monitor is already awaiting the old dispatch proof when completion begins.
+  const checking = Promise.withResolvers<void>();
+  f.assertOwner.mockImplementationOnce(() => checking.promise);
+  await vi.advanceTimersByTimeAsync(250);
+  await f.executor.prepareFinish(f.ctx.runId, f.cancellation.signal);
+  expect(worker.kill).toHaveBeenCalledWith("SIGTERM", { abortSignal: expect.any(AbortSignal) });
+  f.dispatchAbort.abort();
+  f.agentLive(false);
+  checking.reject(new AuxError("cancelled", "Coordinator retired original dispatch."));
+  // Native authority retirement may await before the completed row is saved.
+  await vi.advanceTimersByTimeAsync(750);
+  expect(f.command.kill).not.toHaveBeenCalled();
+  expect(f.stop).not.toHaveBeenCalled();
+  f.repo.saveRun({ ...f.repo.getRun(f.ctx.runId)!, status: "completed" });
+  await f.executor.finishRun(f.ctx.runId);
+  await vi.advanceTimersByTimeAsync(750);
+  const preview = await f.executor.preview(f.ctx, { processId: f.receipt.processId, port: 3000 }, f.token);
+  expect(preview.url).toBe("https://original.vercel.run/");
+  expect(await f.executor.admitPreview(preview.previewId, f.token)).toBe(true);
+  await expect(f.executor.bash({ command: "echo stale" }, f.ctx)).rejects.toMatchObject({
+    code: "cancelled",
+  });
+  expect(f.create).toHaveBeenCalledOnce();
+  expect(f.forbidden).not.toHaveBeenCalled();
+  await f.processes.stop(f.receipt.processId, f.ctx.runId);
+  await f.executor.closeRun(f.ctx.runId);
+  expect(f.stop).toHaveBeenCalledOnce();
+  expect(f.repo.db.prepare("SELECT state,stop_ack FROM execution_resources").get()).toMatchObject({
+    state: "settled",
+    stop_ack: 1,
+  });
+});
+
+it.each(["cancelled", "failed", "needs_input"] as const)(
+  "does not retain a prepared server when task completion becomes %s",
+  async (status) => {
+    vi.useFakeTimers();
+    const f = await previewFixture();
+    await f.executor.prepareFinish(f.ctx.runId, f.cancellation.signal);
+    f.repo.saveRun({ ...f.repo.getRun(f.ctx.runId)!, status });
+    await f.executor.finishRun(f.ctx.runId);
+    expect(f.stop).toHaveBeenCalledOnce();
+    expect(f.executor.retainedProcesses(f.ctx.runId)).toBeUndefined();
+    await expect(
+      f.executor.preview(f.ctx, { processId: f.receipt.processId, port: 3000 }, f.token),
+    ).rejects.toMatchObject({ code: "ref_stale" });
+    expect(f.create).toHaveBeenCalledOnce();
+  },
+);
+
+it("retires a successful task's VM when its background command has no owned server listener", async () => {
+  vi.useFakeTimers();
+  const f = await previewFixture();
+  f.stopListening();
+  await f.executor.prepareFinish(f.ctx.runId, f.cancellation.signal);
+  f.repo.saveRun({ ...f.repo.getRun(f.ctx.runId)!, status: "completed" });
+  await f.executor.finishRun(f.ctx.runId);
+  expect(f.stop).toHaveBeenCalledOnce();
+});
+
+it.each(["original window", "original expiry", "Stop", "policy", "lost command ownership"])(
+  "retires completed servers on %s without creating or resuming a VM",
+  async (cause) => {
+    vi.useFakeTimers();
+    const f = await previewFixture();
+    await f.executor.prepareFinish(f.ctx.runId, f.cancellation.signal);
+    f.repo.saveRun({ ...f.repo.getRun(f.ctx.runId)!, status: "completed" });
+    await f.executor.finishRun(f.ctx.runId);
+    if (cause === "original window") f.nativeLive(false);
+    if (cause === "Stop") f.cancellation.abort();
+    if (cause === "policy") f.retirePolicy();
+    if (cause === "lost command ownership") f.failCommand(new Error("Original command wait failed"));
+    await vi.advanceTimersByTimeAsync(cause === "original expiry" ? 60001 : 251);
+    expect(f.stop).toHaveBeenCalledOnce();
+    expect(f.executor.retainedProcesses(f.ctx.runId)).toBeUndefined();
+    expect(f.repo.db.prepare("SELECT state,stop_ack FROM execution_resources").get()).toMatchObject({
+      state: "settled",
+      stop_ack: 1,
+    });
+    expect(f.create).toHaveBeenCalledOnce();
+    expect(f.forbidden).not.toHaveBeenCalled();
+  },
+);
 
 async function retainedFileFixture() {
   const f = fixture();
@@ -420,7 +582,7 @@ async function retainedFileFixture() {
     get,
     now: () => now,
     authorizeFiles: async () => () => {},
-    authorizeProcess: async () => ({ network: false, check: () => {} }),
+    authorizeProcess: async () => ({ network: false, check: () => {}, checkPolicy: () => {} }),
     authorizeProcessAccess: async () => () => {},
     workerAssets: async () => ({ program: Buffer.from("// reviewed REPL worker"), wasm: Buffer.alloc(1) }),
     fileWorkerProgram: async () => Buffer.from("// immutable reviewed program"),

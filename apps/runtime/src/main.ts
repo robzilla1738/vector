@@ -2718,6 +2718,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           await owner(context);
           return {
             network,
+            checkPolicy: fence,
             check: () => {
               if (context.signal?.aborted)
                 throw new AuxError("cancelled", "The original cloud command stopped.");
@@ -2805,6 +2806,17 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     wait: async (ctx, cellId, yieldTimeMs, terminate) =>
       (await getCloudRuntime()).executor.wait(ctx, cellId, yieldTimeMs, terminate),
     hasOpen: (runId) => cloudExecutor?.hasOpen(runId) ?? false,
+    prepareFinish: async (runId, cancellation) => {
+      if (!cloudRuntime) return;
+      const { executor } = await cloudRuntime;
+      await executor.prepareFinish(runId, cancellation);
+    },
+    finishRun: async (runId) => {
+      if (!cloudRuntime) return;
+      const { executor, admission } = await cloudRuntime;
+      await executor.finishRun(runId);
+      if (!executor.hasOpen(runId)) admission.release(runId);
+    },
     recoverReview: async (ctx, request, target) => {
       const { executor, admission } = await getCloudRuntime();
       await admission.restoreOriginal(ctx);

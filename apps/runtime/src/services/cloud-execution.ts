@@ -39,6 +39,8 @@ export interface CloudReplExecutor {
     terminate?: boolean,
   ): Promise<LoopToolResult>;
   hasOpen(runId: string): boolean;
+  prepareFinish(runId: string, cancellation: AbortSignal): Promise<void>;
+  finishRun(runId: string): Promise<void>;
   closeRun(runId: string): Promise<void>;
   recoverReview?(
     ctx: CloudExecutionContext,
