@@ -1,6 +1,8 @@
 import { PrivateProviderConnection } from "./private-provider.js";
 import {
   PrivateProviderDescriptorSchema,
+  PrivateImageConnectionSchema,
+  type PrivateImageConnection,
   type PrivateProviderDescriptor,
   type PrivateProviderRequest,
   type PrivateProviderResult,
@@ -14,7 +16,7 @@ import type { CopilotServices } from "./copilot-services.js";
 import type { CopilotAccount } from "./copilot-account.js";
 import { FoundationModelsClient, type UtilityRoute, type NetworkUtilityRoute } from "./foundation-models.js";
 import { CopilotRegistrationSchema, type CopilotRegistration } from "./copilot-protocol.js";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   DownloadNamingSettingsSchema,
   DEFAULT_DOWNLOAD_NAMING,
@@ -176,6 +178,10 @@ export class SettingsService {
   modelOverride: ModelClient | null = null;
   private gatewayClient: ModelClient | null = null;
   private privateProvider?: PrivateProviderConnection;
+  private privateImage?: {
+    descriptor: PrivateImageConnection;
+    request(request: PrivateProviderRequest): Promise<PrivateProviderResult>;
+  };
   private fileSettings: Settings = {};
   private native: NativeBridge | null = null;
   private foundationModels: FoundationModelsClient | undefined;
@@ -215,6 +221,10 @@ export class SettingsService {
     if (this.discoveryClosed) throw new AuxError("cancelled", "Private settings retired.");
     if (result.operation !== "describe")
       throw new AuxError("invalid_params", "Invalid private connection descriptor.");
+    this.privateImage = result.imageConnection
+      ? { descriptor: PrivateImageConnectionSchema.parse(result.imageConnection), request }
+      : undefined;
+    if (this.privateImage) this.repo.setSetting("imageModel", this.privateImage.descriptor.modelId);
     if (!result.connection) return;
     const d = PrivateProviderDescriptorSchema.parse(result.connection);
     await this.privateProvider?.close();
@@ -279,7 +289,31 @@ export class SettingsService {
     if (this.env.AUX_PRIVATE_SESSION || this.discoveryClosed)
       throw new AuxError("cancelled", "Original credential owner is unavailable.");
     if (request.operation === "describe")
-      return { operation: "describe", connection: await this.privateProviderDescriptor() };
+      return {
+        operation: "describe",
+        connection: await this.privateProviderDescriptor(),
+        imageConnection: await this.privateImageDescriptor(),
+      };
+    if (request.revision.startsWith("image:")) {
+      const current = () => {
+        if (
+          this.discoveryClosed ||
+          this.privateImageRevision() !== request.revision ||
+          !this.connectionEnabled("gateway") ||
+          !this.imageModel()
+        )
+          throw new AuxError(
+            "cancelled",
+            "The original image account changed. Reopen the private connection.",
+          );
+      };
+      current();
+      const credential = await this.gatewayImageCredential();
+      current();
+      if (!credential)
+        throw new AuxError("backend_unavailable", "Connect AI Gateway before generating an image.");
+      return { operation: "credential", revision: request.revision, accessToken: credential.apiKey };
+    }
     const current = () => {
       if (
         this.discoveryClosed ||
@@ -359,12 +393,17 @@ export class SettingsService {
     )
       return null;
     let teamId: string | undefined, copilotRuntimeRoot: string | undefined;
-    if (chatgpt) await this.refreshChatgptModels(chatgpt, generation);
+    if ((chatgpt && !this.chatgptConnected()) || (vercel && !this.vercelConnected())) return null;
     if (vercel) teamId = (await this.vercelAccounts()).account(vercel).teamId;
     if (copilot) {
-      if (!this.copilotFactory)
-        throw new AuxError("capability_unsupported", "The original Copilot service is unavailable.");
-      copilotRuntimeRoot = await (await this.copilotFactory()).privateRuntime();
+      if (!this.copilotFactory) return null;
+      try {
+        copilotRuntimeRoot = await (await this.copilotFactory()).privateRuntime();
+      } catch (error) {
+        if (error instanceof AuxError && ["needs_input", "capability_unsupported"].includes(error.code))
+          return null;
+        throw error;
+      }
     }
     this.assertModelGeneration(generation);
     if (
@@ -398,6 +437,76 @@ export class SettingsService {
       models: [...this.registryModels()],
       localModelsOnly: this.localModelsOnly(),
     });
+  }
+
+  private privateImageRevision(): string {
+    return (
+      "image:" +
+      createHash("sha256")
+        .update(JSON.stringify([this.modelCacheGeneration(), this.imageModel(), this.activeVercelAccount()]))
+        .digest("hex")
+    );
+  }
+  private async privateImageDescriptor(): Promise<PrivateImageConnection | undefined> {
+    await this.initializeCredentials(["gateway"]);
+    const modelId = this.imageModel();
+    if (!modelId || !this.connectionEnabled("gateway")) return;
+    const accountId = this.activeVercelAccount();
+    if (accountId && !this.vercelConnected()) return;
+    if (!accountId && !this.savedKey && !this.env.AI_GATEWAY_API_KEY) return;
+    return {
+      revision: this.privateImageRevision(),
+      modelId,
+      authentication: accountId ? "vercel" : "api-key",
+      credentialSource: accountId || this.savedKey ? "saved" : "environment",
+      ...(accountId ? { teamId: (await this.vercelAccounts()).account(accountId).teamId } : {}),
+    };
+  }
+
+  /** Resolve image access at dispatch. Only the original account owner rotates refresh credentials. */
+  async gatewayImageCredential(
+    signal?: AbortSignal,
+  ): Promise<{ apiKey: string; teamId?: string } | undefined> {
+    const generation = this.modelCacheGeneration(),
+      imageModel = this.imageModel(),
+      inherited = this.privateImage;
+    const current = () => {
+      signal?.throwIfAborted();
+      if (
+        this.discoveryClosed ||
+        this.modelCacheGeneration() !== generation ||
+        this.imageModel() !== imageModel ||
+        this.privateImage !== inherited
+      )
+        throw new AuxError("cancelled", "The original image connection changed.");
+    };
+    current();
+    if (!imageModel || !this.connectionEnabled("gateway")) return;
+    if (inherited) {
+      if (imageModel !== inherited.descriptor.modelId)
+        throw new AuxError("cancelled", "The original private image model changed.");
+      const result = await inherited.request({
+        operation: "credential",
+        revision: inherited.descriptor.revision,
+      });
+      current();
+      if (result.operation !== "credential" || result.revision !== inherited.descriptor.revision)
+        throw new AuxError("cancelled", "The original private image credential retired.");
+      return { apiKey: result.accessToken, teamId: inherited.descriptor.teamId };
+    }
+    await this.initializeCredentials(["gateway"]);
+    current();
+    const accountId = this.activeVercelAccount();
+    if (accountId) {
+      const accounts = await this.vercelAccounts(),
+        account = accounts.account(accountId);
+      current();
+      const apiKey = await accounts.accessToken(accountId, signal);
+      current();
+      return { apiKey, teamId: account.teamId };
+    }
+    const apiKey = this.gatewayKey();
+    return apiKey ? { apiKey } : undefined;
   }
 
   initializeCredentials(
@@ -831,6 +940,8 @@ export class SettingsService {
     if (next.agentModelRoutes !== undefined)
       next.agentModelRoutes = AgentModelRoutesSettingSchema.parse(next.agentModelRoutes);
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
+    if (patch.gatewayApiKey !== undefined || patch.modelCredential?.provider === "gateway")
+      this.privateImage = undefined;
     if (this.privateProvider && (patch.gatewayApiKey !== undefined || patch.modelCredential !== undefined)) {
       await this.privateProvider.close();
       this.privateProvider = undefined;

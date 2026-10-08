@@ -17,22 +17,33 @@ import { budgetLineage } from "../fixtures/budget-lineage.js";
 import { agentMethods } from "../../apps/runtime/src/api/methods/agent.js";
 
 const imageCall = vi.hoisted(() => vi.fn());
-vi.mock("ai", async (original) => ({ ...(await original<typeof import("ai")>()), generateImage: imageCall }));
+vi.mock("ai", async (original) => ({
+  ...(await original<typeof import("ai")>()),
+  generateImage: async (input: {
+    model: { doGenerate(params: unknown): Promise<unknown> };
+    prompt: string;
+  }) => {
+    // Exercise the actual Gateway transport before the configurable output fixture.
+    await input.model.doGenerate({ prompt: input.prompt, n: 1, providerOptions: {} });
+    return imageCall(input);
+  },
+}));
 const dispose: (() => void)[] = [];
 afterEach(() => {
   for (const fn of dispose.splice(0).reverse()) fn();
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   imageCall.mockReset();
 });
-function fixture() {
+function fixture(env: NodeJS.ProcessEnv = { AI_GATEWAY_API_KEY: "synthetic-image-only" }) {
   const dir = mkdtempSync(join(tmpdir(), "aux-image-setting-")),
     db = openDb(":memory:"),
     repo = new Repo(db);
   vi.stubEnv("AUX_SPEND_LEDGER_PATH", join(dir, "spend.sqlite"));
   vi.stubEnv("AUX_PROGRAM_SPEND_CAP_USD", "5");
-  const settings = new SettingsService(repo, join(dir, "settings.json"), {
-    AI_GATEWAY_API_KEY: "synthetic-image-only",
-  });
+  const settings = new SettingsService(repo, join(dir, "settings.json"), env);
+  const network = vi.fn<typeof fetch>(async () => Response.json({ images: [] }));
+  vi.stubGlobal("fetch", network);
   const events = new EventBus(repo);
   const artifacts = new ArtifactStore(join(dir, "artifacts"), repo, events);
   const turnMentions = fixtureTurnMentions((id) => repo.getPage(id));
@@ -82,6 +93,7 @@ function fixture() {
     } as never);
   return {
     settings,
+    network,
     artifacts,
     decideEgress,
     generate,
@@ -263,4 +275,33 @@ it("settles the actual image receipt when it exceeds the estimate without invent
   expect(f.repo.db.prepare("SELECT cost_estimated FROM model_calls").get()).toMatchObject({
     cost_estimated: 0,
   });
+});
+
+it("uses the original Gateway image lease in private and refuses a lease returned after its window retires", async () => {
+  const normal = fixture({ AI_GATEWAY_API_KEY: "original-image-key", OPENAI_API_KEY: "original-text-key" });
+  await normal.settings.set({ modelProvider: "openai" });
+  const f = fixture({ AUX_PRIVATE_SESSION: "00000000-0000-4000-8000-000000000002" });
+  const requests: unknown[] = [];
+  let retireOnCredential = false;
+  await f.settings.attachPrivateProvider(async (request) => {
+    requests.push(request);
+    const result = await normal.settings.privateProviderRequest(request);
+    if (request.operation === "credential" && retireOnCredential) f.retireOwner();
+    return result;
+  });
+  imageCall.mockResolvedValue({
+    image: { uint8Array: PNG.sync.write(new PNG({ width: 1, height: 1 })), mediaType: "image/png" },
+    providerMetadata: { gateway: { cost: 0.03 } },
+  });
+  await f.generate();
+  expect(new Headers(f.network.mock.calls[0]![1]?.headers).get("authorization")).toBe(
+    "Bearer original-image-key",
+  );
+  expect(f.network.mock.calls[0]![1]?.redirect).toBe("error");
+  expect(JSON.stringify(requests)).not.toContain("Synthetic blue circle");
+  expect(JSON.stringify(f.repo.db.prepare("SELECT * FROM kv").all())).not.toContain("original-image-key");
+  retireOnCredential = true;
+  await expect(f.generate()).rejects.toThrow(/window retired/);
+  expect(f.network).toHaveBeenCalledTimes(1);
+  expect(imageCall).toHaveBeenCalledTimes(1);
 });

@@ -40,7 +40,7 @@ it("keeps SDKs unloaded through construction and coalesces the first gateway cal
       { id: "test/model", contextTokens: 128_000, inputUsdPerMTok: 1, outputUsdPerMTok: 1 } as never,
     ],
   });
-  AgentImageTools.withGateway("fixture", {} as never, ledger, "openai/gpt-image-2");
+  AgentImageTools.withGateway(async () => ({ apiKey: "fixture" }), {} as never, ledger, "openai/gpt-image-2");
   expect(state).toEqual({ sdkLoads: 0, gatewayLoads: 0, gatewayCreates: 0 });
   const [models, result] = await Promise.all([
     client.listModels(),

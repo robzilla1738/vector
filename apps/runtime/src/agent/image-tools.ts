@@ -37,7 +37,7 @@ export class AgentImageTools {
   }
 
   static withGateway(
-    apiKey: string,
+    credential: (signal: AbortSignal) => Promise<{ apiKey: string; teamId?: string }>,
     artifacts: ArtifactStore,
     ledger: SpendLedger,
     modelId: ImageModel,
@@ -46,7 +46,7 @@ export class AgentImageTools {
     let provider:
       | Promise<{
           generateImage: typeof import("ai").generateImage;
-          gateway: ReturnType<typeof import("@ai-sdk/gateway").createGateway>;
+          createGateway: typeof import("@ai-sdk/gateway").createGateway;
         }>
       | undefined;
     return new AgentImageTools(
@@ -55,16 +55,44 @@ export class AgentImageTools {
       async (prompt, dispatch) => {
         provider ??= Promise.all([import("ai"), import("@ai-sdk/gateway")]).then(([sdk, gateway]) => ({
           generateImage: sdk.generateImage,
-          gateway: gateway.createGateway({ apiKey }),
+          createGateway: gateway.createGateway,
         }));
-        const { generateImage, gateway } = await provider;
-        await dispatch.beforeDispatch();
+        const { generateImage, createGateway } = await provider;
+        let preDispatchFailure: unknown;
+        const gateway = createGateway({
+          apiKey: "aux-image-transport",
+          fetch: async (input, init) => {
+            const url = new URL(input instanceof Request ? input.url : String(input));
+            if (url.href !== "https://ai-gateway.vercel.sh/v4/ai/image-model" || init?.method !== "POST")
+              throw new AuxError(
+                "permission_denied",
+                "Image generation changed its original Gateway destination.",
+              );
+            let headers: Headers;
+            try {
+              dispatch.signal.throwIfAborted();
+              const access = await credential(dispatch.signal);
+              dispatch.signal.throwIfAborted();
+              headers = new Headers(init.headers);
+              headers.set("authorization", `Bearer ${access.apiKey}`);
+              headers.delete("x-vercel-ai-gateway-team");
+              if (access.teamId) headers.set("x-vercel-ai-gateway-team", access.teamId);
+              await dispatch.beforeDispatch();
+            } catch (error) {
+              preDispatchFailure = error;
+              throw error;
+            }
+            return fetch(input, { ...init, headers, redirect: "error", signal: dispatch.signal });
+          },
+        });
         const result = await generateImage({
           model: gateway.image(modelId),
           prompt,
           n: 1,
           maxRetries: 0,
           abortSignal: dispatch.signal,
+        }).catch((error: unknown) => {
+          throw preDispatchFailure ?? error;
         });
         const metadata = result.providerMetadata as Record<string, { cost?: unknown }> | undefined;
         const rawCost = metadata?.gateway?.cost;

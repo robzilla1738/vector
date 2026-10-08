@@ -195,7 +195,7 @@ it("refreshes the selected ChatGPT account only in the normal owner and exports 
   );
   expect(refreshedWith).toBe("original-refresh");
   expect(network.mock.calls.filter(([input]) => String(input).endsWith("/oauth/token"))).toHaveLength(1);
-  expect(network.mock.calls.filter(([input]) => String(input).endsWith("/models"))).toHaveLength(1);
+  expect(network.mock.calls.filter(([input]) => String(input).endsWith("/models"))).toHaveLength(0);
   expect(store).toHaveBeenCalledTimes(1);
   expect(vault).toContain("rotated-refresh");
   expect(JSON.stringify([...replies, ...credentials])).not.toContain("refresh");

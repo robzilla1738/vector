@@ -1940,8 +1940,6 @@ export class RunService {
     if (!run || !control) throw new AuxError("permission_denied", "A live original image run is required.");
     const modelId = this.deps.settings.imageModel();
     if (!modelId) throw new AuxError("permission_denied", "Image generation is off in Settings.");
-    const key = this.deps.settings.gatewayKey();
-    if (!key) throw new AuxError("backend_unavailable", "Connect AI Gateway before generating an image.");
     const generation = this.deps.settings.modelCacheGeneration();
     const policyRevision = this.deps.settings.agentPolicy().agentPolicyRevision;
     const cancel = new AbortController();
@@ -2094,7 +2092,19 @@ export class RunService {
       releaseCall();
       releaseCall = undefined;
       toolkitStarted = true;
-      return await AgentImageTools.withGateway(key, this.deps.artifacts, ledger, modelId).generate(
+      return await AgentImageTools.withGateway(
+        async (signal) => {
+          await checkOwner();
+          const access = await this.deps.settings.gatewayImageCredential(signal);
+          await checkOwner();
+          if (!access)
+            throw new AuxError("backend_unavailable", "Connect AI Gateway before generating an image.");
+          return access;
+        },
+        this.deps.artifacts,
+        ledger,
+        modelId,
+      ).generate(
         input.prompt,
         {
           runId: input.runId,

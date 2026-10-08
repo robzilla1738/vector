@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ImageModelSchema } from "./model-connections.js";
 import { ModelProviderSchema } from "./model-providers.js";
 import { AgentModelRoutesSettingSchema, ModelCapabilitySchema } from "./model-registry.js";
 const revision = z.string().min(1).max(160);
@@ -21,6 +22,16 @@ export const PrivateProviderDescriptorSchema = z
   })
   .strict();
 export type PrivateProviderDescriptor = z.infer<typeof PrivateProviderDescriptorSchema>;
+export const PrivateImageConnectionSchema = z
+  .object({
+    revision,
+    modelId: ImageModelSchema,
+    authentication: z.enum(["api-key", "vercel"]),
+    credentialSource: z.enum(["saved", "environment"]),
+    teamId: z.string().max(500).optional(),
+  })
+  .strict();
+export type PrivateImageConnection = z.infer<typeof PrivateImageConnectionSchema>;
 export const PrivateProviderRequestSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("describe") }).strict(),
   z.object({ operation: z.literal("credential"), revision }).strict(),
@@ -28,7 +39,11 @@ export const PrivateProviderRequestSchema = z.discriminatedUnion("operation", [
 export type PrivateProviderRequest = z.infer<typeof PrivateProviderRequestSchema>;
 export const PrivateProviderResultSchema = z.discriminatedUnion("operation", [
   z
-    .object({ operation: z.literal("describe"), connection: PrivateProviderDescriptorSchema.nullable() })
+    .object({
+      operation: z.literal("describe"),
+      connection: PrivateProviderDescriptorSchema.nullable(),
+      imageConnection: PrivateImageConnectionSchema.optional(),
+    })
     .strict(),
   z
     .object({
