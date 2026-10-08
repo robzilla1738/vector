@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { setImmediate } from "node:timers/promises";
 import type { z } from "zod";
 import {
   AuxError,
@@ -40,6 +41,10 @@ export class RoutineService {
       | { chatId?: string; runId?: string },
     private stopWork?: (runId: string) => Promise<void> | void,
   ) {
+    // SQLite's built-in lower() only folds ASCII; match the Skill search UI.
+    this.repo.db.function("aux_routine_lower", { deterministic: true }, (text) =>
+      typeof text === "string" ? text.toLowerCase() : "",
+    );
     this.orphanedDispatches = new Set(
       (
         this.repo.db
@@ -101,7 +106,14 @@ export class RoutineService {
   }
 
   list(
-    opts: { workspaceId?: string; query?: string; includeArchived?: boolean; limit?: number } = {},
+    opts: {
+      workspaceId?: string;
+      query?: string;
+      includeArchived?: boolean;
+      status?: "all" | "ready" | "paused" | "archived";
+      cursor?: { updatedAt: number; routineId: string };
+      limit?: number;
+    } = {},
   ): Routine[] {
     this.sync();
     const limit = opts.limit ?? 50;
@@ -109,13 +121,25 @@ export class RoutineService {
       .prepare(
         `SELECT * FROM routines
       WHERE (? IS NULL OR workspace_id=?) AND (?=1 OR archived_at IS NULL)
-      AND (?='' OR instr(lower(coalesce(json_extract(json,'$.title'),'') || ' ' || coalesce(json_extract(json,'$.objective'),'') || ' ' || coalesce(json_extract(json,'$.outputHint'),'')), lower(?))>0)
-      ORDER BY updated_at DESC LIMIT ?`,
+      AND (?='all' OR (?='archived' AND archived_at IS NOT NULL)
+        OR (?='paused' AND archived_at IS NULL AND paused=1)
+        OR (?='ready' AND archived_at IS NULL AND paused=0))
+      AND (? IS NULL OR updated_at<? OR (updated_at=? AND routine_id<?))
+      AND (?='' OR instr(aux_routine_lower(coalesce(json_extract(json,'$.title'),'') || ' ' || coalesce(json_extract(json,'$.objective'),'') || ' ' || coalesce(json_extract(json,'$.outputHint'),'')), aux_routine_lower(?))>0)
+      ORDER BY updated_at DESC,routine_id DESC LIMIT ?`,
       )
       .all(
         opts.workspaceId ?? null,
         opts.workspaceId ?? null,
-        opts.includeArchived ? 1 : 0,
+        opts.includeArchived || opts.status === "archived" ? 1 : 0,
+        opts.status ?? "all",
+        opts.status ?? "all",
+        opts.status ?? "all",
+        opts.status ?? "all",
+        opts.cursor?.updatedAt ?? null,
+        opts.cursor?.updatedAt ?? null,
+        opts.cursor?.updatedAt ?? null,
+        opts.cursor?.routineId ?? null,
         opts.query?.trim() ?? "",
         opts.query?.trim() ?? "",
         limit,
@@ -552,9 +576,6 @@ export class RoutineService {
 
   /** Portable definitions for sharing or backup; ids, revisions and timestamps are dropped. */
   exportRoutines(routineIds?: string[]): { format: "aux-routine@1"; routines: RoutineShare[] } {
-    const picked = routineIds?.length
-      ? routineIds.map((id) => this.routine(id))
-      : this.list({ includeArchived: false, limit: 500 });
     const workspaceNames = new Map<string, string>();
     const nameOf = (workspaceId: string) => {
       let name = workspaceNames.get(workspaceId);
@@ -564,14 +585,21 @@ export class RoutineService {
       }
       return name;
     };
+    const share = (routine: Routine): RoutineShare => {
+      const definition = RoutineShareSchema.parse(routine);
+      const workspaceName = nameOf(routine.workspaceId);
+      return { ...definition, ...(workspaceName ? { workspaceName } : {}) };
+    };
     return {
       format: "aux-routine@1",
-      routines: picked.map((routine) => {
-        // parse drops the machine-local fields (ids, revision, timestamps)
-        const share = RoutineShareSchema.parse(routine);
-        const workspaceName = nameOf(routine.workspaceId);
-        return { ...share, ...(workspaceName ? { workspaceName } : {}) };
-      }),
+      routines: routineIds?.length
+        ? routineIds.map((id) => share(this.routine(id)))
+        : Array.from(
+            this.repo.db
+              .prepare("SELECT * FROM routines WHERE archived_at IS NULL ORDER BY routine_id")
+              .iterate(),
+            (row) => share(parseRoutine(row as Parameters<typeof parseRoutine>[0])),
+          ),
     };
   }
 
@@ -599,8 +627,13 @@ export class RoutineService {
     const target = workspaceId ?? this.resolveWorkspace(routines[0]?.workspaceName);
     this.requireWorkspace(target);
     const existing = new Set(
-      this.list({ workspaceId: target, includeArchived: true, limit: 500 }).map(
-        (r) => `${r.title}\n${r.objective}`,
+      Array.from(
+        this.repo.db
+          .prepare(
+            "SELECT json_extract(json,'$.title') AS title,json_extract(json,'$.objective') AS objective FROM routines WHERE workspace_id=?",
+          )
+          .iterate(target),
+        (row) => `${row.title}\n${row.objective}`,
       ),
     );
     const routineIds: string[] = [];
@@ -769,9 +802,8 @@ export class RoutineService {
     return (this.scheduler ??= new RoutineScheduler({
       repo: this.repo,
       events: this.events,
-      list: () => this.list({ includeArchived: false, limit: 200 }),
+      list: (at) => this.scheduledRoutines(at),
       sync: () => this.sync(),
-      pauseNeglected: (at) => this.pauseNeglected(at),
       hasOccurrence: (identity) => this.hasOccurrence(identity),
       startOccurrence: (routine, identity, at) => this.startOccurrence(routine, identity, at),
       recordMissed: (routine, identity, reason) => this.recordMissed(routine, identity, reason),
@@ -781,6 +813,38 @@ export class RoutineService {
         this.pause(routine.routineId, routine.revision, true);
       },
     })).due(now);
+  }
+
+  private async *scheduledRoutines(now: number): AsyncGenerator<Routine> {
+    const { last } = this.repo.db.prepare("SELECT coalesce(max(rowid),0) AS last FROM routines").get() as {
+      last: number;
+    };
+    let after = 0;
+    while (after < last) {
+      const rows = this.repo.db
+        .prepare(
+          `SELECT rowid,routine_id FROM routines
+        WHERE rowid>? AND rowid<=? AND archived_at IS NULL AND paused=0
+          AND json_extract(json,'$.trigger.kind')<>'manual'
+        ORDER BY rowid LIMIT 50`,
+        )
+        .all(after, last) as { rowid: number; routine_id: string }[];
+      if (!rows.length) return;
+      // Let pause/Stop and foreground work run before hydrating the next batch.
+      await setImmediate();
+      for (const row of rows) {
+        after = row.rowid;
+        const routine = this.routine(row.routine_id);
+        if (
+          routine.paused ||
+          routine.archivedAt ||
+          routine.trigger.kind === "manual" ||
+          this.pauseNeglected(routine, now)
+        )
+          continue;
+        yield routine;
+      }
+    }
   }
 
   /** Authoritative watch scope and document epoch before native text extraction. */
@@ -814,7 +878,6 @@ export class RoutineService {
     if (event.observedAt > now + 30_000)
       throw new AuxError("invalid_params", "An automation event cannot be from the future.");
     this.sync();
-    this.pauseNeglected(now);
     const created: RoutineRun[] = [];
     const candidates = this.repo.db
       .prepare(
@@ -823,7 +886,12 @@ export class RoutineService {
       .all(event.kind) as Parameters<typeof parseRoutine>[0][];
     for (const row of candidates) {
       const routine = parseRoutine(row);
-      if (routine.paused || routine.trigger.kind !== event.kind || !this.eventMatches(routine, event))
+      if (
+        routine.paused ||
+        this.pauseNeglected(routine, now) ||
+        routine.trigger.kind !== event.kind ||
+        !this.eventMatches(routine, event)
+      )
         continue;
       if (event.kind === "page_change" && routine.trigger.kind === "page_change") {
         const key = `routinePageDigest:${routine.routineId}`;
@@ -1250,51 +1318,44 @@ export class RoutineService {
   }
 
   /** Stop unattended model work when several old results remain unread. */
-  private pauseNeglected(now: number): void {
-    const rows = this.repo.db
+  private pauseNeglected(routine: Routine, now: number): boolean {
+    if (routine.presenceGuardExempt) return false;
+    const acknowledged =
+      this.repo.getSetting<number>(`routinePresenceAcknowledged:${routine.routineId}`) ??
+      routine.activatedAt ??
+      routine.createdAt;
+    const unattended = this.repo.db
       .prepare(
-        "SELECT * FROM routines WHERE archived_at IS NULL AND paused=0 AND json_extract(json,'$.trigger.kind')<>'manual'",
+        `SELECT count(DISTINCT rr.routine_run_id) AS unread,
+      min(rr.created_at) AS oldest, count(m.call_id) AS model_calls
+    FROM routine_runs rr
+    LEFT JOIN kv k ON k.key='setting:routineInboxRead:'||rr.routine_run_id
+    LEFT JOIN model_calls m ON m.run_id=rr.run_id
+    WHERE rr.routine_id=? AND rr.occurrence_identity IS NOT NULL
+      AND rr.status='completed' AND rr.created_at>=? AND k.value IS NULL`,
       )
-      .all() as Parameters<typeof parseRoutine>[0][];
-    for (const row of rows) {
-      const routine = parseRoutine(row);
-      if (routine.presenceGuardExempt) continue;
-      const acknowledged =
-        this.repo.getSetting<number>(`routinePresenceAcknowledged:${routine.routineId}`) ??
-        routine.activatedAt ??
-        routine.createdAt;
-      const unattended = this.repo.db
-        .prepare(
-          `SELECT count(DISTINCT rr.routine_run_id) AS unread,
-          min(rr.created_at) AS oldest, count(m.call_id) AS model_calls
-        FROM routine_runs rr
-        LEFT JOIN kv k ON k.key='setting:routineInboxRead:'||rr.routine_run_id
-        LEFT JOIN model_calls m ON m.run_id=rr.run_id
-        WHERE rr.routine_id=? AND rr.occurrence_identity IS NOT NULL
-          AND rr.status='completed' AND rr.created_at>=? AND k.value IS NULL`,
-        )
-        .get(routine.routineId, acknowledged) as {
-        unread: number;
-        oldest: number | null;
-        model_calls: number;
-      };
-      if (
-        unattended.unread < 3 ||
-        unattended.oldest === null ||
-        now - unattended.oldest < 24 * 60 * 60_000 ||
-        unattended.model_calls === 0
-      )
-        continue;
-      const paused: Routine = {
-        ...routine,
-        paused: true,
-        pauseCause: "unread_results",
-        revision: routine.revision + 1,
-        updatedAt: now,
-      };
-      this.persist(paused);
-      this.events.emit("routine.updated", { routine: paused });
-    }
+      .get(routine.routineId, acknowledged) as {
+      unread: number;
+      oldest: number | null;
+      model_calls: number;
+    };
+    if (
+      unattended.unread < 3 ||
+      unattended.oldest === null ||
+      now - unattended.oldest < 24 * 60 * 60_000 ||
+      unattended.model_calls === 0
+    )
+      return false;
+    const paused: Routine = {
+      ...routine,
+      paused: true,
+      pauseCause: "unread_results",
+      revision: routine.revision + 1,
+      updatedAt: now,
+    };
+    this.persist(paused);
+    this.events.emit("routine.updated", { routine: paused });
+    return true;
   }
 
   private recordMissed(routine: Routine, identity: string, reason: string): RoutineRun {

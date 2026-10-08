@@ -5,7 +5,7 @@ import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { WorkRow } from "../ui";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type {
   CalendarTaskGrant,
   Routine,
@@ -15,6 +15,7 @@ import type {
   RoutineParameter,
   RoutineRun,
   RoutineRunOutcome,
+  RoutineShare,
   RoutineSuggestion,
   RoutineCandidate,
   Task,
@@ -32,6 +33,11 @@ import {
   nativeStatusRoleProps,
   nativeCheckboxTypeProps,
 } from "../ui/native-attribute-props";
+
+function routineCursor(items: Routine[]) {
+  const last = items.at(-1);
+  return last ? { updatedAt: last.updatedAt, routineId: last.routineId } : undefined;
+}
 
 export function Routines({ workspaceId, task }: { workspaceId: string; task?: Task }) {
   const currentPageUrl = useStore((state) => state.pages.byId[state.activePageId ?? ""]?.url);
@@ -59,26 +65,132 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const [activationSource, setActivationSource] = useState<{ routineId: string; task: Task } | null>(null);
   const [activationSourceError, setActivationSourceError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [moreSkills, setMoreSkills] = useState(false);
+  const [skillsCursor, setSkillsCursor] = useState<{ updatedAt: number; routineId: string }>();
+  const [moreInbox, setMoreInbox] = useState(false);
+  const [loadingSkillsPage, setLoadingSkillsPage] = useState(false);
+  const [loadingInboxPage, setLoadingInboxPage] = useState(false);
+  const listRequest = useRef(0);
+  const inboxRequest = useRef(0);
+  const currentWorkspace = useRef(workspaceId);
+  const listScope = JSON.stringify([workspaceId, query, status]);
+  const currentListScope = useRef(listScope);
+  useLayoutEffect(() => {
+    currentWorkspace.current = workspaceId;
+    currentListScope.current = listScope;
+  }, [workspaceId, listScope]);
   async function refresh(routineId?: string) {
+    if (currentListScope.current !== listScope) return;
+    const request = ++listRequest.current;
+    const inboxVersion = ++inboxRequest.current;
     const [items, nextAlerts, nextInbox] = await Promise.all([
-      call("routines.list", { workspaceId, includeArchived: true }),
+      call("routines.list", { workspaceId, includeArchived: true, query, status, limit: 50 }),
       call("routines.alerts", { limit: 20 }),
       call("routines.inbox", { workspaceId, limit: 30 }),
     ]);
-    setRoutines(items);
+    if (currentWorkspace.current !== workspaceId) return;
+    if (request === listRequest.current && currentListScope.current === listScope) {
+      setRoutines(items);
+      setMoreSkills(items.length === 50);
+      setSkillsCursor(routineCursor(items));
+      setLoading(false);
+    }
     setAlerts(nextAlerts);
-    setInbox(nextInbox);
-    if (routineId) setSelected(await call("routines.get", { routineId }));
+    if (inboxVersion === inboxRequest.current) {
+      setInbox(nextInbox);
+      setMoreInbox(nextInbox.length === 30);
+    }
+    if (routineId) {
+      const detail = await call("routines.get", { routineId });
+      if (currentWorkspace.current === workspaceId && request === listRequest.current) setSelected(detail);
+    }
+  }
+  async function olderSkills() {
+    if (!skillsCursor || loadingSkillsPage || loading) return;
+    const request = listRequest.current;
+    setLoadingSkillsPage(true);
+    try {
+      const items = await call("routines.list", {
+        workspaceId,
+        includeArchived: true,
+        query,
+        status,
+        limit: 50,
+        cursor: skillsCursor,
+      });
+      if (currentListScope.current !== listScope || request !== listRequest.current) return;
+      setRoutines((current) => [
+        ...current,
+        ...items.filter((item) => !current.some((saved) => saved.routineId === item.routineId)),
+      ]);
+      setMoreSkills(items.length === 50);
+      setSkillsCursor(routineCursor(items));
+    } catch (reason) {
+      if (currentListScope.current === listScope) setError(errorMessage(reason));
+    } finally {
+      if (currentListScope.current === listScope && request === listRequest.current)
+        setLoadingSkillsPage(false);
+    }
+  }
+  async function olderResults() {
+    const last = inbox.at(-1)?.run;
+    if (!last || loadingInboxPage) return;
+    const request = inboxRequest.current;
+    setLoadingInboxPage(true);
+    try {
+      const items = await call("routines.inbox", {
+        workspaceId,
+        limit: 30,
+        cursor: { createdAt: last.createdAt, routineRunId: last.routineRunId },
+      });
+      if (currentWorkspace.current !== workspaceId || request !== inboxRequest.current) return;
+      setInbox((current) => [
+        ...current,
+        ...items.filter((item) => !current.some((saved) => saved.run.routineRunId === item.run.routineRunId)),
+      ]);
+      setMoreInbox(items.length === 30);
+    } catch (reason) {
+      if (currentWorkspace.current === workspaceId) setError(errorMessage(reason));
+    } finally {
+      if (currentWorkspace.current === workspaceId && request === inboxRequest.current)
+        setLoadingInboxPage(false);
+    }
   }
   useEffect(() => {
     let active = true;
-    const target = useStore.getState().skillSelection;
+    const request = ++listRequest.current;
     setLoading(true);
+    setRoutines([]);
+    setLoadingSkillsPage(false);
+    setMoreSkills(false);
+    void call("routines.list", { workspaceId, includeArchived: true, query, status, limit: 50 })
+      .then((items) => {
+        if (!active || request !== listRequest.current) return;
+        setRoutines(items);
+        setMoreSkills(items.length === 50);
+        setSkillsCursor(routineCursor(items));
+      })
+      .catch((reason) => {
+        if (active) setError(errorMessage(reason));
+      })
+      .finally(() => {
+        if (active && request === listRequest.current) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [workspaceId, query, status]);
+  useEffect(() => {
+    let active = true;
+    const target = useStore.getState().skillSelection;
+    const request = ++inboxRequest.current;
+    setInbox([]);
+    setLoadingInboxPage(false);
+    setMoreInbox(false);
     setSelected(null);
     setComparison(null);
     setError("");
     void Promise.all([
-      call("routines.list", { workspaceId, includeArchived: true }),
       call("routines.alerts", { limit: 20 }),
       call("routines.inbox", { workspaceId, limit: 30 }),
       target?.workspaceId === workspaceId
@@ -88,11 +200,13 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
           })
         : Promise.resolve(null),
     ])
-      .then(([items, nextAlerts, nextInbox, detail]) => {
+      .then(([nextAlerts, nextInbox, detail]) => {
         if (active) {
-          setRoutines(items);
           setAlerts(nextAlerts);
-          setInbox(nextInbox);
+          if (request === inboxRequest.current) {
+            setInbox(nextInbox);
+            setMoreInbox(nextInbox.length === 30);
+          }
           if (detail?.routine.workspaceId === workspaceId) setSelected(detail);
           if (
             target?.workspaceId === workspaceId &&
@@ -103,9 +217,6 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       })
       .catch((reason) => {
         if (active) setError(errorMessage(reason));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
       });
     return () => {
       active = false;
@@ -288,7 +399,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             : !item.archivedAt && (status === "paused" ? item.paused : !item.paused))) &&
         `${item.title} ${item.objective} ${item.outputHint ?? ""}`
           .toLowerCase()
-          .includes(query.toLowerCase()),
+          .includes(query.trim().toLowerCase()),
     )
     .sort(
       (left, right) =>
@@ -375,14 +486,38 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             disabled={busy}
             onClick={() =>
               void action(async () => {
-                const ids = routines.filter((item) => !item.archivedAt).map((item) => item.routineId);
-                if (!ids.length) {
+                const definitions: RoutineShare[] = [];
+                let cursor: { updatedAt: number; routineId: string } | undefined;
+                const seen = new Set<string>();
+                for (;;) {
+                  const items = await call("routines.list", {
+                    workspaceId,
+                    includeArchived: false,
+                    limit: 200,
+                    cursor,
+                  });
+                  if (currentWorkspace.current !== workspaceId) return;
+                  const ids = items.filter((item) => !seen.has(item.routineId)).map((item) => item.routineId);
+                  if (ids.length) {
+                    const chunk = await call("routines.export", { routineIds: ids });
+                    if (currentWorkspace.current !== workspaceId) return;
+                    definitions.push(...chunk.routines);
+                    for (const id of ids) seen.add(id);
+                  }
+                  const last = items.at(-1);
+                  if (items.length < 200 || !last) break;
+                  cursor = { updatedAt: last.updatedAt, routineId: last.routineId };
+                }
+                if (!definitions.length) {
                   setNotice("No active Skills to export.");
                   return;
                 }
-                const envelope = await call("routines.export", { routineIds: ids });
-                const path = await bridge.saveFile("aux-routines.json", JSON.stringify(envelope, null, 2));
-                if (path) setNotice(`Exported ${ids.length} Skill${ids.length === 1 ? "" : "s"}.`);
+                const path = await bridge.saveFile(
+                  "aux-routines.json",
+                  JSON.stringify({ format: "aux-routine@1", routines: definitions }, null, 2),
+                );
+                if (path && currentWorkspace.current === workspaceId)
+                  setNotice(`Exported ${definitions.length} Skill${definitions.length === 1 ? "" : "s"}.`);
               })
             }
           >
@@ -435,7 +570,8 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       <section {...staticFieldProps} aria-label="Automation results inbox">
         <strong>Automation results</strong>
         <span {...staticHintProps}>
-          {inbox.filter((item) => !item.readAt).length} unread · Runs are recorded only while Aux is open.
+          {inbox.filter((item) => !item.readAt).length} unread shown · Runs are recorded only while Aux is
+          open.
         </span>
         {inbox.length === 0 && <span {...staticHintProps}>No automatic runs yet.</span>}
         {inbox.map((item) => (
@@ -458,8 +594,17 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
                   disabled={busy}
                   onClick={() =>
                     void action(async () => {
-                      await call("routines.inboxRead", { routineRunId: item.run.routineRunId });
-                      await refresh();
+                      const result = await call("routines.inboxRead", {
+                        routineRunId: item.run.routineRunId,
+                      });
+                      if (currentWorkspace.current === workspaceId)
+                        setInbox((items) =>
+                          items.map((entry) =>
+                            entry.run.routineRunId === item.run.routineRunId
+                              ? { ...entry, readAt: result.readAt }
+                              : entry,
+                          ),
+                        );
                     })
                   }
                 >
@@ -469,6 +614,15 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             </div>
           </div>
         ))}
+        {moreInbox && (
+          <button
+            {...smallGhostButtonProps}
+            disabled={busy || loadingInboxPage}
+            onClick={() => void olderResults()}
+          >
+            {loadingInboxPage ? "Loading results…" : "Older results"}
+          </button>
+        )}
       </section>
       {alerts.length > 0 && (
         <section {...staticFieldProps} aria-label="Routine alerts">
@@ -558,6 +712,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             {shellIconSearch}
             <input
               aria-label="Search Skills"
+              maxLength={200}
               placeholder="Search Skills…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -623,6 +778,15 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
                   ]}
                 />
               ))}
+              {moreSkills && (
+                <button
+                  {...smallGhostButtonProps}
+                  disabled={busy || loadingSkillsPage}
+                  onClick={() => void olderSkills()}
+                >
+                  {loadingSkillsPage ? "Loading Skills…" : "More Skills"}
+                </button>
+              )}
               {!error && !visibleRoutines.length && (
                 <div className="routine-empty">
                   {shellIconClock}

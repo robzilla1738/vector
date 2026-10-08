@@ -201,7 +201,7 @@ export const RoutineShareSchema = RoutineDefinitionSchema.omit({
 });
 export const RoutineShareEnvelopeSchema = z.object({
   format: z.literal("aux-routine@1"),
-  routines: z.array(RoutineShareSchema).min(1).max(500),
+  routines: z.array(RoutineShareSchema).min(1),
 });
 export const RoutineSuggestionSchema = z.object({
   routineId: text,

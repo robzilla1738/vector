@@ -5,9 +5,8 @@ import type { EventBus } from "../../events.js";
 interface SchedulerDeps {
   repo: Repo;
   events: EventBus;
-  list(): Routine[];
+  list(now: number): AsyncIterable<Routine>;
   sync(): void;
-  pauseNeglected(now: number): void;
   hasOccurrence(identity: string): boolean;
   startOccurrence(routine: Routine, identity: string, at: number): Promise<RoutineRun>;
   recordMissed(routine: Routine, identity: string, reason: string): RoutineRun;
@@ -29,9 +28,8 @@ export class RoutineScheduler {
   }
   private async scheduleDue(now: number): Promise<RoutineRun[]> {
     this.deps.sync();
-    this.deps.pauseNeglected(now);
     const created: RoutineRun[] = [];
-    for (const routine of this.deps.list()) {
+    for await (const routine of this.deps.list(now)) {
       if (routine.paused || routine.trigger.kind === "manual") continue;
       try {
         if (routine.trigger.kind === "schedule" || routine.trigger.kind === "rrule") {

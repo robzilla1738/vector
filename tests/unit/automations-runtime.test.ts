@@ -205,3 +205,29 @@ it("gives fall-back wall minutes one identity and skips nonexistent spring-forwa
   );
   expect(new Date(spring).toISOString()).toBe("2026-03-15T06:30:00.000Z");
 });
+
+it("pages every inbox occurrence with tied timestamps and retains unread filtering", async () => {
+  const f = fixture();
+  const routine = f.routines.fromResult({ taskId: f.task.taskId, title: "Older results" });
+  const insert = f.db.prepare(
+    "INSERT INTO routine_runs(routine_run_id,routine_id,revision,occurrence_identity,status,parameters,created_at) VALUES(?,?,1,?,'completed','{}',?)",
+  );
+  for (let index = 0; index < 65; index++) {
+    const id = `occurrence-${String(index).padStart(3, "0")}`;
+    insert.run(id, routine.routineId, id, 100);
+  }
+  f.routines.markInboxRead("occurrence-064");
+  const ids: string[] = [];
+  let cursor: { createdAt: number; routineRunId: string } | undefined;
+  for (;;) {
+    const page = f.routines.inbox({ workspaceId: routine.workspaceId, unreadOnly: true, limit: 30, cursor });
+    ids.push(...page.map((item) => item.run.routineRunId));
+    const last = page.at(-1)?.run;
+    if (!last || page.length < 30) break;
+    cursor = last;
+  }
+  expect(ids).toHaveLength(64);
+  expect(new Set(ids).size).toBe(64);
+  expect(ids).not.toContain("occurrence-064");
+  expect(ids.at(-1)).toBe("occurrence-000");
+});

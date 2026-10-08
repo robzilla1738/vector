@@ -1339,6 +1339,8 @@ export const MethodSchemas = {
   "vault.secretMatches": VaultSecretMatchParams,
   "routines.list": z.object({
     workspaceId: id.optional(),
+    status: z.enum(["all", "ready", "paused", "archived"]).optional(),
+    cursor: z.object({ updatedAt: z.number().int().nonnegative(), routineId: id }).strict().optional(),
     query: z.string().trim().max(200).optional(),
     includeArchived: z.boolean().default(false),
     limit: z.number().int().min(1).max(200).default(50),
@@ -1405,6 +1407,7 @@ export const MethodSchemas = {
   "routines.inbox": z
     .object({
       workspaceId: id.optional(),
+      cursor: z.object({ createdAt: z.number().int().nonnegative(), routineRunId: id }).strict().optional(),
       limit: z.number().int().min(1).max(100).default(50),
       unreadOnly: z.boolean().default(false),
     })

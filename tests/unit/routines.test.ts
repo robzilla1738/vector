@@ -12,7 +12,14 @@ import {
   nextScheduledTime,
   previousScheduledTime,
 } from "@aux/runtime";
-import { AuxError, MethodSchemas, routineOccurrenceIdentity, type RoutineShare } from "@aux/contracts";
+import {
+  AuxError,
+  MethodSchemas,
+  routineOccurrenceIdentity,
+  type RoutineShare,
+  RoutineShareEnvelopeSchema,
+} from "@aux/contracts";
+import { routinesMethods } from "../../apps/runtime/dist/api/methods/routines.js";
 import { pollCalendarRoutines } from "../../apps/runtime/src/services/calendar-routine-poll.js";
 
 it("keeps omitted safety fields untouched in a partial Skill update", () => {
@@ -103,7 +110,7 @@ it("reruns a saved Skill with changed parameters after a restart", async () => {
 
 it("searches Skills by name, objective, and output within their Space", () => {
   const f = fixture();
-  const skill = f.routines.fromResult({ taskId: f.task.taskId, title: "Vendor check" });
+  const skill = f.routines.fromResult({ taskId: f.task.taskId, title: "Éclair vendor check" });
   const revised = f.routines.update({
     routineId: skill.routineId,
     expectedRevision: skill.revision,
@@ -111,7 +118,7 @@ it("searches Skills by name, objective, and output within their Space", () => {
   });
   const other = f.tasks.createWorkspace("Other");
   f.routines.importRoutines(f.routines.exportRoutines([skill.routineId]).routines, other.workspaceId);
-  for (const query of ["VENDOR", "compare", "MATRIX"]) {
+  for (const query of ["VENDOR", "compare", "MATRIX", "éCLAIR"]) {
     expect(
       f.routines.list({ workspaceId: f.workspace.workspaceId, query }).map((item) => item.routineId),
     ).toEqual([revised.routineId]);
@@ -1782,4 +1789,114 @@ it("does not retry a non-transient monitor dispatch failure", async () => {
   const failed = await f.routines.run({ routineId: routine.routineId, expectedRevision: routine.revision });
   expect(failed.status).toBe("failed");
   expect(calls).toBe(1);
+});
+
+it("pages tied Skill timestamps, searches older definitions, and round-trips all exported definitions", async () => {
+  const f = fixture();
+  const saved = f.routines.fromResult({ taskId: f.task.taskId, title: "Older matching Skill" });
+  const insert = f.db.prepare(
+    "INSERT INTO routines(routine_id,workspace_id,revision,paused,updated_at,json) VALUES(?,?,?,?,?,?)",
+  );
+  for (let index = 0; index < 501; index++) {
+    const id = `skill-${String(index).padStart(3, "0")}`;
+    insert.run(
+      id,
+      saved.workspaceId,
+      1,
+      index % 2,
+      saved.updatedAt + 1,
+      JSON.stringify({ ...saved, routineId: id, title: id, paused: !!(index % 2) }),
+    );
+  }
+  const ids: string[] = [];
+  let cursor: { updatedAt: number; routineId: string } | undefined;
+  for (;;) {
+    const page = f.routines.list({ workspaceId: saved.workspaceId, limit: 50, cursor });
+    ids.push(...page.map((item) => item.routineId));
+    const last = page.at(-1);
+    if (!last || page.length < 50) break;
+    cursor = last;
+  }
+  expect(ids).toHaveLength(502);
+  expect(new Set(ids).size).toBe(502);
+  expect(ids.at(-1)).toBe(saved.routineId);
+  expect(f.routines.list({ workspaceId: saved.workspaceId, query: "Older matching" })).toEqual([saved]);
+  expect(f.routines.list({ workspaceId: saved.workspaceId, status: "paused", limit: 200 })).toHaveLength(200);
+  expect(
+    f.routines.list({ workspaceId: saved.workspaceId, status: "ready" }).every((item) => !item.paused),
+  ).toBe(true);
+  const archived = f.routines.archive(saved.routineId, saved.revision, true);
+  expect(f.routines.list({ workspaceId: saved.workspaceId, status: "archived" })).toEqual([archived]);
+  const envelope = RoutineShareEnvelopeSchema.parse(f.routines.exportRoutines());
+  expect(envelope.routines).toHaveLength(501);
+  expect(f.routines.importRoutines(envelope.routines, saved.workspaceId)).toMatchObject({
+    imported: 0,
+    skipped: 501,
+  });
+  const target = f.tasks.createWorkspace("Imported");
+  const directory = mkdtempSync(join(tmpdir(), "aux-routine-export-"));
+  cleanup.push(() => rmSync(directory, { recursive: true, force: true }));
+  const path = join(directory, "routines.json");
+  writeFileSync(path, JSON.stringify(envelope));
+  const importFile = routinesMethods["routines.import"]!;
+  await expect(
+    importFile({
+      client: { external: false },
+      method: "routines.import",
+      params: { path, workspaceId: target.workspaceId },
+      routines: f.routines,
+    } as Parameters<typeof importFile>[0]),
+  ).resolves.toMatchObject({ imported: 501, skipped: 0 });
+});
+
+it("traverses every active schedule behind newer manual Skills and rechecks paused definitions during the sweep", async () => {
+  const started: string[] = [];
+  let stopLater: () => void = () => {};
+  const f = fixture(async (routine) => {
+    started.push(routine.title);
+    if (started.length === 1) stopLater();
+    return { runId: `agent-${started.length}` };
+  });
+  const scheduled = Array.from({ length: 55 }, (_, index) =>
+    f.routines.fromResult({
+      taskId: f.task.taskId,
+      title: `Scheduled ${index}`,
+      trigger: { kind: "heartbeat", timezone: "UTC", intervalMinutes: 60 },
+      reviewRequired: false,
+    }),
+  );
+  stopLater = () => {
+    const last = scheduled.at(-1)!;
+    f.routines.pause(last.routineId, last.revision, true);
+    const changed = scheduled[52]!;
+    f.routines.update({
+      routineId: changed.routineId,
+      expectedRevision: changed.revision,
+      title: "Changed during sweep",
+    });
+  };
+  const template = scheduled[0]!;
+  const insert = f.db.prepare(
+    "INSERT INTO routines(routine_id,workspace_id,revision,paused,updated_at,json) VALUES(?,?,?,?,?,?)",
+  );
+  for (let index = 0; index < 220; index++) {
+    const id = `new-manual-${index}`;
+    insert.run(
+      id,
+      template.workspaceId,
+      1,
+      1,
+      template.updatedAt + 10_000,
+      JSON.stringify({ ...template, routineId: id, title: id, paused: true, trigger: { kind: "manual" } }),
+    );
+  }
+  const now = Date.now();
+  const result = await f.routines.due(now);
+  expect(result).toHaveLength(54);
+  expect(started).toHaveLength(54);
+  expect(started).toContain("Scheduled 0");
+  expect(started).toContain("Changed during sweep");
+  expect(started).not.toContain("Scheduled 54");
+  expect(new Set(result.map((run) => run.occurrenceIdentity)).size).toBe(54);
+  expect(await f.routines.due(now)).toEqual([]);
 });

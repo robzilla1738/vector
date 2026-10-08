@@ -53,7 +53,14 @@ export class RoutineInbox {
   }
 
   /** One inbox row per automation occurrence, including completed results and missed fires. */
-  inbox(opts: { workspaceId?: string; limit?: number; unreadOnly?: boolean } = {}): RoutineInboxItem[] {
+  inbox(
+    opts: {
+      workspaceId?: string;
+      limit?: number;
+      unreadOnly?: boolean;
+      cursor?: { createdAt: number; routineRunId: string };
+    } = {},
+  ): RoutineInboxItem[] {
     const limit = Math.min(100, Math.max(1, opts.limit ?? 50));
     const rows = this.repo.db
       .prepare(
@@ -63,12 +70,23 @@ export class RoutineInbox {
       LEFT JOIN kv k ON k.key='setting:routineInboxRead:'||rr.routine_run_id
       WHERE rr.occurrence_identity IS NOT NULL AND (? IS NULL OR r.workspace_id=?)
         AND (?=0 OR k.value IS NULL)
+        AND (? IS NULL OR rr.created_at<? OR (rr.created_at=? AND rr.routine_run_id<?))
       ORDER BY rr.created_at DESC,rr.routine_run_id DESC LIMIT ?`,
       )
-      .all(opts.workspaceId ?? null, opts.workspaceId ?? null, opts.unreadOnly ? 1 : 0, limit) as (Record<
-      string,
-      unknown
-    > & { workspace_id: string; routine_json: string; read_at: string | null })[];
+      .all(
+        opts.workspaceId ?? null,
+        opts.workspaceId ?? null,
+        opts.unreadOnly ? 1 : 0,
+        opts.cursor?.createdAt ?? null,
+        opts.cursor?.createdAt ?? null,
+        opts.cursor?.createdAt ?? null,
+        opts.cursor?.routineRunId ?? null,
+        limit,
+      ) as (Record<string, unknown> & {
+      workspace_id: string;
+      routine_json: string;
+      read_at: string | null;
+    })[];
     return rows.map((row) => {
       const definition = JSON.parse(row.routine_json) as { title: string; trigger: RoutineTrigger };
       return {
