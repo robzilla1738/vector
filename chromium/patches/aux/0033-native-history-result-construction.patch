@@ -1,0 +1,21 @@
+diff --git a/components/history/core/browser/history_database.cc b/components/history/core/browser/history_database.cc
+index 0b91abc..09fe35c 100644
+--- a/components/history/core/browser/history_database.cc
++++ b/components/history/core/browser/history_database.cc
+@@ -119,13 +119,13 @@ bool HistoryDatabase::GetVisibleVisitPage(
+   statement.BindInt(index, limit);
+   std::vector<URLResult> rows;
+   while (statement.Step()) {
+-    URLResult row(GURL(statement.ColumnString(0)));
++    URLResult row(GURL(statement.ColumnString(0)),
++                  base::Time::FromDeltaSinceWindowsEpoch(
++                      base::Microseconds(statement.ColumnInt64(2))));
+     if (!row.url().is_valid()) {
+       continue;
+     }
+     row.set_title(statement.ColumnString16(1));
+-    row.set_visit_time(base::Time::FromDeltaSinceWindowsEpoch(
+-        base::Microseconds(statement.ColumnInt64(2))));
+     rows.push_back(std::move(row));
+   }
+   if (!statement.Succeeded()) {

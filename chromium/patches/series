@@ -30,3 +30,4 @@ aux/0029-browser-renderer-integration.patch
 aux/0030-native-performance-fixtures.patch
 aux/0031-coding-projects.patch
 aux/0032-browser-import-export.patch
+aux/0033-native-history-result-construction.patch
