@@ -12,6 +12,7 @@ import { navigateControlledPage } from "./services/pages/controlled-navigation.j
 import { registerNativeSubagentWorkload } from "./services/native-subagent-workload.js";
 import { registerNativeProjectPreview } from "./services/native-project-preview.js";
 import { installNativeSpaceBindings } from "./services/native-space-bindings.js";
+import { registerPrivateProviderBroker } from "./services/private-provider.js";
 import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
 import { withRunAuthorityMutation } from "./services/overnight-authority.js";
 import { lineageRuns, overnightRoot, runAncestry, runRoot } from "./services/run-lineage.js";
@@ -288,6 +289,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const agentInstallWork = new Set<Promise<unknown>>();
   let stopNativeDeviceConfirmation: (() => void) | undefined;
   let stopNativeProjectPreview: (() => void) | undefined;
+  let stopPrivateProviderBroker: (() => void) | undefined;
   let nativeSpaceBindings: Promise<(() => Promise<void>) | undefined> | undefined;
   let stopRunEndHooks: (() => void) | undefined;
   type RuntimeServices = Services & {
@@ -1267,6 +1269,17 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   runtimeServices.settings.attachNative(native);
   privateStartupPhase("services");
   runtimeServices.settings.attachCopilotServices(() => runtimeServices.copilot);
+  if (channel && hostSocket && !privateSession) {
+    stopPrivateProviderBroker = registerPrivateProviderBroker(channel, {
+      current: () => !closed && native.available(),
+      request: (request) => runtimeServices.settings.privateProviderRequest(request),
+    });
+  }
+  if (privateSession) {
+    if (!bootstrapIdentity?.methods.includes("native.privateProvider") || !native.privateProvider)
+      throw new AuxError("capability_unsupported", "This native build does not implement private provider access.");
+    await runtimeServices.settings.attachPrivateProvider((request) => native.privateProvider!(request), { native, dataDir: config.dataDir });
+  }
 
   // These authenticated host-only methods prepare local files for native save dialogs.
   channel?.onMethod("artifact.exportDescriptor", (params) => {
@@ -3175,6 +3188,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       closed = true;
       stopNativeDeviceConfirmation?.();
       stopNativeProjectPreview?.();
+      stopPrivateProviderBroker?.();
       stopDeferred();
       clearInterval(filterTimer);
       clearInterval(memoryExpiry);
@@ -3369,6 +3383,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   hostSocket?.onClose?.(() => {
     stopNativeDeviceConfirmation?.();
     stopNativeProjectPreview?.();
+    stopPrivateProviderBroker?.();
     if (!closed)
       void shutdown().then(
         () => process.exit(0),
