@@ -78,6 +78,8 @@
   .glass-material {
     pointer-events: none;
     border-radius: inherit;
+    /* Blend layers need the themed backing inside their own stacking context. */
+    background: inherit;
     position: absolute;
     inset: 0;
     z-index: -1;

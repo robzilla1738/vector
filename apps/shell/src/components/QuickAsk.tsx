@@ -1,18 +1,12 @@
 import { smallGhostButtonProps } from "../ui/button-props";
-import { memo, useEffect, useRef } from "react";
-import { useShallow } from "zustand/react/shallow";
+import { useEffect, useRef } from "react";
 import { Conversation } from "./Conversation";
+import { Toasts } from "./Toasts";
 import { bridge } from "../bridge";
 import { useStore, errToast } from "../store";
 import { shellIconOpen } from "../ui/icons";
 import "./QuickAsk.css";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
-import { nativePoliteLiveProps } from "../ui/native-attribute-props";
-
-const QuickAskToast = memo(function QuickAskToast({ id }: { id: number }) {
-  const toast = useStore((state) => state.toasts.find((item) => item.id === id));
-  return toast ? <div className={`toast ${toast.kind}`}>{toast.text}</div> : null;
-});
 
 export function QuickAsk({ onExpand }: { onExpand(): void }) {
   const composer = useRef<HTMLTextAreaElement>(null);
@@ -22,7 +16,6 @@ export function QuickAsk({ onExpand }: { onExpand(): void }) {
     return () => cancelAnimationFrame(frame);
   }, [chatId]);
   const connected = useStore((state) => state.connected);
-  const toastIds = useStore(useShallow((state) => state.toasts.map((item) => item.id)));
   return (
     <main
       className="quick-ask"
@@ -56,11 +49,7 @@ export function QuickAsk({ onExpand }: { onExpand(): void }) {
           </output>
         )}
         <Conversation embedded composerRef={composer} />
-        <div className="toasts" {...nativePoliteLiveProps}>
-          {toastIds.map((id) => (
-            <QuickAskToast key={id} id={id} />
-          ))}
-        </div>
+        <Toasts />
       </div>
     </main>
   );

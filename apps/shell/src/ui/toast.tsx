@@ -1,4 +1,4 @@
-import { IconButton } from "./index";
+import { Button, IconButton } from "./index";
 import { GlassMaterial } from "../components/GlassMaterial";
 import { useEffect, useState } from "react";
 import { shellIconAlert, shellIconCheck, shellIconClose } from "./icons";
@@ -43,14 +43,14 @@ export function Toast({
       {kind === "error" ? shellIconAlert : shellIconCheck}
       <span className="toast-text">{text}</span>
       {action && (
-        <button className="btn toast-action" onClick={action.run}>
+        <Button className="toast-action" tone="ghost" size={28} onClick={action.run}>
           {action.label}
-        </button>
+        </Button>
       )}
       {action?.secondary && (
-        <button className="btn toast-action" onClick={action.secondary.run}>
+        <Button className="toast-action" tone="ghost" size={28} onClick={action.secondary.run}>
           {action.secondary.label}
-        </button>
+        </Button>
       )}
       <IconButton
         className="toast-dismiss"

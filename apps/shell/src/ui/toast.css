@@ -27,8 +27,11 @@
     min-width: 0;
     overflow-wrap: anywhere;
   }
-  .toast svg {
+  .toast > svg {
     color: var(--ok);
+    flex: none;
+  }
+  .toast :is(.toast-action, .toast-dismiss) {
     flex: none;
   }
   .toast .toast-dismiss {
@@ -37,7 +40,7 @@
   .toast .toast-dismiss svg {
     color: var(--ink-2);
   }
-  .toast.error svg {
+  .toast.error > svg {
     color: var(--err);
   }
   .toast.error {
