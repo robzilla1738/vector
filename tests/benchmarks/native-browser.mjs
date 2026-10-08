@@ -23,6 +23,7 @@ import { createInterface } from "node:readline";
 import { DatabaseSync } from "node:sqlite";
 import { setTimeout as delay } from "node:timers/promises";
 import { histogram, oneObservation } from "./native-histograms.mjs";
+import { memoryFootprints, shellRoleWitness } from "./native-memory.mjs";
 import { acquireDevLock } from "../../scripts/dev.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -50,6 +51,8 @@ if (process.argv.includes("--plan")) {
           warmFirstFrame: names.firstFrame,
           tabSwitchP95: names.tabSwitch,
           commandBarP95: names.commandBar,
+          shellPhysicalFootprintBytes: "original native-witnessed shell renderer",
+          runtimePhysicalFootprintBytes: "exact packaged Aux Runtime executable",
         },
         interactionsPerProcess: 20,
         controls:
@@ -172,7 +175,7 @@ try {
     120000,
   );
   const report = {
-    schema: 4,
+    schema: 5,
     status: "incomplete",
     at: new Date().toISOString(),
     machine: { arch: arch(), osRelease: osRelease(), model: command("sysctl", ["-n", "hw.model"]), power },
@@ -190,6 +193,15 @@ try {
       presentation: "native-confirmed conservative presentation bound",
       footprint:
         "sum of original process-tree kernel physical footprints; shared pages can be counted more than once",
+      memoryRoles: {
+        shell: "original chrome://aux primary-frame process PID and kernel birth; full process footprint",
+        runtime: "one descendant with kernel executable path matching the passed app bundle's Aux Runtime",
+        stock: "Aux-only role metrics are not applicable; total footprint uses the same kernel collector",
+        sample:
+          "kernel identity/path/ancestry checked around each footprint read; process rows are sequential",
+        shellTargetMiB: 120,
+        runtimeTargetMiB: 90,
+      },
       coldInteractive:
         "original kernel process birth to real input-served fixture presentation, including launch/dyld/probe overhead",
       coldClock: "native original kernel process-birth Mach ticks",
@@ -223,8 +235,8 @@ try {
     }
     throw new Error(`No actual ${label} within ${milliseconds} ms`);
   }
-  function helper(pid) {
-    const child = spawn(helperBinary, [String(pid)], { stdio: ["pipe", "pipe", "inherit"] });
+  function helper(pid, app) {
+    const child = spawn(helperBinary, [String(pid), app], { stdio: ["pipe", "pipe", "inherit"] });
     const pending = new Map();
     let next = 0;
     let exitError;
@@ -316,13 +328,15 @@ try {
     let stderr = "",
       bootBuffer = "";
     const bootPhases = [];
+    const shellRole = shellRoleWitness(child.pid);
     child.stderr.on("data", (data) => {
       stderr = (stderr + data).slice(-8000);
-      bootBuffer = (bootBuffer + data).slice(-8000);
+      bootBuffer += data;
       let end;
       while ((end = bootBuffer.indexOf("\n")) >= 0) {
         const line = bootBuffer.slice(0, end);
         bootBuffer = bootBuffer.slice(end + 1);
+        shellRole.observe(line);
         const match = line.match(/^\[runtime\] boot (\{.*\})$/);
         if (!match || bootPhases.length >= 32) continue;
         try {
@@ -332,13 +346,23 @@ try {
           /* An incomplete diagnostic line is not a timing observation. */
         }
       }
+      bootBuffer = bootBuffer.slice(-8000);
     });
     const exited = new Promise((resolve) => child.once("exit", (code, signal) => resolve({ code, signal })));
     const live = () => {
       if (child.exitCode !== null || child.signalCode !== null)
         throw new Error(`Original ${build.kind} exited: ${stderr}`);
     };
-    const run = { kind: build.kind, child, exited, profile, input: null, browser: null, bootPhases };
+    const run = {
+      kind: build.kind,
+      child,
+      exited,
+      profile,
+      input: null,
+      browser: null,
+      bootPhases,
+      shellRole,
+    };
     try {
       const port = await until("original browser-owned loopback listener", () => {
         live();
@@ -348,7 +372,7 @@ try {
       run.session = await run.browser.newBrowserCDPSession();
       // AppKit registration follows process creation; retain kernel birth time
       // only after this exact browser has published its owned listener.
-      run.input = helper(child.pid);
+      run.input = helper(child.pid, build.app);
       const identity = await run.input.call("identity");
       assert.equal(
         identity.accessibility,
@@ -587,7 +611,24 @@ try {
                 changed = true;
               }
           }
-          sample.memory = await run.input.call("memory", { pids: [...descendants] });
+          const shellWitness = kind === "aux" ? run.shellRole.current() : undefined;
+          sample.memory = await run.input.call("memory", {
+            pids: [...descendants],
+            ...(shellWitness ? { shellWitness } : {}),
+          });
+          if (shellWitness) {
+            assert.deepEqual(
+              run.shellRole.current(),
+              shellWitness,
+              "Original shell owner changed while measuring",
+            );
+            sample.shellRoleWitness = shellWitness;
+          }
+          sample.memorySummary = memoryFootprints(
+            sample.memory,
+            shellWitness,
+            kind === "aux" ? realpathSync(join(builds.aux.app, "Contents/Helpers/Aux Runtime")) : undefined,
+          );
           sample.runtimeBoot = run.bootPhases.map((phase) => ({ ...phase }));
           sample.powerAfter = command("pmset", ["-g", "batt"]);
           assert.match(
@@ -633,15 +674,26 @@ try {
       const node = join(builds[kind].app, "Contents/Helpers/Aux Runtime");
       if (kind === "aux") assert.ok(existsSync(node), "The actual packaged Aux Runtime helper is required");
       report.medians[kind].nodeBytes = existsSync(node) ? statSync(node).size : null;
-      report.medians[kind].physicalFootprintBytes = median(
-        report.raw[kind].map((sample) =>
-          sample.memory.processes.reduce((sum, row) => {
-            assert.ok(Number.isSafeInteger(row.physicalFootprintBytes));
-            return sum + row.physicalFootprintBytes;
-          }, 0),
-        ),
-      );
+      for (const metric of [
+        "physicalFootprintBytes",
+        "shellPhysicalFootprintBytes",
+        "runtimePhysicalFootprintBytes",
+      ]) {
+        report.medians[kind][metric] =
+          kind === "stock" && metric !== "physicalFootprintBytes"
+            ? null
+            : median(report.raw[kind].map((sample) => sample.memorySummary[metric]));
+      }
     }
+    report.memoryTargets = Object.fromEntries(
+      [
+        ["shell", 120],
+        ["runtime", 90],
+      ].map(([role, targetMiB]) => {
+        const medianMiB = report.medians.aux[`${role}PhysicalFootprintBytes`] / (1024 * 1024);
+        return [role, { medianMiB, targetMiB, withinBudget: medianMiB <= targetMiB }];
+      }),
+    );
     report.status = "complete";
     save();
     const pair = (name) => ["aux", "stock"].map((kind) => report.medians[kind][name].toFixed(1)).join(" / ");
@@ -655,7 +707,7 @@ try {
         .join(" / ");
     const rawTarget = join(output, "report.json");
     const rawLink = /\s/.test(rawTarget) ? `<${rawTarget}>` : rawTarget;
-    const row = `| ${report.at.slice(0, 10)} / ${builds.aux.revision.slice(0, 9)} / AC | ${pair("coldLaunch")} | ${pair("firstFrame")} | ${pair("coldInteractive")} | ${pair("navigationInput")} | ${pair("tabSwitch")} | ${pair("commandBar")} | ${pair("warmFirstFrame")} | ${p95("tabSwitch")} | ${p95("commandBar")} | ${mb("physicalFootprintBytes")} | ${mb("appBytes")} / Node ${mb("nodeBytes")} | 5 | [raw report](${rawLink}) |`;
+    const row = `| ${report.at.slice(0, 10)} / ${builds.aux.revision.slice(0, 9)} / AC | ${pair("coldLaunch")} | ${pair("firstFrame")} | ${pair("coldInteractive")} | ${pair("navigationInput")} | ${pair("tabSwitch")} | ${pair("commandBar")} | ${pair("warmFirstFrame")} | ${p95("tabSwitch")} | ${p95("commandBar")} | ${mb("physicalFootprintBytes")} | ${report.memoryTargets.shell.medianMiB.toFixed(1)} | ${report.memoryTargets.runtime.medianMiB.toFixed(1)} | ${mb("appBytes")} / Node ${mb("nodeBytes")} | 5 | [raw report](${rawLink}) |`;
     writeFileSync(join(output, "benchmark-row.md"), `${row}\n`);
     const benchmarksPath = join(root, "docs/BENCHMARKS.md");
     let benchmarks = readFileSync(benchmarksPath, "utf8");

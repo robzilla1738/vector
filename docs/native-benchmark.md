@@ -7,6 +7,7 @@ not yet produced a complete measured comparison.
 The comparison takes five paired runs and reports medians for cold launch,
 actual first presentation, launch to usable content, navigation input,
 presented tab switch, command-bar results, process-tree physical footprint,
+original Aux shell and packaged runtime physical footprints,
 app bytes and bundled Node bytes. Each measured process also records 20 tab switches
 and 20 single-character omnibox queries, producing 100 samples per browser for p50/p95/max.
 After each fresh-process sample it relaunches the same disposable Profile and records
@@ -58,3 +59,13 @@ listeners, renderer readiness, or unit tests.
 
 The previous qualification-oriented instructions and measured evidence remain
 [historical](archive/benchmarks-before-aux-v3.md).
+
+Aux role measurements require the original shell renderer PID and kernel process
+birth emitted by opted-in native instrumentation. A duplicated or retired shell
+witness cannot be replaced by another renderer. The PID-scoped Swift collector
+checks browser ancestry and birth around each kernel footprint observation; it
+recognizes the runtime only when `proc_pidpath` matches the supplied app bundle's
+actual `Contents/Helpers/Aux Runtime` path. Missing or ambiguous roles leave the
+report incomplete. Stock role fields are not applicable, while its total uses
+the same collector. Role targets are reported explicitly in MiB; the shared-page
+caveat still applies to the total process-tree sum.

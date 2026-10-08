@@ -7,7 +7,7 @@ import Foundation
 import Darwin
 
 if CommandLine.arguments == [CommandLine.arguments[0], "--help"] {
-  print("native-perf <original-browser-pid> — JSON stdin commands: identity, activate, address-ready, key, text, memory. No input is sent by --help.")
+  print("native-perf <original-browser-pid> <app-bundle> — JSON stdin commands: identity, activate, address-ready, key, text, memory. No input is sent by --help.")
   exit(0)
 }
 
@@ -29,10 +29,16 @@ func usage(_ pid: pid_t) throws -> rusage_info_v0 {
 func uuid(_ info: rusage_info_v0) -> String {
   withUnsafeBytes(of: info.ri_uuid) { bytes in bytes.map { String(format: "%02x", $0) }.joined() }
 }
-guard CommandLine.arguments.count == 2, let pid = Int32(CommandLine.arguments[1]), pid > 0,
+guard CommandLine.arguments.count == 3, let pid = Int32(CommandLine.arguments[1]), pid > 0,
       let app = NSRunningApplication(processIdentifier: pid), let original = try? usage(pid) else {
   fail("Pass the PID of the browser launched by this benchmark.")
 }
+let expectedApp = URL(fileURLWithPath: CommandLine.arguments[2]).resolvingSymlinksInPath()
+guard app.bundleURL?.resolvingSymlinksInPath().path == expectedApp.path else {
+  fail("Original browser does not belong to the supplied app bundle.")
+}
+let expectedRuntimePath = expectedApp.appendingPathComponent("Contents/Helpers/Aux Runtime")
+  .resolvingSymlinksInPath().path
 let originalUUID = uuid(original)
 func current() throws {
   let info = try usage(pid)
@@ -50,6 +56,14 @@ func descendant(_ child: pid_t) throws -> Bool {
     parent = pid_t(info.pbi_ppid)
   }
   return false
+}
+func executablePath(_ process: pid_t) throws -> String {
+  // libproc defines PROC_PIDPATHINFO_MAXSIZE as 4 * MAXPATHLEN; Swift cannot import that macro.
+  var path = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
+  guard proc_pidpath(process, &path, UInt32(path.count)) > 0 else {
+    throw NSError(domain: "Original process executable unavailable", code: 1)
+  }
+  return URL(fileURLWithPath: String(cString: path)).resolvingSymlinksInPath().path
 }
 func key(_ code: CGKeyCode, flags: CGEventFlags = [], text: String? = nil) throws {
   try current()
@@ -137,17 +151,60 @@ while let line = readLine() {
       guard let requested = request["pids"] as? [Int], requested.count <= 256 else {
         throw NSError(domain: "Invalid process list", code: 1)
       }
+      let shell = request["shellWitness"] as? [String: Any]
+      var shellPID: pid_t?
+      var shellBirth: UInt64?
+      if request["shellWitness"] != nil {
+        guard let shell, shell.count == 4, shell["event"] as? String == "AUX_PERF_SHELL_ROLE",
+              shell["browserPid"] as? Int32 == pid,
+              let raw = shell["pid"] as? Int32, raw > 0, raw != pid,
+              let ticks = shell["startMachTicks"] as? String, let birth = UInt64(ticks), birth > 0 else {
+          throw NSError(domain: "Invalid original shell process witness", code: 1)
+        }
+        shellPID = raw
+        shellBirth = birth
+      }
       var rows: [[String: Any]] = []
+      var shellCount = 0
+      var runtimeCount = 0
       for raw in Set(requested) {
         guard raw > 0, raw <= Int(Int32.max) else { throw NSError(domain: "Invalid PID", code: 1) }
         let child = pid_t(raw)
         guard try descendant(child) else { throw NSError(domain: "Process is outside original browser tree", code: 1) }
+        let before = try usage(child)
+        let path = try executablePath(child)
         let measured = try usage(child)
-        guard measured.ri_proc_start_abstime >= original.ri_proc_start_abstime else {
-          throw NSError(domain: "Process generation is outside browser lifetime", code: 1)
+        guard measured.ri_proc_start_abstime >= original.ri_proc_start_abstime,
+              measured.ri_proc_start_abstime == before.ri_proc_start_abstime,
+              uuid(measured) == uuid(before), try descendant(child),
+              try executablePath(child) == path else {
+          throw NSError(domain: "Process generation changed during footprint observation", code: 1)
         }
-        rows.append(["pid": child, "startMachTicks": String(measured.ri_proc_start_abstime),
-                     "physicalFootprintBytes": measured.ri_phys_footprint])
+        var row: [String: Any] = ["pid": child,
+          "startMachTicks": String(measured.ri_proc_start_abstime),
+          "physicalFootprintBytes": measured.ri_phys_footprint]
+        if child == shellPID {
+          guard measured.ri_proc_start_abstime == shellBirth else {
+            throw NSError(domain: "Original shell renderer process was replaced", code: 1)
+          }
+          row["role"] = "shell"
+          shellCount += 1
+        }
+        if shell != nil && child != pid && path == expectedRuntimePath {
+          guard child != shellPID else { throw NSError(domain: "Process roles overlap", code: 1) }
+          row["role"] = "runtime"
+          row["executablePath"] = path
+          runtimeCount += 1
+        }
+        let after = try usage(child)
+        guard measured.ri_proc_start_abstime == after.ri_proc_start_abstime,
+              uuid(measured) == uuid(after) else {
+          throw NSError(domain: "Original process retired during footprint observation", code: 1)
+        }
+        rows.append(row)
+      }
+      if shell != nil && (shellCount != 1 || runtimeCount != 1) {
+        throw NSError(domain: "Exactly one witnessed shell and bundled runtime are required", code: 1)
       }
       try current()
       result = ["processes": rows]

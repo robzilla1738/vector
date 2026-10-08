@@ -21,14 +21,19 @@ process-tree physical footprint, app bytes, and the bundled Node bytes.
 Presentation requires native successful compositor feedback. An animation frame,
 DOM readiness, open listener, or loaded host bridge cannot substitute for it.
 Unavailable signals leave the report incomplete; they cannot produce a pass row.
+Shell memory uses the original `chrome://aux` renderer's native PID/birth witness;
+runtime memory uses the exact packaged helper's kernel executable path. Both are
+full process physical footprints, with explicit 120 MiB and 90 MiB targets.
+Stock has no Aux-only roles. The total remains a process-tree sum, so shared pages
+may count more than once; per-process rows are sampled sequentially.
 
 A completed phase-end report contributes one row in this format (latencies in ms,
-footprint and sizes in MB, Aux/stock pairs):
+total footprint and sizes in MB, Aux/stock pairs; shell/runtime columns are Aux-only MiB):
 
 <!-- native-perf-table:start -->
 
-| Date / build / power | Cold launch | First frame | Cold interactive | Navigation input | Tab switch | Command bar | Warm frame | Tab p95 | Command p95 | Footprint | App / Node |   n | Raw report |
-| -------------------- | ----------: | ----------: | ---------------: | ---------------: | ---------: | ----------: | ---------: | ------: | ----------: | --------: | ---------: | --: | ---------- |
+| Date / build / power | Cold launch | First frame | Cold interactive | Navigation input | Tab switch | Command bar | Warm frame | Tab p95 | Command p95 | Footprint | Shell MiB | Runtime MiB | App / Node |   n | Raw report |
+| -------------------- | ----------: | ----------: | ---------------: | ---------------: | ---------: | ----------: | ---------: | ------: | ----------: | --------: | --------: | ----------: | ---------: | --: | ---------- |
 
 <!-- native-perf-table:end -->
 

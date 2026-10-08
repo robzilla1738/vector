@@ -1,0 +1,140 @@
+diff --git a/chrome/browser/ui/performance/native_performance.cc b/chrome/browser/ui/performance/native_performance.cc
+index 5ec2a39..d0f1749 100644
+--- a/chrome/browser/ui/performance/native_performance.cc
++++ b/chrome/browser/ui/performance/native_performance.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license.
+ #include "chrome/browser/ui/performance/native_performance.h"
+ 
++#include <cstdio>
+ #include <map>
+ #include "build/build_config.h"
+ #if BUILDFLAG(IS_MAC)
+@@ -11,6 +12,9 @@
+ #endif
+ #include "base/check.h"
+ #include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/values.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/no_destructor.h"
+ #include "chrome/browser/browser_process.h"
+@@ -25,6 +29,7 @@
+ #include "components/startup_metric_utils/browser/startup_metric_utils.h"
+ #include "components/viz/common/frame_timing_details.h"
+ #include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
+ #include "content/public/browser/web_contents.h"
+ #include "third_party/blink/public/common/input/web_input_event.h"
+ #include "ui/compositor/compositor.h"
+@@ -184,6 +189,7 @@ NativePerformance::NativePerformance(views::Widget* widget,
+   page_ = std::make_unique<NativePerformancePage>(this, tabs);
+ }
+ NativePerformance::~NativePerformance() {
++  RetireShellRole();
+   page_.reset();
+   DetachInputHost();
+   if (widget_) {
+@@ -194,6 +200,7 @@ NativePerformance::~NativePerformance() {
+ }
+ void NativePerformance::OnWidgetDestroying(views::Widget* widget) {
+   CHECK(widget == widget_);
++  RetireShellRole();
+   weak_factory_.InvalidateWeakPtrs();
+   page_.reset();
+   DetachInputHost();
+@@ -237,12 +244,16 @@ void NativePerformance::DetachInputHost() {
+   input_host_ = nullptr;
+ }
+ void NativePerformance::RenderWidgetHostDestroyed(content::RenderWidgetHost* host) {
+-  if (host == input_host_) DetachInputHost();
++  if (host == input_host_) {
++    RetireShellRole();
++    DetachInputHost();
++  }
+ }
+ void NativePerformance::PrimaryPageChanged(content::Page&) {
+   // The initial shell navigation is expected. A replacement after its first
+   // presentation retires the original measurement owner rather than adopting it.
+   if (first_frame_recorded_) {
++    RetireShellRole();
+     retired_ = true;
+     page_.reset();
+   }
+@@ -316,8 +327,54 @@ void NativePerformance::RecordFirstFrame(base::TimeTicks presentation) {
+   if (first_frame_recorded_ || !widget_ || presentation.is_null() ||
+       start.is_null() || presentation < start) return;
+   first_frame_recorded_ = true;
++  RecordShellRole();
+   base::UmaHistogramLongTimes("AuxPerf.FirstFrame", presentation - start);
+ }
++void NativePerformance::RecordShellRole() {
++#if BUILDFLAG(IS_MAC)
++  if (!Enabled() || retired_ || !web_contents() || shell_role_recorded_)
++    return;
++  auto* frame = web_contents()->GetPrimaryMainFrame();
++  if (!frame || !frame->IsRenderFrameLive() ||
++      !frame->GetLastCommittedURL().SchemeIs("chrome") ||
++      frame->GetLastCommittedURL().host() != "aux")
++    return;
++  const auto pid = frame->GetProcess()->GetProcess().Pid();
++  rusage_info_v0 usage{};
++  if (pid <= 0 ||
++      proc_pid_rusage(pid, RUSAGE_INFO_V0,
++                      reinterpret_cast<rusage_info_t*>(&usage)) != 0 ||
++      !usage.ri_proc_start_abstime || usage.ri_proc_exit_abstime)
++    return;
++  auto json = base::WriteJson(
++      base::DictValue()
++          .Set("event", "AUX_PERF_SHELL_ROLE")
++          .Set("browserPid", getpid())
++          .Set("pid", pid)
++          .Set("startMachTicks",
++               base::NumberToString(usage.ri_proc_start_abstime)));
++  if (!json)
++    return;
++  shell_role_recorded_ = true;
++  fprintf(stderr, "%s\n", json->c_str());
++#endif
++}
++
++void NativePerformance::RetireShellRole() {
++#if BUILDFLAG(IS_MAC)
++  if (!shell_role_recorded_)
++    return;
++  shell_role_recorded_ = false;
++  if (!Enabled())
++    return;
++  auto json = base::WriteJson(base::DictValue()
++                                  .Set("event", "AUX_PERF_SHELL_RETIRED")
++                                  .Set("browserPid", getpid()));
++  if (json)
++    fprintf(stderr, "%s\n", json->c_str());
++#endif
++}
++
+ void NativePerformance::DidFirstVisuallyNonEmptyPaint() {
+   if (!widget_ || !input_host_ || !web_contents() || first_frame_recorded_) return;
+   const auto document = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+diff --git a/chrome/browser/ui/performance/native_performance.h b/chrome/browser/ui/performance/native_performance.h
+index 03cb76f..0a864c3 100644
+--- a/chrome/browser/ui/performance/native_performance.h
++++ b/chrome/browser/ui/performance/native_performance.h
+@@ -53,6 +53,8 @@ class NativePerformance : public views::WidgetObserver,
+   void RenderWidgetHostDestroyed(content::RenderWidgetHost* host) override;
+   void PrimaryPageChanged(content::Page& page) override;
+   void DidFirstVisuallyNonEmptyPaint() override;
++  void RecordShellRole();
++  void RetireShellRole();
+   void AttachInputHost();
+   void DetachInputHost();
+   void Input(base::TimeTicks timestamp);
+@@ -78,6 +80,7 @@ class NativePerformance : public views::WidgetObserver,
+   int committed_query_id_ = 0;
+   bool retired_ = false;
+   bool first_frame_recorded_ = false;
++  bool shell_role_recorded_ = false;
+   bool window_shown_recorded_ = false;
+   base::WeakPtrFactory<NativePerformance> weak_factory_{this};
+ };
