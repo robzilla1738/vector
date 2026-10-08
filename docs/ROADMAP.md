@@ -59,7 +59,7 @@ separate from this implementation pass.
 
 **Original audit findings: strong foundations, held back by gates and process**
 
-The table records the starting point. Current implementation and build evidence are in [STATUS.md](STATUS.md); the remaining validation targets are preserved below.
+The table records the starting point. Current implementation and build evidence are in [STATUS.md](STATUS.md); the remaining validation targets are preserved below. The completed fluidity and coding implementation scope is recorded in [AUX-FLUIDITY-PLAN.md](AUX-FLUIDITY-PLAN.md).
 
 | Area | Today |
 |---|---|
