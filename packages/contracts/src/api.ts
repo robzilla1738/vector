@@ -1,3 +1,4 @@
+import { DocumentSnapshotSchema } from "./document-snapshot.js";
 import { ConversationSearchParams, ConversationSearchResultSchema } from "./conversation-search.js";
 import { CapturedSourceSchema } from "./captured-source.js";
 import { MemorySaverMinutesSchema } from "./memory-saver.js";
@@ -722,7 +723,8 @@ export const ConversationAttachmentSchema = z.object({
   sourceTruncated: z.boolean().optional(),
   sourceArtifactId: id.optional(),
   attachmentId: id,
-  filename: z.string().min(1).max(255),
+  document: DocumentSnapshotSchema.optional(),
+  filename: z.string().min(1).max(1024),
   excerpt: z.string().max(1000),
   byteLength: z.number().int().nonnegative(),
   createdAt: z.number(),

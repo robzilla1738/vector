@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { BrowserGroupReceiptSchema } from "./browser-group-receipt.js";
+import { DocumentSnapshotSchema } from "./document-snapshot.js";
 
 const text = z.string().trim().min(1);
 export const AcceptanceCriterionSchema = z.object({
@@ -164,6 +165,7 @@ export const TaskEvidenceSchema = z.object({
       .optional(),
   }),
   snapshot: z.object({ title: z.string(), text: z.string() }).optional(),
+  document: DocumentSnapshotSchema.optional(),
 });
 export type TaskEvidence = z.infer<typeof TaskEvidenceSchema>;
 export const CriterionReviewSchema = z.object({
