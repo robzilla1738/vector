@@ -28,7 +28,7 @@ vi.mock("../store", () => ({
         runs: fixture.runs,
         focusCommandBar: fixture.focus,
       }),
-    { setState: fixture.setState, getState: () => ({ openConversation: vi.fn() }) },
+    { setState: fixture.setState, getState: () => ({ openConversation: vi.fn(), focusRequest: 0 }) },
   ),
 }));
 vi.mock("../commands", () => ({ runCommand: fixture.command }));

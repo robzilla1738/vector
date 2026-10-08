@@ -89,7 +89,6 @@ it("validates stub results against the live manifest schemas", async () => {
       "native.cloudPreviewClose",
       "native.spaceBindingsSet",
       "native.contentBlockState",
-      "native.contentBlockOperation",
       "native.contentBlockBegin",
       "native.contentBlockAppend",
       "native.contentBlockCommit",

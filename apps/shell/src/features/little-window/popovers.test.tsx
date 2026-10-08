@@ -23,6 +23,7 @@ vi.mock("../../bridge", () => ({
     littleWindow: host.promote,
     downloadsSnapshot: host.downloads,
     onDownload: () => () => {},
+    onDownloadsRemoved: () => () => {},
     onEvent: () => () => {},
   },
 }));
