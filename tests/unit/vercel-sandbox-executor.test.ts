@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
+import type { ReplHostDeps } from "../../apps/runtime/dist/agent/loop/repl.js";
 import { CLOUD_PROCESS_HEADER } from "../../apps/runtime/dist/services/cloud-process-worker.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { AuxError, type CloudResourceQuote } from "@aux/contracts";
@@ -415,6 +417,9 @@ async function retainedFileFixture() {
     get,
     now: () => now,
     authorizeFiles: async () => () => {},
+    authorizeProcess: async () => ({ network: false, check: () => {} }),
+    authorizeProcessAccess: async () => () => {},
+    workerAssets: async () => ({ program: Buffer.from("// reviewed REPL worker"), wasm: Buffer.alloc(1) }),
     fileWorkerProgram: async () => Buffer.from("// immutable reviewed program"),
   });
   const service = await executor.files(f.ctx);
@@ -519,5 +524,129 @@ it("refuses missing native proof or an expired retained VM before creating an Un
   expect(f.files.get(f.path)?.content).toBe("original edit");
   expect(f.create).toHaveBeenCalledOnce();
   expect(f.get).not.toHaveBeenCalled();
+  await f.executor.closeRun(f.ctx.runId);
+});
+
+it("routes cloud REPL file/process callbacks through their original governed backends and receipts", async () => {
+  const f = await retainedFileFixture();
+  f.assertOwner.mockResolvedValue();
+  const processes = await f.executor.processes(f.ctx);
+  const processId = randomUUID();
+  const process = {
+    processId,
+    runId: f.ctx.runId,
+    actionId: "earlier-command",
+    requestHash: "hash",
+    command: "build",
+    workdir: f.receipt.execution!.root,
+    startedAt: 1,
+    state: "completed",
+    undoAvailable: false,
+    execution: { ...f.receipt.execution, commandId: "original-command" },
+  };
+  f.repo.db
+    .prepare("INSERT INTO coding_process_receipts VALUES(?,?,?,?,?)")
+    .run(processId, f.ctx.runId, process.actionId, process.state, JSON.stringify(process));
+  const target = "/vercel/sandbox/project/from-repl.ts";
+  const requests = [
+    ["write_file", { path: target, content: "cloud content" }, 0],
+    ["bg_status", { processId }, 1],
+    ["write_file", { path: target, content: "cloud content" }, 0],
+    ["write_file", { path: "/vercel/sandbox/project/denied.ts", content: "denied" }, 2],
+  ];
+  const transferred = new Map<string, Buffer>(),
+    replies: { value?: unknown; error?: string }[] = [];
+  const originalWrite = f.session.writeFiles.bind(f.session),
+    originalCommand = f.session.runCommand.bind(f.session);
+  let requestId = "",
+    directory = "",
+    sequence = 0;
+  const publish = () => {
+    transferred.set(
+      `${directory}/rpc-${requestId}-${sequence}.json`,
+      Buffer.from(
+        JSON.stringify({ id: requestId, sequence, method: "codingTool", args: requests[sequence] }),
+      ),
+    );
+  };
+  Object.assign(f.session, {
+    mkDir: async () => {},
+    readFile: async ({ path }: { path: string }) =>
+      transferred.has(path) ? Readable.from([transferred.get(path)!]) : null,
+    writeFiles: async (files: { path: string; content: Buffer }[]) => {
+      for (const file of files) {
+        if (!file.path.includes("/.aux-repl-")) {
+          await originalWrite([file]);
+          continue;
+        }
+        transferred.set(file.path, file.content);
+        if (file.path.includes("/request-") && file.path.endsWith(".payload")) {
+          requestId = JSON.parse(file.content.toString()).id;
+          directory = file.path.slice(0, file.path.lastIndexOf("/"));
+          publish();
+        }
+        if (file.path.includes("/reply-") && file.path.endsWith(".payload"))
+          replies.push(JSON.parse(file.content.toString()));
+        if (file.path.includes("/reply-") && file.path.endsWith(".ready")) {
+          if (++sequence < requests.length) publish();
+          else
+            transferred.set(
+              `${directory}/result-${requestId}.json`,
+              Buffer.from(JSON.stringify({ value: { output: "finished" } })),
+            );
+        }
+      }
+    },
+    runCommand: async (input: Parameters<Session["runCommand"]>[0]) => {
+      if (input.args?.[0]?.endsWith("/worker.mjs")) return { wait: () => new Promise(() => {}) };
+      return originalCommand(input);
+    },
+  });
+  const codingTool = vi.fn<NonNullable<ReplHostDeps["codingTool"]>>(async (name, raw, ordinal) => {
+    if (name === "write_file") {
+      const input = raw as { path: string; content: string };
+      return {
+        output: await f.service.applyChanges(
+          { actionId: `repl:${ordinal}`, changes: [{ kind: "create", ...input }] },
+          { runId: f.ctx.runId },
+        ),
+      };
+    }
+    if (name !== "bg_status") throw new Error("Unexpected coding callback");
+    const fence = await processes.authorizeAccess("status", processId, {
+      ...f.ctx,
+      actionId: `repl:${ordinal}`,
+    });
+    const output = processes.status(processId, f.ctx.runId);
+    fence();
+    return { output };
+  });
+  const allowHostCall = vi.fn((name: string, params: string) => {
+    expect(name).toBe("codingTool");
+    if (JSON.parse(params)[1].path?.endsWith("/denied.ts"))
+      throw new AuxError("permission_denied", "Profile denies this tool request.");
+  });
+  const result = await f.executor.eval(
+    f.ctx,
+    { runId: f.ctx.runId, codingTool, allowHostCall } as ReplHostDeps,
+    "fs.writeFile('/vercel/sandbox/project/from-repl.ts','cloud content'); proc.status('original');",
+  );
+  expect(result).toEqual({ output: "finished" });
+  expect(replies[0]).toMatchObject({
+    value: { output: { status: "confirmed", execution: f.receipt.execution } },
+  });
+  expect(replies[1]).toMatchObject({
+    value: { output: { processId, state: "completed", execution: process.execution } },
+  });
+  expect(replies[2]).toEqual(replies[0]);
+  expect(replies[3]?.error).toContain("Profile denies");
+  expect(codingTool).toHaveBeenCalledTimes(3);
+  expect(allowHostCall).toHaveBeenCalledTimes(4);
+  expect(f.files.get(target)?.content).toBe("cloud content");
+  expect(f.service.changes(f.ctx.runId)).toHaveLength(2);
+  expect(f.dispatches.filter((kind) => kind === "apply")).toHaveLength(2);
+  expect(f.create).toHaveBeenCalledOnce();
+  expect(f.get).not.toHaveBeenCalled();
+  expect(f.forbidden).not.toHaveBeenCalled();
   await f.executor.closeRun(f.ctx.runId);
 });

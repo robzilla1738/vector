@@ -832,17 +832,9 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       });
       this.repls.set(ctx.runId, repl);
     }
-    const cloudDeps: ReplHostDeps = {
-      ...deps,
-      codingTool: async () => {
-        throw new AuxError(
-          "capability_unsupported",
-          "Governed coding tools currently require local execution. Choose On this Mac for this coding run.",
-        );
-      },
-    };
-    return repl.eval(cloudDeps, code, opts);
+    return repl.eval(deps, code, opts);
   }
+
   async wait(
     ctx: CloudExecutionContext,
     cellId: string,
