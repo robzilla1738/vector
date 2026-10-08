@@ -100,28 +100,7 @@ async function render(spec: GeneratedResultSpec): Promise<Buffer> {
     }
     return Buffer.from(await book.xlsx.writeBuffer());
   }
-  if (spec.kind === "docx") {
-    const { Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow, TextRun } =
-      await import("docx");
-    const children: (InstanceType<typeof Paragraph> | InstanceType<typeof Table>)[] = [
-      new Paragraph({ text: spec.title, heading: HeadingLevel.TITLE }),
-      ...spec.paragraphs.map((text) => new Paragraph({ children: [new TextRun(text)] })),
-    ];
-    for (const table of spec.tables) {
-      children.push(new Paragraph({ text: table.name, heading: HeadingLevel.HEADING_2 }));
-      children.push(
-        new Table({
-          rows: table.rows.map(
-            (row) =>
-              new TableRow({
-                children: row.map((value) => new TableCell({ children: [new Paragraph(printable(value))] })),
-              }),
-          ),
-        }),
-      );
-    }
-    return Buffer.from(await Packer.toBuffer(new Document({ sections: [{ children }] })));
-  }
+  if (spec.kind === "docx") return (await import("./rich-document.js")).renderDocument(spec);
   if (spec.kind === "pptx") {
     const pptxgen = (await import("pptxgenjs")).default;
     // PptxGenJS 4 declares a namespace default in NodeNext, while its ESM default is a constructor.

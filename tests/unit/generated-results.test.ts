@@ -133,7 +133,13 @@ it("creates openable DOCX and PPTX with expected document parts", async () =>
       spec: {
         kind: "docx",
         title: "Quarterly brief",
-        paragraphs: ["Revenue rose."],
+        paragraphs: [
+          "## Findings",
+          "**Revenue rose.** See [source](https://example.test/report).",
+          "1. Keep the signed-in workflow\n2. Export the report",
+          "| Metric | Result |\n| --- | --- |\n| Growth | 42 |",
+          "[blocked](javascript:alert) ![Chart](https://tracking.test/pixel) <script>bad()</script>",
+        ],
         tables: [
           {
             name: "Summary",
@@ -146,7 +152,17 @@ it("creates openable DOCX and PPTX with expected document parts", async () =>
       },
     });
     const docZip = await JSZip.loadAsync(bytes(files, doc.artifactId));
-    expect(await docZip.file("word/document.xml")?.async("string")).toContain("Revenue rose.");
+    const document = await docZip.file("word/document.xml")!.async("string");
+    const relations = await docZip.file("word/_rels/document.xml.rels")!.async("string");
+    expect(document).toContain("Revenue rose.");
+    expect(document).toContain('w:pStyle w:val="Heading2"');
+    expect(document).toContain("<w:b/>");
+    expect(document).toContain("<w:tbl>");
+    expect(document).toContain("<w:numPr>");
+    expect(document).toContain("Image: Chart");
+    expect(relations).toContain("https://example.test/report");
+    expect(relations).not.toMatch(/javascript:|tracking.test/);
+    expect(document).not.toContain("<script>");
     expect(docZip.file("[Content_Types].xml")).toBeTruthy();
     const deck = await results.generate({
       chatId: "chat-1",

@@ -9,7 +9,7 @@ import type {
 } from "@aux/contracts";
 
 import { conversationReply } from "@aux/contracts";
-import { visibleAnswerMarkdown } from "@aux/contracts/conversation-reply-text";
+import { visibleAnswerMarkdown } from "@aux/contracts/answer-export-markdown";
 
 const md = (value: unknown) =>
   String(value ?? "")

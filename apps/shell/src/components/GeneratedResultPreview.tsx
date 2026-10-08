@@ -1,7 +1,4 @@
-import {
-  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
-  staticFieldProps as auxReserveStaticFieldProps,
-} from "../ui/class-props";
+import { staticFieldErrorProps as auxReserveStaticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
@@ -10,6 +7,7 @@ import {
   GenerateResultParamsSchema,
   type GeneratedResult,
   type GeneratedResultSummary,
+  type GeneratedResultSpec,
 } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, toast, useStore } from "../store";
@@ -18,11 +16,13 @@ import { useConversationOwner } from "./ConversationControls";
 import { useConversationAttachmentOwner } from "./ConversationAttachmentControls";
 import { ResultPreviewControl } from "./ResultPreviewControls";
 import { shellIconClose } from "../ui/icons";
+import { GeneratedResultEditor, GeneratedResultTable } from "./GeneratedResultEditor";
+import { AnswerMarkdown } from "./AnswerMarkdown";
 import { ViewerFrame } from "./ViewerFrame";
 import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
-/** Office files render a bounded, inert summary. Only verified PNG bytes are embedded as an image. */
+/** Document bodies render inert Markdown; charts embed only verified PNG bytes. */
 export function GeneratedResultPreview({
   artifactId,
   chatId,
@@ -39,7 +39,7 @@ export function GeneratedResultPreview({
   const [result, setResult] = useState<GeneratedResult | null>(null);
   const [versions, setVersions] = useState<GeneratedResultSummary[]>([]);
   const [image, setImage] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState<GeneratedResultSpec | null>(null);
   const [editing, setEditing] = useState(false);
   const connected = useStore((state) => state.connected);
   const conversationCurrent = useConversationOwner(chatId, connected);
@@ -76,6 +76,7 @@ export function GeneratedResultPreview({
     };
   }, [current]);
   const [error, setError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   useEffect(() => {
     let live = true;
     setResult(null);
@@ -94,7 +95,7 @@ export function GeneratedResultPreview({
         published.current = { result: file, current };
         setResult(file);
         setVersions(history);
-        setDraft(JSON.stringify(file.spec, null, 2));
+        setDraft(file.spec);
         if (file.kind === "chart" && file.artifactId === artifactId)
           void call("artifacts.read", { artifactId })
             .then((data) => {
@@ -116,12 +117,13 @@ export function GeneratedResultPreview({
     return () => {
       live = false;
     };
-  }, [artifactId, chatId, current]);
+  }, [artifactId, chatId, current, loadAttempt]);
   function operation(revision: boolean) {
     if (
       !result ||
       pending.current ||
       !loadedCurrent(result) ||
+      (!revision && draft !== result.spec) ||
       (revision && (contextDisabled || result.revision >= 20))
     )
       return;
@@ -146,7 +148,7 @@ export function GeneratedResultPreview({
                 chatId,
                 sourceArtifactId: original.artifactId,
                 filename: original.filename,
-                spec: JSON.parse(originalDraft.draft),
+                spec: originalDraft.draft,
               }),
             )
           : await bridge.saveStoredArtifact(original.artifactId, original.filename);
@@ -210,14 +212,14 @@ export function GeneratedResultPreview({
               disabled={busy || contextDisabled || result.revision >= 20}
               aria-pressed={editing}
             >
-              {editing ? "Preview" : "Revise"}
+              {editing ? "Close editor" : "Revise"}
             </ResultPreviewControl>
             <ResultPreviewControl
               command="export-generated-result"
-              current={() => loadedCurrent(result)}
+              current={() => loadedCurrent(result) && draft === result.spec}
               invoke={() => operation(false)}
               {...smallGhostButtonProps}
-              disabled={busy}
+              disabled={busy || draft !== result.spec}
             >
               Export file…
             </ResultPreviewControl>
@@ -228,17 +230,32 @@ export function GeneratedResultPreview({
       {error && (
         <p {...nativeAlertRoleProps} {...auxReserveStaticFieldErrorProps}>
           {error}
+          {!result && " "}
+          {!result && (
+            <button
+              type="button"
+              {...smallGhostButtonProps}
+              onClick={() => {
+                if (current()) setLoadAttempt((attempt) => attempt + 1);
+              }}
+            >
+              Retry
+            </button>
+          )}
         </p>
       )}
       {!result ? (
         <output data-block {...staticHintProps}>
-          Loading generated result…
+          {error ? "Result unavailable." : "Loading generated result…"}
         </output>
       ) : (
         <>
-          <p {...staticHintProps}>
-            Generated from conversation turn {result.sourceRunId}. SHA-256 {result.sha256.slice(0, 16)}…
-          </p>
+          <details>
+            <summary>File details · version {result.revision}</summary>
+            <p {...staticHintProps}>
+              Generated from conversation turn {result.sourceRunId}. SHA-256 {result.sha256.slice(0, 16)}…
+            </p>
+          </details>
           {versions.length > 1 && (
             <nav {...staticRowProps} aria-label="Result versions">
               {versions.map((version) => (
@@ -260,21 +277,32 @@ export function GeneratedResultPreview({
               ))}
             </nav>
           )}
+          {draft !== result.spec && (
+            <p {...staticHintProps}>
+              Unsaved edits. Save a new version before exporting.{" "}
+              <button
+                type="button"
+                {...smallGhostButtonProps}
+                disabled={busy}
+                onClick={() => {
+                  if (loadedCurrent(result) && !pending.current) setDraft(result.spec);
+                }}
+              >
+                Discard edits
+              </button>
+            </p>
+          )}
           {editing ? (
             <>
-              <label {...auxReserveStaticFieldProps}>
-                Revise structured source
-                <textarea
-                  aria-label="Structured result source"
-                  className="result-source-editor"
-                  value={draft}
-                  maxLength={500_000}
+              {draft && (
+                <GeneratedResultEditor
+                  spec={draft}
                   disabled={busy}
-                  onChange={(event) => {
-                    if (loadedCurrent(result) && !pending.current) setDraft(event.target.value);
+                  onChange={(next) => {
+                    if (loadedCurrent(result) && !pending.current) setDraft(next);
                   }}
                 />
-              </label>
+              )}
               <ResultPreviewControl
                 command="save-generated-result-version"
                 report={false}
@@ -294,11 +322,43 @@ export function GeneratedResultPreview({
               ) : result.kind === "chart" ? (
                 <output {...staticHintProps}>Loading chart image…</output>
               ) : null}
-              <ul>
-                {result.preview.lines.map((line, index) => (
-                  <li key={index}>{line}</li>
-                ))}
-              </ul>
+              {result.spec.kind === "docx" ? (
+                <>
+                  <AnswerMarkdown text={result.spec.paragraphs.join("\n\n")} />
+                  {result.spec.tables.map((table, index) => (
+                    <GeneratedResultTable key={index} table={table} />
+                  ))}
+                </>
+              ) : result.spec.kind === "csv" ? (
+                <GeneratedResultTable table={result.spec.table} />
+              ) : result.spec.kind === "xlsx" ? (
+                result.spec.sheets.map((table, index) => (
+                  <details key={index} open={index === 0}>
+                    <summary>{table.name}</summary>
+                    <GeneratedResultTable table={table} />
+                  </details>
+                ))
+              ) : result.spec.kind === "pptx" ? (
+                result.spec.slides.map((slide, index) => (
+                  <details key={index} open={index === 0}>
+                    <summary>
+                      Slide {index + 1}: {slide.title}
+                    </summary>
+                    <ul>
+                      {slide.bullets.map((bullet, item) => (
+                        <li key={item}>{bullet}</li>
+                      ))}
+                    </ul>
+                    {slide.notes && <p {...staticHintProps}>Notes: {slide.notes}</p>}
+                  </details>
+                ))
+              ) : (
+                <ul>
+                  {result.preview.lines.map((line, index) => (
+                    <li key={index}>{line}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </>

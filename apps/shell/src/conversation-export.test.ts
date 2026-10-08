@@ -135,7 +135,7 @@ it("exports complete rich answers and delivered corrections while omitting inert
 });
 
 it("keeps code and safe citations but never embeds remote images, raw HTML, or active URL schemes", async () => {
-  const { visibleAnswerMarkdown } = await import("@aux/contracts/conversation-reply-text");
+  const { visibleAnswerMarkdown } = await import("@aux/contracts/answer-export-markdown");
   const markdown = visibleAnswerMarkdown(
     "**Keep** [source](https://example.test) ![Chart](https://tracking.test/pixel) <img src=x> [bad](javascript:alert) [![nested](https://tracking.test/nested)](javascript:alert) [secret](https://user:password@example.test)\n\n```html\n<script>example()</script>\n```",
   );

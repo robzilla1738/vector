@@ -93,7 +93,6 @@ import {
   PENDING_CHAT_KEY,
   readPendingConversation,
 } from "../conversation-drafts";
-import { conversationMarkdown } from "../conversation-export";
 import { bridge, type BrowserProfile } from "../bridge";
 import { previewSplit } from "../workspace";
 import { useStore, call, decodeBase64Json, errToast, isLive, toast } from "../store";
@@ -1463,6 +1462,7 @@ export function Conversation({
             .replace(/^-|-$/g, "")
             .slice(0, 60) || chatId.slice(0, 12)
         }.md`;
+        const { conversationMarkdown } = await import("../conversation-export");
         const markdown = conversationMarkdown({
           chatId,
           title,

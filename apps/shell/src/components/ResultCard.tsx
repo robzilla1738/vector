@@ -63,11 +63,17 @@ export function ResultCard({
   const kind =
     result.mediaType === "text/csv"
       ? "Table"
-      : result.mediaType === "application/json"
-        ? "Data"
-        : result.mediaType === "text/html"
-          ? "HTML"
-          : "Document";
+      : result.mediaType.includes("spreadsheetml")
+        ? "Workbook"
+        : result.mediaType.includes("presentationml")
+          ? "Slides"
+          : result.mediaType.startsWith("image/")
+            ? "Image"
+            : result.mediaType === "application/json"
+              ? "Data"
+              : result.mediaType === "text/html"
+                ? "HTML"
+                : "Document";
   // The caller supplies verified automatic-report provenance. Filename alone
   // cannot decide whether an artifact is a redundant answer or a deliverable.
   if (compact)

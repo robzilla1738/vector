@@ -14,7 +14,12 @@ export const GeneratedResultSpecSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("docx"),
     title: text.max(200),
-    paragraphs: z.array(text).max(300),
+    paragraphs: z
+      .array(text)
+      .max(300)
+      .describe(
+        "Document body in Markdown; headings, bold, italic, lists, links, code, and tables retain their formatting in Word.",
+      ),
     tables: z.array(table).max(8).default([]),
   }),
   z.object({

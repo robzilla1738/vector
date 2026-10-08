@@ -133,7 +133,7 @@ async function command(id: string) {
 it("all five actual controls are normal scoped and disconnected viewing retains original args", async () => {
   await ready();
   expect(host.querySelector("script,iframe,img")).toBeNull();
-  expect(host.textContent).toContain("<script>inert</script>");
+  expect(host.textContent).toContain("Current text");
   for (const id of Object.values(ids))
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
       windows: ["normal", "private"],
