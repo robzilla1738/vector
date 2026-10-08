@@ -174,7 +174,13 @@ it("creates openable DOCX and PPTX with expected document parts", async () =>
       },
     });
     const deckZip = await JSZip.loadAsync(bytes(files, deck.artifactId));
-    expect(await deckZip.file("ppt/slides/slide1.xml")?.async("string")).toContain("Revenue rose.");
+    const slide = new JSDOM(await deckZip.file("ppt/slides/slide1.xml")!.async("string"), {
+      contentType: "text/xml",
+    });
+    expect(
+      [...slide.window.document.getElementsByTagName("a:t")].map((node) => node.textContent).join(""),
+    ).toContain("Revenue rose.");
+    slide.window.close();
     expect(deckZip.file("ppt/presentation.xml")).toBeTruthy();
   }));
 

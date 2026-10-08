@@ -99,6 +99,7 @@ it("validates stub results against the live manifest schemas", async () => {
       "native.recorderStop",
       "native.personRead",
       "native.personReadContext",
+      "native.privateProvider",
       "native.permissionRetire",
     ].sort(),
   );
