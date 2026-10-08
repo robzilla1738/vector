@@ -1,0 +1,64 @@
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
+--- a/chrome/browser/ui/aux/tab_catalog.cc
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -50,6 +50,7 @@
+ #include "chrome/browser/ui/tabs/split_tab_metrics.h"
+ #include "components/performance_manager/public/performance_manager.h"
+ #include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/reload_type.h"
+ #include "content/public/browser/web_contents.h"
+@@ -58,6 +59,27 @@
+ 
+ namespace aux {
+ namespace {
++
++void LoadPersonRestoredTab(Profile* profile, content::WebContents* contents) {
++  const auto* identity = PageIdentity::FromWebContents(contents);
++  if (identity && identity->runtime_owned()) return;
++  auto& controller = contents->GetController();
++  const auto* entry = controller.GetLastCommittedEntry();
++  auto* frame = contents->GetPrimaryMainFrame();
++  // Starting a restored navigation clears NeedsReload before it commits. If
++  // that first load was interrupted, restore the cached entry without inventing
++  // a new URL or replacing a loaded document.
++  if (!controller.NeedsReload() && !contents->IsLoading() && frame &&
++      frame->GetLastCommittedURL().is_empty() && entry && entry->IsRestored() &&
++      !entry->IsInitialEntry() && entry->GetURL().SchemeIsHTTPOrHTTPS()) {
++    EgressRequestContext context;
++    context.document = frame->GetWeakDocumentPtr();
++    context.page_id = PageIdentity::GetOrCreate(profile, contents);
++    if (!EgressController::ForProfile(profile)->IsProtected(context))
++      controller.SetNeedsReload();
++  }
++  controller.LoadIfNecessary();
++}
+ 
+ class TabCatalogFactory final : public ProfileKeyedServiceFactory {
+  public:
+@@ -151,11 +173,8 @@
+   TabStripModel* model = browser->GetTabStripModel();
+   if (model && observed_.insert(model).second) {
+     model->AddObserver(this);
+-    if (auto* active = model->GetActiveWebContents()) {
+-      const auto* identity = PageIdentity::FromWebContents(active);
+-      if (!identity || !identity->runtime_owned())
+-        active->GetController().LoadIfNecessary();
+-    }
++    if (auto* active = model->GetActiveWebContents())
++      LoadPersonRestoredTab(profile_, active);
+   }
+ }
+ 
+@@ -791,9 +810,7 @@
+       model->ActivateTabAt(index);
+       // The Aux shell can keep an already-selected restored tab hidden behind
+       // chat, so activation alone need not trigger Chromium's normal load.
+-      const auto* identity = PageIdentity::FromWebContents(contents);
+-      if (identity && !identity->runtime_owned())
+-        contents->GetController().LoadIfNecessary();
++      LoadPersonRestoredTab(profile_, contents);
+     } else if (*kind == "unsplit") {
+       const auto* identity = PageIdentity::FromWebContents(contents);
+       if (!identity || identity->runtime_owned()) return Reject(command_id, "forbidden", "A runtime tab cannot be split");

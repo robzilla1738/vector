@@ -1531,8 +1531,12 @@ export function Conversation({
     } catch (error) {
       restoreDraft();
       if (activeChat.current === id) {
-        setSendError("Your message couldn’t be sent. Try sending it again.");
-        setSendErrorDetails(errorMessage(error));
+        const detail = errorMessage(error);
+        const staleSource = (error as { code?: string } | null)?.code === "ref_stale" || detail.startsWith("ref_stale:");
+        setSendError(staleSource
+          ? "Open the source tab and wait for it to load, then return here and send your reply again."
+          : "Your message couldn’t be sent. Try sending it again.");
+        setSendErrorDetails(detail);
       }
     } finally {
       sendPending.current = false;

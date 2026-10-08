@@ -81,3 +81,4 @@ aux/0081-native-coding-recovery-owner.patch
 aux/0082-native-returned-source-reader.patch
 aux/0083-native-restored-tab-activation.patch
 aux/0084-native-isolation-retirement-identity.patch
+aux/0085-native-resume-uncommitted-restoration.patch
