@@ -18,7 +18,7 @@ export const PrivateProviderDescriptorSchema = z
     recoveryModel: z.string().max(300).optional(),
     visionModel: z.string().max(300).optional(),
     agentModelRoutes: AgentModelRoutesSettingSchema,
-    models: ModelCapabilitySchema.array().max(1000),
+    models: ModelCapabilitySchema.array(),
     localModelsOnly: z.boolean(),
     copilotRuntimeRoot: z.string().max(4096).optional(),
   })

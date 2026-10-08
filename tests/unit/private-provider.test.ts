@@ -9,6 +9,7 @@ import {
   PrivateProviderConnection,
   registerPrivateProviderBroker,
 } from "../../apps/runtime/dist/services/private-provider.js";
+import { PrivateProviderDescriptorSchema } from "@aux/contracts/private-provider";
 import type {
   PrivateProviderDescriptor,
   PrivateProviderRequest,
@@ -283,8 +284,50 @@ it("aborts an already dispatched private provider stream on original-owner revoc
     .generateText({ modelId: "gpt-5.4", prompt: "private stream" });
   const stopped = expect(pending).rejects.toThrow();
   await dispatch;
-  await privateSettings.service.invalidatePrivateProvider();
+  const stop = normal.service.subscribeConnectionChanges(() => {
+    void privateSettings.service.invalidatePrivateProvider();
+  });
+  cleanups.push(stop);
+  await normal.service.set({ modelConnection: { provider: "openai", enabled: false } });
   await stopped;
   expect(dispatchedSignal?.aborted).toBe(true);
   expect(privateSettings.service.all().modelConfigured).toBe(false);
+});
+
+it("accepts the owner's full selected catalog without an unrelated model-count cutoff", () => {
+  expect(
+    PrivateProviderDescriptorSchema.parse({
+      ...descriptor,
+      models: Array.from({ length: 1001 }, (_, index) => ({
+        id: `configured-${index}`,
+        source: "configured",
+      })),
+    }).models,
+  ).toHaveLength(1001);
+});
+
+it("notifies only committed provider changes, including Copilot acceptance, rollback and disconnect", async () => {
+  const normal = settings({ OPENAI_API_KEY: "original-key" });
+  const changes: Array<{ active: unknown; generation: string }> = [];
+  const stop = normal.service.subscribeConnectionChanges(() =>
+    changes.push({
+      active: normal.repo.getSetting("copilotActiveAccount"),
+      generation: normal.service.copilotGeneration(),
+    }),
+  );
+  await normal.service.set({ toolbarAutoHide: true });
+  normal.service.registryModels();
+  expect(changes).toEqual([]);
+  const accountId = "a".repeat(64);
+  const accepted = await normal.service.activateCopilotAccount({ accountId } as never, async () => {});
+  expect(changes).toEqual([{ active: accountId, generation: accepted.generation }]);
+  await accepted.rollback();
+  expect(changes.at(-1)?.active).toBeUndefined();
+  await normal.service.activateCopilotAccount({ accountId } as never, async () => {});
+  await normal.service.deactivateCopilotAccount(accountId, async () => {});
+  expect(changes).toHaveLength(4);
+  expect(changes.at(-1)?.active).toBeUndefined();
+  stop();
+  await normal.service.set({ modelProvider: "openai" });
+  expect(changes).toHaveLength(4);
 });

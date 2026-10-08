@@ -50,6 +50,8 @@ it("leases configured Sandbox access from the original owner without copying cre
     readSecret: async (key: string) => ({ value: vault.get(key) }),
   } as unknown as NativeBridge);
   const privateSettings = new CloudSettingsService(new Repo(privateDb), {} as NativeBridge);
+  const revisions: string[] = [];
+  const stop = normal.subscribeConnectionChanges(() => revisions.push(normal.connectionRevision()));
   try {
     await normal.configure(
       {
@@ -89,6 +91,11 @@ it("leases configured Sandbox access from the original owner without copying cre
     retire = true;
     await expect(privateSettings.configuration()).rejects.toMatchObject({ code: "cancelled" });
     expect(normal.status().configured).toBe(true);
+    expect(revisions).toEqual([normal.connectionRevision()]);
+    await normal.clear(1, "original");
+    expect(revisions).toHaveLength(2);
+    expect(revisions[1]).toBe(normal.connectionRevision());
+    stop();
   } finally {
     await privateSettings.close();
     await normal.close();

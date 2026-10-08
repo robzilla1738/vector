@@ -45,6 +45,23 @@ export async function closeCloudSettings(repo: Repo): Promise<void> {
 export class CloudSettingsService {
   private writes: Promise<unknown> = Promise.resolve();
   private closed = false;
+  private readonly connectionListeners = new Set<() => void>();
+  subscribeConnectionChanges(changed: () => void): () => void {
+    this.connectionListeners.add(changed);
+    return () => {
+      this.connectionListeners.delete(changed);
+    };
+  }
+  private connectionChanged(): void {
+    for (const changed of this.connectionListeners) {
+      try {
+        changed();
+      } catch {
+        /* Preserve the committed account change if a listener retires. */
+      }
+    }
+  }
+
   private inheritedError?: AuxError;
   private inherited?: {
     descriptor: PrivateCloudDescriptor;
@@ -287,6 +304,7 @@ export class CloudSettingsService {
         this.inherited = undefined;
         this.inheritedError = undefined;
         committed = true;
+        this.connectionChanged();
         await this.retireSecrets();
         return this.status();
       } finally {
@@ -314,6 +332,7 @@ export class CloudSettingsService {
       });
       this.inherited = undefined;
       this.inheritedError = undefined;
+      this.connectionChanged();
       await this.retireSecrets();
       return this.status();
     });
@@ -322,6 +341,7 @@ export class CloudSettingsService {
   }
   async close() {
     this.closed = true;
+    this.connectionListeners.clear();
     this.inherited = undefined;
     await this.writes;
     await this.retireSecrets();

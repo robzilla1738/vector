@@ -180,6 +180,23 @@ export interface ModelProbeRecord {
 
 export class SettingsService {
   private connectionEpoch = 0;
+  private readonly connectionListeners = new Set<() => void>();
+  subscribeConnectionChanges(changed: () => void): () => void {
+    this.connectionListeners.add(changed);
+    return () => {
+      this.connectionListeners.delete(changed);
+    };
+  }
+  private connectionChanged(): void {
+    for (const changed of this.connectionListeners) {
+      try {
+        changed();
+      } catch {
+        /* A notification must not interrupt committed revocation. */
+      }
+    }
+  }
+
   private accountBudget?: PrivateBudgetClient;
   private readonly probeController = new AbortController();
   private readonly probes = new Set<Promise<unknown>>();
@@ -1019,6 +1036,7 @@ export class SettingsService {
         this.repo.setSetting(k, v);
       }
     });
+    if (connectionChange) this.connectionChanged();
     // persist non-secret prefs to settings.json for transparency
     const { gatewayApiKey, ...rest } = next;
     if (Object.keys(rest).length) {
@@ -1290,6 +1308,7 @@ export class SettingsService {
             this.repo.deleteSetting("modelProbe");
           });
           this.connectionEpoch++;
+          this.connectionChanged();
           this.catalogService?.invalidate();
           this.mergedCatalog = MODEL_REGISTRY;
           this.gatewayClient = null;
@@ -1318,6 +1337,7 @@ export class SettingsService {
                   }
                 });
                 this.connectionEpoch++;
+                this.connectionChanged();
                 this.catalogService?.invalidate();
                 this.mergedCatalog = MODEL_REGISTRY;
                 this.gatewayClient = null;
@@ -1469,6 +1489,7 @@ export class SettingsService {
             });
             this.gatewayClient = null;
             this.connectionEpoch++;
+            this.connectionChanged();
           }
         });
         this.writes = reduction.catch(() => {});
@@ -1499,6 +1520,7 @@ export class SettingsService {
       this.gatewayClient = null;
       this.chatgptCatalog = [];
       this.connectionEpoch++;
+      this.connectionChanged();
     });
     this.writes = reduction.catch(() => {});
     await reduction;
@@ -1602,6 +1624,7 @@ export class SettingsService {
             this.repo.deleteSetting("modelProbe");
           });
           this.connectionEpoch++;
+          this.connectionChanged();
           this.catalogService?.invalidate();
           this.mergedCatalog = MODEL_REGISTRY;
           this.gatewayClient = null;
@@ -1633,6 +1656,7 @@ export class SettingsService {
                   }
                 });
                 this.connectionEpoch++;
+                this.connectionChanged();
                 this.catalogService?.invalidate();
                 this.mergedCatalog = MODEL_REGISTRY;
                 this.gatewayClient = null;
@@ -1740,6 +1764,7 @@ export class SettingsService {
         this.repo.setSetting("copilotActiveAccount", account.accountId);
         this.repo.setSetting("copilotRevision", generation);
       });
+      this.connectionChanged();
       // Auth adopts this generation before its existing post-acceptance check.
       return {
         generation,
@@ -1755,6 +1780,7 @@ export class SettingsService {
               else this.repo.setSetting("copilotActiveAccount", previousAccount);
               this.repo.setSetting("copilotRevision", previousRevision);
             });
+            this.connectionChanged();
           });
           this.writes = reduction.catch(() => {});
           await reduction;
@@ -1773,6 +1799,7 @@ export class SettingsService {
         this.repo.deleteSetting("copilotActiveAccount");
         this.repo.setSetting("copilotRevision", randomUUID());
       });
+      this.connectionChanged();
     });
     this.writes = work.catch(() => {});
     await work;
@@ -1908,6 +1935,7 @@ export class SettingsService {
         this.repo.setSetting("modelCacheGeneration", randomUUID());
       });
       this.gatewayClient = null;
+      this.connectionChanged();
     });
     this.writes = work.catch(() => {});
     await work;
@@ -1998,6 +2026,7 @@ export class SettingsService {
   }
   async close(): Promise<void> {
     this.discoveryClosed = true;
+    this.connectionListeners.clear();
     this.probeController.abort();
     this.chatgptCatalogController.abort();
     const failures: unknown[] = [];
