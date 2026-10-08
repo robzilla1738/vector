@@ -57,8 +57,11 @@ describe("durable run suspension view and answer guard", () => {
     const db = openDb(":memory:"),
       repo = new Repo(db);
     repo.saveRun(run());
-    const answer = vi.fn(async (_runId: string, _text: string, _mentions: unknown[], recheck: () => void) =>
-      recheck(),
+    const answer = vi.fn(
+      async (_runId: string, _text: string, _mentions: unknown[], recheck: () => void): Promise<Run> => {
+        recheck();
+        return run({ status: "running" });
+      },
     );
     const context = (
       params: Record<string, unknown>,
@@ -128,7 +131,9 @@ describe("durable run suspension view and answer guard", () => {
       runsMethods["runs.answer"]!(context({ runId: "r1", answer: "Work", expectedSuspensionId: "s1" })),
     ).rejects.toThrow(/changed/);
     expect(answer).not.toHaveBeenCalled();
-    await runsMethods["runs.answer"]!(context({ runId: "r1", answer: "Work", expectedSuspensionId: "s2" }));
+    await expect(
+      runsMethods["runs.answer"]!(context({ runId: "r1", answer: "Work", expectedSuspensionId: "s2" })),
+    ).resolves.toMatchObject({ runId: "r1", status: "running" });
     expect(answer).toHaveBeenCalledExactlyOnceWith("r1", "Work", [], expect.any(Function));
     record = suspension({ suspensionId: "replacement" });
     expect(() => answer.mock.calls[0]![3]()).toThrow(/changed/);
