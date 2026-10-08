@@ -39,6 +39,32 @@ Private AI belongs to the actual Chromium off-the-record Profile. Authenticated 
 
 Cloud coding captures the original VM, Session and command identities. Local and cloud file/process receipts share the encrypted ledger; remote receipts never become local PIDs or filesystem paths. Uncertain dispatch cannot replay, and background commands retain network policy until confirmed retirement. Cloud Preview and human Changes/Logs/Stop/Undo routing are integrated. Process metadata contains bounded summaries; encrypted UTF-8 chunks supply cursor-based history without SDK access. Schema-4 startup conversion removes the replaced embedded log field atomically after original key admission. Cloud code-mode parity and actual cloud workflow acceptance remain active.
 
+## Immutable documents and native receipt exports
+
+Native file intake captures the original selected file once and hashes its bytes.
+A dedicated utility extracts PDF with PDFium and DOCX with bounded ZIP/XML parsing;
+UTF-8 text stays explicit. The utility receives captured bytes, rather than a path,
+and admits neither network loading nor document scripts. Extraction, read and
+release retain the original window, runtime generation and cancellation identity.
+A release joins the corresponding pending read before ownership is retired.
+Formats come from bytes and package structure; filenames are display labels.
+
+One DocumentSnapshots service owns encrypted schema-5 manifests and bounded text
+segments. Conversation attachments and historical task evidence share its strict
+import/read interfaces. Cursors bind the original snapshot and hash. Publication
+is atomic after original chat/task ownership checks; preview and model retrieval
+read relevant bounded segments. Backup/recovery authenticates the inventory, and
+Forget removes these derivatives. Old valid inline text converts on access.
+
+Receipt Save streams the exact selected revision and complete captured evidence
+to a temporary file, without creating a public or durable artifact row. Native
+save claims bind the original window token and claim ID. A retained file descriptor
+supports the accepted Save if Node later retires; streaming copy checks byte count
+and hash before destination replacement. Cancellation, original document/window
+retirement and runtime shutdown join writers and remove unclaimed files. Claimed
+files stay owned until native release. Startup scrubs only the runtime-owned export
+subdirectory. Explicitly saved destinations remain user files.
+
 ## Browser chrome and chat surfaces
 
 The native window supplies the glass underlay; the renderer keeps the primary page surface painted while transient menus, previews and the left hover sidebar are visible. Vertical address entry is owned by Sidebar/CommandBar; horizontal entry remains in Toolbar. Focus uses the existing command-bar routing and can reveal the vertical sidebar. Pinned tabs and bookmark folders are separate native browser state.

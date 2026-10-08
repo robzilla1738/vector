@@ -278,7 +278,9 @@ exited 0 and removed the disposable Profile and plain lock.
 
 Text batch selection does not supply PDF/DOCX ingestion. Frozen typed extraction
 and import/read interfaces and schema-5 protected complete document snapshots
-are integrated. A dedicated sandboxed byte-only utility, original native capture
-adapters and bounded preview/retrieval wiring remain in progress. Whole-flow
+are integrated. The dedicated byte-only PDFium/DOCX utility has compiled successfully. Original
+native capture adapters, shared snapshot services, bounded preview/retrieval and
+streamed native receipt Save are integrated in source; their combined app build
+and changed-flow observation remain pending. Whole-flow
 acceptance, physical Take over, paired performance and the manual 20-task smoke
 remain open. No phase completion or competitor-parity claim is made.
