@@ -1,0 +1,120 @@
+diff --git a/chrome/browser/ui/aux/methods/page_controls_methods.cc b/chrome/browser/ui/aux/methods/page_controls_methods.cc
+index 979ae4a..f3b2cca 100644
+--- a/chrome/browser/ui/aux/methods/page_controls_methods.cc
++++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
+@@ -748,7 +748,9 @@ void WebUIBrowserUI::HandleAuxPageControlsRequest(
+     BrowserWindowInterface* owner = nullptr;
+     auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
+     auto* contents = catalog->FindPage((*list)[0].GetString(), &owner);
+-    if (!contents || owner != browser_ ||
++    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++    if (!contents || owner != browser_ || !frame || !frame->IsActive() ||
++        !frame->IsRenderFrameLive() ||
+         browser_->GetTabStripModel()->GetActiveWebContents() != contents) {
+       std::move(callback).Run(false, "", "not_found",
+                               "Select the page before saving its PDF");
+@@ -773,6 +775,7 @@ void WebUIBrowserUI::HandleAuxPageControlsRequest(
+     }
+     file_dialog_purpose_ = FileDialogPurpose::kSavePdf;
+     save_pdf_page_id_ = (*list)[0].GetString();
++    save_pdf_document_ = frame->GetWeakDocumentPtr();
+     file_dialog_callback_ = std::move(callback);
+     ui::SelectFileDialog::FileTypeInfo file_types;
+     file_types.extensions = {{FILE_PATH_LITERAL("pdf")}};
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index db7e472..f68fd56 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -489,6 +489,9 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+   std::string transfer_passphrase = std::move(password_transfer_passphrase_);
+   base::FilePath save_source = std::move(save_file_source_);
+   int64_t save_source_size = std::exchange(save_file_source_size_, 0);
++  std::string save_pdf_page_id = std::exchange(save_pdf_page_id_, {});
++  auto save_pdf_document =
++      std::exchange(save_pdf_document_, content::WeakDocumentPtr());
+   const base::FilePath& selected_path =
+       file.local_path.empty() ? file.file_path : file.local_path;
+   if (selected_path.empty()) {
+@@ -626,9 +629,11 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+ #if BUILDFLAG(ENABLE_PRINTING)
+   BrowserWindowInterface* owner = nullptr;
+   auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
+-  auto* contents = catalog->FindPage(save_pdf_page_id_, &owner);
+-  save_pdf_page_id_.clear();
+-  if (purpose != FileDialogPurpose::kSavePdf || !contents || owner != browser_ ||
++  auto* contents = catalog->FindPage(save_pdf_page_id, &owner);
++  auto* frame = save_pdf_document.AsRenderFrameHostIfValid();
++  if (purpose != FileDialogPurpose::kSavePdf || !contents ||
++      owner != browser_ || !frame || !frame->IsActive() ||
++      !frame->IsRenderFrameLive() || contents->GetPrimaryMainFrame() != frame ||
+       browser_->GetTabStripModel()->GetActiveWebContents() != contents ||
+       !chrome::CanPrint(browser_)) {
+     std::move(callback).Run(false, "", "conflict",
+@@ -645,12 +650,26 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+     return;
+   }
+   manager->PrintToPdf(
+-      contents->GetPrimaryMainFrame(), "",
++      frame, "",
+       std::move(std::get<printing::mojom::PrintPagesParamsPtr>(parameters)),
+       base::BindOnce(
+-          [](RequestCallback callback, base::FilePath destination,
+-             print_to_pdf::PdfPrintResult result,
++          [](base::WeakPtr<BrowserWindowInterface> window, std::string page_id,
++             content::WeakDocumentPtr document, RequestCallback callback,
++             base::FilePath destination, print_to_pdf::PdfPrintResult result,
+              scoped_refptr<base::RefCountedMemory> pdf) {
++            auto* frame = document.AsRenderFrameHostIfValid();
++            BrowserWindowInterface* owner = nullptr;
++            auto* contents =
++                window ? aux::TabCatalog::GetForProfile(window->GetProfile())
++                             ->FindPage(page_id, &owner)
++                       : nullptr;
++            if (!window || !contents || owner != window.get() || !frame ||
++                !frame->IsActive() || !frame->IsRenderFrameLive() ||
++                contents->GetPrimaryMainFrame() != frame) {
++              std::move(callback).Run(false, "", "conflict",
++                                      "The page changed before PDF export");
++              return;
++            }
+             if (result != print_to_pdf::PdfPrintResult::kPrintSuccess || !pdf ||
+                 pdf->size() == 0) {
+               std::move(callback).Run(false, "", "internal",
+@@ -674,7 +693,8 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+                     },
+                     std::move(callback), destination));
+           },
+-          std::move(callback), selected_path));
++          browser_->GetWeakPtr(), std::move(save_pdf_page_id),
++          std::move(save_pdf_document), std::move(callback), selected_path));
+ #else
+   std::move(callback).Run(false, "", "not_supported",
+                           "PDF rendering is unavailable");
+@@ -690,6 +710,7 @@ void WebUIBrowserUI::FileSelectionCanceled() {
+   save_file_source_.clear();
+   save_file_source_size_ = 0;
+   save_pdf_page_id_.clear();
++  save_pdf_document_ = {};
+   if (purpose == FileDialogPurpose::kDownloadFolder) {
+     auto* prefs = DownloadPrefs::FromBrowserContext(browser_->GetProfile());
+     base::DictValue result;
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index bfa9706..94045a1 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -32,6 +32,7 @@
+ #include "components/browser_apis/ui_controllers/toolbar/extensions_bar.mojom.h"
+ #include "components/guest_contents/common/guest_contents.mojom.h"
+ #include "components/omnibox/browser/searchbox.mojom.h"
++#include "content/public/browser/weak_document_ptr.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_ui_controller.h"
+ #include "content/public/browser/webui_config.h"
+@@ -325,6 +326,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+   base::FilePath save_file_source_;
+   int64_t save_file_source_size_ = 0;
+   std::string save_pdf_page_id_;
++  content::WeakDocumentPtr save_pdf_document_;
+ #endif
+ 
+   mojo::Receiver<bookmark_bar::mojom::PageHandlerFactory>
