@@ -4,6 +4,7 @@ import { errorMessage } from "./error-message";
 import { create } from "zustand";
 import type { Download, PageTarget, SavedProgram, TabCommand } from "@aux/contracts";
 import { bridge } from "./bridge";
+import { visibleDownloads } from "./downloads";
 import {
   assignFolder,
   assignSpace,
@@ -161,7 +162,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
           restoringTabs: !!ws.restoringTabs,
           bookmarks: hasNativeBookmarkAuthority() ? s.bookmarks : bookmarks,
           settings,
-          downloads,
+          downloads: visibleDownloads(downloads),
           programs,
           connected: true,
           layout,

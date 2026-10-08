@@ -18,7 +18,7 @@ import type {
   StepRecord,
 } from "@aux/contracts";
 import { retainNativeTabMetadata } from "./native-tab-metadata";
-import { bridge } from "../bridge";
+import { bridge, inNativeHost } from "../bridge";
 import { setDictationDraft } from "../dictation-drafts";
 import { clearResultDrafts, revokeResultDrafts } from "../result-drafts";
 import { writeRunAnswerDraft } from "../run-answer-drafts";
@@ -282,13 +282,15 @@ export const reduceLibraryEvent: Reducer = (state, e) => {
       return sess ? { sessions: upsertBy(state.sessions, sess, "sessionId") } : {};
     }
     case "downloads.removed": {
+      if (inNativeHost) return {};
       const ids = new Set(Array.isArray(e.payload.ids) ? e.payload.ids : []);
       return { downloads: state.downloads.filter((item) => !ids.has(item.id)) };
     }
     case "download.started":
     case "download.finished": {
+      if (inNativeHost) return {};
       const d = e.payload as Download;
-      return d.id ? { downloads: [d, ...state.downloads.filter((x) => x.id !== d.id)].slice(0, 200) } : {};
+      return d.id ? { downloads: [d, ...state.downloads.filter((x) => x.id !== d.id)] } : {};
     }
     case "settings.changed": {
       const settings = e.payload.settings as Record<string, unknown> | undefined;

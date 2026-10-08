@@ -2,6 +2,7 @@ import { conversationReplyText } from "@aux/contracts/conversation-reply-text";
 import {
   AuxError,
   MethodSchemas,
+  ResultSchemas,
   GenerateResultParamsSchema,
   GeneratedResultSpecSchema,
   type GeneratedResult,
@@ -1594,6 +1595,7 @@ export function installMockBridge(q: URLSearchParams) {
           (item) =>
             ids.has(item.id) &&
             !item.canCancel &&
+            !item.canResume &&
             ["completed", "cancelled", "interrupted"].includes(item.state),
         )
         .map((item) => item.id);
@@ -2367,11 +2369,14 @@ export function installMockBridge(q: URLSearchParams) {
       percentage: (defaultPageZoom = next ?? defaultPageZoom),
       managed: false,
     }),
-    downloadsSnapshot: async () => downloads.filter((item) => item.canCancel),
+    downloadsSnapshot: async () => downloads,
+    dismissDownloads: async (ids) =>
+      ResultSchemas["downloads.remove"].parse(await invoke("downloads.remove", { ids })),
     controlDownload: async () => {
       throw new Error("No live download in this preview");
     },
     onDownload: () => () => {},
+    onDownloadsRemoved: () => () => {},
     onLoading: (cb) => (loadingListeners.add(cb), () => loadingListeners.delete(cb)),
     surfaceContentId: async () => null,
     capabilities: async () => ({

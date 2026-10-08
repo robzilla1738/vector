@@ -127,17 +127,18 @@ const DownloadRow = memo(function DownloadRow({
         )}
       </span>
       <div className="dl-actions">
+        {(d.paused || d.state === "interrupted") && d.canResume && (
+          <button
+            {...smallGhostButtonProps}
+            disabled={busy !== null}
+            onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "resume"), true)}
+          >
+            Resume
+          </button>
+        )}
         {d.canCancel && (
           <>
-            {d.paused || d.state === "interrupted" ? (
-              <button
-                {...smallGhostButtonProps}
-                disabled={busy !== null || !d.canResume}
-                onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "resume"), true)}
-              >
-                Resume
-              </button>
-            ) : (
+            {!d.paused && d.state !== "interrupted" && (
               <button
                 {...smallGhostButtonProps}
                 disabled={busy !== null}
@@ -155,7 +156,7 @@ const DownloadRow = memo(function DownloadRow({
             </button>
           </>
         )}
-        {!d.canCancel && d.state !== "completed" && d.sourceUrl && (
+        {!d.canCancel && !d.canResume && d.state !== "completed" && d.sourceUrl && (
           <button
             {...smallGhostButtonProps}
             title="Start a new download from the saved URL. Expired links or form-generated downloads may need the original page."
@@ -364,6 +365,9 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
     setLoadError("");
     const updated = new Set<string>();
     const removed = new Set<string>();
+    const offRemoved = bridge.onDownloadsRemoved(({ ids }) => {
+      for (const id of ids) removed.add(id);
+    });
     const offEvents = bridge.onEvent((event) => {
       if (event.type === "downloads.removed" && Array.isArray(event.payload.ids))
         for (const id of event.payload.ids) if (typeof id === "string") removed.add(id);
@@ -379,11 +383,7 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
       .then((downloads) => {
         if (!live) return;
         useStore.setState((state) => ({
-          downloads: mergeDownloadSnapshot(
-            state.downloads,
-            downloads.filter((item) => !removed.has(item.id)),
-            updated,
-          ),
+          downloads: mergeDownloadSnapshot(state.downloads, downloads, updated, removed),
         }));
       })
       .catch((reason) => {
@@ -396,6 +396,7 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
       live = false;
       unsubscribe();
       offEvents();
+      offRemoved();
     };
   }, [refresh]);
   async function action(id: string, work: () => Promise<unknown>, fileAction = false) {
@@ -431,13 +432,17 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
 
   const dismissDownloads = (ids: string[]) =>
     action("clear", async () => {
-      const result = await call("downloads.remove", { ids });
-      const removed = new Set(result.removed);
-      useStore.setState((state) => ({ downloads: state.downloads.filter((item) => !removed.has(item.id)) }));
+      let count = 0;
+      for (let offset = 0; offset < ids.length; offset += 200) {
+        const result = await call("downloads.remove", { ids: ids.slice(offset, offset + 200) });
+        const removed = new Set(result.removed);
+        count += removed.size;
+        useStore.setState((state) => ({
+          downloads: state.downloads.filter((item) => !removed.has(item.id)),
+        }));
+      }
       toast(
-        result.removed.length
-          ? "Removed from the list. Files remain on your computer."
-          : "No inactive downloads to remove.",
+        count ? "Removed from the list. Files remain on your computer." : "No inactive downloads to remove.",
       );
     });
 

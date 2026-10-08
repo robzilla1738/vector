@@ -43,6 +43,6 @@ export const createBookmarksSlice: Slice<BookmarkKeys> = (set, get) => ({
   applyDownload: (d) =>
     set((s) => {
       const rest = s.downloads.filter((x) => x.id !== d.id);
-      return { downloads: [d, ...rest].slice(0, 200) };
+      return { downloads: [d, ...rest] };
     }),
 });

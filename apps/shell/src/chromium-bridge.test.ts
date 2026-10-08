@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { installChromiumBridge, type ChromiumHostPort } from "./chromium-bridge";
+import type { Download } from "@aux/contracts";
 import { chromiumFeatureStages } from "./feature-stage-reconciliation";
 
 function fakeWindow(url: string, port?: ChromiumHostPort) {
@@ -436,4 +437,60 @@ it("preserves the contiguous runtime stream while native bookmark projection is 
   expect(callback).toHaveBeenCalledTimes(2);
   unsubscribe();
   expect(stop).toHaveBeenCalledOnce();
+});
+
+it("keeps native download dismissal authoritative across held snapshots and late updates without the runtime", async () => {
+  const item: Download = {
+    id: "dismissed-guid",
+    size: 100,
+    filename: "report.pdf",
+    path: "/tmp/report.pdf",
+    state: "completed",
+    startedAt: 1,
+  };
+  const resumable: Download = { ...item, id: "resumable-guid", state: "interrupted", canResume: true };
+  let finishSnapshot!: (items: Download[]) => void;
+  const listeners = new Map<string, Array<(value: unknown) => void>>();
+  const request = vi.fn(async (method: string) => {
+    if (method === "downloadsSnapshot")
+      return new Promise<Download[]>((resolve) => {
+        finishSnapshot = resolve;
+      });
+    if (method === "dismissDownloads") return { removed: [item.id] };
+    throw new Error("Runtime unavailable");
+  });
+  const target = fakeWindow("chrome://aux/", {
+    host: "chromium-fork",
+    windowId: "download-window",
+    profileId: "download-profile",
+    platform: "darwin",
+    privateMode: false,
+    windowKind: "normal",
+    request,
+    subscribe: (event, callback) => {
+      listeners.set(event, [...(listeners.get(event) ?? []), callback]);
+      return () => {};
+    },
+  });
+  installChromiumBridge(target);
+  const aux = target.aux!;
+  const update = vi.fn();
+  aux.onDownload(update);
+  const held = aux.invoke("downloads.list");
+  expect(await aux.invoke("downloads.remove", { ids: [item.id, resumable.id] })).toEqual({
+    removed: [item.id],
+  });
+  finishSnapshot([item, resumable]);
+  expect(await held).toEqual([resumable]);
+  for (const callback of listeners.get("onDownload") ?? []) callback(item);
+  expect(update).not.toHaveBeenCalled();
+  const next = aux.downloadsSnapshot();
+  for (const callback of listeners.get("onDownloadsRemoved") ?? []) callback({ ids: [resumable.id] });
+  finishSnapshot([resumable]);
+  expect(await next).toEqual([]);
+  expect(request.mock.calls.map(([method]) => method)).toEqual([
+    "downloadsSnapshot",
+    "dismissDownloads",
+    "downloadsSnapshot",
+  ]);
 });

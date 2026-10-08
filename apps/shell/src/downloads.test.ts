@@ -21,20 +21,23 @@ it("does not regress completed or newly started transfers when a stale snapshot 
   ]);
 });
 
-it("recovers stale persisted transfers while retaining current private and regular snapshots", () => {
+it("uses the native shelf without reviving absent runtime history", () => {
   const live = { ...transfer, id: "live", paused: true, size: 50 };
   const result = mergeDownloadSnapshot([transfer], [live], new Set());
-  expect(result).toEqual([
-    live,
-    { ...transfer, state: "interrupted", canCancel: false, canResume: false, paused: false },
-  ]);
+  expect(result).toEqual([live]);
 });
 
 it("allows inactive downloads to be dismissed without hiding a resumable transfer", () => {
-  expect(canDismissDownload({ ...transfer, state: "interrupted", canCancel: true, canResume: true })).toBe(
+  expect(canDismissDownload({ ...transfer, state: "interrupted", canCancel: false, canResume: true })).toBe(
     false,
   );
   for (const state of ["completed", "cancelled", "interrupted"] as const)
     expect(canDismissDownload({ ...transfer, state, canCancel: false })).toBe(true);
   expect(canDismissDownload({ ...transfer, canCancel: false })).toBe(false);
+});
+
+it("a removal event wins over both a held snapshot and an earlier live update", () => {
+  expect(
+    mergeDownloadSnapshot([transfer], [transfer], new Set([transfer.id]), new Set([transfer.id])),
+  ).toEqual([]);
 });

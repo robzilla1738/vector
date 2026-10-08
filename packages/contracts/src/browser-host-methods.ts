@@ -472,6 +472,10 @@ export const BrowserHostMethods = {
     strictObject({ percentage: z.number().int(), managed: bool }),
   ),
   downloadsSnapshot: coreShell(noArgs, z.array(DownloadSchema)),
+  dismissDownloads: coreShell(
+    tuple([z.array(str.min(1).max(200)).min(1).max(200)]),
+    strictObject({ removed: z.array(str) }),
+  ),
   controlDownload: coreShell(tuple([str, z.enum(["pause", "resume", "cancel"])]), noResult),
   retryDownload: coreShell(tuple([str]), noResult),
   tabAudio: coreShell(
@@ -724,6 +728,7 @@ export const HostEvents = {
   onRoutePrompt: event("linkRouting", routePrompt),
   onLinkStatus: coreEvent(strictObject({ pageId: str, text: str })),
   onDownload: coreEvent(DownloadSchema),
+  onDownloadsRemoved: coreEvent(strictObject({ ids: z.array(str) })),
   onTabsPlacement: coreEvent(strictObject({ pageId: str, windowId: str, placement: TabPlacementSchema })),
   onPageAction: extensionEvent(PageQuickActionSchema),
   onVaultOffer: coreEvent(

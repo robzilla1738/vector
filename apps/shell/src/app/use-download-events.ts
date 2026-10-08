@@ -15,6 +15,13 @@ export function useDownloadEvents() {
         (error) => console.warn("Native download receipt projection failed", error),
       );
     });
-    return offDownload;
+    const offRemoved = bridge.onDownloadsRemoved(({ ids }) => {
+      const removed = new Set(ids);
+      useStore.setState((state) => ({ downloads: state.downloads.filter((item) => !removed.has(item.id)) }));
+    });
+    return () => {
+      offDownload();
+      offRemoved();
+    };
   }, []);
 }
