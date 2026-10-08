@@ -1392,7 +1392,11 @@ export const MethodSchemas = {
     archived: z.boolean(),
   }),
   "routines.run": RoutineRunParams,
-  "routines.runs": z.object({ routineId: id, limit: z.number().int().min(1).max(100).default(30) }),
+  "routines.runs": z.object({
+    routineId: id,
+    cursor: z.object({ createdAt: z.number().int().nonnegative(), routineRunId: id }).strict().optional(),
+    limit: z.number().int().min(1).max(100).default(30),
+  }),
   "routines.outcome": z.object({ routineRunId: id }),
   "routines.reconcile": z
     .object({

@@ -202,32 +202,50 @@ export class RoutineService {
       /* an invalid page context cannot match */
     }
     if (page && !["http:", "https:"].includes(page.protocol)) page = undefined;
-    return this.list({ workspaceId: input.workspaceId, limit: 200 })
-      .filter((routine) => !routine.paused && !!routine.sourceTaskId)
-      .map((routine) => {
-        const reasons: RoutineSuggestion["reasons"] = [];
-        if (context.trim() && routine.autoInject.keywords.some((keyword) => context.includes(words(keyword))))
-          reasons.push("keyword");
-        if (
-          page &&
-          routine.autoInject.urls.some((pattern) => {
-            try {
-              const rule = new URL(pattern);
-              if (!["http:", "https:"].includes(rule.protocol) || page!.origin !== rule.origin) return false;
-              const prefix = rule.pathname.replace(/\/$/, "");
-              return !prefix || page!.pathname === prefix || page!.pathname.startsWith(`${prefix}/`);
-            } catch {
-              return false;
-            }
-          })
-        )
-          reasons.push("url");
-        return { routine, reasons };
-      })
-      .filter((item) => item.reasons.length)
-      .sort((a, b) => b.reasons.length - a.reasons.length || b.routine.updatedAt - a.routine.updatedAt)
-      .slice(0, input.limit ?? 5)
-      .map(({ routine, reasons }) => ({ routineId: routine.routineId, title: routine.title, reasons }));
+    if (!context.trim() && !page) return [];
+    this.sync();
+    const limit = input.limit ?? 5;
+    const matches: RoutineSuggestion[] = [];
+    const rows = this.repo.db
+      .prepare(
+        `SELECT routine_id,updated_at,
+      json_extract(json,'$.title') AS title,json_extract(json,'$.autoInject') AS auto_inject
+      FROM routines WHERE archived_at IS NULL AND paused=0
+        AND (? IS NULL OR workspace_id=?) AND json_extract(json,'$.sourceTaskId') IS NOT NULL
+        AND (json_array_length(json,'$.autoInject.keywords')>0 OR json_array_length(json,'$.autoInject.urls')>0)
+      ORDER BY updated_at DESC,routine_id DESC`,
+      )
+      .iterate(input.workspaceId ?? null, input.workspaceId ?? null);
+    for (const row of rows) {
+      const autoInject = RoutineSchema.shape.autoInject.parse(JSON.parse(String(row.auto_inject)));
+      const reasons: RoutineSuggestion["reasons"] = [];
+      if (context.trim() && autoInject.keywords.some((keyword) => context.includes(words(keyword))))
+        reasons.push("keyword");
+      if (
+        page &&
+        autoInject.urls.some((pattern) => {
+          try {
+            const rule = new URL(pattern);
+            if (!["http:", "https:"].includes(rule.protocol) || page.origin !== rule.origin) return false;
+            const prefix = rule.pathname.replace(/\/$/, "");
+            return !prefix || page.pathname === prefix || page.pathname.startsWith(`${prefix}/`);
+          } catch {
+            return false;
+          }
+        })
+      )
+        reasons.push("url");
+      if (!reasons.length) continue;
+      const suggestion = { routineId: String(row.routine_id), title: String(row.title), reasons };
+      const before = matches.findIndex((item) => item.reasons.length < reasons.length);
+      if (before < 0) matches.push(suggestion);
+      else matches.splice(before, 0, suggestion);
+      if (matches.length > limit) matches.pop();
+      // Remaining rows are older and cannot outrank a full set of exact matches.
+      const possibleReasons = Number(!!context.trim()) + Number(!!page);
+      if (matches.length === limit && matches.at(-1)?.reasons.length === possibleReasons) break;
+    }
+    return matches;
   }
 
   private inboxService?: RoutineInbox;
@@ -788,12 +806,23 @@ export class RoutineService {
     return next;
   }
 
-  runs(routineId: string, limit = 30): RoutineRun[] {
+  runs(routineId: string, limit = 30, cursor?: { createdAt: number; routineRunId: string }): RoutineRun[] {
     this.sync();
     return (
       this.repo.db
-        .prepare("SELECT * FROM routine_runs WHERE routine_id=? ORDER BY created_at DESC LIMIT ?")
-        .all(routineId, limit) as Record<string, unknown>[]
+        .prepare(
+          `SELECT * FROM routine_runs WHERE routine_id=?
+          AND (? IS NULL OR created_at<? OR (created_at=? AND routine_run_id<?))
+          ORDER BY created_at DESC,routine_run_id DESC LIMIT ?`,
+        )
+        .all(
+          routineId,
+          cursor?.createdAt ?? null,
+          cursor?.createdAt ?? null,
+          cursor?.createdAt ?? null,
+          cursor?.routineRunId ?? null,
+          limit,
+        ) as Record<string, unknown>[]
     ).map(parseRun);
   }
 

@@ -140,6 +140,22 @@ it("suggests enabled Skills for bounded keyword and exact-origin URL context wit
     icon: "chart",
     autoInject: { keywords: ["vendor pricing"], urls: ["https://example.com/pricing"] },
   });
+  const insert = f.db.prepare(
+    "INSERT INTO routines(routine_id,workspace_id,revision,paused,updated_at,json) VALUES(?,?,1,0,?,?)",
+  );
+  for (let index = 0; index < 220; index++) {
+    const routineId = `newer-unrelated-${index}`;
+    insert.run(
+      routineId,
+      skill.workspaceId,
+      skill.updatedAt + 1,
+      JSON.stringify({
+        ...skill,
+        routineId,
+        autoInject: { keywords: ["unrelated"], urls: ["https://different.example/"] },
+      }),
+    );
+  }
   expect(
     f.routines.suggest({
       workspaceId: f.workspace.workspaceId,

@@ -72,7 +72,7 @@ async function h_routines_list(ctx: MethodCtx): Promise<unknown> {
   if (method === "routines.archive")
     return routines.archive(params.routineId, params.expectedRevision, params.archived);
   if (method === "routines.run") return routines.run(params);
-  if (method === "routines.runs") return routines.runs(params.routineId, params.limit);
+  if (method === "routines.runs") return routines.runs(params.routineId, params.limit, params.cursor);
   if (method === "routines.outcome") return routines.outcome(params.routineRunId, taskEvidence);
   if (method === "routines.reconcile")
     return routines.reconcile(params.routineRunId, params.outcome, params.note);

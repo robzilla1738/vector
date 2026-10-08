@@ -194,3 +194,54 @@ it("discards an older page that resolves after the Skill search changes", async 
   expect(host.querySelectorAll(".ui-work-row")).toHaveLength(1);
   expect(host.textContent).not.toContain("Needle stale page");
 });
+
+it("opens every older occurrence under its original Skill history", async () => {
+  const routine = RoutineSchema.parse({
+    routineId: "history",
+    workspaceId: "workspace",
+    revision: 1,
+    title: "History Skill",
+    objective: "Saved work",
+    createdAt: 100,
+    updatedAt: 100,
+  });
+  const runs = Array.from({ length: 65 }, (_, index) => ({
+    routineRunId: `run-${String(index).padStart(3, "0")}`,
+    routineId: routine.routineId,
+    revision: 1,
+    status: "completed",
+    parameters: {},
+    createdAt: 100,
+    reason: `Receipt ${String(index).padStart(3, "0")}`,
+  })).reverse();
+  useStore.setState({ skillSelection: { workspaceId: "workspace", routineId: routine.routineId } });
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method, raw) => {
+    if (method === "routines.list") return [routine];
+    if (method === "routines.get") return { routine, runs: runs.slice(0, 30) };
+    if (method === "routines.runs") {
+      const p = raw as MethodParams<"routines.runs">;
+      return runs
+        .filter(
+          (run) => run.routineId === p.routineId && (!p.cursor || run.routineRunId < p.cursor.routineRunId),
+        )
+        .slice(0, p.limit ?? 30);
+    }
+    return [];
+  });
+  await act(async () => root.render(<Routines workspaceId="workspace" />));
+  expect(host.textContent).not.toContain("Receipt 000");
+  const older = () =>
+    [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+      (button) => button.textContent === "Older runs",
+    );
+  await act(async () => older()!.click());
+  expect(invoke).toHaveBeenCalledWith("routines.runs", {
+    routineId: "history",
+    limit: 30,
+    cursor: { createdAt: 100, routineRunId: "run-035" },
+  });
+  expect(host.textContent).toContain("Receipt 005");
+  await act(async () => older()!.click());
+  expect(host.textContent).toContain("Receipt 000");
+  expect(older()).toBeUndefined();
+});

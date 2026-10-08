@@ -50,7 +50,13 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const [candidates, setCandidates] = useState<RoutineCandidate[]>([]);
   const [inbox, setInbox] = useState<RoutineInboxItem[]>([]);
   const [comparison, setComparison] = useState<RoutineCompare | null>(null);
-  const [selected, setSelected] = useState<{ routine: Routine; runs: RoutineRun[] } | null>(null);
+  const [selected, setSelected] = useState<{
+    routine: Routine;
+    runs: RoutineRun[];
+    moreRuns?: boolean;
+  } | null>(null);
+  const [loadingRunHistory, setLoadingRunHistory] = useState<typeof selected>(null);
+  const currentSelected = useRef(selected);
   const [calendarAccounts, setCalendarAccounts] = useState<CalendarTriggerAccounts>({
     status: "loading",
     choices: [],
@@ -78,7 +84,8 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   useLayoutEffect(() => {
     currentWorkspace.current = workspaceId;
     currentListScope.current = listScope;
-  }, [workspaceId, listScope]);
+    currentSelected.current = selected;
+  }, [workspaceId, listScope, selected]);
   async function refresh(routineId?: string) {
     if (currentListScope.current !== listScope) return;
     const request = ++listRequest.current;
@@ -130,6 +137,39 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     } finally {
       if (currentListScope.current === listScope && request === listRequest.current)
         setLoadingSkillsPage(false);
+    }
+  }
+  async function olderRuns() {
+    const original = selected;
+    const last = original?.runs.at(-1);
+    if (!original || !last || loadingRunHistory === original) return;
+    setLoadingRunHistory(original);
+    try {
+      const runs = await call("routines.runs", {
+        routineId: original.routine.routineId,
+        limit: 30,
+        cursor: { createdAt: last.createdAt, routineRunId: last.routineRunId },
+      });
+      if (currentWorkspace.current !== workspaceId || currentSelected.current !== original) return;
+      setSelected((current) =>
+        current === original
+          ? {
+              ...current,
+              runs: [
+                ...current.runs,
+                ...runs.filter(
+                  (run) => !current.runs.some((saved) => saved.routineRunId === run.routineRunId),
+                ),
+              ],
+              moreRuns: runs.length === 30,
+            }
+          : current,
+      );
+    } catch (reason) {
+      if (currentWorkspace.current === workspaceId && currentSelected.current === original)
+        setError(errorMessage(reason));
+    } finally {
+      setLoadingRunHistory((current) => (current === original ? null : current));
     }
   }
   async function olderResults() {
@@ -843,7 +883,10 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             </div>
             <div>
               <span className="routine-overview-label">Runs</span>
-              <span className="routine-overview-value">{selected.runs.length}</span>
+              <span className="routine-overview-value">
+                {selected.runs.length}
+                {(selected.moreRuns ?? selected.runs.length === 30) ? "+" : ""}
+              </span>
             </div>
           </div>
           {selected.routine.activationReview && (
@@ -1114,6 +1157,15 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               )}
             </div>
           ))}
+          {(selected.moreRuns ?? selected.runs.length === 30) && (
+            <button
+              {...smallGhostButtonProps}
+              disabled={busy || loadingRunHistory === selected}
+              onClick={() => void olderRuns()}
+            >
+              {loadingRunHistory === selected ? "Loading runs…" : "Older runs"}
+            </button>
+          )}
         </div>
       )}
     </section>

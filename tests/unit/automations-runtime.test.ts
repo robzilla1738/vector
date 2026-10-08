@@ -206,7 +206,7 @@ it("gives fall-back wall minutes one identity and skips nonexistent spring-forwa
   expect(new Date(spring).toISOString()).toBe("2026-03-15T06:30:00.000Z");
 });
 
-it("pages every inbox occurrence with tied timestamps and retains unread filtering", async () => {
+it("pages inbox and per-Skill occurrences with tied timestamps and retains unread filtering", async () => {
   const f = fixture();
   const routine = f.routines.fromResult({ taskId: f.task.taskId, title: "Older results" });
   const insert = f.db.prepare(
@@ -230,4 +230,17 @@ it("pages every inbox occurrence with tied timestamps and retains unread filteri
   expect(new Set(ids).size).toBe(64);
   expect(ids).not.toContain("occurrence-064");
   expect(ids.at(-1)).toBe("occurrence-000");
+  const owned: string[] = [];
+  cursor = undefined;
+  for (;;) {
+    const page = f.routines.runs(routine.routineId, 30, cursor);
+    owned.push(...page.map((run) => run.routineRunId));
+    const last = page.at(-1);
+    if (!last || page.length < 30) break;
+    cursor = last;
+  }
+  expect(owned).toHaveLength(65);
+  expect(new Set(owned).size).toBe(65);
+  expect(owned.at(-1)).toBe("occurrence-000");
+  expect(f.routines.runs("other-Skill", 30)).toEqual([]);
 });
