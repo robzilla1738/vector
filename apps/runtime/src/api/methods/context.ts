@@ -97,6 +97,10 @@ export interface Services {
   coderWorktrees?: import("../../services/coder-worktree-operations.js").CoderWorktreeOperations;
   codingFiles?: import("../../services/coding-files.js").CodingFilesService;
   codingProcesses?: import("../../services/coding-processes.js").CodingProcesses;
+  cloudCoding?: Pick<
+    import("../../services/vercel-sandbox-executor.js").VercelSandboxExecutor,
+    "retainedFiles" | "retainedProcesses" | "preview" | "closePreview"
+  >;
   projects?: import("../../services/projects.js").ProjectsService;
   terminals?: import("../../services/terminals.js").TerminalService;
   /** Shared with the agent loop's REPL cell surface — created once in main.ts. */

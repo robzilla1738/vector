@@ -4,9 +4,15 @@ const id = z.string().uuid();
 export const CloudListenerSchema = z
   .object({
     pid: z.number().int().positive(),
-    startTicks: z.string().regex(/^\d+$/),
+    startTicks: z
+      .string()
+      .max(20)
+      .regex(/^[1-9][0-9]*$/),
     fd: z.number().int().nonnegative(),
-    inode: z.string().regex(/^\d+$/),
+    inode: z
+      .string()
+      .max(20)
+      .regex(/^[1-9][0-9]*$/),
     port: z.number().int().min(1).max(65535),
   })
   .strict();

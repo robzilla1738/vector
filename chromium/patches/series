@@ -90,3 +90,7 @@ aux/0090-native-bookmark-controls.patch
 aux/0091-native-bookmark-folder-controls.patch
 aux/0092-native-start-reconciliation.patch
 aux/0093-native-private-ai-session.patch
+aux/0094-native-bookmark-library-quality.patch
+aux/0095-native-sleep-state-projection.patch
+aux/0096-cloud-project-preview.patch
+aux/0097-private-runtime-startup-status.patch

@@ -5,9 +5,11 @@ import type { MethodName } from "./api.js";
 
 export type AuxFeatureMethodId = HostMethodId | MethodName;
 
-// Layouts require native window appearance support.
+// Shared platform dependencies that a feature's own methods cannot establish.
 const sharedRequirements: Partial<Record<AuxFeature, readonly AuxFeatureMethodId[]>> = {
   layouts: ["setAppearance"],
+  demonstrationSkills: ["native.profileStorageRoot"],
+  overnightReview: ["native.profileStorageRoot"],
 };
 
 /** Required method capabilities for each product feature. */

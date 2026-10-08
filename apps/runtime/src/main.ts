@@ -242,6 +242,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   bootPhase("database");
   let channel: RpcChannel | null = null;
   let hostSocket: HostSocketTransport | null = null;
+  const privateStartupPhase = (phase: "connected" | "proof" | "settings" | "services" | "ready") => {
+    if (privateSession) hostSocket?.send({ kind: "note", type: "startupPhase", payload: { phase } });
+  };
   let releaseHostStartup: (() => void) | undefined;
   let columnCipher: FieldCodec | undefined;
   let bootstrapIdentity: HostCapabilities | undefined;
@@ -253,10 +256,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const startup = startupHostChannel(hostSocket);
       channel = startup.channel;
       releaseHostStartup = startup.release;
+      privateStartupPhase("connected");
       const native = new ChannelNativeBridge(channel);
       if (privateSession) {
         bootstrapIdentity = await native.capabilities();
         privateSession.admit(bootstrapIdentity);
+        privateStartupPhase("proof");
       } else {
         columnCipher = await initializeFieldCodec(db, native, env.AUX_BROWSER_PROFILE_ID ?? "");
       }
@@ -270,6 +275,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const repo = new Repo(db, columnCipher);
   try {
     privateSession?.seedSettings(repo);
+    privateStartupPhase("settings");
   } catch (error) {
     db.close();
     hostSocket?.close();
@@ -770,6 +776,18 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     auxPackages: () =>
       new AuxPackageLibrary(repo, runtimeServices.filesystem, new Set(Object.keys(buildToolManifest()))),
     codingFiles: () => new CodingFilesService(repo, runtimeServices.filesystem, authorizeCodingFiles),
+    cloudCoding: () => ({
+      retainedFiles: (runId: string) => cloudExecutor?.retainedFiles(runId),
+      retainedProcesses: (runId: string) => cloudExecutor?.retainedProcesses(runId),
+      preview: (context, input, token, signal) => {
+        if (!cloudExecutor) throw new AuxError("ref_stale", "Start the original cloud command before opening its Preview.");
+        return cloudExecutor.preview(context, input, token, signal);
+      },
+      closePreview: (context, previewId, token) => {
+        if (!cloudExecutor) throw new AuxError("ref_stale", "The original cloud Preview has retired.");
+        return cloudExecutor.closePreview(context, previewId, token);
+      },
+    }),
     codingProcesses: () =>
       new CodingProcesses({
         repo,
@@ -1237,6 +1255,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return auxFeatureEnabled("zapAndUserCss", host, stages) ? snapshot : [];
   });
   runtimeServices.settings.attachNative(native);
+  privateStartupPhase("services");
   runtimeServices.settings.attachCopilotServices(() => runtimeServices.copilot);
 
   // These authenticated host-only methods prepare local files for native save dialogs.
@@ -2515,6 +2534,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       };
       const executor = new execution.VercelSandboxExecutor({
         repo,
+        native,
         funding: runtimeServices.runs.funding,
         configuration: () => settings.cloudSettingsFor(repo, native).configuration(),
         assertOwner: (ctx) => owner(ctx),
@@ -2523,6 +2543,17 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         pauseForResourceFunding: (error, current) =>
           runtimeServices.runs.coordinator.pauseForResourceFunding(error, current),
         authorizeCreate: (ctx, quote, quoteDigest) => admission.authorizeCreate(ctx, quote, quoteDigest),
+        authorizePreview: async (input, context, process, listener) => {
+          await owner(context);
+          const identity = process.execution;
+          if (!identity || identity.backend !== "cloud") throw new AuxError("ref_stale", "Preview requires its original cloud process.");
+          const fence = await authorizeCodingAction(context.runId, "read", `preview:${input.processId}:${input.port}`, [input, identity, listener], undefined, "user", undefined, identity);
+          await owner(context);
+          return () => {
+            checkCodingOwner(context.runId);
+            fence();
+          };
+        },
         authorizeFiles: async (request, context, identity) => {
           const ctx = {
             runId: context.runId,
@@ -2842,6 +2873,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     stopNativeProjectPreview = registerNativeProjectPreview(channel, {
       current: () => !closed,
       terminals: () => runtimeServices.terminals,
+      cloud: (previewId, token) => cloudExecutor?.admitPreview(previewId, token) ?? Promise.resolve(false),
     });
     stopNativeDeviceConfirmation = registerNativeDeviceConfirmation(channel, {
       get approvals() {
@@ -3034,6 +3066,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   api.setReady();
   disarmWatchdog();
   bootPhase("ready");
+  privateStartupPhase("ready");
   channel?.notify("runtime.ready", { port });
 
   let filterTimer: NodeJS.Timeout | undefined;

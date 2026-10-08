@@ -63,11 +63,14 @@ const RESULTS: Record<string, unknown> = {
     "windows": []
   },
   "bookmarksInvoke": {
-    "method": "bookmarks.folders.snapshot",
+    "method": "bookmarks.entries.remove",
     "result": {
-      "rootId": "1",
-      "editable": false,
-      "folders": []
+      "snapshot": {
+        "rootId": "1",
+        "editable": false,
+        "folders": []
+      },
+      "undoToken": "00000000-0000-4000-8000-000000000000"
     }
   },
   "organizationSnapshot": {
@@ -489,6 +492,15 @@ const RESULTS: Record<string, unknown> = {
     "truncated": false
   },
   "showOriginal": 0,
+  "native.cloudPreview": {
+    "previewId": "00000000-0000-4000-8000-000000000000",
+    "processId": "00000000-0000-4000-8000-000000000000",
+    "contentId": "a",
+    "url": "https://example.com/"
+  },
+  "native.cloudPreviewClose": {
+    "closed": true
+  },
   "native.turnSourceContext": {
     "revision": 0,
     "layout": null,

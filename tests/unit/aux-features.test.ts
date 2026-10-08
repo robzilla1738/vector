@@ -8,6 +8,7 @@ import {
   requireAuxFeature,
   SettingsSetParams,
 } from "@aux/contracts";
+import { HostMethods } from "@aux/contracts/host-methods";
 
 describe("feature availability", () => {
   it("enables shipped features without commit qualification", () => {
@@ -32,5 +33,18 @@ describe("feature availability", () => {
     });
     expect(SettingsSetParams.safeParse({ featureOverrides: { memory: "off" } }).success).toBe(false);
     expect(SettingsSetParams.safeParse({ featureOverrides: { unknown: false } }).success).toBe(false);
+  });
+
+  it("keeps persistence-dependent boots unavailable in an ephemeral native Profile", () => {
+    const methods = Object.keys(HostMethods);
+    const normal = featureAvailabilityFor(methods);
+    expect(normal.demonstrationSkills).toBe("on");
+    expect(normal.overnightReview).toBe("on");
+    const privateProfile = featureAvailabilityFor(
+      methods.filter((method) => method !== "native.profileStorageRoot"),
+    );
+    expect(privateProfile.demonstrationSkills).toBe("off");
+    expect(privateProfile.overnightReview).toBe("off");
+    expect(privateProfile.layouts).toBe("on");
   });
 });

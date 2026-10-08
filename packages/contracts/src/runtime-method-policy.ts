@@ -317,6 +317,8 @@ export const RuntimeMethodPolicy = {
   "coding.processes": { feature: "core", auth: "handler-guarded" },
   "coding.logs": { feature: "core", auth: "handler-guarded" },
   "coding.stop": { feature: "core", auth: "handler-guarded" },
+  "coding.preview": { feature: "core", auth: "handler-guarded" },
+  "coding.previewClose": { feature: "core", auth: "handler-guarded" },
   "safety.grants.revokeRun": { feature: "core", auth: "handler-guarded" },
   "safety.approvals.pending": { feature: "core", auth: "handler-guarded" },
   "safety.approvals.decide": { feature: "core", auth: "handler-guarded" },

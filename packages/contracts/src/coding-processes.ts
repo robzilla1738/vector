@@ -3,9 +3,15 @@ import { CloudCodingIdentitySchema } from "./coding-files.js";
 export const CloudSupervisorSchema = z
   .object({
     pid: z.number().int().positive(),
-    startTicks: z.string().regex(/^\d+$/),
+    startTicks: z
+      .string()
+      .max(20)
+      .regex(/^[1-9][0-9]*$/),
     groupPid: z.number().int().positive(),
-    groupStartTicks: z.string().regex(/^\d+$/),
+    groupStartTicks: z
+      .string()
+      .max(20)
+      .regex(/^[1-9][0-9]*$/),
   })
   .strict();
 export type CloudSupervisor = z.infer<typeof CloudSupervisorSchema>;

@@ -6,6 +6,7 @@ export {
   BookmarkOfflineSetParams, BookmarkOfflineGetParams, BookmarkUpdateParams, BookmarkRemoveParams,
 } from "./bookmark-methods.js";
 import { CodingRunParams, CodingChangesParams, CodingUndoParams, CodingProcessParams, CodingLogsParams, CodingFileReceiptSchema, CodingProcessViewSchema, CodingLogsSchema } from "./coding-api.js";
+import { CloudPreviewSchema } from "./cloud-preview.js";
 import { PageSummaryParamsSchema, PageSummaryResultSchema } from "./page-summary.js";
 import { SkillLibraryPreviewParams, SkillLibraryImportParams, SkillLibraryPreviewSchema } from "./skill-library.js";
 import {
@@ -1669,6 +1670,8 @@ export const MethodSchemas = {
   "coding.processes": CodingRunParams,
   "coding.logs": CodingLogsParams,
   "coding.stop": CodingProcessParams,
+  "coding.preview": CodingProcessParams.extend({ port: z.number().int().min(1).max(65535) }).strict(),
+  "coding.previewClose": CodingRunParams.extend({ previewId: z.string().uuid() }).strict(),
   "safety.grants.revokeRun": z.object({ runId: id }).strict(),
   "safety.approvals.pending": z.object({ threadId: id }),
   "safety.approvals.decide": z.object({ decision: ApprovalDecisionSchema, expectedTurnId: id }).strict(),
@@ -2494,6 +2497,8 @@ export const ResultSchemas = {
   "coding.processes": z.array(CodingProcessViewSchema),
   "coding.logs": CodingLogsSchema,
   "coding.stop": CodingProcessViewSchema,
+  "coding.preview": CloudPreviewSchema,
+  "coding.previewClose": z.object({ closed: z.literal(true) }).strict(),
   "runs.message.cancel": RunMessageSchema,
   "runs.events": z.object({
     streamId: z.string(),

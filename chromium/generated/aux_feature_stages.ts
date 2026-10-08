@@ -46,6 +46,7 @@ const requirements = {
   },
   "demonstrationSkills": {
     "requires": [
+      "native.profileStorageRoot",
       "native.recorderStart",
       "native.recorderDrain",
       "native.recorderStop",
@@ -62,6 +63,7 @@ const requirements = {
   },
   "overnightReview": {
     "requires": [
+      "native.profileStorageRoot",
       "native.powerRelease",
       "native.powerStatus",
       "native.powerActivity",
