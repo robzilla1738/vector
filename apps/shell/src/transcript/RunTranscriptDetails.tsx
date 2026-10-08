@@ -9,6 +9,9 @@ import {
   type Suspension,
 } from "@aux/contracts";
 import { bridge } from "../bridge";
+import type { DocumentResultCitation } from "@aux/contracts/document-citation";
+import { DocumentSnapshot } from "../components/DocumentSnapshot";
+import { locatorLabel } from "../components/DocumentPages";
 import { call, useStore } from "../store";
 import { RunPanelAction, RunPanelDisclosure } from "../components/RunPanelAction";
 import { shellIconClose } from "../ui/icons";
@@ -61,6 +64,11 @@ export function RunTranscriptDetails({
   const [refresh, setRefresh] = useState(0);
   const [loadError, setLoadError] = useState("");
   const [selected, setSelected] = useState<ArtifactItem | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<{
+    run: Run;
+    citation: DocumentResultCitation;
+    current(): boolean;
+  } | null>(null);
   const [preview, setPreview] = useState<{
     text?: string;
     image?: string;
@@ -88,6 +96,7 @@ export function RunTranscriptDetails({
     setHydrated(false);
     setLoadError("");
     setSelected(null);
+    setSelectedDocument(null);
     setPreview(null);
     setError("");
     void call("runs.get", { runId: run.runId })
@@ -134,7 +143,10 @@ export function RunTranscriptDetails({
   const errorItem = projection?.items.find(
     (item): item is Extract<RunTranscriptItem, { kind: "error" }> => item.kind === "error",
   );
-  const citations = projection?.items.filter((item) => item.kind === "citation") ?? [];
+  const citations =
+    projection?.runId === run.runId
+      ? projection.items.filter((item) => item.kind === "citation" || item.kind === "document-citation")
+      : [];
   // RunPanel already owns the actionable failure card when a typed failure exists.
   const recovery =
     run.failure || run.error ? undefined : projection?.items.find((item) => item.kind === "recovery");
@@ -143,6 +155,7 @@ export function RunTranscriptDetails({
     if (!current() || !artifacts.some((item) => item.artifactId === artifact.artifactId)) return;
     const request = ++previewRequest.current;
     setSelected(artifact);
+    setSelectedDocument(null);
     setPreview(null);
     setError("");
     setLoading(true);
@@ -309,30 +322,47 @@ export function RunTranscriptDetails({
           summary={<>Verified evidence · {citations.length}</>}
         >
           <ul>
-            {citations.map(
-              (item, index) =>
-                item.kind === "citation" && (
-                  <li key={`${item.observationId}-${index}`}>
-                    <blockquote>{item.quote}</blockquote>
-                    {item.artifactId &&
-                      artifacts.some((artifact) => artifact.artifactId === item.artifactId) && (
-                        <RunPanelAction
-                          command="inspect-run-citation"
-                          run={run}
-                          {...smallGhostButtonProps}
-                          invoke={(current) =>
-                            open(
-                              artifacts.find((artifact) => artifact.artifactId === item.artifactId)!,
-                              item,
-                              current,
-                            )
-                          }
-                        >
-                          Inspect cited snapshot
-                        </RunPanelAction>
-                      )}
-                  </li>
-                ),
+            {citations.map((item, index) =>
+              item.kind === "document-citation" ? (
+                <li key={`document-${item.citation.source.snapshotId}-${index}`}>
+                  <p>{locatorLabel(item.citation.locator)}</p>
+                  <blockquote>{item.citation.quote}</blockquote>
+                  <RunPanelAction
+                    command="inspect-run-citation"
+                    run={run}
+                    identity={item}
+                    {...smallGhostButtonProps}
+                    invoke={(current) => {
+                      if (!current()) return;
+                      closeArtifact();
+                      setSelectedDocument({ run, citation: item.citation, current });
+                    }}
+                  >
+                    Inspect saved document
+                  </RunPanelAction>
+                </li>
+              ) : (
+                <li key={`${item.observationId}-${index}`}>
+                  <blockquote>{item.quote}</blockquote>
+                  {item.artifactId &&
+                    artifacts.some((artifact) => artifact.artifactId === item.artifactId) && (
+                      <RunPanelAction
+                        command="inspect-run-citation"
+                        run={run}
+                        {...smallGhostButtonProps}
+                        invoke={(current) =>
+                          open(
+                            artifacts.find((artifact) => artifact.artifactId === item.artifactId)!,
+                            item,
+                            current,
+                          )
+                        }
+                      >
+                        Inspect cited snapshot
+                      </RunPanelAction>
+                    )}
+                </li>
+              ),
             )}
           </ul>
         </RunPanelDisclosure>
@@ -378,6 +408,15 @@ export function RunTranscriptDetails({
           <strong>{recovery.state.replaceAll("_", " ")}</strong> {recovery.description}{" "}
           {RECOVERY_GUIDANCE[recovery.action]}
         </output>
+      )}
+      {selectedDocument?.run === run && (
+        <DocumentSnapshot
+          chatId={selectedDocument.citation.source.chatId}
+          attachmentId={selectedDocument.citation.source.attachmentId}
+          citation={selectedDocument.citation}
+          ownerCurrent={selectedDocument.current}
+          onClose={() => setSelectedDocument(null)}
+        />
       )}
       {selected && (
         <ViewerFrame

@@ -18,7 +18,7 @@ type PageState = {
   error: string;
 };
 
-function locatorLabel(locator: DocumentLocator): string {
+export function locatorLabel(locator: DocumentLocator): string {
   if (locator.kind === "text") return `Line ${locator.line}`;
   if (locator.kind === "pdf") return `Page ${locator.page} · block ${locator.block}`;
   const part = locator.part

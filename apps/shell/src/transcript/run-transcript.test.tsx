@@ -6,7 +6,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Observation, RunTranscriptProjection } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { RunPanel } from "../components/RunPanel";
-import { makeRun } from "../mock/fixtures";
+import { makeRun, makeDocumentPage } from "../mock/fixtures";
+import type { DocumentResultCitation } from "@aux/contracts/document-citation";
 import { useStore } from "../store";
 import { RunTranscriptDetails } from "./RunTranscriptDetails";
 
@@ -544,6 +545,103 @@ it("permanently retires a held artifact completion across original-window ABA", 
     expect(host.querySelector("pre")!.textContent).toBe("hello");
   } finally {
     bridge.windowId = originalWindow;
+    await act(async () => root.unmount());
+  }
+});
+
+it("opens the exact cited document capture and retires a held section when its run changes", async () => {
+  const run = makeRun({ runId: "document-citation", status: "completed", pageIds: [] });
+  const source = {
+    ...makeDocumentPage("First captured section", "Saved report.txt"),
+    nextCursor: "next-section",
+    attachment: {
+      attachmentId: "saved-document",
+      filename: "Saved report.txt",
+      excerpt: "First captured section",
+      included: true,
+      createdAt: 1,
+      byteLength: 500,
+    },
+  };
+  const citation: DocumentResultCitation = {
+    kind: "document",
+    source: {
+      chatId: "original-chat",
+      attachmentId: source.attachment.attachmentId,
+      sha256: source.sha256,
+      snapshotId: source.document.snapshotId,
+    },
+    locator: { kind: "text", line: 50, offset: 0 },
+    quote: "The cited line fifty.",
+  };
+  const projection: RunTranscriptProjection = {
+    runId: run.runId,
+    items: [{ kind: "document-citation", citation }],
+  };
+  const reads: { params: unknown; resolve(value: typeof source): void }[] = [];
+  vi.spyOn(bridge, "invoke").mockImplementation(async (method, params) => {
+    if (method === "runs.get") return { run, steps: [], transcript: projection };
+    if (method === "conversations.attachments.read")
+      return new Promise<typeof source>((resolve) => reads.push({ params, resolve }));
+    throw new Error(`Unexpected ${method}`);
+  });
+  useStore.setState({ runs: [run] });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const control = (command: string) =>
+    host.querySelector<HTMLButtonElement>(`[data-command-id="${command}"]`)!;
+  try {
+    await act(async () => root.render(<RunTranscriptDetails run={run} />));
+    await act(async () => {
+      host.querySelector<HTMLDetailsElement>(".transcript-citations")!.open = true;
+    });
+    expect(host.textContent).toContain("Line 50");
+    expect(host.textContent).toContain(citation.quote);
+    await act(async () => control("inspect-run-citation").click());
+    expect(reads).toHaveLength(1);
+    expect(reads[0]!.params).toEqual({
+      chatId: "original-chat",
+      attachmentId: "saved-document",
+      sha256: source.sha256,
+    });
+    await act(async () =>
+      reads[0]!.resolve({
+        ...source,
+        document: { ...source.document, snapshotId: "00000000-0000-4000-8000-000000000002" },
+      }),
+    );
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      "original document snapshot is unavailable",
+    );
+    expect(host.textContent).not.toContain("First captured section");
+    await act(async () => control("retry-conversation-document-read").click());
+    expect(reads[1]!.params).toEqual(reads[0]!.params);
+    await act(async () => reads[1]!.resolve(source));
+    expect(host.textContent).toContain("First captured section");
+    expect(host.textContent).toContain("opens at its first section");
+    expect(reads).toHaveLength(2);
+    await act(async () => control("next-document-section").click());
+    expect(reads[2]!.params).toEqual({
+      chatId: "original-chat",
+      attachmentId: "saved-document",
+      sha256: source.sha256,
+      cursor: "next-section",
+    });
+    const nextRun = makeRun({ runId: "other-run", status: "completed", pageIds: [] });
+    await act(async () => {
+      useStore.setState({ runs: [run, nextRun] });
+      root.render(<RunTranscriptDetails run={nextRun} />);
+    });
+    await act(async () =>
+      reads[2]!.resolve({
+        ...source,
+        chunk: { index: 1, segments: [{ locator: citation.locator, text: "Retired section response" }] },
+      }),
+    );
+    expect(host.querySelector('[aria-label="Document snapshot"]')).toBeNull();
+    expect(host.textContent).not.toContain("Retired section response");
+  } finally {
     await act(async () => root.unmount());
   }
 });
