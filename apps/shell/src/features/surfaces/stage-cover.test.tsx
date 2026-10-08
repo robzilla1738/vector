@@ -7,6 +7,7 @@ import type { PageTarget } from "@aux/contracts";
 const fixture = vi.hoisted(() => ({
   state: {} as Record<string, unknown>,
   visible: vi.fn(async () => {}),
+  command: vi.fn(),
   resolve: vi.fn(async (id: string) => `native-${id}`),
   invoke: vi.fn(() => new Promise<never>(() => {})),
 }));
@@ -22,6 +23,7 @@ vi.mock("../../bridge", () => ({
     invoke: fixture.invoke,
   },
 }));
+vi.mock("../../commands", () => ({ runCommand: fixture.command }));
 vi.mock("../../store", async () => {
   const { create } = await import("zustand");
   return { useStore: create(() => fixture.state), call: vi.fn(), tabCommand: vi.fn(), errToast: vi.fn() };
@@ -99,10 +101,51 @@ it("retains native split connectors through covers and full chat while reporting
     await awaitEmbeds();
     expect(fixture.visible.mock.calls).toEqual([[["one", "two"]]]);
     const embeds = [...node.querySelectorAll("embed")];
+    const divider = node.querySelector<HTMLElement>('[role="separator"]')!;
+    let captured: number | null = null;
+    const release = vi.fn((pointer: number) => {
+      expect(pointer).toBe(captured);
+      captured = null;
+    });
+    Object.assign(divider, {
+      setPointerCapture: (pointer: number) => (captured = pointer),
+      hasPointerCapture: (pointer: number) => captured === pointer,
+      releasePointerCapture: release,
+    });
+    const pointer = (type: string) => {
+      const event = new MouseEvent(type, { bubbles: true, button: 0, clientX: 600 });
+      Object.defineProperty(event, "pointerId", { value: 7 });
+      return event;
+    };
+    const startDrag = async () => {
+      fixture.command.mockClear();
+      release.mockClear();
+      await act(async () => divider.dispatchEvent(pointer("pointerdown")));
+      await act(async () => divider.dispatchEvent(pointer("pointermove")));
+      expect(captured).toBe(7);
+      expect(fixture.command).toHaveBeenCalledWith("split-resize", {
+        payload: { pageId: "one", divider: 0, ratio: expect.any(Number), persist: false },
+      });
+      fixture.command.mockClear();
+    };
+    const expectRetiredDrag = async () => {
+      expect(release).toHaveBeenCalledExactlyOnceWith(7);
+      expect(captured).toBeNull();
+      expect(fixture.command.mock.calls).toEqual([
+        ["split-resize", { payload: { pageId: "one", divider: 0, ratio: 0.5, persist: true } }],
+      ]);
+      fixture.command.mockClear();
+      await act(async () => {
+        divider.dispatchEvent(pointer("pointermove"));
+        divider.dispatchEvent(pointer("pointerup"));
+      });
+      expect(fixture.command).not.toHaveBeenCalled();
+    };
     for (const cover of [
       { dragging: "third", picker: false },
       { dragging: null, picker: true },
     ]) {
+      await startDrag();
       await act(async () => {
         setSurfaceState(cover);
       });
@@ -111,6 +154,7 @@ it("retains native split connectors through covers and full chat while reporting
       expect(node.querySelector(".stage-native-surface")?.getAttribute("aria-hidden")).toBe("true");
       expect(node.querySelector(".split-stage")?.hasAttribute("data-split-geometry-generation")).toBe(false);
       expect(fixture.visible.mock.calls.at(-1)).toEqual([[]]);
+      await expectRetiredDrag();
       await act(async () => {
         setSurfaceState({ dragging: null, picker: false });
       });
@@ -122,10 +166,13 @@ it("retains native split connectors through covers and full chat while reporting
       { mode: "focus", overlay: "history" },
       { overlay: "settings" },
     ]) {
+      await act(async () => useStore.setState({ mode: "focus", overlay: null }));
+      await startDrag();
       await act(async () => useStore.setState(state as never));
       expect([...node.querySelectorAll("embed")]).toEqual(embeds);
       expect(node.querySelector(".stage-native-surface")?.hasAttribute("inert")).toBe(true);
       expect(fixture.visible.mock.calls.at(-1)).toEqual([[]]);
+      await expectRetiredDrag();
     }
     await act(async () =>
       useStore.setState({
@@ -139,6 +186,8 @@ it("retains native split connectors through covers and full chat while reporting
     );
     expect([...node.querySelectorAll("embed")]).toEqual(embeds);
     expect(node.querySelector(".stage-native-surface")?.hasAttribute("inert")).toBe(false);
+    await act(async () => divider.dispatchEvent(pointer("pointermove")));
+    expect(fixture.command).not.toHaveBeenCalled();
     expect(fixture.resolve).toHaveBeenCalledTimes(2);
     expect(fixture.visible.mock.calls.at(-1)).toEqual([["one", "two"]]);
   } finally {

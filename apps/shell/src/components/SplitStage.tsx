@@ -1,5 +1,5 @@
 import { committedSplitGeometry, useCommittedSurfaceWitness } from "../committed-surface-witness";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PageTarget, SplitGroup } from "@aux/contracts";
 import { paneRects, dividerRatio, springStep, type Box } from "../split-layout";
 import { runCommand } from "../commands";
@@ -88,14 +88,18 @@ export function SplitStage({
       runCommand("split-resize", { payload: { pageId: group.focused, divider, ratio, persist } }),
     [group.focused],
   );
-  const drag = useRef<{ pointer: number; index: number; ratio: number } | null>(null);
+  const drag = useRef<{ target: HTMLElement; pointer: number; index: number; ratio: number } | null>(null);
   const cancelDrag = useCallback(() => {
     const start = drag.current;
     drag.current = null;
     setResizing(false);
+    if (start?.target.hasPointerCapture(start.pointer)) start.target.releasePointerCapture(start.pointer);
     if (start && useStore.getState().layout.splitGroups?.some((item) => item.id === group.id))
       resize(start.index, start.ratio);
   }, [group.id, resize]);
+  useLayoutEffect(() => {
+    if (!presented) cancelDrag();
+  }, [presented, cancelDrag]);
   useEffect(() => {
     window.addEventListener("blur", cancelDrag);
     return () => {
@@ -184,6 +188,7 @@ export function SplitStage({
               event.currentTarget.focus();
               setResizing(true);
               drag.current = {
+                target: event.currentTarget,
                 pointer: event.pointerId,
                 index: divider.index,
                 ratio: group.ratios[divider.index] ?? 0.5,
@@ -212,8 +217,12 @@ export function SplitStage({
               if (event.currentTarget.hasPointerCapture(event.pointerId))
                 event.currentTarget.releasePointerCapture(event.pointerId);
             }}
-            onPointerCancel={cancelDrag}
-            onLostPointerCapture={cancelDrag}
+            onPointerCancel={(event) => {
+              if (drag.current?.pointer === event.pointerId) cancelDrag();
+            }}
+            onLostPointerCapture={(event) => {
+              if (drag.current?.pointer === event.pointerId) cancelDrag();
+            }}
             onDoubleClick={() => {
               resize(divider.index, 0.5);
             }}
