@@ -7,6 +7,7 @@ import type { FieldCodec } from "./field-codec.js";
 export const TASK_EVIDENCE_PROTECTION = "task_evidence_protection_v1";
 const PROOF = "aux-v3/task-evidence-json/v1";
 type Protection = { cursor: number | null; proof: string };
+const proofContent = (cursor: number | null) => JSON.stringify([PROOF, cursor]);
 
 export function taskEvidenceProtection(db: DatabaseSync): Protection | undefined {
   const marker = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(TASK_EVIDENCE_PROTECTION) as
@@ -31,7 +32,8 @@ export function authenticateTaskEvidenceProtection(
   const state = taskEvidenceProtection(db);
   if (
     state &&
-    codec.decrypt("aux_meta", JSON.stringify([TASK_EVIDENCE_PROTECTION]), "value", state.proof) !== PROOF
+    codec.decrypt("aux_meta", JSON.stringify([TASK_EVIDENCE_PROTECTION]), "value", state.proof) !==
+      proofContent(state.cursor)
   )
     throw new Error("The task evidence protection marker does not match its original Profile.");
   return state;
@@ -46,7 +48,8 @@ export function recodeTaskEvidenceProtection(
   const state = taskEvidenceProtection(db);
   if (!state) return;
   if (direction === "decrypt") authenticateTaskEvidenceProtection(db, codec);
-  else if (state.proof !== PROOF) throw new Error("Invalid portable task evidence protection proof.");
+  else if (state.proof !== proofContent(state.cursor))
+    throw new Error("Invalid portable task evidence protection proof.");
   state.proof = codec[direction](
     "aux_meta",
     JSON.stringify([TASK_EVIDENCE_PROTECTION]),
@@ -71,7 +74,7 @@ export async function protectLegacyTaskEvidence(db: DatabaseSync, codec: FieldCo
   if (marker?.cursor === null) return;
   const state: Protection = marker ?? {
     cursor: 0,
-    proof: codec.encrypt("aux_meta", JSON.stringify([TASK_EVIDENCE_PROTECTION]), "value", PROOF),
+    proof: codec.encrypt("aux_meta", JSON.stringify([TASK_EVIDENCE_PROTECTION]), "value", proofContent(0)),
   };
   let cursor = state.cursor!;
   if (!marker)
@@ -107,6 +110,12 @@ export async function protectLegacyTaskEvidence(db: DatabaseSync, codec: FieldCo
             row.seq,
           );
         state.cursor = row.seq;
+        state.proof = codec.encrypt(
+          "aux_meta",
+          JSON.stringify([TASK_EVIDENCE_PROTECTION]),
+          "value",
+          proofContent(state.cursor),
+        );
         db.prepare("UPDATE aux_meta SET value=? WHERE key=?").run(
           JSON.stringify(state),
           TASK_EVIDENCE_PROTECTION,
@@ -127,5 +136,11 @@ export async function protectLegacyTaskEvidence(db: DatabaseSync, codec: FieldCo
       throw new Error("Task evidence protection is waiting for the original database reader to close.");
   }
   state.cursor = null;
+  state.proof = codec.encrypt(
+    "aux_meta",
+    JSON.stringify([TASK_EVIDENCE_PROTECTION]),
+    "value",
+    proofContent(null),
+  );
   db.prepare("UPDATE aux_meta SET value=? WHERE key=?").run(JSON.stringify(state), TASK_EVIDENCE_PROTECTION);
 }

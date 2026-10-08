@@ -12,6 +12,7 @@ import {
 import {
   protectLegacyTaskEvidence,
   taskEvidenceProtection,
+  TASK_EVIDENCE_PROTECTION,
 } from "../../apps/runtime/src/store/task-evidence-protection.js";
 import { profileSecrets } from "../support/profile-secrets.js";
 import { withSecureDelete } from "../../apps/runtime/src/store/db.js";
@@ -120,6 +121,16 @@ it("resumes a validated legacy conversion and never re-admits plaintext after it
   encrypt.mockRestore();
   expect(taskEvidenceProtection(db)?.cursor).toBe(original[0]!.seq);
   expect(() => encryptedFieldsForDatabase(db)).toThrow("must finish");
+  const pending = taskEvidenceProtection(db)!;
+  db.prepare("UPDATE aux_meta SET value=? WHERE key=?").run(
+    JSON.stringify({ ...pending, cursor: null }),
+    TASK_EVIDENCE_PROTECTION,
+  );
+  await expect(protectLegacyTaskEvidence(db, codec)).rejects.toThrow("original Profile");
+  db.prepare("UPDATE aux_meta SET value=? WHERE key=?").run(
+    JSON.stringify(pending),
+    TASK_EVIDENCE_PROTECTION,
+  );
   repo.close();
   db = openDb(path);
   repo = new Repo(db, await initializeFieldCodec(db, secrets.native, "legacy-evidence"));
