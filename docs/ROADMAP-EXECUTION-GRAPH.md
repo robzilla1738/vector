@@ -237,9 +237,9 @@ items explicit; do not shrink the objective to a finished subset.
   host ABI before staging current runtime changes.
   Areas 0035–0036 are now applied in source and peer-reviewed: own embedded
   document/platform ACK, genuine queued/focused physical input, browser-owned
-  Find/Zoom, and original-owner cancellation. Automatic search classification is
-  bounded and optional; provider cancellation and late-answer suppression have
-  focused checks. The combined candidate still requires native compilation and
+  Find/Zoom, and original-owner cancellation. Enter now executes the displayed Ask/Search choice immediately; committed-input
+  AI reclassification was removed. Explicit governed utility classification
+  retains bounded provider cancellation. The changed command-bar checks pass. The combined candidate still requires native compilation and
   changed-flow observations.
 - Area 0100 adds original shell/runtime role measurement; stock's additive patch
   was retired after its missing object cache requested a full rebuild, stopped

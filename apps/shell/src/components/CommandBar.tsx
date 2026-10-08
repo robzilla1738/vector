@@ -553,20 +553,6 @@ export function CommandBar({
     surfaceMode,
     browserAutocomplete,
     nativeOmnibox,
-    committedInput: {
-      text: raw,
-      generation: queryGeneration,
-      classify:
-        !hero &&
-        !bridge.privateMode &&
-        routing === "automatic" &&
-        !scopePrefix &&
-        !/^[/>?@]/.test(raw) &&
-        !routeFlip &&
-        !scopeFlip &&
-        !askBreaker.unavailable() &&
-        (baseIntent.kind === "run" || (baseIntent.kind === "search" && !baseIntent.engine)),
-    },
     setBreakerVersion,
   });
 
@@ -986,7 +972,7 @@ export function CommandBar({
           chosen &&
           (chosen.section === "tabs" || intent.kind === "command" || providerScope !== "all" || sel > 0)
             ? runSuggestion(chosen, e.metaKey || e.ctrlKey)
-            : exec(completed, e.metaKey || e.ctrlKey, true),
+            : exec(completed, e.metaKey || e.ctrlKey),
         !!chosen && "keepOpen" in chosen && chosen.keepOpen === true,
       );
     }
@@ -1237,7 +1223,7 @@ export function CommandBar({
               chosen &&
               (chosen.section === "tabs" || intent.kind === "command" || providerScope !== "all" || sel > 0)
                 ? runSuggestion(chosen)
-                : exec(intent, false, true),
+                : exec(intent),
             );
           }}
         >

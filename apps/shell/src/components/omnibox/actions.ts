@@ -1,32 +1,15 @@
-import { useCallback, useLayoutEffect, useRef, type Dispatch, type SetStateAction } from "react";
+import { useCallback, type Dispatch, type SetStateAction } from "react";
 import type { PageTarget, Run } from "@aux/contracts";
 import { AskCircuitBreaker, type Intent } from "../../intent";
-import { toUrl } from "../../chrome";
 
 import { bridge, inNativeHost } from "../../bridge";
-import { call, useStore } from "../../store";
+import { useStore } from "../../store";
 import { auxShellPathFromUrl } from "../../settings/routes";
 import { openCommandSurface, type CommandSurfaceMode } from "../../command-surface-state";
 import type { useNativeOmnibox } from "./use-native-omnibox";
 
 export const askBreaker = new AskCircuitBreaker();
 let pendingAsk: Promise<Run | null> | null = null;
-const CLASSIFICATION_ALLOWANCE_MS = 150;
-
-async function classifyCommittedInput(text: string) {
-  if (inNativeHost && !useStore.getState().connected) return null;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      call("agent.utility.intent", { text }).catch(() => null),
-      new Promise<null>((resolve) => {
-        timer = setTimeout(() => resolve(null), CLASSIFICATION_ALLOWANCE_MS);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
 type Workspace = ReturnType<typeof useStore.getState>;
 type Actions = {
   page?: PageTarget;
@@ -37,7 +20,6 @@ type Actions = {
   browserAutocomplete: boolean;
   nativeOmnibox: Pick<ReturnType<typeof useNativeOmnibox>, "openInput">;
   setBreakerVersion: Dispatch<SetStateAction<number>>;
-  committedInput?: { text: string; generation: number; classify: boolean };
 };
 /** Browser acceptance and Ask acknowledgement retain their own authorities. */
 export function useOmniboxActions({
@@ -49,61 +31,9 @@ export function useOmniboxActions({
   browserAutocomplete,
   nativeOmnibox,
   setBreakerVersion,
-  committedInput,
 }: Actions) {
-  const owner = useRef<{
-    live: boolean;
-    text: string;
-    generation: number;
-    classify: boolean;
-    windowId: typeof bridge.windowId;
-    privateMode: boolean;
-  } | null>(null);
-  const text = committedInput?.text ?? "";
-  const generation = committedInput?.generation ?? 0;
-  const classify = committedInput?.classify ?? false;
-  useLayoutEffect(() => {
-    const current = {
-      live: true,
-      text,
-      generation,
-      classify,
-      windowId: bridge.windowId,
-      privateMode: bridge.privateMode,
-    };
-    owner.current = current;
-    return () => {
-      current.live = false;
-    };
-  }, [text, generation, classify, page?.pageId, page?.documentEpoch, page?.url]);
   return useCallback(
-    async (i: Intent, alt = false, typedPick = false) => {
-      const original = owner.current;
-      if (
-        typedPick &&
-        original?.classify &&
-        !original.privateMode &&
-        (i.kind === "run" || (i.kind === "search" && !i.engine))
-      ) {
-        const result = await classifyCommittedInput(original.text);
-        if (
-          !original.live ||
-          owner.current !== original ||
-          bridge.windowId !== original.windowId ||
-          bridge.privateMode !== original.privateMode
-        )
-          throw new Error("The committed input changed. Choose the current input again.");
-        if (result?.kind === "chat" && !askBreaker.unavailable())
-          i = { kind: "run", goal: original.text, scope: page ? "page" : "new" };
-        else if (result?.kind === "search") {
-          const engine = useStore.getState().settings.searchEngine;
-          i = {
-            kind: "search",
-            query: original.text,
-            url: toUrl(original.text, typeof engine === "string" ? engine : undefined),
-          };
-        }
-      }
+    async (i: Intent, alt = false) => {
       switch (i.kind) {
         case "navigate":
         case "search": {
