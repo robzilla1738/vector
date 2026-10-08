@@ -628,7 +628,7 @@ it("routes cloud REPL file/process callbacks through their original governed bac
   });
   const result = await f.executor.eval(
     f.ctx,
-    { runId: f.ctx.runId, codingTool, allowHostCall } as ReplHostDeps,
+    { runId: f.ctx.runId, codingTool, allowHostCall } as unknown as ReplHostDeps,
     "fs.writeFile('/vercel/sandbox/project/from-repl.ts','cloud content'); proc.status('original');",
   );
   expect(result).toEqual({ output: "finished" });

@@ -14,6 +14,8 @@ import { registerNativeProjectPreview } from "./services/native-project-preview.
 import { installNativeSpaceBindings } from "./services/native-space-bindings.js";
 import { registerPrivateProviderBroker } from "./services/private-provider.js";
 import { migrateCodingProcessLogs } from "./services/coding-process-logs.js";
+import { PrivateBudgetOwner } from "./services/private-budget.js";
+import { cloudSettingsFor } from "./services/cloud-settings.js";
 import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
 import { withRunAuthorityMutation } from "./services/overnight-authority.js";
 import { lineageRuns, overnightRoot, runAncestry, runRoot } from "./services/run-lineage.js";
@@ -292,6 +294,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let stopNativeDeviceConfirmation: (() => void) | undefined;
   let stopNativeProjectPreview: (() => void) | undefined;
   let stopPrivateProviderBroker: (() => void) | undefined;
+  let privateBudgetOwner: PrivateBudgetOwner | undefined;
   let nativeSpaceBindings: Promise<(() => Promise<void>) | undefined> | undefined;
   let stopRunEndHooks: (() => void) | undefined;
   type RuntimeServices = Services & {
@@ -1271,18 +1274,26 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   runtimeServices.settings.attachNative(native);
   privateStartupPhase("services");
   runtimeServices.settings.attachCopilotServices(() => runtimeServices.copilot);
+  const cloudSettings = cloudSettingsFor(repo, native);
+  if (!privateSession) privateBudgetOwner = new PrivateBudgetOwner(repo, runtimeServices.budgets);
   if (channel && hostSocket && !privateSession) {
+    const budgetOwner = privateBudgetOwner!;
     stopPrivateProviderBroker = registerPrivateProviderBroker(channel, {
       current: () => !closed && native.available(),
-      revision: () => runtimeServices.settings.privateProviderRevision(),
+      revision: () => `${runtimeServices.settings.privateProviderRevision()}:${cloudSettings.connectionRevision()}`,
       subscribe: (changed) => events.subscribe(() => changed()),
       request: (request) => runtimeServices.settings.privateProviderRequest(request),
+      budgetRequest: (sessionId, request) => budgetOwner.request(sessionId, request),
+      cloudRequest: (request) => cloudSettings.privateRequest(request),
     });
   }
   if (privateSession) {
     if (!bootstrapIdentity?.methods.includes("native.privateProvider") || !native.privateProvider)
       throw new AuxError("capability_unsupported", "This native build does not implement private provider access.");
     await runtimeServices.settings.attachPrivateProvider((request) => native.privateProvider!(request), { native, dataDir: config.dataDir });
+    if (!native.privateCloud)
+      throw new AuxError("capability_unsupported", "This native build does not implement private Sandbox access.");
+    await cloudSettings.attachPrivate((request) => native.privateCloud!(request));
   }
 
   // These authenticated host-only methods prepare local files for native save dialogs.
@@ -3029,6 +3040,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     switch (type) {
       case "privateProviderChanged":
         if (privateSession && Object.keys(pl).length === 0) {
+          cloudSettings.invalidatePrivateConnection();
+          void cloudExecutor?.close().catch(() => {
+            console.error("Private Sandbox retirement could not be confirmed.");
+          });
           void runtimeServices.settings.invalidatePrivateProvider().catch(() => {
             console.error("Private provider cleanup could not be confirmed.");
           });
@@ -3314,6 +3329,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         run: () => serviceContainer.peek("contentMemory")?.close(),
       },
       { stage: "model-discovery", run: () => serviceContainer.peek("settings")?.close() },
+      { stage: "private-budget-owner", run: () => privateBudgetOwner?.close() },
       { stage: "api", run: () => api.close() },
       { stage: "invocations", run: () => invoke.dispose() },
       {

@@ -94,3 +94,7 @@ aux/0094-native-bookmark-library-quality.patch
 aux/0095-native-sleep-state-projection.patch
 aux/0096-cloud-project-preview.patch
 aux/0097-private-runtime-startup-status.patch
+aux/0098-private-provider-broker.patch
+aux/0099-native-space-binding.patch
+aux/0100-native-performance-process-roles.patch
+aux/0101-private-budget-sandbox-broker.patch
