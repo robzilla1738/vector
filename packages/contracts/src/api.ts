@@ -1,3 +1,4 @@
+import { TaskReceiptExportParamsSchema, TaskReceiptExportResultSchema } from "./task-receipt-export.js";
 import { DocumentSnapshotSchema, SavedDocumentPageSchema } from "./document-snapshot.js";
 import {
   ConversationDocumentImportParamsSchema,
@@ -1168,6 +1169,7 @@ export const MethodSchemas = {
   "tasks.reconcileAction": TaskReconcileParams,
   "tasks.reconcileOperation": TaskReconcileOperationParams,
   "tasks.receipt": z.object({ taskId: id, revision: z.number().int().positive().optional() }),
+  "tasks.exportReceipt": TaskReceiptExportParamsSchema,
   "tasks.undoBrowserChange": TaskUndoBrowserChangeParams,
   "tasks.undoRunBrowserChanges": TaskUndoRunBrowserChangesParams,
   "tasks.undoBookmarkChange": TaskUndoBrowserChangeParams,
@@ -1927,6 +1929,7 @@ export const ResultSchemas = {
   "tasks.reconcileAction": z.object({ ok: z.literal(true) }),
   "tasks.reconcileOperation": z.object({ ok: z.literal(true) }),
   "tasks.receipt": TaskReceiptSchema,
+  "tasks.exportReceipt": TaskReceiptExportResultSchema,
   "tasks.undoBrowserChange": z.object({ ok: z.literal(true) }),
   "tasks.undoRunBrowserChanges": z.object({
     restored: z.number().int().nonnegative(),

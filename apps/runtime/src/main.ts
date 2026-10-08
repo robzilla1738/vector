@@ -1073,6 +1073,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     process.stderr.write(`[runtime] privacy checkpoint failed: ${error.message}\n`),
   );
   const events = new EventBus(repo);
+  await runtimeServices.artifacts.exports.initialize();
 
   // ---- loopback API, bound early behind the readiness gate ----
   // 06-T: the port binds before the service tree finishes building so early
@@ -1343,9 +1344,40 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   // These authenticated host-only methods prepare local files for native save dialogs.
   channel?.onMethod("artifact.exportDescriptor", (params) => {
-    const artifactId = (params as { artifactId?: unknown })?.artifactId;
-    if (typeof artifactId !== "string") throw new Error("Invalid artifact identity");
-    return artifactExportDescriptor(repo, artifactId, config.artifactsDir);
+    const request = z
+      .object({
+        artifactId: z.string().min(1).max(128),
+        token: z.string().uuid().optional(),
+        claimId: z.string().uuid().optional(),
+      })
+      .strict()
+      .parse(params);
+    if ((request.token === undefined) !== (request.claimId === undefined))
+      throw new AuxError("invalid_params", "An original export owner and claim are required together.");
+    if (request.token && request.claimId) {
+      const temporary = runtimeServices.artifacts.exports.claim({
+        artifactId: request.artifactId,
+        token: request.token,
+        claimId: request.claimId,
+      });
+      if (temporary) return temporary;
+    }
+    return artifactExportDescriptor(repo, request.artifactId, config.artifactsDir);
+  });
+  channel?.onMethod("artifact.exportRelease", (params) => {
+    const request = z
+      .object({
+        artifactId: z.string().min(1).max(128),
+        token: z.string().uuid(),
+        claimId: z.string().uuid(),
+      })
+      .strict()
+      .parse(params);
+    return runtimeServices.artifacts.exports.release(request);
+  });
+  channel?.onMethod("artifact.exportOwnerRetire", (params) => {
+    const { token } = z.object({ token: z.string().uuid() }).strict().parse(params);
+    return runtimeServices.artifacts.exports.retireOwner(token);
   });
   channel?.onMethod("workbook.renderExport", (params) => {
     const request = params as { content?: unknown; format?: unknown };
@@ -3336,6 +3368,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           serviceContainer.peek("projects")?.dispose(),
           serviceContainer.peek("browserImport")?.close(),
           serviceContainer.peek("documentSnapshots")?.close(),
+          serviceContainer.peek("artifacts")?.exports.close(),
           (async () => {
             await serviceContainer.peek("memoryPipeline")?.close();
             await serviceContainer.peek("contentMemory")?.close();
@@ -3458,6 +3491,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       },
       { stage: "privacy-checkpoint", run: () => privacyCheckpoint.close() },
       { stage: "document-snapshots", run: () => serviceContainer.peek("documentSnapshots")?.close() },
+      { stage: "temporary-exports", run: () => serviceContainer.peek("artifacts")?.exports.close() },
       { stage: "repository", run: () => repo.close() },
     ],
   });

@@ -37,6 +37,7 @@ export const RuntimeMethodPolicy = {
   "tasks.reconcileAction": { feature: "core", auth: "standard" },
   "tasks.reconcileOperation": { feature: "core", auth: "handler-guarded" },
   "tasks.receipt": { feature: "core", auth: "standard" },
+  "tasks.exportReceipt": { feature: "core", auth: "handler-guarded" },
   "tasks.undoBrowserChange": { feature: "core", auth: "handler-guarded" },
   "tasks.undoRunBrowserChanges": { feature: "core", auth: "handler-guarded" },
   "tasks.undoBookmarkChange": { feature: "core", auth: "handler-guarded" },

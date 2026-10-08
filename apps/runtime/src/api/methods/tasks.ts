@@ -1,4 +1,5 @@
 import { nativeDocumentSource } from "./document-source.js";
+import { exportTaskReceipt } from "../../services/task-receipt-export.js";
 import { withTaskAuthorityMutation } from "../../services/overnight-authority.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
@@ -24,6 +25,21 @@ async function h_tasks_receipt(ctx: MethodCtx): Promise<unknown> {
         historyChanges: receipt.historyChanges.map(({ url: _url, title: _title, ...change }) => change),
       }
     : receipt;
+}
+async function h_tasks_exportReceipt(ctx: MethodCtx): Promise<unknown> {
+  const token = ctx.client.nativeTurnContext;
+  if (ctx.client.external || ctx.client.codeMode || !token)
+    throw new AuxError("permission_denied", "Export this receipt from its original Aux window.");
+  return exportTaskReceipt(
+    {
+      repo: ctx.s.repo,
+      evidence: ctx.taskEvidence,
+      documents: ctx.s.documentSnapshots,
+      artifacts: ctx.s.artifacts,
+    },
+    ctx.params,
+    { token, signal: AbortSignal.timeout(75_000) },
+  );
 }
 async function h_tasks_undoBrowserChange(ctx: MethodCtx): Promise<unknown> {
   const { client, params, taskEvidence } = ctx;
@@ -195,6 +211,7 @@ async function h_tasks_start(ctx: MethodCtx): Promise<unknown> {
 
 export const tasksMethods: Partial<Record<MethodName, MethodHandler>> = {
   "tasks.receipt": h_tasks_receipt,
+  "tasks.exportReceipt": h_tasks_exportReceipt,
   "tasks.undoBrowserChange": h_tasks_undoBrowserChange,
   "tasks.undoRunBrowserChanges": h_tasks_undoRunBrowserChanges,
   "tasks.undoBookmarkChange": h_tasks_undoBookmarkChange,
