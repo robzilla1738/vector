@@ -1,0 +1,24 @@
+diff --git a/chrome/browser/ui/aux/egress_controller.cc b/chrome/browser/ui/aux/egress_controller.cc
+--- a/chrome/browser/ui/aux/egress_controller.cc
++++ b/chrome/browser/ui/aux/egress_controller.cc
+@@ -938,7 +938,7 @@
+   RetireRegisteredRun(resume->run_id, resume->generation);
+   return false;
+ }
+-void EgressController::ReleaseIsolation(const std::string& page_id) {
++void EgressController::ReleaseIsolation(std::string page_id) {
+   auto creator = creators_.find(page_id);
+   base::OnceCallback<void(bool)> creator_ready;
+   if (creator != creators_.end()) {
+diff --git a/chrome/browser/ui/aux/egress_controller.h b/chrome/browser/ui/aux/egress_controller.h
+--- a/chrome/browser/ui/aux/egress_controller.h
++++ b/chrome/browser/ui/aux/egress_controller.h
+@@ -122,7 +122,7 @@
+   base::DictValue ConsumeRunResume(const std::string& run_id,
+       const std::string& ticket_id, uint64_t generation);
+   bool FinishRunResume(const std::string& ticket_id, bool success);
+-  void ReleaseIsolation(const std::string& page_id);
++  void ReleaseIsolation(std::string page_id);
+   void IsolationReceipt(const std::string& event,
+                         const std::string& run_id,
+                         const std::string& page_id,
