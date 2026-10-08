@@ -979,7 +979,7 @@ export class Repo {
       const receipt = JSON.parse(
         this.revealRecordField("coding_process_receipts", [process.process_id], "receipt", process.receipt),
       ) as import("@aux/contracts/coding-processes").CodingProcessReceipt;
-      artifactPaths.push(receipt.logPath);
+      if (receipt.logPath) artifactPaths.push(receipt.logPath);
     }
     const images = this.getSetting<{ artifactId: string }[]>(`conversationImages:${chatId}`) ?? [];
     for (const image of images) {

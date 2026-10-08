@@ -10,6 +10,10 @@ export interface CloudExecutionContext {
 
 /** The real cloud REPL boundary; VercelSandboxExecutor implements this contract. */
 export interface CloudReplExecutor {
+  processes?(
+    ctx: CloudExecutionContext,
+    signal?: AbortSignal,
+  ): Promise<import("./cloud-processes.js").CloudCodingProcesses>;
   files?(
     ctx: CloudExecutionContext,
     signal?: AbortSignal,

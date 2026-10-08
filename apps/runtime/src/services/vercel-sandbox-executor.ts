@@ -1,3 +1,6 @@
+import { CloudCodingProcesses, type CloudProcessAdmission } from "./cloud-processes.js";
+import type { CodingProcessContext } from "./coding-processes.js";
+import type { BackgroundStart } from "@aux/contracts/coding-processes";
 import { CloudFileBackend } from "./cloud-files.js";
 import { CodingFilesService, type CodingFileAuthorization, type CodingFileContext } from "./coding-files.js";
 import type { CloudCodingIdentity } from "@aux/contracts/coding-files";
@@ -56,7 +59,24 @@ interface LiveResource {
   finalReceipt?: Awaited<ReturnType<Session["stop"]>>["session"];
   closing?: Promise<void>;
   files?: CodingFilesService;
+  processes?: CloudCodingProcesses;
+  network?: boolean;
+  networkLocks: Map<string, boolean>;
 }
+/** A reviewed process-group supervisor: only command text is supplied as data, never executable helper files. */
+const CLOUD_PROCESS_SUPERVISOR = `
+import { spawn } from 'node:child_process';
+import { realpathSync } from 'node:fs';
+if (realpathSync(process.cwd()) !== process.argv[2]) process.exit(125);
+const child = spawn('/bin/bash', ['-lc', process.argv[1]], { detached: true, stdio: ['ignore', 'inherit', 'inherit'] });
+let stopping = false;
+const kill = () => { if (child.pid) try { process.kill(-child.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } };
+process.on('SIGTERM', () => { stopping = true; kill(); });
+process.on('SIGINT', () => { stopping = true; kill(); });
+process.on('exit', kill);
+child.on('error', () => { process.exitCode = 125; });
+child.on('close', (code) => { kill(); process.exit(stopping ? 143 : code ?? 125); });
+`;
 const OUTPUT_BYTES = 64 * 1024;
 function boundedOutput(limit = OUTPUT_BYTES) {
   let bytes = 0,
@@ -120,6 +140,17 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         identity: CloudCodingIdentity,
       ): Promise<void | (() => void)>;
       fileWorkerProgram?: () => Promise<Buffer>;
+      authorizeProcess?(
+        input: BackgroundStart,
+        context: CodingProcessContext,
+        identity: CloudCodingIdentity,
+      ): Promise<CloudProcessAdmission>;
+      authorizeProcessAccess?(
+        operation: "status" | "logs" | "stop" | "reconcile",
+        processId: string,
+        context: CodingProcessContext,
+        identity: CloudCodingIdentity,
+      ): Promise<() => void>;
       /** Lazy public SDK factory; seam permits protocol-faithful local fixtures without paid calls. */
       create?: typeof Sandbox.create;
       get?: typeof Sandbox.get;
@@ -317,6 +348,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       sandbox,
       session,
       commands: Promise.resolve(),
+      networkLocks: new Map(),
       quote,
       quoteDigest,
       expiresAt: Math.min(this.now() + quote.timeoutMs, sandbox.expiresAt?.getTime() ?? Infinity),
@@ -373,10 +405,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       const requested = input.timeoutMs ?? 30_000;
       if (!Number.isSafeInteger(requested) || requested < 1)
         throw new AuxError("invalid_params", "Choose a positive command timeout.");
-      await resource.session.update(
-        { networkPolicy: network ? "allow-all" : "deny-all" },
-        { signal: input.signal },
-      );
+      await this.network(resource, network, input.signal);
       await this.assertLive(resource, input.signal);
       const timeoutMs = Math.min(requested, resource.expiresAt - this.now());
       if (timeoutMs <= 0) throw new AuxError("cancelled", "The original cloud session expired.");
@@ -471,6 +500,74 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       return fence;
     });
     return resource.files;
+  }
+
+  async processes(ctx: CloudExecutionContext, signal?: AbortSignal): Promise<CloudCodingProcesses> {
+    const authorize = this.deps.authorizeProcess,
+      authorizeAccess = this.deps.authorizeProcessAccess;
+    if (!authorize || !authorizeAccess)
+      throw new AuxError("capability_unsupported", "Cloud process authorization is unavailable.");
+    const resource = await this.acquire(ctx, signal);
+    if (resource.processes) return resource.processes;
+    const identity: CloudCodingIdentity = {
+      backend: "cloud",
+      resourceId: resource.resourceId,
+      sandboxName: resource.sandbox.name,
+      sessionId: resource.session.sessionId,
+      root: CLOUD_PROJECT_ROOT,
+    };
+    resource.processes = new CloudCodingProcesses({
+      repo: this.deps.repo,
+      context: ctx,
+      identity,
+      authorize,
+      authorizeAccess,
+      transport: {
+        current: (signal) => this.assertLive(resource, signal),
+        launch: (input, context, processId, admission, dispatched) =>
+          this.command(resource, context.signal, async () => {
+            await resource.session.mkDir(CLOUD_PROJECT_ROOT, { signal: context.signal });
+            await this.network(resource, admission.network, context.signal);
+            await this.assertLive(resource, context.signal);
+            admission.check();
+            // A pending launch keeps its policy lock even if the provider loses its acknowledgement.
+            resource.networkLocks.set(processId, admission.network);
+            dispatched();
+            return resource.session.runCommand({
+              cmd: "node",
+              args: [
+                "--input-type=module",
+                "-e",
+                CLOUD_PROCESS_SUPERVISOR,
+                "--",
+                input.command,
+                input.workdir!,
+              ],
+              cwd: input.workdir!,
+              detached: true,
+              signal: context.signal,
+              timeoutMs: Math.max(1, resource.expiresAt - this.now()),
+            });
+          }),
+        command: (id, signal) => resource.session.getCommand(id, { signal }),
+        released: (id) => {
+          resource.networkLocks.delete(id);
+        },
+      },
+    });
+    return resource.processes;
+  }
+
+  private async network(resource: LiveResource, network: boolean, signal?: AbortSignal): Promise<void> {
+    if ([...resource.networkLocks.values()].some((mode) => mode !== network))
+      throw new AuxError(
+        "conflict",
+        "Stop the original background processes before changing this VM's network access.",
+      );
+    if (resource.network === network) return;
+    await resource.session.update({ networkPolicy: network ? "allow-all" : "deny-all" }, { signal });
+    resource.network = network;
+    await this.assertLive(resource, signal);
   }
 
   async eval(
@@ -644,6 +741,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       if (stoppedAt === undefined)
         throw new AuxError("needs_input", "The original VM stop receipt is incomplete.");
       resource.finalReceipt = final;
+      resource.processes?.sessionStopped();
       let usage: CloudMeteredUsage | undefined;
       if (
         final.activeCpuDurationMs !== undefined &&
@@ -795,6 +893,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         sandbox,
         session,
         commands: Promise.resolve(),
+        networkLocks: new Map(),
         quote,
         quoteDigest: row.quote_digest,
         expiresAt: 0,

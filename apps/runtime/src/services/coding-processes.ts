@@ -1,3 +1,4 @@
+import { CodingProcessLedger } from "./coding-process-ledger.js";
 import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash, randomUUID } from "node:crypto";
@@ -45,7 +46,7 @@ async function processHasMarker(pid: number, processId: string): Promise<boolean
 }
 
 /** Process ownership is an execution receipt, never permission to replay a command. */
-export class CodingProcesses {
+export class CodingProcesses extends CodingProcessLedger {
   private readonly owned = new Map<string, OwnedProcess>();
   private readonly ready: Promise<void>;
   private closed = false;
@@ -65,79 +66,8 @@ export class CodingProcesses {
       artifacts?: ArtifactStore;
     },
   ) {
+    super(options.repo);
     this.ready = this.recover();
-  }
-  private save(receipt: CodingProcessReceipt): void {
-    const json = this.options.repo.protectRecordField(
-      "coding_process_receipts",
-      [receipt.processId],
-      "receipt",
-      JSON.stringify(receipt),
-    );
-    this.options.repo.db
-      .prepare(
-        "INSERT INTO coding_process_receipts(process_id,run_id,action_id,state,receipt) VALUES(?,?,?,?,?) ON CONFLICT(process_id) DO UPDATE SET state=excluded.state,receipt=excluded.receipt",
-      )
-      .run(receipt.processId, receipt.runId, receipt.actionId, receipt.state, json);
-  }
-  private decode(row: { process_id: string; receipt: string }): CodingProcessReceipt {
-    return JSON.parse(
-      this.options.repo.revealRecordField(
-        "coding_process_receipts",
-        [row.process_id],
-        "receipt",
-        row.receipt,
-      ),
-    ) as CodingProcessReceipt;
-  }
-  list(runId: string): CodingProcessReceipt[] {
-    const rows = this.options.repo.db
-      .prepare("SELECT process_id,receipt FROM coding_process_receipts WHERE run_id=? ORDER BY rowid")
-      .all(runId) as unknown as { process_id: string; receipt: string }[];
-    return rows.map((row) => this.decode(row));
-  }
-  recent(runId: string, limit = 12): CodingProcessReceipt[] {
-    const rows = this.options.repo.db
-      .prepare(
-        "SELECT process_id,receipt FROM coding_process_receipts WHERE run_id=? ORDER BY rowid DESC LIMIT ?",
-      )
-      .all(runId, limit) as unknown as { process_id: string; receipt: string }[];
-    return rows.reverse().map((row) => this.decode(row));
-  }
-  activity(runId: string): CodingProcessReceipt[] {
-    const rows = this.options.repo.db
-      .prepare(
-        "SELECT process_id,receipt FROM coding_process_receipts WHERE run_id=? AND (state IN ('starting','running','uncertain') OR process_id IN (SELECT process_id FROM coding_process_receipts WHERE run_id=? ORDER BY rowid DESC LIMIT 12)) ORDER BY rowid",
-      )
-      .all(runId, runId) as unknown as { process_id: string; receipt: string }[];
-    return rows.map((row) => this.decode(row));
-  }
-  unresolved(runId: string): CodingProcessReceipt[] {
-    return this.withState(runId, ["starting", "uncertain"]);
-  }
-  interrupted(runId: string): CodingProcessReceipt[] {
-    return this.withState(runId, ["interrupted"]);
-  }
-  private withState(runId: string, states: string[]): CodingProcessReceipt[] {
-    const rows = this.options.repo.db
-      .prepare(
-        `SELECT process_id,receipt FROM coding_process_receipts WHERE run_id=? AND state IN (${states.map(() => "?").join(",")}) ORDER BY rowid`,
-      )
-      .all(runId, ...states) as unknown as { process_id: string; receipt: string }[];
-    return rows.map((row) => this.decode(row));
-  }
-  receiptIds(runId: string): string[] {
-    const rows = this.options.repo.db
-      .prepare("SELECT process_id FROM coding_process_receipts WHERE run_id=? ORDER BY rowid")
-      .all(runId) as unknown as { process_id: string }[];
-    return rows.map((row) => row.process_id);
-  }
-  status(processId: string, runId: string): CodingProcessReceipt {
-    const row = this.options.repo.db
-      .prepare("SELECT process_id,receipt FROM coding_process_receipts WHERE process_id=? AND run_id=?")
-      .get(processId, runId) as { process_id: string; receipt: string } | undefined;
-    if (!row) throw new AuxError("not_found", "This process does not belong to the run.");
-    return this.decode(row);
   }
   async authorizeAccess(
     operation: "status" | "logs" | "stop" | "reconcile",
@@ -146,7 +76,7 @@ export class CodingProcesses {
   ): Promise<() => void> {
     await this.ready;
     this.check(context);
-    this.status(processId, context.runId);
+    this.assertLocal(this.status(processId, context.runId));
     const admission = await this.options.authorizeAccess?.(operation, processId, context);
     const authority = this.options.authorityFence?.(context);
     const check = () => {
@@ -160,6 +90,7 @@ export class CodingProcesses {
   async reconcile(processId: string, context: CodingProcessContext): Promise<CodingProcessReceipt> {
     const check = await this.authorizeAccess("reconcile", processId, context);
     const receipt = this.status(processId, context.runId);
+    this.assertLocal(receipt);
     if (receipt.state !== "uncertain" && receipt.state !== "starting") return receipt;
     if (this.owned.has(processId))
       throw new AuxError("operation_uncertain", "The original command still has owned work to finish.");
@@ -195,6 +126,7 @@ export class CodingProcesses {
       .get(context.runId, context.actionId) as { process_id: string; receipt: string } | undefined;
     const existing = existingRow ? this.decode(existingRow) : undefined;
     if (existing) {
+      this.assertLocal(existing);
       const requestHash = createHash("sha256").update(JSON.stringify(input)).digest("hex");
       if (existing.requestHash !== requestHash)
         throw new AuxError("conflict", "The original command request changed; prepare a new action.");
@@ -401,6 +333,7 @@ export class CodingProcesses {
     cursor = 0,
   ): Promise<{ text: string; cursor: number; truncated: boolean }> {
     const receipt = this.status(processId, runId);
+    this.assertLocal(receipt);
     if (!Number.isSafeInteger(cursor) || cursor < 0)
       throw new AuxError("invalid_params", "Invalid log cursor.");
     const file = await open(receipt.logPath, "r");
@@ -464,7 +397,7 @@ export class CodingProcesses {
   }
   async stop(processId: string, runId: string): Promise<CodingProcessReceipt> {
     await this.ready;
-    this.status(processId, runId);
+    this.assertLocal(this.status(processId, runId));
     const owned = this.owned.get(processId);
     if (owned) {
       owned.stop();
@@ -494,6 +427,12 @@ export class CodingProcesses {
     const errors = results.flatMap((result) => (result.status === "rejected" ? [result.reason] : []));
     if (errors.length) throw new AggregateError(errors, "Process cleanup has not completed.");
   }
+  private assertLocal(
+    receipt: CodingProcessReceipt,
+  ): asserts receipt is CodingProcessReceipt & { logPath: string } {
+    if (receipt.execution || !receipt.logPath)
+      throw new AuxError("ref_stale", "This process belongs to its original cloud session.");
+  }
   private check(context: CodingProcessContext): void {
     if (this.closed || context.signal?.aborted) throw new AuxError("cancelled", "Process execution stopped.");
     this.options.checkOwner(context);
@@ -504,6 +443,7 @@ export class CodingProcesses {
       .all() as unknown as { process_id: string; receipt: string }[];
     for (const row of rows) {
       const receipt = this.decode(row);
+      if (receipt.execution) continue;
       if (!["starting", "running"].includes(receipt.state)) continue;
       let pid = receipt.pid;
       const actual = pid ? await processIdentity(pid) : undefined;

@@ -1,4 +1,9 @@
 import { z } from "zod";
+import { CloudCodingIdentitySchema } from "./coding-files.js";
+export const CloudProcessIdentitySchema = CloudCodingIdentitySchema.extend({
+  commandId: z.string().min(1).optional(),
+}).strict();
+export type CloudProcessIdentity = z.infer<typeof CloudProcessIdentitySchema>;
 
 export const BackgroundStartSchema = z
   .object({
@@ -9,6 +14,9 @@ export const BackgroundStartSchema = z
   .strict();
 export type BackgroundStart = z.infer<typeof BackgroundStartSchema>;
 export interface CodingProcessReceipt {
+  execution?: CloudProcessIdentity;
+  /** Bounded remote output, protected with the receipt rather than a local plaintext log. */
+  logText?: string;
   processId: string;
   runId: string;
   actionId: string;
@@ -28,7 +36,7 @@ export interface CodingProcessReceipt {
   stderr?: string;
   outputTruncated?: boolean;
   timedOut?: boolean;
-  logPath: string;
+  logPath?: string;
   artifactId?: string;
   undoAvailable: false;
 }

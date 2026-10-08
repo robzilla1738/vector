@@ -240,3 +240,50 @@ it("binds governed files to the captured Session and rechecks the effect fence a
   expect(f.forbidden).not.toHaveBeenCalled();
   await executor.closeRun(f.ctx.runId);
 });
+it("keeps the VM network mode fixed until its original background command acknowledges exit", async () => {
+  const f = fixture();
+  let complete!: (value: { exitCode: number }) => void;
+  const finished = new Promise<{ exitCode: number }>((resolve) => {
+    complete = resolve;
+  });
+  const command = {
+    cmdId: "original-command",
+    cwd: "/vercel/sandbox/project",
+    startedAt: Date.now(),
+    exitCode: null,
+    wait: () => finished,
+    kill: vi.fn(async () => {
+      complete({ exitCode: 143 });
+    }),
+    logs: async function* () {
+      yield { stream: "stdout", data: "ready\n" };
+      await finished;
+    },
+  };
+  const dispatch = vi.fn(async (input: { detached?: boolean }) =>
+    input.detached ? command : { exitCode: 0 },
+  );
+  Object.assign(f.session, { mkDir: async () => {}, runCommand: dispatch });
+  const executor = new VercelSandboxExecutor({
+    ...f.deps,
+    authorizeBash: async () => true,
+    authorizeProcess: async () => ({ network: false, check: () => {} }),
+    authorizeProcessAccess: async () => () => {},
+  });
+  const processes = await executor.processes(f.ctx);
+  const receipt = await processes.start(
+    { command: "npm run dev", network: false },
+    { ...f.ctx, actionId: "server" },
+  );
+  await expect(
+    executor.bash({ command: "curl https://example.com", network: true }, f.ctx),
+  ).rejects.toMatchObject({ code: "conflict" });
+  expect(dispatch).toHaveBeenCalledTimes(1);
+  expect(f.order.filter((event) => event === "network-ack")).toHaveLength(1);
+  await processes.stop(receipt.processId, f.ctx.runId);
+  await executor.bash({ command: "curl https://example.com", network: true }, f.ctx);
+  expect(dispatch).toHaveBeenCalledTimes(2);
+  expect(f.order.filter((event) => event === "network-ack")).toHaveLength(2);
+  expect(f.forbidden).not.toHaveBeenCalled();
+  await executor.closeRun(f.ctx.runId);
+});
