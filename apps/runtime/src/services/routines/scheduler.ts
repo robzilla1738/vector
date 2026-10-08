@@ -5,7 +5,7 @@ import type { EventBus } from "../../events.js";
 interface SchedulerDeps {
   repo: Repo;
   events: EventBus;
-  list(now: number): AsyncIterable<Routine>;
+  list(now: number, signal: AbortSignal): AsyncIterable<Routine>;
   sync(): void;
   hasOccurrence(identity: string): boolean;
   startOccurrence(routine: Routine, identity: string, at: number): Promise<RoutineRun>;
@@ -17,8 +17,10 @@ interface SchedulerDeps {
 /** Serial recurrence projection and durable catch-up, independent of agent execution. */
 export class RoutineScheduler {
   constructor(private deps: SchedulerDeps) {}
+  private readonly cancellation = new AbortController();
   private duePending?: Promise<RoutineRun[]>;
   due(now = Date.now()): Promise<RoutineRun[]> {
+    if (this.cancellation.signal.aborted) return Promise.resolve([]);
     if (this.duePending) return this.duePending;
     const work = this.scheduleDue(now).finally(() => {
       if (this.duePending === work) this.duePending = undefined;
@@ -26,10 +28,17 @@ export class RoutineScheduler {
     this.duePending = work;
     return work;
   }
+  async close(): Promise<void> {
+    this.cancellation.abort();
+    // An accepted launch still owns its original occurrence and must finish linking it.
+    await this.duePending;
+  }
   private async scheduleDue(now: number): Promise<RoutineRun[]> {
+    const { signal } = this.cancellation;
     this.deps.sync();
     const created: RoutineRun[] = [];
-    for await (const routine of this.deps.list(now)) {
+    for await (const routine of this.deps.list(now, signal)) {
+      if (signal.aborted) break;
       if (routine.paused || routine.trigger.kind === "manual") continue;
       try {
         if (routine.trigger.kind === "schedule" || routine.trigger.kind === "rrule") {
@@ -60,6 +69,7 @@ export class RoutineScheduler {
               ? overdue.at(-1)
               : undefined;
           for (const scheduledFor of pendingInOrder) {
+            if (signal.aborted) break;
             const identity = routineOccurrenceIdentity(
               routine.routineId,
               routine.trigger.timezone,

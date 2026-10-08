@@ -827,11 +827,13 @@ export class RoutineService {
   }
 
   private scheduler?: RoutineScheduler;
+  private closed = false;
   due(now = Date.now()): Promise<RoutineRun[]> {
+    if (this.closed) return Promise.resolve([]);
     return (this.scheduler ??= new RoutineScheduler({
       repo: this.repo,
       events: this.events,
-      list: (at) => this.scheduledRoutines(at),
+      list: (at, signal) => this.scheduledRoutines(at, signal),
       sync: () => this.sync(),
       hasOccurrence: (identity) => this.hasOccurrence(identity),
       startOccurrence: (routine, identity, at) => this.startOccurrence(routine, identity, at),
@@ -844,12 +846,18 @@ export class RoutineService {
     })).due(now);
   }
 
-  private async *scheduledRoutines(now: number): AsyncGenerator<Routine> {
+  async close(): Promise<void> {
+    this.closed = true;
+    await this.scheduler?.close();
+  }
+
+  private async *scheduledRoutines(now: number, signal: AbortSignal): AsyncGenerator<Routine> {
+    if (signal.aborted) return;
     const { last } = this.repo.db.prepare("SELECT coalesce(max(rowid),0) AS last FROM routines").get() as {
       last: number;
     };
     let after = 0;
-    while (after < last) {
+    while (after < last && !signal.aborted) {
       const rows = this.repo.db
         .prepare(
           `SELECT rowid,routine_id FROM routines
@@ -862,6 +870,7 @@ export class RoutineService {
       // Let pause/Stop and foreground work run before hydrating the next batch.
       await setImmediate();
       for (const row of rows) {
+        if (signal.aborted) return;
         after = row.rowid;
         const routine = this.routine(row.routine_id);
         if (

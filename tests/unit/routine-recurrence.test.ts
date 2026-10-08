@@ -6,17 +6,32 @@ import {
 } from "../../apps/runtime/src/services/routines/recurrence.js";
 import type { RoutineTrigger } from "@aux/contracts";
 
-const close: (() => void)[] = [];
-afterEach(() => {
+const close: (() => void | Promise<void>)[] = [];
+afterEach(async () => {
   vi.useRealTimers();
-  for (const fn of close.splice(0)) fn();
+  for (const fn of close.splice(0)) await fn();
 });
+function pendingLaunch() {
+  let acknowledge!: () => void;
+  let finish!: (value: { runId: string }) => void;
+  const started = new Promise<void>((resolve) => {
+    acknowledge = resolve;
+  });
+  const result = new Promise<{ runId: string }>((resolve) => {
+    finish = resolve;
+  });
+  close.push(() => finish({ runId: "fixture-cleanup" }));
+  const start = vi.fn(() => {
+    acknowledge();
+    return result;
+  });
+  return { start, started, finish };
+}
 function fixture(
   start?: ConstructorParameters<typeof RoutineService>[2],
   stop?: ConstructorParameters<typeof RoutineService>[3],
 ) {
   const db = openDb(":memory:");
-  close.push(() => db.close());
   const repo = new Repo(db),
     events = new EventBus(repo),
     tasks = new TaskService(repo, events);
@@ -29,6 +44,10 @@ function fixture(
     resources: [],
   });
   const routines = new RoutineService(repo, events, start, stop);
+  close.push(async () => {
+    await routines.close();
+    repo.close();
+  });
   const create = (trigger: RoutineTrigger, spendCapUsd?: number) => {
     const routine = routines.fromResult({ taskId: task.taskId, trigger });
     return spendCapUsd === undefined
@@ -77,20 +96,14 @@ it("rejects invalid recurrence instruction syntax without accepting a schedule",
   ).toThrow(/recurrence/);
 });
 it("coalesces overlapping heartbeat ticks into one original occurrence", async () => {
-  vi.useFakeTimers();
+  vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(Date.parse("2026-10-06T12:00:00Z"));
-  let finish!: (value: { runId: string }) => void;
-  const start = vi.fn(
-    () =>
-      new Promise<{ runId: string }>((resolve) => {
-        finish = resolve;
-      }),
-  );
+  const { start, started, finish } = pendingLaunch();
   const f = fixture(start);
   f.create({ kind: "heartbeat", timezone: "UTC", intervalMinutes: 60 });
   const first = f.routines.due(Date.now()),
     second = f.routines.due(Date.now());
-  await Promise.resolve();
+  await started;
   expect(start).toHaveBeenCalledTimes(1);
   finish({ runId: "original-heartbeat" });
   const [a, b] = await Promise.all([first, second]);
@@ -99,18 +112,12 @@ it("coalesces overlapping heartbeat ticks into one original occurrence", async (
   expect(await f.routines.due(Date.now())).toEqual([]);
 });
 it("waits for exact original run cancellation when a routine pauses during launch", async () => {
-  let finish!: (value: { runId: string }) => void;
+  const { start, started, finish } = pendingLaunch();
   const stop = vi.fn(async () => {});
-  const f = fixture(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve;
-      }),
-    stop,
-  );
+  const f = fixture(start, stop);
   const routine = f.create({ kind: "heartbeat", timezone: "UTC", intervalMinutes: 60 });
   const pending = f.routines.due();
-  await Promise.resolve();
+  await started;
   f.routines.pause(routine.routineId, routine.revision, true);
   finish({ runId: "original-only" });
   expect((await pending)[0]).toMatchObject({ runId: "original-only", status: "cancelled" });
@@ -148,21 +155,48 @@ it("keeps routine caps explicit and allows the person to remove them", () => {
   ).toBeUndefined();
 });
 it("keeps the original launch uncertain when cancellation is not acknowledged", async () => {
-  let finish!: (value: { runId: string }) => void;
-  const f = fixture(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve;
-      }),
-    async () => {
-      throw new Error("cancel ACK unavailable");
-    },
-  );
+  const { start, started, finish } = pendingLaunch();
+  const f = fixture(start, async () => {
+    throw new Error("cancel ACK unavailable");
+  });
   const routine = f.create({ kind: "heartbeat", timezone: "UTC", intervalMinutes: 60 });
   const pending = f.routines.due();
-  await Promise.resolve();
+  await started;
   f.routines.pause(routine.routineId, routine.revision, true);
   finish({ runId: "original-unacknowledged" });
   expect((await pending)[0]).toMatchObject({ runId: "original-unacknowledged", status: "uncertain" });
   expect(f.routines.runs(routine.routineId)[0]?.reason).toMatch(/not acknowledged/);
+});
+
+it("retires a sweep before its first cooperative dispatch", async () => {
+  const start = vi.fn(async () => ({ runId: "must-not-start" }));
+  const f = fixture(start);
+  f.create({ kind: "heartbeat", timezone: "UTC", intervalMinutes: 60 });
+  const pending = f.routines.due();
+  await f.routines.close();
+  expect(await pending).toEqual([]);
+  expect(await f.routines.due()).toEqual([]);
+  expect(start).not.toHaveBeenCalled();
+});
+
+it("joins an accepted launch and leaves later occurrences unconsumed on shutdown", async () => {
+  const { start, started, finish } = pendingLaunch();
+  const f = fixture(start);
+  const first = f.create({ kind: "heartbeat", timezone: "UTC", intervalMinutes: 60 });
+  const later = f.create({ kind: "heartbeat", timezone: "UTC", intervalMinutes: 60 });
+  const pending = f.routines.due();
+  await started;
+  let closed = false;
+  const closing = f.routines.close().then(() => {
+    closed = true;
+  });
+  expect(closed).toBe(false);
+  expect(await f.routines.due()).toEqual([]);
+  expect(closed).toBe(false);
+  finish({ runId: "accepted-original" });
+  await closing;
+  expect(await pending).toMatchObject([{ routineId: first.routineId, runId: "accepted-original" }]);
+  expect(f.routines.runs(first.routineId)[0]?.runId).toBe("accepted-original");
+  expect(f.routines.runs(later.routineId)).toEqual([]);
+  expect(start).toHaveBeenCalledTimes(1);
 });
