@@ -1,14 +1,19 @@
 # Native performance comparison
 
 Run `pnpm perf` only at phase ends, after the Aux and stock native apps are built.
-The current v3 instrumentation and harness are implemented; setup attempts have
-not yet produced a complete measured comparison.
+The schema-7 runner and matching window/presentation instrumentation are
+implemented. Aux area 0037 and stock area 0051 are applied in their preserved
+source trees; matching compilation and a complete comparison remain pending.
 
 The comparison takes five paired runs and reports medians for cold launch,
 actual first presentation, launch to usable content, navigation input,
 presented tab switch, command-bar results, process-tree physical footprint,
 original Aux shell and packaged runtime physical footprints,
-app bytes and bundled Node bytes. Each measured process also records 20 tab switches
+app bytes and bundled Node bytes. After the one-window/ten-tab memory snapshot,
+the same process creates a warm window with Cmd-N. The runner retains original
+and additional native window identities, first presentation, live address and
+shortcut readiness, and an ordinary input/navigation proof, then closes only
+the additional window. Each measured process also records 20 tab switches
 and 20 single-character omnibox queries, producing 100 samples per browser for p50/p95/max.
 After each fresh-process sample it relaunches the same disposable Profile and records
 the warm first frame. These observations remain separate from the prepared fresh-process
@@ -16,7 +21,8 @@ samples and are warm-process-relaunch diagnostics, not evidence for the 120 ms
 warm-new-window target. Available runtime boot marks are retained as diagnostics; missing marks do not
 prove a runtime-startup target. Both source trees must have the same Chromium
 VERSION and the same critical resolved fast-build flags, with the Aux shell
-excluded from stock. Stock retains the same v3 timing histograms and presentation triggers. Aux area 0100 adds only its original shell-process witness; it is not installed in stock, whose BrowserView supplies no shell WebContents. This difference is recorded in the report: the binaries are not byte-identical. The witness runs after the first presentation timestamp is captured and cannot improve Aux's reported timing.
+excluded from stock. Stock retains the same timing histograms and presentation triggers,
+including matching warm-window and display-interval instrumentation. Aux area 0100 adds only its original shell-process witness; it is not installed in stock, whose BrowserView supplies no shell WebContents. This difference is recorded in the report: the binaries are not byte-identical. The witness runs after the first presentation timestamp is captured and cannot improve Aux's reported timing.
 Source changes do not require an artificial clean-checkout qualification.
 
 Each timed run starts a new browser process with a clone of a prepared disposable
@@ -76,6 +82,8 @@ not change build or measurement exit semantics. Acceptance requires all five
 valid paired samples, all 100 intended input observations and the exact original
 process roles. Missing values remain unavailable; they are never zero or a
 passing subset. Shell/runtime role limits use MiB, while total overhead and
-stock-relative application size use decimal MB. Until genuine warm-window and
-display-interval observations are supplied, those two targets remain unavailable
-even when their related relaunch or tab-latency diagnostics are present.
+stock-relative application size use decimal MB. Warm-window acceptance uses the
+median of each window’s maximum first-frame/controls-ready time. Tab acceptance
+uses all 100 original latency/display-interval pairs and p95 latency beyond that
+input’s confirmed display interval. Missing or zero VSync intervals leave that
+target unavailable; relaunch or absolute tab latency cannot substitute for it.
