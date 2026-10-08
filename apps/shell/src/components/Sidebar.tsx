@@ -230,6 +230,10 @@ const TabRow = memo(function TabRow({
   onKeyMove,
 }: TabRowProps) {
   const p = useStore((state) => state.pages.byId[pageId ?? ""]);
+  const title = useStore((state) => {
+    const page = state.pages.byId[pageId];
+    return page ? tabLabel(state.layout, page) : "";
+  });
   const key = useShortcutLabels();
   const preview = useSidebarTabPreview();
   const row = useRef<HTMLDivElement>(null);
@@ -247,7 +251,6 @@ const TabRow = memo(function TabRow({
       : "Sleeping. Reloads when opened."
     : undefined;
   const description = [sleepHint, windowHint].filter(Boolean).join(" ") || undefined;
-  const title = useStore((state) => tabLabel(state.layout, p));
   return (
     <>
       <div

@@ -37,7 +37,7 @@ it("bounds recent chats, exposes organization in one menu, and requires confirma
     .spyOn(bridge, "invoke")
     .mockImplementation(async (method, params) =>
       method === "conversations.list"
-        ? rows
+        ? rows.slice(0, (params as { limit: number }).limit)
         : method === "conversations.rename"
           ? { ...rows[0], title: (params as { title: string }).title }
           : undefined,
@@ -51,6 +51,9 @@ it("bounds recent chats, exposes organization in one menu, and requires confirma
     expect(host.querySelectorAll(".session-item")).toHaveLength(3);
     expect(host.querySelectorAll(".session-item .ui-menu-trigger")).toHaveLength(3);
     expect(host.textContent).toContain("All chats");
+    expect(invoke.mock.calls.filter(([method]) => method === "conversations.list")).toEqual([
+      ["conversations.list", { archived: false, limit: 3 }],
+    ]);
     expect(host.textContent).not.toContain("Projects");
     await act(async () =>
       host.querySelector<HTMLButtonElement>('[aria-label="Actions for Session 0"]')!.click(),
@@ -135,6 +138,8 @@ it("bounds recent chats, exposes organization in one menu, and requires confirma
     });
     await act(async () => host.querySelector<HTMLButtonElement>(".session-editor button")!.click());
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Actions for project Focused");
+    expect(host.querySelector(".session-folder-toggle")).not.toBeNull();
+    expect(host.querySelector(".session-folder-toggle small")).toBeNull();
     await act(async () =>
       host.querySelector<HTMLButtonElement>('[aria-label="Actions for Renamed session"]')!.click(),
     );
@@ -159,6 +164,7 @@ it("bounds recent chats, exposes organization in one menu, and requires confirma
     await act(async () => host.querySelector<HTMLButtonElement>(".session-confirm .danger")!.click());
     expect(invoke).toHaveBeenCalledWith("conversations.delete", { chatId: "chat-0" });
     expect(document.activeElement?.classList.contains("session-open")).toBe(true);
+    expect(host.textContent).toContain("All chats");
   } finally {
     await act(async () => root.unmount());
     host.remove();

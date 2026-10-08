@@ -8,6 +8,7 @@ import { STATUS_LABEL } from "../run-status";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ConversationSummary } from "@aux/contracts";
 import { errToast, useStore } from "../store";
+import { bridge } from "../bridge";
 import {
   readChatFolders,
   writeChatFolder,
@@ -40,7 +41,7 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
     collection,
     state: { loading, error },
     items: rows,
-  } = useChatCollection({ archived, policy: "complete" });
+  } = useChatCollection({ archived, policy: compact ? "preview" : "complete" });
   const actions = useChatActions(collection);
   const [organization, setOrganization] = useState(() => readChatFolders(localStorage));
   const [editing, setEditing] = useState<ChatFolder | null>(null);
@@ -120,7 +121,6 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
   };
   const term = query.trim().toLocaleLowerCase();
   const matches = term ? rows.filter((row) => row.title.toLocaleLowerCase().includes(term)) : rows;
-  const visibleRows = compact ? matches.slice(0, 3) : matches;
   async function rename(item: ConversationSummary) {
     if (!chatName.trim()) return;
     if (await actions.perform("rename", item, chatName)) {
@@ -360,7 +360,7 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
         </form>
       )}
       {organization.folders.map((folder) => {
-        const children = visibleRows.filter((row) => organization.members[row.chatId] === folder.id);
+        const children = matches.filter((row) => organization.members[row.chatId] === folder.id);
         if (term && !children.length) return null;
         return (
           <div className="session-folder" key={folder.id}>
@@ -374,7 +374,9 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
               >
                 {folder.collapsed ? shellIconRight : shellIconDown}
                 <span>{folder.name}</span>
-                <small>{rows.filter((row) => organization.members[row.chatId] === folder.id).length}</small>
+                {!compact && (
+                  <small>{rows.filter((row) => organization.members[row.chatId] === folder.id).length}</small>
+                )}
               </button>
               <div className="session-actions">
                 <ActionMenu
@@ -407,11 +409,11 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
       })}
 
       {renderChats(
-        visibleRows.filter(
+        matches.filter(
           (row) => !organization.folders.some((folder) => folder.id === organization.members[row.chatId]),
         ),
       )}
-      {compact && matches.length > 3 && (
+      {compact && !bridge.privateMode && (
         <button className="sb-link sb-show-all" onClick={showHistory}>
           All chats {shellIconRight}
         </button>

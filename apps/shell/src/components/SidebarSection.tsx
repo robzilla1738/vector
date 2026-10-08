@@ -25,7 +25,7 @@ export function SidebarSection({
     id,
     ["Bookmarks", "Chats", "Tabs"].includes(title) &&
       ["normal", "private"].includes(bridge.windowKind) &&
-      (!bridge.privateMode || title === "Tabs"),
+      (!bridge.privateMode || title === "Tabs" || title === "Chats"),
     title,
     () => true,
     onToggle,

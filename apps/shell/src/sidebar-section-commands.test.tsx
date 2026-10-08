@@ -9,6 +9,7 @@ import { useStore } from "./store";
 import { makePage } from "./mock/fixtures";
 import * as commands from "./commands";
 import { registerScopedControl } from "./scoped-control-commands";
+import * as membership from "./use-tab-membership";
 const persisted = vi.hoisted(() => {
   const values = new Map<string, string>();
   const storage = {
@@ -177,6 +178,13 @@ it("Private exposes session Chats and Agent beside native browsing controls, wit
   expect(host.querySelector('section[aria-label="Bookmarks"]')).toBeNull();
   expect(host.querySelector('section[aria-label="Chats"]')).not.toBeNull();
   expect(host.querySelector('[aria-label="Toggle agent rail"]')).not.toBeNull();
+  const chats = heading("Chats"),
+    chatsBefore = useStore.getState().sidebarSections.chats;
+  await act(async () => chats.click());
+  expect(useStore.getState().sidebarSections.chats).toBe(!chatsBefore);
+  expect(chats.getAttribute("aria-expanded")).toBe(String(!chatsBefore));
+  expect(host.querySelector('[data-command-id="new-chat"]')).not.toBeNull();
+  expect(host.querySelector(".sb-show-all")).toBeNull();
   const tabs = heading("Tabs"),
     before = useStore.getState().sidebarSections.tabs;
   await act(async () => tabs.click());
@@ -185,6 +193,18 @@ it("Private exposes session Chats and Agent beside native browsing controls, wit
   await act(async () => trigger.click());
   expect(trigger.getAttribute("aria-expanded")).toBe("true");
   expect(document.querySelector('[role="menu"][aria-label="Spaces and browser controls"]')).not.toBeNull();
+});
+it("a retired page clears a still-mounted tab row before its list projection catches up", async () => {
+  const page = makePage(1, { windowId: bridge.windowId, ownedByRuntime: false });
+  vi.spyOn(membership, "useTabMembership").mockReturnValue([
+    { pageId: page.pageId, viewStatus: "visible", ownedByRuntime: false },
+  ]);
+  useStore.setState({ pages: normalizePages([page]), connected: false });
+  await mount();
+  expect(host.querySelectorAll('[role="tab"]')).toHaveLength(1);
+  await act(async () => useStore.setState({ pages: normalizePages([]) }));
+  expect(host.querySelectorAll('[role="tab"]')).toHaveLength(0);
+  expect(host.querySelector('[aria-label="Sidebar"]')).not.toBeNull();
 });
 it("original Space chooser click and focused remap retain menu and current layout identity", async () => {
   await mount();
