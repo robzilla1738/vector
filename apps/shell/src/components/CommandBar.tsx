@@ -2,6 +2,7 @@ import { GlassMaterial } from "./GlassMaterial";
 import type { ChromiumHostPort } from "../chromium-bridge";
 import { orderedPages } from "../store/pages";
 import { takeFirstFrame } from "../first-frame";
+import { nativePerformanceControl } from "../native-performance-ready";
 import { errorMessage } from "../error-message";
 import { smallGhostButtonProps as auxReserveSmallGhostButtonProps } from "../ui/button-props";
 import { HomeEntryAction, runHomeEntry, useHomeEntryInput, useHomeEntryOwner } from "./HomeEntryControls";
@@ -275,6 +276,10 @@ export function CommandBar({
     chats: ConversationSummary[];
   }>({ query: "", results: [], skills: [], chats: [] });
   const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!hero && !surfaceMode && inputRef.current?.isConnected)
+      return nativePerformanceControl("address");
+  }, [hero, surfaceMode]);
   const barRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef(new Map<number, HTMLDivElement>());
   const listId = useId();

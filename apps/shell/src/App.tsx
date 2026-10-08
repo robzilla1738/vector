@@ -13,6 +13,7 @@ import { useTabAudio } from "./app/use-tab-audio";
 import { useDownloadEvents } from "./app/use-download-events";
 import { usePageOffers } from "./app/use-page-offers";
 import { useShellShortcuts } from "./app/use-shell-shortcuts";
+import { nativePerformanceControl } from "./native-performance-ready";
 
 import { useOrganizationEditor } from "./features/organization-state";
 import { useFeature } from "./use-feature";
@@ -307,6 +308,7 @@ export function App() {
   useTabAudio();
   useDownloadEvents();
   useShellShortcuts(findInput);
+  useEffect(() => nativePerformanceControl("shortcuts"), []);
   usePageOffers();
 
   if (nativeOverlayCovering && !toolbarHole) setToolbarHole(true);
