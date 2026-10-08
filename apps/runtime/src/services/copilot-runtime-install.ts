@@ -95,6 +95,8 @@ interface Attempt {
 /** root is an exclusive, protected Aux provider-runtime directory; never a user-selected extraction path. */
 export interface CopilotInstallDeps {
   root: string;
+  /** Private sessions may verify an existing payload but cannot alter its normal Profile. */
+  readOnly?: boolean;
   /** Parent resolves the packaged trusted worker entry; never renderer/model-controlled. */
   workerPath: string;
   checkOwner(original: string, requester?: string): Promise<void>;
@@ -293,7 +295,7 @@ export class CopilotRuntimeInstaller {
     );
   }
   private async root() {
-    await mkdir(this.deps.root, { recursive: true, mode: 0o700 });
+    if (!this.deps.readOnly) await mkdir(this.deps.root, { recursive: true, mode: 0o700 });
     const s = await lstat(this.deps.root, { bigint: true });
     if (
       !s.isDirectory() ||
@@ -330,6 +332,7 @@ export class CopilotRuntimeInstaller {
     a.controller.signal.throwIfAborted();
   }
   install(owner: string): Promise<CopilotInstalledRuntime> {
+    if (this.deps.readOnly) return Promise.reject(new AuxError("permission_denied", "This private session can only read the original runtime payload."));
     if (this.closed)
       return Promise.reject(
         new AuxError("cancelled", "Copilot installation is closed."),

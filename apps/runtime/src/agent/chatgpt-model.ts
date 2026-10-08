@@ -105,7 +105,7 @@ export function chatgptCompletionStream(body: ReadableStream<Uint8Array>): Reada
 }
 
 export function chatgptModelClient(
-  accounts: ChatgptAccounts,
+  accounts: Pick<ChatgptAccounts, "accessToken">,
   accountId: string,
   models: () => readonly ModelCapability[],
   ensureModels: (signal?: AbortSignal) => Promise<void>,
@@ -212,4 +212,3 @@ export function chatgptModelClient(
     listModels: async () => models().map(({ id, name }) => ({ id, ...(name ? { name } : {}) })),
   } satisfies ModelClient;
 }
-

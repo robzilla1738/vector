@@ -257,6 +257,36 @@ export class CopilotServices {
     });
   }
 
+  /** Credential-only private broker: the normal Profile remains the sole refresh owner. */
+  async privateCredential(accountId: string, check: () => void) {
+    this.assertOpen();
+    check();
+    await this.initializeAccounts();
+    check();
+    const lease = await this.accountService.lease(accountId, this.controller.signal);
+    this.assertOpen();
+    check();
+    lease.signal.throwIfAborted();
+    return {
+      accountId: lease.accountId,
+      accessToken: lease.accessToken,
+      authorizationGeneration: lease.authorizationGeneration,
+      credentialRevision: lease.credentialRevision,
+    };
+  }
+  async privateRuntime(): Promise<string> {
+    await this.requireRuntime();
+    const runtime = await this.installer.status();
+    if (!runtime)
+      throw new AuxError(
+        "needs_input",
+        "Install the configured Copilot runtime in the original Profile first.",
+      );
+    await runtime.assertCurrent();
+    this.assertOpen();
+    return runtime.supportDirectory;
+  }
+
   inference<T>(
     accountId: string,
     source: ModelCallSource,

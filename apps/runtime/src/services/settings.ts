@@ -1,3 +1,10 @@
+import { PrivateProviderConnection } from "./private-provider.js";
+import {
+  PrivateProviderDescriptorSchema,
+  type PrivateProviderDescriptor,
+  type PrivateProviderRequest,
+  type PrivateProviderResult,
+} from "@aux/contracts/private-provider";
 import { VercelAuthService } from "./vercel-auth.js";
 import { VercelAccounts, VercelRegistrationSchema, type VercelRegistration } from "./vercel-account.js";
 import { vercelModelClient } from "../agent/vercel-model.js";
@@ -168,6 +175,7 @@ export class SettingsService {
   /** Test hook — inject a mock model instead of the real Gateway client. */
   modelOverride: ModelClient | null = null;
   private gatewayClient: ModelClient | null = null;
+  private privateProvider?: PrivateProviderConnection;
   private fileSettings: Settings = {};
   private native: NativeBridge | null = null;
   private foundationModels: FoundationModelsClient | undefined;
@@ -194,6 +202,202 @@ export class SettingsService {
 
   attachNative(native: NativeBridge): void {
     this.native = native;
+  }
+
+  /** Called only after native OTR identity admission. All adopted preferences remain in its in-memory Repo. */
+  async attachPrivateProvider(
+    request: (request: PrivateProviderRequest) => Promise<PrivateProviderResult>,
+    copilot?: { native: NativeBridge; dataDir: string },
+  ): Promise<void> {
+    if (!this.env.AUX_PRIVATE_SESSION)
+      throw new AuxError("permission_denied", "Private credentials require the admitted private runtime.");
+    const result = await request({ operation: "describe" });
+    if (this.discoveryClosed) throw new AuxError("cancelled", "Private settings retired.");
+    if (result.operation !== "describe")
+      throw new AuxError("invalid_params", "Invalid private connection descriptor.");
+    if (!result.connection) return;
+    const d = PrivateProviderDescriptorSchema.parse(result.connection);
+    await this.privateProvider?.close();
+    this.privateProvider = new PrivateProviderConnection(d, request, fetch, copilot);
+    this.repo.transaction(() => {
+      this.repo.setSetting("modelProvider", d.provider);
+      this.repo.setSetting(
+        "disabledModelProviders",
+        ModelProviderSchema.array()
+          .parse(this.get("disabledModelProviders") ?? [])
+          .filter((provider) => provider !== d.provider),
+      );
+      this.repo.setSetting("localModelsOnly", d.localModelsOnly);
+      if (d.provider === "openai-compatible") this.repo.setSetting("compatibleEndpoint", d.endpoint);
+      if (d.provider === "gateway") {
+        this.repo.setSetting("plannerModel", d.plannerModel);
+        if (d.recoveryModel !== undefined) this.repo.setSetting("recoveryModel", d.recoveryModel);
+        if (d.visionModel !== undefined) this.repo.setSetting("visionModel", d.visionModel);
+        this.repo.setSetting("agentModelRoutes", d.agentModelRoutes);
+      } else {
+        this.repo.setSetting("providerModels", {
+          ...this.profiles(),
+          [d.provider]: {
+            plannerModel: d.plannerModel,
+            recoveryModel: d.recoveryModel,
+            visionModel: d.visionModel,
+          },
+        });
+        this.repo.setSetting("providerAgentModelRoutes", {
+          ...(this.get("providerAgentModelRoutes") as Settings["providerAgentModelRoutes"]),
+          [d.provider]: d.agentModelRoutes,
+        });
+      }
+    });
+    this.gatewayClient = null;
+  }
+  private inheritedProvider(): PrivateProviderConnection | undefined {
+    const inherited = this.privateProvider;
+    if (
+      !inherited ||
+      inherited.descriptor.provider !== this.modelProvider() ||
+      !this.connectionEnabled(this.modelProvider())
+    )
+      return;
+    if (
+      this.localModelsOnly() &&
+      !(
+        this.modelProvider() === "openai-compatible" &&
+        isLoopbackCompatibleEndpoint(this.compatibleEndpoint())
+      )
+    )
+      return;
+    if (
+      this.modelProvider() === "openai-compatible" &&
+      this.compatibleEndpoint() !== inherited.descriptor.endpoint
+    )
+      return;
+    return inherited;
+  }
+  /** Host-only: chooses the original Profile's selected connection; caller cannot name a key, account or destination. */
+  async privateProviderRequest(request: PrivateProviderRequest): Promise<PrivateProviderResult> {
+    if (this.env.AUX_PRIVATE_SESSION || this.discoveryClosed)
+      throw new AuxError("cancelled", "Original credential owner is unavailable.");
+    if (request.operation === "describe")
+      return { operation: "describe", connection: await this.privateProviderDescriptor() };
+    const current = () => {
+      if (
+        this.discoveryClosed ||
+        this.privateProviderRevision() !== request.revision ||
+        !this.connectionEnabled(this.modelProvider()) ||
+        (this.localModelsOnly() &&
+          !(
+            this.modelProvider() === "openai-compatible" &&
+            isLoopbackCompatibleEndpoint(this.compatibleEndpoint())
+          ))
+      )
+        throw new AuxError("cancelled", "The original model account changed. Reopen the private connection.");
+    };
+    current();
+    const provider = this.modelProvider(),
+      copilot = this.copilotSelection(),
+      chatgpt = !copilot && provider === "openai" ? this.activeChatgptAccount() : undefined,
+      vercel = !copilot && provider === "gateway" ? this.activeVercelAccount() : undefined;
+    let accessToken: string;
+    if (copilot) {
+      if (!this.copilotFactory)
+        throw new AuxError("capability_unsupported", "The original Copilot service is unavailable.");
+      const lease = await (await this.copilotFactory()).privateCredential(copilot.accountId, current);
+      current();
+      return {
+        operation: "credential",
+        revision: request.revision,
+        accessToken: lease.accessToken,
+        authorizationGeneration: lease.authorizationGeneration,
+        credentialRevision: lease.credentialRevision,
+      };
+    }
+    if (chatgpt) accessToken = await (await this.chatgptAccounts()).accessToken(chatgpt);
+    else if (vercel) accessToken = await (await this.vercelAccounts()).accessToken(vercel);
+    else {
+      const key = this.selectedKey();
+      if (
+        !key &&
+        !(provider === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint()))
+      )
+        throw new AuxError("cancelled", "The original provider credential is unavailable.");
+      accessToken = key ?? "aux-local";
+    }
+    current();
+    return { operation: "credential", revision: request.revision, accessToken };
+  }
+
+  private privateProviderRevision(): string {
+    const copilot = this.copilotSelection(),
+      provider = this.modelProvider();
+    return [
+      this.modelCacheGeneration(),
+      provider,
+      copilot?.revision ?? "",
+      copilot?.accountId ??
+        (provider === "openai"
+          ? this.activeChatgptAccount()
+          : provider === "gateway"
+            ? this.activeVercelAccount()
+            : undefined) ??
+        "",
+    ].join(":");
+  }
+  private async privateProviderDescriptor(): Promise<PrivateProviderDescriptor | null> {
+    const provider = this.modelProvider(),
+      generation = this.modelCacheGeneration();
+    await this.initializeCredentials([provider]);
+    this.assertModelGeneration(generation);
+    if (!this.connectionEnabled(provider)) return null;
+    const copilot = this.copilotSelection(),
+      chatgpt = !copilot && provider === "openai" ? this.activeChatgptAccount() : undefined,
+      vercel = !copilot && provider === "gateway" ? this.activeVercelAccount() : undefined;
+    const authentication = copilot ? "copilot" : chatgpt ? "chatgpt" : vercel ? "vercel" : "api-key";
+    if (
+      this.localModelsOnly() &&
+      !(provider === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint()))
+    )
+      return null;
+    let teamId: string | undefined, copilotRuntimeRoot: string | undefined;
+    if (chatgpt) await this.refreshChatgptModels(chatgpt, generation);
+    if (vercel) teamId = (await this.vercelAccounts()).account(vercel).teamId;
+    if (copilot) {
+      if (!this.copilotFactory)
+        throw new AuxError("capability_unsupported", "The original Copilot service is unavailable.");
+      copilotRuntimeRoot = await (await this.copilotFactory()).privateRuntime();
+    }
+    this.assertModelGeneration(generation);
+    if (
+      authentication === "api-key" &&
+      !this.selectedKey() &&
+      !(provider === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint()))
+    )
+      return null;
+    return PrivateProviderDescriptorSchema.parse({
+      revision: this.privateProviderRevision(),
+      provider,
+      authentication,
+      credentialSource:
+        authentication !== "api-key" || (provider === "gateway" ? this.savedKey : this.directKeys[provider])
+          ? "saved"
+          : this.selectedKey()
+            ? "environment"
+            : "none",
+      endpoint: copilot
+        ? "https://api.githubcopilot.com"
+        : chatgpt
+          ? CHATGPT_RESOURCE
+          : providerEndpoint(provider, this.compatibleEndpoint()),
+      accountId: copilot?.accountId ?? chatgpt ?? vercel,
+      teamId,
+      copilotRuntimeRoot,
+      plannerModel: this.plannerModel(),
+      recoveryModel: this.recoveryModel(),
+      visionModel: this.visionModel(),
+      agentModelRoutes: this.routeOverrides(),
+      models: [...this.registryModels()],
+      localModelsOnly: this.localModelsOnly(),
+    });
   }
 
   initializeCredentials(
@@ -273,7 +477,14 @@ export class SettingsService {
       this.modelProvider() === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint());
     return {
       gatewayApiKey: this.savedKey || this.env.AI_GATEWAY_API_KEY ? "••••••••" : undefined,
-      gatewayCredentialSource: this.savedKey ? "saved" : this.env.AI_GATEWAY_API_KEY ? "environment" : "none",
+      gatewayCredentialSource:
+        this.inheritedProvider()?.descriptor.provider === "gateway"
+          ? this.inheritedProvider()!.descriptor.credentialSource
+          : this.savedKey
+            ? "saved"
+            : this.env.AI_GATEWAY_API_KEY
+              ? "environment"
+              : "none",
       gatewayCredentialError:
         this.credentialError ??
         (this.hasLegacyCredential()
@@ -281,26 +492,32 @@ export class SettingsService {
           : undefined),
       localModelsOnly: this.localModelsOnly(),
       modelProvider: this.modelProvider(),
-      modelAuthentication: this.copilotSelection()
-        ? "copilot"
-        : this.modelProvider() === "openai" && this.activeChatgptAccount()
-          ? "chatgpt"
-          : this.modelProvider() === "gateway" && this.activeVercelAccount()
-            ? "vercel"
-            : "api-key",
+      modelAuthentication:
+        this.inheritedProvider()?.descriptor.authentication ??
+        (this.copilotSelection()
+          ? "copilot"
+          : this.modelProvider() === "openai" && this.activeChatgptAccount()
+            ? "chatgpt"
+            : this.modelProvider() === "gateway" && this.activeVercelAccount()
+              ? "vercel"
+              : "api-key"),
       modelConnections: this.connectionStatuses(),
       imageModel: this.imageModel(),
       compatibleEndpoint: this.compatibleEndpoint(),
       modelApiKey:
-        this.hasCopilotSelection() || (this.modelProvider() === "gateway" && !!this.activeVercelAccount())
-          ? undefined
-          : this.modelProvider() === "openai" && this.activeChatgptAccount()
+        this.inheritedProvider()?.descriptor.authentication === "api-key" &&
+        this.inheritedProvider()?.descriptor.credentialSource !== "none"
+          ? "••••••••"
+          : this.hasCopilotSelection() || (this.modelProvider() === "gateway" && !!this.activeVercelAccount())
             ? undefined
-            : this.selectedKey()
-              ? "••••••••"
-              : undefined,
+            : this.modelProvider() === "openai" && this.activeChatgptAccount()
+              ? undefined
+              : this.selectedKey()
+                ? "••••••••"
+                : undefined,
       modelCredentialSource:
-        this.hasCopilotSelection() || (this.modelProvider() === "gateway" && !!this.activeVercelAccount())
+        this.inheritedProvider()?.descriptor.credentialSource ??
+        (this.hasCopilotSelection() || (this.modelProvider() === "gateway" && !!this.activeVercelAccount())
           ? "saved"
           : this.modelProvider() === "openai" && this.activeChatgptAccount()
             ? "saved"
@@ -314,7 +531,7 @@ export class SettingsService {
                 ? "saved"
                 : this.selectedKey()
                   ? "environment"
-                  : "none",
+                  : "none"),
       modelCredentialError:
         this.modelProvider() === "gateway" && this.activeVercelAccount() && this.vercelCredentialError
           ? "Sign in with Vercel again to unlock this account."
@@ -327,26 +544,30 @@ export class SettingsService {
               : this.modelProvider() === "gateway"
                 ? this.credentialError
                 : this.directErrors[this.modelProvider()],
-      modelEndpoint: this.copilotSelection()
-        ? "Account-bound Copilot endpoint"
-        : providerEndpoint(this.modelProvider(), this.compatibleEndpoint()),
+      modelEndpoint:
+        this.inheritedProvider()?.descriptor.endpoint ??
+        (this.copilotSelection()
+          ? "Account-bound Copilot endpoint"
+          : providerEndpoint(this.modelProvider(), this.compatibleEndpoint())),
       modelProbe:
         modelProbe?.provider === this.modelProvider() && modelProbe.modelId === this.plannerModel()
           ? modelProbe
           : undefined,
-      modelConfigured: this.hasCopilotSelection()
-        ? !!this.copilotSelection() && !this.localModelsOnly()
-        : (!this.localModelsOnly() || localCompatible) &&
-          this.connectionEnabled(this.modelProvider()) &&
-          !!(
-            this.modelOverride ||
-            (this.plannerModel() &&
-              (this.selectedKey() ||
-                localCompatible ||
-                (this.modelProvider() === "openai" && this.chatgptConnected()) ||
-                (this.modelProvider() === "gateway" && this.vercelConnected())) &&
-              (this.modelProvider() !== "openai-compatible" || this.compatibleEndpoint()))
-          ),
+      modelConfigured:
+        !!this.inheritedProvider() ||
+        (this.hasCopilotSelection()
+          ? !!this.copilotSelection() && !this.localModelsOnly()
+          : (!this.localModelsOnly() || localCompatible) &&
+            this.connectionEnabled(this.modelProvider()) &&
+            !!(
+              this.modelOverride ||
+              (this.plannerModel() &&
+                (this.selectedKey() ||
+                  localCompatible ||
+                  (this.modelProvider() === "openai" && this.chatgptConnected()) ||
+                  (this.modelProvider() === "gateway" && this.vercelConnected())) &&
+                (this.modelProvider() !== "openai-compatible" || this.compatibleEndpoint()))
+            )),
       plannerModel: this.plannerModel(),
       recoveryModel: this.recoveryModel(),
       visionModel: this.visionModel(),
@@ -610,6 +831,10 @@ export class SettingsService {
     if (next.agentModelRoutes !== undefined)
       next.agentModelRoutes = AgentModelRoutesSettingSchema.parse(next.agentModelRoutes);
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
+    if (this.privateProvider && (patch.gatewayApiKey !== undefined || patch.modelCredential !== undefined)) {
+      await this.privateProvider.close();
+      this.privateProvider = undefined;
+    }
     if (connectionChange) {
       this.repo.deleteSetting("copilotInferenceSelection");
       this.connectionEpoch++;
@@ -1619,6 +1844,11 @@ export class SettingsService {
     this.chatgptCatalogController.abort();
     const failures: unknown[] = [];
     try {
+      await this.privateProvider?.close();
+    } catch (error) {
+      failures.push(error);
+    }
+    try {
       await this.foundationModels?.close();
     } catch (error) {
       failures.push(error);
@@ -1650,6 +1880,8 @@ export class SettingsService {
       throw new AggregateError(failures, "Original model account cleanup remains unresolved.");
   }
   registryModels(): readonly ModelCapability[] {
+    const inherited = this.inheritedProvider();
+    if (inherited) return inherited.descriptor.models;
     const copilot = this.copilotSelection();
     if (this.hasCopilotSelection()) return copilot?.models ?? [];
     if (this.modelProvider() === "openai" && this.activeChatgptAccount())
@@ -1709,6 +1941,15 @@ export class SettingsService {
   }
 
   model(): ModelClient | null {
+    const inherited = this.inheritedProvider();
+    if (inherited) {
+      const generation = this.modelCacheGeneration();
+      return inherited.model(() => {
+        this.assertModelGeneration(generation);
+        if (this.inheritedProvider() !== inherited)
+          throw new AuxError("cancelled", "Private model selection changed.");
+      });
+    }
     const copilot = this.copilotSelection();
     if (this.hasCopilotSelection() && !copilot) return null;
     if (copilot) {
@@ -1868,6 +2109,13 @@ export class SettingsService {
     source: "gateway" | "static" | "configured";
     localServers: LocalModelServer[];
   }> {
+    const inherited = this.inheritedProvider();
+    if (inherited)
+      return {
+        models: [...inherited.descriptor.models],
+        source: "configured",
+        localServers: await this.localServers(),
+      };
     const copilot = this.copilotSelection();
     if (this.hasCopilotSelection())
       return {
@@ -2126,6 +2374,16 @@ export class SettingsService {
   }
   private connectionStatuses(): ModelConnectionStatus[] {
     return ModelProviderSchema.options.map((provider) => {
+      const inherited = this.inheritedProvider()?.descriptor;
+      if (inherited?.provider === provider)
+        return ModelConnectionStatusSchema.parse({
+          provider,
+          selected: true,
+          enabled: true,
+          credentialSource: inherited.credentialSource,
+          credentialUnavailable: false,
+          localEndpoint: provider === "openai-compatible" && isLoopbackCompatibleEndpoint(inherited.endpoint),
+        });
       const vercel = provider === "gateway" && this.activeVercelAccount();
       const subscription = provider === "openai" && this.activeChatgptAccount();
       const saved =

@@ -19,9 +19,10 @@ function gate() {
   return { promise, resolve };
 }
 
-it("joins one original native retirement before concurrent close and retire release the volatile eligibility Home", async () => {
+for (const privatePayload of [false, true]) it(`joins native retirement before releasing the volatile Home (private payload: ${privatePayload})`, async () => {
   const dataDir = await realpath(await mkdtemp(join(tmpdir(), "aux-copilot-runtime-lifecycle-")));
-  const supportDirectory = join(dataDir, "provider-runtimes", "copilot-1.0.16-darwin-arm64");
+  const payloadRoot = privatePayload ? await realpath(await mkdtemp(join(tmpdir(), "aux-copilot-original-payload-"))) : dataDir;
+  const supportDirectory = join(payloadRoot, "provider-runtimes", "copilot-1.0.16-darwin-arm64");
   const executable = join(supportDirectory, "prebuilds/darwin-arm64/copilot-runtime");
   await mkdir(join(supportDirectory, "prebuilds/darwin-arm64"), {
     recursive: true,
@@ -124,6 +125,7 @@ it("joins one original native retirement before concurrent close and retire rele
   const current = vi.fn(async () => {});
   const runtime = new CopilotRuntime({
     dataDir,
+    installationRoot: privatePayload ? supportDirectory : undefined,
     native,
     accounts,
     installer: {
@@ -190,5 +192,6 @@ it("joins one original native retirement before concurrent close and retire rele
     await Promise.allSettled([closeWork, retireWork, eligibility]);
     await runtime.close();
     await rm(dataDir, { recursive: true });
+    if (privatePayload) await rm(payloadRoot, {recursive:true});
   }
 });

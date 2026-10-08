@@ -45,6 +45,8 @@ export interface CopilotNativeOwner {
 export interface CopilotRuntimeDeps {
   /** Internal config.dataDir, matching native AUX_DATA_DIR. Never an API path. */
   dataDir: string;
+  /** Only the native private broker may supply the original normal Profile's verified, read-only runtime payload. */
+  installationRoot?: string;
   native: CopilotNativeOwner;
   accounts: Pick<CopilotAccounts, "lease" | "assertCurrent">;
   installer: {
@@ -412,11 +414,9 @@ export class CopilotRuntime {
     await this.check(o);
     const data = await realpath(this.deps.dataDir);
     await this.check(o);
-    const fixedRuntime = join(
-      data,
-      "provider-runtimes",
-      `copilot-${COPILOT_RELEASE.sdkVersion}-${COPILOT_RELEASE.platform}`,
-    );
+    const fixedRuntime =
+      this.deps.installationRoot ??
+      join(data, "provider-runtimes", `copilot-${COPILOT_RELEASE.sdkVersion}-${COPILOT_RELEASE.platform}`);
     if (
       runtime.supportDirectory !== fixedRuntime ||
       runtime.path !== join(fixedRuntime, COPILOT_RELEASE.wrapper)

@@ -12,7 +12,7 @@ import {
 
 /** Actual SIWV app token, carried by the maintained Gateway provider; normal Gateway invoices remain intact. */
 export function vercelModelClient(
-  accounts: () => Promise<VercelAccounts>,
+  accounts: () => Promise<Pick<VercelAccounts, "accessToken"> & { account(id: string): { teamId: string } }>,
   accountId: string,
   models: () => readonly ModelCapability[],
   checkSelection: () => void,

@@ -1,4 +1,10 @@
 import {
+  PrivateProviderRequestSchema,
+  PrivateProviderResultSchema,
+  type PrivateProviderRequest,
+  type PrivateProviderResult,
+} from "@aux/contracts/private-provider";
+import {
   NativeCloudPreviewParams,
   NativeCloudPreviewCloseParams,
   CloudPreviewSchema,
@@ -237,6 +243,7 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   terminalPreviewClose?(
     params: z.infer<typeof NativeTerminalPreviewCloseParams>,
   ): Promise<z.infer<typeof TerminalPreviewClosedSchema>>;
+  privateProvider?(request: PrivateProviderRequest): Promise<PrivateProviderResult>;
   cloudPreview?(
     params: z.infer<typeof NativeCloudPreviewParams>,
   ): Promise<z.infer<typeof CloudPreviewSchema>>;
@@ -590,6 +597,11 @@ export class ChannelNativeBridge implements NativeBridge {
     );
   }
 
+  async privateProvider(request: PrivateProviderRequest): Promise<PrivateProviderResult> {
+    return PrivateProviderResultSchema.parse(
+      await this.channel.call("native.privateProvider", PrivateProviderRequestSchema.parse(request)),
+    );
+  }
   async cloudPreview(params: z.infer<typeof NativeCloudPreviewParams>) {
     return CloudPreviewSchema.parse(
       await this.channel.call("native.cloudPreview", NativeCloudPreviewParams.parse(params)),

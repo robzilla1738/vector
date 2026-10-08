@@ -1,3 +1,4 @@
+import { PrivateProviderRequestSchema, PrivateProviderResultSchema } from "./private-provider.js";
 import {
   NativeCloudPreviewParams,
   NativeCloudPreviewCloseParams,
@@ -218,6 +219,7 @@ export const RuntimeHostMethods = {
   "native.terminalResize": runtime("core", NativeTerminalResizeParams, TerminalSessionSchema),
   "native.terminalClose": runtime("core", NativeTerminalCloseParams, TerminalSessionSchema),
   "native.terminalListeners": runtime("core", NativeTerminalListenersParams, TerminalListenersSchema),
+  "native.privateProvider": runtime("core", PrivateProviderRequestSchema, PrivateProviderResultSchema),
   "native.cloudPreview": runtime("core", NativeCloudPreviewParams, CloudPreviewSchema),
   "native.cloudPreviewClose": runtime("core", NativeCloudPreviewCloseParams, TerminalPreviewClosedSchema),
   "native.terminalPreview": runtime("core", NativeTerminalPreviewParams, TerminalPreviewSchema),
