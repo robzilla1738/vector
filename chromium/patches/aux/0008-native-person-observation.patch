@@ -1,6 +1,6 @@
 diff --git a/chrome/browser/ui/aux/native_person_observer_controller.cc b/chrome/browser/ui/aux/native_person_observer_controller.cc
 new file mode 100644
-index 0000000000..a38505334e
+index 0000000..a385053
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_person_observer_controller.cc
 @@ -0,0 +1,221 @@
@@ -227,7 +227,7 @@ index 0000000000..a38505334e
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/native_person_observer_controller.h b/chrome/browser/ui/aux/native_person_observer_controller.h
 new file mode 100644
-index 0000000000..a358ec1803
+index 0000000..a358ec1
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_person_observer_controller.h
 @@ -0,0 +1,58 @@
@@ -291,7 +291,7 @@ index 0000000000..a358ec1803
 +#endif
 diff --git a/chrome/browser/ui/aux/native_recorder_controller.cc b/chrome/browser/ui/aux/native_recorder_controller.cc
 new file mode 100644
-index 0000000000..3f8790c85f
+index 0000000..fdac548
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_recorder_controller.cc
 @@ -0,0 +1,454 @@
@@ -443,7 +443,7 @@ index 0000000000..3f8790c85f
 +            if (self && self->reply_ == request &&
 +                self->operation_generation_ == operation)
 +              self->Retire();
-+            request->Finish(Fault("timeout", "Recording callback timed out"));
++            request->Finish(Fault("condition_timeout", "Recording callback timed out"));
 +          },
 +          weak_factory_.GetWeakPtr(), request, operation_generation_));
 +  return request;
@@ -660,7 +660,7 @@ index 0000000000..3f8790c85f
 +  auto request = std::make_shared<PendingReply>(std::move(reply));
 +  request->timer.Start(FROM_HERE, base::Seconds(8), base::BindOnce(
 +      [](std::shared_ptr<PendingReply> request) {
-+        request->Finish(Fault("timeout", "Recording cleanup timed out"));
++        request->Finish(Fault("condition_timeout", "Recording cleanup timed out"));
 +      }, request));
 +  (*endpoint)->Stop(id, generation, base::BindOnce(
 +      [](std::shared_ptr<mojo::AssociatedRemote<chrome::mojom::AuxRecorder>> endpoint,
@@ -751,7 +751,7 @@ index 0000000000..3f8790c85f
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/native_recorder_controller.h b/chrome/browser/ui/aux/native_recorder_controller.h
 new file mode 100644
-index 0000000000..5da34e6880
+index 0000000..5da34e6
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_recorder_controller.h
 @@ -0,0 +1,85 @@
@@ -842,7 +842,7 @@ index 0000000000..5da34e6880
 +#endif
 diff --git a/chrome/browser/ui/aux/native_recorder_script.h b/chrome/browser/ui/aux/native_recorder_script.h
 new file mode 100644
-index 0000000000..8a51356024
+index 0000000..8a51356
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_recorder_script.h
 @@ -0,0 +1,5 @@
@@ -853,7 +853,7 @@ index 0000000000..8a51356024
 +#endif
 diff --git a/chrome/common/aux_person_observer.mojom b/chrome/common/aux_person_observer.mojom
 new file mode 100644
-index 0000000000..34272e706e
+index 0000000..34272e7
 --- /dev/null
 +++ b/chrome/common/aux_person_observer.mojom
 @@ -0,0 +1,9 @@
@@ -868,7 +868,7 @@ index 0000000000..34272e706e
 +};
 diff --git a/chrome/common/aux_recorder.mojom b/chrome/common/aux_recorder.mojom
 new file mode 100644
-index 0000000000..ae00c3e414
+index 0000000..ae00c3e
 --- /dev/null
 +++ b/chrome/common/aux_recorder.mojom
 @@ -0,0 +1,18 @@
@@ -892,7 +892,7 @@ index 0000000000..ae00c3e414
 +};
 diff --git a/chrome/common/native_person_observer_script.h b/chrome/common/native_person_observer_script.h
 new file mode 100644
-index 0000000000..99d942887d
+index 0000000..99d9428
 --- /dev/null
 +++ b/chrome/common/native_person_observer_script.h
 @@ -0,0 +1,202 @@
@@ -1100,7 +1100,7 @@ index 0000000000..99d942887d
 +#endif
 diff --git a/chrome/common/native_recorder_script.h b/chrome/common/native_recorder_script.h
 new file mode 100644
-index 0000000000..1ec92585db
+index 0000000..1ec9258
 --- /dev/null
 +++ b/chrome/common/native_recorder_script.h
 @@ -0,0 +1,120 @@
@@ -1226,7 +1226,7 @@ index 0000000000..1ec92585db
 +#endif
 diff --git a/chrome/renderer/aux_person_observer_agent.cc b/chrome/renderer/aux_person_observer_agent.cc
 new file mode 100644
-index 0000000000..7d72a5eb0a
+index 0000000..7d72a5e
 --- /dev/null
 +++ b/chrome/renderer/aux_person_observer_agent.cc
 @@ -0,0 +1,97 @@
@@ -1329,7 +1329,7 @@ index 0000000000..7d72a5eb0a
 +}  // namespace chrome
 diff --git a/chrome/renderer/aux_person_observer_agent.h b/chrome/renderer/aux_person_observer_agent.h
 new file mode 100644
-index 0000000000..2a00f18511
+index 0000000..2a00f18
 --- /dev/null
 +++ b/chrome/renderer/aux_person_observer_agent.h
 @@ -0,0 +1,37 @@
@@ -1372,7 +1372,7 @@ index 0000000000..2a00f18511
 +#endif
 diff --git a/chrome/renderer/aux_recorder_agent.cc b/chrome/renderer/aux_recorder_agent.cc
 new file mode 100644
-index 0000000000..2828325191
+index 0000000..2828325
 --- /dev/null
 +++ b/chrome/renderer/aux_recorder_agent.cc
 @@ -0,0 +1,179 @@
@@ -1557,7 +1557,7 @@ index 0000000000..2828325191
 +}  // namespace chrome
 diff --git a/chrome/renderer/aux_recorder_agent.h b/chrome/renderer/aux_recorder_agent.h
 new file mode 100644
-index 0000000000..c6fd81ab7a
+index 0000000..c6fd81a
 --- /dev/null
 +++ b/chrome/renderer/aux_recorder_agent.h
 @@ -0,0 +1,56 @@

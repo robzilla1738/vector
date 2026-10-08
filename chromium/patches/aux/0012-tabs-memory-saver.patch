@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/extensions/api/tabs/tabs_api.cc b/chrome/browser/extensions/api/tabs/tabs_api.cc
-index d225b3926e..4b4a0c5f8c 100644
+index d225b39..4b4a0c5 100644
 --- a/chrome/browser/extensions/api/tabs/tabs_api.cc
 +++ b/chrome/browser/extensions/api/tabs/tabs_api.cc
 @@ -3,6 +3,10 @@
@@ -44,8 +44,94 @@ index d225b3926e..4b4a0c5f8c 100644
    return true;
  }
  
+diff --git a/chrome/browser/performance_manager/policies/discard_eligibility_policy.cc b/chrome/browser/performance_manager/policies/discard_eligibility_policy.cc
+index 7d19744..b53f130 100644
+--- a/chrome/browser/performance_manager/policies/discard_eligibility_policy.cc
++++ b/chrome/browser/performance_manager/policies/discard_eligibility_policy.cc
+@@ -6,6 +6,11 @@
+ 
+ #include "base/metrics/histogram_functions.h"
+ #include "base/strings/strcat.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#endif
+ #include "chrome/browser/glic/public/glic_keyed_service.h"
+ #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
+ #include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
+@@ -224,6 +229,18 @@ DiscardEligibilityPolicy::CanDiscardWithCustomRecentVisibilityWindow(
+     return CanDiscardResult::kDisallowed;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  // Exclude live task authority before PageDiscardingHelper records an attempt.
++  // A rejected attempt would otherwise keep a subsequently retired tab awake.
++  auto* contents = page_node->GetWebContents().get();
++  if (!contents ||
++      !aux::EgressController::ForProfile(
++           Profile::FromBrowserContext(contents->GetBrowserContext()))
++           ->CanDiscardPage(contents)) {
++    return CanDiscardResult::kDisallowed;
++  }
++#endif
++
+   // Don't discard tabs for which discarding has already been attempted.
+   if (DiscardAttemptMarker::Get(PageNodeImpl::FromNode(page_node)) &&
+       !base::FeatureList::IsEnabled(kIgnoreDiscardAttemptMarker)) {
+diff --git a/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc b/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc
+index e7810ac..5c002a3 100644
+--- a/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc
++++ b/chrome/browser/resource_coordinator/tab_lifecycle_unit.cc
+@@ -17,6 +17,11 @@
+ #include "base/notreached.h"
+ #include "base/process/process_metrics.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#endif
+ #include "chrome/browser/devtools/devtools_window.h"
+ #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
+ #include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
+@@ -362,6 +367,13 @@ bool TabLifecycleUnitSource::TabLifecycleUnit::Discard(
+   if (IsDiscardBlockedByFeature(reason)) {
+     return false;
+   }
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (!aux::EgressController::ForProfile(
++           Profile::FromBrowserContext(web_contents()->GetBrowserContext()))
++           ->CanDiscardPage(web_contents())) {
++    return false;
++  }
++#endif
+ 
+   const base::TimeTicks discard_start_time = NowTicks();
+ 
+@@ -404,8 +416,18 @@ bool TabLifecycleUnitSource::TabLifecycleUnit::Discard(
+   }
+ 
+   discard_reason_ = reason;
+-
+-  if (base::FeatureList::IsEnabled(features::kWebContentsDiscard)) {
++  bool preserve_contents =
++      base::FeatureList::IsEnabled(features::kWebContentsDiscard);
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  // Retired task tabs use the replacement path so their original native
++  // isolation observer retires authority before the replacement can reload.
++  if (auto* identity = aux::PageIdentity::FromWebContents(web_contents());
++      identity && identity->runtime_owned()) {
++    identity->set_runtime_work_retired(true);
++    preserve_contents = false;
++  }
++#endif
++  if (preserve_contents) {
+     FinishDiscardAndPreserveWebContents(reason, tab_memory_footprint_estimate,
+                                         discard_start_time);
+   } else {
 diff --git a/chrome/browser/sessions/session_restore.cc b/chrome/browser/sessions/session_restore.cc
-index be7345cba4..2935d9ad60 100644
+index be7345c..2935d9a 100644
 --- a/chrome/browser/sessions/session_restore.cc
 +++ b/chrome/browser/sessions/session_restore.cc
 @@ -41,6 +41,9 @@
@@ -120,7 +206,7 @@ index be7345cba4..2935d9ad60 100644
      restored_tabs.push_back(restored_tab);
  
 diff --git a/chrome/browser/sessions/session_restore_delegate.cc b/chrome/browser/sessions/session_restore_delegate.cc
-index cf92997e44..ce288ccacc 100644
+index cf92997..ce288cc 100644
 --- a/chrome/browser/sessions/session_restore_delegate.cc
 +++ b/chrome/browser/sessions/session_restore_delegate.cc
 @@ -87,15 +87,24 @@ void SessionRestoreDelegate::RestoreTabs(
@@ -153,10 +239,10 @@ index cf92997e44..ce288ccacc 100644
    }
 diff --git a/chrome/browser/ui/aux/methods/native_tabs_methods.cc b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
 new file mode 100644
-index 0000000000..7dab0ede0b
+index 0000000..a8a21ed
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
-@@ -0,0 +1,543 @@
+@@ -0,0 +1,618 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -176,6 +262,7 @@ index 0000000000..7dab0ede0b
 +#include <array>
 +#include <cerrno>
 +#include <cmath>
++#include <map>
 +#include <memory>
 +#include <limits>
 +#include <optional>
@@ -204,7 +291,6 @@ index 0000000000..7dab0ede0b
 +#include "chrome/browser/ui/aux/cdp_broker.h"
 +#include "chrome/browser/ui/aux/content_blocking_controller.h"
 +#include "chrome/browser/ui/aux/egress_controller.h"
-+#include "chrome/browser/ui/aux/cosmetic_controller.h"
 +#include "chrome/browser/ui/aux/credential_fill.h"
 +#include "chrome/browser/ui/aux/cookie_import.h"
 +#include "chrome/browser/ui/aux/organization_store.h"
@@ -257,6 +343,33 @@ index 0000000000..7dab0ede0b
 +    const std::string& method, const base::DictValue& params,
 +    uint64_t connection_generation) {
 +  auto* catalog = aux::TabCatalog::GetForProfile(profile_);
++  if (method == "native.spaceBindingsSet") {
++    if (profile_->IsOffTheRecord())
++      return NativeFault("forbidden",
++                         "Private tabs do not bind to saved Spaces");
++    if (shutting_down_ || !connection_generation ||
++        admitted_native_generation_ != connection_generation ||
++        connection_generation <= retired_native_generation_)
++      return NativeFault("ref_stale", "Original native connection was retired");
++    const auto* entries = params.FindList("bindings");
++    if (!entries || params.size() != 1)
++      return NativeFault("invalid_params", "Invalid native Space bindings");
++    std::map<std::string, std::string> bindings;
++    for (const auto& value : *entries) {
++      const auto* entry = value.GetIfDict();
++      const auto* space = entry ? entry->FindString("spaceId") : nullptr;
++      const auto* workspace =
++          entry ? entry->FindString("workspaceId") : nullptr;
++      if (!space || !workspace || entry->size() != 2 || space->empty() ||
++          workspace->empty() || space->size() > 128 ||
++          workspace->size() > 128 ||
++          !bindings.emplace(*space, *workspace).second)
++        return NativeFault("invalid_params",
++                           "Invalid native Space binding identity");
++    }
++    catalog->SetRuntimeSpaceBindings(std::move(bindings));
++    return NativeResult(base::Value(base::DictValue().Set("accepted", true)));
++  }
 +  if (method == "native.listPages") {
 +    base::DictValue snapshot = catalog->Snapshot();
 +    base::ListValue pages;
@@ -309,12 +422,15 @@ index 0000000000..7dab0ede0b
 +    const std::string* profile_id = params.FindString("profileId");
 +    const std::string* run_id = params.FindString("runId");
 +    const std::string* window_id = params.FindString("windowId");
++    const std::string* mode = params.FindString("mode");
++    if (!mode || (*mode != "session" && *mode != "private"))
++      return NativeFault("permission_denied", "Invalid Agent storage mode");
++    const bool session = *mode == "session";
 +    const int revision = params.FindInt("taskRevision").value_or(-1);
 +    const std::string task_id = params.FindString("taskId")
 +                                    ? *params.FindString("taskId") : "";
-+    if (!profile_id || *profile_id !=
-+            profile_->GetPath().BaseName().AsUTF8Unsafe() ||
-+        !run_id || run_id->empty() || !window_id || revision < 0) {
++    if (!profile_id || *profile_id != ProfileId(profile_) || !run_id ||
++        run_id->empty() || !window_id || revision < 0) {
 +      return NativeFault("permission_denied", "Invalid task-tab authority");
 +    }
 +    const auto* original_ancestry = params.FindList("ancestry");
@@ -360,12 +476,13 @@ index 0000000000..7dab0ede0b
 +      }
 +    }
 +    auto [isolation_id, partition] = egress->ReserveIsolation(
-+        *run_id, task_id, revision);
++        *run_id, task_id, revision, session);
 +    if (isolation_id.empty()) {
 +      return NativeFault("permission_denied", "Task isolation is unavailable");
 +    }
-+    auto site = content::SiteInstance::CreateForFixedStoragePartition(
-+        profile_, GURL("https://aux.invalid/"), partition);
++    auto site = session ? content::SiteInstance::Create(profile_)
++        : content::SiteInstance::CreateForFixedStoragePartition(
++              profile_, GURL("https://aux.invalid/"), partition);
 +    if (!site) {
 +      return NativeFault("backend_unavailable", "Task partition could not be created");
 +    }
@@ -381,9 +498,9 @@ index 0000000000..7dab0ede0b
 +    auto original_page = contents->GetWeakPtr();
 +    auto* raw = contents.get();
 +    const std::string page_id = aux::PageIdentity::GetOrCreate(profile_, raw);
-+    // Validate the private partition while the original construction still
++    // Validate the exact selected partition while the original construction still
 +    // owns the unpublished contents. Failure destroys only that construction.
-+    if (!egress->RegisterIsolation(raw, isolation_id, *run_id, task_id, revision, ancestry, connection_generation))
++    if (!egress->RegisterIsolation(raw, isolation_id, *run_id, task_id, revision, ancestry, connection_generation, session))
 +      return NativeFault("permission_denied", "Task tab partition identity failed");
 +    if (!original_host || !original_owner || !original_controller || !original_page)
 +      return NativeFault("ref_stale", "Original task construction was retired");
@@ -399,6 +516,10 @@ index 0000000000..7dab0ede0b
 +        params.FindBool("background").value_or(false) ? ADD_NONE : ADD_ACTIVE);
 +    if (!original_host || !original_owner || !original_controller || !original_page)
 +      return NativeFault("ref_stale", "Original task tab was retired during publication");
++    if (!original_controller->GroupAgentPage(original_page.get(), original_owner.get()))
++      return NativeFault("ref_stale", "Original Agent tab group changed during publication");
++    if (!original_host || !original_owner || !original_controller || !original_page)
++      return NativeFault("ref_stale", "Original Agent group owner was retired");
 +    content::NavigationController::LoadURLParams blank(GURL("about:blank"));
 +    blank.source_site_instance = site;
 +    blank.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
@@ -455,8 +576,9 @@ index 0000000000..7dab0ede0b
 +    scope.Set("runId", *run_id);
 +    if (!task_id.empty()) scope.Set("taskId", task_id);
 +    scope.Set("taskRevision", revision);
-+    scope.Set("inMemory", true);
-+    scope.Set("cookies", "empty");
++    scope.Set("mode", *mode);
++    scope.Set("inMemory", !session);
++    scope.Set("cookies", session ? "profile" : "empty");
 +    base::DictValue result;
 +    result.Set("pageId", page_id);
 +    result.Set("creationId", creation_id);
@@ -492,7 +614,7 @@ index 0000000000..7dab0ede0b
 +    const base::DictValue* command = params.FindDict("command");
 +    if (!command_id || command_id->size() < 8 || command_id->size() > 128 ||
 +        !window_id || !command) {
-+      return NativeFault("invalid_argument", "Invalid tab command envelope");
++      return NativeFault("invalid_params", "Invalid tab command envelope");
 +    }
 +    auto* browsers = ProfileBrowserCollection::GetForProfile(profile_);
 +    if (!browsers) {
@@ -505,7 +627,7 @@ index 0000000000..7dab0ede0b
 +    } else {
 +      int parsed_id = 0;
 +      if (!base::StringToInt(*window_id, &parsed_id) || parsed_id <= 0) {
-+        return NativeFault("invalid_argument", "Invalid window identifier");
++        return NativeFault("invalid_params", "Invalid window identifier");
 +      }
 +      issuer = browsers->FindBrowserWithID(
 +          SessionID::FromSerializedValue(parsed_id));
@@ -554,7 +676,7 @@ index 0000000000..7dab0ede0b
 +      int target_id = 0;
 +      if (!base::StringToInt(*requested_window_id, &target_id) ||
 +          target_id <= 0) {
-+        return NativeFault("invalid_argument", "Invalid destination window");
++        return NativeFault("invalid_params", "Invalid destination window");
 +      }
 +      auto* browsers = ProfileBrowserCollection::GetForProfile(profile_);
 +      target = browsers ? browsers->FindBrowserWithID(
@@ -656,7 +778,7 @@ index 0000000000..7dab0ede0b
 +      const GURL url(url_text ? *url_text : "");
 +      if (!url.is_valid() ||
 +          (!url.SchemeIsHTTPOrHTTPS() && !url.SchemeIs("about"))) {
-+        return NativeFault("invalid_argument", "Invalid recovery URL");
++        return NativeFault("invalid_params", "Invalid recovery URL");
 +      }
 +      content::NavigationController::LoadURLParams load(url);
 +      contents->GetController().LoadURLWithParams(load);
@@ -675,6 +797,10 @@ index 0000000000..7dab0ede0b
 +    const bool active =
 +        owner->GetTabStripModel()->GetActiveWebContents() == contents;
 +    if (method == "native.acquireStage") {
++      const auto original_host = GetWeakPtr();
++      const auto original_page = contents->GetWeakPtr();
++      const auto original_owner = owner->GetWeakPtr();
++      const auto original_generation = admitted_native_generation_;
 +      if (params.FindBool("requiresVisible").value_or(false) && !active)
 +        return NativeFault("conflict", "The page must be active for pointer input");
 +      if (contents->GetSize().IsEmpty()) {
@@ -683,14 +809,49 @@ index 0000000000..7dab0ede0b
 +          return NativeFault("backend_unavailable", "Page stage has no size");
 +        contents->Resize(gfx::Rect(size));
 +      }
-+      if (++staged_pages_[*page_id] == 1 && !active)
++      if (!original_host || !original_page || !original_owner)
++        return NativeFault("ref_stale", "Original stage owner retired");
++      base::ScopedClosureRunner capturer;
++      auto previous = staged_pages_.find(*page_id);
++      if (previous == staged_pages_.end() || !previous->second.capturer) {
++        capturer = contents->IncrementCapturerCount(
++            gfx::Size(), /*stay_hidden=*/true, /*stay_awake=*/false,
++            /*is_activity=*/false);
++      }
++      if (!original_host || !original_page || !original_owner)
++        return NativeFault("ref_stale", "Original stage owner retired");
++      if (admitted_native_generation_ != original_generation ||
++          original_owner->GetTabStripModel()->GetIndexOfWebContents(original_page.get()) ==
++              TabStripModel::kNoTab)
++        return NativeFault("ref_stale", "Original stage owner changed");
++      const bool still_active = original_owner->GetTabStripModel()->GetActiveWebContents() ==
++          original_page.get();
++      if (params.FindBool("requiresVisible").value_or(false) && !still_active)
++        return NativeFault("conflict", "The page must remain active for pointer input");
++      stage_release_timers_.erase(*page_id);
++      auto [it, inserted] = staged_pages_.try_emplace(*page_id);
++      auto& lease = it->second;
++      if (!inserted && (lease.contents.get() != contents || lease.owner.get() != owner)) {
++        if (lease.count > 0)
++          return NativeFault("ref_stale", "Original stage owner changed");
++        lease = StageLease();
++      }
++      lease.contents = contents->GetWeakPtr();
++      lease.owner = owner->GetWeakPtr();
++      if (!lease.capturer) lease.capturer = std::move(capturer);
++      if (++lease.count == 1 && !still_active)
 +        contents->UpdateWebContentsVisibility(content::Visibility::VISIBLE);
 +    } else {
 +      auto it = staged_pages_.find(*page_id);
-+      if (it != staged_pages_.end() && --it->second == 0) {
-+        staged_pages_.erase(it);
-+        if (!active)
-+          contents->UpdateWebContentsVisibility(content::Visibility::HIDDEN);
++      if (it != staged_pages_.end() && it->second.count > 0) {
++        if (it->second.contents.get() != contents || it->second.owner.get() != owner)
++          return NativeFault("ref_stale", "Original stage owner changed");
++        if (--it->second.count == 0) {
++          auto timer = std::make_unique<base::OneShotTimer>();
++          timer->Start(FROM_HERE, base::Seconds(2), base::BindOnce(
++              &AuxRuntimeHost::FinishStageRelease, GetWeakPtr(), *page_id));
++          stage_release_timers_[*page_id] = std::move(timer);
++        }
 +      }
 +    }
 +    base::DictValue result;
@@ -702,10 +863,10 @@ index 0000000000..7dab0ede0b
 +}
 diff --git a/chrome/browser/ui/aux/methods/tabs_methods.cc b/chrome/browser/ui/aux/methods/tabs_methods.cc
 new file mode 100644
-index 0000000000..c25aba48fc
+index 0000000..6d416a8
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/tabs_methods.cc
-@@ -0,0 +1,749 @@
+@@ -0,0 +1,702 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1229,14 +1390,14 @@ index 0000000000..c25aba48fc
 +                for (const auto& value : *list) {
 +                  const auto* pin = value.GetIfDict();
 +                  const auto* id = pin ? pin->FindString("pageId") : nullptr;
-+                  if (id && *id == page_id && pin->FindBool("keepAwake").value_or(false))
++                  if (id && *id == page_id)
 +                    keep_awake = true;
 +                }
 +              }
 +            }
 +            if (!shared || keep_awake) {
 +              result.Set("slept", false);
-+              result.Set("reason", keep_awake ? "This pinned app is set to stay awake." : "Profile organization is unavailable.");
++              result.Set("reason", keep_awake ? "Pinned tabs stay awake." : "Profile organization is unavailable.");
 +            } else {
 +              result = aux::TabCatalog::GetForProfile(ui->browser()->GetProfile())
 +                           ->SleepTab(ui->browser(), page_id, url);
@@ -1317,95 +1478,48 @@ index 0000000000..c25aba48fc
 +      return;
 +    }
 +    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
-+    const auto snapshot = catalog->Snapshot();
-+    const std::string window_id = base::NumberToString(browser_->GetSessionID().id());
-+    std::set<std::string> seen;
-+    base::ListValue pending;
 +    for (const auto& value : assignments) {
 +      const auto* item = value.GetIfDict();
 +      const auto* page_id = item ? item->FindString("pageId") : nullptr;
 +      const auto* space_id = item ? item->FindString("spaceId") : nullptr;
 +      if (!page_id || !space_id || page_id->empty() || space_id->empty() ||
-+          page_id->size() > 128 || space_id->size() > 128 || item->size() != 2) {
-+        std::move(callback).Run(false, "", "invalid_argument", "Invalid tab or Space identifier");
++          page_id->size() > 128 || space_id->size() > 128 ||
++          item->size() != 2) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Invalid tab or Space identifier");
 +        return;
 +      }
-+      if (!seen.insert(*page_id).second) continue;
-+      for (const auto& tab_value : *snapshot.FindList("tabs")) {
-+        const auto& tab = tab_value.GetDict();
-+        if (tab.FindString("pageId") && *tab.FindString("pageId") == *page_id &&
-+            tab.FindString("windowId") && *tab.FindString("windowId") == window_id &&
-+            !tab.FindBool("popup").value_or(false) &&
-+            !tab.FindBool("runtimeOwned").value_or(false) &&
-+            (!migrate || !tab.FindString("spaceId"))) {
-+          auto request = item->Clone();
-+          request.Set("generation", tab.FindInt("generation").value_or(0));
-+          request.Set("bindingVersion", ++space_binding_versions_[*page_id]);
-+          pending.Append(std::move(request));
-+          break;
-+        }
++    }
++    std::set<std::string> seen;
++    int migrated = 0;
++    base::DictValue result;
++    for (const auto& value : assignments) {
++      const auto& assignment = value.GetDict();
++      const auto& page_id = *assignment.FindString("pageId");
++      if (!seen.insert(page_id).second)
++        continue;
++      auto* page = catalog->FindPage(page_id);
++      const auto* identity =
++          page ? aux::PageIdentity::FromWebContents(page) : nullptr;
++      if (migrate && (!identity || !identity->space_id().empty()))
++        continue;
++      std::string error;
++      auto binding = catalog->BindOrganizationSpace(
++          browser_, page_id, *assignment.FindString("spaceId"), &error);
++      if (!binding) {
++        if (migrate)
++          continue;
++        std::move(callback).Run(false, "", "conflict", error);
++        return;
 +      }
++      result = std::move(*binding);
++      ++migrated;
 +    }
-+    if (!migrate && pending.empty()) {
-+      std::move(callback).Run(false, "", "not_found", "That tab is unavailable for Space memory");
-+      return;
++    if (migrate) {
++      result.clear();
++      result.Set("migrated", migrated);
 +    }
-+    AuxRuntimeHost::ForProfile(browser_->GetProfile())->CallApi(
-+        "spaces.list", "{}", base::BindOnce(
-+        [](base::WeakPtr<WebUIBrowserUI> self, base::ListValue pending,
-+           bool migrate, std::string window_id, RequestCallback callback,
-+           AuxRuntimeHost::Response response) {
-+          if (!self) return;
-+          if (!response.ok) {
-+            std::move(callback).Run(false, "", response.error_code, response.error_message);
-+            return;
-+          }
-+          auto spaces = base::JSONReader::Read(response.result_json, base::JSON_PARSE_RFC);
-+          if (!spaces || !spaces->is_list()) {
-+            std::move(callback).Run(false, "", "internal", "Invalid Space catalog");
-+            return;
-+          }
-+          auto* catalog = aux::TabCatalog::GetForProfile(self->browser_->GetProfile());
-+          const auto current = catalog->Snapshot();
-+          int migrated = 0;
-+          base::DictValue binding;
-+          for (const auto& value : pending) {
-+            const auto& request = value.GetDict();
-+            const auto& page_id = *request.FindString("pageId");
-+            const auto& space_id = *request.FindString("spaceId");
-+            if (self->space_binding_versions_[page_id] != request.FindInt("bindingVersion")) continue;
-+            bool valid_tab = false;
-+            for (const auto& tab_value : *current.FindList("tabs")) {
-+              const auto& tab = tab_value.GetDict();
-+              if (tab.FindString("pageId") && *tab.FindString("pageId") == page_id &&
-+                  tab.FindString("windowId") && *tab.FindString("windowId") == window_id &&
-+                  tab.FindInt("generation") == request.FindInt("generation") &&
-+                  !tab.FindBool("popup").value_or(false) &&
-+                  !tab.FindBool("runtimeOwned").value_or(false) &&
-+                  (!migrate || !tab.FindString("spaceId"))) valid_tab = true;
-+            }
-+            if (!valid_tab) continue;
-+            for (const auto& space_value : spaces->GetList()) {
-+              const auto* space = space_value.GetIfDict();
-+              if (!space || !space->FindString("id") || *space->FindString("id") != space_id ||
-+                  space->FindBool("archived").value_or(false)) continue;
-+              const auto* workspace = space->FindString("workspaceId");
-+              if (!workspace || workspace->empty() || workspace->size() > 128) continue;
-+              catalog->BindSpace(page_id, space_id, *workspace);
-+              binding.Set("spaceId", space_id);
-+              binding.Set("workspaceId", *workspace);
-+              ++migrated;
-+              break;
-+            }
-+          }
-+          if (!migrate && migrated != 1) {
-+            std::move(callback).Run(false, "", "conflict", "The tab or Space changed. Select it again.");
-+            return;
-+          }
-+          if (migrate) { binding.clear(); binding.Set("migrated", migrated); }
-+          std::move(callback).Run(true, *base::WriteJson(binding), "", "");
-+        }, weak_factory_.GetWeakPtr(), std::move(pending), migrate,
-+           window_id, std::move(callback)));
++    std::move(callback).Run(true, *base::WriteJson(result), "", "");
 +    return;
 +  }
 +  if (method == "tabsSnapshot" || method == "tabsSince") {
@@ -1457,10 +1571,10 @@ index 0000000000..c25aba48fc
 +#endif
 diff --git a/chrome/browser/ui/aux/page_identity.cc b/chrome/browser/ui/aux/page_identity.cc
 new file mode 100644
-index 0000000000..9f61f8e0f6
+index 0000000..3897f0a
 --- /dev/null
 +++ b/chrome/browser/ui/aux/page_identity.cc
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,185 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1573,21 +1687,10 @@ index 0000000000..9f61f8e0f6
 +    CreateForWebContents(to, previous->id());
 +    PageIdentity* created = FromWebContents(to);
 +    created->runtime_owned_ = previous->runtime_owned_;
++    created->runtime_work_retired_ = previous->runtime_work_retired_;
 +    created->space_id_ = previous->space_id_;
 +    created->workspace_id_ = previous->workspace_id_;
-+    if (created->runtime_owned_) {
-+      created->AcquirePaintLease();
-+    }
 +  }
-+}
-+
-+void PageIdentity::AcquirePaintLease() {
-+  if (paint_lease_) {
-+    return;
-+  }
-+  paint_lease_ = GetWebContents().IncrementCapturerCount(
-+      gfx::Size(), /*stay_hidden=*/true, /*stay_awake=*/false,
-+      /*is_activity=*/false);
 +}
 +
 +void PageIdentity::MarkRuntimeOwned(Profile* profile,
@@ -1595,11 +1698,9 @@ index 0000000000..9f61f8e0f6
 +  GetOrCreate(profile, contents);
 +  PageIdentity* identity = FromWebContents(contents);
 +  if (identity->runtime_owned_) {
-+    identity->AcquirePaintLease();
 +    return;
 +  }
 +  identity->runtime_owned_ = true;
-+  identity->AcquirePaintLease();
 +  if (!profile || profile->IsOffTheRecord()) {
 +    return;
 +  }
@@ -1653,9 +1754,6 @@ index 0000000000..9f61f8e0f6
 +      FromWebContents(contents)->space_id_ = space->second;
 +      FromWebContents(contents)->workspace_id_ = workspace->second;
 +    }
-+    if (FromWebContents(contents)->runtime_owned_) {
-+      FromWebContents(contents)->AcquirePaintLease();
-+    }
 +  }
 +}
 +
@@ -1664,10 +1762,10 @@ index 0000000000..9f61f8e0f6
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/page_identity.h b/chrome/browser/ui/aux/page_identity.h
 new file mode 100644
-index 0000000000..7b8a184ff3
+index 0000000..4991e02
 --- /dev/null
 +++ b/chrome/browser/ui/aux/page_identity.h
-@@ -0,0 +1,75 @@
+@@ -0,0 +1,74 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1678,7 +1776,6 @@ index 0000000000..7b8a184ff3
 +#include <map>
 +#include <string>
 +
-+#include "base/functional/callback_helpers.h"
 +#include "content/public/browser/web_contents_user_data.h"
 +
 +class Profile;
@@ -1717,6 +1814,11 @@ index 0000000000..7b8a184ff3
 +
 +  const std::string& id() const { return id_; }
 +  bool runtime_owned() const { return runtime_owned_; }
++  // Native discard proof only; never grants page access or survives restart.
++  bool runtime_work_retired() const { return runtime_work_retired_; }
++  void set_runtime_work_retired(bool retired) {
++    runtime_work_retired_ = retired;
++  }
 +  const std::string& space_id() const { return space_id_; }
 +  const std::string& workspace_id() const { return workspace_id_; }
 +  void BindSpace(Profile* profile, content::WebContents* contents,
@@ -1726,17 +1828,12 @@ index 0000000000..7b8a184ff3
 +  friend class content::WebContentsUserData<PageIdentity>;
 +  PageIdentity(content::WebContents* contents, std::string id);
 +  void Persist(Profile* profile, content::WebContents* contents);
-+  // Hidden agent tabs keep producing frames. The runner drops the capturer
-+  // count when this identity goes away. stay_hidden leaves page visibility
-+  // hidden; stay_awake is off so this does not hold a sleep wake lock.
-+  void AcquirePaintLease();
-+
 +  std::string id_;
 +  std::string space_id_;
 +  std::string workspace_id_;
 +  bool persisted_ = false;
 +  bool runtime_owned_ = false;
-+  base::ScopedClosureRunner paint_lease_;
++  bool runtime_work_retired_ = false;
 +  WEB_CONTENTS_USER_DATA_KEY_DECL();
 +};
 +
@@ -1745,10 +1842,10 @@ index 0000000000..7b8a184ff3
 +#endif  // CHROME_BROWSER_UI_AUX_PAGE_IDENTITY_H_
 diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
 new file mode 100644
-index 0000000000..62a7085cbb
+index 0000000..5a5b577
 --- /dev/null
 +++ b/chrome/browser/ui/aux/tab_catalog.cc
-@@ -0,0 +1,849 @@
+@@ -0,0 +1,1243 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1772,12 +1869,14 @@ index 0000000000..62a7085cbb
 +#include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 +#include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
 +#include "chrome/browser/performance_manager/public/user_tuning/user_tuning_utils.h"
++#include "chrome/browser/performance_manager/policies/discard_eligibility_policy.h"
 +#include "chrome/browser/profiles/profile.h"
 +#include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
 +#include "chrome/browser/resource_coordinator/lifecycle_unit_state.mojom.h"
 +#include "chrome/browser/profiles/profile_keyed_service_factory.h"
 +#include "chrome/browser/profiles/profile_selections.h"
 +#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
 +#include "chrome/browser/ui/aux/quick_ask_controller.h"
 +#include "chrome/browser/ui/aux/little_window_controller.h"
 +#include "chrome/browser/ui/aux/organization_store.h"
@@ -1800,7 +1899,10 @@ index 0000000000..62a7085cbb
 +#include "components/tabs/public/tab_interface.h"
 +#include "chrome/browser/ui/tabs/split_tab_metrics.h"
 +#include "components/performance_manager/public/performance_manager.h"
++#include "components/performance_manager/public/decorators/page_live_state_decorator.h"
++#include "components/prefs/pref_service.h"
 +#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
 +#include "content/public/browser/render_frame_host.h"
 +#include "content/public/browser/reload_type.h"
 +#include "content/public/browser/web_contents.h"
@@ -1809,6 +1911,27 @@ index 0000000000..62a7085cbb
 +
 +namespace aux {
 +namespace {
++
++void LoadPersonRestoredTab(Profile* profile, content::WebContents* contents) {
++  const auto* identity = PageIdentity::FromWebContents(contents);
++  if (identity && identity->runtime_owned()) return;
++  auto& controller = contents->GetController();
++  const auto* entry = controller.GetLastCommittedEntry();
++  auto* frame = contents->GetPrimaryMainFrame();
++  // Starting a restored navigation clears NeedsReload before it commits. If
++  // that first load was interrupted, restore the cached entry without inventing
++  // a new URL or replacing a loaded document.
++  if (!controller.NeedsReload() && !contents->IsLoading() && frame &&
++      frame->GetLastCommittedURL().is_empty() && entry && entry->IsRestored() &&
++      !entry->IsInitialEntry() && entry->GetURL().SchemeIsHTTPOrHTTPS()) {
++    EgressRequestContext context;
++    context.document = frame->GetWeakDocumentPtr();
++    context.page_id = PageIdentity::GetOrCreate(profile, contents);
++    if (!EgressController::ForProfile(profile)->IsProtected(context))
++      controller.SetNeedsReload();
++  }
++  controller.LoadIfNecessary();
++}
 +
 +class TabCatalogFactory final : public ProfileKeyedServiceFactory {
 + public:
@@ -1841,6 +1964,20 @@ index 0000000000..62a7085cbb
 +    return std::make_unique<TabCatalog>(Profile::FromBrowserContext(context));
 +  }
 +};
++
++bool HasActiveSpace(const base::DictValue& shared,
++                    const std::string& space_id) {
++  const auto* spaces = shared.FindList("spaces");
++  if (!spaces)
++    return false;
++  for (const auto& value : *spaces) {
++    const auto& space = value.GetDict();
++    const auto* id = space.FindString("id");
++    if (id && *id == space_id && !space.FindBool("archived").value_or(false))
++      return true;
++  }
++  return false;
++}
 +
 +constexpr char kAnchorKey[] = "aux-window-anchor";
 +
@@ -1877,6 +2014,22 @@ index 0000000000..62a7085cbb
 +  for (const base::Value& value : *initial.FindList("tabs")) {
 +    published_pages_.insert(*value.GetDict().FindString("pageId"));
 +  }
++  if (!profile_->IsOffTheRecord() && !profile_->IsGuestSession()) {
++    preference_registrar_.Init(profile_->GetPrefs());
++    preference_registrar_.Add(
++        kMemorySaverMinutesPref,
++        base::BindRepeating(&TabCatalog::ScheduleMemorySaver,
++                            weak_factory_.GetWeakPtr()));
++    preference_registrar_.Add(
++        kOrganizationPref,
++        base::BindRepeating(&TabCatalog::ReconcileSpaceBindings,
++                            weak_factory_.GetWeakPtr()));
++    authority_subscription_ =
++        EgressController::ForProfile(profile_)->ObserveAuthority(
++            base::BindRepeating(&TabCatalog::ScheduleMemorySaver,
++                                weak_factory_.GetWeakPtr()));
++    ScheduleMemorySaver();
++  }
 +}
 +
 +TabCatalog::~TabCatalog() {
@@ -1884,6 +2037,10 @@ index 0000000000..62a7085cbb
 +}
 +
 +void TabCatalog::Shutdown() {
++  weak_factory_.InvalidateWeakPtrs();
++  memory_saver_timer_.Stop();
++  preference_registrar_.RemoveAll();
++  authority_subscription_ = {};
 +  battery_observation_.Reset();
 +  browser_observation_.Reset();
 +  for (TabStripModel* model : observed_) {
@@ -1902,6 +2059,8 @@ index 0000000000..62a7085cbb
 +  TabStripModel* model = browser->GetTabStripModel();
 +  if (model && observed_.insert(model).second) {
 +    model->AddObserver(this);
++    if (auto* active = model->GetActiveWebContents())
++      LoadPersonRestoredTab(profile_, active);
 +  }
 +}
 +
@@ -1920,6 +2079,7 @@ index 0000000000..62a7085cbb
 +  const int previous_version = version_;
 +  ++version_;
 +  base::DictValue snapshot = Snapshot();
++  ScheduleMemorySaver();
 +  base::ListValue ops;
 +  std::set<std::string> current_pages;
 +  for (const base::Value& value : *snapshot.FindList("tabs")) {
@@ -1976,8 +2136,6 @@ index 0000000000..62a7085cbb
 +      return;
 +    }
 +    PageIdentity::MarkRuntimeOwned(profile_, contents);
-+    if (auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents))
-+      lifecycle->SetAutoDiscardable(false);
 +    Changed();
 +  }
 +}
@@ -2101,18 +2259,22 @@ index 0000000000..62a7085cbb
 +  const auto* identity = PageIdentity::FromWebContents(contents);
 +  if (!identity->space_id().empty()) {
 +    tab.Set("spaceId", identity->space_id());
-+    tab.Set("workspaceId", identity->workspace_id());
++    if (!identity->workspace_id().empty())
++      tab.Set("workspaceId", identity->workspace_id());
 +  }
-+  if (!contents->GetPrimaryMainFrame()->IsRenderFrameLive() &&
-+      contents->GetController().GetEntryCount() > 0) {
++  const auto* lifecycle =
++      resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents);
++  if (lifecycle &&
++      lifecycle->GetTabState() == mojom::LifecycleUnitState::DISCARDED) {
++    tab.Set("lifecycle", "discarded");
++  } else if (lifecycle &&
++             lifecycle->GetTabState() == mojom::LifecycleUnitState::FROZEN) {
++    tab.Set("lifecycle", "frozen");
++  } else if (!contents->GetPrimaryMainFrame()->IsRenderFrameLive() &&
++             contents->GetController().GetEntryCount() > 0) {
 +    tab.Set("lifecycle", "placeholder");
-+  } else if (auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents)) {
-+    if (identity->runtime_owned()) lifecycle->SetAutoDiscardable(false);
-+    switch (lifecycle->GetTabState()) {
-+      case mojom::LifecycleUnitState::FROZEN: tab.Set("lifecycle", "frozen"); break;
-+      case mojom::LifecycleUnitState::DISCARDED: tab.Set("lifecycle", "discarded"); break;
-+      default: tab.Set("lifecycle", "live"); break;
-+    }
++  } else {
++    tab.Set("lifecycle", "live");
 +  }
 +  tab.Set("generation", generations_[id]);
 +  tab.Set("createdAt", static_cast<double>(created_at_.at(id)));
@@ -2132,6 +2294,112 @@ index 0000000000..62a7085cbb
 +    PublishTabPlacement(profile_, contents, space_id, workspace_id);
 +    Changed();
 +  }
++}
++
++std::optional<base::DictValue> TabCatalog::BindOrganizationSpace(
++    BrowserWindowInterface* issuer,
++    const std::string& page_id,
++    const std::string& space_id,
++    std::string* error) {
++  BrowserWindowInterface* owner = nullptr;
++  auto* contents = FindPage(page_id, &owner);
++  const auto* identity =
++      contents ? PageIdentity::FromWebContents(contents) : nullptr;
++  if (!issuer || issuer->GetProfile() != profile_ ||
++      profile_->IsOffTheRecord() || owner != issuer || !identity ||
++      identity->runtime_owned()) {
++    *error = "That tab is unavailable in this browser window";
++    return std::nullopt;
++  }
++  const std::string window_id = WindowId(issuer);
++  auto snapshot = OrganizationStore::Snapshot(profile_, window_id, error);
++  auto* layout = snapshot ? snapshot->FindDict("layout") : nullptr;
++  auto* shared = layout ? layout->FindDict("shared") : nullptr;
++  if (!shared || !HasActiveSpace(*shared, space_id)) {
++    *error = "That Space is no longer available";
++    return std::nullopt;
++  }
++  auto* placements = shared->FindDict("tabSpace");
++  placements->Set(page_id, space_id);
++  if (!OrganizationStore::Commit(
++          profile_, window_id, *snapshot->FindInt("revision"), *layout, error))
++    return std::nullopt;
++  ReconcileSpaceBindings();
++  contents = FindPage(page_id, &owner);
++  identity = contents ? PageIdentity::FromWebContents(contents) : nullptr;
++  if (owner != issuer || !identity || identity->runtime_owned() ||
++      identity->space_id() != space_id) {
++    *error = "The tab or Space changed. Select it again.";
++    return std::nullopt;
++  }
++  base::DictValue binding;
++  binding.Set("spaceId", space_id);
++  if (!identity->workspace_id().empty())
++    binding.Set("workspaceId", identity->workspace_id());
++  return binding;
++}
++
++void TabCatalog::SetRuntimeSpaceBindings(
++    std::map<std::string, std::string> bindings) {
++  runtime_space_bindings_ = std::move(bindings);
++  received_runtime_space_bindings_ = true;
++  ReconcileSpaceBindings();
++}
++
++void TabCatalog::ReconcileSpaceBindings() {
++  if (!profile_ || profile_->IsOffTheRecord() || !browsers_)
++    return;
++  std::string error;
++  const auto organization =
++      OrganizationStore::ProfileSnapshot(profile_, &error);
++  const auto* shared =
++      organization ? organization->FindDict("shared") : nullptr;
++  if (!shared) {
++    ScheduleMemorySaver();
++    return;
++  }
++  const auto* placements = shared->FindDict("tabSpace");
++  bool changed = false;
++  browsers_->ForEach([&](BrowserWindowInterface* browser) {
++    if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL)
++      return true;
++    auto* model = browser->GetTabStripModel();
++    for (int index = 0; index < model->count(); ++index) {
++      auto* contents = model->GetWebContentsAt(index);
++      auto* identity = PageIdentity::FromWebContents(contents);
++      if (!identity || identity->runtime_owned())
++        continue;
++      const auto* selected = placements->FindString(identity->id());
++      const std::string space_id = selected ? *selected : identity->space_id();
++      if (!HasActiveSpace(*shared, space_id)) {
++        if (!identity->workspace_id().empty()) {
++          identity->BindSpace(profile_, contents, identity->space_id(), "");
++          changed = true;
++        }
++        continue;
++      }
++      std::string workspace_id;
++      const auto known = runtime_space_bindings_.find(space_id);
++      if (known != runtime_space_bindings_.end()) {
++        workspace_id = known->second;
++      } else if (!received_runtime_space_bindings_ &&
++                 identity->space_id() == space_id) {
++        // Session-restored native provenance survives runtime unavailability.
++        workspace_id = identity->workspace_id();
++      }
++      if (identity->space_id() == space_id &&
++          identity->workspace_id() == workspace_id)
++        continue;
++      identity->BindSpace(profile_, contents, space_id, workspace_id);
++      PublishTabPlacement(profile_, contents, space_id, workspace_id);
++      changed = true;
++    }
++    return true;
++  });
++  if (changed)
++    Changed();
++  else
++    ScheduleMemorySaver();
 +}
 +
 +base::DictValue TabCatalog::Snapshot() {
@@ -2233,6 +2501,172 @@ index 0000000000..62a7085cbb
 +  return ack;
 +}
 +
++bool TabCatalog::IsMemorySaverMinutes(int minutes) {
++  return minutes == 0 || minutes == 1 || minutes == 15 || minutes == 30 ||
++         minutes == 60;
++}
++
++base::DictValue TabCatalog::MemorySaverGet() const {
++  const auto* prefs = profile_->GetPrefs();
++  const int stored = prefs->GetInteger(kMemorySaverMinutesPref);
++  base::DictValue result;
++  result.Set("minutes", IsMemorySaverMinutes(stored) ? stored : 30);
++  result.Set("managed",
++             prefs->FindPreference(kMemorySaverMinutesPref)->IsManaged());
++  return result;
++}
++
++bool TabCatalog::MemorySaverSet(int minutes) {
++  if (!profile_ || profile_->IsOffTheRecord() || profile_->IsGuestSession() ||
++      !IsMemorySaverMinutes(minutes) ||
++      profile_->GetPrefs()
++          ->FindPreference(kMemorySaverMinutesPref)
++          ->IsManaged()) {
++    return false;
++  }
++  profile_->GetPrefs()->SetInteger(kMemorySaverMinutesPref, minutes);
++  return true;
++}
++
++std::optional<base::TimeTicks> TabCatalog::MemorySaverDeadline(
++    TabStripModel* model,
++    int index,
++    base::TimeTicks now) {
++  auto* contents = model->GetWebContentsAt(index);
++  const auto* identity = PageIdentity::FromWebContents(contents);
++  if (!identity) {
++    return std::nullopt;
++  }
++  const auto& page_id = identity->id();
++  auto seen = memory_saver_seen_at_.try_emplace(page_id, now).first;
++  if (contents->GetVisibility() != content::Visibility::HIDDEN ||
++      model->GetActiveWebContents() == contents) {
++    seen->second = now;
++    memory_saver_retry_at_.erase(page_id);
++    return std::nullopt;
++  }
++  if (model->IsTabPinned(index) || model->GetSplitForTab(index) ||
++      contents->IsLoading() || contents->IsCrashed() ||
++      !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
++    return std::nullopt;
++  }
++  auto* lifecycle =
++      resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents);
++  if (!lifecycle ||
++      lifecycle->GetTabState() != mojom::LifecycleUnitState::ACTIVE) {
++    return std::nullopt;
++  }
++  auto page =
++      performance_manager::PerformanceManager::GetPrimaryPageNodeForWebContents(
++          contents);
++  if (!page || !page->GetPrimaryMainFrameNode()) {
++    return std::nullopt;
++  }
++  const int minutes = MemorySaverGet().FindInt("minutes").value();
++  auto deadline = std::max(seen->second, page->GetLastVisibilityChangeTime()) +
++                  base::Minutes(minutes);
++  if (auto retry = memory_saver_retry_at_.find(page_id);
++      retry != memory_saver_retry_at_.end()) {
++    deadline = std::max(deadline, retry->second);
++  }
++  return deadline;
++}
++
++void TabCatalog::ScheduleMemorySaver() {
++  if (!profile_ || profile_->IsOffTheRecord() || profile_->IsGuestSession() ||
++      !browsers_ || !performance_manager::PerformanceManager::IsAvailable() ||
++      MemorySaverGet().FindInt("minutes") == 0) {
++    memory_saver_timer_.Stop();
++    return;
++  }
++  const auto now = base::TimeTicks::Now();
++  std::optional<base::TimeTicks> next;
++  std::set<std::string> present;
++  browsers_->ForEach([&](BrowserWindowInterface* browser) {
++    if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++        IsQuickAskWindow(browser) || IsLittleWindow(browser)) {
++      return true;
++    }
++    auto* model = browser->GetTabStripModel();
++    if (!model) {
++      return true;
++    }
++    for (int index = 0; index < model->count(); ++index) {
++      if (const auto* identity =
++              PageIdentity::FromWebContents(model->GetWebContentsAt(index))) {
++        present.insert(identity->id());
++      }
++      auto deadline = MemorySaverDeadline(model, index, now);
++      if (deadline && (!next || *deadline < *next)) {
++        next = deadline;
++      }
++    }
++    return true;
++  });
++  std::erase_if(memory_saver_seen_at_, [&](const auto& entry) {
++    return !present.contains(entry.first);
++  });
++  std::erase_if(memory_saver_retry_at_, [&](const auto& entry) {
++    return !present.contains(entry.first);
++  });
++  if (!next) {
++    memory_saver_timer_.Stop();
++    return;
++  }
++  const auto deadline = std::max(*next, now + base::Milliseconds(1));
++  if (memory_saver_timer_.IsRunning() &&
++      memory_saver_timer_.desired_run_time() == deadline) {
++    return;
++  }
++  memory_saver_timer_.Start(
++      FROM_HERE, deadline - now,
++      base::BindOnce(&TabCatalog::RunMemorySaver, weak_factory_.GetWeakPtr()));
++}
++
++void TabCatalog::RunMemorySaver() {
++  if (!profile_ || !browsers_ ||
++      !performance_manager::PerformanceManager::IsAvailable() ||
++      MemorySaverGet().FindInt("minutes") == 0) {
++    return;
++  }
++  const auto now = base::TimeTicks::Now();
++  BrowserWindowInterface* owner = nullptr;
++  std::string page_id;
++  std::string url;
++  browsers_->ForEach([&](BrowserWindowInterface* browser) {
++    if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++        IsQuickAskWindow(browser) || IsLittleWindow(browser)) {
++      return true;
++    }
++    auto* model = browser->GetTabStripModel();
++    if (!model) {
++      return true;
++    }
++    for (int index = 0; index < model->count(); ++index) {
++      auto deadline = MemorySaverDeadline(model, index, now);
++      if (!deadline || *deadline > now) {
++        continue;
++      }
++      auto* contents = model->GetWebContentsAt(index);
++      owner = browser;
++      page_id = PageIdentity::FromWebContents(contents)->id();
++      url = contents->GetLastCommittedURL().spec();
++      return false;
++    }
++    return true;
++  });
++  if (owner) {
++    // One discard per UI task; protected/unknown pages get a bounded retry.
++    memory_saver_retry_at_[page_id] = now + base::Minutes(1);
++    auto weak = weak_factory_.GetWeakPtr();
++    SleepTab(owner, page_id, url);
++    if (!weak) {
++      return;
++    }
++  }
++  ScheduleMemorySaver();
++}
++
 +base::DictValue TabCatalog::SleepTab(BrowserWindowInterface* issuer,
 +                                      const std::string& page_id,
 +                                      const std::string& expected_url) {
@@ -2252,12 +2686,16 @@ index 0000000000..62a7085cbb
 +    return refused("The tab changed or moved. Review it again.");
 +  TabStripModel* model = issuer->GetTabStripModel();
 +  const int index = model->GetIndexOfWebContents(contents);
-+  if (index < 0 || model->GetActiveWebContents() == contents ||
-+      contents->IsLoading() || contents->IsCrashed())
++  if (index < 0 || contents->GetVisibility() != content::Visibility::HIDDEN ||
++      model->GetActiveWebContents() == contents || contents->IsLoading() ||
++      contents->IsCrashed()) {
 +    return refused("Only a loaded background tab can sleep.");
++  }
 +  const PageIdentity* identity = PageIdentity::FromWebContents(contents);
 +  if (!identity) return refused("This tab has no stable identity.");
-+  if (identity->runtime_owned()) return refused("Agent-owned tabs stay awake.");
++  if (!EgressController::ForProfile(profile_)->CanDiscardPage(contents)) {
++    return refused("This tab still has active or resumable work.");
++  }
 +  if (contents->IsCurrentlyAudible()) return refused("Playing audio keeps this tab awake.");
 +  auto capture = MediaCaptureDevicesDispatcher::GetInstance()->GetMediaStreamCaptureIndicator();
 +  if (capture->IsCapturingUserMedia(contents) || capture->IsBeingMirrored(contents) ||
@@ -2267,18 +2705,68 @@ index 0000000000..62a7085cbb
 +  if (contents->NeedToFireBeforeUnloadOrUnloadEvents())
 +    return refused("This tab has unload handlers and stays awake.");
 +  if (model->IsTabPinned(index)) return refused("Pinned tabs stay awake.");
-+  uint64_t estimate_kib = 0;
-+  if (performance_manager::PerformanceManager::IsAvailable()) {
-+    auto page = performance_manager::PerformanceManager::GetPrimaryPageNodeForWebContents(contents);
-+    if (page)
-+      estimate_kib = performance_manager::user_tuning::GetDiscardedMemoryEstimateForPage(page.get()).InKiB();
++  if (model->GetSplitForTab(index)) {
++    return refused("Split tabs stay awake.");
 +  }
++  std::string organization_error;
++  const auto organization =
++      OrganizationStore::ProfileSnapshot(profile_, &organization_error);
++  if (!organization) {
++    return refused("Tab organization is unavailable.");
++  }
++  if (const auto* shared = organization->FindDict("shared")) {
++    for (const auto pins : *shared->FindDict("pins")) {
++      for (const auto& pin : pins.second.GetList()) {
++        if (const auto* bound = pin.GetDict().FindString("pageId");
++            bound && *bound == page_id) {
++          return refused("Pinned tabs stay awake.");
++        }
++      }
++    }
++    for (const auto& split : *shared->FindList("splitGroups")) {
++      if (std::ranges::any_of(*split.GetDict().FindList("panes"),
++                              [&](const base::Value& pane) {
++                                return pane.GetString() == page_id;
++                              })) {
++        return refused("Split tabs stay awake.");
++      }
++    }
++  }
++  if (!performance_manager::PerformanceManager::IsAvailable()) {
++    return refused("Chromium cannot verify this tab's discard safety.");
++  }
++  auto page =
++      performance_manager::PerformanceManager::GetPrimaryPageNodeForWebContents(
++          contents);
++  auto* policy =
++      performance_manager::policies::DiscardEligibilityPolicy::GetFromGraph(
++          performance_manager::PerformanceManager::GetGraph());
++  bool frames_live = true;
++  contents->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
++    frames_live = frames_live && frame->IsRenderFrameLive();
++  });
++  if (!frames_live || !page || !policy ||
++      !performance_manager::PageLiveStateDecorator::Data::FromPageNode(
++          page.get()) ||
++      policy->CanDiscard(page.get(),
++                         mojom::LifecycleUnitDiscardReason::PROACTIVE,
++                         /*ignore_recent_visibility=*/true) !=
++          performance_manager::policies::CanDiscardResult::kEligible) {
++    return refused("This tab has protected or unverified work.");
++  }
++  const uint64_t estimate_kib =
++      performance_manager::user_tuning::GetDiscardedMemoryEstimateForPage(
++          page.get())
++          .InKiB();
 +  auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents);
++  auto weak = weak_factory_.GetWeakPtr();
 +  if (!lifecycle || !lifecycle->IsAutoDiscardable() ||
 +      lifecycle->GetTabState() != mojom::LifecycleUnitState::ACTIVE ||
 +      !lifecycle->DiscardTab(mojom::LifecycleUnitDiscardReason::PROACTIVE, estimate_kib))
 +    return refused("Chromium kept this tab active.");
-+  Changed();
++  if (weak) {
++    Changed();
++  }
 +  base::DictValue result;
 +  result.Set("slept", true);
 +  if (estimate_kib > 0)
@@ -2535,6 +3023,9 @@ index 0000000000..62a7085cbb
 +    const int index = model->GetIndexOfWebContents(contents);
 +    if (*kind == "activate") {
 +      model->ActivateTabAt(index);
++      // The Aux shell can keep an already-selected restored tab hidden behind
++      // chat, so activation alone need not trigger Chromium's normal load.
++      LoadPersonRestoredTab(profile_, contents);
 +    } else if (*kind == "unsplit") {
 +      const auto* identity = PageIdentity::FromWebContents(contents);
 +      if (!identity || identity->runtime_owned()) return Reject(command_id, "forbidden", "A runtime tab cannot be split");
@@ -2600,10 +3091,10 @@ index 0000000000..62a7085cbb
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/tab_catalog.h b/chrome/browser/ui/aux/tab_catalog.h
 new file mode 100644
-index 0000000000..a7d3d7d61a
+index 0000000..e2976df
 --- /dev/null
 +++ b/chrome/browser/ui/aux/tab_catalog.h
-@@ -0,0 +1,114 @@
+@@ -0,0 +1,139 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -2620,12 +3111,16 @@ index 0000000000..a7d3d7d61a
 +
 +#include "base/callback_list.h"
 +#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
 +#include "base/scoped_observation.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
 +#include "base/values.h"
 +#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
 +#include "chrome/browser/performance_manager/public/user_tuning/battery_saver_mode_manager.h"
 +#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 +#include "components/keyed_service/core/keyed_service.h"
++#include "components/prefs/pref_change_registrar.h"
 +
 +class BrowserWindowInterface;
 +class Profile;
@@ -2653,6 +3148,9 @@ index 0000000000..a7d3d7d61a
 +  TabCatalog& operator=(const TabCatalog&) = delete;
 +
 +  base::DictValue Snapshot();
++  base::DictValue MemorySaverGet() const;
++  bool MemorySaverSet(int minutes);
++  static bool IsMemorySaverMinutes(int minutes);
 +  base::DictValue SleepTab(BrowserWindowInterface* issuer,
 +                           const std::string& page_id,
 +                           const std::string& expected_url);
@@ -2664,6 +3162,10 @@ index 0000000000..a7d3d7d61a
 +                                 BrowserWindowInterface** owner = nullptr);
 +  void BindSpace(const std::string& page_id, const std::string& space_id,
 +                 const std::string& workspace_id);
++  std::optional<base::DictValue> BindOrganizationSpace(
++      BrowserWindowInterface* issuer, const std::string& page_id,
++      const std::string& space_id, std::string* error);
++  void SetRuntimeSpaceBindings(std::map<std::string, std::string> bindings);
 +  void MarkRuntimeOwned(const std::string& page_id);
 +  void RefreshPage();
 +  base::CallbackListSubscription ObserveChanges(
@@ -2687,7 +3189,13 @@ index 0000000000..a7d3d7d61a
 +  void ObserveBrowser(BrowserWindowInterface* browser);
 +  void ForgetBrowser(BrowserWindowInterface* browser);
 +  void Changed();
++  void ReconcileSpaceBindings();
 +  void FinishCommand();
++  void ScheduleMemorySaver();
++  void RunMemorySaver();
++  std::optional<base::TimeTicks> MemorySaverDeadline(TabStripModel* model,
++                                                     int index,
++                                                     base::TimeTicks now);
 +  std::string WindowId(const BrowserWindowInterface* browser) const;
 +  base::DictValue TabRecord(BrowserWindowInterface* browser,
 +                              content::WebContents* contents);
@@ -2706,20 +3214,28 @@ index 0000000000..a7d3d7d61a
 +  std::map<std::string, int64_t> created_at_;
 +  std::map<std::string, int64_t> last_active_at_;
 +  std::map<std::string, int> generations_;
++  std::map<std::string, std::string> runtime_space_bindings_;
++  bool received_runtime_space_bindings_ = false;
 +  std::map<std::string, base::DictValue> command_acks_;
 +  std::deque<std::string> ack_order_;
 +  std::set<std::string> published_pages_;
 +  base::RepeatingCallbackList<void(const std::string&)> observers_;
++  PrefChangeRegistrar preference_registrar_;
++  base::CallbackListSubscription authority_subscription_;
++  base::OneShotTimer memory_saver_timer_;
++  std::map<std::string, base::TimeTicks> memory_saver_seen_at_;
++  std::map<std::string, base::TimeTicks> memory_saver_retry_at_;
 +  int version_ = 0;
 +  bool executing_command_ = false;
 +  bool pending_change_ = false;
++  base::WeakPtrFactory<TabCatalog> weak_factory_{this};
 +};
 +
 +}  // namespace aux
 +
 +#endif  // CHROME_BROWSER_UI_AUX_TAB_CATALOG_H_
 diff --git a/chrome/browser/ui/tabs/tab_strip_model.cc b/chrome/browser/ui/tabs/tab_strip_model.cc
-index b3ed5f8ec5..06b546af3e 100644
+index b3ed5f8..d869656 100644
 --- a/chrome/browser/ui/tabs/tab_strip_model.cc
 +++ b/chrome/browser/ui/tabs/tab_strip_model.cc
 @@ -3,6 +3,10 @@
@@ -2931,7 +3447,7 @@ index b3ed5f8ec5..06b546af3e 100644
        if (ShouldRunUnloadListenerBeforeClosing(contents)) {
          continue;
        }
-@@ -4050,7 +4148,9 @@ bool TabStripModel::CloseWebContentses(
+@@ -4050,7 +4147,9 @@ bool TabStripModel::CloseWebContentses(
                        close_types & TabCloseTypes::CLOSE_EXPAND_SIDE_PANEL
                            ? TabRemovedReason::kDeletedAndExpandSidePanel
                            : TabRemovedReason::kDeleted,
@@ -2942,7 +3458,7 @@ index b3ed5f8ec5..06b546af3e 100644
      detached_tab.push_back(std::move(dt));
    }
  
-@@ -4802,13 +4902,18 @@ void TabStripModel::InsertTabAtIndexImpl(
+@@ -4802,13 +4901,18 @@ void TabStripModel::InsertTabAtIndexImpl(
  std::unique_ptr<tabs::TabModel> TabStripModel::RemoveTabFromIndexImpl(
      int index,
      tabs::TabInterface::DetachReason tab_detach_reason,
@@ -2962,7 +3478,7 @@ index b3ed5f8ec5..06b546af3e 100644
    if (removed_tab_is_split) {
      next_selected_index = GetIndexOfTab(
          GetSplitData(tab_to_remove->GetSplit().value())->ListTabs()[0]);
-@@ -4816,6 +4921,24 @@ std::unique_ptr<tabs::TabModel> TabStripModel::RemoveTabFromIndexImpl(
+@@ -4816,6 +4920,24 @@ std::unique_ptr<tabs::TabModel> TabStripModel::RemoveTabFromIndexImpl(
                      SplitTabChange::SplitTabRemoveReason::kSplitTabRemoved);
    }
  
@@ -2988,7 +3504,7 @@ index b3ed5f8ec5..06b546af3e 100644
      tab_to_remove->DestroyTabFeatures();
    }
 diff --git a/chrome/browser/ui/tabs/tab_strip_model.h b/chrome/browser/ui/tabs/tab_strip_model.h
-index b51d7b38fe..42edeea6e7 100644
+index b51d7b3..42edeea 100644
 --- a/chrome/browser/ui/tabs/tab_strip_model.h
 +++ b/chrome/browser/ui/tabs/tab_strip_model.h
 @@ -25,6 +25,8 @@
@@ -3047,7 +3563,7 @@ index b51d7b38fe..42edeea6e7 100644
    // Updates the `contents_data_` and sends out observer notifications for
    // updating the index, pinned state or group property.
 diff --git a/components/performance_manager/performance_manager_tab_helper.cc b/components/performance_manager/performance_manager_tab_helper.cc
-index 56761016c0..c25a46cfb5 100644
+index 5676101..c25a46c 100644
 --- a/components/performance_manager/performance_manager_tab_helper.cc
 +++ b/components/performance_manager/performance_manager_tab_helper.cc
 @@ -436,7 +436,14 @@ void PerformanceManagerTabHelper::OnFrameVisibilityChanged(

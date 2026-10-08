@@ -1,5 +1,5 @@
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java b/chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java
-index 89348f2218..25f2e3f656 100644
+index 89348f2..25f2e3f 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java
 @@ -24,6 +24,13 @@ import java.lang.annotation.RetentionPolicy;
@@ -32,7 +32,7 @@ index 89348f2218..25f2e3f656 100644
  }
  // LINT.ThenChange(//chrome/common/chrome_isolated_world_ids.h)
 diff --git a/chrome/browser/app_controller_mac.mm b/chrome/browser/app_controller_mac.mm
-index 608f3503bb..e9d7461e8d 100644
+index 608f350..e9d7461 100644
 --- a/chrome/browser/app_controller_mac.mm
 +++ b/chrome/browser/app_controller_mac.mm
 @@ -43,7 +43,12 @@
@@ -274,81 +274,8 @@ index 608f3503bb..e9d7461e8d 100644
    int startupIndex = TabStripModel::kNoTab;
    content::WebContents* startupContent = nullptr;
    if (browser && browser->GetTabStripModel()->count() == 1) {
-diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
-index 681ad0d1e1..30743ae5c6 100644
---- a/chrome/browser/browser_process_impl.cc
-+++ b/chrome/browser/browser_process_impl.cc
-@@ -1369,7 +1369,9 @@ void BrowserProcessImpl::RegisterPrefs(PrefRegistrySimple* registry) {
- 
-   registry->RegisterBooleanPref(metrics::prefs::kMetricsReportingEnabled,
-                                 GoogleUpdateSettings::GetCollectStatsConsent());
--  registry->RegisterBooleanPref(prefs::kDevToolsRemoteDebuggingAllowed, true);
-+  // Aux's in-process Profile broker does not require public remote debugging.
-+  registry->RegisterBooleanPref(prefs::kDevToolsRemoteDebuggingAllowed,
-+                                !BUILDFLAG(ENABLE_AUX_SHELL));
-   registry->RegisterBooleanPref(prefs::kDevToolsRemoteDebuggingEnabled, false);
- 
- #if BUILDFLAG(IS_LINUX) && BUILDFLAG(USE_DBUS)
-diff --git a/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc b/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
-index 6da26cc50c..8af642f6dd 100644
---- a/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
-+++ b/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
-@@ -6,6 +6,10 @@
- 
- #include "base/feature_list.h"
- #include "base/functional/bind.h"
-+#include "chrome/browser/buildflags.h"
-+#if BUILDFLAG(ENABLE_AUX_SHELL)
-+#include "chrome/browser/ui/webui_browser/shell_host.mojom.h"
-+#endif
- #include "chrome/browser/actor/ui/actor_overlay_ui.h"
- #include "chrome/browser/chrome_browser_interface_binders_webui_parts.h"
- #include "chrome/browser/contextual_cueing/internals/contextual_cueing_internals.mojom.h"
-@@ -146,12 +150,12 @@
- #include "chrome/browser/ui/webui/app_settings/web_app_settings_ui.h"
- // The intro mojom targets exist on ChromeOS but these headers are only
- // compiled on Win/Mac/Linux; gn check is static, so suppress it on ChromeOS.
--#include "chrome/browser/ui/webui/intro/finish_or_continue.mojom.h" // nogncheck
-+#include "chrome/browser/ui/webui/intro/finish_or_continue.mojom.h"  // nogncheck
- #include "chrome/browser/ui/webui/intro/intro.mojom.h"  // nogncheck
- #include "chrome/browser/ui/webui/intro/intro_ui.h"
- #include "chrome/browser/ui/webui/intro/sign_in_celebration.mojom.h"  // nogncheck
- #include "chrome/browser/ui/webui/intro/sign_in_promo.mojom.h"  // nogncheck
--#include "chrome/browser/ui/webui/intro/welcome.mojom.h"  // nogncheck
-+#include "chrome/browser/ui/webui/intro/welcome.mojom.h"        // nogncheck
- #include "chrome/browser/ui/webui/on_device_translation_internals/on_device_translation_internals_ui.h"
- #include "chrome/browser/ui/webui/signin/history_sync_optin/history_sync_optin.mojom.h"
- #include "chrome/browser/ui/webui/signin/history_sync_optin/history_sync_optin_ui.h"
-@@ -565,9 +569,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
-   // registry.ForWebUI() pattern used in
-   // PopulateChromeWebUIFrameInterfaceBrokersUntrustedPartsDesktop below which
-   // eliminates the need to account for feature flag combinations.
--  RegisterWebUIControllerInterfaceBinder<
--      composebox::mojom::PageHandlerFactory, NewTabPageUI, ContextualTasksUI,
--      OmniboxPopupUI, OmniboxEverywhereUI>(map);
-+  RegisterWebUIControllerInterfaceBinder<composebox::mojom::PageHandlerFactory,
-+                                         NewTabPageUI, ContextualTasksUI,
-+                                         OmniboxPopupUI, OmniboxEverywhereUI>(
-+      map);
- 
-   if (base::FeatureList::IsEnabled(
-           omnibox::kComposeboxDriveContextMenuOption)) {
-@@ -689,8 +694,11 @@ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
-       .Add<help_bubble::mojom::HelpBubbleHandlerFactory>();
- 
-   if (webui_browser::IsWebUIBrowserEnabled()) {
--    registry.ForWebUI<WebUIBrowserUI>()
--        .Add<webui_browser::mojom::PageHandlerFactory>()
-+    auto webui_browser_registry = registry.ForWebUI<WebUIBrowserUI>();
-+#if BUILDFLAG(ENABLE_AUX_SHELL)
-+    webui_browser_registry.Add<aux::mojom::ShellHostFactory>();
-+#endif
-+    webui_browser_registry.Add<webui_browser::mojom::PageHandlerFactory>()
-         .Add<bookmark_bar::mojom::PageHandlerFactory>()
-         .Add<bookmarks_api::mojom::BookmarksService>()
-         .Add<extensions_bar::mojom::PageHandlerFactory>()
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
-index 033f22b414..bc41ab14bc 100644
+index 033f22b..b866773 100644
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
 @@ -72,6 +72,7 @@
@@ -359,23 +286,29 @@ index 033f22b414..bc41ab14bc 100644
  #include "chrome/browser/child_process_host_flags.h"
  #include "chrome/browser/chrome_browser_main.h"
  #include "chrome/browser/chrome_content_browser_client_binder_policies.h"
-@@ -217,6 +218,15 @@
+@@ -217,6 +218,21 @@
  #include "chrome/browser/webauthn/chrome_web_authentication_delegate_base.h"
  #include "chrome/browser/webauthn/webauthn_pref_names.h"
  #include "chrome/common/buildflags.h"
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +#include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/content_filter_source_scope.h"
 +#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/browser/ui/aux/semantic_filter_network.h"
++#include "content/browser/renderer_host/frame_tree_node.h"
++#include "content/browser/renderer_host/navigation_request.h"
 +#if BUILDFLAG(IS_MAC)
 +#include "chrome/browser/ui/aux/native_cdp_input_mac.h"
 +#endif
 +#include "chrome/browser/ui/aux/result_preview.h"
++#include "chrome/browser/ui/aux/native_project_preview.h"
++#include "net/base/net_errors.h"
 +#include "chrome/browser/ui/aux/zap_controller.h"
 +#endif
  #include "chrome/common/channel_info.h"
  #include "chrome/common/chrome_constants.h"
  #include "chrome/common/chrome_content_client.h"
-@@ -888,6 +898,20 @@ bool IsIsolatedWebAppUrl(const GURL& url) {
+@@ -888,6 +904,20 @@ bool IsIsolatedWebAppUrl(const GURL& url) {
  }
  #endif
  
@@ -396,7 +329,20 @@ index 033f22b414..bc41ab14bc 100644
  // Handles the rewriting of the new tab page URL based on group policy.
  bool HandleNewTabPageLocationOverride(
      GURL* url,
-@@ -2865,6 +2889,25 @@ void MaybeAppendBlinkSettingsSwitchForFieldTrial(
+@@ -1769,6 +1799,12 @@ content::StoragePartitionConfig
+ ChromeContentBrowserClient::GetStoragePartitionConfigForSite(
+     content::BrowserContext* browser_context,
+     const GURL& site) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (site.SchemeIs(content::kChromeUIScheme) &&
++      site.host() == "aux-filter-semantics") {
++    return aux::SemanticFilterPartition(browser_context);
++  }
++#endif
+   // Default to the browser-wide storage partition and override based on |site|
+   // below.
+   content::StoragePartitionConfig default_storage_partition_config =
+@@ -2865,6 +2901,25 @@ void MaybeAppendBlinkSettingsSwitchForFieldTrial(
                                    base::JoinString(blink_settings, ","));
  }
  
@@ -422,7 +368,7 @@ index 033f22b414..bc41ab14bc 100644
  }  // namespace
  
  void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
-@@ -2950,6 +2993,16 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
+@@ -2950,6 +3005,16 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
      if (process) {
        Profile* profile =
            Profile::FromBrowserContext(process->GetBrowserContext());
@@ -439,7 +385,76 @@ index 033f22b414..bc41ab14bc 100644
        PrefService* prefs = profile->GetPrefs();
        PrefService* local_state = g_browser_process->local_state();
        // Currently this pref is only registered if applied via a policy.
-@@ -4346,6 +4399,8 @@ bool ChromeContentBrowserClient::CanCreateWindow(
+@@ -4330,6 +4395,68 @@ bool ChromeContentBrowserClient::IsPopupBypassAllowed(
+   return false;
+ }
+ 
++void ChromeContentBrowserClient::OnNativeTrustedMouseDownLink(
++    content::RenderFrameHost* frame,
++    const GURL& actual_href) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (frame) {
++    aux::ContentBlockingController::ForProfile(
++        Profile::FromBrowserContext(frame->GetBrowserContext()))
++        ->TrustedMouseDownLink(frame, actual_href);
++  }
++#endif
++}
++void ChromeContentBrowserClient::ReviewNativePopupCreation(
++    content::RenderFrameHost* opener,
++    const GURL& target_url,
++    WindowOpenDisposition disposition,
++    bool effective_user_gesture,
++    bool opener_suppressed,
++    base::OnceCallback<void(bool)> callback) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (!opener) {
++    std::move(callback).Run(false);
++    return;
++  }
++  // The compiler's hidden resource-only isolate has no popup/window authority.
++  if (aux::IsSemanticFilterPartition(
++          opener->GetProcess()->GetStoragePartition()->GetConfig())) {
++    std::move(callback).Run(false);
++    return;
++  }
++  const GURL& root_url = opener->GetOutermostMainFrame()->GetLastCommittedURL();
++  // The original native Aux shell is browser UI, not list-filtered page
++  // content.
++  if (root_url.SchemeIs(content::kChromeUIScheme) &&
++      root_url.host() == chrome::kChromeUIAuxHost) {
++    std::move(callback).Run(true);
++    return;
++  }
++  aux::ContentBlockingController::ForProfile(
++      Profile::FromBrowserContext(opener->GetBrowserContext()))
++      ->ReviewPopupCreation(opener, target_url, disposition,
++                            std::move(callback));
++#else
++  std::move(callback).Run(true);
++#endif
++}
++void ChromeContentBrowserClient::OnNativePopupCreated(
++    content::RenderFrameHost* opener,
++    const content::WeakDocumentPtr& original_document,
++    content::WebContents* created,
++    const GURL& target_url,
++    WindowOpenDisposition disposition,
++    bool user_gesture,
++    bool opener_suppressed) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (opener) {
++    aux::ContentBlockingController::ForProfile(
++        Profile::FromBrowserContext(opener->GetBrowserContext()))
++        ->PopupCreated(opener, original_document, created, target_url,
++                       disposition);
++  }
++#endif
++}
+ bool ChromeContentBrowserClient::CanCreateWindow(
+     RenderFrameHost* opener,
+     const GURL& opener_url,
+@@ -4346,6 +4473,8 @@ bool ChromeContentBrowserClient::CanCreateWindow(
      bool* no_javascript_access) {
    DCHECK_CURRENTLY_ON(BrowserThread::UI);
    DCHECK(opener);
@@ -448,7 +463,7 @@ index 033f22b414..bc41ab14bc 100644
  
    content::WebContents* web_contents =
        content::WebContents::FromRenderFrameHost(opener);
-@@ -5000,6 +5055,11 @@ void ChromeContentBrowserClient::BrowserURLHandlerCreated(
+@@ -5000,6 +5129,11 @@ void ChromeContentBrowserClient::BrowserURLHandlerCreated(
      part->BrowserURLHandlerCreated(handler);
    }
  
@@ -460,12 +475,18 @@ index 033f22b414..bc41ab14bc 100644
    // Handler to rewrite chrome://about and chrome://sync URLs.
    handler->AddHandlerPair(&HandleChromeAboutAndChromeSyncRewrite,
                            BrowserURLHandler::null_handler());
-@@ -5511,11 +5571,17 @@ void ChromeContentBrowserClient::RemovePresentationObserver(
+@@ -5511,11 +5645,29 @@ void ChromeContentBrowserClient::RemovePresentationObserver(
  
  void ChromeContentBrowserClient::CreateThrottlesForNavigation(
      content::NavigationThrottleRegistry& registry) {
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +  aux::MaybeAddResultPreviewNavigationThrottle(registry);
++  aux::NativeProjectPreview::AddNavigationThrottle(registry);
++  if (auto* contents = registry.GetNavigationHandle().GetWebContents()) {
++    aux::ContentBlockingController::ForProfile(
++        Profile::FromBrowserContext(contents->GetBrowserContext()))
++        ->AddPopupNavigationThrottle(registry);
++  }
 +#endif
    CreateAndAddChromeThrottlesForNavigation(registry);
  }
@@ -474,15 +495,24 @@ index 033f22b414..bc41ab14bc 100644
      content::NavigationThrottleRegistry& registry) {
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +  aux::MaybeAddResultPreviewNavigationThrottle(registry);
++  aux::NativeProjectPreview::AddNavigationThrottle(registry);
++  if (auto* contents = registry.GetNavigationHandle().GetWebContents()) {
++    aux::ContentBlockingController::ForProfile(
++        Profile::FromBrowserContext(contents->GetBrowserContext()))
++        ->AddPopupNavigationThrottle(registry);
++  }
 +#endif
    CreateAndAddChromeThrottlesForCommitWithoutUrlLoader(registry);
  }
  
-@@ -5525,6 +5591,11 @@ ChromeContentBrowserClient::CreateCommitDeferringConditionsForNavigation(
+@@ -5525,6 +5677,14 @@ ChromeContentBrowserClient::CreateCommitDeferringConditionsForNavigation(
      content::CommitDeferringCondition::NavigationType navigation_type) {
    std::vector<std::unique_ptr<content::CommitDeferringCondition>> conditions;
  
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
++  MaybeAddCondition(aux::MaybeCreateContentFilterCondition(*navigation_handle,
++                                                         navigation_type),
++                    &conditions);
 +  MaybeAddCondition(aux::MaybeCreateZapCondition(*navigation_handle),
 +                    &conditions);
 +#endif
@@ -490,49 +520,25 @@ index 033f22b414..bc41ab14bc 100644
  #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
    MaybeAddCondition(
        safe_browsing::MaybeCreateCommitDeferringCondition(*navigation_handle),
-@@ -6031,6 +6102,19 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
+@@ -6031,6 +6191,8 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
      result.push_back(std::move(contextual_tasks_throttle));
    }
  
-+#if BUILDFLAG(ENABLE_AUX_SHELL)
-+  std::string top_site_host(
-+      request.site_for_cookies.RepresentativeUrl().host());
-+  if (top_site_host.empty() && request.request_initiator) {
-+    top_site_host = std::string(request.request_initiator->host());
-+  }
-+  if (auto blocking_throttle =
-+          aux::ContentBlockingController::ForProfile(profile)->CreateThrottle(
-+              request, std::move(top_site_host))) {
-+    result.push_back(std::move(blocking_throttle));
-+  }
-+#endif
++
 +
    return result;
  }
  
-@@ -6066,6 +6150,21 @@ ChromeContentBrowserClient::CreateURLLoaderThrottlesForKeepAlive(
+@@ -6066,6 +6228,8 @@ ChromeContentBrowserClient::CreateURLLoaderThrottlesForKeepAlive(
      result.push_back(std::move(contextual_tasks_throttle));
    }
  
-+#if BUILDFLAG(ENABLE_AUX_SHELL)
-+  std::string top_site_host;
-+  if (content::WebContents* contents =
-+          content::WebContents::FromFrameTreeNodeId(frame_tree_node_id)) {
-+    if (contents->GetBrowserContext() == browser_context) {
-+      top_site_host = std::string(contents->GetLastCommittedURL().host());
-+    }
-+  }
-+  if (auto blocking_throttle =
-+          aux::ContentBlockingController::ForProfile(profile)
-+              ->CreateKeepAliveThrottle(std::move(top_site_host))) {
-+    result.push_back(std::move(blocking_throttle));
-+  }
-+#endif
++
 +
    return result;
  }
  
-@@ -6073,6 +6172,11 @@ mojo::PendingRemote<network::mojom::URLLoaderFactory>
+@@ -6073,6 +6237,11 @@ mojo::PendingRemote<network::mojom::URLLoaderFactory>
  ChromeContentBrowserClient::CreateNonNetworkNavigationURLLoaderFactory(
      const std::string& scheme,
      content::FrameTreeNodeId frame_tree_node_id) {
@@ -544,27 +550,73 @@ index 033f22b414..bc41ab14bc 100644
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE) || BUILDFLAG(IS_CHROMEOS) || \
      !BUILDFLAG(IS_ANDROID)
    content::WebContents* web_contents =
-@@ -6637,6 +6741,19 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -6606,6 +6775,16 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+     network::mojom::URLLoaderFactoryOverridePtr* factory_override,
+     scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
+     bool is_for_network_service) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* semantic_process =
++      content::RenderProcessHost::FromID(render_process_id);
++  if (is_for_network_service && semantic_process &&
++      aux::IsSemanticFilterPartition(
++          semantic_process->GetStoragePartition()->GetConfig())) {
++    aux::DenySemanticFilterNetwork(factory_builder);
++    return;
++  }
++#endif
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+   auto* web_request_api =
+       extensions::BrowserContextKeyedAPIFactory<extensions::WebRequestAPI>::Get(
+@@ -6637,6 +6816,48 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
        frame, type == URLLoaderFactoryType::kNavigation, request_initiator,
        isolation_info, factory_builder);
  
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
-+  if (type == URLLoaderFactoryType::kDocumentSubResource ||
++  std::optional<aux::ContentFilterSourceScope> semantic_filter_source;
++  bool semantic_filter_factory = false;
++  if (type == URLLoaderFactoryType::kNavigation ||
++      type == URLLoaderFactoryType::kDocumentSubResource ||
 +      type == URLLoaderFactoryType::kWorkerMainResource ||
 +      type == URLLoaderFactoryType::kWorkerSubResource ||
 +      type == URLLoaderFactoryType::kServiceWorkerScript ||
 +      type == URLLoaderFactoryType::kServiceWorkerSubResource ||
-+      type == URLLoaderFactoryType::kPrefetch ||
-+      type == URLLoaderFactoryType::kEarlyHints) {
-+    aux::ContentBlockingController::MaybeProxySubresourceFactory(
-+        Profile::FromBrowserContext(browser_context), factory_builder);
++      type == URLLoaderFactoryType::kPrefetch || type == URLLoaderFactoryType::kEarlyHints) {
++    auto* profile = Profile::FromBrowserContext(browser_context);
++    auto* owner = aux::ContentBlockingController::ForProfile(profile);
++    std::optional<aux::ContentFilterSourceScope> source;
++    if (type == URLLoaderFactoryType::kNavigation && frame && navigation_id) {
++      auto* node = content::FrameTreeNode::GloballyFindByID(frame->GetFrameTreeNodeId());
++      auto* navigation = node ? node->navigation_request() : nullptr;
++      if (navigation && navigation->GetNavigationId() == *navigation_id)
++        source = aux::ContentFilterSourceScope::CaptureNavigation(profile, navigation->GetWeakPtr());
++    } else {
++      const auto prospective = owner->ProspectiveNavigation(
++          navigation_id,
++          type == URLLoaderFactoryType::kDocumentSubResource ? frame : nullptr);
++      // An ambiguous prepared document is refused, never recaptured as the
++      // previous committed document on a reused active RFH.
++      if (prospective.has_value()) {
++        source = aux::ContentFilterSourceScope::Capture(profile, frame, render_process_id,
++            request_initiator, isolation_info,
++            type == URLLoaderFactoryType::kWorkerMainResource || type == URLLoaderFactoryType::kWorkerSubResource ||
++                type == URLLoaderFactoryType::kServiceWorkerScript || type == URLLoaderFactoryType::kServiceWorkerSubResource,
++            *prospective);
++      }
++    }
++    const bool trusted_internal_frame = type != URLLoaderFactoryType::kNavigation && frame &&
++        frame->GetLastCommittedURL().SchemeIs(content::kChromeUIScheme) &&
++        !request_initiator.GetURL().SchemeIsHTTPOrHTTPS();
++    if (!trusted_internal_frame) {
++      semantic_filter_source = std::move(source);
++      semantic_filter_factory = true;
++    }
 +  }
 +#endif
 +
  #if BUILDFLAG(ENABLE_CAPTIVE_PORTAL_DETECTION)
    if (disable_secure_dns) {
      WebContents* web_contents = WebContents::FromRenderFrameHost(frame);
-@@ -6682,6 +6799,18 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -6682,6 +6903,31 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
        browser_context, header_client);
  #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
          // BUILDFLAG(IS_CHROMEOS)
@@ -572,18 +624,31 @@ index 033f22b414..bc41ab14bc 100644
 +  // Final inspection runs after extension and enterprise header mutations.
 +  // Every factory path, including navigation/worker/keepalive, preserves its
 +  // browser-owned provenance or is denied when attribution is ambiguous.
-+  aux::EgressController::ProxyFactory(Profile::FromBrowserContext(browser_context),
++  auto* factory_process = frame ? frame->GetProcess() : content::RenderProcessHost::FromID(render_process_id);
++  auto* preview_partition = factory_process ? factory_process->GetStoragePartition() : nullptr;
++  if (aux::NativeProjectPreview::IsPreviewPartition(preview_partition)) {
++    // This unique human-owned partition has a stronger exact Project/process
++    // authority than ambiguous agent-worker attribution. Its own final wrapper
++    // always denies a retired/missing Preview authority, including workers.
++    aux::NativeProjectPreview::ProxyFactory(frame, render_process_id,
++        type == URLLoaderFactoryType::kNavigation, factory_builder, header_client);
++  } else aux::EgressController::ProxyFactory(Profile::FromBrowserContext(browser_context),
 +      frame, type == URLLoaderFactoryType::kNavigation,
 +      type == URLLoaderFactoryType::kWorkerMainResource ||
 +      type == URLLoaderFactoryType::kWorkerSubResource ||
 +      type == URLLoaderFactoryType::kServiceWorkerScript ||
 +      type == URLLoaderFactoryType::kServiceWorkerSubResource,
 +      factory_builder, header_client);
++  if (semantic_filter_factory) {
++    aux::ContentBlockingController::MaybeProxySubresourceFactory(
++        Profile::FromBrowserContext(browser_context), factory_builder,
++        std::move(semantic_filter_source), header_client);
++  }
 +#endif
  }
  
  std::vector<std::unique_ptr<content::URLLoaderRequestInterceptor>>
-@@ -6750,6 +6879,17 @@ ChromeContentBrowserClient::
+@@ -6750,6 +6996,126 @@ ChromeContentBrowserClient::
    return prefetch_handler;
  }
  
@@ -591,6 +656,7 @@ index 033f22b414..bc41ab14bc 100644
 +    content::BrowserContext* context, content::RenderFrameHost* frame,
 +    const std::string& kind) {
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (frame && aux::NativeProjectPreview::IsPreviewPartition(frame->GetProcess()->GetStoragePartition())) return false;
 +  auto* controller = aux::EgressController::ForProfile(Profile::FromBrowserContext(context));
 +  return controller && controller->AllowUninspectable(frame, kind);
 +#else
@@ -598,10 +664,133 @@ index 033f22b414..bc41ab14bc 100644
 +#endif
 +}
 +
++void ChromeContentBrowserClient::CheckWebSocketConnection(content::RenderFrameHost* frame, content::ChildProcessId process_id, const GURL& url,
++    const url::Origin& original_origin, const net::IsolationInfo& original_isolation,
++    mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers,
++    WebSocketConnectionCheck callback) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* process = content::RenderProcessHost::FromID(process_id);
++  if (process && aux::IsSemanticFilterPartition(
++                     process->GetStoragePartition()->GetConfig())) {
++    std::move(callback).Run(false, {}, {});
++    return;
++  }
++  auto* owner = process ? aux::ContentBlockingController::ForProfile(
++      Profile::FromBrowserContext(process->GetBrowserContext())) : nullptr;
++  if (!owner) {
++    std::move(callback).Run(false, {}, {});
++    return;
++  }
++  const bool had_frame = frame != nullptr;
++  const auto original_document = frame ? frame->GetWeakDocumentPtr() : content::WeakDocumentPtr();
++  owner->AdmitWebSocket(
++      frame, process_id.GetUnsafeValue(), original_origin, original_isolation,
++      url,
++      base::BindOnce(
++          [](ChromeContentBrowserClient* client,
++             content::ChildProcessId process_id,
++             content::WeakDocumentPtr original_document, bool had_frame,
++             mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers,
++             WebSocketConnectionCheck callback,
++             aux::ContentBlockingController::OwnerCurrent engine_current,
++             base::WeakPtr<aux::SemanticFilterBridge> semantic_bridge,
++             aux::CaptureSemanticHeaderRequest semantic_capture,
++             GURL routed_url) {
++            auto* process = content::RenderProcessHost::FromID(process_id);
++            auto* frame = original_document.AsRenderFrameHostIfValid();
++            if (!process || (had_frame && !frame) || !engine_current ||
++                !engine_current.Run()) {
++              std::move(callback).Run(false, {}, {});
++              return;
++            }
++            // Engine and Project/egress are independent guards. Recheck the
++            // exact original Engine scope after an asynchronous Project
++            // admission too.
++            auto guarded_reply = base::BindOnce(
++                [](aux::ContentBlockingController::OwnerCurrent engine_current,
++                   base::WeakPtr<aux::SemanticFilterBridge> bridge,
++                   aux::CaptureSemanticHeaderRequest capture, GURL routed_url,
++                   WebSocketConnectionCheck callback, bool allowed,
++                   mojo::PendingRemote<network::mojom::TrustedHeaderClient>
++                       headers) {
++                  if (!allowed || !engine_current.Run()) {
++                    std::move(callback).Run(false, {}, {});
++                    return;
++                  }
++                  if (!bridge || !capture) {
++                    std::move(callback).Run(false, {}, {});
++                    return;
++                  }
++                  std::move(callback).Run(
++                      true,
++                      aux::WrapSemanticTrustedHeaders(
++                          *bridge, std::move(capture), std::move(headers)),
++                      routed_url);
++                },
++                std::move(engine_current), std::move(semantic_bridge),
++                std::move(semantic_capture), routed_url, std::move(callback));
++            const GURL actual_url = routed_url;
++            auto* partition = process->GetStoragePartition();
++            if (aux::NativeProjectPreview::IsPreviewPartition(partition)) {
++              auto preview = aux::NativeProjectPreview::ForPartition(partition);
++              if (!preview) {
++                std::move(guarded_reply).Run(false, {});
++                return;
++              }
++              preview->Admit(
++                  actual_url, false,
++                  base::BindOnce(
++                      [](base::WeakPtr<aux::NativeProjectPreview> preview,
++                         mojo::PendingRemote<
++                             network::mojom::TrustedHeaderClient> headers,
++                         base::OnceCallback<void(
++                             bool, mojo::PendingRemote<
++                                       network::mojom::TrustedHeaderClient>)>
++                             callback,
++                         bool allowed) {
++                        if (!allowed || !preview || !preview->Current()) {
++                          std::move(callback).Run(false, {});
++                          return;
++                        }
++                        std::move(callback).Run(
++                            true, aux::NativeProjectPreview::WrapHeaders(
++                                      preview, std::move(headers)));
++                      },
++                      preview, std::move(headers), std::move(guarded_reply)));
++              return;
++            }
++            const bool allowed = client->AllowUninspectableNetworkTransport(
++                process->GetBrowserContext(), frame, "websocket");
++            std::move(guarded_reply).Run(allowed, std::move(headers));
++          },
++          this, process_id, original_document, had_frame, std::move(headers),
++          std::move(callback)));
++#else
++  auto* original_process = content::RenderProcessHost::FromID(process_id);
++  const bool allowed = original_process && AllowUninspectableNetworkTransport(original_process->GetBrowserContext(), frame, "websocket");
++  std::move(callback).Run(allowed, std::move(headers), url);
++#endif
++}
++
  bool ChromeContentBrowserClient::WillInterceptWebSocket(
      content::RenderFrameHost* frame) {
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-@@ -7298,6 +7438,47 @@ ChromeContentBrowserClient::MaybeGetScopedPictureInPictureTucker(
+@@ -6821,6 +7187,14 @@ void ChromeContentBrowserClient::WillCreateWebTransport(
+     mojo::PendingRemote<network::mojom::WebTransportHandshakeClient>
+         handshake_client,
+     WillCreateWebTransportCallback callback) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* original_process = content::RenderProcessHost::FromID(process_id);
++  if (original_process && aux::NativeProjectPreview::IsPreviewPartition(original_process->GetStoragePartition())) {
++    std::move(callback).Run(std::move(handshake_client), network::mojom::WebTransportError::New(
++        net::ERR_ACCESS_DENIED, 0, "Project Preview does not admit uninspectable WebTransport", true));
++    return;
++  }
++#endif
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   // TODO(crbug.com/40195467): Add a unit test which calls
+@@ -7298,6 +7672,47 @@ ChromeContentBrowserClient::MaybeGetScopedPictureInPictureTucker(
    return base::ScopedClosureRunner();
  }
  
@@ -649,7 +838,7 @@ index 033f22b414..bc41ab14bc 100644
  media::PictureInPictureEventsInfo::AutoPipInfo
  ChromeContentBrowserClient::GetAutoPipInfo(
      const content::WebContents& web_contents) const {
-@@ -8484,6 +8665,8 @@ void ChromeContentBrowserClient::OnKeepaliveTimerFired(
+@@ -8484,6 +8899,8 @@ void ChromeContentBrowserClient::OnKeepaliveTimerFired(
  
  bool ChromeContentBrowserClient::ShouldPreconnectNavigation(
      content::RenderFrameHost* render_frame_host) {
@@ -659,19 +848,47 @@ index 033f22b414..bc41ab14bc 100644
        render_frame_host->GetBrowserContext();
  #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 diff --git a/chrome/browser/chrome_content_browser_client.h b/chrome/browser/chrome_content_browser_client.h
-index 2ea677f146..5918c37f5b 100644
+index 2ea677f..b2e0192 100644
 --- a/chrome/browser/chrome_content_browser_client.h
 +++ b/chrome/browser/chrome_content_browser_client.h
-@@ -712,6 +712,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
+@@ -483,6 +483,23 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
+   content::FeatureObserverClient* GetFeatureObserverClient() override;
+   bool IsPopupBypassAllowed(
+       content::RenderFrameHost* render_frame_host) override;
++  void OnNativeTrustedMouseDownLink(content::RenderFrameHost* original_frame,
++                                    const GURL& actual_href) override;
++  void ReviewNativePopupCreation(
++      content::RenderFrameHost* opener,
++      const GURL& target_url,
++      WindowOpenDisposition disposition,
++      bool effective_user_gesture,
++      bool opener_suppressed,
++      base::OnceCallback<void(bool)> callback) override;
++  void OnNativePopupCreated(
++      content::RenderFrameHost* opener,
++      const content::WeakDocumentPtr& original_opener_document,
++      content::WebContents* created,
++      const GURL& target_url,
++      WindowOpenDisposition disposition,
++      bool user_gesture,
++      bool opener_suppressed) override;
+   bool CanCreateWindow(content::RenderFrameHost* opener,
+                        const GURL& opener_url,
+                        const GURL& opener_top_level_frame_url,
+@@ -712,6 +729,12 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
        int64_t navigation_id,
        scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner)
        override;
 +  bool AllowUninspectableNetworkTransport(content::BrowserContext* context,
 +      content::RenderFrameHost* frame, const std::string& kind) override;
++  void CheckWebSocketConnection(content::RenderFrameHost* frame, content::ChildProcessId process_id, const GURL& url,
++    const url::Origin& original_origin, const net::IsolationInfo& original_isolation,
++      mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers,
++      WebSocketConnectionCheck callback) override;
    bool WillInterceptWebSocket(content::RenderFrameHost* frame) override;
    content::ContentBrowserClient::WebSocketOptions GetWebSocketOptions(
        content::RenderFrameHost* frame) override;
-@@ -828,6 +830,13 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
+@@ -828,6 +851,13 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
        content::VideoPictureInPictureWindowController* controller) override;
    base::ScopedClosureRunner MaybeGetScopedPictureInPictureTucker(
        content::WebContents* web_contents) override;
@@ -686,27 +903,30 @@ index 2ea677f146..5918c37f5b 100644
        const content::WebContents& web_contents) const override;
    void RegisterRendererPreferenceWatcher(
 diff --git a/chrome/browser/metrics/chrome_feature_list_creator.cc b/chrome/browser/metrics/chrome_feature_list_creator.cc
-index 90e572fe4e..3c172c4eaa 100644
+index 90e572f..4376248 100644
 --- a/chrome/browser/metrics/chrome_feature_list_creator.cc
 +++ b/chrome/browser/metrics/chrome_feature_list_creator.cc
-@@ -23,6 +23,10 @@
+@@ -23,6 +23,11 @@
  #include "chrome/browser/prefs/browser_prefs.h"
  #include "chrome/browser/prefs/chrome_pref_service_factory.h"
  #include "chrome/common/chrome_paths.h"
 +#include "chrome/browser/buildflags.h"
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +#include "third_party/blink/public/common/features.h"
++#include "content/public/common/content_features.h"
 +#endif
  #include "chrome/common/chrome_switches.h"
  #include "chrome/installer/util/initial_preferences.h"
  #include "components/content_settings/core/common/features.h"
-@@ -238,10 +242,15 @@ void ChromeFeatureListCreator::SetUpFieldTrials() {
+@@ -238,10 +243,17 @@ void ChromeFeatureListCreator::SetUpFieldTrials() {
  
    variations::VariationsService* variations_service =
        metrics_services_manager_->GetVariationsService();
 +  auto extra_overrides = content::GetSwitchDependentFeatureOverrides(
 +      *base::CommandLine::ForCurrentProcess());
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
++  extra_overrides.emplace_back(features::kWebUIBundledCodeCache,
++                               base::FeatureList::OVERRIDE_ENABLE_FEATURE);
 +  extra_overrides.emplace_back(
 +      blink::features::kBrowserInitiatedAutomaticPictureInPicture,
 +      base::FeatureList::OVERRIDE_ENABLE_FEATURE);
@@ -719,52 +939,12 @@ index 90e572fe4e..3c172c4eaa 100644
        std::move(feature_list), browser_field_trials_.get());
    variations::InitCrashKeys();
  }
-diff --git a/chrome/browser/notifications/notification_handler.h b/chrome/browser/notifications/notification_handler.h
-index 57dd57a2e3..8421b54543 100644
---- a/chrome/browser/notifications/notification_handler.h
-+++ b/chrome/browser/notifications/notification_handler.h
-@@ -41,7 +41,8 @@ class NotificationHandler {
-     TAILORED_SECURITY = 10,
-     DEFAULT_BROWSER_CHANGED = 11,
-     EXTENSION_REQUEST = 12,
--    MAX = EXTENSION_REQUEST,
-+    AUX_RUN_ATTENTION = 13,
-+    MAX = AUX_RUN_ATTENTION,
-   };
- 
-   virtual ~NotificationHandler();
-diff --git a/chrome/browser/ui/aux/auto_pip_site_policy.h b/chrome/browser/ui/aux/auto_pip_site_policy.h
-new file mode 100644
-index 0000000000..9ee57a1769
---- /dev/null
-+++ b/chrome/browser/ui/aux/auto_pip_site_policy.h
-@@ -0,0 +1,20 @@
-+// Copyright 2026 The Aux Authors
-+// Use of this source code is governed by a BSD-style license that can be
-+// found in the LICENSE file.
-+#ifndef CHROME_BROWSER_UI_AUX_AUTO_PIP_SITE_POLICY_H_
-+#define CHROME_BROWSER_UI_AUX_AUTO_PIP_SITE_POLICY_H_
-+#include <string_view>
-+namespace aux {
-+enum class AutoPipSitePolicy { kDefault, kNever, kEvenInaudible };
-+inline AutoPipSitePolicy AutoPipPolicyForHost(std::string_view host) {
-+  const auto matches = [host](std::string_view suffix) {
-+    return host == suffix || (host.size() > suffix.size() &&
-+        host[host.size() - suffix.size() - 1] == '.' && host.ends_with(suffix));
-+  };
-+  if (matches("slack.com") || matches("meet.google.com") ||
-+      matches("teams.microsoft.com") || matches("teams.live.com"))
-+    return AutoPipSitePolicy::kNever;
-+  return matches("youtube.com") ? AutoPipSitePolicy::kEvenInaudible : AutoPipSitePolicy::kDefault;
-+}
-+}  // namespace aux
-+#endif  // CHROME_BROWSER_UI_AUX_AUTO_PIP_SITE_POLICY_H_
 diff --git a/chrome/browser/ui/aux/methods/surfaces_methods.cc b/chrome/browser/ui/aux/methods/surfaces_methods.cc
 new file mode 100644
-index 0000000000..5872422421
+index 0000000..ea9ac6b
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/surfaces_methods.cc
-@@ -0,0 +1,186 @@
+@@ -0,0 +1,192 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -798,13 +978,19 @@ index 0000000000..5872422421
 +#include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom.h"
 +
 +namespace {
-+bool IsProtectedPage(Profile* profile, content::WebContents* contents) {
++bool IsProtectedPage(Profile* profile, content::WebContents* contents,
++                     bool presenting_stage = false) {
 +  auto* identity = contents ? aux::PageIdentity::FromWebContents(contents) : nullptr;
 +  if (!identity || identity->runtime_owned() || !contents->GetPrimaryMainFrame()) return true;
 +  aux::EgressRequestContext context;
 +  context.page_id = aux::PageIdentity::GetOrCreate(profile, contents);
 +  context.document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
-+  return aux::EgressController::ForProfile(profile)->IsProtected(context);
++  auto* controller = aux::EgressController::ForProfile(profile);
++  // Presentation does not grant request/DOM authority. The exact human tab
++  // remains visible after borrowing, while retained credential guards stay set.
++  if (presenting_stage && controller->CanPresentHumanSessionDocument(context))
++    return false;
++  return controller->IsProtected(context);
 +}
 +using Reply = base::OnceCallback<void(bool, const std::string&,
 +                                     const std::string&, const std::string&)>;
@@ -912,7 +1098,7 @@ index 0000000000..5872422421
 +      BrowserWindowInterface* owner = nullptr;
 +      auto* contents = value.is_string() ? catalog->FindPage(value.GetString(), &owner) : nullptr;
 +      auto* identity = contents ? aux::PageIdentity::FromWebContents(contents) : nullptr;
-+      if (!contents || owner != browser_ || !identity || IsProtectedPage(browser_->GetProfile(), contents) ||
++      if (!contents || owner != browser_ || !identity || IsProtectedPage(browser_->GetProfile(), contents, true) ||
 +          !ids.insert(value.GetString()).second) {
 +        std::move(callback).Run(false, "", "forbidden", "Stage pages must belong to this window");
 +        return;
@@ -953,7 +1139,7 @@ index 0000000000..5872422421
 +}
 diff --git a/chrome/browser/ui/aux/webmcp.cc b/chrome/browser/ui/aux/webmcp.cc
 new file mode 100644
-index 0000000000..5b77e9430d
+index 0000000..f606351
 --- /dev/null
 +++ b/chrome/browser/ui/aux/webmcp.cc
 @@ -0,0 +1,122 @@
@@ -1000,7 +1186,7 @@ index 0000000000..5b77e9430d
 +  }
 +  const std::string* page_id = params.FindString("pageId");
 +  if (!page_id || page_id->empty()) {
-+    *fault = Fault("invalid_argument", "WebMCP requires a page");
++    *fault = Fault("invalid_params", "WebMCP requires a page");
 +    return nullptr;
 +  }
 +  TabCatalog* catalog = TabCatalog::GetForProfile(profile);
@@ -1058,7 +1244,7 @@ index 0000000000..5b77e9430d
 +  const std::string* name = params.FindString("name");
 +  const std::string* input = params.FindString("input");
 +  if (!name || name->empty() || !input) {
-+    std::move(callback).Run(Fault("invalid_argument", "WebMCP call requires a tool name and input"));
++    std::move(callback).Run(Fault("invalid_params", "WebMCP call requires a tool name and input"));
 +    return;
 +  }
 +  content::ExecuteDocumentScriptTool(
@@ -1081,7 +1267,7 @@ index 0000000000..5b77e9430d
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/webmcp.h b/chrome/browser/ui/aux/webmcp.h
 new file mode 100644
-index 0000000000..6292ea4227
+index 0000000..6292ea4
 --- /dev/null
 +++ b/chrome/browser/ui/aux/webmcp.h
 @@ -0,0 +1,26 @@
@@ -1111,714 +1297,8 @@ index 0000000000..6292ea4227
 +}  // namespace aux
 +
 +#endif  // CHROME_BROWSER_UI_AUX_WEBMCP_H_
-diff --git a/chrome/browser/ui/aux/zap_controller.cc b/chrome/browser/ui/aux/zap_controller.cc
-new file mode 100644
-index 0000000000..94dc6d877d
---- /dev/null
-+++ b/chrome/browser/ui/aux/zap_controller.cc
-@@ -0,0 +1,617 @@
-+// Copyright 2026 The Aux Authors
-+// Use of this source code is governed by a BSD-style license that can be
-+// found in the LICENSE file.
-+
-+#include "chrome/browser/ui/aux/zap_controller.h"
-+
-+#include <algorithm>
-+#include <memory>
-+#include <optional>
-+#include <set>
-+#include <utility>
-+
-+#include "base/functional/bind.h"
-+#include "base/json/json_reader.h"
-+#include "base/json/json_writer.h"
-+#include "base/strings/string_number_conversions.h"
-+#include "base/strings/string_util.h"
-+#include "base/task/sequenced_task_runner.h"
-+#include "base/time/time.h"
-+#include "chrome/browser/profiles/profile.h"
-+#include "chrome/browser/ui/aux/cosmetic_controller.h"
-+#include "chrome/browser/ui/aux/runtime_host.h"
-+#include "chrome/browser/ui/aux/tab_catalog.h"
-+#include "chrome/common/chrome_render_frame.mojom.h"
-+#include "content/public/browser/commit_deferring_condition.h"
-+#include "content/public/browser/global_routing_id.h"
-+#include "content/public/browser/navigation_handle.h"
-+#include "content/public/browser/render_frame_host.h"
-+#include "content/public/browser/web_contents.h"
-+#include "crypto/sha2.h"
-+#include "mojo/public/cpp/bindings/associated_remote.h"
-+#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
-+#include "url/gurl.h"
-+#include "url/origin.h"
-+
-+namespace aux {
-+namespace {
-+const char kZapControllerKey = 0;
-+constexpr size_t kMaxStylesheetBytes = 80000;
-+
-+base::DictValue Fault(const std::string& message) {
-+  base::DictValue error;
-+  error.Set("code", "invalid_argument");
-+  error.Set("message", message);
-+  base::DictValue response;
-+  response.Set("error", std::move(error));
-+  return response;
-+}
-+
-+std::string Hash(const std::string& stylesheet) {
-+  return base::ToLowerASCII(
-+      base::HexEncode(crypto::SHA256HashString(stylesheet)));
-+}
-+
-+}  // namespace
-+
-+struct ZapController::FrameRequest {
-+  mojo::AssociatedRemote<chrome::mojom::ChromeRenderFrame> remote;
-+  FrameCallback callback;
-+};
-+
-+ZapController* ZapController::ForProfile(Profile* profile) {
-+  if (!profile) {
-+    return nullptr;
-+  }
-+  auto* controller =
-+      static_cast<ZapController*>(profile->GetUserData(&kZapControllerKey));
-+  if (!controller) {
-+    auto created = std::unique_ptr<ZapController>(new ZapController(profile));
-+    controller = created.get();
-+    profile->SetUserData(&kZapControllerKey, std::move(created));
-+  }
-+  return controller;
-+}
-+
-+ZapController::ZapController(Profile* profile) : profile_(profile) {}
-+ZapController::~ZapController() = default;
-+
-+bool ZapController::Validate(const base::DictValue& request) const {
-+  const std::string* profile_id = request.FindString("profileId");
-+  const std::string* origin = request.FindString("origin");
-+  const std::string* stylesheet = request.FindString("stylesheet");
-+  const std::string* hash = request.FindString("stylesheetSha256");
-+  const std::string* phase = request.FindString("phase");
-+  const std::string* scope = request.FindString("frameScope");
-+  const std::optional<int> revision = request.FindInt("revision");
-+  if (!profile_id ||
-+      *profile_id != profile_->GetPath().BaseName().AsUTF8Unsafe() || !origin ||
-+      !stylesheet || !hash || !phase || !scope || !revision || *revision < 0 ||
-+      stylesheet->size() > kMaxStylesheetBytes || *phase != "document_start" ||
-+      *scope != "matching_origin" || Hash(*stylesheet) != *hash) {
-+    return false;
-+  }
-+  const GURL url(*origin);
-+  return url.is_valid() && url.SchemeIsHTTPOrHTTPS() &&
-+         url::Origin::Create(url).Serialize() == *origin;
-+}
-+
-+void ZapController::EnsureReady(ReadyCallback callback) {
-+  if (ready_) {
-+    std::move(callback).Run(true);
-+    return;
-+  }
-+  if (profile_->IsOffTheRecord()) {
-+    ready_ = true;
-+    std::move(callback).Run(true);
-+    return;
-+  }
-+  pending_ready_.push_back(std::move(callback));
-+  if (loading_) {
-+    return;
-+  }
-+  loading_ = true;
-+  AuxRuntimeHost* host = AuxRuntimeHost::ForProfile(profile_);
-+  if (!host) {
-+    loading_ = false;
-+    auto callbacks = std::move(pending_ready_);
-+    for (auto& pending : callbacks) {
-+      std::move(pending).Run(false);
-+    }
-+    return;
-+  }
-+  base::DictValue params;
-+  params.Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe());
-+  const auto params_json = base::WriteJson(params);
-+  host->CallInternal(
-+      "zap.snapshot", *params_json,
-+      base::BindOnce(
-+          [](base::WeakPtr<ZapController> owner,
-+             AuxRuntimeHost::Response response) {
-+            if (!owner) {
-+              return;
-+            }
-+            bool valid = response.ok;
-+            std::map<std::string, Policy> policies;
-+            const auto parsed =
-+                valid ? base::JSONReader::Read(response.result_json,
-+                                               base::JSON_PARSE_RFC)
-+                      : std::nullopt;
-+            const base::ListValue* list =
-+                parsed ? parsed->GetIfList() : nullptr;
-+            valid = list && list->size() <= 100;
-+            if (valid) {
-+              for (const base::Value& value : *list) {
-+                const base::DictValue* request = value.GetIfDict();
-+                if (!request || !owner->Validate(*request)) {
-+                  valid = false;
-+                  break;
-+                }
-+                const std::string& origin = *request->FindString("origin");
-+                if (!policies
-+                         .emplace(
-+                             origin,
-+                             Policy{*request->FindInt("revision"),
-+                                    *request->FindString("stylesheet"),
-+                                    *request->FindString("stylesheetSha256")})
-+                         .second) {
-+                  valid = false;
-+                  break;
-+                }
-+              }
-+            }
-+            if (valid) {
-+              owner->policies_ = std::move(policies);
-+              for (const auto& [origin, policy] : owner->policies_) {
-+                owner->sequence_by_origin_[origin] = ++owner->next_sequence_;
-+              }
-+              owner->ready_ = true;
-+            }
-+            owner->loading_ = false;
-+            auto callbacks = std::move(owner->pending_ready_);
-+            for (auto& pending : callbacks) {
-+              std::move(pending).Run(valid);
-+            }
-+          },
-+          weak_factory_.GetWeakPtr()));
-+}
-+
-+const std::string* ZapController::StyleForOrigin(
-+    const std::string& origin) const {
-+  auto it = policies_.find(origin);
-+  return it == policies_.end() ? nullptr : &it->second.stylesheet;
-+}
-+
-+void ZapController::PrepareFrame(content::RenderFrameHost* frame,
-+                                 const std::string& origin,
-+                                 FrameCallback callback) {
-+  if (!frame) {
-+    std::move(callback).Run(false, false);
-+    return;
-+  }
-+  const int request_id = next_frame_request_id_++;
-+  auto request = std::make_unique<FrameRequest>();
-+  request->callback = std::move(callback);
-+  frame->GetRemoteAssociatedInterfaces()->GetInterface(&request->remote);
-+  request->remote.set_disconnect_handler(
-+      base::BindOnce(&ZapController::OnFrameResult, weak_factory_.GetWeakPtr(),
-+                     request_id, false, false));
-+  const std::string* zap_stylesheet = StyleForOrigin(origin);
-+  std::string stylesheet = zap_stylesheet ? *zap_stylesheet : "";
-+  if (auto* cosmetic = CosmeticController::ForProfile(profile_)) {
-+    stylesheet.append(cosmetic->StyleForOrigin(origin));
-+  }
-+  const auto sequence_it = sequence_by_origin_.find(origin);
-+  const uint64_t sequence =
-+      sequence_it == sequence_by_origin_.end() ? 0 : sequence_it->second;
-+  frame_requests_.emplace(request_id, std::move(request));
-+  frame_requests_.at(request_id)
-+      ->remote->SetAuxZapStylesheet(
-+          origin, sequence, stylesheet,
-+          base::BindOnce(&ZapController::OnFrameResult,
-+                         weak_factory_.GetWeakPtr(), request_id));
-+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-+      FROM_HERE,
-+      base::BindOnce(&ZapController::OnFrameResult, weak_factory_.GetWeakPtr(),
-+                     request_id, false, false),
-+      base::Seconds(10));
-+}
-+
-+void ZapController::RefreshCosmetic(base::OnceCallback<void(bool)> callback) {
-+  auto* catalog = TabCatalog::GetForProfile(profile_);
-+  if (!catalog) {
-+    std::move(callback).Run(false);
-+    return;
-+  }
-+  const base::DictValue snapshot = catalog->Snapshot();
-+  const base::ListValue* tabs = snapshot.FindList("tabs");
-+  if (!tabs) {
-+    std::move(callback).Run(false);
-+    return;
-+  }
-+  std::vector<std::pair<content::GlobalRenderFrameHostId, std::string>> targets;
-+  for (const base::Value& tab : *tabs) {
-+    const std::string* page_id = tab.GetDict().FindString("pageId");
-+    content::WebContents* contents =
-+        page_id ? catalog->FindPage(*page_id) : nullptr;
-+    if (!contents) {
-+      continue;
-+    }
-+    contents->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
-+      const std::string origin = frame->GetLastCommittedOrigin().Serialize();
-+      const GURL url(origin);
-+      if (url.SchemeIsHTTPOrHTTPS()) {
-+        targets.emplace_back(frame->GetGlobalId(), origin);
-+      }
-+    });
-+  }
-+  if (targets.size() > 5000) {
-+    std::move(callback).Run(false);
-+    return;
-+  }
-+  std::set<std::string> origins;
-+  for (const auto& target : targets) {
-+    origins.insert(target.second);
-+  }
-+  for (const auto& origin : origins) {
-+    sequence_by_origin_[origin] = ++next_sequence_;
-+  }
-+  if (targets.empty()) {
-+    std::move(callback).Run(true);
-+    return;
-+  }
-+  struct Pending {
-+    size_t remaining;
-+    bool valid = true;
-+    base::OnceCallback<void(bool)> callback;
-+  };
-+  auto pending = std::make_shared<Pending>();
-+  pending->remaining = targets.size();
-+  pending->callback = std::move(callback);
-+  for (const auto& [frame_id, origin] : targets) {
-+    const std::string* zap_style = StyleForOrigin(origin);
-+    const bool expect_style = (zap_style && !zap_style->empty()) ||
-+                              !CosmeticController::ForProfile(profile_)
-+                                   ->StyleForOrigin(origin)
-+                                   .empty();
-+    PrepareFrame(content::RenderFrameHost::FromID(frame_id), origin,
-+                 base::BindOnce(
-+                     [](std::shared_ptr<Pending> pending,
-+                        content::GlobalRenderFrameHostId frame_id,
-+                        std::string origin, bool expect_style, bool accepted,
-+                        bool applied) {
-+                       auto* current = content::RenderFrameHost::FromID(frame_id);
-+                       if (current &&
-+                           current->GetLastCommittedOrigin().Serialize() == origin) {
-+                         pending->valid &= accepted && (!expect_style || applied);
-+                       }
-+                       if (--pending->remaining == 0) {
-+                         std::move(pending->callback).Run(pending->valid);
-+                       }
-+                     },
-+                     pending, frame_id, origin, expect_style));
-+  }
-+}
-+
-+void ZapController::OnFrameResult(int request_id, bool accepted, bool applied) {
-+  auto it = frame_requests_.find(request_id);
-+  if (it == frame_requests_.end()) {
-+    return;
-+  }
-+  auto request = std::move(it->second);
-+  frame_requests_.erase(it);
-+  std::move(request->callback).Run(accepted, applied);
-+}
-+
-+void ZapController::Install(const base::DictValue& request,
-+                            InstallCallback callback) {
-+  if (!ready_ || !Validate(request)) {
-+    std::move(callback).Run(Fault("Invalid Zap stylesheet installation"));
-+    return;
-+  }
-+  const std::string origin = *request.FindString("origin");
-+  const std::string stylesheet = *request.FindString("stylesheet");
-+  const std::string hash = *request.FindString("stylesheetSha256");
-+  const int revision = *request.FindInt("revision");
-+  const auto previous_it = policies_.find(origin);
-+  if (previous_it == policies_.end() && !stylesheet.empty() &&
-+      policies_.size() >= 100) {
-+    std::move(callback).Run(Fault("Zap is limited to 100 Profile origins"));
-+    return;
-+  }
-+  if (previous_it != policies_.end() &&
-+      previous_it->second.revision > revision) {
-+    std::move(callback).Run(Fault("Zap policy revision is stale"));
-+    return;
-+  }
-+  if (previous_it != policies_.end() &&
-+      previous_it->second.revision == revision &&
-+      previous_it->second.sha256 != hash) {
-+    std::move(callback).Run(Fault("Zap revision conflicts with installed CSS"));
-+    return;
-+  }
-+
-+  struct Target {
-+    std::string page_id;
-+    content::GlobalRenderFrameHostId frame_id;
-+    int64_t epoch;
-+    bool matching_origin;
-+  };
-+  std::vector<Target> targets;
-+  auto* catalog = TabCatalog::GetForProfile(profile_);
-+  if (!catalog) {
-+    std::move(callback).Run(Fault("Tab catalog is unavailable"));
-+    return;
-+  }
-+  base::DictValue snapshot = catalog->Snapshot();
-+  const base::ListValue* tabs = snapshot.FindList("tabs");
-+  if (!tabs) {
-+    std::move(callback).Run(Fault("Tab catalog is unavailable"));
-+    return;
-+  }
-+  for (const base::Value& tab : *tabs) {
-+    const std::string* page_id = tab.GetDict().FindString("pageId");
-+    content::WebContents* contents =
-+        page_id ? catalog->FindPage(*page_id) : nullptr;
-+    if (!contents) {
-+      continue;
-+    }
-+    contents->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
-+      const bool matching_origin =
-+          frame->GetLastCommittedOrigin().Serialize() == origin;
-+      if (matching_origin || stylesheet.empty()) {
-+        targets.push_back({*page_id, frame->GetGlobalId(),
-+                           frame->GetNavigationId(), matching_origin});
-+      }
-+    });
-+  }
-+  const size_t matching_count = std::count_if(
-+      targets.begin(), targets.end(),
-+      [](const Target& target) { return target.matching_origin; });
-+  if (matching_count > 500 || targets.size() > 5000) {
-+    std::move(callback).Run(Fault("Too many active Zap documents"));
-+    return;
-+  }
-+
-+  const std::optional<Policy> previous =
-+      previous_it == policies_.end()
-+          ? std::nullopt
-+          : std::optional<Policy>(previous_it->second);
-+  policies_[origin] = Policy{revision, stylesheet, hash};
-+  sequence_by_origin_[origin] = ++next_sequence_;
-+  struct Pending {
-+    size_t remaining = 0;
-+    bool failed = false;
-+    base::ListValue documents;
-+    InstallCallback callback;
-+    base::DictValue receipt;
-+    std::vector<Target> targets;
-+    std::optional<Policy> previous;
-+    std::string origin;
-+    base::WeakPtr<ZapController> owner;
-+  };
-+  auto pending = std::make_shared<Pending>();
-+  pending->remaining = targets.size();
-+  pending->targets = std::move(targets);
-+  pending->previous = previous;
-+  pending->origin = origin;
-+  pending->owner = weak_factory_.GetWeakPtr();
-+  pending->callback = std::move(callback);
-+  pending->receipt.Set("profileId", *request.FindString("profileId"));
-+  pending->receipt.Set("origin", origin);
-+  pending->receipt.Set("revision", revision);
-+  pending->receipt.Set("stylesheetSha256", hash);
-+  pending->receipt.Set("phase", "document_start");
-+  pending->receipt.Set("futureDocuments", true);
-+
-+  if (pending->remaining == 0) {
-+    if (stylesheet.empty()) {
-+      policies_.erase(origin);
-+    }
-+    pending->receipt.Set(
-+        "appliedAt",
-+        static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch()));
-+    pending->receipt.Set("activeDocuments", base::ListValue());
-+    base::DictValue response;
-+    response.Set("result", std::move(pending->receipt));
-+    std::move(pending->callback).Run(std::move(response));
-+    return;
-+  }
-+  for (const Target& target : pending->targets) {
-+    content::RenderFrameHost* frame =
-+        content::RenderFrameHost::FromID(target.frame_id);
-+    PrepareFrame(
-+        frame, origin,
-+        base::BindOnce(
-+            [](std::shared_ptr<Pending> pending, Target target, bool accepted,
-+               bool applied) {
-+              content::RenderFrameHost* current =
-+                  content::RenderFrameHost::FromID(target.frame_id);
-+              const bool same_document =
-+                  current && current->GetNavigationId() == target.epoch &&
-+                  current->GetLastCommittedOrigin().Serialize() ==
-+                      pending->origin;
-+              if (same_document && target.matching_origin) {
-+                base::DictValue document;
-+                document.Set("pageId", target.page_id);
-+                document.Set(
-+                    "documentEpoch",
-+                    static_cast<double>(std::max<int64_t>(0, target.epoch)));
-+                document.Set("frameOrigin", pending->origin);
-+                document.Set("applied", accepted && applied);
-+                pending->documents.Append(std::move(document));
-+                if (!accepted ||
-+                    (!applied && pending->owner &&
-+                     !pending->owner->StyleForOrigin(pending->origin)
-+                          ->empty())) {
-+                  pending->failed = true;
-+                }
-+              }
-+              if (current && !accepted) {
-+                pending->failed = true;
-+              }
-+              if (--pending->remaining != 0) {
-+                return;
-+              }
-+              if (!pending->owner) {
-+                std::move(pending->callback)
-+                    .Run(Fault("Zap Profile closed during installation"));
-+                return;
-+              }
-+              if (!pending->failed) {
-+                pending->receipt.Set(
-+                    "appliedAt",
-+                    static_cast<double>(
-+                        base::Time::Now().InMillisecondsSinceUnixEpoch()));
-+                pending->receipt.Set("activeDocuments",
-+                                     std::move(pending->documents));
-+                base::DictValue response;
-+                response.Set("result", std::move(pending->receipt));
-+                std::move(pending->callback).Run(std::move(response));
-+                return;
-+              }
-+              // The runtime has not saved this edit. Restore the previous
-+              // policy and wait for every surviving active frame to acknowledge
-+              // rollback.
-+              if (pending->previous) {
-+                pending->owner->policies_[pending->origin] = *pending->previous;
-+              } else {
-+                pending->owner->policies_.erase(pending->origin);
-+              }
-+              struct Rollback {
-+                size_t remaining = 0;
-+                InstallCallback callback;
-+              };
-+              auto rollback = std::make_shared<Rollback>();
-+              rollback->callback = std::move(pending->callback);
-+              for (const Target& item : pending->targets) {
-+                if (content::RenderFrameHost::FromID(item.frame_id)) {
-+                  ++rollback->remaining;
-+                }
-+              }
-+              if (!rollback->remaining) {
-+                std::move(rollback->callback)
-+                    .Run(Fault("Zap active document rejected the stylesheet"));
-+                return;
-+              }
-+              for (const Target& item : pending->targets) {
-+                content::RenderFrameHost* rollback_frame =
-+                    content::RenderFrameHost::FromID(item.frame_id);
-+                if (!rollback_frame) {
-+                  continue;
-+                }
-+                pending->owner->PrepareFrame(
-+                    rollback_frame, pending->origin,
-+                    base::BindOnce(
-+                        [](std::shared_ptr<Rollback> rollback, bool, bool) {
-+                          if (--rollback->remaining == 0) {
-+                            std::move(rollback->callback)
-+                                .Run(Fault("Zap active document rejected the "
-+                                           "stylesheet"));
-+                          }
-+                        },
-+                        rollback));
-+              }
-+            },
-+            pending, target));
-+  }
-+}
-+
-+namespace {
-+
-+void StopNavigation(content::WebContents* contents) {
-+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-+      FROM_HERE, base::BindOnce(
-+                     [](base::WeakPtr<content::WebContents> weak_contents) {
-+                       if (weak_contents) {
-+                         weak_contents->Stop();
-+                       }
-+                     },
-+                     contents->GetWeakPtr()));
-+}
-+
-+class ZapCommitCondition final : public content::CommitDeferringCondition {
-+ public:
-+  explicit ZapCommitCondition(content::NavigationHandle& navigation)
-+      : CommitDeferringCondition(navigation) {}
-+  ~ZapCommitCondition() override = default;
-+
-+  Result WillCommitNavigation(base::OnceClosure resume) override {
-+    content::NavigationHandle& navigation = GetNavigationHandle();
-+    Profile* profile = Profile::FromBrowserContext(
-+        navigation.GetWebContents()->GetBrowserContext());
-+    ZapController* controller = ZapController::ForProfile(profile);
-+    if (!controller) {
-+      return Result::kProceed;
-+    }
-+    const std::string origin =
-+        url::Origin::Create(navigation.GetURL()).Serialize();
-+    controller->EnsureReady(base::BindOnce(
-+        [](base::WeakPtr<ZapCommitCondition> condition, std::string origin,
-+           base::OnceClosure resume, bool ready) {
-+          if (!condition) {
-+            return;
-+          }
-+          if (!ready) {
-+            // A saved policy may exist: do not commit a document without
-+            // loading the authoritative Profile snapshot.
-+            StopNavigation(condition->GetNavigationHandle().GetWebContents());
-+            return;
-+          }
-+          ZapController* controller = ZapController::ForProfile(
-+              Profile::FromBrowserContext(condition->GetNavigationHandle()
-+                                              .GetWebContents()
-+                                              ->GetBrowserContext()));
-+          content::RenderFrameHost* frame =
-+              condition->GetNavigationHandle().GetRenderFrameHost();
-+          if (!controller || !frame) {
-+            StopNavigation(condition->GetNavigationHandle().GetWebContents());
-+            return;
-+          }
-+          controller->PrepareFrame(
-+              frame, origin,
-+              base::BindOnce(
-+                  [](base::WeakPtr<ZapCommitCondition> condition,
-+                     base::OnceClosure resume, bool accepted, bool) {
-+                    if (!condition) {
-+                      return;
-+                    }
-+                    if (!accepted) {
-+                      StopNavigation(
-+                          condition->GetNavigationHandle().GetWebContents());
-+                      return;
-+                    }
-+                    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-+                        FROM_HERE, std::move(resume));
-+                  },
-+                  condition, std::move(resume)));
-+        },
-+        weak_factory_.GetWeakPtr(), origin, std::move(resume)));
-+    return Result::kDefer;
-+  }
-+
-+  const char* TraceEventName() const override {
-+    return "AuxZapCommitCondition";
-+  }
-+
-+ private:
-+  base::WeakPtrFactory<ZapCommitCondition> weak_factory_{this};
-+};
-+
-+}  // namespace
-+
-+std::unique_ptr<content::CommitDeferringCondition> MaybeCreateZapCondition(
-+    content::NavigationHandle& navigation) {
-+  if (navigation.IsSameDocument() ||
-+      !navigation.GetURL().SchemeIsHTTPOrHTTPS()) {
-+    return nullptr;
-+  }
-+  Profile* profile = Profile::FromBrowserContext(
-+      navigation.GetWebContents()->GetBrowserContext());
-+  if (!profile) {
-+    return nullptr;
-+  }
-+  return std::make_unique<ZapCommitCondition>(navigation);
-+}
-+
-+}  // namespace aux
-diff --git a/chrome/browser/ui/aux/zap_controller.h b/chrome/browser/ui/aux/zap_controller.h
-new file mode 100644
-index 0000000000..4d32c0c1b4
---- /dev/null
-+++ b/chrome/browser/ui/aux/zap_controller.h
-@@ -0,0 +1,77 @@
-+// Copyright 2026 The Aux Authors
-+// Use of this source code is governed by a BSD-style license that can be
-+// found in the LICENSE file.
-+
-+#ifndef CHROME_BROWSER_UI_AUX_ZAP_CONTROLLER_H_
-+#define CHROME_BROWSER_UI_AUX_ZAP_CONTROLLER_H_
-+
-+#include <cstdint>
-+#include <map>
-+#include <memory>
-+#include <string>
-+#include <vector>
-+
-+#include "base/functional/callback.h"
-+#include "base/memory/raw_ptr.h"
-+#include "base/memory/weak_ptr.h"
-+#include "base/supports_user_data.h"
-+#include "base/values.h"
-+
-+class Profile;
-+namespace content {
-+class RenderFrameHost;
-+class NavigationHandle;
-+class CommitDeferringCondition;
-+}  // namespace content
-+
-+namespace aux {
-+
-+// Runtime DB is authoritative. This Profile-scoped cache only holds validated
-+// styles delivered over the authenticated Aux Runtime channel.
-+std::unique_ptr<content::CommitDeferringCondition> MaybeCreateZapCondition(
-+    content::NavigationHandle& navigation);
-+
-+class ZapController final : public base::SupportsUserData::Data {
-+ public:
-+  using ReadyCallback = base::OnceCallback<void(bool)>;
-+  using InstallCallback = base::OnceCallback<void(base::DictValue)>;
-+  using FrameCallback = base::OnceCallback<void(bool accepted, bool applied)>;
-+
-+  static ZapController* ForProfile(Profile* profile);
-+  ~ZapController() override;
-+
-+  void EnsureReady(ReadyCallback callback);
-+  void Install(const base::DictValue& request, InstallCallback callback);
-+  void PrepareFrame(content::RenderFrameHost* frame,
-+                    const std::string& origin,
-+                    FrameCallback callback);
-+  void RefreshCosmetic(base::OnceCallback<void(bool)> callback);
-+  const std::string* StyleForOrigin(const std::string& origin) const;
-+  bool ready() const { return ready_; }
-+
-+ private:
-+  explicit ZapController(Profile* profile);
-+  bool Validate(const base::DictValue& request) const;
-+  void OnFrameResult(int request_id, bool accepted, bool applied);
-+  struct FrameRequest;
-+
-+  struct Policy {
-+    int revision;
-+    std::string stylesheet;
-+    std::string sha256;
-+  };
-+  raw_ptr<Profile> profile_;
-+  std::map<std::string, Policy> policies_;
-+  std::map<std::string, uint64_t> sequence_by_origin_;
-+  uint64_t next_sequence_ = 0;
-+  std::vector<ReadyCallback> pending_ready_;
-+  std::map<int, std::unique_ptr<FrameRequest>> frame_requests_;
-+  int next_frame_request_id_ = 1;
-+  bool loading_ = false;
-+  bool ready_ = false;
-+  base::WeakPtrFactory<ZapController> weak_factory_{this};
-+};
-+
-+}  // namespace aux
-+
-+#endif  // CHROME_BROWSER_UI_AUX_ZAP_CONTROLLER_H_
 diff --git a/chrome/browser/ui/navigator/browser_navigator.cc b/chrome/browser/ui/navigator/browser_navigator.cc
-index 258f996c80..e15ecdfe40 100644
+index 258f996..e15ecdf 100644
 --- a/chrome/browser/ui/navigator/browser_navigator.cc
 +++ b/chrome/browser/ui/navigator/browser_navigator.cc
 @@ -22,6 +22,17 @@
@@ -1901,7 +1381,7 @@ index 258f996c80..e15ecdfe40 100644
  #if BUILDFLAG(IS_CHROMEOS)
    if (params->disposition != WindowOpenDisposition::NEW_POPUP &&
 diff --git a/chrome/browser/ui/startup/startup_tab.h b/chrome/browser/ui/startup/startup_tab.h
-index 494d35877b..179937e923 100644
+index 494d358..179937e 100644
 --- a/chrome/browser/ui/startup/startup_tab.h
 +++ b/chrome/browser/ui/startup/startup_tab.h
 @@ -6,6 +6,7 @@
@@ -1922,7 +1402,7 @@ index 494d35877b..179937e923 100644
  
  using StartupTabs = std::vector<StartupTab>;
 diff --git a/chrome/browser/ui/tab_helpers.cc b/chrome/browser/ui/tab_helpers.cc
-index 4de5112246..3b32898abd 100644
+index 4de5112..3b32898 100644
 --- a/chrome/browser/ui/tab_helpers.cc
 +++ b/chrome/browser/ui/tab_helpers.cc
 @@ -137,6 +137,9 @@
@@ -1947,7 +1427,7 @@ index 4de5112246..3b32898abd 100644
        web_contents);
    // The PopupBlockerTabHelper has an implicit dependency on
 diff --git a/chrome/browser/ui/views/global_error_bubble_view.cc b/chrome/browser/ui/views/global_error_bubble_view.cc
-index e87e8bf515..211b893253 100644
+index e87e8bf..211b893 100644
 --- a/chrome/browser/ui/views/global_error_bubble_view.cc
 +++ b/chrome/browser/ui/views/global_error_bubble_view.cc
 @@ -42,9 +42,15 @@
@@ -1970,7 +1450,7 @@ index e87e8bf515..211b893253 100644
        control ? control->GetAnchor() : views::BubbleAnchor();
    GlobalErrorBubbleView* bubble_view = new GlobalErrorBubbleView(
 diff --git a/chrome/common/chrome_content_client.cc b/chrome/common/chrome_content_client.cc
-index a97283168c..2afff54f67 100644
+index a972831..2afff54 100644
 --- a/chrome/common/chrome_content_client.cc
 +++ b/chrome/common/chrome_content_client.cc
 @@ -25,6 +25,7 @@
@@ -1996,7 +1476,7 @@ index a97283168c..2afff54f67 100644
      schemes->standard_schemes.push_back(standard_scheme);
  
 diff --git a/chrome/common/chrome_isolated_world_ids.h b/chrome/common/chrome_isolated_world_ids.h
-index 846e4777c4..eae392d173 100644
+index 846e477..c062901 100644
 --- a/chrome/common/chrome_isolated_world_ids.h
 +++ b/chrome/common/chrome_isolated_world_ids.h
 @@ -6,6 +6,7 @@
@@ -2007,7 +1487,7 @@ index 846e4777c4..eae392d173 100644
  #include "content/public/common/isolated_world_ids.h"
  // LINT.IfChange
  // When changing this file, ChromeIsolatedWorldIds.java must be updated as well.
-@@ -24,10 +25,31 @@ enum ChromeIsolatedWorldIDs {
+@@ -24,10 +25,32 @@ enum ChromeIsolatedWorldIDs {
    ISOLATED_WORLD_ID_APPLESCRIPT,
  #endif  // BUILDFLAG(IS_MAC)
  
@@ -2021,6 +1501,7 @@ index 846e4777c4..eae392d173 100644
 +  ISOLATED_WORLD_ID_AUX_PAGE_CHANGE,
 +  ISOLATED_WORLD_ID_AUX_OBSERVER,
 +  ISOLATED_WORLD_ID_AUX_RECORDER,
++  ISOLATED_WORLD_ID_AUX_CONTENT_FILTER,
 +#endif
 +
    // Numbers for isolated worlds for extensions are set in
@@ -2033,14 +1514,14 @@ index 846e4777c4..eae392d173 100644
 +#if BUILDFLAG(IS_MAC)
 +static_assert(ISOLATED_WORLD_ID_AUX_TRANSLATION > ISOLATED_WORLD_ID_APPLESCRIPT);
 +#endif
-+static_assert(ISOLATED_WORLD_ID_AUX_RECORDER < ISOLATED_WORLD_ID_EXTENSIONS);
-+static_assert(static_cast<int>(ISOLATED_WORLD_ID_AUX_RECORDER) <=
++static_assert(ISOLATED_WORLD_ID_AUX_CONTENT_FILTER < ISOLATED_WORLD_ID_EXTENSIONS);
++static_assert(static_cast<int>(ISOLATED_WORLD_ID_AUX_CONTENT_FILTER) <=
 +              static_cast<int>(content::ISOLATED_WORLD_ID_MAX));
 +#endif
  // LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java)
  #endif  // CHROME_COMMON_CHROME_ISOLATED_WORLD_IDS_H_
 diff --git a/chrome/common/chrome_render_frame.mojom b/chrome/common/chrome_render_frame.mojom
-index c5b742e2fe..2cd64ea8eb 100644
+index c5b742e..2cd64ea 100644
 --- a/chrome/common/chrome_render_frame.mojom
 +++ b/chrome/common/chrome_render_frame.mojom
 @@ -28,6 +28,11 @@ enum ImageFormat {
@@ -2055,129 +1536,8 @@ index c5b742e2fe..2cd64ea8eb 100644
    // Updates the window features of the main frame's render view.
    SetWindowFeatures(blink.mojom.WindowFeatures window_features);
  
-diff --git a/chrome/renderer/aux_zap_stylesheet_registry.cc b/chrome/renderer/aux_zap_stylesheet_registry.cc
-new file mode 100644
-index 0000000000..e593816a71
---- /dev/null
-+++ b/chrome/renderer/aux_zap_stylesheet_registry.cc
-@@ -0,0 +1,8 @@
-+// Copyright 2026 The Aux Authors
-+// Use of this source code is governed by a BSD-style license that can be
-+// found in the LICENSE file.
-+
-+#include "chrome/renderer/aux_zap_stylesheet_registry.h"
-+
-+AuxZapStylesheetRegistry::AuxZapStylesheetRegistry() = default;
-+AuxZapStylesheetRegistry::~AuxZapStylesheetRegistry() = default;
-diff --git a/chrome/renderer/aux_zap_stylesheet_registry.h b/chrome/renderer/aux_zap_stylesheet_registry.h
-new file mode 100644
-index 0000000000..c80ae77872
---- /dev/null
-+++ b/chrome/renderer/aux_zap_stylesheet_registry.h
-@@ -0,0 +1,101 @@
-+// Copyright 2026 The Aux Authors
-+// Use of this source code is governed by a BSD-style license that can be
-+// found in the LICENSE file.
-+
-+#ifndef CHROME_RENDERER_AUX_ZAP_STYLESHEET_REGISTRY_H_
-+#define CHROME_RENDERER_AUX_ZAP_STYLESHEET_REGISTRY_H_
-+
-+#include <chrono>
-+#include <cstddef>
-+#include <cstdint>
-+#include <map>
-+#include <string>
-+
-+// Renderer processes belong to one BrowserContext. Keep exact-origin styles
-+// for inherited-origin documents (about:blank and blob) which may be created
-+// without a network navigation. The browser provides monotonic sequence
-+// numbers; a late message cannot restore a revoked style.
-+class AuxZapStylesheetRegistry {
-+ public:
-+  enum class Result { kAccepted, kStale, kCapacity };
-+  using Clock = std::chrono::steady_clock;
-+
-+  AuxZapStylesheetRegistry();
-+  ~AuxZapStylesheetRegistry();
-+
-+  Result Update(const std::string& origin,
-+                uint64_t sequence,
-+                const std::string& stylesheet,
-+                Clock::time_point now) {
-+    Prune(now);
-+    auto it = entries_.find(origin);
-+    if (it == entries_.end() && stylesheet.empty() && sequence == 0) {
-+      return Result::kAccepted;
-+    }
-+    if (it != entries_.end()) {
-+      if (sequence < it->second.sequence ||
-+          (sequence == it->second.sequence &&
-+           stylesheet != it->second.stylesheet)) {
-+        return Result::kStale;
-+      }
-+    }
-+    if (!stylesheet.empty() &&
-+        (it == entries_.end() || it->second.stylesheet.empty()) &&
-+        live_styles_ >= kMaxLiveStyles) {
-+      return Result::kCapacity;
-+    }
-+    if (it == entries_.end()) {
-+      if (stylesheet.empty() && tombstones_ >= kMaxTombstones) {
-+        return Result::kCapacity;
-+      }
-+      it = entries_.emplace(origin, Entry{}).first;
-+    } else if (it->second.stylesheet.empty()) {
-+      --tombstones_;
-+    } else {
-+      --live_styles_;
-+    }
-+    it->second = {
-+        sequence, stylesheet,
-+        stylesheet.empty() ? now + kTombstoneLifetime : Clock::time_point{}};
-+    if (stylesheet.empty()) {
-+      ++tombstones_;
-+    } else {
-+      ++live_styles_;
-+    }
-+    return Result::kAccepted;
-+  }
-+
-+  const std::string* Find(const std::string& origin) const {
-+    auto it = entries_.find(origin);
-+    return it == entries_.end() || it->second.stylesheet.empty()
-+               ? nullptr
-+               : &it->second.stylesheet;
-+  }
-+
-+ private:
-+  struct Entry {
-+    uint64_t sequence = 0;
-+    std::string stylesheet;
-+    Clock::time_point expires_at;
-+  };
-+  static constexpr size_t kMaxLiveStyles = 512;
-+  static constexpr size_t kMaxTombstones = 5000;
-+  static constexpr auto kTombstoneLifetime = std::chrono::seconds(30);
-+
-+  void Prune(Clock::time_point now) {
-+    for (auto it = entries_.begin(); it != entries_.end();) {
-+      if (it->second.stylesheet.empty() && it->second.expires_at <= now) {
-+        it = entries_.erase(it);
-+        --tombstones_;
-+      } else {
-+        ++it;
-+      }
-+    }
-+  }
-+
-+  std::map<std::string, Entry> entries_;
-+  size_t live_styles_ = 0;
-+  size_t tombstones_ = 0;
-+};
-+
-+#endif  // CHROME_RENDERER_AUX_ZAP_STYLESHEET_REGISTRY_H_
 diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer/chrome_content_renderer_client.cc
-index 02f4820634..bf43f3a3e9 100644
+index 02f4820..bf43f3a 100644
 --- a/chrome/renderer/chrome_content_renderer_client.cc
 +++ b/chrome/renderer/chrome_content_renderer_client.cc
 @@ -942,7 +942,11 @@ bool ChromeContentRendererClient::OverrideCreatePlugin(
@@ -2194,19 +1554,20 @@ index 02f4820634..bf43f3a3e9 100644
          return true;
        }
 diff --git a/chrome/renderer/chrome_render_frame_observer.cc b/chrome/renderer/chrome_render_frame_observer.cc
-index 1dc2c646c0..24f8436847 100644
+index 1dc2c64..1eece57 100644
 --- a/chrome/renderer/chrome_render_frame_observer.cc
 +++ b/chrome/renderer/chrome_render_frame_observer.cc
-@@ -3,6 +3,8 @@
+@@ -3,6 +3,9 @@
  // found in the LICENSE file.
  
  #include "chrome/renderer/chrome_render_frame_observer.h"
++#include "chrome/renderer/aux_cosmetic_filter_agent.h"
 +#include "chrome/renderer/aux_recorder_agent.h"
 +#include "chrome/renderer/aux_person_observer_agent.h"
  
  #include <stddef.h>
  #include <string.h>
-@@ -31,6 +33,7 @@
+@@ -31,6 +34,7 @@
  #include "chrome/common/open_search_description_document_handler.mojom.h"
  #include "chrome/common/webui_url_constants.h"
  #include "chrome/renderer/actor/chrome_page_stability_monitor_delegate.h"
@@ -2214,7 +1575,7 @@ index 1dc2c646c0..24f8436847 100644
  #include "chrome/renderer/actor/journal.h"
  #include "chrome/renderer/actor/tool_executor.h"
  #include "chrome/renderer/benchmarking_bindings.h"
-@@ -67,6 +70,7 @@
+@@ -67,6 +71,7 @@
  #include "third_party/blink/public/platform/web_url_request.h"
  #include "third_party/blink/public/web/web_console_message.h"
  #include "third_party/blink/public/web/web_document.h"
@@ -2222,7 +1583,7 @@ index 1dc2c646c0..24f8436847 100644
  #include "third_party/blink/public/web/web_document_loader.h"
  #include "third_party/blink/public/web/web_element.h"
  #include "third_party/blink/public/web/web_frame_content_dumper.h"
-@@ -82,6 +86,7 @@
+@@ -82,6 +87,7 @@
  #include "ui/gfx/codec/webp_codec.h"
  #include "ui/gfx/geometry/size_f.h"
  #include "url/gurl.h"
@@ -2230,7 +1591,7 @@ index 1dc2c646c0..24f8436847 100644
  
  #if !BUILDFLAG(IS_ANDROID)
  #include "chrome/renderer/accessibility/read_anything/read_anything_app_controller.h"
-@@ -129,6 +134,11 @@ const char kImageJpeg[] = "image/jpeg";
+@@ -129,6 +135,11 @@ const char kImageJpeg[] = "image/jpeg";
  const char kImagePng[] = "image/png";
  const char kImageWebp[] = "image/webp";
  
@@ -2242,11 +1603,12 @@ index 1dc2c646c0..24f8436847 100644
  #if BUILDFLAG(IS_ANDROID)
  base::Lock& GetFrameHeaderMapLock() {
    static base::NoDestructor<base::Lock> s;
-@@ -216,6 +226,13 @@ ChromeRenderFrameObserver::ChromeRenderFrameObserver(
+@@ -216,6 +227,14 @@ ChromeRenderFrameObserver::ChromeRenderFrameObserver(
            &ChromeRenderFrameObserver::OnRenderFrameObserverRequest,
            base::Unretained(this)));
  
 +#if defined(AUX_SHELL_ENABLED)
++  new chrome::AuxCosmeticFilterAgent(render_frame);
 +  if (render_frame->IsMainFrame()) {
 +    new chrome::AuxRecorderAgent(render_frame);
 +    new chrome::AuxPersonObserverAgent(render_frame);
@@ -2256,7 +1618,7 @@ index 1dc2c646c0..24f8436847 100644
    // Don't do anything else for subframes.
    if (!render_frame->IsMainFrame())
      return;
-@@ -317,7 +334,63 @@ void ChromeRenderFrameObserver::DidFinishLoad() {
+@@ -317,7 +336,63 @@ void ChromeRenderFrameObserver::DidFinishLoad() {
    }
  }
  
@@ -2321,7 +1683,7 @@ index 1dc2c646c0..24f8436847 100644
    DCHECK(render_frame());
    if (!render_frame()->IsMainFrame())
 diff --git a/chrome/renderer/chrome_render_frame_observer.h b/chrome/renderer/chrome_render_frame_observer.h
-index 80e224f9bc..dbfaa047ab 100644
+index 80e224f..dbfaa04 100644
 --- a/chrome/renderer/chrome_render_frame_observer.h
 +++ b/chrome/renderer/chrome_render_frame_observer.h
 @@ -5,6 +5,9 @@
@@ -2373,7 +1735,7 @@ index 80e224f9bc..dbfaa047ab 100644
  
    service_manager::BinderRegistry registry_;
 diff --git a/content/browser/renderer_host/model_context_user_data.cc b/content/browser/renderer_host/model_context_user_data.cc
-index b424361a7b..a3ab9de714 100644
+index b424361..a3ab9de 100644
 --- a/content/browser/renderer_host/model_context_user_data.cc
 +++ b/content/browser/renderer_host/model_context_user_data.cc
 @@ -6,6 +6,8 @@
@@ -2531,7 +1893,7 @@ index b424361a7b..a3ab9de714 100644
 +
  }  // namespace content
 diff --git a/content/browser/renderer_host/model_context_user_data.h b/content/browser/renderer_host/model_context_user_data.h
-index 480c0d27cd..5709675209 100644
+index 480c0d2..5709675 100644
 --- a/content/browser/renderer_host/model_context_user_data.h
 +++ b/content/browser/renderer_host/model_context_user_data.h
 @@ -146,6 +146,13 @@ class CONTENT_EXPORT ModelContextUserData
@@ -2549,7 +1911,7 @@ index 480c0d27cd..5709675209 100644
    friend class DocumentUserData<ModelContextUserData>;
    friend class ModelContextPageUserData;
 diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
-index 57a6345fc6..89364dfcca 100644
+index 57a6345..89364df 100644
 --- a/content/browser/renderer_host/navigation_request.cc
 +++ b/content/browser/renderer_host/navigation_request.cc
 @@ -6940,6 +6940,24 @@ bool NavigationRequest::ShouldDispatchPageSwapEvent() const {
@@ -2626,7 +1988,7 @@ index 57a6345fc6..89364dfcca 100644
        common_params().url,
        common_params().initiator_origin.value_or(url::Origin()));
 diff --git a/content/browser/renderer_host/navigation_request.h b/content/browser/renderer_host/navigation_request.h
-index 63ae86f505..f014e588ac 100644
+index 63ae86f..f014e58 100644
 --- a/content/browser/renderer_host/navigation_request.h
 +++ b/content/browser/renderer_host/navigation_request.h
 @@ -3691,6 +3691,14 @@ class CONTENT_EXPORT NavigationRequest
@@ -2645,10 +2007,99 @@ index 63ae86f505..f014e588ac 100644
    // - ready to commit if this navigation is associated with a ViewTransition.
    // - unload old document if there is no ViewTransition opt-in.
 diff --git a/content/browser/renderer_host/render_widget_host_impl.cc b/content/browser/renderer_host/render_widget_host_impl.cc
-index 5d7ac29023..87860c4423 100644
+index 5d7ac29..90ce66e 100644
 --- a/content/browser/renderer_host/render_widget_host_impl.cc
 +++ b/content/browser/renderer_host/render_widget_host_impl.cc
-@@ -2177,6 +2177,14 @@ void RenderWidgetHostImpl::ShowContextMenuAtPoint(
+@@ -108,6 +108,7 @@
+ #include "content/public/browser/render_widget_host_observer.h"
+ #include "content/public/browser/storage_partition.h"
+ #include "content/public/browser/tracked_element_observer.h"
++#include "content/public/browser/weak_document_ptr.h"
+ #include "content/public/common/content_client.h"
+ #include "content/public/common/content_constants.h"
+ #include "content/public/common/content_features.h"
+@@ -498,7 +499,51 @@ RenderWidgetHostImpl::RenderWidgetHostImpl(
+   }
+ }
+ 
++struct RenderWidgetHostImpl::NativeMouseDownReceipt {
++  std::vector<std::pair<WeakDocumentPtr, GURL>> documents;
++  std::optional<blink::NativeMouseLinkObservation> accepted;
++};
++
++bool RenderWidgetHostImpl::AcceptNativeMouseDownLink(
++    RenderFrameHost* frame,
++    const blink::NativeMouseLinkObservation& link) {
++  const auto pending = native_mouse_downs_.find(link.nonce);
++  if (pending == native_mouse_downs_.end() || !frame ||
++      frame->GetRenderWidgetHost() != this || !frame->IsActive() ||
++      !frame->IsRenderFrameLive() || link.href.size() > 65536 ||
++      static_cast<RenderFrameHostImpl*>(frame)->GetDocumentToken() !=
++          link.document) {
++    return false;
++  }
++  const GURL href(link.href);
++  if (!href.is_valid()) {
++    return false;
++  }
++  auto& receipt = *pending->second;
++  bool original = false;
++  for (const auto& [document, url] : receipt.documents) {
++    if (document.AsRenderFrameHostIfValid() == frame &&
++        frame->GetLastCommittedURL() == url) {
++      original = true;
++    }
++  }
++  if (!original) {
++    return false;
++  }
++  if (receipt.accepted) {
++    return receipt.accepted->document == link.document &&
++           receipt.accepted->href == link.href;
++  }
++  receipt.accepted = link;
++  GetContentClient()->browser()->OnNativeTrustedMouseDownLink(frame, href);
++  return true;
++}
++void RenderWidgetHostImpl::RetireNativeMouseDowns() {
++  native_mouse_downs_.clear();
++}
++
+ RenderWidgetHostImpl::~RenderWidgetHostImpl() {
++  RetireNativeMouseDowns();
+   base::ScopedUmaHistogramTimer histogram_timer(
+       "Navigation.RenderWidgetHostDestructor");
+   CHECK(!self_owned_);
+@@ -1664,6 +1709,28 @@ void RenderWidgetHostImpl::ForwardMouseEventWithLatencyInfo(
+   }
+ 
+   input::MouseEventWithLatencyInfo mouse_with_latency(mouse_event, latency);
++  // Caller-provided tokens are never trusted. MouseDown cannot coalesce.
++  mouse_with_latency.event.native_mouse_down_nonce = base::UnguessableToken();
++  if (mouse_event.GetType() == WebInputEvent::Type::kMouseDown &&
++      native_mouse_downs_.size() < 64 && frame_tree() &&
++      frame_tree()->GetMainFrame()) {
++    auto receipt = std::make_unique<NativeMouseDownReceipt>();
++    frame_tree()->GetMainFrame()->ForEachRenderFrameHost(
++        [&](RenderFrameHost* frame) {
++          if (receipt->documents.size() < 64 &&
++              frame->GetRenderWidgetHost() == this && frame->IsActive() &&
++              frame->IsRenderFrameLive()) {
++            receipt->documents.emplace_back(frame->GetWeakDocumentPtr(),
++                                            frame->GetLastCommittedURL());
++          }
++        });
++    if (!receipt->documents.empty()) {
++      const auto nonce = base::UnguessableToken::Create();
++      mouse_with_latency.event.native_mouse_down_nonce = nonce;
++      native_mouse_downs_.emplace(nonce, std::move(receipt));
++    }
++  }
++
+   GetRenderInputRouter()->DispatchInputEventWithLatencyInfo(
+       mouse_with_latency.event, &mouse_with_latency.latency,
+       &mouse_with_latency.event.GetModifiableEventLatencyMetadata());
+@@ -2177,6 +2244,14 @@ void RenderWidgetHostImpl::ShowContextMenuAtPoint(
    }
  }
  
@@ -2663,11 +2114,74 @@ index 5d7ac29023..87860c4423 100644
  void RenderWidgetHostImpl::InsertVisualStateCallback(
      VisualStateCallback callback) {
    if (!blink_frame_widget_) {
+@@ -2346,6 +2421,7 @@ void RenderWidgetHostImpl::OnUpdateDragOperation(
+ }
+ 
+ void RenderWidgetHostImpl::RendererExited() {
++  RetireNativeMouseDowns();
+   if (!renderer_widget_created_) {
+     return;
+   }
+@@ -2554,6 +2630,36 @@ void RenderWidgetHostImpl::OnMouseEventAck(
+     const input::MouseEventWithLatencyInfo& mouse_event,
+     blink::mojom::InputEventResultSource ack_source,
+     blink::mojom::InputEventResultState ack_result) {
++  const auto nonce = mouse_event.event.native_mouse_down_nonce;
++  auto found = native_mouse_downs_.find(nonce);
++  std::unique_ptr<NativeMouseDownReceipt> receipt;
++  if (found != native_mouse_downs_.end()) {
++    receipt = std::move(found->second);
++    native_mouse_downs_.erase(
++        found);  // One-use before invoking any owner callback.
++  }
++  const auto weak = weak_factory_.GetWeakPtr();
++  const auto& link = mouse_event.native_mouse_link;
++  if (receipt && !receipt->accepted && link && link->nonce == nonce &&
++      ack_source != blink::mojom::InputEventResultSource::kBrowser &&
++      mouse_event.event.GetType() == WebInputEvent::Type::kMouseDown) {
++    const GURL href(link->href);
++    for (const auto& [document, url] : receipt->documents) {
++      auto* frame = document.AsRenderFrameHostIfValid();
++      if (frame && frame->GetRenderWidgetHost() == this && frame->IsActive() &&
++          frame->IsRenderFrameLive() && frame->GetLastCommittedURL() == url &&
++          static_cast<RenderFrameHostImpl*>(frame)->GetDocumentToken() ==
++              link->document &&
++          href.is_valid() && href.spec().size() <= 65536) {
++        GetContentClient()->browser()->OnNativeTrustedMouseDownLink(frame,
++                                                                    href);
++        break;
++      }
++    }
++  }
++  if (!weak) {
++    return;
++  }
+   GetRenderInputRouter()->GetLatencyTracker()->OnInputEventAck(
+       mouse_event.event, &mouse_event.latency, ack_result);
+   NotifyObserversOfInputEventAcks(ack_source, ack_result, mouse_event.event);
+@@ -2653,6 +2759,7 @@ void RenderWidgetHostImpl::OnInputEventAckTimeout(
+     return;
+   }
+ 
++  RetireNativeMouseDowns();
+   RendererIsUnresponsive(
+       RendererIsUnresponsiveReason::kOnInputEventAckTimeout,
+       base::BindRepeating(
 diff --git a/content/browser/renderer_host/render_widget_host_impl.h b/content/browser/renderer_host/render_widget_host_impl.h
-index bb016ee9a7..94b98a4882 100644
+index bb016ee..2fbed33 100644
 --- a/content/browser/renderer_host/render_widget_host_impl.h
 +++ b/content/browser/renderer_host/render_widget_host_impl.h
-@@ -346,6 +346,7 @@ class CONTENT_EXPORT RenderWidgetHostImpl
+@@ -265,6 +265,9 @@ class CONTENT_EXPORT RenderWidgetHostImpl
+   void Blur() override;
+   void FlushForTesting() override;
+   void SetActive(bool active) override;
++  bool AcceptNativeMouseDownLink(
++      RenderFrameHost* original_frame,
++      const blink::NativeMouseLinkObservation& link) override;
+   void ForwardMouseEvent(const blink::WebMouseEvent& mouse_event) override;
+   void ForwardWheelEvent(const blink::WebMouseWheelEvent& wheel_event) override;
+   void ForwardKeyboardEvent(
+@@ -346,6 +349,7 @@ class CONTENT_EXPORT RenderWidgetHostImpl
        const gfx::Point& point,
        const ui::mojom::MenuSourceType source_type) override;
    void InsertVisualStateCallback(VisualStateCallback callback) override;
@@ -2675,11 +2189,43 @@ index bb016ee9a7..94b98a4882 100644
    void SetHungRendererDelay(const base::TimeDelta& delay) override;
    void SetReadyForInputCallbackForTesting(base::OnceClosure callback);
  
+@@ -1121,6 +1125,11 @@ class CONTENT_EXPORT RenderWidgetHostImpl
+   virtual void NotifyNewContentRenderingTimeoutForTesting() {}
+ 
+   // virtual for testing.
++  struct NativeMouseDownReceipt;
++  void RetireNativeMouseDowns();
++  std::map<base::UnguessableToken, std::unique_ptr<NativeMouseDownReceipt>>
++      native_mouse_downs_;
++
+   virtual void OnMouseEventAck(const input::MouseEventWithLatencyInfo& event,
+                                blink::mojom::InputEventResultSource ack_source,
+                                blink::mojom::InputEventResultState ack_result);
+diff --git a/content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java b/content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java
+index c84b71b..574c1b6 100644
+--- a/content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java
++++ b/content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java
+@@ -28,6 +28,6 @@ import java.lang.annotation.RetentionPolicy;
+ public @interface IsolatedWorldIds {
+     int ISOLATED_WORLD_ID_GLOBAL = 0;
+     int ISOLATED_WORLD_ID_CONTENT_END = 1;
+-    int ISOLATED_WORLD_ID_MAX = ISOLATED_WORLD_ID_CONTENT_END + 10;
++    int ISOLATED_WORLD_ID_MAX = ISOLATED_WORLD_ID_CONTENT_END + 12;
+ }
+ // LINT.ThenChange(//content/public/common/isolated_world_ids.h)
 diff --git a/content/public/browser/content_browser_client.cc b/content/public/browser/content_browser_client.cc
-index 6499e2f1fe..0625ca252d 100644
+index 6499e2f..494b0ca 100644
 --- a/content/public/browser/content_browser_client.cc
 +++ b/content/public/browser/content_browser_client.cc
-@@ -111,6 +111,9 @@
+@@ -49,6 +49,7 @@
+ #include "content/public/browser/prerender_web_contents_delegate.h"
+ #include "content/public/browser/process_selection_deferring_condition.h"
+ #include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
+ #include "content/public/browser/responsiveness_calculator_delegate.h"
+ #include "content/public/browser/security_principal.h"
+ #include "content/public/browser/site_instance.h"
+@@ -111,6 +112,9 @@
  
  namespace content {
  
@@ -2689,17 +2235,58 @@ index 6499e2f1fe..0625ca252d 100644
  std::unique_ptr<BrowserMainParts> ContentBrowserClient::CreateBrowserMainParts(
      bool /* is_integration_test */) {
    return nullptr;
-@@ -1095,6 +1098,9 @@ void ContentBrowserClient::WillCreateURLLoaderFactory(
+@@ -816,6 +820,31 @@ bool ContentBrowserClient::CanCreateWindow(
+   return true;
+ }
+ 
++void ContentBrowserClient::OnNativeTrustedMouseDownLink(
++    RenderFrameHost* original_frame,
++    const GURL& actual_href) {}
++
++void ContentBrowserClient::ReviewNativePopupCreation(
++    RenderFrameHost* opener,
++    const GURL& target_url,
++    WindowOpenDisposition disposition,
++    bool effective_user_gesture,
++    bool opener_suppressed,
++    base::OnceCallback<void(bool)> callback) {
++  // Embedders without an additional popup policy retain their existing
++  // CanCreateWindow decision. The content continuation still revalidates it.
++  std::move(callback).Run(true);
++}
++
++void ContentBrowserClient::OnNativePopupCreated(
++    RenderFrameHost* opener,
++    const WeakDocumentPtr& original_opener_document,
++    WebContents* created,
++    const GURL& target_url,
++    WindowOpenDisposition disposition,
++    bool user_gesture,
++    bool opener_suppressed) {}
++
+ SpeechRecognitionManagerDelegate*
+ ContentBrowserClient::CreateSpeechRecognitionManagerDelegate() {
+   return nullptr;
+@@ -1095,6 +1124,18 @@ void ContentBrowserClient::WillCreateURLLoaderFactory(
    DCHECK(browser_context);
  }
  
 +bool ContentBrowserClient::AllowUninspectableNetworkTransport(
 +    BrowserContext*, RenderFrameHost*, const std::string&) { return true; }
 +
++void ContentBrowserClient::CheckWebSocketConnection(RenderFrameHost* frame, ChildProcessId process_id, const GURL& url,
++      const url::Origin& original_origin, const net::IsolationInfo& original_isolation,
++    mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers,
++    WebSocketConnectionCheck callback) {
++  auto* process = RenderProcessHost::FromID(process_id);
++  const bool allowed = process && AllowUninspectableNetworkTransport(process->GetBrowserContext(), frame, "websocket");
++  std::move(callback).Run(allowed, std::move(headers), url);
++}
++
  bool ContentBrowserClient::WillInterceptWebSocket(RenderFrameHost*) {
    return false;
  }
-@@ -1350,6 +1356,15 @@ ContentBrowserClient::MaybeGetScopedPictureInPictureTucker(
+@@ -1350,6 +1391,15 @@ ContentBrowserClient::MaybeGetScopedPictureInPictureTucker(
    return base::ScopedClosureRunner();
  }
  
@@ -2716,10 +2303,18 @@ index 6499e2f1fe..0625ca252d 100644
  ContentBrowserClient::GetAutoPipInfo(const WebContents& web_contents) const {
    return media::PictureInPictureEventsInfo::AutoPipInfo();
 diff --git a/content/public/browser/content_browser_client.h b/content/public/browser/content_browser_client.h
-index 933ff42f84..ce358fc3dd 100644
+index 933ff42..13099c9 100644
 --- a/content/public/browser/content_browser_client.h
 +++ b/content/public/browser/content_browser_client.h
-@@ -25,6 +25,7 @@
+@@ -4,6 +4,7 @@
+ 
+ #ifndef CONTENT_PUBLIC_BROWSER_CONTENT_BROWSER_CLIENT_H_
+ #define CONTENT_PUBLIC_BROWSER_CONTENT_BROWSER_CLIENT_H_
++#include "content/public/common/child_process_id.h"
+ 
+ #include <stddef.h>
+ 
+@@ -25,6 +26,7 @@
  #include "base/time/time.h"
  #include "base/types/strong_alias.h"
  #include "base/values.h"
@@ -2727,7 +2322,7 @@ index 933ff42f84..ce358fc3dd 100644
  #include "build/build_config.h"
  #include "build/buildflag.h"
  #include "components/download/public/common/quarantine_connection.h"
-@@ -51,6 +52,7 @@
+@@ -51,6 +53,7 @@
  #include "content/public/browser/process_selection_deferring_condition.h"
  #include "content/public/browser/render_frame_host.h"
  #include "content/public/browser/storage_partition_config.h"
@@ -2735,7 +2330,7 @@ index 933ff42f84..ce358fc3dd 100644
  #include "content/public/common/alternative_error_page_override_info.mojom-forward.h"
  #include "content/public/common/page_visibility_state.h"
  #include "content/public/common/window_container_type.mojom-forward.h"
-@@ -236,6 +238,7 @@ class AnchorElementPreconnectDelegate;
+@@ -236,6 +239,7 @@ class AnchorElementPreconnectDelegate;
  class BluetoothDelegate;
  class BrowserChildProcessHost;
  class BrowserContext;
@@ -2743,7 +2338,7 @@ index 933ff42f84..ce358fc3dd 100644
  class BrowserMainParts;
  class BrowserURLHandler;
  class ClientCertificateDelegate;
-@@ -349,6 +352,15 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -349,6 +353,15 @@ class CONTENT_EXPORT ContentBrowserClient {
  
    virtual ~ContentBrowserClient() = default;
  
@@ -2759,7 +2354,40 @@ index 933ff42f84..ce358fc3dd 100644
    // Allows the embedder to set any number of custom BrowserMainParts
    // implementations for the browser startup code. See comments in
    // browser_main_parts.h.
-@@ -1785,6 +1797,12 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -1275,6 +1288,32 @@ class CONTENT_EXPORT ContentBrowserClient {
+       bool opener_suppressed,
+       bool* no_javascript_access);
+ 
++  // Async policy review of a real validated renderer window-creation request.
++  // Runs after CanCreateWindow and before activation consumption/allocation.
++  // The content continuation retains and revalidates the original document.
++  // Called only after the browser validates its original native input ACK.
++  virtual void OnNativeTrustedMouseDownLink(RenderFrameHost* original_frame,
++                                            const GURL& actual_href);
++
++  virtual void ReviewNativePopupCreation(
++      RenderFrameHost* opener,
++      const GURL& target_url,
++      WindowOpenDisposition disposition,
++      bool effective_user_gesture,
++      bool opener_suppressed,
++      base::OnceCallback<void(bool)> callback);
++
++  // An actual new popup contents, before delegate publication/navigation.
++  // original_opener_document was captured at native CreateNewWindow entry.
++  virtual void OnNativePopupCreated(
++      RenderFrameHost* opener,
++      const WeakDocumentPtr& original_opener_document,
++      WebContents* created,
++      const GURL& target_url,
++      WindowOpenDisposition disposition,
++      bool user_gesture,
++      bool opener_suppressed);
++
+   // Allows the embedder to return a delegate for the SpeechRecognitionManager.
+   // The delegate will be owned by the manager. It's valid to return nullptr.
+   virtual SpeechRecognitionManagerDelegate*
+@@ -1785,6 +1824,12 @@ class CONTENT_EXPORT ContentBrowserClient {
        const std::string& scheme,
        FrameTreeNodeId frame_tree_node_id);
  
@@ -2772,7 +2400,7 @@ index 933ff42f84..ce358fc3dd 100644
    using NonNetworkURLLoaderFactoryMap =
        std::map<std::string,
                 mojo::PendingRemote<network::mojom::URLLoaderFactory>>;
-@@ -1976,6 +1994,12 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -1976,6 +2021,25 @@ class CONTENT_EXPORT ContentBrowserClient {
        bool is_for_network_service);
  
    // Returns true when the embedder wants to intercept a websocket connection.
@@ -2782,10 +2410,23 @@ index 933ff42f84..ce358fc3dd 100644
 +  virtual bool AllowUninspectableNetworkTransport(BrowserContext* context,
 +      RenderFrameHost* frame, const std::string& kind);
 +
++  // Runs before every frame or worker WebSocket handoff, with the original
++  // renderer process identity retained across an asynchronous embedder check.
++  // The routed URL is selected by the native embedder, never supplied by a
++  // renderer. The connector revalidates it before creating the actual socket.
++  using WebSocketConnectionCheck = base::OnceCallback<void(
++      bool,
++      mojo::PendingRemote<network::mojom::TrustedHeaderClient>,
++      GURL)>;
++  virtual void CheckWebSocketConnection(RenderFrameHost* frame, ChildProcessId process_id, const GURL& url,
++      const url::Origin& original_origin, const net::IsolationInfo& original_isolation,
++      mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers,
++      WebSocketConnectionCheck callback);
++
    virtual bool WillInterceptWebSocket(RenderFrameHost* frame);
  
    struct CONTENT_EXPORT WebSocketOptions {
-@@ -2421,6 +2445,15 @@ class CONTENT_EXPORT ContentBrowserClient {
+@@ -2421,6 +2485,15 @@ class CONTENT_EXPORT ContentBrowserClient {
  
    // Returns information related to auto picture in picture. The auto picture in
    // picture reason is recorded in metrics.
@@ -2803,7 +2444,7 @@ index 933ff42f84..ce358fc3dd 100644
  
 diff --git a/content/public/browser/document_script_tools.h b/content/public/browser/document_script_tools.h
 new file mode 100644
-index 0000000000..633a2e5e3b
+index 0000000..633a2e5
 --- /dev/null
 +++ b/content/public/browser/document_script_tools.h
 @@ -0,0 +1,46 @@
@@ -2854,7 +2495,7 @@ index 0000000000..633a2e5e3b
 +
 +#endif  // CONTENT_PUBLIC_BROWSER_DOCUMENT_SCRIPT_TOOLS_H_
 diff --git a/content/public/browser/web_contents.cc b/content/public/browser/web_contents.cc
-index 4e528cb386..5d2bb90361 100644
+index 4e528cb..5d2bb90 100644
 --- a/content/public/browser/web_contents.cc
 +++ b/content/public/browser/web_contents.cc
 @@ -11,6 +11,12 @@
@@ -2871,7 +2512,7 @@ index 4e528cb386..5d2bb90361 100644
                                          base::Location creator_location)
      : CreateParams(context, nullptr, creator_location) {}
 diff --git a/content/public/browser/web_contents.h b/content/public/browser/web_contents.h
-index 9b351343d8..0de8c4e32f 100644
+index 9b35134..0de8c4e 100644
 --- a/content/public/browser/web_contents.h
 +++ b/content/public/browser/web_contents.h
 @@ -1069,6 +1069,10 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
@@ -2885,8 +2526,24 @@ index 9b351343d8..0de8c4e32f 100644
  
    // Attaches |inner_web_contents| to the container frame |render_frame_host|,
    // which must be in a FrameTree for this WebContents. This outer WebContents
+diff --git a/content/public/common/isolated_world_ids.h b/content/public/common/isolated_world_ids.h
+index ea7489e..03d06d2 100644
+--- a/content/public/common/isolated_world_ids.h
++++ b/content/public/common/isolated_world_ids.h
+@@ -17,9 +17,9 @@ enum IsolatedWorldIDs : int32_t {
+   ISOLATED_WORLD_ID_GLOBAL = 0,
+   // Custom isolated world ids used by other embedders should start from here.
+   ISOLATED_WORLD_ID_CONTENT_END,
+-  // If any embedder has more than 10 custom isolated worlds that will be run
++  // If any embedder has more than 12 custom isolated worlds that will be run
+   // via RenderFrameImpl::OnJavaScriptExecuteRequestInIsolatedWorld update this.
+-  ISOLATED_WORLD_ID_MAX = ISOLATED_WORLD_ID_CONTENT_END + 10,
++  ISOLATED_WORLD_ID_MAX = ISOLATED_WORLD_ID_CONTENT_END + 12,
+ };
+ // LINT.ThenChange(//content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java)
+ }  // namespace content
 diff --git a/third_party/blink/renderer/core/frame/frame.h b/third_party/blink/renderer/core/frame/frame.h
-index 3a90f88deb..fe6e9a4cfb 100644
+index 3a90f88..fe6e9a4 100644
 --- a/third_party/blink/renderer/core/frame/frame.h
 +++ b/third_party/blink/renderer/core/frame/frame.h
 @@ -241,6 +241,10 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
@@ -2901,7 +2558,7 @@ index 3a90f88deb..fe6e9a4cfb 100644
    bool HasStickyUserActivation() const {
      return user_activation_state_.HasBeenActive();
 diff --git a/third_party/blink/renderer/core/page/chrome_client.cc b/third_party/blink/renderer/core/page/chrome_client.cc
-index 9f6bd185cd..d949267a67 100644
+index 9f6bd18..d949267 100644
 --- a/third_party/blink/renderer/core/page/chrome_client.cc
 +++ b/third_party/blink/renderer/core/page/chrome_client.cc
 @@ -35,6 +35,7 @@
@@ -2912,29 +2569,3 @@ index 9f6bd185cd..d949267a67 100644
  #include "third_party/blink/renderer/core/page/frame_tree.h"
  #include "third_party/blink/renderer/core/page/page.h"
  #include "third_party/blink/renderer/core/page/scoped_page_pauser.h"
-diff --git a/content/public/common/isolated_world_ids.h b/content/public/common/isolated_world_ids.h
---- a/content/public/common/isolated_world_ids.h
-+++ b/content/public/common/isolated_world_ids.h
-@@ -17,9 +17,9 @@
-   ISOLATED_WORLD_ID_GLOBAL = 0,
-   // Custom isolated world ids used by other embedders should start from here.
-   ISOLATED_WORLD_ID_CONTENT_END,
--  // If any embedder has more than 10 custom isolated worlds that will be run
-+  // If any embedder has more than 11 custom isolated worlds that will be run
-   // via RenderFrameImpl::OnJavaScriptExecuteRequestInIsolatedWorld update this.
--  ISOLATED_WORLD_ID_MAX = ISOLATED_WORLD_ID_CONTENT_END + 10,
-+  ISOLATED_WORLD_ID_MAX = ISOLATED_WORLD_ID_CONTENT_END + 11,
- };
- // LINT.ThenChange(//content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java)
- }  // namespace content
-diff --git a/content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java b/content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java
---- a/content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java
-+++ b/content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java
-@@ -28,6 +28,6 @@
- public @interface IsolatedWorldIds {
-     int ISOLATED_WORLD_ID_GLOBAL = 0;
-     int ISOLATED_WORLD_ID_CONTENT_END = 1;
--    int ISOLATED_WORLD_ID_MAX = ISOLATED_WORLD_ID_CONTENT_END + 10;
-+    int ISOLATED_WORLD_ID_MAX = ISOLATED_WORLD_ID_CONTENT_END + 11;
- }
- // LINT.ThenChange(//content/public/common/isolated_world_ids.h)

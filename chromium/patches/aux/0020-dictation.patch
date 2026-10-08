@@ -1,6 +1,6 @@
 diff --git a/chrome/browser/ui/aux/dictation_mac.h b/chrome/browser/ui/aux/dictation_mac.h
 new file mode 100644
-index 0000000000..58d78f2fb4
+index 0000000..58d78f2
 --- /dev/null
 +++ b/chrome/browser/ui/aux/dictation_mac.h
 @@ -0,0 +1,76 @@
@@ -82,7 +82,7 @@ index 0000000000..58d78f2fb4
 +#endif  // CHROME_BROWSER_UI_AUX_DICTATION_MAC_H_
 diff --git a/chrome/browser/ui/aux/dictation_mac.mm b/chrome/browser/ui/aux/dictation_mac.mm
 new file mode 100644
-index 0000000000..b3251b8fdf
+index 0000000..b3251b8
 --- /dev/null
 +++ b/chrome/browser/ui/aux/dictation_mac.mm
 @@ -0,0 +1,354 @@
@@ -442,7 +442,7 @@ index 0000000000..b3251b8fdf
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/dictation_session.cc b/chrome/browser/ui/aux/dictation_session.cc
 new file mode 100644
-index 0000000000..5037487f75
+index 0000000..5037487
 --- /dev/null
 +++ b/chrome/browser/ui/aux/dictation_session.cc
 @@ -0,0 +1,55 @@
@@ -503,7 +503,7 @@ index 0000000000..5037487f75
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/dictation_session.h b/chrome/browser/ui/aux/dictation_session.h
 new file mode 100644
-index 0000000000..34febb686d
+index 0000000..34febb6
 --- /dev/null
 +++ b/chrome/browser/ui/aux/dictation_session.h
 @@ -0,0 +1,30 @@
@@ -539,7 +539,7 @@ index 0000000000..34febb686d
 +#endif  // CHROME_BROWSER_UI_AUX_DICTATION_SESSION_H_
 diff --git a/chrome/browser/ui/aux/methods/dictation_methods.cc b/chrome/browser/ui/aux/methods/dictation_methods.cc
 new file mode 100644
-index 0000000000..cc1271808b
+index 0000000..cc12718
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/dictation_methods.cc
 @@ -0,0 +1,179 @@

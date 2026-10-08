@@ -1,86 +1,65 @@
-diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
---- a/chrome/browser/prefs/browser_prefs.cc
-+++ b/chrome/browser/prefs/browser_prefs.cc
-@@ -1472,6 +1472,8 @@
- }
- 
- void RegisterLocalState(PrefRegistrySimple* registry) {
-+  registry->RegisterBooleanPref(prefs::kNativeBenchmarkEnabled, false);
-+  registry->RegisterStringPref(prefs::kNativeBenchmarkFixtureUrl, "");
- #if BUILDFLAG(ENABLE_AUX_SHELL)
-   registry->RegisterDictionaryPref(aux::kArchivedProfilesPref);
-   registry->RegisterDictionaryPref(aux::kProfileAppearancePref);
-diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
---- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
-+++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
-@@ -12,9 +12,10 @@
-   privateMode: boolean;
-   windowKind: 'normal'|'private'|'little'|'quick-ask';
-   capabilities: {buildId: string; sourceCommit: string; methods: string[];
--                 testClockScale?: number};
-+                 testClockScale?: number; nativePerformance?: boolean};
-   featureStages: ReturnType<typeof featureStagesFor>;
-   testClockScale?: number;
-+  performanceCommit?: (queryId: number) => Promise<void>;
-   request(method: string, args: unknown[]): Promise<unknown>;
-   subscribe(event: string, callback: (...args: unknown[]) => void): () => void;
- }
-@@ -65,7 +66,7 @@
-   }
-   const capabilities = JSON.parse(capabilityResponse.resultJson) as
-       {buildId: string; sourceCommit: string; methods: string[];
--       testClockScale?: number};
-+       testClockScale?: number; nativePerformance?: boolean};
-   if (!capabilities.buildId || !/^[a-f0-9]{40}(\+dirty)?$/.test(capabilities.sourceCommit) ||
-       !Array.isArray(capabilities.methods) ||
-       !capabilities.methods.every(method => typeof method === 'string') ||
-@@ -74,6 +75,9 @@
-         !Number.isFinite(capabilities.testClockScale) ||
-         capabilities.testClockScale < 1 || capabilities.testClockScale > 100000))) {
-     throw new Error('The Aux browser returned invalid capabilities.');
-+  }
-+  if (capabilities.nativePerformance !== undefined && typeof capabilities.nativePerformance !== "boolean") {
-+    throw new Error("The Aux browser returned invalid benchmark metadata.");
-   }
-   const featureStages = featureStagesFor(capabilities.methods);
-   const windowKinds: Record<WindowKind, Port['windowKind']> = {
-@@ -91,6 +95,13 @@
-     windowKind: windowKinds[identity.windowKind],
-     capabilities,
-     featureStages,
-+    ...(capabilities.nativePerformance === true ? {
-+      async performanceCommit(queryId: number) {
-+        if (!Number.isSafeInteger(queryId) || queryId <= 0) return;
-+        const response = await remote.request("performance.commitQuery", JSON.stringify([queryId]));
-+        if (!response.ok) throw new Error(`${response.errorCode}: ${response.errorMessage}`);
-+      },
-+    } : {}),
-     ...(capabilities.testClockScale !== undefined ?
-         {testClockScale: capabilities.testClockScale} : {}),
-     async request(method, args) {
-diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
---- a/chrome/browser/ui/BUILD.gn
-+++ b/chrome/browser/ui/BUILD.gn
-@@ -2476,6 +2476,10 @@
-   }
- 
-   if (toolkit_views) {
-+    sources += [
-+      "performance/native_performance.cc",
-+      "performance/native_performance.h",
-+    ]
-     sources += [
-       "views/autofill/at_memory_promo_bubble_view.cc",
-       "views/autofill/at_memory_promo_bubble_view.h",
+diff --git a/chrome/browser/ui/aux/journey_fixture_path.h b/chrome/browser/ui/aux/journey_fixture_path.h
+new file mode 100644
+index 0000000..b5757cb
+--- /dev/null
++++ b/chrome/browser/ui/aux/journey_fixture_path.h
+@@ -0,0 +1,45 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_JOURNEY_FIXTURE_PATH_H_
++#define CHROME_BROWSER_UI_AUX_JOURNEY_FIXTURE_PATH_H_
++
++#include <sys/stat.h>
++#include <unistd.h>
++#include <string>
++#include "base/command_line.h"
++#include "base/files/file_path.h"
++#include "base/files/file_util.h"
++
++namespace aux {
++// Metadata only: this never opens a Profile, session, credential or Keychain file.
++inline bool OwnedJourneyFixtureRoot(const std::string& value, uid_t owner = geteuid()) {
++  const base::FilePath path(value);
++  if (!path.IsAbsolute() || path.ReferencesParent() || path.value() != path.StripTrailingSeparators().value())
++    return false;
++  const auto parent = path.DirName().value();
++  const auto name = path.BaseName().value();
++  if ((parent != "/tmp" && parent != "/private/tmp") || !name.starts_with("aux-native-journey-") ||
++      name.size() <= std::string("aux-native-journey-").size()) return false;
++  for (char c : name) if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
++                          (c >= '0' && c <= '9') || c == '-' || c == '_')) return false;
++  struct stat info;
++  if (lstat(value.c_str(), &info) != 0 || !S_ISDIR(info.st_mode) || info.st_uid != owner ||
++      (info.st_mode & 0700) != 0700 || (info.st_mode & 077) != 0) return false;
++  const base::FilePath canonical = base::MakeAbsoluteFilePath(path);
++  return !canonical.empty() && canonical.value() == "/private/tmp/" + name;
++}
++// Test-build opt-in only; no listener or public debugging capability is opened.
++inline bool NativeAppearanceObservationEnabled(
++    const base::CommandLine& command = *base::CommandLine::ForCurrentProcess()) {
++  if (!command.HasSwitch("aux-native-appearance-observer")) return false;
++  const base::FilePath profile(command.GetSwitchValueASCII("user-data-dir"));
++  if (profile.BaseName().value() != "profile" ||
++      !OwnedJourneyFixtureRoot(profile.DirName().value())) return false;
++  struct stat info;
++  return lstat(profile.value().c_str(), &info) == 0 && S_ISDIR(info.st_mode) &&
++      info.st_uid == geteuid() && (info.st_mode & 0700) == 0700 &&
++      (info.st_mode & 077) == 0;
++}
++}  // namespace aux
++#endif
 diff --git a/chrome/browser/ui/performance/native_performance.cc b/chrome/browser/ui/performance/native_performance.cc
 new file mode 100644
+index 0000000..d0f1749
 --- /dev/null
 +++ b/chrome/browser/ui/performance/native_performance.cc
-@@ -0,0 +1,339 @@
+@@ -0,0 +1,396 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license.
 +#include "chrome/browser/ui/performance/native_performance.h"
 +
++#include <cstdio>
 +#include <map>
 +#include "build/build_config.h"
 +#if BUILDFLAG(IS_MAC)
@@ -90,6 +69,9 @@ new file mode 100644
 +#endif
 +#include "base/check.h"
 +#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/values.h"
 +#include "base/metrics/histogram_functions.h"
 +#include "base/no_destructor.h"
 +#include "chrome/browser/browser_process.h"
@@ -104,6 +86,7 @@ new file mode 100644
 +#include "components/startup_metric_utils/browser/startup_metric_utils.h"
 +#include "components/viz/common/frame_timing_details.h"
 +#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
 +#include "content/public/browser/web_contents.h"
 +#include "third_party/blink/public/common/input/web_input_event.h"
 +#include "ui/compositor/compositor.h"
@@ -263,6 +246,7 @@ new file mode 100644
 +  page_ = std::make_unique<NativePerformancePage>(this, tabs);
 +}
 +NativePerformance::~NativePerformance() {
++  RetireShellRole();
 +  page_.reset();
 +  DetachInputHost();
 +  if (widget_) {
@@ -273,6 +257,7 @@ new file mode 100644
 +}
 +void NativePerformance::OnWidgetDestroying(views::Widget* widget) {
 +  CHECK(widget == widget_);
++  RetireShellRole();
 +  weak_factory_.InvalidateWeakPtrs();
 +  page_.reset();
 +  DetachInputHost();
@@ -316,12 +301,16 @@ new file mode 100644
 +  input_host_ = nullptr;
 +}
 +void NativePerformance::RenderWidgetHostDestroyed(content::RenderWidgetHost* host) {
-+  if (host == input_host_) DetachInputHost();
++  if (host == input_host_) {
++    RetireShellRole();
++    DetachInputHost();
++  }
 +}
 +void NativePerformance::PrimaryPageChanged(content::Page&) {
 +  // The initial shell navigation is expected. A replacement after its first
 +  // presentation retires the original measurement owner rather than adopting it.
 +  if (first_frame_recorded_) {
++    RetireShellRole();
 +    retired_ = true;
 +    page_.reset();
 +  }
@@ -395,8 +384,54 @@ new file mode 100644
 +  if (first_frame_recorded_ || !widget_ || presentation.is_null() ||
 +      start.is_null() || presentation < start) return;
 +  first_frame_recorded_ = true;
++  RecordShellRole();
 +  base::UmaHistogramLongTimes("AuxPerf.FirstFrame", presentation - start);
 +}
++void NativePerformance::RecordShellRole() {
++#if BUILDFLAG(IS_MAC)
++  if (!Enabled() || retired_ || !web_contents() || shell_role_recorded_)
++    return;
++  auto* frame = web_contents()->GetPrimaryMainFrame();
++  if (!frame || !frame->IsRenderFrameLive() ||
++      !frame->GetLastCommittedURL().SchemeIs("chrome") ||
++      frame->GetLastCommittedURL().host() != "aux")
++    return;
++  const auto pid = frame->GetProcess()->GetProcess().Pid();
++  rusage_info_v0 usage{};
++  if (pid <= 0 ||
++      proc_pid_rusage(pid, RUSAGE_INFO_V0,
++                      reinterpret_cast<rusage_info_t*>(&usage)) != 0 ||
++      !usage.ri_proc_start_abstime || usage.ri_proc_exit_abstime)
++    return;
++  auto json = base::WriteJson(
++      base::DictValue()
++          .Set("event", "AUX_PERF_SHELL_ROLE")
++          .Set("browserPid", getpid())
++          .Set("pid", pid)
++          .Set("startMachTicks",
++               base::NumberToString(usage.ri_proc_start_abstime)));
++  if (!json)
++    return;
++  shell_role_recorded_ = true;
++  fprintf(stderr, "%s\n", json->c_str());
++#endif
++}
++
++void NativePerformance::RetireShellRole() {
++#if BUILDFLAG(IS_MAC)
++  if (!shell_role_recorded_)
++    return;
++  shell_role_recorded_ = false;
++  if (!Enabled())
++    return;
++  auto json = base::WriteJson(base::DictValue()
++                                  .Set("event", "AUX_PERF_SHELL_RETIRED")
++                                  .Set("browserPid", getpid()));
++  if (json)
++    fprintf(stderr, "%s\n", json->c_str());
++#endif
++}
++
 +void NativePerformance::DidFirstVisuallyNonEmptyPaint() {
 +  if (!widget_ || !input_host_ || !web_contents() || first_frame_recorded_) return;
 +  const auto document = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
@@ -418,10 +453,10 @@ new file mode 100644
 +}
 diff --git a/chrome/browser/ui/performance/native_performance.h b/chrome/browser/ui/performance/native_performance.h
 new file mode 100644
-index 0000000..03cb76f
+index 0000000..0a864c3
 --- /dev/null
 +++ b/chrome/browser/ui/performance/native_performance.h
-@@ -0,0 +1,84 @@
+@@ -0,0 +1,87 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license.
 +#ifndef CHROME_BROWSER_UI_PERFORMANCE_NATIVE_PERFORMANCE_H_
@@ -477,6 +512,8 @@ index 0000000..03cb76f
 +  void RenderWidgetHostDestroyed(content::RenderWidgetHost* host) override;
 +  void PrimaryPageChanged(content::Page& page) override;
 +  void DidFirstVisuallyNonEmptyPaint() override;
++  void RecordShellRole();
++  void RetireShellRole();
 +  void AttachInputHost();
 +  void DetachInputHost();
 +  void Input(base::TimeTicks timestamp);
@@ -502,11 +539,13 @@ index 0000000..03cb76f
 +  int committed_query_id_ = 0;
 +  bool retired_ = false;
 +  bool first_frame_recorded_ = false;
++  bool shell_role_recorded_ = false;
 +  bool window_shown_recorded_ = false;
 +  base::WeakPtrFactory<NativePerformance> weak_factory_{this};
 +};
 +#endif
 diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
+index 32b047f..7a34e78 100644
 --- a/chrome/browser/ui/views/frame/browser_view.cc
 +++ b/chrome/browser/ui/views/frame/browser_view.cc
 @@ -3,6 +3,7 @@
@@ -517,7 +556,7 @@ diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/v
  
  #include <stdint.h>
  
-@@ -4960,6 +4961,7 @@
+@@ -4960,6 +4961,7 @@ void BrowserView::AddedToWidget() {
    }
  
    views::ClientView::AddedToWidget();
@@ -525,7 +564,7 @@ diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/v
  
  #if BUILDFLAG(IS_WIN)
    // Register for screen capture exclusion updates. This is specific to
-@@ -6113,6 +6115,8 @@
+@@ -6113,6 +6115,8 @@ void BrowserView::UpdateFullscreenAllowedFromPolicy(
  
  void BrowserView::OnFirstPresentation(
      const viz::FrameTimingDetails& frame_timing_details) {
@@ -535,6 +574,7 @@ diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/v
      manager->OnBrowserWindowFirstPresentation(
          frame_timing_details.presentation_feedback.timestamp);
 diff --git a/chrome/browser/ui/views/frame/browser_view.h b/chrome/browser/ui/views/frame/browser_view.h
+index ba923f5..180ccb7 100644
 --- a/chrome/browser/ui/views/frame/browser_view.h
 +++ b/chrome/browser/ui/views/frame/browser_view.h
 @@ -73,6 +73,7 @@
@@ -545,7 +585,7 @@ diff --git a/chrome/browser/ui/views/frame/browser_view.h b/chrome/browser/ui/vi
  class BrowserWindowInterface;
  class BrowserViewLayout;
  class ContentsContainerView;
-@@ -1397,6 +1398,7 @@
+@@ -1397,6 +1398,7 @@ class BrowserView : public BrowserWindow,
    base::EnumSet<TabStripAndWebAppViewsReparentedState>
        tab_strip_web_apps_reparented_state_;
  
@@ -554,6 +594,7 @@ diff --git a/chrome/browser/ui/views/frame/browser_view.h b/chrome/browser/ui/vi
  };
  
 diff --git a/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc b/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc
+index 23971d8..937d6d8 100644
 --- a/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc
 +++ b/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc
 @@ -3,6 +3,7 @@
@@ -564,7 +605,7 @@ diff --git a/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc b/chrom
  
  #include <memory>
  #include <numeric>
-@@ -660,6 +661,10 @@
+@@ -660,6 +661,10 @@ void OmniboxPopupViewViews::OnMatchIconUpdated(size_t match_index) {
  
  void OmniboxPopupViewViews::OnContentsChanged() {
    UpdatePopupAppearance();
@@ -575,95 +616,18 @@ diff --git a/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc b/chrom
  }
  
  void OmniboxPopupViewViews::OnPopupFirstPaintPresented(
-diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
---- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-+++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-@@ -47,6 +47,7 @@
- #include "chrome/browser/ui/aux/content_blocking_controller.h"
- #include "chrome/browser/ui/aux/method_registry.h"
- #include "chrome/browser/ui/webui_browser/aux_omnibox_handler.h"
-+#include "chrome/browser/ui/performance/native_performance.h"
- #include "chrome/browser/ui/webui_browser/aux_device_confirmation.h"
- #include "chrome/browser/ui/aux/health_recorder.h"
- #include "chrome/browser/ui/aux/dictation_mac.h"
-@@ -868,8 +869,25 @@
-                               "Capabilities take no arguments");
-       return;
-     }
--    std::move(callback).Run(true, *base::WriteJson(registry.Capabilities()),
--                            "", "");
-+    auto capabilities = registry.Capabilities();
-+    if (NativePerformance::Enabled()) capabilities.Set("nativePerformance", true);
-+    std::move(callback).Run(true, *base::WriteJson(capabilities), "", "");
-+    return;
-+  }
-+  // Disposable-profile telemetry cannot be invoked through the runtime API.
-+  // Its clock and window are taken from original native input ownership.
-+  if (method == "performance.commitQuery" && NativePerformance::Enabled()) {
-+    const auto query = list->size() == 1 ? (*list)[0].GetIfInt() : std::nullopt;
-+    auto* window = WebUIBrowserWindow::FromWebShellWebContents(
-+        web_ui()->GetWebContents());
-+    auto* observer = window ? NativePerformance::ForWidget(window->widget()) : nullptr;
-+    if (!query || *query <= 0 || !observer || !browser_->IsActive()) {
-+      std::move(callback).Run(false, "", "invalid_argument",
-+                              "The original benchmark query is unavailable.");
-+      return;
-+    }
-+    observer->CommitQuery(*query);
-+    std::move(callback).Run(true, "null", "", "");
-     return;
-   }
-   std::string validation_error;
-diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
---- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
-+++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
-@@ -3,6 +3,7 @@
- // found in the LICENSE file.
- 
- #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
-+#include "chrome/browser/ui/performance/native_performance.h"
- #include "chrome/browser/browser_process.h"
- #include "chrome/browser/profiles/profile_attributes_entry.h"
- #include "chrome/browser/profiles/profile_attributes_storage.h"
-@@ -279,6 +280,7 @@
-   web_view->LoadInitialURL(GURL(chrome::kChromeUIWebuiBrowserURL));
- #endif
-   web_view_ = widget_->SetClientContentsView(std::move(web_view));
-+  native_performance_ = NativePerformance::Install(widget_.get(), ui_web_contents, browser_->GetTabStripModel());
-   // Set the ColorProviderSource after attaching to the WebView otherwise
-   // attaching overwrites it.
-   // TODO(webium): |widget_| should use |this| as its ColorProviderSource as
-diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.h b/chrome/browser/ui/webui_browser/webui_browser_window.h
---- a/chrome/browser/ui/webui_browser/webui_browser_window.h
-+++ b/chrome/browser/ui/webui_browser/webui_browser_window.h
-@@ -47,6 +47,8 @@
- 
- // A BrowserWindow implementation that uses WebUI for its primary UI. It still
- // uses views::Widget for windowing management.
-+class NativePerformance;
-+
- class WebUIBrowserWindow : public BrowserWindow,
-                            public ui::ColorProviderSource,
-                            public ui::AcceleratorProvider,
-@@ -319,6 +321,7 @@
-   std::unique_ptr<WebUIBrowserWebContentsDelegate> web_contents_delegate_;
-   std::unique_ptr<WidgetDelegate> widget_delegate_;
-   std::unique_ptr<views::Widget> widget_;
-+  std::unique_ptr<NativePerformance> native_performance_;
-   raw_ptr<views::WebView> web_view_ = nullptr;
-   std::unique_ptr<WebUIStubLocationBar> location_bar_;
- #if BUILDFLAG(ENABLE_AUX_SHELL)
 diff --git a/chrome/common/pref_names.h b/chrome/common/pref_names.h
+index afa296f..8ba51aa 100644
 --- a/chrome/common/pref_names.h
 +++ b/chrome/common/pref_names.h
-@@ -29,6 +29,10 @@
- #endif  // BUILDFLAG(IS_CHROMEOS)
+@@ -30,6 +30,10 @@
  
  namespace prefs {
-+
+ 
 +// Opt-in native measurement, used only in a disposable benchmark Local State.
 +inline constexpr char kNativeBenchmarkEnabled[] = "performance.native_benchmark";
 +inline constexpr char kNativeBenchmarkFixtureUrl[] = "performance.native_benchmark_fixture_url";
- 
++
  // *************** PROFILE PREFS ***************
  // These are attached to the user profile
+ 

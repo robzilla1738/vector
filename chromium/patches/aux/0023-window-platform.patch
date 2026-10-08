@@ -1,6 +1,6 @@
 diff --git a/chrome/browser/ui/aux/little_window_controller.h b/chrome/browser/ui/aux/little_window_controller.h
 new file mode 100644
-index 0000000000..7cdd880cd2
+index 0000000..7cdd880
 --- /dev/null
 +++ b/chrome/browser/ui/aux/little_window_controller.h
 @@ -0,0 +1,22 @@
@@ -28,7 +28,7 @@ index 0000000000..7cdd880cd2
 +#endif
 diff --git a/chrome/browser/ui/aux/little_window_controller.mm b/chrome/browser/ui/aux/little_window_controller.mm
 new file mode 100644
-index 0000000000..b7c0846374
+index 0000000..b7c0846
 --- /dev/null
 +++ b/chrome/browser/ui/aux/little_window_controller.mm
 @@ -0,0 +1,172 @@
@@ -206,7 +206,7 @@ index 0000000000..b7c0846374
 +}
 diff --git a/chrome/browser/ui/aux/methods/layout_methods.cc b/chrome/browser/ui/aux/methods/layout_methods.cc
 new file mode 100644
-index 0000000000..4992eb7df8
+index 0000000..4992eb7
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/layout_methods.cc
 @@ -0,0 +1,16 @@
@@ -228,7 +228,7 @@ index 0000000000..4992eb7df8
 +}
 diff --git a/chrome/browser/ui/aux/methods/layout_methods.h b/chrome/browser/ui/aux/methods/layout_methods.h
 new file mode 100644
-index 0000000000..e6db719c63
+index 0000000..e6db719
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/layout_methods.h
 @@ -0,0 +1,10 @@
@@ -244,7 +244,7 @@ index 0000000000..e6db719c63
 +#endif
 diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
 new file mode 100644
-index 0000000000..0e06cdcfdb
+index 0000000..0e06cdc
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/window_methods.cc
 @@ -0,0 +1,1122 @@
@@ -1372,7 +1372,7 @@ index 0000000000..0e06cdcfdb
 +#endif
 diff --git a/chrome/browser/ui/aux/methods/window_sync_methods.cc b/chrome/browser/ui/aux/methods/window_sync_methods.cc
 new file mode 100644
-index 0000000000..cd8918eaa8
+index 0000000..cd8918e
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/window_sync_methods.cc
 @@ -0,0 +1,41 @@
@@ -1419,7 +1419,7 @@ index 0000000000..cd8918eaa8
 +}
 diff --git a/chrome/browser/ui/aux/surface_visibility.cc b/chrome/browser/ui/aux/surface_visibility.cc
 new file mode 100644
-index 0000000000..3f1d190629
+index 0000000..3f1d190
 --- /dev/null
 +++ b/chrome/browser/ui/aux/surface_visibility.cc
 @@ -0,0 +1,63 @@
@@ -1488,7 +1488,7 @@ index 0000000000..3f1d190629
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/surface_visibility.h b/chrome/browser/ui/aux/surface_visibility.h
 new file mode 100644
-index 0000000000..d1ebe43ddb
+index 0000000..d1ebe43
 --- /dev/null
 +++ b/chrome/browser/ui/aux/surface_visibility.h
 @@ -0,0 +1,14 @@
@@ -1507,7 +1507,7 @@ index 0000000000..d1ebe43ddb
 +}  // namespace aux
 +#endif  // CHROME_BROWSER_UI_AUX_SURFACE_VISIBILITY_H_
 diff --git a/chrome/browser/ui/browser_window/internal/browser_window_features.cc b/chrome/browser/ui/browser_window/internal/browser_window_features.cc
-index 89cd12a061..7203da867b 100644
+index 89cd12a..7203da8 100644
 --- a/chrome/browser/ui/browser_window/internal/browser_window_features.cc
 +++ b/chrome/browser/ui/browser_window/internal/browser_window_features.cc
 @@ -5,6 +5,10 @@
@@ -1540,7 +1540,7 @@ index 89cd12a061..7203da867b 100644
  
    extension_window_controller_ =
 diff --git a/chrome/browser/ui/cocoa/applescript/scripting.sdef b/chrome/browser/ui/cocoa/applescript/scripting.sdef
-index f991d613b4..fa1502c491 100644
+index f991d61..fa1502c 100644
 --- a/chrome/browser/ui/cocoa/applescript/scripting.sdef
 +++ b/chrome/browser/ui/cocoa/applescript/scripting.sdef
 @@ -28,6 +28,8 @@
@@ -1580,7 +1580,7 @@ index f991d613b4..fa1502c491 100644
          <cocoa key="uniqueID"/>
 diff --git a/chrome/browser/ui/cocoa/applescript/space_applescript.h b/chrome/browser/ui/cocoa/applescript/space_applescript.h
 new file mode 100644
-index 0000000000..17bd8a8380
+index 0000000..17bd8a8
 --- /dev/null
 +++ b/chrome/browser/ui/cocoa/applescript/space_applescript.h
 @@ -0,0 +1,13 @@
@@ -1599,7 +1599,7 @@ index 0000000000..17bd8a8380
 +#endif
 diff --git a/chrome/browser/ui/cocoa/applescript/space_applescript.mm b/chrome/browser/ui/cocoa/applescript/space_applescript.mm
 new file mode 100644
-index 0000000000..d7cf408f1c
+index 0000000..d7cf408
 --- /dev/null
 +++ b/chrome/browser/ui/cocoa/applescript/space_applescript.mm
 @@ -0,0 +1,45 @@
@@ -1649,7 +1649,7 @@ index 0000000000..d7cf408f1c
 +}
 +@end
 diff --git a/chrome/browser/ui/cocoa/applescript/tab_applescript.h b/chrome/browser/ui/cocoa/applescript/tab_applescript.h
-index 401d247443..fa3ac462d4 100644
+index 401d247..fa3ac46 100644
 --- a/chrome/browser/ui/cocoa/applescript/tab_applescript.h
 +++ b/chrome/browser/ui/cocoa/applescript/tab_applescript.h
 @@ -33,6 +33,8 @@ class WebContents;
@@ -1662,7 +1662,7 @@ index 401d247443..fa3ac462d4 100644
  @property(readonly) NSNumber* loading;
  
 diff --git a/chrome/browser/ui/cocoa/applescript/tab_applescript.mm b/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
-index defdec0953..4cbb6b5d86 100644
+index defdec0..4cbb6b5 100644
 --- a/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
 +++ b/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
 @@ -3,6 +3,13 @@
@@ -1718,7 +1718,7 @@ index defdec0953..4cbb6b5d86 100644
    if ((self = [super init])) {
      // Holds the SessionID that the new tab is going to get.
 diff --git a/chrome/browser/ui/cocoa/applescript/window_applescript.h b/chrome/browser/ui/cocoa/applescript/window_applescript.h
-index 9dc5c5438b..14025b7090 100644
+index 9dc5c54..14025b7 100644
 --- a/chrome/browser/ui/cocoa/applescript/window_applescript.h
 +++ b/chrome/browser/ui/cocoa/applescript/window_applescript.h
 @@ -12,6 +12,7 @@
@@ -1740,7 +1740,7 @@ index 9dc5c5438b..14025b7090 100644
  // The tabs inside the window.
  // Returns |TabAppleScript*| of all the tabs contained
 diff --git a/chrome/browser/ui/cocoa/applescript/window_applescript.mm b/chrome/browser/ui/cocoa/applescript/window_applescript.mm
-index acae78e6dc..3fd0b7b2ff 100644
+index acae78e..3fd0b7b 100644
 --- a/chrome/browser/ui/cocoa/applescript/window_applescript.mm
 +++ b/chrome/browser/ui/cocoa/applescript/window_applescript.mm
 @@ -5,6 +5,9 @@
@@ -1791,7 +1791,7 @@ index acae78e6dc..3fd0b7b2ff 100644
    if (!_browser) {
      return nil;
 diff --git a/chrome/browser/ui/ui_features.cc b/chrome/browser/ui/ui_features.cc
-index aa39154c20..702f3eb8cf 100644
+index aa39154..702f3eb 100644
 --- a/chrome/browser/ui/ui_features.cc
 +++ b/chrome/browser/ui/ui_features.cc
 @@ -5,6 +5,7 @@

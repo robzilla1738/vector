@@ -1,6 +1,6 @@
 diff --git a/chrome/browser/ui/aux/download_naming.cc b/chrome/browser/ui/aux/download_naming.cc
 new file mode 100644
-index 0000000000..7a75c4af27
+index 0000000..7a75c4a
 --- /dev/null
 +++ b/chrome/browser/ui/aux/download_naming.cc
 @@ -0,0 +1,350 @@
@@ -356,7 +356,7 @@ index 0000000000..7a75c4af27
 +}
 diff --git a/chrome/browser/ui/aux/download_naming.h b/chrome/browser/ui/aux/download_naming.h
 new file mode 100644
-index 0000000000..58ee684167
+index 0000000..58ee684
 --- /dev/null
 +++ b/chrome/browser/ui/aux/download_naming.h
 @@ -0,0 +1,33 @@
@@ -395,7 +395,7 @@ index 0000000000..58ee684167
 +#endif
 diff --git a/chrome/browser/ui/aux/download_naming_mac.mm b/chrome/browser/ui/aux/download_naming_mac.mm
 new file mode 100644
-index 0000000000..5522807d56
+index 0000000..5522807
 --- /dev/null
 +++ b/chrome/browser/ui/aux/download_naming_mac.mm
 @@ -0,0 +1,29 @@
@@ -430,7 +430,7 @@ index 0000000000..5522807d56
 +}
 diff --git a/chrome/browser/ui/aux/methods/downloads_ai_methods.cc b/chrome/browser/ui/aux/methods/downloads_ai_methods.cc
 new file mode 100644
-index 0000000000..1abdf4d292
+index 0000000..1abdf4d
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/downloads_ai_methods.cc
 @@ -0,0 +1,8 @@
@@ -443,7 +443,7 @@ index 0000000000..1abdf4d292
 +  aux::HandleDownloadNaming(profile_, method, params, std::move(callback));
 +}
 diff --git a/components/download/internal/common/download_item_impl.cc b/components/download/internal/common/download_item_impl.cc
-index b7558098bc..dddd35e1d3 100644
+index b755809..dddd35e 100644
 --- a/components/download/internal/common/download_item_impl.cc
 +++ b/components/download/internal/common/download_item_impl.cc
 @@ -832,9 +832,20 @@ void DownloadItemImpl::RenameDownloadedFileDone(
@@ -480,7 +480,7 @@ index b7558098bc..dddd35e1d3 100644
                       weak_ptr_factory_.GetWeakPtr(), std::move(callback),
                       display_name));
 diff --git a/components/download/public/common/download_item.h b/components/download/public/common/download_item.h
-index 526d9c9261..eef7984833 100644
+index 526d9c9..eef7984 100644
 --- a/components/download/public/common/download_item.h
 +++ b/components/download/public/common/download_item.h
 @@ -124,6 +124,7 @@ class COMPONENTS_DOWNLOAD_EXPORT DownloadItem : public base::SupportsUserData {
@@ -505,7 +505,7 @@ index 526d9c9261..eef7984833 100644
  
    // Retrieve the ID for this download. The ID is provided by the owner of the
 diff --git a/components/download/public/common/download_item_impl.h b/components/download/public/common/download_item_impl.h
-index 84084a6483..918dfbfb3d 100644
+index 84084a6..918dfbf 100644
 --- a/components/download/public/common/download_item_impl.h
 +++ b/components/download/public/common/download_item_impl.h
 @@ -272,6 +272,8 @@ class COMPONENTS_DOWNLOAD_EXPORT DownloadItemImpl
@@ -518,7 +518,7 @@ index 84084a6483..918dfbfb3d 100644
    const std::string& GetGuid() const override;
    DownloadState GetState() const override;
 diff --git a/components/download/public/common/mock_download_item.h b/components/download/public/common/mock_download_item.h
-index b49a8d4b5c..4e38d2acd3 100644
+index b49a8d4..4e38d2a 100644
 --- a/components/download/public/common/mock_download_item.h
 +++ b/components/download/public/common/mock_download_item.h
 @@ -150,6 +150,7 @@ class MockDownloadItem : public DownloadItem {

@@ -1,19 +1,224 @@
+diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
+index 681ad0d..32349a8 100644
+--- a/chrome/browser/browser_process_impl.cc
++++ b/chrome/browser/browser_process_impl.cc
+@@ -140,6 +140,9 @@
+ #include "components/update_client/update_query_params.h"
+ #include "components/variations/service/variations_service.h"
+ #include "components/web_resource/web_resource_pref_names.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/shell_warmup_manager.h"
++#endif
+ #include "content/public/browser/browser_task_traits.h"
+ #include "content/public/browser/browser_thread.h"
+ #include "content/public/browser/child_process_security_policy.h"
+@@ -335,6 +338,9 @@ BrowserProcessImpl::BrowserProcessImpl(StartupData* startup_data)
+   g_browser_process = this;
+ 
+   features_->Init();
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  aux_shell_warmup_manager_ = std::make_unique<aux::ShellWarmupManager>();
++#endif
+ 
+   DCHECK(browser_policy_connector_);
+   DCHECK(local_state_);
+@@ -608,6 +614,9 @@ void BrowserProcessImpl::StartTearDown() {
+   DCHECK(IsShuttingDown());
+ 
+   features_->PostMainMessageLoopRun();
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  aux_shell_warmup_manager_.reset();
++#endif
+   metrics_services_manager_client_ = nullptr;
+   metrics_services_manager_.reset();
+   intranet_redirect_detector_.reset();
+@@ -1369,7 +1378,9 @@ void BrowserProcessImpl::RegisterPrefs(PrefRegistrySimple* registry) {
+ 
+   registry->RegisterBooleanPref(metrics::prefs::kMetricsReportingEnabled,
+                                 GoogleUpdateSettings::GetCollectStatsConsent());
+-  registry->RegisterBooleanPref(prefs::kDevToolsRemoteDebuggingAllowed, true);
++  // Aux's in-process Profile broker does not require public remote debugging.
++  registry->RegisterBooleanPref(prefs::kDevToolsRemoteDebuggingAllowed,
++                                !BUILDFLAG(ENABLE_AUX_SHELL));
+   registry->RegisterBooleanPref(prefs::kDevToolsRemoteDebuggingEnabled, false);
+ 
+ #if BUILDFLAG(IS_LINUX) && BUILDFLAG(USE_DBUS)
+diff --git a/chrome/browser/browser_process_impl.h b/chrome/browser/browser_process_impl.h
+index 3fab4be..b3af18d 100644
+--- a/chrome/browser/browser_process_impl.h
++++ b/chrome/browser/browser_process_impl.h
+@@ -25,6 +25,7 @@
+ #include "build/build_config.h"
+ #include "chrome/browser/accessibility/accessibility_prefs/android/accessibility_prefs_controller.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/common/buildflags.h"
+ #include "components/activity_reporter/activity_reporter.h"
+ #include "components/keep_alive_registry/keep_alive_state_observer.h"
+@@ -46,6 +47,10 @@
+ #include "base/android/application_status_listener.h"
+ #endif  // BUILDFLAG(IS_ANDROID)
+ 
++namespace aux {
++class ShellWarmupManager;
++}
++
+ class BatteryMetrics;
+ class ChromeMetricsServicesManagerClient;
+ class DevToolsAutoOpener;
+@@ -515,6 +520,9 @@ class BrowserProcessImpl : public BrowserProcess,
+ 
+   // This must be destroyed before UnownedUserDataHost.
+   std::unique_ptr<GlobalFeatures> features_;
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  std::unique_ptr<aux::ShellWarmupManager> aux_shell_warmup_manager_;
++#endif
+ 
+   // Observes application-wide events and logs them to breadcrumbs. Null if
+   // breadcrumbs logging is disabled.
+diff --git a/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc b/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
+index 6da26cc..6cabe23 100644
+--- a/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
++++ b/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
+@@ -6,6 +6,11 @@
+ 
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/semantic_filter_ui.h"
++#include "chrome/browser/ui/webui_browser/shell_host.mojom.h"
++#endif
+ #include "chrome/browser/actor/ui/actor_overlay_ui.h"
+ #include "chrome/browser/chrome_browser_interface_binders_webui_parts.h"
+ #include "chrome/browser/contextual_cueing/internals/contextual_cueing_internals.mojom.h"
+@@ -146,12 +151,12 @@
+ #include "chrome/browser/ui/webui/app_settings/web_app_settings_ui.h"
+ // The intro mojom targets exist on ChromeOS but these headers are only
+ // compiled on Win/Mac/Linux; gn check is static, so suppress it on ChromeOS.
+-#include "chrome/browser/ui/webui/intro/finish_or_continue.mojom.h" // nogncheck
++#include "chrome/browser/ui/webui/intro/finish_or_continue.mojom.h"  // nogncheck
+ #include "chrome/browser/ui/webui/intro/intro.mojom.h"  // nogncheck
+ #include "chrome/browser/ui/webui/intro/intro_ui.h"
+ #include "chrome/browser/ui/webui/intro/sign_in_celebration.mojom.h"  // nogncheck
+ #include "chrome/browser/ui/webui/intro/sign_in_promo.mojom.h"  // nogncheck
+-#include "chrome/browser/ui/webui/intro/welcome.mojom.h"  // nogncheck
++#include "chrome/browser/ui/webui/intro/welcome.mojom.h"        // nogncheck
+ #include "chrome/browser/ui/webui/on_device_translation_internals/on_device_translation_internals_ui.h"
+ #include "chrome/browser/ui/webui/signin/history_sync_optin/history_sync_optin.mojom.h"
+ #include "chrome/browser/ui/webui/signin/history_sync_optin/history_sync_optin_ui.h"
+@@ -549,6 +554,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
+       on_device_internals::OnDeviceInternalsUI>(map);
+   RegisterWebUIControllerInterfaceBinder<
+       guest_contents::mojom::GuestContentsHost, WebUIBrowserUI>(map);
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  RegisterWebUIControllerInterfaceBinder<chrome::mojom::NativeSemanticBridge,
++                                         aux::SemanticFilterUI>(map);
++#endif
+ 
+   const bool is_contextual_tasks_enabled =
+       contextual_tasks::IsContextualTasksUIEnabled();
+@@ -565,9 +574,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
+   // registry.ForWebUI() pattern used in
+   // PopulateChromeWebUIFrameInterfaceBrokersUntrustedPartsDesktop below which
+   // eliminates the need to account for feature flag combinations.
+-  RegisterWebUIControllerInterfaceBinder<
+-      composebox::mojom::PageHandlerFactory, NewTabPageUI, ContextualTasksUI,
+-      OmniboxPopupUI, OmniboxEverywhereUI>(map);
++  RegisterWebUIControllerInterfaceBinder<composebox::mojom::PageHandlerFactory,
++                                         NewTabPageUI, ContextualTasksUI,
++                                         OmniboxPopupUI, OmniboxEverywhereUI>(
++      map);
+ 
+   if (base::FeatureList::IsEnabled(
+           omnibox::kComposeboxDriveContextMenuOption)) {
+@@ -689,8 +699,11 @@ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
+       .Add<help_bubble::mojom::HelpBubbleHandlerFactory>();
+ 
+   if (webui_browser::IsWebUIBrowserEnabled()) {
+-    registry.ForWebUI<WebUIBrowserUI>()
+-        .Add<webui_browser::mojom::PageHandlerFactory>()
++    auto webui_browser_registry = registry.ForWebUI<WebUIBrowserUI>();
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++    webui_browser_registry.Add<aux::mojom::ShellHostFactory>();
++#endif
++    webui_browser_registry.Add<webui_browser::mojom::PageHandlerFactory>()
+         .Add<bookmark_bar::mojom::PageHandlerFactory>()
+         .Add<bookmarks_api::mojom::BookmarksService>()
+         .Add<extensions_bar::mojom::PageHandlerFactory>()
+diff --git a/chrome/browser/notifications/notification_handler.h b/chrome/browser/notifications/notification_handler.h
+index 57dd57a..8421b54 100644
+--- a/chrome/browser/notifications/notification_handler.h
++++ b/chrome/browser/notifications/notification_handler.h
+@@ -41,7 +41,8 @@ class NotificationHandler {
+     TAILORED_SECURITY = 10,
+     DEFAULT_BROWSER_CHANGED = 11,
+     EXTENSION_REQUEST = 12,
+-    MAX = EXTENSION_REQUEST,
++    AUX_RUN_ATTENTION = 13,
++    MAX = AUX_RUN_ATTENTION,
+   };
+ 
+   virtual ~NotificationHandler();
+diff --git a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
+index 210e73b..7c8c9b4 100644
+--- a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
++++ b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
+@@ -93,6 +93,16 @@ std::ostream& operator<<(std::ostream& out,
+       return out << "kFetchKeepAlive";
+     case ProfileKeepAliveOrigin::kOmniboxEverywhere:
+       return out << "kOmniboxEverywhere";
++    case ProfileKeepAliveOrigin::kAuxBrowserImport:
++      return out << "kAuxBrowserImport";
++    case ProfileKeepAliveOrigin::kAuxFoundationModels:
++      return out << "kAuxFoundationModels";
++    case ProfileKeepAliveOrigin::kAuxCopilotHelper:
++      return out << "kAuxCopilotHelper";
++    case ProfileKeepAliveOrigin::kAuxContentFilterCommit:
++      return out << "kAuxContentFilterCommit";
++    case ProfileKeepAliveOrigin::kAuxShellWarmup:
++      return out << "kAuxShellWarmup";
+   }
+   NOTREACHED();
+ }
+diff --git a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
+index 5582ae1..dedfae7 100644
+--- a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
++++ b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
+@@ -190,7 +190,20 @@ enum class ProfileKeepAliveOrigin {
+   // alive.
+   kOmniboxEverywhere = 46,
+ 
+-  kMaxValue = kOmniboxEverywhere,
++  // Last-used Aux Profile retained for window reopening and spare renderer.
++  kAuxShellWarmup = 47,
++
++  // Accepted Aux content-filter configuration awaiting durable publication.
++  kAuxContentFilterCommit = 48,
++
++  kAuxBrowserImport = 49,
++
++  // Original privately owned Copilot helper awaiting actual group/pipe join.
++  kAuxCopilotHelper = 50,
++
++  kAuxFoundationModels = 51,
++
++  kMaxValue = kAuxFoundationModels,
+ };
+ // LINT.ThenChange(/tools/metrics/histograms/metadata/profile/enums.xml)
+ 
 diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 new file mode 100644
-index 0000000000..0fea7b7d85
+index 0000000..fa3ccd1
 --- /dev/null
 +++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
-@@ -0,0 +1,211 @@
+@@ -0,0 +1,133 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
 +
 +import {ShellHostClientReceiver, ShellHostFactory, ShellHostRemote, WindowKind} from './shell_host.mojom-webui.js';
 +import {featureStagesFor} from './aux_feature_stages.js';
-+import {SuggestInventory} from '//resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
-+import {InputMethod, PageCallbackRouter, PageHandlerFactory, PageHandlerRemote} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-+import type {AutocompleteResult} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-+
 +interface Port {
 +  host: 'chromium-fork';
 +  windowId: string;
@@ -22,9 +227,10 @@ index 0000000000..0fea7b7d85
 +  privateMode: boolean;
 +  windowKind: 'normal'|'private'|'little'|'quick-ask';
 +  capabilities: {buildId: string; sourceCommit: string; methods: string[];
-+                 testClockScale?: number};
++                 testClockScale?: number; nativePerformance?: boolean};
 +  featureStages: ReturnType<typeof featureStagesFor>;
 +  testClockScale?: number;
++  performanceCommit?: (queryId: number) => Promise<void>;
 +  request(method: string, args: unknown[]): Promise<unknown>;
 +  subscribe(event: string, callback: (...args: unknown[]) => void): () => void;
 +}
@@ -39,7 +245,7 @@ index 0000000000..0fea7b7d85
 +const remote = new ShellHostRemote();
 +const listeners = new Map<string, Set<(...args: unknown[]) => void>>();
 +const hostEvents = new Set([
-+  'onEvent', 'onTabsPatch', 'onDictation', 'onSidebarEdge', 'onToolbarEdge',
++  'onEvent', 'onOmniboxResult', 'onTabsPatch', 'onDictation', 'onSidebarEdge', 'onToolbarEdge',
 +  'onOrganizationChanged', 'onShortcut', 'onSiteZoomChanged',
 +  'onRuntimeStatus', 'onLoading', 'onAudio', 'onDownload',
 +  'onHttpAuthChanged', 'onTabsPlacement', 'onQuickAskState',
@@ -48,85 +254,6 @@ index 0000000000..0fea7b7d85
 +  'onPictureInPicture', 'onExtensionActionsChanged', 'onSidePanel',
 +  'onFocusSpace', 'onRoutedOpen', 'onRoutePrompt',
 +]);
-+type Match = {id: string; type: 'history'|'bookmark'|'search'|'typed'; title: string; url: string; description?: string};
-+let searchbox: PageHandlerRemote|undefined;
-+let queryId = 0;
-+let pending: {id: number; resolve: (matches: Match[]) => void; reject: (error: Error) => void; timer: number; matches: Match[]}|undefined;
-+
-+function mapMatches(result: AutocompleteResult): Match[] {
-+  return result.matches.filter(match => !match.isHidden).flatMap(match => {
-+    const url = match.destinationUrl;
-+    let scheme: string;
-+    try { scheme = new URL(url).protocol; } catch { return []; }
-+    if (!['https:', 'http:', 'chrome:', 'about:'].includes(scheme)) return [];
-+    const type = match.isSearchType ? 'search' : match.type.includes('bookmark') ? 'bookmark' :
-+        match.type.includes('history') ? 'history' : 'typed';
-+    const title = match.contents || match.fillIntoEdit || url;
-+    if (!title) return [];
-+    return [{id: `${type}:${url}:${title}`, type, title, url,
-+             ...(match.description ? {description: match.description} : {})} as Match];
-+  }).slice(0, 12);
-+}
-+
-+function finishAutocomplete() {
-+  if (!pending) return;
-+  window.clearTimeout(pending.timer);
-+  const {resolve, matches} = pending;
-+  pending = undefined;
-+  resolve(matches);
-+}
-+
-+function failAutocomplete(message: string) {
-+  if (!pending) return;
-+  window.clearTimeout(pending.timer);
-+  const {reject} = pending;
-+  pending = undefined;
-+  reject(new Error(message));
-+}
-+
-+function onAutocompleteResult(result: AutocompleteResult) {
-+  if (!pending || result.queryId !== pending.id) return;
-+  pending.matches = mapMatches(result);
-+  window.clearTimeout(pending.timer);
-+  if (pending.matches.some(match => match.type !== 'search')) {
-+    finishAutocomplete();
-+    return;
-+  }
-+  // Keep a short window for Chromium's local History and Bookmark update,
-+  // then return without waiting for later network suggestions.
-+  pending.timer = window.setTimeout(finishAutocomplete, 40);
-+}
-+
-+function autocomplete(query: string): Promise<Match[]> {
-+  if (!query.trim() || query.length > 300) return Promise.resolve([]);
-+  finishAutocomplete();
-+  if (!searchbox) {
-+    const handler = new PageHandlerRemote();
-+    const router = new PageCallbackRouter();
-+    PageHandlerFactory.getRemote().createPageHandler(
-+        router.$.bindNewPipeAndPassRemote(),
-+        handler.$.bindNewPipeAndPassReceiver());
-+    router.autocompleteResultChanged.addListener(onAutocompleteResult);
-+    handler.onConnectionError.addListener(() => {
-+      searchbox = undefined;
-+      failAutocomplete('Chromium autocomplete disconnected. Try again.');
-+    });
-+    searchbox = handler;
-+  }
-+  const id = ++queryId;
-+  return new Promise((resolve, reject) => {
-+    pending = {id, resolve, reject, matches: [],
-+               timer: window.setTimeout(() => failAutocomplete(
-+                   'Chromium autocomplete did not respond. Try again.'), 900)};
-+    try {
-+      searchbox!.queryAutocomplete(id, null, query, false,
-+          query.length, SuggestInventory.kDefault, false, '',
-+          InputMethod.kKeyboard);
-+    } catch (error) {
-+      failAutocomplete(error instanceof Error ? error.message : String(error));
-+    }
-+  });
-+}
 +const client = new ShellHostClientReceiver({
 +  onEvent(eventName: string, payloadJson: string) {
 +    if (!hostEvents.has(eventName)) return;
@@ -154,7 +281,7 @@ index 0000000000..0fea7b7d85
 +  }
 +  const capabilities = JSON.parse(capabilityResponse.resultJson) as
 +      {buildId: string; sourceCommit: string; methods: string[];
-+       testClockScale?: number};
++       testClockScale?: number; nativePerformance?: boolean};
 +  if (!capabilities.buildId || !/^[a-f0-9]{40}(\+dirty)?$/.test(capabilities.sourceCommit) ||
 +      !Array.isArray(capabilities.methods) ||
 +      !capabilities.methods.every(method => typeof method === 'string') ||
@@ -163,6 +290,9 @@ index 0000000000..0fea7b7d85
 +        !Number.isFinite(capabilities.testClockScale) ||
 +        capabilities.testClockScale < 1 || capabilities.testClockScale > 100000))) {
 +    throw new Error('The Aux browser returned invalid capabilities.');
++  }
++  if (capabilities.nativePerformance !== undefined && typeof capabilities.nativePerformance !== "boolean") {
++    throw new Error("The Aux browser returned invalid benchmark metadata.");
 +  }
 +  const featureStages = featureStagesFor(capabilities.methods);
 +  const windowKinds: Record<WindowKind, Port['windowKind']> = {
@@ -180,15 +310,16 @@ index 0000000000..0fea7b7d85
 +    windowKind: windowKinds[identity.windowKind],
 +    capabilities,
 +    featureStages,
++    ...(capabilities.nativePerformance === true ? {
++      async performanceCommit(queryId: number) {
++        if (!Number.isSafeInteger(queryId) || queryId <= 0) return;
++        const response = await remote.request("performance.commitQuery", JSON.stringify([queryId]));
++        if (!response.ok) throw new Error(`${response.errorCode}: ${response.errorMessage}`);
++      },
++    } : {}),
 +    ...(capabilities.testClockScale !== undefined ?
 +        {testClockScale: capabilities.testClockScale} : {}),
 +    async request(method, args) {
-+      if (method === 'autocomplete') {
-+        if (args.length !== 1 || typeof args[0] !== 'string') {
-+          throw new Error('Invalid autocomplete query');
-+        }
-+        return autocomplete(args[0]);
-+      }
 +      // Optional versions are omitted on activation. JSON arrays encode an
 +      // explicit undefined as null, which is not a valid catalog version.
 +      const commandArgs = args.length === 2 && args[1] === undefined ?
@@ -215,8 +346,346 @@ index 0000000000..0fea7b7d85
 +    },
 +  };
 +});
+diff --git a/chrome/browser/ui/aux/shell_warmup_manager.cc b/chrome/browser/ui/aux/shell_warmup_manager.cc
+new file mode 100644
+index 0000000..756dac4
+--- /dev/null
++++ b/chrome/browser/ui/aux/shell_warmup_manager.cc
+@@ -0,0 +1,152 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/shell_warmup_manager.h"
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/location.h"
++#include "base/time/time.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/lifetime/browser_shutdown.h"
++#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
++#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "content/public/browser/browser_task_traits.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/render_process_host.h"
++
++namespace aux {
++namespace {
++ShellWarmupManager* g_manager = nullptr;
++constexpr base::MemoryConsumerTraits kTraits(
++    base::MemoryConsumerTraits::ConsumerType::kPassive,
++    base::MemoryConsumerTraits::InProcess::kNo);
++}  // namespace
++
++ShellWarmupManager::ShellWarmupManager()
++    : memory_registration_("AuxShellWarmupManager", kTraits, this) {
++  CHECK(!g_manager);
++  g_manager = this;
++  content::SpareRenderProcessHostManager::Get().AddObserver(this);
++}
++
++ShellWarmupManager::~ShellWarmupManager() {
++  g_manager = nullptr;
++  content::SpareRenderProcessHostManager::Get().RemoveObserver(this);
++  manager_observation_.Reset();
++  ReleaseProfile();
++}
++
++ShellWarmupManager* ShellWarmupManager::Get() {
++  return g_manager;
++}
++
++void ShellWarmupManager::UseProfile(Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!profile || !profile->IsRegularProfile() || profile->ShutdownStarted() ||
++      browser_shutdown::IsTryingToQuit() ||
++      browser_shutdown::HasShutdownStarted()) {
++    return;
++  }
++  auto* manager = g_browser_process->profile_manager();
++  auto* entry = manager->GetProfileAttributesStorage()
++                    .GetProfileAttributesWithPath(profile->GetPath());
++  // Do not change the existing lifetime of ephemeral profiles.
++  if (!entry || entry->IsEphemeral()) {
++    return;
++  }
++  if (profile_keep_alive_ && profile_keep_alive_->profile() == profile) {
++    ScheduleRefill();
++    return;
++  }
++  auto keep_alive = ScopedProfileKeepAlive::TryAcquire(
++      profile, ProfileKeepAliveOrigin::kAuxShellWarmup);
++  if (!keep_alive) {
++    return;
++  }
++  ReleaseProfile();
++  profile_keep_alive_ = std::move(keep_alive);
++  profile_observation_.Observe(profile);
++  if (!manager_observation_.IsObserving()) {
++    manager_observation_.Observe(manager);
++  }
++  ScheduleRefill();
++}
++
++bool ShellWarmupManager::CanWarm() const {
++  return profile_keep_alive_ && profile_keep_alive_->profile() &&
++         !profile_keep_alive_->profile()->ShutdownStarted() &&
++         !browser_shutdown::IsTryingToQuit() &&
++         !browser_shutdown::HasShutdownStarted() &&
++         memory_limit() > base::MemoryLimit::ModeratePressureThreshold() &&
++         !content::RenderProcessHost::IsProcessLimitReached();
++}
++
++void ShellWarmupManager::ScheduleRefill() {
++  if (refill_pending_ || !CanWarm()) {
++    return;
++  }
++  refill_pending_ = true;
++  // Avoid the first frame and yield to interactive browser work. The browser
++  // scheduler owns BEST_EFFORT execution; no polling timer or hidden shell runs.
++  content::GetUIThreadTaskRunner({base::TaskPriority::BEST_EFFORT})
++      ->PostDelayedTask(FROM_HERE,
++                        base::BindOnce(&ShellWarmupManager::Refill,
++                                       weak_factory_.GetWeakPtr()),
++                        base::Seconds(5));
++}
++
++void ShellWarmupManager::OnUpdateMemoryLimit() {
++  ScheduleRefill();
++}
++
++void ShellWarmupManager::Refill() {
++  refill_pending_ = false;
++  if (!CanWarm()) {
++    return;
++  }
++  auto& spare_manager = content::SpareRenderProcessHostManager::Get();
++  // Do not evict another Profile's spare or turn competing warmup clients
++  // into a refill loop. Existing matching spares are already sufficient.
++  if (!spare_manager.GetSpares().empty()) {
++    return;
++  }
++  spare_manager.WarmupSpare(profile_keep_alive_->profile());
++}
++
++void ShellWarmupManager::ReleaseProfile() {
++  weak_factory_.InvalidateWeakPtrs();
++  refill_pending_ = false;
++  profile_observation_.Reset();
++  profile_keep_alive_.reset();
++}
++
++void ShellWarmupManager::OnProfileWillBeDestroyed(Profile* profile) {
++  ReleaseProfile();
++}
++
++void ShellWarmupManager::OnProfileMarkedForPermanentDeletion(Profile* profile) {
++  if (profile_keep_alive_ && profile_keep_alive_->profile() == profile) {
++    ReleaseProfile();
++  }
++}
++
++void ShellWarmupManager::OnProfileManagerDestroying() {
++  manager_observation_.Reset();
++  ReleaseProfile();
++}
++
++void ShellWarmupManager::OnSpareRenderProcessHostRemoved(
++    content::RenderProcessHost* host) {
++  if (profile_keep_alive_ &&
++      host->GetBrowserContext() == profile_keep_alive_->profile()) {
++    ScheduleRefill();
++  }
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/shell_warmup_manager.h b/chrome/browser/ui/aux/shell_warmup_manager.h
+new file mode 100644
+index 0000000..658b084
+--- /dev/null
++++ b/chrome/browser/ui/aux/shell_warmup_manager.h
+@@ -0,0 +1,62 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_SHELL_WARMUP_MANAGER_H_
++#define CHROME_BROWSER_UI_AUX_SHELL_WARMUP_MANAGER_H_
++
++#include <memory>
++
++#include "base/memory/weak_ptr.h"
++#include "base/memory_coordinator/memory_consumer.h"
++#include "base/scoped_observation.h"
++#include "base/time/time.h"
++#include "chrome/browser/profiles/profile_manager_observer.h"
++#include "chrome/browser/profiles/profile_observer.h"
++#include "content/public/browser/spare_render_process_host_manager.h"
++
++class Profile;
++class ProfileManager;
++class ScopedProfileKeepAlive;
++
++namespace aux {
++
++// BrowserProcessImpl owns this service and destroys it before ProfileManager.
++// The upstream spare remains an unprivileged, unused renderer; every normal
++// process suitability and WebUI admission check still runs when it is taken.
++class ShellWarmupManager final
++    : public ProfileObserver,
++      public ProfileManagerObserver,
++      public content::SpareRenderProcessHostManager::Observer,
++      public base::PassiveMemoryConsumer {
++ public:
++  ShellWarmupManager();
++  ~ShellWarmupManager() override;
++  ShellWarmupManager(const ShellWarmupManager&) = delete;
++  ShellWarmupManager& operator=(const ShellWarmupManager&) = delete;
++
++  static ShellWarmupManager* Get();
++  void UseProfile(Profile* profile);
++
++ private:
++  void ScheduleRefill();
++  void Refill();
++  void ReleaseProfile();
++  bool CanWarm() const;
++  void OnUpdateMemoryLimit() override;
++  void OnProfileWillBeDestroyed(Profile* profile) override;
++  void OnProfileMarkedForPermanentDeletion(Profile* profile) override;
++  void OnProfileManagerDestroying() override;
++  void OnSpareRenderProcessHostRemoved(content::RenderProcessHost* host) override;
++
++  std::unique_ptr<ScopedProfileKeepAlive> profile_keep_alive_;
++  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
++  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
++      manager_observation_{this};
++  base::MemoryConsumerRegistration memory_registration_;
++  bool refill_pending_ = false;
++  base::WeakPtrFactory<ShellWarmupManager> weak_factory_{this};
++};
++
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_AUX_SHELL_WARMUP_MANAGER_H_
+diff --git a/chrome/browser/ui/aux/task_attention_mac.h b/chrome/browser/ui/aux/task_attention_mac.h
+new file mode 100644
+index 0000000..3168ba5
+--- /dev/null
++++ b/chrome/browser/ui/aux/task_attention_mac.h
+@@ -0,0 +1,11 @@
++// Copyright 2026 The Aux Authors. BSD-3-Clause.
++#ifndef CHROME_BROWSER_UI_AUX_TASK_ATTENTION_MAC_H_
++#define CHROME_BROWSER_UI_AUX_TASK_ATTENTION_MAC_H_
++#include <cstddef>
++namespace base { class UnguessableToken; }
++namespace aux {
++// Counts belong to actual native attention states and are removed on retirement.
++void SetTaskAttentionBadge(const base::UnguessableToken& owner, size_t count);
++void PlayTaskCompletionSound(const base::UnguessableToken& owner);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/task_attention_mac.mm b/chrome/browser/ui/aux/task_attention_mac.mm
+new file mode 100644
+index 0000000..fb9c230
+--- /dev/null
++++ b/chrome/browser/ui/aux/task_attention_mac.mm
+@@ -0,0 +1,89 @@
++// Copyright 2026 The Aux Authors. BSD-3-Clause.
++#include "chrome/browser/ui/aux/task_attention_mac.h"
++#import <Cocoa/Cocoa.h>
++#include <algorithm>
++#include <cmath>
++#include <cstdint>
++#include <map>
++#include <numbers>
++#include <vector>
++#include "base/no_destructor.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/sys_string_conversions.h"
++#include "base/unguessable_token.h"
++namespace aux {
++namespace {
++struct Attention {
++  size_t count = 0;
++  NSSound* __strong sound = nil;
++};
++std::map<base::UnguessableToken, Attention>& AttentionStates() {
++  static base::NoDestructor<std::map<base::UnguessableToken, Attention>> states;
++  return *states;
++}
++NSSound* MakeCompletionSound() {
++  // Aux-authored ascending two-note chime: 400 ms, mono PCM, gentle attack and
++  // release. It uses no system alert, downloaded asset or recorded user audio.
++  constexpr uint32_t rate = 44100;
++  constexpr uint32_t samples = rate * 2 / 5;
++  std::vector<uint8_t> wave;
++  wave.reserve(44 + samples * 2);
++  const auto u16 = [&](uint16_t value) {
++    wave.push_back(value & 255);
++    wave.push_back(value >> 8);
++  };
++  const auto u32 = [&](uint32_t value) {
++    u16(value & 65535);
++    u16(value >> 16);
++  };
++  const auto tag = [&](char a, char b, char c, char d) {
++    wave.push_back(a); wave.push_back(b); wave.push_back(c); wave.push_back(d);
++  };
++  tag('R', 'I', 'F', 'F'); u32(36 + samples * 2);
++  tag('W', 'A', 'V', 'E'); tag('f', 'm', 't', ' '); u32(16);
++  u16(1); u16(1); u32(rate); u32(rate * 2); u16(2); u16(16);
++  tag('d', 'a', 't', 'a'); u32(samples * 2);
++  for (uint32_t i = 0; i < samples; ++i) {
++    const double time = static_cast<double>(i) / rate;
++    const double start = time < 0.16 ? 0.0 : 0.16;
++    const double duration = time < 0.16 ? 0.14 : 0.24;
++    const double position = time - start;
++    const double envelope = std::clamp(
++        std::min(position / 0.012, (duration - position) / 0.065), 0.0, 1.0);
++    const double frequency = time < 0.16 ? 523.25 : 659.25;
++    const double phase = 2 * std::numbers::pi * frequency * position;
++    const auto sample = static_cast<int16_t>(
++        16384 * envelope * (std::sin(phase) + 0.15 * std::sin(phase * 2)));
++    u16(static_cast<uint16_t>(sample));
++  }
++  NSData* data = [NSData dataWithBytes:wave.data() length:wave.size()];
++  return [[NSSound alloc] initWithData:data];
++}
++}  // namespace
++void SetTaskAttentionBadge(const base::UnguessableToken& owner, size_t count) {
++  auto& states = AttentionStates();
++  if (count) {
++    states[owner].count = count;
++  } else {
++    const auto found = states.find(owner);
++    if (found != states.end()) {
++      [found->second.sound stop];
++      states.erase(found);  // ARC releases the state's exact retained sound.
++    }
++  }
++  size_t total = 0;
++  for (const auto& [id, state] : states) total += state.count;
++  NSDockTile* tile = NSApplication.sharedApplication.dockTile;
++  tile.badgeLabel = total ? base::SysUTF8ToNSString(base::NumberToString(total)) : nil;
++  [tile display];
++}
++void PlayTaskCompletionSound(const base::UnguessableToken& owner) {
++  auto& states = AttentionStates();
++  const auto found = states.find(owner);
++  if (found == states.end()) return;
++  [found->second.sound stop];
++  found->second.sound = MakeCompletionSound();
++  found->second.sound.volume = 0.35f;
++  [found->second.sound play];
++}
++}  // namespace aux
 diff --git a/chrome/browser/ui/startup/first_run_service.cc b/chrome/browser/ui/startup/first_run_service.cc
-index e1f1e2b020..a301fdeb13 100644
+index e1f1e2b..a301fde 100644
 --- a/chrome/browser/ui/startup/first_run_service.cc
 +++ b/chrome/browser/ui/startup/first_run_service.cc
 @@ -13,6 +13,7 @@
@@ -237,9 +706,401 @@ index e1f1e2b020..a301fdeb13 100644
 -         !IsFirstRunMarkedFinishedInPrefs();
 +         !IsFirstRunMarkedFinishedInPrefs() && !BUILDFLAG(ENABLE_AUX_SHELL);
  }
+diff --git a/chrome/browser/ui/webui/util/BUILD.gn b/chrome/browser/ui/webui/util/BUILD.gn
+index ec820d7..0aa80fa 100644
+--- a/chrome/browser/ui/webui/util/BUILD.gn
++++ b/chrome/browser/ui/webui/util/BUILD.gn
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//ui/webui/webui_features.gni")
++import("//chrome/browser/buildflags.gni")
+ 
+ assert(is_win || is_mac || is_linux || is_chromeos)
+ 
+diff --git a/chrome/browser/ui/webui/util/webui_util_desktop.cc b/chrome/browser/ui/webui/util/webui_util_desktop.cc
+index 1eaf6b8..54a2df8 100644
+--- a/chrome/browser/ui/webui/util/webui_util_desktop.cc
++++ b/chrome/browser/ui/webui/util/webui_util_desktop.cc
+@@ -15,6 +15,7 @@
+ #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "chrome/common/chrome_features.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/common/webui_url_constants.h"
+ #include "chrome/common/webui_url_utils.h"
+ #include "content/public/common/url_constants.h"
+@@ -25,6 +26,10 @@
+ 
+ #if BUILDFLAG(ENABLE_WEBUI_GENERATE_CODE_CACHE)
+ #include "chrome/browser/ui/ui_features.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/grit/aux_code_cache_resources_map.h"
++#include "chrome/grit/aux_host_code_cache_resources_map.h"
++#endif
+ #include "chrome/grit/side_panel_bookmarks_code_cache_resources_map.h"
+ #include "chrome/grit/side_panel_customize_chrome_code_cache_resources_map.h"
+ #include "chrome/grit/side_panel_reading_list_code_cache_resources_map.h"
+@@ -204,6 +209,15 @@ base::flat_map<GURL, int> GetWebUIResourceUrlToCodeCacheMap() {
+ 
+ #if BUILDFLAG(ENABLE_WEBUI_GENERATE_CODE_CACHE)
+   if (features::kWebUIBundledCodeCacheGenerateResourceMap.Get()) {
++    // Aux bundles the exact staged shell scripts and Mojo bootstrap.
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++    AppendWebUIResourceURLToCodeCachePairs(
++        content::kChromeUIScheme, chrome::kChromeUIAuxHost,
++        kAuxCodeCacheResources, url_to_code_cache_pairs);
++    AppendWebUIResourceURLToCodeCachePairs(
++        content::kChromeUIScheme, chrome::kChromeUIAuxHost,
++        kAuxHostCodeCacheResources, url_to_code_cache_pairs);
++#endif
+     // Shared resources.
+     AppendWebUIResourceURLToCodeCachePairs(
+         content::kChromeUIScheme, content::kChromeUIResourcesHost,
+diff --git a/chrome/browser/ui/webui_browser/aux_omnibox_handler.cc b/chrome/browser/ui/webui_browser/aux_omnibox_handler.cc
+new file mode 100644
+index 0000000..4c9d6e6
+--- /dev/null
++++ b/chrome/browser/ui/webui_browser/aux_omnibox_handler.cc
+@@ -0,0 +1,283 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/webui_browser/aux_omnibox_handler.h"
++
++#include <cstdint>
++#include <memory>
++#include <utility>
++#include <vector>
++
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/browser/bookmarks/bookmark_model_factory.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/predictors/autocomplete_action_predictor.h"
++#include "chrome/browser/predictors/autocomplete_action_predictor_factory.h"
++#include "chrome/browser/predictors/loading_predictor.h"
++#include "chrome/browser/predictors/loading_predictor_factory.h"
++#include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.h"
++#include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service_factory.h"
++#include "chrome/browser/preloading/search_preload/search_preload_service.h"
++#include "chrome/browser/preloading/search_preload/search_preload_service_factory.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_omnibox_client.h"
++#include "components/bookmarks/browser/bookmark_model.h"
++#include "components/omnibox/browser/autocomplete_controller.h"
++#include "components/omnibox/browser/autocomplete_match.h"
++#include "components/omnibox/browser/autocomplete_result.h"
++#include "components/omnibox/browser/fusebox_action.mojom.h"
++#include "components/omnibox/browser/omnibox_popup_selection.h"
++#include "components/omnibox/browser/searchbox_utils.h"
++#include "components/safe_browsing/buildflags.h"
++#include "extensions/buildflags/buildflags.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "services/network/public/cpp/constants.h"
++#include "services/network/public/cpp/resource_request_body.h"
++#include "content/public/browser/page_navigator.h"
++#include "third_party/metrics_proto/omnibox_event.pb.h"
++
++#if BUILDFLAG(ENABLE_EXTENSIONS) && BUILDFLAG(SAFE_BROWSING_AVAILABLE)
++#include "chrome/browser/safe_browsing/extension_telemetry/extension_telemetry_service.h"
++#endif
++
++namespace {
++class AuxOmniboxClient final : public SearchboxOmniboxClient {
++ public:
++  AuxOmniboxClient(Profile* profile, content::WebContents* shell,
++                   AuxOmniboxHandler::Target resolver)
++      : SearchboxOmniboxClient(profile, shell), resolver_(std::move(resolver)) {}
++  void SetTarget(content::WebContents* target) {
++    accepted_url_ = GURL();
++    document_ = target ? std::make_optional(target->GetPrimaryMainFrame()->GetWeakDocumentPtr()) : std::nullopt;
++    target_ = target ? target->GetWeakPtr() : base::WeakPtr<content::WebContents>();
++    url_ = target ? target->GetLastCommittedURL() : GURL();
++    title_ = target ? target->GetTitle() : std::u16string();
++  }
++  void ArmAcceptance(const AutocompleteMatch& match) {
++    accepted_url_ = match.destination_url;
++  }
++  void OnAutocompleteAccept(const GURL& destination_url,
++      TemplateURLRef::PostContent* post_content, WindowOpenDisposition disposition,
++      ui::PageTransition transition, AutocompleteMatchType::Type match_type,
++      base::TimeTicks timestamp, bool without_scheme, bool http_scheme,
++      const std::u16string& text, const AutocompleteMatch& match,
++      const AutocompleteMatch& alternative) override {
++    // A search-engine confirmation may complete after the renderer's request.
++    // A replacement query, document or active tab cannot inherit that acceptance.
++    auto* current = resolver_.Run();
++    if (!accepted_url_.is_valid() || match.destination_url != accepted_url_ ||
++        current != target_.get() || (document_ && (!current ||
++        !document_->AsRenderFrameHostIfValid() ||
++        document_->AsRenderFrameHostIfValid() != current->GetPrimaryMainFrame()))) return;
++    accepted_url_ = GURL();
++#if BUILDFLAG(ENABLE_EXTENSIONS) && BUILDFLAG(SAFE_BROWSING_AVAILABLE)
++    if (AutocompleteMatch::IsSearchType(match.type)) {
++      if (auto* telemetry = safe_browsing::ExtensionTelemetryService::Get(profile_))
++        telemetry->OnOmniboxSearch(match);
++    }
++#endif
++    content::OpenURLParams params(destination_url, content::Referrer(), disposition,
++                                  transition, false);
++    if (post_content) {
++      params.post_data = network::ResourceRequestBody::CreateFromBytes(
++          std::vector<uint8_t>(post_content->second.begin(), post_content->second.end()));
++      params.extra_headers = "Content-Type: " + post_content->first + "\r\n";
++    }
++    for (const auto& [name, value] : match.extra_headers)
++      params.extra_headers += name + ": " + value + "\r\n";
++    web_contents_->OpenURL(params, {});
++  }
++  bool CurrentPageExists() const override { return !!target_; }
++  const GURL& GetURL() const override { return url_; }
++  const std::u16string& GetTitle() const override { return title_; }
++  metrics::OmniboxEventProto::PageClassification GetPageClassification(
++      bool is_prefetch) const override {
++    return !target_ || url_.IsAboutBlank()
++        ? metrics::OmniboxEventProto::NTP_REALBOX
++        : metrics::OmniboxEventProto::OTHER;
++  }
++ private:
++  AuxOmniboxHandler::Target resolver_;
++  base::WeakPtr<content::WebContents> target_;
++  std::optional<content::WeakDocumentPtr> document_;
++  GURL accepted_url_;
++  GURL url_;
++  std::u16string title_;
++};
++}  // namespace
++
++AuxOmniboxHandler::AuxOmniboxHandler(Profile* profile,
++    content::WebContents* shell, Target target, Update update)
++    : SearchboxHandler({}, {}, profile, shell,
++          std::make_unique<AuxOmniboxClient>(profile, shell, target)),
++      target_resolver_(std::move(target)), update_(std::move(update)) {
++  autocomplete_controller_observation_.Observe(autocomplete_controller());
++}
++AuxOmniboxHandler::~AuxOmniboxHandler() = default;
++
++bool AuxOmniboxHandler::Start(int query_id, const std::u16string& input,
++                              bool on_focus) {
++  if (query_id <= current_query_id_) return false;
++  live_ = false;
++  StopAutocomplete(true);
++  auto* target = target_resolver_.Run();
++  target_ = target ? target->GetWeakPtr() : base::WeakPtr<content::WebContents>();
++  document_ = target ? std::make_optional(
++      target->GetPrimaryMainFrame()->GetWeakDocumentPtr()) : std::nullopt;
++  static_cast<AuxOmniboxClient*>(client())->SetTarget(target);
++  current_query_id_ = query_id;
++  live_ = true;
++  OnFocusChanged(true);
++  QueryAutocomplete(query_id, std::nullopt, input, false, input.size(),
++      omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT, on_focus, "",
++      searchbox::mojom::InputMethod::kKeyboard);
++  return true;
++}
++
++bool AuxOmniboxHandler::Stop(int query_id) {
++  if (query_id != current_query_id_) return false;
++  live_ = false;
++  StopAutocomplete(true);
++  OnFocusChanged(false);
++  return true;
++}
++
++bool AuxOmniboxHandler::TargetIsCurrent() const {
++  auto* current = target_resolver_.Run();
++  if (current != target_.get()) return false;
++  return !document_ || (current && document_->AsRenderFrameHostIfValid() &&
++      current->GetPrimaryMainFrame() &&
++      document_->AsRenderFrameHostIfValid() == current->GetPrimaryMainFrame());
++}
++
++bool AuxOmniboxHandler::Open(int query_id, const base::DictValue* selection,
++                             WindowOpenDisposition disposition) {
++  if (!live_ || query_id != current_query_id_ || !TargetIsCurrent()) return false;
++  AutocompleteMatch accepted;
++  int index = OmniboxPopupSelection::kNoMatch;
++  if (selection) {
++    if (static_cast<uint32_t>(*selection->FindDouble("sequenceId")) !=
++        autocomplete_controller()->result().sequence_id()) return false;
++    const auto native_index = static_cast<size_t>(*selection->FindDouble("index"));
++    const auto* match = GetMatchWithUrl(native_index, GURL(*selection->FindString("url")));
++    if (!match) return false;
++    index = static_cast<int>(native_index);
++    accepted = *match;
++  } else {
++    const auto* match = autocomplete_controller()->result().default_match();
++    if (match) {
++      accepted = *match;
++      int position = 0;
++      for (const auto& result : autocomplete_controller()->result()) {
++        if (&result == match) { index = position; break; }
++        ++position;
++      }
++    } else searchbox::ClassifyString(client(), autocomplete_controller()->input().text(),
++        false, true, &accepted);
++    if (!accepted.destination_url.is_valid()) return false;
++  }
++  if (!target_ && disposition == WindowOpenDisposition::CURRENT_TAB)
++    disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
++  live_ = false;
++  static_cast<AuxOmniboxClient*>(client())->ArmAcceptance(accepted);
++  OpenMatch(OmniboxPopupSelection(index), accepted, disposition,
++            base::TimeTicks::Now());
++  StopAutocomplete(false);
++  return true;
++}
++
++bool AuxOmniboxHandler::Hint(const std::string& page_id,
++                              const GURL& expected_url, const GURL& url) {
++  auto* target = target_resolver_.Run();
++  auto* identity = target ? aux::PageIdentity::FromWebContents(target) : nullptr;
++  if (!target || !identity || identity->id() != page_id ||
++      target->GetBrowserContext() != profile_ ||
++      target->GetLastCommittedURL() != expected_url ||
++      !url.SchemeIsHTTPOrHTTPS() || url == expected_url || profile_->IsOffTheRecord())
++    return false;
++  const auto weak = weak_factory_.GetWeakPtr();
++  const auto original = target->GetWeakPtr();
++  const auto document = target->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  if (auto* loading = predictors::LoadingPredictorFactory::GetForProfile(profile_))
++    loading->PrepareForPageLoad(std::nullopt, url, predictors::HintOrigin::OMNIBOX,
++        network::GetNoOpNetworkRestrictionsId(), true);
++  if (!weak || !original) return false;
++  if (target_resolver_.Run() != original.get() ||
++      original->GetLastCommittedURL() != expected_url ||
++      !document.AsRenderFrameHostIfValid() ||
++      document.AsRenderFrameHostIfValid() != original->GetPrimaryMainFrame()) return false;
++  if (auto* predictor = predictors::AutocompleteActionPredictorFactory::GetForProfile(profile_))
++    predictor->StartPrerendering(url, *original);
++  return true;
++}
++
++void AuxOmniboxHandler::OnResultChanged(AutocompleteController* controller,
++                                        bool default_match_changed) {
++  if (!live_ || !TargetIsCurrent()) return;
++  const auto& result = controller->result();
++  const auto sequence = result.sequence_id();
++  base::ListValue items;
++  auto* bookmarks = BookmarkModelFactory::GetForBrowserContext(profile_);
++  size_t index = 0;
++  for (const auto& match : result) {
++    const size_t native_index = index++;
++    if (match.ShouldHideBasedOnStarterPack(client()->GetTemplateURLService()) || !match.destination_url.is_valid() ||
++        !(match.destination_url.SchemeIsHTTPOrHTTPS() ||
++          match.destination_url.SchemeIs("chrome") ||
++          match.destination_url.SchemeIs("about"))) continue;
++    const auto native_type = AutocompleteMatchType::ToString(match.type);
++    const std::string type = AutocompleteMatch::IsSearchType(match.type) ? "search"
++        : bookmarks && bookmarks->IsBookmarked(match.destination_url) ? "bookmark"
++        : native_type.find("history") != std::string::npos ? "history"
++        : native_type.find("tab") != std::string::npos ? "tab" : "typed";
++    base::DictValue item;
++    item.Set("id", base::NumberToString(current_query_id_) + ":" +
++        base::NumberToString(sequence) + ":" + base::NumberToString(native_index));
++    item.Set("index", static_cast<int>(native_index));
++    item.Set("type", type);
++    item.Set("url", match.destination_url.spec());
++    const auto title = match.contents.empty() ? match.fill_into_edit : match.contents;
++    item.Set("title", title.empty() ? match.destination_url.spec() : base::UTF16ToUTF8(title));
++    if (!match.description.empty())
++      item.Set("description", base::UTF16ToUTF8(match.description));
++    items.Append(std::move(item));
++  }
++  base::DictValue update;
++  update.Set("queryId", current_query_id_);
++  update.Set("sequenceId", static_cast<double>(sequence));
++  update.Set("input", base::UTF16ToUTF8(controller->input().text()));
++  update.Set("done", controller->done());
++  update.Set("items", std::move(items));
++  const auto weak = weak_factory_.GetWeakPtr();
++  update_.Run(std::move(update));
++  if (weak) PredictNavigation(result);
++}
++
++void AuxOmniboxHandler::PredictNavigation(const AutocompleteResult& result) {
++  if (!target_ || !TargetIsCurrent() || result.empty()) return;
++  if (auto* preload = SearchPreloadServiceFactory::GetForProfile(profile_))
++    preload->OnAutocompleteResultChanged(target_.get(), result);
++  if (autocomplete_controller()->done()) {
++    if (auto* prefetch = SearchPrefetchServiceFactory::GetForProfile(profile_))
++      prefetch->OnResultChanged(target_.get(), result);
++  }
++  const auto* default_match = result.default_match();
++  if (!default_match) return;
++  const auto& match = *default_match;
++  auto* predictor = predictors::AutocompleteActionPredictorFactory::GetForProfile(profile_);
++  if (!predictor || autocomplete_controller()->input().text().empty()) return;
++  predictor->RegisterTransitionalMatches(autocomplete_controller()->input().text(), result);
++  const auto action = predictor->RecommendAction(
++      autocomplete_controller()->input().text(), match, target_.get());
++  if (action == predictors::AutocompleteActionPredictor::ACTION_PRERENDER &&
++      match.destination_url != target_->GetLastCommittedURL()) {
++    predictor->StartPrerendering(match.destination_url, *target_);
++  } else if (action == predictors::AutocompleteActionPredictor::ACTION_PRECONNECT) {
++    if (auto* loading = predictors::LoadingPredictorFactory::GetForProfile(profile_))
++      loading->PrepareForPageLoad(std::nullopt, match.destination_url,
++          predictors::HintOrigin::OMNIBOX, network::GetNoOpNetworkRestrictionsId(),
++          predictors::AutocompleteActionPredictor::IsPreconnectable(match));
++  }
++}
+diff --git a/chrome/browser/ui/webui_browser/aux_omnibox_handler.h b/chrome/browser/ui/webui_browser/aux_omnibox_handler.h
+new file mode 100644
+index 0000000..72bb3e6
+--- /dev/null
++++ b/chrome/browser/ui/webui_browser/aux_omnibox_handler.h
+@@ -0,0 +1,46 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_WEBUI_BROWSER_AUX_OMNIBOX_HANDLER_H_
++#define CHROME_BROWSER_UI_WEBUI_BROWSER_AUX_OMNIBOX_HANDLER_H_
++
++#include <optional>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/values.h"
++#include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
++#include "content/public/browser/weak_document_ptr.h"
++
++// Owned by one authorized shell document. Results and navigation use the same
++// native controller; the renderer cannot supply a replacement match.
++class AuxOmniboxHandler final : public SearchboxHandler {
++ public:
++  using Target = base::RepeatingCallback<content::WebContents*()>;
++  using Update = base::RepeatingCallback<void(base::DictValue)>;
++  AuxOmniboxHandler(Profile* profile, content::WebContents* shell,
++                    Target target, Update update);
++  ~AuxOmniboxHandler() override;
++  bool Start(int query_id, const std::u16string& input, bool on_focus);
++  bool Stop(int query_id);
++  bool Open(int query_id, const base::DictValue* selection,
++            WindowOpenDisposition disposition);
++  bool Hint(const std::string& page_id, const GURL& expected_url, const GURL& url);
++  // Aux uses the original window permission UI, without a Realbox Page pipe.
++  // No Lens thumbnail exists in the Aux omnibox, as in the native Realbox.
++  void OnThumbnailRemoved() override {}
++  void OnPermissionPromptChanged(bool is_showing, const gfx::Size& prompt_size) override {}
++  void OnResultChanged(AutocompleteController* controller,
++                       bool default_match_changed) override;
++ private:
++  bool TargetIsCurrent() const;
++  void PredictNavigation(const AutocompleteResult& result);
++  Target target_resolver_;
++  Update update_;
++  base::WeakPtr<content::WebContents> target_;
++  std::optional<content::WeakDocumentPtr> document_;
++  bool live_ = false;
++  base::WeakPtrFactory<AuxOmniboxHandler> weak_factory_{this};
++};
++#endif
 diff --git a/chrome/browser/ui/webui_browser/shell_host.mojom b/chrome/browser/ui/webui_browser/shell_host.mojom
 new file mode 100644
-index 0000000000..2fc2379640
+index 0000000..2fc2379
 --- /dev/null
 +++ b/chrome/browser/ui/webui_browser/shell_host.mojom
 @@ -0,0 +1,31 @@
@@ -275,7 +1136,7 @@ index 0000000000..2fc2379640
 +      (bool ok, string result_json, string error_code, string error_message);
 +};
 diff --git a/chrome/browser/ui/webui_browser/webui_browser.cc b/chrome/browser/ui/webui_browser/webui_browser.cc
-index da9f377770..ca2032446b 100644
+index da9f377..ca20324 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser.cc
 @@ -5,6 +5,7 @@
@@ -299,7 +1160,7 @@ index da9f377770..ca2032446b 100644
  
  bool IsBrowserUIWebContents(content::WebContents* web_contents) {
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_client_view.cc b/chrome/browser/ui/webui_browser/webui_browser_client_view.cc
-index f8a5a94733..23e48fc5a7 100644
+index f8a5a94..23e48fc 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_client_view.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_client_view.cc
 @@ -50,7 +50,17 @@ void WebUIBrowserClientView::AddedToWidget() {
@@ -350,7 +1211,7 @@ index f8a5a94733..23e48fc5a7 100644
    draggable_region_.swap(draggable_region);
  }
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_modal_dialog_host.cc b/chrome/browser/ui/webui_browser/webui_browser_modal_dialog_host.cc
-index 45bc110ce3..a7262161aa 100644
+index 45bc110..a726216 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_modal_dialog_host.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_modal_dialog_host.cc
 @@ -7,6 +7,7 @@
@@ -372,7 +1233,7 @@ index 45bc110ce3..a7262161aa 100644
    // We're expected to provide coordinates relative to the hosting view.
    contents_bounds -= window_bounds.OffsetFromOrigin();
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_page_handler.cc b/chrome/browser/ui/webui_browser/webui_browser_page_handler.cc
-index cb0e145c0c..bf810f338c 100644
+index cb0e145..bf810f3 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_page_handler.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_page_handler.cc
 @@ -202,11 +202,22 @@ void WebUIBrowserPageHandler::GetGuestIdForTabId(
@@ -399,7 +1260,7 @@ index cb0e145c0c..bf810f338c 100644
    // The RenderFrameHost takes ownership of this object via the DocumentService.
    new WebUIBrowserGuestHandler(render_frame_host(), std::move(receiver),
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.cc
-index d4563adad3..865f903793 100644
+index d4563ad..865f903 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.cc
 @@ -5,6 +5,15 @@
@@ -586,7 +1447,7 @@ index d4563adad3..865f903793 100644
  
  WebUIBrowserWindow* WebUIBrowserSidePanelUI::GetWebUIBrowserWindow() {
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h b/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h
-index c99d04143c..1f147a400b 100644
+index c99d041..1f147a4 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h
 @@ -6,6 +6,9 @@
@@ -640,10 +1501,10 @@ index c99d04143c..1f147a400b 100644
  
  #endif  // CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_SIDE_PANEL_UI_H_
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-index 5c29c02888..fe0286b2b5 100644
+index 5c29c02..b6ea600 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-@@ -3,9 +3,66 @@
+@@ -3,9 +3,69 @@
  // found in the LICENSE file.
  
  #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
@@ -690,6 +1551,9 @@ index 5c29c02888..fe0286b2b5 100644
 +#include "chrome/browser/ui/tabs/tab_strip_model.h"
 +#include "chrome/browser/ui/aux/content_blocking_controller.h"
 +#include "chrome/browser/ui/aux/method_registry.h"
++#include "chrome/browser/ui/webui_browser/aux_omnibox_handler.h"
++#include "chrome/browser/ui/performance/native_performance.h"
++#include "chrome/browser/ui/webui_browser/aux_device_confirmation.h"
 +#include "chrome/browser/ui/aux/health_recorder.h"
 +#include "chrome/browser/ui/aux/dictation_mac.h"
 +#include "chrome/browser/ui/aux/extension_bridge.h"
@@ -710,7 +1574,7 @@ index 5c29c02888..fe0286b2b5 100644
  #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
  #include "chrome/browser/profiles/profile.h"
  #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
-@@ -34,6 +91,15 @@
+@@ -34,6 +94,15 @@
  #include "chrome/grit/tab_strip_api_resources_map.h"
  #include "chrome/grit/webui_browser_resources.h"
  #include "chrome/grit/webui_browser_resources_map.h"
@@ -726,7 +1590,7 @@ index 5c29c02888..fe0286b2b5 100644
  #include "chrome/grit/webui_toolbar_shared_resources.h"
  #include "chrome/grit/webui_toolbar_shared_resources_map.h"
  #include "components/contextual_search/contextual_search_service.h"
-@@ -42,18 +108,124 @@
+@@ -42,18 +111,124 @@
  #include "components/guest_contents/browser/guest_contents_host_impl.h"
  #include "components/surface_embed/common/features.h"
  #include "content/public/browser/browser_context.h"
@@ -851,7 +1715,7 @@ index 5c29c02888..fe0286b2b5 100644
  std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
    // TODO(webium): Ideally, the titles should be added to SIDE_PANEL_ENTRY_IDS
    // macros in chrome/browser/ui/side_panel/side_panel_entry_id.h, and
-@@ -79,9 +251,59 @@ std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
+@@ -79,9 +254,59 @@ std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
  
  }  // namespace
  
@@ -912,7 +1776,7 @@ index 5c29c02888..fe0286b2b5 100644
  
  bool WebUIBrowserUIConfig::IsWebUIEnabled(
      content::BrowserContext* browser_context) {
-@@ -99,18 +321,39 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
+@@ -99,18 +324,39 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
    WebUIBrowserWindow* webui_browser_window =
        WebUIBrowserWindow::FromWebShellWebContents(web_ui->GetWebContents());
    Profile* profile = Profile::FromWebUI(web_ui);
@@ -953,7 +1817,7 @@ index 5c29c02888..fe0286b2b5 100644
    source->AddResourcePaths(kTabStripApiResources);
    source->AddResourcePaths(kWebuiToolbarSharedResources);
  
-@@ -167,7 +410,12 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
+@@ -167,7 +413,12 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
    }
  }
  
@@ -967,7 +1831,7 @@ index 5c29c02888..fe0286b2b5 100644
  
  void WebUIBrowserUI::BindInterface(
      mojo::PendingReceiver<webui_browser::mojom::PageHandlerFactory> receiver) {
-@@ -175,6 +423,547 @@ void WebUIBrowserUI::BindInterface(
+@@ -175,6 +426,651 @@ void WebUIBrowserUI::BindInterface(
    page_factory_receiver_.Bind(std::move(receiver));
  }
  
@@ -1377,14 +2241,14 @@ index 5c29c02888..fe0286b2b5 100644
 +    std::move(callback).Run("", "", true, aux::mojom::WindowKind::kPrivate);
 +    return;
 +  }
-+  const Profile* profile = browser_->GetProfile();
-+  std::move(callback).Run(base::NumberToString(browser_->GetSessionID().id()),
-+                          profile->GetPath().BaseName().AsUTF8Unsafe(),
-+                          profile->IsOffTheRecord(),
-+                          profile->IsOffTheRecord() ? aux::mojom::WindowKind::kPrivate :
-+                          aux::IsQuickAskWindow(browser_) ? aux::mojom::WindowKind::kQuickAsk :
-+                          aux::IsLittleWindow(browser_) ? aux::mojom::WindowKind::kLittle :
-+                          aux::mojom::WindowKind::kNormal);
++  Profile* profile = browser_->GetProfile();
++  std::move(callback).Run(
++      base::NumberToString(browser_->GetSessionID().id()),
++      AuxRuntimeHost::ProfileId(profile), profile->IsOffTheRecord(),
++      profile->IsOffTheRecord()         ? aux::mojom::WindowKind::kPrivate
++      : aux::IsQuickAskWindow(browser_) ? aux::mojom::WindowKind::kQuickAsk
++      : aux::IsLittleWindow(browser_)   ? aux::mojom::WindowKind::kLittle
++                                        : aux::mojom::WindowKind::kNormal);
 +}
 +
 +void WebUIBrowserUI::Request(const std::string& method,
@@ -1414,8 +2278,31 @@ index 5c29c02888..fe0286b2b5 100644
 +                              "Capabilities take no arguments");
 +      return;
 +    }
-+    std::move(callback).Run(true, *base::WriteJson(registry.Capabilities()),
-+                            "", "");
++    auto* host = AuxRuntimeHost::ForProfile(browser_->GetProfile());
++    if (!host) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "This browser Profile is closing");
++      return;
++    }
++    auto capabilities = host->Capabilities();
++    if (NativePerformance::Enabled()) capabilities.Set("nativePerformance", true);
++    std::move(callback).Run(true, *base::WriteJson(capabilities), "", "");
++    return;
++  }
++  // Disposable-profile telemetry cannot be invoked through the runtime API.
++  // Its clock and window are taken from original native input ownership.
++  if (method == "performance.commitQuery" && NativePerformance::Enabled()) {
++    const auto query = list->size() == 1 ? (*list)[0].GetIfInt() : std::nullopt;
++    auto* window = WebUIBrowserWindow::FromWebShellWebContents(
++        web_ui()->GetWebContents());
++    auto* observer = window ? NativePerformance::ForWidget(window->widget()) : nullptr;
++    if (!query || *query <= 0 || !observer || !browser_->IsActive()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "The original benchmark query is unavailable.");
++      return;
++    }
++    observer->CommitQuery(*query);
++    std::move(callback).Run(true, "null", "", "");
 +    return;
 +  }
 +  std::string validation_error;
@@ -1423,6 +2310,61 @@ index 5c29c02888..fe0286b2b5 100644
 +      !registry.Validate(method, base::Value(list->Clone()),
 +                         &validation_error)) {
 +    std::move(callback).Run(false, "", "invalid_argument", validation_error);
++    return;
++  }
++  if (method == "auth.confirm") {
++    if (!aux_device_confirmation_) {
++      aux_device_confirmation_ = std::make_unique<AuxDeviceConfirmation>(
++          browser_->GetProfile(), browser_, web_ui()->GetWebContents(),
++          base::BindRepeating([](base::WeakPtr<WebUIBrowserUI> ui) {
++            return ui && ui->IsAuthorizedAuxDocument() && ui->browser_->IsActive();
++          }, weak_factory_.GetWeakPtr()));
++    }
++    aux_device_confirmation_->Confirm((*list)[0].GetDict(), std::move(callback));
++    return;
++  }
++  if (method == "omnibox.start" || method == "omnibox.stop" ||
++      method == "omnibox.open" || method == "preloadNavigation") {
++    if (!aux_omnibox_handler_) {
++      aux_omnibox_handler_ = std::make_unique<AuxOmniboxHandler>(
++          browser_->GetProfile(), web_ui()->GetWebContents(),
++          base::BindRepeating([](base::WeakPtr<WebUIBrowserUI> ui)
++              -> content::WebContents* {
++            if (!ui || !ui->IsAuthorizedAuxDocument()) return nullptr;
++            return ui->browser_->GetTabStripModel()->GetActiveWebContents();
++          }, weak_factory_.GetWeakPtr()),
++          base::BindRepeating([](base::WeakPtr<WebUIBrowserUI> ui,
++                                 base::DictValue result) {
++            if (!ui || !ui->IsAuthorizedAuxDocument() ||
++                !ui->shell_host_client_.is_bound()) return;
++            ui->shell_host_client_->OnEvent("onOmniboxResult",
++                *base::WriteJson(result));
++          }, weak_factory_.GetWeakPtr()));
++    }
++    bool accepted = false;
++    if (method == "omnibox.stop") {
++      accepted = aux_omnibox_handler_->Stop(static_cast<int>((*list)[0].GetDouble()));
++    } else {
++      const auto& params = (*list)[0].GetDict();
++      if (method == "preloadNavigation") {
++        accepted = aux_omnibox_handler_->Hint(*params.FindString("pageId"),
++            GURL(*params.FindString("expectedUrl")), GURL(*params.FindString("url")));
++      } else if (method == "omnibox.start") {
++        accepted = aux_omnibox_handler_->Start(static_cast<int>(*params.FindDouble("queryId")),
++            base::UTF8ToUTF16(*params.FindString("input")),
++            *params.FindBool("onFocus"));
++      } else {
++        const auto& requested = *params.FindString("disposition");
++        const auto disposition = requested == "current-tab"
++            ? WindowOpenDisposition::CURRENT_TAB
++            : requested == "new-background-tab"
++                ? WindowOpenDisposition::NEW_BACKGROUND_TAB
++                : WindowOpenDisposition::NEW_FOREGROUND_TAB;
++        accepted = aux_omnibox_handler_->Open(static_cast<int>(*params.FindDouble("queryId")),
++            params.FindDict("match"), disposition);
++      }
++    }
++    std::move(callback).Run(true, *base::WriteJson(base::Value(accepted)), "", "");
 +    return;
 +  }
 +  const auto group = registry.ShellGroup(method);
@@ -1474,11 +2416,6 @@ index 5c29c02888..fe0286b2b5 100644
 +                            "Unsupported Aux shell method: " + method);
 +    return;
 +  }
-+  if (browser_->GetProfile()->IsOffTheRecord()) {
-+    std::move(callback).Run(false, "", "forbidden",
-+                            "Private windows have no Aux runtime");
-+    return;
-+  }
 +  if (!list || list->size() < 1 || list->size() > 2 ||
 +      !(*list)[0].is_string() || (*list)[0].GetString().empty() ||
 +      (*list)[0].GetString().size() > 128) {
@@ -1497,25 +2434,56 @@ index 5c29c02888..fe0286b2b5 100644
 +  AuxRuntimeHost* host = AuxRuntimeHost::ForProfile(browser_->GetProfile());
 +  if (!host) {
 +    std::move(callback).Run(false, "", "forbidden",
-+                            "Private windows have no Aux runtime");
++                            "This Profile runtime is unavailable");
 +    return;
 +  }
-+  host->CallApi(
-+      (*list)[0].GetString(), *params_json,
-+      base::BindOnce(
++  auto reply = base::BindOnce(
 +          [](RequestCallback callback, AuxRuntimeHost::Response response) {
 +            std::move(callback).Run(response.ok, response.result_json,
 +                                    response.error_code,
 +                                    response.error_message);
 +          },
-+          std::move(callback)));
++          std::move(callback));
++  const auto& api_method = (*list)[0].GetString();
++  if (api_method == "runs.start" || api_method == "runs.reconcileStart" || api_method == "runs.useLocalExecution" || api_method == "runs.retryCloudSetup" || api_method == "tasks.start" ||
++      api_method == "runs.retry" || api_method == "runs.branch" ||
++      api_method == "runs.branch.list" ||
++      api_method == "runs.answer" || api_method == "runs.continueBudget" ||
++      api_method == "runs.retryModelSetup" ||
++      api_method == "coding.undo" || api_method == "coding.worktreeInspect" ||
++      api_method == "coding.worktreeArchive" ||
++      api_method == "packages.install" || api_method == "packages.remove" ||
++      api_method == "packages.defaults" ||
++      api_method == "agent.images.generate" || api_method == "agent.pageSummary" ||
++      api_method == "customization.css.propose" ||
++      api_method == "agent.utility.intent" || api_method == "agent.tidy.propose" ||
++      api_method == "agent.tabName.suggest" || api_method == "routines.skills.preview" || api_method == "routines.skills.import" || api_method == "import.preview" || api_method == "import.selectExport" || api_method == "import.extensions.review" || api_method == "import.selectWindow" || api_method == "import.exportStatus" ||
++      api_method == "import.cancelExport" || api_method == "import.run" ||
++        api_method == "import.status" || api_method == "import.cancel" ||
++        api_method == "settings.set" || api_method == "models.auth.start" ||
++      api_method == "models.auth.status" || api_method == "models.auth.cancel" ||
++      api_method == "models.auth.accounts" || api_method == "models.auth.disconnect" ||
++      api_method == "models.copilot.setup" || api_method == "models.copilot.install" ||
++      api_method == "models.copilot.start" || api_method == "models.copilot.status" ||
++      api_method == "models.copilot.cancel" || api_method == "models.copilot.accounts" ||
++      api_method == "models.copilot.disconnect" || api_method == "models.copilot.catalog" ||
++        api_method == "settings.remoteDebugging.get" || api_method == "settings.remoteDebugging.set" ||
++      api_method == "projects.files" || api_method == "projects.file" || api_method == "projects.changes" ||
++      api_method == "settings.cloud.status" || api_method == "settings.cloud.configure" ||
++      api_method == "settings.cloud.clear" || api_method == "agentConnections.install" || api_method == "developer.cli.install" || api_method == "terminal.listeners" || api_method == "terminal.preview" || api_method == "terminal.previewClose" || api_method == "terminal.start" ||
++      api_method == "terminal.read" || api_method == "terminal.input" ||
++      api_method == "terminal.resize" || api_method == "terminal.close")
++    host->CallApiFromWindow(browser_->GetWeakPtr(), web_ui()->GetRenderFrameHost()->GetWeakDocumentPtr(),
++        api_method, *params_json, std::move(reply));
++  else
++    host->CallApi(api_method, *params_json, std::move(reply));
 +}
 +#endif
 +
  void WebUIBrowserUI::BindInterface(
      mojo::PendingReceiver<bookmark_bar::mojom::PageHandlerFactory> receiver) {
    bookmark_bar_page_factory_receiver_.reset();
-@@ -188,8 +977,7 @@ void WebUIBrowserUI::BindInterface(
+@@ -188,8 +1084,7 @@ void WebUIBrowserUI::BindInterface(
  }
  
  void WebUIBrowserUI::BindInterface(
@@ -1525,7 +2493,7 @@ index 5c29c02888..fe0286b2b5 100644
    searchbox_page_factory_receiver_.reset();
    searchbox_page_factory_receiver_.Bind(std::move(receiver));
  }
-@@ -316,17 +1104,32 @@ void WebUIBrowserUI::ShowSidePanel(SidePanelEntryKey side_panel_entry_key) {
+@@ -316,17 +1211,32 @@ void WebUIBrowserUI::ShowSidePanel(SidePanelEntryKey side_panel_entry_key) {
        browser_window()->GetWebUIBrowserSidePanelUI();
    content::WebContents* web_contents =
        side_panel_ui->GetWebContentsForId(side_panel_entry_key.id());
@@ -1560,7 +2528,7 @@ index 5c29c02888..fe0286b2b5 100644
  }
  
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
-index 1c81b67991..b49b2e7298 100644
+index 1c81b67..bfa9706 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
 @@ -6,7 +6,19 @@
@@ -1595,7 +2563,7 @@ index 1c81b67991..b49b2e7298 100644
  
  namespace content {
  class BrowserContext;
-@@ -44,6 +61,20 @@ class TrackedElementHandler;
+@@ -44,6 +61,22 @@ class TrackedElementHandler;
  
  class RealboxHandler;
  class WebUIBrowserUI;
@@ -1608,6 +2576,8 @@ index 1c81b67991..b49b2e7298 100644
 +}
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +class AuxShellEdgeMonitor;
++class AuxOmniboxHandler;
++class AuxDeviceConfirmation;
 +class PrefChangeRegistrar;
 +namespace aux {
 +class DictationMac;
@@ -1616,7 +2586,7 @@ index 1c81b67991..b49b2e7298 100644
  class WebUIBrowserBookmarkBarPageHandler;
  
  class WebUIBrowserUIConfig
-@@ -58,6 +89,12 @@ class WebUIBrowserUIConfig
+@@ -58,6 +91,12 @@ class WebUIBrowserUIConfig
  // The WebUI for chrome://webui-browser
  class WebUIBrowserUI : public ui::MojoWebUIController,
                         public webui_browser::mojom::PageHandlerFactory,
@@ -1629,7 +2599,7 @@ index 1c81b67991..b49b2e7298 100644
                         public bookmark_bar::mojom::PageHandlerFactory,
                         public extensions_bar::mojom::PageHandlerFactory,
                         public searchbox::mojom::PageHandlerFactory {
-@@ -67,6 +104,10 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+@@ -67,6 +106,10 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
  
    void BindInterface(
        mojo::PendingReceiver<webui_browser::mojom::PageHandlerFactory> receiver);
@@ -1640,7 +2610,7 @@ index 1c81b67991..b49b2e7298 100644
    void BindInterface(
        mojo::PendingReceiver<bookmark_bar::mojom::PageHandlerFactory> receiver);
    void BindInterface(
-@@ -75,8 +116,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+@@ -75,8 +118,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
        mojo::PendingReceiver<extensions_bar::mojom::PageHandlerFactory>
            receiver);
    void BindInterface(
@@ -1650,7 +2620,7 @@ index 1c81b67991..b49b2e7298 100644
    void BindInterface(
        mojo::PendingReceiver<guest_contents::mojom::GuestContentsHost> receiver);
    void BindInterface(
-@@ -108,10 +148,92 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+@@ -108,10 +150,92 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
    }
  
    base::WeakPtr<WebUIBrowserUI> GetWeakPtr();
@@ -1743,13 +2713,14 @@ index 1c81b67991..b49b2e7298 100644
    // webui_browser::mojom::PageHandlerFactory:
    void CreatePageHandler(
        mojo::PendingRemote<webui_browser::mojom::Page> page,
-@@ -156,6 +278,52 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+@@ -156,6 +280,53 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
    mojo::Receiver<webui_browser::mojom::PageHandlerFactory>
        page_factory_receiver_{this};
  
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
-+  std::map<std::string, int> space_binding_versions_;
 +  std::unique_ptr<aux::DictationMac> dictation_;
++  std::unique_ptr<AuxOmniboxHandler> aux_omnibox_handler_;
++  std::unique_ptr<AuxDeviceConfirmation> aux_device_confirmation_;
 +  mojo::Receiver<aux::mojom::ShellHostFactory> shell_host_factory_receiver_{
 +      this};
 +  mojo::Receiver<aux::mojom::ShellHost> shell_host_receiver_{this};
@@ -1797,13 +2768,14 @@ index 1c81b67991..b49b2e7298 100644
        bookmark_bar_page_factory_receiver_{this};
    mojo::Receiver<extensions_bar::mojom::PageHandlerFactory>
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
-index e664f20912..63231fd63b 100644
+index e664f20..3ac6d6b 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
-@@ -3,11 +3,23 @@
+@@ -3,11 +3,27 @@
  // found in the LICENSE file.
  
  #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "chrome/browser/ui/performance/native_performance.h"
 +#include "chrome/browser/browser_process.h"
 +#include "chrome/browser/profiles/profile_attributes_entry.h"
 +#include "chrome/browser/profiles/profile_attributes_storage.h"
@@ -1821,10 +2793,13 @@ index e664f20912..63231fd63b 100644
 +#include "base/strings/utf_string_conversions.h"
  #include "chrome/browser/app_mode/app_mode_utils.h"
 +#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/shell_warmup_manager.h"
++#endif
  #if BUILDFLAG(IS_MAC)
  #include "chrome/browser/global_keyboard_shortcuts_mac.h"
  #endif
-@@ -30,8 +42,12 @@
+@@ -30,8 +46,12 @@
  #include "chrome/browser/ui/find_bar/find_bar.h"
  #include "chrome/browser/ui/interaction/browser_elements.h"
  #include "chrome/browser/ui/side_panel/side_panel_ui_base.h"
@@ -1837,7 +2812,7 @@ index e664f20912..63231fd63b 100644
  #include "chrome/browser/ui/views/find_bar_host.h"
  #include "chrome/browser/ui/views/find_bar_owner.h"
  #include "chrome/browser/ui/views/zoom/zoom_view_controller.h"
-@@ -65,15 +81,68 @@
+@@ -65,15 +85,68 @@
  #include "ui/base/interaction/element_tracker.h"
  #include "ui/compositor/compositor.h"
  #include "ui/content_accelerators/accelerator_util.h"
@@ -1906,7 +2881,7 @@ index e664f20912..63231fd63b 100644
  // Copied from chrome/browser/ui/views/frame/browser_widget.cc.
  bool IsUsingLinuxSystemTheme(Profile* profile) {
  #if BUILDFLAG(IS_LINUX)
-@@ -136,6 +205,9 @@ class WebUIBrowserWindow::WidgetDelegate : public views::WidgetDelegate {
+@@ -136,6 +209,9 @@ class WebUIBrowserWindow::WidgetDelegate : public views::WidgetDelegate {
  
  WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
      : browser_(browser) {
@@ -1916,17 +2891,20 @@ index e664f20912..63231fd63b 100644
    // GuestContents is not approved for use in production. Restrict its
    // proxy content feature kAttachUnownedInnerWebContents to development,
    // canary, and test builds.
-@@ -177,6 +249,9 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
+@@ -177,6 +253,12 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
    auto web_view = std::make_unique<views::WebView>(browser_->GetProfile());
  
    auto* ui_web_contents = web_view->GetWebContents();
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +  ui_web_contents->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
++  if (auto* warmup = aux::ShellWarmupManager::Get()) {
++    warmup->UseProfile(browser_->GetProfile());
++  }
 +#endif
    web_contents_delegate_->SetUIWebContents(ui_web_contents);
    ui_web_contents->SetDelegate(web_contents_delegate_.get());
    ui_web_contents->SetUserData(
-@@ -192,7 +267,11 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
+@@ -192,8 +274,13 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
        std::make_unique<ui::ScopedUnownedUserData<ExtensionsContainer>>(
            browser_->GetUnownedUserDataHost(), *extensions_container_);
  
@@ -1936,9 +2914,11 @@ index e664f20912..63231fd63b 100644
    web_view->LoadInitialURL(GURL(chrome::kChromeUIWebuiBrowserURL));
 +#endif
    web_view_ = widget_->SetClientContentsView(std::move(web_view));
++  native_performance_ = NativePerformance::Install(widget_.get(), ui_web_contents, browser_->GetTabStripModel());
    // Set the ColorProviderSource after attaching to the WebView otherwise
    // attaching overwrites it.
-@@ -225,9 +304,15 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
+   // TODO(webium): |widget_| should use |this| as its ColorProviderSource as
+@@ -225,9 +312,15 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
                                base::Unretained(this)));
  
    LoadAccelerators();
@@ -1954,7 +2934,7 @@ index e664f20912..63231fd63b 100644
    browser_->GetFeatures().TearDownPreBrowserWindowDestruction();
    web_view_ = nullptr;
    // We want to destroy the extensions container before the `widget_` since
-@@ -321,8 +406,8 @@ void WebUIBrowserWindow::PaintAsActiveChanged() {
+@@ -321,8 +414,8 @@ void WebUIBrowserWindow::PaintAsActiveChanged() {
    } else {
      BrowserActiveStateManager::From(browser_)->DidBecomeInactive();
    }
@@ -1965,7 +2945,7 @@ index e664f20912..63231fd63b 100644
    }
  }
  
-@@ -423,18 +508,30 @@ gfx::NativeWindow WebUIBrowserWindow::GetNativeWindow() const {
+@@ -423,18 +516,30 @@ gfx::NativeWindow WebUIBrowserWindow::GetNativeWindow() const {
    // to verify.
    return gfx::NativeWindow();
  #else
@@ -1997,7 +2977,7 @@ index e664f20912..63231fd63b 100644
  }
  
  void WebUIBrowserWindow::SetTopControlsShownRatio(
-@@ -618,11 +715,26 @@ void WebUIBrowserWindow::OnWidgetBoundsChanged(views::Widget* widget,
+@@ -618,11 +723,26 @@ void WebUIBrowserWindow::OnWidgetBoundsChanged(views::Widget* widget,
  }
  
  gfx::Rect WebUIBrowserWindow::GetContentsBoundsInScreen() const {
@@ -2024,7 +3004,7 @@ index e664f20912..63231fd63b 100644
  }
  
  void WebUIBrowserWindow::ProcessFullscreen(bool fullscreen) {
-@@ -645,8 +757,8 @@ void WebUIBrowserWindow::ProcessFullscreen(bool fullscreen) {
+@@ -645,8 +765,8 @@ void WebUIBrowserWindow::ProcessFullscreen(bool fullscreen) {
    }
  
    // Notify the WebUI about the fullscreen mode.
@@ -2035,7 +3015,7 @@ index e664f20912..63231fd63b 100644
    }
  
    browser_->GetFeatures()
-@@ -719,6 +831,9 @@ void WebUIBrowserWindow::LoadAccelerators() {
+@@ -719,6 +839,9 @@ void WebUIBrowserWindow::LoadAccelerators() {
  
  bool WebUIBrowserWindow::AcceleratorPressed(
      const ui::Accelerator& accelerator) {
@@ -2045,7 +3025,7 @@ index e664f20912..63231fd63b 100644
    int command_id;
    // Though AcceleratorManager should not send unknown |accelerator| to us, it's
    // still possible the command cannot be executed now.
-@@ -745,8 +860,12 @@ void WebUIBrowserWindow::SetTopControlsGestureScrollInProgress(
+@@ -745,8 +868,12 @@ void WebUIBrowserWindow::SetTopControlsGestureScrollInProgress(
  }
  
  std::vector<StatusBubble*> WebUIBrowserWindow::GetStatusBubbles() {
@@ -2058,7 +3038,7 @@ index e664f20912..63231fd63b 100644
  }
  
  void WebUIBrowserWindow::UpdateTitleBar() {
-@@ -756,7 +875,9 @@ void WebUIBrowserWindow::UpdateTitleBar() {
+@@ -756,7 +883,9 @@ void WebUIBrowserWindow::UpdateTitleBar() {
  
  void WebUIBrowserWindow::OnBookmarkBarStateChanged(
      BookmarkBar::AnimateChangeType change_type) {
@@ -2069,7 +3049,7 @@ index e664f20912..63231fd63b 100644
  }
  
  void WebUIBrowserWindow::UpdateLoadingAnimations(bool is_visible) {
-@@ -840,14 +961,20 @@ LocationBar* WebUIBrowserWindow::GetLocationBar() const {
+@@ -840,14 +969,20 @@ LocationBar* WebUIBrowserWindow::GetLocationBar() const {
  }
  
  void WebUIBrowserWindow::SetFocusToLocationBar(bool is_user_initiated) {
@@ -2094,7 +3074,7 @@ index e664f20912..63231fd63b 100644
    }
  }
  
-@@ -962,7 +1089,8 @@ void WebUIBrowserWindow::ConfirmBrowserCloseWithPendingDownloads(
+@@ -962,7 +1097,8 @@ void WebUIBrowserWindow::ConfirmBrowserCloseWithPendingDownloads(
      int download_count,
      UnloadController::DownloadCloseType dialog_type,
      base::OnceCallback<void(bool)> callback) {
@@ -2104,7 +3084,7 @@ index e664f20912..63231fd63b 100644
  }
  
  void WebUIBrowserWindow::UserChangedTheme(
-@@ -1014,6 +1142,13 @@ WebUIBrowserWindow::PreHandleKeyboardEvent(
+@@ -1014,6 +1150,13 @@ WebUIBrowserWindow::PreHandleKeyboardEvent(
    ui::Accelerator accelerator =
        ui::GetAcceleratorFromNativeWebKeyboardEvent(event);
  
@@ -2118,7 +3098,7 @@ index e664f20912..63231fd63b 100644
    // What we have to do here is as follows:
    // - If the |browser_| is for an app, do nothing.
    // - On CrOS if |accelerator| is deprecated, we allow web contents to consume
-@@ -1112,24 +1247,26 @@ ExclusiveAccessContext* WebUIBrowserWindow::GetExclusiveAccessContext() {
+@@ -1112,24 +1255,26 @@ ExclusiveAccessContext* WebUIBrowserWindow::GetExclusiveAccessContext() {
  }
  
  std::string WebUIBrowserWindow::GetWorkspace() const {
@@ -2152,7 +3132,7 @@ index e664f20912..63231fd63b 100644
  }
  
  void WebUIBrowserWindow::ShowCaretBrowsingDialog() {
-@@ -1293,8 +1430,17 @@ views::ClientView* WebUIBrowserWindow::WidgetDelegate::CreateClientView(
+@@ -1293,8 +1438,17 @@ views::ClientView* WebUIBrowserWindow::WidgetDelegate::CreateClientView(
  std::u16string WebUIBrowserWindow::WidgetDelegate::GetWindowTitle() const {
    // TODO(webium):  BrowserView::GetWindowTitle() has some magic for media
    // on Mac.
@@ -2171,7 +3151,7 @@ index e664f20912..63231fd63b 100644
  }
  
  bool WebUIBrowserWindow::WidgetDelegate::ShouldDescendIntoChildForEventHandling(
-@@ -1319,18 +1465,23 @@ bool WebUIBrowserWindow::WidgetDelegate::ShouldDescendIntoChildForEventHandling(
+@@ -1319,18 +1473,23 @@ bool WebUIBrowserWindow::WidgetDelegate::ShouldDescendIntoChildForEventHandling(
  }
  
  WebUIBrowserUI* WebUIBrowserWindow::GetWebUIBrowserUI() const {
@@ -2202,7 +3182,7 @@ index e664f20912..63231fd63b 100644
  
  WebUIBrowserSidePanelUI* WebUIBrowserWindow::GetWebUIBrowserSidePanelUI() {
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.h b/chrome/browser/ui/webui_browser/webui_browser_window.h
-index bb20c9d4e6..620875ec15 100644
+index bb20c9d..b76477c 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_window.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window.h
 @@ -6,8 +6,15 @@
@@ -2221,7 +3201,7 @@ index bb20c9d4e6..620875ec15 100644
  #include "base/memory/raw_ptr.h"
  #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
  #include "chrome/browser/ui/browser_window.h"
-@@ -36,6 +43,7 @@ class WebUIBrowserSidePanelUI;
+@@ -36,9 +43,12 @@ class WebUIBrowserSidePanelUI;
  class WebUIBrowserUI;
  class WebUIBrowserWebContentsDelegate;
  class WebUIStubLocationBar;
@@ -2229,7 +3209,12 @@ index bb20c9d4e6..620875ec15 100644
  
  // A BrowserWindow implementation that uses WebUI for its primary UI. It still
  // uses views::Widget for windowing management.
-@@ -49,6 +57,15 @@ class WebUIBrowserWindow : public BrowserWindow,
++class NativePerformance;
++
+ class WebUIBrowserWindow : public BrowserWindow,
+                            public ui::ColorProviderSource,
+                            public ui::AcceleratorProvider,
+@@ -49,6 +59,15 @@ class WebUIBrowserWindow : public BrowserWindow,
   public:
    explicit WebUIBrowserWindow(BrowserWindowInterface* browser);
    ~WebUIBrowserWindow() override;
@@ -2245,7 +3230,7 @@ index bb20c9d4e6..620875ec15 100644
  
    // Returns the containing browser window for a WebContents that hosts
    // WebShell.
-@@ -66,6 +83,15 @@ class WebUIBrowserWindow : public BrowserWindow,
+@@ -66,6 +85,15 @@ class WebUIBrowserWindow : public BrowserWindow,
  
    // BrowserWindow:
    gfx::NativeWindow GetNativeWindow() const override;
@@ -2261,7 +3246,7 @@ index bb20c9d4e6..620875ec15 100644
    bool IsOnCurrentWorkspace() const override;
    bool IsVisibleOnScreen() const override;
    void SetTopControlsShownRatio(content::WebContents* web_contents,
-@@ -233,6 +259,10 @@ class WebUIBrowserWindow : public BrowserWindow,
+@@ -233,6 +261,10 @@ class WebUIBrowserWindow : public BrowserWindow,
    void DeleteBrowserWindow() final;
  
   private:
@@ -2272,8 +3257,11 @@ index bb20c9d4e6..620875ec15 100644
    class WidgetDelegate;
    friend class WebUIBrowserExclusiveAccessContext;
  
-@@ -291,11 +321,32 @@ class WebUIBrowserWindow : public BrowserWindow,
+@@ -289,13 +321,35 @@ class WebUIBrowserWindow : public BrowserWindow,
+   std::unique_ptr<WebUIBrowserWebContentsDelegate> web_contents_delegate_;
+   std::unique_ptr<WidgetDelegate> widget_delegate_;
    std::unique_ptr<views::Widget> widget_;
++  std::unique_ptr<NativePerformance> native_performance_;
    raw_ptr<views::WebView> web_view_ = nullptr;
    std::unique_ptr<WebUIStubLocationBar> location_bar_;
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
@@ -2306,7 +3294,7 @@ index bb20c9d4e6..620875ec15 100644
    std::unique_ptr<WebUIBrowserModalDialogHost> modal_dialog_host_;
    std::unique_ptr<webui_toolbar::IconTable> icon_table_;
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
-index 405471be48..1c78fb781d 100644
+index 405471b..0be4698 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
 @@ -5,17 +5,42 @@
@@ -2352,7 +3340,7 @@ index 405471be48..1c78fb781d 100644
  #import "components/remote_cocoa/app_shim/native_widget_ns_window_bridge.h"
  #include "ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.h"
  #include "ui/views/cocoa/native_widget_mac_ns_window_host.h"
-@@ -25,8 +50,88 @@
+@@ -25,8 +50,105 @@
  #error "This file is macOS-only and should not be included on other platforms."
  #endif
  
@@ -2425,6 +3413,23 @@ index 405471be48..1c78fb781d 100644
 +    objc_setAssociatedObject(window, &kAuxMaterialKey, requested,
 +                             OBJC_ASSOCIATION_COPY_NONATOMIC);
 +  }
++  NSView* effect = objc_getAssociatedObject(window, &kAuxMaterialViewKey);
++  // Retained materials must follow theme changes too. Clear regular glass alone
++  // can brighten a dark sidebar beyond the contrast of its light text.
++  effect.appearance = window.appearance;
++  if (@available(macOS 26.0, *)) {
++    if ([effect isKindOfClass:[AuxGlassBackgroundView class]]) {
++      NSAppearance* appearance = window.effectiveAppearance;
++      NSString* matched = [appearance bestMatchFromAppearancesWithNames:
++          @[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
++      [appearance performAsCurrentDrawingAppearance:^{
++        ((AuxGlassBackgroundView*)effect).tintColor =
++            [matched isEqualToString:NSAppearanceNameDarkAqua]
++                ? [NSColor.windowBackgroundColor colorWithAlphaComponent:0.8]
++                : NSColor.clearColor;
++      }];
++    }
++  }
 +  window.opaque = !glass;
 +  // Chromium's glass frame uses a nearly transparent backing to avoid AppKit
 +  // continuously invalidating a completely transparent window surface.
@@ -2441,7 +3446,7 @@ index 405471be48..1c78fb781d 100644
  AppShimHost* GetHostForBrowser(BrowserWindowInterface* browser) {
    auto* const shim_manager = apps::AppShimManager::Get();
    CHECK(browser);
-@@ -55,6 +160,152 @@ bool ShouldHandleKeyboardEvent(const input::NativeWebKeyboardEvent& event) {
+@@ -55,6 +177,152 @@ bool ShouldHandleKeyboardEvent(const input::NativeWebKeyboardEvent& event) {
  
  }  // namespace
  
@@ -2594,7 +3599,7 @@ index 405471be48..1c78fb781d 100644
  bool WebUIBrowserWindow::HandleKeyboardEvent(
      const input::NativeWebKeyboardEvent& event) {
    if (!ShouldHandleKeyboardEvent(event)) {
-@@ -99,6 +350,7 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
+@@ -99,6 +367,7 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
        bridge->SetCommandDispatcher(
            [[ChromeCommandDispatcherDelegate alloc] init],
            [[BrowserWindowCommandHandler alloc] init]);
@@ -2602,7 +3607,7 @@ index 405471be48..1c78fb781d 100644
      } else {
        if (auto* host = GetHostForBrowser(browser_)) {
          host->GetAppShim()->CreateCommandDispatcherForWidget(
-@@ -107,10 +359,42 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
+@@ -107,10 +376,42 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
      }
    }
  
@@ -2645,7 +3650,7 @@ index 405471be48..1c78fb781d 100644
      if (is_before_first_responder) {
        // The specification for this private extensions API is incredibly vague.
        // For now, we avoid triggering chrome commands prior to giving the
-@@ -141,6 +425,13 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
+@@ -141,6 +442,13 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
    bool ExecuteCommand(int32_t command,
                        WindowOpenDisposition window_open_disposition,
                        bool is_before_first_responder) override {
@@ -2659,7 +3664,7 @@ index 405471be48..1c78fb781d 100644
      if (!WillExecuteCommand(command, window_open_disposition,
                              is_before_first_responder)) {
        return false;
-@@ -185,3 +476,113 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
+@@ -185,3 +493,113 @@ class WebUIBrowserNativeWidgetMac : public views::NativeWidgetMac {
  views::NativeWidget* WebUIBrowserWindow::CreateNativeWidget() {
    return new WebUIBrowserNativeWidgetMac(browser_.get(), widget_.get());
  }
@@ -2774,7 +3779,7 @@ index 405471be48..1c78fb781d 100644
 +}
 +#endif
 diff --git a/chrome/common/webui_url_constants.h b/chrome/common/webui_url_constants.h
-index 23b1c1220e..67e15d9147 100644
+index 23b1c12..67e15d9 100644
 --- a/chrome/common/webui_url_constants.h
 +++ b/chrome/common/webui_url_constants.h
 @@ -432,6 +432,8 @@ inline constexpr char kChromeUIUntrustedReadAnythingSidePanelURL[] =
@@ -2787,10 +3792,10 @@ index 23b1c1220e..67e15d9147 100644
  inline constexpr char kChromeUIWebUIJsErrorURL[] = "chrome://webuijserror/";
  #endif  // BUILDFLAG(IS_ANDROID)
 diff --git a/components/surface_embed/browser/surface_embed_host.cc b/components/surface_embed/browser/surface_embed_host.cc
-index dbf87981d2..3115a8db28 100644
+index dbf8798..b56073b 100644
 --- a/components/surface_embed/browser/surface_embed_host.cc
 +++ b/components/surface_embed/browser/surface_embed_host.cc
-@@ -120,7 +120,14 @@ void SurfaceEmbedHost::AttachConnector(const base::UnguessableToken& content_id,
+@@ -120,8 +120,18 @@ void SurfaceEmbedHost::AttachConnector(const base::UnguessableToken& content_id,
    CHECK(!content_id.is_empty());
    guest_contents::GuestContentsHandle* guest_handle =
        guest_contents::GuestContentsHandle::FromID(content_id);
@@ -2804,10 +3809,14 @@ index dbf87981d2..3115a8db28 100644
 +    return;
 +  }
  
++  // Refuse a retired or foreign browser-owned guest before detaching any
++  // existing connector. The renderer cannot turn an opaque ID into authority.
++  if (!guest_handle->CanAttach(&collection_->render_frame_host())) return;
    content::WebContents* web_contents_to_attach = guest_handle->web_contents();
    CHECK(web_contents_to_attach);
+ 
 diff --git a/components/surface_embed/common/features.cc b/components/surface_embed/common/features.cc
-index c8c54fc681..763a56c8b5 100644
+index c8c54fc..763a56c 100644
 --- a/components/surface_embed/common/features.cc
 +++ b/components/surface_embed/common/features.cc
 @@ -3,6 +3,7 @@
@@ -2830,3 +3839,32 @@ index c8c54fc681..763a56c8b5 100644
  
  }  // namespace features
  
+diff --git a/tools/metrics/histograms/metadata/profile/enums.xml b/tools/metrics/histograms/metadata/profile/enums.xml
+index e5bcc98..4858733 100644
+--- a/tools/metrics/histograms/metadata/profile/enums.xml
++++ b/tools/metrics/histograms/metadata/profile/enums.xml
+@@ -430,6 +430,11 @@ chromium-metrics-reviews@google.com.
+   <int value="44" label="kWebAppDatabaseCorruptionRecovery"/>
+   <int value="45" label="kFetchKeepAlive"/>
+   <int value="46" label="kOmniboxEverywhere"/>
++  <int value="47" label="kAuxShellWarmup"/>
++  <int value="48" label="kAuxContentFilterCommit"/>
++  <int value="49" label="kAuxBrowserImport"/>
++  <int value="50" label="kAuxCopilotHelper"/>
++  <int value="51" label="kAuxFoundationModels"/>
+ </enum>
+ 
+ <!-- LINT.IfChange(ProfileLockStatus) -->
+diff --git a/ui/webui/webui_features.gni b/ui/webui/webui_features.gni
+index 8793ed8..e94e6f7 100644
+--- a/ui/webui/webui_features.gni
++++ b/ui/webui/webui_features.gni
+@@ -67,7 +67,7 @@ if (enable_cast_receiver || is_cast_android || is_castos) {
+ if (enable_webui_generate_code_cache) {
+   enable_webui_generate_code_cache =
+       optimize_webui && host_toolchain == current_toolchain && !is_msan &&
+-      (is_linux || is_win)
++      (is_linux || is_win || is_mac)
+ }
+ 
+ if (load_webui_from_disk) {

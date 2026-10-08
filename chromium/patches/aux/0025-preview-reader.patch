@@ -1,6 +1,6 @@
 diff --git a/chrome/browser/ui/aux/readable_capture.cc b/chrome/browser/ui/aux/readable_capture.cc
 new file mode 100644
-index 0000000000..83093c5a62
+index 0000000..014369c
 --- /dev/null
 +++ b/chrome/browser/ui/aux/readable_capture.cc
 @@ -0,0 +1,188 @@
@@ -173,7 +173,7 @@ index 0000000000..83093c5a62
 +                article ? article->FindString("text") : nullptr;
 +            if (!title || !text || title->size() > kMaxTitleBytes ||
 +                text->empty() || text->size() > kMaxTextBytes) {
-+              std::move(callback).Run(Fault("invalid_argument",
++              std::move(callback).Run(Fault("invalid_params",
 +                                            "Readable page exceeds safe bounds "
 +                                            "or contains private fields"));
 +              return;
@@ -194,7 +194,7 @@ index 0000000000..83093c5a62
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/readable_capture.h b/chrome/browser/ui/aux/readable_capture.h
 new file mode 100644
-index 0000000000..e1c990a09c
+index 0000000..e1c990a
 --- /dev/null
 +++ b/chrome/browser/ui/aux/readable_capture.h
 @@ -0,0 +1,59 @@
@@ -259,7 +259,7 @@ index 0000000000..e1c990a09c
 +#endif  // CHROME_BROWSER_UI_AUX_READABLE_CAPTURE_H_
 diff --git a/chrome/browser/ui/aux/result_preview.cc b/chrome/browser/ui/aux/result_preview.cc
 new file mode 100644
-index 0000000000..1627230b6f
+index 0000000..1627230
 --- /dev/null
 +++ b/chrome/browser/ui/aux/result_preview.cc
 @@ -0,0 +1,322 @@
@@ -587,7 +587,7 @@ index 0000000000..1627230b6f
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/result_preview.h b/chrome/browser/ui/aux/result_preview.h
 new file mode 100644
-index 0000000000..a506b42649
+index 0000000..a506b42
 --- /dev/null
 +++ b/chrome/browser/ui/aux/result_preview.h
 @@ -0,0 +1,81 @@

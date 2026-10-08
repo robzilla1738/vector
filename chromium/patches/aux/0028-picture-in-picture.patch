@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
-index a79df1d201..e46bd05f09 100644
+index a79df1d..e46bd05 100644
 --- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
 +++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
 @@ -3,6 +3,16 @@
@@ -121,7 +121,7 @@ index a79df1d201..e46bd05f09 100644
      permissions::PermissionDecisionAutoBlockerBase* auto_blocker) {
    auto_blocker_ = auto_blocker;
 diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
-index 496945dd16..1578c50ed1 100644
+index 496945d..1578c50 100644
 --- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
 +++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
 @@ -5,7 +5,9 @@
@@ -192,7 +192,7 @@ index 496945dd16..1578c50ed1 100644
    WEB_CONTENTS_USER_DATA_KEY_DECL();
  };
 diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
-index 1c541e7122..53456517c8 100644
+index 1c541e7..5345651 100644
 --- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
 +++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
 @@ -5,6 +5,10 @@
@@ -233,8 +233,34 @@ index 1c541e7122..53456517c8 100644
    UpdateIsTabActivated(GetCurrentTabStripModel());
    return is_tab_activated_;
  }
+diff --git a/chrome/browser/ui/aux/auto_pip_site_policy.h b/chrome/browser/ui/aux/auto_pip_site_policy.h
+new file mode 100644
+index 0000000..9ee57a1
+--- /dev/null
++++ b/chrome/browser/ui/aux/auto_pip_site_policy.h
+@@ -0,0 +1,20 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_AUTO_PIP_SITE_POLICY_H_
++#define CHROME_BROWSER_UI_AUX_AUTO_PIP_SITE_POLICY_H_
++#include <string_view>
++namespace aux {
++enum class AutoPipSitePolicy { kDefault, kNever, kEvenInaudible };
++inline AutoPipSitePolicy AutoPipPolicyForHost(std::string_view host) {
++  const auto matches = [host](std::string_view suffix) {
++    return host == suffix || (host.size() > suffix.size() &&
++        host[host.size() - suffix.size() - 1] == '.' && host.ends_with(suffix));
++  };
++  if (matches("slack.com") || matches("meet.google.com") ||
++      matches("teams.microsoft.com") || matches("teams.live.com"))
++    return AutoPipSitePolicy::kNever;
++  return matches("youtube.com") ? AutoPipSitePolicy::kEvenInaudible : AutoPipSitePolicy::kDefault;
++}
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_AUX_AUTO_PIP_SITE_POLICY_H_
 diff --git a/content/browser/media/session/media_session_controller.cc b/content/browser/media/session/media_session_controller.cc
-index 3dbea6f06c..6a9e361e34 100644
+index 3dbea6f..6a9e361 100644
 --- a/content/browser/media/session/media_session_controller.cc
 +++ b/content/browser/media/session/media_session_controller.cc
 @@ -3,6 +3,7 @@
@@ -288,7 +314,7 @@ index 3dbea6f06c..6a9e361e34 100644
    return RenderFrameHost::FromID(id_.frame_routing_id);
  }
 diff --git a/content/browser/media/session/media_session_controller.h b/content/browser/media/session/media_session_controller.h
-index 7c1e9e9321..90f7e81f28 100644
+index 7c1e9e9..90f7e81 100644
 --- a/content/browser/media/session/media_session_controller.h
 +++ b/content/browser/media/session/media_session_controller.h
 @@ -68,6 +68,9 @@ class CONTENT_EXPORT MediaSessionController
@@ -311,7 +337,7 @@ index 7c1e9e9321..90f7e81f28 100644
    std::optional<media_session::MediaPosition> GetPosition(
        int player_id) const override;
 diff --git a/content/browser/media/session/media_session_impl.cc b/content/browser/media/session/media_session_impl.cc
-index 7c443c00c4..ebe8a2682a 100644
+index 7c443c0..ebe8a26 100644
 --- a/content/browser/media/session/media_session_impl.cc
 +++ b/content/browser/media/session/media_session_impl.cc
 @@ -2,6 +2,7 @@
@@ -604,7 +630,7 @@ index 7c443c00c4..ebe8a2682a 100644
    if (base::FeatureList::IsEnabled(
            blink::features::kBrowserInitiatedAutomaticPictureInPicture)) {
 diff --git a/content/browser/media/session/media_session_impl.h b/content/browser/media/session/media_session_impl.h
-index 41ef57c623..88edfee587 100644
+index 41ef57c..88edfee 100644
 --- a/content/browser/media/session/media_session_impl.h
 +++ b/content/browser/media/session/media_session_impl.h
 @@ -5,8 +5,10 @@
@@ -679,6 +705,7 @@ index 41ef57c623..88edfee587 100644
    // Records the UKM for browser-initiated automatic picture-in-picture.
    void RecordBrowserInitiatedAutomaticPictureInPictureUkm(bool is_dry_run);
 diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.cc b/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
+index c9ee3da..870d11c 100644
 --- a/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
 +++ b/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
 @@ -2,6 +2,7 @@
@@ -689,7 +716,7 @@ diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.
  #include "content/browser/picture_in_picture/picture_in_picture_service_impl.h"
  
  #include <utility>
-@@ -30,6 +31,7 @@
+@@ -30,6 +31,7 @@ struct PictureInPictureServiceImpl::PendingSession {
        StartSessionCallback callback);
    ~PendingSession();
  
@@ -697,7 +724,7 @@ diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.
    uint32_t player_id;
    mojo::PendingAssociatedRemote<media::mojom::MediaPlayer> player_remote;
    viz::SurfaceId surface_id;
-@@ -90,6 +92,38 @@
+@@ -90,6 +92,38 @@ void PictureInPictureServiceImpl::StartSession(
    }
  }
  
@@ -736,7 +763,7 @@ diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.
  void PictureInPictureServiceImpl::StartSessionInternal(
      std::unique_ptr<PictureInPictureServiceImpl::PendingSession>
          pending_session,
-@@ -104,7 +138,8 @@
+@@ -104,7 +138,8 @@ void PictureInPictureServiceImpl::StartSessionInternal(
        std::move(pending_session->player_remote), pending_session->surface_id,
        pending_session->natural_size, pending_session->show_play_pause_button,
        std::move(pending_session->observer), pending_session->source_bounds,
@@ -747,6 +774,7 @@ diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.
    if (result == PictureInPictureResult::kSuccess) {
      // Frames are to be blocklisted from the back-forward cache because the
 diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.h b/content/browser/picture_in_picture/picture_in_picture_service_impl.h
+index 056b3e2..03aa191 100644
 --- a/content/browser/picture_in_picture/picture_in_picture_service_impl.h
 +++ b/content/browser/picture_in_picture/picture_in_picture_service_impl.h
 @@ -5,6 +5,9 @@
@@ -759,7 +787,7 @@ diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.
  #include "base/memory/weak_ptr.h"
  #include "content/common/content_export.h"
  #include "content/public/browser/document_service.h"
-@@ -59,9 +62,18 @@
+@@ -59,9 +62,18 @@ class CONTENT_EXPORT PictureInPictureServiceImpl final
        const media::VideoSpatialFormat& spatial_format,
        StartSessionCallback) final;
  
@@ -779,18 +807,18 @@ diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.
    struct PendingSession;
  
    PictureInPictureServiceImpl(
-@@ -70,6 +82,9 @@
-   ~PictureInPictureServiceImpl() override;
+@@ -71,6 +83,9 @@ class CONTENT_EXPORT PictureInPictureServiceImpl final
  
    VideoPictureInPictureWindowControllerImpl& GetController();
-+
+ 
 +  void DispatchAutomaticSession(const base::UnguessableToken& ticket,
 +                                std::unique_ptr<PendingSession> pending_session);
- 
++
    void StartSessionInternal(std::unique_ptr<PendingSession> pending_session,
                              std::optional<ImmersiveOptions> immersive_options);
+ 
 diff --git a/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc b/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc
-index f163d55709..9a53acc364 100644
+index f163d55..9a53acc 100644
 --- a/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc
 +++ b/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc
 @@ -2,6 +2,7 @@
@@ -832,7 +860,7 @@ index f163d55709..9a53acc364 100644
    }
  
 diff --git a/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.h b/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.h
-index d6fcb466e6..4a17554910 100644
+index d6fcb46..4a17554 100644
 --- a/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.h
 +++ b/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.h
 @@ -150,7 +150,8 @@ class CONTENT_EXPORT VideoPictureInPictureWindowControllerImpl
@@ -846,7 +874,7 @@ index d6fcb466e6..4a17554910 100644
    using RequestImmersivePlaybackConfirmationCallback =
        base::OnceCallback<void(content::ImmersivePlaybackConfirmationResult)>;
 diff --git a/content/public/browser/media_session.h b/content/public/browser/media_session.h
-index 34787cf9e1..3ccd9f7016 100644
+index 34787cf..3ccd9f7 100644
 --- a/content/public/browser/media_session.h
 +++ b/content/public/browser/media_session.h
 @@ -8,6 +8,7 @@
@@ -869,7 +897,7 @@ index 34787cf9e1..3ccd9f7016 100644
    // none is currently available.
    CONTENT_EXPORT static MediaSession* Get(WebContents* contents);
 diff --git a/content/public/browser/media_session_player_observer.cc b/content/public/browser/media_session_player_observer.cc
-index 9e38398e45..fd2baaff8a 100644
+index 9e38398..fd2baaf 100644
 --- a/content/public/browser/media_session_player_observer.cc
 +++ b/content/public/browser/media_session_player_observer.cc
 @@ -17,6 +17,11 @@ void MediaSessionPlayerObserver::OnRequestVisibility(
@@ -885,7 +913,7 @@ index 9e38398e45..fd2baaff8a 100644
  MediaSessionPlayerObserver::GetPosition(int player_id) const {
    return std::nullopt;
 diff --git a/content/public/browser/media_session_player_observer.h b/content/public/browser/media_session_player_observer.h
-index 3dfda5db7f..73e5fa6843 100644
+index 3dfda5d..73e5fa6 100644
 --- a/content/public/browser/media_session_player_observer.h
 +++ b/content/public/browser/media_session_player_observer.h
 @@ -5,6 +5,7 @@
@@ -921,7 +949,7 @@ index 3dfda5db7f..73e5fa6843 100644
    virtual std::optional<media_session::MediaPosition> GetPosition(
        int player_id) const;
 diff --git a/content/public/test/mock_media_session.h b/content/public/test/mock_media_session.h
-index 0923ac01f8..694f5fa4ef 100644
+index 0923ac0..694f5fa 100644
 --- a/content/public/test/mock_media_session.h
 +++ b/content/public/test/mock_media_session.h
 @@ -108,6 +108,8 @@ class MockMediaSession : public MediaSession {
@@ -934,7 +962,7 @@ index 0923ac01f8..694f5fa4ef 100644
  };
  
 diff --git a/media/mojo/mojom/media_player.mojom b/media/mojo/mojom/media_player.mojom
-index 8dcfa93038..61cce3cd52 100644
+index 8dcfa93..61cce3c 100644
 --- a/media/mojo/mojom/media_player.mojom
 +++ b/media/mojo/mojom/media_player.mojom
 @@ -6,6 +6,7 @@ module media.mojom;
@@ -968,7 +996,7 @@ index 8dcfa93038..61cce3cd52 100644
  
  // Implemented by the MediaWebContentsObserver. The remote lives in the renderer
 diff --git a/third_party/blink/common/frame/user_activation_state.cc b/third_party/blink/common/frame/user_activation_state.cc
-index b4e18ada22..b8bd0f7a03 100644
+index b4e18ad..b8bd0f7 100644
 --- a/third_party/blink/common/frame/user_activation_state.cc
 +++ b/third_party/blink/common/frame/user_activation_state.cc
 @@ -30,6 +30,7 @@ bool IsRestricted(UserActivationNotificationType notification_type) {
@@ -980,7 +1008,7 @@ index b4e18ada22..b8bd0f7a03 100644
    last_activation_was_restricted_ = IsRestricted(notification_type);
    ActivateTransientState();
 diff --git a/third_party/blink/public/common/frame/user_activation_state.h b/third_party/blink/public/common/frame/user_activation_state.h
-index 4f1ab42531..c84dd2e02b 100644
+index 4f1ab42..c84dd2e 100644
 --- a/third_party/blink/public/common/frame/user_activation_state.h
 +++ b/third_party/blink/public/common/frame/user_activation_state.h
 @@ -5,6 +5,8 @@
@@ -1010,7 +1038,7 @@ index 4f1ab42531..c84dd2e02b 100644
    base::TimeTicks transient_state_expiry_time_;
  
 diff --git a/third_party/blink/public/mojom/mediasession/media_session.mojom b/third_party/blink/public/mojom/mediasession/media_session.mojom
-index d153b2bbaf..c81b20ab95 100644
+index d153b2b..c81b20a 100644
 --- a/third_party/blink/public/mojom/mediasession/media_session.mojom
 +++ b/third_party/blink/public/mojom/mediasession/media_session.mojom
 @@ -5,6 +5,7 @@
@@ -1031,7 +1059,7 @@ index d153b2bbaf..c81b20ab95 100644
  
  union MediaSessionActionDetails {
 diff --git a/third_party/blink/public/mojom/picture_in_picture/picture_in_picture.mojom b/third_party/blink/public/mojom/picture_in_picture/picture_in_picture.mojom
-index 04fcfd410d..246ba39358 100644
+index 04fcfd4..246ba39 100644
 --- a/third_party/blink/public/mojom/picture_in_picture/picture_in_picture.mojom
 +++ b/third_party/blink/public/mojom/picture_in_picture/picture_in_picture.mojom
 @@ -4,6 +4,7 @@
@@ -1062,7 +1090,7 @@ index 04fcfd410d..246ba39358 100644
 +              gfx.mojom.Size size);
  };
 diff --git a/third_party/blink/renderer/core/frame/picture_in_picture_controller.h b/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
-index b3f24ba2f4..f81ec11b7b 100644
+index b3f24ba..f81ec11 100644
 --- a/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
 +++ b/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
 @@ -5,6 +5,9 @@
@@ -1092,7 +1120,7 @@ index b3f24ba2f4..f81ec11b7b 100644
    virtual void EnterPictureInPictureImmersive(
        HTMLVideoElement& video_element) = 0;
 diff --git a/third_party/blink/renderer/core/html/media/html_media_element.h b/third_party/blink/renderer/core/html/media/html_media_element.h
-index f028964419..32aa259118 100644
+index f028964..32aa259 100644
 --- a/third_party/blink/renderer/core/html/media/html_media_element.h
 +++ b/third_party/blink/renderer/core/html/media/html_media_element.h
 @@ -30,6 +30,7 @@
@@ -1128,7 +1156,7 @@ index f028964419..32aa259118 100644
    void SetVolumeMultiplier(double multiplier) override;
    void SetPersistentState(bool persistent) override {}
 diff --git a/third_party/blink/renderer/core/html/media/html_video_element.cc b/third_party/blink/renderer/core/html/media/html_video_element.cc
-index e07540f7b2..824a217178 100644
+index e07540f..824a217 100644
 --- a/third_party/blink/renderer/core/html/media/html_video_element.cc
 +++ b/third_party/blink/renderer/core/html/media/html_video_element.cc
 @@ -599,7 +599,7 @@ void HTMLVideoElement::ResetCache(TimerBase*) {
@@ -1199,7 +1227,7 @@ index e07540f7b2..824a217178 100644
    GetWebMediaPlayer()->RequestMediaRemoting();
  }
 diff --git a/third_party/blink/renderer/core/html/media/html_video_element.h b/third_party/blink/renderer/core/html/media/html_video_element.h
-index 867eee4cc8..7b68615739 100644
+index 867eee4..7b68615 100644
 --- a/third_party/blink/renderer/core/html/media/html_video_element.h
 +++ b/third_party/blink/renderer/core/html/media/html_video_element.h
 @@ -240,6 +240,10 @@ class CORE_EXPORT HTMLVideoElement final
@@ -1224,7 +1252,7 @@ index 867eee4cc8..7b68615739 100644
    // Logs UMA metrics for the size constraint check result, and the blocked
    // video size on failure.
 diff --git a/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.cc b/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.cc
-index 5df3e4101e..30f203225c 100644
+index 5df3e41..30f2032 100644
 --- a/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.cc
 +++ b/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.cc
 @@ -142,6 +142,32 @@ void PictureInPictureControllerImpl::EnterPictureInPicture(
@@ -1338,7 +1366,7 @@ index 5df3e4101e..30f203225c 100644
                                       "Document PiP requires user activation");
      return;
 diff --git a/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.h b/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.h
-index 56c97b54d1..540316bef3 100644
+index 56c97b5..540316b 100644
 --- a/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.h
 +++ b/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.h
 @@ -5,6 +5,8 @@
@@ -1382,7 +1410,7 @@ index 56c97b54d1..540316bef3 100644
        HTMLVideoElement*,
        bool is_immersive,
 diff --git a/third_party/blink/renderer/modules/mediasession/media_session.cc b/third_party/blink/renderer/modules/mediasession/media_session.cc
-index 8c95e017d4..9a5d39020a 100644
+index 8c95e01..9a5d390 100644
 --- a/third_party/blink/renderer/modules/mediasession/media_session.cc
 +++ b/third_party/blink/renderer/modules/mediasession/media_session.cc
 @@ -2,6 +2,7 @@
@@ -1421,7 +1449,7 @@ index 8c95e017d4..9a5d39020a 100644
    auto v8_action = MojomActionToActionEnum(action);
  
 diff --git a/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.cc b/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.cc
-index 9e3a48ce51..bdc9e069ed 100644
+index 9e3a48c..bdc9e06 100644
 --- a/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.cc
 +++ b/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.cc
 @@ -46,7 +46,9 @@ HTMLVideoElementPictureInPicture::requestPictureInPicture(
@@ -1468,7 +1496,7 @@ index 9e3a48ce51..bdc9e069ed 100644
      exception_state.ThrowDOMException(DOMExceptionCode::kNotAllowedError,
                                        kUserGestureRequired);
 diff --git a/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.h b/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.h
-index 9e359493e8..484fab18d5 100644
+index 9e35949..484fab1 100644
 --- a/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.h
 +++ b/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.h
 @@ -26,7 +26,8 @@ class HTMLVideoElementPictureInPicture {
@@ -1482,7 +1510,7 @@ index 9e359493e8..484fab18d5 100644
    DEFINE_STATIC_ATTRIBUTE_EVENT_LISTENER(enterpictureinpicture,
                                           kEnterpictureinpicture)
 diff --git a/third_party/blink/renderer/modules/webaudio/audio_context.h b/third_party/blink/renderer/modules/webaudio/audio_context.h
-index 2ef3cc50d7..5a85c5c14a 100644
+index 2ef3cc5..5a85c5c 100644
 --- a/third_party/blink/renderer/modules/webaudio/audio_context.h
 +++ b/third_party/blink/renderer/modules/webaudio/audio_context.h
 @@ -5,6 +5,7 @@

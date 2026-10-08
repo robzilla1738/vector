@@ -1,9 +1,9 @@
 diff --git a/chrome/browser/ui/aux/native_person_capture_controller.cc b/chrome/browser/ui/aux/native_person_capture_controller.cc
 new file mode 100644
-index 0000000000..4c0caea197
+index 0000000..96ebedc
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_person_capture_controller.cc
-@@ -0,0 +1,305 @@
+@@ -0,0 +1,313 @@
 +// Copyright 2026 The Aux Authors
 +#include "chrome/browser/ui/aux/native_person_capture_controller.h"
 +#include <utility>
@@ -89,6 +89,11 @@ index 0000000000..4c0caea197
 +  const bool admitted = !frames_.empty() && frames_.size() <= 64 && Current();
 +  if (!weak) return;
 +  if (!admitted) { failed_ = true; Finish(); return; }
++  auto paint_lease = web_contents()->IncrementCapturerCount(
++      gfx::Size(), /*stay_hidden=*/true, /*stay_awake=*/false,
++      /*is_activity=*/false);
++  if (!weak) return;
++  paint_lease_ = std::move(paint_lease);
 +  deadline_.Start(FROM_HERE, base::Seconds(5), base::BindOnce(&NativePersonCaptureController::Deadline, weak_factory_.GetWeakPtr()));
 +  Dispatch("begin");
 +}
@@ -281,6 +286,9 @@ index 0000000000..4c0caea197
 +  const bool accepted = !failed_ && !cleanup_debt_ && Current() && !png_.empty();
 +  if (!weak) return;
 +  const bool debt = cleanup_debt_;
++  // Keep frames available through the original mask cleanup and final reply.
++  // Timeout/retirement retains this lease until late cleanup reaches Finish.
++  auto paint_lease = std::move(paint_lease_);
 +  auto callback = std::move(reply_);
 +  auto result = Fault(debt);
 +  if (accepted) {
@@ -311,16 +319,17 @@ index 0000000000..4c0caea197
 +}
 diff --git a/chrome/browser/ui/aux/native_person_capture_controller.h b/chrome/browser/ui/aux/native_person_capture_controller.h
 new file mode 100644
-index 0000000000..c614193bc6
+index 0000000..acc37e8
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_person_capture_controller.h
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,71 @@
 +// Copyright 2026 The Aux Authors
 +#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PERSON_CAPTURE_CONTROLLER_H_
 +#define CHROME_BROWSER_UI_AUX_NATIVE_PERSON_CAPTURE_CONTROLLER_H_
 +#include <string>
 +#include <vector>
 +#include "base/functional/callback.h"
++#include "base/functional/callback_helpers.h"
 +#include "base/memory/weak_ptr.h"
 +#include "base/timer/timer.h"
 +#include "base/values.h"
@@ -378,6 +387,7 @@ index 0000000000..c614193bc6
 +  int viewport_width_ = 0, viewport_height_ = 0;
 +  gfx::Size viewport_pixels_;
 +  double scale_ = 0;
++  base::ScopedClosureRunner paint_lease_;
 +  base::OneShotTimer deadline_;
 +  base::WeakPtrFactory<NativePersonCaptureController> weak_factory_{this};
 +  WEB_CONTENTS_USER_DATA_KEY_DECL();
@@ -386,7 +396,7 @@ index 0000000000..c614193bc6
 +#endif
 diff --git a/chrome/common/aux_person_capture_mask.h b/chrome/common/aux_person_capture_mask.h
 new file mode 100644
-index 0000000000..2f893ea57a
+index 0000000..2f893ea
 --- /dev/null
 +++ b/chrome/common/aux_person_capture_mask.h
 @@ -0,0 +1,102 @@
@@ -494,7 +504,7 @@ index 0000000000..2f893ea57a
 +#endif
 diff --git a/chrome/common/aux_person_capture_mask.js b/chrome/common/aux_person_capture_mask.js
 new file mode 100644
-index 0000000000..6b18770f93
+index 0000000..6b18770
 --- /dev/null
 +++ b/chrome/common/aux_person_capture_mask.js
 @@ -0,0 +1,95 @@
@@ -594,7 +604,7 @@ index 0000000000..6b18770f93
 +  return true;
 +})
 diff --git a/components/viz/common/frame_sinks/copy_output_request.cc b/components/viz/common/frame_sinks/copy_output_request.cc
-index c3507cf3ab..49222847d7 100644
+index c3507cf..4922284 100644
 --- a/components/viz/common/frame_sinks/copy_output_request.cc
 +++ b/components/viz/common/frame_sinks/copy_output_request.cc
 @@ -64,6 +64,17 @@ CopyOutputRequest::CopyOutputRequest(ResultFormat result_format,
@@ -616,7 +626,7 @@ index c3507cf3ab..49222847d7 100644
    if (!result_callback_.is_null()) {
      // Send an empty result to indicate the request was never satisfied.
 diff --git a/components/viz/common/frame_sinks/copy_output_request.h b/components/viz/common/frame_sinks/copy_output_request.h
-index 971ecf76e4..68633230f7 100644
+index 971ecf7..6863323 100644
 --- a/components/viz/common/frame_sinks/copy_output_request.h
 +++ b/components/viz/common/frame_sinks/copy_output_request.h
 @@ -9,6 +9,8 @@
@@ -651,7 +661,7 @@ index 971ecf76e4..68633230f7 100644
  
  }  // namespace viz
 diff --git a/components/viz/service/display/surface_aggregator.cc b/components/viz/service/display/surface_aggregator.cc
-index 5630e9f610..2c0b76f401 100644
+index 5630e9f..2c0b76f 100644
 --- a/components/viz/service/display/surface_aggregator.cc
 +++ b/components/viz/service/display/surface_aggregator.cc
 @@ -3,6 +3,9 @@
@@ -748,7 +758,7 @@ index 5630e9f610..2c0b76f401 100644
      return;
    }
 diff --git a/components/viz/service/display/surface_aggregator.h b/components/viz/service/display/surface_aggregator.h
-index aef13e755f..f5a6dcdc45 100644
+index aef13e7..f5a6dcd 100644
 --- a/components/viz/service/display/surface_aggregator.h
 +++ b/components/viz/service/display/surface_aggregator.h
 @@ -249,6 +249,7 @@ class VIZ_SERVICE_EXPORT SurfaceAggregator : public SurfaceObserver {
@@ -760,7 +770,7 @@ index aef13e755f..f5a6dcdc45 100644
    void AddDisplayTransformPass();
    void AddRenderPassHelper(AggregatedRenderPassId render_pass_id,
 diff --git a/content/browser/renderer_host/delegated_frame_host.cc b/content/browser/renderer_host/delegated_frame_host.cc
-index 09a518dcb7..4651d9a60e 100644
+index 09a518d..4651d9a 100644
 --- a/content/browser/renderer_host/delegated_frame_host.cc
 +++ b/content/browser/renderer_host/delegated_frame_host.cc
 @@ -180,6 +180,24 @@ void DelegatedFrameHost::CopyFromCompositingSurface(
@@ -813,7 +823,7 @@ index 09a518dcb7..4651d9a60e 100644
  }
  
 diff --git a/content/browser/renderer_host/delegated_frame_host.h b/content/browser/renderer_host/delegated_frame_host.h
-index aa6766c26a..591c5b31b5 100644
+index aa6766c..591c5b3 100644
 --- a/content/browser/renderer_host/delegated_frame_host.h
 +++ b/content/browser/renderer_host/delegated_frame_host.h
 @@ -152,6 +152,9 @@ class CONTENT_EXPORT DelegatedFrameHost
@@ -837,7 +847,7 @@ index aa6766c26a..591c5b31b5 100644
    void SetFrameEvictionStateAndNotifyObservers(
        FrameEvictionState frame_eviction_state);
 diff --git a/content/browser/renderer_host/render_frame_metadata_provider_impl.h b/content/browser/renderer_host/render_frame_metadata_provider_impl.h
-index f49c209bd4..a7b21f702e 100644
+index f49c209..a7b21f7 100644
 --- a/content/browser/renderer_host/render_frame_metadata_provider_impl.h
 +++ b/content/browser/renderer_host/render_frame_metadata_provider_impl.h
 @@ -73,6 +73,10 @@ class CONTENT_EXPORT RenderFrameMetadataProviderImpl
@@ -852,7 +862,7 @@ index f49c209bd4..a7b21f702e 100644
    base::WeakPtr<RenderFrameMetadataProviderImpl> GetWeakPtr();
  
 diff --git a/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.cc b/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.cc
-index 7513ac42e6..195b2885d9 100644
+index 7513ac4..195b288 100644
 --- a/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.cc
 +++ b/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.cc
 @@ -160,6 +160,16 @@ StructTraits<viz::mojom::CopyOutputRequestDataView,
@@ -873,7 +883,7 @@ index 7513ac42e6..195b2885d9 100644
  
    return base::ok();
 diff --git a/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.h b/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.h
-index 8c5fade9fb..1d40ec9a04 100644
+index 8c5fade..1d40ec9 100644
 --- a/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.h
 +++ b/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.h
 @@ -14,6 +14,7 @@
@@ -895,7 +905,7 @@ index 8c5fade9fb..1d40ec9a04 100644
        const std::unique_ptr<viz::CopyOutputRequest>& request);
  
 diff --git a/services/viz/public/mojom/compositing/copy_output_request.mojom b/services/viz/public/mojom/compositing/copy_output_request.mojom
-index 1dd59265de..7233fb9ff5 100644
+index 1dd5926..7233fb9 100644
 --- a/services/viz/public/mojom/compositing/copy_output_request.mojom
 +++ b/services/viz/public/mojom/compositing/copy_output_request.mojom
 @@ -4,6 +4,8 @@
@@ -919,7 +929,7 @@ index 1dd59265de..7233fb9ff5 100644
  };
  
 diff --git a/third_party/blink/public/mojom/widget/platform_widget.mojom b/third_party/blink/public/mojom/widget/platform_widget.mojom
-index 6c682e0ec9..dd6ba9e270 100644
+index 6c682e0..dd6ba9e 100644
 --- a/third_party/blink/public/mojom/widget/platform_widget.mojom
 +++ b/third_party/blink/public/mojom/widget/platform_widget.mojom
 @@ -30,6 +30,7 @@ interface WidgetCompositor {
@@ -932,7 +942,7 @@ index 6c682e0ec9..dd6ba9e270 100644
  // Implemented in Browser, this interface defines widget-specific methods that
 diff --git a/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.cc b/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.cc
 new file mode 100644
-index 0000000000..efcfe41ca8
+index 0000000..efcfe41
 --- /dev/null
 +++ b/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.cc
 @@ -0,0 +1,17 @@
@@ -955,7 +965,7 @@ index 0000000000..efcfe41ca8
 +}
 diff --git a/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.h b/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.h
 new file mode 100644
-index 0000000000..0e0724c712
+index 0000000..0e0724c
 --- /dev/null
 +++ b/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.h
 @@ -0,0 +1,22 @@
@@ -982,7 +992,7 @@ index 0000000000..0e0724c712
 +}
 +#endif
 diff --git a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
-index 55e6d307cd..10a271e7a2 100644
+index 55e6d30..10a271e 100644
 --- a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
 +++ b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
 @@ -3,6 +3,7 @@
@@ -1022,7 +1032,7 @@ index 55e6d307cd..10a271e7a2 100644
    DCHECK(CalledOnValidCompositorThread());
  
 diff --git a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h
-index acad84b050..aadf94788e 100644
+index acad84b..aadf947 100644
 --- a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h
 +++ b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h
 @@ -54,6 +54,7 @@ class PLATFORM_EXPORT WidgetCompositor

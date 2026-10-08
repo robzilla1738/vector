@@ -1,9 +1,9 @@
 diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 new file mode 100644
-index 0000000000..267a12280c
+index 0000000..c6f66aa
 --- /dev/null
 +++ b/chrome/browser/ui/aux/method_registry.cc
-@@ -0,0 +1,225 @@
+@@ -0,0 +1,239 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -88,11 +88,11 @@ index 0000000000..267a12280c
 +                  "languagePreferences",
 +                  "automaticPictureInPicture",
 +                  "keepRuntimeInBackground",
-+                  "defaultPageZoom",
++                  "defaultPageZoom", "memorySaverGet", "memorySaverSet",
 +                  "startupPreferences",
 +                  "downloadsSnapshot", "controlDownload", "retryDownload"});
 +  register_shell(AuxShellMethodGroup::kSurfaces,
-+                 {"setStageVisible", "pictureInPicture"});
++                 {"setStageVisible", "pictureInPicture", "omnibox.start", "omnibox.stop", "omnibox.open", "preloadNavigation", "auth.confirm"});
 +  register_shell(AuxShellMethodGroup::kExtensions,
 +                 {"extensions", "installStoreExtension",
 +                  "checkStoreExtensionUpdate", "setExtensionEnabled",
@@ -101,7 +101,7 @@ index 0000000000..267a12280c
 +                  "extensionActions", "pinExtensionAction", "extensionCommands",
 +                  "setExtensionCommandShortcut", "extensionSidePanel"});
 +  register_shell(AuxShellMethodGroup::kLibrary,
-+                 {"organizationSnapshot", "organizationCommit"});
++                 {"organizationSnapshot", "organizationCommit", "bookmarksInvoke"});
 +  register_shell(AuxShellMethodGroup::kTabs,
 +                 {"bindTabSpace", "migrateTabSpaces", "tabsSnapshot",
 +                  "tabsSince", "tabCommand", "tabAudio", "tabsUnsavedWork", "tabSleep", "archiveTab"});
@@ -128,29 +128,43 @@ index 0000000000..267a12280c
 +  register_runtime(AuxRuntimeMethodGroup::kLibrary,
 +                   {"native.capabilities", "native.searchEngineGet", "native.searchEngineSet",
 +                    "native.searchSuggestionsGet", "native.searchSuggestionsSet",
-+                    "native.bookmarksInvoke", "native.organizationSnapshot", "native.liveFolderSources"});
++                    "native.bookmarksInvoke", "native.organizationSnapshot", "native.turnSourceContext", "native.remoteDebuggingGet", "native.liveFolderSources"});
 +  register_runtime(AuxRuntimeMethodGroup::kBlocking,
-+                   {"native.permissionRetire", "native.egressResumePerson", "native.egressResumeRun", "native.egressCheckRunResume", "native.egressRunTerminal", "native.egressContext", "native.egressInstall", "native.egressRevoke",
++                   {"native.permissionRetire", "native.egressResumePerson",
++                    "native.egressResumeRun", "native.egressCheckRunResume",
++                    "native.egressRunTerminal", "native.adoptSessionPage", "native.egressContext",
++                    "native.egressInstall", "native.egressRevoke",
 +                    "native.contentBlockBegin", "native.contentBlockAppend",
-+                    "native.cosmeticBegin", "native.cosmeticAppend"});
++                    "native.contentBlockOperation"});
 +  register_runtime(AuxRuntimeMethodGroup::kPower, {"native.powerActivity", "native.powerStatus", "native.powerRelease"});
 +  register_runtime(AuxRuntimeMethodGroup::kCdp,
 +                   {"native.cdpReset", "native.cdpCatalog", "native.cdpStartNavigation", "native.cdpDispatch", "native.cdpVersion"});
 +  register_runtime(AuxRuntimeMethodGroup::kTabs,
-+                   {"native.listPages", "native.createAgentPage", "native.creatorCleanupProof", "native.tabCommand", "native.movePage",
++                   {"native.spaceBindingsSet", "native.listPages", "native.createAgentPage", "native.creatorCleanupProof", "native.tabCommand", "native.movePage",
 +                    "native.focusPage", "native.stopPage", "native.recoverPage",
 +                    "native.acquireStage", "native.releaseStage"});
 +  register_runtime(AuxRuntimeMethodGroup::kPageControls,
-+                   {"native.stopFind", "native.setZoom"});
-+  register_runtime(AuxRuntimeMethodGroup::kAsync,
-+                   {"native.cdpAttach", "native.cdpTakeNavigationReceipt", "native.closeCreatedPage", "native.personReadContext", "native.personRead", "native.personCapture", "native.recorderStart", "native.recorderDrain", "native.recorderStop"});
++                   {"native.stopFind", "native.setZoom", "native.memorySaverGet", "native.memorySaverSet"});
++#if BUILDFLAG(IS_MAC)
++  register_runtime(
++      AuxRuntimeMethodGroup::kAsync,
++      {"native.foundationModelsStatus", "native.foundationModelsStart",
++       "native.foundationModelsRead", "native.foundationModelsCancel"});
++#endif
++  register_runtime(
++      AuxRuntimeMethodGroup::kAsync,
++      {"native.copilotStart", "native.copilotEndpoint", "native.copilotStop",
++       "native.cdpAttach", "native.cdpTakeNavigationReceipt",
++       "native.closeCreatedPage", "native.personReadContext",
++       "native.personRead", "native.personCapture", "native.recorderStart",
++       "native.recorderDrain", "native.recorderStop"});
 +  register_runtime(AuxRuntimeMethodGroup::kAsync,
 +                   {"native.downloadRenameReceipts", "native.downloadNamingCandidate", "native.downloadPreviewText",
 +                    "native.renameDownload", "native.undoDownloadRename",
 +                    "native.setCookies", "native.captureReadablePage",
-+                    "native.fillSavedPassword", "native.zapInstallStylesheet",
-+                    "native.cosmeticCommit", "native.findInPage",
-+                    "native.contentBlockCommit", "native.historyClear",
++                    "native.fillSavedPassword", "native.credentialContext", "native.credentialAdmit", "native.zapInstallStylesheet",
++                    "native.contentBlockState", "native.findInPage",
++                    "native.remoteDebuggingSet", "native.contentBlockCommit", "native.historyClear",
 +                    "native.historyImport",
 +                    "native.historyRemove", "native.webmcpList",
 +                    "native.webmcpCall"});
@@ -218,7 +232,7 @@ index 0000000000..267a12280c
 +#endif
 +  base::ListValue methods;
 +  for (const generated::MethodInfo& info : generated::Methods()) {
-+    if (info.name == "capabilities" || info.name == "autocomplete" ||
++    if (info.name == "capabilities" ||
 +        ShellGroup(info.name) != AuxShellMethodGroup::kNone ||
 +        HasRuntimeHandler(info.name)) {
 +      methods.Append(std::string(info.name));
@@ -231,7 +245,7 @@ index 0000000000..267a12280c
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/method_registry.h b/chrome/browser/ui/aux/method_registry.h
 new file mode 100644
-index 0000000000..d4cc170b2c
+index 0000000..d4cc170
 --- /dev/null
 +++ b/chrome/browser/ui/aux/method_registry.h
 @@ -0,0 +1,62 @@

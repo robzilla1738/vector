@@ -1,6 +1,6 @@
 diff --git a/chrome/browser/ui/aux/methods/recovery_methods.cc b/chrome/browser/ui/aux/methods/recovery_methods.cc
 new file mode 100644
-index 0000000000..503aa8cc78
+index 0000000..503aa8c
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/recovery_methods.cc
 @@ -0,0 +1,202 @@

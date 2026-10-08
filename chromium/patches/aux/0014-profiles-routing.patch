@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
-index c76f4b73ad..de8462db3e 100644
+index c76f4b7..de8462d 100644
 --- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 +++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 @@ -52,6 +52,10 @@
@@ -24,7 +24,7 @@ index c76f4b73ad..de8462db3e 100644
    BrowsingDataHistoryObserverService::Factory::GetInstance();
  #if !BUILDFLAG(IS_ANDROID)
 diff --git a/chrome/browser/profiles/profile.cc b/chrome/browser/profiles/profile.cc
-index d36fe0574b..9f25c4624d 100644
+index d36fe05..9f25c46 100644
 --- a/chrome/browser/profiles/profile.cc
 +++ b/chrome/browser/profiles/profile.cc
 @@ -336,6 +336,7 @@ const char Profile::kProfileKey[] = "__PROFILE__";
@@ -37,7 +37,7 @@ index d36fe0574b..9f25c4624d 100644
        true,
 diff --git a/chrome/browser/ui/aux/link_router.cc b/chrome/browser/ui/aux/link_router.cc
 new file mode 100644
-index 0000000000..454a7c2eea
+index 0000000..454a7c2
 --- /dev/null
 +++ b/chrome/browser/ui/aux/link_router.cc
 @@ -0,0 +1,377 @@
@@ -420,7 +420,7 @@ index 0000000000..454a7c2eea
 +}
 diff --git a/chrome/browser/ui/aux/link_router.h b/chrome/browser/ui/aux/link_router.h
 new file mode 100644
-index 0000000000..03ab3ea6c7
+index 0000000..03ab3ea
 --- /dev/null
 +++ b/chrome/browser/ui/aux/link_router.h
 @@ -0,0 +1,72 @@
@@ -498,7 +498,7 @@ index 0000000000..03ab3ea6c7
 +#endif
 diff --git a/chrome/browser/ui/aux/link_routing.cc b/chrome/browser/ui/aux/link_routing.cc
 new file mode 100644
-index 0000000000..5d2ec8498d
+index 0000000..5d2ec84
 --- /dev/null
 +++ b/chrome/browser/ui/aux/link_routing.cc
 @@ -0,0 +1,136 @@
@@ -640,7 +640,7 @@ index 0000000000..5d2ec8498d
 +}
 diff --git a/chrome/browser/ui/aux/link_routing.h b/chrome/browser/ui/aux/link_routing.h
 new file mode 100644
-index 0000000000..9254f58987
+index 0000000..9254f58
 --- /dev/null
 +++ b/chrome/browser/ui/aux/link_routing.h
 @@ -0,0 +1,29 @@
@@ -675,7 +675,7 @@ index 0000000000..9254f58987
 +#endif
 diff --git a/chrome/browser/ui/aux/methods/profile_methods.cc b/chrome/browser/ui/aux/methods/profile_methods.cc
 new file mode 100644
-index 0000000000..4b30a7dbe5
+index 0000000..4b30a7d
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/profile_methods.cc
 @@ -0,0 +1,466 @@
@@ -1147,7 +1147,7 @@ index 0000000000..4b30a7dbe5
 +}
 diff --git a/chrome/browser/ui/aux/methods/profile_routing_methods.cc b/chrome/browser/ui/aux/methods/profile_routing_methods.cc
 new file mode 100644
-index 0000000000..3e8324b9c1
+index 0000000..3e8324b
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/profile_routing_methods.cc
 @@ -0,0 +1,54 @@
@@ -1207,10 +1207,10 @@ index 0000000000..3e8324b9c1
 +}
 diff --git a/chrome/browser/ui/aux/profile_prefs.h b/chrome/browser/ui/aux/profile_prefs.h
 new file mode 100644
-index 0000000000..2322bce86b
+index 0000000..55e5d68
 --- /dev/null
 +++ b/chrome/browser/ui/aux/profile_prefs.h
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,20 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1227,12 +1227,13 @@ index 0000000000..2322bce86b
 +inline constexpr char kQuickAskShortcutBindingsPref[] = "aux.quick_ask_shortcut_bindings";
 +inline constexpr char kQuickAskShortcutEnabledPref[] = "aux.quick_ask_shortcut_enabled";
 +inline constexpr char kKeepRuntimeInBackgroundPref[] = "aux.keep_runtime_in_background";
++inline constexpr char kMemorySaverMinutesPref[] = "aux.memory_saver_minutes";
 +}  // namespace aux
 +
 +#endif  // CHROME_BROWSER_UI_AUX_PROFILE_PREFS_H_
 diff --git a/chrome/browser/ui/aux/profile_search_engine.cc b/chrome/browser/ui/aux/profile_search_engine.cc
 new file mode 100644
-index 0000000000..5edda68ee8
+index 0000000..5edda68
 --- /dev/null
 +++ b/chrome/browser/ui/aux/profile_search_engine.cc
 @@ -0,0 +1,185 @@
@@ -1423,7 +1424,7 @@ index 0000000000..5edda68ee8
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/profile_search_engine.h b/chrome/browser/ui/aux/profile_search_engine.h
 new file mode 100644
-index 0000000000..4d5da821b2
+index 0000000..4d5da82
 --- /dev/null
 +++ b/chrome/browser/ui/aux/profile_search_engine.h
 @@ -0,0 +1,34 @@

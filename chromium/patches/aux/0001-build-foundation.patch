@@ -1,5 +1,108 @@
+diff --git a/build/config/apple/swift_source_set.gni b/build/config/apple/swift_source_set.gni
+index ed3d091..defa035 100644
+--- a/build/config/apple/swift_source_set.gni
++++ b/build/config/apple/swift_source_set.gni
+@@ -272,7 +272,9 @@ template("swift_source_set") {
+     if (!defined(public_configs)) {
+       public_configs = []
+     }
+-    public_configs += [ "//build/config/ios:swift_cxx_interop_includes" ]
++    if (is_ios) {
++      public_configs += [ "//build/config/ios:swift_cxx_interop_includes" ]
++    }
+   }
+ }
+ 
+diff --git a/build/config/mac/BUILD.gn b/build/config/mac/BUILD.gn
+index 7114fd8..875aefe 100644
+--- a/build/config/mac/BUILD.gn
++++ b/build/config/mac/BUILD.gn
+@@ -33,6 +33,12 @@ config("compiler") {
+ 
+   asmflags = common_mac_flags
+   cflags = common_mac_flags
++  swiftflags = [
++    "-target",
++    "$clang_arch-apple-macos$mac_deployment_target",
++    "-swift-version",
++    "6",
++  ]
+ 
+   ldflags = common_mac_flags
+ 
+@@ -59,6 +65,10 @@ config("runtime_library") {
+   asmflags = common_flags
+   cflags = common_flags
+   ldflags = common_flags
++  swiftflags = [
++    "-sdk",
++    rebase_path(sysroot, root_build_dir),
++  ]
+ 
+   # TODO(https://crbug.com/442128549): see if we can convince upstream rust to
+   # add an -isysroot flag instead.
+diff --git a/build/toolchain/apple/swiftc.py b/build/toolchain/apple/swiftc.py
+index 4c1ed0e..f81762e 100644
+--- a/build/toolchain/apple/swiftc.py
++++ b/build/toolchain/apple/swiftc.py
+@@ -449,6 +449,12 @@ def invoke_swift_compiler(args, extras_args, build_cache_dir, output_file_map):
+         for xcc_arg in args.xcc_args:
+             swiftc_args.extend(['-Xcc', xcc_arg])
+ 
++    # Handle optional frontend arguments without interpreting their values
++    # as source filenames.
++    if args.frontend_args:
++        for frontend_arg in args.frontend_args:
++            swiftc_args.extend(['-Xfrontend', frontend_arg])
++
+     # Handle optional -enable-upcoming-feature arguments.
+     if args.upcoming_features:
+         for feature in args.upcoming_features:
+@@ -744,6 +750,13 @@ def main(args):
+         help='enable an upcoming Swift feature (SE-0362)',
+     )
+ 
++    parser.add_argument(
++        '-Xfrontend',
++        action='append',
++        dest='frontend_args',
++        help='add argument to the Swift frontend',
++    )
++
+     parsed, extras = parser.parse_known_args(args)
+     compile_module(parsed, extras, build_signature(os.environ, args))
+ 
+diff --git a/build/toolchain/apple/toolchain.gni b/build/toolchain/apple/toolchain.gni
+index 4baa5be..d56e7f6 100644
+--- a/build/toolchain/apple/toolchain.gni
++++ b/build/toolchain/apple/toolchain.gni
+@@ -762,10 +762,10 @@ template("single_apple_toolchain") {
+       pool = "//build/toolchain/apple:bundle_pool($default_toolchain)"
+     }
+ 
+-    # Swift is only used on iOS, not macOS. We want to minimize the number
+-    # of Xcode-based tools used by the macOS toolchain, so we intentionally
+-    # disallow future uses of Swift on macOS. https://crbug.com/965663.
+-    if (toolchain_args.current_os == "ios") {
++    # Native framework adapters use the existing Apple Swift compiler on
++    # both Apple platforms. C++ keeps its existing compiler configuration.
++    if (toolchain_args.current_os == "ios" ||
++        toolchain_args.current_os == "mac") {
+       tool("swift") {
+         _tool = rebase_path("//build/toolchain/apple/swiftc.py", root_build_dir)
+ 
+@@ -849,7 +849,8 @@ template("single_apple_toolchain") {
+           _env_vars += " XCODE_VERSION=${toolchain_args.xcode_build}"
+         }
+ 
+-        if (invoker.sdk_developer_dir != "") {
++        if (defined(invoker.sdk_developer_dir) &&
++            invoker.sdk_developer_dir != "") {
+           _env_vars += " DEVELOPER_DIR=${toolchain_args.sdk_developer_dir}"
+         }
+ 
 diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
-index ce7ebbe4f6..3a18653625 100644
+index ce7ebbe..77bb6f8 100644
 --- a/chrome/BUILD.gn
 +++ b/chrome/BUILD.gn
 @@ -72,6 +72,11 @@ declare_args() {
@@ -124,7 +227,33 @@ index ce7ebbe4f6..3a18653625 100644
      ]
      visibility = [ "//chrome/installer/mac:copies" ]
    }
-@@ -1297,6 +1378,7 @@ if (is_win) {
+@@ -1043,6 +1124,11 @@ if (is_win) {
+       "//components/crash/core/app:chrome_crashpad_handler",
+     ]
+ 
++    if (enable_aux_shell) {
++      sources += [ "$root_out_dir/aux_owned_headless_launcher" ]
++      public_deps += [ "//chrome/browser/ui/aux:owned_headless_launcher" ]
++    }
++
+     foreach(helper_params, chrome_mac_helpers) {
+       sources +=
+           [ "$root_out_dir/${chrome_helper_name}${helper_params[2]}.app" ]
+@@ -1090,6 +1176,13 @@ if (is_win) {
+       "//chrome/app_shim:app_mode_loader_plist_bundle_data",
+       "//chrome/browser/mac:install",
+     ]
++    if (enable_aux_shell) {
++      public_deps += [
++        "//chrome/browser/ui/aux/semantic/public-component:public_assets",
++        "//chrome/browser/ui/aux/semantic:default_lists",
++      ]
++    }
++
+ 
+     if (icu_use_data_file) {
+       sources += [ "$root_out_dir/icudtl.dat" ]
+@@ -1297,6 +1390,7 @@ if (is_win) {
      ]
  
      sources = [
@@ -132,7 +261,7 @@ index ce7ebbe4f6..3a18653625 100644
        "app/chrome_crash_reporter_client.cc",
        "app/chrome_crash_reporter_client.h",
        "app/chrome_crash_reporter_client_mac.mm",
-@@ -2046,6 +2128,7 @@ if (enable_separate_renderer_binary) {
+@@ -2046,6 +2140,7 @@ if (enable_separate_renderer_binary) {
      "//base",
      "//base:i18n",
      "//build/config/compiler:compiler_buildflags",
@@ -141,7 +270,7 @@ index ce7ebbe4f6..3a18653625 100644
      "//chrome/common:version_header",
      "//chrome/renderer",
 diff --git a/chrome/app/BUILD.gn b/chrome/app/BUILD.gn
-index e0bc13decc..5412cf151c 100644
+index e0bc13d..5412cf1 100644
 --- a/chrome/app/BUILD.gn
 +++ b/chrome/app/BUILD.gn
 @@ -23,7 +23,10 @@ if (is_posix) {
@@ -157,7 +286,7 @@ index e0bc13decc..5412cf151c 100644
        "//base",
        "//build:buildflag_header_h",
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
-index f261c72029..84a6304623 100644
+index f261c72..84a6304 100644
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
 @@ -92,6 +92,9 @@ if (is_win) {
@@ -204,7 +333,7 @@ index f261c72029..84a6304623 100644
      deps += [ "//chrome/browser/chrome_for_testing:browser" ]
    }
 diff --git a/chrome/browser/buildflags.gni b/chrome/browser/buildflags.gni
-index bc2754dc1f..1f62ca5996 100644
+index bc2754d..1f62ca5 100644
 --- a/chrome/browser/buildflags.gni
 +++ b/chrome/browser/buildflags.gni
 @@ -9,6 +9,20 @@ import("//build/config/chrome_build.gni")
@@ -229,7 +358,7 @@ index bc2754dc1f..1f62ca5996 100644
    enable_platform_experience = is_chrome_branded
  
 diff --git a/chrome/browser/picture_in_picture/BUILD.gn b/chrome/browser/picture_in_picture/BUILD.gn
-index 98f3c45098..d9f00dccaa 100644
+index 98f3c45..d9f00dc 100644
 --- a/chrome/browser/picture_in_picture/BUILD.gn
 +++ b/chrome/browser/picture_in_picture/BUILD.gn
 @@ -3,6 +3,7 @@
@@ -252,7 +381,7 @@ index 98f3c45098..d9f00dccaa 100644
      deps += [ "//extensions/common:common_constants" ]
    }
 diff --git a/chrome/browser/resources/BUILD.gn b/chrome/browser/resources/BUILD.gn
-index eb9d625d1c..ec5da16192 100644
+index eb9d625..e0320d2 100644
 --- a/chrome/browser/resources/BUILD.gn
 +++ b/chrome/browser/resources/BUILD.gn
 @@ -28,6 +28,13 @@ group("resources") {
@@ -269,12 +398,25 @@ index eb9d625d1c..ec5da16192 100644
    if (enable_webui_ntp) {
      public_deps += [
        "new_tab_page:resources",
+@@ -232,6 +239,12 @@ if (enable_webui_generate_code_cache) {
+       "side_panel/tabs_from_other_devices:code_cache_resources",
+       "webui_toolbar:code_cache_resources",
+     ]
++    if (enable_aux_shell) {
++      public_deps += [
++        "aux:code_cache_resources",
++        "aux_host:code_cache_resources",
++      ]
++    }
+   }
+ }
+ 
 diff --git a/chrome/browser/resources/aux/BUILD.gn b/chrome/browser/resources/aux/BUILD.gn
 new file mode 100644
-index 0000000000..0f16d0ac61
+index 0000000..4ba3e8a
 --- /dev/null
 +++ b/chrome/browser/resources/aux/BUILD.gn
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,70 @@
 +# Copyright 2026 The Aux Authors
 +# Use of this source code is governed by a BSD-style license that can be
 +# found in the LICENSE file.
@@ -283,10 +425,12 @@ index 0000000000..0f16d0ac61
 +import("//chrome/common/features.gni")
 +import("//tools/grit/grit_rule.gni")
 +import("//ui/webui/resources/tools/generate_grd.gni")
++import("//ui/webui/resources/tools/generate_code_cache.gni")
++import("//ui/webui/webui_features.gni")
 +
 +assert(enable_aux_shell)
 +
-+# stage-shell verifies every file against the checked-in SHA-256 manifest.
++# The local build stages the current renderer and its resource inventory.
 +shell_manifest = read_file("assets/manifest.json", "json")
 +shell_files = []
 +shell_inputs = []
@@ -316,12 +460,39 @@ index 0000000000..0f16d0ac61
 +  input_files = shell_files
 +  input_files_base_dir = rebase_path("assets", "//")
 +}
++
++if (enable_webui_generate_code_cache) {
++  generate_code_cache("build_code_cache") {
++    in_folder = "assets"
++    in_files = filter_include(shell_files, [ "*.js" ])
++    out_folder = "$target_gen_dir/code_cache"
++    out_manifest = "$target_gen_dir/build_code_cache_manifest.json"
++  }
++  generate_grd("build_code_cache_grd") {
++    grd_prefix = "aux_code_cache"
++    out_grd = "$target_gen_dir/code_cache_resources.grd"
++    manifest_files = [ "$target_gen_dir/build_code_cache_manifest.json" ]
++    deps = [ ":build_code_cache" ]
++  }
++  grit("code_cache_resources") {
++    enable_input_discovery_for_gn_analyze = false
++    source = "$target_gen_dir/code_cache_resources.grd"
++    deps = [ ":build_code_cache_grd" ]
++    outputs = [
++      "grit/aux_code_cache_resources.h",
++      "grit/aux_code_cache_resources_map.h",
++      "grit/aux_code_cache_resources_map.cc",
++      "aux_code_cache_resources.pak",
++    ]
++    output_dir = "$root_gen_dir/chrome"
++  }
++}
 diff --git a/chrome/browser/resources/aux_host/BUILD.gn b/chrome/browser/resources/aux_host/BUILD.gn
 new file mode 100644
-index 0000000000..85fd9eb025
+index 0000000..8c1e34b
 --- /dev/null
 +++ b/chrome/browser/resources/aux_host/BUILD.gn
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,17 @@
 +# Copyright 2026 The Aux Authors
 +# Use of this source code is governed by a BSD-style license that can be
 +# found in the LICENSE file.
@@ -333,13 +504,14 @@ index 0000000000..85fd9eb025
 +
 +build_webui("build") {
 +  grd_prefix = "aux_host"
++  generate_code_cache = enable_webui_generate_code_cache
 +  ts_files = [ "aux_host_bootstrap.ts", "aux_feature_stages.ts" ]
 +  mojo_files = [ "$root_gen_dir/chrome/browser/ui/webui_browser/shell_host.mojom-webui.ts" ]
 +  mojo_files_deps = [ "//chrome/browser/ui/webui_browser:shell_host_mojo_bindings_ts__generator" ]
 +  ts_deps = [ "//ui/webui/resources/mojo:build_ts" ]
 +}
 diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
-index 0ab25c63c9..acd9c0b834 100644
+index 0ab25c6..25464a9 100644
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
 @@ -1309,6 +1309,9 @@ static_library("ui") {
@@ -352,22 +524,76 @@ index 0ab25c63c9..acd9c0b834 100644
      sources += [
        # This file physically lives in //chrome/browser but is compiled here so
        # that //chrome/browser:browser has no remaining sources. It registers
+@@ -2473,6 +2476,10 @@ static_library("ui") {
+   }
+ 
+   if (toolkit_views) {
++    sources += [
++      "performance/native_performance.cc",
++      "performance/native_performance.h",
++    ]
+     sources += [
+       "views/autofill/at_memory_promo_bubble_view.cc",
+       "views/autofill/at_memory_promo_bubble_view.h",
 diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
 new file mode 100644
-index 0000000000..fa57c703b6
+index 0000000..9c78880
 --- /dev/null
 +++ b/chrome/browser/ui/aux/BUILD.gn
-@@ -0,0 +1,183 @@
+@@ -0,0 +1,374 @@
 +# Copyright 2026 The Aux Authors
 +# Use of this source code is governed by a BSD-style license that can be
 +# found in the LICENSE file.
 +
 +import("//chrome/browser/buildflags.gni")
++import("//build/config/apple/swift_source_set.gni")
 +
 +assert(enable_aux_shell)
 +
 +source_set("runtime") {
 +  sources = [
++    "browser_export_decode.h",
++    "browser_import_picker.h",
++    "browser_safari_window.h",
++    "browser_safari_window_mac.mm",
++    "browser_firefox_import.cc",
++    "browser_firefox_import.h",
++    "browser_firefox_snapshot.cc",
++    "browser_firefox_snapshot.h",
++    "browser_export_decode.cc",
++    "browser_export_picker.h",
++    "browser_export_picker_mac.mm",
++    "browser_profile_decode.h",
++    "browser_profile_decode.cc",
++    "browser_arc_sidebar.cc",
++    "browser_arc_sidebar.h",
++    "browser_profile_discovery.h",
++    "browser_profile_discovery.cc",
++    "browser_profile_extension_installer.h",
++    "browser_profile_extension_candidates.cc",
++    "browser_profile_extension_candidates.h",
++    "browser_profile_extension_installer.cc",
++    "browser_profile_importer.h",
++    "browser_profile_importer.cc",
++    "browser_profile_key_provider.h",
++    "browser_profile_key_provider.mm",
++    "browser_profile_readers.h",
++    "browser_profile_readers.cc",
++    "browser_profile_snapshot.h",
++    "browser_profile_snapshot.cc",
++    "native_project.cc",
++    "native_project.h",
++    "native_project_files.cc",
++    "native_project_files.h",
++    "native_terminal.cc",
++    "native_project_listener.cc",
++    "native_project_listener.h",
++    "native_project_preview.cc",
++    "native_project_preview.h",
++    "native_project_preview_network.cc",
++    "native_terminal.h",
++    "shell_warmup_manager.cc",
++    "shell_warmup_manager.h",
 +    "native_cdp_input_mac.h",
 +    "native_cdp_input_mac.mm",
 +    "cdp_broker.cc",
@@ -376,8 +602,38 @@ index 0000000000..fa57c703b6
 +    "content_blocking_controller.h",
 +    "content_blocking_policy.cc",
 +    "content_blocking_policy.h",
-+    "cosmetic_controller.cc",
-+    "cosmetic_controller.h",
++    "filter_source_snapshot.cc",
++    "filter_source_snapshot.h",
++    "filter_snapshot_store.cc",
++    "filter_snapshot_store.h",
++    "semantic_filter_popup.cc",
++    "semantic_filter_popup.h",
++    "semantic_filter_body.cc",
++    "semantic_filter_body.h",
++    "semantic_filter_cosmetics.cc",
++    "semantic_filter_cosmetics.h",
++    "semantic_filter_trusted_headers.cc",
++    "semantic_filter_trusted_headers.h",
++    "semantic_filter_headers.cc",
++    "semantic_filter_headers.h",
++    "semantic_filter_response_address.cc",
++    "semantic_filter_response_address.h",
++    "semantic_filter_decision.cc",
++    "semantic_filter_decision.h",
++    "semantic_filter_snapshot.cc",
++    "semantic_filter_snapshot.h",
++    "semantic_factory_headers.cc",
++    "semantic_factory_headers.h",
++    "semantic_loader_registry.cc",
++    "semantic_loader_registry.h",
++    "content_filter_documents.cc",
++    "content_filter_network.cc",
++    "content_filter_source_scope.cc",
++    "content_filter_source_scope.h",
++    "content_filter_resources.cc",
++    "content_filter_resources.h",
++    "cosmetic_filter_host.cc",
++    "cosmetic_filter_host.h",
 +    "cookie_import.cc",
 +    "cookie_import.h",
 +    "credential_fill.cc",
@@ -470,7 +726,35 @@ index 0000000000..fa57c703b6
 +    "zap_controller.cc",
 +    "zap_controller.h",
 +  ]
++  if (is_mac) {
++    sources += [
++      "task_attention_mac.h",
++      "task_attention_mac.mm",
++      "native_foundation_models.h",
++      "native_foundation_models.mm",
++      "native_copilot_session.cc",
++      "native_copilot_session.h",
++      "native_owned_headless_process.cc",
++      "native_owned_headless_process.h",
++      "owned_headless_protocol.h",
++    ]
++  }
++  public_deps = [ ":semantic" ]
 +  deps = [
++    "semantic:semantic_resources",
++    "//chrome/common:ini_parser",
++    "//chrome/common/importer:importer",
++    "//chrome/common/importer:aux_firefox_profile",
++    "//components/sessions",
++    "//components/keep_alive_registry",
++    "//components/os_crypt/async/browser",
++    "//components/os_crypt/async/browser:key_provider_interface",
++    "//components/password_manager/core/browser/import:importer",
++    "//components/password_manager/core/browser/ui",
++    "//chrome/browser/extensions/api/passwords_private",
++    "//chrome/browser/extensions",
++    "//extensions/browser",
++    "//extensions/common",
 +    "//components/download/public/common:public",
 +    "//base",
 +    "//chrome/browser:buildflags",
@@ -481,6 +765,10 @@ index 0000000000..fa57c703b6
 +    "//chrome/browser/device_reauth:impl",
 +    "//chrome/browser/password_manager/factories",
 +    "//chrome/browser/profiles",
++    "//chrome/browser/profiles:profile_util",
++    "//chrome/browser/profiles/keep_alive",
++    "//chrome/browser:browser_process",
++    "//chrome/browser/lifetime",
 +    "//chrome/browser/picture_in_picture",
 +    ":surface_headers",
 +    "//chrome/browser/ui/aux/generated:methods",
@@ -492,6 +780,7 @@ index 0000000000..fa57c703b6
 +    "//components/content_settings/core/browser",
 +    "//components/content_settings/core/common",
 +    "//components/find_in_page",
++    "//components/guest_contents/browser",
 +    "//components/keyed_service/content",
 +    "//components/password_manager/content/browser",
 +    "//components/password_manager/core/browser",
@@ -504,6 +793,10 @@ index 0000000000..fa57c703b6
 +    "//components/zoom",
 +    "//components/permissions",
 +    "//content/public/browser",
++    "//components/user_data_importer/mojom",
++    "//components/user_data_importer/utility:bookmarks",
++    "//components/strings:components_strings_grit",
++    "//third_party/zlib/google:zip",
 +    "//content/public/common",
 +    "//crypto",
 +    "//mojo/public/cpp/bindings",
@@ -524,10 +817,16 @@ index 0000000000..fa57c703b6
 +    "//third_party/blink/public/common:common",
 +    "//url",
 +  ]
++  if (is_mac) {
++    deps += [ ":foundation_models_swift", "//chrome/common", "//sandbox/mac:seatbelt" ]
++    weak_frameworks = [ "FoundationModels.framework" ]
++  }
 +  frameworks = [
 +    "PDFKit.framework",
 +    "AVFoundation.framework",
 +    "Cocoa.framework",
++    "UniformTypeIdentifiers.framework",
++    "ScriptingBridge.framework",
 +    "IOKit.framework",
 +    "ServiceManagement.framework",
 +    "Security.framework",
@@ -541,8 +840,83 @@ index 0000000000..fa57c703b6
 +    "auto_pip_site_policy.h",
 +  ]
 +}
++
++source_set("semantic") {
++  sources = [
++    "semantic_filter_bridge.cc",
++    "semantic_filter_bridge.h",
++    "semantic_filter_document.cc",
++    "semantic_filter_document.h",
++    "semantic_filter_instance.cc",
++    "semantic_filter_instance.h",
++    "semantic_filter_network.cc",
++    "semantic_filter_network.h",
++    "semantic_filter_ui.cc",
++    "semantic_filter_ui.h",
++  ]
++  public_deps = [
++    "//chrome/common:aux_semantic_filters",
++    "//content/public/browser",
++    "//mojo/public/cpp/bindings",
++    "//ui/webui",
++  ]
++  deps = [
++    "semantic:semantic_resources",
++    "//base",
++    "//crypto",
++    "//content/public/common",
++    "//mojo/public/cpp/system",
++    "//net",
++    "//services/network/public/cpp",
++    "//services/network/public/mojom",
++    "//ui/base",
++    "//url",
++  ]
++}
++
++# Fixed launcher is copied by chrome_framework_helpers into the Framework's
++# Helpers directory regardless of verify_dynamic_libraries.
++if (is_mac) {
++  executable("owned_headless_launcher") {
++    output_name = "aux_owned_headless_launcher"
++    sources = [
++      "owned_headless_launcher.cc",
++      "owned_headless_protocol.h",
++    ]
++    # Pure POSIX launcher: no Chrome component or custom C++ runtime symbols.
++    # Keep default compiler/linker/SDK/warning configs, but do not inject the
++    # shared libc++ executable_deps or C++ module target into this relocated
++    # Framework Helpers executable.
++    libs = [ "sandbox" ]
++    no_default_deps = true
++    use_libcxx_modules = false
++  }
++}
++
++if (is_mac) {
++  import("//build/config/mac/mac_sdk.gni")
++  config("foundation_models_swift_runtime") {
++    # clang links the Swift object's genuine autolink directives. Like the
++    # existing iOS config, provide both SDK runtime stubs and the selected
++    # compiler's static compatibility libraries to the final dependent link.
++    lib_dirs = [
++      rebase_path("$mac_sdk_path/usr/lib/swift", "", root_build_dir),
++      rebase_path("$mac_bin_path/../lib/swift/macosx", "", root_build_dir),
++    ]
++  }
++  swift_source_set("foundation_models_swift") {
++    sources = [ "foundation_models.swift" ]
++    all_dependent_configs = [ ":foundation_models_swift_runtime" ]
++    swiftflags = [
++      "-Xfrontend=-disable-autolink-framework",
++      "-Xfrontend=FoundationModels",
++    ]
++    frameworks = [ "Foundation.framework" ]
++    weak_frameworks = [ "FoundationModels.framework" ]
++  }
++}
 diff --git a/chrome/browser/ui/cocoa/BUILD.gn b/chrome/browser/ui/cocoa/BUILD.gn
-index a4d59b3ddd..62a9a2a2c1 100644
+index a4d59b3..62a9a2a 100644
 --- a/chrome/browser/ui/cocoa/BUILD.gn
 +++ b/chrome/browser/ui/cocoa/BUILD.gn
 @@ -66,6 +66,8 @@ source_set("cocoa") {
@@ -555,7 +929,7 @@ index a4d59b3ddd..62a9a2a2c1 100644
      "apps/quit_with_apps_controller_mac.cc",
      "apps/titlebar_background_view.mm",
 diff --git a/chrome/browser/ui/webui_browser/BUILD.gn b/chrome/browser/ui/webui_browser/BUILD.gn
-index fa8206b5ba..8bd4c94e5f 100644
+index fa8206b..2c218e3 100644
 --- a/chrome/browser/ui/webui_browser/BUILD.gn
 +++ b/chrome/browser/ui/webui_browser/BUILD.gn
 @@ -3,6 +3,8 @@
@@ -585,7 +959,7 @@ index fa8206b5ba..8bd4c94e5f 100644
      "//chrome/browser/app_mode",
      "//chrome/browser/bookmarks",
      "//chrome/browser/contextual_search",
-@@ -139,11 +145,57 @@ source_set("impl") {
+@@ -139,11 +145,66 @@ source_set("impl") {
      "//services/network/public/mojom",
      "//ui/base",
      "//ui/content_accelerators",
@@ -598,6 +972,10 @@ index fa8206b5ba..8bd4c94e5f 100644
  
 +  if (enable_aux_shell) {
 +    sources += [
++      "aux_device_confirmation.cc",
++      "aux_device_confirmation.h",
++      "aux_omnibox_handler.cc",
++      "aux_omnibox_handler.h",
 +      "../aux/methods/blocking_methods.cc",
 +      "../aux/methods/content_methods.cc",
 +      "../aux/methods/credentials_methods.cc",
@@ -619,6 +997,11 @@ index fa8206b5ba..8bd4c94e5f 100644
 +      "//chrome/browser/device_reauth:impl",
 +      "//chrome/browser/extensions:extensions",
 +      "//chrome/browser/ui/aux:runtime",
++      "//chrome/browser/predictors",
++      "//chrome/browser/safe_browsing",
++      "//chrome/browser/preloading/prefetch/search_prefetch",
++      "//chrome/browser/preloading/search_preload",
++      "//components/omnibox/browser",
 +      "//components/prefs",
 +      "//components/language/core/browser",
 +      "//components/content_settings/core/browser",
@@ -643,7 +1026,7 @@ index fa8206b5ba..8bd4c94e5f 100644
    if (is_chromeos) {
      deps += [ "//chrome/browser/ui/ash/system_web_apps" ]
    }
-@@ -177,6 +229,13 @@ mojom("browser_mojo_bindings") {
+@@ -177,6 +238,13 @@ mojom("browser_mojo_bindings") {
    webui_module_path = "/"
  }
  
@@ -657,7 +1040,7 @@ index fa8206b5ba..8bd4c94e5f 100644
  source_set("browser_tests") {
    testonly = true
    defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
-@@ -187,6 +246,12 @@ source_set("browser_tests") {
+@@ -187,6 +255,12 @@ source_set("browser_tests") {
    if (!is_chromeos) {
      sources += [ "webui_browser_browsertest.cc" ]
    }
@@ -671,7 +1054,7 @@ index fa8206b5ba..8bd4c94e5f 100644
    deps = [
      ":impl",
 diff --git a/chrome/chrome_paks.gni b/chrome/chrome_paks.gni
-index 6008e03a89..8debaf7ee6 100644
+index 6008e03..2290360 100644
 --- a/chrome/chrome_paks.gni
 +++ b/chrome/chrome_paks.gni
 @@ -182,6 +182,16 @@ template("chrome_extra_paks") {
@@ -691,8 +1074,21 @@ index 6008e03a89..8debaf7ee6 100644
      if (defined(invoker.deps)) {
        deps += invoker.deps
      }
+@@ -600,6 +610,12 @@ template("chrome_extra_paks") {
+     }
+ 
+     if (enable_webui_generate_code_cache) {
++      if (enable_aux_shell) {
++        sources += [
++          "$root_gen_dir/chrome/aux_code_cache_resources.pak",
++          "$root_gen_dir/chrome/aux_host_code_cache_resources.pak",
++        ]
++      }
+       sources += [
+         "$root_gen_dir/chrome/side_panel_bookmarks_code_cache_resources.pak",
+         "$root_gen_dir/chrome/side_panel_customize_chrome_code_cache_resources.pak",
 diff --git a/chrome/common/BUILD.gn b/chrome/common/BUILD.gn
-index 8f287e2353..7bf2e95ed0 100644
+index 8f287e2..dc4820d 100644
 --- a/chrome/common/BUILD.gn
 +++ b/chrome/common/BUILD.gn
 @@ -6,6 +6,7 @@ import("//build/buildflag_header.gni")
@@ -712,17 +1108,30 @@ index 8f287e2353..7bf2e95ed0 100644
      "CHROME_ENABLE_LOGGING_BY_DEFAULT=$chrome_enable_logging_by_default",
      "CHROME_ROOT_STORE_CERT_MANAGEMENT_UI=$chrome_root_store_cert_management_ui",
      "SKIP_ANDROID_UNMIGRATED_ACTOR_FILES=$skip_android_unmigrated_actor_files",
-@@ -686,6 +689,8 @@ mojom("mojo_bindings") {
+@@ -686,6 +689,9 @@ mojom("mojo_bindings") {
  
    sources = [
      "actor.mojom",
 +    "aux_recorder.mojom",
 +    "aux_person_observer.mojom",
++    "aux_cosmetic_filters.mojom",
      "chrome_render_frame.mojom",
      "google_accounts_private_api_extension.mojom",
      "media/webrtc_logging.mojom",
+@@ -839,3 +845,11 @@ mojom("offline_page_auto_fetcher_mojom") {
+   sources = [ "offline_page_auto_fetcher.mojom" ]
+   public_deps = [ "//url/mojom:url_mojom_gurl" ]
+ }
++
++if (enable_aux_shell) {
++  mojom("aux_semantic_filters") {
++    sources = [ "aux_semantic_filters.mojom" ]
++    disable_variants = true
++    webui_module_path = "/"
++  }
++}
 diff --git a/chrome/installer/mac/BUILD.gn b/chrome/installer/mac/BUILD.gn
-index 608e017bb0..753ca38982 100644
+index 608e017..753ca38 100644
 --- a/chrome/installer/mac/BUILD.gn
 +++ b/chrome/installer/mac/BUILD.gn
 @@ -140,6 +140,7 @@ copy("copies") {
@@ -734,7 +1143,7 @@ index 608e017bb0..753ca38982 100644
      "pkg_postinstall.in",
      "pkg_preinstall.in",
 diff --git a/chrome/renderer/BUILD.gn b/chrome/renderer/BUILD.gn
-index 94d46c0511..95a833127a 100644
+index 94d46c0..9e53fca 100644
 --- a/chrome/renderer/BUILD.gn
 +++ b/chrome/renderer/BUILD.gn
 @@ -3,6 +3,7 @@
@@ -754,20 +1163,33 @@ index 94d46c0511..95a833127a 100644
      "benchmarking_bindings.cc",
      "benchmarking_bindings.h",
      "browser_exposed_renderer_interfaces.cc",
-@@ -117,6 +120,11 @@ static_library("renderer") {
+@@ -117,6 +120,13 @@ static_library("renderer") {
    ]
  
    defines = []
 +  if (enable_aux_shell) {
 +    sources += [ "aux_recorder_agent.cc", "aux_recorder_agent.h",
-+                 "aux_person_observer_agent.cc", "aux_person_observer_agent.h" ]
++                 "aux_person_observer_agent.cc", "aux_person_observer_agent.h",
++                 "aux_cosmetic_filter_agent.cc", "aux_cosmetic_filter_agent.h",
++                 "semantic_cosmetic_document.cc", "semantic_cosmetic_document.h" ]
 +    defines += [ "AUX_SHELL_ENABLED" ]
 +  }
  
    public_deps = [
      "//components/signin/public/base:signin_buildflags",
+@@ -233,6 +243,10 @@ static_library("renderer") {
+     "//v8",
+   ]
+ 
++  if (enable_aux_shell) {
++    deps += [ "//chrome/browser/ui/aux/semantic:semantic_resources" ]
++  }
++
+   if (is_mac || is_win || is_linux || is_chromeos) {
+     deps += [ "//components/webapps/isolated_web_apps:scheme" ]
+   }
 diff --git a/components/surface_embed/common/BUILD.gn b/components/surface_embed/common/BUILD.gn
-index ae354415df..59c8a08446 100644
+index ae35441..59c8a08 100644
 --- a/components/surface_embed/common/BUILD.gn
 +++ b/components/surface_embed/common/BUILD.gn
 @@ -2,8 +2,15 @@
@@ -799,7 +1221,7 @@ index ae354415df..59c8a08446 100644
  
  mojom("mojom") {
 diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
-index 4e9e524699..27ea28b3a1 100644
+index 4e9e524..27ea28b 100644
 --- a/content/browser/BUILD.gn
 +++ b/content/browser/BUILD.gn
 @@ -2179,6 +2179,7 @@ source_set("browser") {
@@ -811,7 +1233,7 @@ index 4e9e524699..27ea28b3a1 100644
      "web_contents/web_contents_view_aura.cc",
      "web_contents/web_contents_view_aura.h",
 diff --git a/content/public/browser/BUILD.gn b/content/public/browser/BUILD.gn
-index 86a0536722..620ec79a87 100644
+index 86a0536..620ec79 100644
 --- a/content/public/browser/BUILD.gn
 +++ b/content/public/browser/BUILD.gn
 @@ -162,6 +162,7 @@ source_set("browser_sources") {
@@ -832,7 +1254,7 @@ index 86a0536722..620ec79a87 100644
      "render_widget_host_view_mac_delegate.h",
      "renderer_preferences_util.cc",
 diff --git a/third_party/blink/renderer/platform/BUILD.gn b/third_party/blink/renderer/platform/BUILD.gn
-index 233618cf12..1f6efb6979 100644
+index 233618c..1f6efb6 100644
 --- a/third_party/blink/renderer/platform/BUILD.gn
 +++ b/third_party/blink/renderer/platform/BUILD.gn
 @@ -1636,6 +1636,8 @@ component("platform") {
@@ -845,16 +1267,24 @@ index 233618cf12..1f6efb6979 100644
      "widget/compositing/queue_report_time_swap_promise.h",
      "widget/compositing/render_frame_metadata_observer_impl.cc",
 diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
-index d55db4f82a..2974bb1914 100644
+index d55db4f..580e7b4 100644
 --- a/tools/gritsettings/resource_ids.spec
 +++ b/tools/gritsettings/resource_ids.spec
-@@ -244,6 +244,14 @@
+@@ -244,6 +244,22 @@
      "META": {"sizes": {"includes": [1000],}},
      "includes": [2860],
    },
++  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux/code_cache_resources.grd": {
++    "META": {"sizes": {"includes": [400]}},
++    "includes": [2869],
++  },
 +  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux/resources.grd": {
 +    "META": {"sizes": {"includes": [1000]}},
 +    "includes": [2870],
++  },
++  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux_host/code_cache_resources.grd": {
++    "META": {"sizes": {"includes": [30]}},
++    "includes": [2874],
 +  },
 +  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux_host/resources.grd": {
 +    "META": {"sizes": {"includes": [20]}},

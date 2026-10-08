@@ -1,6 +1,6 @@
 diff --git a/chrome/browser/ui/aux/appearance_prefs.h b/chrome/browser/ui/aux/appearance_prefs.h
 new file mode 100644
-index 0000000000..68be347db2
+index 0000000..68be347
 --- /dev/null
 +++ b/chrome/browser/ui/aux/appearance_prefs.h
 @@ -0,0 +1,16 @@
@@ -22,7 +22,7 @@ index 0000000000..68be347db2
 +#endif  // CHROME_BROWSER_UI_AUX_APPEARANCE_PREFS_H_
 diff --git a/chrome/browser/ui/aux/organization_store.cc b/chrome/browser/ui/aux/organization_store.cc
 new file mode 100644
-index 0000000000..fa931c32aa
+index 0000000..fa931c3
 --- /dev/null
 +++ b/chrome/browser/ui/aux/organization_store.cc
 @@ -0,0 +1,521 @@
@@ -549,7 +549,7 @@ index 0000000000..fa931c32aa
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/organization_store.h b/chrome/browser/ui/aux/organization_store.h
 new file mode 100644
-index 0000000000..d5fd1793bb
+index 0000000..d5fd179
 --- /dev/null
 +++ b/chrome/browser/ui/aux/organization_store.h
 @@ -0,0 +1,40 @@
@@ -595,7 +595,7 @@ index 0000000000..d5fd1793bb
 +#endif  // CHROME_BROWSER_UI_AUX_ORGANIZATION_STORE_H_
 diff --git a/chrome/browser/ui/aux/profile_spaces.cc b/chrome/browser/ui/aux/profile_spaces.cc
 new file mode 100644
-index 0000000000..726e2df298
+index 0000000..726e2df
 --- /dev/null
 +++ b/chrome/browser/ui/aux/profile_spaces.cc
 @@ -0,0 +1,47 @@
@@ -648,7 +648,7 @@ index 0000000000..726e2df298
 +}
 diff --git a/chrome/browser/ui/aux/profile_spaces.h b/chrome/browser/ui/aux/profile_spaces.h
 new file mode 100644
-index 0000000000..7d6ce6d431
+index 0000000..7d6ce6d
 --- /dev/null
 +++ b/chrome/browser/ui/aux/profile_spaces.h
 @@ -0,0 +1,13 @@

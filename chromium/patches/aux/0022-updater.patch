@@ -1,6 +1,6 @@
 diff --git a/chrome/browser/aux_sparkle_updater.h b/chrome/browser/aux_sparkle_updater.h
 new file mode 100644
-index 0000000000..2674cba89e
+index 0000000..2674cba
 --- /dev/null
 +++ b/chrome/browser/aux_sparkle_updater.h
 @@ -0,0 +1,20 @@
@@ -26,7 +26,7 @@ index 0000000000..2674cba89e
 +#endif  // CHROME_BROWSER_AUX_SPARKLE_UPDATER_H_
 diff --git a/chrome/browser/aux_sparkle_updater.mm b/chrome/browser/aux_sparkle_updater.mm
 new file mode 100644
-index 0000000000..37e2e0ee6d
+index 0000000..37e2e0e
 --- /dev/null
 +++ b/chrome/browser/aux_sparkle_updater.mm
 @@ -0,0 +1,81 @@
@@ -113,7 +113,7 @@ index 0000000000..37e2e0ee6d
 +@end
 diff --git a/third_party/aux_sparkle/.gitignore b/third_party/aux_sparkle/.gitignore
 new file mode 100644
-index 0000000000..8a66c659c1
+index 0000000..8a66c65
 --- /dev/null
 +++ b/third_party/aux_sparkle/.gitignore
 @@ -0,0 +1,4 @@

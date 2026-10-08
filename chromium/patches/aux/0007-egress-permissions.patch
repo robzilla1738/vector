@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/predictors/network_hints_handler_impl.cc b/chrome/browser/predictors/network_hints_handler_impl.cc
-index f961084a96..9fda01df61 100644
+index f961084..9fda01d 100644
 --- a/chrome/browser/predictors/network_hints_handler_impl.cc
 +++ b/chrome/browser/predictors/network_hints_handler_impl.cc
 @@ -11,6 +11,10 @@
@@ -49,7 +49,7 @@ index f961084a96..9fda01df61 100644
    base::UnguessableToken network_restrictions_id =
        render_frame_host->GetNetworkRestrictionsID();
 diff --git a/chrome/browser/ssl/https_upgrades_interceptor.cc b/chrome/browser/ssl/https_upgrades_interceptor.cc
-index 6fff9bdd12..880ce030c2 100644
+index 6fff9bd..880ce03 100644
 --- a/chrome/browser/ssl/https_upgrades_interceptor.cc
 +++ b/chrome/browser/ssl/https_upgrades_interceptor.cc
 @@ -11,6 +11,7 @@
@@ -93,10 +93,10 @@ index 6fff9bdd12..880ce030c2 100644
    // HTTP interstitial on fallback.
 diff --git a/chrome/browser/ui/aux/egress_controller.cc b/chrome/browser/ui/aux/egress_controller.cc
 new file mode 100644
-index 0000000000..a9ebf9fa24
+index 0000000..8de01a3
 --- /dev/null
 +++ b/chrome/browser/ui/aux/egress_controller.cc
-@@ -0,0 +1,2009 @@
+@@ -0,0 +1,2321 @@
 +// Copyright 2026 The Aux Authors
 +#include "chrome/browser/ui/aux/egress_controller.h"
 +#include <limits>
@@ -121,6 +121,10 @@ index 0000000000..a9ebf9fa24
 +#include "chrome/browser/ui/aux/native_creator_close_receipt.h"
 +#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 +#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_group_model.h"
++#include "components/tabs/public/tab_group.h"
++#include "components/tab_groups/tab_group_color.h"
++#include "components/tab_groups/tab_group_visual_data.h"
 +#include "chrome/browser/ui/tabs/tab_enums.h"
 +#include "content/public/browser/navigation_handle.h"
 +#include "chrome/browser/ui/aux/page_identity.h"
@@ -128,6 +132,7 @@ index 0000000000..a9ebf9fa24
 +#include "chrome/browser/ui/aux/tab_catalog.h"
 +#include "content/public/browser/browser_thread.h"
 +#include "content/public/browser/document_user_data.h"
++#include "content/public/browser/devtools_agent_host.h"
 +#include "content/public/browser/render_frame_host.h"
 +#include "content/public/browser/render_widget_host_view.h"
 +#include "content/public/browser/render_process_host.h"
@@ -233,6 +238,8 @@ index 0000000000..a9ebf9fa24
 +struct EgressController::PageState {
 +  bool guarded = false;
 +  bool person_controlled = false;
++  content::WeakDocumentPtr human_session_document;
++  content::WeakDocumentPtr returned_person_read_document;
 +  std::string control_generation = base::UnguessableToken::Create().ToString();
 +  content::WeakDocumentPtr document;
 +  base::DictValue lease;
@@ -277,6 +284,8 @@ index 0000000000..a9ebf9fa24
 +  std::string task_id;
 +  int task_revision;
 +  content::StoragePartitionConfig config;
++  bool session = false;
++  std::map<int, tab_groups::TabGroupId> groups;
 +  std::vector<std::string> ancestry;
 +  std::set<std::string> terminal_ancestors;
 +  std::vector<base::WeakPtr<content::WebContents>> registered_pages;
@@ -377,12 +386,13 @@ index 0000000000..a9ebf9fa24
 +std::pair<std::string, content::StoragePartitionConfig>
 +EgressController::ReserveIsolation(const std::string& run_id,
 +                                   const std::string& task_id,
-+                                   int task_revision) {
++                                   int task_revision,
++                                   bool session) {
 +  auto it = isolations_by_run_.find(run_id);
 +  if (it != isolations_by_run_.end()) {
 +    const auto& isolation = *it->second;
 +    if (isolation.task_id != task_id ||
-+        isolation.task_revision != task_revision) {
++        isolation.task_revision != task_revision || isolation.session != session) {
 +      return {};
 +    }
 +    return {isolation.id, isolation.config};
@@ -391,8 +401,8 @@ index 0000000000..a9ebf9fa24
 +    return {};
 +  }
 +  const std::string id = base::UnguessableToken::Create().ToString();
-+  return {id, content::StoragePartitionConfig::Create(profile_, "aux", id,
-+                                                       true)};
++  return {id, session ? content::StoragePartitionConfig::CreateDefault(profile_)
++                      : content::StoragePartitionConfig::Create(profile_, "aux", id, true)};
 +}
 +bool EgressController::RegisterIsolation(content::WebContents* page,
 +                                         const std::string& isolation_id,
@@ -400,7 +410,8 @@ index 0000000000..a9ebf9fa24
 +                                         const std::string& task_id,
 +                                         int task_revision,
 +                                         const std::vector<std::string>& ancestry,
-+                                         uint64_t connection_generation) {
++                                         uint64_t connection_generation,
++                                         bool session) {
 +  if (!connection_generation || connection_generation != admitted_runtime_generation_ || ancestry.empty() || ancestry.size() > 32 ||
 +      ancestry.front() != run_id ||
 +      std::set<std::string>(ancestry.begin(), ancestry.end()).size() != ancestry.size() ||
@@ -411,8 +422,9 @@ index 0000000000..a9ebf9fa24
 +    LOG(ERROR) << "AUX_ISOLATION_DIAG reason=missing_frame_or_scope";
 +    return false;
 +  }
-+  const auto expected = content::StoragePartitionConfig::Create(
-+      profile_, "aux", isolation_id, true);
++  const auto expected = session
++      ? content::StoragePartitionConfig::CreateDefault(profile_)
++      : content::StoragePartitionConfig::Create(profile_, "aux", isolation_id, true);
 +  if (!frame->GetSiteInstance()) {
 +    LOG(ERROR) << "AUX_ISOLATION_DIAG reason=no_site_instance";
 +    return false;
@@ -440,12 +452,14 @@ index 0000000000..a9ebf9fa24
 +    isolation->task_id = task_id;
 +    isolation->task_revision = task_revision;
 +    isolation->config = expected;
++    isolation->session = session;
 +    isolation->ancestry = ancestry;
 +    isolation->connection_generation = connection_generation;
 +    isolation->runtime_owner_incarnation = runtime_owner_incarnation_;
 +    if (!RunIntentCurrent(*isolation)) return false;
 +    it = isolations_by_run_.emplace(run_id, std::move(isolation)).first;
-+  } else if (it->second->id != isolation_id ||
++  } else if (it->second->session != session ||
++             it->second->config != expected || it->second->id != isolation_id ||
 +             it->second->task_id != task_id ||
 +             it->second->task_revision != task_revision ||
 +             it->second->ancestry != ancestry ||
@@ -463,15 +477,64 @@ index 0000000000..a9ebf9fa24
 +  std::erase_if(it->second->registered_pages, [](const auto& original) { return !original; });
 +  it->second->registered_pages.push_back(page->GetWeakPtr());
 +  isolation_run_by_page_[page_id] = run_id;
++  PageIdentity::FromWebContents(page)->set_runtime_work_retired(false);
 +  auto& state = pages_[page_id];
 +  if (!state) {
 +    state = std::make_unique<PageState>();
 +  }
 +  state->guarded = true;
++  state->returned_person_read_document = {};
 +  page->SetUserData(&kIsolationObserverKey,
 +                    std::make_unique<IsolationObserver>(page, GetWeakPtr(), page_id));
 +  authority_observers_.Notify();
 +  return true;
++}
++base::DictValue EgressController::AdoptSessionPage(
++    content::WebContents* page, const base::DictValue& params,
++    uint64_t connection_generation, base::RepeatingCallback<bool()> original_current) {
++  const auto* source = params.FindDict("source");
++  const auto* chain = params.FindList("ancestry");
++  const std::string run_id = String(params, "runId");
++  const std::string token = String(params, "token");
++  const int revision = params.FindInt("taskRevision").value_or(-1);
++  if (!page || page->GetBrowserContext() != profile_ || !original_current ||
++      !original_current.Run() || !source || !chain || run_id.empty() ||
++      token.empty() || revision < 0)
++    return Fault("Original session admission is unavailable");
++  auto before = Context(base::DictValue().Set("tabId", String(*source, "tabId"))
++      .Set("expectedUrl", String(*source, "expectedUrl")));
++  const auto* context = before.FindDict("result");
++  if (!context || context->FindBool("personControlled").value_or(true) ||
++      String(*context, "documentToken") != String(*source, "documentToken"))
++    return Fault("Original session document changed");
++  const std::string page_id = String(*source, "tabId");
++  std::vector<std::string> ancestry;
++  for (const auto& value : *chain) {
++    if (!value.is_string()) return Fault("Original ancestry is invalid");
++    ancestry.push_back(value.GetString());
++  }
++  if (context->FindDict("isolation")) {
++    const auto borrowed = borrowed_sessions_.find(page_id);
++    const auto* isolation = IsolationForPage(page_id, page->GetPrimaryMainFrame());
++    if (borrowed == borrowed_sessions_.end() || borrowed->second.first != token ||
++        !isolation || !isolation->session || isolation->run_id != run_id ||
++        isolation->task_id != String(params, "taskId") || isolation->task_revision != revision ||
++        isolation->ancestry != ancestry || !RunIntentCurrent(*isolation))
++      return Fault("Another original run owns this session page");
++    return before;
++  }
++  auto [isolation_id, partition] = ReserveIsolation(run_id, String(params, "taskId"), revision, true);
++  if (isolation_id.empty() || !partition.is_default() || !original_current.Run() ||
++      !RegisterIsolation(page, isolation_id, run_id, String(params, "taskId"), revision,
++                         ancestry, connection_generation, true))
++    return Fault("Original Profile partition admission failed");
++  borrowed_sessions_.emplace(page_id, std::make_pair(token, std::move(original_current)));
++  pages_[page_id]->human_session_document =
++      page->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  // The earlier plain-tab readback did not contain the newly accepted scope.
++  pages_[page_id]->acknowledged_context.clear();
++  return Context(base::DictValue().Set("tabId", page_id)
++      .Set("expectedUrl", String(*source, "expectedUrl")));
 +}
 +base::DictValue EgressController::RegisterCreatorPage(
 +    content::WebContents* page, int64_t navigation_id,
@@ -561,14 +624,22 @@ index 0000000000..a9ebf9fa24
 +  creator.document = document;
 +  creator.control_generation = state->second->control_generation;
 +  creator.deadline = original_deadline;
-+  creator.proof = base::DictValue().Set("creationId", creator.creation_id)
-+      .Set("receiptId", base::UnguessableToken::Create().ToString()).Set("phase", phase)
-+      .Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe()).Set("pageId", page_id)
-+      .Set("documentToken", EgressDocument::GetOrCreateForCurrentDocument(frame)->token)
-+      .Set("runId", isolation->run_id).Set("taskRevision", isolation->task_revision)
-+      .Set("isolationId", isolation->id).Set("controlGeneration", creator.control_generation)
-+      .Set("connectionGeneration", static_cast<double>(creator.connection_generation))
-+      .Set("expiresAt", expires_at);
++  creator.proof =
++      base::DictValue()
++          .Set("creationId", creator.creation_id)
++          .Set("receiptId", base::UnguessableToken::Create().ToString())
++          .Set("phase", phase)
++          .Set("profileId", AuxRuntimeHost::ProfileId(profile_))
++          .Set("pageId", page_id)
++          .Set("documentToken",
++               EgressDocument::GetOrCreateForCurrentDocument(frame)->token)
++          .Set("runId", isolation->run_id)
++          .Set("taskRevision", isolation->task_revision)
++          .Set("isolationId", isolation->id)
++          .Set("controlGeneration", creator.control_generation)
++          .Set("connectionGeneration",
++               static_cast<double>(creator.connection_generation))
++          .Set("expiresAt", expires_at);
 +  if (!isolation->task_id.empty()) creator.proof.Set("taskId", isolation->task_id);
 +}
 +void EgressController::WaitCreatorReady(const std::string& page_id,
@@ -764,7 +835,7 @@ index 0000000000..a9ebf9fa24
 +      frame->GetStoragePartition()->GetConfig().in_memory()
 +      ? "memory-fixed" : "default";
 +  LOG(ERROR) << "AUX_ISOLATION event=" << ReceiptField(event)
-+             << " profile=" << ReceiptField(profile_->GetPath().BaseName().AsUTF8Unsafe())
++             << " profile=" << ReceiptField(AuxRuntimeHost::ProfileId(profile_))
 +             << " run=" << ReceiptField(run_id)
 +             << " page=" << ReceiptField(page_id)
 +             << " isolation=" << ReceiptField(isolation_id)
@@ -793,8 +864,8 @@ index 0000000000..a9ebf9fa24
 +}
 +base::DictValue EgressController::RetireTerminalRun(const std::string& run_id,
 +    uint64_t generation) {
-+  if (!generation || generation != admitted_runtime_generation_ || run_id.empty() ||
-+      run_id.size() > 160 || profile_->IsOffTheRecord())
++  if (!generation || generation != admitted_runtime_generation_ ||
++      run_id.empty() || run_id.size() > 160)
 +    return Fault("Original terminal run connection is unavailable");
 +  for (auto& [id, isolation] : isolations_by_run_) {
 +    if (isolation->connection_generation == generation &&
@@ -802,7 +873,18 @@ index 0000000000..a9ebf9fa24
 +        std::ranges::find(isolation->ancestry, run_id) != isolation->ancestry.end())
 +      isolation->terminal_ancestors.insert(run_id);
 +  }
++  std::vector<std::string> released;
++  for (const auto& [page_id, original] : borrowed_sessions_) {
++    const auto owner = isolation_run_by_page_.find(page_id);
++    const auto isolation = owner == isolation_run_by_page_.end() ? isolations_by_run_.end()
++        : isolations_by_run_.find(owner->second);
++    if (isolation != isolations_by_run_.end() &&
++        std::ranges::find(isolation->second->ancestry, run_id) != isolation->second->ancestry.end())
++      released.push_back(page_id);
++  }
++  for (const auto& page_id : released) ReleaseIsolation(page_id);
 +  PruneTerminalRegistrations();
++  authority_observers_.Notify();
 +  return Result(base::DictValue().Set("accepted", true));
 +}
 +void EgressController::PruneTerminalRegistrations() {
@@ -832,8 +914,8 @@ index 0000000000..a9ebf9fa24
 +}
 +base::DictValue EgressController::CheckRunResume(const std::string& run_id,
 +    uint64_t generation) const {
-+  if (!generation || generation != admitted_runtime_generation_ || run_id.empty() ||
-+      run_id.size() > 160 || profile_->IsOffTheRecord() || owner_mutations_.pending() ||
++  if (!generation || generation != admitted_runtime_generation_ ||
++      run_id.empty() || run_id.size() > 160 || owner_mutations_.pending() ||
 +      HasStoppedRunIntent(run_id, generation))
 +    return Fault("Original local-person run resume is required");
 +  for (const auto& [id, isolation] : isolations_by_run_) {
@@ -862,8 +944,10 @@ index 0000000000..a9ebf9fa24
 +}
 +bool EgressController::RetireRegisteredRunImpl(const std::string& run_id,
 +    uint64_t generation) {
-+  if (!generation || generation != admitted_runtime_generation_ || run_id.empty() || run_id.size() > 160 || profile_->IsOffTheRecord() ||
-+      (!run_intents_.contains(run_id) && run_intents_.size() >= 256)) return false;
++  if (!generation || generation != admitted_runtime_generation_ ||
++      run_id.empty() || run_id.size() > 160 ||
++      (!run_intents_.contains(run_id) && run_intents_.size() >= 256))
++    return false;
 +  auto intent = std::make_unique<RunIntent>();
 +  intent->generation = generation;
 +  intent->runtime_owner_incarnation = runtime_owner_incarnation_;
@@ -966,7 +1050,7 @@ index 0000000000..a9ebf9fa24
 +  RetireRegisteredRun(resume->run_id, resume->generation);
 +  return false;
 +}
-+void EgressController::ReleaseIsolation(const std::string& page_id) {
++void EgressController::ReleaseIsolation(std::string page_id) {
 +  auto creator = creators_.find(page_id);
 +  base::OnceCallback<void(bool)> creator_ready;
 +  if (creator != creators_.end()) {
@@ -986,7 +1070,36 @@ index 0000000000..a9ebf9fa24
 +  if (it == isolations_by_run_.end()) return;
 +  const std::string isolation_id = it->second->id;
 +  const auto config = it->second->config;
-+  pages_.erase(page_id);
++  const bool borrowed = borrowed_sessions_.erase(page_id) != 0;
++  if (borrowed) {
++    std::erase_if(it->second->registered_pages, [&](const auto& original) {
++      const auto* identity = original ? PageIdentity::FromWebContents(original.get()) : nullptr;
++      if (identity && identity->id() == page_id) {
++        original->RemoveUserData(&kIsolationObserverKey);
++        return true;
++      }
++      return !original;
++    });
++  }
++  if (borrowed) {
++    const auto state = pages_.find(page_id);
++    if (state != pages_.end()) {
++      // Preserve an actual human Take over; only borrowed task authority retires.
++      state->second->guarded = state->second->person_controlled;
++      // Only this exact borrowed document returns to the fixed person reader.
++      // Its network tombstone remains protected against late task requests.
++      state->second->returned_person_read_document = state->second->document;
++      state->second->control_generation = base::UnguessableToken::Create().ToString();
++      state->second->acknowledged_context.clear();
++      state->second->lease.clear();
++      state->second->navigation_transition_id.clear();
++      state->second->navigation_transition_document = {};
++      state->second->navigation_transition_expiry = 0;
++      state->second->navigation_transition_deadline = {};
++    }
++  } else {
++    pages_.erase(page_id);
++  }
 +  auto weak = weak_factory_.GetWeakPtr();
 +  CancelChecks({page_id}, false);
 +  if (!weak) return;
@@ -1007,6 +1120,12 @@ index 0000000000..a9ebf9fa24
 +      base::BindOnce(&EgressController::PruneTerminalRegistrations, weak));
 +  authority_observers_.Notify();
 +  if (!weak) return;
++  // A session run owns its tabs and authority, never the Profile storage.
++  if (config.is_default()) {
++    IsolationReceipt("released", run_id, page_id, isolation_id, nullptr,
++                     "profile_storage_retained");
++    return;
++  }
 +  auto* partition = profile_->GetStoragePartition(config, false);
 +  if (!partition) {
 +    IsolationReceipt("released", run_id, page_id, isolation_id, nullptr,
@@ -1023,14 +1142,173 @@ index 0000000000..a9ebf9fa24
 +                           GetWeakPtr(), "released", run_id, page_id,
 +                           isolation_id, nullptr, "clear_completed"));
 +}
++bool EgressController::GroupAgentPage(content::WebContents* page,
++                                      BrowserWindowInterface* owner) {
++  if (!page || !owner || owner->GetProfile() != profile_) return false;
++  const auto* identity = PageIdentity::FromWebContents(page);
++  const auto* isolation = identity
++      ? IsolationForPage(identity->id(), page->GetPrimaryMainFrame()) : nullptr;
++  auto* model = owner->GetTabStripModel();
++  if (!identity || !identity->runtime_owned() || !isolation ||
++      !RunIntentCurrent(*isolation) || !model || !model->SupportsTabGroups())
++    return false;
++  const int index = model->GetIndexOfWebContents(page);
++  if (index == TabStripModel::kNoTab) return false;
++  const auto run_id = isolation->run_id;
++  const auto isolation_id = isolation->id;
++  const int owner_id = owner->GetSessionID().id();
++  auto original = GetWeakPtr();
++  auto original_page = page->GetWeakPtr();
++  const auto original_document = page->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  auto original_owner = owner->GetWeakPtr();
++  const auto existing = isolation->groups.find(owner_id);
++  const bool reuse = existing != isolation->groups.end() &&
++      model->group_model()->ContainsTabGroup(existing->second);
++  const auto group = reuse ? existing->second : model->AddToNewGroup({index});
++  if (reuse) model->AddToExistingGroup({index}, group, true);
++  // Group notifications may synchronously close or move the original tab.
++  if (!original || !original_page || !original_owner) return false;
++  auto current = isolations_by_run_.find(run_id);
++  auto* current_model = original_owner->GetTabStripModel();
++  const auto* current_identity = PageIdentity::FromWebContents(original_page.get());
++  const int current_index = current_model
++      ? current_model->GetIndexOfWebContents(original_page.get()) : TabStripModel::kNoTab;
++  if (current == isolations_by_run_.end() || current->second->id != isolation_id ||
++      !RunIntentCurrent(*current->second) || !current_identity ||
++      !current_identity->runtime_owned() || current_index == TabStripModel::kNoTab ||
++      !current_model->SupportsTabGroups() ||
++      current_model->GetTabGroupForTab(current_index) != group ||
++      IsolationForPage(current_identity->id(), original_page->GetPrimaryMainFrame()) != current->second.get())
++    return false;
++  const std::string current_page_id = current_identity->id();
++  current->second->groups.insert_or_assign(owner_id, group);
++  if (!reuse) {
++    current_model->group_model()->GetTabGroup(group)->SetVisualData(
++        tab_groups::TabGroupVisualData(u"Agent", tab_groups::TabGroupColorId::kBlue));
++  }
++  if (!original || !original_page || !original_owner ||
++      original_document.AsRenderFrameHostIfValid() != original_page->GetPrimaryMainFrame())
++    return false;
++  auto final = original->isolations_by_run_.find(run_id);
++  auto* final_model = original_owner->GetTabStripModel();
++  const int final_index = final_model ? final_model->GetIndexOfWebContents(original_page.get()) : TabStripModel::kNoTab;
++  return final != original->isolations_by_run_.end() &&
++      final->second->id == isolation_id && original->RunIntentCurrent(*final->second) &&
++      final_index != TabStripModel::kNoTab && final_model->SupportsTabGroups() &&
++      final_model->GetTabGroupForTab(final_index) == group &&
++      original->IsolationForPage(current_page_id, original_document.AsRenderFrameHostIfValid()) == final->second.get();
++}
++bool EgressController::AllowsProfileCookies(const EgressRequestContext& context) const {
++  auto owner = pages_.find(context.page_id);
++  auto* frame = context.document.AsRenderFrameHostIfValid();
++  const auto* isolation = frame ? IsolationForPage(context.page_id, frame) : nullptr;
++  return owner != pages_.end() && isolation && isolation->session &&
++      isolation->config.is_default() && RunIntentCurrent(*isolation) &&
++      Current(context, owner->second->lease);
++}
 +bool EgressController::IsIsolatedPage(content::WebContents* page) const {
 +  const auto* identity = page ? PageIdentity::FromWebContents(page) : nullptr;
 +  return identity && isolation_run_by_page_.contains(identity->id());
 +}
++bool EgressController::CanDiscardPage(content::WebContents* page) const {
++  if (!page || page->GetBrowserContext() != profile_ ||
++      owner_mutations_.pending() || page->IsBeingCaptured()) {
++    return false;
++  }
++  if (content::DevToolsAgentHost::HasFor(page) &&
++      content::DevToolsAgentHost::GetOrCreateFor(page)->IsAttached()) {
++    return false;
++  }
++  if (auto host = content::DevToolsAgentHost::GetForTab(page);
++      host && host->IsAttached()) {
++    return false;
++  }
++  const auto* identity = PageIdentity::FromWebContents(page);
++  const std::string page_id = identity ? identity->id() : std::string();
++  const auto state = pages_.find(page_id);
++  if (state != pages_.end() &&
++      (!state->second->lease.empty() ||
++       !state->second->acknowledged_context.empty() ||
++       !state->second->navigation_transition_id.empty())) {
++    return false;
++  }
++  if (std::ranges::any_of(pending_,
++                          [&](const auto& request) {
++                            return request->context.page_id == page_id;
++                          }) ||
++      std::ranges::any_of(in_flight_,
++                          [&](const auto& request) {
++                            return request.second->context.page_id == page_id;
++                          }) ||
++      std::ranges::any_of(person_resumes_, [&](const auto& resume) {
++        return resume.second->page_id == page_id;
++      })) {
++    return false;
++  }
++  const auto owner = isolation_run_by_page_.find(page_id);
++  if (owner != isolation_run_by_page_.end()) {
++    const auto isolation = isolations_by_run_.find(owner->second);
++    if (isolation == isolations_by_run_.end()) {
++      return false;
++    }
++    const auto& registration = *isolation->second;
++    // Chromium recreates a discarded tab in the Profile's default partition.
++    // A private task tab must retain its original partition and cleanup owner.
++    if (!registration.session || !registration.config.is_default() ||
++        registration.ancestry.empty() ||
++        registration.terminal_ancestors.size() !=
++            registration.ancestry.size() ||
++        !std::ranges::any_of(
++            registration.registered_pages,
++            [page](const auto& original) { return original.get() == page; })) {
++      return false;
++    }
++    for (const auto& [id, resume] : run_resumes_) {
++      if (std::ranges::find(registration.ancestry, resume->run_id) !=
++          registration.ancestry.end()) {
++        return false;
++      }
++    }
++    const auto creator = creators_.find(page_id);
++    return creator == creators_.end() ||
++           (!creator->second->closing && !creator->second->ready &&
++            !creator->second->ready_timer.IsRunning());
++  }
++  if (identity && identity->runtime_owned()) {
++    return identity->runtime_work_retired();
++  }
++  if (state != pages_.end() && state->second->guarded) {
++    return false;
++  }
++  auto* frame = page->GetPrimaryMainFrame();
++  const auto* document =
++      frame ? EgressDocument::GetForCurrentDocument(frame) : nullptr;
++  if (document && document->protected_document &&
++      (state == pages_.end() || state->second->returned_person_read_document
++                                        .AsRenderFrameHostIfValid() != frame)) {
++    return false;
++  }
++  auto* opener = page;
++  for (size_t depth = 0; depth < 64; ++depth) {
++    opener = opener->GetFirstWebContentsInLiveOriginalOpenerChain();
++    if (!opener) {
++      return true;
++    }
++    const auto* opener_identity = PageIdentity::FromWebContents(opener);
++    if (!opener_identity) {
++      continue;
++    }
++    const auto opener_state = pages_.find(opener_identity->id());
++    if (opener_state != pages_.end() && opener_state->second->guarded) {
++      return false;
++    }
++  }
++  return false;
++}
 +bool EgressController::PersonReadPage(content::WebContents* page) {
 +  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 +  if (!page || page->GetBrowserContext() != profile_ ||
-+      profile_->IsOffTheRecord() || owner_mutations_.pending())
++      owner_mutations_.pending())
 +    return false;
 +  const auto* identity = PageIdentity::FromWebContents(page);
 +  auto* frame = page->GetPrimaryMainFrame();
@@ -1038,8 +1316,13 @@ index 0000000000..a9ebf9fa24
 +  if (!identity || identity->runtime_owned() || !LiveFrame(frame) ||
 +      !catalog || catalog->FindPage(identity->id()) != page ||
 +      isolation_run_by_page_.contains(identity->id()) ||
-+      !page->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ||
-+      IsProtected({frame->GetWeakDocumentPtr(), identity->id(), "person-read"}))
++      !page->GetLastCommittedURL().SchemeIsHTTPOrHTTPS())
++    return false;
++  const auto returned = pages_.find(identity->id());
++  const bool returned_document = returned != pages_.end() &&
++      returned->second->returned_person_read_document.AsRenderFrameHostIfValid() == frame;
++  if (IsProtected({frame->GetWeakDocumentPtr(), identity->id(), "person-read"}) &&
++      !returned_document)
 +    return false;
 +  // An ordinary popup cannot borrow person admission from a task opener,
 +  // including the interval before its first installed request lease.
@@ -1094,6 +1377,8 @@ index 0000000000..a9ebf9fa24
 +    const std::string& page_id,
 +    content::RenderFrameHost* frame) const {
 +  auto owner = isolation_run_by_page_.find(page_id);
++  const auto borrowed = borrowed_sessions_.find(page_id);
++  if (borrowed != borrowed_sessions_.end() && !borrowed->second.second.Run()) return nullptr;
 +  if (owner == isolation_run_by_page_.end() || !frame ||
 +      !frame->GetSiteInstance()) {
 +    return nullptr;
@@ -1127,7 +1412,7 @@ index 0000000000..a9ebf9fa24
 +      base::DictValue()
 +          .Set("controlGeneration", state->control_generation)
 +          .Set("personControlled", state->person_controlled)
-+          .Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe())
++          .Set("profileId", AuxRuntimeHost::ProfileId(profile_))
 +          .Set("tabId", page_id)
 +          .Set("frameId", FrameId(frame))
 +          .Set("documentToken",
@@ -1146,8 +1431,9 @@ index 0000000000..a9ebf9fa24
 +      scope.Set("taskId", isolation->task_id);
 +    }
 +    scope.Set("taskRevision", isolation->task_revision);
-+    scope.Set("inMemory", true);
-+    scope.Set("cookies", "empty");
++    scope.Set("mode", isolation->session ? "session" : "private");
++    scope.Set("inMemory", !isolation->session);
++    scope.Set("cookies", isolation->session ? "profile" : "empty");
 +    context.Set("isolation", std::move(scope));
 +  }
 +  if (isolation && !state->acknowledged_context.empty() &&
@@ -1203,8 +1489,7 @@ index 0000000000..a9ebf9fa24
 +  const double now = base::Time::Now().InMillisecondsFSinceUnixEpoch();
 +  const double expires = lease->FindDouble("expiresAt").value_or(0);
 +  const double issued = lease->FindDouble("issuedAt").value_or(0);
-+  if (String(*lease, "profileId") !=
-+          profile_->GetPath().BaseName().AsUTF8Unsafe() ||
++  if (String(*lease, "profileId") != AuxRuntimeHost::ProfileId(profile_) ||
 +      String(*lease, "frameId") != FrameId(frame) ||
 +      String(*lease, "documentToken") != document->token ||
 +      String(*lease, "sourceOrigin") != Origin(frame) ||
@@ -1280,6 +1565,7 @@ index 0000000000..a9ebf9fa24
 +    }
 +  }
 +  state->guarded = true;
++  state->returned_person_read_document = {};
 +  document->protected_document = true;
 +  state->document = frame->GetWeakDocumentPtr();
 +  state->lease = lease->Clone();
@@ -1311,8 +1597,7 @@ index 0000000000..a9ebf9fa24
 +  const auto* lease = params.FindDict("lease");
 +  if (!lease || String(*lease, "leaseId").empty() ||
 +      String(*lease, "controlGeneration").empty() ||
-+      String(*lease, "profileId") !=
-+          profile_->GetPath().BaseName().AsUTF8Unsafe()) {
++      String(*lease, "profileId") != AuxRuntimeHost::ProfileId(profile_)) {
 +    return Fault("Missing exact original browser authority retirement");
 +  }
 +  const std::string page_id = String(*lease, "tabId");
@@ -1391,17 +1676,19 @@ index 0000000000..a9ebf9fa24
 +  NativeCdpRetirementReceipt receipt;
 +  receipt.original_lease = state->lease.Clone();
 +  const auto retired_generation = base::UnguessableToken::Create().ToString();
-+  receipt.original_scope = base::DictValue()
-+      .Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe())
-+      .Set("tabId", page_id)
-+      .Set("isolationId", isolation->id)
-+      .Set("runId", isolation->run_id)
-+      .Set("taskRevision", isolation->task_revision)
-+      .Set("frameId", FrameId(frame))
-+      .Set("documentToken", EgressDocument::GetOrCreateForCurrentDocument(frame)->token)
-+      .Set("sourceOrigin", Origin(frame))
-+      .Set("controlGeneration", state->control_generation)
-+      .Set("retiredControlGeneration", retired_generation);
++  receipt.original_scope =
++      base::DictValue()
++          .Set("profileId", AuxRuntimeHost::ProfileId(profile_))
++          .Set("tabId", page_id)
++          .Set("isolationId", isolation->id)
++          .Set("runId", isolation->run_id)
++          .Set("taskRevision", isolation->task_revision)
++          .Set("frameId", FrameId(frame))
++          .Set("documentToken",
++               EgressDocument::GetOrCreateForCurrentDocument(frame)->token)
++          .Set("sourceOrigin", Origin(frame))
++          .Set("controlGeneration", state->control_generation)
++          .Set("retiredControlGeneration", retired_generation);
 +  if (!isolation->task_id.empty())
 +    receipt.original_scope.Set("taskId", isolation->task_id);
 +  state->cdp_retirement_receipt = NativeCdpRetirementReceipt{
@@ -1433,7 +1720,7 @@ index 0000000000..a9ebf9fa24
 +    return !row.second->consumed && row.second->deadline <= now;
 +  });
 +  const auto it = pages_.find(page_id);
-+  if (!connection_generation || profile_->IsOffTheRecord() || owner_mutations_.pending() ||
++  if (!connection_generation || owner_mutations_.pending() ||
 +      person_resumes_.size() >= 256 || it == pages_.end() ||
 +      !it->second->person_controlled || !it->second->lease.empty() ||
 +      !it->second->cdp_retirement_receipt)
@@ -1473,9 +1760,10 @@ index 0000000000..a9ebf9fa24
 +    uint64_t connection_generation) {
 +  auto ticket = person_resumes_.find(ticket_id);
 +  auto state = pages_.find(page_id);
-+  if (ticket == person_resumes_.end() || ticket->second->page_id != page_id || state == pages_.end() ||
-+      !connection_generation || profile_->IsOffTheRecord() || owner_mutations_.pending() ||
-+      ticket->second->consumed || ticket->second->deadline <= base::TimeTicks::Now() ||
++  if (ticket == person_resumes_.end() || ticket->second->page_id != page_id ||
++      state == pages_.end() || !connection_generation ||
++      owner_mutations_.pending() || ticket->second->consumed ||
++      ticket->second->deadline <= base::TimeTicks::Now() ||
 +      ticket->second->connection_generation != connection_generation ||
 +      ticket->second->runtime_owner_incarnation != runtime_owner_incarnation_ ||
 +      ticket->second->owner_generation != person_read_retirement_generation_ ||
@@ -1590,7 +1878,7 @@ index 0000000000..a9ebf9fa24
 +  auto* frame = current_document.AsRenderFrameHostIfValid();
 +  if (!LiveFrame(frame) || owner_mutations_.pending() ||
 +      String(original_lease, "profileId") !=
-+          profile_->GetPath().BaseName().AsUTF8Unsafe())
++          AuxRuntimeHost::ProfileId(profile_))
 +    return false;
 +  const std::string page_id = String(original_lease, "tabId");
 +  auto* catalog = TabCatalog::GetForProfile(profile_);
@@ -1700,6 +1988,9 @@ index 0000000000..a9ebf9fa24
 +void EgressController::Disconnect() {
 +  retired_runtime_generation_ = std::max(retired_runtime_generation_, admitted_runtime_generation_);
 +  admitted_runtime_generation_ = 0;
++  std::vector<std::string> borrowed;
++  for (const auto& [page_id, original] : borrowed_sessions_) borrowed.push_back(page_id);
++  for (const auto& page_id : borrowed) ReleaseIsolation(page_id);
 +  person_resumes_.clear();
 +  run_resumes_.clear();
 +  run_intents_.clear();
@@ -1764,6 +2055,26 @@ index 0000000000..a9ebf9fa24
 +  for (auto& callback : callbacks) {
 +    std::move(callback).Run(false);
 +  }
++}
++bool EgressController::CanPresentHumanSessionDocument(
++    const EgressRequestContext& context) {
++  if (context.ambiguous)
++    return false;
++  const auto state = pages_.find(context.page_id);
++  auto* frame = context.document.AsRenderFrameHostIfValid();
++  if (state == pages_.end() || !frame ||
++      state->second->human_session_document.AsRenderFrameHostIfValid() != frame)
++    return false;
++  auto* page = content::WebContents::FromRenderFrameHost(frame);
++  const auto* identity = page ? PageIdentity::FromWebContents(page) : nullptr;
++  if (!page || !frame->GetSiteInstance() ||
++      !frame->GetStoragePartition()->GetConfig().is_default() ||
++      !frame->GetSiteInstance()->GetSecurityPrincipal()
++           .GetStoragePartitionConfig().is_default())
++    return false;
++  return page->GetBrowserContext() == profile_ && identity &&
++      identity->id() == context.page_id && !identity->runtime_owned() &&
++      page->GetPrimaryMainFrame() == frame;
 +}
 +bool EgressController::IsProtected(const EgressRequestContext& context) {
 +  if (context.ambiguous) {
@@ -1960,7 +2271,8 @@ index 0000000000..a9ebf9fa24
 +    std::move(callback).Run(false);
 +    return;
 +  }
-+  if (final_headers && headers.HasHeader("Cookie")) {
++  if (final_headers && headers.HasHeader("Cookie") &&
++      !AllowsProfileCookies(context)) {
 +    Receipt(request_id, context.kind, phase, "uninspectable_cookie", false);
 +    std::move(callback).Run(false);
 +    return;
@@ -2108,10 +2420,10 @@ index 0000000000..a9ebf9fa24
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/egress_controller.h b/chrome/browser/ui/aux/egress_controller.h
 new file mode 100644
-index 0000000000..1e2b5d83c1
+index 0000000..61c102f
 --- /dev/null
 +++ b/chrome/browser/ui/aux/egress_controller.h
-@@ -0,0 +1,260 @@
+@@ -0,0 +1,273 @@
 +// Copyright 2026 The Aux Authors
 +#ifndef CHROME_BROWSER_UI_AUX_EGRESS_CONTROLLER_H_
 +#define CHROME_BROWSER_UI_AUX_EGRESS_CONTROLLER_H_
@@ -2209,14 +2521,22 @@ index 0000000000..1e2b5d83c1
 +  std::pair<std::string, content::StoragePartitionConfig> ReserveIsolation(
 +      const std::string& run_id,
 +      const std::string& task_id,
-+      int task_revision);
++      int task_revision,
++      bool session);
 +  bool RegisterIsolation(content::WebContents* page,
 +                         const std::string& isolation_id,
 +                         const std::string& run_id,
 +                         const std::string& task_id,
 +                         int task_revision,
 +                         const std::vector<std::string>& ancestry,
-+                         uint64_t connection_generation);
++                         uint64_t connection_generation,
++                         bool session);
++  base::DictValue AdoptSessionPage(content::WebContents* page,
++                                   const base::DictValue& params,
++                                   uint64_t connection_generation,
++                                   base::RepeatingCallback<bool()> original_current);
++  bool AllowsProfileCookies(const EgressRequestContext& context) const;
++  bool GroupAgentPage(content::WebContents* page, BrowserWindowInterface* owner);
 +  // Local owner ingress only; descendants are resolved from the immutable
 +  // authenticated isolation ancestry, never a caller-supplied page/child list.
 +  bool RetireRegisteredRun(const std::string& run_id, uint64_t generation);
@@ -2228,7 +2548,7 @@ index 0000000000..1e2b5d83c1
 +  base::DictValue ConsumeRunResume(const std::string& run_id,
 +      const std::string& ticket_id, uint64_t generation);
 +  bool FinishRunResume(const std::string& ticket_id, bool success);
-+  void ReleaseIsolation(const std::string& page_id);
++  void ReleaseIsolation(std::string page_id);
 +  void IsolationReceipt(const std::string& event,
 +                        const std::string& run_id,
 +                        const std::string& page_id,
@@ -2236,6 +2556,8 @@ index 0000000000..1e2b5d83c1
 +                        content::RenderFrameHost* frame,
 +                        const std::string& reason);
 +  bool IsIsolatedPage(content::WebContents* page) const;
++  // Discard eligibility only. Does not release authority or permit page access.
++  bool CanDiscardPage(content::WebContents* page) const;
 +  std::optional<NativePersonReadReceipt> CapturePersonRead(
 +      content::WebContents* page);
 +  bool MayReadPerson(const NativePersonReadReceipt& receipt);
@@ -2288,6 +2610,7 @@ index 0000000000..1e2b5d83c1
 +             bool final_headers,
 +             base::OnceCallback<void(bool)> callback);
 +  bool IsProtected(const EgressRequestContext& context);
++  bool CanPresentHumanSessionDocument(const EgressRequestContext& context);
 +  bool MayContinue(const EgressRequestContext& context);
 +  base::CallbackListSubscription ObserveAuthority(
 +      base::RepeatingClosure callback);
@@ -2348,6 +2671,8 @@ index 0000000000..1e2b5d83c1
 +  std::map<std::string, std::unique_ptr<PageState>> pages_;
 +  std::map<std::string, std::unique_ptr<PersonResume>> person_resumes_;
 +  std::map<std::string, std::unique_ptr<CreatorState>> creators_;
++  // Exact original WebUI owner remains authority for borrowed Profile tabs.
++  std::map<std::string, std::pair<std::string, base::RepeatingCallback<bool()>>> borrowed_sessions_;
 +  std::map<std::string, std::unique_ptr<Isolation>> isolations_by_run_;
 +  uint64_t admitted_runtime_generation_ = 0;
 +  std::string runtime_owner_incarnation_;
@@ -2374,7 +2699,7 @@ index 0000000000..1e2b5d83c1
 +#endif
 diff --git a/chrome/browser/ui/aux/egress_projection.cc b/chrome/browser/ui/aux/egress_projection.cc
 new file mode 100644
-index 0000000000..6cb34165eb
+index 0000000..6cb3416
 --- /dev/null
 +++ b/chrome/browser/ui/aux/egress_projection.cc
 @@ -0,0 +1,271 @@
@@ -2651,7 +2976,7 @@ index 0000000000..6cb34165eb
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/egress_projection.h b/chrome/browser/ui/aux/egress_projection.h
 new file mode 100644
-index 0000000000..1e7970ef98
+index 0000000..1e7970e
 --- /dev/null
 +++ b/chrome/browser/ui/aux/egress_projection.h
 @@ -0,0 +1,34 @@
@@ -2691,10 +3016,10 @@ index 0000000000..1e7970ef98
 +#endif
 diff --git a/chrome/browser/ui/aux/egress_url_loader.cc b/chrome/browser/ui/aux/egress_url_loader.cc
 new file mode 100644
-index 0000000000..ed06192133
+index 0000000..a1e7753
 --- /dev/null
 +++ b/chrome/browser/ui/aux/egress_url_loader.cc
-@@ -0,0 +1,509 @@
+@@ -0,0 +1,583 @@
 +// Copyright 2026 The Aux Authors
 +#include <algorithm>
 +#include <limits>
@@ -2784,12 +3109,32 @@ index 0000000000..ed06192133
 +      target_.Bind(std::move(target));
 +    }
 +  }
++  void OnConnected(const GURL& url,
++                   network::mojom::TrustedConnectionInfoPtr connection,
++                   OnConnectedCallback callback) override {
++    if (!state_ || state_->cancelled || url != state_->request.url) {
++      std::move(callback).Run(net::ERR_BLOCKED_BY_CLIENT, std::nullopt);
++      return;
++    }
++    auto reviewed =
++        base::BindOnce(&HeaderClient::AfterConnectionOwners,
++                       weak_factory_.GetWeakPtr(), url, std::move(callback));
++    if (target_) {
++      target_->OnConnected(
++          url, std::move(connection),
++          mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++              std::move(reviewed), net::ERR_FAILED, std::nullopt));
++    } else {
++      std::move(reviewed).Run(required_target_ ? net::ERR_FAILED : net::OK,
++                              std::nullopt);
++    }
++  }
 +  void OnBeforeSendHeaders(const GURL& url,
 +                           const net::HttpRequestHeaders& headers,
 +                           OnBeforeSendHeadersCallback callback) override {
 +    if (!state_ || state_->cancelled || url != state_->request.url) {
 +      std::move(callback).Run(net::ERR_BLOCKED_BY_CLIENT, std::nullopt,
-+                              std::nullopt);
++                              std::nullopt, std::nullopt);
 +      return;
 +    }
 +    if (target_) {
@@ -2799,12 +3144,13 @@ index 0000000000..ed06192133
 +              base::BindOnce(&HeaderClient::AfterMutations,
 +                             weak_factory_.GetWeakPtr(), headers,
 +                             std::move(callback)),
-+              net::ERR_FAILED, std::nullopt, std::nullopt));
++              net::ERR_FAILED, std::nullopt, std::nullopt, std::nullopt));
 +    } else if (required_target_) {
-+      std::move(callback).Run(net::ERR_FAILED, std::nullopt, std::nullopt);
++      std::move(callback).Run(net::ERR_FAILED, std::nullopt, std::nullopt,
++                              std::nullopt);
 +    } else {
 +      AfterMutations(headers, std::move(callback), net::OK, std::nullopt,
-+                     std::nullopt);
++                     std::nullopt, std::nullopt);
 +    }
 +  }
 +  void OnHeadersReceived(const std::string& headers,
@@ -2823,18 +3169,55 @@ index 0000000000..ed06192133
 +  }
 +
 + private:
++  void AfterConnectionOwners(
++      GURL url,
++      OnConnectedCallback callback,
++      int32_t result,
++      const std::optional<GURL>& native_policy_redirect) {
++    if (result != net::OK || !state_ || state_->cancelled ||
++        url != state_->request.url) {
++      std::move(callback).Run(
++          result == net::OK ? net::ERR_BLOCKED_BY_CLIENT : result,
++          state_ && !state_->cancelled && url == state_->request.url
++              ? native_policy_redirect
++              : std::nullopt);
++      return;
++    }
++    // Re-admit the exact final header envelope, rather than granting authority
++    // from DNS metadata. Check retains original controller/source retirement.
++    Check(state_, final_headers_, true,
++          base::BindOnce(
++              [](OnConnectedCallback callback, bool allowed) {
++                std::move(callback).Run(
++                    allowed ? net::OK : net::ERR_BLOCKED_BY_CLIENT,
++                    std::nullopt);
++              },
++              std::move(callback)));
++  }
 +  void AfterMutations(net::HttpRequestHeaders original,
 +                      OnBeforeSendHeadersCallback callback,
 +                      int32_t result,
 +                      const std::optional<net::HttpRequestHeaders>& modified,
-+                      std::optional<base::DictValue> net_log) {
++                      std::optional<base::DictValue> net_log,
++                      const std::optional<GURL>& native_policy_redirect) {
 +    if (result != net::OK) {
-+      std::move(callback).Run(result, std::nullopt, std::nullopt);
++      std::move(callback).Run(result, std::nullopt, std::nullopt,
++                              native_policy_redirect);
 +      return;
 +    }
 +    // Snapshot is immutable while consent waits. No other handler sees a chance
 +    // to mutate after this final wrapper returns it to the network service.
 +    auto final = modified.value_or(original);
++    // Only the CookieStore-selected header from Network Service is ambient
++    // Profile authority. A downstream header client cannot add or replace it.
++    if (state_ && state_->controller &&
++        state_->controller->AllowsProfileCookies(state_->context) &&
++        final.GetHeader("Cookie") != original.GetHeader("Cookie")) {
++      std::move(callback).Run(net::ERR_BLOCKED_BY_CLIENT, std::nullopt,
++                              std::nullopt, std::nullopt);
++      return;
++    }
++    final_headers_ = final;
 +    Check(state_, final, true,
 +          base::BindOnce(
 +              [](net::HttpRequestHeaders final,
@@ -2842,14 +3225,16 @@ index 0000000000..ed06192133
 +                 OnBeforeSendHeadersCallback callback, bool allowed) {
 +                if (!allowed) {
 +                  std::move(callback).Run(net::ERR_BLOCKED_BY_CLIENT,
-+                                          std::nullopt, std::nullopt);
++                                          std::nullopt, std::nullopt,
++                                          std::nullopt);
 +                  return;
 +                }
 +                std::move(callback).Run(net::OK, std::move(final),
-+                                        std::move(net_log));
++                                        std::move(net_log), std::nullopt);
 +              },
 +              std::move(final), std::move(net_log), std::move(callback)));
 +  }
++  net::HttpRequestHeaders final_headers_;
 +  std::shared_ptr<RequestState> state_;
 +  const bool required_target_;
 +  mojo::Remote<network::mojom::TrustedHeaderClient> target_;
@@ -2891,8 +3276,8 @@ index 0000000000..ed06192133
 +    state->context = state_->context;
 +    state->request = request;
 +    if (state->controller && state->controller->IsProtected(state->context)) {
-+      // Network Service can append ambient cookies after the trusted header
-+      // callback. Agent requests cannot rely on that callback to inspect them.
++      // Caller-supplied and browser-bonus cookies never acquire session
++      // authority. Network Service selects ambient cookies from CookieStore.
 +      state->request.headers.RemoveHeader("Cookie");
 +      state->request.cors_exempt_headers.RemoveHeader("Cookie");
 +      if (state->request.trusted_params) {
@@ -2948,6 +3333,11 @@ index 0000000000..ed06192133
 +      return;
 +    }
 +    following_ = true;
++    if (state_->controller && state_->controller->IsProtected(state_->context)) {
++      updates.modified_headers.RemoveHeader("Cookie");
++      updates.modified_cors_exempt_headers.RemoveHeader("Cookie");
++      updates.removed_headers.push_back("Cookie");
++    }
 +    auto next = *redirect_;
 +    if (new_url) {
 +      next.new_url = *new_url;
@@ -3090,6 +3480,12 @@ index 0000000000..ed06192133
 +    state->context = state_->context;
 +    state->request = request;
 +    state->original_id = id;
++    if (state->controller && state->controller->IsProtected(state->context)) {
++      state->request.headers.RemoveHeader("Cookie");
++      state->request.cors_exempt_headers.RemoveHeader("Cookie");
++      if (state->request.trusted_params)
++        state->request.trusted_params->allow_cookies_from_browser = false;
++    }
 +    if (request.request_body && state->controller &&
 +        std::ranges::any_of(*request.request_body->elements(),
 +                            [](const auto& element) {
@@ -3144,7 +3540,10 @@ index 0000000000..ed06192133
 +      return;
 +    }
 +    if (state_->controller && state_->controller->IsProtected(state_->context)) {
-+      options |= network::mojom::kURLLoadOptionBlockAllCookies;
++      // Session pages use only the original Profile's ambient CookieStore;
++      // private and other protected pages retain the empty-cookie transport.
++      if (!state_->controller->AllowsProfileCookies(state_->context))
++        options |= network::mojom::kURLLoadOptionBlockAllCookies;
 +      request.headers.RemoveHeader("Cookie");
 +      request.cors_exempt_headers.RemoveHeader("Cookie");
 +      if (request.trusted_params) {
@@ -3206,7 +3605,7 @@ index 0000000000..ed06192133
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/owner_mutation_fence.cc b/chrome/browser/ui/aux/owner_mutation_fence.cc
 new file mode 100644
-index 0000000000..93ed510618
+index 0000000..93ed510
 --- /dev/null
 +++ b/chrome/browser/ui/aux/owner_mutation_fence.cc
 @@ -0,0 +1,29 @@
@@ -3241,7 +3640,7 @@ index 0000000000..93ed510618
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/owner_mutation_fence.h b/chrome/browser/ui/aux/owner_mutation_fence.h
 new file mode 100644
-index 0000000000..e9b4bafbba
+index 0000000..e9b4baf
 --- /dev/null
 +++ b/chrome/browser/ui/aux/owner_mutation_fence.h
 @@ -0,0 +1,30 @@
@@ -3277,7 +3676,7 @@ index 0000000000..e9b4bafbba
 +#endif
 diff --git a/chrome/browser/ui/aux/permission_broker.cc b/chrome/browser/ui/aux/permission_broker.cc
 new file mode 100644
-index 0000000000..57c2935066
+index 0000000..57c2935
 --- /dev/null
 +++ b/chrome/browser/ui/aux/permission_broker.cc
 @@ -0,0 +1,259 @@
@@ -3542,7 +3941,7 @@ index 0000000000..57c2935066
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/permission_broker.h b/chrome/browser/ui/aux/permission_broker.h
 new file mode 100644
-index 0000000000..f896e34dba
+index 0000000..f896e34
 --- /dev/null
 +++ b/chrome/browser/ui/aux/permission_broker.h
 @@ -0,0 +1,70 @@
@@ -3618,7 +4017,7 @@ index 0000000000..f896e34dba
 +#endif
 diff --git a/chrome/browser/ui/aux/permission_effect_receipt.cc b/chrome/browser/ui/aux/permission_effect_receipt.cc
 new file mode 100644
-index 0000000000..553c3d1880
+index 0000000..553c3d1
 --- /dev/null
 +++ b/chrome/browser/ui/aux/permission_effect_receipt.cc
 @@ -0,0 +1,34 @@
@@ -3658,7 +4057,7 @@ index 0000000000..553c3d1880
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/permission_effect_receipt.h b/chrome/browser/ui/aux/permission_effect_receipt.h
 new file mode 100644
-index 0000000000..79a9d82665
+index 0000000..79a9d82
 --- /dev/null
 +++ b/chrome/browser/ui/aux/permission_effect_receipt.h
 @@ -0,0 +1,20 @@
@@ -3683,7 +4082,7 @@ index 0000000000..79a9d82665
 +}  // namespace aux
 +#endif
 diff --git a/components/permissions/permission_request.h b/components/permissions/permission_request.h
-index 528d64f665..a0cc3b3d72 100644
+index 528d64f..a0cc3b3 100644
 --- a/components/permissions/permission_request.h
 +++ b/components/permissions/permission_request.h
 @@ -125,6 +125,7 @@ class PermissionRequest {
@@ -3695,7 +4094,7 @@ index 528d64f665..a0cc3b3d72 100644
  #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
    // Returns whether displaying a confirmation chip for the request is
 diff --git a/components/permissions/permission_request_manager.cc b/components/permissions/permission_request_manager.cc
-index 0fb19de52c..07e9c0f024 100644
+index 0fb19de..07e9c0f 100644
 --- a/components/permissions/permission_request_manager.cc
 +++ b/components/permissions/permission_request_manager.cc
 @@ -30,6 +30,7 @@
@@ -4160,7 +4559,7 @@ index 0fb19de52c..07e9c0f024 100644
  
  ContentSetting PermissionRequestManager::GetRequestInitialStatus(
 diff --git a/components/permissions/permission_request_manager.h b/components/permissions/permission_request_manager.h
-index 3ec96c5639..8e7062e895 100644
+index 3ec96c5..8e7062e 100644
 --- a/components/permissions/permission_request_manager.h
 +++ b/components/permissions/permission_request_manager.h
 @@ -190,6 +190,14 @@ class PermissionRequestManager
@@ -4218,7 +4617,7 @@ index 3ec96c5639..8e7062e895 100644
    void PermissionDeniedIncludingDuplicates(PermissionRequest* request);
    // Calls Cancelled on a request and all its duplicates.
 diff --git a/content/browser/loader/navigation_early_hints_manager.cc b/content/browser/loader/navigation_early_hints_manager.cc
-index 1d768f07f2..5c69d37935 100644
+index 1d768f0..5c69d37 100644
 --- a/content/browser/loader/navigation_early_hints_manager.cc
 +++ b/content/browser/loader/navigation_early_hints_manager.cc
 @@ -9,6 +9,8 @@
@@ -4241,7 +4640,7 @@ index 1d768f07f2..5c69d37935 100644
    if (preconnect_entries_.contains(entry)) {
      return;
 diff --git a/content/browser/preloading/preconnector.cc b/content/browser/preloading/preconnector.cc
-index 56f8019c92..e79f3993da 100644
+index 56f8019..e79f399 100644
 --- a/content/browser/preloading/preconnector.cc
 +++ b/content/browser/preloading/preconnector.cc
 @@ -5,11 +5,13 @@
@@ -4270,7 +4669,7 @@ index 56f8019c92..e79f3993da 100644
      preconnect_delegate_->MaybePreconnect(url);
    }
 diff --git a/content/browser/preloading/preconnector.h b/content/browser/preloading/preconnector.h
-index 58f7df1569..4fbb83e8bb 100644
+index 58f7df1..4fbb83e 100644
 --- a/content/browser/preloading/preconnector.h
 +++ b/content/browser/preloading/preconnector.h
 @@ -6,6 +6,7 @@
@@ -4290,7 +4689,7 @@ index 58f7df1569..4fbb83e8bb 100644
  
  }  // namespace content
 diff --git a/content/browser/preloading/prefetch/prefetch_service.cc b/content/browser/preloading/prefetch/prefetch_service.cc
-index 9e5ccf76e3..2d987d5555 100644
+index 9e5ccf7..2d987d5 100644
 --- a/content/browser/preloading/prefetch/prefetch_service.cc
 +++ b/content/browser/preloading/prefetch/prefetch_service.cc
 @@ -889,6 +889,12 @@ PrefetchService::InjectedEligibilityCheckCompletedForTesting(
@@ -4307,7 +4706,7 @@ index 9e5ccf76e3..2d987d5555 100644
    TRACE_EVENT_END("loading",
                    params.request().preload_pipeline_info().GetTrack());
 diff --git a/content/browser/preloading/prerender/prerender_host.cc b/content/browser/preloading/prerender/prerender_host.cc
-index 8c139a2f97..ac40a00dc2 100644
+index 8c139a2..ac40a00 100644
 --- a/content/browser/preloading/prerender/prerender_host.cc
 +++ b/content/browser/preloading/prerender/prerender_host.cc
 @@ -588,6 +588,13 @@ PrerenderHost::~PrerenderHost() {
@@ -4325,7 +4724,7 @@ index 8c139a2f97..ac40a00dc2 100644
    // Since prerender started we mark it as eligible and set it to running.
    SetTriggeringOutcome(PreloadingTriggeringOutcome::kRunning);
 diff --git a/content/browser/renderer_host/p2p/socket_dispatcher_host.cc b/content/browser/renderer_host/p2p/socket_dispatcher_host.cc
-index 39677fdd3c..21ebf45ada 100644
+index 39677fd..21ebf45 100644
 --- a/content/browser/renderer_host/p2p/socket_dispatcher_host.cc
 +++ b/content/browser/renderer_host/p2p/socket_dispatcher_host.cc
 @@ -13,6 +13,9 @@
@@ -4350,21 +4749,96 @@ index 39677fdd3c..21ebf45ada 100644
    mojo::PendingRemote<network::mojom::P2PTrustedSocketManagerClient>
        trusted_socket_manager_client;
 diff --git a/content/browser/websockets/websocket_connector_impl.cc b/content/browser/websockets/websocket_connector_impl.cc
-index c1becd05ae..c0ee9500c9 100644
+index c1becd0..3829990 100644
 --- a/content/browser/websockets/websocket_connector_impl.cc
 +++ b/content/browser/websockets/websocket_connector_impl.cc
-@@ -121,6 +121,9 @@ void WebSocketConnectorImpl::Connect(
-   }
- 
+@@ -123,7 +123,51 @@ void WebSocketConnectorImpl::Connect(
    RenderFrameHost* frame = RenderFrameHost::FromID(frame_id_);
-+  if (!GetContentClient()->browser()->AllowUninspectableNetworkTransport(
-+          process->GetBrowserContext(), frame, "websocket")) return;
-+
    content::ContentBrowserClient::WebSocketOptions options =
        GetContentClient()->browser()->GetWebSocketOptions(frame);
++  auto headers = std::move(options.header_client);
++  GetContentClient()->browser()->CheckWebSocketConnection(
++      frame, frame_id_.child_id, url, origin_, isolation_info_,
++      std::move(headers),
++      base::BindOnce(
++          [](base::WeakPtr<WebSocketConnectorImpl> connector, GURL url,
++             std::vector<std::string> protocols,
++             std::optional<std::string> user_agent,
++             net::StorageAccessApiStatus storage_access,
++             mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
++                 client,
++             std::optional<base::UnguessableToken> throttling,
++             network::mojom::IPAddressSpace address_space,
++             content::ContentBrowserClient::WebSocketOptions options,
++             bool allowed,
++             mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers,
++             GURL routed_url) {
++            if (!connector || !allowed || !routed_url.SchemeIsWSOrWSS() ||
++                routed_url.has_username() || routed_url.has_password() ||
++                (url.SchemeIs("wss") && !routed_url.SchemeIs("wss")) ||
++                network::VerifyWebSocketConnectParameters(
++                    routed_url, protocols, connector->isolation_info_)) {
++              return;
++            }
++            options.header_client = std::move(headers);
++            connector->ConnectAfterCheck(routed_url, protocols, user_agent,
++                                         storage_access, std::move(client),
++                                         throttling, address_space,
++                                         std::move(options));
++          },
++          weak_factory_.GetWeakPtr(), url, requested_protocols, user_agent,
++          storage_access_api_status, std::move(handshake_client),
++          throttling_profile_id, target_address_space, std::move(options)));
++}
  
++void WebSocketConnectorImpl::ConnectAfterCheck(const GURL& url, const std::vector<std::string>& requested_protocols,
++    const std::optional<std::string>& user_agent, net::StorageAccessApiStatus storage_access_api_status,
++    mojo::PendingRemote<network::mojom::WebSocketHandshakeClient> handshake_client,
++    const std::optional<base::UnguessableToken>& throttling_profile_id,
++    network::mojom::IPAddressSpace target_address_space,
++    content::ContentBrowserClient::WebSocketOptions options) {
++  if (frame_id_.frame_routing_id != IPC::mojom::kRoutingIdNone && !weak_document_.AsRenderFrameHostIfValid()) return;
++  auto* process = RenderProcessHost::FromID(frame_id_.child_id);
++  auto* frame = RenderFrameHost::FromID(frame_id_);
++  if (!process) return;
+   content::ContentBrowserClient::WebSocketFactory factory = base::BindOnce(
+       ConnectCalledByContentBrowserClient, requested_protocols,
+       storage_access_api_status, isolation_info_, frame_id_,
+diff --git a/content/browser/websockets/websocket_connector_impl.h b/content/browser/websockets/websocket_connector_impl.h
+index efc7b0f..4f91ebb 100644
+--- a/content/browser/websockets/websocket_connector_impl.h
++++ b/content/browser/websockets/websocket_connector_impl.h
+@@ -10,6 +10,7 @@
+ #include <vector>
+ 
+ #include "base/unguessable_token.h"
++#include "base/memory/weak_ptr.h"
+ #include "content/public/browser/content_browser_client.h"
+ #include "content/public/browser/global_routing_id.h"
+ #include "content/public/browser/weak_document_ptr.h"
+@@ -58,6 +59,12 @@ class WebSocketConnectorImpl final : public blink::mojom::WebSocketConnector {
+       network::mojom::IPAddressSpace target_address_space) override;
+ 
+  private:
++  void ConnectAfterCheck(const GURL& url, const std::vector<std::string>& requested_protocols,
++      const std::optional<std::string>& user_agent, net::StorageAccessApiStatus storage_access_api_status,
++      mojo::PendingRemote<network::mojom::WebSocketHandshakeClient> handshake_client,
++      const std::optional<base::UnguessableToken>& throttling_profile_id,
++      network::mojom::IPAddressSpace target_address_space,
++      content::ContentBrowserClient::WebSocketOptions options);
+   static void ConnectCalledByContentBrowserClient(
+       const std::vector<std::string>& requested_protocols,
+       net::StorageAccessApiStatus storage_access_api_status,
+@@ -86,6 +93,7 @@ class WebSocketConnectorImpl final : public blink::mojom::WebSocketConnector {
+   const network::mojom::ClientSecurityStatePtr client_security_state_;
+   const base::UnguessableToken network_restrictions_id_;
+   const std::optional<base::UnguessableToken> devtools_worker_token_;
++  base::WeakPtrFactory<WebSocketConnectorImpl> weak_factory_{this};
+ };
+ 
+ }  // namespace content
 diff --git a/content/browser/webtransport/web_transport_connector_impl.cc b/content/browser/webtransport/web_transport_connector_impl.cc
-index f8e3896a24..8abf2d260c 100644
+index f8e3896..8abf2d2 100644
 --- a/content/browser/webtransport/web_transport_connector_impl.cc
 +++ b/content/browser/webtransport/web_transport_connector_impl.cc
 @@ -260,6 +260,9 @@ void WebTransportConnectorImpl::OnThrottleDone(

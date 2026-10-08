@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm b/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm
-index 1fb0173915..44568de61d 100644
+index 1fb0173..44568de 100644
 --- a/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm
 +++ b/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm
 @@ -15,6 +15,11 @@
@@ -33,7 +33,7 @@ index 1fb0173915..44568de61d 100644
  
 diff --git a/chrome/browser/ui/aux/native_cdp_input_mac.h b/chrome/browser/ui/aux/native_cdp_input_mac.h
 new file mode 100644
-index 0000000000..118166fbb5
+index 0000000..118166f
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_cdp_input_mac.h
 @@ -0,0 +1,26 @@
@@ -65,7 +65,7 @@ index 0000000000..118166fbb5
 +#endif
 diff --git a/chrome/browser/ui/aux/native_cdp_input_mac.mm b/chrome/browser/ui/aux/native_cdp_input_mac.mm
 new file mode 100644
-index 0000000000..e0e342fb17
+index 0000000..1f2b9e7
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_cdp_input_mac.mm
 @@ -0,0 +1,108 @@
@@ -100,7 +100,7 @@ index 0000000000..e0e342fb17
 +      process->GetBrowserContext()) : nullptr;
 +  auto* catalog = profile ? TabCatalog::GetForProfile(profile) : nullptr;
 +  auto* contents = catalog ? catalog->FindPage(input.page_id) : nullptr;
-+  if (!profile || profile->IsOffTheRecord() || !frame || !contents ||
++  if (!profile || !frame || !contents ||
 +      contents->GetPrimaryMainFrame() != frame || !frame->IsActive() ||
 +      !frame->IsRenderFrameLive())
 +    return;
@@ -136,9 +136,9 @@ index 0000000000..e0e342fb17
 +  auto* frame = document.AsRenderFrameHostIfValid();
 +  auto* profile = contents ? Profile::FromBrowserContext(contents->GetBrowserContext())
 +                           : nullptr;
-+  if (!profile || profile->IsOffTheRecord() || !widget || !frame || !event ||
-+      !event.CGEvent || contents->GetPrimaryMainFrame() != frame ||
-+      !frame->IsActive() || !frame->IsRenderFrameLive() || !widget->GetProcess() ||
++  if (!profile || !widget || !frame || !event || !event.CGEvent ||
++      contents->GetPrimaryMainFrame() != frame || !frame->IsActive() ||
++      !frame->IsRenderFrameLive() || !widget->GetProcess() ||
 +      widget->GetProcess()->GetBrowserContext() != profile)
 +    return std::nullopt;
 +  const bool keyboard = event.type == NSEventTypeKeyDown ||
@@ -177,8 +177,207 @@ index 0000000000..e0e342fb17
 +                            static_cast<int>(source)};
 +}
 +}
+diff --git a/components/input/event_with_latency_info.h b/components/input/event_with_latency_info.h
+index abbea56..dfb33ca 100644
+--- a/components/input/event_with_latency_info.h
++++ b/components/input/event_with_latency_info.h
+@@ -5,8 +5,11 @@
+ #ifndef COMPONENTS_INPUT_EVENT_WITH_LATENCY_INFO_H_
+ #define COMPONENTS_INPUT_EVENT_WITH_LATENCY_INFO_H_
+ 
++#include <optional>
++
+ #include "base/check_op.h"
+ #include "components/input/native_web_keyboard_event.h"
++#include "third_party/blink/public/common/input/native_mouse_link_capture.h"
+ #include "third_party/blink/public/common/input/web_gesture_event.h"
+ #include "third_party/blink/public/common/input/web_mouse_wheel_event.h"
+ #include "third_party/blink/public/common/input/web_touch_event.h"
+@@ -21,6 +24,7 @@ class EventWithLatencyInfo {
+  public:
+   T event;
+   mutable ui::LatencyInfo latency;
++  mutable std::optional<blink::NativeMouseLinkObservation> native_mouse_link;
+ 
+   explicit EventWithLatencyInfo(const T& e) : event(e) {}
+ 
+diff --git a/components/input/input_router_impl.cc b/components/input/input_router_impl.cc
+index 51baeda..561e637 100644
+--- a/components/input/input_router_impl.cc
++++ b/components/input/input_router_impl.cc
+@@ -663,7 +663,8 @@ void InputRouterImpl::FilterAndSendWebInputEvent(
+         .Run(input_event, DispatchToRendererResult::kNotDispatched);
+     if (filtered_state != blink::mojom::InputEventResultState::kUnknown) {
+       std::move(callback).Run(blink::mojom::InputEventResultSource::kBrowser,
+-                              latency_info, filtered_state, nullptr, nullptr);
++                              latency_info, filtered_state, nullptr, nullptr,
++                              nullptr);
+     }
+     return;
+   }
+@@ -684,7 +685,8 @@ void InputRouterImpl::FilterAndSendWebInputEvent(
+                const ui::LatencyInfo& latency,
+                blink::mojom::InputEventResultState state,
+                blink::mojom::DidOverscrollParamsPtr overscroll,
+-               blink::mojom::TouchActionOptionalPtr touch_action) {
++               blink::mojom::TouchActionOptionalPtr touch_action,
++               blink::mojom::NativeMouseDownLinkPtr native_mouse_link) {
+               // Filter source to ensure only valid values are sent from the
+               // renderer.
+               if (source == blink::mojom::InputEventResultSource::kBrowser) {
+@@ -693,9 +695,9 @@ void InputRouterImpl::FilterAndSendWebInputEvent(
+                 return;
+               }
+ 
+-              std::move(callback).Run(source, latency, state,
+-                                      std::move(overscroll),
+-                                      std::move(touch_action));
++              std::move(callback).Run(
++                  source, latency, state, std::move(overscroll),
++                  std::move(touch_action), std::move(native_mouse_link));
+             },
+             std::move(callback), weak_this_);
+     {
+@@ -740,9 +742,10 @@ void InputRouterImpl::FilterAndSendWebInputEvent(
+       last_touch_move_event_ = std::move(event);
+     }
+ 
+-    std::move(callback).Run(
+-        blink::mojom::InputEventResultSource::kBrowser, latency_info,
+-        blink::mojom::InputEventResultState::kIgnored, nullptr, nullptr);
++    std::move(callback).Run(blink::mojom::InputEventResultSource::kBrowser,
++                            latency_info,
++                            blink::mojom::InputEventResultState::kIgnored,
++                            nullptr, nullptr, nullptr);
+   }
+   // Ensure that the associated PendingTask for the WidgetInputHandler is
+   // recorded when tasking long-running chrome tasks. This is needed to
+@@ -757,7 +760,8 @@ void InputRouterImpl::KeyboardEventHandled(
+     const ui::LatencyInfo& latency,
+     blink::mojom::InputEventResultState state,
+     blink::mojom::DidOverscrollParamsPtr overscroll,
+-    blink::mojom::TouchActionOptionalPtr touch_action) {
++    blink::mojom::TouchActionOptionalPtr touch_action,
++    blink::mojom::NativeMouseDownLinkPtr native_mouse_link) {
+   TRACE_EVENT2("input", "InputRouterImpl::KeyboardEventHandled", "type",
+                WebInputEvent::GetName(event.event.GetType()), "ack",
+                InputEventResultStateToString(state));
+@@ -780,7 +784,19 @@ void InputRouterImpl::MouseEventHandled(
+     const ui::LatencyInfo& latency,
+     blink::mojom::InputEventResultState state,
+     blink::mojom::DidOverscrollParamsPtr overscroll,
+-    blink::mojom::TouchActionOptionalPtr touch_action) {
++    blink::mojom::TouchActionOptionalPtr touch_action,
++    blink::mojom::NativeMouseDownLinkPtr native_mouse_link) {
++  // Only the ACK of this original MouseDown may carry its hit-tested link.
++  if (native_mouse_link &&
++      source != blink::mojom::InputEventResultSource::kBrowser &&
++      event.event.GetType() == WebInputEvent::Type::kMouseDown &&
++      !event.event.native_mouse_down_nonce.is_empty() &&
++      native_mouse_link->nonce == event.event.native_mouse_down_nonce &&
++      native_mouse_link->href.size() <= 65536) {
++    event.native_mouse_link.emplace(native_mouse_link->nonce,
++                                    native_mouse_link->document,
++                                    native_mouse_link->href);
++  }
+   TRACE_EVENT2("input", "InputRouterImpl::MouseEventHandled", "type",
+                WebInputEvent::GetName(event.event.GetType()), "ack",
+                InputEventResultStateToString(state));
+@@ -797,7 +813,8 @@ void InputRouterImpl::TouchEventHandled(
+     const ui::LatencyInfo& latency,
+     blink::mojom::InputEventResultState state,
+     blink::mojom::DidOverscrollParamsPtr overscroll,
+-    blink::mojom::TouchActionOptionalPtr touch_action) {
++    blink::mojom::TouchActionOptionalPtr touch_action,
++    blink::mojom::NativeMouseDownLinkPtr native_mouse_link) {
+   int64_t trace_id = latency.trace_id();
+   TRACE_EVENT("input,benchmark,latencyInfo", "LatencyInfo.Flow",
+               [&](perfetto::EventContext ctx) {
+@@ -836,7 +853,8 @@ void InputRouterImpl::GestureEventHandled(
+     const ui::LatencyInfo& latency,
+     blink::mojom::InputEventResultState state,
+     blink::mojom::DidOverscrollParamsPtr overscroll,
+-    blink::mojom::TouchActionOptionalPtr touch_action) {
++    blink::mojom::TouchActionOptionalPtr touch_action,
++    blink::mojom::NativeMouseDownLinkPtr native_mouse_link) {
+   int64_t trace_id = latency.trace_id();
+   TRACE_EVENT("input,benchmark,latencyInfo", "LatencyInfo.Flow",
+               [&](perfetto::EventContext ctx) {
+@@ -869,7 +887,8 @@ void InputRouterImpl::MouseWheelEventHandled(
+     const ui::LatencyInfo& latency,
+     blink::mojom::InputEventResultState state,
+     blink::mojom::DidOverscrollParamsPtr overscroll,
+-    blink::mojom::TouchActionOptionalPtr touch_action) {
++    blink::mojom::TouchActionOptionalPtr touch_action,
++    blink::mojom::NativeMouseDownLinkPtr native_mouse_link) {
+   TRACE_EVENT2("input", "InputRouterImpl::MouseWheelEventHandled", "type",
+                WebInputEvent::GetName(event.event.GetType()), "ack",
+                InputEventResultStateToString(state));
+diff --git a/components/input/input_router_impl.h b/components/input/input_router_impl.h
+index cd945e4..b169168 100644
+--- a/components/input/input_router_impl.h
++++ b/components/input/input_router_impl.h
+@@ -213,27 +213,33 @@ class COMPONENT_EXPORT(INPUT) InputRouterImpl
+       const ui::LatencyInfo& latency,
+       blink::mojom::InputEventResultState state,
+       blink::mojom::DidOverscrollParamsPtr overscroll,
+-      blink::mojom::TouchActionOptionalPtr touch_action);
+-  void MouseEventHandled(const MouseEventWithLatencyInfo& event,
+-                         MouseEventCallback event_result_callback,
+-                         blink::mojom::InputEventResultSource source,
+-                         const ui::LatencyInfo& latency,
+-                         blink::mojom::InputEventResultState state,
+-                         blink::mojom::DidOverscrollParamsPtr overscroll,
+-                         blink::mojom::TouchActionOptionalPtr touch_action);
+-  void TouchEventHandled(const TouchEventWithLatencyInfo& touch_event,
+-                         blink::mojom::InputEventResultSource source,
+-                         const ui::LatencyInfo& latency,
+-                         blink::mojom::InputEventResultState state,
+-                         blink::mojom::DidOverscrollParamsPtr overscroll,
+-                         blink::mojom::TouchActionOptionalPtr touch_action);
++      blink::mojom::TouchActionOptionalPtr touch_action,
++      blink::mojom::NativeMouseDownLinkPtr native_mouse_link);
++  void MouseEventHandled(
++      const MouseEventWithLatencyInfo& event,
++      MouseEventCallback event_result_callback,
++      blink::mojom::InputEventResultSource source,
++      const ui::LatencyInfo& latency,
++      blink::mojom::InputEventResultState state,
++      blink::mojom::DidOverscrollParamsPtr overscroll,
++      blink::mojom::TouchActionOptionalPtr touch_action,
++      blink::mojom::NativeMouseDownLinkPtr native_mouse_link);
++  void TouchEventHandled(
++      const TouchEventWithLatencyInfo& touch_event,
++      blink::mojom::InputEventResultSource source,
++      const ui::LatencyInfo& latency,
++      blink::mojom::InputEventResultState state,
++      blink::mojom::DidOverscrollParamsPtr overscroll,
++      blink::mojom::TouchActionOptionalPtr touch_action,
++      blink::mojom::NativeMouseDownLinkPtr native_mouse_link);
+   void GestureEventHandled(
+       const GestureEventWithLatencyInfo& gesture_event,
+       blink::mojom::InputEventResultSource source,
+       const ui::LatencyInfo& latency,
+       blink::mojom::InputEventResultState state,
+       blink::mojom::DidOverscrollParamsPtr overscroll,
+-      blink::mojom::TouchActionOptionalPtr touch_action);
++      blink::mojom::TouchActionOptionalPtr touch_action,
++      blink::mojom::NativeMouseDownLinkPtr native_mouse_link);
+   void MouseWheelEventHandled(
+       const MouseWheelEventWithLatencyInfo& event,
+       MouseWheelEventQueueClient::MouseWheelEventHandledCallback callback,
+@@ -241,7 +247,8 @@ class COMPONENT_EXPORT(INPUT) InputRouterImpl
+       const ui::LatencyInfo& latency,
+       blink::mojom::InputEventResultState state,
+       blink::mojom::DidOverscrollParamsPtr overscroll,
+-      blink::mojom::TouchActionOptionalPtr touch_action);
++      blink::mojom::TouchActionOptionalPtr touch_action,
++      blink::mojom::NativeMouseDownLinkPtr native_mouse_link);
+ 
+   // Called when a touch timeout-affecting bit has changed, in turn toggling the
+   // touch ack timeout feature of the |touch_event_queue_| as appropriate. Input
 diff --git a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h
-index 1f515437b6..ce754691cc 100644
+index 1f51543..ce75469 100644
 --- a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h
 +++ b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h
 @@ -58,6 +58,10 @@ class RenderWidgetHostNSViewBridge : public mojom::RenderWidgetHostNSView,
@@ -193,7 +392,7 @@ index 1f515437b6..ce754691cc 100644
    void InitAsPopup(const gfx::Rect& content_rect,
                     uint64_t popup_parent_ns_view_id) override;
 diff --git a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm
-index 2eda2e79d7..1e537d1c7a 100644
+index 2eda2e7..1e537d1 100644
 --- a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm
 +++ b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm
 @@ -176,6 +176,13 @@ void RenderWidgetHostNSViewBridge::SetBackgroundColor(SkColor color) {
@@ -211,7 +410,7 @@ index 2eda2e79d7..1e537d1c7a 100644
    ScopedCAActionDisabler disabler;
    cocoa_view_.hidden = !visible;
 diff --git a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h
-index 679c80ebaf..6073ddd026 100644
+index 679c80e..6073ddd 100644
 --- a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h
 +++ b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h
 @@ -9,6 +9,7 @@
@@ -232,7 +431,7 @@ index 679c80ebaf..6073ddd026 100644
  @property(nonatomic, assign) ui::TextInputType textInputType;
  @property(nonatomic, assign) int textInputFlags;
 diff --git a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm
-index 6a2880e6e5..2c984a2d45 100644
+index 6a2880e..2c984a2 100644
 --- a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm
 +++ b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm
 @@ -53,6 +53,7 @@
@@ -309,7 +508,7 @@ index 6a2880e6e5..2c984a2d45 100644
    // build a mouse wheel event, and pass it on to the renderer for processing.
    WebMouseWheelEvent webEvent = WebMouseWheelEventBuilder::Build(event, self);
 diff --git a/content/browser/renderer_host/render_widget_host_view_base.cc b/content/browser/renderer_host/render_widget_host_view_base.cc
-index e636ae0c62..c60f662689 100644
+index e636ae0..c60f662 100644
 --- a/content/browser/renderer_host/render_widget_host_view_base.cc
 +++ b/content/browser/renderer_host/render_widget_host_view_base.cc
 @@ -66,6 +66,29 @@
@@ -343,7 +542,7 @@ index e636ae0c62..c60f662689 100644
  void RenderWidgetHostViewBase::OnUnconfirmedTapConvertedToTap() {}
  
 diff --git a/content/browser/renderer_host/render_widget_host_view_base.h b/content/browser/renderer_host/render_widget_host_view_base.h
-index fbaad741af..8aedff49e2 100644
+index fbaad74..8aedff4 100644
 --- a/content/browser/renderer_host/render_widget_host_view_base.h
 +++ b/content/browser/renderer_host/render_widget_host_view_base.h
 @@ -142,6 +142,7 @@ class CONTENT_EXPORT RenderWidgetHostViewBase
@@ -355,7 +554,7 @@ index fbaad741af..8aedff49e2 100644
        const gfx::Rect& src_rect,
        const gfx::Size& output_size,
 diff --git a/content/browser/renderer_host/render_widget_host_view_mac.h b/content/browser/renderer_host/render_widget_host_view_mac.h
-index 2856a74454..ea2ab6c69e 100644
+index 2856a74..ea2ab6c 100644
 --- a/content/browser/renderer_host/render_widget_host_view_mac.h
 +++ b/content/browser/renderer_host/render_widget_host_view_mac.h
 @@ -8,6 +8,8 @@
@@ -435,7 +634,7 @@ index 2856a74454..ea2ab6c69e 100644
    base::WeakPtrFactory<RenderWidgetHostViewMac> weak_factory_;
  };
 diff --git a/content/browser/renderer_host/render_widget_host_view_mac.mm b/content/browser/renderer_host/render_widget_host_view_mac.mm
-index 8aee3fc94c..f3d7e1c74d 100644
+index 8aee3fc..f3d7e1c 100644
 --- a/content/browser/renderer_host/render_widget_host_view_mac.mm
 +++ b/content/browser/renderer_host/render_widget_host_view_mac.mm
 @@ -21,6 +21,7 @@
@@ -735,7 +934,7 @@ index 8aee3fc94c..f3d7e1c74d 100644
      const std::vector<uint8_t>& native_event_data,
 diff --git a/content/browser/web_contents/web_contents_view.cc b/content/browser/web_contents/web_contents_view.cc
 new file mode 100644
-index 0000000000..1099c2c733
+index 0000000..1099c2c
 --- /dev/null
 +++ b/content/browser/web_contents/web_contents_view.cc
 @@ -0,0 +1,18 @@
@@ -758,7 +957,7 @@ index 0000000000..1099c2c733
 +
 +}  // namespace content
 diff --git a/content/browser/web_contents/web_contents_view.h b/content/browser/web_contents/web_contents_view.h
-index 654fb9d77d..c0e21d18fe 100644
+index 654fb9d..c0e21d1 100644
 --- a/content/browser/web_contents/web_contents_view.h
 +++ b/content/browser/web_contents/web_contents_view.h
 @@ -5,9 +5,11 @@
@@ -792,7 +991,7 @@ index 654fb9d77d..c0e21d18fe 100644
  
    virtual void FullscreenStateChanged(bool is_fullscreen) = 0;
 diff --git a/content/browser/web_contents/web_contents_view_mac.h b/content/browser/web_contents/web_contents_view_mac.h
-index b9868665c8..b0fb5580d3 100644
+index b986866..b0fb558 100644
 --- a/content/browser/web_contents/web_contents_view_mac.h
 +++ b/content/browser/web_contents/web_contents_view_mac.h
 @@ -7,6 +7,7 @@
@@ -820,7 +1019,7 @@ index b9868665c8..b0fb5580d3 100644
    base::WeakPtrFactory<WebContentsViewMac> deferred_close_weak_ptr_factory_;
  };
 diff --git a/content/browser/web_contents/web_contents_view_mac.mm b/content/browser/web_contents/web_contents_view_mac.mm
-index 4283e1b4a1..16a41936e5 100644
+index 4283e1b..16a4193 100644
 --- a/content/browser/web_contents/web_contents_view_mac.mm
 +++ b/content/browser/web_contents/web_contents_view_mac.mm
 @@ -520,6 +520,7 @@ bool WebContentsViewMac::CloseTabAfterEventTrackingIfNeeded() {
@@ -852,7 +1051,7 @@ index 4283e1b4a1..16a41936e5 100644
    web_contents_->Close();
  }
 diff --git a/content/common/render_widget_host_ns_view.mojom b/content/common/render_widget_host_ns_view.mojom
-index 566af79647..a2f156bc77 100644
+index 566af79..a2f156b 100644
 --- a/content/common/render_widget_host_ns_view.mojom
 +++ b/content/common/render_widget_host_ns_view.mojom
 @@ -43,6 +43,10 @@ struct PopupMenu {
@@ -879,7 +1078,7 @@ index 566af79647..a2f156bc77 100644
  
 diff --git a/content/public/browser/native_platform_input_admission.cc b/content/public/browser/native_platform_input_admission.cc
 new file mode 100644
-index 0000000000..3a7018eca9
+index 0000000..3a7018e
 --- /dev/null
 +++ b/content/public/browser/native_platform_input_admission.cc
 @@ -0,0 +1,21 @@
@@ -906,7 +1105,7 @@ index 0000000000..3a7018eca9
 +}  // namespace content
 diff --git a/content/public/browser/native_platform_input_admission.h b/content/public/browser/native_platform_input_admission.h
 new file mode 100644
-index 0000000000..0ecf53c6a6
+index 0000000..0ecf53c
 --- /dev/null
 +++ b/content/public/browser/native_platform_input_admission.h
 @@ -0,0 +1,43 @@
@@ -953,8 +1152,41 @@ index 0000000000..0ecf53c6a6
 +};
 +}
 +#endif
+diff --git a/content/public/browser/render_widget_host.h b/content/public/browser/render_widget_host.h
+index 6e0a500..bca9812 100644
+--- a/content/public/browser/render_widget_host.h
++++ b/content/public/browser/render_widget_host.h
+@@ -21,6 +21,7 @@
+ #include "content/common/content_export.h"
+ #include "content/public/browser/tracked_element_observer.h"
+ #include "content/public/common/drop_data.h"
++#include "third_party/blink/public/common/input/native_mouse_link_capture.h"
+ #include "third_party/blink/public/common/input/web_gesture_event.h"
+ #include "third_party/blink/public/common/input/web_input_event.h"
+ #include "third_party/blink/public/common/page/drag_operation.h"
+@@ -60,6 +61,7 @@ class FrameSinkId;
+ namespace content {
+ struct GlobalDOMNodeId;
+ struct GlobalRenderFrameHostId;
++class RenderFrameHost;
+ class RenderProcessHost;
+ class RenderWidgetHostIterator;
+ class RenderWidgetHostObserver;
+@@ -181,6 +183,12 @@ class CONTENT_EXPORT RenderWidgetHost {
+ 
+   // Forwards the given message to the renderer. These are called by
+   // the view when it has received a message.
++  // Admit only the genuine hit test of an already-dispatched native input.
++  // This is also used during synchronous window.open(), before its input ACK.
++  virtual bool AcceptNativeMouseDownLink(
++      RenderFrameHost* original_frame,
++      const blink::NativeMouseLinkObservation& link) = 0;
++
+   virtual void ForwardMouseEvent(
+       const blink::WebMouseEvent& mouse_event) = 0;
+   virtual void ForwardWheelEvent(
 diff --git a/content/public/browser/render_widget_host_view.h b/content/public/browser/render_widget_host_view.h
-index 6b7a3301cb..ae876aac7b 100644
+index 6b7a330..ae876aa 100644
 --- a/content/public/browser/render_widget_host_view.h
 +++ b/content/public/browser/render_widget_host_view.h
 @@ -4,15 +4,21 @@
@@ -1017,3 +1249,621 @@ index 6b7a3301cb..ae876aac7b 100644
    // Creates a video capturer, which will allow the caller to receive a stream
    // of media::VideoFrames captured from this view. The capturer is configured
    // to target this view, so there is no need to call ChangeTarget() before
+diff --git a/third_party/blink/common/input/native_mouse_link_capture.cc b/third_party/blink/common/input/native_mouse_link_capture.cc
+new file mode 100644
+index 0000000..422fade
+--- /dev/null
++++ b/third_party/blink/common/input/native_mouse_link_capture.cc
+@@ -0,0 +1,48 @@
++// Copyright 2026 The Aux Authors. BSD-3-Clause.
++#include "third_party/blink/public/common/input/native_mouse_link_capture.h"
++
++#include <utility>
++
++#include "base/check.h"
++#include "base/strings/string_util.h"
++namespace blink {
++NativeMouseLinkObservation::NativeMouseLinkObservation(
++    base::UnguessableToken value,
++    DocumentToken original,
++    std::string url)
++    : nonce(value), document(original), href(std::move(url)) {}
++NativeMouseLinkObservation::NativeMouseLinkObservation(
++    const NativeMouseLinkObservation&) = default;
++NativeMouseLinkObservation::NativeMouseLinkObservation(
++    NativeMouseLinkObservation&&) = default;
++NativeMouseLinkObservation& NativeMouseLinkObservation::operator=(
++    const NativeMouseLinkObservation&) = default;
++NativeMouseLinkObservation& NativeMouseLinkObservation::operator=(
++    NativeMouseLinkObservation&&) = default;
++NativeMouseLinkObservation::~NativeMouseLinkObservation() = default;
++thread_local NativeMouseLinkCapture* NativeMouseLinkCapture::current_ = nullptr;
++NativeMouseLinkCapture::NativeMouseLinkCapture(base::UnguessableToken nonce)
++    : previous_(current_), nonce_(nonce) {
++  current_ = this;
++}
++NativeMouseLinkCapture::~NativeMouseLinkCapture() {
++  CHECK_EQ(current_, this);
++  current_ = previous_;
++}
++std::optional<NativeMouseLinkObservation>
++NativeMouseLinkCapture::CurrentObservation() {
++  return current_ ? current_->observed_ : std::nullopt;
++}
++void NativeMouseLinkCapture::Record(DocumentToken document, std::string href) {
++  if (!current_ || current_->nonce_.is_empty() || current_->observed_ ||
++      href.empty() || href.size() > 65536 ||
++      href.find('\0') != std::string::npos || !base::IsStringUTF8(href)) {
++    return;
++  }
++  current_->observed_ =
++      NativeMouseLinkObservation{current_->nonce_, document, std::move(href)};
++}
++std::optional<NativeMouseLinkObservation> NativeMouseLinkCapture::Take() {
++  return std::move(observed_);
++}
++}  // namespace blink
+diff --git a/third_party/blink/common/input/web_coalesced_input_event_mojom_traits.cc b/third_party/blink/common/input/web_coalesced_input_event_mojom_traits.cc
+index 80c4a10..0d7d8f4 100644
+--- a/third_party/blink/common/input/web_coalesced_input_event_mojom_traits.cc
++++ b/third_party/blink/common/input/web_coalesced_input_event_mojom_traits.cc
+@@ -321,6 +321,11 @@ bool StructTraits<blink::mojom::EventDataView,
+     PointerPropertiesFromPointerData(pointer_data, mouse_event);
+     if (pointer_data->mouse_data) {
+       mouse_event->click_count = pointer_data->mouse_data->click_count;
++      if (type == blink::WebInputEvent::Type::kMouseDown &&
++          pointer_data->mouse_data->native_mouse_down_nonce) {
++        mouse_event->native_mouse_down_nonce =
++            *pointer_data->mouse_data->native_mouse_down_nonce;
++      }
+ 
+       if (type == blink::WebInputEvent::Type::kMouseWheel &&
+           pointer_data->mouse_data->wheel_data) {
+@@ -419,8 +424,14 @@ StructTraits<blink::mojom::EventDataView,
+   }
+ 
+   return PointerDataFromPointerProperties(
+-      *mouse_event, blink::mojom::MouseData::New(mouse_event->click_count,
+-                                                 std::move(wheel_data)));
++      *mouse_event,
++      blink::mojom::MouseData::New(
++          mouse_event->click_count,
++          mouse_event->GetType() == blink::WebInputEvent::Type::kMouseDown &&
++                  !mouse_event->native_mouse_down_nonce.is_empty()
++              ? std::make_optional(mouse_event->native_mouse_down_nonce)
++              : std::nullopt,
++          std::move(wheel_data)));
+ }
+ 
+ // static
+diff --git a/third_party/blink/public/common/input/native_mouse_link_capture.h b/third_party/blink/public/common/input/native_mouse_link_capture.h
+new file mode 100644
+index 0000000..873edd6
+--- /dev/null
++++ b/third_party/blink/public/common/input/native_mouse_link_capture.h
+@@ -0,0 +1,44 @@
++// Copyright 2026 The Aux Authors. BSD-3-Clause.
++#ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_INPUT_NATIVE_MOUSE_LINK_CAPTURE_H_
++#define THIRD_PARTY_BLINK_PUBLIC_COMMON_INPUT_NATIVE_MOUSE_LINK_CAPTURE_H_
++#include <optional>
++#include <string>
++
++#include "base/memory/raw_ptr.h"
++#include "base/unguessable_token.h"
++#include "third_party/blink/public/common/common_export.h"
++#include "third_party/blink/public/common/tokens/tokens.h"
++namespace blink {
++struct BLINK_COMMON_EXPORT NativeMouseLinkObservation {
++  NativeMouseLinkObservation(base::UnguessableToken nonce,
++                             DocumentToken document,
++                             std::string href);
++  NativeMouseLinkObservation(const NativeMouseLinkObservation&);
++  NativeMouseLinkObservation(NativeMouseLinkObservation&&);
++  NativeMouseLinkObservation& operator=(const NativeMouseLinkObservation&);
++  NativeMouseLinkObservation& operator=(NativeMouseLinkObservation&&);
++  ~NativeMouseLinkObservation();
++  base::UnguessableToken nonce;
++  DocumentToken document;
++  std::string href;
++};
++// Main-thread input-dispatch stack only. No JS endpoint can create a capture or
++// nonce; nested input restores its original enclosing capture on retirement.
++class BLINK_COMMON_EXPORT NativeMouseLinkCapture final {
++ public:
++  explicit NativeMouseLinkCapture(base::UnguessableToken browser_nonce);
++  ~NativeMouseLinkCapture();
++  NativeMouseLinkCapture(const NativeMouseLinkCapture&) = delete;
++  NativeMouseLinkCapture& operator=(const NativeMouseLinkCapture&) = delete;
++  static std::optional<NativeMouseLinkObservation> CurrentObservation();
++  static void Record(DocumentToken original_document, std::string actual_href);
++  std::optional<NativeMouseLinkObservation> Take();
++
++ private:
++  static thread_local NativeMouseLinkCapture* current_;
++  raw_ptr<NativeMouseLinkCapture> previous_;
++  const base::UnguessableToken nonce_;
++  std::optional<NativeMouseLinkObservation> observed_;
++};
++}  // namespace blink
++#endif
+diff --git a/third_party/blink/public/common/input/web_mouse_event.h b/third_party/blink/public/common/input/web_mouse_event.h
+index 6a10343..0e7d367 100644
+--- a/third_party/blink/public/common/input/web_mouse_event.h
++++ b/third_party/blink/public/common/input/web_mouse_event.h
+@@ -7,6 +7,7 @@
+ 
+ #include "base/check_op.h"
+ #include "base/time/time.h"
++#include "base/unguessable_token.h"
+ #include "third_party/blink/public/common/input/web_input_event.h"
+ #include "third_party/blink/public/common/input/web_pointer_properties.h"
+ #include "ui/base/mojom/menu_source_type.mojom-shared.h"
+@@ -24,6 +25,10 @@ class BLINK_COMMON_EXPORT WebMouseEvent : public WebInputEvent,
+ 
+   int click_count = {};
+ 
++  // Issued only by the browser immediately before native mouse-down dispatch.
++  // Not exposed through DOM MouseEvent or renderer-authored WebUI parameters.
++  base::UnguessableToken native_mouse_down_nonce;
++
+   // Only used for contextmenu events.
+   ui::mojom::MenuSourceType menu_source_type = ui::mojom::MenuSourceType::kNone;
+ 
+diff --git a/third_party/blink/public/mojom/input/input_handler.mojom b/third_party/blink/public/mojom/input/input_handler.mojom
+index befc16c..4e43ed0 100644
+--- a/third_party/blink/public/mojom/input/input_handler.mojom
++++ b/third_party/blink/public/mojom/input/input_handler.mojom
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ module blink.mojom;
++import "mojo/public/mojom/base/unguessable_token.mojom";
++import "third_party/blink/public/mojom/tokens/tokens.mojom";
+ 
+ import "cc/mojom/browser_controls_offset_tag_modifications.mojom";
+ import "cc/mojom/browser_controls_state.mojom";
+@@ -89,6 +91,7 @@ struct WheelData {
+ 
+ struct MouseData {
+   int32 click_count;
++  mojo_base.mojom.UnguessableToken? native_mouse_down_nonce;
+   WheelData? wheel_data;
+ };
+ 
+@@ -479,6 +482,14 @@ enum FocusState {
+ // an input interface for an associated Widget object. See
+ // FrameWidgetInputHandler
+ // for an interface at the frame level.
++// Native Blink hit-test observation, returned only with the original input
++// ACK. Browser validates its own nonce and saved widget/document incarnation.
++struct NativeMouseDownLink {
++  mojo_base.mojom.UnguessableToken nonce;
++  blink.mojom.DocumentToken document;
++  string href;
++};
++
+ interface WidgetInputHandler {
+   // Tells widget focus has been changed.
+   SetFocus(FocusState state);
+@@ -565,7 +576,8 @@ interface WidgetInputHandler {
+           ui.mojom.LatencyInfo updated_latency,
+           blink.mojom.InputEventResultState state,
+           DidOverscrollParams? overscroll,
+-          TouchActionOptional? touch_action);
++          TouchActionOptional? touch_action,
++          NativeMouseDownLink? native_mouse_down_link);
+ 
+   // Sends a non-blocking input event to the render widget. The behaviour
+   // of this API is the same as DispatchEvent just that there is no callback
+diff --git a/third_party/blink/renderer/core/input/event_handler.cc b/third_party/blink/renderer/core/input/event_handler.cc
+index 97aece5..fb1de9d 100644
+--- a/third_party/blink/renderer/core/input/event_handler.cc
++++ b/third_party/blink/renderer/core/input/event_handler.cc
+@@ -929,6 +929,13 @@ WebInputEventResult EventHandler::HandleMousePressEvent(
+     discarded_events_.mouse_down_time = base::TimeTicks();
+   }
+ 
++  if (!mouse_event.native_mouse_down_nonce.is_empty() && frame_->Client()) {
++    const KURL href = mev.GetHitTestResult().AbsoluteLinkURL();
++    if (!href.IsEmpty()) {
++      frame_->Client()->DidReceiveTrustedMouseDownLink(href);
++    }
++  }
++
+   LocalFrame::NotifyUserActivation(
+       frame_, mojom::blink::UserActivationNotificationType::kInteraction);
+ 
+diff --git a/third_party/blink/renderer/platform/widget/input/main_thread_event_queue.cc b/third_party/blink/renderer/platform/widget/input/main_thread_event_queue.cc
+index 8ad9715..e89f2d5 100644
+--- a/third_party/blink/renderer/platform/widget/input/main_thread_event_queue.cc
++++ b/third_party/blink/renderer/platform/widget/input/main_thread_event_queue.cc
+@@ -187,7 +187,8 @@ class QueuedWebInputEvent : public MainThreadEventQueueTask {
+       if (touch_event->dispatch_type ==
+           WebInputEvent::DispatchType::kEventNonBlocking) {
+         RunCallbacks(mojom::blink::InputEventResultState::kNotConsumed,
+-                     event_->latency_info(), nullptr, std::nullopt);
++                     event_->latency_info(), nullptr, std::nullopt,
++                     std::nullopt);
+       }
+     }
+ 
+@@ -199,7 +200,7 @@ class QueuedWebInputEvent : public MainThreadEventQueueTask {
+       // The |callback| won't be run, so our stored |callback_| should run
+       // indicating error.
+       HandledEvent(queue, mojom::blink::InputEventResultState::kNotConsumed,
+-                   event_->latency_info(), nullptr, std::nullopt);
++                   event_->latency_info(), nullptr, std::nullopt, std::nullopt);
+     }
+   }
+ 
+@@ -207,8 +208,10 @@ class QueuedWebInputEvent : public MainThreadEventQueueTask {
+                     mojom::blink::InputEventResultState ack_result,
+                     const ui::LatencyInfo& latency_info,
+                     mojom::blink::DidOverscrollParamsPtr overscroll,
+-                    std::optional<cc::TouchAction> touch_action) {
+-    RunCallbacks(ack_result, latency_info, std::move(overscroll), touch_action);
++                    std::optional<cc::TouchAction> touch_action,
++                    std::optional<NativeMouseLinkObservation> native_link) {
++    RunCallbacks(ack_result, latency_info, std::move(overscroll), touch_action,
++                 std::move(native_link));
+ 
+     // TODO(dtapuska): Change the scheduler API to take into account number of
+     // events processed.
+@@ -271,10 +274,12 @@ class QueuedWebInputEvent : public MainThreadEventQueueTask {
+   }
+ 
+  private:
+-  void RunCallbacks(mojom::blink::InputEventResultState ack_result,
+-                    const ui::LatencyInfo& latency_info,
+-                    mojom::blink::DidOverscrollParamsPtr overscroll,
+-                    const std::optional<cc::TouchAction>& touch_action) {
++  void RunCallbacks(
++      mojom::blink::InputEventResultState ack_result,
++      const ui::LatencyInfo& latency_info,
++      mojom::blink::DidOverscrollParamsPtr overscroll,
++      const std::optional<cc::TouchAction>& touch_action,
++      std::optional<NativeMouseLinkObservation> native_link = std::nullopt) {
+     // callback_ is null if we have already run it, in cases
+     // 1. the event had been a blocking touchmove before it was unblocked;
+     // 2. the event is an non-blocking event, and its callback was called when
+@@ -282,7 +287,7 @@ class QueuedWebInputEvent : public MainThreadEventQueueTask {
+     //    the event.
+     if (callback_) {
+       std::move(callback_).Run(ack_result, latency_info, std::move(overscroll),
+-                               touch_action);
++                               touch_action, std::move(native_link));
+     }
+ 
+     if (!blocking_coalesced_callbacks_.empty()) {
+@@ -291,7 +296,8 @@ class QueuedWebInputEvent : public MainThreadEventQueueTask {
+       for (auto& callback : blocking_coalesced_callbacks_) {
+         coalesced_latency_info.set_trace_id(callback.second);
+         std::move(callback.first)
+-            .Run(ack_result, coalesced_latency_info, nullptr, std::nullopt);
++            .Run(ack_result, coalesced_latency_info, nullptr, std::nullopt,
++                 std::nullopt);
+       }
+       blocking_coalesced_callbacks_.clear();
+     }
+@@ -572,7 +578,7 @@ void MainThreadEventQueue::HandleEvent(
+ 
+   if (callback) {
+     std::move(callback).Run(ack_result, cloned_latency_info, nullptr,
+-                            std::nullopt);
++                            std::nullopt, std::nullopt);
+   }
+ }
+ 
+@@ -839,7 +845,8 @@ void MainThreadEventQueue::QueueEvent(
+   if (unblocked_callback_info) {
+     std::move(unblocked_callback_info->callback)
+         .Run(mojom::blink::InputEventResultState::kSetNonBlocking,
+-             unblocked_callback_info->latency_info, nullptr, std::nullopt);
++             unblocked_callback_info->latency_info, nullptr, std::nullopt,
++             std::nullopt);
+   }
+ }
+ 
+@@ -1058,7 +1065,7 @@ void MainThreadEventQueue::UnblockQueuedBlockingTouchEventsIfNeeded(
+   for (auto& callback_info : callbacks) {
+     std::move(callback_info.callback)
+         .Run(mojom::blink::InputEventResultState::kNotConsumed,
+-             callback_info.latency_info, nullptr, std::nullopt);
++             callback_info.latency_info, nullptr, std::nullopt, std::nullopt);
+   }
+ }
+ 
+diff --git a/third_party/blink/renderer/platform/widget/input/main_thread_event_queue.h b/third_party/blink/renderer/platform/widget/input/main_thread_event_queue.h
+index d42add7..8201129 100644
+--- a/third_party/blink/renderer/platform/widget/input/main_thread_event_queue.h
++++ b/third_party/blink/renderer/platform/widget/input/main_thread_event_queue.h
+@@ -15,6 +15,7 @@
+ #include "base/timer/timer.h"
+ #include "cc/input/touch_action.h"
+ #include "cc/metrics/begin_main_frame_metrics.h"
++#include "third_party/blink/public/common/input/native_mouse_link_capture.h"
+ #include "third_party/blink/public/common/input/web_input_event.h"
+ #include "third_party/blink/public/common/input/web_input_event_attribution.h"
+ #include "third_party/blink/public/mojom/input/input_event_result.mojom-shared.h"
+@@ -35,7 +36,8 @@ using HandledEventCallback =
+     base::OnceCallback<void(mojom::blink::InputEventResultState ack_state,
+                             const ui::LatencyInfo& latency_info,
+                             mojom::blink::DidOverscrollParamsPtr,
+-                            std::optional<cc::TouchAction>)>;
++                            std::optional<cc::TouchAction>,
++                            std::optional<NativeMouseLinkObservation>)>;
+ 
+ // All interaction with the MainThreadEventQueueClient will occur
+ // on the main thread.
+diff --git a/third_party/blink/renderer/platform/widget/input/widget_base_input_handler.cc b/third_party/blink/renderer/platform/widget/input/widget_base_input_handler.cc
+index 51f8997..e077980 100644
+--- a/third_party/blink/renderer/platform/widget/input/widget_base_input_handler.cc
++++ b/third_party/blink/renderer/platform/widget/input/widget_base_input_handler.cc
+@@ -20,6 +20,7 @@
+ #include "cc/trees/layer_tree_host.h"
+ #include "services/tracing/public/cpp/perfetto/macros.h"
+ #include "third_party/blink/public/common/features.h"
++#include "third_party/blink/public/common/input/native_mouse_link_capture.h"
+ #include "third_party/blink/public/common/input/web_gesture_device.h"
+ #include "third_party/blink/public/common/input/web_gesture_event.h"
+ #include "third_party/blink/public/common/input/web_input_event_attribution.h"
+@@ -243,6 +244,11 @@ void WidgetBaseInputHandler::HandleInputEvent(
+   base::WeakPtr<WidgetBaseInputHandler> weak_self =
+       weak_ptr_factory_.GetWeakPtr();
+   HandlingState handling_state(weak_self, IsTouchStartOrMove(input_event));
++  NativeMouseLinkCapture link_capture(
++      input_event.GetType() == WebInputEvent::Type::kMouseDown
++          ? static_cast<const WebMouseEvent&>(input_event)
++                .native_mouse_down_nonce
++          : base::UnguessableToken());
+ 
+ #if BUILDFLAG(IS_ANDROID)
+   ImeEventGuard guard(widget_->GetWeakPtr());
+@@ -297,7 +303,8 @@ void WidgetBaseInputHandler::HandleInputEvent(
+       if (callback) {
+         std::move(callback).Run(GetAckResult(processed), swap_latency_info,
+                                 std::move(handling_state.event_overscroll()),
+-                                std::move(handling_state.touch_action()));
++                                std::move(handling_state.touch_action()),
++                                link_capture.Take());
+       }
+       return true;
+     }
+@@ -447,7 +454,8 @@ void WidgetBaseInputHandler::HandleInputEvent(
+   if (callback) {
+     std::move(callback).Run(GetAckResult(processed), swap_latency_info,
+                             std::move(handling_state.event_overscroll()),
+-                            std::move(handling_state.touch_action()));
++                            std::move(handling_state.touch_action()),
++                            link_capture.Take());
+   } else {
+     DCHECK(!handling_state.event_overscroll())
+         << "Unexpected overscroll for un-acked event";
+diff --git a/third_party/blink/renderer/platform/widget/input/widget_base_input_handler.h b/third_party/blink/renderer/platform/widget/input/widget_base_input_handler.h
+index 349a4dd..68b83ac 100644
+--- a/third_party/blink/renderer/platform/widget/input/widget_base_input_handler.h
++++ b/third_party/blink/renderer/platform/widget/input/widget_base_input_handler.h
+@@ -11,6 +11,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "cc/metrics/scroll_sequence_tracker.h"
++#include "third_party/blink/public/common/input/native_mouse_link_capture.h"
+ #include "third_party/blink/public/common/input/web_coalesced_input_event.h"
+ #include "third_party/blink/public/common/input/web_gesture_event.h"
+ #include "third_party/blink/public/mojom/input/input_event_result.mojom-blink.h"
+@@ -54,7 +55,8 @@ class PLATFORM_EXPORT WidgetBaseInputHandler {
+       mojom::InputEventResultState ack_state,
+       const ui::LatencyInfo& latency_info,
+       std::unique_ptr<InputHandlerProxy::DidOverscrollParams>,
+-      std::optional<WebTouchAction>)>;
++      std::optional<WebTouchAction>,
++      std::optional<NativeMouseLinkObservation>)>;
+ 
+   // Handle input events from the input event provider. `metrics` contains
+   // information used in reporting latency metrics in case the event causes
+diff --git a/third_party/blink/renderer/platform/widget/input/widget_input_handler_manager.cc b/third_party/blink/renderer/platform/widget/input/widget_input_handler_manager.cc
+index 4bb61ba..0e4efd3 100644
+--- a/third_party/blink/renderer/platform/widget/input/widget_input_handler_manager.cc
++++ b/third_party/blink/renderer/platform/widget/input/widget_input_handler_manager.cc
+@@ -37,6 +37,7 @@
+ #include "components/viz/common/switches.h"
+ #include "services/tracing/public/cpp/perfetto/flow_event_utils.h"
+ #include "third_party/blink/public/common/features.h"
++#include "third_party/blink/public/common/input/native_mouse_link_capture.h"
+ #include "third_party/blink/public/common/input/web_coalesced_input_event.h"
+ #include "third_party/blink/public/common/input/web_input_event_attribution.h"
+ #include "third_party/blink/public/common/input/web_keyboard_event.h"
+@@ -51,6 +52,7 @@
+ #include "third_party/blink/renderer/platform/widget/input/widget_input_handler_impl.h"
+ #include "third_party/blink/renderer/platform/widget/widget_base.h"
+ #include "third_party/blink/renderer/platform/widget/widget_base_client.h"
++#include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+ #include "ui/latency/latency_info.h"
+ 
+ #if BUILDFLAG(IS_ANDROID)
+@@ -86,12 +88,23 @@ mojom::blink::DidOverscrollParamsPtr ToDidOverscrollParams(
+       overscroll_params->overscroll_behavior, overscroll_params->source_device);
+ }
+ 
++mojom::blink::NativeMouseDownLinkPtr ToNativeMouseDownLink(
++    std::optional<NativeMouseLinkObservation> observation) {
++  if (!observation) {
++    return nullptr;
++  }
++  return mojom::blink::NativeMouseDownLink::New(
++      observation->nonce, observation->document,
++      String::FromUtf8(observation->href));
++}
++
+ void CallCallback(
+     mojom::blink::WidgetInputHandler::DispatchEventCallback callback,
+     mojom::blink::InputEventResultState result_state,
+     const ui::LatencyInfo& latency_info,
+     mojom::blink::DidOverscrollParamsPtr overscroll_params,
+-    std::optional<cc::TouchAction> touch_action) {
++    std::optional<cc::TouchAction> touch_action,
++    std::optional<NativeMouseLinkObservation> native_link) {
+   int64_t trace_id = latency_info.trace_id();
+   TRACE_EVENT("input,benchmark,latencyInfo", "LatencyInfo.Flow",
+               [&](perfetto::EventContext ctx) {
+@@ -106,7 +119,8 @@ void CallCallback(
+       result_state, std::move(overscroll_params),
+       touch_action
+           ? mojom::blink::TouchActionOptional::New(touch_action.value())
+-          : nullptr);
++          : nullptr,
++      ToNativeMouseDownLink(std::move(native_link)));
+ }
+ 
+ mojom::blink::InputEventResultState InputEventDispositionToAck(
+@@ -166,9 +180,10 @@ void SuppressEvent(
+                     ChromeLatencyInfo2::Step::STEP_HANDLE_INPUT_EVENT_IMPL);
+               });
+   if (callback) {
+-    std::move(callback).Run(
+-        mojom::blink::InputEventResultSource::kMainThread, ui::LatencyInfo(),
+-        mojom::blink::InputEventResultState::kNotConsumed, nullptr, nullptr);
++    std::move(callback).Run(mojom::blink::InputEventResultSource::kMainThread,
++                            ui::LatencyInfo(),
++                            mojom::blink::InputEventResultState::kNotConsumed,
++                            nullptr, nullptr, nullptr);
+   }
+ }
+ 
+@@ -428,12 +443,13 @@ bool WidgetInputHandlerManager::HandleInputEvent(
+          const ui::LatencyInfo& latency_info,
+          std::unique_ptr<InputHandlerProxy::DidOverscrollParams>
+              overscroll_params,
+-         std::optional<cc::TouchAction> touch_action) {
++         std::optional<cc::TouchAction> touch_action,
++         std::optional<NativeMouseLinkObservation> native_link) {
+         if (!callback)
+           return;
+         std::move(callback).Run(ack_state, latency_info,
+                                 ToDidOverscrollParams(overscroll_params.get()),
+-                                touch_action);
++                                touch_action, std::move(native_link));
+       },
+       std::move(handled_callback));
+   widget_->input_handler().HandleInputEvent(event, std::move(metrics),
+@@ -776,7 +792,7 @@ void WidgetInputHandlerManager::DispatchEvent(
+         std::move(callback).Run(
+             mojom::blink::InputEventResultSource::kMainThread,
+             ui::LatencyInfo(),
+-            mojom::blink::InputEventResultState::kNotConsumed, nullptr,
++            mojom::blink::InputEventResultState::kNotConsumed, nullptr, nullptr,
+             nullptr);
+       }
+       return;
+@@ -972,7 +988,7 @@ void WidgetInputHandlerManager::DispatchDirectlyToWidget(
+       std::move(callback).Run(mojom::blink::InputEventResultSource::kMainThread,
+                               event->latency_info(),
+                               mojom::blink::InputEventResultState::kNotConsumed,
+-                              nullptr, nullptr);
++                              nullptr, nullptr, nullptr);
+     }
+     return;
+   }
+@@ -1002,7 +1018,7 @@ void WidgetInputHandlerManager::FindScrollTargetReply(
+         .Run(mojom::blink::InputEventResultSource::kMainThread,
+              ui::LatencyInfo(),
+              mojom::blink::InputEventResultState::kNotConsumed, nullptr,
+-             nullptr);
++             nullptr, nullptr);
+     return;
+   }
+ 
+@@ -1151,7 +1167,8 @@ void WidgetInputHandlerManager::DidHandleInputEventSentToCompositor(
+         ToDidOverscrollParams(overscroll_params.get()),
+         touch_action
+             ? mojom::blink::TouchActionOptional::New(touch_action.value())
+-            : nullptr);
++            : nullptr,
++        nullptr);
+   }
+ }
+ 
+@@ -1161,11 +1178,13 @@ void WidgetInputHandlerManager::DidHandleInputEventSentToMainFromWidgetBase(
+     const ui::LatencyInfo& latency_info,
+     std::unique_ptr<blink::InputHandlerProxy::DidOverscrollParams>
+         overscroll_params,
+-    std::optional<cc::TouchAction> touch_action) {
++    std::optional<cc::TouchAction> touch_action,
++    std::optional<NativeMouseLinkObservation> native_link) {
+   DCHECK(main_thread_task_runner_->BelongsToCurrentThread());
+-  DidHandleInputEventSentToMain(
+-      std::move(callback), std::nullopt, ack_state, latency_info,
+-      ToDidOverscrollParams(overscroll_params.get()), touch_action);
++  DidHandleInputEventSentToMain(std::move(callback), std::nullopt, ack_state,
++                                latency_info,
++                                ToDidOverscrollParams(overscroll_params.get()),
++                                touch_action, std::move(native_link));
+ }
+ 
+ void WidgetInputHandlerManager::DidHandleInputEventSentToMain(
+@@ -1174,7 +1193,8 @@ void WidgetInputHandlerManager::DidHandleInputEventSentToMain(
+     mojom::blink::InputEventResultState ack_state,
+     const ui::LatencyInfo& latency_info,
+     mojom::blink::DidOverscrollParamsPtr overscroll_params,
+-    std::optional<cc::TouchAction> touch_action_from_main) {
++    std::optional<cc::TouchAction> touch_action_from_main,
++    std::optional<NativeMouseLinkObservation> native_link) {
+   if (!callback)
+     return;
+ 
+@@ -1213,9 +1233,10 @@ void WidgetInputHandlerManager::DidHandleInputEventSentToMain(
+   if (compositor_thread_default_task_runner_ && !is_compositor_thread) {
+     TRACE_EVENT_INSTANT("input", "PostingToCompositor");
+     compositor_thread_default_task_runner_->PostTask(
+-        FROM_HERE, base::BindOnce(CallCallback, std::move(callback), ack_state,
+-                                  latency_info, std::move(overscroll_params),
+-                                  touch_action_for_ack));
++        FROM_HERE,
++        base::BindOnce(CallCallback, std::move(callback), ack_state,
++                       latency_info, std::move(overscroll_params),
++                       touch_action_for_ack, std::move(native_link)));
+   } else {
+     // Otherwise call the callback immediately.
+     std::move(callback).Run(
+@@ -1225,7 +1246,8 @@ void WidgetInputHandlerManager::DidHandleInputEventSentToMain(
+         latency_info, ack_state, std::move(overscroll_params),
+         touch_action_for_ack ? mojom::blink::TouchActionOptional::New(
+                                    touch_action_for_ack.value())
+-                             : nullptr);
++                             : nullptr,
++        ToNativeMouseDownLink(std::move(native_link)));
+   }
+ }
+ 
+diff --git a/third_party/blink/renderer/platform/widget/input/widget_input_handler_manager.h b/third_party/blink/renderer/platform/widget/input/widget_input_handler_manager.h
+index af6eb26..da5ed2e 100644
+--- a/third_party/blink/renderer/platform/widget/input/widget_input_handler_manager.h
++++ b/third_party/blink/renderer/platform/widget/input/widget_input_handler_manager.h
+@@ -21,6 +21,7 @@
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+ #include "mojo/public/cpp/bindings/shared_remote.h"
++#include "third_party/blink/public/common/input/native_mouse_link_capture.h"
+ #include "third_party/blink/public/mojom/input/input_handler.mojom-blink.h"
+ #include "third_party/blink/renderer/platform/platform_export.h"
+ #include "third_party/blink/renderer/platform/widget/input/input_handler_proxy.h"
+@@ -282,7 +283,8 @@ class PLATFORM_EXPORT WidgetInputHandlerManager final
+       mojom::blink::InputEventResultState ack_state,
+       const ui::LatencyInfo& latency_info,
+       mojom::blink::DidOverscrollParamsPtr overscroll_params,
+-      std::optional<cc::TouchAction> touch_action_from_main);
++      std::optional<cc::TouchAction> touch_action_from_main,
++      std::optional<NativeMouseLinkObservation> native_link);
+ 
+   // This method calls into DidHandleInputEventSentToMain but has a
+   // slightly different signature. TODO(dtapuska): Remove this
+@@ -294,7 +296,8 @@ class PLATFORM_EXPORT WidgetInputHandlerManager final
+       const ui::LatencyInfo& latency_info,
+       std::unique_ptr<blink::InputHandlerProxy::DidOverscrollParams>
+           overscroll_params,
+-      std::optional<cc::TouchAction> touch_action);
++      std::optional<cc::TouchAction> touch_action,
++      std::optional<NativeMouseLinkObservation> native_link);
+ 
+   void ObserveGestureEventOnInputHandlingThread(
+       const WebGestureEvent& gesture_event,

@@ -1,5 +1,5 @@
 diff --git a/chrome/app/app-Info.plist b/chrome/app/app-Info.plist
-index 6fada0a2b1..16bb433826 100644
+index 6fada0a..16bb433 100644
 --- a/chrome/app/app-Info.plist
 +++ b/chrome/app/app-Info.plist
 @@ -176,6 +176,10 @@
@@ -15,7 +15,7 @@ index 6fada0a2b1..16bb433826 100644
  			<string>Web site URL</string>
 diff --git a/chrome/app/app-entitlements-aux-passkey.plist b/chrome/app/app-entitlements-aux-passkey.plist
 new file mode 100644
-index 0000000000..3c62921948
+index 0000000..3c62921
 --- /dev/null
 +++ b/chrome/app/app-entitlements-aux-passkey.plist
 @@ -0,0 +1,19 @@
@@ -40,7 +40,7 @@ index 0000000000..3c62921948
 +</plist>
 diff --git a/chrome/app/aux-crash-Info.plist b/chrome/app/aux-crash-Info.plist
 new file mode 100644
-index 0000000000..b3a0a64abf
+index 0000000..b3a0a64
 --- /dev/null
 +++ b/chrome/app/aux-crash-Info.plist
 @@ -0,0 +1,8 @@
@@ -54,7 +54,7 @@ index 0000000000..b3a0a64abf
 +</plist>
 diff --git a/chrome/app/aux-dictation-Info.plist b/chrome/app/aux-dictation-Info.plist
 new file mode 100644
-index 0000000000..cee92b61a1
+index 0000000..cee92b6
 --- /dev/null
 +++ b/chrome/app/aux-dictation-Info.plist
 @@ -0,0 +1,10 @@
@@ -70,21 +70,23 @@ index 0000000000..cee92b61a1
 +</plist>
 diff --git a/chrome/app/aux-product-Info.plist b/chrome/app/aux-product-Info.plist
 new file mode 100644
-index 0000000000..c6e8c48fe7
+index 0000000..75a1ca4
 --- /dev/null
 +++ b/chrome/app/aux-product-Info.plist
-@@ -0,0 +1,8 @@
+@@ -0,0 +1,10 @@
 +<?xml version="1.0" encoding="UTF-8"?>
 +<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 +<plist version="1.0">
 +<dict>
 +  <key>CrProductDirName</key>
 +  <string>Aux</string>
++  <key>NSAppleEventsUsageDescription</key>
++  <string>Aux can copy tabs from the one Safari window you explicitly choose. It does not read cookies, passwords or page contents.</string>
 +</dict>
 +</plist>
 diff --git a/chrome/app/aux-sparkle-Info.plist b/chrome/app/aux-sparkle-Info.plist
 new file mode 100644
-index 0000000000..ab1d9cf3ae
+index 0000000..ab1d9cf
 --- /dev/null
 +++ b/chrome/app/aux-sparkle-Info.plist
 @@ -0,0 +1,12 @@
@@ -102,7 +104,7 @@ index 0000000000..ab1d9cf3ae
 +</plist>
 diff --git a/chrome/app/aux_crash_reporting_mac.h b/chrome/app/aux_crash_reporting_mac.h
 new file mode 100644
-index 0000000000..b563dc1ff5
+index 0000000..b563dc1
 --- /dev/null
 +++ b/chrome/app/aux_crash_reporting_mac.h
 @@ -0,0 +1,15 @@
@@ -122,7 +124,7 @@ index 0000000000..b563dc1ff5
 +
 +#endif  // CHROME_APP_AUX_CRASH_REPORTING_MAC_H_
 diff --git a/chrome/app/chrome_crash_reporter_client.cc b/chrome/app/chrome_crash_reporter_client.cc
-index 64912e538f..18e4dd2693 100644
+index 64912e5..18e4dd2 100644
 --- a/chrome/app/chrome_crash_reporter_client.cc
 +++ b/chrome/app/chrome_crash_reporter_client.cc
 @@ -17,6 +17,11 @@
@@ -179,7 +181,7 @@ index 64912e538f..18e4dd2693 100644
  
  #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 diff --git a/chrome/app/chrome_crash_reporter_client.h b/chrome/app/chrome_crash_reporter_client.h
-index 7f6390504c..22a4a838cf 100644
+index 7f63905..22a4a83 100644
 --- a/chrome/app/chrome_crash_reporter_client.h
 +++ b/chrome/app/chrome_crash_reporter_client.h
 @@ -10,6 +10,7 @@
@@ -199,7 +201,7 @@ index 7f6390504c..22a4a838cf 100644
  
  #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 diff --git a/chrome/app/chrome_crash_reporter_client_mac.mm b/chrome/app/chrome_crash_reporter_client_mac.mm
-index fd615c8608..3372ff4152 100644
+index fd615c8..3372ff4 100644
 --- a/chrome/app/chrome_crash_reporter_client_mac.mm
 +++ b/chrome/app/chrome_crash_reporter_client_mac.mm
 @@ -3,20 +3,130 @@
@@ -342,7 +344,7 @@ index fd615c8608..3372ff4152 100644
  
  bool ChromeCrashReporterClient::ShouldMonitorCrashHandlerExpensively() {
 diff --git a/chrome/app/chromium_strings.grd b/chrome/app/chromium_strings.grd
-index d5f9a09fc0..4d651fa162 100644
+index d5f9a09..4d651fa 100644
 --- a/chrome/app/chromium_strings.grd
 +++ b/chrome/app/chromium_strings.grd
 @@ -294,10 +294,10 @@ If you update this file, be sure also to update google_chrome_strings.grd. -->
@@ -359,7 +361,7 @@ index d5f9a09fc0..4d651fa162 100644
          </else>
        </if>
 diff --git a/chrome/app/theme/chromium/BRANDING b/chrome/app/theme/chromium/BRANDING
-index f8363d5b29..08e4f388c9 100644
+index f8363d5..08e4f38 100644
 --- a/chrome/app/theme/chromium/BRANDING
 +++ b/chrome/app/theme/chromium/BRANDING
 @@ -1,10 +1,10 @@
@@ -39397,7 +39399,7 @@ cODTc>57e-BV7}QS^#A|>07*qoM6N<$g4N9%TL1t6
 
 diff --git a/chrome/installer/mac/aux-runtime-entitlements.plist b/chrome/installer/mac/aux-runtime-entitlements.plist
 new file mode 100644
-index 0000000000..86611d6bc7
+index 0000000..86611d6
 --- /dev/null
 +++ b/chrome/installer/mac/aux-runtime-entitlements.plist
 @@ -0,0 +1,8 @@
@@ -39410,7 +39412,7 @@ index 0000000000..86611d6bc7
 +</dict>
 +</plist>
 diff --git a/chrome/installer/mac/signing/driver.py b/chrome/installer/mac/signing/driver.py
-index 1c95371f92..94380c3a41 100644
+index 1c95371..94380c3 100644
 --- a/chrome/installer/mac/signing/driver.py
 +++ b/chrome/installer/mac/signing/driver.py
 @@ -8,13 +8,15 @@ The driver module provides the command line interface to the signing module.
@@ -39491,7 +39493,7 @@ index 1c95371f92..94380c3a41 100644
  
      if not commands.file_exists(paths.output):
 diff --git a/chrome/installer/mac/signing/driver_test.py b/chrome/installer/mac/signing/driver_test.py
-index fb09737fdb..41c9c2602f 100644
+index fb09737..41c9c26 100644
 --- a/chrome/installer/mac/signing/driver_test.py
 +++ b/chrome/installer/mac/signing/driver_test.py
 @@ -3,6 +3,7 @@
@@ -39544,7 +39546,7 @@ index fb09737fdb..41c9c2602f 100644
          with self.assertRaises(SystemExit):
              driver.main([])
 diff --git a/chrome/installer/mac/signing/parts.py b/chrome/installer/mac/signing/parts.py
-index caf9b6f544..aa7f33f967 100644
+index caf9b6f..aa7f33f 100644
 --- a/chrome/installer/mac/signing/parts.py
 +++ b/chrome/installer/mac/signing/parts.py
 @@ -15,6 +15,42 @@ _PROVISIONPROFILE_EXT = '.provisionprofile'
@@ -39672,7 +39674,7 @@ index caf9b6f544..aa7f33f967 100644
      signing.sign_part(paths, config, parts['app'])
  
 diff --git a/chrome/installer/mac/signing/parts_test.py b/chrome/installer/mac/signing/parts_test.py
-index 1d238909c9..6fb8da91fc 100644
+index 1d23890..6fb8da9 100644
 --- a/chrome/installer/mac/signing/parts_test.py
 +++ b/chrome/installer/mac/signing/parts_test.py
 @@ -105,6 +105,23 @@ class TestGetParts(unittest.TestCase):

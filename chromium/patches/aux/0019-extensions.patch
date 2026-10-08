@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/background/extensions/background_mode_manager.cc b/chrome/browser/background/extensions/background_mode_manager.cc
-index 511fd95c6d..aa7ac1a512 100644
+index 511fd95..aa7ac1a 100644
 --- a/chrome/browser/background/extensions/background_mode_manager.cc
 +++ b/chrome/browser/background/extensions/background_mode_manager.cc
 @@ -39,6 +39,9 @@
@@ -79,7 +79,7 @@ index 511fd95c6d..aa7ac1a512 100644
    // profile should be added to the status icon if one currently exists.
    if (in_background_mode_ && status_icon_) {
 diff --git a/chrome/browser/background/extensions/background_mode_manager.h b/chrome/browser/background/extensions/background_mode_manager.h
-index 9b67714022..7198bb9b99 100644
+index 9b67714..7198bb9 100644
 --- a/chrome/browser/background/extensions/background_mode_manager.h
 +++ b/chrome/browser/background/extensions/background_mode_manager.h
 @@ -16,6 +16,7 @@
@@ -113,7 +113,7 @@ index 9b67714022..7198bb9b99 100644
      // UpdateProfileKeepAlive().
      std::unique_ptr<ScopedProfileKeepAlive> profile_keep_alive_;
 diff --git a/chrome/browser/extensions/api/messaging/launch_context_posix.cc b/chrome/browser/extensions/api/messaging/launch_context_posix.cc
-index ebc06e1203..a79d6f9595 100644
+index ebc06e1..a79d6f9 100644
 --- a/chrome/browser/extensions/api/messaging/launch_context_posix.cc
 +++ b/chrome/browser/extensions/api/messaging/launch_context_posix.cc
 @@ -16,6 +16,8 @@
@@ -171,7 +171,7 @@ index ebc06e1203..a79d6f9595 100644
      error_message = "Can't find native messaging host " + host_name;
 diff --git a/chrome/browser/ui/aux/extension_bridge.cc b/chrome/browser/ui/aux/extension_bridge.cc
 new file mode 100644
-index 0000000000..5aa6f44580
+index 0000000..5aa6f44
 --- /dev/null
 +++ b/chrome/browser/ui/aux/extension_bridge.cc
 @@ -0,0 +1,331 @@
@@ -508,7 +508,7 @@ index 0000000000..5aa6f44580
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/extension_bridge.h b/chrome/browser/ui/aux/extension_bridge.h
 new file mode 100644
-index 0000000000..c3af60b30b
+index 0000000..c3af60b
 --- /dev/null
 +++ b/chrome/browser/ui/aux/extension_bridge.h
 @@ -0,0 +1,40 @@
@@ -554,7 +554,7 @@ index 0000000000..c3af60b30b
 +#endif  // CHROME_BROWSER_UI_AUX_EXTENSION_BRIDGE_H_
 diff --git a/chrome/browser/ui/aux/methods/extensions_methods.cc b/chrome/browser/ui/aux/methods/extensions_methods.cc
 new file mode 100644
-index 0000000000..8ac4abaff2
+index 0000000..8ac4aba
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/extensions_methods.cc
 @@ -0,0 +1,187 @@
@@ -747,7 +747,7 @@ index 0000000000..8ac4abaff2
 +#endif
 diff --git a/chrome/browser/ui/aux/methods/extensions_ui_methods.cc b/chrome/browser/ui/aux/methods/extensions_ui_methods.cc
 new file mode 100644
-index 0000000000..0b16fd61ce
+index 0000000..0b16fd6
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/extensions_ui_methods.cc
 @@ -0,0 +1,333 @@
@@ -1086,7 +1086,7 @@ index 0000000000..0b16fd61ce
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/methods/extensions_ui_methods.h b/chrome/browser/ui/aux/methods/extensions_ui_methods.h
 new file mode 100644
-index 0000000000..0560c6bfb4
+index 0000000..0560c6b
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/extensions_ui_methods.h
 @@ -0,0 +1,30 @@
@@ -1121,7 +1121,7 @@ index 0000000000..0560c6bfb4
 +
 +#endif  // CHROME_BROWSER_UI_AUX_METHODS_EXTENSIONS_UI_METHODS_H_
 diff --git a/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc b/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc
-index 35c6375ac9..989a26ecf3 100644
+index 35c6375..989a26e 100644
 --- a/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc
 +++ b/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc
 @@ -3,6 +3,12 @@
@@ -1243,7 +1243,7 @@ index 35c6375ac9..989a26ecf3 100644
    if (anchor) {
      anchored_widgets_.emplace_back(widget, extension_id);
 diff --git a/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h b/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h
-index 5dc956263d..9d78e874fb 100644
+index 5dc9562..9d78e87 100644
 --- a/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h
 +++ b/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h
 @@ -22,6 +22,7 @@

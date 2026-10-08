@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/external_protocol/external_protocol_handler.cc b/chrome/browser/external_protocol/external_protocol_handler.cc
-index a6f0cfe5b5..1d4b829f59 100644
+index a6f0cfe..1d4b829 100644
 --- a/chrome/browser/external_protocol/external_protocol_handler.cc
 +++ b/chrome/browser/external_protocol/external_protocol_handler.cc
 @@ -385,6 +385,8 @@ ExternalProtocolHandler::BlockState ExternalProtocolHandler::GetBlockState(
@@ -13,7 +13,7 @@ index a6f0cfe5b5..1d4b829f59 100644
    // If we are being flooded with requests, block the request.
 diff --git a/chrome/browser/ui/aux/health_recorder.cc b/chrome/browser/ui/aux/health_recorder.cc
 new file mode 100644
-index 0000000000..47f46cef9b
+index 0000000..47f46ce
 --- /dev/null
 +++ b/chrome/browser/ui/aux/health_recorder.cc
 @@ -0,0 +1,210 @@
@@ -229,7 +229,7 @@ index 0000000000..47f46cef9b
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/health_recorder.h b/chrome/browser/ui/aux/health_recorder.h
 new file mode 100644
-index 0000000000..6141c83ab7
+index 0000000..6141c83
 --- /dev/null
 +++ b/chrome/browser/ui/aux/health_recorder.h
 @@ -0,0 +1,28 @@
@@ -263,10 +263,10 @@ index 0000000000..6141c83ab7
 +#endif  // CHROME_BROWSER_UI_AUX_HEALTH_RECORDER_H_
 diff --git a/chrome/browser/ui/aux/methods/content_methods.cc b/chrome/browser/ui/aux/methods/content_methods.cc
 new file mode 100644
-index 0000000000..0b67de7c16
+index 0000000..1e787dd
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/content_methods.cc
-@@ -0,0 +1,1650 @@
+@@ -0,0 +1,1654 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -933,6 +933,10 @@ index 0000000000..0b67de7c16
 +              base::DictValue params;
 +              params.Set("texts", texts->Clone());
 +              params.Set("context", *title);
++              base::DictValue source;
++              source.Set("pageId", page_id);
++              source.Set("expectedUrl", url.spec());
++              params.Set("source", std::move(source));
 +              auto params_json = base::WriteJson(base::Value(std::move(params)));
 +              auto* runtime = AuxRuntimeHost::ForProfile(
 +                  ui->browser_->GetProfile());
@@ -1792,7 +1796,7 @@ index 0000000000..0b67de7c16
 +                                  "Invalid private site exception");
 +          return;
 +        }
-+        aux::ZapController::ForProfile(browser_->GetProfile())
++        aux::ContentBlockingController::ForProfile(browser_->GetProfile())
 +            ->RefreshCosmetic(base::BindOnce(
 +                [](base::WeakPtr<WebUIBrowserUI> owner, std::string page_id,
 +                   GURL url, int navigation_id, bool previous, bool allowed,
@@ -1808,7 +1812,7 @@ index 0000000000..0b67de7c16
 +                  if (!applied) {
 +                    aux::ContentBlockingController::ForProfile(profile)
 +                        ->SetPrivateSiteAllowed(url.host(), previous);
-+                    aux::ZapController::ForProfile(profile)->RefreshCosmetic(
++                    aux::ContentBlockingController::ForProfile(profile)->RefreshCosmetic(
 +                        base::BindOnce(
 +                            [](RequestCallback callback, bool) {
 +                              std::move(callback).Run(
@@ -1919,7 +1923,7 @@ index 0000000000..0b67de7c16
 +#endif
 diff --git a/chrome/browser/ui/aux/methods/health_methods.cc b/chrome/browser/ui/aux/methods/health_methods.cc
 new file mode 100644
-index 0000000000..74e1e1d4aa
+index 0000000..74e1e1d
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/health_methods.cc
 @@ -0,0 +1,72 @@
@@ -1997,10 +2001,10 @@ index 0000000000..74e1e1d4aa
 +#endif
 diff --git a/chrome/browser/ui/aux/methods/native_content_methods.cc b/chrome/browser/ui/aux/methods/native_content_methods.cc
 new file mode 100644
-index 0000000000..ee7ed6ee4a
+index 0000000..6668f1f
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/native_content_methods.cc
-@@ -0,0 +1,149 @@
+@@ -0,0 +1,148 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -2045,7 +2049,6 @@ index 0000000000..ee7ed6ee4a
 +#include "chrome/browser/profiles/profile.h"
 +#include "chrome/browser/ui/aux/cdp_broker.h"
 +#include "chrome/browser/ui/aux/content_blocking_controller.h"
-+#include "chrome/browser/ui/aux/cosmetic_controller.h"
 +#include "chrome/browser/ui/aux/credential_fill.h"
 +#include "chrome/browser/ui/aux/cookie_import.h"
 +#include "chrome/browser/ui/aux/organization_store.h"
@@ -2152,10 +2155,10 @@ index 0000000000..ee7ed6ee4a
 +}
 diff --git a/chrome/browser/ui/aux/methods/native_page_controls_methods.cc b/chrome/browser/ui/aux/methods/native_page_controls_methods.cc
 new file mode 100644
-index 0000000000..aae9f73428
+index 0000000..1f98e3c
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/native_page_controls_methods.cc
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,175 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -2200,7 +2203,6 @@ index 0000000000..aae9f73428
 +#include "chrome/browser/profiles/profile.h"
 +#include "chrome/browser/ui/aux/cdp_broker.h"
 +#include "chrome/browser/ui/aux/content_blocking_controller.h"
-+#include "chrome/browser/ui/aux/cosmetic_controller.h"
 +#include "chrome/browser/ui/aux/credential_fill.h"
 +#include "chrome/browser/ui/aux/cookie_import.h"
 +#include "chrome/browser/ui/aux/organization_store.h"
@@ -2254,6 +2256,24 @@ index 0000000000..aae9f73428
 +  constexpr std::array<int, 16> kZoomPercentages = {
 +      25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500};
 +  auto* catalog = aux::TabCatalog::GetForProfile(profile_);
++  if (method == "native.memorySaverGet" || method == "native.memorySaverSet") {
++    if (profile_->IsOffTheRecord() || profile_->IsGuestSession()) {
++      return NativeFault("forbidden",
++                         "Memory saver requires a regular profile");
++    }
++    const bool set = method == "native.memorySaverSet";
++    const auto minutes = params.FindInt("minutes");
++    if ((!set && !params.empty()) ||
++        (set && (params.size() != 1 || !minutes ||
++                 !aux::TabCatalog::IsMemorySaverMinutes(*minutes)))) {
++      return NativeFault("invalid_params",
++                         "Choose a supported memory saver interval");
++    }
++    if (set && !catalog->MemorySaverSet(*minutes)) {
++      return NativeFault("forbidden", "Memory saver is managed by policy");
++    }
++    return NativeResult(base::Value(catalog->MemorySaverGet()));
++  }
 +  if (method == "native.stopFind") return native_find_->Stop(params);
 +  if (method == "native.setZoom") {
 +    const std::string* page_id = params.FindString("pageId");
@@ -2275,7 +2295,7 @@ index 0000000000..aae9f73428
 +    } else if (const std::string* direction = params.FindString("direction")) {
 +      requested = true;
 +      if (*direction != "in" && *direction != "out") {
-+        return NativeFault("invalid_argument", "Invalid zoom direction");
++        return NativeFault("invalid_params", "Invalid zoom direction");
 +      }
 +      const int current_percent =
 +          static_cast<int>(std::round(100.0 * std::pow(kZoomBase, current)));
@@ -2298,7 +2318,7 @@ index 0000000000..aae9f73428
 +      next += *delta;
 +    }
 +    if (!std::isfinite(next)) {
-+      return NativeFault("invalid_argument", "Invalid page zoom");
++      return NativeFault("invalid_params", "Invalid page zoom");
 +    }
 +    if (requested) {
 +      next = std::clamp(next, std::log(kMinZoomFactor) / std::log(kZoomBase),
@@ -2316,10 +2336,10 @@ index 0000000000..aae9f73428
 +}
 diff --git a/chrome/browser/ui/aux/methods/page_controls_methods.cc b/chrome/browser/ui/aux/methods/page_controls_methods.cc
 new file mode 100644
-index 0000000000..eb59bb5337
+index 0000000..979ae4a
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
-@@ -0,0 +1,770 @@
+@@ -0,0 +1,795 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -2469,6 +2489,31 @@ index 0000000000..eb59bb5337
 +    const std::string& method, const base::ListValue& args,
 +    RequestCallback callback) {
 +  const base::ListValue* list = &args;
++  if (method == "memorySaverGet" || method == "memorySaverSet") {
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Memory saver requires a regular profile");
++      return;
++    }
++    const bool set = method == "memorySaverSet";
++    if ((!set && !args.empty()) ||
++        (set && (args.size() != 1 || !args[0].is_int() ||
++                 !aux::TabCatalog::IsMemorySaverMinutes(args[0].GetInt())))) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Choose a supported memory saver interval");
++      return;
++    }
++    auto* catalog = aux::TabCatalog::GetForProfile(profile);
++    if (set && !catalog->MemorySaverSet(args[0].GetInt())) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Memory saver is managed by policy");
++      return;
++    }
++    std::move(callback).Run(true, *base::WriteJson(catalog->MemorySaverGet()),
++                            "", "");
++    return;
++  }
 +  if (method == "defaultPageZoom") {
 +    auto* profile = browser_->GetProfile();
 +    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
@@ -3092,7 +3137,7 @@ index 0000000000..eb59bb5337
 +#endif
 diff --git a/chrome/browser/ui/aux/native_find.cc b/chrome/browser/ui/aux/native_find.cc
 new file mode 100644
-index 0000000000..4611787efd
+index 0000000..ba9a98d
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_find.cc
 @@ -0,0 +1,163 @@
@@ -3161,7 +3206,7 @@ index 0000000000..4611787efd
 +  const auto find_next = params.FindBool("findNext");
 +  if (!page_id || !text || !forward || !find_next || text->empty() ||
 +      text->size() > 4096 || !base::IsStringUTF8(*text)) {
-+    std::move(reply).Run(Fault("invalid_argument", "Invalid find request"));
++    std::move(reply).Run(Fault("invalid_params", "Invalid find request"));
 +    return;
 +  }
 +  auto* catalog = TabCatalog::GetForProfile(profile_);
@@ -3205,7 +3250,7 @@ index 0000000000..4611787efd
 +  const std::string* page_id = params.FindString("pageId");
 +  const std::string* action = params.FindString("action");
 +  if (!page_id || !action || (*action != "clear" && *action != "keep"))
-+    return Fault("invalid_argument", "Invalid stop-find request");
++    return Fault("invalid_params", "Invalid stop-find request");
 +  auto* catalog = TabCatalog::GetForProfile(profile_);
 +  content::WebContents* contents = catalog ? catalog->FindPage(*page_id) : nullptr;
 +  if (!contents || contents->GetBrowserContext() != profile_)
@@ -3261,7 +3306,7 @@ index 0000000000..4611787efd
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/native_find.h b/chrome/browser/ui/aux/native_find.h
 new file mode 100644
-index 0000000000..25cccf8d81
+index 0000000..25cccf8
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_find.h
 @@ -0,0 +1,53 @@
@@ -3320,10 +3365,10 @@ index 0000000000..25cccf8d81
 +#endif  // CHROME_BROWSER_UI_AUX_NATIVE_FIND_H_
 diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
 new file mode 100644
-index 0000000000..fa0b285e1a
+index 0000000..cb99025
 --- /dev/null
 +++ b/chrome/browser/ui/aux/shell_events.cc
-@@ -0,0 +1,946 @@
+@@ -0,0 +1,1036 @@
 +#include <set>
 +#include "chrome/browser/ui/aux/download_naming.h"
 +// Copyright 2026 The Aux Authors
@@ -3340,6 +3385,16 @@ index 0000000000..fa0b285e1a
 +#include <vector>
 +
 +#include "base/functional/bind.h"
++#include "base/scoped_observation.h"
++#include "base/unguessable_token.h"
++#include "build/build_config.h"
++#include "chrome/browser/profiles/profile_observer.h"
++#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux/task_attention_mac.h"
++#endif
 +#include "base/json/json_reader.h"
 +#include "base/json/json_writer.h"
 +#include "base/logging.h"
@@ -4053,10 +4108,71 @@ index 0000000000..fa0b285e1a
 +  std::string window_id;
 +};
 +
-+class RunAttentionState final : public base::SupportsUserData::Data {
++class RunAttentionState final : public base::SupportsUserData::Data,
++                                public ProfileObserver,
++                                public BrowserCollectionObserver {
 + public:
++  explicit RunAttentionState(Profile* profile) : profile_(profile) {
++    profile_observation_.Observe(profile);
++    if (auto* browsers = ProfileBrowserCollection::GetForProfile(profile))
++      browser_observation_.Observe(browsers);
++  }
++  ~RunAttentionState() override {
++    browser_observation_.Reset();
++    profile_observation_.Reset();
++    entries.clear();
++    UpdateBadge();
++  }
++  void UpdateBadge() {
++#if BUILDFLAG(IS_MAC)
++    std::set<std::string> runs;
++    for (const auto& [id, entry] : entries) runs.insert(entry.run_id);
++    SetTaskAttentionBadge(badge_owner_, runs.size());
++#endif
++  }
++  void PlayCompletionSound() {
++#if BUILDFLAG(IS_MAC)
++    PlayTaskCompletionSound(badge_owner_);
++#endif
++  }
++  void OnBrowserActivated(BrowserWindowInterface* browser) override {
++    ClearWindow(browser);
++  }
++  void OnBrowserClosed(BrowserWindowInterface* browser) override {
++    ClearWindow(browser);
++  }
++  void OnProfileWillBeDestroyed(Profile*) override {
++    ClearWindow(nullptr);
++    browser_observation_.Reset();
++    profile_observation_.Reset();
++    profile_ = nullptr;
++  }
 +  std::map<std::string, RunAttentionEntry> entries;
 +  std::map<std::string, base::TimeTicks> last_by_kind;
++ private:
++  void ClearWindow(BrowserWindowInterface* browser) {
++    const std::string window = browser ?
++        base::NumberToString(browser->GetSessionID().id()) : "";
++    std::vector<std::string> removed;
++    std::erase_if(entries, [&](const auto& entry) {
++      if (browser && entry.second.window_id != window) return false;
++      removed.push_back(entry.first);
++      return true;
++    });
++    UpdateBadge();
++    // Remove only this state's native entries; never adopt another Profile or
++    // fabricate acknowledgement of its pending run.
++    if (auto* service = profile_ ?
++        NotificationDisplayServiceFactory::GetForProfile(profile_) : nullptr) {
++      for (const auto& id : removed)
++        service->Close(NotificationHandler::Type::AUX_RUN_ATTENTION, id);
++    }
++  }
++  raw_ptr<Profile> profile_;
++  const base::UnguessableToken badge_owner_ = base::UnguessableToken::Create();
++  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
++  base::ScopedObservation<ProfileBrowserCollection, BrowserCollectionObserver>
++      browser_observation_{this};
 +};
 +
 +class RunAttentionHandler final : public NotificationHandler {
@@ -4075,6 +4191,7 @@ index 0000000000..fa0b285e1a
 +        payload.Set("windowId", it->second.window_id);
 +        EmitDict(profile, "onRunAttentionActivated", std::move(payload));
 +        state->entries.erase(it);
++        state->UpdateBadge();
 +      }
 +    }
 +    std::move(completed).Run();
@@ -4083,7 +4200,10 @@ index 0000000000..fa0b285e1a
 +               bool, base::OnceClosure completed) override {
 +    auto* state = profile ? static_cast<RunAttentionState*>(
 +        profile->GetUserData(&kRunAttentionKey)) : nullptr;
-+    if (state) state->entries.erase(notification_id);
++    if (state) {
++      state->entries.erase(notification_id);
++      state->UpdateBadge();
++    }
 +    std::move(completed).Run();
 +  }
 +};
@@ -4093,7 +4213,7 @@ index 0000000000..fa0b285e1a
 +bool ShowRunAttention(Profile* profile, const std::string& kind,
 +                      const std::string& run_id, const std::string& identity,
 +                      const std::string& window_id) {
-+  if (!profile || profile->IsOffTheRecord() || run_id.empty() || identity.empty() ||
++  if (!profile || profile->IsOffTheRecord() || profile->ShutdownStarted() || run_id.empty() || identity.empty() ||
 +      window_id.empty() || run_id.size() > 128 || identity.size() > 128 ||
 +      window_id.size() > 128) return false;
 +  const char16_t* title = nullptr;
@@ -4110,6 +4230,17 @@ index 0000000000..fa0b285e1a
 +  } else {
 +    return false;
 +  }
++  auto* browsers = ProfileBrowserCollection::GetForProfile(profile);
++  bool original_window_current = false;
++  if (browsers) browsers->ForEach([&](BrowserWindowInterface* browser) {
++    if (base::NumberToString(browser->GetSessionID().id()) != window_id)
++      return true;
++    // Policy belongs to the original durable shell gate. Native validates the
++    // same live Profile/window without adding a whole-window focus policy.
++    original_window_current = browser->GetProfile() == profile;
++    return false;
++  });
++  if (!original_window_current) return false;
 +  auto* service = NotificationDisplayServiceImpl::GetForProfile(profile);
 +  if (!service) return false;
 +  if (!service->GetNotificationHandler(NotificationHandler::Type::AUX_RUN_ATTENTION)) {
@@ -4119,7 +4250,7 @@ index 0000000000..fa0b285e1a
 +  auto* state = static_cast<RunAttentionState*>(
 +      profile->GetUserData(&kRunAttentionKey));
 +  if (!state) {
-+    profile->SetUserData(&kRunAttentionKey, std::make_unique<RunAttentionState>());
++    profile->SetUserData(&kRunAttentionKey, std::make_unique<RunAttentionState>(profile));
 +    state = static_cast<RunAttentionState*>(profile->GetUserData(&kRunAttentionKey));
 +  }
 +  const auto now = base::TimeTicks::Now();
@@ -4138,6 +4269,10 @@ index 0000000000..fa0b285e1a
 +      GURL(), message_center::NotifierId(), data, nullptr);
 +  service->Display(NotificationHandler::Type::AUX_RUN_ATTENTION,
 +                   notification, nullptr);
++  state->UpdateBadge();
++#if BUILDFLAG(IS_MAC)
++  if (kind == "completed") state->PlayCompletionSound();
++#endif
 +  return true;  // Enqueued; OS permission can still deny display. The shell keeps a fallback.
 +}
 +
@@ -4272,7 +4407,7 @@ index 0000000000..fa0b285e1a
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/shell_events.h b/chrome/browser/ui/aux/shell_events.h
 new file mode 100644
-index 0000000000..efb2a8858b
+index 0000000..efb2a88
 --- /dev/null
 +++ b/chrome/browser/ui/aux/shell_events.h
 @@ -0,0 +1,57 @@
@@ -4335,7 +4470,7 @@ index 0000000000..efb2a8858b
 +#endif  // CHROME_BROWSER_UI_AUX_SHELL_EVENTS_H_
 diff --git a/chrome/browser/ui/aux/site_prefs.h b/chrome/browser/ui/aux/site_prefs.h
 new file mode 100644
-index 0000000000..24b019111a
+index 0000000..24b0191
 --- /dev/null
 +++ b/chrome/browser/ui/aux/site_prefs.h
 @@ -0,0 +1,14 @@
@@ -4354,7 +4489,7 @@ index 0000000000..24b019111a
 +
 +#endif  // CHROME_BROWSER_UI_AUX_SITE_PREFS_H_
 diff --git a/chrome/browser/ui/browser_tabrestore.cc b/chrome/browser/ui/browser_tabrestore.cc
-index fa43dd782c..9850e47981 100644
+index fa43dd7..9850e47 100644
 --- a/chrome/browser/ui/browser_tabrestore.cc
 +++ b/chrome/browser/ui/browser_tabrestore.cc
 @@ -10,6 +10,10 @@

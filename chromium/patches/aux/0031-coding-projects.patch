@@ -1,0 +1,1861 @@
+diff --git a/chrome/browser/ui/aux/native_project.cc b/chrome/browser/ui/aux/native_project.cc
+new file mode 100644
+index 0000000..37329bf
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project.cc
+@@ -0,0 +1,211 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_project.h"
++#include <Security/Security.h>
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <optional>
++#include "base/apple/scoped_cftyperef.h"
++#include "base/base64.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_file.h"
++#include "base/process/launch.h"
++#include "base/functional/bind.h"
++#include "base/task/thread_pool.h"
++#include "base/strings/string_util.h"
++#include "chrome/browser/ui/aux/native_project_files.h"
++#include "chrome/browser/ui/aux/native_terminal.h"
++#include "content/public/browser/page.h"
++#include "content/public/browser/web_contents.h"
++
++namespace aux {
++namespace {
++constexpr size_t kOutputBytes = 1024 * 1024;
++struct GitExecutable {
++  std::string path;
++  uint64_t device;
++  uint64_t inode;
++  int64_t size;
++  int64_t modified_seconds;
++  int64_t modified_nanoseconds;
++};
++std::optional<GitExecutable> InspectGitExecutable(const std::string& path) {
++  base::ScopedFD descriptor(open(path.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
++  struct stat identity{};
++  if (!descriptor.is_valid() || fstat(descriptor.get(), &identity) != 0 ||
++      !S_ISREG(identity.st_mode) || identity.st_uid != 0 ||
++      (identity.st_mode & (S_IWGRP | S_IWOTH)) || !(identity.st_mode & S_IXUSR)) return std::nullopt;
++  return GitExecutable{path, static_cast<uint64_t>(identity.st_dev), static_cast<uint64_t>(identity.st_ino),
++      identity.st_size, identity.st_mtimespec.tv_sec, identity.st_mtimespec.tv_nsec};
++}
++std::optional<GitExecutable> FindInstalledGit() {
++  // Resolve Apple's selected toolchain before applying the read-only Project
++  // policy: /usr/bin/git is an xcrun shim which can write its system cache.
++  // Do not let an ambient DEVELOPER_DIR or PATH select another executable.
++  std::string output;
++  if (!base::GetAppOutput(std::vector<std::string>{"/usr/bin/env", "-i", "PATH=/usr/bin:/bin",
++      "/usr/bin/xcrun", "--find", "git"}, &output) || output.size() > 4096) return std::nullopt;
++  const std::string selected(base::TrimWhitespaceASCII(output, base::TRIM_ALL));
++  base::FilePath resolved;
++  if (selected.empty() || selected.front() != '/' || selected.find('\n') != std::string::npos ||
++      !base::NormalizeFilePath(base::FilePath(selected), &resolved) ||
++      resolved.BaseName().value() != "git" || resolved.value() == "/usr/bin/git") return std::nullopt;
++  auto executable = InspectGitExecutable(resolved.value());
++  if (!executable) return std::nullopt;
++  base::apple::ScopedCFTypeRef<CFURLRef> url(CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,
++      reinterpret_cast<const UInt8*>(executable->path.data()), executable->path.size(), false));
++  base::apple::ScopedCFTypeRef<SecStaticCodeRef> code;
++  base::apple::ScopedCFTypeRef<SecRequirementRef> requirement;
++  if (!url || SecStaticCodeCreateWithPath(url.get(), kSecCSDefaultFlags, code.InitializeInto()) != errSecSuccess ||
++      SecRequirementCreateWithString(CFSTR("anchor apple"), kSecCSDefaultFlags, requirement.InitializeInto()) != errSecSuccess ||
++      SecStaticCodeCheckValidity(code.get(), kSecCSCheckAllArchitectures, requirement.get()) != errSecSuccess)
++    return std::nullopt;
++  return executable;
++}
++base::DictValue Fault(const char* message) {
++  return base::DictValue().Set("error", base::DictValue().Set("code", "permission_denied").Set("message", message));
++}
++base::DictValue Closed() { return base::DictValue().Set("result", base::DictValue().Set("closed", true)); }
++}
++struct NativeProject::Work {
++  bool retired = false;
++  bool finished = false;
++  base::OnceCallback<void(base::DictValue)> reply;
++  std::vector<base::OnceCallback<void(base::DictValue)>> closed;
++};
++NativeProject::NativeProject(content::WebContents* owner, content::WeakDocumentPtr document,
++    std::string token, base::DictValue params)
++    : content::WebContentsObserver(owner), document_(document), token_(std::move(token)),
++      params_(std::move(params)), work_(std::make_shared<Work>()) {}
++NativeProject::~NativeProject() { Retire(); }
++bool NativeProject::Current() const { return !work_->retired && document_.AsRenderFrameHostIfValid() && web_contents(); }
++void NativeProject::Start(const std::string& method, base::OnceCallback<void(base::DictValue)> callback) {
++  work_->reply = std::move(callback);
++  if (!Current()) { Finish(Fault("Original Project window retired")); return; }
++  if (method == "native.projectChanges") {
++    output_.resize(3); started_ = base::TimeTicks::Now();
++    base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE,
++        {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN}, base::BindOnce(&FindInstalledGit),
++        base::BindOnce([](base::WeakPtr<NativeProject> owner, std::shared_ptr<Work> work,
++                         std::optional<GitExecutable> executable) {
++          if (owner) {
++            if (!owner->Current()) { owner->Finish(Fault("Original Project window retired")); return; }
++            if (!executable) { owner->Finish(Fault("Apple's installed Git is unavailable or its identity could not be verified")); return; }
++            owner->git_path_ = executable->path; owner->git_device_ = executable->device;
++            owner->git_inode_ = executable->inode; owner->git_size_ = executable->size;
++            owner->git_modified_seconds_ = executable->modified_seconds;
++            owner->git_modified_nanoseconds_ = executable->modified_nanoseconds;
++            owner->BeginGit(); return;
++          }
++          work->finished = true;
++          if (work->reply) std::move(work->reply).Run(Fault("Original Project window retired"));
++          auto callbacks = std::move(work->closed);
++          for (auto& callback : callbacks) std::move(callback).Run(Closed());
++        }, weak_factory_.GetWeakPtr(), work_));
++    return;
++  }
++  const bool listing = method == "native.projectFiles";
++  base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE,
++      {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
++      base::BindOnce(&ReadProjectFiles, params_.Clone(), listing),
++      base::BindOnce([](base::WeakPtr<NativeProject> owner, std::shared_ptr<Work> work, base::DictValue result) {
++        if (owner) { owner->Finish(std::move(result)); return; }
++        work->finished = true;
++        if (work->reply) std::move(work->reply).Run(Fault("Original Project window retired"));
++        auto callbacks = std::move(work->closed);
++        for (auto& callback : callbacks) std::move(callback).Run(Closed());
++      }, weak_factory_.GetWeakPtr(), work_));
++}
++void NativeProject::BeginGit() {
++  if (!Current()) { Finish(Fault("Original Project window retired")); return; }
++  const auto* profile = params_.FindString("sandboxProfile");
++  if (!profile || profile->empty()) { Finish(Fault("Original Project file policy is unavailable")); return; }
++  const auto executable = InspectGitExecutable(git_path_);
++  if (!executable || executable->device != git_device_ || executable->inode != git_inode_ ||
++      executable->size != git_size_ || executable->modified_seconds != git_modified_seconds_ ||
++      executable->modified_nanoseconds != git_modified_nanoseconds_) {
++    Finish(Fault("Original installed Git changed before its Project query")); return;
++  }
++  std::vector<std::string> args = {"-p", *profile, git_path_, "--no-pager", "--no-optional-locks", "--literal-pathspecs",
++      "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "color.ui=false", "-c", "core.pager=cat"};
++  if (phase_ == 0) args.insert(args.end(), {"status", "--short", "--untracked-files=normal"});
++  else {
++    args.insert(args.end(), {"diff", "--no-ext-diff", "--no-textconv", "--ignore-submodules=all"});
++    if (phase_ == 1) args.push_back("--cached");
++  }
++  process_ = std::make_unique<NativeTerminal>(web_contents(), document_, token_,
++      base::DictValue().Set("terminalId", *params_.FindString("operationId")).Set("state", "running").Set("cols", 120).Set("rows", 40));
++  std::string error;
++  if (!process_->StartCommand("/usr/bin/sandbox-exec", args,
++      {"PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0"},
++      *params_.FindString("cwd"), *params_.FindString("rootDevice"), *params_.FindString("rootInode"), &error)) {
++    Finish(Fault("The reviewed Project could not start its Git query")); return;
++  }
++  offset_ = 0;
++  timer_.Start(FROM_HERE, base::Milliseconds(15), this, &NativeProject::Poll);
++}
++void NativeProject::Poll() {
++  if (!Current()) { Finish(Fault("Original Project window retired")); return; }
++  if (base::TimeTicks::Now() - started_ > base::Seconds(30)) { Finish(Fault("Git inspection timed out; its original process is being stopped")); return; }
++  auto read = process_->Read(offset_);
++  const auto* result = read.FindDict("result");
++  if (!result) { Finish(std::move(read)); return; }
++  const auto* encoded = result->FindString("data");
++  const auto next = result->FindDouble("nextOffset");
++  const auto* state = result->FindString("state");
++  std::string data;
++  if (!encoded || !next || !state || !base::Base64Decode(*encoded, &data)) { Finish(Fault("Git output acknowledgement changed")); return; }
++  offset_ = static_cast<uint64_t>(*next);
++  const auto remaining = phase_ == 0 ? kOutputBytes - output_[0].size() :
++      kOutputBytes - 64 - output_[1].size() - output_[2].size();
++  const bool limited = data.size() > remaining;
++  if (limited) { output_[phase_].append(data.data(), remaining); truncated_ = true; }
++  else output_[phase_] += data;
++  if (*state != "closed" && !limited) return;
++  if (limited) for (int count = 0; count < 3 && !output_[phase_].empty() && !base::IsStringUTF8(output_[phase_]); ++count) output_[phase_].pop_back();
++  if (!base::IsStringUTF8(output_[phase_])) { Finish(Fault("Git returned non-text output")); return; }
++  timer_.Stop();
++  const auto exit_code = result->FindInt("exitCode");
++  if (*state == "closed" && (!exit_code || *exit_code != 0)) { Finish(Fault("Git could not inspect this reviewed Project")); return; }
++  process_->Close(base::BindOnce([](base::WeakPtr<NativeProject> owner, base::DictValue closed) {
++    if (!owner) return;
++    if (closed.FindDict("error")) { owner->Finish(std::move(closed)); return; }
++    owner->process_.reset();
++    owner->phase_++;
++    if (owner->phase_ < owner->output_.size()) { owner->BeginGit(); return; }
++    auto result = base::DictValue().Set("status", owner->output_[0])
++        .Set("diff", "Staged changes\n" + owner->output_[1] + "\nWorking changes\n" + owner->output_[2]).Set("truncated", owner->truncated_);
++    owner->Finish(base::DictValue().Set("result", std::move(result)));
++  }, weak_factory_.GetWeakPtr()));
++}
++void NativeProject::Finish(base::DictValue result) {
++  timer_.Stop();
++  if (work_->finished) return;
++  if (!Current()) result = Fault("Original Project window retired");
++  auto complete = base::BindOnce([](std::shared_ptr<Work> work, base::DictValue result, base::DictValue closed) {
++    const bool acknowledged = !closed.FindDict("error");
++    work->finished = acknowledged;
++    if (!acknowledged) result = closed.Clone();
++    else if (work->retired) result = Fault("Original Project window retired");
++    if (work->reply) std::move(work->reply).Run(std::move(result));
++    auto callbacks = std::move(work->closed);
++    for (auto& callback : callbacks) std::move(callback).Run(acknowledged ? Closed() : closed.Clone());
++  }, work_, std::move(result));
++  if (process_) process_->Close(std::move(complete));
++  else std::move(complete).Run(Closed());
++}
++bool NativeProject::Finished() const { return work_->finished; }
++void NativeProject::Close(base::OnceCallback<void(base::DictValue)> callback) {
++  work_->retired = true;
++  if (work_->finished) { std::move(callback).Run(Closed()); return; }
++  work_->closed.push_back(std::move(callback));
++  if (process_) Finish(Fault("Original Project query was cancelled"));
++  // File reads acknowledge only after their original descriptor task joins.
++}
++void NativeProject::Retire() {
++  work_->retired = true;
++  if (process_) Finish(Fault("Original Project window retired"));
++}
++void NativeProject::PrimaryPageChanged(content::Page&) { Retire(); }
++void NativeProject::WebContentsDestroyed() { Retire(); }
++}
+diff --git a/chrome/browser/ui/aux/native_project.h b/chrome/browser/ui/aux/native_project.h
+new file mode 100644
+index 0000000..a2e147b
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project.h
+@@ -0,0 +1,55 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_H_
++#include <cstdint>
++#include <memory>
++#include <string>
++#include <vector>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "base/time/time.h"
++#include "base/values.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/weak_document_ptr.h"
++namespace aux {
++class NativeTerminal;
++class NativeProject final : public content::WebContentsObserver {
++ public:
++  NativeProject(content::WebContents* owner, content::WeakDocumentPtr document,
++                std::string token, base::DictValue params);
++  ~NativeProject() override;
++  const std::string& token() const { return token_; }
++  void Start(const std::string& method, base::OnceCallback<void(base::DictValue)> callback);
++  bool Finished() const;
++  void Close(base::OnceCallback<void(base::DictValue)> callback);
++  void PrimaryPageChanged(content::Page& page) override;
++  void WebContentsDestroyed() override;
++ private:
++  struct Work;
++  bool Current() const;
++  void BeginGit();
++  void Poll();
++  void Finish(base::DictValue result);
++  void Retire();
++  content::WeakDocumentPtr document_;
++  const std::string token_;
++  base::DictValue params_;
++  std::shared_ptr<Work> work_;
++  std::unique_ptr<NativeTerminal> process_;
++  base::RepeatingTimer timer_;
++  std::vector<std::string> output_;
++  std::string git_path_;
++  uint64_t git_device_ = 0;
++  uint64_t git_inode_ = 0;
++  int64_t git_size_ = 0;
++  int64_t git_modified_seconds_ = 0;
++  int64_t git_modified_nanoseconds_ = 0;
++  size_t phase_ = 0;
++  uint64_t offset_ = 0;
++  bool truncated_ = false;
++  base::TimeTicks started_;
++  base::WeakPtrFactory<NativeProject> weak_factory_{this};
++};
++}
++#endif
+diff --git a/chrome/browser/ui/aux/native_project_files.cc b/chrome/browser/ui/aux/native_project_files.cc
+new file mode 100644
+index 0000000..4b6880d
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_files.cc
+@@ -0,0 +1,127 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_project_files.h"
++#include <cerrno>
++#include <cstdint>
++#include <utility>
++#include <dirent.h>
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <algorithm>
++#include <array>
++#include <string>
++#include <vector>
++#include "base/files/scoped_file.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++
++namespace aux {
++namespace {
++constexpr size_t kTextBytes = 1024 * 1024;
++constexpr size_t kEntries = 1000;
++base::DictValue Fail(const char* message) {
++  return base::DictValue().Set("error", base::DictValue()
++      .Set("code", "permission_denied").Set("message", message));
++}
++bool Inside(const std::string& path, const std::string& root) {
++  return path == root || path.starts_with(root.ends_with('/') ? root : root + "/");
++}
++bool Permitted(const std::string& path, const base::ListValue& denied) {
++  for (const auto& value : denied) {
++    if (!value.is_string() || Inside(path, value.GetString())) return false;
++  }
++  return true;
++}
++std::vector<std::string> Components(const std::string& path) {
++  std::vector<std::string> parts;
++  size_t offset = 0;
++  while (offset < path.size()) {
++    const auto end = path.find('/', offset);
++    auto part = path.substr(offset, end == std::string::npos ? end : end - offset);
++    if (part.empty() || part == "." || part == "..") return {};
++    parts.push_back(std::move(part));
++    if (end == std::string::npos) break;
++    offset = end + 1;
++    if (offset == path.size()) return {};
++  }
++  return parts;
++}
++}
++
++base::DictValue ReadProjectFiles(const base::DictValue& params, bool listing) {
++  const auto* root = params.FindString("cwd");
++  const auto* path = params.FindString("path");
++  const auto* device = params.FindString("rootDevice");
++  const auto* inode = params.FindString("rootInode");
++  const auto* denied = params.FindList("deniedRoots");
++  if (!root || !path || !device || !inode || !denied || root->empty() ||
++      root->front() != '/' || root->find('\0') != std::string::npos ||
++      path->find('\0') != std::string::npos || path->size() > 4096 ||
++      (!path->empty() && path->front() == '/') || denied->size() > 512)
++    return Fail("Exact reviewed Project access is required");
++  auto parts = Components(*path);
++  if ((!path->empty() && parts.empty()) || (!listing && parts.empty()))
++    return Fail("Choose a relative Project path");
++  base::ScopedFD fd(open(root->c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
++  struct stat identity{};
++  if (!fd.is_valid() || fstat(fd.get(), &identity) != 0 ||
++      base::NumberToString(static_cast<uint64_t>(identity.st_dev)) != *device ||
++      base::NumberToString(static_cast<uint64_t>(identity.st_ino)) != *inode)
++    return Fail("The original reviewed Project directory changed");
++  std::string current = *root;
++  if (!Permitted(current, *denied)) return Fail("Project access is excluded by current file permissions");
++  for (size_t i = 0; i < parts.size(); ++i) {
++    current += "/" + parts[i];
++    if (!Permitted(current, *denied)) return Fail("This Project path is excluded by current file permissions");
++    const bool directory = listing || i + 1 < parts.size();
++    base::ScopedFD next(openat(fd.get(), parts[i].c_str(), O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC | (directory ? O_DIRECTORY : 0)));
++    if (!next.is_valid()) return Fail("Project paths cannot follow replaced directories or symbolic links");
++    fd = std::move(next);
++  }
++  if (listing) {
++    const int copy = dup(fd.get());
++    DIR* directory = copy < 0 ? nullptr : fdopendir(copy);
++    if (!directory) { if (copy >= 0) close(copy); return Fail("The Project directory cannot be listed"); }
++    std::vector<base::DictValue> entries;
++    bool truncated = false;
++    int listing_error = 0;
++    for (;;) {
++      errno = 0;
++      auto* item = readdir(directory);
++      if (!item) { listing_error = errno; break; }
++      std::string name(item->d_name);
++      if (name == "." || name == ".." || !base::IsStringUTF8(name) || !Permitted(current + "/" + name, *denied)) continue;
++      if (entries.size() == kEntries) { truncated = true; break; }
++      struct stat info{};
++      if (fstatat(fd.get(), name.c_str(), &info, AT_SYMLINK_NOFOLLOW) != 0) continue;
++      const char* type = S_ISDIR(info.st_mode) ? "directory" : S_ISREG(info.st_mode) ? "file" : S_ISLNK(info.st_mode) ? "symlink" : "other";
++      entries.push_back(base::DictValue().Set("name", name).Set("path", path->empty() ? name : *path + "/" + name)
++          .Set("type", type).Set("size", static_cast<double>(std::max<off_t>(0, info.st_size))));
++    }
++    closedir(directory);
++    if (listing_error) return Fail("The original Project directory could not be completely listed");
++    std::ranges::sort(entries, {}, [](const auto& entry) { return *entry.FindString("name"); });
++    base::ListValue result;
++    for (auto& entry : entries) result.Append(std::move(entry));
++    return base::DictValue().Set("result", base::DictValue().Set("path", *path).Set("entries", std::move(result)).Set("truncated", truncated));
++  }
++  struct stat before{};
++  if (fstat(fd.get(), &before) != 0 || !S_ISREG(before.st_mode)) return Fail("Choose a regular Project file");
++  std::string text;
++  std::array<char, 16384> buffer;
++  while (text.size() < kTextBytes) {
++    const auto count = read(fd.get(), buffer.data(), std::min(buffer.size(), kTextBytes - text.size()));
++    if (count < 0) { if (errno == EINTR) continue; return Fail("Project file read failed"); }
++    if (count == 0) break;
++    text.append(buffer.data(), count);
++  }
++  struct stat after{};
++  if (fstat(fd.get(), &after) != 0 || before.st_size != after.st_size ||
++      before.st_mtimespec.tv_sec != after.st_mtimespec.tv_sec || before.st_mtimespec.tv_nsec != after.st_mtimespec.tv_nsec)
++    return Fail("The Project file changed while it was read");
++  const bool truncated = before.st_size > static_cast<off_t>(text.size());
++  if (truncated) for (int count = 0; count < 3 && !text.empty() && !base::IsStringUTF8(text); ++count) text.pop_back();
++  if (text.find('\0') != std::string::npos || !base::IsStringUTF8(text)) return Fail("This file is binary; choose a text file");
++  return base::DictValue().Set("result", base::DictValue().Set("path", *path).Set("text", std::move(text)).Set("truncated", truncated));
++}
++}
+diff --git a/chrome/browser/ui/aux/native_project_files.h b/chrome/browser/ui/aux/native_project_files.h
+new file mode 100644
+index 0000000..2c4393b
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_files.h
+@@ -0,0 +1,10 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_FILES_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_FILES_H_
++#include "base/values.h"
++namespace aux {
++// Caller admits the original WebUI document before dispatch and before reply.
++// All filesystem access is relative to the exact reviewed root descriptor.
++base::DictValue ReadProjectFiles(const base::DictValue& params, bool listing);
++}
++#endif
+diff --git a/chrome/browser/ui/aux/native_project_listener.cc b/chrome/browser/ui/aux/native_project_listener.cc
+new file mode 100644
+index 0000000..dfd9cd0
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_listener.cc
+@@ -0,0 +1,253 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_project_listener.h"
++#include <arpa/inet.h>
++#include <libproc.h>
++#include <sys/proc_info.h>
++#include <sys/socket.h>
++#include <unistd.h>
++#include <errno.h>
++#include <utility>
++#include <signal.h>
++#include <sys/proc.h>
++#include "base/threading/platform_thread.h"
++#include "base/time/time.h"
++#include <algorithm>
++#include <array>
++#include <vector>
++namespace aux {
++namespace {
++bool Process(pid_t pid, proc_bsdinfo* info) {
++  return proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, info, sizeof(*info)) == static_cast<int>(sizeof(*info)) && info->pbi_uid == getuid();
++}
++bool SameBirth(const NativeProjectProcess& process, const proc_bsdinfo& info) {
++  return info.pbi_uid == getuid() && info.pbi_start_tvsec == process.seconds &&
++      info.pbi_start_tvusec == process.microseconds;
++}
++bool BirthCurrent(const NativeProjectProcess& process, proc_bsdinfo* info) {
++  return process.pid > 0 && Process(process.pid, info) && SameBirth(process, *info);
++}
++bool ChainCurrent(const NativeProjectProcess& root,
++                  const std::vector<NativeProjectProcess>& chain) {
++  if (chain.empty() || chain.front().pid != root.pid ||
++      chain.front().seconds != root.seconds || chain.front().microseconds != root.microseconds)
++    return false;
++  for (size_t i = 0; i < chain.size(); ++i) {
++    proc_bsdinfo info{};
++    if (!BirthCurrent(chain[i], &info) ||
++        (i && info.pbi_ppid != static_cast<uint32_t>(chain[i - 1].pid))) return false;
++  }
++  return true;
++}
++bool CaptureChain(const NativeProjectProcess& root, pid_t pid,
++                  std::vector<NativeProjectProcess>* chain) {
++  for (size_t depth = 0; depth < 32 && pid > 1; ++depth) {
++    proc_bsdinfo info{};
++    if (!Process(pid, &info)) return false;
++    chain->push_back({pid, info.pbi_start_tvsec, info.pbi_start_tvusec});
++    if (pid == root.pid) {
++      std::reverse(chain->begin(), chain->end());
++      return ChainCurrent(root, *chain);
++    }
++    pid = static_cast<pid_t>(info.pbi_ppid);
++  }
++  return false;
++}
++bool Inventory(uint32_t type, uint32_t owner, std::vector<NativeProjectProcess>* members) {
++  std::array<pid_t, 4096> pids{};
++  const int bytes = proc_listpids(type, owner, pids.data(), sizeof(pids));
++  if (bytes < 0 || bytes >= static_cast<int>(sizeof(pids)) || bytes % static_cast<int>(sizeof(pid_t))) return false;
++  for (int i = 0; i < bytes / static_cast<int>(sizeof(pid_t)); ++i) {
++    if (pids[i] <= 0) continue;
++    proc_bsdinfo info{};
++    if (!Process(pids[i], &info)) return false;
++    if ((type == PROC_PPID_ONLY && info.pbi_ppid != owner) ||
++        (type == PROC_PGRP_ONLY && info.pbi_pgid != owner)) return false;
++    members->push_back({pids[i], info.pbi_start_tvsec, info.pbi_start_tvusec});
++  }
++  return true;
++}
++bool OriginalGone(const NativeProjectProcess& process) {
++  proc_bsdinfo info{};
++  errno = 0;
++  const int bytes = proc_pidinfo(process.pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info));
++  if (bytes == static_cast<int>(sizeof(info)))
++    return info.pbi_start_tvsec != process.seconds || info.pbi_start_tvusec != process.microseconds;
++  return errno == ESRCH;
++}
++bool StopAndConfirm(const NativeProjectProcess& process, base::TimeTicks deadline) {
++  proc_bsdinfo info{};
++  if (!BirthCurrent(process, &info) || info.pbi_status == SZOMB) return false;
++  if (kill(process.pid, SIGSTOP) != 0) return false;
++  do {
++    if (!BirthCurrent(process, &info) || info.pbi_status == SZOMB) return false;
++    if (info.pbi_status == SSTOP) return true;
++    base::PlatformThread::Sleep(base::Milliseconds(1));
++  } while (base::TimeTicks::Now() < deadline);
++  return false;
++}
++void Remember(std::vector<NativeProjectProcess>* members, const NativeProjectProcess& process) {
++  if (std::none_of(members->begin(), members->end(), [&](const auto& known) {
++        return known.pid == process.pid && known.seconds == process.seconds &&
++            known.microseconds == process.microseconds;
++      })) members->push_back(process);
++}
++bool Socket(pid_t pid, int fd, socket_fdinfo* socket) {
++  return proc_pidfdinfo(pid, fd, PROC_PIDFDSOCKETINFO, socket, sizeof(*socket)) == static_cast<int>(sizeof(*socket)) &&
++      socket->psi.soi_kind == SOCKINFO_TCP && socket->psi.soi_protocol == IPPROTO_TCP &&
++      !(socket->psi.soi_options & SO_REUSEPORT) &&
++      socket->psi.soi_proto.pri_tcp.tcpsi_state == TSI_S_LISTEN;
++}
++std::string LoopbackHost(const socket_fdinfo& socket) {
++  const auto& address = socket.psi.soi_proto.pri_tcp.tcpsi_ini.insi_laddr;
++  if (socket.psi.soi_family == AF_INET) {
++    const auto ipv4 = ntohl(address.ina_46.i46a_addr4.s_addr);
++    if (ipv4 == INADDR_ANY) return "127.0.0.1";
++    if ((ipv4 >> 24) == 127) {
++      std::array<char, INET_ADDRSTRLEN> host{};
++      if (inet_ntop(AF_INET, &address.ina_46.i46a_addr4, host.data(), host.size())) return host.data();
++    }
++  } else if (socket.psi.soi_family == AF_INET6) {
++    if (IN6_IS_ADDR_UNSPECIFIED(&address.ina_6) || IN6_IS_ADDR_LOOPBACK(&address.ina_6)) return "[::1]";
++  }
++  return {};
++}
++}
++bool CaptureProjectProcess(pid_t pid, NativeProjectProcess* process, bool dedicated_descendants) {
++  proc_bsdinfo info{};
++  if (pid <= 0 || !Process(pid, &info)) return false;
++  *process = {pid, info.pbi_start_tvsec, info.pbi_start_tvusec, dedicated_descendants};
++  return true;
++}
++bool ProjectProcessCurrent(const NativeProjectProcess& process) {
++  proc_bsdinfo info{};
++  return process.pid > 0 && Process(process.pid, &info) && info.pbi_pgid == static_cast<uint32_t>(process.pid) &&
++      info.pbi_start_tvsec == process.seconds && info.pbi_start_tvusec == process.microseconds;
++}
++bool FreezeProjectRoot(const NativeProjectProcess& process) {
++  proc_bsdinfo info{};
++  if (!BirthCurrent(process, &info) || info.pbi_status == SZOMB) return false;
++  // The native-owned child has not been reaped, so its root/group ID cannot be reused.
++  if (!process.dedicated_descendants && info.pbi_pgid != static_cast<uint32_t>(process.pid))
++    return false;
++  return kill(process.dedicated_descendants ? process.pid : -process.pid, SIGSTOP) == 0;
++}
++bool StopProjectProcesses(const NativeProjectProcess& process, bool fenced,
++                          std::vector<NativeProjectProcess>* captured) {
++  auto& remembered = *captured;
++  const auto deadline = base::TimeTicks::Now() + base::Seconds(5);
++  proc_bsdinfo root_status{};
++  const bool root_known = BirthCurrent(process, &root_status);
++  const bool exited_group_root = root_known && !process.dedicated_descendants && root_status.pbi_status == SZOMB;
++  bool proven = exited_group_root || (fenced && StopAndConfirm(process, deadline));
++  std::vector<NativeProjectProcess> group;
++  if (ProjectProcessCurrent(process)) {
++    const bool inventoried = Inventory(PROC_PGRP_ONLY, process.pid, &group);
++    proven &= inventoried;
++    for (const auto& member : group) {
++      Remember(&remembered, member);
++      proc_bsdinfo status{};
++      if (!BirthCurrent(member, &status)) proven = false;
++      else if (status.pbi_status != SZOMB) proven &= StopAndConfirm(member, deadline);
++    }
++  } else proven = false;
++  if (process.dedicated_descendants && proven) {
++    // Freeze each parent BEFORE reading its children, then freeze/rescan that
++    // child inventory. A live frozen parent cannot create a late successor.
++    std::vector<NativeProjectProcess> pending{process};
++    for (size_t i = 0; i < pending.size() && proven; ++i) {
++      if (pending.size() > 4096 || base::TimeTicks::Now() >= deadline) { proven = false; break; }
++      const auto parent = pending[i];
++      proc_bsdinfo parent_status{};
++      if (!BirthCurrent(parent, &parent_status) || parent_status.pbi_status != SSTOP) { proven = false; break; }
++      std::vector<NativeProjectProcess> children;
++      if (!Inventory(PROC_PPID_ONLY, parent.pid, &children) ||
++          !BirthCurrent(parent, &parent_status) || parent_status.pbi_status != SSTOP) { proven = false; break; }
++      for (const auto& child : children) {
++        proc_bsdinfo child_status{};
++        if (!BirthCurrent(parent, &parent_status) || parent_status.pbi_status != SSTOP ||
++            !BirthCurrent(child, &child_status) || child_status.pbi_ppid != static_cast<uint32_t>(parent.pid)) { proven = false; break; }
++        Remember(&remembered, child);
++        if (!StopAndConfirm(child, deadline) || !BirthCurrent(parent, &parent_status) ||
++            parent_status.pbi_status != SSTOP) { proven = false; break; }
++        Remember(&pending, child);
++      }
++      std::vector<NativeProjectProcess> confirmed;
++      if (!BirthCurrent(parent, &parent_status) || parent_status.pbi_status != SSTOP ||
++          !Inventory(PROC_PPID_ONLY, parent.pid, &confirmed) ||
++          !BirthCurrent(parent, &parent_status) || parent_status.pbi_status != SSTOP) { proven = false; break; }
++      for (const auto& child : confirmed) {
++        if (std::none_of(children.begin(), children.end(), [&](const auto& known) {
++              return known.pid == child.pid && known.seconds == child.seconds && known.microseconds == child.microseconds;
++            })) { proven = false; break; }
++      }
++    }
++  }
++  // Keep all known receipts even after reparenting; only reduction uses them.
++  // Never signal a recycled PID or expand to an arbitrary descendant group.
++  for (auto it = remembered.rbegin(); it != remembered.rend(); ++it) {
++    if (it->pid == process.pid || OriginalGone(*it)) continue;
++    proc_bsdinfo info{};
++    if (!BirthCurrent(*it, &info) || kill(it->pid, SIGKILL) != 0) proven = false;
++  }
++  proc_bsdinfo root{};
++  if (BirthCurrent(process, &root)) {
++    if (root.pbi_pgid == static_cast<uint32_t>(process.pid)) kill(-process.pid, SIGKILL);
++    if (kill(process.pid, SIGKILL) != 0) proven = false;
++  } else proven = false;
++  // The parent owns only root waitpid. Original descendants must actually
++  // disappear (not merely become zombies) before claiming complete cleanup.
++  do {
++    bool gone = true;
++    for (const auto& member : remembered)
++      if (member.pid != process.pid && !OriginalGone(member)) { gone = false; break; }
++    if (gone) return proven;
++    base::PlatformThread::Sleep(base::Milliseconds(1));
++  } while (base::TimeTicks::Now() < deadline);
++  return false;
++}
++std::vector<NativeProjectListener> FindProjectListeners(const NativeProjectProcess& process) {
++  if (!ProjectProcessCurrent(process)) return {};
++  // Refuse an overflowing process/fd inventory; never silently inspect another group.
++  std::array<pid_t, 4096> pids{};
++  const int bytes = proc_listpids(process.dedicated_descendants ? PROC_UID_ONLY : PROC_PGRP_ONLY,
++      process.dedicated_descendants ? getuid() : process.pid, pids.data(), sizeof(pids));
++  if (bytes <= 0 || bytes >= static_cast<int>(sizeof(pids))) return {};
++  std::vector<NativeProjectListener> listeners;
++  for (int index = 0; index < bytes / static_cast<int>(sizeof(pid_t)); ++index) {
++    const auto pid = pids[index]; proc_bsdinfo info{};
++    if (pid <= 0 || !Process(pid, &info)) continue;
++    std::vector<NativeProjectProcess> ancestry;
++    if (info.pbi_pgid != static_cast<uint32_t>(process.pid) &&
++        (!process.dedicated_descendants || !CaptureChain(process, pid, &ancestry))) continue;
++    std::array<proc_fdinfo, 4096> fds{};
++    const int count = proc_pidinfo(pid, PROC_PIDLISTFDS, 0, fds.data(), sizeof(fds));
++    if (count < 0 || count >= static_cast<int>(sizeof(fds))) return {};
++    for (int item = 0; item < count / static_cast<int>(sizeof(proc_fdinfo)); ++item) {
++      if (fds[item].proc_fdtype != PROX_FDTYPE_SOCKET) continue;
++      socket_fdinfo socket{};
++      if (!Socket(pid, fds[item].proc_fd, &socket)) continue;
++      const auto host = LoopbackHost(socket);
++      const auto& tcp = socket.psi.soi_proto.pri_tcp;
++      const uint16_t port = ntohs(static_cast<uint16_t>(tcp.tcpsi_ini.insi_lport));
++      if (host.empty() || !port) continue;
++      listeners.push_back({pid, static_cast<int>(fds[item].proc_fd), info.pbi_start_tvsec, info.pbi_start_tvusec,
++          socket.psi.soi_so, tcp.tcpsi_ini.insi_gencnt, host, port, ancestry});
++      if (listeners.size() > 32) return {};
++    }
++  }
++  if (!ProjectProcessCurrent(process)) return {};
++  std::erase_if(listeners, [&](const auto& listener) { return !ProjectListenerCurrent(process, listener); });
++  return listeners;
++}
++bool ProjectListenerCurrent(const NativeProjectProcess& process, const NativeProjectListener& listener) {
++  if (!ProjectProcessCurrent(process)) return false;
++  proc_bsdinfo info{}; socket_fdinfo socket{};
++  return Process(listener.pid, &info) &&
++      (info.pbi_pgid == static_cast<uint32_t>(process.pid) ||
++       (process.dedicated_descendants && ChainCurrent(process, listener.ancestry))) &&
++      info.pbi_start_tvsec == listener.started_seconds && info.pbi_start_tvusec == listener.started_microseconds &&
++      Socket(listener.pid, listener.fd, &socket) && socket.psi.soi_so == listener.socket &&
++      socket.psi.soi_proto.pri_tcp.tcpsi_ini.insi_gencnt == listener.generation && LoopbackHost(socket) == listener.host &&
++      ntohs(static_cast<uint16_t>(socket.psi.soi_proto.pri_tcp.tcpsi_ini.insi_lport)) == listener.port;
++}
++}
+diff --git a/chrome/browser/ui/aux/native_project_listener.h b/chrome/browser/ui/aux/native_project_listener.h
+new file mode 100644
+index 0000000..05cb52f
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_listener.h
+@@ -0,0 +1,37 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_LISTENER_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_LISTENER_H_
++#include <sys/types.h>
++#include <cstdint>
++#include <string>
++#include <vector>
++namespace aux {
++// Kernel identities stay native. A renderer receives only a randomly minted ID.
++struct NativeProjectProcess {
++  pid_t pid; uint64_t seconds; uint64_t microseconds;
++  // Set only when native launch selects the dedicated Codex --no-daemon mode.
++  bool dedicated_descendants = false;
++};
++struct NativeProjectListener {
++  pid_t pid;
++  int fd;
++  uint64_t started_seconds;
++  uint64_t started_microseconds;
++  uint64_t socket;
++  uint64_t generation;
++  std::string host;
++  uint16_t port;
++  std::vector<NativeProjectProcess> ancestry;
++};
++bool CaptureProjectProcess(pid_t pid, NativeProjectProcess* process, bool dedicated_descendants = false);
++// Reduction only: fence the original root/group before any guest cleanup await.
++bool FreezeProjectRoot(const NativeProjectProcess& process);
++// Freeze/rescan the original scope, kill birth-bound members, and verify exit.
++// Enumeration/signal/identity uncertainty cannot produce a positive join receipt.
++bool StopProjectProcesses(const NativeProjectProcess& process, bool fenced,
++                          std::vector<NativeProjectProcess>* remembered);
++bool ProjectProcessCurrent(const NativeProjectProcess& process);
++std::vector<NativeProjectListener> FindProjectListeners(const NativeProjectProcess& process);
++bool ProjectListenerCurrent(const NativeProjectProcess& process, const NativeProjectListener& listener);
++}
++#endif
+diff --git a/chrome/browser/ui/aux/native_project_preview.cc b/chrome/browser/ui/aux/native_project_preview.cc
+new file mode 100644
+index 0000000..efd47e1
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_preview.cc
+@@ -0,0 +1,214 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_project_preview.h"
++#include <map>
++#include <set>
++#include <utility>
++#include <vector>
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "base/no_destructor.h"
++#include "base/task/bind_post_task.h"
++#include "base/uuid.h"
++#include "components/guest_contents/browser/guest_contents_handle.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/render_process_host_observer.h"
++#include "content/public/browser/shared_worker_service.h"
++#include "content/public/browser/child_process_termination_info.h"
++#include "content/public/browser/service_worker_context.h"
++#include "content/public/browser/site_instance.h"
++#include "content/public/browser/storage_partition.h"
++#include "services/network/public/mojom/cookie_manager.mojom.h"
++#include "content/public/browser/storage_partition_config.h"
++#include "content/public/browser/web_contents.h"
++#include "url/origin.h"
++#include "net/base/url_util.h"
++#include "ui/base/page_transition_types.h"
++namespace aux {
++namespace {
++constexpr char kDomain[] = "aux-project-preview";
++auto& Previews() {
++  static base::NoDestructor<std::map<std::string, base::WeakPtr<NativeProjectPreview>>> registry;
++  return *registry;
++}
++}
++struct NativeProjectPreview::CloseState final : content::RenderProcessHostObserver {
++  bool started = false;
++  bool finished = false;
++  bool failed = false;
++  bool workers_stopped = false;
++  bool cleared = false;
++  std::set<content::RenderProcessHost*> processes;
++  std::shared_ptr<CloseState> keep_alive;
++  std::vector<base::OnceCallback<void(bool)>> callbacks;
++  void Finish() {
++    if (finished || !workers_stopped || !cleared || !processes.empty()) return;
++    finished = true;
++    auto pending = std::move(callbacks);
++    for (auto& callback : pending) std::move(callback).Run(!failed);
++    auto owned = std::move(keep_alive);
++  }
++  void FailedCleanup() { failed = true; workers_stopped = true; cleared = true; Finish(); }
++  void RenderProcessReady(content::RenderProcessHost* host) override {
++    if (workers_stopped && !host->Shutdown(0)) failed = true;
++  }
++  void RenderProcessExited(content::RenderProcessHost* host,
++      const content::ChildProcessTerminationInfo&) override {
++    host->RemoveObserver(this); processes.erase(host); Finish();
++  }
++  void RenderProcessHostDestroyed(content::RenderProcessHost* host) override {
++    // Losing the native actor before its exit notification cannot manufacture ACK.
++    host->RemoveObserver(this); processes.erase(host); failed = true; Finish();
++  }
++};
++NativeProjectPreview::NativeProjectPreview(content::WebContents* owner, content::WeakDocumentPtr document,
++    GURL origin, base::RepeatingCallback<bool()> source, Review review, OriginKind origin_kind)
++    : owner_document_(document), owner_(owner->GetWeakPtr()), context_(owner->GetBrowserContext()->GetWeakPtr()), origin_(std::move(origin)), origin_kind_(origin_kind), source_(std::move(source)), review_(std::move(review)), close_(std::make_shared<CloseState>()) {}
++NativeProjectPreview::~NativeProjectPreview() {
++  Close(base::BindOnce([](bool) {}));
++  if (config_) Previews().erase(config_->partition_name());
++}
++bool NativeProjectPreview::Current() const {
++  auto* frame = owner_document_.AsRenderFrameHostIfValid();
++  return !retired_ && frame && content::WebContents::FromRenderFrameHost(frame) == owner_.get() && source_.Run();
++}
++content::StoragePartition* NativeProjectPreview::Partition() const {
++  return context_ && config_ ? context_->GetStoragePartition(*config_, false) : nullptr;
++}
++bool NativeProjectPreview::Open() {
++  if (!Current() || guest_ || !origin_.SchemeIsHTTPOrHTTPS() || origin_.has_username() || origin_.has_password()) return false;
++  if (origin_kind_ == OriginKind::kPublicHttps && (!origin_.SchemeIs("https") || origin_.EffectiveIntPort() != 443 ||
++      origin_.HostIsIPAddress() || net::IsLocalhost(origin_) || origin_.path() != "/" || origin_.has_query() || origin_.has_ref())) return false;
++  auto* context = owner_->GetBrowserContext();
++  const auto partition = content::StoragePartitionConfig::Create(context, kDomain,
++      base::Uuid::GenerateRandomV4().AsLowercaseString(), true);
++  auto site = content::SiteInstance::CreateForFixedStoragePartition(context, origin_, partition);
++  if (!site) return false;
++  auto* storage = context->GetStoragePartition(site.get());
++  if (!storage || !storage->GetConfig().in_memory()) return false;
++  config_ = storage->GetConfig();
++  Previews()[config_->partition_name()] = weak_factory_.GetWeakPtr();
++  content::WebContents::CreateParams params(context, site);
++  params.opener_suppressed = true;
++  guest_ = content::WebContents::Create(params);
++  if (!guest_) return false;
++  guest_->SetDelegate(this);
++  auto* handle = guest_contents::GuestContentsHandle::CreateForWebContents(guest_.get());
++  handle->SetAttachmentValidator(base::BindRepeating([](base::WeakPtr<NativeProjectPreview> preview, content::RenderFrameHost* outer) {
++    return preview && preview->Current() && outer == preview->owner_document_.AsRenderFrameHostIfValid();
++  }, weak_factory_.GetWeakPtr()));
++  content_id_ = handle->id().ToString();
++  timer_.Start(FROM_HERE, base::Milliseconds(origin_kind_ == OriginKind::kPublicHttps ? 2000 : 100), this, &NativeProjectPreview::CheckSource);
++  guest_->GetController().LoadURL(origin_, content::Referrer(), ui::PAGE_TRANSITION_AUTO_TOPLEVEL, "");
++  return Current();
++}
++base::DictValue NativeProjectPreview::Describe() const {
++  return base::DictValue().Set("contentId", content_id_).Set("url", origin_.spec());
++}
++bool NativeProjectPreview::MatchesEndpoint(const GURL& url, const net::IPEndPoint& endpoint) const {
++  if (!Current()) return false;
++  if (origin_kind_ == OriginKind::kPublicHttps)
++    return (url.SchemeIs("https") || url.SchemeIs("wss")) && url.host() == origin_.host() &&
++        url.EffectiveIntPort() == origin_.EffectiveIntPort() && endpoint.port() == origin_.EffectiveIntPort() && endpoint.address().IsPubliclyRoutable();
++  if (url.host() != origin_.host() || url.EffectiveIntPort() != origin_.EffectiveIntPort()) return url.SchemeIs("https") && endpoint.address().IsPubliclyRoutable();
++  return endpoint.address().ToString() == origin_.HostNoBrackets() && endpoint.port() == origin_.EffectiveIntPort();
++}
++bool NativeProjectPreview::Permits(const GURL& url, bool navigation) const {
++  if (!url.is_valid() || url.has_username() || url.has_password()) return false;
++  if (origin_kind_ == OriginKind::kPublicHttps)
++    return (url.SchemeIs("https") || (!navigation && url.SchemeIs("wss"))) &&
++        url.host() == origin_.host() && url.EffectiveIntPort() == origin_.EffectiveIntPort();
++  if (navigation) return url::Origin::Create(url) == url::Origin::Create(origin_);
++  // The dev app keeps public HTTPS assets. Local requests stay on its exact
++  // admitted endpoint; localhost URLs are never resolved from renderer input.
++  if (url.SchemeIsHTTPOrHTTPS() && url::Origin::Create(url) == url::Origin::Create(origin_)) return true;
++  if (url.SchemeIs("https")) return !net::IsLocalhost(url);
++  if (url.SchemeIs("http")) return false;
++  if (url.SchemeIsWSOrWSS() && url.host() == origin_.host() && url.EffectiveIntPort() == origin_.EffectiveIntPort()) return true;
++  return false;
++}
++void NativeProjectPreview::Admit(const GURL& url, bool navigation, base::OnceCallback<void(bool)> callback) {
++  callback = base::BindPostTaskToCurrentDefault(std::move(callback));
++  if (!Current() || !Permits(url, navigation)) { std::move(callback).Run(false); return; }
++  review_.Run(base::BindOnce([](base::WeakPtr<NativeProjectPreview> preview, GURL url, bool navigation,
++      base::OnceCallback<void(bool)> callback, bool reviewed) {
++    std::move(callback).Run(reviewed && preview && preview->Current() && preview->Permits(url, navigation));
++  }, weak_factory_.GetWeakPtr(), url, navigation, std::move(callback)));
++}
++void NativeProjectPreview::CheckSource() {
++  if (!Current()) { Close(base::BindOnce([](bool) {})); return; }
++  if (checking_) return;
++  checking_ = true;
++  review_.Run(base::BindOnce([](base::WeakPtr<NativeProjectPreview> preview, bool reviewed) {
++    if (!preview) return;
++    preview->checking_ = false;
++    if (!reviewed || !preview->Current()) preview->Close(base::BindOnce([](bool) {}));
++  }, weak_factory_.GetWeakPtr()));
++}
++void NativeProjectPreview::Close(base::OnceCallback<void(bool)> callback) {
++  retired_ = true; timer_.Stop();
++  if (close_->finished) { std::move(callback).Run(!close_->failed); return; }
++  close_->callbacks.push_back(std::move(callback));
++  if (close_->started) return;
++  close_->started = true;
++  close_->keep_alive = close_;
++  // Observe the real actors before dropping document/worker ownership. A unique
++  // partition cannot contain a Profile page or another Project's renderer.
++  auto* partition = Partition();
++  if (partition) {
++    for (auto hosts = content::RenderProcessHost::AllHostsIterator(); !hosts.IsAtEnd(); hosts.Advance()) {
++      auto* host = hosts.GetCurrentValue();
++      if (host->GetStoragePartition() == partition && host->IsInitializedAndNotDead()) {
++        close_->processes.insert(host); host->AddObserver(close_.get());
++      }
++    }
++  }
++  if (guest_) { guest_->Stop(); guest_.reset(); }
++  if (!partition) {
++    close_->failed = config_.has_value();
++    close_->workers_stopped = true; close_->cleared = true; close_->Finish(); return;
++  }
++  partition->GetSharedWorkerService()->Shutdown();
++  auto failed = base::ScopedClosureRunner(base::BindOnce([](std::shared_ptr<CloseState> state) {
++    state->FailedCleanup();
++  }, close_));
++  partition->GetServiceWorkerContext()->StopAllServiceWorkers(base::BindOnce([](
++      base::WeakPtr<content::BrowserContext> context, content::StoragePartitionConfig config,
++      std::shared_ptr<CloseState> state, base::ScopedClosureRunner failed) {
++    failed.Release().Reset();
++    auto* partition = context ? context->GetStoragePartition(config, false) : nullptr;
++    if (!partition) { state->FailedCleanup(); return; }
++    state->workers_stopped = true;
++    // Include actors whose startup finished while service-worker Stop awaited.
++    for (auto hosts = content::RenderProcessHost::AllHostsIterator(); !hosts.IsAtEnd(); hosts.Advance()) {
++      auto* host = hosts.GetCurrentValue();
++      if (host->GetStoragePartition() == partition && host->IsInitializedAndNotDead() && state->processes.insert(host).second)
++        host->AddObserver(state.get());
++    }
++    // WebSockets and dedicated/shared workers in this exact partition cannot
++    // survive an acknowledged renderer exit, even if their script ignores Stop.
++    const auto processes = state->processes;
++    for (auto* host : processes) if (state->processes.contains(host)) {
++      if (host->IsReady() && !host->Shutdown(0)) state->failed = true;
++    }
++    auto cleanup_failed = base::ScopedClosureRunner(base::BindOnce([](std::shared_ptr<CloseState> state) {
++      state->FailedCleanup();
++    }, state));
++    partition->ClearData(content::StoragePartition::REMOVE_DATA_MASK_ALL, nullptr, {},
++        network::mojom::CookieDeletionFilter::New(), false,
++        base::Time(), base::Time::Max(), base::BindOnce([](std::shared_ptr<CloseState> state,
++            base::ScopedClosureRunner failed) {
++          failed.Release().Reset(); state->cleared = true; state->Finish();
++        }, state, std::move(cleanup_failed)));
++  }, context_, *config_, close_, std::move(failed)));
++}
++bool NativeProjectPreview::IsPreviewPartition(content::StoragePartition* partition) {
++  return partition && partition->GetConfig().in_memory() && partition->GetConfig().partition_domain() == kDomain;
++}
++base::WeakPtr<NativeProjectPreview> NativeProjectPreview::ForPartition(content::StoragePartition* partition) {
++  auto found = partition ? Previews().find(partition->GetConfig().partition_name()) : Previews().end();
++  return found == Previews().end() ? base::WeakPtr<NativeProjectPreview>() : found->second;
++}
++}
+diff --git a/chrome/browser/ui/aux/native_project_preview.h b/chrome/browser/ui/aux/native_project_preview.h
+new file mode 100644
+index 0000000..54c8ffe
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_preview.h
+@@ -0,0 +1,67 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_PREVIEW_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_PREVIEW_H_
++#include <memory>
++#include <optional>
++#include <string>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "content/public/browser/storage_partition_config.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "content/public/browser/web_contents_delegate.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "url/gurl.h"
++#include "net/base/ip_endpoint.h"
++#include "mojo/public/cpp/bindings/pending_remote.h"
++#include "services/network/public/mojom/network_context.mojom-forward.h"
++namespace content { class BrowserContext; class NavigationThrottleRegistry; class RenderFrameHost; class StoragePartition; class WebContents; }
++namespace network { class URLLoaderFactoryBuilder; }
++namespace aux {
++// A live local dev application retains its own origin, routes and network stack.
++// Its cookies/workers live only in a new in-memory partition, never in Profile storage.
++class NativeProjectPreview final : public content::WebContentsDelegate {
++ public:
++  enum class OriginKind { kLocalEndpoint, kPublicHttps };
++  using Review = base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
++  NativeProjectPreview(content::WebContents* owner, content::WeakDocumentPtr document,
++      GURL origin, base::RepeatingCallback<bool()> source, Review review,
++      OriginKind origin_kind = OriginKind::kLocalEndpoint);
++  ~NativeProjectPreview() override;
++  bool Open();
++  base::DictValue Describe() const;
++  bool Current() const;
++  bool MatchesEndpoint(const GURL& url, const net::IPEndPoint& endpoint) const;
++  void Admit(const GURL& url, bool navigation, base::OnceCallback<void(bool)> callback);
++  void Close(base::OnceCallback<void(bool)> callback);
++  static bool IsPreviewPartition(content::StoragePartition* partition);
++  static base::WeakPtr<NativeProjectPreview> ForPartition(content::StoragePartition* partition);
++  static void ProxyFactory(content::RenderFrameHost* frame, int process_id, bool navigation,
++                           network::URLLoaderFactoryBuilder& builder,
++                           mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>* headers);
++  static mojo::PendingRemote<network::mojom::TrustedHeaderClient> WrapHeaders(
++      base::WeakPtr<NativeProjectPreview> preview, mojo::PendingRemote<network::mojom::TrustedHeaderClient> target);
++  static void AddNavigationThrottle(content::NavigationThrottleRegistry& registry);
++ private:
++  void CheckSource();
++  content::StoragePartition* Partition() const;
++  bool Permits(const GURL& url, bool navigation) const;
++  content::WeakDocumentPtr owner_document_;
++  base::WeakPtr<content::WebContents> owner_;
++  base::WeakPtr<content::BrowserContext> context_;
++  const GURL origin_;
++  const OriginKind origin_kind_;
++  base::RepeatingCallback<bool()> source_;
++  Review review_;
++  std::unique_ptr<content::WebContents> guest_;
++  std::optional<content::StoragePartitionConfig> config_;
++  std::string content_id_;
++  bool retired_ = false;
++  bool checking_ = false;
++  struct CloseState;
++  std::shared_ptr<CloseState> close_;
++  base::RepeatingTimer timer_;
++  base::WeakPtrFactory<NativeProjectPreview> weak_factory_{this};
++};
++}
++#endif
+diff --git a/chrome/browser/ui/aux/native_project_preview_network.cc b/chrome/browser/ui/aux/native_project_preview_network.cc
+new file mode 100644
+index 0000000..53325af
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_preview_network.cc
+@@ -0,0 +1,376 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_project_preview.h"
++#include <optional>
++#include <utility>
++#include "base/functional/bind.h"
++#include "base/memory/self_deleting.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/navigation_throttle.h"
++#include "content/public/browser/navigation_throttle_registry.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/web_contents.h"
++#include "mojo/public/cpp/bindings/receiver.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
++#include "mojo/public/cpp/bindings/remote.h"
++#include "mojo/public/cpp/bindings/self_owned_receiver.h"
++#include "net/base/net_errors.h"
++#include "net/base/url_util.h"
++#include "net/url_request/redirect_info.h"
++#include "services/network/public/cpp/http_request_headers_update_params.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/cpp/self_deleting_url_loader_factory.h"
++#include "services/network/public/cpp/url_loader_completion_status.h"
++#include "services/network/public/cpp/url_loader_factory_builder.h"
++#include "services/network/public/mojom/early_hints.mojom.h"
++#include "services/network/public/mojom/network_context.mojom.h"
++#include "services/network/public/mojom/url_loader.mojom.h"
++#include "services/network/public/mojom/url_response_head.mojom.h"
++namespace aux {
++namespace {
++void Check(base::WeakPtr<NativeProjectPreview> preview, const GURL& url, bool navigation,
++    base::OnceCallback<void(bool)> callback) {
++  if (!preview) { std::move(callback).Run(false); return; }
++  preview->Admit(url, navigation, std::move(callback));
++}
++class PreviewHeader final : public network::mojom::TrustedHeaderClient {
++ public:
++  PreviewHeader(base::WeakPtr<NativeProjectPreview> preview, bool navigation,
++      mojo::PendingRemote<network::mojom::TrustedHeaderClient> target)
++      : preview_(preview), navigation_(navigation), required_(!!target), target_(std::move(target)) {}
++  void OnConnected(const GURL& url,
++                   network::mojom::TrustedConnectionInfoPtr connection,
++                   OnConnectedCallback callback) override {
++    if (!connection || !preview_ || url != last_url_ ||
++        !preview_->MatchesEndpoint(url, connection->endpoint)) {
++      std::move(callback).Run(net::ERR_ACCESS_DENIED, std::nullopt);
++      return;
++    }
++    const auto endpoint = connection->endpoint;
++    auto reviewed =
++        base::BindOnce(&PreviewHeader::ReviewedConnection, weak_.GetWeakPtr(),
++                       url, endpoint, std::move(callback));
++    if (target_) {
++      target_->OnConnected(
++          url, std::move(connection),
++          mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++              std::move(reviewed), net::ERR_FAILED, std::nullopt));
++    } else {
++      std::move(reviewed).Run(required_ ? net::ERR_FAILED : net::OK,
++                              std::nullopt);
++    }
++  }
++  void OnBeforeSendHeaders(const GURL& url, const net::HttpRequestHeaders& headers,
++      OnBeforeSendHeadersCallback callback) override {
++    last_url_ = url;
++    if (target_) {
++      target_->OnBeforeSendHeaders(
++          url, headers,
++          mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++              base::BindOnce(&PreviewHeader::ReviewedHeaders,
++                             weak_.GetWeakPtr(), url, std::move(callback)),
++              net::ERR_FAILED, std::nullopt, std::nullopt, std::nullopt));
++    } else {
++      ReviewedHeaders(url, std::move(callback),
++                      required_ ? net::ERR_FAILED : net::OK, std::nullopt,
++                      std::nullopt, std::nullopt);
++    }
++  }
++  void OnHeadersReceived(const std::string& headers, const net::IPEndPoint& endpoint,
++      const std::optional<net::SSLInfo>& ssl, OnHeadersReceivedCallback callback) override {
++    if (!preview_ || !preview_->MatchesEndpoint(last_url_, endpoint)) {
++      std::move(callback).Run(net::ERR_ACCESS_DENIED, std::nullopt, std::nullopt); return;
++    }
++    if (target_) target_->OnHeadersReceived(headers, endpoint, ssl, mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++        base::BindOnce(&PreviewHeader::ReviewedResponse, weak_.GetWeakPtr(), endpoint, std::move(callback)),
++        net::ERR_FAILED, std::nullopt, std::nullopt));
++    else ReviewedResponse(endpoint, std::move(callback), required_ ? net::ERR_FAILED : net::OK, std::nullopt, std::nullopt);
++  }
++ private:
++  void ReviewedConnection(GURL url,
++                          net::IPEndPoint endpoint,
++                          OnConnectedCallback callback,
++                          int32_t result,
++                          const std::optional<GURL>& native_policy_redirect) {
++    if (result != net::OK || !preview_ || url != last_url_ ||
++        !preview_->MatchesEndpoint(url, endpoint)) {
++      std::move(callback).Run(
++          result == net::OK ? net::ERR_ACCESS_DENIED : result,
++          preview_ && url == last_url_ &&
++                  preview_->MatchesEndpoint(url, endpoint)
++              ? native_policy_redirect
++              : std::nullopt);
++      return;
++    }
++    Check(
++        preview_, url, navigation_,
++        base::BindOnce(
++            [](base::WeakPtr<NativeProjectPreview> preview, GURL url,
++               net::IPEndPoint endpoint, OnConnectedCallback callback,
++               bool allowed) {
++              std::move(callback).Run(
++                  allowed && preview && preview->MatchesEndpoint(url, endpoint)
++                      ? net::OK
++                      : net::ERR_ACCESS_DENIED,
++                  std::nullopt);
++            },
++            preview_, url, endpoint, std::move(callback)));
++  }
++  void ReviewedResponse(net::IPEndPoint endpoint, OnHeadersReceivedCallback callback, int32_t result,
++      const std::optional<std::string>& headers, const std::optional<GURL>& preserve) {
++    if (result != net::OK || !preview_ || !preview_->MatchesEndpoint(last_url_, endpoint)) {
++      std::move(callback).Run(result == net::OK ? net::ERR_ACCESS_DENIED : result, std::nullopt, std::nullopt); return;
++    }
++    Check(preview_, last_url_, navigation_, base::BindOnce([](base::WeakPtr<NativeProjectPreview> preview,
++        GURL url, net::IPEndPoint endpoint, OnHeadersReceivedCallback callback,
++        std::optional<std::string> headers, std::optional<GURL> preserve, bool allowed) {
++      const bool current = allowed && preview && preview->MatchesEndpoint(url, endpoint);
++      std::move(callback).Run(current ? net::OK : net::ERR_ACCESS_DENIED,
++          current ? std::move(headers) : std::nullopt, current ? std::move(preserve) : std::nullopt);
++    }, preview_, last_url_, endpoint, std::move(callback), std::move(headers), std::move(preserve)));
++  }
++  void ReviewedHeaders(GURL url,
++                       OnBeforeSendHeadersCallback callback,
++                       int32_t result,
++                       const std::optional<net::HttpRequestHeaders>& headers,
++                       std::optional<base::DictValue> log,
++                       const std::optional<GURL>& native_policy_redirect) {
++    if (result != net::OK) {
++      std::move(callback).Run(result, std::nullopt, std::nullopt,
++                              native_policy_redirect);
++      return;
++    }
++    // The final authority check follows all existing browser header mutations.
++    Check(preview_, url, navigation_,
++          base::BindOnce(
++              [](OnBeforeSendHeadersCallback callback,
++                 std::optional<net::HttpRequestHeaders> headers,
++                 std::optional<base::DictValue> log, bool allowed) {
++                std::move(callback).Run(
++                    allowed ? net::OK : net::ERR_ACCESS_DENIED,
++                    allowed ? headers : std::nullopt,
++                    allowed ? std::move(log) : std::nullopt, std::nullopt);
++              },
++              std::move(callback), headers, std::move(log)));
++  }
++  base::WeakPtr<NativeProjectPreview> preview_;
++  const bool navigation_;
++  const bool required_;
++  mojo::Remote<network::mojom::TrustedHeaderClient> target_;
++  GURL last_url_;
++  base::WeakPtrFactory<PreviewHeader> weak_{this};
++};
++class PreviewFactoryHeaders final : public network::mojom::TrustedURLLoaderHeaderClient {
++ public:
++  PreviewFactoryHeaders(base::WeakPtr<NativeProjectPreview> preview, bool navigation,
++      mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient> target)
++      : preview_(preview), navigation_(navigation), target_(std::move(target)) {}
++  void OnLoaderCreated(int32_t id, mojo::PendingReceiver<network::mojom::TrustedHeaderClient> receiver) override {
++    mojo::PendingRemote<network::mojom::TrustedHeaderClient> target;
++    if (target_) target_->OnLoaderCreated(id, target.InitWithNewPipeAndPassReceiver());
++    mojo::MakeSelfOwnedReceiver(std::make_unique<PreviewHeader>(preview_, navigation_, std::move(target)), std::move(receiver));
++  }
++  void OnLoaderForCorsPreflightCreated(const network::ResourceRequest& request,
++      mojo::PendingReceiver<network::mojom::TrustedHeaderClient> receiver) override {
++    mojo::PendingRemote<network::mojom::TrustedHeaderClient> target;
++    if (target_) target_->OnLoaderForCorsPreflightCreated(request, target.InitWithNewPipeAndPassReceiver());
++    mojo::MakeSelfOwnedReceiver(std::make_unique<PreviewHeader>(preview_, false, std::move(target)), std::move(receiver));
++  }
++ private:
++  base::WeakPtr<NativeProjectPreview> preview_;
++  const bool navigation_;
++  mojo::Remote<network::mojom::TrustedURLLoaderHeaderClient> target_;
++};
++class PreviewRequest final : public network::mojom::URLLoader, public network::mojom::URLLoaderClient {
++ public:
++  PreviewRequest(mojo::PendingReceiver<network::mojom::URLLoader> loader,
++      mojo::PendingRemote<network::mojom::URLLoaderClient> client,
++      base::WeakPtr<NativeProjectPreview> preview, GURL url, bool navigation)
++      : client_(std::move(client)), receiver_(this, std::move(loader)), target_receiver_(this), preview_(preview),
++        url_(std::move(url)), navigation_(navigation) {
++    receiver_.set_disconnect_handler(base::BindOnce(&PreviewRequest::Cancel, base::Unretained(this)));
++    client_.set_disconnect_handler(base::BindOnce(&PreviewRequest::Cancel, base::Unretained(this)));
++  }
++  void Hold(std::shared_ptr<PreviewRequest> owned) { keep_alive_ = std::move(owned); }
++  mojo::PendingRemote<network::mojom::URLLoaderClient> Client() {
++    auto client = target_receiver_.BindNewPipeAndPassRemote();
++    target_receiver_.set_disconnect_handler(base::BindOnce(
++        &PreviewRequest::TargetDisconnected, base::Unretained(this)));
++    return client;
++  }
++  mojo::PendingReceiver<network::mojom::URLLoader> Target() { return target_.BindNewPipeAndPassReceiver(); }
++  void FollowRedirect(network::HttpRequestHeadersUpdateParams headers, const std::optional<GURL>& override_url) override {
++    if (!redirect_ || terminal_) { Reject(); return; }
++    const auto url = override_url.value_or(*redirect_);
++    ++pending_;
++    Check(preview_, url, navigation_, base::BindOnce([](base::WeakPtr<PreviewRequest> request,
++        network::HttpRequestHeadersUpdateParams headers, std::optional<GURL> override_url, GURL url, bool allowed) {
++      if (!request) return;
++      if (!allowed || request->terminal_) { request->Reject(); return; }
++      request->url_ = std::move(url); request->redirect_.reset();
++      request->target_->FollowRedirect(std::move(headers), override_url);
++      request->ReviewFinished();
++    }, weak_.GetWeakPtr(), std::move(headers), override_url, url));
++  }
++  void SetPriority(net::RequestPriority priority, int32_t value) override { if (target_ && !terminal_) target_->SetPriority(priority, value); }
++  void OnReceiveEarlyHints(network::mojom::EarlyHintsPtr hints) override {
++    if (!preview_ || !preview_->Current()) { Reject(); return; }
++    client_->OnReceiveEarlyHints(std::move(hints));
++  }
++  void OnReceiveResponse(network::mojom::URLResponseHeadPtr head, mojo::ScopedDataPipeConsumerHandle body,
++      std::optional<mojo_base::BigBuffer> metadata) override {
++    ++pending_;
++    Check(preview_, url_, navigation_, base::BindOnce([](base::WeakPtr<PreviewRequest> request,
++        network::mojom::URLResponseHeadPtr head, mojo::ScopedDataPipeConsumerHandle body,
++        std::optional<mojo_base::BigBuffer> metadata, bool allowed) {
++      if (!request) return;
++      if (!allowed || request->terminal_) { request->Reject(); return; }
++      request->client_->OnReceiveResponse(std::move(head), std::move(body), std::move(metadata));
++      request->ReviewFinished();
++    }, weak_.GetWeakPtr(), std::move(head), std::move(body), std::move(metadata)));
++  }
++  void OnReceiveRedirect(const net::RedirectInfo& info, network::mojom::URLResponseHeadPtr head) override {
++    ++pending_;
++    Check(preview_, info.new_url, navigation_, base::BindOnce([](base::WeakPtr<PreviewRequest> request,
++        net::RedirectInfo info, network::mojom::URLResponseHeadPtr head, bool allowed) {
++      if (!request) return;
++      if (!allowed || request->terminal_) { request->Reject(); return; }
++      request->redirect_ = info.new_url;
++      request->client_->OnReceiveRedirect(info, std::move(head));
++      request->ReviewFinished();
++    }, weak_.GetWeakPtr(), info, std::move(head)));
++  }
++  void OnUploadProgress(int64_t current, int64_t total, OnUploadProgressCallback callback) override {
++    if (!terminal_) client_->OnUploadProgress(current, total, std::move(callback));
++    else std::move(callback).Run();
++  }
++  void OnTransferSizeUpdated(int32_t size) override { if (!terminal_) client_->OnTransferSizeUpdated(size); }
++  void OnComplete(const network::URLLoaderCompletionStatus& status) override {
++    if (terminal_) return;
++    completion_ = status;
++    FinishIfReady();
++  }
++ private:
++  void Release() {
++    receiver_.reset(); target_receiver_.reset(); target_.reset(); weak_.InvalidateWeakPtrs();
++    auto owned = std::move(keep_alive_);
++  }
++  void ReviewFinished() { --pending_; FinishIfReady(); }
++  void FinishIfReady() {
++    if (terminal_ || pending_ || !completion_) return;
++    terminal_ = true; client_->OnComplete(*completion_); Release();
++  }
++  void TargetDisconnected() {
++    if (!terminal_ && !completion_) Reject();
++    // OnComplete may precede the runtime review. Keep this actual request
++    // alive until its deferred response/redirect is admitted or refused.
++  }
++  void Cancel() { terminal_ = true; Release(); }
++  void Reject() {
++    if (terminal_) return;
++    terminal_ = true; client_->OnComplete(network::URLLoaderCompletionStatus(net::ERR_ACCESS_DENIED));
++    Release();
++  }
++  mojo::Remote<network::mojom::URLLoaderClient> client_;
++  mojo::Receiver<network::mojom::URLLoader> receiver_;
++  mojo::Receiver<network::mojom::URLLoaderClient> target_receiver_;
++  std::shared_ptr<PreviewRequest> keep_alive_;
++  size_t pending_ = 0;
++  std::optional<network::URLLoaderCompletionStatus> completion_;
++  mojo::Remote<network::mojom::URLLoader> target_;
++  base::WeakPtr<NativeProjectPreview> preview_;
++  GURL url_;
++  const bool navigation_;
++  std::optional<GURL> redirect_;
++  bool terminal_ = false;
++  base::WeakPtrFactory<PreviewRequest> weak_{this};
++};
++class PreviewFactory final : public network::SelfDeletingURLLoaderFactory {
++ public:
++  PreviewFactory(mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver,
++      mojo::PendingRemote<network::mojom::URLLoaderFactory> target,
++      base::WeakPtr<NativeProjectPreview> preview, base::SelfDeletingPassKey key)
++      : network::SelfDeletingURLLoaderFactory(std::move(receiver), key), target_(std::move(target)), preview_(preview) {
++    target_.set_disconnect_handler(base::BindOnce(&PreviewFactory::Lost, base::Unretained(this)));
++  }
++  void CreateLoaderAndStart(mojo::PendingReceiver<network::mojom::URLLoader> receiver, int32_t id, uint32_t options,
++      const network::ResourceRequest& request, mojo::PendingRemote<network::mojom::URLLoaderClient> client,
++      const net::MutableNetworkTrafficAnnotationTag& annotation) override {
++    const bool navigation = request.destination == network::mojom::RequestDestination::kDocument ||
++        request.destination == network::mojom::RequestDestination::kIframe;
++    Check(preview_, request.url, navigation, base::BindOnce([](base::WeakPtr<PreviewFactory> factory,
++        mojo::PendingReceiver<network::mojom::URLLoader> receiver, int32_t id, uint32_t options,
++        network::ResourceRequest request, mojo::PendingRemote<network::mojom::URLLoaderClient> client,
++        net::MutableNetworkTrafficAnnotationTag annotation, bool allowed) {
++      if (!factory || !allowed) {
++        mojo::Remote<network::mojom::URLLoaderClient>(std::move(client))->OnComplete(
++            network::URLLoaderCompletionStatus(net::ERR_ACCESS_DENIED)); return;
++      }
++      const bool navigation = request.destination == network::mojom::RequestDestination::kDocument ||
++          request.destination == network::mojom::RequestDestination::kIframe;
++      auto guard = std::make_shared<PreviewRequest>(std::move(receiver), std::move(client), factory->preview_, request.url, navigation);
++      guard->Hold(guard);
++      auto target = guard->Target();
++      auto guarded_client = guard->Client();
++      // Public asset hostnames must never resolve into another local service.
++      request.required_ip_address_space = net::IsLocalhost(request.url) ? network::mojom::IPAddressSpace::kLoopback : network::mojom::IPAddressSpace::kPublic;
++      factory->target_->CreateLoaderAndStart(std::move(target), id, options, request, std::move(guarded_client), annotation);
++    }, weak_.GetWeakPtr(), std::move(receiver), id, options, request, std::move(client), annotation));
++  }
++ private:
++  ~PreviewFactory() override = default;
++  void Lost() { DisconnectReceiversAndDestroy(); }
++  mojo::Remote<network::mojom::URLLoaderFactory> target_;
++  base::WeakPtr<NativeProjectPreview> preview_;
++  base::WeakPtrFactory<PreviewFactory> weak_{this};
++};
++class PreviewNavigation final : public content::NavigationThrottle {
++ public:
++  PreviewNavigation(content::NavigationThrottleRegistry& registry, base::WeakPtr<NativeProjectPreview> preview)
++      : content::NavigationThrottle(registry), preview_(preview) {}
++  ThrottleCheckResult WillStartRequest() override { return Review(); }
++  ThrottleCheckResult WillRedirectRequest() override { return Review(); }
++  const char* GetNameForLogging() override { return "AuxProjectPreview"; }
++ private:
++  ThrottleCheckResult Review() {
++    if (!preview_ || !preview_->Current()) return CANCEL_AND_IGNORE;
++    Check(preview_, navigation_handle()->GetURL(), true,
++        base::BindOnce([](base::WeakPtr<PreviewNavigation> navigation, bool allowed) {
++          if (!navigation) return;
++          if (allowed) navigation->Resume();
++          else navigation->CancelDeferredNavigation(CANCEL_AND_IGNORE);
++        }, weak_.GetWeakPtr()));
++    return DEFER;
++  }
++  base::WeakPtr<NativeProjectPreview> preview_;
++  base::WeakPtrFactory<PreviewNavigation> weak_{this};
++};
++}
++void NativeProjectPreview::ProxyFactory(content::RenderFrameHost* frame, int process_id, bool navigation, network::URLLoaderFactoryBuilder& builder,
++    mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>* headers) {
++  auto* process = frame ? frame->GetProcess() : content::RenderProcessHost::FromID(process_id);
++  auto* partition = process ? process->GetStoragePartition() : nullptr;
++  if (!IsPreviewPartition(partition)) return;
++  if (headers) {
++    auto original = std::move(*headers);
++    mojo::MakeSelfOwnedReceiver(std::make_unique<PreviewFactoryHeaders>(ForPartition(partition), navigation, std::move(original)),
++        headers->InitWithNewPipeAndPassReceiver());
++  }
++  auto [receiver, target] = builder.Append();
++  base::MakeSelfDeleting<PreviewFactory>(std::move(receiver), std::move(target), headers ? ForPartition(partition) : base::WeakPtr<NativeProjectPreview>());
++}
++mojo::PendingRemote<network::mojom::TrustedHeaderClient> NativeProjectPreview::WrapHeaders(
++    base::WeakPtr<NativeProjectPreview> preview, mojo::PendingRemote<network::mojom::TrustedHeaderClient> target) {
++  mojo::PendingRemote<network::mojom::TrustedHeaderClient> wrapped;
++  mojo::MakeSelfOwnedReceiver(std::make_unique<PreviewHeader>(preview, false, std::move(target)),
++      wrapped.InitWithNewPipeAndPassReceiver());
++  return wrapped;
++}
++void NativeProjectPreview::AddNavigationThrottle(content::NavigationThrottleRegistry& registry) {
++  auto* contents = registry.GetNavigationHandle().GetWebContents();
++  auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++  auto* partition = frame ? frame->GetProcess()->GetStoragePartition() : nullptr;
++  if (IsPreviewPartition(partition)) registry.AddThrottle(std::make_unique<PreviewNavigation>(registry, ForPartition(partition)));
++}
++}
+diff --git a/chrome/browser/ui/aux/native_terminal.cc b/chrome/browser/ui/aux/native_terminal.cc
+new file mode 100644
+index 0000000..228f2cd
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_terminal.cc
+@@ -0,0 +1,308 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_terminal.h"
++#include <errno.h>
++#include <fcntl.h>
++#include <signal.h>
++#include <sys/ioctl.h>
++#include <sys/stat.h>
++#include <sys/wait.h>
++#include <unistd.h>
++#include <stdlib.h>
++#include <array>
++#include <optional>
++#include <algorithm>
++#include <vector>
++#include "base/base64.h"
++#include "base/environment.h"
++#include "base/uuid.h"
++#include "base/strings/strcat.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/functional/bind.h"
++#include "base/task/thread_pool.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++namespace aux {
++namespace {
++base::DictValue Fault(const std::string& message) {
++  return base::DictValue().Set("error", base::DictValue().Set("code", "ref_stale").Set("message", message));
++}
++base::DictValue Result(base::DictValue value) { return base::DictValue().Set("result", std::move(value)); }
++struct Termination {
++  bool acknowledged = true;
++  std::optional<int> exit_code;
++  std::vector<NativeProjectProcess> processes;
++};
++Termination KillAndReap(pid_t pid, int fd, NativeProjectProcess process, bool fenced,
++                        std::vector<NativeProjectProcess> remembered) {
++  Termination result;
++  result.processes = std::move(remembered);
++  if (pid > 0) {
++    result.acknowledged = StopProjectProcesses(process, fenced, &result.processes);
++    // This is the exact unreaped child returned by our fork, even if birth
++    // capture failed before Start could acknowledge it. Never adopt another PID.
++    if (kill(pid, SIGKILL) != 0 && errno != ESRCH) result.acknowledged = false;
++  }
++  // A session leader's exit can wait for its controlling PTY output to drain.
++  // Disconnect and flush the original master before joining that exit.
++  if (fd >= 0) result.acknowledged &= close(fd) == 0;
++  if (pid > 0) {
++    int status = 0;
++    pid_t reaped;
++    do { reaped = waitpid(pid, &status, 0); } while (reaped < 0 && errno == EINTR);
++    result.acknowledged &= reaped == pid;
++    if (reaped == pid)
++      result.exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
++  }
++  return result;
++}
++}  // namespace
++NativeTerminal::NativeTerminal(content::WebContents* owner, content::WeakDocumentPtr document,
++    std::string token, base::DictValue session)
++    : content::WebContentsObserver(owner), document_(std::move(document)), token_(std::move(token)), session_(std::move(session)) {}
++NativeTerminal::~NativeTerminal() { Retire(); }
++bool NativeTerminal::Current() const { return document_.AsRenderFrameHostIfValid() && web_contents(); }
++base::DictValue NativeTerminal::Session() const { return session_.Clone(); }
++bool NativeTerminal::Start(const std::string& executable, const std::string& cwd, const std::string& device, const std::string& inode, std::string* error) {
++  dedicated_descendants_ = true;
++  return StartCommand(executable, {"-l"}, {}, cwd, device, inode, error);
++}
++bool NativeTerminal::StartCommand(const std::string& executable, const std::vector<std::string>& args,
++    const std::vector<std::string>& overrides, const std::string& cwd,
++    const std::string& device, const std::string& inode, std::string* error) {
++  if (!Current() || executable.empty() || executable.front() != '/' || cwd.empty() || cwd.front() != '/') { *error = "Original terminal launch is unavailable"; return false; }
++  const int directory = open(cwd.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
++  struct stat identity{};
++  if (directory < 0 || fstat(directory, &identity) != 0 ||
++      base::NumberToString(static_cast<uint64_t>(identity.st_dev)) != device ||
++      base::NumberToString(static_cast<uint64_t>(identity.st_ino)) != inode) {
++    if (directory >= 0) close(directory);
++    *error = "Original Project directory changed before launch"; return false;
++  }
++  // Pass only the user's terminal environment, never runtime/provider credentials.
++  auto env = base::Environment::Create();
++  std::vector<std::string> values;
++  for (base::cstring_view name : {base::cstring_view("HOME"), base::cstring_view("USER"), base::cstring_view("LOGNAME"), base::cstring_view("SHELL"), base::cstring_view("PATH"), base::cstring_view("LANG"), base::cstring_view("LC_ALL"), base::cstring_view("TMPDIR")}) {
++    auto value = env->GetVar(name);
++    if (value) values.push_back(std::string(name.c_str()) + "=" + *value);
++  }
++  values.push_back("TERM=xterm-256color"); values.push_back("COLORTERM=truecolor");
++  for (const auto& value : overrides) {
++    const auto separator = value.find('=');
++    const auto prefix = value.substr(0, separator + 1);
++    std::erase_if(values, [&](const auto& existing) { return existing.starts_with(prefix); });
++    values.push_back(value);
++  }
++  std::vector<char*> environment;
++  for (auto& value : values) environment.push_back(value.data());
++  environment.push_back(nullptr);
++  std::vector<char*> arguments;
++  arguments.push_back(const_cast<char*>(executable.c_str()));
++  for (const auto& arg : args) arguments.push_back(const_cast<char*>(arg.c_str()));
++  arguments.push_back(nullptr);
++  winsize size{}; size.ws_col = *session_.FindInt("cols"); size.ws_row = *session_.FindInt("rows");
++  const int descriptor_limit = getdtablesize();
++  master_ = posix_openpt(O_RDWR | O_NOCTTY | O_CLOEXEC);
++  std::array<char, 128> slave_name;
++  int slave = -1;
++  if (master_ >= 0 && grantpt(master_) == 0 && unlockpt(master_) == 0 &&
++      ptsname_r(master_, slave_name.data(), slave_name.size()) == 0) {
++    slave = open(slave_name.data(), O_RDWR | O_NOCTTY | O_CLOEXEC);
++  }
++  if (slave < 0 || ioctl(slave, TIOCSWINSZ, &size) != 0) {
++    if (slave >= 0) close(slave);
++    if (master_ >= 0) close(master_);
++    master_ = -1;
++    close(directory);
++    *error = "Cannot create terminal descriptors"; return false;
++  }
++  pid_ = fork();
++  if (pid_ == 0) {
++    // The forked child does no allocation or Chromium work before exec.
++    if (fchdir(directory) != 0) _exit(126);
++    if (setsid() < 0 || ioctl(slave, TIOCSCTTY, 0) != 0 ||
++        dup2(slave, STDIN_FILENO) < 0 || dup2(slave, STDOUT_FILENO) < 0 ||
++        dup2(slave, STDERR_FILENO) < 0) _exit(126);
++    for (int fd = STDIN_FILENO; fd <= STDERR_FILENO; ++fd)
++      if (fcntl(fd, F_SETFD, 0) != 0) _exit(126);
++    for (int fd = 3; fd < descriptor_limit; ++fd) close(fd);
++    sigset_t empty; sigemptyset(&empty); sigprocmask(SIG_SETMASK, &empty, nullptr);
++    execve(executable.c_str(), arguments.data(), environment.data());
++    _exit(127);
++  }
++  close(slave);
++  close(directory);
++  if (pid_ < 0) { close(master_); master_ = -1; *error = "Cannot create terminal process"; return false; }
++  const int flags = fcntl(master_, F_GETFL);
++  if (flags < 0 || fcntl(master_, F_SETFL, flags | O_NONBLOCK) < 0 || fcntl(master_, F_SETFD, FD_CLOEXEC) < 0) {
++    Retire(); *error = "Cannot configure terminal descriptor"; return false;
++  }
++  if (!CaptureProjectProcess(pid_, &process_, dedicated_descendants_)) { Retire(); *error = "Original process identity is unavailable"; return false; }
++  cwd_ = cwd; device_ = device; inode_ = inode;
++  return true;
++}
++bool NativeTerminal::PreviewCurrent(const NativeProjectListener& listener) const {
++  if (!Current() || closing_ || pid_ <= 0 || !ProjectListenerCurrent(process_, listener)) return false;
++  const int directory = open(cwd_.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
++  struct stat identity{};
++  const bool current = directory >= 0 && fstat(directory, &identity) == 0 &&
++      base::NumberToString(static_cast<uint64_t>(identity.st_dev)) == device_ &&
++      base::NumberToString(static_cast<uint64_t>(identity.st_ino)) == inode_;
++  if (directory >= 0) close(directory);
++  return current;
++}
++void NativeTerminal::Listeners(base::OnceCallback<void(base::DictValue)> callback) {
++  if (!Current() || closing_ || !ProjectProcessCurrent(process_)) {
++    std::move(callback).Run(Fault("Original terminal process retired")); return;
++  }
++  base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&FindProjectListeners, process_), base::BindOnce(
++          [](base::WeakPtr<NativeTerminal> owner, base::OnceCallback<void(base::DictValue)> callback,
++             std::vector<NativeProjectListener> listeners) {
++            if (!owner || !owner->Current() || owner->closing_ || !ProjectProcessCurrent(owner->process_)) {
++              std::move(callback).Run(Fault("Original terminal process retired")); return;
++            }
++            base::ListValue result;
++            // Preserve opaque IDs only for the same live kernel socket; never reuse an old ID.
++            std::map<std::string, NativeProjectListener> admitted;
++            for (const auto& listener : listeners) {
++              if (!owner->PreviewCurrent(listener)) continue;
++              std::string id;
++              for (const auto& [old_id, old] : owner->listeners_) {
++                if (old.pid == listener.pid && old.fd == listener.fd && old.socket == listener.socket &&
++                    old.generation == listener.generation && old.started_seconds == listener.started_seconds &&
++                    old.started_microseconds == listener.started_microseconds) { id = old_id; break; }
++              }
++              if (id.empty()) id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++              admitted.emplace(id, listener);
++              result.Append(base::DictValue().Set("listenerId", id).Set("url",
++                  base::StrCat({"http://", listener.host, ":", base::NumberToString(listener.port), "/"})));
++            }
++            owner->listeners_ = std::move(admitted);
++            std::move(callback).Run(Result(base::DictValue().Set("terminalId", *owner->session_.FindString("terminalId"))
++                .Set("listeners", std::move(result))));
++          }, weak_factory_.GetWeakPtr(), std::move(callback)));
++}
++base::DictValue NativeTerminal::Preview(const std::string& listener_id, const std::string& preview_id,
++    const std::string& protocol, NativeProjectPreview::Review review) {
++  const auto listener = listeners_.find(listener_id);
++  if (listener == listeners_.end() || !PreviewCurrent(listener->second) || previews_.contains(preview_id) ||
++      previews_.size() >= 8 || (protocol != "http" && protocol != "https")) return Fault("Original Project listener changed");
++  const auto proof = listener->second;
++  const GURL origin(base::StrCat({protocol, "://", proof.host, ":", base::NumberToString(proof.port), "/"}));
++  auto preview = std::make_unique<NativeProjectPreview>(web_contents(), document_, origin,
++      base::BindRepeating([](base::WeakPtr<NativeTerminal> owner, NativeProjectListener listener) {
++        return owner && owner->PreviewCurrent(listener);
++      }, weak_factory_.GetWeakPtr(), proof), std::move(review));
++  if (!preview->Open()) return Fault("Cannot attach original Project preview");
++  auto result = preview->Describe(); result.Set("terminalId", *session_.FindString("terminalId")); result.Set("previewId", preview_id);
++  previews_.emplace(preview_id, std::move(preview)); return Result(std::move(result));
++}
++void NativeTerminal::ClosePreview(const std::string& preview_id, base::OnceCallback<void(base::DictValue)> callback) {
++  const auto preview = previews_.find(preview_id);
++  // This terminal owns the complete native guest inventory for its original
++  // document. Absence proves no guest exists, including an unstarted request.
++  if (preview == previews_.end()) { std::move(callback).Run(Result(base::DictValue().Set("closed", true))); return; }
++  preview->second->Close(base::BindOnce([](base::WeakPtr<NativeTerminal> owner, std::string id,
++      base::OnceCallback<void(base::DictValue)> callback, bool acknowledged) {
++    if (acknowledged && owner) owner->previews_.erase(id);
++    std::move(callback).Run(acknowledged ? Result(base::DictValue().Set("closed", true)) : Fault("Project preview cleanup is not acknowledged"));
++  }, weak_factory_.GetWeakPtr(), preview_id, std::move(callback)));
++}
++void NativeTerminal::Flush() {
++  while (master_ >= 0 && !pending_input_.empty()) {
++    const ssize_t count = write(master_, pending_input_.data(), pending_input_.size());
++    if (count > 0) pending_input_.erase(0, count);
++    else if (count < 0 && errno == EINTR) continue;
++    else if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return;
++    else { Retire(); return; }
++  }
++}
++void NativeTerminal::PollExit() {
++  if (pid_ <= 0 || closing_) return;
++  siginfo_t info{};
++  if (waitid(P_PID, pid_, &info, WEXITED | WNOHANG | WNOWAIT) != 0 || !info.si_pid) return;
++  // Reaping and PTY cleanup use the same asynchronous original close ACK.
++  Close(base::BindOnce([](base::DictValue) {}));
++}
++base::DictValue NativeTerminal::Read(uint64_t offset) {
++  if (!Current()) { Retire(); return Fault("Original terminal document retired"); }
++  if (offset == previous_offset_ && !previous_chunk_.empty()) {
++    return Result(base::DictValue().Set("terminalId", *session_.FindString("terminalId")).Set("offset", static_cast<double>(offset))
++      .Set("nextOffset", static_cast<double>(offset_)).Set("data", base::Base64Encode(previous_chunk_)).Set("encoding", "base64").Set("state", *session_.FindString("state")));
++  }
++  if (offset != offset_) return Fault("Terminal output acknowledgement changed");
++  Flush();
++  std::array<char, 65536> chunk;
++  ssize_t count = master_ < 0 ? 0 : read(master_, chunk.data(), chunk.size());
++  if (count < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR && errno != EIO) { Retire(); return Fault("Terminal output failed"); }
++  previous_offset_ = offset_;
++  previous_chunk_.assign(chunk.data(), count > 0 ? count : 0);
++  offset_ += previous_chunk_.size();
++  PollExit();
++  if (closing_ && closing_->failed) return Fault("Terminal exit has no original reaping acknowledgement");
++  if (count <= 0 && pid_ < 0 && !closing_) session_.Set("state", "closed");
++  auto result = base::DictValue().Set("terminalId", *session_.FindString("terminalId")).Set("offset", static_cast<double>(previous_offset_))
++    .Set("nextOffset", static_cast<double>(offset_)).Set("data", base::Base64Encode(previous_chunk_)).Set("encoding", "base64").Set("state", *session_.FindString("state"));
++  if (*session_.FindString("state") == "closed") result.Set("exitCode", exit_code_);
++  return Result(std::move(result));
++}
++base::DictValue NativeTerminal::Input(uint64_t sequence, const std::string& data) {
++  if (!Current() || pid_ <= 0 || sequence != sequence_ || data.empty() || data.size() > 65536 || pending_input_.size() + data.size() > 65536) return Fault("Terminal input authority or sequence changed");
++  pending_input_ += data; ++sequence_; Flush();
++  if (master_ < 0) return Fault("Terminal input could not be delivered; do not replay it");
++  return Result(base::DictValue().Set("terminalId", *session_.FindString("terminalId")).Set("nextSequence", static_cast<double>(sequence_)));
++}
++base::DictValue NativeTerminal::Resize(int cols, int rows) {
++  if (!Current() || master_ < 0 || cols < 2 || cols > 500 || rows < 1 || rows > 300) return Fault("Terminal resize authority changed");
++  winsize size{}; size.ws_col = cols; size.ws_row = rows;
++  if (ioctl(master_, TIOCSWINSZ, &size) != 0) return Fault("Terminal resize failed");
++  session_.Set("cols", cols); session_.Set("rows", rows);
++  return Result(Session());
++}
++void NativeTerminal::Close(base::OnceCallback<void(base::DictValue)> callback) {
++  if (closing_) {
++    if (closing_->completed) std::move(callback).Run(closing_->failed ? Fault("Terminal termination has no original acknowledgement") : Result(closing_->stopped.Clone()));
++    else closing_->callbacks.push_back(std::move(callback));
++    return;
++  }
++  const pid_t pid = pid_; const int fd = master_;
++  // Freeze the root before any guest cleanup await. Killing it first would
++  // orphan dedicated-session children before their ancestry can be retained.
++  if (pid > 0 && process_.pid != pid)
++    CaptureProjectProcess(pid, &process_, dedicated_descendants_);
++  const bool fenced = pid <= 0 || FreezeProjectRoot(process_);
++  std::vector<NativeProjectProcess> remembered;
++  for (const auto& [id, listener] : listeners_) {
++    remembered.insert(remembered.end(), listener.ancestry.begin(), listener.ancestry.end());
++    remembered.push_back({listener.pid, listener.started_seconds, listener.started_microseconds});
++  }
++  pid_ = -1; master_ = -1; pending_input_.clear(); session_.Set("state", "closing");
++  closing_ = std::make_shared<CloseState>();
++  closing_->stopped = Session(); closing_->stopped.Set("state", "closed");
++  closing_->pending = previews_.size() + 1;
++  closing_->callbacks.push_back(std::move(callback));
++  auto joined = base::BindRepeating([](base::WeakPtr<NativeTerminal> owner, std::shared_ptr<CloseState> state, bool acknowledged) {
++    state->failed |= !acknowledged;
++    if (--state->pending) return;
++    state->completed = true;
++    if (owner && !state->failed) owner->session_ = state->stopped.Clone();
++    auto callbacks = std::move(state->callbacks);
++    for (auto& callback : callbacks) std::move(callback).Run(state->failed ? Fault("Terminal termination has no original acknowledgement") : Result(state->stopped.Clone()));
++  }, weak_factory_.GetWeakPtr(), closing_);
++  for (auto& [id, preview] : previews_) preview->Close(base::BindOnce(joined));
++  base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
++      base::BindOnce(&KillAndReap, pid, fd, process_, fenced, std::move(remembered)), base::BindOnce(
++          [](base::WeakPtr<NativeTerminal> owner, std::shared_ptr<CloseState> state,
++             base::RepeatingCallback<void(bool)> joined, Termination result) {
++            state->processes = std::move(result.processes);
++            if (result.exit_code && owner) owner->exit_code_ = *result.exit_code;
++            joined.Run(result.acknowledged);
++          }, weak_factory_.GetWeakPtr(), closing_, joined));
++}
++void NativeTerminal::Retire() {
++  // Close fences the original root and joins the same eventual cleanup ACK.
++  Close(base::BindOnce([](base::DictValue) {}));
++}
++void NativeTerminal::PrimaryPageChanged(content::Page&) { Retire(); }
++void NativeTerminal::WebContentsDestroyed() { Retire(); Observe(nullptr); }
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/native_terminal.h b/chrome/browser/ui/aux/native_terminal.h
+new file mode 100644
+index 0000000..85e9a26
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_terminal.h
+@@ -0,0 +1,76 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_TERMINAL_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_TERMINAL_H_
++#include <sys/types.h>
++#include <cstdint>
++#include <memory>
++#include <map>
++#include "chrome/browser/ui/aux/native_project_listener.h"
++#include "chrome/browser/ui/aux/native_project_preview.h"
++#include <string>
++#include <vector>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/values.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/weak_document_ptr.h"
++namespace aux {
++// One terminal's process group and PTY belong to the original WebUI document.
++// Dedicated Codex child groups additionally retain birth-bound ancestry.
++class NativeTerminal final : public content::WebContentsObserver {
++ public:
++  NativeTerminal(content::WebContents* owner, content::WeakDocumentPtr document,
++                 std::string token, base::DictValue session);
++  ~NativeTerminal() override;
++  bool Start(const std::string& executable, const std::string& cwd, const std::string& device, const std::string& inode, std::string* error);
++  bool StartCommand(const std::string& executable, const std::vector<std::string>& args,
++                    const std::vector<std::string>& environment, const std::string& cwd,
++                    const std::string& device, const std::string& inode, std::string* error);
++  const std::string& token() const { return token_; }
++  bool Current() const;
++  base::DictValue Session() const;
++  base::DictValue Read(uint64_t offset);
++  base::DictValue Input(uint64_t sequence, const std::string& data);
++  base::DictValue Resize(int cols, int rows);
++  void Listeners(base::OnceCallback<void(base::DictValue)> callback);
++  base::DictValue Preview(const std::string& listener_id, const std::string& preview_id,
++                         const std::string& protocol, NativeProjectPreview::Review review);
++  void ClosePreview(const std::string& preview_id, base::OnceCallback<void(base::DictValue)> callback);
++  // Detaches ownership synchronously, then acknowledges actual child reaping.
++  void Close(base::OnceCallback<void(base::DictValue)> callback);
++  void PrimaryPageChanged(content::Page& page) override;
++  void WebContentsDestroyed() override;
++ private:
++  void Retire();
++  void Flush();
++  void PollExit();
++  bool PreviewCurrent(const NativeProjectListener& listener) const;
++  NativeProjectProcess process_{};
++  bool dedicated_descendants_ = false;
++  std::string cwd_, device_, inode_;
++  std::map<std::string, NativeProjectListener> listeners_;
++  std::map<std::string, std::unique_ptr<NativeProjectPreview>> previews_;
++  content::WeakDocumentPtr document_;
++  std::string token_;
++  base::DictValue session_;
++  pid_t pid_ = -1;
++  int master_ = -1;
++  uint64_t offset_ = 0;
++  uint64_t previous_offset_ = 0;
++  uint64_t sequence_ = 0;
++  std::string previous_chunk_;
++  std::string pending_input_;
++  int exit_code_ = 0;
++  struct CloseState {
++    base::DictValue stopped;
++    bool failed = false;
++    bool completed = false;
++    size_t pending = 0;
++    std::vector<NativeProjectProcess> processes;
++    std::vector<base::OnceCallback<void(base::DictValue)>> callbacks;
++  };
++  std::shared_ptr<CloseState> closing_;
++  base::WeakPtrFactory<NativeTerminal> weak_factory_{this};
++};
++}  // namespace aux
++#endif
+diff --git a/components/guest_contents/browser/guest_contents_handle.cc b/components/guest_contents/browser/guest_contents_handle.cc
+index a497b4f..9dda54a 100644
+--- a/components/guest_contents/browser/guest_contents_handle.cc
++++ b/components/guest_contents/browser/guest_contents_handle.cc
+@@ -5,6 +5,7 @@
+ #include "components/guest_contents/browser/guest_contents_handle.h"
+ 
+ #include <map>
++#include <utility>
+ 
+ #include "base/no_destructor.h"
+ #include "content/public/browser/unowned_inner_web_contents_client.h"
+@@ -54,8 +55,17 @@ GuestContentsHandle::~GuestContentsHandle() {
+   GetGuestContentsMap().erase(id_);
+ }
+ 
++void GuestContentsHandle::SetAttachmentValidator(
++    base::RepeatingCallback<bool(content::RenderFrameHost*)> validator) {
++  attachment_validator_ = std::move(validator);
++}
++bool GuestContentsHandle::CanAttach(content::RenderFrameHost* outer) const {
++  return !attachment_validator_ || attachment_validator_.Run(outer);
++}
++
+ void GuestContentsHandle::AttachToOuterWebContents(
+     content::RenderFrameHost* outer_delegate_frame) {
++  if (!CanAttach(outer_delegate_frame)) return;
+   CHECK(!web_contents()->GetOuterWebContents())
+       << "This WebContents is already attached to an outer WebContents. Hint: "
+          "use GuestContentsHandle::DetachFromOuterWebContents() before "
+diff --git a/components/guest_contents/browser/guest_contents_handle.h b/components/guest_contents/browser/guest_contents_handle.h
+index edf11fd..72879cf 100644
+--- a/components/guest_contents/browser/guest_contents_handle.h
++++ b/components/guest_contents/browser/guest_contents_handle.h
+@@ -6,6 +6,7 @@
+ #define COMPONENTS_GUEST_CONTENTS_BROWSER_GUEST_CONTENTS_HANDLE_H_
+ 
+ #include "base/sequence_checker.h"
++#include "base/functional/callback.h"
+ #include "base/unguessable_token.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_observer.h"
+@@ -34,6 +35,10 @@ class GuestContentsHandle
+   // when the GuestContentsHandle is created.
+   GuestId id() { return id_; }
+ 
++  // Optional browser-owned authority, checked before a connector changes guests.
++  void SetAttachmentValidator(base::RepeatingCallback<bool(content::RenderFrameHost*)> validator);
++  bool CanAttach(content::RenderFrameHost* outer) const;
++
+   void AttachToOuterWebContents(
+       content::RenderFrameHost* outer_delegate_frame);
+ 
+@@ -49,6 +54,7 @@ class GuestContentsHandle
+   void WebContentsDestroyed() override;
+ 
+   base::UnguessableToken id_;
++  base::RepeatingCallback<bool(content::RenderFrameHost*)> attachment_validator_;
+ 
+   SEQUENCE_CHECKER(sequence_checker_);
+ };
