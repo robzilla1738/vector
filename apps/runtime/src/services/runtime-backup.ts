@@ -39,7 +39,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { SCHEMA_VERSION } from "../store/db.js";
 import type { Repo } from "../store/repo.js";
 import { sanitizePortablePageRecall } from "@aux/contracts/portable-page-recall";
-import { ENCRYPTED_FIELDS, type FieldCodec } from "../store/field-codec.js";
+import { encryptedFieldsForDatabase, type FieldCodec } from "../store/field-codec.js";
 import { minimizedObservationArtifactBytes } from "./observation-artifact-minimization.js";
 import {
   assertManagedRecoveryGeneration,
@@ -146,7 +146,7 @@ function authenticateProtectedCopy(db: DatabaseSync, cipher?: FieldCodec) {
       "aux-portable-profile-v3"
   )
     throw new Error("The encrypted backup belongs to another Profile.");
-  for (const [table, columns] of Object.entries(ENCRYPTED_FIELDS)) {
+  for (const [table, columns] of Object.entries(encryptedFieldsForDatabase(db))) {
     const info = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];
     const identity = info
       .filter((item) => item.pk > 0)
@@ -173,7 +173,7 @@ function validateDatabase(path: string) {
   const db = new DatabaseSync(path, { readOnly: true });
   try {
     const version = (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
-    if (version !== 2 && version !== SCHEMA_VERSION)
+    if (version !== 2 && version !== 3 && version !== SCHEMA_VERSION)
       throw new Error(`This backup uses unsupported database schema ${version}.`);
     if (
       !db.prepare("SELECT 1 FROM sqlite_schema WHERE name='aux_meta'").get() ||

@@ -31,8 +31,6 @@ export const BackgroundStartSchema = z
 export type BackgroundStart = z.infer<typeof BackgroundStartSchema>;
 export interface CodingProcessReceipt {
   execution?: CloudProcessIdentity;
-  /** Bounded remote output, protected with the receipt rather than a local plaintext log. */
-  logText?: string;
   logTruncated?: boolean;
   processId: string;
   runId: string;

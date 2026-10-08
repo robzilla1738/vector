@@ -21,12 +21,25 @@ export const ENCRYPTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
   safety_approval_requests: ["action_json"],
   coding_file_receipts: ["receipt", "summary"],
   coding_process_receipts: ["receipt"],
+  coding_process_logs: ["text"],
   coding_repl_calls: ["signature", "response"],
   coding_repl_cells: ["source"],
   coder_worktree_receipts: ["body"],
   model_calls: ["provider_metadata"],
   calendar_connections: ["account_key", "label", "secret_name", "scopes"],
 };
+/** Restorable v2/v3 snapshots predate the separate encrypted process log table. */
+export function encryptedFieldsForDatabase(db: DatabaseSync): typeof ENCRYPTED_FIELDS {
+  const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
+  if (version !== 2 && version !== 3 && version !== 4)
+    throw new Error("Unsupported encrypted database schema.");
+  return version < 4
+    ? Object.fromEntries(
+        Object.entries(ENCRYPTED_FIELDS).filter(([table]) => table !== "coding_process_logs"),
+      )
+    : ENCRYPTED_FIELDS;
+}
+
 export const encryptedField = (table: string, column: string): boolean =>
   ENCRYPTED_FIELDS[table]?.includes(column) ?? false;
 

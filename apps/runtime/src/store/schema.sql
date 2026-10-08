@@ -486,6 +486,13 @@ CREATE TABLE run_start_receipts(
   window_id TEXT NOT NULL, chat_id TEXT NOT NULL, run_id TEXT NOT NULL UNIQUE,
   state TEXT NOT NULL CHECK(state IN ('reserved','accepted','abandoned')));
 
+-- @schema process_logs
+CREATE TABLE coding_process_logs(
+  process_id TEXT NOT NULL REFERENCES coding_process_receipts(process_id) ON DELETE CASCADE,
+  byte_offset INTEGER NOT NULL CHECK(byte_offset>=0),
+  byte_length INTEGER NOT NULL CHECK(byte_length BETWEEN 1 AND 65536),
+  text TEXT NOT NULL, PRIMARY KEY(process_id,byte_offset));
+
 -- @schema spend
 CREATE TABLE IF NOT EXISTS ai_spend(
         reservation_id TEXT PRIMARY KEY,

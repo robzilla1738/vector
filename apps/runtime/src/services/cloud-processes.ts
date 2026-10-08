@@ -13,6 +13,12 @@ import type { Repo } from "../store/repo.js";
 import type { BashSeatbeltInput } from "../agent/loop/bash.js";
 import type { CodingProcessContext } from "./coding-processes.js";
 import { CodingProcessLedger } from "./coding-process-ledger.js";
+import {
+  appendProcessLog,
+  PROCESS_LOG_CHUNK_BYTES,
+  PROCESS_LOG_LIMIT,
+  utf8PrefixLength,
+} from "./coding-process-logs.js";
 import { requireCloudFilePath } from "./cloud-files-protocol.js";
 
 export interface CloudProcessAdmission {
@@ -32,26 +38,20 @@ export interface CloudProcessTransport {
   released(processId: string): void;
   retiring?(processId: string): Promise<void>;
 }
-const LOG_LIMIT = 8 * 1024 * 1024;
 const DISPLAY_LIMIT = 64 * 1024;
 function boundedBytes(limit: number) {
-  let buffer = Buffer.allocUnsafe(Math.min(limit, 64 * 1024)),
-    length = 0,
+  const buffer = Buffer.allocUnsafe(limit);
+  let length = 0,
     truncated = false;
   return {
     append(bytes: Buffer) {
-      const count = Math.min(bytes.length, limit - length);
-      if (length + count > buffer.length) {
-        const grown = Buffer.allocUnsafe(Math.min(limit, Math.max(buffer.length * 2, length + count)));
-        buffer.copy(grown, 0, 0, length);
-        buffer = grown;
-      }
+      if (truncated) return;
+      const count = utf8PrefixLength(bytes, Math.min(bytes.length, limit - length));
       bytes.copy(buffer, length, 0, count);
       length += count;
       truncated ||= count < bytes.length;
     },
     bytes: () => buffer.subarray(0, length),
-    size: () => length,
     truncated: () => truncated,
   };
 }
@@ -124,10 +124,6 @@ export class CloudCodingProcesses extends CodingProcessLedger {
     if (runId !== this.options.context.runId) throw new AuxError("ref_stale", "Cloud process run changed.");
     return receipt;
   }
-  override status(processId: string, runId: string): CodingProcessReceipt {
-    const { logText: _logText, ...receipt } = super.status(processId, runId);
-    return receipt;
-  }
   async authorizeAccess(
     operation: "status" | "logs" | "stop" | "reconcile",
     processId: string,
@@ -185,7 +181,6 @@ export class CloudCodingProcesses extends CodingProcessLedger {
         state: "starting",
         requestHash,
         execution: { ...this.options.identity },
-        logText: "",
         undoAvailable: false,
       };
       this.save(receipt);
@@ -270,15 +265,35 @@ export class CloudCodingProcesses extends CodingProcessLedger {
     admission: CloudProcessAdmission,
   ): Owned {
     const controller = new AbortController();
-    const log = boundedBytes(LOG_LIMIT);
-    log.append(Buffer.from(receipt.logText ?? ""));
-    let savedBytes = log.size();
+    const log = Buffer.allocUnsafe(PROCESS_LOG_CHUNK_BYTES);
+    const digest = createHash("sha256");
+    let pendingBytes = 0,
+      savedBytes = 0;
     const output = { stdout: boundedBytes(DISPLAY_LIMIT), stderr: boundedBytes(DISPLAY_LIMIT) };
     const flush = () => {
-      receipt.logText = log.bytes().toString("utf8");
-      if (!this.retired) this.save(receipt);
-      delete receipt.logText;
-      savedBytes = log.size();
+      if (this.retired) return;
+      this.repo.transaction(() => {
+        appendProcessLog(this.repo, receipt.processId, savedBytes, log.subarray(0, pendingBytes));
+        this.save(receipt);
+      });
+      savedBytes += pendingBytes;
+      pendingBytes = 0;
+    };
+    const append = (bytes: Buffer) => {
+      if (this.retired || receipt.logTruncated) return;
+      const length = utf8PrefixLength(
+        bytes,
+        Math.min(bytes.length, PROCESS_LOG_LIMIT - savedBytes - pendingBytes),
+      );
+      receipt.logTruncated = length < bytes.length;
+      digest.update(bytes.subarray(0, length));
+      for (let start = 0; start < length;) {
+        const end = utf8PrefixLength(bytes, Math.min(length, start + log.length - pendingBytes));
+        bytes.copy(log, pendingBytes, start, end);
+        pendingBytes += end - start;
+        start = end;
+        if (start < length || pendingBytes === log.length) flush();
+      }
     };
     let header = "",
       admitted = false,
@@ -314,11 +329,9 @@ export class CloudCodingProcesses extends CodingProcessLedger {
             header = "";
           }
           const bytes = Buffer.from(data);
-          log.append(bytes);
+          append(bytes);
           output[channel].append(bytes);
-          receipt.logTruncated ||= log.truncated();
-          receipt.outputTruncated ||= log.truncated() || output[channel].truncated();
-          if (log.size() - savedBytes >= 1024 * 1024) flush();
+          receipt.outputTruncated ||= receipt.logTruncated || output[channel].truncated();
         }
       } catch (error) {
         receipt.logTruncated = true;
@@ -344,6 +357,7 @@ export class CloudCodingProcesses extends CodingProcessLedger {
       void this.options.transport
         .current(context.signal)
         .then(() => {
+          if (pendingBytes) flush();
           this.check(context);
           admission.check();
         })
@@ -386,7 +400,7 @@ export class CloudCodingProcesses extends CodingProcessLedger {
               : "failed";
         receipt.stdout = output.stdout.bytes().toString("utf8");
         receipt.stderr = output.stderr.bytes().toString("utf8");
-        receipt.logDigest = createHash("sha256").update(log.bytes()).digest("hex");
+        receipt.logDigest = digest.digest("hex");
         flush();
         this.options.transport.released(receipt.processId);
         this.owned.delete(receipt.processId);

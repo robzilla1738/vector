@@ -164,6 +164,7 @@ describe("fresh schema", () => {
       "site_user_css",
       "site_zap_rules",
       "run_lookup",
+      "coding_process_logs",
     ]) {
       expect(tables.map((row) => row.name)).toContain(table);
     }
@@ -196,7 +197,7 @@ describe("fresh schema", () => {
     const previous = track(openDb(path)), repo = new Repo(previous);
     repo.saveRun({ runId: "saved-run", goal: "Saved question", status: "completed", pageIds: [], createdAt: 42, config: { chatId: "saved-chat" } });
     repo.setSetting("owner-choice", "preserved");
-    previous.exec("DROP TABLE run_start_receipts; PRAGMA user_version=2");
+    previous.exec("DROP TABLE run_start_receipts; DROP TABLE coding_process_logs; PRAGMA user_version=2");
     const savedRun = previous.prepare("SELECT * FROM runs").get();
     const savedChat = previous.prepare("SELECT * FROM conversations").get();
     previous.close();

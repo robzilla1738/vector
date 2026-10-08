@@ -1,6 +1,7 @@
 import { AuxError } from "@aux/contracts";
 import type { CodingProcessReceipt } from "@aux/contracts/coding-processes";
 import type { Repo } from "../store/repo.js";
+import { PROCESS_LOG_CHUNK_BYTES, PROCESS_LOG_LIMIT, utf8PrefixLength } from "./coding-process-logs.js";
 
 /** Local and cloud processes publish into one encrypted receipt ledger. */
 export class CodingProcessLedger {
@@ -75,8 +76,29 @@ export class CodingProcessLedger {
     const receipt = this.stored(processId, runId);
     if (receipt.execution?.backend !== "cloud")
       throw new AuxError("invalid_params", "This process uses a local log file.");
-    const bytes = Buffer.from(receipt.logText ?? ""),
-      part = bytes.subarray(cursor, cursor + 64 * 1024);
+    const rows =
+      cursor >= PROCESS_LOG_LIMIT
+        ? []
+        : (this.repo.db
+            .prepare(
+              "SELECT byte_offset,text FROM coding_process_logs WHERE process_id=? AND byte_offset<? AND byte_offset+byte_length>? ORDER BY byte_offset",
+            )
+            .all(processId, cursor + PROCESS_LOG_CHUNK_BYTES, cursor) as {
+            byte_offset: number;
+            text: string;
+          }[]);
+    const bytes = Buffer.concat(
+      rows.map((row) =>
+        Buffer.from(
+          this.repo.revealRecordField("coding_process_logs", [processId, row.byte_offset], "text", row.text),
+        ),
+      ),
+    );
+    const start = rows.length ? cursor - rows[0]!.byte_offset : 0;
+    if (start < bytes.length && (bytes[start]! & 0xc0) === 0x80)
+      throw new AuxError("invalid_params", "Log cursors must be on UTF-8 character boundaries.");
+    const end = utf8PrefixLength(bytes, Math.min(start + PROCESS_LOG_CHUNK_BYTES, bytes.length));
+    const part = bytes.subarray(start, end);
     return {
       text: part.toString("utf8"),
       cursor: cursor + part.length,

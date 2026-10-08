@@ -8,11 +8,16 @@ import { Repo } from "../../apps/runtime/dist/store/repo.js";
 import { CloudCodingProcesses } from "../../apps/runtime/dist/services/cloud-processes.js";
 import { CodingProcesses } from "../../apps/runtime/dist/services/coding-processes.js";
 
+import { FieldCodec } from "../../apps/runtime/dist/store/field-codec.js";
+import { CodingProcessLedger } from "../../apps/runtime/dist/services/coding-process-ledger.js";
+import { migrateCodingProcessLogs } from "../../apps/runtime/dist/services/coding-process-logs.js";
+import { profileSecrets } from "../support/profile-secrets.js";
+
 const cleanup: (() => void)[] = [];
 afterEach(() => cleanup.splice(0).forEach((close) => close()));
-function fixture(proofSession = "original-session") {
+function fixture(proofSession = "original-session", initialOutput = "ready\n", columnCipher?: FieldCodec) {
   const db = openDb(":memory:"),
-    repo = new Repo(db);
+    repo = new Repo(db, columnCipher);
   cleanup.push(() => db.close());
   const context = { runId: "run", threadId: "chat", turnId: "run", actionId: "start" };
   const identity = {
@@ -48,7 +53,8 @@ function fixture(proofSession = "original-session") {
             sessionId: proofSession,
             supervisor: { pid: 10, startTicks: "1", groupPid: 11, groupStartTicks: "2" },
           }) +
-          "\nready\n",
+          "\n" +
+          initialOutput,
       };
       await done;
       yield { stream: "stderr", data: "finished\n" };
@@ -212,4 +218,102 @@ it("rejects a different Session ownership header before admitting a running comm
   const receipt = f.service.list(f.context.runId)[0]!;
   expect(receipt.execution?.supervisor).toBeUndefined();
   expect(f.service.remoteLogs(receipt.processId, f.context.runId).text).not.toContain(CLOUD_PROCESS_HEADER);
+});
+
+it("keeps encrypted log chunks out of polling and preserves UTF-8 cursors after the VM retires", async () => {
+  const codec = await FieldCodec.create(profileSecrets("process-log").native, "process-log", true);
+  const text = "x".repeat(65535) + "🙂" + "λ".repeat(4 * 1024 * 1024);
+  const f = fixture("original-session", text, codec);
+  const receipt = await f.service.start({ command: "emit output" }, f.context);
+  await f.service.logs(receipt.processId, f.context.runId);
+  const chunks = f.repo.db
+    .prepare("SELECT byte_offset,byte_length,text FROM coding_process_logs ORDER BY byte_offset")
+    .all();
+  expect(chunks.length).toBeGreaterThan(1);
+  expect(
+    chunks.every((row) => Number(row.byte_length) <= 65536 && String(row.text).startsWith("auxenc:v3:")),
+  ).toBe(true);
+  const decrypt = vi.spyOn(codec, "decrypt");
+  for (const result of [
+    f.service.status(receipt.processId, f.context.runId),
+    ...f.service.list(f.context.runId),
+    ...f.service.activity(f.context.runId),
+  ])
+    expect(result).not.toHaveProperty("logText");
+  expect(decrypt.mock.calls.every(([table]) => table === "coding_process_receipts")).toBe(true);
+  expect(decrypt.mock.calls.every(([, , , value]) => value.length < 4096)).toBe(true);
+  await f.service.stop(receipt.processId, f.context.runId);
+  expect(
+    f.repo.db
+      .prepare("SELECT byte_offset,byte_length,text FROM coding_process_logs ORDER BY byte_offset")
+      .all(),
+  ).toEqual(chunks);
+  const history = new CodingProcessLedger(f.repo);
+  const first = history.remoteLogs(receipt.processId, f.context.runId);
+  expect(first).toEqual({ text: "x".repeat(65535), cursor: 65535, truncated: true });
+  const second = history.remoteLogs(receipt.processId, f.context.runId, first.cursor);
+  expect(second.text.startsWith("🙂")).toBe(true);
+  expect(second.text).not.toContain("�");
+  expect(() => history.remoteLogs(receipt.processId, f.context.runId, first.cursor + 1)).toThrow("UTF-8");
+  let actual = first.text,
+    cursor = first.cursor;
+  for (;;) {
+    const result = history.remoteLogs(receipt.processId, f.context.runId, cursor);
+    if (!result.text) break;
+    actual += result.text;
+    cursor = result.cursor;
+  }
+  expect(actual).not.toContain("�");
+  expect(Buffer.byteLength(actual)).toBe(cursor);
+  expect(cursor).toBeLessThanOrEqual(8 * 1024 * 1024);
+  expect(text.startsWith(actual)).toBe(true);
+  expect(f.transport.command).not.toHaveBeenCalled();
+  expect(() => history.remoteLogs(receipt.processId, "another-run")).toThrow("does not belong");
+  f.repo.db.prepare("DELETE FROM coding_process_receipts WHERE process_id=?").run(receipt.processId);
+  expect(f.repo.db.prepare("SELECT count(*) AS n FROM coding_process_logs").get()?.n).toBe(0);
+});
+
+it("converts each authenticated embedded log atomically and never scans it on a completed migration", async () => {
+  const codec = await FieldCodec.create(profileSecrets("old-process-log").native, "old-process-log", true);
+  const f = fixture("original-session", "", codec);
+  const original = {
+    processId: "old-process",
+    runId: "run",
+    actionId: "old-action",
+    state: "completed",
+    execution: f.identity,
+    logText: "saved output 🙂",
+  };
+  f.repo.db
+    .prepare("INSERT INTO coding_process_receipts VALUES(?,?,?,?,?)")
+    .run(
+      original.processId,
+      original.runId,
+      original.actionId,
+      original.state,
+      f.repo.protectRecordField(
+        "coding_process_receipts",
+        [original.processId],
+        "receipt",
+        JSON.stringify(original),
+      ),
+    );
+  f.repo.db.prepare("INSERT INTO aux_meta VALUES('coding_process_logs_migration','0')").run();
+  const protect = vi.spyOn(f.repo, "protectRecordField");
+  protect.mockImplementationOnce(() => {
+    throw new Error("Interrupted conversion");
+  });
+  await expect(migrateCodingProcessLogs(f.repo)).rejects.toThrow("Interrupted conversion");
+  expect(f.repo.db.prepare("SELECT count(*) AS n FROM coding_process_logs").get()?.n).toBe(0);
+  expect(
+    f.repo.db.prepare("SELECT value FROM aux_meta WHERE key='coding_process_logs_migration'").get()?.value,
+  ).toBe("0");
+  await migrateCodingProcessLogs(f.repo);
+  const ledger = new CodingProcessLedger(f.repo);
+  expect(ledger.status(original.processId, "run")).not.toHaveProperty("logText");
+  expect(ledger.remoteLogs(original.processId, "run").text).toBe(original.logText);
+  const decrypt = vi.spyOn(codec, "decrypt");
+  await migrateCodingProcessLogs(f.repo);
+  expect(decrypt).not.toHaveBeenCalled();
+  expect(f.repo.db.prepare("SELECT count(*) AS n FROM coding_process_logs").get()?.n).toBe(1);
 });
