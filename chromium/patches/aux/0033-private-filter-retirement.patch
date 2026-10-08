@@ -1,0 +1,70 @@
+diff --git a/chrome/browser/ui/aux/content_blocking_controller.h b/chrome/browser/ui/aux/content_blocking_controller.h
+--- a/chrome/browser/ui/aux/content_blocking_controller.h
++++ b/chrome/browser/ui/aux/content_blocking_controller.h
+@@ -15,6 +15,7 @@
+ #include "base/supports_user_data.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/values.h"
++#include "chrome/browser/profiles/profile_observer.h"
+ #include "chrome/browser/ui/aux/content_filter_source_scope.h"
+ #include "chrome/browser/ui/aux/filter_snapshot_store.h"
+ #include "chrome/browser/ui/aux/semantic_filter_decision.h"
+@@ -39,7 +40,8 @@
+ namespace aux {
+ class SemanticFilterInstance;
+ class ContentBlockingController final : public base::SupportsUserData::Data,
+-                                        public extensions::ExtensionRegistryObserver {
++                                        public extensions::ExtensionRegistryObserver,
++                                        public ProfileObserver {
+  public:
+   static ContentBlockingController* ForProfile(Profile* profile);
+   static void MaybeProxySubresourceFactory(
+@@ -187,6 +189,7 @@
+   uint64_t next_frame_request_ = 0;
+   void OnExtensionLoaded(content::BrowserContext*, const extensions::Extension*) override;
+   void OnShutdown(extensions::ExtensionRegistry*) override;
++  void OnProfileWillBeDestroyed(Profile*) override;
+   raw_ptr<Profile> profile_;
+   FilterSnapshotStore store_;
+   scoped_refptr<base::SequencedTaskRunner> store_runner_;
+@@ -211,6 +214,7 @@
+   std::map<content::GlobalRenderFrameHostId, DocumentBinding> documents_;
+   uint64_t total_blocked_ = 0;
+   std::map<std::string, int> by_site_;
++  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
+   base::ScopedObservation<extensions::ExtensionRegistry,
+       extensions::ExtensionRegistryObserver> registry_observation_{this};
+   base::WeakPtrFactory<ContentBlockingController> weak_factory_{this};
+diff --git a/chrome/browser/ui/aux/content_blocking_controller.cc b/chrome/browser/ui/aux/content_blocking_controller.cc
+--- a/chrome/browser/ui/aux/content_blocking_controller.cc
++++ b/chrome/browser/ui/aux/content_blocking_controller.cc
+@@ -7,6 +7,7 @@
+ #include <memory>
+ #include <utility>
+ 
++#include "base/check_op.h"
+ #include "base/files/file_util.h"
+ #include "base/functional/bind.h"
+ #include "base/json/json_reader.h"
+@@ -116,6 +117,7 @@
+                 std::move(reply)));
+       },
+       weak_factory_.GetWeakPtr()));
++  profile_observation_.Observe(profile);
+   auto* registry = extensions::ExtensionRegistry::Get(profile->GetOriginalProfile());
+   if (registry) registry_observation_.Observe(registry);
+   if (!profile_->IsOffTheRecord()) Load();
+@@ -329,6 +331,13 @@
+ }
+ void ContentBlockingController::OnExtensionLoaded(content::BrowserContext*, const extensions::Extension* extension) {
+   if (extension->id() == kContentFilterResourceExtensionId) DrainReady();
++}
++void ContentBlockingController::OnProfileWillBeDestroyed(Profile* profile) {
++  CHECK_EQ(profile, profile_);
++  profile_observation_.Reset();
++  // OTR Profiles share the original extension registry. Its shutdown cannot
++  // retire the private renderer before this BrowserContext is destroyed.
++  OnShutdown(nullptr);
+ }
+ void ContentBlockingController::OnShutdown(extensions::ExtensionRegistry*) {
+   registry_observation_.Reset();
