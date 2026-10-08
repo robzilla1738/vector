@@ -99,6 +99,10 @@ export function workFixtures(workspaceId: string, populated: boolean, connectorP
     return item;
   };
   return {
+    "tasks.exportReceipt": async (p: Record<string, unknown>) => {
+      if (p.action === "retire") return { status: "retired", exportId: p.exportId };
+      throw new Error("Native receipt export requires Aux desktop");
+    },
     "tasks.list": async () => tasks,
     "tasks.get": async (p: Record<string, unknown>) => ({
       task: task(p.taskId),

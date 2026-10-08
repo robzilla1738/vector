@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { TaskReceiptSchema, COMMANDS } from "@aux/contracts";
+import type { TaskReceiptExportParams } from "@aux/contracts/task-receipt-export";
 const hostState = vi.hoisted(() => ({
   windowId: "one",
   privateMode: false,
@@ -89,6 +90,20 @@ const sample = (revision = 1) =>
     knownCostUsd: 0,
     costComplete: true,
   });
+const prepared = (exportId: string) => ({
+  status: "prepared" as const,
+  exportId,
+  artifactId: `receipt-${exportId}`,
+  filename: "aux-receipt-original-task-r1.md",
+  byteLength: 200,
+  sha256: "c".repeat(64),
+  expiresAt: Date.now() + 60_000,
+});
+function exportRequest() {
+  return hostState.read.mock.calls.find(
+    ([method, params]) => method === "tasks.exportReceipt" && params.action === "prepare",
+  )![1] as Extract<TaskReceiptExportParams, { action: "prepare" }>;
+}
 function held<T>() {
   let resolve!: (v: T) => void, reject!: (r: unknown) => void;
   const promise = new Promise<T>((a, b) => {
@@ -104,9 +119,18 @@ beforeEach(() => {
   hostState.privateMode = false;
   hostState.kind = "normal";
   receipt = sample();
-  hostState.read.mockReset().mockResolvedValue(receipt);
+  hostState.read.mockReset().mockImplementation(async (method, params: TaskReceiptExportParams) => {
+    if (method !== "tasks.exportReceipt") return receipt;
+    return params.action === "prepare"
+      ? prepared(params.exportId)
+      : { status: "retired", exportId: params.exportId };
+  });
   hostState.saveFile.mockReset().mockResolvedValue("/synthetic/receipt.md");
-  hostState.saveArtifact.mockReset().mockResolvedValue("/synthetic/artifact.bin");
+  hostState.saveArtifact
+    .mockReset()
+    .mockImplementation(async (id: string) =>
+      id.startsWith("receipt-") ? "/synthetic/receipt.md" : "/synthetic/artifact.bin",
+    );
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
   host = document.createElement("div");
   document.body.append(host);
@@ -183,33 +207,44 @@ it("explicit snapshot inclusion exports original fresh saved revision and exact 
   await act(async () => {
     expect(await executeCommand("export-task-receipt")).toBe("/synthetic/receipt.md");
   });
-  expect(hostState.read).toHaveBeenCalledWith("tasks.receipt", { taskId: "original-task", revision: 1 });
-  expect(hostState.saveFile).toHaveBeenCalledWith(
+  expect(exportRequest()).toEqual({
+    action: "prepare",
+    exportId: expect.any(String),
+    taskId: "original-task",
+    expectedRevision: 1,
+    includeCapturedText: true,
+  });
+  expect(hostState.saveArtifact).toHaveBeenCalledWith(
+    `receipt-${exportRequest().exportId}`,
     "aux-receipt-original-task-r1.md",
-    expect.stringContaining("Original captured text"),
   );
+  expect(hostState.read).toHaveBeenLastCalledWith("tasks.exportReceipt", {
+    action: "retire",
+    exportId: exportRequest().exportId,
+  });
+  expect(hostState.saveFile).not.toHaveBeenCalled();
   expect(host.textContent).toContain("Receipt exported.");
 });
 it("default export omits captured text", async () => {
   await render();
   await act(async () => control("export-task-receipt").click());
-  expect(hostState.saveFile.mock.calls[0]![1]).not.toContain("Original captured text");
+  expect(exportRequest().includeCapturedText).toBe(false);
 });
-it("current foreign same-revision receipt refuses before chooser", async () => {
+it("foreign export identity refuses before chooser", async () => {
   await render();
-  hostState.read.mockResolvedValueOnce({ ...receipt, taskId: "foreign-task" });
+  hostState.read.mockResolvedValueOnce(prepared(crypto.randomUUID()));
   control("export-task-receipt").focus();
   await act(async () => {
-    await expect(executeCommand("export-task-receipt")).rejects.toThrow("This task changed");
+    await expect(executeCommand("export-task-receipt")).rejects.toThrow("This receipt export changed");
   });
-  expect(hostState.saveFile).not.toHaveBeenCalled();
+  expect(hostState.saveArtifact).not.toHaveBeenCalled();
 });
 it.each(["receipt", "window", "Private"])(
   "held original export error retires across %s ABA and preserves exact reason",
   async (mode) => {
     await render();
     const hold = held<string | null>();
-    hostState.saveFile.mockReturnValueOnce(hold.promise);
+    hostState.saveArtifact.mockReturnValueOnce(hold.promise);
     control("export-task-receipt").focus();
     let completion!: Promise<unknown>;
     await act(async () => {
@@ -240,15 +275,15 @@ it("old fulfilled chooser ACK remains exact without clearing a new original expo
   await render();
   const a = held<string | null>(),
     b = held<string | null>();
-  hostState.saveFile.mockReturnValueOnce(a.promise);
+  hostState.saveArtifact.mockReturnValueOnce(a.promise);
   control("export-task-receipt").focus();
   let old!: Promise<unknown>, fresh!: Promise<unknown>;
   await act(async () => {
     old = executeCommand("export-task-receipt");
   });
   await render(sample(2));
-  hostState.read.mockResolvedValueOnce(sample(2));
-  hostState.saveFile.mockReturnValueOnce(b.promise);
+  expect(hostState.read.mock.calls.some(([, params]) => params?.action === "retire")).toBe(false);
+  hostState.saveArtifact.mockReturnValueOnce(b.promise);
   control("export-task-receipt").focus();
   await act(async () => {
     fresh = executeCommand("export-task-receipt");
@@ -265,9 +300,9 @@ it("old fulfilled chooser ACK remains exact without clearing a new original expo
   });
   expect(control("export-task-receipt").matches(":disabled")).toBe(false);
 });
-it("receipt retired during initial read never starts a file chooser", async () => {
+it("receipt retired during preparation retires its export and never starts a file chooser", async () => {
   await render();
-  const a = held<ReturnType<typeof sample>>();
+  const a = held<ReturnType<typeof prepared>>();
   hostState.read.mockReturnValueOnce(a.promise);
   control("export-task-receipt").focus();
   let completion!: Promise<unknown>;
@@ -277,10 +312,38 @@ it("receipt retired during initial read never starts a file chooser", async () =
   const observed = completion.catch((reason) => reason);
   await render(sample(2));
   await act(async () => {
-    a.resolve(receipt);
+    a.resolve(prepared(exportRequest().exportId));
     expect(await observed).toBeInstanceOf(Error);
   });
-  expect(hostState.saveFile).not.toHaveBeenCalled();
+  expect(hostState.saveArtifact).not.toHaveBeenCalled();
+  expect(hostState.read).toHaveBeenCalledWith("tasks.exportReceipt", {
+    action: "retire",
+    exportId: exportRequest().exportId,
+  });
+});
+it("Cancel during preparation retires the exact pending export and a late result cannot open Save", async () => {
+  await render();
+  const preparation = held<ReturnType<typeof prepared>>();
+  hostState.read.mockReturnValueOnce(preparation.promise);
+  control("export-task-receipt").focus();
+  let completion!: Promise<unknown>;
+  await act(async () => {
+    completion = executeCommand("export-task-receipt");
+  });
+  control("cancel-task-receipt-export").focus();
+  await act(async () => {
+    await executeCommand("cancel-task-receipt-export");
+  });
+  expect(hostState.read).toHaveBeenCalledWith("tasks.exportReceipt", {
+    action: "retire",
+    exportId: exportRequest().exportId,
+  });
+  await act(async () => {
+    preparation.resolve(prepared(exportRequest().exportId));
+    expect(await completion).toBeNull();
+  });
+  expect(hostState.saveArtifact).not.toHaveBeenCalled();
+  expect(host.textContent).toContain("Export canceled.");
 });
 it("artifact Save preserves exact original native arguments and ACK", async () => {
   await render();

@@ -23,7 +23,7 @@ import { PreferenceAction, usePreferenceCommand } from "../settings/sections/pre
 import { guardCommandCompletion } from "../command-completion";
 import { bridge } from "../bridge";
 import { call } from "../store";
-import { taskReceiptMarkdown } from "../task-receipt-export";
+import { TaskReceiptExport } from "./TaskReceiptExport";
 import type { TaskReceipt, MethodName, RpcArgs } from "@aux/contracts";
 import { staticGrowProps as auxReuseStaticGrowProps } from "../ui/class-props";
 import { nativeCheckboxTypeProps as auxReuseNativeCheckboxTypeProps } from "../ui/native-attribute-props";
@@ -434,7 +434,7 @@ function ReceiptSession({ receipt, pageId, submit, onChanged, readOnly = false }
           as of the revision date.
         </p>
       )}
-      <ReceiptExportControls owner={readOwner} />
+      <TaskReceiptExport owner={readOwner} />
       <output data-block>{STATUS[receipt.status]}</output>
       <span {...staticHintProps}>
         Your acceptance records your review of the selected evidence. Captured pages, documents and command
@@ -1389,108 +1389,6 @@ function useReceiptReadOwner(receipt: TaskReceipt, readOnly: boolean) {
     return () => owner.retire();
   }, [owner]);
   return owner;
-}
-function ReceiptExportControls({ owner }: { owner: ReceiptReadOwner }) {
-  const scopeId = useId();
-  const [choice, setChoice] = useState<{ owner: ReceiptReadOwner; include: boolean }>({
-    owner,
-    include: false,
-  });
-  const [state, setState] = useState<{
-    owner: ReceiptReadOwner;
-    busy: boolean;
-    message: string;
-    error: string;
-  }>({ owner, busy: false, message: "", error: "" });
-  const pending = useRef<{ owner: ReceiptReadOwner; completion: Promise<string | null> } | null>(null);
-  const include = choice.owner === owner && choice.include;
-  const visible = state.owner === owner ? state : { busy: false, message: "", error: "" };
-  const select = useCallback(
-    (original: HTMLInputElement, originalEvent?: Event) => {
-      if (!owner.current()) throw new Error("Choose this receipt’s current control.");
-      setChoice({ owner, include: originalEvent ? original.checked : !original.checked });
-    },
-    [owner],
-  );
-  const [inputRef, toggle] = usePreferenceCommand<HTMLInputElement>(
-    "toggle-task-receipt-captured-text",
-    scopeId,
-    select,
-  );
-  const exportReceipt = () => {
-    if (!owner.current()) throw new Error("Choose this receipt’s current export.");
-    if (pending.current?.owner === owner) return pending.current.completion;
-    setState({ owner, busy: true, message: "", error: "" });
-    const completion = guardCommandCompletion(
-      (async () => {
-        const current = await call("tasks.receipt", {
-          taskId: owner.taskId,
-          ...(owner.readOnly ? { revision: owner.revision } : {}),
-        });
-        if (!owner.current()) throw new Error("This receipt’s export was retired before the file chooser.");
-        if (current.taskId !== owner.taskId || current.taskRevision !== owner.revision)
-          throw new Error("This task changed. Reload the saved task before exporting its receipt.");
-        const destination = await bridge.saveFile(
-          `aux-receipt-${owner.taskId.replace(/[^a-zA-Z0-9_-]/g, "-")}-r${current.taskRevision}.md`,
-          taskReceiptMarkdown(current, include),
-        );
-        if (owner.current())
-          setState({
-            owner,
-            busy: false,
-            message: destination ? "Receipt exported." : "Export canceled.",
-            error: "",
-          });
-        return destination;
-      })()
-        .catch((reason) => {
-          if (owner.current())
-            setState({
-              owner,
-              busy: false,
-              message: "",
-              error: errorMessage(reason).replace(/^Error invoking remote method [^:]+: Error: /, ""),
-            });
-          throw reason;
-        })
-        .finally(() => {
-          if (pending.current?.completion === completion) pending.current = null;
-        }),
-      () => owner.current(),
-    );
-    pending.current = { owner, completion };
-    return completion;
-  };
-  return (
-    <div className="receipt-export">
-      <PreferenceAction
-        {...smallButtonProps}
-        command="export-task-receipt"
-        scopeId={scopeId}
-        disabled={visible.busy}
-        invoke={exportReceipt}
-      >
-        {visible.busy ? "Preparing receipt…" : "Export receipt as Markdown"}
-      </PreferenceAction>
-      <label>
-        <input
-          ref={inputRef}
-          data-command-id="toggle-task-receipt-captured-text"
-          {...auxReuseNativeCheckboxTypeProps}
-          checked={include}
-          onChange={toggle}
-        />{" "}
-        Include captured text
-      </label>
-      <span {...staticHintProps}>
-        Exports objective, evidence summaries and sources, reviews, unresolved actions, run history and
-        recorded usage. Inline captured text is optional. Paged document snapshots are referenced; open their
-        saved preview to read the text.
-      </span>
-      {visible.message && <output data-block>{visible.message}</output>}
-      {visible.error && <p role="alert">{visible.error}</p>}
-    </div>
-  );
 }
 function useReceiptRecordCurrent(owner: ReceiptReadOwner, record: ReceiptEvidence) {
   return useMemo(() => {

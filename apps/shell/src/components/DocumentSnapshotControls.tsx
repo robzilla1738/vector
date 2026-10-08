@@ -5,6 +5,7 @@ import { errToast } from "../store";
 type DocumentCommand =
   | "previous-document-section"
   | "next-document-section"
+  | "copy-document-section"
   | "retry-conversation-document-read"
   | "toggle-conversation-document-details"
   | "close-conversation-document-preview";

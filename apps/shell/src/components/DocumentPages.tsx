@@ -6,6 +6,7 @@ import { smallButtonProps } from "../ui/button-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { DocumentSnapshotControl } from "./DocumentSnapshotControls";
 import { DocumentExtractionNote } from "./DocumentContent";
+import { guardCommandCompletion } from "../command-completion";
 
 type DocumentPage = { document: DocumentMetadata; chunk: DocumentChunk; nextCursor?: string };
 type PageState = {
@@ -65,6 +66,27 @@ export function DocumentPages({
           error: "",
         };
   const available = () => committed.current === owner && owner.current();
+  const section = useMemo(() => ({ owner, page: view.page }), [owner, view.page]);
+  const displayed = useRef<typeof section | null>(section);
+  const [copied, setCopied] = useState<typeof section | null>(null);
+  useLayoutEffect(() => {
+    displayed.current = section;
+    return () => {
+      if (displayed.current === section) displayed.current = null;
+    };
+  }, [section]);
+  const sectionCurrent = () => available() && displayed.current === section;
+  function copySection() {
+    return guardCommandCompletion(
+      navigator.clipboard
+        .writeText(section.page.chunk.segments.map(({ text }) => text).join("\n\n"))
+        .then((ack) => {
+          if (sectionCurrent()) setCopied(section);
+          return ack;
+        }),
+      sectionCurrent,
+    );
+  }
   async function navigate(position: number) {
     if (!available() || view.busy || pending.current?.owner === owner) return;
     const cursor = position > view.position ? view.page.nextCursor : view.cursors[position];
@@ -121,6 +143,16 @@ export function DocumentPages({
         >
           Next section
         </DocumentSnapshotControl>
+        <DocumentSnapshotControl
+          command="copy-document-section"
+          current={sectionCurrent}
+          invoke={copySection}
+          {...smallButtonProps}
+          disabled={view.busy || !view.page.chunk.segments.length}
+        >
+          Copy section
+        </DocumentSnapshotControl>
+        {copied === section && <output {...staticHintProps}>Section copied.</output>}
       </div>
       {view.busy && <output {...staticHintProps}>Loading section…</output>}
       {view.error && <p role="alert">{view.error}</p>}

@@ -246,9 +246,19 @@ it("refused original summary pointer prevents browser default disclosure after o
 });
 
 it("loads only requested immutable sections and replays Previous with the accepted manifest", async () => {
+  let acknowledgeCopy!: () => void;
+  const writeText = vi.fn().mockReturnValue(
+    new Promise<void>((resolve) => {
+      acknowledgeCopy = resolve;
+    }),
+  );
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
   await render();
   const first = { ...snapshot(), nextCursor: "second" };
   await act(async () => reads[0]!.resolve(first));
+  expect(reads).toHaveLength(1);
+  const copy = await command("copy-document-section");
+  expect(writeText).toHaveBeenCalledExactlyOnceWith("Original full snapshot text");
   expect(reads).toHaveLength(1);
   await command("next-document-section");
   expect(reads[1]!.params).toEqual({
@@ -268,6 +278,16 @@ it("loads only requested immutable sections and replays Previous with the accept
   expect(host.textContent).toContain("Last located section");
   expect(host.textContent).toContain("Line 50");
   expect(host.textContent).not.toContain("Original full snapshot text");
+  await act(async () => {
+    acknowledgeCopy();
+    await copy.result;
+  });
+  expect(host.textContent).not.toContain("Section copied.");
+  writeText.mockResolvedValue(undefined);
+  await command("copy-document-section");
+  expect(writeText).toHaveBeenLastCalledWith("Last located section");
+  expect(host.textContent).toContain("Section copied.");
+  expect(reads).toHaveLength(2);
   await command("previous-document-section");
   expect(reads[2]!.params).toEqual({
     chatId: "a",

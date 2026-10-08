@@ -379,6 +379,7 @@ export const COMMANDS = [
   ...singleScopedRows(privateConversationControl, "document-section", "document section", [
     ["previous-", "", "Previous ", ""],
     ["next-", "", "Next ", ""],
+    ["copy-", "", "Copy current ", ""],
   ]),
   ...singleScopedRows(privateConversationControl, "-generated-result", " generated result", [
     ["close", "-preview", "Close", " preview"],
@@ -461,6 +462,7 @@ export const COMMANDS = [
 
   ...G(searchEngineControl, "-task-receipt", [
     ["export", "", "Export saved task receipt"],
+    ["cancel", "-export", "Cancel receipt export preparation"],
     ["toggle", "-captured-text", "Include captured receipt text"],
     ["save", "-artifact", "Save preserved task artifact"],
     ["toggle", "-fingerprint", "Show receipt fingerprint"],

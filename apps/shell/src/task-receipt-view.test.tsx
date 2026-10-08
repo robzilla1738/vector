@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { TaskReceiptSchema } from "@aux/contracts";
+import { TaskReceiptExportParamsSchema } from "@aux/contracts/task-receipt-export";
 import { bridge } from "./bridge";
 import { TaskReceiptView } from "./components/TaskReceiptView";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -16,7 +17,7 @@ afterEach(async () => {
   await act(async () => root.render(null));
   vi.restoreAllMocks();
 });
-it("refuses to export a revision that changed while the receipt was open", async () => {
+it("shows an authoritative preparation conflict without opening a file chooser", async () => {
   const receipt = TaskReceiptSchema.parse({
     taskId: "task-1",
     taskRevision: 1,
@@ -30,8 +31,8 @@ it("refuses to export a revision that changed while the receipt was open", async
     knownCostUsd: 0,
     costComplete: true,
   });
-  vi.spyOn(bridge, "invoke").mockResolvedValue({ ...receipt, taskRevision: 2 });
-  const save = vi.spyOn(bridge, "saveFile").mockResolvedValue("/unused");
+  vi.spyOn(bridge, "invoke").mockRejectedValue(new Error("This task changed. Reload its saved receipt."));
+  const save = vi.spyOn(bridge, "saveStoredArtifact").mockResolvedValue("/unused");
   await act(async () =>
     root.render(<TaskReceiptView receipt={receipt} pageId={null} submit={async () => true} />),
   );
@@ -60,16 +61,33 @@ it("exports the selected saved revision without exposing mutation controls", asy
     knownCostUsd: 0,
     costComplete: true,
   });
-  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue(receipt);
-  const save = vi.spyOn(bridge, "saveFile").mockResolvedValue("/unused");
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (_method, params) => {
+    const input = TaskReceiptExportParamsSchema.parse(params);
+    return input.action === "prepare"
+      ? {
+          status: "prepared",
+          exportId: input.exportId,
+          artifactId: "saved-receipt",
+          filename: "earlier-receipt.md",
+          byteLength: 200,
+          sha256: "a".repeat(64),
+          expiresAt: Date.now() + 60_000,
+        }
+      : { status: "retired", exportId: input.exportId };
+  });
+  const save = vi.spyOn(bridge, "saveStoredArtifact").mockResolvedValue("/unused");
   await act(async () => root.render(<TaskReceiptView receipt={receipt} pageId={null} readOnly />));
   expect(host.textContent).toContain("does not establish the current task");
   expect(host.querySelector("textarea")).toBeNull();
   expect(host.textContent).not.toContain("Accept criterion");
   expect(host.textContent).not.toContain("Import document");
   await act(async () => host.querySelector("button")!.click());
-  expect(invoke).toHaveBeenCalledWith("tasks.receipt", { taskId: "task-1", revision: 1 });
-  expect(save.mock.calls[0]![1]).toContain("# Aux task receipt — earlier revision");
-  expect(save.mock.calls[0]![1]).toContain("current task revision is 3");
-  expect(save.mock.calls[0]![1]).toContain("not a reconstruction");
+  expect(invoke).toHaveBeenCalledWith("tasks.exportReceipt", {
+    action: "prepare",
+    exportId: expect.any(String),
+    taskId: "task-1",
+    expectedRevision: 1,
+    includeCapturedText: false,
+  });
+  expect(save).toHaveBeenCalledExactlyOnceWith("saved-receipt", "earlier-receipt.md");
 });
