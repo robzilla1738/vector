@@ -1,5 +1,5 @@
 diff --git a/chrome/browser/ui/aux/methods/library_methods.cc b/chrome/browser/ui/aux/methods/library_methods.cc
-index 1b51141..2cbd05d 100644
+index 1b51141..c9eba1a 100644
 --- a/chrome/browser/ui/aux/methods/library_methods.cc
 +++ b/chrome/browser/ui/aux/methods/library_methods.cc
 @@ -40,6 +40,11 @@
@@ -14,7 +14,15 @@ index 1b51141..2cbd05d 100644
  #include "chrome/browser/ui/aux/organization_store.h"
  #include "chrome/browser/ui/aux/profile_search_engine.h"
  #include "chrome/browser/ui/aux/result_preview.h"
-@@ -182,6 +187,118 @@ void WebUIBrowserUI::HandleAuxLibraryRequest(
+@@ -92,6 +97,7 @@
+ #include "chrome/grit/webui_toolbar_shared_resources.h"
+ #include "chrome/grit/webui_toolbar_shared_resources_map.h"
+ #include "components/bookmarks/browser/bookmark_model.h"
++#include "components/bookmarks/browser/bookmark_utils.h"
+ #include "components/bookmarks/browser/bookmark_model_load_waiter.h"
+ #include "components/contextual_search/contextual_search_service.h"
+ #include "components/contextual_search/contextual_search_session_handle.h"
+@@ -182,6 +188,118 @@ void WebUIBrowserUI::HandleAuxLibraryRequest(
                        std::move(callback)));
        return;
      }
