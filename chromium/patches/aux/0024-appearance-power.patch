@@ -22,7 +22,7 @@ index 63e5aff..e62acca 100644
    // TODO(crbug.com/552456654): Remove when rollout is complete to stable.
    if (chrome::GetChannel() != version_info::Channel::STABLE) {
 diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
-index 085b77c..66a85fa 100644
+index 085b77c..10c91c5 100644
 --- a/chrome/browser/prefs/browser_prefs.cc
 +++ b/chrome/browser/prefs/browser_prefs.cc
 @@ -19,6 +19,15 @@
@@ -59,7 +59,7 @@ index 085b77c..66a85fa 100644
    // Call outs to individual subsystems that register Local State (browser-wide)
    // prefs en masse. See RegisterProfilePrefs for per-profile prefs. Please
    // keep this list alphabetized.
-@@ -1793,6 +1813,20 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
+@@ -1793,6 +1813,21 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
  void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
                            const std::string& locale) {
    TRACE_EVENT0("browser", "chrome::RegisterProfilePrefs");
@@ -71,6 +71,7 @@ index 085b77c..66a85fa 100644
 +  registry->RegisterBooleanPref(aux::kHttpsUpgradesEnabled, true);
 +  registry->RegisterBooleanPref(aux::kKeepRuntimeInBackgroundPref, false);
 +  registry->RegisterIntegerPref(aux::kMemorySaverMinutesPref, 30);
++  registry->RegisterDictionaryPref(aux::kDismissedDownloadsPref);
 +  registry->RegisterListPref(aux::kHealthSamplesPref);
 +  registry->RegisterIntegerPref(aux::kHealthSessionsPref, 0);
 +  registry->RegisterIntegerPref(aux::kHealthCrashesPref, 0);

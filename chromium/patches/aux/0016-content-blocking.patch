@@ -563,10 +563,10 @@ index 66545e0..32c5e6a 100644
    mojo::Remote<network::mojom::TrustedHeaderClient> remote;
 diff --git a/chrome/browser/ui/aux/content_blocking_controller.cc b/chrome/browser/ui/aux/content_blocking_controller.cc
 new file mode 100644
-index 0000000..b7403be
+index 0000000..07e6442
 --- /dev/null
 +++ b/chrome/browser/ui/aux/content_blocking_controller.cc
-@@ -0,0 +1,1163 @@
+@@ -0,0 +1,1100 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +#include "chrome/browser/ui/aux/content_blocking_controller.h"
 +
@@ -576,6 +576,7 @@ index 0000000..b7403be
 +#include <memory>
 +#include <utility>
 +
++#include "base/check_op.h"
 +#include "base/files/file_util.h"
 +#include "base/functional/bind.h"
 +#include "base/json/json_reader.h"
@@ -622,19 +623,7 @@ index 0000000..b7403be
 +  return value && std::isfinite(*value) && *value >= 1 && *value <= 9007199254740991.0 && std::floor(*value) == *value;
 +}
 +base::DictValue Accepted() { base::DictValue result; result.Set("accepted", true); return result; }
-+content::RenderFrameHost* GuardFrame(Profile* profile, const base::DictValue& guard) {
-+  const auto* page = guard.FindString("pageId");
-+  const auto* url = guard.FindString("expectedUrl");
-+  const auto navigation = guard.FindInt("navigationId");
-+  if (!page || page->size() > 128 || !url || url->size() > 2048 || !navigation) return nullptr;
-+  auto* catalog = TabCatalog::GetForProfile(profile);
-+  auto* contents = catalog ? catalog->FindPage(*page) : nullptr;
-+  const auto* entry = contents ? contents->GetController().GetLastCommittedEntry() : nullptr;
-+  auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
-+  return contents && entry && frame && frame->IsActive() && frame->IsRenderFrameLive() &&
-+      contents->GetBrowserContext() == profile && contents->GetLastCommittedURL().spec() == *url &&
-+      contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() && entry->GetUniqueID() == *navigation ? frame : nullptr;
-+}
++
 +}
 +ContentBlockingController* ContentBlockingController::ForProfile(Profile* profile) {
 +  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
@@ -685,6 +674,7 @@ index 0000000..b7403be
 +                std::move(reply)));
 +      },
 +      weak_factory_.GetWeakPtr()));
++  profile_observation_.Observe(profile);
 +  auto* registry = extensions::ExtensionRegistry::Get(profile->GetOriginalProfile());
 +  if (registry) registry_observation_.Observe(registry);
 +  if (!profile_->IsOffTheRecord()) Load();
@@ -899,6 +889,13 @@ index 0000000..b7403be
 +void ContentBlockingController::OnExtensionLoaded(content::BrowserContext*, const extensions::Extension* extension) {
 +  if (extension->id() == kContentFilterResourceExtensionId) DrainReady();
 +}
++void ContentBlockingController::OnProfileWillBeDestroyed(Profile* profile) {
++  CHECK_EQ(profile, profile_);
++  profile_observation_.Reset();
++  // OTR Profiles share the original extension registry. Its shutdown cannot
++  // retire the private renderer before this BrowserContext is destroyed.
++  OnShutdown(nullptr);
++}
 +void ContentBlockingController::OnShutdown(extensions::ExtensionRegistry*) {
 +  registry_observation_.Reset();
 +  semantic_retired_ = true;
@@ -917,8 +914,11 @@ index 0000000..b7403be
 +      return;
 +    }
 +    base::DictValue state;
-+    state.Set("profileId", owner->profile_->GetPath().BaseName().AsUTF8Unsafe()); state.Set("private", false);
-+    state.Set("generation", owner->snapshot_->generation); state.Set("receipt", owner->snapshot_->Receipt(owner->profile_->GetPath().BaseName().AsUTF8Unsafe()));
++    state.Set("receipt", owner->snapshot_->Receipt(owner->profile_->GetPath().BaseName().AsUTF8Unsafe()));
++    state.Set("enabled", owner->snapshot_->enabled);
++    base::ListValue allowed;
++    for (const auto& host : owner->snapshot_->allowed) allowed.Append(host);
++    state.Set("allowedSiteHosts", std::move(allowed));
 +    std::move(callback).Run(std::move(state), "");
 +  }, weak_factory_.GetWeakPtr(), std::move(callback)));
 +}
@@ -944,117 +944,107 @@ index 0000000..b7403be
 +  }
 +  snapshot_ = std::move(next);
 +}
-+ContentBlockingController::ToggleOperation::ToggleOperation() = default;
-+ContentBlockingController::ToggleOperation::~ToggleOperation() = default;
-+std::optional<std::string> ContentBlockingController::RegisterToggleOperation(
-+    content::RenderFrameHost *frame, bool enabled) {
-+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-+  if (!frame || frame->GetBrowserContext() != profile_ ||
-+      profile_->IsOffTheRecord() || !frame->IsActive() ||
-+      !frame->IsRenderFrameLive() ||
-+      !frame->GetLastCommittedURL().SchemeIs("chrome") ||
-+      frame->GetLastCommittedURL().host() != "aux")
-+    return std::nullopt;
-+  auto operation = std::make_unique<ToggleOperation>();
-+  operation->document = frame->GetWeakDocumentPtr();
-+  operation->enabled = enabled;
-+  auto id = base::UnguessableToken::Create().ToString();
-+  toggle_operations_.emplace(id, std::move(operation));
-+  return id;
++void ContentBlockingController::SetEnabled(bool enabled, OwnerCurrent current,
++                                           Reply callback) {
++  UpdateControls(enabled, "", false, std::move(current), std::move(callback));
 +}
-+bool ContentBlockingController::ToggleOperationCurrent(const std::string &id) {
-+  const auto found = toggle_operations_.find(id);
-+  if (found == toggle_operations_.end() || found->second->retired)
-+    return false;
-+  auto *frame = found->second->document.AsRenderFrameHostIfValid();
-+  return frame && frame->IsActive() && frame->IsRenderFrameLive() &&
-+         frame->GetBrowserContext() == profile_;
-+}
-+void ContentBlockingController::RetireToggleOperation(const std::string &id) {
-+  auto found = toggle_operations_.find(id);
-+  if (found == toggle_operations_.end())
++void ContentBlockingController::SetSiteAllowed(std::string host, bool allowed,
++                                               OwnerCurrent current,
++                                               Reply callback) {
++  if (!IsAllowedSiteHost(host)) {
++    std::move(callback).Run(std::nullopt, "Invalid native filter site exception");
 +    return;
-+  auto &operation = *found->second;
-+  operation.retired = true;
-+  if (operation.phase == "prepared") {
-+    if (staging_ && staging_->operation_id == id)
-+      staging_.reset();
-+    operation.phase = "failed";
-+    operation.error = "Original filter toggle document retired";
 +  }
-+  // Running work reaches its real callback before becoming terminal. An
-+  // already accepted durable publication is never undone by later retirement.
++  UpdateControls(std::nullopt, std::move(host), allowed, std::move(current),
++                 std::move(callback));
 +}
-+bool ContentBlockingController::ReleaseToggleOperation(const std::string &id) {
-+  auto found = toggle_operations_.find(id);
-+  if (found == toggle_operations_.end() ||
-+      (found->second->phase != "completed" && found->second->phase != "failed"))
-+    return false;
-+  toggle_operations_.erase(found);
-+  return true;
-+}
-+std::optional<base::DictValue>
-+ContentBlockingController::ReadToggleOperation(const std::string &id) {
-+  auto found = toggle_operations_.find(id);
-+  if (found == toggle_operations_.end())
-+    return std::nullopt;
-+  auto &operation = *found->second;
-+  base::DictValue result;
-+  result.Set("current", ToggleOperationCurrent(id));
-+  result.Set("enabled", operation.enabled);
-+  result.Set("phase", operation.phase);
-+  if (operation.receipt)
-+    result.Set("receipt", operation.receipt->Clone());
-+  if (!operation.error.empty())
-+    result.Set("error", base::DictValue()
-+                            .Set("code", "conflict")
-+                            .Set("message", operation.error));
-+  return result;
-+}
-+void ContentBlockingController::CompleteToggleOperation(
-+    const std::string &id, const std::optional<base::DictValue> &receipt,
-+    const std::string &error) {
-+  auto found = toggle_operations_.find(id);
-+  if (found == toggle_operations_.end())
-+    return;
-+  auto &operation = *found->second;
-+  operation.phase = receipt ? "completed" : "failed";
-+  operation.receipt =
-+      receipt ? std::make_optional(receipt->Clone()) : std::nullopt;
-+  operation.error = receipt ? std::string() : error.substr(0, 2048);
++void ContentBlockingController::UpdateControls(
++    std::optional<bool> enabled, std::string host, bool allowed,
++    OwnerCurrent current, Reply callback) {
++  EnsureReady(base::BindOnce(
++      [](base::WeakPtr<ContentBlockingController> owner,
++         std::optional<bool> enabled, std::string host, bool allowed,
++         OwnerCurrent current, Reply callback, bool ready) {
++        if (!owner || !ready || !current || !current.Run() ||
++            owner->profile_->IsOffTheRecord() || !owner->snapshot_ ||
++            owner->semantic_retired_) {
++          std::move(callback).Run(std::nullopt,
++                                  "Original content blocking window retired");
++          return;
++        }
++        if (owner->commit_in_progress_) {
++          std::move(callback).Run(std::nullopt,
++                                  "A native filter change is being committed");
++          return;
++        }
++        auto staged = std::make_unique<Staging>();
++        staged->base_generation = owner->snapshot_->generation;
++        staged->snapshot = *owner->snapshot_;
++        auto& next = staged->snapshot;
++        if (enabled.has_value()) {
++          next.enabled = *enabled;
++        } else {
++          auto position = std::lower_bound(next.allowed.begin(),
++                                           next.allowed.end(), host);
++          if (allowed && (position == next.allowed.end() || *position != host)) {
++            if (next.allowed.size() >= kMaxAllowed) {
++              std::move(callback).Run(std::nullopt, "Too many site exceptions");
++              return;
++            }
++            next.allowed.insert(position, host);
++          } else if (!allowed && position != next.allowed.end() &&
++                     *position == host) {
++            next.allowed.erase(position);
++          }
++        }
++        if (next.enabled == owner->snapshot_->enabled &&
++            next.allowed == owner->snapshot_->allowed) {
++          std::move(callback).Run(next.Receipt(
++              owner->profile_->GetPath().BaseName().AsUTF8Unsafe()), "");
++          return;
++        }
++        if (!ValidGeneration(next.generation + 1)) {
++          std::move(callback).Run(std::nullopt, "Native filter generation exhausted");
++          return;
++        }
++        ++next.generation;
++        next.digest = FilterPolicyDigest(next.sources, next.enabled, next.allowed);
++        // A runtime upload is only a candidate until Commit. Original human
++        // controls can retire that unaccepted candidate even while Node is paused.
++        owner->staging_.reset();
++        owner->CommitStaged(std::move(staged), std::move(current),
++                            std::move(callback));
++      }, weak_factory_.GetWeakPtr(), enabled, std::move(host), allowed,
++      std::move(current), std::move(callback)));
 +}
 +std::optional<base::DictValue> ContentBlockingController::Begin(
 +    const base::DictValue& params, uint64_t connection, std::string* error) {
 +  const auto* profile = params.FindString("profileId");
 +  const auto generation = params.FindDouble("generation");
++  const auto base_generation = params.FindDouble("baseGeneration");
 +  const auto* digest = params.FindString("filterDigest");
 +  const auto enabled = params.FindBool("enabled");
 +  const auto* allowed = params.FindList("allowedSiteHosts");
 +  const auto* headers = params.FindList("sources");
 +  if (!connection || commit_in_progress_ || !snapshot_ || profile_->IsOffTheRecord() ||
 +      !profile || *profile != profile_->GetPath().BaseName().AsUTF8Unsafe() || !ValidGeneration(generation) ||
-+      *generation <= snapshot_->generation || !digest || !enabled || !allowed || allowed->size() > kMaxAllowed ||
++      !ValidGeneration(base_generation) ||
++      *generation <= *base_generation || !digest || !enabled || !allowed || allowed->size() > kMaxAllowed ||
 +      !headers || headers->size() > 20) { *error = "Invalid native filter snapshot header"; return std::nullopt; }
-+  const auto *operation_id = params.FindString("operationId");
-+  if ((params.contains("operationId") && !operation_id) ||
-+      (!operation_id && *enabled != snapshot_->enabled)) {
-+    *error = "Original human filter toggle operation is required";
++  if (*base_generation != snapshot_->generation) {
++    *error = "Native filter snapshot changed";
 +    return std::nullopt;
 +  }
-+  if (operation_id) {
-+    auto found = toggle_operations_.find(*operation_id);
-+    if (found == toggle_operations_.end() ||
-+        !ToggleOperationCurrent(*operation_id) ||
-+        found->second->phase != "prepared" ||
-+        found->second->enabled != *enabled || found->second->connection != 0) {
-+      *error = "Original filter toggle operation changed";
-+      return std::nullopt;
-+    }
++  if (*enabled != snapshot_->enabled) {
++    *error = "Native filter controls changed";
++    return std::nullopt;
 +  }
-+  auto staged = std::make_unique<Staging>(); staged->connection = connection;
-+  if (operation_id)
-+    staged->operation_id = *operation_id;
-+  staged->snapshot.generation = *generation; staged->snapshot.enabled = *enabled; staged->snapshot.digest = *digest;
++  auto staged = std::make_unique<Staging>();
++  staged->connection = connection;
++  staged->base_generation = *base_generation;
++  staged->snapshot.generation = *generation;
++  staged->snapshot.enabled = *enabled;
++  staged->snapshot.digest = *digest;
 +  for (const auto& value : *allowed) {
 +    const auto* host = value.GetIfString();
 +    if (!host || !IsAllowedSiteHost(*host) || (!staged->snapshot.allowed.empty() && staged->snapshot.allowed.back() >= *host)) {
@@ -1062,17 +1052,9 @@ index 0000000..b7403be
 +    }
 +    staged->snapshot.allowed.push_back(*host);
 +  }
-+  const auto* guard = params.FindDict("siteGuard");
-+  if (params.contains("siteGuard")) {
-+    auto* frame = guard ? GuardFrame(profile_, *guard) : nullptr;
-+    if (!frame) { *error = "Content blocking page changed"; return std::nullopt; }
-+    staged->guard = guard->Clone(); staged->document = content::RenderFrameHostImpl::From(frame)->GetDocumentToken();
-+  }
-+  for (const auto& host : staged->snapshot.allowed) {
-+    if (std::binary_search(snapshot_->allowed.begin(), snapshot_->allowed.end(), host)) continue;
-+    if (!guard || GURL(*guard->FindString("expectedUrl")).host() != host) {
-+      *error = "New site exception requires its original document"; return std::nullopt;
-+    }
++  if (staged->snapshot.allowed != snapshot_->allowed) {
++    *error = "Native filter controls changed";
++    return std::nullopt;
 +  }
 +  size_t total = 0;
 +  for (const auto& value : *headers) {
@@ -1088,12 +1070,6 @@ index 0000000..b7403be
 +  }
 +  if (FilterPolicyDigest(staged->snapshot.sources, *enabled, staged->snapshot.allowed) != *digest) {
 +    *error = "Native filter policy digest mismatch"; return std::nullopt;
-+  }
-+  if (operation_id) {
-+    auto &operation = *toggle_operations_.at(*operation_id);
-+    operation.connection = connection;
-+    operation.generation = *generation;
-+    operation.digest = *digest;
 +  }
 +  staging_ = std::move(staged); return Accepted();
 +}
@@ -1116,10 +1092,6 @@ index 0000000..b7403be
 +  return Accepted();
 +}
 +void ContentBlockingController::RetireConnection(uint64_t connection) {
-+  for (auto &[id, operation] : toggle_operations_) {
-+    if (operation->connection == connection)
-+      RetireToggleOperation(id);
-+  }
 +  if (staging_ && staging_->connection == connection) staging_.reset();
 +  if (connection && semantic_candidate_connection_ == connection &&
 +      pending_semantic_) {
@@ -1129,52 +1101,25 @@ index 0000000..b7403be
 +}
 +void ContentBlockingController::Commit(const base::DictValue& params, uint64_t connection,
 +    OwnerCurrent current, Reply callback) {
-+  const auto *operation_id = params.FindString("operationId");
-+  if (operation_id) {
-+    auto found = toggle_operations_.find(*operation_id);
-+    if (found == toggle_operations_.end() ||
-+        found->second->phase != "prepared" ||
-+        !ToggleOperationCurrent(*operation_id) || !staging_ ||
-+        staging_->operation_id != *operation_id ||
-+        found->second->connection != connection ||
-+        found->second->generation != staging_->snapshot.generation ||
-+        found->second->digest != staging_->snapshot.digest) {
-+      std::move(callback).Run(std::nullopt,
-+                              "Original filter toggle operation changed");
-+      return;
-+    }
-+    found->second->phase = "running";
-+    current = base::BindRepeating(
-+        [](base::WeakPtr<ContentBlockingController> owner, std::string id,
-+           OwnerCurrent ipc_current) {
-+          return owner && ipc_current.Run() &&
-+                 owner->ToggleOperationCurrent(id);
-+        },
-+        GetWeakPtr(), *operation_id, std::move(current));
-+    callback = base::BindOnce(
-+        [](base::WeakPtr<ContentBlockingController> owner, std::string id,
-+           Reply reply, std::optional<base::DictValue> result,
-+           std::string error) {
-+          if (owner)
-+            owner->CompleteToggleOperation(id, result, error);
-+          std::move(reply).Run(std::move(result), std::move(error));
-+        },
-+        GetWeakPtr(), *operation_id, std::move(callback));
-+  } else if (params.contains("operationId") ||
-+             (staging_ && staging_->operation_id)) {
-+    std::move(callback).Run(std::nullopt,
-+                            "Original filter toggle operation is required");
-+    return;
-+  }
 +  const auto* profile = params.FindString("profileId");
 +  const auto generation = params.FindDouble("generation");
 +  const auto* digest = params.FindString("filterDigest");
 +  if (!staging_ || staging_->connection != connection || !current.Run() || commit_in_progress_ ||
++      !snapshot_ || staging_->base_generation != snapshot_->generation ||
 +      !profile || *profile != profile_->GetPath().BaseName().AsUTF8Unsafe() || !generation ||
 +      *generation != staging_->snapshot.generation || !digest || *digest != staging_->snapshot.digest) {
 +    std::move(callback).Run(std::nullopt, "Native filter commit owner changed"); return;
 +  }
-+  auto staged = std::move(staging_);
++  CommitStaged(std::move(staging_), std::move(current), std::move(callback));
++}
++void ContentBlockingController::CommitStaged(std::unique_ptr<Staging> staged,
++                                             OwnerCurrent current,
++                                             Reply callback) {
++  if (!snapshot_ || !current || !current.Run() || commit_in_progress_ ||
++      staged->base_generation != snapshot_->generation) {
++    std::move(callback).Run(std::nullopt, "Native filter commit owner changed");
++    return;
++  }
 +  base::FilePath resources;
 +  if (!base::PathService::Get(chrome::DIR_RESOURCES, &resources)) {
 +    std::move(callback).Run(std::nullopt, "Native filter resource directory is unavailable"); return;
@@ -1217,18 +1162,10 @@ index 0000000..b7403be
 +                    result.second = std::move(error);
 +                  }
 +                  auto& staged = *result.first;
-+                  bool guarded = true;
-+                  if (owner && staged.guard) {
-+                    auto* frame = GuardFrame(owner->profile_, *staged.guard);
-+                    guarded = frame &&
-+                              content::RenderFrameHostImpl::From(frame)
-+                                      ->GetDocumentToken() == staged.document;
-+                  }
-+                  if (!owner || !current.Run() || !guarded ||
++                  if (!owner || !current.Run() ||
 +                      !result.second.empty() || !semantic ||
 +                      !owner->snapshot_ ||
-+                      staged.snapshot.generation <=
-+                          owner->snapshot_->generation) {
++                      staged.base_generation != owner->snapshot_->generation) {
 +                    if (owner) {
 +                      owner->commit_in_progress_ = false;
 +                      owner->store_runner_->PostTaskAndReply(
@@ -1732,10 +1669,10 @@ index 0000000..b7403be
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/content_blocking_controller.h b/chrome/browser/ui/aux/content_blocking_controller.h
 new file mode 100644
-index 0000000..6048908
+index 0000000..dcee02b
 --- /dev/null
 +++ b/chrome/browser/ui/aux/content_blocking_controller.h
-@@ -0,0 +1,222 @@
+@@ -0,0 +1,207 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +#ifndef CHROME_BROWSER_UI_AUX_CONTENT_BLOCKING_CONTROLLER_H_
 +#define CHROME_BROWSER_UI_AUX_CONTENT_BLOCKING_CONTROLLER_H_
@@ -1753,6 +1690,7 @@ index 0000000..6048908
 +#include "base/supports_user_data.h"
 +#include "base/task/sequenced_task_runner.h"
 +#include "base/values.h"
++#include "chrome/browser/profiles/profile_observer.h"
 +#include "chrome/browser/ui/aux/content_filter_source_scope.h"
 +#include "chrome/browser/ui/aux/filter_snapshot_store.h"
 +#include "chrome/browser/ui/aux/semantic_filter_decision.h"
@@ -1777,7 +1715,8 @@ index 0000000..6048908
 +namespace aux {
 +class SemanticFilterInstance;
 +class ContentBlockingController final : public base::SupportsUserData::Data,
-+                                        public extensions::ExtensionRegistryObserver {
++                                        public extensions::ExtensionRegistryObserver,
++                                        public ProfileObserver {
 + public:
 +  static ContentBlockingController* ForProfile(Profile* profile);
 +  static void MaybeProxySubresourceFactory(
@@ -1800,14 +1739,10 @@ index 0000000..6048908
 +                              base::WeakPtr<SemanticFilterBridge>,
 +                              CaptureSemanticHeaderRequest,
 +                              GURL)> callback);
-+  // IDs are minted only from the actual Aux document. Terminal readback is
-+  // reduction-only and survives that document's retirement or a lost RPC ACK.
-+  std::optional<std::string>
-+  RegisterToggleOperation(content::RenderFrameHost *frame, bool enabled);
-+  bool ToggleOperationCurrent(const std::string &id);
-+  void RetireToggleOperation(const std::string &id);
-+  bool ReleaseToggleOperation(const std::string &id);
-+  std::optional<base::DictValue> ReadToggleOperation(const std::string &id);
++  // Human controls commit the current native sources without a runtime roundtrip.
++  void SetEnabled(bool enabled, OwnerCurrent current, Reply callback);
++  void SetSiteAllowed(std::string host, bool allowed, OwnerCurrent current,
++                      Reply callback);
 +  void State(Reply callback);
 +  std::optional<base::DictValue> Begin(const base::DictValue& params,
 +      uint64_t connection, std::string* error);
@@ -1867,30 +1802,15 @@ index 0000000..6048908
 +  base::WeakPtr<ContentBlockingController> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
 + private:
 +  std::unique_ptr<SemanticPopupRegistry> popups_;
-+  struct ToggleOperation {
-+    ToggleOperation();
-+    ~ToggleOperation();
-+    content::WeakDocumentPtr document;
-+    bool enabled = false;
-+    bool retired = false;
-+    std::string phase = "prepared";
-+    uint64_t connection = 0;
-+    double generation = 0;
-+    std::string digest;
-+    std::optional<base::DictValue> receipt;
-+    std::string error;
-+  };
-+  void CompleteToggleOperation(const std::string &id,
-+                               const std::optional<base::DictValue> &receipt,
-+                               const std::string &error);
-+  std::map<std::string, std::unique_ptr<ToggleOperation>> toggle_operations_;
 +  struct Staging {
 +    uint64_t connection = 0;
-+    std::optional<std::string> operation_id;
++    double base_generation = 0;
 +    NativeFilterSnapshot snapshot;
-+    std::optional<base::DictValue> guard;
-+    std::optional<blink::DocumentToken> document;
 +  };
++  void UpdateControls(std::optional<bool> enabled, std::string host, bool allowed,
++                      OwnerCurrent current, Reply callback);
++  void CommitStaged(std::unique_ptr<Staging> staged, OwnerCurrent current,
++                    Reply callback);
 +  struct FrameRequest {
 +    content::GlobalRenderFrameHostId frame;
 +    std::optional<blink::DocumentToken> document;
@@ -1925,6 +1845,7 @@ index 0000000..6048908
 +  uint64_t next_frame_request_ = 0;
 +  void OnExtensionLoaded(content::BrowserContext*, const extensions::Extension*) override;
 +  void OnShutdown(extensions::ExtensionRegistry*) override;
++  void OnProfileWillBeDestroyed(Profile*) override;
 +  raw_ptr<Profile> profile_;
 +  FilterSnapshotStore store_;
 +  scoped_refptr<base::SequencedTaskRunner> store_runner_;
@@ -1949,6 +1870,7 @@ index 0000000..6048908
 +  std::map<content::GlobalRenderFrameHostId, DocumentBinding> documents_;
 +  uint64_t total_blocked_ = 0;
 +  std::map<std::string, int> by_site_;
++  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
 +  base::ScopedObservation<extensions::ExtensionRegistry,
 +      extensions::ExtensionRegistryObserver> registry_observation_{this};
 +  base::WeakPtrFactory<ContentBlockingController> weak_factory_{this};
@@ -3951,463 +3873,176 @@ index 0000000..eacfbc1
 +#endif
 diff --git a/chrome/browser/ui/aux/methods/blocking_methods.cc b/chrome/browser/ui/aux/methods/blocking_methods.cc
 new file mode 100644
-index 0000000..d41c3db
+index 0000000..ee8c0f7
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/blocking_methods.cc
-@@ -0,0 +1,540 @@
-+// Copyright 2026 The Aux Authors
-+// Use of this source code is governed by a BSD-style license that can be
-+// found in the LICENSE file.
-+
+@@ -0,0 +1,218 @@
++// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
 +
-+#include <cmath>
 +#include <utility>
-+#include <variant>
 +
-+#include "base/files/file_util.h"
 +#include "base/feature_list.h"
 +#include "base/functional/bind.h"
-+#include "base/memory/ref_counted_memory.h"
-+#include "base/task/thread_pool.h"
-+#include "base/task/sequenced_task_runner.h"
-+#include "base/time/time.h"
-+#include "base/memory/ref_counted.h"
-+#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
-+#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
-+#include "chrome/browser/shell_integration.h"
-+#include "printing/buildflags/buildflags.h"
-+#include "content/public/browser/host_zoom_map.h"
-+#include "third_party/blink/public/common/page/page_zoom.h"
-+#include "base/json/json_reader.h"
 +#include "base/json/json_writer.h"
-+#include "base/notimplemented.h"
-+#include "base/strings/string_number_conversions.h"
-+#include "base/strings/utf_string_conversions.h"
-+#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 +#include "chrome/browser/buildflags.h"
-+#if BUILDFLAG(ENABLE_AUX_SHELL)
-+#include "chrome/browser/devtools/devtools_window.h"
-+#if BUILDFLAG(ENABLE_PRINTING)
-+#if BUILDFLAG(ENABLE_PRINT_PREVIEW)
-+#include "chrome/browser/printing/print_view_manager.h"
-+#else
-+#include "chrome/browser/printing/print_view_manager_basic.h"
-+#endif
-+#include "components/printing/browser/print_to_pdf/pdf_print_utils.h"
-+#endif
-+#include "chrome/browser/ui/browser_commands.h"
-+#include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
-+#include "chrome/browser/ui/tabs/tab_strip_model.h"
-+#include "chrome/browser/ui/aux/content_blocking_controller.h"
-+#include "chrome/browser/ui/aux/dictation_mac.h"
-+#include "chrome/browser/ui/aux/extension_bridge.h"
-+#include "chrome/browser/ui/aux/runtime_host.h"
-+#include "chrome/browser/ui/aux/organization_store.h"
-+#include "chrome/browser/ui/aux/profile_search_engine.h"
-+#include "chrome/browser/ui/aux/result_preview.h"
-+#include "chrome/browser/ui/aux/site_prefs.h"
-+#include "chrome/browser/ui/aux/tab_catalog.h"
-+#include "chrome/browser/ui/aux/zap_controller.h"
-+#include "components/guest_contents/browser/guest_contents_handle.h"
-+#include "components/prefs/pref_change_registrar.h"
-+#include "components/prefs/pref_service.h"
-+#endif
-+#include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 +#include "chrome/browser/profiles/profile.h"
-+#include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
-+#include "chrome/browser/ui/bookmarks/bookmarks_service_feature.h"
-+#include "chrome/browser/ui/browser_element_identifiers.h"
-+#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/content_blocking_policy.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/site_prefs.h"
 +#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-+#include "chrome/browser/ui/interaction/browser_elements.h"
-+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
-+#include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
-+#include "chrome/browser/ui/tabs/tab_drag_api/tab_drag_service_feature.h"
-+#include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h"
-+#include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h"
-+#include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
-+#include "chrome/browser/ui/webui/favicon_source.h"
-+#include "chrome/browser/ui/webui/searchbox/realbox_handler.h"
-+#include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h"
-+#include "chrome/browser/ui/webui_browser/bookmark_bar_page_handler.h"
-+#include "chrome/browser/ui/webui_browser/webui_browser.h"
-+#include "chrome/browser/ui/webui_browser/webui_browser_page_handler.h"
-+#include "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h"
-+#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
-+#include "chrome/common/webui_url_constants.h"
-+#include "chrome/common/pref_names.h"
 +#include "chrome/common/chrome_features.h"
-+#include "chrome/grit/branded_strings.h"
-+#include "chrome/grit/generated_resources.h"
-+#include "chrome/grit/tab_strip_api_resources_map.h"
-+#include "chrome/grit/webui_browser_resources.h"
-+#include "chrome/grit/webui_browser_resources_map.h"
-+#if BUILDFLAG(ENABLE_AUX_SHELL)
-+#include "chrome/grit/aux_host_resources.h"
-+#include "chrome/grit/aux_host_resources_map.h"
-+#include "chrome/grit/aux_resources.h"
-+#include "chrome/grit/aux_resources_map.h"
-+#include "ui/display/screen.h"
-+#include "ui/events/event.h"
-+#include "ui/events/event_observer.h"
-+#include "ui/views/event_monitor.h"
-+#include "ui/shell_dialogs/selected_file_info.h"
-+#endif
-+#include "net/base/filename_util.h"
-+#include "chrome/grit/webui_toolbar_shared_resources.h"
-+#include "chrome/grit/webui_toolbar_shared_resources_map.h"
-+#include "components/contextual_search/contextual_search_service.h"
-+#include "components/contextual_search/contextual_search_session_handle.h"
-+#include "components/favicon_base/favicon_url_parser.h"
-+#include "components/guest_contents/browser/guest_contents_host_impl.h"
-+#include "components/surface_embed/common/features.h"
-+#include "content/public/browser/browser_context.h"
-+#include "content/public/browser/navigation_controller.h"
-+#include "content/public/browser/navigation_entry.h"
++#include "chrome/common/pref_names.h"
++#include "components/prefs/pref_service.h"
 +#include "content/public/browser/render_frame_host.h"
 +#include "content/public/browser/web_contents.h"
-+#include "content/public/browser/storage_partition.h"
 +#include "content/public/browser/web_ui.h"
-+#include "content/public/browser/web_ui_data_source.h"
-+#include "services/network/public/mojom/content_security_policy.mojom.h"
-+#if BUILDFLAG(ENABLE_AUX_SHELL)
-+#include "net/cookies/cookie_options.h"
-+#include "net/cookies/cookie_partition_key_collection.h"
-+#include "net/cookies/canonical_cookie.h"
-+#include "mojo/public/cpp/bindings/callback_helpers.h"
-+#include "services/network/public/mojom/cookie_manager.mojom.h"
-+#endif
-+#include "ui/base/l10n/l10n_util.h"
-+#include "ui/views/interaction/element_tracker_views.h"
-+#include "ui/webui/tracked_element/tracked_element_handler.h"
-+#include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
-+#include "ui/webui/webui_util.h"
-+#include "url/origin.h"
-+#include "url/gurl.h"
 +
-+#include <set>
 +
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +namespace {
-+// One original human request owns the accepted runtime work. Short status calls
-+// join that same identity; they never recreate an ambiguous mutation.
-+class BlockingToggleWork final : public base::RefCounted<BlockingToggleWork> {
-+ public:
-+  BlockingToggleWork(base::WeakPtr<AuxRuntimeHost> host,
-+                     base::WeakPtr<aux::ContentBlockingController> blocker,
-+                     std::unique_ptr<ScopedProfileKeepAlive> keep_alive,
-+                     std::string operation, bool enabled,
-+                     base::RepeatingCallback<bool()> current,
-+                     aux::mojom::ShellHost::RequestCallback callback)
-+      : host_(std::move(host)), blocker_(std::move(blocker)),
-+        keep_alive_(std::move(keep_alive)), operation_(std::move(operation)),
-+        enabled_(enabled), current_(std::move(current)),
-+        callback_(std::move(callback)) {}
-+  void Start() {
-+    if (!host_ || !current_.Run()) {
-+      retiring_ = true;
-+      Poll();
-+      return;
-+    }
-+    base::DictValue params;
-+    params.Set("operationId", operation_);
-+    params.Set("enabled", enabled_);
-+    host_->CallInternal("blocking.toggleStart", *base::WriteJson(params),
-+        base::BindOnce(&BlockingToggleWork::Started, base::WrapRefCounted(this)));
-+  }
-+ private:
-+  friend class base::RefCounted<BlockingToggleWork>;
-+  ~BlockingToggleWork() = default;
-+  void Started(AuxRuntimeHost::Response response) {
-+    if (!response.ok) {
-+      retiring_ = true;
-+    } else {
-+      auto result = base::JSONReader::ReadDict(response.result_json,
-+                                              base::JSON_PARSE_RFC);
-+      const auto* operation = result ? result->FindString("operationId") : nullptr;
-+      if (!operation || *operation != operation_) {
-+        retiring_ = true;
-+      }
-+    }
-+    Poll();
-+  }
-+  void Poll() {
-+    if (!blocker_ || !keep_alive_->profile()) {
-+      Finish(false, "", "operation_uncertain",
-+             "Original blocking Profile receipt is unavailable");
-+      return;
-+    }
-+    if (!current_.Run()) retiring_ = true;
-+    if (retiring_) blocker_->RetireToggleOperation(operation_);
-+    if (!host_) {
-+      JoinedWithoutRuntime("Original blocking runtime disconnected");
-+      return;
-+    }
-+    base::DictValue params;
-+    params.Set("operationId", operation_);
-+    host_->CallInternal(retiring_ ? "blocking.toggleCancel" : "blocking.toggleStatus",
-+        *base::WriteJson(params),
-+        base::BindOnce(&BlockingToggleWork::Status, base::WrapRefCounted(this)));
-+  }
-+  void Again() {
-+    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-+        FROM_HERE, base::BindOnce(&BlockingToggleWork::Poll,
-+                                 base::WrapRefCounted(this)),
-+        base::Milliseconds(250));
-+  }
-+  void JoinedWithoutRuntime(std::string message) {
-+    // Lost runtime ACK is not a joined effect. Keep the original native work
-+    // until its real terminal receipt is available, then surface uncertainty.
-+    // A timed-out Start can still be queued in the original runtime. Join its
-+    // exact reduction-only retirement/tombstone before releasing native proof.
-+    if (host_) {
-+      retiring_ = true;
-+      blocker_->RetireToggleOperation(operation_);
-+      Again();
-+      return;
-+    }
-+    const auto native = blocker_->ReadToggleOperation(operation_);
-+    const auto* phase = native ? native->FindString("phase") : nullptr;
-+    if (phase && (*phase == "completed" || *phase == "failed")) {
-+      if (!blocker_->ReleaseToggleOperation(operation_)) { Again(); return; }
-+      Finish(false, "", "operation_uncertain", std::move(message));
-+    } else {
-+      retiring_ = true;
-+      blocker_->RetireToggleOperation(operation_);
-+      Again();
-+    }
-+  }
-+  void Status(AuxRuntimeHost::Response response) {
-+    if (!response.ok) {
-+      JoinedWithoutRuntime(response.error_message);
-+      return;
-+    }
-+    auto result = base::JSONReader::ReadDict(response.result_json,
-+                                            base::JSON_PARSE_RFC);
-+    const auto* phase = result ? result->FindString("phase") : nullptr;
-+    if (!phase) {
-+      JoinedWithoutRuntime("Invalid original blocking work receipt");
-+      return;
-+    }
-+    if (*phase == "running") { Again(); return; }
-+    if (*phase == "uncertain") {
-+      const auto* error = result->FindDict("error");
-+      JoinedWithoutRuntime(error && error->FindString("message")
-+          ? *error->FindString("message") : "Original blocking completion is uncertain");
-+      return;
-+    }
-+    if (*phase != "completed" && *phase != "failed") {
-+      JoinedWithoutRuntime("Invalid original blocking terminal phase");
-+      return;
-+    }
-+    terminal_ = std::move(*result);
-+    base::DictValue params;
-+    params.Set("operationId", operation_);
-+    host_->CallInternal("blocking.toggleRelease", *base::WriteJson(params),
-+        base::BindOnce(&BlockingToggleWork::Released, base::WrapRefCounted(this)));
-+  }
-+  void Released(AuxRuntimeHost::Response response) {
-+    if (!response.ok) {
-+      // Work already joined, but runtime retention cleanup has not ACKed.
-+      // Preserve the native receipt until the same release succeeds.
-+      if (!host_) { JoinedWithoutRuntime(response.error_message); return; }
-+      base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-+          FROM_HERE, base::BindOnce(
-+              [](scoped_refptr<BlockingToggleWork> original) {
-+                base::DictValue params;
-+                params.Set("operationId", original->operation_);
-+                if (!original->host_) {
-+                  original->JoinedWithoutRuntime("Original blocking runtime disconnected");
-+                  return;
-+                }
-+                original->host_->CallInternal("blocking.toggleRelease",
-+                    *base::WriteJson(params),
-+                    base::BindOnce(&BlockingToggleWork::Released, original));
-+              }, base::WrapRefCounted(this)), base::Milliseconds(250));
-+      return;
-+    }
-+    if (!blocker_ || !blocker_->ReleaseToggleOperation(operation_)) {
-+      JoinedWithoutRuntime("Original native blocking work has not joined");
-+      return;
-+    }
-+    if (!current_.Run()) {
-+      Finish(false, "", "ref_stale", "Original blocking window retired");
-+      return;
-+    }
-+    if (terminal_.FindString("phase") && *terminal_.FindString("phase") == "completed") {
-+      auto* result = terminal_.FindDict("result");
-+      const auto enabled = result ? result->FindBool("trackerBlock") : std::nullopt;
-+      if (!result || !enabled || *enabled != enabled_) {
-+        Finish(false, "", "operation_uncertain", "Original blocking result changed");
-+        return;
-+      }
-+      if (!blocker_) {
-+        Finish(false, "", "operation_uncertain", "Original blocking Profile retired");
-+        return;
-+      }
-+      result->Set("blocked", blocker_->blocked_count());
-+      Finish(true, *base::WriteJson(*result), "", "");
-+      return;
-+    }
-+    const auto* error = terminal_.FindDict("error");
-+    Finish(false, "", error && error->FindString("code") ? *error->FindString("code") : "cancelled",
-+           error && error->FindString("message") ? *error->FindString("message") : "Original blocking work retired");
-+  }
-+  void Finish(bool ok, std::string result, std::string code, std::string message) {
-+    if (callback_) std::move(callback_).Run(ok, result, code, message);
-+    keep_alive_.reset();
-+  }
-+  base::WeakPtr<AuxRuntimeHost> host_;
-+  base::WeakPtr<aux::ContentBlockingController> blocker_;
-+  std::unique_ptr<ScopedProfileKeepAlive> keep_alive_;
-+  const std::string operation_;
-+  const bool enabled_;
-+  base::RepeatingCallback<bool()> current_;
-+  aux::mojom::ShellHost::RequestCallback callback_;
-+  bool retiring_ = false;
-+  base::DictValue terminal_;
-+};
-+}  // namespace
++base::DictValue PrivacyState(Profile* profile,
++                             aux::ContentBlockingController* blocker) {
++  base::ListValue allowed;
++  for (const auto& host : blocker->allowed_hosts()) allowed.Append(host);
++  base::DictValue privacy;
++  privacy.Set("trackerBlock", blocker->enabled());
++  privacy.Set("allowedHosts", std::move(allowed));
++  privacy.Set("blocked", blocker->blocked_count());
++  privacy.Set("httpsUpgrade", base::FeatureList::IsEnabled(features::kHttpsUpgrades) &&
++      profile->GetPrefs()->GetBoolean(aux::kHttpsUpgradesEnabled) &&
++      profile->GetPrefs()->GetBoolean(prefs::kHttpsUpgradesEnabled));
++  return privacy;
++}
++}
++
 +void WebUIBrowserUI::HandleAuxBlockingRequest(
 +    const std::string& method, const base::ListValue& args,
 +    RequestCallback callback) {
 +  const base::ListValue* list = &args;
-+  const bool blocking_method =
-+      method == "filterLists" || method == "updateFilters" ||
++  auto* blocker = aux::ContentBlockingController::ForProfile(browser_->GetProfile());
++  if (method == "privacy" || method == "setTrackerBlock" ||
++      method == "removeAllowedHost") {
++    if ((method == "privacy" && !args.empty()) ||
++        (method == "setTrackerBlock" &&
++         (args.size() != 1 || !args[0].is_bool())) ||
++        (method == "removeAllowedHost" &&
++         (args.size() != 1 || !args[0].is_string() ||
++          !aux::IsAllowedSiteHost(args[0].GetString())))) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid blocking control");
++      return;
++    }
++    auto* frame = web_ui()->GetWebContents()->GetPrimaryMainFrame();
++    if (!frame || !frame->IsActive() || !frame->IsRenderFrameLive()) {
++      std::move(callback).Run(false, "", "ref_stale",
++                              "Original blocking document is unavailable");
++      return;
++    }
++    const auto document = frame->GetWeakDocumentPtr();
++    auto current = base::BindRepeating(
++        [](base::WeakPtr<WebUIBrowserUI> owner,
++           base::WeakPtr<BrowserWindowInterface> window,
++           content::WeakDocumentPtr document) {
++          auto* frame = document.AsRenderFrameHostIfValid();
++          return owner && window && owner->browser_ == window.get() &&
++              owner->IsAuthorizedAuxDocument() && frame && frame->IsActive() &&
++              frame->IsRenderFrameLive() && frame ==
++                  owner->web_ui()->GetWebContents()->GetPrimaryMainFrame();
++        }, weak_factory_.GetWeakPtr(), browser_->GetWeakPtr(), document);
++    blocker->EnsureReady(base::BindOnce(
++        [](base::WeakPtr<WebUIBrowserUI> owner,
++           aux::ContentBlockingController::OwnerCurrent current,
++           std::string method, base::ListValue args,
++           RequestCallback callback, bool ready) {
++          if (!owner || !current.Run() || !ready) {
++            std::move(callback).Run(false, "", "ref_stale",
++                                    "Original blocking window is unavailable");
++            return;
++          }
++          auto* profile = owner->browser_->GetProfile();
++          auto* blocker = aux::ContentBlockingController::ForProfile(profile);
++          auto reply = base::BindOnce(
++              [](base::WeakPtr<WebUIBrowserUI> owner,
++                 aux::ContentBlockingController::OwnerCurrent current,
++                 std::string method, RequestCallback callback,
++                 std::optional<base::DictValue> result, std::string error) {
++                if (!result || !owner || !current.Run()) {
++                  std::move(callback).Run(false, "", "conflict",
++                      error.empty() ? "Original blocking window retired" : error);
++                  return;
++                }
++                auto* profile = owner->browser_->GetProfile();
++                auto* blocker = aux::ContentBlockingController::ForProfile(profile);
++                auto privacy = PrivacyState(profile, blocker);
++                if (method != "privacy") privacy.Remove("httpsUpgrade");
++                base::Value value = method == "removeAllowedHost"
++                    ? base::Value(privacy.FindList("allowedHosts")->Clone())
++                    : base::Value(std::move(privacy));
++                std::move(callback).Run(true, *base::WriteJson(value), "", "");
++              }, owner, current, method, std::move(callback));
++          if (method == "privacy") {
++            std::move(reply).Run(base::DictValue(), "");
++            return;
++          }
++          const bool enabled = method == "setTrackerBlock" && args[0].GetBool();
++          const std::string host = method == "removeAllowedHost"
++              ? args[0].GetString() : "";
++          if (!profile->IsOffTheRecord()) {
++            if (method == "setTrackerBlock")
++              blocker->SetEnabled(enabled, std::move(current), std::move(reply));
++            else
++              blocker->SetSiteAllowed(host, false, std::move(current), std::move(reply));
++            return;
++          }
++          const bool previous = host.empty() ? blocker->enabled() : blocker->IsAllowed(host);
++          const bool changed = host.empty() ? blocker->SetPrivateEnabled(enabled)
++              : blocker->SetPrivateSiteAllowed(host, false);
++          if (!changed) {
++            std::move(reply).Run(std::nullopt, "Invalid private blocking preference");
++            return;
++          }
++          blocker->RefreshCosmetic(base::BindOnce(
++              [](base::WeakPtr<aux::ContentBlockingController> blocker,
++                 std::string host, bool previous,
++                 aux::ContentBlockingController::Reply reply, bool applied) {
++                if (!blocker) {
++                  std::move(reply).Run(std::nullopt, "Original private Profile retired");
++                  return;
++                }
++                if (applied) {
++                  std::move(reply).Run(base::DictValue(), "");
++                  return;
++                }
++                if (host.empty()) blocker->SetPrivateEnabled(previous);
++                else blocker->SetPrivateSiteAllowed(host, previous);
++                blocker->RefreshCosmetic(base::BindOnce(
++                    [](aux::ContentBlockingController::Reply reply, bool) {
++                      std::move(reply).Run(std::nullopt,
++                          "An active document rejected cosmetic styles");
++                    }, std::move(reply)));
++              }, blocker->GetWeakPtr(), host, previous, std::move(reply)));
++        }, weak_factory_.GetWeakPtr(), std::move(current), method,
++        args.Clone(), std::move(callback)));
++    return;
++  }
++  if (method == "filterLists" || method == "updateFilters" ||
 +      method == "addFilterSource" || method == "removeFilterSource" ||
-+      method == "setFilterSourceEnabled" || method == "privacy" ||
-+      method == "setTrackerBlock" || method == "removeAllowedHost";
-+  if (blocking_method) {
++      method == "setFilterSourceEnabled") {
 +    if (browser_->GetProfile()->IsOffTheRecord()) {
-+      auto* blocker =
-+          aux::ContentBlockingController::ForProfile(browser_->GetProfile());
-+      if ((method == "privacy" && list->empty()) ||
-+          (method == "setTrackerBlock" && list->size() == 1 &&
-+           (*list)[0].is_bool()) ||
-+          (method == "removeAllowedHost" && list->size() == 1 &&
-+           (*list)[0].is_string())) {
-+        const bool previous_enabled = blocker->enabled();
-+        const std::string changed_host = method == "removeAllowedHost"
-+            ? (*list)[0].GetString() : "";
-+        const bool previous_allowed = !changed_host.empty() &&
-+            blocker->IsAllowed(changed_host);
-+        if (method == "setTrackerBlock" &&
-+            !blocker->SetPrivateEnabled((*list)[0].GetBool())) {
-+          std::move(callback).Run(false, "", "invalid_argument",
-+                                  "Invalid private blocking preference");
-+          return;
-+        }
-+        if (method == "removeAllowedHost" &&
-+            !blocker->SetPrivateSiteAllowed(changed_host, false)) {
-+          std::move(callback).Run(false, "", "invalid_argument",
-+                                  "Invalid private site exception");
-+          return;
-+        }
-+        std::string result_json;
-+        if (method == "removeAllowedHost") {
-+          base::ListValue allowed;
-+          for (const auto& host : blocker->allowed_hosts()) {
-+            allowed.Append(host);
-+          }
-+          result_json = *base::WriteJson(allowed);
-+        } else {
-+          base::DictValue privacy;
-+          privacy.Set("trackerBlock", blocker->enabled());
-+          privacy.Set("blocked", blocker->blocked_count());
-+          privacy.Set("httpsUpgrade",
-+                      base::FeatureList::IsEnabled(features::kHttpsUpgrades) &&
-+                          browser_->GetProfile()->GetPrefs()->GetBoolean(
-+                              aux::kHttpsUpgradesEnabled) &&
-+                          browser_->GetProfile()->GetPrefs()->GetBoolean(
-+                              prefs::kHttpsUpgradesEnabled));
-+          base::ListValue allowed;
-+          for (const auto& host : blocker->allowed_hosts()) {
-+            allowed.Append(host);
-+          }
-+          privacy.Set("allowedHosts", std::move(allowed));
-+          result_json = *base::WriteJson(privacy);
-+        }
-+        if (method == "privacy") {
-+          std::move(callback).Run(true, result_json, "", "");
-+          return;
-+        }
-+        aux::ContentBlockingController::ForProfile(browser_->GetProfile())
-+            ->RefreshCosmetic(base::BindOnce(
-+                [](base::WeakPtr<WebUIBrowserUI> owner,
-+                   std::string changed_host, bool previous_allowed,
-+                   bool previous_enabled, std::string result_json,
-+                   RequestCallback callback, bool applied) {
-+                  if (!owner) return;
-+                  if (applied) {
-+                    std::move(callback).Run(true, result_json, "", "");
-+                    return;
-+                  }
-+                  auto* profile = owner->browser_->GetProfile();
-+                  auto* blocker = aux::ContentBlockingController::ForProfile(profile);
-+                  if (changed_host.empty())
-+                    blocker->SetPrivateEnabled(previous_enabled);
-+                  else
-+                    blocker->SetPrivateSiteAllowed(changed_host, previous_allowed);
-+                  aux::ContentBlockingController::ForProfile(profile)->RefreshCosmetic(
-+                      base::BindOnce(
-+                          [](RequestCallback callback, bool) {
-+                            std::move(callback).Run(
-+                                false, "", "backend_unavailable",
-+                                "An active document rejected cosmetic styles");
-+                          }, std::move(callback)));
-+                }, weak_factory_.GetWeakPtr(), changed_host,
-+                previous_allowed, previous_enabled, std::move(result_json),
-+                std::move(callback)));
-+        return;
-+      }
 +      std::move(callback).Run(false, "", "forbidden",
 +                              "Private windows use temporary site exceptions");
 +      return;
 +    }
-+    if (method == "setTrackerBlock") {
-+      if (list->size() != 1 || !(*list)[0].is_bool()) {
-+        std::move(callback).Run(false, "", "invalid_params", "Invalid blocking preference");
-+        return;
-+      }
-+      auto* blocker = aux::ContentBlockingController::ForProfile(browser_->GetProfile());
-+      auto* frame = web_ui()->GetWebContents()->GetPrimaryMainFrame();
-+      const auto operation = blocker->RegisterToggleOperation(frame, (*list)[0].GetBool());
-+      auto keep_alive = ScopedProfileKeepAlive::TryAcquire(
-+          browser_->GetProfile(), ProfileKeepAliveOrigin::kAuxContentFilterCommit);
-+      if (!operation || !keep_alive) {
-+        if (operation) {
-+          blocker->RetireToggleOperation(*operation);
-+          blocker->ReleaseToggleOperation(*operation);
-+        }
-+        std::move(callback).Run(false, "", "ref_stale", "Original blocking window is unavailable");
-+        return;
-+      }
-+      const auto document = frame->GetWeakDocumentPtr();
-+      auto current = base::BindRepeating(
-+          [](base::WeakPtr<WebUIBrowserUI> owner, content::WeakDocumentPtr document) {
-+            auto* frame = document.AsRenderFrameHostIfValid();
-+            return frame && owner && owner->IsAuthorizedAuxDocument() &&
-+                frame == owner->web_ui()->GetWebContents()->GetPrimaryMainFrame();
-+          }, weak_factory_.GetWeakPtr(), document);
-+      base::MakeRefCounted<BlockingToggleWork>(
-+          AuxRuntimeHost::ForProfile(browser_->GetProfile())->GetWeakPtr(),
-+          blocker->GetWeakPtr(), std::move(keep_alive), *operation,
-+          (*list)[0].GetBool(), std::move(current), std::move(callback))->Start();
-+      return;
-+    }
 +    const char* internal = nullptr;
 +    base::DictValue params;
-+    if (method == "filterLists" || method == "privacy" ||
-+        method == "updateFilters") {
++    if (method == "filterLists" || method == "updateFilters") {
 +      if (list->size() != 0) {
 +        std::move(callback).Run(false, "", "invalid_argument",
 +                                "Unexpected arguments");
 +        return;
 +      }
-+      internal = method == "filterLists" ? "blocking.status"
-+                 : method == "privacy"   ? "blocking.privacy"
-+                                         : "blocking.update";
++      internal = method == "filterLists" ? "blocking.status" : "blocking.update";
 +
 +    } else if (method == "addFilterSource") {
 +      if (list->size() < 2 || list->size() > 3 || !(*list)[0].is_string() ||
@@ -4437,70 +4072,35 @@ index 0000000..d41c3db
 +                                "Invalid filter identifier");
 +        return;
 +      }
-+      params.Set(method == "removeAllowedHost" ? "hostname" : "id",
-+                 (*list)[0].GetString());
-+      internal = method == "removeAllowedHost" ? "blocking.removeAllowedHost"
-+                                               : "blocking.remove";
++      params.Set("id", (*list)[0].GetString());
++      internal = "blocking.remove";
 +    }
-+    AuxRuntimeHost::ForProfile(browser_->GetProfile())
-+        ->CallInternal(
-+            internal, *base::WriteJson(params),
-+            base::BindOnce(
-+                [](base::WeakPtr<WebUIBrowserUI> ui, bool with_count,
-+                   bool with_https,
-+                   RequestCallback callback,
-+                   AuxRuntimeHost::Response response) {
-+                  if (!ui || !ui->IsAuthorizedAuxDocument()) {
-+                    std::move(callback).Run(
-+                        false, "", "forbidden",
-+                        "The Aux shell is no longer active");
-+                    return;
-+                  }
-+                  if (response.ok && with_count) {
-+                    auto value = base::JSONReader::ReadDict(
-+                        response.result_json, base::JSON_PARSE_RFC);
-+                    if (!value) {
-+                      std::move(callback).Run(false, "", "backend_unavailable",
-+                                              "Invalid blocking state");
-+                      return;
-+                    }
-+                    value->Set("blocked",
-+                               aux::ContentBlockingController::ForProfile(
-+                                   ui->browser_->GetProfile())
-+                                   ->blocked_count());
-+                    if (with_https) {
-+                      auto* pref_service =
-+                          ui->browser_->GetProfile()->GetPrefs();
-+                      value->Set("httpsUpgrade",
-+                                 base::FeatureList::IsEnabled(
-+                                     features::kHttpsUpgrades) &&
-+                                     pref_service->GetBoolean(
-+                                         aux::kHttpsUpgradesEnabled) &&
-+                                     pref_service->GetBoolean(
-+                                         prefs::kHttpsUpgradesEnabled));
-+                    }
-+                    response.result_json = *base::WriteJson(*value);
-+                  }
-+                  std::move(callback).Run(response.ok, response.result_json,
-+                                          response.error_code,
-+                                          response.error_message);
-+                },
-+                weak_factory_.GetWeakPtr(),
-+                method == "privacy" || method == "setTrackerBlock",
-+                method == "privacy",
-+                std::move(callback)));
++    AuxRuntimeHost::ForProfile(browser_->GetProfile())->CallInternal(
++        internal, *base::WriteJson(params),
++        base::BindOnce(
++            [](base::WeakPtr<WebUIBrowserUI> owner, RequestCallback callback,
++               AuxRuntimeHost::Response response) {
++              if (!owner || !owner->IsAuthorizedAuxDocument()) {
++                std::move(callback).Run(false, "", "forbidden",
++                                        "The Aux shell is no longer active");
++                return;
++              }
++              std::move(callback).Run(response.ok, response.result_json,
++                  response.error_code, response.error_message);
++            }, weak_factory_.GetWeakPtr(), std::move(callback)));
 +    return;
 +  }
 +  std::move(callback).Run(false, "", "not_found",
 +                          "Unsupported Aux shell method: " + method);
 +}
++
 +#endif
 diff --git a/chrome/browser/ui/aux/methods/native_blocking_methods.cc b/chrome/browser/ui/aux/methods/native_blocking_methods.cc
 new file mode 100644
-index 0000000..1adbebe
+index 0000000..139e0d0
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/native_blocking_methods.cc
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,37 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +#include "chrome/browser/ui/aux/runtime_host.h"
 +#include "chrome/browser/profiles/profile.h"
@@ -4527,24 +4127,6 @@ index 0000000..1adbebe
 +  auto* owner = aux::ContentBlockingController::ForProfile(profile_);
 +  if (!owner) return NativeFault("backend_unavailable", "Native filter Profile is unavailable");
 +  native_content_blocker_ = owner->GetWeakPtr();
-+  if (method == "native.contentBlockOperation") {
-+    const auto *profile = params.FindString("profileId");
-+    const auto *id = params.FindString("operationId");
-+    const auto retire = params.FindBool("retire");
-+    if (!profile || *profile != profile_->GetPath().BaseName().AsUTF8Unsafe() ||
-+        !id || id->empty() || id->size() > 160 ||
-+        params.size() != (retire.has_value() ? 3u : 2u) ||
-+        (retire.has_value() && !*retire))
-+      return NativeFault("invalid_params",
-+                         "Exact original filter operation is required");
-+    if (retire == true)
-+      owner->RetireToggleOperation(*id);
-+    auto operation = owner->ReadToggleOperation(*id);
-+    return operation ? NativeResult(base::Value(std::move(*operation)))
-+                     : NativeFault(
-+                           "operation_uncertain",
-+                           "Original filter operation receipt is unavailable");
-+  }
 +  std::string error;
 +  auto result = method == "native.contentBlockBegin"
 +      ? owner->Begin(params, connection_generation, &error)
@@ -4552,7 +4134,9 @@ index 0000000..1adbebe
 +  if (method != "native.contentBlockBegin" && method != "native.contentBlockAppend")
 +    return NativeFault("backend_unavailable", "Native method is unavailable");
 +  return result ? NativeResult(base::Value(std::move(*result))) : NativeFault(
-+      error == "Content blocking page changed" ? "conflict" : "invalid_argument", std::move(error));
++      error == "Native filter snapshot changed" ||
++              error == "Native filter controls changed"
++          ? "conflict" : "invalid_argument", std::move(error));
 +}
 diff --git a/chrome/browser/ui/aux/semantic/BUILD.gn b/chrome/browser/ui/aux/semantic/BUILD.gn
 new file mode 100644

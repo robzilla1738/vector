@@ -1,13 +1,203 @@
 {
-  "originalRepositoryCommit": "26527f6659f3e90ee674eed93c8924d9993bd3ad",
+  "originalRepositoryCommit": "63ff6827cf27e72274c5eacc1d508a9160ccc6e4",
+  "originalSeriesState": "Reviewed 42-entry series, including 0042 appended to the working series at this commit.",
   "upstreamCommit": "b859317bf11f6be47f9b7799ec690a0a42a1fb33",
-  "originalSeriesSha256": "6309dd337c944e01b119cf9c5ac560445f48ed840d199872ee9c3859164cb790",
-  "originalAggregateSha256": "22b2cb87234f0a3b7e42621b275f9f20bd736236ab2cf9b5d0f65ad46b33a205",
-  "originalPatchCount": 100,
-  "netChangedPaths": 840,
+  "originalSeriesSha256": "775701a47eec9f4fcb7fa222e8ea91552e531f02f47b269fcbbf15efa6fa595d",
+  "originalAggregateSha256": "6326a5ddea898910f334b03064f9fde016994b13713d4f0bfe18788c278e0d62",
+  "originalPatchCount": 42,
+  "netChangedPaths": 850,
   "status": "passed",
-  "originalTree": "2cb374a898133839f46c9b047fd9ed36a24a611b",
+  "originalTree": "ad8be052b051ddfeca6cdf2e14dce58b85055dfa",
   "seriesSha256": "2215c28f24f7e165db5bfffa1bf497ec06e909b19e737796b9b0c319a5a4543c",
+  "changes": {
+    "M": 341,
+    "A": 509
+  },
+  "productComparison": {
+    "status": "passed",
+    "source": "/Users/rcourson/aux-chromium-product/chromium/src",
+    "paths": 850,
+    "differences": 0,
+    "scope": "Series-owned source bytes and executable modes only; generated bindings, staged assets, output artifacts and runtime bundle excluded."
+  },
+  "previousConsolidation": {
+    "originalRepositoryCommit": "26527f6659f3e90ee674eed93c8924d9993bd3ad",
+    "originalSeriesSha256": "6309dd337c944e01b119cf9c5ac560445f48ed840d199872ee9c3859164cb790",
+    "originalAggregateSha256": "22b2cb87234f0a3b7e42621b275f9f20bd736236ab2cf9b5d0f65ad46b33a205",
+    "originalPatchCount": 100,
+    "netChangedPaths": 840,
+    "originalTree": "2cb374a898133839f46c9b047fd9ed36a24a611b"
+  },
+  "inputPatches": [
+    {
+      "patch": "aux/0001-build-foundation.patch",
+      "sha256": "3ba635eb7d2a9ea2b1027a2065b81b9ddda4a465b74d1340373575dedd03b8f6"
+    },
+    {
+      "patch": "aux/0002-branding-signing.patch",
+      "sha256": "aba3d2c3019cb8f18494fce7a0c0856b892904e7b6b9dc03a69e0b4e5a9472e9"
+    },
+    {
+      "patch": "aux/0003-shell-host.patch",
+      "sha256": "ed5650848343be72a92e5d65742037660e5614601c4f942c36224ced4e31c6f0"
+    },
+    {
+      "patch": "aux/0004-runtime-host.patch",
+      "sha256": "b7315421ef327de46c1634b93ee0ec40012e46ddc9e101c140bd5a1a7b58ce08"
+    },
+    {
+      "patch": "aux/0005-method-registry.patch",
+      "sha256": "1e517ab3457d08396dbe4e2722d16367a94feb0b11eba989a578030e3a486b36"
+    },
+    {
+      "patch": "aux/0006-cdp-authority.patch",
+      "sha256": "af56057c6746647f780dc46e0c51086b63ad7cab5173bf5385bd117a8240562a"
+    },
+    {
+      "patch": "aux/0007-egress-permissions.patch",
+      "sha256": "3a3c4da4f31551615bcdcb23d66e530393cabc331a1b37318fcfce5f05565e9d"
+    },
+    {
+      "patch": "aux/0008-native-person-observation.patch",
+      "sha256": "577baccfcdbfe4f7c487c7da18efc7651f7b40da0d569b44d92c14919427e1bf"
+    },
+    {
+      "patch": "aux/0009-native-person-capture.patch",
+      "sha256": "79e36017e0b866bb3d38d71fcd6f9293a3fe2d127063177f16b9e55acee8d007"
+    },
+    {
+      "patch": "aux/0010-native-input-admission.patch",
+      "sha256": "d2244edefb4a1ed3b0039a087fcb0c63a11653f21a9c05f240218aa1590b597e"
+    },
+    {
+      "patch": "aux/0011-native-creator-cleanup.patch",
+      "sha256": "286af179533fe72fdc745a526a4045cd82c771a912bd6cf6eec0433b4943bfe6"
+    },
+    {
+      "patch": "aux/0012-tabs-memory-saver.patch",
+      "sha256": "6d451ecdcc2be0100d8c1e1bcc9f6a8cdf203a971c7ae95f4c05e00169071bff"
+    },
+    {
+      "patch": "aux/0013-organization-spaces.patch",
+      "sha256": "e5011790835b035f5034bbc3ea06d467a438eca03a17debe08885f8b882ec4a8"
+    },
+    {
+      "patch": "aux/0014-profiles-routing.patch",
+      "sha256": "487c720a3a48c73caf52649679c88c2b91c6dfe9267ef3006f732f66375bd463"
+    },
+    {
+      "patch": "aux/0015-credentials-autofill.patch",
+      "sha256": "fb56f3132c04a33f4a72606314d9a3307097d08127fb0394fecc8a300f307693"
+    },
+    {
+      "patch": "aux/0016-content-blocking.patch",
+      "sha256": "a81ee1391589b2d569b4601c0744d54aeac7dc5561d1674e99c33675616f913b"
+    },
+    {
+      "patch": "aux/0017-library-history.patch",
+      "sha256": "556d540051dc7a55b824682520ec6deafbcf798e7c1000ebb06add0865f82843"
+    },
+    {
+      "patch": "aux/0018-downloads.patch",
+      "sha256": "d63050d20a846aa5e4629b9185817e876f4107af83a3f882d05a0830fe5e6364"
+    },
+    {
+      "patch": "aux/0019-extensions.patch",
+      "sha256": "5ab46aa9d0b91e7bdd9b4b8203ac4f8608f0e07dd35d8013348f37304a7cce00"
+    },
+    {
+      "patch": "aux/0020-dictation.patch",
+      "sha256": "15a575787f4068bd0f9f66eb2e971c954f39d84c616d23eeb3137e88b5c58489"
+    },
+    {
+      "patch": "aux/0021-recovery.patch",
+      "sha256": "ace3d32e8acc31d39d5fb51473aa24b8a1a6d52a5cb36b2d403e2c6cf5da46a2"
+    },
+    {
+      "patch": "aux/0022-updater.patch",
+      "sha256": "cad911d44bbcec186d3eba7cdc951c906873b8a01944ddb0ed1c676038cde951"
+    },
+    {
+      "patch": "aux/0023-window-platform.patch",
+      "sha256": "bb94642999041fcad21464287d8d0c5ff5ee89fa5c83db2f7f7a2315675bf411"
+    },
+    {
+      "patch": "aux/0024-appearance-power.patch",
+      "sha256": "55f1745d9dc8cde6887d4d50e839e2347e419517fed3a743f4255eb85c4110d3"
+    },
+    {
+      "patch": "aux/0025-preview-reader.patch",
+      "sha256": "e47e83d613a95a9c4ef3eca4bb1de457285b3d127affb3e4b62e25579409eb69"
+    },
+    {
+      "patch": "aux/0026-page-controls.patch",
+      "sha256": "34c174fb34a060bc32e4555531b4f981f4b17e35c749c9ec829a2140ae5ae21a"
+    },
+    {
+      "patch": "aux/0027-commands.patch",
+      "sha256": "e4997e5263b1e42cd88144e3fc743a357a9a796a95bc181457120c62206916a3"
+    },
+    {
+      "patch": "aux/0028-picture-in-picture.patch",
+      "sha256": "ca6059edb2cb05856369b7fdabd6d4f14a5586d89689cad5a3363c45da2801cf"
+    },
+    {
+      "patch": "aux/0029-browser-renderer-integration.patch",
+      "sha256": "20d3a1ad8b28e83d5a9b949309ecdb501f4fa4b2eaadd096de0a748610dc9bb0"
+    },
+    {
+      "patch": "aux/0030-native-performance-fixtures.patch",
+      "sha256": "d88adff3a2617d46e49a877cb494e8645482c567716e2b18646ecb9527e09dc7"
+    },
+    {
+      "patch": "aux/0031-coding-projects.patch",
+      "sha256": "3c4e94809aa443e4b31d5b1fa7b121b502cdf0dea3ddbb97512d6d01768755e4"
+    },
+    {
+      "patch": "aux/0032-browser-import-export.patch",
+      "sha256": "62dbd8c88fa9998fa58781ed90ce02bfc88084f60276561ed8303c93c188e833"
+    },
+    {
+      "patch": "aux/0033-private-filter-retirement.patch",
+      "sha256": "94d74371d863ef00a3f0f175d057da2cac703d674940d25214b5d21ecd6653d0"
+    },
+    {
+      "patch": "aux/0034-runtime-capabilities-preview-routing.patch",
+      "sha256": "2f7da91e535635ca13bf1d9c06c30644fb6d067749ee2d02506db95fab4fa271"
+    },
+    {
+      "patch": "aux/0035-embedded-input-admission.patch",
+      "sha256": "dacd8b6b6cf22158663ebb5b526578533c091d93585ddd17b5bb1891d4fc0fe6"
+    },
+    {
+      "patch": "aux/0036-browser-owned-find-zoom.patch",
+      "sha256": "148c8425f3cec71dec3fb13e12528ae172da475231bf10c5fe1af529673a9361"
+    },
+    {
+      "patch": "aux/0037-pdf-document-export.patch",
+      "sha256": "e07d2369864ae5d2b79e1bdb2fc06d567b8e86cf931c5e752709f26cc6a1ec1f"
+    },
+    {
+      "patch": "aux/0038-native-download-dismissal.patch",
+      "sha256": "c6bf64a87526ab844167b9172cf53837f8142a57c4e6a0ef07ea2f0827532932"
+    },
+    {
+      "patch": "aux/0039-native-history.patch",
+      "sha256": "2bc00854fc01052e801f5538662509f805f88639ebce19ba000652aa56d783ff"
+    },
+    {
+      "patch": "aux/0040-native-document-selections.patch",
+      "sha256": "2df9b6b1793cf329858b5ffe9d440b4710d1d2f33eb98e92ef0bef4bc359b313"
+    },
+    {
+      "patch": "aux/0041-private-memory-saver-capabilities.patch",
+      "sha256": "deaa03be4b702585986de0257b883e241fab2fff6a286835321b43d313145e4c"
+    },
+    {
+      "patch": "aux/0042-native-filter-controls.patch",
+      "sha256": "28bee5fe4c8ec482765a5fa3c5b7bbe83e3f253ab8ee8d0d8547ade710dcdea6"
+    }
+  ],
   "patches": [
     {
       "patch": "aux/0001-build-foundation.patch",
@@ -22,17 +212,17 @@
     {
       "patch": "aux/0003-shell-host.patch",
       "pathCount": 33,
-      "sha256": "ed5650848343be72a92e5d65742037660e5614601c4f942c36224ced4e31c6f0"
+      "sha256": "6857fa44d6a76ceea3c7e48f832315666aa37c67565884a7d93ebc77330732c6"
     },
     {
       "patch": "aux/0004-runtime-host.patch",
       "pathCount": 13,
-      "sha256": "b7315421ef327de46c1634b93ee0ec40012e46ddc9e101c140bd5a1a7b58ce08"
+      "sha256": "60ca036278c29d86ba6ed0b1fbe6abb9ee629172c4528c82f39afbb384d83db6"
     },
     {
       "patch": "aux/0005-method-registry.patch",
       "pathCount": 2,
-      "sha256": "1e517ab3457d08396dbe4e2722d16367a94feb0b11eba989a578030e3a486b36"
+      "sha256": "4cc932c6f4119f25be475eb041a8c9c61cf53b66752e2f4a57a08eeef69f092c"
     },
     {
       "patch": "aux/0006-cdp-authority.patch",
@@ -56,8 +246,8 @@
     },
     {
       "patch": "aux/0010-native-input-admission.patch",
-      "pathCount": 35,
-      "sha256": "d2244edefb4a1ed3b0039a087fcb0c63a11653f21a9c05f240218aa1590b597e"
+      "pathCount": 43,
+      "sha256": "7e5e3e63a117194874a28ebe9cec0f6c870253f7a0ff88fa5b82c18dc77d7170"
     },
     {
       "patch": "aux/0011-native-creator-cleanup.patch",
@@ -77,7 +267,7 @@
     {
       "patch": "aux/0014-profiles-routing.patch",
       "pathCount": 11,
-      "sha256": "487c720a3a48c73caf52649679c88c2b91c6dfe9267ef3006f732f66375bd463"
+      "sha256": "f5648de85248a7b8e0b1115378c4f9bcd42236a10e6ccba2fbd8b22bd4067a18"
     },
     {
       "patch": "aux/0015-credentials-autofill.patch",
@@ -87,12 +277,12 @@
     {
       "patch": "aux/0016-content-blocking.patch",
       "pathCount": 373,
-      "sha256": "a81ee1391589b2d569b4601c0744d54aeac7dc5561d1674e99c33675616f913b"
+      "sha256": "278eea96da974428c98f25a0dda1fdc687221173764ffc20a6f4788968c81ca1"
     },
     {
       "patch": "aux/0017-library-history.patch",
-      "pathCount": 6,
-      "sha256": "556d540051dc7a55b824682520ec6deafbcf798e7c1000ebb06add0865f82843"
+      "pathCount": 8,
+      "sha256": "c1d9f2b9d94e462d7a4b2a5879086327726892364ef31b522f356919d4a21a8e"
     },
     {
       "patch": "aux/0018-downloads.patch",
@@ -122,12 +312,12 @@
     {
       "patch": "aux/0023-window-platform.patch",
       "pathCount": 17,
-      "sha256": "bb94642999041fcad21464287d8d0c5ff5ee89fa5c83db2f7f7a2315675bf411"
+      "sha256": "863729306ac1266f7556a8e921f70af3d9992e60d918f407bf519e0502b9086e"
     },
     {
       "patch": "aux/0024-appearance-power.patch",
       "pathCount": 5,
-      "sha256": "55f1745d9dc8cde6887d4d50e839e2347e419517fed3a743f4255eb85c4110d3"
+      "sha256": "c3f74499ad02573299f917e4a95063fdd8b07c9b25bbf2a5d8a99ae38112cffe"
     },
     {
       "patch": "aux/0025-preview-reader.patch",
@@ -137,7 +327,7 @@
     {
       "patch": "aux/0026-page-controls.patch",
       "pathCount": 14,
-      "sha256": "34c174fb34a060bc32e4555531b4f981f4b17e35c749c9ec829a2140ae5ae21a"
+      "sha256": "507697745308914c4527c9cd0c38e63aae74f4797b1ccb303668cfd0b7d9e03c"
     },
     {
       "patch": "aux/0027-commands.patch",
@@ -169,11 +359,5 @@
       "pathCount": 50,
       "sha256": "62dbd8c88fa9998fa58781ed90ce02bfc88084f60276561ed8303c93c188e833"
     }
-  ],
-  "consolidatedTree": "2cb374a898133839f46c9b047fd9ed36a24a611b",
-  "aggregateSha256": "22b2cb87234f0a3b7e42621b275f9f20bd736236ab2cf9b5d0f65ad46b33a205",
-  "sameTree": true,
-  "sameAggregate": true,
-  "uniquePaths": 840,
-  "verification": "Exact replay from the pinned upstream affected-path baseline; Git tree identity and canonical binary aggregate diff both match the former 100-patch series."
+  ]
 }

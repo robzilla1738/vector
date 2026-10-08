@@ -1207,10 +1207,10 @@ index 0000000..3e8324b
 +}
 diff --git a/chrome/browser/ui/aux/profile_prefs.h b/chrome/browser/ui/aux/profile_prefs.h
 new file mode 100644
-index 0000000..55e5d68
+index 0000000..b81f75e
 --- /dev/null
 +++ b/chrome/browser/ui/aux/profile_prefs.h
-@@ -0,0 +1,20 @@
+@@ -0,0 +1,21 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1228,6 +1228,7 @@ index 0000000..55e5d68
 +inline constexpr char kQuickAskShortcutEnabledPref[] = "aux.quick_ask_shortcut_enabled";
 +inline constexpr char kKeepRuntimeInBackgroundPref[] = "aux.keep_runtime_in_background";
 +inline constexpr char kMemorySaverMinutesPref[] = "aux.memory_saver_minutes";
++inline constexpr char kDismissedDownloadsPref[] = "aux.dismissed_downloads";
 +}  // namespace aux
 +
 +#endif  // CHROME_BROWSER_UI_AUX_PROFILE_PREFS_H_

@@ -1501,10 +1501,10 @@ index c99d041..1f147a4 100644
  
  #endif  // CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_SIDE_PANEL_UI_H_
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-index 5c29c02..b6ea600 100644
+index 5c29c02..e382a5a 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-@@ -3,9 +3,69 @@
+@@ -3,9 +3,70 @@
  // found in the LICENSE file.
  
  #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
@@ -1528,6 +1528,7 @@ index 5c29c02..b6ea600 100644
 +#include "third_party/blink/public/common/page/page_zoom.h"
 +#include "base/json/json_reader.h"
 +#include "base/json/json_writer.h"
++#include "base/uuid.h"
  #include "base/notimplemented.h"
 +#include "base/strings/string_number_conversions.h"
 +#include "base/strings/string_util.h"
@@ -1574,7 +1575,7 @@ index 5c29c02..b6ea600 100644
  #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
  #include "chrome/browser/profiles/profile.h"
  #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
-@@ -34,6 +94,15 @@
+@@ -34,6 +95,15 @@
  #include "chrome/grit/tab_strip_api_resources_map.h"
  #include "chrome/grit/webui_browser_resources.h"
  #include "chrome/grit/webui_browser_resources_map.h"
@@ -1590,7 +1591,7 @@ index 5c29c02..b6ea600 100644
  #include "chrome/grit/webui_toolbar_shared_resources.h"
  #include "chrome/grit/webui_toolbar_shared_resources_map.h"
  #include "components/contextual_search/contextual_search_service.h"
-@@ -42,18 +111,124 @@
+@@ -42,18 +112,124 @@
  #include "components/guest_contents/browser/guest_contents_host_impl.h"
  #include "components/surface_embed/common/features.h"
  #include "content/public/browser/browser_context.h"
@@ -1715,7 +1716,7 @@ index 5c29c02..b6ea600 100644
  std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
    // TODO(webium): Ideally, the titles should be added to SIDE_PANEL_ENTRY_IDS
    // macros in chrome/browser/ui/side_panel/side_panel_entry_id.h, and
-@@ -79,9 +254,59 @@ std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
+@@ -79,9 +255,59 @@ std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
  
  }  // namespace
  
@@ -1776,7 +1777,7 @@ index 5c29c02..b6ea600 100644
  
  bool WebUIBrowserUIConfig::IsWebUIEnabled(
      content::BrowserContext* browser_context) {
-@@ -99,18 +324,39 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
+@@ -99,18 +325,39 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
    WebUIBrowserWindow* webui_browser_window =
        WebUIBrowserWindow::FromWebShellWebContents(web_ui->GetWebContents());
    Profile* profile = Profile::FromWebUI(web_ui);
@@ -1817,7 +1818,7 @@ index 5c29c02..b6ea600 100644
    source->AddResourcePaths(kTabStripApiResources);
    source->AddResourcePaths(kWebuiToolbarSharedResources);
  
-@@ -167,7 +413,12 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
+@@ -167,7 +414,12 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
    }
  }
  
@@ -1831,7 +1832,7 @@ index 5c29c02..b6ea600 100644
  
  void WebUIBrowserUI::BindInterface(
      mojo::PendingReceiver<webui_browser::mojom::PageHandlerFactory> receiver) {
-@@ -175,6 +426,651 @@ void WebUIBrowserUI::BindInterface(
+@@ -175,6 +427,825 @@ void WebUIBrowserUI::BindInterface(
    page_factory_receiver_.Bind(std::move(receiver));
  }
  
@@ -1890,6 +1891,10 @@ index 5c29c02..b6ea600 100644
 +
 +void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
 +                                  int index) {
++  if (file_dialog_purpose_ == FileDialogPurpose::kEvidenceDocuments) {
++    MultiFilesSelected({file});
++    return;
++  }
 +  scoped_refptr<ui::SelectFileDialog> dialog = std::move(open_file_dialog_);
 +  auto callback = std::move(file_dialog_callback_);
 +  const auto purpose =
@@ -1898,6 +1903,9 @@ index 5c29c02..b6ea600 100644
 +  std::string transfer_passphrase = std::move(password_transfer_passphrase_);
 +  base::FilePath save_source = std::move(save_file_source_);
 +  int64_t save_source_size = std::exchange(save_file_source_size_, 0);
++  std::string save_pdf_page_id = std::exchange(save_pdf_page_id_, {});
++  auto save_pdf_document =
++      std::exchange(save_pdf_document_, content::WeakDocumentPtr());
 +  const base::FilePath& selected_path =
 +      file.local_path.empty() ? file.file_path : file.local_path;
 +  if (selected_path.empty()) {
@@ -2017,12 +2025,10 @@ index 5c29c02..b6ea600 100644
 +            std::move(callback), selected_path));
 +    return;
 +  }
-+  if (purpose == FileDialogPurpose::kEvidenceImage ||
-+      purpose == FileDialogPurpose::kEvidenceDocument) {
++  if (purpose == FileDialogPurpose::kEvidenceImage) {
 +    base::ThreadPool::PostTaskAndReplyWithResult(
 +        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
-+        base::BindOnce(&ReadAuxEvidence, selected_path,
-+                       purpose == FileDialogPurpose::kEvidenceImage),
++        base::BindOnce(&ReadAuxEvidence, selected_path, true),
 +        base::BindOnce(
 +            [](RequestCallback callback, std::optional<std::string> result) {
 +              std::move(callback).Run(result.has_value(), result.value_or(""),
@@ -2035,9 +2041,11 @@ index 5c29c02..b6ea600 100644
 +#if BUILDFLAG(ENABLE_PRINTING)
 +  BrowserWindowInterface* owner = nullptr;
 +  auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
-+  auto* contents = catalog->FindPage(save_pdf_page_id_, &owner);
-+  save_pdf_page_id_.clear();
-+  if (purpose != FileDialogPurpose::kSavePdf || !contents || owner != browser_ ||
++  auto* contents = catalog->FindPage(save_pdf_page_id, &owner);
++  auto* frame = save_pdf_document.AsRenderFrameHostIfValid();
++  if (purpose != FileDialogPurpose::kSavePdf || !contents ||
++      owner != browser_ || !frame || !frame->IsActive() ||
++      !frame->IsRenderFrameLive() || contents->GetPrimaryMainFrame() != frame ||
 +      browser_->GetTabStripModel()->GetActiveWebContents() != contents ||
 +      !chrome::CanPrint(browser_)) {
 +    std::move(callback).Run(false, "", "conflict",
@@ -2054,12 +2062,26 @@ index 5c29c02..b6ea600 100644
 +    return;
 +  }
 +  manager->PrintToPdf(
-+      contents->GetPrimaryMainFrame(), "",
++      frame, "",
 +      std::move(std::get<printing::mojom::PrintPagesParamsPtr>(parameters)),
 +      base::BindOnce(
-+          [](RequestCallback callback, base::FilePath destination,
-+             print_to_pdf::PdfPrintResult result,
++          [](base::WeakPtr<BrowserWindowInterface> window, std::string page_id,
++             content::WeakDocumentPtr document, RequestCallback callback,
++             base::FilePath destination, print_to_pdf::PdfPrintResult result,
 +             scoped_refptr<base::RefCountedMemory> pdf) {
++            auto* frame = document.AsRenderFrameHostIfValid();
++            BrowserWindowInterface* owner = nullptr;
++            auto* contents =
++                window ? aux::TabCatalog::GetForProfile(window->GetProfile())
++                             ->FindPage(page_id, &owner)
++                       : nullptr;
++            if (!window || !contents || owner != window.get() || !frame ||
++                !frame->IsActive() || !frame->IsRenderFrameLive() ||
++                contents->GetPrimaryMainFrame() != frame) {
++              std::move(callback).Run(false, "", "conflict",
++                                      "The page changed before PDF export");
++              return;
++            }
 +            if (result != print_to_pdf::PdfPrintResult::kPrintSuccess || !pdf ||
 +                pdf->size() == 0) {
 +              std::move(callback).Run(false, "", "internal",
@@ -2083,11 +2105,157 @@ index 5c29c02..b6ea600 100644
 +                    },
 +                    std::move(callback), destination));
 +          },
-+          std::move(callback), selected_path));
++          browser_->GetWeakPtr(), std::move(save_pdf_page_id),
++          std::move(save_pdf_document), std::move(callback), selected_path));
 +#else
 +  std::move(callback).Run(false, "", "not_supported",
 +                          "PDF rendering is unavailable");
 +#endif
++}
++
++bool WebUIBrowserUI::EvidenceDocumentsCurrent(
++    const std::string& selection_id) const {
++  if (!evidence_document_selection_ ||
++      evidence_document_selection_->id != selection_id ||
++      !evidence_document_selection_->window ||
++      evidence_document_selection_->window.get() != browser_ ||
++      !IsAuthorizedAuxDocument()) {
++    return false;
++  }
++  auto* frame =
++      evidence_document_selection_->document.AsRenderFrameHostIfValid();
++  return frame && frame->IsActive() && frame->IsRenderFrameLive() &&
++         frame == web_ui()->GetRenderFrameHost() &&
++         frame == web_ui()->GetWebContents()->GetPrimaryMainFrame();
++}
++
++void WebUIBrowserUI::BeginAuxEvidenceDocuments(RequestCallback callback) {
++  if (open_file_dialog_) {
++    std::move(callback).Run(false, "", "conflict",
++                            "A file dialog is already open");
++    return;
++  }
++  evidence_document_selection_.reset();
++  auto* frame = web_ui()->GetRenderFrameHost();
++  if (!IsAuthorizedAuxDocument() || !frame || !frame->IsActive() ||
++      !frame->IsRenderFrameLive() ||
++      frame != web_ui()->GetWebContents()->GetPrimaryMainFrame()) {
++    std::move(callback).Run(false, "", "ref_stale",
++                            "Original document picker window is unavailable");
++    return;
++  }
++  open_file_dialog_ = ui::SelectFileDialog::Create(
++      this,
++      std::make_unique<ChromeSelectFilePolicy>(web_ui()->GetWebContents()));
++  if (!open_file_dialog_) {
++    std::move(callback).Run(false, "", "not_supported",
++                            "The system file dialog is unavailable");
++    return;
++  }
++  evidence_document_selection_.emplace();
++  auto& selection = *evidence_document_selection_;
++  selection.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  selection.document = frame->GetWeakDocumentPtr();
++  selection.window = browser_->GetWeakPtr();
++  file_dialog_purpose_ = FileDialogPurpose::kEvidenceDocuments;
++  file_dialog_callback_ = std::move(callback);
++  open_file_dialog_->SelectFile(
++      ui::SelectFileDialog::SELECT_OPEN_MULTI_FILE, std::u16string(),
++      browser_->GetProfile()->last_selected_directory(), nullptr, 0,
++      base::FilePath::StringType(), browser_->GetWindow()->GetNativeWindow());
++}
++
++void WebUIBrowserUI::MultiFilesSelected(
++    const std::vector<ui::SelectedFileInfo>& files) {
++  scoped_refptr<ui::SelectFileDialog> dialog = std::move(open_file_dialog_);
++  auto callback = std::move(file_dialog_callback_);
++  const auto purpose =
++      std::exchange(file_dialog_purpose_, FileDialogPurpose::kNone);
++  if (purpose != FileDialogPurpose::kEvidenceDocuments ||
++      !evidence_document_selection_ ||
++      !EvidenceDocumentsCurrent(evidence_document_selection_->id)) {
++    evidence_document_selection_.reset();
++    std::move(callback).Run(false, "", "ref_stale",
++                            "Original document selection is unavailable");
++    return;
++  }
++  if (files.empty()) {
++    evidence_document_selection_.reset();
++    std::move(callback).Run(true, "null", "", "");
++    return;
++  }
++  auto& selection = *evidence_document_selection_;
++  selection.paths.reserve(files.size());
++  for (const auto& file : files) {
++    selection.paths.push_back(file.path());
++  }
++  if (!selection.paths.front().empty()) {
++    browser_->GetProfile()->set_last_selected_directory(
++        selection.paths.front().DirName());
++  }
++  base::DictValue result;
++  result.Set("selectionId", selection.id);
++  result.Set("count", static_cast<double>(selection.paths.size()));
++  std::move(callback).Run(true, *base::WriteJson(result), "", "");
++}
++
++void WebUIBrowserUI::ReadAuxEvidenceDocument(const std::string& selection_id,
++                                             double index,
++                                             RequestCallback callback) {
++  if (!EvidenceDocumentsCurrent(selection_id)) {
++    if (evidence_document_selection_ &&
++        evidence_document_selection_->id == selection_id) {
++      evidence_document_selection_.reset();
++    }
++    std::move(callback).Run(false, "", "ref_stale",
++                            "Original document selection is unavailable");
++    return;
++  }
++  auto& selection = *evidence_document_selection_;
++  if (!std::isfinite(index) || index < 0 || std::floor(index) != index ||
++      index > 9007199254740991.0 ||
++      index >= static_cast<double>(selection.paths.size())) {
++    std::move(callback).Run(false, "", "invalid_argument",
++                            "Document selection index is out of range");
++    return;
++  }
++  if (selection.reading) {
++    std::move(callback).Run(false, "", "conflict",
++                            "A document read is already in progress");
++    return;
++  }
++  selection.reading = true;
++  const base::FilePath path = selection.paths[static_cast<size_t>(index)];
++  const std::string filename =
++      base::UTF16ToUTF8(path.BaseName().LossyDisplayName());
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce(&ReadAuxEvidence, path, false),
++      base::BindOnce(
++          [](base::WeakPtr<WebUIBrowserUI> self, std::string selection_id,
++             std::string filename, RequestCallback callback,
++             std::optional<std::string> result) {
++            if (!self || !self->EvidenceDocumentsCurrent(selection_id)) {
++              if (self && self->evidence_document_selection_ &&
++                  self->evidence_document_selection_->id == selection_id) {
++                self->evidence_document_selection_.reset();
++              }
++              std::move(callback).Run(
++                  false, "", "ref_stale",
++                  "Original document selection is unavailable");
++              return;
++            }
++            self->evidence_document_selection_->reading = false;
++            std::move(callback).Run(
++                result.has_value(), result.value_or(""),
++                result ? "" : "invalid_argument",
++                result
++                    ? ""
++                    : filename +
++                          ": could not read a UTF-8 text document up to 2 MiB");
++          },
++          weak_factory_.GetWeakPtr(), selection_id, filename,
++          std::move(callback)));
 +}
 +
 +void WebUIBrowserUI::FileSelectionCanceled() {
@@ -2099,6 +2267,10 @@ index 5c29c02..b6ea600 100644
 +  save_file_source_.clear();
 +  save_file_source_size_ = 0;
 +  save_pdf_page_id_.clear();
++  save_pdf_document_ = {};
++  if (purpose == FileDialogPurpose::kEvidenceDocuments) {
++    evidence_document_selection_.reset();
++  }
 +  if (purpose == FileDialogPurpose::kDownloadFolder) {
 +    auto* prefs = DownloadPrefs::FromBrowserContext(browser_->GetProfile());
 +    base::DictValue result;
@@ -2118,6 +2290,7 @@ index 5c29c02..b6ea600 100644
 +  if (dictation_) {
 +    dictation_->CancelAll();
 +  }
++  evidence_document_selection_.reset();
 +  shell_host_receiver_.reset();
 +  shell_host_client_.reset();
 +  tab_catalog_subscription_ = {};
@@ -2450,7 +2623,9 @@ index 5c29c02..b6ea600 100644
 +      api_method == "runs.branch.list" ||
 +      api_method == "runs.answer" || api_method == "runs.continueBudget" ||
 +      api_method == "runs.retryModelSetup" ||
-+      api_method == "coding.undo" || api_method == "coding.worktreeInspect" ||
++      api_method == "coding.undo" || api_method == "coding.preview" ||
++      api_method == "coding.previewClose" ||
++      api_method == "coding.worktreeInspect" ||
 +      api_method == "coding.worktreeArchive" ||
 +      api_method == "packages.install" || api_method == "packages.remove" ||
 +      api_method == "packages.defaults" ||
@@ -2483,7 +2658,7 @@ index 5c29c02..b6ea600 100644
  void WebUIBrowserUI::BindInterface(
      mojo::PendingReceiver<bookmark_bar::mojom::PageHandlerFactory> receiver) {
    bookmark_bar_page_factory_receiver_.reset();
-@@ -188,8 +1084,7 @@ void WebUIBrowserUI::BindInterface(
+@@ -188,8 +1259,7 @@ void WebUIBrowserUI::BindInterface(
  }
  
  void WebUIBrowserUI::BindInterface(
@@ -2493,7 +2668,7 @@ index 5c29c02..b6ea600 100644
    searchbox_page_factory_receiver_.reset();
    searchbox_page_factory_receiver_.Bind(std::move(receiver));
  }
-@@ -316,17 +1211,32 @@ void WebUIBrowserUI::ShowSidePanel(SidePanelEntryKey side_panel_entry_key) {
+@@ -316,17 +1386,32 @@ void WebUIBrowserUI::ShowSidePanel(SidePanelEntryKey side_panel_entry_key) {
        browser_window()->GetWebUIBrowserSidePanelUI();
    content::WebContents* web_contents =
        side_panel_ui->GetWebContentsForId(side_panel_entry_key.id());
@@ -2528,10 +2703,10 @@ index 5c29c02..b6ea600 100644
  }
  
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
-index 1c81b67..bfa9706 100644
+index 1c81b67..57d0958 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
-@@ -6,7 +6,19 @@
+@@ -6,7 +6,21 @@
  #define CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_UI_H_
  
  #include <memory>
@@ -2539,9 +2714,11 @@ index 1c81b67..bfa9706 100644
 +#include <cstdint>
 +#include <map>
 +#include <string>
++#include <vector>
  
 +#include "base/callback_list.h"
 +#include "base/files/file_path.h"
++#include "base/memory/weak_ptr.h"
 +#include "chrome/browser/buildflags.h"
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +#include "chrome/browser/ui/webui_browser/shell_host.mojom.h"
@@ -2551,7 +2728,15 @@ index 1c81b67..bfa9706 100644
  #include "chrome/browser/ui/side_panel/side_panel_entry_key.h"
  #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter.h"
  #include "chrome/browser/ui/webui_browser/bookmark_bar.mojom.h"
-@@ -29,6 +41,11 @@
+@@ -20,6 +34,7 @@
+ #include "components/browser_apis/ui_controllers/toolbar/extensions_bar.mojom.h"
+ #include "components/guest_contents/common/guest_contents.mojom.h"
+ #include "components/omnibox/browser/searchbox.mojom.h"
++#include "content/public/browser/weak_document_ptr.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_ui_controller.h"
+ #include "content/public/browser/webui_config.h"
+@@ -29,6 +44,11 @@
  #include "ui/webui/resources/js/tracked_element/tracked_element.mojom.h"
  
  class BrowserWindowInterface;
@@ -2563,7 +2748,7 @@ index 1c81b67..bfa9706 100644
  
  namespace content {
  class BrowserContext;
-@@ -44,6 +61,22 @@ class TrackedElementHandler;
+@@ -44,6 +64,22 @@ class TrackedElementHandler;
  
  class RealboxHandler;
  class WebUIBrowserUI;
@@ -2586,7 +2771,7 @@ index 1c81b67..bfa9706 100644
  class WebUIBrowserBookmarkBarPageHandler;
  
  class WebUIBrowserUIConfig
-@@ -58,6 +91,12 @@ class WebUIBrowserUIConfig
+@@ -58,6 +94,12 @@ class WebUIBrowserUIConfig
  // The WebUI for chrome://webui-browser
  class WebUIBrowserUI : public ui::MojoWebUIController,
                         public webui_browser::mojom::PageHandlerFactory,
@@ -2599,7 +2784,7 @@ index 1c81b67..bfa9706 100644
                         public bookmark_bar::mojom::PageHandlerFactory,
                         public extensions_bar::mojom::PageHandlerFactory,
                         public searchbox::mojom::PageHandlerFactory {
-@@ -67,6 +106,10 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+@@ -67,6 +109,10 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
  
    void BindInterface(
        mojo::PendingReceiver<webui_browser::mojom::PageHandlerFactory> receiver);
@@ -2610,7 +2795,7 @@ index 1c81b67..bfa9706 100644
    void BindInterface(
        mojo::PendingReceiver<bookmark_bar::mojom::PageHandlerFactory> receiver);
    void BindInterface(
-@@ -75,8 +118,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+@@ -75,8 +121,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
        mojo::PendingReceiver<extensions_bar::mojom::PageHandlerFactory>
            receiver);
    void BindInterface(
@@ -2620,7 +2805,7 @@ index 1c81b67..bfa9706 100644
    void BindInterface(
        mojo::PendingReceiver<guest_contents::mojom::GuestContentsHost> receiver);
    void BindInterface(
-@@ -108,10 +150,92 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+@@ -108,10 +153,99 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
    }
  
    base::WeakPtr<WebUIBrowserUI> GetWeakPtr();
@@ -2701,7 +2886,14 @@ index 1c81b67..bfa9706 100644
 +      const std::string& method, const base::ListValue& args,
 +      RequestCallback callback);
 +  void FileSelected(const ui::SelectedFileInfo& file, int index) override;
++  void MultiFilesSelected(
++      const std::vector<ui::SelectedFileInfo>& files) override;
 +  void FileSelectionCanceled() override;
++  void BeginAuxEvidenceDocuments(RequestCallback callback);
++  void ReadAuxEvidenceDocument(const std::string& selection_id,
++                               double index,
++                               RequestCallback callback);
++  bool EvidenceDocumentsCurrent(const std::string& selection_id) const;
 +  void BeginAuxGeneratedSave(std::string filename,
 +                             std::string content,
 +                             base::FilePath source,
@@ -2713,7 +2905,7 @@ index 1c81b67..bfa9706 100644
    // webui_browser::mojom::PageHandlerFactory:
    void CreatePageHandler(
        mojo::PendingRemote<webui_browser::mojom::Page> page,
-@@ -156,6 +280,53 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+@@ -156,6 +290,62 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
    mojo::Receiver<webui_browser::mojom::PageHandlerFactory>
        page_factory_receiver_{this};
  
@@ -2745,7 +2937,7 @@ index 1c81b67..bfa9706 100644
 +    kDownloadFolder,
 +    kPluginDirectory,
 +    kEvidenceImage,
-+    kEvidenceDocument,
++    kEvidenceDocuments,
 +    kUnpackedExtension,
 +    kRuntimeRestore,
 +    kPasswordExport,
@@ -2762,6 +2954,15 @@ index 1c81b67..bfa9706 100644
 +  base::FilePath save_file_source_;
 +  int64_t save_file_source_size_ = 0;
 +  std::string save_pdf_page_id_;
++  content::WeakDocumentPtr save_pdf_document_;
++  struct EvidenceDocumentSelection {
++    std::string id;
++    content::WeakDocumentPtr document;
++    base::WeakPtr<BrowserWindowInterface> window;
++    std::vector<base::FilePath> paths;
++    bool reading = false;
++  };
++  std::optional<EvidenceDocumentSelection> evidence_document_selection_;
 +#endif
 +
    mojo::Receiver<bookmark_bar::mojom::PageHandlerFactory>

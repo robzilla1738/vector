@@ -1,22 +1,22 @@
 # Native patch ownership
 
-The consolidated checkpoint contains 32 area patches, numbered `0001`–`0032`. Each of its 840 paths with a net change from pinned Chromium belongs to exactly one patch. Subsequent coherent fixes append to the series: `0033` retires private semantic-filter resources with their actual Profile; `0034` registers implemented asynchronous runtime methods and routes coding Preview through its original window; `0035` binds embedded documents to acknowledged native input and actual physical event targets; `0036` gives human Find and Zoom browser ownership independent of Node. The complete series is the build input; intermediate area patches are not independently buildable products.
+The complete series contains 32 area patches, numbered `0001`–`0032`. Each of its 850 paths with a net change from pinned Chromium belongs to exactly one patch. The areas include native browser controls, document selections and PDF export, download dismissal, native history, private Profile retirement and embedded input ownership. Intermediate area patches are not independently buildable products.
 
-This consolidation replaces the 100-patch series at repository commit `26527f6659f3e90ee674eed93c8924d9993bd3ad`, through the former `0101-private-budget-sandbox-broker.patch`. Replaced patch files are removed; their history remains in Git. Numbering has restarted: the next available reservation is `0037`; the former `0102` reservation is retired. Historical patch numbers in earlier evidence refer to the original series, not this ownership table. Replay equality below describes the original 32-area checkpoint, excluding subsequent fixes.
+This checkpoint folds the reviewed `0033`–`0042` follow-ups into their existing owners. Replaced patch files are removed; their history remains in Git. The next available reservation is `0033`. References to the former `0033`–`0042`, the original 100-patch series through `0101`, or the retired `0102` reservation describe earlier checkpoints, not additional active patches.
 
 ## Replay evidence
 
-Both series replayed in disposable affected-path trees from Chromium `154.0.8037.98`, pinned to `b859317bf11f6be47f9b7799ec690a0a42a1fb33`. Every consolidated patch passed `git apply --index --check` and applied successfully. Git tree identity verifies exact path, byte and mode equality; the canonical binary aggregate diff also matches. No product or stock checkout, native builder, Profile or development lock was changed by this verification.
+The frozen 42-entry input and consolidated series replayed in disposable affected-path trees from Chromium `154.0.8037.98`, pinned to `b859317bf11f6be47f9b7799ec690a0a42a1fb33`. Every consolidated patch passed `git apply --index --check` and applied successfully. Git tree identity verifies exact path, byte and mode equality; the canonical binary aggregate diff also matches. A read-only comparison against the product checkout after the sole writer applied the same 42-entry input found no difference across the 850 series-owned paths. Generated bindings, staged renderer assets, runtime bundles and build outputs are outside this source comparison. Verification changed no product or stock source, index, Profile, build or development lock.
 
 | Evidence | Value |
 | --- | --- |
-| Original series SHA-256 | `6309dd337c944e01b119cf9c5ac560445f48ed840d199872ee9c3859164cb790` |
+| Input series SHA-256 | `775701a47eec9f4fcb7fa222e8ea91552e531f02f47b269fcbbf15efa6fa595d` |
 | Consolidated series SHA-256 | `2215c28f24f7e165db5bfffa1bf497ec06e909b19e737796b9b0c319a5a4543c` |
-| Identical aggregate SHA-256 | `22b2cb87234f0a3b7e42621b275f9f20bd736236ab2cf9b5d0f65ad46b33a205` |
-| Identical affected-path Git tree | `2cb374a898133839f46c9b047fd9ed36a24a611b` |
-| Net paths | 509 added, 331 modified, 0 deleted |
+| Identical aggregate SHA-256 | `6326a5ddea898910f334b03064f9fde016994b13713d4f0bfe18788c278e0d62` |
+| Identical affected-path Git tree | `ad8be052b051ddfeca6cdf2e14dce58b85055dfa` |
+| Net paths | 509 added, 341 modified, 0 deleted |
 
-The original series touched 1,969 paths historically. The other 1,129 paths have no remaining upstream delta, so consolidation carries no obsolete add/remove history. [consolidation.json](consolidation.json) records the individual area hashes and path counts at this checkpoint. This evidence establishes source equivalence; it does not claim native build, browser acceptance or performance completion.
+[consolidation.json](consolidation.json) records every input patch hash, final area hash and path count, plus the previous consolidation's provenance. Source equivalence does not establish native compilation, browser acceptance or performance completion. Current integration and live evidence belong in [STATUS](../../docs/STATUS.md).
 
 Renderer assets and generated host bindings are staged by their existing producers, not embedded in the series. The separate [stock benchmark patch](benchmark/0050-native-performance-stock.patch) remains unchanged and is not part of the Aux series.
 
@@ -33,14 +33,14 @@ Renderer assets and generated host bindings are staged by their existing produce
 | [0007-egress-permissions](aux/0007-egress-permissions.patch) | 25 | Egress authority, permissions and network admission |
 | [0008-native-person-observation](aux/0008-native-person-observation.patch) | 13 | Native person observation and document scripts |
 | [0009-native-person-capture](aux/0009-native-person-capture.patch) | 19 | Person capture, compositor receipts and capture masking |
-| [0010-native-input-admission](aux/0010-native-input-admission.patch) | 35 | Physical input provenance and platform input admission |
+| [0010-native-input-admission](aux/0010-native-input-admission.patch) | 43 | Physical input provenance and platform input admission |
 | [0011-native-creator-cleanup](aux/0011-native-creator-cleanup.patch) | 15 | Native creator ownership and cleanup |
 | [0012-tabs-memory-saver](aux/0012-tabs-memory-saver.patch) | 14 | Tab catalog, native memory saver, discard and wake lifecycle |
 | [0013-organization-spaces](aux/0013-organization-spaces.patch) | 5 | Organization layouts, Spaces and native placement identity |
 | [0014-profiles-routing](aux/0014-profiles-routing.patch) | 11 | Browser Profiles and link routing |
 | [0015-credentials-autofill](aux/0015-credentials-autofill.patch) | 13 | Credentials, autofill and native device confirmation |
 | [0016-content-blocking](aux/0016-content-blocking.patch) | 373 | Content filtering, maintained semantic engine/resources and network receipts |
-| [0017-library-history](aux/0017-library-history.patch) | 6 | Native bookmarks, folders, guarded Undo and history |
+| [0017-library-history](aux/0017-library-history.patch) | 8 | Native bookmarks, folders, guarded Undo and history |
 | [0018-downloads](aux/0018-downloads.patch) | 8 | Downloads and naming |
 | [0019-extensions](aux/0019-extensions.patch) | 10 | Browser extension controls |
 | [0020-dictation](aux/0020-dictation.patch) | 5 | Native dictation sessions |

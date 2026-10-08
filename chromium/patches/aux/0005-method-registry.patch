@@ -1,9 +1,9 @@
 diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 new file mode 100644
-index 0000000..c6f66aa
+index 0000000..f327501
 --- /dev/null
 +++ b/chrome/browser/ui/aux/method_registry.cc
-@@ -0,0 +1,239 @@
+@@ -0,0 +1,253 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -48,7 +48,7 @@ index 0000000..c6f66aa
 +    register_shell(AuxShellMethodGroup::kWindow, {"appearanceSnapshot"});
 +#endif
 +  register_shell(AuxShellMethodGroup::kContent,
-+                 {"preview", "readArticle", "siteZoom", "privatePageZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
++                 {"preview", "readArticle", "siteZoom", "pageZoom", "pageFind", "pageStopFind", "siteInfo", "setSiteTrackers", "sitePermissions",
 +                  "httpAuthRequests", "respondHttpAuth",
 +                  "clearSitePermission", "clearSiteData", "siteDataCount",
 +                  "browsingDataPreview", "clearBrowsingData", "httpsUpgrade",
@@ -90,7 +90,7 @@ index 0000000..c6f66aa
 +                  "keepRuntimeInBackground",
 +                  "defaultPageZoom", "memorySaverGet", "memorySaverSet",
 +                  "startupPreferences",
-+                  "downloadsSnapshot", "controlDownload", "retryDownload"});
++                  "downloadsSnapshot", "dismissDownloads", "controlDownload", "retryDownload"});
 +  register_shell(AuxShellMethodGroup::kSurfaces,
 +                 {"setStageVisible", "pictureInPicture", "omnibox.start", "omnibox.stop", "omnibox.open", "preloadNavigation", "auth.confirm"});
 +  register_shell(AuxShellMethodGroup::kExtensions,
@@ -101,7 +101,8 @@ index 0000000..c6f66aa
 +                  "extensionActions", "pinExtensionAction", "extensionCommands",
 +                  "setExtensionCommandShortcut", "extensionSidePanel"});
 +  register_shell(AuxShellMethodGroup::kLibrary,
-+                 {"organizationSnapshot", "organizationCommit", "bookmarksInvoke"});
++                 {"organizationSnapshot", "organizationCommit",
++                  "bookmarksInvoke", "historyInvoke"});
 +  register_shell(AuxShellMethodGroup::kTabs,
 +                 {"bindTabSpace", "migrateTabSpaces", "tabsSnapshot",
 +                  "tabsSince", "tabCommand", "tabAudio", "tabsUnsavedWork", "tabSleep", "archiveTab"});
@@ -115,7 +116,8 @@ index 0000000..c6f66aa
 +                  "agentConfig", "agentConnections", "agentClients",
 +                  "revokeAgentConnection",
 +                  "openPluginDirectory", "pickEvidenceImage",
-+                  "pickEvidenceDocument", "closeWindow", "openExternal",
++                  "pickEvidenceDocuments", "readEvidenceDocument",
++                  "releaseEvidenceDocuments", "closeWindow", "openExternal",
 +                  "navigationMenu", "contextMenu",
 +                  "revealPath", "openPath"});
 +  register_shell(AuxShellMethodGroup::kWindow,
@@ -134,8 +136,7 @@ index 0000000..c6f66aa
 +                    "native.egressResumeRun", "native.egressCheckRunResume",
 +                    "native.egressRunTerminal", "native.adoptSessionPage", "native.egressContext",
 +                    "native.egressInstall", "native.egressRevoke",
-+                    "native.contentBlockBegin", "native.contentBlockAppend",
-+                    "native.contentBlockOperation"});
++                    "native.contentBlockBegin", "native.contentBlockAppend"});
 +  register_runtime(AuxRuntimeMethodGroup::kPower, {"native.powerActivity", "native.powerStatus", "native.powerRelease"});
 +  register_runtime(AuxRuntimeMethodGroup::kCdp,
 +                   {"native.cdpReset", "native.cdpCatalog", "native.cdpStartNavigation", "native.cdpDispatch", "native.cdpVersion"});
@@ -168,6 +169,19 @@ index 0000000..c6f66aa
 +                    "native.historyImport",
 +                    "native.historyRemove", "native.webmcpList",
 +                    "native.webmcpCall"});
++  register_runtime(
++      AuxRuntimeMethodGroup::kAsync,
++      {"native.privateProvider", "native.cloudPreview",
++       "native.cloudPreviewClose", "native.projectFiles",
++       "native.projectFile", "native.projectChanges", "native.projectCancel",
++       "native.terminalStart", "native.terminalRead", "native.terminalInput",
++       "native.terminalResize", "native.terminalClose",
++       "native.terminalListeners", "native.terminalPreview",
++       "native.terminalPreviewClose", "native.browserImportSelectWindow",
++       "native.browserImportSelectExport", "native.browserImportExportPoll",
++       "native.browserImportExportCancel", "native.browserImportDiscover",
++       "native.browserImportExtensionReview", "native.browserImportBegin",
++       "native.browserImportPoll", "native.browserImportCancel"});
 +  register_runtime(AuxRuntimeMethodGroup::kWorker,
 +                   {"native.storeSecret", "native.readSecret",
 +                    "native.profileStorageRoot", "native.profileStorageFactor",

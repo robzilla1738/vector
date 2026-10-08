@@ -244,10 +244,10 @@ index 0000000..e6db719
 +#endif
 diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
 new file mode 100644
-index 0000000..0e06cdc
+index 0000000..3c513b1
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/window_methods.cc
-@@ -0,0 +1,1122 @@
+@@ -0,0 +1,1151 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1116,8 +1116,39 @@ index 0000000..0e06cdc
 +        base::FilePath::StringType(), browser_->GetWindow()->GetNativeWindow());
 +    return;
 +  }
++  if (method == "pickEvidenceDocuments") {
++    if (!args.empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid document picker arguments");
++      return;
++    }
++    BeginAuxEvidenceDocuments(std::move(callback));
++    return;
++  }
++  if (method == "readEvidenceDocument" ||
++      method == "releaseEvidenceDocuments") {
++    const bool read = method == "readEvidenceDocument";
++    if (args.size() != (read ? 2u : 1u) || !args[0].is_string() ||
++        args[0].GetString().empty() || args[0].GetString().size() > 200 ||
++        (read && !args[1].is_int() && !args[1].is_double())) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid document selection arguments");
++      return;
++    }
++    const std::string& id = args[0].GetString();
++    if (read) {
++      ReadAuxEvidenceDocument(id, args[1].GetDouble(), std::move(callback));
++    } else {
++      if (evidence_document_selection_ &&
++          evidence_document_selection_->id == id) {
++        evidence_document_selection_.reset();
++      }
++      std::move(callback).Run(true, "null", "", "");
++    }
++    return;
++  }
 +  if (method == "saveFile" || method == "openPluginDirectory" ||
-+      method == "pickEvidenceImage" || method == "pickEvidenceDocument") {
++      method == "pickEvidenceImage") {
 +    const bool saving = method == "saveFile";
 +    if ((saving && (list->size() != 2 || !(*list)[0].is_string() ||
 +                    !(*list)[1].is_string())) ||
@@ -1162,9 +1193,7 @@ index 0000000..0e06cdc
 +    } else if (method == "openPluginDirectory") {
 +      file_dialog_purpose_ = FileDialogPurpose::kPluginDirectory;
 +    } else {
-+      file_dialog_purpose_ = method == "pickEvidenceImage"
-+                                 ? FileDialogPurpose::kEvidenceImage
-+                                 : FileDialogPurpose::kEvidenceDocument;
++      file_dialog_purpose_ = FileDialogPurpose::kEvidenceImage;
 +    }
 +    file_dialog_callback_ = std::move(callback);
 +    const auto dialog_type =

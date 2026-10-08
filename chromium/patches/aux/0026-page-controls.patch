@@ -263,10 +263,10 @@ index 0000000..6141c83
 +#endif  // CHROME_BROWSER_UI_AUX_HEALTH_RECORDER_H_
 diff --git a/chrome/browser/ui/aux/methods/content_methods.cc b/chrome/browser/ui/aux/methods/content_methods.cc
 new file mode 100644
-index 0000000..1e787dd
+index 0000000..2973041
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/content_methods.cc
-@@ -0,0 +1,1654 @@
+@@ -0,0 +1,1738 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -326,6 +326,7 @@ index 0000000..1e787dd
 +#include "chrome/browser/ui/login/login_tab_helper.h"
 +#include "chrome/browser/ui/aux/content_blocking_controller.h"
 +#include "chrome/browser/ui/aux/dictation_mac.h"
++#include "chrome/browser/ui/aux/native_find.h"
 +#include "chrome/browser/ui/aux/extension_bridge.h"
 +#include "chrome/browser/ui/aux/runtime_host.h"
 +#include "chrome/browser/ui/aux/organization_store.h"
@@ -1647,15 +1648,67 @@ index 0000000..1e787dd
 +    std::move(callback).Run(true, "true", "", "");
 +    return;
 +  }
-+  if (method == "privatePageZoom") {
-+    if (!browser_->GetProfile()->IsOffTheRecord()) {
-+      std::move(callback).Run(false, "", "permission_denied",
-+                              "Private page zoom is only available in Private windows");
++  if (method == "pageFind" || method == "pageStopFind") {
++    const bool find = method == "pageFind";
++    if (list->size() != (find ? 3u : 2u) || !(*list)[0].is_string() ||
++        !(*list)[1].is_string() || (find && !(*list)[2].is_dict())) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid page find request");
 +      return;
 +    }
++    const std::string page_id = (*list)[0].GetString();
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    BrowserWindowInterface* owner = nullptr;
++    auto* contents = catalog ? catalog->FindPage(page_id, &owner) : nullptr;
++    if (!contents || owner != browser_ || !contents->GetPrimaryMainFrame()) {
++      std::move(callback).Run(false, "", "not_found", "The page is no longer in this window");
++      return;
++    }
++    const auto original_document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++    auto reply = base::BindOnce(
++        [](base::WeakPtr<BrowserWindowInterface> window, std::string page_id,
++           content::WeakDocumentPtr document, RequestCallback callback,
++           base::DictValue response) {
++          auto* frame = document.AsRenderFrameHostIfValid();
++          auto* catalog = window ? aux::TabCatalog::GetForProfile(window->GetProfile()) : nullptr;
++          BrowserWindowInterface* owner = nullptr;
++          auto* page = catalog ? catalog->FindPage(page_id, &owner) : nullptr;
++          if (!window || !frame || !page || owner != window.get() ||
++              page->GetPrimaryMainFrame() != frame) {
++            std::move(callback).Run(false, "", "conflict", "The find document changed");
++            return;
++          }
++          if (const auto* error = response.FindDict("error")) {
++            const auto* code = error->FindString("code");
++            const auto* message = error->FindString("message");
++            std::move(callback).Run(false, "", code ? *code : "backend_unavailable",
++                                    message ? *message : "Page find is unavailable");
++            return;
++          }
++          const auto* result = response.FindDict("result");
++          const auto json = result ? base::WriteJson(*result) : std::nullopt;
++          std::move(callback).Run(json.has_value(), json.value_or(""),
++                                  json ? "" : "backend_unavailable",
++                                  json ? "" : "Invalid page find result");
++        }, browser_->GetWeakPtr(), page_id, original_document, std::move(callback));
++    auto* finder = aux::NativeFind::ForProfile(browser_->GetProfile());
++    base::DictValue params;
++    params.Set("pageId", page_id);
++    if (find) {
++      const auto& options = (*list)[2].GetDict();
++      params.Set("text", (*list)[1].GetString());
++      params.Set("findNext", options.FindBool("findNext").value_or(false));
++      params.Set("forward", options.FindBool("forward").value_or(true));
++      finder->Find(params, std::move(reply), false, browser_);
++    } else {
++      params.Set("action", (*list)[1].GetString());
++      std::move(reply).Run(finder->Stop(params));
++    }
++    return;
++  }
++  if (method == "pageZoom") {
 +    if (list->size() != 2 || !(*list)[0].is_string() || !(*list)[1].is_dict()) {
 +      std::move(callback).Run(false, "", "invalid_argument",
-+                              "Invalid Private page zoom request");
++                              "Invalid page zoom request");
 +      return;
 +    }
 +    BrowserWindowInterface* owner = nullptr;
@@ -1829,24 +1882,55 @@ index 0000000..1e787dd
 +                previous, allowed, std::move(callback)));
 +        return;
 +      }
-+      base::DictValue params;
-+      params.Set("hostname", url.host());
-+      params.Set("allowed", allowed);
-+      base::DictValue site_guard;
-+      site_guard.Set("pageId", page_id);
-+      site_guard.Set("expectedUrl", url.spec());
-+      site_guard.Set("navigationId", navigation_id);
-+      params.Set("siteGuard", std::move(site_guard));
-+      AuxRuntimeHost::ForProfile(browser_->GetProfile())
-+          ->CallInternal("blocking.setSiteAllowed", *base::WriteJson(params),
-+                         base::BindOnce(
-+                             [](RequestCallback callback,
-+                                AuxRuntimeHost::Response response) {
-+                               std::move(callback).Run(
-+                                   response.ok, response.result_json,
-+                                   response.error_code, response.error_message);
-+                             },
-+                             std::move(callback)));
++      auto* shell_frame = web_ui()->GetWebContents()->GetPrimaryMainFrame();
++      auto* target_frame = contents->GetPrimaryMainFrame();
++      if (!shell_frame || !target_frame || !target_frame->IsActive() ||
++          !target_frame->IsRenderFrameLive()) {
++        std::move(callback).Run(false, "", "ref_stale",
++                                "The original website document is unavailable");
++        return;
++      }
++      auto current = base::BindRepeating(
++          [](base::WeakPtr<WebUIBrowserUI> ui,
++             base::WeakPtr<BrowserWindowInterface> window,
++             content::WeakDocumentPtr document,
++             content::WeakDocumentPtr target_document, std::string page_id,
++             GURL url, int navigation_id) {
++            auto* frame = document.AsRenderFrameHostIfValid();
++            auto* target = target_document.AsRenderFrameHostIfValid();
++            if (!ui || !window || ui->browser_ != window.get() || !frame ||
++                !frame->IsActive() || !frame->IsRenderFrameLive() || !target ||
++                !target->IsActive() || !target->IsRenderFrameLive() ||
++                !ui->IsAuthorizedAuxDocument() || frame !=
++                    ui->web_ui()->GetWebContents()->GetPrimaryMainFrame())
++              return false;
++            BrowserWindowInterface* owner = nullptr;
++            auto* catalog = aux::TabCatalog::GetForProfile(window->GetProfile());
++            auto* page = catalog ? catalog->FindPage(page_id, &owner) : nullptr;
++            const auto* entry = page
++                ? page->GetController().GetLastCommittedEntry() : nullptr;
++            return page && owner == window.get() &&
++                page->GetPrimaryMainFrame() == target && entry &&
++                entry->GetUniqueID() == navigation_id &&
++                page->GetLastCommittedURL() == url;
++          }, weak_factory_.GetWeakPtr(), browser_->GetWeakPtr(),
++          shell_frame->GetWeakDocumentPtr(), target_frame->GetWeakDocumentPtr(),
++          page_id, url, navigation_id);
++      blocker->SetSiteAllowed(url.host(), allowed, current,
++          base::BindOnce(
++              [](aux::ContentBlockingController::OwnerCurrent current,
++                 std::string host, bool allowed, RequestCallback callback,
++                 std::optional<base::DictValue> receipt, std::string error) {
++                if (!receipt || !current.Run()) {
++                  std::move(callback).Run(false, "", "conflict",
++                      error.empty() ? "The original website document changed" : error);
++                  return;
++                }
++                base::DictValue result;
++                result.Set("hostname", host);
++                result.Set("allowed", allowed);
++                std::move(callback).Run(true, *base::WriteJson(result), "", "");
++              }, current, url.host(), allowed, std::move(callback)));
 +      return;
 +    }
 +    base::DictValue result;
@@ -2336,10 +2420,10 @@ index 0000000..1f98e3c
 +}
 diff --git a/chrome/browser/ui/aux/methods/page_controls_methods.cc b/chrome/browser/ui/aux/methods/page_controls_methods.cc
 new file mode 100644
-index 0000000..979ae4a
+index 0000000..8c32531
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
-@@ -0,0 +1,795 @@
+@@ -0,0 +1,806 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -2394,6 +2478,7 @@ index 0000000..979ae4a
 +#include "chrome/browser/ui/aux/runtime_host.h"
 +#include "chrome/browser/ui/aux/organization_store.h"
 +#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/aux/shell_events.h"
 +#include "chrome/browser/ui/zoom/chrome_zoom_level_prefs.h"
 +#include "chrome/browser/ui/aux/profile_search_engine.h"
 +#include "chrome/browser/ui/aux/result_preview.h"
@@ -2882,6 +2967,12 @@ index 0000000..979ae4a
 +                            "", "");
 +    return;
 +  }
++  if (method == "dismissDownloads") {
++    base::DictValue result;
++    result.Set("removed", aux::DismissDownloads(browser_->GetProfile(), (*list)[0].GetList()));
++    std::move(callback).Run(true, *base::WriteJson(result), "", "");
++    return;
++  }
 +  if (method == "downloadsSnapshot") {
 +    base::ListValue result;
 +    content::DownloadManager::DownloadVector items;
@@ -2889,6 +2980,7 @@ index 0000000..979ae4a
 +      manager->GetAllDownloads(&items);
 +    }
 +    for (download::DownloadItem* item : items) {
++      if (aux::DownloadIsDismissed(browser_->GetProfile(), item)) continue;
 +      base::DictValue row;
 +      row.Set("id", item->GetGuid());
 +      if (!item->GetURL().is_empty())
@@ -3090,7 +3182,9 @@ index 0000000..979ae4a
 +    BrowserWindowInterface* owner = nullptr;
 +    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
 +    auto* contents = catalog->FindPage((*list)[0].GetString(), &owner);
-+    if (!contents || owner != browser_ ||
++    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++    if (!contents || owner != browser_ || !frame || !frame->IsActive() ||
++        !frame->IsRenderFrameLive() ||
 +        browser_->GetTabStripModel()->GetActiveWebContents() != contents) {
 +      std::move(callback).Run(false, "", "not_found",
 +                              "Select the page before saving its PDF");
@@ -3115,6 +3209,7 @@ index 0000000..979ae4a
 +    }
 +    file_dialog_purpose_ = FileDialogPurpose::kSavePdf;
 +    save_pdf_page_id_ = (*list)[0].GetString();
++    save_pdf_document_ = frame->GetWeakDocumentPtr();
 +    file_dialog_callback_ = std::move(callback);
 +    ui::SelectFileDialog::FileTypeInfo file_types;
 +    file_types.extensions = {{FILE_PATH_LITERAL("pdf")}};
@@ -3137,10 +3232,10 @@ index 0000000..979ae4a
 +#endif
 diff --git a/chrome/browser/ui/aux/native_find.cc b/chrome/browser/ui/aux/native_find.cc
 new file mode 100644
-index 0000000..ba9a98d
+index 0000000..3071ef2
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_find.cc
-@@ -0,0 +1,163 @@
+@@ -0,0 +1,185 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -3148,6 +3243,7 @@ index 0000000..ba9a98d
 +#include "chrome/browser/ui/aux/native_find.h"
 +
 +#include <algorithm>
++#include <memory>
 +#include <utility>
 +#include <vector>
 +
@@ -3165,6 +3261,7 @@ index 0000000..ba9a98d
 +
 +namespace aux {
 +namespace {
++constexpr char kNativeFindKey = 0;
 +base::DictValue Fault(const char* code, const char* message) {
 +  base::DictValue error;
 +  error.Set("code", code);
@@ -3183,6 +3280,15 @@ index 0000000..ba9a98d
 +}
 +}  // namespace
 +
++NativeFind* NativeFind::ForProfile(Profile* profile) {
++  auto* existing = static_cast<NativeFind*>(profile->GetUserData(&kNativeFindKey));
++  if (existing) return existing;
++  auto owned = std::make_unique<NativeFind>(profile);
++  auto* service = owned.get();
++  profile->SetUserData(&kNativeFindKey, std::move(owned));
++  return service;
++}
++
 +NativeFind::NativeFind(Profile* profile) : profile_(profile) {}
 +NativeFind::~NativeFind() {
 +  for (auto& [helper, contents] : observed_) helper->RemoveObserver(this);
@@ -3199,20 +3305,30 @@ index 0000000..ba9a98d
 +  std::move(reply).Run(std::move(result));
 +}
 +
-+void NativeFind::Find(const base::DictValue& params, Reply reply) {
++void NativeFind::CancelOwner(const void* request_owner) {
++  std::vector<std::string> pending;
++  const auto identity = reinterpret_cast<uintptr_t>(request_owner);
++  for (const auto& [id, request] : pending_)
++    if (request.request_owner == identity) pending.push_back(id);
++  for (const auto& id : pending)
++    Finish(id, Fault("cancelled", "The original find owner retired"));
++}
++
++void NativeFind::Find(const base::DictValue& params, Reply reply,
++                      bool web_only, const void* request_owner) {
 +  const std::string* page_id = params.FindString("pageId");
 +  const std::string* text = params.FindString("text");
 +  const auto forward = params.FindBool("forward");
 +  const auto find_next = params.FindBool("findNext");
 +  if (!page_id || !text || !forward || !find_next || text->empty() ||
-+      text->size() > 4096 || !base::IsStringUTF8(*text)) {
++      text->size() > 16384 || !base::IsStringUTF8(*text)) {
 +    std::move(reply).Run(Fault("invalid_params", "Invalid find request"));
 +    return;
 +  }
 +  auto* catalog = TabCatalog::GetForProfile(profile_);
 +  content::WebContents* contents = catalog ? catalog->FindPage(*page_id) : nullptr;
 +  if (!contents || contents->GetBrowserContext() != profile_ ||
-+      !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
++      (web_only && !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS())) {
 +    std::move(reply).Run(Fault("not_found", "Page is not in this Profile"));
 +    return;
 +  }
@@ -3228,7 +3344,8 @@ index 0000000..ba9a98d
 +  Finish(*page_id, Fault("conflict", "A newer find replaced this request"));
 +  if (observed_.emplace(helper, contents).second) helper->AddObserver(this);
 +  if (!*find_next) helper->StopFinding(find_in_page::SelectionAction::kClear);
-+  pending_.emplace(*page_id, Pending{reinterpret_cast<uintptr_t>(contents),
++  pending_.emplace(*page_id, Pending{reinterpret_cast<uintptr_t>(request_owner),
++                                     reinterpret_cast<uintptr_t>(contents),
 +                                     reinterpret_cast<uintptr_t>(&contents->GetPrimaryPage()), 0,
 +                                     std::move(reply)});
 +  helper->StartFinding(base::UTF8ToUTF16(*text), *forward,
@@ -3306,10 +3423,10 @@ index 0000000..ba9a98d
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/native_find.h b/chrome/browser/ui/aux/native_find.h
 new file mode 100644
-index 0000000..25cccf8
+index 0000000..90e10ae
 --- /dev/null
 +++ b/chrome/browser/ui/aux/native_find.h
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,59 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -3325,6 +3442,7 @@ index 0000000..25cccf8
 +#include "base/memory/raw_ptr.h"
 +#include "base/memory/weak_ptr.h"
 +#include "base/values.h"
++#include "base/supports_user_data.h"
 +#include "components/find_in_page/find_result_observer.h"
 +
 +class Profile;
@@ -3335,18 +3453,23 @@ index 0000000..25cccf8
 +
 +// Observes Chromium's actual find results. Pending results are tied to the
 +// owning Profile, page ID, document, and find request; stale replies fail.
-+class NativeFind final : public find_in_page::FindResultObserver {
++class NativeFind final : public find_in_page::FindResultObserver,
++                         public base::SupportsUserData::Data {
 + public:
 +  using Reply = base::OnceCallback<void(base::DictValue)>;
++  static NativeFind* ForProfile(Profile* profile);
 +  explicit NativeFind(Profile* profile);
 +  ~NativeFind() override;
-+  void Find(const base::DictValue& params, Reply reply);
++  void Find(const base::DictValue& params, Reply reply, bool web_only,
++            const void* request_owner);
++  void CancelOwner(const void* request_owner);
 +  base::DictValue Stop(const base::DictValue& params);
 +
 + private:
 +  struct Pending {
 +    // Identity values only. A navigation may destroy either object before a
 +    // delayed result or timeout; neither pointer is ever dereferenced.
++    uintptr_t request_owner;
 +    uintptr_t contents;
 +    uintptr_t document;
 +    int request_id;
@@ -3365,10 +3488,10 @@ index 0000000..25cccf8
 +#endif  // CHROME_BROWSER_UI_AUX_NATIVE_FIND_H_
 diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
 new file mode 100644
-index 0000000..cb99025
+index 0000000..5c412a5
 --- /dev/null
 +++ b/chrome/browser/ui/aux/shell_events.cc
-@@ -0,0 +1,1036 @@
+@@ -0,0 +1,1097 @@
 +#include <set>
 +#include "chrome/browser/ui/aux/download_naming.h"
 +// Copyright 2026 The Aux Authors
@@ -3415,6 +3538,8 @@ index 0000000..cb99025
 +#include "chrome/browser/notifications/notification_display_service_factory.h"
 +#include "chrome/browser/notifications/notification_handler.h"
 +#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "components/prefs/scoped_user_pref_update.h"
 +#include "chrome/browser/ui/aux/health_recorder.h"
 +#include "chrome/browser/ui/aux/page_identity.h"
 +#include "chrome/browser/ui/aux/readable_capture.h"
@@ -3903,30 +4028,42 @@ index 0000000..cb99025
 +  return nullptr;
 +}
 +
-+class DownloadSignals : public content::DownloadManager::Observer,
++class DownloadSignals : public ProfileObserver,
++                        public content::DownloadManager::Observer,
 +                        public download::DownloadItem::Observer,
 +                        public base::SupportsUserData::Data {
 + public:
 +  explicit DownloadSignals(Profile* profile) : profile_(profile) {
++    profile_observation_.Observe(profile);
 +    if (auto* manager = profile->GetDownloadManager()) {
 +      manager_observation_ = manager;
 +      manager->AddObserver(this);
 +      Scan(manager);
 +    }
 +  }
-+  ~DownloadSignals() override {
-+    ForgetItems();
-+    if (manager_observation_) {
-+      manager_observation_->RemoveObserver(this);
-+      manager_observation_ = nullptr;
-+    }
-+  }
++  ~DownloadSignals() override { Retire(); }
++  void OnProfileWillBeDestroyed(Profile*) override { Retire(); }
 +
 +  void OnDownloadCreated(content::DownloadManager* manager,
 +                         download::DownloadItem* item) override {
 +    ObserveItem(item, !manager->IsManagerInitialized());
 +  }
 +  void OnDownloadUpdated(download::DownloadItem* item) override { Publish(item); }
++  void OnDownloadRemoved(download::DownloadItem* item) override {
++    const std::string id = item->GetGuid();
++    item->RemoveObserver(this);
++    std::erase(observed_, item);
++    completed_.erase(id);
++    {
++      ScopedDictPrefUpdate dismissed(profile_->GetPrefs(), kDismissedDownloadsPref);
++      dismissed->Remove(id);
++    }
++    base::ListValue ids;
++    ids.Append(id);
++    base::DictValue payload;
++    payload.Set("ids", std::move(ids));
++    EmitDict(profile_, "onDownloadsRemoved", std::move(payload));
++  }
 +  void OnDownloadDestroyed(download::DownloadItem* item) override {
 +    std::erase(observed_, item);
 +    completed_.erase(item->GetGuid());
@@ -3936,13 +4073,20 @@ index 0000000..cb99025
 +      Scan(manager_observation_);
 +    }
 +  }
-+  void ManagerGoingDown(content::DownloadManager* manager) override {
-+    ForgetItems();
-+    manager->RemoveObserver(this);
-+    manager_observation_ = nullptr;
-+  }
++  void ManagerGoingDown(content::DownloadManager*) override { Retire(); }
 +
 + private:
++  void Retire() {
++    ForgetItems();
++    if (manager_observation_) {
++      manager_observation_->RemoveObserver(this);
++      manager_observation_ = nullptr;
++    }
++    completed_.clear();
++    profile_observation_.Reset();
++    profile_ = nullptr;
++  }
++
 +  void Scan(content::DownloadManager* manager) {
 +    content::DownloadManager::DownloadVector items;
 +    manager->GetAllDownloads(&items);
@@ -3974,6 +4118,11 @@ index 0000000..cb99025
 +    observed_.clear();
 +  }
 +  void Publish(download::DownloadItem* item) {
++    if (DownloadIsDismissed(profile_, item)) return;
++    if (profile_->GetPrefs()->GetDict(kDismissedDownloadsPref).contains(item->GetGuid())) {
++      ScopedDictPrefUpdate dismissed(profile_->GetPrefs(), kDismissedDownloadsPref);
++      dismissed->Remove(item->GetGuid());
++    }
 +    const std::string filename = item->GetFileNameToReportUser().AsUTF8Unsafe();
 +    base::DictValue payload;
 +    payload.Set("id", item->GetGuid());
@@ -4038,6 +4187,7 @@ index 0000000..cb99025
 +    }
 +  }
 +
++  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
 +  raw_ptr<Profile> profile_;
 +  raw_ptr<content::DownloadManager> manager_observation_ = nullptr;
 +  std::vector<raw_ptr<download::DownloadItem>> observed_;
@@ -4276,6 +4426,40 @@ index 0000000..cb99025
 +  return true;  // Enqueued; OS permission can still deny display. The shell keeps a fallback.
 +}
 +
++bool DownloadIsDismissed(Profile* profile, download::DownloadItem* item) {
++  return item->GetState() != download::DownloadItem::IN_PROGRESS &&
++         !item->CanResume() &&
++         profile->GetPrefs()->GetDict(kDismissedDownloadsPref)
++             .FindBool(item->GetGuid()).value_or(false);
++}
++
++base::ListValue DismissDownloads(Profile* profile, const base::ListValue& ids) {
++  base::ListValue removed;
++  auto* manager = profile->GetDownloadManager();
++  if (!manager) return removed;
++  {
++    ScopedDictPrefUpdate dismissed(profile->GetPrefs(), kDismissedDownloadsPref);
++    std::set<std::string> seen;
++    for (const auto& value : ids) {
++      const std::string& id = value.GetString();
++      if (!seen.insert(id).second) continue;
++      auto* item = manager->GetDownloadByGuid(id);
++      if (item && (item->GetState() == download::DownloadItem::IN_PROGRESS ||
++                   item->CanResume())) continue;
++      if (!item && !dismissed->FindBool(id).value_or(false)) continue;
++      // Remove() deletes interrupted partial files. Shelf dismissal must preserve them.
++      dismissed->Set(id, true);
++      removed.Append(id);
++    }
++  }
++  if (!removed.empty()) {
++    base::DictValue payload;
++    payload.Set("ids", removed.Clone());
++    EmitDict(profile, "onDownloadsRemoved", std::move(payload));
++  }
++  return removed;
++}
++
 +void StartShellEvents(Profile* profile) {
 +  if (!profile) {
 +    return;
@@ -4407,10 +4591,10 @@ index 0000000..cb99025
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/shell_events.h b/chrome/browser/ui/aux/shell_events.h
 new file mode 100644
-index 0000000..efb2a88
+index 0000000..2ed6357
 --- /dev/null
 +++ b/chrome/browser/ui/aux/shell_events.h
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,63 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -4431,11 +4615,17 @@ index 0000000..efb2a88
 +class WebContents;
 +}
 +
++namespace download {
++class DownloadItem;
++}
++
 +namespace aux {
 +
 +// Browser-originated shell events. The Aux WebUI subscribes and forwards each
 +// payload to the renderer. Payloads are JSON text.
 +void StartShellEvents(Profile* profile);
++bool DownloadIsDismissed(Profile* profile, download::DownloadItem* item);
++base::ListValue DismissDownloads(Profile* profile, const base::ListValue& ids);
 +// Only fixed browser-owned copy reaches macOS; opaque IDs route a click back to
 +// the exact run after the renderer rechecks its durable state.
 +bool ShowRunAttention(Profile* profile, const std::string& kind,

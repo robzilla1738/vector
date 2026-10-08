@@ -376,14 +376,390 @@ index cd945e4..b169168 100644
  
    // Called when a touch timeout-affecting bit has changed, in turn toggling the
    // touch ack timeout feature of the |touch_event_queue_| as appropriate. Input
+diff --git a/components/input/render_widget_host_input_event_router.cc b/components/input/render_widget_host_input_event_router.cc
+index 56fccc5..af9835c 100644
+--- a/components/input/render_widget_host_input_event_router.cc
++++ b/components/input/render_widget_host_input_event_router.cc
+@@ -641,8 +641,10 @@ RenderWidgetTargetResult RenderWidgetHostInputEventRouter::FindViewAtLocation(
+ void RenderWidgetHostInputEventRouter::RouteMouseEvent(
+     RenderWidgetHostViewInput* root_view,
+     const blink::WebMouseEvent* event,
+-    const ui::LatencyInfo& latency) {
+-  event_targeter_->FindTargetAndDispatch(root_view, *event, latency);
++    const ui::LatencyInfo& latency,
++    RenderWidgetTargeter::BeforeDispatchCallback before_dispatch) {
++  event_targeter_->FindTargetAndDispatch(root_view, *event, latency,
++                                         std::move(before_dispatch));
+ }
+ 
+ void RenderWidgetHostInputEventRouter::DispatchMouseEvent(
+@@ -650,7 +652,8 @@ void RenderWidgetHostInputEventRouter::DispatchMouseEvent(
+     RenderWidgetHostViewInput* target,
+     const blink::WebMouseEvent& mouse_event,
+     const ui::LatencyInfo& latency,
+-    const std::optional<gfx::PointF>& target_location) {
++    const std::optional<gfx::PointF>& target_location,
++    RenderWidgetTargeter::BeforeDispatchCallback before_dispatch) {
+   // TODO(wjmaclean): Should we be sending a no-consumer ack to the root_view
+   // if there is no target?
+   if (!target)
+@@ -731,6 +734,15 @@ void RenderWidgetHostInputEventRouter::DispatchMouseEvent(
+       root_view->GetCursorManager()->UpdateViewUnderCursor(target);
+   }
+ 
++  if (before_dispatch) {
++    const auto root_weak = root_view->GetInputWeakPtr();
++    const auto target_weak = target->GetInputWeakPtr();
++    const auto router_weak = weak_ptr_factory_.GetWeakPtr();
++    std::move(before_dispatch).Run(target);
++    if (!router_weak || !root_weak || !target_weak) {
++      return;
++    }
++  }
+   target->ProcessMouseEvent(event, latency);
+ 
+   if (root_view_receive_additional_mouse_up_ && target != root_view &&
+@@ -742,8 +754,10 @@ void RenderWidgetHostInputEventRouter::DispatchMouseEvent(
+ void RenderWidgetHostInputEventRouter::RouteMouseWheelEvent(
+     RenderWidgetHostViewInput* root_view,
+     blink::WebMouseWheelEvent* event,
+-    const ui::LatencyInfo& latency) {
+-  event_targeter_->FindTargetAndDispatch(root_view, *event, latency);
++    const ui::LatencyInfo& latency,
++    RenderWidgetTargeter::BeforeDispatchCallback before_dispatch) {
++  event_targeter_->FindTargetAndDispatch(root_view, *event, latency,
++                                         std::move(before_dispatch));
+ }
+ 
+ // TODO(crbug.com/346629231): Temporary for debugging.
+@@ -773,7 +787,8 @@ void RenderWidgetHostInputEventRouter::DispatchMouseWheelEvent(
+     RenderWidgetHostViewInput* target,
+     const blink::WebMouseWheelEvent& mouse_wheel_event,
+     const ui::LatencyInfo& latency,
+-    const std::optional<gfx::PointF>& target_location) {
++    const std::optional<gfx::PointF>& target_location,
++    RenderWidgetTargeter::BeforeDispatchCallback before_dispatch) {
+   TRACE_EVENT("input",
+               "RenderWidgetHostInputEventRouter::DispatchMouseWheelEvent",
+               "phase", PhaseToString(mouse_wheel_event.phase), "momentum_phase",
+@@ -821,6 +836,15 @@ void RenderWidgetHostInputEventRouter::DispatchMouseWheelEvent(
+         mouse_wheel_event.PositionInWidget());
+   }
+   event.SetPositionInWidget(point_in_target.x(), point_in_target.y());
++  if (before_dispatch) {
++    const auto root_weak = root_view->GetInputWeakPtr();
++    const auto target_weak = target->GetInputWeakPtr();
++    const auto router_weak = weak_ptr_factory_.GetWeakPtr();
++    std::move(before_dispatch).Run(target);
++    if (!router_weak || !root_weak || !target_weak) {
++      return;
++    }
++  }
+   target->ProcessMouseWheelEvent(event, latency);
+ 
+   if (mouse_wheel_event.phase == blink::WebMouseWheelEvent::kPhaseEnded ||
+@@ -2029,7 +2053,8 @@ void RenderWidgetHostInputEventRouter::DispatchEventToTarget(
+     RenderWidgetHostViewInput* target,
+     blink::WebInputEvent* event,
+     const ui::LatencyInfo& latency,
+-    const std::optional<gfx::PointF>& target_location) {
++    const std::optional<gfx::PointF>& target_location,
++    RenderWidgetTargeter::BeforeDispatchCallback before_dispatch) {
+   DCHECK(event);
+   if (target && target->ScreenRectIsUnstableFor(*event))
+     event->SetTargetFrameMovedRecently();
+@@ -2041,13 +2066,13 @@ void RenderWidgetHostInputEventRouter::DispatchEventToTarget(
+     }
+     DispatchMouseEvent(root_view, target,
+                        *static_cast<blink::WebMouseEvent*>(event), latency,
+-                       target_location);
++                       target_location, std::move(before_dispatch));
+     return;
+   }
+   if (event->GetType() == blink::WebInputEvent::Type::kMouseWheel) {
+-    DispatchMouseWheelEvent(root_view, target,
+-                            *static_cast<blink::WebMouseWheelEvent*>(event),
+-                            latency, target_location);
++    DispatchMouseWheelEvent(
++        root_view, target, *static_cast<blink::WebMouseWheelEvent*>(event),
++        latency, target_location, std::move(before_dispatch));
+     return;
+   }
+   if (blink::WebInputEvent::IsTouchEventType(event->GetType())) {
+diff --git a/components/input/render_widget_host_input_event_router.h b/components/input/render_widget_host_input_event_router.h
+index 46683f5..f1aa55c 100644
+--- a/components/input/render_widget_host_input_event_router.h
++++ b/components/input/render_widget_host_input_event_router.h
+@@ -131,12 +131,16 @@ class COMPONENT_EXPORT(INPUT) RenderWidgetHostInputEventRouter final
+   void OnRenderWidgetHostViewInputDestroyed(
+       RenderWidgetHostViewInput* view) override;
+ 
+-  void RouteMouseEvent(RenderWidgetHostViewInput* root_view,
+-                       const blink::WebMouseEvent* event,
+-                       const ui::LatencyInfo& latency);
+-  void RouteMouseWheelEvent(RenderWidgetHostViewInput* root_view,
+-                            blink::WebMouseWheelEvent* event,
+-                            const ui::LatencyInfo& latency);
++  void RouteMouseEvent(
++      RenderWidgetHostViewInput* root_view,
++      const blink::WebMouseEvent* event,
++      const ui::LatencyInfo& latency,
++      RenderWidgetTargeter::BeforeDispatchCallback before_dispatch = {});
++  void RouteMouseWheelEvent(
++      RenderWidgetHostViewInput* root_view,
++      blink::WebMouseWheelEvent* event,
++      const ui::LatencyInfo& latency,
++      RenderWidgetTargeter::BeforeDispatchCallback before_dispatch = {});
+   void RouteGestureEvent(RenderWidgetHostViewInput* root_view,
+                          const blink::WebGestureEvent* event,
+                          const ui::LatencyInfo& latency);
+@@ -356,18 +360,21 @@ class COMPONENT_EXPORT(INPUT) RenderWidgetHostInputEventRouter final
+       const blink::WebGestureEvent& gesture_event);
+ 
+   // |mouse_event| is in the coord-space of |root_view|.
+-  void DispatchMouseEvent(RenderWidgetHostViewInput* root_view,
+-                          RenderWidgetHostViewInput* target,
+-                          const blink::WebMouseEvent& mouse_event,
+-                          const ui::LatencyInfo& latency,
+-                          const std::optional<gfx::PointF>& target_location);
++  void DispatchMouseEvent(
++      RenderWidgetHostViewInput* root_view,
++      RenderWidgetHostViewInput* target,
++      const blink::WebMouseEvent& mouse_event,
++      const ui::LatencyInfo& latency,
++      const std::optional<gfx::PointF>& target_location,
++      RenderWidgetTargeter::BeforeDispatchCallback before_dispatch = {});
+   // |mouse_wheel_event| is in the coord-space of |root_view|.
+   void DispatchMouseWheelEvent(
+       RenderWidgetHostViewInput* root_view,
+       RenderWidgetHostViewInput* target,
+       const blink::WebMouseWheelEvent& mouse_wheel_event,
+       const ui::LatencyInfo& latency,
+-      const std::optional<gfx::PointF>& target_location);
++      const std::optional<gfx::PointF>& target_location,
++      RenderWidgetTargeter::BeforeDispatchCallback before_dispatch = {});
+   // Assumes |touch_event| has coordinates in the root view's coordinate space.
+   void DispatchTouchEvent(RenderWidgetHostViewInput* root_view,
+                           RenderWidgetHostViewInput* target,
+@@ -402,7 +409,8 @@ class COMPONENT_EXPORT(INPUT) RenderWidgetHostInputEventRouter final
+       RenderWidgetHostViewInput* target,
+       blink::WebInputEvent* event,
+       const ui::LatencyInfo& latency,
+-      const std::optional<gfx::PointF>& target_location) override;
++      const std::optional<gfx::PointF>& target_location,
++      RenderWidgetTargeter::BeforeDispatchCallback before_dispatch) override;
+   // Notify whether the events in the queue are being flushed due to touch ack
+   // timeout, or the flushing has completed.
+   void SetEventsBeingFlushed(bool events_being_flushed) override;
+diff --git a/components/input/render_widget_targeter.cc b/components/input/render_widget_targeter.cc
+index bd52a04..e286805 100644
+--- a/components/input/render_widget_targeter.cc
++++ b/components/input/render_widget_targeter.cc
+@@ -70,7 +70,9 @@ RenderWidgetTargetResult::~RenderWidgetTargetResult() = default;
+ RenderWidgetTargeter::TargetingRequest::TargetingRequest(
+     base::WeakPtr<RenderWidgetHostViewInput> root_view,
+     const blink::WebInputEvent& event,
+-    const ui::LatencyInfo& latency) {
++    const ui::LatencyInfo& latency,
++    BeforeDispatchCallback before_dispatch) {
++  this->before_dispatch = std::move(before_dispatch);
+   this->root_view = std::move(root_view);
+   this->location = ComputeEventLocation(event);
+   this->event = event.Clone();
+@@ -104,11 +106,16 @@ void RenderWidgetTargeter::TargetingRequest::RunCallback(
+ }
+ 
+ bool RenderWidgetTargeter::TargetingRequest::MergeEventIfPossible(
+-    const blink::WebInputEvent& new_event) {
++    const blink::WebInputEvent& new_event,
++    BeforeDispatchCallback& new_before_dispatch) {
++  if (before_dispatch.is_null() != new_before_dispatch.is_null()) {
++    return false;
++  }
+   if (event && !blink::WebInputEvent::IsTouchEventType(new_event.GetType()) &&
+       !blink::WebInputEvent::IsGestureEventType(new_event.GetType()) &&
+       event->CanCoalesce(new_event)) {
+     event->Coalesce(new_event);
++    before_dispatch = std::move(new_before_dispatch);
+     return true;
+   }
+   return false;
+@@ -148,7 +155,8 @@ RenderWidgetTargeter::~RenderWidgetTargeter() = default;
+ void RenderWidgetTargeter::FindTargetAndDispatch(
+     RenderWidgetHostViewInput* root_view,
+     const blink::WebInputEvent& event,
+-    const ui::LatencyInfo& latency) {
++    const ui::LatencyInfo& latency,
++    BeforeDispatchCallback before_dispatch) {
+   DCHECK(blink::WebInputEvent::IsMouseEventType(event.GetType()) ||
+          event.GetType() == blink::WebInputEvent::Type::kMouseWheel ||
+          blink::WebInputEvent::IsTouchEventType(event.GetType()) ||
+@@ -160,11 +168,14 @@ void RenderWidgetTargeter::FindTargetAndDispatch(
+ 
+   if (!requests_.empty()) {
+     auto& request = requests_.back();
+-    if (request.MergeEventIfPossible(event))
++    if ((!before_dispatch || request.GetRootView() == root_view) &&
++        request.MergeEventIfPossible(event, before_dispatch)) {
+       return;
++    }
+   }
+ 
+-  TargetingRequest request(root_view->GetInputWeakPtr(), event, latency);
++  TargetingRequest request(root_view->GetInputWeakPtr(), event, latency,
++                           std::move(before_dispatch));
+ 
+   ResolveTargetingRequest(std::move(request));
+ }
+@@ -363,7 +374,11 @@ void RenderWidgetTargeter::FlushEventQueue() {
+       delegate_->SetEventsBeingFlushed(true);
+       events_being_flushed = true;
+     }
++    const auto weak = weak_ptr_factory_.GetWeakPtr();
+     ResolveTargetingRequest(std::move(request));
++    if (!weak) {
++      return;
++    }
+   }
+   delegate_->SetEventsBeingFlushed(false);
+ }
+@@ -481,15 +496,18 @@ void RenderWidgetTargeter::FoundTarget(
+     return;
+   }
+ 
++  const auto weak = weak_ptr_factory_.GetWeakPtr();
+   if (request->IsWebInputEventRequest()) {
+-    delegate_->DispatchEventToTarget(request->GetRootView(), target,
+-                                     request->GetEvent(), request->GetLatency(),
+-                                     target_location);
++    delegate_->DispatchEventToTarget(
++        request->GetRootView(), target, request->GetEvent(),
++        request->GetLatency(), target_location, request->TakeBeforeDispatch());
+   } else {
+     request->RunCallback(target, target_location);
+   }
+ 
+-  FlushEventQueue();
++  if (weak) {
++    FlushEventQueue();
++  }
+ }
+ 
+ void RenderWidgetTargeter::AsyncHitTestTimedOut(
+diff --git a/components/input/render_widget_targeter.h b/components/input/render_widget_targeter.h
+index 011bf17..0d214b7 100644
+--- a/components/input/render_widget_targeter.h
++++ b/components/input/render_widget_targeter.h
+@@ -9,6 +9,7 @@
+ 
+ #include <optional>
+ #include <queue>
++#include <utility>
+ 
+ #include "base/component_export.h"
+ #include "base/memory/raw_ptr.h"
+@@ -48,6 +49,9 @@ struct COMPONENT_EXPORT(INPUT) RenderWidgetTargetResult {
+ 
+ class RenderWidgetTargeter {
+  public:
++  // Runs once for the final dispatch target, after hit testing and capture.
++  using BeforeDispatchCallback =
++      base::OnceCallback<void(RenderWidgetHostViewInput*)>;
+   using RenderWidgetHostAtPointCallback =
+       base::OnceCallback<void(base::WeakPtr<RenderWidgetHostViewInput>,
+                               std::optional<gfx::PointF>)>;
+@@ -70,7 +74,8 @@ class RenderWidgetTargeter {
+         RenderWidgetHostViewInput* target,
+         blink::WebInputEvent* event,
+         const ui::LatencyInfo& latency,
+-        const std::optional<gfx::PointF>& target_location) = 0;
++        const std::optional<gfx::PointF>& target_location,
++        BeforeDispatchCallback before_dispatch) = 0;
+ 
+     virtual void SetEventsBeingFlushed(bool events_being_flushed) = 0;
+ 
+@@ -108,7 +113,8 @@ class RenderWidgetTargeter {
+   // it through the delegate. |event| is in the coord-space of |root_view|.
+   void FindTargetAndDispatch(RenderWidgetHostViewInput* root_view,
+                              const blink::WebInputEvent& event,
+-                             const ui::LatencyInfo& latency);
++                             const ui::LatencyInfo& latency,
++                             BeforeDispatchCallback before_dispatch = {});
+ 
+   // Finds the appropriate target inside |root_view| for |point|, and passes the
+   // target along with the transformed coordinates of the point with respect to
+@@ -141,7 +147,8 @@ class RenderWidgetTargeter {
+    public:
+     TargetingRequest(base::WeakPtr<RenderWidgetHostViewInput>,
+                      const blink::WebInputEvent&,
+-                     const ui::LatencyInfo&);
++                     const ui::LatencyInfo&,
++                     BeforeDispatchCallback);
+     TargetingRequest(base::WeakPtr<RenderWidgetHostViewInput>,
+                      const gfx::PointF&,
+                      RenderWidgetHostAtPointCallback);
+@@ -156,7 +163,11 @@ class RenderWidgetTargeter {
+     void RunCallback(RenderWidgetHostViewInput* target,
+                      std::optional<gfx::PointF> point);
+ 
+-    bool MergeEventIfPossible(const blink::WebInputEvent& event);
++    bool MergeEventIfPossible(const blink::WebInputEvent& event,
++                              BeforeDispatchCallback& before_dispatch);
++    BeforeDispatchCallback TakeBeforeDispatch() {
++      return std::move(before_dispatch);
++    }
+     bool IsWebInputEventRequest() const;
+     blink::WebInputEvent* GetEvent();
+     RenderWidgetHostViewInput* GetRootView() const;
+@@ -167,6 +178,7 @@ class RenderWidgetTargeter {
+     base::WeakPtr<RenderWidgetHostViewInput> root_view;
+ 
+     RenderWidgetHostAtPointCallback callback;
++    BeforeDispatchCallback before_dispatch;
+ 
+     // |location| is in the coordinate space of |root_view| which is
+     // either set directly when event is null or calculated from the event.
+diff --git a/content/app_shim_remote_cocoa/ns_view_bridge_factory_impl.mm b/content/app_shim_remote_cocoa/ns_view_bridge_factory_impl.mm
+index 010c713..1ad710d 100644
+--- a/content/app_shim_remote_cocoa/ns_view_bridge_factory_impl.mm
++++ b/content/app_shim_remote_cocoa/ns_view_bridge_factory_impl.mm
+@@ -130,16 +130,20 @@ class RenderWidgetHostNSViewBridgeOwner
+         std::move(edit_commands));
+   }
+   void RouteOrProcessMouseEvent(
+-      const blink::WebMouseEvent& web_event) override {
+-    host_->RouteOrProcessMouseEvent(TranslateEvent(web_event));
++      const blink::WebMouseEvent& web_event,
++      mojom::NativeInputEventPtr native_input) override {
++    host_->RouteOrProcessMouseEvent(TranslateEvent(web_event),
++                                    std::move(native_input));
+   }
+   void RouteOrProcessTouchEvent(
+       const blink::WebTouchEvent& web_event) override {
+     host_->RouteOrProcessTouchEvent(TranslateEvent(web_event));
+   }
+   void RouteOrProcessWheelEvent(
+-      const blink::WebMouseWheelEvent& web_event) override {
+-    host_->RouteOrProcessWheelEvent(TranslateEvent(web_event));
++      const blink::WebMouseWheelEvent& web_event,
++      mojom::NativeInputEventPtr native_input) override {
++    host_->RouteOrProcessWheelEvent(TranslateEvent(web_event),
++                                    std::move(native_input));
+   }
+   void ForwardMouseEvent(const blink::WebMouseEvent& web_event) override {
+     host_->ForwardMouseEvent(TranslateEvent(web_event));
 diff --git a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h
-index 1f51543..ce75469 100644
+index 1f51543..f2258ab 100644
 --- a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h
 +++ b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h
-@@ -58,6 +58,10 @@ class RenderWidgetHostNSViewBridge : public mojom::RenderWidgetHostNSView,
+@@ -58,6 +58,14 @@ class RenderWidgetHostNSViewBridge : public mojom::RenderWidgetHostNSView,
    // method is expected to go away).
    RenderWidgetHostViewCocoa* GetNSView();
  
++  void SetEmbeddedNativeInputDocumentBinding(
++      const std::string& binding,
++      bool enabled,
++      SetEmbeddedNativeInputDocumentBindingCallback callback) override;
 +  void SetNativeInputDocumentBinding(
 +      const std::string& binding,
 +      SetNativeInputDocumentBindingCallback callback) override;
@@ -392,13 +768,21 @@ index 1f51543..ce75469 100644
    void InitAsPopup(const gfx::Rect& content_rect,
                     uint64_t popup_parent_ns_view_id) override;
 diff --git a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm
-index 2eda2e7..1e537d1 100644
+index 2eda2e7..c4467d2 100644
 --- a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm
 +++ b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm
-@@ -176,6 +176,13 @@ void RenderWidgetHostNSViewBridge::SetBackgroundColor(SkColor color) {
+@@ -176,6 +176,21 @@ void RenderWidgetHostNSViewBridge::SetBackgroundColor(SkColor color) {
        skia::CGColorCreateFromSkColor(color).get();
  }
  
++void RenderWidgetHostNSViewBridge::SetEmbeddedNativeInputDocumentBinding(
++    const std::string& binding,
++    bool enabled,
++    SetEmbeddedNativeInputDocumentBindingCallback callback) {
++  [cocoa_view_ setEmbeddedNativeInputDocumentBinding:binding enabled:enabled];
++  std::move(callback).Run();
++}
++
 +void RenderWidgetHostNSViewBridge::SetNativeInputDocumentBinding(
 +    const std::string& binding,
 +    SetNativeInputDocumentBindingCallback callback) {
@@ -409,8 +793,42 @@ index 2eda2e7..1e537d1 100644
  void RenderWidgetHostNSViewBridge::SetVisible(bool visible) {
    ScopedCAActionDisabler disabler;
    cocoa_view_.hidden = !visible;
+diff --git a/content/app_shim_remote_cocoa/render_widget_host_ns_view_host_helper.h b/content/app_shim_remote_cocoa/render_widget_host_ns_view_host_helper.h
+index 04fcadb..7b322ca 100644
+--- a/content/app_shim_remote_cocoa/render_widget_host_ns_view_host_helper.h
++++ b/content/app_shim_remote_cocoa/render_widget_host_ns_view_host_helper.h
+@@ -5,10 +5,11 @@
+ #ifndef CONTENT_APP_SHIM_REMOTE_COCOA_RENDER_WIDGET_HOST_NS_VIEW_HOST_HELPER_H_
+ #define CONTENT_APP_SHIM_REMOTE_COCOA_RENDER_WIDGET_HOST_NS_VIEW_HOST_HELPER_H_
+ 
+-#include "third_party/blink/public/mojom/input/input_handler.mojom-forward.h"
+-
+ #include <vector>
+ 
++#include "content/common/render_widget_host_ns_view.mojom.h"
++#include "third_party/blink/public/mojom/input/input_handler.mojom-forward.h"
++
+ @class NSWindow;
+ 
+ namespace blink {
+@@ -74,11 +75,13 @@ class RenderWidgetHostNSViewHostHelper {
+ 
+   // Forward events to the renderer or the input router, as appropriate.
+   virtual void RouteOrProcessMouseEvent(
+-      const blink::WebMouseEvent& web_event) = 0;
++      const blink::WebMouseEvent& web_event,
++      mojom::NativeInputEventPtr native_input = nullptr) = 0;
+   virtual void RouteOrProcessTouchEvent(
+       const blink::WebTouchEvent& web_event) = 0;
+   virtual void RouteOrProcessWheelEvent(
+-      const blink::WebMouseWheelEvent& web_event) = 0;
++      const blink::WebMouseWheelEvent& web_event,
++      mojom::NativeInputEventPtr native_input = nullptr) = 0;
+ 
+   // Special case forwarding of synthetic events to the renderer.
+   virtual void ForwardMouseEvent(const blink::WebMouseEvent& web_event) = 0;
 diff --git a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h
-index 679c80e..6073ddd 100644
+index 679c80e..08d1ca5 100644
 --- a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h
 +++ b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h
 @@ -9,6 +9,7 @@
@@ -421,100 +839,184 @@ index 679c80e..6073ddd 100644
  #include <vector>
  
  #include "base/containers/flat_set.h"
-@@ -56,6 +57,8 @@ CONTENT_EXPORT
+@@ -56,6 +57,10 @@ CONTENT_EXPORT
                         NSTextInputClient,
                         NSAccessibility>
  
 +- (void)setNativeInputDocumentBinding:(const std::string&)binding;
++- (void)setEmbeddedNativeInputDocumentBinding:(const std::string&)binding
++                                      enabled:(BOOL)enabled;
 +
  @property(nonatomic, assign) NSRange markedRange;
  @property(nonatomic, assign) ui::TextInputType textInputType;
  @property(nonatomic, assign) int textInputFlags;
 diff --git a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm
-index 6a2880e..2c984a2 100644
+index 6a2880e..e1f96b7 100644
 --- a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm
 +++ b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm
-@@ -53,6 +53,7 @@
+@@ -10,6 +10,7 @@
+ #include <algorithm>
+ #include <limits>
+ #include <optional>
++#include <set>
+ #include <tuple>
+ #include <utility>
+ 
+@@ -52,6 +53,7 @@
+ #include "ui/base/ui_base_features.h"
  #include "ui/display/display.h"
  #include "ui/display/screen.h"
- #include "ui/events/event_utils.h"
 +#include "ui/events/cocoa/cocoa_event_utils.h"
+ #include "ui/events/event_utils.h"
  #include "ui/events/keycodes/dom/dom_code.h"
  #include "ui/events/keycodes/dom/keycode_converter.h"
- #include "ui/events/platform/platform_event_source.h"
-@@ -258,6 +259,7 @@ gfx::PointF GetSanitizedFlippedPoint(NSPoint point, CGFloat height) {
+@@ -108,11 +110,13 @@ class DummyHostHelper : public RenderWidgetHostNSViewHostHelper {
+       const ui::LatencyInfo& latency_info,
+       const std::vector<blink::mojom::EditCommandPtr> commands) override {}
+   void RouteOrProcessMouseEvent(
+-      const blink::WebMouseEvent& web_event) override {}
++      const blink::WebMouseEvent& web_event,
++      remote_cocoa::mojom::NativeInputEventPtr native_input) override {}
+   void RouteOrProcessTouchEvent(
+       const blink::WebTouchEvent& web_event) override {}
+   void RouteOrProcessWheelEvent(
+-      const blink::WebMouseWheelEvent& web_event) override {}
++      const blink::WebMouseWheelEvent& web_event,
++      remote_cocoa::mojom::NativeInputEventPtr native_input) override {}
+   void ForwardMouseEvent(const blink::WebMouseEvent& web_event) override {}
+   void ForwardWheelEvent(const blink::WebMouseWheelEvent& web_event) override {}
+   void PinchEvent(blink::WebGestureEvent pinch_event,
+@@ -209,6 +213,8 @@ void ExtractUnderlines(NSAttributedString* string,
+ // deferred.
+ @property(weak, nonatomic, class) NSWindow* deferredResignKeyWindow;
+ 
++- (remote_cocoa::mojom::NativeInputEventPtr)nativeInputEventForEvent:
++    (NSEvent*)event;
+ - (void)keyEvent:(NSEvent*)theEvent wasKeyEquivalent:(BOOL)equiv;
+ - (void)windowDidChangeScreenOrBackingProperties:(NSNotification*)notification;
+ - (void)windowChangedGlobalFrame:(NSNotification*)notification;
+@@ -258,6 +264,8 @@ gfx::PointF GetSanitizedFlippedPoint(NSPoint point, CGFloat height) {
    // information) and access to accessibility structures (only present in the
    // browser process).
    raw_ptr<remote_cocoa::RenderWidgetHostNSViewHostHelper> _hostHelper;
 +  std::string _nativeInputDocumentBinding;
++  std::set<std::string> _embeddedNativeInputDocumentBindings;
  
    // This ivar is the cocoa delegate of the NSResponder.
    NSObject<RenderWidgetHostViewMacDelegate>* __strong _responderDelegate;
-@@ -887,6 +889,7 @@ static NSWindow* __weak _deferredResignKeyWindow;
+@@ -887,6 +895,8 @@ static NSWindow* __weak _deferredResignKeyWindow;
  }
  
  - (void)setHostDisconnected {
 +  _nativeInputDocumentBinding.clear();
++  _embeddedNativeInputDocumentBindings.clear();
    // Set the host to be an abandoned message pipe, and set the hostHelper
    // to forward messages to that host.
    std::ignore = _dummyHost.BindNewPipeAndPassReceiver();
-@@ -1158,6 +1161,14 @@ static NSWindow* __weak _deferredResignKeyWindow;
-     return;
+@@ -1264,7 +1274,8 @@ static NSWindow* __weak _deferredResignKeyWindow;
    }
  
-+  // Admit the original native event before any real or derived mouse event
-+  // from this owned Cocoa view is routed. The associated NSViewHost endpoint
-+  // orders this ahead of remote helper forwarding; local calls are synchronous.
-+  if (theEvent == NSApp.currentEvent &&
-+      theEvent.window == self.window && self.window)
-+    _host->AdmitNativeInputEvent(_nativeInputDocumentBinding,
-+                                 ui::EventToData(theEvent));
-+
-   // After re-centering the cursor for pointer lock, macOS folds the
-   // re-centering distance into the delta of the first real mouse-move. Suppress
-   // locked move/crossing events until that movement is absorbed so the spurious
-@@ -1472,6 +1483,10 @@ static NSWindow* __weak _deferredResignKeyWindow;
+   _lastMouseScreenPosition = event.PositionInScreen();
+-  _hostHelper->RouteOrProcessMouseEvent(event);
++  _hostHelper->RouteOrProcessMouseEvent(
++      event, [self nativeInputEventForEvent:theEvent]);
+ }
+ 
+ - (void)tabletEvent:(NSEvent*)theEvent {
+@@ -1472,6 +1483,9 @@ static NSWindow* __weak _deferredResignKeyWindow;
    // all event and Ime messages target the same RenderWidgetHost throughout this
    // function call.
    _host->BeginKeyboardEvent();
-+  if (theEvent == NSApp.currentEvent &&
-+      theEvent.window == self.window && self.window)
-+    _host->AdmitNativeInputEvent(_nativeInputDocumentBinding,
-+                                 ui::EventToData(theEvent));
++  if (auto native_input = [self nativeInputEventForEvent:theEvent]) {
++    _host->AdmitNativeInputEvent(std::move(native_input));
++  }
  
    bool shouldAutohideCursor = _textInputType != ui::TEXT_INPUT_TYPE_NONE &&
                                eventType == NSEventTypeKeyDown &&
-@@ -1781,6 +1796,10 @@ static NSWindow* __weak _deferredResignKeyWindow;
+@@ -1781,6 +1795,51 @@ static NSWindow* __weak _deferredResignKeyWindow;
    _host->LookUpDictionaryOverlayAtPoint(rootPoint);
  }
  
++- (remote_cocoa::mojom::NativeInputEventPtr)nativeInputEventForEvent:
++    (NSEvent*)event {
++  if (event != NSApp.currentEvent || !self.window ||
++      event.window != self.window) {
++    return nullptr;
++  }
++  const auto type = event.type;
++  if (type != NSEventTypeKeyDown && type != NSEventTypeKeyUp &&
++      type != NSEventTypeFlagsChanged && type != NSEventTypeLeftMouseDown &&
++      type != NSEventTypeRightMouseDown && type != NSEventTypeOtherMouseDown &&
++      type != NSEventTypeLeftMouseUp && type != NSEventTypeRightMouseUp &&
++      type != NSEventTypeOtherMouseUp && type != NSEventTypeLeftMouseDragged &&
++      type != NSEventTypeRightMouseDragged &&
++      type != NSEventTypeOtherMouseDragged && type != NSEventTypeScrollWheel) {
++    return nullptr;
++  }
++  if (_nativeInputDocumentBinding.empty() &&
++      _embeddedNativeInputDocumentBindings.empty()) {
++    return nullptr;
++  }
++  auto input = remote_cocoa::mojom::NativeInputEvent::New();
++  input->binding = _nativeInputDocumentBinding;
++  input->embedded_bindings.assign(_embeddedNativeInputDocumentBindings.begin(),
++                                  _embeddedNativeInputDocumentBindings.end());
++  input->event_data = ui::EventToData(event);
++  return input;
++}
++
++- (void)setEmbeddedNativeInputDocumentBinding:(const std::string&)binding
++                                      enabled:(BOOL)enabled {
++  if (binding.empty() || binding.size() > 64) {
++    return;
++  }
++  if (enabled) {
++    _embeddedNativeInputDocumentBindings.insert(binding);
++  } else {
++    _embeddedNativeInputDocumentBindings.erase(binding);
++  }
++}
++
 +- (void)setNativeInputDocumentBinding:(const std::string&)binding {
 +  _nativeInputDocumentBinding = binding.size() <= 64 ? binding : std::string();
++  _embeddedNativeInputDocumentBindings.clear();
 +}
 +
  - (void)scrollWheel:(NSEvent*)event {
    // Consult with the delegate to see if it wants to handle the event. If the
    // delegate has handled the event, it takes priority over the page scrolling.
-@@ -1804,6 +1823,11 @@ static NSWindow* __weak _deferredResignKeyWindow;
-                                      }];
-   }
- 
-+  if (event == NSApp.currentEvent &&
-+      event.window == self.window && self.window)
-+    _host->AdmitNativeInputEvent(_nativeInputDocumentBinding,
-+                                 ui::EventToData(event));
-+
-   // At this point, the delegate has passed on handling the event itself, so
+@@ -1808,7 +1867,8 @@ static NSWindow* __weak _deferredResignKeyWindow;
    // build a mouse wheel event, and pass it on to the renderer for processing.
    WebMouseWheelEvent webEvent = WebMouseWheelEventBuilder::Build(event, self);
+   webEvent.rails_mode = _mouseWheelFilter.UpdateRailsMode(webEvent);
+-  _hostHelper->RouteOrProcessWheelEvent(webEvent);
++  _hostHelper->RouteOrProcessWheelEvent(webEvent,
++                                        [self nativeInputEventForEvent:event]);
+ }
+ 
+ // Called repeatedly during a pinch gesture, with incremental change values.
 diff --git a/content/browser/renderer_host/render_widget_host_view_base.cc b/content/browser/renderer_host/render_widget_host_view_base.cc
-index e636ae0..c60f662 100644
+index e636ae0..58c6db5 100644
 --- a/content/browser/renderer_host/render_widget_host_view_base.cc
 +++ b/content/browser/renderer_host/render_widget_host_view_base.cc
-@@ -66,6 +66,29 @@
+@@ -66,6 +66,43 @@
  #endif
  
  namespace content {
++bool RenderWidgetHostViewBase::HasEmbeddedNativeInputAdmission(
++    RenderWidgetHostViewBase*,
++    const WeakDocumentPtr&) const {
++  return false;
++}
++void RenderWidgetHostViewBase::AwaitEmbeddedNativeInputAdmission(
++    RenderWidgetHostViewBase*,
++    const WeakDocumentPtr&,
++    base::OnceCallback<void(bool)> callback) {
++  std::move(callback).Run(false);
++}
++void RenderWidgetHostViewBase::RetireEmbeddedNativeInputAdmission(
++    RenderWidgetHostViewBase*) {}
++
 +bool RenderWidgetHostView::HasNativeInputAdmissionForDocument(
 +    const WeakDocumentPtr& document) const {
 +  return false;
@@ -542,7 +1044,7 @@ index e636ae0..c60f662 100644
  void RenderWidgetHostViewBase::OnUnconfirmedTapConvertedToTap() {}
  
 diff --git a/content/browser/renderer_host/render_widget_host_view_base.h b/content/browser/renderer_host/render_widget_host_view_base.h
-index fbaad74..8aedff4 100644
+index fbaad74..c62ecd2 100644
 --- a/content/browser/renderer_host/render_widget_host_view_base.h
 +++ b/content/browser/renderer_host/render_widget_host_view_base.h
 @@ -142,6 +142,7 @@ class CONTENT_EXPORT RenderWidgetHostViewBase
@@ -553,8 +1055,104 @@ index fbaad74..8aedff4 100644
    void CopyFromSurface(
        const gfx::Rect& src_rect,
        const gfx::Size& output_size,
+@@ -167,6 +168,15 @@ class CONTENT_EXPORT RenderWidgetHostViewBase
+   void ProcessGestureEvent(const blink::WebGestureEvent& event,
+                            const ui::LatencyInfo& latency) override;
+   RenderWidgetHostViewBase* GetRootView() override;
++  virtual bool HasEmbeddedNativeInputAdmission(
++      RenderWidgetHostViewBase* child,
++      const WeakDocumentPtr& document) const;
++  virtual void AwaitEmbeddedNativeInputAdmission(
++      RenderWidgetHostViewBase* child,
++      const WeakDocumentPtr& document,
++      base::OnceCallback<void(bool)> callback);
++  virtual void RetireEmbeddedNativeInputAdmission(
++      RenderWidgetHostViewBase* child);
+   void OnAutoscrollStart() override;
+   void OnAutoscrollTargetResolved(bool success) override;
+   const viz::DisplayHitTestQueryMap& GetDisplayHitTestQuery() const override;
+diff --git a/content/browser/renderer_host/render_widget_host_view_child_frame.cc b/content/browser/renderer_host/render_widget_host_view_child_frame.cc
+index 6c972ba..ab21639 100644
+--- a/content/browser/renderer_host/render_widget_host_view_child_frame.cc
++++ b/content/browser/renderer_host/render_widget_host_view_child_frame.cc
+@@ -82,6 +82,7 @@ RenderWidgetHostViewChildFrame::RenderWidgetHostViewChildFrame(
+ }
+ 
+ RenderWidgetHostViewChildFrame::~RenderWidgetHostViewChildFrame() {
++  RetireNativeInputAdmission();
+   // TODO(wjmaclean): The next two lines are a speculative fix for
+   // https://crbug.com/760074, based on the theory that perhaps something is
+   // destructing the class without calling Destroy() first.
+@@ -135,10 +136,40 @@ void RenderWidgetHostViewChildFrame::
+   selection_controller_client_.reset();
+ }
+ 
++bool RenderWidgetHostViewChildFrame::HasNativeInputAdmissionForDocument(
++    const WeakDocumentPtr& document) const {
++  auto* root = GetRootRenderWidgetHostView();
++  return root &&
++         root->HasEmbeddedNativeInputAdmission(
++             const_cast<RenderWidgetHostViewChildFrame*>(this), document);
++}
++void RenderWidgetHostViewChildFrame::AwaitNativeInputAdmissionForDocument(
++    const WeakDocumentPtr& document,
++    base::OnceCallback<void(bool)> callback) {
++  if (auto* root = GetRootRenderWidgetHostView()) {
++    root->AwaitEmbeddedNativeInputAdmission(this, document,
++                                            std::move(callback));
++  } else {
++    std::move(callback).Run(false);
++  }
++}
++void RenderWidgetHostViewChildFrame::RetireNativeInputAdmission() {
++  if (auto* root = GetRootRenderWidgetHostView()) {
++    root->RetireEmbeddedNativeInputAdmission(this);
++  }
++}
++void RenderWidgetHostViewChildFrame::OnOldViewDidNavigatePreCommit() {
++  RetireNativeInputAdmission();
++}
++void RenderWidgetHostViewChildFrame::DidEnterBackForwardCache() {
++  RetireNativeInputAdmission();
++}
++
+ void RenderWidgetHostViewChildFrame::SetFrameConnector(
+     FrameConnector* frame_connector) {
+   if (frame_connector_ == frame_connector)
+     return;
++  RetireNativeInputAdmission();
+ 
+   if (frame_connector_) {
+     SetParentFrameSinkId(viz::FrameSinkId());
+@@ -600,6 +631,7 @@ void RenderWidgetHostViewChildFrame::RenderProcessGone() {
+ }
+ 
+ void RenderWidgetHostViewChildFrame::Destroy() {
++  RetireNativeInputAdmission();
+   host()->render_frame_metadata_provider()->RemoveObserver(this);
+ 
+   // FrameSinkIds registered with RenderWidgetHostInputEventRouter
+diff --git a/content/browser/renderer_host/render_widget_host_view_child_frame.h b/content/browser/renderer_host/render_widget_host_view_child_frame.h
+index c049b19..1e91ce9 100644
+--- a/content/browser/renderer_host/render_widget_host_view_child_frame.h
++++ b/content/browser/renderer_host/render_widget_host_view_child_frame.h
+@@ -77,6 +77,14 @@ class CONTENT_EXPORT RenderWidgetHostViewChildFrame
+       const RenderWidgetHostViewChildFrame&) = delete;
+ 
+   void SetFrameConnector(FrameConnector* frame_connector);
++  bool HasNativeInputAdmissionForDocument(
++      const WeakDocumentPtr& document) const override;
++  void AwaitNativeInputAdmissionForDocument(
++      const WeakDocumentPtr& document,
++      base::OnceCallback<void(bool)> callback) override;
++  void OnOldViewDidNavigatePreCommit() override;
++  void DidEnterBackForwardCache() override;
++  void RetireNativeInputAdmission();
+ 
+   // TouchSelectionControllerClientManager::Observer implementation.
+   void OnManagerWillDestroy(
 diff --git a/content/browser/renderer_host/render_widget_host_view_mac.h b/content/browser/renderer_host/render_widget_host_view_mac.h
-index 2856a74..ea2ab6c 100644
+index 2856a74..666e243 100644
 --- a/content/browser/renderer_host/render_widget_host_view_mac.h
 +++ b/content/browser/renderer_host/render_widget_host_view_mac.h
 @@ -8,6 +8,8 @@
@@ -585,13 +1183,37 @@ index 2856a74..ea2ab6c 100644
  
    // TextInputManager::Observer implementation.
    void OnUpdateTextInputStateCalled(TextInputManager* text_input_manager,
-@@ -388,6 +395,14 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+@@ -365,10 +372,13 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+       const input::NativeWebKeyboardEvent& key_event,
+       const ui::LatencyInfo& latency_info,
+       std::vector<blink::mojom::EditCommandPtr> commands) override;
+-  void RouteOrProcessMouseEvent(const blink::WebMouseEvent& web_event) override;
++  void RouteOrProcessMouseEvent(
++      const blink::WebMouseEvent& web_event,
++      remote_cocoa::mojom::NativeInputEventPtr native_input = nullptr) override;
+   void RouteOrProcessTouchEvent(const blink::WebTouchEvent& web_event) override;
+   void RouteOrProcessWheelEvent(
+-      const blink::WebMouseWheelEvent& web_event) override;
++      const blink::WebMouseWheelEvent& web_event,
++      remote_cocoa::mojom::NativeInputEventPtr native_input = nullptr) override;
+   void ForwardMouseEvent(const blink::WebMouseEvent& web_event) override;
+   void ForwardWheelEvent(const blink::WebMouseWheelEvent& web_event) override;
+   void PinchEvent(blink::WebGestureEvent event,
+@@ -388,6 +398,22 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
    void OnWindowFrameInScreenChanged(
        const gfx::Rect& window_frame_in_screen_dip) override;
    void OnScreenInfosChanged(const display::ScreenInfos& screen_infos) override;
 +  void AdmitNativeInputEvent(
-+      const std::string& binding,
-+      const std::vector<uint8_t>& native_event_data) override;
++      remote_cocoa::mojom::NativeInputEventPtr input) override;
++  bool HasEmbeddedNativeInputAdmission(
++      RenderWidgetHostViewBase* child,
++      const WeakDocumentPtr& document) const override;
++  void AwaitEmbeddedNativeInputAdmission(
++      RenderWidgetHostViewBase* child,
++      const WeakDocumentPtr& document,
++      base::OnceCallback<void(bool)> callback) override;
++  void RetireEmbeddedNativeInputAdmission(
++      RenderWidgetHostViewBase* child) override;
 +  bool HasNativeInputAdmissionForDocument(
 +      const content::WeakDocumentPtr& document) const override;
 +  void AwaitNativeInputAdmissionForDocument(
@@ -600,7 +1222,23 @@ index 2856a74..ea2ab6c 100644
    void BeginKeyboardEvent() override;
    void EndKeyboardEvent() override;
    void ForwardKeyboardEventWithCommands(
-@@ -548,6 +563,7 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+@@ -396,11 +422,13 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+       bool skip_if_unhandled,
+       std::vector<blink::mojom::EditCommandPtr> commands) override;
+   void RouteOrProcessMouseEvent(
+-      std::unique_ptr<blink::WebCoalescedInputEvent> event) override;
++      std::unique_ptr<blink::WebCoalescedInputEvent> event,
++      remote_cocoa::mojom::NativeInputEventPtr native_input = nullptr) override;
+   void RouteOrProcessTouchEvent(
+       std::unique_ptr<blink::WebCoalescedInputEvent> event) override;
+   void RouteOrProcessWheelEvent(
+-      std::unique_ptr<blink::WebCoalescedInputEvent> event) override;
++      std::unique_ptr<blink::WebCoalescedInputEvent> event,
++      remote_cocoa::mojom::NativeInputEventPtr native_input = nullptr) override;
+   void ForwardMouseEvent(
+       std::unique_ptr<blink::WebCoalescedInputEvent> event) override;
+   void ForwardWheelEvent(
+@@ -548,6 +576,7 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
  
   private:
    friend class RenderWidgetHostViewMacTest;
@@ -608,10 +1246,32 @@ index 2856a74..ea2ab6c 100644
    friend class MockPointerLockRenderWidgetHostView;
    FRIEND_TEST_ALL_PREFIXES(RenderWidgetHostViewMacTest, GetPageTextForSpeech);
  
-@@ -757,6 +773,24 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+@@ -757,6 +786,46 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
    // details.
    base::OneShotTimer update_windows_timer_;
  
++  struct EmbeddedNativeInputBinding {
++    base::WeakPtr<RenderWidgetHostViewBase> child;
++    WeakDocumentPtr document;
++    uint64_t epoch = 0;
++    bool ready = false;
++    std::vector<base::OnceCallback<void(bool)>> callbacks;
++    base::OneShotTimer timer;
++  };
++  bool EmbeddedNativeInputDocumentCurrent(
++      RenderWidgetHostViewBase* child,
++      const WeakDocumentPtr& document) const;
++  void FinishEmbeddedNativeInputBinding(const std::string& binding, bool ready);
++  void RetireEmbeddedNativeInputBinding(const std::string& binding);
++  void AdmitNativeInputToWidget(
++      RenderWidgetHostImpl* widget,
++      const remote_cocoa::mojom::NativeInputEvent& input);
++  base::OnceCallback<void(input::RenderWidgetHostViewInput*)>
++  NativeInputDispatch(remote_cocoa::mojom::NativeInputEventPtr input);
++  uint64_t native_input_epoch_ = 0;
++  std::map<std::string, std::unique_ptr<EmbeddedNativeInputBinding>>
++      embedded_native_input_bindings_;
++
 +  struct NativeInputAdmissionWaiter {
 +    std::string binding;
 +    content::WeakDocumentPtr document;
@@ -634,7 +1294,7 @@ index 2856a74..ea2ab6c 100644
    base::WeakPtrFactory<RenderWidgetHostViewMac> weak_factory_;
  };
 diff --git a/content/browser/renderer_host/render_widget_host_view_mac.mm b/content/browser/renderer_host/render_widget_host_view_mac.mm
-index 8aee3fc..f3d7e1c 100644
+index 8aee3fc..64afa97 100644
 --- a/content/browser/renderer_host/render_widget_host_view_mac.mm
 +++ b/content/browser/renderer_host/render_widget_host_view_mac.mm
 @@ -21,6 +21,7 @@
@@ -763,17 +1423,217 @@ index 8aee3fc..f3d7e1c 100644
  void RenderWidgetHostViewMac::CopyFromSurface(
      const gfx::Rect& src_subrect,
      const gfx::Size& dst_size,
-@@ -2530,6 +2554,168 @@ void RenderWidgetHostViewMac::SetRemoteAccessibilityWindowToken(
+@@ -2118,14 +2142,23 @@ void RenderWidgetHostViewMac::ForwardKeyboardEventWithCommands(
+ }
+ 
+ void RenderWidgetHostViewMac::RouteOrProcessMouseEvent(
+-    const blink::WebMouseEvent& const_web_event) {
++    const blink::WebMouseEvent& const_web_event,
++    remote_cocoa::mojom::NativeInputEventPtr native_input) {
+   blink::WebMouseEvent web_event = const_web_event;
+   ui::LatencyInfo latency_info;
+   latency_info.AddLatencyNumber(ui::INPUT_EVENT_LATENCY_UI_COMPONENT);
+   if (ShouldRouteEvents()) {
+-    host()->delegate()->GetInputEventRouter()->RouteMouseEvent(this, &web_event,
+-                                                               latency_info);
++    host()->delegate()->GetInputEventRouter()->RouteMouseEvent(
++        this, &web_event, latency_info,
++        NativeInputDispatch(std::move(native_input)));
+   } else {
++    const auto weak = weak_factory_.GetWeakPtr();
++    if (native_input) {
++      AdmitNativeInputToWidget(host(), *native_input);
++    }
++    if (!weak) {
++      return;
++    }
+     ProcessMouseEvent(web_event, latency_info);
+   }
+ }
+@@ -2154,7 +2187,8 @@ void RenderWidgetHostViewMac::RouteOrProcessTouchEvent(
+ }
+ 
+ void RenderWidgetHostViewMac::RouteOrProcessWheelEvent(
+-    const blink::WebMouseWheelEvent& const_web_event) {
++    const blink::WebMouseWheelEvent& const_web_event,
++    remote_cocoa::mojom::NativeInputEventPtr native_input) {
+   blink::WebMouseWheelEvent web_event = const_web_event;
+   ui::LatencyInfo latency_info;
+   latency_info.AddLatencyNumber(ui::INPUT_EVENT_LATENCY_UI_COMPONENT);
+@@ -2168,8 +2202,16 @@ void RenderWidgetHostViewMac::RouteOrProcessWheelEvent(
+   }
+   if (ShouldRouteEvents()) {
+     host()->delegate()->GetInputEventRouter()->RouteMouseWheelEvent(
+-        this, &web_event, latency_info);
++        this, &web_event, latency_info,
++        NativeInputDispatch(std::move(native_input)));
+   } else {
++    const auto weak = weak_factory_.GetWeakPtr();
++    if (native_input) {
++      AdmitNativeInputToWidget(host(), *native_input);
++    }
++    if (!weak) {
++      return;
++    }
+     ProcessMouseWheelEvent(web_event, latency_info);
+   }
+ }
+@@ -2530,6 +2572,374 @@ void RenderWidgetHostViewMac::SetRemoteAccessibilityWindowToken(
  // mojom::RenderWidgetHostNSViewHost functions that translate events and
  // forward them to the RenderWidgetHostNSViewHostHelper implementation:
  
 +void RenderWidgetHostViewMac::RetireNativeInputBinding() {
++  ++native_input_epoch_;
++  RetireEmbeddedNativeInputAdmission(nullptr);
 +  native_input_ready_ = false;
 +  native_input_binding_.clear();
 +  native_input_document_ = {};
 +  FinishNativeInputAdmissionWaiters(false);
 +  if (ns_view_)
 +    ns_view_->SetNativeInputDocumentBinding({}, base::DoNothing());
++}
++
++bool RenderWidgetHostViewMac::EmbeddedNativeInputDocumentCurrent(
++    RenderWidgetHostViewBase* child,
++    const WeakDocumentPtr& document) const {
++  auto* frame = document.AsRenderFrameHostIfValid();
++  auto* widget = child
++                     ? RenderWidgetHostImpl::From(child->GetRenderWidgetHost())
++                     : nullptr;
++  auto* contents =
++      widget ? WebContentsImpl::FromRenderWidgetHostImpl(widget) : nullptr;
++  return ns_view_ && child && child != this && child->GetRootView() == this &&
++         widget && widget->GetView() == child && frame && contents &&
++         frame->GetRenderWidgetHost() == widget &&
++         contents->GetPrimaryMainFrame() == frame && frame->IsActive() &&
++         frame->IsRenderFrameLive();
++}
++
++bool RenderWidgetHostViewMac::HasEmbeddedNativeInputAdmission(
++    RenderWidgetHostViewBase* child,
++    const WeakDocumentPtr& document) const {
++  if (!EmbeddedNativeInputDocumentCurrent(child, document)) {
++    return false;
++  }
++  for (const auto& [binding, entry] : embedded_native_input_bindings_) {
++    if (entry->child.get() == child && entry->epoch == native_input_epoch_ &&
++        entry->ready &&
++        entry->document.AsRenderFrameHostIfValid() ==
++            document.AsRenderFrameHostIfValid()) {
++      return true;
++    }
++  }
++  return false;
++}
++
++void RenderWidgetHostViewMac::RetireEmbeddedNativeInputBinding(
++    const std::string& binding) {
++  auto found = embedded_native_input_bindings_.find(binding);
++  if (found == embedded_native_input_bindings_.end()) {
++    return;
++  }
++  auto entry = std::move(found->second);
++  embedded_native_input_bindings_.erase(found);
++  entry->timer.Stop();
++  if (ns_view_) {
++    ns_view_->SetEmbeddedNativeInputDocumentBinding(binding, false,
++                                                    base::DoNothing());
++  }
++  for (auto& callback : entry->callbacks) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(callback), false));
++  }
++}
++
++void RenderWidgetHostViewMac::RetireEmbeddedNativeInputAdmission(
++    RenderWidgetHostViewBase* child) {
++  std::vector<std::string> retired;
++  for (const auto& [binding, entry] : embedded_native_input_bindings_) {
++    if (!child || !entry->child || entry->child.get() == child) {
++      retired.push_back(binding);
++    }
++  }
++  for (const auto& binding : retired) {
++    RetireEmbeddedNativeInputBinding(binding);
++  }
++}
++
++void RenderWidgetHostViewMac::FinishEmbeddedNativeInputBinding(
++    const std::string& binding,
++    bool ready) {
++  auto found = embedded_native_input_bindings_.find(binding);
++  if (found == embedded_native_input_bindings_.end()) {
++    return;
++  }
++  auto& entry = *found->second;
++  if (!ready || entry.epoch != native_input_epoch_ ||
++      !EmbeddedNativeInputDocumentCurrent(entry.child.get(), entry.document)) {
++    RetireEmbeddedNativeInputBinding(binding);
++    return;
++  }
++  entry.ready = true;
++  entry.timer.Stop();
++  auto callbacks = std::move(entry.callbacks);
++  for (auto& callback : callbacks) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(
++            [](base::WeakPtr<RenderWidgetHostViewMac> root,
++               base::WeakPtr<RenderWidgetHostViewBase> child,
++               WeakDocumentPtr document, std::string binding,
++               base::OnceCallback<void(bool)> callback) {
++              std::move(callback).Run(
++                  root && child &&
++                  root->embedded_native_input_bindings_.contains(binding) &&
++                  root->HasEmbeddedNativeInputAdmission(child.get(), document));
++            },
++            weak_factory_.GetWeakPtr(), entry.child, entry.document, binding,
++            std::move(callback)));
++  }
++}
++
++void RenderWidgetHostViewMac::AwaitEmbeddedNativeInputAdmission(
++    RenderWidgetHostViewBase* child,
++    const WeakDocumentPtr& document,
++    base::OnceCallback<void(bool)> callback) {
++  if (!EmbeddedNativeInputDocumentCurrent(child, document)) {
++    std::move(callback).Run(false);
++    return;
++  }
++  if (HasEmbeddedNativeInputAdmission(child, document)) {
++    std::move(callback).Run(true);
++    return;
++  }
++  for (const auto& [binding, entry] : embedded_native_input_bindings_) {
++    if (entry->child.get() == child && entry->epoch == native_input_epoch_ &&
++        entry->document.AsRenderFrameHostIfValid() ==
++            document.AsRenderFrameHostIfValid()) {
++      if (entry->callbacks.size() < 8) {
++        entry->callbacks.push_back(std::move(callback));
++      } else {
++        std::move(callback).Run(false);
++      }
++      return;
++    }
++  }
++  RetireEmbeddedNativeInputAdmission(child);
++  const std::string binding = base::UnguessableToken::Create().ToString();
++  auto entry = std::make_unique<EmbeddedNativeInputBinding>();
++  entry->child = child->GetWeakPtr();
++  entry->document = document;
++  entry->epoch = native_input_epoch_;
++  entry->callbacks.push_back(std::move(callback));
++  entry->timer.Start(
++      FROM_HERE, base::Seconds(8),
++      base::BindOnce(&RenderWidgetHostViewMac::FinishEmbeddedNativeInputBinding,
++                     weak_factory_.GetWeakPtr(), binding, false));
++  embedded_native_input_bindings_.emplace(binding, std::move(entry));
++  // This independent token is acknowledged by the actual hosting NSView. It
++  // never admits a child using the Aux shell's primary-document token.
++  ns_view_->SetEmbeddedNativeInputDocumentBinding(
++      binding, true,
++      base::BindOnce(&RenderWidgetHostViewMac::FinishEmbeddedNativeInputBinding,
++                     weak_factory_.GetWeakPtr(), binding, true));
 +}
 +
 +bool RenderWidgetHostViewMac::HasNativeInputAdmissionForDocument(
@@ -888,16 +1748,47 @@ index 8aee3fc..f3d7e1c 100644
 +}
 +
 +void RenderWidgetHostViewMac::AdmitNativeInputEvent(
-+    const std::string& binding,
-+    const std::vector<uint8_t>& native_event_data) {
-+  if (binding.empty() || binding != native_input_binding_ ||
-+      !HasNativeInputAdmissionForDocument(native_input_document_) ||
-+      native_event_data.empty() || native_event_data.size() > 8192)
++    remote_cocoa::mojom::NativeInputEventPtr native_input) {
++  if (!native_input || !in_keyboard_event_) {
 +    return;
-+  auto native_event = base::apple::OwnedNSEvent(
-+      ui::EventFromData(native_event_data));
-+  if (!native_event.Get())
++  }
++  AdmitNativeInputToWidget(GetWidgetForKeyboardEvent(), *native_input);
++}
++
++base::OnceCallback<void(input::RenderWidgetHostViewInput*)>
++RenderWidgetHostViewMac::NativeInputDispatch(
++    remote_cocoa::mojom::NativeInputEventPtr native_input) {
++  if (!native_input) {
++    return {};
++  }
++  return base::BindOnce(
++      [](base::WeakPtr<RenderWidgetHostViewMac> root, uint64_t epoch,
++         remote_cocoa::mojom::NativeInputEventPtr native_input,
++         input::RenderWidgetHostViewInput* target) {
++        if (!root || root->native_input_epoch_ != epoch || !target ||
++            target->GetRootView() != root.get()) {
++          return;
++        }
++        auto* view = static_cast<RenderWidgetHostViewBase*>(target);
++        root->AdmitNativeInputToWidget(
++            RenderWidgetHostImpl::From(view->GetRenderWidgetHost()),
++            *native_input);
++      },
++      weak_factory_.GetWeakPtr(), native_input_epoch_, std::move(native_input));
++}
++
++void RenderWidgetHostViewMac::AdmitNativeInputToWidget(
++    RenderWidgetHostImpl* widget,
++    const remote_cocoa::mojom::NativeInputEvent& native_input) {
++  if (!widget || native_input.event_data.empty() ||
++      native_input.event_data.size() > 8192) {
 +    return;
++  }
++  auto native_event =
++      base::apple::OwnedNSEvent(ui::EventFromData(native_input.event_data));
++  if (!native_event.Get()) {
++    return;
++  }
 +  const auto type = [native_event.Get() type];
 +  const bool keyboard = type == NSEventTypeKeyDown ||
 +                        type == NSEventTypeKeyUp ||
@@ -912,18 +1803,48 @@ index 8aee3fc..f3d7e1c 100644
 +                     type == NSEventTypeRightMouseDragged ||
 +                     type == NSEventTypeOtherMouseDragged ||
 +                     type == NSEventTypeScrollWheel;
-+  if (!keyboard && !mouse)
++  if (!keyboard && !mouse) {
 +    return;
-+  auto* widget = keyboard ? GetWidgetForKeyboardEvent() : host();
-+  auto* contents = widget ? WebContentsImpl::FromRenderWidgetHostImpl(widget)
-+                          : nullptr;
++  }
++  auto* contents = WebContentsImpl::FromRenderWidgetHostImpl(widget);
 +  auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
-+  if (!widget || !contents || !frame ||
-+      native_input_document_.AsRenderFrameHostIfValid() != frame)
++  auto* target_view = widget->GetView();
++  auto* primary_widget = frame ? frame->GetRenderWidgetHost() : nullptr;
++  auto* primary_view = primary_widget ? primary_widget->GetView() : nullptr;
++  if (!frame || !target_view || !primary_view ||
++      target_view->GetRootView() != this) {
 +    return;
-+  const auto document = native_input_document_;
-+  // No generic WebInputEvent flags are promoted to person provenance. Chrome
-+  // receives the original decoded OS event on the owned native view endpoint.
++  }
++  const auto document = frame->GetWeakDocumentPtr();
++  if (primary_view == this) {
++    if (native_input.binding.empty() ||
++        native_input.binding != native_input_binding_ ||
++        !HasNativeInputAdmissionForDocument(document)) {
++      return;
++    }
++  } else {
++    auto* child = static_cast<RenderWidgetHostViewBase*>(primary_view);
++    if (!HasEmbeddedNativeInputAdmission(child, document)) {
++      return;
++    }
++    bool admitted = false;
++    for (const auto& binding : native_input.embedded_bindings) {
++      auto found = embedded_native_input_bindings_.find(binding);
++      if (found != embedded_native_input_bindings_.end() &&
++          found->second->ready && found->second->epoch == native_input_epoch_ &&
++          found->second->child.get() == child &&
++          found->second->document.AsRenderFrameHostIfValid() == frame) {
++        admitted = true;
++        break;
++      }
++    }
++    if (!admitted) {
++      return;
++    }
++  }
++  // Retire only the actual queued/focused target's document, before forwarding.
++  // Generic WebInputEvent flags and synthetic helpers never create this
++  // evidence.
 +  const NativePlatformInputAdmission admission(
 +      contents->GetWeakPtr(), widget->GetWeakPtr(), document, native_event);
 +  GetContentClient()->browser()->WillDispatchNativeInput(admission);
@@ -932,6 +1853,44 @@ index 8aee3fc..f3d7e1c 100644
  void RenderWidgetHostViewMac::ForwardKeyboardEventWithCommands(
      std::unique_ptr<blink::WebCoalescedInputEvent> input_event,
      const std::vector<uint8_t>& native_event_data,
+@@ -2555,7 +2965,8 @@ void RenderWidgetHostViewMac::ForwardKeyboardEventWithCommands(
+ }
+ 
+ void RenderWidgetHostViewMac::RouteOrProcessMouseEvent(
+-    std::unique_ptr<blink::WebCoalescedInputEvent> input_event) {
++    std::unique_ptr<blink::WebCoalescedInputEvent> input_event,
++    remote_cocoa::mojom::NativeInputEventPtr native_input) {
+   if (!input_event ||
+       !blink::WebInputEvent::IsMouseEventType(input_event->Event().GetType())) {
+     DLOG(ERROR) << "Absent or non-MouseEventType event.";
+@@ -2563,7 +2974,7 @@ void RenderWidgetHostViewMac::RouteOrProcessMouseEvent(
+   }
+   const blink::WebMouseEvent& mouse_event =
+       static_cast<const blink::WebMouseEvent&>(input_event->Event());
+-  RouteOrProcessMouseEvent(mouse_event);
++  RouteOrProcessMouseEvent(mouse_event, std::move(native_input));
+ }
+ 
+ void RenderWidgetHostViewMac::RouteOrProcessTouchEvent(
+@@ -2579,7 +2990,8 @@ void RenderWidgetHostViewMac::RouteOrProcessTouchEvent(
+ }
+ 
+ void RenderWidgetHostViewMac::RouteOrProcessWheelEvent(
+-    std::unique_ptr<blink::WebCoalescedInputEvent> input_event) {
++    std::unique_ptr<blink::WebCoalescedInputEvent> input_event,
++    remote_cocoa::mojom::NativeInputEventPtr native_input) {
+   if (!input_event || input_event->Event().GetType() !=
+                           blink::WebInputEvent::Type::kMouseWheel) {
+     DLOG(ERROR) << "Absent or non-MouseWheel event.";
+@@ -2587,7 +2999,7 @@ void RenderWidgetHostViewMac::RouteOrProcessWheelEvent(
+   }
+   const blink::WebMouseWheelEvent& wheel_event =
+       static_cast<const blink::WebMouseWheelEvent&>(input_event->Event());
+-  RouteOrProcessWheelEvent(wheel_event);
++  RouteOrProcessWheelEvent(wheel_event, std::move(native_input));
+ }
+ 
+ void RenderWidgetHostViewMac::ForwardMouseEvent(
 diff --git a/content/browser/web_contents/web_contents_view.cc b/content/browser/web_contents/web_contents_view.cc
 new file mode 100644
 index 0000000..1099c2c
@@ -1051,31 +2010,56 @@ index 4283e1b..16a4193 100644
    web_contents_->Close();
  }
 diff --git a/content/common/render_widget_host_ns_view.mojom b/content/common/render_widget_host_ns_view.mojom
-index 566af79..a2f156b 100644
+index 566af79..7fc0601 100644
 --- a/content/common/render_widget_host_ns_view.mojom
 +++ b/content/common/render_widget_host_ns_view.mojom
-@@ -43,6 +43,10 @@ struct PopupMenu {
+@@ -38,11 +38,24 @@ struct PopupMenu {
+   pending_receiver<PopupMenuRunner> receiver;
+ };
+ 
++// Original OS event and the document bindings installed in its owned NSView.
++// Only the browser/app shim may produce this envelope; synthetic events omit it.
++struct NativeInputEvent {
++  string binding;
++  array<string> embedded_bindings;
++  array<uint8> event_data;
++};
++
+ // The interface through which code in the browser process, in
+ // RenderWidgetHostViewMac, sends messages to the app shim process, targeting
  // the RenderWidgetHostViewCocoa NSView. No synchronous communication is allowed
  // in this direction.
  interface RenderWidgetHostNSView {
 +  // Browser-issued current-document binding. Reply only after this exact view
 +  // has installed the binding; empty retires every earlier admission.
 +  SetNativeInputDocumentBinding(string binding) => ();
++  SetEmbeddedNativeInputDocumentBinding(string binding, bool enabled) => ();
 +
    // Specify that the NSView will a popup (e.g, date/time picker) that will
    // create its own NSWindow.
    InitAsPopup(gfx.mojom.Rect content_rect, uint64 popup_parent_ns_view_id);
-@@ -189,6 +193,10 @@ interface RenderWidgetHostNSViewHost {
-   // Indicate the begin and end block of a keyboard event. The beginning of this
+@@ -190,6 +203,9 @@ interface RenderWidgetHostNSViewHost {
    // block will record the active RenderWidgetHost, and will forward all
    // remaining keyboard and Ime messages to that RenderWidgetHost.
-+  // Original OS-event bytes from this owned Cocoa view. Sent on this same
-+  // associated pipe before the matching event is forwarded. This admission
-+  // does not synthesize an event or permit any protocol command.
-+  AdmitNativeInputEvent(string binding, array<uint8> native_event_data);
    BeginKeyboardEvent();
++  // Sent after BeginKeyboardEvent captures the focused widget, before any
++  // matching keyboard/IME dispatch. Mouse/wheel envelopes follow actual routing.
++  AdmitNativeInputEvent(NativeInputEvent input);
    EndKeyboardEvent();
  
+   // Forward a keyboard event to the RenderWidgetHost that is currently handling
+@@ -201,9 +217,9 @@ interface RenderWidgetHostNSViewHost {
+       array<blink.mojom.EditCommand> commands);
+ 
+   // Forward events to the renderer or the input router, as appropriate.
+-  RouteOrProcessMouseEvent(blink.mojom.Event event);
++  RouteOrProcessMouseEvent(blink.mojom.Event event, NativeInputEvent? native_input);
+   RouteOrProcessTouchEvent(blink.mojom.Event event);
+-  RouteOrProcessWheelEvent(blink.mojom.Event event);
++  RouteOrProcessWheelEvent(blink.mojom.Event event, NativeInputEvent? native_input);
+ 
+   // Special case forwarding of synthetic events to the renderer.
+   ForwardMouseEvent(blink.mojom.Event event);
 diff --git a/content/public/browser/native_platform_input_admission.cc b/content/public/browser/native_platform_input_admission.cc
 new file mode 100644
 index 0000000..3a7018e

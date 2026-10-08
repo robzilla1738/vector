@@ -1772,10 +1772,10 @@ index 0000000..fa2dce8
 +#endif
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
 new file mode 100644
-index 0000000..8729cc4
+index 0000000..10a4a6e
 --- /dev/null
 +++ b/chrome/browser/ui/aux/runtime_host.cc
-@@ -0,0 +1,3206 @@
+@@ -0,0 +1,3232 @@
 +#include "chrome/browser/ui/aux/native_project.h"
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
@@ -1957,6 +1957,9 @@ index 0000000..8729cc4
 +
 +bool AuxRuntimeHost::SupportsPrivateMethod(std::string_view method) {
 +  return method != "bookmarksInvoke" && method != "onBookmarksChanged" &&
++         method != "historyInvoke" && method != "onHistoryChanged" &&
++         method != "memorySaverGet" && method != "memorySaverSet" &&
++         method != "native.memorySaverGet" && method != "native.memorySaverSet" &&
 +         method != "organizationSnapshot" && method != "organizationCommit" &&
 +         !method.starts_with("native.foundationModels") &&
 +         method != "native.spaceBindingsSet" &&
@@ -1993,7 +1996,7 @@ index 0000000..8729cc4
 +      private_session_id_(
 +          profile->IsOffTheRecord() ? ProfileId(profile).substr(8) : "") {
 +  profile_observation_.Observe(profile);
-+  native_find_ = std::make_unique<aux::NativeFind>(profile);
++  native_find_ = aux::NativeFind::ForProfile(profile);
 +  worker_thread_ = std::make_unique<base::Thread>("AuxProfileRuntime");
 +  base::Thread::Options worker_options;
 +  worker_options.message_pump_type = base::MessagePumpType::IO;
@@ -2044,6 +2047,13 @@ index 0000000..8729cc4
 +                host->worker_.AsyncCall(&Worker::SendBookmarkChanged);
 +              }
 +            },
++            weak_factory_.GetWeakPtr()),
++        base::BindRepeating(
++            [](base::WeakPtr<AuxRuntimeHost> host) {
++              if (host) {
++                host->observers_.Notify("onHistoryChanged", "{}");
++              }
++            },
 +            weak_factory_.GetWeakPtr()));
 +  }
 +  if (auto* catalog = aux::TabCatalog::GetForProfile(profile_)) {
@@ -2067,6 +2077,21 @@ index 0000000..8729cc4
 +             ? profile_library_->BookmarkCall(method, params)
 +             : NativeFault("forbidden",
 +                           "Private windows do not persist bookmarks");
++}
++
++void AuxRuntimeHost::CallHistoryForUser(
++    const std::string& method,
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback,
++    base::RepeatingCallback<bool()> current) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!profile_library_) {
++    std::move(callback).Run(NativeFault(
++        "forbidden", "Private windows do not expose saved history"));
++    return;
++  }
++  profile_library_->HistoryCall(method, params, std::move(callback),
++                                std::move(current));
 +}
 +
 +AuxRuntimeHost::~AuxRuntimeHost() {
@@ -2093,7 +2118,8 @@ index 0000000..8729cc4
 +    auto importer = std::move(browser_importer_);
 +    importer->Close(base::BindOnce([](std::shared_ptr<aux::BrowserProfileImporter>) {}, importer));
 +  }
-+  native_find_.reset();
++  native_find_->CancelOwner(this);
++  native_find_ = nullptr;
 +  tab_catalog_subscription_ = {};
 +  cdp_authority_subscription_ = {};
 +  profile_library_.reset();
@@ -4423,7 +4449,7 @@ index 0000000..8729cc4
 +                                base::DictValue reply) {
 +                               state->reply = std::move(reply);
 +                               state->ready.Signal();
-+                             }, state));
++                             }, state), true, owner.get());
 +                         return;
 +                       }
 +                       if (owner && method == "native.remoteDebuggingSet") {
@@ -4984,10 +5010,10 @@ index 0000000..8729cc4
 +}
 diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
 new file mode 100644
-index 0000000..9b1582d
+index 0000000..ddfb9a3
 --- /dev/null
 +++ b/chrome/browser/ui/aux/runtime_host.h
-@@ -0,0 +1,379 @@
+@@ -0,0 +1,384 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -5086,6 +5112,11 @@ index 0000000..9b1582d
 +  // Native Profile library access for trusted browser UI; no runtime required.
 +  base::DictValue CallBookmarksForUser(const std::string& method,
 +                                       const base::DictValue& params);
++
++  void CallHistoryForUser(const std::string& method,
++                          const base::DictValue& params,
++                          base::OnceCallback<void(base::DictValue)> callback,
++                          base::RepeatingCallback<bool()> current);
 +
 +  base::DictValue CredentialContext(const base::DictValue& params, uint64_t generation);
 +
@@ -5282,7 +5313,7 @@ index 0000000..9b1582d
 +  std::map<std::string, CredentialAdmission> credential_admissions_;
 +  base::DictValue HandleCredentialAdmission(const base::DictValue& params, uint64_t generation);
 +  std::unique_ptr<aux::CredentialFill> credential_fill_;
-+  std::unique_ptr<aux::NativeFind> native_find_;
++  raw_ptr<aux::NativeFind> native_find_ = nullptr;
 +  std::unique_ptr<device_reauth::DeviceAuthenticator> recovery_authenticator_;
 +  bool recovery_auth_pending_ = false;
 +  struct StageLease {
