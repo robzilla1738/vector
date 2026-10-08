@@ -353,7 +353,12 @@ describe("Chromium native CDP facade", () => {
       await closed;
       newClient = new WebSocket(broker.endpoint());
       const frames: Record<string, unknown>[] = [];
-      newClient.on("message", (raw) => frames.push(JSON.parse(String(raw)) as Record<string, unknown>));
+      const reply = Promise.withResolvers<Record<string, unknown>>();
+      newClient.on("message", (raw) => {
+        const frame = JSON.parse(String(raw)) as Record<string, unknown>;
+        frames.push(frame);
+        if (frame.id === 2) reply.resolve(frame);
+      });
       await new Promise<void>((resolve) => newClient!.on("open", () => resolve()));
       newClient.send(
         JSON.stringify({
@@ -373,9 +378,7 @@ describe("Chromium native CDP facade", () => {
           },
         ],
       });
-      for (let attempt = 0; attempt < 200 && !frames.some((frame) => frame.id === 2); attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 5));
-      }
+      expect((await reply.promise).result).toEqual({});
       expect(frames.some((frame) => frame.id === 1)).toBe(false);
       expect(
         frames.some(
@@ -391,7 +394,6 @@ describe("Chromium native CDP facade", () => {
             (frame.params as { targetInfo?: { targetId?: string } }).targetInfo?.targetId === "new-target",
         ),
       ).toBe(true);
-      expect(frames.find((frame) => frame.id === 2)?.result).toEqual({});
     } finally {
       releaseFirst({ pages: [] });
       oldClient.terminate();
