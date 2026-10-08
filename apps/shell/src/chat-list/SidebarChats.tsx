@@ -35,6 +35,7 @@ import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** Shared session organization for both sidebar layouts. Folder entries belong to this browser profile. */
 export function SidebarChats({ compact = false, query = "" }: { compact?: boolean; query?: string }) {
+  const privateMode = bridge.privateMode;
   const active = useStore((s) => (s.mode === "conversation" ? s.conversationId : null));
   const [archived, setArchived] = useState(false);
   const {
@@ -43,7 +44,10 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
     items: rows,
   } = useChatCollection({ archived, policy: compact ? "preview" : "complete" });
   const actions = useChatActions(collection);
-  const [organization, setOrganization] = useState(() => readChatFolders(localStorage));
+  const [savedOrganization, setOrganization] = useState(() =>
+    privateMode ? { folders: [], members: {} } : readChatFolders(localStorage),
+  );
+  const organization = privateMode ? { folders: [], members: {} } : savedOrganization;
   const [editing, setEditing] = useState<ChatFolder | null>(null);
   const [name, setName] = useState("");
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -84,14 +88,16 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
   }
   useEffect(() => {
     const refresh = () => setOrganization(readChatFolders(localStorage));
+    if (privateMode) return;
     window.addEventListener("storage", refresh);
     window.addEventListener("aux-chat-folders", refresh);
     return () => {
       window.removeEventListener("storage", refresh);
       window.removeEventListener("aux-chat-folders", refresh);
     };
-  }, []);
+  }, [privateMode]);
   function organize(work: () => void) {
+    if (bridge.privateMode) return;
     try {
       work();
       window.dispatchEvent(new Event("aux-chat-folders"));
@@ -173,16 +179,20 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
                 setDeleting(null);
               },
             },
-            {
-              label: "Move to project",
-              icon: shellIconFolder,
-              disabled: busy,
-              onSelect: () => {
-                setMoving(item.chatId);
-                setDeleting(null);
-                setRenaming(null);
-              },
-            },
+            ...(!privateMode
+              ? [
+                  {
+                    label: "Move to project",
+                    icon: shellIconFolder,
+                    disabled: busy,
+                    onSelect: () => {
+                      setMoving(item.chatId);
+                      setDeleting(null);
+                      setRenaming(null);
+                    },
+                  },
+                ]
+              : []),
             {
               label: archived ? "Restore chat" : "Archive chat",
               icon: shellIconArchive,
@@ -302,14 +312,18 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
   return (
     <div ref={root} className="chat-sessions" aria-busy={loading}>
       <div className="session-heading">
-        <span>{archived ? "Archived chats" : compact ? "Recent" : "Chats"}</span>
+        <span>
+          {archived ? "Archived chats" : privateMode ? "Private chats" : compact ? "Recent" : "Chats"}
+        </span>
         <ActionMenu
           label="Chat options"
           triggerRef={(node) => {
             headingTrigger.current = node;
           }}
           actions={[
-            { label: "New chat project", icon: shellIconFolder, onSelect: () => edit() },
+            ...(!privateMode
+              ? [{ label: "New chat project", icon: shellIconFolder, onSelect: () => edit() }]
+              : []),
             {
               label: archived ? "Active chats" : "Archived chats",
               icon: shellIconArchive,
@@ -317,16 +331,20 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
                 setArchived(!archived);
               },
             },
-            { label: "All chats", icon: shellIconChats, onSelect: showHistory },
+            {
+              label: privateMode ? "All private chats" : "All chats",
+              icon: shellIconChats,
+              onSelect: showHistory,
+            },
           ]}
         />
       </div>
-      {(organization.folders.length > 0 || editing) && (
+      {!privateMode && (organization.folders.length > 0 || editing) && (
         <div className="session-heading">
           <span>Projects</span>
         </div>
       )}
-      {editing && (
+      {!privateMode && editing && (
         <form
           className="session-editor"
           onSubmit={(event) => {
@@ -413,9 +431,9 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
           (row) => !organization.folders.some((folder) => folder.id === organization.members[row.chatId]),
         ),
       )}
-      {compact && !bridge.privateMode && (
+      {compact && (
         <button className="sb-link sb-show-all" onClick={showHistory}>
-          All chats {shellIconRight}
+          {privateMode ? "All private chats" : "All chats"} {shellIconRight}
         </button>
       )}
       {loading && !rows.length && (

@@ -184,7 +184,7 @@ it("Private exposes session Chats and Agent beside native browsing controls, wit
   expect(useStore.getState().sidebarSections.chats).toBe(!chatsBefore);
   expect(chats.getAttribute("aria-expanded")).toBe(String(!chatsBefore));
   expect(host.querySelector('[data-command-id="new-chat"]')).not.toBeNull();
-  expect(host.querySelector(".sb-show-all")).toBeNull();
+  expect(host.querySelector(".sb-show-all")?.textContent).toContain("All private chats");
   const tabs = heading("Tabs"),
     before = useStore.getState().sidebarSections.tabs;
   await act(async () => tabs.click());

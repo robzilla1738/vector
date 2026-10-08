@@ -25,6 +25,7 @@ import {
   shellIconTrash,
 } from "../ui/icons";
 import { ConversationDrafts } from "../components/ConversationDrafts";
+import { bridge } from "../bridge";
 
 import { SkeletonRows } from "../components/Skeleton";
 import { Tabs } from "../ui";
@@ -79,7 +80,7 @@ export function ChatHistory() {
   return (
     <section className="conversation conversation-history" aria-label="Conversation history">
       <header className="conversation-head">
-        <h1>Chats</h1>
+        <h1>{bridge.privateMode ? "Private chats" : "Chats"}</h1>
         <div {...auxReuseStaticSpacerProps} />
         <Tabs<"active" | "archived">
           label="Conversation state"
@@ -93,6 +94,9 @@ export function ChatHistory() {
           ]}
         />
       </header>
+      {bridge.privateMode && (
+        <p className="hint history-scope-note">Available until the last private window closes.</p>
+      )}
       <div
         id="conversation-history-panel"
         role="tabpanel"
@@ -162,7 +166,9 @@ export function ChatHistory() {
         {(archived || workspaceId) && (
           <p className="hint history-scope-note">
             {archived
-              ? "Archived chats stay available until you delete them."
+              ? bridge.privateMode
+                ? "Archived chats stay available for this private session."
+                : "Archived chats stay available until you delete them."
               : "Searching this Space. Unsent drafts are available in All Spaces."}
           </p>
         )}

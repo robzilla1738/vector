@@ -48,17 +48,14 @@ export function useChatCollection(query: ConversationQuery, active = true) {
         query,
         (params) => call("conversations.list", params),
         () =>
-          !privateMode &&
-          bridge.windowId === windowId &&
-          bridge.windowKind === kind &&
-          bridge.privateMode === privateMode,
-        active && !privateMode,
+          bridge.windowId === windowId && bridge.windowKind === kind && bridge.privateMode === privateMode,
+        active,
       ),
     [query.archived, query.query, query.workspaceId, query.policy, windowId, kind, privateMode],
   );
   const state = useSyncExternalStore(collection.subscribe, collection.getSnapshot);
   useEffect(() => {
-    if (!active || privateMode) return;
+    if (!active) return;
     collection.start();
     let timer = window.setTimeout(() => void collection.load(), query.policy === "preview" ? 0 : 100);
     const off = watchChats(() => {

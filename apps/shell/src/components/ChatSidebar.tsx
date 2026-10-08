@@ -53,17 +53,15 @@ export function ChatSidebar({ minimal = false }: { minimal?: boolean }) {
         </label>
         <FeatureSlots slot="sidebarItems" />
         <nav aria-label="Work">
-          {!bridge.privateMode && (
-            <button
-              className={`chat-sidebar-link primary${mode === "conversation" && !conversationId ? " current" : ""}`}
-              aria-current={mode === "conversation" && !conversationId ? "page" : undefined}
-              data-command-id="new-chat"
-              onClick={() => runCommand("new-chat")}
-            >
-              {shellIconPencil}
-              <span>New chat</span>
-            </button>
-          )}
+          <button
+            className={`chat-sidebar-link primary${mode === "conversation" && !conversationId ? " current" : ""}`}
+            aria-current={mode === "conversation" && !conversationId ? "page" : undefined}
+            data-command-id="new-chat"
+            onClick={() => runCommand("new-chat")}
+          >
+            {shellIconPencil}
+            <span>New chat</span>
+          </button>
           <button className="chat-sidebar-link" onClick={() => setOverlay("tasks")}>
             {shellIconFolder}
             <span>Tasks</span>
@@ -73,11 +71,9 @@ export function ChatSidebar({ minimal = false }: { minimal?: boolean }) {
             <span>Settings</span>
           </button>
         </nav>
-        {!bridge.privateMode && (
-          <section className="chat-sidebar-history" aria-label="Chats">
-            <SidebarChats query={query} />
-          </section>
-        )}
+        <section className="chat-sidebar-history" aria-label={bridge.privateMode ? "Private chats" : "Chats"}>
+          <SidebarChats query={query} />
+        </section>
       </div>
       {open && (
         <ResizeHandle

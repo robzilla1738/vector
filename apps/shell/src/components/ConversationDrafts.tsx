@@ -115,7 +115,9 @@ export function ConversationDrafts({
         <h2>
           Unsent drafts <span {...auxReserveStaticHintProps}>{entries.length + visibleBranches.length}</span>
         </h2>
-        <span {...auxReserveStaticHintProps}>Saved on this Mac</span>
+        <span {...auxReserveStaticHintProps}>
+          {bridge.privateMode ? "This private session" : "Saved on this Mac"}
+        </span>
       </div>
       {error && (
         <p {...auxReserveStaticFieldErrorProps} role="alert">

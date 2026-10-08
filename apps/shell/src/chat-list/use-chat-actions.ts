@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { ConversationSummary } from "@aux/contracts";
 import { call, useStore } from "../store";
+import { bridge } from "../bridge";
 import { moveChatToFolder } from "../chat-folders";
 import { errorMessage } from "../error-message";
 import type { ConversationCollection } from "./collection";
@@ -53,9 +54,11 @@ export function useChatActions(collection: ConversationCollection) {
         store.setConversationContext(item.chatId, "");
         store.setConversationBrowserSources(item.chatId, []);
         try {
-          localStorage.removeItem(`aux.pending-queue-message.v1:${item.chatId}`);
-          moveChatToFolder(localStorage, item.chatId, "");
-          window.dispatchEvent(new Event("aux-chat-folders"));
+          if (!bridge.privateMode) {
+            localStorage.removeItem(`aux.pending-queue-message.v1:${item.chatId}`);
+            moveChatToFolder(localStorage, item.chatId, "");
+            window.dispatchEvent(new Event("aux-chat-folders"));
+          }
         } catch {
           /* Profile storage is optional; deletion is already acknowledged. */
         }
