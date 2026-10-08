@@ -24,6 +24,7 @@ import { DatabaseSync } from "node:sqlite";
 import { setTimeout as delay } from "node:timers/promises";
 import { histogram, oneObservation } from "./native-histograms.mjs";
 import { memoryFootprints, shellRoleWitness } from "./native-memory.mjs";
+import { formatPerformanceTargets, performanceTargets } from "./native-targets.mjs";
 import { acquireDevLock } from "../../scripts/dev.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -173,7 +174,7 @@ try {
     120000,
   );
   const report = {
-    schema: 5,
+    schema: 6,
     status: "incomplete",
     at: new Date().toISOString(),
     machine: { arch: arch(), osRelease: osRelease(), model: command("sysctl", ["-n", "hw.model"]), power },
@@ -685,15 +686,8 @@ try {
             : median(report.raw[kind].map((sample) => sample.memorySummary[metric]));
       }
     }
-    report.memoryTargets = Object.fromEntries(
-      [
-        ["shell", 120],
-        ["runtime", 90],
-      ].map(([role, targetMiB]) => {
-        const medianMiB = report.medians.aux[`${role}PhysicalFootprintBytes`] / (1024 * 1024);
-        return [role, { medianMiB, targetMiB, withinBudget: medianMiB <= targetMiB }];
-      }),
-    );
+    report.targets = performanceTargets(report);
+    const targetSummary = formatPerformanceTargets(report.targets);
     report.status = "complete";
     save();
     const pair = (name) => ["aux", "stock"].map((kind) => report.medians[kind][name].toFixed(1)).join(" / ");
@@ -707,8 +701,10 @@ try {
         .join(" / ");
     const rawTarget = join(output, "report.json");
     const rawLink = /\s/.test(rawTarget) ? `<${rawTarget}>` : rawTarget;
-    const row = `| ${report.at.slice(0, 10)} / ${builds.aux.revision.slice(0, 9)} / AC | ${pair("coldLaunch")} | ${pair("firstFrame")} | ${pair("coldInteractive")} | ${pair("navigationInput")} | ${pair("tabSwitch")} | ${pair("commandBar")} | ${pair("warmFirstFrame")} | ${p95("tabSwitch")} | ${p95("commandBar")} | ${mb("physicalFootprintBytes")} | ${report.memoryTargets.shell.medianMiB.toFixed(1)} | ${report.memoryTargets.runtime.medianMiB.toFixed(1)} | ${mb("appBytes")} / Node ${mb("nodeBytes")} | 5 | [raw report](${rawLink}) |`;
+    const roleMiB = (role) => report.targets[role].observed?.toFixed(1) ?? "—";
+    const row = `| ${report.at.slice(0, 10)} / ${builds.aux.revision.slice(0, 9)} / AC | ${pair("coldLaunch")} | ${pair("firstFrame")} | ${pair("coldInteractive")} | ${pair("navigationInput")} | ${pair("tabSwitch")} | ${pair("commandBar")} | ${pair("warmFirstFrame")} | ${p95("tabSwitch")} | ${p95("commandBar")} | ${mb("physicalFootprintBytes")} | ${roleMiB("shellMemory")} | ${roleMiB("runtimeMemory")} | ${mb("appBytes")} / Node ${mb("nodeBytes")} | 5 | [raw report](${rawLink}) |`;
     writeFileSync(join(output, "benchmark-row.md"), `${row}\n`);
+    writeFileSync(join(output, "target-summary.md"), targetSummary);
     const benchmarksPath = join(root, "docs/BENCHMARKS.md");
     let benchmarks = readFileSync(benchmarksPath, "utf8");
     assert.ok(existsSync(rawTarget), "The completed raw report must exist before publication");
@@ -735,7 +731,7 @@ try {
     );
     writeFileSync(benchmarksPath, benchmarks);
 
-    console.log(`${row}\nRaw report: ${join(output, "report.json")}`);
+    console.log(`${row}\n${targetSummary}\nRaw report: ${join(output, "report.json")}`);
   } catch (error) {
     report.errors.push(String(error.stack ?? error));
     save();
