@@ -25,6 +25,8 @@ The October 8 combined check passed typecheck/lint and **4,329 tests across 703 
 
 The performance harness records an immediate same-Profile warm relaunch, 100 native input samples per browser for p95 and original shell/runtime physical footprints. Available runtime boot marks include elapsed process time. No complete valid measurement report exists yet.
 
+The current disposable launch exposed two unresolved native-flow defects. A source-backed question submitted normally, but the runtime selected the fixed person reader after the native page had entered its original borrowed task session, so all page reads failed. Private AI still exited after its services startup stage, while private native navigation successfully rendered the fixture. Closing the private window then trapped during Profile destruction because its semantic-filter renderer observed the original extension registry rather than its own Profile. The disposable app and Profile retired; area 0033 now adds that exact Profile cleanup owner and is building. Runtime read-routing and private startup fixes are in progress. These observations are failures to resolve, not passing first-task/private acceptance.
+
 ## Delivered behavior
 
 - Chromium is the only engine. Vertical layout and Ask first default; Skip confirmation is remembered and Auto remains in Settings. The sidebar contains the native address/search field, pinned icon tray, separate bookmark folders and manually ordered tabs. Native browsing remains available without the runtime.
