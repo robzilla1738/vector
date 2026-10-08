@@ -13,7 +13,7 @@ ownership, secret protection, durable effects and conflict-safe undo remain.
 Execution was authorized on October 7, 2026. The source baseline is clean local
 main at `62f3626c8d0b50880452e928c3e24ba0277f4d2e`. The integrated native candidate is
 Chromium 154.0.8037.98 in `~/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`,
-with area patches through 0086. Existing delivery observations live in STATUS.
+with the native tree through historical area 0101, now consolidated into 32 equivalent area patches. Existing delivery observations live in STATUS.
 There is no complete current performance comparison. Source presence and previous
 unit checks do not establish native performance or competitor parity.
 
@@ -198,25 +198,28 @@ items explicit; do not shrink the objective to a finished subset.
   model input-budget projection are integrated. Long-chat deferral/search/jump
   and retained artifact selection are integrated. The synthetic 300-turn workload
   improved initial detail panels from 300 to eight; native timing is unproved.
-  Complete rich chat export is integrated. Rich Word and typed artifact revision
-  controls plus routine continuation are in progress.
+  Complete rich chat export is integrated. Rich Word, dense editable decks, typed artifact revision
+  controls and original-chat routine continuation are integrated.
 - N7 authenticated Space/workspace publication is area 0099; native tab placement
-  remains usable without Node. It awaits the next product build and observation.
+  remains usable without Node. It is compiled; changed-flow observation remains pending.
 - N8 private AI startup failed in the preceding candidate. Persistence-dependent
   feature admission was repaired in source. Area 0098/original credential broker
   now inherit selected direct/Gateway/OAuth access and abort private transports
   on original connection retirement. No private prompts/refresh tokens cross
-  that broker. Area 0101 supplies opaque budget and Sandbox realms; accounting
-  integration, real private AI and last-window cleanup remain pending.
+  that broker. Area 0101 supplies opaque budget and Sandbox realms; shared accounting
+  is integrated; real private AI and last-window cleanup remain pending.
 - N10 cloud files/processes, human Changes/Logs/Stop/Undo and native Preview are
   integrated. Encrypted log chunks replace repeated whole-log decryption. Human
   controls retain original native-window/VM/Session checks after agent dispatch
-  ends. Cloud code-mode parity is being completed. Actual cloud workflow
+  ends. Cloud code-mode uses the existing admission/receipt callbacks. Successful-task process lifetime remains under review. Actual cloud workflow
   acceptance remains pending.
-- Latest integrated check passed typecheck/lint and 4,242 tests, with 33 failures
-  repaired in the affected authority/registry and shell suites. New coherent
-  private/cloud/document slices have focused checks; the combined check waits
-  for frozen shared interfaces. Evidence and exact limitations are in STATUS.
+- The combined check passed typecheck/lint and 4,329 tests, with 15 failures in
+  five affected test files. Contract/restore fixtures and native-only mock/export
+  expectations are being repaired with focused reruns. New private/cloud/document
+  slices and legacy recall projection have focused checks. Evidence is in STATUS.
+- The current native build completed 87 steps in 17m31.05s; the 32-area patch
+  replay exactly preserves its native tree. Runtime-only launches verify the
+  compiled host ABI before staging current runtime changes.
 - Area 0100 adds original shell/runtime role measurement; stock's additive patch
   was retired after its missing object cache requested a full rebuild, stopped
   normally. Stock keeps the same v3 timing triggers; Aux-only role telemetry is
