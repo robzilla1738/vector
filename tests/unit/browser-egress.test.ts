@@ -17,7 +17,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
+function fixture(
+  approve: BrowserEgressDeps["approve"] = async () => true,
+  overrides: Partial<BrowserEgressDeps> = {},
+) {
   let now = 1000,
     revision = 4,
     epoch = 3,
@@ -68,6 +71,7 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
     ownsPage: () => owns,
     audit: vi.fn(),
     approve: consent,
+    ...overrides,
   });
   active.push(service);
   let sequence = 0;
@@ -641,6 +645,82 @@ it("refuses a tab without original window admission and a different run namespac
     cookies: "profile",
   });
   await expect(f.service.acquire("run", "tab")).rejects.toThrow("original browser storage mode");
+  expect(f.native.egressInstall).not.toHaveBeenCalled();
+});
+
+it("publishes borrowed readers only after native install and retires them only after terminal acknowledgement", async () => {
+  const admitted = vi.fn(
+    async (_input: Parameters<NonNullable<BrowserEgressDeps["admitSessionPage"]>>[0]) => {},
+  );
+  const retired = vi.fn(async () => {});
+  const f = fixture(undefined, {
+    run: () => ({
+      taskId: "task",
+      taskRevision: 4,
+      threadId: "thread",
+      nativeTurnContext: "original-window",
+    }),
+    admitSessionPage: admitted,
+    retireSessionPage: retired,
+    prepareSessionPage: async () => {},
+    page: () => ({
+      url: "https://source.test/page",
+      documentEpoch: 3,
+      controller: "none",
+      sessionId: "selected-source",
+    }),
+  });
+  const original = (await f.native.egressContext()).isolation!;
+  f.setIsolation();
+  const terminal = vi.fn(async () => ({ accepted: true as const }));
+  Object.assign(f.native, {
+    adoptSessionPage: vi.fn(async () => {
+      f.setIsolation(original);
+      return f.native.egressContext();
+    }),
+    egressRunTerminal: terminal,
+  });
+  f.native.egressInstall.mockResolvedValueOnce({ accepted: false } as never);
+  await expect(f.service.acquire("run", "tab")).rejects.toMatchObject({ code: "permission_denied" });
+  expect(admitted).not.toHaveBeenCalled();
+  await f.service.acquire("run", "tab");
+  expect(admitted).toHaveBeenCalledOnce();
+  expect(admitted.mock.calls[0]![0].current()).toBe(true);
+  f.service.suspendRun("run");
+  expect(admitted.mock.calls[0]![0].current()).toBe(false);
+  expect(retired).not.toHaveBeenCalled();
+  terminal.mockRejectedValueOnce(new Error("Native retirement ACK lost"));
+  await expect(f.service.retireTerminalRegistrations(["run"])).rejects.toThrow("ACK lost");
+  expect(retired).not.toHaveBeenCalled();
+  await f.service.retireTerminalRegistrations(["run"]);
+  expect(retired).toHaveBeenCalledExactlyOnceWith("tab", original);
+  await f.service.retireTerminalRegistrations(["run"]);
+  expect(retired).toHaveBeenCalledOnce();
+});
+
+it("refuses same-URL source replacement discovered between native context and borrowed admission", async () => {
+  let sessionId = "selected-source";
+  const prepare = vi.fn(async () => {
+    sessionId = "replacement-document";
+  });
+  const f = fixture(undefined, {
+    run: () => ({
+      taskId: "task",
+      taskRevision: 4,
+      threadId: "thread",
+      nativeTurnContext: "original-window",
+    }),
+    page: () => ({ url: "https://source.test/page", documentEpoch: 3, controller: "none", sessionId }),
+    prepareSessionPage: prepare,
+    admitSessionPage: vi.fn(),
+    retireSessionPage: vi.fn(),
+  });
+  f.setIsolation();
+  const adopt = vi.fn();
+  Object.assign(f.native, { adoptSessionPage: adopt });
+  await expect(f.service.acquire("run", "tab")).rejects.toMatchObject({ code: "ref_stale" });
+  expect(prepare).toHaveBeenCalledOnce();
+  expect(adopt).not.toHaveBeenCalled();
   expect(f.native.egressInstall).not.toHaveBeenCalled();
 });
 

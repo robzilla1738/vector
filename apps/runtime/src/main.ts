@@ -2391,6 +2391,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         };
       },
       page: (pageId) => runtimeServices.pages.get(pageId),
+      prepareSessionPage: (pageId) => runtimeServices.pages.prepareReadPage(pageId),
+      admitSessionPage: (input) => runtimeServices.pages.admitSessionPage(input),
+      retireSessionPage: (pageId, isolation) => runtimeServices.pages.retireSessionPage(pageId, isolation),
       ownsPage: (runId, pageId) => runtimeServices.pageClaims.activeForPage(pageId)?.runId === runId,
       audit: (decision, evidence) =>
         runtimeServices.safetyAudit.record({

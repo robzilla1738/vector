@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import type { BrowserDriver, DriverPage, DriverPageEvents } from "@aux/chromium-driver";
 import { PERSON_OBSERVER_WRAPPED_SOURCE } from "@aux/chromium-driver";
 import { EventBus, NullNativeBridge, Repo, openDb } from "@aux/runtime";
 import {
@@ -7,6 +8,7 @@ import {
   type NativePersonReadReceipt,
   type PersonReadRequest,
   type PageTarget,
+  type AgentPageIsolation,
 } from "@aux/contracts";
 import { PageRegistry } from "../../apps/runtime/dist/services/pages/registry.js";
 import { PageLanes } from "../../apps/runtime/dist/services/pages/lanes.js";
@@ -18,6 +20,14 @@ import { TurnMentionService } from "../../apps/runtime/dist/services/turn-mentio
 import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 
 const producerSha256 = createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex");
+const isolation: AgentPageIsolation = {
+  isolationId: "borrowed-session",
+  runId: "run",
+  taskRevision: 0,
+  mode: "session",
+  inMemory: false,
+  cookies: "profile",
+};
 function fixture() {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
@@ -112,6 +122,117 @@ it("observes an actual live native row without minting a driver attachment", asy
   expect(f.original.driver).toBeNull();
   expect(f.original.target.sessionId).toBeDefined();
   expect(f.original.personReadDocumentId).toBeDefined();
+});
+it("joins retired person reads and binds the exact borrowed document before controlled observation", async () => {
+  const f = fixture();
+  f.original.target.controller = "none";
+  const first = await f.observation.observe(f.pageId, {});
+  const source = structuredClone(f.original.target);
+  let handlers: DriverPageEvents = {};
+  const driver = {
+    isAttached: () => true,
+    setEvents: (value: DriverPageEvents) => {
+      handlers = value;
+    },
+    observe: vi.fn(async () => ({ ...first.content, text: "Controlled read" })),
+    extract: vi.fn(async () => ({ heading: "Controlled heading" })),
+    dispose: vi.fn(async () => {
+      handlers.onDestroyed?.("closed");
+    }),
+  } as unknown as DriverPage;
+  const attach = vi.fn(async () => driver);
+  f.pages.deps.drivers = () => ({
+    aux: { isConnected: () => true, attach } as unknown as BrowserDriver,
+    chrome: null,
+  });
+  let release!: (value: NativePersonReadReceipt) => void;
+  let entered!: () => void;
+  const reading = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const held = new Promise<NativePersonReadReceipt>((resolve) => {
+    release = resolve;
+  });
+  const before = f.intercept(async () => {
+    entered();
+    return held;
+  });
+  const pendingRead = f.observation.observe(f.pageId, {}).catch((error) => error);
+  await reading;
+  const admitted = f.pages.admitSessionPage({ pageId: f.pageId, source, isolation, current: () => true });
+  expect(attach).not.toHaveBeenCalled();
+  release(
+    await before({
+      pageId: f.pageId,
+      request: { operation: "observe", maxElements: 120, maxTextChars: 6000 },
+    }),
+  );
+  await expect(pendingRead).resolves.toMatchObject({ code: "target_detached" });
+  await admitted;
+  expect(f.original.target.sessionId).toBe(source.sessionId);
+  expect(f.original.history).toHaveLength(0);
+  expect(f.original.personReadDocumentId).toBeUndefined();
+  expect((await f.observation.observe(f.pageId, {})).content.text).toBe("Controlled read");
+  expect((await f.observation.extract(f.pageId, [{ name: "heading", selector: "h1" }])).fields.heading).toBe(
+    "Controlled heading",
+  );
+  handlers.onDialog?.({ type: "alert", message: "Bound to preserved source" });
+  expect(f.original.lastDialog?.message).toBe("Bound to preserved source");
+  await f.pages.retireSessionPage(f.pageId, isolation);
+  expect(driver.dispose).toHaveBeenCalledOnce();
+  expect(f.original.target.viewStatus).toBe("visible");
+  expect(f.original.target.agentIsolation).toBeUndefined();
+  expect(f.original.driver).toBeNull();
+  f.intercept(before);
+  expect((await f.observation.observe(f.pageId, {})).content.text).toBe("Ready");
+});
+it("refuses a held borrowed attachment after takeover and never reuses its source on a replacement", async () => {
+  const f = fixture();
+  f.original.target.controller = "none";
+  await f.pages.prepareReadPage(f.pageId);
+  const source = structuredClone(f.original.target);
+  let release!: () => void;
+  let entered!: () => void;
+  const attaching = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const driver = {
+    isAttached: () => true,
+    setEvents: vi.fn(),
+    dispose: vi.fn(async () => {}),
+  } as unknown as DriverPage;
+  f.pages.deps.drivers = () => ({
+    aux: {
+      isConnected: () => true,
+      attach: async () => {
+        entered();
+        await held;
+        return driver;
+      },
+    } as unknown as BrowserDriver,
+    chrome: null,
+  });
+  const admission = f.pages.admitSessionPage({ pageId: f.pageId, source, isolation, current: () => true });
+  await attaching;
+  f.original.target.controllerEpoch++;
+  f.original.target.controller = "human";
+  release();
+  await expect(admission).rejects.toMatchObject({ code: "ref_stale" });
+  expect(driver.dispose).toHaveBeenCalledOnce();
+  expect(f.original.driver).toBeNull();
+  expect(f.original.target.agentIsolation).toEqual(isolation);
+  await f.pages.attachVisible(f.pageId);
+  expect(f.original.driver).toBeNull();
+  const preparePerson = vi.spyOn(f.pages.deps.native, "personReadContext");
+  await f.pages.retireSessionPage(f.pageId, isolation);
+  expect(preparePerson).not.toHaveBeenCalled();
+  expect(f.original.target.controller).toBe("human");
+  expect(f.original.target.sessionId).toBeUndefined();
+  f.pages.installDriver(f.original, driver);
+  expect(f.original.target.sessionId).not.toBe(source.sessionId);
 });
 it("increments same-URL replacement epoch once and invalidates prior observation state", async () => {
   const f = fixture();

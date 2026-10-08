@@ -344,6 +344,8 @@ export class PageService {
   viewport: PageDiagnostics["viewport"] = (...args) => this.diagnostics.viewport(...args);
 
   prepareReadPage: PageRegistry["prepareReadPage"] = (...args) => this.pages.prepareReadPage(...args);
+  admitSessionPage: PageRegistry["admitSessionPage"] = (...args) => this.pages.admitSessionPage(...args);
+  retireSessionPage: PageRegistry["retireSessionPage"] = (...args) => this.pages.retireSessionPage(...args);
 
   syncCatalog: NativeViewSync["syncCatalog"] = (...args) => this.nativeSync.syncCatalog(...args);
   onNativeRemoved: NativeViewSync["onNativeRemoved"] = (...args) => this.nativeSync.onNativeRemoved(...args);

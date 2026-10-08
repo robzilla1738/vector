@@ -344,7 +344,7 @@ export class PageDiagnostics {
       targetId: original.targetId,
       url: original.url,
     };
-    const raw = await capture.call(this.pages.deps.native, input);
+    const raw = await this.pages.personRead(live, () => capture.call(this.pages.deps.native, input));
     current();
     if (live.personReadDocumentId !== documentId || live.target.sessionId !== sessionId)
       throw new AuxError("target_detached", "The native page capture document retired.");

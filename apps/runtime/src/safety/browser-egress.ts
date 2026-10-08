@@ -31,6 +31,7 @@ function runSnapshot(run: RunIdentity | null | undefined) {
 
 interface PageIdentity {
   agentIsolation?: AgentPageIsolation;
+  sessionId?: string;
   url: string;
   documentEpoch: number;
   controller?: string;
@@ -68,6 +69,14 @@ export interface BrowserEgressDeps {
   ownsPage(runId: string, pageId: string): boolean;
   /** Actual durable child-to-root ancestry, revalidated by the trusted producer. */
   runAncestry(runId: string): string[];
+  prepareSessionPage?(pageId: string): Promise<void>;
+  admitSessionPage?(input: {
+    pageId: string;
+    source: Pick<PageIdentity, "url" | "documentEpoch" | "controllerEpoch" | "sessionId">;
+    isolation: AgentPageIsolation;
+    current(): boolean;
+  }): Promise<void>;
+  retireSessionPage?(pageId: string, isolation: AgentPageIsolation): Promise<void>;
   audit(decision: EgressDecision, evidence: EgressAuditEvidence): void;
   /** Must approve the exact ephemeral request digest, never a standing grant. */
   approve(input: {
@@ -97,6 +106,10 @@ export class BrowserEgress {
   private readonly runModes = new Map<string, AgentPageIsolation["mode"]>();
   private readonly seen = new Map<string, number>();
   private readonly retirementDebt = new Map<string, EgressLease>();
+  private readonly borrowedSessions = new Map<
+    string,
+    { isolation: AgentPageIsolation; ancestry: string[] }
+  >();
   private readonly mutationBarriers = new Set<(runId: string) => boolean>();
   private readonly now: () => number;
   private closed = false;
@@ -115,10 +128,24 @@ export class BrowserEgress {
     if (!runIds.length) return;
     if (!this.deps.native.egressRunTerminal)
       throw new AuxError("capability_unsupported", "Native terminal-run retirement is unavailable.");
-    for (const runId of runIds)
+    for (const runId of runIds) {
+      await Promise.allSettled(
+        [...this.preparing]
+          .filter(([pageId]) => {
+            const source = this.bindingSources.get(pageId);
+            return source && this.deps.runAncestry(source.runId).includes(runId);
+          })
+          .map(([, pending]) => pending),
+      );
       HostMethods["native.egressRunTerminal"].result.parse(
         await this.deps.native.egressRunTerminal({ runId }),
       );
+      for (const [pageId, original] of this.borrowedSessions) {
+        if (!original.ancestry.includes(runId)) continue;
+        await this.deps.retireSessionPage?.(pageId, original.isolation);
+        if (this.borrowedSessions.get(pageId) === original) this.borrowedSessions.delete(pageId);
+      }
+    }
   }
 
   private retainRunMode(runId: string, run: RunIdentity): AgentPageIsolation["mode"] {
@@ -279,21 +306,57 @@ export class BrowserEgress {
       );
     if (!native.isolation && !run.privateTask) {
       if (!run.nativeTurnContext)
-        throw new AuxError("permission_denied", "An original native window is required to admit this session tab.");
+        throw new AuxError(
+          "permission_denied",
+          "An original native window is required to admit this session tab.",
+        );
       if (!this.deps.native.adoptSessionPage)
         throw new AuxError("capability_unsupported", "This browser cannot admit the original session tab.");
+      if (!this.deps.prepareSessionPage || !this.deps.admitSessionPage || !this.deps.retireSessionPage)
+        throw new AuxError("capability_unsupported", "Original session reader admission is unavailable.");
+      // Join the selected person-read session to the native document token.
+      // Adoption checks that same token again after this fresh native readback.
+      await this.deps.prepareSessionPage(pageId);
+      const source = this.deps.page(pageId);
+      if (
+        !page.sessionId ||
+        source.sessionId !== page.sessionId ||
+        source.url !== page.url ||
+        source.documentEpoch !== page.documentEpoch ||
+        source.controllerEpoch !== page.controllerEpoch ||
+        this.blocked(runId) ||
+        (this.authorityVersions.get(pageId) ?? 0) !== authorityVersion
+      )
+        throw new AuxError("ref_stale", "The selected session document changed before admission.");
       const ancestry = this.deps.runAncestry(runId);
-      if (ancestry[0] !== runId || !ancestry.length || ancestry.length > 32 ||
-          new Set(ancestry).size !== ancestry.length || native.profileId !== this.deps.profileId ||
-          native.tabId !== pageId || native.sourceOrigin !== new URL(page.url).origin)
+      if (
+        ancestry[0] !== runId ||
+        !ancestry.length ||
+        ancestry.length > 32 ||
+        new Set(ancestry).size !== ancestry.length ||
+        native.profileId !== this.deps.profileId ||
+        native.tabId !== pageId ||
+        native.sourceOrigin !== new URL(page.url).origin
+      )
         throw new AuxError("permission_denied", "The original session source changed before admission.");
-      native = EgressContextSchema.parse(await this.deps.native.adoptSessionPage({
-        profileId: this.deps.profileId, runId, taskId: run.taskId,
-        taskRevision: run.taskRevision, ancestry, token: run.nativeTurnContext,
-        source: { tabId: pageId, expectedUrl: page.url, documentToken: native.documentToken },
-      }));
-      if (this.blocked(runId) || (this.authorityVersions.get(pageId) ?? 0) !== authorityVersion ||
-          JSON.stringify(this.deps.runAncestry(runId)) !== JSON.stringify(ancestry))
+      native = EgressContextSchema.parse(
+        await this.deps.native.adoptSessionPage({
+          profileId: this.deps.profileId,
+          runId,
+          taskId: run.taskId,
+          taskRevision: run.taskRevision,
+          ancestry,
+          token: run.nativeTurnContext,
+          source: { tabId: pageId, expectedUrl: page.url, documentToken: native.documentToken },
+        }),
+      );
+      if (native.isolation?.runId === runId)
+        this.borrowedSessions.set(pageId, { isolation: native.isolation, ancestry });
+      if (
+        this.blocked(runId) ||
+        (this.authorityVersions.get(pageId) ?? 0) !== authorityVersion ||
+        JSON.stringify(this.deps.runAncestry(runId)) !== JSON.stringify(ancestry)
+      )
         throw new AuxError("ref_stale", "Original session admission was retired.");
     }
     const isolation = native.isolation;
@@ -362,6 +425,18 @@ export class BrowserEgress {
         throw new AuxError("ref_stale", "The page changed while installing request protection.");
       active.installed = true;
       active.acknowledgedExpiresAt = lease.expiresAt;
+      if (this.borrowedSessions.get(pageId)?.isolation.isolationId === isolation.isolationId)
+        await this.deps.admitSessionPage?.({
+          pageId,
+          source: page,
+          isolation,
+          current: () =>
+            !this.closed &&
+            (this.authorityVersions.get(pageId) ?? 0) === authorityVersion &&
+            this.current(active),
+        });
+      if (!this.current(active))
+        throw new AuxError("ref_stale", "The original session changed while attaching its reader.");
       active.timer = setInterval(() => {
         void this.renew(active);
       }, 10_000);

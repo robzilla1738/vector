@@ -73,6 +73,7 @@ export class ObservationService {
       const original = this.pages.live.get(pageId);
       if (
         original?.target.backend === "aux" &&
+        !original.driver &&
         !original.target.ownedByRuntime &&
         !original.target.agentIsolation &&
         this.pages.deps.native.available()
@@ -148,12 +149,19 @@ export class ObservationService {
       original.target.sessionId === sessionId &&
       original.target.url === url &&
       !original.target.ownedByRuntime &&
+      !original.driver &&
       !original.target.agentIsolation &&
       ["human", "none"].includes(original.target.controller) &&
       !["detached", "crashed"].includes(original.target.viewStatus);
     const read = this.pages.deps.native.personRead;
     if (!read) throw new AuxError("backend_unavailable", "The native page reader is unavailable.");
-    return { reader: new NativePersonReader({ read: read.bind(this.pages.deps.native) }), current, url };
+    return {
+      reader: new NativePersonReader({
+        read: (input) => this.pages.personRead(original, () => read.call(this.pages.deps.native, input)),
+      }),
+      current,
+      url,
+    };
   }
 
   private async observePerson(pageId: string, original: LivePage, req: ObserveReq): Promise<Observation> {
@@ -290,6 +298,8 @@ export class ObservationService {
       const original = this.pages.live.get(pageId);
       if (
         original?.personReadDocumentId &&
+        !original.driver &&
+        !original.target.agentIsolation &&
         original.target.backend === "aux" &&
         this.pages.deps.native.available() &&
         !original.target.ownedByRuntime

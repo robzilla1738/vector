@@ -7,11 +7,21 @@ import {
   type PageTarget,
   type NativePersonReadContext,
   type AgentPageCreated,
+  type AgentPageIsolation,
   NativeCreatorCleanupProofSchema,
 } from "@aux/contracts";
 import type { Repo } from "../../store/repo.js";
 import { parsePersonReadContext } from "../native-person-reader.js";
 import type { LivePage, PageServiceDeps } from "./types.js";
+
+interface BorrowedSession {
+  live: LivePage;
+  isolation: AgentPageIsolation;
+  attachment?: Promise<void>;
+  sourceSessionId?: string;
+  driver?: DriverPage;
+  retiringDriver?: DriverPage;
+}
 
 /**
  * The live page map and what every component shares: identity lookup,
@@ -26,6 +36,8 @@ export class PageRegistry {
   agentCreations = new Set<Promise<void>>();
   pendingExternal = new Map<string, { removed: boolean; done?: Promise<PageTarget> }>();
   private driverAttaches = new Map<string, Promise<void>>();
+  private personReads = new Map<LivePage, Set<Promise<unknown>>>();
+  private borrowedSessions = new Map<string, BorrowedSession>();
   private controlledTransitions = new Map<
     string,
     {
@@ -177,6 +189,153 @@ export class PageRegistry {
       this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
     }
   }
+
+  async personRead<T>(lp: LivePage, read: () => Promise<T>): Promise<T> {
+    if (this.live.get(lp.target.pageId) !== lp || lp.driver || lp.target.agentIsolation)
+      throw new AuxError("target_detached", "The original person reader retired.");
+    const reads = this.personReads.get(lp) ?? new Set<Promise<unknown>>();
+    this.personReads.set(lp, reads);
+    const pending = read();
+    reads.add(pending);
+    try {
+      return await pending;
+    } finally {
+      reads.delete(pending);
+      if (!reads.size && this.personReads.get(lp) === reads) this.personReads.delete(lp);
+    }
+  }
+
+  /** Only BrowserEgress's acknowledged original-document admission calls this. */
+  async admitSessionPage(input: {
+    pageId: string;
+    source: Pick<PageTarget, "url" | "documentEpoch" | "sessionId"> & { controllerEpoch?: number };
+    isolation: AgentPageIsolation;
+    current(): boolean;
+  }): Promise<void> {
+    const { pageId, source, isolation } = input;
+    const lp = this.live.get(pageId);
+    const existing = this.borrowedSessions.get(pageId);
+    if (existing && existing.live === lp && existing.isolation.isolationId === isolation.isolationId) {
+      if (existing.attachment) await existing.attachment;
+      if (lp?.driver?.isAttached() && input.current()) return;
+      throw new AuxError("ref_stale", "The original borrowed attachment retired.");
+    }
+    const current = () =>
+      !!lp &&
+      !this.closing &&
+      this.live.get(pageId) === lp &&
+      input.current() &&
+      lp.target.backend === "aux" &&
+      !lp.target.ownedByRuntime &&
+      lp.target.url === source.url &&
+      lp.target.documentEpoch === source.documentEpoch &&
+      lp.target.controllerEpoch === source.controllerEpoch &&
+      lp.target.sessionId === source.sessionId;
+    if (!current() || !lp || lp.driver || lp.target.agentIsolation || isolation.mode !== "session")
+      throw new AuxError("ref_stale", "The original session document changed before reader admission.");
+    const driver = this.driverFor("aux");
+    if (!driver?.isConnected())
+      throw new AuxError("backend_unavailable", "The protected browser reader is unavailable.");
+    const original: BorrowedSession = { live: lp, isolation };
+    this.borrowedSessions.set(pageId, original);
+    // Retire pending fixed reads before any CDP attachment can dispatch.
+    lp.target.agentIsolation = structuredClone(isolation);
+    this.resetDocumentState(lp);
+    const work = (async () => {
+      await Promise.allSettled(this.personReads.get(lp) ?? []);
+      if (!current() || this.borrowedSessions.get(pageId) !== original)
+        throw new AuxError("ref_stale", "The original session reader admission retired.");
+      const attached = await driver.attach(lp.target.targetId, pageId, {
+        initialDocumentEpoch: source.documentEpoch,
+      });
+      original.driver = attached;
+      try {
+        if (!current() || this.borrowedSessions.get(pageId) !== original || !attached.isAttached())
+          throw new AuxError("ref_stale", "The original session changed while attaching its reader.");
+        original.sourceSessionId = source.sessionId;
+        this.installDriver(lp, attached);
+        delete lp.personReadDocumentId;
+        delete lp.personReadDocumentEpoch;
+      } catch (error) {
+        original.retiringDriver = attached;
+        try {
+          await attached.dispose();
+          delete original.retiringDriver;
+          delete original.driver;
+        } catch (cleanupError) {
+          throw new AggregateError(
+            [error, cleanupError],
+            "Session admission and attachment retirement failed",
+            { cause: error },
+          );
+        }
+        throw error;
+      } finally {
+        delete original.sourceSessionId;
+      }
+    })();
+    original.attachment = work;
+    try {
+      await work;
+    } finally {
+      original.attachment = undefined;
+    }
+  }
+
+  /** Native terminal retirement has acknowledged this exact borrowed isolation. */
+  async retireSessionPage(pageId: string, isolation: AgentPageIsolation): Promise<void> {
+    const original = this.borrowedSessions.get(pageId);
+    if (!original || original.isolation.isolationId !== isolation.isolationId) return;
+    if (original.attachment) await original.attachment.catch(() => {});
+    const lp = original.live;
+    if (this.live.get(pageId) !== lp || lp.target.agentIsolation?.isolationId !== isolation.isolationId) {
+      const orphan = original.retiringDriver ?? original.driver;
+      if (orphan) await orphan.dispose();
+      if (this.borrowedSessions.get(pageId) === original) this.borrowedSessions.delete(pageId);
+      return;
+    }
+    const driver = original.retiringDriver ?? lp.driver;
+    if (driver) {
+      original.retiringDriver = driver;
+      if (lp.driver === driver) lp.driver = null;
+      await driver.dispose();
+      delete original.retiringDriver;
+      if (this.live.get(pageId) !== lp || lp.driver) return;
+    }
+    const source = { ...lp.target };
+    let context: NativePersonReadContext | undefined;
+    if (source.viewStatus !== "crashed" && source.controller !== "human") {
+      const prepare = this.deps.native.personReadContext;
+      if (!prepare) throw new AuxError("backend_unavailable", "The native page reader is unavailable.");
+      context = parsePersonReadContext(pageId, await prepare.call(this.deps.native, pageId));
+      if (
+        this.live.get(pageId) !== lp ||
+        this.borrowedSessions.get(pageId) !== original ||
+        lp.driver ||
+        lp.target.agentIsolation?.isolationId !== isolation.isolationId ||
+        lp.target.url !== source.url ||
+        lp.target.documentEpoch !== source.documentEpoch ||
+        lp.target.controllerEpoch !== source.controllerEpoch ||
+        context.url !== source.url
+      )
+        throw new AuxError("ref_stale", "The original page changed while returning its person reader.");
+    }
+    this.borrowedSessions.delete(pageId);
+    delete lp.target.agentIsolation;
+    delete lp.target.sessionId;
+    delete lp.personReadDocumentId;
+    delete lp.personReadDocumentEpoch;
+    this.resetDocumentState(lp);
+    if (context) {
+      if (lp.target.viewStatus === "detached")
+        lp.target.viewStatus =
+          this.activeByWindow.get(lp.target.windowId ?? "main") === pageId ? "visible" : "hidden";
+      this.adoptPersonReadContext(lp, context);
+    }
+    this.persist(lp);
+    this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
+  }
+
   async prepareReadPage(pageId: string): Promise<void> {
     const lp = this.live.get(pageId);
     if (!lp) throw new AuxError("target_detached", "This tab is no longer available.");
@@ -193,7 +352,7 @@ export class PageRegistry {
     const epoch = lp.target.documentEpoch,
       control = lp.target.controllerEpoch,
       url = lp.target.url;
-    const raw = await prepare.call(this.deps.native, pageId);
+    const raw = await this.personRead(lp, () => prepare.call(this.deps.native, pageId));
     if (
       this.live.get(pageId) !== lp ||
       this.closing ||
@@ -216,7 +375,14 @@ export class PageRegistry {
   /** Restored placeholders acquire a driver only after their native tab opens. */
   async attachVisible(pageId: string): Promise<void> {
     const lp = this.live.get(pageId);
-    if (!lp || lp.driver || lp.target.backend !== "aux" || this.controlledTransitions.has(pageId)) return;
+    if (
+      !lp ||
+      lp.driver ||
+      lp.target.backend !== "aux" ||
+      this.controlledTransitions.has(pageId) ||
+      this.borrowedSessions.has(pageId)
+    )
+      return;
     if (
       this.deps.native.available() &&
       typeof this.deps.native.personReadContext === "function" &&
@@ -489,7 +655,8 @@ export class PageRegistry {
     if (lp.driver === driver) return lp.target.sessionId;
     if (lp.driver) throw new AuxError("conflict", "This tab already has a newer attachment.");
     lp.driver = driver;
-    const sessionId = randomUUID();
+    const admission = this.borrowedSessions.get(lp.target.pageId);
+    const sessionId = admission?.live === lp ? (admission.sourceSessionId ?? randomUUID()) : randomUUID();
     lp.target.sessionId = sessionId;
     try {
       if (lp.target.backend === "aux" && this.deps.native.available()) driver.setNativeDownloadAuthority?.();
@@ -558,7 +725,11 @@ export class PageRegistry {
         delete lp.target.sessionId;
         lp.driver = null;
         lp.target.viewStatus = reason === "crashed" ? "crashed" : "detached";
-        if (!controlledRetirement) lp.target.controller = "none";
+        if (
+          !controlledRetirement &&
+          !(this.borrowedSessions.has(lp.target.pageId) && lp.target.controller === "human")
+        )
+          lp.target.controller = "none";
         this.resetDocumentState(lp);
         this.persist(lp);
         if (transition) for (const observer of Array.from(transition.retirementObservers)) observer();
