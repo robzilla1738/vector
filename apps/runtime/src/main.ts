@@ -13,6 +13,7 @@ import { registerNativeSubagentWorkload } from "./services/native-subagent-workl
 import { registerNativeProjectPreview } from "./services/native-project-preview.js";
 import { installNativeSpaceBindings } from "./services/native-space-bindings.js";
 import { registerPrivateProviderBroker } from "./services/private-provider.js";
+import { migrateCodingProcessLogs } from "./services/coding-process-logs.js";
 import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
 import { withRunAuthorityMutation } from "./services/overnight-authority.js";
 import { lineageRuns, overnightRoot, runAncestry, runRoot } from "./services/run-lineage.js";
@@ -276,6 +277,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   bootPhase("protection");
   const repo = new Repo(db, columnCipher);
   try {
+    await migrateCodingProcessLogs(repo);
     privateSession?.seedSettings(repo);
     privateStartupPhase("settings");
   } catch (error) {
@@ -2583,7 +2585,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             threadId: repo.getRun(context.runId)?.config?.chatId ?? context.runId,
             turnId: context.runId,
           };
-          await owner(ctx);
+          const verify = async () => {
+            if (context.actor !== "user") return owner(ctx);
+            shutdownAdmission.assertOpen();
+            if (!repo.getRun(context.runId) || !context.verifyOwner)
+              throw new AuxError("permission_denied", "Undo cloud changes from their original Aux window.");
+            await context.verifyOwner();
+            shutdownAdmission.assertOpen();
+          };
+          await verify();
           const fence = await authorizeCodingAction(
             context.runId,
             request.category,
@@ -2594,10 +2604,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             undefined,
             identity,
           );
-          await owner(ctx);
+          await verify();
           return () => {
             context.checkOwner?.();
-            checkCodingOwner(context.runId);
+            if (context.actor !== "user") checkCodingOwner(context.runId);
+            else {
+              shutdownAdmission.assertOpen();
+              if (!repo.getRun(context.runId))
+                throw new AuxError("cancelled", "The original coding run is unavailable.");
+            }
             fence();
           };
         },
