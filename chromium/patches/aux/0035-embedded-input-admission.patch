@@ -405,7 +405,7 @@ index 1e537d1..c4467d2 100644
      const std::string& binding,
      SetNativeInputDocumentBindingCallback callback) {
 diff --git a/content/app_shim_remote_cocoa/render_widget_host_ns_view_host_helper.h b/content/app_shim_remote_cocoa/render_widget_host_ns_view_host_helper.h
-index 04fcadb..1543b64 100644
+index 04fcadb..7b322ca 100644
 --- a/content/app_shim_remote_cocoa/render_widget_host_ns_view_host_helper.h
 +++ b/content/app_shim_remote_cocoa/render_widget_host_ns_view_host_helper.h
 @@ -5,10 +5,11 @@
@@ -416,7 +416,7 @@ index 04fcadb..1543b64 100644
 -
  #include <vector>
  
-+#include "content/common/render_widget_host_ns_view.mojom-forward.h"
++#include "content/common/render_widget_host_ns_view.mojom.h"
 +#include "third_party/blink/public/mojom/input/input_handler.mojom-forward.h"
 +
  @class NSWindow;
