@@ -687,7 +687,8 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
       <p {...staticHintProps}>
         Eligible readable HTTPS articles are remembered locally after you spend time on the tab. Sensitive
         pages and private windows are excluded. You can pause capture or forget saved articles. Semantic
-        search uses an installed local embedding model; content stays on this device.
+        search uses an installed local embedding model on this device. Forget removes articles
+        from recall; copies already included in older chats or exported files may remain.
       </p>
       {needsFreshBackup && <MemoryRecoveryNotice possible={possiblyRemoved} />}
       {policy && (
