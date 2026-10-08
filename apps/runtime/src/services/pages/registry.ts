@@ -234,7 +234,7 @@ export class PageRegistry {
     if (!current() || !lp || lp.driver || lp.target.agentIsolation || isolation.mode !== "session")
       throw new AuxError("ref_stale", "The original session document changed before reader admission.");
     const driver = this.driverFor("aux");
-    if (!driver?.isConnected())
+    if (!driver)
       throw new AuxError("backend_unavailable", "The protected browser reader is unavailable.");
     const original: BorrowedSession = { live: lp, isolation };
     this.borrowedSessions.set(pageId, original);

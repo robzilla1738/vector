@@ -142,7 +142,7 @@ it("joins retired person reads and binds the exact borrowed document before cont
   } as unknown as DriverPage;
   const attach = vi.fn(async () => driver);
   f.pages.deps.drivers = () => ({
-    aux: { isConnected: () => true, attach } as unknown as BrowserDriver,
+    aux: { isConnected: () => false, attach } as unknown as BrowserDriver,
     chrome: null,
   });
   let release!: (value: NativePersonReadReceipt) => void;
