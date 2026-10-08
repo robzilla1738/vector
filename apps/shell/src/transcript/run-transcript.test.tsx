@@ -574,9 +574,14 @@ it("opens the exact cited document capture and retires a held section when its r
     locator: { kind: "text", line: 50, offset: 0 },
     quote: "The cited line fifty.",
   };
+  const cursor = "cited-section";
+  source.chunk = {
+    index: 0,
+    segments: [{ locator: citation.locator, text: `Captured context. ${citation.quote} Following context.` }],
+  };
   const projection: RunTranscriptProjection = {
     runId: run.runId,
-    items: [{ kind: "document-citation", citation }],
+    items: [{ kind: "document-citation", citation, cursor }],
   };
   const reads: { params: unknown; resolve(value: typeof source): void }[] = [];
   vi.spyOn(bridge, "invoke").mockImplementation(async (method, params) => {
@@ -604,6 +609,7 @@ it("opens the exact cited document capture and retires a held section when its r
       chatId: "original-chat",
       attachmentId: "saved-document",
       sha256: source.sha256,
+      cursor,
     });
     await act(async () =>
       reads[0]!.resolve({
@@ -614,12 +620,13 @@ it("opens the exact cited document capture and retires a held section when its r
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(
       "original document snapshot is unavailable",
     );
-    expect(host.textContent).not.toContain("First captured section");
+    expect(host.textContent).not.toContain("Captured context.");
     await act(async () => control("retry-conversation-document-read").click());
     expect(reads[1]!.params).toEqual(reads[0]!.params);
     await act(async () => reads[1]!.resolve(source));
-    expect(host.textContent).toContain("First captured section");
-    expect(host.textContent).toContain("opens at its first section");
+    expect(host.textContent).toContain("Captured context.");
+    expect(host.textContent).toContain("Cited section");
+    expect(host.querySelector("pre mark")?.textContent).toBe(citation.quote);
     expect(reads).toHaveLength(2);
     await act(async () => control("next-document-section").click());
     expect(reads[2]!.params).toEqual({
@@ -628,13 +635,28 @@ it("opens the exact cited document capture and retires a held section when its r
       sha256: source.sha256,
       cursor: "next-section",
     });
+    await act(async () =>
+      reads[2]!.resolve({
+        ...source,
+        chunk: {
+          index: 1,
+          segments: [{ locator: { kind: "text", line: 60, offset: 0 }, text: citation.quote }],
+        },
+      }),
+    );
+    expect(host.querySelector("pre mark")).toBeNull();
+    await act(async () => control("previous-document-section").click());
+    expect(reads[3]!.params).toEqual(reads[0]!.params);
+    await act(async () => reads[3]!.resolve(source));
+    expect(host.querySelector("pre mark")?.textContent).toBe(citation.quote);
+    await act(async () => control("next-document-section").click());
     const nextRun = makeRun({ runId: "other-run", status: "completed", pageIds: [] });
     await act(async () => {
       useStore.setState({ runs: [run, nextRun] });
       root.render(<RunTranscriptDetails run={nextRun} />);
     });
     await act(async () =>
-      reads[2]!.resolve({
+      reads[4]!.resolve({
         ...source,
         chunk: { index: 1, segments: [{ locator: citation.locator, text: "Retired section response" }] },
       }),

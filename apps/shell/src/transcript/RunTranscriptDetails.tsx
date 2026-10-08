@@ -67,6 +67,7 @@ export function RunTranscriptDetails({
   const [selectedDocument, setSelectedDocument] = useState<{
     run: Run;
     citation: DocumentResultCitation;
+    cursor: string;
     current(): boolean;
   } | null>(null);
   const [preview, setPreview] = useState<{
@@ -335,7 +336,7 @@ export function RunTranscriptDetails({
                     invoke={(current) => {
                       if (!current()) return;
                       closeArtifact();
-                      setSelectedDocument({ run, citation: item.citation, current });
+                      setSelectedDocument({ run, citation: item.citation, cursor: item.cursor, current });
                     }}
                   >
                     Inspect saved document
@@ -414,6 +415,7 @@ export function RunTranscriptDetails({
           chatId={selectedDocument.citation.source.chatId}
           attachmentId={selectedDocument.citation.source.attachmentId}
           citation={selectedDocument.citation}
+          initialCursor={selectedDocument.cursor}
           ownerCurrent={selectedDocument.current}
           onClose={() => setSelectedDocument(null)}
         />

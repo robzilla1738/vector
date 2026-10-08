@@ -21,12 +21,14 @@ export function DocumentSnapshot({
   chatId,
   attachmentId,
   citation,
+  initialCursor,
   ownerCurrent,
   onClose,
 }: {
   chatId: string;
   attachmentId: string;
   citation?: DocumentResultCitation;
+  initialCursor?: string;
   ownerCurrent?(): boolean;
   onClose(): void;
 }) {
@@ -38,8 +40,8 @@ export function DocumentSnapshot({
   const expectedSha256 = citation?.source.sha256,
     expectedSnapshotId = citation?.source.snapshotId;
   const reference = useMemo(
-    () => ({ attachmentId, expectedSha256, expectedSnapshotId }),
-    [attachmentId, expectedSha256, expectedSnapshotId],
+    () => ({ attachmentId, expectedSha256, expectedSnapshotId, initialCursor }),
+    [attachmentId, expectedSha256, expectedSnapshotId, initialCursor],
   );
   const referenceCurrent = useConversationAttachmentOwner(chatCurrent, [reference]);
   const current = useCallback(
@@ -78,7 +80,7 @@ export function DocumentSnapshot({
     setSnapshot(null);
     setError("");
     if (!current()) return;
-    void read()
+    void read(initialCursor)
       .then((value) => {
         if (live && current()) {
           published.current = { snapshot: value, current };
@@ -91,7 +93,7 @@ export function DocumentSnapshot({
     return () => {
       live = false;
     };
-  }, [read, retry, current]);
+  }, [read, retry, current, initialCursor]);
   return (
     <ViewerFrame
       label="Document snapshot"
@@ -115,7 +117,6 @@ export function DocumentSnapshot({
         <section aria-label="Cited document passage">
           <p {...staticHintProps}>Cited passage · {locatorLabel(citation.locator)}</p>
           <blockquote>{citation.quote}</blockquote>
-          {snapshot && <p {...staticHintProps}>The saved document opens at its first section.</p>}
         </section>
       )}
       {error ? (
@@ -145,6 +146,8 @@ export function DocumentSnapshot({
           </div>
           <DocumentPages
             initial={snapshot}
+            initialCursor={initialCursor}
+            citation={citation}
             current={loadedCurrent}
             read={(cursor) => read(cursor, snapshot.sha256, snapshot.document.snapshotId)}
           />
