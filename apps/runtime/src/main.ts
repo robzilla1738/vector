@@ -1632,6 +1632,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     review?: CodingFileAuthorization,
     actor?: "user",
     reviewedActions?: import("@aux/contracts").SafetyAction["reviewedActions"],
+    execution?: import("@aux/contracts/coding-files").CloudCodingIdentity,
   ) => {
     if (actor === "user") {
       if (closed || !repo.getRun(runId))
@@ -1652,11 +1653,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
               : "external_tool",
       category,
       action: `agent.coding.${category}`,
-      recipient: run.config?.projectRoot ?? "filesystem",
+      recipient: execution
+        ? `${execution.sandboxName}/${execution.sessionId}:${execution.root}`
+        : (run.config?.projectRoot ?? "filesystem"),
       dataClasses: [],
       provenance: actor === "user" ? "user" : "template",
       invocationDigest: createHash("sha256")
-        .update(JSON.stringify([actionId, ...details]))
+        .update(JSON.stringify([actionId, execution, ...details]))
         .digest("hex"),
       turnId: runId,
       threadId: run.config?.chatId ?? runId,
@@ -2520,6 +2523,94 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         pauseForResourceFunding: (error, current) =>
           runtimeServices.runs.coordinator.pauseForResourceFunding(error, current),
         authorizeCreate: (ctx, quote, quoteDigest) => admission.authorizeCreate(ctx, quote, quoteDigest),
+        authorizeFiles: async (request, context, identity) => {
+          const ctx = {
+            runId: context.runId,
+            threadId: repo.getRun(context.runId)?.config?.chatId ?? context.runId,
+            turnId: context.runId,
+          };
+          await owner(ctx);
+          const fence = await authorizeCodingAction(
+            context.runId,
+            request.category,
+            request.actionId,
+            [request.paths, request.before, request.after],
+            request,
+            context.actor,
+            undefined,
+            identity,
+          );
+          await owner(ctx);
+          return () => {
+            context.checkOwner?.();
+            checkCodingOwner(context.runId);
+            fence();
+          };
+        },
+        authorizeProcess: async (input, context, identity) => {
+          await owner(context);
+          const network =
+            input.network ??
+            runtimeServices.approvals.effectivePolicy(runtimeServices.settings.agentPolicy(), context.runId)
+              .agentMode !== "ask";
+          const workdir = input.workdir ?? identity.root;
+          const fence = await authorizeCodingAction(
+            context.runId,
+            "bash",
+            context.actionId,
+            [input.command, workdir, network],
+            undefined,
+            undefined,
+            [
+              {
+                action: "bash",
+                target: workdir,
+                arguments: input.command,
+                destination: network ? "cloud network allowed" : "cloud network blocked",
+              },
+            ],
+            identity,
+          );
+          await owner(context);
+          return {
+            network,
+            check: () => {
+              if (context.signal?.aborted)
+                throw new AuxError("cancelled", "The original cloud command stopped.");
+              checkCodingOwner(context.runId);
+              fence();
+            },
+          };
+        },
+        authorizeProcessAccess: async (operation, processId, context, identity) => {
+          await owner(context);
+          const fence = await authorizeCodingAction(
+            context.runId,
+            operation === "stop" ? "bash" : "read",
+            context.actionId,
+            [operation, processId],
+            undefined,
+            undefined,
+            operation === "stop"
+              ? [
+                  {
+                    action: "stop process",
+                    target: processId,
+                    arguments: "Stop this run-owned command",
+                    destination: "original cloud session",
+                  },
+                ]
+              : undefined,
+            identity,
+          );
+          await owner(context);
+          return () => {
+            if (context.signal?.aborted)
+              throw new AuxError("cancelled", "The original cloud command request stopped.");
+            checkCodingOwner(context.runId);
+            fence();
+          };
+        },
         authorizeBash: async (ctx, input) => {
           await owner(ctx);
           const fence = runtimeServices.safetyGate.policyFence(ctx.runId);
@@ -2563,6 +2654,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   };
   agentLoop.cloudExecutor = {
     selected: (runId) => repo.getRun(runId)?.config?.executionTarget === "cloud",
+    files: async (ctx, signal) => (await getCloudRuntime()).executor.files(ctx, signal),
+    processes: async (ctx, signal) => (await getCloudRuntime()).executor.processes(ctx, signal),
     eval: async (ctx, deps, code, options) =>
       (await getCloudRuntime()).executor.eval(ctx, deps, code, options),
     wait: async (ctx, cellId, yieldTimeMs, terminate) =>

@@ -68,9 +68,10 @@ it.runIf(process.platform === "darwin")(
       command: "sleep 60",
       workdir: project,
       state: "stopped",
-      exitCode: null,
     });
-    expect(interrupted.signal).toBeTruthy();
+    // The OS may acknowledge the killed shell before or after the Stop receipt.
+    expect([null, 137]).toContain(interrupted.exitCode);
+    expect(interrupted.exitCode === 137 || !!interrupted.signal).toBe(true);
     expect(await service.run(timeout, timeoutContext)).toEqual(interrupted);
   },
 );

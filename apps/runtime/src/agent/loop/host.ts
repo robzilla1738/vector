@@ -37,6 +37,7 @@ import { TranscriptStore, type ParkedCall } from "./transcript.js";
 import { recordRunTabChange } from "../../services/browser-change-ledger.js";
 import { buildToolManifest } from "./tools.js";
 import { hydrateSelectedArticles } from "./memory-context.js";
+import { CLOUD_PROJECT_ROOT } from "../../services/cloud-files-protocol.js";
 import { matchingRoute } from "./route.js";
 import { toolResultsMessage, type LoopToolDeps, type LoopToolResult, type ModelMessage } from "./types.js";
 
@@ -1149,12 +1150,9 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           );
         return { output: matches[0] };
       }
-      if (self.get(runId).config?.executionTarget === "cloud")
-        throw new AuxError(
-          "capability_unsupported",
-          "Coding filesystem and process tools require the local execution target.",
-        );
       if (name.startsWith("coder_worktree_")) {
+        if (self.get(runId).config?.executionTarget === "cloud")
+          throw new AuxError("capability_unsupported", "Local worktrees belong to local execution.");
         const input = codingToolManifest()[name]!.inputSchema.parse(raw) as {
           cellId: string;
           expectedDigest?: string;
@@ -1196,9 +1194,14 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       };
       const context = { runId, signal, checkOwner };
       checkOwner();
-      const files = self.deps.agentLoop?.codingFiles;
-      const processes = self.deps.agentLoop?.codingProcesses;
+      const remote = self.get(runId).config?.executionTarget === "cloud";
+      const executor = self.deps.agentLoop?.cloudExecutor;
+      const executionContext = { runId, threadId, turnId: runId };
       if (name.startsWith("bg_") || name === "reconcile_process") {
+        const processes = remote
+          ? await executor?.processes?.(executionContext, signal)
+          : self.deps.agentLoop?.codingProcesses;
+        checkOwner();
         if (!processes)
           throw new AuxError("capability_unsupported", "Supervised coding processes are unavailable.");
         if (name === "bg_start")
@@ -1225,6 +1228,10 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         fence();
         return { output };
       }
+      const files = remote
+        ? await executor?.files?.(executionContext, signal)
+        : self.deps.agentLoop?.codingFiles;
+      checkOwner();
       if (!files) throw new AuxError("capability_unsupported", "Governed coding files are unavailable.");
       if (name === "coding_state") {
         const fence = await files.authorizeInspection(context, actionId);
@@ -1390,7 +1397,10 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
     if (!service) throw new AuxError("capability_unsupported", "Supervised file access is unavailable.");
     return service;
   };
-  const fsRoots = (access: "read" | "write") => filesystem().roots(runId, access);
+  const fsRoots = (access: "read" | "write") =>
+    self.get(runId).config?.executionTarget === "cloud"
+      ? [CLOUD_PROJECT_ROOT]
+      : filesystem().roots(runId, access);
   const replDeps: ReplHostDeps = {
     runId,
     signal,
@@ -2101,7 +2111,15 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       deps,
       maxSteps: modelCallLimit() === 0 ? 0 : Math.max(1, modelCallLimit() - modelCalls),
       steerCheck: steerPending,
-      prepareModelMessages: async (messages) => {
+      prepareModelMessages: async (messages, budget) => {
+        const human = messages.findLast((message) => message.role === "user");
+        const query =
+          (typeof human?.content === "string"
+            ? human.content
+            : human?.content
+                .filter((part) => part.type === "text")
+                .map((part) => part.text)
+                .join("\n")) || self.get(runId).goal;
         publishModelContext(messages);
         const checkpoint = self.deps.repo.loadCheckpoint(`run:${runId}`, "loop_todos") as
           { todos?: unknown } | undefined;
@@ -2129,11 +2147,16 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
             },
           ];
         const original = self.get(runId);
-        const ids = original.config?.contextMemoryIds ?? [];
+        const refs = original.config?.contextMemoryRefs ?? [];
+        if (original.config?.contextMemoryIds?.length && !refs.length)
+          throw new AuxError(
+            "permission_denied",
+            "Reselect saved articles to use their current capture identities.",
+          );
         const imageIds = original.config?.contextImageArtifactIds ?? [];
-        if (!ids.length && !imageIds.length) return messages;
+        if (!refs.length && !imageIds.length) return messages;
         const authority = JSON.stringify([
-          ids,
+          refs,
           imageIds,
           original.config?.contextWorkspaceId,
           original.config?.contextWorkspaceRevision,
@@ -2142,11 +2165,11 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           original.config?.messageRevision,
         ]);
         self.deps.checkRunSource?.(runId);
-        if (ids.length && !self.deps.memoryReferences)
+        if (refs.length && !self.deps.memoryReferences)
           throw new AuxError("permission_denied", "Selected article evidence is unavailable.");
         if (imageIds.length && !self.deps.imageReferences)
           throw new AuxError("permission_denied", "Selected image evidence is unavailable.");
-        const references = ids.length ? await self.deps.memoryReferences!(original) : [];
+        const references = refs.length ? await self.deps.memoryReferences!(original, query) : [];
         const images = imageIds.length ? self.deps.imageReferences!(original) : [];
         const current = self.get(runId);
         if (
@@ -2154,7 +2177,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           self.controls.get(runId) !== c ||
           c.paused ||
           JSON.stringify([
-            current.config?.contextMemoryIds ?? [],
+            current.config?.contextMemoryRefs ?? [],
             current.config?.contextImageArtifactIds ?? [],
             current.config?.contextWorkspaceId,
             current.config?.contextWorkspaceRevision,
@@ -2166,10 +2189,9 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         )
           throw new AuxError("cancelled", "The original source selection changed before model dispatch.");
         self.deps.checkRunSource?.(runId);
-        const hydrated = hydrateSelectedArticles(messages, references, ids.length);
-        return images.length
+        const base = images.length
           ? [
-              ...hydrated,
+              ...messages,
               {
                 role: "user" as const,
                 content: [
@@ -2181,7 +2203,11 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
                 ],
               },
             ]
-          : hydrated;
+          : messages;
+        return hydrateSelectedArticles(base, references, refs.length, {
+          query,
+          maxBytes: budget.remainingInputBytes(base),
+        });
       },
       beforeModelCall: async (request) => {
         self.deps.turnMentions.skills(runId);
