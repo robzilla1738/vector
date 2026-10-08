@@ -225,6 +225,73 @@ it("explicit snapshot inclusion exports original fresh saved revision and exact 
   expect(hostState.saveFile).not.toHaveBeenCalled();
   expect(host.textContent).toContain("Receipt exported.");
 });
+it.each(["saved", "canceled", "failed"] as const)(
+  "settles native %s outcome before runtime cleanup and preserves it after cleanup failure",
+  async (outcome) => {
+    await render();
+    const cleanup = held<{ status: "retired"; exportId: string }>();
+    hostState.read.mockImplementation(async (_method, params: TaskReceiptExportParams) =>
+      params.action === "prepare" ? prepared(params.exportId) : cleanup.promise,
+    );
+    const reason = new Error("Native chooser unavailable");
+    const destination = outcome === "saved" ? "/synthetic/receipt.md" : null;
+    if (outcome === "failed") hostState.saveArtifact.mockRejectedValueOnce(reason);
+    else hostState.saveArtifact.mockResolvedValueOnce(destination);
+    control("export-task-receipt").focus();
+    let settled: unknown = "pending";
+    await act(async () => {
+      void executeCommand("export-task-receipt").then(
+        (value) => (settled = value),
+        (error) => (settled = error),
+      );
+    });
+    expect(settled).toBe(outcome === "failed" ? reason : destination);
+    expect(control("export-task-receipt").matches(":disabled")).toBe(false);
+    const message =
+      outcome === "failed" ? reason.message : outcome === "saved" ? "Receipt exported." : "Export canceled.";
+    expect(host.textContent).toContain(message);
+    expect(hostState.read).toHaveBeenLastCalledWith("tasks.exportReceipt", {
+      action: "retire",
+      exportId: exportRequest().exportId,
+    });
+    await act(async () => cleanup.reject(new Error("Runtime unavailable")));
+    expect(host.textContent).toContain(message);
+    expect(host.textContent).toContain("Temporary export cleanup is pending.");
+  },
+);
+it.each(["receipt ABA", "new attempt"])("late cleanup warning cannot enter %s", async (replacement) => {
+  await render();
+  const cleanup = held<{ status: "retired"; exportId: string }>();
+  hostState.read
+    .mockImplementationOnce(async (_method, params: TaskReceiptExportParams) => prepared(params.exportId))
+    .mockReturnValueOnce(cleanup.promise);
+  control("export-task-receipt").focus();
+  let settled: unknown = "pending";
+  await act(async () => {
+    void executeCommand("export-task-receipt").then((value) => (settled = value));
+  });
+  expect(settled).toBe("/synthetic/receipt.md");
+  if (replacement === "receipt ABA") {
+    await render(sample(2));
+    await render();
+  }
+  const save = held<string | null>();
+  hostState.saveArtifact.mockReturnValueOnce(save.promise);
+  control("export-task-receipt").focus();
+  let completion!: Promise<unknown>;
+  await act(async () => {
+    completion = executeCommand("export-task-receipt");
+  });
+  await act(async () => cleanup.reject(new Error("Old cleanup failed")));
+  expect(host.textContent).not.toContain("Temporary export cleanup is pending.");
+  expect(control("export-task-receipt").matches(":disabled")).toBe(true);
+  await act(async () => {
+    save.resolve("/synthetic/fresh.md");
+    expect(await completion).toBe("/synthetic/fresh.md");
+  });
+  expect(host.textContent).toContain("Receipt exported.");
+  expect(host.textContent).not.toContain("Temporary export cleanup is pending.");
+});
 it("default export omits captured text", async () => {
   await render();
   await act(async () => control("export-task-receipt").click());
@@ -324,22 +391,30 @@ it("receipt retired during preparation retires its export and never starts a fil
 it("Cancel during preparation retires the exact pending export and a late result cannot open Save", async () => {
   await render();
   const preparation = held<ReturnType<typeof prepared>>();
-  hostState.read.mockReturnValueOnce(preparation.promise);
+  const cleanup = held<{ status: "retired"; exportId: string }>();
+  hostState.read.mockReturnValueOnce(preparation.promise).mockReturnValueOnce(cleanup.promise);
   control("export-task-receipt").focus();
   let completion!: Promise<unknown>;
   await act(async () => {
     completion = executeCommand("export-task-receipt");
   });
   control("cancel-task-receipt-export").focus();
+  let canceled = false,
+    exported = false;
   await act(async () => {
-    await executeCommand("cancel-task-receipt-export");
+    void executeCommand("cancel-task-receipt-export").then(() => (canceled = true));
+    void completion.then(() => (exported = true));
+    preparation.resolve(prepared(exportRequest().exportId));
   });
+  expect(canceled).toBe(false);
+  expect(exported).toBe(false);
+  expect(host.textContent).toContain("Canceling…");
   expect(hostState.read).toHaveBeenCalledWith("tasks.exportReceipt", {
     action: "retire",
     exportId: exportRequest().exportId,
   });
   await act(async () => {
-    preparation.resolve(prepared(exportRequest().exportId));
+    cleanup.resolve({ status: "retired", exportId: exportRequest().exportId });
     expect(await completion).toBeNull();
   });
   expect(hostState.saveArtifact).not.toHaveBeenCalled();

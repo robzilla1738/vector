@@ -18,6 +18,7 @@ type Attempt = {
 };
 type ExportState = {
   owner: ReceiptOwner;
+  exportId?: string;
   phase: "idle" | "preparing" | "saving" | "cancelling";
   message: string;
   error: string;
@@ -70,7 +71,8 @@ export function TaskReceiptExport({ owner }: { owner: ReceiptOwner }) {
       phase: "preparing",
       cancellation: new AbortController(),
     };
-    setState({ owner, phase: "preparing", message: "", error: "" });
+    setState({ owner, exportId: attempt.exportId, phase: "preparing", message: "", error: "" });
+    const cleanupMessage = "Temporary export cleanup is pending.";
     let cleanupWarning = "";
     const completion = guardCommandCompletion(
       (async () => {
@@ -87,23 +89,25 @@ export function TaskReceiptExport({ owner }: { owner: ReceiptOwner }) {
           if (prepared.status !== "prepared" || prepared.exportId !== attempt.exportId)
             throw new Error("This receipt export changed. Export the saved receipt again.");
           attempt.phase = "saving";
-          setState({ owner, phase: "saving", message: "", error: "" });
+          setState({ owner, exportId: attempt.exportId, phase: "saving", message: "", error: "" });
           return await bridge.saveStoredArtifact(prepared.artifactId, prepared.filename);
         } catch (reason) {
           if (attempt.cancellation.signal.aborted) return null;
           throw reason;
         } finally {
-          try {
-            await retire(attempt);
-          } catch {
-            cleanupWarning = "Temporary export cleanup is pending.";
-          }
+          if (attempt.cancellation.signal.aborted)
+            try {
+              await retire(attempt);
+            } catch {
+              cleanupWarning = cleanupMessage;
+            }
         }
       })()
         .then((destination) => {
           if (owner.current())
             setState({
               owner,
+              exportId: attempt.exportId,
               phase: "idle",
               message: [destination ? "Receipt exported." : "Export canceled.", cleanupWarning]
                 .filter(Boolean)
@@ -116,6 +120,7 @@ export function TaskReceiptExport({ owner }: { owner: ReceiptOwner }) {
           if (owner.current())
             setState({
               owner,
+              exportId: attempt.exportId,
               phase: "idle",
               message: cleanupWarning,
               error: errorMessage(reason).replace(/^Error invoking remote method [^:]+: Error: /, ""),
@@ -123,6 +128,16 @@ export function TaskReceiptExport({ owner }: { owner: ReceiptOwner }) {
           throw reason;
         })
         .finally(() => {
+          // Native owns a claimed export through its Save ACK; cleanup must not delay that outcome.
+          if (!attempt.cancellation.signal.aborted)
+            void retire(attempt).catch(() => {
+              if (owner.current())
+                setState((current) =>
+                  owner.current() && current.owner === owner && current.exportId === attempt.exportId
+                    ? { ...current, message: [current.message, cleanupMessage].filter(Boolean).join(" ") }
+                    : current,
+                );
+            });
           if (pending.current?.completion === completion) pending.current = null;
         }),
       () => owner.current(),
@@ -135,7 +150,7 @@ export function TaskReceiptExport({ owner }: { owner: ReceiptOwner }) {
     if (!owner.current() || attempt?.owner !== owner || attempt.phase !== "preparing")
       throw new Error("Choose this receipt’s current export preparation.");
     attempt.cancellation.abort();
-    setState({ owner, phase: "cancelling", message: "", error: "" });
+    setState({ owner, exportId: attempt.exportId, phase: "cancelling", message: "", error: "" });
     return guardCommandCompletion(retire(attempt), () => owner.current());
   }
   return (
