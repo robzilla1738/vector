@@ -326,6 +326,7 @@ export function eventEffects(e: AuxEvent, s: Workspace, set: Set, get: () => Wor
       get().setConversationDraft(chatId, "");
       get().setConversationContext(chatId, "");
       get().setConversationBrowserSources(chatId, []);
+      get().setConversationCapturedSources(chatId, null);
       if (!clearResultDrafts(chatId))
         toast("An edited result draft could not be removed from this browser.", "error");
       setDictationDraft(draftKey(chatId), "");

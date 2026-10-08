@@ -148,6 +148,8 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
           : opts.pageId === undefined
             ? (opts.pageIds?.[0] ?? (opts.scope === "page" ? before.activePageId : null))
             : opts.pageId;
+      if (bridge.privateMode && opts.capturedSources?.sources.length)
+        throw new Error("Saved articles belong to their original regular Profile.");
       const n = Number(before.settings.maxModelCalls);
       const budget = Number.isInteger(n) && n > 0 ? n : 0;
       const pageIds = [...new Set([...(pageId ? [pageId] : []), ...(opts.pageIds ?? [])])];
@@ -171,12 +173,12 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
         pageIds,
         contextPageRefs,
         mentions: opts.mentions,
-        contextMemoryIds: opts.memorySource ? [opts.memorySource.memoryId] : undefined,
+        contextMemoryRefs: opts.capturedSources?.sources,
         maxModelCalls: budget,
         chatId: opts.chatId,
         defaultWorkspaceId: bridge.privateMode
           ? undefined
-          : (opts.memorySource?.workspaceId ??
+          : (opts.capturedSources?.workspaceId ??
             before.layout.spaces.find((space) => space.id === before.layout.activeSpaceId)?.workspaceId),
       });
       const run = delivery.run;
@@ -238,6 +240,11 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
       }
       if (chatId) get().setConversationDraft(chatId, attempt.request.goal);
       else get().setAgentDraft(attempt.request.goal);
+      if (attempt.request.contextMemoryRefs?.length && attempt.request.defaultWorkspaceId)
+        get().setConversationCapturedSources(chatId ?? null, {
+          workspaceId: attempt.request.defaultWorkspaceId,
+          sources: attempt.request.contextMemoryRefs,
+        });
       get().setConversationBrowserSources(chatId ?? null, attempt.request.contextPageRefs ?? []);
       get().setConversationContext(chatId ?? null, attempt.request.pageIds?.[0] ?? "");
       get().setComposerPreferences(chatId ? draftKey(chatId) : "new", {

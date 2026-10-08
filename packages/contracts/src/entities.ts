@@ -1,3 +1,4 @@
+import { CapturedSourceSchema } from "./captured-source.js";
 import { z } from "zod";
 import { AgentProfileSchema } from "./agent-profiles.js";
 import { AuxPackageSnapshotSchema } from "./aux-packages.js";
@@ -202,7 +203,8 @@ export const RunSchema = z.object({
       /** Immutable image snapshots explicitly included in this run. */
       contextImageArtifactIds: z.array(z.string()).max(4).optional(),
       /** Selected protected article IDs; plaintext is hydrated only for a model call. */
-      contextMemoryIds: z.array(z.string()).max(3).optional(),
+      contextMemoryIds: z.array(z.string()).optional(),
+      contextMemoryRefs: z.array(CapturedSourceSchema).optional(),
       /** The selected article was deleted; saved model outputs were removed. */
       contextMemoryRevoked: z.boolean().optional(),
       /** IDs of removed generated artifacts, retained only to revoke later dependent turns. */
@@ -212,7 +214,7 @@ export const RunSchema = z.object({
         .array(z.object({ sourcePageId: z.string(), pageId: z.string(), url: z.string() }).strict())
         .optional(),
       /** Live pages explicitly selected for this turn; their identity was checked before launch. */
-      contextPageRefs: z.array(PageContextRefSchema).max(9).optional(),
+      contextPageRefs: z.array(PageContextRefSchema).optional(),
       mentions: MentionRefsSchema.optional(),
       /** Accepted human steering revision for this run. */
       messageRevision: z.number().int().nonnegative().optional(),
@@ -288,8 +290,8 @@ export const RunMessageSchema = z
     mode: z.enum(["queue", "steer"]),
     status: z.enum(["accepted", "delivering", "delivered", "needs_attention", "cancelled"]),
     text: z.string().min(1).max(20_000),
-    pageIds: z.array(z.string().min(1)).max(9),
-    contextPageRefs: z.array(PageContextRefSchema).max(9),
+    pageIds: z.array(z.string().min(1)),
+    contextPageRefs: z.array(PageContextRefSchema),
     mentions: MentionRefsSchema.optional(),
     expectedRevision: z.number().int().nonnegative(),
     /** This message supersedes an earlier message id (resend nonce chain). */

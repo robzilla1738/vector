@@ -59,7 +59,6 @@ export function insertMention(
   label: string,
   ref: MentionRef,
 ): MentionDraft {
-  if (draft.tokens.length >= 16) throw new Error("You can mention up to 16 sources in one message.");
   const text = `@${label}`;
   const next = spliceMentionDraft(draft, query.start, query.end, text + " ");
   return {

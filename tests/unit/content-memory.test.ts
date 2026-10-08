@@ -736,7 +736,7 @@ it("cancels an in-flight batch on Forget and cannot publish its late vectors", a
   expect(await f.memory.search(workspaceId, "car")).toEqual([]);
 });
 
-it("replaces one captured source at the same timestamp without publishing the old batch", async () => {
+it("gives a same-clock recapture a distinct identity without publishing the old batch", async () => {
   const local = delayedEmbeddings();
   const f = fixture(local.request),
     workspaceId = f.workspace.workspaceId;
@@ -757,7 +757,7 @@ it("replaces one captured source at the same timestamp without publishing the ol
     title: "Trees",
     text: "Trees provide shade.",
   });
-  expect(updated.capturedAt).toBe(saved.capturedAt);
+  expect(updated.capturedAt).toBe(saved.capturedAt + 1);
   expect(updated.memoryId).toBe(saved.memoryId);
   await f.memory.prewarm(workspaceId);
   local.release();
@@ -943,4 +943,46 @@ it("does not rank an older query vector against a refreshed model's corpus", asy
     message: expect.stringContaining("model changed"),
     matches: [{ pageId: "car" }],
   });
+});
+
+it("pages thirty exact capture metadata identities and exposes recapture and forgetting without article bodies", async () => {
+  const f = fixture(),
+    workspaceId = f.workspace.workspaceId;
+  const saved: Awaited<ReturnType<ContentMemoryStore["saveEligible"]>>[] = [];
+  for (let index = 0; index < 30; index++) {
+    f.advance(1);
+    saved.push(
+      await f.memory.saveEligible({
+        workspaceId,
+        pageId: `page-${index}`,
+        documentEpoch: 1,
+        url: `https://example.test/articles/${index}`,
+        title: `Research ${index}`,
+        text: "Private body must stay out of the catalog.",
+      }),
+    );
+  }
+  const selectedIds = saved.map((source) => source.memoryId);
+  const first = await f.memory.list(workspaceId, { workspaceId, query: "Research", selectedIds });
+  expect(first.items).toHaveLength(20);
+  expect(first.selected).toHaveLength(30);
+  expect(JSON.stringify(first)).not.toContain("Private body");
+  const second = await f.memory.list(workspaceId, {
+    workspaceId,
+    query: "Research",
+    selectedIds,
+    cursor: first.nextCursor!,
+  });
+  expect(second.items).toHaveLength(10);
+  expect(second.nextCursor).toBeNull();
+  expect(new Set([...first.items, ...second.items].map((source) => source.memoryId)).size).toBe(30);
+  const original = saved[0]!;
+  f.advance(1);
+  await f.memory.saveEligible({ ...original, documentEpoch: 2, text: "Changed source text." });
+  await f.memory.forget(workspaceId, saved[1]!.memoryId);
+  const changed = await f.memory.list(workspaceId, { workspaceId, query: "", selectedIds });
+  expect(changed.selected.find((source) => source.memoryId === original.memoryId)).toMatchObject({
+    documentEpoch: 2,
+  });
+  expect(changed.selected.some((source) => source.memoryId === saved[1]!.memoryId)).toBe(false);
 });

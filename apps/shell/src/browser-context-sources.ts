@@ -2,8 +2,6 @@ import type { PageContextRef, PageTarget } from "@aux/contracts";
 import { draftKey } from "./conversation-drafts";
 
 export const BROWSER_SOURCES_PREFIX = "aux.conversation-browser-sources.v1:";
-// Eight additional pages plus a pinned primary source from a page action.
-const MAX_SELECTED_PAGES = 9;
 type EntryStorage = Pick<Storage, "getItem" | "setItem" | "removeItem"> &
   Partial<Pick<Storage, "length" | "key">>;
 
@@ -36,13 +34,12 @@ function validSource(value: unknown): value is PageContextRef {
 }
 
 function parseSources(value: string | null): PageContextRef[] | null {
-  if (!value || value.length > 80_000) return null;
+  if (!value) return null;
   try {
     const entry: unknown = JSON.parse(value);
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
     const record = entry as Record<string, unknown>;
-    if (record.version !== 1 || !Array.isArray(record.sources) || record.sources.length > MAX_SELECTED_PAGES)
-      return null;
+    if (record.version !== 1 || !Array.isArray(record.sources)) return null;
     if (!record.sources.every(validSource)) return null;
     const sources: PageContextRef[] = record.sources;
     if (new Set(sources.map((source) => source.pageId)).size !== sources.length) return null;
@@ -77,8 +74,7 @@ export function writeBrowserSources(
   sources: PageContextRef[],
 ): void {
   if (!validKey(key)) throw new Error("Invalid conversation context key.");
-  if (sources.length > MAX_SELECTED_PAGES || !sources.every(validSource))
-    throw new Error("Selected browser context is invalid.");
+  if (!sources.every(validSource)) throw new Error("Selected browser context is invalid.");
   if (new Set(sources.map((source) => source.pageId)).size !== sources.length)
     throw new Error("A browser tab can be selected only once.");
   if (!storage) return;

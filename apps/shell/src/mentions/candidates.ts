@@ -63,7 +63,7 @@ export function mentionCandidates(input: {
       ...shared.splitGroups.map((group) => ({ id: group.id, label: "Split group", ids: group.panes })),
     ];
     for (const group of groups) {
-      if (!group.ids.length || group.ids.length > 9) continue;
+      if (!group.ids.length) continue;
       const members = group.ids.flatMap((id) => {
         const tab = tabs.find((value) => value.pageId === id);
         return tab

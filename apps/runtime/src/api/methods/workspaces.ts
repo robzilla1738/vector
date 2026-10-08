@@ -125,6 +125,7 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
   if (method === "workspaces.contentMemory.embeddingModels") return store.embeddingModels(params.workspaceId);
   if (method === "workspaces.contentMemory.semanticSearch")
     return store.semanticSearch(params.workspaceId, params.query);
+  if (method === "workspaces.contentMemory.list") return store.list(params.workspaceId, params);
   if (method === "workspaces.contentMemory.search") return store.search(params.workspaceId, params.query);
   if (method === "workspaces.contentMemory.get") {
     const body = await store.get(params.workspaceId, params.memoryId);
@@ -303,6 +304,7 @@ export const workspacesMethods: Partial<Record<MethodName, MethodHandler>> = {
   "workspaces.contentMemory.capture": h_workspaces_contentMemory_policy,
   "workspaces.contentMemory.embeddingModels": h_workspaces_contentMemory_policy,
   "workspaces.contentMemory.semanticSearch": h_workspaces_contentMemory_policy,
+  "workspaces.contentMemory.list": h_workspaces_contentMemory_policy,
   "workspaces.contentMemory.search": h_workspaces_contentMemory_policy,
   "workspaces.contentMemory.get": h_workspaces_contentMemory_policy,
   "workspaces.contentMemory.forget": h_workspaces_contentMemory_policy,

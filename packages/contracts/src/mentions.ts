@@ -14,7 +14,7 @@ const Tab = z
 export const MentionRefSchema = z.discriminatedUnion("kind", [
   Tab.extend({ kind: z.literal("tab") }),
   z.object({ kind: z.literal("tabs") }).strict(),
-  z.object({ kind: z.literal("group"), groupId: Id, members: z.array(Tab).min(1).max(9) }).strict(),
+  z.object({ kind: z.literal("group"), groupId: Id, members: z.array(Tab).min(1) }).strict(),
   z
     .object({
       kind: z.literal("space"),
@@ -26,5 +26,5 @@ export const MentionRefSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("skill"), routineId: Id, revision: z.number().int().positive() }).strict(),
   z.object({ kind: z.literal("connector"), connectorId: Id }).strict(),
 ]);
-export const MentionRefsSchema = z.array(MentionRefSchema).max(16);
+export const MentionRefsSchema = z.array(MentionRefSchema);
 export type MentionRef = z.infer<typeof MentionRefSchema>;

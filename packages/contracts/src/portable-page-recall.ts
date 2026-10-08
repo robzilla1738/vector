@@ -5,6 +5,7 @@ import { redactSettledRunInvocations } from "./forgotten-run-invocations.js";
 type RecallConfig = {
   chatId?: string;
   contextMemoryIds?: string[];
+  contextMemoryRefs?: { memoryId: string }[];
   contextMemoryRevoked?: boolean;
   contextRunIds?: string[];
   contextArtifactIds?: string[];
@@ -69,6 +70,7 @@ export function redactedPageRecallConfig<T extends RecallConfig>(config: T, arti
   return {
     ...config,
     contextMemoryRevoked: true,
+    contextMemoryRefs: undefined,
     context: undefined,
     revokedArtifactIds: [...new Set([...(config.revokedArtifactIds ?? []), ...artifactIds])],
     contextDocumentEvidence: undefined,
@@ -124,7 +126,12 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
       }
       const seeds = new Set(
         parsed
-          .filter((row) => row.config.contextMemoryIds?.length || row.config.contextMemoryRevoked)
+          .filter(
+            (row) =>
+              row.config.contextMemoryRefs?.length ||
+              row.config.contextMemoryIds?.length ||
+              row.config.contextMemoryRevoked,
+          )
           .map((row) => row.runId),
       );
       const affected = derivedPageRecallRunIds(parsed, seeds, owners);

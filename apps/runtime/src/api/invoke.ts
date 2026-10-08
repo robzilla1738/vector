@@ -179,9 +179,20 @@ export function makeInvoker(s: Services) {
         throw new AuxError("permission_denied", "This method is outside the connection's task scope");
       }
       if (method === "tasks.start" || method === "tasks.replaceAgent") {
-        if (params.contextMemoryIds?.length || params.mentions?.length || params.contextPageRefs?.length || params.defaultWorkspaceId || params.chatId || params.setId)
-          throw new AuxError("permission_denied", "External runs inherit only the reviewed task context and scoped attachments.");
-        for (const pageId of params.pageIds ?? (params.pageId ? [params.pageId] : [])) deps.requireScopedPage(scope, pageId, client.connectionId);
+        if (
+          params.contextMemoryRefs?.length ||
+          params.mentions?.length ||
+          params.contextPageRefs?.length ||
+          params.defaultWorkspaceId ||
+          params.chatId ||
+          params.setId
+        )
+          throw new AuxError(
+            "permission_denied",
+            "External runs inherit only the reviewed task context and scoped attachments.",
+          );
+        for (const pageId of params.pageIds ?? (params.pageId ? [params.pageId] : []))
+          deps.requireScopedPage(scope, pageId, client.connectionId);
       }
     }
 

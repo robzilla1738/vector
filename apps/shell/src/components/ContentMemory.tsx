@@ -16,6 +16,7 @@ import {
   type ReactNode,
 } from "react";
 import type {
+  CapturedSource,
   ContentMemoryDocument,
   ContentMemoryMatch,
   ContentMemoryPolicy,
@@ -275,8 +276,8 @@ function ContentDetail({
       </p>
       <div className="content-memory-text">{document.text}</div>
       <p {...staticHintProps}>
-        Ask Aux sends up to 8,000 characters of this saved article to your selected AI provider. The saved
-        copy may be older than the live page.
+        Ask Aux sends relevant excerpts of this exact capture to your selected AI provider. The saved copy may
+        be older than the live page.
       </p>
       <div {...staticRowProps}>
         <input
@@ -564,7 +565,21 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
           scope: "new",
           chatId: crypto.randomUUID(),
           presentation: "conversation",
-          memorySource: { workspaceId: memory.workspaceId, memoryId: document.memoryId },
+          capturedSources: {
+            workspaceId: memory.workspaceId,
+            sources: [
+              {
+                memoryId: document.memoryId,
+                profileId: document.profileId,
+                workspaceId: document.workspaceId,
+                pageId: document.pageId,
+                documentEpoch: document.documentEpoch,
+                url: document.url,
+                title: document.title,
+                capturedAt: document.capturedAt,
+              } satisfies CapturedSource,
+            ],
+          },
         }),
       (run) => {
         if (run && current() && questionScope.active) {

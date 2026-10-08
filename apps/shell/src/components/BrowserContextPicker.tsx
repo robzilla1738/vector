@@ -9,6 +9,7 @@ import { useShortcutLabel, withShortcut } from "../use-shortcut-label";
 import type { PageTarget } from "@aux/contracts";
 import { useStore, errToast } from "../store";
 import { hostOf } from "../workspace";
+import { SourceCollection } from "./SourceCollection";
 import { Popover } from "../ui/popover";
 import { shellIconCheck, shellIconDown, shellIconGlobe } from "../ui/icons";
 import "./ContextPicker.css";
@@ -222,15 +223,19 @@ export function BrowserContextPicker({
             )}
             <section className="context-picker-group" aria-label="Open browser tabs">
               <p>Open tabs</p>
-              {matches.map((pageId) => (
-                <BrowserContextChoice
-                  key={pageId}
-                  pageId={pageId}
-                  value={value}
-                  onSelect={select}
-                  disabled={disabled}
-                />
-              ))}
+              <SourceCollection items={matches} scope={query} label="Browser context pages">
+                {(visible) =>
+                  visible.map((pageId) => (
+                    <BrowserContextChoice
+                      key={pageId}
+                      pageId={pageId}
+                      value={value}
+                      onSelect={select}
+                      disabled={disabled}
+                    />
+                  ))
+                }
+              </SourceCollection>
               {!matches.length && <p>No matching available tabs.</p>}
             </section>
           </>

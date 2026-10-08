@@ -1,3 +1,4 @@
+import { SourceCollection } from "../components/SourceCollection";
 import { useShallow } from "zustand/react/shallow";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -132,10 +133,7 @@ export function MentionComposer({
           setQuery(null);
           input.setAttribute("aria-expanded", "false");
         } else if (event.key === "Enter") {
-          if (matching[0])
-            void executeCommand("mention-insert", {
-              payload: { composerId, candidateId: matching[0].id },
-            }).catch(errToast);
+          rows.current?.querySelector<HTMLButtonElement>('[role="option"]')?.click();
         } else {
           const options = rows.current?.querySelectorAll<HTMLButtonElement>('[role="option"]');
           (event.key === "ArrowUp" ? options?.[options.length - 1] : options?.[0])?.focus();
@@ -289,36 +287,41 @@ export function MentionComposer({
                 } else moveListFocus(event, '[role="option"]');
               }}
             >
-              {(["Tabs", "Folders and groups", "Spaces", "Skills", "Connectors"] as const).map((section) => {
-                const items = matching.filter((candidate) => candidate.section === section);
-                return items.length ? (
-                  <fieldset key={section} aria-label={section}>
-                    <legend>{section}</legend>
-                    {items.map((candidate) => (
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected={false}
-                        key={candidate.id}
-                        data-command-id="mention-insert"
-                        disabled={draft.tokens.length >= 16}
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() =>
-                          void executeCommand("mention-insert", {
-                            payload: { composerId, candidateId: candidate.id },
-                          }).catch(errToast)
-                        }
-                      >
-                        <span>{candidate.label}</span>
-                        <small>{candidate.detail}</small>
-                      </button>
-                    ))}
-                  </fieldset>
-                ) : null;
-              })}
+              <SourceCollection items={matching} scope={query.query} label="Mention source pages">
+                {(visible) =>
+                  (["Tabs", "Folders and groups", "Spaces", "Skills", "Connectors"] as const).map(
+                    (section) => {
+                      const items = visible.filter((candidate) => candidate.section === section);
+                      return items.length ? (
+                        <fieldset key={section} aria-label={section}>
+                          <legend>{section}</legend>
+                          {items.map((candidate) => (
+                            <button
+                              type="button"
+                              role="option"
+                              aria-selected={false}
+                              key={candidate.id}
+                              data-command-id="mention-insert"
+                              disabled={disabled}
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() =>
+                                void executeCommand("mention-insert", {
+                                  payload: { composerId, candidateId: candidate.id },
+                                }).catch(errToast)
+                              }
+                            >
+                              <span>{candidate.label}</span>
+                              <small>{candidate.detail}</small>
+                            </button>
+                          ))}
+                        </fieldset>
+                      ) : null;
+                    },
+                  )
+                }
+              </SourceCollection>
               {!matching.length && <p>No matching sources.</p>}
             </div>
-            {draft.tokens.length >= 16 && <output>A message can mention up to 16 sources.</output>}
             {error && <output>{error}</output>}
             <p>Other Profiles' tabs aren't available here</p>
           </div>,

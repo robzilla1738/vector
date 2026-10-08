@@ -20,11 +20,30 @@ it("switching a composed normal draft to Temporary erases its stored copy and ke
   state.setConversationBrowserSources("chat", [
     { pageId: "source", documentEpoch: 1, url: "https://example.test/" },
   ]);
+  const selection = {
+    workspaceId: "space",
+    sources: [
+      {
+        memoryId: "capture",
+        profileId: "profile",
+        workspaceId: "space",
+        pageId: "page",
+        documentEpoch: 1,
+        url: "https://example.test/",
+        title: "Selected capture",
+        capturedAt: 1,
+      },
+    ],
+  };
+  state.setConversationCapturedSources("chat", selection);
   draftWriter.flush();
+  expect(localStorage.getItem("aux.captured-sources.v1:chat:chat")).toContain("Selected capture");
   expect(localStorage.getItem(DRAFT_ENTRY_PREFIX + "chat:chat")).toBe("Normal draft");
   state.setComposerPreferences("chat:chat", { privateTask: true });
   expect(localStorage.getItem(DRAFT_ENTRY_PREFIX + "chat:chat")).toBeNull();
   expect(localStorage.getItem(BROWSER_SOURCES_PREFIX + "chat:chat")).toBeNull();
+  expect(localStorage.getItem("aux.captured-sources.v1:chat:chat")).toBeNull();
+  expect(useStore.getState().conversationCapturedSources["chat:chat"]).toEqual(selection);
   state.setConversationDraft("chat", "Temporary secret");
   state.setConversationContext("chat", "temporary-tab");
   draftWriter.flush();

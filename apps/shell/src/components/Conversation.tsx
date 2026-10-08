@@ -1,3 +1,4 @@
+import { CapturedSourcePicker } from "./CapturedSourcePicker";
 import { isRunStartRemoved, readStartAttempt } from "../run-start-attempts";
 import { CodingRunActivity } from "../features/coding/CodingRunActivity";
 import { shellIconMore } from "../ui/icons";
@@ -717,6 +718,9 @@ export function Conversation({
   const setContextPage = (pageId: string) => useStore.getState().setConversationContext(id, pageId);
   const selectedBrowserSources = useStore((s) => s.conversationBrowserSources[browserSourcesKey(id)]);
   const browserSources = selectedBrowserSources ?? [];
+  const capturedSources = useStore((s) => s.conversationCapturedSources[browserSourcesKey(id)]);
+  const setCapturedSources = (selection: import("@aux/contracts").CapturedSourceSelection | null) =>
+    useStore.getState().setConversationCapturedSources(id, selection);
   const setBrowserSources = (sources: typeof browserSources) =>
     useStore.getState().setConversationBrowserSources(id, sources);
   const reopenPending = useRef<RecoveryOperation | null>(null);
@@ -1175,6 +1179,8 @@ export function Conversation({
     if (text) useStore.getState().setConversationDraft(chatId, text);
     useStore.getState().setConversationContext(chatId, contextPage);
     useStore.getState().setConversationBrowserSources(chatId, browserSources);
+    useStore.getState().setConversationCapturedSources(chatId, capturedSources ?? null);
+    useStore.getState().setConversationCapturedSources(null, null);
     useStore.getState().setAgentDraft("");
     try {
       if (!privateTask && !bridge.privateMode) localStorage.setItem(PENDING_CHAT_KEY, chatId);
@@ -1429,6 +1435,11 @@ export function Conversation({
         }
         scrolling.jumpToLatest();
       } else {
+        if (
+          capturedSources &&
+          capturedSources.workspaceId !== (workspaceContext.workspace?.workspaceId ?? draftWorkspaceId)
+        )
+          throw new Error("Return to the selected articles’ Space or remove them before sending.");
         const mentionedPageIds = mentions.flatMap((ref) =>
           ref.kind === "tab"
             ? [ref.pageId]
@@ -1503,6 +1514,7 @@ export function Conversation({
           pageId: primaryForRun?.pageId ?? null,
           pageIds,
           contextPageRefs,
+          capturedSources,
           mentions,
           scope: primaryForRun ? "page" : "new",
           presentation: embedded && !home ? "rail" : "conversation",
@@ -1841,15 +1853,24 @@ export function Conversation({
     </div>
   );
   const browserContextControls = (
-    <BrowserContextTray
-      key={id ?? "new"}
-      primary={contextPage}
-      onPrimary={setContextPage}
-      linkedPageId={linked?.pageId}
-      sources={browserSources}
-      onSources={setBrowserSources}
-      disabled={contextLocked}
-    />
+    <>
+      <BrowserContextTray
+        key={id ?? "new"}
+        primary={contextPage}
+        onPrimary={setContextPage}
+        linkedPageId={linked?.pageId}
+        sources={browserSources}
+        onSources={setBrowserSources}
+        disabled={contextLocked}
+      />
+      <CapturedSourcePicker
+        key={`captured:${id ?? "new"}`}
+        workspaceId={workspaceContext.workspace?.workspaceId ?? draftWorkspaceId}
+        selection={capturedSources}
+        disabled={contextLocked}
+        onChange={setCapturedSources}
+      />
+    </>
   );
   const composerContext = !taskBound && !answering && (
     <span className="home-tools-trigger">
@@ -2545,7 +2566,8 @@ export function Conversation({
               >
                 <div className="composer-context">
                   {((selectedContext && selectedContext.url !== "about:blank") ||
-                    browserSources.length > 0) && (
+                    browserSources.length > 0 ||
+                    !!capturedSources?.sources.length) && (
                     <button
                       {...auxReuseNativeButtonTypeProps}
                       className="home-context-summary"
@@ -2555,10 +2577,17 @@ export function Conversation({
                     >
                       {shellIconGlobe}
                       <span>
-                        {selectedContext?.title || selectedContext?.url || "Selected browser context"}
-                        {browserSources.length
-                          ? ` · ${browserSources.length} saved ${browserSources.length === 1 ? "source" : "sources"}`
-                          : ""}
+                        {[
+                          selectedContext?.title || selectedContext?.url,
+                          browserSources.length
+                            ? `${browserSources.length} live ${browserSources.length === 1 ? "tab" : "tabs"}`
+                            : undefined,
+                          capturedSources?.sources.length
+                            ? `${capturedSources.sources.length} saved ${capturedSources.sources.length === 1 ? "article" : "articles"}`
+                            : undefined,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </span>
                     </button>
                   )}

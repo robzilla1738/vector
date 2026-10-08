@@ -1,3 +1,4 @@
+import { readCapturedSources, writeCapturedSources } from "../captured-sources";
 import { bridge } from "../bridge";
 import { browserSourcesKey, readBrowserSources, writeBrowserSources } from "../browser-context-sources";
 import {
@@ -17,6 +18,23 @@ const draftStorage = bridge.privateMode ? null : storage;
 
 export const createDraftsSlice: Slice<DraftKeys> = (set, get) => ({
   conversationContexts: readConversationContexts(draftStorage),
+  conversationCapturedSources: readCapturedSources(draftStorage),
+  setConversationCapturedSources: (id, selection) => {
+    const key = id ? draftKey(id) : NEW_DRAFT_KEY;
+    set((state) => {
+      const sources = { ...state.conversationCapturedSources };
+      if (selection?.sources.length) sources[key] = selection;
+      else delete sources[key];
+      return { conversationCapturedSources: sources };
+    });
+    try {
+      writeCapturedSources(draftStorage, key, temporaryDraft(get(), key) ? null : selection);
+    } catch {
+      warnDraftStorage(
+        "Your saved-article selection is kept in this window, but could not be saved for restart.",
+      );
+    }
+  },
   conversationBrowserSources: readBrowserSources(bridge.privateMode ? null : storage),
   setConversationContext: (id, pageId) => {
     const contexts = { ...get().conversationContexts };
@@ -82,6 +100,7 @@ export const createDraftsSlice: Slice<DraftKeys> = (set, get) => ({
       try {
         writeConversationEntry(draftStorage, "context", key, "");
         writeBrowserSources(draftStorage, key, []);
+        writeCapturedSources(draftStorage, key, null);
       } catch {
         warnDraftStorage(
           "The saved copy of this draft could not be removed. Your temporary reply stays in this window.",

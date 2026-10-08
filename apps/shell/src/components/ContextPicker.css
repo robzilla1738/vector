@@ -9,6 +9,16 @@
     outline: 2px solid var(--focus-line);
     outline-offset: -2px;
   }
+  .source-collection-pages {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    width: 100%;
+    margin-top: var(--space-2);
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
   .context-choice {
     display: flex;
     align-items: center;

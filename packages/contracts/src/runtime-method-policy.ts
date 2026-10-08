@@ -62,6 +62,7 @@ export const RuntimeMethodPolicy = {
   "workspaces.contentMemory.semanticSearch": { feature: "memory", auth: "aux-webui" },
   "workspaces.contentMemory.embeddingModels": { feature: "memory", auth: "aux-webui" },
   "workspaces.contentMemory.search": { feature: "core", auth: "standard" },
+  "workspaces.contentMemory.list": { feature: "core", auth: "aux-webui" },
   "workspaces.contentMemory.get": { feature: "core", auth: "standard" },
   "workspaces.contentMemory.forget": { feature: "core", auth: "handler-guarded" },
   "workspaces.memory.get": { feature: "core", auth: "handler-guarded" },

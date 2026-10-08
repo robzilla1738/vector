@@ -1022,6 +1022,7 @@ export function installMockBridge(q: URLSearchParams) {
     "workspaces.contentMemory.capture": async () => {
       throw new Error("Article capture needs a native Aux tab.");
     },
+    "workspaces.contentMemory.list": async () => ({ items: [], selected: [], nextCursor: null }),
     "workspaces.contentMemory.search": async () => [],
     "workspaces.contentMemory.get": async () => null,
     "workspaces.contentMemory.forget": async (p) => {
@@ -2169,7 +2170,7 @@ export function installMockBridge(q: URLSearchParams) {
     tabsUnsavedWork: async (tabs: { pageId: string; url: string }[]) =>
       Object.fromEntries(tabs.map((tab) => [tab.pageId, "clean" as const])),
     memorySaverGet: async () => ({ minutes: memorySaverMinutes, managed: false }),
-    memorySaverSet: async (minutes) => ({ minutes: memorySaverMinutes = minutes, managed: false }),
+    memorySaverSet: async (minutes) => ({ minutes: (memorySaverMinutes = minutes), managed: false }),
     tabSleep: async () => ({ slept: false, reason: "Native lifecycle unavailable in preview" }),
     // Mock tab commands reuse the local page list — the real surface is the
     // main-owned catalog; visual dev only needs the pages themselves to move.

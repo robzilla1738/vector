@@ -1,3 +1,4 @@
+import { CapturedSourceSchema } from "./captured-source.js";
 import { MemorySaverMinutesSchema } from "./memory-saver.js";
 import { BookmarkMethodSchemas, BookmarkResultSchemas } from "./bookmark-methods.js";
 export {
@@ -565,38 +566,43 @@ export const SetsResultsParams = z.object({
 });
 
 /** runs.* */
-export const RunsStartParams = z.object({
-  /** Original native composer delivery; the runtime still owns its run ID. */
-  requestId: z.string().uuid().optional(),
-  projectRoot: z.string().min(1).max(4096).optional(),
-  packageNames: z.array(z.string().min(1).max(128)).max(32).optional(),
-  profile: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/).optional(),
-  agentMode: AgentModeSchema.optional(),
-  ...ScopedTaskBinding,
-  mentions: MentionRefsSchema.optional(),
-  goal: z.string().min(1),
-  pageId: z.string().optional(),
-  pageIds: z.array(z.string()).optional(),
-  contextPageRefs: z.array(PageContextRefSchema).max(9).optional(),
-  setId: z.string().optional(),
-  modelId: z.string().optional(),
-  reasoning: z.enum(["low", "medium", "high"]).optional(),
-  privateTask: z.boolean().default(false),
-  executionTarget: ExecutionTargetSchema.default("local"),
-  maxSteps: z.number().int().nonnegative().optional(),
-  maxCostUsd: z.number().nonnegative().optional(),
-  /** `0` = no per-run cap. */
-  maxModelCalls: z.number().int().min(0).optional(),
-  deadlineMs: z.number().int().positive().optional(),
-  /** prior turns / notes the planner should see ("EARLIER IN THIS SESSION") */
-  context: z.string().max(20_000).optional(),
-  /** Desktop default for a new conversation; never reassigns an existing conversation. */
-  defaultWorkspaceId: id.optional(),
-  /** Explicitly chosen protected articles. Only Aux's local window may request model use. */
-  contextMemoryIds: z.array(id).max(3).optional(),
-  /** chat thread this run belongs to — groups turns into conversations */
-  chatId: z.string().optional(),
-});
+export const RunsStartParams = z
+  .object({
+    /** Original native composer delivery; the runtime still owns its run ID. */
+    requestId: z.string().uuid().optional(),
+    projectRoot: z.string().min(1).max(4096).optional(),
+    packageNames: z.array(z.string().min(1).max(128)).max(32).optional(),
+    profile: z
+      .string()
+      .regex(/^[a-z][a-z0-9_-]{0,63}$/)
+      .optional(),
+    agentMode: AgentModeSchema.optional(),
+    ...ScopedTaskBinding,
+    mentions: MentionRefsSchema.optional(),
+    goal: z.string().min(1),
+    pageId: z.string().optional(),
+    pageIds: z.array(z.string()).optional(),
+    contextPageRefs: z.array(PageContextRefSchema).optional(),
+    setId: z.string().optional(),
+    modelId: z.string().optional(),
+    reasoning: z.enum(["low", "medium", "high"]).optional(),
+    privateTask: z.boolean().default(false),
+    executionTarget: ExecutionTargetSchema.default("local"),
+    maxSteps: z.number().int().nonnegative().optional(),
+    maxCostUsd: z.number().nonnegative().optional(),
+    /** `0` = no per-run cap. */
+    maxModelCalls: z.number().int().min(0).optional(),
+    deadlineMs: z.number().int().positive().optional(),
+    /** prior turns / notes the planner should see ("EARLIER IN THIS SESSION") */
+    context: z.string().max(20_000).optional(),
+    /** Desktop default for a new conversation; never reassigns an existing conversation. */
+    defaultWorkspaceId: id.optional(),
+    /** Explicitly chosen protected articles. Only Aux's local window may request model use. */
+    contextMemoryRefs: z.array(CapturedSourceSchema).optional(),
+    /** chat thread this run belongs to — groups turns into conversations */
+    chatId: z.string().optional(),
+  })
+  .strict();
 export const RunsControlParams = z.object({ runId: id });
 export const RunsGetParams = z.object({ runId: id });
 export const RunsEventsParams = z.object({
@@ -640,8 +646,8 @@ export const RunsQueueParams = z.object({
   runId: id,
   chatId: id,
   text: z.string().trim().min(1).max(20_000),
-  pageIds: z.array(id).min(1).max(9),
-  contextPageRefs: z.array(PageContextRefSchema).max(9),
+  pageIds: z.array(id).min(1),
+  contextPageRefs: z.array(PageContextRefSchema),
   expectedRevision: z.number().int().nonnegative(),
   /** This send supersedes an earlier cancelled/failed message — the nonce chain (04-A). */
   resendsMessageId: z.string().uuid().optional(),
@@ -1241,6 +1247,14 @@ export const MethodSchemas = {
     .strict(),
   "workspaces.contentMemory.embeddingModels": z.object({ workspaceId: id }).strict(),
   "workspaces.contentMemory.search": z.object({ workspaceId: id, query: z.string().trim().min(1).max(200) }),
+  "workspaces.contentMemory.list": z
+    .object({
+      workspaceId: id,
+      query: z.string().trim().max(200).default(""),
+      cursor: z.object({ capturedAt: z.number(), memoryId: id }).optional(),
+      selectedIds: z.array(id).default([]),
+    })
+    .strict(),
   "workspaces.contentMemory.get": z.object({ workspaceId: id, memoryId: id }),
   "workspaces.contentMemory.forget": z.object({ workspaceId: id, memoryId: id.optional() }),
   "workspaces.memory.get": z.object({ workspaceId: id }),
@@ -1974,6 +1988,13 @@ export const ResultSchemas = {
   }),
   "workspaces.contentMemory.embeddingModels": z.array(z.object({ modelId: z.string(), digest: z.string() })),
   "workspaces.contentMemory.search": z.array(ContentMemoryMatchSchema),
+  "workspaces.contentMemory.list": z
+    .object({
+      items: z.array(CapturedSourceSchema),
+      selected: z.array(CapturedSourceSchema),
+      nextCursor: z.object({ capturedAt: z.number(), memoryId: id }).nullable(),
+    })
+    .strict(),
   "workspaces.contentMemory.get": ContentMemoryDocumentSchema.nullable(),
   "workspaces.contentMemory.forget": z.object({ forgotten: z.number().int().nonnegative() }),
   "workspaces.memory.get": WorkspaceMemorySchema,

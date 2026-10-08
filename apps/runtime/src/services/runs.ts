@@ -1,3 +1,5 @@
+import { sameCapturedSource, type CapturedSource } from "@aux/contracts";
+import { collectSelectedArticles } from "../agent/loop/memory-context.js";
 import { RunStartReceipts, type RunStartRequest } from "./run-start-receipts.js";
 import { recoverablePark } from "./startup-recovery.js";
 import { narrowProfileLimit, narrowCostLimit } from "./agent-profiles.js";
@@ -540,25 +542,20 @@ export class RunService {
     ))
       sources.push(...calendarConversationSourcesFromStep(step));
     for (const run of runs) {
-      if (this.deps.contentMemory && run.config?.contextWorkspaceId && run.config.contextMemoryIds?.length) {
-        for (const memoryId of run.config.contextMemoryIds) {
-          const body = await this.deps.contentMemory.get(run.config.contextWorkspaceId, memoryId);
-          if (body)
-            sources.push({
-              kind: "memory",
-              sourceId: `memory:${run.runId}:${memoryId}`,
-              runId: run.runId,
-              memoryId,
-              workspaceId: body.workspaceId,
-              pageId: body.pageId,
-              profileId: body.profileId,
-              documentEpoch: body.documentEpoch,
-              url: body.url,
-              title: body.title,
-              observedAt: body.capturedAt,
-            });
-        }
-      }
+      for (const source of run.config?.contextMemoryRefs ?? [])
+        sources.push({
+          kind: "memory",
+          sourceId: `memory:${run.runId}:${source.memoryId}`,
+          runId: run.runId,
+          memoryId: source.memoryId,
+          workspaceId: source.workspaceId,
+          pageId: source.pageId,
+          profileId: source.profileId,
+          documentEpoch: source.documentEpoch,
+          url: source.url,
+          title: source.title,
+          observedAt: source.capturedAt,
+        });
       for (const artifact of this.deps.repo.listArtifacts({ runId: run.runId })) {
         if (
           artifact.mediaType !== "application/json" ||
@@ -1145,24 +1142,31 @@ export class RunService {
       privateBrowserProfile: deps.privateBrowserProfile,
       taskSource: deps.taskSource,
       imageReferences: (run) => this.images.forRun(run),
-      memoryReferences: async (run) => {
-        const ids = run.config?.contextMemoryIds ?? [];
-        if (!ids.length) return [];
+      memoryReferences: async (run, query) => {
+        const refs = run.config?.contextMemoryRefs ?? [];
+        if (!refs.length && run.config?.contextMemoryIds?.length)
+          throw new AuxError("ref_stale", "Choose the saved articles again to use their exact captures.");
+        if (!refs.length) return [];
         const workspaceId = run.config?.contextWorkspaceId;
-        if (!workspaceId || !this.deps.contentMemory)
+        const memory = this.deps.contentMemory;
+        if (!workspaceId || !memory)
           throw new AuxError("permission_denied", "Selected article context is unavailable.");
-        const records = await Promise.all(ids.map((id) => this.deps.contentMemory!.get(workspaceId, id)));
-        if (records.some((record) => !record))
-          throw new AuxError(
-            "permission_denied",
-            "A selected article was forgotten or its site access changed.",
-          );
-        const references = records.map((record) => ({
-          url: record!.url,
-          title: record!.title,
-          capturedAt: record!.capturedAt,
-          text: record!.text.slice(0, 8_000),
-        }));
+        const references = await collectSelectedArticles(refs, query ?? run.goal, async (source) => {
+          const record = await memory.get(workspaceId, source.memoryId);
+          if (!record || !sameCapturedSource(source, record))
+            throw new AuxError(
+              "ref_stale",
+              "A selected article changed, was forgotten, or is unavailable. Choose its current capture.",
+            );
+          return {
+            memoryId: record.memoryId,
+            url: record.url,
+            title: record.title,
+            capturedAt: record.capturedAt,
+            text: record.text,
+          };
+        });
+        await this.requireCapturedSources(workspaceId, refs);
         for (const reference of references) deps.browserEgress?.protect(run.runId, reference.text, "memory");
         return references;
       },
@@ -1302,10 +1306,34 @@ export class RunService {
     });
   }
 
+  private async requireCapturedSources(workspaceId: string, refs: readonly CapturedSource[]) {
+    if (
+      !this.deps.contentMemory ||
+      refs.some((source) => source.workspaceId !== workspaceId) ||
+      new Set(refs.map((source) => source.memoryId)).size !== refs.length
+    )
+      throw new AuxError("invalid_params", "Choose distinct saved captures from this Space.");
+    const catalog = await this.deps.contentMemory.list(workspaceId, {
+      workspaceId,
+      query: "",
+      selectedIds: refs.map((source) => source.memoryId),
+    });
+    if (refs.some((source) => !catalog.selected.some((current) => sameCapturedSource(source, current))))
+      throw new AuxError(
+        "ref_stale",
+        "A selected article changed, was forgotten, or is unavailable. Remove it or choose its current capture.",
+      );
+  }
+
   private async startQueuedMessage(message: RunMessage): Promise<Run> {
     const target = this.deps.repo.getRun(message.targetRunId);
     if (!target || target.config?.chatId !== message.chatId)
       throw new AuxError("conflict", "The original conversation run changed. Review this follow-up.");
+    if (target.config.contextMemoryIds?.length && !target.config.contextMemoryRefs?.length)
+      throw new AuxError(
+        "ref_stale",
+        "Choose the saved articles again in a new turn before sending this follow-up.",
+      );
     if (target.config.contextMemoryRevoked)
       throw new AuxError(
         "permission_denied",
@@ -1336,6 +1364,8 @@ export class RunService {
       chatId: message.chatId,
       pageIds: message.pageIds,
       contextPageRefs: message.contextPageRefs,
+      contextMemoryRefs: target.config.contextMemoryRefs,
+      contextWorkspaceId: target.config.contextWorkspaceId,
       mentions: message.mentions,
       ...(prepared
         ? {
@@ -2188,6 +2218,8 @@ export class RunService {
   ): Promise<{ result: import("@aux/contracts").ResultRecord }> {
     ctx.checkSource();
     const parent = this.deps.repo.getRun(ctx.runId)!;
+    if (parent.config?.contextMemoryIds?.length && !parent.config.contextMemoryRefs?.length)
+      throw new AuxError("ref_stale", "Choose the saved articles again in a new turn.");
     const page = member.pageId ? this.deps.pages.get(member.pageId) : undefined;
     const url = member.url ?? page?.url;
     if (!url) throw new AuxError("invalid_params", "Set member has no source URL.");
@@ -2215,7 +2247,7 @@ export class RunService {
       executionTarget: parent.config?.executionTarget,
       setMemberSource: { ...original, sourceDigest: setMemberSourceDigest(original) },
       nativeTurnContext: parent.config?.nativeTurnContext,
-      contextMemoryIds: parent.config?.contextMemoryIds,
+      contextMemoryRefs: parent.config?.contextMemoryRefs,
       contextAttachmentIds: parent.config?.contextAttachmentIds,
       contextArtifactIds: parent.config?.contextArtifactIds,
       context: parent.config?.context,
@@ -2540,7 +2572,7 @@ export class RunService {
     contextArtifactIds?: string[];
     contextSourceArtifactIds?: string[];
     contextImageArtifactIds?: string[];
-    contextMemoryIds?: string[];
+    contextMemoryRefs?: CapturedSource[];
     contextPageRefs?: PageContextRef[];
     mentions?: import("@aux/contracts").MentionRef[];
     contextWorkspaceId?: string;
@@ -2599,6 +2631,8 @@ export class RunService {
     if (branch) {
       await checkBranch();
       const source = this.branches.source(branch);
+      if (source.config?.contextMemoryIds?.length && !source.config.contextMemoryRefs?.length)
+        throw new AuxError("ref_stale", "Choose the saved articles again in a new turn before branching.");
       if (source.config?.taskId) {
         const task = this.deps.taskSource?.(source.config.taskId);
         if (!task || task.revision !== source.config.taskRevision || task.state !== "open")
@@ -2632,7 +2666,7 @@ export class RunService {
               contextArtifactIds: source.config?.contextArtifactIds,
               contextSourceArtifactIds: source.config?.contextSourceArtifactIds,
               contextImageArtifactIds: source.config?.contextImageArtifactIds,
-              contextMemoryIds: source.config?.contextMemoryIds,
+              contextMemoryRefs: source.config?.contextMemoryRefs,
               contextWorkspaceId: source.config?.contextWorkspaceId,
               contextWorkspaceRevision: source.config?.contextWorkspaceRevision,
               contextBrowsingMemory: source.config?.contextBrowsingMemory,
@@ -2778,13 +2812,11 @@ export class RunService {
       : (inherited?.workspaceId ??
         (opts.chatId ? this.conversationWorkspace(opts.chatId).workspace?.workspaceId : undefined) ??
         opts.contextWorkspaceId);
-    const contextMemoryIds = opts.contextMemoryIds?.length ? [...new Set(opts.contextMemoryIds)] : undefined;
-    if (contextMemoryIds?.length) {
+    const contextMemoryRefs = opts.contextMemoryRefs?.length ? opts.contextMemoryRefs : undefined;
+    if (contextMemoryRefs) {
       if (!contextWorkspaceId || !this.deps.contentMemory)
-        throw new AuxError("permission_denied", "Choose an active Space with protected article recall.");
-      for (const id of contextMemoryIds)
-        if (!(await this.deps.contentMemory.get(contextWorkspaceId, id)))
-          throw new AuxError("permission_denied", "A selected article is unavailable in this Space.");
+        throw new AuxError("permission_denied", "Choose an active Space with saved articles.");
+      await this.requireCapturedSources(contextWorkspaceId, contextMemoryRefs);
     }
     const contextWorkspaceRevision = opts.contextSnapshot
       ? opts.contextWorkspaceRevision
@@ -2920,7 +2952,7 @@ export class RunService {
       contextArtifactIds,
       contextSourceArtifactIds,
       contextImageArtifactIds,
-      contextMemoryIds,
+      contextMemoryRefs,
       contextPageRefs: opts.contextPageRefs,
       mentions: opts.mentions,
       contextWorkspaceId,
@@ -2960,6 +2992,8 @@ export class RunService {
       throw new AuxError("conflict", "A newer turn exists in this conversation. Retry it instead.");
     if (replacementPageId && prior.pageIds.length > 1)
       throw new AuxError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
+    if (prior.config?.contextMemoryIds?.length && !prior.config.contextMemoryRefs?.length)
+      throw new AuxError("ref_stale", "Choose the saved articles again in a new turn before retrying.");
     const originalRefs = prior.config?.contextPageRefs ?? [];
     let originalPageIds = prior.pageIds;
     const copies = prior.config?.isolatedPageSources;
@@ -3072,7 +3106,7 @@ export class RunService {
       contextArtifactIds: prior.config?.contextArtifactIds,
       contextSourceArtifactIds: prior.config?.contextSourceArtifactIds,
       contextImageArtifactIds: prior.config?.contextImageArtifactIds,
-      contextMemoryIds: prior.config?.contextMemoryIds,
+      contextMemoryRefs: prior.config?.contextMemoryRefs,
       contextWorkspaceId: prior.config?.contextWorkspaceId,
       contextWorkspaceRevision: prior.config?.contextWorkspaceRevision,
       contextBrowsingMemory: prior.config?.contextBrowsingMemory,

@@ -264,7 +264,16 @@ it("keeps a newer question after the original Ask ACK and does not open its stal
   expect(startRun).toHaveBeenCalledWith(
     "original question",
     expect.objectContaining({
-      memorySource: { workspaceId: "space", memoryId: "article" },
+      capturedSources: {
+        workspaceId: "space",
+        sources: [
+          expect.objectContaining({
+            memoryId: "article",
+            capturedAt: saved.capturedAt,
+            documentEpoch: saved.documentEpoch,
+          }),
+        ],
+      },
       presentation: "conversation",
     }),
   );

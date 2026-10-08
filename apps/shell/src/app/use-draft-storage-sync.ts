@@ -1,3 +1,4 @@
+import { capturedSourceEntry } from "../captured-sources";
 import { useEffect } from "react";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
@@ -22,6 +23,17 @@ export function useDraftStorageSync() {
           if (answer.draft) drafts[answer.runId] = answer.draft;
           else delete drafts[answer.runId];
           return { runAnswerDrafts: drafts };
+        });
+        return;
+      }
+      const captured = capturedSourceEntry(event.key, event.newValue);
+      if (captured) {
+        useStore.setState((state) => {
+          if (state.composerPreferences[captured.key]?.privateTask) return state;
+          const selected = { ...state.conversationCapturedSources };
+          if (captured.selection) selected[captured.key] = captured.selection;
+          else delete selected[captured.key];
+          return { conversationCapturedSources: selected };
         });
         return;
       }

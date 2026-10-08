@@ -1,4 +1,5 @@
 import { TranscriptStore } from "./loop/transcript.js";
+import type { SelectedArticleReference } from "./loop/memory-context.js";
 import type { ModelMessage } from "./loop/types.js";
 import { CloudSetupUnavailable } from "../services/cloud-setup-unavailable.js";
 import { lineageRuns, runRoot } from "../services/run-lineage.js";
@@ -93,9 +94,7 @@ export interface CoordinatorDeps {
   pages: PageService;
   model: () => ModelClient | null;
   imageReferences?: (run: Run) => string[];
-  memoryReferences?: (
-    run: Run,
-  ) => Promise<{ url: string; title: string; capturedAt: number; text: string }[]>;
+  memoryReferences?: (run: Run, query?: string) => Promise<SelectedArticleReference[]>;
   defaultModel: () => string;
   /** Pre-call user-budget gate (D11): throws permission_denied when a scope is spent. */
   checkBudget?: (scope: {
@@ -222,7 +221,7 @@ export class RunCoordinator {
     contextArtifactIds?: string[];
     contextSourceArtifactIds?: string[];
     contextImageArtifactIds?: string[];
-    contextMemoryIds?: string[];
+    contextMemoryRefs?: import("@aux/contracts").CapturedSource[];
     contextPageRefs?: import("@aux/contracts").PageContextRef[];
     mentions?: import("@aux/contracts").MentionRef[];
     contextWorkspaceId?: string;
@@ -287,7 +286,8 @@ export class RunCoordinator {
         contextArtifactIds: opts.contextArtifactIds,
         contextSourceArtifactIds: opts.contextSourceArtifactIds,
         contextImageArtifactIds: opts.contextImageArtifactIds,
-        contextMemoryIds: opts.contextMemoryIds,
+        contextMemoryIds: opts.contextMemoryRefs?.map((source) => source.memoryId),
+        contextMemoryRefs: opts.contextMemoryRefs,
         contextPageRefs: opts.contextPageRefs,
         mentions: opts.mentions,
         messageRevision: 0,

@@ -2,6 +2,8 @@ import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { setImmediate as idle } from "node:timers/promises";
 import {
   AuxError,
+  CapturedSourceSchema,
+  type MethodParams,
   ContentMemoryPolicySchema,
   type ContentMemoryPolicy,
   type HistoryEntry,
@@ -694,9 +696,13 @@ export class ContentMemoryStore {
       .update(`${this.profileId}\0${input.workspaceId}\0${url.href}`)
       .digest("hex");
     const existing = this.repo.db
-      .prepare("SELECT memory_id FROM content_memory WHERE profile_id=? AND workspace_id=? AND source_key=?")
-      .get(this.profileId, input.workspaceId, sourceKey) as { memory_id: string } | undefined;
-    const at = this.now();
+      .prepare(
+        "SELECT memory_id,captured_at FROM content_memory WHERE profile_id=? AND workspace_id=? AND source_key=?",
+      )
+      .get(this.profileId, input.workspaceId, sourceKey) as
+      { memory_id: string; captured_at: number } | undefined;
+    // Reusing an article ID must still produce a distinct capture identity, even within one clock tick.
+    const at = Math.max(this.now(), (existing?.captured_at ?? -1) + 1);
     const body: RecordBody = {
       ...input,
       memoryId: existing?.memory_id ?? randomUUID(),
@@ -1425,6 +1431,65 @@ export class ContentMemoryStore {
     } finally {
       this.historyControllers.delete(controller);
     }
+  }
+
+  /** Catalog metadata pages never decrypt complete articles into the renderer. */
+  async list(workspaceId: string, options: MethodParams<"workspaces.contentMemory.list">) {
+    return this.own(async () => {
+      if (!this.policy(workspaceId).enabled || !readWorkspaceMemory(this.repo, workspaceId).enabled)
+        return { items: [], selected: [], nextCursor: null };
+      const index = await this.index(workspaceId);
+      if (this.indexes.get(workspaceId) !== index || this.closed)
+        throw new AuxError("cancelled", "The saved article collection changed. Try again.");
+      const selectedIds = new Set(options.selectedIds);
+      const available = [...index.rows.values()].filter((body) => this.readable(body));
+      const selected = available
+        .filter((body) => selectedIds.has(body.memoryId))
+        .map((body) => {
+          const {
+            normalizedText: _text,
+            sourceVersion: _source,
+            embeddingVersion: _embedding,
+            sessionId: _session,
+            ...metadata
+          } = body;
+          return CapturedSourceSchema.parse(metadata);
+        });
+      const query = (options.query ?? "").toLocaleLowerCase();
+      const cursor = options.cursor;
+      const candidates = available
+        .filter(
+          (body) =>
+            `${body.title} ${body.url}`.toLocaleLowerCase().includes(query) &&
+            (!cursor ||
+              body.capturedAt < cursor.capturedAt ||
+              (body.capturedAt === cursor.capturedAt && body.memoryId < cursor.memoryId)),
+        )
+        .sort(
+          (a, b) =>
+            b.capturedAt - a.capturedAt || (a.memoryId < b.memoryId ? 1 : a.memoryId > b.memoryId ? -1 : 0),
+        );
+      const page = candidates.slice(0, 20);
+      const items = page.map((body) => {
+        const {
+          normalizedText: _text,
+          sourceVersion: _source,
+          embeddingVersion: _embedding,
+          sessionId: _session,
+          ...metadata
+        } = body;
+        return CapturedSourceSchema.parse(metadata);
+      });
+      const last = page.at(-1);
+      return {
+        items,
+        selected,
+        nextCursor:
+          candidates.length > page.length && last
+            ? { capturedAt: last.capturedAt, memoryId: last.memoryId }
+            : null,
+      };
+    });
   }
 
   async search(workspaceId: string, query: string, limit = 10, signal?: AbortSignal) {

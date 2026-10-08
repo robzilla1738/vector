@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { ArtifactStore, EventBus, openDb, Repo, RunService, SetService } from "@aux/runtime";
+import { ArtifactStore, EventBus, openDb, Repo, RunService, SetService, TaskService } from "@aux/runtime";
 import type { PageService, SettingsService } from "@aux/runtime";
 import type { Run } from "@aux/contracts";
 import { runsMethods } from "../../apps/runtime/dist/api/methods/runs.js";
@@ -23,7 +23,7 @@ const deferred = () => {
     resolve: () => resolve(),
   };
 };
-function fixture() {
+function fixture(contentMemory?: ConstructorParameters<typeof RunService>[0]["contentMemory"]) {
   const dir = mkdtempSync(join(tmpdir(), "aux-first-send-"));
   const repo = new Repo(openDb(join(dir, "state.sqlite"))),
     events = new EventBus(repo);
@@ -52,6 +52,7 @@ function fixture() {
       repo,
       events,
       pages,
+      contentMemory,
       settings,
       turnMentions,
       artifacts: new ArtifactStore(dir, repo, events),
@@ -267,4 +268,44 @@ it("rechecks exact native page ownership and document identity after asynchronou
   await expect(f.invoke("runs.start", { ...f.request(), pageIds: [f.source.pageId] })).rejects.toMatchObject({
     code: "invalid_params",
   });
+});
+
+it("admits only exact captured references and refuses recaptured or historical ID-only selections", async () => {
+  let selected: import("@aux/contracts").CapturedSource[] = [];
+  const memory = {
+    list: async () => ({ selected, items: selected, nextCursor: null }),
+  } as unknown as NonNullable<ConstructorParameters<typeof RunService>[0]["contentMemory"]>;
+  const f = fixture(memory);
+  const tasks = new TaskService(f.repo, new EventBus(f.repo));
+  const workspace = tasks.createWorkspace("Captured collection");
+  selected = [
+    {
+      memoryId: "article",
+      workspaceId: workspace.workspaceId,
+      profileId: "profile",
+      pageId: "page",
+      documentEpoch: 1,
+      title: "Exact source",
+      url: "https://example.test/article",
+      capturedAt: 1,
+    },
+  ];
+  const original = structuredClone(selected);
+  const options = { defaultWorkspaceId: workspace.workspaceId, contextMemoryRefs: original };
+  const accepted = (await f.invoke("runs.start", { ...f.request(), ...options })) as Run;
+  expect(accepted.config).toMatchObject({ contextMemoryRefs: original, contextMemoryIds: ["article"] });
+  selected = [{ ...selected[0]!, capturedAt: 2 }];
+  await expect(f.invoke("runs.start", { ...f.request(), ...options })).rejects.toMatchObject({
+    code: "ref_stale",
+  });
+  await expect(f.invoke("runs.start", { ...f.request(), contextMemoryIds: ["article"] })).rejects.toThrow();
+  f.repo.saveRun({
+    runId: "historical",
+    goal: "Old capture",
+    pageIds: [],
+    status: "failed",
+    createdAt: 1,
+    config: { contextMemoryIds: ["article"], contextWorkspaceId: workspace.workspaceId },
+  });
+  await expect(f.runs().retry("historical")).rejects.toMatchObject({ code: "ref_stale" });
 });

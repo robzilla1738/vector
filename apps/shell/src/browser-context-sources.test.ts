@@ -59,12 +59,9 @@ it("keeps selected live-tab identities across restart and rejects malformed entr
   );
   expect(readBrowserSources(storage)).toEqual({ "chat:research": [ref] });
   expect(() => writeBrowserSources(storage, "chat:research", [ref, ref])).toThrow();
-  const nine = Array.from({ length: 9 }, (_, index) => ({ ...ref, pageId: `tab-${index}` }));
-  writeBrowserSources(storage, "chat:research", nine);
-  expect(readBrowserSources(storage)["chat:research"]).toHaveLength(9);
-  expect(() =>
-    writeBrowserSources(storage, "chat:research", [...nine, { ...ref, pageId: "tab-10" }]),
-  ).toThrow();
+  const collection = Array.from({ length: 30 }, (_, index) => ({ ...ref, pageId: `tab-${index}` }));
+  writeBrowserSources(storage, "chat:research", collection);
+  expect(readBrowserSources(storage)["chat:research"]).toEqual(collection);
   writeBrowserSources(storage, "chat:research", []);
   expect(readBrowserSources(storage)).toEqual({});
 });

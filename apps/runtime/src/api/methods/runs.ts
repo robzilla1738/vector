@@ -80,7 +80,7 @@ async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external && ctx.params.mentions?.length)
     throw new AuxError("permission_denied", "Mention sources through the Aux composer.");
   const { client, params, s } = ctx;
-  if (client.external && params.contextMemoryIds?.length)
+  if (client.external && params.contextMemoryRefs?.length)
     throw new AuxError(
       "permission_denied",
       "Protected article context can only be sent from the Aux window.",

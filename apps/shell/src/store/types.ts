@@ -77,6 +77,11 @@ export interface Workspace {
   conversationId: string | null;
   conversationContexts: Record<string, string>;
   setConversationContext(id: string | null, pageId: string): void;
+  conversationCapturedSources: Record<string, import("@aux/contracts").CapturedSourceSelection>;
+  setConversationCapturedSources(
+    id: string | null,
+    selection: import("@aux/contracts").CapturedSourceSelection | null,
+  ): void;
   conversationBrowserSources: Record<string, PageContextRef[]>;
   setConversationBrowserSources(id: string | null, sources: PageContextRef[]): void;
   openConversation(runId: string | null): void;
@@ -217,7 +222,7 @@ export interface Workspace {
       pageIds?: string[];
       contextPageRefs?: PageContextRef[];
       mentions?: import("@aux/contracts").MentionRef[];
-      memorySource?: { workspaceId: string; memoryId: string };
+      capturedSources?: import("@aux/contracts").CapturedSourceSelection;
       scope?: "page" | "new";
       chatId?: string;
       presentation?: "rail" | "conversation";
@@ -358,6 +363,8 @@ export type UiKeys =
 export type DraftKeys =
   | "conversationContexts"
   | "setConversationContext"
+  | "conversationCapturedSources"
+  | "setConversationCapturedSources"
   | "conversationBrowserSources"
   | "setConversationBrowserSources"
   | "agentDraft"

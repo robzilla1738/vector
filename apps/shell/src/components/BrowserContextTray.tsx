@@ -11,6 +11,7 @@ import { sourceRef, sourceStatus } from "../browser-context-sources";
 import { availableConversationPage, conversationPage } from "../conversation-page";
 import { useStore, call, errToast } from "../store";
 import { hostOf } from "../workspace";
+import { SourceCollection } from "./SourceCollection";
 import { BrowserContextPicker } from "./BrowserContextPicker";
 import { Popover } from "../ui/popover";
 import "./ContextPicker.css";
@@ -121,7 +122,7 @@ const SourceChip = memo(function SourceChip({
   return (
     <span className={status === "current" ? "" : "stale"}>
       {shellIconGlobe}
-      <span title={source.url}>{source.pageId === primaryPageId ? `Captured source · ${label}` : label}</span>
+      <span title={source.url}>{source.pageId === primaryPageId ? `Pinned live tab · ${label}` : label}</span>
       {status !== "current" && <small>{status === "changed" ? "Changed" : "Closed"}</small>}
       {status === "changed" && (
         <button
@@ -290,10 +291,6 @@ export function BrowserContextTray({
       onSources(sources.filter((source) => source.pageId !== pageId));
       return;
     }
-    if (additionalSources.length >= 8) {
-      errToast(new Error("Choose up to eight additional tabs."));
-      return;
-    }
     const page = orderedPages(useStore.getState().pages).find(
       (page) => page.pageId === pageId && availableSource(page, primaryPage?.pageId),
     );
@@ -355,7 +352,7 @@ export function BrowserContextTray({
             {...auxNativeButtonTypeProps}
             data-command-id="toggle-browser-source"
             {...smallGhostButtonProps}
-            disabled={disabled || !!busyPageId || additionalSources.length >= 8}
+            disabled={disabled || !!busyPageId}
             title={withShortcut(
               `Include ${splitCompanion.title || hostOf(splitCompanion.url)} from the current split`,
               splitShortcut,
@@ -391,18 +388,22 @@ export function BrowserContextTray({
                 onChange={(event) => setQuery(event.target.value)}
               />
               <div role="group" aria-label="Additional browser tabs">
-                {matchingIds.map((pageId) => {
-                  const selected = sources.some((source) => source.pageId === pageId);
-                  return (
-                    <AdditionalTabChoice
-                      key={pageId}
-                      pageId={pageId}
-                      selected={selected}
-                      disabled={disabled || !!busyPageId || (additionalSources.length >= 8 && !selected)}
-                      onToggle={toggle}
-                    />
-                  );
-                })}
+                <SourceCollection items={matchingIds} scope={query} label="Available browser tab pages">
+                  {(visible) =>
+                    visible.map((pageId) => {
+                      const selected = sources.some((source) => source.pageId === pageId);
+                      return (
+                        <AdditionalTabChoice
+                          key={pageId}
+                          pageId={pageId}
+                          selected={selected}
+                          disabled={disabled || !!busyPageId}
+                          onToggle={toggle}
+                        />
+                      );
+                    })
+                  }
+                </SourceCollection>
                 {!matchingIds.length && <p {...staticHintProps}>No matching available tabs.</p>}
               </div>
             </>
@@ -411,20 +412,24 @@ export function BrowserContextTray({
       </div>
       {sources.length > 0 && (
         <div role="group" className="conversation-browser-sources" aria-label="Selected browser tabs">
-          {sources.map((source) => (
-            <SourceChip
-              key={source.pageId}
-              source={source}
-              primaryPageId={primaryPage?.pageId}
-              disabled={disabled}
-              busy={!!busyPageId}
-              onRefresh={refresh}
-              onRemove={(id) => {
-                onSources(sources.filter((item) => item.pageId !== id));
-                if (id === primaryPage?.pageId) onPrimary("none");
-              }}
-            />
-          ))}
+          <SourceCollection items={sources} pageSize={6} label="Selected browser source pages">
+            {(visible) =>
+              visible.map((source) => (
+                <SourceChip
+                  key={source.pageId}
+                  source={source}
+                  primaryPageId={primaryPage?.pageId}
+                  disabled={disabled}
+                  busy={!!busyPageId}
+                  onRefresh={refresh}
+                  onRemove={(id) => {
+                    onSources(sources.filter((item) => item.pageId !== id));
+                    if (id === primaryPage?.pageId) onPrimary("none");
+                  }}
+                />
+              ))
+            }
+          </SourceCollection>
         </div>
       )}
     </div>

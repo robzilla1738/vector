@@ -27,12 +27,17 @@ describe("composer mention offsets", () => {
     expect(deleted.draft.text).toBe("read @Other ");
     expect(deleted.draft.tokens[0]).toMatchObject({ start: 5, end: 11 });
   });
-  it("refuses a seventeenth mention without changing the draft", () => {
-    const value = {
-      text: "@",
-      tokens: Array.from({ length: 16 }, (_, index) => ({ start: index, end: index + 1, text: "@", ref })),
-    };
-    expect(() => insertMention(value, { start: 0, end: 1, query: "" }, "Tabs", ref)).toThrow("16 sources");
-    expect(value.text).toBe("@");
+  it("retains all identities when more than sixteen sources are mentioned", () => {
+    let value = { text: "", tokens: [] } as ReturnType<typeof draft>;
+    for (let index = 0; index < 30; index++) {
+      const start = value.text.length;
+      value = insertMention(
+        { ...value, text: value.text + "@" },
+        { start, end: start + 1, query: "" },
+        `Source${index}`,
+        ref,
+      );
+    }
+    expect(mentionRefs(value)).toHaveLength(30);
   });
 });
