@@ -1,3 +1,8 @@
+import {
+  NativeCloudPreviewParams,
+  NativeCloudPreviewCloseParams,
+  CloudPreviewSchema,
+} from "./cloud-preview.js";
 import { MemorySaverMinutesSchema, MemorySaverSettingsSchema } from "./memory-saver.js";
 import {
   NativeFoundationStatusParams,
@@ -213,6 +218,8 @@ export const RuntimeHostMethods = {
   "native.terminalResize": runtime("core", NativeTerminalResizeParams, TerminalSessionSchema),
   "native.terminalClose": runtime("core", NativeTerminalCloseParams, TerminalSessionSchema),
   "native.terminalListeners": runtime("core", NativeTerminalListenersParams, TerminalListenersSchema),
+  "native.cloudPreview": runtime("core", NativeCloudPreviewParams, CloudPreviewSchema),
+  "native.cloudPreviewClose": runtime("core", NativeCloudPreviewCloseParams, TerminalPreviewClosedSchema),
   "native.terminalPreview": runtime("core", NativeTerminalPreviewParams, TerminalPreviewSchema),
   "native.terminalPreviewClose": runtime(
     "core",

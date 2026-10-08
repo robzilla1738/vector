@@ -1,3 +1,7 @@
+import { CloudPreviews } from "./cloud-previews.js";
+import { CloudListenerSchema, type CloudListener } from "@aux/contracts/cloud-preview";
+import type { CodingProcessReceipt } from "@aux/contracts/coding-processes";
+import type { NativeBridge } from "../native.js";
 import { CloudCodingProcesses, type CloudProcessAdmission } from "./cloud-processes.js";
 import type { CodingProcessContext } from "./coding-processes.js";
 import type { BackgroundStart } from "@aux/contracts/coding-processes";
@@ -62,21 +66,10 @@ interface LiveResource {
   processes?: CloudCodingProcesses;
   network?: boolean;
   networkLocks: Map<string, boolean>;
+  previews?: CloudPreviews;
+  exposedPorts: Set<number>;
+  previewPorts: Promise<unknown>;
 }
-/** A reviewed process-group supervisor: only command text is supplied as data, never executable helper files. */
-const CLOUD_PROCESS_SUPERVISOR = `
-import { spawn } from 'node:child_process';
-import { realpathSync } from 'node:fs';
-if (realpathSync(process.cwd()) !== process.argv[2]) process.exit(125);
-const child = spawn('/bin/bash', ['-lc', process.argv[1]], { detached: true, stdio: ['ignore', 'inherit', 'inherit'] });
-let stopping = false;
-const kill = () => { if (child.pid) try { process.kill(-child.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } };
-process.on('SIGTERM', () => { stopping = true; kill(); });
-process.on('SIGINT', () => { stopping = true; kill(); });
-process.on('exit', kill);
-child.on('error', () => { process.exitCode = 125; });
-child.on('close', (code) => { kill(); process.exit(stopping ? 143 : code ?? 125); });
-`;
 const OUTPUT_BYTES = 64 * 1024;
 function boundedOutput(limit = OUTPUT_BYTES) {
   let bytes = 0,
@@ -108,6 +101,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
   private readonly ledger: ExecutionResourceLedger;
   private closed = false;
   private retired = false;
+  private processWorker?: Promise<string>;
   constructor(
     private readonly deps: {
       repo: Repo;
@@ -140,6 +134,14 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         identity: CloudCodingIdentity,
       ): Promise<void | (() => void)>;
       fileWorkerProgram?: () => Promise<Buffer>;
+      processWorkerProgram?: () => Promise<Buffer>;
+      native?: Pick<NativeBridge, "cloudPreview" | "cloudPreviewClose" | "turnSourceContext">;
+      authorizePreview?(
+        input: { processId: string; port: number },
+        context: CloudExecutionContext,
+        process: CodingProcessReceipt,
+        listener: CloudListener,
+      ): Promise<() => void>;
       authorizeProcess?(
         input: BackgroundStart,
         context: CodingProcessContext,
@@ -349,6 +351,8 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       session,
       commands: Promise.resolve(),
       networkLocks: new Map(),
+      exposedPorts: new Set(),
+      previewPorts: Promise.resolve(),
       quote,
       quoteDigest,
       expiresAt: Math.min(this.now() + quote.timeoutMs, sandbox.expiresAt?.getTime() ?? Infinity),
@@ -430,6 +434,13 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         truncated: stdout.truncated() || stderr.truncated(),
       };
     });
+  }
+
+  retainedFiles(runId: string): CodingFilesService | undefined {
+    return this.live.get(runId)?.files;
+  }
+  retainedProcesses(runId: string): CloudCodingProcesses | undefined {
+    return this.live.get(runId)?.processes;
   }
 
   async files(ctx: CloudExecutionContext, signal?: AbortSignal): Promise<CodingFilesService> {
@@ -529,6 +540,8 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
             await resource.session.mkDir(CLOUD_PROJECT_ROOT, { signal: context.signal });
             await this.network(resource, admission.network, context.signal);
             await this.assertLive(resource, context.signal);
+            const program = await this.processProgram();
+            await this.assertLive(resource, context.signal);
             admission.check();
             // A pending launch keeps its policy lock even if the provider loses its acknowledgement.
             resource.networkLocks.set(processId, admission.network);
@@ -538,10 +551,15 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
               args: [
                 "--input-type=module",
                 "-e",
-                CLOUD_PROCESS_SUPERVISOR,
+                program,
                 "--",
-                input.command,
-                input.workdir!,
+                JSON.stringify({
+                  kind: "start",
+                  command: input.command,
+                  workdir: input.workdir,
+                  processId,
+                  sessionId: resource.session.sessionId,
+                }),
               ],
               cwd: input.workdir!,
               detached: true,
@@ -550,14 +568,135 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
             });
           }),
         command: (id, signal) => resource.session.getCommand(id, { signal }),
+        retiring: (id) => resource.previews?.closeProcess(id) ?? Promise.resolve(),
         released: (id) => {
           resource.networkLocks.delete(id);
+          void resource.previews?.closeProcess(id).catch(() => {
+            /* Retained previews retry retirement with the original VM. */
+          });
         },
       },
     });
     return resource.processes;
   }
 
+  async preview(
+    ctx: CloudExecutionContext,
+    input: { processId: string; port: number },
+    token: string,
+    signal?: AbortSignal,
+  ) {
+    const authorize = this.deps.authorizePreview,
+      native = this.deps.native;
+    if (!authorize || !native?.cloudPreview || !native.cloudPreviewClose || !native.turnSourceContext)
+      throw new AuxError("capability_unsupported", "Native cloud Preview is unavailable.");
+    // A Preview never provisions a new VM or resumes an old session.
+    const resource = this.live.get(ctx.runId);
+    if (!resource?.processes || resource.ctx.threadId !== ctx.threadId || resource.ctx.turnId !== ctx.turnId)
+      throw new AuxError("ref_stale", "Start the original cloud command before opening its Preview.");
+    await this.assertLive(resource, signal);
+    resource.previews ??= new CloudPreviews({
+      context: resource.ctx,
+      native,
+      authorize,
+      current: (signal) => this.assertLive(resource, signal),
+      process: (id) => {
+        const receipt = resource.processes!.status(id, ctx.runId);
+        if (
+          receipt.execution?.resourceId !== resource.resourceId ||
+          receipt.execution.sessionId !== resource.session.sessionId
+        )
+          throw new AuxError("ref_stale", "The server belongs to a different cloud session.");
+        return receipt;
+      },
+      listeners: async (process, port, signal) => {
+        if (!process.execution?.supervisor || !process.execution.commandId)
+          throw new AuxError("ref_stale", "The server has no original process ownership proof.");
+        const program = await this.processProgram();
+        await this.assertLive(resource, signal);
+        const stdout = boundedOutput(),
+          stderr = boundedOutput();
+        const result = await resource.session.runCommand({
+          cmd: "node",
+          args: [
+            "--input-type=module",
+            "-e",
+            program,
+            "--",
+            JSON.stringify({ kind: "listeners", supervisor: process.execution.supervisor, port }),
+          ],
+          cwd: "/vercel/sandbox",
+          signal,
+          timeoutMs: 5000,
+          stdout: stdout.stream,
+          stderr: stderr.stream,
+        });
+        await this.assertLive(resource, signal);
+        if (result.exitCode !== 0 || stdout.truncated())
+          throw new AuxError("ref_stale", stderr.value() || "The original cloud listener retired.");
+        return CloudListenerSchema.array().max(256).parse(JSON.parse(stdout.value()));
+      },
+      expose: (port, signal, fence) =>
+        this.updatePreviewPort(resource, port, true, signal, fence).then(
+          () => new URL(resource.session.domain(port)).origin + "/",
+        ),
+      hide: (port) => this.updatePreviewPort(resource, port, false),
+    });
+    return resource.previews.open(input, token, signal);
+  }
+  async admitPreview(previewId: string, token: string): Promise<boolean> {
+    for (const resource of this.live.values())
+      if (await resource.previews?.admit(previewId, token)) return true;
+    return false;
+  }
+  async closePreview(
+    ctx: CloudExecutionContext,
+    previewId: string,
+    token: string,
+  ): Promise<{ closed: true }> {
+    const resource = this.live.get(ctx.runId);
+    if (!resource?.previews || resource.ctx.threadId !== ctx.threadId || resource.ctx.turnId !== ctx.turnId)
+      throw new AuxError("ref_stale", "Original cloud Preview cleanup ownership is unavailable.");
+    await resource.previews.close(previewId, token);
+    return { closed: true };
+  }
+  private updatePreviewPort(
+    resource: LiveResource,
+    port: number,
+    expose: boolean,
+    signal?: AbortSignal,
+    fence?: () => void,
+  ): Promise<void> {
+    const work = resource.previewPorts.then(async () => {
+      if (resource.finalReceipt) {
+        resource.exposedPorts.delete(port);
+        return;
+      }
+      if (expose) {
+        await this.assertLive(resource, signal);
+        fence?.();
+        resource.exposedPorts.add(port);
+      }
+      const ports = [...resource.exposedPorts].filter((candidate) => expose || candidate !== port);
+      // update({ports}) changes only routes on this retained Sandbox; it never starts/resumes a Session.
+      await resource.sandbox.update({ ports }, { signal: expose ? signal : AbortSignal.timeout(30000) });
+      if (!expose) resource.exposedPorts.delete(port);
+      else await this.assertLive(resource, signal);
+    });
+    resource.previewPorts = work.catch(() => {});
+    return work;
+  }
+
+  private processProgram(): Promise<string> {
+    this.processWorker ??= (async () => {
+      const program = await (this.deps.processWorkerProgram?.() ??
+        readFile(new URL("../cloud-process/worker.mjs", import.meta.url)));
+      if (program.length > CLOUD_FILE_PROGRAM_BYTES || program.includes(0))
+        throw new AuxError("permission_denied", "The packaged cloud process worker exceeds its bound.");
+      return program.toString("utf8");
+    })();
+    return this.processWorker;
+  }
   private async network(resource: LiveResource, network: boolean, signal?: AbortSignal): Promise<void> {
     if ([...resource.networkLocks.values()].some((mode) => mode !== network))
       throw new AuxError(
@@ -742,6 +881,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         throw new AuxError("needs_input", "The original VM stop receipt is incomplete.");
       resource.finalReceipt = final;
       resource.processes?.sessionStopped();
+      await resource.previews?.closeAll();
       let usage: CloudMeteredUsage | undefined;
       if (
         final.activeCpuDurationMs !== undefined &&
@@ -894,6 +1034,8 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         session,
         commands: Promise.resolve(),
         networkLocks: new Map(),
+        exposedPorts: new Set(),
+        previewPorts: Promise.resolve(),
         quote,
         quoteDigest: row.quote_digest,
         expiresAt: 0,

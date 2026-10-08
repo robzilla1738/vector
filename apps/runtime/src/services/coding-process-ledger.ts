@@ -65,7 +65,28 @@ export class CodingProcessLedger {
       .all(runId) as unknown as { process_id: string }[];
     return rows.map((row) => row.process_id);
   }
+  remoteLogs(
+    processId: string,
+    runId: string,
+    cursor = 0,
+  ): { text: string; cursor: number; truncated: boolean } {
+    if (!Number.isSafeInteger(cursor) || cursor < 0)
+      throw new AuxError("invalid_params", "Invalid log cursor.");
+    const receipt = this.stored(processId, runId);
+    if (receipt.execution?.backend !== "cloud")
+      throw new AuxError("invalid_params", "This process uses a local log file.");
+    const bytes = Buffer.from(receipt.logText ?? ""),
+      part = bytes.subarray(cursor, cursor + 64 * 1024);
+    return {
+      text: part.toString("utf8"),
+      cursor: cursor + part.length,
+      truncated: receipt.logTruncated ?? receipt.outputTruncated === true,
+    };
+  }
   status(processId: string, runId: string): CodingProcessReceipt {
+    return this.stored(processId, runId);
+  }
+  private stored(processId: string, runId: string): CodingProcessReceipt {
     const row = this.repo.db
       .prepare("SELECT process_id,receipt FROM coding_process_receipts WHERE process_id=? AND run_id=?")
       .get(processId, runId) as { process_id: string; receipt: string } | undefined;

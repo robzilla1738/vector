@@ -1,8 +1,10 @@
+import { CLOUD_PROCESS_HEADER } from "./cloud-process-worker.js";
 import { createHash, randomUUID } from "node:crypto";
 import type { Command } from "@vercel/sandbox";
 import { AuxError } from "@aux/contracts";
 import {
   BackgroundStartSchema,
+  CloudSupervisorSchema,
   type BackgroundStart,
   type CodingProcessReceipt,
 } from "@aux/contracts/coding-processes";
@@ -28,6 +30,7 @@ export interface CloudProcessTransport {
   ): Promise<Command>;
   command(commandId: string, signal?: AbortSignal): Promise<Command>;
   released(processId: string): void;
+  retiring?(processId: string): Promise<void>;
 }
 const LOG_LIMIT = 8 * 1024 * 1024;
 const DISPLAY_LIMIT = 64 * 1024;
@@ -56,6 +59,7 @@ type Owned = {
   command: Command;
   receipt: CodingProcessReceipt;
   finished: Promise<void>;
+  ready: Promise<void>;
   stopping?: Promise<void>;
   cleanup(): void;
   flush(): void;
@@ -213,6 +217,7 @@ export class CloudCodingProcesses extends CodingProcessLedger {
         const owned = this.watch(command, receipt, context, admission);
         this.owned.set(receipt.processId, owned);
         try {
+          await this.waitForProof(owned, context.signal);
           await this.options.transport.current(context.signal);
           this.check(context);
           admission.check();
@@ -233,6 +238,31 @@ export class CloudCodingProcesses extends CodingProcessLedger {
     return pending;
   }
 
+  private async waitForProof(owned: Owned, signal?: AbortSignal): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined, abort: (() => void) | undefined;
+    const deadline = new Promise<void>((_resolve, reject) => {
+      timer = setTimeout(
+        () =>
+          reject(
+            new AuxError(
+              "backend_unavailable",
+              "The original command did not publish its process ownership proof.",
+            ),
+          ),
+        10000,
+      );
+      timer.unref();
+      abort = () => reject(new AuxError("cancelled", "Cloud command stopped before ownership admission."));
+      signal?.addEventListener("abort", abort, { once: true });
+      if (signal?.aborted) abort();
+    });
+    try {
+      await Promise.race([owned.ready, deadline]);
+    } finally {
+      clearTimeout(timer);
+      if (abort) signal?.removeEventListener("abort", abort);
+    }
+  }
   private watch(
     command: Command,
     receipt: CodingProcessReceipt,
@@ -250,18 +280,60 @@ export class CloudCodingProcesses extends CodingProcessLedger {
       delete receipt.logText;
       savedBytes = log.size();
     };
+    let header = "",
+      admitted = false,
+      proofRejected = false,
+      acceptProof!: () => void,
+      rejectProof!: (error: unknown) => void;
+    const ready = new Promise<void>((resolve, reject) => {
+      acceptProof = resolve;
+      rejectProof = reject;
+    });
     const logs = (async () => {
       try {
         for await (const entry of command.logs({ signal: controller.signal })) {
-          const bytes = Buffer.from(entry.data),
-            channel = entry.stream === "stderr" ? "stderr" : "stdout";
+          let data = entry.data;
+          const channel = entry.stream === "stderr" ? "stderr" : "stdout";
+          if (!admitted && channel === "stdout") {
+            header += data;
+            const newline = header.indexOf("\n");
+            if (Buffer.byteLength(newline < 0 ? header : header.slice(0, newline)) > 8192)
+              throw new AuxError("permission_denied", "Invalid cloud ownership header.");
+            if (newline < 0) continue;
+            const line = header.slice(0, newline);
+            if (!line.startsWith(CLOUD_PROCESS_HEADER))
+              throw new AuxError("permission_denied", "Missing cloud ownership header.");
+            const proof = JSON.parse(line.slice(CLOUD_PROCESS_HEADER.length));
+            if (proof.processId !== receipt.processId || proof.sessionId !== this.options.identity.sessionId)
+              throw new AuxError("ref_stale", "Cloud ownership belongs to another command or Session.");
+            receipt.execution!.supervisor = CloudSupervisorSchema.parse(proof.supervisor);
+            this.save(receipt);
+            admitted = true;
+            acceptProof();
+            data = header.slice(newline + 1);
+            header = "";
+          }
+          const bytes = Buffer.from(data);
           log.append(bytes);
           output[channel].append(bytes);
+          receipt.logTruncated ||= log.truncated();
           receipt.outputTruncated ||= log.truncated() || output[channel].truncated();
           if (log.size() - savedBytes >= 1024 * 1024) flush();
         }
-      } catch {
+      } catch (error) {
+        receipt.logTruncated = true;
         receipt.outputTruncated = true;
+        if (!admitted) {
+          proofRejected = true;
+          rejectProof(error);
+        }
+      } finally {
+        if (!admitted) {
+          proofRejected = true;
+          rejectProof(
+            new AuxError("permission_denied", "The cloud command has no original process ownership proof."),
+          );
+        }
       }
     })();
     let checking = false,
@@ -305,7 +377,13 @@ export class CloudCodingProcesses extends CodingProcessLedger {
         if (this.retired || receipt.state === "interrupted") return;
         receipt.exitCode = result.exitCode;
         receipt.endedAt = Date.now();
-        receipt.state = stopRequested ? "stopped" : result.exitCode === 0 ? "completed" : "failed";
+        receipt.state = proofRejected
+          ? "interrupted"
+          : stopRequested
+            ? "stopped"
+            : result.exitCode === 0
+              ? "completed"
+              : "failed";
         receipt.stdout = output.stdout.bytes().toString("utf8");
         receipt.stderr = output.stderr.bytes().toString("utf8");
         receipt.logDigest = createHash("sha256").update(log.bytes()).digest("hex");
@@ -325,6 +403,7 @@ export class CloudCodingProcesses extends CodingProcessLedger {
       command,
       receipt,
       finished,
+      ready,
       cleanup,
       flush,
       requestStop: () => {
@@ -337,23 +416,20 @@ export class CloudCodingProcesses extends CodingProcessLedger {
     runId: string,
     cursor = 0,
   ): Promise<{ text: string; cursor: number; truncated: boolean }> {
-    if (!Number.isSafeInteger(cursor) || cursor < 0)
-      throw new AuxError("invalid_params", "Invalid log cursor.");
     this.original(processId, runId);
     this.owned.get(processId)?.flush();
-    const receipt = super.status(processId, runId),
-      bytes = Buffer.from(receipt.logText ?? "");
-    const part = bytes.subarray(cursor, cursor + 64 * 1024);
-    return {
-      text: part.toString("utf8"),
-      cursor: cursor + part.length,
-      truncated: receipt.outputTruncated === true,
-    };
+    return this.remoteLogs(processId, runId, cursor);
   }
+
   async stop(processId: string, runId: string): Promise<CodingProcessReceipt> {
     const receipt = this.original(processId, runId),
       owned = this.owned.get(processId);
-    if (!["starting", "running", "uncertain"].includes(receipt.state)) return this.status(processId, runId);
+    const previews = this.options.transport.retiring?.(processId) ?? Promise.resolve();
+    void previews.catch(() => {});
+    if (!["starting", "running", "uncertain"].includes(receipt.state)) {
+      await previews;
+      return this.status(processId, runId);
+    }
     if (!receipt.execution?.commandId)
       throw new AuxError(
         "operation_uncertain",
@@ -364,27 +440,30 @@ export class CloudCodingProcesses extends CodingProcessLedger {
       return this.status(processId, runId);
     }
     owned?.requestStop();
-    const stopping = (async () => {
-      const signal = AbortSignal.timeout(30_000);
-      const command =
-        owned?.command ?? (await this.options.transport.command(receipt.execution!.commandId!, signal));
-      if (command.cmdId !== receipt.execution!.commandId)
-        throw new AuxError("ref_stale", "Provider command identity changed.");
-      await command.kill("SIGTERM", { abortSignal: signal });
-      const result = await command.wait({ signal });
-      // A fresh kill+wait acknowledgement settles an earlier failed wait.
-      if (this.retired) return;
-      const current = owned?.receipt ?? super.status(processId, runId);
-      current.state = "stopped";
-      current.exitCode = result.exitCode;
-      current.endedAt = Date.now();
-      if (owned) {
-        owned.cleanup();
-        owned.flush();
-      } else this.save(current);
-      this.options.transport.released(processId);
-      this.owned.delete(processId);
-    })();
+    const stopping = Promise.all([
+      previews,
+      (async () => {
+        const signal = AbortSignal.timeout(30_000);
+        const command =
+          owned?.command ?? (await this.options.transport.command(receipt.execution!.commandId!, signal));
+        if (command.cmdId !== receipt.execution!.commandId)
+          throw new AuxError("ref_stale", "Provider command identity changed.");
+        await command.kill("SIGTERM", { abortSignal: signal });
+        const result = await command.wait({ signal });
+        // A fresh kill+wait acknowledgement settles an earlier failed wait.
+        if (this.retired) return;
+        const current = owned?.receipt ?? super.status(processId, runId);
+        current.state = "stopped";
+        current.exitCode = result.exitCode;
+        current.endedAt = Date.now();
+        if (owned) {
+          owned.cleanup();
+          owned.flush();
+        } else this.save(current);
+        this.options.transport.released(processId);
+        this.owned.delete(processId);
+      })(),
+    ]).then(() => {});
     if (owned) owned.stopping = stopping;
     try {
       await stopping;

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { CLOUD_PROCESS_HEADER } from "../../apps/runtime/dist/services/cloud-process-worker.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { AuxError, type CloudResourceQuote } from "@aux/contracts";
 import { openDb, Repo, RunFundingService, resourceFundingAccounting } from "@aux/runtime";
@@ -246,6 +248,7 @@ it("keeps the VM network mode fixed until its original background command acknow
   const finished = new Promise<{ exitCode: number }>((resolve) => {
     complete = resolve;
   });
+  let processId = "";
   const command = {
     cmdId: "original-command",
     cwd: "/vercel/sandbox/project",
@@ -256,16 +259,53 @@ it("keeps the VM network mode fixed until its original background command acknow
       complete({ exitCode: 143 });
     }),
     logs: async function* () {
-      yield { stream: "stdout", data: "ready\n" };
+      yield {
+        stream: "stdout",
+        data:
+          CLOUD_PROCESS_HEADER +
+          JSON.stringify({
+            processId,
+            sessionId: "original-session",
+            supervisor: { pid: 10, startTicks: "1", groupPid: 11, groupStartTicks: "2" },
+          }) +
+          "\nready\n",
+      };
       await finished;
     },
   };
-  const dispatch = vi.fn(async (input: { detached?: boolean }) =>
-    input.detached ? command : { exitCode: 0 },
+  const dispatch = vi.fn(
+    async (input: { detached?: boolean; args?: string[]; stdout?: { write(value: string): void } }) => {
+      if (input.detached) {
+        processId = JSON.parse(input.args!.at(-1)!).processId;
+        return command;
+      }
+      if (input.args?.at(-1)?.includes('"kind":"listeners"'))
+        input.stdout!.write(JSON.stringify([{ pid: 12, startTicks: "3", fd: 4, inode: "123", port: 3000 }]));
+      return { exitCode: 0 };
+    },
   );
-  Object.assign(f.session, { mkDir: async () => {}, runCommand: dispatch });
+  Object.assign(f.session, {
+    domain: () => "https://original.vercel.run",
+    mkDir: async () => {},
+    runCommand: dispatch,
+  });
   const executor = new VercelSandboxExecutor({
     ...f.deps,
+    processWorkerProgram: async () => Buffer.from("// immutable process worker"),
+    native: {
+      turnSourceContext: async () => ({}) as never,
+      cloudPreview: async (binding) => ({
+        previewId: binding.previewId,
+        processId: binding.processId,
+        url: binding.url,
+        contentId: "native-content",
+      }),
+      cloudPreviewClose: async () => {
+        f.order.push("native-preview-closed");
+        return { closed: true };
+      },
+    },
+    authorizePreview: async () => () => {},
     authorizeBash: async () => true,
     authorizeProcess: async () => ({ network: false, check: () => {} }),
     authorizeProcessAccess: async () => () => {},
@@ -280,10 +320,21 @@ it("keeps the VM network mode fixed until its original background command acknow
   ).rejects.toMatchObject({ code: "conflict" });
   expect(dispatch).toHaveBeenCalledTimes(1);
   expect(f.order.filter((event) => event === "network-ack")).toHaveLength(1);
+  expect(executor.retainedProcesses(f.ctx.runId)).toBe(processes);
+  const sandbox = await f.create.mock.results[0]!.value;
+  const ports = vi.fn(async (input: { ports: number[] }) => {
+    f.order.push(`ports:${input.ports.join(",")}`);
+  });
+  Object.assign(sandbox, { update: ports });
+  const preview = await executor.preview(f.ctx, { processId: receipt.processId, port: 3000 }, randomUUID());
+  expect(preview.url).toBe("https://original.vercel.run/");
+  expect(ports).toHaveBeenCalledWith({ ports: [3000] }, expect.any(Object));
   await processes.stop(receipt.processId, f.ctx.runId);
+  expect(f.order.slice(-2)).toEqual(["native-preview-closed", "ports:"]);
   await executor.bash({ command: "curl https://example.com", network: true }, f.ctx);
-  expect(dispatch).toHaveBeenCalledTimes(2);
+  expect(dispatch.mock.calls.filter(([input]) => input.detached)).toHaveLength(1);
   expect(f.order.filter((event) => event === "network-ack")).toHaveLength(2);
   expect(f.forbidden).not.toHaveBeenCalled();
   await executor.closeRun(f.ctx.runId);
+  expect(executor.retainedProcesses(f.ctx.runId)).toBeUndefined();
 });

@@ -1,3 +1,8 @@
+import {
+  NativeCloudPreviewParams,
+  NativeCloudPreviewCloseParams,
+  CloudPreviewSchema,
+} from "@aux/contracts/cloud-preview";
 import { MemorySaverSettingsSchema, type MemorySaverSettings } from "@aux/contracts";
 import { parsePersonReadContext } from "./services/native-person-reader.js";
 import {
@@ -232,6 +237,10 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   terminalPreviewClose?(
     params: z.infer<typeof NativeTerminalPreviewCloseParams>,
   ): Promise<z.infer<typeof TerminalPreviewClosedSchema>>;
+  cloudPreview?(
+    params: z.infer<typeof NativeCloudPreviewParams>,
+  ): Promise<z.infer<typeof CloudPreviewSchema>>;
+  cloudPreviewClose?(params: z.infer<typeof NativeCloudPreviewCloseParams>): Promise<{ closed: true }>;
   remoteDebuggingGet?(token: string): Promise<RemoteDebuggingState>;
   remoteDebuggingSet?(token: string, enabled: boolean): Promise<RemoteDebuggingState>;
   turnSourceContext?(token: string): Promise<TurnSourceContext>;
@@ -246,7 +255,9 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
     recorderId: string;
   }): Promise<HostMethodResult<"native.recorderStop">>;
   createAgentPage?(input: AgentPageCreate): Promise<AgentPageCreated>;
-  adoptSessionPage?(input: z.infer<typeof HostMethods["native.adoptSessionPage"]["args"]>): Promise<HostMethodResult<"native.adoptSessionPage">>;
+  adoptSessionPage?(
+    input: z.infer<(typeof HostMethods)["native.adoptSessionPage"]["args"]>,
+  ): Promise<HostMethodResult<"native.adoptSessionPage">>;
   creatorCleanupProof?(input: { pageId: string; creationId: string }): Promise<NativeCreatorCleanupProof>;
   closeCreatedPage?(input: { proof: NativeCreatorCleanupProof }): Promise<{ closed: true }>;
   egressRunTerminal?(input: { runId: string }): Promise<HostMethodResult<"native.egressRunTerminal">>;
@@ -425,9 +436,14 @@ export class ChannelNativeBridge implements NativeBridge {
   async createAgentPage(input: AgentPageCreate): Promise<AgentPageCreated> {
     return AgentPageCreatedSchema.parse(await this.channel.call("native.createAgentPage", input, 55_000));
   }
-  async adoptSessionPage(input: z.infer<typeof HostMethods["native.adoptSessionPage"]["args"]>): Promise<HostMethodResult<"native.adoptSessionPage">> {
+  async adoptSessionPage(
+    input: z.infer<(typeof HostMethods)["native.adoptSessionPage"]["args"]>,
+  ): Promise<HostMethodResult<"native.adoptSessionPage">> {
     return HostMethods["native.adoptSessionPage"].result.parse(
-      await this.channel.call("native.adoptSessionPage", HostMethods["native.adoptSessionPage"].args.parse(input)),
+      await this.channel.call(
+        "native.adoptSessionPage",
+        HostMethods["native.adoptSessionPage"].args.parse(input),
+      ),
     );
   }
   async egressRunTerminal(input: { runId: string }): Promise<HostMethodResult<"native.egressRunTerminal">> {
@@ -568,6 +584,17 @@ export class ChannelNativeBridge implements NativeBridge {
   async terminalPreviewClose(params: z.infer<typeof NativeTerminalPreviewCloseParams>) {
     return TerminalPreviewClosedSchema.parse(
       await this.channel.call("native.terminalPreviewClose", NativeTerminalPreviewCloseParams.parse(params)),
+    );
+  }
+
+  async cloudPreview(params: z.infer<typeof NativeCloudPreviewParams>) {
+    return CloudPreviewSchema.parse(
+      await this.channel.call("native.cloudPreview", NativeCloudPreviewParams.parse(params)),
+    );
+  }
+  async cloudPreviewClose(params: z.infer<typeof NativeCloudPreviewCloseParams>) {
+    return TerminalPreviewClosedSchema.parse(
+      await this.channel.call("native.cloudPreviewClose", NativeCloudPreviewCloseParams.parse(params)),
     );
   }
 

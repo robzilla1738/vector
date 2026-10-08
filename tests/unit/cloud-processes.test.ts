@@ -1,3 +1,4 @@
+import { CLOUD_PROCESS_HEADER } from "../../apps/runtime/dist/services/cloud-process-worker.js";
 import { afterEach, expect, it, vi } from "vitest";
 import type { CloudProcessTransport } from "../../apps/runtime/dist/services/cloud-processes.js";
 type Command = Awaited<ReturnType<CloudProcessTransport["command"]>>;
@@ -9,7 +10,7 @@ import { CodingProcesses } from "../../apps/runtime/dist/services/coding-process
 
 const cleanup: (() => void)[] = [];
 afterEach(() => cleanup.splice(0).forEach((close) => close()));
-function fixture() {
+function fixture(proofSession = "original-session") {
   const db = openDb(":memory:"),
     repo = new Repo(db);
   cleanup.push(() => db.close());
@@ -26,6 +27,7 @@ function fixture() {
     complete = resolve;
     fail = reject;
   });
+  let originalProcessId = "";
   const command = {
     cmdId: "original-command",
     cwd: identity.root,
@@ -37,7 +39,17 @@ function fixture() {
       complete({ exitCode: 143 });
     }),
     logs: async function* () {
-      yield { stream: "stdout", data: "ready\n" };
+      yield {
+        stream: "stdout",
+        data:
+          CLOUD_PROCESS_HEADER +
+          JSON.stringify({
+            processId: originalProcessId,
+            sessionId: proofSession,
+            supervisor: { pid: 10, startTicks: "1", groupPid: 11, groupStartTicks: "2" },
+          }) +
+          "\nready\n",
+      };
       await done;
       yield { stream: "stderr", data: "finished\n" };
     },
@@ -47,6 +59,7 @@ function fixture() {
       if (signal?.aborted) throw new AuxError("cancelled", "Stopped");
     },
     launch: vi.fn<CloudProcessTransport["launch"]>(async (_input, _context, _id, _admission, dispatched) => {
+      originalProcessId = _id;
       dispatched();
       return command as unknown as Command;
     }),
@@ -77,7 +90,9 @@ it("retains original command identity, bounded logs and duplicate suppression th
   expect(receipt).not.toHaveProperty("logText");
   await f.service.start(input, f.context);
   expect(f.transport.launch).toHaveBeenCalledTimes(1);
-  expect((await f.service.logs(receipt.processId, f.context.runId)).text).toContain("ready");
+  const logs = await f.service.logs(receipt.processId, f.context.runId);
+  expect(logs.text).toContain("ready");
+  expect(logs.text).not.toContain(CLOUD_PROCESS_HEADER);
   expect((await f.service.stop(receipt.processId, f.context.runId)).state).toBe("stopped");
   expect(f.command.kill).toHaveBeenCalledWith("SIGTERM", { abortSignal: expect.any(AbortSignal) });
   expect(f.transport.released).toHaveBeenCalledWith(receipt.processId);
@@ -129,6 +144,8 @@ it("keeps retirement evidence when an old wait fails and prevents local recovery
     checkOwner: () => {},
   });
   await expect(local.reconcile(receipt.processId, f.context)).rejects.toMatchObject({ code: "ref_stale" });
+  expect(local.remoteLogs(receipt.processId, f.context.runId).text).toContain("ready");
+  expect(f.transport.command).not.toHaveBeenCalled();
   await local.close();
   expect(f.service.status(receipt.processId, f.context.runId).state).toBe("interrupted");
   const replacement = new CloudCodingProcesses({
@@ -186,4 +203,13 @@ it("returns cancelled foreground work promptly while failed Stop cleanup remains
   f.service.sessionStopped();
   f.complete({ exitCode: 143 });
   await new Promise((resolve) => setTimeout(resolve, 0));
+});
+
+it("rejects a different Session ownership header before admitting a running command", async () => {
+  const f = fixture("another-session");
+  await expect(f.service.start({ command: "dev" }, f.context)).rejects.toMatchObject({ code: "ref_stale" });
+  expect(f.command.kill).toHaveBeenCalledTimes(1);
+  const receipt = f.service.list(f.context.runId)[0]!;
+  expect(receipt.execution?.supervisor).toBeUndefined();
+  expect(f.service.remoteLogs(receipt.processId, f.context.runId).text).not.toContain(CLOUD_PROCESS_HEADER);
 });

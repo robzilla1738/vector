@@ -1,7 +1,17 @@
 import { z } from "zod";
 import { CloudCodingIdentitySchema } from "./coding-files.js";
+export const CloudSupervisorSchema = z
+  .object({
+    pid: z.number().int().positive(),
+    startTicks: z.string().regex(/^\d+$/),
+    groupPid: z.number().int().positive(),
+    groupStartTicks: z.string().regex(/^\d+$/),
+  })
+  .strict();
+export type CloudSupervisor = z.infer<typeof CloudSupervisorSchema>;
 export const CloudProcessIdentitySchema = CloudCodingIdentitySchema.extend({
   commandId: z.string().min(1).optional(),
+  supervisor: CloudSupervisorSchema.optional(),
 }).strict();
 export type CloudProcessIdentity = z.infer<typeof CloudProcessIdentitySchema>;
 
@@ -17,6 +27,7 @@ export interface CodingProcessReceipt {
   execution?: CloudProcessIdentity;
   /** Bounded remote output, protected with the receipt rather than a local plaintext log. */
   logText?: string;
+  logTruncated?: boolean;
   processId: string;
   runId: string;
   actionId: string;

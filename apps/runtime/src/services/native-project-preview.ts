@@ -7,13 +7,23 @@ const admission = z
 /** No public API can grant the native guest's original Project authority. */
 export function registerNativeProjectPreview(
   channel: Pick<RpcChannel, "onMethod">,
-  deps: { current: () => boolean; terminals: () => TerminalService },
+  deps: {
+    current: () => boolean;
+    terminals: () => TerminalService;
+    cloud?: (previewId: string, token: string) => Promise<boolean>;
+  },
 ) {
   let stopped = false;
   channel.onMethod("projects.preview.admit", async (raw) => {
     if (stopped || !deps.current()) throw new AuxError("ref_stale", "Original Preview connection retired.");
     const p = admission.parse(raw);
     const allowed = await deps.terminals().admitPreview(p.terminalId, p.previewId, p.token);
+    return allowed && !stopped && deps.current();
+  });
+  channel.onMethod("projects.cloudPreview.admit", async (raw) => {
+    if (stopped || !deps.current() || !deps.cloud) return false;
+    const p = admission.omit({ terminalId: true }).parse(raw);
+    const allowed = await deps.cloud(p.previewId, p.token);
     return allowed && !stopped && deps.current();
   });
   return () => {

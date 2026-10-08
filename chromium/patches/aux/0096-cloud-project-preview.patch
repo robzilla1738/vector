@@ -1,0 +1,238 @@
+diff --git a/chrome/browser/ui/aux/native_project_preview.cc b/chrome/browser/ui/aux/native_project_preview.cc
+index 583d74b..efd47e1 100644
+--- a/chrome/browser/ui/aux/native_project_preview.cc
++++ b/chrome/browser/ui/aux/native_project_preview.cc
+@@ -64,8 +64,8 @@ struct NativeProjectPreview::CloseState final : content::RenderProcessHostObserv
+   }
+ };
+ NativeProjectPreview::NativeProjectPreview(content::WebContents* owner, content::WeakDocumentPtr document,
+-    GURL origin, base::RepeatingCallback<bool()> source, Review review)
+-    : owner_document_(document), owner_(owner->GetWeakPtr()), context_(owner->GetBrowserContext()->GetWeakPtr()), origin_(std::move(origin)), source_(std::move(source)), review_(std::move(review)), close_(std::make_shared<CloseState>()) {}
++    GURL origin, base::RepeatingCallback<bool()> source, Review review, OriginKind origin_kind)
++    : owner_document_(document), owner_(owner->GetWeakPtr()), context_(owner->GetBrowserContext()->GetWeakPtr()), origin_(std::move(origin)), origin_kind_(origin_kind), source_(std::move(source)), review_(std::move(review)), close_(std::make_shared<CloseState>()) {}
+ NativeProjectPreview::~NativeProjectPreview() {
+   Close(base::BindOnce([](bool) {}));
+   if (config_) Previews().erase(config_->partition_name());
+@@ -79,6 +79,8 @@ content::StoragePartition* NativeProjectPreview::Partition() const {
+ }
+ bool NativeProjectPreview::Open() {
+   if (!Current() || guest_ || !origin_.SchemeIsHTTPOrHTTPS() || origin_.has_username() || origin_.has_password()) return false;
++  if (origin_kind_ == OriginKind::kPublicHttps && (!origin_.SchemeIs("https") || origin_.EffectiveIntPort() != 443 ||
++      origin_.HostIsIPAddress() || net::IsLocalhost(origin_) || origin_.path() != "/" || origin_.has_query() || origin_.has_ref())) return false;
+   auto* context = owner_->GetBrowserContext();
+   const auto partition = content::StoragePartitionConfig::Create(context, kDomain,
+       base::Uuid::GenerateRandomV4().AsLowercaseString(), true);
+@@ -98,7 +100,7 @@ bool NativeProjectPreview::Open() {
+     return preview && preview->Current() && outer == preview->owner_document_.AsRenderFrameHostIfValid();
+   }, weak_factory_.GetWeakPtr()));
+   content_id_ = handle->id().ToString();
+-  timer_.Start(FROM_HERE, base::Milliseconds(100), this, &NativeProjectPreview::CheckSource);
++  timer_.Start(FROM_HERE, base::Milliseconds(origin_kind_ == OriginKind::kPublicHttps ? 2000 : 100), this, &NativeProjectPreview::CheckSource);
+   guest_->GetController().LoadURL(origin_, content::Referrer(), ui::PAGE_TRANSITION_AUTO_TOPLEVEL, "");
+   return Current();
+ }
+@@ -107,11 +109,17 @@ base::DictValue NativeProjectPreview::Describe() const {
+ }
+ bool NativeProjectPreview::MatchesEndpoint(const GURL& url, const net::IPEndPoint& endpoint) const {
+   if (!Current()) return false;
++  if (origin_kind_ == OriginKind::kPublicHttps)
++    return (url.SchemeIs("https") || url.SchemeIs("wss")) && url.host() == origin_.host() &&
++        url.EffectiveIntPort() == origin_.EffectiveIntPort() && endpoint.port() == origin_.EffectiveIntPort() && endpoint.address().IsPubliclyRoutable();
+   if (url.host() != origin_.host() || url.EffectiveIntPort() != origin_.EffectiveIntPort()) return url.SchemeIs("https") && endpoint.address().IsPubliclyRoutable();
+   return endpoint.address().ToString() == origin_.HostNoBrackets() && endpoint.port() == origin_.EffectiveIntPort();
+ }
+ bool NativeProjectPreview::Permits(const GURL& url, bool navigation) const {
+   if (!url.is_valid() || url.has_username() || url.has_password()) return false;
++  if (origin_kind_ == OriginKind::kPublicHttps)
++    return (url.SchemeIs("https") || (!navigation && url.SchemeIs("wss"))) &&
++        url.host() == origin_.host() && url.EffectiveIntPort() == origin_.EffectiveIntPort();
+   if (navigation) return url::Origin::Create(url) == url::Origin::Create(origin_);
+   // The dev app keeps public HTTPS assets. Local requests stay on its exact
+   // admitted endpoint; localhost URLs are never resolved from renderer input.
+diff --git a/chrome/browser/ui/aux/native_project_preview.h b/chrome/browser/ui/aux/native_project_preview.h
+index 0dbc439..54c8ffe 100644
+--- a/chrome/browser/ui/aux/native_project_preview.h
++++ b/chrome/browser/ui/aux/native_project_preview.h
+@@ -22,9 +22,11 @@ namespace aux {
+ // Its cookies/workers live only in a new in-memory partition, never in Profile storage.
+ class NativeProjectPreview final : public content::WebContentsDelegate {
+  public:
++  enum class OriginKind { kLocalEndpoint, kPublicHttps };
+   using Review = base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
+   NativeProjectPreview(content::WebContents* owner, content::WeakDocumentPtr document,
+-      GURL origin, base::RepeatingCallback<bool()> source, Review review);
++      GURL origin, base::RepeatingCallback<bool()> source, Review review,
++      OriginKind origin_kind = OriginKind::kLocalEndpoint);
+   ~NativeProjectPreview() override;
+   bool Open();
+   base::DictValue Describe() const;
+@@ -48,6 +50,7 @@ class NativeProjectPreview final : public content::WebContentsDelegate {
+   base::WeakPtr<content::WebContents> owner_;
+   base::WeakPtr<content::BrowserContext> context_;
+   const GURL origin_;
++  const OriginKind origin_kind_;
+   base::RepeatingCallback<bool()> source_;
+   Review review_;
+   std::unique_ptr<content::WebContents> guest_;
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index ab806f6..65ec42b 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -63,6 +63,7 @@
+ #include "chrome/browser/ui/aux/native_person_observer_controller.h"
+ #include "chrome/browser/ui/aux/native_recorder_controller.h"
+ #include "chrome/browser/ui/aux/native_terminal.h"
++#include "chrome/browser/ui/aux/native_project_preview.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
+ #include "chrome/browser/ui/aux/permission_broker.h"
+@@ -1173,6 +1174,100 @@ void AuxRuntimeHost::HandleNativeCopilotCall(
+                       std::move(callback));
+ }
+ 
++void AuxRuntimeHost::HandleNativeCloudPreviewCall(
++    const std::string& method, const base::DictValue& params, uint64_t generation,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  const auto fail = [&](const std::string& message) { std::move(callback).Run(NativeFault("permission_denied", message)); };
++  const auto* token = params.FindString("token");
++  const auto* id = params.FindString("previewId");
++  if (!token || !id || !base::Uuid::ParseLowercase(*id).is_valid() ||
++      generation != admitted_native_generation_ || generation <= retired_native_generation_) {
++    fail("Original cloud Preview connection retired"); return;
++  }
++  auto entry = native_cloud_previews_.find(*id);
++  if (method == "native.cloudPreviewClose") {
++    if (params.size() != 2) { fail("Exact cloud Preview close identity is required"); return; }
++    // This authenticated connection owns the complete guest inventory. Absence is an unstarted or acknowledged close.
++    if (entry == native_cloud_previews_.end()) { std::move(callback).Run(NativeResult(base::Value(base::DictValue().Set("closed", true)))); return; }
++    if (entry->second.token != *token) { fail("Original cloud Preview close owner changed"); return; }
++    if (!entry->second.preview) { std::move(callback).Run(NativeResult(base::Value(base::DictValue().Set("closed", true)))); return; }
++    entry->second.preview->Close(base::BindOnce([](base::WeakPtr<AuxRuntimeHost> host, std::string id, std::string token,
++        base::OnceCallback<void(base::DictValue)> callback, bool closed) {
++      if (!closed || !host) { std::move(callback).Run(NativeFault("backend_unavailable", "Original cloud Preview retirement is not acknowledged")); return; }
++      const auto entry = host->native_cloud_previews_.find(id);
++      if (entry == host->native_cloud_previews_.end() || entry->second.token != token) {
++        std::move(callback).Run(NativeFault("ref_stale", "Original cloud Preview close owner changed")); return;
++      }
++      entry->second.preview.reset();
++      std::move(callback).Run(NativeResult(base::Value(base::DictValue().Set("closed", true))));
++    }, weak_factory_.GetWeakPtr(), *id, *token, std::move(callback))); return;
++  }
++  const auto owner = turn_contexts_.find(*token);
++  const auto* process = params.FindString("processId"), *url = params.FindString("url");
++  const auto* execution = params.FindDict("execution"), *listener = params.FindDict("listener");
++  if (method != "native.cloudPreview" || params.size() != 6 || !process || !base::Uuid::ParseLowercase(*process).is_valid() ||
++      !url || !execution || execution->size() != 7 || !listener || listener->size() != 5 ||
++      owner == turn_contexts_.end() || owner->second.generation != generation || !TurnContextCurrent(owner->second) ||
++      entry != native_cloud_previews_.end()) { fail("Exact original cloud listener binding is required"); return; }
++  const auto* backend = execution->FindString("backend");
++  const auto* resource = execution->FindString("resourceId"), *sandbox = execution->FindString("sandboxName"),
++      *session = execution->FindString("sessionId"), *command = execution->FindString("commandId"), *root = execution->FindString("root");
++  const auto* supervisor = execution->FindDict("supervisor");
++  if (!backend || *backend != "cloud" || !resource || resource->empty() || !sandbox || sandbox->empty() ||
++      !session || session->empty() || !command || command->empty() || !root || *root != "/vercel/sandbox/project" ||
++      !supervisor || supervisor->size() != 4 || !listener->FindInt("port") || !listener->FindInt("pid") ||
++      !listener->FindInt("fd") || !listener->FindString("inode") || !listener->FindString("startTicks") ||
++      !supervisor->FindInt("pid") || !supervisor->FindInt("groupPid") || !supervisor->FindString("startTicks") ||
++      !supervisor->FindString("groupStartTicks")) { fail("Original cloud command and socket proof is required"); return; }
++  const auto port = listener->FindInt("port"), pid = listener->FindInt("pid"), fd = listener->FindInt("fd");
++  const auto supervisor_pid = supervisor->FindInt("pid"), group_pid = supervisor->FindInt("groupPid");
++  const auto decimal = [](const std::string* value) { return value && !value->empty() && value->size() <= 32 && base::ContainsOnlyChars(*value, "0123456789"); };
++  if (!port || *port < 1 || *port > 65535 || !pid || *pid <= 0 || !fd || *fd < 0 ||
++      !supervisor_pid || *supervisor_pid <= 0 || !group_pid || *group_pid <= 0 ||
++      !decimal(listener->FindString("inode")) || !decimal(listener->FindString("startTicks")) ||
++      !decimal(supervisor->FindString("startTicks")) || !decimal(supervisor->FindString("groupStartTicks"))) {
++    fail("Invalid original process or socket identity"); return;
++  }
++  const GURL origin(*url);
++  if (!origin.is_valid() || !origin.SchemeIs("https") || origin.EffectiveIntPort() != 443 || origin.HostIsIPAddress() ||
++      origin.has_username() || origin.has_password() || origin.path() != "/" || origin.has_query() || origin.has_ref()) {
++    fail("An exact public HTTPS Preview origin is required"); return;
++  }
++  if (native_cloud_previews_.size() >= 128) std::erase_if(native_cloud_previews_, [](const auto& item) { return !item.second.preview; });
++  if (native_cloud_previews_.size() >= 128) { fail("Close an original cloud Preview first"); return; }
++  auto current = base::BindRepeating([](base::WeakPtr<AuxRuntimeHost> host, uint64_t generation, std::string token) {
++    if (!host || host->admitted_native_generation_ != generation || generation <= host->retired_native_generation_) return false;
++    const auto owner = host->turn_contexts_.find(token);
++    return owner != host->turn_contexts_.end() && host->TurnContextCurrent(owner->second);
++  }, weak_factory_.GetWeakPtr(), generation, *token);
++  auto review = base::BindRepeating([](base::WeakPtr<AuxRuntimeHost> host, uint64_t generation, std::string token,
++      std::string id, base::OnceCallback<void(bool)> callback) {
++    if (!host || host->admitted_native_generation_ != generation || generation <= host->retired_native_generation_) { std::move(callback).Run(false); return; }
++    const auto owner = host->turn_contexts_.find(token);
++    const auto entry = host->native_cloud_previews_.find(id);
++    if (owner == host->turn_contexts_.end() || !host->TurnContextCurrent(owner->second) || entry == host->native_cloud_previews_.end() || entry->second.token != token || !entry->second.preview) { std::move(callback).Run(false); return; }
++    const auto json = base::WriteJson(base::DictValue().Set("previewId", id).Set("token", token));
++    host->CallInternal("projects.cloudPreview.admit", *json, base::BindOnce([](base::WeakPtr<AuxRuntimeHost> host,
++        uint64_t generation, std::string token, std::string id, base::OnceCallback<void(bool)> callback, Response response) {
++      if (!host || host->admitted_native_generation_ != generation || generation <= host->retired_native_generation_) { std::move(callback).Run(false); return; }
++      const auto owner = host->turn_contexts_.find(token);
++      const auto entry = host->native_cloud_previews_.find(id);
++      const auto result = base::JSONReader::Read(response.result_json, base::JSON_PARSE_RFC);
++      std::move(callback).Run(response.ok && result && result->is_bool() && result->GetBool() && owner != host->turn_contexts_.end() &&
++          host->TurnContextCurrent(owner->second) && entry != host->native_cloud_previews_.end() && entry->second.token == token && !!entry->second.preview);
++    }, host, generation, token, id, std::move(callback)));
++  }, weak_factory_.GetWeakPtr(), generation, *token, *id);
++  auto* frame = owner->second.document.AsRenderFrameHostIfValid();
++  auto preview = std::make_unique<aux::NativeProjectPreview>(content::WebContents::FromRenderFrameHost(frame), owner->second.document,
++      origin, std::move(current), std::move(review), aux::NativeProjectPreview::OriginKind::kPublicHttps);
++  auto [inserted, ok] = native_cloud_previews_.emplace(*id, NativeCloudPreview{*token, params.Clone(), std::move(preview)});
++  if (!ok || !inserted->second.preview->Open()) { fail("Cannot attach the original cloud Preview"); return; }
++  auto result = inserted->second.preview->Describe();
++  result.Set("previewId", *id);
++  result.Set("processId", *process);
++  std::move(callback).Run(NativeResult(base::Value(std::move(result))));
++}
++
+ void AuxRuntimeHost::HandleNativeTerminalCall(
+     const std::string& method,
+     const base::DictValue& params,
+@@ -1331,6 +1426,7 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+   native_person_connection_id_.clear();
+   native_projects_.clear();
+   native_terminals_.clear();
++  native_cloud_previews_.clear();
+   // Retire acceptance synchronously; blocking process/group join stays on the
+   // separate BLOCK_SHUTDOWN sequence. Keep original unjoined debts in registry.
+   for (const auto& [id, session] : native_copilots_) {
+@@ -2350,6 +2446,13 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+                              }, state));
+                          return;
+                        }
++                       if (owner && (method == "native.cloudPreview" || method == "native.cloudPreviewClose")) {
++                         owner->HandleNativeCloudPreviewCall(method, params, connection_generation,
++                             base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
++                               state->reply = std::move(reply); state->ready.Signal();
++                             }, state));
++                         return;
++                       }
+                        if (owner && method.starts_with("native.terminal")) {
+                          owner->HandleNativeTerminalCall(method, params, connection_generation,
+                              base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 840e627..2fa13da 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -59,6 +59,7 @@ class NativePersonObserverController;
+ class NativePersonCaptureController;
+ class CredentialFill;
+ class NativeTerminal;
++class NativeProjectPreview;
+ class NativeCopilotSession;
+ class NativeFoundationRequest;
+ enum class FoundationAdmission;
+@@ -321,6 +322,14 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+   void HandleNativeTerminalCall(const std::string& method, const base::DictValue& params,
+       uint64_t connection_generation, base::OnceCallback<void(base::DictValue)> callback);
+   std::map<std::string, std::unique_ptr<aux::NativeTerminal>> native_terminals_;
++  void HandleNativeCloudPreviewCall(const std::string& method, const base::DictValue& params,
++      uint64_t connection_generation, base::OnceCallback<void(base::DictValue)> callback);
++  struct NativeCloudPreview {
++    std::string token;
++    base::DictValue binding;
++    std::unique_ptr<aux::NativeProjectPreview> preview;
++  };
++  std::map<std::string, NativeCloudPreview> native_cloud_previews_;
+ #if BUILDFLAG(IS_MAC)
+   void HandleNativeFoundationCall(
+       const std::string& method,
