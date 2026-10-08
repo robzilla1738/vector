@@ -28,16 +28,22 @@ export class CloudPreviews {
     private readonly deps: {
       context: CloudExecutionContext;
       native: Pick<NativeBridge, "cloudPreview" | "cloudPreviewClose" | "turnSourceContext">;
-      current(signal?: AbortSignal): Promise<void>;
+      current(token: string, signal?: AbortSignal): Promise<void>;
       process(processId: string): CodingProcessReceipt;
-      listeners(process: CodingProcessReceipt, port: number, signal?: AbortSignal): Promise<CloudListener[]>;
-      expose(port: number, signal?: AbortSignal, fence?: () => void): Promise<string>;
+      listeners(
+        process: CodingProcessReceipt,
+        port: number,
+        token: string,
+        signal?: AbortSignal,
+      ): Promise<CloudListener[]>;
+      expose(port: number, token: string, signal?: AbortSignal, fence?: () => void): Promise<string>;
       hide(port: number): Promise<void>;
       authorize(
         input: { processId: string; port: number },
         context: CloudExecutionContext,
         process: CodingProcessReceipt,
         listener: CloudListener,
+        token: string,
       ): Promise<() => void>;
     },
   ) {}
@@ -59,8 +65,7 @@ export class CloudPreviews {
       throw new AuxError("capability_unsupported", "Native cloud Preview is unavailable.");
     if (!Number.isInteger(input.port) || input.port < 1 || input.port > 65535)
       throw new AuxError("invalid_params", "Choose a valid server port.");
-    await this.deps.current(signal);
-    await this.deps.native.turnSourceContext(token);
+    await this.deps.current(token, signal);
     for (const preview of this.previews.values())
       if (preview.binding.listener.port === input.port) {
         if (
@@ -79,20 +84,19 @@ export class CloudPreviews {
         "ref_stale",
         "Preview requires the original running command and process ownership proof.",
       );
-    const listeners = await this.deps.listeners(process, input.port, signal);
+    const listeners = await this.deps.listeners(process, input.port, token, signal);
     if (listeners.length !== 1)
       throw new AuxError(
         "needs_input",
         "The selected command must own one server listening on this port on all interfaces.",
       );
     const listener = listeners[0]!;
-    const fence = await this.deps.authorize(input, this.deps.context, process, listener);
-    await this.deps.current(signal);
-    await this.deps.native.turnSourceContext(token);
+    const fence = await this.deps.authorize(input, this.deps.context, process, listener, token);
+    await this.deps.current(token, signal);
     fence();
     let preview: Preview | undefined;
     try {
-      const url = await this.deps.expose(input.port, signal, fence);
+      const url = await this.deps.expose(input.port, token, signal, fence);
       const binding = CloudPreviewBindingSchema.parse({
         previewId: randomUUID(),
         processId: input.processId,
@@ -112,7 +116,7 @@ export class CloudPreviews {
         result.url !== binding.url
       )
         throw new AuxError("ref_stale", "Another cloud listener returned the Preview surface.");
-      await this.deps.current(signal);
+      await this.deps.current(token, signal);
       fence();
       if (!(await this.admit(binding.previewId, token)))
         throw new AuxError("ref_stale", "The cloud listener retired while its Preview opened.");
@@ -135,8 +139,7 @@ export class CloudPreviews {
     const work = (async () => {
       try {
         preview.check();
-        await this.deps.current();
-        await this.deps.native.turnSourceContext?.(token);
+        await this.deps.current(token);
         const process = this.deps.process(preview.binding.processId);
         if (
           process.state !== "running" ||
@@ -144,8 +147,8 @@ export class CloudPreviews {
             JSON.stringify(preview.binding.execution)
         )
           return false;
-        const listeners = await this.deps.listeners(process, preview.binding.listener.port);
-        await this.deps.current();
+        const listeners = await this.deps.listeners(process, preview.binding.listener.port, token);
+        await this.deps.current(token);
         preview.check();
         return (
           !preview.retiring &&

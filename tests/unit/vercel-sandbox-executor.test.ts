@@ -9,6 +9,7 @@ type Sandbox = Awaited<ReturnType<Create>>;
 type Session = ReturnType<Sandbox["currentSession"]>;
 const cleanup: (() => void)[] = [];
 afterEach(() => {
+  vi.useRealTimers();
   for (const close of cleanup.splice(0)) close();
 });
 function fixture() {
@@ -242,8 +243,16 @@ it("binds governed files to the captured Session and rechecks the effect fence a
   expect(f.forbidden).not.toHaveBeenCalled();
   await executor.closeRun(f.ctx.runId);
 });
-it("keeps the VM network mode fixed until its original background command acknowledges exit", async () => {
+it("keeps human Preview on the retained Session after dispatch pauses and preserves network cleanup", async () => {
+  vi.useFakeTimers();
   const f = fixture();
+  const token = randomUUID();
+  let agentLive = true,
+    nativeLive = true;
+  const assertOwner = vi.fn(async () => {
+    if (!agentLive) throw new AuxError("cancelled", "Run dispatch paused.");
+  });
+  const authorizePreview = vi.fn(async () => () => {});
   let complete!: (value: { exitCode: number }) => void;
   const finished = new Promise<{ exitCode: number }>((resolve) => {
     complete = resolve;
@@ -292,8 +301,13 @@ it("keeps the VM network mode fixed until its original background command acknow
   const executor = new VercelSandboxExecutor({
     ...f.deps,
     processWorkerProgram: async () => Buffer.from("// immutable process worker"),
+    assertOwner,
     native: {
-      turnSourceContext: async () => ({}) as never,
+      turnSourceContext: async (value) => {
+        if (!nativeLive || value !== token)
+          throw new AuxError("permission_denied", "Native Preview source retired.");
+        return { windowId: "original-window" } as never;
+      },
       cloudPreview: async (binding) => ({
         previewId: binding.previewId,
         processId: binding.processId,
@@ -305,7 +319,7 @@ it("keeps the VM network mode fixed until its original background command acknow
         return { closed: true };
       },
     },
-    authorizePreview: async () => () => {},
+    authorizePreview,
     authorizeBash: async () => true,
     authorizeProcess: async () => ({ network: false, check: () => {} }),
     authorizeProcessAccess: async () => () => {},
@@ -326,7 +340,24 @@ it("keeps the VM network mode fixed until its original background command acknow
     f.order.push(`ports:${input.ports.join(",")}`);
   });
   Object.assign(sandbox, { update: ports });
-  const preview = await executor.preview(f.ctx, { processId: receipt.processId, port: 3000 }, randomUUID());
+  agentLive = false;
+  assertOwner.mockClear();
+  f.repo.saveRun({ ...f.repo.getRun(f.ctx.runId)!, status: "needs_input" });
+  const preview = await executor.preview(f.ctx, { processId: receipt.processId, port: 3000 }, token);
+  expect(await executor.admitPreview(preview.previewId, token)).toBe(true);
+  expect(assertOwner).not.toHaveBeenCalled();
+  expect(authorizePreview).toHaveBeenCalledWith(
+    expect.anything(),
+    f.ctx,
+    expect.anything(),
+    expect.anything(),
+    token,
+  );
+  expect(f.create).toHaveBeenCalledOnce();
+  nativeLive = false;
+  expect(await executor.admitPreview(preview.previewId, token)).toBe(false);
+  nativeLive = true;
+  agentLive = true;
   expect(preview.url).toBe("https://original.vercel.run/");
   expect(ports).toHaveBeenCalledWith({ ports: [3000] }, expect.any(Object));
   await processes.stop(receipt.processId, f.ctx.runId);

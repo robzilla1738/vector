@@ -36,7 +36,7 @@ function fixture() {
     order.push("native-close");
     return { closed: true as const };
   });
-  const expose = vi.fn(async (_port: number, _signal?: AbortSignal, fence?: () => void) => {
+  const expose = vi.fn(async (_port: number, _token: string, _signal?: AbortSignal, fence?: () => void) => {
     fence?.();
     order.push("expose");
     return "https://original.vercel.run/";

@@ -141,6 +141,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
         context: CloudExecutionContext,
         process: CodingProcessReceipt,
         listener: CloudListener,
+        token: string,
       ): Promise<() => void>;
       authorizeProcess?(
         input: BackgroundStart,
@@ -596,12 +597,29 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     const resource = this.live.get(ctx.runId);
     if (!resource?.processes || resource.ctx.threadId !== ctx.threadId || resource.ctx.turnId !== ctx.turnId)
       throw new AuxError("ref_stale", "Start the original cloud command before opening its Preview.");
-    await this.assertLive(resource, signal);
+    const session = resource.session,
+      sessionId = session.sessionId,
+      sandboxName = resource.sandbox.name;
+    const current = async (token: string, signal?: AbortSignal) => {
+      const exactSession = () => {
+        this.assertRetained(resource, signal);
+        if (
+          resource.session !== session ||
+          session.sessionId !== sessionId ||
+          resource.sandbox.name !== sandboxName
+        )
+          throw new AuxError("ref_stale", "The original cloud Preview session changed.");
+      };
+      exactSession();
+      await this.assertAccount(resource, signal);
+      await native.turnSourceContext!(token);
+      exactSession();
+    };
     resource.previews ??= new CloudPreviews({
       context: resource.ctx,
       native,
       authorize,
-      current: (signal) => this.assertLive(resource, signal),
+      current,
       process: (id) => {
         const receipt = resource.processes!.status(id, ctx.runId);
         if (
@@ -611,11 +629,11 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
           throw new AuxError("ref_stale", "The server belongs to a different cloud session.");
         return receipt;
       },
-      listeners: async (process, port, signal) => {
+      listeners: async (process, port, token, signal) => {
         if (!process.execution?.supervisor || !process.execution.commandId)
           throw new AuxError("ref_stale", "The server has no original process ownership proof.");
         const program = await this.processProgram();
-        await this.assertLive(resource, signal);
+        await current(token, signal);
         const stdout = boundedOutput(),
           stderr = boundedOutput();
         const result = await resource.session.runCommand({
@@ -633,16 +651,19 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
           stdout: stdout.stream,
           stderr: stderr.stream,
         });
-        await this.assertLive(resource, signal);
+        await current(token, signal);
         if (result.exitCode !== 0 || stdout.truncated())
           throw new AuxError("ref_stale", stderr.value() || "The original cloud listener retired.");
         return CloudListenerSchema.array().max(256).parse(JSON.parse(stdout.value()));
       },
-      expose: (port, signal, fence) =>
-        this.updatePreviewPort(resource, port, true, signal, fence).then(
-          () => new URL(resource.session.domain(port)).origin + "/",
-        ),
-      hide: (port) => this.updatePreviewPort(resource, port, false),
+      expose: (port, token, signal, fence) =>
+        this.updatePreviewPort(resource, port, {
+          kind: "expose",
+          signal,
+          fence,
+          current: () => current(token, signal),
+        }).then(() => new URL(resource.session.domain(port)).origin + "/"),
+      hide: (port) => this.updatePreviewPort(resource, port, { kind: "hide" }),
     });
     return resource.previews.open(input, token, signal);
   }
@@ -665,25 +686,31 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
   private updatePreviewPort(
     resource: LiveResource,
     port: number,
-    expose: boolean,
-    signal?: AbortSignal,
-    fence?: () => void,
+    change:
+      | { kind: "hide" }
+      | { kind: "expose"; signal?: AbortSignal; fence?: () => void; current(): Promise<void> },
   ): Promise<void> {
     const work = resource.previewPorts.then(async () => {
       if (resource.finalReceipt) {
         resource.exposedPorts.delete(port);
+        if (change.kind === "expose") throw new AuxError("cancelled", "The original cloud session stopped.");
         return;
       }
-      if (expose) {
-        await this.assertLive(resource, signal);
-        fence?.();
+      if (change.kind === "expose") {
+        await change.current();
+        change.fence?.();
         resource.exposedPorts.add(port);
       }
-      const ports = [...resource.exposedPorts].filter((candidate) => expose || candidate !== port);
+      const ports = [...resource.exposedPorts].filter(
+        (candidate) => change.kind === "expose" || candidate !== port,
+      );
       // update({ports}) changes only routes on this retained Sandbox; it never starts/resumes a Session.
-      await resource.sandbox.update({ ports }, { signal: expose ? signal : AbortSignal.timeout(30000) });
-      if (!expose) resource.exposedPorts.delete(port);
-      else await this.assertLive(resource, signal);
+      await resource.sandbox.update(
+        { ports },
+        { signal: change.kind === "expose" ? change.signal : AbortSignal.timeout(30000) },
+      );
+      if (change.kind === "hide") resource.exposedPorts.delete(port);
+      else await change.current();
     });
     resource.previewPorts = work.catch(() => {});
     return work;
@@ -846,6 +873,10 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
   private async assertLive(resource: LiveResource, signal?: AbortSignal) {
     this.assertRetained(resource, signal);
     await this.deps.assertOwner(resource.ctx, resource.quote);
+    await this.assertAccount(resource, signal);
+  }
+  private async assertAccount(resource: LiveResource, signal?: AbortSignal): Promise<void> {
+    this.assertRetained(resource, signal);
     if (cloudQuoteIdentity((await this.deps.configuration()).quote).digest !== resource.quoteDigest)
       throw new AuxError("ref_stale", "The original cloud account or quote changed.");
     this.assertRetained(resource, signal);
@@ -873,8 +904,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     }
     if (!context.verifyOwner)
       throw new AuxError("permission_denied", "Undo cloud changes from their original Aux window.");
-    if (cloudQuoteIdentity((await this.deps.configuration()).quote).digest !== resource.quoteDigest)
-      throw new AuxError("ref_stale", "The original cloud account or quote changed.");
+    await this.assertAccount(resource, context.signal);
     await context.verifyOwner();
     context.checkOwner?.();
     current();
