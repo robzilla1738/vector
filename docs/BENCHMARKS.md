@@ -16,6 +16,7 @@ listener; no test GN bypass or saved Profile is used.
 
 The comparison covers cold launch, actual first frame, cold launch to usable UI,
 navigation input latency, presented tab switch, presented command-bar results,
+immediate same-Profile relaunch, p95 tab/command interactions across 100 native inputs per browser,
 process-tree physical footprint, app bytes, and the bundled Node bytes.
 Presentation requires native successful compositor feedback. An animation frame,
 DOM readiness, open listener, or loaded host bridge cannot substitute for it.
@@ -26,8 +27,8 @@ footprint and sizes in MB, Aux/stock pairs):
 
 <!-- native-perf-table:start -->
 
-| Date / build / power | Cold launch | First frame | Cold interactive | Navigation input | Tab switch | Command bar | Footprint | App / Node |   n | Raw report |
-| -------------------- | ----------: | ----------: | ---------------: | ---------------: | ---------: | ----------: | --------: | ---------: | --: | ---------- |
+| Date / build / power | Cold launch | First frame | Cold interactive | Navigation input | Tab switch | Command bar | Warm frame | Tab p95 | Command p95 | Footprint | App / Node |   n | Raw report |
+| -------------------- | ----------: | ----------: | ---------------: | ---------------: | ---------: | ----------: | ---------: | ------: | ----------: | --------: | ---------: | --: | ---------- |
 
 <!-- native-perf-table:end -->
 

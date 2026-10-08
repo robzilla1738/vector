@@ -7,7 +7,12 @@ not yet produced a complete measured comparison.
 The comparison takes five paired runs and reports medians for cold launch,
 actual first presentation, launch to usable content, navigation input,
 presented tab switch, command-bar results, process-tree physical footprint,
-app bytes and bundled Node bytes. Both source trees must have the same Chromium
+app bytes and bundled Node bytes. Each measured process also records 20 tab switches
+and 20 single-character omnibox queries, producing 100 samples per browser for p50/p95/max.
+After each fresh-process sample it relaunches the same disposable Profile and records
+the warm first frame. These observations remain separate from the prepared fresh-process
+samples. Available runtime boot marks are retained as diagnostics; missing marks do not
+prove a runtime-startup target. Both source trees must have the same Chromium
 VERSION and the same critical resolved fast-build flags, with the Aux shell
 excluded from stock. Stock receives the same benign measurement instrumentation.
 Source changes do not require an artificial clean-checkout qualification.

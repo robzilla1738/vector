@@ -212,6 +212,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         phase,
         durationMs: Math.round((at - phaseStarted) * 100) / 100,
         elapsedMs: Math.round((at - bootStarted) * 100) / 100,
+        processElapsedMs: Math.round(process.uptime() * 100000) / 100,
       })}\n`,
     );
     phaseStarted = at;

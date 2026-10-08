@@ -45,7 +45,13 @@ if (process.argv.includes("--plan")) {
         command:
           "pnpm perf --aux-app /absolute/Aux.app --stock-app /absolute/Chromium.app --aux-source /absolute/patched/src --stock-source /absolute/stock/src [--output /absolute/new/report]",
         runs: 5,
-        metrics: names,
+        metrics: {
+          ...names,
+          warmFirstFrame: names.firstFrame,
+          tabSwitchP95: names.tabSwitch,
+          commandBarP95: names.commandBar,
+        },
+        interactionsPerProcess: 20,
         controls:
           "Same pinned Chromium VERSION and resolved fast flags; AC power; prepared disposable Profiles; 50,000 synthetic history entries; 10 idle fixture tabs; identical native instrumentation; no OS cache flush.",
         status: "Measures only after native instrumentation is compiled in both apps.",
@@ -166,7 +172,7 @@ try {
     120000,
   );
   const report = {
-    schema: 3,
+    schema: 4,
     status: "incomplete",
     at: new Date().toISOString(),
     machine: { arch: arch(), osRelease: osRelease(), model: command("sysctl", ["-n", "hw.model"]), power },
@@ -175,6 +181,8 @@ try {
       runs: 5,
       historyEntries: 50000,
       idleTabs: 10,
+      interactionSamplesPerProcess: 20,
+      warmLaunch: "immediate relaunch of the same measured disposable Profile with ten tabs",
       profile: "fresh process; clone of prepared disposable Profile",
       osCaches: "not flushed",
       buildProvenance:
@@ -188,6 +196,7 @@ try {
     },
     raw: { aux: [], stock: [] },
     medians: {},
+    percentiles: {},
     errors: [],
   };
   const save = () => writeFileSync(join(output, "report.json"), JSON.stringify(report, null, 2));
@@ -304,16 +313,32 @@ try {
       ],
       { env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"] },
     );
-    let stderr = "";
+    let stderr = "",
+      bootBuffer = "";
+    const bootPhases = [];
     child.stderr.on("data", (data) => {
       stderr = (stderr + data).slice(-8000);
+      bootBuffer = (bootBuffer + data).slice(-8000);
+      let end;
+      while ((end = bootBuffer.indexOf("\n")) >= 0) {
+        const line = bootBuffer.slice(0, end);
+        bootBuffer = bootBuffer.slice(end + 1);
+        const match = line.match(/^\[runtime\] boot (\{.*\})$/);
+        if (!match || bootPhases.length >= 32) continue;
+        try {
+          const phase = JSON.parse(match[1]);
+          if (typeof phase.phase === "string" && Number.isFinite(phase.elapsedMs)) bootPhases.push(phase);
+        } catch {
+          /* An incomplete diagnostic line is not a timing observation. */
+        }
+      }
     });
     const exited = new Promise((resolve) => child.once("exit", (code, signal) => resolve({ code, signal })));
     const live = () => {
       if (child.exitCode !== null || child.signalCode !== null)
         throw new Error(`Original ${build.kind} exited: ${stderr}`);
     };
-    const run = { kind: build.kind, child, exited, profile, input: null, browser: null };
+    const run = { kind: build.kind, child, exited, profile, input: null, browser: null, bootPhases };
     try {
       const port = await until("original browser-owned loopback listener", () => {
         live();
@@ -397,8 +422,16 @@ try {
     return pages;
   }
   async function addressReady(run) {
-    await until("original browser address focus", async () => (await run.input.call("address-ready", run.kind === "aux"
-      ? { expectedLabel: "address, search, and agent prompt" } : {})).ready);
+    await until(
+      "original browser address focus",
+      async () =>
+        (
+          await run.input.call(
+            "address-ready",
+            run.kind === "aux" ? { expectedLabel: "address, search, and agent prompt" } : {},
+          )
+        ).ready,
+    );
   }
   async function open(run) {
     const before = (await loadedFixturePages(run)).length;
@@ -524,15 +557,22 @@ try {
             }
           }
           assert.equal(windows.size, 1, "All fixture tabs must belong to the original native window");
-          const beforeSwitch = await hist(run, names.tabSwitch);
-          await run.input.call("key", { chord: "next-tab" });
-          sample.tabSwitch = await observation(run, names.tabSwitch, beforeSwitch);
-          await run.input.call("key", { chord: "address" });
-          await addressReady(run);
-          const beforeQuery = await hist(run, names.commandBar);
-          await run.input.call("text", { text: "native fixture" });
-          sample.commandBar = await observation(run, names.commandBar, beforeQuery);
-          await run.input.call("key", { chord: "escape" });
+          sample.interactions = { tabSwitch: [], commandBar: [] };
+          for (let interaction = 0; interaction < 20; interaction++) {
+            const beforeSwitch = await hist(run, names.tabSwitch);
+            await run.input.call("key", { chord: "next-tab" });
+            sample.interactions.tabSwitch.push(await observation(run, names.tabSwitch, beforeSwitch));
+            await run.input.call("key", { chord: "address" });
+            await addressReady(run);
+            const beforeQuery = await hist(run, names.commandBar);
+            // One native character is one input observation; multi-character typing
+            // may cross presentation frames and cannot be a single latency sample.
+            await run.input.call("text", { text: interaction % 2 ? "f" : "n" });
+            sample.interactions.commandBar.push(await observation(run, names.commandBar, beforeQuery));
+            await run.input.call("key", { chord: "escape" });
+          }
+          sample.tabSwitch = sample.interactions.tabSwitch[0];
+          sample.commandBar = sample.interactions.commandBar[0];
           await delay(2000); // Fixed idle workload settling, not a readiness metric.
           const processRows = command("ps", ["-axo", "pid=,ppid="])
             .split("\n")
@@ -548,6 +588,7 @@ try {
               }
           }
           sample.memory = await run.input.call("memory", { pids: [...descendants] });
+          sample.runtimeBoot = run.bootPhases.map((phase) => ({ ...phase }));
           sample.powerAfter = command("pmset", ["-g", "batt"]);
           assert.match(
             sample.powerAfter,
@@ -558,6 +599,15 @@ try {
           save();
         } finally {
           await close(run);
+        }
+        const warm = await launch(builds[kind], profile);
+        try {
+          const sample = report.raw[kind].at(-1);
+          sample.warmLaunch = await observation(warm, names.coldLaunch);
+          sample.warmFirstFrame = await observation(warm, names.firstFrame);
+          save();
+        } finally {
+          await close(warm);
           rmSync(profile, { recursive: true });
         }
       }
@@ -567,6 +617,17 @@ try {
       assert.equal(report.raw[kind].length, 5);
       report.medians[kind] = Object.fromEntries(
         Object.keys(names).map((name) => [name, median(report.raw[kind].map((sample) => sample[name]))]),
+      );
+      for (const metric of ["warmLaunch", "warmFirstFrame"])
+        report.medians[kind][metric] = median(report.raw[kind].map((sample) => sample[metric]));
+      report.percentiles[kind] = Object.fromEntries(
+        ["tabSwitch", "commandBar"].map((metric) => {
+          const values = report.raw[kind]
+            .flatMap((sample) => sample.interactions[metric])
+            .sort((a, b) => a - b);
+          assert.equal(values.length, 100);
+          return [metric, { samples: values.length, p50: values[49], p95: values[94], max: values.at(-1) }];
+        }),
       );
       report.medians[kind].appBytes = bytes(builds[kind].app);
       const node = join(builds[kind].app, "Contents/Helpers/Aux Runtime");
@@ -584,6 +645,8 @@ try {
     report.status = "complete";
     save();
     const pair = (name) => ["aux", "stock"].map((kind) => report.medians[kind][name].toFixed(1)).join(" / ");
+    const p95 = (name) =>
+      ["aux", "stock"].map((kind) => report.percentiles[kind][name].p95.toFixed(1)).join(" / ");
     const mb = (name) =>
       ["aux", "stock"]
         .map((kind) =>
@@ -592,7 +655,7 @@ try {
         .join(" / ");
     const rawTarget = join(output, "report.json");
     const rawLink = /\s/.test(rawTarget) ? `<${rawTarget}>` : rawTarget;
-    const row = `| ${report.at.slice(0, 10)} / ${builds.aux.revision.slice(0, 9)} / AC | ${pair("coldLaunch")} | ${pair("firstFrame")} | ${pair("coldInteractive")} | ${pair("navigationInput")} | ${pair("tabSwitch")} | ${pair("commandBar")} | ${mb("physicalFootprintBytes")} | ${mb("appBytes")} / Node ${mb("nodeBytes")} | 5 | [raw report](${rawLink}) |`;
+    const row = `| ${report.at.slice(0, 10)} / ${builds.aux.revision.slice(0, 9)} / AC | ${pair("coldLaunch")} | ${pair("firstFrame")} | ${pair("coldInteractive")} | ${pair("navigationInput")} | ${pair("tabSwitch")} | ${pair("commandBar")} | ${pair("warmFirstFrame")} | ${p95("tabSwitch")} | ${p95("commandBar")} | ${mb("physicalFootprintBytes")} | ${mb("appBytes")} / Node ${mb("nodeBytes")} | 5 | [raw report](${rawLink}) |`;
     writeFileSync(join(output, "benchmark-row.md"), `${row}\n`);
     const benchmarksPath = join(root, "docs/BENCHMARKS.md");
     let benchmarks = readFileSync(benchmarksPath, "utf8");
