@@ -155,6 +155,8 @@ function Process({ process, refresh }: { process: CodingProcessView; refresh: ()
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const cursor = useRef(0);
+  const retryStop =
+    process.state === "uncertain" && process.execution?.backend === "cloud" && !!process.execution.commandId;
   async function loadLogs() {
     try {
       const next = await call("coding.logs", {
@@ -170,6 +172,7 @@ function Process({ process, refresh }: { process: CodingProcessView; refresh: ()
   }
   async function stop() {
     setBusy(true);
+    setError("");
     try {
       await call("coding.stop", { runId: process.runId, processId: process.processId });
       await refresh();
@@ -194,13 +197,17 @@ function Process({ process, refresh }: { process: CodingProcessView; refresh: ()
       <button type="button" onClick={() => void loadLogs()}>
         Read new output
       </button>
-      {(process.state === "running" || process.state === "starting") && (
+      {(process.state === "running" || process.state === "starting" || retryStop) && (
         <button type="button" disabled={busy} onClick={() => void stop()}>
-          Stop process
+          {retryStop ? "Retry Stop" : "Stop process"}
         </button>
       )}
       {process.state === "uncertain" && (
-        <p>Read the output and ask Aux to reconcile the original process before retrying.</p>
+        <p>
+          {retryStop
+            ? "The original cloud command's outcome is unknown. Retry Stop to confirm it has ended."
+            : "Read the output and ask Aux to reconcile the original process before retrying."}
+        </p>
       )}
       {error && <p role="alert">{error}</p>}
       {logs && <pre className="coding-process-log">{logs}</pre>}
