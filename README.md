@@ -6,6 +6,8 @@ Read the [roadmap](docs/ROADMAP.md) for the product direction, [status](docs/STA
 
 ## Development
 
+Node `26.9.0` is recommended for local checks and recorded in `.node-version`. It includes the [SQLite backup completion fix](https://github.com/nodejs/node/pull/65666) that prevents pending backup promises from waiting for unrelated event-loop activity. The package engine requirement remains `>=22.18.0`.
+
 ```bash
 pnpm install
 npm run check

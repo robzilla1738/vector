@@ -11,7 +11,7 @@ import { pipeline } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
 import { assertDevLock } from "../scripts/dev.mjs";
 
-export const nodeVersion = "26.7.0";
+export const nodeVersion = "26.9.0";
 export const nodeLicenseName = "LICENSE_NODE.txt";
 export const nodeIcuDataName = "icudt78l.dat";
 export const nodeIcuDataSha256 = "ef9bbeee661fac0da8d642a38ad993461ae6b2afdd6877d64ca0e935463a2aad";
@@ -27,7 +27,7 @@ export async function nodeIcuData(executable) {
 }
 
 const archiveName = `node-v${nodeVersion}.tar.xz`;
-const archiveSha256 = "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356";
+const archiveSha256 = "47b970d88511b429e587b740fa733176909d2a2005a29662f01b05205f58468b";
 const configureArgs = ["--with-intl=small-icu", "--without-npm", "--enable-lto"];
 // Node 26 no longer distributes Corepack or accepts --without-corepack.
 
