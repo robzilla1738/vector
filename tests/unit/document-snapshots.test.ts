@@ -103,13 +103,27 @@ it("seals immutable metadata and segments, survives reopen, and fences cursor an
     const first = saved.read(owner, receipt.sha256);
     expect(first.chunk.segments).toHaveLength(4);
     const second = saved.read(owner, receipt.sha256, first.nextCursor);
+    expect(second.chunk.index).toBe(1);
     expect(second.chunk.segments[0]?.locator).toMatchObject({ page: 5 });
     expect(saved.read(owner, receipt.sha256)).toEqual(first);
     expect(() => saved.read({ ...owner, ownerId: "other" }, receipt.sha256)).toThrow();
-    const other = capture("Another source");
+    const other = fixture;
     const otherOwner = { ...owner, documentId: "other" };
     const otherReceipt = await saved.importSource(otherOwner, other.input, other.source, context());
+    expect(otherReceipt.sha256).toBe(receipt.sha256);
     expect(() => saved.read(otherOwner, otherReceipt.sha256, first.nextCursor)).toThrow(/another snapshot/);
+    const reveal = vi.spyOn(repo, "revealRecordField");
+    const streamed: DocumentSegment[] = [];
+    for await (const segment of saved.segments(
+      otherOwner,
+      otherReceipt.sha256,
+      new AbortController().signal,
+      () => {},
+    ))
+      streamed.push(segment);
+    expect(streamed).toHaveLength(5);
+    expect(reveal.mock.calls.filter(([table]) => table === "document_snapshots")).toHaveLength(2);
+    reveal.mockRestore();
     const cipher = db
       .prepare("SELECT json FROM document_segments WHERE document_id='document' AND ordinal=0")
       .get() as { json: string };

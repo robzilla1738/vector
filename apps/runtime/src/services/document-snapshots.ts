@@ -45,8 +45,8 @@ const identity = (owner: DocumentOwner, snapshotId: string) => [
 ];
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 const CursorSchema = z.tuple([
-  z.string().uuid(),
   z.string().regex(/^[a-f0-9]{64}$/),
+  z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
 ]);
 
@@ -205,6 +205,11 @@ export class DocumentSnapshots {
   }
 
   metadata(owner: DocumentOwner, expectedSha256?: string): DocumentSnapshot {
+    return this.original(owner, expectedSha256).snapshot;
+  }
+
+  private original(owner: DocumentOwner, expectedSha256?: string) {
+    if (this.closed) throw new AuxError("cancelled", "Document reading is closed.");
     const row = this.repo.db
       .prepare(
         "SELECT snapshot_id,manifest FROM document_snapshots WHERE owner_kind=? AND owner_id=? AND document_id=? AND state='published'",
@@ -227,12 +232,15 @@ export class DocumentSnapshots {
       (expectedSha256 !== undefined && snapshot.sha256 !== expectedSha256)
     )
       throw new AuxError("ref_stale", "The saved document no longer matches its original identity.");
-    return snapshot;
+    return { snapshot, manifest: row.manifest };
   }
 
   read(owner: DocumentOwner, sha256: string, cursor?: string): SavedDocumentPage {
-    const snapshot = this.metadata(owner, sha256);
+    const { snapshot, manifest } = this.original(owner, sha256);
+    const key = identity(owner, snapshot.document.snapshotId);
+    const binding = digest(JSON.stringify([...key, sha256]));
     let start = 0;
+    let chunkIndex = 0;
     if (cursor !== undefined) {
       let parsed: z.infer<typeof CursorSchema>;
       try {
@@ -241,20 +249,16 @@ export class DocumentSnapshots {
       } catch {
         throw new AuxError("ref_stale", "The saved document cursor is invalid.");
       }
-      if (
-        parsed[0] !== snapshot.document.snapshotId ||
-        parsed[1] !== sha256 ||
-        parsed[2] >= snapshot.completed.segmentCount
-      )
+      if (parsed[0] !== binding || parsed[1] >= snapshot.completed.segmentCount || parsed[2] > parsed[1])
         throw new AuxError("ref_stale", "The saved document cursor belongs to another snapshot.");
-      start = parsed[2];
+      start = parsed[1];
+      chunkIndex = parsed[2];
     }
-    const key = identity(owner, snapshot.document.snapshotId);
     const segments: DocumentSegment[] = [];
     let bytes = 0;
     let ordinal = start;
     while (ordinal < snapshot.completed.segmentCount) {
-      const segment = this.segment(key, ordinal);
+      const segment = this.segment(key, ordinal, manifest);
       const frameBytes = encodeDocumentSegment(segment).byteLength;
       if (bytes + frameBytes > DOCUMENT_MAX_CHUNK_BYTES) break;
       segments.push(segment);
@@ -263,12 +267,10 @@ export class DocumentSnapshots {
     }
     return {
       ...snapshot,
-      chunk: { index: start, segments },
+      chunk: { index: chunkIndex, segments },
       ...(ordinal < snapshot.completed.segmentCount
         ? {
-            nextCursor: Buffer.from(JSON.stringify([snapshot.document.snapshotId, sha256, ordinal])).toString(
-              "base64url",
-            ),
+            nextCursor: Buffer.from(JSON.stringify([binding, ordinal, chunkIndex + 1])).toString("base64url"),
           }
         : {}),
     };
@@ -280,26 +282,34 @@ export class DocumentSnapshots {
     signal: AbortSignal,
     checkCurrent: () => void,
   ): AsyncGenerator<DocumentSegment> {
-    const snapshot = this.metadata(owner, sha256);
+    const { snapshot, manifest } = this.original(owner, sha256);
     const key = identity(owner, snapshot.document.snapshotId);
+    let batchBytes = 0;
     for (let ordinal = 0; ordinal < snapshot.completed.segmentCount; ordinal++) {
       if (this.closed || signal.aborted) throw new AuxError("cancelled", "Document reading was cancelled.");
       checkCurrent();
-      this.metadata(owner, sha256);
-      yield this.segment(key, ordinal);
-      await setImmediate();
+      const segment = this.segment(key, ordinal, manifest);
+      batchBytes += Buffer.byteLength(segment.text);
+      yield segment;
+      if (batchBytes >= DOCUMENT_MAX_CHUNK_BYTES || ordinal % 32 === 31) {
+        await setImmediate();
+        batchBytes = 0;
+      }
     }
     if (this.closed || signal.aborted) throw new AuxError("cancelled", "Document reading was cancelled.");
     checkCurrent();
     this.metadata(owner, sha256);
   }
 
-  private segment(key: string[], ordinal: number): DocumentSegment {
+  private segment(key: string[], ordinal: number, manifest: string): DocumentSegment {
     const row = this.repo.db
       .prepare(
-        "SELECT json FROM document_segments WHERE owner_kind=? AND owner_id=? AND document_id=? AND snapshot_id=? AND ordinal=?",
+        `SELECT segments.json FROM document_segments segments JOIN document_snapshots snapshot
+        USING(owner_kind,owner_id,document_id,snapshot_id)
+        WHERE owner_kind=? AND owner_id=? AND document_id=? AND snapshot_id=? AND ordinal=?
+          AND snapshot.state='published' AND snapshot.manifest=?`,
       )
-      .get(...key, ordinal) as { json: string } | undefined;
+      .get(...key, ordinal, manifest) as { json: string } | undefined;
     if (!row) throw new AuxError("ref_stale", "A segment of the saved document is unavailable.");
     return DocumentSegmentSchema.parse(
       JSON.parse(this.repo.revealRecordField("document_segments", [...key, ordinal], "json", row.json)),
