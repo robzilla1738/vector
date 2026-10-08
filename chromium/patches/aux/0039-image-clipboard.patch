@@ -1,0 +1,494 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index e7eb504..12de5e1 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -106,7 +106,7 @@ AuxMethodRegistry::AuxMethodRegistry() {
+                  {"defaultBrowser", "setDefaultBrowser", "dataDir",
+                   "resolveSearch", "setAppearance", "setShortcuts", "dispatchCommand",
+                   "windowControlsVisible", "focusShell", "showRunAttention", "openFile", "saveFile", "saveWorkbook",
+-                  "saveStoredArtifact",
++                  "saveStoredArtifact", "copyStoredImage",
+                   "agentConfig", "agentConnections", "agentClients",
+                   "revokeAgentConnection",
+                   "openPluginDirectory", "pickEvidenceImage",
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+index 42f1d44..cb2e7a7 100644
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -962,6 +962,19 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+         base::FilePath::StringType(), browser_->GetWindow()->GetNativeWindow());
+     return;
+   }
++  if (method == "copyStoredImage") {
++    if (list->size() != 1 || !(*list)[0].is_string() ||
++        (*list)[0].GetString().empty() || (*list)[0].GetString().size() > 128 ||
++        (*list)[0].GetString().find_first_not_of(
++            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-") !=
++            std::string::npos) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid saved image identity");
++      return;
++    }
++    BeginAuxImageCopy((*list)[0].GetString(), std::move(callback));
++    return;
++  }
+   if (method == "saveWorkbook" || method == "saveStoredArtifact") {
+     const bool workbook = method == "saveWorkbook";
+     if ((workbook && (list->empty() || list->size() > 2 ||
+diff --git a/chrome/browser/ui/webui_browser/BUILD.gn b/chrome/browser/ui/webui_browser/BUILD.gn
+index 2c218e3..344a328 100644
+--- a/chrome/browser/ui/webui_browser/BUILD.gn
++++ b/chrome/browser/ui/webui_browser/BUILD.gn
+@@ -195,6 +195,9 @@ source_set("impl") {
+       "//components/device_reauth",
+       "//components/password_manager/core/browser",
+       "//crypto",
++      "//services/data_decoder/public/cpp",
++      "//skia",
++      "//ui/base/clipboard",
+       "//extensions/browser",
+       "//extensions/common",
+       "//chrome/browser/resources/aux_host:resources",
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 41be250..2dd8360 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -12,6 +12,7 @@
+ #include <cmath>
+ #include <utility>
+ #include <variant>
++#include <vector>
+ 
+ #include "base/containers/span.h"
+ #include "base/files/file_util.h"
+@@ -36,6 +37,14 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "crypto/hash.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "services/data_decoder/public/cpp/data_decoder.h"
++#include "services/data_decoder/public/cpp/decode_image.h"
++#include "services/data_decoder/public/mojom/image_decoder.mojom.h"
++#include "third_party/skia/include/core/SkBitmap.h"
++#include "ui/base/clipboard/clipboard.h"
++#include "ui/base/clipboard/scoped_clipboard_writer.h"
++#include "ui/gfx/geometry/size.h"
+ #include "chrome/browser/devtools/devtools_window.h"
+ #include "chrome/browser/download/download_prefs.h"
+ #include "chrome/browser/ui/aux/evidence_documents.h"
+@@ -181,6 +190,62 @@ std::shared_ptr<base::File> OpenAuxArtifact(const base::FilePath& root,
+   return file;
+ }
+ 
++constexpr int64_t kMaxAuxCopiedImageBytes = 64 * 1024 * 1024;
++
++struct AuxStoredImageBytes {
++  std::vector<uint8_t> bytes;
++  std::string error_code;
++  std::string error_message;
++};
++
++AuxStoredImageBytes ReadAuxStoredImage(
++    base::FilePath root,
++    base::FilePath path,
++    int64_t expected_size,
++    std::string expected_sha256,
++    const std::shared_ptr<std::atomic_bool>& cancelled) {
++  if (cancelled->load())
++    return {{}, "cancelled", "Image copy was cancelled"};
++  if (expected_size <= 0 || expected_size > kMaxAuxCopiedImageBytes) {
++    return {{}, "invalid_argument",
++            "This image is too large to copy. Save the original instead"};
++  }
++  auto source = OpenAuxArtifact(root, path, expected_size);
++  if (!source)
++    return {{}, "io_error", "The original image file is unavailable"};
++  std::vector<uint8_t> bytes(static_cast<size_t>(expected_size));
++  crypto::hash::Hasher hash(crypto::hash::kSha256);
++  size_t offset = 0;
++  while (offset < bytes.size()) {
++    if (cancelled->load())
++      return {{}, "cancelled", "Image copy was cancelled"};
++    const auto part = base::span(bytes).subspan(
++        offset, std::min<size_t>(64 * 1024, bytes.size() - offset));
++    const auto read = source->ReadAtCurrentPos(part);
++    if (!read || !*read)
++      return {{}, "io_error", "The original image file could not be read"};
++    hash.Update(part.first(*read));
++    offset += *read;
++  }
++  std::array<uint8_t, crypto::hash::kSha256Size> digest;
++  hash.Finish(digest);
++  if (source->GetLength() != expected_size ||
++      (!expected_sha256.empty() &&
++       base::HexEncodeLower(digest) != expected_sha256)) {
++    return {{}, "ref_stale", "The original image file changed"};
++  }
++  const std::string_view signature(
++      reinterpret_cast<const char*>(bytes.data()), bytes.size());
++  if (!signature.starts_with("\x89PNG\r\n\x1a\n") &&
++      !signature.starts_with("\xff\xd8\xff") &&
++      !(signature.size() >= 12 && signature.starts_with("RIFF") &&
++        signature.substr(8, 4) == "WEBP")) {
++    return {{}, "invalid_argument",
++            "This saved file is not a PNG, JPEG, or WebP image"};
++  }
++  return {std::move(bytes), {}, {}};
++}
++
+ bool CopyAuxArtifact(std::shared_ptr<base::File> source, int64_t expected_size,
+                      const std::string& expected_sha256,
+                      const base::FilePath& destination) {
+@@ -296,6 +361,240 @@ std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
+ }  // namespace
+ 
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++// One native human copy owns its source claim, decoder and clipboard witness.
++// No source path or encoded image is sent back through the shell transport.
++class AuxStoredImageCopy final : public content::WebContentsObserver {
++ public:
++  using Callback = aux::mojom::ShellHost::RequestCallback;
++
++  AuxStoredImageCopy(content::WebContents* contents,
++                     base::WeakPtr<BrowserWindowInterface> window,
++                     bool private_profile,
++                     base::RepeatingCallback<bool()> current,
++                     Callback callback)
++      : content::WebContentsObserver(contents),
++        private_profile_(private_profile),
++        current_(std::move(current)),
++        callback_(std::move(callback)),
++        clipboard_sequence_(
++            ui::Clipboard::GetForCurrentThread()->GetSequenceNumber(
++                ui::ClipboardBuffer::kCopyPaste)) {
++    window_closed_ = window->RegisterBrowserDidClose(base::BindRepeating(
++        [](AuxStoredImageCopy* copy, BrowserWindowInterface*) {
++          copy->OwnerRetired();
++        },
++        base::Unretained(this)));
++  }
++
++  ~AuxStoredImageCopy() override { Cancel(); }
++
++  base::WeakPtr<AuxStoredImageCopy> GetWeakPtr() {
++    return weak_factory_.GetWeakPtr();
++  }
++
++  void Start(AuxRuntimeHost* runtime,
++             base::WeakPtr<BrowserWindowInterface> window,
++             content::WeakDocumentPtr document,
++             std::string artifact_id) {
++    if (!Current()) {
++      OwnerRetired();
++      return;
++    }
++    deadline_.Start(
++        FROM_HERE, base::Seconds(30),
++        base::BindOnce(&AuxStoredImageCopy::Finish, weak_factory_.GetWeakPtr(),
++                       false, "timeout",
++                       "Image copy timed out. The clipboard was not changed"));
++    runtime->ExportArtifactFromWindow(
++        std::move(window), std::move(document), std::move(artifact_id),
++        base::BindOnce(&AuxStoredImageCopy::OnDescriptor,
++                       weak_factory_.GetWeakPtr()));
++  }
++
++  void Cancel() { Finish(false, "cancelled", "Image copy was cancelled"); }
++
++ private:
++  bool Current() const { return callback_ && current_.Run(); }
++
++  void OwnerRetired() {
++    Finish(false, "ref_stale", "Original image copy window is unavailable");
++  }
++
++  void PrimaryPageChanged(content::Page&) override {
++    if (!Current())
++      OwnerRetired();
++  }
++  void PrimaryMainFrameRenderProcessGone(base::TerminationStatus) override {
++    OwnerRetired();
++  }
++  void WebContentsDestroyed() override { OwnerRetired(); }
++
++  void OnDescriptor(AuxRuntimeHost::Response response,
++                    base::FilePath root,
++                    base::ScopedClosureRunner release) {
++    if (!Current()) {
++      OwnerRetired();
++      return;
++    }
++    release_ = std::move(release);
++    if (!response.ok) {
++      Finish(false, response.error_code, response.error_message);
++      return;
++    }
++    const auto data = base::JSONReader::ReadDict(
++        response.result_json, base::JSON_PARSE_RFC);
++    const auto* path = data ? data->FindString("path") : nullptr;
++    const auto size = data ? data->FindDouble("size") : std::nullopt;
++    const auto* digest = data ? data->FindString("sha256") : nullptr;
++    if (!path || path->empty() || root.empty() || !size ||
++        !std::isfinite(*size) || std::trunc(*size) != *size || *size <= 0 ||
++        (data->contains("claimId") && !digest) ||
++        (data->contains("sha256") && !digest) ||
++        (digest && (digest->size() != 64 ||
++                    digest->find_first_not_of("0123456789abcdef") !=
++                        std::string::npos))) {
++      Finish(false, "invalid_argument", "Invalid saved image descriptor");
++      return;
++    }
++    if (*size > kMaxAuxCopiedImageBytes) {
++      Finish(false, "invalid_argument",
++             "This image is too large to copy. Save the original instead");
++      return;
++    }
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++        base::BindOnce(&ReadAuxStoredImage, std::move(root),
++                       base::FilePath::FromUTF8Unsafe(*path),
++                       static_cast<int64_t>(*size),
++                       digest ? *digest : std::string(), cancelled_),
++        base::BindOnce(&AuxStoredImageCopy::OnRead, weak_factory_.GetWeakPtr()));
++  }
++
++  void OnRead(AuxStoredImageBytes result) {
++    if (!Current()) {
++      OwnerRetired();
++      return;
++    }
++    if (!result.error_code.empty()) {
++      Finish(false, std::move(result.error_code),
++             std::move(result.error_message));
++      return;
++    }
++    decoder_ = std::make_unique<data_decoder::DataDecoder>();
++    decoder_->GetService()->BindImageDecoder(
++        image_decoder_.BindNewPipeAndPassReceiver());
++    image_decoder_.set_disconnect_handler(base::BindOnce(
++        &AuxStoredImageCopy::Finish, weak_factory_.GetWeakPtr(), false,
++        "io_error", "The image decoder is unavailable"));
++    image_decoder_->DecodeImage(
++        base::span<const uint8_t>(result.bytes),
++        data_decoder::mojom::ImageCodec::kDefault,
++        /*shrink_to_fit=*/false, data_decoder::kDefaultMaxSizeInBytes,
++        gfx::Size(),
++        base::BindOnce(&AuxStoredImageCopy::OnDecoded,
++                       weak_factory_.GetWeakPtr()));
++  }
++
++  void OnDecoded(const SkBitmap& bitmap) {
++    if (!Current()) {
++      OwnerRetired();
++      return;
++    }
++    if (bitmap.drawsNothing() || !bitmap.getPixels() ||
++        bitmap.colorType() != kN32_SkColorType ||
++        bitmap.computeByteSize() > data_decoder::kDefaultMaxSizeInBytes) {
++      Finish(false, "invalid_argument",
++             "This image could not be decoded at its original size. "
++             "Save the original instead");
++      return;
++    }
++    auto* clipboard = ui::Clipboard::GetForCurrentThread();
++    if (clipboard->GetSequenceNumber(ui::ClipboardBuffer::kCopyPaste) !=
++        clipboard_sequence_) {
++      Finish(false, "conflict",
++             "The clipboard changed while preparing this image. "
++             "Copy again to replace it");
++      return;
++    }
++    // The deadline governs preparation only. There is no asynchronous gap
++    // between this original sequence check and the native clipboard write.
++    deadline_.Stop();
++    const auto weak = weak_factory_.GetWeakPtr();
++    {
++      ui::ScopedClipboardWriter writer(ui::ClipboardBuffer::kCopyPaste);
++      if (private_profile_)
++        writer.MarkAsOffTheRecord();
++      writer.WriteImage(bitmap);
++    }
++    if (!weak)
++      return;
++    if (!Current()) {
++      OwnerRetired();
++      return;
++    }
++    const auto written =
++        clipboard->GetSequenceNumber(ui::ClipboardBuffer::kCopyPaste);
++    if (written == clipboard_sequence_) {
++      Finish(false, "io_error", "The image could not be copied");
++      return;
++    }
++    clipboard->GetStandardFormats(
++        ui::ClipboardBuffer::kCopyPaste, std::nullopt,
++        base::BindOnce(&AuxStoredImageCopy::OnWritten,
++                       weak_factory_.GetWeakPtr(), written));
++  }
++
++  void OnWritten(ui::ClipboardSequenceNumberToken written,
++                 std::vector<std::u16string> formats) {
++    if (!Current()) {
++      OwnerRetired();
++      return;
++    }
++    if (ui::Clipboard::GetForCurrentThread()->GetSequenceNumber(
++            ui::ClipboardBuffer::kCopyPaste) != written) {
++      Finish(false, "conflict", "The clipboard changed after copying the image");
++      return;
++    }
++    if (std::ranges::find(formats, u"image/png") == formats.end()) {
++      Finish(false, "io_error", "The image could not be copied");
++      return;
++    }
++    Finish(true, {}, {});
++  }
++
++  void Finish(bool copied, std::string code, std::string message) {
++    if (!callback_)
++      return;
++    auto callback = std::move(callback_);
++    auto release = std::move(release_);
++    cancelled_->store(true);
++    weak_factory_.InvalidateWeakPtrs();
++    Observe(nullptr);
++    window_closed_ = {};
++    deadline_.Stop();
++    image_decoder_.reset();
++    decoder_.reset();
++    current_.Reset();
++    if (release)
++      release.RunAndReset();
++    std::move(callback).Run(copied, copied ? "{\"copied\":true}" : "",
++                            std::move(code), std::move(message));
++  }
++
++  const bool private_profile_;
++  base::RepeatingCallback<bool()> current_;
++  Callback callback_;
++  const ui::ClipboardSequenceNumberToken clipboard_sequence_;
++  base::CallbackListSubscription window_closed_;
++  base::ScopedClosureRunner release_;
++  std::shared_ptr<std::atomic_bool> cancelled_ =
++      std::make_shared<std::atomic_bool>(false);
++  base::OneShotTimer deadline_;
++  std::unique_ptr<data_decoder::DataDecoder> decoder_;
++  mojo::Remote<data_decoder::mojom::ImageDecoder> image_decoder_;
++  base::WeakPtrFactory<AuxStoredImageCopy> weak_factory_{this};
++};
++
+ // Embedded page surfaces do not deliver mouse moves to the shell or the
+ // native window event monitor. Sample only this window's active cursor state.
+ class AuxShellEdgeMonitor {
+@@ -456,6 +755,7 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
+ 
+ WebUIBrowserUI::~WebUIBrowserUI() {
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++  RetireAuxImageCopy();
+   RetireAuxArtifactSave();
+   if (open_file_dialog_)
+     open_file_dialog_->ListenerDestroyed();
+@@ -527,6 +827,58 @@ void WebUIBrowserUI::BeginAuxGeneratedSave(std::string filename,
+       browser_->GetWindow()->GetNativeWindow());
+ }
+ 
++void WebUIBrowserUI::BeginAuxImageCopy(std::string artifact_id,
++                                     RequestCallback callback) {
++  auto* runtime = AuxRuntimeHost::ForProfile(browser_->GetProfile());
++  if (!runtime) {
++    std::move(callback).Run(false, "", "backend_unavailable",
++                            "Aux Runtime is unavailable");
++    return;
++  }
++  const auto window = browser_->GetWeakPtr();
++  const auto document = web_ui()->GetRenderFrameHost()->GetWeakDocumentPtr();
++  auto current = base::BindRepeating(
++      [](base::WeakPtr<WebUIBrowserUI> self,
++         base::WeakPtr<BrowserWindowInterface> window,
++         content::WeakDocumentPtr document) {
++        auto* frame = document.AsRenderFrameHostIfValid();
++        return self && window && self->browser_ == window.get() &&
++               !window->IsDeleteScheduled() && frame && frame->IsActive() &&
++               frame->IsRenderFrameLive() &&
++               frame == self->web_ui()->GetRenderFrameHost() &&
++               self->IsAuthorizedAuxDocument();
++      },
++      weak_factory_.GetWeakPtr(), window, document);
++  if (!current.Run()) {
++    std::move(callback).Run(false, "", "ref_stale",
++                            "Original image copy window is unavailable");
++    return;
++  }
++  const auto runtime_owner = runtime->GetWeakPtr();
++  auto next = std::make_unique<AuxStoredImageCopy>(
++      web_ui()->GetWebContents(), window,
++      browser_->GetProfile()->IsOffTheRecord(), std::move(current),
++      std::move(callback));
++  const auto weak_copy = next->GetWeakPtr();
++  auto previous = std::exchange(image_copy_, std::move(next));
++  if (previous)
++    previous->Cancel();
++  // A cancelled callback may reenter and replace this request again.
++  if (!weak_copy)
++    return;
++  if (!runtime_owner) {
++    weak_copy->Cancel();
++    return;
++  }
++  weak_copy->Start(runtime_owner.get(), window, document, std::move(artifact_id));
++}
++
++void WebUIBrowserUI::RetireAuxImageCopy() {
++  auto retired = std::move(image_copy_);
++  if (retired)
++    retired->Cancel();
++}
++
+ void WebUIBrowserUI::BeginAuxArtifactSave(
+     std::string filename, base::FilePath root, base::FilePath source,
+     int64_t source_size, std::string source_sha256,
+@@ -1003,6 +1355,7 @@ void WebUIBrowserUI::FileSelectionCanceled() {
+ void WebUIBrowserUI::CreateShellHost(
+     mojo::PendingReceiver<aux::mojom::ShellHost> host,
+     mojo::PendingRemote<aux::mojom::ShellHostClient> client) {
++  RetireAuxImageCopy();
+   RetireAuxArtifactSave();
+   if (dictation_) {
+     dictation_->CancelAll();
+@@ -1024,6 +1377,7 @@ void WebUIBrowserUI::CreateShellHost(
+             ui->dictation_->CancelAll();
+           }
+           if (ui) {
++            ui->RetireAuxImageCopy();
+             ui->RetireAuxArtifactSave();
+             ui->shell_host_receiver_.reset();
+             ui->shell_host_client_.reset();
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index e7566b1..5cb2dd3 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -76,6 +76,7 @@ class DeviceAuthenticator;
+ }
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ class AuxShellEdgeMonitor;
++class AuxStoredImageCopy;
+ class AuxOmniboxHandler;
+ class AuxDeviceConfirmation;
+ class PrefChangeRegistrar;
+@@ -267,6 +268,8 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+                             base::RepeatingCallback<bool()> current,
+                             RequestCallback callback);
+   void RetireAuxArtifactSave();
++  void BeginAuxImageCopy(std::string artifact_id, RequestCallback callback);
++  void RetireAuxImageCopy();
+   bool IsAuthorizedAuxDocument() const;
+ #endif
+ 
+@@ -355,6 +358,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+   std::unique_ptr<device_reauth::DeviceAuthenticator>
+       password_export_authenticator_;
+   bool password_export_auth_pending_ = false;
++  std::unique_ptr<AuxStoredImageCopy> image_copy_;
+   std::string save_file_content_;
+   std::shared_ptr<base::File> save_file_source_;
+   std::string save_file_source_sha256_;
