@@ -295,7 +295,7 @@ it("all five normal scoped rows retain remapping and no palette authority", () =
     "reset-conversation-supporting-width",
   ])
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       bindings: [],
       intercept: true,

@@ -40,6 +40,7 @@ afterEach(() => {
 });
 it("leaves normal runtimes on their existing storage path", () => {
   expect(PrivateRuntimeSession.fromEnvironment({})).toBeUndefined();
+  expect(PrivateRuntimeSession.fromEnvironment({ AUX_PRIVATE_SESSION: "" })).toBeUndefined();
 });
 it("requires the actual authenticated session identity and native OTR proof", () => {
   const { env } = fixture();

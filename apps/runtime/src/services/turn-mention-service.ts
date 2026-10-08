@@ -32,6 +32,8 @@ export interface MentionContext {
   sourcePageIds?: readonly string[];
 }
 export interface TurnMentionDependencies {
+  /** Set only by the admitted native OTR runtime, never by a turn request. */
+  privateBrowserProfile?: boolean;
   prepareReadPage?(pageId: string): Promise<void>;
   page(pageId: string): PageTarget | undefined;
   authorizeRead?(runId: string, pageId: string, taskRead?: ValidatedTaskRead): Promise<() => void>;
@@ -113,15 +115,22 @@ export class TurnMentionService {
       for (const pageId of defaults)
         if (browserContextPage(() => this.deps.page(pageId))) selected.add(pageId);
       const unavailableImplicitPages: string[] = [];
-      if (this.deps.prepareReadPage && selected.size && !context.privateTask) {
+      if (
+        this.deps.prepareReadPage &&
+        selected.size &&
+        (!context.privateTask || this.deps.privateBrowserProfile)
+      ) {
         await Promise.all(
           [...selected].map(async (pageId) => {
             try {
               await this.deps.prepareReadPage!(pageId);
             } catch (error) {
               if (
-                !hasPageSelection && !context.sourcePageIds && defaults.has(pageId) &&
-                error instanceof AuxError && error.code === "ref_stale"
+                !hasPageSelection &&
+                !context.sourcePageIds &&
+                defaults.has(pageId) &&
+                error instanceof AuxError &&
+                error.code === "ref_stale"
               ) {
                 defaults.delete(pageId);
                 unavailableImplicitPages.push(pageId);
@@ -176,7 +185,7 @@ export class TurnMentionService {
       };
       active.authority.begin(runId, refs, ownedPageIds, {
         defaultPages: [...defaults].map(this.page).filter((page): page is MentionPage => !!page),
-        privateTask: context.privateTask,
+        privateTask: context.privateTask && !this.deps.privateBrowserProfile,
       });
       if (context.privateTask)
         for (const source of active.authority.sourcePages(runId)) {

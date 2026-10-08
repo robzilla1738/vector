@@ -222,7 +222,7 @@ it("uses only closed normal-window scoped registry rows for all ten original act
     expect(COMMANDS.find((command) => command.id === id)).toMatchObject({
       handler: "shell",
       dispatch: "scoped",
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       intercept: true,
       bindings: [],

@@ -262,21 +262,30 @@ export function RunOptions({
           <option value="high">High</option>
         </select>
       </label>
-      <label
-        title={
-          privateTaskLocked
-            ? "This chat's task mode is fixed."
-            : "Use isolated signed-out tabs for this task."
-        }
-      >
-        <Switch
-          aria-label="Private task"
-          checked={privateTask}
-          disabled={disabled || privateTaskLocked}
-          onChange={(event) => patch({ privateTask: event.target.checked })}
-        />
-        Private task
-      </label>
+      {bridge.privateMode ? (
+        <span
+          className="chip"
+          title="Chats stay in this private session and disappear when its last window closes."
+        >
+          Private session · {localOnly ? "local models" : "configured AI provider"}
+        </span>
+      ) : (
+        <label
+          title={
+            privateTaskLocked
+              ? "This chat's task mode is fixed."
+              : "Use isolated signed-out tabs for this task."
+          }
+        >
+          <Switch
+            aria-label="Private task"
+            checked={privateTask}
+            disabled={disabled || privateTaskLocked}
+            onChange={(event) => patch({ privateTask: event.target.checked })}
+          />
+          Private task
+        </label>
+      )}
       {error && <span role="alert">Model catalog unavailable: {error}</span>}
     </div>
   );

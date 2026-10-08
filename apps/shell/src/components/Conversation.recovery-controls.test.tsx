@@ -397,7 +397,7 @@ for (const changed of ["run", "observation"] as const)
 it("both recovery rows remain normal scoped remappable controls", () => {
   for (const id of ["restore-archived-conversation", "reopen-conversation-page"])
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       bindings: [],
       intercept: true,

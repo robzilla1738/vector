@@ -469,7 +469,7 @@ it("all five source actions are normal scoped and remappable", () => {
     "cancel-conversation-source-profile",
   ])
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       bindings: [],
       intercept: true,

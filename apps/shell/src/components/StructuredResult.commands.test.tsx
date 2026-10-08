@@ -62,7 +62,7 @@ it("three actual actions retain normal scoped registry and disconnected source t
   await render();
   for (const id of Object.values(ids))
     expect(COMMANDS.find((value) => value.id === id)).toMatchObject({
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       bindings: [],
       intercept: true,

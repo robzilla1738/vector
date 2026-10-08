@@ -205,7 +205,7 @@ it("hidden/unfocused controls refuse original close or display mutation", async 
 it("all four actions remain original normal scoped controls", () => {
   for (const id of [text, details, retry, closeId])
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       bindings: [],
       intercept: true,

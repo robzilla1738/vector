@@ -332,7 +332,7 @@ it("adds only the four original focused normal-window remappable command policie
   for (const id of ids)
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
       handler: "shell",
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       bindings: [],
       intercept: true,

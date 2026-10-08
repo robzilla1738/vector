@@ -86,6 +86,8 @@ export interface CoordinatorDeps {
   pauseFamily?: (runId: string, reason: string) => Promise<() => Promise<void>>;
   taskSource?: (taskId: string) => { revision: number; state: string; sourceOrigin?: string };
   turnMentions: import("../services/turn-mention-service.js").TurnMentionService;
+  /** Native OTR already owns the private browser session and its signed-in tabs. */
+  privateBrowserProfile?: boolean;
   repo: Repo;
   events: EventBus;
   pages: PageService;
@@ -265,7 +267,7 @@ export class RunCoordinator {
         nightShiftItemId: opts.nightShiftItemId,
         modelId: opts.modelId,
         reasoning: opts.reasoning,
-        privateTask: opts.privateTask ?? false,
+        privateTask: this.deps.privateBrowserProfile || (opts.privateTask ?? false),
         agentMode: opts.agentMode,
         executionTarget: opts.executionTarget ?? "local",
         nativeTurnContext: opts.nativeTurnContext,
@@ -1605,13 +1607,14 @@ export class RunCoordinator {
       this.deps.repo.saveRun(run);
     }
     if (this.deps.turnMentions.unavailableImplicitPages(runId).length) {
-      const message = "Some browser tabs are still loading and were omitted from this run’s context. Open them before mentioning them.";
+      const message =
+        "Some browser tabs are still loading and were omitted from this run’s context. Open them before mentioning them.";
       run.statusMessage = message;
       this.deps.repo.saveRun(run);
       this.deps.events.emit(EventTypes.RunStatus, { runId, status: run.status, message }, runId);
     }
     await this.acquirePages(runId);
-    if (this.get(runId).config?.privateTask) {
+    if (this.get(runId).config?.privateTask && !this.deps.privateBrowserProfile) {
       const current = this.get(runId);
       await this.deps.turnMentions.begin(runId, current.config?.mentions ?? [], this.ownedPages(runId), {
         workspaceId: current.config?.contextWorkspaceId,
@@ -1708,7 +1711,7 @@ export class RunCoordinator {
       if (
         this.deps.browserEgress &&
         !run.config?.isolatedPageSources &&
-        (run.config?.privateTask || !!run.config?.setMemberSource)
+        ((run.config?.privateTask && !this.deps.privateBrowserProfile) || !!run.config?.setMemberSource)
       ) {
         const sources: NonNullable<NonNullable<Run["config"]>["isolatedPageSources"]> = [];
         for (const sourcePageId of run.pageIds) {

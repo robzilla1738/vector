@@ -55,16 +55,6 @@ export const useStore = create<Workspace>((set, get, api) => ({
   ...createRunsSlice(set, get, api),
 
   refresh: async () => {
-    if (bridge.privateMode) {
-      // Private windows deliberately have no Aux runtime; their tab catalog is
-      // still native and should refresh without a reconnect loop.
-      try {
-        get().syncTabsSnapshot(await bridge.tabsSnapshot());
-      } catch {
-        /* Native tab patches can converge after the next window event. */
-      }
-      return;
-    }
     if (
       !bridge.privateMode &&
       bridge.windowKind === "normal" &&
@@ -90,6 +80,13 @@ export const useStore = create<Workspace>((set, get, api) => ({
       .then((snapshot) => get().syncTabsSnapshot(snapshot))
       .catch(() => {});
     try {
+      if (bridge.privateMode) {
+        const identity = await bridge.capabilities();
+        if (!identity.privateSession) throw new Error("The private AI session is unavailable.");
+        // This first unscoped request starts this OTR worker before Send needs
+        // its authenticated window token. It never starts the regular worker.
+        await call("settings.get");
+      }
       const ws = await call("workspace.get");
       const [bookmarks, settings, downloads, programs] = await Promise.all([
         call("bookmarks.list").catch(() => [] as { url: string; title: string }[]),

@@ -384,5 +384,5 @@ it("hidden preview and detached original element cannot gain mutation authority"
 });
 it("five metadata rows remain normal scoped and remappable", () => {
   for (const id of ["preview-conversation-document", toggle, remove, "preview-conversation-result", result])
-    expect(COMMANDS.find((row) => row.id === id)).toMatchObject({ palette: false, windows: ["normal"] });
+    expect(COMMANDS.find((row) => row.id === id)).toMatchObject({ palette: false, windows: ["normal", "private"] });
 });

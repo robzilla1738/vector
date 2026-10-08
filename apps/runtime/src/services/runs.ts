@@ -1085,6 +1085,8 @@ export class RunService {
       settings: SettingsService;
       artifacts: ArtifactStore;
       nativeAvailable: () => boolean;
+      /** Native startup proof, independent of renderer privacy preferences. */
+      privateBrowserProfile?: boolean;
       turnMentions: import("./turn-mention-service.js").TurnMentionService;
       taskSource?: (taskId: string) => { revision: number; state: string; sourceOrigin?: string };
       vault?: import("./vault.js").VaultService;
@@ -1140,6 +1142,7 @@ export class RunService {
       events: deps.events,
       pages: deps.pages,
       turnMentions: deps.turnMentions,
+      privateBrowserProfile: deps.privateBrowserProfile,
       taskSource: deps.taskSource,
       imageReferences: (run) => this.images.forRun(run),
       memoryReferences: async (run) => {
@@ -2568,11 +2571,17 @@ export class RunService {
   }
 
   private privateTaskForStart(opts: { chatId?: string; privateTask?: boolean }): boolean {
-    return opts.privateTask === true || (!!opts.chatId && this.deps.repo.conversationPrivateTask(opts.chatId) === true);
+    return (
+      this.deps.privateBrowserProfile === true ||
+      opts.privateTask === true ||
+      (!!opts.chatId && this.deps.repo.conversationPrivateTask(opts.chatId) === true)
+    );
   }
 
   reconcileStart(opts: Parameters<RunService["start"]>[0] & { startRequest: RunStartRequest }) {
-    return this.ownOperation(() => this.startReceipts.reconcile(opts.startRequest, this.privateTaskForStart(opts)));
+    return this.ownOperation(() =>
+      this.startReceipts.reconcile(opts.startRequest, this.privateTaskForStart(opts)),
+    );
   }
 
   private async startOwned(opts: Parameters<RunService["start"]>[0]): Promise<Run> {
@@ -2636,7 +2645,7 @@ export class RunService {
       throw new AuxError("conflict", "Start a new private chat to change this conversation’s privacy mode.");
     opts = {
       ...opts,
-      privateTask: savedPrivateTask ?? opts.privateTask ?? false,
+      privateTask: this.deps.privateBrowserProfile || (savedPrivateTask ?? opts.privateTask ?? false),
       executionTarget: opts.executionTarget ?? "local",
     };
     const selectedModel = opts.reasoning
@@ -2824,8 +2833,10 @@ export class RunService {
         if (
           page.ownedByRuntime ||
           (opts.startRequest &&
-            (page.windowId !== opts.startRequest.windowId || page.loading ||
-              page.controller === "agent" || page.controller === "external")) ||
+            (page.windowId !== opts.startRequest.windowId ||
+              page.loading ||
+              page.controller === "agent" ||
+              page.controller === "external")) ||
           page.viewStatus === "detached" ||
           page.viewStatus === "crashed" ||
           page.documentEpoch !== ref.documentEpoch ||

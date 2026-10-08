@@ -170,7 +170,7 @@ it("all ten original actions use normal scoped metadata and close offline retain
   await ready();
   for (const id of Object.values(ids))
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       bindings: [],
       intercept: true,

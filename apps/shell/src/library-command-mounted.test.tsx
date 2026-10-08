@@ -60,6 +60,10 @@ beforeEach(() => {
   ] as unknown as DOMRectList);
   vi.spyOn(bridge, "overlay").mockResolvedValue(true);
   bridge.privateMode = false;
+  vi.spyOn(bridge, "bookmarksInvoke").mockResolvedValue({
+    method: "bookmarks.folders.snapshot",
+    result: { rootId: "1", editable: true, folders: [] },
+  });
   bridge.windowKind = "normal";
   useStore.setState({
     pages: normalizePages([]),

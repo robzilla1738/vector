@@ -317,7 +317,7 @@ it("opt-in Popover receives the genuine original click event and invokes its sam
 });
 it("the context row is normal scoped and remappable", () => {
   expect(COMMANDS.find((row) => row.id === "toggle-conversation-context")).toMatchObject({
-    windows: ["normal"],
+    windows: ["normal", "private"],
     palette: false,
     bindings: [],
     intercept: true,

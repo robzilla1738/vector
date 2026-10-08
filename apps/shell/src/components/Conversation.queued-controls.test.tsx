@@ -315,7 +315,7 @@ it("adds exactly the two focused normal-window remappable queue command policies
   for (const id of ["edit-conversation-queued-message", "remove-conversation-queued-message"])
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
       handler: "shell",
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       bindings: [],
       intercept: true,

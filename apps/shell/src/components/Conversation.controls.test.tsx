@@ -250,7 +250,7 @@ it("registers only the closed original normal-window scoped command policies", (
     expect(command).toMatchObject({
       handler: "shell",
       dispatch: "scoped",
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       intercept: true,
       bindings: [],

@@ -352,7 +352,7 @@ export const COMMAND_ACTIONS = {
     void st.toggleBookmark(p.url, p.title).catch(errToast);
   },
   "bookmark-all": (st) => bookmarkAll(st),
-  "agent-rail": (st) => (bridge.privateMode ? undefined : st.toggleRail()),
+  "agent-rail": (st) => st.toggleRail(),
   "clear-history": (st) => st.setOverlay("clear-history"),
   "tab-next": (st, context) => cycleTab(st, 1, context),
   "tab-previous": (st, context) => cycleTab(st, -1, context),

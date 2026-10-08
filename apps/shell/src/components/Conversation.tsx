@@ -638,10 +638,10 @@ export function Conversation({
   const draftPreferences = useStore((state) => state.composerPreferences[composerPreferenceKey]);
   const taskModeKnown = !id || taskMode?.id === id;
   const taskModeLocked = !!id && (!taskModeKnown || !!taskMode?.found);
-  const privateTask =
+  const privateTask = bridge.privateMode || (
     taskMode && taskMode.id === id && taskMode.found
       ? taskMode.privateTask
-      : (draftPreferences?.privateTask ?? false);
+      : (draftPreferences?.privateTask ?? false));
   useEffect(() => {
     let live = true;
     const version = ++metadataRequest.current;
@@ -1912,7 +1912,7 @@ export function Conversation({
           }
           draftKey={composerPreferenceKey}
           privateTask={privateTask}
-          privateTaskLocked={taskModeLocked}
+          privateTaskLocked={bridge.privateMode || taskModeLocked}
           disabled={archived || sending || live || !taskModeKnown}
         />
       </ChatPreferences>

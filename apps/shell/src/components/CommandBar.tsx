@@ -210,7 +210,7 @@ export function CommandBar({
   const homeCurrent = useHomeEntryOwner(hero);
   const entryModeRequest = useRef(0);
   const [entryMode, setEntryModeState] = useState<"search" | "ask">(() => {
-    if (!hero || bridge.privateMode) return "search";
+    if (!hero || bridge.privateMode) return firstFrame?.mode ?? "search";
     if (firstFrame) return firstFrame.mode;
     if (settings.homeEntryMode === "ask" || settings.homeEntryMode === "search")
       return settings.homeEntryMode;
@@ -247,6 +247,7 @@ export function CommandBar({
     const previous = entryMode;
     const request = ++entryModeRequest.current;
     setEntryModeState(next);
+    if (bridge.privateMode) return Promise.resolve();
     return guardCommandCompletion(
       call("settings.set", { homeEntryMode: next })
         .then((value) => {
@@ -410,11 +411,9 @@ export function CommandBar({
           hasPage,
           searchEngines,
           routing,
-          askUnavailable: bridge.privateMode || askBreaker.unavailable(),
+          askUnavailable: askBreaker.unavailable(),
         });
   const intent: Intent = (() => {
-    if (bridge.privateMode && baseIntent.kind === "run")
-      return { kind: "search", query: raw, url: toUrl(raw, searchEngine) };
     if (hero && raw) {
       if (entryMode === "ask") return { kind: "run", goal: raw, scope: "new" };
       return baseIntent.kind === "navigate"
@@ -422,7 +421,7 @@ export function CommandBar({
         : { kind: "search", query: raw, url: toUrl(raw, searchEngine) };
     }
     if (routeFlip && raw && (baseIntent.kind === "run" || baseIntent.kind === "search"))
-      return routeFlip === "search" || askBreaker.unavailable() || bridge.privateMode
+      return routeFlip === "search" || askBreaker.unavailable()
         ? { kind: "search", query: raw, url: toUrl(raw, searchEngine) }
         : { kind: "run", goal: raw, scope: hasPage ? "page" : "new" };
     if (baseIntent.kind === "run" && scopeFlip)
@@ -637,7 +636,7 @@ export function CommandBar({
       });
     }
     if (intent.kind === "command") return out;
-    if (!hero && !bridge.privateMode && intent.kind === "search") {
+    if (!hero && intent.kind === "search") {
       out.push({
         id: "ask",
         section: "intent",
@@ -903,11 +902,8 @@ export function CommandBar({
     return completion;
   };
 
-  const homeInputScope = useHomeEntryInput(
-    inputRef,
-    hero && entryMode === "search" && !bridge.privateMode,
-    homeCurrent,
-    () => switchEntryMode("ask"),
+  const homeInputScope = useHomeEntryInput(inputRef, hero && entryMode === "search", homeCurrent, () =>
+    switchEntryMode("ask"),
   );
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -920,7 +916,7 @@ export function CommandBar({
       setSel(0);
       return;
     }
-    if (hero && !bridge.privateMode && e.key === "Tab" && !e.shiftKey) {
+    if (hero && e.key === "Tab" && !e.shiftKey) {
       e.preventDefault();
       runHomeEntry("select-home-ask", homeInputScope, e.nativeEvent);
       return;
@@ -1021,7 +1017,7 @@ export function CommandBar({
   const title = page?.title || (hasPage ? hostOf(pageAddress) : "");
   const placeholder = hero && entryMode === "ask" ? "Ask Aux a task…" : "Search or type a URL";
 
-  if (hero && entryMode === "ask" && !bridge.privateMode)
+  if (hero && entryMode === "ask")
     return (
       <Suspense
         fallback={
@@ -1160,9 +1156,7 @@ export function CommandBar({
           onKeyDown={onKeyDown}
         />
       </div>
-      {hero && bridge.privateMode ? (
-        <span className="private-search-label">Private</span>
-      ) : hero ? (
+      {hero ? (
         <div className="home-mode">
           <span>
             <kbd>Tab</kbd> to switch

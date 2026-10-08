@@ -38,8 +38,7 @@ export function useHomeEntryOwner(active: boolean) {
       original?.active &&
       original.identity === identity &&
       active &&
-      !privateMode &&
-      windowKind === "normal" &&
+      (windowKind === "normal" || windowKind === "private") &&
       bridge.windowId === windowId &&
       bridge.privateMode === privateMode &&
       bridge.windowKind === windowKind &&

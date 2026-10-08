@@ -357,7 +357,7 @@ export function App() {
         void bridge.contextMenu(useStore.getState().activePageId);
       }}
     >
-      {!connected && !bridge.privateMode && (
+      {!connected && (
         <output className="degraded" data-block {...nativePoliteLiveProps}>
           {shellIconAlert}
           <span>Runtime reconnecting — tabs keep working</span>
@@ -406,7 +406,7 @@ export function App() {
             </div>
           </div>
         </div>
-        {!bridge.privateMode && railOpen && (
+        {railOpen && (
           <PaneBoundary label="The assistant">
             <AgentRail />
           </PaneBoundary>

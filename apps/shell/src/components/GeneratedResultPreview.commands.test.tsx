@@ -136,7 +136,7 @@ it("all five actual controls are normal scoped and disconnected viewing retains 
   expect(host.textContent).toContain("<script>inert</script>");
   for (const id of Object.values(ids))
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       bindings: [],
       intercept: true,

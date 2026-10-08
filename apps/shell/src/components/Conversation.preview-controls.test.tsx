@@ -416,7 +416,7 @@ it("all three commands retain normal scoped remappable policy", () => {
     "split-conversation-preview-page",
   ])
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       bindings: [],
       intercept: true,

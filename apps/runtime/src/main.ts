@@ -612,6 +612,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       }),
     turnMentions: () =>
       new TurnMentionService({
+        privateBrowserProfile: !!privateSession,
         prepareReadPage: (pageId) => runtimeServices.pages.prepareReadPage(pageId),
         authorizeRead: (runId, pageId, taskRead) =>
           runtimeServices.pages.authorizeAgentRead(runId, pageId, "page.read", taskRead),
@@ -653,6 +654,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       }),
     runs: () => {
       const runs = new RunService({
+        privateBrowserProfile: !!privateSession,
         resolveCodingContext: async (input) => {
           const roots = input.workspaceId
             ? runtimeServices.workspaceFolders.roots(input.workspaceId).write

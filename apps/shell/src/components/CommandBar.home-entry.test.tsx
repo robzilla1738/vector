@@ -63,6 +63,7 @@ afterEach(async () => {
   host.remove();
   useStore.setState(initial, true);
   bridge.privateMode = originalPrivate;
+  bridge.windowKind = "normal";
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -297,7 +298,7 @@ it("keeps newer storage when an original mode ACK arrives after unmount", async 
   expect(values.get(legacyKey)).toBe("search");
   expect(useStore.getState().toasts).toEqual([]);
 });
-it("refuses hidden or unrelated focused Home commands and retains Private search-only presentation", async () => {
+it("refuses retired Home controls and switches Private Ask without persisting its preference", async () => {
   useStore.setState({ settings: { homeEntryMode: "search" } });
   await render();
   const ask = modeButton("Ask");
@@ -312,9 +313,10 @@ it("refuses hidden or unrelated focused Home commands and retains Private search
   foreign.remove();
   bridge.privateMode = true;
   await render();
-  expect(host.querySelector('[aria-label="Search or Ask"]')).toBeNull();
-  expect(host.querySelector(".private-search-label")?.textContent).toBe("Private");
-  await expect(executeCommand("select-home-ask")).rejects.toThrow();
+  bridge.windowKind = "private";
+  await render();
+  await act(async () => modeButton("Ask").click());
+  expect(host.querySelector(".home-ask textarea")).not.toBeNull();
   expect(vi.mocked(bridge.invoke).mock.calls.filter(([method]) => method === "settings.set")).toEqual([]);
 });
 

@@ -414,7 +414,7 @@ it("all four view controls remain normal scoped remappable commands", () => {
     "jump-conversation-to-latest",
   ])
     expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
-      windows: ["normal"],
+      windows: ["normal", "private"],
       palette: false,
       bindings: [],
       intercept: true,

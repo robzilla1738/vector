@@ -35,7 +35,7 @@ const tab = {
   sessionId: "attachment-a",
   access: "read" as const,
 };
-function fixture() {
+function fixture(privateBrowserProfile = false) {
   const pages = new Map([
     ["a", { ...page }],
     ["b", { ...page, pageId: "b", sessionId: "attachment-b" }],
@@ -87,6 +87,7 @@ function fixture() {
   });
   const prepareReadPage = vi.fn(async (_pageId: string) => {});
   const service = new TurnMentionService({
+    privateBrowserProfile,
     page: (id) => pages.get(id),
     prepareReadPage,
     turnSourceContext: async () => sourceContext,
@@ -465,6 +466,17 @@ describe("original window default source reach", () => {
     expect(f.service.selectedPages("run")).toEqual(["clone"]);
     expect(await f.service.require("run", "clone", "act")).toEqual({ status: "available" });
   });
+  it("uses admitted OTR signed-in tabs with their exact identities instead of borrowing regular Profile tabs", async () => {
+    const f = fixture(true);
+    f.setSourceContext({ windowId: "main", activePageId: "a", revision: 0, layout: null });
+    await f.service.begin("run", [], [], { nativeTurnContext, privateTask: true });
+    expect(f.prepareReadPage).toHaveBeenCalledWith("a");
+    expect(f.service.selectedPages("run")).toEqual(["a"]);
+    expect(await f.service.require("run", "a", "act")).toEqual({ status: "available" });
+    expect(await f.service.require("run", "b", "read")).toMatchObject({ status: "unavailable" });
+    f.pages.set("a", { ...page, sessionId: "replacement" });
+    expect(await f.service.require("run", "a", "read")).toMatchObject({ status: "unavailable" });
+  });
   it("keeps a trusted child source binding narrow and retains exact document invalidation", async () => {
     const f = fixture();
     await f.service.begin("run", [], [], { nativeTurnContext, sourcePageIds: ["b"] });
@@ -490,6 +502,10 @@ it("omits an uncommitted implicit tab but keeps explicit and recovered sources s
   expect(f.service.selectedPages("run")).toEqual(["b"]);
   expect(f.service.unavailableImplicitPages("run")).toEqual(["a"]);
   expect(await f.service.require("run", "a", "read")).toMatchObject({ status: "unavailable" });
-  await expect(f.service.begin("explicit", [tab], [], { nativeTurnContext: "owner" })).rejects.toMatchObject({ code: "ref_stale" });
-  await expect(f.service.begin("recovered", [], [], { nativeTurnContext: "owner", sourcePageIds: ["a"] })).rejects.toMatchObject({ code: "ref_stale" });
+  await expect(f.service.begin("explicit", [tab], [], { nativeTurnContext: "owner" })).rejects.toMatchObject({
+    code: "ref_stale",
+  });
+  await expect(
+    f.service.begin("recovered", [], [], { nativeTurnContext: "owner", sourcePageIds: ["a"] }),
+  ).rejects.toMatchObject({ code: "ref_stale" });
 });

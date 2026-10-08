@@ -150,14 +150,14 @@ const focusedAgentControl = {
   handler: "shell",
   focusShell: true,
   palette: false,
-  windows: ["normal"],
+  windows: ["normal", "private"],
   bindings: [],
 } as const;
 const runControl = {
   section: "Agent",
   handler: "shell",
   focusShell: true,
-  windows: ["normal"],
+  windows: ["normal", "private"],
   bindings: [],
   intercept: true,
 } as const;
@@ -170,6 +170,7 @@ const browserContextControl = {
   bindings: [],
   intercept: true,
 } as const;
+const privateConversationControl = { ...browserContextControl, windows: ["normal", "private"] } as const;
 const shellApplication = {
   section: "Application",
   handler: "shell",
@@ -304,7 +305,7 @@ export const COMMANDS = [
     ["cancel-", "-key-removal", "Cancel ", " key removal"],
   ]),
 
-  ...GL(browserContextControl, "-conversation-", " conversation ", [
+  ...GL(privateConversationControl, "-conversation-", " conversation ", [
     ["choose", "image", "Choose", "image"],
     ["capture", "page", "Capture", "page"],
     ["select", "image-region", "Select", "image region"],
@@ -322,17 +323,17 @@ export const COMMANDS = [
     ["retry", "image-preview", "Retry", "image preview"],
     ["attach", "document", "Attach", "document"],
   ]),
-  ...singleScopedRows(browserContextControl, "conversation", "conversation", [
+  ...singleScopedRows(privateConversationControl, "conversation", "conversation", [
     ["load-", "-history", "Load ", " history"],
     ["reload-", "-context", "Reload ", " context"],
     ["toggle-", "-error-details", "Show ", " error details"],
   ]),
-  ...singleScopedRows(browserContextControl, "-home-", " Home ", [
+  ...singleScopedRows(privateConversationControl, "-home-", " Home ", [
     ["select", "search", "Choose", "Search"],
     ["select", "ask", "Choose", "Ask"],
     ["open", "conversation", "Open full", "conversation"],
   ]),
-  ...singleScopedRows(browserContextControl, "conversation", "conversation", [
+  ...singleScopedRows(privateConversationControl, "conversation", "conversation", [
     ["select-", "-answer", "Answer the current ", " question"],
     ["select-", "-steer", "Steer the current ", ""],
     ["select-", "-queue", "Queue the next ", " message"],
@@ -353,11 +354,11 @@ export const COMMANDS = [
     ["select-", "-source", "Show recorded ", " source details"],
     ["open-", "-recorded-source", "Open recorded ", " source"],
   ]),
-  ...singleScopedRows(browserContextControl, "conversation", "", [
+  ...singleScopedRows(privateConversationControl, "conversation", "", [
     ["choose-", "-source-profile", "Open Calendar source in chosen Profile", ""],
     ["cancel-", "-source-profile", "Cancel Calendar source Profile choice", ""],
   ]),
-  ...singleScopedRows(browserContextControl, "conversation", "conversation", [
+  ...singleScopedRows(privateConversationControl, "conversation", "conversation", [
     ["preview-", "-document", "Preview ", " document"],
     ["toggle-", "-document", "Include or exclude ", " document"],
     ["remove-", "-document", "Remove ", " document"],
@@ -369,20 +370,20 @@ export const COMMANDS = [
     ["decrease-", "-supporting-width", "Narrow supporting ", " content"],
     ["reset-", "-supporting-width", "Reset supporting ", " content width"],
   ]),
-  ...singleScopedRows(browserContextControl, "conversation", "", [
+  ...singleScopedRows(privateConversationControl, "conversation", "", [
     ["retry-", "-document-read", "Retry document snapshot read", ""],
     ["toggle-", "-document-text", "Show included or full document snapshot text", ""],
     ["toggle-", "-document-details", "Toggle document snapshot details", ""],
     ["close-", "-document-preview", "Close document snapshot preview", ""],
   ]),
-  ...singleScopedRows(browserContextControl, "-generated-result", " generated result", [
+  ...singleScopedRows(privateConversationControl, "-generated-result", " generated result", [
     ["close", "-preview", "Close", " preview"],
     ["toggle", "-source", "Toggle", " source"],
     ["export", "", "Export", ""],
     ["select", "-version", "Select", " version"],
     ["save", "-version", "Save", " version"],
   ]),
-  ...singleScopedRows(browserContextControl, "-saved-result", " saved result", [
+  ...singleScopedRows(privateConversationControl, "-saved-result", " saved result", [
     ["close", "-preview", "Close", " preview"],
     ["toggle", "-source", "Toggle", " source"],
     ["copy", "", "Copy", ""],
@@ -1164,7 +1165,7 @@ export const COMMANDS = [
   K("bookmark-all", "Bookmark All Tabs", "Tabs", []),
   {
     id: "agent-rail",
-    windows: ["normal"],
+    windows: ["normal", "private"],
     section: "Agent",
     handler: "shell",
     label: "Toggle Agent Rail",

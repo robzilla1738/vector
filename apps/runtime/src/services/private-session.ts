@@ -50,7 +50,7 @@ export class PrivateRuntimeSession {
   ) {}
 
   static fromEnvironment(env: NodeJS.ProcessEnv): PrivateRuntimeSession | undefined {
-    if (env.AUX_PRIVATE_SESSION === undefined) return;
+    if (!env.AUX_PRIVATE_SESSION) return;
     const id = z.string().uuid().parse(env.AUX_PRIVATE_SESSION);
     if (
       !env.AUX_HOST_SOCKET ||
