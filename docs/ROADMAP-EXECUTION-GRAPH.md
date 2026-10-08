@@ -13,7 +13,7 @@ ownership, secret protection, durable effects and conflict-safe undo remain.
 Execution was authorized on October 7, 2026. The source baseline is clean local
 main at `62f3626c8d0b50880452e928c3e24ba0277f4d2e`. The integrated native candidate is
 Chromium 154.0.8037.98 in `~/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`,
-with the native tree through historical area 0101, consolidated into 32 equivalent area patches, plus compiled areas 0033–0036. A source-backed first answer and runtime-unavailable Find/Zoom now work in a disposable Profile. A real private source-backed answer and Stop now work; last-window closure retires the worker and its temporary data. Broader provider, takeover and workflow acceptance remain. Existing delivery observations live in STATUS.
+with the native tree through the frozen 42-area source checkpoint consolidated into 32 equivalent areas. The compiled candidate still contains the earlier 267-method ABI; the integrated 270-method candidate is rebuilding after an additive history-constructor correction. A source-backed first answer and runtime-unavailable Find/Zoom now work in a disposable Profile. A real private source-backed answer and Stop now work; last-window closure retires the worker and its temporary data. Broader provider, takeover and workflow acceptance remain. Existing delivery observations live in STATUS.
 There is no complete current performance comparison. Source presence and previous
 unit checks do not establish native performance or competitor parity.
 
@@ -220,15 +220,17 @@ items explicit; do not shrink the objective to a finished subset.
   controls retain original native-window/VM/Session checks after agent dispatch
   ends. Cloud code-mode uses the existing admission/receipt callbacks. Successful-task process retention now transfers monitor/Stop ownership before dispatch retirement and retains original funding expiry. Actual cloud workflow
   acceptance remains pending.
-- The latest integrated check passed typecheck/lint and 4,367 tests across 708
-  passing files. Its five failures were confined to routine sweep timing/shutdown,
-  one disconnected missing-model fixture and an obsolete mock inventory test.
-  Shutdown now joins accepted routine launches before repository closure; ten
-  affected recurrence cases pass without unhandled errors. The command-bar
-  fixture is repaired and the inventory ratchet deleted. Passing suites are not
-  repeated. Borrowed-reader cold connection and retained cloud lifetime have
-  focused checks. Deck groups say Sections; result editing has no version-20 wall
-  and concurrent revisions receive unique ordinals. Evidence is in STATUS.
+- The latest integrated check passed typecheck/lint and 4,399 tests across 711
+  passing files. Its three fixture failures were corrected and their 12 affected
+  tests passed. The test phase took 172.70 seconds; the under-60-second target is
+  still open. Passing unchanged suites are not repeated. Runtime dist was rebuilt.
+  The current 270-method/30-event source ABI is `289705b74098`. Native History,
+  download dismissal, Space presentation, PDF ownership, document batches and
+  tracker exception authority are integrated. The native rebuild stopped on a
+  History constructor error, repaired in additive area 0033; rebuilding is active.
+  The frozen 42-area checkpoint was replayed into 32 disjoint areas, matching all
+  850 native paths, bytes and executable modes. This proves source equivalence,
+  not compilation or native acceptance.
 - Areas 0033–0036 are compiled. The corrected complete Mojo include allowed the
   combined candidate to build in 420 steps / 32m32.25s. The ordinary composer
   completed a real source-backed answer in a fresh disposable Profile within
