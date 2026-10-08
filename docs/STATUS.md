@@ -75,7 +75,7 @@ The actual default provider used in these walkthroughs was `anthropic/claude-son
 
 Runtime dist was rebuilt before runtime tests. The earlier delivery check passed **4,218 tests across 686 files**, typecheck and lint, with existing advisory warnings (`/tmp/aux-final-owner-command-check.log`). Earlier integrated failures were fixed and rerun in their affected suites; passing suites were not repeatedly rerun. The subsequent reply/context fixes passed **40 focused tests**, including real SDK prompt conversion, native-source drift rejection and strict restored-source admission. Runtime dist was rebuilt and staged; touched-file lint passed. Evidence: `/tmp/aux-final-recovery-focused.log`, `/tmp/aux-final-recovery-mentions.log` and `/tmp/aux-final-recovery-lint.log`.
 
-Chromium is **154.0.8037.98**. The runnable app is `/Users/rcourson/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`, with the compiled **270-method / 30-event** ABI `289705b74098` and 198 renderer assets. Subsequent sidebar/private-history, retained-page and document-intake source changes await the next staging step. Runtime-only disposable launches verify the actual compiled ABI before staging. The latest fresh runtime reached ready at **330.67 ms elapsed process time**; this is one boot observation without a paired comparison. Evidence: `/tmp/aux-native-library-filter-build-launch-api-repaired.log`.
+Chromium is **154.0.8037.98**. The app path is `/Users/rcourson/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`. Its latest native build has **272 methods / 30 events**, `97d6daa5466e`, and awaits matched embedded-runtime staging before the owned disposable launch. The previous fully staged 270-method candidate used `289705b74098` and 198 renderer assets; its fresh runtime reached ready at **330.67 ms elapsed process time**. That is one earlier boot observation without a paired comparison, not timing for the new candidate. Runtime-only disposable launches verify the actual compiled ABI before staging. Earlier evidence: `/tmp/aux-native-library-filter-build-launch-api-repaired.log`.
 
 The latest 42-patch source checkpoint is consolidated into **32 disjoint area patches**, followed by the additive native API repairs. Replay from the pinned Chromium baseline reproduced all 850 native paths and exact aggregate bytes; comparison with the product source found zero content or executable-mode differences. This extends the earlier 100-to-32 consolidation. [Patch documentation](../chromium/patches/README.md) records the replay evidence. This consolidation adds no new native behavior or performance claim.
 
@@ -100,9 +100,9 @@ a completed Vercel sign-in identifies Vercel. Fourteen focused UI checks pass.
 Unchanged renderer staging now preserves asset and manifest timestamps, avoiding
 unnecessary native regeneration. Disposable byte/inventory mutation verification
 confirmed replacement and cleanup still occur when needed; syntax and lint pass.
-Native extension reload now has a separate source patch that waits for actual
-Chromium completion or load failure. It is not applied to the active document
-build; its incremental build and unpacked-extension walkthrough remain pending.
+Native extension reload now waits for actual Chromium completion or load failure.
+Its area 0036 is compiled in the latest combined native candidate; the
+unpacked-extension walkthrough remains pending.
 
 Explicit provider metadata now excludes non-text models from agent and utility
 choices while preserving unknown/manual IDs. Opaque connection revisions retire
@@ -125,3 +125,15 @@ bytes/timestamps; the real disposable staging proof passed. Neither the build
 duration nor the preserved-app size inventory is a performance acceptance pass.
 Evidence: `/tmp/aux-native-272-documents-export-extension-node269-build-launch.log`
 and `/tmp/aux-host-identity-proof.json`.
+
+Area 0037 and matching stock instrumentation now measure warm-window creation,
+first presentation and live address/shortcut readiness separately, plus exact
+tab-switch latency/display-interval pairs in microseconds. The existing runner
+retains one accepted callback pair per input and all 100 samples, verifies the
+original process and additional window, proves subsequent ordinary address input,
+and closes only that new window. Role observation ends after the completed
+one-window memory snapshot. Eight focused measurement/target cases, Swift source
+typecheck, two renderer readiness cases and shell TypeScript passed. The new
+instrumentation is source-only and is not in the active 272-method build. No
+performance report or target pass is claimed. The preserved stock app's missing
+object inputs need rebuilding before equivalent new measurements can run.
