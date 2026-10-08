@@ -21,10 +21,10 @@ index 9c78880..f83a4c8 100644
      "//chrome/common/importer:aux_firefox_profile",
 diff --git a/chrome/browser/ui/aux/evidence_documents.cc b/chrome/browser/ui/aux/evidence_documents.cc
 new file mode 100644
-index 0000000..64ef267
+index 0000000..4e0cc6e
 --- /dev/null
 +++ b/chrome/browser/ui/aux/evidence_documents.cc
-@@ -0,0 +1,440 @@
+@@ -0,0 +1,452 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -151,6 +151,7 @@ index 0000000..64ef267
 +      snapshot_id_(base::Uuid::GenerateRandomV4().AsLowercaseString()),
 +      owner_current_(std::move(owner_current)) {}
 +EvidenceDocumentSnapshot::~EvidenceDocumentSnapshot() {
++  runtime_read_owner_.reset();
 +  extractor_.reset();
 +  if (pending_) {
 +    std::move(pending_).Run(false, "", "ref_stale",
@@ -215,15 +216,23 @@ index 0000000..64ef267
 +  return capture;
 +}
 +bool EvidenceDocumentSnapshot::Current() {
-+  if (!retired_ && owner_current_.Run()) {
++  if (!retired_ && (!runtime_read_owner_ || !runtime_read_owner_->load()) &&
++      owner_current_.Run()) {
 +    return true;
 +  }
 +  Fault("ref_stale", "Original document selection retired");
 +  return false;
 +}
-+void EvidenceDocumentSnapshot::Read(const std::optional<std::string>& cursor,
-+                                    Callback callback) {
-+  if (retired_ || !owner_current_.Run()) {
++bool EvidenceDocumentSnapshot::OwnsRead(
++    const std::shared_ptr<std::atomic_bool>& runtime_owner) const {
++  return pending_ && runtime_owner && runtime_read_owner_ == runtime_owner;
++}
++void EvidenceDocumentSnapshot::Read(
++    const std::optional<std::string>& cursor,
++    Callback callback,
++    std::shared_ptr<std::atomic_bool> runtime_owner) {
++  if (retired_ || (runtime_owner && runtime_owner->load()) ||
++      !owner_current_.Run()) {
 +    std::move(callback).Run(false, "", "ref_stale",
 +                            "Original document selection retired");
 +    return;
@@ -245,6 +254,7 @@ index 0000000..64ef267
 +  }
 +  pending_chunk_ = chunk;
 +  pending_ = std::move(callback);
++  runtime_read_owner_ = std::move(runtime_owner);
 +  if (!failure_.empty()) {
 +    Unreadable(failure_);
 +    return;
@@ -450,11 +460,13 @@ index 0000000..64ef267
 +  cursors_.clear();
 +  metadata_.clear();
 +  completed_.clear();
++  runtime_read_owner_.reset();
 +  if (pending_) {
 +    std::move(pending_).Run(false, "", code, message);
 +  }
 +}
 +void EvidenceDocumentSnapshot::Reply(base::DictValue result) {
++  runtime_read_owner_.reset();
 +  auto callback = std::move(pending_);
 +  auto json = base::WriteJson(result);
 +  if (!json) {
@@ -467,15 +479,17 @@ index 0000000..64ef267
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/evidence_documents.h b/chrome/browser/ui/aux/evidence_documents.h
 new file mode 100644
-index 0000000..80817ae
+index 0000000..05f417a
 --- /dev/null
 +++ b/chrome/browser/ui/aux/evidence_documents.h
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,75 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
 +#ifndef CHROME_BROWSER_UI_AUX_EVIDENCE_DOCUMENTS_H_
 +#define CHROME_BROWSER_UI_AUX_EVIDENCE_DOCUMENTS_H_
++#include <atomic>
++#include <memory>
 +#include <optional>
 +#include <string>
 +#include <vector>
@@ -499,7 +513,10 @@ index 0000000..80817ae
 +                           base::FilePath path,
 +                           base::RepeatingCallback<bool()> owner_current);
 +  ~EvidenceDocumentSnapshot() override;
-+  void Read(const std::optional<std::string>& cursor, Callback callback);
++  void Read(const std::optional<std::string>& cursor,
++            Callback callback,
++            std::shared_ptr<std::atomic_bool> runtime_owner);
++  bool OwnsRead(const std::shared_ptr<std::atomic_bool>& runtime_owner) const;
 +
 + private:
 +  void PrimaryPageChanged(content::Page& page) override;
@@ -534,6 +551,7 @@ index 0000000..80817ae
 +  base::DictValue completed_;
 +  std::vector<std::string> cursors_;
 +  Callback pending_;
++  std::shared_ptr<std::atomic_bool> runtime_read_owner_;
 +  mojo::Remote<document::mojom::DocumentExtractor> extractor_;
 +  base::OneShotTimer deadline_;
 +  base::WeakPtrFactory<EvidenceDocumentSnapshot> weak_factory_{this};
@@ -595,10 +613,10 @@ index 3c513b1..9f455a3 100644
      }
      return;
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
-index 10a4a6e..a7848a2 100644
+index 10a4a6e..6dcddc0 100644
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
-@@ -1248,6 +1248,77 @@ void AuxRuntimeHost::HandlePrivateProviderCall(const base::DictValue& params, ui
+@@ -1248,6 +1248,85 @@ void AuxRuntimeHost::HandlePrivateProviderCall(const base::DictValue& params, ui
        }, weak_factory_.GetWeakPtr(), original->GetWeakPtr(), generation, std::move(callback)));
  }
  
@@ -644,6 +662,7 @@ index 10a4a6e..a7848a2 100644
 +        "invalid_params", "Original document selection is required"));
 +    return;
 +  }
++  evidence_read_owners_.push_back({owner->second, *selection, cancelled});
 +  ui->ReadAuxEvidenceDocument(
 +      *selection, index->GetDouble(),
 +      cursor ? std::make_optional(*cursor) : std::nullopt,
@@ -653,6 +672,12 @@ index 10a4a6e..a7848a2 100644
 +             base::OnceCallback<void(base::DictValue)> callback, bool ok,
 +             const std::string& json, const std::string& code,
 +             const std::string& message) {
++            if (host) {
++              std::erase_if(host->evidence_read_owners_,
++                            [&](const EvidenceReadOwner& read) {
++                              return read.cancelled == cancelled;
++                            });
++            }
 +            if (!host || cancelled->load() ||
 +                !host->TurnContextCurrent(original)) {
 +              std::move(callback).Run(NativeFault(
@@ -669,14 +694,68 @@ index 10a4a6e..a7848a2 100644
 +                       : NativeFault("io_error",
 +                                     "Document result could not be encoded"));
 +          },
-+          weak_factory_.GetWeakPtr(), owner->second, std::move(cancelled),
-+          std::move(callback)));
++          weak_factory_.GetWeakPtr(), owner->second, cancelled,
++          std::move(callback)),
++      cancelled);
 +}
 +
  void AuxRuntimeHost::HandleNativeCloudPreviewCall(
      const std::string& method, const base::DictValue& params, uint64_t generation,
      base::OnceCallback<void(base::DictValue)> callback) {
-@@ -2379,6 +2450,10 @@ bool AuxRuntimeHost::Worker::Disconnect() {
+@@ -1477,10 +1556,52 @@ void AuxRuntimeHost::RetireStageLeases() {
+   }
+ }
+ 
++void AuxRuntimeHost::RetireEvidenceReads(uint64_t generation) {
++  std::vector<EvidenceReadOwner> retired;
++  for (auto it = evidence_read_owners_.begin();
++       it != evidence_read_owners_.end();) {
++    if (it->original.generation == generation) {
++      retired.push_back(std::move(*it));
++      it = evidence_read_owners_.erase(it);
++    } else {
++      ++it;
++    }
++  }
++  for (const auto& read : retired) {
++    read.cancelled->store(true);
++  }
++  const auto weak = weak_factory_.GetWeakPtr();
++  for (const auto& read : retired) {
++    auto* frame = read.original.document.AsRenderFrameHostIfValid();
++    if (!read.original.window ||
++        read.original.window->GetProfile() != profile_ || !frame ||
++        !frame->IsActive() || !frame->IsRenderFrameLive()) {
++      continue;
++    }
++    auto* contents = content::WebContents::FromRenderFrameHost(frame);
++    auto* window = WebUIBrowserWindow::FromWebShellWebContents(contents);
++    auto* ui = window ? window->GetWebUIBrowserUI() : nullptr;
++    if (!ui || contents->GetPrimaryMainFrame() != frame ||
++        window->browser() != read.original.window.get() ||
++        !ui->EvidenceDocumentsCurrent(read.selection_id)) {
++      continue;
++    }
++    ui->ReleaseAuxEvidenceDocuments(read.selection_id, read.cancelled);
++    if (!weak) {
++      return;
++    }
++  }
++}
++
+ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+   if (!generation)
+     return;
+   retired_native_generation_ = std::max(retired_native_generation_, generation);
++  const auto evidence_retirement_weak = weak_factory_.GetWeakPtr();
++  RetireEvidenceReads(generation);
++  if (!evidence_retirement_weak) {
++    return;
++  }
+   if (admitted_native_generation_ != generation)
+     return;
+   admitted_native_generation_ = 0;
+@@ -2379,6 +2500,10 @@ bool AuxRuntimeHost::Worker::Disconnect() {
    socket_watcher_.reset();
    request_deadline_timer_.Stop();
    weak_factory_.InvalidateWeakPtrs();
@@ -687,7 +766,7 @@ index 10a4a6e..a7848a2 100644
    if (connection_fd_ >= 0 && connection_generation_)
      ui_runner_->PostTask(FROM_HERE, base::BindOnce(
          &AuxRuntimeHost::NativeConnectionRetired, owner_, connection_generation_));
-@@ -2780,6 +2855,63 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+@@ -2780,6 +2905,63 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
    return std::move(state->reply);
  }
  
@@ -751,7 +830,7 @@ index 10a4a6e..a7848a2 100644
  
  bool AuxRuntimeHost::Worker::HandleNativeRequest(
      const base::DictValue& data) {
-@@ -2806,6 +2938,26 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
+@@ -2806,6 +2988,26 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
          base::DictValue()
              .Set("code", "forbidden")
              .Set("message", "This native service requires a regular Profile"));
@@ -778,7 +857,7 @@ index 10a4a6e..a7848a2 100644
    } else if (native_method && native_params &&
               *native_method == "native.storeSecret") {
      const std::string* name = native_params->FindString("name");
-@@ -3153,6 +3305,9 @@ void AuxRuntimeHost::Worker::CallRequest(
+@@ -3153,6 +3355,9 @@ void AuxRuntimeHost::Worker::CallRequest(
    const bool backup_request = desktop_api &&
        (method == "installation.createBackup" ||
         method == "installation.stageRestore");
@@ -788,7 +867,7 @@ index 10a4a6e..a7848a2 100644
    if (pending_requests_.size() >= 256) {
      std::move(callback).Run({false, "", "backend_unavailable", "Too many pending runtime requests"});
      return;
-@@ -3200,10 +3355,14 @@ void AuxRuntimeHost::Worker::CallRequest(
+@@ -3200,10 +3405,14 @@ void AuxRuntimeHost::Worker::CallRequest(
    }
    // Return to the worker loop. CDP events and other responses must continue
    // flowing while an API call waits for runtime initialization or browser work.
@@ -808,7 +887,7 @@ index 10a4a6e..a7848a2 100644
  }
  
 diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
-index ddfb9a3..566f2f8 100644
+index ddfb9a3..4636a1e 100644
 --- a/chrome/browser/ui/aux/runtime_host.h
 +++ b/chrome/browser/ui/aux/runtime_host.h
 @@ -169,6 +169,19 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
@@ -844,8 +923,22 @@ index ddfb9a3..566f2f8 100644
    void HandleZapInstall(const base::DictValue& params,
                          base::OnceCallback<void(base::DictValue)> callback);
    void HandleReadableCapture(
+@@ -370,6 +389,13 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+     content::WeakDocumentPtr document;
+     uint64_t generation;
+   };
++  struct EvidenceReadOwner {
++    TurnContextOwner original;
++    std::string selection_id;
++    std::shared_ptr<std::atomic_bool> cancelled;
++  };
++  std::vector<EvidenceReadOwner> evidence_read_owners_;
++  void RetireEvidenceReads(uint64_t generation);
+   std::map<std::string, TurnContextOwner> turn_contexts_;
+   bool TurnContextCurrent(const TurnContextOwner& owner) const;
+   bool RemoteDebuggingOwnerCurrent(const std::string& token, uint64_t connection) const;
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-index e382a5a..20772a4 100644
+index e382a5a..a05620c 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 @@ -31,9 +31,10 @@
@@ -882,7 +975,7 @@ index e382a5a..20772a4 100644
 -          image ? kMaxAuxEvidenceImageBytes : kMaxAuxEvidenceDocumentBytes))
 +  if (!base::ReadFileToStringWithMaxSize(path, &content,
 +                                         kMaxAuxEvidenceImageBytes)) {
-+    return std::nullopt;
+     return std::nullopt;
 +  }
 +  std::string_view bytes(content);
 +  std::string_view mime;
@@ -897,7 +990,7 @@ index e382a5a..20772a4 100644
 +    mime = "image/webp";
 +  }
 +  if (mime.empty()) {
-     return std::nullopt;
++    return std::nullopt;
 +  }
    base::DictValue result;
    result.Set("filename", path.BaseName().AsUTF8Unsafe());
@@ -938,12 +1031,19 @@ index e382a5a..20772a4 100644
          base::BindOnce(
              [](RequestCallback callback, std::optional<std::string> result) {
                std::move(callback).Run(result.has_value(), result.value_or(""),
-@@ -792,12 +787,10 @@ void WebUIBrowserUI::MultiFilesSelected(
+@@ -790,14 +785,14 @@ void WebUIBrowserUI::MultiFilesSelected(
+   std::move(callback).Run(true, *base::WriteJson(result), "", "");
+ }
  
- void WebUIBrowserUI::ReadAuxEvidenceDocument(const std::string& selection_id,
-                                              double index,
-+                                             std::optional<std::string> cursor,
-                                              RequestCallback callback) {
+-void WebUIBrowserUI::ReadAuxEvidenceDocument(const std::string& selection_id,
+-                                             double index,
+-                                             RequestCallback callback) {
++void WebUIBrowserUI::ReadAuxEvidenceDocument(
++    const std::string& selection_id,
++    double index,
++    std::optional<std::string> cursor,
++    RequestCallback callback,
++    std::shared_ptr<std::atomic_bool> runtime_owner) {
    if (!EvidenceDocumentsCurrent(selection_id)) {
 -    if (evidence_document_selection_ &&
 -        evidence_document_selection_->id == selection_id) {
@@ -953,7 +1053,7 @@ index e382a5a..20772a4 100644
      std::move(callback).Run(false, "", "ref_stale",
                              "Original document selection is unavailable");
      return;
-@@ -810,43 +803,39 @@ void WebUIBrowserUI::ReadAuxEvidenceDocument(const std::string& selection_id,
+@@ -810,43 +805,57 @@ void WebUIBrowserUI::ReadAuxEvidenceDocument(const std::string& selection_id,
                              "Document selection index is out of range");
      return;
    }
@@ -1004,7 +1104,7 @@ index e382a5a..20772a4 100644
 +                              "Original document cursor retired");
 +      return;
 +    }
-+    selection.snapshot.reset();
++    auto retired_snapshot = std::move(selection.snapshot);
 +    selection.current_index = selected;
 +    selection.snapshot = std::make_unique<aux::EvidenceDocumentSnapshot>(
 +        web_ui()->GetWebContents(), selection.paths[selected],
@@ -1016,19 +1116,37 @@ index e382a5a..20772a4 100644
 +                         selected;
 +            },
 +            weak_factory_.GetWeakPtr(), selection_id, selected));
++    const auto weak = weak_factory_.GetWeakPtr();
++    retired_snapshot.reset();
++    if (!weak || !EvidenceDocumentsCurrent(selection_id) ||
++        evidence_document_selection_->current_index != selected) {
++      std::move(callback).Run(false, "", "ref_stale",
++                              "Original document selection retired");
++      return;
++    }
 +  }
-+  selection.snapshot->Read(cursor, std::move(callback));
++  evidence_document_selection_->snapshot->Read(cursor, std::move(callback),
++                                               std::move(runtime_owner));
 +}
 +void WebUIBrowserUI::ReleaseAuxEvidenceDocuments(
-+    const std::string& selection_id) {
-+  if (evidence_document_selection_ &&
-+      evidence_document_selection_->id == selection_id) {
-+    evidence_document_selection_.reset();
++    const std::string& selection_id,
++    const std::shared_ptr<std::atomic_bool>& runtime_owner) {
++  if (!evidence_document_selection_ ||
++      evidence_document_selection_->id != selection_id ||
++      (runtime_owner &&
++       (!evidence_document_selection_->snapshot ||
++        !evidence_document_selection_->snapshot->OwnsRead(runtime_owner)))) {
++    return;
 +  }
++  // Detach the selection before settling its callback: a replacement picker or
++  // read started from that callback must never inherit the retired selection.
++  auto retired = std::move(evidence_document_selection_);
++  evidence_document_selection_.reset();
++  retired.reset();
  }
  
  void WebUIBrowserUI::FileSelectionCanceled() {
-@@ -1209,6 +1198,14 @@ void WebUIBrowserUI::Request(const std::string& method,
+@@ -1209,6 +1218,14 @@ void WebUIBrowserUI::Request(const std::string& method,
            },
            std::move(callback));
    const auto& api_method = (*list)[0].GetString();
@@ -1044,10 +1162,24 @@ index e382a5a..20772a4 100644
        api_method == "runs.retry" || api_method == "runs.branch" ||
        api_method == "runs.branch.list" ||
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
-index 57d0958..55f1a0e 100644
+index 57d0958..bd863c7 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
-@@ -76,7 +76,9 @@ class AuxShellEdgeMonitor;
+@@ -5,10 +5,11 @@
+ #ifndef CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_UI_H_
+ #define CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_UI_H_
+ 
+-#include <memory>
+-#include <optional>
++#include <atomic>
+ #include <cstdint>
+ #include <map>
++#include <memory>
++#include <optional>
+ #include <string>
+ #include <vector>
+ 
+@@ -76,7 +77,9 @@ class AuxShellEdgeMonitor;
  class AuxOmniboxHandler;
  class AuxDeviceConfirmation;
  class PrefChangeRegistrar;
@@ -1057,18 +1189,27 @@ index 57d0958..55f1a0e 100644
  class DictationMac;
  }
  #endif
-@@ -236,7 +238,10 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+@@ -234,9 +237,16 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+       const std::vector<ui::SelectedFileInfo>& files) override;
+   void FileSelectionCanceled() override;
    void BeginAuxEvidenceDocuments(RequestCallback callback);
-   void ReadAuxEvidenceDocument(const std::string& selection_id,
-                                double index,
-+                               std::optional<std::string> cursor,
-                                RequestCallback callback);
-+  void ReleaseAuxEvidenceDocuments(const std::string& selection_id);
+-  void ReadAuxEvidenceDocument(const std::string& selection_id,
+-                               double index,
+-                               RequestCallback callback);
++  void ReadAuxEvidenceDocument(
++      const std::string& selection_id,
++      double index,
++      std::optional<std::string> cursor,
++      RequestCallback callback,
++      std::shared_ptr<std::atomic_bool> runtime_owner = {});
++  void ReleaseAuxEvidenceDocuments(
++      const std::string& selection_id,
++      const std::shared_ptr<std::atomic_bool>& runtime_owner = {});
 +  friend class AuxRuntimeHost;
    bool EvidenceDocumentsCurrent(const std::string& selection_id) const;
    void BeginAuxGeneratedSave(std::string filename,
                               std::string content,
-@@ -341,7 +346,8 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+@@ -341,7 +351,8 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
      content::WeakDocumentPtr document;
      base::WeakPtr<BrowserWindowInterface> window;
      std::vector<base::FilePath> paths;
