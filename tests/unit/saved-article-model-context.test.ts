@@ -33,8 +33,10 @@ it("hydrates live selected articles only for provider dispatch and refuses revok
       runId: "run-one",
       threadId: "chat-one",
       deps: {},
-      prepareModelMessages: async (messages) =>
-        hydrateSelectedArticles(messages, available ? [source] : [], 1),
+      prepareModelMessages: async (messages, budget) =>
+        hydrateSelectedArticles(messages, available ? [source] : [], 1, {
+          maxBytes: budget.remainingInputBytes(messages),
+        }),
     });
     expect(providerRequests).toHaveLength(1);
     expect(JSON.stringify(providerRequests[0])).toContain("The harvest begins in October.");

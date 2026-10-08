@@ -35,7 +35,10 @@ export interface AgentLoopOptions {
   onText?: (text: string) => void;
   afterModelCall?: () => void;
   onModelAdmissionCancelled?: (reservationId: string | undefined) => void;
-  prepareModelMessages?: (messages: ModelMessage[]) => Promise<ModelMessage[]>;
+  prepareModelMessages?: (
+    messages: ModelMessage[],
+    budget: { remainingInputBytes(messages: ModelMessage[]): number },
+  ) => Promise<ModelMessage[]>;
   modelId: string;
   reasoning?: "low" | "medium" | "high";
   tools: LoopToolManifest;
@@ -407,7 +410,20 @@ async function runAgentLoopOwned(
     let recalled: RecallProjection | undefined;
     let recallMessage: ModelMessage | undefined;
     try {
-      requestMessages = opts.prepareModelMessages ? await opts.prepareModelMessages(messages) : messages;
+      const contextOptions = {
+        contextTokens: opts.contextTokens,
+        maxOutputTokens: opts.maxOutputTokens ?? 4000,
+        system,
+        toolsBytes: sdk.bytes,
+      };
+      requestMessages = opts.prepareModelMessages
+        ? await opts.prepareModelMessages(messages, {
+            remainingInputBytes: (base) => {
+              const context = prepareWorkingContext(base, contextOptions);
+              return Math.max(0, (context.inputBudgetTokens - context.estimatedInputTokens) * 3 - 256);
+            },
+          })
+        : messages;
       if (query && opts.deps.recall && (index === 0 || preparedRecall))
         recalled = await recallAtBoundary(
           index === 0 ? preparation : Promise.resolve(preparedRecall),
@@ -423,12 +439,6 @@ async function runAgentLoopOwned(
         requestMessages = [...requestMessages, recallMessage];
       }
       if (opts.signal?.aborted) throw new AuxError("cancelled", "Original model request authority changed.");
-      const contextOptions = {
-        contextTokens: opts.contextTokens,
-        maxOutputTokens: opts.maxOutputTokens ?? 4000,
-        system,
-        toolsBytes: sdk.bytes,
-      };
       try {
         requestMessages = prepareWorkingContext(requestMessages, contextOptions).messages;
       } catch (error) {
