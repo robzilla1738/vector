@@ -106,6 +106,25 @@ within 100 ms; stream updates without blocking browsing. Model first-token and
 page-load times are reported separately. Compare cold/warm startup with stock
 Chromium at the scheduled performance milestone, on matching build settings.
 
+## Current competitor check — October 8
+
+[Dia's October 1 Mac release](https://www.diabrowser.com/changelog/mac) emphasizes
+queued/steered chat, pinned-tab search, Profile switching, dictation and window
+responsiveness. Its September update adds historical chat/artifact search. These
+reinforce Aux's existing priorities: preserve in-flight work, search complete
+history and keep navigation responsive during AI activity. Dia reports M155;
+Aux's current matching measurement pair is M154, with the next engine update
+tracked in CHROMIUM_RESPINS.
+
+[Aside's native changelog](https://docs.aside.com/changelog/native) emphasizes
+new-tab preloading, background AI that preserves typing focus, repeated-layout
+elimination, split-drag stability, Profile switching and import/shutdown quality.
+The review should inspect those interactions directly, not infer quality from
+rounded corners. Its [product page](https://aside.com/) positions logged-in
+website work, local memory and protected credential use; benchmark rankings are
+vendor claims. Aux should prove its own workflows and timings rather than repeat
+those claims.
+
 ## Fluidity slices A–E
 
 ### A — Per-run mode, consistent at dispatch
