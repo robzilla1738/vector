@@ -120,13 +120,12 @@ import {
 
 export interface ContentBlockBegin {
   profileId: string;
+  baseGeneration: number;
   generation: number;
   filterDigest: string;
   sources: readonly (Omit<ContentBlockSource, "text"> & { bundled: boolean })[];
   allowedSiteHosts: readonly string[];
   enabled: boolean;
-  operationId?: string;
-  siteGuard?: { pageId: string; expectedUrl: string; navigationId: number };
 }
 export interface ContentBlockAppend {
   profileId: string;
@@ -136,7 +135,6 @@ export interface ContentBlockAppend {
   text: string;
 }
 export interface ContentBlockCommit {
-  operationId?: string;
   profileId: string;
   generation: number;
   filterDigest: string;
@@ -309,14 +307,7 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   }): Promise<{ accepted: true }>;
   /** Chromium BookmarkModel owns the tree; the runtime only keeps offline article bodies. */
   bookmarksInvoke?(method: string, params: unknown): Promise<unknown>;
-  contentBlockState?(request: {
-    profileId: string;
-  }): Promise<{ receipt: ChromiumContentBlockReceipt | null }>;
-  contentBlockOperation?(request: {
-    profileId: string;
-    operationId: string;
-    retire?: true;
-  }): Promise<HostMethodResult<"native.contentBlockOperation">>;
+  contentBlockState?(request: { profileId: string }): Promise<HostMethodResult<"native.contentBlockState">>;
   contentBlockBegin?(request: ContentBlockBegin): Promise<{ accepted: true }>;
   contentBlockAppend?(request: ContentBlockAppend): Promise<{ accepted: true }>;
   contentBlockCommit?(request: ContentBlockCommit): Promise<ChromiumContentBlockReceipt>;
@@ -753,14 +744,8 @@ export class ChannelNativeBridge implements NativeBridge {
     return HostCapabilitiesSchema.parse(await this.channel.call("native.capabilities", {}));
   }
   contentBlockState(request: { profileId: string }) {
-    return this.channel.call<{ receipt: ChromiumContentBlockReceipt | null }>(
+    return this.channel.call<HostMethodResult<"native.contentBlockState">>(
       "native.contentBlockState",
-      request,
-    );
-  }
-  contentBlockOperation(request: { profileId: string; operationId: string; retire?: true }) {
-    return this.channel.call<HostMethodResult<"native.contentBlockOperation">>(
-      "native.contentBlockOperation",
       request,
     );
   }

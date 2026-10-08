@@ -3,7 +3,6 @@ import { NativeRecorderStartedSchema, NativeCdpNavigationReceiptSchema } from "@
 import { createMockHost } from "../../apps/shell/src/host/mock.generated.js";
 
 it.each([
-  "native.contentBlockOperation",
   "native.foundationModelsStatus",
   "native.foundationModelsStart",
   "native.foundationModelsRead",

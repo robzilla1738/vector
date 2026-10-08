@@ -28,15 +28,13 @@ export interface FilterListStatus {
   cosmeticBackend: ChromiumContentBlockReceipt["cosmeticBackend"] | "unavailable";
   compilationWarnings: ChromiumContentBlockReceipt["compilationWarnings"];
 }
-export interface BlockingState {
+export interface FilterListState {
   generation: number;
-  enabled: boolean;
-  allowedSiteHosts: string[];
   sources: (FilterSource & { meta?: SourceMeta })[];
   receipt?: ChromiumContentBlockReceipt;
 }
 export interface PreparedFilters {
-  state: BlockingState;
+  state: FilterListState;
   sources: ContentBlockSource[];
 }
 export interface FilterResponse {
@@ -49,19 +47,11 @@ export const sourceId = (url: string) => createHash("sha256").update(url).digest
 const digest = (text: string) => createHash("sha256").update(text).digest("hex");
 const validDigest = (value: unknown): value is string =>
   typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
-const validHost = (host: unknown): host is string => {
-  if (typeof host !== "string" || !host || host.length > 253 || /[/?#@\\]/.test(host)) return false;
-  try {
-    return new URL(`https://${host}/`).hostname === host;
-  } catch {
-    return false;
-  }
-};
 
 /** Immutable byte cache and one atomic Profile manifest. Parsing and activation belong to Chromium. */
 export class FilterLists {
   readonly dir: string;
-  private state: BlockingState;
+  private state: FilterListState;
   private attestedReceipt: ChromiumContentBlockReceipt | undefined;
   private readonly activePath: string;
   private readonly pendingPath: string;
@@ -74,15 +64,13 @@ export class FilterLists {
     this.generationPath = join(this.dir, "generation.json");
     this.state = this.readState(this.activePath) ?? {
       generation: 0,
-      enabled: true,
-      allowedSiteHosts: [],
       sources: BUNDLED_FILTER_SOURCES.map(({ bytes, sha256, ...source }) => ({
         ...source,
         meta: { fetchedAt: 0, bytes, sha256 },
       })),
     };
   }
-  private readState(path: string): BlockingState | undefined {
+  private readState(path: string): FilterListState | undefined {
     let text: string;
     try {
       if (statSync(path).size > 2 * 1024 * 1024) throw new Error("Oversized filter manifest");
@@ -91,16 +79,11 @@ export class FilterLists {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
       throw error;
     }
-    const state = JSON.parse(text) as BlockingState;
+    const state = JSON.parse(text) as FilterListState;
     if (
       !state ||
       !Number.isSafeInteger(state.generation) ||
       state.generation < 0 ||
-      typeof state.enabled !== "boolean" ||
-      !Array.isArray(state.allowedSiteHosts) ||
-      state.allowedSiteHosts.length > 4096 ||
-      !state.allowedSiteHosts.every(validHost) ||
-      state.allowedSiteHosts.some((host, index) => index > 0 && host <= state.allowedSiteHosts[index - 1]!) ||
       !Array.isArray(state.sources) ||
       state.sources.length > MAX_FILTER_SOURCES
     )
@@ -133,12 +116,17 @@ export class FilterLists {
         source.meta = { fetchedAt, bytes, sha256, ...(etag ? { etag } : {}), ...(error ? { error } : {}) };
       }
     }
-    return state;
+    // Legacy control fields are ignored; the native Profile owns their authority.
+    return {
+      generation: state.generation,
+      sources: state.sources,
+      ...(state.receipt ? { receipt: state.receipt } : {}),
+    };
   }
-  current(): BlockingState {
+  current(): FilterListState {
     return structuredClone(this.state);
   }
-  pending(): BlockingState | undefined {
+  pending(): FilterListState | undefined {
     return this.readState(this.pendingPath);
   }
   sources(): FilterSource[] {
@@ -155,7 +143,7 @@ export class FilterLists {
       compilationWarnings: receipt ? structuredClone(receipt.compilationWarnings) : [],
     };
   }
-  addSource(state: BlockingState, name: string, rawUrl: string, kind: FilterSourceKind): void {
+  addSource(state: FilterListState, name: string, rawUrl: string, kind: FilterSourceKind): void {
     const url = filterSourceUrl(rawUrl),
       id = sourceId(url);
     if (kind !== "hosts" && kind !== "adblock") throw new Error("Choose a supported filter list format.");
@@ -171,11 +159,11 @@ export class FilterLists {
       enabled: true,
     });
   }
-  removeSource(state: BlockingState, id: string): void {
+  removeSource(state: FilterListState, id: string): void {
     if (!state.sources.some((source) => source.id === id)) throw new Error("Choose a saved filter list.");
     state.sources = state.sources.filter((source) => source.id !== id);
   }
-  setEnabled(state: BlockingState, id: string, enabled: boolean): void {
+  setEnabled(state: FilterListState, id: string, enabled: boolean): void {
     const source = state.sources.find((source) => source.id === id);
     if (!source || typeof enabled !== "boolean") throw new Error("Choose a saved filter list state.");
     source.enabled = enabled;
@@ -218,7 +206,7 @@ export class FilterLists {
     await this.atomic(this.generationPath, JSON.stringify(next));
     return next;
   }
-  private async cached(source: BlockingState["sources"][number]): Promise<ContentBlockSource> {
+  private async cached(source: FilterListState["sources"][number]): Promise<ContentBlockSource> {
     const meta = source.meta;
     if (!meta) throw new Error(`Download ${source.name} before enabling it.`);
     const header = {
@@ -246,7 +234,7 @@ export class FilterLists {
     if (digest(text) !== meta.sha256) throw new Error(`The cached ${source.name} is damaged.`);
     return { ...header, text };
   }
-  async prepare(state: BlockingState): Promise<PreparedFilters> {
+  async prepare(state: FilterListState): Promise<PreparedFilters> {
     const sources: ContentBlockSource[] = [];
     for (const source of state.sources) if (source.enabled) sources.push(await this.cached(source));
     if (sources.reduce((sum, source) => sum + source.bytes, 0) > MAX_FILTER_SNAPSHOT_BYTES)
@@ -257,7 +245,7 @@ export class FilterLists {
     await this.atomic(this.pendingPath, JSON.stringify(prepared.state));
   }
   async publish(prepared: PreparedFilters, receipt: ChromiumContentBlockReceipt): Promise<void> {
-    const state = { ...prepared.state, receipt };
+    const state = { ...prepared.state, generation: receipt.generation, receipt };
     await this.atomic(this.activePath, JSON.stringify(state));
     this.state = structuredClone(state);
     this.attestedReceipt = receipt;
@@ -276,7 +264,7 @@ export class FilterLists {
   }
   /** No candidate body/configuration becomes active before the matching native ACK. */
   async update(
-    state: BlockingState,
+    state: FilterListState,
     fetchText: FetchFilter,
     signal: AbortSignal,
     requiredId?: string,

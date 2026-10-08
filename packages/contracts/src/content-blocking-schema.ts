@@ -51,43 +51,22 @@ export const ContentBlockReceiptSchema = z
     futureDocuments: z.literal(true),
   })
   .strict();
-const operationId = z.string().min(1).max(160);
-export const ContentBlockOperationParams = z
+export const ContentBlockStateSchema = z
   .object({
-    profileId: z.string().min(1).max(128),
-    operationId,
-    retire: z.literal(true).optional(),
-  })
-  .strict();
-export const ContentBlockOperationSchema = z
-  .object({
-    current: z.boolean(),
+    receipt: ContentBlockReceiptSchema.nullable(),
     enabled: z.boolean(),
-    phase: z.enum(["prepared", "running", "completed", "failed"]),
-    receipt: ContentBlockReceiptSchema.optional(),
-    error: z
-      .object({ code: z.literal("conflict"), message: z.string().max(2048) })
-      .strict()
-      .optional(),
+    allowedSiteHosts: z.array(z.string().min(1).max(253)).max(4096),
   })
   .strict();
 export const ContentBlockBeginSchema = z
   .object({
     profileId: z.string().min(1).max(128),
+    baseGeneration: whole.positive(),
     generation: whole.positive(),
     filterDigest: digest,
     sources: z.array(FilterSourceHeaderSchema.extend({ bundled: z.boolean() })).max(MAX_FILTER_SOURCES),
     allowedSiteHosts: z.array(z.string().min(1).max(253)).max(4096),
     enabled: z.boolean(),
-    operationId: operationId.optional(),
-    siteGuard: z
-      .object({
-        pageId: z.string().min(1).max(128),
-        expectedUrl: z.string().url().max(2048),
-        navigationId: whole,
-      })
-      .strict()
-      .optional(),
   })
   .strict()
   .refine(
@@ -111,7 +90,6 @@ export const ContentBlockAppendSchema = z
   .strict();
 export const ContentBlockCommitSchema = z
   .object({
-    operationId: operationId.optional(),
     profileId: z.string().min(1).max(128),
     generation: whole.positive(),
     filterDigest: digest,

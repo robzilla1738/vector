@@ -44,8 +44,7 @@ import {
   NativeProjectClosedSchema,
 } from "./projects.js";
 import {
-  ContentBlockOperationParams,
-  ContentBlockOperationSchema,
+  ContentBlockStateSchema,
   ContentBlockBeginSchema,
   ContentBlockAppendSchema,
   ContentBlockCommitSchema,
@@ -195,12 +194,7 @@ export const RuntimeHostMethods = {
   "native.contentBlockState": runtime(
     "contentBlocking",
     z.object({ profileId: z.string().min(1).max(128) }).strict(),
-    z.object({ receipt: ContentBlockReceiptSchema.nullable() }).strict(),
-  ),
-  "native.contentBlockOperation": runtime(
-    "contentBlocking",
-    ContentBlockOperationParams,
-    ContentBlockOperationSchema,
+    ContentBlockStateSchema,
   ),
   "native.contentBlockBegin": runtime("contentBlocking", ContentBlockBeginSchema, accepted),
   "native.contentBlockAppend": runtime("contentBlocking", ContentBlockAppendSchema, accepted),
