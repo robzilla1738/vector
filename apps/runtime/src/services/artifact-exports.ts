@@ -25,6 +25,7 @@ export class ArtifactExports {
   private readonly directory: string;
   private readonly owners = new Map<string, ExportOwner>();
   private readonly artifacts = new Map<string, ExportOwner>();
+  private readonly retiredOwners = new Set<string>();
   private ready?: Promise<void>;
   private closing?: Promise<void>;
   private closed = false;
@@ -51,6 +52,8 @@ export class ArtifactExports {
     checkComplete(): void;
   }): Promise<Prepared> {
     if (this.closed) throw new AuxError("cancelled", "Receipt export is closed.");
+    if (this.retiredOwners.has(input.token))
+      throw new AuxError("cancelled", "The original export window was retired.");
     const prior = this.owners.get(input.exportId);
     if (prior) {
       this.checkOwner(prior, input.token);
@@ -186,6 +189,24 @@ export class ArtifactExports {
     if (!active.claimId) await this.remove(owner, active);
   }
 
+  async retireOwner(token: string): Promise<{ ok: true }> {
+    if (this.closed) {
+      await this.closing;
+      return { ok: true };
+    }
+    // The native document is gone. Queued calls must not recreate exports after this ACK.
+    this.retiredOwners.add(token);
+    const retired = await Promise.allSettled(
+      [...this.owners]
+        .filter(([, owner]) => owner.token === token)
+        .map(([exportId]) => this.retire(exportId, token)),
+    );
+    const failures = retired.filter((result) => result.status === "rejected").map((result) => result.reason);
+    if (failures.length)
+      throw new AggregateError(failures, "The original window's receipt exports could not be retired.");
+    return { ok: true };
+  }
+
   close(): Promise<void> {
     if (this.closing) return this.closing;
     this.closed = true;
@@ -202,6 +223,7 @@ export class ArtifactExports {
       await rm(this.directory, { recursive: true, force: true });
       this.artifacts.clear();
       this.owners.clear();
+      this.retiredOwners.clear();
       if (this.cleanupFailures.length)
         throw new AggregateError(this.cleanupFailures, "Temporary receipt exports could not be removed.");
     });

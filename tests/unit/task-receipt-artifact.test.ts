@@ -188,3 +188,71 @@ it("joins cancellation, fences delayed prepares, and unlinks claimed output on r
     await fd.close();
   }
 });
+
+it("tombstones a retired native owner before queued prepares and leaves a different original window usable", async () => {
+  const f = await fixture();
+  await expect(f.artifacts.exports.retireOwner(f.context.token)).resolves.toEqual({ ok: true });
+  await expect(exportTaskReceipt(f.services, f.params, f.context)).rejects.toMatchObject({
+    code: "cancelled",
+  });
+  await expect(
+    exportTaskReceipt(f.services, { ...f.params, exportId: randomUUID() }, f.context),
+  ).rejects.toMatchObject({ code: "cancelled" });
+  await expect(f.artifacts.exports.retireOwner(f.context.token)).resolves.toEqual({ ok: true });
+  expect(readdirSync(join(f.directory, "artifacts", "private.exports"))).toEqual([]);
+  await expect(
+    exportTaskReceipt(
+      f.services,
+      { ...f.params, exportId: randomUUID(), includeCapturedText: false },
+      { ...f.context, token: "different-original-window" },
+    ),
+  ).resolves.toMatchObject({ status: "prepared" });
+});
+
+it("joins a retired owner's pending writer and removes unclaimed output while preserving an accepted native claim", async () => {
+  const f = await fixture();
+  const unclaimed = await exportTaskReceipt(
+    f.services,
+    { ...f.params, exportId: randomUUID(), includeCapturedText: false },
+    f.context,
+  );
+  const claimed = await exportTaskReceipt(
+    f.services,
+    { ...f.params, exportId: randomUUID(), includeCapturedText: false },
+    f.context,
+  );
+  if (unclaimed.status !== "prepared" || claimed.status !== "prepared")
+    throw new Error("Expected prepared exports");
+  const claim = { artifactId: claimed.artifactId, token: f.context.token, claimId: randomUUID() };
+  const descriptor = f.artifacts.exports.claim(claim)!;
+  const fd = await open(descriptor.path, "r");
+  const paused = pauseAfterFirstSegment(f.documents);
+  const preparing = exportTaskReceipt(f.services, f.params, f.context);
+  const outcome = preparing.catch((error: unknown) => error);
+  await paused.reached;
+  let joined = false;
+  const retirement = f.artifacts.exports.retireOwner(f.context.token).then((result) => {
+    joined = true;
+    return result;
+  });
+  try {
+    await expect(
+      exportTaskReceipt(f.services, { ...f.params, exportId: randomUUID() }, f.context),
+    ).rejects.toMatchObject({ code: "cancelled" });
+    expect(joined).toBe(false);
+    paused.resume();
+    expect(await outcome).toMatchObject({ code: "cancelled" });
+    await expect(retirement).resolves.toEqual({ ok: true });
+    expect(readdirSync(join(f.directory, "artifacts", "private.exports"))).toEqual([
+      `${claimed.artifactId}.md`,
+    ]);
+    expect(existsSync(descriptor.path)).toBe(true);
+    expect(await fd.readFile("utf8")).toContain("Captured document text omitted");
+    await f.artifacts.exports.release(claim);
+    expect(existsSync(descriptor.path)).toBe(false);
+  } finally {
+    paused.resume();
+    await retirement;
+    await fd.close();
+  }
+});
