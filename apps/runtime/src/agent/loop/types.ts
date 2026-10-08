@@ -54,6 +54,15 @@ export type LoopToolResult =
    */
   | { finish: { result: Record<string, unknown> } };
 
+/** Only an admitted independent read may dispatch concurrently; late refusal must not park another call. */
+export type PreparedRead = { execute: () => Promise<{ output: unknown }> } | { park: LoopPark };
+export interface WebToolContext {
+  runId: string;
+  threadId: string;
+  turnId: string;
+  signal?: AbortSignal;
+}
+
 /** Service surface a loop tool executes against. */
 export interface LoopToolDeps {
   calendarEvents?: (
@@ -88,14 +97,10 @@ export interface LoopToolDeps {
    * Cookie-free web fetch; the destination runs through decide() first —
    * an `ask` parks the loop on the suspension it creates.
    */
-  webFetch?: (
-    url: string,
-    ctx: { runId: string; threadId: string; turnId: string },
-  ) => Promise<LoopToolResult>;
-  webSearch?: (
-    query: string,
-    ctx: { runId: string; threadId: string; turnId: string },
-  ) => Promise<LoopToolResult>;
+  webFetch?: (url: string, ctx: WebToolContext) => Promise<LoopToolResult>;
+  webSearch?: (query: string, ctx: WebToolContext) => Promise<LoopToolResult>;
+  prepareWebFetch?: (url: string, ctx: WebToolContext) => Promise<PreparedRead>;
+  prepareWebSearch?: (query: string, ctx: WebToolContext) => Promise<PreparedRead>;
   /** The code-mode REPL: eval guest code against the persistent per-run session. */
   repl?: (
     input: { code: string; deadlineMs?: number; yieldTimeMs?: number },
@@ -239,6 +244,9 @@ export interface LoopTool {
    * must be the only tool call in their step — the model's park turn.
    */
   requiresSoloCall?: boolean;
+  independentRead?: (ctx: LoopToolContext) => boolean;
+  /** Runs in call order before any read in this batch dispatches. Effects and page-dependent reads omit this. */
+  prepare?: (input: unknown, ctx: LoopToolContext) => Promise<PreparedRead>;
   execute: (input: unknown, ctx: LoopToolContext) => Promise<LoopToolResult> | LoopToolResult;
 }
 

@@ -48,6 +48,7 @@ export class SubagentService {
         childRunId: string,
       ): import("@aux/contracts").CoderWorktreeRecovery | undefined;
     },
+    private publicWebTools: readonly ("webfetch" | "websearch")[] = [],
   ) {
     void this.reconcile().catch((error) => console.error("[aux-runtime] subagent recovery failed", error));
     this.unsubscribe = events.subscribe((event) => {
@@ -440,16 +441,30 @@ export class SubagentService {
         deadlineMs: narrowerLimit(inheritedLimits?.deadlineMs, selectedProfile.limits?.deadlineMs),
       },
     };
-    if (!input.pageIds.length && !parent.config?.projectRoot)
-      throw new AuxError(
-        "invalid_params",
-        "Attach pages or a reviewed coding project before spawning an agent.",
-      );
     if (profile.workspace === "isolated" && (!parent.config?.projectRoot || !this.coding))
       throw new AuxError(
         "capability_unsupported",
         "An isolated profile requires an attached Git project and governed worktree support.",
       );
+    if (!input.pageIds.length && !parent.config?.projectRoot) {
+      const publicTools = new Set([
+        ...this.publicWebTools,
+        "get_time",
+        "write_todos",
+        "ask_user_question",
+        "request_action_confirmation",
+        "submit_result",
+        "package_skill",
+        "package_template",
+        "package_workflow",
+      ]);
+      profile.tools = tools.includes("*") ? [...publicTools] : tools.filter((tool) => publicTools.has(tool));
+      if (!this.publicWebTools.some((tool) => profile.tools.includes(tool)))
+        throw new AuxError(
+          "capability_unsupported",
+          "This child needs an available public web tool, attached pages, or a coding project.",
+        );
+    }
     const reserved = actionId
       ? this.agents(group.groupId).find((agent) => agent.spawnActionId === actionId)
       : undefined;

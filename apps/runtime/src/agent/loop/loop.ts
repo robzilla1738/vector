@@ -9,6 +9,7 @@ import type {
   LoopToolManifest,
   LoopToolResult,
   LoopPark,
+  PreparedRead,
   ModelMessage,
 } from "./types.js";
 import { parkAnswerOutput, toolResultsMessage } from "./types.js";
@@ -92,6 +93,35 @@ export type AgentLoopOutcome =
   | { kind: "failed"; error: AuxError };
 
 const DEFAULT_MAX_LOOP_STEPS = 0;
+const MAX_PARALLEL_READS = 4;
+const modelToolsCache = new WeakMap<
+  LoopToolManifest,
+  { tools: Record<string, { description: string; inputSchema: z.ZodType }>; bytes: number }
+>();
+
+function modelTools(manifest: LoopToolManifest) {
+  const cached = modelToolsCache.get(manifest);
+  if (cached) return cached;
+  const tools = Object.fromEntries(
+    Object.entries(manifest).map(([name, tool]) => [
+      name,
+      { description: `${tool.description}\n\n(${tool.byline})`, inputSchema: tool.inputSchema },
+    ]),
+  );
+  const bytes = Buffer.byteLength(
+    JSON.stringify(
+      Object.entries(tools).map(([name, tool]) => ({
+        name,
+        description: tool.description,
+        schema: z.toJSONSchema(tool.inputSchema),
+      })),
+    ),
+    "utf8",
+  );
+  const result = { tools, bytes };
+  modelToolsCache.set(manifest, result);
+  return result;
+}
 
 /** Provider markup a model leaks when it serialises calls into text rather than emitting real tool calls. */
 const LEAKED_TOOL_MARKUP =
@@ -179,6 +209,33 @@ function interruptedResults(
   }));
 }
 
+function parkCall(park: LoopPark, call: LoopToolCall, ctx: LoopToolContext): { park: LoopPark } {
+  return {
+    park: {
+      ...park,
+      detail: {
+        ...park.detail,
+        execution: { input: call.input, callCount: ctx.callCount, goalTurn: ctx.goalTurn },
+      },
+    },
+  };
+}
+
+function failedCall(
+  error: unknown,
+  call: LoopToolCall,
+  ctx: LoopToolContext,
+): { output: unknown } | { park: LoopPark } {
+  if (ctx.signal?.aborted) throw error;
+  if (error instanceof AuxError && error.code === "needs_input") {
+    const detail = error.detail as { park?: LoopPark } | undefined;
+    const park = detail?.park ?? ctx.deps.pendingPark?.();
+    if (park) return parkCall(park, call, ctx);
+  }
+  if (error instanceof MentionUnavailable) return { output: error.unavailable };
+  return { output: error instanceof Error ? error : new Error(String(error)) };
+}
+
 async function executeOne(
   toolName: string,
   call: LoopToolCall,
@@ -201,34 +258,10 @@ async function executeOne(
   try {
     const result = await tool.execute(call.input, { ...ctx, toolCallId: call.toolCallId });
     if ("park" in result && (result.park.approvalId || result.park.detail?.retryCall))
-      return {
-        park: {
-          ...result.park,
-          detail: {
-            ...result.park.detail,
-            execution: { input: call.input, callCount: ctx.callCount, goalTurn: ctx.goalTurn },
-          },
-        },
-      };
+      return parkCall(result.park, call, ctx);
     return "output" in result ? { ...result, output: annotateToolFailure(result.output) } : result;
   } catch (error) {
-    if (ctx.signal?.aborted) throw error;
-    if (error instanceof AuxError && error.code === "needs_input") {
-      const detail = error.detail as { park?: LoopPark } | undefined;
-      const park = detail?.park ?? ctx.deps.pendingPark?.();
-      if (park)
-        return {
-          park: {
-            ...park,
-            detail: {
-              ...park.detail,
-              execution: { input: call.input, callCount: ctx.callCount, goalTurn: ctx.goalTurn },
-            },
-          },
-        };
-    }
-    if (error instanceof MentionUnavailable) return { output: error.unavailable };
-    return { output: error instanceof Error ? error : new Error(String(error)) };
+    return failedCall(error, call, ctx);
   }
 }
 
@@ -296,15 +329,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       webmcp: opts.webmcp === true,
     });
   const maxSteps = opts.maxSteps ?? DEFAULT_MAX_LOOP_STEPS;
-  const sdkTools = Object.fromEntries(
-    Object.entries(tools).map(([name, tool]) => [
-      name,
-      {
-        description: `${tool.description}\n\n(${tool.byline})`,
-        inputSchema: tool.inputSchema,
-      },
-    ]),
-  );
+  const sdk = modelTools(tools);
   // Auto-recall (06-Z): query content memory for the task once, durably. The
   // recall message lands before any assistant turn, so every later step shares
   // the same cache prefix.
@@ -362,7 +387,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
         ),
       };
 
-    const callTools = sdkTools;
+    const callTools = sdk.tools;
     let reservationId: string | undefined;
     let requestMessages: ModelMessage[];
     try {
@@ -392,16 +417,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       reservationId = await opts.beforeModelCall?.({
         modelId: opts.modelId,
         promptBytes: Buffer.byteLength(`${system}\n${JSON.stringify(requestMessages)}`, "utf8"),
-        toolsBytes: Buffer.byteLength(
-          JSON.stringify(
-            Object.entries(callTools).map(([name, spec]) => ({
-              name,
-              description: spec.description,
-              schema: z.toJSONSchema(spec.inputSchema),
-            })),
-          ),
-          "utf8",
-        ),
+        toolsBytes: sdk.bytes,
         maxOutputTokens: opts.maxOutputTokens ?? 4000,
       });
     } catch (error) {
@@ -521,7 +537,87 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     }[] = [];
     let parked: { call: LoopToolCall; park: LoopPark } | undefined;
     let finished: Record<string, unknown> | undefined;
-    for (const call of ordered) {
+    let skippedReason: string | undefined;
+    const independentRead = (call: LoopToolCall) => {
+      const tool = tools[call.toolName];
+      return !!tool?.prepare && !tool.requiresSoloCall && tool.independentRead?.(ctx) === true;
+    };
+    for (let cursor = 0; cursor < ordered.length;) {
+      const call = ordered[cursor]!;
+      if (independentRead(call)) {
+        const controller = new AbortController();
+        const signal = ctx.signal ? AbortSignal.any([ctx.signal, controller.signal]) : controller.signal;
+        const readContext = { ...ctx, signal };
+        const batch: { call: LoopToolCall; execute: () => Promise<{ output: unknown }> }[] = [];
+        while (cursor < ordered.length && batch.length < MAX_PARALLEL_READS) {
+          const next = ordered[cursor]!;
+          if (!independentRead(next)) break;
+          try {
+            signal.throwIfAborted();
+            await opts.beforeToolCall?.(next);
+            signal.throwIfAborted();
+          } catch (error) {
+            controller.abort(error);
+            return {
+              kind: "failed",
+              error: error instanceof AuxError ? error : new AuxError("step_failed", String(error)),
+            };
+          }
+          let prepared: PreparedRead | { output: unknown };
+          try {
+            prepared = await tools[next.toolName]!.prepare!(next.input, {
+              ...readContext,
+              toolCallId: next.toolCallId,
+            });
+          } catch (error) {
+            prepared = failedCall(error, next, readContext);
+          }
+          cursor++;
+          if ("park" in prepared) {
+            parked = { call: next, park: parkCall(prepared.park, next, ctx).park };
+            results.push({ toolCallId: next.toolCallId, toolName: next.toolName, parked: true });
+            controller.abort(new AuxError("cancelled", "Read preparation requires review."));
+            break;
+          }
+          if ("output" in prepared) {
+            results.push({ toolCallId: next.toolCallId, toolName: next.toolName, output: prepared.output });
+            opts.onToolCall?.(next, prepared);
+            skippedReason =
+              "A read could not be prepared. This call was not executed; replan from the reported error.";
+            controller.abort(prepared.output);
+            break;
+          }
+          batch.push({ call: next, execute: prepared.execute });
+        }
+        if (parked || skippedReason) break;
+        // The batch contains only prepared reads with no browser/page effects.
+        // Joining the batch before the next call is the barrier for all other tools.
+        const outputs = await Promise.all(
+          batch.map(async ({ execute }) => {
+            try {
+              signal.throwIfAborted();
+              const result = await execute();
+              if (result.output instanceof Error) controller.abort(result.output);
+              return { output: annotateToolFailure(result.output) };
+            } catch (error) {
+              controller.abort(error);
+              return { output: error instanceof Error ? error : new Error(String(error)) };
+            }
+          }),
+        );
+        batch.forEach(({ call }, index) => {
+          const result = outputs[index]!;
+          results.push({ toolCallId: call.toolCallId, toolName: call.toolName, output: result.output });
+          opts.onToolCall?.(call, result);
+        });
+        if (signal.aborted) {
+          skippedReason =
+            "An independent read failed or was stopped. This call was not executed; inspect the read results before continuing.";
+          break;
+        }
+        continue;
+      }
+      cursor++;
       try {
         await opts.beforeToolCall?.(call);
       } catch (error) {
@@ -548,23 +644,22 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       opts.onToolCall?.(call, result);
     }
 
-    // A terminal call can appear alongside other calls. If it was accepted,
-    // every later call was skipped; still pair each assistant call with a
-    // truthful result before this completed turn enters durable history.
-    if (finished !== undefined) {
+    if (parked)
+      skippedReason = "A suspension ended this step; the call was not executed — re-issue if still needed.";
+    if (finished !== undefined)
+      skippedReason = "The accepted submit_result ended this turn before this call ran.";
+    if (skippedReason) {
       const answered = new Set(results.map((result) => result.toolCallId));
-      for (const call of toolCalls) {
+      for (const call of toolCalls)
         if (!answered.has(call.toolCallId))
           results.push({
             toolCallId: call.toolCallId,
             toolName: call.toolName,
-            output: {
-              interrupted: true,
-              detail: "The accepted submit_result ended this turn before this call ran.",
-            },
+            output: { interrupted: true, detail: skippedReason },
           });
-      }
     }
+    const callOrder = new Map(toolCalls.map((call, index) => [call.toolCallId, index]));
+    results.sort((a, b) => callOrder.get(a.toolCallId)! - callOrder.get(b.toolCallId)!);
 
     // Media pruning + the per-turn tool budget (06-Z): embedded payloads
     // shrink to markers before they persist, and aggregate output past 40 KB
@@ -573,19 +668,6 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     results.splice(0, results.length, ...budgetToolOutputs(results));
 
     if (parked) {
-      // Calls that never ran still need a result so the transcript stays paired.
-      const answered = new Set(results.map((result) => result.toolCallId));
-      for (const call of toolCalls) {
-        if (answered.has(call.toolCallId)) continue;
-        results.push({
-          toolCallId: call.toolCallId,
-          toolName: call.toolName,
-          output: {
-            interrupted: true,
-            detail: "a suspension ended this step; the call was not executed — re-issue if still needed.",
-          },
-        });
-      }
       transcript.park(runId, {
         toolCallId: parked.call.toolCallId,
         toolName: parked.call.toolName,
@@ -629,6 +711,8 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
 
     messages.push(toolMessage);
     transcript.append(runId, [toolMessage]);
+    if (opts.signal?.aborted)
+      return { kind: "failed", error: new AuxError("cancelled", "The original read batch stopped.") };
   }
   return { kind: "exhausted" };
 }

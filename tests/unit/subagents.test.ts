@@ -17,7 +17,10 @@ import {
 } from "@aux/runtime";
 import { AuxError, AuxPackageSnapshotSchema, EventTypes, type Run } from "@aux/contracts";
 
-function fixture(coding?: ConstructorParameters<typeof SubagentService>[3]) {
+function fixture(
+  coding?: ConstructorParameters<typeof SubagentService>[3],
+  publicWebTools?: ConstructorParameters<typeof SubagentService>[4],
+) {
   const db = openDb(":memory:");
   const repo = new Repo(db),
     events = new EventBus(repo);
@@ -73,7 +76,7 @@ function fixture(coding?: ConstructorParameters<typeof SubagentService>[3]) {
       },
     },
   } as unknown as ConstructorParameters<typeof SubagentService>[2];
-  const service = new SubagentService(repo, events, runs, coding);
+  const service = new SubagentService(repo, events, runs, coding, publicWebTools);
   return {
     db,
     repo,
@@ -91,6 +94,86 @@ function fixture(coding?: ConstructorParameters<typeof SubagentService>[3]) {
     },
   };
 }
+
+it("starts tab-free public research with inherited budgets and no browser or filesystem authority", async () => {
+  const f = fixture(undefined, ["webfetch", "websearch"]);
+  try {
+    f.parent.pageIds = [];
+    f.parent.config = { ...f.parent.config, agentMode: "ask", nativeTurnContext: "original-source" };
+    f.repo.saveRun(f.parent);
+    const group = f.service.createGroup({
+      parentRunId: f.parent.runId,
+      tokenBudget: 1000,
+      costBudgetUsd: 1,
+      timeBudgetMs: 60000,
+    });
+    await f.service.spawn({
+      groupId: group.groupId,
+      goal: "Compare public documentation",
+      pageIds: [],
+      profile: "read_only",
+      tokenAllocation: 500,
+      costAllocationUsd: 0.2,
+    });
+    expect(f.starts[0]).toMatchObject({
+      pageIds: [],
+      agentMode: "ask",
+      nativeTurnContext: "original-source",
+      contextWorkspaceId: f.workspace.workspaceId,
+      maxCostUsd: 0.2,
+      agentProfile: { name: "read_only", tools: expect.arrayContaining(["webfetch", "websearch"]) },
+    });
+    const profile = f.starts[0]!.agentProfile as { tools: string[] };
+    expect(profile.tools).not.toEqual(expect.arrayContaining(["snapshot"]));
+    expect(
+      profile.tools.some((tool) => ["*", "act", "repl", "read_file", "bash", "subagent"].includes(tool)),
+    ).toBe(false);
+    expect(f.starts[0]!.projectRoot).toBeUndefined();
+  } finally {
+    f.close();
+  }
+});
+
+it.each(["unavailable", "parent-restricted"] as const)(
+  "does not enlarge tab-free research authority when public tools are %s",
+  async (reason) => {
+    const f = fixture(undefined, reason === "unavailable" ? [] : ["webfetch", "websearch"]);
+    try {
+      f.parent.pageIds = [];
+      if (reason === "parent-restricted")
+        f.parent.config = {
+          ...f.parent.config,
+          agentProfile: {
+            name: "limited",
+            prompt: "Read files only",
+            tools: ["read_file"],
+            packages: [],
+            workspace: "shared",
+          },
+        };
+      f.repo.saveRun(f.parent);
+      const group = f.service.createGroup({
+        parentRunId: f.parent.runId,
+        tokenBudget: 0,
+        costBudgetUsd: 0,
+        timeBudgetMs: 0,
+      });
+      await expect(
+        f.service.spawn({
+          groupId: group.groupId,
+          goal: "Research",
+          pageIds: [],
+          profile: "default",
+          tokenAllocation: 0,
+          costAllocationUsd: 0,
+        }),
+      ).rejects.toThrow(/available public web tool/);
+      expect(f.starts).toHaveLength(0);
+    } finally {
+      f.close();
+    }
+  },
+);
 
 it("shares the explicit reservation budget across nine children and rejects page collisions", async () => {
   const f = fixture();

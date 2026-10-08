@@ -152,12 +152,18 @@ export function buildToolManifest(): LoopToolManifest {
     inputSchema: z.object({
       url: z.string().url().describe("Absolute http(s) URL; private-network addresses are denied."),
     }),
+    independentRead: (ctx) => !!ctx.deps.prepareWebFetch,
+    prepare: (raw, ctx) => {
+      const { url } = z.object({ url: z.string().url() }).parse(raw);
+      return need(ctx.deps.prepareWebFetch, "webfetch")(url, ctx);
+    },
     execute: async (raw, ctx) => {
       const { url } = z.object({ url: z.string().url() }).parse(raw);
       return need(ctx.deps.webFetch, "webfetch")(url, {
         runId: ctx.runId,
         threadId: ctx.threadId,
         turnId: ctx.turnId,
+        signal: ctx.signal,
       });
     },
   };
@@ -167,12 +173,18 @@ export function buildToolManifest(): LoopToolManifest {
       "Search the web through the configured search engine; returns title, text and links. Same egress rules as webfetch.",
     byline: "Aux web search",
     inputSchema: z.object({ query: z.string().min(1).max(500) }),
+    independentRead: (ctx) => !!ctx.deps.prepareWebSearch,
+    prepare: (raw, ctx) => {
+      const { query } = z.object({ query: z.string().min(1).max(500) }).parse(raw);
+      return need(ctx.deps.prepareWebSearch, "websearch")(query, ctx);
+    },
     execute: async (raw, ctx) => {
       const { query } = z.object({ query: z.string().min(1).max(500) }).parse(raw);
       return need(ctx.deps.webSearch, "websearch")(query, {
         runId: ctx.runId,
         threadId: ctx.threadId,
         turnId: ctx.turnId,
+        signal: ctx.signal,
       });
     },
   };
@@ -198,8 +210,9 @@ export function buildToolManifest(): LoopToolManifest {
 
   const requestActionConfirmation: LoopTool = {
     description:
-      "Confirm a consequential outcome with the user before finishing: produces a review artifact (what changed, evidence, links). " +
-      "Call exactly once as the only tool call of its turn, after the work is done and verified.",
+      "Request a review only when the user explicitly requests one or the current policy requires a decision. " +
+      "Ordinary actions allowed by Ask first, Auto, or Skip confirmation need no additional confirmation; report their verified result directly. " +
+      "When a review is required, call this once and alone with the exact outcome, evidence, and links.",
     byline: "Aux action confirmation",
     inputSchema: z.object({
       summary: z.string().min(1).max(4_000).describe("What was done and the evidence for it."),
