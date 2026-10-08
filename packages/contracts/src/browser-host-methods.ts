@@ -1,4 +1,5 @@
 import { MemorySaverMinutesSchema, MemorySaverSettingsSchema } from "./memory-saver.js";
+import { NativeBookmarkRequestSchema, NativeBookmarkResultSchema } from "./bookmark-methods.js";
 import { FilterCompilationWarningsSchema } from "./content-blocking-schema.js";
 import { z } from "zod";
 import { OrganizationCommitSchema, OrganizationSnapshotSchema } from "./organization.js";
@@ -9,7 +10,7 @@ import {
   TabPatchSchema,
   TabPlacementSchema,
 } from "./tabs.js";
-import { DownloadSchema, PageQuickActionSchema } from "./entities.js";
+import { BookmarkSchema, DownloadSchema, PageQuickActionSchema } from "./entities.js";
 import {
   AgentClientSchema,
   AgentConnectionCreateParams,
@@ -222,6 +223,7 @@ export const BrowserHostMethods = {
     strictObject({ migrated: number }),
   ),
   tabsSnapshot: coreShell(noArgs, TabCatalogSnapshotSchema),
+  bookmarksInvoke: coreShell(tuple([NativeBookmarkRequestSchema]), NativeBookmarkResultSchema),
   organizationSnapshot: spacesShell(noArgs, OrganizationSnapshotSchema),
   organizationCommit: spacesShell(tuple([OrganizationCommitSchema]), OrganizationSnapshotSchema),
   tabsSince: coreShell(
@@ -654,6 +656,7 @@ const coreEvent = eventFor("core"),
 /** Events published by the native browser to an authorized Aux WebUI. */
 export const HostEvents = {
   onEvent: coreEvent(EventSchema),
+  onBookmarksChanged: coreEvent(z.array(BookmarkSchema)),
   onOmniboxResult: event("commandBar", omniboxResult),
   onRunAttentionActivated: coreEvent(
     strictObject({ runId: freshTokenString(), identity: freshTokenString(), windowId: freshTokenString() }),

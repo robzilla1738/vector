@@ -1,3 +1,9 @@
+import {
+  isNativeBookmarkMethod,
+  BookmarkMethodSchemas,
+  NativeBookmarkRequestSchema,
+  BookmarkResultSchemas,
+} from "@aux/contracts/bookmark-methods";
 import { effectiveShortcuts, type ShortcutOverrides } from "@aux/contracts/shortcut-defs";
 import type { AuxBridge } from "./bridge";
 import { requireAuxMethod } from "@aux/contracts/method-feature";
@@ -106,6 +112,14 @@ export function installChromiumBridge(
     },
     invoke: async <M extends MethodName>(method: M, ...params: RpcArgs<M>): Promise<MethodResult<M>> => {
       requireAuxMethod(method, "chromium-fork", chromiumFeatureStages(target));
+      if (isNativeBookmarkMethod(method)) {
+        const request = NativeBookmarkRequestSchema.parse({
+          method,
+          params: BookmarkMethodSchemas[method].parse(params[0] ?? {}),
+        });
+        const result = await port.request("bookmarksInvoke", [request]);
+        return BookmarkResultSchemas[method].parse(result) as MethodResult<M>;
+      }
       // The browser forwards this name to the runtime as the signed-in desktop user.
       return port.request("invoke", [method, params[0] ?? {}]) as Promise<MethodResult<M>>;
     },

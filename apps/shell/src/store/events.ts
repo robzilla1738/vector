@@ -1,3 +1,4 @@
+import { hasNativeBookmarkAuthority } from "../native-bookmark-observer";
 import { isAgentPolicyCategory, isPolicySite } from "../features/permissions/categories";
 import { orderedPages, normalizePages, putPage } from "./pages";
 import { EFFECT_CATEGORIES, CONFIRMATION_LEVELS } from "@aux/contracts";
@@ -288,6 +289,7 @@ export const reduceLibraryEvent: Reducer = (state, e) => {
       return settings ? { settings } : {};
     }
     case "bookmarks.changed": {
+      if (hasNativeBookmarkAuthority()) return {};
       const bookmarks = e.payload.bookmarks as { url: string; title: string }[] | undefined;
       return bookmarks ? { bookmarks } : {};
     }

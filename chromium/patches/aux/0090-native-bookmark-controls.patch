@@ -1,0 +1,135 @@
+diff --git a/chrome/browser/ui/aux/methods/library_methods.cc b/chrome/browser/ui/aux/methods/library_methods.cc
+index a65d51c..2034ee1 100644
+--- a/chrome/browser/ui/aux/methods/library_methods.cc
++++ b/chrome/browser/ui/aux/methods/library_methods.cc
+@@ -127,6 +127,43 @@ void WebUIBrowserUI::HandleAuxLibraryRequest(
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "bookmarksInvoke") {
++    Profile* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Private windows do not persist bookmarks");
++      return;
++    }
++    const base::DictValue* request =
++        args.size() == 1 ? args[0].GetIfDict() : nullptr;
++    const std::string* bookmark_method =
++        request ? request->FindString("method") : nullptr;
++    const base::DictValue* params =
++        request ? request->FindDict("params") : nullptr;
++    if (!bookmark_method || !params) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid bookmark request");
++      return;
++    }
++    // The generated public schema admits only native bookmark methods and
++    // their exact parameter shapes. Reuse the Profile model's identity and
++    // stale-revision checks instead of introducing a second mutation path.
++    base::DictValue response =
++        AuxRuntimeHost::ForProfile(profile)->CallBookmarksForUser(
++            *bookmark_method, *params);
++    if (const base::Value* result = response.Find("result")) {
++      std::move(callback).Run(true, *base::WriteJson(*result), "", "");
++      return;
++    }
++    const base::DictValue* error = response.FindDict("error");
++    const std::string* code = error ? error->FindString("code") : nullptr;
++    const std::string* message = error ? error->FindString("message") : nullptr;
++    std::move(callback).Run(
++        false, "", code ? *code : "backend_unavailable",
++        message ? *message : "Chromium bookmarks are unavailable");
++    return;
++  }
++
+   if (method == "organizationSnapshot" || method == "organizationCommit") {
+     if (browser_->GetProfile()->IsOffTheRecord()) {
+       std::move(callback).Run(false, "", "forbidden",
+diff --git a/chrome/browser/ui/aux/profile_library.cc b/chrome/browser/ui/aux/profile_library.cc
+index b6bd4d0..f7b5e44 100644
+--- a/chrome/browser/ui/aux/profile_library.cc
++++ b/chrome/browser/ui/aux/profile_library.cc
+@@ -134,6 +134,7 @@ void ProfileLibrary::OnRuntimeDisconnected() {
+   pending_deltas_.clear();
+   bookmark_note_pending_ = false;
+   weak_factory_.InvalidateWeakPtrs();
++  NotifyBookmarks();
+ }
+ 
+ void ProfileLibrary::RefreshHistory() {
+@@ -345,7 +346,7 @@ void ProfileLibrary::HistoryServiceBeingDeleted(
+ }
+ 
+ void ProfileLibrary::NotifyBookmarks() {
+-  if (!runtime_available_ || bookmark_note_pending_) {
++  if (bookmark_note_pending_) {
+     return;
+   }
+   bookmark_note_pending_ = true;
+@@ -357,7 +358,7 @@ void ProfileLibrary::NotifyBookmarks() {
+               return;
+             }
+             self->bookmark_note_pending_ = false;
+-            if (self->runtime_available_ && self->changed_) {
++            if (self->changed_) {
+               self->changed_.Run();
+             }
+           },
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index 87d8af2..4dcf76a 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -87,6 +87,7 @@
+ #include "components/sessions/core/session_id.h"
+ #include "components/version_info/version_info.h"
+ #include "components/zoom/zoom_controller.h"
++#include "content/public/browser/browser_thread.h"
+ #include "content/public/browser/devtools_agent_host.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/render_frame_host.h"
+@@ -192,6 +193,15 @@ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
+           weak_factory_.GetWeakPtr()),
+       base::BindRepeating(
+           [](base::WeakPtr<AuxRuntimeHost> host) {
++            if (!host) {
++              return;
++            }
++            base::DictValue snapshot =
++                host->CallBookmarksForUser("bookmarks.list", base::DictValue());
++            if (const base::Value* result = snapshot.Find("result")) {
++              host->observers_.Notify("onBookmarksChanged",
++                                      *base::WriteJson(*result));
++            }
+             if (host) {
+               host->worker_.AsyncCall(&Worker::SendBookmarkChanged);
+             }
+@@ -210,6 +220,13 @@ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
+   }
+ }
+ 
++base::DictValue AuxRuntimeHost::CallBookmarksForUser(
++    const std::string& method,
++    const base::DictValue& params) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  return profile_library_->BookmarkCall(method, params);
++}
++
+ AuxRuntimeHost::~AuxRuntimeHost() {
+   shutting_down_ = true;
+   NativeConnectionRetired(admitted_native_generation_);
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 4ed414e..cb4a51e 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -86,6 +86,10 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+         generation > retired_native_generation_;
+   }
+ 
++  // Native Profile library access for trusted browser UI; no runtime required.
++  base::DictValue CallBookmarksForUser(const std::string& method,
++                                       const base::DictValue& params);
++
+   base::DictValue CredentialContext(const base::DictValue& params, uint64_t generation);
+ 
+   void CallApi(std::string method,

@@ -1,4 +1,9 @@
 import { MemorySaverMinutesSchema } from "./memory-saver.js";
+import { BookmarkMethodSchemas, BookmarkResultSchemas } from "./bookmark-methods.js";
+export {
+  BookmarkAddParams, BookmarkReadingListParams, BookmarkMarkReadParams,
+  BookmarkOfflineSetParams, BookmarkOfflineGetParams, BookmarkUpdateParams, BookmarkRemoveParams,
+} from "./bookmark-methods.js";
 import { CodingRunParams, CodingChangesParams, CodingUndoParams, CodingProcessParams, CodingLogsParams, CodingFileReceiptSchema, CodingProcessViewSchema, CodingLogsSchema } from "./coding-api.js";
 import { PageSummaryParamsSchema, PageSummaryResultSchema } from "./page-summary.js";
 import { SkillLibraryPreviewParams, SkillLibraryImportParams, SkillLibraryPreviewSchema } from "./skill-library.js";
@@ -119,8 +124,6 @@ export const SearchEngineTemplateSchema = z
 import {
   ArtifactSchema,
   BackendSchema,
-  BookmarkSchema,
-  BookmarkFolderPathSchema,
   BrowserSessionSchema,
   ConversationSummarySchema,
   DownloadSchema,
@@ -1084,81 +1087,6 @@ export const HistoryProjectDeltaParams = z
       .optional(),
   })
   .strict();
-const WebBookmarkSchema = z.object({
-  url: z
-    .string()
-    .url()
-    .max(8192)
-    .refine((value) => {
-      try {
-        const url = new URL(value);
-        return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password;
-      } catch {
-        return false;
-      }
-    }, "Use a web address without credentials."),
-  title: z.string().max(1000),
-  folderPath: BookmarkFolderPathSchema.optional(),
-});
-const BookmarkNodeIdSchema = z.string().regex(/^[1-9]\d{0,18}$/);
-export const BookmarkAddParams = z.object({
-  url: z.string().url(),
-  title: z.string(),
-  folderPath: BookmarkFolderPathSchema.optional(),
-  readingList: z.boolean().optional(),
-  forceNew: z.boolean().optional(),
-});
-/** Toggle the reading-list flag on a bookmark; creates the bookmark when absent (title then required). */
-export const BookmarkReadingListParams = z.object({
-  url: z.string().url().max(8192),
-  nodeId: BookmarkNodeIdSchema.optional(),
-  readingList: z.boolean(),
-  title: z.string().max(1000).optional(),
-});
-export const BookmarkMarkReadParams = z.object({
-  url: z.string().url().max(8192),
-  nodeId: BookmarkNodeIdSchema.optional(),
-  read: z.boolean(),
-});
-/** Serialized reader-extract article; stored opaque and capped so list copies stay small. */
-export const BookmarkOfflineSetParams = z.object({
-  url: z.string().url().max(8192),
-  article: z
-    .string()
-    .min(2)
-    .max(512 * 1024),
-});
-export const BookmarkOfflineGetParams = z.object({ url: z.string().url().max(8192) });
-export const BookmarkUpdateParams = BookmarkAddParams.extend({
-  nodeId: BookmarkNodeIdSchema.optional(),
-  originalUrl: z.string().url(),
-  url: z
-    .string()
-    .max(8192)
-    .url()
-    .refine((value) => {
-      try {
-        const url = new URL(value);
-        return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password;
-      } catch {
-        return false;
-      }
-    }, "Use a web address without credentials."),
-  title: z.string().trim().min(1).max(1000),
-  expected: z.object({ title: z.string(), folderPath: BookmarkFolderPathSchema.optional() }),
-});
-export const BookmarkRemoveParams = z.object({
-  url: z.string().url(),
-  nodeId: BookmarkNodeIdSchema.optional(),
-  expected: z
-    .object({
-      title: z.string(),
-      createdAt: z.number(),
-      folderPath: BookmarkFolderPathSchema.optional(),
-      readingList: z.boolean().optional(),
-    })
-    .optional(),
-});
 
 export const PageWindowMoveParams = z.object({
   pageId: id,
@@ -1852,46 +1780,7 @@ export const MethodSchemas = {
   "history.count": HistoryRangeParams,
   "history.clear": HistoryRangeParams,
   "history.remove": z.object({ url: z.string().min(1), visitedAt: z.number().finite().nonnegative() }),
-  "bookmarks.list": z.object({}),
-  "bookmarks.folders.list": z.object({}),
-  "bookmarks.folders.create": z.object({ path: BookmarkFolderPathSchema.min(1) }),
-  "bookmarks.folders.rename": z.object({
-    path: BookmarkFolderPathSchema.min(1),
-    name: z.string().trim().min(1).max(200),
-  }),
-  "bookmarks.folders.remove": z.object({ path: BookmarkFolderPathSchema.min(1) }),
-  "bookmarks.add": BookmarkAddParams,
-  "bookmarks.readingList": BookmarkReadingListParams,
-  "bookmarks.markRead": BookmarkMarkReadParams,
-  "bookmarks.offline.set": BookmarkOfflineSetParams,
-  "bookmarks.offline.get": BookmarkOfflineGetParams,
-  "bookmarks.update": BookmarkUpdateParams,
-  "bookmarks.move": z.object({
-    bookmarks: z
-      .array(
-        z.object({
-          url: z.string().min(1).max(8192),
-          nodeId: BookmarkNodeIdSchema.optional(),
-          folderPath: BookmarkFolderPathSchema,
-        }),
-      )
-      .min(1)
-      .max(10000),
-    folderPath: BookmarkFolderPathSchema,
-    createFolder: z.boolean().optional(),
-  }),
-  "bookmarks.import": z.object({
-    bookmarks: z.array(WebBookmarkSchema).max(10000),
-    folders: z.array(BookmarkFolderPathSchema.min(1)).max(10000).optional(),
-  }),
-  "bookmarks.saveFolder": z.object({
-    name: z.string().trim().min(1).max(200),
-    bookmarks: z
-      .array(WebBookmarkSchema.omit({ folderPath: true }))
-      .min(1)
-      .max(10000),
-  }),
-  "bookmarks.remove": BookmarkRemoveParams,
+  ...BookmarkMethodSchemas,
   "downloads.list": z.object({}),
   "downloads.projectNative": DownloadSchema.extend({
     id: z.string().min(1).max(200),
@@ -2735,21 +2624,7 @@ export const ResultSchemas = {
   "history.count": z.object({ count: z.number().int().nonnegative() }),
   "history.clear": z.object({ ok: z.boolean(), removed: z.number().int().nonnegative() }),
   "history.remove": z.object({ removed: z.boolean() }),
-  "bookmarks.list": z.array(BookmarkSchema),
-  "bookmarks.folders.list": z.array(BookmarkFolderPathSchema),
-  "bookmarks.folders.create": z.array(BookmarkFolderPathSchema),
-  "bookmarks.folders.rename": z.array(BookmarkFolderPathSchema),
-  "bookmarks.folders.remove": z.array(BookmarkFolderPathSchema),
-  "bookmarks.add": z.object({ ok: z.boolean() }),
-  "bookmarks.update": z.object({ ok: z.boolean() }),
-  "bookmarks.move": z.object({ moved: z.number().int().nonnegative() }),
-  "bookmarks.import": z.object({ added: z.number().int(), skipped: z.number().int() }),
-  "bookmarks.saveFolder": z.object({ added: z.number().int(), skipped: z.number().int() }),
-  "bookmarks.remove": z.object({ ok: z.boolean() }),
-  "bookmarks.readingList": z.object({ ok: z.boolean() }),
-  "bookmarks.markRead": z.object({ ok: z.boolean() }),
-  "bookmarks.offline.set": z.object({ ok: z.boolean() }),
-  "bookmarks.offline.get": z.object({ article: z.string().nullable(), savedAt: z.number().nullable() }),
+  ...BookmarkResultSchemas,
   "downloads.list": z.array(DownloadSchema),
   "downloads.projectNative": z.object({ accepted: z.boolean() }),
   "downloads.remove": z.object({ removed: z.array(z.string()) }),

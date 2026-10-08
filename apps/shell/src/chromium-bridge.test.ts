@@ -374,3 +374,64 @@ it("keeps the registry's first command when custom chords conflict", async () =>
     "sidebar",
   );
 });
+
+it("keeps bookmark CRUD native, validates each result, and leaves offline article storage on the runtime", async () => {
+  const request = vi.fn(async (method: string) =>
+    method === "bookmarksInvoke" ? { ok: true } : { article: null, savedAt: null },
+  );
+  const target = fakeWindow("chrome://aux/", {
+    host: "chromium-fork",
+    windowId: "current",
+    profileId: "profile-1",
+    platform: "darwin",
+    privateMode: false,
+    windowKind: "normal",
+    request,
+    subscribe: vi.fn(() => () => {}),
+  });
+  installChromiumBridge(target);
+  await target.aux!.invoke("bookmarks.remove", { url: "https://saved.test/", nodeId: "17" });
+  expect(request).toHaveBeenLastCalledWith("bookmarksInvoke", [
+    {
+      method: "bookmarks.remove",
+      params: { url: "https://saved.test/", nodeId: "17" },
+    },
+  ]);
+  await target.aux!.invoke("bookmarks.offline.get", { url: "https://saved.test/" });
+  expect(request).toHaveBeenLastCalledWith("invoke", [
+    "bookmarks.offline.get",
+    { url: "https://saved.test/" },
+  ]);
+  request.mockResolvedValueOnce({ moved: 1 } as never);
+  await expect(target.aux!.invoke("bookmarks.remove", { url: "https://saved.test/" })).rejects.toThrow();
+  const calls = request.mock.calls.length;
+  await expect(target.aux!.invoke("bookmarks.move", { bookmarks: [], folderPath: [] })).rejects.toThrow();
+  expect(request).toHaveBeenCalledTimes(calls);
+});
+
+it("preserves the contiguous runtime stream while native bookmark projection is handled separately", () => {
+  let receive: ((payload: unknown) => void) | undefined;
+  const stop = vi.fn();
+  const target = fakeWindow("chrome://aux/", {
+    host: "chromium-fork",
+    windowId: "current",
+    profileId: "profile-1",
+    platform: "darwin",
+    privateMode: false,
+    windowKind: "normal",
+    request: vi.fn(),
+    subscribe: (_event, callback) => {
+      receive = callback;
+      return stop;
+    },
+  });
+  installChromiumBridge(target);
+  const callback = vi.fn();
+  const unsubscribe = target.aux!.onEvent(callback);
+  receive!({ seq: 1, streamId: "old", type: "bookmarks.changed", payload: {}, ts: 0 });
+  expect(callback).toHaveBeenCalledOnce();
+  receive!({ seq: 2, streamId: "old", type: "settings.changed", payload: {}, ts: 0 });
+  expect(callback).toHaveBeenCalledTimes(2);
+  unsubscribe();
+  expect(stop).toHaveBeenCalledOnce();
+});
