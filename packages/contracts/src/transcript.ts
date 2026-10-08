@@ -1,3 +1,4 @@
+import { DocumentResultCitationSchema } from "./document-citation.js";
 import { z } from "zod";
 
 /** Presentation only. Run, safety, artifact and event records remain authoritative. */
@@ -47,6 +48,10 @@ export const RunTranscriptItemSchema = z.discriminatedUnion("kind", [
     observationId: z.string(),
     quote: z.string(),
     artifactId: z.string().optional(),
+  }),
+  z.object({
+    kind: z.literal("document-citation"),
+    citation: DocumentResultCitationSchema,
   }),
   z.object({
     kind: z.literal("artifact"),

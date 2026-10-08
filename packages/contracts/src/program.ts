@@ -1,3 +1,4 @@
+import { DocumentResultCitationSchema } from "./document-citation.js";
 import { z } from "zod";
 import { type ObservationScope, ObservationScopeSchema } from "./observation.js";
 import { AuthorizationProvenanceSchema, CredentialSelectorSchema } from "./safety.js";
@@ -408,7 +409,7 @@ export const ActionReceiptSchema = z.object({
 export type ActionReceipt = z.infer<typeof ActionReceiptSchema>;
 
 /** Verification v2 — a cited observation snapshot plus a verbatim quote span from it. */
-export const ResultCitationSchema = z
+export const BrowserResultCitationSchema = z
   .object({
     /** `observationId`/`revision` handle the snapshot tool returned — one of these or pageId is required. */
     observationId: z.string().min(1).optional(),
@@ -422,6 +423,8 @@ export const ResultCitationSchema = z
     (c) => c.observationId !== undefined || c.pageId !== undefined,
     "a citation needs observationId or pageId",
   );
+export type BrowserResultCitation = z.infer<typeof BrowserResultCitationSchema>;
+export const ResultCitationSchema = z.union([BrowserResultCitationSchema, DocumentResultCitationSchema]);
 export type ResultCitation = z.infer<typeof ResultCitationSchema>;
 
 export const StepOutcomeSchema = z.object({
