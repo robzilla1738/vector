@@ -576,6 +576,7 @@ export const BrowserHostMethods = {
   saveFile: coreShell(tuple([str, str]), nullableString),
   saveWorkbook: documentArtifactsShell(tuple([str, z.enum(["snapshot", "csv"]).optional()]), nullableString),
   saveStoredArtifact: documentArtifactsShell(tuple([str, str]), nullableString),
+  copyStoredImage: documentArtifactsShell(tuple([str.min(1).max(128)]), strictObject({ copied: z.literal(true) })),
   openPluginDirectory: shell("skills", noArgs, nullableString),
   pickEvidenceImage: conversationShell(noArgs, strictObject({ filename: str, dataUrl: str }).nullable()),
   pickEvidenceDocuments: conversationShell(

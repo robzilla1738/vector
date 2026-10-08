@@ -2488,6 +2488,9 @@ export function installMockBridge(q: URLSearchParams) {
     saveFile: async () => null,
     saveWorkbook: async () => null,
     saveStoredArtifact: async () => null,
+    copyStoredImage: async () => {
+      throw new AuxError("capability_unsupported", "Image copy requires Aux desktop.");
+    },
     savePagePdf: async () => {
       throw new Error("PDF export requires the desktop browser");
     },

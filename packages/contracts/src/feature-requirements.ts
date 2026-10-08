@@ -20,7 +20,8 @@ export const AUX_FEATURE_REQUIREMENTS = Object.fromEntries(
       requires: [
         ...(sharedRequirements[feature] ?? []),
         ...(Object.entries(HostMethods) as [HostMethodId, (typeof HostMethods)[HostMethodId]][])
-          .filter(([, method]) => method.feature === feature)
+          // Image Copy is checked per control; its absence must not disable existing Save methods.
+          .filter(([id, method]) => method.feature === feature && id !== "copyStoredImage")
           .map(([id]) => id),
         ...(Object.entries(RuntimeMethodPolicy) as [MethodName, (typeof RuntimeMethodPolicy)[MethodName]][])
           .filter(([, method]) => method.feature === feature)

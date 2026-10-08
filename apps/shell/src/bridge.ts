@@ -269,6 +269,7 @@ const stub: AuxBridge = {
   saveFile: async () => null,
   saveWorkbook: async () => null,
   saveStoredArtifact: unavailable("Artifact export requires Aux desktop"),
+  copyStoredImage: unavailable("Image copy requires Aux desktop"),
   savePagePdf: unavailable("PDF export requires the desktop browser"),
   printPage: async () => true,
   devTools: async () => true,

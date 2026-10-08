@@ -595,6 +595,7 @@ function firstValid(schema, hint, depth) {
 }
 // A browser mock cannot issue native document, lease or effect receipts.
 const nativeOnlyHostMethods = new Set([
+  "copyStoredImage",
   "native.privateProvider",
   "native.foundationModelsStatus",
   "native.foundationModelsStart",
