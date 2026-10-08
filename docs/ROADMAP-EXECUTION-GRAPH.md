@@ -60,21 +60,21 @@ Every node includes deletion of replaced code and focused verification. States
 distinguish working source, integration, native build, observation and acceptance.
 No node is complete merely because a worker returns a commit.
 
-| Node | State | Requirements and completion evidence | Owner / dependencies |
-| --- | --- | --- | --- |
-| N0 | active | Preserve current baseline; reconcile historical roadmap against source/evidence; establish cancellation, scheduling, sources, retrieval, providers and private-retention interfaces; maintain this graph and current docs. | Integrator; ready baseline inspected |
-| N1 | active | Event-driven native socket bridge with bounded draining and original ownership; remove artificial startup sleep; selected-route credentials first; browser-owned memory saving; task provenance distinct from active-work discard exemption; consistent native checkout/flavor resolution. Validate changed native behavior and actual startup/interaction measurements. | Native worker + integrator runtime wiring; N0 |
-| N2 | active | Readable toast/tooltip/omnibox/command/approval material; shared Quick Ask toast actions/Undo/dismiss/timing; consistent control spacing/icons/focus/loading/errors; polish sidebar reveal, narrow layouts, pins, folders and bottom Profile/Space controls; compact result-first task status; consolidated Settings metadata; keyboard/VoiceOver/reduced motion/transparency. Required selected native look comparison. | Shell worker; N0 |
-| N3 | planned | Four skippable setup stages; optional recovery/import receipts out of first-task path; normal composer and signed-in context; durable start identity; Ask/remembered Skip/temporary mode consistent; no redundant completion confirmations; truthful available providers, local discovery and OpenRouter PKCE; actionable unavailable registration paths; correct image copy. Fresh Profile completes first task within two minutes. | Shell + provider owner; N0, N2 acceptance |
-| N4 | active | Up to four independent safe reads overlap; dependent effects, suspension and terminal completion ordered; deterministic pairing/receipts; cancellation through DNS/redirects/body/extraction and absolute deadline; native search preference authority; public page-free research children; stable capability-derived manifests and cached schemas; model-aware working context separate from durable history, preserving constraints/decisions/sources/effects; compact browser observation/action batching/strategy changes. | Runtime worker + integrator wiring; N0 |
-| N5 | planned | Cancellable idle incremental encrypted indexes/embeddings; batch identity validation; lexical results immediately, semantic refinement; active-Space recall prewarm with 150 ms initial allowance and late safe-boundary recall; no plaintext sensitive FTS; version/reuse indexes; pause/forget/revocation removes all derivatives; visible editable provenance. | Retrieval owner; N0 |
-| N6 | planned | One live/captured source model across tabs/groups/Spaces/files/mentions; native refresh at Send, pinned captures and retained drafts; paginated source collections replace unrelated count walls; relevant retrieval instead of eager entire pages; compact source pills/previews/optional diagnostics; extracted transcript/composer/context responsibilities; normalized projections; large-chat profile followed by justified bounded rendering; whole-conversation search/jump/history segment; stable drafts/selection/scroll/focus/streaming. | Conversation owner; N4, N5 acceptance |
-| N7 | planned | Native bookmark context actions/nesting/open-folder/DnD/keyboard/Undo; remove runtime gates from browser controls; predictable bulk tabs/reopen/pins/splits/Profile-Space switching; background AI never steals focus; restore/sleep-wake/external links/downloads/uploads/PDF-print/reader/PiP/media/clipboard; actual blocking/site exceptions/Store installs/popups/side panels/native messaging. | Browser owner; N1 |
-| N8 | planned | Native off-the-record session owns ephemeral AI; in-memory chats/recall/logs, temporary artifacts outside normal Profile; last private window closure cancels/clears; explicit exports remain; no normal memory/history indexing; available local/cloud route with concise truthful cloud indicator; Ask/rail enabled only with implemented lifecycle. | Private-runtime owner; N6 |
-| N9 | planned | Five excellent journeys: cited multi-source report/table; selection explain/rewrite/translate/insert/Undo; signed-in multi-site task alongside human browsing; local files to document/sheet/deck/image; project change/run/preview/review/Undo. Useful source/copy/export/reveal/continue actions; website path and supported connectors; routine continuation and quiet notifications; reuse existing skills/packages/providers. | Workflow owner; N0, N6 acceptance |
-| N10 | planned | Aux owns execution; complete local Files/Changes/terminal/preview/coder worktree integration; CLI/MCP/SDK same supported capabilities/presence/Stop/Take over; cloud provision/execute/preview/stop/recovery without duplicates, governed file/process parity before cloud coding exposure; local coding default; connector account/reconnect/error quality; declarative pinned packages. | Developer-runtime owner; N4 |
-| N11 | continuous | Delete replaced onboarding/search/context/presentation paths; extract touched bootstrap/provider/retrieval/dispatch responsibilities; final native area patch consolidation in disposable replay work; preserve checkouts/caches/lock; current docs and mock capability accuracy; remove obsolete implementation tests while keeping effect/recovery guarantees; local Chromium/dependency maintenance. | Each node + integrator final assembly |
-| F | planned | Entire requirements audit, integrated build, focused native workflow observations, valid performance report, required manual 20-task smoke, selected Aside look checks, current evidence/docs and explicit external prerequisites. | Integrator; all nodes integrated |
+| Node | State      | Requirements and completion evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Owner / dependencies                          |
+| ---- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| N0   | active     | Preserve current baseline; reconcile historical roadmap against source/evidence; establish cancellation, scheduling, sources, retrieval, providers and private-retention interfaces; maintain this graph and current docs.                                                                                                                                                                                                                                                                                                                          | Integrator; ready baseline inspected          |
+| N1   | active     | Event-driven native socket bridge with bounded draining and original ownership; remove artificial startup sleep; selected-route credentials first; browser-owned memory saving; task provenance distinct from active-work discard exemption; consistent native checkout/flavor resolution. Validate changed native behavior and actual startup/interaction measurements.                                                                                                                                                                            | Native worker + integrator runtime wiring; N0 |
+| N2   | active     | Readable toast/tooltip/omnibox/command/approval material; shared Quick Ask toast actions/Undo/dismiss/timing; consistent control spacing/icons/focus/loading/errors; polish sidebar reveal, narrow layouts, pins, folders and bottom Profile/Space controls; compact result-first task status; consolidated Settings metadata; keyboard/VoiceOver/reduced motion/transparency. Required selected native look comparison.                                                                                                                            | Shell worker; N0                              |
+| N3   | active     | Four skippable setup stages; optional recovery/import receipts out of first-task path; normal composer and signed-in context; durable start identity; Ask/remembered Skip/temporary mode consistent; no redundant completion confirmations; truthful available providers, local discovery and OpenRouter PKCE; actionable unavailable registration paths; correct image copy. Fresh Profile completes first task within two minutes.                                                                                                                | Shell + provider owner; N0, N2 acceptance     |
+| N4   | active     | Up to four independent safe reads overlap; dependent effects, suspension and terminal completion ordered; deterministic pairing/receipts; cancellation through DNS/redirects/body/extraction and absolute deadline; native search preference authority; public page-free research children; stable capability-derived manifests and cached schemas; model-aware working context separate from durable history, preserving constraints/decisions/sources/effects; compact browser observation/action batching/strategy changes.                      | Runtime worker + integrator wiring; N0        |
+| N5   | active     | Cancellable idle incremental encrypted indexes/embeddings; batch identity validation; lexical results immediately, semantic refinement; active-Space recall prewarm with 150 ms initial allowance and late safe-boundary recall; no plaintext sensitive FTS; version/reuse indexes; pause/forget/revocation removes all derivatives; visible editable provenance.                                                                                                                                                                                   | Retrieval owner; N0                           |
+| N6   | planned    | One live/captured source model across tabs/groups/Spaces/files/mentions; native refresh at Send, pinned captures and retained drafts; paginated source collections replace unrelated count walls; relevant retrieval instead of eager entire pages; compact source pills/previews/optional diagnostics; extracted transcript/composer/context responsibilities; normalized projections; large-chat profile followed by justified bounded rendering; whole-conversation search/jump/history segment; stable drafts/selection/scroll/focus/streaming. | Conversation owner; N4, N5 acceptance         |
+| N7   | active     | Native bookmark context actions/nesting/open-folder/DnD/keyboard/Undo; remove runtime gates from browser controls; predictable bulk tabs/reopen/pins/splits/Profile-Space switching; background AI never steals focus; restore/sleep-wake/external links/downloads/uploads/PDF-print/reader/PiP/media/clipboard; actual blocking/site exceptions/Store installs/popups/side panels/native messaging.                                                                                                                                                | Browser owner; N1                             |
+| N8   | planned    | Native off-the-record session owns ephemeral AI; in-memory chats/recall/logs, temporary artifacts outside normal Profile; last private window closure cancels/clears; explicit exports remain; no normal memory/history indexing; available local/cloud route with concise truthful cloud indicator; Ask/rail enabled only with implemented lifecycle.                                                                                                                                                                                              | Private-runtime owner; N6                     |
+| N9   | planned    | Five excellent journeys: cited multi-source report/table; selection explain/rewrite/translate/insert/Undo; signed-in multi-site task alongside human browsing; local files to document/sheet/deck/image; project change/run/preview/review/Undo. Useful source/copy/export/reveal/continue actions; website path and supported connectors; routine continuation and quiet notifications; reuse existing skills/packages/providers.                                                                                                                  | Workflow owner; N0, N6 acceptance             |
+| N10  | planned    | Aux owns execution; complete local Files/Changes/terminal/preview/coder worktree integration; CLI/MCP/SDK same supported capabilities/presence/Stop/Take over; cloud provision/execute/preview/stop/recovery without duplicates, governed file/process parity before cloud coding exposure; local coding default; connector account/reconnect/error quality; declarative pinned packages.                                                                                                                                                           | Developer-runtime owner; N4                   |
+| N11  | continuous | Delete replaced onboarding/search/context/presentation paths; extract touched bootstrap/provider/retrieval/dispatch responsibilities; final native area patch consolidation in disposable replay work; preserve checkouts/caches/lock; current docs and mock capability accuracy; remove obsolete implementation tests while keeping effect/recovery guarantees; local Chromium/dependency maintenance.                                                                                                                                             | Each node + integrator final assembly         |
+| F    | planned    | Entire requirements audit, integrated build, focused native workflow observations, valid performance report, required manual 20-task smoke, selected Aside look checks, current evidence/docs and explicit external prerequisites.                                                                                                                                                                                                                                                                                                                  | Integrator; all nodes integrated              |
 
 ### Shared interfaces
 
@@ -103,12 +103,12 @@ local main. Never push. Workers return a narrow commit, exact owned paths,
 focused check results, observed behavior and unresolved limitations. They propose
 changes to occupied shared files to the integrator instead of editing them.
 
-| Worker | First assignment | Reserved files/resources | Next ready work |
-| --- | --- | --- | --- |
-| Native | N1 event-driven transport | Product native runtime_host sources; its additive area patch. No native mutation until baseline run retires. | N7 native lifecycle/readiness, then patch consolidation |
-| Runtime | N4 cancellable public web tools and independent reads | agent/loop loop/tools/types, agent/web-tools, subagents and focused tests | N4 working context, N5 retrieval, N10 |
-| Shell | N2 readable shared material and Quick Ask notices | ui material/toast/tooltip, glass/affected primitive styles, QuickAsk; narrow command/approval presentation | N3 onboarding, N6 conversations |
-| Integrator | N0 and shared wiring | Contracts; main/host/runs/settings composition; generated outputs; launcher defaults; docs; series ordering; native builder/lock | Review/integrate; baseline, native acceptance and ready outcome dispatch |
+| Worker     | First assignment                                      | Reserved files/resources                                                                                                         | Next ready work                                                          |
+| ---------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Native     | N1 event-driven transport                             | Product native runtime_host sources; its additive area patch. No native mutation until baseline run retires.                     | N7 native lifecycle/readiness, then patch consolidation                  |
+| Runtime    | N4 cancellable public web tools and independent reads | agent/loop loop/tools/types, agent/web-tools, subagents and focused tests                                                        | N4 working context, N5 retrieval, N10                                    |
+| Shell      | N2 readable shared material and Quick Ask notices     | ui material/toast/tooltip, glass/affected primitive styles, QuickAsk; narrow command/approval presentation                       | N3 onboarding, N6 conversations                                          |
+| Integrator | N0 and shared wiring                                  | Contracts; main/host/runs/settings composition; generated outputs; launcher defaults; docs; series ordering; native builder/lock | Review/integrate; baseline, native acceptance and ready outcome dispatch |
 
 The integrator alone builds/stages/launches/measures native candidates under one
 plain lock. One native writer edits the reserved product tree only while no build
@@ -137,17 +137,17 @@ derivatives; private-session cleanup; conflict-safe Undo; and no duplicate first
 task/restart. Reversible presentation-only changes require typecheck and inspection
 rather than implementation-mirroring tests.
 
-| Quantity | Existing target |
-| --- | --- |
-| First frame | <=500 ms and <=same-flag stock +5% |
-| Interactive / runtime ready | <=700 / <=600 ms, AI runtime off browser critical path |
-| Warm window | <=120 ms |
-| Tab switch | p95 <=one frame +8 ms |
-| Command bar | p95 <=16 ms with 50,000 history entries |
-| Idle memory | shell <=120 MB; runtime <=90 MB; total overhead <=stock +150 MB |
-| App bytes | <=same-flag stock +90 MB |
-| First useful task | <=two minutes on available supported setup path |
-| Default-provider smoke | >=18/20 completed, using existing native manual runner |
+| Quantity                    | Existing target                                                 |
+| --------------------------- | --------------------------------------------------------------- |
+| First frame                 | <=500 ms and <=same-flag stock +5%                              |
+| Interactive / runtime ready | <=700 / <=600 ms, AI runtime off browser critical path          |
+| Warm window                 | <=120 ms                                                        |
+| Tab switch                  | p95 <=one frame +8 ms                                           |
+| Command bar                 | p95 <=16 ms with 50,000 history entries                         |
+| Idle memory                 | shell <=120 MB; runtime <=90 MB; total overhead <=stock +150 MB |
+| App bytes                   | <=same-flag stock +90 MB                                        |
+| First useful task           | <=two minutes on available supported setup path                 |
+| Default-provider smoke      | >=18/20 completed, using existing native manual runner          |
 
 Extend the existing performance runner only for missing promised quantities:
 short repeated inputs for p95, warm windows, existing boot marks and identified
@@ -186,7 +186,7 @@ items explicit; do not shrink the objective to a finished subset.
   capability-narrowed page-free children. Model context now projects from full
   durable history using route limits; selected source retrieval remains N6 work.
 - N1 event-driven bridge and Profile-owned memory saver authored/applied as areas
-  0087–0089; compilation and native observations remain pending. Root removed
+  0087–0089; first native compilation is in progress and observations remain pending. Root removed
   fixed boot sleep, loads selected credentials first, moved remaining reads to idle,
   removed the shell memory scheduler/report and uses native memory settings.
   All development/staging tools share the product/Fast defaults.
@@ -195,5 +195,18 @@ items explicit; do not shrink the objective to a finished subset.
   after repair. Bootstrap/provider checks passed 16 tests; native memory setting
   and adjacent extraction checks passed six tests. Context worker rebuilt dist and
   passed 101 focused cases. No passing source checks substitute for native proof.
-- Workers continue durable first-send reconciliation, incremental encrypted memory
-  and native-independent bookmark quality. The integrator owns native building.
+- N7 native bookmark transport/events and the sidebar tree/context/bulk actions
+  are integrated as area 0090. Runtime-free observations and identity-bound folder
+  reordering remain pending. The typed transport binds each response to its method.
+- N5 indexing/embedding preparation is integrated, with active-Space idle prewarm
+  and awaited invalidation on Space memory changes. Auto-recall is being replaced
+  by bounded provider-only source hydration; legacy durable snippets remain an
+  explicitly separate historical-retention concern.
+- The next integrated check passed typecheck/lint and 4,203 tests, then its single
+  native-memory fixture repair passed 15 affected tests. Bookmark transport
+  envelope checks passed 19 tests. Passing suites were not repeated unchanged.
+- Native Chromium is compiling 0087–0090 under the single builder. Workers continue
+  durable first-send reconciliation, ephemeral recall and native bookmark folder
+  identities. The integrator owns native building and native observation.
+- The measurement runner now includes same-Profile warm relaunch and 100 samples
+  per browser for p95 tab/omnibox input latency. Actual measurements remain open.

@@ -2,9 +2,23 @@
 
 ## Current local checkpoint
 
-Work is consolidated on local `main`. Nothing has been pushed; no hosted CI, signing, notarization or release has run. Aux remains under development. This checkpoint delivers the fluidity/coding implementation; it does not establish competitor parity or completion of every browser-roadmap phase.
+Work is consolidated on local `main`. Nothing has been pushed; no hosted CI, signing, notarization or release has run. Aux remains under development. The approved competitive-browser execution is active in [the execution graph](ROADMAP-EXECUTION-GRAPH.md). Integrated source and the native candidate remain distinct from measured acceptance; competitor parity is not yet established.
 
 Read the [fluidity and coding plan](AUX-FLUIDITY-PLAN.md) for the delivered scope, [ROADMAP](ROADMAP.md) for owner decisions and scheduled acceptance, [ARCHITECTURE](ARCHITECTURE.md) for system boundaries, and [native build instructions](../chromium/BUILDING.md) before starting another builder. Earlier chronological notes are [archived](archive/status-before-sidebar-polish-2026-10-07.md).
+
+## Competitive-browser work in progress
+
+The October 7 approved plan is being implemented with three isolated workers and one integrator. Its acceptance work is active; the earlier owner deferral described below is historical and does not waive this plan's performance, design or workflow evidence.
+
+- Optional setup now ends after four stages. Starters fill the ordinary composer with current native source identities. The separate first-task dispatcher was deleted.
+- Native areas 0087–0090 replace the polling bridge, add Profile-owned memory saving, register its browser controls, and expose bookmark controls and events without Node. The shell's old memory scheduler was removed. Folder/tree/context and bulk-tab controls are integrated; identity-bound folder reordering remains in progress.
+- Independent public web reads overlap under their original cancellation and dispatch authority. Native search preference is authoritative. Model working context uses route capacity while preserving the full durable transcript.
+- Encrypted page indexes and local embedding batches warm cooperatively outside search. Cold recall returns lexical results while vectors prepare; capture, model changes, Forget and shutdown fence late work. Active Space policy reads schedule idle prewarm, and memory mutations await derivative invalidation. Bounded, ephemeral auto-recall is still being integrated.
+- Development tools use one shared product/Fast source configuration and one plain builder lock. The first new native candidate is compiling under `node scripts/dev.mjs --temp-profile`; no changed native behavior has been observed yet. Do not treat the existing app as the new accepted candidate during this build.
+
+The latest integrated source check passed typecheck/lint and 4,203 tests; its one missing native-memory fixture was repaired and its 15 affected tests passed. The bookmark transport's changed envelope passed its affected 19 tests after one fixture repair; the adjacent memory control had already passed. The memory worker rebuilt runtime and passed 34 focused tests. These checks do not substitute for native observations. `/tmp/aux-native-fluidity-context-check.log`, `/tmp/aux-native-preferences-repair.log`, and `/tmp/aux-native-bookmark-envelope-repair.log` retain the local results.
+
+The performance harness now records an immediate same-Profile warm relaunch and 100 native input samples per browser for tab-switch/omnibox p95. Available runtime boot marks include elapsed process time. No complete valid measurement report exists yet.
 
 ## Delivered behavior
 
@@ -38,7 +52,7 @@ Chromium is **154.0.8037.98**. The runnable app is `/Users/rcourson/aux-chromium
 
 ## Remaining acceptance
 
-The current implementation is distinct from empirical phase acceptance. The owner previously deferred broad acceptance to the next roadmap round: detailed Aside comparisons, the manual 20-task default-provider smoke, offline/provider/OAuth acceptance, and native import/extension/filter walkthroughs. Their targets remain in ROADMAP; none is marked passed from source or unit tests.
+The current implementation is distinct from empirical phase acceptance. Before the competitive-browser plan, the owner deferred broad acceptance: detailed Aside comparisons, the manual 20-task default-provider smoke, offline/provider/OAuth acceptance, and native import/extension/filter walkthroughs. Their targets remain in ROADMAP; none is marked passed from source or unit tests.
 
 The paired native performance runner has been exercised, but setup failures have produced no valid samples or performance claims. Its preparation now uses the normal native UI and ordinary fixture tabs while preserving the privileged shell's exclusion from CDP. Record a benchmark row only after all required observations complete. See [benchmark instructions](native-benchmark.md).
 
