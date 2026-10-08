@@ -455,8 +455,10 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       sessionId: resource.session.sessionId,
       root: CLOUD_PROJECT_ROOT,
     };
-    const backend = new CloudFileBackend(ctx.runId, identity, (request, commandSignal, beforeDispatch) =>
-      this.command(resource, commandSignal, async () => {
+    const backend = new CloudFileBackend(ctx.runId, identity, (request, context, beforeDispatch) =>
+      this.queueCommand(resource, async () => {
+        const commandSignal = context.signal;
+        await this.assertFileAccess(resource, identity, context);
         const content = Buffer.from(JSON.stringify(request));
         if (content.length > CLOUD_FILE_BYTES)
           throw new AuxError(
@@ -470,10 +472,10 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
             "permission_denied",
             "The packaged cloud file worker exceeds its reviewed bound.",
           );
-        await this.assertLive(resource, commandSignal);
+        await this.assertFileAccess(resource, identity, context);
         const path = `/vercel/sandbox/.aux-files-${randomUUID()}.json`;
         await resource.session.writeFiles([{ path, content }], { signal: commandSignal });
-        await this.assertLive(resource, commandSignal);
+        await this.assertFileAccess(resource, identity, context);
         const stdout = boundedOutput(CLOUD_FILE_BYTES),
           stderr = boundedOutput();
         beforeDispatch?.();
@@ -493,7 +495,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
           stdout: stdout.stream,
           stderr: stderr.stream,
         });
-        await this.assertLive(resource, commandSignal);
+        await this.assertFileAccess(resource, identity, context);
         if (result.exitCode !== 0 || stdout.truncated())
           throw new AuxError(
             "conflict",
@@ -505,9 +507,9 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     resource.files = new CodingFilesService(this.deps.repo, backend, async (request, context) => {
       if (context.runId !== ctx.runId)
         throw new AuxError("ref_stale", "Cloud files belong to the original run.");
-      await this.assertLive(resource, context.signal);
+      await this.assertFileAccess(resource, identity, context);
       const fence = await authorize(request, context, { ...identity });
-      await this.assertLive(resource, context.signal);
+      await this.assertFileAccess(resource, identity, context);
       return fence;
     });
     return resource.files;
@@ -829,36 +831,66 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     return this.repls.get(runId)?.hasOpen(runId) ?? false;
   }
 
-  private async assertLive(resource: LiveResource, signal?: AbortSignal) {
+  private assertRetained(resource: LiveResource, signal?: AbortSignal): void {
     if (
       this.closed ||
       signal?.aborted ||
+      this.live.get(resource.ctx.runId) !== resource ||
+      !resource.ready ||
       resource.closing ||
       resource.finalReceipt ||
       this.now() >= resource.expiresAt
     )
       throw new AuxError("cancelled", "The original cloud session expired or stopped.");
+  }
+  private async assertLive(resource: LiveResource, signal?: AbortSignal) {
+    this.assertRetained(resource, signal);
     await this.deps.assertOwner(resource.ctx, resource.quote);
     if (cloudQuoteIdentity((await this.deps.configuration()).quote).digest !== resource.quoteDigest)
       throw new AuxError("ref_stale", "The original cloud account or quote changed.");
-    if (
-      this.closed ||
-      signal?.aborted ||
-      resource.closing ||
-      resource.finalReceipt ||
-      this.now() >= resource.expiresAt
-    )
-      throw new AuxError("cancelled", "The original cloud session retired during authorization.");
+    this.assertRetained(resource, signal);
+  }
+  private async assertFileAccess(
+    resource: LiveResource,
+    identity: CloudCodingIdentity,
+    context: CodingFileContext,
+  ): Promise<void> {
+    const current = () => {
+      this.assertRetained(resource, context.signal);
+      if (
+        context.runId !== resource.ctx.runId ||
+        identity.resourceId !== resource.resourceId ||
+        identity.sessionId !== resource.session.sessionId ||
+        identity.sandboxName !== resource.sandbox.name
+      )
+        throw new AuxError("ref_stale", "These files belong to a different cloud execution session.");
+    };
+    current();
+    if (context.actor !== "user") {
+      await this.assertLive(resource, context.signal);
+      current();
+      return;
+    }
+    if (!context.verifyOwner)
+      throw new AuxError("permission_denied", "Undo cloud changes from their original Aux window.");
+    if (cloudQuoteIdentity((await this.deps.configuration()).quote).digest !== resource.quoteDigest)
+      throw new AuxError("ref_stale", "The original cloud account or quote changed.");
+    await context.verifyOwner();
+    context.checkOwner?.();
+    current();
   }
   private command<T>(
     resource: LiveResource,
     signal: AbortSignal | undefined,
     work: () => Promise<T>,
   ): Promise<T> {
-    const result = resource.commands.then(async () => {
+    return this.queueCommand(resource, async () => {
       await this.assertLive(resource, signal);
       return work();
     });
+  }
+  private queueCommand<T>(resource: LiveResource, work: () => Promise<T>): Promise<T> {
+    const result = resource.commands.then(work);
     resource.commands = result.then(
       () => {},
       () => {},

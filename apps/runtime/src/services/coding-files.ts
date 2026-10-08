@@ -20,6 +20,7 @@ export interface CodingFileBackend {
     runId?: string,
     signal?: AbortSignal,
     beforeDispatch?: () => void,
+    context?: CodingFileContext,
   ): Promise<T>;
 }
 
@@ -71,7 +72,7 @@ export class CodingFilesService {
   }
   private async readState(path: string, context: CodingFileContext): Promise<CodingFileState> {
     this.boundary(context);
-    return this.filesystem.coding({ kind: "read", path }, context.runId, context.signal);
+    return this.filesystem.coding({ kind: "read", path }, context.runId, context.signal, undefined, context);
   }
   private async readStates(paths: string[], context: CodingFileContext): Promise<CodingFileState[]> {
     this.boundary(context);
@@ -79,6 +80,8 @@ export class CodingFilesService {
       { kind: "snapshots", path: paths[0], paths },
       context.runId,
       context.signal,
+      undefined,
+      context,
     );
   }
   async read(
@@ -121,6 +124,8 @@ export class CodingFilesService {
       { kind: "search", ...request },
       context.runId,
       context.signal,
+      undefined,
+      context,
     );
     this.boundary(context);
     fence?.();
@@ -139,6 +144,8 @@ export class CodingFilesService {
       { kind: "list", path },
       context.runId,
       context.signal,
+      undefined,
+      context,
     );
     this.boundary(context);
     fence?.();
@@ -154,6 +161,8 @@ export class CodingFilesService {
       { kind: "stat", path },
       context.runId,
       context.signal,
+      undefined,
+      context,
     );
     this.boundary(context);
     fence?.();
@@ -176,6 +185,8 @@ export class CodingFilesService {
           { kind: "versions", path: batch[0], paths: batch },
           context.runId,
           context.signal,
+          undefined,
+          context,
         )),
       );
     }
@@ -513,6 +524,7 @@ export class CodingFilesService {
           this.boundary(context);
           checkAuthority?.();
         },
+        context,
       );
       receipt.status = "confirmed";
       receipt.fileOutcomes = after.map((state) => ({ path: state.path, status: "confirmed" }));

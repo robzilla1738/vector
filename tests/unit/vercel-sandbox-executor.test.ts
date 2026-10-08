@@ -338,3 +338,155 @@ it("keeps the VM network mode fixed until its original background command acknow
   await executor.closeRun(f.ctx.runId);
   expect(executor.retainedProcesses(f.ctx.runId)).toBeUndefined();
 });
+
+async function retainedFileFixture() {
+  const f = fixture();
+  const envelopes = new Map<string, Record<string, unknown>>();
+  const files = new Map<string, import("@aux/contracts/coding-files").CodingFileState>();
+  const dispatches: string[] = [];
+  let now = Date.now(),
+    windowLive = true,
+    beforeApply = () => {};
+  Object.assign(f.session, {
+    writeFiles: async (entries: { path: string; content: Buffer }[]) => {
+      for (const entry of entries) {
+        const request = JSON.parse(entry.content.toString());
+        envelopes.set(entry.path, request);
+        if (request.kind === "apply") beforeApply();
+      }
+    },
+    runCommand: async (input: { args: string[]; stdout: { write(value: string): void } }) => {
+      const request = envelopes.get(input.args.at(-2)!)!;
+      dispatches.push(String(request.kind));
+      let value: unknown = null;
+      if (request.kind === "snapshots")
+        value = (request.paths as string[]).map(
+          (path) => files.get(path) ?? { path, version: null, content: null },
+        );
+      else if (request.kind === "apply") {
+        for (const state of request.after as import("@aux/contracts/coding-files").CodingFileState[])
+          files.set(state.path, state);
+      } else throw new Error("Unexpected fixture request");
+      input.stdout.write(JSON.stringify({ value }));
+      return { exitCode: 0 };
+    },
+  });
+  const assertOwner = vi.fn(async () => {});
+  const verifyOwner = vi.fn(async () => {
+    if (!windowLive) throw new AuxError("permission_denied", "The original native window retired.");
+  });
+  const get = vi.fn(() => {
+    throw new Error("A retained file operation cannot look up or resume a VM.");
+  });
+  const executor = new VercelSandboxExecutor({
+    ...f.deps,
+    assertOwner,
+    get,
+    now: () => now,
+    authorizeFiles: async () => () => {},
+    fileWorkerProgram: async () => Buffer.from("// immutable reviewed program"),
+  });
+  const service = await executor.files(f.ctx);
+  const path = "/vercel/sandbox/project/code.ts";
+  const receipt = await service.applyChanges(
+    { actionId: "write", changes: [{ kind: "create", path, content: "original edit" }] },
+    { runId: f.ctx.runId },
+  );
+  assertOwner.mockRejectedValue(
+    new AuxError("cancelled", "Run dispatch retired after budget, Needs Input or completion."),
+  );
+  const context = { runId: f.ctx.runId, actor: "user" as const, verifyOwner };
+  return {
+    ...f,
+    executor,
+    service,
+    receipt,
+    context,
+    verifyOwner,
+    assertOwner,
+    get,
+    files,
+    path,
+    dispatches,
+    expire: () => {
+      now += 120000;
+    },
+    beforeApply: (change: () => void) => {
+      beforeApply = change;
+    },
+    retireWindow: () => {
+      windowLive = false;
+    },
+  };
+}
+
+it("lets a person undo in the retained live Session after run authority retires, while agents stay stopped", async () => {
+  const f = await retainedFileFixture();
+  f.repo.saveRun({ ...f.repo.getRun(f.ctx.runId)!, status: "completed" });
+  const retained = f.executor.retainedFiles(f.ctx.runId)!;
+  expect(retained).toBe(f.service);
+  await expect(
+    retained.undo({ actionId: "agent-undo", receiptIds: [f.receipt.receiptId] }, { runId: f.ctx.runId }),
+  ).rejects.toMatchObject({ code: "cancelled" });
+  f.assertOwner.mockClear();
+  const [undo] = await retained.undo(
+    { actionId: "human-undo", receiptIds: [f.receipt.receiptId] },
+    f.context,
+  );
+  expect(undo).toMatchObject({
+    status: "confirmed",
+    undoOf: f.receipt.receiptId,
+    execution: f.receipt.execution,
+  });
+  expect(f.files.get(f.path)?.version).toBeNull();
+  expect(f.assertOwner).not.toHaveBeenCalled();
+  expect(f.verifyOwner).toHaveBeenCalled();
+  expect(f.create).toHaveBeenCalledOnce();
+  expect(f.get).not.toHaveBeenCalled();
+  expect(f.forbidden).not.toHaveBeenCalled();
+  await f.executor.closeRun(f.ctx.runId);
+  expect(f.executor.retainedFiles(f.ctx.runId)).toBeUndefined();
+});
+
+it.each(["window", "session"] as const)(
+  "rechecks the retained %s after Undo transport preparation",
+  async (boundary) => {
+    const f = await retainedFileFixture();
+    f.beforeApply(() => {
+      if (boundary === "window") f.retireWindow();
+      else Object.assign(f.session, { sessionId: "replacement-session" });
+    });
+    const count = f.dispatches.filter((kind) => kind === "apply").length;
+    await expect(
+      f.service.undo({ actionId: "human-undo", receiptIds: [f.receipt.receiptId] }, f.context),
+    ).rejects.toMatchObject({ code: "operation_uncertain" });
+    expect(f.files.get(f.path)?.content).toBe("original edit");
+    expect(f.dispatches.filter((kind) => kind === "apply")).toHaveLength(count);
+    expect(f.service.changes(f.ctx.runId).at(-1)?.status).toBe("uncertain");
+    expect(f.create).toHaveBeenCalledOnce();
+    expect(f.get).not.toHaveBeenCalled();
+    Object.assign(f.session, { sessionId: "original-session" });
+    await f.executor.closeRun(f.ctx.runId);
+  },
+);
+
+it("refuses missing native proof or an expired retained VM before creating an Undo receipt", async () => {
+  const f = await retainedFileFixture(),
+    count = f.dispatches.length;
+  await expect(
+    f.service.undo(
+      { actionId: "missing-proof", receiptIds: [f.receipt.receiptId] },
+      { runId: f.ctx.runId, actor: "user" },
+    ),
+  ).rejects.toMatchObject({ code: "permission_denied" });
+  f.expire();
+  await expect(
+    f.service.undo({ actionId: "expired", receiptIds: [f.receipt.receiptId] }, f.context),
+  ).rejects.toMatchObject({ code: "cancelled" });
+  expect(f.dispatches).toHaveLength(count);
+  expect(f.service.changes(f.ctx.runId)).toHaveLength(1);
+  expect(f.files.get(f.path)?.content).toBe("original edit");
+  expect(f.create).toHaveBeenCalledOnce();
+  expect(f.get).not.toHaveBeenCalled();
+  await f.executor.closeRun(f.ctx.runId);
+});

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { afterEach, expect, it } from "vitest";
 import { openDb } from "../../apps/runtime/dist/store/db.js";
 import { Repo } from "../../apps/runtime/dist/store/repo.js";
-import { CodingFilesService } from "../../apps/runtime/dist/services/coding-files.js";
+import { CodingFilesService, type CodingFileContext } from "../../apps/runtime/dist/services/coding-files.js";
 import { CloudFileBackend } from "../../apps/runtime/dist/services/cloud-files.js";
 import { executeCloudFileRequest } from "../../apps/runtime/dist/services/cloud-files-worker.js";
 import { CodingFileReceiptSchema } from "@aux/contracts/coding-api";
@@ -29,7 +29,11 @@ function fixture() {
     sessionId: "original-session",
     root,
   };
-  const dispatch = async (request: Record<string, unknown>, _signal?: AbortSignal, fence?: () => void) => {
+  const dispatch = async (
+    request: Record<string, unknown>,
+    _context: CodingFileContext,
+    fence?: () => void,
+  ) => {
     fence?.();
     const result = await executeCloudFileRequest(request, root);
     if (request.kind === "apply" && loseResponse) throw new Error("Lost provider acknowledgement");
