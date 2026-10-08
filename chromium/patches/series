@@ -86,3 +86,4 @@ aux/0086-native-cached-response-endpoint.patch
 aux/0087-event-driven-runtime-bridge.patch
 aux/0088-native-profile-memory-saver.patch
 aux/0089-memory-saver-method-routes.patch
+aux/0090-native-bookmark-controls.patch

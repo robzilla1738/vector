@@ -16,6 +16,8 @@ const resolve = {
 };
 
 export default defineConfig({
+  // Isolate optimized editable contracts even when worktrees share dependencies.
+  cacheDir: join(import.meta.dirname, "node_modules/.aux-vitest"),
   resolve,
   esbuild: { jsx: "automatic" },
   test: {
@@ -23,7 +25,9 @@ export default defineConfig({
     pool: "threads",
     maxWorkers: unitWorkers,
     minWorkers: unitWorkers,
-    poolOptions: { threads: { isolate: true } },
+    // Browser tests must use jsdom storage, not Node's unrelated experimental
+    // global, which is unavailable without a filesystem-backed storage flag.
+    poolOptions: { threads: { isolate: true, execArgv: ["--no-experimental-webstorage"] } },
     projects: [
       {
         resolve,

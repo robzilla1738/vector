@@ -377,7 +377,9 @@ it("keeps the registry's first command when custom chords conflict", async () =>
 
 it("keeps bookmark CRUD native, validates each result, and leaves offline article storage on the runtime", async () => {
   const request = vi.fn(async (method: string) =>
-    method === "bookmarksInvoke" ? { ok: true } : { article: null, savedAt: null },
+    method === "bookmarksInvoke"
+      ? { method: "bookmarks.remove", result: { ok: true } }
+      : { article: null, savedAt: null },
   );
   const target = fakeWindow("chrome://aux/", {
     host: "chromium-fork",

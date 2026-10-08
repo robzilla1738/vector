@@ -1,3 +1,4 @@
+import { hasNativeBookmarkAuthority } from "./native-bookmark-observer";
 import { normalizePages } from "./store/pages";
 import { errorMessage } from "./error-message";
 import { create } from "zustand";
@@ -161,7 +162,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
           activePageId,
           splitPageId: splitForPage(layout, ws.pages, activePageId),
           restoringTabs: !!ws.restoringTabs,
-          bookmarks,
+          bookmarks: hasNativeBookmarkAuthority() ? s.bookmarks : bookmarks,
           settings,
           downloads,
           programs,

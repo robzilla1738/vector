@@ -1,5 +1,5 @@
 import { BookmarkSchema, type Bookmark } from "@aux/contracts/entities";
-import { BookmarkResultSchemas } from "@aux/contracts/bookmark-methods";
+import { BookmarkResultSchemas, NativeBookmarkResultSchema } from "@aux/contracts/bookmark-methods";
 import type { ChromiumHostPort } from "./chromium-bridge";
 
 const bookmarks = BookmarkSchema.array();
@@ -39,7 +39,12 @@ export function startNativeBookmarkObserver(
   void port
     .request("bookmarksInvoke", [{ method: "bookmarks.list", params: {} }])
     .then((payload) => {
-      if (current() && requested === revision) commit(BookmarkResultSchemas["bookmarks.list"].parse(payload));
+      if (current() && requested === revision) {
+        const response = NativeBookmarkResultSchema.parse(payload);
+        if (response.method !== "bookmarks.list")
+          throw new Error("Native bookmark snapshot does not match its request.");
+        commit(BookmarkResultSchemas["bookmarks.list"].parse(response.result));
+      }
     })
     .catch((error) => {
       if (current() && requested === revision) onError(error);

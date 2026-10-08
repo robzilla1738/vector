@@ -33,7 +33,7 @@ function fixture() {
     error,
     stop,
     emit: (value: unknown) => receive(value),
-    finish: (value: unknown) => resolve(value),
+    finish: (value: unknown) => resolve({ method: "bookmarks.list", result: value }),
   };
 }
 const saved = [{ nodeId: "12", url: "https://saved.test/", title: "Saved", createdAt: 1 }];

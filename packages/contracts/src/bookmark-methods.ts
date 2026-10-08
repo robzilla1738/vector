@@ -232,10 +232,22 @@ export const NativeBookmarkRequestSchema = z.discriminatedUnion("method", [
     .strict(),
 ]);
 
-export const NativeBookmarkResultSchema = z.union([
-  BookmarkResultSchemas["bookmarks.list"],
-  BookmarkResultSchemas["bookmarks.folders.list"],
-  BookmarkResultSchemas["bookmarks.add"],
-  BookmarkResultSchemas["bookmarks.move"],
-  BookmarkResultSchemas["bookmarks.import"],
+/** A method tag makes transport validation and output normalization unambiguous. */
+function bookmarkResponse<M extends NativeBookmarkMethod>(method: M) {
+  return z.object({ method: z.literal(method), result: BookmarkResultSchemas[method] }).strict();
+}
+export const NativeBookmarkResultSchema = z.discriminatedUnion("method", [
+  bookmarkResponse("bookmarks.list"),
+  bookmarkResponse("bookmarks.folders.list"),
+  bookmarkResponse("bookmarks.folders.create"),
+  bookmarkResponse("bookmarks.folders.rename"),
+  bookmarkResponse("bookmarks.folders.remove"),
+  bookmarkResponse("bookmarks.add"),
+  bookmarkResponse("bookmarks.readingList"),
+  bookmarkResponse("bookmarks.markRead"),
+  bookmarkResponse("bookmarks.update"),
+  bookmarkResponse("bookmarks.move"),
+  bookmarkResponse("bookmarks.import"),
+  bookmarkResponse("bookmarks.saveFolder"),
+  bookmarkResponse("bookmarks.remove"),
 ]);

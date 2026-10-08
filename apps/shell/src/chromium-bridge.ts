@@ -2,6 +2,7 @@ import {
   isNativeBookmarkMethod,
   BookmarkMethodSchemas,
   NativeBookmarkRequestSchema,
+  NativeBookmarkResultSchema,
   BookmarkResultSchemas,
 } from "@aux/contracts/bookmark-methods";
 import { effectiveShortcuts, type ShortcutOverrides } from "@aux/contracts/shortcut-defs";
@@ -117,8 +118,10 @@ export function installChromiumBridge(
           method,
           params: BookmarkMethodSchemas[method].parse(params[0] ?? {}),
         });
-        const result = await port.request("bookmarksInvoke", [request]);
-        return BookmarkResultSchemas[method].parse(result) as MethodResult<M>;
+        const response = NativeBookmarkResultSchema.parse(await port.request("bookmarksInvoke", [request]));
+        if (response.method !== method)
+          throw new Error("Native bookmark response does not match its request.");
+        return BookmarkResultSchemas[method].parse(response.result) as MethodResult<M>;
       }
       // The browser forwards this name to the runtime as the signed-in desktop user.
       return port.request("invoke", [method, params[0] ?? {}]) as Promise<MethodResult<M>>;

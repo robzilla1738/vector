@@ -62,6 +62,10 @@ const RESULTS: Record<string, unknown> = {
     "tabs": [],
     "windows": []
   },
+  "bookmarksInvoke": {
+    "method": "bookmarks.list",
+    "result": []
+  },
   "organizationSnapshot": {
     "revision": 0,
     "layout": null

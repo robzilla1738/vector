@@ -1,5 +1,5 @@
 import { bridge, inMock, inNativeHost } from "../../bridge";
-import { MemorySaverMinutesSchema, type MemorySaverSettings } from "@aux/contracts";
+import { MemorySaverMinutesSchema, type MemorySaverSettings } from "@aux/contracts/memory-saver";
 import { useNativePreference } from "./use-native-preference";
 import { smallGhostButtonProps } from "../../ui/button-props";
 import { nativeAlertRoleProps } from "../../ui/native-attribute-props";

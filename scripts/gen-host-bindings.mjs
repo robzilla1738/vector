@@ -197,7 +197,7 @@ function emitNode(schema, index) {
         add("const auto& decimal = value.GetString();");
         add("if (decimal.empty() || decimal[0] < '1' || decimal[0] > '9') return false;");
         add("for (char c : decimal) if (c < '0' || c > '9') return false;");
-      } else if (schema.pattern === "^[1-9][0-9]{0,18}$") {
+      } else if (["^[1-9][0-9]{0,18}$", "^[1-9]\\d{0,18}$"].includes(schema.pattern)) {
         add("const auto& navigation = value.GetString();");
         add(
           "if (navigation.empty() || navigation.size() > 19 || navigation[0] < '1' || navigation[0] > '9') return false;",
@@ -206,12 +206,16 @@ function emitNode(schema, index) {
         add('if (navigation.size() == 19 && navigation > "9223372036854775807") return false;');
       } else if (schema.pattern === "^gho_[A-Za-z0-9_]{16,500}$") {
         add("const auto& token = value.GetString();");
-        add("if (token.size() < 20 || token.size() > 504 || !token.starts_with(\"gho_\")) return false;");
-        add("for (char c : std::string_view(token).substr(4)) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_')) return false;");
+        add('if (token.size() < 20 || token.size() > 504 || !token.starts_with("gho_")) return false;');
+        add(
+          "for (char c : std::string_view(token).substr(4)) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_')) return false;",
+        );
       } else if (schema.pattern === "^[A-Za-z0-9_-]{43}$") {
         add("const auto& token = value.GetString();");
         add("if (token.size() != 43) return false;");
-        add("for (char c : token) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) return false;");
+        add(
+          "for (char c : token) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) return false;",
+        );
       } else if (schema.pattern === "^[A-Za-z][\\w-]{0,63}$") {
         add("const auto& name = value.GetString();");
         add("const auto alpha = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); };");

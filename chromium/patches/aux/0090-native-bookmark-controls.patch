@@ -1,8 +1,7 @@
 diff --git a/chrome/browser/ui/aux/methods/library_methods.cc b/chrome/browser/ui/aux/methods/library_methods.cc
-index a65d51c..2034ee1 100644
 --- a/chrome/browser/ui/aux/methods/library_methods.cc
 +++ b/chrome/browser/ui/aux/methods/library_methods.cc
-@@ -127,6 +127,43 @@ void WebUIBrowserUI::HandleAuxLibraryRequest(
+@@ -127,6 +127,46 @@
      const std::string& method, const base::ListValue& args,
      RequestCallback callback) {
    const base::ListValue* list = &args;
@@ -31,7 +30,10 @@ index a65d51c..2034ee1 100644
 +        AuxRuntimeHost::ForProfile(profile)->CallBookmarksForUser(
 +            *bookmark_method, *params);
 +    if (const base::Value* result = response.Find("result")) {
-+      std::move(callback).Run(true, *base::WriteJson(*result), "", "");
++      base::DictValue envelope;
++      envelope.Set("method", *bookmark_method);
++      envelope.Set("result", result->Clone());
++      std::move(callback).Run(true, *base::WriteJson(envelope), "", "");
 +      return;
 +    }
 +    const base::DictValue* error = response.FindDict("error");
@@ -133,3 +135,15 @@ index 4ed414e..cb4a51e 100644
    base::DictValue CredentialContext(const base::DictValue& params, uint64_t generation);
  
    void CallApi(std::string method,
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -95,7 +95,7 @@
+                   "extensionActions", "pinExtensionAction", "extensionCommands",
+                   "setExtensionCommandShortcut", "extensionSidePanel"});
+   register_shell(AuxShellMethodGroup::kLibrary,
+-                 {"organizationSnapshot", "organizationCommit"});
++                 {"organizationSnapshot", "organizationCommit", "bookmarksInvoke"});
+   register_shell(AuxShellMethodGroup::kTabs,
+                  {"bindTabSpace", "migrateTabSpaces", "tabsSnapshot",
+                   "tabsSince", "tabCommand", "tabAudio", "tabsUnsavedWork", "tabSleep", "archiveTab"});
