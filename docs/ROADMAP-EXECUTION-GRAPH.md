@@ -285,15 +285,19 @@ compiled and launched with slim Node 26.9. Actual DOCX import and paged preview
 were observed; other document formats, full chat, exports and extension flows
 remain pending. The candidate retired normally with exit 0 and Profile cleanup.
 The latest integrated Node-26.9 check passed 4,446 tests across 720 files,
-typecheck and lint after rebuilding runtime dist. Focused checks cover subsequent
-renderer slices; unchanged passing suites are not repeatedly run.
+typecheck and lint after rebuilding runtime dist. The subsequent citation
+integration passed typecheck/lint and 4,473 of 4,474 tests; its sole stale mock
+was corrected to the actual Run-returning contract and all four affected cases
+pass. Unchanged suites are not repeated. The next combined build is active;
+actual current app overhead remains 161.68 decimal MB, above the 90 MB target.
 
 Integrated source closes early Enter handoff before React controls mount, keeps
 full-size image Save available, and verifies typed document citations against
 protected admitted source spans with direct saved-section opening. These slices
 await combined staging and native observation. Area 0037 adds genuine warm-window
 controls readiness and paired display-frame intervals to the existing benchmark;
-its source is applied under the sole dev lock, with compilation pending. Warm process relaunch is diagnostic only;
+its source is applied under the sole dev lock, with the sole-owner combined build active. Matching stock area 0051 is applied;
+its missing compiled inputs remain to be rebuilt. Warm process relaunch is diagnostic only;
 missing warm-window or frame-interval evidence remains unavailable. First static
 paint is not interactive readiness. The benchmark target summary is advisory and
 requires complete measurements before accepting a target. Whole-flow

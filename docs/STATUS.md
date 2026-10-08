@@ -21,7 +21,7 @@ The October 7 approved plan is being implemented with three isolated workers and
 - The synthetic 300-turn chat workload now mounts eight initial detail panels instead of 300, makes 25 detail/image reads instead of about 900, and preserves focus/drafts. Deferred settled-turn bodies and whole-chat search/jump are integrated. These synthetic results do not establish native timings. Source selections retain more than 30 saved artifacts without truncation. Full conversation exports preserve rich answers, result details and delivered corrections.
 - Native area 0099 publishes real Space/workspace bindings from the authenticated runtime and keeps browser tab placement available without Node. Area 0100 identifies the original shell/runtime processes for physical-footprint measurement. Both are compiled. Native Space creation and its authentic runtime workspace adoption were observed with the runtime paused and resumed; formal role measurements remain pending. The original stock app already contains the same v3 timing instrumentation. Aux-only role telemetry does not require a stock rebuild.
 
-The latest integrated check on checksum-verified official Node 26.9 passed **4,446 tests across 720 files**, typecheck and lint. Runtime dist was rebuilt first. The affected recovery checks all passed separately, with 4.52 seconds of assertions versus 224.98 seconds in the preceding Node-26.7 run. A bare same-process diagnostic also reproduced the upstream Promise-completion defect: 26.7 waited for an unrelated wake callback, while 26.9 completed before it. Node 26.9 is now the source pin and recommended development version; ICU, build flags and the package API floor are preserved. The packaged runtime is now checksum-pinned slim Node 26.9; its owned disposable launch and normal cleanup completed. No timeout, worker-pool or production callback workaround is applied. The integrated test phase took **249.61 seconds under concurrent native build load**; this is not an uncontended development-check performance measurement, and the under-60-second target remains open. Evidence: `/tmp/aux-node269-model-routine-cloud-integrated-check.log`, `/tmp/aux-node269-affected-recovery.log` and `/tmp/aux-backup-node269-probe/RCA.md`. Passing unchanged suites are not repeated. Routine shutdown joins accepted launch receipts before repository closure; ten focused cases passed without unhandled database errors. Borrowed tab readers follow the acknowledged native task-session lifetime, including cold driver connection. Completed cloud servers retain their original Session, funding expiry, native window and Stop ownership. Result revisions have no version-20 wall; concurrent revisions receive distinct ordinals and deck source groups are labeled Sections.
+The preceding integrated check on checksum-verified official Node 26.9 passed **4,446 tests across 720 files**, typecheck and lint. Runtime dist was rebuilt first. The affected recovery checks all passed separately, with 4.52 seconds of assertions versus 224.98 seconds in the preceding Node-26.7 run. A bare same-process diagnostic also reproduced the upstream Promise-completion defect: 26.7 waited for an unrelated wake callback, while 26.9 completed before it. Node 26.9 is now the source pin and recommended development version; ICU, build flags and the package API floor are preserved. The packaged runtime is now checksum-pinned slim Node 26.9; its owned disposable launch and normal cleanup completed. No timeout, worker-pool or production callback workaround is applied. The integrated test phase took **249.61 seconds under concurrent native build load**; this is not an uncontended development-check performance measurement, and the under-60-second target remains open. Evidence: `/tmp/aux-node269-model-routine-cloud-integrated-check.log`, `/tmp/aux-node269-affected-recovery.log` and `/tmp/aux-backup-node269-probe/RCA.md`. Passing unchanged suites are not repeated. Routine shutdown joins accepted launch receipts before repository closure; ten focused cases passed without unhandled database errors. Borrowed tab readers follow the acknowledged native task-session lifetime, including cold driver connection. Completed cloud servers retain their original Session, funding expiry, native window and Stop ownership. Result revisions have no version-20 wall; concurrent revisions receive distinct ordinals and deck source groups are labeled Sections.
 
 The performance harness records an immediate same-Profile warm relaunch, 100 native input samples per browser for p95 and original shell/runtime physical footprints. Available runtime boot marks include elapsed process time. No complete valid measurement report exists yet.
 
@@ -170,4 +170,23 @@ citation opens the exact server-bound saved section, with literal quote
 highlighting at its matching locator and honest relative section navigation.
 Seven focused runtime cases, one physical reopened-journal/API projection case,
 one affected viewer case, TypeScript and touched lint passed. The consolidated
-integration check is running once; native citation observation remains pending.
+integration check passed typecheck, lint and 4,473 of 4,474 cases across 722 files.
+Its remaining suspension fixture returned undefined instead of the coordinator's
+Run; the existing mock now follows that contract and its four affected cases
+pass. No production shim or broad repeat was added. Evidence:
+`/tmp/aux-document-citations-integrated-check.log` and
+`/tmp/aux-run-suspension-fixture.log`. Native citation observation remains pending.
+
+The next sole-owner combined build is active, staging 200 renderer assets and
+native area 0037 with the stable generated header. Both preserved source trees
+have their matching window/display-interval instrumentation applied; StockFast
+still needs its missing object outputs reconstructed before paired measurement.
+
+A read-only inventory of the observed 272-method app found 514,841,398 logical
+file bytes against stock's 353,158,965: **161.68 decimal MB overhead**, above the
+90 MB target. Its staged Node 26.9 runtime is 130,976,821 bytes, including a
+78,979,712-byte executable and 33,105,536-byte full ICU data. Required Node and
+ICU already exceed 90 MB together; trivial cleanup cannot meet the target. No
+large duplicate runtime payload remains. A bounded lossless icon-compression
+slice is being prepared; startup code-cache changes await actual measurements.
+This inventory is not a phase performance pass.
