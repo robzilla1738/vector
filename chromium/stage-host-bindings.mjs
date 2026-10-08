@@ -24,7 +24,7 @@ for (const file of generated) {
   const to = join(output, file);
   const bytes = readFileSync(from);
   const expected =
-    file === "aux_host_methods.h"
+    file === "aux_host_methods.cc"
       ? Buffer.from(bytes.toString("utf8").replace("__AUX_SOURCE_COMMIT__", identity.label))
       : bytes;
   requireOriginalOwner();

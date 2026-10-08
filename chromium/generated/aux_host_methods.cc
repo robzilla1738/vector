@@ -7,6 +7,7 @@
 #include "unicode/uchar.h"
 #include "unicode/utf16.h"
 namespace aux::generated {
+const std::string_view kSourceCommit = "__AUX_SOURCE_COMMIT__";
 namespace {
 double AsNumber(const base::Value& value) { return value.is_int() ? value.GetInt() : value.GetDouble(); }
 bool HasNoControlOrFormatCharacters(const std::u16string& value) {
