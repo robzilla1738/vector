@@ -113,3 +113,15 @@ completed turns refresh retained servers until terminal/unlocated. These slices
 have focused checks; cloud provider execution remains unobserved. Covering a
 split view now retires divider pointer capture while preserving its native page
 connectors; five focused renderer cases pass, native observation remains open.
+
+The combined native 0033–0036 build succeeded in **33 steps / 30m40.20s** with
+**272 methods / 30 events**, `97d6daa5466e`. The same owned pipeline is now building
+the checksum-pinned slim Node 26.9 executable before runtime staging and launch.
+There is no GUI observation for this candidate yet. Later account, retained cloud
+refresh, split-drag and receipt-completion renderer slices plus the generated
+source-identity change need a subsequent combined staging/build. Source identity
+stamping now changes generated implementation bytes while preserving header
+bytes/timestamps; the real disposable staging proof passed. Neither the build
+duration nor the preserved-app size inventory is a performance acceptance pass.
+Evidence: `/tmp/aux-native-272-documents-export-extension-node269-build-launch.log`
+and `/tmp/aux-host-identity-proof.json`.
