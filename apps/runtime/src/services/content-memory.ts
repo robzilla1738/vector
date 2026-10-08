@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
+import { setImmediate as idle } from "node:timers/promises";
 import {
   AuxError,
   ContentMemoryPolicySchema,
@@ -46,12 +47,61 @@ type Row = {
   expires_at: number;
   ciphertext: string;
 };
+type IndexedPage = Omit<RecordBody, "text"> & {
+  normalizedText: string;
+  sourceVersion: string;
+  embeddingVersion: string;
+};
 type Index = {
   revision: number;
+  generation: number;
+  epoch: number;
+  policy: string;
   expiresAt: number;
-  rows: Map<string, RecordBody>;
-  searchable: Map<string, { title: string; text: string }>;
+  rows: Map<string, IndexedPage>;
 };
+type WarmIndex = {
+  controller: AbortController;
+  promise: Promise<void>;
+  generation: number;
+  startedAt: number;
+  model?: LocalEmbeddingModel;
+  vectors: Map<string, { embeddingVersion: string; vector: Float32Array }>;
+};
+type HistoryIndex = {
+  controller: AbortController;
+  startedAt: number;
+  model?: LocalEmbeddingModel;
+  vectors: Map<string, { entry: HistoryEntry; vector: Float32Array }>;
+};
+type DerivativeInput<T> = {
+  workspaceId: string;
+  signature: string;
+  eligible: () => boolean;
+  parse: (value: unknown) => T;
+};
+function compactVector(vector: number[]): Float32Array {
+  const scale = Math.max(...vector.map(Math.abs));
+  return Float32Array.from(vector, (value) => value / scale);
+}
+const fingerprint = (value: string) => createHash("sha256").update(value).digest("hex");
+
+async function cancellable<T>(pending: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return pending;
+  signal.throwIfAborted();
+  let abort: () => void;
+  try {
+    return await Promise.race([
+      pending,
+      new Promise<never>((_, reject) => {
+        abort = () => reject(signal.reason);
+        signal.addEventListener("abort", abort, { once: true });
+      }),
+    ]);
+  } finally {
+    signal.removeEventListener("abort", abort!);
+  }
+}
 
 const policyKey = (workspaceId: string) => `contentMemoryPolicy:${workspaceId}`;
 const STOPWORDS = new Set([
@@ -117,6 +167,9 @@ export class ContentMemoryStore {
   private rotationQueue: Promise<unknown> = Promise.resolve();
   private indexes = new Map<string, Index>();
   private derivativeEpoch = 0;
+  private generations = new Map<string, number>();
+  private indexBuilds = new Map<string, { controller: AbortController; promise: Promise<Index> }>();
+  private warms = new Map<string, WarmIndex>();
   private unsubscribe?: () => void;
   private embeddings: LocalMemoryEmbeddings;
   private closed = false;
@@ -125,12 +178,13 @@ export class ContentMemoryStore {
   private discoveryController = new AbortController();
   private semanticControllers = new Map<string, AbortController>();
   private historyControllers = new Set<AbortController>();
-  private historyIndexes = new Map<string, { model: string; vectors: Map<string, number[]> }>();
+  private historyIndexes = new Map<string, HistoryIndex>();
   private historyEpoch = 0;
 
   private retireHistory(): void {
     this.historyEpoch++;
     for (const controller of this.historyControllers) controller.abort();
+    for (const index of this.historyIndexes.values()) index.controller.abort();
     this.historyIndexes.clear();
   }
 
@@ -153,7 +207,8 @@ export class ContentMemoryStore {
       )
         this.retireHistory();
       if (event.type === "workspace.memory.updated" && typeof event.payload.workspaceId === "string") {
-        this.indexes.delete(event.payload.workspaceId);
+        this.derivativeEpoch++;
+        this.retireIndexes(event.payload.workspaceId);
         this.retireSemantic(event.payload.workspaceId);
       }
     });
@@ -175,6 +230,7 @@ export class ContentMemoryStore {
     this.discoveryController.abort();
     this.retireHistory();
     this.retireSemantic();
+    this.retireIndexes();
     this.unsubscribe?.();
     if (this.closing) return this.closing;
     const closing = (async () => {
@@ -326,7 +382,7 @@ export class ContentMemoryStore {
         () => this.repo.setSetting(policyKey(workspaceId), next),
         beforeRemoval,
       );
-      this.indexes.delete(workspaceId);
+      this.retireIndexes(workspaceId);
       return next;
     });
   }
@@ -379,101 +435,112 @@ export class ContentMemoryStore {
   }
 
   /** Only admitted page derivatives enter this cache; model receipts and action authority never do. */
-  async cachedDerivative<T>(input: {
-    workspaceId: string;
-    signature: string;
-    eligible: () => boolean;
-    parse: (value: unknown) => T;
-    cacheable?: (value: T) => boolean;
-    compute: () => Promise<T>;
-  }): Promise<T> {
+  async cachedDerivative<T>(
+    input: DerivativeInput<T> & {
+      cacheable?: (value: T) => boolean;
+      compute: () => Promise<T>;
+    },
+  ): Promise<T> {
     return this.own(() => this.cachedDerivativeOwned<T>(input));
   }
 
-  private async cachedDerivativeOwned<T>(input: {
-    workspaceId: string;
-    signature: string;
-    eligible: () => boolean;
-    parse: (value: unknown) => T;
-    cacheable?: (value: T) => boolean;
-    compute: () => Promise<T>;
-  }): Promise<T> {
+  private async cachedDerivativeOwned<T>(
+    input: DerivativeInput<T> & {
+      cacheable?: (value: T) => boolean;
+      compute: () => Promise<T>;
+    },
+  ): Promise<T> {
+    const cache = await this.prepareDerivative(input);
+    if (!cache) return input.compute();
+    const cached = cache.read();
+    if (cached) return cached.result;
+    const result = input.parse(await input.compute());
+    if (input.cacheable?.(result) !== false) cache.write(result);
+    return result;
+  }
+
+  private async prepareDerivative<T>(input: DerivativeInput<T>) {
     const maxEntryBytes = 1024 * 1024;
     const maxCacheBytes = 200_000_000;
-    if (!input.eligible() || Buffer.byteLength(input.signature) > maxEntryBytes) return input.compute();
+    if (!input.eligible() || Buffer.byteLength(input.signature) > maxEntryBytes) return undefined;
     const epoch = this.derivativeEpoch;
     const factor = this.factorName();
     const key = await this.key();
-    const current = () => epoch === this.derivativeEpoch && factor === this.factorName() && input.eligible();
-    if (!current()) return input.compute();
+    const current = () =>
+      !this.closed && epoch === this.derivativeEpoch && factor === this.factorName() && input.eligible();
+    if (!current()) return undefined;
     const cacheKey = createHmac("sha256", key)
       .update(`${this.profileId}\0${input.workspaceId}\0${input.signature}`)
       .digest("hex");
-    const cached = this.repo.transaction(() => {
-      const size = this.repo.db
-        .prepare(
-          "SELECT length(CAST(ciphertext AS BLOB)) AS bytes FROM ai_result_cache WHERE cache_key=? AND profile_id=? AND workspace_id=? AND expires_at>?",
-        )
-        .get(cacheKey, this.profileId, input.workspaceId, this.now()) as { bytes: number } | undefined;
-      if (!size) return undefined;
-      if (size.bytes > maxEntryBytes) throw new Error("AI cache entry exceeds its reviewed size cap.");
-      const row = this.repo.db
-        .prepare("SELECT ciphertext FROM ai_result_cache WHERE cache_key=?")
-        .get(cacheKey) as { ciphertext: string };
-      const body = JSON.parse(
-        this.protectedStore.open(key, "ai-result-cache", cacheKey, row.ciphertext).toString("utf8"),
-      ) as {
-        profileId: string;
-        workspaceId: string;
-        result: unknown;
-      };
-      if (body.profileId !== this.profileId || body.workspaceId !== input.workspaceId)
-        throw new Error("AI cache provenance does not match this Profile and Space.");
-      const result = input.parse(body.result);
-      this.repo.db
-        .prepare("UPDATE ai_result_cache SET accessed_at=? WHERE cache_key=?")
-        .run(this.now(), cacheKey);
-      return { result };
-    });
-    if (cached && current()) return cached.result;
-    const result = input.parse(await input.compute());
-    if (!current() || input.cacheable?.(result) === false) return result;
-    const bytes = Buffer.from(
-      JSON.stringify({ profileId: this.profileId, workspaceId: input.workspaceId, result }),
-    );
-    if (bytes.length > maxEntryBytes / 2) return result;
-    const ciphertext = this.protectedStore.seal(key, "ai-result-cache", cacheKey, bytes);
-    if (Buffer.byteLength(ciphertext) > maxEntryBytes) return result;
-    this.repo.transaction(() => {
+    const read = () =>
+      this.repo.transaction(() => {
+        if (!current()) return undefined;
+        const size = this.repo.db
+          .prepare(
+            "SELECT length(CAST(ciphertext AS BLOB)) AS bytes FROM ai_result_cache WHERE cache_key=? AND profile_id=? AND workspace_id=? AND expires_at>?",
+          )
+          .get(cacheKey, this.profileId, input.workspaceId, this.now()) as { bytes: number } | undefined;
+        if (!size) return undefined;
+        if (size.bytes > maxEntryBytes) throw new Error("AI cache entry exceeds its reviewed size cap.");
+        const row = this.repo.db
+          .prepare("SELECT ciphertext FROM ai_result_cache WHERE cache_key=?")
+          .get(cacheKey) as { ciphertext: string };
+        const body = JSON.parse(
+          this.protectedStore.open(key, "ai-result-cache", cacheKey, row.ciphertext).toString("utf8"),
+        ) as {
+          profileId: string;
+          workspaceId: string;
+          result: unknown;
+        };
+        if (body.profileId !== this.profileId || body.workspaceId !== input.workspaceId)
+          throw new Error("AI cache provenance does not match this Profile and Space.");
+        const result = input.parse(body.result);
+        this.repo.db
+          .prepare("UPDATE ai_result_cache SET accessed_at=? WHERE cache_key=?")
+          .run(this.now(), cacheKey);
+        return { result };
+      });
+    const write = (result: T) => {
       if (!current()) return;
-      this.repo.db.prepare("DELETE FROM ai_result_cache WHERE expires_at<=?").run(this.now());
-      this.repo.db
-        .prepare(
-          "INSERT INTO ai_result_cache(cache_key,workspace_id,profile_id,ciphertext,created_at,accessed_at,expires_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(cache_key) DO UPDATE SET ciphertext=excluded.ciphertext,accessed_at=excluded.accessed_at,expires_at=excluded.expires_at",
-        )
-        .run(
-          cacheKey,
-          input.workspaceId,
-          this.profileId,
-          ciphertext,
-          this.now(),
-          this.now(),
-          this.now() + DAY,
-        );
-      const total = () =>
-        (
-          this.repo.db
-            .prepare("SELECT COALESCE(SUM(length(CAST(ciphertext AS BLOB))),0) AS bytes FROM ai_result_cache")
-            .get() as { bytes: number }
-        ).bytes;
-      while (total() > maxCacheBytes)
+      const bytes = Buffer.from(
+        JSON.stringify({ profileId: this.profileId, workspaceId: input.workspaceId, result }),
+      );
+      if (bytes.length > maxEntryBytes / 2) return;
+      const ciphertext = this.protectedStore.seal(key, "ai-result-cache", cacheKey, bytes);
+      if (Buffer.byteLength(ciphertext) > maxEntryBytes) return;
+      this.repo.transaction(() => {
+        if (!current()) return;
+        this.repo.db.prepare("DELETE FROM ai_result_cache WHERE expires_at<=?").run(this.now());
         this.repo.db
           .prepare(
-            "DELETE FROM ai_result_cache WHERE cache_key=(SELECT cache_key FROM ai_result_cache ORDER BY accessed_at,cache_key LIMIT 1)",
+            "INSERT INTO ai_result_cache(cache_key,workspace_id,profile_id,ciphertext,created_at,accessed_at,expires_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(cache_key) DO UPDATE SET ciphertext=excluded.ciphertext,accessed_at=excluded.accessed_at,expires_at=excluded.expires_at",
           )
-          .run();
-    });
-    return result;
+          .run(
+            cacheKey,
+            input.workspaceId,
+            this.profileId,
+            ciphertext,
+            this.now(),
+            this.now(),
+            this.now() + DAY,
+          );
+        const total = () =>
+          (
+            this.repo.db
+              .prepare(
+                "SELECT COALESCE(SUM(length(CAST(ciphertext AS BLOB))),0) AS bytes FROM ai_result_cache",
+              )
+              .get() as { bytes: number }
+          ).bytes;
+        while (total() > maxCacheBytes)
+          this.repo.db
+            .prepare(
+              "DELETE FROM ai_result_cache WHERE cache_key=(SELECT cache_key FROM ai_result_cache ORDER BY accessed_at,cache_key LIMIT 1)",
+            )
+            .run();
+      });
+    };
+    return { read, write };
   }
 
   private encrypt(key: Buffer, body: RecordBody): string {
@@ -561,7 +628,7 @@ export class ContentMemoryStore {
         );
       }
     });
-    this.indexes.clear();
+    this.retireIndexes();
   }
 
   /** Caller must establish foreground/document eligibility before supplying page text. */
@@ -629,6 +696,7 @@ export class ContentMemoryStore {
       text: input.text.trim(),
       capturedAt: at,
     };
+    const ciphertext = this.encrypt(key, body);
     this.repo.transaction(() => {
       this.repo.db
         .prepare(
@@ -644,7 +712,7 @@ export class ContentMemoryStore {
           url.origin,
           at,
           at + current.retentionDays * DAY,
-          this.encrypt(key, body),
+          ciphertext,
         );
       this.repo.db
         .prepare(
@@ -653,44 +721,129 @@ export class ContentMemoryStore {
         )
         .run(this.profileId, input.workspaceId, MAX_PAGES_PER_SPACE);
     });
-    this.indexes.delete(input.workspaceId);
+    const generation = this.generation(input.workspaceId) + 1;
+    this.generations.set(input.workspaceId, generation);
+    const building = this.indexBuilds.get(input.workspaceId);
+    building?.controller.abort();
+    this.indexBuilds.delete(input.workspaceId);
+    const cached = this.indexes.get(input.workspaceId);
+    if (cached) {
+      cached.generation = generation;
+      cached.rows.set(body.memoryId, this.indexPage(body, ciphertext));
+      cached.expiresAt = Math.min(cached.expiresAt, at + current.retentionDays * DAY);
+      const retained = new Set(
+        (
+          this.repo.db
+            .prepare("SELECT memory_id FROM content_memory WHERE profile_id=? AND workspace_id=?")
+            .all(this.profileId, input.workspaceId) as { memory_id: string }[]
+        ).map((row) => row.memory_id),
+      );
+      for (const id of cached.rows.keys()) if (!retained.has(id)) cached.rows.delete(id);
+    }
+    if (this.warms.has(input.workspaceId)) void this.prewarm(input.workspaceId);
     return body;
   }
 
-  private async index(workspaceId: string): Promise<Index> {
-    const memory = readWorkspaceMemory(this.repo, workspaceId);
-    const revision = memory?.revision ?? 0;
-    const cached = this.indexes.get(workspaceId);
-    if (cached?.revision === revision && cached.expiresAt > this.now()) return cached;
-    const policy = this.policy(workspaceId);
-    if (!policy.enabled || readWorkspaceMemory(this.repo, workspaceId)?.enabled === false)
-      return { revision, expiresAt: this.now(), rows: new Map(), searchable: new Map() };
+  private generation(workspaceId: string): number {
+    return this.generations.get(workspaceId) ?? 0;
+  }
+
+  private retireIndexes(workspaceId?: string): void {
+    for (const [id, work] of this.indexBuilds) {
+      if (workspaceId !== undefined && id !== workspaceId) continue;
+      work.controller.abort();
+      this.indexBuilds.delete(id);
+    }
+    for (const [id, work] of this.warms) {
+      if (workspaceId !== undefined && id !== workspaceId) continue;
+      work.controller.abort();
+      this.warms.delete(id);
+    }
+    if (workspaceId === undefined) this.indexes.clear();
+    else this.indexes.delete(workspaceId);
+  }
+
+  private indexPage(body: RecordBody, ciphertext: string): IndexedPage {
+    const { text, ...metadata } = body;
+    const normalizedText = text.toLocaleLowerCase();
+    return {
+      ...metadata,
+      normalizedText,
+      sourceVersion: fingerprint(ciphertext),
+      embeddingVersion: fingerprint(JSON.stringify([body.title, normalizedText.slice(0, 6000)])),
+    };
+  }
+
+  private authenticated(key: Buffer, row: Row, workspaceId: string): RecordBody {
+    const body = this.decrypt(key, row);
+    const sourceKey = createHmac("sha256", key)
+      .update(`${this.profileId}\0${workspaceId}\0${body.url}`)
+      .digest("hex");
     if (
-      !this.repo.db
-        .prepare("SELECT 1 FROM content_memory WHERE profile_id=? AND workspace_id=? LIMIT 1")
-        .get(this.profileId, workspaceId)
-    ) {
-      await this.retirePendingFactors();
-      return { revision, expiresAt: this.now(), rows: new Map(), searchable: new Map() };
-    }
-    const policyIdentity = JSON.stringify(policy);
+      body.memoryId !== row.memory_id ||
+      body.profileId !== this.profileId ||
+      body.workspaceId !== workspaceId ||
+      new URL(body.url).origin !== row.origin ||
+      body.capturedAt !== row.captured_at ||
+      sourceKey !== row.source_key
+    )
+      throw new Error("Protected page-memory provenance does not match its storage record.");
+    return body;
+  }
+
+  private index(workspaceId: string, originalSignal?: AbortSignal): Promise<Index> {
+    const policy = this.policy(workspaceId);
+    const memory = readWorkspaceMemory(this.repo, workspaceId);
+    const cached = this.indexes.get(workspaceId);
+    const identity = JSON.stringify(policy);
+    if (
+      cached?.revision === memory.revision &&
+      cached.policy === identity &&
+      cached.epoch === this.derivativeEpoch &&
+      cached.generation === this.generation(workspaceId) &&
+      cached.expiresAt > this.now()
+    )
+      return cancellable(Promise.resolve(cached), originalSignal);
+    const pending = this.indexBuilds.get(workspaceId);
+    if (pending) return cancellable(pending.promise, originalSignal);
+    const controller = new AbortController();
+    const promise = this.own(() => this.buildIndex(workspaceId, controller.signal));
+    this.indexBuilds.set(workspaceId, { controller, promise });
+    void promise
+      .finally(() => {
+        if (this.indexBuilds.get(workspaceId)?.controller === controller)
+          this.indexBuilds.delete(workspaceId);
+      })
+      .catch(() => undefined); // The owning search/prewarm receives the original failure.
+    return cancellable(promise, originalSignal);
+  }
+
+  private async buildIndex(workspaceId: string, signal: AbortSignal): Promise<Index> {
+    const policy = this.policy(workspaceId);
+    const memory = readWorkspaceMemory(this.repo, workspaceId);
+    const index: Index = {
+      revision: memory.revision,
+      policy: JSON.stringify(policy),
+      epoch: this.derivativeEpoch,
+      generation: this.generation(workspaceId),
+      expiresAt: Infinity,
+      rows: new Map(),
+    };
     const retired = () =>
-      readWorkspaceMemory(this.repo, workspaceId).revision !== revision ||
-      JSON.stringify(this.policy(workspaceId)) !== policyIdentity;
-    const empty = (): Index => ({ revision, expiresAt: this.now(), rows: new Map(), searchable: new Map() });
-    let key: Buffer;
-    try {
-      key = await this.key();
-    } catch (error) {
-      // Revocation may remove the factor while this original read is awaiting Keychain.
-      if (retired()) return empty();
-      throw error;
-    }
+      this.closed ||
+      signal.aborted ||
+      index.epoch !== this.derivativeEpoch ||
+      index.generation !== this.generation(workspaceId) ||
+      readWorkspaceMemory(this.repo, workspaceId).revision !== index.revision ||
+      JSON.stringify(this.policy(workspaceId)) !== index.policy;
+    const empty = () => ({ ...index, expiresAt: this.now(), rows: new Map<string, IndexedPage>() });
+    if (!policy.enabled || !memory.enabled) return empty();
+    await idle(undefined, { signal });
     if (retired()) return empty();
     const rows = this.repo.db
       .prepare(
         `SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext FROM content_memory
-      WHERE profile_id=? AND workspace_id=? AND expires_at>? AND captured_at>? ORDER BY captured_at DESC LIMIT ?`,
+      WHERE profile_id=? AND workspace_id=? AND expires_at>? AND captured_at>? ORDER BY captured_at DESC,memory_id DESC LIMIT ?`,
       )
       .all(
         this.profileId,
@@ -699,38 +852,75 @@ export class ContentMemoryStore {
         this.now() - policy.retentionDays * DAY,
         MAX_PAGES_PER_SPACE,
       ) as Row[];
-    const index: Index = { revision, expiresAt: Infinity, rows: new Map(), searchable: new Map() };
-    for (const row of rows) {
-      if (!memoryOriginAllowed(policy, row.origin) || memory?.excludedOrigins?.includes(row.origin)) continue;
-      index.expiresAt = Math.min(index.expiresAt, row.expires_at);
-      const body = this.decrypt(key, row);
-      const sourceKey = createHmac("sha256", key)
-        .update(`${this.profileId}\0${workspaceId}\0${body.url}`)
-        .digest("hex");
-      if (
-        body.memoryId !== row.memory_id ||
-        body.profileId !== this.profileId ||
-        body.workspaceId !== workspaceId ||
-        new URL(body.url).origin !== row.origin ||
-        body.capturedAt !== row.captured_at ||
-        sourceKey !== row.source_key
-      )
-        throw new Error("Protected page-memory provenance does not match its storage record.");
-      if (memorySensitivityReason(body.url, body.title) || memoryContentSensitivityReason(body.text))
-        continue;
-      index.rows.set(row.memory_id, body);
-      index.searchable.set(row.memory_id, {
-        title: body.title.toLocaleLowerCase(),
-        text: body.text.toLocaleLowerCase(),
-      });
+    if (!rows.length) {
+      await this.retirePendingFactors();
+      return empty();
     }
+    let key: Buffer;
+    try {
+      key = await this.key();
+    } catch (error) {
+      if (retired()) return empty();
+      throw error;
+    }
+    for (let offset = 0; offset < rows.length; offset += 16) {
+      await idle(undefined, { signal });
+      if (retired()) return empty();
+      for (const row of rows.slice(offset, offset + 16)) {
+        if (!memoryOriginAllowed(policy, row.origin) || memory.excludedOrigins?.includes(row.origin))
+          continue;
+        const body = this.authenticated(key, row, workspaceId);
+        if (
+          !this.readable(body) ||
+          memorySensitivityReason(body.url, body.title) ||
+          memoryContentSensitivityReason(body.text)
+        )
+          continue;
+        index.expiresAt = Math.min(
+          index.expiresAt,
+          row.expires_at,
+          row.captured_at + policy.retentionDays * DAY,
+        );
+        index.rows.set(row.memory_id, this.indexPage(body, row.ciphertext));
+      }
+    }
+    if (retired()) return empty();
     this.indexes.delete(workspaceId);
     this.indexes.set(workspaceId, index);
-    if (this.indexes.size > MAX_INDEXED_SPACES) this.indexes.delete(this.indexes.keys().next().value!);
+    if (this.indexes.size > MAX_INDEXED_SPACES) this.retireIndexes(this.indexes.keys().next().value!);
     return index;
   }
 
-  private readable(body: RecordBody): boolean {
+  private sourceCurrent(body: IndexedPage): boolean {
+    if (!this.readable(body)) return false;
+    const row = this.repo.db
+      .prepare(
+        `SELECT ciphertext,expires_at,captured_at FROM content_memory
+      WHERE memory_id=? AND profile_id=? AND workspace_id=?`,
+      )
+      .get(body.memoryId, this.profileId, body.workspaceId) as
+      Pick<Row, "ciphertext" | "expires_at" | "captured_at"> | undefined;
+    return (
+      !!row &&
+      row.expires_at > this.now() &&
+      row.captured_at > this.now() - this.policy(body.workspaceId).retentionDays * DAY &&
+      fingerprint(row.ciphertext) === body.sourceVersion
+    );
+  }
+
+  private async readIndexedPage(body: IndexedPage): Promise<RecordBody | undefined> {
+    const key = await this.key();
+    if (!this.sourceCurrent(body)) return undefined;
+    const row = this.repo.db
+      .prepare(
+        `SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext FROM content_memory
+      WHERE memory_id=? AND profile_id=? AND workspace_id=?`,
+      )
+      .get(body.memoryId, this.profileId, body.workspaceId) as Row;
+    return this.authenticated(key, row, body.workspaceId);
+  }
+
+  private readable(body: Pick<RecordBody, "workspaceId" | "url">): boolean {
     const policy = this.policy(body.workspaceId);
     const memory = readWorkspaceMemory(this.repo, body.workspaceId);
     return (
@@ -759,120 +949,247 @@ export class ContentMemoryStore {
       AbortSignal.any([this.discoveryController.signal, AbortSignal.timeout(30_000)]),
     );
   }
-  async semanticSearch(workspaceId: string, query: string, limit = 10) {
-    return this.own(() => this.semanticSearchOwned(workspaceId, query, limit));
+  prewarm(workspaceId: string): Promise<void> {
+    const previous = this.warms.get(workspaceId);
+    const generation = this.generation(workspaceId);
+    if (
+      previous &&
+      previous.generation === generation &&
+      !previous.controller.signal.aborted &&
+      this.now() - previous.startedAt < 60_000
+    )
+      return previous.promise;
+    previous?.controller.abort();
+    const controller = new AbortController();
+    const promise = this.own(() => this.prewarmOwned(workspaceId, controller));
+    this.warms.set(workspaceId, {
+      controller,
+      promise,
+      generation,
+      startedAt: this.now(),
+      model: previous?.model,
+      vectors: previous?.vectors ?? new Map(),
+    });
+    if (this.warms.size > MAX_INDEXED_SPACES) this.retireIndexes(this.warms.keys().next().value!);
+    return promise;
   }
 
-  private async semanticSearchOwned(workspaceId: string, query: string, limit = 10) {
+  private async prewarmOwned(workspaceId: string, controller: AbortController): Promise<void> {
+    const signal = AbortSignal.any([
+      controller.signal,
+      this.discoveryController.signal,
+      AbortSignal.timeout(60_000),
+    ]);
+    await idle(undefined, { signal });
+    const policy = this.policy(workspaceId);
+    const memory = readWorkspaceMemory(this.repo, workspaceId);
+    const epoch = this.derivativeEpoch;
+    const warm = this.warms.get(workspaceId)!;
+    const current = () =>
+      !this.closed &&
+      !signal.aborted &&
+      warm.controller === controller &&
+      this.warms.get(workspaceId) === warm &&
+      epoch === this.derivativeEpoch &&
+      policy.enabled &&
+      memory.enabled !== false &&
+      JSON.stringify(this.policy(workspaceId)) === JSON.stringify(policy) &&
+      readWorkspaceMemory(this.repo, workspaceId).revision === memory.revision;
+    const check = () => {
+      if (!current()) throw new AuxError("cancelled", "The original Memory index or policy changed.");
+    };
+    if (!policy.enabled || !memory.enabled) return;
+    const index = await this.index(workspaceId, signal);
+    check();
+    let models: LocalEmbeddingModel[];
+    try {
+      models = await this.embeddings.discover(signal);
+    } catch (error) {
+      check();
+      if (error instanceof AuxError && error.code !== "backend_unavailable") throw error;
+      warm.model = undefined;
+      warm.vectors.clear();
+      return; // Lexical recall stays available when the installed local server is offline.
+    }
+    check();
+    const model = policy.semanticModelId
+      ? models.find((item) => item.modelId === policy.semanticModelId)
+      : models[0];
+    if (!model) {
+      warm.model = undefined;
+      warm.vectors.clear();
+      return;
+    }
+    if (JSON.stringify(warm.model) !== JSON.stringify(model)) warm.vectors.clear();
+    warm.model = model;
+    for (const [id, cached] of warm.vectors)
+      if (index.rows.get(id)?.embeddingVersion !== cached.embeddingVersion) warm.vectors.delete(id);
+    const pages = [...index.rows.values()];
+    for (let offset = 0; offset < pages.length; offset += 8) {
+      await idle(undefined, { signal });
+      check();
+      const missing: {
+        body: IndexedPage;
+        cache:
+          { read: () => { result: number[] } | undefined; write: (result: number[]) => void } | undefined;
+      }[] = [];
+      for (const body of pages.slice(offset, offset + 8)) {
+        check();
+        const eligible = () => current() && this.sourceCurrent(body);
+        if (!eligible() || warm.vectors.get(body.memoryId)?.embeddingVersion === body.embeddingVersion)
+          continue;
+        const cache = await this.prepareDerivative({
+          workspaceId,
+          signature: JSON.stringify([
+            "local-memory-embedding-v2",
+            model,
+            body.memoryId,
+            body.embeddingVersion,
+          ]),
+          eligible,
+          parse: embeddingVector,
+        });
+        check();
+        const cached = cache?.read();
+        if (cached && eligible())
+          warm.vectors.set(body.memoryId, {
+            embeddingVersion: body.embeddingVersion,
+            vector: compactVector(cached.result),
+          });
+        else if (eligible()) missing.push({ body, cache });
+      }
+      if (!missing.length) continue;
+      const vectors = await this.embeddings.embedBatch(
+        model,
+        missing.map(({ body }) => `${body.title}\n${body.normalizedText.slice(0, 6000)}`),
+        signal,
+      );
+      check();
+      for (const [i, item] of missing.entries()) {
+        if (!this.sourceCurrent(item.body)) continue;
+        const vector = vectors[i]!;
+        item.cache?.write(vector);
+        if (current() && this.sourceCurrent(item.body))
+          warm.vectors.set(item.body.memoryId, {
+            embeddingVersion: item.body.embeddingVersion,
+            vector: compactVector(vector),
+          });
+      }
+    }
+  }
+
+  async semanticSearch(workspaceId: string, query: string, limit = 10, originalSignal?: AbortSignal) {
+    return this.own(() => this.semanticSearchOwned(workspaceId, query, limit, originalSignal));
+  }
+
+  private async semanticSearchOwned(
+    workspaceId: string,
+    query: string,
+    limit: number,
+    originalSignal?: AbortSignal,
+  ) {
     this.requireSpace(workspaceId);
+    originalSignal?.throwIfAborted();
+    const lexical = async (message: string) => ({
+      mode: "lexical" as const,
+      message,
+      matches: await this.search(workspaceId, query, limit, originalSignal),
+    });
+    if (!this.policy(workspaceId).enabled || !readWorkspaceMemory(this.repo, workspaceId).enabled)
+      return lexical("Memory recall is paused in this Space.");
+    if (memoryContentSensitivityReason(query))
+      throw new AuxError("permission_denied", "Sensitive queries cannot be sent for semantic recall.");
+    void this.prewarm(workspaceId);
+    const warm = this.warms.get(workspaceId)!;
+    if (!warm.model || !warm.vectors.size)
+      return lexical("The local index is warming or unavailable. Showing keyword matches.");
+    const model = warm.model;
+    const checkModel = () => {
+      if (JSON.stringify(warm.model) !== JSON.stringify(model))
+        throw new AuxError("cancelled", "The installed local embedding model changed.");
+    };
     this.retireSemantic(workspaceId);
     const controller = new AbortController();
     this.semanticControllers.set(workspaceId, controller);
-    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(60_000)]);
-    const initial = this.policy(workspaceId),
-      epoch = this.derivativeEpoch;
-    const eligible = () =>
-      !this.closed &&
-      !signal.aborted &&
-      epoch === this.derivativeEpoch &&
-      initial.enabled &&
-      JSON.stringify(this.policy(workspaceId)) === JSON.stringify(initial) &&
-      readWorkspaceMemory(this.repo, workspaceId).enabled !== false;
+    const signal = AbortSignal.any([
+      controller.signal,
+      warm.controller.signal,
+      ...(originalSignal ? [originalSignal] : []),
+      AbortSignal.timeout(15_000),
+    ]);
+    const epoch = this.derivativeEpoch;
+    const policy = JSON.stringify(this.policy(workspaceId));
+    const revision = readWorkspaceMemory(this.repo, workspaceId).revision;
     const check = () => {
-      if (!eligible()) throw new AuxError("cancelled", "The original Memory search or policy changed.");
+      signal.throwIfAborted();
+      if (
+        this.closed ||
+        epoch !== this.derivativeEpoch ||
+        this.warms.get(workspaceId) !== warm ||
+        JSON.stringify(this.policy(workspaceId)) !== policy ||
+        readWorkspaceMemory(this.repo, workspaceId).revision !== revision
+      )
+        throw new AuxError("cancelled", "The original Memory search or policy changed.");
     };
     try {
-      check();
-      if (memoryContentSensitivityReason(query))
-        throw new AuxError("permission_denied", "Sensitive queries cannot be sent for semantic recall.");
-      let models: Awaited<ReturnType<LocalMemoryEmbeddings["discover"]>>;
-      try {
-        models = await this.embeddings.discover(signal);
-      } catch (error) {
-        check();
-        if (error instanceof AuxError && error.code !== "backend_unavailable") throw error;
-        return {
-          mode: "lexical" as const,
-          message: "Local embeddings are unavailable. Showing keyword matches.",
-          matches: await this.search(workspaceId, query, limit),
-        };
-      }
-      check();
-      const model = initial.semanticModelId
-        ? models.find((item) => item.modelId === initial.semanticModelId)
-        : models[0];
-      if (!model)
-        return {
-          mode: "lexical" as const,
-          message: "No installed local embedding model is available. Showing keyword matches.",
-          matches: await this.search(workspaceId, query, limit),
-        };
-      const index = await this.index(workspaceId);
+      const index = await this.index(workspaceId, signal);
       check();
       const queryVector = await this.embeddings.embed(model, query, signal);
       check();
-      const ranked: Array<{ body: RecordBody; score: number }> = [];
+      checkModel();
+      const ranked: { body: IndexedPage; score: number }[] = [];
       for (const body of index.rows.values()) {
-        check();
-        const text = `${body.title}\n${body.text.slice(0, 6000)}`;
-        const sourceCurrent = () =>
-          eligible() &&
-          this.readable(body) &&
-          !!this.repo.db
-            .prepare(
-              "SELECT 1 FROM content_memory WHERE memory_id=? AND profile_id=? AND workspace_id=? AND captured_at=?",
-            )
-            .get(body.memoryId, this.profileId, workspaceId, body.capturedAt);
-        if (!sourceCurrent()) continue;
-        const vector = await this.cachedDerivative({
-          workspaceId,
-          signature: JSON.stringify([
-            "local-memory-embedding-v1",
-            model,
-            body.memoryId,
-            body.capturedAt,
-            text,
-          ]),
-          eligible: sourceCurrent,
-          parse: embeddingVector,
-          compute: async () => {
-            check();
-            if (!sourceCurrent()) throw new AuxError("cancelled", "The original Memory source changed.");
-            const value = await this.embeddings.embed(model, text, signal);
-            check();
-            return value;
-          },
-        });
-        if (sourceCurrent()) ranked.push({ body, score: cosineSimilarity(queryVector, vector) });
+        const cached = warm.vectors.get(body.memoryId);
+        if (cached?.embeddingVersion === body.embeddingVersion && this.sourceCurrent(body))
+          ranked.push({ body, score: cosineSimilarity(queryVector, cached.vector) });
       }
-      const currentModels = await this.embeddings.discover(signal);
-      check();
-      if (!currentModels.some((item) => item.modelId === model.modelId && item.digest === model.digest))
-        throw new AuxError("cancelled", "The installed local embedding model changed.");
+      const matches = [];
+      for (const { body } of ranked
+        .sort((a, b) => b.score - a.score || b.body.capturedAt - a.body.capturedAt)
+        .slice(0, Math.max(1, Math.min(limit, 20)))) {
+        const original = await this.readIndexedPage(body);
+        check();
+        checkModel();
+        if (original) matches.push(this.match(original, original.text.slice(0, 240)));
+      }
       return {
         mode: "semantic" as const,
         modelId: model.modelId,
-        message: "Local semantic matches use each article’s title and first 6,000 readable characters.",
-        matches: ranked
-          .sort((a, b) => b.score - a.score || b.body.capturedAt - a.body.capturedAt)
-          .filter((item) => this.readable(item.body))
-          .slice(0, Math.max(1, Math.min(limit, 20)))
-          .map(({ body }) => ({
-            memoryId: body.memoryId,
-            profileId: body.profileId,
-            workspaceId: body.workspaceId,
-            pageId: body.pageId,
-            documentEpoch: body.documentEpoch,
-            url: body.url,
-            title: body.title,
-            capturedAt: body.capturedAt,
-            snippet: body.text.slice(0, 240),
-          })),
+        message:
+          "Local semantic matches use prepared article titles and their first 6,000 readable characters; remaining articles index in the background.",
+        matches,
       };
+    } catch (error) {
+      check();
+      if (error instanceof AuxError && error.code === "cancelled") {
+        warm.controller.abort();
+        this.warms.delete(workspaceId);
+        void this.prewarm(workspaceId);
+        return lexical(
+          "The installed local model changed. Showing keyword matches while its index refreshes.",
+        );
+      }
+      if (error instanceof AuxError && error.code === "backend_unavailable")
+        return lexical("Local embeddings are unavailable. Showing keyword matches.");
+      throw error;
     } finally {
       if (this.semanticControllers.get(workspaceId) === controller)
         this.semanticControllers.delete(workspaceId);
     }
+  }
+
+  private match(body: RecordBody, snippet: string) {
+    return {
+      memoryId: body.memoryId,
+      profileId: body.profileId,
+      workspaceId: body.workspaceId,
+      pageId: body.pageId,
+      documentEpoch: body.documentEpoch,
+      url: body.url,
+      title: body.title,
+      capturedAt: body.capturedAt,
+      snippet,
+    };
   }
 
   private *historyVisits(query?: string): Generator<HistoryEntry> {
@@ -883,6 +1200,117 @@ export class ContentMemoryStore {
       for (const entry of batch) yield entry;
       const last = batch[batch.length - 1]!;
       before = { visitedAt: last.visitedAt, url: last.url };
+    }
+  }
+
+  private historyEligible(workspaceId: string, entry: HistoryEntry): boolean {
+    try {
+      const url = new URL(entry.url);
+      const fragment = new URLSearchParams(url.hash.slice(1).split("?").pop());
+      const credentialKey =
+        /^(?:access_token|refresh_token|id_token|token|password|passwd|secret|api_key|apikey|authorization|otp|one_time_code)$/i;
+      if ([...url.searchParams.keys(), ...fragment.keys()].some((key) => credentialKey.test(key)))
+        return false;
+      return (
+        ["https:", "http:"].includes(url.protocol) &&
+        !url.username &&
+        !url.password &&
+        !memorySensitivityReason(entry.url, entry.title) &&
+        !memoryContentSensitivityReason(entry.title) &&
+        memoryOriginAllowed(this.policy(workspaceId), url.origin) &&
+        !memorySourceExcluded(readWorkspaceMemory(this.repo, workspaceId), entry.url)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  private historyCurrent(workspaceId: string, entry: HistoryEntry): boolean {
+    return (
+      this.historyEligible(workspaceId, entry) &&
+      !!this.repo.db
+        .prepare("SELECT 1 FROM history WHERE url=? AND visited_at=? AND title=?")
+        .get(entry.url, entry.visitedAt, entry.title)
+    );
+  }
+
+  private prewarmHistory(workspaceId: string) {
+    let index = this.historyIndexes.get(workspaceId);
+    if (index && this.now() - index.startedAt < 60_000 && !index.controller.signal.aborted) return index;
+    index?.controller.abort();
+    const controller = new AbortController();
+    index = { controller, startedAt: this.now(), vectors: index?.vectors ?? new Map(), model: index?.model };
+    this.historyIndexes.set(workspaceId, index);
+    if (this.historyIndexes.size > MAX_INDEXED_SPACES) {
+      const oldest = this.historyIndexes.keys().next().value!;
+      this.historyIndexes.get(oldest)?.controller.abort();
+      this.historyIndexes.delete(oldest);
+    }
+    void this.own(() => this.prewarmHistoryOwned(workspaceId, index));
+    return index;
+  }
+
+  private async prewarmHistoryOwned(workspaceId: string, index: HistoryIndex): Promise<void> {
+    const signal = AbortSignal.any([
+      index.controller.signal,
+      this.discoveryController.signal,
+      AbortSignal.timeout(60_000),
+    ]);
+    await idle(undefined, { signal });
+    const epoch = this.historyEpoch;
+    const policy = this.policy(workspaceId);
+    const workspace = readWorkspaceMemory(this.repo, workspaceId);
+    const check = () => {
+      signal.throwIfAborted();
+      if (
+        this.closed ||
+        epoch !== this.historyEpoch ||
+        this.historyIndexes.get(workspaceId) !== index ||
+        JSON.stringify(this.policy(workspaceId)) !== JSON.stringify(policy) ||
+        JSON.stringify(readWorkspaceMemory(this.repo, workspaceId)) !== JSON.stringify(workspace)
+      )
+        throw new AuxError("cancelled", "The original history index or policy changed.");
+    };
+    if (!policy.enabled || !workspace.enabled) return;
+    const models = await this.embeddings.discover(signal);
+    check();
+    const model = policy.semanticModelId
+      ? models.find((item) => item.modelId === policy.semanticModelId)
+      : models[0];
+    if (!model) {
+      index.model = undefined;
+      index.vectors.clear();
+      return;
+    }
+    if (JSON.stringify(index.model) !== JSON.stringify(model)) index.vectors.clear();
+    index.model = model;
+    const entries = this.repo
+      .listHistory(undefined, MAX_PAGES_PER_SPACE)
+      .filter((entry) => this.historyCurrent(workspaceId, entry));
+    const keys = new Set(entries.map((entry) => fingerprint(JSON.stringify(entry))));
+    for (const key of index.vectors.keys()) if (!keys.has(key)) index.vectors.delete(key);
+    for (let offset = 0; offset < entries.length; offset += 8) {
+      await idle(undefined, { signal });
+      check();
+      const missing = entries
+        .slice(offset, offset + 8)
+        .filter((entry) => !index.vectors.has(fingerprint(JSON.stringify(entry))));
+      if (!missing.length) continue;
+      const vectors = await this.embeddings.embedBatch(
+        model,
+        missing.map((entry) => {
+          const url = new URL(entry.url);
+          return `${entry.title.slice(0, 4000)}\n${url.hostname}${url.pathname.slice(0, 2000)}`;
+        }),
+        signal,
+      );
+      check();
+      for (const [i, entry] of missing.entries())
+        if (this.historyCurrent(workspaceId, entry))
+          index.vectors.set(fingerprint(JSON.stringify(entry)), {
+            entry,
+            vector: compactVector(vectors[i]!),
+          });
     }
   }
 
@@ -921,40 +1349,17 @@ export class ContentMemoryStore {
       )
         throw new AuxError("cancelled", "The original history source or memory policy changed.");
     };
-    const eligible = (entry: HistoryEntry) => {
-      try {
-        const url = new URL(entry.url);
-        // Do not put an original credential-bearing link into a model tool result.
-        // Retain ordinary query URLs exactly; never manufacture a replacement destination.
-        const fragment = new URLSearchParams(url.hash.slice(1).split("?").pop());
-        const credentialKey = /^(?:access_token|refresh_token|id_token|token|password|passwd|secret|api_key|apikey|authorization|otp|one_time_code)$/i;
-        if ([...url.searchParams.keys(), ...fragment.keys()].some((key) => credentialKey.test(key)))
-          return false;
-        return (
-          ["https:", "http:"].includes(url.protocol) &&
-          !url.username &&
-          !url.password &&
-          !memorySensitivityReason(entry.url, entry.title) &&
-          !memoryContentSensitivityReason(entry.title) &&
-          memoryOriginAllowed(policy, url.origin) &&
-          !memorySourceExcluded(workspace, entry.url)
-        );
-      } catch {
-        return false;
-      }
-    };
-    const current = (entry: HistoryEntry) =>
-      eligible(entry) &&
-      !!this.repo.db
-        .prepare("SELECT 1 FROM history WHERE url=? AND visited_at=? AND title=?")
-        .get(entry.url, entry.visitedAt, entry.title);
     const count = Math.min(50, Math.max(1, Math.floor(limit)));
-    const lexical = (message: string) => {
+    const lexical = async (message: string) => {
       check();
       const entries: HistoryEntry[] = [];
+      let inspected = 0;
       for (const entry of this.historyVisits(query)) {
-        check();
-        if (current(entry)) entries.push(entry);
+        if (inspected++ % 64 === 0) {
+          await idle(undefined, { signal });
+          check();
+        }
+        if (this.historyCurrent(workspaceId, entry)) entries.push(entry);
         if (entries.length >= count) break;
       }
       return { mode: "lexical" as const, message, entries };
@@ -968,108 +1373,93 @@ export class ContentMemoryStore {
           "permission_denied",
           "Sensitive queries cannot be sent for semantic history recall.",
         );
-      let models: LocalEmbeddingModel[];
-      try {
-        models = await this.embeddings.discover(signal);
-      } catch (error) {
-        check();
-        if (error instanceof AuxError && error.code !== "backend_unavailable") throw error;
-        return lexical("Local embeddings are unavailable; these are keyword history matches.");
-      }
+      const index = this.prewarmHistory(workspaceId);
+      if (!index.model || !index.vectors.size)
+        return lexical(
+          "The local history index is warming or unavailable; these are keyword history matches.",
+        );
+      const model = index.model;
+      const queryVector = await this.embeddings.embed(
+        model,
+        query,
+        AbortSignal.any([signal, index.controller.signal]),
+      );
       check();
-      const model = policy.semanticModelId
-        ? models.find((entry) => entry.modelId === policy.semanticModelId)
-        : models[0];
-      if (!model)
-        return lexical("No installed embedding model is selected; these are keyword history matches.");
-      const identity = JSON.stringify(model);
-      let index = this.historyIndexes.get(workspaceId);
-      if (!index || index.model !== identity) {
-        if (this.historyIndexes.size >= MAX_INDEXED_SPACES) this.historyIndexes.clear();
-        index = { model: identity, vectors: new Map() };
-        this.historyIndexes.set(workspaceId, index);
-      }
-      const key = (entry: HistoryEntry) =>
-        createHash("sha256")
-          .update(JSON.stringify([entry.url, entry.title, entry.visitedAt, model]))
-          .digest("hex");
-      const queryVector = await this.embeddings.embed(model, query, signal);
-      check();
-      const ranked: Array<{ entry: HistoryEntry; score: number }> = [];
-      for (const entry of this.historyVisits()) {
-        check();
-        if (!current(entry)) continue;
-        const signature = key(entry);
-        let vector = index.vectors.get(signature);
-        if (!vector) {
-          const url = new URL(entry.url);
-          // Only original HistoryService metadata; never query/fragment secrets or a borrowed page read.
-          vector = await this.embeddings.embed(
-            model,
-            `${entry.title.slice(0, 4000)}\n${url.hostname}${url.pathname.slice(0, 2000)}`,
-            signal,
-          );
-          check();
-          if (!current(entry)) continue;
-          if (index.vectors.size >= 500) index.vectors.delete(index.vectors.keys().next().value!);
-          index.vectors.set(signature, vector);
-        } else {
-          index.vectors.delete(signature);
-          index.vectors.set(signature, vector);
-        }
-        ranked.push({ entry, score: cosineSimilarity(queryVector, vector) });
-        ranked.sort((a, b) => b.score - a.score || b.entry.visitedAt - a.entry.visitedAt);
-        if (ranked.length > count) ranked.pop();
-      }
-      const installed = await this.embeddings.discover(signal);
-      check();
-      if (!installed.some((entry) => entry.modelId === model.modelId && entry.digest === model.digest))
-        throw new AuxError("cancelled", "The installed history embedding model changed.");
+      if (this.historyIndexes.get(workspaceId) !== index)
+        throw new AuxError("cancelled", "The original history index changed.");
+      if (JSON.stringify(index.model) !== JSON.stringify(model))
+        throw new AuxError("cancelled", "The installed local embedding model changed.");
+      const ranked = [...index.vectors.values()]
+        .filter(({ entry }) => this.historyCurrent(workspaceId, entry))
+        .map(({ entry, vector }) => ({ entry, score: cosineSimilarity(queryVector, vector) }))
+        .sort((a, b) => b.score - a.score || b.entry.visitedAt - a.entry.visitedAt);
       return {
         mode: "semantic",
         message:
-          "Local semantic history matches use eligible visit titles and URL path metadata, not page bodies.",
-        entries: ranked
-          .sort((a, b) => b.score - a.score || b.entry.visitedAt - a.entry.visitedAt)
-          .filter(({ entry }) => current(entry))
-          .slice(0, count)
-          .map(({ entry }) => entry),
+          "Local semantic history matches use prepared titles and URL paths from up to 500 recent visits; older visits remain searchable by keyword.",
+        entries: ranked.slice(0, count).map(({ entry }) => entry),
       };
     } catch (error) {
       check();
-      if (error instanceof AuxError && error.code === "backend_unavailable")
+      if (error instanceof AuxError && error.code === "cancelled") {
+        this.historyIndexes.get(workspaceId)?.controller.abort();
+        this.historyIndexes.delete(workspaceId);
+        this.prewarmHistory(workspaceId);
         return lexical(
-          "The installed local embedding model is unavailable; these are keyword history matches.",
+          "The installed local model changed; keyword history matches remain available while its index refreshes.",
         );
+      }
+      if (error instanceof AuxError && error.code === "backend_unavailable")
+        return lexical("Local embeddings are unavailable; these are keyword history matches.");
       throw error;
     } finally {
       this.historyControllers.delete(controller);
     }
   }
 
-  async search(workspaceId: string, query: string, limit = 10) {
-    return this.own(() => this.searchOwned(workspaceId, query, limit));
+  async search(workspaceId: string, query: string, limit = 10, signal?: AbortSignal) {
+    return this.own(() => this.searchOwned(workspaceId, query, limit, signal));
   }
 
-  private async searchOwned(workspaceId: string, query: string, limit = 10) {
+  private async searchOwned(workspaceId: string, query: string, limit: number, signal?: AbortSignal) {
+    signal?.throwIfAborted();
     if (!this.policy(workspaceId).enabled || readWorkspaceMemory(this.repo, workspaceId)?.enabled === false)
       return [];
+    const epoch = this.derivativeEpoch;
+    const revision = readWorkspaceMemory(this.repo, workspaceId).revision;
+    const policy = JSON.stringify(this.policy(workspaceId));
+    const check = () => {
+      signal?.throwIfAborted();
+      if (
+        this.closed ||
+        epoch !== this.derivativeEpoch ||
+        revision !== readWorkspaceMemory(this.repo, workspaceId).revision ||
+        policy !== JSON.stringify(this.policy(workspaceId))
+      )
+        throw new AuxError("cancelled", "The original Memory source or policy changed.");
+    };
     const tokens = terms(query.slice(0, 200)).slice(0, 8);
     if (!tokens.length) return [];
-    const index = await this.index(workspaceId);
+    const index = await this.index(workspaceId, signal);
+    check();
     if (!this.policy(workspaceId).enabled || readWorkspaceMemory(this.repo, workspaceId)?.enabled === false)
       return [];
     const frequencies = new Map(tokens.map((token) => [token, 0]));
-    const candidates = [...index.rows].flatMap(([id, body]) => {
-      const haystack = index.searchable.get(id)!;
+    const candidates: { body: IndexedPage; haystack: { title: string; text: string }; hits: string[] }[] = [];
+    let inspected = 0;
+    for (const body of index.rows.values()) {
+      if (inspected++ % 16 === 0) {
+        await idle(undefined, { signal });
+        check();
+      }
+      const haystack = { title: body.title.toLocaleLowerCase(), text: body.normalizedText };
       const hits = tokens.filter(
         (token) => termPosition(haystack.title, token) >= 0 || termPosition(haystack.text, token) >= 0,
       );
       for (const token of hits) frequencies.set(token, frequencies.get(token)! + 1);
-      // Multi-term questions need corroboration. A single common word such as
-      // Spanish "de" should not surface an unrelated saved page as an answer.
-      return hits.length >= (tokens.length >= 3 ? 2 : 1) ? [{ body, haystack, hits }] : [];
-    });
+      // Multi-term questions need corroboration, not one common incidental word.
+      if (hits.length >= (tokens.length >= 3 ? 2 : 1)) candidates.push({ body, haystack, hits });
+    }
     const ranked = candidates
       .map(({ body, haystack, hits }) => {
         const score =
@@ -1082,31 +1472,31 @@ export class ContentMemoryStore {
         return { body, haystack, score, hits };
       })
       .sort((a, b) => b.score - a.score || b.body.capturedAt - a.body.capturedAt);
-    return ranked
+    const matches = [];
+    for (const { body, haystack, hits } of ranked
       .filter(({ body }) => this.readable(body))
-      .slice(0, Math.max(1, Math.min(limit, 20)))
-      .map(({ body, haystack, hits }) => {
-        const at = Math.max(
-          0,
-          termPosition(
-            haystack.text,
-            hits.find((token) => termPosition(haystack.text, token) >= 0) ?? hits[0]!,
-          ),
-        );
-        const start = Math.max(0, at - 70),
-          end = Math.min(body.text.length, start + 240);
-        return {
-          memoryId: body.memoryId,
-          profileId: body.profileId,
-          workspaceId: body.workspaceId,
-          url: body.url,
-          title: body.title,
-          capturedAt: body.capturedAt,
-          pageId: body.pageId,
-          documentEpoch: body.documentEpoch,
-          snippet: `${start ? "…" : ""}${body.text.slice(start, end)}${end < body.text.length ? "…" : ""}`,
-        };
-      });
+      .slice(0, Math.max(1, Math.min(limit, 20)))) {
+      check();
+      const original = await this.readIndexedPage(body);
+      check();
+      if (!original) continue;
+      const at = Math.max(
+        0,
+        termPosition(
+          haystack.text,
+          hits.find((token) => termPosition(haystack.text, token) >= 0) ?? hits[0]!,
+        ),
+      );
+      const start = Math.max(0, at - 70),
+        end = Math.min(original.text.length, start + 240);
+      matches.push(
+        this.match(
+          original,
+          `${start ? "…" : ""}${original.text.slice(start, end)}${end < original.text.length ? "…" : ""}`,
+        ),
+      );
+    }
+    return matches;
   }
 
   async get(workspaceId: string, memoryId: string): Promise<RecordBody | undefined> {
@@ -1117,7 +1507,7 @@ export class ContentMemoryStore {
     if (!this.policy(workspaceId).enabled || readWorkspaceMemory(this.repo, workspaceId)?.enabled === false)
       return undefined;
     const record = (await this.index(workspaceId)).rows.get(memoryId);
-    return record && this.readable(record) ? record : undefined;
+    return record && this.readable(record) ? this.readIndexedPage(record) : undefined;
   }
 
   async invalidateDerivatives(): Promise<void> {
@@ -1163,6 +1553,8 @@ export class ContentMemoryStore {
     beforeRemoval?: () => void | Promise<void>,
   ): Promise<number> {
     this.retireSemantic();
+    this.retireIndexes();
+    this.retireHistory();
     this.derivativeEpoch++;
     const hasDerivatives = !!this.repo.db
       .prepare("SELECT 1 FROM ai_result_cache WHERE profile_id=? LIMIT 1")

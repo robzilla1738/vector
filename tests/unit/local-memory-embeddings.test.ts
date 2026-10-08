@@ -87,3 +87,34 @@ it("rejects malformed embeddings and aborted operations without remote fallback"
   ).rejects.toThrow();
   expect(f.calls).toEqual([]);
 });
+
+it("embeds one bounded batch between two identity checks and rejects a changed model", async () => {
+  const paths: string[] = [];
+  let digest = "a".repeat(64),
+    change = false;
+  const service = new LocalMemoryEmbeddings(async (input, init) => {
+    const path = new URL(String(input)).pathname;
+    paths.push(path);
+    if (path === "/api/tags") return Response.json({ models: [{ name: "local", digest }] });
+    const body = JSON.parse(String(init?.body)) as { input: string[] };
+    if (change) digest = "b".repeat(64);
+    return Response.json({ embeddings: body.input.map(() => [1, 0]) });
+  });
+  const model = { modelId: "local", digest };
+  expect(await service.embedBatch(model, ["one", "two", "three"], new AbortController().signal)).toHaveLength(
+    3,
+  );
+  expect(paths).toEqual(["/api/tags", "/api/embed", "/api/tags"]);
+  change = true;
+  await expect(service.embedBatch(model, ["changed"], new AbortController().signal)).rejects.toMatchObject({
+    code: "cancelled",
+  });
+  await expect(
+    service.embedBatch(
+      model,
+      Array.from({ length: 9 }, () => "too many"),
+      new AbortController().signal,
+    ),
+  ).rejects.toMatchObject({ code: "invalid_params" });
+  await service.close();
+});

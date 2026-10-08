@@ -1,10 +1,13 @@
 import { afterEach, expect, it } from "vitest";
+import { setImmediate as idle } from "node:timers/promises";
 import { createHash, randomBytes } from "node:crypto";
 import { EventBus, openDb, Repo, TaskService } from "@aux/runtime";
 import { ContentMemoryStore } from "../../apps/runtime/src/services/content-memory.js";
 
 const databases: ReturnType<typeof openDb>[] = [];
-afterEach(() => {
+const memories: ContentMemoryStore[] = [];
+afterEach(async () => {
+  await Promise.all(memories.splice(0).map((memory) => memory.close()));
   for (const db of databases.splice(0)) db.close();
 });
 
@@ -12,7 +15,8 @@ function fixture(request?: typeof fetch) {
   const db = openDb(":memory:");
   databases.push(db);
   const repo = new Repo(db);
-  const tasks = new TaskService(repo, new EventBus(repo));
+  const events = new EventBus(repo);
+  const tasks = new TaskService(repo, events);
   const workspace = tasks.createWorkspace("Research");
   const secrets = new Map<string, string>();
   const native = {
@@ -28,10 +32,12 @@ function fixture(request?: typeof fetch) {
     },
   };
   let now = 1_800_000_000_000;
-  const memory = new ContentMemoryStore(repo, native, "profile-one", () => now, undefined, request);
+  const memory = new ContentMemoryStore(repo, native, "profile-one", () => now, events, request);
+  memories.push(memory);
   return {
     db,
     repo,
+    events,
     tasks,
     workspace,
     secrets,
@@ -555,9 +561,11 @@ it("semantically recalls local synonyms with sealed derivative vectors and clear
     if (path === "/api/tags") return Response.json({ models: [{ name: "local-embedding:latest", digest }] });
     if (path === "/api/show") return Response.json({ capabilities: ["embedding"] });
     if (path === "/api/embed") {
-      const text = (JSON.parse(String(init?.body)) as { input: string }).input;
+      const value = (JSON.parse(String(init?.body)) as { input: string | string[] }).input;
       return Response.json({
-        embeddings: [text.includes("car") || text.includes("vehicle") ? [1, 0] : [0, 1]],
+        embeddings: (Array.isArray(value) ? value : [value]).map((text) =>
+          text.includes("car") || text.includes("vehicle") ? [1, 0] : [0, 1],
+        ),
       });
     }
     throw new Error("Unexpected local route");
@@ -581,6 +589,8 @@ it("semantically recalls local synonyms with sealed derivative vectors and clear
     text: "Trees provide shade in parks.",
   });
   expect(await f.memory.search(workspaceId, "vehicle")).toEqual([]);
+  expect(await f.memory.semanticSearch(workspaceId, "vehicle")).toMatchObject({ mode: "lexical" });
+  await f.memory.prewarm(workspaceId);
   const semantic = await f.memory.semanticSearch(workspaceId, "vehicle");
   expect(semantic.mode).toBe("semantic");
   expect(semantic.matches[0]?.memoryId).toBe(car.memoryId);
@@ -624,4 +634,313 @@ it("defaults to safe-site capture but preserves explicit off/listed policy and f
     allowedOrigins: [],
   });
   expect(f.memory.policy(workspaceId).enabled).toBe(false);
+});
+
+function delayedEmbeddings() {
+  const batches: string[][] = [];
+  const signals: AbortSignal[] = [];
+  let start!: () => void;
+  let release!: () => void;
+  const started = new Promise<void>((resolve) => {
+    start = resolve;
+  });
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const request: typeof fetch = async (input, init) => {
+    const path = new URL(String(input)).pathname;
+    if (path === "/api/tags") return Response.json({ models: [{ name: "local", digest: "a".repeat(64) }] });
+    if (path === "/api/show") return Response.json({ capabilities: ["embedding"] });
+    if (path !== "/api/embed") throw new Error("Unexpected local embedding route");
+    const value = (JSON.parse(String(init?.body)) as { input: string | string[] }).input;
+    const texts = Array.isArray(value) ? value : [value];
+    if (Array.isArray(value)) {
+      batches.push(value);
+      signals.push(init!.signal!);
+      if (batches.length === 1) {
+        start();
+        await blocked;
+      }
+    }
+    return Response.json({
+      embeddings: texts.map((text) => (text.includes("car") || text.includes("vehicle") ? [1, 0] : [0, 1])),
+    });
+  };
+  return { request, batches, signals, started, release: () => release() };
+}
+
+it("returns lexical matches while a corpus batch is blocked and reuses sealed vectors after restart", async () => {
+  const local = delayedEmbeddings();
+  const f = fixture(local.request);
+  const workspaceId = f.workspace.workspaceId;
+  for (let i = 0; i < 9; i++)
+    await f.memory.saveEligible({
+      workspaceId,
+      pageId: `page-${i}`,
+      documentEpoch: 1,
+      url: `https://example.test/article-${i}`,
+      title: `Car article ${i}`,
+      text: "A car carries travelers.",
+    });
+  const warming = f.memory.prewarm(workspaceId);
+  await local.started;
+  expect((await f.memory.search(workspaceId, "travelers")).length).toBe(9);
+  expect(await f.memory.semanticSearch(workspaceId, "travelers")).toMatchObject({
+    mode: "lexical",
+    matches: expect.any(Array),
+  });
+  expect(local.batches.map((batch) => batch.length)).toEqual([8]);
+  local.release();
+  await warming;
+  expect(local.batches.map((batch) => batch.length)).toEqual([8, 1]);
+  expect((await f.memory.semanticSearch(workspaceId, "vehicle")).mode).toBe("semantic");
+  const raw = JSON.stringify(f.db.prepare("SELECT * FROM ai_result_cache").all());
+  expect(raw).not.toContain("Car article");
+  expect(raw).not.toContain("[1,0]");
+  await f.memory.saveEligible({
+    workspaceId,
+    pageId: "page-0",
+    documentEpoch: 2,
+    url: "https://example.test/article-0",
+    title: "Car article 0",
+    text: "A car carries travelers.",
+  });
+  await f.memory.prewarm(workspaceId);
+  expect(local.batches.map((batch) => batch.length)).toEqual([8, 1]);
+  const reopened = new ContentMemoryStore(f.repo, f.native, "profile-one", f.now, undefined, local.request);
+  memories.push(reopened);
+  await reopened.prewarm(workspaceId);
+  expect(local.batches.map((batch) => batch.length)).toEqual([8, 1]);
+  expect((await reopened.semanticSearch(workspaceId, "vehicle")).matches).toHaveLength(9);
+});
+
+it("cancels an in-flight batch on Forget and cannot publish its late vectors", async () => {
+  const local = delayedEmbeddings();
+  const f = fixture(local.request),
+    workspaceId = f.workspace.workspaceId;
+  const saved = await f.memory.saveEligible({
+    workspaceId,
+    pageId: "car",
+    documentEpoch: 1,
+    url: "https://example.test/car",
+    title: "Car",
+    text: "A car carries travelers.",
+  });
+  const warming = f.memory.prewarm(workspaceId);
+  await local.started;
+  await f.memory.forget(workspaceId, saved.memoryId);
+  expect(local.signals[0]!.aborted).toBe(true);
+  local.release();
+  await expect(warming).rejects.toThrow();
+  expect(f.db.prepare("SELECT count(*) AS n FROM ai_result_cache").get()?.n).toBe(0);
+  expect(await f.memory.search(workspaceId, "car")).toEqual([]);
+});
+
+it("replaces one captured source at the same timestamp without publishing the old batch", async () => {
+  const local = delayedEmbeddings();
+  const f = fixture(local.request),
+    workspaceId = f.workspace.workspaceId;
+  const input = {
+    workspaceId,
+    pageId: "p",
+    documentEpoch: 1,
+    url: "https://example.test/article",
+    title: "Car",
+    text: "A car carries travelers.",
+  };
+  const saved = await f.memory.saveEligible(input);
+  const oldWarm = f.memory.prewarm(workspaceId);
+  await local.started;
+  const updated = await f.memory.saveEligible({
+    ...input,
+    documentEpoch: 2,
+    title: "Trees",
+    text: "Trees provide shade.",
+  });
+  expect(updated.capturedAt).toBe(saved.capturedAt);
+  expect(updated.memoryId).toBe(saved.memoryId);
+  await f.memory.prewarm(workspaceId);
+  local.release();
+  await expect(oldWarm).rejects.toThrow();
+  expect(local.signals[0]!.aborted).toBe(true);
+  expect(await f.memory.search(workspaceId, "travelers")).toEqual([]);
+  expect((await f.memory.search(workspaceId, "shade"))[0]?.documentEpoch).toBe(2);
+  expect(f.db.prepare("SELECT count(*) AS n FROM ai_result_cache").get()?.n).toBe(1);
+  expect(local.batches).toHaveLength(2);
+});
+
+it("cancels the original lexical request while its shared index waits for the OS key", async () => {
+  const f = fixture();
+  const workspaceId = f.workspace.workspaceId;
+  await f.memory.saveEligible({
+    workspaceId,
+    pageId: "p",
+    documentEpoch: 1,
+    url: "https://example.test/article",
+    title: "Article",
+    text: "Reusable browser research.",
+  });
+  let release!: () => void, started!: () => void;
+  const keyWait = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const keyStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const reopened = new ContentMemoryStore(
+    f.repo,
+    {
+      ...f.native,
+      readSecret: async (name) => {
+        started();
+        await keyWait;
+        return f.native.readSecret(name);
+      },
+    },
+    "profile-one",
+    f.now,
+  );
+  memories.push(reopened);
+  const controller = new AbortController();
+  const search = reopened.search(workspaceId, "research", 5, controller.signal);
+  await keyStarted;
+  controller.abort(new Error("Original run stopped"));
+  await expect(search).rejects.toThrow("Original run stopped");
+  release();
+  expect((await reopened.search(workspaceId, "research"))[0]?.title).toBe("Article");
+});
+
+it("retires derivatives and stops pending publication when Space memory is paused", async () => {
+  const local = delayedEmbeddings();
+  const f = fixture(local.request),
+    workspaceId = f.workspace.workspaceId;
+  await f.memory.saveEligible({
+    workspaceId,
+    pageId: "car",
+    documentEpoch: 1,
+    url: "https://example.test/car",
+    title: "Car",
+    text: "A car carries travelers.",
+  });
+  await f.memory.cachedDerivative({
+    workspaceId,
+    signature: "prior",
+    eligible: () => true,
+    parse: (value) => String(value),
+    compute: async () => "prior result",
+  });
+  const warming = f.memory.prewarm(workspaceId);
+  await local.started;
+  f.tasks.setWorkspaceMemory(workspaceId, 0, "", false);
+  expect(local.signals[0]!.aborted).toBe(true);
+  await f.memory.invalidateDerivatives();
+  local.release();
+  await expect(warming).rejects.toThrow();
+  expect(f.db.prepare("SELECT count(*) AS n FROM ai_result_cache").get()?.n).toBe(0);
+  expect(f.db.prepare("SELECT count(*) AS n FROM content_memory").get()?.n).toBe(1);
+  expect(await f.memory.search(workspaceId, "car")).toEqual([]);
+});
+
+it("returns keyword history while recent eligible visits warm and never returns removed visits", async () => {
+  const local = delayedEmbeddings();
+  const f = fixture(local.request),
+    workspaceId = f.workspace.workspaceId;
+  f.repo.addHistory("https://example.test/car", "Car transport");
+  f.repo.addHistory("https://example.test/trees", "Tree shade");
+  f.repo.addHistory("https://example.test/private?token=secret", "Credential page");
+  const signal = new AbortController().signal;
+  const cold = await f.memory.semanticHistory(workspaceId, "Car", 5, signal, () => {});
+  expect(cold).toMatchObject({ mode: "lexical", entries: [{ title: "Car transport" }] });
+  await local.started;
+  expect(local.batches[0]).toHaveLength(2);
+  expect(local.batches[0]!.join(" ")).not.toContain("secret");
+  local.release();
+  await idle();
+  const refined = await f.memory.semanticHistory(workspaceId, "vehicle", 5, signal, () => {});
+  expect(refined.mode).toBe("semantic");
+  expect(refined.entries[0]?.title).toBe("Car transport");
+  const car = f.repo.listHistory("Car")[0]!;
+  f.repo.removeHistory(car.url, car.visitedAt);
+  f.events.emit("history.changed", {});
+  expect(await f.memory.semanticHistory(workspaceId, "Car", 5, signal, () => {})).toMatchObject({
+    mode: "lexical",
+    entries: [],
+  });
+});
+
+it("aborts background transport and joins it before closing Memory", async () => {
+  const local = delayedEmbeddings();
+  const f = fixture(local.request),
+    workspaceId = f.workspace.workspaceId;
+  await f.memory.saveEligible({
+    workspaceId,
+    pageId: "car",
+    documentEpoch: 1,
+    url: "https://example.test/car",
+    title: "Car",
+    text: "A car carries travelers.",
+  });
+  const warming = f.memory.prewarm(workspaceId);
+  await local.started;
+  const closing = f.memory.close();
+  expect(local.signals[0]!.aborted).toBe(true);
+  local.release();
+  await expect(warming).rejects.toThrow();
+  await closing;
+  expect(f.db.prepare("SELECT count(*) AS n FROM ai_result_cache").get()?.n).toBe(0);
+});
+
+it("does not rank an older query vector against a refreshed model's corpus", async () => {
+  let refreshed = false;
+  let started!: () => void;
+  let release!: () => void;
+  const queryStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const queryGate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const request: typeof fetch = async (input, init) => {
+    const path = new URL(String(input)).pathname;
+    if (path === "/api/tags")
+      return Response.json({
+        models: [
+          { name: "z-old", digest: "a".repeat(64) },
+          ...(refreshed ? [{ name: "a-new", digest: "b".repeat(64) }] : []),
+        ],
+      });
+    if (path === "/api/show") return Response.json({ capabilities: ["embedding"] });
+    const body = JSON.parse(String(init?.body)) as { model: string; input: string | string[] };
+    if (typeof body.input === "string") {
+      started();
+      await queryGate;
+    }
+    return Response.json({
+      embeddings: (Array.isArray(body.input) ? body.input : [body.input]).map(() =>
+        body.model === "z-old" ? [1, 0] : [0, 1],
+      ),
+    });
+  };
+  const f = fixture(request),
+    workspaceId = f.workspace.workspaceId;
+  await f.memory.saveEligible({
+    workspaceId,
+    pageId: "car",
+    documentEpoch: 1,
+    url: "https://example.test/car",
+    title: "Car",
+    text: "A car carries travelers.",
+  });
+  await f.memory.prewarm(workspaceId);
+  refreshed = true;
+  f.advance(60_001);
+  const pending = f.memory.semanticSearch(workspaceId, "car");
+  await queryStarted;
+  await f.memory.prewarm(workspaceId);
+  release();
+  expect(await pending).toMatchObject({
+    mode: "lexical",
+    message: expect.stringContaining("model changed"),
+    matches: [{ pageId: "car" }],
+  });
 });

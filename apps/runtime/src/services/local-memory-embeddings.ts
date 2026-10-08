@@ -57,7 +57,7 @@ export function embeddingVector(value: unknown): number[] {
     throw new AuxError("backend_unavailable", "The local model returned an invalid embedding.");
   return value;
 }
-export function cosineSimilarity(a: readonly number[], b: readonly number[]): number {
+export function cosineSimilarity(a: ArrayLike<number>, b: ArrayLike<number>): number {
   if (a.length !== b.length)
     throw new AuxError("backend_unavailable", "The selected local model changed its embedding dimensions.");
   let scaleA = 0,
@@ -138,7 +138,22 @@ export class LocalMemoryEmbeddings {
           ...(body === undefined ? {} : { "Content-Type": "application/json" }),
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      }).then((response) => json(response, (join) => this.retain(join))),
+      })
+        .then((response) => json(response, (join) => this.retain(join)))
+        .catch((error: unknown) => {
+          signal.throwIfAborted();
+          this.shutdown.signal.throwIfAborted();
+          if (
+            error instanceof TypeError ||
+            error instanceof SyntaxError ||
+            (error instanceof Error && error.name === "TimeoutError")
+          )
+            throw new AuxError(
+              "backend_unavailable",
+              "The installed local embedding server is unavailable or returned an invalid response.",
+            );
+          throw error;
+        }),
     );
   }
   discover(signal: AbortSignal): Promise<LocalEmbeddingModel[]> {
@@ -192,18 +207,36 @@ export class LocalMemoryEmbeddings {
       throw new AuxError("cancelled", "The installed local embedding model changed.");
   }
   embed(model: LocalEmbeddingModel, text: string, signal: AbortSignal): Promise<number[]> {
-    return this.own(() => this.embedOwned(model, text, signal));
+    return this.own(async () => (await this.embedInputs(model, text, signal))[0]!);
   }
-  private async embedOwned(model: LocalEmbeddingModel, text: string, signal: AbortSignal): Promise<number[]> {
+  embedBatch(model: LocalEmbeddingModel, texts: string[], signal: AbortSignal): Promise<number[][]> {
+    if (!texts.length || texts.length > 8)
+      return Promise.reject(new AuxError("invalid_params", "Embed between one and eight inputs per batch."));
+    return this.own(() => this.embedInputs(model, texts, signal));
+  }
+  private async embedInputs(
+    model: LocalEmbeddingModel,
+    input: string | string[],
+    signal: AbortSignal,
+  ): Promise<number[][]> {
     signal.throwIfAborted();
     await this.assertInstalled(model, signal);
+    signal.throwIfAborted();
     const body = record(
-      await this.fetch("/api/embed", signal, { model: model.modelId, input: text, truncate: true }),
+      await this.fetch("/api/embed", signal, { model: model.modelId, input, truncate: true }),
     );
-    if (!Array.isArray(body?.embeddings) || body.embeddings.length !== 1)
+    signal.throwIfAborted();
+    const count = typeof input === "string" ? 1 : input.length;
+    if (!Array.isArray(body?.embeddings) || body.embeddings.length !== count)
       throw new AuxError("backend_unavailable", "The local model returned an invalid embedding response.");
-    const vector = embeddingVector(body.embeddings[0]);
+    const vectors = body.embeddings.map(embeddingVector);
+    if (vectors.some((vector) => vector.length !== vectors[0]!.length))
+      throw new AuxError(
+        "backend_unavailable",
+        "The local model changed embedding dimensions within a batch.",
+      );
     await this.assertInstalled(model, signal);
-    return vector;
+    signal.throwIfAborted();
+    return vectors;
   }
 }
