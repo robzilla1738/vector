@@ -13,7 +13,7 @@ ownership, secret protection, durable effects and conflict-safe undo remain.
 Execution was authorized on October 7, 2026. The source baseline is clean local
 main at `62f3626c8d0b50880452e928c3e24ba0277f4d2e`. The integrated native candidate is
 Chromium 154.0.8037.98 in `~/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`,
-with the native tree through historical area 0101, now consolidated into 32 equivalent area patches. Existing delivery observations live in STATUS.
+with the native tree through historical area 0101, consolidated into 32 equivalent area patches, plus compiled private-filter retirement area 0033. Area 0034 repairs runtime capability and Preview routing in source; child-document input admission is the current native blocker. Existing delivery observations live in STATUS.
 There is no complete current performance comparison. Source presence and previous
 unit checks do not establish native performance or competitor parity.
 
@@ -211,15 +211,23 @@ items explicit; do not shrink the objective to a finished subset.
 - N10 cloud files/processes, human Changes/Logs/Stop/Undo and native Preview are
   integrated. Encrypted log chunks replace repeated whole-log decryption. Human
   controls retain original native-window/VM/Session checks after agent dispatch
-  ends. Cloud code-mode uses the existing admission/receipt callbacks. Successful-task process lifetime remains under review. Actual cloud workflow
+  ends. Cloud code-mode uses the existing admission/receipt callbacks. Successful-task process retention now transfers monitor/Stop ownership before dispatch retirement and retains original funding expiry. Actual cloud workflow
   acceptance remains pending.
-- The combined check passed typecheck/lint and 4,329 tests, with 15 failures in
-  five affected test files. Contract/restore fixtures and native-only mock/export
-  expectations are being repaired with focused reruns. New private/cloud/document
-  slices and legacy recall projection have focused checks. Evidence is in STATUS.
-- The current native build completed 87 steps in 17m31.05s; the 32-area patch
-  replay exactly preserves its native tree. Runtime-only launches verify the
-  compiled host ABI before staging current runtime changes.
+- The latest integrated check passed typecheck/lint and 4,358 tests. Its one
+  remaining reconnect fixture now awaits the real protocol reply and passes its
+  focused rerun. Earlier isolation/restore/native-mock/export fixtures are repaired.
+  Borrowed-reader cold connection and retained cloud lifetime have focused checks.
+  Deck groups now say Sections and result editing has no version-20 wall; concurrent
+  revisions keep their chosen source with unique ordinals. Evidence is in STATUS.
+- Area 0033 compiled in 33 steps / 16m02.15s. Closing a private window after
+  loading a real HTTP page left normal browsing alive; normal exit retired the
+  disposable Profile and lock. Private AI still failed because the native registry
+  omitted its implemented provider. Area 0034 adds that and the other 23 omitted
+  concrete handlers plus original-window Preview routing. Agent attachment now
+  exposes the child-frame view's missing input acknowledgement; the proper
+  child-document/native-platform repair is in progress. These are not successful
+  first-task/private-AI observations. Runtime-only launches verify the compiled
+  host ABI before staging current runtime changes.
 - Area 0100 adds original shell/runtime role measurement; stock's additive patch
   was retired after its missing object cache requested a full rebuild, stopped
   normally. Stock keeps the same v3 timing triggers; Aux-only role telemetry is

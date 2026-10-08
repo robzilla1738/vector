@@ -1,0 +1,37 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -162,6 +162,19 @@
+                     "native.historyImport",
+                     "native.historyRemove", "native.webmcpList",
+                     "native.webmcpCall"});
++  register_runtime(
++      AuxRuntimeMethodGroup::kAsync,
++      {"native.privateProvider", "native.cloudPreview",
++       "native.cloudPreviewClose", "native.projectFiles",
++       "native.projectFile", "native.projectChanges", "native.projectCancel",
++       "native.terminalStart", "native.terminalRead", "native.terminalInput",
++       "native.terminalResize", "native.terminalClose",
++       "native.terminalListeners", "native.terminalPreview",
++       "native.terminalPreviewClose", "native.browserImportSelectWindow",
++       "native.browserImportSelectExport", "native.browserImportExportPoll",
++       "native.browserImportExportCancel", "native.browserImportDiscover",
++       "native.browserImportExtensionReview", "native.browserImportBegin",
++       "native.browserImportPoll", "native.browserImportCancel"});
+   register_runtime(AuxRuntimeMethodGroup::kWorker,
+                    {"native.storeSecret", "native.readSecret",
+                     "native.profileStorageRoot", "native.profileStorageFactor",
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1041,7 +1041,9 @@
+       api_method == "runs.branch.list" ||
+       api_method == "runs.answer" || api_method == "runs.continueBudget" ||
+       api_method == "runs.retryModelSetup" ||
+-      api_method == "coding.undo" || api_method == "coding.worktreeInspect" ||
++      api_method == "coding.undo" || api_method == "coding.preview" ||
++      api_method == "coding.previewClose" ||
++      api_method == "coding.worktreeInspect" ||
+       api_method == "coding.worktreeArchive" ||
+       api_method == "packages.install" || api_method == "packages.remove" ||
+       api_method == "packages.defaults" ||
