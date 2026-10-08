@@ -1,0 +1,53 @@
+diff --git a/chrome/browser/ui/aux/egress_controller.cc b/chrome/browser/ui/aux/egress_controller.cc
+--- a/chrome/browser/ui/aux/egress_controller.cc
++++ b/chrome/browser/ui/aux/egress_controller.cc
+@@ -139,6 +139,7 @@
+   bool guarded = false;
+   bool person_controlled = false;
+   content::WeakDocumentPtr human_session_document;
++  content::WeakDocumentPtr returned_person_read_document;
+   std::string control_generation = base::UnguessableToken::Create().ToString();
+   content::WeakDocumentPtr document;
+   base::DictValue lease;
+@@ -381,6 +382,7 @@
+     state = std::make_unique<PageState>();
+   }
+   state->guarded = true;
++  state->returned_person_read_document = {};
+   page->SetUserData(&kIsolationObserverKey,
+                     std::make_unique<IsolationObserver>(page, GetWeakPtr(), page_id));
+   authority_observers_.Notify();
+@@ -972,6 +974,9 @@
+     if (state != pages_.end()) {
+       // Preserve an actual human Take over; only borrowed task authority retires.
+       state->second->guarded = state->second->person_controlled;
++      // Only this exact borrowed document returns to the fixed person reader.
++      // Its network tombstone remains protected against late task requests.
++      state->second->returned_person_read_document = state->second->document;
+       state->second->control_generation = base::UnguessableToken::Create().ToString();
+       state->second->acknowledged_context.clear();
+       state->second->lease.clear();
+@@ -1104,8 +1109,13 @@
+   if (!identity || identity->runtime_owned() || !LiveFrame(frame) ||
+       !catalog || catalog->FindPage(identity->id()) != page ||
+       isolation_run_by_page_.contains(identity->id()) ||
+-      !page->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ||
+-      IsProtected({frame->GetWeakDocumentPtr(), identity->id(), "person-read"}))
++      !page->GetLastCommittedURL().SchemeIsHTTPOrHTTPS())
++    return false;
++  const auto returned = pages_.find(identity->id());
++  const bool returned_document = returned != pages_.end() &&
++      returned->second->returned_person_read_document.AsRenderFrameHostIfValid() == frame;
++  if (IsProtected({frame->GetWeakDocumentPtr(), identity->id(), "person-read"}) &&
++      !returned_document)
+     return false;
+   // An ordinary popup cannot borrow person admission from a task opener,
+   // including the interval before its first installed request lease.
+@@ -1349,6 +1359,7 @@
+     }
+   }
+   state->guarded = true;
++  state->returned_person_read_document = {};
+   document->protected_document = true;
+   state->document = frame->GetWeakDocumentPtr();
+   state->lease = lease->Clone();
