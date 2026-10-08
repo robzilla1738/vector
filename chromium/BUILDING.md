@@ -1,6 +1,6 @@
 # Building Aux locally
 
-Aux uses Chromium 154 on macOS arm64. The current product checkout is `~/aux-chromium-product/chromium/src`; the current preview app is `out/AuxFast/Aux.app`, with compiled native changes through historical area 0101 (now consolidated into 32 equivalent area patches). Area 0033 adds private filter retirement and is building; current acceptance is in STATUS. The launcher and staging tools default to that product checkout and Fast output through `dev-defaults.json`. Set `AUX_CHROMIUM_SRC` to use another checkout, or `--flavor dev` for `out/AuxDev/Aux.app`. Preserve both existing checkouts and caches; do not reset them or run setup/push to change an applied build.
+Aux uses Chromium 154 on macOS arm64. The current product checkout is `~/aux-chromium-product/chromium/src`; the current preview app is `out/AuxFast/Aux.app`, with compiled native changes through historical area 0101 (now consolidated into 32 equivalent area patches), plus areas 0033–0036. The current checked host ABI is 267 methods / 28 events; later source contracts require a combined native rebuild. Current acceptance is in STATUS. The launcher and staging tools default to that product checkout and Fast output through `dev-defaults.json`. Set `AUX_CHROMIUM_SRC` to use another checkout, or `--flavor dev` for `out/AuxDev/Aux.app`. Preserve both existing checkouts and caches; do not reset them or run setup/push to change an applied build.
 
 ```bash
 export AUX_CHROMIUM_SRC="$HOME/aux-chromium-product/chromium/src"
