@@ -6,7 +6,13 @@ import { FileChanges } from "./FileChanges";
 import { CloudProcessPreview } from "./CloudProcessPreview";
 import "./CodingRunActivity.css";
 
-export function CodingRunActivity({ runId, live }: { runId: string; live: boolean }) {
+export function CodingRunActivity(props: { runId: string; live: boolean }) {
+  return <RunActivity key={props.runId} {...props} />;
+}
+
+function RunActivity({ runId, live }: { runId: string; live: boolean }) {
+  const surface = useRef<HTMLDetailsElement>(null);
+  const [visible, setVisible] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [receipts, setReceipts] = useState<CodingFileReceipt[]>([]);
   const [agents, setAgents] = useState<Subagent[]>([]);
@@ -15,9 +21,11 @@ export function CodingRunActivity({ runId, live }: { runId: string; live: boolea
   const [busy, setBusy] = useState(false);
   const undoRequest = useRef<{ actionId: string; receiptIds: string[] } | null>(null);
   const generation = useRef(0);
+  const active = useRef(false);
   const loading = useRef<number | null>(null);
   const fileRevision = useRef("");
   const refresh = useCallback(async () => {
+    if (!active.current) return;
     const request = generation.current;
     if (loading.current === request) return;
     loading.current = request;
@@ -40,19 +48,45 @@ export function CodingRunActivity({ runId, live }: { runId: string; live: boolea
     }
   }, [runId]);
   useEffect(() => {
-    if (!expanded) return;
-    const originalGeneration = ++generation.current;
-    void refresh().catch((reason) => setError(errorMessage(reason)));
-    const interval = live
-      ? setInterval(() => {
-          void refresh().catch((reason) => setError(errorMessage(reason)));
-        }, 2000)
-      : undefined;
+    let intersecting = false;
+    const update = () => setVisible(intersecting && document.visibilityState !== "hidden");
+    const observer = new IntersectionObserver(([entry]) => {
+      intersecting = entry?.isIntersecting ?? false;
+      update();
+    });
+    observer.observe(surface.current!);
+    document.addEventListener("visibilitychange", update);
     return () => {
-      generation.current = originalGeneration + 1;
-      clearInterval(interval);
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", update);
     };
-  }, [expanded, live, refresh]);
+  }, []);
+  useEffect(() => {
+    if (!expanded || !visible) return;
+    const originalGeneration = ++generation.current;
+    active.current = true;
+    void refresh().catch((reason) => setError(errorMessage(reason)));
+    return () => {
+      active.current = false;
+      generation.current = originalGeneration + 1;
+    };
+  }, [expanded, visible, live, refresh]);
+  const needsRefresh =
+    live ||
+    processes.some(
+      (process) =>
+        process.runId === runId &&
+        process.execution?.backend === "cloud" &&
+        !!process.execution.commandId &&
+        ["starting", "running", "uncertain"].includes(process.state),
+    );
+  useEffect(() => {
+    if (!expanded || !visible || !needsRefresh) return;
+    const interval = setInterval(() => {
+      void refresh().catch((reason) => setError(errorMessage(reason)));
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [expanded, visible, needsRefresh, refresh]);
   const undone = new Set(
     receipts.flatMap((receipt) => (receipt.undoOf && receipt.status === "confirmed" ? [receipt.undoOf] : [])),
   );
@@ -80,7 +114,11 @@ export function CodingRunActivity({ runId, live }: { runId: string; live: boolea
     }
   }
   return (
-    <details className="coding-run-activity" onToggle={(event) => setExpanded(event.currentTarget.open)}>
+    <details
+      ref={surface}
+      className="coding-run-activity"
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
+    >
       <summary>Changes, processes and agents</summary>
       {expanded && (
         <>
