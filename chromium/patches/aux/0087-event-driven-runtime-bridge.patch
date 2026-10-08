@@ -1,0 +1,343 @@
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -156,7 +156,9 @@
+ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
+   native_find_ = std::make_unique<aux::NativeFind>(profile);
+   worker_thread_ = std::make_unique<base::Thread>("AuxProfileRuntime");
+-  CHECK(worker_thread_->Start());
++  base::Thread::Options worker_options;
++  worker_options.message_pump_type = base::MessagePumpType::IO;
++  CHECK(worker_thread_->StartWithOptions(std::move(worker_options)));
+   cdp_broker_ = std::make_unique<aux::CdpBroker>(
+       profile, base::BindRepeating(&AuxRuntimeHost::OnCdpMessage,
+                                    weak_factory_.GetWeakPtr()),
+@@ -386,7 +388,6 @@
+       }, weak_factory_.GetWeakPtr(), std::move(mutation_token), person_resume, run_release, std::move(callback)));
+   worker_.AsyncCall(&Worker::CallApi)
+       .WithArgs(std::move(method), std::move(params_json), std::move(person_resume), std::move(completion), std::move(turn_context));
+-  SchedulePump();
+ }
+ 
+ void AuxRuntimeHost::FinishOwnerMutation(const std::string& token, bool success) {
+@@ -409,7 +410,6 @@
+   auto completion = base::BindPostTaskToCurrentDefault(std::move(callback));
+   worker_.AsyncCall(&Worker::CallInternal)
+       .WithArgs(std::move(method), std::move(params_json), std::move(completion));
+-  SchedulePump();
+ }
+ 
+ base::CallbackListSubscription AuxRuntimeHost::ObserveEvents(
+@@ -428,7 +428,6 @@
+   payload.Set("error", error ? base::Value(error->Clone()) : base::Value());
+   if (auto json = base::WriteJson(payload)) {
+     worker_.AsyncCall(&Worker::SendNavigationError).WithArgs(std::move(*json));
+-    SchedulePump();
+   }
+ }
+ 
+@@ -451,7 +450,6 @@
+   // Installed fixture transport has no Worker connection. Keep authority
+   // notifications on that transport, just as CallApi already does.
+   worker_.AsyncCall(&Worker::SendCdpAuthorityChanged).WithArgs(admitted_native_generation_);
+-  SchedulePump();
+ }
+ void AuxRuntimeHost::OnCdpNavigationState(uint64_t connection_generation,
+     const std::string& page_id, const std::string& attachment_id,
+@@ -462,24 +460,6 @@
+       connection_generation, page_id, attachment_id, command_id, lease_id, ready);
+ }
+ 
+-
+-void AuxRuntimeHost::SchedulePump() {
+-  if (pump_scheduled_) {
+-    return;
+-  }
+-  pump_scheduled_ = true;
+-  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+-      FROM_HERE,
+-      base::BindOnce(&AuxRuntimeHost::PumpOnce, weak_factory_.GetWeakPtr()),
+-      base::Milliseconds(100));
+-}
+-
+-void AuxRuntimeHost::PumpOnce() {
+-  pump_scheduled_ = false;
+-  worker_.AsyncCall(&Worker::Pump)
+-      .Then(base::BindOnce(&AuxRuntimeHost::OnPumpDone,
+-                           weak_factory_.GetWeakPtr()));
+-}
+ 
+ void AuxRuntimeHost::NativeConnectionPublished(uint64_t generation) {
+   if (shutting_down_ || !generation || generation <= retired_native_generation_ ||
+@@ -498,6 +478,8 @@
+   native_connection_egress_ = original_egress->GetWeakPtr();
+   admitted_native_generation_ = generation;
+   native_person_connection_id_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  runtime_connected_ = true;
++  observers_.Notify("onRuntimeStatus", "{\"connected\":true}");
+ }
+ void AuxRuntimeHost::HandleNativeBrowserImportCall(const std::string& method,
+     const base::DictValue& params, uint64_t generation,
+@@ -1232,6 +1214,7 @@
+   if (admitted_native_generation_ != generation)
+     return;
+   admitted_native_generation_ = 0;
++  runtime_connected_ = false;
+   credential_admissions_.clear();
+   if (native_content_blocker_) native_content_blocker_->RetireConnection(generation);
+   native_content_blocker_.reset();
+@@ -1288,6 +1271,14 @@
+   }
+   if (recorder)
+     recorder->Disconnect(generation);
++  if (!weak || admitted_native_generation_) return;
++  FailOwnerMutations();
++  if (!weak || admitted_native_generation_) return;
++  cdp_broker_->DetachAll();
++  if (!weak || admitted_native_generation_) return;
++  profile_library_->OnRuntimeDisconnected();
++  if (!weak || admitted_native_generation_) return;
++  observers_.Notify("onRuntimeStatus", "{\"connected\":false}");
+ }
+ void AuxRuntimeHost::HandleNativePersonReadCall(
+     const std::string& method, const base::DictValue& params, uint64_t connection_generation,
+@@ -1640,23 +1631,6 @@
+ }
+ 
+ 
+-void AuxRuntimeHost::OnPumpDone(bool connected) {
+-  if (runtime_connected_ != connected) {
+-    runtime_connected_ = connected;
+-    observers_.Notify("onRuntimeStatus",
+-                      connected ? "{\"connected\":true}"
+-                                : "{\"connected\":false}");
+-  }
+-  if (connected) {
+-    SchedulePump();
+-  } else {
+-    FailOwnerMutations();
+-    aux::EgressController::ForProfile(profile_)->Disconnect();
+-    cdp_broker_->DetachAll();
+-    profile_library_->OnRuntimeDisconnected();
+-  }
+-}
+-
+ base::DictValue AuxRuntimeHost::HandleNativeCall(
+     const std::string& method,
+     const base::DictValue& params,
+@@ -2046,10 +2020,16 @@
+   // Same sequenced UI endpoint: admission precedes every posted native request.
+   ui_runner_->PostTask(FROM_HERE, base::BindOnce(
+       &AuxRuntimeHost::NativeConnectionPublished, owner_, connection_generation_));
++  // Authentication may have read ahead into the first runtime request.
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(&Worker::DrainSocket, weak_factory_.GetWeakPtr()));
+   return true;
+ }
+ 
+ bool AuxRuntimeHost::Worker::Disconnect() {
++  socket_watcher_.reset();
++  request_deadline_timer_.Stop();
++  weak_factory_.InvalidateWeakPtrs();
+   if (connection_fd_ >= 0 && connection_generation_)
+     ui_runner_->PostTask(FROM_HERE, base::BindOnce(
+         &AuxRuntimeHost::NativeConnectionRetired, owner_, connection_generation_));
+@@ -2639,44 +2619,65 @@
+                      owner_, *type, *payload_json));
+ }
+ 
+-bool AuxRuntimeHost::Worker::Pump() {
++void AuxRuntimeHost::Worker::ScheduleRequestDeadline() {
++  if (pending_requests_.empty()) {
++    request_deadline_timer_.Stop();
++    return;
++  }
++  const auto earliest = std::min_element(
++      pending_requests_.begin(), pending_requests_.end(),
++      [](const auto& left, const auto& right) {
++        return left.second.deadline < right.second.deadline;
++      });
++  const auto deadline = earliest->second.deadline;
++  request_deadline_timer_.Start(FROM_HERE, deadline - base::TimeTicks::Now(),
++                                this, &Worker::ExpireRequests);
++}
++
++void AuxRuntimeHost::Worker::ExpireRequests() {
+   const auto now = base::TimeTicks::Now();
+   for (auto it = pending_requests_.begin(); it != pending_requests_.end();) {
+-    if (it->second.deadline > now) { ++it; continue; }
++    if (it->second.deadline > now) {
++      ++it;
++      continue;
++    }
+     auto callback = std::move(it->second.callback);
+     it = pending_requests_.erase(it);
+     std::move(callback).Run({false, "", "operation_uncertain",
+                             "The runtime request was not acknowledged before its deadline"});
+   }
++  ScheduleRequestDeadline();
++}
++
++void AuxRuntimeHost::Worker::DrainSocket() {
++  // Unregister before draining so buffered continuations have one owner.
++  socket_watcher_.reset();
++  ExpireRequests();
+   if (connection_fd_ < 0) {
+-    return false;
++    return;
+   }
+   for (int handled = 0; handled < 32; ++handled) {
+     if (read_buffer_.find('\n') == std::string::npos) {
+-      pollfd pending = {connection_fd_, POLLIN, 0};
+-      if (poll(&pending, 1, 0) != 1) {
+-        return true;
+-      }
+-      if (!(pending.revents & POLLIN)) {
+-        if (pending.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+-          Disconnect();
+-          return false;
+-        }
+-        return true;
+-      }
+       std::array<char, 4096> chunk;
+-      const ssize_t count = read(connection_fd_, chunk.data(), chunk.size());
++      const ssize_t count =
++          recv(connection_fd_, chunk.data(), chunk.size(), MSG_DONTWAIT);
+       if (count < 0 && errno == EINTR) {
+         continue;
+       }
++      if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
++        socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
++            connection_fd_,
++            base::BindRepeating(&Worker::DrainSocket, weak_factory_.GetWeakPtr()));
++        return;
++      }
+       if (count <= 0) {
+         Disconnect();
+-        return false;
++        return;
+       }
+       read_buffer_.append(chunk.data(), count);
+       if (read_buffer_.size() >= kMaxFrameBytes) {
+         Disconnect();
+-        return false;
++        return;
+       }
+       continue;
+     }
+@@ -2687,12 +2688,12 @@
+     const base::DictValue* data = frame ? frame->GetIfDict() : nullptr;
+     if (!data) {
+       Disconnect();
+-      return false;
++      return;
+     }
+     const std::string* kind = data->FindString("kind");
+     if (kind && *kind == "req" && !HandleNativeRequest(*data)) {
+       Disconnect();
+-      return false;
++      return;
+     }
+     if (kind && *kind == "note") {
+       ForwardNote(*data);
+@@ -2700,7 +2701,10 @@
+       HandleResponse(*data);
+     }
+   }
+-  return true;
++  // Yield between bounded batches; complete buffered frames need no new
++  // readability edge, and a partial frame will rearm the watcher on EAGAIN.
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(&Worker::DrainSocket, weak_factory_.GetWeakPtr()));
+ }
+ 
+ void AuxRuntimeHost::Worker::CallApi(
+@@ -2771,6 +2775,7 @@
+       base::TimeTicks::Now() + base::Milliseconds(
+           egress_request ? 125000 : backup_request ? kBackupRequestTimeoutMs : kRequestTimeoutMs),
+       std::move(callback)});
++  ScheduleRequestDeadline();
+ }
+ 
+ void AuxRuntimeHost::Worker::HandleResponse(const base::DictValue& data) {
+@@ -2780,6 +2785,7 @@
+   if (it == pending_requests_.end()) return;
+   auto callback = std::move(it->second.callback);
+   pending_requests_.erase(it);
++  ScheduleRequestDeadline();
+   if (const auto* fault = data.FindDict("error")) {
+     const auto* code = fault->FindString("code");
+     const auto* message = fault->FindString("message");
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -14,6 +14,7 @@
+ #include <string>
+ 
+ #include "base/callback_list.h"
++#include "base/files/file_descriptor_watcher_posix.h"
+ #include "base/files/file_path.h"
+ #include "base/files/scoped_temp_dir.h"
+ #include "base/functional/callback.h"
+@@ -63,7 +64,7 @@
+ }  // namespace aux
+ 
+ // One authenticated runtime connection per regular Chromium Profile. The
+-// blocking Unix-domain protocol runs on a sequenced worker; WebUI and browser
++// Unix-domain protocol runs on a dedicated IO sequence; WebUI and browser
+ // controls remain on the UI sequence.
+ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+  public:
+@@ -125,7 +126,6 @@
+     void CallRequest(std::string method, std::string params_json,
+                      bool desktop_api, std::string person_resume,
+                      ResponseCallback callback, std::string turn_context = {});
+-    bool Pump();
+     void SendCdpMessage(uint64_t connection_generation,
+                         std::string page_id,
+                         std::string message);
+@@ -143,6 +143,9 @@
+     bool Disconnect();
+     bool SendFrame(const std::string& frame);
+     bool ReadFrame(std::string* frame, int timeout_ms);
++    void DrainSocket();
++    void ScheduleRequestDeadline();
++    void ExpireRequests();
+     base::DictValue DispatchNative(const std::string& method,
+                                    base::DictValue params);
+     bool HandleNativeRequest(const base::DictValue& data);
+@@ -153,6 +156,8 @@
+       ResponseCallback callback;
+     };
+     std::map<uint32_t, PendingRequest> pending_requests_;
++    base::OneShotTimer request_deadline_timer_;
++    std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
+ 
+     base::FilePath profile_path_;
+     std::string profile_id_;
+@@ -167,6 +172,7 @@
+     uint32_t next_request_id_ = 1;
+     uint64_t connection_generation_ = 0;
+     std::string read_buffer_;
++    base::WeakPtrFactory<Worker> weak_factory_{this};
+   };
+ 
+   explicit AuxRuntimeHost(Profile* profile);
+@@ -216,9 +222,6 @@
+   void OnCdpNavigationState(uint64_t connection_generation,
+       const std::string& page_id, const std::string& attachment_id,
+       int command_id, const std::string& lease_id, bool ready);
+-  void SchedulePump();
+-  void PumpOnce();
+-  void OnPumpDone(bool connected);
+   void NativeConnectionPublished(uint64_t generation);
+   void NativeConnectionRetired(uint64_t generation);
+   void HandleNativeCdpAttachment(
+@@ -283,7 +286,6 @@
+   base::CallbackListSubscription tab_catalog_subscription_;
+   base::RepeatingCallbackList<void(const std::string&, const std::string&)>
+       observers_;
+-  bool pump_scheduled_ = false;
+   bool runtime_connected_ = false;
+   const std::string native_owner_incarnation_ = base::UnguessableToken::Create().ToString();
+   base::WeakPtr<aux::EgressController> native_connection_egress_;
