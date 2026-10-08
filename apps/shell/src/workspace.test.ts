@@ -11,6 +11,9 @@ import {
   splitForPage,
   addPane,
   separate,
+  archiveSpace,
+  restoreSpace,
+  reconcileSpaces,
   assignFolder,
   assignSpace,
   createFolder,
@@ -401,4 +404,46 @@ it("keeps horizontal group members contiguous without losing ungrouped or orphan
   const tabs = ["a", "b", "c", "d"].map((pageId) => ({ pageId }));
   expect(groupedTabs(layout, tabs).map((tab) => tab.pageId)).toEqual(["a", "c", "b", "d"]);
   expect(tabs.map((tab) => tab.pageId)).toEqual(["a", "b", "c", "d"]);
+});
+
+it("archives and restores exact Space organization while ignoring stale runtime presentation", () => {
+  let layout = createSpace(emptyLayout(), "Local research", "teal", 35);
+  const spaceId = layout.activeSpaceId;
+  layout = createFolder(layout, spaceId, "Sources");
+  layout = assignFolder(assignSpace(layout, "page", spaceId), "page", layout.folders[0]!.id);
+  layout = togglePin(layout, spaceId, { url: "https://example.test", title: "Source" });
+  const before = roundTrip(layout);
+  const archived = roundTrip(archiveSpace(layout, spaceId));
+  const reconciled = reconcileSpaces(archived, [
+    {
+      id: spaceId,
+      workspaceId: "real-workspace",
+      name: "Stale name",
+      color: "pink",
+      grain: 0,
+      archived: false,
+    },
+    { id: "invented", workspaceId: "other", name: "Untrusted ID", color: "slate", grain: 0, archived: false },
+    {
+      id: "workspace:genuine",
+      workspaceId: "genuine",
+      name: "CLI project",
+      color: "slate",
+      grain: 0,
+      archived: false,
+    },
+  ]);
+  expect(reconciled.archivedSpaces?.[0]).toEqual({ ...before.spaces[1], workspaceId: "real-workspace" });
+  expect(reconciled.spaces.map((space) => space.id)).toEqual([before.spaces[0]!.id, "workspace:genuine"]);
+  expect(reconciled.tabSpace).toEqual(before.tabSpace);
+  expect(reconciled.tabFolder).toEqual(before.tabFolder);
+  expect(reconciled.folders).toEqual(before.folders);
+  expect(reconciled.pins).toEqual(before.pins);
+  const restored = roundTrip(restoreSpace(reconciled, spaceId));
+  expect(restored.spaces.find((space) => space.id === spaceId)).toEqual({
+    ...before.spaces[1],
+    workspaceId: "real-workspace",
+  });
+  expect(restored.archivedSpaces).toEqual([]);
+  expect(() => archiveSpace(emptyLayout(), DEFAULT_SPACE.id)).toThrow("Keep at least one active Space.");
 });

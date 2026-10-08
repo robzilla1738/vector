@@ -4,6 +4,7 @@ import { bridge } from "../bridge";
 import { featureStage } from "../feature-availability";
 import { errToast, toast } from "../store";
 import {
+  archiveSpace,
   assignFolder,
   assignSpace,
   createFolder,
@@ -14,6 +15,7 @@ import {
   removeSpace,
   renameFolder,
   renameSpace,
+  restoreSpace as restoreArchivedSpace,
   reorderGroup,
   reorderInSpace,
   reorderPin,
@@ -24,7 +26,7 @@ import {
   togglePin,
   updateFolder,
 } from "../workspace";
-import { initialLayout, persistLayout } from "./persistence";
+import { flushLayout, initialLayout, persistLayout } from "./persistence";
 import { call, sendTabCommand, syncCatalogOrder } from "./shared";
 import type { LayoutKeys, Slice } from "./types";
 
@@ -144,46 +146,60 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
   },
   refreshSpaces: async (valid = () => true) => {
     if (bridge.privateMode || !valid()) return;
+    await flushLayout();
+    if (!valid()) return;
     const spaces = await call("spaces.list");
     if (valid()) get().syncBrowserSpaces(spaces);
   },
   addSpace: async (name, color = "slate", grain = 0, theme) => {
-    if (bridge.privateMode) {
-      const layout = createSpace(get().layout, name, color, grain, theme);
-      persistLayout(layout);
-      set({ layout });
-      get().switchSpace(layout.activeSpaceId);
-      return;
-    }
-    const previous = new Set(get().layout.spaces.map((space) => space.id));
-    const spaces = await call("spaces.create", { name, color, grain, ...(theme ? { theme } : {}) });
-    get().syncBrowserSpaces(spaces);
-    const created = spaces.find((space) => !space.archived && !previous.has(space.id));
-    if (created) get().switchSpace(created.id);
+    const layout = createSpace(get().layout, name, color, grain, theme);
+    persistLayout(layout);
+    set({ layout });
+    get().switchSpace(layout.activeSpaceId);
+    await flushLayout();
+    if (!bridge.privateMode && get().connected)
+      void get()
+        .refreshSpaces()
+        .catch(() => {});
   },
   editSpace: async (spaceId, name, color, grain, theme) => {
-    if (bridge.privateMode) {
-      const layout = renameSpace(get().layout, spaceId, name, color, grain, theme);
-      persistLayout(layout);
-      set({ layout });
-      return;
-    }
-    get().syncBrowserSpaces(await call("spaces.update", { id: spaceId, name, color, grain, theme }));
+    if (!get().layout.spaces.some((space) => space.id === spaceId))
+      throw new Error("This Space is no longer available.");
+    const layout = renameSpace(get().layout, spaceId, name, color, grain, theme);
+    persistLayout(layout);
+    set({ layout });
+    await flushLayout();
+    if (!bridge.privateMode && get().connected)
+      void get()
+        .refreshSpaces()
+        .catch(() => {});
   },
   deleteSpace: async (spaceId) => {
-    if (bridge.privateMode) {
-      const layout = removeSpace(get().layout, spaceId);
-      persistLayout(layout);
-      set({ layout });
-      get().switchSpace(layout.activeSpaceId);
-      return;
+    const layout = bridge.privateMode
+      ? removeSpace(get().layout, spaceId)
+      : archiveSpace(get().layout, spaceId);
+    persistLayout(layout);
+    set({ layout });
+    get().switchSpace(layout.activeSpaceId);
+    await flushLayout();
+    if (!bridge.privateMode) {
+      toast("Space archived. Its tabs and saved work are kept for you.");
+      if (get().connected)
+        void get()
+          .refreshSpaces()
+          .catch(() => {});
     }
-    get().syncBrowserSpaces(await call("spaces.update", { id: spaceId, archived: true }));
-    toast("Space archived. Its tabs and saved work are kept for you.");
   },
   restoreSpace: async (spaceId, activate = true) => {
-    get().syncBrowserSpaces(await call("spaces.update", { id: spaceId, archived: false }));
+    const layout = restoreArchivedSpace(get().layout, spaceId);
+    persistLayout(layout);
+    set({ layout });
     if (activate) get().switchSpace(spaceId);
+    await flushLayout();
+    if (!bridge.privateMode && get().connected)
+      void get()
+        .refreshSpaces()
+        .catch(() => {});
   },
   switchSpace: (spaceId) => {
     const state = get();

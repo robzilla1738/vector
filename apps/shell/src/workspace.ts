@@ -391,16 +391,53 @@ export function setActiveSpace(layout: Layout, spaceId: string): Layout {
   return layout.spaces.some((s) => s.id === spaceId) ? { ...layout, activeSpaceId: spaceId } : layout;
 }
 
-export function reconcileSpaces(layout: Layout, records: BrowserSpace[]): Layout {
-  const spaces = records.filter((space) => !space.archived);
-  if (!spaces.length) return layout;
+/** Archive only the Space presentation; its folders, pins and tab assignments survive. */
+export function archiveSpace(layout: Layout, spaceId: string): Layout {
+  const space = layout.spaces.find((item) => item.id === spaceId);
+  if (!space) throw new Error("This Space is no longer available.");
+  if (layout.spaces.length <= 1) throw new Error("Keep at least one active Space.");
+  const spaces = layout.spaces.filter((item) => item.id !== spaceId);
   return {
     ...layout,
     spaces,
-    archivedSpaces: records.filter((space) => space.archived),
-    activeSpaceId: spaces.some((space) => space.id === layout.activeSpaceId)
-      ? layout.activeSpaceId
-      : spaces[0]!.id,
+    archivedSpaces: [...(layout.archivedSpaces ?? []), space],
+    activeSpaceId: layout.activeSpaceId === spaceId ? spaces[0]!.id : layout.activeSpaceId,
+  };
+}
+
+export function restoreSpace(layout: Layout, spaceId: string): Layout {
+  if (layout.spaces.some((space) => space.id === spaceId)) return layout;
+  const space = layout.archivedSpaces?.find((item) => item.id === spaceId);
+  if (!space) throw new Error("This archived Space is no longer available.");
+  return {
+    ...layout,
+    spaces: [...layout.spaces, space],
+    archivedSpaces: layout.archivedSpaces!.filter((item) => item.id !== spaceId),
+  };
+}
+
+/** Native presentation wins. Runtime records supply only authenticated workspace bindings. */
+export function reconcileSpaces(layout: Layout, records: BrowserSpace[]): Layout {
+  const mappings = new Map(records.map((space) => [space.id, space.workspaceId]));
+  const mapped = (space: Space): Space => {
+    const workspaceId = mappings.get(space.id);
+    return workspaceId && workspaceId !== space.workspaceId ? { ...space, workspaceId } : space;
+  };
+  const known = new Set([...layout.spaces, ...(layout.archivedSpaces ?? [])].map((space) => space.id));
+  // A workspace created by a genuine runtime client may not have a native Space yet.
+  const added = records
+    .filter((space) => !known.has(space.id) && space.id === `workspace:${space.workspaceId}`)
+    .map(({ archived, ...space }) => ({ archived, space }));
+  return {
+    ...layout,
+    spaces: [
+      ...layout.spaces.map(mapped),
+      ...added.filter((item) => !item.archived).map((item) => item.space),
+    ],
+    archivedSpaces: [
+      ...(layout.archivedSpaces ?? []).map(mapped),
+      ...added.filter((item) => item.archived).map((item) => item.space),
+    ],
   };
 }
 

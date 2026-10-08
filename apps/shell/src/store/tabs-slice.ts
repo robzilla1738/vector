@@ -643,7 +643,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     try {
       for (const entry of entries) {
         if (get().layout.archivedSpaces?.some((space) => space.id === entry.spaceId)) {
-          get().syncBrowserSpaces(await call("spaces.update", { id: entry.spaceId, archived: false }));
+          await get().restoreSpace(entry.spaceId, false);
         }
         const destinationSpace = get().layout.spaces.some((space) => space.id === entry.spaceId)
           ? entry.spaceId

@@ -96,17 +96,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
         call("programs.list").catch(() => [] as SavedProgram[]),
       ]);
       if (!bridge.privateMode && bridge.windowKind === "normal" && featureStage("spaces") === "on") {
-        const layout = get().layout;
-        const legacySpaces = layout.spaces.filter((space) => !space.workspaceId);
-        const spaces = await call("spaces.import", {
-          spaces: legacySpaces.map((space) => ({
-            id: space.id,
-            name: space.name.slice(0, 100) || "Untitled",
-            color: space.color ?? "slate",
-            grain: space.grain,
-            ...(space.theme ? { theme: space.theme } : {}),
-          })),
-        });
+        const spaces = await call("spaces.list");
         get().syncBrowserSpaces(spaces);
       }
       // Events received while the supporting data loaded take precedence over this snapshot.
@@ -249,6 +239,12 @@ if (!bridge.privateMode && bridge.windowKind === "normal")
       .then((layout) => {
         if (useStore.getState().layout === before)
           useStore.setState({ layout, tidyUndo: layout.tidyUndo ?? null });
+        // Workspace identity catches up when available; native organization is usable offline.
+        if (useStore.getState().connected)
+          void useStore
+            .getState()
+            .refreshSpaces()
+            .catch(() => {});
       })
       .catch(errToast);
   });

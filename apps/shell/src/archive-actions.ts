@@ -119,7 +119,7 @@ export function restoreArchivedTab(entry: ArchivedTab) {
   return withArchiveTransaction(() => restoreArchivedTabTransaction(entry));
 }
 async function restoreArchivedTabTransaction(entry: ArchivedTab) {
-  const { useStore, call, flushLayout } = await import("./store");
+  const { useStore, flushLayout } = await import("./store");
   const { persistLayout } = await import("./store/persistence");
   const { assignSpace, assignFolder } = await import("./workspace");
   const state = useStore.getState();
@@ -133,7 +133,7 @@ async function restoreArchivedTabTransaction(entry: ArchivedTab) {
   if (existing && existing.url !== entry.url)
     throw new Error("The original tab ID now has a different page. Review it before restoring.");
   if (state.layout.archivedSpaces?.some((space) => space.id === entry.spaceId))
-    state.syncBrowserSpaces(await call("spaces.update", { id: entry.spaceId, archived: false }));
+    await state.restoreSpace(entry.spaceId, false);
   if (!useStore.getState().layout.spaces.some((space) => space.id === entry.spaceId))
     throw new Error("Restore this Space before reopening its archived tabs.");
   if (!existing) {
