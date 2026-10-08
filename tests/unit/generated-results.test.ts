@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import JSZip from "jszip";
+import { JSDOM } from "jsdom";
 import ExcelJS from "exceljs";
 import { PNG } from "pngjs";
 import { ArtifactStore, EventBus, openDb, Repo } from "@aux/runtime";
@@ -175,6 +176,77 @@ it("creates openable DOCX and PPTX with expected document parts", async () =>
     const deckZip = await JSZip.loadAsync(bytes(files, deck.artifactId));
     expect(await deckZip.file("ppt/slides/slide1.xml")?.async("string")).toContain("Revenue rose.");
     expect(deckZip.file("ppt/presentation.xml")).toBeTruthy();
+  }));
+
+it("paginates dense presentation text at readable sizes with complete content and truthful counts", async () =>
+  fixture(async (results, files) => {
+    const title = "Research findings: " + "a clear comparison of the original sources ".repeat(4);
+    const bullets = Array.from(
+      { length: 10 },
+      (_, index) =>
+        `Finding ${index + 1}: ` +
+        "The original signed-in source provides complete evidence for this comparison. ".repeat(5),
+    );
+    bullets.push("https://example.test/" + "a".repeat(350), "界".repeat(360) + " END-CJK");
+    const notes = "Keep these original speaker notes exactly once.";
+    const result = await results.generate({
+      chatId: "chat-1",
+      filename: "dense.pptx",
+      spec: {
+        kind: "pptx",
+        slides: [
+          { title, bullets, notes },
+          { title: "Conclusion", bullets: ["Final visible conclusion."], notes: "Final speaker notes." },
+        ],
+      },
+    });
+    const zip = await JSZip.loadAsync(bytes(files, result.artifactId));
+    const slides = Object.keys(zip.files)
+      .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
+      .sort((a, b) => Number(a.match(/slide(\d+)/)![1]) - Number(b.match(/slide(\d+)/)![1]));
+    expect(slides.length).toBeGreaterThan(2);
+    expect(result.preview.title).toBe(`${slides.length} slides`);
+    expect(result.preview.lines).toEqual([
+      `1–${slides.length - 1}. ${title}`,
+      `${slides.length}. Conclusion`,
+    ]);
+    const presentation = new JSDOM(await zip.file("ppt/presentation.xml")!.async("string"), {
+      contentType: "text/xml",
+    });
+    expect(presentation.window.document.getElementsByTagName("p:sldId").length).toBe(slides.length);
+    presentation.window.close();
+    let body = "";
+    for (const name of slides) {
+      const parsed = new JSDOM(await zip.file(name)!.async("string"), { contentType: "text/xml" });
+      const document = parsed.window.document;
+      for (const frame of document.getElementsByTagName("p:graphicFrame")) {
+        const table = frame.getElementsByTagName("a:tbl")[0]!;
+        body += [...table.getElementsByTagName("a:t")].map((node) => node.textContent).join("");
+        const y = Number(frame.getElementsByTagName("a:off")[0]!.getAttribute("y"));
+        const height = [...table.getElementsByTagName("a:tr")].reduce(
+          (sum, row) => sum + Number(row.getAttribute("h")),
+          0,
+        );
+        // 0.55-inch top and a protected footer on the real 7.5-inch slide.
+        expect(y).toBeGreaterThanOrEqual(0.5 * 914400);
+        expect(y + height).toBeLessThanOrEqual(7 * 914400);
+        for (const text of table.getElementsByTagName("a:rPr"))
+          expect(Number(text.getAttribute("sz"))).toBeGreaterThanOrEqual(1800);
+      }
+      parsed.window.close();
+    }
+    const visible = body.replace(/\s/g, "");
+    for (const text of [title, ...bullets, "Conclusion", "Final visible conclusion."])
+      expect(visible).toContain(text.replace(/\s/g, ""));
+    const allNotes = (
+      await Promise.all(
+        Object.keys(zip.files)
+          .filter((name) => /^ppt\/notesSlides\/notesSlide\d+\.xml$/.test(name))
+          .map((name) => zip.file(name)!.async("string")),
+      )
+    ).join("");
+    expect(allNotes.split(notes)).toHaveLength(2);
+    expect(allNotes).toContain("Final speaker notes.");
   }));
 
 it(

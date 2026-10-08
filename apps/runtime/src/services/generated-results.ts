@@ -35,7 +35,7 @@ function filename(name: string, kind: GeneratedResultSpec["kind"]): string {
   const expected = EXT[kind];
   return extname(leaf).toLowerCase() === expected ? leaf : `${leaf.replace(/\.[^.]+$/, "")}${expected}`;
 }
-function preview(spec: GeneratedResultSpec): GeneratedResult["preview"] {
+function preview(spec: Exclude<GeneratedResultSpec, { kind: "pptx" }>): GeneratedResult["preview"] {
   switch (spec.kind) {
     case "csv":
       return {
@@ -55,11 +55,6 @@ function preview(spec: GeneratedResultSpec): GeneratedResult["preview"] {
           ...spec.tables.slice(0, 4).map((table) => `${table.name} · ${table.rows.length} rows`),
         ],
       };
-    case "pptx":
-      return {
-        title: `${spec.slides.length} slide${spec.slides.length === 1 ? "" : "s"}`,
-        lines: spec.slides.slice(0, 20).map((slide, index) => `${index + 1}. ${slide.title}`),
-      };
     case "chart":
       return {
         title: spec.title,
@@ -67,7 +62,7 @@ function preview(spec: GeneratedResultSpec): GeneratedResult["preview"] {
       };
   }
 }
-async function render(spec: GeneratedResultSpec): Promise<Buffer> {
+async function render(spec: Exclude<GeneratedResultSpec, { kind: "pptx" }>): Promise<Buffer> {
   if (spec.kind === "csv")
     return Buffer.from(
       `\uFEFF${spec.table.rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`,
@@ -101,44 +96,6 @@ async function render(spec: GeneratedResultSpec): Promise<Buffer> {
     return Buffer.from(await book.xlsx.writeBuffer());
   }
   if (spec.kind === "docx") return (await import("./rich-document.js")).renderDocument(spec);
-  if (spec.kind === "pptx") {
-    const pptxgen = (await import("pptxgenjs")).default;
-    // PptxGenJS 4 declares a namespace default in NodeNext, while its ESM default is a constructor.
-    // @ts-expect-error Upstream declaration does not model the NodeNext default export.
-    const deck = new pptxgen();
-    deck.author = "Aux";
-    deck.subject = "Generated result";
-    deck.title = spec.slides[0]?.title ?? "Presentation";
-    deck.layout = "LAYOUT_WIDE";
-    for (const source of spec.slides) {
-      const slide = deck.addSlide();
-      slide.background = { color: "F6F8FC" };
-      slide.addText(source.title, {
-        x: 0.8,
-        y: 0.6,
-        w: 11.7,
-        h: 0.9,
-        fontSize: 30,
-        bold: true,
-        color: "26395A",
-        breakLine: false,
-      });
-      source.bullets.forEach((bullet, index) =>
-        slide.addText(bullet, {
-          x: 1.05,
-          y: 1.75 + index * 0.43,
-          w: 11.2,
-          h: 0.36,
-          fontSize: 18,
-          color: "30435F",
-          bullet: { indent: 18 },
-          breakLine: false,
-        }),
-      );
-      if (source.notes) slide.addNotes(source.notes);
-    }
-    return Buffer.from((await deck.write({ outputType: "nodebuffer" })) as Buffer);
-  }
   const points = spec.data.map((item) => ({ ...item }));
   const xNumeric = points.every((item) => typeof item[spec.x] === "number");
   const yNumeric = points.every((item) => typeof item[spec.y] === "number");
@@ -215,14 +172,16 @@ export class GeneratedResults {
         "conflict",
         "This result has reached its 20-version limit. Start a new result to continue.",
       );
-    const buffer = await render(spec);
+    const { buffer, preview: summary } =
+      spec.kind === "pptx"
+        ? await (await import("./presentation-result.js")).renderPresentation(spec)
+        : { buffer: await render(spec), preview: preview(spec) };
     if (buffer.length === 0 || buffer.length > MAX_FILE_BYTES)
       throw new AuxError("invalid_params", "The generated file exceeds the 20 MB limit.");
     if (canCommit && !canCommit())
       throw new AuxError("conflict", "The turn changed before the generated file could be saved.");
     const name = filename(proposed, spec.kind),
-      sha256 = createHash("sha256").update(buffer).digest("hex"),
-      summary = preview(spec);
+      sha256 = createHash("sha256").update(buffer).digest("hex");
     const artifact = this.artifacts.save(
       { runId, label: name, mediaType: MEDIA[spec.kind], buffer },
       (saved) => {
