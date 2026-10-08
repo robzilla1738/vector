@@ -364,7 +364,7 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     category: "Models",
     label: "Image-generation model",
     description:
-      "Off until you choose a model. Images use the Gateway connection and send the image prompt to Google through Gateway, independently of your chat provider. Selecting a model makes no request. One image is requested with no model fallback; provider usage may be charged.",
+      "Images use your Gateway connection independently of your chat provider. Aux uses the default image model unless you choose another or turn it off. Selecting a model makes no request.",
     target: "Image-generation model",
   },
   {
@@ -510,7 +510,7 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   {
     category: "General",
     label: "Set up Aux",
-    description: "Replay import, model setup and your first chat. Saved work is kept.",
+    description: "Replay optional import, model and appearance setup. Saved work is kept.",
     target: "Set up Aux",
   },
   {

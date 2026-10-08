@@ -83,7 +83,11 @@ async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promis
   const store = s.contentMemory;
   if (!store)
     throw new AuxError("backend_unavailable", "Protected page-content memory requires the Aux desktop app.");
-  if (method === "workspaces.contentMemory.policy") return store.policy(params.workspaceId);
+  if (method === "workspaces.contentMemory.policy") {
+    const policy = store.policy(params.workspaceId);
+    if (policy.enabled) void store.prewarm(params.workspaceId).catch(() => {});
+    return policy;
+  }
   if (method === "workspaces.contentMemory.setPolicy") {
     const prior = store.policy(params.workspaceId);
     let advanced = false;
@@ -275,6 +279,7 @@ async function retired_h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown>
       );
     throw error;
   }
+  await s.contentMemory?.invalidateDerivatives();
   await revokeWorkspaceContext(params.workspaceId, false);
   await s.runs.redactForgottenArticleOutputs(params.workspaceId);
   if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);

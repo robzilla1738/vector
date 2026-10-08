@@ -22,6 +22,17 @@ export function useBrowsingMemory() {
       );
     }),
   );
+  const connected = useStore((state) => state.connected);
+  const activeWorkspaceId = useStore(
+    (state) => state.layout.spaces.find((space) => space.id === state.layout.activeSpaceId)?.workspaceId,
+  );
+  useEffect(() => {
+    if (!inNativeHost || bridge.privateMode || !connected || !activeWorkspaceId) return;
+    const idle = window.requestIdleCallback(() => {
+      void call("workspaces.contentMemory.policy", { workspaceId: activeWorkspaceId }).catch(() => {});
+    });
+    return () => window.cancelIdleCallback(idle);
+  }, [connected, activeWorkspaceId]);
   const activeSpaceId = useStore((state) => state.layout.activeSpaceId);
   const spaceId = useStore((state) =>
     page ? (state.layout.tabSpace[page.pageId] ?? state.layout.activeSpaceId) : undefined,
