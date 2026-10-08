@@ -1,0 +1,403 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index c5724e0..c6f66aa 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -134,7 +134,7 @@ AuxMethodRegistry::AuxMethodRegistry() {
+   register_runtime(AuxRuntimeMethodGroup::kCdp,
+                    {"native.cdpReset", "native.cdpCatalog", "native.cdpStartNavigation", "native.cdpDispatch", "native.cdpVersion"});
+   register_runtime(AuxRuntimeMethodGroup::kTabs,
+-                   {"native.listPages", "native.createAgentPage", "native.creatorCleanupProof", "native.tabCommand", "native.movePage",
++                   {"native.spaceBindingsSet", "native.listPages", "native.createAgentPage", "native.creatorCleanupProof", "native.tabCommand", "native.movePage",
+                     "native.focusPage", "native.stopPage", "native.recoverPage",
+                     "native.acquireStage", "native.releaseStage"});
+   register_runtime(AuxRuntimeMethodGroup::kPageControls,
+diff --git a/chrome/browser/ui/aux/methods/native_tabs_methods.cc b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+index 0159cce..a8a21ed 100644
+--- a/chrome/browser/ui/aux/methods/native_tabs_methods.cc
++++ b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+@@ -17,6 +17,7 @@
+ #include <array>
+ #include <cerrno>
+ #include <cmath>
++#include <map>
+ #include <memory>
+ #include <limits>
+ #include <optional>
+@@ -97,6 +98,33 @@ base::DictValue AuxRuntimeHost::HandleNativeTabsCall(
+     const std::string& method, const base::DictValue& params,
+     uint64_t connection_generation) {
+   auto* catalog = aux::TabCatalog::GetForProfile(profile_);
++  if (method == "native.spaceBindingsSet") {
++    if (profile_->IsOffTheRecord())
++      return NativeFault("forbidden",
++                         "Private tabs do not bind to saved Spaces");
++    if (shutting_down_ || !connection_generation ||
++        admitted_native_generation_ != connection_generation ||
++        connection_generation <= retired_native_generation_)
++      return NativeFault("ref_stale", "Original native connection was retired");
++    const auto* entries = params.FindList("bindings");
++    if (!entries || params.size() != 1)
++      return NativeFault("invalid_params", "Invalid native Space bindings");
++    std::map<std::string, std::string> bindings;
++    for (const auto& value : *entries) {
++      const auto* entry = value.GetIfDict();
++      const auto* space = entry ? entry->FindString("spaceId") : nullptr;
++      const auto* workspace =
++          entry ? entry->FindString("workspaceId") : nullptr;
++      if (!space || !workspace || entry->size() != 2 || space->empty() ||
++          workspace->empty() || space->size() > 128 ||
++          workspace->size() > 128 ||
++          !bindings.emplace(*space, *workspace).second)
++        return NativeFault("invalid_params",
++                           "Invalid native Space binding identity");
++    }
++    catalog->SetRuntimeSpaceBindings(std::move(bindings));
++    return NativeResult(base::Value(base::DictValue().Set("accepted", true)));
++  }
+   if (method == "native.listPages") {
+     base::DictValue snapshot = catalog->Snapshot();
+     base::ListValue pages;
+diff --git a/chrome/browser/ui/aux/methods/tabs_methods.cc b/chrome/browser/ui/aux/methods/tabs_methods.cc
+index 39842e6..6d416a8 100644
+--- a/chrome/browser/ui/aux/methods/tabs_methods.cc
++++ b/chrome/browser/ui/aux/methods/tabs_methods.cc
+@@ -609,95 +609,48 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
+       return;
+     }
+     auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
+-    const auto snapshot = catalog->Snapshot();
+-    const std::string window_id = base::NumberToString(browser_->GetSessionID().id());
+-    std::set<std::string> seen;
+-    base::ListValue pending;
+     for (const auto& value : assignments) {
+       const auto* item = value.GetIfDict();
+       const auto* page_id = item ? item->FindString("pageId") : nullptr;
+       const auto* space_id = item ? item->FindString("spaceId") : nullptr;
+       if (!page_id || !space_id || page_id->empty() || space_id->empty() ||
+-          page_id->size() > 128 || space_id->size() > 128 || item->size() != 2) {
+-        std::move(callback).Run(false, "", "invalid_argument", "Invalid tab or Space identifier");
++          page_id->size() > 128 || space_id->size() > 128 ||
++          item->size() != 2) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Invalid tab or Space identifier");
+         return;
+       }
+-      if (!seen.insert(*page_id).second) continue;
+-      for (const auto& tab_value : *snapshot.FindList("tabs")) {
+-        const auto& tab = tab_value.GetDict();
+-        if (tab.FindString("pageId") && *tab.FindString("pageId") == *page_id &&
+-            tab.FindString("windowId") && *tab.FindString("windowId") == window_id &&
+-            !tab.FindBool("popup").value_or(false) &&
+-            !tab.FindBool("runtimeOwned").value_or(false) &&
+-            (!migrate || !tab.FindString("spaceId"))) {
+-          auto request = item->Clone();
+-          request.Set("generation", tab.FindInt("generation").value_or(0));
+-          request.Set("bindingVersion", ++space_binding_versions_[*page_id]);
+-          pending.Append(std::move(request));
+-          break;
+-        }
++    }
++    std::set<std::string> seen;
++    int migrated = 0;
++    base::DictValue result;
++    for (const auto& value : assignments) {
++      const auto& assignment = value.GetDict();
++      const auto& page_id = *assignment.FindString("pageId");
++      if (!seen.insert(page_id).second)
++        continue;
++      auto* page = catalog->FindPage(page_id);
++      const auto* identity =
++          page ? aux::PageIdentity::FromWebContents(page) : nullptr;
++      if (migrate && (!identity || !identity->space_id().empty()))
++        continue;
++      std::string error;
++      auto binding = catalog->BindOrganizationSpace(
++          browser_, page_id, *assignment.FindString("spaceId"), &error);
++      if (!binding) {
++        if (migrate)
++          continue;
++        std::move(callback).Run(false, "", "conflict", error);
++        return;
+       }
++      result = std::move(*binding);
++      ++migrated;
+     }
+-    if (!migrate && pending.empty()) {
+-      std::move(callback).Run(false, "", "not_found", "That tab is unavailable for Space memory");
+-      return;
++    if (migrate) {
++      result.clear();
++      result.Set("migrated", migrated);
+     }
+-    AuxRuntimeHost::ForProfile(browser_->GetProfile())->CallApi(
+-        "spaces.list", "{}", base::BindOnce(
+-        [](base::WeakPtr<WebUIBrowserUI> self, base::ListValue pending,
+-           bool migrate, std::string window_id, RequestCallback callback,
+-           AuxRuntimeHost::Response response) {
+-          if (!self) return;
+-          if (!response.ok) {
+-            std::move(callback).Run(false, "", response.error_code, response.error_message);
+-            return;
+-          }
+-          auto spaces = base::JSONReader::Read(response.result_json, base::JSON_PARSE_RFC);
+-          if (!spaces || !spaces->is_list()) {
+-            std::move(callback).Run(false, "", "internal", "Invalid Space catalog");
+-            return;
+-          }
+-          auto* catalog = aux::TabCatalog::GetForProfile(self->browser_->GetProfile());
+-          const auto current = catalog->Snapshot();
+-          int migrated = 0;
+-          base::DictValue binding;
+-          for (const auto& value : pending) {
+-            const auto& request = value.GetDict();
+-            const auto& page_id = *request.FindString("pageId");
+-            const auto& space_id = *request.FindString("spaceId");
+-            if (self->space_binding_versions_[page_id] != request.FindInt("bindingVersion")) continue;
+-            bool valid_tab = false;
+-            for (const auto& tab_value : *current.FindList("tabs")) {
+-              const auto& tab = tab_value.GetDict();
+-              if (tab.FindString("pageId") && *tab.FindString("pageId") == page_id &&
+-                  tab.FindString("windowId") && *tab.FindString("windowId") == window_id &&
+-                  tab.FindInt("generation") == request.FindInt("generation") &&
+-                  !tab.FindBool("popup").value_or(false) &&
+-                  !tab.FindBool("runtimeOwned").value_or(false) &&
+-                  (!migrate || !tab.FindString("spaceId"))) valid_tab = true;
+-            }
+-            if (!valid_tab) continue;
+-            for (const auto& space_value : spaces->GetList()) {
+-              const auto* space = space_value.GetIfDict();
+-              if (!space || !space->FindString("id") || *space->FindString("id") != space_id ||
+-                  space->FindBool("archived").value_or(false)) continue;
+-              const auto* workspace = space->FindString("workspaceId");
+-              if (!workspace || workspace->empty() || workspace->size() > 128) continue;
+-              catalog->BindSpace(page_id, space_id, *workspace);
+-              binding.Set("spaceId", space_id);
+-              binding.Set("workspaceId", *workspace);
+-              ++migrated;
+-              break;
+-            }
+-          }
+-          if (!migrate && migrated != 1) {
+-            std::move(callback).Run(false, "", "conflict", "The tab or Space changed. Select it again.");
+-            return;
+-          }
+-          if (migrate) { binding.clear(); binding.Set("migrated", migrated); }
+-          std::move(callback).Run(true, *base::WriteJson(binding), "", "");
+-        }, weak_factory_.GetWeakPtr(), std::move(pending), migrate,
+-           window_id, std::move(callback)));
++    std::move(callback).Run(true, *base::WriteJson(result), "", "");
+     return;
+   }
+   if (method == "tabsSnapshot" || method == "tabsSince") {
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
+index faf5c85..5a5b577 100644
+--- a/chrome/browser/ui/aux/tab_catalog.cc
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -117,6 +117,20 @@ class TabCatalogFactory final : public ProfileKeyedServiceFactory {
+   }
+ };
+ 
++bool HasActiveSpace(const base::DictValue& shared,
++                    const std::string& space_id) {
++  const auto* spaces = shared.FindList("spaces");
++  if (!spaces)
++    return false;
++  for (const auto& value : *spaces) {
++    const auto& space = value.GetDict();
++    const auto* id = space.FindString("id");
++    if (id && *id == space_id && !space.FindBool("archived").value_or(false))
++      return true;
++  }
++  return false;
++}
++
+ constexpr char kAnchorKey[] = "aux-window-anchor";
+ 
+ int64_t NowMs() {
+@@ -154,11 +168,14 @@ TabCatalog::TabCatalog(Profile* profile)
+   }
+   if (!profile_->IsOffTheRecord() && !profile_->IsGuestSession()) {
+     preference_registrar_.Init(profile_->GetPrefs());
+-    for (const char* pref : {kMemorySaverMinutesPref, kOrganizationPref}) {
+-      preference_registrar_.Add(
+-          pref, base::BindRepeating(&TabCatalog::ScheduleMemorySaver,
+-                                    weak_factory_.GetWeakPtr()));
+-    }
++    preference_registrar_.Add(
++        kMemorySaverMinutesPref,
++        base::BindRepeating(&TabCatalog::ScheduleMemorySaver,
++                            weak_factory_.GetWeakPtr()));
++    preference_registrar_.Add(
++        kOrganizationPref,
++        base::BindRepeating(&TabCatalog::ReconcileSpaceBindings,
++                            weak_factory_.GetWeakPtr()));
+     authority_subscription_ =
+         EgressController::ForProfile(profile_)->ObserveAuthority(
+             base::BindRepeating(&TabCatalog::ScheduleMemorySaver,
+@@ -394,7 +411,8 @@ base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
+   const auto* identity = PageIdentity::FromWebContents(contents);
+   if (!identity->space_id().empty()) {
+     tab.Set("spaceId", identity->space_id());
+-    tab.Set("workspaceId", identity->workspace_id());
++    if (!identity->workspace_id().empty())
++      tab.Set("workspaceId", identity->workspace_id());
+   }
+   const auto* lifecycle =
+       resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents);
+@@ -430,6 +448,112 @@ void TabCatalog::BindSpace(const std::string& page_id,
+   }
+ }
+ 
++std::optional<base::DictValue> TabCatalog::BindOrganizationSpace(
++    BrowserWindowInterface* issuer,
++    const std::string& page_id,
++    const std::string& space_id,
++    std::string* error) {
++  BrowserWindowInterface* owner = nullptr;
++  auto* contents = FindPage(page_id, &owner);
++  const auto* identity =
++      contents ? PageIdentity::FromWebContents(contents) : nullptr;
++  if (!issuer || issuer->GetProfile() != profile_ ||
++      profile_->IsOffTheRecord() || owner != issuer || !identity ||
++      identity->runtime_owned()) {
++    *error = "That tab is unavailable in this browser window";
++    return std::nullopt;
++  }
++  const std::string window_id = WindowId(issuer);
++  auto snapshot = OrganizationStore::Snapshot(profile_, window_id, error);
++  auto* layout = snapshot ? snapshot->FindDict("layout") : nullptr;
++  auto* shared = layout ? layout->FindDict("shared") : nullptr;
++  if (!shared || !HasActiveSpace(*shared, space_id)) {
++    *error = "That Space is no longer available";
++    return std::nullopt;
++  }
++  auto* placements = shared->FindDict("tabSpace");
++  placements->Set(page_id, space_id);
++  if (!OrganizationStore::Commit(
++          profile_, window_id, *snapshot->FindInt("revision"), *layout, error))
++    return std::nullopt;
++  ReconcileSpaceBindings();
++  contents = FindPage(page_id, &owner);
++  identity = contents ? PageIdentity::FromWebContents(contents) : nullptr;
++  if (owner != issuer || !identity || identity->runtime_owned() ||
++      identity->space_id() != space_id) {
++    *error = "The tab or Space changed. Select it again.";
++    return std::nullopt;
++  }
++  base::DictValue binding;
++  binding.Set("spaceId", space_id);
++  if (!identity->workspace_id().empty())
++    binding.Set("workspaceId", identity->workspace_id());
++  return binding;
++}
++
++void TabCatalog::SetRuntimeSpaceBindings(
++    std::map<std::string, std::string> bindings) {
++  runtime_space_bindings_ = std::move(bindings);
++  received_runtime_space_bindings_ = true;
++  ReconcileSpaceBindings();
++}
++
++void TabCatalog::ReconcileSpaceBindings() {
++  if (!profile_ || profile_->IsOffTheRecord() || !browsers_)
++    return;
++  std::string error;
++  const auto organization =
++      OrganizationStore::ProfileSnapshot(profile_, &error);
++  const auto* shared =
++      organization ? organization->FindDict("shared") : nullptr;
++  if (!shared) {
++    ScheduleMemorySaver();
++    return;
++  }
++  const auto* placements = shared->FindDict("tabSpace");
++  bool changed = false;
++  browsers_->ForEach([&](BrowserWindowInterface* browser) {
++    if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL)
++      return true;
++    auto* model = browser->GetTabStripModel();
++    for (int index = 0; index < model->count(); ++index) {
++      auto* contents = model->GetWebContentsAt(index);
++      auto* identity = PageIdentity::FromWebContents(contents);
++      if (!identity || identity->runtime_owned())
++        continue;
++      const auto* selected = placements->FindString(identity->id());
++      const std::string space_id = selected ? *selected : identity->space_id();
++      if (!HasActiveSpace(*shared, space_id)) {
++        if (!identity->workspace_id().empty()) {
++          identity->BindSpace(profile_, contents, identity->space_id(), "");
++          changed = true;
++        }
++        continue;
++      }
++      std::string workspace_id;
++      const auto known = runtime_space_bindings_.find(space_id);
++      if (known != runtime_space_bindings_.end()) {
++        workspace_id = known->second;
++      } else if (!received_runtime_space_bindings_ &&
++                 identity->space_id() == space_id) {
++        // Session-restored native provenance survives runtime unavailability.
++        workspace_id = identity->workspace_id();
++      }
++      if (identity->space_id() == space_id &&
++          identity->workspace_id() == workspace_id)
++        continue;
++      identity->BindSpace(profile_, contents, space_id, workspace_id);
++      PublishTabPlacement(profile_, contents, space_id, workspace_id);
++      changed = true;
++    }
++    return true;
++  });
++  if (changed)
++    Changed();
++  else
++    ScheduleMemorySaver();
++}
++
+ base::DictValue TabCatalog::Snapshot() {
+   base::ListValue tabs;
+   base::ListValue windows;
+diff --git a/chrome/browser/ui/aux/tab_catalog.h b/chrome/browser/ui/aux/tab_catalog.h
+index 378bc22..e2976df 100644
+--- a/chrome/browser/ui/aux/tab_catalog.h
++++ b/chrome/browser/ui/aux/tab_catalog.h
+@@ -65,6 +65,10 @@ class TabCatalog final : public KeyedService,
+                                  BrowserWindowInterface** owner = nullptr);
+   void BindSpace(const std::string& page_id, const std::string& space_id,
+                  const std::string& workspace_id);
++  std::optional<base::DictValue> BindOrganizationSpace(
++      BrowserWindowInterface* issuer, const std::string& page_id,
++      const std::string& space_id, std::string* error);
++  void SetRuntimeSpaceBindings(std::map<std::string, std::string> bindings);
+   void MarkRuntimeOwned(const std::string& page_id);
+   void RefreshPage();
+   base::CallbackListSubscription ObserveChanges(
+@@ -88,6 +92,7 @@ class TabCatalog final : public KeyedService,
+   void ObserveBrowser(BrowserWindowInterface* browser);
+   void ForgetBrowser(BrowserWindowInterface* browser);
+   void Changed();
++  void ReconcileSpaceBindings();
+   void FinishCommand();
+   void ScheduleMemorySaver();
+   void RunMemorySaver();
+@@ -112,6 +117,8 @@ class TabCatalog final : public KeyedService,
+   std::map<std::string, int64_t> created_at_;
+   std::map<std::string, int64_t> last_active_at_;
+   std::map<std::string, int> generations_;
++  std::map<std::string, std::string> runtime_space_bindings_;
++  bool received_runtime_space_bindings_ = false;
+   std::map<std::string, base::DictValue> command_acks_;
+   std::deque<std::string> ack_order_;
+   std::set<std::string> published_pages_;
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index 96d2a81..bfa9706 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -281,7 +281,6 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+       page_factory_receiver_{this};
+ 
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+-  std::map<std::string, int> space_binding_versions_;
+   std::unique_ptr<aux::DictationMac> dictation_;
+   std::unique_ptr<AuxOmniboxHandler> aux_omnibox_handler_;
+   std::unique_ptr<AuxDeviceConfirmation> aux_device_confirmation_;

@@ -470,6 +470,22 @@ export const RuntimeHostMethods = {
     ZapStylesheetInstallSchema,
     ZapInstallReceiptSchema,
   ),
+  "native.spaceBindingsSet": runtime(
+    "spaces",
+    z
+      .object({
+        bindings: z.array(
+          z
+            .object({
+              spaceId: str.min(1).max(128),
+              workspaceId: str.min(1).max(128),
+            })
+            .strict(),
+        ),
+      })
+      .strict(),
+    z.object({ accepted: z.literal(true) }).strict(),
+  ),
   "native.listPages": runtime(
     "core",
     z.object({}).strict(),

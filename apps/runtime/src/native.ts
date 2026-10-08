@@ -283,6 +283,9 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   }): Promise<{ accepted: true }>;
   egressRevoke?(input: { lease: EgressLease }): Promise<{ accepted: true }>;
   capabilities?(): Promise<HostCapabilities>;
+  spaceBindingsSet?(input: {
+    bindings: { spaceId: string; workspaceId: string }[];
+  }): Promise<{ accepted: true }>;
   /** Chromium BookmarkModel owns the tree; the runtime only keeps offline article bodies. */
   bookmarksInvoke?(method: string, params: unknown): Promise<unknown>;
   contentBlockState?(request: {
@@ -697,6 +700,12 @@ export class ChannelNativeBridge implements NativeBridge {
   ): Promise<HostMethodResult<"native.foundationModelsCancel">> {
     return this.channel.call("native.foundationModelsCancel", input, 45_000);
   }
+  async spaceBindingsSet(input: { bindings: { spaceId: string; workspaceId: string }[] }) {
+    return HostMethods["native.spaceBindingsSet"].result.parse(
+      await this.channel.call("native.spaceBindingsSet", input),
+    );
+  }
+
   async capabilities(): Promise<HostCapabilities> {
     return HostCapabilitiesSchema.parse(await this.channel.call("native.capabilities", {}));
   }

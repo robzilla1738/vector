@@ -217,7 +217,10 @@ export const BrowserHostMethods = {
     // The bootstrap supplies a command ID before forwarding to Mojo.
     wireArgs: tuple([str.min(8).max(128), TabCommandSchema, freshOptional(number)]),
   },
-  bindTabSpace: spacesShell(tuple([str, str]), strictObject({ spaceId: str, workspaceId: str })),
+  bindTabSpace: spacesShell(
+    tuple([str, str]),
+    strictObject({ spaceId: str, workspaceId: freshOptional(str) }),
+  ),
   migrateTabSpaces: spacesShell(
     tuple([z.array(strictObject({ pageId: str, spaceId: str }))]),
     strictObject({ migrated: number }),
