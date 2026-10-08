@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 import { nativeSource } from "./dev-config.mjs";
 /** Stage the current renderer build; CSP and bootstrap order prevent broken apps. */
-import { cpSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { assertDevLock } from "../scripts/dev.mjs";
 
@@ -35,24 +44,33 @@ if (mode === "verify") {
 } else if (mode === "install") {
   assertDevLock();
   const assets = check(dist);
-  const staging = `${destination}.staging-${process.pid}`;
-  mkdirSync(dirname(destination), { recursive: true });
-  try {
-    mkdirSync(staging);
-    for (const path of assets) {
-      mkdirSync(dirname(join(staging, path)), { recursive: true });
-      cpSync(join(dist, path), join(staging, path));
+  const manifest = JSON.stringify({ files: assets.map((path) => ({ path })) });
+  const currentManifest = join(destination, "manifest.json");
+  const currentAssets = existsSync(currentManifest) ? files(destination) : [];
+  if (
+    currentAssets.length === assets.length &&
+    currentAssets.every((path, index) => path === assets[index]) &&
+    readFileSync(currentManifest, "utf8") === manifest &&
+    assets.every((path) => readFileSync(join(destination, path)).equals(readFileSync(join(dist, path))))
+  ) {
+    console.log(`Renderer assets unchanged (${assets.length}); preserved native input timestamps`);
+  } else {
+    const staging = `${destination}.staging-${process.pid}`;
+    mkdirSync(dirname(destination), { recursive: true });
+    try {
+      mkdirSync(staging);
+      for (const path of assets) {
+        mkdirSync(dirname(join(staging, path)), { recursive: true });
+        cpSync(join(dist, path), join(staging, path));
+      }
+      // GN needs a file inventory; there are no pinned hashes or qualification gates.
+      writeFileSync(join(staging, "manifest.json"), manifest);
+      assertDevLock();
+      rmSync(destination, { recursive: true, force: true });
+      renameSync(staging, destination);
+      console.log(`Staged ${assets.length} renderer assets from apps/shell/dist`);
+    } finally {
+      rmSync(staging, { recursive: true, force: true });
     }
-    // GN needs a file inventory; there are no pinned hashes or qualification gates.
-    writeFileSync(
-      join(staging, "manifest.json"),
-      JSON.stringify({ files: assets.map((path) => ({ path })) }),
-    );
-    assertDevLock();
-    rmSync(destination, { recursive: true, force: true });
-    renameSync(staging, destination);
-    console.log(`Staged ${assets.length} renderer assets from apps/shell/dist`);
-  } finally {
-    rmSync(staging, { recursive: true, force: true });
   }
 } else throw new Error("Usage: node chromium/stage-shell.mjs install [destination] | verify [directory]");
