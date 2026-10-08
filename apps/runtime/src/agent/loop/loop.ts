@@ -15,14 +15,8 @@ import type {
 import { parkAnswerOutput, toolResultsMessage } from "./types.js";
 import { TranscriptStore } from "./transcript.js";
 import { buildSystemPrompt } from "./prompt.js";
-import {
-  annotateToolFailure,
-  budgetToolOutputs,
-  compactMessages,
-  pruneMedia,
-  transcriptBytes,
-  TRANSCRIPT_COMPACT_BYTES,
-} from "./context.js";
+import { annotateToolFailure, pruneMedia } from "./context.js";
+import { prepareWorkingContext } from "./working-context.js";
 import { parseLooseJson } from "./tools.js";
 
 /**
@@ -83,6 +77,8 @@ export interface AgentLoopOptions {
   webmcp?: boolean;
   hasProject?: boolean;
   maxOutputTokens?: number;
+  /** Context window from the selected route's model capability metadata. */
+  contextTokens?: number;
 }
 
 export type AgentLoopOutcome =
@@ -364,56 +360,18 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     if (opts.signal?.aborted) return { kind: "failed", error: new AuxError("cancelled", "cancelled") };
     if (opts.steerCheck?.()) return { kind: "steered" };
 
-    // Deterministic compaction (06-Z): when the serialized history passes the
-    // cap, the oldest half shrinks to placeholders — persisted so a restart
-    // rebuilds the same compact context.
-    if (transcriptBytes(messages) > TRANSCRIPT_COMPACT_BYTES) {
-      const compacted = compactMessages(messages);
-      if (compacted) {
-        const entries = transcript.entries(runId);
-        transcript.rewrite(
-          runId,
-          compacted.changed.map((i) => ({ seq: entries[i]!.seq, message: compacted.messages[i]! })),
-        );
-        messages.splice(0, messages.length, ...compacted.messages);
-      }
-    }
-    if (transcriptBytes(messages) > TRANSCRIPT_COMPACT_BYTES)
-      return {
-        kind: "failed",
-        error: new AuxError(
-          "model_error",
-          "Context remains above the 192 KB limit after durable compaction; no model call was made.",
-        ),
-      };
-
     const callTools = sdk.tools;
     let reservationId: string | undefined;
     let requestMessages: ModelMessage[];
     try {
       requestMessages = opts.prepareModelMessages ? await opts.prepareModelMessages(messages) : messages;
       if (opts.signal?.aborted) throw new AuxError("cancelled", "Original model request authority changed.");
-      if (
-        Buffer.byteLength(
-          JSON.stringify(
-            requestMessages.map((message) =>
-              message.role === "user" && Array.isArray(message.content)
-                ? {
-                    ...message,
-                    content: message.content.map((part) =>
-                      part.type === "image" ? { type: "image", image: "[selected image]" } : part,
-                    ),
-                  }
-                : message,
-            ),
-          ),
-          "utf8",
-        ) > TRANSCRIPT_COMPACT_BYTES
-      )
-        throw new AuxError(
-          "model_error",
-          "Selected source context exceeds the 192 KB request limit; no model call was made.",
-        );
+      requestMessages = prepareWorkingContext(requestMessages, {
+        contextTokens: opts.contextTokens,
+        maxOutputTokens: opts.maxOutputTokens ?? 4000,
+        system,
+        toolsBytes: sdk.bytes,
+      }).messages;
       reservationId = await opts.beforeModelCall?.({
         modelId: opts.modelId,
         promptBytes: Buffer.byteLength(`${system}\n${JSON.stringify(requestMessages)}`, "utf8"),
@@ -661,11 +619,9 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     const callOrder = new Map(toolCalls.map((call, index) => [call.toolCallId, index]));
     results.sort((a, b) => callOrder.get(a.toolCallId)! - callOrder.get(b.toolCallId)!);
 
-    // Media pruning + the per-turn tool budget (06-Z): embedded payloads
-    // shrink to markers before they persist, and aggregate output past 40 KB
-    // truncates with an honest note.
+    // Embedded media already lives in artifacts; textual results remain complete
+    // in the durable history. Only the next model request receives a compact view.
     for (const result of results) if ("output" in result) result.output = pruneMedia(result.output);
-    results.splice(0, results.length, ...budgetToolOutputs(results));
 
     if (parked) {
       transcript.park(runId, {

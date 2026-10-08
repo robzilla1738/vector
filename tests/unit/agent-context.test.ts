@@ -7,14 +7,10 @@ import {
   MockModelClient,
   TranscriptStore,
   buildToolManifest,
-  budgetToolOutputs,
-  compactMessages,
+  prepareWorkingContext,
   openDb,
   pruneMedia,
   runAgentLoop,
-  TRANSCRIPT_COMPACT_BYTES,
-  TRANSCRIPT_KEEP_TAIL,
-  TURN_TOOL_BUDGET_BYTES,
   type AgentLoopOptions,
   type LoopToolDeps,
   type ModelMessage,
@@ -48,12 +44,10 @@ function baseOpts(transcript: TranscriptStore, deps: LoopToolDeps = {}): Omit<Ag
 const actStep = { steps: [{ id: "s1", op: "click", target: "r1" }] };
 
 const userTask: ModelMessage = { role: "user", content: "do the task" };
-const toolMsg = (id: string, output: unknown): ModelMessage =>
+const toolMsg = (id: string, output: unknown, toolName = "act"): ModelMessage =>
   ({
     role: "tool",
-    content: [
-      { type: "tool-result", toolCallId: id, toolName: "act", output: { type: "json", value: output } },
-    ],
+    content: [{ type: "tool-result", toolCallId: id, toolName, output: { type: "json", value: output } }],
   }) as ModelMessage;
 
 describe("context management — pruneMedia", () => {
@@ -72,51 +66,6 @@ describe("context management — pruneMedia", () => {
       s: "data:image/png;base64,abc",
     });
   });
-});
-
-describe("context management — per-turn tool budget", () => {
-  it("keeps results under 40 KB verbatim and truncates what overflows", () => {
-    const results = [
-      { toolCallId: "a", toolName: "act", output: "small" },
-      { toolCallId: "b", toolName: "act", output: "x".repeat(TURN_TOOL_BUDGET_BYTES - 20) },
-      { toolCallId: "c", toolName: "act", output: "also small" },
-    ];
-    const bounded = budgetToolOutputs(results);
-    expect(bounded[0]!.output).toBe("small");
-    expect(bounded[1]!.output).toBe("x".repeat(TURN_TOOL_BUDGET_BYTES - 20)); // fits under the cap
-    expect((bounded[2]!.output as unknown as Record<string, unknown>).truncated).toBe(true);
-    expect((bounded[2]!.output as unknown as Record<string, unknown>).bytes).toBeGreaterThan(0);
-    expect(bounded).toHaveLength(3); // every call keeps its slot
-  });
-});
-
-it("retains command failure evidence through output truncation without suggesting effect replay", () => {
-  const diagnostic = annotateToolFailure({
-    exitCode: 1,
-    stdout: "x".repeat(70000) + " assertion failed",
-    stderr: "test failure",
-    artifactId: "logs-1",
-    processId: "process-1",
-  });
-  const bounded = budgetToolOutputs([{ toolName: "bash", output: diagnostic }])[0]!.output as {
-    evidence: { artifactId: string; processId: string; exitCode: number; diagnostic: { excerpt: string } };
-    note: string;
-  };
-  expect(bounded.evidence).toMatchObject({ artifactId: "logs-1", processId: "process-1", exitCode: 1 });
-  expect(bounded.evidence.diagnostic.excerpt).toContain("assertion failed");
-  expect(bounded.evidence.diagnostic.excerpt.length).toBeLessThanOrEqual(4096);
-  expect(bounded.note).toContain("Do not repeat");
-  const messages = [
-    userTask,
-    toolMsg("effect", { receiptId: "file-receipt", status: "uncertain", content: "x".repeat(210000) }),
-    ...Array.from({ length: 10 }, (_, i) => toolMsg(String(i), "ok")),
-  ];
-  const compacted = compactMessages(messages)!;
-  const result = (
-    compacted.messages[1]!.content as unknown as { output: { value: { evidence: unknown; hint: string } } }[]
-  )[0]!.output.value;
-  expect(result.evidence).toEqual({ receiptId: "file-receipt", status: "uncertain" });
-  expect(result.hint).toContain("Do not repeat");
 });
 
 it("keeps resume diffs bounded and points to independent interrupted-command evidence", () => {
@@ -152,112 +101,223 @@ it("keeps resume diffs bounded and points to independent interrupted-command evi
   expect(summary).toContain("new");
 });
 
-describe("context management — compaction", () => {
-  it("shrinks the middle of an oversized history, keeps task and tail verbatim", () => {
-    const messages: ModelMessage[] = [userTask];
-    for (let i = 0; i < 20; i++) messages.push(toolMsg(`t${i}`, { blob: "y".repeat(4_000) }));
-    const before = JSON.stringify(messages).length;
-    const compacted = compactMessages(messages);
-    expect(compacted).not.toBeNull();
-    expect(compacted!.messages[0]).toMatchObject({ role: "user", content: "do the task" });
-    // the newest KEEP_TAIL messages are untouched
-    for (let i = messages.length - TRANSCRIPT_KEEP_TAIL; i < messages.length; i++)
-      expect(compacted!.messages[i]).toEqual(messages[i]);
-    // the middle got placeholders and the whole thing is smaller
-    const middle = (compacted!.messages[3]!.content as Record<string, unknown>[])[0]!;
-    expect((middle.output as { value: { compacted?: boolean } }).value.compacted).toBe(true);
-    expect(JSON.stringify(compacted!.messages).length).toBeLessThan(before);
-    expect(compacted!.changed.length).toBeGreaterThan(0);
-  });
+const workingOptions = { contextTokens: 16_000, maxOutputTokens: 1000, system: "system", toolsBytes: 500 };
+const callMsg = (id: string, toolName: string, input: unknown): ModelMessage => ({
+  role: "assistant",
+  content: [{ type: "tool-call", toolCallId: id, toolName, input }],
+});
 
-  it("returns null when nothing between task and tail can shrink", () => {
-    const messages: ModelMessage[] = [userTask, toolMsg("a", { ok: 1 }), toolMsg("b", { ok: 2 })];
-    expect(compactMessages(messages)).toBeNull();
-  });
-
-  it("bounds a huge completed REPL call in the newest exchange and preserves pairing", () => {
-    const code = "x".repeat(210_000);
-    const call = {
-      role: "assistant",
-      content: [{ type: "tool-call", toolCallId: "g1", toolName: "goal_program", input: { code } }],
-    } as ModelMessage;
-    const result = toolMsg("g1", { status: "failed", detail: "Inspect the current page" });
-    const compacted = compactMessages([userTask, call, result]);
-    expect(compacted).not.toBeNull();
-    expect(JSON.stringify(compacted!.messages).length).toBeLessThan(TRANSCRIPT_COMPACT_BYTES);
-    expect((compacted!.messages[1]!.content as Record<string, unknown>[])[0]).toMatchObject({
-      toolCallId: "g1",
-      toolName: "goal_program",
-      input: { compacted: true },
+describe("model working context", () => {
+  it("uses the selected window, schema/system cost and output reserve without rewriting messages", () => {
+    const messages = [
+      userTask,
+      toolMsg("read", { url: "https://example.com", text: "source".repeat(20_000) }, "webfetch"),
+    ];
+    const original = JSON.stringify(messages);
+    const small = prepareWorkingContext(messages, workingOptions);
+    expect(small.estimatedInputTokens).toBeLessThanOrEqual(small.inputBudgetTokens);
+    expect(JSON.stringify(small.messages)).toContain('"contextElided":true');
+    const large = prepareWorkingContext(messages, { ...workingOptions, contextTokens: 200_000 });
+    expect(large.messages).toEqual(messages);
+    expect(JSON.stringify(messages)).toBe(original);
+    const moreOverhead = prepareWorkingContext(messages, {
+      ...workingOptions,
+      toolsBytes: 3500,
+      maxOutputTokens: 2000,
     });
-    expect(compacted!.messages[2]).toEqual(result);
+    expect(moreOverhead.inputBudgetTokens).toBe(small.inputBudgetTokens - 1000);
+    expect(moreOverhead.estimatedInputTokens).toBe(small.estimatedInputTokens + 1000);
+    expect(
+      prepareWorkingContext([userTask], { ...workingOptions, contextTokens: 1_000_000 }).inputBudgetTokens,
+    ).toBe(128_000);
   });
 
-  it("keeps an unanswered call intact when a process stopped before its result", () => {
-    const call = {
+  it("compacts stale observations first and keeps current evidence, user constraints and decisions exact", () => {
+    const constraint: ModelMessage = {
+      role: "user",
+      content: "detail ".repeat(100) + "Never send the draft.",
+    };
+    const decision: ModelMessage = {
+      role: "assistant",
+      content: "reason ".repeat(100) + "Use the selected account only.",
+    };
+    const current = toolMsg(
+      "latest",
+      {
+        pageId: "p1",
+        observationId: "obs-new",
+        content: { url: "https://example.com/new", text: "new".repeat(6000) },
+      },
+      "snapshot",
+    );
+    const messages = [
+      userTask,
+      toolMsg(
+        "old",
+        {
+          pageId: "p1",
+          observationId: "obs-old",
+          content: { url: "https://example.com/old", text: "old".repeat(20_000) },
+        },
+        "snapshot",
+      ),
+      constraint,
+      decision,
+      current,
+    ];
+    const projected = prepareWorkingContext(messages, workingOptions).messages;
+    expect(projected[2]).toEqual(constraint);
+    expect(projected[3]).toEqual(decision);
+    expect(projected[4]).toEqual(current);
+    expect(JSON.stringify(projected[1])).toContain('"observationId":"obs-old"');
+    expect(JSON.stringify(projected[1])).toContain('"url":"https://example.com/old"');
+  });
+
+  it("replaces exact redundant reads with explicit references while keeping the latest original", () => {
+    const output = { url: "https://example.com", text: "source ".repeat(160) };
+    const messages = [
+      userTask,
+      ...Array.from({ length: 60 }, (_, i) => toolMsg(`read-${i}`, output, "webfetch")),
+    ];
+    const projected = prepareWorkingContext(messages, workingOptions);
+    expect(projected.estimatedInputTokens).toBeLessThanOrEqual(projected.inputBudgetTokens);
+    expect(projected.messages[1]).toMatchObject({
+      content: [{ toolCallId: "read-0", output: { value: { identicalResultToolCallId: "read-59" } } }],
+    });
+    expect(projected.messages.at(-1)).toEqual(messages.at(-1));
+  });
+
+  it("retains every nested source and effect reference and failure diagnostics in explicit excerpts", () => {
+    const sources = Array.from({ length: 30 }, (_, i) => ({
+      title: `source-${i}`,
+      url: `https://example.com/${i}`,
+      text: "x".repeat(2000),
+    }));
+    const receiptIds = Array.from({ length: 30 }, (_, i) => `receipt-${i}-${"r".repeat(600)}`);
+    const output = annotateToolFailure({
+      sources,
+      receiptIds,
+      processId: "process",
+      artifactId: "logs",
+      exitCode: 1,
+      stdout: "x".repeat(100_000) + "assertion failed",
+      stderr: "diagnostic",
+    });
+    const projected = prepareWorkingContext([userTask, toolMsg("effect", output)], {
+      ...workingOptions,
+      contextTokens: 20_000,
+    });
+    expect(projected.messages[1]).toMatchObject({
+      content: [
+        {
+          output: {
+            value: {
+              evidence: {
+                receiptIds,
+                sources: sources.map(({ title, url }) => ({ title, url })),
+                diagnostic: { excerpt: expect.stringContaining("assertion failed"), exitCode: 1 },
+              },
+              recovery: expect.stringContaining("Do not repeat effects"),
+            },
+          },
+        },
+      ],
+    });
+  });
+
+  it("keeps unresolved effects and unanswered inputs exact while compacting other results", () => {
+    const unresolved = toolMsg("effect", {
+      status: "uncertain",
+      receiptId: "receipt",
+      content: "uncertain".repeat(1000),
+    });
+    const effect = callMsg("effect", "act", { command: "original".repeat(1000) });
+    const pending = callMsg("pending", "repl", { code: "pending".repeat(500) });
+    const messages = [
+      userTask,
+      effect,
+      unresolved,
+      toolMsg("read", "x".repeat(100_000), "webfetch"),
+      pending,
+    ];
+    const projected = prepareWorkingContext(messages, workingOptions).messages;
+    expect(projected[1]).toEqual(effect);
+    expect(projected[2]).toEqual(unresolved);
+    expect(projected[4]).toEqual(pending);
+    expect(() =>
+      prepareWorkingContext(
+        [userTask, callMsg("pending", "repl", { code: "x".repeat(100_000) })],
+        workingOptions,
+      ),
+    ).toThrow("larger context");
+  });
+
+  it("keeps a yielded program's original input while its cell is still running", () => {
+    const messages = [
+      userTask,
+      callMsg("cell", "repl", { code: "original program ".repeat(7000) }),
+      toolMsg("cell", { cellId: "active-cell", running: true }, "repl"),
+    ];
+    expect(() => prepareWorkingContext(messages, workingOptions)).toThrow(
+      "unresolved effects were preserved",
+    );
+    expect(messages[1]).toEqual(callMsg("cell", "repl", { code: "original program ".repeat(7000) }));
+  });
+
+  it("preserves owner answers and plan decisions carried by tools, including instructions at the end", () => {
+    const answer = toolMsg(
+      "answer",
+      { answer: "context ".repeat(500) + "Do not publish." },
+      "ask_user_question",
+    );
+    const plan = callMsg("plan", "write_todos", { todos: ["details ".repeat(500) + "Wait for my review."] });
+    const messages = [
+      userTask,
+      answer,
+      plan,
+      toolMsg("plan", { written: true }, "write_todos"),
+      toolMsg("read", "x".repeat(100_000), "webfetch"),
+    ];
+    const projected = prepareWorkingContext(messages, workingOptions).messages;
+    expect(projected[1]).toEqual(answer);
+    expect(projected[2]).toEqual(plan);
+  });
+
+  it("can compact completed bulky programs without losing pairing or altering the durable input", () => {
+    const input = { code: "x".repeat(120_000) };
+    const messages = [
+      userTask,
+      callMsg("program", "repl", input),
+      toolMsg("program", { status: "confirmed", receiptId: "receipt" }),
+    ];
+    const projected = prepareWorkingContext(messages, workingOptions).messages;
+    expect(projected[1]).toMatchObject({
+      content: [
+        { type: "tool-call", toolCallId: "program", input: { contextElided: true, toolCallId: "program" } },
+      ],
+    });
+    expect(projected[2]).toEqual(messages[2]);
+    expect(messages[1]).toEqual(callMsg("program", "repl", input));
+  });
+
+  it("preserves reasoning text and signed provider data rather than silently rewriting decisions", () => {
+    const reasoning: ModelMessage = {
       role: "assistant",
       content: [
         {
-          type: "tool-call",
-          toolCallId: "g1",
-          toolName: "goal_program",
-          input: { code: "x".repeat(210_000) },
+          type: "reasoning",
+          text: "decision".repeat(100),
+          providerOptions: { gateway: { signature: "signed".repeat(500) } },
         },
       ],
-    } as ModelMessage;
-    expect(compactMessages([userTask, call])).toBeNull();
-  });
-
-  it("drops oversized provider reasoning metadata from completed history", () => {
-    const reasoning = {
-      type: "reasoning",
-      text: "brief reasoning",
-      providerOptions: { gateway: { signature: "s".repeat(22_000) } },
     };
-    const messages: ModelMessage[] = [userTask];
-    for (let i = 0; i < 10; i++) {
-      messages.push({
-        role: "assistant",
-        content: [
-          reasoning,
-          reasoning,
-          reasoning,
-          { type: "tool-call", toolCallId: `r${i}`, toolName: "snapshot", input: {} },
-        ],
-      } as ModelMessage);
-      messages.push(toolMsg(`r${i}`, { ok: true }));
-    }
-    expect(JSON.stringify(messages).length).toBeGreaterThan(TRANSCRIPT_COMPACT_BYTES);
-    const compacted = compactMessages(messages);
-    expect(compacted).not.toBeNull();
-    expect(JSON.stringify(compacted!.messages).length).toBeLessThan(TRANSCRIPT_COMPACT_BYTES);
-    expect((compacted!.messages[1]!.content as Record<string, unknown>[])[0]).toEqual({
-      type: "reasoning",
-      text: "brief reasoning",
-    });
-    expect((compacted!.messages.at(-1)!.content as Record<string, unknown>[])[0]).toMatchObject({
-      toolCallId: "r9",
-    });
-  });
-});
-
-describe("TranscriptStore entries/rewrite (compaction)", () => {
-  it("rewrites message rows in place and survives reload", () => {
-    const { transcript, db } = fixture();
-    transcript.append("r1", [userTask, toolMsg("t1", { blob: "z".repeat(4_000) }), userTask]);
-    const entries = transcript.entries("r1");
-    expect(entries).toHaveLength(3);
-    expect(entries.map((e) => e.seq)).toEqual([0, 1, 2]);
-    transcript.rewrite("r1", [{ seq: entries[1]!.seq, message: toolMsg("t1", { compacted: true }) }]);
-    const reloaded = new TranscriptStore(db).load("r1");
-    expect((reloaded[1]!.content as Record<string, unknown>[])[0]).toMatchObject({
-      output: { value: { compacted: true } },
-    });
+    const messages = [userTask, reasoning, toolMsg("read", "x".repeat(100_000), "webfetch")];
+    expect(prepareWorkingContext(messages, workingOptions).messages[1]).toEqual(reasoning);
   });
 });
 
 describe("runAgentLoop — context integration", () => {
-  it("prunes media and applies the tool budget before persisting results", async () => {
+  it("replaces embedded media with artifact markers before persisting results", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);
     const model = new MockModelClient().scriptToolSteps([
@@ -284,8 +344,8 @@ describe("runAgentLoop — context integration", () => {
     expect(JSON.stringify(toolMessage).length).toBeLessThan(90_000);
   });
 
-  it("truncates the overflow result when a step's outputs exceed 40 KB", async () => {
-    const { transcript } = fixture();
+  it("keeps full large results durably and projects a smaller request after restart", async () => {
+    const { transcript, db } = fixture();
     transcript.append("run-1", [userTask]);
     const model = new MockModelClient().scriptToolSteps([
       {
@@ -296,12 +356,56 @@ describe("runAgentLoop — context integration", () => {
       },
       { text: "done" },
     ]);
-    const deps: LoopToolDeps = { act: async () => ({ output: "w".repeat(30_000) }) };
-    const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model });
+    const requests: ModelMessage[][] = [];
+    const wrapped = {
+      toolCallStep: async (request: Parameters<typeof model.toolCallStep>[0]) => {
+        requests.push(request.messages);
+        return model.toolCallStep(request);
+      },
+    };
+    const deps: LoopToolDeps = {
+      act: async () => ({ output: { text: "w".repeat(90_000), receiptId: "receipt", status: "confirmed" } }),
+    };
+    const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model: wrapped });
     expect(outcome).toMatchObject({ kind: "done" });
-    const parts = transcript.load("run-1")[2]!.content as { output: { value: unknown } }[];
-    expect(parts[0]!.output.value).toBe("w".repeat(30_000));
-    expect(parts[1]!.output.value).toMatchObject({ truncated: true, bytes: 30_002 });
+    const original = new TranscriptStore(db).load("run-1");
+    expect(original[2]).toMatchObject({
+      content: Array.from({ length: 2 }, () => ({ output: { value: { text: "w".repeat(90_000) } } })),
+    });
+    expect(JSON.stringify(requests[1])).toContain('"contextElided":true');
+    requests.length = 0;
+    await runAgentLoop({ ...baseOpts(new TranscriptStore(db)), model: wrapped });
+    expect(JSON.stringify(requests[0])).toContain('"contextElided":true');
+    expect(new TranscriptStore(db).load("run-1").slice(0, original.length)).toEqual(original);
+  });
+
+  it("fails before provider admission when protected instructions cannot fit and allows a larger route", async () => {
+    const { transcript } = fixture();
+    const constraint = {
+      role: "user",
+      content: "Never submit until I review. ".repeat(4000),
+    } as ModelMessage;
+    transcript.append("run-1", [constraint]);
+    const model = new MockModelClient().scriptToolSteps([{ text: "done" }]);
+    let admissions = 0;
+    const options = {
+      ...baseOpts(transcript),
+      model,
+      beforeModelCall: () => {
+        admissions++;
+        return undefined;
+      },
+    };
+    const outcome = await runAgentLoop({ ...options, contextTokens: 64_000 });
+    expect(outcome).toMatchObject({
+      kind: "failed",
+      error: { code: "model_error", message: expect.stringContaining("larger context") },
+    });
+    expect(admissions).toBe(0);
+    expect(transcript.load("run-1")).toEqual([constraint]);
+    expect(await runAgentLoop({ ...options, contextTokens: 200_000 })).toMatchObject({ kind: "done" });
+    expect(admissions).toBe(1);
+    expect(transcript.load("run-1")[0]).toEqual(constraint);
   });
 
   it("injects auto-recall once as a durable user message after the task", async () => {
@@ -351,30 +455,6 @@ describe("runAgentLoop — context integration", () => {
     expect(
       transcript.load("run-1").filter((m) => String(m.content).includes("Auto-recalled memory")),
     ).toHaveLength(0);
-  });
-
-  it("compacts an oversized transcript durably before the next model call", async () => {
-    const { transcript } = fixture();
-    transcript.append("run-1", [userTask]);
-    // >192 KB of message history across 20 tool results
-    for (let i = 0; i < 20; i++)
-      transcript.append("run-1", [
-        { role: "assistant", content: "ok" } as ModelMessage,
-        toolMsg(`t${i}`, { blob: "y".repeat(11_000) }),
-      ]);
-    expect(JSON.stringify(transcript.load("run-1")).length).toBeGreaterThan(TRANSCRIPT_COMPACT_BYTES);
-    const model = new MockModelClient().scriptToolSteps([{ text: "done" }]);
-    const outcome = await runAgentLoop({ ...baseOpts(transcript), model });
-    expect(outcome).toMatchObject({ kind: "done" });
-    const reloaded = transcript.load("run-1");
-    // task + newest tail verbatim; the compacted middle persists
-    expect(reloaded[0]).toMatchObject({ content: "do the task" });
-    const anyCompacted = reloaded.some(
-      (m) => Array.isArray(m.content) && JSON.stringify(m.content).includes('"compacted":true'),
-    );
-    expect(anyCompacted).toBe(true);
-    const size = JSON.stringify(reloaded.slice(0, -1)).length; // before the final assistant message
-    expect(size).toBeLessThan(TRANSCRIPT_COMPACT_BYTES + 20_000);
   });
 });
 

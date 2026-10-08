@@ -44,8 +44,6 @@ it("encrypts transcripts at write time and leaves general metadata in ordinary S
       );
       expect(columns.every((column) => names.has(column))).toBe(true);
     }
-    transcript.rewrite("r", [{ seq: 0, message: { role: "user", content: "edited" } }]);
-    expect(transcript.load("r")[0]?.content).toBe("edited");
     transcript.truncateFrom("r", 0);
     expect(transcript.count("r")).toBe(0);
     expect(db.prepare("PRAGMA secure_delete").get()).toMatchObject({ secure_delete: 0 });

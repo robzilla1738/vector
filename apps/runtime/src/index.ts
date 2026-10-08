@@ -128,15 +128,8 @@ export {
 } from "./agent/loop/loop.js";
 export { runToolLoop, steerMessage, type AgentLoopHostDeps } from "./agent/loop/host.js";
 export { ReplPool, REPL_MAX_DEADLINE_MS, type ReplHostDeps, type ReplTab } from "./agent/loop/repl.js";
-export {
-  TURN_TOOL_BUDGET_BYTES,
-  TRANSCRIPT_COMPACT_BYTES,
-  TRANSCRIPT_KEEP_TAIL,
-  pruneMedia,
-  budgetToolOutputs,
-  compactMessages,
-  transcriptBytes,
-} from "./agent/loop/context.js";
+export { pruneMedia } from "./agent/loop/context.js";
+export { prepareWorkingContext, type WorkingContextOptions } from "./agent/loop/working-context.js";
 export { TranscriptStore, type ParkedCall } from "./agent/loop/transcript.js";
 export { buildToolManifest, normalizeSubmitResultInput } from "./agent/loop/tools.js";
 export {

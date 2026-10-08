@@ -717,37 +717,7 @@ describe("runAgentLoop (S5)", () => {
     expect(transcript.count("run-1")).toBe(0); // no assistant step was billed or persisted
   });
 
-  it("compacts an oversized recent tail durably before the next model call", async () => {
-    const { transcript, db } = fixture();
-    transcript.append("run-1", [
-      userTask,
-      ...Array.from({ length: 10 }, (_, i) => ({
-        role: "user" as const,
-        content: `${i}: ${"é".repeat(18_000)}`,
-      })),
-    ]);
-    let sentBytes = 0;
-    const model: NonNullable<AgentLoopOptions["model"]["toolCallStep"]> = async ({ messages }) => {
-      sentBytes = Buffer.byteLength(JSON.stringify(messages), "utf8");
-      return {
-        message: { role: "assistant", content: "done" } as ModelMessage,
-        toolCalls: [],
-        text: "done",
-        durationMs: 0,
-      };
-    };
-    const outcome = await runAgentLoop({
-      ...baseOpts(new TranscriptStore(db)),
-      model: { toolCallStep: model },
-    });
-    expect(outcome).toMatchObject({ kind: "done" });
-    expect(sentBytes).toBeLessThanOrEqual(192 * 1024);
-    const persisted = new TranscriptStore(db).load("run-1");
-    expect(String(persisted[1]!.content)).toContain("compacted");
-    expect(String(persisted[10]!.content)).toContain("é");
-  });
-
-  it("fails before billing when even durable compaction cannot fit the task", async () => {
+  it("fails before billing when protected task instructions exceed the working budget", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [{ role: "user", content: "x".repeat(200_000) }]);
     let calls = 0;

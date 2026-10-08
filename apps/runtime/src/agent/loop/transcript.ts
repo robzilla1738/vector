@@ -6,7 +6,8 @@ import type { LoopPark, ModelMessage } from "./types.js";
 /**
  * Durable transcript rows: every model-visible message a run consumes or
  * produces lands here before the loop continues. A restart rebuilds the
- * exact context; a suspension's parked tool results ride in a `park` row
+ * original history; the loop derives a bounded working view for each request.
+ * A suspension's parked tool results ride in a `park` row
  * (never a message row) so side-effect-bearing outputs are not recomputed.
  */
 interface TranscriptRow {
@@ -110,25 +111,6 @@ export class TranscriptStore {
       seq: row.seq,
       message: this.decode<ModelMessage>(runId, row.seq, "message", row.message),
     }));
-  }
-
-  /** Persist a compaction rewrite — specific message rows replaced in one transaction. */
-  rewrite(runId: string, updates: { seq: number; message: ModelMessage }[]): void {
-    if (!updates.length) return;
-    try {
-      this.db.exec("BEGIN");
-      const stmt = this.db.prepare(
-        `UPDATE run_transcript SET message=? WHERE run_id=? AND seq=? AND kind='message'`,
-      );
-      for (const update of updates)
-        withSecureDelete(this.db, () =>
-          stmt.run(this.encode(runId, update.seq, "message", update.message), runId, update.seq),
-        );
-      this.db.exec("COMMIT");
-    } catch (e) {
-      this.db.exec("ROLLBACK");
-      throw e;
-    }
   }
 
   /** One open park per run — parking again superseded by a newer row is impossible. */
