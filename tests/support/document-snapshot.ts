@@ -3,7 +3,7 @@ import type { Repo } from "@aux/runtime";
 import { DOCUMENT_TEXT_DIGEST_PREFIX, encodeDocumentSegment } from "@aux/contracts/document-intake";
 import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 
-export async function saveDocumentSnapshot(repo: Repo) {
+export function capturedDocument() {
   const segment = {
     locator: { kind: "text" as const, line: 1, offset: 0 },
     text: "Protected segmented document",
@@ -25,22 +25,34 @@ export async function saveDocumentSnapshot(repo: Repo) {
     textBytes: document.sourceBytes,
     segmentCount: 1,
   };
+  return {
+    input: {
+      selectionId: randomUUID(),
+      index: 0,
+      snapshotId: document.snapshotId,
+      sourceSha256: document.sourceSha256,
+    },
+    source: {
+      read: async () => ({
+        kind: "chunk" as const,
+        document,
+        chunk: { index: 0, segments: [segment] },
+        completed,
+      }),
+    },
+  };
+}
+
+export async function saveDocumentSnapshot(repo: Repo) {
+  const captured = capturedDocument();
   const owner = { kind: "conversation" as const, ownerId: "fixture-chat", documentId: "fixture-document" };
   const store = new DocumentSnapshots(repo);
   try {
-    const snapshot = await store.importSource(
-      owner,
-      {
-        selectionId: randomUUID(),
-        index: 0,
-        snapshotId: document.snapshotId,
-        sourceSha256: document.sourceSha256,
-      },
-      {
-        read: async () => ({ kind: "chunk", document, chunk: { index: 0, segments: [segment] }, completed }),
-      },
-      { signal: new AbortController().signal, checkCurrent: () => {}, publish: () => {} },
-    );
+    const snapshot = await store.importSource(owner, captured.input, captured.source, {
+      signal: new AbortController().signal,
+      checkCurrent: () => {},
+      publish: () => {},
+    });
     return { owner, snapshot };
   } finally {
     await store.close();

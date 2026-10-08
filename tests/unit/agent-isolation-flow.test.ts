@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, expect, it, vi } from "vitest";
 import {
@@ -224,6 +225,7 @@ function harness(url = "https://source.test/") {
   } as unknown as SettingsService;
   const sets = new SetService(repo, events, pages);
   runs = new RunService({
+    documentSnapshots: new DocumentSnapshots(repo),
     turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined =>
       pages.get(pageId),
     ),

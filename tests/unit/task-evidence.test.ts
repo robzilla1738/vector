@@ -1,3 +1,5 @@
+import { capturedDocument } from "../support/document-snapshot.js";
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   DurableWriteLedger,
@@ -45,8 +47,9 @@ function fixture() {
     undoFormChange: vi.fn(async () => {}),
     undoOpenedTab: vi.fn(async () => {}),
   } as unknown as PageService;
-  const evidence = new TaskEvidenceService(repo, events, pages);
-  const invoke = makeInvoker({ repo, events, pages } as Services);
+  const documentSnapshots = new DocumentSnapshots(repo);
+  const evidence = new TaskEvidenceService(repo, events, documentSnapshots, pages);
+  const invoke = makeInvoker({ repo, events, pages, documentSnapshots } as Services);
   const base = { taskId: task.taskId, expectedRevision: 1, criterionId: "order" };
   const note = () =>
     evidence.recordNote({ ...base, summary: "Independent fixture record: order 123" }, "desktop_user");
@@ -783,36 +786,36 @@ it("blocks decisions during active work", () => {
 it("imports exact local document snapshots only through desktop authority and requires fresh idle revisions", async () => {
   const f = fixture();
   const params = { ...f.base, filename: "order.md", content: "# Order\n123\n" };
-  await expect(f.invoke("tasks.importDocumentEvidence", params)).rejects.toMatchObject({
+  await expect(f.invoke("tasks.importTextEvidence", params)).rejects.toMatchObject({
     code: "permission_denied",
   });
   await expect(
-    f.invoke("tasks.importDocumentEvidence", { ...params, filename: "../order.md" }, { external: false }),
+    f.invoke("tasks.importTextEvidence", { ...params, filename: "../order.md" }, { external: false }),
   ).rejects.toThrow();
-  const record = (await f.invoke("tasks.importDocumentEvidence", params, {
+  const record = (await f.invoke("tasks.importTextEvidence", params, {
     external: false,
   })) as import("@aux/contracts").TaskEvidence;
   expect(record).toMatchObject({
     kind: "document_snapshot",
     actor: "desktop_user",
     source: { filename: "order.md", byteLength: 12 },
-    snapshot: { text: params.content },
+    document: { completed: { textBytes: 12 } },
   });
   expect(record.source.sha256).toMatch(/^[a-f0-9]{64}$/);
   f.review(record.evidenceId);
   expect(f.evidence.receipt(f.task.taskId).status).toBe("accepted");
-  f.evidence.importDocument({ ...params, content: "Updated order" });
+  f.evidence.importText({ ...params, content: "Updated order" });
   expect(f.evidence.receipt(f.task.taskId).status).toBe("needs_review");
-  expect(() => f.evidence.importDocument({ ...params, expectedRevision: 2 })).toThrow("revision changed");
-  expect(() => f.evidence.importDocument({ ...params, content: "x\0y" })).toThrow();
-  expect(() => f.evidence.importDocument({ ...params, content: "é".repeat(262145) })).toThrow();
+  expect(() => f.evidence.importText({ ...params, expectedRevision: 2 })).toThrow("revision changed");
+  expect(() => f.evidence.importText({ ...params, content: "x\0y" })).toThrow();
+  expect(() => f.evidence.importText({ ...params, content: "é".repeat(8 * 1024 * 1024 + 1) })).toThrow();
   f.run("running");
-  expect(() => f.evidence.importDocument(params)).toThrow("Stop active task runs");
+  expect(() => f.evidence.importText(params)).toThrow("Stop active task runs");
 });
 
 it("reads earlier definitions and evidence without carrying acceptance into current revisions", async () => {
   const f = fixture();
-  const original = f.evidence.importDocument({ ...f.base, filename: "order.txt", content: "Order 123" });
+  const original = f.evidence.importText({ ...f.base, filename: "order.txt", content: "Order 123" });
   f.review(original.evidenceId);
   f.repo.saveRun({
     runId: "old-run",
@@ -899,4 +902,46 @@ it("refuses CLI and MCP write access on task resources", async () => {
     { external: false },
   )) as { resources: { access: string }[] };
   expect(updated.resources[0]?.access).toBe("read");
+});
+
+it("publishes native document evidence only for the original idle task revision", async () => {
+  const f = fixture();
+  const captured = capturedDocument();
+  const recorded = await f.evidence.importDocument({ ...f.base, ...captured.input }, captured.source, {
+    signal: new AbortController().signal,
+  });
+  expect(recorded.snapshot).toBeUndefined();
+  expect(recorded.document?.document.snapshotId).toBe(captured.input.snapshotId);
+  expect(
+    f.evidence.readDocument({
+      taskId: f.task.taskId,
+      expectedRevision: 1,
+      evidenceId: recorded.evidenceId,
+      sha256: recorded.document!.sha256,
+    }).chunk.segments[0]?.text,
+  ).toBe("Protected segmented document");
+  let reading!: () => void, finish!: () => void;
+  const started = new Promise<void>((resolve) => {
+    reading = resolve;
+  });
+  const release = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  const pending = f.evidence.importDocument(
+    { ...f.base, ...captured.input },
+    {
+      read: async () => {
+        reading();
+        await release;
+        return captured.source.read();
+      },
+    },
+    { signal: new AbortController().signal },
+  );
+  await started;
+  f.run("running");
+  finish();
+  await expect(pending).rejects.toThrow("Stop active task runs");
+  expect(f.repo.db.prepare("SELECT count(*) n FROM document_snapshots").get()).toEqual({ n: 1 });
+  expect(f.evidence.receipt(f.task.taskId).criteria[0]!.evidence).toHaveLength(1);
 });

@@ -10,3 +10,6 @@ export const documentExcerptIdentity = (chatId: string, attachmentId: string) =>
   `setting:${documentCollectionKey(chatId)}`,
   attachmentId,
 ];
+
+export const DOCUMENT_COLLECTION_PROOF_PREFIX = "document_collection_protection_v1:";
+export const documentCollectionProofKey = (key: string) => `${DOCUMENT_COLLECTION_PROOF_PREFIX}${key}`;

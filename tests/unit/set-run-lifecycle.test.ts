@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { selectedDocumentEvidence } from "../../apps/runtime/src/agent/loop/document-context.js";
 import { TurnMentionService } from "../../apps/runtime/src/services/turn-mention-service.js";
 import { describe, it, expect, vi } from "vitest";
@@ -213,6 +214,7 @@ function harness(
     revokeRun: () => {},
   } as unknown as BrowserEgress;
   const runs = new RunService({
+    documentSnapshots: new DocumentSnapshots(repo),
     repo,
     events,
     pages,
@@ -849,8 +851,10 @@ describe("conversation turn retry", () => {
     });
     await h.pages.navigate(page.pageId, "https://reference.test/other");
     const snapshot = h.runs.readAttachment({ chatId: "page-chat", attachmentId: item.attachmentId });
-    expect(snapshot.content).toContain("Source: https://reference.test/article");
-    expect(snapshot.content).not.toContain("/other");
+    expect(snapshot.chunk.segments.map((segment) => segment.text).join("")).toContain(
+      "Source: https://reference.test/article",
+    );
+    expect(snapshot.chunk.segments.map((segment) => segment.text).join("")).not.toContain("/other");
   });
 
   it("deletes an unsent page-and-image draft with its saved data", async () => {
@@ -905,7 +909,7 @@ describe("conversation turn retry", () => {
       chatId: "workbook-chat",
       attachmentId: attachment.attachmentId,
     });
-    expect(snapshot.content).toBe(content);
+    expect(snapshot.chunk.segments.map((segment) => segment.text).join("")).toBe(content);
     const evidence = await selectedDocumentEvidence(
       h.runs.documents.references("workbook-chat"),
       h.runs.documents,
@@ -951,10 +955,12 @@ describe("conversation turn retry", () => {
       chatId: "document-chat",
       attachmentId: added.attachments[0]!.attachmentId,
     });
-    expect(snapshot.content).toBe("# Private brief\nCompare option A and option B.");
+    expect(snapshot.chunk.segments.map((segment) => segment.text).join("")).toBe(
+      "# Private brief\nCompare option A and option B.",
+    );
     expect(() =>
       h.runs.readAttachment({ chatId: "another-chat", attachmentId: added.attachments[0]!.attachmentId }),
-    ).toThrow("not found");
+    ).toThrow(/changed or was removed/);
     const large = h.runs.addAttachment({
       chatId: "document-chat",
       filename: "large.txt",
@@ -970,9 +976,14 @@ describe("conversation turn retry", () => {
     h.runs.removeAttachment({ chatId: "document-chat", attachmentId: added.attachments[0]!.attachmentId });
     const retry = await h.runs.retry(run.runId);
     expect(retry.config?.contextAttachmentRefs).toEqual(run.config?.contextAttachmentRefs);
-    expect(h.runs.documents.readReference(retry.config!.contextAttachmentRefs![0]!).content).toBe(
-      snapshot.content,
-    );
+    const retained: string[] = [];
+    for await (const segment of h.runs.documents.segments(
+      retry.config!.contextAttachmentRefs![0]!,
+      new AbortController().signal,
+      () => {},
+    ))
+      retained.push(segment.text);
+    expect(retained.join("")).toBe(snapshot.chunk.segments.map((segment) => segment.text).join(""));
     expect(retry.config?.context).toBe(run.config?.context);
     expect(retry.config?.instructions).toBe(run.config?.instructions);
   });

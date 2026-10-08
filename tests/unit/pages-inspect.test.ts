@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 /**
  * H2-C7: pages.extract / waitFor / console / dialog / network are real RPCs.
@@ -238,6 +239,7 @@ describe("H2-C7 pages inspect RPCs", () => {
     const { pages, repo, events, responses, turnMentions } = harness();
     const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
     const invoke = makeInvoker({
+      documentSnapshots: new DocumentSnapshots(repo),
       turnMentions,
       pages,
       sets: {

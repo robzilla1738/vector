@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { expect, it, vi } from "vitest";
 import {
   EventBus,
@@ -62,7 +63,7 @@ it("attributes one new native visit to a claimed run and removes only its unchan
     const step = f.repo.listSteps("r1")[0]!;
     expect(step.op).toBe("history.visit");
     const remove = vi.fn(async () => ({ removed: true }));
-    const evidence = new TaskEvidenceService(f.repo, f.events, undefined, {
+    const evidence = new TaskEvidenceService(f.repo, f.events, new DocumentSnapshots(f.repo), undefined, {
       historyRemove: remove,
     } as unknown as NativeBridge);
     f.repo.saveRun({ ...f.repo.getRun("r1")!, status: "completed", endedAt: Date.now() });

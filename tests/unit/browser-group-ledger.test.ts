@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { randomUUID } from "node:crypto";
 import { expect, it, vi } from "vitest";
 import { BrowserGroupLedger } from "../../apps/runtime/src/services/browser-group-ledger.js";
@@ -69,7 +70,7 @@ it("projects a native group effect from one claimed task run without granting un
       stepId: f.effect.mutationId,
     });
     f.repo.saveRun({ ...f.repo.getRun("group-run")!, status: "completed", endedAt: Date.now() });
-    const receipt = new TaskEvidenceService(f.repo, f.events).receipt(f.task.taskId);
+    const receipt = new TaskEvidenceService(f.repo, f.events, new DocumentSnapshots(f.repo)).receipt(f.task.taskId);
     expect(receipt.groupChanges).toMatchObject([
       {
         groupId: "native-group",
@@ -139,7 +140,7 @@ it("accepts authenticated native effects into one receipt and selected history u
     expect(added.recorded).toBe(true);
     f.repo.saveRun({ ...f.repo.getRun("group-run")!, status: "completed", endedAt: Date.now() });
     const remove = vi.fn(async () => ({ removed: true }));
-    const evidence = new TaskEvidenceService(f.repo, f.events, undefined, {
+    const evidence = new TaskEvidenceService(f.repo, f.events, new DocumentSnapshots(f.repo), undefined, {
       historyRemove: remove,
     } as unknown as NativeBridge);
     const receipt = evidence.receipt(f.task.taskId);

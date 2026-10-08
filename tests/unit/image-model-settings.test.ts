@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -59,6 +60,7 @@ function fixture(env: NodeJS.ProcessEnv = { AI_GATEWAY_API_KEY: "synthetic-image
   const owner = new PrivateBudgetOwner(repo, budgets),
     accountBudget = owner.client();
   const runs = new RunService({
+    documentSnapshots: new DocumentSnapshots(repo),
     accountBudget,
     repo,
     events,

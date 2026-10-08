@@ -1,5 +1,6 @@
 import { setImmediate } from "node:timers/promises";
 import { AuxError, type AttachmentReference } from "@aux/contracts";
+import { documentLocatorKey } from "@aux/contracts/document-intake";
 import type { ModelMessage } from "ai";
 import { documentReference } from "../../services/document-context.js";
 import type { ConversationDocuments } from "../../services/conversation-documents.js";
@@ -16,7 +17,7 @@ type Excerpt = {
   excerpted: boolean;
 };
 
-/** One plaintext body at a time; only bounded excerpts survive the next cooperative yield. */
+/** One protected segment at a time; only bounded located excerpts survive each read. */
 export async function selectedDocumentEvidence(
   references: readonly AttachmentReference[],
   documents: ConversationDocuments,
@@ -54,19 +55,60 @@ export async function selectedDocumentEvidence(
       throw new AuxError("cancelled", "Document context preparation was cancelled.");
     checkCurrent();
   };
-  const collect = (reference: AttachmentReference, index: number) => {
-    const { record, content } = documents.readReference(reference);
-    const text = documentReference(record.filename, content).join("\n\n");
+  const collect = async (reference: AttachmentReference, index: number) => {
+    const record = documents.referenceMetadata(reference);
+    const selected: {
+      text: string;
+      locator: string;
+      score: number;
+      index: number;
+      bytes: number;
+      excerpted: boolean;
+    }[] = [];
+    let ordinal = 0;
+    let selectedBytes = 0;
+    const retained = () => selected.map((part) => `[${part.locator}]\n${part.text}`).join("\n\n");
+    for await (const segment of documents.segments(reference, options.signal, checkCurrent)) {
+      const text =
+        record.document?.completed.segmentCount === 1
+          ? documentReference(record.filename, segment.text).join("\n\n")
+          : segment.text;
+      const excerpt = selectedArticleExcerpt(text, options.query, share);
+      const score = sourceRelevance(`${record.filename} ${excerpt}`, options.query);
+      const locator = documentLocatorKey(segment.locator);
+      const part = {
+        text: excerpt,
+        locator,
+        score,
+        index: ordinal++,
+        bytes: Buffer.byteLength(`[${locator}]\n${excerpt}\n\n`),
+        excerpted: excerpt !== text,
+      };
+      // Keep a byte-bounded ranked projection without repeatedly sorting or joining tiny source segments.
+      let low = 0,
+        high = selected.length;
+      while (low < high) {
+        const middle = (low + high) >>> 1;
+        if (selected[middle]!.score >= score) low = middle + 1;
+        else high = middle;
+      }
+      selected.splice(low, 0, part);
+      selectedBytes += part.bytes;
+      while (selected.length > 1 && selectedBytes > share) selectedBytes -= selected.pop()!.bytes;
+    }
+    if (!selected.length) return;
+    selected.sort((a, b) => a.index - b.index);
     const excerpt: Excerpt = {
       attachmentId: reference.attachmentId,
       filename: record.filename,
       capturedAt: record.createdAt,
       sourceUrl: record.sourceUrl,
       sourceTruncated: record.sourceTruncated,
-      text: selectedArticleExcerpt(text, options.query, share),
-      excerpted: false,
+      text: retained(),
+      excerpted:
+        selected.length !== record.document?.completed.segmentCount ||
+        selected.some((part) => part.excerpted),
     };
-    excerpt.excerpted = excerpt.text !== text;
     candidates.push({
       excerpt,
       index,
@@ -86,24 +128,12 @@ export async function selectedDocumentEvidence(
   };
   for (const [index, reference] of references.entries()) {
     check();
-    collect(reference, index);
+    await collect(reference, index);
     await setImmediate();
   }
   check();
   // Recheck every immutable identity after yielding: Forget/deletion cannot publish a partial stale collection.
-  const identities = new Map<string, Map<string, string>>();
-  for (const reference of references) {
-    let records = identities.get(reference.chatId);
-    if (!records) {
-      records = new Map(documents.records(reference.chatId).map((item) => [item.attachmentId, item.sha256]));
-      identities.set(reference.chatId, records);
-    }
-    if (records.get(reference.attachmentId) !== reference.sha256)
-      throw new AuxError(
-        "ref_stale",
-        "A selected document was removed while preparing context. Choose its current snapshot.",
-      );
-  }
+  for (const reference of references) documents.referenceMetadata(reference);
   for (const { excerpt } of candidates) protect?.(excerpt.text);
   return { role: "user", content: payload() };
 }

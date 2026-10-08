@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -656,7 +657,7 @@ it("pauses unattended model Skills and honors read, Keep, and Don't ask choices"
 
 it("shows criterion evidence only for the linked Skill run and marks it stale after a later task run", async () => {
   const f = fixture(async () => ({ runId: "skill-agent-run" }));
-  const evidence = new TaskEvidenceService(f.repo, f.events);
+  const evidence = new TaskEvidenceService(f.repo, f.events, new DocumentSnapshots(f.repo));
   const skill = f.routines.fromResult({ taskId: f.task.taskId, title: "Evidence Skill" });
   const occurrence = await f.routines.run({ routineId: skill.routineId, expectedRevision: skill.revision });
   f.repo.saveRun({
@@ -734,7 +735,7 @@ it("does not expose evidence through a mismatched Skill run link", async () => {
     config: { taskId: otherTask.taskId, taskRevision: otherTask.revision },
   });
   expect(() =>
-    f.routines.outcome(occurrence.routineRunId, new TaskEvidenceService(f.repo, f.events)),
+    f.routines.outcome(occurrence.routineRunId, new TaskEvidenceService(f.repo, f.events, new DocumentSnapshots(f.repo))),
   ).toThrow(/does not belong/i);
 });
 

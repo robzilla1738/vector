@@ -1,3 +1,4 @@
+import { ConversationDocuments } from "../../apps/runtime/src/services/conversation-documents.js";
 import { DatabaseSync } from "node:sqlite";
 import { createHash, randomBytes } from "node:crypto";
 import {
@@ -99,6 +100,13 @@ async function fixture() {
   const sourceCipher = await initializeFieldCodec(sourceDb, sourceNative.bridge, sourceId);
   const source = new Repo(sourceDb, sourceCipher);
   const segmented = await saveDocumentSnapshot(source);
+  const documents = new ConversationDocuments(source, new DocumentSnapshots(source));
+  documents.add({
+    chatId: "protected-documents",
+    filename: "Saved private filename.txt",
+    content: "Saved private conversation text",
+  });
+  const documentReference = documents.references("protected-documents")[0]!;
   const tasks = new TaskService(source, new EventBus(source));
   const space = tasks.createWorkspace("Protected research space");
   const task = tasks.create({
@@ -107,7 +115,11 @@ async function fixture() {
     objective: "Check source",
     criteria: [{ criterionId: "check", description: "Protected", verification: "manual" }],
   });
-  const evidence = new TaskEvidenceService(source, new EventBus(source)).importDocument({
+  const evidence = new TaskEvidenceService(
+    source,
+    new EventBus(source),
+    new DocumentSnapshots(source),
+  ).importText({
     taskId: task.taskId,
     expectedRevision: 1,
     criterionId: "check",
@@ -191,6 +203,7 @@ async function fixture() {
     hook,
     evidence,
     segmented,
+    documentReference,
   };
 }
 
@@ -296,6 +309,14 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
     new DocumentSnapshots(restored).read(f.segmented.owner, f.segmented.snapshot.sha256).chunk.segments[0]
       ?.text,
   ).toBe("Protected segmented document");
+  const restoredDocuments = new ConversationDocuments(restored, new DocumentSnapshots(restored));
+  expect(
+    restoredDocuments.read(
+      f.documentReference.chatId,
+      f.documentReference.attachmentId,
+      f.documentReference.sha256,
+    ).chunk.segments[0]?.text,
+  ).toBe("Saved private conversation text");
   expect(restored.listWorkspaces()[0]?.name).toBe("Protected research space");
   expect(restored.getRun("recovery-run")?.goal).toBe("Protected source goal");
   const restoredEvidence = reopenedDb
@@ -306,7 +327,9 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
     JSON.parse(
       restored.revealRecordField("task_evidence", [restoredEvidence.seq], "json", restoredEvidence.json),
     ),
-  ).toMatchObject({ snapshot: { text: "Protected task document evidence" } });
+  ).toMatchObject({
+    document: { completed: { textBytes: Buffer.byteLength("Protected task document evidence") } },
+  });
   expect(
     reopenedDb.prepare("SELECT cost_usd FROM private_spend WHERE lease_id=?").get("opaque-fixture"),
   ).toEqual({ cost_usd: 0.75 });
@@ -440,6 +463,14 @@ it("keeps a copied phrase package restorable after Forget refuses the older mana
   const reopenedDb = openDb(join(f.targetDir, "state.sqlite"));
   const cipher = await initializeFieldCodec(reopenedDb, f.targetNative.bridge, f.targetId);
   const restored = new Repo(reopenedDb, cipher);
+  const restoredDocuments = new ConversationDocuments(restored, new DocumentSnapshots(restored));
+  expect(
+    restoredDocuments.read(
+      f.documentReference.chatId,
+      f.documentReference.attachmentId,
+      f.documentReference.sha256,
+    ).chunk.segments[0]?.text,
+  ).toBe("Saved private conversation text");
   expect(restored.listWorkspaces()[0]?.name).toBe("Protected research space");
   const memory = new MemoryPipeline(restored, f.targetNative.bridge, f.targetId);
   expect(await memory.inbox(f.space.workspaceId)).toHaveLength(1);

@@ -198,3 +198,25 @@ it("cancels and joins a pending native read before retiring unpublished rows and
   await expect(store.importSource(owner, fixture.input, fixture.source, context())).rejects.toThrow(/closed/);
   repo.close();
 });
+
+it("segments direct Unicode text exactly and accepts only authenticated legacy text references", async () => {
+  const repo = new Repo(openDb(":memory:"));
+  const store = new DocumentSnapshots(repo);
+  try {
+    const text = "😀".repeat(10_000) + "\nFinal line";
+    const oldHash = createHash("sha256").update(text).digest("hex");
+    const snapshot = store.writeText(owner, "captured.pdf", text, () => {}, oldHash);
+    expect(snapshot.document.format).toBe("text");
+    const page = store.read(owner, oldHash);
+    expect(page.chunk.segments.map((segment) => segment.text).join("")).toBe(text);
+    expect(page.chunk.segments[1]?.locator).toEqual({ kind: "text", line: 1, offset: 32768 });
+    expect(() => store.read(owner, "b".repeat(64))).toThrow();
+    expect(() =>
+      store.writeText({ ...owner, documentId: "invalid" }, "invalid.txt", text, () => {}, "b".repeat(64)),
+    ).toThrow();
+    expect(repo.db.prepare("SELECT count(*) n FROM document_snapshots").get()).toEqual({ n: 1 });
+  } finally {
+    await store.close();
+    repo.close();
+  }
+});

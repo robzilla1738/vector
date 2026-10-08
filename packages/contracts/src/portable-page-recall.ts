@@ -186,19 +186,40 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
       }
     }
     if (has("kv") && artifactIds.size) {
+      const removeDocument = (chatId: string, attachmentId?: string) => {
+        if (!has("document_snapshots")) return;
+        const clause =
+          attachmentId === undefined
+            ? "owner_kind='conversation' AND owner_id=?"
+            : "owner_kind='conversation' AND owner_id=? AND document_id=?";
+        const params = attachmentId === undefined ? [chatId] : [chatId, attachmentId];
+        // Portable copies can have foreign_keys disabled; remove protected children explicitly.
+        db.prepare(`DELETE FROM document_segments WHERE ${clause}`).run(...params);
+        db.prepare(`DELETE FROM document_snapshots WHERE ${clause}`).run(...params);
+      };
       const entries = db
         .prepare("SELECT key,value FROM kv WHERE key LIKE 'setting:conversationAttachments:%'")
         .all() as { key: string; value: string }[];
       for (const { key, value } of entries) {
         const chatId = key.slice("setting:conversationAttachments:".length);
         let records: unknown;
+        let protectedMetadata = false;
         try {
           records = JSON.parse(value);
-        } catch {
+          if (typeof records === "string") {
+            protectedMetadata = true;
+            records = JSON.parse(
+              cipher ? cipher.decrypt("kv", JSON.stringify([key]), "value", records) : records,
+            );
+          }
+        } catch (error) {
+          // Authentication failures are not malformed historical JSON and must fail closed.
+          if (protectedMetadata) throw error;
           if (affectedChats.has(chatId)) {
             db.prepare("DELETE FROM kv WHERE key=?").run(key);
             const prefix = `setting:${documentBodyPrefix(chatId)}`;
             db.prepare("DELETE FROM kv WHERE substr(key,1,length(?))=?").run(prefix, prefix);
+            removeDocument(chatId);
           }
           continue;
         }
@@ -212,12 +233,18 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
         );
         if (kept.length !== records.length) {
           for (const item of records) {
-            if (!kept.includes(item) && typeof item?.attachmentId === "string")
+            if (!kept.includes(item) && typeof item?.attachmentId === "string") {
               db.prepare("DELETE FROM kv WHERE key=?").run(
                 `setting:${documentBodyKey(chatId, item.attachmentId)}`,
               );
+              removeDocument(chatId, item.attachmentId);
+            }
           }
-          db.prepare("UPDATE kv SET value=? WHERE key=?").run(JSON.stringify(kept), key);
+          const text = JSON.stringify(kept);
+          const next = protectedMetadata
+            ? JSON.stringify(cipher ? cipher.encrypt("kv", JSON.stringify([key]), "value", text) : text)
+            : text;
+          db.prepare("UPDATE kv SET value=? WHERE key=?").run(next, key);
         }
       }
     }

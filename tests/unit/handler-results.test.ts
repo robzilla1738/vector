@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -95,7 +96,9 @@ beforeAll(() => {
   } as unknown as SettingsService;
   const artifacts = new ArtifactStore(dir, repo, events);
   const turnMentions = fixtureTurnMentions((pageId) => pages.get(pageId));
+  const documentSnapshots = new DocumentSnapshots(repo);
   const runs = new RunService({
+    documentSnapshots,
     turnMentions,
     repo,
     events,
@@ -112,6 +115,7 @@ beforeAll(() => {
     { nodeId: string; url: string; title: string; createdAt: number; folderPath: string[] }
   >();
   const services: Services = {
+    documentSnapshots,
     turnMentions,
     pages,
     sets,
@@ -197,7 +201,7 @@ describe("handler results conform to ResultSchemas", () => {
       native: {
         ...fixtureServices.native!,
         memorySaverGet: async () => ({ minutes: memoryMinutes, managed: false }),
-        memorySaverSet: async (minutes) => ({ minutes: memoryMinutes = minutes, managed: false }),
+        memorySaverSet: async (minutes) => ({ minutes: (memoryMinutes = minutes), managed: false }),
         searchEngineGet: async () => selected,
         searchEngineSet: async (template) => {
           selected = template;

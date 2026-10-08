@@ -246,8 +246,8 @@ export class RunService {
     return this.documents.list(chatId);
   }
 
-  readAttachment(opts: { chatId: string; attachmentId: string }) {
-    return this.documents.read(opts.chatId, opts.attachmentId);
+  readAttachment(opts: import("@aux/contracts/document-api").ConversationDocumentReadParams) {
+    return this.documents.read(opts.chatId, opts.attachmentId, opts.sha256, opts.cursor);
   }
 
   async documentEvidence(
@@ -302,6 +302,23 @@ export class RunService {
     this.documents.add(opts);
     this.deps.events.emit("conversation.context.changed", { chatId: opts.chatId });
     return this.attachments(opts.chatId);
+  }
+
+  importAttachment(
+    input: import("@aux/contracts/document-api").ConversationDocumentImportParams,
+    source: import("./document-snapshots.js").DocumentSource,
+    context: { signal: AbortSignal },
+  ) {
+    return this.ownOperation(async () => {
+      const result = await this.documents.importDocument(input.chatId, input, source, {
+        signal: context.signal,
+        checkCurrent: () => {
+          if (this.closed) throw new AuxError("cancelled", "Conversation document intake is closed.");
+        },
+      });
+      this.deps.events.emit("conversation.context.changed", { chatId: input.chatId });
+      return result;
+    });
   }
 
   async attachPage(opts: { chatId: string; pageId: string; expectedDocumentEpoch: number }) {
@@ -799,6 +816,7 @@ export class RunService {
         "conflict",
         "Reconcile this conversation's unresolved operation before deleting it.",
       );
+    this.documents.retire(chatId);
     const deleted = this.deps.repo.deleteConversation(chatId);
     this.branches.purgeRevoked();
     this.deps.events.emit("conversation.deleted", { chatId });
@@ -989,6 +1007,7 @@ export class RunService {
         agentProfile?: import("@aux/contracts").AgentProfile;
       }>;
       repo: Repo;
+      documentSnapshots: import("./document-snapshots.js").DocumentSnapshots;
       accountBudget?: import("./private-budget.js").PrivateBudgetClient;
       events: EventBus;
       pages: PageService;
@@ -1027,7 +1046,7 @@ export class RunService {
     },
   ) {
     this.startReceipts = new RunStartReceipts(deps.repo);
-    this.documents = new ConversationDocuments(deps.repo);
+    this.documents = new ConversationDocuments(deps.repo, deps.documentSnapshots);
     this.images = new ConversationImages(deps.repo, deps.artifacts, (chatId) =>
       deps.events.emit("conversation.context.changed", { chatId }),
     );

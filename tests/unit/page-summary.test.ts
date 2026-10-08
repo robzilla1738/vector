@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -193,6 +194,7 @@ async function fixture(privateTask = false) {
     });
   }
   const runs = new RunService({
+    documentSnapshots: new DocumentSnapshots(repo),
     repo,
     events,
     pages,

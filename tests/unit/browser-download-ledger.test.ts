@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -61,7 +62,7 @@ it("records a run-controlled native download and moves unchanged bytes to recove
   try {
     await writeFile(f.path, "report");
     await f.finish();
-    const evidence = new TaskEvidenceService(f.repo, f.events, undefined, undefined, f.downloads, f.trash);
+    const evidence = new TaskEvidenceService(f.repo, f.events, new DocumentSnapshots(f.repo), undefined, undefined, f.downloads, f.trash);
     const change = evidence.receipt(f.task.taskId).downloadChanges[0]!;
     expect(change).toMatchObject({ status: "completed", filename: "report.txt", cleanupAvailable: true });
     await evidence.undoDownloadChange({
@@ -88,7 +89,7 @@ it("refuses cleanup after a person edits the completed file", async () => {
     await writeFile(f.path, "report");
     await f.finish();
     await writeFile(f.path, "revised report");
-    const evidence = new TaskEvidenceService(f.repo, f.events, undefined, undefined, f.downloads, f.trash);
+    const evidence = new TaskEvidenceService(f.repo, f.events, new DocumentSnapshots(f.repo), undefined, undefined, f.downloads, f.trash);
     const change = evidence.receipt(f.task.taskId).downloadChanges[0]!;
     await expect(
       evidence.undoDownloadChange({
@@ -112,6 +113,7 @@ it("keeps interrupted downloads visible without cleanup authority", async () => 
     const change = new TaskEvidenceService(
       f.repo,
       f.events,
+      new DocumentSnapshots(f.repo),
       undefined,
       undefined,
       f.downloads,
@@ -131,7 +133,7 @@ it("recovers a Trash move after interruption before the receipt marker", async (
     await f.finish();
     await f.ledger.undo(f.repo.downloadStep("d1")!);
     expect(f.repo.downloadStep("d1")?.outcome?.undoneAt).toBeUndefined();
-    const evidence = new TaskEvidenceService(f.repo, f.events, undefined, undefined, f.downloads, f.trash);
+    const evidence = new TaskEvidenceService(f.repo, f.events, new DocumentSnapshots(f.repo), undefined, undefined, f.downloads, f.trash);
     const change = evidence.receipt(f.task.taskId).downloadChanges[0]!;
     await evidence.undoDownloadChange({
       taskId: f.task.taskId,
@@ -215,7 +217,7 @@ it("uses the native Profile download folder when it differs from the runtime fol
       createdAt: 1,
       endedAt: Date.now(),
     });
-    const evidence = new TaskEvidenceService(f.repo, f.events, undefined, undefined, f.downloads, f.trash);
+    const evidence = new TaskEvidenceService(f.repo, f.events, new DocumentSnapshots(f.repo), undefined, undefined, f.downloads, f.trash);
     const change = evidence
       .receipt(f.task.taskId)
       .downloadChanges.find((item) => item.filename === "native.txt")!;

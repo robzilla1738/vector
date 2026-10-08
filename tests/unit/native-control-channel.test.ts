@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, expect, it, vi } from "vitest";
 import {
@@ -70,6 +71,7 @@ async function fixture() {
   };
   const service = pages as PageService;
   const runs = new RunService({
+    documentSnapshots: new DocumentSnapshots(repo),
     turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined =>
       service.get(pageId),
     ),

@@ -1,7 +1,9 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { createHash } from "node:crypto";
 import { afterEach, expect, it, vi } from "vitest";
 import { EventBus, openDb, Repo, TaskEvidenceService, TaskService } from "@aux/runtime";
 import {
@@ -37,12 +39,12 @@ function taskFixture(repo: Repo) {
     objective: "Read the selected document",
     criteria: [{ criterionId: "document", description: "Review complete", verification: "manual" }],
   });
-  const evidence = new TaskEvidenceService(repo, events);
+  const evidence = new TaskEvidenceService(repo, events, new DocumentSnapshots(repo));
   return {
     task,
     evidence,
     add: (content: string) =>
-      evidence.importDocument({
+      evidence.importText({
         taskId: task.taskId,
         expectedRevision: 1,
         criterionId: "document",
@@ -76,8 +78,16 @@ it("seals evidence before commit, survives raw SQLite reopen and rejects copied 
   db = openDb(path);
   repo = new Repo(db, await initializeFieldCodec(db, secrets.native, "evidence"));
   try {
-    const service = new TaskEvidenceService(repo, new EventBus(repo));
-    expect(service.receipt(f.task.taskId).criteria[0]?.evidence[0]?.record.snapshot?.text).toBe(marker);
+    const service = new TaskEvidenceService(repo, new EventBus(repo), new DocumentSnapshots(repo));
+    const record = service.receipt(f.task.taskId).criteria[0]!.evidence[0]!.record;
+    expect(
+      service.readDocument({
+        taskId: f.task.taskId,
+        expectedRevision: 1,
+        evidenceId: record.evidenceId,
+        sha256: record.document!.sha256,
+      }).chunk.segments[0]?.text,
+    ).toBe(marker);
     const rows = db.prepare("SELECT seq,json FROM task_evidence ORDER BY seq").all() as {
       seq: number;
       json: string;
@@ -96,8 +106,28 @@ it("resumes a validated legacy conversion and never re-admits plaintext after it
   let repo = new Repo(db);
   const f = taskFixture(repo);
   const marker = "Legacy confidential document: c605a473";
-  f.add(marker);
-  f.add("Second legacy document");
+  const addLegacy = (text: string) => {
+    const record = f.add(text);
+    const legacy = {
+      ...record,
+      document: undefined,
+      source: {
+        filename: "evidence.txt",
+        sha256: createHash("sha256").update(text).digest("hex"),
+        byteLength: Buffer.byteLength(text),
+      },
+      snapshot: { title: "evidence.txt", text },
+    };
+    db.prepare("UPDATE task_evidence SET json=? WHERE evidence_id=?").run(
+      JSON.stringify(legacy),
+      record.evidenceId,
+    );
+    db.prepare("DELETE FROM document_snapshots WHERE owner_kind='task' AND document_id=?").run(
+      record.evidenceId,
+    );
+  };
+  addLegacy(marker);
+  addLegacy("Second legacy document");
   const original = db.prepare("SELECT seq,json FROM task_evidence ORDER BY seq").all() as {
     seq: number;
     json: string;
@@ -138,8 +168,18 @@ it("resumes a validated legacy conversion and never re-admits plaintext after it
     expect(taskEvidenceProtection(db)?.cursor).toBeNull();
     expect(encryptedFieldsForDatabase(db).task_evidence).toEqual(["json"]);
     expect(readFileSync(path).includes(Buffer.from(marker))).toBe(false);
-    const service = new TaskEvidenceService(repo, new EventBus(repo));
-    expect(service.receipt(f.task.taskId).criteria[0]?.evidence).toHaveLength(2);
+    const service = new TaskEvidenceService(repo, new EventBus(repo), new DocumentSnapshots(repo));
+    const migrated = service.receipt(f.task.taskId).criteria[0]!.evidence;
+    expect(migrated).toHaveLength(2);
+    expect(migrated[0]!.record).not.toHaveProperty("snapshot");
+    expect(
+      service.readDocument({
+        taskId: f.task.taskId,
+        expectedRevision: 1,
+        evidenceId: migrated[0]!.record.evidenceId,
+        sha256: migrated[0]!.record.source.sha256!,
+      }).chunk.segments[0]?.text,
+    ).toBe(marker);
     const prepared = vi.spyOn(db, "prepare");
     await initializeFieldCodec(db, secrets.native, "legacy-evidence");
     expect(prepared.mock.calls.every(([sql]) => sql.includes("aux_meta"))).toBe(true);

@@ -151,7 +151,7 @@ it("sanitizes protected article recall and authenticates the same Profile before
     result: { answer: "private answer" },
     createdAt: 1,
   });
-  const documents = new ConversationDocuments(repo);
+  const documents = new ConversationDocuments(repo, new DocumentSnapshots(repo));
   documents.add({
     chatId: "chat",
     filename: "retained.txt",
@@ -169,7 +169,7 @@ it("sanitizes protected article recall and authenticates the same Profile before
     objective: "Review the document",
     criteria: [{ criterionId: "criterion", description: "Document reviewed", verification: "manual" }],
   });
-  const document = new TaskEvidenceService(repo, events).importDocument({
+  const document = new TaskEvidenceService(repo, events, new DocumentSnapshots(repo)).importText({
     taskId: task.taskId,
     expectedRevision: 1,
     criterionId: "criterion",
@@ -183,7 +183,7 @@ it("sanitizes protected article recall and authenticates the same Profile before
   const backup = await createRuntimeBackup(repo, dataDir);
   const backupBytes = readFileSync(join(backup.path, "state.sqlite"));
   expect(backupBytes.includes("private source paragraph")).toBe(false);
-  expect(backupBytes.includes("retained.txt")).toBe(true);
+  expect(backupBytes.includes("retained.txt")).toBe(false);
   expect(backupBytes.includes("Protected body tail")).toBe(false);
   expect(backupBytes.includes("Opening text")).toBe(false);
   expect(backupBytes.includes("private evidence")).toBe(false);
@@ -208,24 +208,29 @@ it("sanitizes protected article recall and authenticates the same Profile before
       )
       .get(),
   ).toMatchObject({ revoked: 1 });
-  expect(new ConversationDocuments(restored).list("chat").attachments[0]!.excerpt).toContain("Opening text");
-  expect(new ConversationDocuments(restored).readReference(reference).content).toContain(
-    "Protected body tail",
-  );
+  expect(
+    new ConversationDocuments(restored, new DocumentSnapshots(restored)).list("chat").attachments[0]!.excerpt,
+  ).toContain("Opening text");
+  expect(
+    new ConversationDocuments(restored, new DocumentSnapshots(restored))
+      .read(reference.chatId, reference.attachmentId, reference.sha256)
+      .chunk.segments.map((segment) => segment.text)
+      .join(""),
+  ).toContain("Protected body tail");
   const evidence = restored.db
     .prepare("SELECT seq,json FROM task_evidence WHERE evidence_id=?")
     .get(document.evidenceId) as { seq: number; json: string };
   expect(
     JSON.parse(restored.revealRecordField("task_evidence", [evidence.seq], "json", evidence.json)),
   ).toMatchObject({
-    snapshot: { text: "private evidence" },
+    document: { completed: { textBytes: Buffer.byteLength("private evidence") } },
   });
   restored.close();
   const backupDbPath = join(backup.path, "state.sqlite");
   const tampered = new DatabaseSync(backupDbPath);
   tampered
-    .prepare("UPDATE kv SET value=json_set(value,'$[0].excerptCiphertext',?) WHERE key=?")
-    .run("auxenc:v3:tampered", "setting:conversationAttachments:chat");
+    .prepare("UPDATE kv SET value=? WHERE key=?")
+    .run(JSON.stringify("auxenc:v3:tampered"), "setting:conversationAttachments:chat");
   tampered.close();
   const manifestPath = join(backup.path, "manifest.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {

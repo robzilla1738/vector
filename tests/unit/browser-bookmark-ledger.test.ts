@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { expect, it, vi } from "vitest";
 import { BrowserBookmarkLedger } from "../../apps/runtime/src/services/browser-bookmark-ledger.js";
 import { EventBus, openDb, PageClaimStore, Repo, TaskEvidenceService, TaskService } from "@aux/runtime";
@@ -29,7 +30,7 @@ it("records a new bookmark and removes it through the owning task receipt", asyn
     expect(saved.saved).toBe(true);
     expect(await ledger.save("r1", "p1", "https://fixture.test/source", "Source")).toEqual({ saved: false });
     repo.saveRun({ ...repo.getRun("r1")!, status: "completed", endedAt: Date.now() });
-    const evidence = new TaskEvidenceService(repo, events);
+    const evidence = new TaskEvidenceService(repo, events, new DocumentSnapshots(repo));
     expect(evidence.receipt(task.taskId).bookmarkChanges).toMatchObject([{ status: "ok", title: "Source" }]);
     const review = evidence.receipt(task.taskId).undoReviews.find((item) => item.runId === "r1")!;
     const result = await evidence.undoRunBrowserChanges({
@@ -78,7 +79,7 @@ it("refuses to remove a bookmark whose title changed after the run", async () =>
     );
     repo.saveRun({ ...repo.getRun("r1")!, status: "completed", endedAt: Date.now() });
     repo.addBookmark("https://fixture.test/source", "Human edited title");
-    const evidence = new TaskEvidenceService(repo, events);
+    const evidence = new TaskEvidenceService(repo, events, new DocumentSnapshots(repo));
     await expect(
       evidence.undoBookmarkChange({
         taskId: task.taskId,
@@ -120,7 +121,7 @@ it("preserves a bookmark promoted to the reading list after the run", async () =
     const saved = await new BrowserBookmarkLedger(repo).save("r1", "p1", url, "Source");
     repo.saveRun({ ...repo.getRun("r1")!, status: "completed", endedAt: Date.now() });
     repo.setReadingList(url, true, "Source");
-    const evidence = new TaskEvidenceService(repo, events);
+    const evidence = new TaskEvidenceService(repo, events, new DocumentSnapshots(repo));
     await expect(
       evidence.undoBookmarkChange({
         taskId: task.taskId,
@@ -213,7 +214,7 @@ it("attributes a distinct bookmark when an older bookmark has the same creation 
           .sort(),
       ).toEqual(["https://fixture.test/other", "https://fixture.test/source"]);
       repo.saveRun({ ...repo.getRun("r1")!, status: "completed", endedAt: 1_700_000_000_000 });
-      const evidence = new TaskEvidenceService(repo, events);
+      const evidence = new TaskEvidenceService(repo, events, new DocumentSnapshots(repo));
       await evidence.undoBookmarkChange({
         taskId: task.taskId,
         expectedRevision: 1,

@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { expect, it } from "vitest";
 import { EventBus, openDb, Repo, TaskService, TaskEvidenceService } from "@aux/runtime";
 import { recordRunTabChange } from "../../apps/runtime/src/services/browser-change-ledger.js";
@@ -32,7 +33,7 @@ it("records model-opened and model-closed tabs under the owning task run", () =>
     } as PageTarget;
     const openId = recordRunTabChange(repo, "run-one", page, "tab.open");
     const closeId = recordRunTabChange(repo, "run-one", page, "tab.close");
-    const changes = new TaskEvidenceService(repo, events).receipt(task.taskId).tabChanges;
+    const changes = new TaskEvidenceService(repo, events, new DocumentSnapshots(repo)).receipt(task.taskId).tabChanges;
     expect(changes).toHaveLength(2);
     expect(changes.find((change) => change.stepId === openId)).toMatchObject({
       op: "tab.open",

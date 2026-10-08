@@ -1,10 +1,16 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
+  TaskDocumentImportParamsSchema,
+  TaskTextEvidenceParamsSchema,
+  type TaskDocumentReadParams,
+} from "@aux/contracts/document-api";
+import { withSecureDelete } from "../store/db.js";
+import { DocumentSnapshots, type DocumentSource } from "./document-snapshots.js";
+import {
   CriterionReviewParams,
   CriterionReviewSchema,
   CriterionVerificationSchema,
   EvidenceCaptureParams,
-  EvidenceDocumentParams,
   EvidenceNoteParams,
   TaskEvidenceSchema,
   TaskReconcileParams,
@@ -66,6 +72,7 @@ export class TaskEvidenceService {
   constructor(
     private repo: Repo,
     private events: EventBus,
+    private documents: DocumentSnapshots,
     private pages?: Pick<PageService, "observe" | "get" | "undoFormChange" | "undoOpenedTab">,
     private native?: NativeBridge,
     private downloadsDir?: string,
@@ -93,30 +100,105 @@ export class TaskEvidenceService {
     });
   }
 
-  importDocument(input: unknown): TaskEvidence {
-    const p = EvidenceDocumentParams.parse(input);
-    const task = this.current(p.taskId, p.expectedRevision, p.criterionId, true);
+  importText(input: unknown): TaskEvidence {
+    const p = TaskTextEvidenceParamsSchema.parse(input);
+    this.documentTask(p.taskId, p.expectedRevision, p.criterionId);
+    const evidenceId = randomUUID();
+    const now = Date.now();
+    let record!: TaskEvidence;
+    this.documents.writeText(
+      { kind: "task", ownerId: p.taskId, documentId: evidenceId },
+      p.filename,
+      p.content,
+      (document) => {
+        record = this.insertEvidence({
+          evidenceId,
+          taskId: p.taskId,
+          taskRevision: p.expectedRevision,
+          criterionId: p.criterionId,
+          kind: "document_snapshot",
+          actor: "desktop_user",
+          summary: `Document: ${p.filename}`,
+          recordedAt: now,
+          observedAt: now,
+          runSequence: this.runSequence(p.taskId),
+          source: { filename: p.filename, sha256: document.sha256, byteLength: document.completed.textBytes },
+          document,
+        });
+      },
+    );
+    this.notifyEvidence(record);
+    return record;
+  }
+
+  async importDocument(
+    input: unknown,
+    source: DocumentSource,
+    context: { signal: AbortSignal },
+  ): Promise<TaskEvidence> {
+    const p = TaskDocumentImportParamsSchema.parse(input);
+    this.documentTask(p.taskId, p.expectedRevision, p.criterionId);
+    const sequence = this.runSequence(p.taskId);
+    const evidenceId = randomUUID();
+    let record!: TaskEvidence;
+    const checkCurrent = () => {
+      this.documentTask(p.taskId, p.expectedRevision, p.criterionId);
+      if (this.runSequence(p.taskId) !== sequence)
+        throw new AuxError("conflict", "A task run started during document intake; import fresh evidence.");
+    };
+    const { selectionId, index, snapshotId, sourceSha256 } = p;
+    await this.documents.importSource(
+      { kind: "task", ownerId: p.taskId, documentId: evidenceId },
+      { selectionId, index, snapshotId, sourceSha256 },
+      source,
+      {
+        signal: context.signal,
+        checkCurrent,
+        publish: (document) => {
+          const now = Date.now();
+          record = this.insertEvidence({
+            evidenceId,
+            taskId: p.taskId,
+            taskRevision: p.expectedRevision,
+            criterionId: p.criterionId,
+            kind: "document_snapshot",
+            actor: "desktop_user",
+            summary: `Document: ${document.document.filename}`,
+            recordedAt: now,
+            observedAt: now,
+            runSequence: sequence,
+            source: {
+              filename: document.document.filename,
+              sha256: document.sha256,
+              byteLength: document.completed.textBytes,
+            },
+            document,
+          });
+        },
+      },
+    );
+    this.notifyEvidence(record);
+    return record;
+  }
+
+  readDocument(p: TaskDocumentReadParams) {
+    this.tasks.get(p.taskId);
+    const record = this.evidence(p.taskId, p.expectedRevision).find(
+      ({ record }) => record.evidenceId === p.evidenceId,
+    )?.record;
+    if (record?.kind !== "document_snapshot" || !record.document)
+      throw new AuxError("not_found", "Document evidence does not belong to this task revision.");
+    return this.documents.read(
+      { kind: "task", ownerId: p.taskId, documentId: p.evidenceId },
+      p.sha256,
+      p.cursor,
+    );
+  }
+
+  private documentTask(taskId: string, revision: number, criterionId: string) {
+    const task = this.current(taskId, revision, criterionId, true);
     if (task.state === "archived")
       throw new AuxError("conflict", "Restore this task before importing evidence");
-    const now = Date.now();
-    return this.saveEvidence({
-      evidenceId: randomUUID(),
-      taskId: p.taskId,
-      taskRevision: p.expectedRevision,
-      criterionId: p.criterionId,
-      kind: "document_snapshot",
-      actor: "desktop_user",
-      summary: `Document: ${p.filename}`,
-      recordedAt: now,
-      observedAt: now,
-      runSequence: this.runSequence(p.taskId),
-      source: {
-        filename: p.filename,
-        sha256: createHash("sha256").update(p.content, "utf8").digest("hex"),
-        byteLength: Buffer.byteLength(p.content, "utf8"),
-      },
-      snapshot: { title: p.filename, text: p.content },
-    });
   }
 
   async capture(input: unknown): Promise<TaskEvidence> {
@@ -1035,11 +1117,46 @@ export class TaskEvidenceService {
         record.criterionId !== row.criterion_id
       )
         throw new AuxError("conflict", "The original task evidence identity does not match its stored row.");
+      if (record.kind === "document_snapshot" && !record.document && record.snapshot) {
+        const content = record.snapshot.text;
+        if (
+          !record.source.filename ||
+          !record.source.sha256 ||
+          record.source.byteLength !== Buffer.byteLength(content)
+        )
+          throw new AuxError("conflict", "The legacy document evidence does not match its original source.");
+        this.repo.transaction(() =>
+          withSecureDelete(this.repo.db, () => {
+            this.documents.writeText(
+              { kind: "task", ownerId: taskId, documentId: record.evidenceId },
+              record.source.filename!,
+              content,
+              (document) => {
+                record.document = document;
+                delete record.snapshot;
+                this.repo.db
+                  .prepare("UPDATE task_evidence SET json=? WHERE seq=?")
+                  .run(
+                    this.repo.protectRecordField("task_evidence", [row.seq], "json", JSON.stringify(record)),
+                    row.seq,
+                  );
+              },
+              record.source.sha256,
+            );
+          }),
+        );
+      }
       return { seq: row.seq, record };
     });
   }
 
   private saveEvidence(record: TaskEvidence): TaskEvidence {
+    const validated = this.insertEvidence(record);
+    this.notifyEvidence(validated);
+    return validated;
+  }
+
+  private insertEvidence(record: TaskEvidence): TaskEvidence {
     const validated = TaskEvidenceSchema.parse(record);
     this.repo.transaction(() => {
       const inserted = this.repo.db
@@ -1053,10 +1170,10 @@ export class TaskEvidenceService {
         .prepare("UPDATE task_evidence SET json=? WHERE seq=?")
         .run(this.repo.protectRecordField("task_evidence", [seq], "json", JSON.stringify(validated)), seq);
     });
-    this.events.emit("task.evidence_recorded", {
-      taskId: validated.taskId,
-      evidenceId: validated.evidenceId,
-    });
     return validated;
+  }
+
+  private notifyEvidence(record: TaskEvidence) {
+    this.events.emit("task.evidence_recorded", { taskId: record.taskId, evidenceId: record.evidenceId });
   }
 }

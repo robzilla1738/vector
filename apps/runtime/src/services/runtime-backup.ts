@@ -1,9 +1,4 @@
 import {
-  DOCUMENT_BODY_PREFIX,
-  DOCUMENT_COLLECTION_PREFIX,
-  documentExcerptIdentity,
-} from "@aux/contracts/document-storage";
-import {
   currentSpaceMemory,
   omitDerivedAndSpaceMemory,
   retainSpaceMemory,
@@ -51,6 +46,7 @@ import type { Repo } from "../store/repo.js";
 import { sanitizePortablePageRecall } from "@aux/contracts/portable-page-recall";
 import { encryptedFieldsForDatabase, type FieldCodec } from "../store/field-codec.js";
 import { authenticateTaskEvidenceProtection } from "../store/task-evidence-protection.js";
+import { transformDocumentFields, protectLegacyDocumentCollections } from "../store/document-fields.js";
 import { minimizedObservationArtifactBytes } from "./observation-artifact-minimization.js";
 import {
   assertManagedRecoveryGeneration,
@@ -179,33 +175,7 @@ function authenticateProtectedCopy(db: DatabaseSync, cipher?: FieldCodec) {
       }
     }
   }
-  const prefix = `setting:${DOCUMENT_BODY_PREFIX}`;
-  const bodies = db
-    .prepare("SELECT key,value FROM kv WHERE substr(key,1,length(?))=?")
-    .all(prefix, prefix) as { key: string; value: string }[];
-  for (const body of bodies) {
-    const value: unknown = JSON.parse(body.value);
-    if (typeof value !== "string") throw new Error("The backup contains an invalid document body.");
-    cipher.decrypt("kv", JSON.stringify([body.key]), "value", value);
-  }
-  const collectionPrefix = `setting:${DOCUMENT_COLLECTION_PREFIX}`;
-  const collections = db
-    .prepare("SELECT key,value FROM kv WHERE substr(key,1,length(?))=?")
-    .all(collectionPrefix, collectionPrefix) as { key: string; value: string }[];
-  for (const collection of collections) {
-    const records: unknown = JSON.parse(collection.value);
-    if (!Array.isArray(records)) throw new Error("The backup contains an invalid document collection.");
-    for (const record of records) {
-      if (!record || typeof record !== "object" || !("excerptCiphertext" in record)) continue;
-      if (typeof record.attachmentId !== "string" || typeof record.excerptCiphertext !== "string")
-        throw new Error("The backup contains an invalid protected document preview.");
-      const identity = documentExcerptIdentity(
-        collection.key.slice(collectionPrefix.length),
-        record.attachmentId,
-      );
-      cipher.decrypt("kv", JSON.stringify(identity), "excerpt", record.excerptCiphertext);
-    }
-  }
+  transformDocumentFields(db, cipher, "authenticate");
 }
 
 function validateDatabase(path: string) {
@@ -355,6 +325,7 @@ export async function createRuntimeBackup(
     try {
       discardIncompleteDocumentSnapshots(sanitized);
       authenticateProtectedCopy(sanitized, repo.columnCipher);
+      if (repo.columnCipher) protectLegacyDocumentCollections(sanitized, repo.columnCipher);
       omitDerivedAndSpaceMemory(sanitized);
       sanitized.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
       sanitizePortablePageRecall(sanitized, repo.columnCipher);

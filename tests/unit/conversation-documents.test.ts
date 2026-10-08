@@ -1,3 +1,6 @@
+import { capturedDocument } from "../support/document-snapshot.js";
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
+import { createHash } from "node:crypto";
 import { expect, it, vi } from "vitest";
 import { openDb, Repo } from "@aux/runtime";
 import { documentBodyKey, documentBodyPrefix } from "@aux/contracts/document-storage";
@@ -11,7 +14,7 @@ it("converts every old inline record once and lists/toggles without decrypting p
   try {
     const cipher = await initializeFieldCodec(db, profileSecrets("documents").native, "documents");
     const repo = new Repo(db, cipher),
-      documents = new ConversationDocuments(repo);
+      documents = new ConversationDocuments(repo, new DocumentSnapshots(repo));
     const originals = Array.from({ length: 30 }, (_, i) => ({
       attachmentId: `doc-${i}`,
       filename: `${i}.txt`,
@@ -28,35 +31,60 @@ it("converts every old inline record once and lists/toggles without decrypting p
     const stored = JSON.stringify(repo.db.prepare("SELECT value FROM kv").all());
     expect(stored).not.toContain("Opening text");
     expect(stored).not.toContain("Confidential tail");
-    expect(
-      repo.getSetting<object[]>("conversationAttachments:chat")?.every((record) => !("content" in record)),
-    ).toBe(true);
+    expect(typeof repo.getSetting("conversationAttachments:chat")).toBe("string");
     const read = vi.spyOn(cipher, "decrypt");
     const references = documents.references("chat");
     documents.update("chat", references[0]!.attachmentId, { included: false });
     expect(documents.list("chat").attachments).toHaveLength(30);
-    expect(read.mock.calls).toHaveLength(30);
-    expect(read.mock.calls.every((args) => args[2] === "excerpt")).toBe(true);
-    expect(documents.readReference(references[29]!).content).toBe(originals[29]!.content);
-    expect(read.mock.calls.filter((args) => args[2] === "value")).toHaveLength(1);
-    const body = repo.getSetting<string>(documentBodyKey("chat", "doc-29"))!;
-    expect(body).not.toContain("Confidential tail");
-    repo.setSetting(documentBodyKey("chat", "doc-28"), body);
-    expect(() => documents.readReference(references[28]!)).toThrow();
-    // The former metadata shape is converted once, preserving its exact preview and immutable body.
-    documents.add({ chatId: "metadata", filename: "protected.txt", content: "Original preview text" });
-    const original = documents.list("metadata").attachments[0]!;
-    const savedRecord = repo.getSetting<Record<string, unknown>[]>("conversationAttachments:metadata")![0]!;
-    const { excerptCiphertext, ...metadata } = savedRecord;
-    const bodyBefore = repo.getSetting(documentBodyKey("metadata", original.attachmentId));
-    repo.setSetting("conversationAttachments:metadata", [{ ...metadata, excerpt: original.excerpt }]);
-    expect(documents.list("metadata").attachments[0]!.excerpt).toBe(original.excerpt);
-    expect(repo.getSetting(documentBodyKey("metadata", original.attachmentId))).toBe(bodyBefore);
-    const converted = repo.getSetting<Record<string, unknown>[]>("conversationAttachments:metadata")![0]!;
-    expect(converted).not.toHaveProperty("excerpt");
-    expect(JSON.stringify(converted)).not.toContain("Original preview text");
-    repo.setSetting("conversationAttachments:metadata", [{ ...converted, attachmentId: "foreign" }]);
-    expect(() => documents.list("metadata")).toThrow();
+    expect(read.mock.calls.every((args) => args[0] === "kv" || args[0] === "aux_meta")).toBe(true);
+    expect(documents.read("chat", "doc-29").chunk.segments[0]?.text).toBe(originals[29]!.content);
+    const legacy = {
+      ...references[29]!,
+      sha256: createHash("sha256").update(originals[29]!.content).digest("hex"),
+    };
+    expect(documents.referenceMetadata(legacy).sha256).toBe(references[29]!.sha256);
+    const segment = repo.db.prepare("SELECT json FROM document_segments WHERE document_id='doc-29'").get()!
+      .json;
+    repo.db.prepare("UPDATE document_segments SET json=? WHERE document_id='doc-28'").run(segment!);
+    expect(() => documents.read("chat", "doc-28")).toThrow();
+    // The previous protected-body layout migrates only when its exact body is selected.
+    const content = "Original preview text",
+      attachmentId = "previous",
+      filename = "protected.pdf";
+    const body = documentBodyKey("metadata", attachmentId);
+    const oldSha = createHash("sha256").update(content).digest("hex");
+    repo.setSetting(body, repo.protectRecordField("kv", [`setting:${body}`], "value", content));
+    repo.setSetting("conversationAttachments:metadata", [
+      {
+        attachmentId,
+        filename,
+        byteLength: Buffer.byteLength(content),
+        excerpt: content,
+        createdAt: 1,
+        included: true,
+        sha256: oldSha,
+      },
+    ]);
+    expect(documents.list("metadata").attachments[0]!.excerpt).toBe(content);
+    expect(repo.hasSetting(body)).toBe(true);
+    const converted = documents.referenceMetadata({ chatId: "metadata", attachmentId, sha256: oldSha });
+    expect(converted.document?.document.format).toBe("text");
+    expect(repo.hasSetting(body)).toBe(false);
+    expect(documents.read("metadata", attachmentId, oldSha).chunk.segments[0]?.text).toBe(content);
+    const protectedCollection = repo.getSetting("conversationAttachments:metadata");
+    repo.setSetting("conversationAttachments:metadata", [
+      {
+        attachmentId,
+        filename,
+        byteLength: content.length,
+        excerpt: content,
+        createdAt: 1,
+        included: true,
+        sha256: oldSha,
+      },
+    ]);
+    expect(() => documents.list("metadata")).toThrow(/plaintext legacy/);
+    repo.setSetting("conversationAttachments:metadata", protectedCollection);
     // An invalid collection is preserved, never silently filtered during conversion.
     const invalid = [...originals, { attachmentId: "broken" }];
     repo.setSetting("conversationAttachments:invalid", invalid);
@@ -71,7 +99,7 @@ it("converts every old inline record once and lists/toggles without decrypting p
 it("projects late relevant content from thirty retained sources within the actual byte budget", async () => {
   const repo = new Repo(openDb(":memory:"));
   try {
-    const documents = new ConversationDocuments(repo);
+    const documents = new ConversationDocuments(repo, new DocumentSnapshots(repo));
     for (let i = 0; i < 30; i++)
       documents.add({
         chatId: "chat",
@@ -82,10 +110,10 @@ it("projects late relevant content from thirty retained sources within the actua
       });
     const refs = documents.references("chat"),
       reads: string[] = [];
-    const read = documents.readReference.bind(documents);
-    vi.spyOn(documents, "readReference").mockImplementation((ref) => {
+    const read = documents.segments.bind(documents);
+    vi.spyOn(documents, "segments").mockImplementation((ref, signal, check) => {
       reads.push(ref.attachmentId);
-      return read(ref);
+      return read(ref, signal, check);
     });
     const message = await selectedDocumentEvidence(
       refs,
@@ -118,7 +146,7 @@ it("projects late relevant content from thirty retained sources within the actua
 it("cooperatively stops or refuses a forgotten source instead of publishing stale evidence", async () => {
   const repo = new Repo(openDb(":memory:"));
   try {
-    const documents = new ConversationDocuments(repo);
+    const documents = new ConversationDocuments(repo, new DocumentSnapshots(repo));
     for (let i = 0; i < 3; i++)
       documents.add({
         chatId: "chat",
@@ -128,7 +156,7 @@ it("cooperatively stops or refuses a forgotten source instead of publishing stal
       });
     const refs = documents.references("chat");
     const controller = new AbortController();
-    const reads = vi.spyOn(documents, "readReference");
+    const reads = vi.spyOn(documents, "segments");
     const pending = selectedDocumentEvidence(
       refs,
       documents,
@@ -156,13 +184,61 @@ it("cooperatively stops or refuses a forgotten source instead of publishing stal
       config: { chatId: "branched-chat", contextAttachmentRefs: [refs[1]!] },
     });
     documents.update("chat", refs[1]!.attachmentId, { removed: true });
-    expect(documents.readReference(refs[1]!).content).toBe("Evidence 1");
+    expect(documents.referenceMetadata(refs[1]!).removed).toBe(true);
+    const retained: string[] = [];
+    for await (const segment of documents.segments(refs[1]!, new AbortController().signal, () => {}))
+      retained.push(segment.text);
+    expect(retained.join("")).toBe("Evidence 1");
     documents.update("chat", refs[2]!.attachmentId, { removed: true });
     expect(repo.hasSetting(documentBodyKey("chat", refs[2]!.attachmentId))).toBe(false);
     repo.deleteConversation("chat");
     expect(repo.settingKeys(documentBodyPrefix("chat"))).toEqual([]);
-    expect(() => documents.readReference(refs[1]!)).toThrow(/removed/);
+    expect(() => documents.referenceMetadata(refs[1]!)).toThrow(/removed/);
   } finally {
+    repo.close();
+  }
+});
+
+it("publishes a native chat capture atomically and refuses a changed original Space", async () => {
+  const repo = new Repo(openDb(":memory:"));
+  const snapshots = new DocumentSnapshots(repo);
+  const documents = new ConversationDocuments(repo, snapshots);
+  try {
+    const captured = capturedDocument();
+    const input = { chatId: "native-chat", ...captured.input };
+    repo.insertWorkspace("original-space", "Original", 1);
+    repo.insertWorkspace("other-space", "Other", 2);
+    repo.setSetting("conversationWorkspace:native-chat", "original-space");
+    const context = { signal: new AbortController().signal, checkCurrent: () => {} };
+    const result = await documents.importDocument("native-chat", input, captured.source, context);
+    expect(result.attachments[0]?.document?.document.snapshotId).toBe(input.snapshotId);
+    let acknowledge!: () => void, finish!: () => void;
+    const started = new Promise<void>((resolve) => {
+      acknowledge = resolve;
+    });
+    const released = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const pending = documents.importDocument(
+      "native-chat",
+      input,
+      {
+        read: async () => {
+          acknowledge();
+          await released;
+          return captured.source.read();
+        },
+      },
+      context,
+    );
+    await started;
+    repo.setSetting("conversationWorkspace:native-chat", "other-space");
+    finish();
+    await expect(pending).rejects.toMatchObject({ code: "ref_stale" });
+    expect(documents.list("native-chat").attachments).toHaveLength(1);
+    expect(repo.db.prepare("SELECT count(*) n FROM document_snapshots").get()).toEqual({ n: 1 });
+  } finally {
+    await snapshots.close();
     repo.close();
   }
 });

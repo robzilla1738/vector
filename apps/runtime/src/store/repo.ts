@@ -1,4 +1,8 @@
-import { documentBodyPrefix } from "@aux/contracts/document-storage";
+import {
+  documentBodyPrefix,
+  documentCollectionKey,
+  documentCollectionProofKey,
+} from "@aux/contracts/document-storage";
 import { MentionRefsSchema } from "@aux/contracts";
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync, StatementSync } from "node:sqlite";
@@ -24,6 +28,7 @@ import { AuxError } from "@aux/contracts";
 import { redactSettledRunInvocations } from "@aux/contracts/forgotten-run-invocations";
 import { commitRelaxed, kvGet, kvSet, withSecureDelete } from "./db.js";
 import type { FieldCodec } from "./field-codec.js";
+import { authenticateDocumentCollection } from "./document-fields.js";
 
 const now = () => Date.now();
 const J = JSON.stringify;
@@ -875,6 +880,16 @@ export class Repo {
         let snapshots: unknown;
         try {
           snapshots = this.getSetting<unknown>(key);
+          if (prefix === "conversationAttachments:") {
+            authenticateDocumentCollection(
+              this.db,
+              this.columnCipher,
+              `setting:${key}`,
+              typeof snapshots === "string",
+            );
+            if (typeof snapshots === "string")
+              snapshots = JSON.parse(this.revealRecordField("kv", [`setting:${key}`], "value", snapshots));
+          }
         } catch (error) {
           if (error instanceof SyntaxError) continue;
           throw error;
@@ -1029,6 +1044,10 @@ export class Repo {
       if (artifact) artifactPaths.push(artifact.path);
     }
     this.transaction(() => {
+      this.q("DELETE FROM document_snapshots WHERE owner_kind='conversation' AND owner_id=?").run(chatId);
+      this.q("DELETE FROM aux_meta WHERE key=?").run(
+        documentCollectionProofKey(`setting:${documentCollectionKey(chatId)}`),
+      );
       withSecureDelete(this.db, () =>
         this.q(`DELETE FROM safety_approval_requests WHERE turn_id IN (${owned})`).run(chatId),
       );

@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { expect, it, vi } from "vitest";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -286,6 +287,7 @@ it("funds scoped external summaries on the original session and joins a held dis
       destination: "https://ai-gateway.vercel.sh",
     }));
   const runs = new RunService({
+    documentSnapshots: new DocumentSnapshots(repo),
     repo,
     events,
     pages,

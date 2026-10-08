@@ -1,13 +1,15 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { setImmediate } from "node:timers/promises";
 import { z } from "zod";
 import { AuxError } from "@aux/contracts";
 import {
   DOCUMENT_MAX_CHUNK_BYTES,
+  DOCUMENT_MAX_SEGMENT_BYTES,
   DOCUMENT_MAX_FRAMED_BYTES,
   DOCUMENT_MAX_TEXT_BYTES,
   DOCUMENT_TEXT_DIGEST_PREFIX,
   DocumentImportParamsSchema,
+  DocumentMetadataSchema,
   DocumentReadResultSchema,
   DocumentSegmentSchema,
   encodeDocumentSegment,
@@ -44,6 +46,12 @@ const identity = (owner: DocumentOwner, snapshotId: string) => [
   snapshotId,
 ];
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
+const SnapshotRecordSchema = DocumentSnapshotSchema.extend({
+  legacyTextSha256: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+});
 const CursorSchema = z.tuple([
   z.string().regex(/^[a-f0-9]{64}$/),
   z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
@@ -52,12 +60,82 @@ const CursorSchema = z.tuple([
 
 /** Each import owns its cancellation and unpublished rows; only a complete immutable manifest is readable. */
 export class DocumentSnapshots {
-  private pending = new Map<AbortController, Promise<DocumentSnapshot>>();
+  private pending = new Map<
+    AbortController,
+    { owner: DocumentOwner; operation: Promise<DocumentSnapshot> }
+  >();
   private closing?: Promise<void>;
   private closed = false;
   private cleanupFailures: unknown[] = [];
 
   constructor(private readonly repo: Repo) {}
+
+  /** Direct text and authenticated legacy conversion use the same located, protected storage. */
+  writeText(
+    owner: DocumentOwner,
+    filename: string,
+    content: string,
+    publish: (snapshot: DocumentSnapshot) => void,
+    legacyTextSha256?: string,
+  ): DocumentSnapshot {
+    if (this.closed) throw new AuxError("cancelled", "Document intake is closed.");
+    if (content.includes("\0") || /[\uD800-\uDFFF]/u.test(content))
+      throw new AuxError(
+        "invalid_params",
+        "Document text must contain valid Unicode without null characters.",
+      );
+    const bytes = Buffer.from(content);
+    if (bytes.length > DOCUMENT_MAX_TEXT_BYTES)
+      throw new AuxError("invalid_params", "The document exceeds the captured text limit.");
+    const sourceSha256 = createHash("sha256").update(bytes).digest("hex");
+    if (legacyTextSha256 !== undefined && legacyTextSha256 !== sourceSha256)
+      throw new AuxError("ref_stale", "The legacy document no longer matches its original text snapshot.");
+    const document = DocumentMetadataSchema.parse({
+      snapshotId: randomUUID(),
+      filename,
+      format: "text",
+      sourceSha256,
+      sourceBytes: bytes.length,
+      extractorVersion: "aux-document-v1",
+      warnings: [],
+    });
+    const key = identity(owner, document.snapshotId);
+    const textHash = createHash("sha256").update(DOCUMENT_TEXT_DIGEST_PREFIX);
+    let count = 0;
+    let line = 1;
+    let offset = 0;
+    return this.repo.transaction(() => {
+      this.repo.db
+        .prepare(
+          "INSERT INTO document_snapshots(owner_kind,owner_id,document_id,snapshot_id,state) VALUES(?,?,?,?,'staging')",
+        )
+        .run(...key);
+      for (let start = 0; start < bytes.length;) {
+        let end = Math.min(bytes.length, start + DOCUMENT_MAX_SEGMENT_BYTES);
+        while (end < bytes.length && (bytes[end]! & 0xc0) === 0x80) end--;
+        const part = bytes.subarray(start, end);
+        const segment: DocumentSegment = {
+          locator: { kind: "text", line, offset },
+          text: part.toString("utf8"),
+        };
+        textHash.update(encodeDocumentSegment(segment));
+        this.saveSegment(key, count++, segment);
+        for (const byte of part) {
+          if (byte === 10) {
+            line++;
+            offset = 0;
+          } else offset++;
+        }
+        start = end;
+      }
+      const completed = { textSha256: textHash.digest("hex"), textBytes: bytes.length, segmentCount: count };
+      const captured = { document, completed };
+      const snapshot = { ...captured, sha256: digest(documentSnapshotDigestInput(captured)) };
+      this.publishSnapshot(key, snapshot, legacyTextSha256);
+      publish(snapshot);
+      return snapshot;
+    });
+  }
 
   importSource(
     owner: DocumentOwner,
@@ -68,11 +146,14 @@ export class DocumentSnapshots {
     if (this.closed) return Promise.reject(new AuxError("cancelled", "Document intake is closed."));
     const controller = new AbortController();
     const signal = AbortSignal.any([context.signal, controller.signal]);
-    const operation = this.capture(owner, DocumentImportParamsSchema.parse(input), source, {
-      ...context,
-      signal,
-    });
-    this.pending.set(controller, operation);
+    // Register ownership before invoking a source reader, which may synchronously retire its owner.
+    const operation = Promise.resolve().then(() =>
+      this.capture(owner, DocumentImportParamsSchema.parse(input), source, {
+        ...context,
+        signal,
+      }),
+    );
+    this.pending.set(controller, { owner, operation });
     void operation.then(
       () => this.pending.delete(controller),
       () => this.pending.delete(controller),
@@ -139,14 +220,7 @@ export class DocumentSnapshots {
             if (framedBytes > DOCUMENT_MAX_FRAMED_BYTES || textBytes > DOCUMENT_MAX_TEXT_BYTES)
               throw new AuxError("invalid_params", "The selected document exceeds the extracted text limit.");
             textHash.update(frame);
-            const row = [...key, ordinal++];
-            const sealed = this.repo.protectRecordField(
-              "document_segments",
-              row,
-              "json",
-              JSON.stringify(segment),
-            );
-            this.repo.db.prepare("INSERT INTO document_segments VALUES(?,?,?,?,?,?)").run(...row, sealed);
+            this.saveSegment(key, ordinal++, segment);
           }
         });
         if (result.completed) {
@@ -161,19 +235,7 @@ export class DocumentSnapshots {
           check();
           this.repo.transaction(() => {
             check();
-            const manifest = this.repo.protectRecordField(
-              "document_snapshots",
-              key,
-              "manifest",
-              JSON.stringify(snapshot),
-            );
-            const updated = this.repo.db
-              .prepare(
-                "UPDATE document_snapshots SET state='published',manifest=? WHERE owner_kind=? AND owner_id=? AND document_id=? AND snapshot_id=? AND state='staging'",
-              )
-              .run(manifest, ...key);
-            if (updated.changes !== 1)
-              throw new AuxError("ref_stale", "The original document import was retired.");
+            this.publishSnapshot(key, snapshot);
             context.publish(snapshot);
             check();
           });
@@ -216,7 +278,7 @@ export class DocumentSnapshots {
       )
       .get(owner.kind, owner.ownerId, owner.documentId) as SnapshotRow | undefined;
     if (!row) throw new AuxError("ref_stale", "The original saved document is unavailable.");
-    const snapshot = DocumentSnapshotSchema.parse(
+    const { legacyTextSha256, ...snapshot } = SnapshotRecordSchema.parse(
       JSON.parse(
         this.repo.revealRecordField(
           "document_snapshots",
@@ -229,7 +291,9 @@ export class DocumentSnapshots {
     if (
       snapshot.document.snapshotId !== row.snapshot_id ||
       snapshot.sha256 !== digest(documentSnapshotDigestInput(snapshot)) ||
-      (expectedSha256 !== undefined && snapshot.sha256 !== expectedSha256)
+      (expectedSha256 !== undefined &&
+        snapshot.sha256 !== expectedSha256 &&
+        legacyTextSha256 !== expectedSha256)
     )
       throw new AuxError("ref_stale", "The saved document no longer matches its original identity.");
     return { snapshot, manifest: row.manifest };
@@ -316,20 +380,51 @@ export class DocumentSnapshots {
     );
   }
 
+  private saveSegment(key: string[], ordinal: number, segment: DocumentSegment) {
+    const row = [...key, ordinal];
+    const sealed = this.repo.protectRecordField("document_segments", row, "json", JSON.stringify(segment));
+    this.repo.db.prepare("INSERT INTO document_segments VALUES(?,?,?,?,?,?)").run(...row, sealed);
+  }
+
+  private publishSnapshot(key: string[], snapshot: DocumentSnapshot, legacyTextSha256?: string) {
+    const manifest = this.repo.protectRecordField(
+      "document_snapshots",
+      key,
+      "manifest",
+      JSON.stringify({ ...snapshot, ...(legacyTextSha256 ? { legacyTextSha256 } : {}) }),
+    );
+    const updated = this.repo.db
+      .prepare(
+        "UPDATE document_snapshots SET state='published',manifest=? WHERE owner_kind=? AND owner_id=? AND document_id=? AND snapshot_id=? AND state='staging'",
+      )
+      .run(manifest, ...key);
+    if (updated.changes !== 1) throw new AuxError("ref_stale", "The original document import was retired.");
+  }
+
   remove(owner: DocumentOwner) {
     this.repo.db
       .prepare("DELETE FROM document_snapshots WHERE owner_kind=? AND owner_id=? AND document_id=?")
       .run(owner.kind, owner.ownerId, owner.documentId);
   }
 
+  cancelOwner(kind: DocumentOwner["kind"], ownerId: string) {
+    for (const [controller, pending] of this.pending)
+      if (pending.owner.kind === kind && pending.owner.ownerId === ownerId) controller.abort();
+  }
+
   close(): Promise<void> {
     if (this.closing) return this.closing;
     this.closed = true;
     for (const controller of this.pending.keys()) controller.abort();
-    this.closing = Promise.allSettled(this.pending.values()).then(() => {
-      if (this.cleanupFailures.length)
-        throw new AggregateError(this.cleanupFailures, "Unpublished document imports could not be retired.");
-    });
+    this.closing = Promise.allSettled([...this.pending.values()].map(({ operation }) => operation)).then(
+      () => {
+        if (this.cleanupFailures.length)
+          throw new AggregateError(
+            this.cleanupFailures,
+            "Unpublished document imports could not be retired.",
+          );
+      },
+    );
     return this.closing;
   }
 }

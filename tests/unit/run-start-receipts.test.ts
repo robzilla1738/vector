@@ -1,3 +1,4 @@
+import { DocumentSnapshots } from "../../apps/runtime/src/services/document-snapshots.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -49,6 +50,7 @@ function fixture(contentMemory?: ConstructorParameters<typeof RunService>[0]["co
   const turnMentions = fixtureTurnMentions(() => undefined);
   const makeRuns = () =>
     new RunService({
+    documentSnapshots: new DocumentSnapshots(repo),
       repo,
       events,
       pages,
