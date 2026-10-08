@@ -349,6 +349,25 @@ it("forgets saved article answers through later turns, artifact citations, and r
     });
   invocation("settled-invocation", "completed", "verified");
   invocation("uncertain-invocation", "running", "unknown");
+  const beforeImage = JSON.stringify({ before: "original human file", after: "reviewed file change" });
+  h.repo.db
+    .prepare(
+      "INSERT INTO coding_file_receipts(receipt_id,run_id,action_id,created_at,status,receipt,summary) VALUES(?,?,?,?,?,?,?)",
+    )
+    .run("retained-undo", "followup", "reviewed-write", 1, "confirmed", beforeImage, "{}");
+  h.repo.db
+    .prepare("INSERT INTO coder_worktree_receipts(action_id,run_id,state,body) VALUES(?,?,?,?)")
+    .run("unresolved-integration", "followup", "uncertain", "original integration identity");
+  h.repo.saveModelCall({
+    callId: "retained-invoice",
+    runId: "followup",
+    role: "agent",
+    modelId: "test-model",
+    durationMs: 1,
+    costUsd: 0.25,
+    costEstimated: false,
+    createdAt: Date.now(),
+  });
   save("citation", { contextArtifactIds: ["derived-report"], context: "private answer followup" });
   save("retry", { retryOfRunId: "citation", context: "private answer citation" });
   save("unrelated", { context: "ordinary independent context" });
@@ -401,6 +420,15 @@ it("forgets saved article answers through later turns, artifact citations, and r
   });
   expect(h.repo.getInvocation("settled-invocation")?.error).toBeUndefined();
   expect(h.repo.getInvocation("uncertain-invocation")?.inputs).toHaveProperty("privateText");
+  expect(
+    h.repo.db.prepare("SELECT receipt FROM coding_file_receipts WHERE receipt_id=?").get("retained-undo"),
+  ).toMatchObject({ receipt: beforeImage });
+  expect(
+    h.repo.db
+      .prepare("SELECT state,body FROM coder_worktree_receipts WHERE action_id=?")
+      .get("unresolved-integration"),
+  ).toMatchObject({ state: "uncertain", body: "original integration identity" });
+  expect(h.repo.listModelCalls("followup")).toMatchObject([{ callId: "retained-invoice", costUsd: 0.25 }]);
   invocation("uncertain-invocation", "completed", "verified");
   expect(h.repo.getInvocation("uncertain-invocation")?.inputs).toEqual({
     taskId: "task-one",

@@ -579,7 +579,7 @@ export class RunService {
     return { chatId, sources: dedupeConversationSources(sources) };
   }
 
-  /** Withdraw saved answers and run-owned artifacts when any selected article is deleted. */
+  /** Withdraw article-derived answers while retaining financial and effect recovery records. */
   async redactForgottenArticleOutputs(workspaceId: string): Promise<number> {
     const rows = this.deps.repo.db.prepare("SELECT run_id AS runId FROM runs").all() as { runId: string }[];
     const runs = rows
@@ -657,18 +657,12 @@ export class RunService {
           .run(runId);
         for (const table of [
           "artifacts",
-          "model_calls",
           "events",
           "steps",
           "results",
           "datasets",
           "spans",
           "response_metadata",
-          "coder_worktree_receipts",
-          "coding_repl_calls",
-          "coding_repl_cells",
-          "coding_file_receipts",
-          "coding_process_receipts",
           "safety_run_grants",
           "safety_run_authority",
         ])
