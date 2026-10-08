@@ -160,6 +160,16 @@ function termPosition(text: string, token: string): number {
   return -1;
 }
 
+export function contentMemoryExcerpt(text: string, query: string): string {
+  const normalized = text.toLocaleLowerCase();
+  const tokens = terms(query.slice(0, 200)).slice(0, 8);
+  const token = tokens.find((word) => termPosition(normalized, word) >= 0);
+  const at = token ? termPosition(normalized, token) : 0;
+  const start = Math.max(0, at - 70),
+    end = Math.min(text.length, start + 240);
+  return `${start ? "…" : ""}${text.slice(start, end)}${end < text.length ? "…" : ""}`;
+}
+
 /** Page text is encrypted before SQLite sees it. Search structures exist only in bounded process memory. */
 export class ContentMemoryStore {
   private keyPromise?: Promise<Buffer>;
@@ -1469,32 +1479,18 @@ export class ContentMemoryStore {
             return sum + rarity * (termPosition(haystack.title, token) >= 0 ? 3 : 1);
           }, 0) *
           (0.5 + hits.length / tokens.length);
-        return { body, haystack, score, hits };
+        return { body, score };
       })
       .sort((a, b) => b.score - a.score || b.body.capturedAt - a.body.capturedAt);
     const matches = [];
-    for (const { body, haystack, hits } of ranked
+    for (const { body } of ranked
       .filter(({ body }) => this.readable(body))
       .slice(0, Math.max(1, Math.min(limit, 20)))) {
       check();
       const original = await this.readIndexedPage(body);
       check();
       if (!original) continue;
-      const at = Math.max(
-        0,
-        termPosition(
-          haystack.text,
-          hits.find((token) => termPosition(haystack.text, token) >= 0) ?? hits[0]!,
-        ),
-      );
-      const start = Math.max(0, at - 70),
-        end = Math.min(original.text.length, start + 240);
-      matches.push(
-        this.match(
-          original,
-          `${start ? "…" : ""}${original.text.slice(start, end)}${end < original.text.length ? "…" : ""}`,
-        ),
-      );
+      matches.push(this.match(original, contentMemoryExcerpt(original.text, query)));
     }
     return matches;
   }

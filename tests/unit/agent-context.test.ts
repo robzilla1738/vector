@@ -1,5 +1,5 @@
 import { annotateToolFailure, codingResumeSummary } from "../../apps/runtime/dist/agent/loop/context.js";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,6 +18,7 @@ import {
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
+  vi.useRealTimers();
   for (const fn of cleanup.splice(0).reverse()) fn();
 });
 
@@ -405,40 +406,169 @@ describe("runAgentLoop — context integration", () => {
     expect(transcript.load("run-1")).toEqual([constraint]);
     expect(await runAgentLoop({ ...options, contextTokens: 200_000 })).toMatchObject({ kind: "done" });
     expect(admissions).toBe(1);
+    expect(
+      await runAgentLoop({
+        ...options,
+        contextTokens: 200_000,
+        deps: {
+          recall: async () => async () => ({
+            hits: [
+              { title: "Large optional source", url: "https://example.com", text: "extra".repeat(100_000) },
+            ],
+            admit: () => {
+              throw new Error("Oversized optional recall must be omitted");
+            },
+          }),
+        },
+      }),
+    ).toMatchObject({ kind: "done" });
     expect(transcript.load("run-1")[0]).toEqual(constraint);
   });
 
-  it("injects auto-recall once as a durable user message after the task", async () => {
+  it("rehydrates recall per provider boundary and on resume without persisting snippets", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);
-    const model = new MockModelClient().scriptToolSteps([{ text: "done" }]);
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "s1", toolName: "act", input: actStep }] },
+      { text: "done" },
+    ]);
+    const requests: ModelMessage[][] = [];
+    let preparations = 0,
+      readers = 0,
+      admissions = 0;
+    let text = "expired snippet";
     const deps: LoopToolDeps = {
-      recall: async (query) => {
+      recall: async (query, context) => {
+        preparations++;
         expect(query).toBe("do the task");
-        return [{ title: "Note", url: "https://example.com", text: "saved snippet" }];
+        expect(context.signal.aborted).toBe(false);
+        return async () => {
+          readers++;
+          const original = text;
+          return {
+            hits: [{ title: "Note", url: "https://example.com", text: original }],
+            admit: () => original === text,
+          };
+        };
+      },
+      act: async () => ({ output: "clicked" }),
+    };
+    const wrapped = {
+      toolCallStep: async (request: Parameters<typeof model.toolCallStep>[0]) => {
+        requests.push(request.messages);
+        return model.toolCallStep(request);
       },
     };
-    const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model });
+    const outcome = await runAgentLoop({
+      ...baseOpts(transcript, deps),
+      model: wrapped,
+      beforeModelCall: () => {
+        if (++admissions === 1) text = "fresh snippet";
+        return undefined;
+      },
+    });
     expect(outcome).toMatchObject({ kind: "done" });
-    const messages = transcript.load("run-1");
-    expect(messages[1]).toMatchObject({ role: "user" });
-    expect(String(messages[1]!.content)).toMatch(/Auto-recalled memory.*Note — https:\/\/example\.com/s);
-    // a second invocation does not re-inject (messages.length > 1 now)
-    let calls = 0;
-    const again = await runAgentLoop({
+    expect(preparations).toBe(1);
+    expect(readers).toBe(2);
+    expect(JSON.stringify(requests[0])).not.toContain("snippet");
+    expect(JSON.stringify(requests[1])).toContain("fresh snippet");
+    expect(JSON.stringify(transcript.load("run-1"))).not.toContain("snippet");
+    requests.length = 0;
+    await runAgentLoop({ ...baseOpts(transcript, deps), model: wrapped });
+    expect(preparations).toBe(2);
+    expect(JSON.stringify(requests[0])).toContain("fresh snippet");
+    expect(JSON.stringify(transcript.load("run-1"))).not.toContain("Auto-recalled");
+  });
+
+  it("waits at most 150 ms initially and bounds later readers while accepting ready recall", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const { transcript } = fixture();
+    transcript.append("run-1", [userTask]);
+    let release!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const requests: ModelMessage[][] = [];
+    let reads = 0;
+    let slowSignal: AbortSignal | undefined;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "s1", toolName: "act", input: actStep }] },
+      { toolCalls: [{ toolCallId: "s2", toolName: "act", input: actStep }] },
+      { text: "done" },
+    ]);
+    const pending = runAgentLoop({
       ...baseOpts(transcript, {
         recall: async () => {
-          calls++;
-          return [{ title: "x", url: "y", text: "z" }];
+          await ready;
+          return async (signal) => {
+            if (++reads > 1) {
+              slowSignal = signal;
+              return new Promise(() => {});
+            }
+            return {
+              hits: [{ title: "Note", url: "https://example.com", text: "late snippet" }],
+              admit: () => true,
+            };
+          };
+        },
+        act: async () => {
+          release();
+          await ready;
+          return { output: "clicked" };
         },
       }),
-      model: new MockModelClient().scriptToolSteps([{ text: "again" }]),
+      model: {
+        toolCallStep: async (request) => {
+          requests.push(request.messages);
+          return model.toolCallStep(request);
+        },
+      },
     });
-    expect(again).toMatchObject({ kind: "done" });
+    await vi.advanceTimersByTimeAsync(149);
+    expect(requests).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(requests).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(150);
+    expect(slowSignal?.aborted).toBe(true);
+    expect(await pending).toMatchObject({ kind: "done" });
+    expect(JSON.stringify(requests[0])).not.toContain("late snippet");
+    expect(JSON.stringify(requests[1])).toContain("late snippet");
+    expect(JSON.stringify(requests[2])).not.toContain("late snippet");
+    expect(JSON.stringify(transcript.load("run-1"))).not.toContain("late snippet");
+  });
+
+  it("cancels outstanding recall when the loop stops", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const { transcript } = fixture();
+    transcript.append("run-1", [userTask]);
+    const controller = new AbortController();
+    let lifetime!: AbortSignal, boundary!: AbortSignal;
+    let calls = 0;
+    const pending = runAgentLoop({
+      ...baseOpts(transcript, {
+        recall: async (_query, context) => {
+          lifetime = context.signal;
+          return async (signal) => {
+            boundary = signal;
+            return new Promise(() => {});
+          };
+        },
+      }),
+      signal: controller.signal,
+      model: {
+        toolCallStep: async () => {
+          calls++;
+          throw new Error("must not dispatch");
+        },
+      },
+    });
+    await vi.advanceTimersByTimeAsync(10);
+    controller.abort();
+    expect(await pending).toMatchObject({ kind: "failed", error: { code: "cancelled" } });
+    expect(lifetime.aborted).toBe(true);
+    expect(boundary.aborted).toBe(true);
     expect(calls).toBe(0);
-    expect(
-      transcript.load("run-1").filter((m) => String(m.content).includes("Auto-recalled memory")),
-    ).toHaveLength(1);
+    expect(transcript.load("run-1")).toEqual([userTask]);
   });
 
   it("recall failure never blocks the run", async () => {

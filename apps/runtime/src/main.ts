@@ -21,7 +21,7 @@ import type { Services } from "./api/methods/context.js";
 import { ConnectionRecovery } from "./connection-recovery.js";
 import { readRuntimeIdentity } from "./api/runtime-identity.js";
 import { BrowsingMemory } from "./services/browsing-memory.js";
-import { ContentMemoryStore } from "./services/content-memory.js";
+import { ContentMemoryStore, contentMemoryExcerpt } from "./services/content-memory.js";
 import { MemoryPipeline } from "./services/memory-pipeline.js";
 import { createMcpTransportProvider } from "./services/mcp-transport-provider.js";
 import { McpOAuthService } from "./services/mcp-oauth.js";
@@ -40,6 +40,7 @@ import { registerNativeDeviceConfirmation } from "./services/native-device-confi
 import { resumeApproval } from "./services/approval-continuation.js";
 import { registerNativeReceiptChannel } from "./services/native-receipt-channel.js";
 import { BrowserEgress } from "./safety/browser-egress.js";
+import { MEMORY_WINDOW } from "./safety/egress-projection.js";
 import { browserEgressApproval } from "./safety/browser-egress-approval.js";
 /**
  * Aux runtime entry point.
@@ -1947,13 +1948,129 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const prepared = await agentLoop.prepareWebSearch!(query, ctx);
       return "park" in prepared ? prepared : prepared.execute();
     },
-    // Auto-recall (06-Z): search protected page memory under the run's workspace policy.
-    recall: async (query, ctx) => {
-      const ws = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
-      if (!ws || !runtimeServices.contentMemory) return [];
-      const hits = await runtimeServices.contentMemory.search(ws, query, 5);
-      for (const hit of hits) browserEgress?.protect(ctx.runId, hit.snippet, "memory");
-      return hits.map((hit) => ({ title: hit.title, url: hit.url, text: hit.snippet }));
+    recall: async (_query, ctx) => {
+      ctx.signal.throwIfAborted();
+      const empty = async () => ({ hits: [], admit: () => false });
+      const original = repo.getRun(ctx.runId);
+      const workspaceId = original?.config?.contextWorkspaceId;
+      const memory = runtimeServices.contentMemory;
+      if (
+        !original ||
+        original.status !== "running" ||
+        !workspaceId ||
+        !memory ||
+        original.config?.privateTask ||
+        repo.conversationPrivateTask(ctx.threadId)
+      )
+        return empty;
+      const query = original.goal;
+      const configuration = JSON.stringify(original.config);
+      const source = runtimeServices.turnMentions.capture(ctx.runId);
+      const policy = memory.policy(workspaceId);
+      const workspace = runtimeServices.tasks.workspaceMemory(workspaceId);
+      const browsingPolicy = runtimeServices.browsingMemory.policy(workspaceId);
+      if (!policy.enabled || !workspace.enabled || !browsingPolicy.enabled) return empty;
+      let invalidated = false;
+      const unsubscribe = events.subscribe((event) => {
+        if (
+          event.payload.workspaceId === workspaceId &&
+          (event.type === "workspace.memory.updated" ||
+            event.type === "workspace.browsingMemory.updated" ||
+            (event.type === "workspace.contentMemory.updated" && event.payload.policyChanged))
+        )
+          invalidated = true;
+      });
+      ctx.signal.addEventListener("abort", unsubscribe, { once: true });
+      const current = () => {
+        if (
+          invalidated ||
+          ctx.signal.aborted ||
+          !repo.getWorkspace(workspaceId) ||
+          !runtimeServices.turnMentions.has(ctx.runId)
+        )
+          return false;
+        const run = repo.getRun(ctx.runId);
+        if (
+          run?.status !== "running" ||
+          run.goal !== query ||
+          JSON.stringify(run.config) !== configuration ||
+          repo.conversationPrivateTask(ctx.threadId) ||
+          runtimeServices.turnMentions.capture(ctx.runId) !== source
+        )
+          return false;
+        if (original.config?.taskId) {
+          const task = repo.db
+            .prepare("SELECT revision FROM tasks WHERE task_id=?")
+            .get(original.config.taskId);
+          if (task?.revision !== original.config.taskRevision) return false;
+        }
+        return (
+          runtimeServices.tasks.workspaceMemory(workspaceId).revision === workspace.revision &&
+          JSON.stringify(memory.policy(workspaceId)) === JSON.stringify(policy) &&
+          JSON.stringify(runtimeServices.browsingMemory.policy(workspaceId)) ===
+            JSON.stringify(browsingPolicy)
+        );
+      };
+      const token = original.config?.nativeTurnContext;
+      const window = token && native.turnSourceContext ? await native.turnSourceContext(token) : undefined;
+      if (!current()) return empty;
+      const sourceRow = repo.db.prepare(`SELECT ciphertext,expires_at,captured_at FROM content_memory
+        WHERE memory_id=? AND profile_id=? AND workspace_id=?`);
+      const stamp = (memoryId: string) => {
+        const row = sourceRow.get(memoryId, env.AUX_BROWSER_PROFILE_ID!, workspaceId) as
+          { ciphertext: string; expires_at: number; captured_at: number } | undefined;
+        return row &&
+          row.expires_at > Date.now() &&
+          row.captured_at > Date.now() - policy.retentionDays * 86_400_000
+          ? createHash("sha256").update(row.ciphertext).digest("hex")
+          : undefined;
+      };
+      // Retain only encrypted-source identities; excerpts are hydrated afresh for each provider request.
+      const references = (await memory.search(workspaceId, query, 5, ctx.signal)).flatMap(({ memoryId }) => {
+        const version = stamp(memoryId);
+        return version ? [{ memoryId, version }] : [];
+      });
+      if (!current()) return empty;
+      return async (signal) => {
+        const absent = { hits: [], admit: () => false };
+        if (!current() || signal.aborted) return absent;
+        if (window && token && native.turnSourceContext) {
+          const latest = await native.turnSourceContext(token);
+          if (
+            latest.windowId !== window.windowId ||
+            latest.layout?.window.activeSpaceId !== window.layout?.window.activeSpaceId ||
+            !latest.layout?.shared.spaces.some(
+              (space) =>
+                space.id === latest.layout?.window.activeSpaceId &&
+                !space.archived &&
+                space.workspaceId === workspaceId,
+            )
+          )
+            return absent;
+        }
+        if (!current() || signal.aborted) return absent;
+        const hits: { title: string; url: string; text: string }[] = [];
+        const used: typeof references = [];
+        for (const ref of references) {
+          if (stamp(ref.memoryId) !== ref.version) continue;
+          const page = await memory.get(workspaceId, ref.memoryId);
+          if (!current() || signal.aborted) return absent;
+          if (!page || stamp(ref.memoryId) !== ref.version) continue;
+          const text = contentMemoryExcerpt(page.text, query);
+          if (text.normalize("NFKC").replace(/\s+/gu, " ").length < MEMORY_WINDOW) continue;
+          hits.push({ title: page.title, url: page.url, text });
+          used.push(ref);
+        }
+        return {
+          hits,
+          admit: () => {
+            if (!current() || signal.aborted || used.some((ref) => stamp(ref.memoryId) !== ref.version))
+              return false;
+            for (const hit of hits) browserEgress?.protect(ctx.runId, hit.text, "memory");
+            return true;
+          },
+        };
+      };
     },
     // 06-X history_search / memory_search — the same projections the shell uses.
     historySearch: async (query, limit, context) => {

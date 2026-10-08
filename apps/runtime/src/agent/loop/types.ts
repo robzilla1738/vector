@@ -56,6 +56,13 @@ export type LoopToolResult =
 
 /** Only an admitted independent read may dispatch concurrently; late refusal must not park another call. */
 export type PreparedRead = { execute: () => Promise<{ output: unknown }> } | { park: LoopPark };
+/** Ephemeral evidence; admit rechecks its sources synchronously just before provider dispatch. */
+export interface RecallProjection {
+  hits: { title: string; url: string; text: string }[];
+  admit: () => boolean;
+}
+export type PreparedRecall = (signal: AbortSignal) => Promise<RecallProjection>;
+
 export interface WebToolContext {
   runId: string;
   threadId: string;
@@ -118,11 +125,11 @@ export interface LoopToolDeps {
   canRecoverDialogValue?: (label: string) => boolean;
   /** Explicit requested label from a goal that names a dialog-only value. */
   dialogAnswerLabel?: () => string | undefined;
-  /** Auto-recall (06-Z): query content memory for the task — hits land as one durable user message. */
+  /** Prepare source references once; rehydrate only at bounded provider boundaries. Never persist excerpts. */
   recall?: (
     query: string,
-    ctx: { runId: string; threadId: string; turnId: string },
-  ) => Promise<{ title: string; url: string; text: string }[]>;
+    ctx: { runId: string; threadId: string; turnId: string; signal: AbortSignal },
+  ) => Promise<PreparedRecall>;
   /** Session/workspace file roots — fs tools stay inside them (S4 upload roots). */
   fsRoots?: () => string[];
   pendingPark?: () => LoopPark | undefined;
