@@ -21,10 +21,10 @@ index 9c78880..f83a4c8 100644
      "//chrome/common/importer:aux_firefox_profile",
 diff --git a/chrome/browser/ui/aux/evidence_documents.cc b/chrome/browser/ui/aux/evidence_documents.cc
 new file mode 100644
-index 0000000..4e0cc6e
+index 0000000..93fc28b
 --- /dev/null
 +++ b/chrome/browser/ui/aux/evidence_documents.cc
-@@ -0,0 +1,452 @@
+@@ -0,0 +1,453 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -94,9 +94,9 @@ index 0000000..4e0cc6e
 +    if (format != "text" || !value.line) {
 +      return std::nullopt;
 +    }
-+    result.Set("kind", "text")
-+        .Set("line", static_cast<double>(value.line))
-+        .Set("offset", static_cast<double>(value.offset));
++    result.Set("kind", "text");
++    result.Set("line", static_cast<double>(value.line));
++    result.Set("offset", static_cast<double>(value.offset));
 +    return result;
 +  }
 +  if (locator.is_pdf()) {
@@ -105,10 +105,10 @@ index 0000000..4e0cc6e
 +        !value.block) {
 +      return std::nullopt;
 +    }
-+    result.Set("kind", "pdf")
-+        .Set("page", static_cast<double>(value.page))
-+        .Set("block", static_cast<double>(value.block))
-+        .Set("offset", static_cast<double>(value.offset));
++    result.Set("kind", "pdf");
++    result.Set("page", static_cast<double>(value.page));
++    result.Set("block", static_cast<double>(value.block));
++    result.Set("offset", static_cast<double>(value.offset));
 +    return result;
 +  }
 +  const auto& value = *locator.get_docx();
@@ -118,17 +118,17 @@ index 0000000..4e0cc6e
 +      (value.table == 0) != (value.column == 0)) {
 +    return std::nullopt;
 +  }
-+  result.Set("kind", "docx")
-+      .Set("part", value.part)
-+      .Set("paragraph", static_cast<double>(value.paragraph))
-+      .Set("offset", static_cast<double>(value.offset));
++  result.Set("kind", "docx");
++  result.Set("part", value.part);
++  result.Set("paragraph", static_cast<double>(value.paragraph));
++  result.Set("offset", static_cast<double>(value.offset));
 +  if (value.heading_level) {
 +    result.Set("headingLevel", value.heading_level);
 +  }
 +  if (value.table) {
-+    result.Set("table", static_cast<double>(value.table))
-+        .Set("row", static_cast<double>(value.row))
-+        .Set("column", static_cast<double>(value.column));
++    result.Set("table", static_cast<double>(value.table));
++    result.Set("row", static_cast<double>(value.row));
++    result.Set("column", static_cast<double>(value.column));
 +  }
 +  if (value.note_id) {
 +    int64_t note;
@@ -290,11 +290,11 @@ index 0000000..4e0cc6e
 +    Unreadable(std::move(capture.failure));
 +    return;
 +  }
-+  metadata_.Set("snapshotId", snapshot_id_)
-+      .Set("filename", filename_)
-+      .Set("sourceSha256", capture.sha256)
-+      .Set("sourceBytes", static_cast<double>(capture.size))
-+      .Set("extractorVersion", "aux-document-v1");
++  metadata_.Set("snapshotId", snapshot_id_);
++  metadata_.Set("filename", filename_);
++  metadata_.Set("sourceSha256", capture.sha256);
++  metadata_.Set("sourceBytes", static_cast<double>(capture.size));
++  metadata_.Set("extractorVersion", "aux-document-v1");
 +  extractor_ =
 +      content::ServiceProcessHost::Launch<document::mojom::DocumentExtractor>(
 +          content::ServiceProcessHost::Options()
@@ -350,8 +350,8 @@ index 0000000..4e0cc6e
 +      return;
 +    }
 +    base::DictValue item;
-+    item.Set("code", WarningName(warning->code))
-+        .Set("count", static_cast<double>(warning->count));
++    item.Set("code", WarningName(warning->code));
++    item.Set("count", static_cast<double>(warning->count));
 +    if (warning->story != Story::kNone) {
 +      item.Set("story", StoryName(warning->story));
 +    }
@@ -363,14 +363,14 @@ index 0000000..4e0cc6e
 +    }
 +    warnings.Append(std::move(item));
 +  }
-+  metadata_.Set("format", FormatName(value.format))
-+      .Set("warnings", std::move(warnings));
++  metadata_.Set("format", FormatName(value.format));
++  metadata_.Set("warnings", std::move(warnings));
 +  if (value.page_count) {
 +    metadata_.Set("pageCount", static_cast<double>(value.page_count));
 +  }
-+  completed_.Set("textSha256", value.completed->text_sha256)
-+      .Set("textBytes", static_cast<double>(value.completed->text_bytes))
-+      .Set("segmentCount", static_cast<double>(value.completed->segment_count));
++  completed_.Set("textSha256", value.completed->text_sha256);
++  completed_.Set("textBytes", static_cast<double>(value.completed->text_bytes));
++  completed_.Set("segmentCount", static_cast<double>(value.completed->segment_count));
 +  cursors_.reserve(value.chunk_count);
 +  for (uint32_t index = 0; index < value.chunk_count; ++index) {
 +    cursors_.push_back(base::Uuid::GenerateRandomV4().AsLowercaseString());
@@ -423,11 +423,12 @@ index 0000000..4e0cc6e
 +    return;
 +  }
 +  base::DictValue result;
-+  result.Set("kind", "chunk")
-+      .Set("document", metadata_.Clone())
-+      .Set("chunk", base::DictValue()
-+                        .Set("index", static_cast<double>(chunk->index))
-+                        .Set("segments", std::move(segments)));
++  base::DictValue chunk_value;
++  chunk_value.Set("index", static_cast<double>(chunk->index));
++  chunk_value.Set("segments", std::move(segments));
++  result.Set("kind", "chunk");
++  result.Set("document", metadata_.Clone());
++  result.Set("chunk", std::move(chunk_value));
 +  if (chunk->final_chunk) {
 +    result.Set("completed", completed_.Clone());
 +  } else {
