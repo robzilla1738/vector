@@ -1,0 +1,242 @@
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index 66a85fa..10c91c5 100644
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -1821,6 +1821,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+   registry->RegisterBooleanPref(aux::kHttpsUpgradesEnabled, true);
+   registry->RegisterBooleanPref(aux::kKeepRuntimeInBackgroundPref, false);
+   registry->RegisterIntegerPref(aux::kMemorySaverMinutesPref, 30);
++  registry->RegisterDictionaryPref(aux::kDismissedDownloadsPref);
+   registry->RegisterListPref(aux::kHealthSamplesPref);
+   registry->RegisterIntegerPref(aux::kHealthSessionsPref, 0);
+   registry->RegisterIntegerPref(aux::kHealthCrashesPref, 0);
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index 704ebf9..5ab6766 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -84,7 +84,7 @@ AuxMethodRegistry::AuxMethodRegistry() {
+                   "keepRuntimeInBackground",
+                   "defaultPageZoom", "memorySaverGet", "memorySaverSet",
+                   "startupPreferences",
+-                  "downloadsSnapshot", "controlDownload", "retryDownload"});
++                  "downloadsSnapshot", "dismissDownloads", "controlDownload", "retryDownload"});
+   register_shell(AuxShellMethodGroup::kSurfaces,
+                  {"setStageVisible", "pictureInPicture", "omnibox.start", "omnibox.stop", "omnibox.open", "preloadNavigation", "auth.confirm"});
+   register_shell(AuxShellMethodGroup::kExtensions,
+diff --git a/chrome/browser/ui/aux/methods/page_controls_methods.cc b/chrome/browser/ui/aux/methods/page_controls_methods.cc
+index 979ae4a..2550f02 100644
+--- a/chrome/browser/ui/aux/methods/page_controls_methods.cc
++++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
+@@ -52,6 +52,7 @@
+ #include "chrome/browser/ui/aux/runtime_host.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/aux/shell_events.h"
+ #include "chrome/browser/ui/zoom/chrome_zoom_level_prefs.h"
+ #include "chrome/browser/ui/aux/profile_search_engine.h"
+ #include "chrome/browser/ui/aux/result_preview.h"
+@@ -540,6 +541,12 @@ void WebUIBrowserUI::HandleAuxPageControlsRequest(
+                             "", "");
+     return;
+   }
++  if (method == "dismissDownloads") {
++    base::DictValue result;
++    result.Set("removed", aux::DismissDownloads(browser_->GetProfile(), (*list)[0].GetList()));
++    std::move(callback).Run(true, *base::WriteJson(result), "", "");
++    return;
++  }
+   if (method == "downloadsSnapshot") {
+     base::ListValue result;
+     content::DownloadManager::DownloadVector items;
+@@ -547,6 +554,7 @@ void WebUIBrowserUI::HandleAuxPageControlsRequest(
+       manager->GetAllDownloads(&items);
+     }
+     for (download::DownloadItem* item : items) {
++      if (aux::DownloadIsDismissed(browser_->GetProfile(), item)) continue;
+       base::DictValue row;
+       row.Set("id", item->GetGuid());
+       if (!item->GetURL().is_empty())
+diff --git a/chrome/browser/ui/aux/profile_prefs.h b/chrome/browser/ui/aux/profile_prefs.h
+index 55e5d68..b81f75e 100644
+--- a/chrome/browser/ui/aux/profile_prefs.h
++++ b/chrome/browser/ui/aux/profile_prefs.h
+@@ -15,6 +15,7 @@ inline constexpr char kQuickAskShortcutBindingsPref[] = "aux.quick_ask_shortcut_
+ inline constexpr char kQuickAskShortcutEnabledPref[] = "aux.quick_ask_shortcut_enabled";
+ inline constexpr char kKeepRuntimeInBackgroundPref[] = "aux.keep_runtime_in_background";
+ inline constexpr char kMemorySaverMinutesPref[] = "aux.memory_saver_minutes";
++inline constexpr char kDismissedDownloadsPref[] = "aux.dismissed_downloads";
+ }  // namespace aux
+ 
+ #endif  // CHROME_BROWSER_UI_AUX_PROFILE_PREFS_H_
+diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
+index cb99025..5c412a5 100644
+--- a/chrome/browser/ui/aux/shell_events.cc
++++ b/chrome/browser/ui/aux/shell_events.cc
+@@ -44,6 +44,8 @@
+ #include "chrome/browser/notifications/notification_display_service_factory.h"
+ #include "chrome/browser/notifications/notification_handler.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "components/prefs/scoped_user_pref_update.h"
+ #include "chrome/browser/ui/aux/health_recorder.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
+ #include "chrome/browser/ui/aux/readable_capture.h"
+@@ -532,30 +534,42 @@ const base::DictValue* FindSpace(const base::DictValue& root,
+   return nullptr;
+ }
+ 
+-class DownloadSignals : public content::DownloadManager::Observer,
++class DownloadSignals : public ProfileObserver,
++                        public content::DownloadManager::Observer,
+                         public download::DownloadItem::Observer,
+                         public base::SupportsUserData::Data {
+  public:
+   explicit DownloadSignals(Profile* profile) : profile_(profile) {
++    profile_observation_.Observe(profile);
+     if (auto* manager = profile->GetDownloadManager()) {
+       manager_observation_ = manager;
+       manager->AddObserver(this);
+       Scan(manager);
+     }
+   }
+-  ~DownloadSignals() override {
+-    ForgetItems();
+-    if (manager_observation_) {
+-      manager_observation_->RemoveObserver(this);
+-      manager_observation_ = nullptr;
+-    }
+-  }
++  ~DownloadSignals() override { Retire(); }
++  void OnProfileWillBeDestroyed(Profile*) override { Retire(); }
+ 
+   void OnDownloadCreated(content::DownloadManager* manager,
+                          download::DownloadItem* item) override {
+     ObserveItem(item, !manager->IsManagerInitialized());
+   }
+   void OnDownloadUpdated(download::DownloadItem* item) override { Publish(item); }
++  void OnDownloadRemoved(download::DownloadItem* item) override {
++    const std::string id = item->GetGuid();
++    item->RemoveObserver(this);
++    std::erase(observed_, item);
++    completed_.erase(id);
++    {
++      ScopedDictPrefUpdate dismissed(profile_->GetPrefs(), kDismissedDownloadsPref);
++      dismissed->Remove(id);
++    }
++    base::ListValue ids;
++    ids.Append(id);
++    base::DictValue payload;
++    payload.Set("ids", std::move(ids));
++    EmitDict(profile_, "onDownloadsRemoved", std::move(payload));
++  }
+   void OnDownloadDestroyed(download::DownloadItem* item) override {
+     std::erase(observed_, item);
+     completed_.erase(item->GetGuid());
+@@ -565,13 +579,20 @@ class DownloadSignals : public content::DownloadManager::Observer,
+       Scan(manager_observation_);
+     }
+   }
+-  void ManagerGoingDown(content::DownloadManager* manager) override {
++  void ManagerGoingDown(content::DownloadManager*) override { Retire(); }
++
++ private:
++  void Retire() {
+     ForgetItems();
+-    manager->RemoveObserver(this);
+-    manager_observation_ = nullptr;
++    if (manager_observation_) {
++      manager_observation_->RemoveObserver(this);
++      manager_observation_ = nullptr;
++    }
++    completed_.clear();
++    profile_observation_.Reset();
++    profile_ = nullptr;
+   }
+ 
+- private:
+   void Scan(content::DownloadManager* manager) {
+     content::DownloadManager::DownloadVector items;
+     manager->GetAllDownloads(&items);
+@@ -603,6 +624,11 @@ class DownloadSignals : public content::DownloadManager::Observer,
+     observed_.clear();
+   }
+   void Publish(download::DownloadItem* item) {
++    if (DownloadIsDismissed(profile_, item)) return;
++    if (profile_->GetPrefs()->GetDict(kDismissedDownloadsPref).contains(item->GetGuid())) {
++      ScopedDictPrefUpdate dismissed(profile_->GetPrefs(), kDismissedDownloadsPref);
++      dismissed->Remove(item->GetGuid());
++    }
+     const std::string filename = item->GetFileNameToReportUser().AsUTF8Unsafe();
+     base::DictValue payload;
+     payload.Set("id", item->GetGuid());
+@@ -667,6 +693,7 @@ class DownloadSignals : public content::DownloadManager::Observer,
+     }
+   }
+ 
++  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
+   raw_ptr<Profile> profile_;
+   raw_ptr<content::DownloadManager> manager_observation_ = nullptr;
+   std::vector<raw_ptr<download::DownloadItem>> observed_;
+@@ -905,6 +932,40 @@ bool ShowRunAttention(Profile* profile, const std::string& kind,
+   return true;  // Enqueued; OS permission can still deny display. The shell keeps a fallback.
+ }
+ 
++bool DownloadIsDismissed(Profile* profile, download::DownloadItem* item) {
++  return item->GetState() != download::DownloadItem::IN_PROGRESS &&
++         !item->CanResume() &&
++         profile->GetPrefs()->GetDict(kDismissedDownloadsPref)
++             .FindBool(item->GetGuid()).value_or(false);
++}
++
++base::ListValue DismissDownloads(Profile* profile, const base::ListValue& ids) {
++  base::ListValue removed;
++  auto* manager = profile->GetDownloadManager();
++  if (!manager) return removed;
++  {
++    ScopedDictPrefUpdate dismissed(profile->GetPrefs(), kDismissedDownloadsPref);
++    std::set<std::string> seen;
++    for (const auto& value : ids) {
++      const std::string& id = value.GetString();
++      if (!seen.insert(id).second) continue;
++      auto* item = manager->GetDownloadByGuid(id);
++      if (item && (item->GetState() == download::DownloadItem::IN_PROGRESS ||
++                   item->CanResume())) continue;
++      if (!item && !dismissed->FindBool(id).value_or(false)) continue;
++      // Remove() deletes interrupted partial files. Shelf dismissal must preserve them.
++      dismissed->Set(id, true);
++      removed.Append(id);
++    }
++  }
++  if (!removed.empty()) {
++    base::DictValue payload;
++    payload.Set("ids", removed.Clone());
++    EmitDict(profile, "onDownloadsRemoved", std::move(payload));
++  }
++  return removed;
++}
++
+ void StartShellEvents(Profile* profile) {
+   if (!profile) {
+     return;
+diff --git a/chrome/browser/ui/aux/shell_events.h b/chrome/browser/ui/aux/shell_events.h
+index efb2a88..2ed6357 100644
+--- a/chrome/browser/ui/aux/shell_events.h
++++ b/chrome/browser/ui/aux/shell_events.h
+@@ -18,11 +18,17 @@ namespace content {
+ class WebContents;
+ }
+ 
++namespace download {
++class DownloadItem;
++}
++
+ namespace aux {
+ 
+ // Browser-originated shell events. The Aux WebUI subscribes and forwards each
+ // payload to the renderer. Payloads are JSON text.
+ void StartShellEvents(Profile* profile);
++bool DownloadIsDismissed(Profile* profile, download::DownloadItem* item);
++base::ListValue DismissDownloads(Profile* profile, const base::ListValue& ids);
+ // Only fixed browser-owned copy reaches macOS; opaque IDs route a click back to
+ // the exact run after the renderer rechecks its durable state.
+ bool ShowRunAttention(Profile* profile, const std::string& kind,

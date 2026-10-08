@@ -34,3 +34,8 @@ aux/0033-private-filter-retirement.patch
 aux/0034-runtime-capabilities-preview-routing.patch
 aux/0035-embedded-input-admission.patch
 aux/0036-browser-owned-find-zoom.patch
+aux/0037-pdf-document-export.patch
+aux/0038-native-download-dismissal.patch
+aux/0039-native-history.patch
+aux/0040-native-document-selections.patch
+aux/0041-private-memory-saver-capabilities.patch

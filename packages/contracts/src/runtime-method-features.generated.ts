@@ -38,8 +38,6 @@ export const RuntimeMethodFeatures = {
   "agent.inlineAssist.draft": feature4,
   "agent.inlineAssist.apply": feature4,
   "agent.inlineAssist.cancel": feature4,
-  "spaces.create": "spaces",
-  "spaces.update": "spaces",
   "workspaces.contentMemory.semanticSearch": feature5,
   "workspaces.contentMemory.embeddingModels": feature5,
   "vault.status": feature6,

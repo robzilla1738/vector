@@ -1223,14 +1223,22 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           return featureAvailabilityFor([]);
         })
     : Promise.resolve(featureAvailabilityFor([]));
-  if (!privateSession && nativeIdentity && native.spaceBindingsSet) {
+  if (!privateSession && nativeIdentity && native.spaceBindingsSet && native.organizationSnapshot) {
     nativeSpaceBindings = nativeIdentity
       .then((identity) => {
-        if (closed || !identity.methods.includes("native.spaceBindingsSet")) return;
+        if (
+          closed ||
+          !identity.methods.includes("native.spaceBindingsSet") ||
+          !identity.methods.includes("native.organizationSnapshot")
+        )
+          return;
         return installNativeSpaceBindings(
           repo,
           events,
-          { spaceBindingsSet: (input) => native.spaceBindingsSet!(input) },
+          {
+            spaceBindingsSet: (input) => native.spaceBindingsSet!(input),
+            organizationSnapshot: () => native.organizationSnapshot!(),
+          },
           (error) => {
             console.error(
               "Native Space publication failed",
@@ -1840,6 +1848,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         throw new AuxError("cancelled", "The original model run or window retired.");
       const source = runtimeServices.turnMentions.capture(runId);
       const config = JSON.stringify(original.config);
+      const checkOwner = () => {
+        const current = repo.getRun(runId);
+        if (
+          !current ||
+          current.status !== "running" ||
+          JSON.stringify(current.config) !== config ||
+          runtimeServices.turnMentions.capture(runId) !== source
+        )
+          throw new AuxError("cancelled", "The original model source changed during admission.");
+      };
       const threadId = original.config.chatId ?? runId;
       const request = EffectRequestSchema.parse({
         profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
@@ -1880,15 +1898,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         turnId: runId,
         threadId,
         runId,
+        configuredModelDestination: destination,
+        checkOwner,
       });
-      const current = repo.getRun(runId);
-      if (
-        !current ||
-        current.status !== "running" ||
-        JSON.stringify(current.config) !== config ||
-        runtimeServices.turnMentions.capture(runId) !== source
-      )
-        throw new AuxError("cancelled", "The original model source changed during admission.");
+      checkOwner();
     },
     prepareWaitingPhrase: (input) =>
       runtimeServices.runs.prepareWaitingPhrase({

@@ -72,6 +72,10 @@ const RESULTS: Record<string, unknown> = {
       "undoToken": "00000000-0000-4000-8000-000000000000"
     }
   },
+  "historyInvoke": {
+    "method": "history.list",
+    "result": []
+  },
   "organizationSnapshot": {
     "revision": 0,
     "layout": null
@@ -312,6 +316,9 @@ const RESULTS: Record<string, unknown> = {
     "managed": false
   },
   "downloadsSnapshot": [],
+  "dismissDownloads": {
+    "removed": []
+  },
   "tabAudio": {},
   "pictureInPicture": {
     "active": false
@@ -360,7 +367,11 @@ const RESULTS: Record<string, unknown> = {
   "saveStoredArtifact": null,
   "openPluginDirectory": null,
   "pickEvidenceImage": null,
-  "pickEvidenceDocument": null,
+  "pickEvidenceDocuments": null,
+  "readEvidenceDocument": {
+    "filename": "/tmp/aux-mock",
+    "content": "mock-content"
+  },
   "agentConfig": {
     "command": "mock-command",
     "args": [],
