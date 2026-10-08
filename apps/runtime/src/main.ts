@@ -1,3 +1,5 @@
+import { PrivateRuntimeSession } from "./services/private-session.js";
+import type { HostCapabilities } from "@aux/contracts/host-methods";
 import { modelCapabilities } from "@aux/contracts/model-registry";
 import { coderWorktreePolicy } from "./services/coder-worktree-policy.js";
 import { memoryContentSensitivityReason } from "@aux/contracts/memory-sensitivity";
@@ -222,9 +224,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // `.env` in the data dir, then in the cwd — real environment variables
   // always win. The README promised this; nothing loaded it before.
   const configured = normalizeAuxEnvironment(processEnv);
+  const privateSession = PrivateRuntimeSession.fromEnvironment(configured);
   const env =
     configured.AUX_LOAD_DOTENV === "0" ? configured : loadDotEnv(processEnv, dotEnvCandidates(processEnv));
-  const config = loadConfig(env);
+  const config = loadConfig(env, { ephemeral: !!privateSession });
   const bashScratch = join(config.artifactsDir, "bash-tmp");
   mkdirSync(bashScratch, { recursive: true });
   const developmentIdentity = developmentPeerIdentity();
@@ -232,7 +235,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   if (config.apiPort !== 0 && (await loopbackPortTaken(config.apiPort))) {
     await takeoverOrDecline(config.dataDir, config.apiPort, developmentIdentity);
   }
-  await applyPendingRuntimeRestore(config.dataDir, config.dbPath, env.AUX_BROWSER_PROFILE_ID);
+  if (!privateSession)
+    await applyPendingRuntimeRestore(config.dataDir, config.dbPath, env.AUX_BROWSER_PROFILE_ID);
   bootPhase("restore");
   const db = openDb(config.dbPath);
   bootPhase("database");
@@ -240,6 +244,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let hostSocket: HostSocketTransport | null = null;
   let releaseHostStartup: (() => void) | undefined;
   let columnCipher: FieldCodec | undefined;
+  let bootstrapIdentity: HostCapabilities | undefined;
   try {
     if (env.AUX_HOST_SOCKET) {
       const generation = env.AUX_HOST_GENERATION ?? "";
@@ -249,7 +254,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       channel = startup.channel;
       releaseHostStartup = startup.release;
       const native = new ChannelNativeBridge(channel);
-      columnCipher = await initializeFieldCodec(db, native, env.AUX_BROWSER_PROFILE_ID ?? "");
+      if (privateSession) {
+        bootstrapIdentity = await native.capabilities();
+        privateSession.admit(bootstrapIdentity);
+      } else {
+        columnCipher = await initializeFieldCodec(db, native, env.AUX_BROWSER_PROFILE_ID ?? "");
+      }
     }
   } catch (error) {
     db.close();
@@ -258,6 +268,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   }
   bootPhase("protection");
   const repo = new Repo(db, columnCipher);
+  try {
+    privateSession?.seedSettings(repo);
+  } catch (error) {
+    db.close();
+    hostSocket?.close();
+    throw error;
+  }
   let closed = false;
   let cliInstallTail = Promise.resolve();
   const cliInstallWork = new Set<Promise<unknown>>();
@@ -399,15 +416,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       }),
     artifacts: () => new ArtifactStore(config.artifactsDir, repo, events),
     zap: () => new ZapService(repo, native, env.AUX_BROWSER_PROFILE_ID ?? "default"),
-    tracer: () => new Tracer(repo.db, { traceDir: join(config.dataDir, "traces") }),
+    tracer: () =>
+      new Tracer(repo.db, privateSession ? undefined : { traceDir: join(config.dataDir, "traces") }),
     responses: () => new ResponseStore({ repo, events, artifacts: runtimeServices.artifacts }),
     vault: () => new VaultService(repo, native),
     contentMemory: () =>
-      native.available() && env.AUX_BROWSER_PROFILE_ID
+      !privateSession && native.available() && env.AUX_BROWSER_PROFILE_ID
         ? new ContentMemoryStore(repo, native, env.AUX_BROWSER_PROFILE_ID, Date.now, events)
         : undefined,
     memoryPipeline: () =>
-      native.available() && env.AUX_BROWSER_PROFILE_ID
+      !privateSession && native.available() && env.AUX_BROWSER_PROFILE_ID
         ? new MemoryPipeline(repo, native, env.AUX_BROWSER_PROFILE_ID)
         : undefined,
     pages: () =>
@@ -1160,7 +1178,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // ---- authenticated channel to the native browser host ----
   const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
   const runtimeIdentity = readRuntimeIdentity(import.meta.url);
-  const nativeIdentity = env.AUX_HOST_SOCKET ? native.capabilities!() : undefined;
+  const nativeIdentity = env.AUX_HOST_SOCKET
+    ? bootstrapIdentity
+      ? Promise.resolve(bootstrapIdentity)
+      : native.capabilities!()
+    : undefined;
   const featureStages = nativeIdentity
     ? nativeIdentity
         .then((capabilities) => featureAvailabilityFor(capabilities.methods))

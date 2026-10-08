@@ -63,8 +63,12 @@ const RESULTS: Record<string, unknown> = {
     "windows": []
   },
   "bookmarksInvoke": {
-    "method": "bookmarks.list",
-    "result": []
+    "method": "bookmarks.folders.snapshot",
+    "result": {
+      "rootId": "1",
+      "editable": false,
+      "folders": []
+    }
   },
   "organizationSnapshot": {
     "revision": 0,

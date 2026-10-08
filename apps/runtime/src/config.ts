@@ -82,10 +82,10 @@ export interface RuntimeConfig {
   apiToken: string;
 }
 
-export function loadConfig(source = process.env): RuntimeConfig {
+export function loadConfig(source = process.env, options?: { ephemeral: boolean }): RuntimeConfig {
   const env = normalizeAuxEnvironment(source);
   const dataDir = resolveDataDirectory(env);
-  const dbPath = resolveDatabasePath(dataDir);
+  const dbPath = options?.ephemeral ? ":memory:" : resolveDatabasePath(dataDir);
   const artifactsDir = join(dataDir, "artifacts");
   const downloadsDir = join(dataDir, "downloads");
   const previewsDir = join(dataDir, "previews");

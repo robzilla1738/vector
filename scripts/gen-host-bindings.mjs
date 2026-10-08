@@ -370,6 +370,7 @@ const STRING_CANDIDATES = [
   "x",
   "a",
   "0",
+  "1",
   "mock",
   "mock-value",
   "en",
@@ -454,7 +455,6 @@ function stringCandidates(schema, hint) {
   return [...preferred, ...padded, `mock-${h.split(/[.\-_]/).pop() || "value"}`, ...STRING_CANDIDATES];
 }
 function* rawCandidates(schema, hint, depth) {
-  if (depth > 8) return;
   const def = zdef(schema);
   switch (def.type) {
     case "string":
