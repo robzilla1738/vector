@@ -39,3 +39,4 @@ aux/0038-native-download-dismissal.patch
 aux/0039-native-history.patch
 aux/0040-native-document-selections.patch
 aux/0041-private-memory-saver-capabilities.patch
+aux/0042-native-filter-controls.patch

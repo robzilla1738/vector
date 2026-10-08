@@ -1267,17 +1267,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   if (env.AUX_HOST_SOCKET) {
     for (const method of [
       "blocking.status",
-      "blocking.privacy",
       "blocking.update",
       "blocking.add",
       "blocking.remove",
       "blocking.setSourceEnabled",
-      "blocking.toggleStart",
-      "blocking.toggleStatus",
-      "blocking.toggleCancel",
-      "blocking.toggleRelease",
-      "blocking.setSiteAllowed",
-      "blocking.removeAllowedHost",
     ]) {
       channel?.onMethod(method, (params) =>
         ensureBlocking().then(() => runtimeServices.blocking!.handle(method, params)),
