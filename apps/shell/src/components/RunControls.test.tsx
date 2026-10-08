@@ -128,13 +128,18 @@ it("explains separate sign-in and opens only this run’s controlled tab", async
   mock.state.runs = [{ runId: "run", status: "running", pageIds: [] }];
   mock.state.pages = normalizePages([
     { pageId: "owner", controller: "none", viewStatus: "visible" },
-    { pageId: "other", controller: "none", viewStatus: "background", agentIsolation: { runId: "other" } },
+    {
+      pageId: "other",
+      controller: "none",
+      viewStatus: "background",
+      agentIsolation: { mode: "private", runId: "other" },
+    },
     {
       pageId: "controlled",
       windowId: bridge.windowId,
       controller: "agent",
       viewStatus: "background",
-      agentIsolation: { runId: "run" },
+      agentIsolation: { mode: "private", runId: "run" },
     },
   ] as never);
   mock.call.mockResolvedValue({ ok: true });
@@ -152,6 +157,42 @@ it("explains separate sign-in and opens only this run’s controlled tab", async
     await act(async () => open!.click());
     expect(mock.state.activate).toHaveBeenCalledWith("controlled");
     expect(mock.call).not.toHaveBeenCalled();
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps session-backed tabs free of the separate-sign-in notice", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  mock.state.runs = [{ runId: "run", status: "running", pageIds: ["borrowed"] }];
+  mock.state.pages = normalizePages([
+    {
+      pageId: "borrowed",
+      windowId: bridge.windowId,
+      controller: "agent",
+      viewStatus: "visible",
+      ownedByRuntime: false,
+      agentIsolation: {
+        mode: "session",
+        runId: "run",
+        isolationId: "original-session",
+        taskRevision: 0,
+        inMemory: false,
+        cookies: "profile",
+      },
+    },
+  ] as never);
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<RunControls runId="run" />));
+    expect(host.textContent).not.toContain("Sign in there if needed");
+    expect(host.textContent).not.toContain("cookie transfer is unavailable");
+    expect(host.querySelector('[data-command-id="open-run-tab"]')).toBeNull();
+    expect(host.querySelector('[data-command-id="take-run-control"]')).toBeTruthy();
   } finally {
     act(() => root.unmount());
     host.remove();

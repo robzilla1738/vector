@@ -50,7 +50,9 @@ export function RunControls({ runId, compact = false }: { runId: string; compact
     );
   const isolated = pages.filter(
     (page) =>
-      page.agentIsolation?.runId === runId && !["crashed", "detached"].includes(page.viewStatus ?? ""),
+      page.agentIsolation?.runId === runId &&
+      page.agentIsolation.mode === "private" &&
+      !["crashed", "detached"].includes(page.viewStatus ?? ""),
   );
   const temporaryHere = isolated.find((page) => page.windowId === bridge.windowId);
   const held = pages.filter((page) => page.controller === "human");
