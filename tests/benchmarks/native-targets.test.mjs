@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatPerformanceTargets, performanceTargets } from "./native-targets.mjs";
+import { formatPerformanceTargets, performanceTargets, tabPresentationSummary } from "./native-targets.mjs";
 
 function report() {
   const samples = (kind) =>
@@ -10,7 +10,10 @@ function report() {
       coldInteractive: 700,
       warmFirstFrame: 100,
       runtimeBoot: [{ phase: "ready", elapsedMs: 200, processElapsedMs: 600 }],
-      interactions: { tabSwitch: Array(20).fill(12), commandBar: Array(20).fill(16) },
+      interactions: {
+        tabSwitch: Array.from({ length: 20 }, () => ({ latencyUs: 12000, frameIntervalUs: 0 })),
+        commandBar: Array(20).fill(16),
+      },
       memorySummary: {
         physicalFootprintBytes: kind === "aux" ? 1_150_000_000 : 1_000_000_000,
         shellPhysicalFootprintBytes: 120 * 1024 * 1024,
@@ -112,11 +115,45 @@ test("retains diagnostics without claiming unmeasured warm-window or display-fra
   assert.equal(targets.warmWindow.observed, null);
   assert.equal(targets.warmWindow.diagnostics.warmRelaunchFirstFrameMs, 100);
   assert.equal(targets.tabSwitch.status, "unavailable");
-  assert.equal(targets.tabSwitch.observed, 12);
-  assert.equal(targets.tabSwitch.limit, null);
+  assert.equal(targets.tabSwitch.observed, null);
+  assert.equal(targets.tabSwitch.diagnostics.latencyP95Ms, 12);
+  assert.equal(targets.tabSwitch.limit, 8000);
   const markdown = formatPerformanceTargets(targets);
   assert.match(markdown, /Performance targets are advisory/);
   assert.match(markdown, /Measured warm relaunch first frame: 100\.00 ms/);
-  assert.match(markdown, /No measured display-frame interval/);
+  assert.match(markdown, /zero or missing intervals cannot be guessed or dropped/);
   assert.match(markdown, /MiB = 1,048,576 bytes; MB = 1,000,000 bytes/);
+});
+
+test("compares all exact variable-refresh pairs and both warm-window presentation signals", () => {
+  const measured = report();
+  for (const sample of measured.raw.aux) {
+    sample.warmWindow = { firstFrameUs: 115000, controlsReadyUs: 120000 };
+    sample.interactions.tabSwitch = Array.from({ length: 20 }, (_, index) => {
+      const frameIntervalUs = index % 2 ? 16667 : 8333;
+      return { latencyUs: frameIntervalUs + 8000, frameIntervalUs };
+    });
+  }
+  let targets = performanceTargets(measured);
+  assert.equal(targets.warmWindow.status, "met");
+  assert.equal(targets.warmWindow.observed, 120);
+  assert.equal(targets.warmWindow.diagnostics.firstFrameMs, 115);
+  assert.equal(targets.warmWindow.diagnostics.controlsReadyMs, 120);
+  assert.equal(targets.tabSwitch.status, "met");
+  assert.equal(targets.tabSwitch.observed, 8000);
+  assert.deepEqual(targets.tabSwitch.diagnostics.frameIntervalRangeUs, { min: 8333, max: 16667 });
+  assert.equal(tabPresentationSummary(measured.raw.aux).p95, 24.667);
+  for (const sample of measured.raw.aux) {
+    sample.warmWindow.firstFrameUs = 120001;
+    for (const pair of sample.interactions.tabSwitch) pair.latencyUs++;
+  }
+  targets = performanceTargets(measured);
+  assert.equal(targets.warmWindow.status, "missed");
+  assert.equal(targets.tabSwitch.status, "missed");
+  delete measured.raw.aux[4].warmWindow.controlsReadyUs;
+  measured.raw.aux[4].interactions.tabSwitch[19].frameIntervalUs = 0;
+  targets = performanceTargets(measured);
+  assert.equal(targets.warmWindow.status, "unavailable");
+  assert.equal(targets.tabSwitch.status, "unavailable");
+  assert.equal(targets.tabSwitch.diagnostics.latencyP95Ms, 24.668);
 });

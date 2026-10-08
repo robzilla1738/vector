@@ -8,12 +8,38 @@ function median(samples, select) {
   return values.every(measurement) ? values.sort((a, b) => a - b)[2] : null;
 }
 
-function percentile(samples, metric) {
+function interactions(samples, metric) {
   if (!Array.isArray(samples) || samples.length !== 5) return null;
   const groups = Array.from(samples, (sample) => sample?.interactions?.[metric]);
   if (groups.some((values) => !Array.isArray(values) || values.length !== 20)) return null;
-  const values = groups.flat();
-  return values.every(measurement) ? values.sort((a, b) => a - b)[94] : null;
+  return groups.flat();
+}
+
+function percentile(values) {
+  return values?.length === 100 && values.every(Number.isFinite)
+    ? [...values].sort((a, b) => a - b)[94]
+    : null;
+}
+
+export function tabPresentationSummary(samples) {
+  const pairs = interactions(samples, "tabSwitch");
+  const latency = pairs?.every((pair) => Number.isSafeInteger(pair?.latencyUs) && pair.latencyUs >= 0)
+    ? pairs.map((pair) => pair.latencyUs / 1000).sort((a, b) => a - b)
+    : null;
+  const intervals =
+    latency && pairs.every((pair) => Number.isSafeInteger(pair.frameIntervalUs) && pair.frameIntervalUs > 0)
+      ? pairs.map((pair) => pair.frameIntervalUs)
+      : null;
+  return {
+    samples: pairs?.length ?? 0,
+    p50: latency?.[49] ?? null,
+    p95: latency?.[94] ?? null,
+    max: latency?.at(-1) ?? null,
+    frameIntervalRangeUs: intervals ? { min: Math.min(...intervals), max: Math.max(...intervals) } : null,
+    frameAdjustedP95Us: intervals
+      ? percentile(pairs.map((pair) => pair.latencyUs - pair.frameIntervalUs))
+      : null,
+  };
 }
 
 function target(label, observed, limit, unit, basis) {
@@ -37,6 +63,8 @@ export function performanceTargets(report) {
   const stockMemory = memory(stock, "physicalFootprintBytes");
   const auxApp = report.medians.aux?.appBytes;
   const stockApp = report.medians.stock?.appBytes;
+  const tabSwitch = tabPresentationSummary(aux);
+  const commandBar = interactions(aux, "commandBar");
   const ready = median(aux, (sample) => {
     const phases = Array.isArray(sample?.runtimeBoot)
       ? sample.runtimeBoot.filter((phase) => phase?.phase === "ready")
@@ -68,28 +96,46 @@ export function performanceTargets(report) {
     ),
     warmWindow: {
       ...target(
-        "Warm new window",
-        null,
+        "Warm new window ready",
+        median(aux, (sample) => {
+          const firstFrame = sample?.warmWindow?.firstFrameUs;
+          const controlsReady = sample?.warmWindow?.controlsReadyUs;
+          return Number.isSafeInteger(firstFrame) &&
+            firstFrame >= 0 &&
+            Number.isSafeInteger(controlsReady) &&
+            controlsReady >= 0
+            ? Math.max(firstFrame, controlsReady) / 1000
+            : null;
+        }),
         120,
         "ms",
-        "No new window in an already-running browser is measured.",
+        "Five-window median of max(firstFrameUs, controlsReadyUs), from native OpenEmptyWindow in the same process. Exact additional-window and subsequent ordinary input proof; excludes CmdN ingress and input-probe time.",
       ),
-      reason: "The retained workload is a whole-process same-Profile relaunch, not a warm new window.",
-      diagnostics: { warmRelaunchFirstFrameMs: median(aux, (sample) => sample?.warmFirstFrame) },
+      diagnostics: {
+        firstFrameMs: median(aux, (sample) =>
+          measurement(sample?.warmWindow?.firstFrameUs) ? sample.warmWindow.firstFrameUs / 1000 : null,
+        ),
+        controlsReadyMs: median(aux, (sample) =>
+          measurement(sample?.warmWindow?.controlsReadyUs) ? sample.warmWindow.controlsReadyUs / 1000 : null,
+        ),
+        warmRelaunchFirstFrameMs: median(aux, (sample) => sample?.warmFirstFrame),
+      },
     },
     tabSwitch: {
       ...target(
         "Tab switch p95 (one frame + 8 ms)",
-        percentile(aux, "tabSwitch"),
-        null,
-        "ms",
-        "95th of 100 retained native input observations, twenty from each of five processes.",
+        tabSwitch.frameAdjustedP95Us,
+        8000,
+        "µs",
+        "95th of 100 latency-minus-paired-frame-interval observations, twenty per process; every interval must be positive and native VSync-backed.",
       ),
-      reason: "No measured display-frame interval is retained; a refresh rate cannot be assumed.",
+      diagnostics: { latencyP95Ms: tabSwitch.p95, frameIntervalRangeUs: tabSwitch.frameIntervalRangeUs },
     },
     commandBar: target(
       "Command-bar input to paint p95",
-      report.method.historyEntries === 50000 ? percentile(aux, "commandBar") : null,
+      report.method.historyEntries === 50000 && commandBar?.every(measurement)
+        ? percentile(commandBar)
+        : null,
       16,
       "ms",
       "95th of 100 retained native input observations, twenty per process, with 50,000 history entries.",
@@ -123,6 +169,12 @@ export function performanceTargets(report) {
       "Difference of measured bundle bytes; includes the packaged runtime, which is also reported separately.",
     ),
   };
+  if (targets.warmWindow.status === "unavailable")
+    targets.warmWindow.reason =
+      "Five actual same-process new-window measurements are unavailable; whole-process relaunch cannot substitute.";
+  if (targets.tabSwitch.status === "unavailable")
+    targets.tabSwitch.reason =
+      "All 100 exact latency/positive-frame-interval pairs are required; zero or missing intervals cannot be guessed or dropped.";
   for (const item of Object.values(targets)) {
     if (item.status === "unavailable" && !item.reason)
       item.reason =
@@ -134,9 +186,15 @@ export function performanceTargets(report) {
 export function formatPerformanceTargets(targets) {
   const format = (value, unit) => (value === null ? "—" : `${value.toFixed(2)} ${unit}`);
   const rows = Object.values(targets).map((item) => {
-    const diagnostic = item.diagnostics
-      ? ` Measured warm relaunch first frame: ${format(item.diagnostics.warmRelaunchFirstFrameMs, "ms")}.`
-      : "";
+    let diagnostic =
+      item.diagnostics && Object.hasOwn(item.diagnostics, "warmRelaunchFirstFrameMs")
+        ? ` New-window first frame: ${format(item.diagnostics.firstFrameMs, "ms")}; controls ready: ${format(item.diagnostics.controlsReadyMs, "ms")}. Measured warm relaunch first frame: ${format(item.diagnostics.warmRelaunchFirstFrameMs, "ms")}.`
+        : "";
+    if (item.diagnostics && Object.hasOwn(item.diagnostics, "latencyP95Ms")) {
+      diagnostic = ` Absolute latency p95: ${format(item.diagnostics.latencyP95Ms, "ms")}.`;
+      const range = item.diagnostics.frameIntervalRangeUs;
+      if (range) diagnostic += ` Actual frame intervals: ${range.min}–${range.max} µs.`;
+    }
     return `| ${item.label} | ${format(item.observed, item.unit)} | ${format(item.limit, item.unit)} | ${item.status} | ${item.basis}${item.reason ? ` ${item.reason}` : ""}${diagnostic} |`;
   });
   return [

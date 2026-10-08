@@ -22,9 +22,9 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { DatabaseSync } from "node:sqlite";
 import { setTimeout as delay } from "node:timers/promises";
-import { histogram, oneObservation } from "./native-histograms.mjs";
+import { histogram, oneObservation, onePresentation, tabPresentationNames } from "./native-histograms.mjs";
 import { memoryFootprints, shellRoleWitness } from "./native-memory.mjs";
-import { formatPerformanceTargets, performanceTargets } from "./native-targets.mjs";
+import { formatPerformanceTargets, performanceTargets, tabPresentationSummary } from "./native-targets.mjs";
 import { acquireDevLock } from "../../scripts/dev.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -37,8 +37,12 @@ const names = {
   firstFrame: "AuxPerf.FirstFrame",
   coldInteractive: "AuxPerf.ColdLaunchToUsableContent",
   navigationInput: "AuxPerf.NavigationInputToPresented",
-  tabSwitch: "AuxPerf.TabSwitchInputToPresented",
+  tabSwitch: tabPresentationNames.latency,
   commandBar: "AuxPerf.CommandBarInputToPresented",
+};
+const warmWindowNames = {
+  firstFrameUs: "AuxPerf.WarmWindowFirstFrameUs",
+  controlsReadyUs: "AuxPerf.WarmWindowControlsReadyUs",
 };
 if (process.argv.includes("--plan")) {
   console.log(
@@ -50,14 +54,15 @@ if (process.argv.includes("--plan")) {
         metrics: {
           ...names,
           warmFirstFrame: names.firstFrame,
-          tabSwitchP95: names.tabSwitch,
+          warmWindow: warmWindowNames,
+          tabSwitch: tabPresentationNames,
           commandBarP95: names.commandBar,
           shellPhysicalFootprintBytes: "original native-witnessed shell renderer",
           runtimePhysicalFootprintBytes: "exact packaged Aux Runtime executable",
         },
         interactionsPerProcess: 20,
         controls:
-          "Same pinned Chromium VERSION and resolved fast flags; AC power; prepared disposable Profiles; 50,000 synthetic history entries; 10 idle fixture tabs; shared v3 presentation histograms; Aux-only process-role witness; no OS cache flush.",
+          "Same pinned Chromium VERSION and resolved fast flags; AC power; prepared disposable Profiles; 50,000 synthetic history entries; 10 idle fixture tabs; paired native presentation histograms; actual same-process new window; Aux-only process-role witness; no OS cache flush.",
         status: "Measures only after native instrumentation is compiled in both apps.",
       },
       null,
@@ -174,7 +179,7 @@ try {
     120000,
   );
   const report = {
-    schema: 6,
+    schema: 7,
     status: "incomplete",
     at: new Date().toISOString(),
     machine: { arch: arch(), osRelease: osRelease(), model: command("sysctl", ["-n", "hw.model"]), power },
@@ -185,12 +190,32 @@ try {
       idleTabs: 10,
       interactionSamplesPerProcess: 20,
       warmLaunch: "immediate relaunch of the same measured disposable Profile with ten tabs",
+      warmWindow: {
+        clock: "native OpenEmptyWindow immediately before CreateBrowserWindow; excludes CmdN ingress",
+        firstFrame: "first successful presentation of the exact additional native window",
+        controlsReady:
+          "mounted live address control and registered shortcuts followed by native presentation; stock native controls exist at first presentation",
+        proof:
+          "same original PID/birth; exact additional window; subsequent original-window address/query presentation and fixture navigation; close only the added window",
+        target:
+          "median max(firstFrameUs, controlsReadyUs) from five windows; subsequent input proof is outside timing",
+      },
+      tabSwitch: {
+        histograms: tabPresentationNames,
+        units:
+          "integer microseconds, latency and frame interval emitted by the same accepted original-input presentation callback",
+        summaryUnits:
+          "absolute p50/p95/max are milliseconds; paired frame-adjusted p95 and interval range remain microseconds",
+        interval:
+          "positive native VSync-backed interval; zero means unavailable, never a guessed refresh rate",
+        target: "p95(latencyUs - frameIntervalUs) <= 8000 across all 100 paired observations",
+      },
       profile: "fresh process; clone of prepared disposable Profile",
       osCaches: "not flushed",
       buildProvenance:
         "declared source/output paths and actual bundle VERSION; not a reproducible-build attestation",
       instrumentation:
-        "Shared v3 timing histograms and presentation triggers. Aux area 0100 adds an original-shell process witness; stock retains the preexisting timing instrumentation without that Aux-only patch. Instrumentation binaries are not byte-identical.",
+        "Shared native timing and presentation triggers require the warm-window and paired microsecond histogram names above in both apps. Aux adds an original-shell process witness. Instrumentation binaries are not byte-identical.",
       presentation: "native-confirmed conservative presentation bound",
       footprint:
         "sum of original process-tree kernel physical footprints; shared pages can be counted more than once",
@@ -330,6 +355,7 @@ try {
       bootBuffer = "";
     const bootPhases = [];
     const shellRole = shellRoleWitness(child.pid);
+    let observeShellRole = true;
     child.stderr.on("data", (data) => {
       stderr = (stderr + data).slice(-8000);
       bootBuffer += data;
@@ -337,7 +363,7 @@ try {
       while ((end = bootBuffer.indexOf("\n")) >= 0) {
         const line = bootBuffer.slice(0, end);
         bootBuffer = bootBuffer.slice(end + 1);
-        shellRole.observe(line);
+        if (observeShellRole) shellRole.observe(line);
         const match = line.match(/^\[runtime\] boot (\{.*\})$/);
         if (!match || bootPhases.length >= 32) continue;
         try {
@@ -363,6 +389,9 @@ try {
       browser: null,
       bootPhases,
       shellRole,
+      stopShellRoleObservation: () => {
+        observeShellRole = false;
+      },
     };
     try {
       const port = await until("original browser-owned loopback listener", () => {
@@ -430,6 +459,31 @@ try {
       return after.count > before.count ? oneObservation(before, after, name) : null;
     });
   }
+  async function presentationHistograms(run) {
+    const response = await run.session.send("Browser.getHistograms", {
+      query: "AuxPerf.TabSwitch",
+      delta: false,
+    });
+    return Object.fromEntries(
+      Object.entries(tabPresentationNames).map(([key, name]) => [key, histogram(response, name)]),
+    );
+  }
+  async function presentationObservation(run, before) {
+    return until("paired native tab presentation", async () => {
+      const after = await presentationHistograms(run);
+      for (const key of Object.keys(tabPresentationNames))
+        assert.ok(
+          after[key].count <= before[key].count + 1,
+          "Overlapping native tab presentation observations",
+        );
+      if (
+        after.latency.count <= before.latency.count ||
+        after.frameInterval.count <= before.frameInterval.count
+      )
+        return null;
+      return onePresentation(before, after);
+    });
+  }
   function ordinaryPages(run) {
     const pages = run.browser.contexts().flatMap((context) => context.pages());
     assert.ok(
@@ -446,17 +500,97 @@ try {
     }
     return pages;
   }
-  async function addressReady(run) {
+  async function addressReady(run, windowId) {
     await until(
       "original browser address focus",
       async () =>
         (
-          await run.input.call(
-            "address-ready",
-            run.kind === "aux" ? { expectedLabel: "address, search, and agent prompt" } : {},
-          )
+          await run.input.call("address-ready", {
+            ...(run.kind === "aux" ? { expectedLabel: "address, search, and agent prompt" } : {}),
+            ...(windowId === undefined ? {} : { windowId }),
+          })
         ).ready,
     );
+  }
+  async function nativeWindowId(page) {
+    const session = await page.context().newCDPSession(page);
+    try {
+      return (await session.send("Browser.getWindowForTarget")).windowId;
+    } finally {
+      await session.detach();
+    }
+  }
+  async function warmWindow(run, originalIdentity) {
+    const before = await run.input.call("windows");
+    assert.equal(before.windowIds.length, 1, "Warm-window measurement requires exactly the original window");
+    const originalWindowId = before.windowIds[0];
+    assert.equal(before.focusedWindowId, originalWindowId);
+    const pages = ordinaryPages(run);
+    assert.equal(pages.length, 10, "Warm-window probe must follow the ten-tab memory measurement");
+    const originalNativeWindowId = await nativeWindowId(pages[0]);
+    const beforeFrame = await hist(run, warmWindowNames.firstFrameUs);
+    const beforeReady = await hist(run, warmWindowNames.controlsReadyUs);
+    await run.input.call("key", { chord: "new-window", windowId: originalWindowId });
+    const opened = await until("one additional focused native window", async () => {
+      const snapshot = await run.input.call("windows");
+      assert.ok(snapshot.windowIds.includes(originalWindowId), "Original window retired during CmdN");
+      assert.ok(snapshot.windowIds.length <= 2, "More than one new native window appeared");
+      const added = snapshot.windowIds.find((id) => id !== originalWindowId);
+      return added !== undefined && snapshot.focusedWindowId === added ? snapshot : null;
+    });
+    const windowId = opened.focusedWindowId;
+    const page = await until("one additional ordinary page", () => {
+      const added = ordinaryPages(run).filter((item) => !pages.includes(item));
+      assert.ok(added.length <= 1, "More than one new ordinary page appeared");
+      return added[0] ?? null;
+    });
+    const newNativeWindowId = await nativeWindowId(page);
+    assert.notEqual(
+      newNativeWindowId,
+      originalNativeWindowId,
+      "CmdN must create another actual browser window",
+    );
+    const firstFrameUs = await observation(run, warmWindowNames.firstFrameUs, beforeFrame);
+    const controlsReadyUs = await observation(run, warmWindowNames.controlsReadyUs, beforeReady);
+    const beforeQuery = await hist(run, names.commandBar);
+    await run.input.call("key", { chord: "address", windowId });
+    await addressReady(run, windowId);
+    await run.input.call("text", { text: "f", windowId });
+    const queryPresentationMs = await observation(run, names.commandBar, beforeQuery);
+    await run.input.call("key", { chord: "address", windowId });
+    await addressReady(run, windowId);
+    await run.input.call("text", { text: url, windowId });
+    await run.input.call("key", { chord: "return", windowId });
+    await page.waitForURL(url, { waitUntil: "load", timeout: 20000 });
+    assert.equal(await nativeWindowId(page), newNativeWindowId, "Input left the original added window");
+    await run.input.call("key", { chord: "close-window", windowId });
+    const after = await until("only the original native window remains", async () => {
+      const snapshot = await run.input.call("windows");
+      assert.ok(snapshot.windowIds.includes(originalWindowId), "CmdShiftW retired the original window");
+      return snapshot.windowIds.length === 1 ? snapshot : null;
+    });
+    await until("only the original ten fixture tabs remain", () => {
+      const remaining = ordinaryPages(run);
+      return remaining.length === pages.length && pages.every((item) => remaining.includes(item));
+    });
+    const identity = await run.input.call("identity");
+    for (const field of ["pid", "imageUUID", "startMachTicks"])
+      assert.equal(
+        identity[field],
+        originalIdentity[field],
+        "Warm window changed the original process generation",
+      );
+    return {
+      firstFrameUs,
+      controlsReadyUs,
+      queryPresentationMs,
+      identity,
+      before,
+      opened,
+      after,
+      originalNativeWindowId,
+      newNativeWindowId,
+    };
   }
   async function open(run) {
     const before = (await loadedFixturePages(run)).length;
@@ -573,20 +707,13 @@ try {
           const pages = await loadedFixturePages(run);
           assert.equal(pages.length, 10, "The native workload must have exactly ten fixture tabs");
           const windows = new Set();
-          for (const page of pages) {
-            const session = await page.context().newCDPSession(page);
-            try {
-              windows.add((await session.send("Browser.getWindowForTarget")).windowId);
-            } finally {
-              await session.detach();
-            }
-          }
+          for (const page of pages) windows.add(await nativeWindowId(page));
           assert.equal(windows.size, 1, "All fixture tabs must belong to the original native window");
           sample.interactions = { tabSwitch: [], commandBar: [] };
           for (let interaction = 0; interaction < 20; interaction++) {
-            const beforeSwitch = await hist(run, names.tabSwitch);
+            const beforeSwitch = await presentationHistograms(run);
             await run.input.call("key", { chord: "next-tab" });
-            sample.interactions.tabSwitch.push(await observation(run, names.tabSwitch, beforeSwitch));
+            sample.interactions.tabSwitch.push(await presentationObservation(run, beforeSwitch));
             await run.input.call("key", { chord: "address" });
             await addressReady(run);
             const beforeQuery = await hist(run, names.commandBar);
@@ -596,7 +723,7 @@ try {
             sample.interactions.commandBar.push(await observation(run, names.commandBar, beforeQuery));
             await run.input.call("key", { chord: "escape" });
           }
-          sample.tabSwitch = sample.interactions.tabSwitch[0];
+          sample.tabSwitch = sample.interactions.tabSwitch[0].latencyUs / 1000;
           sample.commandBar = sample.interactions.commandBar[0];
           await delay(2000); // Fixed idle workload settling, not a readiness metric.
           const processRows = command("ps", ["-axo", "pid=,ppid="])
@@ -630,14 +757,17 @@ try {
             shellWitness,
             kind === "aux" ? realpathSync(join(builds.aux.app, "Contents/Helpers/Aux Runtime")) : undefined,
           );
+          run.stopShellRoleObservation();
           sample.runtimeBoot = run.bootPhases.map((phase) => ({ ...phase }));
+          report.raw[kind].push(sample);
+          save();
+          sample.warmWindow = await warmWindow(run, sample.identity);
           sample.powerAfter = command("pmset", ["-g", "batt"]);
           assert.match(
             sample.powerAfter,
             /Now drawing from 'AC Power'/,
             "Every completed sample requires mains power",
           );
-          report.raw[kind].push(sample);
           save();
         } finally {
           await close(run);
@@ -662,8 +792,13 @@ try {
       );
       for (const metric of ["warmLaunch", "warmFirstFrame"])
         report.medians[kind][metric] = median(report.raw[kind].map((sample) => sample[metric]));
+      for (const metric of ["firstFrameUs", "controlsReadyUs"])
+        report.medians[kind][`warmWindow${metric[0].toUpperCase()}${metric.slice(1)}`] = median(
+          report.raw[kind].map((sample) => sample.warmWindow[metric]),
+        );
       report.percentiles[kind] = Object.fromEntries(
         ["tabSwitch", "commandBar"].map((metric) => {
+          if (metric === "tabSwitch") return [metric, tabPresentationSummary(report.raw[kind])];
           const values = report.raw[kind]
             .flatMap((sample) => sample.interactions[metric])
             .sort((a, b) => a - b);

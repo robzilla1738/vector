@@ -7,7 +7,7 @@ import Foundation
 import Darwin
 
 if CommandLine.arguments == [CommandLine.arguments[0], "--help"] {
-  print("native-perf <original-browser-pid> <app-bundle> — JSON stdin commands: identity, activate, address-ready, key, text, memory. No input is sent by --help.")
+  print("native-perf <original-browser-pid> <app-bundle> — JSON stdin commands: identity, windows, activate, address-ready, key, text, memory. No input is sent by --help.")
   exit(0)
 }
 
@@ -65,8 +65,42 @@ func executablePath(_ process: pid_t) throws -> String {
   }
   return URL(fileURLWithPath: String(cString: path)).resolvingSymlinksInPath().path
 }
-func key(_ code: CGKeyCode, flags: CGEventFlags = [], text: String? = nil) throws {
+var retainedWindows: [(id: Int, element: AXUIElement)] = []
+var nextWindowID = 0
+func windows() throws -> (ids: [Int], focused: Int?) {
   try current()
+  guard AXIsProcessTrusted(), NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+    throw NSError(domain: "Original browser window permission/focus unavailable", code: 1)
+  }
+  let application = AXUIElementCreateApplication(pid)
+  var value: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(application, kAXWindowsAttribute as CFString, &value) == .success,
+        let elements = value as? [AXUIElement] else {
+    throw NSError(domain: "Original browser windows unavailable", code: 1)
+  }
+  retainedWindows.removeAll { saved in !elements.contains { CFEqual(saved.element, $0) } }
+  let ids = elements.map { element in
+    if let saved = retainedWindows.first(where: { CFEqual($0.element, element) }) { return saved.id }
+    nextWindowID += 1
+    retainedWindows.append((id: nextWindowID, element: element))
+    return nextWindowID
+  }
+  var focused: CFTypeRef?
+  let status = AXUIElementCopyAttributeValue(application, kAXFocusedWindowAttribute as CFString, &focused)
+  let focusedID = status == .success && focused != nil
+    ? retainedWindows.first(where: { CFEqual($0.element, focused!) })?.id : nil
+  try current()
+  return (ids, focusedID)
+}
+func requireWindow(_ id: Int) throws {
+  let snapshot = try windows()
+  guard snapshot.focused == id, snapshot.ids.contains(id) else {
+    throw NSError(domain: "Original benchmark window lost focus or retired", code: 1)
+  }
+}
+func key(_ code: CGKeyCode, flags: CGEventFlags = [], text: String? = nil, windowID: Int? = nil) throws {
+  try current()
+  if let windowID { try requireWindow(windowID) }
   guard AXIsProcessTrusted(), NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
         let down = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: true),
         let up = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false) else {
@@ -97,6 +131,9 @@ while let line = readLine() {
       result = ["pid": pid, "imageUUID": originalUUID, "startMachTicks": String(original.ri_proc_start_abstime),
                 "accessibility": AXIsProcessTrusted(),
                 "focused": NSWorkspace.shared.frontmostApplication?.processIdentifier == pid]
+    case "windows":
+      let snapshot = try windows()
+      result = ["windowIds": snapshot.ids, "focusedWindowId": snapshot.focused as Any? ?? NSNull()]
     case "activate":
       guard AXIsProcessTrusted(), app.activate(options: [.activateAllWindows]) else {
         throw NSError(domain: "Browser activation unavailable", code: 1)
@@ -104,6 +141,7 @@ while let line = readLine() {
       AXUIElementSetAttributeValue(AXUIElementCreateApplication(pid), kAXFrontmostAttribute as CFString, kCFBooleanTrue)
       result = ["requested": true]
     case "address-ready":
+      if let windowID = request["windowId"] as? Int { try requireWindow(windowID) }
       guard AXIsProcessTrusted(), NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
         throw NSError(domain: "Original browser input permission/focus unavailable", code: 1)
       }
@@ -130,12 +168,19 @@ while let line = readLine() {
       result = ["ready": ready]
     case "key":
       guard let chord = request["chord"] as? String else { throw NSError(domain: "Missing chord", code: 1) }
+      let windowID = request["windowId"] as? Int
       switch chord {
-      case "address": try key(37, flags: .maskCommand)
+      case "address": try key(37, flags: .maskCommand, windowID: windowID)
       case "new-tab": try key(17, flags: .maskCommand)
+      case "new-window":
+        guard let windowID else { throw NSError(domain: "Missing original window", code: 1) }
+        try key(45, flags: .maskCommand, windowID: windowID)
+      case "close-window":
+        guard let windowID else { throw NSError(domain: "Missing original window", code: 1) }
+        try key(13, flags: [.maskCommand, .maskShift], windowID: windowID)
       case "next-tab": try key(48, flags: .maskControl)
-      case "escape": try key(53)
-      case "return": try key(36)
+      case "escape": try key(53, windowID: windowID)
+      case "return": try key(36, windowID: windowID)
       case "select-all": try key(0, flags: .maskCommand)
       default: throw NSError(domain: "Unsupported benchmark chord", code: 1)
       }
@@ -145,7 +190,7 @@ while let line = readLine() {
             text.utf16.allSatisfy({ $0 >= 32 && $0 <= 126 }) else {
         throw NSError(domain: "Invalid benchmark text", code: 1)
       }
-      for character in text { try key(0, text: String(character)) }
+      for character in text { try key(0, text: String(character), windowID: request["windowId"] as? Int) }
       result = ["posted": true]
     case "memory":
       guard let requested = request["pids"] as? [Int], requested.count <= 256 else {
