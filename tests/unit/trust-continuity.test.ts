@@ -614,6 +614,9 @@ it("refuses an incompatible database even when the loopback port is free", async
   cleanup.push(() => rmSync(parent, { recursive: true, force: true }));
   const dataDir = join(parent, "data");
   const dbPath = rewindDatabase(dataDir);
+  const future = new DatabaseSync(dbPath);
+  future.exec(`PRAGMA user_version = ${SCHEMA_VERSION + 1}`);
+  future.close();
   const probe = createServer();
   const port = await new Promise<number>((resolve, reject) => {
     probe.once("error", reject);
@@ -628,7 +631,7 @@ it("refuses an incompatible database even when the loopback port is free", async
   await expect(startRuntime({ ...runtimeEnv(dataDir), AUX_API_PORT: String(port) })).rejects.toThrow(
     /incompatible with Aux v3/,
   );
-  expect(userVersion(dbPath)).toBe(SCHEMA_VERSION - 1);
+  expect(userVersion(dbPath)).toBe(SCHEMA_VERSION + 1);
 });
 
 it("reopens a crashed runtime without widening a scoped replay gap", async () => {

@@ -1,4 +1,11 @@
-import { DocumentSnapshotSchema } from "./document-snapshot.js";
+import { DocumentSnapshotSchema, SavedDocumentPageSchema } from "./document-snapshot.js";
+import {
+  ConversationDocumentImportParamsSchema,
+  ConversationDocumentReadParamsSchema,
+  TaskDocumentImportParamsSchema,
+  TaskDocumentReadParamsSchema,
+  TaskTextEvidenceParamsSchema,
+} from "./document-api.js";
 import { ConversationSearchParams, ConversationSearchResultSchema } from "./conversation-search.js";
 import { CapturedSourceSchema } from "./captured-source.js";
 import { MemorySaverMinutesSchema } from "./memory-saver.js";
@@ -188,7 +195,6 @@ import {
   ContentMemoryDocumentSchema,
   EvidenceNoteParams,
   EvidenceCaptureParams,
-  EvidenceDocumentParams,
   CriterionReviewParams,
   TaskReconcileParams,
   TaskReconcileOperationParams,
@@ -735,22 +741,10 @@ export const ConversationAttachmentsSchema = z.object({
   chatId: id,
   attachments: z.array(ConversationAttachmentSchema),
 });
-export const ConversationAttachmentAddParams = z.object({
-  chatId: id,
-  sourceArtifactId: id.optional(),
-  filename: z
-    .string()
-    .min(1)
-    .max(255)
-    .regex(/^[^/\\\x00-\x1f]+\.(txt|md|csv|json|docx|xlsx|pdf)$/i),
-  content: z
-    .string()
-    .max(512 * 1024)
-    .refine(
-      (value) => !value.includes("\0") && new TextEncoder().encode(value).length <= 512 * 1024,
-      "Use a UTF-8 text document up to 512 KB",
-    ),
-});
+export const ConversationAttachmentAddParams = TaskTextEvidenceParamsSchema
+  .omit({ taskId: true, expectedRevision: true, criterionId: true })
+  .extend({ chatId: id, sourceArtifactId: id.optional() })
+  .strict();
 export const ConversationAttachmentControlParams = z.object({ chatId: id, attachmentId: id });
 export const ConversationAttachmentToggleParams = ConversationAttachmentControlParams.extend({
   included: z.boolean(),
@@ -1167,7 +1161,9 @@ export const MethodSchemas = {
   "sites.read": SiteReadParamsSchema,
   "tasks.recordEvidence": EvidenceNoteParams,
   "tasks.captureEvidence": EvidenceCaptureParams,
-  "tasks.importDocumentEvidence": EvidenceDocumentParams,
+  "tasks.importDocumentEvidence": TaskDocumentImportParamsSchema,
+  "tasks.importTextEvidence": TaskTextEvidenceParamsSchema,
+  "tasks.readDocumentEvidence": TaskDocumentReadParamsSchema,
   "tasks.reviewCriterion": CriterionReviewParams,
   "tasks.reconcileAction": TaskReconcileParams,
   "tasks.reconcileOperation": TaskReconcileOperationParams,
@@ -1588,7 +1584,8 @@ export const MethodSchemas = {
   "conversations.images.toggle": ConversationImageControl.extend({ included: z.boolean() }),
   "conversations.images.remove": ConversationImageControl,
   "conversations.attachments.get": z.object({ chatId: id }),
-  "conversations.attachments.read": ConversationAttachmentControlParams,
+  "conversations.attachments.read": ConversationDocumentReadParamsSchema,
+  "conversations.attachments.import": ConversationDocumentImportParamsSchema,
   "conversations.attachments.add": ConversationAttachmentAddParams,
   "conversations.attachments.page": z.object({
     chatId: id,
@@ -1924,6 +1921,8 @@ export const ResultSchemas = {
   "tasks.recordEvidence": TaskEvidenceSchema,
   "tasks.captureEvidence": TaskEvidenceSchema,
   "tasks.importDocumentEvidence": TaskEvidenceSchema,
+  "tasks.importTextEvidence": TaskEvidenceSchema,
+  "tasks.readDocumentEvidence": SavedDocumentPageSchema,
   "tasks.reviewCriterion": CriterionReviewSchema,
   "tasks.reconcileAction": z.object({ ok: z.literal(true) }),
   "tasks.reconcileOperation": z.object({ ok: z.literal(true) }),
@@ -2406,10 +2405,8 @@ export const ResultSchemas = {
   "conversations.images.toggle": ConversationImagesSchema,
   "conversations.images.remove": ConversationImagesSchema,
   "conversations.attachments.get": ConversationAttachmentsSchema,
-  "conversations.attachments.read": z.object({
-    attachment: ConversationAttachmentSchema,
-    content: z.string(),
-  }),
+  "conversations.attachments.read": SavedDocumentPageSchema.extend({ attachment: ConversationAttachmentSchema }).strict(),
+  "conversations.attachments.import": ConversationAttachmentsSchema,
   "conversations.attachments.add": ConversationAttachmentsSchema,
   "conversations.attachments.page": ConversationAttachmentsSchema,
   "conversations.attachments.toggle": ConversationAttachmentsSchema,

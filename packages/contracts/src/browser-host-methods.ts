@@ -1,3 +1,4 @@
+import { DocumentSelectionSchema, DocumentReadResultSchema } from "./document-intake.js";
 import { MemorySaverMinutesSchema, MemorySaverSettingsSchema } from "./memory-saver.js";
 import { NativeBookmarkRequestSchema, NativeBookmarkResultSchema } from "./bookmark-methods.js";
 import { NativeHistoryRequestSchema, NativeHistoryResultSchema } from "./history-methods.js";
@@ -579,13 +580,13 @@ export const BrowserHostMethods = {
   pickEvidenceImage: conversationShell(noArgs, strictObject({ filename: str, dataUrl: str }).nullable()),
   pickEvidenceDocuments: conversationShell(
     noArgs,
-    strictObject({ selectionId: str.min(1).max(200), count: number.int().positive() }).nullable(),
+    DocumentSelectionSchema.nullable(),
   ),
   readEvidenceDocument: conversationShell(
-    tuple([str.min(1).max(200), number.int().nonnegative()]),
-    strictObject({ filename: str, content: str }),
+    tuple([str.uuid(), number.int().nonnegative(), str.min(1).max(200).optional()]),
+    DocumentReadResultSchema,
   ),
-  releaseEvidenceDocuments: conversationShell(tuple([str.min(1).max(200)]), noResult),
+  releaseEvidenceDocuments: conversationShell(tuple([str.uuid()]), noResult),
   // External agents
   agentConfig: inboundAgentsShell(
     tuple([AgentConnectionCreateParams]),

@@ -7,7 +7,7 @@ it("releases the original capture during a pending read and joins its retirement
   const [local, remote] = memoryTransportPair();
   const caller = new RpcChannel(local, "document-runtime");
   const native = new RpcChannel(remote, "document-native");
-  const input = { token: "original-window", selectionId: randomUUID(), index: 2 };
+  const input = { token: randomUUID(), selectionId: randomUUID(), index: 2 };
   let rejectRead!: (error: Error) => void;
   let acknowledgeRelease!: (result: { ok: true }) => void;
   let released!: () => void;

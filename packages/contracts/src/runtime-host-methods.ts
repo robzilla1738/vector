@@ -1,3 +1,4 @@
+import { DocumentReadParamsSchema, DocumentReadResultSchema } from "./document-intake.js";
 import { PrivateRuntimeRequestSchema, PrivateRuntimeResultSchema } from "./private-provider.js";
 import {
   NativeCloudPreviewParams,
@@ -221,6 +222,16 @@ export const RuntimeHostMethods = {
     "core",
     NativeTerminalPreviewCloseParams,
     TerminalPreviewClosedSchema,
+  ),
+  "native.evidenceDocumentRead": runtime(
+    "conversation",
+    DocumentReadParamsSchema.extend({ token: z.string().uuid() }).strict(),
+    DocumentReadResultSchema,
+  ),
+  "native.evidenceDocumentsRelease": runtime(
+    "conversation",
+    z.object({ token: z.string().uuid(), selectionId: z.string().uuid() }).strict(),
+    z.object({ ok: z.literal(true) }).strict(),
   ),
   "native.turnSourceContext": runtime(
     "tabMentions",

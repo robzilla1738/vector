@@ -192,28 +192,6 @@ export const EvidenceNoteParams = z
 export const EvidenceCaptureParams = z
   .object({ taskId: text, expectedRevision: z.number().int().positive(), criterionId: text, pageId: text })
   .strict();
-/** Exact UTF-8 snapshot; filenames are labels, never filesystem authority. */
-export const DOCUMENT_EVIDENCE_MAX_BYTES = 512 * 1024;
-export const EvidenceDocumentParams = z
-  .object({
-    taskId: text,
-    expectedRevision: z.number().int().positive(),
-    criterionId: text,
-    filename: z
-      .string()
-      .min(1)
-      .max(255)
-      .regex(/^[^/\\\x00-\x1f]+\.(txt|md|csv|json|docx|xlsx|pdf)$/i),
-    content: z
-      .string()
-      .max(DOCUMENT_EVIDENCE_MAX_BYTES)
-      .refine(
-        (value) =>
-          !value.includes("\0") && new TextEncoder().encode(value).length <= DOCUMENT_EVIDENCE_MAX_BYTES,
-        "Use a UTF-8 text document up to 512 KB",
-      ),
-  })
-  .strict();
 export const CriterionReviewParams = z
   .object({
     taskId: text,

@@ -67,9 +67,8 @@ import {
   NativeTerminalResizeParams,
   NativeTerminalCloseParams,
 } from "@aux/contracts/terminal";
-import { z } from "zod";
+import type { z } from "zod";
 import {
-  DocumentReadParamsSchema,
   DocumentReadResultSchema,
   type DocumentReadParams,
   type DocumentReadResult,
@@ -421,7 +420,7 @@ export class ChannelNativeBridge implements NativeBridge {
     signal?: AbortSignal,
   ): Promise<DocumentReadResult> {
     if (signal?.aborted) throw new AuxError("cancelled", "Document import was cancelled.");
-    const params = DocumentReadParamsSchema.extend({ token: z.string().min(1) }).strict().parse(input);
+    const params = HostMethods["native.evidenceDocumentRead"].args.parse(input);
     let retirement: Promise<{ ok: true }> | undefined;
     const abort = () => {
       retirement ??= this.evidenceDocumentsRelease({ token: params.token, selectionId: params.selectionId });
@@ -453,8 +452,8 @@ export class ChannelNativeBridge implements NativeBridge {
     }
   }
   async evidenceDocumentsRelease(input: { token: string; selectionId: string }): Promise<{ ok: true }> {
-    const params = z.object({ token: z.string().min(1), selectionId: z.string().uuid() }).strict().parse(input);
-    return z.object({ ok: z.literal(true) }).strict().parse(
+    const params = HostMethods["native.evidenceDocumentsRelease"].args.parse(input);
+    return HostMethods["native.evidenceDocumentsRelease"].result.parse(
       await this.channel.call("native.evidenceDocumentsRelease", params),
     );
   }

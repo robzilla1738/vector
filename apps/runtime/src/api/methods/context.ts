@@ -44,6 +44,7 @@ import { SpaceService } from "../../services/spaces.js";
 import type { StateService } from "../../services/state.js";
 import { SubagentService } from "../../services/subagents.js";
 import { SuspensionStore } from "../../safety/suspensions.js";
+import type { DocumentSnapshots } from "../../services/document-snapshots.js";
 import { TaskEvidenceService } from "../../services/task-evidence.js";
 import { TaskService } from "../../services/tasks.js";
 import type { Tracer } from "../../services/tracing.js";
@@ -80,6 +81,7 @@ export interface Services {
   settings: SettingsService;
   events: EventBus;
   repo: Repo;
+  documentSnapshots: DocumentSnapshots;
   agentConnections?: AgentConnectionService;
   installCli?: (owner: string) => Promise<import("@aux/contracts").MethodResult<"developer.cli.install">>;
   installAgentConnection?: (
@@ -225,7 +227,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
       }),
     browsingMemory: () => new BrowsingMemory(s.repo),
     spaces: () => new SpaceService(s.repo, s.events),
-    taskEvidence: () => new TaskEvidenceService(s.repo, s.events, s.pages, s.native, s.downloadsDir),
+    taskEvidence: () => new TaskEvidenceService(s.repo, s.events, s.documentSnapshots, s.pages, s.native, s.downloadsDir),
     vault: () => s.vault ?? new VaultService(s.repo, s.native),
     translate: () => new TranslateService(s.settings),
     safetyAudit: () => s.safetyAudit ?? new SafetyAuditStore(s.repo.db),

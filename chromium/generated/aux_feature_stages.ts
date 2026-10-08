@@ -228,7 +228,9 @@ const requirements = {
       "pickEvidenceImage",
       "pickEvidenceDocuments",
       "readEvidenceDocument",
-      "releaseEvidenceDocuments"
+      "releaseEvidenceDocuments",
+      "native.evidenceDocumentRead",
+      "native.evidenceDocumentsRelease"
     ]
   },
   "selectionAsk": {

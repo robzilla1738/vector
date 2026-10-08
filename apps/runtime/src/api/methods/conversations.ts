@@ -1,3 +1,4 @@
+import { nativeDocumentSource } from "./document-source.js";
 import { searchConversation } from "../../services/conversation-search.js";
 import type { MethodCtx, MethodHandler, Services } from "./context.js";
 import type { MethodName } from "@aux/contracts";
@@ -80,6 +81,10 @@ async function h_conversations_attachments_read(ctx: MethodCtx): Promise<unknown
   if (client.external) throw new AuxError("permission_denied", "Inspect document snapshots in Aux.");
   return s.runs.readAttachment(params);
 }
+async function h_conversations_attachments_import(ctx: MethodCtx): Promise<unknown> {
+  const { source, context } = nativeDocumentSource(ctx, ctx.params);
+  return ctx.s.runs.importAttachment(ctx.params, source, context);
+}
 async function h_conversations_attachments_get(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
   return s.runs.attachments(params.chatId);
@@ -145,6 +150,7 @@ export const conversationsMethods: Partial<Record<MethodName, MethodHandler>> = 
   "conversations.archive": h_conversations_archive,
   "conversations.delete": h_conversations_delete,
   "conversations.attachments.read": h_conversations_attachments_read,
+  "conversations.attachments.import": h_conversations_attachments_import,
   "conversations.attachments.get": h_conversations_attachments_get,
   "conversations.attachments.page": h_conversations_attachments_page,
   "conversations.attachments.add": h_conversations_attachments_add,

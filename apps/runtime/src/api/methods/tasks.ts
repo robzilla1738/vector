@@ -1,3 +1,4 @@
+import { nativeDocumentSource } from "./document-source.js";
 import { withTaskAuthorityMutation } from "../../services/overnight-authority.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
@@ -87,10 +88,18 @@ async function h_tasks_recordEvidence(ctx: MethodCtx): Promise<unknown> {
   return taskEvidence.recordNote(params, client.external ? "external_client" : "desktop_user");
 }
 async function h_tasks_importDocumentEvidence(ctx: MethodCtx): Promise<unknown> {
-  const { client, params, taskEvidence } = ctx;
-  if (client.external)
-    throw new AuxError("permission_denied", "Document import requires the Aux desktop interface");
-  return taskEvidence.importDocument(params);
+  const { source, context } = nativeDocumentSource(ctx, ctx.params);
+  return ctx.taskEvidence.importDocument(ctx.params, source, context);
+}
+async function h_tasks_importTextEvidence(ctx: MethodCtx): Promise<unknown> {
+  if (ctx.client.external)
+    throw new AuxError("permission_denied", "Document import requires the Aux desktop interface.");
+  return ctx.taskEvidence.importText(ctx.params);
+}
+async function h_tasks_readDocumentEvidence(ctx: MethodCtx): Promise<unknown> {
+  if (ctx.client.external || ctx.client.codeMode)
+    throw new AuxError("permission_denied", "Inspect document snapshots in Aux.");
+  return ctx.taskEvidence.readDocument(ctx.params);
 }
 async function h_tasks_captureEvidence(ctx: MethodCtx): Promise<unknown> {
   const { params, taskEvidence } = ctx;
@@ -195,6 +204,8 @@ export const tasksMethods: Partial<Record<MethodName, MethodHandler>> = {
   "tasks.replaceAgent": h_tasks_replaceAgent,
   "tasks.recordEvidence": h_tasks_recordEvidence,
   "tasks.importDocumentEvidence": h_tasks_importDocumentEvidence,
+  "tasks.importTextEvidence": h_tasks_importTextEvidence,
+  "tasks.readDocumentEvidence": h_tasks_readDocumentEvidence,
   "tasks.captureEvidence": h_tasks_captureEvidence,
   "tasks.reviewCriterion": h_tasks_reviewCriterion,
   "tasks.reconcileAction": h_tasks_reviewCriterion,

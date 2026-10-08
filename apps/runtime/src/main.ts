@@ -98,6 +98,7 @@ import { NativePermissionController } from "./safety/native-permission.js";
 import { ConnectorCatalogService } from "./services/connectors.js";
 import { RoutineService } from "./services/routines.js";
 import { SetService } from "./services/sets.js";
+import { DocumentSnapshots } from "./services/document-snapshots.js";
 import { RunService } from "./services/runs.js";
 import { TaskService } from "./services/tasks.js";
 import { GoalService } from "./services/goals.js";
@@ -668,8 +669,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           });
         },
       }),
+    documentSnapshots: () => new DocumentSnapshots(repo),
     runs: () => {
       const runs = new RunService({
+        documentSnapshots: runtimeServices.documentSnapshots,
         privateBrowserProfile: !!privateSession,
         resolveCodingContext: async (input) => {
           const roots = input.workspaceId
@@ -3332,6 +3335,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           serviceContainer.peek("codingProcesses")?.close(),
           serviceContainer.peek("projects")?.dispose(),
           serviceContainer.peek("browserImport")?.close(),
+          serviceContainer.peek("documentSnapshots")?.close(),
           (async () => {
             await serviceContainer.peek("memoryPipeline")?.close();
             await serviceContainer.peek("contentMemory")?.close();
@@ -3453,6 +3457,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         },
       },
       { stage: "privacy-checkpoint", run: () => privacyCheckpoint.close() },
+      { stage: "document-snapshots", run: () => serviceContainer.peek("documentSnapshots")?.close() },
       { stage: "repository", run: () => repo.close() },
     ],
   });

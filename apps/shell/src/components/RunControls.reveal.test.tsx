@@ -100,7 +100,11 @@ it("reveals the exact isolated native surface from the task scrim without taking
         </>,
       ),
     );
-    expect(node.querySelector("embed")).toBeNull();
+    const retained = node.querySelector("embed")!;
+    expect(retained.getAttribute("data-page-id")).toBe("owner");
+    const cover = retained.closest(".stage-native-surface")!;
+    expect(cover.hasAttribute("inert")).toBe(true);
+    expect(cover.getAttribute("aria-hidden")).toBe("true");
     const open = [...node.querySelectorAll("button")].find(
       (button) => button.textContent === "Open temporary tab",
     )!;

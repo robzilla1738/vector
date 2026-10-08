@@ -369,8 +369,9 @@ const RESULTS: Record<string, unknown> = {
   "pickEvidenceImage": null,
   "pickEvidenceDocuments": null,
   "readEvidenceDocument": {
+    "kind": "unreadable",
     "filename": "/tmp/aux-mock",
-    "content": "mock-content"
+    "reason": "unsupported_format"
   },
   "agentConfig": {
     "command": "mock-command",
@@ -508,6 +509,14 @@ const RESULTS: Record<string, unknown> = {
     "truncated": false
   },
   "showOriginal": 0,
+  "native.evidenceDocumentRead": {
+    "kind": "unreadable",
+    "filename": "/tmp/aux-mock",
+    "reason": "unsupported_format"
+  },
+  "native.evidenceDocumentsRelease": {
+    "ok": true
+  },
   "native.turnSourceContext": {
     "revision": 0,
     "layout": null,

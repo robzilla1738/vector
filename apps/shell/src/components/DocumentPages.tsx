@@ -124,7 +124,7 @@ export function DocumentPages({
       </div>
       {view.busy && <output {...staticHintProps}>Loading section…</output>}
       {view.error && <p role="alert">{view.error}</p>}
-      <div aria-label="Document text section">
+      <div role="region" aria-label="Document text section">
         {view.page.chunk.segments.length ? (
           view.page.chunk.segments.map(({ locator, text }) => (
             <section key={documentLocatorKey(locator)}>
