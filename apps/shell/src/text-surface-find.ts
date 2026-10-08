@@ -21,10 +21,19 @@ class TextSurfaceFinder {
     this.active = -1;
   }
 
-  find(query: string, next = false, forward = true, reveal = true) {
-    const root = [...document.querySelectorAll<HTMLElement>(`[data-find-surface="${this.surface}"]`)].find(
-      (element) => !element.closest('[inert], [aria-hidden="true"]') && element.getClientRects().length > 0,
-    );
+  find(
+    query: string,
+    next = false,
+    forward = true,
+    reveal = true,
+    scopeRoot?: HTMLElement,
+    occurrence?: number,
+  ) {
+    const root =
+      scopeRoot ??
+      [...document.querySelectorAll<HTMLElement>(`[data-find-surface="${this.surface}"]`)].find(
+        (element) => !element.closest('[inert], [aria-hidden="true"]') && element.getClientRects().length > 0,
+      );
     if (!root || !query) {
       this.clear();
       return { matches: 0 };
@@ -83,6 +92,7 @@ class TextSurfaceFinder {
           : ranges.length - 1
         : (Math.min(previous, ranges.length - 1) + (next ? (forward ? 1 : -1) : 0) + ranges.length) %
           ranges.length;
+    if (occurrence !== undefined && ranges.length) this.active = Math.min(occurrence, ranges.length - 1);
     CSS.highlights.set(this.matchesKey, new Highlight(...ranges));
     CSS.highlights.delete(this.activeKey);
     const active = ranges[this.active];

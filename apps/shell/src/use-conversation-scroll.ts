@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 type Position = { follow: boolean; turn?: string; fraction: number; top: number };
 // In-window continuity only; private conversation content is never persisted here.
@@ -9,7 +9,7 @@ export function useConversationScroll(id: string | null) {
   const threadRef = useRef<HTMLDivElement>(null);
   const [awayFromLatest, setAwayFromLatest] = useState(false);
   const position = useRef<Position>({ follow: true, fraction: 0, top: 0 });
-  const capture = () => {
+  const capture = useCallback(() => {
     const scroll = scrollRef.current,
       thread = threadRef.current;
     if (!scroll || !thread) return;
@@ -25,7 +25,7 @@ export function useConversationScroll(id: string | null) {
       fraction: bounds?.height ? (top - bounds.top) / bounds.height : 0,
     };
     setAwayFromLatest(!position.current.follow);
-  };
+  }, []);
 
   useLayoutEffect(() => {
     const scroll = scrollRef.current,
@@ -61,19 +61,29 @@ export function useConversationScroll(id: string | null) {
         if (positions.size > 100) positions.delete(positions.keys().next().value!);
       }
     };
-  }, [id]);
+  }, [id, capture]);
 
-  function jumpToLatest() {
+  const jumpToLatest = useCallback(() => {
     position.current = { follow: true, fraction: 0, top: 0 };
     setAwayFromLatest(false);
     const scroll = scrollRef.current;
     if (scroll) scroll.scrollTop = scroll.scrollHeight;
-  }
+  }, []);
 
-  function preservePosition() {
+  const preservePosition = useCallback(() => {
     capture();
     position.current.follow = false;
     setAwayFromLatest(true);
-  }
-  return { scrollRef, threadRef, awayFromLatest, jumpToLatest, preservePosition };
+  }, [capture]);
+  const revealTurn = useCallback((turnId: string) => {
+    position.current = { follow: false, turn: turnId, fraction: 0, top: scrollRef.current?.scrollTop ?? 0 };
+    setAwayFromLatest(true);
+    const scroll = scrollRef.current;
+    const turn = [...(threadRef.current?.querySelectorAll<HTMLElement>("[data-turn-id]") ?? [])].find(
+      (element) => element.dataset.turnId === turnId,
+    );
+    if (scroll && turn)
+      scroll.scrollTop += turn.getBoundingClientRect().top - scroll.getBoundingClientRect().top;
+  }, []);
+  return { scrollRef, threadRef, awayFromLatest, jumpToLatest, preservePosition, revealTurn };
 }

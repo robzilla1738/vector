@@ -1,3 +1,4 @@
+import { conversationReplyText } from "@aux/contracts/conversation-reply-text";
 import {
   AuxError,
   MethodSchemas,
@@ -1165,6 +1166,68 @@ export function installMockBridge(q: URLSearchParams) {
     "conversations.get": async (p) => {
       return chatSummaries().find((item) => item.chatId === p.chatId) ?? null;
     },
+    "conversations.search": async (p) => {
+      const input = MethodSchemas["conversations.search"].parse(p);
+      const expression = new RegExp(input.query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "giu");
+      const hits = runs
+        .filter((run) => (run.config?.chatId ?? run.runId) === input.chatId)
+        .sort((a, b) => b.createdAt - a.createdAt || b.runId.localeCompare(a.runId))
+        .flatMap((run) =>
+          [
+            { part: "goal", text: run.goal },
+            ...[...queuedMessages.values()]
+              .filter(
+                (message) =>
+                  message.targetRunId === run.runId &&
+                  message.mode === "steer" &&
+                  message.status === "delivered",
+              )
+              .map((message) => ({ part: `steer:${message.messageId}`, text: message.text })),
+            { part: "reply", text: conversationReplyText(run) },
+            { part: "error", text: run.failure?.message ?? run.error ?? "" },
+          ].flatMap(({ part, text }) =>
+            [...text.matchAll(expression)].map((match, occurrence) => ({
+              runId: run.runId,
+              part,
+              offset: match.index,
+              occurrence,
+              excerpt: text.slice(Math.max(0, match.index - 80), match.index + match[0].length + 120),
+            })),
+          ),
+        );
+      const prior = input.cursor
+        ? hits.findIndex(
+            (hit) =>
+              hit.runId === input.cursor!.runId &&
+              hit.part === input.cursor!.part &&
+              hit.offset === input.cursor!.offset,
+          )
+        : -1;
+      const index =
+        prior < 0
+          ? input.direction === "previous"
+            ? hits.length - 1
+            : 0
+          : (prior +
+              (input.direction === "next" ? 1 : input.direction === "previous" ? -1 : 0) +
+              hits.length) %
+            hits.length;
+      return { match: hits[index] ?? null, matches: hits.length, activeMatch: hits.length ? index + 1 : 0 };
+    },
+    "conversations.turns": async (p) => {
+      const chat = runs
+        .filter((run) => (run.config?.chatId ?? run.runId) === p.chatId)
+        .sort((a, b) => a.createdAt - b.createdAt || a.runId.localeCompare(b.runId));
+      const index = chat.findIndex((run) => run.runId === p.runId);
+      if (index < 0) throw new Error("This message is no longer in the conversation.");
+      const start = Math.max(0, index - 24),
+        end = Math.min(chat.length, index + 25);
+      return {
+        runs: chat.slice(start, end),
+        earlierRunId: chat[start - 1]?.runId ?? null,
+        laterRunId: chat[end]?.runId ?? null,
+      };
+    },
     "conversations.rename": mockConversationsRename,
     "conversations.archive": mockConversationsRename,
     "conversations.delete": async (p) => {
@@ -1997,7 +2060,14 @@ export function installMockBridge(q: URLSearchParams) {
       return message;
     },
     "runs.messages.list": async (p) =>
-      [...queuedMessages.values()].filter((message) => message.chatId === p.chatId),
+      [...queuedMessages.values()].filter(
+        (message) =>
+          message.chatId === p.chatId &&
+          (!["delivered", "cancelled"].includes(message.status) ||
+            (message.mode === "steer" &&
+              message.status === "delivered" &&
+              (p.runIds as string[]).includes(message.targetRunId))),
+      ),
     "runs.message.cancel": async (p) => {
       const message = queuedMessages.get(String(p.messageId));
       if (!message) throw new Error("Queued preview message not found.");

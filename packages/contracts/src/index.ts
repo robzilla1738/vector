@@ -110,3 +110,5 @@ export * from "./coding-api.js";
 export * from "./memory-saver.js";
 
 export * from "./captured-source.js";
+
+export * from "./conversation-search.js";

@@ -1,6 +1,9 @@
+import { SourceCollection } from "./SourceCollection";
+import { registerConversationSearchSurface } from "../conversation-search";
+import { ConversationTurn } from "./ConversationTurn";
+import { useConversationViewport } from "../use-conversation-viewport";
 import { CapturedSourcePicker } from "./CapturedSourcePicker";
 import { isRunStartRemoved, readStartAttempt } from "../run-start-attempts";
-import { CodingRunActivity } from "../features/coding/CodingRunActivity";
 import { shellIconMore } from "../ui/icons";
 import { RunOptions } from "../composer/RunOptions";
 import { ChatPreferences } from "../composer/ChatPreferences";
@@ -10,7 +13,6 @@ import { errorMessage } from "../error-message";
 import {
   ConversationSourceAction,
   ConversationSourceRow,
-  ConversationSourcesSummary,
   useConversationSourcesOwner,
 } from "./ConversationSourceControls";
 import {
@@ -46,8 +48,6 @@ import { Tooltip } from "../ui/tooltip";
 import { Menu } from "../ui/dialog";
 import { ConversationContext } from "./ConversationContext";
 import { BrowserContextTray } from "./BrowserContextTray";
-import { ResultCard } from "./ResultCard";
-import { RunImages } from "./RunImages";
 import { Dictation } from "./Dictation";
 import { ImageSnapshot } from "./ImageSnapshot";
 import { SavedResultPreview } from "./SavedResultPreview";
@@ -103,7 +103,6 @@ import { SuspensionPrompt } from "../features/permissions/SuspensionPrompt";
 import { ChatHistory } from "../chat-list/ChatHistory";
 import { cursor, mergeHistory } from "../run-history";
 import { browserLinkUrl as answerUrl } from "../browser-links";
-import { RunPanel } from "./RunPanel";
 import {
   shellIconArrowDown,
   shellIconClose,
@@ -359,42 +358,6 @@ function LivePage({ pageId }: { pageId: string }) {
   );
 }
 
-function RunSources({
-  sources,
-  profileNames,
-  onOpen,
-  current,
-}: {
-  sources: ConversationSource[];
-  profileNames: Record<string, string>;
-  onOpen: (source: ConversationSource) => void;
-  current(source?: ConversationSource): boolean;
-}) {
-  if (!sources.length) return null;
-  return (
-    <details className="conversation-sources">
-      <ConversationSourcesSummary current={() => current()}>
-        {shellIconGlobe}
-        <span>Sources</span>
-        <span {...auxReuseStaticNumericCountProps}>{sources.length}</span>
-      </ConversationSourcesSummary>
-      <div>
-        {sources.map((source) => (
-          <ConversationSourceRow
-            key={source.sourceId}
-            command="select-conversation-source"
-            current={() => current(source)}
-            source={source}
-            profileNames={profileNames}
-            invoke={() => onOpen(source)}
-          />
-        ))}
-        <p>Sources record what Aux read; verify external outcomes in the source account.</p>
-      </div>
-    </details>
-  );
-}
-
 function isCalendarCitation(url: string): boolean {
   try {
     const parsed = new URL(url);
@@ -431,6 +394,7 @@ export function Conversation({
   const fullPageId = useStore((s) => s.conversationId);
   const id = chatId === undefined ? fullPageId : chatId;
   const scrolling = useConversationScroll(id);
+  const { threadRef, preservePosition, revealTurn } = scrolling;
   useEffect(() => {
     if (id || embedded || bridge.privateMode) return;
     const pending = readPendingConversation(typeof localStorage === "undefined" ? null : localStorage);
@@ -440,8 +404,28 @@ export function Conversation({
     useShallow((s) =>
       s.runs
         .filter((run) => (run.config?.chatId ?? run.runId) === id)
-        .sort((a, b) => a.createdAt - b.createdAt),
+        .sort((a, b) => a.createdAt - b.createdAt || a.runId.localeCompare(b.runId)),
     ),
+  );
+  const [searchTarget, setSearchTarget] =
+    useState<import("@aux/contracts").MethodResult<"conversations.search">["match"]>();
+  const [searchWindow, setSearchWindow] =
+    useState<import("@aux/contracts").MethodResult<"conversations.turns">>();
+  const visibleTurns = searchWindow
+    ? turns.filter((run) => searchWindow.runs.some((item) => item.runId === run.runId))
+    : turns;
+  const revealedTurn = searchTarget?.runId;
+  const searchReveal = useRef<{
+    resolve(element: HTMLElement): void;
+    reject(error: Error): void;
+    current(): boolean;
+  } | null>(null);
+  const turnViewport = useConversationViewport(
+    id,
+    visibleTurns,
+    scrolling.scrollRef,
+    scrolling.threadRef,
+    turns.length,
   );
   // Digest re-renders on structure/navigation change only — loading/favicon churn doesn't.
   useStore(
@@ -466,6 +450,61 @@ export function Conversation({
   const seenFocusRequest = useRef(focusRequest);
   const conversationCurrent = useConversationOwner(id, connected);
   const contextControls = useConversationContextControls(conversationCurrent);
+  const [queuedMessages, setQueuedMessages] = useState<RunMessage[]>([]);
+
+  useLayoutEffect(() => {
+    if (!id || id === "history") return;
+    const unregister = registerConversationSearchSurface({
+      chatId: id,
+      element: () => threadRef.current,
+      reveal: async (hit, searchCurrent) => {
+        const current = () => conversationCurrent() && searchCurrent();
+        const [found, messages] = await Promise.all([
+          call("conversations.turns", { chatId: id, runId: hit.runId }),
+          call("runs.messages.list", { chatId: id, runIds: [hit.runId] }),
+        ]);
+        if (!current()) throw new Error("This conversation search was replaced.");
+        searchReveal.current?.reject(new Error("This conversation search was replaced."));
+        preservePosition();
+        const shown = new Promise<HTMLElement>((resolve, reject) => {
+          searchReveal.current = { resolve, reject, current };
+        });
+        mergeHistory(found.runs);
+        setQueuedMessages((prior) => [
+          ...new Map([...prior, ...messages].map((message) => [message.messageId, message])).values(),
+        ]);
+        setSearchWindow(found);
+        setSearchTarget(hit);
+        return shown;
+      },
+    });
+    return () => {
+      unregister();
+      searchReveal.current?.reject(new Error("This conversation was closed."));
+      searchReveal.current = null;
+    };
+  }, [id, conversationCurrent, threadRef, preservePosition]);
+  useLayoutEffect(() => {
+    const pending = searchReveal.current;
+    if (!searchTarget) return;
+    searchReveal.current = null;
+    if (pending && !pending.current()) {
+      pending.reject(new Error("This conversation search was replaced."));
+      return;
+    }
+    const turn = [...(threadRef.current?.querySelectorAll<HTMLElement>("[data-turn-id]") ?? [])].find(
+      (element) => element.dataset.turnId === searchTarget.runId,
+    );
+    if (!turn) {
+      pending?.reject(new Error("The matching message could not be opened."));
+      return;
+    }
+    revealTurn(searchTarget.runId);
+    const part = [...turn.querySelectorAll<HTMLElement>("[data-find-part]")].find(
+      (element) => element.dataset.findPart === searchTarget.part,
+    );
+    pending?.resolve(part ?? turn);
+  }, [searchTarget, threadRef, revealTurn]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
   const [earlier, setEarlier] = useState<ReturnType<typeof cursor> | null>(null);
@@ -498,6 +537,8 @@ export function Conversation({
   };
   useEffect(() => {
     setEarlier(null);
+    setSearchWindow(undefined);
+    setSearchTarget(undefined);
     setHistoryError("");
     setHistoryLoading(false);
     void loadTurns();
@@ -505,6 +546,28 @@ export function Conversation({
       ++historyRequest.current;
     };
   }, [id, connected, conversationCurrent]);
+  const loadMessageWindow = async (runId: string) => {
+    if (!id || !conversationCurrent() || historyPending.current) return;
+    historyPending.current = true;
+    const version = ++historyRequest.current;
+    setHistoryLoading(true);
+    setHistoryError("");
+    try {
+      const found = await call("conversations.turns", { chatId: id, runId });
+      if (version !== historyRequest.current || !conversationCurrent()) return;
+      scrolling.preservePosition();
+      mergeHistory(found.runs);
+      setSearchWindow(found);
+      setSearchTarget({ runId, part: "goal", offset: 0, occurrence: 0, excerpt: "" });
+    } catch (reason) {
+      if (version === historyRequest.current && conversationCurrent()) setHistoryError(errorMessage(reason));
+    } finally {
+      if (version === historyRequest.current && conversationCurrent()) {
+        historyPending.current = false;
+        setHistoryLoading(false);
+      }
+    }
+  };
   const [sending, setSending] = useState(false);
   const sendPending = useRef(false);
   const exportPending = useRef<{ owner: typeof conversationCurrent } | null>(null);
@@ -512,6 +575,14 @@ export function Conversation({
   const [images, setImages] = useState<ConversationImage[]>([]);
   const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
   const [generated, setGenerated] = useState<ConversationArtifact[]>([]);
+  const [unavailableArtifacts, setUnavailableArtifacts] = useState<string[]>([]);
+  const setArtifactCollection = useCallback(
+    (value: import("@aux/contracts").MethodResult<"conversations.artifacts.get">) => {
+      setGenerated(value.artifacts);
+      setUnavailableArtifacts(value.unavailableArtifactIds ?? []);
+    },
+    [],
+  );
   const artifactVersions = useMemo(() => {
     const byId = new Map(generated.map((item) => [item.artifactId, item]));
     const version = (item: ConversationArtifact, visited: Set<string>): number => {
@@ -609,6 +680,24 @@ export function Conversation({
   const [documentPreview, setDocumentPreview] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imagePreviewGeneration, setImagePreviewGeneration] = useState(0);
+  const openSourceDetail = useCallback(
+    (source: ConversationSource) => {
+      setSourceDetail(source);
+      setImagePreview(null);
+      setDocumentPreview(null);
+      useStore.setState({ resultPreview: null });
+    },
+    [setSourceDetail, setImagePreview, setDocumentPreview],
+  );
+  const openResultDetail = useCallback(
+    (artifactId: string) => {
+      setSourceDetail(null);
+      setImagePreview(null);
+      setDocumentPreview(null);
+      useStore.setState({ resultPreview: artifactId });
+    },
+    [setSourceDetail, setImagePreview, setDocumentPreview],
+  );
   const activeChat = useRef(id);
   activeChat.current = id;
   const documentBusy = useRef(false);
@@ -728,17 +817,18 @@ export function Conversation({
   const last = turns.at(-1);
   useEffect(() => {
     setGenerated([]);
+    setUnavailableArtifacts([]);
     if (!id || id === "history") return;
     let active = true;
     void call("conversations.artifacts.get", { chatId: id })
       .then((value) => {
-        if (active) setGenerated(value.artifacts);
+        if (active) setArtifactCollection(value);
       })
       .catch(() => {});
     return () => {
       active = false;
     };
-  }, [id, last?.status, last?.runId]);
+  }, [id, last?.status, last?.runId, setArtifactCollection]);
   const [currentSuspension, setCurrentSuspension] = useState<{
     runId: string;
     statusMessage?: string;
@@ -790,24 +880,48 @@ export function Conversation({
   const answering = last?.status === "needs_input" && suspension?.kind === "ask-user-question";
   const liveControlCurrent = useConversationLiveOwner(conversationCurrent, id, last, suspension);
   const [sendingChat, setSendingChat] = useState<string | null>(null);
-  const [queuedMessages, setQueuedMessages] = useState<RunMessage[]>([]);
   const queueAttemptRef = useRef<QueueAttempt | null>(null);
   const [liveSendMode, setLiveSendMode] = useState<"answer" | "steer" | "queue">("answer");
   useEffect(() => setLiveSendMode("answer"), [last?.runId, answering]);
   const effectiveLiveMode = answering ? liveSendMode : liveSendMode === "answer" ? "steer" : liveSendMode;
   const answerRunId = answering && effectiveLiveMode === "answer" ? last?.runId : undefined,
     answerQuestion = last?.statusMessage;
+  const messageRunIds = JSON.stringify(
+    visibleTurns
+      .filter(
+        (run, index) =>
+          !turnViewport.enabled ||
+          index >= visibleTurns.length - 8 ||
+          isLive(run) ||
+          turnViewport.visible.has(run.runId) ||
+          revealedTurn === run.runId,
+      )
+      .map((run) => run.runId),
+  );
+  const [messageError, setMessageError] = useState("");
+  const [messageRefresh, setMessageRefresh] = useState(0);
   useEffect(() => {
     setQueuedMessages([]);
+    setMessageError("");
     queueAttemptRef.current = null;
+  }, [id]);
+  useEffect(() => {
     if (!id || id === "history") return;
-    let current = true;
-    const refresh = () =>
-      void call("runs.messages.list", { chatId: id })
+    let current = true,
+      refreshVersion = 0;
+    const refresh = () => {
+      const version = ++refreshVersion;
+      void call("runs.messages.list", { chatId: id, runIds: JSON.parse(messageRunIds) })
         .then((messages) => {
-          if (current) setQueuedMessages(messages);
+          if (current && version === refreshVersion) {
+            setQueuedMessages(messages);
+            setMessageError("");
+          }
         })
-        .catch(() => {});
+        .catch((reason) => {
+          if (current && version === refreshVersion) setMessageError(errorMessage(reason));
+        });
+    };
     refresh();
     const unsubscribe = bridge.onEvent((event) => {
       if (event.type === "conversation.messages.changed" && event.payload.chatId === id) refresh();
@@ -816,7 +930,7 @@ export function Conversation({
       current = false;
       unsubscribe();
     };
-  }, [id]);
+  }, [id, messageRunIds, messageRefresh]);
   const pendingTurns = useStore(
     useShallow((s) => s.pendingTurns.filter((turn) => turn.chatId === (id ?? sendingChat))),
   );
@@ -1158,7 +1272,9 @@ export function Conversation({
           setConversationSources([]);
           setContextRefresh((value) => value + 1);
           void call("conversations.artifacts.get", { chatId: id! })
-            .then((value) => setGenerated(value.artifacts))
+            .then((value) => {
+              if (conversationCurrent()) setArtifactCollection(value);
+            })
             .catch(() => {});
         }
         if (
@@ -1167,7 +1283,7 @@ export function Conversation({
         )
           setContextRefresh((value) => value + 1);
       }),
-    [id, workspaceContext.workspace?.workspaceId],
+    [id, workspaceContext.workspace?.workspaceId, setArtifactCollection, conversationCurrent],
   );
   const ensureChatId = () => {
     if (id) return id;
@@ -1293,7 +1409,7 @@ export function Conversation({
           if ("attachments" in value) {
             setAttachments(value.attachments);
             setDocumentPreview(null);
-          } else setGenerated(value.artifacts);
+          } else setArtifactCollection(value);
         }
         return value;
       } finally {
@@ -2291,6 +2407,19 @@ export function Conversation({
             }}
           >
             <div className="conversation-thread" data-find-surface="conversation" ref={scrolling.threadRef}>
+              {messageError && (
+                <p role="alert" className="hint">
+                  Changed-task messages could not be loaded.{" "}
+                  <button
+                    type="button"
+                    {...auxReuseSmallButtonProps}
+                    title={messageError}
+                    onClick={() => setMessageRefresh((value) => value + 1)}
+                  >
+                    Retry
+                  </button>
+                </p>
+              )}
               {historyLoading && (
                 <output data-block {...auxReuseStaticHintProps}>
                   Loading conversation…
@@ -2303,14 +2432,39 @@ export function Conversation({
                     command="load-conversation-history"
                     current={() => conversationCurrent() && !!historyError && !historyLoading}
                     disabled={historyLoading}
-                    invoke={() => loadTurns(earlier ?? undefined)}
+                    invoke={() =>
+                      searchWindow && searchTarget
+                        ? loadMessageWindow(searchTarget.runId)
+                        : loadTurns(earlier ?? undefined)
+                    }
                   >
                     Try again
                   </ConversationAction>
                   <ConversationDetails current={conversationCurrent} text={historyError} />
                 </div>
               )}
-              {earlier && !historyError && (
+              {searchWindow && (
+                <nav className="source-collection-pages" aria-label="Conversation message pages">
+                  <button
+                    type="button"
+                    {...auxReuseSmallButtonProps}
+                    disabled={!searchWindow.earlierRunId || historyLoading}
+                    onClick={() => void loadMessageWindow(searchWindow.earlierRunId!)}
+                  >
+                    Earlier messages
+                  </button>
+                  <span>Messages around this match</span>
+                  <button
+                    type="button"
+                    {...auxReuseSmallButtonProps}
+                    disabled={!searchWindow.laterRunId || historyLoading}
+                    onClick={() => void loadMessageWindow(searchWindow.laterRunId!)}
+                  >
+                    Later messages
+                  </button>
+                </nav>
+              )}
+              {!searchWindow && earlier && !historyError && (
                 <ConversationAction
                   command="load-conversation-history"
                   current={() => conversationCurrent() && !!earlier && !historyError && !historyLoading}
@@ -2333,87 +2487,35 @@ export function Conversation({
                   {!branchInfo.available && " The original source is unavailable; this draft cannot be sent."}
                 </p>
               )}
-              {turns.map((run) => (
-                <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}>
-                  <time
-                    dateTime={new Date(run.createdAt).toISOString()}
-                    title={new Date(run.createdAt).toLocaleString()}
-                  >
-                    {new Date(run.createdAt).toLocaleTimeString(undefined, {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </time>
-                  <div className="user-message">{run.goal}</div>
-                  {run.status === "completed" && !archived && !run.setId && !run.config?.subagentProfile && !run.config?.setMemberSource && (
-                    <div role="group" aria-label="Historical turn actions" className="conversation-turn-actions">
-                      <button type="button" disabled={!connected || branching?.owner === conversationCurrent} onClick={() => void branchTurn(run, "branch")}>Branch from here</button>
-                      <button type="button" disabled={!connected || branching?.owner === conversationCurrent} onClick={() => void branchTurn(run, "edit")}>Edit into new draft</button>
-                    </div>
-                  )}
-
-                  {queuedMessages
-                    .filter(
-                      (message) =>
-                        message.mode === "steer" &&
-                        message.targetRunId === run.runId &&
-                        message.status === "delivered",
-                    )
-                    .map((message) => (
-                      <div className="conversation-steer" key={message.messageId}>
-                        <small>Changed task</small>
-                        <div className="user-message">{message.text}</div>
-                      </div>
-                    ))}
-                  <RunPanel
-                    savedAnswerIds={generated
-                      .filter((item) => item.runId === run.runId && item.automaticReport === true)
-                      .map((item) => item.artifactId)}
-                    runId={run.runId}
-                    conversation
-                    readOnly={archived}
-                    retryPageId={selectedContext?.pageId}
-                    latest={run === last}
-                    suspensionInComposer={run === last && run.status === "needs_input"}
-                    controlsInComposer={run === last}
-                    composerRef={textareaRef}
-                    sources={sourcesByRun.get(run.runId) ?? NO_SOURCES}
-                    onCitationOpen={openCitation}
-                  />
-                  <RunSources
-                    current={sourceCurrent}
-                    sources={sourcesByRun.get(run.runId) ?? NO_SOURCES}
-                    profileNames={sourceProfileNames}
-                    onOpen={(source) => {
-                      setSourceDetail(source);
-                      setImagePreview(null);
-                      setDocumentPreview(null);
-                      useStore.setState({ resultPreview: null });
-                    }}
-                  />
-                  {generated.some((item) => item.runId === run.runId) && (
-                    <div role="group" className="conversation-results" aria-label="Saved results">
-                      {generated
-                        .filter((item) => item.runId === run.runId)
-                        .map((item) => (
-                          <ResultCard
-                            key={item.artifactId}
-                            compact={item.automaticReport === true}
-                            result={item}
-                            revision={item.revision ?? artifactVersions[item.artifactId]}
-                            onOpen={() => {
-                              setSourceDetail(null);
-                              setImagePreview(null);
-                              setDocumentPreview(null);
-                              useStore.setState({ resultPreview: item.artifactId });
-                            }}
-                          />
-                        ))}
-                    </div>
-                  )}
-                  {run.config?.projectRoot && <CodingRunActivity runId={run.runId} live={isLive(run)} />}
-                  <RunImages runId={run.runId} />
-                </article>
+              {visibleTurns.map((run, index) => (
+                <ConversationTurn
+                  key={run.runId}
+                  run={run}
+                  latest={run === last}
+                  archived={archived}
+                  connected={connected}
+                  branching={branching?.owner === conversationCurrent}
+                  branchTurn={branchTurn}
+                  queuedMessages={queuedMessages}
+                  generated={generated}
+                  artifactVersions={artifactVersions}
+                  retryPageId={selectedContext?.pageId}
+                  textareaRef={textareaRef}
+                  sources={sourcesByRun.get(run.runId) ?? NO_SOURCES}
+                  profileNames={sourceProfileNames}
+                  sourceCurrent={sourceCurrent}
+                  openCitation={openCitation}
+                  onSource={openSourceDetail}
+                  onResult={openResultDetail}
+                  visible={
+                    !turnViewport.enabled ||
+                    index >= visibleTurns.length - 8 ||
+                    isLive(run) ||
+                    turnViewport.visible.has(run.runId) ||
+                    revealedTurn === run.runId
+                  }
+                  height={turnViewport.heights.get(run.runId)}
+                />
               ))}
               {pendingTurns.map((turn) => (
                 <article className="conversation-turn pending" key={turn.id} aria-busy="true">
@@ -2429,7 +2531,7 @@ export function Conversation({
               ))}
             </div>
           </div>
-          {scrolling.awayFromLatest && (
+          {(searchWindow || scrolling.awayFromLatest) && (
             <div className="conversation-jump">
               <ConversationViewAction
                 command="jump-conversation-to-latest"
@@ -2437,7 +2539,11 @@ export function Conversation({
                 {...auxReuseStaticIconButtonProps}
                 aria-label="Jump to latest"
                 title="Jump to latest"
-                invoke={scrolling.jumpToLatest}
+                invoke={() => {
+                  setSearchWindow(undefined);
+                  setSearchTarget(undefined);
+                  scrolling.jumpToLatest();
+                }}
               >
                 {shellIconArrowDown}
               </ConversationViewAction>
@@ -2592,6 +2698,43 @@ export function Conversation({
                     </button>
                   )}
                   <AttachmentTray items={attachmentItems} disabled={contextLocked} busy={attachmentSaving} />
+                  {unavailableArtifacts.length > 0 && (
+                    <section aria-label="Unavailable selected results" className="conversation-sources">
+                      <p role="alert">
+                        Some selected saved results are unavailable. Remove them before sending.
+                      </p>
+                      <SourceCollection
+                        items={unavailableArtifacts}
+                        pageSize={6}
+                        label="Unavailable result pages"
+                      >
+                        {(visible) =>
+                          visible.map((artifactId) => (
+                            <div key={artifactId} className="context-choice">
+                              <span>Unavailable · {artifactId}</span>
+                              <ConversationAttachmentAction
+                                command="toggle-conversation-result"
+                                current={() =>
+                                  conversationCurrent() && unavailableArtifacts.includes(artifactId)
+                                }
+                                disabled={contextLocked || attachmentSaving}
+                                invoke={async () => {
+                                  const value = await call("conversations.artifacts.toggle", {
+                                    chatId: id!,
+                                    artifactId,
+                                    included: false,
+                                  });
+                                  if (conversationCurrent()) setArtifactCollection(value);
+                                }}
+                              >
+                                Remove
+                              </ConversationAttachmentAction>
+                            </div>
+                          ))
+                        }
+                      </SourceCollection>
+                    </section>
+                  )}
                   {id && turns.length > 0 && (
                     <ConversationContext
                       key={id}

@@ -1,4 +1,27 @@
 @layer components {
+  .conversation-turn-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-2) 0;
+  }
+  .conversation-turn-actions button,
+  .conversation-turn-placeholder {
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--r-md);
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+  .conversation-turn-actions button:hover,
+  .conversation-turn-placeholder:hover {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  .conversation-turn-placeholder {
+    text-align: start;
+  }
+
   .composer-queue {
     margin-bottom: var(--space-2);
     font-size: var(--fs-xs);

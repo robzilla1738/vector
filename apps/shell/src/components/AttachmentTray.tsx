@@ -1,3 +1,4 @@
+import { SourceCollection } from "./SourceCollection";
 import type { ReactNode } from "react";
 import { ConversationImageAction, ConversationImageChoice } from "./ConversationImageControl";
 import { Checkbox } from "../ui";
@@ -45,9 +46,11 @@ export function AttachmentTray({
   if (!items.length && !busy) return null;
   return (
     <div className="attachment-tray" role="group" aria-label="Attachments and results" aria-busy={busy}>
-      {items.map((item) => (
-        <AttachmentChip key={item.key} item={item} disabled={disabled} busy={busy} />
-      ))}
+      <SourceCollection items={items} pageSize={8} label="Attachment and result pages">
+        {(visible) =>
+          visible.map((item) => <AttachmentChip key={item.key} item={item} disabled={disabled} busy={busy} />)
+        }
+      </SourceCollection>
       {busy && <output className="attachment-progress">Saving attachments…</output>}
     </div>
   );

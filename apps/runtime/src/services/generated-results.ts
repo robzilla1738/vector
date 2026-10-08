@@ -273,7 +273,7 @@ export class GeneratedResults {
     const selected = new Set(this.repo.getSetting<string[]>(`conversationArtifacts:${chatId}`) ?? []);
     if (sourceArtifactId) selected.delete(sourceArtifactId);
     selected.add(artifact.artifactId);
-    this.repo.setSetting(`conversationArtifacts:${chatId}`, [...selected].slice(-20));
+    this.repo.setSetting(`conversationArtifacts:${chatId}`, [...selected]);
     return this.get(artifact.artifactId);
   }
   get(artifactId: string): GeneratedResult {

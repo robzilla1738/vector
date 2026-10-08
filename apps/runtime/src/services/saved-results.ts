@@ -77,7 +77,7 @@ export class SavedResults {
     const selected = new Set(this.repo.getSetting<string[]>(`conversationArtifacts:${chatId}`) ?? []);
     selected.delete(sourceArtifactId);
     selected.add(saved.artifactId);
-    this.repo.setSetting(`conversationArtifacts:${chatId}`, [...selected].slice(-20));
+    this.repo.setSetting(`conversationArtifacts:${chatId}`, [...selected]);
     return this.read(saved.artifactId) as ReturnType<SavedResults["read"]> & {
       revision: number;
       parentArtifactId: string;

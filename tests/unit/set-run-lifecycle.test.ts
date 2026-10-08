@@ -595,6 +595,57 @@ describe("conversation turn retry", () => {
     expect(retry.config?.instructions).toBe(run.config?.instructions);
   });
 
+  it("preserves more than thirty selected saved results and makes unavailable selections removable without read-side writes", async () => {
+    const h = harness();
+    try {
+      const selected = Array.from({ length: 35 }, (_, index) => `result-${index}`);
+      for (const [index, artifactId] of selected.entries()) {
+        const runId = `result-turn-${index}`;
+        h.repo.saveRun({
+          runId,
+          goal: `Saved result ${index}`,
+          status: "completed",
+          pageIds: [],
+          createdAt: index,
+          config: { chatId: "collection" },
+        });
+        h.repo.saveArtifact({
+          artifactId,
+          runId,
+          path: `/artifacts/${artifactId}-report.md`,
+          mediaType: "text/markdown",
+          size: 40,
+          status: "complete",
+          createdAt: index,
+        });
+        h.artifactContents.set(artifactId, `Report ${index}`);
+      }
+      h.repo.setSetting("conversationArtifacts:collection", selected.slice(0, 34));
+      const read = h.runs.conversationArtifacts("collection");
+      expect(read.artifacts).toHaveLength(35);
+      expect(read.artifacts.filter((item) => item.included)).toHaveLength(34);
+      expect(h.repo.getSetting("conversationArtifacts:collection")).toEqual(selected.slice(0, 34));
+      h.runs.toggleConversationArtifact({ chatId: "collection", artifactId: selected[34]!, included: true });
+      expect(h.repo.getSetting("conversationArtifacts:collection")).toEqual(selected);
+      h.artifactContents.delete(selected[0]!);
+      expect(h.runs.conversationArtifacts("collection").unavailableArtifactIds).toEqual([selected[0]]);
+      expect(h.repo.getSetting("conversationArtifacts:collection")).toEqual(selected);
+      await expect(
+        h.runs.start({ goal: "Compare my saved results", chatId: "collection", pageIds: [] }),
+      ).rejects.toMatchObject({ code: "ref_stale" });
+      const removed = h.runs.toggleConversationArtifact({
+        chatId: "collection",
+        artifactId: selected[0]!,
+        included: false,
+      });
+      expect(removed.unavailableArtifactIds).toBeUndefined();
+      expect(h.repo.getSetting("conversationArtifacts:collection")).toEqual(selected.slice(1));
+    } finally {
+      await h.runs.close();
+      h.repo.close();
+    }
+  });
+
   it("reuses selected generated text artifacts with bounded exact provenance", async () => {
     const h = harness();
     await h.pages.open({ url: "https://example.com", background: true, ownedByRuntime: false });

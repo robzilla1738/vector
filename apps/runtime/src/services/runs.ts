@@ -437,12 +437,16 @@ export class RunService {
   private artifactSelection(chatId: string): string[] {
     const saved = this.deps.repo.getSetting<unknown>(`conversationArtifacts:${chatId}`);
     return Array.isArray(saved)
-      ? [...new Set(saved.filter((value): value is string => typeof value === "string"))].slice(0, 20)
+      ? [...new Set(saved.filter((value): value is string => typeof value === "string"))]
       : [];
   }
 
-  conversationArtifacts(chatId: string): { chatId: string; artifacts: ConversationArtifact[] } {
-    const runs = this.deps.repo.listRuns(500, { chatId });
+  conversationArtifacts(chatId: string): {
+    chatId: string;
+    artifacts: ConversationArtifact[];
+    unavailableArtifactIds?: string[];
+  } {
+    const runs = this.deps.repo.conversationRuns(chatId);
     const byRun = new Map(runs.map((run) => [run.runId, run]));
     const included = new Set(this.artifactSelection(chatId));
     const artifacts: ConversationArtifact[] = [];
@@ -511,24 +515,21 @@ export class RunService {
       }
     }
     artifacts.sort((a, b) => b.createdAt - a.createdAt);
-    const visible = artifacts.slice(0, 30);
-    const availableIds = new Set(visible.map((item) => item.artifactId));
-    const validSelection = [...included].filter((id) => availableIds.has(id));
-    if (validSelection.length !== included.size)
-      this.deps.repo.setSetting(`conversationArtifacts:${chatId}`, validSelection);
-    return { chatId, artifacts: visible };
+    const availableIds = new Set(artifacts.map((item) => item.artifactId));
+    const unavailableArtifactIds = [...included].filter((id) => !availableIds.has(id));
+    return { chatId, artifacts, ...(unavailableArtifactIds.length ? { unavailableArtifactIds } : {}) };
   }
 
   toggleConversationArtifact(opts: { chatId: string; artifactId: string; included: boolean }) {
     if (this.deps.repo.getConversation(opts.chatId)?.archived)
       throw new AuxError("conflict", "Restore this conversation before changing its context.");
     const available = this.conversationArtifacts(opts.chatId).artifacts;
-    if (!available.some((item) => item.artifactId === opts.artifactId))
+    if (opts.included && !available.some((item) => item.artifactId === opts.artifactId))
       throw new AuxError("not_found", "Generated artifact not found in this conversation.");
     const selected = new Set(this.artifactSelection(opts.chatId));
     if (opts.included) selected.add(opts.artifactId);
     else selected.delete(opts.artifactId);
-    this.deps.repo.setSetting(`conversationArtifacts:${opts.chatId}`, [...selected].slice(0, 20));
+    this.deps.repo.setSetting(`conversationArtifacts:${opts.chatId}`, [...selected]);
     this.deps.events.emit("conversation.context.changed", { chatId: opts.chatId });
     return this.conversationArtifacts(opts.chatId);
   }
@@ -930,7 +931,14 @@ export class RunService {
     const artifactText: string[] = [];
     const verifiedArtifactText: string[] = [];
     let artifactRemaining = 4_000;
-    for (const item of this.conversationArtifacts(chatId).artifacts.filter((item) => item.included)) {
+    const artifactCollection = this.conversationArtifacts(chatId);
+    if (artifactCollection.unavailableArtifactIds?.length)
+      throw new AuxError(
+        "ref_stale",
+        "A selected saved result is unavailable. Remove it from the composer before sending.",
+      );
+    const selectedArtifacts = artifactCollection.artifacts.filter((item) => item.included);
+    for (const item of selectedArtifacts) {
       if (artifactRemaining <= 0) break;
       try {
         const generated = this.deps.repo.getSetting<unknown>(`generatedResult:${item.artifactId}`);
@@ -951,9 +959,16 @@ export class RunService {
         artifactIds.push(item.artifactId);
         artifactRemaining -= excerpt.length;
       } catch {
-        /* artifact disappeared between inspection and context assembly */
+        throw new AuxError(
+          "ref_stale",
+          "A selected saved result became unavailable. Review the composer before sending.",
+        );
       }
     }
+    if (selectedArtifacts.length)
+      artifactText.unshift(
+        `SAVED RESULT COLLECTION: ${selectedArtifacts.length} selected; ${artifactIds.length} excerpts included in this request. Other selected results remain in the collection and are not included in this request.`,
+      );
     const workspace = this.conversationWorkspace(chatId);
     const savedMemory = workspace.memoryPreview;
     const workspaceText = savedMemory

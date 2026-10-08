@@ -1,3 +1,4 @@
+import { cancelConversationSearch, clearConversationSearch } from "../conversation-search";
 import { staticSmallIconButtonProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
@@ -86,14 +87,15 @@ export function FindBar({
       cancelAnimationFrame(frame);
       cancelAnimationFrame(nextFrame);
       if (debounce.current) window.clearTimeout(debounce.current);
-      finder.clear();
+      if (inConversation) clearConversationSearch();
+      else finder.clear();
       if (!inShell && activePageId)
         void call("pages.stopFind", { pageId: activePageId, action: "clear" }).catch(() => {});
     };
-  }, [activePageId, epoch, loading, search, inShell, conversationId, finder]);
+  }, [activePageId, epoch, loading, search, inShell, inConversation, conversationId, finder]);
 
   useEffect(() => {
-    if (!inShell) return;
+    if (!inReader) return;
     const root = document.querySelector(inReader ? ".reader-scroll" : '[data-find-surface="conversation"]');
     if (!root) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -125,7 +127,8 @@ export function FindBar({
   const close = async () => {
     ++request.current;
     if (debounce.current) window.clearTimeout(debounce.current);
-    finder.clear();
+    if (inConversation) clearConversationSearch();
+    else finder.clear();
     if (inReader) useStore.setState({ readerFindOpen: false });
     else setOverlay(null);
     if (inShell) returnFocusRef?.current?.focus({ preventScroll: true });
@@ -134,6 +137,7 @@ export function FindBar({
   };
   const onChange = (v: string) => {
     ++request.current;
+    if (inConversation) cancelConversationSearch();
     setError("");
     useStore.setState({ findText: v, findMatches: null });
     if (debounce.current) window.clearTimeout(debounce.current);
@@ -157,13 +161,10 @@ export function FindBar({
       <input
         ref={ref}
         value={text}
-        placeholder={
-          inReader ? "Find in article" : inConversation ? "Find in loaded messages" : "Find in page"
-        }
+        maxLength={inConversation ? 500 : undefined}
+        placeholder={inReader ? "Find in article" : inConversation ? "Find in conversation" : "Find in page"}
         title={
-          inConversation
-            ? "Searches loaded messages. Load earlier messages to include older replies."
-            : undefined
+          inConversation ? "Search all messages in this conversation, including earlier replies." : undefined
         }
         aria-label={inReader ? "Find in article" : inConversation ? "Find in conversation" : "Find in page"}
         disabled={!inShell && !activePageId}

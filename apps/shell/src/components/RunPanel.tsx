@@ -1,3 +1,4 @@
+import { conversationReply } from "@aux/contracts";
 import { orderedPages } from "../store/pages";
 import { staticSmallIconButtonProps, staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
@@ -147,27 +148,6 @@ function ResultFields({ result, labeled }: { result: Record<string, unknown>; la
   );
 }
 
-function chatReply(run: Run): string | null {
-  const goal = run.goal.trim().toLowerCase();
-  const prose = (value: unknown) => {
-    const text = typeof value === "string" ? value.trim() : "";
-    return text && text.toLowerCase() !== goal ? text : "";
-  };
-  const answer = prose(run.result?.answer);
-  const report = prose(run.result?.report);
-  const message =
-    run.failure || (run.error && run.statusMessage === run.error) ? "" : prose(run.statusMessage);
-  if (report && run.status === "completed") return report;
-  if (answer && run.status !== "completed" && message) return `${message}\n\n${answer}`;
-  if (answer) return answer;
-  if (message) return message;
-  if (!run.result) return null;
-  const rest = Object.entries(run.result)
-    .flatMap(([key, value]) => (key === "answer" ? [] : [prose(value)]))
-    .filter(Boolean);
-  return rest.length ? rest.join("\n\n") : null;
-}
-
 /** Final answer as prose — no status chrome, copy is an icon. */
 function Answer({
   run,
@@ -202,7 +182,7 @@ function Answer({
     run.statusMessage !== run.error &&
     (!run.failure || !!run.result) &&
     !(run.status === "completed" && plainAnswer?.trim());
-  const reply = conversation ? chatReply(run) : null;
+  const reply = conversation ? conversationReply(run) : null;
   const [copied, setCopied] = useState(false);
   const text = useMemo(() => {
     const parts: string[] = [];
@@ -236,13 +216,15 @@ function Answer({
     return (
       <section className="answer">
         {reply && (
-          <AnswerMarkdown
-            text={reply}
-            sources={sources}
-            onOpenLink={
-              onCitationOpen ? (url, background) => onCitationOpen(url, background, run.runId) : undefined
-            }
-          />
+          <div data-find-part="reply">
+            <AnswerMarkdown
+              text={reply}
+              sources={sources}
+              onOpenLink={
+                onCitationOpen ? (url, background) => onCitationOpen(url, background, run.runId) : undefined
+              }
+            />
+          </div>
         )}
         {(reply || retry) && (
           <span className="answer-tools">
@@ -261,7 +243,11 @@ function Answer({
             {retry}
           </span>
         )}
-        {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
+        {run.error && !run.failure && (
+          <p className="answer-text err" data-find-part="error">
+            {run.error}
+          </p>
+        )}
       </section>
     );
   }
@@ -293,7 +279,11 @@ function Answer({
           <ResultFields result={result} labeled />
         </RunPanelDisclosure>
       )}
-      {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
+      {run.error && !run.failure && (
+        <p className="answer-text err" data-find-part="error">
+          {run.error}
+        </p>
+      )}
     </section>
   );
 }
@@ -615,7 +605,7 @@ export const RunPanel = memo(function RunPanel({
                   ? "Permission needed"
                   : "This turn stopped"}
             </strong>
-            <p>{run.failure.message}</p>
+            <p data-find-part="error">{run.failure.message}</p>
           </div>
           {latestConversationTurn &&
             !run.config?.taskId &&

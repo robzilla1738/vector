@@ -1,3 +1,4 @@
+import { ConversationSearchParams, ConversationSearchResultSchema } from "./conversation-search.js";
 import { CapturedSourceSchema } from "./captured-source.js";
 import { MemorySaverMinutesSchema } from "./memory-saver.js";
 import { BookmarkMethodSchemas, BookmarkResultSchemas } from "./bookmark-methods.js";
@@ -804,6 +805,7 @@ export type SavedResult = z.infer<typeof SavedResultSchema>;
 export const ConversationArtifactsSchema = z.object({
   chatId: id,
   artifacts: z.array(ConversationArtifactSchema),
+  unavailableArtifactIds: z.array(id).optional(),
 });
 export const ConversationArtifactToggleParams = z.object({
   chatId: id,
@@ -1596,6 +1598,8 @@ export const MethodSchemas = {
   "conversations.list": ConversationsListParams,
   "conversations.prepared": z.object({}),
   "conversations.get": z.object({ chatId: id }),
+  "conversations.search": ConversationSearchParams,
+  "conversations.turns": z.object({ chatId: id, runId: id }),
   "conversations.rename": ConversationRenameParams,
   "conversations.archive": ConversationArchiveParams,
   "conversations.delete": ConversationDeleteParams,
@@ -1655,7 +1659,7 @@ export const MethodSchemas = {
   "runs.retryModelSetup": z.object({ runId: id, suspensionId: id }).strict(),
   "runs.queue": RunsQueueParams,
   "runs.steer": RunsSteerParams,
-  "runs.messages.list": z.object({ chatId: id }),
+  "runs.messages.list": z.object({ chatId: id, runIds: z.array(id) }),
   "runs.messageStatus": z.object({ nonce: id }),
   "safety.decisions.list": SafetyActivityQuerySchema,
   "packages.list": z.object({}).strict(),
@@ -2417,6 +2421,12 @@ export const ResultSchemas = {
   "conversations.list": z.array(ConversationSummarySchema),
   "conversations.prepared": z.array(PreparedConversationSchema),
   "conversations.get": z.union([ConversationSummarySchema, ConversationBranchMetadataSchema]).nullable(),
+  "conversations.search": ConversationSearchResultSchema,
+  "conversations.turns": z.object({
+    runs: z.array(RunSchema),
+    earlierRunId: id.nullable(),
+    laterRunId: id.nullable(),
+  }),
   "conversations.rename": ConversationSummarySchema,
   "conversations.archive": ConversationSummarySchema,
   "conversations.delete": z.object({ ok: z.literal(true), deletedRuns: z.number().int().nonnegative() }),

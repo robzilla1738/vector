@@ -1,4 +1,5 @@
-import type { MethodCtx, MethodHandler } from "./context.js";
+import { searchConversation } from "../../services/conversation-search.js";
+import type { MethodCtx, MethodHandler, Services } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
 
@@ -38,6 +39,27 @@ async function h_conversations_get(ctx: MethodCtx): Promise<unknown> {
   if (s.runs.branches.get(params.chatId) && (ctx.client.external || ctx.client.codeMode))
     throw new AuxError("permission_denied", "Review the branch draft in its original Aux window.");
   return s.runs.conversation(params.chatId);
+}
+const searches = new WeakMap<Services["repo"], Map<string, AbortController>>();
+async function h_conversations_search(ctx: MethodCtx): Promise<unknown> {
+  const owner = ctx.client.nativeTurnContext;
+  if (!owner) return searchConversation(ctx.s.repo, ctx.params);
+  let active = searches.get(ctx.s.repo);
+  if (!active) {
+    active = new Map();
+    searches.set(ctx.s.repo, active);
+  }
+  active.get(owner)?.abort();
+  const request = new AbortController();
+  active.set(owner, request);
+  try {
+    return await searchConversation(ctx.s.repo, ctx.params, request.signal);
+  } finally {
+    if (active.get(owner) === request) active.delete(owner);
+  }
+}
+async function h_conversations_turns(ctx: MethodCtx): Promise<unknown> {
+  return ctx.s.repo.conversationTurnWindow(ctx.params.chatId, ctx.params.runId);
 }
 async function h_conversations_rename(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
@@ -117,6 +139,8 @@ export const conversationsMethods: Partial<Record<MethodName, MethodHandler>> = 
   "conversations.images.toggle": h_conversations_images_toggle,
   "conversations.images.remove": h_conversations_images_remove,
   "conversations.get": h_conversations_get,
+  "conversations.search": h_conversations_search,
+  "conversations.turns": h_conversations_turns,
   "conversations.rename": h_conversations_rename,
   "conversations.archive": h_conversations_archive,
   "conversations.delete": h_conversations_delete,

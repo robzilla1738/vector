@@ -714,6 +714,17 @@ export class Repo {
     ).map((row) => this.rowToRunMessage(row));
   }
 
+  visibleRunMessages(chatId: string, runIds: readonly string[]): RunMessage[] {
+    return (
+      this.q(
+        `SELECT * FROM run_messages WHERE chat_id=? AND
+      (status NOT IN ('delivered','cancelled') OR
+       (mode='steer' AND status='delivered' AND target_run_id IN (SELECT value FROM json_each(?))))
+      ORDER BY created_at,message_id`,
+      ).all(chatId, JSON.stringify(runIds)) as Record<string, unknown>[]
+    ).map((row) => this.rowToRunMessage(row));
+  }
+
   listRunSteers(runId: string): RunMessage[] {
     return (
       this.q(
@@ -963,6 +974,31 @@ export class Repo {
       ORDER BY r.created_at DESC,r.run_id DESC`,
       ).all(chatId) as any[]
     ).map((row) => this.rowToRun(row));
+  }
+
+  conversationTurnWindow(chatId: string, runId: string) {
+    const run = this.getRun(runId);
+    if (!run || (run.config?.chatId ?? run.runId) !== chatId)
+      throw new AuxError("not_found", "This message is no longer in the conversation.");
+    const adjacent = (direction: "older" | "newer") => {
+      const operator = direction === "older" ? "<" : ">";
+      const order = direction === "older" ? "DESC" : "ASC";
+      return (
+        this.q(
+          `SELECT r.* FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
+        WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=?
+        AND (r.created_at ${operator} ? OR (r.created_at=? AND r.run_id ${operator} ?))
+        ORDER BY r.created_at ${order},r.run_id ${order} LIMIT 25`,
+        ).all(chatId, run.createdAt, run.createdAt, runId) as Record<string, unknown>[]
+      ).map((row) => this.rowToRun(row));
+    };
+    const older = adjacent("older"),
+      newer = adjacent("newer");
+    return {
+      runs: [...older.slice(0, 24).reverse(), run, ...newer.slice(0, 24)],
+      earlierRunId: older[24]?.runId ?? null,
+      laterRunId: newer[24]?.runId ?? null,
+    };
   }
 
   deleteConversation(chatId: string): { deletedRuns: number; artifactPaths: string[] } {

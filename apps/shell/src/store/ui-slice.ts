@@ -1,7 +1,8 @@
+import { findConversation, clearConversationSearch } from "../conversation-search";
 import { bridge } from "../bridge";
 import { isHomeAddress, isScrimOverlay } from "../chrome";
 import { nextSidebarMode, readSidebarMode, sidebarFocusSelector } from "../sidebar-mode";
-import { conversationFinder, readerFinder } from "../text-surface-find";
+import { readerFinder } from "../text-surface-find";
 import { storage } from "./persistence";
 import { call } from "./shared";
 import type { CommandSlot, Slice, UiKeys } from "./types";
@@ -157,11 +158,13 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
       return;
     }
     if (get().mode === "conversation") {
-      const result = conversationFinder.find(text, findNext, forward);
-      set({ findText: text, findMatches: text ? result : null });
+      set({ findText: text });
+      const result = await findConversation(get().conversationId, text, findNext, forward);
+      if (result && sequence === findSequence && get().mode === "conversation" && get().findText === text)
+        set({ findMatches: text ? result : null });
       return;
     }
-    conversationFinder.clear();
+    clearConversationSearch();
     const epoch = get().pages.byId[id ?? ""]?.documentEpoch;
     set({ findText: text, findMatches: null });
     if (!id || !text) {

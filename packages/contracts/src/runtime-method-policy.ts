@@ -266,6 +266,8 @@ export const RuntimeMethodPolicy = {
   "conversations.list": { feature: "core", auth: "standard" },
   "conversations.prepared": { feature: "core", auth: "handler-guarded" },
   "conversations.get": { feature: "core", auth: "standard" },
+  "conversations.search": { feature: "core", auth: "aux-webui" },
+  "conversations.turns": { feature: "core", auth: "aux-webui" },
   "conversations.rename": { feature: "core", auth: "standard" },
   "conversations.archive": { feature: "core", auth: "standard" },
   "conversations.delete": { feature: "core", auth: "standard" },

@@ -317,7 +317,7 @@ async function h_runs_steer(ctx: MethodCtx): Promise<unknown> {
 async function h_runs_messages_list(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
   if (client.external) throw new AuxError("permission_denied", "Conversation messages are available in Aux.");
-  return s.runs.messages.list(params.chatId);
+  return s.repo.visibleRunMessages(params.chatId, params.runIds);
 }
 async function h_runs_messageStatus(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
