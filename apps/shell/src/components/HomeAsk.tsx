@@ -123,6 +123,7 @@ export default function HomeAsk({
           <Conversation
             embedded
             home
+            initialActivation={firstFrame?.activation?.mode === "ask" ? firstFrame.activation : undefined}
             composerRef={composer}
             chatId={chatId}
             onChatCreated={(id, temporary) => {

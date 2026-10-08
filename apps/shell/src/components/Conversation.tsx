@@ -1,3 +1,4 @@
+import type { FirstFrameActivation } from "../first-frame";
 import { SourceCollection } from "./SourceCollection";
 import { registerConversationSearchSurface } from "../conversation-search";
 import { ConversationTurn } from "./ConversationTurn";
@@ -376,6 +377,7 @@ export function Conversation({
   embedded = false,
   home = false,
   entryControls,
+  initialActivation,
   onChatCreated,
   composerRef,
   findReturnRef,
@@ -384,6 +386,7 @@ export function Conversation({
   embedded?: boolean;
   home?: boolean;
   entryControls?: ReactNode;
+  initialActivation?: FirstFrameActivation;
   onChatCreated?: (chatId: string, temporary: boolean) => void;
   composerRef?: RefObject<HTMLTextAreaElement | null>;
   findReturnRef?: RefObject<HTMLDivElement | null>;
@@ -1488,10 +1491,54 @@ export function Conversation({
     })();
     return guardCommandCompletion(completion, original.owner);
   };
-  const send = async () => {
-    const text = readText();
+  const send = async (initial?: FirstFrameActivation) => {
+    const text = initial?.text ?? readText();
     const composerId = mentionComposerId(id, answerRunId);
-    if (archived || !connected || !text.trim() || sendPending.current || answerPending) return;
+    let sentChatId = id;
+    let recoveredInitial = false;
+    const keepInitialPrompt = () => {
+      if (!initial || recoveredInitial) return;
+      recoveredInitial = true;
+      const state = useStore.getState();
+      const chatId = sentChatId ?? createdChat.current ?? id;
+      const draft = chatId ? state.conversationDrafts[draftKey(chatId)] : state.agentDraft;
+      if (draft === text) return;
+      if (chatId && readStartAttempt(chatId)) {
+        state.toast(
+          "Aux couldn’t confirm the original send. Open its chat to check without sending it twice.",
+          "error",
+          {
+            label: "Open original prompt",
+            run: () => useStore.getState().openConversationDraft(chatId),
+          },
+        );
+        return;
+      }
+      const recoveryId = crypto.randomUUID();
+      const preferences = state.composerPreferences[composerPreferenceKey];
+      state.setComposerPreferences(draftKey(recoveryId), { ...preferences, privateTask });
+      state.setConversationDraft(recoveryId, text);
+      try {
+        if (!privateTask && !bridge.privateMode) localStorage.setItem(PENDING_CHAT_KEY, recoveryId);
+      } catch {
+        /* The current window still owns the recovered prompt. */
+      }
+      state.toast(
+        "Your original startup prompt wasn’t sent. It is saved separately from your newer draft.",
+        "error",
+        {
+          label: "Open original prompt",
+          run: () => useStore.getState().openConversationDraft(recoveryId),
+        },
+      );
+    };
+    if (archived || !connected || !text.trim() || sendPending.current || answerPending) {
+      if (initial) {
+        keepInitialPrompt();
+        setSendError("Aux couldn’t send the startup prompt. Try sending it again.");
+      }
+      return;
+    }
     if (
       !answering &&
       (attachmentSaving ||
@@ -1502,14 +1549,18 @@ export function Conversation({
         contextLoading ||
         contextError ||
         (taskBound && last?.status !== "needs_input"))
-    )
+    ) {
+      if (initial) {
+        keepInitialPrompt();
+        setSendError("Aux couldn’t send the startup prompt. Review the current context and send again.");
+      }
       return;
+    }
     sendPending.current = true;
     setSending(true);
     setSendError("");
     setSendErrorDetails("");
     let draftCleared = false;
-    let sentChatId = id;
     const restoreDraft = () => {
       if (isRunStartRemoved(sentChatId ?? "new")) return;
       const state = useStore.getState();
@@ -1607,6 +1658,10 @@ export function Conversation({
         }
         // Optimistic: the message leaves the composer and joins the thread now;
         // a failed start puts it back unless something new was typed meanwhile.
+        if (initial && !initial.current())
+          throw new Error(
+            "The original startup prompt’s context changed. Send it again from the current Home.",
+          );
         const chatId = ensureChatId();
         sentChatId = chatId;
         const pageIds = selectedPageIds;
@@ -1620,11 +1675,17 @@ export function Conversation({
           ...browserSources.filter((source) => source.pageId !== primaryForRun?.pageId),
         ].filter((source) => pageIds.includes(source.pageId));
         setSendingChat(chatId);
-        useStore.getState().setConversationDraft(chatId, "");
-        draftCleared = true;
+        if (useStore.getState().conversationDrafts[draftKey(chatId)] === text) {
+          useStore.getState().setConversationDraft(chatId, "");
+          draftCleared = true;
+        }
         if (activeChat.current === id) scrolling.jumpToLatest();
         if (!taskModeKnown) throw new Error("The chat’s task mode is still loading. Your draft is kept.");
         const preferences = useStore.getState().composerPreferences[composerPreferenceKey];
+        if (initial && !initial.current())
+          throw new Error(
+            "The original startup prompt’s context changed. Send it again from the current Home.",
+          );
         const run = await useStore.getState().startRun(text, {
           privateTask,
           executionTarget: preferences?.executionTarget,
@@ -1669,10 +1730,14 @@ export function Conversation({
             useStore.getState().setConversationBrowserSources(null, []);
           }
           if (activeChat.current === id) scrolling.jumpToLatest();
-        } else restoreDraft();
+        } else {
+          restoreDraft();
+          keepInitialPrompt();
+        }
       }
     } catch (error) {
       restoreDraft();
+      keepInitialPrompt();
       if (activeChat.current === id || activeChat.current === sentChatId) {
         const detail = errorMessage(error);
         const staleSource = (error as { code?: string } | null)?.code === "ref_stale" || detail.startsWith("ref_stale:");
@@ -1689,6 +1754,10 @@ export function Conversation({
       setSendingChat(null);
     }
   };
+  useEffect(() => {
+    if (!home || !initialActivation?.current() || !initialActivation.consume()) return;
+    void send(initialActivation).finally(() => initialActivation.retire());
+  });
   const reopen = () => {
     if (
       !recoverUrl ||

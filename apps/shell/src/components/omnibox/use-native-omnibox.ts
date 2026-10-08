@@ -12,6 +12,7 @@ type Snapshot = {
   sequenceId: number;
   items: OmniboxResult["items"];
   error: string | null;
+  ready: boolean;
 };
 
 /** Native browser providers stream independently of runtime work providers. */
@@ -24,6 +25,7 @@ export function useNativeOmnibox(enabled: boolean, query: string, generation: nu
     sequenceId: 0,
     items: empty,
     error: null,
+    ready: false,
   });
   const retried = useRef<Snapshot | null>(null);
   const windowId = bridge.windowId;
@@ -44,7 +46,7 @@ export function useNativeOmnibox(enabled: boolean, query: string, generation: nu
       bridge.windowId === windowId &&
       bridge.windowKind === windowKind &&
       bridge.privateMode === privateMode;
-    const initial = { query, generation, queryId, sequenceId: 0, items: empty, error: null };
+    const initial = { query, generation, queryId, sequenceId: 0, items: empty, error: null, ready: false };
     setSnapshot(initial);
     const unsubscribe = bridge.onOmniboxResult((result) => {
       if (
@@ -55,15 +57,21 @@ export function useNativeOmnibox(enabled: boolean, query: string, generation: nu
       )
         return;
       latestSequence = result.sequenceId;
-      setSnapshot({ ...initial, sequenceId: result.sequenceId, items: result.items });
+      setSnapshot((current) => ({
+        ...initial,
+        ready: current.queryId === queryId && current.ready,
+        sequenceId: result.sequenceId,
+        items: result.items,
+      }));
     });
     void Promise.resolve()
       .then(() =>
         current() ? bridge["omnibox.start"]({ queryId, input: query, onFocus: query.length === 0 }) : false,
       )
       .then((accepted) => {
-        if (!accepted && current())
-          setSnapshot({ ...initial, error: "The current browser query could not be started." });
+        if (!current()) return;
+        if (!accepted) setSnapshot({ ...initial, error: "The current browser query could not be started." });
+        else setSnapshot((value) => (value.queryId === queryId ? { ...value, ready: true } : value));
       })
       .catch((error: unknown) => {
         if (current())
@@ -111,6 +119,7 @@ export function useNativeOmnibox(enabled: boolean, query: string, generation: nu
     items: isCurrent ? snapshot.items : empty,
     error: isCurrent ? snapshot.error : null,
     current: isCurrent,
+    ready: isCurrent && snapshot.ready,
     retry: retryCurrent,
     open,
     openInput,

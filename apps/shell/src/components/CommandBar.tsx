@@ -161,7 +161,11 @@ export function CommandBar({
         ? (seed[0] as "@" | "/" | ">" | "?")
         : null;
   const [firstFrame] = useState(() => (hero ? takeFirstFrame() : undefined));
-  const [editing, setEditing] = useState(!!surfaceMode || !!firstFrame?.focused);
+  const [firstSearch, setFirstSearch] = useState(() =>
+    firstFrame?.activation?.mode === "search" ? firstFrame.activation : undefined,
+  );
+  useEffect(() => () => firstFrame?.activation?.retire(), [firstFrame]);
+  const [editing, setEditing] = useState(!!surfaceMode || !!firstFrame?.focused || !!firstSearch?.current());
   const [submitting, setSubmitting] = useState(false);
   const [queryState, setQueryState] = useState({
     value:
@@ -277,8 +281,7 @@ export function CommandBar({
   }>({ query: "", results: [], skills: [], chats: [] });
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (!hero && !surfaceMode && inputRef.current?.isConnected)
-      return nativePerformanceControl("address");
+    if (!hero && !surfaceMode && inputRef.current?.isConnected) return nativePerformanceControl("address");
   }, [hero, surfaceMode]);
   const barRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef(new Map<number, HTMLDivElement>());
@@ -315,17 +318,6 @@ export function CommandBar({
     inputRef.current?.focus();
     if (surfaceMode === "edit") inputRef.current?.select();
   }, [surfaceMode]);
-
-  useLayoutEffect(() => {
-    if (!firstFrame?.focused || firstFrame.mode !== "search") return;
-    const input = inputRef.current;
-    input?.focus();
-    input?.setSelectionRange(
-      firstFrame.selectionStart,
-      firstFrame.selectionEnd,
-      firstFrame.selectionDirection,
-    );
-  }, [firstFrame]);
 
   // ⌘L and friends land here
   useEffect(() => {
@@ -391,6 +383,16 @@ export function CommandBar({
   useLayoutEffect(() => {
     if (editing && document.activeElement === inputRef.current) inputRef.current?.select();
   }, [editing]);
+  useLayoutEffect(() => {
+    if (!firstFrame?.focused || firstFrame.mode !== "search") return;
+    const input = inputRef.current;
+    input?.focus();
+    input?.setSelectionRange(
+      firstFrame.selectionStart,
+      firstFrame.selectionEnd,
+      firstFrame.selectionDirection,
+    );
+  }, [firstFrame]);
   const onBlur = () => {
     // let a click on a suggestion land before we tear the list down
     window.setTimeout(() => {
@@ -478,10 +480,10 @@ export function CommandBar({
       !scopePrefix &&
       !(hero && entryMode === "ask") &&
       ["empty", "navigate", "search"].includes(intent.kind),
-    raw,
-    queryGeneration,
+    firstSearch?.current() ? firstSearch.text.trim() : raw,
+    firstSearch?.current() ? -1 : queryGeneration,
   );
-  const browserMatches = nativeOmnibox.items;
+  const browserMatches = firstSearch ? [] : nativeOmnibox.items;
   const browserError = nativeOmnibox.error;
   const currentBrowserResult = nativeOmnibox.current;
   const retryAutocomplete = nativeOmnibox.retry;
@@ -967,6 +969,7 @@ export function CommandBar({
       setPreferSearchOffer(askBreaker.flipped(next));
     } else if (e.key === "Enter") {
       e.preventDefault();
+      if (firstSearch) return;
       const chosen = suggestions[sel];
       // ↵ on the intent row accepts a ghost-completed host, like Chrome.
       const completed =
@@ -999,6 +1002,70 @@ export function CommandBar({
       setSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (!firstSearch) return;
+    if (entryMode !== "search" || !firstSearch.current() || !homeCurrent()) {
+      firstSearch.retire();
+      setFirstSearch(undefined);
+      return;
+    }
+    if (browserAutocomplete && !nativeOmnibox.ready && !nativeOmnibox.error) return;
+    if (!firstSearch.consume()) return;
+    const original = firstSearch;
+    const latest = inputRef.current?.value ?? val;
+    if (latest !== original.text) useStore.getState().setAgentDraft(latest);
+    const target = detectIntent(original.text, { hasPage, searchEngine, searchEngines });
+    const search: Intent =
+      target.kind === "navigate"
+        ? target
+        : {
+            kind: "search",
+            query: original.text.trim(),
+            url: toUrl(original.text, searchEngine),
+          };
+    void submit(async () => {
+      if (!original.current() || !homeCurrent()) return;
+      let recoveryOffered = false;
+      try {
+        if (nativeOmnibox.error) throw new Error(nativeOmnibox.error);
+        await exec(search, original.newTab);
+      } catch (error) {
+        if (original.current() && homeCurrent()) {
+          const input = inputRef.current;
+          const currentText = input?.value ?? val;
+          if (currentText !== original.text) {
+            useStore.getState().setAgentDraft(currentText);
+            recoveryOffered = true;
+            useStore.getState().toast(errorMessage(error), "error", {
+              label: "Restore original search",
+              run: () => {
+                if (
+                  !original.current() ||
+                  !homeCurrent() ||
+                  inputRef.current !== input ||
+                  !input?.isConnected
+                )
+                  return;
+                original.retire();
+                setVal(original.text);
+                setEditing(true);
+                input.focus();
+              },
+            });
+          } else {
+            setVal(original.text);
+            throw error;
+          }
+        }
+      } finally {
+        // A failed query may retain its owner only for explicit text recovery.
+        // Clearing firstSearch always releases the original native query.
+        if (!recoveryOffered) original.retire();
+        setFirstSearch(undefined);
+      }
+    }, true);
+  });
 
   const secure =
     !page?.navigationError &&
@@ -1134,6 +1201,11 @@ export function CommandBar({
           autoCapitalize="off"
           onFocus={onFocus}
           onChange={(e) => {
+            if (firstSearch) {
+              setVal(e.target.value);
+              useStore.getState().setAgentDraft(e.target.value);
+              return;
+            }
             setRouteFlip(null);
             if (!scopePrefix && /^[ @/>?]$/.test(e.target.value) && e.target.value !== " ") {
               const prefix = e.target.value as "@" | "/" | ">" | "?";

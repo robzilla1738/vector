@@ -64,8 +64,14 @@ async function boot() {
     }
     const { App } = await import("./App");
     const { useStore } = await import("./store");
+    const { bindFirstFrameActivation } = await import("./first-frame-owner");
     const firstFrame = captureFirstFrame();
-    if (firstFrame?.mode === "ask") useStore.getState().setAgentDraft(firstFrame.text);
+    if (firstFrame?.activation) bindFirstFrameActivation(firstFrame.activation);
+    if (
+      firstFrame &&
+      (firstFrame.mode === "ask" || (firstFrame.activation && firstFrame.text !== firstFrame.activation.text))
+    )
+      useStore.getState().setAgentDraft(firstFrame.text);
     root.render(
       <RootBoundary>
         <App />

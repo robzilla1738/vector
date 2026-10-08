@@ -8,9 +8,13 @@ import { useStore } from "../store";
 import { executeCommand } from "../commands";
 import { COMMANDS } from "@aux/contracts";
 import { CommandBar } from "./CommandBar";
+import { captureFirstFrame, listenFirstFrame, takeFirstFrame } from "../first-frame";
+import { bindFirstFrameActivation } from "../first-frame-owner";
+import { makePage } from "../mock/fixtures";
 vi.mock("../bridge", async (original) => ({
   ...(await original<typeof import("../bridge")>()),
   inMock: true,
+  inNativeHost: true,
 }));
 const initial = useStore.getState();
 const originalWindow = { id: bridge.windowId, kind: bridge.windowKind, private: bridge.privateMode };
@@ -44,6 +48,8 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
+  captureFirstFrame();
+  takeFirstFrame();
   useStore.setState(initial, true);
   bridge.windowId = originalWindow.id;
   bridge.windowKind = originalWindow.kind;
@@ -182,3 +188,95 @@ it("acknowledges only committed current native rows to an opted-in native benchm
   await act(async () => receive?.({ ...result, sequenceId: 2 }));
   expect(performanceCommit).toHaveBeenCalledTimes(1);
 });
+
+function earlySearch() {
+  const skeleton = document.createElement("div");
+  skeleton.innerHTML = '<input id="first-frame-entry">';
+  document.body.append(skeleton);
+  const input = skeleton.querySelector("input")!;
+  input.focus();
+  input.value = "original search";
+  listenFirstFrame();
+  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true }));
+  input.value = "newer draft";
+  input.setSelectionRange(2, 5, "backward");
+  const entry = captureFirstFrame()!;
+  bindFirstFrameActivation(entry.activation!);
+  useStore.getState().setAgentDraft(entry.text);
+  skeleton.remove();
+  return entry;
+}
+it.each(["accepted", "rejected", "source ABA"])(
+  "owns early Search's original native query until its exact start ACK: %s",
+  async (outcome) => {
+    useStore.setState({ mode: "focus", overlay: null, activePageId: null });
+    const entry = earlySearch();
+    let resolve!: (value: boolean) => void;
+    vi.mocked(bridge["omnibox.start"]).mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    const open = vi.spyOn(bridge, "omnibox.open").mockResolvedValue(true);
+    const stop = vi.spyOn(bridge, "omnibox.stop").mockResolvedValue(true);
+    await act(async () => root.render(<CommandBar hero />));
+    const request = vi.mocked(bridge["omnibox.start"]).mock.calls.at(-1)![0];
+    const originalAck = resolve;
+    expect(request.input).toBe("original search");
+    const input = host.querySelector<HTMLInputElement>('input[role="combobox"]')!;
+    expect([input.selectionStart, input.selectionEnd, input.selectionDirection]).toEqual([2, 5, "backward"]);
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        input,
+        "newer typed draft",
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(vi.mocked(bridge["omnibox.start"]).mock.calls.at(-1)![0]).toEqual(request);
+    expect(open).not.toHaveBeenCalled();
+    let adoptedOriginalHome = true;
+    if (outcome === "source ABA") {
+      const home = makePage(0, { pageId: "home", windowId: bridge.windowId, url: "about:blank" });
+      await act(async () => useStore.setState({ pages: normalizePages([home]), activePageId: "home" }));
+      adoptedOriginalHome = entry.activation!.current();
+      await act(async () =>
+        useStore.setState({ pages: normalizePages([{ ...home, url: "https://example.test/" }]) }),
+      );
+      await act(async () => useStore.setState({ pages: normalizePages([home]) }));
+    }
+    await act(async () => originalAck(outcome !== "rejected"));
+    expect(useStore.getState().agentDraft).toBe("newer typed draft");
+    expect(adoptedOriginalHome).toBe(true);
+    expect(open.mock.calls).toEqual(
+      outcome === "accepted"
+        ? [
+            [
+              {
+                queryId: request.queryId,
+                disposition: "new-foreground-tab",
+              },
+            ],
+          ]
+        : [],
+    );
+    expect(outcome === "rejected" ? input.value : null).toBe(
+      outcome === "rejected" ? "newer typed draft" : null,
+    );
+    const recovery = useStore.getState().toasts.at(-1)?.action;
+    expect(recovery?.label).toBe(outcome === "rejected" ? "Restore original search" : undefined);
+    expect(useStore.getState().toasts).toHaveLength(outcome === "rejected" ? 1 : 0);
+    await act(async () => recovery?.run());
+    expect(outcome === "rejected" ? input.value : null).toBe(
+      outcome === "rejected" ? "original search" : null,
+    );
+    expect(
+      outcome !== "rejected" ||
+        vi.mocked(bridge["omnibox.start"]).mock.calls.at(-1)![0].queryId > request.queryId,
+    ).toBe(true);
+    expect(entry.activation!.current()).toBe(false);
+    await act(async () => root.render(<CommandBar hero />));
+    expect(open).toHaveBeenCalledTimes(outcome === "accepted" ? 1 : 0);
+    expect(stop).toHaveBeenCalledWith(request.queryId);
+  },
+);

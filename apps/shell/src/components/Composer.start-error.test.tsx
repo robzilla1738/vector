@@ -8,6 +8,9 @@ import { useStore } from "../store";
 import { PENDING_CHAT_KEY } from "../conversation-drafts";
 import { draftWriter } from "../store/persistence";
 import { Conversation } from "./Conversation";
+import HomeAsk from "./HomeAsk";
+import { captureFirstFrame, listenFirstFrame, takeFirstFrame } from "../first-frame";
+import { makePage, makeRun } from "../mock/fixtures";
 let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
 const initial = useStore.getState();
 const originalScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
@@ -55,6 +58,8 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
+  captureFirstFrame();
+  takeFirstFrame();
   draftWriter.flush();
   localStorage.clear();
   useStore.setState(initial, true);
@@ -155,3 +160,102 @@ it.each([false, true])(
     expect(invoke.mock.calls.filter(([method]) => method === "runs.start")).toHaveLength(1);
   },
 );
+
+function earlyAsk() {
+  const skeleton = document.createElement("div");
+  skeleton.innerHTML = '<input id="first-frame-entry"><input id="first-frame-ask" type="radio" checked>';
+  document.body.append(skeleton);
+  const input = skeleton.querySelector("input")!;
+  input.focus();
+  input.value = "Original startup question";
+  listenFirstFrame();
+  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  input.value = "Newer unsent question";
+  const entry = captureFirstFrame()!;
+  skeleton.remove();
+  return entry;
+}
+it.each([true, false])(
+  "hands original early Ask to normal Send once, retaining newer text (connected=%s)",
+  async (connected) => {
+    const entry = earlyAsk();
+    useStore.setState({
+      connected,
+      conversationId: null,
+      agentDraft: entry.text,
+      conversationDrafts: {},
+      railOpen: false,
+    });
+    const invoke = vi.mocked(bridge.invoke),
+      fallback = invoke.getMockImplementation()!;
+    let acceptedRun: ReturnType<typeof makeRun>;
+    invoke.mockImplementation(async (method, params) => {
+      if (method === "conversations.get") return null;
+      if (method === "runs.get") return { run: acceptedRun, steps: [] };
+      if (method === "runs.start") {
+        const request = params as { goal: string; chatId: string };
+        return (acceptedRun = makeRun({
+          runId: "startup-run",
+          goal: request.goal,
+          config: { chatId: request.chatId },
+          pageIds: [],
+        }));
+      }
+      return fallback(method, params);
+    });
+    await act(async () => root.render(<HomeAsk firstFrame={entry} onSearch={() => {}} />));
+    const starts = invoke.mock.calls.filter(([method]) => method === "runs.start");
+    expect(
+      starts.map(([, value]) => {
+        const request = value as { goal: string; pageIds: string[] };
+        return { goal: request.goal, pageIds: request.pageIds };
+      }),
+    ).toEqual(connected ? [{ goal: "Original startup question", pageIds: [] }] : []);
+    const sentChat = (starts[0]?.[1] as { chatId: string } | undefined)?.chatId;
+    const originalChat = sentChat ?? localStorage.getItem(PENDING_CHAT_KEY)!;
+    expect(useStore.getState().conversationDrafts[`chat:${originalChat}`]).toBe(
+      connected ? "Newer unsent question" : "Original startup question",
+    );
+    expect(
+      connected ? useStore.getState().conversationDrafts[`chat:${sentChat}`] : useStore.getState().agentDraft,
+    ).toBe("Newer unsent question");
+    expect(useStore.getState().toasts.at(-1)?.action?.label).toBe(
+      connected ? undefined : "Open original prompt",
+    );
+    await act(async () => {
+      useStore.setState({ connected: true });
+      root.render(<HomeAsk firstFrame={entry} onSearch={() => {}} />);
+    });
+    expect(invoke.mock.calls.filter(([method]) => method === "runs.start")).toHaveLength(connected ? 1 : 0);
+  },
+);
+it("keeps text typed while normal Send awaits source recovery", async () => {
+  const page = makePage(0, { pageId: "source", windowId: bridge.windowId, url: "https://example.test/" });
+  useStore.setState({ pages: normalizePages([page]), activePageId: "source" });
+  useStore.getState().setConversationContext("original", "source");
+  let release!: (value: []) => void;
+  const invoke = vi.mocked(bridge.invoke),
+    fallback = invoke.getMockImplementation()!;
+  const acceptedRun = makeRun({
+    runId: "ordinary-run",
+    goal: "Original question",
+    config: { chatId: "original" },
+    pageIds: ["source"],
+  });
+  invoke.mockImplementation(async (method, params) => {
+    if (method === "runs.get") return { run: acceptedRun, steps: [] };
+    if (method === "browser.recovery.list")
+      return new Promise((done) => {
+        release = done;
+      });
+    if (method === "runs.start") return acceptedRun;
+    return fallback(method, params);
+  });
+  await act(async () => root.render(<Conversation chatId="original" />));
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.click());
+  expect(release).toBeTypeOf("function");
+  await act(async () => useStore.getState().setConversationDraft("original", "Typed while source refreshed"));
+  await act(async () => release([]));
+  expect(invoke.mock.calls.filter(([method]) => method === "runs.start")).toHaveLength(1);
+  expect(useStore.getState().conversationDrafts["chat:original"]).toBe("Typed while source refreshed");
+});
