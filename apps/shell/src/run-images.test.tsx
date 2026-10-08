@@ -43,7 +43,7 @@ it("defers image reads until expansion and keeps usable images when another read
   }
 });
 
-it("exports an oversized original without reading its bytes or publishing a retired turn's save", async () => {
+it("copies and exports an oversized original without reading bytes or publishing retired replies", async () => {
   const initial = useStore.getState();
   useStore.setState({ toasts: [] });
   const artifact = {
@@ -65,6 +65,18 @@ it("exports an oversized original without reading its bytes or publishing a reti
         saved = resolve;
       }),
   );
+  const capabilities = vi.spyOn(bridge, "capabilities").mockResolvedValue({
+    buildId: "native-copy-fixture",
+    sourceCommit: "a".repeat(40),
+    methods: ["copyStoredImage"],
+  });
+  let copied!: (result: { copied: true }) => void;
+  const copy = vi.spyOn(bridge, "copyStoredImage").mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        copied = resolve;
+      }),
+  );
   const host = document.createElement("div"),
     root = createRoot(host);
   try {
@@ -77,13 +89,32 @@ it("exports an oversized original without reading its bytes or publishing a reti
     expect(host.querySelectorAll("figure")).toHaveLength(1);
     expect(host.textContent).toContain("20.0 MB");
     expect(host.textContent).toContain("too large for inline preview");
+    const copyButton = [...host.querySelectorAll("button")].find(
+      (button) => button.textContent === "Copy image",
+    )!;
+    await act(async () => {
+      copyButton.click();
+      copyButton.click();
+    });
+    expect(copy).toHaveBeenCalledExactlyOnceWith("large-original");
+    expect(capabilities).toHaveBeenCalledTimes(1);
+    expect(copyButton.disabled).toBe(true);
+    expect(host.textContent).not.toContain("Image copied.");
+    await act(async () => copied({ copied: true }));
+    expect(host.textContent).toContain("Image copied.");
+    await act(async () => copyButton.click());
+    expect(copy).toHaveBeenCalledTimes(2);
     await act(async () => {
       host.querySelector("button")!.click();
       host.querySelector("button")!.click();
     });
     expect(save).toHaveBeenCalledExactlyOnceWith("large-original", "full-resolution.png");
     await act(async () => root.render(<RunImages runId="replacement" />));
-    await act(async () => saved("/chosen/full-resolution.png"));
+    await act(async () => {
+      saved("/chosen/full-resolution.png");
+      copied({ copied: true });
+    });
+    expect(host.textContent).not.toContain("Image copied.");
     expect(invoke.mock.calls.some(([method]) => method === "artifacts.read")).toBe(false);
     expect(useStore.getState().toasts).toEqual([]);
   } finally {

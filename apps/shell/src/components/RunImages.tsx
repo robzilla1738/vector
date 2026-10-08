@@ -27,7 +27,15 @@ const artifactIdentity = (artifact: Artifact) =>
     artifact.createdAt,
   ]);
 
-function RunImage({ artifact, runId }: { artifact: Artifact; runId: string }) {
+function RunImage({
+  artifact,
+  runId,
+  copyAvailable,
+}: {
+  artifact: Artifact;
+  runId: string;
+  copyAvailable: boolean;
+}) {
   const connected = useStore((state) => state.connected);
   const incarnation = artifactIdentity(artifact);
   const viewCurrent = useConversationOwner(JSON.stringify([runId, incarnation]), connected);
@@ -35,10 +43,14 @@ function RunImage({ artifact, runId }: { artifact: Artifact; runId: string }) {
   const [loaded, setLoaded] = useState<{ current: typeof current; url: string } | null>(null);
   const [error, setError] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [copyError, setCopyError] = useState("");
+  const [copied, setCopied] = useState(false);
   const [retry, setRetry] = useState(0);
   const [previewRequested, setPreviewRequested] = useState(false);
   const [saving, setSaving] = useState<object | null>(null);
   const pending = useRef<object | null>(null);
+  const [copying, setCopying] = useState<object | null>(null);
+  const copyPending = useRef<object | null>(null);
   const preview = artifact.size < 8_000_000 || previewRequested;
   const canPreview = artifact.size <= MAX_PREVIEW_BYTES;
   const url = loaded?.current === current ? loaded.url : "";
@@ -49,11 +61,16 @@ function RunImage({ artifact, runId }: { artifact: Artifact; runId: string }) {
       : `${Math.max(1, Math.ceil(artifact.size / 1_000))} KB`;
   useLayoutEffect(() => {
     pending.current = null;
+    copyPending.current = null;
     setSaving(null);
+    setCopying(null);
     setSaveError("");
+    setCopyError("");
+    setCopied(false);
     setPreviewRequested(false);
     return () => {
       pending.current = null;
+      copyPending.current = null;
     };
   }, [current]);
   useEffect(() => {
@@ -89,6 +106,28 @@ function RunImage({ artifact, runId }: { artifact: Artifact; runId: string }) {
       if (pending.current === token) {
         pending.current = null;
         if (current()) setSaving(null);
+      }
+    }
+  }
+  async function copy() {
+    if (!copyAvailable || !current() || copyPending.current) return;
+    const token = {};
+    copyPending.current = token;
+    setCopying(token);
+    setCopyError("");
+    setCopied(false);
+    const delivering = () => current() && copyPending.current === token;
+    try {
+      const result = await bridge.copyStoredImage(artifact.artifactId);
+      if (!delivering()) return;
+      if (result.copied !== true) throw new Error("The native clipboard did not confirm the copy.");
+      setCopied(true);
+    } catch (reason) {
+      if (delivering()) setCopyError(errorMessage(reason));
+    } finally {
+      if (copyPending.current === token) {
+        copyPending.current = null;
+        if (current()) setCopying(null);
       }
     }
   }
@@ -142,6 +181,17 @@ function RunImage({ artifact, runId }: { artifact: Artifact; runId: string }) {
       <button {...smallButtonProps} disabled={!!saving} onClick={() => void save()}>
         {saving ? "Saving image…" : "Save image…"}
       </button>
+      {copyAvailable && (
+        <button {...smallGhostButtonProps} disabled={!!copying} onClick={() => void copy()}>
+          {copying ? "Copying image…" : "Copy image"}
+        </button>
+      )}
+      {copied && <output {...staticHintProps}>Image copied.</output>}
+      {copyError && (
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
+          Couldn’t copy this image. {copyError}
+        </p>
+      )}
       {saveError && (
         <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           Couldn’t save this image. {saveError}
@@ -159,6 +209,31 @@ function RunImageGallery({ runId }: { runId: string }) {
   const [retry, setRetry] = useState(0);
   const [open, setOpen] = useState(false);
   const [limit, setLimit] = useState(3);
+  const [copyAvailable, setCopyAvailable] = useState(false);
+  const windowId = bridge.windowId,
+    windowKind = bridge.windowKind,
+    privateMode = bridge.privateMode;
+  useEffect(() => {
+    let live = true;
+    const current = () =>
+      live &&
+      bridge.windowId === windowId &&
+      bridge.windowKind === windowKind &&
+      bridge.privateMode === privateMode;
+    setCopyAvailable(false);
+    if (open)
+      void bridge
+        .capabilities()
+        .then((capabilities) => {
+          if (current()) setCopyAvailable(capabilities.methods.includes("copyStoredImage"));
+        })
+        .catch(() => {
+          if (current()) setCopyAvailable(false);
+        });
+    return () => {
+      live = false;
+    };
+  }, [open, windowId, windowKind, privateMode]);
   useEffect(() => {
     let live = true;
     void call("artifacts.list", { runId })
@@ -200,7 +275,12 @@ function RunImageGallery({ runId }: { runId: string }) {
             </p>
           )}
           {artifacts.slice(0, limit).map((artifact) => (
-            <RunImage key={artifact.artifactId} artifact={artifact} runId={runId} />
+            <RunImage
+              key={artifact.artifactId}
+              artifact={artifact}
+              runId={runId}
+              copyAvailable={copyAvailable}
+            />
           ))}
           {artifacts.length > limit && (
             <button {...smallGhostButtonProps} onClick={() => setLimit((value) => value + 3)}>
