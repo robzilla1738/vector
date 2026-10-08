@@ -21,7 +21,8 @@ export function StartPage() {
   const needsModel = useStore((s) => s.settings.modelConfigured === false);
   const runs = useStore(useShallow((s) => selectAttentionRuns(s.runs)));
   useEffect(() => {
-    if (bridge.privateMode) focus("hero");
+    // Home can load after Cmd-L has already focused the address field.
+    if (bridge.privateMode && useStore.getState().focusRequest === 0) focus("hero");
   }, [focus]);
   return (
     <div className="start aux-home">

@@ -343,12 +343,13 @@ export function CommandBar({
     };
   }, [focusRequest, focusSlot, slot]);
 
-  // A real tab change resets its draft; initial surface mounting preserves prefill.
+  // The first native catalog adopts this window’s tab after the field mounts.
+  // Only a change away from an existing tab retires its address draft.
   const previousActivePage = useRef(activePageId);
   useEffect(() => {
     const previous = previousActivePage.current;
     previousActivePage.current = activePageId;
-    if (!editing || previous === activePageId) return;
+    if (!editing || previous === null || previous === activePageId) return;
     setEditing(false);
     setVal("");
     setScopeFlip(false);
