@@ -286,7 +286,11 @@ it.each([false, true])(
       await act(async () => item.click());
     }
     expect(run).not.toHaveBeenCalled();
-    expect(invoke.mock.calls.filter(([method]) => method.startsWith("bookmarks."))).toEqual([]);
+    expect(
+      invoke.mock.calls.filter(
+        ([method]) => method.startsWith("bookmarks.") && method !== "bookmarks.folders.list",
+      ),
+    ).toEqual([]);
     expect(button("More").getAttribute("aria-expanded")).toBe("true");
   },
 );

@@ -46,7 +46,11 @@ export function openDb(path: string): DatabaseSync {
         throw incompatible();
       }
       if (identity !== SCHEMA_IDENTITY) throw incompatible();
-      if (version === 2) applySchema(db, [schema.run_starts, `PRAGMA user_version=${SCHEMA_VERSION}`]);
+      if (version === 2) {
+        if (db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='run_start_receipts'").get())
+          throw incompatible();
+        applySchema(db, [schema.run_starts, `PRAGMA user_version=${SCHEMA_VERSION}`]);
+      }
     } else {
       applySchema(db, [schema.profile, schema.run_starts, `PRAGMA user_version=${SCHEMA_VERSION}`]);
     }

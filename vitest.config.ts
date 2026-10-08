@@ -30,6 +30,7 @@ export default defineConfig({
     poolOptions: { threads: { isolate: true, execArgv: ["--no-experimental-webstorage"] } },
     projects: [
       {
+        cacheDir: join(import.meta.dirname, "node_modules/.aux-vitest/unit"),
         resolve,
         esbuild: { jsx: "automatic" },
         test: {
@@ -49,6 +50,7 @@ export default defineConfig({
         },
       },
       {
+        cacheDir: join(import.meta.dirname, "node_modules/.aux-vitest/integration"),
         resolve,
         esbuild: { jsx: "automatic" },
         test: {
