@@ -56,6 +56,46 @@ const decisions = (db: ReturnType<typeof openDb>) =>
   }[];
 
 describe("S3 decide()", () => {
+  it("admits only the configured account endpoint without overriding explicit site or managed rules", async () => {
+    const { deps, request, db } = fixture({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] });
+    const origin = "https://ai-gateway.vercel.sh";
+    const modelRequest: EffectRequest = {
+      ...request,
+      action: "agent.model.account",
+      category: "external_tool",
+      effect: "egress",
+      origin,
+      destination: origin,
+    };
+    const context = { phase: "dispatch" as const, configuredModelDestination: origin };
+    expect(await decide(modelRequest, deps, context)).toMatchObject({ status: "allow" });
+    expect(decisions(db).at(-1)).toEqual({ status: "allow", source: "configured_provider" });
+    expect(await decide({ ...modelRequest, destination: "https://other.test" }, deps, context)).toMatchObject(
+      { status: "ask" },
+    );
+    expect(await decide({ ...modelRequest, action: "agent.webfetch" }, deps, context)).toMatchObject({
+      status: "ask",
+    });
+    for (const access of ["ask", "block"] as const) {
+      expect(
+        await decide(
+          modelRequest,
+          {
+            ...deps,
+            agentPolicy: () => ({
+              agentMode: "ask",
+              agentPolicyRevision: 1,
+              agentPolicies: [{ category: "external_tool", site: origin, access }],
+            }),
+          },
+          context,
+        ),
+      ).toMatchObject({ status: access === "ask" ? "ask" : "deny" });
+    }
+    expect(
+      await decide(modelRequest, { ...deps, managedRules: () => [{ origin, access: "deny" }] }, context),
+    ).toMatchObject({ status: "deny" });
+  });
   it("maps every step op to a stable category", () => {
     expect(categoryForOp("navigate")).toBe("navigate");
     expect(categoryForOp("fill")).toBe("input");

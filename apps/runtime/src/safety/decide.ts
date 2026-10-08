@@ -44,6 +44,7 @@ export type DecisionSource =
   | "guardian"
   | "task_resource"
   | "trusted_source"
+  | "configured_provider"
   | "default";
 
 export interface DecisionRecord {
@@ -106,6 +107,8 @@ export interface DecideDeps {
 }
 
 export interface DecideContext {
+  /** Runtime account adapter's validated endpoint, never an agent/RPC parameter. */
+  configuredModelDestination?: string;
   trustedUserAction?: boolean;
   runId?: string;
   policyCategories?: import("@aux/contracts").AgentPolicyCategory[];
@@ -364,6 +367,23 @@ export async function decide(
         guidance: ASK_GUIDANCE,
       },
       source,
+      at,
+    );
+  if (
+    context.configuredModelDestination === exact &&
+    parsed.destination === exact &&
+    parsed.action === "agent.model.account" &&
+    parsed.actor === "builtin_agent" &&
+    parsed.category === "external_tool" &&
+    parsed.effect === "egress" &&
+    modePolicy.source === "default" &&
+    managed.every((rule) => !rule.confirmation || rule.confirmation === "none")
+  )
+    return allow(
+      deps.journal,
+      parsed,
+      { authorizedBy: "policy", policySource: "user" },
+      "configured_provider",
       at,
     );
   const trustedUserAction =

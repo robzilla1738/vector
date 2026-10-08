@@ -6,6 +6,7 @@ import type { ModelCapability } from "@aux/contracts/model-registry";
 import { GatewayModelClient } from "./gateway-client.js";
 import {
   attemptsOf,
+  markModelUndispatched,
   withAttempts,
   copilotBillingReceipt,
   type ModelClient,
@@ -79,13 +80,18 @@ export function copilotModelClient(
     },
     use: (client: GatewayModelClient, signal: AbortSignal) => Promise<T>,
   ): Promise<T> {
-    const source = options.source;
-    if (!source)
-      throw new AuxError("needs_input", "Copilot inference needs the original live run and browser window.");
-    await source.checkOriginal();
-    const signal = options.signal ?? new AbortController().signal;
     let completed: T | undefined;
+    let dispatched = false;
+    let predispatchFailure: unknown;
     try {
+      const source = options.source;
+      if (!source)
+        throw new AuxError(
+          "needs_input",
+          "Copilot inference needs the original live run and browser window.",
+        );
+      await source.checkOriginal();
+      const signal = options.signal ?? new AbortController().signal;
       return copilotBillingReceipt(
         await service.inference(
           accountId,
@@ -99,69 +105,73 @@ export function copilotModelClient(
             });
             await current();
             const base = validateEndpoint(initial, options.modelId);
-            await authorizeEndpoint(source, base.origin);
-            await current();
             const transport: typeof fetch = async (input, init) => {
-              await current();
-              const url = new URL(input instanceof Request ? input.url : String(input));
-              if (
-                url.origin !== base.origin ||
-                !url.pathname.startsWith(base.pathname.replace(/\/$/, "") + "/") ||
-                init?.method !== "POST"
-              )
-                throw new AuxError(
-                  "permission_denied",
-                  "Copilot inference changed its admitted destination.",
+              try {
+                await current();
+                const url = new URL(input instanceof Request ? input.url : String(input));
+                if (
+                  url.origin !== base.origin ||
+                  !url.pathname.startsWith(base.pathname.replace(/\/$/, "") + "/") ||
+                  init?.method !== "POST"
+                )
+                  throw new AuxError(
+                    "permission_denied",
+                    "Copilot inference changed its admitted destination.",
+                  );
+                // Refresh through this exact session before dispatch, never retry an already billed HTTP attempt here.
+                const latest = await session.rpc.provider.getEndpoint({
+                  modelId: options.modelId,
+                });
+                await current();
+                if (
+                  validateEndpoint(latest, options.modelId).href !== base.href ||
+                  latest.type !== initial.type ||
+                  latest.wireApi !== initial.wireApi
+                )
+                  throw new AuxError("cancelled", "The original Copilot endpoint changed.");
+                await authorizeEndpoint(source, base.origin);
+                await current();
+                const headers = new Headers(init.headers);
+                headers.delete("authorization");
+                headers.delete("x-api-key");
+                for (const key of Object.keys(initial.headers)) headers.delete(key);
+                for (const [key, value] of Object.entries(latest.headers))
+                  if (value !== undefined) headers.set(key, value);
+                if (latest.sessionToken) headers.set(latest.sessionToken.header, latest.sessionToken.token);
+                if (latest.apiKey)
+                  headers.set(
+                    initial.type === "anthropic" ? "x-api-key" : "authorization",
+                    initial.type === "anthropic" ? latest.apiKey : `Bearer ${latest.apiKey}`,
+                  );
+                dispatched = true;
+                const response = await networkFetch(url, {
+                  ...init,
+                  headers,
+                  redirect: "error",
+                  signal: AbortSignal.any([originalSignal, ...(init?.signal ? [init.signal] : [])]),
+                });
+                await current();
+                if (!response.body) return response;
+                const body = response.body.pipeThrough(
+                  new TransformStream<Uint8Array, Uint8Array>({
+                    async transform(chunk, controller) {
+                      await current();
+                      controller.enqueue(chunk);
+                    },
+                    async flush() {
+                      await current();
+                    },
+                  }),
                 );
-              // Refresh through this exact session before dispatch, never retry an already billed HTTP attempt here.
-              const latest = await session.rpc.provider.getEndpoint({
-                modelId: options.modelId,
-              });
-              await current();
-              if (
-                validateEndpoint(latest, options.modelId).href !== base.href ||
-                latest.type !== initial.type ||
-                latest.wireApi !== initial.wireApi
-              )
-                throw new AuxError("cancelled", "The original Copilot endpoint changed.");
-              await authorizeEndpoint(source, base.origin);
-              await current();
-              const headers = new Headers(init.headers);
-              headers.delete("authorization");
-              headers.delete("x-api-key");
-              for (const key of Object.keys(initial.headers)) headers.delete(key);
-              for (const [key, value] of Object.entries(latest.headers))
-                if (value !== undefined) headers.set(key, value);
-              if (latest.sessionToken) headers.set(latest.sessionToken.header, latest.sessionToken.token);
-              if (latest.apiKey)
-                headers.set(
-                  initial.type === "anthropic" ? "x-api-key" : "authorization",
-                  initial.type === "anthropic" ? latest.apiKey : `Bearer ${latest.apiKey}`,
-                );
-              const response = await networkFetch(url, {
-                ...init,
-                headers,
-                redirect: "error",
-                signal: AbortSignal.any([originalSignal, ...(init?.signal ? [init.signal] : [])]),
-              });
-              await current();
-              if (!response.body) return response;
-              const body = response.body.pipeThrough(
-                new TransformStream<Uint8Array, Uint8Array>({
-                  async transform(chunk, controller) {
-                    await current();
-                    controller.enqueue(chunk);
-                  },
-                  async flush() {
-                    await current();
-                  },
-                }),
-              );
-              return new Response(body, {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers,
-              });
+                return new Response(body, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  headers: response.headers,
+                });
+              } catch (error) {
+                if (!dispatched) predispatchFailure = error;
+                throw error;
+              }
             };
             let model: LanguageModel;
             if (initial.type === "anthropic") {
@@ -203,7 +213,7 @@ export function copilotModelClient(
     } catch (error) {
       if (completed) withAttempts(error, [...(completed.retries ?? []), completed]);
       for (const attempt of attemptsOf(error)) copilotBillingReceipt(attempt);
-      throw error;
+      throw dispatched ? error : markModelUndispatched(predispatchFailure ?? error);
     }
   }
   return {

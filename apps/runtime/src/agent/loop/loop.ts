@@ -89,12 +89,19 @@ export interface AgentLoopOptions {
 export type AgentLoopOutcome =
   | { kind: "done"; text: string; result?: Record<string, unknown> }
   | { kind: "parked"; park: LoopPark; toolCallId: string }
+  | { kind: "model_admission"; park: LoopPark }
   | { kind: "steered" }
   | { kind: "exhausted" }
   | { kind: "failed"; error: AuxError };
 
 const DEFAULT_MAX_LOOP_STEPS = 0;
 const MAX_PARALLEL_READS = 4;
+
+function modelAdmissionPark(error: unknown, opts: AgentLoopOptions): LoopPark | undefined {
+  if (!opts.signal?.aborted && error instanceof AuxError && error.code === "needs_input")
+    return opts.deps.pendingPark?.();
+  return undefined;
+}
 const modelToolsCache = new WeakMap<
   LoopToolManifest,
   { tools: Record<string, { description: string; inputSchema: z.ZodType }>; bytes: number }
@@ -456,6 +463,8 @@ async function runAgentLoopOwned(
         maxOutputTokens: opts.maxOutputTokens ?? 4000,
       });
     } catch (error) {
+      const park = modelAdmissionPark(error, opts);
+      if (park) return { kind: "model_admission", park };
       return {
         kind: "failed",
         error:
@@ -501,13 +510,16 @@ async function runAgentLoopOwned(
         maxAttempts: opts.maxAttempts,
       });
     } catch (error) {
+      const undispatched = modelUndispatched(error);
       try {
-        if (modelUndispatched(error)) await opts.onModelAdmissionCancelled?.(reservationId);
+        if (undispatched) await opts.onModelAdmissionCancelled?.(reservationId);
         else await opts.onModelFailure?.({ index, error, reservationId });
       } finally {
         opts.afterModelCall?.();
       }
       if (opts.steerCheck?.()) return { kind: "steered" };
+      const park = undispatched ? modelAdmissionPark(error, opts) : undefined;
+      if (park) return { kind: "model_admission", park };
       return {
         kind: "failed",
         error:

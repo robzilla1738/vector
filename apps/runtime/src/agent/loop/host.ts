@@ -2728,7 +2728,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           );
           return;
         }
-        if (outcome.kind === "parked") {
+        if (outcome.kind === "parked" || outcome.kind === "model_admission") {
           // The gate may already have parked a typed suspension inside `act`;
           // only create one when the suspension tools parked directly.
           const suspension =
@@ -2763,8 +2763,10 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           self.suspensions.resolve(suspension.suspensionId, "answered");
           freshHandoff = suspension.kind === "handoff";
           resumeAnswer = raw.trim() ? raw : { resolved: true };
-          preserveAnswer(resumeAnswer);
-          hasResume = true;
+          if (outcome.kind === "parked") {
+            preserveAnswer(resumeAnswer);
+            hasResume = true;
+          }
           continue;
         }
         if (outcome.kind === "steered") {

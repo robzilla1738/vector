@@ -23,6 +23,8 @@ import type { OriginPolicyAudit } from "./origin-policy.js";
 import type { SuspensionStore } from "./suspensions.js";
 
 export interface StepSafetyContext {
+  /** Only the selected account's original adapter can supply this validated endpoint. */
+  configuredModelDestination?: string;
   taskRead?: ValidatedTaskRead;
   profileId: string;
   scope: SafetyAction["scope"];
@@ -383,6 +385,7 @@ export class SafetyDispatchGate {
         phase: phase,
         runId: context.runId,
         taskRead: context.taskRead,
+        configuredModelDestination: context.configuredModelDestination,
         ...(context.sessionId ? { sessionId: context.sessionId } : {}),
         ...(context.approvalId ? { approvalId: context.approvalId } : {}),
         ...(context.review ? { review: context.review } : {}),

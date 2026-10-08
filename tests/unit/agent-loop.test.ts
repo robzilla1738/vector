@@ -102,6 +102,53 @@ describe("TranscriptStore (S5)", () => {
 });
 
 describe("runAgentLoop (S5)", () => {
+  it("parks a proven unsent model admission and resumes without inventing a tool transcript", async () => {
+    const { transcript } = fixture();
+    transcript.append("run-1", [userTask]);
+    const park = {
+      kind: "approval" as const,
+      instruction: "Review account rule",
+      approvalId: "original-review",
+    };
+    let waiting = true;
+    const cancel = vi.fn(),
+      failed = vi.fn();
+    const model = new MockModelClient().scriptToolSteps([{ text: "Done" }]);
+    const original = model.toolCallStep.bind(model);
+    const toolCallStep = vi.spyOn(model, "toolCallStep").mockImplementation(async (options) => {
+      if (waiting) throw markModelUndispatched(new AuxError("needs_input", park.instruction));
+      return original(options);
+    });
+    const opts = {
+      ...baseOpts(transcript, { pendingPark: () => (waiting ? park : undefined) }),
+      model,
+      beforeModelCall: () => "reservation",
+      onModelAdmissionCancelled: cancel,
+      onModelFailure: failed,
+    };
+    expect(await runAgentLoop(opts)).toEqual({ kind: "model_admission", park });
+    expect(cancel).toHaveBeenCalledWith("reservation");
+    expect(failed).not.toHaveBeenCalled();
+    expect(transcript.openPark("run-1")).toBeUndefined();
+    expect(transcript.load("run-1")).toEqual([userTask]);
+    waiting = false;
+    expect(await runAgentLoop(opts)).toMatchObject({ kind: "done", text: "Done" });
+    expect(toolCallStep).toHaveBeenCalledTimes(2);
+    expect(transcript.load("run-1").map((message) => message.role)).toEqual(["user", "assistant"]);
+
+    waiting = true;
+    toolCallStep.mockRejectedValueOnce(new AuxError("needs_input", "Untrusted provider message"));
+    expect(await runAgentLoop(opts)).toMatchObject({ kind: "failed" });
+    expect(failed).toHaveBeenCalledTimes(1);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    const stop = new AbortController();
+    stop.abort();
+    expect(await runAgentLoop({ ...opts, signal: stop.signal })).toMatchObject({
+      kind: "failed",
+      error: { code: "cancelled" },
+    });
+    expect(toolCallStep).toHaveBeenCalledTimes(3);
+  });
   it("rejects a trailing download waiter before dispatching its preceding click", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);
@@ -922,6 +969,39 @@ async function settle(repo: Repo, runId: string) {
 }
 
 describe("runToolLoop (S5 host integration)", () => {
+  it("waits for an original model admission review and continues the same run without a tool park", async () => {
+    const model = new MockModelClient().scriptToolSteps([{ text: "Account admitted" }]);
+    const h = coordinatorHarness(model);
+    vi.spyOn(model, "toolCallStep").mockImplementationOnce(async () => {
+      const runId = h.repo.listRuns()[0]!.runId;
+      h.coordinator.suspensions.park({
+        runId,
+        turnId: runId,
+        threadId: "chat-1",
+        kind: "approval",
+        request: {
+          kind: "approval",
+          approvalId: "original-account-review",
+          instruction: "Review account rule",
+          guidance: "Wait.",
+        },
+      });
+      throw markModelUndispatched(new AuxError("needs_input", "Review account rule"));
+    });
+    const run = await h.coordinator.start({ goal: "Read the page", pageIds: ["p1"], chatId: "chat-1" });
+    await vi.waitFor(() => expect(h.repo.getRun(run.runId)?.status).toBe("needs_input"));
+    const transcript = new TranscriptStore(h.db);
+    expect(transcript.openPark(run.runId)).toBeUndefined();
+    expect(h.modelCalls).toHaveLength(0);
+    await h.coordinator.answer(run.runId, "Approved");
+    expect(await settle(h.repo, run.runId)).toMatchObject({
+      status: "completed",
+      result: { report: "Account admitted" },
+    });
+    expect(h.modelCalls).toHaveLength(1);
+    expect(transcript.load(run.runId).some((message) => message.role === "tool")).toBe(false);
+    expect(h.coordinator.suspensions.pending(run.runId)).toBeUndefined();
+  });
   it("restores the saved current plan as bounded harness context before the next model call", async () => {
     const model = new MockModelClient().scriptToolSteps([
       {
