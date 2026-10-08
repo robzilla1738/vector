@@ -139,12 +139,10 @@ function build(kind) {
 }
 const releases = [];
 try {
-  // Reuse the existing one-owner lock, retaining each exact source independently.
-  // Canonical sorted order avoids opposing Aux/stock acquisition order.
-  for (const source of [
-    ...new Set(["aux", "stock"].map((kind) => realpathSync(option(`--${kind}-source`)))),
-  ].sort())
-    releases.push(acquireDevLock(source));
+  // The shared development owner serializes both builders and this comparison.
+  const stockSource = realpathSync(option("--stock-source"));
+  assert.ok(!existsSync(join(stockSource, "out", ".aux-dev-lock")), "Stock has another development owner");
+  releases.push(acquireDevLock(realpathSync(option("--aux-source"))));
   const builds = { aux: build("aux"), stock: build("stock") };
   assert.equal(builds.aux.version, builds.stock.version, "Chromium VERSION must match");
   for (const key of critical) {
