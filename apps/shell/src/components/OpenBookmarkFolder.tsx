@@ -4,11 +4,12 @@ import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
-import { bookmarkWebUrl } from "../bookmark-files";
+import { orderedPages } from "../store/pages";
+import { openBookmark } from "../bookmark-folders";
 import { bridge } from "../bridge";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
-type Bookmark = { url: string; title: string; folderPath?: string[] };
+type Bookmark = { nodeId?: string; url: string; title: string; folderPath?: string[] };
 
 /** Reopen saved material in an existing Space without interrupting browsing. */
 export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[]; folder: string[] }) {
@@ -32,9 +33,7 @@ export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[
       stopped.current = true;
     };
   }, []);
-  const pages = bookmarks.filter(
-    (item) => bookmarkWebUrl(item.url) && folder.every((part, index) => item.folderPath?.[index] === part),
-  );
+  const pages = bookmarks.filter((item) => !item.url.toLowerCase().startsWith("javascript:"));
 
   async function open() {
     if (active.current) return;
@@ -54,7 +53,16 @@ export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[
       }
       setMessage(`Opening ${index + 1} of ${queue.length}…`);
       try {
-        await useStore.getState().openBackgroundTab(queue[index]!.url, spaceId);
+        const item = queue[index]!;
+        const state = useStore.getState();
+        const existing = orderedPages(state.pages).some(
+          (page) =>
+            page.url === item.url &&
+            !page.ownedByRuntime &&
+            state.layout.tabSpace[page.pageId] === spaceId &&
+            page.viewStatus !== "crashed",
+        );
+        if (!existing) await openBookmark(item, true, undefined, spaceId);
         completed++;
       } catch (reason) {
         failed.push(queue[index]!);
@@ -90,6 +98,7 @@ export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[
         <strong>Open {folder.at(-1)}</strong>
         <p {...staticHintProps}>
           Includes subfolders. Pages open in background tabs; pages already open in this Space are reused.
+          Bookmarklets must be opened individually.
         </p>
       </div>
       <div className="library-folder-open-actions">

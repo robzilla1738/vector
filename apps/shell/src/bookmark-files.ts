@@ -1,3 +1,4 @@
+import type { BookmarkFolderSnapshot } from "@aux/contracts/bookmark-folder-methods";
 export type BookmarkFileEntry = { url: string; title: string; folderPath?: string[] };
 export const MAX_BOOKMARK_FILE_SIZE = 5_000_000;
 
@@ -84,47 +85,36 @@ export async function parseBookmarkFile(source: string) {
   return { bookmarks, folders: [...folders.values()], skipped };
 }
 
-export function exportBookmarkFile(bookmarks: BookmarkFileEntry[], folders: string[][] = []): string {
+/** Export the actual native tree, including duplicate/empty folders and browser URL schemes. */
+export function exportBookmarkFile(
+  bookmarks: (BookmarkFileEntry & { nodeId?: string })[],
+  snapshot: BookmarkFolderSnapshot,
+): string {
   const escape = (text: string) =>
     text.replace(
       /[&<>"']/g,
       (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!,
     );
-  type Folder = { children: Map<string, Folder>; bookmarks: BookmarkFileEntry[] };
-  const root: Folder = { children: new Map(), bookmarks: [] };
-  const folderAt = (path: string[]) => {
-    let folder = root;
-    for (const part of path) {
-      let child = folder.children.get(part);
-      if (!child) {
-        child = { children: new Map(), bookmarks: [] };
-        folder.children.set(part, child);
-      }
-      folder = child;
-    }
-    return folder;
-  };
-  for (const path of folders) folderAt(path);
-  for (const bookmark of bookmarks) {
-    if (bookmarkWebUrl(bookmark.url)) folderAt(bookmark.folderPath ?? []).bookmarks.push(bookmark);
-  }
-  const render = (folder: Folder, depth: number): string => {
+  const folders = new Map(snapshot.folders.map((folder) => [folder.nodeId, folder]));
+  const entries = new Map(bookmarks.map((bookmark) => [bookmark.nodeId, bookmark]));
+  const render = (id: string, depth: number): string => {
     const indent = "  ".repeat(depth);
-    return (
-      [...folder.children]
-        .map(
-          ([name, child]) =>
-            `${indent}<DT><H3>${escape(name)}</H3>\n${indent}<DL><p>\n${render(child, depth + 1)}${indent}</DL><p>\n`,
-        )
-        .join("") +
-      folder.bookmarks
-        .map((bookmark) => `${indent}<DT><A HREF="${escape(bookmark.url)}">${escape(bookmark.title)}</A>\n`)
-        .join("")
-    );
+    const folder = folders.get(id);
+    if (folder)
+      return `${indent}<DT><H3>${escape(folder.path.at(-1) ?? folder.title)}</H3>\n${indent}<DL><p>\n${folder.childIds.map((child) => render(child, depth + 1)).join("")}${indent}</DL><p>\n`;
+    const bookmark = entries.get(id);
+    return bookmark ? `${indent}<DT><A HREF="${escape(bookmark.url)}">${escape(bookmark.title)}</A>\n` : "";
   };
+  const root = folders.get(snapshot.rootId);
+  const roots = [
+    ...(root?.childIds ?? []),
+    ...snapshot.folders
+      .filter((folder) => folder.permanent && folder.nodeId !== snapshot.rootId)
+      .map((folder) => folder.nodeId),
+  ];
   return (
     '<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>Aux Bookmarks</TITLE>\n<H1>Aux Bookmarks</H1>\n<DL><p>\n' +
-    render(root, 1) +
+    roots.map((id) => render(id, 1)).join("") +
     "</DL><p>\n"
   );
 }

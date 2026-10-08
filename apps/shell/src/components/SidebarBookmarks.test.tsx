@@ -51,16 +51,19 @@ it("offers keyboard bookmark actions while disconnected and preserves duplicate 
   const root = setup();
   const toast = vi.fn();
   useStore.setState({ connected: false, bookmarks: [saved], toast });
-  vi.spyOn(bridge, "bookmarksInvoke").mockResolvedValue({
-    method: "bookmarks.folders.snapshot",
-    result: folders,
+  const undoToken = "12345678-1234-4234-8234-123456789abc";
+  const native = vi.spyOn(bridge, "bookmarksInvoke").mockImplementation(async (request) => {
+    if (request.method === "bookmarks.entries.remove")
+      return { method: request.method, result: { snapshot: folders, undoToken } };
+    if (request.method === "bookmarks.entries.restore") return { method: request.method, result: folders };
+    return { method: "bookmarks.folders.snapshot", result: folders };
   });
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "bookmarks.list") return [];
     return { ok: true };
   });
   try {
-    await act(async () => root.render(<SidebarBookmarks onOpen={() => {}} />));
+    await act(async () => root.render(<SidebarBookmarks />));
     expect(document.querySelector<HTMLButtonElement>('[aria-label="New bookmark folder"]')!.disabled).toBe(
       false,
     );
@@ -70,18 +73,14 @@ it("offers keyboard bookmark actions while disconnected and preserves duplicate 
     );
     expect(menuButton("Edit bookmark")).toBeDefined();
     await act(async () => menuButton("Remove bookmark").click());
-    expect(invoke).toHaveBeenCalledWith("bookmarks.remove", { nodeId: "12", url: saved.url });
+    expect(native).toHaveBeenCalledWith({
+      method: "bookmarks.entries.remove",
+      params: { source: { nodeId: "12", parentId: "1", index: 0, title: "Saved", url: saved.url } },
+    });
     const undo = toast.mock.calls.find(([text]) => text === "Bookmark removed")![2];
     await act(async () => undo.run());
-    expect(invoke).toHaveBeenCalledWith(
-      "bookmarks.add",
-      expect.objectContaining({
-        url: saved.url,
-        title: "Saved",
-        folderPath: [],
-        forceNew: true,
-      }),
-    );
+    expect(native).toHaveBeenCalledWith({ method: "bookmarks.entries.restore", params: { undoToken } });
+    expect(invoke.mock.calls.every(([method]) => method === "bookmarks.list")).toBe(true);
   } finally {
     await act(async () => root.unmount());
   }
@@ -108,7 +107,7 @@ it("moves a dragged bookmark into the selected duplicate folder and uses native 
     return event;
   };
   try {
-    await act(async () => root.render(<SidebarBookmarks onOpen={() => {}} />));
+    await act(async () => root.render(<SidebarBookmarks />));
     await act(async () => document.querySelector(".sb-link")!.dispatchEvent(drag("dragstart")));
     await act(async () => document.querySelectorAll("summary")[1]!.dispatchEvent(drag("drop")));
     expect(native).toHaveBeenCalledWith({
@@ -142,7 +141,7 @@ it("reorders duplicate folders from the keyboard menu with source identity and t
   });
   vi.spyOn(bridge, "invoke").mockResolvedValue([saved]);
   try {
-    await act(async () => root.render(<SidebarBookmarks onOpen={() => {}} />));
+    await act(async () => root.render(<SidebarBookmarks />));
     await act(async () =>
       document
         .querySelectorAll("summary")[1]!

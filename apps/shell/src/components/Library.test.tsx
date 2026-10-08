@@ -23,19 +23,38 @@ beforeEach(() => {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
+  vi.spyOn(bridge, "bookmarksInvoke").mockImplementation(async () => ({
+    method: "bookmarks.folders.snapshot",
+    result: {
+      rootId: "1",
+      editable: true,
+      folders: [
+        {
+          nodeId: "1",
+          parentId: null,
+          index: 0,
+          title: "Bookmarks",
+          path: [],
+          permanent: true,
+          childIds: useStore.getState().bookmarks.map((item) => item.nodeId!),
+        },
+      ],
+    },
+  }));
 });
 
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   useStore.setState(initial, true);
+  vi.restoreAllMocks();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
 it("updates the changed bookmark row without losing its sibling or edit action", async () => {
-  const first = { nodeId: "one", url: "https://example.com/one", title: "First bookmark", folderPath: [] };
-  const second = { nodeId: "two", url: "https://example.com/two", title: "Second bookmark", folderPath: [] };
+  const first = { nodeId: "12", url: "https://example.com/one", title: "First bookmark", folderPath: [] };
+  const second = { nodeId: "13", url: "https://example.com/two", title: "Second bookmark", folderPath: [] };
   useStore.setState({ bookmarks: [first, second] });
   await act(async () => root.render(<Library />));
   expect(host.textContent).toContain("First bookmark");
@@ -56,14 +75,14 @@ it("updates the changed bookmark row without losing its sibling or edit action",
 
 it("keeps reading-list controls current when one saved page changes", async () => {
   const first = {
-    nodeId: "reading-one",
+    nodeId: "14",
     url: "https://example.com/one",
     title: "First reading page",
     folderPath: [],
     readingList: true,
   };
   const second = {
-    nodeId: "reading-two",
+    nodeId: "15",
     url: "https://example.com/two",
     title: "Second reading page",
     folderPath: [],
@@ -86,7 +105,7 @@ it("keeps reading-list controls current when one saved page changes", async () =
 });
 
 it("closes Library when a bookmark opens in Peek", async () => {
-  const item = { nodeId: "peek", url: "https://example.com/story", title: "Story", folderPath: [] };
+  const item = { nodeId: "16", url: "https://example.com/story", title: "Story", folderPath: [] };
   useStore.setState({
     bookmarks: [item],
     overlay: "bookmarks",
@@ -104,11 +123,38 @@ it("closes Library when a bookmark opens in Peek", async () => {
 
 it("returns focus to search and scrolls its own result panel when opening a folder", async () => {
   const saved = {
-    nodeId: "folder-bookmark",
+    nodeId: "17",
     url: "https://example.com/story",
     title: "Story",
     folderPath: ["Notes"],
   };
+  vi.mocked(bridge.bookmarksInvoke).mockResolvedValue({
+    method: "bookmarks.folders.snapshot",
+    result: {
+      rootId: "1",
+      editable: true,
+      folders: [
+        {
+          nodeId: "1",
+          parentId: null,
+          index: 0,
+          title: "Bookmarks",
+          path: [],
+          permanent: true,
+          childIds: ["20"],
+        },
+        {
+          nodeId: "20",
+          parentId: "1",
+          index: 0,
+          title: "Notes",
+          path: ["Notes"],
+          permanent: false,
+          childIds: ["17"],
+        },
+      ],
+    },
+  });
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "bookmarks.list") return [saved] as never;
     if (method === "bookmarks.folders.list") return [["Notes"]] as never;
@@ -133,4 +179,69 @@ it("returns focus to search and scrolls its own result panel when opening a fold
   } finally {
     invoke.mockRestore();
   }
+});
+
+it("opens the selected duplicate folder and keeps browser-only bookmarks out of web preview", async () => {
+  const entries = [
+    {
+      nodeId: "12",
+      url: "https://example.com/first",
+      title: "First folder story",
+      createdAt: 1,
+      folderPath: ["Work"],
+    },
+    {
+      nodeId: "13",
+      url: "chrome://settings/",
+      title: "Browser settings",
+      createdAt: 1,
+      folderPath: ["Work"],
+    },
+  ];
+  useStore.setState({ bookmarks: entries });
+  vi.mocked(bridge.bookmarksInvoke).mockResolvedValue({
+    method: "bookmarks.folders.snapshot",
+    result: {
+      rootId: "1",
+      editable: true,
+      folders: [
+        {
+          nodeId: "1",
+          parentId: null,
+          index: 0,
+          title: "Bookmarks",
+          path: [],
+          permanent: true,
+          childIds: ["20", "21"],
+        },
+        {
+          nodeId: "20",
+          parentId: "1",
+          index: 0,
+          title: "Work",
+          path: ["Work"],
+          permanent: false,
+          childIds: ["12"],
+        },
+        {
+          nodeId: "21",
+          parentId: "1",
+          index: 1,
+          title: "Work",
+          path: ["Work"],
+          permanent: false,
+          childIds: ["13"],
+        },
+      ],
+    },
+  });
+  await act(async () => root.render(<Library />));
+  host.querySelector<HTMLElement>("#library-results")!.scrollTo = vi.fn();
+  const folders = host.querySelectorAll<HTMLButtonElement>(".library-folder");
+  expect(folders).toHaveLength(2);
+  await act(async () => folders[1]!.click());
+  expect(host.textContent).toContain("Browser settings");
+  expect(host.textContent).not.toContain("First folder story");
+  expect(host.querySelector('[aria-label="Preview Browser settings"]')).toBeNull();
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="Remove empty folder"]')!.disabled).toBe(true);
 });

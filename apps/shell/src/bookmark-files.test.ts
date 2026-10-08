@@ -10,31 +10,88 @@ it("parses browser HTML as inert data, preserving titles and rejecting unsafe or
     folders: [["Folder"]],
     skipped: 3,
   });
-  expect(await parseBookmarkFile(exportBookmarkFile(result.bookmarks))).toEqual({
-    bookmarks: result.bookmarks,
-    folders: result.folders,
-    skipped: 0,
-  });
 });
 it("escapes exported markup and reports unsupported/oversized files", async () => {
   const entry = { url: "https://example.test/", title: '<img src=x onerror="alert(1)"> & notes' };
-  const html = exportBookmarkFile([entry]);
+  const html = exportBookmarkFile([{ ...entry, nodeId: "10" }], {
+    rootId: "1",
+    editable: true,
+    folders: [
+      {
+        nodeId: "1",
+        parentId: null,
+        index: 0,
+        title: "Bookmarks",
+        path: [],
+        permanent: true,
+        childIds: ["10"],
+      },
+    ],
+  });
   expect(html).not.toContain("<img");
   expect((await parseBookmarkFile(html)).bookmarks).toEqual([entry]);
   await expect(parseBookmarkFile('<a href="file:///tmp/private">File</a>')).rejects.toThrow("No supported");
   await expect(parseBookmarkFile("x".repeat(5_000_001))).rejects.toThrow("5 MB");
 });
 
-it("round-trips sibling, nested and empty folders without moving links between them", async () => {
+it("exports duplicate and empty folders, native child order and saved browser schemes without executing them", async () => {
   const bookmarks = [
-    { url: "https://one.test/", title: "One", folderPath: ["Work", "Reading"] },
-    { url: "https://two.test/", title: "Two", folderPath: ["Personal"] },
-    { url: "https://root.test/", title: "Root" },
+    { nodeId: "10", url: "chrome://settings/", title: "Settings" },
+    { nodeId: "11", url: "javascript:alert('saved')", title: "Saved script" },
+    { nodeId: "12", url: "file:///tmp/readme.html", title: "Local" },
   ];
-  const folders = [["Work"], ["Work", "Reading"], ["Work", "Empty"], ["Personal"]];
-  const parsed = await parseBookmarkFile(exportBookmarkFile(bookmarks, folders));
-  expect(parsed.bookmarks).toEqual(expect.arrayContaining(bookmarks));
-  expect(parsed.bookmarks).toHaveLength(3);
-  expect(parsed.folders).toEqual(expect.arrayContaining(folders));
-  expect(parsed.folders).toHaveLength(4);
+  const html = exportBookmarkFile(bookmarks, {
+    rootId: "1",
+    editable: true,
+    folders: [
+      {
+        nodeId: "1",
+        parentId: null,
+        index: 0,
+        title: "Bookmarks",
+        path: [],
+        permanent: true,
+        childIds: ["20", "12", "21", "22"],
+      },
+      {
+        nodeId: "20",
+        parentId: "1",
+        index: 0,
+        title: "Work",
+        path: ["Work"],
+        permanent: false,
+        childIds: ["10"],
+      },
+      {
+        nodeId: "21",
+        parentId: "1",
+        index: 2,
+        title: "Work",
+        path: ["Work"],
+        permanent: false,
+        childIds: ["11"],
+      },
+      {
+        nodeId: "22",
+        parentId: "1",
+        index: 3,
+        title: "Empty",
+        path: ["Empty"],
+        permanent: false,
+        childIds: [],
+      },
+    ],
+  });
+  const inert = document.createElement("template");
+  inert.innerHTML = html;
+  expect([...inert.content.querySelectorAll("h3")].map((node) => node.textContent)).toEqual([
+    "Work",
+    "Work",
+    "Empty",
+  ]);
+  expect([...inert.content.querySelectorAll("a")].map((node) => node.getAttribute("href"))).toEqual([
+    bookmarks[0]!.url,
+    bookmarks[2]!.url,
+    bookmarks[1]!.url,
+  ]);
 });

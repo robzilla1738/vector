@@ -1,5 +1,13 @@
 import { z } from "zod";
 import {
+  BookmarkEntryRemoveSchema,
+  BookmarkEntryRemoveResultSchema,
+  BookmarkEntryRestoreSchema,
+  BookmarkEntryEditSchema,
+  BookmarkEntryEditResultSchema,
+  BookmarkEntryCreateSchema,
+  BookmarkOpenSchema,
+  BookmarkOpenResultSchema,
   BookmarkFolderChangeSchema,
   BookmarkFolderChangeResultSchema,
   BookmarkFolderSnapshotSchema,
@@ -129,10 +137,10 @@ export const BookmarkMethodSchemas = {
 
 export const BookmarkResultSchemas = {
   "bookmarks.list": z.array(BookmarkSchema),
-  "bookmarks.folders.list": z.array(BookmarkFolderPathSchema),
-  "bookmarks.folders.create": z.array(BookmarkFolderPathSchema),
-  "bookmarks.folders.rename": z.array(BookmarkFolderPathSchema),
-  "bookmarks.folders.remove": z.array(BookmarkFolderPathSchema),
+  "bookmarks.folders.list": z.array(z.array(z.string())),
+  "bookmarks.folders.create": z.array(z.array(z.string())),
+  "bookmarks.folders.rename": z.array(z.array(z.string())),
+  "bookmarks.folders.remove": z.array(z.array(z.string())),
   "bookmarks.add": z.object({ ok: z.boolean() }),
   "bookmarks.update": z.object({ ok: z.boolean() }),
   "bookmarks.move": z.object({ moved: z.number().int().nonnegative() }),
@@ -159,6 +167,11 @@ export function isNativeBookmarkMethod(method: string): method is NativeBookmark
 }
 
 const NativeFolderResultSchemas = {
+  "bookmarks.entries.remove": BookmarkEntryRemoveResultSchema,
+  "bookmarks.entries.restore": BookmarkFolderSnapshotSchema,
+  "bookmarks.entries.edit": BookmarkEntryEditResultSchema,
+  "bookmarks.entries.create": BookmarkFolderSnapshotSchema,
+  "bookmarks.open": BookmarkOpenResultSchema,
   "bookmarks.folders.snapshot": BookmarkFolderSnapshotSchema,
   "bookmarks.folders.change": BookmarkFolderChangeResultSchema,
   "bookmarks.folders.placeBookmark": BookmarkPlacementResultSchema,
@@ -166,6 +179,11 @@ const NativeFolderResultSchemas = {
 const NativeResultSchemas = { ...BookmarkResultSchemas, ...NativeFolderResultSchemas };
 
 export const NativeBookmarkRequestSchema = z.discriminatedUnion("method", [
+  z.object({ method: z.literal("bookmarks.entries.create"), params: BookmarkEntryCreateSchema }).strict(),
+  z.object({ method: z.literal("bookmarks.entries.remove"), params: BookmarkEntryRemoveSchema }).strict(),
+  z.object({ method: z.literal("bookmarks.entries.restore"), params: BookmarkEntryRestoreSchema }).strict(),
+  z.object({ method: z.literal("bookmarks.entries.edit"), params: BookmarkEntryEditSchema }).strict(),
+  z.object({ method: z.literal("bookmarks.open"), params: BookmarkOpenSchema }).strict(),
   z
     .object({ method: z.literal("bookmarks.folders.placeBookmark"), params: BookmarkPlacementSchema })
     .strict(),
@@ -256,6 +274,11 @@ function bookmarkResponse<M extends keyof typeof NativeResultSchemas>(method: M)
   return z.object({ method: z.literal(method), result: NativeResultSchemas[method] }).strict();
 }
 export const NativeBookmarkResultSchema = z.discriminatedUnion("method", [
+  bookmarkResponse("bookmarks.entries.remove"),
+  bookmarkResponse("bookmarks.entries.restore"),
+  bookmarkResponse("bookmarks.entries.edit"),
+  bookmarkResponse("bookmarks.entries.create"),
+  bookmarkResponse("bookmarks.open"),
   bookmarkResponse("bookmarks.folders.snapshot"),
   bookmarkResponse("bookmarks.folders.change"),
   bookmarkResponse("bookmarks.folders.placeBookmark"),

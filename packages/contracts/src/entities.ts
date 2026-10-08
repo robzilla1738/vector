@@ -443,7 +443,12 @@ export const BookmarkSchema = z.object({
     .string()
     .regex(/^[1-9]\d{0,18}$/)
     .optional(),
-  folderPath: BookmarkFolderPathSchema.optional(),
+  parentId: z
+    .string()
+    .regex(/^[1-9]\d{0,18}$/)
+    .optional(),
+  index: z.number().int().nonnegative().optional(),
+  folderPath: z.array(z.string()).optional(),
   url: z.string(),
   title: z.string(),
   createdAt: z.number(),

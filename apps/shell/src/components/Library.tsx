@@ -13,6 +13,27 @@ import { SessionRecovery } from "./SessionRecovery";
 import { Fragment, memo, useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { HistoryEntry } from "@aux/contracts";
+import type {
+  BookmarkFolder,
+  BookmarkFolderChange,
+  BookmarkFolderSnapshot,
+  BookmarkPlacement,
+} from "@aux/contracts/bookmark-folder-methods";
+import {
+  bookmarkSource,
+  bookmarkFolderLabel,
+  changeBookmarkFolder,
+  createBookmark,
+  editBookmark,
+  folderDestination,
+  folderSource,
+  readBookmarkFolders,
+  removeBookmark,
+  restoreBookmark,
+  openBookmark,
+  placeBookmark,
+  descendantBookmarkIds,
+} from "../bookmark-folders";
 import { call, useStore } from "../store";
 import { hostOf } from "../workspace";
 import {
@@ -53,6 +74,8 @@ import { nativeCheckboxTypeProps, nativeAlertRoleProps } from "../ui/native-attr
 
 type SavedPage = {
   nodeId?: string;
+  parentId?: string;
+  index?: number;
   url: string;
   title: string;
   folderPath?: string[];
@@ -60,6 +83,12 @@ type SavedPage = {
   readAt?: number;
   offline?: boolean;
 };
+type BookmarkEditor = SavedPage & {
+  original: SavedPage;
+  source: BookmarkPlacement["source"];
+  destinationId: string;
+};
+type RemovedBookmark = { title: string; undoToken: string };
 const bookmarkKey = (item: SavedPage) => item.nodeId ?? item.url;
 type View = "archived" | "bookmarks" | "reading" | "history" | "closed";
 const VIEWS: View[] = ["archived", "bookmarks", "reading", "history", "closed"];
@@ -97,7 +126,7 @@ const SavedPageRow = memo(function SavedPageRow({
   busy,
   showFolderPath,
   editing,
-  folders,
+  snapshot,
   firstResult,
   onSelect,
   onOpen,
@@ -114,14 +143,14 @@ const SavedPageRow = memo(function SavedPageRow({
   selecting: boolean;
   busy: boolean;
   showFolderPath: boolean;
-  editing: (SavedPage & { original: SavedPage }) | null;
-  folders: string[][];
+  editing: BookmarkEditor | null;
+  snapshot: BookmarkFolderSnapshot | null;
   firstResult?: RefObject<HTMLButtonElement | null>;
   onSelect(item: SavedPage): void;
   onOpen(item: SavedPage, background?: boolean, trigger?: HTMLElement): void;
   action(work: () => Promise<void>): Promise<void>;
-  setEditing: React.Dispatch<React.SetStateAction<(SavedPage & { original: SavedPage }) | null>>;
-  setRemoved: React.Dispatch<React.SetStateAction<SavedPage | null>>;
+  setEditing: React.Dispatch<React.SetStateAction<BookmarkEditor | null>>;
+  setRemoved: React.Dispatch<React.SetStateAction<RemovedBookmark | null>>;
   setNotice: React.Dispatch<React.SetStateAction<string>>;
   cancelEditor(): void;
 }) {
@@ -190,7 +219,7 @@ const SavedPageRow = memo(function SavedPageRow({
         ) : null}
       </button>
       <div className="library-actions" hidden={view === "bookmarks" && selecting}>
-        {canPeek && (
+        {canPeek && bookmarkWebUrl(item.url) && (
           <button
             {...staticSmallIconButtonProps}
             title="Preview link"
@@ -209,22 +238,29 @@ const SavedPageRow = memo(function SavedPageRow({
             <button
               {...staticSmallIconButtonProps}
               title="Edit bookmark"
-              disabled={busy}
+              disabled={busy || !snapshot?.editable}
               aria-label={`Edit ${title}`}
-              onClick={() => setEditing({ ...item, original: item })}
+              onClick={() =>
+                void action(async () => {
+                  if (!snapshot) return;
+                  const source = bookmarkSource(item, snapshot);
+                  setEditing({ ...item, original: item, source, destinationId: source.parentId });
+                })
+              }
             >
               {shellIconPencil}
             </button>
             <button
               {...staticSmallIconButtonProps}
               title="Remove bookmark"
-              disabled={busy}
+              disabled={busy || !snapshot?.editable}
               aria-label={`Remove ${title}`}
               onClick={() =>
                 void action(async () => {
-                  await call("bookmarks.remove", { url: item.url, nodeId: item.nodeId });
+                  if (!snapshot) throw new Error("Bookmark folders are still loading.");
+                  const result = await removeBookmark(bookmarkSource(item, snapshot));
                   useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
-                  setRemoved(item);
+                  setRemoved({ title: item.title || hostOf(item.url), undoToken: result.undoToken });
                   setNotice("");
                   setEditing((current) =>
                     current && bookmarkKey(current.original) === bookmarkKey(item) ? null : current,
@@ -309,16 +345,15 @@ const SavedPageRow = memo(function SavedPageRow({
           onSubmit={(event) => {
             event.preventDefault();
             void action(async () => {
-              const url = bookmarkWebUrl(editing.url.trim());
-              if (!url)
-                throw new Error("Enter a complete http or https address without a username or password.");
-              await call("bookmarks.update", {
-                originalUrl: editing.original.url,
-                nodeId: editing.original.nodeId,
-                url,
+              const destination = snapshot?.folders.find((folder) => folder.nodeId === editing.destinationId);
+              if (!destination) throw new Error("The destination folder no longer exists.");
+              await editBookmark({
+                source: editing.source,
+                url: editing.url.trim(),
                 title: editing.title.trim(),
-                folderPath: editing.folderPath,
-                expected: { title: editing.original.title, folderPath: editing.original.folderPath },
+                ...(destination.nodeId !== editing.source.parentId
+                  ? { destination: folderDestination(destination) }
+                  : {}),
               });
               setEditing(null);
               setNotice("Bookmark updated.");
@@ -357,15 +392,12 @@ const SavedPageRow = memo(function SavedPageRow({
               {...staticFieldInputProps}
               aria-label="Bookmark folder"
               disabled={busy}
-              value={JSON.stringify(editing.folderPath ?? [])}
-              onChange={(event) =>
-                setEditing({ ...editing, folderPath: JSON.parse(event.target.value) as string[] })
-              }
+              value={editing.destinationId}
+              onChange={(event) => setEditing({ ...editing, destinationId: event.target.value })}
             >
-              <option value="[]">Bookmarks</option>
-              {folders.map((path) => (
-                <option key={JSON.stringify(path)} value={JSON.stringify(path)}>
-                  {path.join(" / ")}
+              {snapshot?.folders.map((folder) => (
+                <option key={folder.nodeId} value={folder.nodeId}>
+                  {bookmarkFolderLabel(folder, snapshot)}
                 </option>
               ))}
             </select>
@@ -425,11 +457,15 @@ export function Library({
   const active = useStore((s) => s.pages.byId[s.activePageId ?? ""]);
   const [view, setView] = useState<View>(initialView);
   const [query, setQuery] = useState("");
-  const [folders, setFolders] = useState<string[][]>([]);
-  const [folder, setFolder] = useState<string[]>([]);
+  const [snapshot, setSnapshot] = useState<BookmarkFolderSnapshot | null>(null);
+  const folders = snapshot?.folders ?? [];
+  const [folderId, setFolderId] = useState("");
+  const currentFolder = folders.find((item) => item.nodeId === (folderId || snapshot?.rootId));
+  const folder = currentFolder?.path ?? [];
+  const [folderUndo, setFolderUndo] = useState<BookmarkFolderChange | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selection, setSelection] = useState<SavedPage[]>([]);
-  const [moveFolder, setMoveFolder] = useState("[]");
+  const [moveFolder, setMoveFolder] = useState("");
   const [newMoveFolder, setNewMoveFolder] = useState("");
   const toggleSelection = useCallback(
     (item: SavedPage) =>
@@ -440,7 +476,11 @@ export function Library({
       ),
     [],
   );
-  const [folderEditor, setFolderEditor] = useState<{ mode: "create" | "rename"; name: string } | null>(null);
+  const [folderEditor, setFolderEditor] = useState<{
+    mode: "create" | "rename";
+    name: string;
+    folder: BookmarkFolder;
+  } | null>(null);
   const [importSource, setImportSource] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyRange, setHistoryRange] = useState("all");
@@ -462,8 +502,8 @@ export function Library({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [removed, setRemoved] = useState<SavedPage | null>(null);
-  const [editing, setEditing] = useState<(SavedPage & { original: SavedPage }) | null>(null);
+  const [removed, setRemoved] = useState<RemovedBookmark | null>(null);
+  const [editing, setEditing] = useState<BookmarkEditor | null>(null);
   const [importPreview, setImportPreview] = useState<Awaited<ReturnType<typeof parseBookmarkFile>> | null>(
     null,
   );
@@ -527,14 +567,12 @@ export function Library({
                   setMoreHistory(items.length === HISTORY_PAGE_SIZE);
                 }
               })
-            : Promise.all([call("bookmarks.list", {}), call("bookmarks.folders.list", {})]).then(
-                ([items, paths]) => {
-                  if (live && readCurrent() && version === historyRequest.current) {
-                    useStore.setState({ bookmarks: items });
-                    setFolders(paths);
-                  }
-                },
-              );
+            : Promise.all([call("bookmarks.list", {}), readBookmarkFolders()]).then(([items, snapshot]) => {
+                if (live && readCurrent() && version === historyRequest.current) {
+                  useStore.setState({ bookmarks: items });
+                  setSnapshot(snapshot);
+                }
+              });
         void request
           .catch((reason) => {
             if (live && readCurrent() && version === historyRequest.current) {
@@ -601,12 +639,12 @@ export function Library({
     let revision = 0;
     const refreshFolders = () => {
       const requested = ++revision;
-      void call("bookmarks.folders.list")
-        .then((paths) => {
+      void readBookmarkFolders()
+        .then((snapshot) => {
           if (!live || !readCurrent() || requested !== revision) return;
-          setFolders(paths);
-          setFolder((previous) =>
-            paths.some((path) => JSON.stringify(path) === JSON.stringify(previous)) ? previous : [],
+          setSnapshot(snapshot);
+          setFolderId((previous) =>
+            snapshot.folders.some((folder) => folder.nodeId === previous) ? previous : snapshot.rootId,
           );
         })
         .catch((reason) => {
@@ -624,15 +662,30 @@ export function Library({
     };
   }, [view, readCurrent]);
 
+  function folderItems(folder: BookmarkFolder) {
+    if (!snapshot) return [];
+    const ids = descendantBookmarkIds(folder, snapshot);
+    return bookmarks.filter((item) => ids.has(item.nodeId ?? ""));
+  }
   const q = query.trim().toLocaleLowerCase();
-  const folderKey = JSON.stringify(folder);
-  const childFolders = folders.filter((path) =>
-    q
-      ? path.join(" / ").toLocaleLowerCase().includes(q)
-      : path.length === folder.length + 1 && folder.every((part, index) => path[index] === part),
+  const folderKey = currentFolder?.nodeId ?? "";
+  const currentChildIds = new Set(currentFolder?.childIds);
+  const childFolders = folders.filter(
+    (item) =>
+      item.nodeId !== snapshot?.rootId &&
+      (q
+        ? item.path.join(" / ").toLocaleLowerCase().includes(q)
+        : (item.parentId ?? snapshot?.rootId) === currentFolder?.nodeId),
   );
-  function openFolder(path: string[]) {
-    setFolder(path);
+  const breadcrumbs: BookmarkFolder[] = [];
+  for (
+    let node = currentFolder;
+    node && node.nodeId !== snapshot?.rootId;
+    node = folders.find((parent) => parent.nodeId === node?.parentId)
+  )
+    breadcrumbs.unshift(node);
+  function openFolder(id: string) {
+    setFolderId(id);
     setQuery("");
     setEditing(null);
     setFolderEditor(null);
@@ -644,11 +697,14 @@ export function Library({
       ? bookmarks.filter((item) =>
           q
             ? `${item.title} ${item.url} ${item.folderPath?.join(" ") ?? ""}`.toLocaleLowerCase().includes(q)
-            : JSON.stringify(item.folderPath ?? []) === folderKey,
+            : !currentFolder || currentChildIds.has(item.nodeId ?? ""),
         )
       : view === "reading"
         ? bookmarks.filter(
-            (item) => item.readingList && (!q || `${item.title} ${item.url}`.toLocaleLowerCase().includes(q)),
+            (item) =>
+              item.readingList &&
+              !!bookmarkWebUrl(item.url) &&
+              (!q || `${item.title} ${item.url}`.toLocaleLowerCase().includes(q)),
           )
         : view === "history"
           ? history
@@ -682,21 +738,31 @@ export function Library({
         });
     }
   }, []);
-  const save = useCallback(async (item: SavedPage, forceNew = false) => {
-    await call("bookmarks.add", { ...item, forceNew });
-    const items = await call("bookmarks.list", {});
-    useStore.setState({ bookmarks: items });
-    setFolders(await call("bookmarks.folders.list"));
-  }, []);
+  const save = useCallback(
+    async (item: SavedPage) => {
+      if (!currentFolder) throw new Error("Bookmark folders are still loading.");
+      setSnapshot(
+        await createBookmark({
+          title: item.title,
+          url: item.url,
+          destination: folderDestination(currentFolder),
+        }),
+      );
+      useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
+    },
+    [currentFolder],
+  );
   const open = useCallback(
     (item: SavedPage, background = false, trigger?: HTMLElement) => {
       void action(async () => {
-        const url = bookmarkWebUrl(item.url);
-        if (!url) throw new Error("This saved address is not a web page.");
+        const url = item.url;
+        if (!item.nodeId && !bookmarkWebUrl(url)) throw new Error("This saved address is not a web page.");
         const state = useStore.getState();
         if (background) {
           const overlay = state.overlay;
-          await state.openBackgroundTab(url, state.layout.activeSpaceId, false);
+          if (item.nodeId) {
+            await openBookmark(item, true, undefined, state.layout.activeSpaceId);
+          } else await state.openBackgroundTab(url, state.layout.activeSpaceId, false);
           setNotice(`Opened ${item.title || hostOf(url)} in a background tab.`);
           const returnFocus = () =>
             trigger?.isConnected &&
@@ -714,18 +780,22 @@ export function Library({
           });
           return;
         }
-        const existing = orderedPages(state.pages).find(
-          (page) =>
-            page.url === item.url &&
-            !page.ownedByRuntime &&
-            !["crashed", "detached"].includes(page.viewStatus ?? ""),
-        );
-        if (existing) {
-          const spaceId = state.layout.tabSpace[existing.pageId];
-          if (spaceId && spaceId !== state.layout.activeSpaceId) state.switchSpace(spaceId);
-          await state.activate(existing.pageId);
-        } else if (!(await state.newTab(item.url)))
-          throw new Error("The page could not be opened. Try again.");
+        if (item.nodeId) {
+          await openBookmark(item, false, state.activePageId ?? undefined, state.layout.activeSpaceId);
+        } else {
+          const existing = orderedPages(state.pages).find(
+            (page) =>
+              page.url === item.url &&
+              !page.ownedByRuntime &&
+              !["crashed", "detached"].includes(page.viewStatus ?? ""),
+          );
+          if (existing) {
+            const spaceId = state.layout.tabSpace[existing.pageId];
+            if (spaceId && spaceId !== state.layout.activeSpaceId) state.switchSpace(spaceId);
+            await state.activate(existing.pageId);
+          } else if (!(await state.newTab(item.url)))
+            throw new Error("The page could not be opened. Try again.");
+        }
         // A foreground open is the act of reading — background opens stay unread.
         if (item.readingList && !item.readAt)
           await call("bookmarks.markRead", { url: item.url, nodeId: item.nodeId, read: true });
@@ -864,7 +934,7 @@ export function Library({
                   firstResult.current?.click();
                 } else if (view === "bookmarks" && childFolders[0]) {
                   event.preventDefault();
-                  openFolder(childFolders[0]);
+                  openFolder(childFolders[0].nodeId);
                 } else if (items[0]) {
                   event.preventDefault();
                   open(items[0]);
@@ -953,7 +1023,9 @@ export function Library({
                   <button
                     {...smallButtonProps}
                     disabled={busy}
-                    onClick={() => setFolderEditor({ mode: "create", name: "" })}
+                    onClick={() =>
+                      currentFolder && setFolderEditor({ mode: "create", name: "", folder: currentFolder })
+                    }
                   >
                     {shellIconFolderClosed} New folder
                   </button>
@@ -962,12 +1034,12 @@ export function Library({
                   </button>
                   <button
                     {...smallButtonProps}
-                    disabled={busy || (!bookmarks.length && !folders.length) || !inNativeHost}
+                    disabled={busy || !snapshot || (!bookmarks.length && !folders.length) || !inNativeHost}
                     onClick={() =>
                       void action(async () => {
                         const file = await bridge.saveFile(
                           "aux-bookmarks.html",
-                          exportBookmarkFile(bookmarks, folders),
+                          exportBookmarkFile(bookmarks, snapshot!),
                         );
                         if (file) {
                           const skipped = bookmarks.filter((item) => !bookmarkWebUrl(item.url)).length;
@@ -1073,10 +1145,10 @@ export function Library({
                     disabled={busy}
                     onChange={(event) => setMoveFolder(event.target.value)}
                   >
-                    <option value="[]">Bookmarks</option>
-                    {folders.map((path) => (
-                      <option key={JSON.stringify(path)} value={JSON.stringify(path)}>
-                        {path.join(" / ")}
+                    <option value="">Choose a folder</option>
+                    {folders.map((item) => (
+                      <option key={item.nodeId} value={item.nodeId}>
+                        {snapshot && bookmarkFolderLabel(item, snapshot)}
                       </option>
                     ))}
                     <option value="new">
@@ -1096,25 +1168,55 @@ export function Library({
                   )}
                   <button
                     {...smallButtonProps}
-                    disabled={busy || !selection.length || (moveFolder === "new" && !newMoveFolder.trim())}
+                    disabled={
+                      busy ||
+                      !snapshot?.editable ||
+                      !moveFolder ||
+                      !selection.length ||
+                      (moveFolder === "new" && !newMoveFolder.trim())
+                    }
                     onClick={() =>
                       void action(async () => {
-                        const result = await call("bookmarks.move", {
-                          bookmarks: selection.map((item) => ({
-                            url: item.url,
-                            nodeId: item.nodeId,
-                            folderPath: item.folderPath ?? [],
-                          })),
-                          folderPath:
-                            moveFolder === "new" ? [...folder, newMoveFolder.trim()] : JSON.parse(moveFolder),
-                          createFolder: moveFolder === "new",
-                        });
-                        useStore.setState({ bookmarks: await call("bookmarks.list") });
-                        setFolders(await call("bookmarks.folders.list"));
+                        if (!snapshot || !currentFolder)
+                          throw new Error("Bookmark folders are still loading.");
+                        let next = snapshot;
+                        let destinationId = moveFolder;
+                        if (moveFolder === "new") {
+                          const result = await changeBookmarkFolder({
+                            kind: "create",
+                            destination: folderDestination(currentFolder),
+                            title: newMoveFolder.trim(),
+                          });
+                          next = result.snapshot;
+                          if (result.undo?.kind !== "remove")
+                            throw new Error("The new folder is unavailable.");
+                          destinationId = result.undo.source.nodeId;
+                        }
+                        let moved = 0;
+                        try {
+                          for (const item of selection) {
+                            const destination = next.folders.find(
+                              (folder) => folder.nodeId === destinationId,
+                            );
+                            if (!destination) throw new Error("The destination folder no longer exists.");
+                            next = (
+                              await placeBookmark({
+                                source: bookmarkSource(item, next),
+                                destination: folderDestination(destination),
+                              })
+                            ).snapshot;
+                            moved++;
+                          }
+                        } catch (reason) {
+                          throw new Error(`${moved} bookmarks moved. ${errorMessage(reason)}`);
+                        } finally {
+                          setSnapshot(next);
+                          useStore.setState({ bookmarks: await call("bookmarks.list") });
+                        }
                         setSelection([]);
                         setSelecting(false);
                         search.current?.focus();
-                        setNotice(`${result.moved} ${result.moved === 1 ? "bookmark" : "bookmarks"} moved.`);
+                        setNotice(`${moved} ${moved === 1 ? "bookmark" : "bookmarks"} moved.`);
                       })
                     }
                   >
@@ -1152,8 +1254,8 @@ export function Library({
                           folders: importPreview.folders,
                         });
                         useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
-                        setFolders(await call("bookmarks.folders.list"));
-                        setFolder([]);
+                        setSnapshot(await readBookmarkFolders());
+                        setFolderId("");
                         setImportPreview(null);
                         setQuery("");
                         setNotice(`Imported ${result.added} bookmarks. ${result.skipped} already saved.`);
@@ -1170,25 +1272,27 @@ export function Library({
             )}
             {view === "bookmarks" && (
               <nav className="library-breadcrumbs" aria-label="Bookmark folders">
-                <button className="btn ghost sm" onClick={() => openFolder([])}>
+                <button className="btn ghost sm" onClick={() => openFolder(snapshot?.rootId ?? "")}>
                   Bookmarks
                 </button>
-                {folder.map((part, index) => (
-                  <span key={index}>
+                {breadcrumbs.map((item) => (
+                  <span key={item.nodeId}>
                     {shellIconRight}
-                    <button className="btn ghost sm" onClick={() => openFolder(folder.slice(0, index + 1))}>
-                      {part}
+                    <button className="btn ghost sm" onClick={() => openFolder(item.nodeId)}>
+                      {item.title || "Untitled folder"}
                     </button>
                   </span>
                 ))}
                 <span {...auxClassSpacerProps} />
-                {folder.length > 0 && (
+                {currentFolder && !currentFolder.permanent && (
                   <>
                     <button
                       {...staticIconButtonProps}
                       title="Rename folder"
                       aria-label="Rename folder"
-                      onClick={() => setFolderEditor({ mode: "rename", name: folder.at(-1)! })}
+                      onClick={() =>
+                        setFolderEditor({ mode: "rename", name: currentFolder.title, folder: currentFolder })
+                      }
                     >
                       {shellIconPencil}
                     </button>
@@ -1196,11 +1300,16 @@ export function Library({
                       {...staticIconButtonProps}
                       title="Remove empty folder"
                       aria-label="Remove empty folder"
-                      disabled={busy}
+                      disabled={busy || !snapshot?.editable || !!currentFolder.childIds.length}
                       onClick={() =>
                         void action(async () => {
-                          setFolders(await call("bookmarks.folders.remove", { path: folder }));
-                          setFolder(folder.slice(0, -1));
+                          const result = await changeBookmarkFolder({
+                            kind: "remove",
+                            source: folderSource(currentFolder),
+                          });
+                          setSnapshot(result.snapshot);
+                          setFolderUndo(result.undo);
+                          setFolderId(currentFolder.parentId ?? result.snapshot.rootId);
                         })
                       }
                     >
@@ -1212,7 +1321,13 @@ export function Library({
             )}
             {view === "bookmarks" && folder.length > 0 && !q && !loading && (
               <div className="library-tools">
-                <OpenBookmarkFolder key={folderKey} bookmarks={bookmarks} folder={folder} />
+                {currentFolder && snapshot && (
+                  <OpenBookmarkFolder
+                    key={folderKey}
+                    bookmarks={folderItems(currentFolder)}
+                    folder={folder}
+                  />
+                )}
               </div>
             )}
             {view === "bookmarks" && folderEditor && (
@@ -1223,13 +1338,13 @@ export function Library({
                   void action(async () => {
                     const name = folderEditor.name.trim();
                     if (!name) return;
-                    if (folderEditor.mode === "create")
-                      setFolders(await call("bookmarks.folders.create", { path: [...folder, name] }));
-                    else {
-                      setFolders(await call("bookmarks.folders.rename", { path: folder, name }));
-                      useStore.setState({ bookmarks: await call("bookmarks.list") });
-                      setFolder([...folder.slice(0, -1), name]);
-                    }
+                    const result = await changeBookmarkFolder(
+                      folderEditor.mode === "create"
+                        ? { kind: "create", destination: folderDestination(folderEditor.folder), title: name }
+                        : { kind: "rename", source: folderSource(folderEditor.folder), title: name },
+                    );
+                    setSnapshot(result.snapshot);
+                    setFolderUndo(result.undo);
                     setFolderEditor(null);
                     search.current?.focus();
                   });
@@ -1274,15 +1389,34 @@ export function Library({
                 {notice}
               </output>
             )}
-            {removed && (
+            {folderUndo && (
               <div className="library-tools">
-                <span {...staticHintProps}>Removed {removed.title || hostOf(removed.url)}</span>
                 <button
                   {...smallButtonProps}
                   disabled={busy}
                   onClick={() =>
                     void action(async () => {
-                      await save(removed, true);
+                      const result = await changeBookmarkFolder(folderUndo);
+                      setSnapshot(result.snapshot);
+                      setFolderUndo(null);
+                      setNotice("Folder change undone.");
+                    })
+                  }
+                >
+                  Undo folder change
+                </button>
+              </div>
+            )}
+            {removed && (
+              <div className="library-tools">
+                <span {...staticHintProps}>Removed {removed.title}</span>
+                <button
+                  {...smallButtonProps}
+                  disabled={busy}
+                  onClick={() =>
+                    void action(async () => {
+                      setSnapshot(await restoreBookmark(removed.undoToken));
+                      useStore.setState({ bookmarks: await call("bookmarks.list") });
                       setRemoved(null);
                       setNotice("Bookmark restored.");
                     })
@@ -1302,22 +1436,18 @@ export function Library({
               onKeyDown={(event) => moveListFocus(event, ".library-folder, .library-open")}
             >
               {view === "bookmarks" &&
-                childFolders.map((path, index) => (
+                childFolders.map((item, index) => (
                   <button
-                    key={JSON.stringify(path)}
+                    key={item.nodeId}
                     ref={index === 0 ? firstResult : undefined}
                     className="library-folder"
-                    onClick={() => openFolder(path)}
+                    onClick={() => openFolder(item.nodeId)}
                   >
                     <span className="library-folder-icon">{shellIconFolderClosed}</span>
-                    <span {...auxClassTextProps}>{q ? path.join(" / ") : path.at(-1)}</span>
-                    <span {...staticHintProps}>
-                      {
-                        bookmarks.filter((item) =>
-                          path.every((part, index) => item.folderPath?.[index] === part),
-                        ).length
-                      }
+                    <span {...auxClassTextProps}>
+                      {q ? item.path.join(" / ") : item.title || "Untitled folder"}
                     </span>
+                    <span {...staticHintProps}>{folderItems(item).length}</span>
                     {shellIconRight}
                   </button>
                 ))}
@@ -1359,7 +1489,7 @@ export function Library({
                       editing={
                         editing && bookmarkKey(editing.original) === bookmarkKey(item) ? editing : null
                       }
-                      folders={folders}
+                      snapshot={snapshot}
                       firstResult={index === 0 && !childFolders.length ? firstResult : undefined}
                       onSelect={toggleSelection}
                       onOpen={open}
@@ -1382,7 +1512,7 @@ export function Library({
                         busy={busy}
                         showFolderPath={false}
                         editing={null}
-                        folders={folders}
+                        snapshot={snapshot}
                         firstResult={index === 0 ? firstResult : undefined}
                         onSelect={toggleSelection}
                         onOpen={open}

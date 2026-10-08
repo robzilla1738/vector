@@ -1,0 +1,340 @@
+diff --git a/chrome/browser/ui/aux/methods/library_methods.cc b/chrome/browser/ui/aux/methods/library_methods.cc
+index 1b51141..2cbd05d 100644
+--- a/chrome/browser/ui/aux/methods/library_methods.cc
++++ b/chrome/browser/ui/aux/methods/library_methods.cc
+@@ -40,6 +40,11 @@
+ #include "chrome/browser/ui/aux/dictation_mac.h"
+ #include "chrome/browser/ui/aux/extension_bridge.h"
+ #include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/browser/ui/navigator/browser_navigator.h"
++#include "chrome/browser/ui/navigator/browser_navigator_params.h"
++#include "components/bookmarks/browser/bookmark_node.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_search_engine.h"
+ #include "chrome/browser/ui/aux/result_preview.h"
+@@ -182,6 +187,118 @@ void WebUIBrowserUI::HandleAuxLibraryRequest(
+                       std::move(callback)));
+       return;
+     }
++    if (*bookmark_method == "bookmarks.open") {
++      const std::string* node_id = params->FindString("nodeId");
++      const std::string* url = params->FindString("url");
++      const std::string* disposition = params->FindString("disposition");
++      int64_t id = 0;
++      const auto* node = node_id && base::StringToInt64(*node_id, &id)
++                             ? bookmarks::GetBookmarkNodeByID(model, id)
++                             : nullptr;
++      if (!node || !node->is_url() || !url || node->url().spec() != *url ||
++          !disposition) {
++        std::move(callback).Run(false, "", "conflict", "This bookmark changed");
++        return;
++      }
++      const bool current = *disposition == "current";
++      const bool activated = web_ui()
++                                 ->GetWebContents()
++                                 ->GetPrimaryMainFrame()
++                                 ->HasTransientUserActivation();
++      auto* target = browser_->GetTabStripModel()->GetActiveWebContents();
++      if (current || node->url().SchemeIs("javascript")) {
++        const auto* identity =
++            target ? aux::PageIdentity::FromWebContents(target) : nullptr;
++        const std::string* page_id = params->FindString("pageId");
++        aux::EgressRequestContext context;
++        if (target && target->GetPrimaryMainFrame()) {
++          context.page_id = identity ? identity->id() : "";
++          context.document =
++              target->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++        }
++        if (!current || !activated || !target ||
++            target == web_ui()->GetWebContents() ||
++            target->GetBrowserContext() != profile || !identity ||
++            identity->runtime_owned() || !page_id ||
++            *page_id != identity->id() ||
++            aux::EgressController::ForProfile(profile)->IsProtected(context)) {
++          std::move(callback).Run(
++              false, "", "ref_stale",
++              "Open this bookmark from its current browsing tab");
++          return;
++        }
++      }
++      const std::string* space_id = params->FindString("spaceId");
++      const std::string window_id =
++          base::NumberToString(browser_->GetSessionID().id());
++      std::string placement_error;
++      auto destination = [&]() -> std::optional<base::DictValue> {
++        auto snapshot = aux::OrganizationStore::Snapshot(profile, window_id,
++                                                         &placement_error);
++        const auto* layout = snapshot ? snapshot->FindDict("layout") : nullptr;
++        const auto* shared = layout ? layout->FindDict("shared") : nullptr;
++        const auto* spaces = shared ? shared->FindList("spaces") : nullptr;
++        if (spaces) {
++          for (const auto& value : *spaces) {
++            const auto& space = value.GetDict();
++            if (space.FindString("id") &&
++                *space.FindString("id") == *space_id &&
++                !space.FindBool("archived").value_or(false))
++              return snapshot;
++          }
++        }
++        return std::nullopt;
++      };
++      if (space_id && !current && !destination()) {
++        std::move(callback).Run(false, "", "conflict",
++                                "This bookmark Space is no longer available");
++        return;
++      }
++      NavigateParams navigation(browser_, node->url(),
++                                ui::PAGE_TRANSITION_AUTO_BOOKMARK);
++      navigation.disposition = current ? WindowOpenDisposition::CURRENT_TAB
++                               : *disposition == "background"
++                                   ? WindowOpenDisposition::NEW_BACKGROUND_TAB
++                                   : WindowOpenDisposition::NEW_FOREGROUND_TAB;
++      navigation.source_contents = current ? target : nullptr;
++      navigation.user_gesture = activated;
++      navigation.original_user_gesture = activated;
++      Navigate(&navigation);
++      auto* opened = navigation.navigated_or_inserted_contents.get();
++      const bool opened_here =
++          opened && opened->GetBrowserContext() == profile &&
++          browser_->GetTabStripModel()->GetIndexOfWebContents(opened) !=
++              TabStripModel::kNoTab;
++      const std::string opened_id =
++          opened_here ? aux::PageIdentity::GetOrCreate(profile, opened) : "";
++      if (opened_here && space_id && !current) {
++        auto snapshot = destination();
++        if (!snapshot) {
++          std::move(callback).Run(false, "", "conflict",
++                                  "Bookmark opened, but its Space changed");
++          return;
++        }
++        auto* layout = snapshot->FindDict("layout");
++        layout->FindDict("shared")
++            ->FindDict("tabSpace")
++            ->Set(opened_id, *space_id);
++        if (!aux::OrganizationStore::Commit(
++                profile, window_id, snapshot->FindInt("revision").value(),
++                *layout, &placement_error)) {
++          std::move(callback).Run(false, "", "conflict",
++                                  "Bookmark opened, but its Space changed");
++          return;
++        }
++      }
++      base::DictValue result;
++      result.Set("pageId",
++                 opened_here ? base::Value(opened_id) : base::Value());
++      base::DictValue envelope;
++      envelope.Set("method", *bookmark_method);
++      envelope.Set("result", std::move(result));
++      std::move(callback).Run(true, *base::WriteJson(envelope), "", "");
++      return;
++    }
+     // The generated public schema admits only native bookmark methods and
+     // their exact parameter shapes. Reuse the Profile model's identity and
+     // stale-revision checks instead of introducing a second mutation path.
+diff --git a/chrome/browser/ui/aux/profile_library.cc b/chrome/browser/ui/aux/profile_library.cc
+index a90a31d..29d228f 100644
+--- a/chrome/browser/ui/aux/profile_library.cc
++++ b/chrome/browser/ui/aux/profile_library.cc
+@@ -84,6 +84,19 @@ base::DictValue NodeSource(const bookmarks::BookmarkNode* node) {
+   return source;
+ }
+ 
++const bookmarks::BookmarkNode* BookmarkBySource(bookmarks::BookmarkModel* model,
++                                                const base::DictValue* source) {
++  int64_t id = 0;
++  const std::string* node_id = source ? source->FindString("nodeId") : nullptr;
++  if (!node_id || !base::StringToInt64(*node_id, &id) || id <= 0)
++    return nullptr;
++  const auto* node = bookmarks::GetBookmarkNodeByID(model, id);
++  return node && node->is_url() && !model->client()->IsNodeManaged(node) &&
++                 *source == NodeSource(node)
++             ? node
++             : nullptr;
++}
++
+ const bookmarks::BookmarkNode* FolderById(bookmarks::BookmarkModel* model,
+                                           const std::string* node_id) {
+   int64_t id = 0;
+@@ -147,6 +160,18 @@ bool IsFolderName(const base::Value &value) {
+ 
+ } // namespace
+ 
++struct ProfileLibrary::RemovedBookmark {
++  std::string token;
++  int64_t node_id;
++  int64_t parent_id;
++  size_t index;
++  base::ListValue expected_children;
++  std::u16string title;
++  GURL url;
++  base::Time created_at;
++  bookmarks::BookmarkNode::MetaInfoMap meta;
++};
++
+ struct ProfileLibrary::HistoryImportState {
+   std::vector<Visit> visits;
+   size_t next = 0;
+@@ -518,11 +543,11 @@ base::ListValue ProfileLibrary::ListBookmarks() const {
+         self(self, child.get(), next);
+         continue;
+       }
+-      if (!child->url().SchemeIsHTTPOrHTTPS()) {
+-        continue;
+-      }
+       base::DictValue bookmark;
+-      bookmark.Set("nodeId", base::NumberToString(child->id()));
++      bookmark.Set("nodeId", NodeId(child.get()));
++      bookmark.Set("parentId", NodeId(node));
++      bookmark.Set("index",
++                   static_cast<int>(node->GetIndexOf(child.get()).value()));
+       bookmark.Set("url", child->url().spec());
+       bookmark.Set("title", base::UTF16ToUTF8(child->GetTitle()));
+       bookmark.Set("folderPath", path.Clone());
+@@ -731,8 +756,7 @@ base::DictValue ProfileLibrary::PlaceBookmark(const base::DictValue& params) {
+                  "Bookmark editing is managed by your organization");
+   }
+   const base::DictValue* expected_source = params.FindDict("source");
+-  const auto* source =
+-      expected_source ? FindBookmark(*expected_source, "url") : nullptr;
++  const auto* source = BookmarkBySource(bookmarks_, expected_source);
+   if (!source || bookmarks_->client()->IsNodeManaged(source) ||
+       *expected_source != NodeSource(source)) {
+     return Fault("conflict",
+@@ -760,6 +784,93 @@ base::DictValue ProfileLibrary::PlaceBookmark(const base::DictValue& params) {
+                                            : base::Value())));
+ }
+ 
++base::DictValue ProfileLibrary::ChangeBookmark(const std::string& method,
++                                               const base::DictValue& params) {
++  if (!profile_->GetPrefs()->GetBoolean(
++          bookmarks::prefs::kEditBookmarksEnabled))
++    return Fault("forbidden",
++                 "Bookmark editing is managed by your organization");
++  if (method == "bookmarks.entries.restore") {
++    const std::string* token = params.FindString("undoToken");
++    auto found = std::find_if(
++        removed_bookmarks_.begin(), removed_bookmarks_.end(),
++        [&](const auto& entry) { return token && entry->token == *token; });
++    if (found == removed_bookmarks_.end())
++      return Fault("not_found", "This bookmark can no longer be restored");
++    const auto& entry = **found;
++    const std::string parent_id = base::NumberToString(entry.parent_id);
++    const auto* parent = FolderById(bookmarks_, &parent_id);
++    if (!parent || bookmarks::GetBookmarkNodeByID(bookmarks_, entry.node_id) ||
++        ChildIds(parent) != entry.expected_children ||
++        entry.index > parent->children().size())
++      return Fault("conflict",
++                   "The original folder changed. Undo is unavailable.");
++    bookmarks_->AddURL(parent, entry.index, entry.title, entry.url, &entry.meta,
++                       entry.created_at);
++    removed_bookmarks_.erase(found);
++    return Result(base::Value(FolderSnapshot()));
++  }
++  const auto* node = BookmarkBySource(bookmarks_, params.FindDict("source"));
++  const bool create = method == "bookmarks.entries.create";
++  if (!node && !create)
++    return Fault("conflict",
++                 "The bookmark changed. Open its menu and try again.");
++  if (method == "bookmarks.entries.remove") {
++    auto entry = std::make_unique<RemovedBookmark>();
++    entry->token = base::Uuid::GenerateRandomV4().AsLowercaseString();
++    entry->node_id = node->id();
++    const auto* parent = node->parent();
++    entry->parent_id = parent->id();
++    entry->index = parent->GetIndexOf(node).value();
++    entry->title = node->GetTitle();
++    entry->url = node->url();
++    entry->created_at = node->date_added();
++    if (const auto* meta = node->GetMetaInfoMap())
++      entry->meta = *meta;
++    bookmarks_->Remove(node, bookmarks::metrics::BookmarkEditSource::kUser,
++                       FROM_HERE);
++    entry->expected_children = ChildIds(parent);
++    base::DictValue result = base::DictValue()
++                                 .Set("snapshot", FolderSnapshot())
++                                 .Set("undoToken", entry->token);
++    if (removed_bookmarks_.size() == 32)
++      removed_bookmarks_.pop_front();
++    removed_bookmarks_.push_back(std::move(entry));
++    return Result(base::Value(std::move(result)));
++  }
++  const std::string* title = params.FindString("title");
++  const std::string* url = params.FindString("url");
++  if (!title || !url || !GURL(*url).is_valid())
++    return Fault("invalid_params", "Enter a valid bookmark address");
++  const auto* parent = node ? node->parent() : nullptr;
++  size_t index = node ? parent->GetIndexOf(node).value() : 0;
++  if (const auto* destination = params.FindDict("destination")) {
++    parent = FolderById(bookmarks_, destination->FindString("parentId"));
++    const auto* children = destination->FindList("expectedChildren");
++    const auto proposed = destination->FindInt("index");
++    if (!parent || !children || *children != ChildIds(parent) || !proposed ||
++        *proposed < 0 ||
++        static_cast<size_t>(*proposed) > parent->children().size())
++      return Fault("conflict", "The destination changed. Choose it again.");
++    index = static_cast<size_t>(*proposed);
++  }
++  if (create) {
++    if (!parent)
++      return Fault("invalid_params", "Choose a bookmark folder");
++    bookmarks_->AddURL(parent, index, base::UTF8ToUTF16(*title), GURL(*url));
++    return Result(base::Value(FolderSnapshot()));
++  }
++  // Check every guard before editing either the entry or its placement.
++  bookmarks_->SetTitle(node, base::UTF8ToUTF16(*title),
++                       bookmarks::metrics::BookmarkEditSource::kUser);
++  bookmarks_->SetURL(node, GURL(*url),
++                     bookmarks::metrics::BookmarkEditSource::kUser);
++  MoveNode(bookmarks_, node, parent, index);
++  return Result(base::Value(base::DictValue()
++                                .Set("snapshot", FolderSnapshot())
++                                .Set("source", NodeSource(node))));
++}
++
+ const bookmarks::BookmarkNode *
+ ProfileLibrary::FindFolder(const base::ListValue &path, bool create) {
+   if (!bookmarks_ || !bookmarks_->loaded() || path.size() > 32) {
+@@ -859,6 +970,12 @@ ProfileLibrary::BookmarkCall(const std::string &method,
+   if (!bookmarks_ || !bookmarks_->loaded()) {
+     return Fault("backend_unavailable", "Chromium bookmarks are still loading");
+   }
++  if (method == "bookmarks.entries.remove" ||
++      method == "bookmarks.entries.restore" ||
++      method == "bookmarks.entries.edit" ||
++      method == "bookmarks.entries.create") {
++    return ChangeBookmark(method, params);
++  }
+   if (method == "bookmarks.folders.snapshot") {
+     return Result(base::Value(FolderSnapshot()));
+   }
+diff --git a/chrome/browser/ui/aux/profile_library.h b/chrome/browser/ui/aux/profile_library.h
+index e9cda76..69e4cef 100644
+--- a/chrome/browser/ui/aux/profile_library.h
++++ b/chrome/browser/ui/aux/profile_library.h
+@@ -102,6 +102,7 @@ public:
+ 
+ private:
+   struct HistoryImportState;
++  struct RemovedBookmark;
+   struct Visit {
+     std::string url;
+     std::string title;
+@@ -119,6 +120,8 @@ private:
+   base::DictValue FolderSnapshot() const;
+   base::DictValue ChangeFolder(const base::DictValue& operation);
+   base::DictValue PlaceBookmark(const base::DictValue& params);
++  base::DictValue ChangeBookmark(const std::string& method,
++                                 const base::DictValue& params);
+   const bookmarks::BookmarkNode *FindFolder(const base::ListValue &path,
+                                             bool create);
+   const bookmarks::BookmarkNode *FindBookmark(const base::DictValue &params,
+@@ -143,6 +146,7 @@ private:
+   uint64_t sequence_ = 0;
+   std::vector<Visit> snapshot_visits_;
+   std::deque<base::DictValue> pending_deltas_;
++  std::deque<std::unique_ptr<RemovedBookmark>> removed_bookmarks_;
+   // Accepted import completion survives runtime-projection disconnect. Its
+   // final backend query still joins the original destination batch.
+   base::WeakPtrFactory<ProfileLibrary> import_weak_factory_{this};

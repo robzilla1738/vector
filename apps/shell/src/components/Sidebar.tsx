@@ -1147,13 +1147,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
           open={sections.bookmarks}
           onToggle={() => toggleSection("bookmarks")}
         >
-          <SidebarBookmarks
-            onOpen={(link, event) => {
-              if (event.type === "auxclick" && event.button !== 1) return;
-              event.preventDefault();
-              void openBrowserLink(link.url, backgroundLink(event)).catch(errToast);
-            }}
-          />
+          <SidebarBookmarks />
         </SidebarSection>
       )}
       {!bridge.privateMode && (

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Bookmark } from "@aux/contracts";
 import type {
   BookmarkFolder,
   BookmarkFolderChange,
@@ -8,6 +7,10 @@ import type {
 } from "@aux/contracts/bookmark-folder-methods";
 import {
   bookmarkSource,
+  removeBookmark,
+  restoreBookmark,
+  editBookmark,
+  openBookmark,
   changeBookmarkFolder,
   folderDestination,
   folderDrop,
@@ -16,7 +19,8 @@ import {
   placeBookmark,
   type FolderDropPosition,
 } from "../bookmark-folders";
-import { bookmarkWebUrl } from "../bookmark-files";
+import { backgroundLink } from "../browser-links";
+import { orderedPages } from "../store/pages";
 import { runCommand } from "../commands";
 import { hintNavigation } from "../navigation-preload";
 import { call, errToast, toast, useStore } from "../store";
@@ -25,7 +29,6 @@ import { shellIconPlus, shellIconMore } from "../ui/icons";
 import { FavIcon } from "./SiteTile";
 
 type SavedBookmark = ReturnType<typeof useStore.getState>["bookmarks"][number];
-type OpenLink = (link: Pick<Bookmark, "url" | "title">, event: React.MouseEvent) => void;
 type Target = { item: SavedBookmark } | { folder: BookmarkFolder };
 type Editor =
   | { mode: "create"; folder: BookmarkFolder; name: string }
@@ -33,9 +36,8 @@ type Editor =
   | { mode: "move-folder"; folder: BookmarkFolder; destinationId: string }
   | { mode: "move-bookmark"; source: BookmarkPlacement["source"]; destinationId: string }
   | { mode: "edit"; item: SavedBookmark; title: string; url: string };
-const samePath = (left: string[], right: string[]) => JSON.stringify(left) === JSON.stringify(right);
 
-export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
+export function SidebarBookmarks() {
   const bookmarks = useStore((state) => state.bookmarks);
   const [snapshot, setSnapshot] = useState<BookmarkFolderSnapshot | null>(null);
   const folders = snapshot?.folders ?? [];
@@ -200,67 +202,66 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
   }
   async function openFolder(folder: BookmarkFolder) {
     const state = useStore.getState();
-    const urls = [
-      ...new Set(
+    const items = [
+      ...new Map(
         folderItems(folder)
-          .map((item) => bookmarkWebUrl(item.url))
-          .filter((url): url is string => !!url),
-      ),
+          .filter((item) => !item.url.toLowerCase().startsWith("javascript:"))
+          .map((item) => [item.url, item]),
+      ).values(),
     ];
     let opened = 0;
     let stopped = false;
-    toast(`Opening ${urls.length} pages in background tabs`, "info", {
+    toast(`Opening ${items.length} pages in background tabs`, "info", {
       label: "Stop",
       run: () => {
         stopped = true;
       },
     });
     try {
-      for (const url of urls) {
+      for (const item of items) {
         if (stopped) break;
-        await state.openBackgroundTab(url, state.layout.activeSpaceId, true);
+        const latest = useStore.getState();
+        const existing = orderedPages(latest.pages).some(
+          (page) =>
+            page.url === item.url &&
+            !page.ownedByRuntime &&
+            latest.layout.tabSpace[page.pageId] === state.layout.activeSpaceId &&
+            page.viewStatus !== "crashed",
+        );
+        if (!existing) await openBookmark(item, true, undefined, state.layout.activeSpaceId);
         ++opened;
       }
       toast(
         stopped
-          ? `Stopped after opening ${opened} of ${urls.length} pages`
+          ? `Stopped after opening ${opened} of ${items.length} pages`
           : `Opened ${opened} ${opened === 1 ? "page" : "pages"} in background tabs`,
       );
     } catch (reason) {
       throw new Error(
-        `Opened ${opened} of ${urls.length} pages. ${reason instanceof Error ? reason.message : String(reason)}`,
+        `Opened ${opened} of ${items.length} pages. ${reason instanceof Error ? reason.message : String(reason)}`,
       );
     }
   }
   async function remove(item: SavedBookmark) {
-    await call("bookmarks.remove", { nodeId: item.nodeId, url: item.url });
+    if (!snapshot) throw new Error("Bookmark folders are still loading.");
+    const result = await removeBookmark(bookmarkSource(item, snapshot));
+    setSnapshot(result.snapshot);
     undo("Bookmark removed", async () => {
-      const previousIds = item.readAt
-        ? new Set((await call("bookmarks.list", {})).map((saved) => saved.nodeId))
-        : null;
-      await call("bookmarks.add", {
-        url: item.url,
-        title: item.title,
-        folderPath: item.folderPath,
-        readingList: item.readingList,
-        forceNew: true,
-      });
-      if (previousIds) {
-        const restored = (await call("bookmarks.list", {})).filter(
-          (saved) =>
-            saved.nodeId &&
-            !previousIds.has(saved.nodeId) &&
-            saved.url === item.url &&
-            saved.title === item.title &&
-            samePath(saved.folderPath ?? [], item.folderPath ?? []),
-        );
-        if (restored.length !== 1)
-          throw new Error("Bookmark restored, but its reading status could not be restored.");
-        await call("bookmarks.markRead", { url: item.url, nodeId: restored[0]!.nodeId, read: true });
-      }
+      setSnapshot(await restoreBookmark(result.undoToken));
       await refresh();
     });
     await refresh();
+  }
+  function open(item: SavedBookmark, event: React.MouseEvent) {
+    if (event.type === "auxclick" && event.button !== 1) return;
+    event.preventDefault();
+    const state = useStore.getState();
+    void openBookmark(
+      item,
+      backgroundLink(event),
+      state.activePageId ?? undefined,
+      state.layout.activeSpaceId,
+    ).catch(errToast);
   }
   async function save() {
     if (!editor || pending.current) return;
@@ -270,21 +271,14 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
     try {
       if (editor.mode === "edit") {
         const { item, title, url } = editor;
-        await call("bookmarks.update", {
-          nodeId: item.nodeId,
-          originalUrl: item.url,
-          url,
-          title,
-          expected: { title: item.title, folderPath: item.folderPath ?? [] },
-        });
+        if (!snapshot) throw new Error("Bookmark folders are still loading.");
+        const source = bookmarkSource(item, snapshot);
+        const updated = await editBookmark({ source, url, title });
+        setSnapshot(updated.snapshot);
         undo("Bookmark updated", async () => {
-          await call("bookmarks.update", {
-            nodeId: item.nodeId,
-            originalUrl: url,
-            url: item.url,
-            title: item.title,
-            expected: { title: title.trim(), folderPath: item.folderPath ?? [] },
-          });
+          setSnapshot(
+            (await editBookmark({ source: updated.source, title: item.title, url: item.url })).snapshot,
+          );
           await refresh();
         });
         await refresh();
@@ -373,8 +367,8 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
             title={item.title || item.url}
             onPointerEnter={() => hintNavigation(item.url)}
             onFocus={() => hintNavigation(item.url)}
-            onClick={(event) => onOpen(item, event)}
-            onAuxClick={(event) => onOpen(item, event)}
+            onClick={(event) => open(item, event)}
+            onAuxClick={(event) => open(item, event)}
             onContextMenu={(event) => context(event, { item })}
             onKeyDown={(event) => contextKey(event, { item })}
             draggable={!!snapshot?.editable}
@@ -482,12 +476,11 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
               <button
                 className="menu-item"
                 role="menuitem"
+                disabled={item.url.toLowerCase().startsWith("javascript:")}
                 onClick={() =>
                   action(async () => {
-                    const url = bookmarkWebUrl(item.url);
-                    if (!url) throw new Error("This saved address is not a web page.");
-                    const state = useStore.getState();
-                    await state.openBackgroundTab(url, state.layout.activeSpaceId, false);
+                    const spaceId = useStore.getState().layout.activeSpaceId;
+                    await openBookmark(item, true, undefined, spaceId);
                   })
                 }
               >
@@ -699,7 +692,7 @@ export function SidebarBookmarks({ onOpen }: { onOpen: OpenLink }) {
                 disabled={
                   busy ||
                   (editor.mode === "edit"
-                    ? !editor.title.trim() || !bookmarkWebUrl(editor.url)
+                    ? !editor.title.trim() || !editor.url.trim()
                     : editor.mode === "move-folder" || editor.mode === "move-bookmark"
                       ? !editor.destinationId
                       : !editor.name.trim())

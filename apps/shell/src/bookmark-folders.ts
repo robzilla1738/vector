@@ -1,4 +1,8 @@
 import {
+  BookmarkEntryRemoveResultSchema,
+  BookmarkEntryEditResultSchema,
+  BookmarkOpenResultSchema,
+  type BookmarkEntryEdit,
   BookmarkFolderSnapshotSchema,
   BookmarkPlacementResultSchema,
   type BookmarkPlacement,
@@ -77,4 +81,82 @@ export function bookmarkSource(
     title: item.title,
     url: item.url,
   };
+}
+
+export async function removeBookmark(source: BookmarkPlacement["source"]) {
+  const response = await bridge.bookmarksInvoke({ method: "bookmarks.entries.remove", params: { source } });
+  if (response.method !== "bookmarks.entries.remove") throw new Error("Unexpected bookmark response.");
+  return BookmarkEntryRemoveResultSchema.parse(response.result);
+}
+
+export async function restoreBookmark(undoToken: string) {
+  const response = await bridge.bookmarksInvoke({
+    method: "bookmarks.entries.restore",
+    params: { undoToken },
+  });
+  if (response.method !== "bookmarks.entries.restore") throw new Error("Unexpected bookmark response.");
+  return BookmarkFolderSnapshotSchema.parse(response.result);
+}
+
+export async function editBookmark(params: BookmarkEntryEdit) {
+  const response = await bridge.bookmarksInvoke({ method: "bookmarks.entries.edit", params });
+  if (response.method !== "bookmarks.entries.edit") throw new Error("Unexpected bookmark response.");
+  return BookmarkEntryEditResultSchema.parse(response.result);
+}
+
+/** Saved browser addresses stay in Chromium's navigation pipeline, outside the WebUI document. */
+export async function openBookmark(
+  item: Pick<Bookmark, "nodeId" | "url">,
+  background: boolean,
+  pageId?: string,
+  spaceId?: string,
+) {
+  if (!item.nodeId) throw new Error("This bookmark is no longer available.");
+  const script = item.url.toLowerCase().startsWith("javascript:");
+  if (script && background)
+    throw new Error("Bookmarklets run in the current tab. Open this bookmark normally.");
+  const response = await bridge.bookmarksInvoke({
+    method: "bookmarks.open",
+    params: {
+      nodeId: item.nodeId,
+      url: item.url,
+      disposition: script ? "current" : background ? "background" : "foreground",
+      ...(script && pageId ? { pageId } : {}),
+      ...(spaceId ? { spaceId } : {}),
+    },
+  });
+  if (response.method !== "bookmarks.open") throw new Error("Unexpected bookmark response.");
+  return BookmarkOpenResultSchema.parse(response.result);
+}
+
+export function descendantBookmarkIds(folder: BookmarkFolder, snapshot: BookmarkFolderSnapshot): Set<string> {
+  const byId = new Map(snapshot.folders.map((item) => [item.nodeId, item]));
+  const ids = new Set<string>();
+  const visit = (parent: BookmarkFolder) => {
+    for (const id of parent.childIds) {
+      ids.add(id);
+      const child = byId.get(id);
+      if (child) visit(child);
+    }
+  };
+  visit(folder);
+  return ids;
+}
+
+export async function createBookmark(
+  params: Pick<BookmarkEntryEdit, "title" | "url"> & { destination: BookmarkPlacement["destination"] },
+) {
+  const response = await bridge.bookmarksInvoke({ method: "bookmarks.entries.create", params });
+  if (response.method !== "bookmarks.entries.create") throw new Error("Unexpected bookmark response.");
+  return BookmarkFolderSnapshotSchema.parse(response.result);
+}
+
+export function bookmarkFolderLabel(folder: BookmarkFolder, snapshot: BookmarkFolderSnapshot) {
+  const name = folder.path.join(" / ") || "Bookmarks";
+  const matches = snapshot.folders.filter(
+    (item) => JSON.stringify(item.path) === JSON.stringify(folder.path),
+  );
+  return matches.length > 1
+    ? `${name} (${matches.findIndex((item) => item.nodeId === folder.nodeId) + 1})`
+    : name;
 }

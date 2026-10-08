@@ -61,3 +61,38 @@ export const BookmarkPlacementResultSchema = z
   })
   .strict();
 export type BookmarkPlacement = z.infer<typeof BookmarkPlacementSchema>;
+
+export const BookmarkEntrySourceSchema = BookmarkPlacementSchema.shape.source;
+export const BookmarkEntryRemoveSchema = z.object({ source: BookmarkEntrySourceSchema }).strict();
+export const BookmarkEntryRemoveResultSchema = z
+  .object({
+    snapshot: BookmarkFolderSnapshotSchema,
+    undoToken: z.string().uuid(),
+  })
+  .strict();
+export const BookmarkEntryRestoreSchema = z.object({ undoToken: z.string().uuid() }).strict();
+export const BookmarkEntryEditSchema = z
+  .object({
+    source: BookmarkEntrySourceSchema,
+    title: z.string(),
+    url: z.string().min(1),
+    destination: destination.optional(),
+  })
+  .strict();
+export const BookmarkEntryEditResultSchema = z
+  .object({ snapshot: BookmarkFolderSnapshotSchema, source: BookmarkEntrySourceSchema })
+  .strict();
+export const BookmarkEntryCreateSchema = BookmarkEntryEditSchema.omit({ source: true })
+  .extend({ destination })
+  .strict();
+export const BookmarkOpenSchema = z
+  .object({
+    nodeId,
+    url: z.string(),
+    disposition: z.enum(["current", "foreground", "background"]),
+    pageId: z.string().optional(),
+    spaceId: z.string().min(1).max(128).optional(),
+  })
+  .strict();
+export const BookmarkOpenResultSchema = z.object({ pageId: z.string().nullable() }).strict();
+export type BookmarkEntryEdit = z.infer<typeof BookmarkEntryEditSchema>;

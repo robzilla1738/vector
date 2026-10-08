@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import { bridge } from "./bridge";
 import type { BookmarkFolderSnapshot } from "@aux/contracts/bookmark-folder-methods";
-import { bookmarkSource, folderDrop } from "./bookmark-folders";
+import { bookmarkSource, folderDrop, openBookmark, descendantBookmarkIds } from "./bookmark-folders";
 
 const snapshot: BookmarkFolderSnapshot = {
   rootId: "1",
@@ -68,4 +69,35 @@ it("captures bookmark source identity and rejects nodes missing from the native 
     url: saved.url,
   });
   expect(() => bookmarkSource({ ...saved, nodeId: "999" }, snapshot)).toThrow("bookmark changed");
+});
+
+it("keeps duplicate-folder membership distinct and sends saved schemes only to native bookmark navigation", async () => {
+  const tree = {
+    ...snapshot,
+    folders: snapshot.folders.map((folder) =>
+      folder.nodeId === "21" ? { ...folder, childIds: ["13"] } : folder,
+    ),
+  };
+  expect(descendantBookmarkIds(first!, tree).has("13")).toBe(false);
+  expect(descendantBookmarkIds(tree.folders[2]!, tree).has("13")).toBe(true);
+  const native = vi
+    .spyOn(bridge, "bookmarksInvoke")
+    .mockResolvedValue({ method: "bookmarks.open", result: { pageId: "p_current" } });
+  try {
+    await openBookmark({ nodeId: "12", url: "javascript:alert('saved')" }, false, "p_current");
+    expect(native).toHaveBeenLastCalledWith({
+      method: "bookmarks.open",
+      params: { nodeId: "12", url: "javascript:alert('saved')", disposition: "current", pageId: "p_current" },
+    });
+    await expect(
+      openBookmark({ nodeId: "12", url: "javascript:alert('saved')" }, true, "p_current"),
+    ).rejects.toThrow("current tab");
+    await openBookmark({ nodeId: "13", url: "chrome://settings/" }, false, undefined, "space-work");
+    expect(native).toHaveBeenLastCalledWith({
+      method: "bookmarks.open",
+      params: { nodeId: "13", url: "chrome://settings/", disposition: "foreground", spaceId: "space-work" },
+    });
+  } finally {
+    native.mockRestore();
+  }
 });
