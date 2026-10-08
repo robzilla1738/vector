@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
+import { AuxError } from "@aux/contracts";
 import { openDb, Repo, SettingsService, chatgptAccountId } from "@aux/runtime";
 import {
   PrivateProviderConnection,
@@ -132,6 +133,88 @@ it("sends private content only to the actual provider and drops a credential ret
   }
   expect(modelUndispatched(refusal)).toBe(true);
   expect(network).toHaveBeenCalledTimes(1);
+});
+it.each([
+  descriptor,
+  { ...descriptor, provider: "gateway" as const, endpoint: "https://ai-gateway.vercel.sh" },
+  { ...descriptor, authentication: "chatgpt" as const, accountId: "original-account" },
+])("uses the selected $provider/$authentication route without a website-action review", async (selected) => {
+  const checkOriginal = vi.fn(),
+    authorizeDestination = vi.fn(async () => {
+      throw new Error("An agent-selected website action would need review.");
+    }),
+    network = vi.fn<typeof fetch>(async (input, init) => {
+      expect(new URL(input instanceof Request ? input.url : String(input)).origin).toBe(
+        new URL(selected.endpoint).origin,
+      );
+      expect(new Headers(init?.headers).get("authorization")).toBe("Bearer original-key");
+      expect(init?.redirect).toBe("error");
+      return Response.json({ error: { message: "Fixture refuses inference" } }, { status: 401 });
+    });
+  const connection = new PrivateProviderConnection(
+    selected,
+    async () => ({ operation: "credential", revision: selected.revision, accessToken: "original-key" }),
+    network,
+  );
+  cleanups.push(() => connection.close());
+  await expect(
+    connection
+      .model(() => {})
+      .generateText({
+        modelId: "fixture-model",
+        prompt: "Private question",
+        maxAttempts: 1,
+        source: {
+          runId: "original-run",
+          nativeTurnContext: "original-document",
+          checkOriginal,
+          authorizeDestination,
+        },
+      }),
+  ).rejects.toThrow();
+  expect(network).toHaveBeenCalledTimes(1);
+  expect(checkOriginal).toHaveBeenCalled();
+  expect(authorizeDestination).not.toHaveBeenCalled();
+});
+it("refuses a transport outside the authenticated provider destination before requesting credentials", async () => {
+  const credentials = vi.fn(async () => ({
+    operation: "credential" as const,
+    revision: descriptor.revision,
+    accessToken: "original-key",
+  }));
+  const network = vi.fn<typeof fetch>();
+  const connection = new PrivateProviderConnection(
+    { ...descriptor, endpoint: "https://different.example/v1" },
+    credentials,
+    network,
+  );
+  cleanups.push(() => connection.close());
+  await expect(
+    connection
+      .model(() => {})
+      .generateText({ modelId: "fixture-model", prompt: "Private question", maxAttempts: 1 }),
+  ).rejects.toThrow();
+  expect(credentials).not.toHaveBeenCalled();
+  expect(network).not.toHaveBeenCalled();
+});
+it("preserves the original local suspension through SDK wrapping before any network dispatch", async () => {
+  const suspension = new AuxError("needs_input", "Reconnect the original account.", { original: true });
+  const network = vi.fn<typeof fetch>();
+  const connection = new PrivateProviderConnection(
+    descriptor,
+    async () => {
+      throw suspension;
+    },
+    network,
+  );
+  cleanups.push(() => connection.close());
+  await expect(
+    connection
+      .model(() => {})
+      .generateText({ modelId: "fixture-model", prompt: "Private question", maxAttempts: 1 }),
+  ).rejects.toBe(suspension);
+  expect(modelUndispatched(suspension)).toBe(true);
+  expect(network).not.toHaveBeenCalled();
 });
 it("refreshes the selected ChatGPT account only in the normal owner and exports no rotating refresh token", async () => {
   const normal = settings(),

@@ -177,26 +177,37 @@ export class PrivateProviderConnection {
       use: (client: ModelClient, signal: AbortSignal) => Promise<T>,
     ): Promise<T> => {
       let dispatched = false;
+      let predispatchFailure: unknown;
+      const preflight = async <T>(prepare: () => Promise<T>): Promise<T> => {
+        try {
+          return await prepare();
+        } catch (error) {
+          if (!dispatched) predispatchFailure = error;
+          throw error;
+        }
+      };
       const network: typeof fetch = (input, init) => {
         dispatched = true;
         return this.network(input, init);
       };
       try {
         const signal = AbortSignal.any([this.controller.signal, ...(options.signal ? [options.signal] : [])]);
-        const current = async () => {
-          signal.throwIfAborted();
-          check();
-          await options.source?.checkOriginal();
-          signal.throwIfAborted();
-          check();
-        };
+        const current = () =>
+          preflight(async () => {
+            signal.throwIfAborted();
+            check();
+            await options.source?.checkOriginal();
+            signal.throwIfAborted();
+            check();
+          });
         await current();
-        const credential = async () => {
-          await current();
-          const value = await this.credential(signal);
-          await current();
-          return value.accessToken;
-        };
+        const credential = () =>
+          preflight(async () => {
+            await current();
+            const value = await this.credential(signal);
+            await current();
+            return value.accessToken;
+          });
         const models = () => descriptor.models;
         let client: ModelClient;
         if (descriptor.authentication === "copilot") {
@@ -228,11 +239,7 @@ export class PrivateProviderConnection {
             { accessToken: credential },
             descriptor.accountId!,
             models,
-            async () => {
-              await current();
-              await options.source?.authorizeDestination(new URL(descriptor.endpoint).origin);
-              await current();
-            },
+            current,
             check,
             network,
           );
@@ -261,9 +268,8 @@ export class PrivateProviderConnection {
                   "permission_denied",
                   "Private inference changed its configured provider destination.",
                 );
-              await current();
-              await options.source?.authorizeDestination(base.origin);
-              await current();
+              // The authenticated descriptor already binds the selected provider. It is
+              // not an agent-selected website action requiring a second confirmation.
               const key = await credential(),
                 headers = new Headers(
                   init?.headers ?? (input instanceof Request ? input.headers : undefined),
@@ -285,6 +291,7 @@ export class PrivateProviderConnection {
                 ]),
               });
             } catch (error) {
+              if (!dispatched) predispatchFailure = error;
               throw dispatched ? error : markModelUndispatched(error);
             }
           };
@@ -302,7 +309,7 @@ export class PrivateProviderConnection {
         await current();
         return value;
       } catch (error) {
-        throw dispatched ? error : markModelUndispatched(error);
+        throw dispatched ? error : markModelUndispatched(predispatchFailure ?? error);
       }
     };
     return {
