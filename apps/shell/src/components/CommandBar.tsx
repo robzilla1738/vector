@@ -378,8 +378,12 @@ export function CommandBar({
     const seed = hero && entryMode === "ask" ? agentDraft : hasPage ? pageAddress : "";
     setVal(seed);
     setSel(0);
-    requestAnimationFrame(() => inputRef.current?.select());
   };
+  // Select the committed address before another input event can arrive. A frame
+  // callback could select text the person had already started typing.
+  useLayoutEffect(() => {
+    if (editing && document.activeElement === inputRef.current) inputRef.current?.select();
+  }, [editing]);
   const onBlur = () => {
     // let a click on a suggestion land before we tear the list down
     window.setTimeout(() => {
@@ -745,7 +749,11 @@ export function CommandBar({
       return mergeCommandResults(
         browserRows,
         !raw && (providerScope === "all" || providerScope === "tabs")
-          ? commandTabRows("", tabCandidates.filter((tab) => tab.pageId !== activePageId), activate)
+          ? commandTabRows(
+              "",
+              tabCandidates.filter((tab) => tab.pageId !== activePageId),
+              activate,
+            )
           : [],
       ).rows;
     if (intent.kind === "command" && commandRows)

@@ -2,9 +2,10 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
+import { nativeSource } from "../chromium/dev-config.mjs";
 
 const {
   positionals: [mode],
@@ -13,7 +14,7 @@ const {
   allowPositionals: true,
   options: {
     worktree: { type: "string", default: process.cwd() },
-    source: { type: "string", default: join(homedir(), "aux-chromium-stable/chromium/src") },
+    source: { type: "string", default: nativeSource },
     file: { type: "string", multiple: true },
     patch: { type: "string" },
   },

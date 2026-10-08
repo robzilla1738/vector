@@ -165,11 +165,35 @@ overlays. Use few deliberate observations rather than a screenshot campaign.
 
 - Baseline source/STATUS/build instructions inspected; no dirty source at start.
 - Three managed worker worktrees created from the exact baseline.
-- Baseline paired performance attempt started before native mutation; result is
-  pending and cannot support a performance claim.
+- Two baseline paired performance attempts produced no valid samples. The first
+  exposed early native-helper attachment; the second reached setup and timed out
+  on genuine interaction telemetry. Helper attachment now waits for the owned
+  listener and input waits for native address focus. Measurements remain open.
 - Existing native walkthrough evidence is retained in STATUS and is not relabeled
   as this execution's acceptance.
 
 Completion requires every explicit requirement above to be implemented,
 integrated and proved at its proper scope. Leave incomplete or externally blocked
 items explicit; do not shrink the objective to a finished subset.
+
+### Current implementation handoff — October 7, evening
+
+- N2 overlay material/shared Quick Ask notifications and N3 four-step optional
+  setup/ordinary draft starters integrated. Native appearance/first-task timing
+  remain unobserved for this candidate. The replaced setup dispatcher was deleted.
+- N4 prepared public web reads integrated with preflight/dispatch grant identity,
+  original-window/run cancellation checks, actual native search preference and
+  capability-narrowed page-free children. Model context now projects from full
+  durable history using route limits; selected source retrieval remains N6 work.
+- N1 event-driven bridge and Profile-owned memory saver authored/applied as areas
+  0087–0089; compilation and native observations remain pending. Root removed
+  fixed boot sleep, loads selected credentials first, moved remaining reads to idle,
+  removed the shell memory scheduler/report and uses native memory settings.
+  All development/staging tools share the product/Fast defaults.
+- First integrated check passed typecheck/lint and 4,207 tests. Five Home focus
+  isolation fixtures needed the new sibling mocked; their six focused tests passed
+  after repair. Bootstrap/provider checks passed 16 tests; native memory setting
+  and adjacent extraction checks passed six tests. Context worker rebuilt dist and
+  passed 101 focused cases. No passing source checks substitute for native proof.
+- Workers continue durable first-send reconciliation, incremental encrypted memory
+  and native-independent bookmark quality. The integrator owns native building.

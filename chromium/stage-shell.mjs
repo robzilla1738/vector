@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { nativeSource } from "./dev-config.mjs";
 /** Stage the current renderer build; CSP and bootstrap order prevent broken apps. */
 import { cpSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -6,9 +7,7 @@ import { assertDevLock } from "../scripts/dev.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const dist = join(root, "apps/shell/dist");
-const source = resolve(
-  process.env.AUX_CHROMIUM_SRC ?? join(process.env.HOME, "aux-chromium-stable/chromium/src"),
-);
+const source = nativeSource;
 const destination = resolve(process.argv[3] ?? join(source, "chrome/browser/resources/aux/assets"));
 function files(path, prefix = "") {
   return readdirSync(join(path, prefix), { withFileTypes: true })

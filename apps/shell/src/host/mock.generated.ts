@@ -305,6 +305,14 @@ const RESULTS: Record<string, unknown> = {
   "archiveTab": {
     "archived": false
   },
+  "memorySaverGet": {
+    "minutes": 0,
+    "managed": false
+  },
+  "memorySaverSet": {
+    "minutes": 0,
+    "managed": false
+  },
   "tabSleep": {
     "slept": false
   },
@@ -539,6 +547,14 @@ const RESULTS: Record<string, unknown> = {
   },
   "native.historyRemove": {
     "removed": false
+  },
+  "native.memorySaverGet": {
+    "minutes": 0,
+    "managed": false
+  },
+  "native.memorySaverSet": {
+    "minutes": 0,
+    "managed": false
   },
   "native.searchEngineGet": "mock-searchengineget",
   "native.searchEngineSet": false,

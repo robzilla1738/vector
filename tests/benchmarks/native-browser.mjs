@@ -218,6 +218,7 @@ try {
     const child = spawn(helperBinary, [String(pid)], { stdio: ["pipe", "pipe", "inherit"] });
     const pending = new Map();
     let next = 0;
+    let exitError;
     createInterface({ input: child.stdout }).on("line", (line) => {
       const result = JSON.parse(line);
       const item = pending.get(result.id);
@@ -228,9 +229,10 @@ try {
       else item.reject(new Error(result.error));
     });
     child.once("exit", () => {
+      exitError = new Error("Original PID input helper exited");
       for (const item of pending.values()) {
         clearTimeout(item.timer);
-        item.reject(new Error("Original PID input helper exited"));
+        item.reject(exitError);
       }
       pending.clear();
     });
@@ -238,6 +240,10 @@ try {
       close: () => child.stdin.end(),
       call: (command, args = {}) =>
         new Promise((resolve, reject) => {
+          if (exitError) {
+            reject(exitError);
+            return;
+          }
           const id = ++next;
           const timer = setTimeout(() => {
             pending.delete(id);
@@ -307,7 +313,7 @@ try {
       if (child.exitCode !== null || child.signalCode !== null)
         throw new Error(`Original ${build.kind} exited: ${stderr}`);
     };
-    const run = { child, exited, profile, input: helper(child.pid), browser: null };
+    const run = { kind: build.kind, child, exited, profile, input: null, browser: null };
     try {
       const port = await until("original browser-owned loopback listener", () => {
         live();
@@ -315,6 +321,9 @@ try {
       });
       run.browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
       run.session = await run.browser.newBrowserCDPSession();
+      // AppKit registration follows process creation; retain kernel birth time
+      // only after this exact browser has published its owned listener.
+      run.input = helper(child.pid);
       const identity = await run.input.call("identity");
       assert.equal(
         identity.accessibility,
@@ -328,7 +337,7 @@ try {
       );
       return run;
     } catch (error) {
-      run.input.close();
+      run.input?.close();
       child.kill("SIGTERM");
       await Promise.race([
         exited,
@@ -387,9 +396,15 @@ try {
     }
     return pages;
   }
+  async function addressReady(run) {
+    await until("original browser address focus", async () => (await run.input.call("address-ready", run.kind === "aux"
+      ? { expectedLabel: "address, search, and agent prompt" } : {})).ready);
+  }
   async function open(run) {
     const before = (await loadedFixturePages(run)).length;
     await run.input.call("key", { chord: "new-tab" });
+    await run.input.call("key", { chord: "address" });
+    await addressReady(run);
     await run.input.call("text", { text: url });
     await run.input.call("key", { chord: "return" });
     await until(
@@ -486,6 +501,7 @@ try {
             firstFrame: await observation(run, names.firstFrame),
           };
           await run.input.call("key", { chord: "address" });
+          await addressReady(run);
           await run.input.call("text", { text: url });
           await run.input.call("key", { chord: "return" });
           sample.coldInteractive = await observation(run, names.coldInteractive);
@@ -512,6 +528,7 @@ try {
           await run.input.call("key", { chord: "next-tab" });
           sample.tabSwitch = await observation(run, names.tabSwitch, beforeSwitch);
           await run.input.call("key", { chord: "address" });
+          await addressReady(run);
           const beforeQuery = await hist(run, names.commandBar);
           await run.input.call("text", { text: "native fixture" });
           sample.commandBar = await observation(run, names.commandBar, beforeQuery);

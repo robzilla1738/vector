@@ -1,3 +1,4 @@
+import { MemorySaverSettingsSchema, type MemorySaverSettings } from "@aux/contracts";
 import { parsePersonReadContext } from "./services/native-person-reader.js";
 import {
   ImportExtensionReviewSchema,
@@ -291,6 +292,8 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   ): Promise<{ added: number; skipped: number }>;
   historyRemove?(url: string, visitedAt: number, expectedTitle?: string): Promise<{ removed: boolean }>;
   /** The Chromium Profile's TemplateURLService is the selected engine authority. */
+  memorySaverGet?(): Promise<MemorySaverSettings>;
+  memorySaverSet?(minutes: MemorySaverSettings["minutes"]): Promise<MemorySaverSettings>;
   searchEngineGet?(): Promise<string>;
   searchEngineSet?(template: string): Promise<boolean>;
   searchSuggestionsGet?(): Promise<boolean>;
@@ -710,6 +713,12 @@ export class ChannelNativeBridge implements NativeBridge {
       visitedAt,
       ...(expectedTitle === undefined ? {} : { expectedTitle }),
     });
+  }
+  async memorySaverGet() {
+    return MemorySaverSettingsSchema.parse(await this.channel.call("native.memorySaverGet", {}));
+  }
+  async memorySaverSet(minutes: MemorySaverSettings["minutes"]) {
+    return MemorySaverSettingsSchema.parse(await this.channel.call("native.memorySaverSet", { minutes }));
   }
   searchEngineGet() {
     return this.channel.call<string>("native.searchEngineGet", {});

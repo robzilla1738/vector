@@ -1,10 +1,10 @@
 # Building Aux locally
 
-Aux uses Chromium 154 on macOS arm64. The current product checkout is `~/aux-chromium-product/chromium/src`; the current preview app is `out/AuxFast/Aux.app`, with compiled native areas through 0086 and the packaged runtime. The incremental development output is `out/AuxDev/Aux.app`. Select the product checkout explicitly below: the tools retain `~/aux-chromium-stable/chromium/src` as their default. Preserve both existing checkouts and caches; do not reset them or run setup/push to change an applied build.
+Aux uses Chromium 154 on macOS arm64. The current product checkout is `~/aux-chromium-product/chromium/src`; the current preview app is `out/AuxFast/Aux.app`, with compiled native areas through 0086 and the packaged runtime. The launcher and staging tools default to that product checkout and Fast output through `dev-defaults.json`. Set `AUX_CHROMIUM_SRC` to use another checkout, or `--flavor dev` for `out/AuxDev/Aux.app`. Preserve both existing checkouts and caches; do not reset them or run setup/push to change an applied build.
 
 ```bash
 export AUX_CHROMIUM_SRC="$HOME/aux-chromium-product/chromium/src"
-node scripts/dev.mjs --temp-profile --flavor fast
+node scripts/dev.mjs --temp-profile
 ```
 
 The launcher takes one plain PID lock, rebuilds workspace modules, builds the Chromium shell, stages the current renderer and regenerated host bindings, compiles incrementally, stages the runtime and launches. The lock remains held until the app exits. Temporary Profiles are removed after the owned app process exits. Without `--temp-profile`, the launcher uses the dedicated `~/aux-dev-profile`. Real browser Profiles require explicit owner permission.
@@ -16,7 +16,7 @@ node scripts/dev.mjs -- chromium/aux-chromium stage-shell
 node scripts/dev.mjs -- chromium/aux-chromium build
 ```
 
-A second builder refuses immediately. The previous inspection preview retired before this launcher transition. Native source changes are consolidated in `chromium/patches/series` through area 0086. The launcher above explicitly reuses the completed AuxFast cache. Omit `--flavor fast` to use the configured AuxDev build; its cache may require a much larger rebuild. Launch the current AuxFast executable through the same `scripts/dev.mjs -- command` lock wrapper with an explicitly disposable `--user-data-dir`; retain launcher ownership until the app quits before deleting that Profile. Check [STATUS](../docs/STATUS.md) for current delivery and deferred acceptance.
+A second builder refuses immediately. The previous inspection preview retired before this launcher transition. Native source changes are consolidated in `chromium/patches/series` through area 0086. The launcher above explicitly reuses the completed AuxFast cache. Pass `--flavor dev` to use the configured AuxDev build; its cache may require a much larger rebuild. Launch the current AuxFast executable through the same `scripts/dev.mjs -- command` lock wrapper with an explicitly disposable `--user-data-dir`; retain launcher ownership until the app quits before deleting that Profile. Check [STATUS](../docs/STATUS.md) for current delivery and deferred acceptance.
 
 Renderer assets come from `apps/shell/dist`, with CSP and bootstrap-order checks. The generated asset inventory feeds GN; SHA pinning and product qualification do not gate staging. Node’s downloaded archive integrity check is retained.
 
@@ -24,7 +24,7 @@ No release, signing, notarization, push or hosted CI is part of this workflow. P
 
 ## Rebuild the current AuxFast preview
 
-The October 7 UI handoff uses AuxFast, not the default AuxDev flavor. First quit the existing disposable Aux preview normally and let its launcher release the lock. Keep the product checkout and incremental cache. From the repository root:
+AuxFast is the default local development flavor. First quit the existing disposable Aux preview normally and let its launcher release the lock. Keep the product checkout and incremental cache. From the repository root:
 
 ```bash
 export AUX_CHROMIUM_SRC="$HOME/aux-chromium-product/chromium/src"

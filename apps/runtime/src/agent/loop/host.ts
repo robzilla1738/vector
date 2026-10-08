@@ -89,7 +89,10 @@ export interface AgentLoopHostDeps {
     size: number;
     modelId: string;
   }>;
+  modelLimits?: (modelId: string) => { contextTokens: number; maxOutputTokens: number };
   /** decide()-gated web backends — main.ts builds them from AgentWebTools + decideDeps. */
+  prepareWebFetch?: LoopToolDeps["prepareWebFetch"];
+  prepareWebSearch?: LoopToolDeps["prepareWebSearch"];
   webFetch?: LoopToolDeps["webFetch"];
   webSearch?: LoopToolDeps["webSearch"];
   /** Auto-recall backend (06-Z) — main.ts queries content memory under the run's workspace policy. */
@@ -1109,6 +1112,8 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
       noteUnresolved();
       return { ok: true as const, intentId: intent.id, status: "confirmed" as const };
     },
+    prepareWebFetch: self.deps.agentLoop?.prepareWebFetch,
+    prepareWebSearch: self.deps.agentLoop?.prepareWebSearch,
     webFetch: self.deps.agentLoop?.webFetch,
     webSearch: self.deps.agentLoop?.webSearch,
     recall: self.deps.agentLoop?.recall,
@@ -1530,7 +1535,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           "capability_unsupported",
           "fetch is unavailable — no web egress backend for this run.",
         );
-      return fetchDep(url, { runId, threadId, turnId: runId });
+      return fetchDep(url, { runId, threadId, turnId: runId, signal });
     },
 
     submitResult: (input) =>
@@ -2070,6 +2075,7 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
         if (!signal.aborted) answer.push(text);
       },
       modelId: modelId(),
+      ...self.deps.agentLoop?.modelLimits?.(modelId()),
       reasoning: run.config?.reasoning,
       hasProject: Boolean(
         run.config?.projectRoot ||

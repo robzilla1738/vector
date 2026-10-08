@@ -1,0 +1,4 @@
+{
+  "source": "aux-chromium-product/chromium/src",
+  "flavor": "fast"
+}

@@ -160,7 +160,11 @@ const requirements = {
   },
   "tabLifecycle": {
     "requires": [
-      "tabSleep"
+      "memorySaverGet",
+      "memorySaverSet",
+      "tabSleep",
+      "native.memorySaverGet",
+      "native.memorySaverSet"
     ]
   },
   "profiles": {

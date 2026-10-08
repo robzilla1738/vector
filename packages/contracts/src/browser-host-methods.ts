@@ -1,3 +1,4 @@
+import { MemorySaverMinutesSchema, MemorySaverSettingsSchema } from "./memory-saver.js";
 import { FilterCompilationWarningsSchema } from "./content-blocking-schema.js";
 import { z } from "zod";
 import { OrganizationCommitSchema, OrganizationSnapshotSchema } from "./organization.js";
@@ -490,6 +491,8 @@ export const BrowserHostMethods = {
     tuple([freshTokenString(), freshWebUrl(), str.min(1).max(200), number.nonnegative()]),
     strictObject({ archived: bool, reason: freshOptional(str) }),
   ),
+  memorySaverGet: shell("tabLifecycle", noArgs, MemorySaverSettingsSchema),
+  memorySaverSet: shell("tabLifecycle", tuple([MemorySaverMinutesSchema]), MemorySaverSettingsSchema),
   tabSleep: shell(
     "tabLifecycle",
     tuple([str, freshWebUrl()]),

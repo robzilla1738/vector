@@ -14,7 +14,15 @@ async function h_settings_get(ctx: MethodCtx): Promise<unknown> {
   const searchSuggestions = await s.native?.searchSuggestionsGet?.();
   if (searchSuggestions === undefined)
     throw new AuxError("backend_unavailable", "Profile search suggestions are unavailable.");
-  return { ...settings, searchEngine, searchSuggestions };
+  const memorySaver = await s.native?.memorySaverGet?.();
+  if (!memorySaver) throw new AuxError("backend_unavailable", "Profile memory saver is unavailable.");
+  return {
+    ...settings,
+    searchEngine,
+    searchSuggestions,
+    memorySaverMinutes: memorySaver.minutes,
+    memorySaverManaged: memorySaver.managed,
+  };
 }
 async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
@@ -45,6 +53,15 @@ async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
     ].some((key) => key in patch)
   )
     throw new AuxError("permission_denied", "Agent permissions must be changed in Aux Settings.");
+  let memorySaver: import("@aux/contracts").MemorySaverSettings | undefined;
+  if (s.featureHost === "chromium-fork" && patch.memorySaverMinutes !== undefined) {
+    if (Object.keys(patch).length !== 1)
+      throw new AuxError("invalid_params", "Save Profile memory saver separately from other settings.");
+    if (!s.native?.memorySaverSet)
+      throw new AuxError("backend_unavailable", "Profile memory saver is unavailable.");
+    memorySaver = await s.native.memorySaverSet(patch.memorySaverMinutes);
+    delete patch.memorySaverMinutes;
+  }
   let searchEngine: string | undefined;
   let searchSuggestions: boolean | undefined;
   if (
@@ -84,6 +101,9 @@ async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
   s.events.emit(EventTypes.SettingsChanged, {
     settings: {
       ...s.settings.all(),
+      ...(memorySaver
+        ? { memorySaverMinutes: memorySaver.minutes, memorySaverManaged: memorySaver.managed }
+        : {}),
       ...(searchEngine ? { searchEngine } : {}),
       ...(searchSuggestions !== undefined ? { searchSuggestions } : {}),
     },

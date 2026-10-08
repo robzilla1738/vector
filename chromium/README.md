@@ -16,11 +16,11 @@ chromium/aux-chromium sanity
 chromium/aux-chromium stage-shell
 chromium/aux-chromium configure --flavor dev
 chromium/aux-chromium build --flavor dev
-node chromium/stage-runtime.mjs "$HOME/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app"
+node chromium/stage-runtime.mjs "$HOME/aux-chromium-product/chromium/src/out/AuxDev/Aux.app"
 chromium/aux-chromium run --flavor dev --profile /tmp/aux-chromium-profile
 ```
 
-The current product checkout is `~/aux-chromium-product/chromium/src`; preserve its applied patches and incremental cache. Set `AUX_CHROMIUM_SRC` to select it and `AUX_DEPOT_TOOLS` to select depot_tools. Read [STATUS](../docs/STATUS.md) before staging: authored patches, applied patches, compiled patches and staged renderer/host bindings can be at different checkpoints. Do not rerun `setup` or `push` on an existing patched checkout.
+The current product checkout is `~/aux-chromium-product/chromium/src`; preserve its applied patches and incremental cache. The launcher, builder and staging tools default to it and Fast output through `dev-defaults.json`. Set `AUX_CHROMIUM_SRC` for a different checkout and `AUX_DEPOT_TOOLS` for depot_tools. Read [STATUS](../docs/STATUS.md) before staging: authored patches, applied patches, compiled patches and staged renderer/host bindings can be at different checkpoints. Do not rerun `setup` or `push` on an existing patched checkout.
 
 Development builds use `out/AuxDev` and component linking. Fast/release builds use [flags.fast.gn](flags.fast.gn): official static linking, ThinLTO, PGO phase 2, H.264/AAC and Widevine. [flags.release.gn](flags.release.gn) imports these settings. Build flags alone do not prove that an output was built with them. Keep one native builder and use the plain development PID lock for every native source mutation/build.
 

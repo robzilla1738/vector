@@ -176,6 +176,7 @@ export class SettingsService {
   private directErrors: Partial<Record<ModelProvider, string>> = {};
   private credentialError: string | undefined;
   private writes: Promise<unknown> = Promise.resolve();
+  private initializedCredentials = new Set<ModelProvider>();
 
   constructor(
     private repo: Repo,
@@ -195,28 +196,51 @@ export class SettingsService {
     this.native = native;
   }
 
-  async initializeCredentials(): Promise<void> {
-    if (!this.native?.available()) return;
+  initializeCredentials(
+    providers: readonly ModelProvider[] = ["gateway", ...DIRECT_PROVIDERS],
+  ): Promise<void> {
+    // Share the settings queue so a delayed read cannot overwrite a newer key.
+    const load = this.writes.then(async () => {
+      await Promise.all([...new Set(providers)].map((provider) => this.readCredential(provider)));
+    });
+    this.writes = load.catch(() => {});
+    return load;
+  }
+
+  private async readCredential(provider: ModelProvider): Promise<void> {
+    if (!this.native?.available() || this.discoveryClosed || this.initializedCredentials.has(provider))
+      return;
     try {
-      this.savedKey = (await this.native.readSecret("gatewayApiKey")).value;
-      this.credentialError = undefined;
-    } catch {
-      this.credentialError =
-        "Saved credential is unavailable. Unlock the OS credential store or re-enter the key in Settings.";
-    }
-    for (const provider of DIRECT_PROVIDERS) {
-      try {
-        this.directKeys[provider] = (await this.native.readSecret(`modelKey-${provider}`)).value;
+      const { value } = await this.native.readSecret(
+        provider === "gateway" ? "gatewayApiKey" : `modelKey-${provider}`,
+      );
+      if (this.discoveryClosed) return;
+      if (provider === "gateway") {
+        this.savedKey = value;
+        this.credentialError = undefined;
+      } else {
+        this.directKeys[provider] = value;
         delete this.directErrors[provider];
-      } catch {
+      }
+    } catch {
+      if (this.discoveryClosed) return;
+      if (provider === "gateway")
+        this.credentialError =
+          "Saved credential is unavailable. Unlock the OS credential store or re-enter the key in Settings.";
+      else
         this.directErrors[provider] =
           "Saved credential is unavailable. Re-enter this provider's key in Settings.";
+    }
+    if (this.discoveryClosed) return;
+    this.initializedCredentials.add(provider);
+    if (provider === "gateway" && this.repo.getSetting("vercelHostId")) {
+      try {
+        await this.vercelAccounts();
+      } catch {
+        this.vercelCredentialError = true;
       }
     }
-    if (this.repo.getSetting("vercelHostId")) {
-      try { await this.vercelAccounts(); } catch { this.vercelCredentialError = true; }
-    }
-    if (this.repo.getSetting("chatgptHostId")) {
+    if (provider === "openai" && this.repo.getSetting("chatgptHostId")) {
       try {
         await this.chatgptAccounts();
       } catch {
@@ -261,43 +285,48 @@ export class SettingsService {
         ? "copilot"
         : this.modelProvider() === "openai" && this.activeChatgptAccount()
           ? "chatgpt"
-          : this.modelProvider() === "gateway" && this.activeVercelAccount() ? "vercel" : "api-key",
+          : this.modelProvider() === "gateway" && this.activeVercelAccount()
+            ? "vercel"
+            : "api-key",
       modelConnections: this.connectionStatuses(),
       imageModel: this.imageModel(),
       compatibleEndpoint: this.compatibleEndpoint(),
-      modelApiKey: this.hasCopilotSelection() || (this.modelProvider() === "gateway" && !!this.activeVercelAccount())
-        ? undefined
-        : this.modelProvider() === "openai" && this.activeChatgptAccount()
+      modelApiKey:
+        this.hasCopilotSelection() || (this.modelProvider() === "gateway" && !!this.activeVercelAccount())
           ? undefined
-          : this.selectedKey()
-            ? "••••••••"
-            : undefined,
-      modelCredentialSource: this.hasCopilotSelection() || (this.modelProvider() === "gateway" && !!this.activeVercelAccount())
-        ? "saved"
-        : this.modelProvider() === "openai" && this.activeChatgptAccount()
+          : this.modelProvider() === "openai" && this.activeChatgptAccount()
+            ? undefined
+            : this.selectedKey()
+              ? "••••••••"
+              : undefined,
+      modelCredentialSource:
+        this.hasCopilotSelection() || (this.modelProvider() === "gateway" && !!this.activeVercelAccount())
           ? "saved"
-          : this.modelProvider() === "gateway"
-            ? this.savedKey
-              ? "saved"
-              : this.env.AI_GATEWAY_API_KEY
-                ? "environment"
-                : "none"
-            : this.directKeys[this.modelProvider()]
-              ? "saved"
-              : this.selectedKey()
-                ? "environment"
-                : "none",
-      modelCredentialError: this.modelProvider() === "gateway" && this.activeVercelAccount() && this.vercelCredentialError
-        ? "Sign in with Vercel again to unlock this account."
-        : this.hasCopilotSelection()
-        ? this.copilotSelection()
-          ? undefined
-          : "Choose a model after signing in to Copilot again."
-        : this.modelProvider() === "openai" && this.activeChatgptAccount() && this.chatgptCredentialError
-          ? "Sign in to ChatGPT again to unlock this account."
-          : this.modelProvider() === "gateway"
-            ? this.credentialError
-            : this.directErrors[this.modelProvider()],
+          : this.modelProvider() === "openai" && this.activeChatgptAccount()
+            ? "saved"
+            : this.modelProvider() === "gateway"
+              ? this.savedKey
+                ? "saved"
+                : this.env.AI_GATEWAY_API_KEY
+                  ? "environment"
+                  : "none"
+              : this.directKeys[this.modelProvider()]
+                ? "saved"
+                : this.selectedKey()
+                  ? "environment"
+                  : "none",
+      modelCredentialError:
+        this.modelProvider() === "gateway" && this.activeVercelAccount() && this.vercelCredentialError
+          ? "Sign in with Vercel again to unlock this account."
+          : this.hasCopilotSelection()
+            ? this.copilotSelection()
+              ? undefined
+              : "Choose a model after signing in to Copilot again."
+            : this.modelProvider() === "openai" && this.activeChatgptAccount() && this.chatgptCredentialError
+              ? "Sign in to ChatGPT again to unlock this account."
+              : this.modelProvider() === "gateway"
+                ? this.credentialError
+                : this.directErrors[this.modelProvider()],
       modelEndpoint: this.copilotSelection()
         ? "Account-bound Copilot endpoint"
         : providerEndpoint(this.modelProvider(), this.compatibleEndpoint()),
@@ -400,7 +429,11 @@ export class SettingsService {
     const category = agentPolicyCategoryFor(action.category ?? "external_tool", action.action);
     if (category === "account_security" || category === "captcha")
       throw new AuxError("permission_denied", "This action requires a person.");
-    const rule = { category, ...(scope === "site" && action.origin ? { site: new URL(action.origin).origin } : {}), access: "allow" as const };
+    const rule = {
+      category,
+      ...(scope === "site" && action.origin ? { site: new URL(action.origin).origin } : {}),
+      access: "allow" as const,
+    };
     const next = AgentPolicySettingsSchema.parse({
       ...current,
       agentPolicyRevision: current.agentPolicyRevision + 1,
@@ -522,6 +555,12 @@ export class SettingsService {
     }
     if (next.compatibleEndpoint !== undefined)
       next.compatibleEndpoint = normalizeCompatibleEndpoint(next.compatibleEndpoint);
+    if (connectionChange) {
+      await this.readCredential(selectedProvider);
+      if (next.modelCredential) await this.readCredential(next.modelCredential.provider);
+      if (next.gatewayApiKey !== undefined) await this.readCredential("gateway");
+      await check?.();
+    }
     if (next.modelCredential) {
       const { provider, key } = next.modelCredential;
       if (provider === "gateway") await this.writeGatewayKey(key);
@@ -759,8 +798,11 @@ export class SettingsService {
       redirectUri: this.env.AUX_VERCEL_REDIRECT_URI,
       teamId: this.env.AUX_VERCEL_TEAM_ID,
     });
-    if (!parsed.success) throw new AuxError("needs_input",
-      "Sign in with Vercel requires Aux's registered public client, exact loopback callback, and team. The Vercel app also needs the AI Gateway Use permission, currently in private beta.");
+    if (!parsed.success)
+      throw new AuxError(
+        "needs_input",
+        "Sign in with Vercel requires Aux's registered public client, exact loopback callback, and team. The Vercel app also needs the AI Gateway Use permission, currently in private beta.",
+      );
     return parsed.data;
   }
   private activeVercelAccount(): string | undefined {
@@ -1010,14 +1052,30 @@ export class SettingsService {
     await this.checkAuthRequester(token);
     const chatgpt = this.repo.getSetting("chatgptHostId") ? (await this.chatgptAccounts()).summaries() : [];
     const vercel = this.repo.getSetting("vercelHostId") ? (await this.vercelAccounts()).summaries() : [];
-    return [...chatgpt.map(account => ({...account, selected: !this.hasCopilotSelection() && this.modelProvider() === "openai" && this.activeChatgptAccount() === account.accountId, provider: "chatgpt" as const})),
-      ...vercel.map(account => ({...account, selected: !this.hasCopilotSelection() && this.modelProvider() === "gateway" && this.activeVercelAccount() === account.accountId, provider: "vercel" as const}))];
+    return [
+      ...chatgpt.map((account) => ({
+        ...account,
+        selected:
+          !this.hasCopilotSelection() &&
+          this.modelProvider() === "openai" &&
+          this.activeChatgptAccount() === account.accountId,
+        provider: "chatgpt" as const,
+      })),
+      ...vercel.map((account) => ({
+        ...account,
+        selected:
+          !this.hasCopilotSelection() &&
+          this.modelProvider() === "gateway" &&
+          this.activeVercelAccount() === account.accountId,
+        provider: "vercel" as const,
+      })),
+    ];
   }
   async disconnectProviderAccount(id: string, token: string) {
     await this.checkAuthRequester(token);
     if (this.repo.getSetting("vercelHostId")) {
       const vault = await this.vercelAccounts();
-      if (vault.summaries().some(account => account.accountId === id)) {
+      if (vault.summaries().some((account) => account.accountId === id)) {
         const reduction = this.writes.then(async () => {
           await this.checkAuthRequester(token);
           if (this.activeVercelAccount() === id) {
@@ -1034,7 +1092,7 @@ export class SettingsService {
         this.writes = reduction.catch(() => {});
         await reduction;
         const revocationConfirmed = await vault.disconnect(id, () => this.checkAuthRequester(token));
-        return {disconnected: true as const, revocationConfirmed};
+        return { disconnected: true as const, revocationConfirmed };
       }
     }
     const accounts = await this.chatgptAccounts();
@@ -1575,7 +1633,11 @@ export class SettingsService {
     } catch (error) {
       failures.push(error);
     }
-    try { await this.closeVercelAccounts(); } catch (error) { failures.push(error); }
+    try {
+      await this.closeVercelAccounts();
+    } catch (error) {
+      failures.push(error);
+    }
     await this.chatgptCatalogPending?.catch(() => {});
     try {
       await this.writes;
@@ -1720,13 +1782,20 @@ export class SettingsService {
     if (vercelId) {
       if (this.vercelCredentialError || !this.vercelConnected()) return null;
       const generation = this.modelCacheGeneration();
-      return vercelModelClient(() => this.vercelAccounts(), vercelId, () => this.registryModels(), () => {
-        this.assertModelGeneration(generation);
-        if (this.activeVercelAccount() !== vercelId) throw new AuxError("cancelled", "The Vercel account changed.");
-      }, async source => {
-        // Capture the calling run's actual native document, never the sign-in window.
-        await this.checkAuthRequester(source.nativeTurnContext);
-      });
+      return vercelModelClient(
+        () => this.vercelAccounts(),
+        vercelId,
+        () => this.registryModels(),
+        () => {
+          this.assertModelGeneration(generation);
+          if (this.activeVercelAccount() !== vercelId)
+            throw new AuxError("cancelled", "The Vercel account changed.");
+        },
+        async (source) => {
+          // Capture the calling run's actual native document, never the sign-in window.
+          await this.checkAuthRequester(source.nativeTurnContext);
+        },
+      );
     }
     const chatgptId = provider === "openai" ? this.activeChatgptAccount() : undefined;
     if (chatgptId) {
@@ -2059,7 +2128,8 @@ export class SettingsService {
     return ModelProviderSchema.options.map((provider) => {
       const vercel = provider === "gateway" && this.activeVercelAccount();
       const subscription = provider === "openai" && this.activeChatgptAccount();
-      const saved = vercel || subscription || (provider === "gateway" ? this.savedKey : this.directKeys[provider]);
+      const saved =
+        vercel || subscription || (provider === "gateway" ? this.savedKey : this.directKeys[provider]);
       const environment =
         provider === "gateway" ? this.env.AI_GATEWAY_API_KEY : this.env[PROVIDER_ENV[provider]];
       return ModelConnectionStatusSchema.parse({
@@ -2067,11 +2137,13 @@ export class SettingsService {
         selected: provider === this.modelProvider(),
         enabled: this.connectionEnabled(provider),
         credentialSource: saved ? "saved" : environment ? "environment" : "none",
-        credentialUnavailable: !!(vercel ? this.vercelCredentialError : subscription
-          ? this.chatgptCredentialError
-          : provider === "gateway"
-            ? this.credentialError
-            : this.directErrors[provider]),
+        credentialUnavailable: !!(vercel
+          ? this.vercelCredentialError
+          : subscription
+            ? this.chatgptCredentialError
+            : provider === "gateway"
+              ? this.credentialError
+              : this.directErrors[provider]),
         localEndpoint:
           provider === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint()),
       });

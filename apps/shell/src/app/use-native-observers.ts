@@ -3,7 +3,6 @@ import { bridge, inNativeHost, inMock } from "../bridge";
 import type { ChromiumHostPort } from "../chromium-bridge";
 import { bootShellFeatures } from "../features/registry";
 import { errToast } from "../store";
-import { installMemorySaver } from "../memory-saver";
 import { recoverPeekLink } from "../peek-link";
 
 export function useNativeObservers() {
@@ -56,6 +55,5 @@ export function useNativeObservers() {
       stop?.();
     };
   }, []);
-  useEffect(() => installMemorySaver(), []);
   useEffect(() => recoverPeekLink(), []);
 }

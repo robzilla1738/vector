@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { UI_FONT_SIZES } from "../ui-font-size";
 
+vi.mock("../onboarding/OnboardingStarters", () => ({ OnboardingStarters: () => null }));
 vi.mock("../store", () => ({
   errToast: vi.fn(),
   useStore: Object.assign(

@@ -49,6 +49,18 @@ changed-flow native walkthrough with a disposable Profile. No new e2e framework,
 screenshot suite or benchmark campaign. Scheduled phase acceptance remains
 separate from this implementation pass.
 
+## October 7 competitive implementation
+
+The owner has authorized completion of the comprehensive competitive plan, with
+three parallel workers and one integrator. [ROADMAP-EXECUTION-GRAPH](ROADMAP-EXECUTION-GRAPH.md)
+is the active dependency and evidence ledger. This supersedes the previous
+inspection freeze and deferred wrap-up scope. Chromium remains the only engine;
+vertical layout and Ask first remain defaults. Setup now has four optional steps
+and starter suggestions fill the ordinary composer. Durable first-send recovery,
+model context, background memory, native browser quality and private AI continue
+under the graph's explicit ownership. Performance and changed native flows still
+need valid observations; no source result establishes fastest-browser claims.
+
 ## Context (original audit, before v3 implementation)
 
 **Why this plan exists.** The owner asked for a full audit and a hand-off plan to make Aux the best AI browser. The plan must be fast, small, beautiful and frictionless, with no over-testing, CI or release work.
@@ -61,7 +73,7 @@ separate from this implementation pass.
 
 The table records the starting point. Current implementation and build evidence are in [STATUS.md](STATUS.md); the remaining validation targets are preserved below. The completed fluidity and coding implementation scope is recorded in [AUX-FLUIDITY-PLAN.md](AUX-FLUIDITY-PLAN.md).
 
-| Area | Today |
+| Area | Original starting point |
 |---|---|
 | Features | 91 features are refused unless "qualified" for the exact clean commit. **Only `splitView` qualifies.** |
 | Agent approvals | Every click needs a separate human approval. `CONFIRMATION_TIERS` is frozen (`apps/runtime/src/safety/confirmation.ts:6`), "always" is downgraded to "ask" (`safety/decide.ts:253`), and the guardian model runs on risky steps. |
@@ -798,7 +810,10 @@ Each schema carries a `byline` for the tool rail.
 3. **AI.** Sign in with Vercel or OpenRouter, or pick a detected local model. Ask first is preselected; Skip confirmation remains an explicit choice.
 4. **Look.** Vertical is preselected, with a live preview of both layouts.
 
-Then a first-chat postcard with 3 starter prompts, and a default-browser ask with a back-off cooldown. Rewrite `apps/shell/src/onboarding/OnboardingFlow.tsx`, which has 7 steps today.
+The current source ends setup after Look. Three optional Home Ask suggestions fill
+the ordinary composer with visible context; only Send starts a task. Data-use,
+agent behavior, import/recovery receipts and notes are optional details. Default
+browser remains available in Settings without adding another setup screen.
 
 ---
 
@@ -825,11 +840,17 @@ Then a first-chat postcard with 3 starter prompts, and a default-browser ask wit
 
 ---
 
-## Deferred next-round validation (proportionate, local only)
+## Active validation targets (proportionate, local only)
 
-The owner has deferred remaining native walkthroughs, phase performance measurements, manual 20-task/provider acceptance, and detailed design comparisons to the next roadmap round so implementation can wrap up now. Source checks have passed, and the current AuxFast native build and runtime packaging have completed successfully. The targets below are preserved for later validation, not claimed as passed or as empirical phase completion. The inherited shell Gateway credential was rejected. The workspace configuration subsequently completed native coding, supervised command and browser question/answer walkthroughs; broad provider acceptance remains deferred. Owner OAuth registrations remain explicitly deferred.
+The current competitive execution includes the native walkthroughs, valid paired
+performance measurements, required manual 20-task smoke and selected design
+comparisons. Earlier accepted native coding, command and question/answer receipts
+remain in STATUS, but are not acceptance of the new candidate. OAuth registrations,
+DRM licensing and release prerequisites remain external as documented in the
+execution graph. Do not repeat unchanged passing checks or add a provider benchmark
+campaign; use one integrated check per coherent slice and rerun only affected
+failures. Record unmet targets plainly.
 
-- Do not repeat passing source checks for this wrap-up. Remaining native walkthroughs and provider-dependent acceptance are next-round work.
 - **P0 validation target:**
   - a populated dev Profile boots with runtime ready in under 1 s;
   - every built feature is visible;

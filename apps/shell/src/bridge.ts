@@ -213,6 +213,8 @@ const stub: AuxBridge = {
   retryDownload: unavailable("Download retry requires Aux desktop"),
   tabAudio: async () => ({}),
   tabsUnsavedWork: async () => ({}),
+  memorySaverGet: unavailable("Memory saver requires Aux desktop"),
+  memorySaverSet: unavailable("Memory saver requires Aux desktop"),
   tabSleep: async () => ({ slept: false, reason: "Sleeping tabs requires Aux desktop" }),
   tabCommand: async () => ({
     commandId: "",

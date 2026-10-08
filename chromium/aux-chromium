@@ -15,7 +15,8 @@ import sys
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
 VERSION, REVISION = (ROOT / "version.txt").read_text().splitlines()[:2]
-DEFAULT_SRC = Path.home() / "aux-chromium-stable/chromium/src"
+DEV_DEFAULTS = json.loads((ROOT / "dev-defaults.json").read_text())
+DEFAULT_SRC = Path.home() / DEV_DEFAULTS["source"]
 SRC = Path(os.environ.get("AUX_CHROMIUM_SRC", DEFAULT_SRC)).expanduser().resolve()
 DEPOT_TOOLS = Path(os.environ.get("AUX_DEPOT_TOOLS", Path.home() / "aux-chromium-proof/depot_tools"))
 ENV = os.environ.copy()
@@ -263,7 +264,7 @@ def stage_shell() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("setup", "presetup", "configure", "build", "run", "push", "pop", "refresh", "validate", "sanity", "format", "stage-shell"))
-    parser.add_argument("--flavor", choices=("dev", "fast", "release"), default="dev")
+    parser.add_argument("--flavor", choices=("dev", "fast", "release"), default=DEV_DEFAULTS["flavor"])
     parser.add_argument("--profile", type=Path)
     parser.add_argument("--patch", help="destination relative to chromium/patches")
     parser.add_argument("paths", nargs="*")

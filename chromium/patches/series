@@ -83,3 +83,6 @@ aux/0083-native-restored-tab-activation.patch
 aux/0084-native-isolation-retirement-identity.patch
 aux/0085-native-resume-uncommitted-restoration.patch
 aux/0086-native-cached-response-endpoint.patch
+aux/0087-event-driven-runtime-bridge.patch
+aux/0088-native-profile-memory-saver.patch
+aux/0089-memory-saver-method-routes.patch

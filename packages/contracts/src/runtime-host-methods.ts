@@ -1,3 +1,4 @@
+import { MemorySaverMinutesSchema, MemorySaverSettingsSchema } from "./memory-saver.js";
 import {
   NativeFoundationStatusParams,
   NativeFoundationStatusSchema,
@@ -446,6 +447,12 @@ export const RuntimeHostMethods = {
     "core",
     z.object({ url: str, visitedAt: number, expectedTitle: z.string().max(4096).optional() }).strict(),
     z.object({ removed: bool }).strict(),
+  ),
+  "native.memorySaverGet": runtime("tabLifecycle", z.object({}).strict(), MemorySaverSettingsSchema),
+  "native.memorySaverSet": runtime(
+    "tabLifecycle",
+    z.object({ minutes: MemorySaverMinutesSchema }).strict(),
+    MemorySaverSettingsSchema,
   ),
   "native.searchEngineGet": runtime("searchEngines", z.object({}).strict(), str),
   "native.searchEngineSet": runtime("searchEngines", z.object({ template: str }).strict(), bool),

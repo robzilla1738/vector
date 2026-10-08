@@ -7,7 +7,7 @@ import Foundation
 import Darwin
 
 if CommandLine.arguments == [CommandLine.arguments[0], "--help"] {
-  print("native-perf <original-browser-pid> — JSON stdin commands: identity, activate, key, text, memory. No input is sent by --help.")
+  print("native-perf <original-browser-pid> — JSON stdin commands: identity, activate, address-ready, key, text, memory. No input is sent by --help.")
   exit(0)
 }
 
@@ -89,6 +89,31 @@ while let line = readLine() {
       }
       AXUIElementSetAttributeValue(AXUIElementCreateApplication(pid), kAXFrontmostAttribute as CFString, kCFBooleanTrue)
       result = ["requested": true]
+    case "address-ready":
+      guard AXIsProcessTrusted(), NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+        throw NSError(domain: "Original browser input permission/focus unavailable", code: 1)
+      }
+      var focused: CFTypeRef?
+      let status = AXUIElementCopyAttributeValue(AXUIElementCreateApplication(pid), kAXFocusedUIElementAttribute as CFString, &focused)
+      var ready = false
+      if status == .success, let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() {
+        let element = focused as! AXUIElement
+        func attribute(_ name: String) -> String {
+          var value: CFTypeRef?
+          guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success else { return "" }
+          return value as? String ?? ""
+        }
+        let role = attribute(kAXRoleAttribute)
+        let label = [kAXTitleAttribute, kAXDescriptionAttribute, kAXHelpAttribute]
+          .map(attribute).joined(separator: " ").lowercased()
+        ready = [kAXTextFieldRole, kAXComboBoxRole].contains(role)
+          && (label.contains("address") || label.contains("search"))
+        if let expectedLabel = request["expectedLabel"] as? String {
+          ready = ready && label.contains(expectedLabel.lowercased())
+        }
+      }
+      try current()
+      result = ["ready": ready]
     case "key":
       guard let chord = request["chord"] as? String else { throw NSError(domain: "Missing chord", code: 1) }
       switch chord {

@@ -241,3 +241,40 @@ it("refuses catalog results when the account changes while local discovery is st
   respond(new Response(JSON.stringify({ models: [] })));
   await expect(pending).rejects.toMatchObject({ code: "cancelled" });
 });
+
+it("loads the selected provider without reading unrelated credentials, and serializes a late read with key rotation", async () => {
+  const f = fixture();
+  f.repo.setSetting("modelProvider", "anthropic");
+  f.keys.set("modelKey-anthropic", "selected-fixture");
+  await f.settings.initializeCredentials([f.settings.modelProvider()]);
+  expect(f.native.readSecret.mock.calls.map(([name]) => name)).toEqual(["modelKey-anthropic"]);
+  expect(f.settings.all().modelCredentialSource).toBe("saved");
+  let entered!: () => void;
+  let release!: () => void;
+  const reading = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const read = f.native.readSecret.getMockImplementation()!;
+  f.native.readSecret.mockImplementation(async (name) => {
+    if (name !== "modelKey-openai") return read(name);
+    const previous = { value: "old-fixture" };
+    entered();
+    await gate;
+    return previous;
+  });
+  const loading = f.settings.initializeCredentials(["openai"]);
+  await reading;
+  const rotating = f.settings.set({
+    modelProvider: "openai",
+    modelCredential: { provider: "openai", key: "new-fixture" },
+  });
+  release();
+  await Promise.all([loading, rotating]);
+  expect(f.keys.get("modelKey-openai")).toBe("new-fixture");
+  await f.settings.initializeCredentials(["openai"]);
+  expect(f.native.readSecret.mock.calls.filter(([name]) => name === "modelKey-openai")).toHaveLength(1);
+  expect(f.settings.all().modelCredentialSource).toBe("saved");
+});

@@ -1,5 +1,5 @@
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
-import { useEffect, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
+import { useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { SettingsRow as Field, SettingsGroup, Switch } from "../../ui";
 import { bridge } from "../../bridge";
@@ -17,12 +17,7 @@ import { LanguagesSetting } from "./Languages";
 import { PictureInPictureSetting } from "./PictureInPicture";
 import { BackgroundRuntimeSetting } from "./BackgroundRuntime";
 import { useFeature } from "../../use-feature";
-import {
-  memorySaverCyclesChanged,
-  memorySaverCyclesKey,
-  memorySaverSummary,
-  readMemorySaverCycles,
-} from "../../memory-saver-report";
+import { MemorySaverSetting } from "./MemorySaver";
 import { TaskAttentionSettings } from "../../agent/TaskAttentionSettings";
 import { RecoveryPackage } from "./RecoveryPackage";
 import { requestOnboardingReplay } from "../../onboarding/replay";
@@ -30,7 +25,6 @@ import { RestoreBackupControls } from "./RestoreBackupControls";
 import { BackupSettings } from "./BackupSettings";
 import { DiagnosticsStorage } from "./DiagnosticsStorage";
 import { SetupProgress } from "../../onboarding/SetupProgress";
-import { nativeStatusRoleProps } from "../../ui/native-attribute-props";
 
 export function GeneralSettings({
   active,
@@ -56,21 +50,6 @@ export function GeneralSettings({
   const connected = useStore((state) => state.connected);
   const [backupOperation, setBackupOperation] = useState<object | null>(null);
   const tabLifecycleEnabled = useFeature("tabLifecycle");
-  const [memoryCycles, setMemoryCycles] = useState(readMemorySaverCycles);
-  const memorySummary = memorySaverSummary(memoryCycles);
-
-  useEffect(() => {
-    const update = () => setMemoryCycles(readMemorySaverCycles());
-    const updateFromStorage = (event: StorageEvent) => {
-      if (event.key === memorySaverCyclesKey) update();
-    };
-    window.addEventListener(memorySaverCyclesChanged, update);
-    window.addEventListener("storage", updateFromStorage);
-    return () => {
-      window.removeEventListener(memorySaverCyclesChanged, update);
-      window.removeEventListener("storage", updateFromStorage);
-    };
-  }, []);
 
   return (
     <>
@@ -82,43 +61,7 @@ export function GeneralSettings({
               label="Memory saver"
               hint="Sleep clean background tabs after they have been idle. Playing audio, unsaved work, captured media and agent work stay awake. Sleeping tabs reload when opened."
             >
-              <select
-                aria-label="Memory saver"
-                value={String(settings.memorySaverMinutes ?? 30)}
-                onChange={(event) => void onSave({ memorySaverMinutes: Number(event.target.value) })}
-              >
-                <option value="0">Off</option>
-                <option value="1">After 1 minute</option>
-                <option value="15">After 15 minutes</option>
-                <option value="30">After 30 minutes</option>
-                <option value="60">After 1 hour</option>
-              </select>
-              {memoryCycles.length > 0 && (
-                <small {...nativeStatusRoleProps} aria-label="Memory saver cycle report">
-                  {memorySummary.slept} {memorySummary.slept === 1 ? "tab" : "tabs"} slept in the last{" "}
-                  {memoryCycles.length} cycles.
-                  {memorySummary.measured > 0
-                    ? ` About ${Math.round(memorySummary.estimatedSavedBytes / 1024 / 1024)} MB estimated at sleep time across ${memorySummary.measured} measured cycles; this is not current memory use.`
-                    : " Memory estimate unavailable."}
-                </small>
-              )}
-              {memoryCycles.length > 0 && (
-                <details>
-                  <summary>Recent Memory saver cycles</summary>
-                  <ul>
-                    {memoryCycles.slice(0, 10).map((cycle, index) => (
-                      <li key={`${cycle.at}:${cycle.pageId}:${index}`}>
-                        {new Date(cycle.at).toLocaleString()} · {cycle.site || "Tab"} ·{" "}
-                        {cycle.slept
-                          ? cycle.estimatedSavedBytes !== undefined
-                            ? `about ${(cycle.estimatedSavedBytes / 1024 / 1024).toFixed(1)} MB estimated saved`
-                            : "slept; estimate unavailable"
-                          : cycle.reason || "kept awake"}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
+              <MemorySaverSetting active={active && !searching && !subview} />
             </IndexedField>
           )}
           <IndexedField label="Default browser">
@@ -126,7 +69,7 @@ export function GeneralSettings({
           </IndexedField>
           <IndexedField
             label="Set up Aux"
-            hint="Replay import, model setup and your first chat. Saved work is kept."
+            hint="Replay optional import, model and appearance setup. Saved work is kept."
           >
             {active && connected && <SetupProgress />}
             <button {...smallButtonProps} onClick={requestOnboardingReplay}>

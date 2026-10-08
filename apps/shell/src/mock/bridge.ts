@@ -2100,6 +2100,7 @@ export function installMockBridge(q: URLSearchParams) {
 
   const { emitEvent: _emitHostEvent, ...hostDefaults } = createMockHost();
   let omnibox: OmniboxResult | null = null;
+  let memorySaverMinutes: import("@aux/contracts").MemorySaverSettings["minutes"] = 30;
   const bridge: AuxBridge = {
     ...hostDefaults,
     browserProfiles: async () => [],
@@ -2144,6 +2145,8 @@ export function installMockBridge(q: URLSearchParams) {
     tabAudio: async () => ({}),
     tabsUnsavedWork: async (tabs: { pageId: string; url: string }[]) =>
       Object.fromEntries(tabs.map((tab) => [tab.pageId, "clean" as const])),
+    memorySaverGet: async () => ({ minutes: memorySaverMinutes, managed: false }),
+    memorySaverSet: async (minutes) => ({ minutes: memorySaverMinutes = minutes, managed: false }),
     tabSleep: async () => ({ slept: false, reason: "Native lifecycle unavailable in preview" }),
     // Mock tab commands reuse the local page list — the real surface is the
     // main-owned catalog; visual dev only needs the pages themselves to move.

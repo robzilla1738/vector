@@ -186,15 +186,18 @@ const call = async (method: MethodName, params: unknown = {}) => {
 };
 
 describe("handler results conform to ResultSchemas", () => {
-  it("uses Profile search preferences without persisting a second runtime copy", async () => {
+  it("uses Profile browser preferences without persisting a second runtime copy", async () => {
     let selected = "https://search.example/?q=%s";
     let suggestions = false;
+    let memoryMinutes: import("@aux/contracts").MemorySaverSettings["minutes"] = 30;
     const chromium = makeInvoker({
       ...fixtureServices,
       featureHost: "chromium-fork",
       featureProfileId: "regular-profile",
       native: {
         ...fixtureServices.native!,
+        memorySaverGet: async () => ({ minutes: memoryMinutes, managed: false }),
+        memorySaverSet: async (minutes) => ({ minutes: memoryMinutes = minutes, managed: false }),
         searchEngineGet: async () => selected,
         searchEngineSet: async (template) => {
           selected = template;
@@ -214,10 +217,14 @@ describe("handler results conform to ResultSchemas", () => {
     });
     await chromium("settings.set", { searchEngine: "https://other.example/?q=%s" }, { external: false });
     await chromium("settings.set", { searchSuggestions: true }, { external: false });
+    await chromium("settings.set", { memorySaverMinutes: 15 }, { external: false });
     expect(await chromium("settings.get", {}, { external: false })).toMatchObject({
       searchEngine: "https://other.example/?q=%s",
       searchSuggestions: true,
+      memorySaverMinutes: 15,
+      memorySaverManaged: false,
     });
+    expect(repo.getSetting("memorySaverMinutes")).toBeUndefined();
     expect(repo.getSetting("searchEngine")).toEqual(before);
     expect(repo.getSetting("searchSuggestions")).toBeUndefined();
   });

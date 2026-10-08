@@ -1,3 +1,4 @@
+import { modelCapabilities } from "@aux/contracts/model-registry";
 import { coderWorktreePolicy } from "./services/coder-worktree-policy.js";
 import { memoryContentSensitivityReason } from "@aux/contracts/memory-sensitivity";
 import { pageDerivativeCache } from "./services/ai-result-cache.js";
@@ -806,25 +807,31 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         authorityFence: (context) => runtimeServices.safetyGate.policyFence(context.runId),
       }),
     subagents: () =>
-      new SubagentService(repo, events, runtimeServices.runs, {
-        recover: (parentRunId, childRunId) =>
-          recoverCoderWorktree(repo, join(config.artifactsDir, "coder-worktrees"), parentRunId, childRunId),
-        create: (parentRoot, parentRunId, childRunId) =>
-          startCoderWorktree(
-            {
-              repo,
-              filesystem: runtimeServices.filesystem,
-              directory: join(config.artifactsDir, "coder-worktrees"),
-              projectRoot: parentRoot,
-              runId: parentRunId,
-              checkOwner: () => checkCodingOwner(parentRunId),
-              authorize: (actionId, details) =>
-                authorizeCodingAction(parentRunId, "file_write", actionId, details),
-            },
-            parentRoot,
-            childRunId,
-          ),
-      }),
+      new SubagentService(
+        repo,
+        events,
+        runtimeServices.runs,
+        {
+          recover: (parentRunId, childRunId) =>
+            recoverCoderWorktree(repo, join(config.artifactsDir, "coder-worktrees"), parentRunId, childRunId),
+          create: (parentRoot, parentRunId, childRunId) =>
+            startCoderWorktree(
+              {
+                repo,
+                filesystem: runtimeServices.filesystem,
+                directory: join(config.artifactsDir, "coder-worktrees"),
+                projectRoot: parentRoot,
+                runId: parentRunId,
+                checkOwner: () => checkCodingOwner(parentRunId),
+                authorize: (actionId, details) =>
+                  authorizeCodingAction(parentRunId, "file_write", actionId, details),
+              },
+              parentRoot,
+              childRunId,
+            ),
+        },
+        ["webfetch", "websearch"],
+      ),
     bashSeatbelt: () =>
       new BashSeatbelt({
         filesystemPolicy: (ctx) => runtimeServices.filesystem.codingPolicy(ctx?.runId),
@@ -1085,11 +1092,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     /* non-POSIX fs */
   }
   renameSync(descriptorTemp, runtimeFile);
-  // The descriptor is public before the service tree exists. Hold the gate
-  // across a short timer so a client that just read runtime.json can observe
-  // the not-ready /health body; one microtask is not a long enough window
-  // for that HTTP round trip (06-T).
-  await new Promise((resolve) => setTimeout(resolve, 50));
 
   // Shared claim ledger — the page dialog decision reads it before `runs`
   // exists, so it lives here and flows into RunService deps.
@@ -1268,7 +1270,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     );
   });
   if (channel) registerDownloadNamingChannel(channel, invokerReady);
-  await runtimeServices.settings.initializeCredentials();
+  await runtimeServices.settings.initializeCredentials([runtimeServices.settings.modelProvider()]);
 
   // ---- drivers ----
   const drivers: DriverSet = {
@@ -1432,6 +1434,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     dest: URL,
     action: string,
     headless: boolean,
+    phase: "preflight" | "dispatch" = "dispatch",
   ) => {
     const run = repo.getRun(ctx.runId);
     const request = EffectRequestSchema.parse({
@@ -1455,7 +1458,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       runId: ctx.runId,
       requestedAt: Date.now(),
     });
-    const decision = await decide(request, decideDeps, { phase: "dispatch", headless, runId: ctx.runId });
+    const decision = await decide(request, decideDeps, { phase, headless, runId: ctx.runId });
     if (decision.status === "ask") runtimeServices.safetyGate.park(request, request, decision.suspension);
     return decision;
   };
@@ -1463,8 +1466,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     ctx: { runId: string; threadId: string; turnId: string },
     url: string,
     action: string,
+    phase: "preflight" | "dispatch" = "dispatch",
   ): Promise<URL | { park: import("./agent/loop/types.js").LoopPark }> => {
-    const decision = await decideLoopEgress(ctx, permittedWebUrl(url), action, false);
+    const decision = await decideLoopEgress(ctx, permittedWebUrl(url), action, false, phase);
     if (decision.status === "deny") {
       throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
     }
@@ -1478,6 +1482,62 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       };
     }
     return permittedWebUrl(url);
+  };
+  const prepareWebRead = async (
+    url: string,
+    ctx: import("./agent/loop/types.js").WebToolContext,
+    action: string,
+  ): Promise<import("./agent/loop/types.js").PreparedRead> => {
+    const original = repo.getRun(ctx.runId);
+    if (!original || original.status !== "running")
+      throw new AuxError("cancelled", "The original web run ended.");
+    const source = runtimeServices.turnMentions.capture(ctx.runId);
+    const configuration = JSON.stringify(original.config);
+    const checkOwner = () => {
+      ctx.signal?.throwIfAborted();
+      const current = repo.getRun(ctx.runId);
+      if (
+        !current ||
+        current.status !== "running" ||
+        JSON.stringify(current.config) !== configuration ||
+        runtimeServices.turnMentions.capture(ctx.runId) !== source
+      )
+        throw new AuxError("cancelled", "The original web source changed.");
+    };
+    checkOwner();
+    const token = original.config?.nativeTurnContext;
+    const windowId =
+      token && native.turnSourceContext ? (await native.turnSourceContext(token)).windowId : undefined;
+    const checkWindow = async () => {
+      checkOwner();
+      if (token && native.turnSourceContext && (await native.turnSourceContext(token)).windowId !== windowId)
+        throw new AuxError("cancelled", "The original web window retired.");
+      checkOwner();
+    };
+    // Preparing a later read may park the whole batch. Spend a once grant only
+    // when this exact destination is actually dispatched, using the same digest.
+    const gated = await loopEgressGate(ctx, url, action, "preflight");
+    await checkWindow();
+    if ("park" in gated) return gated;
+    return {
+      execute: async () => {
+        await checkWindow();
+        const web = new AgentWebTools(async (hop) => {
+          await checkWindow();
+          const decision = await decideLoopEgress(
+            ctx,
+            hop,
+            hop.href === gated.href ? action : `${action}.hop`,
+            true,
+          );
+          await checkWindow();
+          return decision.status === "allow";
+        });
+        const output = await web.fetch(gated.href, ctx.signal);
+        await checkWindow();
+        return { output };
+      },
+    };
   };
   /**
    * Local service effects use the same agent mode and category policy.
@@ -1628,6 +1688,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     );
   };
   const agentLoop: AgentLoopHostDeps = {
+    modelLimits: (modelId) => {
+      const candidates = runtimeServices.settings.candidatesForModel(modelId);
+      const ids = candidates.length ? candidates.map((route) => route.modelId) : [modelId];
+      const models = runtimeServices.settings.registryModels();
+      const limits = ids.map((id) => modelCapabilities(id, models));
+      return {
+        contextTokens: Math.min(...limits.map((model) => model?.contextTokens ?? 64_000)),
+        maxOutputTokens: Math.min(4000, ...limits.map((model) => model?.maxOutputTokens ?? 4000)),
+      };
+    },
     get coderWorktrees() {
       return runtimeServices.coderWorktrees;
     },
@@ -1860,27 +1930,21 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       }),
 
     workspaceContext: (workspaceId) => runtimeServices.workspaceFolders.context(workspaceId),
+    prepareWebFetch: (url, ctx) => prepareWebRead(url, ctx, "agent.web.fetch"),
+    prepareWebSearch: async (query, ctx) => {
+      const engine = native.available()
+        ? await native.searchEngineGet?.()
+        : runtimeServices.settings.searchEngine();
+      if (!engine) throw new AuxError("backend_unavailable", "Profile search engine is unavailable.");
+      return prepareWebRead(engine.replaceAll("%s", encodeURIComponent(query)), ctx, "agent.web.search");
+    },
     webFetch: async (url, ctx) => {
-      const gated = await loopEgressGate(ctx, url, "agent.web.fetch");
-      if ("park" in gated) return { park: gated.park };
-      const web = new AgentWebTools(
-        async (hop) => (await decideLoopEgress(ctx, hop, "agent.web.fetch.hop", true)).status === "allow",
-      );
-      return { output: await web.fetch(gated.href) };
+      const prepared = await agentLoop.prepareWebFetch!(url, ctx);
+      return "park" in prepared ? prepared : prepared.execute();
     },
     webSearch: async (query, ctx) => {
-      const engine = runtimeServices.settings.searchEngine();
-      if (!engine) throw new AuxError("backend_unavailable", "Profile search engine is unavailable.");
-      const gated = await loopEgressGate(
-        ctx,
-        engine.replaceAll("%s", encodeURIComponent(query)),
-        "agent.web.search",
-      );
-      if ("park" in gated) return { park: gated.park };
-      const web = new AgentWebTools(
-        async (hop) => (await decideLoopEgress(ctx, hop, "agent.web.search.hop", true)).status === "allow",
-      );
-      return { output: await web.search(query, engine) };
+      const prepared = await agentLoop.prepareWebSearch!(query, ctx);
+      return "park" in prepared ? prepared : prepared.execute();
     },
     // Auto-recall (06-Z): search protected page memory under the run's workspace policy.
     recall: async (query, ctx) => {
@@ -2763,6 +2827,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const stopDeferred = deferRuntimeWork(
     () => !closed && isRuntimeIdle(repo),
     async () => {
+      await runtimeServices.settings.initializeCredentials();
+      if (closed) return;
+      events.emit(EventTypes.SettingsChanged, { settings: runtimeServices.settings.all() });
       void runtimeServices.settings.listModels().catch(() => {
         if (!closed) process.stderr.write("[runtime] model catalog refresh unavailable\n");
       });

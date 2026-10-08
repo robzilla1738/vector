@@ -1,3 +1,4 @@
+import { MemorySaverMinutesSchema } from "./memory-saver.js";
 import { CodingRunParams, CodingChangesParams, CodingUndoParams, CodingProcessParams, CodingLogsParams, CodingFileReceiptSchema, CodingProcessViewSchema, CodingLogsSchema } from "./coding-api.js";
 import { PageSummaryParamsSchema, PageSummaryResultSchema } from "./page-summary.js";
 import { SkillLibraryPreviewParams, SkillLibraryImportParams, SkillLibraryPreviewSchema } from "./skill-library.js";
@@ -989,9 +990,7 @@ export const SettingsSetParams = z.object({
     .strict()
     .optional(),
   /** Idle minutes before a clean background tab may be discarded. Zero disables automatic sleep. */
-  memorySaverMinutes: z
-    .union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)])
-    .optional(),
+  memorySaverMinutes: MemorySaverMinutesSchema.optional(),
   tabSwitcherOrder: z.enum(["sidebar", "recently-used"]).optional(),
   /** commandId → replacement bindings; null disables the command's shortcuts. */
   shortcutOverrides: ShortcutOverridesSchema.optional(),

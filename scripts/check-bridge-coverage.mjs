@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { nativeSource } from "../chromium/dev-config.mjs";
 /** Advisory inventory of shell calls the current Chromium host cannot answer. */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -7,9 +8,7 @@ import ts from "typescript";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const renderer = join(root, "apps/shell/src");
-const nativeRoot = resolve(
-  process.env.AUX_CHROMIUM_SRC ?? join(process.env.HOME, "aux-chromium-stable/chromium/src"),
-);
+const nativeRoot = nativeSource;
 const registry = join(nativeRoot, "chrome/browser/ui/aux/method_registry.cc");
 const dispatcher = join(nativeRoot, "chrome/browser/ui/webui_browser/webui_browser_ui.cc");
 const bootstrap = join(nativeRoot, "chrome/browser/resources/aux_host/aux_host_bootstrap.ts");

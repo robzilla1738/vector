@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** One local build/launch owner. Children inherit the plain PID lock. */
 import { runCommand } from "./lib/run-command.mjs";
+import { nativeSource, nativeFlavor, nativeOutput } from "../chromium/dev-config.mjs";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { createRequire } from "node:module";
@@ -9,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(import.meta.dirname, "..");
 const typescriptCli = createRequire(import.meta.url).resolve("typescript/bin/tsc");
-const source = resolve(process.env.AUX_CHROMIUM_SRC ?? join(homedir(), "aux-chromium-stable/chromium/src"));
+const source = nativeSource;
 const lock = join(source, "out", ".aux-dev-lock");
 function alive(pid) {
   if (!Number.isSafeInteger(pid) || pid <= 0) return false;
@@ -66,11 +67,13 @@ async function run(command, args, env = {}) {
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
-    console.log("Usage: node scripts/dev.mjs [--temp-profile] [--flavor dev|fast] | -- command [args...]");
+    console.log(
+      "Usage: node scripts/dev.mjs [--temp-profile] [--flavor dev|fast] | -- command [args...] (default: product checkout, fast)",
+    );
     return;
   }
   const commandIndex = args.indexOf("--");
-  let flavor = "dev";
+  let flavor = nativeFlavor;
   if (commandIndex < 0) {
     for (let index = 0; index < args.length; index++) {
       if (args[index] === "--temp-profile") continue;
@@ -91,13 +94,14 @@ async function main() {
       await run(command, commandArgs);
       return;
     }
+    console.log(`Aux development: ${source} · ${flavor}`);
     await run("node", ["scripts/gen-runtime-schema.mjs"]);
     await run(process.execPath, [typescriptCli, "-b"]);
     await run(process.execPath, [typescriptCli, "-p", "apps/shell/tsconfig.json"]);
     await run("pnpm", ["--filter", "@aux/shell", "build"], { AUX_CHROMIUM_SHELL_BUILD: "1" });
     await run("node", ["chromium/stage-shell.mjs", "install"]);
     await run("chromium/aux-chromium", ["build", "--flavor", flavor]);
-    const app = join(source, "out", flavor === "fast" ? "AuxFast" : "AuxDev", "Aux.app");
+    const app = join(source, "out", nativeOutput[flavor], "Aux.app");
     await run("node", ["chromium/stage-runtime.mjs", app]);
     const profile = args.includes("--temp-profile")
       ? (temporary = mkdtempSync(join(tmpdir(), "aux-dev-")))

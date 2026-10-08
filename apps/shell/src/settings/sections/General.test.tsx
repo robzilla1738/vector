@@ -4,7 +4,6 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { collectSettingsFields } from "../search";
 import { GeneralSettings } from "./General";
-import { recordMemorySaverCycle } from "../../memory-saver-report";
 
 vi.mock("../../use-feature", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../use-feature")>()),
@@ -53,23 +52,6 @@ it("keeps General fields indexed and opens an editor after extraction", async ()
         "Task data backup",
       ]),
     );
-    const saver = container.querySelector<HTMLSelectElement>('[aria-label="Memory saver"]')!;
-    expect(saver.value).toBe("30");
-    await act(async () => {
-      saver.value = "1";
-      saver.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    expect(props.onSave).toHaveBeenCalledWith({ memorySaverMinutes: 1 });
-    await act(async () =>
-      recordMemorySaverCycle(
-        { pageId: "fixture", url: "https://example.test/" },
-        { slept: true, estimatedSavedBytes: 12 * 1024 * 1024 },
-      ),
-    );
-    expect(container.querySelector('[aria-label="Memory saver cycle report"]')?.textContent).toContain(
-      "About 12 MB estimated at sleep time",
-    );
-    expect(container.querySelector("details")?.textContent).toContain("about 12.0 MB estimated saved");
     const manage = container.querySelector<HTMLButtonElement>('[aria-label="Manage keyword engines"]')!;
     await act(async () => manage.click());
     expect(onOpenEditor).toHaveBeenCalledWith("Keyword engines", manage);
