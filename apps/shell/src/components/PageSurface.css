@@ -1,4 +1,12 @@
 @layer components {
+  .stage-native-surface {
+    position: absolute;
+    inset: 0;
+  }
+  .stage-native-surface[aria-hidden="true"] {
+    visibility: hidden;
+    pointer-events: none;
+  }
   .page-surface {
     display: block;
     width: 100%;

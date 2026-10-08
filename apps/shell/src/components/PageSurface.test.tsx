@@ -27,7 +27,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("embeds only an opaque content ID for the current document and discards a stale reply", async () => {
+it("embeds only an opaque content ID for the current page owner and discards a stale reply", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const first = deferred<string | null>();
   const second = deferred<string | null>();
@@ -39,7 +39,9 @@ it("embeds only an opaque content ID for the current document and discards a sta
 
   try {
     await act(async () => root.render(<PageSurface page={page} />));
-    await act(async () => root.render(<PageSurface page={{ ...page, documentEpoch: 2 }} />));
+    await act(async () =>
+      root.render(<PageSurface page={{ ...page, pageId: "page-2", documentEpoch: 2 }} />),
+    );
     await act(async () => first.resolve("stale-id"));
     expect(node.querySelector("embed")).toBeNull();
     await act(async () => second.resolve("opaque-content-id"));
@@ -67,6 +69,48 @@ it("shows an attach failure with retry instead of mounting an invalid embed", as
     expect(node.textContent).toContain("not available");
     await act(async () => (node.querySelector("button") as HTMLButtonElement).click());
     expect(node.querySelector("embed")?.getAttribute("data-content-id")).toBe("attached-id");
+  } finally {
+    await act(async () => root.unmount());
+    node.remove();
+  }
+});
+
+it("retains the WebContents embed through visibility and navigation changes, but retires lost ownership", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  surfaceContentId
+    .mockResolvedValueOnce("original-web-contents")
+    .mockResolvedValueOnce("recovered-web-contents");
+  const node = document.createElement("div");
+  document.body.append(node);
+  const root = createRoot(node);
+  const page = {
+    pageId: "page-1",
+    windowId: "main",
+    documentEpoch: 1,
+    viewStatus: "visible",
+    title: "Original",
+  } as PageTarget;
+  try {
+    await act(async () => root.render(<PageSurface page={page} />));
+    const embed = node.querySelector("embed");
+    expect(embed).not.toBeNull();
+    await act(async () => root.render(<PageSurface page={{ ...page, viewStatus: "hidden" }} />));
+    expect(node.querySelector("embed")).toBe(embed);
+    await act(async () =>
+      root.render(
+        <PageSurface page={{ ...page, documentEpoch: 2, url: "https://example.test/next", title: "Next" }} />,
+      ),
+    );
+    expect(node.querySelector("embed")).toBe(embed);
+    expect(embed?.getAttribute("data-document-epoch")).toBe("2");
+    expect(surfaceContentId).toHaveBeenCalledTimes(1);
+    await act(async () => root.render(<PageSurface page={{ ...page, windowId: "other-window" }} />));
+    expect(node.querySelector("embed")).toBeNull();
+    await act(async () => root.render(<PageSurface page={page} />));
+    expect(node.querySelector("embed")).not.toBe(embed);
+    expect(node.querySelector("embed")?.getAttribute("data-content-id")).toBe("recovered-web-contents");
+    await act(async () => root.render(<PageSurface page={{ ...page, viewStatus: "crashed" }} />));
+    expect(node.querySelector("embed")).toBeNull();
   } finally {
     await act(async () => root.unmount());
     node.remove();

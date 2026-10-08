@@ -11,7 +11,7 @@ import { nativeStatusRoleProps, nativePoliteLiveProps } from "../ui/native-attri
 
 type SurfaceState = {
   pageId: string;
-  documentEpoch: number;
+  windowId: string;
   contentId: string | null;
   error: string | null;
 };
@@ -21,22 +21,28 @@ type SurfaceState = {
 export function PageSurface({ page }: { page: PageTarget }) {
   const [state, setState] = useState<SurfaceState | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const windowId = page.windowId ?? "main";
+  const local = isLocal(page) && page.viewStatus !== "crashed";
 
+  // The native handle belongs to WebContents; navigation rebinds its document
+  // internally without destroying the embedding connector.
   useEffect(() => {
-    if (!inNativeHost || !isLocal(page)) return;
+    if (!inNativeHost || !local) {
+      setState(null);
+      return;
+    }
     let current = true;
     setState(null);
     void bridge
       .surfaceContentId(page.pageId)
       .then((contentId) => {
-        if (current)
-          setState({ pageId: page.pageId, documentEpoch: page.documentEpoch, contentId, error: null });
+        if (current) setState({ pageId: page.pageId, windowId, contentId, error: null });
       })
       .catch((reason) => {
         if (current)
           setState({
             pageId: page.pageId,
-            documentEpoch: page.documentEpoch,
+            windowId,
             contentId: null,
             error: errorMessage(reason),
           });
@@ -44,7 +50,7 @@ export function PageSurface({ page }: { page: PageTarget }) {
     return () => {
       current = false;
     };
-  }, [page.pageId, page.documentEpoch, page.windowId, page.anchor, page.viewStatus, attempt]);
+  }, [page.pageId, windowId, local, attempt]);
 
   if (inMock && MockPage)
     return (
@@ -52,12 +58,13 @@ export function PageSurface({ page }: { page: PageTarget }) {
         <MockPage page={page} />
       </div>
     );
-  if (!inNativeHost || !isLocal(page)) return null;
+  if (!inNativeHost || !local) return null;
 
-  const resolved = state?.pageId === page.pageId && state.documentEpoch === page.documentEpoch ? state : null;
+  const resolved = state?.pageId === page.pageId && state.windowId === windowId ? state : null;
   if (resolved?.contentId)
     return (
       <embed
+        key={resolved.contentId}
         className="page-surface webium"
         type="application/x-chromium-surface-embed"
         data-content-id={resolved.contentId}

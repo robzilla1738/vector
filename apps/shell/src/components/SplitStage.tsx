@@ -70,7 +70,15 @@ function useSpringRects(targets: Box[], ids: string[], immediate: boolean) {
   return rects;
 }
 
-export function SplitStage({ group, pages }: { group: SplitGroup; pages: PageTarget[] }) {
+export function SplitStage({
+  group,
+  pages,
+  presented = true,
+}: {
+  group: SplitGroup;
+  pages: PageTarget[];
+  presented?: boolean;
+}) {
   const root = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<Box>({ x: 0, y: 0, width: 0, height: 0 });
   const minimal = useStore((state) => state.settings.minimalUi === true);
@@ -115,6 +123,7 @@ export function SplitStage({ group, pages }: { group: SplitGroup; pages: PageTar
     group.panes.map((id) => [id, pages.find((page) => page.pageId === id)?.documentEpoch ?? null]),
   );
   useCommittedSurfaceWitness(root, "split", (element) => {
+    if (!presented) return null;
     const renderedGeometry = committedSplitGeometry(element);
     return renderedGeometry === null ? null : JSON.stringify([committedPages, renderedGeometry]);
   });

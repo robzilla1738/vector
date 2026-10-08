@@ -15,7 +15,7 @@ import { useStore, call, errToast } from "../store";
 import { Conversation } from "./surfaces";
 import { shellIconChrome } from "../ui/icons";
 import { AgentOverlay } from "../agent/AgentOverlay";
-import { visibleSplitGroup } from "../features/surfaces/split-actions";
+import { canSplitPage, splitGroupForPage } from "../workspace";
 import { useSurfaceState } from "../features/surfaces/drag-state";
 import { useFeature } from "../use-feature";
 import { isLocal } from "../tab-window-transfer";
@@ -72,9 +72,15 @@ export const Stage = memo(
 
     const organizationCovered = !!useOrganizationEditor();
     const covered = organizationCovered || !!surfaceState.dragging || surfaceState.picker;
-    const splitGroup = useStore((state) =>
-      splitting && page && mode === "focus" ? visibleSplitGroup(state.layout, page.pageId) : null,
-    );
+    const splitGroup = useStore((state) => {
+      const group = splitting && page ? splitGroupForPage(state.layout, page.pageId) : null;
+      return group?.panes.every((id) => {
+        const pane = state.pages.byId[id];
+        return pane && isLocal(pane) && !pane.ownedByRuntime && canSplitPage(pane);
+      })
+        ? group
+        : null;
+    });
     const pages = useStore(
       useShallow((state) =>
         (splitGroup?.panes ?? []).flatMap((id) => (state.pages.byId[id] ? [state.pages.byId[id]!] : [])),
@@ -87,7 +93,9 @@ export const Stage = memo(
         return item && nativePageId({ mode, overlay, activePageId: id, ...item });
       });
     const splitVisible = !covered && selectedSplit;
-    // A scrim or an action confirmation replaces the page so the dialog is the thing that can be clicked.
+    const retainedPage =
+      !!page && nativePageId({ ...page, mode: "focus", overlay: null, activePageId: page.pageId });
+    // Presentation can change without retiring the original native connector.
     const selectedPage =
       !!page &&
       nativePageId({
@@ -101,6 +109,7 @@ export const Stage = memo(
         showBlankDocument: page.showBlankDocument,
       }) === page.pageId;
 
+    const showingPage = !covered && selectedPage;
     const stageNode = useRef<HTMLDivElement>(null);
     const bindStage = useCallback(
       (node: HTMLDivElement | null) => {
@@ -113,21 +122,20 @@ export const Stage = memo(
     const committedSelection = JSON.stringify([
       mode,
       overlay,
-      organizationCovered,
-      selectedSplit
+      covered,
+      splitVisible
         ? splitGroup!.panes.map((id) => {
             const item = pages.find((page) => page.pageId === id)!;
             return [id, item.documentEpoch];
           })
-        : selectedPage && page
+        : showingPage && page
           ? [[page.pageId, page.documentEpoch]]
           : [],
     ]);
     useCommittedSurfaceWitness(stageNode, "stage", () => committedSelection);
 
-    const showingPage = !covered && selectedPage;
     const visibleIds = JSON.stringify(
-      organizationCovered
+      covered
         ? []
         : selectedSplit
           ? splitGroup!.panes
@@ -191,13 +199,18 @@ export const Stage = memo(
           {mode === "focus" && page?.backend !== "chrome" && !hasUrl && page?.viewStatus !== "crashed" && (
             <StartPage />
           )}
-          {showingPage && page && !splitVisible && <PageSurface page={page} />}
-          {showingPage && page && !splitVisible && <AgentOverlay pageId={page.pageId} />}
-          {splitVisible && (
-            <Suspense fallback={null}>
-              <SplitStage group={splitGroup!} pages={pages} />
-            </Suspense>
+          {(splitGroup || retainedPage) && (
+            <div className="stage-native-surface" inert={!showingPage} aria-hidden={!showingPage}>
+              {splitGroup ? (
+                <Suspense fallback={null}>
+                  <SplitStage group={splitGroup} pages={pages} presented={!!splitVisible} />
+                </Suspense>
+              ) : (
+                page && <PageSurface page={page} />
+              )}
+            </div>
           )}
+          {showingPage && page && !splitGroup && <AgentOverlay pageId={page.pageId} />}
           {mode === "conversation" && (
             <PaneBoundary label="This conversation">
               <Conversation composerRef={composerRef} findReturnRef={scrollRef} />

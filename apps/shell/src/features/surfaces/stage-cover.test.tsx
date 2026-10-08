@@ -52,7 +52,7 @@ const page = (pageId: string): PageTarget => ({
   createdAt: 1,
   lastActiveAt: 1,
 });
-it("keeps selected native split membership through drag and picker covers, restores embeds, and clears real hidden stage", async () => {
+it("retains native split connectors through covers and full chat while reporting only presented pages", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
   vi.stubGlobal(
@@ -98,6 +98,7 @@ it("keeps selected native split membership through drag and picker covers, resto
     });
     await awaitEmbeds();
     expect(fixture.visible.mock.calls).toEqual([[["one", "two"]]]);
+    const embeds = [...node.querySelectorAll("embed")];
     for (const cover of [
       { dragging: "third", picker: false },
       { dragging: null, picker: true },
@@ -105,18 +106,41 @@ it("keeps selected native split membership through drag and picker covers, resto
       await act(async () => {
         setSurfaceState(cover);
       });
-      expect(node.querySelector("embed")).toBeNull();
-      expect(fixture.visible.mock.calls).toEqual([[["one", "two"]]]);
+      expect([...node.querySelectorAll("embed")]).toEqual(embeds);
+      expect(node.querySelector(".stage-native-surface")?.hasAttribute("inert")).toBe(true);
+      expect(node.querySelector(".stage-native-surface")?.getAttribute("aria-hidden")).toBe("true");
+      expect(node.querySelector(".split-stage")?.hasAttribute("data-split-geometry-generation")).toBe(false);
+      expect(fixture.visible.mock.calls.at(-1)).toEqual([[]]);
       await act(async () => {
         setSurfaceState({ dragging: null, picker: false });
       });
-      await awaitEmbeds();
+      expect([...node.querySelectorAll("embed")]).toEqual(embeds);
+      expect(fixture.visible.mock.calls.at(-1)).toEqual([["one", "two"]]);
     }
-    await act(async () => {
-      useStore.setState({ mode: "conversation" });
-    });
-    expect(node.querySelector("embed")).toBeNull();
-    expect(fixture.visible.mock.calls.at(-1)).toEqual([[]]);
+    for (const state of [
+      { mode: "conversation" },
+      { mode: "focus", overlay: "history" },
+      { overlay: "settings" },
+    ]) {
+      await act(async () => useStore.setState(state as never));
+      expect([...node.querySelectorAll("embed")]).toEqual(embeds);
+      expect(node.querySelector(".stage-native-surface")?.hasAttribute("inert")).toBe(true);
+      expect(fixture.visible.mock.calls.at(-1)).toEqual([[]]);
+    }
+    await act(async () =>
+      useStore.setState({
+        mode: "focus",
+        overlay: null,
+        pages: normalizePages([
+          { ...page("one"), controller: "agent", viewStatus: "hidden", documentEpoch: 2 },
+          page("two"),
+        ]),
+      }),
+    );
+    expect([...node.querySelectorAll("embed")]).toEqual(embeds);
+    expect(node.querySelector(".stage-native-surface")?.hasAttribute("inert")).toBe(false);
+    expect(fixture.resolve).toHaveBeenCalledTimes(2);
+    expect(fixture.visible.mock.calls.at(-1)).toEqual([["one", "two"]]);
   } finally {
     await act(async () => root.unmount());
     node.remove();
@@ -166,7 +190,19 @@ it("attaches a native page while the runtime and agent surface remain unresponsi
     expect(node.querySelector('[role="dialog"]')?.getAttribute("aria-label")).toBe("Pending action");
     await act(async () => useStore.setState({ confirmation: null }));
     expect(node.querySelector('[role="dialog"]')).toBeNull();
-    expect(node.querySelector("embed")?.getAttribute("data-content-id")).toBe("native-browser");
+    const embed = node.querySelector("embed");
+    for (const state of [
+      { mode: "conversation" },
+      { mode: "focus", overlay: "history" },
+      { overlay: "settings" },
+      { overlay: null },
+    ]) {
+      await act(async () => useStore.setState(state as never));
+      expect(node.querySelector("embed")).toBe(embed);
+    }
+    expect(fixture.resolve).toHaveBeenCalledTimes(1);
+    await act(async () => useStore.setState({ pages: normalizePages([]), activePageId: null }));
+    expect(node.querySelector("embed")).toBeNull();
   } finally {
     await act(async () => root.unmount());
     node.remove();
