@@ -13,7 +13,7 @@ ownership, secret protection, durable effects and conflict-safe undo remain.
 Execution was authorized on October 7, 2026. The source baseline is clean local
 main at `62f3626c8d0b50880452e928c3e24ba0277f4d2e`. The integrated native candidate is
 Chromium 154.0.8037.98 in `~/aux-chromium-product/chromium/src/out/AuxFast/Aux.app`,
-with the native tree through historical area 0101, consolidated into 32 equivalent area patches, plus compiled areas 0033–0036. A source-backed first answer and runtime-unavailable Find/Zoom now work in a disposable Profile. Private Send still refuses an incorrect storage-mode identity. Existing delivery observations live in STATUS.
+with the native tree through historical area 0101, consolidated into 32 equivalent area patches, plus compiled areas 0033–0036. A source-backed first answer and runtime-unavailable Find/Zoom now work in a disposable Profile. Private Send now admits the correct storage identity but its configured provider transport still fails at policy admission. Existing delivery observations live in STATUS.
 There is no complete current performance comparison. Source presence and previous
 unit checks do not establish native performance or competitor parity.
 
@@ -235,8 +235,8 @@ items explicit; do not shrink the objective to a finished subset.
   two minutes. With the exact runtime paused, native Find moved between both
   matches and Zoom enlarged/reset the page. Private last-window retirement left
   normal browsing alive and removed its worker directory. Private UI reconnect
-  now works after omitting a regular-only settings request; private Send still
-  refuses an incorrect run storage-mode identity under repair. Normal shutdown
+  now works after omitting a regular-only settings request; private Send now
+  admits its correct storage identity but configured provider admission still fails. Normal shutdown
   exited 0 and retired its Profile and plain lock. Physical Take over remains
   unobserved. Runtime-only launches verify the compiled host ABI before staging.
   Enter executes the displayed Ask/Search choice immediately in source; the
@@ -260,4 +260,4 @@ keeps all file bytes and resumable transfers, persists Space presentation withou
 Node while attaching only authentic runtime workspace mappings, and fences PDF
 export to its original live document. These changes are prepared in isolated
 worker/scratch sources. They are not yet compiled or observed in the native app.
-The 0034–0036 candidate compiled in 420 steps / 32m32.25s. A real source-backed first answer completed within two minutes, and Find/Zoom worked with the exact runtime paused. Private UI reconnect now works; its first Send exposed a storage-mode identity mismatch still under repair. Native multi-document selection is also prepared for this next slice. No overall acceptance claim follows from these observations.
+The 0034–0036 candidate compiled in 420 steps / 32m32.25s. A real source-backed first answer completed within two minutes, and Find/Zoom worked with the exact runtime paused. Private UI reconnect now works; its storage-mode identity fix passes live Send, which now exposes a configured-provider admission failure under repair. Native multi-document selection is also prepared for this next slice. No overall acceptance claim follows from these observations.
