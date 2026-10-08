@@ -164,12 +164,20 @@ it("revision uses exact original source/draft and returns real ACK once", async 
   expect(control(ids.save).disabled).toBe(false);
 });
 it("export retains real path ACK, exact original producer and current toast", async () => {
+  const reveal = vi.spyOn(bridge, "revealPath").mockResolvedValue(true);
   await ready();
   const operation = await command(ids.export);
   expect(bridge.saveStoredArtifact).toHaveBeenCalledExactlyOnceWith("one", "report.docx");
   await act(async () => exports[0]!.resolve("/tmp/real-original-report.docx"));
   await expect(operation.result).resolves.toBe("/tmp/real-original-report.docx");
   expect(useStore.getState().toasts.map((value) => value.text)).toContain("Result exported");
+  const action = useStore.getState().toasts.find((value) => value.text === "Result exported")!.action!;
+  expect(action.label).toBe("Reveal");
+  await act(async () => action.run());
+  expect(reveal).toHaveBeenCalledExactlyOnceWith("/tmp/real-original-report.docx");
+  await render("a", "two");
+  await act(async () => action.run());
+  expect(reveal).toHaveBeenCalledTimes(1);
 });
 it("current original revision rejection remains identical and inline without duplicate toast", async () => {
   await ready();

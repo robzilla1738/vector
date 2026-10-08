@@ -10,6 +10,7 @@ import {
   type GeneratedResultSpec,
 } from "@aux/contracts";
 import { bridge } from "../bridge";
+import { artifactExported, useArtifactOwner } from "../artifact-export";
 import { call, toast, useStore } from "../store";
 import { guardCommandCompletion } from "../command-completion";
 import { useConversationOwner } from "./ConversationControls";
@@ -45,7 +46,8 @@ export function GeneratedResultPreview({
   const conversationCurrent = useConversationOwner(chatId, connected);
   const reference = useMemo(() => ({ artifactId }), [artifactId]);
   const referenceCurrent = useConversationAttachmentOwner(conversationCurrent, [reference]);
-  const current = useCallback(() => referenceCurrent(reference), [reference, referenceCurrent]);
+  const viewCurrent = useCallback(() => referenceCurrent(reference), [reference, referenceCurrent]);
+  const current = useArtifactOwner(viewCurrent);
   const published = useRef<{ result: GeneratedResult; current: () => boolean } | null>(null);
   const recordCurrent = useConversationAttachmentOwner(current, result ? [result, ...versions] : []);
   const loadedCurrent = useCallback(
@@ -157,7 +159,7 @@ export function GeneratedResultPreview({
             const next = ack as GeneratedResult;
             toast(`${next.filename} · v${next.revision} saved`);
             onVersionSaved?.(next.artifactId);
-          } else if (ack) toast("Result exported");
+          } else if (typeof ack === "string") artifactExported("Result exported", ack, delivering);
         }
         return ack;
       } catch (reason) {

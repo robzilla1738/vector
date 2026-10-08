@@ -1,61 +1,158 @@
 import { staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
-import { smallGhostButtonProps } from "../ui/button-props";
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Artifact } from "@aux/contracts";
 import { call, useStore } from "../store";
+import { bridge } from "../bridge";
+import { artifactExported, useArtifactOwner } from "../artifact-export";
+import { useConversationOwner } from "./ConversationControls";
 import { ImageViewer } from "./ImageViewer";
 import { shellIconResult } from "../ui/icons";
 import { staticNumericCountProps as auxClassNumericCountProps } from "../ui/class-props";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
-function RunImage({ artifact }: { artifact: Artifact }) {
-  const [url, setUrl] = useState("");
+// Base64 must fit the existing 16 MiB host frame, including its JSON envelope.
+const MAX_PREVIEW_BYTES = 11 * 1024 * 1024;
+const artifactIdentity = (artifact: Artifact) =>
+  JSON.stringify([
+    artifact.artifactId,
+    artifact.runId,
+    artifact.pageId,
+    artifact.path,
+    artifact.mediaType,
+    artifact.size,
+    artifact.status,
+    artifact.createdAt,
+  ]);
+
+function RunImage({ artifact, runId }: { artifact: Artifact; runId: string }) {
+  const connected = useStore((state) => state.connected);
+  const incarnation = artifactIdentity(artifact);
+  const viewCurrent = useConversationOwner(JSON.stringify([runId, incarnation]), connected);
+  const current = useArtifactOwner(viewCurrent);
+  const [loaded, setLoaded] = useState<{ current: typeof current; url: string } | null>(null);
   const [error, setError] = useState("");
+  const [saveError, setSaveError] = useState("");
   const [retry, setRetry] = useState(0);
+  const [previewRequested, setPreviewRequested] = useState(false);
+  const [saving, setSaving] = useState<object | null>(null);
+  const pending = useRef<object | null>(null);
+  const preview = artifact.size < 8_000_000 || previewRequested;
+  const canPreview = artifact.size <= MAX_PREVIEW_BYTES;
+  const url = loaded?.current === current ? loaded.url : "";
+  const filename = artifact.path.split(/[\\/]/).at(-1) || `image.${artifact.mediaType.slice(6)}`;
+  const size =
+    artifact.size >= 1_000_000
+      ? `${(artifact.size / 1_000_000).toFixed(1)} MB`
+      : `${Math.max(1, Math.ceil(artifact.size / 1_000))} KB`;
+  useLayoutEffect(() => {
+    pending.current = null;
+    setSaving(null);
+    setSaveError("");
+    setPreviewRequested(false);
+    return () => {
+      pending.current = null;
+    };
+  }, [current]);
   useEffect(() => {
     let live = true;
-    setUrl("");
     setError("");
+    if (!preview || !canPreview || !current()) return;
     void call("artifacts.read", { artifactId: artifact.artifactId })
       .then((data) => {
-        if (live) setUrl(`data:${artifact.mediaType};base64,${data.dataBase64}`);
+        if (!live || !current()) return;
+        if (artifactIdentity(data.artifact) !== incarnation) throw new Error("This saved image changed.");
+        setLoaded({ current, url: `data:${artifact.mediaType};base64,${data.dataBase64}` });
       })
       .catch((reason) => {
-        if (live) setError(errorMessage(reason));
+        if (live && current()) setError(errorMessage(reason));
       });
     return () => {
       live = false;
     };
-  }, [artifact.artifactId, artifact.mediaType, retry]);
+  }, [artifact.artifactId, artifact.mediaType, incarnation, current, preview, canPreview, retry]);
+  async function save() {
+    if (!current() || pending.current) return;
+    const token = {};
+    pending.current = token;
+    setSaving(token);
+    setSaveError("");
+    const delivering = () => current() && pending.current === token;
+    try {
+      const destination = await bridge.saveStoredArtifact(artifact.artifactId, filename);
+      if (destination && delivering()) artifactExported("Image saved", destination, current);
+    } catch (reason) {
+      if (delivering()) setSaveError(errorMessage(reason));
+    } finally {
+      if (pending.current === token) {
+        pending.current = null;
+        if (current()) setSaving(null);
+      }
+    }
+  }
   return (
     <figure className="conversation-image">
       {error ? (
         <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           Couldn’t load this image. {error}{" "}
-          <button {...smallGhostButtonProps} onClick={() => setRetry((value) => value + 1)}>
-            Retry image
-          </button>
+          {canPreview && preview && (
+            <button
+              {...smallGhostButtonProps}
+              onClick={() => {
+                if (current()) setRetry((value) => value + 1);
+              }}
+            >
+              Retry image
+            </button>
+          )}
         </p>
       ) : url ? (
         <ImageViewer
           src={url}
           alt="Saved image from this turn"
-          onError={() => setError("The saved image could not be displayed.")}
+          current={current}
+          onError={() => {
+            if (current()) setError("The saved image could not be displayed.");
+          }}
         />
-      ) : (
+      ) : preview && canPreview ? (
         <output {...staticHintProps} data-block>
           Loading image…
         </output>
+      ) : canPreview ? (
+        <button
+          {...smallGhostButtonProps}
+          onClick={() => {
+            if (current()) setPreviewRequested(true);
+          }}
+        >
+          Preview image
+        </button>
+      ) : (
+        <p {...staticHintProps}>
+          This image is too large for inline preview. Save it to view the full image.
+        </p>
       )}
-      <figcaption>Saved {new Date(artifact.createdAt).toLocaleString()}</figcaption>
+      <figcaption>
+        {artifact.mediaType.slice(6).toUpperCase()} · {size} · Saved{" "}
+        {new Date(artifact.createdAt).toLocaleString()}
+      </figcaption>
+      <button {...smallButtonProps} disabled={!!saving} onClick={() => void save()}>
+        {saving ? "Saving image…" : "Save image…"}
+      </button>
+      {saveError && (
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
+          Couldn’t save this image. {saveError}
+        </p>
+      )}
     </figure>
   );
 }
 
 /** Fetch image bytes only when their turn's gallery is opened. */
-export function RunImages({ runId }: { runId: string }) {
+function RunImageGallery({ runId }: { runId: string }) {
   const status = useStore((state) => state.runs.find((run) => run.runId === runId)?.status);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [error, setError] = useState("");
@@ -82,8 +179,6 @@ export function RunImages({ runId }: { runId: string }) {
     };
   }, [runId, status, retry]);
   if (!artifacts.length && !error) return null;
-  const previews = artifacts.filter((item) => item.size < 8_000_000);
-  const large = artifacts.length - previews.length;
   return (
     <details
       className="conversation-sources conversation-images"
@@ -104,21 +199,20 @@ export function RunImages({ runId }: { runId: string }) {
               </button>
             </p>
           )}
-          {previews.slice(0, limit).map((artifact) => (
-            <RunImage key={artifact.artifactId} artifact={artifact} />
+          {artifacts.slice(0, limit).map((artifact) => (
+            <RunImage key={artifact.artifactId} artifact={artifact} runId={runId} />
           ))}
-          {large > 0 && (
-            <p {...staticHintProps}>
-              {large} {large === 1 ? "image exceeds" : "images exceed"} the 8 MB inline preview limit.
-            </p>
-          )}
-          {previews.length > limit && (
+          {artifacts.length > limit && (
             <button {...smallGhostButtonProps} onClick={() => setLimit((value) => value + 3)}>
-              Show more images · {previews.length - limit} remaining
+              Show more images · {artifacts.length - limit} remaining
             </button>
           )}
         </div>
       )}
     </details>
   );
+}
+
+export function RunImages({ runId }: { runId: string }) {
+  return <RunImageGallery key={runId} runId={runId} />;
 }
