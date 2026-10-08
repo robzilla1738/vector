@@ -17,7 +17,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { nativeSource, nativeFlavor, nativeOutput } from "./dev-config.mjs";
-import { bundleRuntime } from "../scripts/bundle-runtime.mjs";
+import { bundleRuntime, writeRuntimeSize } from "../scripts/bundle-runtime.mjs";
 import {
   ensureSlimNode,
   nodeVersion,
@@ -78,7 +78,7 @@ try {
     ...(runtimeOnly ? ["apps/runtime", "packages/cli", "packages/mcp"] : ["tsconfig.json"]),
   ]);
   const payload = join(staging, "aux-runtime");
-  await bundleRuntime(payload, "node26");
+  const bundleSize = await bundleRuntime(payload, "node26");
   const fullData = await nodeIcuData(node);
   const icuDirectory = join(payload, "vendor", "icu");
   mkdirSync(icuDirectory, { recursive: true });
@@ -118,6 +118,7 @@ try {
   copyFileSync(node, helper);
   chmodSync(helper, 0o755);
   cpSync(payload, resources, { recursive: true, dereference: true });
+  writeRuntimeSize(resources, helper, bundleSize);
   console.log(`Staged Node v${nodeVersion} (${digest(helper)}) and Aux Runtime in ${appRoot}`);
 } finally {
   rmSync(staging, { recursive: true, force: true });

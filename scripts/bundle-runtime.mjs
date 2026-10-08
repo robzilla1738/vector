@@ -4,6 +4,7 @@ import {
   copyFileSync,
   cpSync,
   mkdirSync,
+  lstatSync,
   readdirSync,
   rmSync,
   readFileSync,
@@ -19,6 +20,41 @@ import { generateRuntimeSchema } from "./gen-runtime-schema.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const runtimeDir = join(root, "apps", "runtime");
+
+function runtimeFiles(directory) {
+  return readdirSync(directory, { recursive: true })
+    .filter((name) => name !== "runtime-size.json")
+    .map((name) => ({ name, stat: lstatSync(join(directory, name)) }))
+    .filter((item) => item.stat.isFile())
+    .map((item) => ({ name: item.name, bytes: item.stat.size }));
+}
+
+export function writeRuntimeSize(resources, helper, bundleSize) {
+  const resourcePayloadBytes = runtimeFiles(resources).reduce((sum, file) => sum + file.bytes, 0);
+  const nodeHelperBytes = statSync(helper).size;
+  const size = {
+    measurement: "logical-file-bytes",
+    ...bundleSize,
+    resourcePayloadBytes,
+    nodeHelperBytes,
+    reportManifestBytes: 0,
+    installedRuntimeBytes: resourcePayloadBytes + nodeHelperBytes,
+  };
+  let report;
+  // Account for this manifest without including an older copy in the file walk.
+  for (;;) {
+    report = `${JSON.stringify(size, null, 2)}\n`;
+    const bytes = Buffer.byteLength(report);
+    if (bytes === size.reportManifestBytes) break;
+    size.reportManifestBytes = bytes;
+    size.installedRuntimeBytes = resourcePayloadBytes + nodeHelperBytes + bytes;
+  }
+  writeFileSync(join(resources, "runtime-size.json"), report);
+  console.log(
+    `[runtime installed] resources ${(resourcePayloadBytes / 1024 / 1024).toFixed(2)} MiB; Node ${(nodeHelperBytes / 1024 / 1024).toFixed(2)} MiB; report ${size.reportManifestBytes} bytes; total ${(size.installedRuntimeBytes / 1024 / 1024).toFixed(2)} MiB`,
+  );
+  return size;
+}
 
 // Playwright embeds its generated browser programs as JavaScript strings.
 // Minify each complete program without changing public export property names.
@@ -210,13 +246,12 @@ export async function bundleRuntime(rtOut, target) {
   writeFileSync(join(rtOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices({...runtimeBuild.metafile.inputs,...cloudFilesBuild.metafile.inputs, ...cloudProcessBuild.metafile.inputs,...cloudWorkerBuild.metafile.inputs,...recurrenceBuild.metafile.inputs,...archiveNoticeInputs}));
 
   // QuickJS's async release variant loads its WASM beside the esbuild chunk at
-  // runtime. esbuild bundles the loader JS but does not copy that sibling file.
+  // runtime. The cloud executor uploads these same bytes beside its VM worker.
   const quickjsVariant = dirname(
     runtimeRequire.resolve("@jitl/quickjs-wasmfile-release-asyncify/package.json"),
   );
   const quickjsWasm = readFileSync(join(quickjsVariant, "dist", "emscripten-module.wasm"));
   await WebAssembly.compile(quickjsWasm);
-  copyFileSync(join(quickjsVariant, "dist", "emscripten-module.wasm"), join(cloudWorkerOut, "emscripten-module.wasm"));
   copyFileSync(
     join(quickjsVariant, "dist", "emscripten-module.wasm"),
     join(rtOut, "dist", "chunks", "emscripten-module.wasm"),
@@ -310,20 +345,17 @@ export async function bundleRuntime(rtOut, target) {
     rmSync(resvgSmoke, { force: true });
   }
 
-  const files = readdirSync(rtOut, { recursive: true })
-    .map((name) => ({ name, bytes: statSync(join(rtOut, name)) }))
-    .filter((item) => item.bytes.isFile())
-    .map((item) => ({ name: item.name, bytes: item.bytes.size }));
+  const files = runtimeFiles(rtOut);
   const size = {
     entryBytes: statSync(join(rtOut, "dist/main.js")).size,
     javascriptBytes: files
       .filter((item) => /\.(?:m|c)?js$/.test(item.name))
       .reduce((sum, item) => sum + item.bytes, 0),
-    totalBytes: files.reduce((sum, item) => sum + item.bytes, 0),
-    advisoryTargetBytes: 8 * 1024 * 1024,
+    bundlePayloadBytes: files.reduce((sum, item) => sum + item.bytes, 0),
+    advisoryBundleTargetBytes: 8 * 1024 * 1024,
   };
-  writeFileSync(join(dirname(rtOut), "runtime-size.json"), JSON.stringify(size, null, 2));
   console.log(
-    `[runtime bundle] entry ${(size.entryBytes / 1024).toFixed(1)} KiB; JavaScript ${(size.javascriptBytes / 1024 / 1024).toFixed(2)} MiB; payload ${(size.totalBytes / 1024 / 1024).toFixed(2)} MiB (8 MiB advisory target)`,
+    `[runtime bundle] entry ${(size.entryBytes / 1024).toFixed(1)} KiB; JavaScript ${(size.javascriptBytes / 1024 / 1024).toFixed(2)} MiB; payload ${(size.bundlePayloadBytes / 1024 / 1024).toFixed(2)} MiB (8 MiB bundle advisory target; excludes Node and ICU)`,
   );
+  return size;
 }

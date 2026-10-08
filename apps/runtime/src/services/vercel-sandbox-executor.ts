@@ -809,7 +809,7 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
             const assets = await (this.deps.workerAssets?.() ??
               Promise.all([
                 readFile(new URL("../cloud-repl/worker.mjs", import.meta.url)),
-                readFile(new URL("../cloud-repl/emscripten-module.wasm", import.meta.url)),
+                readFile(new URL("../chunks/emscripten-module.wasm", import.meta.url)),
                 readFile(new URL("../cloud-repl/THIRD-PARTY-NOTICES.txt", import.meta.url)),
               ]).then(([program, wasm, notices]) => ({ program: program!, wasm: wasm!, notices: notices! })));
             if (assets.program.length > 8 * 1024 * 1024 || assets.wasm.length > 8 * 1024 * 1024)
