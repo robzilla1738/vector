@@ -200,6 +200,13 @@ items explicit; do not shrink the objective to a finished subset.
   improved initial detail panels from 300 to eight; native timing is unproved.
   Complete rich chat export is integrated. Rich Word, dense editable decks, typed artifact revision
   controls and original-chat routine continuation are integrated.
+  The final coverage pass replaces the distinct five-document/fixed-excerpt path
+  with protected immutable body/preview records and all exact metadata. Model
+  evidence is ephemeral, relevant and uses the actual remaining input budget.
+  Skills/search/suggestions, per-Skill occurrence history and the global inbox
+  now reach older records through keyset paging; full 501-Skill file round-trip
+  passed. Scheduling cooperatively visits all eligible definitions and preserves
+  current pause/review/occurrence ownership.
 - N7 authenticated Space/workspace publication is area 0099; native tab placement
   remains usable without Node. It is compiled; changed-flow observation remains pending.
 - N8 private AI startup failed in the preceding candidate. Persistence-dependent
@@ -228,6 +235,12 @@ items explicit; do not shrink the objective to a finished subset.
   child-document/native-platform repair is in progress. These are not successful
   first-task/private-AI observations. Runtime-only launches verify the compiled
   host ABI before staging current runtime changes.
+  Areas 0035–0036 are now applied in source and peer-reviewed: own embedded
+  document/platform ACK, genuine queued/focused physical input, browser-owned
+  Find/Zoom, and original-owner cancellation. Automatic search classification is
+  bounded and optional; provider cancellation and late-answer suppression have
+  focused checks. The combined candidate still requires native compilation and
+  changed-flow observations.
 - Area 0100 adds original shell/runtime role measurement; stock's additive patch
   was retired after its missing object cache requested a full rebuild, stopped
   normally. Stock keeps the same v3 timing triggers; Aux-only role telemetry is

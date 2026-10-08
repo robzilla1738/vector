@@ -2168,48 +2168,50 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
           ];
         const original = self.get(runId);
         const refs = original.config?.contextMemoryRefs ?? [];
+        const documentRefs = original.config?.contextAttachmentRefs ?? [];
         if (original.config?.contextMemoryIds?.length && !refs.length)
           throw new AuxError(
             "permission_denied",
             "Reselect saved articles to use their current capture identities.",
           );
         const imageIds = original.config?.contextImageArtifactIds ?? [];
-        if (!refs.length && !imageIds.length) return messages;
-        const authority = JSON.stringify([
-          refs,
-          imageIds,
-          original.config?.contextWorkspaceId,
-          original.config?.contextWorkspaceRevision,
-          original.config?.taskId,
-          original.config?.taskRevision,
-          original.config?.messageRevision,
-        ]);
+        if (!refs.length && !imageIds.length && !documentRefs.length) return messages;
+        const sourceAuthority = (run: Run) =>
+          JSON.stringify([
+            run.config?.contextMemoryRefs ?? [],
+            run.config?.contextImageArtifactIds ?? [],
+            run.config?.contextAttachmentRefs ?? [],
+            run.config?.contextWorkspaceId,
+            run.config?.contextWorkspaceRevision,
+            run.config?.taskId,
+            run.config?.taskRevision,
+            run.config?.messageRevision,
+            run.config?.contextMemoryRevoked,
+          ]);
+        const authority = sourceAuthority(original);
+        const checkSources = () => {
+          if (
+            signal.aborted ||
+            self.controls.get(runId) !== c ||
+            c.paused ||
+            sourceAuthority(self.get(runId)) !== authority
+          )
+            throw new AuxError("cancelled", "The original source selection changed before model dispatch.");
+          self.deps.checkRunSource?.(runId);
+        };
         self.deps.checkRunSource?.(runId);
         if (refs.length && !self.deps.memoryReferences)
           throw new AuxError("permission_denied", "Selected article evidence is unavailable.");
         if (imageIds.length && !self.deps.imageReferences)
           throw new AuxError("permission_denied", "Selected image evidence is unavailable.");
+        if (documentRefs.length && !self.deps.documentEvidence)
+          throw new AuxError("permission_denied", "Selected document evidence is unavailable.");
         const references = refs.length ? await self.deps.memoryReferences!(original, query) : [];
         const images = imageIds.length ? self.deps.imageReferences!(original) : [];
-        const current = self.get(runId);
-        if (
-          signal.aborted ||
-          self.controls.get(runId) !== c ||
-          c.paused ||
-          JSON.stringify([
-            current.config?.contextMemoryRefs ?? [],
-            current.config?.contextImageArtifactIds ?? [],
-            current.config?.contextWorkspaceId,
-            current.config?.contextWorkspaceRevision,
-            current.config?.taskId,
-            current.config?.taskRevision,
-            current.config?.messageRevision,
-          ]) !== authority ||
-          images.length !== imageIds.length
-        )
-          throw new AuxError("cancelled", "The original source selection changed before model dispatch.");
-        self.deps.checkRunSource?.(runId);
-        const base = images.length
+        checkSources();
+        if (images.length !== imageIds.length)
+          throw new AuxError("cancelled", "The original image selection changed before model dispatch.");
+        let base = images.length
           ? [
               ...messages,
               {
@@ -2224,6 +2226,16 @@ export async function runToolLoop(self: RunCoordinator, runId: string): Promise<
               },
             ]
           : messages;
+        if (documentRefs.length) {
+          const available = budget.remainingInputBytes(base);
+          const evidence = await self.deps.documentEvidence!(original, {
+            query,
+            maxBytes: refs.length ? Math.floor(available / 2) : available,
+            signal,
+          });
+          checkSources();
+          if (evidence) base = [...base, evidence];
+        }
         return hydrateSelectedArticles(base, references, refs.length, {
           query,
           maxBytes: budget.remainingInputBytes(base),
