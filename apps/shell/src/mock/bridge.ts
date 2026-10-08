@@ -11,6 +11,7 @@ import {
 import { HostMethods } from "@aux/contracts/host-methods";
 import { createMockHost } from "../host/mock.generated";
 import { workFixtures } from "./work";
+import { mockDocument } from "./documents";
 import { connectorFixtures } from "./connectors";
 import { steppedZoomLevel } from "@aux/contracts/page-zoom";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
@@ -118,7 +119,8 @@ export function installMockBridge(q: URLSearchParams) {
   const customCss = new Map<string, { css: string; updatedAt: number }>();
   let zapRules: ZapRule[] = [];
   let rankingChoices: CommandRankingEntry[] = [];
-  let documentSelection: string | null = null;
+  let documentSelection: { selectionId: string; file: Awaited<ReturnType<typeof mockDocument>> } | null =
+    null;
   let organization: OrganizationSnapshot = { revision: 0, layout: null };
   const organizationListeners = new Set<(revision: number) => void>();
   let history = [...HISTORY];
@@ -472,6 +474,7 @@ export function installMockBridge(q: URLSearchParams) {
     string,
     {
       attachmentId: string;
+      file: Awaited<ReturnType<typeof mockDocument>>;
       filename: string;
       sourceUrl?: string;
       sourceTruncated?: boolean;
@@ -520,8 +523,9 @@ export function installMockBridge(q: URLSearchParams) {
     ]);
   const documentList = (chatId: string) => ({
     chatId,
-    attachments: (documents.get(chatId) ?? []).map(({ content, ...item }) => ({
+    attachments: (documents.get(chatId) ?? []).map(({ content, file, ...item }) => ({
       ...item,
+      document: file.manifest,
       excerpt: content.slice(0, 1000),
     })),
   });
@@ -1443,6 +1447,7 @@ export function installMockBridge(q: URLSearchParams) {
       items.push({
         attachmentId: crypto.randomUUID(),
         filename: `${page.title.slice(0, 180)}.txt`,
+        file: await mockDocument(`${page.title.slice(0, 180)}.txt`, content),
         sourceUrl: page.url,
         sourceTruncated: false,
         content,
@@ -1460,8 +1465,35 @@ export function installMockBridge(q: URLSearchParams) {
       items.push({
         attachmentId: crypto.randomUUID(),
         filename: String(p.filename),
+        file: await mockDocument(String(p.filename), String(p.content)),
         content: String(p.content),
         byteLength: new TextEncoder().encode(String(p.content)).length,
+        createdAt: Date.now(),
+        included: true,
+      });
+      documents.set(chatId, items);
+      emit("conversation.context.changed", { chatId });
+      return documentList(chatId);
+    },
+    "conversations.attachments.import": async (p) => {
+      const selection = documentSelection;
+      if (
+        !selection ||
+        selection.selectionId !== p.selectionId ||
+        p.index !== 0 ||
+        selection.file.manifest.document.snapshotId !== p.snapshotId ||
+        selection.file.manifest.document.sourceSha256 !== p.sourceSha256
+      )
+        throw new AuxError("ref_stale", "This document selection was closed.");
+      const chatId = String(p.chatId),
+        items = documents.get(chatId) ?? [];
+      const first = selection.file.read();
+      items.push({
+        attachmentId: crypto.randomUUID(),
+        file: selection.file,
+        filename: first.document.filename,
+        content: first.chunk.segments.map((segment) => segment.text).join(""),
+        byteLength: first.completed.textBytes,
         createdAt: Date.now(),
         included: true,
       });
@@ -1474,13 +1506,16 @@ export function installMockBridge(q: URLSearchParams) {
     "conversations.attachments.read": async (p) => {
       const items = documents.get(String(p.chatId)) ?? [];
       for (const item of items) {
-        if (item.attachmentId === p.attachmentId)
+        if (item.attachmentId === p.attachmentId) {
+          if (p.sha256 && p.sha256 !== item.file.manifest.sha256)
+            throw new AuxError("ref_stale", "This document changed.");
           return {
+            ...item.file.read(typeof p.cursor === "string" ? p.cursor : undefined),
             attachment: documentList(String(p.chatId)).attachments.find(
               (entry) => entry.attachmentId === item.attachmentId,
             ),
-            content: item.content,
           };
+        }
       }
       throw new Error("Document attachment not found.");
     },
@@ -2525,20 +2560,30 @@ export function installMockBridge(q: URLSearchParams) {
       ctx.fillRect(70, 180, 660, 230);
       return { filename: "sample-image.png", dataUrl: canvas.toDataURL("image/png") };
     },
-    pickEvidenceDocuments: async () => ({ selectionId: (documentSelection = crypto.randomUUID()), count: 1 }),
-    readEvidenceDocument: async (selectionId, index) => {
-      if (selectionId !== documentSelection)
+    pickEvidenceDocuments: async () => {
+      const selectionId = crypto.randomUUID();
+      const file = await mockDocument(
+        "project-brief.md",
+        "# Project brief\n\nUse a calm cobalt accent and keep browser controls minimal.\n\n" +
+          "Reference notes for the attached project.\n".repeat(180),
+      );
+      documentSelection = { selectionId, file };
+      return { selectionId, count: 1 };
+    },
+    readEvidenceDocument: async (selectionId, index, cursor) => {
+      if (selectionId !== documentSelection?.selectionId)
         throw new AuxError("ref_stale", "This document selection was closed.");
       if (index !== 0) throw new Error("invalid_argument: This file is not in the selected collection.");
+      const page = documentSelection.file.read(cursor);
       return {
-        filename: "project-brief.md",
-        content:
-          "# Project brief\n\nUse a calm cobalt accent and keep browser controls minimal.\n\n" +
-          "Reference notes for the attached project.\n".repeat(180),
+        kind: "chunk",
+        document: page.document,
+        chunk: page.chunk,
+        ...(page.nextCursor ? { nextCursor: page.nextCursor } : { completed: page.completed }),
       };
     },
     releaseEvidenceDocuments: async (selectionId) => {
-      if (documentSelection === selectionId) documentSelection = null;
+      if (documentSelection?.selectionId === selectionId) documentSelection = null;
       return undefined;
     },
     agentConfig: async (input) => ({
