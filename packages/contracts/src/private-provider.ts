@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { PrivateCloudRequestSchema, PrivateCloudResultSchema } from "./private-cloud.js";
+import { PrivateBudgetRequestSchema, PrivateBudgetResultSchema } from "./private-budget.js";
 import { ImageModelSchema } from "./model-connections.js";
 import { ModelProviderSchema } from "./model-providers.js";
 import { AgentModelRoutesSettingSchema, ModelCapabilitySchema } from "./model-registry.js";
@@ -60,3 +62,14 @@ export const PrivateProviderResultSchema = z.discriminatedUnion("operation", [
     .strict(),
 ]);
 export type PrivateProviderResult = z.infer<typeof PrivateProviderResultSchema>;
+
+export const PrivateRuntimeRequestSchema = z.union([
+  PrivateProviderRequestSchema,
+  z.object({ operation: z.literal("cloud"), cloud: PrivateCloudRequestSchema }).strict(),
+  z.object({ operation: z.literal("budget"), budget: PrivateBudgetRequestSchema }).strict(),
+]);
+export const PrivateRuntimeResultSchema = z.union([
+  PrivateProviderResultSchema,
+  z.object({ operation: z.literal("cloud"), cloud: PrivateCloudResultSchema }).strict(),
+  z.object({ operation: z.literal("budget"), budget: PrivateBudgetResultSchema }).strict(),
+]);

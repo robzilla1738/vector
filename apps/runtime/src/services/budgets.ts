@@ -45,6 +45,24 @@ export function monthStartMs(now = Date.now()): number {
 }
 
 export class BudgetsService {
+  private privateSpend?: (after: number) => { costUsd: number; unknown: number };
+  private sharedWindows?: () => readonly BudgetStatus[];
+  configurePrivateSpend(read: (after: number) => { costUsd: number; unknown: number }) {
+    if (this.privateSpend)
+      throw new AuxError("conflict", "Private aggregate accounting is already installed.");
+    this.privateSpend = read;
+    return () => {
+      if (this.privateSpend === read) this.privateSpend = undefined;
+    };
+  }
+  configureSharedWindows(read: () => readonly BudgetStatus[]) {
+    if (this.sharedWindows)
+      throw new AuxError("conflict", "Original account budget windows are already installed.");
+    this.sharedWindows = read;
+    return () => {
+      if (this.sharedWindows === read) this.sharedWindows = undefined;
+    };
+  }
   private nightShift?: (runId: string) => BudgetStatus[];
   configureNightShift(status: (runId: string) => BudgetStatus[]) {
     if (this.nightShift) throw new AuxError("conflict", "Night shift budgets are already installed.");
@@ -144,7 +162,7 @@ export class BudgetsService {
     const row = this.db
       .prepare("SELECT COUNT(*) n FROM model_calls WHERE created_at>=? AND cost_usd IS NULL")
       .get(after) as { n: number };
-    return row.n;
+    return row.n + (this.privateSpend?.(after).unknown ?? 0);
   }
 
   /** Original parent and all historical descendants are one charged scope. */
@@ -173,6 +191,7 @@ export class BudgetsService {
   /** All model-call cost across every run since local midnight. */
   spentDayUsd(now = Date.now()): number {
     return (
+      (this.privateSpend?.(dayStartMs(now)).costUsd ?? 0) +
       this.sum("SELECT COALESCE(SUM(cost_usd),0) s FROM model_calls WHERE created_at>=?", dayStartMs(now)) +
       this.sum(
         "SELECT COALESCE(SUM(cost_usd),0) s FROM execution_resources WHERE created_at>=? AND state='settled' AND cost_estimated=0",
@@ -184,6 +203,7 @@ export class BudgetsService {
   /** All recorded model-call cost since the start of the local month. */
   spentMonthUsd(now = Date.now()): number {
     return (
+      (this.privateSpend?.(monthStartMs(now)).costUsd ?? 0) +
       this.sum("SELECT COALESCE(SUM(cost_usd),0) s FROM model_calls WHERE created_at>=?", monthStartMs(now)) +
       this.sum(
         "SELECT COALESCE(SUM(cost_usd),0) s FROM execution_resources WHERE created_at>=? AND state='settled' AND cost_estimated=0",
@@ -251,6 +271,15 @@ export class BudgetsService {
       resourceCostComplete: this.resourceWindowComplete(monthStartMs(now)),
       unpricedModelCalls: this.unpricedWindow(monthStartMs(now)),
     });
+    if (this.sharedWindows) {
+      const windows = this.sharedWindows();
+      for (const scope of ["day", "month"] as const) {
+        const shared = windows.find((window) => window.scope === scope);
+        if (!shared) throw new AuxError("needs_input", "Original account budget status is unavailable.");
+        const index = out.findIndex((window) => window.scope === scope);
+        out[index] = { ...shared };
+      }
+    }
     if (scope.routineId)
       push({
         scope: "routine",

@@ -1,4 +1,16 @@
 import {
+  PrivateCloudRequestSchema,
+  PrivateCloudResultSchema,
+  type PrivateCloudRequest,
+  type PrivateCloudResult,
+} from "@aux/contracts/private-cloud";
+import {
+  PrivateBudgetRequestSchema,
+  PrivateBudgetResultSchema,
+  type PrivateBudgetRequest,
+  type PrivateBudgetResult,
+} from "@aux/contracts/private-budget";
+import {
   PrivateProviderRequestSchema,
   PrivateProviderResultSchema,
   type PrivateProviderRequest,
@@ -244,6 +256,8 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
     params: z.infer<typeof NativeTerminalPreviewCloseParams>,
   ): Promise<z.infer<typeof TerminalPreviewClosedSchema>>;
   privateProvider?(request: PrivateProviderRequest): Promise<PrivateProviderResult>;
+  privateCloud?(request: PrivateCloudRequest): Promise<PrivateCloudResult>;
+  privateBudget?(request: PrivateBudgetRequest): Promise<PrivateBudgetResult>;
   cloudPreview?(
     params: z.infer<typeof NativeCloudPreviewParams>,
   ): Promise<z.infer<typeof CloudPreviewSchema>>;
@@ -597,6 +611,23 @@ export class ChannelNativeBridge implements NativeBridge {
     );
   }
 
+  async privateCloud(request: PrivateCloudRequest): Promise<PrivateCloudResult> {
+    const result = await this.channel.call<{ operation: string; cloud: unknown }>("native.privateProvider", {
+      operation: "cloud",
+      cloud: PrivateCloudRequestSchema.parse(request),
+    });
+    if (result.operation !== "cloud") throw new AuxError("invalid_params", "Invalid original Sandbox reply.");
+    return PrivateCloudResultSchema.parse(result.cloud);
+  }
+  async privateBudget(request: PrivateBudgetRequest): Promise<PrivateBudgetResult> {
+    const result = await this.channel.call<{ operation: string; budget: unknown }>("native.privateProvider", {
+      operation: "budget",
+      budget: PrivateBudgetRequestSchema.parse(request),
+    });
+    if (result.operation !== "budget")
+      throw new AuxError("invalid_params", "Invalid original account budget reply.");
+    return PrivateBudgetResultSchema.parse(result.budget);
+  }
   async privateProvider(request: PrivateProviderRequest): Promise<PrivateProviderResult> {
     return PrivateProviderResultSchema.parse(
       await this.channel.call("native.privateProvider", PrivateProviderRequestSchema.parse(request)),

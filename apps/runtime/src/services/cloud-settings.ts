@@ -1,3 +1,10 @@
+import {
+  PrivateCloudDescriptorSchema,
+  PrivateCloudResultSchema,
+  type PrivateCloudDescriptor,
+  type PrivateCloudRequest,
+  type PrivateCloudResult,
+} from "@aux/contracts/private-cloud";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
@@ -38,6 +45,48 @@ export async function closeCloudSettings(repo: Repo): Promise<void> {
 export class CloudSettingsService {
   private writes: Promise<unknown> = Promise.resolve();
   private closed = false;
+  private inherited?: {
+    descriptor: PrivateCloudDescriptor;
+    request(request: PrivateCloudRequest): Promise<PrivateCloudResult>;
+  };
+  async attachPrivate(request: (request: PrivateCloudRequest) => Promise<PrivateCloudResult>): Promise<void> {
+    const result = PrivateCloudResultSchema.parse(await request({ operation: "describe" }));
+    if (this.closed) throw new AuxError("cancelled", "Private Sandbox settings retired.");
+    if (result.operation !== "describe")
+      throw new AuxError("invalid_params", "Invalid original Sandbox descriptor.");
+    this.inherited = result.connection ? { descriptor: result.connection, request } : undefined;
+  }
+  invalidatePrivateConnection(): void {
+    this.inherited = undefined;
+  }
+  connectionRevision(): string {
+    return createHash("sha256")
+      .update(JSON.stringify(this.record() ?? null))
+      .digest("hex");
+  }
+  async privateRequest(request: PrivateCloudRequest): Promise<PrivateCloudResult> {
+    if (this.closed || this.inherited)
+      throw new AuxError("cancelled", "Original Sandbox credential owner retired.");
+    const record = this.record();
+    if (request.operation === "describe")
+      return {
+        operation: "describe",
+        connection: record
+          ? PrivateCloudDescriptorSchema.parse({
+              revision: this.connectionRevision(),
+              teamId: record.teamId,
+              projectId: record.projectId,
+              quote: record.quote,
+            })
+          : null,
+      };
+    if (!record || this.connectionRevision() !== request.revision)
+      throw new AuxError("cancelled", "Original Sandbox configuration changed.");
+    const configuration = await this.configuration();
+    if (this.closed || this.connectionRevision() !== request.revision)
+      throw new AuxError("cancelled", "Original Sandbox configuration changed.");
+    return { operation: "credential", revision: request.revision, accessToken: configuration.token };
+  }
   constructor(
     private readonly repo: Repo,
     private readonly native: NativeBridge,
@@ -69,6 +118,16 @@ export class CloudSettingsService {
     return parsed.data;
   }
   status(): CloudSettingsStatus {
+    if (this.inherited) {
+      const d = this.inherited.descriptor;
+      return {
+        configured: true,
+        revision: d.quote.revision,
+        teamId: d.teamId,
+        projectId: d.projectId,
+        quote: d.quote,
+      };
+    }
     const saved = this.record();
     return saved
       ? {
@@ -126,6 +185,25 @@ export class CloudSettingsService {
   }
   async configuration(): Promise<CloudConfiguration> {
     if (this.closed) throw new AuxError("cancelled", "Cloud settings are closed.");
+    const inherited = this.inherited;
+    if (inherited) {
+      const result = PrivateCloudResultSchema.parse(
+        await inherited.request({ operation: "credential", revision: inherited.descriptor.revision }),
+      );
+      if (
+        this.closed ||
+        this.inherited !== inherited ||
+        result.operation !== "credential" ||
+        result.revision !== inherited.descriptor.revision
+      )
+        throw new AuxError("cancelled", "Original private Sandbox configuration retired.");
+      return {
+        token: result.accessToken,
+        teamId: inherited.descriptor.teamId,
+        projectId: inherited.descriptor.projectId,
+        quote: inherited.descriptor.quote,
+      };
+    }
     const saved = this.record();
     if (!saved)
       throw new AuxError(
@@ -192,6 +270,7 @@ export class CloudSettingsService {
           );
           if (previous && previous.secretName !== secretName) this.queueRetirement(previous.secretName);
         });
+        this.inherited = undefined;
         committed = true;
         await this.retireSecrets();
         return this.status();
@@ -218,6 +297,7 @@ export class CloudSettingsService {
         this.repo.setSetting("cloudExecutionRevision", before.revision + 1);
         if (previous) this.queueRetirement(previous.secretName);
       });
+      this.inherited = undefined;
       await this.retireSecrets();
       return this.status();
     });
@@ -226,6 +306,7 @@ export class CloudSettingsService {
   }
   async close() {
     this.closed = true;
+    this.inherited = undefined;
     await this.writes;
     await this.retireSecrets();
   }

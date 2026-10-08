@@ -6,13 +6,16 @@ import { copilotModelClient } from "../agent/copilot-model.js";
 import type { NativeBridge } from "../native.js";
 import { AuxError, type RpcChannel } from "@aux/contracts";
 import {
-  PrivateProviderRequestSchema,
+  PrivateRuntimeRequestSchema,
+  PrivateRuntimeResultSchema,
   PrivateProviderResultSchema,
   type PrivateProviderDescriptor,
   type PrivateProviderRequest,
   type PrivateProviderResult,
 } from "@aux/contracts/private-provider";
 import { z } from "zod";
+import type { PrivateCloudRequest, PrivateCloudResult } from "@aux/contracts/private-cloud";
+import type { PrivateBudgetRequest, PrivateBudgetResult } from "@aux/contracts/private-budget";
 import type { ModelClient, ModelCallSource } from "../agent/model-client.js";
 import { directModelClient } from "../agent/direct-providers.js";
 import { GatewayModelClient } from "../agent/gateway-client.js";
@@ -27,6 +30,11 @@ export function registerPrivateProviderBroker(
     revision(): string;
     subscribe(changed: () => void): () => void;
     request(request: PrivateProviderRequest): Promise<PrivateProviderResult>;
+    cloudRequest?(request: PrivateCloudRequest): Promise<PrivateCloudResult>;
+    budgetRequest?(
+      sessionId: string,
+      request: PrivateBudgetRequest,
+    ): PrivateBudgetResult | Promise<PrivateBudgetResult>;
   },
 ) {
   let closed = false,
@@ -38,11 +46,34 @@ export function registerPrivateProviderBroker(
     revision = next;
     channel.notify("privateProviderChanged", {});
   });
-  const params = z.object({ sessionId: z.string().uuid(), request: PrivateProviderRequestSchema }).strict();
+  const params = z.object({ sessionId: z.string().uuid(), request: PrivateRuntimeRequestSchema }).strict();
   channel.onMethod("provider.private", async (raw) => {
     const input = params.parse(raw);
     if (closed || !deps.current()) throw new AuxError("cancelled", "Original credential owner retired.");
-    const result = PrivateProviderResultSchema.parse(await deps.request(input.request));
+    const result = PrivateRuntimeResultSchema.parse(
+      input.request.operation === "budget"
+        ? {
+            operation: "budget",
+            budget: await (() => {
+              if (!deps.budgetRequest)
+                throw new AuxError("capability_unsupported", "Original account accounting is unavailable.");
+              return deps.budgetRequest(input.sessionId, input.request.budget);
+            })(),
+          }
+        : input.request.operation === "cloud"
+          ? {
+              operation: "cloud",
+              cloud: await (() => {
+                if (!deps.cloudRequest)
+                  throw new AuxError(
+                    "capability_unsupported",
+                    "Original Sandbox configuration is unavailable.",
+                  );
+                return deps.cloudRequest(input.request.cloud);
+              })(),
+            }
+          : await deps.request(input.request),
+    );
     if (closed || !deps.current()) throw new AuxError("cancelled", "Original credential owner retired.");
     return result;
   });
