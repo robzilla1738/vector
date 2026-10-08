@@ -3331,6 +3331,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           })(),
           serviceContainer.peek("copilot")?.then((services) => services.close()),
           serviceContainer.peek("externalSessions")?.dispose(),
+          serviceContainer.peek("routines")?.close(),
           (async () => {
             const failures: unknown[] = [];
             try {
