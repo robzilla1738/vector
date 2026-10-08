@@ -166,10 +166,10 @@ index 9f455a3..42f1d44 100644
    }
    if (method == "agentConfig" || method == "agentConnections" ||
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
-index 6dcddc0..9d531ec 100644
+index 1ee4973..a9421b7 100644
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
-@@ -94,6 +94,7 @@
+@@ -95,6 +95,7 @@
  #include "content/public/browser/navigation_controller.h"
  #include "content/public/browser/render_frame_host.h"
  #include "content/public/browser/web_contents.h"
@@ -177,7 +177,7 @@ index 6dcddc0..9d531ec 100644
  #include "content/public/common/stop_find_action.h"
  #include "content/public/common/url_constants.h"
  #include "ui/base/base_window.h"
-@@ -144,6 +145,52 @@ bool IsOwnerOnlyDirectory(const base::FilePath& path) {
+@@ -145,6 +146,52 @@ bool IsOwnerOnlyDirectory(const base::FilePath& path) {
  
  }  // namespace
  
@@ -230,7 +230,7 @@ index 6dcddc0..9d531ec 100644
  AuxRuntimeHost* AuxRuntimeHost::ForProfile(Profile* profile) {
    if (!profile || profile->IsGuestSession()) {
      return nullptr;
-@@ -373,26 +420,145 @@ bool AuxRuntimeHost::RemoteDebuggingOwnerCurrent(const std::string& token,
+@@ -374,26 +421,145 @@ bool AuxRuntimeHost::RemoteDebuggingOwnerCurrent(const std::string& token,
    return found != turn_contexts_.end() && found->second.generation == connection &&
        TurnContextCurrent(found->second);
  }
@@ -391,7 +391,7 @@ index 6dcddc0..9d531ec 100644
  void AuxRuntimeHost::CallApi(std::string method,
                               std::string params_json,
                               ResponseCallback callback, std::string turn_context) {
-@@ -1556,6 +1722,21 @@ void AuxRuntimeHost::RetireStageLeases() {
+@@ -1557,6 +1723,21 @@ void AuxRuntimeHost::RetireStageLeases() {
    }
  }
  
@@ -413,7 +413,7 @@ index 6dcddc0..9d531ec 100644
  void AuxRuntimeHost::RetireEvidenceReads(uint64_t generation) {
    std::vector<EvidenceReadOwner> retired;
    for (auto it = evidence_read_owners_.begin();
-@@ -1598,6 +1779,7 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+@@ -1599,6 +1780,7 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
      return;
    retired_native_generation_ = std::max(retired_native_generation_, generation);
    const auto evidence_retirement_weak = weak_factory_.GetWeakPtr();
@@ -421,7 +421,7 @@ index 6dcddc0..9d531ec 100644
    RetireEvidenceReads(generation);
    if (!evidence_retirement_weak) {
      return;
-@@ -3348,6 +3530,14 @@ void AuxRuntimeHost::Worker::CallInternal(
+@@ -3350,6 +3532,14 @@ void AuxRuntimeHost::Worker::CallInternal(
    CallRequest(std::move(method), std::move(params_json), false, {}, std::move(callback));
  }
  
@@ -436,7 +436,7 @@ index 6dcddc0..9d531ec 100644
  void AuxRuntimeHost::Worker::CallRequest(
      std::string method, std::string params_json, bool desktop_api,
      std::string person_resume, ResponseCallback callback, std::string turn_context) {
-@@ -3357,8 +3547,13 @@ void AuxRuntimeHost::Worker::CallRequest(
+@@ -3359,8 +3549,13 @@ void AuxRuntimeHost::Worker::CallRequest(
         method == "installation.stageRestore");
    const bool document_import =
        desktop_api && (method == "conversations.attachments.import" ||

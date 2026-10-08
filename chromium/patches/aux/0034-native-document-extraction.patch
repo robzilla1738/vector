@@ -614,10 +614,18 @@ index 3c513b1..9f455a3 100644
      }
      return;
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
-index 10a4a6e..6dcddc0 100644
+index 10a4a6e..1ee4973 100644
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
-@@ -1248,6 +1248,85 @@ void AuxRuntimeHost::HandlePrivateProviderCall(const base::DictValue& params, ui
+@@ -80,6 +80,7 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
+ #include "chrome/common/webui_url_constants.h"
+ #include "components/device_reauth/device_authenticator.h"
+@@ -1248,6 +1249,85 @@ void AuxRuntimeHost::HandlePrivateProviderCall(const base::DictValue& params, ui
        }, weak_factory_.GetWeakPtr(), original->GetWeakPtr(), generation, std::move(callback)));
  }
  
@@ -703,7 +711,7 @@ index 10a4a6e..6dcddc0 100644
  void AuxRuntimeHost::HandleNativeCloudPreviewCall(
      const std::string& method, const base::DictValue& params, uint64_t generation,
      base::OnceCallback<void(base::DictValue)> callback) {
-@@ -1477,10 +1556,52 @@ void AuxRuntimeHost::RetireStageLeases() {
+@@ -1477,10 +1557,52 @@ void AuxRuntimeHost::RetireStageLeases() {
    }
  }
  
@@ -756,7 +764,7 @@ index 10a4a6e..6dcddc0 100644
    if (admitted_native_generation_ != generation)
      return;
    admitted_native_generation_ = 0;
-@@ -2379,6 +2500,10 @@ bool AuxRuntimeHost::Worker::Disconnect() {
+@@ -2379,6 +2501,10 @@ bool AuxRuntimeHost::Worker::Disconnect() {
    socket_watcher_.reset();
    request_deadline_timer_.Stop();
    weak_factory_.InvalidateWeakPtrs();
@@ -767,7 +775,7 @@ index 10a4a6e..6dcddc0 100644
    if (connection_fd_ >= 0 && connection_generation_)
      ui_runner_->PostTask(FROM_HERE, base::BindOnce(
          &AuxRuntimeHost::NativeConnectionRetired, owner_, connection_generation_));
-@@ -2780,6 +2905,63 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+@@ -2780,6 +2906,64 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
    return std::move(state->reply);
  }
  
@@ -822,7 +830,8 @@ index 10a4a6e..6dcddc0 100644
 +  }
 +  cancelled->store(true);
 +  evidence_requests_.erase(current);
-+  reply.Set("kind", "res").Set("id", id);
++  reply.Set("kind", "res");
++  reply.Set("id", id);
 +  const auto encoded = base::WriteJson(reply);
 +  if (!encoded || !SendFrame(*encoded)) {
 +    Disconnect();
@@ -831,7 +840,7 @@ index 10a4a6e..6dcddc0 100644
  
  bool AuxRuntimeHost::Worker::HandleNativeRequest(
      const base::DictValue& data) {
-@@ -2806,6 +2988,26 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
+@@ -2806,6 +2990,26 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
          base::DictValue()
              .Set("code", "forbidden")
              .Set("message", "This native service requires a regular Profile"));
@@ -858,7 +867,7 @@ index 10a4a6e..6dcddc0 100644
    } else if (native_method && native_params &&
               *native_method == "native.storeSecret") {
      const std::string* name = native_params->FindString("name");
-@@ -3153,6 +3355,9 @@ void AuxRuntimeHost::Worker::CallRequest(
+@@ -3153,6 +3357,9 @@ void AuxRuntimeHost::Worker::CallRequest(
    const bool backup_request = desktop_api &&
        (method == "installation.createBackup" ||
         method == "installation.stageRestore");
@@ -868,7 +877,7 @@ index 10a4a6e..6dcddc0 100644
    if (pending_requests_.size() >= 256) {
      std::move(callback).Run({false, "", "backend_unavailable", "Too many pending runtime requests"});
      return;
-@@ -3200,10 +3405,14 @@ void AuxRuntimeHost::Worker::CallRequest(
+@@ -3200,10 +3407,14 @@ void AuxRuntimeHost::Worker::CallRequest(
    }
    // Return to the worker loop. CDP events and other responses must continue
    // flowing while an API call waits for runtime initialization or browser work.
