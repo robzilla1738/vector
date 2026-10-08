@@ -1,0 +1,32 @@
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
+index 2c69e2f..faf5c85 100644
+--- a/chrome/browser/ui/aux/tab_catalog.cc
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -396,15 +396,19 @@ base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
+     tab.Set("spaceId", identity->space_id());
+     tab.Set("workspaceId", identity->workspace_id());
+   }
+-  if (!contents->GetPrimaryMainFrame()->IsRenderFrameLive() &&
+-      contents->GetController().GetEntryCount() > 0) {
++  const auto* lifecycle =
++      resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents);
++  if (lifecycle &&
++      lifecycle->GetTabState() == mojom::LifecycleUnitState::DISCARDED) {
++    tab.Set("lifecycle", "discarded");
++  } else if (lifecycle &&
++             lifecycle->GetTabState() == mojom::LifecycleUnitState::FROZEN) {
++    tab.Set("lifecycle", "frozen");
++  } else if (!contents->GetPrimaryMainFrame()->IsRenderFrameLive() &&
++             contents->GetController().GetEntryCount() > 0) {
+     tab.Set("lifecycle", "placeholder");
+-  } else if (auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents)) {
+-    switch (lifecycle->GetTabState()) {
+-      case mojom::LifecycleUnitState::FROZEN: tab.Set("lifecycle", "frozen"); break;
+-      case mojom::LifecycleUnitState::DISCARDED: tab.Set("lifecycle", "discarded"); break;
+-      default: tab.Set("lifecycle", "live"); break;
+-    }
++  } else {
++    tab.Set("lifecycle", "live");
+   }
+   tab.Set("generation", generations_[id]);
+   tab.Set("createdAt", static_cast<double>(created_at_.at(id)));

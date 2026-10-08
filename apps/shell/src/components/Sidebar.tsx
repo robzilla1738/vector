@@ -66,6 +66,7 @@ import { TabMenu } from "./TabMenu";
 import { TabAudioButton } from "./TabAudioButton";
 import {
   shellIconAgent,
+  shellIconPause,
   shellIconAgentSm,
   shellIconAlert,
   shellIconBookmark,
@@ -240,6 +241,12 @@ const TabRow = memo(function TabRow({
   const crashed = p.viewStatus === "crashed";
   const sleeping =
     !crashed && (p.lifecycle === "frozen" || p.lifecycle === "discarded" || p.lifecycle === "placeholder");
+  const sleepHint = sleeping
+    ? p.lifecycle === "frozen"
+      ? "Sleeping. Resumes when opened."
+      : "Sleeping. Reloads when opened."
+    : undefined;
+  const description = [sleepHint, windowHint].filter(Boolean).join(" ") || undefined;
   const title = useStore((state) => tabLabel(state.layout, p));
   return (
     <>
@@ -256,7 +263,7 @@ const TabRow = memo(function TabRow({
         className={`tab-row ${active ? "active" : ""} ${selected ? "multi-selected" : ""} ${crashed ? "crashed" : ""} ${sleeping ? "sleeping" : ""} ${dragging ? "dragging" : ""} ${dropBefore ? "drop-before" : ""} ${dropAfter ? "drop-after" : ""}`}
         role="tab"
         title={windowHint}
-        aria-description={windowHint ?? (sleeping ? "Sleeping. Reloads when opened." : undefined)}
+        aria-description={description}
         aria-selected={selecting ? selected : active}
         tabIndex={focusable ? 0 : -1}
         data-index={index}
@@ -307,6 +314,10 @@ const TabRow = memo(function TabRow({
         <span className="tab-fav">
           {crashed ? (
             shellIconAlert
+          ) : sleeping ? (
+            <span role="img" aria-label="Sleeping tab" title={sleepHint}>
+              {shellIconPause}
+            </span>
           ) : p.loading ? (
             <span className="spin" />
           ) : (
@@ -1150,11 +1161,9 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
           <SidebarBookmarks />
         </SidebarSection>
       )}
-      {!bridge.privateMode && (
-        <SidebarSection title="Chats" open={sections.chats} onToggle={() => toggleSection("chats")}>
-          <SidebarChatSection />
-        </SidebarSection>
-      )}
+      <SidebarSection title="Chats" open={sections.chats} onToggle={() => toggleSection("chats")}>
+        <SidebarChatSection />
+      </SidebarSection>
       <SidebarSection title="Tabs" open={sections.tabs} onToggle={() => toggleSection("tabs")} fill>
         <div className="sb-tabs" ref={listRef} onKeyDown={onListKey}>
           <div
@@ -1283,6 +1292,16 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
         {bridge.privateMode ? (
           <>
             <span className="private-sidebar-label">Private</span>
+            <button
+              className={`icon-btn ${railOpenNow ? "on" : ""}`}
+              title={withShortcut("Agent", key("agent-rail"))}
+              aria-label="Toggle agent rail"
+              aria-pressed={railOpenNow}
+              data-command-id="agent-rail"
+              onClick={() => runCommand("agent-rail")}
+            >
+              {shellIconAgent}
+            </button>
             <button
               data-command-id="overview"
               onClick={() => runCommand("overview")}

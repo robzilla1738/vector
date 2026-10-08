@@ -60,6 +60,14 @@ const HorizontalTabControls = memo(function HorizontalTabControls({
   if (!page) return null;
   const title = useStore((state) => tabLabel(state.layout, page));
   const windowHint = windowTabHint(page);
+  const sleeping =
+    page.viewStatus !== "crashed" && ["discarded", "frozen", "placeholder"].includes(page.lifecycle ?? "");
+  const sleepHint = sleeping
+    ? page.lifecycle === "frozen"
+      ? "Sleeping. Resumes when opened."
+      : "Sleeping. Reloads when opened."
+    : undefined;
+  const description = [sleepHint, windowHint].filter(Boolean).join(" ") || undefined;
   return (
     <>
       <button
@@ -69,14 +77,9 @@ const HorizontalTabControls = memo(function HorizontalTabControls({
         tabIndex={focusable ? 0 : -1}
         data-active={active}
         aria-selected={selecting ? selected : active}
-        aria-label={page.loading ? `Loading ${title}`.trim() : undefined}
+        aria-label={page.loading && !sleeping ? `Loading ${title}`.trim() : undefined}
         title={windowHint}
-        aria-description={
-          windowHint ??
-          (page.lifecycle === "discarded" || page.lifecycle === "frozen" || page.lifecycle === "placeholder"
-            ? "Sleeping. Reloads when opened."
-            : undefined)
-        }
+        aria-description={description}
         onClick={(event) => {
           if (!onSelect(pageId, event)) void useStore.getState().activate(pageId).catch(errToast);
         }}
@@ -112,19 +115,12 @@ const HorizontalTabControls = memo(function HorizontalTabControls({
       >
         {page.viewStatus === "crashed" ? (
           shellIconAlert
-        ) : page.loading ? (
-          <output className="spin" aria-label="Loading" />
-        ) : page.lifecycle === "discarded" ||
-          page.lifecycle === "frozen" ||
-          page.lifecycle === "placeholder" ? (
-          <span
-            className="horizontal-sleep-icon"
-            role="img"
-            aria-label="Sleeping tab"
-            title="Sleeping until opened"
-          >
+        ) : sleeping ? (
+          <span className="horizontal-sleep-icon" role="img" aria-label="Sleeping tab" title={sleepHint}>
             {shellIconPause}
           </span>
+        ) : page.loading ? (
+          <output className="spin" aria-label="Loading" />
         ) : isHomeAddress(page.url) ? (
           <span className="horizontal-empty-icon">
             <AuxMark />

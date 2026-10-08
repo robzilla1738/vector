@@ -144,6 +144,34 @@ export class NativeViewSync {
         /* one malformed op must not drop the rest of the batch */
       }
     }
+    const windows = new Set(
+      patch.ops.flatMap((op) =>
+        op.op === "window" ? [op.window.windowId] : op.op === "upsert" ? [op.tab.windowId] : [],
+      ),
+    );
+    for (const page of this.pages.live.values()) {
+      const target = page.target;
+      const windowId = target.windowId ?? "main";
+      if (
+        target.backend !== "aux" ||
+        target.ownedByRuntime ||
+        target.agentIsolation ||
+        target.viewStatus === "crashed" ||
+        !windows.has(windowId)
+      )
+        continue;
+      const activeId = this.pages.activeByWindow.get(windowId);
+      const active = activeId ? this.pages.live.get(activeId)?.target : undefined;
+      const sleeping = ["discarded", "frozen", "placeholder"].includes(target.lifecycle ?? "");
+      const visible =
+        !sleeping &&
+        (activeId === target.pageId || !!(target.split && active?.split?.id === target.split.id));
+      const viewStatus = visible ? "visible" : "hidden";
+      if (target.viewStatus === viewStatus) continue;
+      target.viewStatus = viewStatus;
+      this.pages.persist(page);
+      this.pages.deps.events.emit(EventTypes.PageUpdated, { pageId: target.pageId, viewStatus });
+    }
   }
 
   private syncMemoryAdmission(pageId: string, windowKind: PageTarget["windowKind"], workspaceId?: string) {
@@ -197,9 +225,13 @@ export class NativeViewSync {
           if (lp.target.lifecycle !== tab.lifecycle) {
             lp.target.lifecycle = tab.lifecycle;
             this.pages.persist(lp);
+            this.pages.deps.events.emit(EventTypes.PageUpdated, {
+              pageId: tab.pageId,
+              lifecycle: tab.lifecycle,
+            });
           }
-          // The catalog owns window placement; the driver and view.* events
-          // own the per-page fields the runtime reports.
+          // Native catalog facts own placement, lifecycle and ordinary tab visibility.
+          // Runtime task controllers and isolated surfaces keep their own state.
           if ((lp.target.windowId ?? "main") !== tab.windowId) {
             lp.target.windowId = tab.windowId;
             this.pages.persist(lp);

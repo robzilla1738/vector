@@ -256,3 +256,48 @@ it("keeps native activation order through full and partial runtime metadata over
   expect(useStore.getState().pages.byId.two?.lastActiveAt).toBe(20);
   expect(useStore.getState().activePageId).toBe("one");
 });
+
+it("keeps native sleep and wake authoritative across delayed runtime page updates", () => {
+  setup();
+  useStore.setState((state) => ({
+    pages: normalizePages(
+      orderedPages(state.pages).map((page) => ({
+        ...page,
+        backend: "aux",
+        ownedByRuntime: false,
+        controller: "human",
+        lifecycle: "live",
+      })),
+    ),
+  }));
+  useStore
+    .getState()
+    .applyTabsPatch(patch(4, 3, [{ op: "upsert", tab: record("one", { lifecycle: "discarded" }) }]));
+  const state = useStore.getState();
+  useStore.setState(
+    reducePageEvent(state, {
+      type: "page.updated",
+      payload: { pageId: "one", lifecycle: "live", viewStatus: "detached" },
+    } as never)!,
+  );
+  expect(useStore.getState().pages.byId.one).toMatchObject({
+    lifecycle: "discarded",
+    controller: "human",
+    viewStatus: "visible",
+  });
+  useStore
+    .getState()
+    .applyTabsPatch(patch(5, 4, [{ op: "upsert", tab: record("one", { lifecycle: "live" }) }]));
+  const awake = useStore.getState();
+  useStore.setState(
+    reducePageEvent(awake, {
+      type: "page.updated",
+      payload: { page: { ...awake.pages.byId.one, lifecycle: "placeholder", viewStatus: "detached" } },
+    } as never)!,
+  );
+  expect(useStore.getState().pages.byId.one).toMatchObject({
+    lifecycle: "live",
+    controller: "human",
+    viewStatus: "visible",
+  });
+});

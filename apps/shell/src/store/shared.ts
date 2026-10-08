@@ -131,8 +131,14 @@ export const mergedTab = (page: PageTarget, tab: TabRecord): PageTarget => ({
   canGoForward: tab.canGoForward,
   navigationError: tab.navigationError ?? null,
   lastActiveAt: tab.lastActiveAt,
-  viewStatus: tab.crashed ? "crashed" : page.viewStatus === "crashed" ? "hidden" : page.viewStatus,
-  lifecycle: lifecycleForStrip(page.lifecycle, tab.lifecycle, page.viewStatus),
+  viewStatus: tab.crashed
+    ? "crashed"
+    : page.viewStatus === "crashed" || (!tab.runtimeOwned && page.viewStatus === "detached")
+      ? "hidden"
+      : page.viewStatus,
+  lifecycle: tab.runtimeOwned
+    ? lifecycleForStrip(page.lifecycle, tab.lifecycle, page.viewStatus)
+    : (tab.lifecycle ?? page.lifecycle),
 });
 
 /** Push the window's strip order to the catalog — the window op echo converges the rest. */

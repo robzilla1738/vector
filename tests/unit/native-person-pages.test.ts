@@ -322,3 +322,85 @@ it("refuses persisted context after its original live native row disappears", as
   f.pages.live.delete(f.pageId);
   await expect(f.pages.prepareReadPage(f.pageId)).rejects.toMatchObject({ code: "target_detached" });
 });
+
+it("publishes native discard and wake while ordinary visibility follows window and split selection", async () => {
+  const f = fixture();
+  const activation = new ActivationPolicy(f.pages);
+  const sync = new NativeViewSync(f.pages, new PageOpener(f.pages, activation), activation);
+  const secondId = randomUUID();
+  const second = f.pages.addLive({ ...f.original.target, pageId: secondId, viewStatus: "hidden" }, null);
+  const task = f.pages.addLive(
+    {
+      ...f.original.target,
+      pageId: randomUUID(),
+      ownedByRuntime: true,
+      controller: "agent",
+      viewStatus: "background",
+    },
+    null,
+  );
+  const updates: Record<string, unknown>[] = [];
+  const stop = f.pages.deps.events.subscribe((event) => {
+    if (event.type === "page.updated") updates.push(event.payload);
+  });
+  const tab = (pageId: string, lifecycle: "live" | "discarded", split?: PageTarget["split"]) => ({
+    pageId,
+    windowId: "main",
+    url: f.original.target.url,
+    title: "Plan",
+    loading: false,
+    muted: false,
+    audible: false,
+    canGoBack: false,
+    canGoForward: false,
+    popup: false,
+    crashed: false,
+    runtimeOwned: false,
+    generation: 0,
+    createdAt: 1,
+    lastActiveAt: 1,
+    lifecycle,
+    split,
+  });
+  f.pages.activeByWindow.set("main", f.pageId);
+  await sync.syncCatalog({
+    version: 1,
+    baseVersion: 0,
+    ts: 1,
+    ops: [
+      { op: "window", window: { windowId: "main", order: [f.pageId, secondId], activePageId: secondId } },
+      { op: "upsert", tab: tab(f.pageId, "discarded") },
+      { op: "upsert", tab: tab(secondId, "live") },
+    ],
+  });
+  expect(f.original.target).toMatchObject({
+    lifecycle: "discarded",
+    viewStatus: "hidden",
+    controller: "human",
+  });
+  expect(second.target.viewStatus).toBe("visible");
+  expect(task.target).toMatchObject({ controller: "agent", viewStatus: "background" });
+  expect(updates).toContainEqual({ pageId: f.pageId, lifecycle: "discarded" });
+  await sync.syncCatalog({
+    version: 2,
+    baseVersion: 1,
+    ts: 2,
+    ops: [
+      { op: "window", window: { windowId: "main", order: [f.pageId, secondId], activePageId: f.pageId } },
+      { op: "upsert", tab: tab(f.pageId, "live") },
+    ],
+  });
+  expect(f.original.target).toMatchObject({ lifecycle: "live", viewStatus: "visible" });
+  expect(second.target.viewStatus).toBe("hidden");
+  await sync.syncCatalog({
+    version: 3,
+    baseVersion: 2,
+    ts: 3,
+    ops: [
+      { op: "upsert", tab: tab(f.pageId, "live", { id: "split", index: 0 }) },
+      { op: "upsert", tab: tab(secondId, "live", { id: "split", index: 1 }) },
+    ],
+  });
+  expect(second.target.viewStatus).toBe("visible");
+  stop();
+});

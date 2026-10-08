@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Sidebar } from "./components/Sidebar";
 import { bridge } from "./bridge";
 import { useStore } from "./store";
+import { makePage } from "./mock/fixtures";
 import * as commands from "./commands";
 import { registerScopedControl } from "./scoped-control-commands";
 const persisted = vi.hoisted(() => {
@@ -169,12 +170,13 @@ it("section shortcuts refuse foreign focus, ambiguous original owners and hidden
   expect(useStore.getState().sidebarSections).toBe(snapshot);
   control.hidden = false;
 });
-it("Private supports actual Tabs disclosure and Space chooser without mounting Bookmarks or Chats", async () => {
+it("Private exposes session Chats and Agent beside native browsing controls, without Bookmarks", async () => {
   bridge.privateMode = true;
   bridge.windowKind = "private";
   await mount();
   expect(host.querySelector('section[aria-label="Bookmarks"]')).toBeNull();
-  expect(host.querySelector('section[aria-label="Chats"]')).toBeNull();
+  expect(host.querySelector('section[aria-label="Chats"]')).not.toBeNull();
+  expect(host.querySelector('[aria-label="Toggle agent rail"]')).not.toBeNull();
   const tabs = heading("Tabs"),
     before = useStore.getState().sidebarSections.tabs;
   await act(async () => tabs.click());
@@ -341,4 +343,29 @@ it("pins dropped tabs once, keeps bookmarks separate, and ignores the retired so
   await act(async () => drop());
   expect(useStore.getState().layout.pins[spaceId]).toHaveLength(1);
   expect(host.querySelectorAll('[role="tab"]')).toHaveLength(2);
+});
+
+it("announces a native sleeping tab even when an older loading flag remains", async () => {
+  const page = makePage(1, {
+    windowId: bridge.windowId,
+    lifecycle: "discarded",
+    loading: true,
+    viewStatus: "hidden",
+    ownedByRuntime: false,
+  });
+  const layout = useStore.getState().layout;
+  useStore.setState({
+    pages: normalizePages([page]),
+    layout: {
+      ...layout,
+      order: [page.pageId],
+      folders: [],
+      tabSpace: { [page.pageId]: layout.activeSpaceId },
+    },
+  });
+  await mount();
+  const tab = host.querySelector<HTMLElement>('[role="tab"]')!;
+  expect(tab.getAttribute("aria-description")).toContain("Sleeping. Reloads when opened.");
+  expect(tab.querySelector('[role="img"][aria-label="Sleeping tab"]')).not.toBeNull();
+  expect(tab.querySelector(".spin")).toBeNull();
 });

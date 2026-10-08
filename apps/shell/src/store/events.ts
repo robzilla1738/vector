@@ -229,6 +229,11 @@ export const reducePageEvent: Reducer = (state, e) => {
           delete fields.anchor;
           delete fields.split;
           delete fields.lastActiveAt;
+          const native = state.pages.byId[pageId]!;
+          if (!native.ownedByRuntime && native.backend === "aux" && native.lifecycle !== undefined) {
+            delete fields.lifecycle;
+            if (fields.viewStatus === "detached") delete fields.viewStatus;
+          }
         }
         if (Object.keys(fields).length) next = { ...next, ...patchPage(next, pageId, fields) };
       }
