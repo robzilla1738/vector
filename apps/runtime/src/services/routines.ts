@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { setImmediate } from "node:timers/promises";
+import { setImmediate, setTimeout } from "node:timers/promises";
 import type { z } from "zod";
 import {
   AuxError,
@@ -29,6 +29,7 @@ export { nextScheduledTime, previousScheduledTime } from "./routines/recurrence.
 export class RoutineService {
   /** Only records present when this service starts can be abandoned dispatches. */
   private readonly orphanedDispatches: Set<string>;
+  private readonly unsubscribe: () => void;
   constructor(
     private repo: Repo,
     private events: EventBus,
@@ -54,7 +55,7 @@ export class RoutineService {
           .all() as { routine_run_id: string }[]
       ).map((row) => row.routine_run_id),
     );
-    this.events.subscribe((event) => {
+    this.unsubscribe = this.events.subscribe((event) => {
       if (event.type !== "task.updated") return;
       const task = event.payload.task;
       if (
@@ -689,6 +690,7 @@ export class RoutineService {
       triggerDocumentEpoch?: number;
     },
   ): Promise<RoutineRun> {
+    if (this.closed) throw new AuxError("cancelled", "Aux is closing. This Skill was not started.");
     this.sync();
     const routine = this.routine(input.routineId);
     if (routine.revision !== input.expectedRevision)
@@ -784,6 +786,7 @@ export class RoutineService {
     outcome: "applied" | "not_applied",
     note: string,
   ): Promise<RoutineRun> {
+    if (this.closed) throw new AuxError("cancelled", "Aux is closing. This Skill was not reviewed.");
     const reviewNote = note.trim();
     if (!reviewNote || reviewNote.length > 1000)
       throw new AuxError("invalid_params", "Add a review note up to 1,000 characters.");
@@ -828,6 +831,9 @@ export class RoutineService {
 
   private scheduler?: RoutineScheduler;
   private closed = false;
+  private closing?: Promise<void>;
+  private readonly pendingWork = new Set<Promise<unknown>>();
+  private readonly cancellation = new AbortController();
   due(now = Date.now()): Promise<RoutineRun[]> {
     if (this.closed) return Promise.resolve([]);
     return (this.scheduler ??= new RoutineScheduler({
@@ -846,9 +852,36 @@ export class RoutineService {
     })).due(now);
   }
 
-  async close(): Promise<void> {
+  close(): Promise<void> {
+    if (this.closing) return this.closing;
     this.closed = true;
-    await this.scheduler?.close();
+    this.unsubscribe();
+    this.cancellation.abort();
+    // Accepted launches still own their original receipts until startWork acknowledges them.
+    this.closing = Promise.allSettled([this.scheduler?.close(), ...this.pendingWork]).then((results) => {
+      const failures = results
+        .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+        .map((result) => result.reason);
+      if (failures.length) throw new AggregateError(failures, "Skill dispatch retirement failed.");
+    });
+    return this.closing;
+  }
+
+  private own<T>(operation: () => Promise<T>): Promise<T> {
+    // Register before invoking callbacks that can synchronously retire the service.
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (error: unknown) => void;
+    const pending = new Promise<T>((done, fail) => {
+      resolve = done;
+      reject = fail;
+    }).finally(() => this.pendingWork.delete(pending));
+    this.pendingWork.add(pending);
+    try {
+      resolve(operation());
+    } catch (error) {
+      reject(error);
+    }
+    return pending;
   }
 
   private async *scheduledRoutines(now: number, signal: AbortSignal): AsyncGenerator<Routine> {
@@ -887,6 +920,7 @@ export class RoutineService {
 
   /** Authoritative watch scope and document epoch before native text extraction. */
   pageChangeTarget(pageId: string, url: string): { documentEpoch: number } | null {
+    if (this.closed) return null;
     const page = this.repo.db
       .prepare("SELECT epoch FROM pages WHERE page_id=? AND url=? AND detached=0 AND owned=0")
       .get(pageId, url) as { epoch: number } | undefined;
@@ -911,7 +945,13 @@ export class RoutineService {
   }
 
   /** Trusted host observations only. Event bodies and page text are never stored here. */
-  async ingestEvent(raw: RoutineSourceEvent, now = Date.now()): Promise<RoutineRun[]> {
+  ingestEvent(raw: RoutineSourceEvent, now = Date.now()): Promise<RoutineRun[]> {
+    if (this.closed) return Promise.resolve([]);
+    return this.own(() => this.consumeEvent(raw, now));
+  }
+
+  private async consumeEvent(raw: RoutineSourceEvent, now: number): Promise<RoutineRun[]> {
+    if (this.closed) return [];
     const event = RoutineSourceEventSchema.parse(raw);
     if (event.observedAt > now + 30_000)
       throw new AuxError("invalid_params", "An automation event cannot be from the future.");
@@ -923,6 +963,7 @@ export class RoutineService {
       )
       .all(event.kind) as Parameters<typeof parseRoutine>[0][];
     for (const row of candidates) {
+      if (this.closed) break;
       const routine = parseRoutine(row);
       if (
         routine.paused ||
@@ -1132,7 +1173,22 @@ export class RoutineService {
     }
   }
 
-  private async dispatch(record: RoutineRun, routine: Routine): Promise<RoutineRun> {
+  private dispatch(record: RoutineRun, routine: Routine): Promise<RoutineRun> {
+    if (this.closed) {
+      const cancelled: RoutineRun = {
+        ...record,
+        status: "cancelled",
+        reason: "Aux closed before this Skill began.",
+        endedAt: Date.now(),
+      };
+      this.updateRun(cancelled);
+      this.events.emit("routine.updated", { routine, run: cancelled });
+      return Promise.resolve(cancelled);
+    }
+    return this.own(() => this.dispatchWork(record, routine));
+  }
+
+  private async dispatchWork(record: RoutineRun, routine: Routine): Promise<RoutineRun> {
     // Read-only monitor checks retry a transient dispatch once before failing.
     const attempts = ["monitor", "heartbeat"].includes(routine.trigger.kind) ? 2 : 1;
     let retried = false;
@@ -1236,10 +1292,16 @@ export class RoutineService {
         this.events.emit("routine.updated", { routine, run: next });
         return next;
       } catch (error) {
-        if (attempt < attempts && this.transient(error)) {
-          retried = true;
-          await new Promise((resolve) => setTimeout(resolve, 2_000));
-          continue;
+        if (attempt < attempts && !this.closed && this.transient(error)) {
+          try {
+            await setTimeout(2_000, undefined, { signal: this.cancellation.signal });
+          } catch (delayError) {
+            if (!(delayError instanceof Error) || delayError.name !== "AbortError") throw delayError;
+          }
+          if (!this.closed) {
+            retried = true;
+            continue;
+          }
         }
         const reason = `${error instanceof Error ? error.message : String(error)}${retried ? " — retried once" : ""}`;
         const next = { ...record, status: "failed" as const, reason, endedAt: Date.now() };
