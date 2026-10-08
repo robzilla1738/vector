@@ -1,0 +1,69 @@
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index ab806f6..82aeaf0 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -1989,6 +1989,7 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
+     *error = "Previous runtime transport cleanup is not acknowledged";
+     return false;
+   }
++  private_startup_phase_.clear();
+   if (!private_session_id_.empty() &&
+       (!private_data_directory_.CreateUniqueTempDirUnderPath(
+            base::FilePath("/tmp"), "aux-private-") ||
+@@ -2185,6 +2186,8 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
+   close(listener_fd_);
+   listener_fd_ = -1;
+   ++connection_generation_;
++  if (!private_session_id_.empty())
++    private_startup_phase_ = "connected";
+   // Same sequenced UI endpoint: admission precedes every posted native request.
+   ui_runner_->PostTask(FROM_HERE, base::BindOnce(
+       &AuxRuntimeHost::NativeConnectionPublished, owner_, connection_generation_));
+@@ -2230,10 +2233,14 @@ bool AuxRuntimeHost::Worker::Disconnect() {
+   read_buffer_.clear();
+   auto pending = std::move(pending_requests_);
+   pending_requests_.clear();
++  const std::string disconnected =
++      private_startup_phase_.empty()
++          ? "The runtime connection ended before this request was acknowledged"
++          : "Private AI disconnected after the " + private_startup_phase_ +
++                " startup stage.";
+   for (auto& [id, request] : pending) {
+-    std::move(request.callback).Run(
+-        {false, "", "operation_uncertain",
+-         "The runtime connection ended before this request was acknowledged"});
++    std::move(request.callback)
++        .Run({false, "", "operation_uncertain", disconnected});
+   }
+   return child_stopped && socket_removed && directory_removed &&
+          private_data_removed;
+@@ -2799,6 +2806,17 @@ void AuxRuntimeHost::Worker::SendNavigationError(std::string payload_json) {
+ void AuxRuntimeHost::Worker::ForwardNote(const base::DictValue& data) {
+   const std::string* type = data.FindString("type");
+   const base::Value* payload = data.Find("payload");
++  if (type && *type == "startupPhase") {
++    const auto* status = payload ? payload->GetIfDict() : nullptr;
++    const auto* phase = status ? status->FindString("phase") : nullptr;
++    if (!private_session_id_.empty() && data.size() == 3 && status &&
++        status->size() == 1 && phase &&
++        (*phase == "connected" || *phase == "proof" || *phase == "settings" ||
++         *phase == "services" || *phase == "ready")) {
++      private_startup_phase_ = *phase;
++    }
++    return;
++  }
+   if (!type || *type != "event" || !payload) {
+     return;
+   }
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 840e627..d5473f5 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -175,6 +175,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+     base::FilePath profile_path_;
+     std::string profile_id_;
+     std::string private_session_id_;
++    std::string private_startup_phase_;
+     base::ScopedTempDir private_data_directory_;
+     std::map<std::string, std::string> private_secrets_;
+     scoped_refptr<base::SequencedTaskRunner> ui_runner_;
