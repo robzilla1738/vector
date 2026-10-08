@@ -15,7 +15,7 @@ the warm first frame. These observations remain separate from the prepared fresh
 samples. Available runtime boot marks are retained as diagnostics; missing marks do not
 prove a runtime-startup target. Both source trees must have the same Chromium
 VERSION and the same critical resolved fast-build flags, with the Aux shell
-excluded from stock. Stock receives the same benign measurement instrumentation.
+excluded from stock. Stock retains the same v3 timing histograms and presentation triggers. Aux area 0100 adds only its original shell-process witness; it is not installed in stock, whose BrowserView supplies no shell WebContents. This difference is recorded in the report: the binaries are not byte-identical. The witness runs after the first presentation timestamp is captured and cannot improve Aux's reported timing.
 Source changes do not require an artificial clean-checkout qualification.
 
 Each timed run starts a new browser process with a clone of a prepared disposable

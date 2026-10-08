@@ -218,7 +218,8 @@ items explicit; do not shrink the objective to a finished subset.
   private/cloud/document slices have focused checks; the combined check waits
   for frozen shared interfaces. Evidence and exact limitations are in STATUS.
 - Area 0100 adds original shell/runtime role measurement; stock's additive patch
-  applied, but its missing object cache triggered a full rebuild, stopped normally
-  before the next Aux build. No valid paired performance report, native 20-task
+  was retired after its missing object cache requested a full rebuild, stopped
+  normally. Stock keeps the same v3 timing triggers; Aux-only role telemetry is
+  recorded as an instrumentation difference, with no stock role metrics. No valid paired performance report, native 20-task
   smoke, five workflow acceptance or final design comparison exists. No phase or
   competitor-parity claim is made.

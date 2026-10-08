@@ -56,7 +56,7 @@ if (process.argv.includes("--plan")) {
         },
         interactionsPerProcess: 20,
         controls:
-          "Same pinned Chromium VERSION and resolved fast flags; AC power; prepared disposable Profiles; 50,000 synthetic history entries; 10 idle fixture tabs; identical native instrumentation; no OS cache flush.",
+          "Same pinned Chromium VERSION and resolved fast flags; AC power; prepared disposable Profiles; 50,000 synthetic history entries; 10 idle fixture tabs; shared v3 presentation histograms; Aux-only process-role witness; no OS cache flush.",
         status: "Measures only after native instrumentation is compiled in both apps.",
       },
       null,
@@ -188,6 +188,8 @@ try {
       osCaches: "not flushed",
       buildProvenance:
         "declared source/output paths and actual bundle VERSION; not a reproducible-build attestation",
+      instrumentation:
+        "Shared v3 timing histograms and presentation triggers. Aux area 0100 adds an original-shell process witness; stock retains the preexisting timing instrumentation without that Aux-only patch. Instrumentation binaries are not byte-identical.",
       presentation: "native-confirmed conservative presentation bound",
       footprint:
         "sum of original process-tree kernel physical footprints; shared pages can be counted more than once",
