@@ -544,6 +544,7 @@ it("keeps missing-model Ask refusals in the command surface and searches after t
   nativeFlag.value = true;
   const fixture = nativeOmniboxFixture();
   useStore.setState({
+    connected: true,
     settings: { modelConfigured: false, commandRouting: "automatic" },
     overlay: null,
     toasts: [],
