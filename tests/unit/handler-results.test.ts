@@ -228,6 +228,40 @@ describe("handler results conform to ResultSchemas", () => {
     expect(repo.getSetting("searchEngine")).toEqual(before);
     expect(repo.getSetting("searchSuggestions")).toBeUndefined();
   });
+  it("reads private AI settings without requesting normal-only memory saver preferences", async () => {
+    let memorySaverReads = 0;
+    const chromium = makeInvoker({
+      ...fixtureServices,
+      featureHost: "chromium-fork",
+      nativeIdentity: Promise.resolve({
+        buildId: "private-fixture",
+        sourceCommit: "a".repeat(40),
+        methods: [],
+        privateSession: { id: "b830f4d9-629c-40e1-93a4-f9e981c8a8d3" },
+      }),
+      settings: {
+        ...fixtureServices.settings,
+        all: () => ({ ...fixtureServices.settings.all(), memorySaverMinutes: 30 }),
+      } as SettingsService,
+      native: {
+        ...fixtureServices.native!,
+        memorySaverGet: async () => {
+          memorySaverReads++;
+          throw new Error("Memory saver requires a regular profile");
+        },
+        searchEngineGet: async () => "https://search.example/?q=%s",
+        searchSuggestionsGet: async () => false,
+      },
+    });
+    const settings = ResultSchemas["settings.get"].parse(
+      await chromium("settings.get", {}, { external: false }),
+    );
+    expect(settings).toMatchObject({ plannerModel: "m", searchSuggestions: false });
+    expect(settings.memorySaverMinutes).toBeUndefined();
+    expect(settings.memorySaverManaged).toBeUndefined();
+    expect(memorySaverReads).toBe(0);
+    await chromium.dispose();
+  });
   it("routes Chromium bookmarks to BookmarkModel and waits for a fresh native history projection", async () => {
     const chromiumRepo = new Repo(openDb(":memory:"));
     chromiumRepo.requireChromiumHistory();

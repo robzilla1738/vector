@@ -14,14 +14,16 @@ async function h_settings_get(ctx: MethodCtx): Promise<unknown> {
   const searchSuggestions = await s.native?.searchSuggestionsGet?.();
   if (searchSuggestions === undefined)
     throw new AuxError("backend_unavailable", "Profile search suggestions are unavailable.");
-  const memorySaver = await s.native?.memorySaverGet?.();
-  if (!memorySaver) throw new AuxError("backend_unavailable", "Profile memory saver is unavailable.");
+  const privateSession = (await s.nativeIdentity)?.privateSession;
+  const memorySaver = privateSession ? undefined : await s.native?.memorySaverGet?.();
+  if (!privateSession && !memorySaver)
+    throw new AuxError("backend_unavailable", "Profile memory saver is unavailable.");
   return {
     ...settings,
     searchEngine,
     searchSuggestions,
-    memorySaverMinutes: memorySaver.minutes,
-    memorySaverManaged: memorySaver.managed,
+    memorySaverMinutes: memorySaver?.minutes,
+    memorySaverManaged: memorySaver?.managed,
   };
 }
 async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
