@@ -1,0 +1,2596 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 9c78880..f83a4c8 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -96,6 +96,8 @@ source_set("runtime") {
+     "credential_fill.cc",
+     "credential_fill.h",
+     "credential_fill_prompt_mac.mm",
++    "evidence_documents.cc",
++    "evidence_documents.h",
+     "egress_controller.cc",
+     "egress_controller.h",
+     "owner_mutation_fence.h",
+@@ -199,6 +201,7 @@ source_set("runtime") {
+   public_deps = [ ":semantic" ]
+   deps = [
+     "semantic:semantic_resources",
++    "//chrome/services/aux_document:types",
+     "//chrome/common:ini_parser",
+     "//chrome/common/importer:importer",
+     "//chrome/common/importer:aux_firefox_profile",
+diff --git a/chrome/browser/ui/aux/evidence_documents.cc b/chrome/browser/ui/aux/evidence_documents.cc
+new file mode 100644
+index 0000000..64ef267
+--- /dev/null
++++ b/chrome/browser/ui/aux/evidence_documents.cc
+@@ -0,0 +1,440 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/evidence_documents.h"
++
++#include <algorithm>
++#include <array>
++#include <set>
++#include <utility>
++
++#include "base/files/file.h"
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/thread_pool.h"
++#include "base/uuid.h"
++#include "build/build_config.h"
++#include "chrome/services/aux_document/public/document_limits.h"
++#include "chrome/services/aux_document/public/document_types.h"
++#include "content/public/browser/service_process_host.h"
++#include "crypto/hash.h"
++#if BUILDFLAG(IS_POSIX)
++#include <fcntl.h>
++#include <sys/stat.h>
++
++#include "base/posix/eintr_wrapper.h"
++#endif
++namespace aux {
++namespace {
++using document::mojom::Format;
++using document::mojom::Story;
++using document::mojom::WarningCode;
++std::string FormatName(Format format) {
++  constexpr std::array<std::string_view, 3> names = {"text", "pdf", "docx"};
++  return std::string(names[static_cast<size_t>(format)]);
++}
++std::string FailureName(document::mojom::Failure failure) {
++  constexpr std::array<std::string_view, 8> names = {
++      "invalid_document", "unsupported_format", "encrypted",
++      "no_text",          "invalid_document",   "source_limit",
++      "text_limit",       "structure_limit"};
++  return std::string(names[static_cast<size_t>(failure)]);
++}
++std::string WarningName(WarningCode code) {
++  constexpr std::array<std::string_view, 5> names = {
++      "no_selectable_text", "unmapped_text", "external_relationships_ignored",
++      "embedded_content_ignored", "unsupported_markup_ignored"};
++  return std::string(names[static_cast<size_t>(code)]);
++}
++std::string StoryName(Story story) {
++  constexpr std::array<std::string_view, 7> names = {
++      "", "body", "header", "footer", "footnote", "endnote", "comment"};
++  return std::string(names[static_cast<size_t>(story)]);
++}
++bool Sha256(const std::string& value) {
++  return value.size() == 64 &&
++         value.find_first_not_of("0123456789abcdef") == std::string::npos;
++}
++std::optional<base::DictValue> Locator(const document::mojom::Locator& locator,
++                                       const std::string& format,
++                                       uint32_t page_count) {
++  base::DictValue result;
++  if (locator.is_text()) {
++    const auto& value = *locator.get_text();
++    if (format != "text" || !value.line) {
++      return std::nullopt;
++    }
++    result.Set("kind", "text")
++        .Set("line", static_cast<double>(value.line))
++        .Set("offset", static_cast<double>(value.offset));
++    return result;
++  }
++  if (locator.is_pdf()) {
++    const auto& value = *locator.get_pdf();
++    if (format != "pdf" || !value.page || value.page > page_count ||
++        !value.block) {
++      return std::nullopt;
++    }
++    result.Set("kind", "pdf")
++        .Set("page", static_cast<double>(value.page))
++        .Set("block", static_cast<double>(value.block))
++        .Set("offset", static_cast<double>(value.offset));
++    return result;
++  }
++  const auto& value = *locator.get_docx();
++  if (format != "docx" || !document::IsStoryPart(value.part) ||
++      !value.paragraph || value.heading_level > 9 ||
++      (value.table == 0) != (value.row == 0) ||
++      (value.table == 0) != (value.column == 0)) {
++    return std::nullopt;
++  }
++  result.Set("kind", "docx")
++      .Set("part", value.part)
++      .Set("paragraph", static_cast<double>(value.paragraph))
++      .Set("offset", static_cast<double>(value.offset));
++  if (value.heading_level) {
++    result.Set("headingLevel", value.heading_level);
++  }
++  if (value.table) {
++    result.Set("table", static_cast<double>(value.table))
++        .Set("row", static_cast<double>(value.row))
++        .Set("column", static_cast<double>(value.column));
++  }
++  if (value.note_id) {
++    int64_t note;
++    if (!base::StringToInt64(*value.note_id, &note) ||
++        base::NumberToString(note) != *value.note_id) {
++      return std::nullopt;
++    }
++    result.Set("noteId", *value.note_id);
++  }
++  return result;
++}
++}  // namespace
++EvidenceDocumentSnapshot::EvidenceDocumentSnapshot(
++    content::WebContents* contents,
++    base::FilePath path,
++    base::RepeatingCallback<bool()> owner_current)
++    : content::WebContentsObserver(contents),
++      path_(std::move(path)),
++      filename_(base::UTF16ToUTF8(path_.BaseName().LossyDisplayName())),
++      snapshot_id_(base::Uuid::GenerateRandomV4().AsLowercaseString()),
++      owner_current_(std::move(owner_current)) {}
++EvidenceDocumentSnapshot::~EvidenceDocumentSnapshot() {
++  extractor_.reset();
++  if (pending_) {
++    std::move(pending_).Run(false, "", "ref_stale",
++                            "Original document selection retired");
++  }
++}
++void EvidenceDocumentSnapshot::PrimaryPageChanged(content::Page& page) {
++  Current();
++}
++void EvidenceDocumentSnapshot::PrimaryMainFrameRenderProcessGone(
++    base::TerminationStatus status) {
++  Fault("ref_stale", "Original document selection retired");
++}
++void EvidenceDocumentSnapshot::WebContentsDestroyed() {
++  Fault("ref_stale", "Original document selection retired");
++}
++EvidenceDocumentSnapshot::Capture EvidenceDocumentSnapshot::CaptureFile(
++    const base::FilePath& path) {
++  Capture capture;
++  capture.failure = "io_error";
++#if BUILDFLAG(IS_POSIX)
++  base::File file(HANDLE_EINTR(
++      open(path.value().c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK)));
++  struct stat status;
++  if (!file.IsValid() || fstat(file.GetPlatformFile(), &status) != 0 ||
++      !S_ISREG(status.st_mode)) {
++    return capture;
++  }
++#else
++  base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ);
++#endif
++  base::File::Info before, after;
++  if (!file.IsValid() || !file.GetInfo(&before) || before.is_directory ||
++      before.size < 0) {
++    return capture;
++  }
++  if (static_cast<uint64_t>(before.size) > document::kMaxSourceBytes) {
++    capture.failure = "source_limit";
++    return capture;
++  }
++  capture.size = before.size;
++  base::MappedReadOnlyRegion region;
++  if (capture.size) {
++    region = base::ReadOnlySharedMemoryRegion::Create(capture.size);
++    if (!region.IsValid() ||
++        !file.ReadAndCheck(0, region.mapping.GetMemoryAsSpan<uint8_t>())) {
++      return capture;
++    }
++  }
++  if (!file.GetInfo(&after) || before.size != after.size ||
++      before.last_modified != after.last_modified) {
++    return capture;
++  }
++  const auto bytes = capture.size
++                         ? region.mapping.GetMemoryAsSpan<const uint8_t>()
++                         : base::span<const uint8_t>();
++  capture.sha256 = base::HexEncodeLower(crypto::hash::Sha256(bytes));
++  if (capture.size) {
++    capture.bytes = std::move(region.region);
++  }
++  capture.failure.clear();
++  return capture;
++}
++bool EvidenceDocumentSnapshot::Current() {
++  if (!retired_ && owner_current_.Run()) {
++    return true;
++  }
++  Fault("ref_stale", "Original document selection retired");
++  return false;
++}
++void EvidenceDocumentSnapshot::Read(const std::optional<std::string>& cursor,
++                                    Callback callback) {
++  if (retired_ || !owner_current_.Run()) {
++    std::move(callback).Run(false, "", "ref_stale",
++                            "Original document selection retired");
++    return;
++  }
++  if (pending_) {
++    std::move(callback).Run(false, "", "conflict",
++                            "A document read is already in progress");
++    return;
++  }
++  uint32_t chunk = 0;
++  if (cursor) {
++    const auto found = std::find(cursors_.begin(), cursors_.end(), *cursor);
++    if (found == cursors_.end()) {
++      std::move(callback).Run(false, "", "ref_stale",
++                              "Original document cursor retired");
++      return;
++    }
++    chunk = found - cursors_.begin();
++  }
++  pending_chunk_ = chunk;
++  pending_ = std::move(callback);
++  if (!failure_.empty()) {
++    Unreadable(failure_);
++    return;
++  }
++  if (!cursors_.empty()) {
++    deadline_.Start(FROM_HERE, base::Seconds(60),
++                    base::BindOnce(&EvidenceDocumentSnapshot::Unreadable,
++                                   weak_factory_.GetWeakPtr(), "timeout"));
++    extractor_->ReadChunk(chunk,
++                          base::BindOnce(&EvidenceDocumentSnapshot::Received,
++                                         weak_factory_.GetWeakPtr()));
++    return;
++  }
++  if (started_) {
++    Fault("ref_stale", "Original document snapshot retired");
++    return;
++  }
++  started_ = true;
++  deadline_.Start(FROM_HERE, base::Seconds(60),
++                  base::BindOnce(&EvidenceDocumentSnapshot::Unreadable,
++                                 weak_factory_.GetWeakPtr(), "timeout"));
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce(&EvidenceDocumentSnapshot::CaptureFile, path_),
++      base::BindOnce(&EvidenceDocumentSnapshot::Captured,
++                     weak_factory_.GetWeakPtr()));
++}
++void EvidenceDocumentSnapshot::Captured(Capture capture) {
++  if (!Current()) {
++    return;
++  }
++  if (!capture.failure.empty()) {
++    Unreadable(std::move(capture.failure));
++    return;
++  }
++  metadata_.Set("snapshotId", snapshot_id_)
++      .Set("filename", filename_)
++      .Set("sourceSha256", capture.sha256)
++      .Set("sourceBytes", static_cast<double>(capture.size))
++      .Set("extractorVersion", "aux-document-v1");
++  extractor_ =
++      content::ServiceProcessHost::Launch<document::mojom::DocumentExtractor>(
++          content::ServiceProcessHost::Options()
++              .WithDisplayName("Aux document reader")
++              .Pass());
++  extractor_.set_disconnect_handler(
++      base::BindOnce(&EvidenceDocumentSnapshot::Unreadable,
++                     weak_factory_.GetWeakPtr(), "extractor_unavailable"));
++  extractor_->Start(std::move(capture.bytes), capture.size,
++                    base::BindOnce(&EvidenceDocumentSnapshot::Started,
++                                   weak_factory_.GetWeakPtr()));
++}
++void EvidenceDocumentSnapshot::Started(document::mojom::StartResultPtr result) {
++  if (!Current()) {
++    return;
++  }
++  if (result->is_failure()) {
++    Unreadable(FailureName(result->get_failure()));
++    return;
++  }
++  const auto& value = *result->get_metadata();
++  if (!value.chunk_count ||
++      value.chunk_count >
++          document::kMaxFramedBytes / (document::kMaxChunkBytes -
++                                       document::kMaxSegmentBytes - 256) +
++              1 ||
++      (value.format == Format::kPdf) != (value.page_count != 0) ||
++      !Sha256(value.completed->text_sha256) ||
++      value.completed->text_bytes > document::kMaxTextBytes ||
++      value.completed->segment_count > document::kMaxFramedBytes / 8 ||
++      value.warnings.size() > 35) {
++    Unreadable("invalid_document");
++    return;
++  }
++  base::ListValue warnings;
++  std::set<std::pair<WarningCode, Story>> groups;
++  for (const auto& warning : value.warnings) {
++    const bool pdf = warning->code == WarningCode::kNoSelectableText ||
++                     warning->code == WarningCode::kUnmappedText;
++    if (!warning->count ||
++        !groups.insert({warning->code, warning->story}).second ||
++        (pdf &&
++         (value.format != Format::kPdf || warning->story != Story::kNone ||
++          !warning->first_page || warning->first_page > value.page_count ||
++          !warning->first_part.empty())) ||
++        (!pdf && (value.format != Format::kDocx || warning->first_page)) ||
++        (warning->code == WarningCode::kNoSelectableText &&
++         warning->count >= value.page_count) ||
++        (!warning->first_part.empty() &&
++         (!document::IsStoryPart(warning->first_part) ||
++          document::PartStory(warning->first_part) != warning->story))) {
++      Unreadable("invalid_document");
++      return;
++    }
++    base::DictValue item;
++    item.Set("code", WarningName(warning->code))
++        .Set("count", static_cast<double>(warning->count));
++    if (warning->story != Story::kNone) {
++      item.Set("story", StoryName(warning->story));
++    }
++    if (warning->first_page) {
++      item.Set("firstPage", static_cast<double>(warning->first_page));
++    }
++    if (!warning->first_part.empty()) {
++      item.Set("firstPart", warning->first_part);
++    }
++    warnings.Append(std::move(item));
++  }
++  metadata_.Set("format", FormatName(value.format))
++      .Set("warnings", std::move(warnings));
++  if (value.page_count) {
++    metadata_.Set("pageCount", static_cast<double>(value.page_count));
++  }
++  completed_.Set("textSha256", value.completed->text_sha256)
++      .Set("textBytes", static_cast<double>(value.completed->text_bytes))
++      .Set("segmentCount", static_cast<double>(value.completed->segment_count));
++  cursors_.reserve(value.chunk_count);
++  for (uint32_t index = 0; index < value.chunk_count; ++index) {
++    cursors_.push_back(base::Uuid::GenerateRandomV4().AsLowercaseString());
++  }
++  extractor_->ReadChunk(0, base::BindOnce(&EvidenceDocumentSnapshot::Received,
++                                          weak_factory_.GetWeakPtr()));
++}
++void EvidenceDocumentSnapshot::Received(document::mojom::ChunkPtr chunk) {
++  if (!Current()) {
++    return;
++  }
++  if (!pending_ || chunk->index != pending_chunk_ ||
++      chunk->index >= cursors_.size() ||
++      chunk->final_chunk != (chunk->index + 1 == cursors_.size()) ||
++      chunk->segments.size() > document::kMaxChunkBytes / 8) {
++    Unreadable("invalid_document");
++    return;
++  }
++  const std::string& format = *metadata_.FindString("format");
++  const auto pages = metadata_.FindDouble("pageCount").value_or(0);
++  size_t bytes = 0;
++  base::ListValue segments;
++  for (const auto& segment : chunk->segments) {
++    if (segment->text.empty() ||
++        segment->text.size() > document::kMaxSegmentBytes ||
++        segment->text.find('\0') != std::string::npos) {
++      Unreadable("invalid_document");
++      return;
++    }
++    auto locator = Locator(*segment->locator, format, pages);
++    if (!locator) {
++      Unreadable("invalid_document");
++      return;
++    }
++    bytes += 8 + document::LocatorKey(*segment->locator).size() +
++             segment->text.size();
++    if (bytes > document::kMaxChunkBytes) {
++      Unreadable("invalid_document");
++      return;
++    }
++    segments.Append(base::DictValue()
++                        .Set("locator", std::move(*locator))
++                        .Set("text", segment->text));
++  }
++  if (segments.empty() &&
++      (format != "text" || chunk->index || !chunk->final_chunk ||
++       completed_.FindDouble("textBytes").value_or(-1) != 0 ||
++       completed_.FindDouble("segmentCount").value_or(-1) != 0)) {
++    Unreadable("invalid_document");
++    return;
++  }
++  base::DictValue result;
++  result.Set("kind", "chunk")
++      .Set("document", metadata_.Clone())
++      .Set("chunk", base::DictValue()
++                        .Set("index", static_cast<double>(chunk->index))
++                        .Set("segments", std::move(segments)));
++  if (chunk->final_chunk) {
++    result.Set("completed", completed_.Clone());
++  } else {
++    result.Set("nextCursor", cursors_[chunk->index + 1]);
++  }
++  deadline_.Stop();
++  Reply(std::move(result));
++}
++void EvidenceDocumentSnapshot::Unreadable(std::string reason) {
++  failure_ = std::move(reason);
++  deadline_.Stop();
++  weak_factory_.InvalidateWeakPtrs();
++  extractor_.reset();
++  cursors_.clear();
++  metadata_.clear();
++  completed_.clear();
++  if (pending_) {
++    Reply(base::DictValue()
++              .Set("kind", "unreadable")
++              .Set("filename", filename_)
++              .Set("reason", failure_));
++  }
++}
++void EvidenceDocumentSnapshot::Fault(const std::string& code,
++                                     const std::string& message) {
++  retired_ = true;
++  deadline_.Stop();
++  weak_factory_.InvalidateWeakPtrs();
++  extractor_.reset();
++  cursors_.clear();
++  metadata_.clear();
++  completed_.clear();
++  if (pending_) {
++    std::move(pending_).Run(false, "", code, message);
++  }
++}
++void EvidenceDocumentSnapshot::Reply(base::DictValue result) {
++  auto callback = std::move(pending_);
++  auto json = base::WriteJson(result);
++  if (!json) {
++    std::move(callback).Run(false, "", "io_error",
++                            "Document result could not be encoded");
++    return;
++  }
++  std::move(callback).Run(true, *json, "", "");
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/evidence_documents.h b/chrome/browser/ui/aux/evidence_documents.h
+new file mode 100644
+index 0000000..80817ae
+--- /dev/null
++++ b/chrome/browser/ui/aux/evidence_documents.h
+@@ -0,0 +1,69 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_EVIDENCE_DOCUMENTS_H_
++#define CHROME_BROWSER_UI_AUX_EVIDENCE_DOCUMENTS_H_
++#include <optional>
++#include <string>
++#include <vector>
++
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
++#include "base/memory/read_only_shared_memory_region.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "chrome/services/aux_document/public/mojom/document_extractor.mojom.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "mojo/public/cpp/bindings/remote.h"
++namespace aux {
++// A current selected file owns one immutable capture, never a reopen-on-retry.
++class EvidenceDocumentSnapshot : public content::WebContentsObserver {
++ public:
++  using Callback = base::OnceCallback<
++      void(bool, const std::string&, const std::string&, const std::string&)>;
++  EvidenceDocumentSnapshot(content::WebContents* contents,
++                           base::FilePath path,
++                           base::RepeatingCallback<bool()> owner_current);
++  ~EvidenceDocumentSnapshot() override;
++  void Read(const std::optional<std::string>& cursor, Callback callback);
++
++ private:
++  void PrimaryPageChanged(content::Page& page) override;
++  void PrimaryMainFrameRenderProcessGone(
++      base::TerminationStatus status) override;
++  void WebContentsDestroyed() override;
++
++  struct Capture {
++    base::ReadOnlySharedMemoryRegion bytes;
++    uint32_t size = 0;
++    std::string sha256;
++    std::string failure;
++  };
++  static Capture CaptureFile(const base::FilePath& path);
++  void Captured(Capture capture);
++  void Started(document::mojom::StartResultPtr result);
++  void Received(document::mojom::ChunkPtr chunk);
++  void Unreadable(std::string reason);
++  void Fault(const std::string& code, const std::string& message);
++  void Reply(base::DictValue result);
++  bool Current();
++
++  const base::FilePath path_;
++  const std::string filename_;
++  const std::string snapshot_id_;
++  const base::RepeatingCallback<bool()> owner_current_;
++  bool started_ = false;
++  bool retired_ = false;
++  uint32_t pending_chunk_ = 0;
++  std::string failure_;
++  base::DictValue metadata_;
++  base::DictValue completed_;
++  std::vector<std::string> cursors_;
++  Callback pending_;
++  mojo::Remote<document::mojom::DocumentExtractor> extractor_;
++  base::OneShotTimer deadline_;
++  base::WeakPtrFactory<EvidenceDocumentSnapshot> weak_factory_{this};
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index f327501..e7eb504 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -141,6 +141,9 @@ AuxMethodRegistry::AuxMethodRegistry() {
+   register_runtime(AuxRuntimeMethodGroup::kPageControls,
+                    {"native.stopFind", "native.setZoom", "native.memorySaverGet", "native.memorySaverSet"});
+ #if BUILDFLAG(IS_MAC)
++  register_runtime(
++      AuxRuntimeMethodGroup::kAsync,
++      {"native.evidenceDocumentRead", "native.evidenceDocumentsRelease"});
+   register_runtime(
+       AuxRuntimeMethodGroup::kAsync,
+       {"native.foundationModelsStatus", "native.foundationModelsStart",
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+index 3c513b1..9f455a3 100644
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -878,21 +878,27 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+   if (method == "readEvidenceDocument" ||
+       method == "releaseEvidenceDocuments") {
+     const bool read = method == "readEvidenceDocument";
+-    if (args.size() != (read ? 2u : 1u) || !args[0].is_string() ||
+-        args[0].GetString().empty() || args[0].GetString().size() > 200 ||
+-        (read && !args[1].is_int() && !args[1].is_double())) {
++    if ((read ? (args.size() < 2 || args.size() > 3) : args.size() != 1) ||
++        !args[0].is_string() || args[0].GetString().empty() ||
++        args[0].GetString().size() > 200 ||
++        (read && !args[1].is_int() && !args[1].is_double()) ||
++        (args.size() == 3 && !args[2].is_none() &&
++         (!args[2].is_string() || args[2].GetString().empty() ||
++          args[2].GetString().size() > 200))) {
+       std::move(callback).Run(false, "", "invalid_argument",
+                               "Invalid document selection arguments");
+       return;
+     }
+     const std::string& id = args[0].GetString();
+     if (read) {
+-      ReadAuxEvidenceDocument(id, args[1].GetDouble(), std::move(callback));
+-    } else {
+-      if (evidence_document_selection_ &&
+-          evidence_document_selection_->id == id) {
+-        evidence_document_selection_.reset();
++      std::optional<std::string> cursor;
++      if (args.size() == 3 && args[2].is_string()) {
++        cursor = args[2].GetString();
+       }
++      ReadAuxEvidenceDocument(id, args[1].GetDouble(), std::move(cursor),
++                              std::move(callback));
++    } else {
++      ReleaseAuxEvidenceDocuments(id);
+       std::move(callback).Run(true, "null", "", "");
+     }
+     return;
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index 10a4a6e..a7848a2 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -1248,6 +1248,77 @@ void AuxRuntimeHost::HandlePrivateProviderCall(const base::DictValue& params, ui
+       }, weak_factory_.GetWeakPtr(), original->GetWeakPtr(), generation, std::move(callback)));
+ }
+ 
++void AuxRuntimeHost::HandleNativeEvidenceDocumentCall(
++    const std::string& method,
++    const base::DictValue& params,
++    uint64_t generation,
++    std::shared_ptr<std::atomic_bool> cancelled,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  const auto* token = params.FindString("token");
++  const auto* selection = params.FindString("selectionId");
++  const auto owner = token ? turn_contexts_.find(*token) : turn_contexts_.end();
++  if (!token || !selection || owner == turn_contexts_.end() ||
++      owner->second.generation != generation || cancelled->load() ||
++      !TurnContextCurrent(owner->second)) {
++    std::move(callback).Run(
++        NativeFault("ref_stale", "Original document import window retired"));
++    return;
++  }
++  auto* frame = owner->second.document.AsRenderFrameHostIfValid();
++  auto* window = frame ? WebUIBrowserWindow::FromWebShellWebContents(
++                             content::WebContents::FromRenderFrameHost(frame))
++                       : nullptr;
++  auto* ui = window ? window->GetWebUIBrowserUI() : nullptr;
++  if (!ui || window->browser() != owner->second.window.get()) {
++    std::move(callback).Run(
++        NativeFault("ref_stale", "Original document import window retired"));
++    return;
++  }
++  if (method == "native.evidenceDocumentsRelease" && params.size() == 2) {
++    ui->ReleaseAuxEvidenceDocuments(*selection);
++    std::move(callback).Run(
++        NativeResult(base::Value(base::DictValue().Set("ok", true))));
++    return;
++  }
++  const auto* index = params.Find("index");
++  const auto* cursor = params.FindString("cursor");
++  if (method != "native.evidenceDocumentRead" || !index ||
++      (!index->is_int() && !index->is_double()) ||
++      params.size() != (cursor ? 4u : 3u) ||
++      (cursor && (cursor->empty() || cursor->size() > 200))) {
++    std::move(callback).Run(NativeFault(
++        "invalid_params", "Original document selection is required"));
++    return;
++  }
++  ui->ReadAuxEvidenceDocument(
++      *selection, index->GetDouble(),
++      cursor ? std::make_optional(*cursor) : std::nullopt,
++      base::BindOnce(
++          [](base::WeakPtr<AuxRuntimeHost> host, TurnContextOwner original,
++             std::shared_ptr<std::atomic_bool> cancelled,
++             base::OnceCallback<void(base::DictValue)> callback, bool ok,
++             const std::string& json, const std::string& code,
++             const std::string& message) {
++            if (!host || cancelled->load() ||
++                !host->TurnContextCurrent(original)) {
++              std::move(callback).Run(NativeFault(
++                  "ref_stale", "Original document import window retired"));
++              return;
++            }
++            if (!ok) {
++              std::move(callback).Run(NativeFault(code, message));
++              return;
++            }
++            auto result = base::JSONReader::Read(json, base::JSON_PARSE_RFC);
++            std::move(callback).Run(
++                result ? NativeResult(std::move(*result))
++                       : NativeFault("io_error",
++                                     "Document result could not be encoded"));
++          },
++          weak_factory_.GetWeakPtr(), owner->second, std::move(cancelled),
++          std::move(callback)));
++}
++
+ void AuxRuntimeHost::HandleNativeCloudPreviewCall(
+     const std::string& method, const base::DictValue& params, uint64_t generation,
+     base::OnceCallback<void(base::DictValue)> callback) {
+@@ -2379,6 +2450,10 @@ bool AuxRuntimeHost::Worker::Disconnect() {
+   socket_watcher_.reset();
+   request_deadline_timer_.Stop();
+   weak_factory_.InvalidateWeakPtrs();
++  for (const auto& [id, request] : evidence_requests_) {
++    request->cancelled->store(true);
++  }
++  evidence_requests_.clear();
+   if (connection_fd_ >= 0 && connection_generation_)
+     ui_runner_->PostTask(FROM_HERE, base::BindOnce(
+         &AuxRuntimeHost::NativeConnectionRetired, owner_, connection_generation_));
+@@ -2780,6 +2855,63 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+   return std::move(state->reply);
+ }
+ 
++void AuxRuntimeHost::Worker::DispatchEvidenceRequest(int id,
++                                                     std::string method,
++                                                     base::DictValue params) {
++  auto request = std::make_unique<EvidenceRequest>();
++  const auto cancelled = request->cancelled;
++  const auto generation = connection_generation_;
++  request->deadline.Start(
++      FROM_HERE,
++      base::Seconds(method == "native.evidenceDocumentRead" ? 65 : 30),
++      base::BindOnce(
++          &Worker::ReplyEvidenceRequest, weak_factory_.GetWeakPtr(), id,
++          generation, cancelled,
++          NativeFault("backend_unavailable",
++                      "The browser did not answer the document request")));
++  evidence_requests_.emplace(id, std::move(request));
++  ui_runner_->PostTask(
++      FROM_HERE,
++      base::BindOnce(
++          [](base::WeakPtr<AuxRuntimeHost> owner, std::string method,
++             base::DictValue params, uint64_t generation,
++             std::shared_ptr<std::atomic_bool> cancelled,
++             base::OnceCallback<void(base::DictValue)> callback) {
++            if (!owner || cancelled->load()) {
++              std::move(callback).Run(NativeFault(
++                  "ref_stale", "Original document import window retired"));
++              return;
++            }
++            owner->HandleNativeEvidenceDocumentCall(method, params, generation,
++                                                    std::move(cancelled),
++                                                    std::move(callback));
++          },
++          owner_, std::move(method), std::move(params), generation, cancelled,
++          base::BindPostTask(base::SequencedTaskRunner::GetCurrentDefault(),
++                             base::BindOnce(&Worker::ReplyEvidenceRequest,
++                                            weak_factory_.GetWeakPtr(), id,
++                                            generation, cancelled))));
++}
++
++void AuxRuntimeHost::Worker::ReplyEvidenceRequest(
++    int id,
++    uint64_t generation,
++    std::shared_ptr<std::atomic_bool> cancelled,
++    base::DictValue reply) {
++  const auto current = evidence_requests_.find(id);
++  if (connection_fd_ < 0 || generation != connection_generation_ ||
++      current == evidence_requests_.end() ||
++      current->second->cancelled != cancelled) {
++    return;
++  }
++  cancelled->store(true);
++  evidence_requests_.erase(current);
++  reply.Set("kind", "res").Set("id", id);
++  const auto encoded = base::WriteJson(reply);
++  if (!encoded || !SendFrame(*encoded)) {
++    Disconnect();
++  }
++}
+ 
+ bool AuxRuntimeHost::Worker::HandleNativeRequest(
+     const base::DictValue& data) {
+@@ -2806,6 +2938,26 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
+         base::DictValue()
+             .Set("code", "forbidden")
+             .Set("message", "This native service requires a regular Profile"));
++  } else if (native_method && native_params &&
++             (*native_method == "native.evidenceDocumentRead" ||
++              *native_method == "native.evidenceDocumentsRelease")) {
++    if (!nested_id || *nested_id <= 0 ||
++        evidence_requests_.contains(*nested_id)) {
++      reply.Set("error",
++                base::DictValue()
++                    .Set("code", "invalid_params")
++                    .Set("message",
++                         "A unique document request identity is required"));
++    } else if (evidence_requests_.size() >= 256) {
++      reply.Set("error",
++                base::DictValue()
++                    .Set("code", "backend_unavailable")
++                    .Set("message", "Too many pending document requests"));
++    } else {
++      DispatchEvidenceRequest(*nested_id, *native_method,
++                              native_params->Clone());
++      return true;
++    }
+   } else if (native_method && native_params &&
+              *native_method == "native.storeSecret") {
+     const std::string* name = native_params->FindString("name");
+@@ -3153,6 +3305,9 @@ void AuxRuntimeHost::Worker::CallRequest(
+   const bool backup_request = desktop_api &&
+       (method == "installation.createBackup" ||
+        method == "installation.stageRestore");
++  const bool document_import =
++      desktop_api && (method == "conversations.attachments.import" ||
++                      method == "tasks.importDocumentEvidence");
+   if (pending_requests_.size() >= 256) {
+     std::move(callback).Run({false, "", "backend_unavailable", "Too many pending runtime requests"});
+     return;
+@@ -3200,10 +3355,14 @@ void AuxRuntimeHost::Worker::CallRequest(
+   }
+   // Return to the worker loop. CDP events and other responses must continue
+   // flowing while an API call waits for runtime initialization or browser work.
+-  pending_requests_.emplace(id, PendingRequest{
+-      base::TimeTicks::Now() + base::Milliseconds(
+-          egress_request ? 125000 : backup_request ? kBackupRequestTimeoutMs : kRequestTimeoutMs),
+-      std::move(callback)});
++  pending_requests_.emplace(
++      id, PendingRequest{
++              base::TimeTicks::Now() +
++                  base::Milliseconds(egress_request    ? 125000
++                                     : backup_request  ? kBackupRequestTimeoutMs
++                                     : document_import ? 80000
++                                                       : kRequestTimeoutMs),
++              std::move(callback)});
+   ScheduleRequestDeadline();
+ }
+ 
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index ddfb9a3..566f2f8 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -169,6 +169,19 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+     base::DictValue DispatchNative(const std::string& method,
+                                    base::DictValue params);
+     bool HandleNativeRequest(const base::DictValue& data);
++    void DispatchEvidenceRequest(int id,
++                                 std::string method,
++                                 base::DictValue params);
++    void ReplyEvidenceRequest(int id,
++                              uint64_t generation,
++                              std::shared_ptr<std::atomic_bool> cancelled,
++                              base::DictValue reply);
++    struct EvidenceRequest {
++      std::shared_ptr<std::atomic_bool> cancelled =
++          std::make_shared<std::atomic_bool>(false);
++      base::OneShotTimer deadline;
++    };
++    std::map<int, std::unique_ptr<EvidenceRequest>> evidence_requests_;
+     void ForwardNote(const base::DictValue& data);
+     void HandleResponse(const base::DictValue& data);
+     struct PendingRequest {
+@@ -200,6 +213,12 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data,
+   };
+ 
+   explicit AuxRuntimeHost(Profile* profile);
++  void HandleNativeEvidenceDocumentCall(
++      const std::string& method,
++      const base::DictValue& params,
++      uint64_t generation,
++      std::shared_ptr<std::atomic_bool> cancelled,
++      base::OnceCallback<void(base::DictValue)> callback);
+   void HandleZapInstall(const base::DictValue& params,
+                         base::OnceCallback<void(base::DictValue)> callback);
+   void HandleReadableCapture(
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index e382a5a..20772a4 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -31,9 +31,10 @@
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+-#include "components/device_reauth/device_authenticator.h"
+-#include "chrome/browser/download/download_prefs.h"
+ #include "chrome/browser/devtools/devtools_window.h"
++#include "chrome/browser/download/download_prefs.h"
++#include "chrome/browser/ui/aux/evidence_documents.h"
++#include "components/device_reauth/device_authenticator.h"
+ #if BUILDFLAG(ENABLE_PRINTING)
+ #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
+ #include "chrome/browser/printing/print_view_manager.h"
+@@ -139,7 +140,6 @@ namespace {
+ 
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ constexpr size_t kMaxAuxEvidenceImageBytes = 8 * 1024 * 1024;
+-constexpr size_t kMaxAuxEvidenceDocumentBytes = 2 * 1024 * 1024;
+ 
+ bool WriteAuxText(const base::FilePath& destination, std::string content) {
+   base::FilePath temporary;
+@@ -176,37 +176,32 @@ bool CopyAuxArtifact(const base::FilePath& root,
+   return false;
+ }
+ 
+-std::optional<std::string> ReadAuxEvidence(const base::FilePath& path,
+-                                           bool image) {
++std::optional<std::string> ReadAuxEvidenceImage(const base::FilePath& path) {
+   std::string content;
+-  if (!base::ReadFileToStringWithMaxSize(
+-          path, &content,
+-          image ? kMaxAuxEvidenceImageBytes : kMaxAuxEvidenceDocumentBytes))
++  if (!base::ReadFileToStringWithMaxSize(path, &content,
++                                         kMaxAuxEvidenceImageBytes)) {
++    return std::nullopt;
++  }
++  std::string_view bytes(content);
++  std::string_view mime;
++  if (bytes.starts_with("\x89PNG\r\n\x1a\n")) {
++    mime = "image/png";
++  } else if (bytes.starts_with("\xff\xd8\xff")) {
++    mime = "image/jpeg";
++  } else if (bytes.starts_with("GIF87a") || bytes.starts_with("GIF89a")) {
++    mime = "image/gif";
++  } else if (bytes.size() >= 12 && bytes.starts_with("RIFF") &&
++             bytes.substr(8, 4) == "WEBP") {
++    mime = "image/webp";
++  }
++  if (mime.empty()) {
+     return std::nullopt;
++  }
+   base::DictValue result;
+   result.Set("filename", path.BaseName().AsUTF8Unsafe());
+-  if (image) {
+-    std::string_view bytes(content);
+-    std::string_view mime;
+-    if (bytes.starts_with("\x89PNG\r\n\x1a\n"))
+-      mime = "image/png";
+-    else if (bytes.starts_with("\xff\xd8\xff"))
+-      mime = "image/jpeg";
+-    else if (bytes.starts_with("GIF87a") || bytes.starts_with("GIF89a"))
+-      mime = "image/gif";
+-    else if (bytes.size() >= 12 && bytes.starts_with("RIFF") &&
+-             bytes.substr(8, 4) == "WEBP")
+-      mime = "image/webp";
+-    if (mime.empty())
+-      return std::nullopt;
+-    result.Set("dataUrl", "data:" + std::string(mime) + ";base64," +
+-                              base::Base64Encode(content));
+-  } else {
+-    if (!base::IsStringUTF8(content) || content.find('\0') != std::string::npos)
+-      return std::nullopt;
+-    result.Set("content", std::move(content));
+-  }
+-  return base::WriteJson(base::Value(std::move(result)));
++  result.Set("dataUrl", "data:" + std::string(mime) + ";base64," +
++                            base::Base64Encode(content));
++  return base::WriteJson(result);
+ }
+ #endif
+ 
+@@ -619,7 +614,7 @@ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+   if (purpose == FileDialogPurpose::kEvidenceImage) {
+     base::ThreadPool::PostTaskAndReplyWithResult(
+         FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+-        base::BindOnce(&ReadAuxEvidence, selected_path, true),
++        base::BindOnce(&ReadAuxEvidenceImage, selected_path),
+         base::BindOnce(
+             [](RequestCallback callback, std::optional<std::string> result) {
+               std::move(callback).Run(result.has_value(), result.value_or(""),
+@@ -792,12 +787,10 @@ void WebUIBrowserUI::MultiFilesSelected(
+ 
+ void WebUIBrowserUI::ReadAuxEvidenceDocument(const std::string& selection_id,
+                                              double index,
++                                             std::optional<std::string> cursor,
+                                              RequestCallback callback) {
+   if (!EvidenceDocumentsCurrent(selection_id)) {
+-    if (evidence_document_selection_ &&
+-        evidence_document_selection_->id == selection_id) {
+-      evidence_document_selection_.reset();
+-    }
++    ReleaseAuxEvidenceDocuments(selection_id);
+     std::move(callback).Run(false, "", "ref_stale",
+                             "Original document selection is unavailable");
+     return;
+@@ -810,43 +803,39 @@ void WebUIBrowserUI::ReadAuxEvidenceDocument(const std::string& selection_id,
+                             "Document selection index is out of range");
+     return;
+   }
+-  if (selection.reading) {
+-    std::move(callback).Run(false, "", "conflict",
+-                            "A document read is already in progress");
++  const size_t selected = static_cast<size_t>(index);
++  if (selection.current_index && selected < *selection.current_index) {
++    std::move(callback).Run(false, "", "ref_stale",
++                            "Original document snapshot retired");
+     return;
+   }
+-  selection.reading = true;
+-  const base::FilePath path = selection.paths[static_cast<size_t>(index)];
+-  const std::string filename =
+-      base::UTF16ToUTF8(path.BaseName().LossyDisplayName());
+-  base::ThreadPool::PostTaskAndReplyWithResult(
+-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+-      base::BindOnce(&ReadAuxEvidence, path, false),
+-      base::BindOnce(
+-          [](base::WeakPtr<WebUIBrowserUI> self, std::string selection_id,
+-             std::string filename, RequestCallback callback,
+-             std::optional<std::string> result) {
+-            if (!self || !self->EvidenceDocumentsCurrent(selection_id)) {
+-              if (self && self->evidence_document_selection_ &&
+-                  self->evidence_document_selection_->id == selection_id) {
+-                self->evidence_document_selection_.reset();
+-              }
+-              std::move(callback).Run(
+-                  false, "", "ref_stale",
+-                  "Original document selection is unavailable");
+-              return;
+-            }
+-            self->evidence_document_selection_->reading = false;
+-            std::move(callback).Run(
+-                result.has_value(), result.value_or(""),
+-                result ? "" : "invalid_argument",
+-                result
+-                    ? ""
+-                    : filename +
+-                          ": could not read a UTF-8 text document up to 2 MiB");
+-          },
+-          weak_factory_.GetWeakPtr(), selection_id, filename,
+-          std::move(callback)));
++  if (!selection.current_index || *selection.current_index != selected) {
++    if (cursor) {
++      std::move(callback).Run(false, "", "ref_stale",
++                              "Original document cursor retired");
++      return;
++    }
++    selection.snapshot.reset();
++    selection.current_index = selected;
++    selection.snapshot = std::make_unique<aux::EvidenceDocumentSnapshot>(
++        web_ui()->GetWebContents(), selection.paths[selected],
++        base::BindRepeating(
++            [](base::WeakPtr<WebUIBrowserUI> owner, std::string id,
++               size_t selected) {
++              return owner && owner->EvidenceDocumentsCurrent(id) &&
++                     owner->evidence_document_selection_->current_index ==
++                         selected;
++            },
++            weak_factory_.GetWeakPtr(), selection_id, selected));
++  }
++  selection.snapshot->Read(cursor, std::move(callback));
++}
++void WebUIBrowserUI::ReleaseAuxEvidenceDocuments(
++    const std::string& selection_id) {
++  if (evidence_document_selection_ &&
++      evidence_document_selection_->id == selection_id) {
++    evidence_document_selection_.reset();
++  }
+ }
+ 
+ void WebUIBrowserUI::FileSelectionCanceled() {
+@@ -1209,6 +1198,14 @@ void WebUIBrowserUI::Request(const std::string& method,
+           },
+           std::move(callback));
+   const auto& api_method = (*list)[0].GetString();
++  if (api_method == "conversations.attachments.import" ||
++      api_method == "tasks.importDocumentEvidence") {
++    host->CallApiFromWindow(
++        browser_->GetWeakPtr(),
++        web_ui()->GetRenderFrameHost()->GetWeakDocumentPtr(), api_method,
++        *params_json, std::move(reply));
++    return;
++  }
+   if (api_method == "runs.start" || api_method == "runs.reconcileStart" || api_method == "runs.useLocalExecution" || api_method == "runs.retryCloudSetup" || api_method == "tasks.start" ||
+       api_method == "runs.retry" || api_method == "runs.branch" ||
+       api_method == "runs.branch.list" ||
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index 57d0958..55f1a0e 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -76,7 +76,9 @@ class AuxShellEdgeMonitor;
+ class AuxOmniboxHandler;
+ class AuxDeviceConfirmation;
+ class PrefChangeRegistrar;
++class AuxRuntimeHost;
+ namespace aux {
++class EvidenceDocumentSnapshot;
+ class DictationMac;
+ }
+ #endif
+@@ -236,7 +238,10 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+   void BeginAuxEvidenceDocuments(RequestCallback callback);
+   void ReadAuxEvidenceDocument(const std::string& selection_id,
+                                double index,
++                               std::optional<std::string> cursor,
+                                RequestCallback callback);
++  void ReleaseAuxEvidenceDocuments(const std::string& selection_id);
++  friend class AuxRuntimeHost;
+   bool EvidenceDocumentsCurrent(const std::string& selection_id) const;
+   void BeginAuxGeneratedSave(std::string filename,
+                              std::string content,
+@@ -341,7 +346,8 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+     content::WeakDocumentPtr document;
+     base::WeakPtr<BrowserWindowInterface> window;
+     std::vector<base::FilePath> paths;
+-    bool reading = false;
++    std::optional<size_t> current_index;
++    std::unique_ptr<aux::EvidenceDocumentSnapshot> snapshot;
+   };
+   std::optional<EvidenceDocumentSelection> evidence_document_selection_;
+ #endif
+diff --git a/chrome/services/aux_document/BUILD.gn b/chrome/services/aux_document/BUILD.gn
+new file mode 100644
+index 0000000..985824c
+--- /dev/null
++++ b/chrome/services/aux_document/BUILD.gn
+@@ -0,0 +1,37 @@
++# Copyright 2026 The Aux Authors
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++import("//chrome/browser/buildflags.gni")
++import("//pdf/features.gni")
++assert(enable_aux_shell && enable_pdf)
++source_set("types") {
++  sources = [
++    "public/document_limits.h",
++    "public/document_types.cc",
++    "public/document_types.h",
++  ]
++  public_deps = [ "public/mojom" ]
++  deps = [ "//base" ]
++}
++source_set("lib") {
++  visibility = [ "//chrome/utility:*" ]
++  sources = [
++    "document_extractor.cc",
++    "document_extractor.h",
++    "document_segments.cc",
++    "document_segments.h",
++    "docx_document.cc",
++    "pdf_document.cc",
++  ]
++  public_deps = [ "public/mojom" ]
++  deps = [
++    ":types",
++    "//base",
++    "//content/public/common",
++    "//crypto",
++    "//mojo/public/cpp/bindings",
++    "//third_party/libxml",
++    "//third_party/pdfium",
++    "//third_party/zlib/google:zip",
++  ]
++}
+diff --git a/chrome/services/aux_document/document_extractor.cc b/chrome/services/aux_document/document_extractor.cc
+new file mode 100644
+index 0000000..0998ad3
+--- /dev/null
++++ b/chrome/services/aux_document/document_extractor.cc
+@@ -0,0 +1,124 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/services/aux_document/document_extractor.h"
++
++#include "base/check.h"
++#include "base/command_line.h"
++#include "base/functional/bind.h"
++#include "base/memory/shared_memory_mapping.h"
++#include "base/process/process.h"
++#include "base/strings/string_util.h"
++#include "base/strings/string_view_util.h"
++#include "base/task/thread_pool.h"
++#include "chrome/services/aux_document/document_segments.h"
++#include "content/public/common/content_switches.h"
++namespace aux::document {
++class DocumentExtractor::Parser {
++ public:
++  mojom::StartResultPtr Start(base::ReadOnlySharedMemoryRegion source,
++                              uint32_t source_bytes) {
++    if (source_bytes > kMaxSourceBytes) {
++      return mojom::StartResult::NewFailure(mojom::Failure::kSourceLimit);
++    }
++    base::ReadOnlySharedMemoryMapping mapping;
++    if (source.IsValid()) {
++      mapping = source.Map();
++    }
++    if ((source_bytes &&
++         (!mapping.IsValid() || mapping.size() != source_bytes)) ||
++        (!source_bytes && source.IsValid())) {
++      return mojom::StartResult::NewFailure(mojom::Failure::kInvalidDocument);
++    }
++    const auto bytes = source_bytes ? mapping.GetMemoryAsSpan<const uint8_t>()
++                                    : base::span<const uint8_t>();
++    const std::string_view text = base::as_string_view(bytes);
++    mojom::Failure failure = mojom::Failure::kNone;
++    if (text.substr(0, 1024).find("%PDF-") != std::string_view::npos) {
++      failure = ExtractPdf(bytes, output_);
++    } else if (text.starts_with("PK\003\004") ||
++               text.starts_with("PK\005\006")) {
++      failure = ExtractDocx(bytes, output_);
++    } else if (text.find('\0') != std::string_view::npos ||
++               !base::IsStringUTF8(text)) {
++      failure = mojom::Failure::kUnsupportedFormat;
++    } else {
++      std::string normalized(text);
++      if (normalized.starts_with("\xef\xbb\xbf")) {
++        normalized.erase(0, 3);
++      }
++      base::ReplaceSubstringsAfterOffset(&normalized, 0, "\r\n", "\n");
++      base::ReplaceSubstringsAfterOffset(&normalized, 0, "\r", "\n");
++      size_t start = 0;
++      uint32_t line = 1;
++      while (start < normalized.size()) {
++        const size_t newline = normalized.find('\n', start);
++        const size_t end =
++            newline == std::string::npos ? normalized.size() : newline + 1;
++        auto locator = mojom::TextLocator::New();
++        locator->line = line++;
++        failure = output_.Add(mojom::Locator::NewText(std::move(locator)),
++                              normalized.substr(start, end - start));
++        if (failure != mojom::Failure::kNone) {
++          break;
++        }
++        start = end;
++      }
++    }
++    if (failure != mojom::Failure::kNone) {
++      return mojom::StartResult::NewFailure(failure);
++    }
++    return mojom::StartResult::NewMetadata(output_.Finish());
++  }
++  mojom::ChunkPtr ReadChunk(uint32_t index) { return output_.Chunk(index); }
++
++ private:
++  DocumentSegments output_;
++};
++DocumentExtractor::DocumentExtractor(
++    mojo::PendingReceiver<mojom::DocumentExtractor> receiver)
++    : receiver_(this, std::move(receiver)),
++      parser_(base::ThreadPool::CreateSequencedTaskRunner(
++          {base::TaskPriority::USER_VISIBLE})) {
++  CHECK_EQ(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
++               switches::kProcessType),
++           switches::kUtilityProcess);
++}
++DocumentExtractor::~DocumentExtractor() {
++  // This primordial interface owns an entire dedicated process. Its IO receiver
++  // must reclaim even a parser stuck on the separate parsing sequence. Never
++  // signal a PID: the child itself is the exact process whose owner retired.
++  base::Process::TerminateCurrentProcessImmediately(0);
++}
++void DocumentExtractor::Start(base::ReadOnlySharedMemoryRegion source,
++                              uint32_t source_bytes,
++                              StartCallback callback) {
++  if (started_) {
++    receiver_.ReportBadMessage(
++        "Document extractor accepts one immutable source");
++    return;
++  }
++  started_ = true;
++  parser_.AsyncCall(&Parser::Start)
++      .WithArgs(std::move(source), source_bytes)
++      .Then(base::BindOnce(&DocumentExtractor::Started,
++                           weak_factory_.GetWeakPtr(), std::move(callback)));
++}
++void DocumentExtractor::Started(StartCallback callback,
++                                mojom::StartResultPtr result) {
++  if (result->is_metadata()) {
++    chunk_count_ = result->get_metadata()->chunk_count;
++  }
++  std::move(callback).Run(std::move(result));
++}
++void DocumentExtractor::ReadChunk(uint32_t index, ReadChunkCallback callback) {
++  if (index >= chunk_count_) {
++    receiver_.ReportBadMessage(
++        "Document chunk is outside the immutable snapshot");
++    return;
++  }
++  parser_.AsyncCall(&Parser::ReadChunk)
++      .WithArgs(index)
++      .Then(std::move(callback));
++}
++}  // namespace aux::document
+diff --git a/chrome/services/aux_document/document_extractor.h b/chrome/services/aux_document/document_extractor.h
+new file mode 100644
+index 0000000..ac95efa
+--- /dev/null
++++ b/chrome/services/aux_document/document_extractor.h
+@@ -0,0 +1,34 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_SERVICES_AUX_DOCUMENT_DOCUMENT_EXTRACTOR_H_
++#define CHROME_SERVICES_AUX_DOCUMENT_DOCUMENT_EXTRACTOR_H_
++#include <optional>
++
++#include "base/memory/read_only_shared_memory_region.h"
++#include "base/memory/weak_ptr.h"
++#include "base/threading/sequence_bound.h"
++#include "chrome/services/aux_document/public/mojom/document_extractor.mojom.h"
++#include "mojo/public/cpp/bindings/receiver.h"
++namespace aux::document {
++class DocumentExtractor final : public mojom::DocumentExtractor {
++ public:
++  explicit DocumentExtractor(
++      mojo::PendingReceiver<mojom::DocumentExtractor> receiver);
++  ~DocumentExtractor() override;
++  void Start(base::ReadOnlySharedMemoryRegion source,
++             uint32_t source_bytes,
++             StartCallback callback) override;
++  void ReadChunk(uint32_t index, ReadChunkCallback callback) override;
++
++ private:
++  class Parser;
++  void Started(StartCallback callback, mojom::StartResultPtr result);
++  mojo::Receiver<mojom::DocumentExtractor> receiver_;
++  base::SequenceBound<Parser> parser_;
++  bool started_ = false;
++  uint32_t chunk_count_ = 0;
++  base::WeakPtrFactory<DocumentExtractor> weak_factory_{this};
++};
++}  // namespace aux::document
++#endif
+diff --git a/chrome/services/aux_document/document_segments.cc b/chrome/services/aux_document/document_segments.cc
+new file mode 100644
+index 0000000..cc846bf
+--- /dev/null
++++ b/chrome/services/aux_document/document_segments.cc
+@@ -0,0 +1,120 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/services/aux_document/document_segments.h"
++
++#include <array>
++#include <utility>
++
++#include "base/check.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++namespace aux::document {
++namespace {
++uint32_t& Offset(mojom::Locator& locator) {
++  if (locator.is_text()) {
++    return locator.get_text()->offset;
++  }
++  if (locator.is_pdf()) {
++    return locator.get_pdf()->offset;
++  }
++  return locator.get_docx()->offset;
++}
++void HashLength(crypto::hash::Hasher& hash, size_t size) {
++  const std::array<uint8_t, 4> bytes = {
++      static_cast<uint8_t>(size >> 24), static_cast<uint8_t>(size >> 16),
++      static_cast<uint8_t>(size >> 8), static_cast<uint8_t>(size)};
++  hash.Update(bytes);
++}
++}  // namespace
++DocumentSegments::DocumentSegments() {
++  hash_.Update("aux-document-text-v1\n");
++}
++DocumentSegments::~DocumentSegments() = default;
++mojom::Failure DocumentSegments::Add(mojom::LocatorPtr locator,
++                                     std::string text) {
++  if (!base::IsStringUTF8(text) || text.find('\0') != std::string::npos) {
++    return mojom::Failure::kInvalidDocument;
++  }
++  base::ReplaceSubstringsAfterOffset(&text, 0, "\r\n", "\n");
++  base::ReplaceSubstringsAfterOffset(&text, 0, "\r", "\n");
++  if (text.size() > kMaxTextBytes - text_bytes_) {
++    return mojom::Failure::kTextLimit;
++  }
++  size_t offset = 0;
++  while (offset < text.size()) {
++    size_t size = std::min(kMaxSegmentBytes, text.size() - offset);
++    while (offset + size < text.size() &&
++           (static_cast<uint8_t>(text[offset + size]) & 0xc0) == 0x80) {
++      --size;
++    }
++    auto item = mojom::Segment::New();
++    item->locator = locator.Clone();
++    Offset(*item->locator) += offset;
++    item->text = text.substr(offset, size);
++    const std::string key = LocatorKey(*item->locator);
++    const size_t bytes = 8 + key.size() + size;
++    if (bytes > kMaxFramedBytes - framed_bytes_) {
++      return mojom::Failure::kStructureLimit;
++    }
++    if (chunks_.empty() || bytes > kMaxChunkBytes - chunk_bytes_) {
++      auto chunk = mojom::Chunk::New();
++      chunk->index = chunks_.size();
++      chunks_.push_back(std::move(chunk));
++      chunk_bytes_ = 0;
++    }
++    HashLength(hash_, key.size());
++    hash_.Update(key);
++    HashLength(hash_, size);
++    hash_.Update(item->text);
++    chunks_.back()->segments.push_back(std::move(item));
++    chunk_bytes_ += bytes;
++    framed_bytes_ += bytes;
++    text_bytes_ += size;
++    ++segment_count_;
++    offset += size;
++  }
++  return mojom::Failure::kNone;
++}
++void DocumentSegments::Warn(mojom::WarningCode code,
++                            uint32_t count,
++                            mojom::Story story,
++                            uint32_t page,
++                            const std::string& part) {
++  for (auto& warning : warnings_) {
++    if (warning->code == code && warning->story == story) {
++      warning->count += count;
++      return;
++    }
++  }
++  auto warning = mojom::Warning::New();
++  warning->code = code;
++  warning->count = count;
++  warning->story = story;
++  warning->first_page = page;
++  warning->first_part = part;
++  warnings_.push_back(std::move(warning));
++}
++mojom::MetadataPtr DocumentSegments::Finish() {
++  if (chunks_.empty()) {
++    chunks_.push_back(mojom::Chunk::New());
++  }
++  chunks_.back()->final_chunk = true;
++  std::array<uint8_t, crypto::hash::kSha256Size> digest;
++  hash_.Finish(digest);
++  auto result = mojom::Metadata::New();
++  result->format = format;
++  result->page_count = page_count;
++  result->warnings = std::move(warnings_);
++  result->chunk_count = chunks_.size();
++  result->completed = mojom::Completed::New();
++  result->completed->text_sha256 = base::HexEncodeLower(digest);
++  result->completed->text_bytes = text_bytes_;
++  result->completed->segment_count = segment_count_;
++  return result;
++}
++mojom::ChunkPtr DocumentSegments::Chunk(uint32_t index) const {
++  CHECK_LT(index, chunks_.size());
++  return chunks_[index].Clone();
++}
++}  // namespace aux::document
+diff --git a/chrome/services/aux_document/document_segments.h b/chrome/services/aux_document/document_segments.h
+new file mode 100644
+index 0000000..0424933
+--- /dev/null
++++ b/chrome/services/aux_document/document_segments.h
+@@ -0,0 +1,47 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_SERVICES_AUX_DOCUMENT_DOCUMENT_SEGMENTS_H_
++#define CHROME_SERVICES_AUX_DOCUMENT_DOCUMENT_SEGMENTS_H_
++#include <string>
++#include <vector>
++
++#include "base/containers/span.h"
++#include "chrome/services/aux_document/public/document_limits.h"
++#include "chrome/services/aux_document/public/document_types.h"
++#include "chrome/services/aux_document/public/mojom/document_extractor.mojom.h"
++#include "crypto/hash.h"
++namespace aux::document {
++
++class DocumentSegments {
++ public:
++  DocumentSegments();
++  ~DocumentSegments();
++  mojom::Failure Add(mojom::LocatorPtr locator, std::string text);
++  void Warn(mojom::WarningCode code,
++            uint32_t count,
++            mojom::Story story = mojom::Story::kNone,
++            uint32_t page = 0,
++            const std::string& part = {});
++  mojom::MetadataPtr Finish();
++  mojom::ChunkPtr Chunk(uint32_t index) const;
++  size_t text_bytes() const { return text_bytes_; }
++  uint32_t chunk_count() const { return chunks_.size(); }
++  mojom::Format format = mojom::Format::kText;
++  uint32_t page_count = 0;
++
++ private:
++  std::vector<mojom::ChunkPtr> chunks_;
++  std::vector<mojom::WarningPtr> warnings_;
++  crypto::hash::Hasher hash_{crypto::hash::kSha256};
++  size_t text_bytes_ = 0;
++  size_t framed_bytes_ = 0;
++  size_t chunk_bytes_ = 0;
++  uint32_t segment_count_ = 0;
++};
++mojom::Failure ExtractPdf(base::span<const uint8_t> bytes,
++                          DocumentSegments& output);
++mojom::Failure ExtractDocx(base::span<const uint8_t> bytes,
++                           DocumentSegments& output);
++}  // namespace aux::document
++#endif
+diff --git a/chrome/services/aux_document/docx_document.cc b/chrome/services/aux_document/docx_document.cc
+new file mode 100644
+index 0000000..dffdedd
+--- /dev/null
++++ b/chrome/services/aux_document/docx_document.cc
+@@ -0,0 +1,729 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include <libxml/xmlreader.h>
++
++#include <algorithm>
++#include <map>
++#include <memory>
++#include <set>
++#include <utility>
++
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/services/aux_document/document_segments.h"
++#include "third_party/zlib/google/zip_reader.h"
++namespace aux::document {
++namespace {
++constexpr char kWord[] =
++    "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
++constexpr char kStrictWord[] =
++    "http://purl.oclc.org/ooxml/wordprocessingml/main";
++constexpr char kRelationships[] =
++    "http://schemas.openxmlformats.org/package/2006/relationships";
++constexpr char kContentTypes[] =
++    "http://schemas.openxmlformats.org/package/2006/content-types";
++
++class MemoryReader final : public zip::ReaderDelegate {
++ public:
++  explicit MemoryReader(base::span<const uint8_t> bytes) : bytes_(bytes) {}
++  int64_t ReadBytes(base::span<uint8_t> destination) override {
++    const size_t size = std::min(destination.size(), bytes_.size() - offset_);
++    destination.first(size).copy_from(bytes_.subspan(offset_, size));
++    offset_ += size;
++    return size;
++  }
++  bool Seek(int64_t offset) override {
++    if (offset < 0 || static_cast<uint64_t>(offset) > bytes_.size()) {
++      return false;
++    }
++    offset_ = offset;
++    return true;
++  }
++  int64_t Tell() override { return offset_; }
++  int64_t GetLength() override { return bytes_.size(); }
++
++ private:
++  const base::span<const uint8_t> bytes_;
++  size_t offset_ = 0;
++};
++class XmlWriter final : public zip::WriterDelegate {
++ public:
++  XmlWriter(std::string& text, size_t& remaining)
++      : text_(text), remaining_(remaining) {}
++  bool WriteBytes(base::span<const uint8_t> bytes) override {
++    if (bytes.size() > remaining_) {
++      exceeded = true;
++      return false;
++    }
++    text_.append(reinterpret_cast<const char*>(bytes.data()), bytes.size());
++    remaining_ -= bytes.size();
++    return true;
++  }
++  bool exceeded = false;
++
++ private:
++  std::string& text_;
++  size_t& remaining_;
++};
++std::string XmlString(const xmlChar* value) {
++  return value ? reinterpret_cast<const char*>(value) : "";
++}
++std::string Attribute(xmlTextReaderPtr reader,
++                      const char* name,
++                      const char* uri = nullptr) {
++  xmlChar* value = xmlTextReaderGetAttributeNs(
++      reader, reinterpret_cast<const xmlChar*>(name),
++      reinterpret_cast<const xmlChar*>(uri));
++  std::string result = XmlString(value);
++  xmlFree(value);
++  return result;
++}
++bool WordNamespace(std::string_view value) {
++  return value == kWord || value == kStrictWord;
++}
++std::string WordAttribute(xmlTextReaderPtr reader, const char* name) {
++  auto result = Attribute(reader, name, kWord);
++  return result.empty() ? Attribute(reader, name, kStrictWord) : result;
++}
++class Xml {
++ public:
++  explicit Xml(const std::string& bytes)
++      : reader_(xmlReaderForMemory(bytes.data(),
++                                   bytes.size(),
++                                   nullptr,
++                                   nullptr,
++                                   XML_PARSE_NONET | XML_PARSE_NO_XXE |
++                                       XML_PARSE_NOERROR | XML_PARSE_NOWARNING),
++                &xmlFreeTextReader) {
++    if (!reader_) {
++      return;
++    }
++    xmlTextReaderSetResourceLoader(
++        reader_.get(),
++        [](void*, const char*, const char*, xmlResourceType,
++           xmlParserInputFlags, xmlParserInput** input) {
++          *input = nullptr;
++          return XML_IO_ENOENT;
++        },
++        nullptr);
++    xmlTextReaderSetErrorHandler(
++        reader_.get(),
++        [](void*, const char*, xmlParserSeverities, xmlTextReaderLocatorPtr) {},
++        nullptr);
++  }
++  bool Next() {
++    if (!reader_) {
++      failed_ = true;
++      return false;
++    }
++    const int status = xmlTextReaderRead(reader_.get());
++    if (status < 0) {
++      failed_ = true;
++    }
++    if (status != 1) {
++      return false;
++    }
++    const int type = xmlTextReaderNodeType(reader_.get());
++    if (xmlTextReaderDepth(reader_.get()) > 128 ||
++        type == XML_READER_TYPE_DOCUMENT_TYPE ||
++        type == XML_READER_TYPE_ENTITY ||
++        type == XML_READER_TYPE_ENTITY_REFERENCE ||
++        type == XML_READER_TYPE_END_ENTITY) {
++      failed_ = true;
++      return false;
++    }
++    return true;
++  }
++  bool ok() const { return !failed_; }
++  xmlTextReaderPtr get() const { return reader_.get(); }
++  std::string name() const {
++    return XmlString(xmlTextReaderConstLocalName(get()));
++  }
++  std::string uri() const {
++    return XmlString(xmlTextReaderConstNamespaceUri(get()));
++  }
++  bool element() const {
++    return xmlTextReaderNodeType(get()) == XML_READER_TYPE_ELEMENT;
++  }
++  bool end() const {
++    return xmlTextReaderNodeType(get()) == XML_READER_TYPE_END_ELEMENT;
++  }
++  bool empty() const { return xmlTextReaderIsEmptyElement(get()) == 1; }
++  int depth() const { return xmlTextReaderDepth(get()); }
++
++ private:
++  std::unique_ptr<xmlTextReader, decltype(&xmlFreeTextReader)> reader_{
++      nullptr, &xmlFreeTextReader};
++  bool failed_ = false;
++};
++
++using Parts = std::map<std::string, std::string>;
++struct Relationship {
++  std::string type;
++  std::string target;
++  bool external;
++};
++std::string RelationshipPart(const std::string& part) {
++  return "word/_rels/" + part.substr(5) + ".rels";
++}
++bool IsConsumedPart(const std::string& name) {
++  if (name == "[Content_Types].xml" || name == "_rels/.rels" ||
++      name == "word/styles.xml" || IsStoryPart(name)) {
++    return true;
++  }
++  if (!name.starts_with("word/_rels/") || !name.ends_with(".rels")) {
++    return false;
++  }
++  const std::string owner = "word/" + name.substr(11, name.size() - 16);
++  return IsStoryPart(owner);
++}
++mojom::Failure ReadPackage(base::span<const uint8_t> bytes, Parts& parts) {
++  MemoryReader memory(bytes);
++  zip::ZipReader zip;
++  if (!zip.OpenFromReaderDelegate(&memory)) {
++    return mojom::Failure::kInvalidDocument;
++  }
++  size_t remaining = kMaxSourceBytes;
++  size_t path_bytes = 0;
++  std::set<std::string> names;
++  while (const auto* entry = zip.Next()) {
++    const auto& name = entry->path_in_original_encoding;
++    if (name.empty() || name.size() > 1024 ||
++        name.size() > kMaxSourceBytes - path_bytes) {
++      return mojom::Failure::kStructureLimit;
++    }
++    path_bytes += name.size();
++    if (entry->is_encrypted) {
++      return mojom::Failure::kEncrypted;
++    }
++    if (entry->is_unsafe || entry->is_symbolic_link ||
++        name.find('\\') != std::string::npos ||
++        name.find('\0') != std::string::npos || !names.insert(name).second) {
++      return mojom::Failure::kInvalidDocument;
++    }
++    if (base::ToLowerASCII(name).ends_with("vbaproject.bin")) {
++      return mojom::Failure::kUnsupportedFormat;
++    }
++    if (entry->is_directory || !IsConsumedPart(name)) {
++      continue;
++    }
++    auto& text = parts[name];
++    XmlWriter writer(text, remaining);
++    if (!zip.ExtractCurrentEntry(&writer, remaining + 1)) {
++      return writer.exceeded ? mojom::Failure::kStructureLimit
++                             : mojom::Failure::kInvalidDocument;
++    }
++  }
++  if (!zip.ok()) {
++    return mojom::Failure::kInvalidDocument;
++  }
++  return mojom::Failure::kNone;
++}
++bool ReadTypes(const std::string& bytes,
++               std::map<std::string, std::string>& types,
++               bool& macro) {
++  Xml xml(bytes);
++  bool root = false;
++  while (xml.Next()) {
++    if (!xml.element()) {
++      continue;
++    }
++    if (!root) {
++      if (xml.name() != "Types" || xml.uri() != kContentTypes ||
++          xml.depth() != 0) {
++        return false;
++      }
++      root = true;
++    }
++    if (xml.name() != "Override" && xml.name() != "Default") {
++      continue;
++    }
++    if (xml.uri() != kContentTypes || xml.depth() != 1) {
++      return false;
++    }
++    const auto type = Attribute(xml.get(), "ContentType");
++    if (type.find("macroEnabled") != std::string::npos ||
++        type.find("vbaProject") != std::string::npos) {
++      macro = true;
++    }
++    if (xml.name() == "Override") {
++      const auto part = Attribute(xml.get(), "PartName");
++      if (part.empty() || !types.emplace(part, type).second) {
++        return false;
++      }
++    }
++  }
++  return root && xml.ok();
++}
++bool ReadRelationships(const std::string& bytes,
++                       std::vector<Relationship>& relationships) {
++  Xml xml(bytes);
++  bool root = false;
++  std::set<std::string> ids;
++  while (xml.Next()) {
++    if (!xml.element()) {
++      continue;
++    }
++    if (!root) {
++      if (xml.name() != "Relationships" || xml.uri() != kRelationships ||
++          xml.depth() != 0) {
++        return false;
++      }
++      root = true;
++      continue;
++    }
++    if (xml.name() != "Relationship" || xml.uri() != kRelationships ||
++        xml.depth() != 1) {
++      return false;
++    }
++    auto id = Attribute(xml.get(), "Id");
++    auto type = Attribute(xml.get(), "Type");
++    auto target = Attribute(xml.get(), "Target");
++    auto mode = Attribute(xml.get(), "TargetMode");
++    if (id.empty() || type.empty() || target.empty() || target.size() > 1024 ||
++        (!mode.empty() && mode != "External" && mode != "Internal") ||
++        !ids.insert(id).second) {
++      return false;
++    }
++    relationships.push_back(
++        {std::move(type), std::move(target), mode == "External"});
++  }
++  return root && xml.ok();
++}
++std::string RelationshipType(std::string_view type) {
++  constexpr std::string_view transitional =
++      "http://schemas.openxmlformats.org/officeDocument/2006/relationships/";
++  constexpr std::string_view strict =
++      "http://purl.oclc.org/ooxml/officeDocument/relationships/";
++  if (type.starts_with(transitional)) {
++    return std::string(type.substr(transitional.size()));
++  }
++  if (type.starts_with(strict)) {
++    return std::string(type.substr(strict.size()));
++  }
++  return {};
++}
++std::string StoryType(const std::string& part) {
++  switch (PartStory(part)) {
++    case mojom::Story::kBody:
++      return "document.main";
++    case mojom::Story::kHeader:
++      return "header";
++    case mojom::Story::kFooter:
++      return "footer";
++    case mojom::Story::kFootnote:
++      return "footnotes";
++    case mojom::Story::kEndnote:
++      return "endnotes";
++    case mojom::Story::kComment:
++      return "comments";
++    case mojom::Story::kNone:
++      return {};
++  }
++}
++bool CorrectType(const std::map<std::string, std::string>& types,
++                 const std::string& part) {
++  const auto found = types.find("/" + part);
++  return found != types.end() &&
++         found->second ==
++             "application/vnd.openxmlformats-officedocument.wordprocessingml." +
++                 StoryType(part) + "+xml";
++}
++struct Style {
++  std::string parent;
++  uint8_t heading = 0;
++  bool has_heading = false;
++};
++using Styles = std::map<std::string, Style>;
++bool ReadStyles(const std::string& bytes, Styles& styles) {
++  Xml xml(bytes);
++  std::string id;
++  int depth = -1;
++  bool root = false;
++  while (xml.Next()) {
++    if (!root && xml.element()) {
++      if (xml.name() != "styles" || !WordNamespace(xml.uri()) ||
++          xml.depth() != 0) {
++        return false;
++      }
++      root = true;
++    }
++    if (!WordNamespace(xml.uri())) {
++      continue;
++    }
++    if (xml.element() && xml.name() == "style") {
++      id = WordAttribute(xml.get(), "styleId");
++      if (id.empty() || !styles.emplace(id, Style()).second) {
++        return false;
++      }
++      depth = xml.depth();
++      if (xml.empty()) {
++        id.clear();
++      }
++    } else if (xml.end() && xml.name() == "style" && xml.depth() == depth) {
++      id.clear();
++    } else if (!id.empty() && xml.element()) {
++      if (xml.name() == "basedOn") {
++        styles[id].parent = WordAttribute(xml.get(), "val");
++      }
++      if (xml.name() == "outlineLvl") {
++        unsigned int level;
++        if (!base::StringToUint(WordAttribute(xml.get(), "val"), &level) ||
++            level > 9) {
++          return false;
++        }
++        styles[id].heading = level < 9 ? level + 1 : 0;
++        styles[id].has_heading = true;
++      }
++    }
++  }
++  return root && xml.ok();
++}
++uint8_t Heading(const Styles& styles, std::string id) {
++  std::set<std::string> visited;
++  while (!id.empty() && visited.insert(id).second) {
++    auto found = styles.find(id);
++    if (found == styles.end()) {
++      return 0;
++    }
++    if (found->second.has_heading) {
++      return found->second.heading;
++    }
++    id = found->second.parent;
++  }
++  return 0;
++}
++mojom::Failure ReadStory(const std::string& part,
++                         const std::string& bytes,
++                         const Styles& styles,
++                         DocumentSegments& output,
++                         bool& selectable_text) {
++  Xml xml(bytes);
++  const auto story = PartStory(part);
++  struct Table {
++    uint32_t id;
++    int depth;
++    uint32_t row = 0;
++    uint32_t column = 0;
++    uint32_t next_column = 1;
++    int cell_depth = -1;
++  };
++  std::vector<Table> tables;
++  uint32_t table_id = 0, paragraph_id = 0;
++  int paragraph_depth = -1, text_depth = -1, skip_depth = -1, note_depth = -1;
++  std::optional<std::string> note;
++  mojom::DocxLocatorPtr location;
++  std::string text;
++  bool root = false;
++  auto finish = [&]() {
++    if (!location) {
++      return mojom::Failure::kNone;
++    }
++    const auto paragraph = base::UTF8ToUTF16(text);
++    if (!base::TrimWhitespace(paragraph, base::TRIM_ALL).empty()) {
++      selectable_text = true;
++    }
++    text.push_back('\n');
++    auto result = output.Add(mojom::Locator::NewDocx(std::move(location)),
++                             std::move(text));
++    text.clear();
++    paragraph_depth = text_depth = -1;
++    return result;
++  };
++  while (xml.Next()) {
++    if (!root && xml.element()) {
++      root = true;
++      const std::map<mojom::Story, std::string> roots = {
++          {mojom::Story::kBody, "document"},
++          {mojom::Story::kHeader, "hdr"},
++          {mojom::Story::kFooter, "ftr"},
++          {mojom::Story::kFootnote, "footnotes"},
++          {mojom::Story::kEndnote, "endnotes"},
++          {mojom::Story::kComment, "comments"}};
++      if (!WordNamespace(xml.uri()) || xml.depth() != 0 ||
++          xml.name() != roots.at(story)) {
++        return mojom::Failure::kInvalidDocument;
++      }
++    }
++    if (skip_depth >= 0) {
++      if (xml.end() && xml.depth() == skip_depth) {
++        skip_depth = -1;
++      }
++      continue;
++    }
++    const auto name = xml.name();
++    const bool word = WordNamespace(xml.uri());
++    if (!word && xml.element()) {
++      output.Warn(mojom::WarningCode::kUnsupportedMarkupIgnored, 1, story, 0,
++                  part);
++      if (!xml.empty()) {
++        skip_depth = xml.depth();
++      }
++      continue;
++    }
++    if (word && xml.element()) {
++      if (name == "del" || name == "moveFrom" || name == "drawing" ||
++          name == "pict" || name == "object" || name == "altChunk") {
++        if (name != "del" && name != "moveFrom") {
++          output.Warn(mojom::WarningCode::kEmbeddedContentIgnored, 1, story, 0,
++                      part);
++        }
++        if (!xml.empty()) {
++          skip_depth = xml.depth();
++        }
++        continue;
++      }
++      if (name == "footnote" || name == "endnote" || name == "comment") {
++        auto value = WordAttribute(xml.get(), "id");
++        int64_t id;
++        if (!base::StringToInt64(value, &id) ||
++            base::NumberToString(id) != value) {
++          return mojom::Failure::kInvalidDocument;
++        }
++        if ((name == "footnote" || name == "endnote") &&
++            !WordAttribute(xml.get(), "type").empty()) {
++          if (!xml.empty()) {
++            skip_depth = xml.depth();
++          }
++          continue;
++        }
++        note = value;
++        note_depth = xml.depth();
++      }
++      if (name == "tbl") {
++        ++table_id;
++        if (!xml.empty()) {
++          tables.push_back({table_id, xml.depth()});
++        }
++      }
++      if (!tables.empty() && name == "tr") {
++        ++tables.back().row;
++        tables.back().column = 0;
++        tables.back().next_column = 1;
++        tables.back().cell_depth = -1;
++      }
++      if (!tables.empty() && (name == "gridBefore" || name == "gridSpan")) {
++        uint32_t count;
++        if (!base::StringToUint(WordAttribute(xml.get(), "val"), &count) ||
++            (name == "gridSpan" && !count)) {
++          return mojom::Failure::kInvalidDocument;
++        }
++        auto& table = tables.back();
++        if (count > kMaxSourceBytes || table.column > kMaxSourceBytes - count) {
++          return mojom::Failure::kStructureLimit;
++        }
++        if (name == "gridBefore" && table.cell_depth < 0) {
++          table.next_column = count + 1;
++        }
++        if (name == "gridSpan" && table.cell_depth >= 0) {
++          table.next_column = table.column + count;
++        }
++      }
++      if (!tables.empty() && name == "tc") {
++        auto& table = tables.back();
++        table.column = table.next_column++;
++        table.cell_depth = xml.empty() ? -1 : xml.depth();
++      }
++      if (name == "p") {
++        if (location) {
++          return mojom::Failure::kInvalidDocument;
++        }
++        location = mojom::DocxLocator::New();
++        location->part = part;
++        location->paragraph = ++paragraph_id;
++        location->note_id = note;
++        if (!tables.empty()) {
++          const auto& table = tables.back();
++          if (!table.row || !table.column) {
++            return mojom::Failure::kInvalidDocument;
++          }
++          location->table = table.id;
++          location->row = table.row;
++          location->column = table.column;
++        }
++        paragraph_depth = xml.depth();
++        if (xml.empty()) {
++          const auto error = finish();
++          if (error != mojom::Failure::kNone) {
++            return error;
++          }
++        }
++      }
++      if (location && name == "pStyle") {
++        location->heading_level =
++            Heading(styles, WordAttribute(xml.get(), "val"));
++      }
++      if (location && name == "outlineLvl") {
++        unsigned int level;
++        if (!base::StringToUint(WordAttribute(xml.get(), "val"), &level) ||
++            level > 9) {
++          return mojom::Failure::kInvalidDocument;
++        }
++        location->heading_level = level < 9 ? level + 1 : 0;
++      }
++      if (location && name == "t" && !xml.empty()) {
++        text_depth = xml.depth();
++      }
++      if (location && name == "tab") {
++        text.push_back('\t');
++      }
++      if (location && name == "noBreakHyphen") {
++        text += "\xe2\x80\x91";
++      }
++      if (location && name == "softHyphen") {
++        text += "\xc2\xad";
++      }
++      if (name == "sym") {
++        output.Warn(mojom::WarningCode::kUnsupportedMarkupIgnored, 1, story, 0,
++                    part);
++      }
++      if (location && (name == "br" || name == "cr")) {
++        text.push_back('\n');
++      }
++    } else if (xml.end()) {
++      if (word && name == "t" && xml.depth() == text_depth) {
++        text_depth = -1;
++      }
++      if (word && name == "p" && xml.depth() == paragraph_depth) {
++        const auto error = finish();
++        if (error != mojom::Failure::kNone) {
++          return error;
++        }
++      }
++      if (word && name == "tc" && !tables.empty() &&
++          xml.depth() == tables.back().cell_depth) {
++        tables.back().cell_depth = -1;
++      }
++      if (word && name == "tbl" && !tables.empty() &&
++          xml.depth() == tables.back().depth) {
++        tables.pop_back();
++      }
++      if (xml.depth() == note_depth) {
++        note.reset();
++        note_depth = -1;
++      }
++    } else if (location && text_depth >= 0) {
++      const int type = xmlTextReaderNodeType(xml.get());
++      if (type == XML_READER_TYPE_TEXT || type == XML_READER_TYPE_CDATA ||
++          type == XML_READER_TYPE_WHITESPACE ||
++          type == XML_READER_TYPE_SIGNIFICANT_WHITESPACE) {
++        text += XmlString(xmlTextReaderConstValue(xml.get()));
++      }
++    }
++    if (text.size() > kMaxTextBytes - output.text_bytes()) {
++      return mojom::Failure::kTextLimit;
++    }
++  }
++  return root && xml.ok() && !location && tables.empty()
++             ? mojom::Failure::kNone
++             : mojom::Failure::kInvalidDocument;
++}
++}  // namespace
++mojom::Failure ExtractDocx(base::span<const uint8_t> bytes,
++                           DocumentSegments& output) {
++  Parts parts;
++  auto error = ReadPackage(bytes, parts);
++  if (error != mojom::Failure::kNone) {
++    return error;
++  }
++  if (!parts.contains("[Content_Types].xml") ||
++      !parts.contains("_rels/.rels")) {
++    return mojom::Failure::kUnsupportedFormat;
++  }
++  std::map<std::string, std::string> types;
++  bool macro = false;
++  if (!ReadTypes(parts.at("[Content_Types].xml"), types, macro)) {
++    return mojom::Failure::kInvalidDocument;
++  }
++  if (macro) {
++    return mojom::Failure::kUnsupportedFormat;
++  }
++  std::vector<Relationship> relationships;
++  if (!ReadRelationships(parts.at("_rels/.rels"), relationships)) {
++    return mojom::Failure::kInvalidDocument;
++  }
++  size_t document_count = 0;
++  for (const auto& relationship : relationships) {
++    if (RelationshipType(relationship.type) != "officeDocument") {
++      continue;
++    }
++    if (relationship.external ||
++        (relationship.target != "word/document.xml" &&
++         relationship.target != "/word/document.xml")) {
++      return mojom::Failure::kUnsupportedFormat;
++    }
++    ++document_count;
++  }
++  if (document_count != 1 || !parts.contains("word/document.xml") ||
++      !CorrectType(types, "word/document.xml")) {
++    return mojom::Failure::kUnsupportedFormat;
++  }
++  output.format = mojom::Format::kDocx;
++  std::set<std::string> stories = {"word/document.xml"};
++  bool has_styles = false;
++  if (parts.contains("word/_rels/document.xml.rels")) {
++    relationships.clear();
++    if (!ReadRelationships(parts.at("word/_rels/document.xml.rels"),
++                           relationships)) {
++      return mojom::Failure::kInvalidDocument;
++    }
++    for (const auto& relationship : relationships) {
++      const auto type = RelationshipType(relationship.type);
++      if (relationship.external) {
++        continue;
++      }
++      if (type != "header" && type != "footer" && type != "footnotes" &&
++          type != "endnotes" && type != "comments" && type != "styles") {
++        continue;
++      }
++      const std::string target = relationship.target.starts_with('/')
++                                     ? relationship.target.substr(1)
++                                     : "word/" + relationship.target;
++      if (type == "styles") {
++        if (target != "word/styles.xml" || !parts.contains(target)) {
++          return mojom::Failure::kInvalidDocument;
++        }
++        has_styles = true;
++      } else {
++        if (!IsStoryPart(target) || !parts.contains(target) ||
++            !CorrectType(types, target)) {
++          return mojom::Failure::kInvalidDocument;
++        }
++        stories.insert(target);
++      }
++    }
++  }
++  Styles styles;
++  if (has_styles && !ReadStyles(parts.at("word/styles.xml"), styles)) {
++    return mojom::Failure::kInvalidDocument;
++  }
++  std::vector<std::string> ordered(stories.begin(), stories.end());
++  std::stable_sort(ordered.begin(), ordered.end(),
++                   [](const auto& left, const auto& right) {
++                     return PartStory(left) < PartStory(right);
++                   });
++  bool selectable_text = false;
++  for (const auto& story : ordered) {
++    const auto rels = RelationshipPart(story);
++    if (parts.contains(rels)) {
++      relationships.clear();
++      if (!ReadRelationships(parts.at(rels), relationships)) {
++        return mojom::Failure::kInvalidDocument;
++      }
++      for (const auto& relationship : relationships) {
++        if (relationship.external) {
++          output.Warn(mojom::WarningCode::kExternalRelationshipsIgnored, 1,
++                      PartStory(story), 0, story);
++        }
++      }
++    }
++    error = ReadStory(story, parts.at(story), styles, output, selectable_text);
++    if (error != mojom::Failure::kNone) {
++      return error;
++    }
++  }
++  return selectable_text ? mojom::Failure::kNone : mojom::Failure::kNoText;
++}
++}  // namespace aux::document
+diff --git a/chrome/services/aux_document/pdf_document.cc b/chrome/services/aux_document/pdf_document.cc
+new file mode 100644
+index 0000000..9330655
+--- /dev/null
++++ b/chrome/services/aux_document/pdf_document.cc
+@@ -0,0 +1,109 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversion_utils.h"
++#include "chrome/services/aux_document/document_segments.h"
++#include "third_party/pdfium/public/cpp/fpdf_scopers.h"
++#include "third_party/pdfium/public/fpdf_text.h"
++#include "third_party/pdfium/public/fpdfview.h"
++namespace aux::document {
++namespace {
++class PdfLibrary {
++ public:
++  PdfLibrary() {
++    // Version 1 does not initialize V8; no forms, actions or XFA are loaded.
++    FPDF_LIBRARY_CONFIG config = {};
++    config.version = 1;
++    FPDF_InitLibraryWithConfig(&config);
++  }
++  ~PdfLibrary() { FPDF_DestroyLibrary(); }
++};
++}  // namespace
++mojom::Failure ExtractPdf(base::span<const uint8_t> bytes,
++                          DocumentSegments& output) {
++  PdfLibrary library;
++  ScopedFPDFDocument document(
++      FPDF_LoadMemDocument64(bytes.data(), bytes.size(), nullptr));
++  if (!document) {
++    return FPDF_GetLastError() == FPDF_ERR_PASSWORD
++               ? mojom::Failure::kEncrypted
++               : mojom::Failure::kInvalidDocument;
++  }
++  if (FPDF_GetSecurityHandlerRevision(document.get()) != -1) {
++    return mojom::Failure::kEncrypted;
++  }
++  const int pages = FPDF_GetPageCount(document.get());
++  if (pages <= 0) {
++    return mojom::Failure::kInvalidDocument;
++  }
++  output.format = mojom::Format::kPdf;
++  output.page_count = pages;
++  size_t characters = 0;
++  for (int page_index = 0; page_index < pages; ++page_index) {
++    ScopedFPDFPage page(FPDF_LoadPage(document.get(), page_index));
++    if (!page) {
++      return mojom::Failure::kInvalidDocument;
++    }
++    ScopedFPDFTextPage text_page(FPDFText_LoadPage(page.get()));
++    if (!text_page) {
++      return mojom::Failure::kInvalidDocument;
++    }
++    const int count = FPDFText_CountChars(text_page.get());
++    if (count < 0) {
++      return mojom::Failure::kInvalidDocument;
++    }
++    if (static_cast<size_t>(count) > kMaxSourceBytes - characters) {
++      return mojom::Failure::kStructureLimit;
++    }
++    characters += count;
++    std::string text;
++    uint32_t unmapped = 0;
++    bool has_text = false;
++    for (int index = 0; index < count; ++index) {
++      unsigned int code = FPDFText_GetUnicode(text_page.get(), index);
++      if (!code) {
++        ++unmapped;
++        code = 0xfffd;
++      } else if (code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) {
++        return mojom::Failure::kInvalidDocument;
++      } else if (code != ' ' && code != '\t' && code != '\r' && code != '\n') {
++        has_text = true;
++      }
++      base::WriteUnicodeCharacter(code, &text);
++      if (text.size() > kMaxTextBytes - output.text_bytes()) {
++        return mojom::Failure::kTextLimit;
++      }
++    }
++    if (unmapped) {
++      output.Warn(mojom::WarningCode::kUnmappedText, unmapped,
++                  mojom::Story::kNone, page_index + 1);
++    }
++    if (!has_text) {
++      output.Warn(mojom::WarningCode::kNoSelectableText, 1, mojom::Story::kNone,
++                  page_index + 1);
++      continue;
++    }
++    base::ReplaceSubstringsAfterOffset(&text, 0, "\r\n", "\n");
++    base::ReplaceSubstringsAfterOffset(&text, 0, "\r", "\n");
++    if (!text.ends_with('\n')) {
++      text.push_back('\n');
++    }
++    size_t start = 0;
++    uint32_t block = 1;
++    while (start < text.size()) {
++      const size_t end = text.find('\n', start) + 1;
++      auto location = mojom::PdfLocator::New();
++      location->page = page_index + 1;
++      location->block = block++;
++      const auto error = output.Add(mojom::Locator::NewPdf(std::move(location)),
++                                    text.substr(start, end - start));
++      if (error != mojom::Failure::kNone) {
++        return error;
++      }
++      start = end;
++    }
++  }
++  return output.text_bytes() ? mojom::Failure::kNone : mojom::Failure::kNoText;
++}
++}  // namespace aux::document
+diff --git a/chrome/services/aux_document/public/document_limits.h b/chrome/services/aux_document/public/document_limits.h
+new file mode 100644
+index 0000000..04d6e3e
+--- /dev/null
++++ b/chrome/services/aux_document/public/document_limits.h
+@@ -0,0 +1,14 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_SERVICES_AUX_DOCUMENT_PUBLIC_DOCUMENT_LIMITS_H_
++#define CHROME_SERVICES_AUX_DOCUMENT_PUBLIC_DOCUMENT_LIMITS_H_
++#include <cstddef>
++namespace aux::document {
++inline constexpr size_t kMaxSourceBytes = 64 * 1024 * 1024;
++inline constexpr size_t kMaxTextBytes = 16 * 1024 * 1024;
++inline constexpr size_t kMaxFramedBytes = 32 * 1024 * 1024;
++inline constexpr size_t kMaxSegmentBytes = 32 * 1024;
++inline constexpr size_t kMaxChunkBytes = 128 * 1024;
++}  // namespace aux::document
++#endif
+diff --git a/chrome/services/aux_document/public/document_types.cc b/chrome/services/aux_document/public/document_types.cc
+new file mode 100644
+index 0000000..4a8de3d
+--- /dev/null
++++ b/chrome/services/aux_document/public/document_types.cc
+@@ -0,0 +1,62 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/services/aux_document/public/document_types.h"
++
++#include "base/strings/string_number_conversions.h"
++namespace aux::document {
++std::string LocatorKey(const mojom::Locator& locator) {
++  if (locator.is_text()) {
++    const auto& value = *locator.get_text();
++    return "text:" + base::NumberToString(value.line) + ":" +
++           base::NumberToString(value.offset);
++  }
++  if (locator.is_pdf()) {
++    const auto& value = *locator.get_pdf();
++    return "pdf:" + base::NumberToString(value.page) + ":" +
++           base::NumberToString(value.block) + ":" +
++           base::NumberToString(value.offset);
++  }
++  const auto& value = *locator.get_docx();
++  return "docx:" + value.part + ":" + base::NumberToString(value.paragraph) +
++         ":" + base::NumberToString(value.offset) + ":" +
++         base::NumberToString(value.heading_level) + ":" +
++         base::NumberToString(value.table) + ":" +
++         base::NumberToString(value.row) + ":" +
++         base::NumberToString(value.column) + ":" + value.note_id.value_or("");
++}
++mojom::Story PartStory(const std::string& part) {
++  if (part == "word/document.xml") {
++    return mojom::Story::kBody;
++  }
++  if (part == "word/footnotes.xml") {
++    return mojom::Story::kFootnote;
++  }
++  if (part == "word/endnotes.xml") {
++    return mojom::Story::kEndnote;
++  }
++  if (part == "word/comments.xml") {
++    return mojom::Story::kComment;
++  }
++  if (part.starts_with("word/header")) {
++    return mojom::Story::kHeader;
++  }
++  if (part.starts_with("word/footer")) {
++    return mojom::Story::kFooter;
++  }
++  return mojom::Story::kNone;
++}
++bool IsStoryPart(const std::string& part) {
++  if (part == "word/document.xml" || part == "word/footnotes.xml" ||
++      part == "word/endnotes.xml" || part == "word/comments.xml") {
++    return true;
++  }
++  if ((!part.starts_with("word/header") && !part.starts_with("word/footer")) ||
++      !part.ends_with(".xml") || part.size() > 80) {
++    return false;
++  }
++  const auto number = std::string_view(part).substr(11, part.size() - 15);
++  return !number.empty() && number.front() >= '1' && number.front() <= '9' &&
++         number.find_first_not_of("0123456789") == std::string_view::npos;
++}
++}  // namespace aux::document
+diff --git a/chrome/services/aux_document/public/document_types.h b/chrome/services/aux_document/public/document_types.h
+new file mode 100644
+index 0000000..36a05a9
+--- /dev/null
++++ b/chrome/services/aux_document/public/document_types.h
+@@ -0,0 +1,14 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_SERVICES_AUX_DOCUMENT_PUBLIC_DOCUMENT_TYPES_H_
++#define CHROME_SERVICES_AUX_DOCUMENT_PUBLIC_DOCUMENT_TYPES_H_
++#include <string>
++
++#include "chrome/services/aux_document/public/mojom/document_extractor.mojom.h"
++namespace aux::document {
++std::string LocatorKey(const mojom::Locator& locator);
++mojom::Story PartStory(const std::string& part);
++bool IsStoryPart(const std::string& part);
++}  // namespace aux::document
++#endif
+diff --git a/chrome/services/aux_document/public/mojom/BUILD.gn b/chrome/services/aux_document/public/mojom/BUILD.gn
+new file mode 100644
+index 0000000..3808f13
+--- /dev/null
++++ b/chrome/services/aux_document/public/mojom/BUILD.gn
+@@ -0,0 +1,11 @@
++# Copyright 2026 The Aux Authors
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++import("//mojo/public/tools/bindings/mojom.gni")
++mojom("mojom") {
++  sources = [ "document_extractor.mojom" ]
++  public_deps = [
++    "//mojo/public/mojom/base",
++    "//sandbox/policy/mojom",
++  ]
++}
+diff --git a/chrome/services/aux_document/public/mojom/document_extractor.mojom b/chrome/services/aux_document/public/mojom/document_extractor.mojom
+new file mode 100644
+index 0000000..0fa85c3
+--- /dev/null
++++ b/chrome/services/aux_document/public/mojom/document_extractor.mojom
+@@ -0,0 +1,45 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++module aux.document.mojom;
++import "mojo/public/mojom/base/shared_memory.mojom";
++import "sandbox/policy/mojom/sandbox.mojom";
++
++enum Format { kText, kPdf, kDocx };
++enum Failure {
++  kNone, kUnsupportedFormat, kEncrypted, kNoText, kInvalidDocument,
++  kSourceLimit, kTextLimit, kStructureLimit,
++};
++enum Story { kNone, kBody, kHeader, kFooter, kFootnote, kEndnote, kComment };
++enum WarningCode {
++  kNoSelectableText, kUnmappedText, kExternalRelationshipsIgnored,
++  kEmbeddedContentIgnored, kUnsupportedMarkupIgnored,
++};
++struct TextLocator { uint32 line; uint32 offset; };
++struct PdfLocator { uint32 page; uint32 block; uint32 offset; };
++struct DocxLocator {
++  string part; uint32 paragraph; uint32 offset; uint8 heading_level;
++  uint32 table; uint32 row; uint32 column; string? note_id;
++};
++union Locator { TextLocator text; PdfLocator pdf; DocxLocator docx; };
++struct Segment { Locator locator; string text; };
++struct Warning {
++  WarningCode code; uint32 count; Story story;
++  uint32 first_page; string first_part;
++};
++struct Completed { string text_sha256; uint32 text_bytes; uint32 segment_count; };
++struct Metadata {
++  Format format; uint32 page_count; array<Warning> warnings;
++  Completed completed; uint32 chunk_count;
++};
++struct Chunk { uint32 index; array<Segment> segments; bool final_chunk; };
++union StartResult { Metadata metadata; Failure failure; };
++
++// One dedicated computation-only process per immutable selected file. No paths,
++// Profile handles, credentials, file/network capability or executable actions.
++[ServiceSandbox=sandbox.mojom.Sandbox.kService]
++interface DocumentExtractor {
++  Start(mojo_base.mojom.ReadOnlySharedMemoryRegion? source, uint32 source_bytes)
++      => (StartResult result);
++  ReadChunk(uint32 index) => (Chunk chunk);
++};
+diff --git a/chrome/utility/BUILD.gn b/chrome/utility/BUILD.gn
+index 1673288..6be4e3b 100644
+--- a/chrome/utility/BUILD.gn
++++ b/chrome/utility/BUILD.gn
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//build/config/sysroot.gni")
++import("//chrome/browser/buildflags.gni")
+ import("//chrome/common/features.gni")
+ import("//chrome/services/speech/buildflags/buildflags.gni")
+ import("//components/on_device_translation/buildflags/features.gni")
+@@ -35,6 +36,7 @@ static_library("utility") {
+     "//build:chromeos_buildflags",
+     "//chrome:resources",
+     "//chrome:strings",
++    "//chrome/browser:buildflags",
+     "//chrome/common",
+     "//chrome/common:mojo_bindings",
+     "//chrome/services/speech/buildflags",
+@@ -77,6 +79,10 @@ static_library("utility") {
+     "//ui/base:buildflags",
+   ]
+ 
++  if (enable_aux_shell) {
++    deps += [ "//chrome/services/aux_document:lib" ]
++  }
++
+   if (is_mac) {
+     sources += [
+       "aux/firefox_private_vfs.cc",
+diff --git a/chrome/utility/services.cc b/chrome/utility/services.cc
+index b47e56c..50cb8a0 100644
+--- a/chrome/utility/services.cc
++++ b/chrome/utility/services.cc
+@@ -8,6 +8,7 @@
+ #include <utility>
+ 
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/services/speech/buildflags/buildflags.h"
+ #include "components/on_device_translation/buildflags/buildflags.h"
+ #include "components/paint_preview/buildflags/buildflags.h"
+@@ -32,6 +33,12 @@
+ #include "services/passage_embeddings/passage_embeddings_service.h"
+ #include "ui/accessibility/accessibility_features.h"
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "base/command_line.h"
++#include "chrome/services/aux_document/document_extractor.h"
++#include "content/public/common/content_switches.h"
++#endif
++
+ #if BUILDFLAG(IS_ANDROID)
+ #include "chrome/services/readaloud/read_aloud_playback_controller.h"  // nogncheck
+ #endif  // BUILDFLAG(IS_ANDROID)
+@@ -480,6 +487,18 @@ auto RunAuxFirefoxProfileDecoder(
+ }
+ #endif
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++std::unique_ptr<aux::document::DocumentExtractor> RunAuxDocumentExtractor(
++    mojo::PendingReceiver<aux::document::mojom::DocumentExtractor> receiver) {
++  if (base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
++          switches::kProcessType) != switches::kUtilityProcess) {
++    return nullptr;
++  }
++  return std::make_unique<aux::document::DocumentExtractor>(
++      std::move(receiver));
++}
++#endif
++
+ }  // namespace
+ 
+ void RegisterElevatedMainThreadServices(mojo::ServiceFactory& services) {
+@@ -595,6 +614,9 @@ void RegisterMainThreadServices(mojo::ServiceFactory& services) {
+ }
+ 
+ void RegisterIOThreadServices(mojo::ServiceFactory& services) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  services.Add(RunAuxDocumentExtractor);
++#endif
+ #if !BUILDFLAG(IS_ANDROID)
+   services.Add(RunProxyResolver);
+ #endif
+diff --git a/third_party/libxml/BUILD.gn b/third_party/libxml/BUILD.gn
+index 890afc0..c8b511b 100644
+--- a/third_party/libxml/BUILD.gn
++++ b/third_party/libxml/BUILD.gn
+@@ -143,6 +143,8 @@ static_library("libxml") {
+     ":libxml_utils",
+     ":xml_reader",
+     ":xml_writer",
++    "//chrome/services/aux_document:lib",  # Byte-only sandboxed document
++                                           # utility.
+     "//chromecast/internal",
+     "//testing/libfuzzer/*",
+     "//third_party/blink/renderer/*",
