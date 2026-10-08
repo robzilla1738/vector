@@ -187,8 +187,8 @@ items explicit; do not shrink the objective to a finished subset.
   current renderer/runtime has not yet been staged in that candidate.
 - N2 shared material and four-stage optional setup are integrated. Ordinary Send
   has durable UUID reconciliation. A submitted native turn survived a deliberate
-  runtime pause but then failed source reading; successful delivery/lost-ACK and
-  selected Aside comparisons remain pending.
+  runtime pause but then failed source reading; a subsequent fresh ordinary composer completed a source-backed answer within
+  two minutes. Lost-ACK and selected Aside comparisons remain pending.
 - N4 overlapping prepared reads and model-capacity working context are integrated.
   N5 encrypted cooperative index/embedding preparation is integrated; automatic
   recall is ephemeral. Indexed Forget retires derivatives, but unprovenanceable
@@ -214,7 +214,8 @@ items explicit; do not shrink the objective to a finished subset.
   now inherit selected direct/Gateway/OAuth access and abort private transports
   on original connection retirement. No private prompts/refresh tokens cross
   that broker. Area 0101 supplies opaque budget and Sandbox realms; shared accounting
-  is integrated; real private AI and last-window cleanup remain pending.
+  is integrated. A real private source-backed answer, Stop and last-window
+  retirement have now been observed; broader provider/shared-budget/cloud acceptance remains pending.
 - N10 cloud files/processes, human Changes/Logs/Stop/Undo and native Preview are
   integrated. Encrypted log chunks replace repeated whole-log decryption. Human
   controls retain original native-window/VM/Session checks after agent dispatch
@@ -231,7 +232,7 @@ items explicit; do not shrink the objective to a finished subset.
   The frozen 42-area checkpoint was replayed into 32 disjoint areas, matching all
   850 native paths, bytes and executable modes. This proves source equivalence,
   not compilation or native acceptance.
-- Areas 0033–0036 are compiled. The corrected complete Mojo include allowed the
+- The frozen pre-consolidation areas 0033–0036 are compiled. The complete Mojo include allowed the
   combined candidate to build in 420 steps / 32m32.25s. The ordinary composer
   completed a real source-backed answer in a fresh disposable Profile within
   two minutes. With the exact runtime paused, native Find moved between both
@@ -254,18 +255,24 @@ items explicit; do not shrink the objective to a finished subset.
 
 ## Final browser coverage follow-up
 
-The October 8 source audit found native downloads still reappearing after a
-runtime-only shelf deletion, Node-dependent history and Space editing, and PDF
-export that retained a tab but not its original document. The next integrated
-slice moves human history and download presentation directly to the browser,
-keeps all file bytes and resumable transfers, persists Space presentation without
-Node while attaching only authentic runtime workspace mappings, and fences PDF
-export to its original live document. These changes are prepared in isolated
-worker/scratch sources. They are not yet compiled or observed in the native app.
-The 0034–0036 candidate compiled in 420 steps / 32m32.25s. A real source-backed first answer completed within two minutes, and Find/Zoom worked with the exact runtime paused. Private UI reconnect now works; its storage and configured-provider fixes now complete a real private answer and support Stop; last-window closure removes worker data. Native multi-document selection is also prepared for this next slice. No overall acceptance claim follows from these observations.
+The October 8 source audit found native downloads reappearing after a runtime-only
+shelf deletion, Node-dependent history and Space editing, PDF export retaining a
+tab rather than its original document, and tracker exception controls depending
+on Node. Their replacements are integrated and covered by the current 270-method
+source ABI. Human history and download presentation belong to the browser;
+dismissal keeps files and resumable transfers. Native Space presentation attaches
+only authentic runtime workspace mappings. PDF export is fenced to its original
+live document. Blocking source updates preserve the browser’s current controls
+through source-generation checks. Replaced toggle polling is deleted.
 
-The integrated source contracts now contain 271 methods / 30 events; the current
-native app still contains 267 / 28. Native tracker controls are also moving off
-Node into the existing durable browser policy. Text batch selection does not
-supply PDF/DOCX ingestion; that real local-files gap and the inconsistent per-file
-bounds remain under implementation before complete workflow acceptance.
+The frozen 42-area checkpoint was consolidated to 32 equivalent areas. Additive
+0033 corrects History result construction; its native rebuild is active. The
+compiled app still has 267 methods / 28 events. The source-backed first answer,
+runtime-paused Find/Zoom and basic private answer/Stop/retirement observations
+belong to that earlier candidate. History/Space/download/filter/document batch
+observations await the current build.
+
+Text batch selection does not supply PDF/DOCX ingestion. A sandboxed byte-only
+utility, immutable extraction metadata, bounded chunks and protected complete
+text snapshots will replace inconsistent per-file bounds and filename-derived
+extraction claims before complete local-files workflow acceptance.
