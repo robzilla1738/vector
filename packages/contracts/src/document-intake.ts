@@ -109,6 +109,7 @@ export function encodeDocumentSegment(segment: DocumentSegment): Uint8Array {
 
 export const DocumentWarningCodeSchema = z.enum([
   "no_selectable_text",
+  "unmapped_text",
   "external_relationships_ignored",
   "embedded_content_ignored",
   "unsupported_markup_ignored",
@@ -143,14 +144,14 @@ export const DocumentMetadataSchema = z
     const keys = warnings.map((warning) => `${warning.code}:${warning.story ?? ""}`);
     if (new Set(keys).size !== keys.length) return false;
     return warnings.every((warning) => {
-      if (warning.code === "no_selectable_text") {
+      if (warning.code === "no_selectable_text" || warning.code === "unmapped_text") {
         return (
           format === "pdf" &&
           warning.story === undefined &&
           warning.firstPart === undefined &&
           warning.firstPage !== undefined &&
           warning.firstPage <= (pageCount ?? 0) &&
-          warning.count < (pageCount ?? 0)
+          (warning.code === "unmapped_text" || warning.count < (pageCount ?? 0))
         );
       }
       return format === "docx" && warning.firstPage === undefined;

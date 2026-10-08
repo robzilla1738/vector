@@ -62,6 +62,12 @@ describe("native document intake contract", () => {
     const warning = { code: "no_selectable_text", count: 1, firstPage: 2 };
     const pdf = { ...metadata, format: "pdf", pageCount: 3, warnings: [warning] };
     expect(DocumentMetadataSchema.safeParse(pdf).success).toBe(true);
+    expect(
+      DocumentMetadataSchema.safeParse({
+        ...pdf,
+        warnings: [{ code: "unmapped_text", count: 12, firstPage: 1 }],
+      }).success,
+    ).toBe(true);
     expect(DocumentMetadataSchema.safeParse({ ...pdf, warnings: [warning, warning] }).success).toBe(false);
   });
 });
