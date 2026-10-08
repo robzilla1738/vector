@@ -1321,7 +1321,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         current: () => !closed && native.available(),
         revision: () =>
           `${runtimeServices.settings.privateProviderRevision()}:${cloudSettings.connectionRevision()}`,
-        subscribe: (changed) => events.subscribe(() => changed()),
+        subscribe: (changed) => {
+          const stopSettings = runtimeServices.settings.subscribeConnectionChanges(changed);
+          const stopCloud = cloudSettings.subscribeConnectionChanges(changed);
+          return () => {
+            stopSettings();
+            stopCloud();
+          };
+        },
         request: (request) => runtimeServices.settings.privateProviderRequest(request),
         budgetRequest: (sessionId, request) => budgetOwner.request(sessionId, request),
         cloudRequest: (request) => cloudSettings.privateRequest(request),
