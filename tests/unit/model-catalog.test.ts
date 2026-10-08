@@ -141,6 +141,33 @@ it("preserves native Google IDs, context limits and unknown capabilities", () =>
   ]);
 });
 
+it("retains explicit provider text capabilities without guessing from IDs or unfamiliar metadata", () => {
+  const gateway = parseModelCatalog({ data: [
+    { id: "future/language", type: "language" },
+    { id: "future/picture", type: "image" },
+    { id: "future/vector", type: "embedding" },
+    { id: "future/rank", type: "reranking" },
+    { id: "future/movie", type: "video" },
+    { id: "future/new-type", type: "new-type" },
+    { id: "name-contains-image-and-embedding" },
+  ] }, "gateway");
+  expect(gateway.map(({ id, textGeneration }) => [id, textGeneration])).toEqual([
+    ["future/language", true], ["future/picture", false], ["future/vector", false],
+    ["future/rank", false], ["future/movie", false], ["future/new-type", undefined],
+    ["name-contains-image-and-embedding", undefined],
+  ]);
+  expect(parseModelCatalog({ data: [
+    { id: "multimodal", architecture: { output_modalities: ["text", "image"] } },
+    { id: "image-only", architecture: { output_modalities: ["image"] } },
+    { id: "unknown", architecture: { output_modalities: [] } },
+  ] }, "openrouter").map((model) => model.textGeneration)).toEqual([true, false, undefined]);
+  expect(parseModelCatalog({ models: [
+    { name: "models/chat", supportedGenerationMethods: ["generateContent", "countTokens"] },
+    { name: "models/vector", supportedGenerationMethods: ["embedContent"] },
+    { name: "models/unknown" },
+  ] }, "google").map((model) => model.textGeneration)).toEqual([true, false, undefined]);
+});
+
 it("maps an actual aborted metadata request to account cancellation", async () => {
   const request = vi.fn<typeof fetch>().mockImplementation(
     (_url, options) =>

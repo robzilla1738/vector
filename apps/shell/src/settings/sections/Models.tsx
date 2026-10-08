@@ -23,6 +23,7 @@ import {
   MODEL_REGISTRY,
   agentModelRoute,
   modelPickerEntries,
+  isTextModelCandidate,
   type AgentModelCategory,
   type AgentModelRoute,
   type AgentModelRouteChain,
@@ -44,6 +45,7 @@ const KEY_MASK = "••••••••";
 interface ModelEntry {
   id: string;
   name?: string;
+  textGeneration?: boolean;
 }
 
 const KNOWN_PLANNER_MODELS: ModelEntry[] = modelPickerEntries(MODEL_REGISTRY);
@@ -169,15 +171,12 @@ function plannerModelSelection(settings: Record<string, unknown>, provider: Mode
       : "";
 }
 
-function mergeModelOptions(models: ModelEntry[], current?: string): ModelEntry[] {
-  const out: ModelEntry[] = [];
-  const seen = new Set<string>();
-  for (const m of [...KNOWN_PLANNER_MODELS, ...models, ...(current ? [{ id: current }] : [])]) {
-    if (seen.has(m.id)) continue;
-    seen.add(m.id);
-    out.push(m);
+function mergeModelOptions(models: ModelEntry[], configured: string[]): ModelEntry[] {
+  const entries = new Map(models.map((model) => [model.id, model]));
+  for (const id of configured) {
+    if (id && !entries.has(id)) entries.set(id, { id });
   }
-  return out;
+  return [...entries.values()].filter(isTextModelCandidate);
 }
 interface ProbeResult {
   ok: boolean;
@@ -545,13 +544,10 @@ export function ModelsSettings({
     },
   );
   const plannerModel = plannerModelSelection(settings, provider);
-  const plannerOptions: ModelEntry[] =
-    provider === "gateway"
-      ? mergeModelOptions(models, plannerModel)
-      : [
-          ...models,
-          ...[plannerModel, String(settings.visionModel ?? "")].filter(Boolean).map((id) => ({ id })),
-        ].filter((model, index, all) => all.findIndex((item) => item.id === model.id) === index);
+  const plannerOptions = mergeModelOptions(
+    [...(provider === "gateway" ? KNOWN_PLANNER_MODELS : []), ...models],
+    [plannerModel, String(settings.visionModel ?? "")],
+  );
   const roleOverrides = (settings.agentModelRouteOverrides ?? {}) as Partial<
     Record<AgentModelCategory, AgentModelRouteChain>
   >;
@@ -655,7 +651,10 @@ export function ModelsSettings({
                   : "OpenAI-compatible"}{" "}
               · {server.endpoint}
             </span>
-            {server.models.map((model) => (
+            {!server.models.some(isTextModelCandidate) && (
+              <span {...staticHintProps}>No text models advertised.</span>
+            )}
+            {server.models.filter(isTextModelCandidate).map((model) => (
               <PreferenceAction
                 key={model.id}
                 command="use-local-model"

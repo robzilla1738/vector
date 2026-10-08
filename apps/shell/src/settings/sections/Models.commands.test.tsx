@@ -7,6 +7,7 @@ import { ModelsSettings } from "./Models";
 import { invokeScopedControl } from "../../scoped-control-commands";
 import { reportCommandCompletionFailure } from "../../command-completion";
 import { ModelProviderSchema } from "@aux/contracts";
+import { DEFAULT_AGENT_MODEL_ROUTES } from "@aux/contracts/model-registry";
 const fixture = vi.hoisted(() => ({
   windowId: "models-original-window",
   windowKind: "normal",
@@ -106,6 +107,36 @@ it("tests the configured ChatGPT route without a key and retires its result when
   expect(host.textContent).not.toContain("Connection tested");
   expect(host.textContent).not.toContain("OpenAI is ready.");
   expect(save).not.toHaveBeenCalled();
+});
+it("uses live text compatibility in model choices without losing a custom ID or selecting a non-text local model", async () => {
+  const known = DEFAULT_AGENT_MODEL_ROUTES.standard.modelId;
+  call.mockImplementation(async (method) => method === "models.list" ? {
+    models: [
+      { id: known, textGeneration: false, source: "catalog" },
+      { id: "future/language", textGeneration: true, source: "catalog" },
+    ],
+    localServers: [{
+      kind: "compatible", endpoint: "http://127.0.0.1:8080/v1", models: [
+        { id: "local/vector", textGeneration: false, source: "catalog" },
+        { id: "local/new", source: "catalog" },
+      ],
+    }],
+  } : modelRead(method));
+  const save = vi.fn(async () => true);
+  await act(async () => root.render(<ModelsSettings active settings={{
+    modelProvider: "gateway", plannerModel: "my/custom-image-name",
+  }} onSave={save} />));
+  const choices = [...host.querySelectorAll<HTMLOptionElement>("#agent-model-options option")]
+    .map((option) => option.value);
+  expect(choices).toContain("future/language");
+  expect(choices).toContain("my/custom-image-name");
+  expect(choices).not.toContain(known);
+  expect(button("Use local/vector")).toBeUndefined();
+  await act(async () => button("Use local/new").click());
+  expect(save).toHaveBeenCalledWith({
+    modelProvider: "openai-compatible", compatibleEndpoint: "http://127.0.0.1:8080/v1",
+    plannerModel: "local/new", modelConnection: { provider: "openai-compatible", enabled: true },
+  });
 });
 it("input Enter and remapped focused Save share one actual registration and original boolean ACK", async () => {
   const save = vi.fn(async () => true);

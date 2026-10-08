@@ -37,12 +37,21 @@ describe("typed model registry (AI-04)", () => {
     expect(merged.some((m) => m.id === DEFAULT_AGENT_MODEL)).toBe(true);
   });
 
-  it("picker projection keeps the {id, name} contract", () => {
-    const entries = modelPickerEntries(MODEL_REGISTRY);
+  it("picker projection excludes explicitly incompatible live models while retaining unknown choices", () => {
+    const models = mergeModelCapabilities(MODEL_REGISTRY, [
+      { id: LUNA_FAST_MODEL, textGeneration: false, source: "catalog" },
+      { id: "unknown/future", source: "catalog" },
+      { id: "my/custom-image-name", source: "configured" },
+    ]);
+    const entries = modelPickerEntries(models);
     expect(entries).toContainEqual({
       id: DEFAULT_AGENT_MODEL,
       name: MODEL_REGISTRY.find((model) => model.id === DEFAULT_AGENT_MODEL)?.name,
     });
+    expect(models.find((model) => model.id === LUNA_FAST_MODEL)?.textGeneration).toBe(false);
+    expect(entries.some((model) => model.id === LUNA_FAST_MODEL)).toBe(false);
+    expect(entries).toContainEqual({ id: "unknown/future" });
+    expect(entries).toContainEqual({ id: "my/custom-image-name" });
   });
 
   it("settings.listModels merges snapshot + live gateway catalog and re-tags sources", async () => {

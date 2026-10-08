@@ -59,6 +59,8 @@ import {
   DEFAULT_IMAGE_MODEL_ID,
   AgentModelRoutesSettingSchema,
   mergeModelCapabilities,
+  isTextModelCandidate,
+  modelCapabilities,
   agentModelRoute,
   normalizeRouteChain,
   type AgentModelCategory,
@@ -2408,19 +2410,20 @@ export class SettingsService {
     const local = await this.localServers();
     this.assertModelGeneration(generation);
     const server = this.connectionEnabled("openai-compatible")
-      ? local.find((entry) => entry.models.length)
+      ? local.find((entry) => entry.models.some(isTextModelCandidate))
       : undefined;
-    if (server)
+    const localModel = server?.models.find(isTextModelCandidate);
+    if (server && localModel)
       return {
         kind: "network",
         model: directModelClient("openai-compatible", "aux-local", undefined, server.endpoint),
-        modelId: server.models[0]!.id,
+        modelId: localModel.id,
         provider: "openai-compatible",
         destination: new URL(server.endpoint).origin,
       };
     if (this.localModelsOnly()) return null;
     const key = this.gatewayKey();
-    if (key)
+    if (key && isTextModelCandidate(modelCapabilities(DEFAULT_UTILITY_MODEL_ID, this.registryModels()) ?? {}))
       return {
         kind: "network",
         model: new GatewayModelClient(key, {
@@ -2431,7 +2434,10 @@ export class SettingsService {
         destination: "https://ai-gateway.vercel.sh",
       };
     // A saved direct provider remains usable without a separate Gateway account.
-    if (this.hasCopilotSelection()) return null;
+    if (
+      this.hasCopilotSelection() ||
+      !isTextModelCandidate(modelCapabilities(this.plannerModel(), this.registryModels()) ?? {})
+    ) return null;
     const selected = this.model();
     return selected
       ? {

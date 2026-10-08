@@ -9,8 +9,8 @@ import { z } from "zod";
  * from ("snapshot" = bundled known-good data, "catalog" = live provider
  * discovery, "configured" = user-entered), and `status` distinguishes verified
  * from unverified snapshot data. Never treat a missing ID as invalid: catalog
- * entries pass through unfiltered so new models cannot be blacklisted by an
- * out-of-date snapshot.
+ * entries remain in the catalog so new models cannot be blacklisted by an
+ * out-of-date snapshot. Text pickers exclude only explicit incompatibility.
  */
 export const ModelCapabilitySchema = z
   .object({
@@ -20,6 +20,8 @@ export const ModelCapabilitySchema = z
     contextTokens: z.number().int().positive().optional(),
     maxOutputTokens: z.number().int().positive().optional(),
     modalities: z.array(z.enum(["text", "image", "audio"])).optional(),
+    /** Explicit catalog support for the provider's text-generation route; absent means unknown. */
+    textGeneration: z.boolean().optional(),
     structuredOutput: z.boolean().optional(),
     streaming: z.boolean().optional(),
     reasoning: z.enum(["none", "supported", "required"]).optional(),
@@ -291,7 +293,7 @@ export function registryCostUsd(
 /**
  * Merge capability lists left-to-right: later lists win per-ID metadata and
  * re-tag the entry with their own `source`. IDs never drop out — a catalog or
- * configured model the snapshot does not know stays selectable.
+ * configured model the snapshot does not know remains in the catalog.
  */
 export function mergeModelCapabilities(...lists: readonly (readonly ModelCapability[])[]): ModelCapability[] {
   const merged = new Map<string, ModelCapability>();
@@ -304,7 +306,14 @@ export function mergeModelCapabilities(...lists: readonly (readonly ModelCapabil
   return [...merged.values()];
 }
 
-/** Lightweight `{id, name}` projection for pickers and legacy callers. */
+/** Unknown capabilities remain eligible; model names never determine compatibility. */
+export function isTextModelCandidate(model: Pick<ModelCapability, "textGeneration">): boolean {
+  return model.textGeneration !== false;
+}
+
+/** Lightweight text-model choices; the full catalog retains incompatible entries. */
 export function modelPickerEntries(models: readonly ModelCapability[]): { id: string; name?: string }[] {
-  return models.map((m) => (m.name === undefined ? { id: m.id } : { id: m.id, name: m.name }));
+  return models
+    .filter(isTextModelCandidate)
+    .map((m) => (m.name === undefined ? { id: m.id } : { id: m.id, name: m.name }));
 }

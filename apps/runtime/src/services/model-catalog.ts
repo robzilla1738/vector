@@ -22,6 +22,23 @@ function price(value: unknown): number | undefined {
   return Number.isFinite(n) && n >= 0 ? n * 1_000_000 : undefined;
 }
 
+function textGeneration(model: Record<string, unknown>, provider: ModelProvider): boolean | undefined {
+  if (provider === "gateway") {
+    if (model.type === "language") return true;
+    if (typeof model.type === "string" && ["embedding", "reranking", "image", "video"].includes(model.type))
+      return false;
+  }
+  const advertised =
+    provider === "google"
+      ? model.supportedGenerationMethods
+      : provider === "openrouter"
+        ? record(model.architecture)?.output_modalities
+        : undefined;
+  if (Array.isArray(advertised) && advertised.length && advertised.every((item) => typeof item === "string"))
+    return advertised.includes(provider === "google" ? "generateContent" : "text");
+  return undefined;
+}
+
 /** Provider metadata remains nonsecret; IDs pass through without an offline allowlist. */
 export function parseModelCatalog(value: unknown, provider: ModelProvider): ModelCapability[] {
   const root = record(value);
@@ -39,11 +56,13 @@ export function parseModelCatalog(value: unknown, provider: ModelProvider): Mode
     const tags = Array.isArray(m.tags) ? m.tags.filter((tag): tag is string => typeof tag === "string") : [];
     const modalities = record(m.modalities)?.input ?? record(m.architecture)?.input_modalities;
     const pricing = record(m.pricing);
+    const generatesText = textGeneration(m, provider);
     const candidate: ModelCapability = {
       id,
       provider: provider === "gateway" && typeof m.owned_by === "string" ? m.owned_by : provider,
       source: "catalog",
       status: "verified",
+      ...(generatesText === undefined ? {} : { textGeneration: generatesText }),
       ...(typeof (m.name ?? m.display_name ?? m.displayName) === "string" && provider !== "google"
         ? { name: String(m.name ?? m.display_name ?? m.displayName).slice(0, 500) }
         : typeof m.displayName === "string"

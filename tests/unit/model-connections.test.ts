@@ -245,6 +245,24 @@ it("refuses catalog results when the account changes while local discovery is st
   await expect(pending).rejects.toMatchObject({ code: "cancelled" });
 });
 
+it("does not automatically use a catalog-confirmed embedding model for text utilities", async () => {
+  const f = fixture({ GOOGLE_GENERATIVE_AI_API_KEY: "synthetic-google-key" });
+  vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockImplementation(async (url) =>
+    String(url).startsWith("https://generativelanguage.googleapis.com/")
+      ? new Response(JSON.stringify({ models: [
+          { name: "models/vector-route", supportedGenerationMethods: ["embedContent"] },
+        ] }))
+      : new Response("", { status: 404 }),
+  ));
+  await f.settings.set({ modelProvider: "google", plannerModel: "vector-route" });
+  expect((await f.settings.listModels()).models).toContainEqual(expect.objectContaining({
+    id: "vector-route", textGeneration: false,
+  }));
+  expect(await f.settings.utilityModel()).toBeNull();
+  await f.settings.set({ plannerModel: "new-unknown-route" });
+  expect((await f.settings.utilityModel())?.modelId).toBe("new-unknown-route");
+});
+
 it("loads the selected provider without reading unrelated credentials, and serializes a late read with key rotation", async () => {
   const f = fixture();
   f.repo.setSetting("modelProvider", "anthropic");
