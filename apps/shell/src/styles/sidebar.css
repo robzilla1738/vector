@@ -92,7 +92,7 @@
     display: grid;
     place-items: center;
     width: 100%;
-    height: 44px;
+    height: 40px;
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-md);
     background: color-mix(in srgb, var(--sb-ink-0) 4%, transparent);
@@ -129,12 +129,14 @@
   }
   .sb-pins .tile-face {
     width: 100%;
-    height: 44px;
-    min-height: 44px;
+    height: 40px;
+    min-height: 40px;
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-lg);
-    background: color-mix(in srgb, var(--sb-ink-0) 6%, transparent);
-    box-shadow: none;
+    background:
+      linear-gradient(to bottom, color-mix(in srgb, var(--sb-ink-0) 10%, transparent), transparent),
+      color-mix(in srgb, var(--sb-ink-0) 5%, transparent);
+    box-shadow: inset 0 1px color-mix(in srgb, var(--sb-ink-0) 6%, transparent);
     aspect-ratio: auto;
   }
   .sb-pins .site-tile:is(:hover, :focus-visible) .tile-face {
@@ -394,7 +396,6 @@
       color var(--t-fast) var(--ease-out);
   }
   .tab-row:hover .tab-close,
-  .tab-row.active .tab-close,
   .tab-row:focus-within .tab-close,
   .horizontal-tab:hover .horizontal-tab-close,
   .horizontal-tab:has([aria-selected="true"]) .horizontal-tab-close,
@@ -721,15 +722,6 @@
   .sb-bookmark-list {
     min-height: var(--space-2);
   }
-  .sb-bookmark-folder > summary {
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--r-xs);
-    cursor: pointer;
-    overflow-wrap: anywhere;
-  }
-  .sb-bookmark-folder > summary:hover {
-    background: var(--bg-3);
-  }
   .sb-bookmark-folder > summary[data-folder-drop="inside"] {
     background: var(--bg-hover);
     outline: 1px solid var(--border);
@@ -743,9 +735,6 @@
   .sb-bookmark-folder > summary:focus-visible {
     outline: 2px solid var(--ink-2);
     outline-offset: -2px;
-  }
-  .sb-bookmark-folder > div {
-    padding-left: var(--space-2);
   }
   .sb-bookmark-editor {
     display: grid;

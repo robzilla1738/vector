@@ -64,6 +64,27 @@
     max-height: min(220px, 32vh);
     overflow-y: auto;
   }
+  .sidebar .sb-chats {
+    position: relative;
+  }
+  .sidebar .sb-chats > .sb-link {
+    padding-right: var(--space-8);
+  }
+  .sidebar .chat-sessions.compact > .session-heading:first-child {
+    position: absolute;
+    top: 0;
+    right: var(--space-2);
+    height: var(--sidebar-row-h);
+    padding: 0;
+  }
+  .sidebar .chat-sessions.compact > .session-heading:first-child > span {
+    display: none;
+  }
+  .sidebar .chat-sessions.compact > .sb-show-all {
+    height: 28px;
+    color: var(--sb-ink-2);
+    font-size: var(--fs-xs);
+  }
   .session-heading {
     display: flex;
     align-items: center;

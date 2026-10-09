@@ -900,9 +900,6 @@
     color: var(--sb-selected-ink);
     box-shadow: var(--sb-selected-shadow);
   }
-  .sb-rule {
-    display: none;
-  }
   .start {
     position: absolute;
     inset: 0;

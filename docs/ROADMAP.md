@@ -5,6 +5,12 @@ glass as the default for both sidebars and horizontal browser chrome. Native
 glass must not add an implicit dark tint; the explicit tint setting controls
 added opacity. Content retains its separate opacity setting.
 
+**October 9 sidebar refinement:** use Aside's quiet left-sidebar hierarchy:
+soft pinned tiles, fine section dividers, actual open/closed bookmark folder
+icons and clean selected rows. Keep Aux's address field in the sidebar directly
+above Tabs. Empty Chats should stay compact, and narrow widths must preserve
+usable controls.
+
 **October 8 local checkpoint:** the owner requested wrapping up and stopping further
 testing. Completed work is committed on local main; execution is paused with
 remaining acceptance preserved in [STATUS](STATUS.md) and the

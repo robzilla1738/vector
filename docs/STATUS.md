@@ -1,5 +1,25 @@
 # Aux status — October 9, 2026
 
+## Sidebar refinement
+
+The left sidebar follows the owner's Aside reference with soft pinned tiles,
+fine section dividers, open/closed bookmark folder icons and quiet selected-tab
+borders. Aux's existing address field sits directly above Tabs. Bookmark tools
+sit beside their heading, empty Chats is compact, and the archive education
+notice lives above the footer with its explicit Got it acknowledgement.
+Dark/light appearances, narrow-width controls and the address suggestion popup
+were inspected in the renderer preview. Typecheck and lint pass. The integrated
+check found the two previously recorded unrelated failures plus two old layout expectations; those
+expectations were updated and all 42 affected tests passed. Logs:
+`/tmp/aux-sidebar-refinement-check.log` and
+`/tmp/aux-sidebar-refinement-focused.log`. The native build succeeded in 24 steps /
+11m36.93s, with 273 methods / 30 events (`cce8203bcbd0`) and staged Node 26.9.
+The disposable app launched and its accessibility tree confirms the new section
+order and compact empty Chats. The screenshot/native folder walkthrough was
+interrupted before completion; those visual and interaction checks remain open.
+Aux is left running for the owner's screenshots. Build log:
+`/tmp/aux-sidebar-refinement-build-launch-final.log`.
+
 ## Glass appearance correction
 
 The owner resumed UI work after comparing the disposable Aux preview with Aside.
@@ -17,8 +37,8 @@ succeeded in 49 steps / 16m06.22s, including areas 0038–0040, with 273 methods
 vertical sidebars and horizontal chrome share the clear material at 0% tint,
 and the light → dark switch preserves it. Window-only captures show a much
 lighter material and do not establish a desktop-backed match to Aside; the
-owner's visual comparison remains pending. The preview is left open in dark
-vertical layout with both sidebars visible. Logs: `/tmp/aux-clear-glass-check.log`,
+owner's visual comparison remains pending. That preview was retired normally
+before the sidebar refinement build above. Logs: `/tmp/aux-clear-glass-check.log`,
 `/tmp/aux-clear-glass-summary-recheck.log` and
 `/tmp/aux-clear-glass-build-launch.log`.
 

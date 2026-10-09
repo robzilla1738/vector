@@ -1062,12 +1062,8 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
           {shellIconSidebarClose}
         </button>
       </div>
-      <div className="sidebar-address">
-        <SidebarAddress compact />
-      </div>
-      <FeatureSlots slot="sidebarItems" />
       <div
-        className={`sb-pins${pinTrayHover ? " drop" : ""}`}
+        className={`sb-pins${pins.length ? "" : " empty"}${pinTrayHover ? " drop" : ""}`}
         role="group"
         aria-label="Pinned tabs"
         onDragOver={(event) => {
@@ -1095,7 +1091,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
           setDrag(IDLE_DRAG);
         }}
       >
-        {!pins.length && <span className="sb-pin-hint">Drag tabs here to pin</span>}
+        {!pins.length && <span className="sb-pin-hint">{shellIconPin} Drag tabs here to pin</span>}
         {visiblePins.map((b, index) => (
           <SiteTile
             {...pinDragProps(b)}
@@ -1167,6 +1163,9 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
       <SidebarSection title="Chats" open={sections.chats} onToggle={() => toggleSection("chats")}>
         <SidebarChatSection />
       </SidebarSection>
+      <div className="sidebar-address">
+        <SidebarAddress compact />
+      </div>
       <SidebarSection title="Tabs" open={sections.tabs} onToggle={() => toggleSection("tabs")} fill>
         <div className="sb-tabs" ref={listRef} onKeyDown={onListKey}>
           <div
@@ -1233,8 +1232,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
               );
             })}
 
-            {(folders.length > 0 || loose.length > 0) && <div className="sb-rule" />}
-
             <VirtualList
               items={loose}
               rowHeight={32}
@@ -1256,6 +1253,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
           </div>
         </div>
       </SidebarSection>
+      <FeatureSlots slot="sidebarItems" />
       <div className="sb-foot">
         <div className="sb-space">
           <button

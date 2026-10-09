@@ -25,7 +25,13 @@ import { runCommand } from "../commands";
 import { hintNavigation } from "../navigation-preload";
 import { call, errToast, toast, useStore } from "../store";
 import { Dialog, Menu } from "../ui";
-import { shellIconPlus, shellIconMore } from "../ui/icons";
+import {
+  shellIconPlus,
+  shellIconMore,
+  shellIconFolderClosed,
+  shellIconFolder,
+  shellIconDown,
+} from "../ui/icons";
 import { FavIcon } from "./SiteTile";
 
 type SavedBookmark = ReturnType<typeof useStore.getState>["bookmarks"][number];
@@ -354,7 +360,13 @@ export function SidebarBookmarks() {
                 data-folder-drop={dropTarget?.nodeId === child.nodeId ? dropTarget.position : undefined}
                 onDrop={(event) => drop(event, child)}
               >
-                {child.path.at(-1) || "Untitled folder"}
+                <span className="sb-bookmark-folder-icon" aria-hidden="true">
+                  {expanded.has(key) ? shellIconFolder : shellIconFolderClosed}
+                </span>
+                <span className="sb-bookmark-folder-name">{child.path.at(-1) || "Untitled folder"}</span>
+                <span className="sb-bookmark-folder-chevron" aria-hidden="true">
+                  {shellIconDown}
+                </span>
               </summary>
               {expanded.has(key) && <div>{tree(key)}</div>}
             </details>

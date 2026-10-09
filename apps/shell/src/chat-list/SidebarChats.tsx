@@ -310,7 +310,7 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
     />
   );
   return (
-    <div ref={root} className="chat-sessions" aria-busy={loading}>
+    <div ref={root} className={`chat-sessions${compact ? " compact" : ""}`} aria-busy={loading}>
       <div className="session-heading">
         <span>
           {archived ? "Archived chats" : privateMode ? "Private chats" : compact ? "Recent" : "Chats"}
@@ -431,7 +431,7 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
           (row) => !organization.folders.some((folder) => folder.id === organization.members[row.chatId]),
         ),
       )}
-      {compact && (
+      {compact && (rows.length > 0 || archived || organization.folders.length > 0) && (
         <button className="sb-link sb-show-all" onClick={showHistory}>
           {privateMode ? "All private chats" : "All chats"} {shellIconRight}
         </button>
@@ -441,7 +441,7 @@ export function SidebarChats({ compact = false, query = "" }: { compact?: boolea
           Loading chats…
         </output>
       )}
-      {!loading && !error && !matches.length && (
+      {!loading && !error && !matches.length && (!compact || term || archived) && (
         <p className="session-empty">
           {term ? "No matching chats." : archived ? "No archived chats." : "Your sessions will appear here."}
         </p>
