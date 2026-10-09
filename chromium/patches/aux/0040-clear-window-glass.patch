@@ -1,0 +1,28 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+--- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
++++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+@@ -120,22 +120,9 @@
+                              OBJC_ASSOCIATION_COPY_NONATOMIC);
+   }
+   NSView* effect = objc_getAssociatedObject(window, &kAuxMaterialViewKey);
+-  // Retained materials must follow theme changes too. Clear regular glass alone
+-  // can brighten a dark sidebar beyond the contrast of its light text.
++  // Let the native material adapt to the desktop in both appearances. Extra
++  // opacity belongs to the user's renderer tint, not an implicit dark backing.
+   effect.appearance = window.appearance;
+-  if (@available(macOS 26.0, *)) {
+-    if ([effect isKindOfClass:[AuxGlassBackgroundView class]]) {
+-      NSAppearance* appearance = window.effectiveAppearance;
+-      NSString* matched = [appearance bestMatchFromAppearancesWithNames:
+-          @[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
+-      [appearance performAsCurrentDrawingAppearance:^{
+-        ((AuxGlassBackgroundView*)effect).tintColor =
+-            [matched isEqualToString:NSAppearanceNameDarkAqua]
+-                ? [NSColor.windowBackgroundColor colorWithAlphaComponent:0.8]
+-                : NSColor.clearColor;
+-      }];
+-    }
+-  }
+   window.opaque = !glass;
+   // Chromium's glass frame uses a nearly transparent backing to avoid AppKit
+   // continuously invalidating a completely transparent window surface.

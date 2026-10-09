@@ -972,13 +972,14 @@
   body.resizing .chat-sidebar {
     transition: none;
   }
-  /* Empty browser content and work panels share one continuous window material. */
-  :root[data-sidebar-appearance="translucent"]
-    .app.native-host.tabs-horizontal:has(.main-col:not(.has-page)) {
-    --chrome-surface: color-mix(in srgb, var(--sb-bg) max(85%, var(--sidebar-tint, 0%)), transparent);
+  /* Horizontal chrome shares the sidebars' native glass and optional tint.
+   Content keeps its independent opacity in either tab layout. */
+  :root[data-sidebar-appearance="translucent"] .app.native-host.tabs-horizontal {
+    --chrome-surface: var(--window-glass-tint);
   }
-  :root[data-sidebar-appearance="translucent"] .app.native-host.tabs-horizontal .main-col:not(.has-page) {
-    background: color-mix(in srgb, var(--sb-bg) max(85%, var(--sidebar-tint, 0%)), transparent);
+  :root[data-sidebar-appearance="translucent"] .app.native-host .horizontal-tab:has([data-active="true"]),
+  :root[data-sidebar-appearance="translucent"] .app.native-host .horizontal-tab.empty {
+    background: var(--sb-selected);
   }
   .chat-sidebar-toggle {
     position: absolute;

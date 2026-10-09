@@ -2,18 +2,14 @@
 
 Aux uses Chromium 154 on macOS arm64. The product checkout is
 `~/aux-chromium-product/chromium/src`; the built app is `out/AuxFast/Aux.app`.
-The latest build compiled native areas 0033–0037 in **44 steps / 26m07.40s** with
-**272 methods / 30 events**, `97d6daa5466e`, 200 renderer assets and slim Node 26.9.
-Its disposable preview retired normally with exit 0 and Profile/lock cleanup.
-Native DOCX/text/PDF batch intake and the preceding DOCX paged preview were
-observed; complete workflow and performance acceptance remain in STATUS.
-
-Local main and product source now include registered areas 0038–0039 for lossless
-icon compression and real native image Copy. Generated source has **273 methods /
-30 events**, `cce8203bcbd0`; these changes are **not compiled in the current app**.
-Use the ordinary combined launcher below when development resumes. Runtime-only
-staging refuses the old compiled ABI. No additional build was run during the
-owner-requested wrap-up.
+The October 9 build includes native areas 0038–0040 (icon compression, image Copy
+and clear window glass), and completed in **49 steps / 16m06.22s** with
+**273 methods / 30 events**, `cce8203bcbd0`, and slim Node 26.9. Its disposable
+preview is open for the owner's appearance comparison; preserve its launcher
+ownership until normal retirement. Vertical/horizontal glass and light/dark
+switching were inspected. Clipboard acceptance and broader workflow/performance
+acceptance remain in STATUS. The prior 272-method app's document-intake evidence
+is historical evidence, not a new walkthrough of this build.
 
 The launcher defaults to this preserved product checkout and Fast output through
 `dev-defaults.json`. Set `AUX_CHROMIUM_SRC` for another checkout, or `--flavor dev`

@@ -1,6 +1,28 @@
-# Aux status — October 8, 2026
+# Aux status — October 9, 2026
 
-## Current local checkpoint
+## Glass appearance correction
+
+The owner resumed UI work after comparing the disposable Aux preview with Aside.
+Native area 0040 removes the implicit 80% dark window tint so the default clear
+Liquid Glass can respond to the desktop. Horizontal toolbar chrome now uses the
+same optional tint as both sidebars, including on new tabs; the selected tab
+retains a visible highlight. Content opacity is consistent across tab layouts.
+Typecheck and lint pass. The integrated check passed 4,472 of 4,474 tests; the
+failures are the generated-host refusal list missing `copyStoredImage` and the
+external page-summary retirement expecting an error object but receiving the
+trusted takeover symbol. The latter also fails in isolation. Neither test nor
+its implementation was changed in this appearance slice. The native build
+succeeded in 49 steps / 16m06.22s, including areas 0038–0040, with 273 methods /
+30 events (`cce8203bcbd0`) and staged Node 26.9. The disposable app launched;
+vertical sidebars and horizontal chrome share the clear material at 0% tint,
+and the light → dark switch preserves it. Window-only captures show a much
+lighter material and do not establish a desktop-backed match to Aside; the
+owner's visual comparison remains pending. The preview is left open in dark
+vertical layout with both sidebars visible. Logs: `/tmp/aux-clear-glass-check.log`,
+`/tmp/aux-clear-glass-summary-recheck.log` and
+`/tmp/aux-clear-glass-build-launch.log`.
+
+## October 8 local checkpoint
 
 Work is consolidated on local `main`. Nothing has been pushed; no hosted CI, signing, notarization or release has run. Aux remains under development. The competitive-browser execution is paused at the owner’s October 8 wrap-up request; remaining work is preserved in [the execution graph](ROADMAP-EXECUTION-GRAPH.md). Integrated source and the native candidate remain distinct from measured acceptance; competitor parity is not yet established.
 

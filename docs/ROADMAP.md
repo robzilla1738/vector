@@ -1,5 +1,10 @@
 # Aux v3: the fast, free, powerful AI browser
 
+**October 9 appearance correction:** the owner reaffirmed Aside's clear frosted
+glass as the default for both sidebars and horizontal browser chrome. Native
+glass must not add an implicit dark tint; the explicit tint setting controls
+added opacity. Content retains its separate opacity setting.
+
 **October 8 local checkpoint:** the owner requested wrapping up and stopping further
 testing. Completed work is committed on local main; execution is paused with
 remaining acceptance preserved in [STATUS](STATUS.md) and the
