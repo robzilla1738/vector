@@ -108,7 +108,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(dark).toMatch(/--bg-window:\s*#17171780/);
     expect(dark).toMatch(/--ink-0:\s*rgb\(255 255 255 \/ 85%\)/);
     expect(block("light")).toMatch(/--ink-0:\s*rgb\(0 0 0 \/ 95%\)/);
-    expect(dark).toMatch(/--floating-sidebar-surface:\s*#24272b/);
+    expect(dark).toMatch(/--floating-sidebar-surface:\s*#232323/);
     expect(dark).not.toMatch(/--bg-window:\s*#000000/);
   });
 
