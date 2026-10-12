@@ -209,10 +209,8 @@ const ComposerInput = memo(function ComposerInput({
   onChange,
   onSend,
   children,
-  footer,
   leading,
   inlineControls,
-  modes,
   textareaRef,
   workspaceId,
 }: {
@@ -231,10 +229,8 @@ const ComposerInput = memo(function ComposerInput({
   onChange(value: string): void;
   onSend(): void;
   children?: ReactNode;
-  footer?: ReactNode;
   leading?: ReactNode;
   inlineControls?: ReactNode;
-  modes?: ReactNode;
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   const text = useStore((s) => draftText(s, id, answerRunId, answerQuestion));
@@ -288,26 +284,53 @@ const ComposerInput = memo(function ComposerInput({
           )}
         </div>
       </div>
-      <div className="composer-footer">
-        <div className="composer-footer-context">
-          {footer}
-          {modes}
-          <Popover label="More chat actions" trigger={shellIconMore}>
-            {() => (
-              <div className="chat-run-menu">
-                <FeatureComposer
-                  slot="composerActions"
-                  composerId={mentionComposerId(id, answerRunId)}
-                  workspaceId={workspaceId}
-                  textareaRef={inputRef}
-                  value={text}
-                  onChange={onChange}
-                  disabled={disabled}
-                />
-              </div>
-            )}
-          </Popover>
-        </div>
+    </div>
+  );
+});
+
+/** Aside anatomy: mode/model selects sit in a row below the composer card, not inside it. */
+const ComposerControls = memo(function ComposerControls({
+  id,
+  answerRunId,
+  answerQuestion,
+  workspaceId,
+  disabled,
+  onChange,
+  textareaRef,
+  footer,
+  modes,
+}: {
+  id: string | null | undefined;
+  answerRunId?: string;
+  answerQuestion?: string;
+  workspaceId?: string;
+  disabled: boolean;
+  onChange(value: string): void;
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
+  footer?: ReactNode;
+  modes?: ReactNode;
+}) {
+  const text = useStore((s) => draftText(s, id, answerRunId, answerQuestion));
+  return (
+    <div className="composer-footer">
+      <div className="composer-footer-context">
+        {footer}
+        {modes}
+        <Popover label="More chat actions" trigger={shellIconMore}>
+          {() => (
+            <div className="chat-run-menu">
+              <FeatureComposer
+                slot="composerActions"
+                composerId={mentionComposerId(id, answerRunId)}
+                workspaceId={workspaceId}
+                textareaRef={textareaRef}
+                value={text}
+                onChange={onChange}
+                disabled={disabled}
+              />
+            </div>
+          )}
+        </Popover>
       </div>
     </div>
   );
@@ -2735,6 +2758,19 @@ export function Conversation({
                       )}
                   </>
                 }
+                controls={
+                  <ComposerControls
+                    id={id}
+                    answerRunId={answerRunId}
+                    answerQuestion={answerQuestion}
+                    workspaceId={workspaceContext.workspace?.workspaceId}
+                    disabled={archived || sending || answerPending}
+                    onChange={setText}
+                    textareaRef={textareaRef}
+                    footer={composerFooter}
+                    modes={composerModes}
+                  />
+                }
               >
                 <div className="composer-context">
                   {((selectedContext && selectedContext.url !== "about:blank") ||
@@ -3022,10 +3058,8 @@ export function Conversation({
                       }
                       onChange={setText}
                       onSend={() => void send()}
-                      footer={composerFooter}
                       leading={home ? undefined : composerContext}
                       inlineControls={home ? entryControls : undefined}
-                      modes={composerModes}
                       textareaRef={textareaRef}
                     >
                       {home ? null : dictation}

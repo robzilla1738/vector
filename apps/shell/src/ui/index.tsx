@@ -674,10 +674,12 @@ export function DetailPane({
 export function ComposerFrame({
   context,
   notices,
+  controls,
   children,
 }: {
   context?: ReactNode;
   notices?: ReactNode;
+  controls?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -687,6 +689,7 @@ export function ComposerFrame({
         {context && <div className="composer-context">{context}</div>}
         {children}
       </Surface>
+      {controls}
     </div>
   );
 }

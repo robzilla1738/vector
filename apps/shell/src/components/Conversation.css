@@ -113,9 +113,10 @@
   }
   .composer-footer {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: var(--space-2);
-    padding: 0 var(--space-1) var(--space-1);
+    min-height: 32px;
+    padding: var(--space-1-5) var(--space-1) 0;
   }
   .composer-footer-context {
     flex: 1;
