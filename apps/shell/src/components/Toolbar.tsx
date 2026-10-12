@@ -154,7 +154,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
         )}
         {!bridge.privateMode && (
           <button
-            className={`icon-btn ${railOpen ? "on" : ""}`}
+            className={`tb-ask ${railOpen ? "on" : ""}`}
             title={withShortcut("Agent", key("agent-rail"))}
             aria-label="Toggle agent rail"
             aria-pressed={railOpen}
@@ -162,6 +162,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
             onClick={() => runCommand("agent-rail")}
           >
             {shellIconAgent}
+            <span>Ask Aux</span>
           </button>
         )}
       </div>
