@@ -1167,4 +1167,45 @@
   .composer textarea:disabled {
     opacity: 0.5;
   }
+
+  /* Aside motion language: shimmer on running text, pulse on running
+     dots, slide-up as the streamed answer first appears. */
+  @keyframes aux-shimmer {
+    0% { background-position: 100% 0; }
+    to { background-position: 0 0; }
+  }
+  @keyframes aux-slide-up {
+    0% { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes aux-pulse {
+    50% { opacity: .5; }
+  }
+  .tl-status.running {
+    background: linear-gradient(90deg, var(--warn) 0%, rgb(255 255 255 / 75%) 50%, var(--warn) 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: aux-shimmer 1.2s linear infinite;
+  }
+  .mini-grid i.running,
+  .set-bar i.running {
+    animation: aux-pulse 1.2s ease-in-out infinite;
+  }
+  .answer-stream {
+    animation: aux-slide-up 0.15s ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tl-status.running,
+    .mini-grid i.running,
+    .set-bar i.running,
+    .answer-stream {
+      animation: none;
+    }
+    .tl-status.running {
+      color: var(--warn);
+      background: none;
+    }
+  }
 }
