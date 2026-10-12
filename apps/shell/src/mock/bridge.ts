@@ -51,6 +51,7 @@ import type {
   PageTarget,
   Run,
   StepRecord,
+  Suspension,
   AuxEvent,
   ZapRule,
   PluginSkillGrant,
@@ -541,6 +542,8 @@ export function installMockBridge(q: URLSearchParams) {
     effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   };
 
+  const NEEDS_INPUT_MESSAGE =
+    "Two comment threads are marked resolved but still discuss focus rings. Include resolved threads too?";
   if (withRun) {
     activePageId = "page-1";
     const run = makeRun(
@@ -549,8 +552,7 @@ export function installMockBridge(q: URLSearchParams) {
         : scenario === "needs-input"
           ? {
               status: "needs_input",
-              statusMessage:
-                "Two comment threads are marked resolved but still discuss focus rings. Include resolved threads too?",
+              statusMessage: NEEDS_INPUT_MESSAGE,
             }
           : {},
     );
@@ -568,6 +570,23 @@ export function installMockBridge(q: URLSearchParams) {
     pages = pages.map((p, i) =>
       i === 7 ? { ...p, loading: true } : i === 21 ? { ...p, viewStatus: "crashed" } : p,
     );
+  const suspensionFor = (run: Run): Suspension | null =>
+    run.status === "needs_input" && run.statusMessage === NEEDS_INPUT_MESSAGE
+      ? {
+          suspensionId: "susp-mock-1",
+          runId: run.runId,
+          threadId: run.runId,
+          turnId: run.runId,
+          kind: "ask-user-question",
+          request: {
+            kind: "ask-user-question",
+            instruction: NEEDS_INPUT_MESSAGE,
+            guidance: "Answer so the run can finish the review summary.",
+          },
+          state: "pending",
+          createdAt: run.createdAt + 1_000,
+        }
+      : null;
 
   const sets = scenario === "set" || withRun ? [SET] : [];
   const members = sets.length ? MEMBERS : [];
@@ -1938,7 +1957,12 @@ export function installMockBridge(q: URLSearchParams) {
     "runs.get": async (p) => {
       const run = runs.find((r) => r.runId === p.runId);
       if (!run) throw new Error("no such run");
-      return { run, steps: steps[run.runId] ?? [], modelCalls: run.config?.modelCalls ?? 3 };
+      return {
+        run,
+        steps: steps[run.runId] ?? [],
+        modelCalls: run.config?.modelCalls ?? 3,
+        suspension: suspensionFor(run),
+      };
     },
     "runs.list": async (p) => {
       const key = (run: Run) => run.config?.chatId ?? run.runId;
