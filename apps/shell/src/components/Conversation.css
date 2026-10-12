@@ -132,9 +132,13 @@
     gap: var(--space-1);
   }
   .composer-send-actions > button[aria-label="Send message"] {
-    background: var(--accent);
-    color: var(--accent-ink);
-    border-radius: var(--r-pill);
+    width: 28px;
+    height: 28px;
+    padding: 6px;
+    background: var(--ink-0);
+    color: var(--ink-inverse);
+    border-radius: 50%;
+    corner-shape: round;
   }
   .composer-footer .new-chat-options {
     display: flex;
@@ -197,8 +201,8 @@
     outline: none;
   }
   .conversation-embedded:not(.conversation-home) .conversation-scroll:has(.conversation-empty) {
-    place-items: start center;
-    padding-top: clamp(32px, 8vh, 80px);
+    place-items: center;
+    padding-top: 0;
   }
   .conversation-embedded:not(.conversation-home) .conversation-empty {
     margin: 0 auto;
@@ -601,36 +605,47 @@
 }
 
 @layer components {
-  .conversation .composer-frame,
+  .conversation .composer-frame {
+    background: var(--surface-primary);
+    border-radius: var(--r-2xl);
+    corner-shape: round;
+    box-shadow: inset 0 0 0 var(--hairline) var(--line-strong);
+    padding: 4px;
+  }
   .conversation .composer-frame:focus-within {
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
+    background: var(--surface-primary);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+    padding: 4px;
+  }
+  .conversation .composer-context {
+    padding-bottom: 4px;
   }
   .conversation-message-field {
+    position: relative;
     display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    padding: 8px 10px 8px 16px;
-    border-radius: 28px;
-    background: var(--bg-hover);
-    box-shadow: inset 0 0 0 1px var(--line);
-    min-height: 52px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 0 38px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    min-height: 0;
   }
   .conversation-message-field:focus-within {
-    box-shadow: inset 0 0 0 1px var(--focus-line);
+    box-shadow: none;
   }
   .conversation-message-field > textarea {
     flex: 1;
     min-width: 0;
     width: 100%;
-    min-height: 32px;
+    min-height: 44px;
     max-height: 240px;
     field-sizing: content;
     resize: none;
     border: 0;
     outline: none;
-    padding: 6px 0;
+    padding: 10px 14px 4px;
     background: transparent;
     color: var(--ink-0);
     font: inherit;
@@ -638,16 +653,18 @@
     box-shadow: none;
   }
   .conversation-message-field .composer-send-actions {
-    align-self: flex-end;
-    min-height: 36px;
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    min-height: 0;
   }
   .conversation-message-field .dictation-trigger {
     font-size: 0;
     padding: 8px;
   }
   .conversation-message-field .dictation-trigger svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
   }
   .conversation .composer-footer {
     padding: 0 8px;
@@ -698,20 +715,21 @@
   .conversation .conversation-compose {
     padding-bottom: 16px;
   }
-  .conversation .home-tools-trigger {
-    order: -1;
-  }
 }
 @layer components {
   .conversation-message-field > .home-tools-trigger {
-    align-self: flex-end;
+    position: absolute;
+    left: 4px;
+    bottom: 4px;
     flex: none;
   }
   .conversation-message-field .home-tools-trigger > button {
-    width: 32px;
-    height: 36px;
-    padding: 8px;
+    width: 28px;
+    height: 28px;
+    padding: 6px;
     border-radius: 50%;
+    background: var(--surface-primary);
+    color: var(--ink-2);
   }
   .conversation .composer-footer-context > .new-chat-options {
     flex: 1;
@@ -719,8 +737,8 @@
   }
   .conversation .composer-footer-context > button {
     width: 28px;
-    height: 32px;
-    border-radius: 8px;
+    height: 24px;
+    border-radius: var(--r-pill);
   }
 }
 @layer components {
@@ -738,12 +756,10 @@
 }
 
 @layer overrides {
-  .conversation-message-field {
-    background: var(--bg-hover);
-    box-shadow: inset 0 0 0 1px var(--line);
-  }
-  .conversation-message-field:focus-within {
-    box-shadow: inset 0 0 0 1px var(--line-strong);
+  .conversation .composer-footer {
+    padding: 6px 8px;
+    min-height: 36px;
+    box-sizing: border-box;
   }
   .conversation .composer-footer-context {
     align-items: center;
@@ -758,9 +774,11 @@
     gap: 12px;
   }
   .chat-preferences > :is(select, button) {
-    min-height: 32px;
+    min-height: 24px;
     padding-inline: 8px;
-    font-size: var(--fs-sm);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    border-radius: var(--r-pill);
     color: var(--ink-2);
   }
   .conversation
@@ -773,11 +791,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 32px;
-    width: 32px;
-    height: 32px;
-    min-height: 32px;
-    padding: 8px;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    padding: 6px;
     border-radius: 50%;
     corner-shape: round;
     background: transparent;
@@ -820,5 +838,14 @@
     width: 16px;
     height: 16px;
     flex: 0 0 16px;
+  }
+  /* Aside anatomy: with no send action the mic is the primary ink-filled
+   * button; once a send is available it recedes to a ghost icon. */
+  .conversation .composer-send-actions:not(:has(> button[aria-label="Send message"]:not(:disabled))) > .dictation-trigger {
+    background: var(--ink-0);
+    color: var(--ink-inverse);
+  }
+  .conversation .composer-send-actions > button[aria-label="Send message"]:disabled {
+    display: none;
   }
 }

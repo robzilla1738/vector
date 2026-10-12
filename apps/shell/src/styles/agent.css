@@ -65,12 +65,13 @@
     font-size: var(--fs-sm);
     font-weight: var(--fw-medium);
     letter-spacing: var(--tracking-snug);
-    color: var(--sb-ink-1);
+    color: var(--sb-ink-0);
   }
   .rail-head .icon-btn {
     width: 28px;
     height: 28px;
-    border-radius: var(--r-md);
+    border-radius: 50%;
+    corner-shape: round;
     -webkit-app-region: no-drag;
   }
   .rail-title .ci,
