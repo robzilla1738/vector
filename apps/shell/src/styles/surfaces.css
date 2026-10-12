@@ -909,10 +909,10 @@
   }
   .aux-home .start-inner {
     width: 100%;
-    max-width: 1152px;
+    max-width: 827px;
     min-height: 100%;
     justify-content: flex-start;
-    padding: clamp(48px, 12vh, 128px) clamp(var(--space-5), 4cqw, 48px) 48px;
+    padding: 160px var(--space-4) 48px;
     gap: 0;
   }
   .aux-home .aux-mark {
@@ -928,14 +928,17 @@
     width: min(736px, 100%);
     max-width: none;
     min-width: 0;
-    height: 54px;
+    height: 52px;
     margin: 0 auto;
     padding: var(--space-2-5);
     gap: var(--space-2-5);
     border: 0;
     border-radius: var(--r-2xl);
     background: var(--surface-primary);
-    box-shadow: var(--shadow-card);
+    box-shadow:
+      0 0 0 1px var(--border-surface),
+      0 20px 25px -5px var(--shadow-tint),
+      0 8px 10px -6px var(--shadow-tint);
   }
   .aux-home .cmdbar.hero:has(input:focus-visible) {
     border: 0;
@@ -995,14 +998,14 @@
   }
   .home-history {
     width: min(827px, 100%);
-    margin: clamp(var(--space-8), 8vh, 80px) auto 0;
+    margin: 152px auto 0;
   }
   .home-section-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
     color: var(--ink-1);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-2);
   }
   .home-cards {
     display: grid;
@@ -1014,9 +1017,9 @@
     text-align: left;
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
-    padding: var(--space-2) var(--space-3) var(--space-3);
-    height: 240px;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    aspect-ratio: 1;
     min-height: 0;
     overflow: hidden;
     border: 0;
@@ -1026,10 +1029,80 @@
     transition:
       background var(--t-fast) var(--ease-in-out),
       box-shadow var(--t-fast) var(--ease-in-out);
+    -webkit-user-select: none;
+    user-select: none;
   }
   .home-card:hover {
     background: var(--surface-primary);
     box-shadow: var(--shadow-pop);
+  }
+  .home-card-hero {
+    position: relative;
+    display: grid;
+    place-items: center;
+    flex: none;
+    height: 128px;
+    margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) 0;
+    border: 0;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    background: var(--surface-tertiary);
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .home-card-hero-icon {
+    display: grid;
+    place-items: center;
+    width: 80px;
+    height: 80px;
+    border-radius: var(--r-2xl);
+    corner-shape: squircle;
+    background: linear-gradient(to bottom, var(--card-tile-hi), var(--card-tile-lo));
+    color: var(--card-tile-ink);
+  }
+  .home-card-status {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    padding: var(--space-0-5) var(--space-2);
+    border-radius: var(--r-pill);
+    background: rgb(0 0 0 / 28%);
+    color: var(--ink-1);
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-medium);
+  }
+  .home-card h3 {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+  .home-card-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: auto;
+  }
+  .home-card-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1-5);
+    height: 28px;
+    max-width: 100%;
+    padding: 0 var(--space-2-5);
+    border: 0;
+    border-radius: var(--r-lg);
+    corner-shape: squircle;
+    background: rgb(255 255 255 / 3%);
+    box-shadow: var(--line-inset);
+    color: var(--ink-0);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .home-card-cta:hover {
+    background: var(--bg-hover);
   }
   .home-card p {
     font-size: var(--fs-xs);
@@ -1041,10 +1114,18 @@
     color: var(--ink-2);
     font-size: var(--fs-xs);
     line-height: 1.5;
+    display: -webkit-box;
     overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     min-height: 0;
     max-height: none;
+    margin: 0;
+  }
+  .home-excerpt.rich {
+    display: block;
     flex: 1;
+    overflow: hidden;
     mask-image: linear-gradient(var(--mask-opaque) 80%, transparent);
   }
   .home-empty {
@@ -1399,14 +1480,14 @@
     margin-right: auto;
   }
   .home-card h3 {
-    font-size: var(--fs-md);
+    font-size: var(--fs-sm);
     font-weight: var(--fw-semibold);
     line-height: 20px;
   }
   .home-card-open {
     text-align: left;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     width: 100%;
     overflow: hidden;

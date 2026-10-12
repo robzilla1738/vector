@@ -5,15 +5,6 @@
     flex-wrap: wrap;
     gap: var(--space-4);
   }
-  .home-card-meta {
-    display: flex;
-    color: var(--ink-2);
-    font-size: var(--fs-xs);
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
   .compact-drafts {
     margin: var(--space-6) 0 0;
   }
@@ -70,7 +61,7 @@
     gap: var(--space-2);
   }
   .aux-home .home-history {
-    margin-top: clamp(var(--space-8), 8vh, 80px);
+    margin-top: 152px;
   }
   .aux-home .start-inner > .aux-mark {
     opacity: 0.28;
@@ -80,17 +71,23 @@
 @layer components {
   .home-welcome {
     display: grid;
-    justify-items: center;
-    margin-bottom: 48px;
-  }
-  .aux-home .home-welcome .aux-mark {
+    place-items: center;
     width: 64px;
     height: 64px;
+    margin: 0 auto 48px;
+    border-radius: 50%;
+    corner-shape: round;
+    background: var(--surface-tertiary);
+    box-shadow: inset 0 0 0 var(--hairline) var(--line);
+  }
+  .aux-home .home-welcome .aux-mark {
+    width: 40px;
+    height: 40px;
     margin: 0;
     opacity: 0.18;
   }
   .aux-home .start-inner:has(.home-welcome) {
-    padding-top: clamp(64px, 17vh, 160px);
+    padding-top: 160px;
   }
   .home-model-setup {
     display: flex;

@@ -320,6 +320,9 @@
     --surface-primary: rgb(255 255 255 / 8%);
     --surface-secondary: rgb(255 255 255 / 6%);
     --surface-tertiary: rgb(255 255 255 / 4%);
+    --card-tile-hi: rgb(255 255 255 / 10%);
+    --card-tile-lo: rgb(255 255 255 / 50%);
+    --card-tile-ink: #fff;
     --muted: rgb(255 255 255 / 15%);
     --tabs-list: rgb(23 23 23 / 40%);
     --surface-window: var(--bg-window);
@@ -425,6 +428,9 @@
     --surface-primary: #fff;
     --surface-secondary: rgb(255 255 255 / 85%);
     --surface-tertiary: rgb(255 255 255 / 55%);
+    --card-tile-hi: rgb(0 0 0 / 6%);
+    --card-tile-lo: rgb(0 0 0 / 12%);
+    --card-tile-ink: var(--ink-0);
     --muted: rgb(0 0 0 / 5%);
     --tabs-list: rgb(0 0 0 / 20%);
     --shadow-tint: #0000000d;

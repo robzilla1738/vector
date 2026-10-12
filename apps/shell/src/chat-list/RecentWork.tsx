@@ -10,7 +10,7 @@ import { call, errToast, useStore } from "../store";
 import { ConversationDrafts } from "../components/ConversationDrafts";
 import { ChatList, savedChat } from "./ChatList";
 import { openSavedTask } from "../task-navigation";
-import { shellIconRight } from "../ui/icons";
+import { shellIconOpen, shellIconRight, Zap } from "../ui/icons";
 import { RecentWorkEmpty } from "../components/RecentWorkEmpty";
 import { Tabs } from "../ui";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
@@ -116,28 +116,36 @@ export function RecentWork() {
             }}
           />
         ) : (
-          routines.slice(0, 3).map((item) => (
-            <article className="home-card" key={item.routineId}>
-              <div className="home-card-meta">
-                <span>
-                  {item.paused ? "Paused" : item.trigger.kind === "manual" ? "On demand" : "Scheduled"}
-                </span>
-              </div>
-              <h3>
-                <button
-                  className="home-card-open"
-                  onClick={() =>
-                    item.sourceTaskId
-                      ? void openSavedTask(item.sourceTaskId).catch(errToast)
-                      : useStore.getState().setOverlay("tasks")
-                  }
-                >
-                  {item.title}
+          routines.slice(0, 3).map((item) => {
+            const open = () =>
+              item.sourceTaskId
+                ? void openSavedTask(item.sourceTaskId).catch(errToast)
+                : useStore.getState().setOverlay("tasks");
+            return (
+              <article className="home-card" key={item.routineId}>
+                <button className="home-card-hero" onClick={open} aria-label={item.title}>
+                  <span className="home-card-hero-icon">
+                    <Zap width={56} height={56} />
+                  </span>
+                  <span className="home-card-status">
+                    {item.paused ? "Paused" : item.trigger.kind === "manual" ? "On demand" : "Scheduled"}
+                  </span>
                 </button>
-              </h3>
-              <p className="home-excerpt">{item.objective}</p>
-            </article>
-          ))
+                <h3>
+                  <button className="home-card-open" onClick={open}>
+                    {item.title}
+                  </button>
+                </h3>
+                <p className="home-excerpt">{item.objective}</p>
+                <div className="home-card-actions">
+                  <button className="home-card-cta" onClick={open}>
+                    Open routine
+                    {shellIconOpen}
+                  </button>
+                </div>
+              </article>
+            );
+          })
         )}
         {!visibleLoading && !visibleError && !count && (
           <RecentWorkEmpty view={tab} onCreateTask={() => useStore.getState().setOverlay("tasks")} />
