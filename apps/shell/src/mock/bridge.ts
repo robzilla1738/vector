@@ -58,7 +58,8 @@ import type {
 import { normalizeCommandRankingQuery } from "@aux/contracts/command-ranking-query";
 import { OrganizationCommitSchema, type OrganizationSnapshot } from "@aux/contracts/organization";
 import type { BrowserExtension, AuxBridge, OmniboxResult } from "../bridge";
-import { DEFAULT_SPACE } from "../workspace";
+import { toOrganizationLayout } from "../store/organization-layout";
+import { DEFAULT_SPACE, type Layout } from "../workspace";
 import {
   BOOKMARKS,
   HISTORY,
@@ -210,30 +211,29 @@ export function installMockBridge(q: URLSearchParams) {
   const sidebar = q.get("sidebar");
   if (sidebar) localStorage.setItem("aux.sidebar", sidebar);
   else localStorage.removeItem("aux.sidebar");
-  localStorage.setItem(
-    "aux.layout.v1",
-    JSON.stringify({
-      spaces: [DEFAULT_SPACE],
-      activeSpaceId: DEFAULT_SPACE.id,
-      tabSpace: {},
-      order: ["page-1", "page-2", "page-3", "page-4", "page-6", "page-5"],
-      pins: { [DEFAULT_SPACE.id]: BOOKMARKS },
-      folders: [
-        { id: "folder-dev", name: "Dev", spaceId: DEFAULT_SPACE.id, collapsed: false },
-        { id: "folder-social", name: "Social", spaceId: DEFAULT_SPACE.id, collapsed: true },
-        { id: "folder-design", name: "Design", spaceId: DEFAULT_SPACE.id, collapsed: true },
-        { id: "folder-rhema", name: "Rhema", spaceId: DEFAULT_SPACE.id, collapsed: true },
-        { id: "folder-ai", name: "AI", spaceId: DEFAULT_SPACE.id, collapsed: true },
-      ],
-      tabFolder: {
-        "page-1": "folder-dev",
-        "page-2": "folder-dev",
-        "page-3": "folder-dev",
-        "page-4": "folder-dev",
-        "page-6": "folder-social",
-      },
-    }),
-  );
+  const seedLayout: Layout = {
+    spaces: [DEFAULT_SPACE],
+    activeSpaceId: DEFAULT_SPACE.id,
+    tabSpace: {},
+    order: ["page-1", "page-2", "page-3", "page-4", "page-6", "page-5"],
+    pins: { [DEFAULT_SPACE.id]: BOOKMARKS },
+    folders: [
+      { id: "folder-dev", name: "Dev", spaceId: DEFAULT_SPACE.id, collapsed: false },
+      { id: "folder-social", name: "Social", spaceId: DEFAULT_SPACE.id, collapsed: true },
+      { id: "folder-design", name: "Design", spaceId: DEFAULT_SPACE.id, collapsed: true },
+      { id: "folder-rhema", name: "Rhema", spaceId: DEFAULT_SPACE.id, collapsed: true },
+      { id: "folder-ai", name: "AI", spaceId: DEFAULT_SPACE.id, collapsed: true },
+    ],
+    tabFolder: {
+      "page-1": "folder-dev",
+      "page-2": "folder-dev",
+      "page-3": "folder-dev",
+      "page-4": "folder-dev",
+      "page-6": "folder-social",
+    },
+  };
+  localStorage.setItem("aux.layout.v1", JSON.stringify(seedLayout));
+  organization = { revision: 0, layout: toOrganizationLayout(seedLayout) };
   localStorage.setItem("aux.sb-w", q.get("sbw") ?? "260");
   localStorage.setItem("aux.rail-w", q.get("railw") ?? "380");
   if (q.get("rail")) localStorage.setItem("aux.mock.rail", q.get("rail")!);
