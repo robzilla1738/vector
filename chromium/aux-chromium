@@ -18,10 +18,20 @@ VERSION, REVISION = (ROOT / "version.txt").read_text().splitlines()[:2]
 DEV_DEFAULTS = json.loads((ROOT / "dev-defaults.json").read_text())
 DEFAULT_SRC = Path.home() / DEV_DEFAULTS["source"]
 SRC = Path(os.environ.get("AUX_CHROMIUM_SRC", DEFAULT_SRC)).expanduser().resolve()
-DEPOT_TOOLS = Path(os.environ.get("AUX_DEPOT_TOOLS", Path.home() / "aux-chromium-proof/depot_tools"))
+_depot_default = Path.home() / "aux-chromium-proof/depot_tools"
+if not _depot_default.is_dir():
+    _alt = Path.home() / "Documents/Code/aux-chromium-proof/depot_tools"
+    if _alt.is_dir():
+        _depot_default = _alt
+DEPOT_TOOLS = Path(os.environ.get("AUX_DEPOT_TOOLS", _depot_default))
 ENV = os.environ.copy()
 ENV["PATH"] = f"{DEPOT_TOOLS}:{ENV.get('PATH', '')}"
-ENV.setdefault("DEVELOPER_DIR", "/Applications/Xcode-beta.app/Contents/Developer")
+if "DEVELOPER_DIR" not in ENV:
+    for _xc in ("Xcode-beta.app", "Xcode.app"):
+        _devdir = Path(f"/Applications/{_xc}/Contents/Developer")
+        if (_devdir / "usr/bin/xcodebuild").exists():
+            ENV["DEVELOPER_DIR"] = str(_devdir)
+            break
 
 
 def run(*args: str, cwd: Path | None = None, capture: bool = False) -> str:
@@ -269,19 +279,18 @@ def main() -> None:
     parser.add_argument("--patch", help="destination relative to chromium/patches")
     parser.add_argument("paths", nargs="*")
     args = parser.parse_args()
-    match args.command:
-        case "setup": setup()
-        case "presetup": presetup()
-        case "push": push()
-        case "pop": pop()
-        case "configure": configure(args.flavor)
-        case "build": build(args.flavor)
-        case "run": run_app(args.flavor, args.profile)
-        case "validate": validate()
-        case "sanity": sanity()
-        case "refresh": refresh(args.patch or "", args.paths)
-        case "format": format_sources(args.paths)
-        case "stage-shell": stage_shell()
+    if args.command == "setup": setup()
+    elif args.command == "presetup": presetup()
+    elif args.command == "push": push()
+    elif args.command == "pop": pop()
+    elif args.command == "configure": configure(args.flavor)
+    elif args.command == "build": build(args.flavor)
+    elif args.command == "run": run_app(args.flavor, args.profile)
+    elif args.command == "validate": validate()
+    elif args.command == "sanity": sanity()
+    elif args.command == "refresh": refresh(args.patch or "", args.paths)
+    elif args.command == "format": format_sources(args.paths)
+    elif args.command == "stage-shell": stage_shell()
 
 
 if __name__ == "__main__":
