@@ -436,7 +436,8 @@
     .app.layout-hidden .rail.open .rail-inner {
       top: var(--toolbar-h);
     }
-    .cb-host {
+    .cb-host,
+    .cb-sep {
       display: none;
     }
     .toolbar .icon-btn[aria-label="Tab overview"],

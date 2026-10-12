@@ -1157,14 +1157,15 @@ export function CommandBar({
             }}
           >
             {hasPage && !hero ? (
-              compact ? (
+              <>
                 <span className="cb-title">{hostOf(pageAddress)}</span>
-              ) : (
-                <>
-                  <span className="cb-title">{title}</span>
-                  <span className="cb-host">{hostOf(pageAddress)}</span>
-                </>
-              )
+                {title !== hostOf(pageAddress) && (
+                  <>
+                    <span className="cb-sep" aria-hidden>|</span>
+                    <span className="cb-host">{title}</span>
+                  </>
+                )}
+              </>
             ) : (
               <span className="cb-placeholder">{placeholder}</span>
             )}

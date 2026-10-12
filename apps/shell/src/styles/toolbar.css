@@ -273,10 +273,15 @@
     min-width: 0;
     flex: 0 1 auto;
   }
+  .cb-sep {
+    color: var(--ink-3);
+    flex: none;
+  }
   .cb-host {
     color: var(--ink-2);
-    flex: none;
-    font-size: var(--fs-sm);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .cb-placeholder {
     color: var(--ink-2);
@@ -349,7 +354,6 @@
   .app:not(.native-host) .cmdbar.compact {
     background: var(--sb-field);
   }
-  .cmdbar.compact .cb-host,
   .cmdbar.compact .cb-lock {
     display: none;
   }

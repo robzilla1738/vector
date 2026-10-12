@@ -156,9 +156,9 @@
     margin: 0 0 18px auto;
     max-width: min(78%, 420px);
     width: fit-content;
-    border-radius: 18px;
-    background: color-mix(in srgb, var(--ink-0) 7%, transparent);
-    padding: var(--space-2-5) var(--space-3-5);
+    border-radius: var(--r-xl);
+    background: var(--surface-secondary);
+    padding: 6px var(--space-2-5);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     font-size: var(--fs-lg);
