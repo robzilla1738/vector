@@ -2747,19 +2747,30 @@ export function Conversation({
                       data-command-id="toggle-conversation-context"
                       onClick={contextControls.onSummary}
                     >
-                      {shellIconGlobe}
-                      <span>
-                        {[
-                          selectedContext?.title || selectedContext?.url,
-                          browserSources.length
-                            ? `${browserSources.length} live ${browserSources.length === 1 ? "tab" : "tabs"}`
-                            : undefined,
-                          capturedSources?.sources.length
-                            ? `${capturedSources.sources.length} saved ${capturedSources.sources.length === 1 ? "article" : "articles"}`
-                            : undefined,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
+                      <span className="context-tile">
+                        {selectedContext?.favicon ? (
+                          <img src={selectedContext.favicon} alt="" />
+                        ) : (
+                          shellIconGlobe
+                        )}
+                      </span>
+                      <span className="context-text">
+                        <b>
+                          {[
+                            selectedContext?.title || selectedContext?.url,
+                            browserSources.length
+                              ? `${browserSources.length} live ${browserSources.length === 1 ? "tab" : "tabs"}`
+                              : undefined,
+                            capturedSources?.sources.length
+                              ? `${capturedSources.sources.length} saved ${capturedSources.sources.length === 1 ? "article" : "articles"}`
+                              : undefined,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </b>
+                        {selectedContext?.url && selectedContext.url !== "about:blank" && (
+                          <small>{URL.parse(selectedContext.url)?.host ?? selectedContext.url}</small>
+                        )}
                       </span>
                     </button>
                   )}

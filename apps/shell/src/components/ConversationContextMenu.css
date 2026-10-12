@@ -49,16 +49,55 @@
     gap: var(--space-2);
     max-width: 100%;
     width: fit-content;
-    padding: var(--space-2);
-    border-radius: var(--r-pill);
-    background: var(--bg-hover);
+    padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+    border-radius: var(--r-xl);
+    corner-shape: squircle;
+    background: var(--surface-secondary);
+    box-shadow: var(--line-inset);
     color: var(--ink-2);
     font-size: var(--fs-xs);
   }
-  .home-context-summary > span:not(.ci) {
+  .home-context-summary .context-tile {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: var(--r-lg);
+    corner-shape: squircle;
+    background: var(--surface-tertiary);
+    color: var(--ink-1);
+    overflow: hidden;
+  }
+  .home-context-summary .context-tile img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+  }
+  .home-context-summary .context-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    text-align: left;
+  }
+  .home-context-summary .context-text b {
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--ink-0);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+  }
+  .home-context-summary .context-text small {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-regular);
   }
   /* The same explicit context choices remain available in narrow menus. */
   .home-tools-menu .conversation-browser-context-controls > :not(.browser-context-trigger) {
