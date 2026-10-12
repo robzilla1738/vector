@@ -18,8 +18,7 @@ async function processGroupMembers(groupId) {
       fields.length !== 3 ||
       fields.some((field) => !Number.isSafeInteger(field)) ||
       fields[0] < 0 ||
-      fields[1] < 0 ||
-      fields[2] < 0
+      fields[1] < 0
     )
       throw new Error("Process-group retirement inventory is invalid");
     if (fields[1] === groupId) members.push({ pid: fields[0], uid: fields[2] });
