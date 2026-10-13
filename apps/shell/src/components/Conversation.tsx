@@ -8,6 +8,7 @@ import { isRunStartRemoved, readStartAttempt } from "../run-start-attempts";
 import { shellIconMore } from "../ui/icons";
 import { RunOptions } from "../composer/RunOptions";
 import { ChatPreferences } from "../composer/ChatPreferences";
+import { useComposerLayout } from "../composer/use-composer-layout";
 import { BudgetPrompt } from "../features/budget/BudgetPrompt";
 import { orderedPages } from "../store/pages";
 import { errorMessage } from "../error-message";
@@ -115,6 +116,7 @@ import {
   shellIconSplit,
 } from "../ui/icons";
 import "./Conversation.css";
+import "../composer/Composer.css";
 import "./ConversationContextMenu.css";
 import {
   staticIconButtonProps as auxReuseStaticIconButtonProps,
@@ -222,10 +224,7 @@ const ComposerInput = memo(function ComposerInput({
   sendDisabled: boolean;
   placeholder: string;
   maxLength?: number;
-  inputProps: Pick<
-    React.TextareaHTMLAttributes<HTMLTextAreaElement>,
-    "onPaste" | "onDragOver" | "onDrop"
-  >;
+  inputProps: Pick<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onPaste" | "onDragOver" | "onDrop">;
   onChange(value: string): void;
   onSend(): void;
   children?: ReactNode;
@@ -236,6 +235,7 @@ const ComposerInput = memo(function ComposerInput({
   const text = useStore((s) => draftText(s, id, answerRunId, answerQuestion));
   const ownInput = useRef<HTMLTextAreaElement>(null);
   const inputRef = textareaRef ?? ownInput;
+  const { field, multiline } = useComposerLayout(inputRef, text, !!inlineControls);
   return (
     <div className="conversation-input">
       <FeatureComposer
@@ -246,7 +246,12 @@ const ComposerInput = memo(function ComposerInput({
         onChange={onChange}
         disabled={disabled}
       />
-      <div className="conversation-message-field">
+      <div
+        ref={field}
+        className="conversation-message-field"
+        data-multiline={multiline}
+        data-inline-controls={!!inlineControls || undefined}
+      >
         {leading}
         <textarea
           ref={inputRef}
@@ -262,7 +267,9 @@ const ComposerInput = memo(function ComposerInput({
               e.key === "Enter" &&
               !e.shiftKey &&
               !e.nativeEvent.isComposing &&
-              e.keyCode !== 229
+              e.keyCode !== 229 &&
+              !sendDisabled &&
+              text.trim()
             ) {
               e.preventDefault();
               onSend();
@@ -469,8 +476,8 @@ export function Conversation({
   useEffect(() => {
     if (connected) void useStore.getState().recoverRunStart(id);
   }, [connected, id]);
-  const draftWorkspaceId = useStore((s) =>
-    s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId)?.workspaceId,
+  const draftWorkspaceId = useStore(
+    (s) => s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId)?.workspaceId,
   );
   const focusRequest = useStore((s) => s.focusRequest);
   const seenFocusRequest = useRef(focusRequest);
@@ -754,8 +761,9 @@ export function Conversation({
   const draftPreferences = useStore((state) => state.composerPreferences[composerPreferenceKey]);
   const taskModeKnown = !id || taskMode?.id === id;
   const taskModeLocked = !!id && (!taskModeKnown || !!taskMode?.found);
-  const privateTask = bridge.privateMode || (
-    taskMode && taskMode.id === id && taskMode.found
+  const privateTask =
+    bridge.privateMode ||
+    (taskMode && taskMode.id === id && taskMode.found
       ? taskMode.privateTask
       : (draftPreferences?.privateTask ?? false));
   useEffect(() => {
@@ -775,12 +783,22 @@ export function Conversation({
             const branch = value && "kind" in value && value.kind === "branch-draft" ? value : null;
             setBranchInfo(branch);
             const state = useStore.getState();
-            if (value) state.setComposerPreferences(draftKey(id), {
-              ...(branch ? { modelId: branch.modelId, reasoning: branch.reasoning, executionTarget: branch.executionTarget ?? "local" } : {}),
-              ...state.composerPreferences[draftKey(id)],
-              privateTask: value.privateTask ?? false,
-            });
-            if (branch && !Object.prototype.hasOwnProperty.call(state.conversationBrowserSources, browserSourcesKey(id))) {
+            if (value)
+              state.setComposerPreferences(draftKey(id), {
+                ...(branch
+                  ? {
+                      modelId: branch.modelId,
+                      reasoning: branch.reasoning,
+                      executionTarget: branch.executionTarget ?? "local",
+                    }
+                  : {}),
+                ...state.composerPreferences[draftKey(id)],
+                privateTask: value.privateTask ?? false,
+              });
+            if (
+              branch &&
+              !Object.prototype.hasOwnProperty.call(state.conversationBrowserSources, browserSourcesKey(id))
+            ) {
               state.setConversationBrowserSources(id, branch.contextPageRefs);
               state.setConversationContext(id, branch.contextPageRefs[0]?.pageId ?? "none");
             }
@@ -1732,7 +1750,9 @@ export function Conversation({
           const hasUnsentDraft = !!useStore.getState().conversationDrafts[draftKey(chatId)];
           const latestPreferences = useStore.getState().composerPreferences[draftKey(chatId)];
           if (!hasUnsentDraft && latestPreferences?.agentMode !== undefined)
-            useStore.getState().setComposerPreferences(draftKey(chatId), { ...latestPreferences, agentMode: undefined });
+            useStore
+              .getState()
+              .setComposerPreferences(draftKey(chatId), { ...latestPreferences, agentMode: undefined });
           if ((!id || !taskMode?.found) && (activeChat.current === id || activeChat.current === chatId)) {
             setTaskMode({ id: chatId, found: true, privateTask: run.config?.privateTask ?? privateTask });
             setMetadataRefresh((value) => value + 1);
@@ -1763,12 +1783,15 @@ export function Conversation({
       keepInitialPrompt();
       if (activeChat.current === id || activeChat.current === sentChatId) {
         const detail = errorMessage(error);
-        const staleSource = (error as { code?: string } | null)?.code === "ref_stale" || detail.startsWith("ref_stale:");
-        setSendError(readStartAttempt(sentChatId ?? "new")
-          ? "Aux couldn’t confirm whether your message was sent. Send again to check its status."
-          : staleSource
-            ? "Open the source tab and wait for it to load, then return here and send your reply again."
-            : "Your message couldn’t be sent. Try sending it again.");
+        const staleSource =
+          (error as { code?: string } | null)?.code === "ref_stale" || detail.startsWith("ref_stale:");
+        setSendError(
+          readStartAttempt(sentChatId ?? "new")
+            ? "Aux couldn’t confirm whether your message was sent. Send again to check its status."
+            : staleSource
+              ? "Open the source tab and wait for it to load, then return here and send your reply again."
+              : "Your message couldn’t be sent. Try sending it again.",
+        );
         setSendErrorDetails(detail);
       }
     } finally {
@@ -1845,8 +1868,14 @@ export function Conversation({
   const branchPending = useRef<BranchOperation | null>(null);
   const [branching, setBranching] = useState<BranchOperation | null>(null);
   const branchTurn = async (run: Run, mode: "branch" | "edit") => {
-    if (branchPending.current?.owner === conversationCurrent || !conversationCurrent() || run.status !== "completed") return;
-    const owner = conversationCurrent, attempt = { owner };
+    if (
+      branchPending.current?.owner === conversationCurrent ||
+      !conversationCurrent() ||
+      run.status !== "completed"
+    )
+      return;
+    const owner = conversationCurrent,
+      attempt = { owner };
     branchPending.current = attempt;
     setBranching(attempt);
     try {
@@ -1855,7 +1884,9 @@ export function Conversation({
       const state = useStore.getState();
       state.setConversationDraft(draft.chatId, draft.draftText);
       state.setComposerPreferences(draftKey(draft.chatId), {
-        privateTask: draft.privateTask, modelId: draft.modelId, reasoning: draft.reasoning,
+        privateTask: draft.privateTask,
+        modelId: draft.modelId,
+        reasoning: draft.reasoning,
         executionTarget: draft.executionTarget ?? "local",
       });
       state.setConversationBrowserSources(draft.chatId, draft.contextPageRefs);
@@ -1970,8 +2001,16 @@ export function Conversation({
       setContextRefresh((value) => value + 1);
     },
   });
-  const newChat =
-    !embedded && !turns.length && !pendingTurns.length && !historyLoading && !historyError && !taskBound;
+  const emptyTranscript =
+    !turns.length &&
+    !pendingTurns.length &&
+    !historyLoading &&
+    !historyError &&
+    !messageError &&
+    !branchInfo &&
+    !searchWindow &&
+    !earlier;
+  const newChat = !embedded && emptyTranscript && !taskBound;
   useEffect(() => {
     if (newChat) textareaRef.current?.focus();
   }, [newChat, textareaRef]);
@@ -2429,6 +2468,7 @@ export function Conversation({
     <section
       ref={conversationRoot}
       className={`conversation${embedded ? " conversation-embedded" : ""}${home ? " conversation-home" : ""}${newChat ? " conversation-new" : ""}`}
+      data-empty-transcript={emptyTranscript || undefined}
       aria-label={embedded ? "Conversation" : undefined}
       aria-labelledby={embedded ? undefined : "conversation-title"}
     >
@@ -2563,7 +2603,7 @@ export function Conversation({
                   Load earlier messages
                 </ConversationAction>
               )}
-              {!turns.length && !historyLoading && !historyError && (
+              {emptyTranscript && (
                 <div className="conversation-empty">
                   <AuxMark />
                   <span className="sr-only">Start a conversation with Aux</span>
@@ -2572,7 +2612,9 @@ export function Conversation({
               {branchInfo && !turns.length && (
                 <p role="status" className="hint">
                   {branchInfo.privateTask ? "Private draft. " : ""}
-                  {branchInfo.mode === "edit" ? "History before the selected turn is retained. Edit the message, then send." : "History through the selected turn is retained. Write a new message to continue."}
+                  {branchInfo.mode === "edit"
+                    ? "History before the selected turn is retained. Edit the message, then send."
+                    : "History through the selected turn is retained. Write a new message to continue."}
                   {!branchInfo.available && " The original source is unavailable; this draft cannot be sent."}
                 </p>
               )}
@@ -3039,7 +3081,7 @@ export function Conversation({
                                 ? "Ask about this page…"
                                 : home
                                   ? "Ask Aux a task, @ for context"
-                                  : "Reply, @ for context"
+                                  : "Ask anything, @ for context"
                       }
                       sendDisabled={
                         archived ||

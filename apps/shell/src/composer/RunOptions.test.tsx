@@ -41,6 +41,18 @@ function select(label: string, value: string) {
     element.dispatchEvent(new Event("change", { bubbles: true }));
   });
 }
+const modelMenu = () => document.querySelector<HTMLDialogElement>('[aria-label="Choose a model"]')!;
+const modelOption = (value: string) =>
+  [...modelMenu().querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].find(
+    (button) => button.value === value,
+  );
+async function openModels() {
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Composer model"]')!.click());
+}
+async function chooseModel(value: string) {
+  if (!modelMenu()) await openModels();
+  await act(async () => modelOption(value)!.click());
+}
 it("loads only the actual catalog on demand and preserves Auto as absence", async () => {
   const rpc = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
     if (method === "packages.list") return { packages: [], defaults: [] } as never;
@@ -49,22 +61,21 @@ it("loads only the actual catalog on demand and preserves Auto as absence", asyn
   });
   await mount();
   expect(rpc).not.toHaveBeenCalledWith("models.list");
-  await act(async () =>
-    host.querySelector<HTMLSelectElement>('select[aria-label="Composer model"]')!.focus(),
-  );
+  await openModels();
   expect(rpc).toHaveBeenCalledWith("models.list");
-  expect(host.textContent).toContain("Fixture model");
-  select("Composer model", "fixture/exact");
+  expect(modelMenu().textContent).toContain("Fixture model");
+  await chooseModel("fixture/exact");
   select("Thinking level", "high");
   expect(useStore.getState().composerPreferences.new).toEqual({
     privateTask: false,
     modelId: "fixture/exact",
     reasoning: "high",
   });
-  select("Composer model", "");
+  await chooseModel("");
   select("Thinking level", "");
   expect(useStore.getState().composerPreferences.new?.modelId).toBeUndefined();
   expect(useStore.getState().composerPreferences.new?.reasoning).toBeUndefined();
+  await openModels();
   let refresh!: (value: unknown) => void;
   rpc.mockImplementation(
     () =>
@@ -75,11 +86,12 @@ it("loads only the actual catalog on demand and preserves Auto as absence", asyn
   await act(async () =>
     useStore.setState({ settings: { ...useStore.getState().settings, modelProvider: "changed-fixture" } }),
   );
-  expect(host.querySelector('option[value="fixture/exact"]')).toBeNull();
+  expect(modelOption("fixture/exact")).toBeUndefined();
+  expect(modelMenu().textContent).toContain("Loading models");
   await act(async () =>
     refresh({ models: [{ id: "fixture/new", name: "Current model" }], source: "configured" }),
   );
-  expect(host.querySelector('option[value="fixture/new"]')).not.toBeNull();
+  expect(modelOption("fixture/new")).toBeDefined();
 });
 it("captures a newchat private choice while existingchat mode stays immutable", async () => {
   await mount();
@@ -113,24 +125,86 @@ it("offers conversational capabilities while preserving an unsupported saved sel
     composerPreferences: { new: { privateTask: false, modelId: "provider/non-language" } },
   });
   await mount();
-  await act(async () =>
-    host.querySelector<HTMLSelectElement>('select[aria-label="Composer model"]')!.focus(),
-  );
-  const model = host.querySelector<HTMLSelectElement>('select[aria-label="Composer model"]')!;
-  expect([...model.options].map((option) => option.value)).toEqual([
-    "",
-    "provider/non-language",
-    "provider/chat",
-    "provider/new-local",
-  ]);
-  expect(model.value).toBe("provider/non-language");
+  await openModels();
+  expect(
+    [...modelMenu().querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].map(
+      (option) => option.value,
+    ),
+  ).toEqual(["", "provider/non-language", "provider/chat", "provider/new-local"]);
+  expect(modelOption("provider/non-language")?.getAttribute("aria-checked")).toBe("true");
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("not supported for chat");
-  expect(model.querySelector<HTMLOptionElement>('option[value="provider/non-language"]')?.disabled).toBe(
-    true,
-  );
-  select("Composer model", "provider/chat");
+  expect(modelOption("provider/non-language")?.disabled).toBe(true);
+  await chooseModel("provider/chat");
   expect(useStore.getState().composerPreferences.new?.modelId).toBe("provider/chat");
   expect(host.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("searches model names, IDs and providers and moves keyboard focus through the filtered choices", async () => {
+  vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
+    if (method === "packages.list") return { packages: [], defaults: [] } as never;
+    return {
+      models: [
+        { id: "alpha/standard", name: "Standard", provider: "Alpha", reasoning: "supported" },
+        { id: "beta/fast", name: "Fast", provider: "Beta", reasoning: "none" },
+      ],
+    } as never;
+  });
+  useStore.setState({ composerPreferences: { new: { privateTask: false, reasoning: "high" } } });
+  await mount();
+  await openModels();
+  const search = modelMenu().querySelector<HTMLInputElement>('[aria-label="Search models"]')!;
+  expect(document.activeElement).toBe(search);
+  const searchFor = async (value: string) =>
+    act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(search, value);
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  await searchFor("Beta");
+  expect(modelOption("alpha/standard")).toBeUndefined();
+  expect(modelOption("beta/fast")).toBeDefined();
+  await searchFor("missing");
+  expect(modelMenu().textContent).toContain("No matching models");
+  await searchFor("beta/fast");
+  await act(async () =>
+    search.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })),
+  );
+  expect(document.activeElement).toBe(modelOption("beta/fast"));
+  await act(async () => (document.activeElement as HTMLButtonElement).click());
+  expect(modelMenu()).toBeNull();
+  expect(useStore.getState().composerPreferences.new).toMatchObject({
+    modelId: "beta/fast",
+    reasoning: undefined,
+  });
+  expect(host.querySelector<HTMLSelectElement>('[aria-label="Thinking level"]')!.disabled).toBe(true);
+});
+
+it("keeps an unknown current selection through retry and rejects a catalog response from the previous provider generation", async () => {
+  const completions: ((value: unknown) => void)[] = [];
+  let attempts = 0;
+  vi.spyOn(bridge, "invoke").mockImplementation((method) => {
+    if (method === "packages.list") return Promise.resolve({ packages: [], defaults: [] }) as never;
+    if (++attempts === 1) return Promise.reject(new Error("Provider unavailable"));
+    return new Promise((resolve) => completions.push(resolve)) as never;
+  });
+  useStore.setState({ composerPreferences: { new: { privateTask: false, modelId: "custom/current" } } });
+  await mount();
+  await openModels();
+  expect(modelMenu().textContent).toContain("Provider unavailable");
+  expect(modelOption("custom/current")?.getAttribute("aria-checked")).toBe("true");
+  await act(async () => modelMenu().querySelector<HTMLButtonElement>('[role="menuitem"]')!.click());
+  expect(modelMenu().textContent).toContain("Loading models");
+  await act(async () =>
+    useStore.setState({ settings: { ...useStore.getState().settings, modelProvider: "replacement" } }),
+  );
+  await act(async () => completions[0]!({ models: [{ id: "stale/model", name: "Stale model" }] }));
+  expect(modelOption("stale/model")).toBeUndefined();
+  expect(modelMenu().textContent).toContain("Loading models");
+  await act(async () => completions[1]!({ models: [{ id: "replacement/model", name: "Current model" }] }));
+  expect(modelOption("replacement/model")).toBeDefined();
+  expect(modelOption("custom/current")?.disabled).toBe(true);
+  expect(useStore.getState().composerPreferences.new?.modelId).toBe("custom/current");
+  await chooseModel("replacement/model");
+  expect(useStore.getState().composerPreferences.new?.modelId).toBe("replacement/model");
 });
 
 it("hides the previous Space's project choices immediately while a new Space has no workspace mapping", async () => {

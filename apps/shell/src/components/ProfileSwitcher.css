@@ -3,9 +3,10 @@
 }
 .profile-menu-trigger {
   width: 100%;
-  padding: 7px;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-2-5);
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--r-lg);
   background: transparent;
   color: inherit;
   text-align: left;
@@ -22,16 +23,17 @@
 .profile-menu button {
   display: block;
   width: 100%;
-  padding: 7px;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-2-5);
   border: 0;
   background: transparent;
   color: inherit;
   text-align: left;
-  border-radius: 5px;
+  border-radius: var(--r-lg);
 }
 .profile-menu-profile {
-  border-left: 3px solid var(--space-color) !important;
+  box-shadow: inset 3px 0 var(--space-color);
 }
 .profile-menu-space {
-  padding-left: 22px !important;
+  padding-left: var(--space-6);
 }

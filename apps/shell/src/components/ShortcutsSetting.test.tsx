@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { ShortcutsSetting } from "./ShortcutsSetting";
+import { bridge } from "../bridge";
 it("searches commands and stops recording when its Settings subview is hidden", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const host = document.createElement("div"),
@@ -31,6 +32,58 @@ it("searches commands and stops recording when its Settings subview is hidden", 
   } finally {
     await act(async () => root.unmount());
     host.remove();
+    vi.unstubAllGlobals();
+  }
+});
+it("reuses conflict checks in the dedicated Quick Ask recorder and lets Tab leave it", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const host = document.createElement("div"),
+    root = createRoot(host);
+  document.body.append(host);
+  const save = vi.fn().mockResolvedValue(true);
+  vi.spyOn(bridge, "setShortcuts").mockResolvedValue(true);
+  vi.spyOn(bridge, "setShortcutOverrides").mockResolvedValue(true);
+  try {
+    await act(async () => root.render(<ShortcutsSetting value={{}} onSave={save} commandId="quick-ask" />));
+    expect(host.querySelector('[aria-label="Find keyboard shortcut"]')).toBeNull();
+    expect(host.textContent).not.toContain("Reset all shortcuts");
+    const recorder = host.querySelector<HTMLInputElement>('[aria-label="Change Quick Ask shortcut"]')!;
+    await act(async () => recorder.focus());
+    const reserved = new KeyboardEvent("keydown", {
+      key: "q",
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => window.dispatchEvent(reserved));
+    expect(host.textContent).toContain("macOS uses");
+    expect(save).not.toHaveBeenCalled();
+    await act(async () =>
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "t", metaKey: true, bubbles: true, cancelable: true }),
+      ),
+    );
+    expect(host.textContent).toContain("is used by");
+    expect(save).not.toHaveBeenCalled();
+    await act(async () =>
+      [...host.querySelectorAll("button")]
+        .find((button) => button.textContent?.startsWith("Assign anyway"))!
+        .click(),
+    );
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        "quick-ask": [{ key: "t", command: true }],
+        "new-tab": [],
+      }),
+    );
+    await act(async () => recorder.click());
+    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    await act(async () => window.dispatchEvent(tab));
+    expect(tab.defaultPrevented).toBe(false);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   }
 });

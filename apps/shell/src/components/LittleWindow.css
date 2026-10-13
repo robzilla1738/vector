@@ -10,9 +10,24 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px 0 80px;
+  gap: 4px;
+  padding: 0 10px 0 8px;
   -webkit-app-region: drag;
+}
+.little-window.native-host .little-strip {
+  padding-left: 80px;
+}
+.little-strip > button {
+  height: 28px;
+  flex-shrink: 0;
+}
+.little-strip > .icon-btn {
+  width: 28px;
+  border-radius: var(--r-pill);
+}
+.little-strip > button svg {
+  width: 16px;
+  height: 16px;
 }
 .little-strip :is(button, input, .cmdbar) {
   -webkit-app-region: no-drag;
@@ -28,7 +43,21 @@
 }
 .little-strip .cmdbar {
   flex: 1;
-  min-width: 120px;
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .little-host {
+    display: none;
+  }
+}
+@media (max-width: 420px) {
+  .little-open-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
 }
 .little-page {
   flex: 1;

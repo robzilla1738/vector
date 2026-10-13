@@ -378,7 +378,7 @@
   }
   .settings-search-box input {
     min-width: 0;
-    height: 36px;
+    height: 32px;
     padding: 0;
     margin: 0;
     background: none;
@@ -419,15 +419,6 @@
   }
   .settings-content .field :is(input:not([type="checkbox"]):not([type="range"]), select) {
     border-radius: var(--r-lg);
-  }
-  .settings-connection-tabs {
-    overflow-x: auto;
-    gap: var(--space-1);
-  }
-  .settings-connection-tabs button {
-    flex: none;
-    min-height: 32px;
-    border-radius: var(--r-pill);
   }
   .settings-search-results > div {
     display: grid;
@@ -506,32 +497,30 @@
 }
 
 @layer components {
-  .tabs-horizontal .settings-search-box {
-    margin-left: var(--space-6);
-  }
   .settings-content .btn {
-    min-height: 36px;
+    min-height: 32px;
     height: auto;
-    padding: var(--space-2) var(--space-3);
+    padding: 6px 10px;
     border: 0;
     border-radius: var(--r-lg);
     box-shadow: none;
     font-size: var(--fs-sm);
   }
   .settings-content :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select) {
-    min-height: 36px;
-    height: 36px;
-    padding: 0 var(--space-3);
-    border: 0;
+    min-height: 32px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
     border-radius: var(--r-lg);
     box-shadow: none;
     font-size: var(--fs-sm);
   }
   .settings-content select {
+    appearance: auto;
     padding-right: var(--space-7);
   }
   .settings-content textarea {
-    border: 0;
+    border: 1px solid var(--line);
     border-radius: var(--r-lg);
     padding: var(--space-3);
     box-shadow: none;
@@ -540,6 +529,9 @@
   .settings-content :is(input, select, textarea, .btn):focus-visible {
     outline: 2px solid var(--focus-line);
     outline-offset: 2px;
+  }
+  .settings-content .btn:not(.ghost):not(.primary):not(.danger) {
+    border: 1px solid var(--line);
   }
 
   .feature-availability {
@@ -559,5 +551,73 @@
   .feature-availability td:last-child {
     width: 28%;
     white-space: nowrap;
+  }
+}
+
+@layer overrides {
+  .settings-visual-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .settings-visual-choice .settings-visual-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 72px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-md);
+    background: none;
+    color: var(--ink-2);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 12px;
+    cursor: pointer;
+  }
+  .settings-visual-option img {
+    display: block;
+    width: 72px;
+    height: 44px;
+    border-radius: var(--r-md);
+    corner-shape: superellipse(var(--squircle-factor));
+    pointer-events: none;
+    user-select: none;
+  }
+  .settings-visual-choice .settings-visual-option.selected {
+    color: var(--ink-0);
+    font-weight: 600;
+    background: none;
+    box-shadow: none;
+  }
+  .settings-visual-option.selected img {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--link) 30%, transparent);
+  }
+  .settings-visual-option:has(input[value="vertical"]):is(.selected) img {
+    box-shadow: 0 0 0 3px rgb(251 146 60 / 30%);
+  }
+  .settings-visual-option:hover {
+    color: var(--ink-0);
+  }
+  .settings-visual-option:has(input:focus-visible) img {
+    outline: 2px solid var(--focus-line);
+    outline-offset: 3px;
+  }
+  .settings-check-list {
+    display: grid;
+    gap: 0;
+  }
+  .settings-check-list > label {
+    justify-content: space-between;
+    min-height: 36px;
+    padding-block: 6px;
+    font-size: 13px;
+  }
+  .settings-check-list > label + label {
+    border-top: var(--hairline) solid var(--line);
+  }
+  .settings-content .ui-setting-control > .btn:only-child {
+    align-self: flex-start;
   }
 }

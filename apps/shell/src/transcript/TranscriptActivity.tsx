@@ -1,6 +1,7 @@
 import type { RunTranscriptItem } from "@aux/contracts";
 import "./TranscriptActivity.css";
 import { nativePoliteLiveProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
+import { shellIconCheck, shellIconClose, shellIconRight } from "../ui/icons";
 
 type Waiting = Extract<RunTranscriptItem, { kind: "waiting" }>;
 type Tool = Extract<RunTranscriptItem, { kind: "tool" }>;
@@ -56,10 +57,16 @@ export function ToolFold({ tools, summary }: { tools: readonly Tool[]; summary?:
   const total = summary?.total ?? tools.length;
   return (
     <details className="transcript-tools">
-      <summary>Recorded actions · {total}</summary>
+      <summary>
+        <span>Recorded actions · {total}</span>
+        {shellIconRight}
+      </summary>
       <ol>
         {tools.map((item, index) => (
-          <li key={`${item.op}-${index}`}>
+          <li key={`${item.op}-${index}`} data-state={item.status}>
+            <span className="transcript-tool-icon" aria-hidden="true">
+              {item.status === "ok" ? shellIconCheck : item.status === "failed" ? shellIconClose : <span />}
+            </span>
             <span>{TOOL_LABELS[item.op] ?? "Recorded action"}</span>{" "}
             <span className="transcript-tool-status">{item.status}</span>
           </li>

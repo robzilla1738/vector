@@ -170,7 +170,7 @@ it("places an anchored menu above its trigger and focuses its search field", asy
     );
     const menu = document.querySelector<HTMLDialogElement>('dialog[role="menu"]')!;
     expect(menu.style.left).toBe("100px");
-    expect(menu.style.top).toBe("112px");
+    expect(menu.style.top).toBe("116px");
     expect(document.activeElement).toBe(menu.querySelector('input[type="search"]'));
     await act(async () =>
       root.render(
@@ -189,7 +189,7 @@ it("places an anchored menu above its trigger and focuses its search field", asy
       ),
     );
     expect(menu.style.left).toBe("90px");
-    expect(menu.style.top).toBe("112px");
+    expect(menu.style.top).toBe("116px");
   } finally {
     await act(async () => root.unmount());
     container.remove();

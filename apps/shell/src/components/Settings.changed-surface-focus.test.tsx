@@ -55,7 +55,7 @@ function Chat() {
   }, []);
   return <textarea ref={ref} aria-label="New chat draft" />;
 }
-it("shows feature-only Services in its own tab and preserves new-chat focus on Settings retirement", async () => {
+it("shows feature-only Services in its own category and preserves new-chat focus on Settings retirement", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal(
     "ResizeObserver",
@@ -82,7 +82,7 @@ it("shows feature-only Services in its own tab and preserves new-chat focus on S
       .at(-1)!;
     expect(github.hidden).toBe(true);
     const services = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
-      (node) => node.textContent === "Services",
+      (node) => node.textContent === "Connected services",
     )!;
     expect(services).toBeTruthy();
     await act(async () => services.click());
@@ -98,7 +98,7 @@ it("shows feature-only Services in its own tab and preserves new-chat focus on S
   }
 });
 
-it("makes MCP available under Plugins without requiring Skills or a duplicate Services panel", async () => {
+it("makes MCP available in the rail without requiring Skills or a duplicate Services panel", async () => {
   features.mcp = true;
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal(
@@ -114,10 +114,10 @@ it("makes MCP available under Plugins without requiring Skills or a duplicate Se
   window.history.replaceState(null, "", "/settings/connections/plugins");
   try {
     await act(async () => root.render(<Settings />));
-    const plugins = host.querySelector<HTMLButtonElement>('[id="connection-tab-Plugins"]');
+    const plugins = host.querySelector<HTMLButtonElement>('[data-category="Skills & MCP"]');
     expect(plugins).toBeTruthy();
     await act(async () => plugins!.click());
-    expect(plugins!.getAttribute("aria-selected")).toBe("true");
+    expect(plugins!.getAttribute("aria-current")).toBe("page");
     expect(host.querySelectorAll('[data-testid="canonical-plugins"]')).toHaveLength(1);
     expect(host.querySelector("#connection-mcp")).toBeNull();
     expect(host.querySelector("#connection-panel-Plugins")?.hasAttribute("hidden")).toBe(false);

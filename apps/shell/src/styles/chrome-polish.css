@@ -34,7 +34,6 @@
     .sidebar .tab-row,
     .sidebar .folder-row,
     .settings-category-list > button,
-    .settings-connection-tabs button,
     .history-segment button,
     .horizontal-group-chip
   ) {
@@ -51,7 +50,6 @@
     .sidebar .tab-row,
     .sidebar .folder-row,
     .settings-category-list > button,
-    .settings-connection-tabs button,
     .history-segment button,
     .horizontal-group-chip
   ):is(:hover, :focus-visible) {

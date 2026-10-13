@@ -18,7 +18,7 @@ export function LabsSettings({
       {FEATURES.filter((feature) => featureAvailable(feature.id)).map((feature) => {
         const label = feature.id.replace(/([A-Z])/g, " $1").replace(/^./, (first) => first.toUpperCase());
         return (
-          <SettingsField key={feature.id} label={label} description="Show this feature in Aux.">
+          <SettingsField compact key={feature.id} label={label} description="Show this feature in Aux.">
             <Switch
               aria-label={label}
               checked={featureEnabled(feature.id, overrides)}

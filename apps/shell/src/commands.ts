@@ -24,6 +24,7 @@ import { closeSelectedTabs } from "./use-tab-selection";
 import { bookmarkWebUrl } from "./bookmark-files";
 import { isTab, tabsInSpace } from "./workspace";
 import { createTabSwitcher, type TabSwitcherOrder } from "./tab-switcher";
+import { cycleTabPreview } from "./tab-switcher-state";
 
 type StoreState = ReturnType<typeof useStore.getState>;
 export interface CommandContext extends CommandInvocation {
@@ -427,5 +428,9 @@ export function dispatchShortcut(
       shortcut,
       { platform: bridge.platform },
     )?.id;
+  if ((id === "tab-next" || id === "tab-previous") && shortcut.key.toLowerCase() === "tab" && shortcut.ctrl) {
+    cycleTabPreview(id === "tab-next" ? 1 : -1);
+    return true;
+  }
   return id ? runCommand(id, { ...context, state }) : false;
 }

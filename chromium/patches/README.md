@@ -1,5 +1,13 @@
 # Native patch ownership
 
+The current series extends the consolidated 32 areas with follow-ups 0033–0041.
+Area [0041](aux/0041-tab-switcher-chords.patch) forwards actual held Ctrl-Tab
+identity and focuses the shell for the preview's modifier-release handling.
+Other Next/Previous shortcuts and menu commands still activate immediately.
+Its three-file patch was checked and applied under the sole development lock;
+compilation and native observation are recorded in STATUS. The consolidation
+evidence below describes the earlier 32-area checkpoint.
+
 The complete series contains 32 area patches, numbered `0001`–`0032`. Each of its 850 paths with a net change from pinned Chromium belongs to exactly one patch. The areas include native browser controls, document selections and PDF export, download dismissal, native history, private Profile retirement and embedded input ownership. Intermediate area patches are not independently buildable products.
 
 This checkpoint folds the reviewed `0033`–`0042` follow-ups into their existing owners. Replaced patch files are removed; their history remains in Git. The next available reservation is `0033`. References to the former `0033`–`0042`, the original 100-patch series through `0101`, or the retired `0102` reservation describe earlier checkpoints, not additional active patches.

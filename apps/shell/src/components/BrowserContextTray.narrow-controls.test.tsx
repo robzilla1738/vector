@@ -42,9 +42,11 @@ beforeEach(() => {
   document.body.append(host);
   root = createRoot(host);
   style = document.createElement("style");
-  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "Conversation.css"), "utf8");
+  const here = dirname(fileURLToPath(import.meta.url));
+  const css = readFileSync(join(here, "../composer/Composer.css"), "utf8");
+  const conversation = readFileSync(join(here, "Conversation.css"), "utf8");
   // Apply the actual narrow-container rules to actual mounted controls; jsdom does not implement container sizing.
-  const container = /@container composer\s*\(max-width:\s*420px\)\s*\{/.exec(css)!;
+  const container = /@container\s*\(max-width:\s*520px\)\s*\{/.exec(css)!;
   const start = container.index + container[0].length;
   let depth = 1,
     end = start;
@@ -56,8 +58,9 @@ beforeEach(() => {
   }
   if (depth) throw new Error("The composer container CSS block is incomplete.");
   const narrow = css.slice(start, end - 1);
+  const controls = conversation.match(/^\s*\.conversation-browser-context-controls \{[^}]+\}/m)![0];
   const wrap = css.match(/^\s*\.composer-footer \.conversation-browser-context-controls \{[^}]+\}/m)![0];
-  style.textContent = wrap + narrow;
+  style.textContent = controls + wrap + narrow;
   document.head.append(style);
 });
 afterEach(async () => {
@@ -71,14 +74,16 @@ afterEach(async () => {
 const render = (disabled = false, selected = "none") =>
   act(async () =>
     root.render(
-      <div className="composer-footer">
-        <BrowserContextTray
-          primary={selected}
-          sources={[]}
-          onPrimary={primary}
-          onSources={sources}
-          disabled={disabled}
-        />
+      <div className="conversation">
+        <div className="composer-footer">
+          <BrowserContextTray
+            primary={selected}
+            sources={[]}
+            onPrimary={primary}
+            onSources={sources}
+            disabled={disabled}
+          />
+        </div>
       </div>,
     ),
   );
@@ -97,6 +102,7 @@ function originalReads() {
 it("retains explicit additional-tab selection and primary page-free state under the actual narrow rules", async () => {
   const invoke = originalReads();
   await render();
+  expect(getComputedStyle(host.querySelector(".composer-footer")!).padding).toBe("6px");
   expect(getComputedStyle(addTabs()).display).not.toBe("none");
   expect(getComputedStyle(host.querySelector(".conversation-browser-context-controls")!).flexWrap).toBe(
     "wrap",

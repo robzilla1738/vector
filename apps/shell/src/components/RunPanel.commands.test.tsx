@@ -178,6 +178,93 @@ it("opens the exact original permission settings and work-history disclosure", a
   expect(button("toggle-run-steps").getAttribute("aria-expanded")).toBe("true");
 });
 
+it("shows active work before the reply and folds it when the answer starts, keeping recorded work available", async () => {
+  const startedAt = Date.now() - 12000;
+  useStore.setState((state) => ({
+    runs: state.runs.map((run) => ({
+      ...run,
+      status: "running",
+      startedAt,
+      endedAt: undefined,
+      result: undefined,
+    })),
+    steps: { turn: [{ stepId: "read", runId: "turn", op: "observe", startedAt }] },
+    answerStreams: {},
+  }));
+  await render();
+  expect(button("toggle-run-steps").textContent).toContain("Working for");
+  expect(button("toggle-run-steps").getAttribute("aria-expanded")).toBe("true");
+  await act(async () => useStore.setState({ answerStreams: { turn: "The answer is arriving" } }));
+  expect(button("toggle-run-steps").getAttribute("aria-expanded")).toBe("false");
+  expect(host.querySelector(".run-work-fold")!.compareDocumentPosition(host.querySelector(".answer")!)).toBe(
+    Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  await act(async () =>
+    useStore.setState((state) => ({
+      runs: state.runs.map((run) => ({
+        ...run,
+        status: "completed",
+        endedAt: startedAt + 12000,
+        result: { answer: "The recorded answer" },
+      })),
+    })),
+  );
+  expect(button("toggle-run-steps").textContent).toContain("Worked for 12s");
+  await act(async () => button("toggle-run-steps").click());
+  expect(button("toggle-run-steps").getAttribute("aria-expanded")).toBe("true");
+  expect(host.querySelector(".timeline")).not.toBeNull();
+});
+
+it.each(["focus", "pointer", "activate"] as const)(
+  "keeps inspected work open across streaming and completion after timeline %s",
+  async (interaction) => {
+    const startedAt = Date.now() - 12000;
+    useStore.setState((state) => ({
+      runs: state.runs.map((run) => ({
+        ...run,
+        status: "running",
+        startedAt,
+        endedAt: undefined,
+        result: undefined,
+      })),
+      steps: {
+        turn: [{ stepId: "read", runId: "turn", op: "observe", startedAt, inputs: { selector: "main" } }],
+      },
+      answerStreams: {},
+    }));
+    await render();
+    const step = button("toggle-run-step");
+    await act(async () => {
+      if (interaction === "focus") step.focus();
+      else if (interaction === "pointer")
+        step.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      else step.click();
+    });
+    const focusedElement = document.activeElement;
+    await act(async () => useStore.setState({ answerStreams: { turn: "The answer is arriving" } }));
+    expect(button("toggle-run-steps").getAttribute("aria-expanded")).toBe("true");
+    expect(button("toggle-run-step")).toBe(step);
+    expect(document.activeElement).toBe(focusedElement);
+    expect(step.getAttribute("aria-expanded")).toBe(interaction === "activate" ? "true" : "false");
+    await act(async () =>
+      useStore.setState((state) => ({
+        runs: state.runs.map((run) => ({
+          ...run,
+          status: "completed",
+          endedAt: startedAt + 12000,
+          result: { answer: "The recorded answer" },
+        })),
+      })),
+    );
+    expect(button("toggle-run-steps").getAttribute("aria-expanded")).toBe("true");
+    expect(button("toggle-run-step")).toBe(step);
+    expect(document.activeElement).toBe(focusedElement);
+    expect(step.getAttribute("aria-expanded")).toBe(interaction === "activate" ? "true" : "false");
+    await act(async () => button("toggle-run-steps").click());
+    expect(host.querySelector(".timeline")).toBeNull();
+  },
+);
+
 it("remaps original run and structured result disclosures without extra markup", async () => {
   await act(async () =>
     useStore.setState((state) => ({

@@ -15,9 +15,10 @@ export function SettingsNav({
   profilesAvailable,
   linkRoutingAvailable,
   appleScriptAvailable,
-  skillsAvailable,
+  pluginsAvailable,
   automationsAvailable,
   servicesAvailable,
+  vaultAvailable,
   permissionsAvailable,
   extensionsAvailable,
   firstCategory,
@@ -35,9 +36,10 @@ export function SettingsNav({
   profilesAvailable: boolean;
   linkRoutingAvailable: boolean;
   appleScriptAvailable: boolean;
-  skillsAvailable: boolean;
+  pluginsAvailable: boolean;
   automationsAvailable: boolean;
   servicesAvailable: boolean;
+  vaultAvailable: boolean;
   permissionsAvailable: boolean;
   extensionsAvailable: boolean;
   firstCategory: RefObject<HTMLButtonElement | null>;
@@ -85,9 +87,10 @@ export function SettingsNav({
         profilesAvailable={profilesAvailable}
         linkRoutingAvailable={linkRoutingAvailable}
         appleScriptAvailable={appleScriptAvailable}
-        skillsAvailable={skillsAvailable}
+        pluginsAvailable={pluginsAvailable}
         automationsAvailable={automationsAvailable}
         servicesAvailable={servicesAvailable}
+        vaultAvailable={vaultAvailable}
         permissionsAvailable={permissionsAvailable}
         extensionsAvailable={extensionsAvailable}
         firstCategory={firstCategory}

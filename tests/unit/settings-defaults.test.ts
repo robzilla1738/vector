@@ -15,6 +15,38 @@ function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}
 }
 
 describe("settings defaults for a real test pass", () => {
+  it("persists sidebar preview, visibility and tab placement preferences across restart", async () => {
+    const { dir, repo, settings } = harness();
+    try {
+      expect(settings.all()).toMatchObject({
+        sidebarRecentChatLimit: 3,
+        sidebarBookmarksVisible: true,
+        verticalTabInsertionPosition: "top",
+        horizontalTabShrinkToFit: false,
+      });
+      const patch = MethodSchemas["settings.set"].parse({
+        sidebarRecentChatLimit: 10,
+        sidebarBookmarksVisible: false,
+        verticalTabInsertionPosition: "bottom",
+        horizontalTabShrinkToFit: true,
+      });
+      await settings.set(patch);
+      expect(settings.all()).toMatchObject(patch);
+      expect(new SettingsService(repo, join(dir, "settings.json"), {}).all()).toMatchObject(patch);
+      expect(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8"))).toMatchObject(patch);
+      for (const invalid of [
+        { sidebarRecentChatLimit: 4 },
+        { sidebarRecentChatLimit: "all" },
+        { sidebarBookmarksVisible: "false" },
+        { verticalTabInsertionPosition: "sorted" },
+        { horizontalTabShrinkToFit: "true" },
+      ])
+        expect(MethodSchemas["settings.set"].safeParse(invalid).success).toBe(false);
+    } finally {
+      repo.db.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it("exposes saved layout and automation preferences in live and reopened snapshots", async () => {
     const { dir, repo, settings } = harness();
     try {

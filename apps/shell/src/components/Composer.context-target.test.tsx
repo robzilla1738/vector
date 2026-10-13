@@ -73,12 +73,17 @@ beforeEach(() => {
   style = document.createElement("style");
   document.head.append(style);
   const menu = readFileSync("apps/shell/src/components/ConversationContextMenu.css", "utf8"),
-    conversation = readFileSync("apps/shell/src/components/Conversation.css", "utf8");
+    composer = readFileSync("apps/shell/src/composer/Composer.css", "utf8");
   const hit = readFileSync("apps/shell/src/tokens.css", "utf8").match(/--hit:\s*(\d+px)/)![1]!;
   const opener = menu.match(/\.home-tools-trigger > button\s*\{[^}]+\}/)![0];
-  const narrow = conversation.match(/\.composer-send-actions \.dictation-trigger\s*\{[^}]+\}/)![0];
-  // Source-selected narrow rule activation; jsdom does not implement physical container queries.
-  style.textContent = [opener, narrow].join("\n").replaceAll("var(--hit)", hit);
+  const controls = composer.match(
+    /\.conversation\s+:is\(\s*\.home-tools-trigger > button,[^{}]*\)\s*\{[^}]+\}/,
+  )![0];
+  const glyph = composer.match(
+    /\.conversation\s+:is\(\.home-tools-trigger,[^{}]*\)\s*>\s*button\s+svg\s*\{[^}]+\}/,
+  )![0];
+  // Apply the shipped action rules without their enclosing layer, which jsdom does not implement.
+  style.textContent = [opener, controls, glyph].join("\n").replaceAll("var(--hit)", hit);
 });
 afterEach(async () => {
   await act(async () => root.unmount());
@@ -96,14 +101,14 @@ afterEach(async () => {
     else Reflect.deleteProperty(prototype, key);
   }
 });
-it("keeps the page-free Add context opener's label, draft and modal focus at the established target", async () => {
+it("keeps the page-free Add context opener's label, draft and modal focus at the reference 28px target", async () => {
   await act(async () => root.render(<HomeAsk onSearch={vi.fn()} />));
   const input = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="Reply to conversation"]')!,
     opener = host.querySelector<HTMLButtonElement>('.home-tools-trigger > button[aria-label="Add context"]')!;
   expect(input.value).toBe("Original page-free question");
   expect(orderedPages(useStore.getState().pages)).toEqual([]);
-  expect(getComputedStyle(opener).width).toBe("32px");
-  expect(getComputedStyle(opener).height).toBe("32px");
+  expect(getComputedStyle(opener).width).toBe("28px");
+  expect(getComputedStyle(opener).height).toBe("28px");
   opener.focus();
   expect(document.activeElement).toBe(opener);
   await act(async () => opener.click());
@@ -115,24 +120,26 @@ it("keeps the page-free Add context opener's label, draft and modal focus at the
   expect(input.value).toBe("Original page-free question");
   expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(bridge.startDictation).not.toHaveBeenCalled();
-  const selector = readFileSync("apps/shell/src/components/Conversation.css", "utf8").match(
-    /(\.home-tools-trigger > button[^,{]+):hover \{/,
+  const selector = readFileSync("apps/shell/src/composer/Composer.css", "utf8").match(
+    /(\.conversation\s+:is\(\s*\.home-tools-trigger > button,[^{}]*\):not\(:disabled\)):is\(:hover, \[aria-expanded="true"\]\)\s*\{/,
   )![1]!;
   expect(opener.matches(selector)).toBe(true);
   opener.disabled = true;
   expect(opener.matches(selector)).toBe(false);
   opener.disabled = false;
 });
-it("retains original disabled Dictate and glyph while the actual narrow footer target remains32", async () => {
+it("retains disabled Dictate and its glyph at the reference 28px action target", async () => {
   await act(async () => root.render(<Conversation chatId="archived-fixture" embedded />));
   const dictation = host.querySelector<HTMLButtonElement>(".composer-send-actions .dictation-trigger")!;
   expect(dictation.textContent).toContain("Dictate");
   expect(dictation.disabled).toBe(true);
-  expect(getComputedStyle(dictation).width).toBe("32px");
-  expect(getComputedStyle(dictation).height).toBe("32px");
-  expect(getComputedStyle(dictation).minWidth).toBe("32px");
+  expect(getComputedStyle(dictation).width).toBe("28px");
+  expect(getComputedStyle(dictation).height).toBe("28px");
+  expect(getComputedStyle(dictation).flexBasis).toBe("28px");
   expect(dictation.querySelector("svg")!.getAttribute("width")).toBe("15");
   expect(dictation.querySelector("svg")!.getAttribute("height")).toBe("15");
+  expect(getComputedStyle(dictation.querySelector("svg")!).width).toBe("16px");
+  expect(getComputedStyle(dictation.querySelector("svg")!).height).toBe("16px");
   await act(async () => dictation.click());
   expect(bridge.startDictation).not.toHaveBeenCalled();
 });

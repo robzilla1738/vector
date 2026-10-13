@@ -37,6 +37,7 @@ it("validates stub results against the live manifest schemas", async () => {
   expect(failures).toEqual([]);
   expect(refused.map((row) => row.name).sort()).toEqual(
     [
+      "copyStoredImage",
       "native.foundationModelsStatus",
       "native.foundationModelsStart",
       "native.foundationModelsRead",

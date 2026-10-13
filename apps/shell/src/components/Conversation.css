@@ -3,8 +3,14 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
-    margin: var(--space-2) 0;
+    justify-content: flex-end;
+    gap: 4px;
+    margin: -12px 0 16px;
+    opacity: 0;
+    transition: opacity var(--t-fast) var(--ease-in-out);
+  }
+  .conversation-turn:is(:hover, :focus-within) .conversation-turn-actions {
+    opacity: 1;
   }
   .conversation-turn-actions button,
   .conversation-turn-placeholder {
@@ -111,65 +117,6 @@
     background: var(--bg-hover);
     color: var(--ink-0);
   }
-  .composer-footer {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: 32px;
-    padding: var(--space-1-5) var(--space-1) 0;
-  }
-  .composer-footer-context {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-  }
-  .composer-send-actions {
-    display: flex;
-    align-items: center;
-    flex: none;
-    gap: var(--space-1);
-  }
-  .composer-send-actions > button[aria-label="Send message"] {
-    width: 28px;
-    height: 28px;
-    padding: 6px;
-    background: var(--ink-0);
-    color: var(--ink-inverse);
-    border-radius: 50%;
-    corner-shape: round;
-  }
-  .composer-footer .new-chat-options {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    width: 100%;
-    padding: 0;
-    margin: 0;
-  }
-  .composer-footer .conversation-browser-context {
-    flex: 1;
-    min-width: 0;
-  }
-  .composer-footer .conversation-browser-context-controls {
-    flex-wrap: wrap;
-  }
-  .composer-footer select {
-    max-width: 100%;
-    text-overflow: ellipsis;
-  }
-  .composer-frame .conversation-input {
-    background: transparent;
-    border: 0;
-    box-shadow: none;
-    border-radius: 0;
-  }
-  .composer-frame .conversation-images {
-    margin: 0;
-  }
   .composer-frame-wrap .field-error {
     margin: var(--space-1) var(--space-2);
   }
@@ -188,20 +135,7 @@
   .conversation-body:has(> .supporting-chip) .conversation-scroll {
     padding-top: 48px;
   }
-
-  .composer-footer .browser-context-trigger {
-    max-width: min(240px, 100%);
-    min-height: 32px;
-  }
-  .conversation .composer-frame:focus-within {
-    box-shadow:
-      inset 0 0 0 2px var(--focus-line),
-      var(--shadow-card);
-  }
-  .conversation .composer-frame textarea:focus-visible {
-    outline: none;
-  }
-  .conversation-embedded:not(.conversation-home) .conversation-scroll:has(.conversation-empty) {
+  .conversation-embedded[data-empty-transcript]:not(.conversation-home) .conversation-scroll {
     place-items: center;
     padding-top: 0;
   }
@@ -218,38 +152,6 @@
   .conversation .field-error {
     overflow-wrap: anywhere;
   }
-
-  .composer-frame {
-    container: composer / inline-size;
-  }
-  @container composer (max-width:420px) {
-    .composer-footer .new-chat-attach > span:not(.ci) {
-      display: none;
-    }
-    .composer-footer .new-chat-attach {
-      min-width: 28px;
-      min-height: 28px;
-      justify-content: center;
-    }
-    .composer-footer .conversation-browser-context-controls {
-      justify-content: flex-start;
-    }
-    .composer-footer .browser-context-trigger {
-      max-width: 100%;
-    }
-    .composer-send-actions .dictation-trigger {
-      width: var(--hit);
-      height: var(--hit);
-      min-width: var(--hit);
-      padding: 0;
-      justify-content: center;
-      font-size: 0;
-      gap: 0;
-    }
-  }
-}
-
-@layer components {
   .rail-body:has(.conversation-embedded) {
     display: flex;
     flex-direction: column;
@@ -266,7 +168,7 @@
     background: transparent;
   }
   .conversation-embedded .conversation-scroll {
-    padding: var(--space-3) var(--space-4);
+    padding: 16px;
   }
   .conversation-embedded .conversation-turn {
     margin: var(--space-1) 0 var(--space-6);
@@ -276,12 +178,12 @@
     font-size: var(--fs-xs);
   }
   .conversation-embedded .user-message {
-    max-width: 94%;
+    max-width: calc(100% - 40px);
     margin-bottom: 18px;
-    padding: 9px var(--space-3);
-    border-radius: var(--r-lg);
-    background: var(--sb-hover);
-    color: var(--sb-ink-0);
+    padding: 8px 12px;
+    border-radius: var(--r-xl);
+    background: var(--bg-hover);
+    color: var(--ink-0);
     box-shadow: none;
   }
   .conversation-embedded .answer {
@@ -291,16 +193,10 @@
   .conversation-embedded .conversation-compose {
     width: 100%;
     margin: 0;
-    padding: var(--space-2) var(--space-3) var(--space-3);
+    padding: 0 12px 4px;
     max-height: 55%;
     overflow-y: auto;
     flex-shrink: 0;
-  }
-  .conversation-embedded .conversation-input > textarea {
-    min-height: 88px;
-  }
-  .conversation-embedded .conversation-input > .dictation-trigger {
-    margin-left: auto;
   }
   .conversation-embedded .field-error {
     padding: var(--space-2) var(--space-3);
@@ -420,9 +316,6 @@
       flex-basis: 100%;
     }
   }
-}
-
-@layer components {
   .tabs-horizontal .conversation:not(.conversation-embedded) > .conversation-head {
     padding-left: 52px;
   }
@@ -462,8 +355,8 @@
     }
   }
   .conversation.conversation-new .conversation-main {
-    width: min(880px, 100%);
-    max-width: 880px;
+    width: min(896px, 100%);
+    max-width: 896px;
     padding-top: 0;
   }
   .conversation-new .conversation-scroll {
@@ -480,8 +373,8 @@
     padding: var(--space-6) 0;
   }
   .conversation-new .conversation-empty .aux-mark {
-    width: 56px;
-    height: 56px;
+    width: 64px;
+    height: 64px;
     margin: 0;
     opacity: 0.22;
   }
@@ -505,46 +398,8 @@
     color: var(--ink-2);
     font-size: var(--fs-sm);
   }
-  .conversation-new .conversation-compose {
-    padding-bottom: 0;
-  }
   .conversation-new .conversation-compose-content {
     padding-inline: 0;
-  }
-  .new-chat-options {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    padding: var(--space-1-5) var(--space-2) 0;
-    min-height: 34px;
-    color: var(--ink-2);
-    font-size: var(--fs-xs);
-  }
-  .new-chat-attach {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1-5);
-    padding: var(--space-1) var(--space-1-5);
-    min-height: 32px;
-    border-radius: var(--r-md);
-    white-space: nowrap;
-  }
-  .new-chat-options select {
-    min-width: 0;
-    max-width: min(260px, 60%);
-    border: 0;
-    border-radius: var(--r-md);
-    padding: var(--space-1) var(--space-1-5);
-    background: transparent;
-    color: inherit;
-    text-overflow: ellipsis;
-  }
-  .new-chat-options :is(button, select):not(:disabled):hover,
-  .home-tools-trigger > button:not(:disabled):hover {
-    background: var(--bg-hover);
-    color: var(--ink-0);
   }
   .conversation-browser-context {
     display: grid;
@@ -603,250 +458,11 @@
     border-radius: var(--r-xs);
     flex: none;
   }
-}
-
-@layer components {
-  .conversation .composer-frame {
-    background: var(--surface-primary);
-    border-radius: var(--r-2xl);
-    corner-shape: round;
-    box-shadow: inset 0 0 0 var(--hairline) var(--line-strong);
-    padding: 4px;
-  }
-  .conversation .composer-frame:focus-within {
-    background: var(--surface-primary);
-    box-shadow: inset 0 0 0 1px var(--line-strong);
-    padding: 4px;
-  }
-  .conversation .composer-context {
-    padding-bottom: 4px;
-  }
-  .conversation-message-field {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    padding: 0 0 38px;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    min-height: 0;
-  }
-  .conversation-message-field:focus-within {
-    box-shadow: none;
-  }
-  .conversation-message-field > textarea {
-    flex: 1;
-    min-width: 0;
-    width: 100%;
-    min-height: 44px;
-    max-height: 240px;
-    field-sizing: content;
-    resize: none;
-    border: 0;
-    outline: none;
-    padding: 10px 14px 4px;
-    background: transparent;
-    color: var(--ink-0);
-    font: inherit;
-    line-height: 20px;
-    box-shadow: none;
-  }
-  .conversation-message-field .composer-send-actions {
-    position: absolute;
-    right: 4px;
-    bottom: 4px;
-    min-height: 0;
-  }
-  .conversation-message-field .dictation-trigger {
-    font-size: 0;
-    padding: 8px;
-  }
-  .conversation-message-field .dictation-trigger svg {
-    width: 16px;
-    height: 16px;
-  }
-  .conversation .composer-footer {
-    padding: 0 8px;
-  }
-  .chat-preferences {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex: 1;
-    min-width: 0;
-    flex-wrap: wrap;
-  }
-  .private-ai-disclosure {
-    flex-basis: 100%;
-    color: var(--ink-2);
-    font-size: var(--fs-xs);
-    line-height: 1.5;
-    overflow-wrap: anywhere;
-  }
-  .chat-preferences > select,
-  .chat-preferences > button {
-    min-height: 32px;
-    max-width: 100%;
-    border: 0;
-    background-color: transparent;
-    color: var(--ink-2);
-    box-shadow: none;
-    border-radius: 8px;
-    font-size: var(--fs-xs);
-  }
-  .chat-preferences > :is(select, button):hover {
-    background-color: var(--bg-hover);
-    color: var(--ink-0);
-  }
-  .chat-run-menu {
-    padding: 8px;
-    width: 100%;
-  }
-  .chat-run-menu .composer-run-options {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-  .chat-run-menu .composer-run-options label {
-    justify-content: space-between;
-  }
-  .conversation .conversation-compose {
-    padding-bottom: 16px;
-  }
-}
-@layer components {
-  .conversation-message-field > .home-tools-trigger {
-    position: absolute;
-    left: 4px;
-    bottom: 4px;
-    flex: none;
-  }
-  .conversation-message-field .home-tools-trigger > button {
-    width: 28px;
-    height: 28px;
-    padding: 6px;
-    border-radius: 50%;
-    background: var(--surface-primary);
-    color: var(--ink-2);
-  }
-  .conversation .composer-footer-context > .new-chat-options {
-    flex: 1;
-    width: auto;
-  }
-  .conversation .composer-footer-context > button {
-    width: 28px;
-    height: 24px;
-    border-radius: var(--r-pill);
-  }
-}
-@layer components {
-  .chat-preferences > select[data-mode="full"] {
-    color: var(--warning, #d99a4d);
-  }
-}
-@layer components {
-  .conversation .composer-footer-context {
-    align-items: flex-start;
-  }
-  .chat-preferences {
-    row-gap: 2px;
-  }
-}
-
-@layer overrides {
-  .conversation .composer-footer {
-    padding: 6px 8px;
-    min-height: 36px;
-    box-sizing: border-box;
-  }
-  .conversation .composer-footer-context {
-    align-items: center;
-    gap: 8px;
-  }
-  .conversation .new-chat-options {
-    align-items: center;
-    gap: 8px;
-  }
-  .chat-preferences {
-    align-items: center;
-    gap: 12px;
-  }
-  .chat-preferences > :is(select, button) {
-    min-height: 24px;
-    padding-inline: 8px;
-    font-size: var(--fs-xs);
-    font-weight: var(--fw-medium);
-    border-radius: var(--r-pill);
-    color: var(--ink-2);
-  }
-  .conversation
-    :is(
-      .home-tools-trigger > button,
-      .new-chat-options > .dictation-trigger,
-      .composer-footer-context > .anchored-trigger,
-      .composer-send-actions > .dictation-trigger
-    ) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 28px;
-    width: 28px;
-    height: 28px;
-    min-height: 28px;
-    padding: 6px;
-    border-radius: 50%;
-    corner-shape: round;
-    background: transparent;
-    color: var(--ink-2);
-  }
-  .conversation
-    :is(
-      .home-tools-trigger > button,
-      .new-chat-options > .dictation-trigger,
-      .composer-footer-context > .anchored-trigger,
-      .composer-send-actions > .dictation-trigger
-    ):not(:disabled):is(:hover, [aria-expanded="true"]) {
-    background: var(--bg-hover);
-    color: var(--ink-0);
-  }
-  .conversation
-    :is(.home-tools-trigger, .new-chat-options, .composer-footer-context, .composer-send-actions)
-    > button
-    svg {
-    width: 16px;
-    height: 16px;
-  }
-  .chat-run-menu .composer-run-options label {
-    min-height: 36px;
-    gap: 12px;
-    font-size: var(--fs-sm);
-  }
-  .chat-run-menu .composer-run-options select {
-    width: 156px;
-    max-width: 60%;
-  }
-}
-
-@layer overrides {
-  .conversation :is(.new-chat-options, .composer-send-actions) > .dictation-trigger {
-    font-size: 0;
-    gap: 0;
-  }
-  .conversation :is(.new-chat-options, .composer-send-actions) > .dictation-trigger > svg {
-    width: 16px;
-    height: 16px;
-    flex: 0 0 16px;
-  }
-  /* Aside anatomy: with no send action the mic is the primary ink-filled
-   * button; once a send is available it recedes to a ghost icon. */
-  .conversation .composer-send-actions:not(:has(> button[aria-label="Send message"]:not(:disabled))) > .dictation-trigger {
-    background: var(--ink-0);
-    color: var(--ink-inverse);
-  }
-  .conversation .composer-send-actions > button[aria-label="Send message"]:disabled {
-    display: none;
+  @container (max-width: 640px) {
+    .conversation-new .conversation-empty .aux-mark,
+    .conversation-embedded .conversation-empty .aux-mark {
+      width: 48px;
+      height: 48px;
+    }
   }
 }

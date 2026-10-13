@@ -4,60 +4,63 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   {
     category: "Appearance",
     label: "Theme",
-    description: "Use light, dark or the system appearance.",
+    description: "Choose how Aux looks.",
     target: "Theme",
   },
   {
     category: "Appearance",
-    label: "Interface text",
-    description: "Shell type size only. Does not change website zoom or the html root font size.",
-    target: "Interface text",
+    label: "Default page zoom",
+    description: "Page size for websites without a saved site-specific zoom.",
+    target: "Default page zoom",
+  },
+  {
+    category: "Appearance",
+    label: "Tab layout",
+    description: "",
+    target: "Tab layout",
   },
   {
     category: "Appearance",
     label: "Sidebar appearance",
-    description:
-      "Translucent lets your desktop show through the sidebar. Reduce Transparency uses solid surfaces.",
+    description: "",
     target: "Sidebar appearance",
+    searchTerms: ["transparency", "glass", "translucent", "solid"],
+  },
+  {
+    category: "Appearance",
+    label: "Tab switcher order",
+    description: "Choose how Control-Tab moves between tabs.",
+    target: "Tab switcher order",
+  },
+  {
+    category: "Appearance",
+    label: "Interface text",
+    description: "Adjust the text size in Aux.",
+    target: "Interface text",
   },
   {
     category: "Appearance",
     label: "Native material",
-    description:
-      "Liquid Glass uses macOS Tahoe’s native material, with a title-bar fallback on older macOS. Browser previews cannot show native blur.",
+    description: "Liquid Glass uses the native macOS material, with a fallback on older versions.",
     target: "Native material",
   },
   {
     category: "Appearance",
     label: "Sidebar tint",
-    description:
-      "Adds theme-colored opacity over the native blur without fading text or weakening the blur.",
+    description: "Add a light or dark tint over the glass.",
     target: "Sidebar tint",
   },
   {
     category: "Appearance",
     label: "Content opacity",
-    description:
-      "Keeps chats and the new-tab surface separate from the glass sidebar. Websites remain opaque.",
+    description: "Control the opacity of chats and new tabs.",
     target: "Content opacity",
   },
   {
     category: "Appearance",
     label: "Glass defaults",
-    description: "Restore the native glass material, clear sidebar tint and 95% content opacity.",
+    description: "Restore clear glass and 95% content opacity.",
     target: "Glass defaults",
-  },
-  {
-    category: "Appearance",
-    label: "Tab layout",
-    description: "Both layouts use the same tabs, folders, and current selection.",
-    target: "Tab layout",
-  },
-  {
-    category: "Appearance",
-    label: "Tab switcher order",
-    description: "Control-Tab follows the sidebar or recently used tabs in this space.",
-    target: "Tab switcher order",
   },
   {
     category: "Appearance",
@@ -67,16 +70,33 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Appearance",
-    label: "Default page zoom",
-    description:
-      "Page size for websites without a saved site-specific zoom. Existing site sizes stay as chosen.",
-    target: "Default page zoom",
+    label: "Keyboard shortcuts",
+    description: "Change browser and app shortcuts.",
+    target: "Keyboard shortcuts",
   },
   {
     category: "Appearance",
-    label: "Keyboard shortcuts",
-    description: "Change browser and app shortcuts. Collisions are explained before saving.",
-    target: "Keyboard shortcuts",
+    label: "New tab position",
+    description: "Choose where new tabs are added in the sidebar.",
+    target: "New tab position",
+  },
+  {
+    category: "Appearance",
+    label: "Recent chats in sidebar",
+    description: "How many recent chats to show in the sidebar.",
+    target: "Recent chats in sidebar",
+  },
+  {
+    category: "Appearance",
+    label: "Customize sidebar",
+    description: "Choose which sections appear above your tabs.",
+    target: "Customize sidebar",
+  },
+  {
+    category: "Appearance",
+    label: "Shrink tabs to fit",
+    description: "Tabs shrink to fit as the tab bar fills up.",
+    target: "Shrink tabs to fit",
   },
   {
     category: "Appearance",
@@ -213,12 +233,6 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     description:
       "Choose whether Aux may upload future crash reports when this build has a configured destination.",
     target: "Crash reports",
-  },
-  {
-    category: "Site permissions",
-    label: "Help improve Aux",
-    description: "Optional product usage analytics are not available in this build.",
-    target: "Help improve Aux",
   },
   {
     category: "Site permissions",
@@ -458,6 +472,19 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     description:
       "Open a compact chat, then expand it into a full browser window without losing the draft.",
     target: "Quick Ask window",
+  },
+  {
+    category: "Quick Ask",
+    label: "Global shortcut",
+    description: "",
+    target: "Global shortcut",
+    searchTerms: ["keyboard", "shortcut", "hotkey"],
+  },
+  {
+    category: "Quick Ask",
+    label: "Keyboard shortcut",
+    description: "Set a global shortcut for Quick Ask.",
+    target: "Keyboard shortcut",
   },
   {
     category: "Selection & Capture",

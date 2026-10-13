@@ -7,7 +7,7 @@ import { useStore } from "../store";
 import { ResizeHandle } from "./ResizeHandle";
 import { Conversation } from "./surfaces";
 import { deferSurface } from "./DeferredSurface";
-import { shellIconChats, shellIconLeft, shellIconOpen, shellIconPlus, shellIconRail } from "../ui/icons";
+import { shellIconClose, shellIconDown, shellIconLeft, shellIconOpen, shellIconPencil } from "../ui/icons";
 import { RunPresence } from "../agent/RunPresence";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
@@ -90,21 +90,27 @@ export const AgentRail = memo(function AgentRail() {
       ) : (
         <div className="rail-inner">
           <div className="rail-head">
-            <span className="rail-title">
-              {recentOpen ? "Recent work" : view.kind === "set" ? "Set" : "Ask Aux"}
-            </span>
-            {!connected && <output className="rail-sub offline">Connecting…</output>}
-            {selectedRun && <RunPresence run={selectedRun} pages={selectedPages} compact />}
-            <span {...auxClassSpacerProps} />
             <button
-              {...staticIconButtonProps}
+              type="button"
+              className="rail-title"
               title={recentOpen ? "Return to conversation" : "Recent conversations"}
               aria-label={recentOpen ? "Return to conversation" : "Recent conversations"}
               aria-pressed={recentOpen}
               onClick={() => setRecentOpen((value) => !value)}
             >
-              {recentOpen ? shellIconLeft : shellIconChats}
+              {recentOpen && shellIconLeft}
+              <span>
+                {recentOpen
+                  ? "Recent chats"
+                  : view.kind === "set"
+                    ? "Set"
+                    : selectedRun?.goal || (chatId ? "Chat with Aux" : "New chat")}
+              </span>
+              {!recentOpen && shellIconDown}
             </button>
+            {!connected && <output className="rail-sub offline">Connecting…</output>}
+            {selectedRun && <RunPresence run={selectedRun} pages={selectedPages} compact />}
+            <span {...auxClassSpacerProps} />
             {!recentOpen && view.kind !== "set" && (
               <button
                 {...staticIconButtonProps}
@@ -124,7 +130,7 @@ export const AgentRail = memo(function AgentRail() {
                 setRailView({ kind: "home" });
               }}
             >
-              {shellIconPlus}
+              {shellIconPencil}
             </button>
             <button
               {...staticIconButtonProps}
@@ -132,7 +138,7 @@ export const AgentRail = memo(function AgentRail() {
               aria-label="Hide assistant"
               onClick={toggleRail}
             >
-              {shellIconRail}
+              {shellIconClose}
             </button>
           </div>
           <div className={`rail-body${recentOpen ? " rail-recents" : ""}`}>

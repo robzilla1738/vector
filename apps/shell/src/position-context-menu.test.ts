@@ -29,13 +29,13 @@ it("places a composer picker above its anchor and grows again when space returns
     offsetHeight: { get: () => Math.min(400, Number.parseFloat(menu.style.maxHeight) || 400) },
   });
   positionAnchoredPopover(menu, { left: 620, top: 300, bottom: 332 });
-  expect(menu.style.maxHeight).toBe("286px");
+  expect(menu.style.maxHeight).toBe("284px");
   expect(menu.style.top).toBe("8px");
   expect(Number.parseFloat(menu.style.top) + menu.offsetHeight).toBeLessThan(300);
   positionAnchoredPopover(menu, { left: 100, top: 500, bottom: 532 });
   expect(menu.style.maxHeight).toBe("420px");
-  expect(menu.style.top).toBe("94px");
+  expect(menu.style.top).toBe("92px");
   positionAnchoredPopover(menu, { left: 100, top: 40, bottom: 72 });
-  expect(menu.style.top).toBe("78px");
+  expect(menu.style.top).toBe("80px");
   expect(menu.style.maxHeight).toBe("420px");
 });

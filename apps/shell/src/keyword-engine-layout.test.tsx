@@ -79,7 +79,7 @@ it("uses a shrinkable copy column with a separate original trailing Remove contr
   expect(getComputedStyle(row).display).toBe("grid");
   expect(getComputedStyle(button).gridColumn).toBe("2");
   expect(getComputedStyle(button).gridRow).toBe("1 / span 3");
-  expect(getComputedStyle(button).minHeight).toBe("36px");
+  expect(getComputedStyle(button).minHeight).toBe("32px");
   button.focus();
   await act(async () => button.click());
   expect(document.activeElement).toBe(button);
@@ -106,14 +106,14 @@ it("preserves existing focus, disabled, palette and preference recipes without n
   expect(rules).not.toMatch(
     /opacity|color:|background|outline|overflow:\s*(hidden|clip)|animation|transition|white-space:\s*nowrap/,
   );
-  expect(settings).toMatch(/\.settings-content \.btn\s*\{[^}]*min-height:\s*36px/);
+  expect(settings).toMatch(/\.settings-content \.btn\s*\{[^}]*min-height:\s*32px/);
   expect(settings).toMatch(
     /\.settings-content :is\(input, select, textarea, \.btn\):focus-visible\s*\{[^}]*outline:\s*2px solid var\(--focus-line\)/,
   );
   expect(settings).toContain("@media (prefers-reduced-motion: reduce)");
   expect(settings).toContain("@container settings-page (width < 720px)");
 });
-it("keeps the genuine pending disabled control without lowering the original hit area", async () => {
+it("keeps the pending disabled control at the 32px Settings target height", async () => {
   let resolve!: (value: boolean) => void;
   const held = new Promise<boolean>((done) => {
     resolve = done;
@@ -123,7 +123,7 @@ it("keeps the genuine pending disabled control without lowering the original hit
   const button = host.querySelector<HTMLButtonElement>(".engine-row button")!;
   await act(async () => button.click());
   expect(button.disabled).toBe(true);
-  expect(getComputedStyle(button).minHeight).toBe("36px");
+  expect(getComputedStyle(button).minHeight).toBe("32px");
   await act(async () => resolve(false));
   expect(button.disabled).toBe(false);
   expect(host.querySelector('[role="alert"]')!.textContent).toContain("weren’t saved");

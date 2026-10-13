@@ -2,7 +2,6 @@
   .quick-ask {
     height: 100%;
     box-sizing: border-box;
-    padding: var(--space-4);
     background: transparent;
   }
   .quick-ask-panel {
@@ -19,21 +18,37 @@
     animation: quick-ask-in var(--t-enter) var(--ease-emphasized);
   }
   .quick-ask-header {
-    height: 46px;
+    height: 40px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: var(--space-1-5);
-    padding: 0 var(--space-3) 0 86px;
+    gap: 4px;
+    padding: 0 10px 0 8px;
     -webkit-app-region: drag;
+  }
+  .quick-ask.native-host .quick-ask-header {
+    padding-left: 80px;
   }
   .quick-ask-header button {
     -webkit-app-region: no-drag;
   }
   .quick-ask-header strong {
+    flex: 1;
+    min-width: 0;
+    padding-left: 8px;
     font-size: var(--fs-sm);
-    font-weight: var(--fw-strong);
+    font-weight: var(--fw-medium);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .quick-ask-header .icon-btn {
+    flex-shrink: 0;
+    border-radius: var(--r-pill);
+  }
+  .quick-ask-header .icon-btn svg {
+    width: 16px;
+    height: 16px;
   }
   .quick-ask-panel > .conversation {
     position: relative;
@@ -43,10 +58,10 @@
   }
   .quick-ask .conversation-embedded .conversation-compose {
     max-height: 50%;
-    padding: var(--space-1) var(--space-3-5) var(--space-3-5);
+    padding: 0 10px 10px;
   }
   .quick-ask .conversation-embedded .conversation-scroll {
-    padding: var(--space-2) var(--space-4) var(--space-3);
+    padding: 16px 12px 12px 16px;
   }
   .quick-ask-connection {
     font-size: var(--fs-xs);
@@ -54,27 +69,60 @@
     padding: 0 var(--space-4);
     margin: 0;
   }
-  .quick-ask .conversation-scroll:has(.conversation-empty) {
-    display: grid;
-    place-items: center;
+  .quick-ask .conversation[data-empty-transcript] .conversation-scroll {
+    display: none;
   }
-  .quick-ask .conversation-empty {
-    width: 100%;
-    padding: var(--space-4);
+  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-compose {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    padding: 4px 6px 2px;
   }
-  .quick-ask .composer-frame {
-    border-radius: var(--r-composer);
-    transition: box-shadow var(--t-enter) var(--ease-emphasized);
+  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-compose-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
   }
-  .quick-ask .composer-frame:focus-within,
-  .quick-ask .composer-frame:has(textarea:focus-visible) {
-    outline: none;
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--ink-0) 16%, transparent),
-      0 0 0 6px color-mix(in srgb, var(--ink-0) 7%, transparent);
+  .quick-ask .conversation[data-empty-transcript] .conversation-main .composer-frame,
+  .quick-ask .conversation[data-empty-transcript] .conversation-main .composer-frame-wrap,
+  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-input,
+  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-message-field {
+    flex: 1;
+    min-height: 0;
   }
-  .quick-ask .composer-frame textarea:focus-visible {
-    outline: none;
+  .quick-ask .conversation[data-empty-transcript] .conversation-main .composer-frame {
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .quick-ask .conversation[data-empty-transcript] .conversation-main .composer-frame-wrap,
+  .quick-ask .conversation[data-empty-transcript] .conversation-main .composer-frame {
+    display: flex;
+    flex-direction: column;
+  }
+  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-message-field {
+    align-items: flex-start;
+    padding-bottom: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .quick-ask .conversation[data-empty-transcript] .conversation-main .conversation-message-field textarea {
+    align-self: stretch;
+    flex: 1;
+    max-height: none;
+    padding: 8px 8px 44px;
+  }
+  .quick-ask .conversation:not([data-empty-transcript]) .conversation-main .composer-frame {
+    border-radius: 16px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .quick-ask-panel {
+      animation: none;
+    }
   }
   @keyframes quick-ask-in {
     from {

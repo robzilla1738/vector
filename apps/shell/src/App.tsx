@@ -21,6 +21,7 @@ import { useSurfaceCovering } from "./features/surfaces/drag-state";
 import { FeatureSlots } from "./features/registry";
 import { runCommand, executeCommand } from "./commands";
 import { useCommandSurfaceRequest } from "./command-surface-state";
+import { TabSwitcher } from "./components/TabSwitcher";
 
 import { PaneBoundary } from "./components/PaneBoundary";
 
@@ -434,6 +435,7 @@ export function App() {
         <SiteCustomization key={`${activePageId}:${activePage?.url}:${activePageEpoch}`} />
       )}
       <HttpAuthPrompt />
+      <TabSwitcher />
       {vaultOffer && <VaultOfferBanner />}
       <FeatureSlots slot="overlays" />
       <Toasts />

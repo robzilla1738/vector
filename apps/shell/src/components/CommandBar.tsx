@@ -76,6 +76,7 @@ export function CommandBar({
   compact = false,
   hero = false,
   surfaceMode,
+  tabSearch = false,
   seed,
   onClose,
   commandRows,
@@ -85,6 +86,7 @@ export function CommandBar({
   compact?: boolean;
   hero?: boolean;
   surfaceMode?: CommandSurfaceMode;
+  tabSearch?: boolean;
   seed?: string;
   onQueryChange?: (query: string) => void;
   providerRows?: (query: string) => Suggestion[];
@@ -154,8 +156,9 @@ export function CommandBar({
     [settings.searchEngines],
   );
 
-  const initialPrefix =
-    surfaceMode === "command"
+  const initialPrefix = tabSearch
+    ? null
+    : surfaceMode === "command"
       ? "/"
       : seed && /^[@/>?]/.test(seed)
         ? (seed[0] as "@" | "/" | ">" | "?")
@@ -289,7 +292,7 @@ export function CommandBar({
   const [popup, setPopup] = useState({ above: false, height: 420 });
 
   useLayoutEffect(() => {
-    if (!editing) return;
+    if (!editing || tabSearch) return;
     const place = () => {
       const bounds = barRef.current?.getBoundingClientRect();
       if (!bounds) return;
@@ -311,7 +314,7 @@ export function CommandBar({
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [editing]);
+  }, [editing, tabSearch]);
 
   useLayoutEffect(() => {
     if (!surfaceMode) return;
@@ -412,8 +415,11 @@ export function CommandBar({
     settings.commandRouting === "prefer-chat" || settings.commandRouting === "prefer-search"
       ? settings.commandRouting
       : "automatic";
-  const baseIntent: Intent =
-    scopePrefix === "/"
+  const baseIntent: Intent = tabSearch
+    ? raw
+      ? { kind: "search", query: raw, url: toUrl(raw, searchEngine) }
+      : { kind: "empty" }
+    : scopePrefix === "/"
       ? { kind: "command", query: raw.replace(/^\//, "") }
       : detectIntent((scopePrefix === ">" || scopePrefix === "?" ? scopePrefix : "") + raw, {
           hasPage,
@@ -439,7 +445,7 @@ export function CommandBar({
   const typedSomething =
     !(hero && entryMode === "ask") &&
     editing &&
-    (scopePrefix === "/" || scopePrefix === "@" || raw.length > 0) &&
+    (tabSearch || scopePrefix === "/" || scopePrefix === "@" || raw.length > 0) &&
     (surfaceMode !== undefined || raw !== pageAddress);
   const browserAutocomplete = inNativeHost || inMock;
 
@@ -535,7 +541,7 @@ export function CommandBar({
   // Inline host completion — only a bare hostname prefix earns ghost text;
   // ArrowRight/End accepts like every mainstream browser.
   const inlineCompletion = useMemo(() => {
-    if (!typedSomething || intent.kind === "command" || /\s/.test(raw)) return null;
+    if (tabSearch || !typedSomething || intent.kind === "command" || /\s/.test(raw)) return null;
     const q = raw.toLowerCase();
     if (q.length < 2 || q.includes("/")) return null;
     const urls = [
@@ -551,7 +557,7 @@ export function CommandBar({
       if (!best || host.length < best.length) best = host;
     }
     return best ? best.slice(q.length) : null;
-  }, [typedSomething, intent.kind, raw, tabDigest, bookmarks]);
+  }, [tabSearch, typedSomething, intent.kind, raw, tabDigest, bookmarks]);
 
   const exec = useOmniboxActions({
     page,
@@ -570,7 +576,7 @@ export function CommandBar({
   const tabCandidates = useMemo(() => {
     const layout = useStore.getState().layout;
     return orderedPages(useStore.getState().pages)
-      .filter((p) => p.pageId !== activePageId && !p.ownedByRuntime)
+      .filter((p) => (tabSearch || p.pageId !== activePageId) && !p.ownedByRuntime)
       .map((p) => ({
         ...p,
         id: p.pageId,
@@ -579,7 +585,7 @@ export function CommandBar({
           .flat()
           .some((pin) => pin.pageId === p.pageId || (!pin.pageId && pin.url === p.url)),
       }));
-  }, [tabDigest, activePageId, tabNames, pins]);
+  }, [tabDigest, activePageId, tabNames, pins, tabSearch]);
   const closedCandidates = useMemo(() => closedTabs.map((tab) => ({ ...tab, id: tab.pageId })), [closedTabs]);
   const extensionCandidates = useMemo(
     () => extensionItems.map((item) => ({ ...item, id: item.key, title: item.name })),
@@ -647,7 +653,14 @@ export function CommandBar({
     () =>
       browserMatches.map((match) => ({
         id: `browser-${match.id}`,
-        section: "browser",
+        section:
+          tabSearch && ["tab", "bookmark", "history"].includes(match.type)
+            ? match.type === "tab"
+              ? "tabs"
+              : match.type === "bookmark"
+                ? "bookmarks"
+                : "history"
+            : "browser",
         providerType: match.type,
         url: match.url,
         icon: match.type === "search" ? shellIconSearch : <FavIcon url={match.url} size="sm" />,
@@ -656,16 +669,16 @@ export function CommandBar({
         run: () =>
           nativeOmnibox.open(match, surfaceMode === "new-tab" ? "new-foreground-tab" : "current-tab"),
       })),
-    [browserMatches, nativeOmnibox.open, surfaceMode],
+    [browserMatches, nativeOmnibox.open, surfaceMode, tabSearch],
   );
   const rankQuery = useDeferredValue(typedSomething ? raw.toLowerCase() : "");
   // Open tabs remain keyboard-ready while the optional providers load.
   const immediateTabs = useMemo(
-    () => (scopePrefix === "@" ? commandTabRows(rankQuery, tabCandidates, activate) : []),
-    [rankQuery, tabCandidates, activate, scopePrefix],
+    () => (scopePrefix === "@" || tabSearch ? commandTabRows(rankQuery, tabCandidates, activate) : []),
+    [rankQuery, tabCandidates, activate, scopePrefix, tabSearch],
   );
   const rankedDetails = useMemo(() => {
-    if (!rankQuery)
+    if (!rankQuery && !tabSearch)
       return scopePrefix === "@"
         ? immediateTabs.map((candidate) => ({
             candidate,
@@ -685,7 +698,8 @@ export function CommandBar({
       }));
     return providerBuilder({
       query: rankQuery,
-      tabs: scopePrefix === "@" ? tabCandidates : [],
+      tabs: scopePrefix === "@" || tabSearch ? tabCandidates : [],
+      includeRecent: tabSearch && !rankQuery,
       closed: closedCandidates,
       extensions: extensionCandidates,
       programs: programCandidates,
@@ -702,6 +716,7 @@ export function CommandBar({
     providerBuilder,
     immediateTabs,
     scopePrefix,
+    tabSearch,
     tabCandidates,
     closedCandidates,
     extensionCandidates,
@@ -737,7 +752,7 @@ export function CommandBar({
     );
     return mergeCommandResults(browser, aux);
   }, [browserRows, rankedRows, rankQuery, raw, providerScope]);
-  const suggestions = useMemo(() => {
+  const combinedSuggestions = useMemo(() => {
     if (!typedSomething)
       return mergeCommandResults(
         browserRows,
@@ -781,6 +796,32 @@ export function CommandBar({
     providerRows,
     raw,
   ]);
+  const suggestions = useMemo(() => {
+    if (!tabSearch) return combinedSuggestions;
+    const order: Partial<Record<Suggestion["section"], number>> = {
+      extensions: 0,
+      tabs: 1,
+      closed: 2,
+      runs: 3,
+      chats: 3,
+      bookmarks: 4,
+      history: 5,
+    };
+    const counts = new Map<Suggestion["section"], number>();
+    return combinedSuggestions
+      .filter((row) => {
+        if (row.section === "intent") return false;
+        if (providerScope !== "all") return true;
+        if (order[row.section] === undefined) return false;
+        if (raw) return true;
+        if (!["tabs", "closed", "runs", "chats"].includes(row.section)) return false;
+        const section = row.section === "runs" ? "chats" : row.section;
+        const count = (counts.get(section) ?? 0) + 1;
+        counts.set(section, count);
+        return count <= 2;
+      })
+      .sort((a, b) => (order[a.section] ?? 6) - (order[b.section] ?? 6));
+  }, [combinedSuggestions, tabSearch, providerScope, raw]);
 
   // Disposable benchmark only: acknowledge a real current native suggestion
   // after its DOM row is committed. Native owns input time, original document,
@@ -962,7 +1003,12 @@ export function CommandBar({
         setProviderScope(scope as ProviderScope);
         setSel(0);
       }
-    } else if (e.key === "Tab" && !e.shiftKey && (intent.kind === "run" || intent.kind === "search")) {
+    } else if (
+      !tabSearch &&
+      e.key === "Tab" &&
+      !e.shiftKey &&
+      (intent.kind === "run" || intent.kind === "search")
+    ) {
       e.preventDefault();
       const next = intent.kind === "run" ? "search" : "ask";
       setRouteFlip(next);
@@ -971,6 +1017,7 @@ export function CommandBar({
       e.preventDefault();
       if (firstSearch) return;
       const chosen = suggestions[sel];
+      if (tabSearch && !chosen) return;
       // ↵ on the intent row accepts a ghost-completed host, like Chrome.
       const completed =
         inlineCompletion && sel === 0 && e.currentTarget.selectionStart === val.length
@@ -979,7 +1026,11 @@ export function CommandBar({
       void submit(
         () =>
           chosen &&
-          (chosen.section === "tabs" || intent.kind === "command" || providerScope !== "all" || sel > 0)
+          (tabSearch ||
+            chosen.section === "tabs" ||
+            intent.kind === "command" ||
+            providerScope !== "all" ||
+            sel > 0)
             ? runSuggestion(chosen, e.metaKey || e.ctrlKey)
             : exec(completed, e.metaKey || e.ctrlKey),
         !!chosen && "keepOpen" in chosen && chosen.keepOpen === true,
@@ -1072,9 +1123,13 @@ export function CommandBar({
     !page?.loading &&
     page?.viewStatus !== "crashed" &&
     pageAddress.startsWith("https://");
-  const showIntent = typedSomething && intent.kind !== "empty";
+  const showIntent = !tabSearch && typedSomething && intent.kind !== "empty";
   const title = page?.title || (hasPage ? hostOf(pageAddress) : "");
-  const placeholder = hero && entryMode === "ask" ? "Ask Aux a task…" : "Search or type a URL";
+  const placeholder = tabSearch
+    ? "Search tabs, chats, history, bookmarks or extensions"
+    : hero && entryMode === "ask"
+      ? "Ask Aux a task…"
+      : "Search or type a URL";
 
   if (hero && entryMode === "ask")
     return (
@@ -1093,11 +1148,14 @@ export function CommandBar({
     <div
       ref={barRef}
       data-command-query-generation={queryGeneration}
+      data-tab-search={tabSearch || undefined}
       onBlurCapture={onBlur}
       className={`cmdbar ${compact ? "compact" : ""} ${hero ? "hero" : ""} ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`}
     >
       <span className="cb-lead">
-        {compact ? (
+        {tabSearch ? (
+          <span className="cb-ico">{shellIconSearch}</span>
+        ) : compact ? (
           hasPage && !editing ? (
             <button
               {...auxNativeButtonTypeProps}
@@ -1161,7 +1219,9 @@ export function CommandBar({
                 <span className="cb-title">{hostOf(pageAddress)}</span>
                 {title !== hostOf(pageAddress) && (
                   <>
-                    <span className="cb-sep" aria-hidden>|</span>
+                    <span className="cb-sep" aria-hidden>
+                      |
+                    </span>
                     <span className="cb-host">{title}</span>
                   </>
                 )}
@@ -1184,9 +1244,11 @@ export function CommandBar({
           value={editing ? val : ""}
           role="combobox"
           aria-label={
-            hero
-              ? `${entryMode === "search" ? "Search or address" : "Ask Aux"}. Press Tab to switch mode.`
-              : "Address, search, and agent prompt"
+            tabSearch
+              ? placeholder
+              : hero
+                ? `${entryMode === "search" ? "Search or address" : "Ask Aux"}. Press Tab to switch mode.`
+                : "Address, search, and agent prompt"
           }
           data-command-value-generation={queryGeneration}
           aria-expanded={editing}
@@ -1208,7 +1270,7 @@ export function CommandBar({
               return;
             }
             setRouteFlip(null);
-            if (!scopePrefix && /^[ @/>?]$/.test(e.target.value) && e.target.value !== " ") {
+            if (!tabSearch && !scopePrefix && /^[ @/>?]$/.test(e.target.value) && e.target.value !== " ") {
               const prefix = e.target.value as "@" | "/" | ">" | "?";
               setScopePrefix(prefix);
               setVal("");
@@ -1221,7 +1283,9 @@ export function CommandBar({
           onKeyDown={onKeyDown}
         />
       </div>
-      {hero ? (
+      {tabSearch ? (
+        key("command-tabs") && <kbd className="cb-tab-search-key">{key("command-tabs")}</kbd>
+      ) : hero ? (
         <div className="home-mode">
           <span>
             <kbd>Tab</kbd> to switch
@@ -1323,7 +1387,8 @@ export function CommandBar({
       )}
       {editing && (
         <OmniboxResults
-          popup={popup}
+          popup={tabSearch ? { above: false, height: 296 } : popup}
+          tabSearch={tabSearch}
           idle={!typedSomething}
           privateMode={bridge.privateMode}
           extensionEnabled={extensionEnabled}

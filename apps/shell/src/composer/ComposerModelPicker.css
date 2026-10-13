@@ -1,0 +1,126 @@
+@layer components {
+  .composer-model-picker-trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 156px;
+    max-width: 62%;
+    min-width: 0;
+    min-height: 28px;
+    padding: 4px 8px;
+    border-radius: var(--r-lg);
+    color: var(--ink-1);
+    text-align: left;
+  }
+  .composer-model-picker-trigger:is(:hover, [aria-expanded="true"]) {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  .composer-model-picker-trigger > span:not(.ci) {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .composer-model-picker-trigger > .ci {
+    width: 14px;
+    height: 14px;
+    color: var(--ink-2);
+    opacity: 0.5;
+  }
+  .composer-model-picker {
+    width: 192px;
+    max-width: calc(100vw - 16px);
+    padding: 6px;
+  }
+  .composer-model-search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 0 8px;
+    margin-bottom: 4px;
+  }
+  .composer-model-search > .ci {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--ink-2);
+  }
+  .composer-model-search > input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    outline: none;
+    background: transparent;
+    box-shadow: none;
+    font-size: var(--fs-md);
+  }
+  .composer-model-list {
+    max-height: 288px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+  .composer-model-list button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    width: 100%;
+    padding: 4px 10px;
+    border-radius: var(--r-lg);
+    color: var(--ink-1);
+    text-align: left;
+    font-size: var(--fs-md);
+    line-height: 20px;
+  }
+  .composer-model-list button:not(:disabled):is(:hover, :focus-visible) {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+    outline: none;
+  }
+  .composer-model-list button > span:not(.ci) {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .composer-model-list button > .ci {
+    flex: none;
+    width: 16px;
+    height: 16px;
+  }
+  .composer-model-list button small {
+    display: block;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    line-height: 16px;
+    white-space: normal;
+  }
+  .composer-model-list :is(p, .composer-model-provider) {
+    margin: 0;
+    padding: 8px 10px;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    line-height: 20px;
+    overflow-wrap: anywhere;
+  }
+  .composer-model-list .composer-model-provider {
+    padding-block: 6px;
+    font-size: var(--fs-xs);
+  }
+  .composer-model-list > [role="group"]:has(.composer-model-provider) {
+    margin-top: 4px;
+    border-top: var(--hairline) solid var(--line);
+  }
+  .composer-model-error > p {
+    color: var(--err);
+  }
+}

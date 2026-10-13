@@ -184,6 +184,24 @@ export function withSyncedOrder(
   return order === layout.order ? layout : { ...layout, order };
 }
 
+/** Place only a tab this shell just created; existing tabs retain their manual order. */
+export function placeNewTab(
+  layout: Layout,
+  pageId: string,
+  spaceId: string,
+  position: "top" | "bottom" | undefined,
+): Layout {
+  if (!position) return layout;
+  const order = layout.order.filter((id) => id !== pageId);
+  const inSpace = (id: string) => (layout.tabSpace[id] ?? layout.activeSpaceId) === spaceId;
+  const edge = position === "top" ? order.findIndex(inSpace) : order.findLastIndex(inSpace);
+  const index = edge < 0 ? order.length : edge + (position === "bottom" ? 1 : 0);
+  order.splice(index, 0, pageId);
+  return order.every((id, i) => id === layout.order[i]) && order.length === layout.order.length
+    ? layout
+    : { ...layout, order };
+}
+
 /** Order and Space assignment synced to the live pages — identity-preserving. */
 export function syncLayout(
   layout: Layout,

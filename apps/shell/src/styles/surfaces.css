@@ -311,26 +311,6 @@
     background: var(--bg-active);
     color: var(--ink-0);
   }
-  .settings-connection-tabs {
-    display: flex;
-    flex-shrink: 0;
-    gap: var(--space-1-5);
-    padding: 0 var(--space-1) var(--space-4);
-  }
-  .settings-connection-tabs button {
-    border-radius: var(--r-md);
-    padding: var(--space-2) var(--space-3-5);
-    font-size: var(--fs-sm);
-    color: var(--ink-2);
-  }
-  .settings-connection-tabs button:hover {
-    background: var(--bg-hover);
-  }
-  .settings-connection-tabs button[aria-selected="true"] {
-    background: var(--bg-active);
-    color: var(--ink-0);
-  }
-
   /* Multi-selection stays distinct from the single tab currently on screen. */
   .tab-row.multi-selected,
   .horizontal-tab.multi-selected {
@@ -909,10 +889,10 @@
   }
   .aux-home .start-inner {
     width: 100%;
-    max-width: 827px;
+    max-width: 1152px;
     min-height: 100%;
     justify-content: flex-start;
-    padding: 160px var(--space-4) 48px;
+    padding: 160px var(--space-7) 80px;
     gap: 0;
   }
   .aux-home .aux-mark {
@@ -925,7 +905,7 @@
   }
   .aux-home .cmdbar.hero {
     flex: none;
-    width: min(736px, 100%);
+    width: min(736px, calc(100% - 64px));
     max-width: none;
     min-width: 0;
     height: 52px;
@@ -934,6 +914,7 @@
     gap: var(--space-2-5);
     border: 0;
     border-radius: var(--r-2xl);
+    corner-shape: round;
     background: var(--surface-primary);
     box-shadow:
       0 0 0 1px var(--border-surface),
@@ -976,7 +957,7 @@
     align-items: center;
     justify-content: center;
     width: 64px;
-    height: 26px;
+    height: 25px;
     padding: 0;
     font-size: var(--fs-md);
     font-weight: var(--fw-medium);
@@ -1174,8 +1155,8 @@
     min-height: 0;
     display: flex;
     align-items: stretch;
-    gap: 28px;
-    padding: 0 var(--space-6) var(--space-2) 28px;
+    gap: 0;
+    padding: 0;
   }
   .conversation-main {
     flex: 1;
@@ -1183,7 +1164,7 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    max-width: 880px;
+    max-width: 896px;
     margin-inline: auto;
   }
   .conversation-embedded .conversation-body {
@@ -1198,10 +1179,10 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    min-height: 40px;
-    padding: var(--space-0) var(--space-5) 0 var(--space-6);
+    min-height: 44px;
+    padding: 0 12px;
     font-weight: var(--fw-medium);
-    font-size: var(--fs-md);
+    font-size: var(--fs-sm);
   }
   .app.native-host.tabs-vertical:is(.layout-hidden, .layout-rail)
     .conversation:not(.conversation-embedded)
@@ -1213,26 +1194,15 @@
     padding: var(--space-6) 0;
     text-align: center;
   }
-  .conversation-empty::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: var(--surface-tertiary);
-    box-shadow: inset 0 0 0 var(--hairline) var(--line);
-  }
   .conversation-empty .aux-mark {
     position: relative;
     display: block;
-    width: 80px;
-    height: 80px;
+    width: 64px;
+    height: 64px;
     margin: 0 auto;
     opacity: 0.2;
-    -webkit-mask-size: 44px;
-    mask-size: 44px;
+    -webkit-mask-size: contain;
+    mask-size: contain;
   }
   .conversation-input {
     display: flex;
@@ -1245,33 +1215,17 @@
     box-shadow: none;
     padding: 0;
   }
-  .conversation-input > textarea {
-    width: 100%;
-    min-width: 0;
-    min-height: 56px;
-    max-height: calc(15lh + 1rem);
-    field-sizing: content;
-    resize: none;
-    border: 0;
-    outline: none;
-    box-shadow: none;
-    padding: var(--space-2) var(--space-2-5);
-    background: transparent;
-    color: var(--ink-0);
-    font: inherit;
-    line-height: var(--lh-normal);
-  }
   .conversation-compose {
     width: 100%;
     margin: 0;
-    padding: 0 0 var(--space-2);
+    padding: 0 12px 8px;
     max-height: 60%;
     overflow-y: auto;
     flex-shrink: 0;
   }
   .conversation-compose-content {
     width: 100%;
-    max-width: 880px;
+    max-width: 896px;
     margin: 0 auto;
     min-width: 0;
   }
@@ -1552,14 +1506,14 @@
     font-weight: var(--fw-medium);
     line-height: 1;
   }
-  .conversation-scroll:has(.conversation-empty) {
+  .conversation[data-empty-transcript] .conversation-scroll {
     align-items: center;
   }
   .conversation-empty h1,
   .conversation-empty p {
     margin: var(--space-3) 0 0;
   }
-  .conversation-embedded .conversation-scroll:has(.conversation-empty) {
+  .conversation-embedded[data-empty-transcript] .conversation-scroll {
     display: grid;
     place-items: center;
   }
@@ -1581,14 +1535,6 @@
     corner-shape: round;
     background: var(--accent);
     color: var(--accent-ink);
-  }
-  .conversation-input > .dictation-trigger {
-    flex: none;
-    align-self: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    font-size: 0;
   }
 
   .conversation-input,
@@ -1751,10 +1697,7 @@
   .conversation .answer {
     font-size: var(--fs-md);
     line-height: var(--lh-relaxed);
-    max-width: 62ch;
-  }
-  .conversation .user-message {
-    background: var(--surface-primary);
+    max-width: 100%;
   }
   .task-index {
     max-width: 1120px;
@@ -1960,7 +1903,7 @@
   }
   @container start-page (max-width: 640px) {
     .aux-home .start-inner {
-      padding: 64px var(--space-6) 48px;
+      padding: 64px var(--space-4) 80px;
     }
     .aux-home .aux-mark {
       margin-bottom: var(--space-7);

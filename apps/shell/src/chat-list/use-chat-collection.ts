@@ -51,7 +51,16 @@ export function useChatCollection(query: ConversationQuery, active = true) {
           bridge.windowId === windowId && bridge.windowKind === kind && bridge.privateMode === privateMode,
         active,
       ),
-    [query.archived, query.query, query.workspaceId, query.policy, windowId, kind, privateMode],
+    [
+      query.archived,
+      query.query,
+      query.workspaceId,
+      query.policy,
+      query.previewLimit,
+      windowId,
+      kind,
+      privateMode,
+    ],
   );
   const state = useSyncExternalStore(collection.subscribe, collection.getSnapshot);
   useEffect(() => {

@@ -111,7 +111,7 @@ it("contains the full archived Space label and preserves exact workspace selecti
   expect(css.minWidth).toBe("0");
   expect(css.maxWidth).toBe("100%");
   expect(css.height).toBe("auto");
-  expect(css.minHeight).toBe("36px");
+  expect(css.minHeight).toBe("32px");
   expect(css.whiteSpace).toBe("normal");
   expect(getComputedStyle(choice.querySelector("span")!).overflowWrap).toBe("anywhere");
   choice.focus();

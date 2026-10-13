@@ -368,6 +368,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
   return (
     <SettingsSection name="Automations" hidden={!active}>
       <SettingsField
+        compact
         label="Skill suggestions"
         hint="Suggest saved Skills from the current task or page. Scans stay on this device and never start a run."
         searchTerms={["suggestions", "scan frequency", "skills"]}

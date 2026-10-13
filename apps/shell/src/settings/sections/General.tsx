@@ -77,7 +77,7 @@ export function GeneralSettings({
             </button>
           </IndexedField>
 
-          <IndexedField compact label="Search engine">
+          <IndexedField label="Search engine">
             <SearchEngineSetting
               value={(settings.searchEngine as string) ?? DEFAULT_SEARCH_ENGINE}
               onSave={(searchEngine) => onSave({ searchEngine })}
@@ -157,7 +157,11 @@ export function GeneralSettings({
           <IndexedField label="About Aux" hint="Installed browser version and source revision.">
             <AboutAuxSetting active={active && !searching && !subview} />
           </IndexedField>
-          <IndexedField label="Spell check" hint="Check spelling as you type in websites and the browser.">
+          <IndexedField
+            compact
+            label="Spell check"
+            hint="Check spelling as you type in websites and the browser."
+          >
             <SpellCheckSetting active={active && !searching && !subview} />
           </IndexedField>
           <IndexedField
@@ -173,12 +177,14 @@ export function GeneralSettings({
             <LanguagesSetting active={active && !searching && !subview} />
           </IndexedField>
           <IndexedField
+            compact
             label="Automatic picture in picture"
             hint="Control whether sites may open floating video automatically. Manual picture in picture remains available."
           >
             <PictureInPictureSetting active={active && !searching && !subview} />
           </IndexedField>
           <IndexedField
+            compact
             label="Keep Aux running in the background"
             hint="Let your Profile's runtime remain available after the last browser window closes. Quit Aux to stop it."
           >

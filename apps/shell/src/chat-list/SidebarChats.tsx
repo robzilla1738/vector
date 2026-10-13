@@ -37,12 +37,16 @@ import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 export function SidebarChats({ compact = false, query = "" }: { compact?: boolean; query?: string }) {
   const privateMode = bridge.privateMode;
   const active = useStore((s) => (s.mode === "conversation" ? s.conversationId : null));
+  const previewLimit = useStore((state) => {
+    const value = state.settings.sidebarRecentChatLimit;
+    return value === 5 || value === 10 ? value : 3;
+  });
   const [archived, setArchived] = useState(false);
   const {
     collection,
     state: { loading, error },
     items: rows,
-  } = useChatCollection({ archived, policy: compact ? "preview" : "complete" });
+  } = useChatCollection({ archived, policy: compact ? "preview" : "complete", previewLimit });
   const actions = useChatActions(collection);
   const [savedOrganization, setOrganization] = useState(() =>
     privateMode ? { folders: [], members: {} } : readChatFolders(localStorage),

@@ -4,6 +4,7 @@ import { useStore } from "./store";
 export type CommandSurfaceMode = "new-tab" | "edit" | "command";
 export interface CommandSurfaceRequest {
   mode: CommandSurfaceMode;
+  presentation?: "tab-search";
   seed?: string;
   provider?: "split";
   sequence: number;
@@ -13,6 +14,7 @@ let sequence = 0;
 const listeners = new Set<() => void>();
 export function openCommandSurface(request: {
   mode: CommandSurfaceMode;
+  presentation?: "tab-search";
   seed?: string;
   provider?: "split";
 }): void {
@@ -22,7 +24,12 @@ export function openCommandSurface(request: {
 }
 /** Cmd-L keeps an unfinished new tab instead of retargeting its existing page. */
 export function refocusNewTabSurface(): boolean {
-  if (current?.mode !== "new-tab" || useStore.getState().overlay !== "command-surface") return false;
+  if (
+    current?.mode !== "new-tab" ||
+    current.presentation === "tab-search" ||
+    useStore.getState().overlay !== "command-surface"
+  )
+    return false;
   const input = document.querySelector<HTMLInputElement>(
     `[data-command-surface-sequence="${current.sequence}"] input`,
   );

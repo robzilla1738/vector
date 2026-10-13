@@ -60,12 +60,6 @@
     background: transparent;
     gap: var(--space-2);
   }
-  .aux-home .home-history {
-    margin-top: 152px;
-  }
-  .aux-home .start-inner > .aux-mark {
-    opacity: 0.28;
-  }
 }
 
 @layer components {
@@ -75,19 +69,12 @@
     width: 64px;
     height: 64px;
     margin: 0 auto 48px;
-    border-radius: 50%;
-    corner-shape: round;
-    background: var(--surface-tertiary);
-    box-shadow: inset 0 0 0 var(--hairline) var(--line);
   }
   .aux-home .home-welcome .aux-mark {
-    width: 40px;
-    height: 40px;
+    width: 64px;
+    height: 64px;
     margin: 0;
     opacity: 0.18;
-  }
-  .aux-home .start-inner:has(.home-welcome) {
-    padding-top: 160px;
   }
   .home-model-setup {
     display: flex;
@@ -126,6 +113,11 @@
     }
     .home-model-setup .btn {
       width: 100%;
+    }
+  }
+  @container start-page (max-width:640px) {
+    .home-welcome {
+      margin-bottom: var(--space-7);
     }
   }
 }

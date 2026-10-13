@@ -20,6 +20,31 @@ function deferred<T>() {
   });
   return { promise, resolve };
 }
+it.each([3, 5, 10] as const)("limits only the sidebar preview to %i chats", async (previewLimit) => {
+  const rows = Array.from({ length: 237 }, (_, index) => item(String(index)));
+  const read = vi.fn(async ({ limit, before }: { limit?: number; before?: { chatId: string } }) => {
+    const start = before ? rows.findIndex((row) => row.chatId === before.chatId) + 1 : 0;
+    return rows.slice(start, start + (limit ?? 40));
+  });
+  const preview = new ConversationCollection(
+    { archived: false, policy: "preview", previewLimit },
+    read,
+    () => true,
+  );
+  preview.start();
+  await preview.load();
+  expect(preview.getSnapshot().ids).toHaveLength(previewLimit);
+  expect(read).toHaveBeenLastCalledWith({ archived: false, limit: previewLimit });
+  const history = new ConversationCollection(
+    { archived: false, policy: "complete", previewLimit },
+    read,
+    () => true,
+  );
+  history.start();
+  await history.load();
+  expect(history.getSnapshot().ids).toHaveLength(rows.length);
+  expect(history.getSnapshot().more).toBe(false);
+});
 it("keeps unchanged entity identities while replacing changed summaries", async () => {
   let rows = [item("a"), item("b")];
   const collection = new ConversationCollection(

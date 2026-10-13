@@ -32,7 +32,7 @@ async function nativeFieldAction(method: "autofill" | "vaultFill") {
 /** Actual legacy palette actions enter exclusively through the shared registry
  * dispatcher; these functions contain no bindings or secondary registry. */
 export const COMMAND_SURFACE_ACTIONS = {
-  "command-tabs": () => openCommandSurface({ mode: "new-tab", seed: "@" }),
+  "command-tabs": () => openCommandSurface({ mode: "new-tab", presentation: "tab-search" }),
   "command-observe": () => {
     useStore.setState({ inspectorObs: null });
     useStore.getState().setOverlay("observe");

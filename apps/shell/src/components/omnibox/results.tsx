@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { PreferenceAction } from "../../settings/sections/preference-command";
 import { nativeAlertRoleProps, nativeButtonTypeProps } from "../../ui/native-attribute-props";
-import { shellIconSend } from "../../ui/icons";
+import { shellIconOpen, shellIconSend } from "../../ui/icons";
 import { SearchResultRow } from "../SearchResultRow";
 import type { Suggestion } from "../command-provider-types";
 
@@ -48,6 +48,7 @@ const scopes: Record<ProviderScope, string> = {
 };
 
 type Props = {
+  tabSearch?: boolean;
   popup: { above: boolean; height: number };
   privateMode: boolean;
   extensionEnabled: boolean;
@@ -106,9 +107,11 @@ export function OmniboxResults(p: Props) {
       )}
       {p.suggestions.length === 0 && (
         <p className="cb-empty">
-          {p.idle
-            ? "Search the web, enter an address, or find an open tab."
-            : `No ${p.providerScope === "all" ? "results" : p.providerScope} matches. Choose another provider or edit the query.`}
+          {p.tabSearch
+            ? "No results"
+            : p.idle
+              ? "Search the web, enter an address, or find an open tab."
+              : `No ${p.providerScope === "all" ? "results" : p.providerScope} matches. Choose another provider or edit the query.`}
         </p>
       )}
       <div
@@ -118,7 +121,10 @@ export function OmniboxResults(p: Props) {
         data-command-results-generation={p.resultSource ? p.generation : undefined}
       >
         {p.suggestions.map((suggestion, index) => {
-          const first = index === 0 || p.suggestions[index - 1]!.section !== suggestion.section;
+          const group = (section: Suggestion["section"]) =>
+            p.tabSearch && section === "runs" ? "chats" : section;
+          const section = group(suggestion.section);
+          const first = index === 0 || group(p.suggestions[index - 1]!.section) !== section;
           const source =
             p.resultSource &&
             (p.resultSource === "registry"
@@ -134,17 +140,26 @@ export function OmniboxResults(p: Props) {
               }
             >
               {first &&
-                ![
-                  "intent",
-                  "browser",
-                  "suggest",
-                  "tabs",
-                  "domains",
-                  "bookmarks",
-                  "closed",
-                  "history",
-                ].includes(suggestion.section) && (
-                  <div className="cb-section">{sections[suggestion.section]}</div>
+                (p.tabSearch ||
+                  ![
+                    "intent",
+                    "browser",
+                    "suggest",
+                    "tabs",
+                    "domains",
+                    "bookmarks",
+                    "closed",
+                    "history",
+                  ].includes(section)) && (
+                  <div className="cb-section">
+                    {p.tabSearch && section === "tabs"
+                      ? "Open Tabs"
+                      : p.tabSearch && section === "chats"
+                        ? p.query
+                          ? "Chat"
+                          : "Recent Chat"
+                        : sections[section]}
+                  </div>
                 )}
               <SearchResultRow
                 id={`${p.listId}-opt-${index}`}
@@ -160,7 +175,13 @@ export function OmniboxResults(p: Props) {
                 onHover={() => p.onHover(index)}
                 onSelect={() => p.onSelect(suggestion)}
                 trailing={
-                  suggestion.section === "tabs" ? (
+                  p.tabSearch &&
+                  (suggestion.section === "tabs" || ["Reopen", "Open"].includes(suggestion.hint ?? "")) ? (
+                    <span className="cb-tab-search-action">
+                      {suggestion.section === "tabs" ? "Switch to Tab" : suggestion.hint}
+                      {shellIconOpen}
+                    </span>
+                  ) : suggestion.section === "tabs" ? (
                     <span className="cb-tab-action">Switch to this tab</span>
                   ) : suggestion.hint === "↵" ? (
                     <span className="cb-go" aria-hidden="true">

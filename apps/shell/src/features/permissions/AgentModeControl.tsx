@@ -2,7 +2,9 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { AgentMode, AgentPolicySettings } from "@aux/contracts";
 import { bridge } from "../../bridge";
 import { Segmented } from "../../ui";
-import { useConfirm } from "../../ui/dialog";
+import { Menu, useConfirm } from "../../ui/dialog";
+import { shellIconCheck, shellIconDown, shellIconPlay, shellIconShield } from "../../ui/icons";
+import "./AgentModeControl.css";
 
 /** Setup and Settings share the real mode choice and its explicit Full auto opt-in. */
 export function AgentModeControl({
@@ -45,6 +47,26 @@ export function AgentModeControl({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const { confirm, confirmation } = useConfirm();
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useLayoutEffect(() => {
+    setMenuOpen(false);
+  }, [active, disabled, windowId, windowKind, privateMode]);
+  const choices = [
+    {
+      mode: "ask" as const,
+      label: "Ask first",
+      description: "Review consequential actions before Aux continues.",
+    },
+    {
+      mode: "full" as const,
+      label: "Skip confirmation",
+      description: "Let Aux complete actions without asking.",
+    },
+    ...(policy.agentMode === "auto"
+      ? [{ mode: "auto" as const, label: "Auto", description: "Ask before payments and credential use." }]
+      : []),
+  ];
   async function change(mode: AgentMode) {
     const original = owner;
     if (pending.current || !current(original) || mode === policy.agentMode) return;
@@ -78,18 +100,59 @@ export function AgentModeControl({
   return (
     <>
       {compact ? (
-        <select
-          data-mode={policy.agentMode}
-          aria-label="Confirmation mode"
-          title={temporary ? "This run only" : "Remembered for future chats"}
-          disabled={disabled || busy}
-          value={policy.agentMode}
-          onChange={(event) => void change(event.target.value as AgentMode)}
-        >
-          <option value="ask">Ask first</option>
-          <option value="full">Skip confirmation</option>
-          {policy.agentMode === "auto" && <option value="auto">Auto</option>}
-        </select>
+        <>
+          <button
+            ref={trigger}
+            type="button"
+            className="agent-mode-trigger"
+            data-mode={policy.agentMode}
+            aria-label="Confirmation mode"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            title={`${choices.find((choice) => choice.mode === policy.agentMode)?.label} · ${temporary ? "This run only" : "Remembered for future chats"}`}
+            disabled={!active || disabled || busy}
+            onClick={() => setMenuOpen((value) => !value)}
+          >
+            {policy.agentMode === "full" ? shellIconPlay : shellIconShield}
+            <span className="agent-mode-label">
+              {choices.find((choice) => choice.mode === policy.agentMode)?.label}
+            </span>
+            {shellIconDown}
+          </button>
+          {menuOpen && active && !disabled && (
+            <Menu
+              label="Confirmation mode"
+              className="agent-mode-menu"
+              anchor={trigger}
+              returnFocus={trigger}
+              placement="above-start"
+              onClose={() => setMenuOpen(false)}
+            >
+              <p className="agent-mode-menu-label">
+                {temporary ? "This run only" : "For this and future chats"}
+              </p>
+              {choices.map((choice) => (
+                <button
+                  key={choice.mode}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={policy.agentMode === choice.mode}
+                  disabled={busy}
+                  onClick={() => {
+                    void change(choice.mode).then(() => setMenuOpen(false));
+                  }}
+                >
+                  {choice.mode === "full" ? shellIconPlay : shellIconShield}
+                  <span className="agent-mode-copy">
+                    <strong>{choice.label}</strong>
+                    <small>{choice.description}</small>
+                  </span>
+                  {policy.agentMode === choice.mode && shellIconCheck}
+                </button>
+              ))}
+            </Menu>
+          )}
+        </>
       ) : (
         <Segmented<AgentMode>
           label="Agent mode"

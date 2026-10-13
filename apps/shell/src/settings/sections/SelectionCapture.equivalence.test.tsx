@@ -10,9 +10,10 @@ import { useStore } from "../../store";
 import { invokeScopedControl } from "../../scoped-control-commands";
 import { SelectionCaptureSettings } from "./SelectionCapture";
 import { AutofillSetting } from "../../components/AutofillSetting";
-/** Original mounted DOM/control ledger. Generated only from pinned before source;
- * it is construction equivalence, never native pixel or hit geometry proof. */
-it("keeps the original rendered hierarchy, full copy, attributes and local action results", async () => {
+/** Mounted DOM/control ledger from pinned before source, with the duplicate category
+ * heading removed because the Settings shell supplies it. This checks section content
+ * and control equivalence, never native pixel or hit geometry proof. */
+it("keeps the section hierarchy, full copy, attributes and local action results", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
     { width: 160, height: 36 },

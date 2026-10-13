@@ -1,17 +1,20 @@
 import { normalizePages, orderedPages } from "../store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot } from "react-dom/client";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
-import { PENDING_CHAT_KEY } from "../conversation-drafts";
+import { HOME_DRAFT_CHAT_KEY, PENDING_CHAT_KEY } from "../conversation-drafts";
 import { draftWriter } from "../store/persistence";
 import { Conversation } from "./Conversation";
 import HomeAsk from "./HomeAsk";
+import { QuickAsk } from "./QuickAsk";
 import { captureFirstFrame, listenFirstFrame, takeFirstFrame } from "../first-frame";
 import { makePage, makeRun } from "../mock/fixtures";
 let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
+let transcriptStyle: HTMLStyleElement | undefined;
 const initial = useStore.getState();
 const originalScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
 beforeEach(() => {
@@ -58,6 +61,8 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
+  transcriptStyle?.remove();
+  transcriptStyle = undefined;
   captureFirstFrame();
   takeFirstFrame();
   draftWriter.flush();
@@ -259,3 +264,109 @@ it("keeps text typed while normal Send awaits source recovery", async () => {
   expect(invoke.mock.calls.filter(([method]) => method === "runs.start")).toHaveLength(1);
   expect(useStore.getState().conversationDrafts["chat:original"]).toBe("Typed while source refreshed");
 });
+
+async function renderCompact(surface: "Quick Ask" | "Home") {
+  useStore.setState({ railOpen: false, agentDraft: "" });
+  localStorage.setItem(HOME_DRAFT_CHAT_KEY, "original");
+  transcriptStyle = document.createElement("style");
+  // Apply the shipped transcript visibility rules without CSS layers, which jsdom does not parse.
+  transcriptStyle.textContent = ["./QuickAsk.css", "./HomeAsk.css"]
+    .flatMap((file) =>
+      [...readFileSync(new URL(file, import.meta.url), "utf8").matchAll(/\.(?:quick-ask|home-ask)\s[^{}]*\{[^{}]*\}/g)]
+        .map(([rule]) => rule)
+        .filter((rule) => rule.includes(".conversation-scroll")),
+    )
+    .join("\n");
+  document.head.append(transcriptStyle);
+  await act(async () =>
+    root.render(surface === "Quick Ask" ? <QuickAsk onExpand={vi.fn()} /> : <HomeAsk onSearch={vi.fn()} />),
+  );
+}
+
+it.each(["Quick Ask", "Home"] as const)(
+  "%s reveals a first pending turn and returns to the blank layout only after it settles",
+  async (surface) => {
+    const invoke = vi.mocked(bridge.invoke),
+      fallback = invoke.getMockImplementation()!;
+    let reject!: (reason: Error) => void;
+    invoke.mockImplementation((method, params) =>
+      method === "runs.start"
+        ? new Promise((_resolve, fail) => {
+            reject = fail;
+          })
+        : fallback(method, params),
+    );
+    await renderCompact(surface);
+    const scroll = host.querySelector<HTMLElement>(".conversation-scroll")!;
+    expect(getComputedStyle(scroll).display).toBe("none");
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.click());
+    expect(useStore.getState().pendingTurns).toMatchObject([{ chatId: "original", goal: "Original question" }]);
+    expect(scroll.querySelector(".conversation-turn.pending")?.textContent).toContain("Original question");
+    expect(scroll.textContent).toContain("Starting…");
+    expect(getComputedStyle(scroll).display).not.toBe("none");
+    expect(scroll.querySelector(".conversation-empty")).toBeNull();
+    await act(async () => reject(new Error("Start was refused")));
+    expect(scroll.querySelector(".conversation-turn.pending")).toBeNull();
+    expect(getComputedStyle(scroll).display).toBe("none");
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("Your reply is kept");
+    expect(host.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("Original question");
+  },
+);
+
+it.each([
+  ["Quick Ask", true],
+  ["Quick Ask", false],
+  ["Home", true],
+  ["Home", false],
+] as const)("%s keeps branch instructions visible (source available=%s)", async (surface, available) => {
+  const invoke = vi.mocked(bridge.invoke),
+    fallback = invoke.getMockImplementation()!;
+  invoke.mockImplementation(async (method, params) =>
+    method === "conversations.get"
+      ? {
+          kind: "branch-draft",
+          chatId: "original",
+          sourceRunId: "source",
+          privateTask: false,
+          draftText: "Original question",
+          contextPageRefs: [],
+          title: "Edited first turn",
+          archived: false,
+          mode: "edit",
+          available,
+        }
+      : fallback(method, params),
+  );
+  await renderCompact(surface);
+  const scroll = host.querySelector<HTMLElement>(".conversation-scroll")!;
+  expect(scroll.textContent).toContain("Edit the message, then send.");
+  expect(scroll.textContent?.includes("The original source is unavailable; this draft cannot be sent.")).toBe(
+    !available,
+  );
+  expect(getComputedStyle(scroll).display).not.toBe("none");
+  expect(scroll.querySelector(".conversation-empty")).toBeNull();
+  expect(invoke.mock.calls.filter(([method]) => method === "runs.start")).toEqual([]);
+});
+
+it.each(["Quick Ask", "Home"] as const)(
+  "%s keeps changed-task message errors and their Retry visible before the first turn",
+  async (surface) => {
+    const invoke = vi.mocked(bridge.invoke),
+      fallback = invoke.getMockImplementation()!;
+    let failed = true;
+    invoke.mockImplementation((method, params) =>
+      method === "runs.messages.list" && failed
+        ? Promise.reject(new Error("Messages unavailable"))
+        : fallback(method, params),
+    );
+    await renderCompact(surface);
+    const scroll = host.querySelector<HTMLElement>(".conversation-scroll")!;
+    expect(scroll.querySelector('[role="alert"]')?.textContent).toContain("Changed-task messages could not be loaded");
+    expect(getComputedStyle(scroll).display).not.toBe("none");
+    failed = false;
+    await act(async () => scroll.querySelector<HTMLButtonElement>('[role="alert"] button')!.click());
+    expect(scroll.querySelector('[role="alert"]')).toBeNull();
+    expect(getComputedStyle(scroll).display).toBe("none");
+    expect(invoke.mock.calls.filter(([method]) => method === "runs.messages.list")).toHaveLength(2);
+  },
+);

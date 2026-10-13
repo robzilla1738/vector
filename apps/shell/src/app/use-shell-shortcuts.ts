@@ -5,6 +5,7 @@ import { bridge } from "../bridge";
 import { useStore } from "../store";
 import { dispatchShortcut as dispatchCommandShortcut } from "../commands";
 import { createTabSwitcher } from "../tab-switcher";
+import { finishTabPreview } from "../tab-switcher-state";
 
 type Shortcut = {
   key: string;
@@ -55,8 +56,18 @@ export function useShellShortcuts(findInput: RefObject<HTMLInputElement | null>)
       }
       if (e.key === "Escape" && !e.defaultPrevented && useStore.getState().overlay) setOverlay(null);
     };
+    const release = (event: KeyboardEvent) => {
+      if (event.key === "Control" && !event.ctrlKey) finishTabPreview(true);
+    };
+    const cancel = () => finishTabPreview(false);
     window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
+    window.addEventListener("keyup", release);
+    window.addEventListener("blur", cancel);
+    return () => {
+      window.removeEventListener("keydown", h);
+      window.removeEventListener("keyup", release);
+      window.removeEventListener("blur", cancel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

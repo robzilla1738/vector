@@ -78,28 +78,6 @@ const ProfilesSettings = lazySection(
   async () => (await import("../settings/sections/Profiles")).ProfilesSettings,
 );
 
-const categoryDescriptions: Record<string, string> = {
-  Downloads: "File names, exclusions and smart downloads.",
-  General: "Search, shortcuts, and your browsing data.",
-  Profiles: "Separate browsing identities and local data.",
-  "Link Routing": "Choose where links open across Profiles and Spaces.",
-  Advanced: "Control local script access to browser tabs.",
-  Appearance: "Make Aux feel at home, from tabs to text size.",
-  "Passwords & Autofill": "Manage personal info and Chromium Profile passwords.",
-  Memory: "Manage the context Aux remembers for your work.",
-  Projects: "Project roots, skills and instructions by Space.",
-  Connections: "Models, services and connected tools.",
-  "Usage & Budgets": "Model spending limits for runs, days, months and routines.",
-  Automations: "Schedules, results and spending limits for Skills.",
-  "Quick Ask": "Open a compact chat from Aux or any app.",
-  "Selection & Capture": "Review selections, capture shortcuts, and writing assistance.",
-  "Archived chats": "Find and restore archived conversations.",
-  "Site permissions": "Choose what websites can access.",
-  Permissions: "Control what Aux can do on your behalf.",
-  Extensions: "Manage browser extensions.",
-  Labs: "Choose which features appear in Aux.",
-};
-
 const connectionCategories = ["Models", "Connections", "External agents", "Vault"];
 export function Settings() {
   const [refreshVersion, setRefreshVersion] = useState(0);
@@ -304,7 +282,8 @@ export function Settings() {
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const shell = dialogRef.current;
-    firstCategory.current?.focus();
+    const selected = shell?.querySelector<HTMLButtonElement>('.settings-nav [aria-current="page"]');
+    (selected ?? firstCategory.current)?.focus();
     return () => {
       if (ownsFocus(shell) && previous && availableForFocus(previous))
         previous.focus({ preventScroll: true });
@@ -316,7 +295,12 @@ export function Settings() {
   }, [category, query, connectionTab, subview]);
 
   useLayoutEffect(() => {
-    if (refreshVersion) firstCategory.current?.focus();
+    if (refreshVersion) {
+      const selected = dialogRef.current?.querySelector<HTMLButtonElement>(
+        '.settings-nav [aria-current="page"]',
+      );
+      (selected ?? firstCategory.current)?.focus();
+    }
   }, [refreshVersion]);
 
   useLayoutEffect(() => {
@@ -387,9 +371,10 @@ export function Settings() {
           profilesAvailable={profilesAvailable}
           linkRoutingAvailable={linkRoutingAvailable}
           appleScriptAvailable={appleScriptAvailable}
-          skillsAvailable={skillsAvailable}
+          pluginsAvailable={pluginsAvailable}
           automationsAvailable={automationsAvailable}
           servicesAvailable={servicesAvailable}
+          vaultAvailable={vaultAvailable}
           permissionsAvailable={permissionsAvailable}
           extensionsAvailable={extensionsAvailable}
           firstCategory={firstCategory}
@@ -418,13 +403,9 @@ export function Settings() {
         )}
         <div className="settings-heading">
           <h1>{searching ? "Search settings" : (subview ?? sectionTitle)}</h1>
-          <p>
-            {searching
-              ? "Find a preference across all categories."
-              : subview
-                ? "General settings"
-                : categoryDescriptions[category]}
-          </p>
+          {(searching || subview) && (
+            <p>{searching ? "Find a preference across all categories." : "General settings"}</p>
+          )}
         </div>
         <span {...auxClassSpacerProps} />
         {saved && <output className="saved">{shellIconCheck} Saved</output>}
@@ -438,39 +419,6 @@ export function Settings() {
         </button>
       </div>
 
-      {!searching && category === "Connections" && (
-        <div
-          className="settings-connection-tabs"
-          role="tablist"
-          aria-label="Connection types"
-          onKeyDown={(event) => moveListFocus(event, '[role="tab"]', false)}
-        >
-          {(
-            [
-              "Models",
-              ...(servicesAvailable ? (["Services"] as const) : []),
-              ...(vaultAvailable ? (["Vault"] as const) : []),
-              "Agents",
-              ...(pluginsAvailable ? (["Plugins"] as const) : []),
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab}
-              role="tab"
-              id={`connection-tab-${tab}`}
-              aria-controls={`connection-panel-${tab}`}
-              aria-selected={connectionTab === tab}
-              tabIndex={connectionTab === tab ? 0 : -1}
-              onClick={() => {
-                setConnectionTab(tab);
-                pushSettingsPath("Connections", tab);
-              }}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-      )}
       <div
         role="group"
         className="settings-scroll"
@@ -540,14 +488,13 @@ export function Settings() {
         <UsageBudgetsSettings active={visible("Usage & Budgets")} settings={settings} onSave={set} />
         {automationsFeatureAvailable && <AutomationsSettings active={visible("Automations")} />}
         <WorkspacesSettings active={visible("Projects")} />
-        <QuickAskSettings active={visible("Quick Ask")} />
+        <QuickAskSettings active={visible("Quick Ask")} settings={settings} onSave={set} />
         <SelectionCaptureSettings active={visible("Selection & Capture")} settings={settings} onSave={set} />
         <ArchivedChatsSettings active={visible("Archived chats")} />
         {servicesAvailable && (
           <section
             id="connection-panel-Services"
-            role="tabpanel"
-            aria-labelledby="connection-tab-Services"
+            aria-label="Connected services"
             hidden={!visible("Connections")}
           >
             {connectorsAvailable && (
@@ -569,21 +516,14 @@ export function Settings() {
           </section>
         )}
         {vaultAvailable && (
-          <section
-            tabIndex={-1}
-            id="connection-panel-Vault"
-            role="tabpanel"
-            aria-labelledby="connection-tab-Vault"
-            hidden={!visible("Vault")}
-          >
+          <section tabIndex={-1} id="connection-panel-Vault" aria-label="Vault" hidden={!visible("Vault")}>
             <VaultSettings active={visible("Vault")} />
           </section>
         )}
         <section
           tabIndex={-1}
           id="connection-panel-Agents"
-          role="tabpanel"
-          aria-labelledby="connection-tab-Agents"
+          aria-label="Developers and external agents"
           hidden={!visible("External agents")}
         >
           <ExternalAgents active={visible("External agents")} />
@@ -592,9 +532,8 @@ export function Settings() {
           <section
             tabIndex={-1}
             id="connection-panel-Plugins"
-            role="tabpanel"
-            aria-labelledby="connection-tab-Plugins"
-            hidden={!(category === "Connections" && connectionTab === "Plugins")}
+            aria-label="Skills and MCP"
+            hidden={searching || category !== "Connections" || connectionTab !== "Plugins"}
           >
             <div data-setting="Plugins" tabIndex={-1}>
               <PluginsPanel

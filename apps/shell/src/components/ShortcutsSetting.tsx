@@ -42,9 +42,13 @@ export function ShortcutsSetting({
   value,
   onSave,
   active = true,
+  commandId,
+  disabled = false,
 }: {
   value: ShortcutOverrides;
   active?: boolean;
+  commandId?: string;
+  disabled?: boolean;
   onSave: (value: ShortcutOverrides) => Promise<boolean>;
 }) {
   const importInput = useRef<HTMLInputElement>(null);
@@ -72,7 +76,7 @@ export function ShortcutsSetting({
   };
 
   useEffect(() => {
-    if (!active || !recording) return;
+    if (!active || !recording || disabled) return;
     // The recorder must receive chords before native app accelerators.
     void bridge.setShortcuts([]).catch(() => setError("Couldn't start shortcut recording. Try again."));
     return () => {
@@ -80,11 +84,15 @@ export function ShortcutsSetting({
         .setShortcutOverrides(value)
         .catch(() => setError("Couldn't restore shortcuts. Reopen Settings."));
     };
-  }, [active, recording, value]);
+  }, [active, recording, value, disabled]);
 
   useEffect(() => {
-    if (!active || !recording) return;
+    if (!active || !recording || disabled) return;
     const onKeydown = (event: KeyboardEvent) => {
+      if (commandId && event.key === "Tab" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        setRecording(null);
+        return;
+      }
       // Capture phase + preventDefault keeps the recorded chord from also
       // firing the browser command it would normally trigger.
       event.preventDefault();
@@ -120,8 +128,8 @@ export function ShortcutsSetting({
   });
 
   useEffect(() => {
-    if (!active) setRecording(null);
-  }, [active]);
+    if (!active || disabled) setRecording(null);
+  }, [active, disabled]);
 
   const steal = (entry: PendingConflict) => {
     const next: ShortcutOverrides = { ...value, [entry.id]: [entry.binding] };
@@ -145,100 +153,145 @@ export function ShortcutsSetting({
     link.click();
     URL.revokeObjectURL(url);
   };
-  const visibleDefs = defs.filter((def) =>
-    `${def.label} ${def.bindings.map((binding) => bindingLabel(binding, platform)).join(" ")}`
-      .toLocaleLowerCase()
-      .includes(query.trim().toLocaleLowerCase()),
+  const visibleDefs = defs.filter(
+    (def) =>
+      (!commandId || def.id === commandId) &&
+      `${def.label} ${def.bindings.map((binding) => bindingLabel(binding, platform)).join(" ")}`
+        .toLocaleLowerCase()
+        .includes(query.trim().toLocaleLowerCase()),
   );
   return (
-    <div className="shortcuts-setting">
-      <p {...staticHintProps}>Make Aux feel familiar. Your shortcuts are saved for this Profile.</p>
-      <div className="field-row">
-        <button {...smallButtonProps} disabled={busy} onClick={exportFile}>
-          Export shortcuts
-        </button>
-        <button {...smallButtonProps} disabled={busy} onClick={() => importInput.current?.click()}>
-          Import shortcuts
-        </button>
-        <input
-          ref={importInput}
-          hidden
-          type="file"
-          accept="application/json,.json"
-          aria-label="Import shortcuts"
-          disabled={busy}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            if (file)
-              void file
-                .text()
-                .then((text) => save(importShortcuts(text, platform)))
-                .catch((error) =>
-                  setError(error instanceof Error ? error.message : "Couldn't import shortcuts."),
-                );
-          }}
-        />
-      </div>
-      <input
-        {...staticFieldInputProps}
-        aria-label="Find keyboard shortcut"
-        placeholder="Find a command or shortcut…"
-        value={query}
-        disabled={recording !== null}
-        onChange={(event) => setQuery(event.target.value)}
-      />
-      {!visibleDefs.length && (
-        <p {...staticHintProps} {...nativeStatusRoleProps}>
-          No matching shortcuts. Try another command name.
-        </p>
+    <div className={`shortcuts-setting${commandId ? " shortcut-single" : ""}`}>
+      {commandId ? (
+        visibleDefs.map((def) => (
+          <div className="shortcut-single-control" key={def.id}>
+            <input
+              readOnly
+              spellCheck={false}
+              autoComplete="off"
+              aria-label={`Change ${def.label} shortcut`}
+              placeholder={recording === def.id ? "Press keys…" : "Not set"}
+              value={
+                recording === def.id
+                  ? ""
+                  : def.bindings.map((binding) => bindingLabel(binding, platform)).join(", ")
+              }
+              disabled={busy || disabled}
+              onFocus={() => {
+                setPending(null);
+                setRecording(def.id);
+              }}
+              onClick={() => {
+                setPending(null);
+                setRecording(def.id);
+              }}
+              onBlur={() => setRecording(null)}
+            />
+            {value[def.id] !== undefined && (
+              <button
+                {...smallGhostButtonProps}
+                disabled={busy || disabled}
+                aria-label={`Reset ${def.label} shortcut`}
+                onClick={() => reset(def.id)}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        ))
+      ) : (
+        <>
+          <p {...staticHintProps}>Make Aux feel familiar. Your shortcuts are saved for this Profile.</p>
+          <div className="field-row">
+            <button {...smallButtonProps} disabled={busy} onClick={exportFile}>
+              Export shortcuts
+            </button>
+            <button {...smallButtonProps} disabled={busy} onClick={() => importInput.current?.click()}>
+              Import shortcuts
+            </button>
+            <input
+              ref={importInput}
+              hidden
+              type="file"
+              accept="application/json,.json"
+              aria-label="Import shortcuts"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file)
+                  void file
+                    .text()
+                    .then((text) => save(importShortcuts(text, platform)))
+                    .catch((error) =>
+                      setError(error instanceof Error ? error.message : "Couldn't import shortcuts."),
+                    );
+              }}
+            />
+          </div>
+          <input
+            {...staticFieldInputProps}
+            aria-label="Find keyboard shortcut"
+            placeholder="Find a command or shortcut…"
+            value={query}
+            disabled={recording !== null}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          {!visibleDefs.length && (
+            <p {...staticHintProps} {...nativeStatusRoleProps}>
+              No matching shortcuts. Try another command name.
+            </p>
+          )}
+          <ul className="shortcut-list">
+            {visibleDefs.map((def) => {
+              const overridden = value[def.id] !== undefined;
+              return (
+                <li key={def.id} className="shortcut-row">
+                  <span className="shortcut-label">
+                    <span {...staticHintProps}>
+                      {COMMANDS.find((command) => command.id === def.id)?.section}
+                    </span>{" "}
+                    {def.label}
+                  </span>
+                  <span className="shortcut-chords">
+                    {def.bindings.length ? (
+                      def.bindings.map((b) => <kbd key={bindingKey(b)}>{bindingLabel(b, platform)}</kbd>)
+                    ) : (
+                      <span {...staticHintProps}>No shortcut</span>
+                    )}
+                  </span>
+                  {recording === def.id ? (
+                    <output className="hint shortcut-recording">Press keys… Esc cancels</output>
+                  ) : (
+                    <button
+                      {...smallGhostButtonProps}
+                      aria-label={`Change ${def.label} shortcut`}
+                      disabled={busy || recording !== null}
+                      onClick={() => {
+                        setPending(null);
+                        setRecording(def.id);
+                      }}
+                    >
+                      Change
+                    </button>
+                  )}
+                  {overridden && (
+                    <button
+                      {...smallGhostButtonProps}
+                      disabled={busy}
+                      aria-label={`Reset ${def.label} shortcut`}
+                      onClick={() => reset(def.id)}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {active && <FeatureSettings category="Keyboard shortcuts" />}
+        </>
       )}
-      <ul className="shortcut-list">
-        {visibleDefs.map((def) => {
-          const overridden = value[def.id] !== undefined;
-          return (
-            <li key={def.id} className="shortcut-row">
-              <span className="shortcut-label">
-                <span {...staticHintProps}>{COMMANDS.find((command) => command.id === def.id)?.section}</span>{" "}
-                {def.label}
-              </span>
-              <span className="shortcut-chords">
-                {def.bindings.length ? (
-                  def.bindings.map((b) => <kbd key={bindingKey(b)}>{bindingLabel(b, platform)}</kbd>)
-                ) : (
-                  <span {...staticHintProps}>No shortcut</span>
-                )}
-              </span>
-              {recording === def.id ? (
-                <output className="hint shortcut-recording">Press keys… Esc cancels</output>
-              ) : (
-                <button
-                  {...smallGhostButtonProps}
-                  aria-label={`Change ${def.label} shortcut`}
-                  disabled={busy || recording !== null}
-                  onClick={() => {
-                    setPending(null);
-                    setRecording(def.id);
-                  }}
-                >
-                  Change
-                </button>
-              )}
-              {overridden && (
-                <button
-                  {...smallGhostButtonProps}
-                  disabled={busy}
-                  aria-label={`Reset ${def.label} shortcut`}
-                  onClick={() => reset(def.id)}
-                >
-                  Reset
-                </button>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      {active && <FeatureSettings category="Keyboard shortcuts" />}
       {pending && (
         <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {bindingLabel(pending.binding, platform)} is used by{" "}
@@ -268,12 +321,12 @@ export function ShortcutsSetting({
           {error}
         </p>
       )}
-      {Object.keys(value).length > 0 && (
+      {!commandId && Object.keys(value).length > 0 && (
         <button {...smallGhostButtonProps} disabled={busy} onClick={() => void save({})}>
           Reset all shortcuts
         </button>
       )}
-      <ExtensionShortcuts active={active} />
+      {!commandId && <ExtensionShortcuts active={active} />}
     </div>
   );
 }

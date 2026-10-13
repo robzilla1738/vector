@@ -11,16 +11,6 @@
           "state": {},
           "children": [
             {
-              "tag": "H2",
-              "attrs": [["class", "drawer-section"]],
-              "state": {},
-              "children": [
-                {
-                  "text": "Selection & Capture"
-                }
-              ]
-            },
-            {
               "tag": "P",
               "attrs": [["class", "hint"]],
               "state": {},
@@ -903,16 +893,6 @@
           "state": {},
           "children": [
             {
-              "tag": "H2",
-              "attrs": [["class", "drawer-section"]],
-              "state": {},
-              "children": [
-                {
-                  "text": "Selection & Capture"
-                }
-              ]
-            },
-            {
               "tag": "P",
               "attrs": [["class", "hint"]],
               "state": {},
@@ -1792,7 +1772,7 @@
         }
       ]
     },
-    "focused": 12,
+    "focused": 11,
     "saved": []
   },
   {
@@ -1806,16 +1786,6 @@
           "attrs": [["data-settings-section", "Selection & Capture"]],
           "state": {},
           "children": [
-            {
-              "tag": "H2",
-              "attrs": [["class", "drawer-section"]],
-              "state": {},
-              "children": [
-                {
-                  "text": "Selection & Capture"
-                }
-              ]
-            },
             {
               "tag": "P",
               "attrs": [["class", "hint"]],
@@ -2736,7 +2706,7 @@
         }
       ]
     },
-    "focused": 14,
+    "focused": 13,
     "saved": []
   },
   {
@@ -2750,16 +2720,6 @@
           "attrs": [["data-settings-section", "Selection & Capture"]],
           "state": {},
           "children": [
-            {
-              "tag": "H2",
-              "attrs": [["class", "drawer-section"]],
-              "state": {},
-              "children": [
-                {
-                  "text": "Selection & Capture"
-                }
-              ]
-            },
             {
               "tag": "P",
               "attrs": [["class", "hint"]],
@@ -3517,7 +3477,7 @@
         }
       ]
     },
-    "focused": 37,
+    "focused": 36,
     "saved": []
   },
   {
@@ -3531,16 +3491,6 @@
           "attrs": [["data-settings-section", "Selection & Capture"]],
           "state": {},
           "children": [
-            {
-              "tag": "H2",
-              "attrs": [["class", "drawer-section"]],
-              "state": {},
-              "children": [
-                {
-                  "text": "Selection & Capture"
-                }
-              ]
-            },
             {
               "tag": "P",
               "attrs": [["class", "hint"]],
@@ -4308,7 +4258,7 @@
         }
       ]
     },
-    "focused": 63,
+    "focused": 62,
     "saved": [
       {
         "selectionCapture": {

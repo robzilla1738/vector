@@ -17,6 +17,8 @@ import { steppedZoomLevel } from "@aux/contracts/page-zoom";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { MODEL_REGISTRY } from "@aux/contracts/model-registry";
 import { workspaceMemoryText } from "@aux/contracts/memory-context";
+import type { DownloadRenameReceipt } from "@aux/contracts/download-naming";
+import type { BookmarkFolderSnapshot } from "@aux/contracts/bookmark-folder-methods";
 /**
  * Scripted AuxBridge for `vite --mode mock`. Runs the whole shell in a
  * plain browser without the native host or runtime — for visual review, screenshot
@@ -1609,7 +1611,7 @@ export function installMockBridge(q: URLSearchParams) {
       throw new Error("Demonstration and overnight work require the Aux native browser.");
     },
     "downloads.renameReceipts": async () => {
-      throw new Error("Download naming requires the Aux native browser.");
+      return [] satisfies DownloadRenameReceipt[];
     },
     "downloads.undoRename": async () => {
       throw new Error("Download naming requires the Aux native browser.");
@@ -2228,6 +2230,28 @@ export function installMockBridge(q: URLSearchParams) {
   let memorySaverMinutes: import("@aux/contracts").MemorySaverSettings["minutes"] = 30;
   const bridge: AuxBridge = {
     ...hostDefaults,
+    bookmarksInvoke: async (request) => {
+      if (request.method !== "bookmarks.folders.snapshot")
+        throw new Error("This bookmark action requires the Aux native browser.");
+      return {
+        method: request.method,
+        result: {
+          rootId: "1",
+          editable: false,
+          folders: [
+            {
+              nodeId: "1",
+              parentId: null,
+              index: 0,
+              title: "Bookmarks",
+              path: [],
+              permanent: true,
+              childIds: [],
+            },
+          ],
+        } satisfies BookmarkFolderSnapshot,
+      };
+    },
     browserProfiles: async () => [],
     createBrowserProfile: async () => {
       throw new Error("Profiles require the native browser.");

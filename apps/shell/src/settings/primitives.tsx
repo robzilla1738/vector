@@ -5,7 +5,7 @@ import { nativeGroupRoleProps } from "../ui/native-attribute-props";
 
 export function SettingsSection({
   name,
-  title = name,
+  title,
   hidden = false,
   className = "",
   children,
@@ -18,7 +18,7 @@ export function SettingsSection({
 }) {
   return (
     <section className={className || undefined} data-settings-section={name} hidden={hidden}>
-      <h2 {...auxClassDrawerSectionProps}>{title}</h2>
+      {title && <h2 {...auxClassDrawerSectionProps}>{title}</h2>}
       {children}
     </section>
   );

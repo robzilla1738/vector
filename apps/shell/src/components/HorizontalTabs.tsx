@@ -148,6 +148,7 @@ const HorizontalTabControls = memo(function HorizontalTabControls({
 });
 
 export function HorizontalTabs() {
+  const shrinkToFit = useStore((state) => state.settings.horizontalTabShrinkToFit === true);
   const key = useShortcutLabels();
   const layout = useTabLayout();
   const pages = useTabMembership();
@@ -278,6 +279,7 @@ export function HorizontalTabs() {
         <div
           ref={strip}
           className="horizontal-tabs"
+          data-shrink-to-fit={shrinkToFit}
           style={{ width: Math.max(1, tabs.length) * 200 + groupCount * 96 + 24 }}
           onScroll={hidePreview}
           role="tablist"

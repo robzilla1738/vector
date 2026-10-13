@@ -88,6 +88,21 @@ The native window supplies the glass underlay, with a clear native tint in both 
 
 Conversation shares its compact composer between Home Ask and full chat. ChatPreferences exposes the remembered confirmation policy and a Popover containing RunOptions; model, reasoning, execution target and private-task controls retain their existing authority checks. Ask first is the fresh-profile default, Skip confirmation selects Full auto, and Auto remains a Settings choice. Anchored popovers use Dialog focus containment and viewport-clamped placement with a dark theme surface; they deliberately omit the decorative GlassMaterial stack. Only the left sidebar has edge-hover reveal. Interactive controls are excluded from native window-drag regions.
 
+The searchable composer model menu is presentation over RunOptions' existing
+catalog; it does not create a second provider or admission path. Browser-object
+search also reuses the command bar's providers, with a compact presentation that
+accepts only a selected browser object or chat. Its empty Enter never starts a
+navigation or agent request.
+
+Held Ctrl-Tab uses an ephemeral renderer selection over the current Space's
+native tabs. Native chord forwarding distinguishes a physical Control-Tab from
+menu commands and alternate shortcuts. The ordinary preview API supplies visible
+cards; no history or thumbnails are persisted by the switcher. Control release
+activates the retained selection only while its window, Space and original
+selection remain current. Dialog composition keeps the underlying page painted.
+Sidebar visibility/count and tab layout preferences use the existing settings
+service, while native tab indices and saved organization preserve manual order.
+
 Current build/validation evidence and deferred acceptance live in [STATUS](STATUS.md); the roadmap describes targets rather than proof that every target has passed.
 
 ## Governed coding and approval fluidity

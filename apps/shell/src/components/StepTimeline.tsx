@@ -4,7 +4,21 @@ import { backgroundLink, browserLinkUrl, openBrowserLink } from "../browser-link
 import { bridge } from "../bridge";
 import { RunPanelAction, useRunPanelCommand } from "./RunPanelAction";
 import { errToast, useStore } from "../store";
-import { shellIconCheck, shellIconClose, shellIconObs, shellIconRight } from "../ui/icons";
+import {
+  shellIconArrowDown,
+  shellIconCheck,
+  shellIconClockSm,
+  shellIconClose,
+  shellIconCode,
+  shellIconDownloadSm,
+  shellIconGlobe,
+  shellIconHandSm,
+  shellIconLock,
+  shellIconObs,
+  shellIconPencil,
+  shellIconResult,
+  shellIconRight,
+} from "../ui/icons";
 import { nativeAriaHiddenProps as auxNativeAriaHiddenProps } from "../ui/native-attribute-props";
 import {
   staticMetadataKeyProps as auxClassMetadataKeyProps,
@@ -12,6 +26,30 @@ import {
 } from "../ui/class-props";
 
 export type StepState = "ok" | "failed" | "skipped" | "running";
+
+const operationIcons: Record<string, ReactNode> = {
+  navigate: shellIconGlobe,
+  back: shellIconGlobe,
+  forward: shellIconGlobe,
+  reload: shellIconGlobe,
+  click: shellIconHandSm,
+  dblclick: shellIconHandSm,
+  hover: shellIconHandSm,
+  clickPoint: shellIconHandSm,
+  dragTo: shellIconHandSm,
+  fill: shellIconPencil,
+  type: shellIconPencil,
+  press: shellIconPencil,
+  fillCredential: shellIconLock,
+  scroll: shellIconArrowDown,
+  collectScroll: shellIconArrowDown,
+  waitFor: shellIconClockSm,
+  screenshot: shellIconObs,
+  observe: shellIconObs,
+  extract: shellIconResult,
+  evaluate: shellIconCode,
+  expectDownload: shellIconDownloadSm,
+};
 
 const SECRET_KEY = /^(value|password|secret|token|passphrase|cookie)$/i;
 const playedEntrance = new Map<string, number>();
@@ -265,7 +303,7 @@ const StepCard = memo(function StepCard({
     >
       <span className="tl-dot">
         {state === "ok" ? (
-          shellIconCheck
+          (operationIcons[s.op] ?? shellIconCheck)
         ) : state === "failed" ? (
           shellIconClose
         ) : state === "skipped" ? (

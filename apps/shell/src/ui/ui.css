@@ -138,35 +138,37 @@
   input.ui-switch {
     appearance: none;
     position: relative;
-    width: 36px;
-    min-width: 36px;
-    height: 22px;
-    min-height: 22px;
+    width: 40px;
+    min-width: 40px;
+    height: 20px;
+    min-height: 20px;
     padding: 0;
     border: 0;
     border-radius: var(--r-pill);
-    background: var(--bg-3);
+    background: var(--switch-off);
     box-shadow: none;
     cursor: pointer;
     flex: none;
+    overflow: visible;
+    transition: background-color var(--t-layout) var(--ease-out);
   }
   input.ui-switch::after {
     content: "";
     position: absolute;
-    width: 16px;
+    width: 24px;
     height: 16px;
-    top: 3px;
-    left: 3px;
-    border-radius: 50%;
-    background: var(--ink-0);
-    transition: transform var(--t-quick) var(--ease-out);
+    top: 2px;
+    left: 2px;
+    border-radius: var(--r-pill);
+    background: var(--toggle-thumb);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--t-layout) var(--ease-out);
   }
   input.ui-switch:checked {
-    background: var(--accent-blue);
+    background: var(--switch-on);
   }
   input.ui-switch:checked::after {
-    transform: translateX(14px);
-    background: var(--toggle-thumb);
+    transform: translateX(12px);
   }
   input.ui-switch:disabled {
     opacity: 0.5;
@@ -447,6 +449,7 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
+    input.ui-switch,
     input.ui-switch::after {
       transition: none;
     }

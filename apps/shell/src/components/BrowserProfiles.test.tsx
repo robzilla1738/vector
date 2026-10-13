@@ -66,7 +66,7 @@ it("keeps a complete long Space name and original registered selection within th
   const choice = section.querySelector("button")!;
   expect(choice.textContent).toBe(longName);
   expect(choice.className).toBe("btn sm ghost");
-  expect(getComputedStyle(choice).minHeight).toBe("36px");
+  expect(getComputedStyle(choice).minHeight).toBe("32px");
   expect(getComputedStyle(choice).height).toBe("auto");
   expect(getComputedStyle(choice).whiteSpace).toBe("normal");
   expect(getComputedStyle(section).maxWidth).toBe("100%");

@@ -10,6 +10,7 @@ const tokens = readFileSync(join(here, "../../apps/shell/src/tokens.css"), "utf8
 const styles = readCssGraph(join(here, "../../apps/shell/src/styles.css"));
 const sharedUi = readFileSync(join(here, "../../apps/shell/src/ui/ui.css"), "utf8");
 const conversationCss = readFileSync(join(here, "../../apps/shell/src/components/Conversation.css"), "utf8");
+const composerCss = readFileSync(join(here, "../../apps/shell/src/composer/Composer.css"), "utf8");
 const css = tokens + "\n" + styles;
 
 // Formatting does not change a declaration, selector or numeric CSS value.
@@ -171,7 +172,9 @@ describe("shipped stylesheet — native macOS chrome", () => {
   });
 
   it("uses the reference editor growth limit and collapsible section tracks", () => {
-    expect(styles).toMatch(/\.conversation-input > textarea\s*\{[^}]*max-height:\s*calc\(15lh \+ 1rem\)/);
+    expect(composerCss).toMatch(
+      /\.conversation-message-field > textarea\s*\{[^}]*max-height:\s*calc\(15lh \+ 24px\)/,
+    );
     expect(styles).toMatch(/\.sidebar-section-body\s*\{[^}]*grid-template-rows:\s*0fr/);
     expect(styles).toMatch(/\.sidebar-section-body\.open\s*\{[^}]*grid-template-rows:\s*1fr/);
   });
@@ -371,13 +374,18 @@ describe("session chrome — search, preview, close, settings, attachments", () 
         '.settings-nav button[aria-current="page"] { background: var(--bg-active); color: var(--ink-0); }',
       ),
     );
-    expectCss(settingsCss).toContain(
-      ".settings-nav button[data-category] { display: flex; align-items: center; gap: 10px;",
+    const navigation = settingsCss.match(/\.settings-nav button\[data-category\]\s*\{[^}]+\}/)![0];
+    expectCss(navigation).toContain(
+      ".settings-nav button[data-category] { display: flex; align-items: center; gap: 8px;",
     );
-    expectCss(settingsCss).toContain("border-radius: 10px;");
-    expectCss(settingsCss).not.toContain("box-shadow:");
+    expectCss(navigation).toContain("height: 32px;");
+    expectCss(navigation).toContain("border-radius: 10px;");
+    expectCss(navigation).not.toContain("box-shadow:");
     expectCss(settingsCss).toContain(
-      ".settings-content .drawer-section + .field.ui-setting, .settings-content section > .field.ui-setting:first-child { border-start-start-radius: 14px; border-start-end-radius: 14px; }",
+      ".settings-content .field.ui-setting:not(.field.ui-setting + .field.ui-setting) { border-start-start-radius: var(--r-xl); border-start-end-radius: var(--r-xl); }",
+    );
+    expectCss(settingsCss).toContain(
+      ".settings-content .field.ui-setting:not(:has(+ .field.ui-setting)) { border-end-start-radius: var(--r-xl); border-end-end-radius: var(--r-xl); }",
     );
     expectCss(sharedUi).toContain(
       ".ui-settings-group > div { background:var(--surface-secondary); border-radius:var(--r-xl); overflow:hidden; }",

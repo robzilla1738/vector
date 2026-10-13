@@ -6,12 +6,22 @@ import { useCallback, useEffect, useMemo } from "react";
 import { bridge, inNativeHost } from "../../bridge";
 import { useSettingsStatusOwner } from "./use-settings-status-owner";
 import { useShortcutLabels } from "../../use-shortcut-label";
-import "./QuickAsk.css";
 import { SettingsField, SettingsSection } from "../primitives";
-import { nativeCheckboxTypeProps, nativeAlertRoleProps } from "../../ui/native-attribute-props";
+import { Switch } from "../../ui";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
+import type { ShortcutOverrides } from "@aux/contracts";
+import { ShortcutsSetting } from "../../components/ShortcutsSetting";
 
 type Status = { enabled: boolean; registered: boolean; error: string };
-export function QuickAskSettings({ active }: { active: boolean }) {
+export function QuickAskSettings({
+  active,
+  settings,
+  onSave,
+}: {
+  active: boolean;
+  settings: Record<string, unknown>;
+  onSave: (patch: Record<string, unknown>) => Promise<boolean>;
+}) {
   const key = useShortcutLabels(),
     windowId = bridge.windowId,
     privateMode = bridge.privateMode;
@@ -67,54 +77,76 @@ export function QuickAskSettings({ active }: { active: boolean }) {
   return (
     <SettingsSection name="Quick Ask" hidden={!active}>
       <SettingsField
+        compact
         label="Quick Ask window"
         hint="Open a compact chat, then expand it into a full browser window without losing the draft."
       >
-        <div className="quick-ask-setting">
-          <button
-            {...smallButtonProps}
-            disabled={!inNativeHost || privateMode}
-            onClick={(event) => run("quick-ask", event)}
-          >
-            Open Quick Ask
-          </button>
-          <p {...staticHintProps}>
-            A compact chat that expands into a full browser window. Your draft stays with it.
-          </p>
-          {status && (
-            <label className="memory-use-toggle">
-              <input
-                ref={toggleRef}
-                {...nativeCheckboxTypeProps}
-                disabled={busy || !inNativeHost}
-                checked={status.enabled}
-                onChange={(event) => run("toggle-quick-ask-shortcut", event)}
-              />
-              <span>
-                Open from any app with {key("quick-ask")}
-                <small>
-                  Optional · available while Aux is running. Other apps and their contents are not captured.
-                </small>
-              </span>
-            </label>
-          )}
-          {(error || status?.error) && (
-            <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
-              {error || status?.error}{" "}
-              <button
-                ref={retryRef}
-                {...smallGhostButtonProps}
-                disabled={busy || !inNativeHost}
-                onClick={(event) => run("retry-quick-ask-shortcut", event)}
-              >
-                Try again
-              </button>
-            </p>
-          )}
-          {!inNativeHost && <p {...staticHintProps}>Available in the Aux desktop app.</p>}
-          {inNativeHost && privateMode && <p {...staticHintProps}>Open Quick Ask from a regular window.</p>}
-        </div>
+        <button
+          {...smallButtonProps}
+          disabled={!inNativeHost || privateMode}
+          onClick={(event) => run("quick-ask", event)}
+        >
+          Open Quick Ask
+        </button>
       </SettingsField>
+      {status && (
+        <SettingsField
+          compact
+          label="Global shortcut"
+          hint={
+            <>
+              Open from any app with <kbd>{key("quick-ask")}</kbd> while Aux is running. Other apps and their
+              contents are not captured.
+            </>
+          }
+          searchTerms={["keyboard", "shortcut", "hotkey"]}
+        >
+          <Switch
+            controlRef={toggleRef}
+            aria-label="Enable Quick Ask global shortcut"
+            disabled={busy || !inNativeHost}
+            checked={status.enabled}
+            onChange={(event) => run("toggle-quick-ask-shortcut", event)}
+          />
+        </SettingsField>
+      )}
+      {status?.enabled && (
+        <SettingsField compact label="Keyboard shortcut" hint="Set a global shortcut for Quick Ask.">
+          <ShortcutsSetting
+            active={active}
+            commandId="quick-ask"
+            disabled={busy || !inNativeHost || privateMode}
+            value={(settings.shortcutOverrides ?? {}) as ShortcutOverrides}
+            onSave={async (shortcutOverrides) => {
+              const owner = getOwner();
+              if (!current(owner) || !inNativeHost || privateMode) return false;
+              if (!(await onSave({ shortcutOverrides }))) return false;
+              if (!current(owner)) return true;
+              read(
+                owner,
+                () => bridge.quickAskShortcut(),
+                (value) => value,
+              );
+              return true;
+            }}
+          />
+        </SettingsField>
+      )}
+      {(error || status?.error) && (
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
+          {error || status?.error}{" "}
+          <button
+            ref={retryRef}
+            {...smallGhostButtonProps}
+            disabled={busy || !inNativeHost}
+            onClick={(event) => run("retry-quick-ask-shortcut", event)}
+          >
+            Try again
+          </button>
+        </p>
+      )}
+      {!inNativeHost && <p {...staticHintProps}>Available in the Aux desktop app.</p>}
+      {inNativeHost && privateMode && <p {...staticHintProps}>Open Quick Ask from a regular window.</p>}
     </SettingsSection>
   );
 }

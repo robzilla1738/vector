@@ -393,11 +393,16 @@ it("funds scoped external summaries on the original session and joins a held dis
       client,
     );
     await waitForEntry(entered.promise, pending, "Funded summary");
-    const rejected = expect(pending).rejects.toMatchObject({
-      code: expect.stringMatching(/cancelled|permission_denied|conflict/),
-    });
     const originalControl = runs.coordinator.controls.get(runId);
     expect(originalControl).toBeDefined();
+    const originalDispatch = originalControl!.dispatchAbort!.signal;
+    const rejected = pending.then(
+      () => { throw new Error("The retired dispatch must reject."); },
+      (error) => {
+        expect(originalDispatch.aborted).toBe(true);
+        expect(error).toBe(originalDispatch.reason);
+      },
+    );
     siblingPending = invoke(
       "agent.pageSummary",
       { runId, pageId: sibling.pageId },

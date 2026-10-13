@@ -1,15 +1,17 @@
 # Building Aux locally
 
 Aux uses Chromium 154 on macOS arm64. The product checkout is
-`~/aux-chromium-product/chromium/src`; the built app is `out/AuxFast/Aux.app`.
-The October 9 build includes native areas 0038–0040 (icon compression, image Copy
-and clear window glass), and completed in **49 steps / 16m06.22s** with
-**273 methods / 30 events**, `cce8203bcbd0`, and slim Node 26.9. Its disposable
-preview is open for the owner's appearance comparison; preserve its launcher
-ownership until normal retirement. Vertical/horizontal glass and light/dark
-switching were inspected. Clipboard acceptance and broader workflow/performance
-acceptance remain in STATUS. The prior 272-method app's document-intake evidence
-is historical evidence, not a new walkthrough of this build.
+`~/Documents/Code/aux-chromium-product/chromium/src`; the built app is `out/AuxFast/Aux.app`.
+The October 12 parity build includes native area 0041 (held Ctrl-Tab routing)
+and completed in **24 steps / 8m56.42s**, with **273 methods / 30 events**,
+`cce8203bcbd0`, 206 renderer assets and slim Node 26.9. Its disposable app and
+launcher retired normally at the owner's wrap-up; the Profile and lock were
+removed. Final renderer review fixes postdate this candidate and require the
+next ordinary build. Home and local fixture navigation were observed; native
+Ctrl-Tab release/focus and broader workflow/performance acceptance remain in
+[STATUS](../docs/STATUS.md). Earlier builds' observations are historical evidence,
+not new walkthroughs of this candidate. Preserve every launcher's ownership
+until normal retirement.
 
 The launcher defaults to this preserved product checkout and Fast output through
 `dev-defaults.json`. Set `AUX_CHROMIUM_SRC` for another checkout, or `--flavor dev`
@@ -17,7 +19,7 @@ for `out/AuxDev/Aux.app`. Preserve both checkouts and caches; do not reset them 
 run setup/push to change applied source.
 
 ```bash
-export AUX_CHROMIUM_SRC="$HOME/aux-chromium-product/chromium/src"
+export AUX_CHROMIUM_SRC="$HOME/Documents/Code/aux-chromium-product/chromium/src"
 node scripts/dev.mjs --temp-profile
 ```
 
@@ -41,7 +43,7 @@ No release, signing, notarization, push or hosted CI is part of this workflow. P
 AuxFast is the default local development flavor. First quit the existing disposable Aux preview normally and let its launcher release the lock. Keep the product checkout and incremental cache. From the repository root:
 
 ```bash
-export AUX_CHROMIUM_SRC="$HOME/aux-chromium-product/chromium/src"
+export AUX_CHROMIUM_SRC="$HOME/Documents/Code/aux-chromium-product/chromium/src"
 node scripts/dev.mjs -- chromium/aux-chromium stage-shell
 node scripts/dev.mjs -- chromium/aux-chromium build --flavor fast
 node scripts/dev.mjs -- node chromium/stage-runtime.mjs "$AUX_CHROMIUM_SRC/out/AuxFast/Aux.app"

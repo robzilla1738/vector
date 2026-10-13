@@ -17,6 +17,7 @@ import {
   useState,
   type ReactNode,
   type RefObject,
+  type SyntheticEvent,
 } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { CompactObservation, Run, StepRecord } from "@aux/contracts";
@@ -51,14 +52,18 @@ import {
 
 /** Ticks on its own so a live run's clock never re-renders the whole panel. */
 function Elapsed({ run }: { run: Run }) {
-  const live = isLive(run);
+  const live = ["queued", "planning", "running"].includes(run.status);
+  const stoppedAt = useMemo(() => Date.now(), [run.runId, run.status]);
   const [, tick] = useState(0);
   useEffect(() => {
     if (!live) return;
     const t = window.setInterval(() => tick((n) => n + 1), 1000);
     return () => window.clearInterval(t);
   }, [live]);
-  const elapsed = Math.max(0, (run.endedAt ?? Date.now()) - (run.startedAt ?? run.createdAt));
+  const elapsed = Math.max(
+    0,
+    (run.endedAt ?? (live ? Date.now() : stoppedAt)) - (run.startedAt ?? run.createdAt),
+  );
   return (
     <span className="run-time" title="Elapsed">
       {fmtElapsed(elapsed)}
@@ -342,18 +347,14 @@ export const RunPanel = memo(function RunPanel({
   const [obsError, setObsError] = useState("");
   const [inspectedArtifact, setInspectedArtifact] = useState<string | null>(null);
   const observationRequest = useRef(0);
-  const [showSteps, setShowSteps] = useState(() => {
-    const current = useStore.getState().runs.find((item) => item.runId === runId);
-    return !conversation && !!current && isLive(current);
-  });
+  const [stepsExpanded, setShowSteps] = useState<boolean | null>(null);
 
   useEffect(() => {
     setShowObs(false);
     setObsLoading(false);
     setObsError("");
     setInspectedArtifact(null);
-    const r = useStore.getState().runs.find((x) => x.runId === runId);
-    setShowSteps(!conversation && !!r && isLive(r));
+    setShowSteps(null);
     if (!steps) void loadRun(runId);
     return () => {
       ++observationRequest.current;
@@ -370,6 +371,8 @@ export const RunPanel = memo(function RunPanel({
   if (!run) return <div className="rail-empty">This run is no longer available.</div>;
 
   const live = isLive(run);
+  const working = ["queued", "planning", "running"].includes(run.status);
+  const showSteps = stepsExpanded ?? (working && !stream);
   const originalPages = run.pageIds.map((id) => runPages.find((p) => p.pageId === id));
   const usable = (item?: (typeof runPages)[number]) =>
     !!item && !["crashed", "detached"].includes(item.viewStatus ?? "");
@@ -429,6 +432,58 @@ export const RunPanel = memo(function RunPanel({
     }
   };
   inspectRef.current = inspect;
+
+  const keepWorkOpen = (event: SyntheticEvent<HTMLElement>) => {
+    if (event.target instanceof Element && event.target.closest(".timeline")) setShowSteps(true);
+  };
+  const workHistory = (!conversation || live || (steps?.length ?? 0) > 0) && (
+    <section
+      className={`run-section${conversation ? " run-work-fold" : ""}`}
+      onFocusCapture={keepWorkOpen}
+      onPointerDownCapture={keepWorkOpen}
+      onClickCapture={keepWorkOpen}
+    >
+      <RunPanelAction
+        command="toggle-run-steps"
+        run={run}
+        className={conversation ? "run-work-toggle" : "run-section-head toggle"}
+        aria-expanded={showSteps}
+        invoke={() => setShowSteps(!showSteps)}
+      >
+        {conversation ? (
+          <>
+            <span>
+              {working ? "Working for" : "Worked for"} <Elapsed run={run} />
+            </span>
+            <span className={`chev ${showSteps ? "open" : ""}`}>{shellIconRight}</span>
+          </>
+        ) : (
+          <>
+            <span className={`chev ${showSteps ? "open" : ""}`}>{shellIconRight}</span>
+            <span>Steps</span>
+            <span {...auxClassNumericCountProps}>{steps?.length ?? 0}</span>
+            {steps && steps.length > 0 && (
+              <span className="sum nums">
+                {fmtMs(steps.reduce((total, step) => total + (step.outcome?.durationMs ?? 0), 0))}
+              </span>
+            )}
+          </>
+        )}
+      </RunPanelAction>
+      {showSteps && (!!steps?.length || live) && (
+        <StepTimeline
+          run={run}
+          windowId={bridge.windowId}
+          privateMode={bridge.privateMode}
+          windowKind={bridge.windowKind}
+          compact
+          steps={steps ?? []}
+          live={working && !humanHolds}
+          onInspect={onInspect}
+        />
+      )}
+    </section>
+  );
 
   return (
     <div className="run-panel" data-testid="run-panel">
@@ -525,6 +580,7 @@ export const RunPanel = memo(function RunPanel({
         <p className="run-msg">{run.statusMessage}</p>
       )}
 
+      {conversation && workHistory}
       <Answer
         run={run}
         sources={sources}
@@ -694,38 +750,7 @@ export const RunPanel = memo(function RunPanel({
         </section>
       )}
 
-      {(!conversation || (steps?.length ?? 0) > 0) && (
-        <section className="run-section">
-          <RunPanelAction
-            command="toggle-run-steps"
-            run={run}
-            className="run-section-head toggle"
-            aria-expanded={showSteps}
-            invoke={() => setShowSteps((v) => !v)}
-          >
-            <span className={`chev ${showSteps ? "open" : ""}`}>{shellIconRight}</span>
-            <span>{conversation ? "Work history" : "Steps"}</span>
-            <span {...auxClassNumericCountProps}>{steps?.length ?? 0}</span>
-            {steps && steps.length > 0 && (
-              <span className="sum nums">
-                {fmtMs(steps.reduce((a, s) => a + (s.outcome?.durationMs ?? 0), 0))}
-              </span>
-            )}
-          </RunPanelAction>
-          {showSteps && (!!steps?.length || live) && (
-            <StepTimeline
-              run={run}
-              windowId={bridge.windowId}
-              privateMode={bridge.privateMode}
-              windowKind={bridge.windowKind}
-              compact
-              steps={steps ?? []}
-              live={live && !humanHolds && run.status !== "paused"}
-              onInspect={onInspect}
-            />
-          )}
-        </section>
-      )}
+      {!conversation && workHistory}
 
       {(obs || observationArtifact) && (!conversation || showSteps) && (
         <section className="run-section">

@@ -98,7 +98,15 @@ import type { NativeBridge } from "../native.js";
 
 export interface Settings extends Pick<
   z.infer<typeof SettingsSetParams>,
-  "toolbarAutoHide" | "minimalUi" | "minimalUiAcknowledged" | "autoArchive" | "nightShift"
+  | "toolbarAutoHide"
+  | "minimalUi"
+  | "minimalUiAcknowledged"
+  | "autoArchive"
+  | "nightShift"
+  | "sidebarRecentChatLimit"
+  | "sidebarBookmarksVisible"
+  | "verticalTabInsertionPosition"
+  | "horizontalTabShrinkToFit"
 > {
   modelProvider?: ModelProvider;
   modelConnection?: { provider: ModelProvider; enabled: boolean };
@@ -773,6 +781,21 @@ export class SettingsService {
       sidebarBlur: Number(this.get("sidebarBlur") ?? 0),
       sidebarOpacity: Number(this.get("sidebarOpacity") ?? 90),
       tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "vertical",
+      sidebarRecentChatLimit: SettingsSetParams.shape.sidebarRecentChatLimit
+        .catch(3)
+        .parse(this.get("sidebarRecentChatLimit") ?? 3),
+      sidebarBookmarksVisible: z
+        .boolean()
+        .catch(true)
+        .parse(this.get("sidebarBookmarksVisible") ?? true),
+      verticalTabInsertionPosition: z
+        .enum(["top", "bottom"])
+        .catch("top")
+        .parse(this.get("verticalTabInsertionPosition") ?? "top"),
+      horizontalTabShrinkToFit: z
+        .boolean()
+        .catch(false)
+        .parse(this.get("horizontalTabShrinkToFit") ?? false),
       toolbarAutoHide: z.boolean().parse(this.get("toolbarAutoHide") ?? true),
       minimalUi: z.boolean().parse(this.get("minimalUi") ?? false),
       minimalUiAcknowledged: z.boolean().parse(this.get("minimalUiAcknowledged") ?? false),

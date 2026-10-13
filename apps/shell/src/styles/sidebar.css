@@ -573,8 +573,8 @@
     align-items: center;
     gap: var(--space-2);
     min-height: 32px;
-    padding: var(--space-1-5) var(--space-2-5);
-    border-radius: var(--r-md);
+    padding: var(--space-1) var(--space-2-5);
+    border-radius: var(--r-lg);
     color: var(--ink-0);
     font-size: var(--fs-sm);
     transition: background var(--t-fast) var(--ease-out);

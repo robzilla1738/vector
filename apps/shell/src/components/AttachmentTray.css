@@ -1,23 +1,38 @@
 @layer components {
   .attachment-tray {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    max-height: 160px;
-    overflow: auto;
-    overscroll-behavior: contain;
-    padding: var(--space-1);
+    flex-direction: column;
+    min-width: 0;
+    gap: 4px;
+  }
+  .attachment-strip {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    min-width: 0;
+    padding: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
   }
   .attachment-chip {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    flex: 0 0 180px;
+    width: 180px;
+    height: 44px;
     min-width: 0;
-    max-width: 100%;
-    padding-right: var(--space-1);
-    border-radius: var(--r-lg);
-    background: var(--surface-secondary);
-    box-shadow: var(--line-inset);
+    border-radius: var(--r-xl);
+    background: var(--surface-primary);
+    box-shadow:
+      0 0 0 var(--hairline) var(--line-strong),
+      var(--shadow-card);
+    transition: background var(--t-fast) var(--ease-in-out);
+  }
+  .attachment-chip:hover {
+    background: var(--surface-tertiary);
   }
   .attachment-chip.excluded {
     background: transparent;
@@ -25,14 +40,18 @@
   .attachment-open {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 8px;
+    width: 100%;
     min-width: 0;
-    padding: var(--space-2);
+    height: 100%;
+    padding: 6px 24px 6px 6px;
+    border-radius: inherit;
     text-align: left;
   }
   .attachment-open > span:last-child {
+    display: grid;
+    gap: 4px;
     min-width: 0;
-    max-width: 200px;
   }
   .attachment-open strong,
   .attachment-open small {
@@ -40,34 +59,64 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: var(--fs-xs);
+    line-height: 1;
   }
   .attachment-open strong {
-    font-size: var(--fs-xs);
     font-weight: var(--fw-medium);
-    color: var(--ink-1);
+    color: var(--ink-0);
   }
   .attachment-open small,
   .attachment-progress {
-    font-size: var(--fs-xs);
+    font-weight: var(--fw-regular);
     color: var(--ink-2);
   }
   .attachment-icon {
     display: grid;
     place-items: center;
     flex: none;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border-radius: var(--r-md);
     background: var(--bg-hover);
+    color: var(--ink-2);
   }
   .attachment-icon svg {
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
   }
   .attachment-chip > input {
-    flex: none;
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    width: 12px;
+    height: 12px;
+    margin: 0;
+  }
+  .attachment-chip > .attachment-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    opacity: 0;
+    border-radius: 50%;
+    background: var(--surface-popover);
+  }
+  .attachment-chip:is(:hover, :focus-within) > .attachment-remove {
+    opacity: 1;
+  }
+  .attachment-tray > .source-collection-pages {
+    padding: 0 8px 4px;
+    margin: 0;
   }
   .attachment-progress {
-    padding: var(--space-2);
+    padding: 8px;
+    font-size: var(--fs-xs);
+  }
+  @media (hover: none) {
+    .attachment-chip > .attachment-remove {
+      opacity: 1;
+    }
   }
 }

@@ -1,21 +1,74 @@
 .transcript-waiting {
   display: block;
   color: var(--ink-2);
+  padding-block: 4px;
+  font-size: var(--fs-md);
+}
+.transcript-tools > summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  min-height: 24px;
+  color: var(--ink-2);
   font-size: var(--fs-sm);
+  list-style: none;
+  cursor: pointer;
+}
+.transcript-tools > summary:hover {
+  color: var(--ink-0);
+}
+.transcript-tools > summary::-webkit-details-marker {
+  display: none;
+}
+.transcript-tools > summary > svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--t-fast) var(--ease-in-out);
+}
+.transcript-tools[open] > summary > svg {
+  transform: rotate(90deg);
 }
 .transcript-tools ol {
-  margin: var(--space-2) 0;
-  padding-inline-start: var(--space-5);
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
 }
 .transcript-tools li {
-  padding-block: var(--space-1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  color: var(--ink-1);
+  font-size: var(--fs-sm);
+}
+.transcript-tool-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  color: var(--ink-2);
+}
+.transcript-tool-icon > svg {
+  width: 14px;
+  height: 14px;
+}
+.transcript-tool-icon > span {
+  width: 6px;
+  height: 6px;
+  background: var(--ink-3);
+  border-radius: 50%;
+}
+.transcript-tools li[data-state="failed"] .transcript-tool-icon {
+  color: var(--err);
 }
 .transcript-tool-status {
+  margin-left: auto;
   color: var(--ink-2);
   font-size: var(--fs-xs);
-}
-.transcript-tool-status::before {
-  content: "· ";
 }
 .transcript-tools p {
   margin: var(--space-2) 0 0;
@@ -26,8 +79,11 @@
   display: grid;
   gap: var(--space-1);
   border: var(--hairline) solid var(--line);
-  border-radius: var(--r-lg);
-  padding: var(--space-3);
+  border-radius: var(--r-2xl);
+  padding: 8px 12px;
+  background: var(--err-soft);
+  border-color: var(--err-line);
+  font-size: var(--fs-sm);
 }
 .transcript-error p {
   margin: 0;

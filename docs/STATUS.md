@@ -1,4 +1,60 @@
-# Aux status — October 9, 2026
+# Aux status — October 12, 2026
+
+## Aside parity checkpoint — owner wrap-up
+
+The owner resumed the full surface/option comparison. Home, Settings, composers,
+transcripts, model selection, compact windows and shared menu/dialog controls now
+use dimensions from the current extracted Aside extension. Settings has one
+category rail, full-width editors, appearance thumbnails and real bookmark
+visibility, recent-chat count, tab insertion, shrink-to-fit and Quick Ask shortcut
+preferences. Complete chat history remains available. The composer has a
+searchable model picker with its original catalog/authority checks. Browser-object
+search has the reference's compact grouped presentation and preserves the normal
+address and command routes.
+
+Held Ctrl-Tab has a renderer preview with stable ordering, commit on Control
+release and cancellation on Escape, window blur, tab retirement or changed
+browsing context. Native area 0041 forwards the actual Ctrl-Tab chord and focuses
+the shell while preserving immediate alternate shortcuts. Renderer tests and
+narrow-window observations cover selection, placement and focus restoration;
+the physical native hold/release/cancel walkthrough remains unfinished.
+
+The native build succeeded in **24 steps / 8m56.42s**, with 206 renderer assets,
+**273 methods / 30 events** (`cce8203bcbd0`) and slim Node 26.9. The disposable
+app launched, Home was inspected and two local fixture pages loaded. This
+candidate includes area 0041 and the main parity changes, but predates the final
+renderer fixes for inspected-work disclosure, empty-transcript layout,
+permission-menu retirement, shortcut-save ordering, narrow Home/switcher layout
+and dialog animation. It must be rebuilt before those changes receive native
+acceptance. Build log: `/tmp/aux-aside-parity-native-final.log`.
+
+Closing typecheck and lint pass. The final full unit run passed **4,513 of
+4,514 tests** across 726 files; the unchanged coder-worktrees test reached its
+60-second timeout. It passed in **54.1 seconds** in the earlier isolated run.
+The initial integrated pass's stale expectations and the new regression tests'
+conditional-assertion lint errors were corrected. A full-suite attempt using
+the slim Node 26.9 binary aborted with a segmentation fault; the subsequent
+standard development Node 26.11 run produced the counts above. The full check
+is therefore not all-green. Logs: `/tmp/aux-aside-parity-wrapup-check.log`,
+`/tmp/aux-aside-parity-wrapup-tests.log` and
+`/tmp/aux-aside-parity-worktrees-postbuild.log`.
+
+At the owner's wrap-up request, implementation stopped at this slice. The
+disposable native app exited normally, its launcher exited 0 and removed both
+its Profile and the plain build lock. Temporary renderer/browser/fixture
+servers were stopped. Resume with one ordinary
+`node scripts/dev.mjs --temp-profile` build and the native Ctrl-Tab, Settings and compact-window
+walkthrough. Chromium-created tab placement still needs explicit native
+creation provenance; the new top/bottom preference currently covers tabs
+created through Aux's shell actions. Quick Ask's reference sizing/Profile
+picker, broader native prompts and complete surface/state comparison remain
+open in [the parity ledger](design/aside-parity.md). No phase, full-parity or
+performance acceptance is claimed.
+
+The October 8 pause and older build/profile notes below are historical. Current
+development uses the preserved product checkout at
+`~/Documents/Code/aux-chromium-product/chromium/src`, the single native builder,
+and disposable Profiles. No source has been pushed.
 
 ## Sidebar refinement
 

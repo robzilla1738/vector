@@ -1,11 +1,11 @@
-import { staticHintProps, staticRowProps } from "../ui/class-props";
-import { smallGhostButtonProps } from "../ui/button-props";
+import { staticHintProps } from "../ui/class-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Run, Suspension } from "@aux/contracts";
 import { call } from "../store";
 import "./RunAttentionFeed.css";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
+import { shellIconClose, shellIconRight } from "../ui/icons";
 
 type Attention = { run: Run; suspension: Suspension };
 
@@ -116,31 +116,36 @@ export function RunAttentionFeed({
   return (
     <section className="run-attention-feed" aria-label="Tasks needing your input">
       <h2>Needs your input</h2>
-      {visible.map((item) => (
-        <article className="run-failure run-attention-card" key={item.suspension.suspensionId}>
-          <div>
+      <div className="run-attention-grid">
+        {visible.map((item) => (
+          <article className="run-attention-card" key={item.suspension.suspensionId}>
+            <header>
+              <span>Needs your input</span>
+              <button
+                type="button"
+                className="icon-btn xs"
+                aria-label={`Dismiss ${LABELS[item.suspension.kind].title}`}
+                onKeyDown={(event) => dismissOnEscape(event, item.suspension.suspensionId)}
+                onClick={() => dismiss(item.suspension.suspensionId)}
+              >
+                {shellIconClose}
+              </button>
+            </header>
             <strong>{LABELS[item.suspension.kind].title}</strong>
-            <p {...staticHintProps}>{LABELS[item.suspension.kind].detail}</p>
-          </div>
-          <div {...staticRowProps}>
-            <button
-              className="btn sm primary"
-              onKeyDown={(event) => dismissOnEscape(event, item.suspension.suspensionId)}
-              onClick={() => void review(item)}
-            >
-              Review task
-            </button>
-            <button
-              {...smallGhostButtonProps}
-              aria-label={`Dismiss ${LABELS[item.suspension.kind].title}`}
-              onKeyDown={(event) => dismissOnEscape(event, item.suspension.suspensionId)}
-              onClick={() => dismiss(item.suspension.suspensionId)}
-            >
-              Dismiss
-            </button>
-          </div>
-        </article>
-      ))}
+            <p>{LABELS[item.suspension.kind].detail}</p>
+            <footer>
+              <button
+                className="btn sm primary"
+                onKeyDown={(event) => dismissOnEscape(event, item.suspension.suspensionId)}
+                onClick={() => void review(item)}
+              >
+                Review task
+                {shellIconRight}
+              </button>
+            </footer>
+          </article>
+        ))}
+      </div>
       {items.length > visible.length && <p {...staticHintProps}>More tasks need your input in Tasks.</p>}
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
     </section>

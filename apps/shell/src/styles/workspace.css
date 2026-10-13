@@ -73,7 +73,7 @@
     max-width: 80%;
   }
   .conversation-scroll {
-    padding: var(--space-2) 0 var(--space-5);
+    padding: 16px 32px;
     overflow-y: auto;
     overflow-anchor: none;
     flex: 1;
@@ -88,11 +88,7 @@
   }
   @media (max-width: 1024px) {
     .conversation-scroll {
-      padding: var(--space-4) var(--space-5);
-      gap: var(--space-4);
-    }
-    .conversation-compose-content {
-      padding-inline: var(--space-3);
+      padding: 16px 20px;
     }
     .empty-state {
       max-width: 100%;
@@ -103,11 +99,6 @@
     }
     .sidebar.collapsed {
       width: 64px;
-    }
-  }
-  @media (min-width: 1025px) and (max-width: 1279px) {
-    .conversation-scroll {
-      padding: 18px 28px;
     }
   }
   .task-workspace {
@@ -124,17 +115,17 @@
   .conversation:not(.conversation-embedded) .conversation-body {
     justify-content: center;
     gap: 0;
-    padding: 0 var(--space-7) var(--space-5);
+    padding: 0;
   }
   .conversation:not(.conversation-embedded) .conversation-body:has(.supporting-content) {
     gap: 24px;
     align-items: stretch;
   }
   .conversation:not(.conversation-embedded) .conversation-main {
-    width: min(880px, 100%);
-    max-width: 880px;
+    width: min(896px, 100%);
+    max-width: 896px;
     margin-inline: auto;
-    padding-top: var(--space-2);
+    padding-top: 0;
   }
   .main-col.conversation-open > .toolbar {
     display: none;
@@ -154,15 +145,15 @@
   }
   .user-message {
     margin: 0 0 18px auto;
-    max-width: min(78%, 420px);
+    max-width: 80%;
     width: fit-content;
     border-radius: var(--r-xl);
-    background: var(--surface-secondary);
-    padding: 6px var(--space-2-5);
+    background: var(--bg-hover);
+    padding: 8px 12px;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    font-size: var(--fs-lg);
-    line-height: 1.5;
+    font-size: var(--fs-md);
+    line-height: 20px;
   }
   .conversation .run-goal {
     display: none;
@@ -175,10 +166,10 @@
     display: none;
   }
   .conversation:not(.conversation-embedded) .answer {
-    font-size: var(--fs-lg);
-    line-height: 1.7;
+    font-size: var(--fs-md);
+    line-height: var(--lh-relaxed);
     color: var(--ink-0);
-    max-width: 62ch;
+    max-width: 100%;
   }
   .conversation .run-status {
     font-size: var(--fs-2xs);
@@ -580,7 +571,7 @@
     z-index: 2;
     display: flex;
     align-items: center;
-    height: 38px;
+    height: var(--horizontal-tab-strip-h);
     min-width: 0;
     gap: var(--space-1);
     padding: 0 var(--space-2);
@@ -677,6 +668,16 @@
   }
   .horizontal-tabs::-webkit-scrollbar {
     display: none;
+  }
+  .horizontal-tabs[data-shrink-to-fit="true"] {
+    flex: 1 1 auto;
+  }
+  .horizontal-tabs[data-shrink-to-fit="true"] .horizontal-tab {
+    flex: 1 1 200px;
+    min-width: 48px;
+  }
+  .horizontal-tabs[data-shrink-to-fit="false"] .horizontal-tab {
+    flex: 0 0 200px;
   }
   .horizontal-tab {
     display: flex;

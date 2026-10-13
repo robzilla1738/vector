@@ -1,4 +1,37 @@
 @layer overrides {
+  .shortcut-single-control {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+  .shortcut-single-control input {
+    width: 96px;
+    height: 28px;
+    min-height: 28px;
+    padding: 0 8px;
+    border: 0;
+    background: var(--bg-hover);
+    text-align: center;
+    font-size: var(--fs-xs);
+    font-variant-numeric: tabular-nums;
+  }
+  .shortcut-single-control input:focus {
+    background: var(--bg-active);
+  }
+  .settings-sidebar-menu-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+    white-space: nowrap;
+  }
+  .settings-sidebar-menu-trigger .ci {
+    width: 14px;
+    height: 14px;
+    flex: none;
+  }
   .settings-page {
     background: var(--bg-0);
     container: settings-page / inline-size;
@@ -8,36 +41,37 @@
     display: flex;
   }
   .settings-nav {
-    width: 208px;
+    width: clamp(144px, 30vw, 208px);
     flex: none;
     min-height: 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    padding: 4px 6px;
-    gap: 4px;
+    padding: 4px 0 4px 6px;
+    gap: 0;
     background: transparent;
     border: 0;
   }
   .settings-category-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0;
+    padding-bottom: 40px;
   }
   .settings-nav button[data-category] {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     width: 100%;
-    height: auto;
+    height: 32px;
     min-height: 32px;
     padding: 6px 10px;
     border: 0;
     border-radius: 10px;
     font-size: 14px;
-    font-weight: 450;
+    font-weight: 500;
     text-align: left;
-    color: var(--ink-1);
+    color: var(--ink-2);
     background: none;
   }
   .settings-nav button[data-category]:hover {
@@ -52,22 +86,40 @@
     outline: 2px solid var(--focus-line);
     outline-offset: -2px;
   }
-  .settings-nav button[aria-current="page"] .settings-category-icon svg {
-    fill: currentColor;
-    fill-opacity: 1;
+  .settings-category-icon {
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+  .settings-category-icon > svg {
+    width: 16px;
+    height: 16px;
+  }
+  .settings-category-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .settings-rail-group-title {
     display: block;
-    padding: 16px 10px 4px;
+    padding: 12px 10px 4px;
     color: var(--ink-2);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     text-transform: none;
     letter-spacing: 0;
   }
+  .settings-rail-item:first-child .settings-rail-group-title {
+    padding-top: 0;
+  }
   .settings-search-box {
-    margin: 4px 4px 8px;
-    background: var(--surface-secondary);
+    flex: none;
+    margin: 0 0 12px;
+    background: var(--surface-primary);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
     border-radius: 10px;
   }
   .settings-content {
@@ -96,7 +148,7 @@
     position: static;
     border: 0;
     background: none;
-    padding: 0 0 32px;
+    padding: 0 14px 24px;
   }
   .settings-content .settings-heading h1 {
     margin: 0;
@@ -115,22 +167,36 @@
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-gutter: stable;
-    padding: 14px 14px 160px;
+    padding: 0 14px 160px;
+    scroll-padding-top: 12px;
+    overscroll-behavior: contain;
   }
-  .settings-content .drawer-section {
-    margin: 32px 0 12px;
+  .settings-content :is(.drawer-section, .ui-settings-group > h4) {
+    margin: 32px 0 8px;
     padding: 0;
-    color: color-mix(in srgb, var(--ink-0) 80%, transparent);
+    color: color-mix(in srgb, var(--ink-2) 80%, transparent);
     font-size: 14px;
     font-weight: 550;
+    line-height: 20px;
+  }
+  .settings-scroll > section > :is(.drawer-section, .ui-settings-group):first-child,
+  .settings-scroll > section > .ui-settings-group:first-child > h4 {
+    margin-top: 0;
+  }
+  .settings-content :is(.ui-settings-group > div, .settings-card) {
+    margin-inline: -14px;
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-xl);
+    corner-shape: superellipse(var(--squircle-factor));
+    background: transparent;
+    overflow: hidden;
   }
   .settings-content .field.ui-setting {
     min-height: 52px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 160px);
+    grid-template-columns: minmax(0, 1fr);
     align-items: center;
-    column-gap: 16px;
-    row-gap: 4px;
+    gap: 4px 12px;
     margin: 0 -14px;
     padding: 14px;
     border: 0;
@@ -142,57 +208,85 @@
   }
   .settings-content .field.ui-setting > .setting-label {
     grid-column: 1;
+    grid-row: 1;
     font-size: 14px;
     font-weight: 500;
+    line-height: 20px;
     min-width: 0;
   }
   .settings-content .field.ui-setting > .hint {
     grid-column: 1;
+    grid-row: 2;
     font-size: 12px;
     font-weight: 500;
     margin: 0;
-    line-height: 1.5;
+    line-height: 16px;
   }
   .settings-content .ui-setting-control {
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: stretch;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    margin-top: 8px;
+  }
+  .settings-content .field.ui-setting.compact {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px;
+    row-gap: 0;
+  }
+  .settings-content .field.ui-setting.compact > :is(.setting-label, .hint) {
+    padding-inline: 4px;
+  }
+  .settings-content .field.ui-setting.compact > .ui-setting-control {
     grid-column: 2;
     grid-row: 1 / span 2;
+    align-items: flex-end;
     justify-self: end;
-    width: 100%;
+    width: auto;
     max-width: 160px;
-    min-width: 0;
+    margin-top: 0;
   }
   .settings-content .ui-setting-control > :is(input, select, button) {
     max-width: 100%;
   }
   .settings-content .ui-setting-control .btn {
     max-width: 100%;
-    min-height: var(--control-h);
+    min-height: 32px;
     height: auto;
-    padding-block: var(--space-1-5);
+    padding-block: 6px;
     white-space: normal;
     overflow-wrap: anywhere;
   }
-  .settings-content [data-settings-field="Projects"] > .ui-setting-control {
-    grid-column: 1 / -1;
-    grid-row: 3;
+  .settings-content .field.ui-setting:has(.settings-visual-choice) > .ui-setting-control {
     max-width: none;
-    justify-self: stretch;
-    margin-top: 8px;
   }
-  .settings-content [data-settings-field="Projects"] .row > .grow {
-    flex-basis: 100%;
+  .settings-content .field.ui-setting:has(.settings-visual-choice) {
+    align-items: start;
   }
-  .settings-content .drawer-section + .field.ui-setting,
-  .settings-content section > .field.ui-setting:first-child {
-    border-start-start-radius: 14px;
-    border-start-end-radius: 14px;
+  .settings-content :is(.ui-settings-group, .settings-card) .field.ui-setting {
+    margin-inline: 0;
+    border-radius: 0;
+  }
+  .settings-content :is(.ui-settings-group, .settings-card) .field.ui-setting + .field.ui-setting {
+    border-top: 0;
+  }
+  .settings-content .field.ui-setting:not(.field.ui-setting + .field.ui-setting) {
+    border-start-start-radius: var(--r-xl);
+    border-start-end-radius: var(--r-xl);
   }
   .settings-content .field.ui-setting:not(:has(+ .field.ui-setting)) {
-    border-end-start-radius: 14px;
-    border-end-end-radius: 14px;
+    border-end-start-radius: var(--r-xl);
+    border-end-end-radius: var(--r-xl);
   }
   [data-theme="light"] .settings-content .field.ui-setting + .field.ui-setting {
     margin-top: 0;
+    border-top: var(--hairline) solid var(--line);
+  }
+  [data-theme="dark"] .settings-content :is(.ui-settings-group > div, .settings-card) {
+    border-color: transparent;
   }
   @container settings-page (width < 720px) {
     .settings-nav {
@@ -207,9 +301,11 @@
       flex-direction: row;
       overflow-x: auto;
       min-height: 40px;
+      padding-bottom: 0;
     }
-    .settings-rail-item > button {
+    .settings-nav button[data-category] {
       flex: none;
+      width: auto;
       white-space: nowrap;
     }
     .settings-rail-group-title {
@@ -225,13 +321,21 @@
     }
   }
   @container settings-content (width < 440px) {
-    .settings-content .field.ui-setting {
+    .settings-content .field.ui-setting.compact {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .settings-content .field.ui-setting.compact:has(.settings-visual-choice) {
       grid-template-columns: minmax(0, 1fr);
     }
-    .settings-content .ui-setting-control {
+    .settings-content .field.ui-setting.compact:has(.settings-visual-choice) > .ui-setting-control {
       grid-column: 1;
-      grid-row: auto;
+      grid-row: 3;
       justify-self: start;
+      margin-top: 10px;
+      max-width: none;
+    }
+    .settings-content .field.ui-setting.compact > .ui-setting-control {
+      max-width: 140px;
     }
   }
 }

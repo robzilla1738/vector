@@ -31,7 +31,7 @@ it("keeps the destination and current browsing state when a background open fini
   finish({ commandId: "", status: "applied", catalogVersion: 0, pageId: "opened" });
   await opening;
   expect(tabCommand).toHaveBeenCalledWith(
-    { kind: "open", url: "https://example.com", background: true, activate: false },
+    { kind: "open", url: "https://example.com", background: true, activate: false, index: 0 },
     expect.any(Number),
   );
   expect(bindTabSpace).not.toHaveBeenCalled(); // plain-browser tests do not advertise native Spaces

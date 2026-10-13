@@ -16,6 +16,7 @@ import { requestStageReport } from "../stage-obstruction";
 import { availableControls, availableForFocus } from "./focus";
 import { acquireFloatingSidebarLock } from "../floating-sidebar";
 import { ownsFocus } from "./focus";
+import { ownedDialogs, topModal } from "./modal-stack";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "./native-attribute-props";
 import { staticButtonProps as auxClassButtonProps } from "./class-props";
 import "./dialog.css";
@@ -135,7 +136,7 @@ export function Menu({
       dialog.style.bottom = "auto";
       if (rect) {
         const x = placement === "above-start" ? rect.left : rect.right - dialog.offsetWidth;
-        const y = placement.startsWith("above") ? rect.top - dialog.offsetHeight - 8 : rect.bottom + 4;
+        const y = placement.startsWith("above") ? rect.top - dialog.offsetHeight - 4 : rect.bottom + 4;
         positionContextMenu(dialog, x, y);
       } else if (point) positionContextMenu(dialog, point.x, point.y);
       requestStageReport();
@@ -217,20 +218,6 @@ function focusOutsideMenu(trigger: HTMLElement | null | undefined, direction: 1 
   const next = index >= 0 ? candidates[index + direction] : null;
   (next ?? trigger).focus({ preventScroll: true });
 }
-
-const ownedDialogs = new Set<HTMLDialogElement>();
-const topModal = () => {
-  // Fallback DOMs can expose dialog.open without implementing the native top layer.
-  // Only ask the selector engine for native modal state when it advertises support.
-  const nativeModalState =
-    typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("selector(:modal)");
-  if (
-    nativeModalState &&
-    [...document.querySelectorAll<HTMLDialogElement>("dialog:modal")].some((item) => !ownedDialogs.has(item))
-  )
-    return null;
-  return [...ownedDialogs].findLast((item) => item.open && item.isConnected);
-};
 
 /** One lifecycle for native top-layer dialogs, menus and popovers. */
 export function useNativeDialog(

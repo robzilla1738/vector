@@ -1,21 +1,73 @@
 @layer components {
   .composer-run-options {
     display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
     min-width: 0;
+    gap: 2px;
   }
-  .composer-run-options label {
+  .composer-run-options > label,
+  .composer-run-option {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
-    font-size: var(--fs-xs);
-    color: var(--ink-2);
+    justify-content: space-between;
+    gap: 12px;
     min-width: 0;
+    min-height: 36px;
+    padding: 4px 8px;
+    color: var(--ink-1);
+    font-size: var(--fs-sm);
   }
   .composer-run-options select {
-    max-width: 180px;
+    width: 156px;
+    max-width: 62%;
     min-width: 0;
+    text-overflow: ellipsis;
+  }
+  .composer-run-options > span {
+    padding: 6px 8px;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  .composer-run-options > span[role="alert"] {
+    color: var(--err);
+  }
+  .composer-run-options > .chip {
+    align-self: flex-start;
+    margin: 0 8px 4px;
+    padding: 2px 6px;
+  }
+  .composer-run-options fieldset {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    margin: 4px 0;
+    padding: 8px;
+    border: 0;
+    border-block: var(--hairline) solid var(--line);
+  }
+  .composer-run-options legend {
+    padding: 0 4px;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+  }
+  .composer-run-options fieldset label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    min-width: 0;
+    color: var(--ink-1);
+    font-size: var(--fs-sm);
+    overflow-wrap: anywhere;
+  }
+  .composer-run-options fieldset input {
+    flex: none;
+  }
+  .composer-run-options label:has(> .ui-switch) {
+    flex-direction: row-reverse;
   }
 }

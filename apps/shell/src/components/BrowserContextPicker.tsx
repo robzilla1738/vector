@@ -11,7 +11,7 @@ import { useStore, errToast } from "../store";
 import { hostOf } from "../workspace";
 import { SourceCollection } from "./SourceCollection";
 import { Popover } from "../ui/popover";
-import { shellIconCheck, shellIconDown, shellIconGlobe } from "../ui/icons";
+import { shellIconCheck, shellIconDown, shellIconGlobe, shellIconChats } from "../ui/icons";
 import "./ContextPicker.css";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 
@@ -100,6 +100,7 @@ const BrowserContextChoice = memo(function BrowserContextChoice({
       selected={value === pageId}
       onSelect={onSelect}
     >
+      {shellIconGlobe}
       <span>
         <strong>{page.title || page.url}</strong>
         <small>{hostOf(page.url)}</small>
@@ -197,6 +198,7 @@ export function BrowserContextPicker({
             selected={value === key}
             onSelect={select}
           >
+            {key === "none" ? shellIconChats : shellIconGlobe}
             <span>
               <strong>{title}</strong>
               {subtitle && <small>{subtitle}</small>}

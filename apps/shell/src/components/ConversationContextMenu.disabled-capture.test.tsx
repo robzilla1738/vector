@@ -71,13 +71,9 @@ beforeEach(() => {
   root = createRoot(host);
   style = document.createElement("style");
   document.head.append(style);
-  const menu = readFileSync("apps/shell/src/components/ConversationContextMenu.css", "utf8"),
-    conversation = readFileSync("apps/shell/src/components/Conversation.css", "utf8");
-  const hit = readFileSync("apps/shell/src/tokens.css", "utf8").match(/--hit:\s*(\d+px)/)![1]!;
-  const opener = menu.match(/\.home-tools-trigger > button\s*\{[^}]+\}/)![0];
-  const narrow = conversation.match(/\.composer-send-actions \.dictation-trigger\s*\{[^}]+\}/)![0];
-  // Source-selected narrow rule activation; jsdom does not implement physical container queries.
-  style.textContent = [opener, narrow].join("\n").replaceAll("var(--hit)", hit);
+  const menu = readFileSync("apps/shell/src/components/ConversationContextMenu.css", "utf8");
+  // Keep the actual menu rules; jsdom does not implement their enclosing layer.
+  style.textContent = menu.replace(/^@layer components\s*\{\s*/, "").replace(/\}\s*$/, "");
 });
 afterEach(async () => {
   await act(async () => root.unmount());

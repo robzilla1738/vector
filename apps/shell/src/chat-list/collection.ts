@@ -5,6 +5,7 @@ export type ConversationQuery = {
   query?: string;
   workspaceId?: string;
   policy: "complete" | "paged" | "preview";
+  previewLimit?: 3 | 5 | 10;
 };
 export type ConversationCollectionState = {
   byId: Readonly<Record<string, ConversationSummary>>;
@@ -106,7 +107,7 @@ export class ConversationCollection {
     this.publish({ loading: true, error: "" });
     const current = () => this.current() && version === this.sequence;
     const complete = this.query.policy === "complete";
-    const pageSize = this.query.policy === "preview" ? 3 : 40;
+    const pageSize = this.query.policy === "preview" ? (this.query.previewLimit ?? 3) : 40;
     const target = complete
       ? Infinity
       : mode === "refresh"

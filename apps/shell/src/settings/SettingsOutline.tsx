@@ -8,9 +8,11 @@ export function SettingsOutline({ shellRef }: { shellRef: RefObject<HTMLElement 
     const root = shellRef.current;
     if (!root) return;
     const visible = () =>
-      [...root.querySelectorAll<HTMLElement>(".settings-scroll h2")].filter(
-        (heading) => !heading.closest("[hidden], [inert]"),
-      );
+      [
+        ...root.querySelectorAll<HTMLElement>(
+          ".settings-scroll h2, .settings-scroll .ui-settings-group > h4",
+        ),
+      ].filter((heading) => !heading.closest("[hidden], [inert]"));
     const updateActive = () => {
       const list = visible(),
         top = root.querySelector(".settings-scroll")?.getBoundingClientRect().top ?? 0;

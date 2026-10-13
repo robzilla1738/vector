@@ -27,7 +27,8 @@ interface RailItem {
     | "memory"
     | "permissions"
     | "extensions"
-    | "skills"
+    | "plugins"
+    | "vault"
     | "services"
     | "profiles"
     | "automations"
@@ -36,6 +37,10 @@ interface RailItem {
 }
 
 const items: readonly RailItem[] = [
+  { label: "General", category: "General", group: "Personal", icon: shellIconGear },
+  { label: "Appearance", category: "Appearance", group: "Personal", icon: shellIconSun },
+  { label: "Profiles", category: "Profiles", group: "Personal", icon: shellIconChats, gate: "profiles" },
+  { label: "Usage & Budgets", category: "Usage & Budgets", group: "Personal", icon: shellIconModel },
   {
     label: "Downloads",
     category: "Downloads",
@@ -43,9 +48,6 @@ const items: readonly RailItem[] = [
     icon: shellIconDownloadSm,
     gate: "smartDownloadNames",
   },
-  { label: "General", category: "General", group: "Personal", icon: shellIconGear },
-  { label: "Appearance", category: "Appearance", group: "Personal", icon: shellIconSun },
-  { label: "Profiles", category: "Profiles", group: "Personal", icon: shellIconChats, gate: "profiles" },
   {
     label: "Link Routing",
     category: "Link Routing",
@@ -61,20 +63,19 @@ const items: readonly RailItem[] = [
     icon: shellIconLock,
     gate: "permissions",
   },
-  { label: "Passwords & Autofill", category: "Passwords & Autofill", group: "Personal", icon: shellIconLock },
   { label: "Permissions", category: "Permissions", group: "Agent", icon: shellIconChats },
+  { label: "Projects", category: "Projects", group: "Agent", icon: shellIconFolder },
   { label: "Models", category: "Connections", group: "Agent", icon: shellIconModel, tab: "Models" },
-  { label: "Usage & Budgets", category: "Usage & Budgets", group: "Agent", icon: shellIconModel },
   {
-    label: "Skills & Plugins",
+    label: "Skills & MCP",
     category: "Connections",
     group: "Agent",
     icon: shellIconExtension,
     tab: "Plugins",
-    gate: "skills",
+    gate: "plugins",
   },
   {
-    label: "MCP & Connectors",
+    label: "Connected services",
     category: "Connections",
     group: "Agent",
     icon: shellIconGlobe,
@@ -82,7 +83,15 @@ const items: readonly RailItem[] = [
     gate: "services",
   },
   { label: "Memory", category: "Memory", group: "Agent", icon: shellIconChats, gate: "memory" },
-  { label: "Projects", category: "Projects", group: "Agent", icon: shellIconFolder },
+  { label: "Passwords & Autofill", category: "Passwords & Autofill", group: "Features", icon: shellIconLock },
+  {
+    label: "Vault",
+    category: "Connections",
+    group: "Features",
+    icon: shellIconLock,
+    tab: "Vault",
+    gate: "vault",
+  },
   {
     label: "Automations",
     category: "Automations",
@@ -93,7 +102,7 @@ const items: readonly RailItem[] = [
   { label: "Quick Ask", category: "Quick Ask", group: "Features", icon: shellIconChats },
   { label: "Selection & Capture", category: "Selection & Capture", group: "Features", icon: shellIconResult },
   {
-    label: "Developers & External Agents",
+    label: "Developers",
     category: "Connections",
     group: "Features",
     icon: shellIconGlobe,
@@ -119,9 +128,10 @@ export function SectionRail({
   profilesAvailable,
   linkRoutingAvailable,
   appleScriptAvailable,
-  skillsAvailable,
+  pluginsAvailable,
   automationsAvailable,
   servicesAvailable,
+  vaultAvailable,
   permissionsAvailable,
   extensionsAvailable,
   firstCategory,
@@ -135,9 +145,10 @@ export function SectionRail({
   profilesAvailable: boolean;
   linkRoutingAvailable: boolean;
   appleScriptAvailable: boolean;
-  skillsAvailable: boolean;
+  pluginsAvailable: boolean;
   automationsAvailable: boolean;
   servicesAvailable: boolean;
+  vaultAvailable: boolean;
   permissionsAvailable: boolean;
   extensionsAvailable: boolean;
   firstCategory: RefObject<HTMLButtonElement | null>;
@@ -154,9 +165,10 @@ export function SectionRail({
       (item.gate === "appleScript" && appleScriptAvailable) ||
       (item.gate === "permissions" && permissionsAvailable) ||
       (item.gate === "extensions" && extensionsAvailable) ||
-      (item.gate === "skills" && skillsAvailable) ||
+      (item.gate === "plugins" && pluginsAvailable) ||
       (item.gate === "automations" && automationsAvailable) ||
-      (item.gate === "services" && servicesAvailable),
+      (item.gate === "services" && servicesAvailable) ||
+      (item.gate === "vault" && vaultAvailable),
   );
   return (
     <div className="settings-category-list">
@@ -168,13 +180,14 @@ export function SectionRail({
             <button
               ref={item.label === "General" ? firstCategory : undefined}
               data-category={item.label}
+              title={item.label}
               aria-current={
                 !searching && selectedPath === settingsPath(item.category, item.tab) ? "page" : undefined
               }
               onClick={() => onOpenCategory(item.category, item.tab)}
             >
               <span className="settings-category-icon">{item.icon}</span>
-              {item.label}
+              <span className="settings-category-label">{item.label}</span>
             </button>
           </div>
         );

@@ -95,6 +95,7 @@
         width: 4rem;
         height: 4rem;
         margin: 0 auto 3rem;
+        opacity: 0.18;
       }
       .first-entry-wrap {
         max-width: 50rem;
@@ -107,7 +108,7 @@
         padding: 0.625rem;
         margin: 0 1rem;
         border-radius: 1.4rem;
-        corner-shape: superellipse(1.4);
+        corner-shape: round;
         background: var(--first-surface);
         box-shadow:
           0 0 0 0.5px var(--first-line),
@@ -174,13 +175,10 @@
           overflow: hidden;
         }
         .first-home {
-          padding: 5rem 1rem;
+          padding: 4rem 1rem 5rem;
         }
-        .first-entry-wrap {
-          padding: 0;
-        }
-        .first-entry {
-          flex-wrap: wrap;
+        .first-mark {
+          margin-bottom: 2rem;
         }
       }
       @media (prefers-reduced-motion: reduce) {

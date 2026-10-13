@@ -4,11 +4,11 @@ import { smallButtonProps } from "../ui/button-props";
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useStore } from "../store";
 import { useCommittedSurfaceWitness } from "../committed-surface-witness";
-import { bridge } from "../bridge";
+import { bridge, inNativeHost } from "../bridge";
 import { isHomeAddress } from "../chrome";
 import { fromOrganizationLayout } from "../store/organization-layout";
 import { Dialog, Menu } from "../ui";
-import { shellIconCopy, shellIconDown, shellIconDownloadSm, shellIconLock } from "../ui/icons";
+import { shellIconCopy, shellIconDown, shellIconDownloadSm, shellIconLock, shellIconOpen } from "../ui/icons";
 import { runCommand } from "../commands";
 import { ownPages } from "../tab-window-transfer";
 import { CommandBar } from "./CommandBar";
@@ -74,7 +74,7 @@ export function LittleWindow() {
   }, [panel, spacesReady, spaces]);
   const host = page && /^https?:/.test(page.url) ? new URL(page.url).host : "New Little window";
   return (
-    <main className="little-window" aria-label="Little window">
+    <main className={`little-window${inNativeHost ? " native-host" : ""}`} aria-label="Little window">
       <header className="little-strip">
         <span className="little-host" title={page?.url}>
           {page?.url.startsWith("https:") && (
@@ -85,8 +85,15 @@ export function LittleWindow() {
           {host}
         </span>
         <CommandBar compact />
-        <button {...smallButtonProps} data-command-id="promote-tab" onClick={() => runCommand("promote-tab")}>
-          Open in Aux
+        <button
+          {...smallButtonProps}
+          data-command-id="promote-tab"
+          aria-label="Open in Aux"
+          title="Open in Aux"
+          onClick={() => runCommand("promote-tab")}
+        >
+          <span className="little-open-label">Open in Aux</span>
+          {shellIconOpen}
         </button>
         <button
           ref={spacesTrigger}
@@ -94,6 +101,7 @@ export function LittleWindow() {
           data-command-id="little-space-picker"
           aria-haspopup="menu"
           aria-label="Choose destination Space"
+          title="Choose destination Space"
           aria-expanded={panel === "spaces"}
           onClick={() => runCommand("little-space-picker")}
         >
@@ -103,6 +111,7 @@ export function LittleWindow() {
           {...staticSmallIconButtonProps}
           data-command-id="copy-url"
           aria-label="Copy link"
+          title="Copy link"
           onClick={() => runCommand("copy-url")}
         >
           {shellIconCopy}
@@ -113,6 +122,7 @@ export function LittleWindow() {
           data-command-id="little-downloads"
           aria-haspopup="dialog"
           aria-label="Downloads for this page"
+          title="Downloads for this page"
           aria-expanded={panel === "downloads"}
           onClick={() => runCommand("little-downloads")}
         >

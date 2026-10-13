@@ -76,13 +76,14 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
   }
 
   return (
-    <SettingsSection name="Projects" title="Projects" hidden={!active}>
+    <SettingsSection name="Projects" hidden={!active}>
       <p {...staticHintProps}>
         Add project folders to a Space. Read access lets the agent inspect files and instructions; read and
         write access also lets it change them. Your agent mode controls network access.
       </p>
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
       <SettingsField
+        compact
         label="Space"
         hint="Project roots and repository instructions apply only to runs in this Space. Aux Packages are selected per run."
       >

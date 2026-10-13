@@ -30,6 +30,55 @@
     right: 0;
     width: 100%;
   }
+  .command-surface[data-presentation="tab-search"] {
+    height: min(340px, calc(100dvh - 16px));
+    overflow: hidden;
+  }
+  .command-surface[data-presentation="tab-search"] .cmdbar {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    grid-template-rows: 44px minmax(0, 1fr);
+    column-gap: 10px;
+    row-gap: 0;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    max-width: none;
+    padding: 0 12px;
+    border-radius: inherit;
+    background: transparent;
+    box-shadow: none;
+    outline: none;
+  }
+  .command-surface[data-presentation="tab-search"] .cmdbar:has(> .cb-tab-search-key) {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+  }
+  .command-surface[data-presentation="tab-search"] .cmdbar:has(input:focus-visible) {
+    outline: none;
+  }
+  .command-surface[data-presentation="tab-search"] .cb-field input {
+    font-size: 16px;
+  }
+  .command-surface[data-presentation="tab-search"] .cb-ico,
+  .command-surface[data-presentation="tab-search"] .cb-ico svg {
+    width: 18px;
+    height: 18px;
+    color: var(--ink-2);
+  }
+  .command-surface[data-presentation="tab-search"] .cb-pop {
+    position: static;
+    grid-column: 1 / -1;
+    align-self: stretch;
+    width: calc(100% + 24px);
+    height: 100%;
+    min-height: 0;
+    margin-inline: -12px;
+    padding: 4px 8px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    animation: none;
+  }
   .command-surface {
     animation: command-surface-appear var(--t-popup, 82ms) var(--ease-in-out) both;
   }

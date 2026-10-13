@@ -47,9 +47,13 @@ export function AttachmentTray({
   return (
     <div className="attachment-tray" role="group" aria-label="Attachments and results" aria-busy={busy}>
       <SourceCollection items={items} pageSize={8} label="Attachment and result pages">
-        {(visible) =>
-          visible.map((item) => <AttachmentChip key={item.key} item={item} disabled={disabled} busy={busy} />)
-        }
+        {(visible) => (
+          <div className="attachment-strip">
+            {visible.map((item) => (
+              <AttachmentChip key={item.key} item={item} disabled={disabled} busy={busy} />
+            ))}
+          </div>
+        )}
       </SourceCollection>
       {busy && <output className="attachment-progress">Saving attachments…</output>}
     </div>
@@ -86,7 +90,7 @@ function AttachmentChip({
   );
   const removeProps = {
     type: "button" as const,
-    className: "icon-btn xs",
+    className: "icon-btn xs attachment-remove",
     "aria-label": `Remove ${item.name}`,
     disabled: disabled || busy,
   };

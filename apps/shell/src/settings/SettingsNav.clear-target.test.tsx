@@ -7,7 +7,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { SettingsNav } from "./SettingsNav";
 
-it("keeps a 32px clear target, 14px glyph and 36px field while clearing the exact query and restoring input focus", async () => {
+it("keeps a 32px clear target and field with a 14px glyph while clearing the exact query and restoring input focus", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const host = document.createElement("div"),
     style = document.createElement("style");
@@ -50,9 +50,10 @@ it("keeps a 32px clear target, 14px glyph and 36px field while clearing the exac
         profilesAvailable={false}
         linkRoutingAvailable={false}
         appleScriptAvailable={false}
-        skillsAvailable={false}
+        pluginsAvailable={false}
         automationsAvailable={false}
         servicesAvailable={false}
+        vaultAvailable={false}
         permissionsAvailable={false}
         extensionsAvailable={false}
         firstCategory={createRef()}
@@ -66,7 +67,7 @@ it("keeps a 32px clear target, 14px glyph and 36px field while clearing the exac
     await act(async () => root.render(<OriginalParent />));
     const clear = host.querySelector<HTMLButtonElement>('[aria-label="Clear settings search"]')!;
     expect(input.current!.value).toBe(original);
-    expect(getComputedStyle(input.current!).height).toBe("36px");
+    expect(getComputedStyle(input.current!).height).toBe("32px");
     expect(getComputedStyle(clear).width).toBe("32px");
     expect(getComputedStyle(clear).height).toBe("32px");
     expect(getComputedStyle(clear).minWidth).toBe("32px");

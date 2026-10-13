@@ -1,0 +1,72 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -161,7 +161,8 @@
+   base::WeakPtr<WebUIBrowserUI> GetWeakPtr();
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   bool DispatchAuxShortcut(const std::string& command_id, bool focus_shell = false,
+-                           std::optional<bool> website_pass_through = std::nullopt);
++                           std::optional<bool> website_pass_through = std::nullopt,
++                           bool preview_tabs = false);
+   bool IsCommandIdEnabled(int command_id) const override;
+   void ExecuteCommand(int command_id, int event_flags) override;
+ #endif
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -776,16 +776,18 @@
+ }
+ 
+ bool WebUIBrowserUI::DispatchAuxShortcut(const std::string& command_id, bool focus_shell,
+-                                           std::optional<bool> website_pass_through) {
++                                           std::optional<bool> website_pass_through,
++                                           bool preview_tabs) {
+   if (!IsAuthorizedAuxDocument() || !shell_host_client_.is_bound())
+     return false;
+-  if (focus_shell) web_ui()->GetWebContents()->Focus();
++  if (focus_shell || preview_tabs) web_ui()->GetWebContents()->Focus();
+   base::DictValue shortcut;
+   shortcut.Set("commandId", command_id);
+   if (website_pass_through.has_value()) shortcut.Set("websitePassThrough", *website_pass_through);
+-  shortcut.Set("key", "");
++  shortcut.Set("key", preview_tabs ? "Tab" : "");
++  shortcut.Set("ctrl", preview_tabs);
+   shortcut.Set("meta", false);
+-  shortcut.Set("shift", false);
++  shortcut.Set("shift", preview_tabs && command_id == "tab-previous");
+   shortcut.Set("alt", false);
+   shell_host_client_->OnEvent("onShortcut", *base::WriteJson(shortcut));
+   return true;
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+--- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
++++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+@@ -271,8 +271,18 @@
+   auto* shell = GetWebUIBrowserUI();
+   if (!shell) return false;
+   const std::string& id = found->second.first;
++  // Only an actual held Ctrl-Tab chord opens the preview. Menu commands and
++  // alternate Next/Previous shortcuts continue to activate immediately.
++  const bool preview_tabs =
++      native_down && native_down.type == NSEventTypeKeyDown &&
++      native_down.window == NSApp.keyWindow &&
++      native_down.window == GetNativeWindow().GetNativeNSWindow() &&
++      accelerator.key_code() == ui::VKEY_TAB &&
++      (accelerator.modifiers() & ui::EF_CONTROL_DOWN) &&
++      (id == "tab-next" || id == "tab-previous");
+   if (native_down && native_down.isARepeat)
+-    return shell->DispatchAuxShortcut(id, found->second.second);
++    return shell->DispatchAuxShortcut(id, found->second.second, std::nullopt,
++                                     preview_tabs);
+   auto* contents = FocusedAuxWebsite(browser_.get());
+   const bool site_chord = !found->second.second && contents &&
+       id != "new-tab" && id != "new-window" && id != "new-private-window" &&
+@@ -306,7 +316,8 @@
+   aux_site_shortcut_url_ = site_chord ? contents->GetLastCommittedURL().spec() : "";
+   aux_site_shortcut_contents_ = site_chord ? contents->GetWeakPtr() : base::WeakPtr<content::WebContents>();
+   return shell->DispatchAuxShortcut(id, found->second.second,
+-                                   site_chord ? std::optional<bool>(false) : std::nullopt);
++                                   site_chord ? std::optional<bool>(false) : std::nullopt,
++                                   preview_tabs);
+ }
+ #endif
+ 

@@ -54,7 +54,7 @@ beforeEach(() => {
   const wrap = css.match(/\.settings-content :is\(\[role="alert"\], \.hint\) \{[^}]+\}/)?.[0];
   assert.ok(wrap);
   const controls = css.match(/\.settings-content \.btn \{[^}]+\}/)?.[0];
-  assert.ok(controls?.includes("min-height: 36px"));
+  assert.ok(controls?.includes("min-height: 32px"));
   style = document.createElement("style");
   style.textContent = `${wrap}\n${controls}`;
   document.head.append(style);
@@ -79,7 +79,7 @@ it("retains complete unbroken initial native diagnostic with readable wrapping a
   retry.focus();
   expect(document.activeElement).toBe(retry);
   expect(retry.disabled).toBe(false);
-  expect(getComputedStyle(retry).minHeight).toBe("36px");
+  expect(getComputedStyle(retry).minHeight).toBe("32px");
   await act(async () => retry.click());
   expect(mocks.zoom.mock.calls).toEqual([[], []]);
   expect(host.textContent).not.toContain(diagnostic);

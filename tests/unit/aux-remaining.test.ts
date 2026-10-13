@@ -110,15 +110,25 @@ it("skips incomplete backups and fails closed when the backup cannot fit", async
   expect(await listRuntimeBackups(directory)).toEqual([]);
 });
 
-it("keeps the compact and mid-width conversation breakpoints", () => {
+it("keeps compact shell recovery layout and a responsive full-page conversation", () => {
   const css = readCssGraph(join(process.cwd(), "apps/shell/src/styles.css"));
-  // wider layouts are governed by the full-page conversation rule, not a breakpoint
-  expect(css).toContain("@media (max-width: 1024px)");
-  expect(css).toContain("@media (min-width: 1025px) and (max-width: 1279px)");
-  const compact = css.slice(
-    css.indexOf("@media (max-width: 1024px)"),
-    css.indexOf("@media (min-width: 1025px)"),
+  // Full-page conversations now use the same reference frame above the compact breakpoint.
+  expect(css).toMatch(
+    /\.conversation:not\(\.conversation-embedded\) \.conversation-main\s*\{[^}]*width:\s*min\(896px, 100%\)/,
   );
+  expect(css).toMatch(/\.conversation-scroll\s*\{[^}]*padding:\s*16px 32px/);
+  const media = /@media \(max-width: 1024px\)\s*\{/.exec(css)!;
+  const start = media.index + media[0].length;
+  let depth = 1,
+    end = start;
+  while (depth && end < css.length) {
+    if (css[end] === "{") depth++;
+    else if (css[end] === "}") depth--;
+    end++;
+  }
+  expect(depth).toBe(0);
+  const compact = css.slice(start, end - 1);
+  expect(compact).toMatch(/\.conversation-scroll\s*\{[^}]*padding:\s*16px 20px/);
   expect(compact).toContain(".empty-state");
   expect(compact).toContain(".stage-card.loading");
   expect(compact).toContain(".sidebar.collapsed");

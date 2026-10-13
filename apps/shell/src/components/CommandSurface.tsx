@@ -103,6 +103,7 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
   );
   const picker =
     pickerOverride?.sequence === request.sequence ? pickerOverride.provider : (request.provider ?? null);
+  const tabSearch = request.presentation === "tab-search" && !picker;
   const setPicker = (provider: "split" | null) => setPickerOverride({ sequence: request.sequence, provider });
   const [revision, setRevision] = useState(0);
   const close = useCallback(() => {
@@ -242,7 +243,7 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
         !toolbar.closest('[inert], [aria-hidden="true"]') &&
         toolbar.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
       const box = stage?.getBoundingClientRect();
-      const width = Math.min(680, window.innerWidth * 0.7);
+      const width = Math.min(680, tabSearch ? Math.max(0, window.innerWidth - 16) : window.innerWidth * 0.7);
       const next = visible
         ? { left: bounds.left, top: bounds.top, width: bounds.width }
         : {
@@ -250,6 +251,13 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
             top: box && box.height > 0 ? box.top + box.height * 0.18 : window.innerHeight * 0.18,
             width,
           };
+      if (tabSearch) {
+        next.left = Math.max(8, Math.min(window.innerWidth - width - 8, next.left));
+        next.top = Math.max(
+          8,
+          Math.min(window.innerHeight - Math.min(340, window.innerHeight - 16) - 8, next.top),
+        );
+      }
       setPlacement((previous) =>
         previous?.left === next.left && previous.top === next.top && previous.width === next.width
           ? previous
@@ -275,7 +283,7 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [request.mode, layout]);
+  }, [request.mode, layout, tabSearch]);
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -311,8 +319,9 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
         open
         className="command-surface"
         aria-modal="true"
-        aria-label="Command surface"
+        aria-label={tabSearch ? "Search tabs, chats, history, bookmarks or extensions" : "Command surface"}
         data-mode={request.mode}
+        data-presentation={tabSearch ? "tab-search" : undefined}
         data-command-surface-sequence={request.sequence}
         style={placement ? { ...placement, transform: "none" } : undefined}
         ref={dialogRef}
@@ -332,6 +341,7 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
         <CommandBar
           key={`${request.sequence}:${revision}`}
           surfaceMode={picker ? "command" : request.mode}
+          tabSearch={tabSearch}
           seed={picker ? "" : request.seed}
           commandRows={rows}
           providerRows={providerRows}

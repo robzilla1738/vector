@@ -293,7 +293,8 @@ export function ModelsSettings({
           setCatalog({ owner: catalogOwner, models: result.models, localServers: result.localServers ?? [] });
       })
       .catch((error) => {
-        if (catalogOwner.current() && sequence === modelsSequence.current) setConnectionError(errorMessage(error));
+        if (catalogOwner.current() && sequence === modelsSequence.current)
+          setConnectionError(errorMessage(error));
       })
       .finally(() => {
         if (catalogOwner.current() && sequence === modelsSequence.current) setModelsBusy(false);
@@ -499,7 +500,8 @@ export function ModelsSettings({
   );
   const discoverModels = () =>
     catalogOwner.completion(async () => {
-      if (modelsBusy || !catalogOwner.reserve("discovery")) throw new Error("Choose the current provider models.");
+      if (modelsBusy || !catalogOwner.reserve("discovery"))
+        throw new Error("Choose the current provider models.");
       const sequence = ++modelsSequence.current;
       setModelsBusy(true);
       setConnectionError("");
@@ -510,7 +512,8 @@ export function ModelsSettings({
         if (!result.models.length) setConnectionError("The endpoint returned no models.");
         return result;
       } catch (error) {
-        if (catalogOwner.current() && sequence === modelsSequence.current) setConnectionError(errorMessage(error));
+        if (catalogOwner.current() && sequence === modelsSequence.current)
+          setConnectionError(errorMessage(error));
         throw error;
       } finally {
         catalogOwner.finish("discovery");
@@ -597,7 +600,7 @@ export function ModelsSettings({
   const connectionReady = connected && (accountProvider ? accountReady : hasKey || localCompatible);
 
   return (
-    <SettingsSection name="Models" title="AI model" hidden={!active}>
+    <SettingsSection name="Models" hidden={!active}>
       <output {...staticFieldProps} data-block>
         {!connected
           ? `${providerNames[provider]} is disconnected. Reconnect explicitly before making requests.`
@@ -689,6 +692,7 @@ export function ModelsSettings({
         ))}
       </IndexedField>
       <IndexedField
+        compact
         label="Model provider"
         hint="Switching providers changes where task context and screenshots are sent. Each provider keeps its own key and model choices; there is no automatic fallback to another provider."
       >
@@ -772,7 +776,7 @@ export function ModelsSettings({
       {provider !== "openai-compatible" && (
         <span className="hint field">
           Destination: {String(settings.modelEndpoint ?? "Vercel AI Gateway")}. Enter a model ID available to
-          your account. Use the Agents tab to connect an external MCP client.
+          your account. Open Developers settings to connect an external MCP client.
         </span>
       )}
       <IndexedField

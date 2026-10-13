@@ -113,7 +113,7 @@
     --sidebar-row-h: 32px;
     --sidebar-row-radius: 8px;
     --sidebar-resize-handle: 5px;
-    --horizontal-tab-strip-h: 38px;
+    --horizontal-tab-strip-h: 41px;
     --horizontal-toolbar-h: 42px;
     --horizontal-chrome-h: calc(var(--horizontal-tab-strip-h) + var(--horizontal-toolbar-h));
     --t-disclosure-fade: 160ms;
@@ -195,6 +195,8 @@
 
     /* Native materials, masks and opaque page previews use named shared colors. */
     --toggle-thumb: #fff;
+    --switch-on: oklch(69.6% 0.17 162.48);
+    --switch-off: var(--muted);
     --mask-opaque: #000;
     --mask-soft: rgb(0 0 0 / 85%);
     --mask-fade: rgb(0 0 0 / 35%);
@@ -393,6 +395,7 @@
     --search-field: #f3f4f6;
     --hover-card: #fff;
     --tab-switcher: rgb(255 255 255 / 70%);
+    --switch-off: #e5e5e5;
     --frame-inactive: #f3f4f6;
     --frame-active: #fff;
     --glass: rgb(255 255 255 / 94%);

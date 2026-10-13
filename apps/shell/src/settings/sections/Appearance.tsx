@@ -1,14 +1,14 @@
-import { Button, Segmented } from "../../ui";
+import { Button, SettingsGroup } from "../../ui";
 import { smallGhostButtonProps } from "../../ui/button-props";
 import { useState } from "react";
 import type { ShortcutOverrides } from "@aux/contracts";
-import { LayoutChoice } from "../../components/LayoutChoice";
 import { ShortcutsSetting } from "../../components/ShortcutsSetting";
 import { WebsiteSizes } from "../../components/WebsiteSizes";
 import { UI_FONT_SIZES, readUiFontSize, writeUiFontSize, type UiFontSize } from "../../ui-font-size";
 import { SettingsField, SettingsSection } from "../primitives";
 import { DefaultPageZoomSetting } from "./DefaultPageZoom";
 import { SidebarOptions } from "./SidebarOptions";
+import { AppearanceChoice } from "./AppearanceChoice";
 
 export function AppearanceSettings({
   active,
@@ -25,174 +25,187 @@ export function AppearanceSettings({
   const set = onSave;
   return (
     <SettingsSection name="Appearance" className="appearance-preferences" hidden={!active}>
-      <SettingsField compact label="Theme" description="Use light, dark or the system appearance.">
-        <Segmented
-          label="Theme"
-          value={theme}
-          onChange={(theme) => void set({ theme })}
-          items={[
-            { value: "system", label: "System" },
-            { value: "dark", label: "Dark" },
-            { value: "light", label: "Light" },
-          ]}
-        />
-      </SettingsField>
-
-      <SettingsField
-        compact
-        label="Interface text"
-        hint="Shell type size only. Does not change website zoom or the html root font size."
-      >
-        <Segmented
-          label="Interface text"
-          value={uiFont}
-          items={UI_FONT_SIZES.map((value) => ({ value, label: value }))}
-          onChange={(size) => {
-            writeUiFontSize(size);
-            setUiFont(size);
-          }}
-        />
-      </SettingsField>
-
-      <SettingsField
-        compact
-        label="Sidebar appearance"
-        hint="Translucent lets your desktop show through the sidebar. Reduce Transparency uses solid surfaces."
-      >
-        <select
-          aria-label="Sidebar appearance"
-          value={String(settings.sidebarAppearance ?? "translucent")}
-          onChange={(e) => void set({ sidebarAppearance: e.target.value })}
+      <div className="settings-card">
+        <SettingsField compact label="Theme" description="Choose how Aux looks.">
+          <select
+            aria-label="Theme"
+            value={theme}
+            onChange={(event) => void set({ theme: event.target.value })}
+          >
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </SettingsField>
+        <SettingsField
+          compact
+          label="Default page zoom"
+          hint="Page size for websites without a saved site-specific zoom."
         >
-          <option value="translucent">Translucent</option>
-          <option value="solid">Solid</option>
-        </select>
-      </SettingsField>
-      <SettingsField
-        compact
-        label="Native material"
-        hint="Liquid Glass uses macOS Tahoe’s native material, with a title-bar fallback on older macOS. Browser previews cannot show native blur."
-      >
-        <select
-          aria-label="Native material"
-          disabled={settings.sidebarAppearance === "solid"}
-          value={String(settings.sidebarMaterial ?? "liquid-glass")}
-          onChange={(e) => void set({ sidebarMaterial: e.target.value })}
-        >
-          <option value="liquid-glass">Liquid Glass</option>
-          <option value="titlebar">Title bar</option>
-          <option value="sidebar">Sidebar</option>
-          <option value="under-window">Under window</option>
-        </select>
-      </SettingsField>
-      <SettingsField
-        compact
-        label="Sidebar tint"
-        hint="Adds theme-colored opacity over the native blur without fading text or weakening the blur."
-      >
-        <select
-          aria-label="Sidebar tint"
-          disabled={settings.sidebarAppearance === "solid"}
-          value={Number(settings.sidebarTint ?? 0)}
-          onChange={(e) => void set({ sidebarTint: Number(e.target.value) })}
-        >
-          {[0, 10, 20, 30, 40, 50, 60].map((value) => (
-            <option key={value} value={value}>
-              {value}%
-            </option>
-          ))}
-        </select>
-      </SettingsField>
-      <SettingsField
-        compact
-        label="Content opacity"
-        hint="Keeps chats and the new-tab surface separate from the glass sidebar. Websites remain opaque."
-      >
-        <select
-          aria-label="Content opacity"
-          disabled={settings.sidebarAppearance === "solid"}
-          value={Number(settings.contentOpacity ?? 95)}
-          onChange={(e) => void set({ contentOpacity: Number(e.target.value) })}
-        >
-          {[80, 85, 90, 95, 100].map((value) => (
-            <option key={value} value={value}>
-              {value}%
-            </option>
-          ))}
-        </select>
-      </SettingsField>
-      <SettingsField
-        compact
-        label="Glass defaults"
-        hint="Restore the native glass material, clear sidebar tint and 95% content opacity."
-      >
-        <Button
-          size={28}
-          onClick={() =>
-            void set({
-              sidebarAppearance: "translucent",
-              sidebarMaterial: "liquid-glass",
-              sidebarTint: 0,
-              contentOpacity: 95,
-            })
-          }
-        >
-          Reset glass appearance
-        </Button>
-      </SettingsField>
-      <SettingsField
-        compact
-        label="Tab layout"
-        hint="Both layouts use the same tabs, folders, and current selection."
-      >
-        <LayoutChoice
-          value={String(settings.tabLayout ?? "vertical")}
-          onChange={(tabLayout) => void set({ tabLayout })}
-        />
-      </SettingsField>
-      <SidebarOptions />
-      <SettingsField
-        compact
-        label="Tab switcher order"
-        hint="Control-Tab follows the sidebar or recently used tabs in this space."
-      >
-        <select
-          aria-label="Tab switcher order"
-          value={String(settings.tabSwitcherOrder ?? "sidebar")}
-          onChange={(event) => void set({ tabSwitcherOrder: event.target.value })}
-        >
-          <option value="sidebar">Sidebar order</option>
-          <option value="recently-used">Recently used</option>
-        </select>
-      </SettingsField>
-      <SettingsField label="Website sizes">
-        <WebsiteSizes />
-      </SettingsField>
-      <SettingsField
-        label="Default page zoom"
-        hint="Page size for websites without a saved site-specific zoom. Existing site sizes stay as chosen."
-      >
-        <DefaultPageZoomSetting active={active} />
-      </SettingsField>
-      <SettingsField
-        label="Keyboard shortcuts"
-        hint="Change browser and app shortcuts. Collisions are explained before saving."
-      >
-        <button
-          {...smallGhostButtonProps}
-          aria-expanded={showShortcuts}
-          onClick={() => setShowShortcuts((value) => !value)}
-        >
-          {showShortcuts ? "Hide shortcuts" : "Manage shortcuts"}
-        </button>
-        {showShortcuts && (
-          <ShortcutsSetting
-            active={active}
-            value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}}
-            onSave={(shortcutOverrides) => onSave({ shortcutOverrides })}
+          <DefaultPageZoomSetting active={active} />
+        </SettingsField>
+        <SettingsField compact label="Tab layout">
+          <AppearanceChoice
+            label="Tab layout"
+            value={String(settings.tabLayout ?? "vertical")}
+            onChange={(tabLayout) => void set({ tabLayout })}
+            choices={[
+              {
+                value: "horizontal",
+                label: "Horizontal",
+                image: "/appearance/horizontal-tabs.png",
+                description: "Show tabs in the top bar",
+              },
+              {
+                value: "vertical",
+                label: "Vertical",
+                image: "/appearance/vertical-tabs.png",
+                description: "Show tabs in the left sidebar",
+              },
+            ]}
           />
-        )}
-      </SettingsField>
+        </SettingsField>
+        <SettingsField
+          compact
+          label="Sidebar appearance"
+          searchTerms={["transparency", "glass", "translucent", "solid"]}
+        >
+          <AppearanceChoice
+            label="Sidebar appearance"
+            value={String(settings.sidebarAppearance ?? "translucent")}
+            onChange={(sidebarAppearance) => void set({ sidebarAppearance })}
+            choices={[
+              {
+                value: "solid",
+                label: "Solid",
+                image: "/appearance/solid-window.png",
+                description: "Use a solid window background",
+              },
+              {
+                value: "translucent",
+                label: "Translucent",
+                image: "/appearance/transparent-window.png",
+                description: "Use the native glass effect. Reduce Transparency uses solid surfaces.",
+              },
+            ]}
+          />
+        </SettingsField>
+      </div>
+
+      <SettingsGroup title="Tabs & sidebar">
+        <SidebarOptions active={active} settings={settings} onSave={onSave} />
+        <SettingsField compact label="Tab switcher order" hint="Choose how Control-Tab moves between tabs.">
+          <select
+            aria-label="Tab switcher order"
+            value={String(settings.tabSwitcherOrder ?? "sidebar")}
+            onChange={(event) => void set({ tabSwitcherOrder: event.target.value })}
+          >
+            <option value="sidebar">Sidebar order</option>
+            <option value="recently-used">Recently used</option>
+          </select>
+        </SettingsField>
+      </SettingsGroup>
+
+      <SettingsGroup title="Window details">
+        <SettingsField compact label="Interface text" hint="Adjust the text size in Aux.">
+          <select
+            aria-label="Interface text"
+            value={uiFont}
+            onChange={(event) => {
+              const size = Number(event.target.value) as UiFontSize;
+              writeUiFontSize(size);
+              setUiFont(size);
+            }}
+          >
+            {UI_FONT_SIZES.map((value) => (
+              <option key={value} value={value}>
+                {value} px
+              </option>
+            ))}
+          </select>
+        </SettingsField>
+        <SettingsField
+          compact
+          label="Native material"
+          hint="Liquid Glass uses the native macOS material, with a fallback on older versions."
+        >
+          <select
+            aria-label="Native material"
+            disabled={settings.sidebarAppearance === "solid"}
+            value={String(settings.sidebarMaterial ?? "liquid-glass")}
+            onChange={(event) => void set({ sidebarMaterial: event.target.value })}
+          >
+            <option value="liquid-glass">Liquid Glass</option>
+            <option value="titlebar">Title bar</option>
+            <option value="sidebar">Sidebar</option>
+            <option value="under-window">Under window</option>
+          </select>
+        </SettingsField>
+        <SettingsField compact label="Sidebar tint" hint="Add a light or dark tint over the glass.">
+          <select
+            aria-label="Sidebar tint"
+            disabled={settings.sidebarAppearance === "solid"}
+            value={Number(settings.sidebarTint ?? 0)}
+            onChange={(event) => void set({ sidebarTint: Number(event.target.value) })}
+          >
+            {[0, 10, 20, 30, 40, 50, 60].map((value) => (
+              <option key={value} value={value}>
+                {value}%
+              </option>
+            ))}
+          </select>
+        </SettingsField>
+        <SettingsField compact label="Content opacity" hint="Control the opacity of chats and new tabs.">
+          <select
+            aria-label="Content opacity"
+            disabled={settings.sidebarAppearance === "solid"}
+            value={Number(settings.contentOpacity ?? 95)}
+            onChange={(event) => void set({ contentOpacity: Number(event.target.value) })}
+          >
+            {[80, 85, 90, 95, 100].map((value) => (
+              <option key={value} value={value}>
+                {value}%
+              </option>
+            ))}
+          </select>
+        </SettingsField>
+        <SettingsField compact label="Glass defaults" hint="Restore clear glass and 95% content opacity.">
+          <Button
+            size={28}
+            onClick={() =>
+              void set({
+                sidebarAppearance: "translucent",
+                sidebarMaterial: "liquid-glass",
+                sidebarTint: 0,
+                contentOpacity: 95,
+              })
+            }
+          >
+            Reset appearance
+          </Button>
+        </SettingsField>
+      </SettingsGroup>
+      <SettingsGroup title="Websites & shortcuts">
+        <SettingsField label="Website sizes">
+          <WebsiteSizes />
+        </SettingsField>
+        <SettingsField label="Keyboard shortcuts" hint="Change browser and app shortcuts.">
+          <button
+            {...smallGhostButtonProps}
+            aria-expanded={showShortcuts}
+            onClick={() => setShowShortcuts((value) => !value)}
+          >
+            {showShortcuts ? "Hide shortcuts" : "Manage shortcuts"}
+          </button>
+          {showShortcuts && (
+            <ShortcutsSetting
+              active={active}
+              value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}}
+              onSave={(shortcutOverrides) => onSave({ shortcutOverrides })}
+            />
+          )}
+        </SettingsField>
+      </SettingsGroup>
     </SettingsSection>
   );
 }

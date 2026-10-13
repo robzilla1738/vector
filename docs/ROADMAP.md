@@ -1,5 +1,21 @@
 # Aux v3: the fast, free, powerful AI browser
 
+**October 12 wrap-up:** the owner requested a stopping point after the parity
+implementation pass. Changes are consolidated locally; further implementation
+and native acceptance are paused at this checkpoint. [STATUS](STATUS.md) records
+the source/build distinction and [the surface ledger](design/aside-parity.md)
+lists the unfinished comparisons. Resume with the final-source native build and
+changed-flow walkthrough before expanding the parity scope.
+
+**October 12 Aside parity work:** the owner resumed implementation and requested
+every surface and option be compared with Aside. This supersedes the October 8
+pause. Use the installed Aside 1.0.928.1 and extracted extension 1.26.1004.147
+alongside the existing corpus; older palette captures must not undo newer owner
+appearance decisions. [The surface ledger](design/aside-parity.md) records
+concrete differences, implemented options and remaining native observations.
+Keep Aux identity and its capability, privacy and confirmation boundaries.
+Source matching and focused walkthroughs do not establish complete parity.
+
 **October 9 appearance correction:** the owner reaffirmed Aside's clear frosted
 glass as the default for both sidebars and horizontal browser chrome. Native
 glass must not add an implicit dark tint; the explicit tint setting controls

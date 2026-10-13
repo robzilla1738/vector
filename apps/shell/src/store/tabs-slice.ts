@@ -15,6 +15,7 @@ import {
   assignFolder,
   assignSpace,
   isTab,
+  placeNewTab,
   rememberActiveTab,
   setActiveSpace,
   splitForPage,
@@ -429,6 +430,20 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     // id that main adopts; a refused open removes the placeholder again.
     const pageId = reuseId ?? newPageId();
     const before = get();
+    const position =
+      index == null && !reuseId && before.settings.tabLayout !== "horizontal"
+        ? before.settings.verticalTabInsertionPosition === "bottom"
+          ? "bottom"
+          : "top"
+        : undefined;
+    const openingIndex =
+      index ??
+      (position === "top"
+        ? 0
+        : position === "bottom"
+          ? orderedPages(before.pages).filter((page) => isLocal(page)).length
+          : undefined);
+    const openingSpace = before.layout.activeSpaceId;
     const optimistic = !!!before.pages.byId[pageId ?? ""];
     const observed = new Set(orderedPages(before.pages).map((page) => page.pageId));
     const unsubscribe = api.subscribe((state) => {
@@ -473,10 +488,11 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
       openingOptimistic.add(pageId);
       set((s) => {
         const pages = [...orderedPages(s.pages), stub(pageId)];
-        const layout = assignSpace(
-          withSyncedOrder(s.layout, pages, s.pendingRestoreIds),
+        const layout = placeNewTab(
+          assignSpace(withSyncedOrder(s.layout, pages, s.pendingRestoreIds), pageId, openingSpace),
           pageId,
-          s.layout.activeSpaceId,
+          openingSpace,
+          position,
         );
         persistLayout(layout);
         return {
@@ -492,7 +508,13 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     } else set({ mode: "focus" });
     try {
       const ack = await bridge.tabCommand(
-        { kind: "open", url, activate: true, pageId, ...(index == null ? {} : { index }) },
+        {
+          kind: "open",
+          url,
+          activate: true,
+          pageId,
+          ...(openingIndex == null ? {} : { index: openingIndex }),
+        },
         get().catalogVersion,
       );
       if (ack.status === "rejected" || !ack.pageId)
@@ -505,10 +527,16 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
           const existing = !!s.pages.byId[confirmed ?? ""];
           if (!existing && observed.has(confirmed)) return {}; // Closed while the open response was pending.
           const pages = existing ? orderedPages(s.pages) : [...orderedPages(s.pages), stub(confirmed)];
-          const layout = assignSpace(
-            withSyncedOrder(s.layout, pages, s.pendingRestoreIds),
+          const destination = [...s.layout.spaces, ...(s.layout.archivedSpaces ?? [])].some(
+            (space) => space.id === openingSpace,
+          )
+            ? openingSpace
+            : s.layout.activeSpaceId;
+          const layout = placeNewTab(
+            assignSpace(withSyncedOrder(s.layout, pages, s.pendingRestoreIds), confirmed, destination),
             confirmed,
-            s.layout.activeSpaceId,
+            destination,
+            position,
           );
           persistLayout(layout);
           return {
@@ -545,6 +573,20 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         get().layout.tabSpace[page.pageId] === spaceId,
     );
     if (reuseExisting && existing) return existing;
+    const before = get();
+    const position =
+      index == null && !reuseId && before.settings.tabLayout !== "horizontal"
+        ? before.settings.verticalTabInsertionPosition === "bottom"
+          ? "bottom"
+          : "top"
+        : undefined;
+    const openingIndex =
+      index ??
+      (position === "top"
+        ? 0
+        : position === "bottom"
+          ? orderedPages(before.pages).filter((page) => isLocal(page)).length
+          : undefined);
     const observed = new Set(orderedPages(get().pages).map((page) => page.pageId));
     const unsubscribe = api.subscribe((state) => {
       for (const page of orderedPages(state.pages)) observed.add(page.pageId);
@@ -557,7 +599,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
           background: true,
           activate: false,
           ...(reuseId ? { pageId: reuseId } : {}),
-          ...(index == null ? {} : { index }),
+          ...(openingIndex == null ? {} : { index: openingIndex }),
         },
         get().catalogVersion,
       );
@@ -591,11 +633,16 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         )
           ? spaceId
           : state.layout.activeSpaceId;
-        const layout = {
-          ...state.layout,
-          order: syncOrder(state.layout.order, pages, state.pendingRestoreIds),
-          tabSpace: { ...state.layout.tabSpace, [pageId]: destination },
-        };
+        const layout = placeNewTab(
+          {
+            ...state.layout,
+            order: syncOrder(state.layout.order, pages, state.pendingRestoreIds),
+            tabSpace: { ...state.layout.tabSpace, [pageId]: destination },
+          },
+          pageId,
+          destination,
+          position,
+        );
         persistLayout(layout);
         return { pages: normalizePages(pages, state.pages), layout };
       });

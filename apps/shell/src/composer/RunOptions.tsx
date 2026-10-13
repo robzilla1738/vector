@@ -4,6 +4,7 @@ import { call, useStore } from "../store";
 import { bridge } from "../bridge";
 import { Switch } from "../ui";
 import { errorMessage } from "../error-message";
+import { ComposerModelPicker } from "./ComposerModelPicker";
 import "./RunOptions.css";
 const DEFAULT: {
   privateTask: boolean;
@@ -71,6 +72,8 @@ export function RunOptions({
   const choice = useStore((state) => state.composerPreferences[draftKey] ?? DEFAULT);
   const [requested, setRequested] = useState(false),
     [catalog, setCatalog] = useState<{ generation: string; models: ModelCapability[] } | null>(null),
+    [catalogFailure, setCatalogFailure] = useState<{ generation: string; message: string } | null>(null),
+    [catalogAttempt, setCatalogAttempt] = useState(0),
     [error, setError] = useState("");
   const catalogGeneration = useStore((state) => JSON.stringify(state.settings));
   const windowId = bridge.windowId,
@@ -80,6 +83,7 @@ export function RunOptions({
   useEffect(() => {
     if (!requested || disabled) return;
     let live = true;
+    setCatalogFailure(null);
     const current = () =>
       live &&
       bridge.windowId === windowId &&
@@ -90,17 +94,18 @@ export function RunOptions({
       .then((result) => {
         if (current()) {
           setCatalog({ generation: identity, models: result.models });
-          setError("");
+          setCatalogFailure(null);
         }
       })
       .catch((reason) => {
-        if (current()) setError(errorMessage(reason));
+        if (current()) setCatalogFailure({ generation: identity, message: errorMessage(reason) });
       });
     return () => {
       live = false;
     };
-  }, [requested, disabled, windowId, kind, privateMode, catalogGeneration, identity]);
+  }, [requested, disabled, windowId, kind, privateMode, catalogGeneration, identity, catalogAttempt]);
   const catalogItems = catalog?.generation === identity ? catalog.models : [];
+  const catalogError = catalogFailure?.generation === identity ? catalogFailure.message : undefined;
   const selected = catalogItems.find((model) => model.id === choice.modelId);
   // Missing provider metadata does not blacklist a newly configured/local model.
   // Explicit non-streaming/non-text catalog entries are not conversational routes.
@@ -126,34 +131,25 @@ export function RunOptions({
           Local only
         </span>
       )}
-      <label>
-        Model
-        <select
-          aria-label="Composer model"
+      <div className="composer-run-option">
+        <span>Model</span>
+        <ComposerModelPicker
+          models={chatModels}
+          modelId={choice.modelId}
+          selectedModel={selected}
+          unsupported={unsupportedSelection}
           disabled={disabled}
-          value={choice.modelId ?? ""}
-          onFocus={() => setRequested(true)}
-          onChange={(event) => {
-            const modelId = event.target.value || undefined;
+          loading={requested && catalog?.generation !== identity && !catalogError}
+          error={catalogError}
+          onRequest={() => setRequested(true)}
+          onRetry={() => setCatalogAttempt((attempt) => attempt + 1)}
+          onChange={(modelId) => {
             const model = chatModels.find((item) => item.id === modelId);
             if (modelId && !model) return;
             patch({ modelId, ...(model?.reasoning === "none" ? { reasoning: undefined } : {}) });
           }}
-        >
-          <option value="">Automatic</option>
-          {choice.modelId && !chatModels.some((model) => model.id === choice.modelId) && (
-            <option value={choice.modelId} disabled={unsupportedSelection}>
-              {selected?.name ?? choice.modelId}
-              {unsupportedSelection ? " · not supported for chat" : ""}
-            </option>
-          )}
-          {chatModels.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.name ?? model.id}
-            </option>
-          ))}
-        </select>
-      </label>
+        />
+      </div>
       {unsupportedSelection && (
         <span role="alert">
           This selected model is not supported for chat. Choose Automatic or a conversational model.
@@ -284,7 +280,7 @@ export function RunOptions({
           Private task
         </label>
       )}
-      {error && <span role="alert">Model catalog unavailable: {error}</span>}
+      {error && <span role="alert">Run options unavailable: {error}</span>}
     </div>
   );
 }

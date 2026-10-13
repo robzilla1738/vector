@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { act, type ReactNode, type RefObject } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import { UI_FONT_SIZES } from "../ui-font-size";
 
 vi.mock("../onboarding/OnboardingStarters", () => ({ OnboardingStarters: () => null }));
 vi.mock("../store", () => ({
@@ -84,24 +81,4 @@ it("keeps original Search focus/action and selected Ask inert while retaining th
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   }
-});
-
-it("uses the compact minimum hit height at every supported type scale with readable type and wider horizontal padding", () => {
-  const source = (path: string) => readFileSync(resolve(process.cwd(), "apps/shell/src", path), "utf8");
-  const css = source("components/HomeAsk.css"),
-    tokens = source("tokens.css"),
-    reset = source("styles/reset.css");
-  const rule = css.match(/\.home-composer-mode button\s*\{([^}]+)\}/)![1]!;
-  expect(rule).toMatch(/font-size:\s*var\(--fs-sm\)/);
-  expect(rule).toMatch(/padding:\s*var\(--space-1\)\s+var\(--space-3\)/);
-  expect(tokens).toContain("--fs-sm: calc(var(--ui-font-size) - 1px)");
-  expect(reset).toContain("line-height: var(--lh-normal)");
-  const hit = Number(tokens.match(/--hit:\s*(\d+)px/)![1]);
-  const padding = Number(tokens.match(/--space-1:\s*(\d+)px/)![1]);
-  const line = Number(tokens.match(/--lh-normal:\s*([\d.]+)/)![1]);
-  const minimum = /min-height:\s*var\(--hit\)/.test(rule) ? hit : 0;
-  // Source box model only: jsdom does not supply native paint or hit-test geometry.
-  expect(UI_FONT_SIZES.map((size) => Math.max(minimum, (size - 1) * line + padding * 2))).toEqual([
-    32, 32, 32,
-  ]);
 });

@@ -77,7 +77,7 @@ it("shows a new tab before main acknowledges it and removes it when the open is 
   const opening = useStore.getState().newTab("https://example.test/new");
   const sent = command.mock.calls[0]![0] as { pageId: string };
   expect(useStore.getState().activePageId).toBe(sent.pageId);
-  expect(useStore.getState().layout.order).toEqual(["a", sent.pageId]);
+  expect(useStore.getState().layout.order).toEqual([sent.pageId, "a"]);
   finish({
     commandId: "",
     status: "rejected",

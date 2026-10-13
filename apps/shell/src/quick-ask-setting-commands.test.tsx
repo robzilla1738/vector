@@ -54,7 +54,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 async function mount() {
-  await act(async () => root.render(<QuickAskSettings active />));
+  await act(async () => root.render(<QuickAskSettings active settings={{}} onSave={async () => true} />));
 }
 const shortcut = () => host.querySelector<HTMLInputElement>("input")!;
 const retry = () => [...host.querySelectorAll("button")].find((b) => b.textContent === "Try again")!;
@@ -217,7 +217,7 @@ it("keeps the two measured owners independent during a real OS focus read and he
   await act(async () =>
     root.render(
       <>
-        <QuickAskSettings active />
+        <QuickAskSettings active settings={{}} onSave={async () => true} />
         <DefaultBrowserSetting />
       </>,
     ),

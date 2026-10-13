@@ -20,6 +20,7 @@ import { bridge, type BrowserExtension } from "../bridge";
 type Store = ReturnType<typeof useStore.getState>;
 export interface CommandProviderInput {
   query: string;
+  includeRecent?: boolean;
   tabs: Array<NonNullable<Store["pages"]["byId"][string]> & { id: string }>;
   closed: Array<Store["closedTabs"][number] & { id: string }>;
   extensions: Array<BrowserExtension & { id: string; title: string }>;
@@ -37,6 +38,7 @@ export interface CommandProviderInput {
 export function buildCommandProviderRows(input: CommandProviderInput) {
   const {
     query: q,
+    includeRecent,
     tabs,
     closed,
     extensions,
@@ -50,7 +52,7 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
   } = input;
   const out: ProviderSuggestion[] = [];
   out.push(...commandTabRows(q, tabs, activate));
-  for (const item of rankCandidates(q, closed).slice(0, 2)) {
+  for (const item of (includeRecent ? closed : rankCandidates(q, closed)).slice(0, 2)) {
     out.push({
       id: `closed-${item.pageId}`,
       section: "closed",
@@ -94,7 +96,7 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
   }
   const matchingChats = new Set(rankCandidates(q, runs).map((run) => run.config?.chatId ?? run.runId));
   for (const item of recentChats
-    .filter((run) => matchingChats.has(run.config?.chatId ?? run.runId))
+    .filter((run) => includeRecent || matchingChats.has(run.config?.chatId ?? run.runId))
     .slice(0, 3)) {
     out.push({
       id: `run-${item.runId}`,

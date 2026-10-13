@@ -1,0 +1,68 @@
+@layer components {
+  .agent-mode-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .agent-mode-trigger > .ci {
+    flex: none;
+    width: 16px;
+    height: 16px;
+  }
+  .agent-mode-trigger[data-mode="full"] {
+    color: var(--warn);
+  }
+  .agent-mode-menu {
+    width: 288px;
+    max-width: calc(100vw - 16px);
+    padding: 6px;
+  }
+  .agent-mode-menu-label {
+    padding: 6px 8px;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+  }
+  .agent-mode-menu > button {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    padding: 8px;
+    border-radius: var(--r-lg);
+    text-align: left;
+    color: var(--ink-1);
+  }
+  .agent-mode-menu > button:is(:hover, :focus-visible) {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  .agent-mode-menu > button > .ci {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+  }
+  .agent-mode-copy {
+    display: grid;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+  .agent-mode-menu strong {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+  }
+  .agent-mode-menu small {
+    font-size: var(--fs-xs);
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+  @container (max-width: 420px) {
+    .agent-mode-trigger > .agent-mode-label {
+      display: none;
+    }
+  }
+}

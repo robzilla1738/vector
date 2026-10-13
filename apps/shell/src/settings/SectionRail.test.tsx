@@ -21,9 +21,10 @@ it("shows implemented sections, gates unavailable ones, and routes connection se
           profilesAvailable={true}
           linkRoutingAvailable={true}
           appleScriptAvailable={false}
-          skillsAvailable={false}
+          pluginsAvailable={false}
           automationsAvailable={false}
           servicesAvailable={false}
+          vaultAvailable={true}
           permissionsAvailable={true}
           extensionsAvailable={false}
           firstCategory={createRef<HTMLButtonElement>()}
@@ -47,16 +48,18 @@ it("shows implemented sections, gates unavailable ones, and routes connection se
       (container.querySelector('button[data-category="Link Routing"]') as HTMLButtonElement).click(),
     );
     expect(onOpenCategory).toHaveBeenCalledWith("Link Routing", undefined);
-    expect(container.querySelector('button[data-category="Skills & Plugins"]')).toBeNull();
+    expect(container.querySelector('button[data-category="Skills & MCP"]')).toBeNull();
     expect(container.querySelector('button[data-category="Automations"]')).toBeNull();
     expect(container.querySelector('button[data-category="Selection & Capture"]')).not.toBeNull();
-    expect(container.querySelector('button[data-category="MCP & Connectors"]')).toBeNull();
+    expect(container.querySelector('button[data-category="Connected services"]')).toBeNull();
     await act(async () =>
-      (
-        container.querySelector('button[data-category="Developers & External Agents"]') as HTMLButtonElement
-      ).click(),
+      (container.querySelector('button[data-category="Developers"]') as HTMLButtonElement).click(),
     );
     expect(onOpenCategory).toHaveBeenCalledWith("Connections", "Agents");
+    await act(async () =>
+      (container.querySelector('button[data-category="Vault"]') as HTMLButtonElement).click(),
+    );
+    expect(onOpenCategory).toHaveBeenCalledWith("Connections", "Vault");
   } finally {
     await act(async () => root.unmount());
     vi.unstubAllGlobals();

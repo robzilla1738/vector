@@ -735,6 +735,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const key = useShortcutLabels();
   const sidebarPref = useStore((s) => s.sidebar);
   const sections = useStore((s) => s.sidebarSections);
+  const bookmarksVisible = useStore((state) => state.settings.sidebarBookmarksVisible !== false);
   const toggleSection = useStore((s) => s.toggleSidebarSection);
   const railOpenNow = useStore((s) => s.railOpen && s.overlay !== "settings");
   const sidebar = minimal ? "hidden" : sidebarPref;
@@ -1151,7 +1152,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
         )}
       </div>
 
-      {!bridge.privateMode && (
+      {!bridge.privateMode && bookmarksVisible && (
         <SidebarSection
           title="Bookmarks"
           open={sections.bookmarks}

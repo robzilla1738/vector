@@ -63,11 +63,9 @@ it("keeps Stop available during pause and ignores the superseded pause error", a
   });
   try {
     await act(async () => root.render(<RunPanel runId="controls" conversation />));
-    expect(
-      Array.from(host.querySelectorAll<HTMLButtonElement>("button")).some((button) =>
-        button.textContent?.includes("Work history"),
-      ),
-    ).toBe(false);
+    const work = host.querySelector('[data-command-id="toggle-run-steps"]')!;
+    expect(work.textContent).toContain("Working for");
+    expect(work.getAttribute("aria-expanded")).toBe("true");
     const pause = host.querySelector<HTMLButtonElement>('[aria-label="Pause run"]')!;
     await act(async () => {
       pause.click();
@@ -105,7 +103,11 @@ it("loads saved page evidence only when opened and offers retry on failure", asy
       Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find((item) =>
         item.textContent?.includes(text),
       )!;
-    await act(async () => button("Work history").click());
+    const work = host.querySelector<HTMLButtonElement>('[data-command-id="toggle-run-steps"]')!;
+    expect(work.textContent).toContain("Worked for");
+    expect(work.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => work.click());
+    expect(work.getAttribute("aria-expanded")).toBe("true");
     expect(invoke.mock.calls.filter(([method]) => method === "artifacts.read")).toHaveLength(0);
     await act(async () => button("Page").click());
     expect(invoke).toHaveBeenCalledWith("artifacts.read", { artifactId: "saved-page" });

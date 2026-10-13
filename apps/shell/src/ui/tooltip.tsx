@@ -1,4 +1,3 @@
-import { GlassMaterial } from "../components/GlassMaterial";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import "./tooltip.css";
@@ -61,7 +60,7 @@ export function Tooltip({ content, children }: { content: ReactNode; children(id
       const maxLeft = Math.max(8, window.innerWidth - tip.offsetWidth - 8);
       const maxTop = Math.max(8, window.innerHeight - tip.offsetHeight - 8);
       const proposedTop =
-        anchor.top - tip.offsetHeight - 8 >= 8 ? anchor.top - tip.offsetHeight - 8 : anchor.bottom + 8;
+        anchor.top - tip.offsetHeight - 4 >= 8 ? anchor.top - tip.offsetHeight - 4 : anchor.bottom + 4;
       tip.style.left = `${Math.max(8, Math.min(anchor.left + (anchor.width - tip.offsetWidth) / 2, maxLeft))}px`;
       tip.style.top = `${Math.max(8, Math.min(proposedTop, maxTop))}px`;
     };
@@ -110,7 +109,6 @@ export function Tooltip({ content, children }: { content: ReactNode; children(id
             onPointerEnter={enter}
             onPointerLeave={leave}
           >
-            <GlassMaterial />
             {content}
           </span>,
           portalHost,

@@ -11,13 +11,24 @@
     max-height: calc(100dvh - 16px);
     overflow: auto;
     overflow-wrap: anywhere;
-    padding: var(--space-1-5) var(--space-2);
+    padding: var(--space-1) var(--space-2-5);
     border-radius: var(--r-md);
+    corner-shape: round;
     background: var(--surface-menu);
     color: var(--ink-0);
     font-size: var(--fs-xs);
+    font-weight: var(--fw-regular);
     line-height: var(--lh-normal);
-    box-shadow: var(--shadow-pop), var(--line-inset);
+    box-shadow: var(--shadow-card), var(--line-inset);
     pointer-events: auto;
+    animation: pop var(--t-popup) var(--ease-out);
+  }
+  :root[data-theme="light"] .ui-tooltip {
+    font-weight: var(--fw-medium);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ui-tooltip {
+      animation: none;
+    }
   }
 }
