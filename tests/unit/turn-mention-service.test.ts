@@ -509,3 +509,38 @@ it("omits an uncommitted implicit tab but keeps explicit and recovered sources s
     f.service.begin("recovered", [], [], { nativeTurnContext: "owner", sourcePageIds: ["a"] }),
   ).rejects.toMatchObject({ code: "ref_stale" });
 });
+
+it.each([
+  "chrome://newtab/",
+  "chrome://aux/",
+  "about:blank",
+  "file:///tmp/example.txt",
+  "https://person:secret@mentions.test/",
+])(
+  "omits implicit non-website context %s without reading it or dropping eligible website tabs",
+  async (url) => {
+    const f = fixture();
+    f.pages.set("a", { ...page, url });
+    const source = f.sourceContext();
+    f.setSourceContext({
+      ...source,
+      layout: {
+        ...source.layout!,
+        shared: { ...source.layout!.shared, tabSpace: { a: "space", b: "space" } },
+      },
+    });
+    f.prepareReadPage.mockImplementation(async (id) => {
+      if (id === "a") throw new AuxError("permission_denied", "This page could not be read");
+    });
+    await f.service.begin("run", [], [], { nativeTurnContext: "owner" });
+    expect(f.prepareReadPage).toHaveBeenCalledExactlyOnceWith("b");
+    expect(f.service.selectedPages("run")).toEqual(["b"]);
+    expect(await f.service.require("run", "a", "read")).toMatchObject({ status: "unavailable" });
+    await expect(
+      f.service.begin("explicit", [{ ...tab, url }], [], { nativeTurnContext: "owner" }),
+    ).rejects.toMatchObject({ code: "permission_denied" });
+    await expect(
+      f.service.begin("restored", [], [], { nativeTurnContext: "owner", sourcePageIds: ["a"] }),
+    ).rejects.toMatchObject({ code: "permission_denied" });
+  },
+);

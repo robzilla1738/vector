@@ -349,3 +349,43 @@ preview remains running under its launcher's normal cleanup ownership.
 These observations close the named interaction defects and owner focus correction
 for the observed states. They do not close exact reference parity for the whole
 Home/Settings/chat families, nor the complete ledger's remaining native states.
+
+
+## All Chats native observations — source 68affeb44
+
+The candidate built in **25 steps / 8m39.01s**, with 206 renderer assets,
+273 methods / 30 events (`cce8203bcbd0`) and Node 26.9. It launched in a new
+disposable Profile. The ordinary composer appears above the List/Card toolbar.
+Search expands and dismisses; sort opens with checked Newest/Oldest choices,
+Oldest selection returns focus to its trigger. Card view retained the saved
+synthetic conversation and its rename/archive/delete menu; Escape returned
+focus. Archive filtering produced the correct empty state and returned focus.
+An unsent synthetic draft survived Card → List and was cleared without sending.
+
+Evidence under `/tmp/aux-parity-2026-10-16/`: `aux-history-layout-68affeb.png`,
+`aux-history-search-68affeb.png`, `aux-history-sort-68affeb.png`,
+`aux-history-list-populated-68affeb.png`, `aux-history-card-68affeb.png`, and
+`aux-history-filter-68affeb.png`. These are 2400×1922 native captures, with a
+different viewport and synthetic data from the 3424×1978 reference. No exact
+pixel-parity pass is claimed.
+
+The walkthrough **did not pass full acceptance**. The composer options remain
+outside the rounded input card; reference 112 puts them inside one card. The
+browser toolbar occupies space but its controls fade out on internal surfaces;
+the reference keeps them visible. The filter editor differs from Status/Projects.
+
+A real synthetic prompt failed before any model call with “This page could not
+be read”. Read-only inspection through the disposable runtime SDK confirmed
+empty explicit `pageIds` and `contextPageRefs`. The implicit window/Space source
+collector nevertheless prepared the internal New Tab page's native reader,
+which correctly refused it. The runtime correction excludes non-website and
+credential-bearing URLs only from implicit window context; explicit/restored
+source checks stay strict. Five regression inputs cover New Tab, Aux internals,
+blank pages, file URLs and credential-bearing addresses. Its rebuilt runtime
+and native follow-up are pending; this must not be reported as a successful AI
+reply yet.
+
+The next Home batch can use the original unbranded card background assets found
+in R5: `1-C1ScKAAP.webp`, `2-CvTUY-kA.webp`, `3-BeB6e1fn.webp`. Capture 005 shows
+expandable Suggested tasks beneath Recent work, including existing-user states.
+The current first-chat-only text buttons do not match that surface.

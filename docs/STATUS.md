@@ -48,8 +48,8 @@ commits are ahead of GitHub; no push or release actions were run.
 The final combined source candidate (`c612736f5`, including the focus correction,
 compact dialogs and restored toolbar) built in **25 steps / 8m55.10s**, with
 **207 renderer assets**, **273 methods / 30 events** (`cce8203bcbd0`) and Node
-26.9. The disposable native app is running under its launcher and plain lock;
-quit it normally before starting another builder. The launcher owns Profile/lock
+26.9. That disposable native app later retired with its launcher and plain lock
+cleanup before the next build. The launcher owns Profile/lock
 cleanup. Build log: `/tmp/aux-parity-combined-build.log`.
 
 Post-build observations: the empty focused model-search field has the rounded
@@ -77,6 +77,23 @@ the reference Status/Projects submenu. Typecheck and lint pass; the integrated s
 only the existing coder-worktrees 60-second timeout. Native acceptance is pending
 the next build. The previous c612736f5 disposable preview and its launcher retired
 with exit 0 and released their Profile/lock normally.
+
+All Chats source `68affeb44` subsequently built in **25 steps / 8m39.01s**,
+with 206 renderer assets and unchanged 273-method / 30-event ABI. Native
+observations cover List/Card switching, search expansion, sort selection/return
+focus, archive filtering and draft retention. The options footer is still outside
+the rounded composer card, and internal toolbar controls fade out; both remain
+visual gaps. The capture ledger names the evidence and viewport limitations.
+
+A synthetic send exposed a functional blocker before any model call: implicit
+window context tried to prepare the internal New Tab page for native reading.
+The disposable runtime SDK confirmed empty explicit page scope. Implicit context
+now excludes non-website/credential-bearing addresses; explicit and restored
+source failures stay strict. Runtime dist was rebuilt before tests. Typecheck,
+lint and 4,522/4,523 tests pass; the sole failure remains coder-worktrees' known
+60-second timeout. Native verification of this runtime correction is pending.
+The source 68affeb44 disposable preview will retire normally before runtime-only
+staging; no real Profile, push, hosted Actions or release is involved.
 
 The October 12 wrap-up and older notes below are historical.
 

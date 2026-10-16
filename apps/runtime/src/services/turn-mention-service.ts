@@ -112,8 +112,25 @@ export class TurnMentionService {
               if (memberSpace === spaceId) defaults.add(pageId);
         }
       }
-      for (const pageId of defaults)
-        if (browserContextPage(() => this.deps.page(pageId))) selected.add(pageId);
+      for (const pageId of defaults) {
+        const page = browserContextPage(() => this.deps.page(pageId));
+        // A window's ordinary New Tab/Settings pages are not website context.
+        // Explicit and restored selections still go through their strict reader checks.
+        if (!context.sourcePageIds && sourceContext) {
+          let website = false;
+          try {
+            const url = new URL(page?.url ?? "");
+            website = ["http:", "https:"].includes(url.protocol) && !url.username && !url.password;
+          } catch {
+            // An incomplete/internal address cannot provide implicit website context.
+          }
+          if (!website) {
+            defaults.delete(pageId);
+            continue;
+          }
+        }
+        if (page) selected.add(pageId);
+      }
       const unavailableImplicitPages: string[] = [];
       if (
         this.deps.prepareReadPage &&

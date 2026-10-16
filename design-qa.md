@@ -44,6 +44,17 @@ Findings and implementation status:
    hid the browser toolbar. The hiding rule was removed. The combined candidate preserved the toolbar and sidebar navigation in the
    observed All Chats state.
 
+6. **P1 — All Chats anatomy.** Source 68affeb44 built in 25 steps / 8m39.01s.
+   Native List/Card, expandable search, sort choice/return focus, archive filtering
+   and draft retention were observed. The composer footer remains outside the
+   card and internal browser controls still fade; both differ from the reference.
+   Captures are named in the October 16 ledger. This slice is not a parity pass.
+7. **P0 — New Tab blocks a page-free AI request.** The synthetic native send
+   failed before a model call. Empty explicit page scope was confirmed through
+   the disposable runtime SDK; implicit context still prepared the internal tab.
+   A runtime correction and five URL regressions are in progress. A successful
+   native AI reply remains unverified.
+
 Required fidelity surfaces remain open:
 
 - **Fonts/typography:** current Aux Geist retained; full-size reference/native

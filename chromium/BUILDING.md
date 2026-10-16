@@ -1,14 +1,14 @@
 # Building Aux locally
 
-The October 16 combined UI candidate built source `c612736f5` in **25 steps /
-8m55.10s**, with 207 renderer assets, **273 methods / 30 events**
-(`cce8203bcbd0`) and slim Node 26.9. It includes direct composer model/thinking
-controls, compact General dialogs, shared search focus styling and the restored
-chat toolbar. The disposable preview is running under the existing launcher and
-plain lock. Let it retire normally before another build; do not clear its lock
-or remove its Profile while live. See STATUS for the observed flows and remaining
-full-parity work. Log: `/tmp/aux-parity-combined-build.log`.
-The October 12 build notes below are historical.
+The October 16 All Chats candidate built source `68affeb44` in **25 steps /
+8m39.01s**, with 206 renderer assets, **273 methods / 30 events**
+(`cce8203bcbd0`) and slim Node 26.9. It includes the ordinary composer and compact
+history controls. Native observations and remaining visual gaps are in STATUS.
+The subsequent runtime-only correction skips internal pages in implicit context;
+its native retest is pending. It requires no host ABI or renderer rebuild.
+The launcher owns the disposable Profile and plain lock; retire it normally
+before another builder. Logs: `/tmp/aux-chat-parity-native.log` and
+`/tmp/aux-internal-context-check.log`. Older build notes below are historical.
 
 Aux uses Chromium 154 on macOS arm64. The product checkout is
 `~/Documents/Code/aux-chromium-product/chromium/src`; the built app is `out/AuxFast/Aux.app`.
