@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AgentPolicySettingsSchema } from "@aux/contracts/agent-policy";
 import { call, errToast, useStore } from "../store";
 import { AgentModeControl } from "../features/permissions/AgentModeControl";
+import { ComposerProjectControl } from "./ComposerProjectControl";
 import { ComposerModelControls } from "./ComposerModelControls";
 import { shellIconGearSm } from "../ui/icons";
 import { errorMessage } from "../error-message";
@@ -13,11 +14,13 @@ import "./ChatPreferences.css";
 export function ChatPreferences({
   children,
   draftKey,
+  workspaceId,
   activeRunId,
   disabled,
 }: {
   children: ReactNode;
   draftKey: string;
+  workspaceId?: string;
   activeRunId?: string;
   disabled: boolean;
 }) {
@@ -42,6 +45,11 @@ export function ChatPreferences({
   const temporaryMode = temporary || (activeMode !== undefined && activeMode !== policy.agentMode);
   return (
     <div className="chat-preferences">
+      <ComposerProjectControl
+        draftKey={draftKey}
+        workspaceId={workspaceId}
+        disabled={disabled || !connected}
+      />
       <AgentModeControl
         compact
         active={connected}

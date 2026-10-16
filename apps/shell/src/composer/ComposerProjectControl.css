@@ -1,0 +1,50 @@
+@layer components {
+  .composer-project-trigger {
+    max-width: 200px;
+  }
+  .composer-project-menu {
+    display: grid;
+    gap: 2px;
+  }
+  .composer-project-menu > header {
+    padding: 6px 8px;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+  }
+  .composer-project-menu button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 32px;
+    padding: 6px 8px;
+    border-radius: var(--r-lg);
+    color: var(--ink-1);
+    font: inherit;
+    text-align: left;
+  }
+  .composer-project-menu button:hover {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  .composer-project-menu button > span:not(.ci) {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .composer-project-menu :is(p, output, [role="alert"]) {
+    margin: 0;
+    padding: 4px 8px;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    line-height: 1.5;
+  }
+  .composer-project-menu hr {
+    width: 100%;
+    border: 0;
+    border-top: var(--hairline) solid var(--line);
+    margin: 4px 0;
+  }
+}

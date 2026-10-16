@@ -392,3 +392,15 @@ Title focus, usable pre-prompt scheduling and Weekly weekday disclosure. No seco
 routine was created. Screenshots and source/native distinction are in the ledger.
 Full QA remains open; compact native staging and listed capability/comparison
 gaps remain unproven.
+
+
+## October 16 — direct Project control
+
+Reference007 compared. Project now sits beside confirmation controls, selecting
+actual reviewed writable folders or opening the existing Projects access review.
+Old Run options select/query removed. Deferred catalog/error handling, private/
+cloud behavior, current-Space handoff and window identity checks have focused
+coverage. Typecheck/lint and renderer build pass. One obsolete integrated select
+assertion was migrated; all20 final affected cases pass. Known coder-worktrees
+timeout remains. Live mock inspection covers placement/error/Retry and real editor
+routing only; populated/native selection and scratch creation are still open.

@@ -96,18 +96,23 @@ it("shows the new chat's reviewed project from the active Space and follows Spac
     if (method === "packages.list") return { packages: [], defaults: ["aux-core"] };
     if (method === "workspaces.folders.list") {
       const workspaceId = (params as { workspaceId: string }).workspaceId;
-      return [{ path: `/tmp/${workspaceId}`, access: "readWrite" }];
+      return [{ folderId: workspaceId, path: `/tmp/${workspaceId}`, access: "readWrite" }];
     }
     return original(method, params);
   });
   await act(async () => root.render(<Conversation chatId={null} embedded />));
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Run options"]')!.click());
-  const project = () => document.querySelector<HTMLSelectElement>('[aria-label="Coding project"]')!;
-  expect(project().value).toBe("/tmp/workspace-personal");
+  const openProject = () =>
+    act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Composer project"]')!.click());
+  await openProject();
+  const project = () => document.querySelector<HTMLElement>('[role="dialog"][aria-label="Composer project"]');
+  expect(project()!.textContent).toContain("workspace-personal");
   await act(async () => {
     useStore.setState((state) => ({ layout: { ...state.layout, activeSpaceId: "research" } }));
   });
-  expect(project().value).toBe("/tmp/workspace-research");
+  expect(project()).toBeNull();
+  await openProject();
+  expect(project()!.textContent).toContain("workspace-research");
+  expect(project()!.textContent).not.toContain("workspace-personal");
   expect(bridge.invoke).toHaveBeenCalledWith("workspaces.folders.list", {
     workspaceId: "workspace-research",
   });

@@ -18,46 +18,29 @@ const DEFAULT: {
 /** A draft choice is not a route default or authority to change an existing chat's mode. */
 export function RunOptions({
   draftKey,
-  workspaceId,
   privateTask,
   privateTaskLocked,
   disabled,
 }: {
   draftKey: string;
-  workspaceId?: string;
   privateTask: boolean;
   privateTaskLocked: boolean;
   disabled: boolean;
 }) {
-  const [projectCatalog, setProjectCatalog] = useState<{
-    workspaceId?: string;
-    items: { path: string; label: string }[];
-  }>({ items: [] });
-  const projects = projectCatalog.workspaceId === workspaceId ? projectCatalog.items : [];
   const [packages, setPackages] = useState<{ name: string; version: string; profiles: { name: string }[] }[]>(
     [],
   );
   const [packageDefaults, setPackageDefaults] = useState<string[]>(["aux-core"]);
   useEffect(() => {
     let live = true;
-    void Promise.all([
-      workspaceId ? call("workspaces.folders.list", { workspaceId }) : Promise.resolve([]),
-      call("packages.list"),
-    ])
-      .then(([folders, library]) => {
+    void call("packages.list")
+      .then((library) => {
         if (!live) return;
-        setProjectCatalog({
-          workspaceId,
-          items: folders
-            .filter((folder) => folder.access === "readWrite" && !folder.archivedAt && !folder.agentsChanged)
-            .map((folder) => ({ path: folder.path, label: folder.path.split("/").pop() ?? folder.path })),
-        });
         setPackages(library.packages);
         setPackageDefaults(library.defaults);
       })
       .catch((reason) => {
         if (live) {
-          setProjectCatalog({ workspaceId, items: [] });
           setPackages([]);
           setError(errorMessage(reason));
         }
@@ -65,7 +48,7 @@ export function RunOptions({
     return () => {
       live = false;
     };
-  }, [workspaceId]);
+  }, []);
   const choice = useStore((state) => state.composerPreferences[draftKey] ?? DEFAULT);
   const [error, setError] = useState("");
   const catalogGeneration = useStore((state) => JSON.stringify(state.settings));
@@ -137,24 +120,6 @@ export function RunOptions({
             ))}
         </select>
       </label>
-      {projects.length > 0 && (
-        <label>
-          Project
-          <select
-            aria-label="Coding project"
-            value={choice.projectRoot ?? (projects.length === 1 ? projects[0]!.path : "")}
-            disabled={disabled || choice.executionTarget === "cloud"}
-            onChange={(event) => patch({ projectRoot: event.target.value || undefined })}
-          >
-            <option value="">Choose project</option>
-            {projects.map((project) => (
-              <option key={project.path} value={project.path}>
-                {project.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
       {packages.length > 0 && (
         <fieldset disabled={disabled}>
           <legend>Aux Packages</legend>

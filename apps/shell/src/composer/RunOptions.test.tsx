@@ -22,18 +22,12 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-function mount(key = "new", locked = false, privateTask = false, workspaceId?: string) {
+function mount(key = "new", locked = false, privateTask = false) {
   return act(async () =>
     root.render(
       <>
         <ComposerModelControls draftKey={key} disabled={false} />
-        <RunOptions
-          draftKey={key}
-          workspaceId={workspaceId}
-          privateTask={privateTask}
-          privateTaskLocked={locked}
-          disabled={false}
-        />
+        <RunOptions draftKey={key} privateTask={privateTask} privateTaskLocked={locked} disabled={false} />
       </>,
     ),
   );
@@ -209,22 +203,4 @@ it("keeps an unknown current selection through retry and rejects a catalog respo
   expect(useStore.getState().composerPreferences.new?.modelId).toBe("custom/current");
   await chooseModel("replacement/model");
   expect(useStore.getState().composerPreferences.new?.modelId).toBe("replacement/model");
-});
-
-it("hides the previous Space's project choices immediately while a new Space has no workspace mapping", async () => {
-  const rpc = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
-    if (method === "workspaces.folders.list")
-      return [{ path: "/tmp/previous-project", access: "readWrite" }] as never;
-    return { packages: [], defaults: [] } as never;
-  });
-  await mount("new", false, false, "previous-workspace");
-  expect(host.querySelector('select[aria-label="Coding project"]')?.textContent).toContain(
-    "previous-project",
-  );
-  rpc.mockImplementation(() => new Promise(() => {}));
-  await mount();
-  expect(host.querySelector('select[aria-label="Coding project"]')).toBeNull();
-  expect(rpc.mock.calls.filter(([method]) => method === "workspaces.folders.list")).toEqual([
-    ["workspaces.folders.list", { workspaceId: "previous-workspace" }],
-  ]);
 });

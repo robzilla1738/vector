@@ -83,7 +83,7 @@ source limitations. The complete source filename and metadata live in the folder
 | 004 | New tab routines                            | captured                                                                                                                  | Empty panel source/live renderer reviewed; native pending                                                            |
 | 005 | New tab suggested tasks                     | captured                                                                                                                  | Native cards/draft action observed; full comparison open                                                            |
 | 006 | Composer options dropdown                   | captured                                                                                                                  | Open                                                            |
-| 007 | Composer project picker                     | captured                                                                                                                  | Open                                                            |
+| 007 | Composer project picker                     | captured                                                                                                                  | Direct source/error route reviewed; native/scratch flow open                                                            |
 | 008 | Composer permission guard                   | captured                                                                                                                  | Open                                                            |
 | 009 | Composer model picker                       | captured                                                                                                                  | Direct control implemented; visual comparison open              |
 | 010 | Composer model provider row focused         | supplemental — Provider row focused; see 011 for the expanded Aside models.                                               | Open                                                            |
@@ -656,3 +656,42 @@ shared-action CSS placement, Time row rounding and initial-focus adjustments.
 Previous goal turn made source/commit progress; this turn added compact controls,
 regressions, local commit00c737815 and native/runtime/live-renderer evidence.
 Full goal remains active; no phase completion or full acceptance is claimed.
+
+
+## Composer Project picker — source and error-route rendering
+
+Inspected reference007's Project menu: Projects header, Use an existing folder,
+Start from scratch. Aux now exposes Project directly beside Ask first, before
+model controls. On demand it lists reviewed writable, unarchived, unchanged
+folders from the current Space. Automatic explicitly retains the existing runtime
+behavior (use the only reviewed writable root if available); it is not labeled
+No project because that would misrepresent the runtime fallback. Selection only
+changes the ordinary composer preference; it never starts a run or grants access.
+Removed the replaced Project select and folder query from Run options.
+
+The popover loads only when opened, supports keyboard list focus, Retry and an
+explicit unavailable-selection message, preserves the selected root on failures,
+retires on Space/draft/window identity changes, omits private-Profile controls and
+disables local projects for cloud runs. Use an existing folder opens the actual
+Projects Settings review editor; it now prefers the Home Space rather than the
+first catalog item. Existing canonical-path/AGENTS.md/digest/access review remains.
+Start from scratch is not implemented: no folder-creation control is being counted
+as parity until it has a real reviewed creation flow. Folder chooser anatomy also
+remains open; Settings currently accepts a path for inspection.
+
+Focused picker/options/editor checks:15 passed. Integrated check typecheck/lint
+passed;4,542/4,544 cases across731 files passed, with the known coder-worktrees
+timeout and one stale Conversation assertion for the removed select. Migrated
+that integration check to the direct picker and old-Space menu retirement; final
+20 affected cases pass, including six picker cases. No unchanged full-suite rerun
+was needed after the test-only correction. Renderer build passed2.90s.
+
+Fresh live renderer inside the disposable native app showed the direct control,
+mock catalog-error/Retry state and Use an existing folder reaching Projects,
+Folder Space and the real Local folder path/Review folder controls. Mock folder
+listing is unimplemented, so it supplies no successful/populated catalog evidence.
+Screenshot:`aux-project-error-live.png` in the existing evidence folder. Native
+and populated selection verification remain pending. The currently compiled app
+still containsffb87541f; Project and compact timing source are newer. Previous goal
+turn made native/source progress; this turn adds the direct control, removes its
+old implementation and migrates its integration coverage. Full goal remains open.

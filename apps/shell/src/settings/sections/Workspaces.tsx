@@ -12,12 +12,15 @@ import type {
   WorkspaceFolderAccess,
   WorkspaceFolderReview,
 } from "@aux/contracts";
-import { call } from "../../store";
+import { call, useStore } from "../../store";
 import { SettingsField, SettingsSection } from "../primitives";
 import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
 import { nativeAlertRoleProps, nativeGroupRoleProps } from "../../ui/native-attribute-props";
 
 export function WorkspacesSettings({ active }: { active: boolean }) {
+  const preferredWorkspaceId = useStore(
+    (state) => state.layout.spaces.find((space) => space.id === state.layout.activeSpaceId)?.workspaceId,
+  );
   const [projectFolder, setProjectFolder] = useState<WorkspaceFolder | null>(null);
   const [terminalFolder, setTerminalFolder] = useState<WorkspaceFolder | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -36,8 +39,10 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
       .then((items) => {
         if (!live) return;
         setWorkspaces(items);
-        setWorkspaceId((current) =>
-          items.some((item) => item.workspaceId === current) ? current : (items[0]?.workspaceId ?? ""),
+        setWorkspaceId(
+          (current) =>
+            items.find((item) => item.workspaceId === preferredWorkspaceId)?.workspaceId ??
+            (items.some((item) => item.workspaceId === current) ? current : (items[0]?.workspaceId ?? "")),
         );
       })
       .catch((reason) => {
@@ -46,7 +51,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
     return () => {
       live = false;
     };
-  }, [active]);
+  }, [active, preferredWorkspaceId]);
 
   useEffect(() => {
     if (!active || !workspaceId) return;

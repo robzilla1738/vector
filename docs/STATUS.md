@@ -3,6 +3,23 @@
 
 ## October 16 UI parity review — in progress
 
+Latest source adds a direct Project picker beside confirmation controls. It loads
+reviewed writable folders on demand, preserves explicit selection through catalog
+failure, retires old-Space menus and rejects changed native-window identity.
+Automatic retains the runtime’s single-reviewed-root behavior. Use an existing
+folder opens the real Projects review editor in the Home Space. Removed Project
+from Run options. Private Profiles omit the control; cloud runs disable it.
+Start from scratch/native folder creation remains an explicit reference gap.
+
+Typecheck/lint and renderer build (2.90s) pass. Integrated check initially passed
+4,542/4,544 cases across 731 files: known coder-worktrees timeout plus an obsolete
+Conversation test targeting the removed select. Migrated that integration test
+to the direct picker/Space handoff; all 20 final affected cases pass. The initial
+15 picker/options/editor cases also passed. Live mock-renderer inspection showed
+placement, catalog-error/Retry state and routing to the real Projects editor;
+mock folder listing is unimplemented. Populated/native picker evidence remains
+pending, together with compact routine native staging.
+
 Work continues on local `main` against the growing
 `~/Desktop/Aside UI Reference 2026-10-16` corpus. Latest recursive scan: 192
 manifest entries and 182 original images, unchanged since capture 192. The

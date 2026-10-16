@@ -2180,14 +2180,14 @@ function ConversationContent({
         </span>
       )}
       <ChatPreferences
+        workspaceId={
+          bridge.privateMode ? undefined : id ? workspaceContext.workspace?.workspaceId : draftWorkspaceId
+        }
         draftKey={composerPreferenceKey}
         activeRunId={live ? last?.runId : undefined}
         disabled={archived || sending || live || !taskModeKnown}
       >
         <RunOptions
-          workspaceId={
-            bridge.privateMode ? undefined : id ? workspaceContext.workspace?.workspaceId : draftWorkspaceId
-          }
           draftKey={composerPreferenceKey}
           privateTask={privateTask}
           privateTaskLocked={bridge.privateMode || taskModeLocked}

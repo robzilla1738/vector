@@ -8,7 +8,11 @@ import { SpaceMemory } from "./SpaceMemory";
 const rpc = vi.hoisted(() => vi.fn());
 const state = vi.hoisted(() => ({
   settings: {},
-  layout: { spaces: [{ id: "native-space", workspaceId: "space-1" }], archivedSpaces: [] },
+  layout: {
+    activeSpaceId: "native-space",
+    spaces: [{ id: "native-space", workspaceId: "space-1" }],
+    archivedSpaces: [],
+  },
 }));
 vi.mock("../../feature-availability", () => ({
   featureAvailable: () => true,
@@ -302,4 +306,20 @@ it("requires UI confirmation before forgetting all pending and historical notes"
   });
   expect(rpc).toHaveBeenCalledWith("memory.pipeline.forget", { workspaceId, all: true });
   expect(container.textContent).not.toContain("A pending Space note.");
+});
+
+it("opens the folder review editor in the current Home Space rather than the first catalog entry", async () => {
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "workspaces.list")
+      return [
+        { workspaceId: "other", name: "Other" },
+        { workspaceId: "space-1", name: "Home" },
+      ];
+    if (method === "workspaces.folders.list") return [];
+    if (method === "settings.get") return {};
+    return [];
+  });
+  await act(async () => root.render(<WorkspacesSettings active />));
+  expect(container.querySelector<HTMLSelectElement>('[aria-label="Folder Space"]')!.value).toBe("space-1");
+  expect(rpc).toHaveBeenCalledWith("workspaces.folders.list", { workspaceId: "space-1" });
 });
