@@ -1,7 +1,6 @@
 import { staticFieldProps, staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
-import { smallGhostButtonProps } from "../ui/button-props";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { RoutineTrigger } from "@aux/contracts";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
@@ -42,14 +41,33 @@ export function RoutineSchedule({
   calendar,
   onSave,
   mode = "edit",
+  submitDisabled = false,
+  children,
+  actions,
 }: {
   trigger: RoutineTrigger;
   disabled: boolean;
   calendar?: CalendarTriggerAccounts;
   onSave: (trigger: RoutineTrigger) => void;
   mode?: "edit" | "create";
+  submitDisabled?: boolean;
+  children?: ReactNode;
+  actions?: ReactNode;
 }) {
-  const [kind, setKind] = useState<RoutineTrigger["kind"]>(trigger.kind);
+  const [repeat, setRepeat] = useState(() => {
+    if (trigger.kind !== "schedule") return trigger.kind;
+    const days = [...trigger.days].sort().join();
+    return trigger.days.length === 7
+      ? "daily"
+      : days === "1,2,3,4,5"
+        ? "weekdays"
+        : trigger.days.length === 1
+          ? "weekly"
+          : "selected-days";
+  });
+  const kind: RoutineTrigger["kind"] = ["daily", "weekdays", "weekly", "selected-days"].includes(repeat)
+    ? "schedule"
+    : (repeat as RoutineTrigger["kind"]);
   const [time, setTime] = useState(
     trigger.kind === "schedule"
       ? `${String(trigger.hour).padStart(2, "0")}:${String(trigger.minute).padStart(2, "0")}`
@@ -111,6 +129,7 @@ export function RoutineSchedule({
       className="routine-schedule"
       onSubmit={(event) => {
         event.preventDefault();
+        if (disabled || submitDisabled || saveDisabled) return;
         if (kind === "manual") return onSave({ kind });
         if (kind === "rrule") {
           const at = Date.parse(startAt);
@@ -145,17 +164,32 @@ export function RoutineSchedule({
     >
       <fieldset disabled={disabled}>
         <legend>When</legend>
-        <label>
-          Trigger
-          <select value={kind} onChange={(event) => setKind(event.target.value as RoutineTrigger["kind"])}>
+        <label className="routine-repeat-row">
+          Repeat
+          <select
+            aria-label="Routine repeat"
+            value={repeat}
+            onChange={(event) => {
+              const next = event.target.value;
+              setRepeat(next);
+              if (next === "daily") setDays([0, 1, 2, 3, 4, 5, 6]);
+              else if (next === "weekdays") setDays([1, 2, 3, 4, 5]);
+              else if (next === "weekly") setDays([days[0] ?? 1]);
+            }}
+          >
             {mode === "edit" && <option value="manual">On demand</option>}
-            <option value="schedule">Scheduled time</option>
-            <option value="rrule">Recurrence rule</option>
-            <option value="heartbeat">Heartbeat</option>
-            <option value="monitor">Recurring monitor</option>
-            <option value="site_notification">Site notification</option>
-            <option value="page_change">Page change</option>
-            <option value="calendar_event">Calendar event</option>
+            <option value="monitor">Interval</option>
+            <option value="daily">Daily</option>
+            <option value="weekdays">Weekdays</option>
+            <option value="weekly">Weekly</option>
+            <option value="rrule">Custom</option>
+            <option value="selected-days">Selected days</option>
+            <optgroup label="Event triggers">
+              <option value="heartbeat">Heartbeat</option>
+              <option value="site_notification">Site notification</option>
+              <option value="page_change">Page change</option>
+              <option value="calendar_event">Calendar event</option>
+            </optgroup>
           </select>
         </label>
         {kind === "calendar_event" && (
@@ -246,53 +280,51 @@ export function RoutineSchedule({
         )}
         {kind === "schedule" && (
           <>
-            <label>
+            <label className="routine-time-row">
               Time
               <input type="time" required value={time} onChange={(event) => setTime(event.target.value)} />
             </label>
-            <div className="routine-day-presets">
-              <button
-                {...smallGhostButtonProps}
-                {...auxNativeButtonTypeProps}
-                onClick={() => setDays([1, 2, 3, 4, 5])}
-              >
-                Weekdays
-              </button>
-              <button
-                {...smallGhostButtonProps}
-                {...auxNativeButtonTypeProps}
-                onClick={() => setDays([0, 1, 2, 3, 4, 5, 6])}
-              >
-                Every day
-              </button>
-            </div>
-            <div className="routine-days" role="group" aria-label="Days of the week">
-              {weekdays.map((day, index) => (
-                <button
-                  key={day}
-                  {...auxNativeButtonTypeProps}
-                  aria-pressed={days.includes(index)}
-                  onClick={() =>
-                    setDays((current) =>
-                      current.includes(index)
-                        ? current.filter((value) => value !== index)
-                        : [...current, index].sort(),
-                    )
-                  }
+            {repeat === "weekly" && (
+              <label>
+                Day
+                <select
+                  aria-label="Routine weekday"
+                  value={days[0] ?? 1}
+                  onChange={(event) => setDays([Number(event.target.value)])}
                 >
-                  {day}
-                </button>
-              ))}
-            </div>
+                  {weekdays.map((day, index) => (
+                    <option key={day} value={index}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {repeat === "selected-days" && (
+              <div className="routine-days" role="group" aria-label="Days of the week">
+                {weekdays.map((day, index) => (
+                  <button
+                    key={day}
+                    {...auxNativeButtonTypeProps}
+                    aria-pressed={days.includes(index)}
+                    onClick={() =>
+                      setDays((current) =>
+                        current.includes(index)
+                          ? current.filter((value) => value !== index)
+                          : [...current, index].sort(),
+                      )
+                    }
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            )}
             {!days.length && (
               <output {...staticFieldErrorProps} data-block>
                 Choose at least one day.
               </output>
             )}
-            <p {...staticHintProps}>
-              On clock-change days, a missing local time is skipped. A repeated local time runs once at its
-              first occurrence.
-            </p>
           </>
         )}
         {kind === "rrule" && (
@@ -336,25 +368,30 @@ export function RoutineSchedule({
           </label>
         )}
         {(kind === "schedule" || kind === "rrule" || kind === "monitor" || kind === "heartbeat") && (
-          <>
+          <details className="routine-timezone">
+            <summary>Time zone · {timezone}</summary>
             <label>
               Time zone
               <input required value={timezone} onChange={(event) => setTimezone(event.target.value)} />
             </label>
-            <p {...staticHintProps}>
-              {timezone} ·{" "}
-              {mode === "create"
-                ? "Saved task review criteria carry into this routine."
-                : "Existing review requirements remain unchanged."}
-            </p>
-          </>
+            {kind === "schedule" && (
+              <p {...staticHintProps}>
+                On clock-change days, a missing local time is skipped. A repeated local time runs once at its
+                first occurrence.
+              </p>
+            )}
+          </details>
         )}
         <output className="routine-schedule-summary" data-block>
           {summary}
         </output>
-        <button {...auxClassButtonProps} type="submit" disabled={!!saveDisabled}>
-          {mode === "create" ? "Create paused routine" : "Save trigger"}
-        </button>
+        {children}
+        <div className="routine-schedule-actions">
+          {actions}
+          <button {...auxClassButtonProps} type="submit" disabled={!!saveDisabled || submitDisabled}>
+            {mode === "create" ? "Create paused routine" : "Save trigger"}
+          </button>
+        </div>
       </fieldset>
     </form>
   );

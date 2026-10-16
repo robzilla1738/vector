@@ -3,6 +3,18 @@
 
 ## October 16 UI parity review — in progress
 
+Routine scheduling source now leads with compact Repeat/Time controls. Daily,
+Weekdays, Weekly, Interval and Custom use real schedule/monitor/recurrence payloads;
+selected-day and event triggers remain available. Weekly exposes its weekday;
+time-zone and clock-change details are collapsed. Scheduling can be prepared
+before the prompt is ready, but submit stays disabled. Advanced source/review/cap
+fields and Cancel now sit with the schedule actions; title receives initial focus.
+Typecheck/lint pass; 4,537/4,538 tests across 730 files pass (same coder-worktrees
+timeout), plus 15 focused cases. Production renderer build passed 2.74s. These
+compact changes are newer than the running native build: that builder staged
+`ffb87541f` with 215 renderer assets and is still the sole builder. Do not restart
+or clear its lock. Native paused creation and current-source rendering remain next.
+
 Home All Routines now opens `/settings/routines` directly. The former Automations
 Settings implementation is replaced by Routines Settings, with matching rail,
 heading, search metadata and feature navigation; the automations Labs gate remains.

@@ -76,4 +76,44 @@
     color: var(--ink-0);
     box-shadow: inset 0 0 0 var(--hairline) var(--line-strong);
   }
+  .routine-create-dialog .routine-schedule fieldset {
+    padding: 0;
+    border: 0;
+    gap: 0;
+  }
+  .routine-create-dialog .routine-schedule legend {
+    display: none;
+  }
+  .routine-create-dialog .routine-schedule fieldset > label {
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    border: var(--hairline) solid var(--line);
+    border-top: 0;
+  }
+  .routine-create-dialog .routine-schedule fieldset > .routine-repeat-row {
+    border-top: var(--hairline) solid var(--line);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+  }
+  .routine-create-dialog .routine-schedule fieldset > label :is(select, input) {
+    background-color: transparent;
+    border-color: transparent;
+    text-align: end;
+  }
+  .routine-create-dialog .routine-schedule fieldset > .routine-time-row {
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+  }
+  .routine-create-dialog .routine-timezone,
+  .routine-create-dialog .routine-create-advanced {
+    padding: var(--space-3) 0;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+  }
+  .routine-create-dialog .routine-create-advanced label {
+    grid-template-columns: 1fr;
+  }
+  .routine-create-dialog .routine-schedule-summary {
+    padding: var(--space-2) 0;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
 }

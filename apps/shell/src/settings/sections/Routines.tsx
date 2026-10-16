@@ -38,6 +38,7 @@ function CreateRoutineDialog({
   onClose: () => void;
   onCreated: (routine: Routine) => void;
 }) {
+  const titleInput = useRef<HTMLInputElement>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskId, setTaskId] = useState("");
   const [title, setTitle] = useState("");
@@ -195,6 +196,7 @@ function CreateRoutineDialog({
     <Dialog
       className="routine-create-dialog"
       label="Create routine"
+      initialFocusRef={titleInput}
       onClose={() => {
         if (!busy) onClose();
       }}
@@ -212,6 +214,7 @@ function CreateRoutineDialog({
       <label>
         Title
         <input
+          ref={titleInput}
           aria-label="New routine name"
           value={title}
           maxLength={200}
@@ -233,51 +236,6 @@ function CreateRoutineDialog({
           />
         </label>
       )}
-      <details className="routine-create-advanced">
-        <summary>Advanced</summary>
-        <label>
-          Saved task (optional)
-          <select
-            aria-label="Routine source task"
-            value={taskId}
-            onChange={(event) => setTaskId(event.target.value)}
-            disabled={busy}
-          >
-            <option value="">Create from this prompt</option>
-            {tasks.map((task) => (
-              <option key={task.taskId} value={task.taskId}>
-                {task.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        {!taskId && (
-          <label>
-            Review criterion
-            <textarea
-              aria-label="Routine review criterion"
-              maxLength={1000}
-              value={criterion}
-              onChange={(event) => setCriterion(event.target.value)}
-              disabled={busy}
-            />
-          </label>
-        )}
-        <label>
-          Model spend cap (USD, optional)
-          <input
-            aria-label="New routine model spend cap"
-            {...nativeNumberTypeProps}
-            placeholder="No additional cap"
-            min="0.01"
-
-            step="0.01"
-            value={cap}
-            onChange={(event) => setCap(event.target.value)}
-            disabled={busy}
-          />
-        </label>
-      </details>
       <RoutineSchedule
         mode="create"
         trigger={{
@@ -288,17 +246,66 @@ function CreateRoutineDialog({
           days: [0, 1, 2, 3, 4, 5, 6],
         }}
         calendar={calendar}
-        disabled={busy || (!taskId && (!title.trim() || !prompt.trim() || !criterion.trim()))}
+        disabled={busy}
+        submitDisabled={!taskId && (!title.trim() || !prompt.trim() || !criterion.trim())}
         onSave={(trigger) => void create(trigger)}
-      />
+        actions={
+          <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+        }
+      >
+        <details className="routine-create-advanced">
+          <summary>Advanced</summary>
+          <label>
+            Saved task (optional)
+            <select
+              aria-label="Routine source task"
+              value={taskId}
+              onChange={(event) => setTaskId(event.target.value)}
+              disabled={busy}
+            >
+              <option value="">Create from this prompt</option>
+              {tasks.map((task) => (
+                <option key={task.taskId} value={task.taskId}>
+                  {task.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          {!taskId && (
+            <label>
+              Review criterion
+              <textarea
+                aria-label="Routine review criterion"
+                maxLength={1000}
+                value={criterion}
+                onChange={(event) => setCriterion(event.target.value)}
+                disabled={busy}
+              />
+            </label>
+          )}
+          <label>
+            Model spend cap (USD, optional)
+            <input
+              aria-label="New routine model spend cap"
+              {...nativeNumberTypeProps}
+              placeholder="No additional cap"
+              min="0.01"
+
+              step="0.01"
+              value={cap}
+              onChange={(event) => setCap(event.target.value)}
+              disabled={busy}
+            />
+          </label>
+        </details>
+      </RoutineSchedule>
       {error && (
         <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}
-      <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={onClose} disabled={busy}>
-        Cancel
-      </button>
     </Dialog>
   );
 }

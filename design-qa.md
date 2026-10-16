@@ -369,3 +369,14 @@ handoff and stale-record hiding. Live renderer route/dialog inspection recorded
 in the ledger; exact compact-form anatomy and native creation are still pending.
 Typecheck/lint pass; final serialized suite 4,535/4,536 passes (known timeout),
 20 final focused cases and production renderer build pass. No full-parity claim.
+
+
+## October 16 — compact routine timing source
+
+Repeat/Time controls now map Daily/Weekdays/Weekly/Interval/Custom to real triggers,
+with explicit weekly weekday, retained selected-day/event controls and collapsed
+time-zone details. Advanced and actions moved below timing; initial focus is Title.
+Typecheck/lint pass; 4,537/4,538 tests pass (known timeout), 15 focused cases and
+production renderer build pass. Current native builder still contains ffb87541f;
+compact source needs fresh rendered/native evidence. The ledger records actual
+088–090 capability gaps rather than accepting similarly named controls as parity.

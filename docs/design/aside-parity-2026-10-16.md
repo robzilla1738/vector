@@ -588,3 +588,39 @@ checked with typecheck, production renderer build (3.06s) and 20 focused cases.
 Reference rescan unchanged: 182 originals / 192 manifest entries. Previous goal
 turn made source/commit/rendering progress; this turn changes route and actual
 creation behavior. Full goal remains active and unproven.
+
+
+## Compact routine timing — source; native build still ffb87541f
+
+Inspected references 085 and 087–090. Replaced the exposed preset/day controls with
+Repeat choices: Interval, Daily, Weekdays, Weekly and Custom, plus Aux's selected-
+day/event triggers. Every choice produces its real monitor/schedule/rrule payload.
+Weekly uses an explicit weekday. Existing selected-day schedules retain their
+exact days and time zone. Time-zone and clock-change details are collapsed.
+Advanced source/review/cap fields are below timing, Cancel/Create share actions,
+and the dialog initially focuses Title. Inputs can be scheduled before the prompt
+is complete, while submit remains disabled; the submit handler also enforces
+busy/readiness and Calendar/day validity. No replacement shim or placeholder API.
+
+15 focused cases passed, including Weekly payload, preserved time zone and refused
+premature submit. Integrated typecheck/lint pass; 4,537/4,538 tests across 730 files
+pass (only known coder-worktrees timeout). Renderer production build passed 2.74s.
+Later changes only move shared action CSS, round the Time row and set initial
+Title focus; final native/live rendering remains required. The one live native
+builder is compiling the previously staged **ffb87541f**, not this compact source.
+Its log is `/tmp/aux-routines-consolidated-native.log`, launcher session 18842.
+
+Advanced references reviewed, still open:
+- 088: Aside offers Standalone / Runs in task. Aux creates a task-backed paused
+  routine and can choose an existing saved task. Exact standalone semantics need
+  an explicit runtime implementation; the present binding is not full parity.
+- 089: the capture only offers This computer. Aux scheduled routines run locally
+  while open. Broader cloud/remote options are not evidenced in that screenshot.
+- 090: Read only / Guard / Full access. Aux preserves task grants, scheduled-write
+  review and activation checks. Its current routine contract has no equivalent
+  per-routine permission enum; do not pretend the modes are interchangeable.
+- 084/087: routine-level model and notification switches are still absent in the
+  current RoutineDefinition contract. Real persisted runtime support and behavior
+  verification are needed before matching controls can be accepted.
+- 086: native Time input exists, but the exact reference popup still needs a
+  matched interaction comparison. Custom recurrence UI also remains to compare.

@@ -4,6 +4,13 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { RoutineSchedule, routineScheduleSummary } from "./RoutineSchedule";
 
+function choose(select: HTMLSelectElement, value: string) {
+  act(() => {
+    select.value = value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
 let container: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
@@ -48,6 +55,7 @@ it("requires a selected day and prevents saving an empty schedule", () => {
       />,
     ),
   );
+  choose(container.querySelector<HTMLSelectElement>('[aria-label="Routine repeat"]')!, "selected-days");
   act(() => container.querySelector<HTMLButtonElement>('[aria-pressed="true"]')!.click());
   expect(container.textContent).toContain("Choose at least one day.");
   expect(container.querySelector<HTMLButtonElement>('button:not([type="button"])')?.disabled).toBe(true);
@@ -62,7 +70,7 @@ it("keeps archived or busy schedules disabled", () => {
   expect(container.querySelector("fieldset")?.disabled).toBe(true);
 });
 
-it("applies day presets without submitting and preserves time and timezone on save", () => {
+it("applies Repeat choices without submitting and preserves time and timezone on save", () => {
   const onSave = vi.fn();
   act(() =>
     root.render(
@@ -73,14 +81,10 @@ it("applies day presets without submitting and preserves time and timezone on sa
       />,
     ),
   );
-  const preset = (name: string) =>
-    [...container.querySelectorAll<HTMLButtonElement>("button")].find(
-      (button) => button.textContent === name,
-    )!;
-  act(() => preset("Every day").click());
-  expect(container.querySelectorAll('.routine-days [aria-pressed="true"]')).toHaveLength(7);
-  act(() => preset("Weekdays").click());
-  expect(container.querySelectorAll('.routine-days [aria-pressed="true"]')).toHaveLength(5);
+  const repeat = container.querySelector<HTMLSelectElement>('[aria-label="Routine repeat"]')!;
+  choose(repeat, "daily");
+  expect(container.querySelector(".routine-schedule-summary")?.textContent).toContain("Every day");
+  choose(repeat, "weekdays");
   expect(onSave).not.toHaveBeenCalled();
   expect(container.querySelector(".routine-schedule-summary")?.textContent).toBe(
     "Weekdays at 15:30 · America/Chicago",
@@ -198,4 +202,58 @@ it("rejects a site notification path rather than broadening it to the entire ori
   );
   expect(onSave).not.toHaveBeenCalled();
   expect(container.textContent).toContain("exact site origin without a path");
+});
+
+it("saves a Weekly choice with the selected weekday and retains the existing time zone", () => {
+  const onSave = vi.fn();
+  act(() =>
+    root.render(
+      <RoutineSchedule
+        mode="create"
+        trigger={{
+          kind: "schedule",
+          timezone: "America/Chicago",
+          hour: 14,
+          minute: 5,
+          days: [0, 1, 2, 3, 4, 5, 6],
+        }}
+        disabled={false}
+        onSave={onSave}
+      />,
+    ),
+  );
+  choose(container.querySelector<HTMLSelectElement>('[aria-label="Routine repeat"]')!, "weekly");
+  choose(container.querySelector<HTMLSelectElement>('[aria-label="Routine weekday"]')!, "4");
+  expect(onSave).not.toHaveBeenCalled();
+  act(() =>
+    container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+  );
+  expect(onSave).toHaveBeenCalledWith({
+    kind: "schedule",
+    timezone: "America/Chicago",
+    hour: 14,
+    minute: 5,
+    days: [4],
+  });
+});
+it("lets scheduling be prepared before the prompt is ready but refuses submission", () => {
+  const onSave = vi.fn();
+  act(() =>
+    root.render(
+      <RoutineSchedule
+        mode="create"
+        trigger={{ kind: "schedule", timezone: "UTC", hour: 9, minute: 0, days: [0, 1, 2, 3, 4, 5, 6] }}
+        disabled={false}
+        submitDisabled
+        onSave={onSave}
+      />,
+    ),
+  );
+  const repeat = container.querySelector<HTMLSelectElement>('[aria-label="Routine repeat"]')!;
+  expect(repeat.disabled).toBe(false);
+  choose(repeat, "monitor");
+  act(() =>
+    container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+  );
+  expect(onSave).not.toHaveBeenCalled();
 });
