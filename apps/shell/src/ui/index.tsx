@@ -675,11 +675,13 @@ export function ComposerFrame({
   context,
   notices,
   controls,
+  controlsInside = false,
   children,
 }: {
   context?: ReactNode;
   notices?: ReactNode;
   controls?: ReactNode;
+  controlsInside?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -688,8 +690,9 @@ export function ComposerFrame({
       <Surface material="inset" className="composer-frame">
         {context && <div className="composer-context">{context}</div>}
         {children}
+        {controlsInside && controls}
       </Surface>
-      {controls}
+      {!controlsInside && controls}
     </div>
   );
 }

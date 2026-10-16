@@ -820,7 +820,7 @@ export class Repo {
             !term ||
             conversation.title.toLocaleLowerCase().includes(term) ||
             runs.some((run) =>
-              `${run.goal} ${run.statusMessage ?? ""} ${run.result?.answer ?? ""}`
+              `${run.goal} ${run.statusMessage ?? ""} ${run.result?.answer ?? ""} ${run.result?.report ?? ""}`
                 .toLocaleLowerCase()
                 .includes(term),
             )

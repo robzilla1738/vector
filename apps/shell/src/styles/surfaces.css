@@ -711,7 +711,8 @@
       box-shadow var(--t-fast) var(--ease-out);
   }
   .toolbar:is(:hover, :focus-within, :has(.cmdbar.editing)) > :is(.cmdbar, .tb-left, .tb-right),
-  .main-col.toolbar-revealed > .toolbar > :is(.cmdbar, .tb-left, .tb-right) {
+  .main-col.toolbar-revealed > .toolbar > :is(.cmdbar, .tb-left, .tb-right),
+  .main-col:not(.has-page) > .toolbar > :is(.cmdbar, .tb-left, .tb-right) {
     opacity: 1;
     transform: translateY(0);
   }
@@ -1255,8 +1256,7 @@
   }
   html.toolbar-stacked,
   html.toolbar-stacked body,
-  html.toolbar-stacked
-    :is(.app, .app-body, .main-col, .main, .stage-wrap, .stage-card.has-page) {
+  html.toolbar-stacked :is(.app, .app-body, .main-col, .main, .stage-wrap, .stage-card.has-page) {
     background: transparent;
     isolation: auto;
   }

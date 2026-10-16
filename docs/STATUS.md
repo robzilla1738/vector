@@ -3,108 +3,62 @@
 
 ## October 16 UI parity review — in progress
 
-The owner resumed full UI parity work on local `main`, using the growing
-`~/Desktop/Aside UI Reference 2026-10-16` corpus. The folder now has grouped
-captures, source limitations and a manifest; scan recursively because captures
-can be added or reorganized during the pass. The active
-[capture ledger](design/aside-parity-2026-10-16.md) preserves the full scope and
-tracks incomplete comparisons, alongside the earlier surface ledger.
-
-The first slice exposes model selection and thinking directly in the composer
-instead of nesting them under model/run options. Catalog filtering, retries and
-provider/window authority checks remain. Execution, agent, package, project and
-private-task options remain available in Run options. General Settings now has
-Preferences, Languages, Import and About Aux groups before the additional Aux
-browsing, task-attention and recovery controls. Languages and import open their
-existing editors in compact dialogs; leaving the route retires the dialog and
-Escape returns focus to its trigger. Five focused dialog/General cases pass. Native baseline Home Search/Ask
-and General Settings were inspected with a disposable Profile.
-
-A concrete Conversation hook-order defect was found while following up the
-preview's React #310 error: All Chats returned before `supportingCurrent`'s
-`useCallback`. The hook now runs before that return; a regression covers
-history → draft → history and draft preservation. Typecheck and lint pass. The integrated suite passed 4,515 of 4,516 tests
-across 727 files; the sole failure is the previously recorded coder-worktrees
-60-second timeout. The new history transition regression passes. The combined native observations below cover the changed flows. Full parity is
+Work continues on local `main` against the growing
+`~/Desktop/Aside UI Reference 2026-10-16` corpus. Recursive rescan: 192 manifest
+entries and 182 original image files; no new capture since the last batch.
+[The capture ledger](design/aside-parity-2026-10-16.md) tracks the complete scope,
+source limitations, exact evidence and incomplete comparisons. Full parity is
 not established.
 
-The owner then flagged hard rectangular focus outlines in model search. A shared
-normal-contrast dialog rule was overriding the input's own styling. Search
-surfaces now own one thin rounded focus treatment; inner text inputs do not draw
-a second box. This applies to model search, Settings, chat history/sidebar,
-downloads, routines, memory, Space search and overview/results. Forced-color
-focus indicators remain explicit. The focused dialog and complete UI checks
-retain the same known coder-worktrees timeout.
+Current source exposes composer model/thinking choices directly, retains execution/
+agent/package/privacy controls in Run options, and groups General Settings into
+Preferences, Languages, Import and About Aux. Languages/import open the real
+editors in compact dialogs. Shared searches have one rounded focus surface.
+All Chats uses the real composer, defaults to dense List rows, and provides
+Card, expandable search, filters, checked sort choices and existing chat actions.
+History routing no longer mounts a hidden transcript owner. Oldest-first reads
+all matching summaries before reversing, then reveals 40 rows at a time; newest-
+first retains server paging. The filter editor still differs from Status/Projects.
 
-The native walkthrough also found that full chat/All Chats hid the entire browser
-toolbar. That CSS rule was removed so navigation and sidebar controls remain
-available. The first candidate built successfully in 25 steps / 10m05.65s and
-showed the direct model picker, filtering and All Chats without the previous
-hook error. It predates the compact dialogs, shared focus correction and toolbar
-fix; their combined native observations are recorded below. Local source
-commits are ahead of GitHub; no push or release actions were run.
+The latest source slice puts All Chats controls inside its rounded composer card
+and keeps internal toolbar controls visible. The live renderer was inspected
+inside the disposable native browser: one card contains input/options, and the
+internal controls remain visible. This was mock data and the current Vite source,
+not a rebuilt native renderer. Screenshot:
+`/tmp/aux-parity-2026-10-16/aux-history-contained-live-renderer.png`.
 
+Report completions now supply chat excerpts and match conversation search across
+earlier turns, Space filters and archive state. Initial activity now says
+“Preparing this request” rather than asserting an unrecorded page read. Runtime
+dist was rebuilt before tests. Typecheck/lint pass; the integrated suite passed
+**4,524/4,525 tests across 728 files**. The only failure is the longstanding
+coder-worktrees 60-second timeout. These latest presentation/search changes await
+the next combined native build.
 
-The final combined source candidate (`c612736f5`, including the focus correction,
-compact dialogs and restored toolbar) built in **25 steps / 8m55.10s**, with
-**207 renderer assets**, **273 methods / 30 events** (`cce8203bcbd0`) and Node
-26.9. That disposable native app later retired with its launcher and plain lock
-cleanup before the next build. The launcher owns Profile/lock
-cleanup. Build log: `/tmp/aux-parity-combined-build.log`.
+Last compiled renderer: **68affeb44**, built in **25 steps / 8m39.01s**, with
+206 renderer assets and **273 methods / 30 events** (`cce8203bcbd0`). Native
+List/Card, sort selection/return focus, archive filtering, menu dismissal and
+draft retention were observed. The preceding focus/dialog/toolbar candidate
+c612736f5 also built and was inspected; both previews retired normally before
+subsequent launchers. Evidence and limitations are in the ledger and QA report.
 
-Post-build observations: the empty focused model-search field has the rounded
-outer treatment and no hard inner rectangle. General groups and language/import
-dialogs were captured; both dialogs open and dismiss with Escape returning to
-their triggers. Source scanning/import was not started. All Chats retains its
-browser toolbar, can reveal the sidebar, and returns to a new chat. A synthetic
-draft survived new chat → All Chats → new chat; it was cleared afterwards without
-sending. No React #310 appeared in this walkthrough. Matching viewport/theme,
-provider submenus, Project controls, remaining surfaces and broader native states
-remain open. This does not establish full parity.
+Current staged runtime: **bbcce77c3**, reused the compiled ABI and renderer in a
+new disposable Profile under its launcher/plain lock. A native synthetic send
+from All Chats completed with the exact requested reply and zero page IDs
+(one gateway model call). This verifies the fix that excludes internal and
+credential-bearing URLs from implicit window context while keeping explicit and
+restored source checks strict. Reply evidence:
+`/tmp/aux-parity-2026-10-16/aux-page-free-reply-bbcce77.png`. Quit this owned preview
+normally before another builder; the launcher owns Profile/lock cleanup.
 
-Accepted screenshots and the original-size focus before/after comparison are in
-`/tmp/aux-parity-2026-10-16/`; the current QA report names each file and its limits.
-
-The next source slice brings the normal composer to All Chats, makes List the
-default, and uses dense title/excerpt/time rows with List/Card controls on the
-left and expandable search/filter/sort controls on the right. Existing chat
-mutations, drafts and private-session scope remain. History now chooses its
-surface before mounting a transcript owner. Oldest-first reads all matching
-summaries before reversing, then reveals 40 rows at a time; newest-first retains
-server paging. Tests cover ordering beyond one page and failed-start draft
-preservation through the ordinary composer. The filter editor still differs from
-the reference Status/Projects submenu. Typecheck and lint pass; the integrated suite passed 4,517/4,518 tests, with
-only the existing coder-worktrees 60-second timeout. Native acceptance is pending
-the next build. The previous c612736f5 disposable preview and its launcher retired
-with exit 0 and released their Profile/lock normally.
-
-All Chats source `68affeb44` subsequently built in **25 steps / 8m39.01s**,
-with 206 renderer assets and unchanged 273-method / 30-event ABI. Native
-observations cover List/Card switching, search expansion, sort selection/return
-focus, archive filtering and draft retention. The options footer is still outside
-the rounded composer card, and internal toolbar controls fade out; both remain
-visual gaps. The capture ledger names the evidence and viewport limitations.
-
-A synthetic send exposed a functional blocker before any model call: implicit
-window context tried to prepare the internal New Tab page for native reading.
-The disposable runtime SDK confirmed empty explicit page scope. Implicit context
-now excludes non-website/credential-bearing addresses; explicit and restored
-source failures stay strict. Runtime dist was rebuilt before tests. Typecheck,
-lint and 4,522/4,523 tests pass; the sole failure remains coder-worktrees' known
-60-second timeout. The source 68affeb44 preview retired with launcher exit 0 and normal cleanup.
-Runtime-only staging of `bbcce77c3` checked the compiled ABI and launched another
-disposable Profile. A real synthetic send from All Chats completed with the exact
-requested answer and empty page scope (one gateway model call). The reply was
-observed in the native transcript. Evidence: `aux-page-free-reply-bbcce77.png` in
-`/tmp/aux-parity-2026-10-16/`. The app remains under its launcher/plain lock.
-
-Further native findings: list excerpts currently show “Done” for a completed
-`result.report` instead of its answer, and the initial timeline falsely says it
-is reading a page for a page-free task. Source locations are `ChatCard.previewText`,
-Repo conversation search (which also searches only `result.answer`), and
-`StepTimeline`'s initial empty-step placeholder. These join the composer-card,
-internal-toolbar visibility and filter submenu gaps in the next slice. No real
-Profile, push, hosted Actions or release was involved.
+Next gaps include raw Markdown syntax in single-line excerpts, the Status/Projects
+filter composition, direct Project choice, provider submenus, expandable Home
+suggestions, remaining captured surfaces and uncaptured native/error/approval
+states. The live renderer walkthrough also left an outer floating sidebar visible
+when focus moved into the native web content; investigate that transition rather
+than treating this nested preview as sidebar acceptance. No phase, performance,
+full accessibility or full parity completion is claimed. No real Profile, push,
+hosted Actions, signing or release was involved.
 
 The October 12 wrap-up and older notes below are historical.
 

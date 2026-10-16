@@ -10,7 +10,10 @@ import { ResultExcerpt } from "../components/ResultCard";
 export function previewText(item: ConversationSummary, draft?: string) {
   if (draft?.trim()) return draft.trim();
   const run = item.latestRun;
-  if (typeof run.result?.answer === "string" && run.result.answer.trim()) return run.result.answer;
+  const answer = [run.result?.answer, run.result?.report].find(
+    (value): value is string => typeof value === "string" && !!value.trim(),
+  );
+  if (answer) return answer;
   if (run.status === "failed") return "This chat couldn’t finish. Open it to review or retry.";
   if (run.status === "cancelled") return "This chat was cancelled.";
   if (run.status === "interrupted") return "This chat was interrupted. Open it to continue.";
@@ -34,9 +37,7 @@ export const ChatCard = memo(function ChatCard({
         <span className="home-card-hero-icon">
           <MessageCircle width={56} height={56} />
         </span>
-        <span className="home-card-status">
-          {hasDraft ? "Draft" : STATUS_LABEL[item.latestRun.status]}
-        </span>
+        <span className="home-card-status">{hasDraft ? "Draft" : STATUS_LABEL[item.latestRun.status]}</span>
       </button>
       <h3>
         <button className="home-card-open" onClick={open}>

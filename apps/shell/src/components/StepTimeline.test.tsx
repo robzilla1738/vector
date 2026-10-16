@@ -113,11 +113,13 @@ describe("StepTimeline", () => {
     expect(current[0]!.querySelector(".live-dot")).not.toBeNull();
   });
 
-  it("shows an observing placeholder when a live run has no steps yet, and nothing when idle", () => {
+  it("keeps the initial page-free status truthful before any recorded step and stays empty when idle", () => {
     const live = render(
       <StepTimeline run={run} windowId="main" privateMode={false} windowKind="normal" live steps={[]} />,
     );
-    expect(live.textContent).toContain("Observing");
+    expect(live.textContent).toContain("Preparing this request");
+    expect(live.textContent).not.toContain("Reading the page");
+    expect(live.textContent).not.toContain("Observing");
     act(() => root!.unmount());
     host?.remove();
     const idle = render(

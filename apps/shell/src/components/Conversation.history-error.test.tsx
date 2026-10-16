@@ -156,6 +156,9 @@ it("sends from All Chats through the ordinary composer and preserves a failed st
   await act(async () => root.render(<Conversation />));
   const input = host.querySelector<HTMLTextAreaElement>("textarea")!;
   expect(input.value).toBe("Synthetic history question");
+  expect(
+    input.closest(".composer-frame")?.contains(host.querySelector('[aria-label="Confirmation mode"]')),
+  ).toBe(true);
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Card view"]')!.click());
   expect(host.querySelector("textarea")).toBe(input);
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.click());

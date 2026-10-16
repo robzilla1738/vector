@@ -38,7 +38,7 @@ Findings and implementation status:
    native dialogs were observed opening/closing with return focus. Summary text
    and exact reference card/dialog composition remain open.
 4. **P0 — History transition stability.** A hook ran after the All Chats early
-   return. It now runs before it; history → draft → history passes with draft
+   return. History routing now selects the surface before mounting a transcript; history → draft → history passes with draft
    preservation. All Chats opened in the first native candidate without #310.
 5. **P1 — Browser navigation hidden in chat.** The first native All Chats view
    hid the browser toolbar. The hiding rule was removed. The combined candidate preserved the toolbar and sidebar navigation in the
@@ -47,7 +47,10 @@ Findings and implementation status:
 6. **P1 — All Chats anatomy.** Source 68affeb44 built in 25 steps / 8m39.01s.
    Native List/Card, expandable search, sort choice/return focus, archive filtering
    and draft retention were observed. The composer footer remains outside the
-   card and internal browser controls still fade; both differ from the reference.
+   card and internal browser controls still fade in that candidate. The latest
+   source places controls inside one card and keeps internal toolbar controls
+   visible; the live mock renderer was inspected. A compiled native comparison
+   is pending.
    Captures are named in the October 16 ledger. This slice is not a parity pass.
 7. **P0 — New Tab blocks a page-free AI request.** The synthetic native send
    failed before a model call. Empty explicit page scope was confirmed through
@@ -59,7 +62,12 @@ Findings and implementation status:
    `result.report`; the list shows “Done” because its preview only reads
    `result.answer`. Conversation search has the same report omission. The
    initial empty-step timeline also claims a page read for a page-free task.
-   These remain open; native evidence is named in the October 16 ledger.
+   The latest source now includes report excerpts/search and truthful initial
+   activity text; meaningful regressions pass. Native staging is pending.
+9. **P1 — Raw Markdown list excerpts.** The live populated renderer shows heading
+   and table markers in single-line previews. Use a plain-text projection there,
+   retaining rich Markdown in cards. The outer native floating sidebar also
+   stayed visible on focus transfer into its web content; investigate separately.
 
 Required fidelity surfaces remain open:
 
@@ -68,7 +76,7 @@ Required fidelity surfaces remain open:
 - **Spacing/layout:** compare matching sidebar, viewport, theme and interaction
   states; direct controls and compact dialogs alone do not establish parity.
 - **Colors/tokens:** use a controlled backdrop for native glass; existing owner
-  appearance decisions remain authoritative. Post-fix focus treatment is pending.
+  appearance decisions remain authoritative. The scoped focus correction passed.
 - **Assets:** preserve Aux marks and supplied Central Icons. Do not reproduce
   personal reference content or infer product UI from capture overlays.
 - **Copy/content:** Aux capabilities and confirmation/privacy semantics remain;

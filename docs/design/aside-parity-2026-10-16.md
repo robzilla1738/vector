@@ -408,3 +408,33 @@ search likewise omits report text. `StepTimeline` also labels an initial
 empty-step task as “Reading the page” even when no page is attached. Fix these
 alongside the remaining composer/card and internal-toolbar presentation gaps.
 The current renderer is still source 68affeb44; the runtime is bbcce77c3.
+
+
+## Presentation follow-up — current source, native rebuild pending
+
+All Chats now passes its actual control row into the same rounded ComposerFrame
+surface. Home and ordinary reply composers keep the below-card layout shown in
+005/155. Internal surfaces keep their toolbar controls visible without hover;
+loaded website toolbar behavior is unchanged. The history List/Card control now
+uses the reference's compact rounded-rectangle shape. The live Vite renderer was
+opened in the owned disposable native browser, and the unified card was inspected
+with the mock sidebar hidden to use the available main-column width. Evidence:
+`aux-history-contained-live-renderer.png` in the existing `/tmp` evidence folder.
+This proves the observed renderer anatomy only: the nested preview uses mock data
+and an older native outer frame, with unmatched viewport/state. It is not native
+acceptance of a compiled renderer or a full-window parity comparison.
+
+The renderer now reads both `result.answer` and `result.report` for previews,
+keeping unsent drafts first. Repo conversation search also matches report text
+in earlier turns while retaining current title, Space and archive semantics.
+The initial empty-step timeline says “Preparing this request”, with no invented
+page-read claim. New report preview/search cases and the composer containment
+regression pass. Runtime dist was rebuilt first. Typecheck/lint pass and
+4,524/4,525 cases across 728 files passed; the sole failure remains the existing
+coder-worktrees timeout. The latest source is not yet staged into the native app.
+
+The mock populated list reveals raw Markdown headings/table syntax in single-line
+excerpts; implement a proper plain-text projection while retaining rich Card
+previews. The outer native floating sidebar also stayed visible when focus moved
+into its web content; that transition needs investigation. Neither is accepted
+as parity. Reference rescan remains 182 original images / 192 manifest entries.

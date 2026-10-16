@@ -157,3 +157,35 @@ it("recovers attachment-only drafts and removes them from the draft index after 
     db.close();
   }
 });
+
+it("finds report answers in earlier turns while preserving current titles, archive and Space filters", () => {
+  const db = openDb(":memory:");
+  try {
+    const repo = new Repo(db);
+    for (const [runId, createdAt, result] of [
+      ["earlier-report", 1, { report: "Distinctive report answer" }],
+      ["latest-answer", 2, { answer: "A different answer" }],
+    ] as const)
+      repo.saveRun({
+        runId,
+        createdAt,
+        goal: "Ordinary question",
+        status: "completed",
+        pageIds: [],
+        config: { chatId: "report-chat" },
+        result,
+      });
+    repo.setSetting("conversationWorkspace:report-chat", "workspace");
+    repo.renameConversation("report-chat", "Renamed conversation");
+    const found = repo.listConversations(40, { query: "distinctive REPORT", workspaceId: "workspace" });
+    expect(found.map((item) => [item.title, item.latestRun.runId])).toEqual([
+      ["Renamed conversation", "latest-answer"],
+    ]);
+    expect(repo.listConversations(40, { query: "Distinctive report", workspaceId: "other" })).toEqual([]);
+    repo.archiveConversation("report-chat", true);
+    expect(repo.listConversations(40, { query: "Distinctive report" })).toEqual([]);
+    expect(repo.listConversations(40, { query: "Distinctive report", archived: true })).toHaveLength(1);
+  } finally {
+    db.close();
+  }
+});

@@ -406,6 +406,7 @@ type ConversationProps = {
   chatId?: string | null;
   embedded?: boolean;
   home?: boolean;
+  composerControlsInside?: boolean;
   entryControls?: ReactNode;
   initialActivation?: FirstFrameActivation;
   onChatCreated?: (chatId: string, temporary: boolean) => void;
@@ -417,7 +418,10 @@ type ConversationProps = {
 export function Conversation(props: ConversationProps = {}) {
   const fullPageId = useStore((state) => state.conversationId);
   const id = props.chatId === undefined ? fullPageId : props.chatId;
-  if (id === "history") return <ChatHistory composer={<ConversationContent chatId={null} embedded home />} />;
+  if (id === "history")
+    return (
+      <ChatHistory composer={<ConversationContent chatId={null} embedded home composerControlsInside />} />
+    );
   return <ConversationContent {...props} chatId={id} />;
 }
 
@@ -425,6 +429,7 @@ function ConversationContent({
   chatId: id = null,
   embedded = false,
   home = false,
+  composerControlsInside = false,
   entryControls,
   initialActivation,
   onChatCreated,
@@ -2756,6 +2761,7 @@ function ConversationContent({
                 </section>
               )}
               <ComposerFrame
+                controlsInside={composerControlsInside}
                 notices={
                   <>
                     {last && <RunControls runId={last.runId} />}

@@ -432,8 +432,8 @@ export const StepTimeline = memo(function StepTimeline({
               <span className="live-dot" />
             </span>
             <span className="tl-body">
-              <span className="tl-op">Observing</span>
-              <span className="tl-detail">Reading the page before the first step</span>
+              <span className="tl-op">Working</span>
+              <span className="tl-detail">Preparing this request</span>
             </span>
           </li>
         )}
