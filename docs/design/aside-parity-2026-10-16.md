@@ -10,7 +10,8 @@ support the behavior, using Aux identity. This ledger supplements
 Reference folder: `/Users/rcourson/Desktop/Aside UI Reference 2026-10-16`.
 The owner is adding captures while work continues. Rescan **recursively** at each
 batch and before completion. Use `manifest.json`, README and reconstruction notes
-when available; also discover numbered PNG/text files not yet in the manifest.
+when available; also discover image/text files not yet in the manifest, including unnumbered
+new captures. Exclude generated thumbnails from the surface count.
 Paths and labels can change as the owner organizes the folder. Identify captures
 by number and compare the actual latest image before relying on previous notes.
 Do not copy the reference's personal chat contents, avatars, account information
@@ -39,7 +40,7 @@ density, viewport and interaction state before judging exact geometry.
   and an ordinary conversation. Added a history → draft → history regression.
 - Typecheck and lint pass; the integrated suite passed 4,515/4,516 tests. The
   sole failure was the unchanged coder-worktrees 60-second timeout. The new
-  history transition regression passed. Post-build native observations are pending.
+  history transition regression passed. Combined native observations follow below.
   No full
   surface, phase, performance, accessibility or parity acceptance is claimed.
 
@@ -299,3 +300,30 @@ Accepted local baseline images (viewed this run):
 These are a different viewport and empty-profile state from the reference's
 3424×1978 Home captures. They establish available controls, not exact geometry,
 color, responsive or full-parity acceptance.
+
+
+## Combined native observation — source c612736f5
+
+The final combined build succeeded in 25 steps / 8m55.10s, with 207 renderer
+assets, 273 methods / 30 events (`cce8203bcbd0`) and Node 26.9. The disposable
+preview remains running under its launcher's normal cleanup ownership.
+
+- Focus correction: inspected `/tmp/aux-parity-2026-10-16/aux-model-search-final.png`
+  and the combined `model-focus-comparison.png`. The owner's original crop and
+  revised crop are both 426×116, unscaled, with an empty focused model search.
+  The former inner rectangle is gone; a thin rounded search surface remains.
+- General: inspected `aux-general-final.png`. Compact language and import
+  entries are present; actual controls remain available in their dialogs.
+- Languages: inspected `aux-languages-final.png`. Current disposable languages
+  loaded; Escape closed the dialog and focused the Preferred languages trigger.
+- Import: inspected `aux-import-final.png`. Entry/information/recovery controls
+  fit in the dialog. Escape focused the Import browser data trigger. No source
+  discovery, owner Profile import or file selection was started.
+- Chats: `aux-history-toolbar-final.png` records the toolbar surviving All Chats.
+  Native sidebar navigation opened a new chat; a synthetic draft survived a
+  subsequent round trip through All Chats and was then cleared without sending.
+  The current native log has no React #310 during these actions.
+
+These observations close the named interaction defects and owner focus correction
+for the observed states. They do not close exact reference parity for the whole
+Home/Settings/chat families, nor the complete ledger's remaining native states.

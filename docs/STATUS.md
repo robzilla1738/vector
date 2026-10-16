@@ -25,8 +25,8 @@ preview's React #310 error: All Chats returned before `supportingCurrent`'s
 `useCallback`. The hook now runs before that return; a regression covers
 history → draft → history and draft preservation. Typecheck and lint pass. The integrated suite passed 4,515 of 4,516 tests
 across 727 files; the sole failure is the previously recorded coder-worktrees
-60-second timeout. The new history transition regression passes. Post-change
-native acceptance is still running. Full parity is not established.
+60-second timeout. The new history transition regression passes. The combined native observations below cover the changed flows. Full parity is
+not established.
 
 The owner then flagged hard rectangular focus outlines in model search. A shared
 normal-contrast dialog rule was overriding the input's own styling. Search
@@ -41,8 +41,29 @@ toolbar. That CSS rule was removed so navigation and sidebar controls remain
 available. The first candidate built successfully in 25 steps / 10m05.65s and
 showed the direct model picker, filtering and All Chats without the previous
 hook error. It predates the compact dialogs, shared focus correction and toolbar
-fix; the next combined build must receive their native acceptance. Local source
+fix; their combined native observations are recorded below. Local source
 commits are ahead of GitHub; no push or release actions were run.
+
+
+The final combined source candidate (`c612736f5`, including the focus correction,
+compact dialogs and restored toolbar) built in **25 steps / 8m55.10s**, with
+**207 renderer assets**, **273 methods / 30 events** (`cce8203bcbd0`) and Node
+26.9. The disposable native app is running under its launcher and plain lock;
+quit it normally before starting another builder. The launcher owns Profile/lock
+cleanup. Build log: `/tmp/aux-parity-combined-build.log`.
+
+Post-build observations: the empty focused model-search field has the rounded
+outer treatment and no hard inner rectangle. General groups and language/import
+dialogs were captured; both dialogs open and dismiss with Escape returning to
+their triggers. Source scanning/import was not started. All Chats retains its
+browser toolbar, can reveal the sidebar, and returns to a new chat. A synthetic
+draft survived new chat → All Chats → new chat; it was cleared afterwards without
+sending. No React #310 appeared in this walkthrough. Matching viewport/theme,
+provider submenus, Project controls, remaining surfaces and broader native states
+remain open. This does not establish full parity.
+
+Accepted screenshots and the original-size focus before/after comparison are in
+`/tmp/aux-parity-2026-10-16/`; the current QA report names each file and its limits.
 
 The October 12 wrap-up and older notes below are historical.
 

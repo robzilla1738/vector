@@ -1,3 +1,93 @@
+# Current UI parity QA — October 16, 2026
+
+final result: blocked
+
+This means full parity acceptance is still pending; implementation is active.
+Historical passes below do not establish acceptance of the current product.
+The current authority is [ROADMAP](docs/ROADMAP.md), [STATUS](docs/STATUS.md) and
+[the complete capture ledger](docs/design/aside-parity-2026-10-16.md).
+
+Source visual truth: `~/Desktop/Aside UI Reference 2026-10-16`, currently 192
+manifest entries (170 captured, 12 supplemental, 10 text-only). The owner is
+adding captures. Several requested states are explicitly missing in the source
+README. Inspect current images recursively before completing any family.
+
+Native baseline: `/tmp/aux-parity-2026-10-16/aux-home-ask-candidate.png` and
+`/tmp/aux-parity-2026-10-16/aux-model-filter-candidate.png`, both 2400×1922.
+The source Home captures are 3424×1978. These have different viewport/empty-data
+states, so no exact full-window comparison or pixel-parity pass is claimed.
+The combined source c612736f5 built successfully in 25 steps / 8m55.10s.
+Native observations below supplement these baseline images.
+
+Findings and implementation status:
+
+1. **P1 — Model and thinking choices were nested.** Direct controls were added
+   and observed in the first native candidate. Catalog opening, filtering and
+   model selection worked. Provider submenu geometry, full option coverage and
+   narrow states still need comparison with 009–013.
+2. **P1 — Hard inner focus rectangle.** The owner supplied a focused crop of
+   model search. The first native filtered-picker screenshot confirms it. Shared
+   dialog overrides drew over the component's input styling. The new source
+   gives wrapped searches one rounded focus surface; the inner input no longer
+   draws its own outline or shadow. This is shared across the identified search
+   surfaces and preserves native clear controls and forced-color indicators.
+   The combined-source native capture now verifies this correction; see the
+   scoped focus pass below.
+3. **P1 — General page density.** Preferences/Import/About groups were introduced,
+   and languages/import now open existing editors in compact dialogs. Their
+   native dialogs were observed opening/closing with return focus. Summary text
+   and exact reference card/dialog composition remain open.
+4. **P0 — History transition stability.** A hook ran after the All Chats early
+   return. It now runs before it; history → draft → history passes with draft
+   preservation. All Chats opened in the first native candidate without #310.
+5. **P1 — Browser navigation hidden in chat.** The first native All Chats view
+   hid the browser toolbar. The hiding rule was removed. The combined candidate preserved the toolbar and sidebar navigation in the
+   observed All Chats state.
+
+Required fidelity surfaces remain open:
+
+- **Fonts/typography:** current Aux Geist retained; full-size reference/native
+  comparisons of weights, wrapping and density are still required.
+- **Spacing/layout:** compare matching sidebar, viewport, theme and interaction
+  states; direct controls and compact dialogs alone do not establish parity.
+- **Colors/tokens:** use a controlled backdrop for native glass; existing owner
+  appearance decisions remain authoritative. Post-fix focus treatment is pending.
+- **Assets:** preserve Aux marks and supplied Central Icons. Do not reproduce
+  personal reference content or infer product UI from capture overlays.
+- **Copy/content:** Aux capabilities and confirmation/privacy semantics remain;
+  do not add fake Aside account, subscription or unsupported model controls.
+
+Full-product QA cannot pass while the capture ledger and older surface/state
+acceptance remain incomplete. This turn does not close a phase or performance gate.
+
+
+## Scoped focus correction — native result: passed
+
+Source: the owner's supplied model-search crop. Implementation:
+`/tmp/aux-parity-2026-10-16/aux-model-search-final.png` (2400×1922).
+Focused comparison: `/tmp/aux-parity-2026-10-16/model-focus-comparison.png`.
+Both control crops are 426×116, translated/cropped only, with no resampling.
+State: empty model search, focused after opening the direct composer picker.
+The comparison was opened and inspected as a single before/after image.
+
+- Typography/content: the existing Aux search font, text, icon and input remain.
+- Spacing/layout: focus now follows the rounded whole search row; the square
+  inner text-only rectangle no longer appears. Search/clear behavior remains.
+- Color: a thin neutral focus line replaces the heavy inner outline; forced-color
+  styling is retained in source. OS high-contrast behavior was not changed/tested.
+- Assets: original Aux/Central Icons remain; no replacement raster or fake control.
+- Evidence limits: this accepts the owner-requested focus correction in this
+  native state. Other marked search surfaces use the shared rule but still need
+  their individual full parity comparisons. Full-product result remains blocked.
+
+Additional accepted native captures: `aux-general-final.png`,
+`aux-languages-final.png`, `aux-import-final.png`, and
+`aux-history-toolbar-final.png` in the same evidence folder. Dialog entry,
+Escape/return focus, chat toolbar/sidebar availability and native draft round-trip
+were observed. Exact source viewport/card composition remains unaccepted.
+
+---
+
 # Shell design QA history — 2026-09-23
 
 This is a chronological local QA record, including rejected intermediate designs.
