@@ -91,9 +91,20 @@ The disposable runtime SDK confirmed empty explicit page scope. Implicit context
 now excludes non-website/credential-bearing addresses; explicit and restored
 source failures stay strict. Runtime dist was rebuilt before tests. Typecheck,
 lint and 4,522/4,523 tests pass; the sole failure remains coder-worktrees' known
-60-second timeout. Native verification of this runtime correction is pending.
-The source 68affeb44 disposable preview will retire normally before runtime-only
-staging; no real Profile, push, hosted Actions or release is involved.
+60-second timeout. The source 68affeb44 preview retired with launcher exit 0 and normal cleanup.
+Runtime-only staging of `bbcce77c3` checked the compiled ABI and launched another
+disposable Profile. A real synthetic send from All Chats completed with the exact
+requested answer and empty page scope (one gateway model call). The reply was
+observed in the native transcript. Evidence: `aux-page-free-reply-bbcce77.png` in
+`/tmp/aux-parity-2026-10-16/`. The app remains under its launcher/plain lock.
+
+Further native findings: list excerpts currently show “Done” for a completed
+`result.report` instead of its answer, and the initial timeline falsely says it
+is reading a page for a page-free task. Source locations are `ChatCard.previewText`,
+Repo conversation search (which also searches only `result.answer`), and
+`StepTimeline`'s initial empty-step placeholder. These join the composer-card,
+internal-toolbar visibility and filter submenu gaps in the next slice. No real
+Profile, push, hosted Actions or release was involved.
 
 The October 12 wrap-up and older notes below are historical.
 

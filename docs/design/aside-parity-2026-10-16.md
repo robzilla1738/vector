@@ -389,3 +389,22 @@ The next Home batch can use the original unbranded card background assets found
 in R5: `1-C1ScKAAP.webp`, `2-CvTUY-kA.webp`, `3-BeB6e1fn.webp`. Capture 005 shows
 expandable Suggested tasks beneath Recent work, including existing-user states.
 The current first-chat-only text buttons do not match that surface.
+
+
+### Runtime-only follow-up — source bbcce77c3
+
+The original disposable preview retired normally (launcher exit 0). Runtime-only
+staging checked the compiled 273-method / 30-event ABI, then launched a fresh
+temporary Profile. The same ordinary All Chats send path completed with the
+exact synthetic reply and no page scope. Native transcript evidence:
+`aux-page-free-reply-bbcce77.png`. The runtime SDK confirmed completed status,
+zero page IDs and one gateway model call. Typecheck/lint pass, with 4,522/4,523
+unit cases passing; only the existing coder-worktrees timeout remains.
+
+The completed-row capture `aux-history-completed-excerpt-bbcce77.png` exposes
+another actual gap: `previewText` reads only `result.answer`, whereas this real
+completion uses `result.report`, so the list shows “Done”. Repo conversation
+search likewise omits report text. `StepTimeline` also labels an initial
+empty-step task as “Reading the page” even when no page is attached. Fix these
+alongside the remaining composer/card and internal-toolbar presentation gaps.
+The current renderer is still source 68affeb44; the runtime is bbcce77c3.

@@ -52,8 +52,14 @@ Findings and implementation status:
 7. **P0 — New Tab blocks a page-free AI request.** The synthetic native send
    failed before a model call. Empty explicit page scope was confirmed through
    the disposable runtime SDK; implicit context still prepared the internal tab.
-   A runtime correction and five URL regressions are in progress. A successful
-   native AI reply remains unverified.
+   The correction and five URL regressions pass. Runtime-only source bbcce77c3
+   checked its compiled host ABI; a fresh native All Chats send completed with
+   the requested reply and zero page IDs. Scoped runtime correction: passed.
+8. **P1 — Answer excerpts and live status.** A completed native answer uses
+   `result.report`; the list shows “Done” because its preview only reads
+   `result.answer`. Conversation search has the same report omission. The
+   initial empty-step timeline also claims a page read for a page-free task.
+   These remain open; native evidence is named in the October 16 ledger.
 
 Required fidelity surfaces remain open:
 

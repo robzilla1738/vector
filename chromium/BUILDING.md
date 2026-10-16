@@ -5,7 +5,9 @@ The October 16 All Chats candidate built source `68affeb44` in **25 steps /
 (`cce8203bcbd0`) and slim Node 26.9. It includes the ordinary composer and compact
 history controls. Native observations and remaining visual gaps are in STATUS.
 The subsequent runtime-only correction skips internal pages in implicit context;
-its native retest is pending. It requires no host ABI or renderer rebuild.
+runtime-only source `bbcce77c3` checked the compiled ABI and passed a real
+native page-free reply from All Chats. It reuses renderer source `68affeb44`.
+The current temporary preview is running under that runtime-only launcher.
 The launcher owns the disposable Profile and plain lock; retire it normally
 before another builder. Logs: `/tmp/aux-chat-parity-native.log` and
 `/tmp/aux-internal-context-check.log`. Older build notes below are historical.
