@@ -206,7 +206,7 @@ export function ResultsTable() {
         <span {...auxClassSpacerProps} />
         {resultCount > 0 && (
           <>
-            <div className="rail-search compact">
+            <div className="rail-search compact" data-input-surface>
               {shellIconSearch}
               <input
                 placeholder="Filter rows"

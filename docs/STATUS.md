@@ -27,6 +27,23 @@ history → draft → history and draft preservation. Typecheck and lint pass. T
 across 727 files; the sole failure is the previously recorded coder-worktrees
 60-second timeout. The new history transition regression passes. Post-change
 native acceptance is still running. Full parity is not established.
+
+The owner then flagged hard rectangular focus outlines in model search. A shared
+normal-contrast dialog rule was overriding the input's own styling. Search
+surfaces now own one thin rounded focus treatment; inner text inputs do not draw
+a second box. This applies to model search, Settings, chat history/sidebar,
+downloads, routines, memory, Space search and overview/results. Forced-color
+focus indicators remain explicit. The focused dialog and complete UI checks
+retain the same known coder-worktrees timeout.
+
+The native walkthrough also found that full chat/All Chats hid the entire browser
+toolbar. That CSS rule was removed so navigation and sidebar controls remain
+available. The first candidate built successfully in 25 steps / 10m05.65s and
+showed the direct model picker, filtering and All Chats without the previous
+hook error. It predates the compact dialogs, shared focus correction and toolbar
+fix; the next combined build must receive their native acceptance. Local source
+commits are ahead of GitHub; no push or release actions were run.
+
 The October 12 wrap-up and older notes below are historical.
 
 ## Aside parity checkpoint — owner wrap-up

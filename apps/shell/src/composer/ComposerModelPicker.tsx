@@ -109,7 +109,7 @@ export function ComposerModelPicker({
           placement="above-end"
           onClose={close}
         >
-          <div className="composer-model-search">
+          <div className="composer-model-search" data-input-surface>
             {shellIconSearch}
             <input
               ref={search}

@@ -159,11 +159,6 @@
     color: var(--ink-2);
     margin: 0 0 var(--space-1);
   }
-  .rail-search:focus-within {
-    box-shadow:
-      0 0 0 1px var(--accent-line),
-      0 0 0 3px var(--ring);
-  }
   .rail-search input {
     flex: 1;
     min-width: 0;

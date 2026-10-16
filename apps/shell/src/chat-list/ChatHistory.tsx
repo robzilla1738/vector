@@ -106,7 +106,7 @@ export function ChatHistory() {
         onKeyDown={(event) => moveListFocus(event, ".history-conversation")}
       >
         <div className="history-toolbar">
-          <label className="history-search">
+          <label className="history-search" data-input-surface>
             {shellIconSearch}
             <input
               ref={search}

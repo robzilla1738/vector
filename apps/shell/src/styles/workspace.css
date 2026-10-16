@@ -127,9 +127,6 @@
     margin-inline: auto;
     padding-top: 0;
   }
-  .main-col.conversation-open > .toolbar {
-    display: none;
-  }
   .conversation-turn {
     margin: 0 0 var(--space-8);
     user-select: text;

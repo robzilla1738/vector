@@ -24,10 +24,6 @@
     font: inherit;
     outline: none;
   }
-  .chat-sidebar-search:focus-within {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: -2px;
-  }
   .chat-sidebar .chat-sidebar-search input::placeholder {
     color: var(--sb-ink-2);
   }

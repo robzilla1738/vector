@@ -196,13 +196,34 @@
     }
   }
   @media (forced-colors: none) {
+    /* Search icons, text and clear actions form one control. Focus belongs to
+       that rounded surface instead of drawing a second rectangle around text. */
+    :is([data-input-surface], .ui-search-field, .ui-input-group):has(> :is(input, textarea):focus-visible) {
+      outline: none;
+      box-shadow: 0 0 0 1px var(--focus-line);
+    }
+    .aux-native-dialog
+      :where(
+        input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+        textarea,
+        select
+      ):focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 1px var(--focus-line);
+    }
+    :is([data-input-surface], .ui-search-field, .ui-input-group) > :is(input, textarea):focus-visible,
+    .aux-native-dialog
+      :is([data-input-surface], .ui-search-field, .ui-input-group)
+      > :is(input, textarea):focus-visible {
+      outline: none;
+      box-shadow: none;
+    }
     :is(
       .horizontal-tab-select,
       .horizontal-group-chip,
       .horizontal-profile,
       .sidebar .space-switch,
       .aux-native-dialog button,
-      .aux-native-dialog input,
       .cb-provider-scopes button
     ):focus-visible {
       outline: 2px solid var(--focus-line);

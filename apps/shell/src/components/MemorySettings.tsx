@@ -116,7 +116,7 @@ export function MemorySettings() {
         Keep useful preferences and project context in one place. Write notes yourself or opt in to
         remembering page titles and addresses below. Browsing memory is off by default.
       </p>
-      <label className="memory-space-search">
+      <label className="memory-space-search" data-input-surface>
         Search saved memory
         <input
           {...staticFieldInputProps}

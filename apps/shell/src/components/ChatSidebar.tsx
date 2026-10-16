@@ -34,7 +34,7 @@ export function ChatSidebar({ minimal = false }: { minimal?: boolean }) {
       inert={!open}
     >
       <div className="chat-sidebar-content">
-        <label className="chat-sidebar-search">
+        <label className="chat-sidebar-search" data-input-surface>
           {shellIconSearch}
           <input
             type="search"

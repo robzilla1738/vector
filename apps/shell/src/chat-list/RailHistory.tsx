@@ -97,7 +97,7 @@ export function RailHistory() {
           <span>Recent conversations</span>
           <span {...auxClassNumericCountProps}>{past.length}</span>
         </div>
-        <div className="rail-search">
+        <div className="rail-search" data-input-surface>
           {shellIconSearch}
           <input
             value={q}

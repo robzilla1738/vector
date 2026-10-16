@@ -488,7 +488,7 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
         </button>
       </div>
       <div className="download-tools">
-        <label className="download-search">
+        <label className="download-search" data-input-surface>
           {shellIconSearch}
           <input
             ref={searchRef}

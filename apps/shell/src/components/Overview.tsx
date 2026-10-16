@@ -363,7 +363,7 @@ export function Overview() {
         </button>
       </div>
       <div className="ov-tools">
-        <label className="ov-search">
+        <label className="ov-search" data-input-surface>
           {shellIconSearch}
           <input
             ref={searchInput}

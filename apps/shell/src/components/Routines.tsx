@@ -748,7 +748,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               </div>
             </section>
           )}
-          <label className="routine-search">
+          <label className="routine-search" data-input-surface>
             {shellIconSearch}
             <input
               aria-label="Search Skills"

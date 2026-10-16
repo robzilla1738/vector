@@ -246,3 +246,56 @@ source limitations. The complete source filename and metadata live in the folder
 | 190 | Browser notification permissions            | captured                                                                                                                  | Open                                                            |
 | 191 | Browser embedded content permissions        | captured                                                                                                                  | Open                                                            |
 | 192 | Browser javascript permissions              | captured                                                                                                                  | Open                                                            |
+
+## Concrete next comparisons
+
+These are differences to resolve against the full-size captures, not accepted
+exceptions or a replacement for the complete table above.
+
+- **Home, 001–005:** compare the whole content rhythm at a matching viewport,
+  recent-card density, empty Routines, and the suggested-task reveal control.
+  Aux currently limits starter suggestions to fresh Ask drafts; the reference
+  has a separate reveal control beside existing recent work.
+- **Composer, 006–014:** expose the actual reviewed Project choice near the
+  confirmation control; compare the Add/options menu, provider submenus and
+  direct thinking menu. Aux currently supports Auto/Low/Medium/High; the source
+  also shows Extra High, Max, Ultrabrowse and Fast mode. Do not add inert choices
+  or imply unsupported provider/run semantics.
+- **General, 015–022:** compare the search-engine dropdown, selected-language
+  summary, compact card group spacing, language editor and browser-import source
+  picker. A compact dialog wrapper does not prove its contained editor matches.
+- **Appearance, 023–031:** compare the complete option sets, actual thumbnail
+  assets, tab insertion provenance, Tidy Tabs prompt and shortcut recorder.
+- **Chats, 112–126 and 151–157:** compare list/card/filter/sort/search, full and
+  side chat layouts, work traces, nested tool details and source previews. The
+  history transition fix establishes stability only, not visual parity.
+- Continue through agents, projects/models, skills/MCPs, memory/passwords,
+  routines/channels, developers/capture, browser chrome/libraries and native
+  settings using every remaining table entry. Keep the older ledger's empty,
+  error, unavailable-runtime, focus and narrow-window checks in scope.
+
+
+## Owner focus correction and first native candidate
+
+The owner supplied a focused model-search screenshot showing a thick rectangular
+inner input outline. The normal-contrast `.aux-native-dialog input:focus-visible`
+override was drawing over component styling. Search controls now share one thin,
+rounded focus surface; their inner text inputs omit the second outline. The
+change covers model, Settings, rail/history, downloads, routines, memory, Spaces,
+overview and results searches. Forced-color indicators are preserved.
+
+The first native candidate built in 25 steps / 10m05.65s. Home Ask exposes model,
+thinking and Run options directly. The actual catalog opened, filtering GPT-6.1
+Sol showed its available choices, and selecting a model returned to the composer.
+The thinking menu opened with Auto/Low/Medium/High; selection was not accepted as
+verified after the automation reported a window change. All Chats opened without
+React #310. The browser toolbar disappearing on that screen was observed and its
+hiding rule removed. The first candidate predates this focus/toolbar correction
+and compact dialogs; their combined native acceptance remains open.
+
+Accepted local baseline images (viewed this run):
+`/tmp/aux-parity-2026-10-16/aux-home-ask-candidate.png` and
+`/tmp/aux-parity-2026-10-16/aux-model-filter-candidate.png`, both 2400×1922.
+These are a different viewport and empty-profile state from the reference's
+3424×1978 Home captures. They establish available controls, not exact geometry,
+color, responsive or full-parity acceptance.

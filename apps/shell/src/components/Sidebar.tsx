@@ -475,7 +475,7 @@ export function SpaceMenu({
         </div>
       </div>
       {spaces.length + archivedSpaces.length > 6 && (
-        <label className="space-search">
+        <label className="space-search" data-input-surface>
           {shellIconSearch}
           <input
             ref={spaceSearch}

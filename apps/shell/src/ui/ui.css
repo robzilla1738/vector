@@ -636,6 +636,9 @@
     width: var(--kit-control-height);
     min-width: var(--kit-control-height);
   }
+  [data-input-surface] {
+    border-radius: var(--r-lg);
+  }
   .ui-search-field {
     display: flex;
     align-items: center;
