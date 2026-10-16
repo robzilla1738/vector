@@ -143,3 +143,14 @@ it("refreshes routines for their own changes without refetching on chat changes"
     expect.objectContaining({ workspaceId: "workspace-a" }),
   );
 });
+
+it("opens routine management from the empty Home section", async () => {
+  vi.spyOn(bridge, "invoke").mockResolvedValue([]);
+  await openRoutines();
+  expect(host.textContent).toContain("No routines");
+  const manager = [...host.querySelectorAll<HTMLButtonElement>("button")].find((button) =>
+    button.textContent?.includes("All Routines"),
+  )!;
+  await act(async () => manager.click());
+  expect(useStore.getState().overlay).toBe("tasks");
+});

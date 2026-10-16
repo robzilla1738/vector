@@ -18,19 +18,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 it("keeps the empty home chat secondary without a competing new-chat action", () => {
-  const createTask = vi.fn();
-  act(() => root.render(<RecentWorkEmpty view="chats" onCreateTask={createTask} />));
+  act(() => root.render(<RecentWorkEmpty view="chats" />));
   expect(container.textContent).toBe("Your conversations will appear here.");
   expect(container.querySelector("button")).toBeNull();
-  expect(createTask).not.toHaveBeenCalled();
 });
-it("retains the routine creation action after switching from the empty chat view", () => {
-  const createTask = vi.fn();
-  act(() => root.render(<RecentWorkEmpty view="chats" onCreateTask={createTask} />));
-  act(() => root.render(<RecentWorkEmpty view="routines" onCreateTask={createTask} />));
-  const button = container.querySelector("button")!;
-  expect(button.textContent).toContain("Create a task");
-  act(() => button.click());
-  expect(createTask).toHaveBeenCalledOnce();
-  expect(container.textContent).toContain("Your saved routines will appear here.");
+it("shows the routine explanation after switching from the empty chat view", () => {
+  act(() => root.render(<RecentWorkEmpty view="chats" />));
+  act(() => root.render(<RecentWorkEmpty view="routines" />));
+  expect(container.querySelector("h3")?.textContent).toBe("No routines");
+  expect(container.textContent).toContain("Let Aux handle the tasks you do on repeat.");
 });

@@ -120,4 +120,10 @@
     background: var(--surface-primary);
     color: var(--ink-0);
   }
+  @container start-page (max-width: 520px) {
+    .home-suggestion-card {
+      aspect-ratio: auto;
+      min-height: 264px;
+    }
+  }
 }

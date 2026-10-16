@@ -96,7 +96,7 @@ export function RecentWork() {
             }
           }}
         >
-          {tab === "chats" ? "All Chats" : "Manage routines"}
+          {tab === "chats" ? "All Chats" : "All Routines"}
           {shellIconRight}
         </button>
       </header>
@@ -148,7 +148,7 @@ export function RecentWork() {
           })
         )}
         {!visibleLoading && !visibleError && !count && (
-          <RecentWorkEmpty view={tab} onCreateTask={() => useStore.getState().setOverlay("tasks")} />
+          <RecentWorkEmpty view={tab} />
         )}
       </div>
       {tab === "chats" && <ConversationDrafts limit={3} compact exclude={items.map((item) => item.chatId)} />}

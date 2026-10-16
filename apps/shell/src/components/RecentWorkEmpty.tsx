@@ -1,23 +1,19 @@
-import { shellIconPlusSm } from "../ui/icons";
-import { staticGhostButtonProps as auxClassGhostButtonProps } from "../ui/class-props";
+import { Zap } from "../ui/icons";
 
-/** The home composer is already the empty chat state's primary action. */
-export function RecentWorkEmpty({
-  view,
-  onCreateTask,
-}: {
-  view: "chats" | "routines";
-  onCreateTask(): void;
-}) {
+/** Home owns the chat composer; its section header opens routine management. */
+export function RecentWorkEmpty({ view }: { view: "chats" | "routines" }) {
   return (
     <div className={`home-empty home-empty-${view}`}>
-      <p>
-        {view === "chats" ? "Your conversations will appear here." : "Your saved routines will appear here."}
-      </p>
-      {view === "routines" && (
-        <button {...auxClassGhostButtonProps} onClick={onCreateTask}>
-          {shellIconPlusSm}Create a task
-        </button>
+      {view === "routines" ? (
+        <>
+          <span className="home-empty-icon" aria-hidden>
+            <Zap width={20} height={20} />
+          </span>
+          <h3>No routines</h3>
+          <p>Let Aux handle the tasks you do on repeat.</p>
+        </>
+      ) : (
+        <p>Your conversations will appear here.</p>
       )}
     </div>
   );

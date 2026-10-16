@@ -80,7 +80,7 @@ source limitations. The complete source filename and metadata live in the folder
 | 001 | New tab default                             | captured                                                                                                                  | Reviewed; matching native comparison open                       |
 | 002 | New tab profile menu                        | captured                                                                                                                  | Open                                                            |
 | 003 | New tab ask composer                        | captured                                                                                                                  | Source changed; native comparison open                          |
-| 004 | New tab routines                            | captured                                                                                                                  | Open                                                            |
+| 004 | New tab routines                            | captured                                                                                                                  | Empty panel source/live renderer reviewed; native pending                                                            |
 | 005 | New tab suggested tasks                     | captured                                                                                                                  | Native cards/draft action observed; full comparison open                                                            |
 | 006 | Composer options dropdown                   | captured                                                                                                                  | Open                                                            |
 | 007 | Composer project picker                     | captured                                                                                                                  | Open                                                            |
@@ -515,3 +515,35 @@ it is not matched-viewport or complete product parity. Narrow Home layout,
 remount persistence, customization's native destination and remaining ledger
 surfaces still require observation. Reference rescan: unchanged 182 original
 images / 192 manifest entries, latest capture 192 JavaScript permissions.
+
+
+## Home Routines and narrow cards — source/live renderer
+
+Reference 004 inspected at its supplied 2048×1183 raster. Home's empty Routines
+panel now has a centered 32px icon tile, No routines heading, Aux explanation,
+264px minimum height and dashed rounded edge. Removed the inline Create a task
+button; All Routines retains the existing real Tasks-manager action, confirmed by
+a mounted interaction regression and live navigation. That manager currently
+calls the routine section Skills and does not land directly on it: the manager
+route/naming are still open parity gaps, not accepted equivalents.
+
+A 1514×1534 native window (~757×767 CSS) exposed overly tall single-column
+suggestion cards. Below the 520px Home container width, cards now use content
+height with a 264px minimum, preserving original art and actions. Fresh Vite
+renderer inspection inside the native app showed compact cards and the complete
+routine panel. Removed the stale `.home-empty span { display:none }` rule that
+initially hid the icon. Other empty-task controls remain intact.
+
+Evidence: `aux-routines-empty-live.png` and `aux-home-cards-narrow-live.png` in
+`/tmp/aux-parity-2026-10-16/`; old compiled narrow baseline is
+`aux-home-narrow-before-02316.png`. Latest changes await a combined native build;
+this is current renderer/mock evidence. Typecheck/lint pass, 4,532/4,533 tests
+across 730 files pass (only unchanged coder-worktrees timeout). Final renderer
+production build passed 1.87s; cosmetic CSS correction followed the suite and was
+checked by fresh rendering/build, without repeating unchanged unit tests.
+
+Additional compiled 02316f6b8 checks passed before switching to Vite: Customize
+opened Skills & MCP and explicit expansion survived the Settings round trip.
+Previous goal turn made authoritative progress with source changes, local commits,
+and native evidence; this turn adds empty-state/responsive corrections and
+resolves those two outstanding native observations. Full parity remains open.

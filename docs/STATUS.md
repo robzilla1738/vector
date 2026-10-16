@@ -3,6 +3,21 @@
 
 ## October 16 UI parity review — in progress
 
+Home Routines now matches the reference empty-state anatomy: centered icon,
+“No routines”, Aux explanation and a 264px dashed panel. The section header says
+All Routines and retains its real manager action. Narrow suggested cards size to
+content instead of stretching into large squares. Removed the stale global rule
+that hid Home empty-state icons. Typecheck/lint pass; 4,532/4,533 tests pass across
+730 files, with only the existing coder-worktrees timeout. Final renderer build
+passed in 1.87s. Live mock-renderer screenshots verify the styles; they await the
+next combined native build. The manager still opens Tasks and labels routines as
+Skills; its direct route/naming remain an open parity gap.
+
+Additional native 02316f6b8 observation: Customize reached Skills & MCP, and
+explicitly expanded Home suggestions survived a Settings round trip. Resizing to
+a narrower native window exposed the oversized single-card layout corrected in
+source above; do not treat the old compiled narrow layout as accepted.
+
 **Latest compiled/staged source: `02316f6b8`.** Combined native build succeeded
 in 26 steps / 9m05.51s, staging 214 renderer assets and the rebuilt runtime
 (273 methods / 30 events, `cce8203bcbd0`, Node 26.9). This supersedes the older
@@ -23,8 +38,8 @@ old first-run prompt strip. Live mock-renderer inspection verified cards, focuse
 draft insertion and the actual Settings destination; screenshots are
 `aux-home-suggestions-live.png` and `aux-home-suggestion-draft-live.png` in the
 existing evidence folder. Typecheck/lint pass; 4,531/4,532 tests across 730 files
-passed, with only the existing coder-worktrees timeout. Combined native staging
-is next; this source evidence does not establish native parity.
+passed, with only the existing coder-worktrees timeout. Combined native staging was subsequently verified below; this earlier live
+renderer evidence alone does not establish native parity.
 
 Work continues on local `main` against the growing
 `~/Desktop/Aside UI Reference 2026-10-16` corpus. Recursive rescan: 192 manifest

@@ -345,3 +345,15 @@ and report excerpts/search. One synthetic request completed with report `seven`
 and no page IDs; a report-only search matched it. Evidence filenames and remaining
 native/narrow-layout comparisons are in the active ledger. Full-product QA stays
 open; no phase or full-parity acceptance is claimed.
+
+
+## October 16 — routine empty panel and responsive Home
+
+Reference 004's centered icon/title/explanation and dashed panel are implemented
+with Aux copy. All Routines still opens the real manager, verified in a mounted
+check/live UI; its Tasks/Skills naming and landing point remain an open mismatch.
+A narrower native-window inspection exposed oversized single-column suggested
+cards; current source uses content height and was freshly rendered in that same
+window. Evidence is in the active ledger. Typecheck/lint pass; 4,532/4,533 tests
+pass (existing coder-worktrees timeout); final production renderer build passes.
+Latest styles require combined native staging. Full parity remains open.
