@@ -1,5 +1,15 @@
 # Aux v3: the fast, free, powerful AI browser
 
+**October 16 full UI parity review:** the owner resumed work on local `main`
+against the growing screenshot folder at
+`~/Desktop/Aside UI Reference 2026-10-16`. This supersedes the October 12 pause.
+Review every captured surface and the remaining Aux states, preserve Aux branding
+and actual capabilities, and keep the comparison open until native evidence
+supports parity. [The current capture ledger](design/aside-parity-2026-10-16.md)
+tracks the new reference set and missing comparisons. The owner is adding and
+organizing captures during work; rescan recursively between batches. Keep all
+native work under the single launcher/lock and use disposable Profiles.
+
 **October 12 wrap-up:** the owner requested a stopping point after the parity
 implementation pass. Changes are consolidated locally; further implementation
 and native acceptance are paused at this checkpoint. [STATUS](STATUS.md) records

@@ -2055,6 +2055,9 @@ export function Conversation({
       }}
     />
   );
+  const supportingKey =
+    resultPreview || imagePreview || documentPreview || sourceDetail?.sourceId || "browser";
+  const supportingCurrent = useCallback(() => conversationCurrent(), [conversationCurrent, supportingKey]);
   if (id === "history") return <ChatHistory />;
   const dictation = (
     <Dictation
@@ -2168,8 +2171,6 @@ export function Conversation({
         draftKey={composerPreferenceKey}
         activeRunId={live ? last?.runId : undefined}
         disabled={archived || sending || live || !taskModeKnown}
-        modelId={draftPreferences?.modelId}
-        reasoning={draftPreferences?.reasoning}
       >
         <RunOptions
           workspaceId={
@@ -2454,9 +2455,6 @@ export function Conversation({
     ) : (
       browserPreview
     );
-  const supportingKey =
-    resultPreview || imagePreview || documentPreview || sourceDetail?.sourceId || "browser";
-  const supportingCurrent = useCallback(() => conversationCurrent(), [conversationCurrent, supportingKey]);
   const closeSupporting = () => {
     useStore.setState({ resultPreview: null });
     setImagePreview(null);

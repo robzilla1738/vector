@@ -101,14 +101,16 @@ it("shows the new chat's reviewed project from the active Space and follows Spac
     return original(method, params);
   });
   await act(async () => root.render(<Conversation chatId={null} embedded />));
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Model and run options"]')!.click());
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Run options"]')!.click());
   const project = () => document.querySelector<HTMLSelectElement>('[aria-label="Coding project"]')!;
   expect(project().value).toBe("/tmp/workspace-personal");
   await act(async () => {
     useStore.setState((state) => ({ layout: { ...state.layout, activeSpaceId: "research" } }));
   });
   expect(project().value).toBe("/tmp/workspace-research");
-  expect(bridge.invoke).toHaveBeenCalledWith("workspaces.folders.list", { workspaceId: "workspace-research" });
+  expect(bridge.invoke).toHaveBeenCalledWith("workspaces.folders.list", {
+    workspaceId: "workspace-research",
+  });
 });
 it("dispatches the original native disclosure once and supports its focused remapped action", async () => {
   await act(async () => root.render(<Details id="a" />));

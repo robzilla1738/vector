@@ -54,36 +54,13 @@ export function GeneralSettings({
   return (
     <>
       <section data-settings-section="General" hidden={!active || searching || !!subview}>
-        <SettingsGroup title="Browsing">
-          {tabLifecycleEnabled && !bridge.privateMode && (
-            <IndexedField
-              compact
-              label="Memory saver"
-              hint="Sleep clean background tabs after they have been idle. Playing audio, unsaved work, captured media and agent work stay awake. Sleeping tabs reload when opened."
-            >
-              <MemorySaverSetting active={active && !searching && !subview} />
-            </IndexedField>
-          )}
-          <IndexedField label="Default browser">
-            <DefaultBrowserSetting />
-          </IndexedField>
-          <IndexedField
-            label="Set up Aux"
-            hint="Replay optional import, model and appearance setup. Saved work is kept."
-          >
-            {active && connected && <SetupProgress />}
-            <button {...smallButtonProps} onClick={requestOnboardingReplay}>
-              Replay setup
-            </button>
-          </IndexedField>
-
+        <SettingsGroup title="Preferences">
           <IndexedField label="Search engine">
             <SearchEngineSetting
               value={(settings.searchEngine as string) ?? DEFAULT_SEARCH_ENGINE}
               onSave={(searchEngine) => onSave({ searchEngine })}
             />
           </IndexedField>
-
           <IndexedField
             compact
             label="New tab mode"
@@ -98,7 +75,64 @@ export function GeneralSettings({
               <option value="ask">Ask</option>
             </select>
           </IndexedField>
-
+          <IndexedField
+            compact
+            label="Automatic picture in picture"
+            hint="Control whether sites may open floating video automatically. Manual picture in picture remains available."
+          >
+            <PictureInPictureSetting active={active && !searching && !subview} />
+          </IndexedField>
+          <IndexedField
+            compact
+            label="Spell check"
+            hint="Check spelling as you type in websites and the browser."
+          >
+            <SpellCheckSetting active={active && !searching && !subview} />
+          </IndexedField>
+        </SettingsGroup>
+        <SettingsGroup title="Languages">
+          <IndexedField
+            label="Languages"
+            hint="Choose the languages websites receive in order of preference. The app language follows macOS."
+          >
+            <LanguagesSetting active={active && !searching && !subview} />
+          </IndexedField>
+        </SettingsGroup>
+        <SettingsGroup title="Import">
+          <IndexedField
+            label="Import browser data"
+            hint="Preview what each installed browser can share — bookmarks and folders, history, and tabs — then import what you choose. Source profiles are only ever read, never changed."
+          >
+            <ImportDataSetting />
+          </IndexedField>
+        </SettingsGroup>
+        <SettingsGroup title="About Aux">
+          <IndexedField label="About Aux" hint="Installed browser version and source revision.">
+            <AboutAuxSetting active={active && !searching && !subview} />
+          </IndexedField>
+          <IndexedField label="Default browser">
+            <DefaultBrowserSetting />
+          </IndexedField>
+          <IndexedField
+            label="Set up Aux"
+            hint="Replay optional import, model and appearance setup. Saved work is kept."
+          >
+            {active && connected && <SetupProgress />}
+            <button {...smallButtonProps} onClick={requestOnboardingReplay}>
+              Replay setup
+            </button>
+          </IndexedField>
+        </SettingsGroup>
+        <SettingsGroup title="Browsing">
+          {tabLifecycleEnabled && !bridge.privateMode && (
+            <IndexedField
+              compact
+              label="Memory saver"
+              hint="Sleep clean background tabs after they have been idle. Playing audio, unsaved work, captured media and agent work stay awake. Sleeping tabs reload when opened."
+            >
+              <MemorySaverSetting active={active && !searching && !subview} />
+            </IndexedField>
+          )}
           <IndexedField
             compact
             label="Command routing"
@@ -114,7 +148,6 @@ export function GeneralSettings({
               <option value="prefer-search">Prefer Search</option>
             </select>
           </IndexedField>
-
           <IndexedField
             compact
             label="Search suggestions"
@@ -126,7 +159,6 @@ export function GeneralSettings({
               onChange={(event) => void onSave({ searchSuggestions: event.target.checked })}
             />
           </IndexedField>
-
           <IndexedField
             compact
             label="Keyword engines"
@@ -141,29 +173,6 @@ export function GeneralSettings({
               Manage {shellIconRight}
             </button>
           </IndexedField>
-
-          <IndexedField
-            label="Import browser data"
-            hint="Preview what each installed browser can share — bookmarks and folders, history, and tabs — then import what you choose. Source profiles are only ever read, never changed."
-          >
-            <ImportDataSetting />
-          </IndexedField>
-          <IndexedField
-            label="Download folder"
-            hint="Choose where ordinary downloads are saved. Private downloads ask for a location each time."
-          >
-            <DownloadFolderSetting active={active && !searching && !subview} />
-          </IndexedField>
-          <IndexedField label="About Aux" hint="Installed browser version and source revision.">
-            <AboutAuxSetting active={active && !searching && !subview} />
-          </IndexedField>
-          <IndexedField
-            compact
-            label="Spell check"
-            hint="Check spelling as you type in websites and the browser."
-          >
-            <SpellCheckSetting active={active && !searching && !subview} />
-          </IndexedField>
           <IndexedField
             label="On startup"
             hint="Open a new tab, restore your previous session, or open chosen pages."
@@ -171,17 +180,10 @@ export function GeneralSettings({
             <StartupSetting active={active && !searching && !subview} />
           </IndexedField>
           <IndexedField
-            label="Languages"
-            hint="Choose the languages websites receive in order of preference. The app language follows macOS."
+            label="Download folder"
+            hint="Choose where ordinary downloads are saved. Private downloads ask for a location each time."
           >
-            <LanguagesSetting active={active && !searching && !subview} />
-          </IndexedField>
-          <IndexedField
-            compact
-            label="Automatic picture in picture"
-            hint="Control whether sites may open floating video automatically. Manual picture in picture remains available."
-          >
-            <PictureInPictureSetting active={active && !searching && !subview} />
+            <DownloadFolderSetting active={active && !searching && !subview} />
           </IndexedField>
           <IndexedField
             compact

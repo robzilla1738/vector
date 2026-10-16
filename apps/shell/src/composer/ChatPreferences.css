@@ -24,11 +24,12 @@
     background: var(--bg-hover);
     color: var(--ink-0);
   }
-  .chat-model-trigger {
-    margin-left: auto;
-    max-width: 65%;
+  .chat-run-options-trigger {
+    flex: 0 0 28px;
+    width: 28px;
+    padding: 6px;
   }
-  .chat-model-trigger > .ci {
+  .chat-run-options-trigger > .ci {
     flex: none;
     width: 14px;
     height: 14px;

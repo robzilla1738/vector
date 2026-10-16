@@ -120,3 +120,20 @@ it("a fresh no-tab chat does not request history or present a transport error", 
   expect(orderedPages(useStore.getState().pages)).toEqual([]);
   expect(useStore.getState().toasts).toEqual([]);
 });
+
+it("moves between all chats and a draft without changing the hook order or losing the draft", async () => {
+  const invoke = vi.mocked(bridge.invoke),
+    fallback = invoke.getMockImplementation()!;
+  invoke.mockImplementation((method, params) =>
+    ["conversations.list", "conversations.prepared", "runs.branch.list"].includes(method)
+      ? Promise.resolve([])
+      : fallback(method, params),
+  );
+  await act(async () => root.render(<Conversation chatId="history" />));
+  expect(host.querySelector('[aria-label="Conversation history"]')).not.toBeNull();
+  await act(async () => root.render(<Conversation chatId="original" />));
+  expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("Original question");
+  await act(async () => root.render(<Conversation chatId="history" />));
+  expect(host.querySelector('[aria-label="Conversation history"]')).not.toBeNull();
+  expect(useStore.getState().conversationDrafts["chat:original"]).toBe("Original question");
+});

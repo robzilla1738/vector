@@ -2,7 +2,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AgentPolicySettingsSchema } from "@aux/contracts/agent-policy";
 import { call, errToast, useStore } from "../store";
 import { AgentModeControl } from "../features/permissions/AgentModeControl";
-import { shellIconDown } from "../ui/icons";
+import { ComposerModelControls } from "./ComposerModelControls";
+import { shellIconGearSm } from "../ui/icons";
 import { errorMessage } from "../error-message";
 import { Popover } from "../ui/popover";
 import { bridge } from "../bridge";
@@ -14,15 +15,11 @@ export function ChatPreferences({
   draftKey,
   activeRunId,
   disabled,
-  modelId,
-  reasoning,
 }: {
   children: ReactNode;
   draftKey: string;
   activeRunId?: string;
   disabled: boolean;
-  modelId?: string;
-  reasoning?: string;
 }) {
   const activeMode = useStore(
     (state) => state.runs.find((run) => run.runId === activeRunId)?.config?.agentMode,
@@ -67,22 +64,11 @@ export function ChatPreferences({
           }
         }}
       />
-      <Popover
-        label="Model and run options"
-        className="chat-model-trigger"
-        trigger={
-          <>
-            <span>
-              {modelId ?? "Automatic"}
-              {reasoning ? ` · ${reasoning}` : ""}
-            </span>
-            {shellIconDown}
-          </>
-        }
-      >
+      <ComposerModelControls draftKey={draftKey} disabled={disabled || !connected} />
+      <Popover label="Run options" className="chat-run-options-trigger" trigger={shellIconGearSm}>
         {() => (
           <div className="chat-run-menu">
-            <header>Model and run options</header>
+            <header>Run options</header>
             {children}
             <div className="chat-run-menu-section">
               <label className="chat-run-scope">

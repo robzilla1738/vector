@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
+import { ComposerModelControls } from "./ComposerModelControls";
 import { RunOptions } from "./RunOptions";
 let host: HTMLDivElement, root: Root;
 const initial = useStore.getState();
@@ -24,13 +25,16 @@ afterEach(() => {
 function mount(key = "new", locked = false, privateTask = false, workspaceId?: string) {
   return act(async () =>
     root.render(
-      <RunOptions
-        draftKey={key}
-        workspaceId={workspaceId}
-        privateTask={privateTask}
-        privateTaskLocked={locked}
-        disabled={false}
-      />,
+      <>
+        <ComposerModelControls draftKey={key} disabled={false} />
+        <RunOptions
+          draftKey={key}
+          workspaceId={workspaceId}
+          privateTask={privateTask}
+          privateTaskLocked={locked}
+          disabled={false}
+        />
+      </>,
     ),
   );
 }

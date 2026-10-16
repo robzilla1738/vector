@@ -1,4 +1,31 @@
-# Aux status — October 12, 2026
+# Aux status — October 16, 2026
+
+
+## October 16 UI parity review — in progress
+
+The owner resumed full UI parity work on local `main`, using the growing
+`~/Desktop/Aside UI Reference 2026-10-16` corpus. The folder now has grouped
+captures, source limitations and a manifest; scan recursively because captures
+can be added or reorganized during the pass. The active
+[capture ledger](design/aside-parity-2026-10-16.md) preserves the full scope and
+tracks incomplete comparisons, alongside the earlier surface ledger.
+
+The first slice exposes model selection and thinking directly in the composer
+instead of nesting them under model/run options. Catalog filtering, retries and
+provider/window authority checks remain. Execution, agent, package, project and
+private-task options remain available in Run options. General Settings now has
+Preferences, Languages, Import and About Aux groups before the additional Aux
+browsing, task-attention and recovery controls. Native baseline Home Search/Ask
+and General Settings were inspected with a disposable Profile.
+
+A concrete Conversation hook-order defect was found while following up the
+preview's React #310 error: All Chats returned before `supportingCurrent`'s
+`useCallback`. The hook now runs before that return; a regression covers
+history → draft → history and draft preservation. Typecheck and lint pass. The integrated suite passed 4,514 of 4,515 tests
+across 726 files; the sole failure is the previously recorded coder-worktrees
+60-second timeout. The new history transition regression passes. Post-change
+native acceptance is still running. Full parity is not established.
+The October 12 wrap-up and older notes below are historical.
 
 ## Aside parity checkpoint — owner wrap-up
 

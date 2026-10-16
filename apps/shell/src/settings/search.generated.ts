@@ -523,10 +523,49 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "General",
-    label: "Memory saver",
+    label: "Search engine",
+    description: "",
+    target: "Search engine",
+  },
+  {
+    category: "General",
+    label: "New tab mode",
     description:
-      "Sleep clean background tabs after they have been idle. Playing audio, unsaved work, captured media and agent work stay awake. Sleeping tabs reload when opened.",
-    target: "Memory saver",
+      "Choose whether a new tab starts with Search or the Ask composer. Private windows always start with Search.",
+    target: "New tab mode",
+  },
+  {
+    category: "General",
+    label: "Automatic picture in picture",
+    description:
+      "Control whether sites may open floating video automatically. Manual picture in picture remains available.",
+    target: "Automatic picture in picture",
+  },
+  {
+    category: "General",
+    label: "Spell check",
+    description: "Check spelling as you type in websites and the browser.",
+    target: "Spell check",
+  },
+  {
+    category: "General",
+    label: "Languages",
+    description:
+      "Choose the languages websites receive in order of preference. The app language follows macOS.",
+    target: "Languages",
+  },
+  {
+    category: "General",
+    label: "Import browser data",
+    description:
+      "Preview what each installed browser can share — bookmarks and folders, history, and tabs — then import what you choose. Source profiles are only ever read, never changed.",
+    target: "Import browser data",
+  },
+  {
+    category: "General",
+    label: "About Aux",
+    description: "Installed browser version and source revision.",
+    target: "About Aux",
   },
   {
     category: "General",
@@ -542,16 +581,10 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "General",
-    label: "Search engine",
-    description: "",
-    target: "Search engine",
-  },
-  {
-    category: "General",
-    label: "New tab mode",
+    label: "Memory saver",
     description:
-      "Choose whether a new tab starts with Search or the Ask composer. Private windows always start with Search.",
-    target: "New tab mode",
+      "Sleep clean background tabs after they have been idle. Playing audio, unsaved work, captured media and agent work stay awake. Sleeping tabs reload when opened.",
+    target: "Memory saver",
   },
   {
     category: "General",
@@ -574,10 +607,9 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "General",
-    label: "Import browser data",
-    description:
-      "Preview what each installed browser can share — bookmarks and folders, history, and tabs — then import what you choose. Source profiles are only ever read, never changed.",
-    target: "Import browser data",
+    label: "On startup",
+    description: "Open a new tab, restore your previous session, or open chosen pages.",
+    target: "On startup",
   },
   {
     category: "General",
@@ -585,38 +617,6 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     description:
       "Choose where ordinary downloads are saved. Private downloads ask for a location each time.",
     target: "Download folder",
-  },
-  {
-    category: "General",
-    label: "About Aux",
-    description: "Installed browser version and source revision.",
-    target: "About Aux",
-  },
-  {
-    category: "General",
-    label: "Spell check",
-    description: "Check spelling as you type in websites and the browser.",
-    target: "Spell check",
-  },
-  {
-    category: "General",
-    label: "On startup",
-    description: "Open a new tab, restore your previous session, or open chosen pages.",
-    target: "On startup",
-  },
-  {
-    category: "General",
-    label: "Languages",
-    description:
-      "Choose the languages websites receive in order of preference. The app language follows macOS.",
-    target: "Languages",
-  },
-  {
-    category: "General",
-    label: "Automatic picture in picture",
-    description:
-      "Control whether sites may open floating video automatically. Manual picture in picture remains available.",
-    target: "Automatic picture in picture",
   },
   {
     category: "General",
