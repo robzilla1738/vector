@@ -438,3 +438,29 @@ excerpts; implement a proper plain-text projection while retaining rich Card
 previews. The outer native floating sidebar also stayed visible when focus moved
 into its web content; that transition needs investigation. Neither is accepted
 as parity. Reference rescan remains 182 original images / 192 manifest entries.
+
+
+## Plain list excerpts — live renderer observed
+
+List rows now project the rich answer's Markdown AST into text, instead of
+showing source headings/table fences. Draft text remains exact and rich Card
+previews retain their Markdown/table/code rendering. The shared parser is loaded
+on demand, uses the same GFM grammar as the answer renderer and limits teaser
+input to 4,096 characters. Direct dependency pins reuse existing locked unified /
+remark-parse versions; no new transitive package versions were introduced.
+Tests cover table and link text, escaped literal punctuation, code, image alt,
+block/hard-break boundaries and omitted HTML/reference/footnote definitions.
+
+A fresh mock renderer load in the disposable native browser showed the parsed
+list text in its accessibility tree and screenshot. Card view still rendered the
+table and code preview. Evidence: `aux-history-plain-excerpts-live.png` and
+`aux-history-rich-cards-live.png` in `/tmp/aux-parity-2026-10-16/`. This is nested
+live-renderer/mock evidence with unmatched viewports, not native full-product
+acceptance. DevTools reported a failed Vite WebSocket; after dependency changes,
+reload and inspect actual rendered state rather than treating HMR logs as proof.
+
+Typecheck and lint pass. The integrated suite passed 4,527/4,528 tests across
+729 files; only the existing coder-worktrees 60-second timeout failed. A production
+renderer build passed in 2.10s. Its manifest shows the text projection and parser
+chunks outside both the entry and App static closures. The compiled/staged native
+app remains renderer 68affeb44 / runtime bbcce77c3 until the next combined build.

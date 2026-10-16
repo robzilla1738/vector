@@ -4,6 +4,7 @@ import "./ChatList.css";
 import { memo, type ReactNode } from "react";
 import type { ConversationSummary, ConversationArtifact } from "@aux/contracts";
 import { previewText } from "./ChatCard";
+import { PlainAnswerPreview } from "../components/surfaces";
 import { relativeChatTime } from "./relative-chat-time";
 import { draftKey } from "../conversation-drafts";
 import { useStore } from "../store";
@@ -46,11 +47,13 @@ const ChatOpen = memo(function ChatOpen({
         <>
           <strong>{chatTitle(entry)}</strong>
           <span>
-            {draft?.trim()
-              ? `Draft · ${draft}`
-              : entry.kind === "saved-chat"
-                ? previewText(entry.item)
-                : entry.run.goal}
+            {draft?.trim() ? (
+              `Draft · ${draft}`
+            ) : entry.kind === "saved-chat" ? (
+              <PlainAnswerPreview text={previewText(entry.item)} />
+            ) : (
+              entry.run.goal
+            )}
           </span>
           {entry.kind === "saved-chat" && (
             <time

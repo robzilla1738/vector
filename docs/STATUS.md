@@ -51,7 +51,19 @@ restored source checks strict. Reply evidence:
 `/tmp/aux-parity-2026-10-16/aux-page-free-reply-bbcce77.png`. Quit this owned preview
 normally before another builder; the launcher owns Profile/lock cleanup.
 
-Next gaps include raw Markdown syntax in single-line excerpts, the Status/Projects
+Single-line list excerpts now use a bounded, on-demand Markdown text projection.
+Headings, tables, link labels, escaped punctuation, image descriptions and code
+remain readable without syntax markers; Card previews remain rich. A fresh live
+renderer load was inspected in both layouts, with evidence
+`aux-history-plain-excerpts-live.png` and `aux-history-rich-cards-live.png` in the
+existing `/tmp` evidence folder. Vite's development WebSocket failed to connect,
+so HMR log messages alone cannot establish that a loaded preview is current.
+Typecheck/lint pass; **4,527/4,528 tests across 729 files** passed, with only the
+same coder-worktrees timeout. The production renderer build also passed; its
+manifest keeps the text projection and Markdown parser out of the App's static
+startup closure. This is still not a combined native staging pass.
+
+Next gaps include the Status/Projects
 filter composition, direct Project choice, provider submenus, expandable Home
 suggestions, remaining captured surfaces and uncaptured native/error/approval
 states. The live renderer walkthrough also left an outer floating sidebar visible

@@ -35,3 +35,21 @@ export function AnswerPreview({ text }: { text: string }) {
 AnswerPreview.preload = () => {
   void loadMarkdown().catch(() => {});
 };
+
+let PlainText: ComponentType<{ text: string }> | undefined;
+const loadPlainText = async () => {
+  const module = await import("./PlainAnswerText");
+  PlainText = module.PlainAnswerText;
+  return { default: module.PlainAnswerText };
+};
+const LazyPlainText = lazy(loadPlainText);
+
+/** List excerpts stay text-only; the Markdown parser stays off the startup path. */
+export function PlainAnswerPreview({ text }: { text: string }) {
+  const [Surface] = useState(() => PlainText ?? LazyPlainText);
+  return (
+    <Suspense fallback={text}>
+      <Surface text={text} />
+    </Suspense>
+  );
+}

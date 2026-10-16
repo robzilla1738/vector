@@ -64,10 +64,13 @@ Findings and implementation status:
    initial empty-step timeline also claims a page read for a page-free task.
    The latest source now includes report excerpts/search and truthful initial
    activity text; meaningful regressions pass. Native staging is pending.
-9. **P1 — Raw Markdown list excerpts.** The live populated renderer shows heading
-   and table markers in single-line previews. Use a plain-text projection there,
-   retaining rich Markdown in cards. The outer native floating sidebar also
-   stayed visible on focus transfer into its web content; investigate separately.
+9. **P1 — Raw Markdown list excerpts.** The text projection now parses the same
+   GFM grammar on demand. Fresh live-renderer List/Card checks verified readable
+   list text and retained rich tables/code in cards. Three semantic parser cases
+   pass; production build confirms the parser remains outside the App static
+   closure. Compiled native staging is pending. The outer native floating sidebar
+   transition remains open. Development HMR failed to connect; future preview
+   checks must inspect a fresh actual render, not infer it from server logs.
 
 Required fidelity surfaces remain open:
 
