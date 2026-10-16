@@ -31,11 +31,13 @@ density, viewport and interaction state before judging exact geometry.
   run/execution/package/privacy controls remain in Run options. Catalog filtering,
   retry, stale-provider/window rejection and non-reasoning model handling remain.
 - 015: General Settings now separates Preferences, Languages, Import and About Aux,
-  followed by Aux browsing/task/recovery controls. Language/import dialogs and
-  the search-engine dropdown still need closer matching; grouping alone is not parity.
+  followed by Aux browsing/task/recovery controls. Languages and import now open from compact rows into dialogs using the
+  existing native preference/import editors. Escape returns focus, route changes
+  retire the editor, and the controls mount on demand. Five focused cases pass.
+  The search-engine dropdown and exact dialog composition still need closer matching.
 - 112–118: Fixed Conversation's hook-order change when switching between All Chats
   and an ordinary conversation. Added a history → draft → history regression.
-- Typecheck and lint pass; the integrated suite passed 4,514/4,515 tests. The
+- Typecheck and lint pass; the integrated suite passed 4,515/4,516 tests. The
   sole failure was the unchanged coder-worktrees 60-second timeout. The new
   history transition regression passed. Post-build native observations are pending.
   No full
@@ -69,9 +71,9 @@ source limitations. The complete source filename and metadata live in the folder
 | 015 | Settings general top                        | captured                                                                                                                  | Source changed; native comparison open                          |
 | 016 | Settings search engine dropdown             | captured                                                                                                                  | Open                                                            |
 | 017 | Settings new tab mode dropdown              | captured                                                                                                                  | Open                                                            |
-| 018 | Settings language configuration             | captured                                                                                                                  | Open                                                            |
+| 018 | Settings language configuration             | captured                                                                                                                  | Compact dialog implemented; native composition comparison open |
 | 019 | Settings add language dropdown              | captured                                                                                                                  | Open                                                            |
-| 020 | Settings browser import dialog              | captured                                                                                                                  | Open                                                            |
+| 020 | Settings browser import dialog              | captured                                                                                                                  | Compact dialog implemented; native composition comparison open |
 | 021 | Settings import browser picker              | captured                                                                                                                  | Open                                                            |
 | 022 | Settings general about section              | captured                                                                                                                  | Open                                                            |
 | 023 | Settings appearance top                     | captured                                                                                                                  | Reviewed; matching native comparison open                       |

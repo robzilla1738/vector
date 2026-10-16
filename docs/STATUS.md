@@ -15,14 +15,16 @@ instead of nesting them under model/run options. Catalog filtering, retries and
 provider/window authority checks remain. Execution, agent, package, project and
 private-task options remain available in Run options. General Settings now has
 Preferences, Languages, Import and About Aux groups before the additional Aux
-browsing, task-attention and recovery controls. Native baseline Home Search/Ask
+browsing, task-attention and recovery controls. Languages and import open their
+existing editors in compact dialogs; leaving the route retires the dialog and
+Escape returns focus to its trigger. Five focused dialog/General cases pass. Native baseline Home Search/Ask
 and General Settings were inspected with a disposable Profile.
 
 A concrete Conversation hook-order defect was found while following up the
 preview's React #310 error: All Chats returned before `supportingCurrent`'s
 `useCallback`. The hook now runs before that return; a regression covers
-history → draft → history and draft preservation. Typecheck and lint pass. The integrated suite passed 4,514 of 4,515 tests
-across 726 files; the sole failure is the previously recorded coder-worktrees
+history → draft → history and draft preservation. Typecheck and lint pass. The integrated suite passed 4,515 of 4,516 tests
+across 727 files; the sole failure is the previously recorded coder-worktrees
 60-second timeout. The new history transition regression passes. Post-change
 native acceptance is still running. Full parity is not established.
 The October 12 wrap-up and older notes below are historical.

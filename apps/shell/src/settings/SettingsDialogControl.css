@@ -1,0 +1,41 @@
+@layer components {
+  .settings-preference-dialog > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .settings-preference-dialog > header h3 {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .settings-preference-dialog > header button {
+    display: grid;
+    place-items: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    padding: 6px;
+    border-radius: var(--r-md);
+    color: var(--ink-2);
+  }
+  .settings-preference-dialog > header button:hover {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  .settings-preference-editor {
+    min-width: 0;
+    color: var(--ink-1);
+    font-size: var(--fs-sm);
+    overflow-wrap: anywhere;
+  }
+  .settings-preference-editor :is(input, select) {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .settings-preference-dialog > footer {
+    display: flex;
+    justify-content: flex-end;
+  }
+}

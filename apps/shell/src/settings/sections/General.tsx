@@ -25,6 +25,7 @@ import { RestoreBackupControls } from "./RestoreBackupControls";
 import { BackupSettings } from "./BackupSettings";
 import { DiagnosticsStorage } from "./DiagnosticsStorage";
 import { SetupProgress } from "../../onboarding/SetupProgress";
+import { SettingsDialogControl } from "../SettingsDialogControl";
 
 export function GeneralSettings({
   active,
@@ -92,18 +93,32 @@ export function GeneralSettings({
         </SettingsGroup>
         <SettingsGroup title="Languages">
           <IndexedField
+            compact
             label="Languages"
             hint="Choose the languages websites receive in order of preference. The app language follows macOS."
           >
-            <LanguagesSetting active={active && !searching && !subview} />
+            <SettingsDialogControl
+              active={active && !searching && !subview}
+              label="Preferred languages"
+              action="Configure"
+            >
+              <LanguagesSetting active={active && !searching && !subview} />
+            </SettingsDialogControl>
           </IndexedField>
         </SettingsGroup>
         <SettingsGroup title="Import">
           <IndexedField
+            compact
             label="Import browser data"
             hint="Preview what each installed browser can share — bookmarks and folders, history, and tabs — then import what you choose. Source profiles are only ever read, never changed."
           >
-            <ImportDataSetting />
+            <SettingsDialogControl
+              active={active && !searching && !subview}
+              label="Import browser data"
+              action="Import"
+            >
+              <ImportDataSetting />
+            </SettingsDialogControl>
           </IndexedField>
         </SettingsGroup>
         <SettingsGroup title="About Aux">
