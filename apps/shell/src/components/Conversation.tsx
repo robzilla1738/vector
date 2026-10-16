@@ -402,16 +402,7 @@ function isCalendarCitation(url: string): boolean {
   }
 }
 
-export function Conversation({
-  chatId,
-  embedded = false,
-  home = false,
-  entryControls,
-  initialActivation,
-  onChatCreated,
-  composerRef,
-  findReturnRef,
-}: {
+type ConversationProps = {
   chatId?: string | null;
   embedded?: boolean;
   home?: boolean;
@@ -420,12 +411,29 @@ export function Conversation({
   onChatCreated?: (chatId: string, temporary: boolean) => void;
   composerRef?: RefObject<HTMLTextAreaElement | null>;
   findReturnRef?: RefObject<HTMLDivElement | null>;
-} = {}) {
+};
+
+/** History shares the real draft composer without mounting a second transcript owner. */
+export function Conversation(props: ConversationProps = {}) {
+  const fullPageId = useStore((state) => state.conversationId);
+  const id = props.chatId === undefined ? fullPageId : props.chatId;
+  if (id === "history") return <ChatHistory composer={<ConversationContent chatId={null} embedded home />} />;
+  return <ConversationContent {...props} chatId={id} />;
+}
+
+function ConversationContent({
+  chatId: id = null,
+  embedded = false,
+  home = false,
+  entryControls,
+  initialActivation,
+  onChatCreated,
+  composerRef,
+  findReturnRef,
+}: ConversationProps) {
   const ownComposerRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = composerRef ?? ownComposerRef;
   useInteractiveComposer(home, textareaRef);
-  const fullPageId = useStore((s) => s.conversationId);
-  const id = chatId === undefined ? fullPageId : chatId;
   const scrolling = useConversationScroll(id);
   const { threadRef, preservePosition, revealTurn } = scrolling;
   useEffect(() => {
@@ -486,7 +494,7 @@ export function Conversation({
   const [queuedMessages, setQueuedMessages] = useState<RunMessage[]>([]);
 
   useLayoutEffect(() => {
-    if (!id || id === "history") return;
+    if (!id) return;
     const unregister = registerConversationSearchSurface({
       chatId: id,
       element: () => threadRef.current,
@@ -548,7 +556,7 @@ export function Conversation({
     historyPending.current = false;
   }, [id, connected, conversationCurrent]);
   const loadTurns = async (before?: ReturnType<typeof cursor>) => {
-    if (!id || id === "history" || !conversationCurrent() || historyPending.current) return;
+    if (!id || !conversationCurrent() || historyPending.current) return;
     historyPending.current = true;
     const version = ++historyRequest.current;
     setHistoryLoading(true);
@@ -862,7 +870,7 @@ export function Conversation({
   useEffect(() => {
     setGenerated([]);
     setUnavailableArtifacts([]);
-    if (!id || id === "history") return;
+    if (!id) return;
     let active = true;
     void call("conversations.artifacts.get", { chatId: id })
       .then((value) => {
@@ -950,7 +958,7 @@ export function Conversation({
     queueAttemptRef.current = null;
   }, [id]);
   useEffect(() => {
-    if (!id || id === "history") return;
+    if (!id) return;
     let current = true,
       refreshVersion = 0;
     const refresh = () => {
@@ -2058,7 +2066,6 @@ export function Conversation({
   const supportingKey =
     resultPreview || imagePreview || documentPreview || sourceDetail?.sourceId || "browser";
   const supportingCurrent = useCallback(() => conversationCurrent(), [conversationCurrent, supportingKey]);
-  if (id === "history") return <ChatHistory />;
   const dictation = (
     <Dictation
       draftKey={id ? draftKey(id) : "new"}

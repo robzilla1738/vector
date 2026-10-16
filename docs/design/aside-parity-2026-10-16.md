@@ -44,6 +44,28 @@ density, viewport and interaction state before judging exact geometry.
   No full
   surface, phase, performance, accessibility or parity acceptance is claimed.
 
+## All Chats implementation slice
+
+References 112–117 were inspected at normalized 1712×989 size. All Chats now
+uses the ordinary task composer above List/Card controls, expandable search,
+filter and sort controls. List is the default, with single-line titles, actual
+answer/draft excerpts and relative update times; narrow rows retain a second
+excerpt line. Cards retain the existing Markdown previews and rename/archive/
+delete actions. The accessible page heading remains available without a second
+visual header. The history route is selected before mounting the transcript,
+so it does not mount a hidden transcript owner alongside its composer.
+
+Newest-first retains paged loading. Oldest-first uses the complete collection
+producer before reversing, then reveals 40 rows at a time; partial newest pages
+are never mislabeled as the oldest results. This can read all matching summaries
+for oldest-first; a server-side ascending cursor would avoid that cost for very
+large histories. Archive and Space filtering remain real Aux controls. Their
+current grouped editor differs from the reference's Status/Projects submenu;
+that comparison remains open. Project composer controls and richer preview
+artifacts also remain open. Synthetic multi-page ordering and real-composer
+failed-start/draft regressions were added. Typecheck and lint pass; the integrated suite passed 4,517/4,518 tests, with
+only the previously recorded coder-worktrees timeout. Native acceptance is pending rebuild.
+
 ## Capture coverage
 
 **Open** means not yet compared in this run. **Source changed** is incomplete
@@ -166,12 +188,12 @@ source limitations. The complete source filename and metadata live in the folder
 | 109 | Settings archived chats                     | captured                                                                                                                  | Open                                                            |
 | 110 | Feedback menu                               | captured                                                                                                                  | Open                                                            |
 | 111 | Archived chat actions                       | captured                                                                                                                  | Open                                                            |
-| 112 | All chats page                              | captured                                                                                                                  | All Chats transition fixed; visual comparison open              |
-| 113 | All chats loaded                            | captured                                                                                                                  | All Chats transition fixed; visual comparison open              |
-| 114 | Chats filter dropdown                       | captured                                                                                                                  | All Chats transition fixed; visual comparison open              |
-| 115 | Chats sort dropdown                         | captured                                                                                                                  | All Chats transition fixed; visual comparison open              |
-| 116 | Chats search expanded                       | captured                                                                                                                  | All Chats transition fixed; visual comparison open              |
-| 117 | Chats card view                             | captured                                                                                                                  | All Chats transition fixed; visual comparison open              |
+| 112 | All chats page                              | captured                                                                                                                  | Source changed; native list/card/search/sort comparison pending              |
+| 113 | All chats loaded                            | captured                                                                                                                  | Source changed; native list/card/search/sort comparison pending              |
+| 114 | Chats filter dropdown                       | captured                                                                                                                  | Source changed; native list/card/search/sort comparison pending              |
+| 115 | Chats sort dropdown                         | captured                                                                                                                  | Source changed; native list/card/search/sort comparison pending              |
+| 116 | Chats search expanded                       | captured                                                                                                                  | Source changed; native list/card/search/sort comparison pending              |
+| 117 | Chats card view                             | captured                                                                                                                  | Source changed; native list/card/search/sort comparison pending              |
 | 118 | Chat detail open                            | captured                                                                                                                  | All Chats transition fixed; visual comparison open              |
 | 119 | Chat header actions                         | captured                                                                                                                  | Open                                                            |
 | 120 | Chat share popover                          | captured                                                                                                                  | Open                                                            |

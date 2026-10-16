@@ -3,25 +3,20 @@ import { LocalChatRow } from "./LocalChatRow";
 import "./ChatList.css";
 import { memo, type ReactNode } from "react";
 import type { ConversationSummary, ConversationArtifact } from "@aux/contracts";
-import { STATUS_LABEL } from "../run-status";
+import { previewText } from "./ChatCard";
+import { relativeChatTime } from "./relative-chat-time";
 import { draftKey } from "../conversation-drafts";
 import { useStore } from "../store";
 import { ChatCard } from "./ChatCard";
 import { VirtualList } from "../components/VirtualList";
-import {
-  chatId,
-  chatTitle,
-  latestRun,
-  type ChatEntry,
-  type SavedChatEntry,
-  type LocalChatEntry,
-} from "./model";
+import { chatId, chatTitle, type ChatEntry, type SavedChatEntry, type LocalChatEntry } from "./model";
 
 const ChatOpen = memo(function ChatOpen({
   entry,
   className,
   selected,
   detailed,
+  now,
   disabled,
   buttonRef,
   onOpen,
@@ -30,12 +25,12 @@ const ChatOpen = memo(function ChatOpen({
   className: string;
   selected?: boolean;
   detailed?: boolean;
+  now?: number;
   disabled?: boolean;
   buttonRef?: (node: HTMLButtonElement | null) => void;
   onOpen(entry: ChatEntry): void;
 }) {
-  const id = chatId(entry),
-    run = latestRun(entry);
+  const id = chatId(entry);
   const draft = useStore((state) => state.conversationDrafts[draftKey(id)]);
   return (
     <button
@@ -53,14 +48,16 @@ const ChatOpen = memo(function ChatOpen({
           <span>
             {draft?.trim()
               ? `Draft · ${draft}`
-              : entry.kind === "saved-chat" && entry.item.taskId
-                ? "Saved task"
-                : (run.statusMessage ?? STATUS_LABEL[run.status])}
+              : entry.kind === "saved-chat"
+                ? previewText(entry.item)
+                : entry.run.goal}
           </span>
           {entry.kind === "saved-chat" && (
-            <time>
-              {new Date(entry.item.updatedAt).toLocaleString()} · {entry.item.turnCount}{" "}
-              {entry.item.turnCount === 1 ? "turn" : "turns"}
+            <time
+              dateTime={new Date(entry.item.updatedAt).toISOString()}
+              title={`${new Date(entry.item.updatedAt).toLocaleString()} · ${entry.item.turnCount} ${entry.item.turnCount === 1 ? "turn" : "turns"}`}
+            >
+              {relativeChatTime(entry.item.updatedAt, now)}
             </time>
           )}
         </>
@@ -78,6 +75,7 @@ export type ChatListRow = {
   openClassName: string;
   className?: string;
   detailed?: boolean;
+  now?: number;
   disabled?: boolean;
   buttonRef?: (node: HTMLButtonElement | null) => void;
   actions?: ReactNode;
@@ -123,6 +121,7 @@ export function ChatList({
               className={row.openClassName}
               selected={row.selected}
               detailed={row.detailed}
+              now={row.now}
               disabled={row.disabled}
               buttonRef={row.buttonRef}
               onOpen={onOpen}

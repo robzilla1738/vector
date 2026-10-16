@@ -65,6 +65,19 @@ remain open. This does not establish full parity.
 Accepted screenshots and the original-size focus before/after comparison are in
 `/tmp/aux-parity-2026-10-16/`; the current QA report names each file and its limits.
 
+The next source slice brings the normal composer to All Chats, makes List the
+default, and uses dense title/excerpt/time rows with List/Card controls on the
+left and expandable search/filter/sort controls on the right. Existing chat
+mutations, drafts and private-session scope remain. History now chooses its
+surface before mounting a transcript owner. Oldest-first reads all matching
+summaries before reversing, then reveals 40 rows at a time; newest-first retains
+server paging. Tests cover ordering beyond one page and failed-start draft
+preservation through the ordinary composer. The filter editor still differs from
+the reference Status/Projects submenu. Typecheck and lint pass; the integrated suite passed 4,517/4,518 tests, with
+only the existing coder-worktrees 60-second timeout. Native acceptance is pending
+the next build. The previous c612736f5 disposable preview and its launcher retired
+with exit 0 and released their Profile/lock normally.
+
 The October 12 wrap-up and older notes below are historical.
 
 ## Aside parity checkpoint — owner wrap-up

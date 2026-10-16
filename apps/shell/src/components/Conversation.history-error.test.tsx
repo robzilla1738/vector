@@ -137,3 +137,41 @@ it("moves between all chats and a draft without changing the hook order or losin
   expect(host.querySelector('[aria-label="Conversation history"]')).not.toBeNull();
   expect(useStore.getState().conversationDrafts["chat:original"]).toBe("Original question");
 });
+
+it("sends from All Chats through the ordinary composer and preserves a failed start as a chat draft", async () => {
+  const invoke = vi.mocked(bridge.invoke),
+    fallback = invoke.getMockImplementation()!;
+  invoke.mockImplementation((method, params) =>
+    ["conversations.list", "conversations.prepared", "runs.branch.list"].includes(method)
+      ? Promise.resolve([])
+      : fallback(method, params),
+  );
+  const startRun = vi.fn(async () => null);
+  useStore.setState({
+    conversationId: "history",
+    agentDraft: "Synthetic history question",
+    startRun,
+    composerPreferences: { new: { privateTask: false, reasoning: "high", agentMode: "ask" } },
+  });
+  await act(async () => root.render(<Conversation />));
+  const input = host.querySelector<HTMLTextAreaElement>("textarea")!;
+  expect(input.value).toBe("Synthetic history question");
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Card view"]')!.click());
+  expect(host.querySelector("textarea")).toBe(input);
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.click());
+  const id = useStore.getState().conversationId!;
+  expect(id).not.toBe("history");
+  expect(startRun).toHaveBeenCalledWith(
+    "Synthetic history question",
+    expect.objectContaining({
+      chatId: id,
+      presentation: "conversation",
+      reasoning: "high",
+      agentMode: "ask",
+      pageId: null,
+    }),
+  );
+  expect(useStore.getState().conversationDrafts[`chat:${id}`]).toBe("Synthetic history question");
+  expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("Synthetic history question");
+  expect(host.querySelector('[aria-label="Conversation history"]')).toBeNull();
+});

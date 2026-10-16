@@ -9,12 +9,16 @@ import {
 } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { moveListFocus } from "../keyboard-list";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ConversationSummary } from "@aux/contracts";
 import { openSavedTask } from "../task-navigation";
 import { errToast, useStore } from "../store";
 import {
   shellIconArchive,
+  shellIconArrowDown,
+  shellIconSend,
+  shellIconFilter,
+  shellIconCheck,
   shellIconGrid,
   shellIconLayersSm,
   shellIconMore,
@@ -29,13 +33,12 @@ import { bridge } from "../bridge";
 
 import { SkeletonRows } from "../components/Skeleton";
 import { Tabs } from "../ui";
+import { Popover } from "../ui/popover";
+import "../components/HomeAsk.css";
 import { Menu } from "../ui/dialog";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
-import {
-  staticSpacerProps as auxReuseStaticSpacerProps,
-  staticButtonProps as auxReuseStaticButtonProps,
-} from "../ui/class-props";
-export function ChatHistory() {
+import { staticButtonProps as auxReuseStaticButtonProps } from "../ui/class-props";
+export function ChatHistory({ composer }: { composer?: ReactNode }) {
   const space = useStore((state) =>
     state.layout.spaces.find((item) => item.id === state.layout.activeSpaceId),
   );
@@ -43,16 +46,30 @@ export function ChatHistory() {
   const workspaceId = currentSpaceOnly ? space?.workspaceId : undefined;
   const [query, setQuery] = useState("");
   const [archived, setArchived] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [oldestFirst, setOldestFirst] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortTrigger = useRef<HTMLButtonElement>(null);
+  const [visibleCount, setVisibleCount] = useState(40);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const {
     collection,
-    state: { loading, error, more },
-    items: rows,
-  } = useChatCollection({ archived, query, workspaceId, policy: "paged" });
+    state: { loading, error, more: pagedMore },
+    items,
+  } = useChatCollection({ archived, query, workspaceId, policy: oldestFirst ? "complete" : "paged" });
+  // The complete producer publishes only after every page arrives: oldest-first never reverses a partial page.
+  const rows = oldestFirst ? [...items].reverse().slice(0, visibleCount) : items;
+  const more = oldestFirst ? items.length > visibleCount : pagedMore;
   const actions = useChatActions(collection);
   const saving = actions.busy,
     actionError = actions.error;
   const search = useRef<HTMLInputElement>(null);
+  const searchTrigger = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const firstConversation = useRef<HTMLButtonElement>(null);
   const [menu, setMenu] = useState<string | null>(null);
@@ -62,6 +79,7 @@ export function ChatHistory() {
   const [deleting, setDeleting] = useState<string | null>(null);
   useChatScrollAnchor(collection, list);
   useEffect(() => {
+    setVisibleCount(40);
     setMenu(null);
     setRenaming(null);
     setDeleting(null);
@@ -79,88 +97,156 @@ export function ChatHistory() {
   };
   return (
     <section className="conversation conversation-history" aria-label="Conversation history">
-      <header className="conversation-head">
-        <h1>{bridge.privateMode ? "Private chats" : "Chats"}</h1>
-        <div {...auxReuseStaticSpacerProps} />
-        <Tabs<"active" | "archived">
-          label="Conversation state"
-          value={archived ? "archived" : "active"}
-          onChange={(value) => setArchived(value === "archived")}
-          panelId="conversation-history-panel"
-          className="history-segment"
-          items={[
-            { value: "active", label: "Active", disabled: saving },
-            { value: "archived", label: "Archived", disabled: saving },
-          ]}
-        />
-      </header>
+      <h1 className="sr-only">{bridge.privateMode ? "Private chats" : "Chats"}</h1>
       {bridge.privateMode && (
         <p className="hint history-scope-note">Available until the last private window closes.</p>
       )}
       <div
         id="conversation-history-panel"
-        role="tabpanel"
-        aria-labelledby={`conversation-history-panel-${archived ? "archived" : "active"}`}
         className="conversation-history-list"
         ref={list}
         onKeyDown={(event) => moveListFocus(event, ".history-conversation")}
       >
+        {composer && <div className="home-ask history-composer">{composer}</div>}
         <div className="history-toolbar">
-          <label className="history-search" data-input-surface>
-            {shellIconSearch}
-            <input
-              ref={search}
-              disabled={saving}
-              onKeyDown={(event) => {
-                if (event.nativeEvent.isComposing) return;
-                if (event.key === "ArrowDown") {
-                  event.preventDefault();
-                  firstConversation.current?.focus();
-                } else if (event.key === "Enter" && !loading && rows[0]) {
-                  event.preventDefault();
-                  useStore.getState().openConversation(rows[0].latestRun.runId);
-                }
-              }}
-              aria-label="Search conversations"
-              placeholder="Search chats…"
-              maxLength={500}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
-          {space?.workspaceId && (
-            <div className="history-space-filter" role="group" aria-label="Conversation Space filter">
-              <button
-                {...smallGhostButtonProps}
-                disabled={saving}
-                aria-pressed={!currentSpaceOnly}
-                onClick={() => setCurrentSpaceOnly(false)}
-              >
-                All Spaces
-              </button>
-              <button
-                {...smallGhostButtonProps}
-                disabled={saving}
-                aria-pressed={currentSpaceOnly}
-                title={space.name}
-                onClick={() => setCurrentSpaceOnly(true)}
-              >
-                {space.name}
-              </button>
-            </div>
-          )}
+          <Tabs<"grid" | "list">
+            label="Chat layout"
+            value={viewMode}
+            onChange={setViewMode}
+            panelId="conversation-layout-panel"
+            className="history-segment"
+            items={[
+              { value: "list", label: <>{shellIconResult} List</>, ariaLabel: "List view" },
+              { value: "grid", label: <>{shellIconGrid} Card</>, ariaLabel: "Card view" },
+            ]}
+          />
           <div className="history-view-tools">
-            <Tabs<"grid" | "list">
-              label="Chat layout"
-              value={viewMode}
-              onChange={setViewMode}
-              panelId="conversation-layout-panel"
-              className="history-segment"
-              items={[
-                { value: "grid", label: shellIconGrid, ariaLabel: "Grid view" },
-                { value: "list", label: shellIconResult, ariaLabel: "List view" },
-              ]}
-            />
+            <label className="history-search" data-input-surface hidden={!searchOpen && !query}>
+              {shellIconSearch}
+              <input
+                ref={search}
+                onBlur={() => {
+                  if (!query) setSearchOpen(false);
+                }}
+                disabled={saving}
+                onKeyDown={(event) => {
+                  if (event.nativeEvent.isComposing) return;
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setQuery("");
+                    setSearchOpen(false);
+                    requestAnimationFrame(() => searchTrigger.current?.focus());
+                  } else if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    firstConversation.current?.focus();
+                  } else if (event.key === "Enter" && !loading && rows[0]) {
+                    event.preventDefault();
+                    useStore.getState().openConversation(rows[0].latestRun.runId);
+                  }
+                }}
+                aria-label="Search conversations"
+                placeholder="Search chats…"
+                maxLength={500}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            {!searchOpen && !query && (
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Search chats"
+                ref={searchTrigger}
+                disabled={saving}
+                onClick={() => {
+                  setSearchOpen(true);
+                  requestAnimationFrame(() => search.current?.focus());
+                }}
+              >
+                {shellIconSearch}
+              </button>
+            )}
+            <Popover
+              label="Filter chats"
+              trigger={shellIconFilter}
+              disabled={saving}
+              className={archived || workspaceId ? "history-filter-active" : ""}
+            >
+              {() => (
+                <div className="history-filters">
+                  <fieldset>
+                    <legend>Show</legend>
+                    {[false, true].map((value) => (
+                      <label key={String(value)}>
+                        <input
+                          type="radio"
+                          name="chat-state"
+                          checked={archived === value}
+                          onChange={() => setArchived(value)}
+                        />
+                        {value ? "Archived chats" : "Active chats"}
+                      </label>
+                    ))}
+                  </fieldset>
+                  {space?.workspaceId && (
+                    <fieldset>
+                      <legend>Space</legend>
+                      {[false, true].map((value) => (
+                        <label key={String(value)}>
+                          <input
+                            type="radio"
+                            name="chat-space"
+                            checked={currentSpaceOnly === value}
+                            onChange={() => setCurrentSpaceOnly(value)}
+                          />
+                          {value ? space.name : "All Spaces"}
+                        </label>
+                      ))}
+                    </fieldset>
+                  )}
+                </div>
+              )}
+            </Popover>
+            <button
+              ref={sortTrigger}
+              type="button"
+              className="icon-btn"
+              disabled={saving}
+              aria-label="Sort chats"
+              aria-haspopup="menu"
+              aria-expanded={sortOpen}
+              title={oldestFirst ? "Oldest first" : "Newest first"}
+              onClick={() => setSortOpen((value) => !value)}
+            >
+              {oldestFirst ? shellIconSend : shellIconArrowDown}
+            </button>
+            {sortOpen && (
+              <Menu
+                label="Sort chats"
+                className="menu ctx-menu history-sort-menu"
+                anchor={sortTrigger}
+                returnFocus={sortTrigger}
+                onClose={() => setSortOpen(false)}
+              >
+                {[false, true].map((value) => (
+                  <button
+                    key={String(value)}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={oldestFirst === value}
+                    disabled={saving}
+                    onClick={() => {
+                      setOldestFirst(value);
+                      setSortOpen(false);
+                    }}
+                  >
+                    <span>{value ? "Oldest first" : "Newest first"}</span>
+                    {oldestFirst === value && shellIconCheck}
+                  </button>
+                ))}
+              </Menu>
+            )}
           </div>
         </div>
         {(archived || workspaceId) && (
@@ -195,6 +281,7 @@ export function ChatHistory() {
               className: "history-conversation-wrap",
               openClassName: "history-conversation",
               detailed: true,
+              now,
               disabled: saving,
               buttonRef:
                 index === 0
@@ -368,7 +455,9 @@ export function ChatHistory() {
           <button
             {...auxReuseStaticButtonProps}
             disabled={loading}
-            onClick={() => void collection.load("append")}
+            onClick={() =>
+              oldestFirst ? setVisibleCount((count) => count + 40) : void collection.load("append")
+            }
           >
             Load more conversations
           </button>
