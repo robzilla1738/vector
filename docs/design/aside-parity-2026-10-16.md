@@ -81,7 +81,7 @@ source limitations. The complete source filename and metadata live in the folder
 | 002 | New tab profile menu                        | captured                                                                                                                  | Open                                                            |
 | 003 | New tab ask composer                        | captured                                                                                                                  | Source changed; native comparison open                          |
 | 004 | New tab routines                            | captured                                                                                                                  | Open                                                            |
-| 005 | New tab suggested tasks                     | captured                                                                                                                  | Open                                                            |
+| 005 | New tab suggested tasks                     | captured                                                                                                                  | Native cards/draft action observed; full comparison open                                                            |
 | 006 | Composer options dropdown                   | captured                                                                                                                  | Open                                                            |
 | 007 | Composer project picker                     | captured                                                                                                                  | Open                                                            |
 | 008 | Composer permission guard                   | captured                                                                                                                  | Open                                                            |
@@ -489,3 +489,29 @@ in `/tmp/aux-parity-2026-10-16/`. Viewports remain unmatched; no pixel/native pa
 claim. 37 focused checks pass. Integrated typecheck/lint pass, 4,531/4,532 tests
 across 730 files pass; existing coder-worktrees timeout remains. Combined native
 build and narrow-layout acceptance remain pending.
+
+
+## Combined native candidate — 02316f6b8
+
+Full incremental build succeeded: 26 steps / 9m05.51s, 214 renderer assets,
+273 methods / 30 events (`cce8203bcbd0`), rebuilt runtime and Node 26.9. Old
+preview retired normally before building; new launcher owns the plain lock and
+fresh `aux-dev-iy88v8` disposable Profile. No real Profile was touched.
+
+Native inspection showed rounded model-search focus without the inner rectangle,
+Home's three supplied-art cards and memory prompt insertion with focus but no
+send. Cleared that draft before one synthetic All Chats request: “Reply with the
+number of days in a week, spelled out in English.” Runtime SDK read confirmed
+completed report `seven`, `pageIds: []`. The native List row showed `seven`, and
+searching `seven` matched the conversation although that word is absent from its
+question/title. Initial activity said Preparing this request. The All Chats
+composer contained its controls and internal toolbar buttons remained visible.
+
+Screenshots in `/tmp/aux-parity-2026-10-16/`:
+`aux-model-focus-native-02316.png`, `aux-home-cards-native-02316.png`,
+`aux-home-draft-native-02316.png`, `aux-reply-native-02316.png`,
+`aux-report-search-native-02316.png`. This verifies the stated native behaviors;
+it is not matched-viewport or complete product parity. Narrow Home layout,
+remount persistence, customization's native destination and remaining ledger
+surfaces still require observation. Reference rescan: unchanged 182 original
+images / 192 manifest entries, latest capture 192 JavaScript permissions.

@@ -3,6 +3,17 @@
 
 ## October 16 UI parity review — in progress
 
+**Latest compiled/staged source: `02316f6b8`.** Combined native build succeeded
+in 26 steps / 9m05.51s, staging 214 renderer assets and the rebuilt runtime
+(273 methods / 30 events, `cce8203bcbd0`, Node 26.9). This supersedes the older
+renderer/runtime staging notes below. Preview uses a fresh disposable Profile;
+launcher owns its lock and cleanup. Native observation verified rounded model
+search focus, all three Home cards, draft-only insertion/focus, internal toolbar
+visibility and the contained All Chats composer. A synthetic question completed
+with report `seven` and zero page IDs. List showed the report excerpt, and a
+report-only search matched it. Evidence is in the capture ledger. Narrow layouts,
+Home persistence across native remount and full parity remain open.
+
 Home now has expandable suggested-task cards using the supplied unbranded
 backgrounds/icons. Memory/routine actions append a reviewable draft to the real
 composer, preserve existing text/context, and never send automatically. Customize
@@ -47,14 +58,14 @@ dist was rebuilt before tests. Typecheck/lint pass; the integrated suite passed
 coder-worktrees 60-second timeout. These latest presentation/search changes await
 the next combined native build.
 
-Last compiled renderer: **68affeb44**, built in **25 steps / 8m39.01s**, with
+Previous compiled renderer: **68affeb44**, built in **25 steps / 8m39.01s**, with
 206 renderer assets and **273 methods / 30 events** (`cce8203bcbd0`). Native
 List/Card, sort selection/return focus, archive filtering, menu dismissal and
 draft retention were observed. The preceding focus/dialog/toolbar candidate
 c612736f5 also built and was inspected; both previews retired normally before
 subsequent launchers. Evidence and limitations are in the ledger and QA report.
 
-Current staged runtime: **bbcce77c3**, reused the compiled ABI and renderer in a
+Previous staged runtime: **bbcce77c3**, reused the compiled ABI and renderer in a
 new disposable Profile under its launcher/plain lock. A native synthetic send
 from All Chats completed with the exact requested reply and zero page IDs
 (one gateway model call). This verifies the fix that excludes internal and

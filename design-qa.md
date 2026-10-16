@@ -334,3 +334,14 @@ Typecheck/lint pass; 4,531/4,532 integrated tests pass (existing coder-worktrees
 timeout). See the current capture ledger for asset provenance and screenshots.
 Full-product result remains pending; combined native and narrow-layout evidence
 are still required.
+
+
+## October 16 — consolidated native candidate 02316f6b8
+
+Native build passed in 26 steps / 9m05.51s (214 renderer assets). In a fresh
+disposable Profile, verified the corrected rounded model search, Home card
+rendering and draft insertion/focus without sending, contained history composer,
+and report excerpts/search. One synthetic request completed with report `seven`
+and no page IDs; a report-only search matched it. Evidence filenames and remaining
+native/narrow-layout comparisons are in the active ledger. Full-product QA stays
+open; no phase or full-parity acceptance is claimed.
