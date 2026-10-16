@@ -93,8 +93,8 @@ const items: readonly RailItem[] = [
     gate: "vault",
   },
   {
-    label: "Automations",
-    category: "Automations",
+    label: "Routines",
+    category: "Routines",
     group: "Features",
     icon: shellIconClock,
     gate: "automations",

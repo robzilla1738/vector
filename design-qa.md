@@ -357,3 +357,15 @@ cards; current source uses content height and was freshly rendered in that same
 window. Evidence is in the active ledger. Typecheck/lint pass; 4,532/4,533 tests
 pass (existing coder-worktrees timeout); final production renderer build passes.
 Latest styles require combined native staging. Full parity remains open.
+
+
+## October 16 — direct Routines Settings and prompt creation
+
+Home routes directly to Routines Settings. My routines/Create lead the page;
+creation now accepts a prompt and binds a real saved task/revision, with manual
+criteria and paused state. Retry reuses that task. Existing task/Calendar scope,
+review/activation and spend controls remain. Scoped regression verifies Home Space
+handoff and stale-record hiding. Live renderer route/dialog inspection recorded
+in the ledger; exact compact-form anatomy and native creation are still pending.
+Typecheck/lint pass; final serialized suite 4,535/4,536 passes (known timeout),
+20 final focused cases and production renderer build pass. No full-parity claim.

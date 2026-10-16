@@ -21,7 +21,7 @@ const routes: readonly SettingsRoute[] = [
   { slug: "agents", category: "Permissions" },
   { slug: "models", category: "Connections", connectionTab: "Models" },
   { slug: "usage-budgets", category: "Usage & Budgets" },
-  { slug: "automations", category: "Automations" },
+  { slug: "routines", category: "Routines" },
   { slug: "quick-ask", category: "Quick Ask" },
   { slug: "selection-capture", category: "Selection & Capture" },
   { slug: "archived-chats", category: "Archived chats" },

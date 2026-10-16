@@ -39,7 +39,7 @@ export const mount: FeatureMount = {
   boot: bootNightReview,
   overlays: [NightOverlays],
   composerActions: [QueueButton],
-  settingsSections: [{ category: "Automations", component: NightSettingsSection }],
+  settingsSections: [{ category: "Routines", component: NightSettingsSection }],
   commands: {
     "queue-for-tonight": (_context, invocation) =>
       invocation.payload && "queue" in invocation.payload

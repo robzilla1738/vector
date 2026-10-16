@@ -3,6 +3,25 @@
 
 ## October 16 UI parity review — in progress
 
+Home All Routines now opens `/settings/routines` directly. The former Automations
+Settings implementation is replaced by Routines Settings, with matching rail,
+heading, search metadata and feature navigation; the automations Labs gate remains.
+My routines leads the page, including on-demand definitions. Create accepts a title
+and prompt, saves a task with a manual review criterion, then creates a paused
+routine using that exact task revision. Advanced retains existing-task selection,
+Calendar grants and spend caps. Retrying a failed routine save reuses the saved
+task. Reopening from Home prefers its current Space and hides stale-Space records.
+
+Typecheck/lint pass; the final integrated run passed 4,535/4,536 tests across
+730 files (only longstanding coder-worktrees timeout). An earlier overlapping
+focused/full invocation hit a Vitest dependency-cache race; the final serialized
+full run resolved it. After the final presentation ordering/close-button change,
+typecheck, renderer production build (3.06s) and 20 focused Settings/creation cases
+passed. Live renderer inspected the route, Create row and prompt dialog at narrow
+and wide sizes, without submitting. Native staging/real paused creation remains
+next. The form still needs the reference's compact Repeat/Time rows and remaining
+advanced-option comparisons; full parity is not established.
+
 Home Routines now matches the reference empty-state anatomy: centered icon,
 “No routines”, Aux explanation and a 264px dashed panel. The section header says
 All Routines and retains its real manager action. Narrow suggested cards size to

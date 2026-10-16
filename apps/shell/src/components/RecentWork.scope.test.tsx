@@ -152,5 +152,7 @@ it("opens routine management from the empty Home section", async () => {
     button.textContent?.includes("All Routines"),
   )!;
   await act(async () => manager.click());
-  expect(useStore.getState().overlay).toBe("tasks");
+  expect(useStore.getState().overlay).toBe("settings");
+  expect(useStore.getState().settingsCategory).toBe("Routines");
+  expect(window.location.pathname).toBe("/settings/routines");
 });

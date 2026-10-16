@@ -56,8 +56,8 @@ const ModelsSettings = lazySection(async () => (await import("../settings/sectio
 const UsageBudgetsSettings = lazySection(
   async () => (await import("../settings/sections/UsageBudgets")).UsageBudgetsSettings,
 );
-const AutomationsSettings = lazySection(
-  async () => (await import("../settings/sections/Automations")).AutomationsSettings,
+const RoutinesSettings = lazySection(
+  async () => (await import("../settings/sections/Routines")).RoutinesSettings,
 );
 const WorkspacesSettings = lazySection(
   async () => (await import("../settings/sections/Workspaces")).WorkspacesSettings,
@@ -97,7 +97,7 @@ export function Settings() {
   const automationsAvailable =
     automationsFeatureAvailable ||
     featureSettingsAvailable(
-      "Automations",
+      "Routines",
       settings.featureOverrides as import("@aux/contracts").FeatureOverride | undefined,
     );
   const outboundMcpAvailable = useFeature("outboundMcp");
@@ -120,7 +120,7 @@ export function Settings() {
     (route.category !== "Advanced" || appleScriptAvailable) &&
     (route.category !== "Site permissions" || permissionsAvailable) &&
     (route.category !== "Extensions" || extensionsAvailable) &&
-    (route.category !== "Automations" || automationsAvailable) &&
+    (route.category !== "Routines" || automationsAvailable) &&
     (route.connectionTab !== "Vault" || vaultAvailable) &&
     (route.connectionTab !== "Plugins" || pluginsAvailable) &&
     (route.connectionTab !== "Services" || servicesAvailable);
@@ -137,7 +137,7 @@ export function Settings() {
     (initialCategory === "Advanced" && !appleScriptAvailable) ||
     (initialCategory === "Site permissions" && !permissionsAvailable) ||
     (initialCategory === "Extensions" && !extensionsAvailable) ||
-    (initialCategory === "Automations" && !automationsAvailable) ||
+    (initialCategory === "Routines" && !automationsAvailable) ||
     (initialCategory === "Vault" && !vaultAvailable)
       ? "General"
       : connectionCategories.includes(initialCategory)
@@ -234,7 +234,7 @@ export function Settings() {
       (permissionsAvailable || result.category !== "Site permissions") &&
       (vaultAvailable || result.category !== "Vault") &&
       (pluginsAvailable || result.target !== "Plugins") &&
-      (automationsAvailable || result.category !== "Automations") &&
+      (automationsAvailable || result.category !== "Routines") &&
       (connectorsAvailable || result.target !== "Google Calendar") &&
       (outboundMcpAvailable || result.target !== "MCP servers") &&
       (extensionsAvailable || result.category !== "Extensions"),
@@ -426,13 +426,6 @@ export function Settings() {
         tabIndex={0}
         aria-label={searching ? "Settings search results" : `${category} settings`}
       >
-        <FeatureSettings
-          category={
-            !searching && !subview && (category !== "Connections" || connectionTab === "Services")
-              ? category
-              : null
-          }
-        />
         {searching && (
           <div className="settings-search-results">
             <output {...staticHintProps} data-block>
@@ -486,7 +479,14 @@ export function Settings() {
         {permissionsAvailable && <PrivacySecuritySettings active={visible("Site permissions")} />}
         <ModelsSettings active={visible("Models")} settings={settings} onSave={set} />
         <UsageBudgetsSettings active={visible("Usage & Budgets")} settings={settings} onSave={set} />
-        {automationsFeatureAvailable && <AutomationsSettings active={visible("Automations")} />}
+        {automationsFeatureAvailable && <RoutinesSettings active={visible("Routines")} />}
+        <FeatureSettings
+          category={
+            !searching && !subview && (category !== "Connections" || connectionTab === "Services")
+              ? category
+              : null
+          }
+        />
         <WorkspacesSettings active={visible("Projects")} />
         <QuickAskSettings active={visible("Quick Ask")} settings={settings} onSave={set} />
         <SelectionCaptureSettings active={visible("Selection & Capture")} settings={settings} onSave={set} />

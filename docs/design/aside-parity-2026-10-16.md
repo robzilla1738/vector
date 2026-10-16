@@ -159,8 +159,8 @@ source limitations. The complete source filename and metadata live in the folder
 | 080 | Passwords 1password menu                    | captured                                                                                                                  | Open                                                            |
 | 081 | Passwords external manager picker           | captured                                                                                                                  | Open                                                            |
 | 082 | Passwords other managers expanded           | captured                                                                                                                  | Open                                                            |
-| 083 | Settings routines                           | captured                                                                                                                  | Open                                                            |
-| 084 | Routine create form                         | captured                                                                                                                  | Open                                                            |
+| 083 | Settings routines                           | captured                                                                                                                  | Direct route source/live renderer reviewed; native pending                                                            |
+| 084 | Routine create form                         | captured                                                                                                                  | Prompt creation implemented; native and exact anatomy pending                                                            |
 | 085 | Routine repeat dropdown                     | captured                                                                                                                  | Open                                                            |
 | 086 | Routine time picker                         | captured                                                                                                                  | Open                                                            |
 | 087 | Routine advanced form                       | captured                                                                                                                  | Open                                                            |
@@ -547,3 +547,44 @@ opened Skills & MCP and explicit expansion survived the Settings round trip.
 Previous goal turn made authoritative progress with source changes, local commits,
 and native evidence; this turn adds empty-state/responsive corrections and
 resolves those two outstanding native observations. Full parity remains open.
+
+
+## Direct Routines route and prompt creation — source/live renderer
+
+Inspected original captures 083/084. Home's All Routines action now goes directly
+to Settings → Routines (`/settings/routines`) rather than Tasks/Skills. Renamed
+and replaced the Automations Settings component and route; updated Settings rail,
+feature navigation, budget destination, generated search and mocks. The existing
+Labs automations capability gate is preserved. My routines/Create now lead the
+page; scan preferences and overnight review remain below. On-demand definitions
+are listed too, so All Routines does not omit Home's manual entries.
+
+Creation accepts Title and Prompt. It saves a real task with an editable manual
+review criterion, then creates a paused routine bound to that task/revision.
+Daily at 09:00 is the default. Advanced retains existing reviewed-task selection,
+Calendar grants and model spend cap. No run or activation occurs on creation.
+After a routine-save failure, retry reuses the same task; an error explains that
+the task was saved. This is not a claim of transport-level idempotency for an
+unknown routine-create outcome. Reopening the page follows Home's preferred
+Space; scoped display hides the previous Space during loading. Regression checks
+cover retry, paused payload, exact source criteria, manual entries and Space handoff.
+
+Live renderer inside the disposable native browser verified the route, Create
+row, prompt dialog and dismissal, without submitting synthetic routines there.
+Screenshots in the existing `/tmp` evidence folder:
+`aux-routines-settings-live.png`, `aux-routines-settings-wide-live.png`,
+`aux-routine-create-wide-live.png`. Native staging and a real paused-create check
+remain pending. Form still differs visibly: its day controls/time zone/trigger
+editor need compact Repeat/Time anatomy, and references 085–090 require further
+control/capability comparison. Routine-specific model/notification/remote
+execution semantics must be real Aux capabilities before corresponding controls
+can be accepted. Existing 200-item Settings listing needs pagination comparison.
+
+Final serialized `npm run check`: typecheck/lint pass, 4,535/4,536 tests across
+730 files pass; only known coder-worktrees timeout. The earlier concurrent
+focused/full run hit a missing Vitest dependency-cache chunk; the final serialized
+full run passed that suite. Final presentation ordering/close button was then
+checked with typecheck, production renderer build (3.06s) and 20 focused cases.
+Reference rescan unchanged: 182 originals / 192 manifest entries. Previous goal
+turn made source/commit/rendering progress; this turn changes route and actual
+creation behavior. Full goal remains active and unproven.

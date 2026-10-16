@@ -117,7 +117,7 @@ export function BudgetPrompt({ run, suspension }: { run: Run; suspension: Suspen
   function reviewBudget() {
     if (!current()) return;
     const category =
-      budget?.scope === "routine" || budget?.scope === "nightShift" ? "Automations" : "Usage & Budgets";
+      budget?.scope === "routine" || budget?.scope === "nightShift" ? "Routines" : "Usage & Budgets";
     useStore.setState({ overlay: "settings", settingsCategory: category });
     pushSettingsPath(category);
     window.dispatchEvent(new PopStateEvent("popstate"));

@@ -57,7 +57,7 @@ async function render() {
   await act(async () =>
     root.render(
       <>
-        <SettingsShell shellRef={createRef<HTMLElement>()} nav={<button>Automations</button>}>
+        <SettingsShell shellRef={createRef<HTMLElement>()} nav={<button>Routines</button>}>
           <h1>Settings</h1>
         </SettingsShell>
         <NightOverlays />
@@ -86,7 +86,7 @@ it("dismisses the actual modal lifecycle when global Settings navigation occurs"
   await act(async () => fixture.store.setState({ overlay: "settings" }));
   expect(document.querySelector("dialog[open]")).toBeNull();
   expect(useNightReview.getState().inboxOpen).toBe(false);
-  expect(container.querySelector('[aria-label="Settings"] button')?.textContent).toBe("Automations");
+  expect(container.querySelector('[aria-label="Settings"] button')?.textContent).toBe("Routines");
 });
 it("loads no queue data before the first visit, and preserves form edits across navigation", async () => {
   await render();

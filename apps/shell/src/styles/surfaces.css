@@ -1955,7 +1955,7 @@
     font-weight: var(--fw-medium);
   }
 }
-.automation-create-dialog {
+.routine-create-dialog {
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);
   overflow: auto;
@@ -1967,14 +1967,14 @@
   color: var(--ink-0);
   box-shadow: var(--shadow-pop);
 }
-.automation-create-dialog::backdrop {
+.routine-create-dialog::backdrop {
   background: color-mix(in srgb, var(--bg-0) 68%, transparent);
 }
-.automation-create-dialog > label {
+.routine-create-dialog > label {
   display: grid;
   gap: 6px;
   margin-block: 14px;
 }
-.automation-create-dialog > label :is(input, select) {
+.routine-create-dialog > label :is(input, select) {
   width: 100%;
 }

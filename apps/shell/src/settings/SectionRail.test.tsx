@@ -49,7 +49,7 @@ it("shows implemented sections, gates unavailable ones, and routes connection se
     );
     expect(onOpenCategory).toHaveBeenCalledWith("Link Routing", undefined);
     expect(container.querySelector('button[data-category="Skills & MCP"]')).toBeNull();
-    expect(container.querySelector('button[data-category="Automations"]')).toBeNull();
+    expect(container.querySelector('button[data-category="Routines"]')).toBeNull();
     expect(container.querySelector('button[data-category="Selection & Capture"]')).not.toBeNull();
     expect(container.querySelector('button[data-category="Connected services"]')).toBeNull();
     await act(async () =>

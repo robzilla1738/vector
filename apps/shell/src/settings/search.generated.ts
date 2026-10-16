@@ -409,23 +409,23 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     target: "Usage report",
   },
   {
-    category: "Automations",
-    label: "Skill suggestions",
+    category: "Routines",
+    label: "My routines",
     description:
-      "Suggest saved Skills from the current task or page. Scans stay on this device and never start a run.",
-    target: "Skill suggestions",
-    searchTerms: ["suggestions", "scan frequency", "skills"],
-  },
-  {
-    category: "Automations",
-    label: "Scheduled Skills",
-    description:
-      "Scheduled Skills and Calendar checks run while Aux is open. Calendar checks poll granted accounts once a minute; no event titles are stored in automation runs.",
-    target: "Scheduled Skills",
+      "Schedules and Calendar checks run while Aux is open. Review a routine before enabling it.",
+    target: "My routines",
     searchTerms: ["monitor", "schedule", "calendar", "automation"],
   },
   {
-    category: "Automations",
+    category: "Routines",
+    label: "Routine suggestions",
+    description:
+      "Suggest saved routines from the current task or page. Scans stay on this device and never start a run.",
+    target: "Routine suggestions",
+    searchTerms: ["suggestions", "scan frequency", "skills"],
+  },
+  {
+    category: "Routines",
     label: "Missed runs and results",
     description:
       "Missed read-only checks are combined into one run when Aux resumes. Writes wait for review; overlapping runs are blocked.",

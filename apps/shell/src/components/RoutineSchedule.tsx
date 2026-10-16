@@ -344,7 +344,7 @@ export function RoutineSchedule({
             <p {...staticHintProps}>
               {timezone} ·{" "}
               {mode === "create"
-                ? "Saved task review criteria carry into this Skill."
+                ? "Saved task review criteria carry into this routine."
                 : "Existing review requirements remain unchanged."}
             </p>
           </>
@@ -353,7 +353,7 @@ export function RoutineSchedule({
           {summary}
         </output>
         <button {...auxClassButtonProps} type="submit" disabled={!!saveDisabled}>
-          {mode === "create" ? "Create paused Skill" : "Save trigger"}
+          {mode === "create" ? "Create paused routine" : "Save trigger"}
         </button>
       </fieldset>
     </form>

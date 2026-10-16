@@ -3,6 +3,8 @@ import { useChatArtifacts } from "./use-chat-artifacts";
 import { staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
+import { pushSettingsPath } from "../settings/routes";
+import { runCommand } from "../commands";
 import { bridge } from "../bridge";
 import { useEffect, useState } from "react";
 import type { Routine } from "@aux/contracts";
@@ -89,8 +91,11 @@ export function RecentWork() {
         <button
           className="home-all"
           onClick={() => {
-            if (tab === "routines") useStore.getState().setOverlay("tasks");
-            else {
+            if (tab === "routines") {
+              pushSettingsPath("Routines");
+              useStore.setState({ settingsCategory: "Routines" });
+              runCommand("settings");
+            } else {
               useStore.getState().openConversation(null);
               useStore.setState({ conversationId: "history" });
             }
@@ -147,9 +152,7 @@ export function RecentWork() {
             );
           })
         )}
-        {!visibleLoading && !visibleError && !count && (
-          <RecentWorkEmpty view={tab} />
-        )}
+        {!visibleLoading && !visibleError && !count && <RecentWorkEmpty view={tab} />}
       </div>
       {tab === "chats" && <ConversationDrafts limit={3} compact exclude={items.map((item) => item.chatId)} />}
       {visibleLoading && !count && (

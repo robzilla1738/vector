@@ -10,7 +10,7 @@ it("maps current Settings panels to stable section URLs", () => {
   expect(settingsPath("Connections", "Plugins")).toBe("/settings/skills-plugins");
   expect(settingsPath("Models")).toBe("/settings/models");
   expect(settingsPath("Usage & Budgets")).toBe("/settings/usage-budgets");
-  expect(settingsPath("Automations")).toBe("/settings/automations");
+  expect(settingsPath("Routines")).toBe("/settings/routines");
   expect(settingsPath("Quick Ask")).toBe("/settings/quick-ask");
   expect(settingsPath("Selection & Capture")).toBe("/settings/selection-capture");
   expect(settingsPath("Archived chats")).toBe("/settings/archived-chats");

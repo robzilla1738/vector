@@ -14,7 +14,7 @@ const sections = {
   Models: "Models",
   CloudExecution: "Models",
   UsageBudgets: "Usage & Budgets",
-  Automations: "Automations",
+  Routines: "Routines",
   Workspaces: "Projects",
   QuickAsk: "Quick Ask",
   SelectionCapture: "Selection & Capture",
@@ -192,7 +192,7 @@ for (const [file, category] of Object.entries(components))
 for (const [file, category, feature] of [
   ["features/apple-script/preference.tsx", "Advanced", "appleScript"],
   ["settings/sections/LinkRouting.tsx", "Link Routing", "linkRouting"],
-  ["features/morning-review/NightSettings.tsx", "Automations", "overnightReview"],
+  ["features/morning-review/NightSettings.tsx", "Routines", "overnightReview"],
   ["features/download-naming/Settings.tsx", "Downloads", "smartDownloadNames"],
   ["features/little-window/ExternalLinksSetting.tsx", "General", "littleWindow"],
 ])
