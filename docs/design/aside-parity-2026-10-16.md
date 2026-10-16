@@ -624,3 +624,35 @@ Advanced references reviewed, still open:
   verification are needed before matching controls can be accepted.
 - 086: native Time input exists, but the exact reference popup still needs a
   matched interaction comparison. Custom recurrence UI also remains to compare.
+
+
+## Native route/paused creation and current compact renderer evidence
+
+The single builder completed **ffb87541f**: 25 steps / 9m06.46s, 215 renderer
+assets, 273 methods / 30 events (`cce8203bcbd0`), runtime and Node 26.9 staged.
+Launcher PID 1327/session18842 remains owner of its live disposable preview
+(app PID6044, `aux-dev-gLF8IT`). Old preview cleanup completed normally first.
+
+Observed compiled Home's centered empty Routines panel and All Routines opening
+Settings → Routines directly. UI entered synthetic title “Aux routine parity
+check” and prompt “Return the words: synthetic routine review. Do not browse or
+change anything.” Create saved a paused routine. Scoped SDK reads confirmed:
+- `paused: true`, daily09:00, America/Chicago, days0–6;
+- bound source task revision1 matches actual task revision1;
+- exact matching criterion `routine-output`, manual verification;
+- zero routine occurrences and zero agent runs. No model call or activation.
+Returning Home showed the actual Paused routine card. Native screenshots:
+`aux-routines-empty-native-ffb875.png`, `aux-routine-paused-native-ffb875.png`.
+Native compact timing remains unverified because that candidate predates00c737815.
+
+Loaded the current Vite Settings route freshly inside that native browser and
+inspected00c737815's form: compact Daily/Time rows, Title initially focused,
+Repeat usable before prompt entry, Weekly exposes weekday, incomplete Create stays
+disabled. Dismissed without creating another routine. Screenshots:
+`aux-routine-compact-live-00c737.png`, `aux-routine-weekly-live-00c737.png` in the
+same evidence folder. This is current renderer/mock evidence and unmatched
+viewports, not native acceptance or pixel parity. Final typecheck passed after
+shared-action CSS placement, Time row rounding and initial-focus adjustments.
+Previous goal turn made source/commit progress; this turn added compact controls,
+regressions, local commit00c737815 and native/runtime/live-renderer evidence.
+Full goal remains active; no phase completion or full acceptance is claimed.

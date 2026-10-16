@@ -3,145 +3,62 @@
 
 ## October 16 UI parity review — in progress
 
-Routine scheduling source now leads with compact Repeat/Time controls. Daily,
-Weekdays, Weekly, Interval and Custom use real schedule/monitor/recurrence payloads;
-selected-day and event triggers remain available. Weekly exposes its weekday;
-time-zone and clock-change details are collapsed. Scheduling can be prepared
-before the prompt is ready, but submit stays disabled. Advanced source/review/cap
-fields and Cancel now sit with the schedule actions; title receives initial focus.
-Typecheck/lint pass; 4,537/4,538 tests across 730 files pass (same coder-worktrees
-timeout), plus 15 focused cases. Production renderer build passed 2.74s. These
-compact changes are newer than the running native build: that builder staged
-`ffb87541f` with 215 renderer assets and is still the sole builder. Do not restart
-or clear its lock. Native paused creation and current-source rendering remain next.
-
-Home All Routines now opens `/settings/routines` directly. The former Automations
-Settings implementation is replaced by Routines Settings, with matching rail,
-heading, search metadata and feature navigation; the automations Labs gate remains.
-My routines leads the page, including on-demand definitions. Create accepts a title
-and prompt, saves a task with a manual review criterion, then creates a paused
-routine using that exact task revision. Advanced retains existing-task selection,
-Calendar grants and spend caps. Retrying a failed routine save reuses the saved
-task. Reopening from Home prefers its current Space and hides stale-Space records.
-
-Typecheck/lint pass; the final integrated run passed 4,535/4,536 tests across
-730 files (only longstanding coder-worktrees timeout). An earlier overlapping
-focused/full invocation hit a Vitest dependency-cache race; the final serialized
-full run resolved it. After the final presentation ordering/close-button change,
-typecheck, renderer production build (3.06s) and 20 focused Settings/creation cases
-passed. Live renderer inspected the route, Create row and prompt dialog at narrow
-and wide sizes, without submitting. Native staging/real paused creation remains
-next. The form still needs the reference's compact Repeat/Time rows and remaining
-advanced-option comparisons; full parity is not established.
-
-Home Routines now matches the reference empty-state anatomy: centered icon,
-“No routines”, Aux explanation and a 264px dashed panel. The section header says
-All Routines and retains its real manager action. Narrow suggested cards size to
-content instead of stretching into large squares. Removed the stale global rule
-that hid Home empty-state icons. Typecheck/lint pass; 4,532/4,533 tests pass across
-730 files, with only the existing coder-worktrees timeout. Final renderer build
-passed in 1.87s. Live mock-renderer screenshots verify the styles; they await the
-next combined native build. The manager still opens Tasks and labels routines as
-Skills; its direct route/naming remain an open parity gap.
-
-Additional native 02316f6b8 observation: Customize reached Skills & MCP, and
-explicitly expanded Home suggestions survived a Settings round trip. Resizing to
-a narrower native window exposed the oversized single-card layout corrected in
-source above; do not treat the old compiled narrow layout as accepted.
-
-**Latest compiled/staged source: `02316f6b8`.** Combined native build succeeded
-in 26 steps / 9m05.51s, staging 214 renderer assets and the rebuilt runtime
-(273 methods / 30 events, `cce8203bcbd0`, Node 26.9). This supersedes the older
-renderer/runtime staging notes below. Preview uses a fresh disposable Profile;
-launcher owns its lock and cleanup. Native observation verified rounded model
-search focus, all three Home cards, draft-only insertion/focus, internal toolbar
-visibility and the contained All Chats composer. A synthetic question completed
-with report `seven` and zero page IDs. List showed the report excerpt, and a
-report-only search matched it. Evidence is in the capture ledger. Narrow layouts,
-Home persistence across native remount and full parity remain open.
-
-Home now has expandable suggested-task cards using the supplied unbranded
-backgrounds/icons. Memory/routine actions append a reviewable draft to the real
-composer, preserve existing text/context, and never send automatically. Customize
-opens Skills & MCP Settings. The section remains available after first use,
-remembers its expanded state, and is absent in private Profiles. Replaced the
-old first-run prompt strip. Live mock-renderer inspection verified cards, focused
-draft insertion and the actual Settings destination; screenshots are
-`aux-home-suggestions-live.png` and `aux-home-suggestion-draft-live.png` in the
-existing evidence folder. Typecheck/lint pass; 4,531/4,532 tests across 730 files
-passed, with only the existing coder-worktrees timeout. Combined native staging was subsequently verified below; this earlier live
-renderer evidence alone does not establish native parity.
-
 Work continues on local `main` against the growing
-`~/Desktop/Aside UI Reference 2026-10-16` corpus. Recursive rescan: 192 manifest
-entries and 182 original image files; no new capture since the last batch.
-[The capture ledger](design/aside-parity-2026-10-16.md) tracks the complete scope,
-source limitations, exact evidence and incomplete comparisons. Full parity is
-not established.
+`~/Desktop/Aside UI Reference 2026-10-16` corpus. Latest recursive scan: 192
+manifest entries and 182 original images, unchanged since capture 192. The
+[active capture ledger](design/aside-parity-2026-10-16.md) retains the full scope,
+exact evidence and remaining comparisons. Full parity is not established.
 
-Current source exposes composer model/thinking choices directly, retains execution/
-agent/package/privacy controls in Run options, and groups General Settings into
-Preferences, Languages, Import and About Aux. Languages/import open the real
-editors in compact dialogs. Shared searches have one rounded focus surface.
-All Chats uses the real composer, defaults to dense List rows, and provides
-Card, expandable search, filters, checked sort choices and existing chat actions.
-History routing no longer mounts a hidden transcript owner. Oldest-first reads
-all matching summaries before reversing, then reveals 40 rows at a time; newest-
-first retains server paging. The filter editor still differs from Status/Projects.
+**Compiled/staged candidate: `ffb87541f`.** The incremental native build passed
+in 25 steps / 9m06.46s with 215 renderer assets, 273 methods / 30 events
+(`cce8203bcbd0`), rebuilt runtime and Node 26.9. It includes the prior Home empty
+panel/narrow-card changes, Routines route and prompt creation. The old preview
+retired normally; the current launcher owns its disposable Profile/plain lock.
+Never start another builder until this owned preview retires and cleans up.
 
-The latest source slice puts All Chats controls inside its rounded composer card
-and keeps internal toolbar controls visible. The live renderer was inspected
-inside the disposable native browser: one card contains input/options, and the
-internal controls remain visible. This was mock data and the current Vite source,
-not a rebuilt native renderer. Screenshot:
-`/tmp/aux-parity-2026-10-16/aux-history-contained-live-renderer.png`.
+Native verification: Home showed its centered empty Routines panel; All Routines
+opened Settings → Routines directly. A synthetic prompt created a **paused**
+daily 09:00 routine in America/Chicago. SDK reads confirmed source task revision
+1 equals the bound revision, exact matching manual review criteria, zero routine
+occurrences and zero agent runs. Returning Home showed the actual paused card.
+No activation or model call was performed. Evidence:
+`aux-routines-empty-native-ffb875.png` and
+`aux-routine-paused-native-ffb875.png` in `/tmp/aux-parity-2026-10-16/`.
 
-Report completions now supply chat excerpts and match conversation search across
-earlier turns, Space filters and archive state. Initial activity now says
-“Preparing this request” rather than asserting an unrecorded page read. Runtime
-dist was rebuilt before tests. Typecheck/lint pass; the integrated suite passed
-**4,524/4,525 tests across 728 files**. The only failure is the longstanding
-coder-worktrees 60-second timeout. These latest presentation/search changes await
-the next combined native build.
+**Newer source: `00c737815`.** Routine timing now uses compact Repeat/Time rows,
+Daily/Weekdays/Weekly/Interval/Custom with real payloads, retained selected-day/event
+triggers, collapsed time-zone details, Advanced source/review/cap fields and
+Cancel/Create actions. Title receives initial focus. Scheduling can be prepared
+before the prompt; incomplete or busy forms refuse submission. Fresh live renderer
+inspection verified compact rows, initial focus and Weekly weekday disclosure,
+without creating a second routine. Evidence `aux-routine-compact-live-00c737.png`
+and `aux-routine-weekly-live-00c737.png`. This is current renderer/mock evidence,
+not the compiled native compact form. Compact native staging remains pending.
 
-Previous compiled renderer: **68affeb44**, built in **25 steps / 8m39.01s**, with
-206 renderer assets and **273 methods / 30 events** (`cce8203bcbd0`). Native
-List/Card, sort selection/return focus, archive filtering, menu dismissal and
-draft retention were observed. The preceding focus/dialog/toolbar candidate
-c612736f5 also built and was inspected; both previews retired normally before
-subsequent launchers. Evidence and limitations are in the ledger and QA report.
+Typecheck and lint pass. Integrated checks passed **4,537/4,538 tests across
+730 files**; only the longstanding coder-worktrees 60-second timeout failed.
+15 focused timing/creation cases pass. The production renderer built in 2.74s;
+final cosmetic/shared-action/focus changes were also typechecked and built.
 
-Previous staged runtime: **bbcce77c3**, reused the compiled ABI and renderer in a
-new disposable Profile under its launcher/plain lock. A native synthetic send
-from All Chats completed with the exact requested reply and zero page IDs
-(one gateway model call). This verifies the fix that excludes internal and
-credential-bearing URLs from implicit window context while keeping explicit and
-restored source checks strict. Reply evidence:
-`/tmp/aux-parity-2026-10-16/aux-page-free-reply-bbcce77.png`. Quit this owned preview
-normally before another builder; the launcher owns Profile/lock cleanup.
+Current behavior from preceding slices remains: direct composer model/thinking
+choices; Ask first and remembered confirmation preferences; General Settings
+Preferences/Languages/Import/About with real compact editors; rounded shared
+search focus; All Chats real contained composer, default dense List, rich Card,
+search/filter/sort and real chat actions. Report excerpts/search and the internal-
+page implicit-context fix were verified with a native synthetic `seven` reply and
+no page IDs. Plain list excerpts use an on-demand bounded Markdown projection.
+Home suggested cards reuse supplied unbranded art, append a reviewable draft
+without sending, preserve text/context and hide in private Profiles. Customize
+opens Skills & MCP; explicit expansion survived a native Settings round trip.
 
-Single-line list excerpts now use a bounded, on-demand Markdown text projection.
-Headings, tables, link labels, escaped punctuation, image descriptions and code
-remain readable without syntax markers; Card previews remain rich. A fresh live
-renderer load was inspected in both layouts, with evidence
-`aux-history-plain-excerpts-live.png` and `aux-history-rich-cards-live.png` in the
-existing `/tmp` evidence folder. Vite's development WebSocket failed to connect,
-so HMR log messages alone cannot establish that a loaded preview is current.
-Typecheck/lint pass; **4,527/4,528 tests across 729 files** passed, with only the
-same coder-worktrees timeout. The production renderer build also passed; its
-manifest keeps the text projection and Markdown parser out of the App's static
-startup closure. This is still not a combined native staging pass.
-
-Next gaps include the Status/Projects
-filter composition, direct Project choice, provider submenus, expandable Home
-suggestions, remaining captured surfaces and uncaptured native/error/approval
-states. The live renderer walkthrough also left an outer floating sidebar visible
-when focus moved into the native web content; investigate that transition rather
-than treating this nested preview as sidebar acceptance. No phase, performance,
-full accessibility or full parity completion is claimed. No real Profile, push,
-hosted Actions, signing or release was involved.
-
-The October 12 wrap-up and older notes below are historical.
+Remaining comparisons include the complete ledger, compact native form, exact
+Time/custom-recurrence popup, routine-level model/notifications, standalone/task
+and permission semantics, Settings pagination beyond 200 routines, project
+composer controls, provider nesting, Settings details and the native floating
+sidebar transition into web content. The ledger records concrete capability gaps;
+no similarly named or mock controls count as full parity. Matched viewports,
+alternate themes, accessibility, error/approval states and phase performance/smoke
+evidence are still required before any full-product acceptance.
 
 ## Aside parity checkpoint — owner wrap-up
 

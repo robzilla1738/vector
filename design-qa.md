@@ -380,3 +380,15 @@ Typecheck/lint pass; 4,537/4,538 tests pass (known timeout), 15 focused cases an
 production renderer build pass. Current native builder still contains ffb87541f;
 compact source needs fresh rendered/native evidence. The ledger records actual
 088–090 capability gaps rather than accepting similarly named controls as parity.
+
+
+## October 16 — native paused creation and live compact form
+
+Compiledffb87541f passed25-step/9m06.46s build. Disposable native UI verified Home
+empty Routines → direct Settings → paused synthetic creation. Scoped SDK evidence
+confirmed exact source task revision/manual criteria and zero occurrences/agent
+runs. Current source00c737815 separately rendered compact Repeat/Time, initial
+Title focus, usable pre-prompt scheduling and Weekly weekday disclosure. No second
+routine was created. Screenshots and source/native distinction are in the ledger.
+Full QA remains open; compact native staging and listed capability/comparison
+gaps remain unproven.
