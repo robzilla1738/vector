@@ -12,7 +12,6 @@ const fixture = vi.hoisted(() => ({
   errToast: vi.fn(),
   listeners: new Set<(event: { type: string; payload: { chatId: string } }) => void>(),
 }));
-vi.mock("../onboarding/OnboardingStarters", () => ({ OnboardingStarters: () => null }));
 vi.mock("../store", () => ({
   errToast: fixture.errToast,
   useStore: Object.assign(

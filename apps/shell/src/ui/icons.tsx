@@ -361,6 +361,16 @@ export const RotateCw = (props: Props) =>
 export const shellIconReload = /* @__PURE__ */ icon(RotateCw);
 export const shellIconReloadSm = /* @__PURE__ */ icon(RotateCw, "sm");
 
+// Supplied Central Icons IconQuestionmarkCircle.svg.
+export const QuestionCircle = (props: Props) =>
+  svg(
+    props,
+    <circle cx="12" cy="12" r="9.25" {...strokeProps} />,
+    svgPath("M12 13.25C12 11.0682 14.2499 11.3344 14.25 9.3158C14.2501 6.64348 10.2339 6.6432 9.75 8.85662"),
+    <circle cx="12" cy="16.5" r="1" fill="currentColor" />,
+  );
+export const shellIconQuestion = /* @__PURE__ */ icon(QuestionCircle, "sm");
+
 // Supplied Central Icons IconFilter1.svg.
 export const Filter = (props: Props) =>
   svg(

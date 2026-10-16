@@ -3,7 +3,6 @@ import { act, type ReactNode, type RefObject } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 
-vi.mock("../onboarding/OnboardingStarters", () => ({ OnboardingStarters: () => null }));
 vi.mock("../store", () => ({
   errToast: vi.fn(),
   useStore: Object.assign(

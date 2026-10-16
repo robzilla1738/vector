@@ -371,3 +371,19 @@ it("keeps disconnected Home switches usable with original held preference acknow
       .map(([, args]) => args),
   ).toEqual([{ homeEntryMode: "ask" }, { homeEntryMode: "search" }]);
 });
+
+it("opens the ordinary Ask draft for a suggestion without sending or waiting for settings RPC", async () => {
+  useStore.setState({ settings: { homeEntryMode: "search" }, agentDraft: "Existing question" });
+  await render();
+  const request = { text: "Suggest a routine" },
+    consumed = vi.fn();
+  await act(async () => root.render(<CommandBar hero promptRequest={request} onPromptConsumed={consumed} />));
+  expect(host.querySelector(".home-ask textarea")).not.toBeNull();
+  expect(useStore.getState().agentDraft).toBe("Existing question\n\nSuggest a routine");
+  expect(consumed).toHaveBeenCalledExactlyOnceWith(request);
+  expect(bridge.invoke).not.toHaveBeenCalledWith("runs.start", expect.anything());
+  expect(bridge.invoke).not.toHaveBeenCalledWith("settings.set", expect.anything());
+  await act(async () => root.render(<CommandBar hero />));
+  expect(host.querySelector(".home-ask textarea")).not.toBeNull();
+  expect(useStore.getState().agentDraft).toBe("Existing question\n\nSuggest a routine");
+});

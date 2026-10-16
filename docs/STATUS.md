@@ -3,6 +3,18 @@
 
 ## October 16 UI parity review — in progress
 
+Home now has expandable suggested-task cards using the supplied unbranded
+backgrounds/icons. Memory/routine actions append a reviewable draft to the real
+composer, preserve existing text/context, and never send automatically. Customize
+opens Skills & MCP Settings. The section remains available after first use,
+remembers its expanded state, and is absent in private Profiles. Replaced the
+old first-run prompt strip. Live mock-renderer inspection verified cards, focused
+draft insertion and the actual Settings destination; screenshots are
+`aux-home-suggestions-live.png` and `aux-home-suggestion-draft-live.png` in the
+existing evidence folder. Typecheck/lint pass; 4,531/4,532 tests across 730 files
+passed, with only the existing coder-worktrees timeout. Combined native staging
+is next; this source evidence does not establish native parity.
+
 Work continues on local `main` against the growing
 `~/Desktop/Aside UI Reference 2026-10-16` corpus. Recursive rescan: 192 manifest
 entries and 182 original image files; no new capture since the last batch.

@@ -6,8 +6,8 @@ import {
 import { HomeEntryAction, useHomeEntryOwner } from "./HomeEntryControls";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Conversation } from "./Conversation";
-import { OnboardingStarters } from "../onboarding/OnboardingStarters";
-import { HOME_DRAFT_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
+import type { HomePromptRequest } from "./home-prompt";
+import { HOME_DRAFT_CHAT_KEY, draftKey, readPendingConversation } from "../conversation-drafts";
 import { bridge } from "../bridge";
 import { runCommand } from "../commands";
 import { errToast, useStore } from "../store";
@@ -19,12 +19,16 @@ export default function HomeAsk({
   onSearch,
   current,
   firstFrame,
+  promptRequest,
+  onPromptConsumed,
 }: {
   onSearch?(): unknown;
   current?(): boolean;
   firstFrame?: FirstFrameEntry;
+  promptRequest?: HomePromptRequest;
+  onPromptConsumed?(request: HomePromptRequest): void;
 }) {
-  const ownCurrent = useHomeEntryOwner(!!onSearch);
+  const ownCurrent = useHomeEntryOwner(true);
   const searchCurrent = current ?? ownCurrent;
   const [chatId, setChatId] = useState(() =>
     bridge.privateMode || useStore.getState().agentDraft.trim()
@@ -47,6 +51,18 @@ export default function HomeAsk({
   }, [firstFrame]);
   const focusRequest = useStore((state) => state.focusRequest);
   const railOpen = useStore((state) => state.railOpen);
+  const consumedPrompt = useRef<HomePromptRequest | null>(null);
+  useLayoutEffect(() => {
+    if (!promptRequest || consumedPrompt.current === promptRequest || railOpen || !searchCurrent()) return;
+    consumedPrompt.current = promptRequest;
+    const state = useStore.getState();
+    const existing = chatId ? (state.conversationDrafts[draftKey(chatId)] ?? "") : state.agentDraft;
+    const text = existing.trim() ? `${existing.trimEnd()}\n\n${promptRequest.text}` : promptRequest.text;
+    if (chatId) state.setConversationDraft(chatId, text);
+    else state.setAgentDraft(text);
+    composer.current?.focus();
+    onPromptConsumed?.(promptRequest);
+  }, [promptRequest, onPromptConsumed, chatId, railOpen, searchCurrent]);
   useEffect(() => {
     if (railOpen) return;
     let active = true;
@@ -135,15 +151,6 @@ export default function HomeAsk({
               }
             }}
             entryControls={controls}
-          />
-          <OnboardingStarters
-            chatId={chatId}
-            onChoose={(prompt) => {
-              const state = useStore.getState();
-              if (chatId) state.setConversationDraft(chatId, prompt);
-              else state.setAgentDraft(prompt);
-              composer.current?.focus();
-            }}
           />
         </>
       )}

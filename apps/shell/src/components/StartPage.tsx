@@ -3,7 +3,9 @@ import { FeatureSlots } from "../features/registry";
 import "./StartPage.css";
 import { SessionRecovery } from "./SessionRecovery";
 import { AuxMark } from "./AuxMark";
-import { useEffect } from "react";
+import { SuggestedTasks } from "./SuggestedTasks";
+import type { HomePromptRequest } from "./home-prompt";
+import { useCallback, useEffect, useState } from "react";
 import { useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
 import { CommandBar } from "./CommandBar";
@@ -16,6 +18,10 @@ import { nativeStatusRoleProps } from "../ui/native-attribute-props";
 
 /** Home shares the Search/Ask entry; Ask retains the durable page-free composer. */
 export function StartPage() {
+  const [promptRequest, setPromptRequest] = useState<HomePromptRequest>();
+  const consumePrompt = useCallback((request: HomePromptRequest) => {
+    setPromptRequest((current) => (current === request ? undefined : current));
+  }, []);
   const focus = useStore((s) => s.focusCommandBar);
   const connected = useStore((s) => s.connected);
   const needsModel = useStore((s) => s.settings.modelConfigured === false);
@@ -60,7 +66,7 @@ export function StartPage() {
                 </button>
               </div>
             )}
-            <CommandBar hero />
+            <CommandBar hero promptRequest={promptRequest} onPromptConsumed={consumePrompt} />
             <SessionRecovery compact />
             {connected && (
               <RunAttentionFeed
@@ -76,6 +82,12 @@ export function StartPage() {
                 Connecting to Aux… You can keep writing or browse.
               </output>
             )}
+            <SuggestedTasks
+              onChoose={(text) => {
+                if (useStore.getState().railOpen) runCommand("agent-rail");
+                setPromptRequest({ text });
+              }}
+            />
           </>
         )}
       </div>

@@ -322,3 +322,15 @@ budgets, and unsigned macOS ARM64 packaging passed. Integration was rerun alone
 after fixture-port/build-output contention in overlapping runs. Current behavior,
 limitations and pickup steps are in [the checkpoint](docs/archive/2026-09-24-b0-reset/ui/design-update-2026-09-23.md).
 GitHub CI remains a separate post-push gate.
+
+
+## October 16 — Home suggested tasks
+
+Scoped live renderer evidence: supplied backgrounds/icons render in three rounded
+cards, Use this prompt focuses a draft in the real Home Ask composer without
+sending, and Customize opens Skills & MCP. Existing drafts/context are preserved
+in focused checks, private Profiles omit suggestions, and expansion is remembered.
+Typecheck/lint pass; 4,531/4,532 integrated tests pass (existing coder-worktrees
+timeout). See the current capture ledger for asset provenance and screenshots.
+Full-product result remains pending; combined native and narrow-layout evidence
+are still required.

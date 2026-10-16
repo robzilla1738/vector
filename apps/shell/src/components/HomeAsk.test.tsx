@@ -3,7 +3,7 @@ import { act, type ReactNode, type RefObject } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { HOME_DRAFT_CHAT_KEY } from "../conversation-drafts";
-import { ONBOARDING_STARTERS, type PageTarget } from "@aux/contracts";
+import { type PageTarget } from "@aux/contracts";
 
 const fixture = vi.hoisted(() => ({
   draft: "",
@@ -223,61 +223,38 @@ it("preserves a newer home pointer written by another window when this chat is d
   expect(localStorage.getItem(HOME_DRAFT_CHAT_KEY)).toBe("newer-chat");
 });
 
-it("fills the normal composer without sending and preserves its durable draft target", async () => {
+it("inserts a suggestion into the existing durable draft once, preserves its text, and acknowledges its exact request", async () => {
   localStorage.setItem(HOME_DRAFT_CHAT_KEY, "first-draft");
-  await render();
-  const starter = container.querySelector<HTMLButtonElement>(".onboarding-starters button")!;
-  await act(async () => starter.click());
-  expect(fixture.setConversationDraft).toHaveBeenCalledWith("first-draft", ONBOARDING_STARTERS[0].prompt);
+  fixture.conversationDrafts["chat:first-draft"] = "Existing unsent question";
+  const request = { text: "Draft a routine proposal" };
+  const consumed = vi.fn();
+  await act(async () => root.render(<HomeAsk promptRequest={request} onPromptConsumed={consumed} />));
+  expect(fixture.setConversationDraft).toHaveBeenCalledExactlyOnceWith(
+    "first-draft",
+    "Existing unsent question\n\nDraft a routine proposal",
+  );
   expect(fixture.setAgentDraft).not.toHaveBeenCalled();
+  expect(consumed).toHaveBeenCalledExactlyOnceWith(request);
   expect(document.activeElement).toBe(container.querySelector("textarea"));
-  await render();
-  expect(container.querySelector(".onboarding-starters")).toBeNull();
+  await act(async () => root.render(<HomeAsk promptRequest={request} onPromptConsumed={consumed} />));
+  expect(fixture.setConversationDraft).toHaveBeenCalledTimes(1);
+  expect(fixture.runCommand).not.toHaveBeenCalled();
 });
 
-it("prefills exact signed-in source context from this window without replacing a chosen source", async () => {
-  const source: PageTarget = {
-    pageId: "source",
-    windowId: "main",
-    backend: "aux",
-    targetId: "tab-source",
-    url: "https://example.com/article",
-    title: "Useful article",
-    documentEpoch: 7,
-    sessionId: "signed-in",
-    lastRevision: 0,
-    viewStatus: "visible",
-    controller: "none",
-    controllerEpoch: 0,
-    ownedByRuntime: false,
-    createdAt: 1,
-    lastActiveAt: 1,
-  };
-  const other = { ...source, pageId: "other", windowId: "other-window", lastActiveAt: 2 };
-  fixture.pages = {
-    allIds: [other.pageId, source.pageId],
-    byId: { [other.pageId]: other, [source.pageId]: source },
-  };
-  await render();
-  expect(container.querySelector(".onboarding-starters p")?.textContent).toContain("Useful article");
-  await act(async () => container.querySelector<HTMLButtonElement>(".onboarding-starters button")!.click());
-  expect(fixture.setAgentDraft).toHaveBeenCalledWith(ONBOARDING_STARTERS[0].prompt);
-  expect(fixture.setConversationContext).toHaveBeenCalledWith(null, source.pageId);
-  expect(fixture.setConversationBrowserSources).toHaveBeenCalledWith(null, [
-    {
-      pageId: source.pageId,
-      url: source.url,
-      documentEpoch: 7,
-      sessionId: "signed-in",
-      selectedAt: expect.any(Number),
-    },
-  ]);
-  fixture.draft = "";
-  fixture.conversationContexts = { new: source.pageId };
-  fixture.setConversationContext.mockClear();
-  fixture.setConversationBrowserSources.mockClear();
-  await render();
-  await act(async () => container.querySelector<HTMLButtonElement>(".onboarding-starters button")!.click());
+it("keeps a suggestion pending during a rail handoff and inserts it locally without changing chosen browser sources", async () => {
+  fixture.railOpen = true;
+  fixture.draft = "My draft";
+  fixture.conversationContexts = { new: "chosen-source" };
+  const request = { text: "Review memory notes" };
+  const consumed = vi.fn();
+  await act(async () => root.render(<HomeAsk promptRequest={request} onPromptConsumed={consumed} />));
+  expect(consumed).not.toHaveBeenCalled();
+  expect(fixture.setAgentDraft).not.toHaveBeenCalled();
+  fixture.railOpen = false;
+  await act(async () => root.render(<HomeAsk promptRequest={request} onPromptConsumed={consumed} />));
+  expect(fixture.setAgentDraft).toHaveBeenCalledExactlyOnceWith("My draft\n\nReview memory notes");
+  expect(consumed).toHaveBeenCalledExactlyOnceWith(request);
   expect(fixture.setConversationContext).not.toHaveBeenCalled();
   expect(fixture.setConversationBrowserSources).not.toHaveBeenCalled();
+  expect(fixture.runCommand).not.toHaveBeenCalled();
 });

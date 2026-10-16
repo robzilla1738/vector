@@ -464,3 +464,28 @@ Typecheck and lint pass. The integrated suite passed 4,527/4,528 tests across
 renderer build passed in 2.10s. Its manifest shows the text projection and parser
 chunks outside both the entry and App static closures. The compiled/staged native
 app remains renderer 68affeb44 / runtime bbcce77c3 until the next combined build.
+
+
+## Home suggested tasks — source and live renderer
+
+Reference 005 now has an Aux counterpart: expandable cards, original unbranded
+backgrounds and filled icons, draft-only memory/routine actions, and a real
+Skills & MCP Settings destination. Cards stay available for returning users and
+persist a versioned presentation preference; private Profiles neither read the
+preference nor show cards. Existing durable drafts and browser-context selection
+survive insertion, including rail handoff. Removed the replaced onboarding strip
+and its unused contract constant. Approval/secrets boundaries remain in Aux copy.
+
+Asset mapping in `apps/shell/public/suggestions`: memory/routines/customize WebP
+are supplied assets `1-C1ScKAAP.webp`, `2-CvTUY-kA.webp`, `3-BeB6e1fn.webp` from
+`~/AI Blueprints/06/assets/live-1.0.928/agent-manager-live-1.26.1004/assets/`.
+White SVG geometry is unchanged from onboarding-helper's V/K icons and tag-icon's
+Q icon. No reference account/chat information was copied.
+
+Live renderer/mock inspection inside the disposable native app verified three
+cards, draft insertion/focus without a send, and Customize reaching Skills & MCP.
+Evidence: `aux-home-suggestions-live.png` and `aux-home-suggestion-draft-live.png`
+in `/tmp/aux-parity-2026-10-16/`. Viewports remain unmatched; no pixel/native parity
+claim. 37 focused checks pass. Integrated typecheck/lint pass, 4,531/4,532 tests
+across 730 files pass; existing coder-worktrees timeout remains. Combined native
+build and narrow-layout acceptance remain pending.

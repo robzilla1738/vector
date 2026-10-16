@@ -1,3 +1,4 @@
+import type { HomePromptRequest } from "./home-prompt";
 import { GlassMaterial } from "./GlassMaterial";
 import type { ChromiumHostPort } from "../chromium-bridge";
 import { orderedPages } from "../store/pages";
@@ -82,9 +83,13 @@ export function CommandBar({
   commandRows,
   providerRows,
   onQueryChange,
+  promptRequest,
+  onPromptConsumed,
 }: {
   compact?: boolean;
   hero?: boolean;
+  promptRequest?: HomePromptRequest;
+  onPromptConsumed?(request: HomePromptRequest): void;
   surfaceMode?: CommandSurfaceMode;
   tabSearch?: boolean;
   seed?: string;
@@ -275,6 +280,15 @@ export function CommandBar({
       homeCurrent,
     );
   };
+  const [suggestionUsed, setSuggestionUsed] = useState(false);
+  useEffect(() => {
+    if (!hero || !promptRequest || !homeCurrent()) return;
+    setSuggestionUsed(true);
+    ++entryModeRequest.current;
+    setVal("");
+    setEditing(false);
+    setEntryModeState("ask");
+  }, [hero, promptRequest, homeCurrent]);
   const [scopeFlip, setScopeFlip] = useState(false);
   const [workResult, setWorkResult] = useState<{
     query: string;
@@ -1140,7 +1154,13 @@ export function CommandBar({
           </output>
         }
       >
-        <HomeAsk firstFrame={firstFrame} onSearch={() => switchEntryMode("search")} current={homeCurrent} />
+        <HomeAsk
+          firstFrame={suggestionUsed || promptRequest ? undefined : firstFrame}
+          promptRequest={promptRequest}
+          onPromptConsumed={onPromptConsumed}
+          onSearch={() => switchEntryMode("search")}
+          current={homeCurrent}
+        />
       </Suspense>
     );
 
