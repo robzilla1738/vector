@@ -1,5 +1,30 @@
 # Aux status — October 16, 2026
 
+Native walkthrough on October 17: the current disposable preview is verified in
+Settings > General as source `79bfa144e91b062efbbbc9f9d7adf34b107593a9`,
+build/ABI `c791d36afba5add46ccd2945dcc37acffe88fba766bcaebe1cc626df9aaf0b75`,
+Chromium 154.0.8037.98. Launcher 52233 and app 56049 remain live with disposable
+Profile aux-dev-GXRhpY; retain their cleanup ownership.
+
+Verified in the native UI: model search has one rounded surface focus border and
+no inner rectangular text outline. Created a synthetic bookmark in Bookmarks Bar;
+Open in new window opened its exact saved URL in a separate window. Open in
+Private window opened the same URL; expanding its sidebar exposed the Private
+indicator. Closed only those two test windows. Normal History showed the normal
+visit and no second visit from Private browsing (this is limited History evidence,
+not a general profile-isolation audit). Selected the visit, opened the rounded
+review dialog, verified Cancel was initially focused, then cancelled; the selected
+visit remained. Capture:
+`/tmp/aux-parity-2026-10-16/aux-history-review-native-79bfa144e.png`.
+No history deletion, provider inference or owner Profile access was performed.
+
+Sort/undo source 0e7e6689c postdates this native candidate. Background bookmark
+opening, native sort/undo, batch deletion and light/narrow comparisons remain
+pending. Reference 170 still requires clipboard, tab-group and split destinations
+and menu-order alignment. Full parity and separate native Library routes remain
+incomplete. This was a native acceptance pass; unchanged automated checks were
+not repeated. Earlier process/build notes below are historical.
+
 Bookmark Sort by name (reference 169) is now implemented in source. It persists
 folders-first, locale-aware title ordering through the existing checked native
 folder/bookmark moves. Equal-title items retain their relative order. Search
