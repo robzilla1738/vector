@@ -263,8 +263,11 @@
 }
 
 @layer overrides {
+  :root .aux-native-dialog.anchored-panel:has(> .model-choice-picker) {
+    width: var(--model-menu-width);
+  }
   .settings-model-picker.model-choice-picker {
-    width: 192px;
+    width: 100%;
   }
   .model-choice-picker .settings-model-options button {
     min-height: 32px;

@@ -25,7 +25,6 @@
     padding: 12px;
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-lg);
-    background: var(--bg-hover);
     color: var(--ink-0);
     font: inherit;
     resize: vertical;

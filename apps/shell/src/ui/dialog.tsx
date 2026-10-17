@@ -44,24 +44,26 @@ export function Dialog({
   dialogRef,
   id,
   dismissOnSurfaceClick = false,
+  placement = "stage",
 }: BaseProps & {
   kind?: "dialog" | "alertdialog";
   descriptionId?: string;
   dialogRef?: RefObject<HTMLDialogElement | null>;
   id?: string;
   dismissOnSurfaceClick?: boolean;
+  placement?: "stage" | "anchored";
 }) {
   const internalRef = useRef<HTMLDialogElement>(null);
   const ref = dialogRef ?? internalRef;
   useNativeDialog(true, ref, returnFocus, initialFocusRef);
-  useDialogStage(ref);
+  useDialogStage(ref, placement === "stage");
   return createPortal(
     <dialog
       id={id}
       ref={ref}
       tabIndex={-1}
       role={kind}
-      className={`aux-native-dialog aux-stage-dialog ${className}`}
+      className={`aux-native-dialog ${placement === "stage" ? "aux-stage-dialog" : ""} ${className}`}
       aria-label={label}
       aria-modal="true"
       aria-describedby={descriptionId}
@@ -106,11 +108,11 @@ export function Dialog({
 }
 
 /** Portaled modals remain centered in the browsing area as the sidebar resizes. */
-function useDialogStage(ref: RefObject<HTMLDialogElement | null>) {
+function useDialogStage(ref: RefObject<HTMLDialogElement | null>, enabled: boolean) {
   useLayoutEffect(() => {
     const dialog = ref.current;
     const stage = document.querySelector<HTMLElement>(".main-col > .main");
-    if (!dialog || !stage) return;
+    if (!enabled || !dialog || !stage) return;
     const place = () => {
       const bounds = stage.getBoundingClientRect();
       for (const [edge, value] of Object.entries({
@@ -130,7 +132,7 @@ function useDialogStage(ref: RefObject<HTMLDialogElement | null>) {
       observer?.disconnect();
       window.removeEventListener("resize", place);
     };
-  }, [ref]);
+  }, [ref, enabled]);
 }
 
 /** One menu surface shared by pointer actions and anchored controls. */

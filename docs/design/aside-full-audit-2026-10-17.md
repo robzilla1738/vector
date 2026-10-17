@@ -245,3 +245,24 @@ slice is pending. Selected-item alignment of select popups remains open.
 
 The reference folder still contains 182 PNGs. Detailed paired acceptance remains
 open; inventory review does not establish full parity.
+
+## Packaged stage and canvas acceptance, and popup correction
+
+Packaged `d316d2d69` passed native build in 8m50.49s. About Aux reported that
+source. Home's dominant visible canvas is now #2d2d2d, matching the live Aside
+capture. Project dialogs center in the content area at maximized and restored
+window sizes; their backdrop leaves the browser sidebar and toolbar sharp.
+Tidy Tabs uses the same corrected modal placement. Captures 24–30 record these
+comparisons locally.
+
+Native model-picker inspection (capture 31) caught an inherited positioning
+regression: Popover uses Dialog internally, so the stage inset also stretched
+anchored popups. The correction makes placement explicit: modal Dialog defaults
+to stage, while Popover requests anchored placement. Nested popup lifecycle tests
+assert that separation. Do not accept d316d2d69 as the final popup build.
+
+This follow-up also removes the inherited blue focus shadow from native select
+options, gives modal text inputs the shared quiet control fill, and focuses the
+first editable field in Settings editors. Models now uses the reference box icon;
+Memory uses the chip and Developers uses the code icon. These source corrections
+still require native acceptance after rebuilding.

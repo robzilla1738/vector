@@ -40,6 +40,7 @@ it("opens the editor on demand, returns focus on Escape, and retires it when the
       '[role="dialog"][aria-label="Preferred languages"]',
     )!;
     expect(dialog).not.toBeNull();
+    expect(document.activeElement).toBe(dialog.querySelector("input"));
     await act(async () =>
       dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
     );

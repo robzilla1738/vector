@@ -42,6 +42,7 @@ it("closes only the nested picker on Escape and restores each original trigger",
   try {
     const outer = view.host.querySelector<HTMLButtonElement>("button")!;
     await act(async () => outer.click());
+    expect(dialog("Context").classList.contains("aux-stage-dialog")).toBe(false);
     const inner = dialog("Context").querySelector<HTMLButtonElement>("button")!;
     await act(async () => inner.click());
     expect(document.activeElement).toBe(dialog("Tabs").querySelector("input"));

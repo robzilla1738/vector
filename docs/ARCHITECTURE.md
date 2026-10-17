@@ -211,3 +211,14 @@ and drift between themes. Page CSS should describe layout unique to that page.
 Add semantic tokens only for a distinct reusable role; reuse existing scale tokens
 for ordinary spacing and sizes. Reference-specific geometry may remain explicit
 when it is genuinely unique.
+
+Settings chrome, canvas and cards have separate opaque semantic colors. Home/chat
+uses `--content-canvas` under the existing content-opacity setting; do not stack
+another opaque conversation fill over it. Native page slots remain transparent.
+The Settings toolbar reads the section title from the Settings route owner.
+
+Shared `Dialog` portals retain native focus containment and dismissal. Their
+position and backdrop bounds follow `.main-col > .main`, observed for resizing,
+so the browser sidebar and toolbar remain visually outside the modal content
+area. Anchored Menu and Popover surfaces retain their own placement. New dialogs
+should use this shared shell rather than calculating sidebar offsets independently.

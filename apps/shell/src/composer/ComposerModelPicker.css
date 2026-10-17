@@ -30,7 +30,7 @@
     opacity: 0.5;
   }
   .composer-model-picker {
-    width: 192px;
+    width: var(--model-menu-width);
     max-width: calc(100vw - 16px);
     padding: 6px;
   }
@@ -131,7 +131,7 @@
   }
   .composer-model-submenu {
     position: fixed;
-    width: 240px;
+    width: var(--model-submenu-width);
     max-width: calc(100vw - 16px);
     max-height: min(360px, calc(100dvh - 16px));
     overflow-y: auto;

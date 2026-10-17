@@ -101,7 +101,7 @@
   .project-directory {
     display: flex;
     align-items: center;
-    background: var(--surface-input);
+    background: var(--settings-control-fill);
     padding-right: 4px;
   }
   .project-directory input {

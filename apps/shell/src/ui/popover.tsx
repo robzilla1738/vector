@@ -91,6 +91,7 @@ export function Popover({
         <Dialog
           id={id}
           dialogRef={panel}
+          placement="anchored"
           returnFocus={button}
           initialFocusRef={initialFocusRef}
           className="anchored-panel ctx-menu"

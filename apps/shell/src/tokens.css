@@ -162,6 +162,8 @@
     --menu-radius: var(--r-xl);
     --menu-item-radius: var(--r-control);
     --menu-padding: var(--space-1-5);
+    --model-menu-width: 192px;
+    --model-submenu-width: 208px;
     --settings-control-fill: color-mix(in srgb, var(--ink-0) 4%, transparent);
     --control-h-hero: 48px;
     --hit: 32px;

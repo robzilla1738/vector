@@ -7,6 +7,16 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Popup and editor follow-up — source
+
+The full check passed 4,647 tests / 746 files plus typecheck and lint. Native
+inspection of d316d2d69 verified the Home canvas and modal stage bounds, then
+caught an anchored model picker inheriting those bounds. Popover now explicitly
+requests anchored placement, covered by the nested popup lifecycle test. The
+follow-up standardizes model menu widths (192px root / 208px submenu), modal text
+field fills and editor initial focus, and corrects Models/Memory/Developers icons.
+Final native acceptance is pending; the prior d316d2d69 preview has been retired.
+
 ## Live Aside audit — Settings and shared surfaces
 
 The foundation build `da1c89ef4` was verified natively against the installed Aside:

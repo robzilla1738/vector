@@ -7,6 +7,7 @@ import {
   shellIconChats,
   shellIconClock,
   shellIconCode,
+  shellIconCube,
   shellIconExtension,
   shellIconFolder,
   shellIconGear,
@@ -68,7 +69,7 @@ const items: readonly RailItem[] = [
   },
   { label: "Agents", category: "Permissions", group: "Agent", icon: shellIconAgent },
   { label: "Projects", category: "Projects", group: "Agent", icon: shellIconFolder },
-  { label: "Models", category: "Connections", group: "Agent", icon: shellIconModel, tab: "Models" },
+  { label: "Models", category: "Connections", group: "Agent", icon: shellIconCube, tab: "Models" },
   {
     label: "Skills & MCP",
     category: "Connections",
@@ -85,7 +86,7 @@ const items: readonly RailItem[] = [
     tab: "Services",
     gate: "services",
   },
-  { label: "Memory", category: "Memory", group: "Agent", icon: shellIconChats, gate: "memory" },
+  { label: "Memory", category: "Memory", group: "Agent", icon: shellIconModel, gate: "memory" },
   { label: "Passwords & Autofill", category: "Passwords & Autofill", group: "Features", icon: shellIconLock },
   {
     label: "Vault",
@@ -108,7 +109,7 @@ const items: readonly RailItem[] = [
     label: "Developers",
     category: "Connections",
     group: "Features",
-    icon: shellIconGlobe,
+    icon: shellIconCode,
     tab: "Agents",
   },
   {

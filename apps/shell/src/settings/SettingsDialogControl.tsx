@@ -22,6 +22,7 @@ export function SettingsDialogControl({
 }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
+  const editorFocus = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!active) setOpen(false);
   }, [active]);
@@ -45,6 +46,7 @@ export function SettingsDialogControl({
           label={label}
           className="aux-dialog-surface settings-preference-dialog"
           returnFocus={trigger}
+          initialFocusRef={editorFocus}
           onClose={() => setOpen(false)}
         >
           <header>
@@ -59,7 +61,15 @@ export function SettingsDialogControl({
               </button>
             )}
           </header>
-          <div className="settings-preference-editor">
+          <div
+            className="settings-preference-editor"
+            ref={(node) => {
+              editorFocus.current =
+                node?.querySelector<HTMLElement>(
+                  'input:not([type="hidden"]):not(:disabled), textarea:not(:disabled), select:not(:disabled)',
+                ) ?? null;
+            }}
+          >
             {typeof children === "function" ? children(() => setOpen(false)) : children}
           </div>
           {typeof children !== "function" && (
