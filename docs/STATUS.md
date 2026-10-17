@@ -1,5 +1,20 @@
 # Aux status — October 16, 2026
 
+Replacement candidate `479f5a96b` is building under launcher **73597**, exec
+session **88582**, log `/tmp/aux-bookmark-clipboard-rebuild.log`. It includes the
+Library layout follow-up and the clipboard link correction. Source now constructs
+BookmarkNodeData from the validated native node and calls its implemented
+WriteToClipboard API. Patch 0047 reverse-apply check passed. Prior launcher 70194
+exited and released the lock; no preview was launched from that failed build.
+Preserve launcher 73597 ownership. Native clipboard, context menu, split readiness
+and updated Library layout walkthroughs remain pending this candidate.
+
+The reported rectangular model-search focus box is already fixed by shared
+rounded input-surface focus styling (commit c612736f5), with native acceptance
+recorded below. Existing capture `/tmp/aux-parity-2026-10-16/model-focus-final-crop.png`
+shows the whole rounded search control without an inner text rectangle.
+
+
 Library layout follow-up: permanent bookmark roots stay in the folder rail, not
 as duplicate rows in the main pane. Nested breadcrumbs follow the actual native
 parent chain; root views omit breadcrumbs. Bookmark rows show titles with URLs
