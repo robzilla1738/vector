@@ -3,6 +3,17 @@
 
 ## October 16 UI parity review — in progress
 
+The recurring coder-worktrees verification timeout is resolved. An isolated timed
+diagnostic completed all assertions in51.07s; the monolithic60s test exceeded its
+limit under full-suite load. Split it into independent snapshot/integration/undo,
+interrupted-snapshot recovery, and batch-integration scenarios with disposable
+fixtures and explicit current-worktree access. All34 original assertions remain;
+each case retains the60s timeout. The temporary diagnostic was removed.
+`npm run check` now passes typecheck, lint and all4,592 tests across738 files.
+The three cases took27.44s,34.54s and22.08s under the full suite. No runtime behavior
+or permissions were changed. Native launcher94580/session68095 remains active,
+generating debug symbols for the b1b4a2544 renderer build.
+
 Appearance now includes Quick Ask in the same common-shortcut recorder, with
 read-only global registration status refreshed after shortcut changes and window
 focus. Disabled, unregistered, conflicting, unavailable and Private states have

@@ -20,105 +20,145 @@ import {
 } from "@aux/runtime";
 const execute = promisify(execFile);
 
+async function createFixture() {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "aux-coder-")));
+  const project = join(root, "project"),
+    artifacts = join(root, "artifacts"),
+    scratch = join(root, "scratch");
+  await Promise.all([mkdir(project), mkdir(artifacts), mkdir(scratch)]);
+  const git = (args: string[]) => execute("/usr/bin/git", ["-C", project, ...args]);
+  const db = openDb(":memory:");
+  try {
+    await git(["init"]);
+    await writeFile(join(project, "source.txt"), "original\n");
+    await writeFile(join(project, "image.bin"), Buffer.from([0, 255, 1, 128]));
+    await writeFile(join(project, "run.sh"), "#!/bin/sh\nexit 0\n");
+    await chmod(join(project, "run.sh"), 0o755);
+    await writeFile(join(project, ".env"), "TOKEN=synthetic-test-value\n");
+    await git(["add", "."]);
+    await git([
+      "-c",
+      "user.name=Aux Test",
+      "-c",
+      "user.email=aux@example.invalid",
+      "commit",
+      "-m",
+      "fixture",
+    ]);
+    await writeFile(join(project, "source.txt"), "parent dirty\n");
+    await writeFile(join(project, "extra.txt"), "untracked\n");
+    const repo = new Repo(db);
+    const filesystem = new FilesystemAccessService({
+      homeDir: root,
+      internalRoots: [artifacts],
+      scratchDir: scratch,
+      protectedRoots: [],
+      reviewedRoots: () => ({ read: [project], write: [project] }),
+      settings: () => ({ fileAccessMode: "guard", fileAccessRevision: 0 }),
+    });
+    const options = {
+      repo,
+      filesystem,
+      directory: join(artifacts, "worktrees"),
+      runId: "parent",
+      checkOwner: () => {},
+      authorize: async () => {},
+    };
+    let worktree = await startCoderWorktree(options, project, "fixture-child");
+    const files = new CodingFilesService(repo, filesystem, async () => {});
+    const operations = new CoderWorktreeOperations(
+      {
+        worktreeFor: () => worktree,
+        updateWorktree: (_id, value) => {
+          worktree = value;
+        },
+        recoveryFor: () => {
+          throw new Error("No incomplete snapshot in this scenario");
+        },
+        updateRecovery: () => {},
+      },
+      files,
+      () => worktreeAuthority(options),
+    );
+    return {
+      root,
+      project,
+      scratch,
+      artifacts,
+      db,
+      repo,
+      filesystem,
+      options,
+      worktree,
+      files,
+      operations,
+      currentWorktree: () => worktree,
+    };
+  } catch (error) {
+    db.close();
+    await rm(root, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+async function withFixture(run: (fixture: Awaited<ReturnType<typeof createFixture>>) => Promise<void>) {
+  const fixture = await createFixture();
+  try {
+    await run(fixture);
+  } finally {
+    vi.restoreAllMocks();
+    fixture.db.close();
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+}
+
 describe.skipIf(process.platform !== "darwin")("supervised coder worktrees", () => {
   it("snapshots dirty projects including binary/modes and integrates with journaled conflicts", async () => {
-    const root = await realpath(await mkdtemp(join(tmpdir(), "aux-coder-")));
-    const project = join(root, "project"),
-      artifacts = join(root, "artifacts"),
-      scratch = join(root, "scratch");
-    await Promise.all([mkdir(project), mkdir(artifacts), mkdir(scratch)]);
-    const git = (args: string[]) => execute("/usr/bin/git", ["-C", project, ...args]);
-    const db = openDb(":memory:");
-    try {
-      await git(["init"]);
-      await writeFile(join(project, "source.txt"), "original\n");
-      await writeFile(join(project, "image.bin"), Buffer.from([0, 255, 1, 128]));
-      await writeFile(join(project, "run.sh"), "#!/bin/sh\nexit 0\n");
-      await chmod(join(project, "run.sh"), 0o755);
-      await writeFile(join(project, ".env"), "TOKEN=synthetic-test-value\n");
-      await git(["add", "."]);
-      await git([
-        "-c",
-        "user.name=Aux Test",
-        "-c",
-        "user.email=aux@example.invalid",
-        "commit",
-        "-m",
-        "fixture",
-      ]);
-      await writeFile(join(project, "source.txt"), "parent dirty\n");
-      await writeFile(join(project, "extra.txt"), "untracked\n");
-      const repo = new Repo(db);
-      const filesystem = new FilesystemAccessService({
-        homeDir: root,
-        internalRoots: [artifacts],
-        scratchDir: scratch,
-        protectedRoots: [],
-        reviewedRoots: () => ({ read: [project], write: [project] }),
-        settings: () => ({ fileAccessMode: "guard", fileAccessRevision: 0 }),
-      });
-      const options = {
-        repo,
-        filesystem,
-        directory: join(artifacts, "worktrees"),
-        runId: "parent",
-        checkOwner: () => {},
-        authorize: async () => {},
-      };
-      let worktree = await startCoderWorktree(options, project, "fixture-child");
-      expect(await readFile(join(worktree.root, "source.txt"), "utf8")).toBe("parent dirty\n");
-      expect(await readFile(join(worktree.root, "extra.txt"), "utf8")).toBe("untracked\n");
-      expect(await readFile(join(worktree.root, "image.bin"))).toEqual(Buffer.from([0, 255, 1, 128]));
-      expect((await stat(join(worktree.root, "run.sh"))).mode & 0o777).toBe(0o755);
-      const childPolicy = coderWorktreePolicy(filesystem.codingPolicy(), worktree, {
-        scratch: join(scratch, "child"),
-        artifacts: join(artifacts, "child"),
-      });
-      expect(filesystemPermits(childPolicy, join(worktree.root, "source.txt"), "write")).toBe(true);
-      expect(filesystemPermits(childPolicy, join(options.directory, "sibling", "source.txt"), "write")).toBe(
-        false,
-      );
-      expect(filesystemPermits(childPolicy, join(options.directory, "sibling", "source.txt"), "read")).toBe(
-        false,
-      );
-      expect(filesystemPermits(childPolicy, join(project, "source.txt"), "write")).toBe(false);
+    await withFixture(
+      async ({ worktree, filesystem, scratch, artifacts, options, project, operations, files }) => {
+        expect(await readFile(join(worktree.root, "source.txt"), "utf8")).toBe("parent dirty\n");
+        expect(await readFile(join(worktree.root, "extra.txt"), "utf8")).toBe("untracked\n");
+        expect(await readFile(join(worktree.root, "image.bin"))).toEqual(Buffer.from([0, 255, 1, 128]));
+        expect((await stat(join(worktree.root, "run.sh"))).mode & 0o777).toBe(0o755);
+        const childPolicy = coderWorktreePolicy(filesystem.codingPolicy(), worktree, {
+          scratch: join(scratch, "child"),
+          artifacts: join(artifacts, "child"),
+        });
+        expect(filesystemPermits(childPolicy, join(worktree.root, "source.txt"), "write")).toBe(true);
+        expect(
+          filesystemPermits(childPolicy, join(options.directory, "sibling", "source.txt"), "write"),
+        ).toBe(false);
+        expect(filesystemPermits(childPolicy, join(options.directory, "sibling", "source.txt"), "read")).toBe(
+          false,
+        );
+        expect(filesystemPermits(childPolicy, join(project, "source.txt"), "write")).toBe(false);
 
-      await expect(stat(join(worktree.root, ".env"))).rejects.toMatchObject({ code: "ENOENT" });
-      await writeFile(join(worktree.root, "source.txt"), "child change\n");
-      await writeFile(join(worktree.root, "image.bin"), Buffer.from([0, 254, 2, 129]));
-      const files = new CodingFilesService(repo, filesystem, async () => {});
-      const operations = new CoderWorktreeOperations(
-        {
-          worktreeFor: () => worktree,
-          updateWorktree: (_id, value) => {
-            worktree = value;
-          },
-          recoveryFor: () => {
-            throw new Error("No incomplete snapshot in this scenario");
-          },
-          updateRecovery: () => {},
-        },
-        files,
-        () => worktreeAuthority(options),
-      );
-      await writeFile(join(project, "source.txt"), "person change\n");
-      await expect(
-        operations.integrate("cell", { runId: "parent", actionId: "integration" }),
-      ).rejects.toThrow();
-      expect(await readFile(join(project, "source.txt"), "utf8")).toBe("person change\n");
-      await writeFile(join(project, "source.txt"), "parent dirty\n");
-      const integrated = await operations.integrate("cell", { runId: "parent", actionId: "integration" });
-      expect(integrated.receipt?.status).toBe("confirmed");
-      expect(await readFile(join(project, "image.bin"))).toEqual(Buffer.from([0, 254, 2, 129]));
-      expect(await readFile(join(project, "source.txt"), "utf8")).toBe("child change\n");
-      expect(await readFile(join(project, "extra.txt"), "utf8")).toBe("untracked\n");
-      const undone = await files.undo(
-        { actionId: "undo", receiptIds: [integrated.receipt!.receiptId] },
-        { runId: "parent" },
-      );
-      expect(undone[0]?.status).toBe("confirmed");
-      expect(await readFile(join(project, "source.txt"), "utf8")).toBe("parent dirty\n");
-      expect(await readFile(join(project, "image.bin"))).toEqual(Buffer.from([0, 255, 1, 128]));
+        await expect(stat(join(worktree.root, ".env"))).rejects.toMatchObject({ code: "ENOENT" });
+        await writeFile(join(worktree.root, "source.txt"), "child change\n");
+        await writeFile(join(worktree.root, "image.bin"), Buffer.from([0, 254, 2, 129]));
+        await writeFile(join(project, "source.txt"), "person change\n");
+        await expect(
+          operations.integrate("cell", { runId: "parent", actionId: "integration" }),
+        ).rejects.toThrow();
+        expect(await readFile(join(project, "source.txt"), "utf8")).toBe("person change\n");
+        await writeFile(join(project, "source.txt"), "parent dirty\n");
+        const integrated = await operations.integrate("cell", { runId: "parent", actionId: "integration" });
+        expect(integrated.receipt?.status).toBe("confirmed");
+        expect(await readFile(join(project, "image.bin"))).toEqual(Buffer.from([0, 254, 2, 129]));
+        expect(await readFile(join(project, "source.txt"), "utf8")).toBe("child change\n");
+        expect(await readFile(join(project, "extra.txt"), "utf8")).toBe("untracked\n");
+        const undone = await files.undo(
+          { actionId: "undo", receiptIds: [integrated.receipt!.receiptId] },
+          { runId: "parent" },
+        );
+        expect(undone[0]?.status).toBe("confirmed");
+        expect(await readFile(join(project, "source.txt"), "utf8")).toBe("parent dirty\n");
+        expect(await readFile(join(project, "image.bin"))).toEqual(Buffer.from([0, 255, 1, 128]));
+      },
+    );
+  }, 60_000);
+  it("preserves changed files while inspecting and archiving interrupted snapshots", async () => {
+    await withFixture(async ({ options, project, db, repo, worktree, files }) => {
       const supervised = worktreeAuthority(options);
       let failure: unknown;
       try {
@@ -181,7 +221,10 @@ describe.skipIf(process.platform !== "darwin")("supervised coder worktrees", () 
       expect(archived.state).toBe("archived");
       expect(await readFile(join(archived.root, "source.txt"), "utf8")).toBe("preserved later change\n");
       await expect(stat(recovery.root)).rejects.toMatchObject({ code: "ENOENT" });
-      worktree = await startCoderWorktree(options, project, "batched-child");
+    });
+  }, 60_000);
+  it("reconciles partial integration and journals large batches", async () => {
+    await withFixture(async ({ worktree, filesystem, operations, files, project, currentWorktree }) => {
       await Promise.all(
         Array.from({ length: 101 }, (_, index) =>
           writeFile(join(worktree.root, `batch-${String(index).padStart(3, "0")}.txt`), `change ${index}\n`),
@@ -223,12 +266,9 @@ describe.skipIf(process.platform !== "darwin")("supervised coder worktrees", () 
       const large = await operations.integrate("cell", { runId: "parent", actionId: "large-batch" });
       expect(large.integrated).toBe(true);
       expect(large.receipts.slice(-2).map((receipt) => receipt.after.length)).toEqual([100, 1]);
-      expect(new Set(worktree.integrationBatches!.map((batch) => batch.actionId)).size).toBe(
-        worktree.integrationBatches!.length,
+      expect(new Set(currentWorktree().integrationBatches!.map((batch) => batch.actionId)).size).toBe(
+        currentWorktree().integrationBatches!.length,
       );
-    } finally {
-      db.close();
-      await rm(root, { recursive: true, force: true });
-    }
+    });
   }, 60_000);
 });
