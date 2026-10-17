@@ -7,17 +7,38 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Current replacement build
+## Current native preview
 
-Product **f8a63b938**, launcher **34011**, exec **63143**, log
-`/tmp/aux-memory-index-native-build.log`. Launcher confirmed live. Preserve this
-single builder and freeze renderer/runtime edits until staging finishes. Prior
-launcher26443, app27577 and runtime27591 retired normally; Profileaux-dev-juErea
-and lock were verified removed. CUA homeHistoryApp is stale.
+Product **f8a63b938**, launcher **34011**, app **35335**, runtime **35351**,
+exec **63143**, API port **52797**, disposable Profile **aux-dev-Q8EcMu**.
+Log `/tmp/aux-memory-index-native-build.log`; native build passed in **9m47.99s**,
+runtime staged and booted. CUA **memoryIndexApp** is live. Preserve launcher cleanup
+ownership. Prior26443/app27577/runtime27591 and Profileaux-dev-juErea plus lock
+retired normally and were verified removed. homeHistoryApp is stale.
+About confirms clean source f8a63b9380e6a30f838db531a58f7e6eba6089b4,
+Chromium154.0.8037.98 and ABI9021388e….
 
-Next acceptance: About identity; Ask spacing and Tab/draft round trip; Memory
-Configure before/after Rebuild, approved-note chunk count/update time, pause and
-reopening. Compare075 plus light/narrow layouts. No packaged acceptance yet.
+Native acceptance: Ask → Tab → Search → Tab → Ask preserves the full unfinished
+draft and focuses the right input. Cleared the synthetic draft afterward. Empty
+Ask/Routines spacing now aligns closely with004 at3456×2010 versus3424×1978.
+Memory Configure starts with Index not built. Rebuild shows Running normally,
+actual update time and0chunks. Pausing disables Rebuild; enabling preserves the
+index and time. Imported one1,215-character fictional garden note through local
+paste preview/review and accepted it as explicitly unverified personal context.
+Configuration then reports3chunks from that one approved note. Rebuild retains3
+and advances update time. No provider call was needed for this acceptance.
+
+Captures under `/tmp/aux-parity-2026-10-16/`:
+- `aux-ask-routines-f8a63b938.jpg`
+- `aux-memory-index-empty-f8a63b938.jpg`
+- `aux-memory-index-populated-f8a63b938.jpg`
+
+Reference075 still exposes a configuration layout mismatch: the index is nested
+below the manual-memory switch and a large Space memory explanation/card. Next
+visual correction should lead with the index card and group both actual settings
+below it, preserving their distinct behavior and DOM/keyboard order. Avoid merely
+reordering nested wrappers with CSS. Native light/narrow comparison remains open.
+No complete Memory/phase/full-parity claim.
 
 ## Previous Home/history native preview (retired)
 
@@ -48,7 +69,7 @@ Ask also lacks the reference's Tab-to-switch affordance; any hint must have work
 draft-preserving keyboard behavior. Real image thumbnails and native narrow/light
 states remain open. These observations do not establish full Home parity.
 
-## Ask follow-up — source checked, not yet packaged
+## Ask follow-up — packaged and natively observed
 
 The empty Ask composer now uses a56px Recent work gap on wide Home layouts,
 offsetting the toolbar height; narrow layouts and nonempty transcripts retain
@@ -69,7 +90,7 @@ combined f8a63b938 replacement.
 (`/tmp/aux-home-ask-check.log`). Reference rescan remains182PNG/192TXT/6support.
 Full parity, image thumbnails and native light/narrow comparison remain open.
 
-## Memory index batch — source checked, replacement building
+## Memory index batch — packaged and natively observed
 
 Memory now persists encrypted512-character search chunks with64-character overlap,
 a digest of approved source text and a real update time. Search uses these chunks
@@ -90,7 +111,7 @@ host bindings. Only explanatory text and removal of unrelated formatting followe
 This adds the approved-note index foundation. Editable documents, indexing those
 future documents, model extraction and episodic retention remain incomplete.
 See [Memory implementation boundary](design/memory-parity-implementation.md).
-Native observation of this batch and the preceding Ask changes is still required.
+Native behavior is observed above; configuration layout and light/narrow comparison remain open.
 
 ## Previous accepted native preview (retired)
 

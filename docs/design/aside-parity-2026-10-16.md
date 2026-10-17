@@ -2612,3 +2612,28 @@ Replacement ownership: f8a63b938 launcher34011/session63143, log
 normally; Profileaux-dev-juErea and lock verified removed. CUA homeHistoryApp is
 stale. Renderer/runtime source frozen until staging; combined Ask/Memory native
 acceptance remains pending. Launcher34011 was confirmed live after starting.
+
+
+## October 17 — packaged Ask and Memory index acceptance
+
+f8a63b938 built in9m47.99s, staged runtime and launched: launcher34011, app35335,
+runtime35351, session63143, Profileaux-dev-Q8EcMu, API52797. CUA memoryIndexApp is
+live. About confirms clean f8a63b9380e6a30f838db531a58f7e6eba6089b4 and
+Chromium154.0.8037.98. Preserve launcher ownership.
+
+Native Ask → Tab → Search → Tab → Ask retains the full draft and focuses the
+correct input. Synthetic draft cleared. Ask/Routines spacing aligns closely
+with004 at3456×2010 versus3424×1978. Capture aux-ask-routines-f8a63b938.jpg.
+
+Memory Configure: Index not built → Rebuild → Running normally with real time
+and0chunks. Pause disables Rebuild; enable preserves the index/time. A1,215-char
+fictional garden note was locally previewed, imported and accepted as unverified
+personal context. One approved note produces3chunks. Rebuild preserves3 and
+advances update time. No provider call. Captures aux-memory-index-empty-f8a63b938.jpg
+and aux-memory-index-populated-f8a63b938.jpg under /tmp/aux-parity-2026-10-16/.
+
+075 comparison reveals remaining nested-card layout: index appears under the
+manual-memory switch and long pipeline explanation. Flatten the configuration
+presentation with index first and actual settings below, preserving DOM/keyboard
+order and both existing behaviors. Light/narrow remains open. Document tree,
+episodic retention, model extraction and full parity remain incomplete.
