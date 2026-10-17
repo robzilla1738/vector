@@ -1,6 +1,17 @@
 # Aux status — October 16, 2026
 
-Current accepted candidate **4b1358c589f27d8dd830e3eaca76163325ed2793** built
+Current replacement build: **930d6632f**, launcher **95514**, exec **35247**,
+log `/tmp/aux-layout-defaults-build.log`. Includes the f95a500ce layout defaults
+and toolbar alignment, plus regenerated settings-search copy. Native compilation
+passed and framework linking is in progress. Wait for staging and launch, verify
+About, then fresh sidebar/toolbar visibility and right-aligned actions.
+Launcher 91436/app 92805 retired normally; aux-dev-2gPXgK and its lock were
+verified removed before this replacement. Do not bind the retired app or start
+another builder. Subsequent 196c543fd records the already-generated search copy
+and architecture description; it does not introduce a different renderer design.
+
+
+Previously accepted candidate **4b1358c589f27d8dd830e3eaca76163325ed2793** built
 in 9m15.86s. Launcher **91436**, app **92805**, exec **57397**, disposable Profile
 **aux-dev-2gPXgK**; log `/tmp/aux-native-library-features-build.log`.
 About source/Chromium/ABI verified. Empty Mobile/Managed bookmark roots are hidden.

@@ -1,5 +1,16 @@
 # Aside UI parity — October 16, 2026
 
+October 17 follow-up acceptance: candidate 4b1358c58 hides empty native bookmark
+roots and removes Private/group/split actions immediately after their Labs opt-outs,
+without reloading the native page. The model-search focus follows the rounded
+whole control; the inner rectangular box is absent. Capture:
+`/tmp/aux-parity-2026-10-16/aux-model-search-rounded-4b1358c58.png`.
+Layout defaults and toolbar alignment are committed in f95a500ce; integrated
+check passed 4,618 tests / 744 files. Replacement candidate 930d6632f is building
+under launcher 95514. Runtime-unavailable caching, reading-row focus, replacement
+layout walkthrough and broader parity evidence remain open.
+
+
 October 17 Library integration acceptance: candidate 70b1bd1b5 verified in About.
 Toolbar/shortcuts open actual native Bookmarks, History and data-deletion controls;
 Reading/Archived/Recently closed remain accessible with rounded search focus.
