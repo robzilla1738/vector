@@ -129,9 +129,7 @@ import {
   staticHintProps as auxReuseStaticHintProps,
   staticFieldErrorProps as auxReuseStaticFieldErrorProps,
 } from "../ui/class-props";
-import {
-  nativeButtonTypeProps as auxReuseNativeButtonTypeProps,
-} from "../ui/native-attribute-props";
+import { nativeButtonTypeProps as auxReuseNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { smallButtonProps as auxReuseSmallButtonProps } from "../ui/button-props";
 import { useDocumentImport } from "./use-document-import";
 
@@ -304,6 +302,7 @@ const ComposerActions = memo(function ComposerActions({
   disabled,
   onChange,
   textareaRef,
+  children,
 }: {
   id: string | null | undefined;
   answerRunId?: string;
@@ -312,12 +311,14 @@ const ComposerActions = memo(function ComposerActions({
   disabled: boolean;
   onChange(value: string): void;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
+  children?: ReactNode;
 }) {
   const text = useStore((s) => draftText(s, id, answerRunId, answerQuestion));
   return (
     <Popover label="More chat actions" className="composer-actions-trigger" trigger={shellIconMore}>
       {() => (
         <div className="chat-run-menu">
+          {children}
           <FeatureComposer
             slot="composerActions"
             composerId={mentionComposerId(id, answerRunId)}
@@ -851,7 +852,9 @@ function ConversationContent({
     return guardCommandCompletion(completion, original.owner);
   };
   const contexts = useStore((s) => s.conversationContexts);
-  const contextPage = contexts[id ? draftKey(id) : "new"] ?? (id ? "linked" : "none");
+  const unsavedDraft = taskModeKnown && !taskModeLocked;
+  const defaultContext = embedded && !home && unsavedDraft ? "active" : id ? "linked" : "none";
+  const contextPage = contexts[id ? draftKey(id) : "new"] ?? defaultContext;
   const setContextPage = (pageId: string) => useStore.getState().setConversationContext(id, pageId);
   const selectedBrowserSources = useStore((s) => s.conversationBrowserSources[browserSourcesKey(id)]);
   const browserSources = selectedBrowserSources ?? [];
@@ -1190,7 +1193,7 @@ function ConversationContent({
   ]);
   const readPreviewPage = useCallback(() => {
     const state = useStore.getState();
-    const selection = state.conversationContexts[id ? draftKey(id) : "new"] ?? (id ? "linked" : "none");
+    const selection = state.conversationContexts[id ? draftKey(id) : "new"] ?? defaultContext;
     if (selection !== contextPage) return undefined;
     const latest = state.runs
       .filter((run) => (run.config?.chatId ?? run.runId) === id)
@@ -1208,7 +1211,7 @@ function ConversationContent({
     )
       return undefined;
     return selected;
-  }, [id, contextPage, previewLayoutIdentity]);
+  }, [id, contextPage, defaultContext, previewLayoutIdentity]);
   const previewCurrent = useConversationPreviewOwner(
     conversationCurrent,
     selectedContext,
@@ -2166,16 +2169,25 @@ function ConversationContent({
       </Popover>
     </span>
   );
-  const composerActions = (
+  const composerWorkspaceId = bridge.privateMode
+    ? undefined
+    : !id
+      ? draftWorkspaceId
+      : loadedContextChat.current === id && !contextLoading && !contextError
+        ? (workspaceContext.workspace?.workspaceId ?? (unsavedDraft ? draftWorkspaceId : undefined))
+        : undefined;
+  const composerActions = (options?: ReactNode) => (
     <ComposerActions
       id={id}
       answerRunId={answerRunId}
       answerQuestion={answerQuestion}
-      workspaceId={workspaceContext.workspace?.workspaceId}
+      workspaceId={composerWorkspaceId}
       disabled={archived || sending || answerPending}
       onChange={setText}
       textareaRef={textareaRef}
-    />
+    >
+      {options}
+    </ComposerActions>
   );
   const composerFooter = !taskBound && !answering && (
     <div className="new-chat-options">
@@ -2190,9 +2202,7 @@ function ConversationContent({
       )}
       <ChatPreferences
         actions={composerActions}
-        workspaceId={
-          bridge.privateMode ? undefined : id ? workspaceContext.workspace?.workspaceId : draftWorkspaceId
-        }
+        workspaceId={composerWorkspaceId}
         draftKey={composerPreferenceKey}
         activeRunId={live ? last?.runId : undefined}
         disabled={archived || sending || live || !taskModeKnown}
@@ -2495,12 +2505,10 @@ function ConversationContent({
       {!embedded && (
         <WindowToolbarContent active={toolbarActive}>
           <header className="conversation-head">
-            {newChat && (
-              <span className="new-chat-brand">
-                <AuxMark />
-                Aux
-              </span>
-            )}
+            <span className="new-chat-brand">
+              <AuxMark />
+              Aux
+            </span>
             <h1 id="conversation-title">{taskTitle || savedTitle || turns[0]?.goal || "New chat"}</h1>
             <span className="conversation-title-kind" aria-hidden="true">
               · Chats
@@ -2831,7 +2839,7 @@ function ConversationContent({
                     <div className="composer-footer-context">
                       {composerFooter}
                       {composerModes}
-                      {!composerFooter && composerActions}
+                      {!composerFooter && composerActions()}
                     </div>
                   </div>
                 }

@@ -21,7 +21,7 @@
   .chat-preferences-model {
     margin-left: auto;
   }
-  :is(.chat-run-options-trigger, .composer-actions-trigger).anchored-trigger {
+  .composer-actions-trigger.anchored-trigger {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -36,11 +36,11 @@
     color: var(--ink-2);
     box-shadow: none;
   }
-  :is(.chat-run-options-trigger, .composer-actions-trigger).anchored-trigger:hover {
+  .composer-actions-trigger.anchored-trigger:hover {
     background: var(--bg-hover);
     color: var(--ink-0);
   }
-  :is(.chat-run-options-trigger, .composer-actions-trigger) > .ci {
+  .composer-actions-trigger > .ci {
     flex: none;
     width: 16px;
     height: 16px;

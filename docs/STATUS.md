@@ -7,6 +7,45 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Sidebar anatomy and shared popup glass — current source
+
+The owner's new rail and search screenshots show a persistent multiline composer,
+a context card, compact controls and translucent popup material. The rail now uses
+an 84px minimum writing/action area with its selected website card above it; empty
+state branding is 44px. Confirmation and Project use compact icon/chevron triggers
+with retained names and tooltips. Run options and feature actions share More.
+The rail supports 280px through 620px without changing the saved/default width.
+Fresh rail drafts expose the current website; explicit no-context choices remain.
+Unsaved UUID drafts use the active Space's reviewed projects only after their
+metadata/context loads; saved and unavailable chats do not borrow that scope.
+Failed/blank website documents are excluded from renderer context selection.
+
+Menus, anchored pickers and command search now share `popup-material`, themed tint,
+blur and the existing alpha glass edge layers. Replaced opaque overrides and the
+second popup pseudo-layer recipe were removed. Reduced transparency and forced
+colors retain solid surfaces. Full settings editors keep their separate material.
+47 focused tests passed. Integrated `npm run check` passed typecheck/lint and
+4,667 tests; one old stylesheet assertion still required the replaced 80% fill.
+That assertion now checks the shared popup material and all 26 tests in its file
+pass on targeted retry (4,668 tests total). Native acceptance is pending.
+The reference folder still contains 182 PNGs; the two new owner images are also
+comparison references. Full parity remains incomplete.
+
+Packaged `c5d9bfc67` passed Developers field focus, compact/long Quick Ask sizing,
+a real READY reply, expansion into a full chat with one toolbar, grouped footer in
+the 400px rail, extension menu and extension-only import editor Escape/focus return.
+Quick Ask sizes were 440×202 empty, 440×360 long and 520×640 conversation; Aside's
+92px compact draft remains different. Captures 59–66 are local audit artifacts.
+Extension discovery/import was not run against owner Profiles.
+
+The manual native 20-task smoke was stopped after two scored tasks: L01-owner
+passed; L02-status failed with an invalid `sourceOrigin`. Manual navigation in the
+completed L01 tab returned `ERR_BLOCKED_BY_CLIENT`; a fresh tab navigated normally.
+The report is local `tasks-local-2026-10-17T18-00-47-270Z.json`; no 20-task acceptance
+or phase completion is claimed. Runner/fixture PIDs 14483–14486 were retired.
+Native document retirement/navigation and failed-document context admission need
+investigation before resuming the smoke. No provider sweep is scheduled.
+
 ## Composer, window chrome and extensions — current source
 
 Native `986b4d070` built in 8m28.35s and About confirmed the source. Toolbar

@@ -79,43 +79,66 @@ function Details({
   capture?.(current);
   return <ConversationDetails current={current} text={text} />;
 }
-it("shows the new chat's reviewed project from the active Space and follows Space changes", async () => {
-  const layout = initial.layout;
+it.each([null, "unsaved-uuid"])(
+  "shows the unsaved %s draft project from the active Space and follows Space changes",
+  async (chatId) => {
+    const layout = initial.layout;
+    useStore.setState({
+      layout: {
+        ...layout,
+        activeSpaceId: "personal",
+        spaces: [
+          { id: "personal", name: "Personal", color: "blue", grain: 0, workspaceId: "workspace-personal" },
+          { id: "research", name: "Research", color: "teal", grain: 0, workspaceId: "workspace-research" },
+        ],
+      },
+    });
+    const original = vi.mocked(bridge.invoke).getMockImplementation()!;
+    vi.mocked(bridge.invoke).mockImplementation(async (method, params) => {
+      if (method === "conversations.get") return null;
+      if (method === "packages.list") return { packages: [], defaults: ["aux-core"] };
+      if (method === "workspaces.folders.list") {
+        const workspaceId = (params as { workspaceId: string }).workspaceId;
+        return [{ folderId: workspaceId, path: `/tmp/${workspaceId}`, access: "readWrite" }];
+      }
+      return original(method, params);
+    });
+    await act(async () => root.render(<Conversation chatId={chatId} embedded />));
+    const openProject = () =>
+      act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Composer project"]')!.click());
+    await openProject();
+    const project = () =>
+      document.querySelector<HTMLElement>('[role="dialog"][aria-label="Composer project"]');
+    expect(project()!.textContent).toContain("workspace-personal");
+    await act(async () => {
+      useStore.setState((state) => ({ layout: { ...state.layout, activeSpaceId: "research" } }));
+    });
+    expect(project()).toBeNull();
+    await openProject();
+    expect(project()!.textContent).toContain("workspace-research");
+    expect(project()!.textContent).not.toContain("workspace-personal");
+    expect(bridge.invoke).toHaveBeenCalledWith("workspaces.folders.list", {
+      workspaceId: "workspace-research",
+    });
+  },
+);
+it.each(["saved", "failed"])("does not borrow the active Space for %s chat context", async (kind) => {
   useStore.setState({
     layout: {
-      ...layout,
+      ...initial.layout,
       activeSpaceId: "personal",
       spaces: [
         { id: "personal", name: "Personal", color: "blue", grain: 0, workspaceId: "workspace-personal" },
-        { id: "research", name: "Research", color: "teal", grain: 0, workspaceId: "workspace-research" },
       ],
     },
   });
   const original = vi.mocked(bridge.invoke).getMockImplementation()!;
   vi.mocked(bridge.invoke).mockImplementation(async (method, params) => {
-    if (method === "packages.list") return { packages: [], defaults: ["aux-core"] };
-    if (method === "workspaces.folders.list") {
-      const workspaceId = (params as { workspaceId: string }).workspaceId;
-      return [{ folderId: workspaceId, path: `/tmp/${workspaceId}`, access: "readWrite" }];
-    }
+    if (method === "conversations.get" && kind === "failed") throw new Error("Unavailable");
     return original(method, params);
   });
-  await act(async () => root.render(<Conversation chatId={null} embedded />));
-  const openProject = () =>
-    act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Composer project"]')!.click());
-  await openProject();
-  const project = () => document.querySelector<HTMLElement>('[role="dialog"][aria-label="Composer project"]');
-  expect(project()!.textContent).toContain("workspace-personal");
-  await act(async () => {
-    useStore.setState((state) => ({ layout: { ...state.layout, activeSpaceId: "research" } }));
-  });
-  expect(project()).toBeNull();
-  await openProject();
-  expect(project()!.textContent).toContain("workspace-research");
-  expect(project()!.textContent).not.toContain("workspace-personal");
-  expect(bridge.invoke).toHaveBeenCalledWith("workspaces.folders.list", {
-    workspaceId: "workspace-research",
-  });
+  await act(async () => root.render(<Conversation chatId="saved-a" embedded />));
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="Composer project"]')!.disabled).toBe(true);
 });
 it("dispatches the original native disclosure once and supports its focused remapped action", async () => {
   await act(async () => root.render(<Details id="a" />));

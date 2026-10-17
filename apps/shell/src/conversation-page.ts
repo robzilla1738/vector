@@ -2,7 +2,13 @@ import type { PageTarget } from "@aux/contracts";
 
 /** Context copying uses the protected browser broker's website-only boundary. */
 export function availableConversationPage(page: PageTarget) {
-  if (page.ownedByRuntime || ["crashed", "detached"].includes(page.viewStatus ?? "")) return false;
+  if (
+    page.ownedByRuntime ||
+    page.navigationError ||
+    page.showBlankDocument ||
+    ["crashed", "detached"].includes(page.viewStatus ?? "")
+  )
+    return false;
   try {
     const url = new URL(page.url);
     return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password;

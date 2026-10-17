@@ -18,6 +18,7 @@ import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "./native-attr
 export function Popover({
   label,
   trigger,
+  title,
   disabled,
   className = "",
   align = "start",
@@ -28,6 +29,7 @@ export function Popover({
 }: {
   label: string;
   trigger: ReactNode;
+  title?: string;
   disabled?: boolean;
   className?: string;
   align?: "start" | "end";
@@ -80,6 +82,7 @@ export function Popover({
         className={`anchored-trigger ${className}`}
         disabled={disabled}
         aria-label={label}
+        title={title ?? label}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? id : undefined}

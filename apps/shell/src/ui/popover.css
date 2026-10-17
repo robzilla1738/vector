@@ -75,16 +75,7 @@
 
 @layer overrides {
   :root .aux-native-dialog.anchored-panel {
-    background: var(--surface-menu);
-    color: var(--ink-0);
-    border: var(--hairline) solid var(--line);
-    box-shadow: var(--shadow-pop);
     padding: var(--menu-padding);
-    isolation: isolate;
-  }
-  :root .aux-native-dialog.anchored-panel::before,
-  :root .aux-native-dialog.anchored-panel::after {
-    content: none;
   }
   .anchored-panel :is(button, select, input) {
     font: inherit;

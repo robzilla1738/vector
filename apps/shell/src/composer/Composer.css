@@ -254,4 +254,63 @@
       justify-content: center;
     }
   }
+  /* The rail has a persistent writing area and its own action row, including
+     one-line drafts. Full-window and Quick Ask keep their compact input. */
+  .rail .conversation-message-field {
+    min-height: var(--composer-rail-min-height);
+    padding-bottom: 36px;
+  }
+  .rail .conversation-message-field > textarea {
+    min-height: 48px;
+    padding: 14px;
+  }
+  .rail .conversation .composer-footer {
+    padding-inline: 0;
+  }
+  .rail .conversation .home-tools-trigger > button {
+    background: var(--bg-hover);
+  }
+  .rail .chat-preferences {
+    flex-wrap: nowrap;
+  }
+  .rail .chat-preferences-context {
+    flex: none;
+    gap: 0;
+  }
+  .rail .chat-preferences-model {
+    flex: 1;
+    gap: 0;
+  }
+  .rail .composer-model-controls,
+  .rail .composer-model-controls .composer-run-option {
+    flex: 1;
+  }
+  .rail .composer-model-controls .composer-model-picker-trigger {
+    max-width: 100%;
+  }
+  .rail :is(.agent-mode-label, .composer-project-label) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .rail .composer-control {
+    gap: var(--space-1);
+    padding-inline: var(--space-1);
+  }
+  .rail .composer-thinking-control {
+    padding: 0;
+  }
+  .rail .composer-thinking-control > select {
+    padding-left: var(--space-1);
+  }
+  .rail .conversation-empty .aux-mark {
+    width: 44px;
+    height: 44px;
+    opacity: 0.16;
+  }
 }

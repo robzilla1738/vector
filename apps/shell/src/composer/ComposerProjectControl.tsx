@@ -29,12 +29,15 @@ export function ComposerProjectControl({
     <Popover
       key={JSON.stringify([draftKey, workspaceId, bridge.windowId, bridge.windowKind])}
       label="Composer project"
+      title={choice?.projectRoot ? `Project: ${folderName(choice.projectRoot)}` : "Project: Automatic"}
       className="composer-control composer-project-trigger"
       disabled={disabled || !workspaceId || choice?.executionTarget === "cloud"}
       trigger={
         <>
           {shellIconFolder}
-          <span>{choice?.projectRoot ? folderName(choice.projectRoot) : "Project"}</span>
+          <span className="composer-project-label">
+            {choice?.projectRoot ? folderName(choice.projectRoot) : "Project"}
+          </span>
           <ComposerChevron />
         </>
       }

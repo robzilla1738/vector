@@ -114,7 +114,7 @@ source; the current built 272-method app predates it.
 
 The native window supplies the glass underlay, with a clear native tint in both appearances. Docked sidebars and horizontal browser chrome share the renderer's optional sidebar tint; Home and chats use their independent content opacity. The renderer keeps the primary page surface painted while transient menus, previews and the left hover sidebar are visible. Vertical address entry is owned by Sidebar/CommandBar; horizontal entry remains in Toolbar. Fresh Profiles start with the sidebar expanded and the 42 px toolbar visible; saved collapse and auto-hide choices are preserved. Auto-hide requires both the saved preference and its Labs feature, while Minimal UI can still hide the toolbar independently. Focus uses the existing command-bar routing and can reveal the vertical sidebar. Pinned tabs and bookmark folders are separate native browser state.
 
-Conversation shares its compact composer between Home Ask and full chat. ChatPreferences exposes the remembered confirmation policy and a Popover containing RunOptions; model, reasoning, execution target and private-task controls retain their existing authority checks. Ask first is the fresh-profile default, Skip confirmation selects Full auto, and Auto remains a Settings choice. Anchored popovers use Dialog focus containment and viewport-clamped placement with a dark theme surface; they deliberately omit the decorative GlassMaterial stack. Only the left sidebar has edge-hover reveal. Interactive controls are excluded from native window-drag regions.
+Conversation shares its compact composer between Home Ask and full chat. ChatPreferences exposes the remembered confirmation policy and one More menu containing RunOptions and feature actions; model, reasoning, execution target and private-task controls retain their existing authority checks. Ask first is the fresh-profile default, Skip confirmation selects Full auto, and Auto remains a Settings choice. Anchored popovers use Dialog focus containment and viewport-clamped placement with the shared popup material: themed translucent backing, blur and alpha GlassMaterial edges, plus solid accessibility fallbacks. Only the left sidebar has edge-hover reveal. Interactive controls are excluded from native window-drag regions.
 
 The searchable composer model menu is presentation over RunOptions' existing
 catalog; it does not create a second provider or admission path. Browser-object
@@ -224,7 +224,7 @@ area. Anchored Menu and Popover surfaces retain their own placement. New dialogs
 should use this shared shell rather than calculating sidebar offsets independently.
 
 Composer controls share one trigger recipe and chevron across menus and native
-selects. Context controls and model/actions wrap as groups in the rail. The full
+selects. Full-width context controls and model/actions wrap as groups. The rail uses compact confirmation/project triggers, flexible model labels and one More menu beneath a persistent writing area. Unsaved rail drafts show the current website by default; explicit context selections remain authoritative. The full
 conversation portals its title and actions into the shared window toolbar; overlay
 ownership keeps Settings and the active chat from competing for that slot.
 Extension import reuses the existing reviewed importer with an extension-only

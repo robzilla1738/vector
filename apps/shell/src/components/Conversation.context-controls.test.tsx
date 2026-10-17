@@ -323,3 +323,14 @@ it("the context row is normal scoped and remappable", () => {
     intercept: true,
   });
 });
+
+it("shows the active website in a fresh rail draft and keeps an explicit no-context choice", async () => {
+  const original = vi.mocked(bridge.invoke).getMockImplementation()!;
+  vi.mocked(bridge.invoke).mockImplementation(async (method, params) =>
+    method === "conversations.get" ? null : original(method, params),
+  );
+  await render("new-rail");
+  expect(summary().textContent).toContain("Original selected context");
+  await act(async () => useStore.getState().setConversationContext("new-rail", "none"));
+  expect(summary()).toBeNull();
+});

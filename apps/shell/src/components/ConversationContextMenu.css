@@ -48,13 +48,13 @@
     align-items: center;
     gap: var(--space-2);
     max-width: 100%;
-    width: 180px;
-    height: 44px;
+    width: var(--composer-context-width);
+    height: var(--composer-context-height);
     padding: 6px;
     border-radius: var(--r-xl);
     corner-shape: round;
-    background: var(--surface-secondary);
-    box-shadow: var(--line-inset);
+    background: var(--bg-hover);
+    box-shadow: none;
     color: var(--ink-2);
     font-size: var(--fs-xs);
   }

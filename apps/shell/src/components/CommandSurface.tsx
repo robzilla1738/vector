@@ -331,7 +331,7 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
     >
       <dialog
         open
-        className="command-surface"
+        className="command-surface popup-material"
         aria-modal="true"
         aria-label={tabSearch ? "Search tabs, chats, history, bookmarks or extensions" : "Command surface"}
         data-mode={request.mode}
@@ -340,7 +340,7 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
         style={placement ? { ...placement, transform: "none" } : undefined}
         ref={dialogRef}
       >
-        <GlassMaterial />
+        <GlassMaterial alpha noTopGlow />
         {picker && (
           <button
             {...smallGhostButtonProps}

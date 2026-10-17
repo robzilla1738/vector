@@ -4,9 +4,7 @@ import { call, errToast, useStore } from "../store";
 import { AgentModeControl } from "../features/permissions/AgentModeControl";
 import { ComposerProjectControl } from "./ComposerProjectControl";
 import { ComposerModelControls } from "./ComposerModelControls";
-import { shellIconGearSm } from "../ui/icons";
 import { errorMessage } from "../error-message";
-import { Popover } from "../ui/popover";
 import { bridge } from "../bridge";
 import { Switch } from "../ui";
 import "./ChatPreferences.css";
@@ -20,7 +18,7 @@ export function ChatPreferences({
   disabled,
 }: {
   children: ReactNode;
-  actions?: ReactNode;
+  actions(options: ReactNode): ReactNode;
   draftKey: string;
   workspaceId?: string;
   activeRunId?: string;
@@ -78,53 +76,50 @@ export function ChatPreferences({
       </div>
       <div className="chat-preferences-model">
         <ComposerModelControls draftKey={draftKey} disabled={disabled || !connected} />
-        <Popover label="Run options" className="chat-run-options-trigger" trigger={shellIconGearSm}>
-          {() => (
-            <div className="chat-run-menu">
-              <header>Run options</header>
-              {children}
-              <div className="chat-run-menu-section">
-                <label className="chat-run-scope">
-                  <span>This run only</span>
-                  <Switch
-                    checked={temporary}
-                    disabled={disabled}
-                    onChange={(event) => {
-                      setThisRunOnly(event.target.checked);
-                      if (!event.target.checked && preferences?.agentMode !== undefined)
-                        useStore
-                          .getState()
-                          .setComposerPreferences(draftKey, { ...preferences, agentMode: undefined });
-                    }}
-                  />
-                </label>
-                {temporaryMode && <span className="chat-run-menu-note">Temporary confirmation mode</span>}
-                {activeRunId && (
-                  <button
-                    type="button"
-                    disabled={!connected}
-                    onClick={() => {
-                      const original = useStore.getState().confirmation;
-                      void call("safety.grants.revokeRun", { runId: activeRunId })
-                        .then(() => {
-                          if (
-                            original?.turnId === activeRunId &&
-                            ["approval", "touch-id"].includes(original.kind) &&
-                            useStore.getState().confirmation === original
-                          )
-                            useStore.setState({ confirmation: null });
-                        })
-                        .catch((error) => errToast(errorMessage(error)));
-                    }}
-                  >
-                    Reset permissions for this run
-                  </button>
-                )}
-              </div>
+        {actions(
+          <div className="chat-run-menu-section">
+            <header>Run options</header>
+            {children}
+            <div className="chat-run-menu-section">
+              <label className="chat-run-scope">
+                <span>This run only</span>
+                <Switch
+                  checked={temporary}
+                  disabled={disabled}
+                  onChange={(event) => {
+                    setThisRunOnly(event.target.checked);
+                    if (!event.target.checked && preferences?.agentMode !== undefined)
+                      useStore
+                        .getState()
+                        .setComposerPreferences(draftKey, { ...preferences, agentMode: undefined });
+                  }}
+                />
+              </label>
+              {temporaryMode && <span className="chat-run-menu-note">Temporary confirmation mode</span>}
+              {activeRunId && (
+                <button
+                  type="button"
+                  disabled={!connected}
+                  onClick={() => {
+                    const original = useStore.getState().confirmation;
+                    void call("safety.grants.revokeRun", { runId: activeRunId })
+                      .then(() => {
+                        if (
+                          original?.turnId === activeRunId &&
+                          ["approval", "touch-id"].includes(original.kind) &&
+                          useStore.getState().confirmation === original
+                        )
+                          useStore.setState({ confirmation: null });
+                      })
+                      .catch((error) => errToast(errorMessage(error)));
+                  }}
+                >
+                  Reset permissions for this run
+                </button>
+              )}
             </div>
-          )}
-        </Popover>
-        {actions}
+          </div>,
+        )}
       </div>
       {bridge.privateMode && (
         <span

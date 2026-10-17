@@ -57,3 +57,12 @@ for (const url of ["http://example.test/", "https://example.test/"])
     expect(conversationPage([website], "current", null)).toBe(website);
     expect(conversationPage([website], "active", "current")).toBe(website);
   });
+
+it("does not attach a failed or blank document under its previous website URL", () => {
+  for (const state of [
+    { navigationError: { url: "https://example.test", code: -20, message: "Blocked" } },
+    { showBlankDocument: true },
+  ]) {
+    expect(conversationPage([{ ...pages[0]!, ...state }], "active", "current")).toBeUndefined();
+  }
+});

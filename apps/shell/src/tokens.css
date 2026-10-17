@@ -202,6 +202,10 @@
     --blur-24: 24px;
     --blur-64: 64px;
     --blur-glass-floating: 4px;
+    --blur-popup: var(--blur-16);
+    --composer-rail-min-height: 84px;
+    --composer-context-width: 180px;
+    --composer-context-height: 44px;
 
     /* ---- z ---- */
     --z-stage: 1;
@@ -364,6 +368,7 @@
     --surface-sidebar: var(--sb-bg);
     --surface-popover: var(--bg-2);
     --surface-menu: #262626;
+    --popup-tint: rgb(38 38 38 / 60%);
     --surface-input: var(--surface-primary);
     --border: var(--line);
     --panel: var(--surface-panel);
@@ -423,6 +428,7 @@
     --bg-1: #f3f4f6;
     --bg-2: #fff;
     --surface-menu: #fff;
+    --popup-tint: rgb(255 255 255 / 70%);
     --bg-3: #f3f4f6;
     --bg-hover: rgb(0 0 0 / 10%);
     --bg-active: rgb(0 0 0 / 12.5%);

@@ -3,6 +3,19 @@
 Full parity is not established. The owner requested all captured surfaces, granular
 colors/borders/menus and window chrome, and authorized live Aside inspection.
 
+## New owner references — rail and glass popups
+
+The latest pasted references show the complete narrow rail and tab-search glass.
+Source corrections cover persistent rail composer height, context card, compact
+controls, centered mark, header spacing and shared floating material. The previous
+c5d9bfc67 native captures 59–66 confirm Quick Ask registration/sizing, one chat
+window toolbar, grouped footer, extension menu and import editor focus. They do
+not accept this newer rail/glass implementation. New paired captures are pending.
+
+Two native fixture attempts exposed browser readiness gaps (post-task navigation
+blocked and invalid source-origin on the next turn). The 20-task smoke is incomplete;
+see STATUS for the local report and controlled runner retirement.
+
 ## Native follow-up and owner composer feedback
 
 Packaged `986b4d070` passed actual toolbar Back/Forward navigation and Cloud initial

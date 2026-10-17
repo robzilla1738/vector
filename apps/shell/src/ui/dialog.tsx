@@ -10,6 +10,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { GlassMaterial } from "../components/GlassMaterial";
 import { moveMenuFocus } from "../keyboard-list";
 import { positionContextMenu } from "../position-context-menu";
 import { requestStageReport } from "../stage-obstruction";
@@ -63,7 +64,7 @@ export function Dialog({
       ref={ref}
       tabIndex={-1}
       role={kind}
-      className={`aux-native-dialog ${placement === "stage" ? "aux-stage-dialog" : ""} ${className}`}
+      className={`aux-native-dialog ${placement === "stage" ? "aux-stage-dialog" : "popup-material"} ${className}`}
       aria-label={label}
       aria-modal="true"
       aria-describedby={descriptionId}
@@ -101,6 +102,7 @@ export function Dialog({
           onClose();
       }}
     >
+      {placement === "anchored" && <GlassMaterial alpha noTopGlow />}
       {children}
     </dialog>,
     document.body,
@@ -206,7 +208,7 @@ export function Menu({
       ref={ref}
       tabIndex={-1}
       role="menu"
-      className={`aux-native-dialog aux-native-menu ${className}`}
+      className={`aux-native-dialog aux-native-menu popup-material ${className}`}
       aria-label={label}
       onCancel={(event) => {
         event.preventDefault();
@@ -244,6 +246,7 @@ export function Menu({
           onClose();
       }}
     >
+      <GlassMaterial alpha noTopGlow />
       {children}
     </dialog>,
     document.body,

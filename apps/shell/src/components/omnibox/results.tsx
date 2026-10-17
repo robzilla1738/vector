@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { GlassMaterial } from "../GlassMaterial";
 import { PreferenceAction } from "../../settings/sections/preference-command";
 import { nativeAlertRoleProps, nativeButtonTypeProps } from "../../ui/native-attribute-props";
 import { shellIconOpen, shellIconSend } from "../../ui/icons";
@@ -78,13 +79,14 @@ type Props = {
 export function OmniboxResults(p: Props) {
   return (
     <div
-      className="cb-pop"
+      className={`cb-pop${p.tabSearch ? "" : " popup-material"}`}
       style={{
         maxHeight: p.popup.height,
         ...(p.popup.above ? { top: "auto", bottom: "calc(100% + 6px)" } : {}),
       }}
       onMouseDown={(event) => event.preventDefault()}
     >
+      {!p.tabSearch && <GlassMaterial alpha noTopGlow />}
       {p.status}
 
       {p.searchSuggestions && (

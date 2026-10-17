@@ -64,6 +64,9 @@ export const AgentRail = memo(function AgentRail() {
         : view.kind === "run"
           ? view.runId
           : null;
+  const hasDraft = useStore(
+    (state) => !!(chatId ? state.conversationDrafts[`chat:${chatId}`] : state.agentDraft)?.trim(),
+  );
   useEffect(() => {
     setRecentOpen(false);
   }, [view]);
@@ -100,18 +103,14 @@ export const AgentRail = memo(function AgentRail() {
             >
               {recentOpen && shellIconLeft}
               <span>
-                {recentOpen
-                  ? "Recent chats"
-                  : view.kind === "set"
-                    ? "Set"
-                    : selectedRun?.goal || (chatId ? "Chat with Aux" : "New chat")}
+                {recentOpen ? "Recent chats" : view.kind === "set" ? "Set" : selectedRun?.goal || "New chat"}
               </span>
               {!recentOpen && shellIconDown}
             </button>
             {!connected && <output className="rail-sub offline">Connecting…</output>}
             {selectedRun && <RunPresence run={selectedRun} pages={selectedPages} compact />}
             <span {...auxClassSpacerProps} />
-            {!recentOpen && view.kind !== "set" && (
+            {!recentOpen && view.kind !== "set" && (selectedRun || hasDraft) && (
               <button
                 {...staticIconButtonProps}
                 title="Open full conversation"
@@ -155,7 +154,7 @@ export const AgentRail = memo(function AgentRail() {
           </div>
         </div>
       )}
-      <ResizeHandle side="right" value={railWidth} min={300} max={620} reset={400} onResize={setRailWidth} />
+      <ResizeHandle side="right" value={railWidth} min={280} max={620} reset={400} onResize={setRailWidth} />
     </aside>
   );
 });
