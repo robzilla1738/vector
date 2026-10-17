@@ -556,3 +556,56 @@ it("copies native bookmark identity, pastes after the selected row and offers gu
   expect(vi.mocked(bridge.invoke).mock.calls.length).toBe(reads);
   expect(host.textContent).not.toContain("Bookmark copied.");
 });
+
+it("keeps permanent roots in navigation and follows the selected root's real folder ancestry", async () => {
+  const folder = (
+    nodeId: string,
+    parentId: string | null,
+    title: string,
+    childIds: string[],
+    path: string[],
+  ) => ({ nodeId, parentId, title, childIds, path, index: 0, permanent: parentId === null });
+  const snapshot = {
+    rootId: "1",
+    editable: true,
+    folders: [
+      folder("1", null, "Bookmarks Bar", ["10", "14"], []),
+      folder("2", null, "Other Bookmarks", ["20"], ["Other bookmarks"]),
+      folder("3", null, "Mobile Bookmarks", [], ["Mobile bookmarks"]),
+      folder("10", "1", "Research", [], ["Research"]),
+      folder("20", "2", "Research", [], ["Other bookmarks", "Research"]),
+    ],
+  };
+  const saved = { nodeId: "14", title: "Saved reference", url: "https://example.com/", createdAt: 1 };
+  vi.mocked(bridge.invoke).mockImplementation(
+    async (method) => (method === "bookmarks.list" ? [saved] : []) as never,
+  );
+  vi.mocked(bridge.bookmarksInvoke).mockImplementation(async (request) =>
+    request.method === "bookmarks.clipboard.available"
+      ? { method: request.method, result: { available: false } }
+      : { method: "bookmarks.folders.snapshot", result: snapshot },
+  );
+  await render("bookmarks");
+  await tick();
+  host.querySelector<HTMLElement>(".library-list")!.scrollTo = vi.fn();
+  expect(host.querySelectorAll(".library-list .library-folder")).toHaveLength(1);
+  expect(host.querySelector(".library-list")?.textContent).not.toContain("Other Bookmarks");
+  expect(host.querySelector(".library-breadcrumbs")).toBeNull();
+  expect(host.querySelector(".library-open")?.getAttribute("title")).toContain(saved.url);
+  expect(host.querySelector(".library-open .library-url")).toBeNull();
+  await act(async () => host.querySelector<HTMLButtonElement>(".library-list .library-folder")!.click());
+  expect(
+    [...host.querySelectorAll(".library-breadcrumbs button")].slice(0, 2).map((button) => button.textContent),
+  ).toEqual(["Bookmarks Bar", "Research"]);
+  await act(async () =>
+    [...host.querySelectorAll<HTMLButtonElement>(".library-folder-destination")]
+      .find((button) => button.textContent === "Other Bookmarks")!
+      .click(),
+  );
+  expect(host.querySelector(".library-breadcrumbs")).toBeNull();
+  expect(host.querySelectorAll(".library-list .library-folder")).toHaveLength(1);
+  await act(async () => host.querySelector<HTMLButtonElement>(".library-list .library-folder")!.click());
+  expect(
+    [...host.querySelectorAll(".library-breadcrumbs button")].slice(0, 2).map((button) => button.textContent),
+  ).toEqual(["Other Bookmarks", "Research"]);
+});

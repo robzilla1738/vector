@@ -1,5 +1,18 @@
 # Aux status — October 16, 2026
 
+Library layout follow-up: permanent bookmark roots stay in the folder rail, not
+as duplicate rows in the main pane. Nested breadcrumbs follow the actual native
+parent chain; root views omit breadcrumbs. Bookmark rows show titles with URLs
+on hover, and folder/bookmark rows share compact card spacing. Integrated check
+passed 4,649 tests / 749 files; renderer built in 2.99s. Native visual acceptance
+of this follow-up is pending. Logs `/tmp/aux-bookmark-layout-{check,build}.log`.
+
+The consolidated candidate launcher 70194 exited and released its lock after a
+linker failure: Chromium declares CopyToClipboard but provides no implementation
+in this checkout. The replacement will use BookmarkNodeData::WriteToClipboard.
+No app was launched from that candidate; its acceptance remains pending.
+
+
 Consolidated native clipboard candidate started from `f22e40699`, including
 context menus and split-readiness follow-up. Launcher **70194**, exec session
 **48817**, log `/tmp/aux-bookmark-clipboard-native.log`; process confirmed live at

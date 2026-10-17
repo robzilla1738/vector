@@ -275,7 +275,7 @@ const SavedPageRow = memo(function SavedPageRow({
         <span className="library-row-heading">
           <span className="library-title">{title}</span>
         </span>
-        <span className="library-url">{item.url}</span>
+        {view === "reading" && <span className="library-url">{item.url}</span>}
         {showFolderPath && item.folderPath?.length ? (
           <span {...staticHintProps}>{item.folderPath.join(" / ")}</span>
         ) : null}
@@ -841,18 +841,19 @@ export function Library({
   const currentChildIds = new Set(currentFolder?.childIds);
   const childFolders = folders.filter(
     (item) =>
-      item.nodeId !== snapshot?.rootId &&
-      (q
-        ? item.path.join(" / ").toLocaleLowerCase().includes(q)
-        : (item.parentId ?? snapshot?.rootId) === currentFolder?.nodeId),
+      !item.permanent &&
+      (q ? item.path.join(" / ").toLocaleLowerCase().includes(q) : item.parentId === currentFolder?.nodeId),
   );
   const breadcrumbs: BookmarkFolder[] = [];
+  const ancestors = new Set<string>();
   for (
     let node = currentFolder;
-    node && node.nodeId !== snapshot?.rootId;
+    node && !ancestors.has(node.nodeId);
     node = folders.find((parent) => parent.nodeId === node?.parentId)
-  )
+  ) {
+    ancestors.add(node.nodeId);
     breadcrumbs.unshift(node);
+  }
   function openFolder(id: string) {
     setAddingBookmark(false);
     setFolderId(id);
@@ -1594,15 +1595,16 @@ export function Library({
               {view === "bookmarks" && (
                 <BookmarkImportReview flow={bookmarkImport} bookmarks={bookmarks} disabled={busy} />
               )}
-              {view === "bookmarks" && (
+              {view === "bookmarks" && breadcrumbs.length > 1 && (
                 <nav className="library-breadcrumbs" aria-label="Bookmark folders">
-                  <button className="btn ghost sm" onClick={() => openFolder(snapshot?.rootId ?? "")}>
-                    Bookmarks
-                  </button>
-                  {breadcrumbs.map((item) => (
+                  {breadcrumbs.map((item, index) => (
                     <span key={item.nodeId}>
-                      {shellIconRight}
-                      <button className="btn ghost sm" onClick={() => openFolder(item.nodeId)}>
+                      {index > 0 && shellIconRight}
+                      <button
+                        className="btn ghost sm"
+                        aria-current={item.nodeId === currentFolder?.nodeId ? "location" : undefined}
+                        onClick={() => openFolder(item.nodeId)}
+                      >
                         {item.title || "Untitled folder"}
                       </button>
                     </span>
