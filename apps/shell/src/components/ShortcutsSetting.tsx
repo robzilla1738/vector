@@ -12,6 +12,7 @@ import {
   type ShortcutOverrides,
 } from "@aux/contracts/shortcut-defs";
 import { bridge } from "../bridge";
+import { shellIconReloadSm } from "../ui/icons";
 import {
   bindingFromKeydown,
   exportShortcuts,
@@ -208,14 +209,18 @@ export function ShortcutsSetting({
                 }}
                 onBlur={() => setRecording(null)}
               />
-              {value[def.id] !== undefined && (
+              {(featuredCommands || value[def.id] !== undefined) && (
                 <button
                   {...smallGhostButtonProps}
-                  disabled={busy || disabled}
+                  className={featuredCommands ? "shortcut-reset icon-btn" : smallGhostButtonProps.className}
+                  disabled={
+                    busy || disabled || (featuredCommands !== undefined && value[def.id] === undefined)
+                  }
                   aria-label={`Reset ${def.label} shortcut`}
+                  title={`Reset ${def.label} shortcut`}
                   onClick={() => reset(def.id)}
                 >
-                  Reset
+                  {featuredCommands ? shellIconReloadSm : "Reset"}
                 </button>
               )}
             </div>

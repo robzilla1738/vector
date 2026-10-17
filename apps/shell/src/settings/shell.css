@@ -2,6 +2,11 @@
   .shortcuts-setting.shortcut-featured {
     gap: 0;
   }
+  .shortcut-featured .shortcut-reset {
+    width: 28px;
+    height: 28px;
+    flex: none;
+  }
   .settings-content .shortcut-featured .field.ui-setting {
     border-radius: 0;
   }

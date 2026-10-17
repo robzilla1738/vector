@@ -552,3 +552,11 @@ recorder, conflict handling and native shortcut restoration. Do not relabel a
 flip-layout command as a direct split-orientation command or substitute Quick
 Ask for its global shortcut preference. Exact supported command behavior and
 corresponding inline fields need an implementation/verification slice.
+
+October16 shortcut follow-up: common inline rows now retain compact reset-icon
+positions, disabled until a custom binding exists; single-command and full editors
+keep their existing reset presentation. Typecheck/lint and4,582/4,583 tests pass;
+only coder-worktrees60s timeout remains. Renderer2.81s. Native comparison pending.
+Reference040/044 inspection found Security & Privacy card/order gaps and confirms
+that the cookie reference uses exactly Allow/Block all, supported by Aux's existing
+boolean native policy; its current switch should become that selector.

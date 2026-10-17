@@ -1105,3 +1105,18 @@ Native visual acceptance, reset-icon fidelity, two direct split-orientation
 commands and the global Quick Ask row remain open. Agent Rail is labeled for its
 actual behavior. This remains partial progress toward the complete reference card.
 Reference folder rescan still contains562 files; no new captures found this batch.
+
+Reference040 reopened against current PrivacySecurity/SitePermissions source.
+The Security & Privacy page still materially differs: Aux starts with HTTPS-first,
+cookies and crash reports, then embeds the complete site-permission/filter editor,
+and places clear browsing data last. Reference040 instead has Browsing history
+(Delete then View), Adblock (switch then compact Configure), Privacy (cookies then
+Help improve), then separate Ads privacy/Site settings/Advanced navigation rows.
+Required next slice: preserve Aux’s real deletion review and filter subscription
+semantics while moving the editors behind compact entry controls; expose history
+navigation; separate blocking controls from website-data/permission management;
+retain HTTPS-first in advanced controls. Keep crash reporting described truthfully
+(build destination availability); do not invent a usage-statistics service to copy
+Aside’s wording. Native Chromium destinations must be implemented/verified before
+adding navigation rows. A visual-only mock of these missing destinations is not
+acceptance. Reference041/043/044 nested states still require direct comparison.
