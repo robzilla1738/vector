@@ -316,7 +316,8 @@
   }
 
   .app.native-host.tabs-vertical .toolbar > .toolbar-drag-space {
-    flex: 0 0 64px;
+    flex: 1 1 64px;
+    min-width: 16px;
     align-self: stretch;
     -webkit-app-region: drag;
     background: var(--native-material-thin-plane);

@@ -51,14 +51,14 @@ describe("settings defaults for a real test pass", () => {
     const { dir, repo, settings } = harness();
     try {
       expect(settings.all()).toMatchObject({
-        toolbarAutoHide: true,
+        toolbarAutoHide: false,
         minimalUi: false,
         minimalUiAcknowledged: false,
         autoArchive: { acknowledged: false, bySpace: {} },
         nightShift: { enabled: false, requireAC: true },
       });
       const patch = MethodSchemas["settings.set"].parse({
-        toolbarAutoHide: false,
+        toolbarAutoHide: true,
         minimalUi: true,
         minimalUiAcknowledged: true,
         autoArchive: { acknowledged: true, bySpace: { work: 24 } },

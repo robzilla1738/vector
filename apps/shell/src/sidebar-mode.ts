@@ -1,6 +1,7 @@
 export type SidebarMode = "expanded" | "hidden";
 
 export function readSidebarMode(raw: string | null | undefined): SidebarMode {
+  if (raw == null) return "expanded";
   if (raw === "hidden" || raw === "expanded") return raw;
   return "hidden";
 }

@@ -21,7 +21,8 @@ export function useLayoutChrome() {
   const layoutMotion = isNormalLayoutWindow() && minimalUiFeature;
   const minimal = useStore((state) => state.settings.minimalUi === true) && layoutMotion;
   const sidebarWidth = useStore((state) => state.sidebarWidth);
-  const autoHide = useStore((state) => state.settings.toolbarAutoHide !== false);
+  const autoHideFeature = useFeature("autoHideToolbar");
+  const autoHide = useStore((state) => state.settings.toolbarAutoHide === true) && autoHideFeature;
   return { minimal, autoHide, hideToolbar: minimal || autoHide, layoutMotion, sidebarWidth };
 }
 

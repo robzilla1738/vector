@@ -801,7 +801,7 @@ export class SettingsService {
         .boolean()
         .catch(false)
         .parse(this.get("horizontalTabShrinkToFit") ?? false),
-      toolbarAutoHide: z.boolean().parse(this.get("toolbarAutoHide") ?? true),
+      toolbarAutoHide: z.boolean().parse(this.get("toolbarAutoHide") ?? false),
       minimalUi: z.boolean().parse(this.get("minimalUi") ?? false),
       minimalUiAcknowledged: z.boolean().parse(this.get("minimalUiAcknowledged") ?? false),
       autoArchive: SettingsSetParams.shape.autoArchive.parse(

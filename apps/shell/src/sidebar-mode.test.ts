@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import { nextSidebarMode, readSidebarMode, sidebarFocusSelector } from "./sidebar-mode";
 
 describe("sidebar-mode", () => {
-  it("reads the two sidebar modes and defaults invalid values to hidden", () => {
+  it("starts with the sidebar open and retains saved collapse choices", () => {
     expect(readSidebarMode("rail")).toBe("hidden");
     expect(readSidebarMode("hidden")).toBe("hidden");
     expect(readSidebarMode("expanded")).toBe("expanded");
     expect(readSidebarMode("nope")).toBe("hidden");
-    expect(readSidebarMode(null)).toBe("hidden");
+    expect(readSidebarMode(null)).toBe("expanded");
+    expect(readSidebarMode(undefined)).toBe("expanded");
   });
 
   it("toggles expanded and hidden without a logo strip", () => {

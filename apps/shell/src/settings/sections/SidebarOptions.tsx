@@ -2,6 +2,7 @@ import { staticRowProps } from "../../ui/class-props";
 import { runCommand } from "../../commands";
 import { useStore } from "../../store";
 import { bridge } from "../../bridge";
+import { useFeature } from "../../use-feature";
 import { useEffect, useRef, useState } from "react";
 import { SettingsField } from "../primitives";
 import { Menu, Switch } from "../../ui";
@@ -150,7 +151,8 @@ export function SidebarDetails({
   const open = useStore((state) => state.sidebarSections);
   const setWidth = useStore((state) => state.setSidebarWidth);
   const toggle = useStore((state) => state.toggleSidebarSection);
-  const autoHide = settings.toolbarAutoHide !== false;
+  const autoHideAvailable = useFeature("autoHideToolbar");
+  const autoHide = settings.toolbarAutoHide === true;
   const bookmarksVisible = settings.sidebarBookmarksVisible !== false;
   return (
     <>
@@ -166,17 +168,19 @@ export function SidebarDetails({
           onChange={() => runCommand("sidebar")}
         />
       </SettingsField>
-      <SettingsField
-        compact
-        label="Auto-hide toolbar"
-        hint="Reveal the address field from the top edge, or keep it visible."
-      >
-        <Switch
-          aria-label="Auto-hide toolbar"
-          checked={autoHide}
-          onChange={() => void onSave({ toolbarAutoHide: !autoHide })}
-        />
-      </SettingsField>
+      {autoHideAvailable && (
+        <SettingsField
+          compact
+          label="Auto-hide toolbar"
+          hint="Reveal browser controls from the top edge, or keep them visible."
+        >
+          <Switch
+            aria-label="Auto-hide toolbar"
+            checked={autoHide}
+            onChange={() => void onSave({ toolbarAutoHide: !autoHide })}
+          />
+        </SettingsField>
+      )}
       <SettingsField
         compact
         label="Sidebar width"

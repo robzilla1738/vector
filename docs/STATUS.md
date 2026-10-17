@@ -1,12 +1,23 @@
 # Aux status — October 16, 2026
 
-Current replacement build: **4b1358c58**, launcher **91436**, exec **57397**,
-log `/tmp/aux-native-library-features-build.log`. Includes patch 0051 and the
-reading/navigation focus corrections. Prior launcher 87016/app 88409 retired
-normally; aux-dev-8h142T and its lock were verified removed before replacement.
-Do not bind the retired app or start another builder. Await this build, verify
-About, then Labs live opt-outs, root visibility and reading-row focus. The accepted
-70b1bd1b5 behavior below is historical evidence, not the latest source acceptance.
+Current accepted candidate **4b1358c589f27d8dd830e3eaca76163325ed2793** built
+in 9m15.86s. Launcher **91436**, app **92805**, exec **57397**, disposable Profile
+**aux-dev-2gPXgK**; log `/tmp/aux-native-library-features-build.log`.
+About source/Chromium/ABI verified. Empty Mobile/Managed bookmark roots are hidden.
+A synthetic Example bookmark exposed Private/group/split actions; switching those
+three features off in Labs immediately removed them from the existing native page.
+Model search focus visibly follows the rounded full field, with no inner rectangle:
+`/tmp/aux-parity-2026-10-16/aux-model-search-rounded-4b1358c58.png`.
+Runtime-unavailable preference retention and reading-row focus still need native
+acceptance; neither is inferred from the successful live feature check.
+
+Next layout batch: fresh Profiles open the sidebar and keep the toolbar visible;
+saved collapse/auto-hide choices survive. Labs Auto Hide Toolbar now gates the
+behavior and its Appearance switch. The native vertical toolbar spacer expands
+to keep actions at the right edge while preserving its drag region.
+Integrated `npm run check` passed typecheck/lint and all 4,618 tests / 744 files in
+100.95s (`/tmp/aux-layout-defaults-check.log`). This layout batch awaits replacement
+native preview. Preserve launcher cleanup ownership during normal retirement.
 
 
 Live candidate **70b1bd1b5c35689528c35607da547bbd211b9e94** built in 8m33.88s.
