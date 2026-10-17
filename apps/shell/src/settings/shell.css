@@ -162,7 +162,7 @@
   }
   .settings-content > :not(.settings-outline) {
     width: 100%;
-    max-width: 672px;
+    max-width: 636px;
     margin-inline: auto;
   }
   .settings-content .drawer-head {
@@ -270,6 +270,30 @@
     width: auto;
     max-width: 160px;
     margin-top: 0;
+  }
+  .settings-content .field.ui-setting > .setting-details {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    min-width: 0;
+    padding: 8px 4px 0;
+  }
+  .settings-content .field.ui-setting.compact:has(> .setting-icon) {
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    column-gap: 10px;
+  }
+  .settings-content .field.ui-setting.compact > .setting-icon {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    justify-self: center;
+    color: var(--ink-2);
+    display: flex;
+  }
+  .settings-content .field.ui-setting.compact:has(> .setting-icon) > :is(.setting-label, .hint) {
+    grid-column: 2;
+    padding-inline: 0;
+  }
+  .settings-content .field.ui-setting.compact:has(> .setting-icon) > .ui-setting-control {
+    grid-column: 3;
   }
   .settings-content .ui-setting-control > :is(input, select, button) {
     max-width: 100%;

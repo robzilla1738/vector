@@ -3,6 +3,7 @@ import { bridge } from "../../bridge";
 import { errorMessage } from "../../error-message";
 import { FilterSettings } from "./FilterSettings";
 import { SettingsGroup, Switch } from "../../ui";
+import { shellIconHand, shellIconFilter } from "../../ui/icons";
 import { SettingsField } from "../primitives";
 
 type Privacy = Awaited<ReturnType<typeof bridge.privacy>>;
@@ -69,6 +70,7 @@ export function ContentBlockingSettings({ active }: { active: boolean }) {
       <SettingsField
         compact
         label="Block ads and trackers"
+        icon={shellIconHand}
         description="Block known advertising and tracking domains. Reload open tabs after changing this setting."
         hint={
           !privacy
@@ -97,33 +99,36 @@ export function ContentBlockingSettings({ active }: { active: boolean }) {
       <SettingsField
         compact
         label="Manage filters"
+        icon={shellIconFilter}
         description="Review filter sources, updates and website exceptions."
+        details={
+          !!privacy?.allowedHosts?.length && (
+            <section aria-label="Sites where blocking is paused">
+              <h4>Sites where blocking is paused</h4>
+              {privacy.allowedHosts.map((host) => (
+                <div className="site-permission-row" key={host}>
+                  <span>{host}</span>
+                  <button
+                    className="btn sm"
+                    aria-label={`Resume blocking on ${host}`}
+                    disabled={!active || busy}
+                    onClick={() =>
+                      void action(async () => {
+                        const allowedHosts = await bridge.removeAllowedHost(host);
+                        setPrivacy((current) => current && { ...current, allowedHosts });
+                        setNotice(`${host} will block trackers and ads again. Reload its tabs to apply.`);
+                      })
+                    }
+                  >
+                    Resume blocking
+                  </button>
+                </div>
+              ))}
+            </section>
+          )
+        }
       >
         <FilterSettings active={active} />
-        {!!privacy?.allowedHosts?.length && (
-          <section aria-label="Sites where blocking is paused">
-            <h4>Sites where blocking is paused</h4>
-            {privacy.allowedHosts.map((host) => (
-              <div className="site-permission-row" key={host}>
-                <span>{host}</span>
-                <button
-                  className="btn sm"
-                  aria-label={`Resume blocking on ${host}`}
-                  disabled={!active || busy}
-                  onClick={() =>
-                    void action(async () => {
-                      const allowedHosts = await bridge.removeAllowedHost(host);
-                      setPrivacy((current) => current && { ...current, allowedHosts });
-                      setNotice(`${host} will block trackers and ads again. Reload its tabs to apply.`);
-                    })
-                  }
-                >
-                  Resume blocking
-                </button>
-              </div>
-            ))}
-          </section>
-        )}
       </SettingsField>
       {error && (
         <div role="alert">

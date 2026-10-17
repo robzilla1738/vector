@@ -32,6 +32,8 @@ export function SettingsField({
   searchTerms = [],
   target,
   compact = false,
+  icon,
+  details,
   children,
 }: {
   label: string;
@@ -40,6 +42,8 @@ export function SettingsField({
   searchTerms?: readonly string[];
   target?: string;
   compact?: boolean;
+  icon?: ReactNode;
+  details?: ReactNode;
   children: ReactNode;
 }) {
   const id = useId();
@@ -56,10 +60,16 @@ export function SettingsField({
       aria-labelledby={`${id}-label`}
       aria-describedby={supportingText ? `${id}-hint` : undefined}
     >
+      {icon && (
+        <span className="setting-icon" aria-hidden="true">
+          {icon}
+        </span>
+      )}
       <span id={`${id}-label`} className="setting-label">
         {label}
       </span>
       <div className="ui-setting-control">{children}</div>
+      {details && <div className="setting-details">{details}</div>}
       {supportingText && (
         <span id={`${id}-hint`} {...staticHintProps}>
           {supportingText}

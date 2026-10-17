@@ -3,6 +3,18 @@
 
 ## October 16 UI parity review — in progress
 
+The settings-card batch brings the shared content column to636px, adds leading
+history/adblock icons, and moves cookie/crash status under the label. Full-width
+details keep confirmation, retry errors and paused-blocking website exceptions
+out of the narrow control column. Settings search retains the same destinations.
+Full check passes typecheck, lint and all4,594 tests/738 files (86.92s).
+Renderer build passes in1.95s. Visual acceptance is pending: the single native
+launcher9489/session75082 is linking fc9df54b1 from before this card batch, with
+log /tmp/aux-appearance-consolidated-native.log. The prior launcher94580/app4604
+retired normally and disposable aux-dev-aQO2gg was removed. The latest cards can
+be inspected through Vite5197 after that preview launches; do not claim these
+later changes are compiled into its native renderer. Full parity remains open.
+
 Appearance now exposes eight common shortcut rows, including separate side-by-side
 and stacked split commands in reference031 order. Both commands open the existing
 tab picker and preserve the requested edge through the registered split writer.

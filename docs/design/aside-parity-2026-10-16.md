@@ -1187,3 +1187,19 @@ actual counts and Cancel. No data was deleted. Evidence under
 /tmp/aux-parity-2026-10-16: aux-filter-search-native-b1b4a.png,
 aux-history-review-native-b1b4a.png, aux-appearance-eight-shortcuts-vite.png.
 These observations do not close the full-surface parity ledger.
+
+## Settings card geometry and status placement
+
+Reference040 comparison exposed a wider content column, missing leading icons in
+history/adblock rows, and crash-report status squeezed into the control column.
+The shared settings column is now636px (previously672px). SettingsField supports
+decorative leading icons and full-width details; Privacy uses icons for history,
+delete, blocking and filters. Crash/cookie status replaces the static supporting
+copy below its label. Error/retry and crash-upload confirmation use the full row;
+paused-blocking website exceptions also occupy full width below Configure.
+Native availability, policy-managed controls, consent confirmation and native
+write acknowledgement remain intact. Controls are disabled while inactive.
+Full check passes typecheck, lint and4,594 tests/738 files; renderer build1.95s.
+Native/Vite visual acceptance of these newest card
+changes is pending the active consolidated build. No parity closure is claimed.
+Reference folder rescanned:562 files, unchanged from the last batch.

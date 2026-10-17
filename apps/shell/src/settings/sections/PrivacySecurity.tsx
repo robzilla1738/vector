@@ -3,7 +3,7 @@ import { ClearBrowsingData } from "../../components/ClearBrowsingData";
 import { SavedWebsiteSettings } from "./NativePrivacySettings";
 import { NativeSettingsLink } from "../NativeSettingsLink";
 import { SettingsGroup } from "../../ui";
-import { shellIconOpen } from "../../ui/icons";
+import { shellIconOpen, shellIconTrash, shellIconClock } from "../../ui/icons";
 import { runCommand } from "../../commands";
 import { useFeature } from "../../use-feature";
 import { SettingsField, SettingsSection } from "../primitives";
@@ -20,11 +20,12 @@ export function PrivacySecuritySettings({ active }: { active: boolean }) {
         <SettingsField
           compact
           label="Delete browsing history"
+          icon={shellIconTrash}
           description="Delete history, cookies, and cached files."
         >
           <ClearBrowsingData active={active} />
         </SettingsField>
-        <SettingsField compact label="View browsing history">
+        <SettingsField compact label="View browsing history" icon={shellIconClock}>
           <button
             className="icon-btn"
             aria-label="View browsing history"
@@ -38,20 +39,8 @@ export function PrivacySecuritySettings({ active }: { active: boolean }) {
       </SettingsGroup>
       {contentBlockingAvailable && <ContentBlockingSettings active={active} />}
       <SettingsGroup title="Privacy">
-        <SettingsField
-          compact
-          label="Allow third-party cookies"
-          description="Used for embedded content, ads, and tracking by websites. Existing cookies are kept."
-        >
-          <CookieControlsSetting active={active} />
-        </SettingsField>
-        <SettingsField
-          compact
-          label="Crash reports"
-          description="Choose whether Aux may upload future crash reports when this build has a configured destination."
-        >
-          <CrashReportingSetting active={active} />
-        </SettingsField>
+        <CookieControlsSetting active={active} />
+        <CrashReportingSetting active={active} />
       </SettingsGroup>
       <SettingsGroup>
         <SettingsField

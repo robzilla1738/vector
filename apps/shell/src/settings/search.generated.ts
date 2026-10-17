@@ -287,20 +287,6 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Site permissions",
-    label: "Allow third-party cookies",
-    description:
-      "Used for embedded content, ads, and tracking by websites. Existing cookies are kept.",
-    target: "Allow third-party cookies",
-  },
-  {
-    category: "Site permissions",
-    label: "Crash reports",
-    description:
-      "Choose whether Aux may upload future crash reports when this build has a configured destination.",
-    target: "Crash reports",
-  },
-  {
-    category: "Site permissions",
     label: "Site settings",
     description: "Manage site permissions for location, camera, pop-ups, and more.",
     target: "Site settings",
@@ -336,6 +322,20 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     label: "Manage filters",
     description: "Review filter sources, updates and website exceptions.",
     target: "Manage filters",
+  },
+  {
+    category: "Site permissions",
+    label: "Allow third-party cookies",
+    description:
+      "Used for embedded content, ads, and tracking by websites. Existing cookies are kept.",
+    target: "Allow third-party cookies",
+  },
+  {
+    category: "Site permissions",
+    label: "Crash reports",
+    description:
+      "Choose whether Aux may upload future crash reports when this build has a configured destination.",
+    target: "Crash reports",
   },
   {
     category: "Passwords & Autofill",
