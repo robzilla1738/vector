@@ -125,6 +125,12 @@ function originalEvent(target: HTMLElement) {
   Object.defineProperty(event, "target", { value: target });
   return event;
 }
+it("opens browser-object search from the sidebar search control", async () => {
+  const run = vi.spyOn(commands, "runCommand").mockReturnValue(true);
+  await mount();
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Search browser"]')!.click());
+  expect(run).toHaveBeenCalledWith("command-tabs");
+});
 it.each(["Bookmarks", "Chats", "Tabs"])(
   "mounted %s heading click and remap preserve exact original storage key and disclosure",
   async (title) => {

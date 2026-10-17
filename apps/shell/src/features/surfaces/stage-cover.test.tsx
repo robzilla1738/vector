@@ -174,6 +174,15 @@ it("retains native split connectors through covers and full chat while reporting
       expect(fixture.visible.mock.calls.at(-1)).toEqual([[]]);
       await expectRetiredDrag();
     }
+    await act(async () => useStore.setState({ mode: "focus", overlay: null }));
+    await startDrag();
+    await act(async () => useStore.setState({ overlay: "command-surface" }));
+    expect([...node.querySelectorAll("embed")]).toEqual(embeds);
+    expect(node.querySelector(".stage-card")?.hasAttribute("inert")).toBe(true);
+    expect(node.querySelector(".stage-native-surface")?.getAttribute("aria-hidden")).toBe("false");
+    expect(node.querySelector(".split-stage")?.hasAttribute("data-split-geometry-generation")).toBe(false);
+    expect(fixture.visible.mock.calls.at(-1)).toEqual([["one", "two"]]);
+    await expectRetiredDrag();
     await act(async () =>
       useStore.setState({
         mode: "focus",

@@ -43,7 +43,7 @@ export function addressNavigate(input: string, searchEngine?: string): { action:
   return { action: "navigate", url: toUrl(input, searchEngine) };
 }
 
-/** Scrim overlays cover the stage and must hide WebContentsView. In-flow strips shrink the stage instead. */
+/** Scrim overlays own input over the stage. Translucent search keeps its page painted. */
 export function isScrimOverlay(overlay: string | null): boolean {
   return (
     overlay === "reader" ||
@@ -72,7 +72,7 @@ export function nativePageId(input: {
   showBlankDocument?: boolean;
 }): string | null {
   if (input.mode !== "focus" || input.viewStatus === "crashed" || input.navigationError) return null;
-  if (isScrimOverlay(input.overlay)) return null;
+  if (isScrimOverlay(input.overlay) && input.overlay !== "command-surface") return null;
   if (!input.activePageId) return null;
   const url = input.url?.trim() ?? "";
   if (isHomeAddress(url) && !input.showBlankDocument) return null;

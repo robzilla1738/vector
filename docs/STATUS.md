@@ -9,6 +9,31 @@ retired and old gaps may have been resolved by later entries.
 
 ## Sidebar anatomy and shared popup glass — current source
 
+Native `19dbb7105` built in 8m56.62s. About confirmed that renderer/native
+identity; runtime staging subsequently built `275690ec6`. This preview therefore
+has mixed source identities and must not stand in for final-source acceptance.
+The launcher stages runtime after native linking; keep source frozen through that
+step in the replacement build. Native observations confirmed the 400px and 280px
+rail footer, fresh UUID Project popup, model-search focus and Escape restoration,
+and consolidated More actions. Captures 68–78 are local audit artifacts.
+
+Browser search now retains the native page's paint while making the stage inert
+and retiring split drag/geometry authority. The sidebar search button opens the
+dedicated browser search rather than the command palette. Its default results
+omit repeated URL lines and the utility footer; keyboard-selected provider filters
+still expose their controls. Search has no extra dimmer. Integrated check passed
+typecheck, lint and 4,672 tests / 749 files in 110.28s
+(`/tmp/aux-search-material-check.log`). Native acceptance of this slice is pending.
+
+Popup material still needs native acceptance. Temporary DevTools diagnostics
+confirmed blur(16px), also reproduced sharp background text on a plain backdrop
+surface, and demonstrated blur working when the document backing was opaque.
+Ordinary foreground blur works. The remaining issue concerns backdrop composition
+over the transparent window, not a missing CSS declaration. Diagnostics were
+removed; no opaque window backing or global tint change was adopted. Captures
+79–85 record this investigation. Search over retained opaque page content is the
+next observation; do not claim full liquid-glass parity from these source changes.
+
 The live Aside search popup measures 620×340 logical pixels (local capture 67).
 The follow-up uses that width, applies the source context-card fill/blur/ring,
 removes the duplicate composer ring, and includes tab previews in popup glass.

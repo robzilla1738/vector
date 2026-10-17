@@ -87,7 +87,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-it("opens the compact entry with recent browser objects and retains every source control", async () => {
+it("opens a quiet compact entry with recent browser objects and exposes filters when selected", async () => {
   nativeOmniboxFixture([]);
   const input = await open();
   expect(host.querySelector('[data-presentation="tab-search"]')).not.toBeNull();
@@ -98,6 +98,9 @@ it("opens the compact entry with recent browser objects and retains every source
     "Recently Closed",
     "Recent Chat",
   ]);
+  expect(host.querySelector(".cb-results-footer")).toBeNull();
+  expect(host.querySelector('[role="option"]')?.querySelector(".search-result-detail")).toBeNull();
+  await act(async () => key(input, "2", { altKey: true }));
   expect([...host.querySelectorAll(".cb-provider-scopes button")].map((node) => node.textContent)).toEqual([
     "All",
     "Open Tabs",
@@ -109,7 +112,9 @@ it("opens the compact entry with recent browser objects and retains every source
     "Work",
     "Ranking",
   ]);
-  expect(host.querySelector('.cb-provider-scopes [aria-pressed="true"]')?.textContent).toBe("All");
+  expect(host.querySelector('.cb-provider-scopes [aria-pressed="true"]')?.textContent).toBe("Open Tabs");
+  await act(async () => key(input, "Escape"));
+  expect(host.querySelector(".cb-results-footer")).toBeNull();
 });
 
 it("keeps all browser-object providers and accepts the selected native row without reclassifying it", async () => {

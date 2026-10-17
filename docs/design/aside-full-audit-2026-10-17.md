@@ -5,6 +5,20 @@ colors/borders/menus and window chrome, and authorized live Aside inspection.
 
 ## New owner references — rail and glass popups
 
+Native `19dbb7105` now has 400px/280px rail and popup focus observations in
+captures 68–78. Its runtime is `275690ec6` because runtime staging follows the
+long native link. The next package must freeze source until all staging completes.
+Search was hiding its page and the sidebar search opened the palette; both have
+checked source corrections. Search retains page paint but owns input, has no
+dimmer, and uses quiet single-line browser results by default. Full integrated
+check passed 4,672 tests; final-source native acceptance remains pending.
+
+Glass diagnostics 79–85 isolate sharp background text to transparent backing:
+foreground blur works, and backdrop blur works with an opaque document backing.
+Changing popup isolation, corner shape, edge layers or modal backdrop did not
+resolve it. All temporary styles were removed. No global opaque fill was adopted;
+native transparent-material composition and retained-page search remain open.
+
 The latest pasted references show the complete narrow rail and tab-search glass.
 Source corrections cover persistent rail composer height, context card, compact
 controls, centered mark, header spacing and shared floating material. The previous

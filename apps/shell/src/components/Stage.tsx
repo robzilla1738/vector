@@ -157,6 +157,7 @@ export const Stage = memo(
       <div
         inert={
           organizationCovered ||
+          overlay === "command-surface" ||
           overlay === "tasks" ||
           overlay === "settings" ||
           overlay === "saved-pages"
@@ -208,7 +209,11 @@ export const Stage = memo(
             <div className="stage-native-surface" inert={!showingPage} aria-hidden={!showingPage}>
               {splitGroup ? (
                 <Suspense fallback={null}>
-                  <SplitStage group={splitGroup} pages={pages} presented={!!splitVisible} />
+                  <SplitStage
+                    group={splitGroup}
+                    pages={pages}
+                    presented={!!splitVisible && overlay !== "command-surface"}
+                  />
                 </Suspense>
               ) : (
                 page && <PageSurface page={page} />

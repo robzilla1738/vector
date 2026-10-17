@@ -53,12 +53,17 @@ describe("overlay → native-view visibility", () => {
   const page = "page-1";
   const url = "https://example.com";
 
-  it("hides the native page for command surface, settings, saved pages, observe, and capture", () => {
-    for (const overlay of ["command-surface", "settings", "saved-pages", "observe", "capture"] as const) {
+  it("hides the native page for settings, saved pages, observe, and capture", () => {
+    for (const overlay of ["settings", "saved-pages", "observe", "capture"] as const) {
       expect(isScrimOverlay(overlay)).toBe(true);
       expect(isFlowOverlay(overlay)).toBe(false);
       expect(nativePageId({ mode: "focus", overlay, activePageId: page, url })).toBeNull();
     }
+  });
+
+  it("keeps the native page painted behind translucent search while search owns the scrim", () => {
+    expect(isScrimOverlay("command-surface")).toBe(true);
+    expect(nativePageId({ mode: "focus", overlay: "command-surface", activePageId: page, url })).toBe(page);
   });
 
   it("keeps the native page live for find and downloads (in-flow strips)", () => {

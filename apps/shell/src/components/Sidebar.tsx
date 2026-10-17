@@ -1317,10 +1317,10 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
           <>
             <button
               {...staticIconButtonProps}
-              title={withShortcut("Search", key("palette"))}
+              title={withShortcut("Search", key("command-tabs"))}
               aria-label="Search browser"
-              data-command-id="palette"
-              onClick={() => runCommand("palette")}
+              data-command-id="command-tabs"
+              onClick={() => runCommand("command-tabs")}
             >
               {shellIconSearch}
             </button>

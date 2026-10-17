@@ -170,7 +170,11 @@ export function OmniboxResults(p: Props) {
                 selected={index === p.selected}
                 className={`cb-opt ${suggestion.section}`}
                 title={suggestion.title}
-                detail={suggestion.detail}
+                detail={
+                  p.tabSearch && suggestion.section !== "chats" && suggestion.section !== "runs"
+                    ? undefined
+                    : suggestion.detail
+                }
                 icon={suggestion.icon}
                 query={p.query}
                 elementRef={(node) => p.onOptionRef(index, node)}
@@ -199,44 +203,48 @@ export function OmniboxResults(p: Props) {
         })}
       </div>
       {p.rankingDetails}
-      <div className="cb-results-footer">
-        <details className="cb-source-options">
-          <summary>{p.providerScope === "all" ? "All sources" : scopes[p.providerScope]}</summary>
-          <div className="cb-provider-scopes" role="group" aria-label="Search providers">
-            {PROVIDER_SCOPES.filter((scope) => scope !== "extensions" || p.extensionEnabled).map((scope) => (
-              <button
-                key={scope}
-                {...nativeButtonTypeProps}
-                aria-pressed={p.providerScope === scope}
-                title={`Alt+${PROVIDER_SCOPES.indexOf(scope) + 1}`}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => p.onScope(scope)}
-              >
-                {scopes[scope]}
-              </button>
-            ))}
-            {!p.privateMode && (
-              <button
-                {...nativeButtonTypeProps}
-                className="cb-ranking-toggle"
-                aria-expanded={p.rankingOpen}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={p.onRankingToggle}
-              >
-                Ranking
-              </button>
-            )}
+      {(!p.tabSearch || p.providerScope !== "all" || p.rankingOpen) && (
+        <div className="cb-results-footer">
+          <details className="cb-source-options">
+            <summary>{p.providerScope === "all" ? "All sources" : scopes[p.providerScope]}</summary>
+            <div className="cb-provider-scopes" role="group" aria-label="Search providers">
+              {PROVIDER_SCOPES.filter((scope) => scope !== "extensions" || p.extensionEnabled).map(
+                (scope) => (
+                  <button
+                    key={scope}
+                    {...nativeButtonTypeProps}
+                    aria-pressed={p.providerScope === scope}
+                    title={`Alt+${PROVIDER_SCOPES.indexOf(scope) + 1}`}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => p.onScope(scope)}
+                  >
+                    {scopes[scope]}
+                  </button>
+                ),
+              )}
+              {!p.privateMode && (
+                <button
+                  {...nativeButtonTypeProps}
+                  className="cb-ranking-toggle"
+                  aria-expanded={p.rankingOpen}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={p.onRankingToggle}
+                >
+                  Ranking
+                </button>
+              )}
+            </div>
+          </details>
+          <div className="cb-search-keys">
+            <span>
+              <kbd>Enter</kbd> choose
+            </span>
+            <span>
+              <kbd>Esc</kbd> {p.providerScope === "all" ? "close" : "all results"}
+            </span>
           </div>
-        </details>
-        <div className="cb-search-keys">
-          <span>
-            <kbd>Enter</kbd> choose
-          </span>
-          <span>
-            <kbd>Esc</kbd> {p.providerScope === "all" ? "close" : "all results"}
-          </span>
         </div>
-      </div>
+      )}
     </div>
   );
 }

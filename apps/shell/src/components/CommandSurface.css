@@ -5,6 +5,9 @@
     z-index: var(--z-modal, 100);
     background: var(--scrim);
   }
+  .command-surface-scrim:has(> [data-presentation="tab-search"]) {
+    background: transparent;
+  }
   .command-surface {
     position: absolute;
     margin: 0;
