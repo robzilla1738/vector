@@ -10,11 +10,13 @@ export function SettingsDialogControl({
   label,
   action,
   children,
+  showClose = typeof children !== "function",
 }: {
   active: boolean;
   label: string;
   action: string;
   children: ReactNode | ((close: () => void) => ReactNode);
+  showClose?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -44,7 +46,7 @@ export function SettingsDialogControl({
         >
           <header>
             <h3>{label}</h3>
-            {typeof children !== "function" && (
+            {showClose && (
               <button
                 type="button"
                 aria-label={`Close ${label.toLocaleLowerCase()}`}

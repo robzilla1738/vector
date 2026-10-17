@@ -1002,6 +1002,8 @@ export const SettingsSetParams = z.object({
   /** Idle minutes before a clean background tab may be discarded. Zero disables automatic sleep. */
   memorySaverMinutes: MemorySaverMinutesSchema.optional(),
   tabSwitcherOrder: z.enum(["sidebar", "recently-used"]).optional(),
+  /** Owner grouping/naming preference for reviewed AI Tidy proposals. */
+  tidyPrompt: z.string().max(300).optional(),
   /** commandId → replacement bindings; null disables the command's shortcuts. */
   shortcutOverrides: ShortcutOverridesSchema.optional(),
   selectionCapture: SelectionCaptureSettingsSchema.optional(),

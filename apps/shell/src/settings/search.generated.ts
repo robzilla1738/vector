@@ -34,6 +34,12 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Appearance",
+    label: "Customize Tidy Tabs",
+    description: "Choose how AI Tidy groups and names your tabs.",
+    target: "Customize Tidy Tabs",
+  },
+  {
+    category: "Appearance",
     label: "Interface text",
     description: "Adjust the text size in Aux.",
     target: "Interface text",

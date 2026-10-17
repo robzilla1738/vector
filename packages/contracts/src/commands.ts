@@ -567,6 +567,7 @@ export const COMMANDS = [
     ["remove-site", "", "Remove site", ""],
     ["retry", "-preferences", "Retry", " preferences"],
   ]),
+  S("save-tidy-prompt", "Save Tidy Tabs prompt", memoryControl),
   S("toggle-system-task-notices", "Toggle system task notifications", searchEngineControl),
   S("toggle-task-focus-mode", "Toggle task Focus Mode", searchEngineControl),
   ...singleScopedRows(memoryControl, "-background-runtime", " background runtime", [

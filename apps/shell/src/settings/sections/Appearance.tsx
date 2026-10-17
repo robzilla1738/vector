@@ -8,6 +8,9 @@ import { UI_FONT_SIZES, readUiFontSize, writeUiFontSize, type UiFontSize } from 
 import { SettingsField, SettingsSection } from "../primitives";
 import { DefaultPageZoomSetting } from "./DefaultPageZoom";
 import { SidebarOptions } from "./SidebarOptions";
+import { SettingsDialogControl } from "../SettingsDialogControl";
+import { TidyTabsSetting } from "./TidyTabs";
+import { bridge } from "../../bridge";
 import { AppearanceChoice } from "./AppearanceChoice";
 
 export function AppearanceSettings({
@@ -103,6 +106,27 @@ export function AppearanceSettings({
             <option value="sidebar">Sidebar order</option>
             <option value="recently-used">Recently used</option>
           </select>
+        </SettingsField>
+        <SettingsField
+          compact
+          label="Customize Tidy Tabs"
+          hint="Choose how AI Tidy groups and names your tabs."
+        >
+          <SettingsDialogControl
+            active={active && !bridge.privateMode}
+            label="Customize Tidy Tabs"
+            action="Configure"
+            showClose
+          >
+            {(close) => (
+              <TidyTabsSetting
+                active={active}
+                value={String(settings.tidyPrompt ?? "")}
+                onSave={(tidyPrompt) => onSave({ tidyPrompt })}
+                onClose={close}
+              />
+            )}
+          </SettingsDialogControl>
         </SettingsField>
       </SettingsGroup>
 

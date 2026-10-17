@@ -346,3 +346,22 @@ describe("search engine URL templates", () => {
     }
   });
 });
+
+it("persists a bounded Tidy prompt across restart and allows clearing it", async () => {
+  const { dir, repo, settings } = harness();
+  try {
+    expect(settings.tidyPrompt()).toBe("");
+    const patch = MethodSchemas["settings.set"].parse({
+      tidyPrompt: "Group by project and keep names short.",
+    });
+    await settings.set(patch);
+    expect(settings.all().tidyPrompt).toBe(patch.tidyPrompt);
+    expect(new SettingsService(repo, join(dir, "settings.json"), {}).tidyPrompt()).toBe(patch.tidyPrompt);
+    expect(MethodSchemas["settings.set"].safeParse({ tidyPrompt: "x".repeat(301) }).success).toBe(false);
+    await settings.set({ tidyPrompt: "" });
+    expect(settings.tidyPrompt()).toBe("");
+  } finally {
+    repo.db.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

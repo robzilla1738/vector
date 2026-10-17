@@ -1,0 +1,39 @@
+@layer components {
+  .settings-preference-dialog:has(.tidy-prompt-editor) {
+    width: 448px;
+    padding: 24px;
+  }
+  .settings-preference-dialog:has(.tidy-prompt-editor) > header h3 {
+    font-size: 18px;
+  }
+  .tidy-prompt-editor {
+    display: grid;
+    gap: 8px;
+  }
+  .tidy-prompt-editor > label {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .tidy-prompt-editor > label > span {
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+  .tidy-prompt-editor > textarea {
+    width: 100%;
+    min-height: 128px;
+    padding: 12px;
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--bg-hover);
+    color: var(--ink-0);
+    font: inherit;
+    resize: vertical;
+  }
+  .tidy-prompt-editor > footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 24px;
+  }
+}

@@ -259,6 +259,7 @@ async function h_agent_tidy_propose(ctx: MethodCtx): Promise<unknown> {
         { modelId, reasoning: "low" },
         pageDerivativeCache(s, params.pageIds),
         route.kind === "on-device" ? 1_024 : 1_200,
+        s.settings.tidyPrompt(),
       ),
   );
   s.events.emit("agent.tidy.proposed", {

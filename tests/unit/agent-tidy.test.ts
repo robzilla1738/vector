@@ -173,3 +173,29 @@ describe("AI Tidy proposal and guarded layout apply", () => {
     ).toThrow(/new tab/);
   });
 });
+
+it("uses the saved owner grouping preference without exposing full tab URLs or changing the output guard", async () => {
+  let request: { prompt: string; system: string } | undefined;
+  const model = {
+    generateStructured: async (value: typeof request) => {
+      request = value;
+      return { object: { groups: [{ name: "By site", pageIds: ["p1", "p2"] }] } };
+    },
+  } as unknown as ModelClient;
+  const result = await proposeTabTidy(
+    { pageIds: ["p1", "p2", "p3"] },
+    pages,
+    model,
+    { modelId: "synthetic-model", reasoning: "low" },
+    undefined,
+    1200,
+    "Group by website and keep folder names short.",
+  );
+  expect(request!.prompt).toContain(
+    "Owner grouping preference: Group by website and keep folder names short.",
+  );
+  expect(request!.prompt).not.toContain("/private/");
+  expect(request!.prompt).not.toContain("token=secret");
+  expect(request!.system).toContain("Use only IDs given");
+  expect(result.groups[0]!.pageIds).toEqual(["p1", "p2"]);
+});

@@ -3,14 +3,38 @@
 
 ## October 16 UI parity review — in progress
 
-**Native build in progress: 544da21a2 / area0042.** Single launcher PID41893,
-node scripts/dev.mjs --temp-profile, log /tmp/aux-selected-export-native.log.
-It includes the shared bookmark entry and selected-file scope correction. Poll
-this same process/session before replacement; no active lock may be cleared.
-The owned synthetic fixture remains at the path in /tmp/aux-settings-fixture-path.
-Next acceptance: native selected-export import succeeds despite directory metadata
-changes, edited/replaced file still refuses, and shared Settings file review/import
-works with the disposable Profile. These outcomes are not yet established.
+Current source adds Appearance → Customize Tidy Tabs, matching capture030’s
+compact dialog, 300-character counter, draft Cancel and explicit Save. The saved
+preference is persisted through settings and reaches the actual Tidy proposal;
+only page titles and origins are supplied, with existing output validation and
+review/undo unchanged. Private/stale editors cannot save or publish completions.
+Runtime dist rebuilt before tests. All36 focused cases pass; integrated typecheck
+and lint pass, 4,575/4,576 tests across733 files pass (only the existing
+coder-worktrees timeout). Renderer build passes in1.90s. Live editor walkthrough
+and compiled-native inclusion are still pending; the current native builder
+staged its renderer before this source change.
+
+**Native544da21a2 / area0042 built and launched.** Build passed38 steps in
+8m33.45s; launcher41893 owns disposable preview46360, Profile aux-dev-Q0doIW.
+Keep its lock/cleanup ownership until normal retirement. The selected-export
+walkthrough accepted an unchanged standard Netscape HTML file after a deliberate
+directory xattr/ctime change: one bookmark imported with its folder; SDK listing
+confirmed exactly that synthetic URL. Editing the selected file after a fresh
+review then refused Begin with permission_denied; SDK listing remained one original
+bookmark and zero changed URLs. Evidence: aux-export-directory-change-native-544da.png
+and aux-export-file-change-refused-native-544da.png.
+
+The initial compact one-line synthetic HTML parsed as zero bookmarks. It was
+replaced with standard export line structure before the successful acceptance;
+zero was not counted as writer success. Only owned synthetic files were used.
+
+The separate shared Settings Import bookmarks dialog fails native acceptance:
+Choose bookmark file closes the dialog with no file chooser (also reproduced by
+direct pointer). The shell WebContents delegate lacks RunFileChooser, and a file
+input cancel event can bubble into the enclosing dialog’s onCancel. Both require
+correction and native reinspection. The mock UI/file-parser evidence below does
+not establish native chooser support. New export review also retains an earlier
+finished receipt; this should be distinguished or cleared in the next UI slice.
 
 Native 2425d212a verification is complete for the changed provider/language UI:
 Brave stays checked after the real Chromium URL normalization, fresh Settings and

@@ -941,3 +941,57 @@ A single new native launcher builds544da21a2/area0042, PID41893,
 on an observation timeout. The owned fixture is retained for native review,
 directory-metadata acceptance and changed/replaced-file refusal checks. Shared
 Settings native file-import acceptance also remains pending.
+
+
+## Capture030: real Tidy Tabs preference implementation
+
+Reopened the current030 reference and implemented its compact448px dialog,
+Prompt label, live300-character count,128px text area, top Close, Cancel and
+Save actions. Appearance now has a compact Configure entry. The prompt persists
+through the existing Settings writer; the real agent.tidy.propose handler reads
+it and includes it as the owner grouping preference. The model still receives
+only tab titles and origins, treats tab data as untrusted and validates IDs and
+groups through the existing schema. Cache signatures include the preference.
+No automatic grouping or model call occurs when editing this preference.
+
+Draft Cancel discards edits. Save closes only after acknowledgement, preserves
+failed drafts, excludes private/inactive editors and rejects stale window/view
+completions. A preference replaced elsewhere requires reopening. Acknowledged
+publication before promise delivery still closes the correct editor.
+
+Runtime dist rebuilt before tests;36 affected cases pass, covering persisted
+restart/clear/limit, prompt propagation and editor lifecycle. Full check passes
+typecheck/lint and4,575/4,576 tests across733 files; the existing coder-worktrees
+timeout is the sole failure. Renderer build passes1.90s. Live visual/editor
+walkthrough and compiled-native inclusion remain pending. Current native544
+builder staged its renderer before this edit and must finish normally.
+
+Recursive reference rescan:562 files, unchanged192-entry manifest. The full
+surface review remains open. Latest focus screenshot reinspection confirms
+native985 model search has a single rounded focus surface, matching the local
+shared search correction rather than the owner’s older inner-rectangle capture.
+
+
+## Native544 selected-export acceptance and next discovered gap
+
+Build succeeded38 steps/8m33.45s. Disposable Profile aux-dev-Q0doIW, launcher41893,
+app46360. Standard Netscape synthetic HTML imported1 bookmark, preserving its
+folder, after a deliberate directory xattr changed directory ctime while the
+file’s inode/size/mtime/ctime stayed identical. SDK bookmarks.list independently
+confirmed one synthetic URL and its folder path. Initial compact one-line HTML
+parsed0; it was corrected before this success and is not counted as acceptance.
+
+A fresh native review followed by an actual file edit refused Begin with
+permission_denied. SDK listing still showed exactly1 original and0 mutated URLs.
+Captures: aux-export-directory-change-native-544da.png and
+aux-export-file-change-refused-native-544da.png. This establishes selected-file
+metadata/contents protection without falsely invalidating directory-only changes.
+A replaced-inode case remains an additional unchecked scenario.
+
+Shared Settings Import bookmarks still fails native acceptance: selecting its
+file action closes the dialog without showing a chooser; direct pointer reproduces.
+Native shell WebContents delegate has no RunFileChooser override. File-input
+cancel also bubbles into Dialog onCancel, dismissing the editor. Next slice must
+forward file selection to Chromium’s chooser and scope modal cancellation to the
+dialog itself, then verify real shared Settings import. Earlier mock evidence is
+insufficient. New browser-export review also leaves prior finished receipt visible.

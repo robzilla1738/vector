@@ -163,6 +163,7 @@ export interface Settings extends Pick<
   downloadNaming?: import("@aux/contracts").DownloadNamingSettings;
   memorySaverMinutes?: 0 | 1 | 15 | 30 | 60;
   tabSwitcherOrder?: "sidebar" | "recently-used";
+  tidyPrompt?: string;
   /** commandId → replacement bindings; null disables the command's shortcuts. */
   featureOverrides?: import("@aux/contracts").FeatureOverride;
   shortcutOverrides?: ShortcutOverrides;
@@ -811,6 +812,7 @@ export class SettingsService {
         .catch(30)
         .parse(this.get("memorySaverMinutes")),
       tabSwitcherOrder: (this.get("tabSwitcherOrder") as Settings["tabSwitcherOrder"]) ?? "sidebar",
+      tidyPrompt: this.tidyPrompt(),
       featureOverrides: SettingsSetParams.shape.featureOverrides.parse(this.get("featureOverrides") ?? {}),
       shortcutOverrides: (this.get("shortcutOverrides") as Settings["shortcutOverrides"]) ?? {},
       selectionCapture: this.selectionCapture(),
@@ -2139,6 +2141,10 @@ export class SettingsService {
       routineUsd: pos(b?.routineUsd),
     };
   }
+  tidyPrompt(): string {
+    return SettingsSetParams.shape.tidyPrompt.catch("").parse(this.get("tidyPrompt")) ?? "";
+  }
+
   searchEngine(): string {
     return (this.get("searchEngine") as string) ?? DEFAULT_SEARCH_ENGINE;
   }
@@ -2462,7 +2468,8 @@ export class SettingsService {
     if (
       this.hasCopilotSelection() ||
       !isTextModelCandidate(modelCapabilities(this.plannerModel(), this.registryModels()) ?? {})
-    ) return null;
+    )
+      return null;
     const selected = this.model();
     return selected
       ? {
