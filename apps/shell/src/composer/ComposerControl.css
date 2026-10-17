@@ -2,6 +2,7 @@
   .composer-control {
     --composer-control-height: 28px;
     --composer-control-gap: var(--space-1-5);
+    --composer-control-padding: var(--space-1-5);
     --composer-chevron-size: 12px;
     display: inline-flex;
     align-items: center;
@@ -12,7 +13,7 @@
     max-width: 100%;
     height: var(--composer-control-height);
     min-height: var(--composer-control-height);
-    padding: 0 var(--space-1-5);
+    padding: 0 var(--composer-control-padding);
     border: 0;
     border-radius: var(--r-lg);
     background: transparent;

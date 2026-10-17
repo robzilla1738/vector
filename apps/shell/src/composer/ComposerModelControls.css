@@ -33,8 +33,8 @@
     max-width: 100%;
     height: 28px;
     min-height: 28px;
-    padding: 0 calc(var(--space-1-5) + var(--composer-chevron-size) + var(--composer-control-gap)) 0
-      var(--space-1-5);
+    padding: 0 calc(var(--composer-control-padding) + var(--composer-chevron-size) + var(--composer-control-gap)) 0
+      var(--composer-control-padding);
     border: 0;
     border-radius: inherit;
     background: transparent;
@@ -45,7 +45,7 @@
   }
   .composer-thinking-control > .composer-chevron {
     position: absolute;
-    right: var(--space-1-5);
+    right: var(--composer-control-padding);
     pointer-events: none;
   }
   .composer-model-controls > [role="alert"] {

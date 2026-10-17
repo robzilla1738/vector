@@ -22,8 +22,11 @@ its chevron uses the same size and label gap as the other composer triggers.
 This fixes the owner's Auto/Automatic spacing report in both full chat and rail.
 The popup integration passed typecheck, lint and 4,672 tests / 749 files in
 102.40s (`/tmp/aux-popup-recipe-check.log`). The CSS spacing follow-up passed
-typecheck (`/tmp/aux-arrow-typecheck.log`); spacing and the native title update
-still need packaged acceptance.
+typecheck (`/tmp/aux-arrow-typecheck.log`). The rail's compact padding and gap
+now override shared variables, including the reasoning select's chevron offset.
+Popup shadows retain the reference 10% opacity in both appearances. The first
+96fdcf27d build was stopped normally before packaging to include those refinements;
+its lock retired. Spacing and the native title update still need packaged acceptance.
 
 Native `ed45559fb` built in 8m26.90s. About and runtime both confirmed the same
 clean source identity. The sidebar search button opens dedicated browser search;

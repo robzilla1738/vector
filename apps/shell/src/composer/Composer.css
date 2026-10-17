@@ -295,14 +295,11 @@
     white-space: nowrap;
   }
   .rail .composer-control {
-    gap: var(--space-1);
-    padding-inline: var(--space-1);
+    --composer-control-gap: var(--space-1);
+    --composer-control-padding: var(--space-1);
   }
   .rail .composer-thinking-control {
     padding: 0;
-  }
-  .rail .composer-thinking-control > select {
-    padding-left: var(--space-1);
   }
   .rail .conversation-empty .aux-mark {
     width: 44px;
