@@ -7,26 +7,34 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Native readiness acceptance — address-save crash open
+## Native readiness — window lookup correction awaiting acceptance
 
-Nativeba8bdd8f4 compiled successfully in14m44.12s after the callback/importer
-call-site corrections. The disposable preview loaded the synthetic local address
-form and accepted keyboard input. Submitting it terminated the native browser;
-the repeated logging-enabled reproduction also terminated. No matching current
-macOS diagnostic report or fatal log was produced, so the older morning crash
-reports are not assigned as its cause. Autofill and browser handback acceptance
-remain open.
+The local minidump identifies the repeatable address-save SIGSEGV at
+`address_bubbles_controller.cc:62`: the shared BrowserWindow lookup returned
+only BrowserView, while Aux uses WebUIBrowserWindow. Area0057 resolves both
+native window implementations, including background tabs, and removes a second
+BrowserView assumption from the address promo. The actual existing Chromium
+address/payment bubble handler remains shared. Native compilation and the
+synthetic save/update/cancel walkthrough follow; no autofill acceptance yet.
 
+The same slice deletes the superseded PageSignals takeover callback. Native
+platform input admission remains the sole physical takeover producer. Network
+factories now retain their document's sticky protection marker after document
+destruction; returning control never clears old factory protection or permits
+late agent traffic. These changes need changed-flow native observation.
+
+The crash capture used only synthetic local form data and a disposable Profile.
+The minidump and symbolized stack remain local in `/tmp`; no process dump enters
+the repository. The live debugger request was retired through its original
+launcher, including its lock/Profile. macOS Developer Tools authorization is
+unneeded for the offline stack. No default-Profile process is running.
 The UI tool restarted Aux without the disposable Profile argument after the
-first exit. That process was stopped immediately; no further UI inspection or
-action used it. Subsequent checks inspect the owned PID before reading UI state.
-The normal disposable launchers cleaned their Profiles/locks after each failure.
-Native stderr logging and an optional `--debug-native` mode now stay within the
-same launcher and cleanup owner; debugging requires `--temp-profile`.
-The current LLDB reproduction is paused at macOS Developer Tools authorization,
-with launcher69145 owning its disposable Profile and plain lock. This is an OS
-permission request, not product acceptance. The separate Chromium155 checkout
-has completed dependency sync/hooks; patch replay is in progress there.
+first crash; that process was stopped immediately and no further UI inspection
+used it. Crash-risk checks now inspect the owned PID before reading UI state.
+
+The separate Chromium155 checkout completed dependency sync/hooks and is
+replaying the ordered native areas. The stable product pin is unchanged until
+migration and build evidence are ready.
 
 ## Compact provider tool schemas — source
 
