@@ -15,19 +15,18 @@ flowchart TD
   Runtime --> Models[AI Gateway / direct providers]
 ```
 
-Browser Library renders within the stage as a full-page region. History, bookmarks,
-reading list, archived tabs and recently closed views share a navigation rail that
-becomes horizontal in narrow panes. It retains the original scoped Library
-commands and native storage methods. The covered stage is inert while the browser
-chrome remains accessible; Close and Escape leave the page without a modal scrim
-or focus trap. Bookmarks adds a collapsible folder tree using native node IDs and
-child order across the bookmarks bar and the other permanent roots, synchronized
-with the breadcrumb and results. Compact bookmark rows
-use page-session icons and an anchored action dialog for preview, edit and delete;
-reading-list controls retain their inline presentation. An Organize menu owns
-bookmark creation, selection and import/export; the file input remains mounted
-outside the menu so dismissal does not interrupt file selection. Grouped History and
-separate browser page routes remain parity gaps; History currently groups by date.
+Bookmarks, History and Clear History route to Chromium's native WebUI pages.
+The native bookmark model owns folder navigation, selection, editing, clipboard,
+Undo and import/export. Aux branding and appearance apply within those pages.
+The normal Profile caches the folders, split-view and Private-window feature
+preferences so native bookmark actions honor Labs opt-outs without the runtime.
+Invisible empty permanent roots are omitted. Private windows reject persistent
+Library destinations without redirecting to a normal window.
+
+SavedPages retains Reading list, Archived tabs and Recently closed as a full-stage
+Aux surface. Reading items use native bookmark data and keep row focus when their
+read state moves them between groups. Browser chrome remains usable around this
+surface, and the replaced combined Library implementation has been removed.
 
 Memory extraction activity is committed atomically with candidate notes in the encrypted
 Space-memory generation. It records local processing duration, source identity,
@@ -39,10 +38,10 @@ does not claim model token or cost usage.
 Memory Settings uses four routed views under the same retained Space editor:
 Overview, History, Context awareness and Configure. Subpage selection changes the
 visible controls without discarding the editor draft or changing the selected
-Space. The History list selects a stored revision; Restore invokes the existing
-scoped command with that revision's ID. Context controls continue to use the
-separate browsing-title and page-content policies. These views do not add
-extraction telemetry, episodic retention or an index-rebuild API.
+Space. History defaults to extraction activity; Recovery revisions retains Restore
+through the existing scoped command and original revision ID. Context controls
+continue to use separate browsing-title and page-content policies. Model-based
+extraction telemetry, episodic retention and index rebuilding remain unimplemented.
 
 The native method registry advertises implemented capabilities. Feature entry points depend on those capabilities and user Labs preferences. Runtime-owned chat, task and AI data stream to the shell; browser-owned interactions must remain available independently of runtime readiness.
 
