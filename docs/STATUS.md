@@ -1,5 +1,27 @@
 # Aux status — October 16, 2026
 
+October 16 native consolidation: source `80b9431f8` built successfully in
+9m06.79s (26 steps). The disposable preview now includes Models, Permissions and
+the shared rounded input-focus correction. Native model search showed no inner
+rectangular outline. Selecting GPT-6.1 Sol persisted through Settings reload.
+Adding a Publish posts deny rule also persisted through reload; the test rule was
+then removed. Rapid Separate followed immediately by the stacked split shortcut
+successfully restored two panes without the stale-tabs guard. These are focused
+walkthroughs, not full parity or phase acceptance.
+
+Captures under `/tmp/aux-parity-2026-10-16/`:
+`aux-model-saved-native-80b943.png`, `aux-permission-saved-native-80b943.png`,
+and `aux-split-separate-stacked-native-80b943.png`.
+Launcher 34917/app 36707 owns this disposable preview. Previous launcher 21465,
+its app and disposable Profile were retired normally before this build.
+
+A follow-up permission-editor correction keeps the popover mounted during saves,
+so failed saves retain the draft and successful closing can restore focus.
+Its deferred-save regression and all nine permission tests pass. Integrated
+`npm run check` passed typecheck, lint and all 4,601 tests across 739 files.
+The final renderer build also passes. This follow-up is source-only until the next
+native consolidation; the shared input-focus correction is already native.
+
 October 16 Permissions batch: references 045 and 051–053 now inform grouped
 Allow, Ask and Deny cards with anchored Add Rule forms. These edit the existing
 canonical action categories; exact-site overrides and policy revisions are

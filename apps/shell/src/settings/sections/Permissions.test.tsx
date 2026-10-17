@@ -156,3 +156,32 @@ it("adds a grouped rule with its revision while preserving exact-site overrides"
     agentPolicyRevision: 7,
   });
 });
+
+it("keeps the rule editor open while saving and shows a rejected save without losing the draft", async () => {
+  let finish!: (saved: boolean) => void;
+  const save = vi.fn(
+    () =>
+      new Promise<boolean>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await act(async () => root.render(<PermissionsSettings active settings={settings} onSave={save} />));
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Add ask rule"]')!.click());
+  const editor = () => document.querySelector('dialog[aria-label="Add ask rule"]');
+  const category = editor()!.querySelector<HTMLSelectElement>('[aria-label="Action category"]')!;
+  await act(async () => {
+    category.value = "send";
+    category.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await act(async () =>
+    editor()!
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+  );
+  expect(editor()).not.toBeNull();
+  expect(category.disabled).toBe(true);
+  await act(async () => finish(false));
+  expect(editor()?.textContent).toContain("The rule was not saved");
+  expect(category.value).toBe("send");
+  expect(category.disabled).toBe(false);
+});

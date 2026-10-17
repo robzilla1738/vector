@@ -5,6 +5,15 @@ review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
 [the earlier surface ledger](aside-parity.md); it does not narrow its acceptance.
 
+## October 16 native consolidation
+
+Native `80b9431f8` verifies rounded model-search focus without the inner square,
+model selection persistence, grouped permission save/reload/removal, and one
+rapid Separate-to-stacked-split walkthrough. STATUS records captures and preview
+ownership. Full surface, viewport and phase acceptance remain open. The subsequent
+permission-editor pending-save focus correction has focused regression coverage
+but is not included in this native build.
+
 ## Reference handling
 
 Reference031: Quick Ask now joins the common inline recorder and reports actual

@@ -16,10 +16,12 @@ const groups = [
 /** Edit explicit category overrides; inherited mode and site policy stay authoritative. */
 export function PolicyGroups({
   policy,
+  active,
   busy,
   save,
 }: {
   policy: AgentPolicySettings;
+  active: boolean;
   busy: boolean;
   save(rules: Rule[]): Promise<boolean>;
 }) {
@@ -34,6 +36,7 @@ export function PolicyGroups({
               <span>{group.hint}</span>
               <AddPolicyRule
                 {...group}
+                active={active}
                 busy={busy}
                 save={(category) =>
                   save(replacementRules(policy, category, undefined, { category, access: group.access }))
@@ -73,11 +76,13 @@ export function PolicyGroups({
 function AddPolicyRule({
   label,
   hint,
+  active,
   busy,
   save,
 }: {
   label: string;
   hint: string;
+  active: boolean;
   busy: boolean;
   save(category: AgentPolicyCategory): Promise<boolean>;
 }) {
@@ -88,7 +93,7 @@ function AddPolicyRule({
     <Popover
       label={`Add ${label.toLowerCase()} rule`}
       className="permission-add-rule"
-      disabled={busy}
+      disabled={!active}
       initialFocusRef={select}
       trigger={
         <>

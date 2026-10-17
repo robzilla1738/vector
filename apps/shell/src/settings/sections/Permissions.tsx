@@ -252,7 +252,12 @@ export function PermissionsSettings({
           "shell commands",
         ]}
       >
-        <PolicyGroups policy={policy} busy={!active || busy} save={(rules) => save({ agentPolicies: rules })} />
+        <PolicyGroups
+          active={active}
+          policy={policy}
+          busy={!active || busy}
+          save={(rules) => save({ agentPolicies: rules })}
+        />
         <details className="permission-defaults">
           <summary>View all action defaults</summary>
           <PolicyTable policy={policy} busy={busy} save={(rules) => void save({ agentPolicies: rules })} />
@@ -291,7 +296,7 @@ export function PermissionsSettings({
         <Popover
           label="Add site rule"
           className="permission-add-rule"
-          disabled={!active || busy}
+          disabled={!active}
           trigger={
             <>
               <Plus /> Add Rule
