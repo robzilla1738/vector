@@ -1,3 +1,4 @@
+import { openNativeLibrary } from "../native-library";
 import { useTabLayout } from "../use-tab-layout";
 import { orderedPages } from "../store/pages";
 import { staticIconButtonProps } from "../ui/class-props";
@@ -495,7 +496,7 @@ export function HorizontalTabs() {
               onEdit={setEditingSpace}
               onDelete={(id) => void useStore.getState().deleteSpace(id).catch(errToast)}
               onRestore={(id) => void useStore.getState().restoreSpace(id).catch(errToast)}
-              onHistory={() => useStore.getState().setOverlay("history")}
+              onHistory={() => void openNativeLibrary("history").catch(errToast)}
               onDownloads={() => useStore.getState().setOverlay("downloads")}
               onSettings={() => useStore.getState().setOverlay("settings")}
               onClose={() => setSpaceMenuOpen(false)}

@@ -18,6 +18,7 @@ it("preserves the legacy palette action inventory with real registered producer 
       "command-translate",
       "command-show-original",
       "command-bookmarks",
+      "command-saved-pages",
       "command-open-live-chrome",
       "command-new-space",
     ].sort(),

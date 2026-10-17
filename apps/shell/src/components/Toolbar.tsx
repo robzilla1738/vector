@@ -95,8 +95,8 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && (
           <button
             {...staticIconButtonProps}
-            title={withShortcut("Library", key("command-bookmarks"))}
-            aria-label="Library"
+            title={withShortcut("Bookmarks", key("command-bookmarks"))}
+            aria-label="Bookmarks"
             data-command-id="command-bookmarks"
             onClick={() => runCommand("command-bookmarks")}
           >

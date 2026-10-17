@@ -1,0 +1,23 @@
+--- a/chrome/browser/ui/incognito_allowed_url.cc
++++ b/chrome/browser/ui/incognito_allowed_url.cc
+@@ -8,6 +8,7 @@
+ #include <string_view>
+ 
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/signin/signin_promo.h"
+ #include "chrome/common/webui_url_constants.h"
+ #include "components/password_manager/content/common/web_ui_constants.h"
+@@ -49,7 +50,12 @@
+          host != ash::kChromeUIOSSettingsHost &&
+ #endif
+          host != chrome::kChromeUIHelpHost &&
++#if !BUILDFLAG(ENABLE_AUX_SHELL)
++         // Aux's HistoryUIConfig rejects Private contexts directly. Keep the
++         // request in its originating window so navigation cannot redirect to
++         // the owner's persistent History in a normal window.
+          host != chrome::kChromeUIHistoryHost &&
++#endif
+          host != chrome::kChromeUIExtensionsHost &&
+          host != password_manager::kChromeUIPasswordManagerHost;
+ }

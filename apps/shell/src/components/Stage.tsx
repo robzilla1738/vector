@@ -159,9 +159,7 @@ export const Stage = memo(
           organizationCovered ||
           overlay === "tasks" ||
           overlay === "settings" ||
-          overlay === "history" ||
-          overlay === "bookmarks" ||
-          overlay === "clear-history"
+          overlay === "saved-pages"
         }
         className={`stage-card ${loading ? "loading" : ""} ${showingPage ? "has-page" : ""}`}
         data-controller={page?.controller ?? "none"}

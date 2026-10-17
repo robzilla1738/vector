@@ -104,7 +104,7 @@ export function SessionRecovery({ compact = false }: { compact?: boolean }) {
   if (compact && !tabs.length) return null;
   if (compact)
     return (
-      <button className="home-recovery" onClick={() => useStore.getState().setOverlay("history")}>
+      <button className="home-recovery" onClick={() => useStore.getState().setOverlay("saved-pages")}>
         {tabs.length} {tabs.length === 1 ? "tab couldn’t" : "tabs couldn’t"} reopen · Review saved tabs
       </button>
     );

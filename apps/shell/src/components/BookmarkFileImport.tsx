@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { call, useStore } from "../store";
 import { errorMessage } from "../error-message";
 import { MAX_BOOKMARK_FILE_SIZE, parseBookmarkFile } from "../bookmark-files";
-import { useLibraryReadOwner } from "./LibraryControls";
+import { useLibraryReadOwner } from "./library-owner";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { nativeAlertRoleProps, nativePoliteLiveProps } from "../ui/native-attribute-props";
 import { hostOf } from "../workspace";

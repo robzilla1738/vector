@@ -1,3 +1,4 @@
+import { openNativeLibrary } from "./native-library";
 import { orderedPages } from "./store/pages";
 import {
   COMMANDS,
@@ -347,7 +348,7 @@ export const COMMAND_ACTIONS = {
   palette: (st) =>
     st.overlay === "command-surface" ? closeCommandSurface() : openCommandSurface({ mode: "command" }),
   settings: (st) => (bridge.privateMode ? undefined : st.setOverlay("settings")),
-  history: (st) => st.setOverlay("history"),
+  history: () => openNativeLibrary("history"),
   downloads: (st) => st.setOverlay("downloads"),
   bookmark: (st) => {
     const p = st.pages.byId[st.activePageId ?? ""];
@@ -356,7 +357,7 @@ export const COMMAND_ACTIONS = {
   },
   "bookmark-all": (st) => bookmarkAll(st),
   "agent-rail": (st) => st.toggleRail(),
-  "clear-history": (st) => st.setOverlay("clear-history"),
+  "clear-history": () => openNativeLibrary("clear"),
   "tab-next": (st, context) => cycleTab(st, 1, context),
   "tab-previous": (st, context) => cycleTab(st, -1, context),
   "close-tab": (st) => {

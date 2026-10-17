@@ -53,8 +53,8 @@ describe("overlay → native-view visibility", () => {
   const page = "page-1";
   const url = "https://example.com";
 
-  it("hides the native page for command surface, settings, history, observe, and capture", () => {
-    for (const overlay of ["command-surface", "settings", "history", "observe", "capture"] as const) {
+  it("hides the native page for command surface, settings, saved pages, observe, and capture", () => {
+    for (const overlay of ["command-surface", "settings", "saved-pages", "observe", "capture"] as const) {
       expect(isScrimOverlay(overlay)).toBe(true);
       expect(isFlowOverlay(overlay)).toBe(false);
       expect(nativePageId({ mode: "focus", overlay, activePageId: page, url })).toBeNull();

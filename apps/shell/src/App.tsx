@@ -52,7 +52,7 @@ import { nativePoliteLiveProps } from "./ui/native-attribute-props";
 
 const ReaderView = deferNamedSurface(() => import("./components/ReaderView"), "ReaderView", "Reader");
 const Settings = deferNamedSurface(() => import("./components/Settings"), "Settings", "Settings");
-const Library = deferNamedSurface(() => import("./components/Library"), "Library", "Library");
+const SavedPages = deferNamedSurface(() => import("./components/SavedPages"), "SavedPages", "Saved pages");
 const Inspector = deferNamedSurface(() => import("./components/Inspector"), "Inspector", "Page inspection");
 const Tasks = deferNamedSurface(() => import("./components/Tasks"), "Tasks", "Tasks");
 const CommandSurface = deferNamedSurface(
@@ -405,13 +405,7 @@ export function App() {
               {overlay === "reader" && <ReaderView />}
               {peekPageId && <LinkPeek />}
               {overlay === "settings" && <Settings />}
-              {(overlay === "history" || overlay === "bookmarks" || overlay === "clear-history") && (
-                <Library
-                  key={overlay}
-                  initialView={overlay === "bookmarks" ? "bookmarks" : "history"}
-                  confirmClear={overlay === "clear-history"}
-                />
-              )}
+              {overlay === "saved-pages" && <SavedPages />}
 
               {overlay === "tasks" && <Tasks />}
               {overlay === "downloads" && <Downloads />}

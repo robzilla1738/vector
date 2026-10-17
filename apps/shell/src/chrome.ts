@@ -47,11 +47,9 @@ export function addressNavigate(input: string, searchEngine?: string): { action:
 export function isScrimOverlay(overlay: string | null): boolean {
   return (
     overlay === "reader" ||
-    overlay === "bookmarks" ||
+    overlay === "saved-pages" ||
     overlay === "command-surface" ||
     overlay === "settings" ||
-    overlay === "history" ||
-    overlay === "clear-history" ||
     overlay === "observe" ||
     overlay === "tasks" ||
     overlay === "site" ||

@@ -1,3 +1,4 @@
+import * as nativeLibrary from "./native-library";
 import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
@@ -19,6 +20,7 @@ let original: ReturnType<typeof useStore.getState>,
   originalWindowId: string;
 const overrides = { "command-bookmarks": [{ key: "l", command: true, alt: true }] };
 beforeEach(() => {
+  vi.spyOn(nativeLibrary, "openNativeLibrary").mockResolvedValue(makePage(0));
   original = useStore.getState();
   originalPrivate = bridge.privateMode;
   originalKind = bridge.windowKind;
@@ -101,20 +103,20 @@ function button(label: string): HTMLButtonElement {
   expect(rows).toHaveLength(1);
   return rows[0]!;
 }
-it("hidden-sidebar Toolbar Library and remapped shortcut execute the same genuine registered overlay action", async () => {
+it("hidden-sidebar Toolbar Library and remapped shortcut execute the same registered native page action", async () => {
   const run = vi.spyOn(commands, "runCommand");
   await act(async () => root.render(<Toolbar />));
-  const library = button("Library");
+  const library = button("Bookmarks");
   expect(library.dataset.commandId).toBe("command-bookmarks");
-  expect(library.title).toBe(`Library (${shortcutLabel("command-bookmarks", overrides)})`);
+  expect(library.title).toBe(`Bookmarks (${shortcutLabel("command-bookmarks", overrides)})`);
   await act(async () => library.click());
   expect(run).toHaveBeenCalledWith("command-bookmarks");
-  expect(useStore.getState().overlay).toBe("bookmarks");
+  expect(nativeLibrary.openNativeLibrary).toHaveBeenCalledWith("bookmarks");
   await act(async () => useStore.getState().setOverlay(null));
   await act(async () => {
     expect(commands.dispatchShortcut({ key: "l", meta: true, alt: true, shift: false })).toBe(true);
   });
-  expect(useStore.getState().overlay).toBe("bookmarks");
+  expect(nativeLibrary.openNativeLibrary).toHaveBeenCalledWith("bookmarks");
 });
 it("Sidebar More Library closes its real mounted menu and reaches the registered Library action", async () => {
   useStore.setState({ sidebar: "expanded" });
@@ -123,12 +125,12 @@ it("Sidebar More Library closes its real mounted menu and reaches the registered
   const more = button("More");
   await act(async () => more.click());
   expect(more.getAttribute("aria-expanded")).toBe("true");
-  const library = button("Library");
+  const library = button("Bookmarks");
   expect(library.getAttribute("role")).toBe("menuitem");
   expect(library.querySelector("kbd")?.textContent).toBe(shortcutLabel("command-bookmarks", overrides));
   await act(async () => library.click());
   expect(run).toHaveBeenCalledWith("command-bookmarks");
-  expect(useStore.getState().overlay).toBe("bookmarks");
+  expect(nativeLibrary.openNativeLibrary).toHaveBeenCalledWith("bookmarks");
   expect(more.getAttribute("aria-expanded")).toBe("false");
   expect(document.querySelector('[role="menuitem"][aria-label="Library"]')).toBeNull();
 });
@@ -148,7 +150,7 @@ it("bookmark management invokes the genuine command without changing saved bookm
   expect(rows[0]!.dataset.commandId).toBe("command-bookmarks");
   await act(async () => rows[0]!.click());
   expect(run).toHaveBeenCalledWith("command-bookmarks");
-  expect(useStore.getState().overlay).toBe("bookmarks");
+  expect(nativeLibrary.openNativeLibrary).toHaveBeenCalledWith("bookmarks");
   expect(useStore.getState().bookmarks).toEqual(bookmarks);
 });
 it("Private controls stay absent and real registry eligibility is preserved; unavailable IDs cannot open Library", async () => {
@@ -164,11 +166,11 @@ it("Private controls stay absent and real registry eligibility is preserved; una
   );
   expect(document.querySelector('[data-command-id="command-bookmarks"]')).toBeNull();
   expect(document.querySelector('[aria-label="More"]')).toBeNull();
-  // Original command-bookmarks metadata has no window-kind restriction.
+  // Persistent native Library pages are unavailable in Private windows.
   await act(async () => {
-    expect(commands.dispatchShortcut({ key: "l", meta: true, alt: true, shift: false })).toBe(true);
+    expect(commands.dispatchShortcut({ key: "l", meta: true, alt: true, shift: false })).toBe(false);
   });
-  expect(useStore.getState().overlay).toBe("bookmarks");
+  expect(nativeLibrary.openNativeLibrary).not.toHaveBeenCalled();
   await act(async () => useStore.getState().setOverlay(null));
   expect(commands.runCommand("unavailable-library-command")).toBe(false);
   await expect(commands.executeCommand("unavailable-library-command")).rejects.toThrow();
@@ -442,7 +444,7 @@ it("original Agent rail button invokes the existing registered action and toggle
 });
 
 it.each(["history", "downloads", "settings"] as const)(
-  "original Space menu %s callback reaches its existing real registered overlay and closes the menu",
+  "original Space menu %s callback reaches its registered destination and closes the menu",
   async (id) => {
     await mountMore();
     const trigger = host.querySelector<HTMLButtonElement>('button[title="Switch space"]');
@@ -455,7 +457,10 @@ it.each(["history", "downloads", "settings"] as const)(
     );
     expect(item).toBeDefined();
     await act(async () => item!.click());
-    expect(useStore.getState().overlay).toBe(id);
+    expect(vi.mocked(nativeLibrary.openNativeLibrary).mock.calls).toEqual(
+      id === "history" ? [["history"]] : [],
+    );
+    expect(useStore.getState().overlay).toBe(id === "history" ? null : id);
     expect(trigger!.getAttribute("aria-expanded")).toBe("false");
     expect(document.querySelector('[role="menu"][aria-label="Spaces and browser controls"]')).toBeNull();
   },

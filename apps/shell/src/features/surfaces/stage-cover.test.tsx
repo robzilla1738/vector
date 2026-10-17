@@ -163,7 +163,7 @@ it("retains native split connectors through covers and full chat while reporting
     }
     for (const state of [
       { mode: "conversation" },
-      { mode: "focus", overlay: "history" },
+      { mode: "focus", overlay: "saved-pages" },
       { overlay: "settings" },
     ]) {
       await act(async () => useStore.setState({ mode: "focus", overlay: null }));
@@ -242,7 +242,7 @@ it("attaches a native page while the runtime and agent surface remain unresponsi
     const embed = node.querySelector("embed");
     for (const state of [
       { mode: "conversation" },
-      { mode: "focus", overlay: "history" },
+      { mode: "focus", overlay: "saved-pages" },
       { overlay: "settings" },
       { overlay: null },
     ]) {

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CommandSurface } from "./CommandSurface";
 import { openCommandSurface, useCommandSurfaceRequest } from "../command-surface-state";
 import { Conversation } from "./Conversation";
-import { Library } from "./Library";
+import { SavedPages } from "./SavedPages";
 import { deferSurface } from "./DeferredSurface";
 import { executeCommand } from "../commands";
 import { bridge } from "../bridge";
@@ -16,7 +16,7 @@ vi.mock("./CalendarTaskGrants", () => ({ CalendarTaskGrants: () => null }));
 vi.mock("./Routines", () => ({ Routines: () => null }));
 vi.mock("./Goals", () => ({ Goals: () => null }));
 vi.mock("./Hooks", () => ({ Hooks: () => null }));
-const DeferredLibrary = deferSurface(async () => ({ default: Library }), "Library");
+const DeferredLibrary = deferSurface(async () => ({ default: SavedPages }), "Library");
 const initial = useStore.getState();
 const modal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal"),
   close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close"),
@@ -119,7 +119,7 @@ function PaletteShell() {
         aria-label="Original palette"
         onClick={() => {
           useStore.getState().setMode("focus");
-          openCommandSurface({ mode: "command", seed: "Bookmarks and history" });
+          openCommandSurface({ mode: "command", seed: "Reading list and saved tabs" });
         }}
       >
         Commands
@@ -134,7 +134,7 @@ function PaletteShell() {
         </div>
       )}
       {request && <CommandSurface request={request} executeCommand={executeCommand} />}
-      {overlay === "bookmarks" && <DeferredLibrary />}
+      {overlay === "saved-pages" && <DeferredLibrary />}
     </>
   );
 }
@@ -159,11 +159,13 @@ it.each([false, true])(
     await act(async () =>
       command.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })),
     );
-    expect(host.querySelector('[aria-label="Library"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Saved pages"]')).not.toBeNull();
     if (dismissFirst)
-      await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Close library"]')!.click());
+      await act(async () =>
+        host.querySelector<HTMLButtonElement>('[aria-label="Close saved pages"]')!.click(),
+      );
     expect(useStore.getState().focusRequest).toBe(0);
-    expect(useStore.getState().overlay).toBe(dismissFirst ? null : "bookmarks");
+    expect(useStore.getState().overlay).toBe(dismissFirst ? null : "saved-pages");
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Original New chat"]')!.click());
     const input = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="Reply to conversation"]')!;
     expect(input).not.toBe(initialInput);

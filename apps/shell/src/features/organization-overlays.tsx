@@ -6,7 +6,9 @@ import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
 const LiveFolderEditor = lazy(() =>
   import("../components/LiveFolderEditor").then((module) => ({ default: module.LiveFolderEditor })),
 );
-const Library = lazy(() => import("../components/Library").then((module) => ({ default: module.Library })));
+const SavedPages = lazy(() =>
+  import("../components/SavedPages").then((module) => ({ default: module.SavedPages })),
+);
 
 export function OrganizationEditor() {
   const editor = useOrganizationEditor();
@@ -45,7 +47,7 @@ export function ArchiveOverlay() {
   if (editor?.kind !== "archive") return null;
   return (
     <Suspense fallback={null}>
-      <Library initialView="archived" onClose={() => showOrganizationEditor(null)} />
+      <SavedPages initialView="archived" onClose={() => showOrganizationEditor(null)} />
     </Suspense>
   );
 }

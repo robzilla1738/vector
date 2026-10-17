@@ -15,7 +15,7 @@ it("keeps the destination and current browsing state when a background open fini
     ],
     activeSpaceId: "work",
   };
-  useStore.setState({ layout, pages: normalizePages([]), activePageId: null, overlay: "bookmarks" });
+  useStore.setState({ layout, pages: normalizePages([]), activePageId: null, overlay: "saved-pages" });
   let finish!: (ack: TabCommandAck) => void;
   const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(
     async () =>
@@ -38,7 +38,7 @@ it("keeps the destination and current browsing state when a background open fini
   expect(useStore.getState().layout.tabSpace.opened).toBe("work");
   expect(useStore.getState().layout.activeSpaceId).toBe("home");
   expect(useStore.getState().activePageId).toBe("new-selection");
-  expect(useStore.getState().overlay).toBe("bookmarks");
+  expect(useStore.getState().overlay).toBe("saved-pages");
   await useStore.getState().openBackgroundTab("https://example.com", "work");
   expect(tabCommand).toHaveBeenCalledTimes(1);
 });

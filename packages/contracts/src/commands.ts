@@ -745,7 +745,8 @@ export const COMMANDS = [
   C("command-vault-fill", "Fill sign-in…", normalApplication),
   C("command-translate", "Translate this page", translationControl),
   C("command-show-original", "Show original page", translationControl),
-  C("command-bookmarks", "Bookmarks and history", shellApplication),
+  C("command-bookmarks", "Bookmarks", normalApplication),
+  C("command-saved-pages", "Reading list and saved tabs", shellApplication),
   C("command-open-live-chrome", "Open live in Chrome", normalApplication),
   {
     id: "command-new-space",
@@ -1184,7 +1185,7 @@ export const COMMANDS = [
     bindings: [B(",", commandModifiers)],
     intercept: true,
   },
-  K("history", "History", "Application", [B("y", commandModifiers)]),
+  { ...K("history", "History", "Application", [B("y", commandModifiers)]), windows: ["normal"] },
   K("downloads", "Downloads", "Application", [B("j", commandShiftModifiers)]),
   K("bookmark", "Bookmark This Page", "Tabs", [B("d", commandModifiers)]),
   K("bookmark-all", "Bookmark All Tabs", "Tabs", []),
@@ -1197,7 +1198,10 @@ export const COMMANDS = [
     bindings: [B("a", commandShiftModifiers)],
     intercept: true,
   },
-  K("clear-history", "Clear History", "Application", [B("backspace", commandShiftModifiers)]),
+  {
+    ...K("clear-history", "Clear History", "Application", [B("backspace", commandShiftModifiers)]),
+    windows: ["normal"],
+  },
   {
     id: "tab-next",
     section: "Tabs",

@@ -33,11 +33,9 @@ export type Overlay =
   | "find"
   | "downloads"
   | "inline-assist"
-  | "history"
-  | "clear-history"
+  | "saved-pages"
   | "observe"
   | "tasks"
-  | "bookmarks"
   | "site"
   | "zap"
   | "capture";

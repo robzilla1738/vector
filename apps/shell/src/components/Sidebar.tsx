@@ -1401,13 +1401,22 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                   </button>
                   <button
                     {...nativeMenuItemRoleProps}
-                    aria-label="Library"
+                    aria-label="Bookmarks"
                     data-command-id="command-bookmarks"
                     onClick={() => chooseMore("command-bookmarks")}
                   >
                     {shellIconBookmark}
-                    <span>Library</span>
+                    <span>Bookmarks</span>
                     {key("command-bookmarks") && <kbd>{key("command-bookmarks")}</kbd>}
+                  </button>
+                  <button
+                    {...nativeMenuItemRoleProps}
+                    aria-label="Reading list and saved tabs"
+                    data-command-id="command-saved-pages"
+                    onClick={() => chooseMore("command-saved-pages")}
+                  >
+                    {shellIconBookmark}
+                    <span>Reading list and saved tabs</span>
                   </button>
                   <button
                     {...nativeMenuItemRoleProps}

@@ -1,3 +1,4 @@
+import { openNativeLibrary } from "./native-library";
 import { orderedPages } from "./store/pages";
 import { bridge, inNativeHost } from "./bridge";
 import { call, useStore } from "./store";
@@ -73,7 +74,8 @@ export const COMMAND_SURFACE_ACTIONS = {
     if (page.backend !== "aux") throw new Error("Translation requires an Aux page.");
     return bridge.showOriginal(page.pageId);
   },
-  "command-bookmarks": () => useStore.getState().setOverlay("bookmarks"),
+  "command-bookmarks": () => openNativeLibrary("bookmarks"),
+  "command-saved-pages": () => useStore.getState().setOverlay("saved-pages"),
   "command-open-live-chrome": () => {
     const page = personPage();
     if (page.backend !== "chrome") throw new Error("Choose an attached Chrome page.");

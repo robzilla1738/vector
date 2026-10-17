@@ -1,14 +1,36 @@
 # Aux status — October 16, 2026
 
-Consolidated native candidate **21d7d725c** is building under launcher **81608**,
-exec session **95623**, log `/tmp/aux-native-library-presentation-build.log`.
-Process confirmed live. It includes patches 0048 (Library/download events) and
-0049 (native Library presentation and Private guards). Previous launcher 73597
-received SIGTERM; app 74900 exited, disposable Profile aux-dev-a2hXEY and the
-plain lock were verified removed before replacement. Do not launch a second
-builder or bind the retired app. Next acceptance: About identity, native History/
-Bookmarks styling and menus, bookmark edits updating the sidebar without Library
-refresh, Private route rejection, then public navigation/overlay replacement.
+Native candidate **21d7d725cfce93aa84a5762c3bfc381d01ee6603** built and launched
+under launcher **81608**, app **82974**, disposable Profile **aux-dev-UFpGbW**,
+exec **95623**, log `/tmp/aux-native-library-presentation-build.log`.
+About verified source identity, Chromium 154.0.8037.98 and ABI
+`9021388efb6b3a3f317178bce1b0794baf2826aa9c132b5bb276b28470fb8c68`.
+Native Bookmarks shows the Aux logo, dark palette and rounded search focus;
+creating a synthetic bookmark immediately updates the Aux sidebar (0048 accepted).
+Its menu shows Edit/Delete, Cut/Copy/Paste, Private/group/tab/window/split actions.
+History exposes By date/By group and Aux history navigation without synced tabs.
+Populated clustering and light/narrow comparisons remain pending.
+
+The next source batch routes Bookmarks, History and Clear History to real browser
+pages; removes the combined cloned Library and its obsolete helpers; retains
+Reading list, Archived tabs and Recently closed in SavedPages. Saved pages preserve
+background-open unread state, offline extraction ownership and focus restoration.
+Persistent Library commands reject Private/Little windows and do not depend on
+the agent runtime. Native APIs remain available to their structured clients.
+Native group/split Labs opt-outs still need integration; this is not full parity.
+
+Private testing exposed an additional native redirect: History navigation moved
+to a normal window before HistoryUIConfig could reject it. Area patch 0050 keeps
+Aux History requests in their initiating context so 0049's WebUI guard applies,
+including view-source requests. Bookmarks already rejected the Private URL. The
+0050 fix and replacement renderer await a consolidated native build/walkthrough.
+
+Integrated `npm run check`: typecheck/lint passed, 4,607/4,616 tests passed initially.
+Six stale overlay/focus expectations were updated; all 47 tests in those three
+files passed on retry. Three routine tests depended on the wall clock staying
+outside the minute before 09:00 UTC; fixed fixture clocks preserve the same
+schedule assertions, and all three passed. No passing full suites were repeated.
+Renderer build passed in 2.22s. Logs `/tmp/aux-library-routes-{check,retry,routines-retry,renderer-build}.log`.
 
 
 Native Library presentation batch is consolidated in area patch

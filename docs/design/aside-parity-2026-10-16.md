@@ -1,5 +1,16 @@
 # Aside UI parity — October 16, 2026
 
+October 17 native Library follow-up: candidate 21d7d725c verified in About.
+Aux logo/dark native Bookmarks styling, original bookmark menu order, immediate
+sidebar synchronization after native creation and native History navigation accepted.
+Direct Private Bookmarks rejected; History first redirected to a normal window,
+so patch 0050 now lets the existing WebUI guard reject the originating request.
+That correction still needs native acceptance. Source replaces the cloned Library
+with native routes and retains Aux Reading/Archived/Recently closed in SavedPages.
+Renderer build and affected navigation/focus tests pass; replacement UI acceptance,
+Labs group/split opt-outs, populated History and light/narrow comparisons remain.
+
+
 Native Library presentation batch is consolidated in area patch
 `chromium/patches/aux/0049-native-library-presentation.patch`. History and Bookmarks
 receive Aux logo slots and scoped light/dark palette variables; Aux selects the

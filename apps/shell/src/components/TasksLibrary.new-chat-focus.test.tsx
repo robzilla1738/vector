@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Conversation } from "./Conversation";
 import { Tasks } from "./Tasks";
-import { Library } from "./Library";
+import { SavedPages } from "./SavedPages";
 import { deferSurface } from "./DeferredSurface";
 import { executeCommand } from "../commands";
 import { bridge } from "../bridge";
@@ -16,7 +16,7 @@ vi.mock("./Routines", () => ({ Routines: () => null }));
 vi.mock("./Goals", () => ({ Goals: () => null }));
 vi.mock("./Hooks", () => ({ Hooks: () => null }));
 const DeferredTasks = deferSurface(async () => ({ default: Tasks }), "Tasks");
-const DeferredLibrary = deferSurface(async () => ({ default: Library }), "Library");
+const DeferredLibrary = deferSurface(async () => ({ default: SavedPages }), "Library");
 const initial = useStore.getState();
 const modal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal"),
   close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close"),
@@ -105,12 +105,12 @@ afterEach(async () => {
 
 function Shell({ surface }: { surface: "Tasks" | "Library" }) {
   const overlay = useStore((state) => state.overlay);
-  const selected = surface === "Tasks" ? "tasks" : "bookmarks";
+  const selected = surface === "Tasks" ? "tasks" : "saved-pages";
   return (
     <>
       <button
         aria-label="Original surface opener"
-        onClick={() => void executeCommand(surface === "Tasks" ? "open-tasks" : "command-bookmarks")}
+        onClick={() => void executeCommand(surface === "Tasks" ? "open-tasks" : "command-saved-pages")}
       >
         {surface}
       </button>
@@ -143,7 +143,9 @@ const opener = () => host.querySelector<HTMLButtonElement>('[aria-label="Origina
 async function open(surface: "Tasks" | "Library") {
   opener().focus();
   await act(async () => opener().click());
-  expect(host.querySelector(`[aria-label="${surface}"]`)).not.toBeNull();
+  expect(
+    host.querySelector(`[aria-label="${surface === "Tasks" ? "Tasks" : "Saved pages"}"]`),
+  ).not.toBeNull();
 }
 it.each(["Tasks", "Library"] as const)(
   "%s to registered New chat retains original composer and draft focus",
@@ -164,7 +166,7 @@ it.each(["Tasks", "Library"] as const)("ordinary %s Close restores its original 
   await mount(surface);
   await open(surface);
   const close = host.querySelector<HTMLButtonElement>(
-    `[aria-label="${surface === "Tasks" ? "Close tasks" : "Close library"}"]`,
+    `[aria-label="${surface === "Tasks" ? "Close tasks" : "Close saved pages"}"]`,
   )!;
   expect(close).not.toBeNull();
   await act(async () => close.click());
