@@ -254,23 +254,23 @@ it("queued read refuses retired owner before producing native request", async ()
   await tick();
   expect(bridge.invoke).not.toHaveBeenCalled();
 });
-it("close button, backdrop and Escape retain actual local callback, remap owner", async () => {
+it("page close button and Escape retain actual local callback, remap owner", async () => {
   const close = vi.fn();
   await render("bookmarks", close);
   await act(async () => button(ids.close).click());
   expect(close).toHaveBeenCalledTimes(1);
   await act(async () =>
     host
-      .querySelector<HTMLElement>(".overlay-scrim")!
+      .querySelector<HTMLElement>(".library-page")!
       .dispatchEvent(new MouseEvent("mousedown", { bubbles: true })),
   );
-  expect(close).toHaveBeenCalledTimes(2);
+  expect(close).toHaveBeenCalledTimes(1);
   await act(async () =>
     host
-      .querySelector<HTMLElement>('[role="dialog"]')!
+      .querySelector<HTMLElement>('[role="region"]')!
       .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
   );
-  expect(close).toHaveBeenCalledTimes(3);
+  expect(close).toHaveBeenCalledTimes(2);
   await act(async () =>
     useStore.setState({
       settings: { shortcutOverrides: { [ids.close]: [{ key: "l", command: true, alt: true }] } },
@@ -280,10 +280,10 @@ it("close button, backdrop and Escape retain actual local callback, remap owner"
     button(ids.close).focus();
     expect(dispatchShortcut({ key: "l", meta: true, alt: true, shift: false })).toBe(true);
   });
-  expect(close).toHaveBeenCalledTimes(4);
+  expect(close).toHaveBeenCalledTimes(3);
   bridge.windowId = "foreign";
   await act(async () => button(ids.close).click());
-  expect(close).toHaveBeenCalledTimes(4);
+  expect(close).toHaveBeenCalledTimes(3);
 });
 
 it("held query A to B to A read cannot deliver its old failure over newest matching request", async () => {
@@ -334,4 +334,20 @@ it("new committed window read remains usable while original held callback stays 
   expect(pending).toHaveLength(3);
   await act(async () => pending[2]!.resolve(visits("Current range", 1)));
   expect(host.textContent).toContain("Current range 0");
+});
+
+it("page navigation supports vertical arrows without trapping Tab or dismissing on background clicks", async () => {
+  await render("bookmarks");
+  expect(host.querySelector('[aria-modal="true"]')).toBeNull();
+  const bookmarks = host.querySelector<HTMLButtonElement>("#library-bookmarks")!;
+  await act(async () =>
+    bookmarks.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(host.querySelector("#library-reading")?.getAttribute("aria-selected")).toBe("true");
+  expect(document.activeElement).toBe(host.querySelector("#library-reading"));
+  const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+  host.querySelector('[aria-label="Library"]')!.dispatchEvent(tab);
+  expect(tab.defaultPrevented).toBe(false);
 });

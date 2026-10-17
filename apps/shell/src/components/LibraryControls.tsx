@@ -85,7 +85,7 @@ export function LibraryButton({
       onKeyDown={
         keyboard
           ? (event) => {
-              if (["ArrowLeft", "ArrowRight"].includes(event.key)) {
+              if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
                 event.preventDefault();
                 run(event);
               }

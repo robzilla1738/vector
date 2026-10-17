@@ -405,6 +405,14 @@ export function App() {
               {overlay === "reader" && <ReaderView />}
               {peekPageId && <LinkPeek />}
               {overlay === "settings" && <Settings />}
+              {(overlay === "history" || overlay === "bookmarks" || overlay === "clear-history") && (
+                <Library
+                  key={overlay}
+                  initialView={overlay === "bookmarks" ? "bookmarks" : "history"}
+                  confirmClear={overlay === "clear-history"}
+                />
+              )}
+
               {overlay === "tasks" && <Tasks />}
               {overlay === "downloads" && <Downloads />}
               {overlay === "inline-assist" && <InlineAssist />}
@@ -422,13 +430,6 @@ export function App() {
           key={commandSurface.sequence}
           request={commandSurface}
           executeCommand={executeCommand}
-        />
-      )}
-      {(overlay === "history" || overlay === "bookmarks" || overlay === "clear-history") && (
-        <Library
-          key={overlay}
-          initialView={overlay === "bookmarks" ? "bookmarks" : "history"}
-          confirmClear={overlay === "clear-history"}
         />
       )}
       {overlay === "observe" && <Inspector />}

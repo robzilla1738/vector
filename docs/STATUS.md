@@ -1,5 +1,36 @@
 # Aux status — October 16, 2026
 
+Browser Library page batch: History and Bookmarks now render inside the stage
+instead of a centered modal. Added a left navigation rail, rounded search, and
+full-height results; narrow panes use a horizontally scrollable navigation strip.
+History has date-group surfaces with time/title/address columns that wrap at
+narrow widths. Existing scoped actions, selection, import and undo remain intact.
+The covered Stage is inert, while the shell chrome remains reachable. Removed
+modal Tab trapping and background dismissal; Close/Escape preserve command guards.
+
+Validation: integrated typecheck/lint and 4,624 tests across 743 files passed
+(94.89s), including new vertical-navigation/nonmodal-focus coverage and the
+updated close/draft-preservation cases. Final typecheck after the Stage inert
+adjustment passed; final renderer build passed (2.05s). Logs:
+`/tmp/aux-library-page-check.log`, `/tmp/aux-library-page-final-typecheck.log`,
+`/tmp/aux-library-page-build.log`.
+
+Visual evidence: the real Library component with synthetic history was inspected
+at wide and 560px widths; History-to-Bookmarks navigation worked. Captures:
+`/tmp/aux-parity-2026-10-16/aux-library-history-page-vite.png` and
+`aux-library-history-narrow-vite.png`. Temporary fixture files were removed.
+The integrated mock toolbar's Library click produced no visible transition; its
+entry-point acceptance remains open. Fixture evidence does not prove integrated
+native entry, focus return, or persistence. Reference group-history and bookmark
+folder-tree navigation, separate browser page routes and full parity remain open.
+
+Native consolidation for `2cb93764b1fea59f093207aa0e9fe0800390c493` completed in
+8m31.54s and About confirmed that source revision. Launcher **18613** / session
+**95680** owns app **22360**, disposable Profile **aux-dev-8UsqSc**, API
+`http://127.0.0.1:60816`. Keep its cleanup ownership. This native build includes
+Memory and chat-card refinements and the Quick Ask routing guard, but predates
+the Library page batch. Native walkthrough of those changes remains open.
+
 Native consolidation started for `2cb93764b` (Memory document/control layout,
 Quick Ask routing guard, and responsive chat cards). Launcher **18613**, session
 **95680**, owns the only build. Log: `/tmp/aux-memory-chat-native.log`. Previous

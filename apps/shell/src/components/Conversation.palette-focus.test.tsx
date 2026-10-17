@@ -139,7 +139,7 @@ function PaletteShell() {
   );
 }
 it.each([false, true])(
-  "registered palette Library to fresh New chat keeps draft/focus (scrim dismissal first: %s)",
+  "registered palette Library to fresh New chat keeps draft/focus (close Library first: %s)",
   async (dismissFirst) => {
     useStore.setState({
       mode: "conversation",
@@ -161,11 +161,7 @@ it.each([false, true])(
     );
     expect(host.querySelector('[aria-label="Library"]')).not.toBeNull();
     if (dismissFirst)
-      await act(async () =>
-        host
-          .querySelector<HTMLElement>(".overlay-scrim")!
-          .dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true })),
-      );
+      await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Close library"]')!.click());
     expect(useStore.getState().focusRequest).toBe(0);
     expect(useStore.getState().overlay).toBe(dismissFirst ? null : "bookmarks");
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Original New chat"]')!.click());

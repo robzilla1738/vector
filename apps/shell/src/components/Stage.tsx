@@ -155,7 +155,14 @@ export const Stage = memo(
 
     return (
       <div
-        inert={organizationCovered || overlay === "tasks" || overlay === "settings"}
+        inert={
+          organizationCovered ||
+          overlay === "tasks" ||
+          overlay === "settings" ||
+          overlay === "history" ||
+          overlay === "bookmarks" ||
+          overlay === "clear-history"
+        }
         className={`stage-card ${loading ? "loading" : ""} ${showingPage ? "has-page" : ""}`}
         data-controller={page?.controller ?? "none"}
       >
