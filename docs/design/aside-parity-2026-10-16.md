@@ -1,5 +1,16 @@
 # Aside UI parity — October 16, 2026
 
+October17 native **3c34b442b** acceptance: Cmd-L now retains the full immediate
+about:blank and focus-handoff-check strings; subsequent Cmd-T retains its full
+draft, and Escape restores the original Bookmarks query/input. Build9m27.89s;
+About clean source/Chromium/ABI verified. Current live ownership is in STATUS.
+Expanded3456×2010 Home/Appearance compared with3424×1978 references001/023.
+Appearance top cards closely align; Configure needs bordered action treatment.
+Home Recent work begins about50CSS pixels too low (margin152px; reference~100px).
+Populated cards, Home profile action, palette and Advanced destination remain
+open. Captures and concrete next actions are in STATUS. No full-parity claim.
+
+
 October17 focus acceptance: native dd642e5a4 fixed embedded-page ownership;
 Cmd-T opened about:blank, Escape returned to the retained Bookmarks query/input,
 and hide/raise preserved page focus. Cmd-L exposed a separate delayed selection

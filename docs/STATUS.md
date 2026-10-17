@@ -7,20 +7,41 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Current replacement build
+## Current live preview
 
-Product **3c34b442b**, launcher **12644**, exec **93546**, log
-`/tmp/aux-address-focus-native-build.log`. Wait on this same live builder. The
-previous launcher8670, app9769, runtime9785, Profileaux-dev-2nvFHq and lock retired
-normally and were verified removed before replacement. CUA focusHandoffApp is
-stale. No renderer/runtime edits until staging completes.
+Product **3c34b442b**, launcher **12644**, app **13842**, runtime **13856**,
+exec **93546**, disposable Profile **aux-dev-kxVOpm**, API port64825.
+Log `/tmp/aux-address-focus-native-build.log`; native build passed in **9m27.89s**.
+About verified clean source3c34b442b2ec578303a703db6a4bcc877e098f4f,
+Chromium154.0.8037.98 and ABI9021388e…. CUA binding **addressFocusApp**.
+Preserve launcher12644 cleanup ownership. The prior8670 preview is retired.
 
-Next: verify About, then check Cmd-L with immediate about:blank and
-focus-handoff-check from a native Bookmarks search input. Follow Cmd-L with Cmd-T
-and immediate typing too, since the prior focusRequest also affected the newly
-mounted command surface. Escape must dismiss without clicking and preserve the
-page query/focus. Source check passed4,621tests; native rapid-typing acceptance is
-pending. Continue the Memory document batch after this candidate is verified.
+Native rapid-typing acceptance passed: from Bookmarks search, Cmd-L preserved
+full about:blank and focus-handoff-check; after Cmd-L, Cmd-T preserved full
+keyboard focus check. Escape dismissed without clicking, restored the retained
+Bookmarks search, and subsequent typing appended to it. This verifies the native
+ownership and renderer delayed-selection corrections together. Integrated source
+check passed4,621tests/744files. No unchanged suite repeated for acceptance.
+
+Window zoom action expanded the preview for reference comparison. Current app
+captures are3456×2010 versus reference001/023 at3424×1978 (close, not exact).
+Saved captures:
+- `/tmp/aux-parity-2026-10-16/aux-appearance-expanded-3c34b442b.png`
+- `/tmp/aux-parity-2026-10-16/aux-home-expanded-3c34b442b.png`
+
+Next visual batch findings: Appearance card width/order/row spacing are close to
+023. SettingsDialogControl uses smallGhostButtonProps, leaving Configure as plain
+text where the reference shows a bordered action. Reference Tabs also has an
+Advanced row; verify its actual destination before adding it. Home hero position
+matches closely, but Recent work is about50CSS pixels too low: current
+`.home-history` margin-top152px versus approximately100px in001. Home screenshot
+has no synthetic chats yet, so populated card parity remains unverified. Home
+profile action and backdrop/palette also require comparison; do not infer a color
+fix from screenshots with uncontrolled backdrop. Sidebar address placement remains
+an explicit Aux owner decision. Preview is left on Home with suggestions collapsed.
+
+Memory document work remains the next substantial backend/UI batch; implement its
+model/recall/recovery together per the design boundary. Reference count stays182PNG.
 
 ## Prior native acceptance and source follow-up
 
