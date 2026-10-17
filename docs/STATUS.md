@@ -3,6 +3,28 @@
 
 ## October 16 UI parity review — in progress
 
+Latest acceptance supersedes the pending area0045 notes below: native
+a8e2a2ea8 built in 26 steps (8m46.25s). The disposable preview kept the Aux shell
+at normal size at both 25% and 500% website defaults. Fresh example.org and
+example.com tabs reported the respective zoom values; Settings retained them
+after reopening, and saved website sizes excluded the shell. Restored 100%.
+Restart and private-window coverage remain outstanding.
+
+Native shortcut recording passed Tab navigation, Escape cancellation, temporary
+New chat binding save/readback, and reset. Cookie policy retained Block all after
+reopening Settings, then was restored to Allow. Evidence is saved under
+/tmp/aux-parity-2026-10-16 in the native-a8e2a screenshots.
+
+Common shortcut fields now size to their contents (36–160px), visually checked
+in the local Vite preview: aux-shortcuts-content-sized-vite.png. The latest
+history review dialog opened with counts; Cancel and Escape returned to Settings
+without clearing data. These latter observations use mock data. Compiled
+acceptance for the dialog, content sizing and Page zoom Reset remains pending.
+Renderer build passed. Integrated check passed typecheck/lint and 4,584/4,585
+tests, with only the existing coder-worktrees 60-second timeout. Active native
+preview remains a8e2a2ea8, launcher74686/app82128, disposable aux-dev-i17F6V.
+Whole-product parity remains open.
+
 Appearance now presents the first five common shortcut controls inline, with one
 shared recorder and the complete editor available from Manage shortcuts. Explicit
 row declarations preserve Settings search indexing. Tab leaves a recorder,
