@@ -466,3 +466,93 @@ it("extends visit selection with Shift and clears it when the date range changes
   expect(host.querySelectorAll(".library-history-check:checked")).toHaveLength(0);
   expect(host.querySelector('[aria-label="Selected history visits"]')).toBeNull();
 });
+
+it("copies native bookmark identity, pastes after the selected row and offers guarded Undo paste", async () => {
+  const original = { nodeId: "12", url: "https://example.com/", title: "Reference", createdAt: 1 };
+  let entries = [original];
+  let available = false;
+  let holdCopy = false;
+  let releaseCopy: (() => void) | undefined;
+  const snapshot = () => ({
+    rootId: "1",
+    editable: true,
+    folders: [
+      {
+        nodeId: "1",
+        parentId: null,
+        index: 0,
+        title: "Bookmarks",
+        path: [],
+        permanent: true,
+        childIds: entries.map((item) => item.nodeId),
+      },
+    ],
+  });
+  const token = "8decc1e9-08f7-4c62-a18d-b0144f550799";
+  vi.mocked(bridge.invoke).mockImplementation(
+    async (method) => (method === "bookmarks.list" ? entries : []) as never,
+  );
+  vi.mocked(bridge.bookmarksInvoke).mockImplementation(async (request) => {
+    switch (request.method) {
+      case "bookmarks.clipboard.available":
+        return { method: request.method, result: { available } };
+      case "bookmarks.clipboard.copy":
+        if (holdCopy)
+          await new Promise<void>((resolve) => {
+            releaseCopy = resolve;
+          });
+        available = true;
+        return { method: request.method, result: { snapshot: snapshot(), undoToken: null } };
+      case "bookmarks.clipboard.paste":
+        entries = [original, { ...original, nodeId: "13" }];
+        return { method: request.method, result: { snapshot: snapshot(), undoToken: token } };
+      case "bookmarks.entries.restore":
+        entries = [original];
+        return { method: request.method, result: snapshot() };
+      default:
+        return { method: "bookmarks.folders.snapshot", result: snapshot() };
+    }
+  });
+  await render("bookmarks");
+  await tick();
+  const choose = async (label: string) => {
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[aria-label="Actions for Reference"]')!.click(),
+    );
+    const item = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+      (button) => button.textContent === label,
+    )!;
+    expect(item.disabled).toBe(false);
+    await act(async () => item.click());
+  };
+  await choose("Copy");
+  expect(bridge.bookmarksInvoke).toHaveBeenCalledWith({
+    method: "bookmarks.clipboard.copy",
+    params: {
+      source: { nodeId: "12", parentId: "1", index: 0, title: "Reference", url: original.url },
+      cut: false,
+    },
+  });
+  await choose("Paste");
+  expect(bridge.bookmarksInvoke).toHaveBeenCalledWith({
+    method: "bookmarks.clipboard.paste",
+    params: { destination: { parentId: "1", index: 1, expectedChildren: ["12"] } },
+  });
+  const undo = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+    (button) => button.textContent === "Undo paste",
+  )!;
+  expect(undo).toBeTruthy();
+  await act(async () => undo.click());
+  expect(bridge.bookmarksInvoke).toHaveBeenCalledWith({
+    method: "bookmarks.entries.restore",
+    params: { undoToken: token },
+  });
+  expect(host.textContent).toContain("Paste undone.");
+  holdCopy = true;
+  await choose("Copy");
+  const reads = vi.mocked(bridge.invoke).mock.calls.length;
+  bridge.windowId = "foreign-window";
+  await act(async () => releaseCopy!());
+  expect(vi.mocked(bridge.invoke).mock.calls.length).toBe(reads);
+  expect(host.textContent).not.toContain("Bookmark copied.");
+});

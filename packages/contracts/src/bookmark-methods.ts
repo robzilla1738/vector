@@ -1,5 +1,8 @@
 import { z } from "zod";
 import {
+  BookmarkClipboardCopySchema,
+  BookmarkClipboardPasteSchema,
+  BookmarkClipboardResultSchema,
   BookmarkEntryRemoveSchema,
   BookmarkEntryRemoveResultSchema,
   BookmarkEntryRestoreSchema,
@@ -167,6 +170,9 @@ export function isNativeBookmarkMethod(method: string): method is NativeBookmark
 }
 
 const NativeFolderResultSchemas = {
+  "bookmarks.clipboard.available": z.object({ available: z.boolean() }).strict(),
+  "bookmarks.clipboard.copy": BookmarkClipboardResultSchema,
+  "bookmarks.clipboard.paste": BookmarkClipboardResultSchema,
   "bookmarks.entries.remove": BookmarkEntryRemoveResultSchema,
   "bookmarks.entries.restore": BookmarkFolderSnapshotSchema,
   "bookmarks.entries.edit": BookmarkEntryEditResultSchema,
@@ -179,6 +185,9 @@ const NativeFolderResultSchemas = {
 const NativeResultSchemas = { ...BookmarkResultSchemas, ...NativeFolderResultSchemas };
 
 export const NativeBookmarkRequestSchema = z.discriminatedUnion("method", [
+  z.object({ method: z.literal("bookmarks.clipboard.available"), params: z.object({}).strict() }).strict(),
+  z.object({ method: z.literal("bookmarks.clipboard.copy"), params: BookmarkClipboardCopySchema }).strict(),
+  z.object({ method: z.literal("bookmarks.clipboard.paste"), params: BookmarkClipboardPasteSchema }).strict(),
   z.object({ method: z.literal("bookmarks.entries.create"), params: BookmarkEntryCreateSchema }).strict(),
   z.object({ method: z.literal("bookmarks.entries.remove"), params: BookmarkEntryRemoveSchema }).strict(),
   z.object({ method: z.literal("bookmarks.entries.restore"), params: BookmarkEntryRestoreSchema }).strict(),
@@ -274,6 +283,9 @@ function bookmarkResponse<M extends keyof typeof NativeResultSchemas>(method: M)
   return z.object({ method: z.literal(method), result: NativeResultSchemas[method] }).strict();
 }
 export const NativeBookmarkResultSchema = z.discriminatedUnion("method", [
+  bookmarkResponse("bookmarks.clipboard.available"),
+  bookmarkResponse("bookmarks.clipboard.copy"),
+  bookmarkResponse("bookmarks.clipboard.paste"),
   bookmarkResponse("bookmarks.entries.remove"),
   bookmarkResponse("bookmarks.entries.restore"),
   bookmarkResponse("bookmarks.entries.edit"),

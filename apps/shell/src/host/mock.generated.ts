@@ -62,14 +62,9 @@ const RESULTS: Record<string, unknown> = {
     "windows": []
   },
   "bookmarksInvoke": {
-    "method": "bookmarks.entries.remove",
+    "method": "bookmarks.clipboard.available",
     "result": {
-      "snapshot": {
-        "rootId": "1",
-        "editable": false,
-        "folders": []
-      },
-      "undoToken": "00000000-0000-4000-8000-000000000000"
+      "available": false
     }
   },
   "historyInvoke": {

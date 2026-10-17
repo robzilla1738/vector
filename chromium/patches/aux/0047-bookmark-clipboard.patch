@@ -1,0 +1,328 @@
+diff --git a/chrome/browser/ui/aux/methods/library_methods.cc b/chrome/browser/ui/aux/methods/library_methods.cc
+--- a/chrome/browser/ui/aux/methods/library_methods.cc
++++ b/chrome/browser/ui/aux/methods/library_methods.cc
+@@ -250,6 +250,45 @@
+                       std::move(callback)));
+       return;
+     }
++    if (bookmark_method->starts_with("bookmarks.clipboard.")) {
++      const auto document = web_ui()
++                                ->GetWebContents()
++                                ->GetPrimaryMainFrame()
++                                ->GetWeakDocumentPtr();
++      auto current = base::BindRepeating(
++          [](base::WeakPtr<WebUIBrowserUI> owner,
++             content::WeakDocumentPtr document) {
++            auto* frame = document.AsRenderFrameHostIfValid();
++            return owner && frame && owner->IsAuthorizedAuxDocument() &&
++                   frame ==
++                       owner->web_ui()->GetWebContents()->GetPrimaryMainFrame();
++          },
++          weak_factory_.GetWeakPtr(), document);
++      AuxRuntimeHost::ForProfile(profile)->CallBookmarkClipboardForUser(
++          *bookmark_method, *params,
++          base::BindOnce(
++              [](std::string method, RequestCallback callback,
++                 base::DictValue response) {
++                if (const auto* result = response.Find("result")) {
++                  base::DictValue envelope;
++                  envelope.Set("method", method);
++                  envelope.Set("result", result->Clone());
++                  std::move(callback).Run(true, *base::WriteJson(envelope), "",
++                                          "");
++                  return;
++                }
++                const auto* error = response.FindDict("error");
++                const auto* code = error ? error->FindString("code") : nullptr;
++                const auto* message =
++                    error ? error->FindString("message") : nullptr;
++                std::move(callback).Run(
++                    false, "", code ? *code : "backend_unavailable",
++                    message ? *message : "Clipboard operation failed");
++              },
++              *bookmark_method, std::move(callback)),
++          current);
++      return;
++    }
+     if (*bookmark_method == "bookmarks.open") {
+       const std::string* node_id = params->FindString("nodeId");
+       const std::string* url = params->FindString("url");
+diff --git a/chrome/browser/ui/aux/profile_library.cc b/chrome/browser/ui/aux/profile_library.cc
+--- a/chrome/browser/ui/aux/profile_library.cc
++++ b/chrome/browser/ui/aux/profile_library.cc
+@@ -25,6 +25,8 @@
+ #include "components/bookmarks/browser/bookmark_client.h"
+ #include "components/bookmarks/browser/bookmark_model.h"
+ #include "components/bookmarks/browser/bookmark_node.h"
++#include "components/bookmarks/browser/bookmark_node_data.h"
++#include "ui/base/clipboard/clipboard_buffer.h"
+ #include "components/bookmarks/browser/bookmark_utils.h"
+ #include "components/bookmarks/common/bookmark_metrics.h"
+ #include "components/bookmarks/common/bookmark_pref_names.h"
+@@ -85,6 +87,41 @@
+   if (node->is_url())
+     source.Set("url", node->url().spec());
+   return source;
++}
++
++bool ValidClipboardElements(
++    const std::vector<bookmarks::BookmarkNodeData::Element>& elements,
++    size_t depth,
++    size_t& count) {
++  if (depth > 128) {
++    return false;
++  }
++  for (const auto& element : elements) {
++    if (++count > 10000 || (element.is_url && !element.url.is_valid()) ||
++        !ValidClipboardElements(element.children, depth + 1, count)) {
++      return false;
++    }
++  }
++  return true;
++}
++
++base::DictValue ClipboardNodeState(const bookmarks::BookmarkNode* node) {
++  base::ListValue children;
++  for (const auto& child : node->children()) {
++    children.Append(ClipboardNodeState(child.get()));
++  }
++  base::DictValue meta;
++  if (const auto* values = node->GetMetaInfoMap()) {
++    for (const auto& [key, value] : *values) {
++      meta.Set(key, value);
++    }
++  }
++  return base::DictValue()
++      .Set("id", base::NumberToString(node->id()))
++      .Set("title", base::UTF16ToUTF8(node->GetTitle()))
++      .Set("url", node->url().spec())
++      .Set("meta", std::move(meta))
++      .Set("children", std::move(children));
+ }
+ 
+ const bookmarks::BookmarkNode* BookmarkBySource(bookmarks::BookmarkModel* model,
+@@ -897,6 +934,121 @@
+                                            : base::Value())));
+ }
+ 
++void ProfileLibrary::BookmarkClipboardCall(
++    const std::string& method,
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback,
++    base::RepeatingCallback<bool()> current) {
++  if (!current.Run() || !bookmarks_ || !bookmarks_->loaded()) {
++    std::move(callback).Run(
++        Fault("ref_stale", "Original bookmark window is unavailable"));
++    return;
++  }
++  if (method == "bookmarks.clipboard.copy") {
++    const auto* node = BookmarkBySource(bookmarks_, params.FindDict("source"));
++    const bool cut = params.FindBool("cut").value_or(false);
++    if (!node || (cut && !profile_->GetPrefs()->GetBoolean(
++                             bookmarks::prefs::kEditBookmarksEnabled))) {
++      std::move(callback).Run(
++          Fault("conflict", "The bookmark changed or cannot be cut."));
++      return;
++    }
++    bookmarks::CopyToClipboard(bookmarks_, {node}, false,
++                               bookmarks::metrics::BookmarkEditSource::kUser,
++                               profile_->IsOffTheRecord());
++    if (cut) {
++      std::move(callback).Run(
++          ChangeBookmark("bookmarks.entries.remove", params));
++    } else {
++      std::move(callback).Run(
++          Result(base::Value(base::DictValue()
++                                 .Set("snapshot", FolderSnapshot())
++                                 .Set("undoToken", base::Value()))));
++    }
++    return;
++  }
++  bookmarks::BookmarkNodeData::ReadFromClipboard(
++      ui::ClipboardBuffer::kCopyPaste,
++      base::BindOnce(
++          [](base::WeakPtr<ProfileLibrary> owner, std::string method,
++             base::DictValue params, base::RepeatingCallback<bool()> current,
++             base::OnceCallback<void(base::DictValue)> callback,
++             std::unique_ptr<bookmarks::BookmarkNodeData> data) {
++            if (!owner || !current.Run()) {
++              std::move(callback).Run(Fault(
++                  "ref_stale", "Original bookmark window is unavailable"));
++              return;
++            }
++            if (method == "bookmarks.clipboard.available") {
++              std::move(callback).Run(Result(base::Value(base::DictValue().Set(
++                  "available", data && data->is_valid()))));
++              return;
++            }
++            if (!data || !data->is_valid()) {
++              std::move(callback).Run(
++                  Fault("invalid_argument",
++                        "The clipboard does not contain bookmarks or a URL."));
++              return;
++            }
++            if (!owner->profile_->GetPrefs()->GetBoolean(
++                    bookmarks::prefs::kEditBookmarksEnabled)) {
++              std::move(callback).Run(
++                  Fault("forbidden",
++                        "Bookmark editing is managed by your organization"));
++              return;
++            }
++            const auto* destination = params.FindDict("destination");
++            const auto* parent =
++                destination ? FolderById(owner->bookmarks_,
++                                         destination->FindString("parentId"))
++                            : nullptr;
++            const auto* children =
++                destination ? destination->FindList("expectedChildren")
++                            : nullptr;
++            const auto index =
++                destination ? destination->FindInt("index") : std::nullopt;
++            if (!parent || !children || *children != ChildIds(parent) ||
++                !index || *index < 0 ||
++                static_cast<size_t>(*index) > parent->children().size()) {
++              std::move(callback).Run(Fault(
++                  "conflict", "The destination changed. Choose it again."));
++              return;
++            }
++            size_t total = 0;
++            if (!ValidClipboardElements(data->elements, 0, total)) {
++              std::move(callback).Run(Fault("invalid_argument",
++                                            "The clipboard bookmarks are "
++                                            "invalid or too large to paste."));
++              return;
++            }
++            const size_t count = data->elements.size();
++            bookmarks::CloneBookmarkNode(owner->bookmarks_, data->elements,
++                                         parent, *index, true);
++            base::ListValue nodes;
++            for (size_t i = 0; i < count; ++i) {
++              nodes.Append(
++                  ClipboardNodeState(parent->children()[*index + i].get()));
++            }
++            const auto token =
++                base::Uuid::GenerateRandomV4().AsLowercaseString();
++            if (owner->pasted_bookmarks_.size() == 32) {
++              owner->pasted_bookmarks_.pop_front();
++            }
++            owner->pasted_bookmarks_.push_back(
++                base::DictValue()
++                    .Set("token", token)
++                    .Set("parentId", base::NumberToString(parent->id()))
++                    .Set("children", ChildIds(parent))
++                    .Set("nodes", std::move(nodes)));
++            std::move(callback).Run(
++                Result(base::Value(base::DictValue()
++                                       .Set("snapshot", owner->FolderSnapshot())
++                                       .Set("undoToken", token))));
++          },
++          weak_factory_.GetWeakPtr(), method, params.Clone(),
++          std::move(current), std::move(callback)));
++}
++
+ base::DictValue ProfileLibrary::ChangeBookmark(const std::string& method,
+                                                const base::DictValue& params) {
+   if (!profile_->GetPrefs()->GetBoolean(
+@@ -905,6 +1057,40 @@
+                  "Bookmark editing is managed by your organization");
+   if (method == "bookmarks.entries.restore") {
+     const std::string* token = params.FindString("undoToken");
++    auto pasted = std::find_if(pasted_bookmarks_.begin(),
++                               pasted_bookmarks_.end(), [&](const auto& entry) {
++                                 return token && entry.FindString("token") &&
++                                        *entry.FindString("token") == *token;
++                               });
++    if (pasted != pasted_bookmarks_.end()) {
++      const auto* parent =
++          FolderById(bookmarks_, pasted->FindString("parentId"));
++      if (!parent || ChildIds(parent) != *pasted->FindList("children")) {
++        return Fault("conflict",
++                     "The destination changed. Undo paste is unavailable.");
++      }
++      std::vector<const bookmarks::BookmarkNode*> nodes;
++      for (const auto& expected : *pasted->FindList("nodes")) {
++        int64_t id = 0;
++        if (!base::StringToInt64(*expected.GetDict().FindString("id"), &id)) {
++          return Fault("conflict", "The pasted bookmark changed.");
++        }
++        const auto* node = bookmarks::GetBookmarkNodeByID(bookmarks_, id);
++        if (!node || node->parent() != parent ||
++            ClipboardNodeState(node) != expected.GetDict()) {
++          return Fault("conflict",
++                       "The pasted bookmarks changed. Undo is unavailable.");
++        }
++        nodes.push_back(node);
++      }
++      for (const auto* node : nodes) {
++        bookmarks_->Remove(node, bookmarks::metrics::BookmarkEditSource::kUser,
++                           FROM_HERE);
++      }
++      pasted_bookmarks_.erase(pasted);
++      return Result(base::Value(FolderSnapshot()));
++    }
++
+     auto found = std::find_if(
+         removed_bookmarks_.begin(), removed_bookmarks_.end(),
+         [&](const auto& entry) { return token && entry->token == *token; });
+diff --git a/chrome/browser/ui/aux/profile_library.h b/chrome/browser/ui/aux/profile_library.h
+--- a/chrome/browser/ui/aux/profile_library.h
++++ b/chrome/browser/ui/aux/profile_library.h
+@@ -66,6 +66,10 @@
+       const std::vector<NativeBookmarkImportEntry>& entries,
+       std::map<size_t, base::Uuid>& accepted_folders,
+       base::RepeatingCallback<bool()> current);
++  void BookmarkClipboardCall(const std::string& method,
++                             const base::DictValue& params,
++                             base::OnceCallback<void(base::DictValue)> callback,
++                             base::RepeatingCallback<bool()> current);
+   void HistoryCall(const std::string& method,
+                    const base::DictValue& params,
+                    base::OnceCallback<void(base::DictValue)> callback,
+@@ -158,6 +162,7 @@
+   std::vector<Visit> snapshot_visits_;
+   std::deque<base::DictValue> pending_deltas_;
+   std::deque<std::unique_ptr<RemovedBookmark>> removed_bookmarks_;
++  std::deque<base::DictValue> pasted_bookmarks_;
+   // Accepted import completion survives runtime-projection disconnect. Its
+   // final backend query still joins the original destination batch.
+   base::WeakPtrFactory<ProfileLibrary> import_weak_factory_{this};
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -347,6 +347,21 @@
+              ? profile_library_->BookmarkCall(method, params)
+              : NativeFault("forbidden",
+                            "Private windows do not persist bookmarks");
++}
++
++void AuxRuntimeHost::CallBookmarkClipboardForUser(
++    const std::string& method,
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback,
++    base::RepeatingCallback<bool()> current) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!profile_library_) {
++    std::move(callback).Run(
++        NativeFault("forbidden", "Private windows do not persist bookmarks"));
++    return;
++  }
++  profile_library_->BookmarkClipboardCall(method, params, std::move(callback),
++                                          std::move(current));
+ }
+ 
+ void AuxRuntimeHost::CallHistoryForUser(
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -98,6 +98,11 @@
+   base::DictValue CallBookmarksForUser(const std::string& method,
+                                        const base::DictValue& params);
+ 
++  void CallBookmarkClipboardForUser(
++      const std::string& method,
++      const base::DictValue& params,
++      base::OnceCallback<void(base::DictValue)> callback,
++      base::RepeatingCallback<bool()> current);
+   void CallHistoryForUser(const std::string& method,
+                           const base::DictValue& params,
+                           base::OnceCallback<void(base::DictValue)> callback,

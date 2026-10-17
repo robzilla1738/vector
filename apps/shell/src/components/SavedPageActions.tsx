@@ -32,6 +32,7 @@ export function SavedPageActions({
   disabled,
   children,
   rowRef,
+  onMenuOpen,
 }: {
   title: string;
   menu: boolean;
@@ -39,11 +40,14 @@ export function SavedPageActions({
   disabled: boolean;
   children: ReactNode;
   rowRef: RefObject<HTMLDivElement | null>;
+  onMenuOpen?: () => void;
 }) {
   const [open, setOpen] = useState<{ point?: { x: number; y: number }; atEnd?: boolean } | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
   const id = useId();
+  const menuOpen = useRef(onMenuOpen);
+  menuOpen.current = onMenuOpen;
   useEffect(() => {
     const row = rowRef.current;
     if (!row || !menu || hidden || disabled) {
@@ -63,6 +67,7 @@ export function SavedPageActions({
       event.stopPropagation();
       returnFocus.current = target.closest<HTMLElement>("button, input") ?? trigger.current;
       const rect = target.getBoundingClientRect();
+      menuOpen.current?.();
       setOpen({
         point:
           event instanceof MouseEvent
@@ -92,12 +97,14 @@ export function SavedPageActions({
         disabled={disabled}
         onClick={() => {
           returnFocus.current = trigger.current;
+          if (!open) menuOpen.current?.();
           setOpen(open ? null : {});
         }}
         onKeyDown={(event) => {
           if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
           event.preventDefault();
           returnFocus.current = trigger.current;
+          menuOpen.current?.();
           setOpen({ atEnd: event.key === "ArrowUp" });
         }}
       >

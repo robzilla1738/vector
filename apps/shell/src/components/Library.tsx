@@ -11,6 +11,7 @@ import { NewBookmarkDialog } from "./NewBookmarkDialog";
 import { sortBookmarkFolder, undoBookmarkOrder, type BookmarkOrderUndo } from "../bookmark-sort";
 import { HistoryDeleteDialog } from "./HistoryDeleteDialog";
 import { HistoryVisitRow } from "./HistoryVisitRow";
+import { bookmarkClipboardAvailable, copyBookmark, pasteBookmarks } from "../bookmark-clipboard";
 import { openBookmarkDestination } from "../bookmark-destinations";
 import { localSplitPage } from "../features/surfaces/split-actions";
 import { SavedPageActions } from "./SavedPageActions";
@@ -99,7 +100,7 @@ type BookmarkEditor = SavedPage & {
   source: BookmarkPlacement["source"];
   destinationId: string;
 };
-type RemovedBookmark = { title: string; undoToken: string };
+type RemovedBookmark = { title: string; undoToken: string; action?: "cut" | "paste" };
 const bookmarkWindowKey = () => JSON.stringify([bridge.windowId, bridge.privateMode, bridge.windowKind]);
 const visitKey = (item: HistoryEntry) => JSON.stringify([item.url, item.visitedAt]);
 const bookmarkKey = (item: SavedPage) => item.nodeId ?? item.url;
@@ -148,6 +149,7 @@ const SavedPageRow = memo(function SavedPageRow({
   setRemoved,
   setNotice,
   cancelEditor,
+  clipboard,
 }: {
   view: "bookmarks" | "reading";
   itemKey: string;
@@ -166,6 +168,12 @@ const SavedPageRow = memo(function SavedPageRow({
   setRemoved: React.Dispatch<React.SetStateAction<RemovedBookmark | null>>;
   setNotice: React.Dispatch<React.SetStateAction<string>>;
   cancelEditor(): void;
+  clipboard?: {
+    available: boolean;
+    refresh(): void;
+    copy(item: SavedPage, cut: boolean): void;
+    paste(item?: SavedPage): void;
+  };
 }) {
   const editTitle = useRef<HTMLInputElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -274,6 +282,7 @@ const SavedPageRow = memo(function SavedPageRow({
       </button>
       <SavedPageActions
         rowRef={rowRef}
+        onMenuOpen={clipboard?.refresh}
         title={title}
         menu={view === "bookmarks"}
         hidden={view === "bookmarks" && selecting}
@@ -317,6 +326,28 @@ const SavedPageRow = memo(function SavedPageRow({
             >
               {shellIconTrash}
               <span>Delete</span>
+            </button>
+            <hr />
+            <button
+              {...staticSmallIconButtonProps}
+              disabled={busy || !snapshot?.editable}
+              onClick={() => clipboard?.copy(item, true)}
+            >
+              <span>Cut</span>
+            </button>
+            <button
+              {...staticSmallIconButtonProps}
+              disabled={busy || !item.nodeId}
+              onClick={() => clipboard?.copy(item, false)}
+            >
+              <span>Copy</span>
+            </button>
+            <button
+              {...staticSmallIconButtonProps}
+              disabled={busy || !snapshot?.editable || !clipboard?.available}
+              onClick={() => clipboard?.paste(item)}
+            >
+              <span>Paste</span>
             </button>
             <hr />
             {privateWindows && !bridge.privateMode && windowAction("private")}
@@ -602,6 +633,28 @@ export function Library({
   const [actionBusy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [clipboardAvailable, setClipboardAvailable] = useState(false);
+  const clipboardRead = useRef(0);
+  const organizeOpen = useRef(() => {});
+  const refreshClipboard = useCallback(() => {
+    const request = ++clipboardRead.current;
+    void bookmarkClipboardAvailable()
+      .then((available) => {
+        if (current() && request === clipboardRead.current) setClipboardAvailable(available);
+      })
+      .catch(() => {
+        if (current() && request === clipboardRead.current) setClipboardAvailable(false);
+      });
+  }, [current]);
+  useEffect(() => {
+    if (view !== "bookmarks") return;
+    refreshClipboard();
+    window.addEventListener("focus", refreshClipboard);
+    return () => {
+      ++clipboardRead.current;
+      window.removeEventListener("focus", refreshClipboard);
+    };
+  }, [view, refreshClipboard]);
   const [removed, setRemoved] = useState<RemovedBookmark | null>(null);
   const [editing, setEditing] = useState<BookmarkEditor | null>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -965,6 +1018,41 @@ export function Library({
     },
     [action, close],
   );
+  const clipboard = {
+    available: clipboardAvailable,
+    refresh: refreshClipboard,
+    copy: (item: SavedPage, cut: boolean) =>
+      void action(async () => {
+        if (!current()) return;
+        if (!snapshot) throw new Error("Bookmark folders are still loading.");
+        const result = await copyBookmark(bookmarkSource(item, snapshot), cut);
+        if (!current()) return;
+        setSnapshot(result.snapshot);
+        if (cut && result.undoToken)
+          setRemoved({ title: item.title, undoToken: result.undoToken, action: "cut" });
+        setNotice(cut ? "Bookmark cut. Paste it into a folder." : "Bookmark copied.");
+        const entries = await call("bookmarks.list", {});
+        if (current()) useStore.setState({ bookmarks: entries });
+        if (current()) refreshClipboard();
+      }),
+    paste: (item?: SavedPage) =>
+      void action(async () => {
+        if (!current()) return;
+        const parent = item
+          ? snapshot?.folders.find((folder) => folder.childIds.includes(item.nodeId ?? ""))
+          : currentFolder;
+        if (!parent) throw new Error("Choose a bookmark folder.");
+        const index = item ? parent.childIds.indexOf(item.nodeId!) + 1 : parent.childIds.length;
+        const result = await pasteBookmarks(folderDestination(parent, index));
+        if (!current()) return;
+        setSnapshot(result.snapshot);
+        if (result.undoToken)
+          setRemoved({ title: "bookmarks", undoToken: result.undoToken, action: "paste" });
+        setNotice("Bookmarks pasted.");
+        const entries = await call("bookmarks.list", {});
+        if (current()) useStore.setState({ bookmarks: entries });
+      }),
+  };
   function choose(next: View) {
     setAddingBookmark(false);
     setFolderEditor(null);
@@ -1118,6 +1206,13 @@ export function Library({
             {view === "bookmarks" && (
               <ActionMenu
                 label="Organize bookmarks"
+                triggerControl={(_node, open) => {
+                  organizeOpen.current = open;
+                }}
+                onTrigger={() => {
+                  refreshClipboard();
+                  organizeOpen.current();
+                }}
                 actions={[
                   {
                     label: "Sort by name",
@@ -1155,6 +1250,11 @@ export function Library({
                           useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
                         }
                       }),
+                  },
+                  {
+                    label: "Paste",
+                    disabled: busy || !snapshot?.editable || !currentFolder || !clipboardAvailable,
+                    onSelect: () => clipboard.paste(),
                   },
                   {
                     label: "Add new bookmark",
@@ -1669,7 +1769,10 @@ export function Library({
               )}
               {removed && (
                 <div className="library-tools">
-                  <span {...staticHintProps}>Removed {removed.title}</span>
+                  <span {...staticHintProps}>
+                    {removed.action === "paste" ? "Pasted" : removed.action === "cut" ? "Cut" : "Removed"}{" "}
+                    {removed.title}
+                  </span>
                   <button
                     {...smallButtonProps}
                     disabled={busy}
@@ -1678,11 +1781,11 @@ export function Library({
                         setSnapshot(await restoreBookmark(removed.undoToken));
                         useStore.setState({ bookmarks: await call("bookmarks.list") });
                         setRemoved(null);
-                        setNotice("Bookmark restored.");
+                        setNotice(removed.action === "paste" ? "Paste undone." : "Bookmark restored.");
                       })
                     }
                   >
-                    Undo remove
+                    Undo {removed.action ?? "remove"}
                   </button>
                 </div>
               )}
@@ -1739,6 +1842,7 @@ export function Library({
                     view === "bookmarks" ? (
                       <SavedPageRow
                         key={bookmarkKey(item)}
+                        clipboard={clipboard}
                         view="bookmarks"
                         itemKey={bookmarkKey(item)}
                         position={bookmarkPositions.get(bookmarkKey(item))!}

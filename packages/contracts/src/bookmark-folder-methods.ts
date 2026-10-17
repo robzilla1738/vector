@@ -96,3 +96,11 @@ export const BookmarkOpenSchema = z
   .strict();
 export const BookmarkOpenResultSchema = z.object({ pageId: z.string().nullable() }).strict();
 export type BookmarkEntryEdit = z.infer<typeof BookmarkEntryEditSchema>;
+
+export const BookmarkClipboardCopySchema = z
+  .object({ source: BookmarkEntrySourceSchema, cut: z.boolean() })
+  .strict();
+export const BookmarkClipboardPasteSchema = z.object({ destination }).strict();
+export const BookmarkClipboardResultSchema = z
+  .object({ snapshot: BookmarkFolderSnapshotSchema, undoToken: z.string().uuid().nullable() })
+  .strict();

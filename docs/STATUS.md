@@ -1,5 +1,38 @@
 # Aux status — October 16, 2026
 
+Bookmark clipboard batch (reference 170) is implemented in source. Single-row
+Cut/Copy use Chromium's native bookmark clipboard format; Paste accepts native
+bookmark trees or a URL, inserts after the selected row or at the current folder's
+end, and refreshes the model. Paste availability refreshes on Library/window focus
+and menu opening. Menus use the reference's text-only action alignment. Cut and
+Paste offer Undo through native tokens. Cut retains the existing guarded removal
+receipt. Undo paste checks destination child order and each inserted subtree's
+identity, titles, URLs, metadata and descendants before removing anything; changed
+content causes a conflict instead of overwriting subsequent work. Receipts are
+bounded to 32 batches. Clipboard paste validates all data before cloning (10,000
+nodes, depth 128, valid URLs), checks managed policy and destination children after
+the async clipboard read, and retains document/owner guards. Clipboard contents
+are not returned to the renderer. Late UI responses cannot publish into another
+window. Private windows retain the native prohibition on persistent bookmarks.
+
+Native implementation is consolidated in area patch
+`chromium/patches/aux/0047-bookmark-clipboard.patch`; generated host bindings/ABI
+updated. Modified profile_library, runtime_host and Library bridge objects compiled
+under inherited launcher 59717 ownership. First compile caught a chained lvalue
+DictValue setter; corrected to separate Set calls. Retry succeeded in 12.26s;
+other changed objects had already compiled. Reverse-apply check passed.
+
+Validation: integrated typecheck/lint and 4,648 tests / 749 files passed in 122.13s.
+Final stale-response refinement passed typecheck and 18 focused UI tests; renderer
+build 2.27s. Regression covers native copy source identity, row paste index and
+expected children, Undo paste token dispatch, clipboard availability and foreign
+window response suppression. Logs `/tmp/aux-bookmark-clipboard-check.log`,
+`/tmp/aux-bookmark-clipboard-final.log`, `/tmp/aux-bookmark-clipboard-build.log`,
+`/tmp/aux-bookmark-clipboard-compile{,-retry}.log`.
+Native clipboard walkthrough, split-readiness fix and semantic context menus still
+require consolidated app acceptance. Folder/multi-selection clipboard controls,
+separate native Library routes and full Aside parity remain incomplete.
+
 Native candidate `03e1dc20513b9441fb120b86c30459a7c4690d79` built successfully
 in 9m39.11s and was verified in About (Chromium 154.0.8037.98;
 ABI c791d36afba5add46ccd2945dcc37acffe88fba766bcaebe1cc626df9aaf0b75).
