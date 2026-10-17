@@ -1,5 +1,11 @@
 # Aux status — October 16, 2026
 
+Native consolidation is running for `4e5fa2188`: launcher 75304, exec session
+72707, log `/tmp/aux-models-routines-native.log`. Previous preview retired normally
+as recorded below. Preserve this one builder and poll its live handle; do not
+start another. Pending native acceptance includes searchable routine/thinking
+controls, routine persistence, image menus and focused provider dialogs.
+
 Provider account setup follow-up (reference 059): Connect now exposes searchable
 ChatGPT, OpenRouter and Vercel account entries, plus explicitly labeled Copilot
 catalog setup. Each opens a focused dialog backed by the existing sign-in
