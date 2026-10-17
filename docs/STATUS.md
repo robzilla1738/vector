@@ -1,5 +1,16 @@
 # Aux status — October 16, 2026
 
+Current build: **70b1bd1b5**, launcher **87016**, exec **92146**, log
+`/tmp/aux-native-library-routes-build.log`. Includes native routes, SavedPages and
+0050 Private History redirect correction. Launcher 81608 was normally retired;
+app 82974 exited and its disposable Profile/lock were removed before replacement.
+Do not bind the retired app or start a second builder. Current source checks,
+renderer build and affected retries pass; 0050 native object compiled in 8.70s
+and reverse-apply validation passed. Next: await build, inspect new destinations,
+SavedPages focus/layout, Private History rejection and then Labs native opt-outs.
+Reference rescan unchanged: 182 PNG, 192 TXT, six supporting files.
+
+
 Native candidate **21d7d725cfce93aa84a5762c3bfc381d01ee6603** built and launched
 under launcher **81608**, app **82974**, disposable Profile **aux-dev-UFpGbW**,
 exec **95623**, log `/tmp/aux-native-library-presentation-build.log`.
