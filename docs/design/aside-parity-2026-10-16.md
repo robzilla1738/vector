@@ -749,3 +749,34 @@ Final search-slice integrated check: typecheck/lint pass; 4,545/4,546 tests
 across 731 files pass. The sole failure is the longstanding coder-worktrees
 60-second timeout. Final renderer build passes in 1.92s; diff whitespace check
 is clean. No runtime or native C++ source was changed in this search slice.
+
+## Capture 018 — draft language preferences
+
+Compared the original 018 screenshot. Replaced immediate native writes for every
+list action with an owner-bound draft. Numbered rows use rounded selectors and
+standard localized names, with Add, remove, drag handles and Cancel/Save. Retained
+keyboard Arrow Up/Down and scoped accessible move actions; obsolete immediate
+write language tests were replaced with draft/save/lifetime coverage. New scoped
+set-site-language and save-site-languages commands retain normal-window routing.
+The existing native preference writer remains the only mutation boundary.
+
+A collapsed code editor preserves arbitrary valid BCP-style language codes beyond
+the common-language catalog. Managed/forced policy, duplicate validation, one-to-20
+limits, failed-save draft retention, read retry and stale window/Private/inactive
+A→B→A retirement remain covered. The shared Settings dialog can now give an editor
+its dismissal callback and let it own its actions; simple editors retain Done.
+Language Cancel/Escape unmounts unsaved drafts; acknowledged Save dismisses and
+returns focus to Configure. No native host/runtime methods were added.
+
+Fresh local renderer inside the disposable native app: Add → Cancel → reopen
+retained the original two languages. Add → Save → reopen retained the third
+language. Keyboard reorder moved English (United Kingdom) ahead of English and
+kept focus on its handle. Evidence: aux-languages-draft-live.png. A pointer drag
+automation attempt produced no observed reorder, so actual pointer acceptance
+remains unproven. Exact six-dot grip/icon and matched-viewport acceptance remain
+open. This is renderer/mock evidence only; native language/save staging pending.
+
+Integrated check: typecheck/lint pass, 4,543/4,544 cases across 731 files pass; only
+the longstanding coder-worktrees 60-second timeout fails. Final 26 affected cases
+pass after adding fresh-pending, synchronous native failure and failed-read retry
+checks. Final renderer build passes in 2.08s. Full goal remains active.

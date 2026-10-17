@@ -3,6 +3,23 @@
 
 ## October 16 UI parity review — in progress
 
+Latest source also replaces the immediate-write language editor with a draft
+list matching capture 018: ranked rows, rounded language selectors, Add, removal,
+reordering and Cancel/Save. Keyboard arrows on the reorder handle and scoped
+move actions support accessible reordering. Drag handlers accept only this
+editor’s current owner. Common languages use localized standard names; a
+collapsed code editor preserves arbitrary valid language codes. Policy, forced
+languages, one-to-20 bounds and stale owner protections remain. Cancel and
+Escape discard unsaved drafts; only Save writes the complete ordered list.
+
+Live local-renderer verification proved Cancel discards an added row, Save
+persists it across reopening, focus returns to Configure, and keyboard reordering
+retains its row. Pointer drag verification remains open: an automation attempt
+produced no observed reorder. This is not yet compiled native language evidence.
+Typecheck/lint pass; integrated 4,543/4,544 tests pass with only the known
+coder-worktrees timeout. Final 26 affected cases pass, including pending-owner
+retirement, synchronous failure and read retry. Renderer builds in 2.08s.
+
 Latest source replaces General Settings’ search-provider button strip with one
 compact dropdown: Google, DuckDuckGo, Brave, Microsoft Bing, Ecosia and the
 existing custom URL editor. Saved selection changes close the menu without
@@ -53,7 +70,7 @@ search and implicit internal-page context exclusion have native synthetic-run
 evidence. Home suggested tasks reuse supplied art, append reviewable drafts,
 preserve context, hide in private Profiles and retain explicit expansion.
 
-Remaining comparisons include the complete ledger, Languages draft Save/Cancel,
+Remaining comparisons include the complete ledger, native Languages Save/Cancel and pointer drag,
 exact Time/custom recurrence popup, routine model/notifications, standalone/task
 and permission semantics, Settings pagination beyond 200 routines, scratch Project
 creation, provider nesting, Settings details and native floating sidebar behavior.

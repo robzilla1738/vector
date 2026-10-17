@@ -423,3 +423,15 @@ Language Save/Cancel, scratch Project creation and full-product QA remain open.
 
 Final integrated result: typecheck/lint pass, 4,545/4,546 tests pass; only the
 known coder-worktrees 60-second timeout fails. Final renderer build: 1.92s.
+
+## October 16 — preferred language drafts
+
+Capture 018 compared and implemented as an owner-bound draft list with numbered
+rows, rounded selectors, Add, removal, reorder and Cancel/Save. Native preference
+writes now happen only on Save. Policies, arbitrary code entry, bounds, failed
+save retention and stale-window/Private/inactive retirement remain covered.
+Local-renderer walkthrough verified Cancel, persisted Save and keyboard reorder
+with focus return. Pointer drag attempt gave no observed reorder; native staging
+and pointer acceptance remain open. Evidence is in the active capture ledger.
+Typecheck/lint pass, 4,543/4,544 integrated tests pass (known coder-worktrees timeout
+only), final 26 affected cases pass; renderer build 2.08s. Full QA remains open.

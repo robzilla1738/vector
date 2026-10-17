@@ -560,6 +560,8 @@ export const COMMANDS = [
   ]),
   ...GL(memoryControl, "-language", " language", [
     ["add-site", "", "Add site", ""],
+    ["set-site", "", "Set site", ""],
+    ["save-site", "s", "Save site", "s"],
     ["move-site", "-up", "Move site", " up"],
     ["move-site", "-down", "Move site", " down"],
     ["remove-site", "", "Remove site", ""],

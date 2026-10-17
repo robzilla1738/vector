@@ -1,0 +1,104 @@
+@layer components {
+  .settings-preference-dialog:has(.language-editor) {
+    width: 620px;
+    padding: 22px;
+    gap: 8px;
+  }
+  .language-editor > p {
+    margin: 0 0 20px;
+  }
+  .language-list {
+    padding: 0;
+    margin: 0 0 14px;
+    list-style: none;
+  }
+  .language-list > li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 58px;
+    border-top: var(--hairline) solid var(--line);
+  }
+  .language-list select {
+    width: auto;
+    max-width: 100%;
+    height: 38px;
+    padding: 6px 10px;
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--bg-hover);
+    color: var(--ink-0);
+    font: inherit;
+  }
+  .language-rank {
+    min-width: 24px;
+    padding: 2px 4px;
+    text-align: center;
+    background: var(--bg-hover);
+    border-radius: var(--r-sm);
+    color: var(--ink-2);
+  }
+  .language-list button {
+    padding: 4px;
+    color: var(--ink-2);
+    border-radius: var(--r-md);
+  }
+  .language-list button:hover {
+    background: var(--bg-hover);
+  }
+  .language-drag {
+    cursor: grab;
+  }
+  .language-drag > .ci {
+    rotate: 90deg;
+  }
+  .language-row-actions {
+    display: flex;
+    margin-left: auto;
+    opacity: 0;
+  }
+  .language-list li:is(:hover, :focus-within) .language-row-actions {
+    opacity: 1;
+  }
+  .language-custom {
+    margin-top: 14px;
+    color: var(--ink-2);
+  }
+  .language-custom summary {
+    font-size: var(--fs-xs);
+    cursor: pointer;
+  }
+  .language-custom form {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .language-custom input {
+    min-width: 0;
+    flex: 1;
+  }
+  .language-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 32px;
+  }
+  @media (hover: none) {
+    .language-row-actions {
+      opacity: 1;
+    }
+  }
+  @media (max-width: 560px) {
+    .language-list > li {
+      flex-wrap: wrap;
+      padding: 8px 0;
+    }
+    .language-list select {
+      flex: 1;
+      min-width: 100px;
+    }
+    .language-row-actions {
+      opacity: 1;
+    }
+  }
+}

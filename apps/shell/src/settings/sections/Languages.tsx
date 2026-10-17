@@ -1,40 +1,133 @@
-import { staticFieldErrorProps } from "../../ui/class-props";
-import { staticHintProps, staticRowProps } from "../../ui/class-props";
+import { staticFieldErrorProps, staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { useRef, useState } from "react";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
 import { PreferenceAction, usePreferenceCommand } from "./preference-command";
 import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
+import { shellIconClose, shellIconMore, shellIconPlusSm, shellIconUp, shellIconDown } from "../../ui/icons";
+import "./Languages.css";
 const read = () => bridge.languagePreferences();
 const write = (selected: string[]) =>
   bridge.languagePreferences(selected).then((value) => ({ ack: value, value }));
 const COMMON = [
   "en-US",
+  "en",
   "en-GB",
   "es-ES",
+  "es-419",
   "fr",
+  "fr-CA",
   "de",
   "it",
   "pt-BR",
+  "pt-PT",
   "ja",
   "ko",
   "zh-CN",
   "zh-TW",
   "hi",
   "ar",
+  "af",
+  "am",
+  "az",
+  "be",
+  "bg",
+  "bn",
+  "bs",
+  "ca",
+  "cs",
+  "cy",
+  "da",
+  "el",
+  "et",
+  "eu",
+  "fa",
+  "fi",
+  "fil",
+  "gl",
+  "gu",
+  "he",
+  "hr",
+  "hu",
+  "hy",
+  "id",
+  "is",
+  "ka",
+  "kk",
+  "km",
+  "kn",
+  "lo",
+  "lt",
+  "lv",
+  "mk",
+  "ml",
+  "mn",
+  "mr",
+  "ms",
+  "my",
+  "nb",
+  "ne",
+  "nl",
+  "pa",
+  "pl",
+  "ro",
+  "ru",
+  "si",
+  "sk",
+  "sl",
+  "sq",
+  "sr",
+  "sv",
+  "sw",
+  "ta",
+  "te",
+  "th",
+  "tr",
+  "uk",
+  "ur",
+  "uz",
+  "vi",
+  "zu",
 ];
-
 function name(code: string) {
   try {
-    const display = new Intl.DisplayNames([navigator.language], { type: "language" }).of(code);
-    return display && display !== code ? `${display} (${code})` : code;
+    return (
+      new Intl.DisplayNames([navigator.language], { type: "language", languageDisplay: "standard" }).of(
+        code,
+      ) || code
+    );
   } catch {
     return code;
   }
 }
-
-export function LanguagesSetting({ active }: { active: boolean }) {
+function LanguageSelect({
+  code,
+  options,
+  disabled,
+  scopeId,
+  change,
+}: {
+  code: string;
+  options: string[];
+  disabled: boolean;
+  scopeId: string;
+  change(code: string): void;
+}) {
+  const [ref, run] = usePreferenceCommand<HTMLSelectElement>("set-site-language", scopeId, (control) =>
+    change(control.value),
+  );
+  return (
+    <select ref={ref} aria-label={`Language ${code}`} disabled={disabled} value={code} onChange={run}>
+      {options.map((item) => (
+        <option key={item} value={item}>
+          {name(item)}
+        </option>
+      ))}
+    </select>
+  );
+}
+export function LanguagesSetting({ active, onClose }: { active: boolean; onClose?: () => void }) {
   const available = inNativeHost || inMock;
   const { owner, scopeId, value, busy, error, perform, refresh } = useNativePreference({
     active,
@@ -43,46 +136,66 @@ export function LanguagesSetting({ active }: { active: boolean }) {
     write,
     formatReadError: String,
   });
-  const [draft, setDraft] = useState<{ owner: typeof owner; text: string } | null>(null);
-  const draftRef = useRef<typeof draft>(null);
+  const [draft, setDraft] = useState<{ owner: typeof owner; selected: string[] } | null>(null);
+  const draftRef = useRef(draft);
   const [invalid, setInvalid] = useState<{ owner: typeof owner; message: string } | null>(null);
-  const input = draft?.owner === owner ? draft.text : "";
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [customDraft, setCustomDraft] = useState<{ owner: typeof owner; text: string } | null>(null);
+  const customCode = customDraft?.owner === owner ? customDraft.text : "";
+  const setCustomCode = (text: string) => setCustomDraft({ owner, text });
+  const customInput = useRef<HTMLInputElement>(null);
+  const drag = useRef<{ owner: typeof owner; code: string } | null>(null);
+  const selected = draft?.owner === owner ? draft.selected : (value?.selected ?? []);
   const current = () => value && owner.owns(value) && !busy && !value.managed;
-  const save = (selected: string[]) => {
-    if (!current() || !selected.length || selected.length > 20)
-      return Promise.reject(new Error("Choose the current languages preference."));
+  function edit(next: string[]) {
+    if (!current()) throw new Error("Choose the current languages preference.");
+    if (
+      !next.length ||
+      next.length > 20 ||
+      new Set(next.map((code) => code.toLowerCase())).size !== next.length
+    )
+      throw new Error("Choose between one and 20 different languages.");
+    const nextDraft = { owner, selected: next };
+    draftRef.current = nextDraft;
+    setDraft(nextDraft);
     setInvalid(null);
-    const completion = perform(selected, value!);
-    void completion.then(
-      () => {
-        if (owner.current() && draftRef.current === draft && inputRef.current?.value === input) {
-          const cleared = { owner, text: "" };
-          draftRef.current = cleared;
-          setDraft(cleared);
-        }
-      },
-      () => {},
-    );
-    return completion;
-  };
+  }
+  function move(code: string, target: number) {
+    const index = selected.indexOf(code);
+    if (index < 0 || target < 0 || target >= selected.length)
+      throw new Error("Choose a current language row.");
+    const next = [...selected];
+    next.splice(index, 1);
+    next.splice(target, 0, code);
+    edit(next);
+  }
   const [addRef, add] = usePreferenceCommand<HTMLFormElement>("add-site-language", scopeId, () => {
-    if (!current() || draftRef.current !== draft || inputRef.current?.value !== input)
-      return Promise.reject(new Error("Choose the current language draft."));
-    const code = input.trim();
+    if (!current()) throw new Error("Choose the current languages preference.");
+    const code = customInput.current?.value.trim() ?? "";
     const message = !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(code)
       ? "Enter a language code such as es-ES."
-      : value!.selected.some((item) => item.toLowerCase() === code.toLowerCase())
+      : selected.some((item) => item.toLowerCase() === code.toLowerCase())
         ? "That language is already listed."
-        : value!.selected.length >= 20
+        : selected.length >= 20
           ? "Languages are limited to 20."
           : "";
     if (message) {
       setInvalid({ owner, message });
-      return Promise.reject(new Error(message));
+      throw new Error(message);
     }
-    return save([...value!.selected, code]);
+    edit([...selected, code]);
+    setCustomCode("");
   });
+  const changed = !!value && JSON.stringify(selected) !== JSON.stringify(value.selected);
+  const save = () => {
+    if (!current() || !changed || draftRef.current !== draft)
+      throw new Error("Choose the current language draft.");
+    const original = owner;
+    const completion = perform([...selected], value!);
+    return completion.then((ack) => {
+      if (original.current() && draftRef.current === draft) onClose?.();
+      return ack;
+    });
+  };
   if (bridge.privateMode)
     return (
       <span {...staticHintProps}>
@@ -110,108 +223,171 @@ export function LanguagesSetting({ active }: { active: boolean }) {
       </span>
     );
   const editable = !busy && !value.managed;
+  const options = [...new Set([...COMMON, ...selected])];
   return (
-    <div className="settings-startup">
-      {value.managed && <span {...staticHintProps}>Managed by your organization</span>}
+    <div className="language-editor">
+      <p className="hint">Websites use the first matching language in this list when available.</p>
+      {value.managed && <p className="hint">Managed by your organization</p>}
       {value.forced.length > 0 && (
-        <span {...staticHintProps}>Required by policy: {value.forced.map(name).join(", ")}</span>
+        <p className="hint">Required by policy: {value.forced.map(name).join(", ")}</p>
       )}
-      <div className="settings-startup-pages">
-        {value.selected.map((code, index) => (
-          <div className="row" key={code}>
-            <span className="hint grow">{name(code)}</span>
-            <PreferenceAction
-              command="move-site-language-up"
-              scopeId={scopeId}
-              {...smallGhostButtonProps}
-              aria-label={`Move ${code} up`}
-              disabled={!editable || index === 0}
-              invoke={() => {
-                if (index === 0) return Promise.reject(new Error("Choose a language with a previous row."));
-                const next = [...value.selected];
-                const previous = next[index - 1]!;
-                next[index - 1] = next[index]!;
-                next[index] = previous;
-                return save(next);
+      <ol className="language-list">
+        {selected.map((code, index) => (
+          <li
+            key={code}
+            onDragOver={(event) => {
+              if (editable && drag.current?.owner === owner) event.preventDefault();
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              const source = drag.current;
+              drag.current = null;
+              if (source?.owner === owner && owner.current() && editable) move(source.code, index);
+            }}
+          >
+            <button
+              type="button"
+              className="language-drag"
+              aria-label={`Reorder ${code}`}
+              title="Drag to reorder, or use Arrow Up and Arrow Down"
+              disabled={!editable}
+              draggable={editable}
+              onDragStart={(event) => {
+                if (!current()) {
+                  event.preventDefault();
+                  return;
+                }
+                drag.current = { owner, code };
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", code);
+              }}
+              onDragEnd={() => {
+                drag.current = null;
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+                event.preventDefault();
+                if (!current()) return;
+                const target = index + (event.key === "ArrowUp" ? -1 : 1);
+                if (target >= 0 && target < selected.length) move(code, target);
               }}
             >
-              ↑
-            </PreferenceAction>
-            <PreferenceAction
-              command="move-site-language-down"
+              {shellIconMore}
+            </button>
+            <span className="language-rank" aria-hidden>
+              {index + 1}
+            </span>
+            <LanguageSelect
+              code={code}
+              options={options.filter(
+                (item) =>
+                  item === code || !selected.some((used) => used.toLowerCase() === item.toLowerCase()),
+              )}
+              disabled={!editable}
               scopeId={scopeId}
-              {...smallGhostButtonProps}
-              aria-label={`Move ${code} down`}
-              disabled={!editable || index === value.selected.length - 1}
-              invoke={() => {
-                if (index === value.selected.length - 1)
-                  return Promise.reject(new Error("Choose a language with a following row."));
-                const next = [...value.selected];
-                const following = next[index + 1]!;
-                next[index + 1] = next[index]!;
-                next[index] = following;
-                return save(next);
+              change={(next) => {
+                if (!options.includes(next)) throw new Error("Choose a listed language.");
+                edit(selected.map((item) => (item === code ? next : item)));
               }}
-            >
-              ↓
-            </PreferenceAction>
+            />
+            <span className="language-row-actions">
+              <PreferenceAction
+                command="move-site-language-up"
+                scopeId={scopeId}
+                aria-label={`Move ${code} up`}
+                disabled={!editable || index === 0}
+                invoke={() => move(code, index - 1)}
+              >
+                {shellIconUp}
+              </PreferenceAction>
+              <PreferenceAction
+                command="move-site-language-down"
+                scopeId={scopeId}
+                aria-label={`Move ${code} down`}
+                disabled={!editable || index === selected.length - 1}
+                invoke={() => move(code, index + 1)}
+              >
+                {shellIconDown}
+              </PreferenceAction>
+            </span>
             <PreferenceAction
               command="remove-site-language"
               scopeId={scopeId}
-              {...smallGhostButtonProps}
               aria-label={`Remove ${code}`}
-              disabled={!editable || value.selected.length === 1}
-              invoke={() => save(value.selected.filter((item) => item !== code))}
+              disabled={!editable || selected.length === 1}
+              invoke={() => edit(selected.filter((item) => item !== code))}
             >
-              Remove
+              {shellIconClose}
             </PreferenceAction>
-          </div>
+          </li>
         ))}
+      </ol>
+      <PreferenceAction
+        command="add-site-language"
+        scopeId={scopeId}
+        {...smallButtonProps}
+        disabled={!editable || selected.length >= 20}
+        invoke={() => {
+          const next = COMMON.find(
+            (code) => !selected.some((item) => item.toLowerCase() === code.toLowerCase()),
+          );
+          if (!next) throw new Error("Choose a language code below.");
+          edit([...selected, next]);
+        }}
+      >
+        {shellIconPlusSm} Add
+      </PreferenceAction>
+      <details className="language-custom">
+        <summary>Use a language code</summary>
         <form
           ref={addRef}
-          {...staticRowProps}
-
           onSubmit={(event) => {
             event.preventDefault();
             add(event);
           }}
         >
           <input
-            ref={inputRef}
-            className="field-input grow"
+            ref={customInput}
             aria-label="Language code"
-            list="aux-common-languages"
-            placeholder="Add a language, e.g. es-ES"
-            value={input}
+            placeholder="e.g. es-ES"
+            value={customCode}
             disabled={!editable}
-            onChange={(event) => {
-              const next = { owner, text: event.target.value };
-              draftRef.current = next;
-              setDraft(next);
-            }}
+            onChange={(event) => setCustomCode(event.target.value)}
           />
-          <datalist id="aux-common-languages">
-            {COMMON.map((code) => (
-              <option value={code} key={code}>
-                {name(code)}
-              </option>
-            ))}
-          </datalist>
-          <button
-            {...smallButtonProps}
-            type="submit"
-            data-command-id="add-site-language"
-            disabled={!editable || !input.trim()}
-          >
-            Add
+          <button {...smallButtonProps} type="submit" disabled={!editable || !customCode.trim()}>
+            Add language
           </button>
         </form>
-      </div>
+      </details>
       {message && (
-        <span {...nativeAlertRoleProps} {...staticFieldErrorProps}>
+        <p {...nativeAlertRoleProps} {...staticFieldErrorProps}>
           {message} {retry}
-        </span>
+        </p>
       )}
+      <footer className="language-actions">
+        <button
+          {...smallGhostButtonProps}
+          type="button"
+          onClick={() => {
+            draftRef.current = null;
+            setDraft(null);
+            setCustomCode("");
+            setInvalid(null);
+            onClose?.();
+          }}
+        >
+          Cancel
+        </button>
+        <PreferenceAction
+          command="save-site-languages"
+          scopeId={scopeId}
+          {...smallButtonProps}
+          disabled={!editable || !changed}
+          invoke={save}
+        >
+          {busy ? "Saving…" : "Save"}
+        </PreferenceAction>
+      </footer>
     </div>
   );
 }

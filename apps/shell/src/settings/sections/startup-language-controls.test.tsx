@@ -26,7 +26,6 @@ vi.mock("../../bridge", async (original) => ({
   inNativeHost: false,
 }));
 import { StartupSetting } from "./Startup";
-import { LanguagesSetting } from "./Languages";
 import { dispatchShortcut, executeCommand } from "../../commands";
 import { COMMANDS } from "@aux/contracts";
 const surfaces = [
@@ -42,18 +41,6 @@ const surfaces = [
     changed: { mode: "pages", urls: ["https://original.example/", "https://new.example/"], managed: false },
     args: { mode: "pages", urls: ["https://original.example/", "https://new.example/"] },
   },
-  {
-    name: "languages",
-    Component: LanguagesSetting,
-    producer: mocks.languages,
-    command: "add-site-language",
-    retry: "retry-language-preferences",
-    input: "es-ES",
-    normalized: "es-ES",
-    initial: { selected: ["en-US"], effective: ["en-US"], forced: [], managed: false },
-    changed: { selected: ["en-US", "es-ES"], effective: ["en-US", "es-ES"], forced: [], managed: false },
-    args: ["en-US", "es-ES"],
-  },
 ] as const;
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -65,7 +52,9 @@ beforeEach(() => {
   mocks.languages
     .mockReset()
     .mockImplementation(async (next) =>
-      next ? { selected: next, effective: next, forced: [], managed: false } : surfaces[1].initial,
+      next
+        ? { selected: next, effective: next, forced: [], managed: false }
+        : { selected: ["en-US"], effective: ["en-US"], forced: [], managed: false },
     );
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
     { width: 10, height: 10 } as DOMRect,
@@ -288,13 +277,15 @@ for (const spec of surfaces) {
     });
   });
 }
-it("all nine list actions retain normal remappable scoped metadata", () => {
+it("all list actions retain normal remappable scoped metadata", () => {
   for (const id of [
     "set-startup-mode",
     "add-startup-page",
     "remove-startup-page",
     "retry-startup-preferences",
     "add-site-language",
+    "set-site-language",
+    "save-site-languages",
     "move-site-language-up",
     "move-site-language-down",
     "remove-site-language",

@@ -102,7 +102,7 @@ export function GeneralSettings({
               label="Preferred languages"
               action="Configure"
             >
-              <LanguagesSetting active={active && !searching && !subview} />
+              {(close) => <LanguagesSetting active={active && !searching && !subview} onClose={close} />}
             </SettingsDialogControl>
           </IndexedField>
         </SettingsGroup>

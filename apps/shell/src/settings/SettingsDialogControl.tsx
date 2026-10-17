@@ -14,7 +14,7 @@ export function SettingsDialogControl({
   active: boolean;
   label: string;
   action: string;
-  children: ReactNode;
+  children: ReactNode | ((close: () => void) => ReactNode);
 }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -44,20 +44,26 @@ export function SettingsDialogControl({
         >
           <header>
             <h3>{label}</h3>
-            <button
-              type="button"
-              aria-label={`Close ${label.toLocaleLowerCase()}`}
-              onClick={() => setOpen(false)}
-            >
-              {shellIconClose}
-            </button>
+            {typeof children !== "function" && (
+              <button
+                type="button"
+                aria-label={`Close ${label.toLocaleLowerCase()}`}
+                onClick={() => setOpen(false)}
+              >
+                {shellIconClose}
+              </button>
+            )}
           </header>
-          <div className="settings-preference-editor">{children}</div>
-          <footer>
-            <button {...smallButtonProps} type="button" onClick={() => setOpen(false)}>
-              Done
-            </button>
-          </footer>
+          <div className="settings-preference-editor">
+            {typeof children === "function" ? children(() => setOpen(false)) : children}
+          </div>
+          {typeof children !== "function" && (
+            <footer>
+              <button {...smallButtonProps} type="button" onClick={() => setOpen(false)}>
+                Done
+              </button>
+            </footer>
+          )}
         </Dialog>
       )}
     </>
