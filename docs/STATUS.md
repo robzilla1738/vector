@@ -7,14 +7,29 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Current native preview
+## Current replacement build
+
+Product **0a5a757e0**, launcher **26443**, exec **4789**, log
+`/tmp/aux-home-history-native-build.log`. Launcher is confirmed live. Keep this
+single builder and do not edit renderer/runtime source until staging finishes.
+Prior launcher17093, app18292, runtime18307, Profileaux-dev-c7Z9wr and lock all
+retired normally and were verified removed before replacement. CUA homeSettingsApp
+is stale. No native browser is available until this build launches.
+
+Next acceptance: verify About identity, zoom the window, create synthetic chats
+and compare the new Home card hierarchy with001. Compare history composer width
+and background with113, then verify Cmd-T URL acceptance from history reveals the
+new page without clicking its tab. Check narrow/light states in the same preview.
+Do not mark these changes natively accepted until observed in the packaged app.
+
+## Previous accepted native preview (retired)
 
 Product **eabff947d**, launcher **17093**, app **18292**, runtime **18307**,
 exec **50761**, disposable Profile **aux-dev-c7Z9wr**, API port49455.
 Log `/tmp/aux-home-settings-native-build.log`; native build passed in **8m49.07s**
 and runtime staging finished. About verified clean source
 `eabff947db8db210d384dbe549cf8acab8047163`, Chromium154.0.8037.98 and ABI9021388e….
-CUA binding **homeSettingsApp**. Preserve this launcher's cleanup ownership.
+CUA binding **homeSettingsApp** is stale; this preview was retired normally.
 Previous12644 preview retired normally; addressFocusApp is stale.
 
 Native acceptance: Home Recent work spacing now aligns closely with001 at a
@@ -23,7 +38,7 @@ opens Profiles, Usage & Budgets and General settings. Escape closes the menu and
 returns focus to its trigger. General Configure/Import and Appearance Configure
 have bordered surfaces; Languages and Customize Tidy Tabs dialogs open and cancel.
 Three synthetic real-provider chats completed without tools in this disposable
-Profile. The preview is left on populated Home in Search mode.
+Profile. Populated Home was captured in Search mode before this preview was retired.
 
 Captures under `/tmp/aux-parity-2026-10-16/`:
 - `aux-home-menu-eabff947d.jpg`
@@ -48,7 +63,7 @@ pending. Do not claim complete populated-card parity; real image thumbnails and
 wide/narrow/light comparison remain to verify. Keep the substantial Memory
 model/UI batch open per the implementation boundary.
 
-## Related Home/history batch — source checked, native replacement next
+## Related Home/history batch — source checked, replacement building
 
 Reference113 comparison found the history composer constrained by the inner896px
 compose-content wrapper even though its outer history column was full width.

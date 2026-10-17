@@ -2533,3 +2533,9 @@ Final integrated validation: typecheck/lint and4,627tests/745files passed in102.
 (/tmp/aux-home-navigation-check.log);8native-omnibox tests include the new cases.
 The earlier CSS batch passed4,625tests in96.17s before the additional navigation
 fix. No unchanged broad test campaign is needed for native acceptance.
+
+Replacement ownership:0a5a757e0 launcher26443/session4789, log
+/tmp/aux-home-history-native-build.log. Prior17093/app18292/runtime18307 and
+Profileaux-dev-c7Z9wr plus lock retired normally and verified removed.
+CUA homeSettingsApp is stale. Wait on26443; freeze renderer/runtime source until
+staging finishes. Packaged acceptance remains pending.
