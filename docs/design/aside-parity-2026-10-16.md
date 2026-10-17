@@ -2120,3 +2120,17 @@ reference corpus still contains 380 source files. Group/split destinations,
 bookmark Sort/Cut/Copy/Paste and separate native Library routes remain open.
 Full Aside parity is not complete.
 
+
+Consolidated native build started from `79bfa144e`, including bookmark window
+and Private destinations (area patch 0046), History rows/selection and rounded
+Library dialogs. Launcher **52233**, exec session **58825**, log
+`/tmp/aux-library-destinations-native.log`. Verified live at 58s, resource and
+host-schema compilation in progress; no new app acceptance yet.
+
+Previous launcher 41736 was retired via SIGTERM; app 45506 exited, disposable
+Profile aux-dev-vseCSW was removed and the native lock released before replacement.
+Keep launcher 52233's ownership; poll its existing session, never start a second
+builder. Next walkthrough: About revision/ABI, synthetic bookmark opens in new
+tab/new window/Private window, destination isolation, and updated History/dialog
+behavior. Remaining full-parity gaps are unchanged.
+
