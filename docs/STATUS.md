@@ -37,6 +37,28 @@ Ask also lacks the reference's Tab-to-switch affordance; any hint must have work
 draft-preserving keyboard behavior. Real image thumbnails and native narrow/light
 states remain open. These observations do not establish full Home parity.
 
+## Ask follow-up — source checked, not yet packaged
+
+The empty Ask composer now uses a56px Recent work gap on wide Home layouts,
+offsetting the toolbar height; narrow layouts and nonempty transcripts retain
+their existing spacing. Ask shows the same Tab-to-switch hint as Search. Plain
+Tab from its textarea invokes the scoped Search command without modifying the
+durable draft. Modified, composing, already-handled and other-control events
+keep their existing behavior. The hint hides at the existing narrow breakpoint.
+
+Local renderer observed through the disposable browser: Ask → Tab → Search → Ask
+restored the unfinished text. The synthetic draft was cleared, the temporary tab
+closed and native sidebar restored. Capture `aux-ask-spacing-live-renderer.jpg`
+under the capture directory shows the empty Ask/Routines layout. It includes an
+extra outer native toolbar; accounting for that toolbar, Recent work aligns with004.
+This is renderer evidence, not packaged acceptance. Native0a5a757e0 remains live;
+queue this source change with the next native replacement rather than starting a
+separate nine-minute build for spacing alone.
+
+`npm run check` passed typecheck/lint and **4,629 tests /745 files** in95.79s
+(`/tmp/aux-home-ask-check.log`). Reference rescan remains182PNG/192TXT/6support.
+Full parity, image thumbnails and native light/narrow comparison remain open.
+
 ## Previous accepted native preview (retired)
 
 Product **eabff947d**, launcher **17093**, app **18292**, runtime **18307**,

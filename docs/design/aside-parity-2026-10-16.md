@@ -2564,3 +2564,23 @@ than reference004, while Search aligns closely with001. Ask lacks Tab-to-switch;
 adding that hint requires real keyboard behavior and draft preservation. These
 remain implementation follow-ups. Light/narrow states and real image thumbnails
 remain unverified. Full parity and phase completion remain open.
+
+
+## October 17 — Ask spacing and bidirectional mode shortcut
+
+Source follows004: wide empty Ask uses56px Recent work margin to account for its
+44px toolbar. Narrow layouts and nonempty transcripts preserve existing spacing.
+Ask now shares Search's Tab-to-switch hint and registers its textarea with the
+same scoped command ownership. Plain Tab switches to Search without rewriting
+any draft. Modified/composing/handled Tab events and other controls are excluded.
+
+Local Vite5197 observed through the disposable native browser: Ask → Tab → Search
+→ Ask restores the unfinished draft. Cleared that synthetic text, captured empty
+Ask/Routines, closed the preview tab and restored native sidebar. Capture
+/tmp/aux-parity-2026-10-16/aux-ask-spacing-live-renderer.jpg includes an extra outer
+native toolbar; accounting for it, Recent work aligns with004. This is source
+rendering evidence only. Package with the next native batch;0a5a757e0 stays live.
+
+Integrated check: typecheck/lint and4,629tests/745files passed in95.79s, log
+/tmp/aux-home-ask-check.log. Reference rescan unchanged182PNG/192TXT/6support.
+Native light/narrow and image thumbnails remain open; no full-parity claim.

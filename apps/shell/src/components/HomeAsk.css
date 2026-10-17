@@ -90,6 +90,9 @@
     height: 18px;
   }
 
+  .home-composer-controls {
+    align-self: flex-end;
+  }
   .home-composer-mode {
     flex: none;
     align-self: flex-end;
@@ -133,6 +136,9 @@
     }
     .home-ask .conversation-message-field > textarea {
       grid-column: 1 / -1;
+    }
+    .home-ask .home-composer-controls {
+      justify-self: start;
     }
     .home-ask .home-composer-mode {
       min-width: 0;

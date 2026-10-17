@@ -78,16 +78,17 @@ export function HomeEntryAction({
   );
 }
 export function useHomeEntryInput(
-  input: RefObject<HTMLInputElement | null>,
+  input: RefObject<HTMLInputElement | HTMLTextAreaElement | null>,
   enabled: boolean,
   current: () => boolean,
   invoke: () => unknown,
+  command: "select-home-ask" | "select-home-search" = "select-home-ask",
 ) {
   const scopeId = useId();
   useLayoutEffect(() => {
     const original = input.current;
     if (!enabled || !original) return;
-    return registerScopedControl(original, "select-home-ask", scopeId, () => {
+    return registerScopedControl(original, command, scopeId, () => {
       if (input.current !== original || !current()) throw new Error("Choose the current Home control.");
       return invoke();
     });

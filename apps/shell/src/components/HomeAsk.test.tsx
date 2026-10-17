@@ -258,3 +258,45 @@ it("keeps a suggestion pending during a rail handoff and inserts it locally with
   expect(fixture.setConversationBrowserSources).not.toHaveBeenCalled();
   expect(fixture.runCommand).not.toHaveBeenCalled();
 });
+
+it("switches from the Ask textarea with Tab while preserving its durable draft", async () => {
+  localStorage.setItem(HOME_DRAFT_CHAT_KEY, "kept-chat");
+  fixture.conversationDrafts["chat:kept-chat"] = "Keep this unfinished question";
+  const search = vi.fn();
+  await render(search);
+  const input = container.querySelector("textarea")!;
+  const event = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+  await act(async () => input.dispatchEvent(event));
+  expect(event.defaultPrevented).toBe(true);
+  expect(search).toHaveBeenCalledOnce();
+  expect(fixture.conversationDrafts["chat:kept-chat"]).toBe("Keep this unfinished question");
+  expect(localStorage.getItem(HOME_DRAFT_CHAT_KEY)).toBe("kept-chat");
+  expect(fixture.setAgentDraft).not.toHaveBeenCalled();
+  expect(fixture.setConversationDraft).not.toHaveBeenCalled();
+});
+
+it("keeps modified, composing, handled and non-textarea Tab events in their own controls", async () => {
+  const search = vi.fn();
+  await render(search);
+  const input = container.querySelector("textarea")!;
+  for (const options of [
+    { shiftKey: true },
+    { altKey: true },
+    { ctrlKey: true },
+    { metaKey: true },
+    { isComposing: true },
+  ]) {
+    const event = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true, ...options });
+    await act(async () => input.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(false);
+  }
+  const handled = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+  handled.preventDefault();
+  await act(async () => input.dispatchEvent(handled));
+  await act(async () =>
+    container
+      .querySelector("button")!
+      .dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true })),
+  );
+  expect(search).not.toHaveBeenCalled();
+});

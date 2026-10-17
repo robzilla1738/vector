@@ -3,7 +3,7 @@ import {
   smallButtonProps as auxReserveSmallButtonProps,
   smallGhostButtonProps as auxReserveSmallGhostButtonProps,
 } from "../ui/button-props";
-import { HomeEntryAction, useHomeEntryOwner } from "./HomeEntryControls";
+import { HomeEntryAction, runHomeEntry, useHomeEntryInput, useHomeEntryOwner } from "./HomeEntryControls";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Conversation } from "./Conversation";
 import type { HomePromptRequest } from "./home-prompt";
@@ -95,24 +95,55 @@ export default function HomeAsk({
       }),
     [chatId],
   );
+  const searchScope = useHomeEntryInput(
+    composer,
+    !!onSearch && !railOpen,
+    searchCurrent,
+    () => onSearch?.(),
+    "select-home-search",
+  );
   const controls = onSearch ? (
-    <div className="home-composer-mode" role="group" aria-label="Search or Ask">
-      <HomeEntryAction
-        type="button"
-        aria-pressed={false}
-        command="select-home-search"
-        current={searchCurrent}
-        invoke={onSearch}
-      >
-        Search
-      </HomeEntryAction>
-      <button {...auxNativeButtonTypeProps} aria-pressed={true}>
-        Ask
-      </button>
+    <div className="home-mode home-composer-controls">
+      <span>
+        <kbd>Tab</kbd> to switch
+      </span>
+      <div className="home-composer-mode" role="group" aria-label="Search or Ask">
+        <HomeEntryAction
+          type="button"
+          aria-pressed={false}
+          command="select-home-search"
+          current={searchCurrent}
+          invoke={onSearch}
+        >
+          Search
+        </HomeEntryAction>
+        <button {...auxNativeButtonTypeProps} aria-pressed={true}>
+          Ask
+        </button>
+      </div>
     </div>
   ) : undefined;
   return (
-    <div className="home-ask">
+    <div
+      className="home-ask"
+      onKeyDown={(event) => {
+        if (
+          !onSearch ||
+          event.target !== composer.current ||
+          event.defaultPrevented ||
+          event.key !== "Tab" ||
+          event.shiftKey ||
+          event.altKey ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.nativeEvent.isComposing ||
+          event.keyCode === 229
+        )
+          return;
+        event.preventDefault();
+        runHomeEntry("select-home-search", searchScope, event.nativeEvent);
+      }}
+    >
       {railOpen ? (
         <div className="home-ask-handoff">
           <span>Your assistant is open in the side panel.</span>

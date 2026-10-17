@@ -982,6 +982,11 @@
     width: min(827px, 100%);
     margin: 100px auto 0;
   }
+  @container start-page (min-width: 641px) {
+    .start-inner:has(.home-ask .conversation-home[data-empty-transcript]) .home-history {
+      margin-top: 56px;
+    }
+  }
   .home-section-head {
     display: flex;
     justify-content: space-between;
