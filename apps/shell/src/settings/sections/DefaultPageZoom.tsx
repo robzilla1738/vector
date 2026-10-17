@@ -5,7 +5,7 @@ import { useNativePreference, NativePreferenceRetry } from "./use-native-prefere
 import { usePreferenceCommand } from "./preference-command";
 import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 type Preference = Awaited<ReturnType<typeof bridge.defaultPageZoom>>;
-const CHOICES = [50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200];
+const CHOICES = [25, 33, 50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500];
 const availableNow = () => inNativeHost || inMock;
 const read = () => bridge.defaultPageZoom();
 const write = (percentage: number) =>

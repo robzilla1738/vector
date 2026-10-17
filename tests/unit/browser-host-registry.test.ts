@@ -84,3 +84,11 @@ describe("separate browser host registry", () => {
     expect(Object.keys(BrowserHostMethods).some((id) => id.startsWith("native."))).toBe(false);
   });
 });
+
+
+it("admits the full Chromium default zoom range and refuses out-of-range or fractional writes", () => {
+  const args = BrowserHostMethods.defaultPageZoom.args;
+  expect(args.safeParse([]).success).toBe(true);
+  for (const percent of [25, 33, 50, 100, 200, 250, 300, 400, 500]) expect(args.safeParse([percent]).success).toBe(true);
+  for (const percent of [24, 501, 33.5, NaN, Infinity]) expect(args.safeParse([percent]).success).toBe(false);
+});

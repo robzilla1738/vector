@@ -471,7 +471,7 @@ export const BrowserHostMethods = {
     strictObject({ enabled: bool, available: bool, managed: bool }),
   ),
   defaultPageZoom: coreShell(
-    tuple([z.number().int().min(50).max(200).optional()]),
+    tuple([z.number().int().min(25).max(500).optional()]),
     strictObject({ percentage: z.number().int(), managed: bool }),
   ),
   downloadsSnapshot: coreShell(noArgs, z.array(DownloadSchema)),

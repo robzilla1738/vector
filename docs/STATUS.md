@@ -3,8 +3,15 @@
 
 ## October 16 UI parity review — in progress
 
-
-
+Appearance default page zoom now offers 25%–500%, including the upper choices
+in reference025. The renderer, host argument schema and native writer agree on
+the range; managed-policy and Profile restrictions remain intact. Area0044 is
+registered and applied (reverse-apply check passes). Endpoint writer and schema
+tests pass. Integrated check passed typecheck/lint and 4,581/4,582 tests; the sole
+failure remains the coder-worktrees 60-second timeout. This run also passed the
+final asynchronous bookmark parser UI tests. Renderer build passed in 1.79s.
+Native range acceptance and the newer Appearance/import changes still require
+a fresh disposable preview; the last built app remains native0edb56c33 below.
 
 Native0edb56c33/area0043 passed29 build steps in9m27.37s. Disposable preview
 56765 (launcher50077, aux-dev-Em2Vio) proved macOS file chooser opens and chooser
@@ -35,11 +42,11 @@ Runtime dist rebuilt before tests. All36 focused cases pass; integrated typechec
 and lint pass, 4,575/4,576 tests across733 files pass (only the existing
 coder-worktrees timeout). Renderer build passes in1.90s. Live renderer walkthrough confirms Cancel discards, Save closes on acknowledgement,
 and reopening retains the43-character prompt. Capture: aux-tidy-saved-live-d3078.png.
-Compiled-native inclusion is still pending; native544 staged its renderer before
-this source change.
+Compiled-native Save/reopen and runtime settings.get are now verified in0edb56c33
+as recorded above; the later Appearance card ordering remains newer than that build.
 
 **Native544da21a2 / area0042 built and launched.** Build passed38 steps in
-8m33.45s; launcher41893 owns disposable preview46360, Profile aux-dev-Q0doIW.
+8m33.45s; launcher41893 owned disposable preview46360, Profile aux-dev-Q0doIW.
 This owned preview has now retired normally; its disposable Profile was removed
 and the next plain-lock command acquired successfully. The selected-export
 walkthrough accepted an unchanged standard Netscape HTML file after a deliberate
@@ -53,13 +60,11 @@ The initial compact one-line synthetic HTML parsed as zero bookmarks. It was
 replaced with standard export line structure before the successful acceptance;
 zero was not counted as writer success. Only owned synthetic files were used.
 
-The separate shared Settings Import bookmarks dialog fails native acceptance:
-Choose bookmark file closes the dialog with no file chooser (also reproduced by
-direct pointer). The shell WebContents delegate lacks RunFileChooser, and a file
-input cancel event can bubble into the enclosing dialog’s onCancel. Both require
-correction and native reinspection. The mock UI/file-parser evidence below does
-not establish native chooser support. New export review also retains an earlier
-finished receipt; this should be distinguished or cleared in the next UI slice.
+The shared Settings chooser gap found in native544 is corrected and verified in
+native0edb: file selection opens and Cancel preserves the editor. The subsequent
+TrustedHTML parser failure is fixed in newer source but still needs compiled
+shared-import acceptance. New export reviews now distinguish completed receipts
+with a Previous import heading in source; native0edb predates that label change.
 
 Native 2425d212a verification is complete for the changed provider/language UI:
 Brave stays checked after the real Chromium URL normalization, fresh Settings and
@@ -67,7 +72,7 @@ Home both show Search, and Add’s bounded alphabetized menu adds/saves Akan acr
 reopening. Build passed 25 steps / 9m06.34s, 217 assets, unchanged host ABI.
 The owned preview has retired; its disposable Profile was confirmed removed.
 
-Native export walkthrough used only the owned synthetic bookmark HTML. It
+Historical native2425 export walkthrough used only the owned synthetic bookmark HTML. It
 populated Detected browser and reviewed category controls, then native Begin
 refused the supposedly stale preview. Standard SDK bookmarks.list confirmed zero
 bookmarks, including zero synthetic URLs; the human-only import.status SDK request
@@ -76,8 +81,8 @@ The chosen file’s metadata stayed unchanged while its directory ctime changed 
 macOS access/provenance attributes were present. Directory metadata appears to
 invalidate the current broad snapshot guard. Area 0042 adds an explicit selected-
 file scope: one leaf only, strict file checks and pinned directory identity/mode/
-uid/gid; whole-Profile content checks remain. Native build and changed-file refusal
-walkthrough are still required to validate this fix. Patch forward/reverse checks
+uid/gid; whole-Profile content checks remain. Native544 acceptance and changed-file refusal are verified above; a replaced-inode
+walkthrough remains unchecked. Patch forward/reverse checks
 pass against exact before/current source. Source IDs now show browser display names.
 
 The shared bookmark-file Settings entry has current renderer evidence: native

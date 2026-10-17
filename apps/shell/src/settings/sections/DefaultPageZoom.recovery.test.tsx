@@ -155,6 +155,8 @@ it("retains all standard and actual nonstandard native choices with remappable s
   mocks.zoom.mockResolvedValue({ percentage: 130, managed: false });
   await render();
   expect([...control().options].map((option) => option.value)).toEqual([
+    "25",
+    "33",
     "50",
     "67",
     "75",
@@ -166,6 +168,10 @@ it("retains all standard and actual nonstandard native choices with remappable s
     "150",
     "175",
     "200",
+    "250",
+    "300",
+    "400",
+    "500",
     "130",
   ]);
   control().focus();
@@ -321,4 +327,18 @@ it("retains actual zoom ACK but refuses delivery after live capability loss", as
   await act(async () => resolve(ack));
   expect(await completion).toBe(ack);
   expect(select.value).toBe("100");
+});
+
+
+it.each([25, 500])("saves and displays the %s%% endpoint through the native preference writer", async (percentage) => {
+  mocks.zoom.mockResolvedValueOnce({ percentage: 100, managed: false }).mockResolvedValueOnce({ percentage, managed: false });
+  await act(async () => root.render(<DefaultPageZoomSetting active />));
+  const select = host.querySelector<HTMLSelectElement>("select")!;
+  await act(async () => {
+    select.value = String(percentage);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(mocks.zoom.mock.calls).toEqual([[], [percentage]]);
+  expect(select.value).toBe(String(percentage));
+  expect(host.querySelector('[role="alert"]')).toBeNull();
 });

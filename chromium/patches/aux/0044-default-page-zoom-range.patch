@@ -1,0 +1,16 @@
+--- a/chrome/browser/ui/aux/methods/page_controls_methods.cc
++++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
+@@ -194,10 +194,10 @@
+                                 "Default page zoom is managed by policy");
+         return;
+       }
+-      if (!(*list)[0].is_int() || (*list)[0].GetInt() < 50 ||
+-          (*list)[0].GetInt() > 200) {
++      if (!(*list)[0].is_int() || (*list)[0].GetInt() < 25 ||
++          (*list)[0].GetInt() > 500) {
+         std::move(callback).Run(false, "", "invalid_argument",
+-                                "Choose a page zoom from 50% to 200%");
++                                "Choose a page zoom from 25% to 500%");
+         return;
+       }
+       zoom_prefs->SetDefaultZoomLevelPref(
