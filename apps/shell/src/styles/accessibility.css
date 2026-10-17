@@ -200,7 +200,7 @@
        that rounded surface instead of drawing a second rectangle around text. */
     :is([data-input-surface], .ui-search-field, .ui-input-group):has(> :is(input, textarea):focus-visible) {
       outline: none;
-      box-shadow: 0 0 0 1px var(--focus-line);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus-line) 65%, transparent);
     }
     .aux-native-dialog
       :where(
@@ -211,10 +211,10 @@
       outline: none;
       box-shadow: 0 0 0 1px var(--focus-line);
     }
-    :is([data-input-surface], .ui-search-field, .ui-input-group) > :is(input, textarea):focus-visible,
+    :is([data-input-surface], .ui-search-field, .ui-input-group) > :is(input, textarea):focus,
     .aux-native-dialog
       :is([data-input-surface], .ui-search-field, .ui-input-group)
-      > :is(input, textarea):focus-visible {
+      > :is(input, textarea):focus {
       outline: none;
       box-shadow: none;
     }
