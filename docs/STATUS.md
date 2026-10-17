@@ -26,8 +26,8 @@ check passed4,621tests/744files. No unchanged suite repeated for acceptance.
 Window zoom action expanded the preview for reference comparison. Current app
 captures are3456×2010 versus reference001/023 at3424×1978 (close, not exact).
 Saved captures:
-- `/tmp/aux-parity-2026-10-16/aux-appearance-expanded-3c34b442b.png`
-- `/tmp/aux-parity-2026-10-16/aux-home-expanded-3c34b442b.png`
+- `/tmp/aux-parity-2026-10-16/aux-appearance-expanded-3c34b442b.jpg`
+- `/tmp/aux-parity-2026-10-16/aux-home-expanded-3c34b442b.jpg`
 
 Next visual batch findings: Appearance card width/order/row spacing are close to
 023. SettingsDialogControl uses smallGhostButtonProps, leaving Configure as plain
