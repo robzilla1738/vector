@@ -33,7 +33,7 @@
     min-height: 52px;
     padding: var(--space-3);
     border-radius: var(--r-xl);
-    background: var(--surface-secondary);
+    background: var(--settings-card);
     color: var(--ink-2);
     text-align: left;
   }
@@ -156,7 +156,7 @@
     gap: var(--space-2-5);
     padding: var(--space-4);
     border-radius: var(--r-xl);
-    background: var(--surface-secondary);
+    background: var(--settings-card);
     min-width: 0;
   }
   .routine-card-heading {

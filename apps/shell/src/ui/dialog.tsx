@@ -54,13 +54,14 @@ export function Dialog({
   const internalRef = useRef<HTMLDialogElement>(null);
   const ref = dialogRef ?? internalRef;
   useNativeDialog(true, ref, returnFocus, initialFocusRef);
+  useDialogStage(ref);
   return createPortal(
     <dialog
       id={id}
       ref={ref}
       tabIndex={-1}
       role={kind}
-      className={`aux-native-dialog ${className}`}
+      className={`aux-native-dialog aux-stage-dialog ${className}`}
       aria-label={label}
       aria-modal="true"
       aria-describedby={descriptionId}
@@ -102,6 +103,34 @@ export function Dialog({
     </dialog>,
     document.body,
   );
+}
+
+/** Portaled modals remain centered in the browsing area as the sidebar resizes. */
+function useDialogStage(ref: RefObject<HTMLDialogElement | null>) {
+  useLayoutEffect(() => {
+    const dialog = ref.current;
+    const stage = document.querySelector<HTMLElement>(".main-col > .main");
+    if (!dialog || !stage) return;
+    const place = () => {
+      const bounds = stage.getBoundingClientRect();
+      for (const [edge, value] of Object.entries({
+        top: bounds.top,
+        left: bounds.left,
+        right: window.innerWidth - bounds.right,
+        bottom: window.innerHeight - bounds.bottom,
+      }))
+        dialog.style.setProperty(`--dialog-stage-${edge}`, `${Math.max(0, value)}px`);
+    };
+    place();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
+    observer?.observe(stage);
+    // Position can also change when the toolbar/layout changes without changing stage size.
+    window.addEventListener("resize", place);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", place);
+    };
+  }, [ref]);
 }
 
 /** One menu surface shared by pointer actions and anchored controls. */

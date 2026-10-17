@@ -98,6 +98,7 @@
     padding: var(--space-1-5) var(--space-2-5);
     border: 0;
     border-radius: var(--menu-item-radius);
+    outline: none;
     background: transparent;
     color: var(--ink-0);
     font: inherit;

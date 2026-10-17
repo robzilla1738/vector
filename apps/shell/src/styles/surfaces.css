@@ -645,7 +645,7 @@
     margin: 0;
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-xl);
-    background: var(--page-shell-background, var(--bg-0));
+    background: var(--page-shell-background, var(--content-canvas));
     isolation: isolate;
     overflow: clip;
     box-shadow: var(--shadow-sm);
@@ -1208,6 +1208,9 @@
     background: var(--bg-0);
     container-type: inline-size;
   }
+  .main-col .conversation:not(.conversation-embedded) {
+    background: transparent;
+  }
   .conversation-body {
     flex: 1;
     min-height: 0;
@@ -1303,7 +1306,7 @@
   :root[data-sidebar-appearance="translucent"] .main-col {
     background: var(
       --page-shell-background,
-      color-mix(in srgb, var(--bg-0) var(--content-opacity, 95%), transparent)
+      color-mix(in srgb, var(--content-canvas) var(--content-opacity, 95%), transparent)
     );
   }
   /* A live native page supplies this slot; overlays must see that page through it. */

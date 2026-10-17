@@ -263,6 +263,7 @@
     /* Opaque Settings planes sampled from Aside 1.0.928.1, October 17.
      * Keep these independent of translucent native window materials. */
     --settings-chrome: #2d2d2d;
+    --content-canvas: #282828;
     --settings-canvas: #1b1b1b;
     --settings-card: #282828;
     --settings-search-fill: rgb(255 255 255 / 3%);
@@ -408,6 +409,7 @@
     --bg-window: #ffffff80;
     --bg-0: #fff;
     --settings-chrome: #f3f4f6;
+    --content-canvas: #fff;
     --settings-canvas: #fff;
     --settings-card: #f7f7f7;
     --settings-search-fill: rgb(0 0 0 / 3%);

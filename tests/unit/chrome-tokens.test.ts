@@ -138,7 +138,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
       ':root[data-sidebar-appearance="translucent"] .app-body { background: transparent; }',
     );
     expectCss(styles).toContain(
-      ':root[data-sidebar-appearance="translucent"] .main-col { background: var(--page-shell-background, color-mix(in srgb, var(--bg-0) var(--content-opacity, 95%), transparent)); }',
+      ':root[data-sidebar-appearance="translucent"] .main-col { background: var(--page-shell-background, color-mix(in srgb, var(--content-canvas) var(--content-opacity, 95%), transparent)); }',
     );
     expectCss(styles).toContain(
       "--window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);",

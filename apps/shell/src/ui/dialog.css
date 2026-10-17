@@ -4,6 +4,18 @@
     border: 0;
     margin: auto;
   }
+  .aux-stage-dialog:not(.aux-observation-dialog) {
+    inset: var(--dialog-stage-top, 0px) var(--dialog-stage-right, 0px) var(--dialog-stage-bottom, 0px)
+      var(--dialog-stage-left, 0px);
+    max-width: calc(100vw - var(--dialog-stage-left, 0px) - var(--dialog-stage-right, 0px) - 32px);
+    max-height: calc(100dvh - var(--dialog-stage-top, 0px) - var(--dialog-stage-bottom, 0px) - 32px);
+  }
+  .aux-stage-dialog::backdrop {
+    clip-path: inset(
+      var(--dialog-stage-top, 0px) var(--dialog-stage-right, 0px) var(--dialog-stage-bottom, 0px)
+        var(--dialog-stage-left, 0px)
+    );
+  }
   .aux-dialog-surface {
     width: 384px;
     max-width: calc(100vw - 32px);

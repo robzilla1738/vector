@@ -226,3 +226,22 @@ the supplied numbering. Rescan the folder between integrated batches.
 | 190-browser-notification-permissions | Pending paired verification |
 | 191-browser-embedded-content-permissions | Pending paired verification |
 | 192-browser-javascript-permissions | Pending paired verification |
+
+## Native comparison after foundation build
+
+Packaged source `da1c89ef4` was verified in About Aux. General now renders the
+measured #1b1b1b canvas, #282828 cards and #2d2d2d navigation plane. The Settings
+breadcrumb updates with the section and the expanded sidebar has one collapse
+control. Evidence: local captures 15–19 in `/tmp/aux-parity-full-audit`.
+The native preview used a disposable Profile and was retired through its launcher.
+
+The next source slice centers shared modal dialogs within the main content stage,
+clips their backdrop below the toolbar, and observes sidebar resizing. Home has a
+separate #282828 base canvas (composited through the existing content-opacity
+setting); full conversation surfaces inherit that canvas. Project, routine and
+provider cards use Settings card tokens. Select options use shared highlighted
+rows instead of the browser-default blue outline. Native verification of this
+slice is pending. Selected-item alignment of select popups remains open.
+
+The reference folder still contains 182 PNGs. Detailed paired acceptance remains
+open; inventory review does not establish full parity.

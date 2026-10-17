@@ -183,7 +183,6 @@ it("Dialog focuses an explicit heading and restores the opener on close", async 
   }
 });
 
-
 it("file input cancellation keeps its containing dialog open; dialog cancellation closes it", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const host = document.createElement("div");
@@ -191,9 +190,17 @@ it("file input cancellation keeps its containing dialog open; dialog cancellatio
   const root = createRoot(host);
   const close = vi.fn();
   try {
-    await act(async () => root.render(<Dialog label="Import" onClose={close}><input type="file" /></Dialog>));
+    await act(async () =>
+      root.render(
+        <Dialog label="Import" onClose={close}>
+          <input type="file" />
+        </Dialog>,
+      ),
+    );
     const dialog = document.querySelector("dialog")!;
-    await act(async () => dialog.querySelector("input")!.dispatchEvent(new Event("cancel", { bubbles: true, cancelable: true })));
+    await act(async () =>
+      dialog.querySelector("input")!.dispatchEvent(new Event("cancel", { bubbles: true, cancelable: true })),
+    );
     expect(close).not.toHaveBeenCalled();
     await act(async () => dialog.dispatchEvent(new Event("cancel", { bubbles: true, cancelable: true })));
     expect(close).toHaveBeenCalledTimes(1);
@@ -201,4 +208,50 @@ it("file input cancellation keeps its containing dialog open; dialog cancellatio
     await act(async () => root.unmount());
     host.remove();
   }
+});
+
+it("centers portaled dialogs in the content area and tracks sidebar resizing", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  let resized = () => {};
+  const disconnect = vi.fn();
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: () => void) {
+        resized = callback;
+      }
+      observe() {}
+      disconnect = disconnect;
+    },
+  );
+  const host = document.createElement("div");
+  host.className = "main-col";
+  const stage = document.createElement("div");
+  stage.className = "main";
+  host.append(stage);
+  document.body.append(host);
+  let left = 280;
+  stage.getBoundingClientRect = () =>
+    ({ left, top: 44, right: window.innerWidth, bottom: window.innerHeight }) as DOMRect;
+  const root = createRoot(stage);
+  try {
+    await act(async () =>
+      root.render(
+        <Dialog label="Stage dialog" onClose={() => {}}>
+          <button>Cancel</button>
+        </Dialog>,
+      ),
+    );
+    const dialog = document.querySelector<HTMLDialogElement>('[aria-label="Stage dialog"]')!;
+    expect(dialog.parentElement).toBe(document.body);
+    expect(dialog.style.getPropertyValue("--dialog-stage-left")).toBe("280px");
+    expect(dialog.style.getPropertyValue("--dialog-stage-top")).toBe("44px");
+    left = 360;
+    resized();
+    expect(dialog.style.getPropertyValue("--dialog-stage-left")).toBe("360px");
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+  expect(disconnect).toHaveBeenCalled();
 });

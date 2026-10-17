@@ -7,6 +7,25 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Live Aside audit — Settings and shared surfaces
+
+The foundation build `da1c89ef4` was verified natively against the installed Aside:
+Settings canvas/card/navigation colors now match the sampled opaque planes, with
+section breadcrumbs and corrected sidebar spacing. Both preceding disposable
+previews were retired through their launchers; the next native build is pending.
+See [the full audit](design/aside-full-audit-2026-10-17.md) for evidence and the
+182-image inventory. Full paired parity remains incomplete.
+
+The next source slice gives Home a separate content canvas token, standardizes
+remaining project/routine/provider card fills, removes default blue option
+outlines in favor of menu row highlights, and centers modal dialogs in the main
+content area with a clipped backdrop and resize tracking. Existing native dialog
+focus and cancellation ownership is retained. Integrated typecheck/lint passed;
+4,646 tests passed and one stylesheet expectation needed the new canvas token.
+That fixture and Settings dialog controls passed all 27 targeted tests. The new
+stage geometry test and existing dialog tests passed (six total). Native visual
+verification of this slice is pending.
+
 ## Pills, buttons and typography consolidation — source
 
 The owner requested consistent pills, buttons and text sizes across surfaces.

@@ -38,7 +38,7 @@
     box-shadow: none;
     min-height: 0;
     position: relative;
-    background: var(--bg-0);
+    background: var(--content-canvas);
     overflow: hidden;
     transition: box-shadow var(--t-fast) var(--ease-out);
   }

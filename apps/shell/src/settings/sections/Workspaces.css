@@ -9,7 +9,7 @@
     text-align: left;
     border: 0;
     border-radius: var(--r-lg);
-    background: var(--surface-input);
+    background: var(--settings-card);
     color: var(--ink-1);
   }
   .project-create-row:hover {
@@ -183,7 +183,7 @@
     gap: 10px;
     padding: 16px;
     border-radius: var(--r-lg);
-    background: var(--surface-input);
+    background: var(--settings-card);
   }
   .project-card > .grow {
     min-width: 140px;
