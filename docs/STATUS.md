@@ -1,5 +1,28 @@
 # Aux status — October 16, 2026
 
+Image model menu follow-up (reference 061): the overview now uses the same
+searchable provider-grouped control as task models. The shared control was
+extracted into `ui/model-choice.tsx`. Image choices use the actual supported
+catalog, plus Off and Default image model (which saves the current default ID).
+This is not dynamic provider routing. The detailed connection editor retains its
+explicit select and scoped command. No image request is made by selection.
+
+The new failure-path test exposed menus closing when saves became pending.
+Task and image pickers now distinguish pending saves from inactive/unavailable
+controls, disabling choices without discarding the menu on failure. Local Vite
+confirmed GPT filtering, model/Off saves, provider submenu and final layout.
+Capture: `/tmp/aux-parity-2026-10-16/aux-image-model-menu-vite.png`.
+This mock walkthrough does not establish runtime persistence or native acceptance.
+
+Integrated check passed typecheck/lint and 4,615 tests; the one new failure-path
+test initially failed and prompted the correction above. Final affected tests
+pass all 15 cases; final typecheck and renderer build pass (2.35s). Logs:
+`/tmp/aux-image-model-picker-check.log`,
+`/tmp/aux-image-model-picker-final-tests.log`, and
+`/tmp/aux-image-model-picker-build.log`. Settings search generation passes after
+placing the shared control with UI primitives. Provider branding, subscription
+setup, custom-provider composition and full viewport comparisons remain OPEN.
+
 Latest routine visual review: the local renderer confirms searchable model
 selection (GPT filtering and GPT-6.1 Sol selection), High thinking selection and
 completion notification opt-out. Reference 084 comparison exposed overly bright

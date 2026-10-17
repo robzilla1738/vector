@@ -144,3 +144,35 @@ it("updates one role's reasoning without replacing other routes and can restore 
     agentModelRoutes: { deep: current.agentModelRouteOverrides.deep },
   });
 });
+
+it("searches image models and retains the picker on a rejected save", async () => {
+  const save = vi.fn().mockResolvedValue(false);
+  await act(async () => root.render(<ModelsOverview active settings={settings} onSave={save} />));
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="Image-generation model selection"]')!.click(),
+  );
+  const input = document.querySelector<HTMLInputElement>(
+    '[aria-label="Search models for image-generation model"]',
+  )!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "GPT");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const image = [...document.querySelectorAll<HTMLButtonElement>("dialog button")].find(
+    (node) => node.textContent === "GPT Image 2",
+  )!;
+  await act(async () => image.click());
+  expect(save).toHaveBeenLastCalledWith({ imageModel: "openai/gpt-image-2" });
+  expect(document.querySelector('[aria-label="Search models for image-generation model"]')).not.toBeNull();
+  save.mockResolvedValue(true);
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "Off");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const off = [...document.querySelectorAll<HTMLButtonElement>("dialog button")].find(
+    (node) => node.textContent === "Off",
+  )!;
+  await act(async () => off.click());
+  expect(save).toHaveBeenLastCalledWith({ imageModel: null });
+  expect(document.querySelector('[aria-label="Search models for image-generation model"]')).toBeNull();
+});

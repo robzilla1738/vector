@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MODEL_PROVIDER_NAMES,
   ModelProviderSchema,
@@ -17,12 +17,10 @@ import { call } from "../../store";
 import { errorMessage } from "../../error-message";
 import { Dialog } from "../../ui/dialog";
 import { Popover } from "../../ui/popover";
-import { Check, ChevronDown, Plus, Search } from "../../ui/icons";
-import { ActionMenu, type MenuAction } from "../../ui";
-import { ModelProviderMenu } from "../../composer/ModelProviderMenu";
+import { Check, Plus, Search } from "../../ui/icons";
 import "../../composer/ComposerModelPicker.css";
 import { moveListFocus } from "../../keyboard-list";
-import { SettingsField, SettingsSection } from "../primitives";
+import { SettingsSection } from "../primitives";
 import { ModelConnections } from "./ModelConnections";
 import { ModelsSettings } from "./Models";
 import { useModelControlOwner } from "./models-command-controls";
@@ -30,8 +28,7 @@ import "./ModelsOverview.css";
 import { focusSettingsDestination } from "../search-focus";
 import type { SettingsSearchItem } from "../search";
 
-type ModelOption = { id: string; name?: string; provider?: string; textGeneration?: boolean };
-const providerNames: Record<string, string> = { ...MODEL_PROVIDER_NAMES, meta: "Meta", alibaba: "Alibaba" };
+import { ModelChoice, type ModelOption } from "../../ui/model-choice";
 const roles: { id: AgentModelCategory; label: string; hint: string }[] = [
   { id: "fast", label: "Fast", hint: "Quick chats and lightweight tasks." },
   { id: "standard", label: "Standard", hint: "Balanced reasoning and everyday work." },
@@ -218,7 +215,8 @@ export function ModelsOverview({
             hint="The model used by default for new chats."
             value={String(settings.plannerModel ?? "")}
             options={options}
-            disabled={busy || !active}
+            disabled={!active}
+            pending={busy}
             loading={loading}
             onChange={(id) => save({ plannerModel: id })}
             actions={[
@@ -236,7 +234,8 @@ export function ModelsOverview({
                   value={route.modelId}
                   automatic={!overrides[role.id]}
                   options={options}
-                  disabled={busy || !active}
+                  disabled={!active}
+                  pending={busy}
                   loading={loading}
                   actions={[
                     ...(["low", "medium", "high", "xhigh"] as const).map((reasoning) => ({
@@ -301,154 +300,6 @@ export function ModelsOverview({
         )}
       </SettingsSection>
     </div>
-  );
-}
-
-function ModelChoice({
-  label,
-  hint,
-  value,
-  automatic,
-  options,
-  disabled,
-  loading,
-  onChange,
-  actions,
-}: {
-  label: string;
-  hint: string;
-  value: string;
-  automatic?: boolean;
-  options: ModelOption[];
-  disabled: boolean;
-  loading: boolean;
-  onChange(value: string | undefined): Promise<boolean>;
-  actions: MenuAction[];
-}) {
-  const [query, setQuery] = useState("");
-  const search = useRef<HTMLInputElement>(null);
-  const [providerOpen, setProviderOpen] = useState<string | null>(null);
-  const selected = options.find((model) => model.id === value);
-  const name = selected?.name ?? value.split("/").at(-1) ?? "Choose model";
-  const matched = options.filter((model) =>
-    `${model.id} ${model.name ?? ""} ${providerNames[model.provider ?? ""] ?? ""}`
-      .toLowerCase()
-      .includes(query.trim().toLowerCase()),
-  );
-  const groups = new Map<string, ModelOption[]>();
-  for (const model of matched) {
-    const group = model.provider ?? "";
-    groups.set(group, [...(groups.get(group) ?? []), model]);
-  }
-  const modelRows = (models: ModelOption[], close: () => void, root: boolean) =>
-    models.map((model) => (
-      <button
-        type="button"
-        key={model.id}
-        disabled={disabled}
-        role="menuitemradio"
-        data-model-root={root ? "" : undefined}
-        aria-checked={!automatic && value === model.id}
-        onClick={() =>
-          void onChange(model.id).then((ok) => {
-            if (ok) {
-              setProviderOpen(null);
-              close();
-            }
-          })
-        }
-      >
-        <span>{model.name ?? model.id}</span>
-        {!automatic && value === model.id && <Check />}
-      </button>
-    ));
-  const control = (close: () => void): ReactNode => (
-    <div
-      className="settings-model-picker"
-      onKeyDown={(event) => {
-        if (event.target === search.current) {
-          if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
-          event.preventDefault();
-          const choices = event.currentTarget.querySelectorAll<HTMLButtonElement>(
-            "[data-model-root]:not(:disabled)",
-          );
-          (event.key === "ArrowDown" ? choices[0] : choices[choices.length - 1])?.focus();
-          return;
-        }
-        moveListFocus(event, "[data-model-root]:not(:disabled)");
-      }}
-    >
-      <label className="settings-model-search" data-input-surface>
-        <Search />
-        <input
-          ref={search}
-          aria-label={`Search models for ${label.toLowerCase()}`}
-          placeholder="Search models"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setProviderOpen(null);
-          }}
-        />
-      </label>
-      <div className="settings-model-options" role="menu" aria-label={`${label} models`}>
-        {automatic !== undefined && (
-          <button
-            type="button"
-            data-model-root
-            role="menuitemradio"
-            aria-checked={automatic}
-            disabled={disabled}
-            onClick={() =>
-              void onChange(undefined).then((ok) => {
-                if (ok) close();
-              })
-            }
-          >
-            Automatic {automatic && <Check />}
-          </button>
-        )}
-        {loading && <p>Loading models…</p>}
-        {!loading && !matched.length && <p>No matching models. Use Model settings to enter a model ID.</p>}
-        {[...groups].map(([group, models]) =>
-          group && !query.trim() ? (
-            <ModelProviderMenu
-              key={group}
-              label={providerNames[group] ?? group}
-              open={providerOpen === group}
-              onOpen={() => setProviderOpen(group)}
-              onClose={() => setProviderOpen(null)}
-            >
-              {modelRows(models, close, false)}
-            </ModelProviderMenu>
-          ) : (
-            <div key={group}>{modelRows(models, close, true)}</div>
-          ),
-        )}
-      </div>
-    </div>
-  );
-  return (
-    <SettingsField compact label={label} hint={hint}>
-      <div className="settings-model-control">
-        <Popover
-          label={`${label} selection`}
-          align="end"
-          className="settings-model-trigger"
-          disabled={disabled}
-          initialFocusRef={search}
-          trigger={
-            <>
-              <span>{name || "Choose model"}</span>
-              <ChevronDown />
-            </>
-          }
-        >
-          {control}
-        </Popover>
-        <ActionMenu label={`${label} options`} actions={actions} />
-      </div>
-    </SettingsField>
   );
 }
 

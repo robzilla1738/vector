@@ -12,6 +12,7 @@ import {
 import { toast, errToast } from "../../store";
 import { ActionMenu } from "../../ui";
 import { useConfirm } from "../../ui/dialog";
+import { ModelChoice } from "../../ui/model-choice";
 import { SettingsField } from "../primitives";
 import { usePreferenceCommand } from "./preference-command";
 import {
@@ -230,45 +231,80 @@ export function ModelConnections({
         {error && <p {...nativeAlertRoleProps}>{error}</p>}
       </SettingsField>
       {children}
-      <SettingsField
-        compact={concise}
-        label="Image-generation model"
-        description="Images use your Gateway connection independently of your chat provider. Aux uses the default image model unless you choose another or turn it off. Selecting a model makes no request."
-        hint={
-          concise
-            ? "Model used to generate and edit images."
-            : "Images use your Gateway connection independently of your chat provider. Aux uses the default image model unless you choose another or turn it off. Selecting a model makes no request."
-        }
-      >
-        <select
-          aria-label="Image-generation model"
-          disabled={disabled || busy || !parsed.success}
+      {concise ? (
+        <ModelChoice
+          label="Image-generation model"
+          hint="Model used to generate and edit images."
           value={String(
             settings.imageModel === undefined ? DEFAULT_IMAGE_MODEL_ID : (settings.imageModel ?? "off"),
           )}
-          ref={imageRef}
-          data-command-id="set-image-generation-model"
-          onChange={chooseImage}
+          automaticLabel="Default image model"
+          automatic={settings.imageModel === undefined || settings.imageModel === DEFAULT_IMAGE_MODEL_ID}
+          options={[
+            ...IMAGE_MODELS.map((model) => ({
+              id: model.id,
+              name: model.label,
+              provider: model.id.split("/")[0],
+            })),
+            { id: "off", name: "Off" },
+          ]}
+          disabled={!parsed.success || !active}
+          pending={disabled || busy}
+          loading={false}
+          onChange={async (id) => {
+            try {
+              return (
+                (await work(() =>
+                  onSave({ imageModel: id === "off" ? null : (id ?? DEFAULT_IMAGE_MODEL_ID) }),
+                )) === true
+              );
+            } catch {
+              return false;
+            }
+          }}
         >
-          <option value="off">Off</option>
-          {IMAGE_MODELS.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.label}
-            </option>
-          ))}
-        </select>
-        {!!settings.imageModel && (!gateway?.enabled || gateway.credentialSource === "none") && (
-          <p {...staticHintProps}>
-            Connect Gateway with a key authorized for this image model before generating an image.
-          </p>
-        )}
-        {!concise && (
-          <p {...staticHintProps}>
-            Image requests count toward your spending limits. Usage may be charged; image costs are estimated
-            when the provider does not return a price.
-          </p>
-        )}
-      </SettingsField>
+          {!!settings.imageModel && (!gateway?.enabled || gateway.credentialSource === "none") && (
+            <p {...staticHintProps}>
+              Connect Gateway with a key authorized for this image model before generating an image.
+            </p>
+          )}
+        </ModelChoice>
+      ) : (
+        <SettingsField
+          label="Image-generation model"
+          description="Images use your Gateway connection independently of your chat provider. Aux uses the default image model unless you choose another or turn it off. Selecting a model makes no request."
+          hint="Images use your Gateway connection independently of your chat provider. Aux uses the default image model unless you choose another or turn it off. Selecting a model makes no request."
+        >
+          <select
+            aria-label="Image-generation model"
+            disabled={disabled || busy || !parsed.success}
+            value={String(
+              settings.imageModel === undefined ? DEFAULT_IMAGE_MODEL_ID : (settings.imageModel ?? "off"),
+            )}
+            ref={imageRef}
+            data-command-id="set-image-generation-model"
+            onChange={chooseImage}
+          >
+            <option value="off">Off</option>
+            {IMAGE_MODELS.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.label}
+              </option>
+            ))}
+          </select>
+          {!!settings.imageModel && (!gateway?.enabled || gateway.credentialSource === "none") && (
+            <p {...staticHintProps}>
+              Connect Gateway with a key authorized for this image model before generating an image.
+            </p>
+          )}
+          {!concise && (
+            <p {...staticHintProps}>
+              Image requests count toward your spending limits. Usage may be charged; image costs are
+              estimated when the provider does not return a price.
+            </p>
+          )}
+        </SettingsField>
+      )}
       {confirmation}
     </>
   );
