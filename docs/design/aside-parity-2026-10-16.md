@@ -1144,3 +1144,13 @@ for chrome://aux at100% before initial navigation and excludes it from saved sit
 zoom listings. Applied/reverse-check passes; uncompiled. Next native acceptance:
 500%/25% writes and reopening, shell remains100%, fresh websites honor the default,
 restore100%, no internal Aux entry in website sizes. Do not accept from source alone.
+
+Reference040 source progress: compact Browsing history Delete/View rows now lead
+Security & Privacy. Deletion review moved from an expanded in-page block into the
+shared native Dialog with owned form CSS; count revalidation and category selection
+remain. Cancel/Escape perform no deletion; the trigger persists for focus return.
+Cookies/crash reports share a Privacy card, HTTPS-first moves to Advanced. Embedded
+Adblock/site-permission editors still differ from040/041 and remain open work.
+Full check4,582/4,584 (coder60s and CDP reconnect30s timeouts); isolated CDP9+clear2
+pass. Renderer2.57s. Nativea8e2a2ea8 currently linking does not include this later
+renderer slice. No live geometry/flow claim yet.

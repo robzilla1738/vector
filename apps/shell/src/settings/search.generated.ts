@@ -251,10 +251,15 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Site permissions",
-    label: "HTTPS-first",
-    description:
-      "Try HTTPS before HTTP for eligible sites. Other Chromium security modes may still require HTTPS.",
-    target: "HTTPS-first",
+    label: "Delete browsing history",
+    description: "Delete history, cookies, and cached files.",
+    target: "Delete browsing history",
+  },
+  {
+    category: "Site permissions",
+    label: "View browsing history",
+    description: "",
+    target: "View browsing history",
   },
   {
     category: "Site permissions",
@@ -272,9 +277,10 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Site permissions",
-    label: "Clear browsing data",
-    description: "Preview and remove visits, cookies and cached files for a selected period.",
-    target: "Clear browsing data",
+    label: "HTTPS-first",
+    description:
+      "Try HTTPS before HTTP for eligible sites. Other Chromium security modes may still require HTTPS.",
+    target: "HTTPS-first",
   },
   {
     category: "Passwords & Autofill",

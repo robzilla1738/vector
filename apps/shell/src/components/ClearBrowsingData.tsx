@@ -2,8 +2,10 @@ import { staticFieldErrorProps } from "../ui/class-props";
 import { staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { bridge } from "../bridge";
+import { Dialog } from "../ui/dialog";
+import "./ClearBrowsingData.css";
 import { call, toast } from "../store";
 import { nativeCheckboxTypeProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
@@ -25,6 +27,7 @@ function cacheSize(bytes: number, estimate: boolean) {
 }
 
 export function ClearBrowsingData({ active }: { active: boolean }) {
+  const trigger = useRef<HTMLButtonElement>(null);
   const [cutoff, setCutoff] = useState<number | null>(null);
   const [range, setRange] = useState<(typeof ranges)[number]["value"]>("hour");
   const [selected, setSelected] = useState<Selection>({ history: true, cookies: false, cache: false });
@@ -54,7 +57,7 @@ export function ClearBrowsingData({ active }: { active: boolean }) {
   }, [active, cutoff, since]);
 
   const clear = async () => {
-    if (cutoff === null || !preview || !historyRange || busy) return;
+    if (!active || cutoff === null || !preview || !historyRange || busy) return;
     setBusy(true);
     setError("");
     let browserCleared = false;
@@ -97,12 +100,19 @@ export function ClearBrowsingData({ active }: { active: boolean }) {
     }
   };
 
-  if (cutoff === null)
-    return (
-      <button {...smallGhostButtonProps} onClick={() => setCutoff(Date.now())}>
-        Clear browsing data…
-      </button>
-    );
+  const close = () => {
+    if (busy) return;
+    setCutoff(null);
+    setPreview(null);
+    setError("");
+  };
+  useEffect(() => {
+    if (!active && !busy) {
+      setCutoff(null);
+      setPreview(null);
+      setError("");
+    }
+  }, [active, busy]);
   const amount =
     (selected.history ? (preview?.visits ?? 0) : 0) +
     (selected.cookies ? (preview?.cookies ?? 0) : 0) +
@@ -111,79 +121,101 @@ export function ClearBrowsingData({ active }: { active: boolean }) {
   const cookiesLabel = `Cookies — ${preview ? `${preview.cookies} ${preview.cookies === 1 ? "cookie" : "cookies"}` : "counting…"}`;
   const cacheLabel = `Cached files — ${preview ? cacheSize(preview.cacheBytes, preview.cacheEstimate) : "counting…"}`;
   return (
-    <div className="clear-history" role="group" aria-label="Clear browsing data">
-      <p>
-        Choose a period and data types. The period ends when this panel opened; newer data stays. This cannot
-        be undone.
-      </p>
-      <div className="clear-history-ranges" role="group" aria-label="Browsing data time range">
-        {ranges.map((item) => (
-          <button
-            key={item.value}
-            {...smallGhostButtonProps}
-            aria-pressed={range === item.value}
-            disabled={busy}
-            onClick={() => {
-              setRange(item.value);
-              setError("");
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-      <label>
-        <input
-          {...nativeCheckboxTypeProps}
-          aria-label={historyLabel}
-          checked={selected.history}
-          disabled={busy}
-          onChange={(event) => setSelected((value) => ({ ...value, history: event.target.checked }))}
-        />{" "}
-        {historyLabel}
-      </label>
-      <label>
-        <input
-          {...nativeCheckboxTypeProps}
-          aria-label={cookiesLabel}
-          checked={selected.cookies}
-          disabled={busy}
-          onChange={(event) => setSelected((value) => ({ ...value, cookies: event.target.checked }))}
-        />{" "}
-        {cookiesLabel}
-      </label>
-      <label>
-        <input
-          {...nativeCheckboxTypeProps}
-          aria-label={cacheLabel}
-          checked={selected.cache}
-          disabled={busy}
-          onChange={(event) => setSelected((value) => ({ ...value, cache: event.target.checked }))}
-        />{" "}
-        {cacheLabel}
-      </label>
-      <p>Clearing cookies can sign you out. Bookmarks, downloads, saved work and Aux memory stay in place.</p>
-      {error && (
-        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
-          {error}
-        </p>
-      )}
-      <div {...staticRowProps}>
-        <button
-          {...smallButtonProps}
-          disabled={busy}
-          onClick={() => {
-            setCutoff(null);
-            setPreview(null);
-            setError("");
-          }}
+    <>
+      <button
+        ref={trigger}
+        className="btn sm danger"
+        disabled={!active}
+        aria-haspopup="dialog"
+        aria-expanded={active && cutoff !== null}
+        aria-label="Delete browsing history"
+        onClick={() => setCutoff(Date.now())}
+      >
+        Delete
+      </button>
+      {active && cutoff !== null && (
+        <Dialog
+          label="Delete browsing history"
+          onClose={close}
+          returnFocus={trigger}
+          className="aux-dialog-surface settings-preference-dialog"
         >
-          Cancel
-        </button>
-        <button className="btn sm danger" disabled={busy || !preview || !amount} onClick={() => void clear()}>
-          {busy ? "Clearing…" : "Clear selected data"}
-        </button>
-      </div>
-    </div>
+          <h3>Delete browsing history</h3>
+          <div className="clear-browsing-data" role="group" aria-label="Clear browsing data">
+            <p>
+              Choose a period and data types. The period ends when this panel opened; newer data stays. This
+              cannot be undone.
+            </p>
+            <div className="clear-history-ranges" role="group" aria-label="Browsing data time range">
+              {ranges.map((item) => (
+                <button
+                  key={item.value}
+                  {...smallGhostButtonProps}
+                  aria-pressed={range === item.value}
+                  disabled={busy}
+                  onClick={() => {
+                    setRange(item.value);
+                    setError("");
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <label>
+              <input
+                {...nativeCheckboxTypeProps}
+                aria-label={historyLabel}
+                checked={selected.history}
+                disabled={busy}
+                onChange={(event) => setSelected((value) => ({ ...value, history: event.target.checked }))}
+              />{" "}
+              {historyLabel}
+            </label>
+            <label>
+              <input
+                {...nativeCheckboxTypeProps}
+                aria-label={cookiesLabel}
+                checked={selected.cookies}
+                disabled={busy}
+                onChange={(event) => setSelected((value) => ({ ...value, cookies: event.target.checked }))}
+              />{" "}
+              {cookiesLabel}
+            </label>
+            <label>
+              <input
+                {...nativeCheckboxTypeProps}
+                aria-label={cacheLabel}
+                checked={selected.cache}
+                disabled={busy}
+                onChange={(event) => setSelected((value) => ({ ...value, cache: event.target.checked }))}
+              />{" "}
+              {cacheLabel}
+            </label>
+            <p>
+              Clearing cookies can sign you out. Bookmarks, downloads, saved work and Aux memory stay in
+              place.
+            </p>
+            {error && (
+              <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
+                {error}
+              </p>
+            )}
+            <div {...staticRowProps}>
+              <button {...smallButtonProps} disabled={busy} onClick={close}>
+                Cancel
+              </button>
+              <button
+                className="btn sm danger"
+                disabled={busy || !preview || !amount}
+                onClick={() => void clear()}
+              >
+                {busy ? "Clearing…" : "Clear selected data"}
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+    </>
   );
 }

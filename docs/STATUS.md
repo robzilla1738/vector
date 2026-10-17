@@ -591,3 +591,15 @@ coder-worktrees60s timeout failed (log /tmp/aux-shell-zoom-isolation-check.log).
 Poll the existing native builder rather than restarting. Next: shell stays100% at website defaults
 25%/500%, fresh websites inherit the chosen default, restore100%, verify saved
 website sizes exclude chrome://aux, then inspect current shortcut/cookie controls.
+
+October16 Security & Privacy source: Browsing history now leads with compact
+Delete/View rows. Delete opens the existing reviewed category/count workflow in a
+focus-contained dialog; Cancel and Escape dismiss without deletion, leaving the
+trigger mounted for focus return. Inactive sections cannot start a clear. The
+component owns its dialog-form styling independently of Library loading. Privacy
+contains cookies/crash reports; HTTPS-first is under Advanced. Adblock and site
+permissions still need their compact reference040/041 restructuring.
+Typecheck/lint pass. Full check4,582/4,584: existing coder-worktrees60s timeout and
+native-cdp-broker reconnect30s timeout; isolated CDP+clear-dialog recheck passed all
+11 cases in1.13s. Renderer2.57s. This source postdates staged nativea8e2a2ea8 and
+still needs live visual acceptance; don't treat it as compiled evidence.
