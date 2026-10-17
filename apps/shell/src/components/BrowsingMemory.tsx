@@ -369,6 +369,7 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
         <>
           <label className="memory-use-toggle">
             <input
+              className="ui-switch"
               ref={toggleAttach}
               {...nativeCheckboxTypeProps}
               checked={saved.policy.enabled}
@@ -385,7 +386,7 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
             </span>
           </label>
           {saved.policy.enabled && memory.enabled === false && (
-            <p {...staticHintProps}>Space memory is paused above. Recording and use are paused too.</p>
+            <p {...staticHintProps}>Space memory is paused in Configure. Recording and use are paused too.</p>
           )}
           <label className="browsing-retention">
             Keep remembered pages for

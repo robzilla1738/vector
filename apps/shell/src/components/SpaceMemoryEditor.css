@@ -170,3 +170,49 @@
     line-height: 1.5;
   }
 }
+
+@layer overrides {
+  .memory-settings .memory-use-toggle {
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    border-radius: var(--r-lg);
+    background: var(--surface-secondary);
+  }
+  .memory-settings .memory-use-toggle > span {
+    flex: 1;
+    min-width: 0;
+  }
+  .memory-settings .memory-use-toggle > input.ui-switch {
+    order: 1;
+    margin: 0;
+  }
+  .memory-settings .browsing-memory {
+    margin-top: 24px;
+    padding-top: 0;
+    border-top: 0;
+  }
+  .memory-settings .browsing-memory h4 {
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    margin-bottom: 10px;
+  }
+  .memory-settings .browsing-memory > .hint {
+    margin: 0 0 16px;
+    line-height: 1.5;
+  }
+  .memory-settings .browsing-retention {
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    margin: 1px 0 12px;
+    border-radius: var(--r-lg);
+    background: var(--surface-secondary);
+    flex-wrap: wrap;
+  }
+  .memory-settings .browsing-retention select {
+    margin-left: auto;
+    max-width: 100%;
+  }
+}

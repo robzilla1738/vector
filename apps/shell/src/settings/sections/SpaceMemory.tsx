@@ -109,6 +109,7 @@ function PipelineControl({
       "data-command-id": command,
       "aria-label": "Enable Space memory",
       type: "checkbox",
+      className: "ui-switch",
       checked,
       disabled,
       onChange: invoke,
@@ -360,7 +361,7 @@ function SpaceMemoryContent({
     >
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
       <div hidden={!!view && view !== "configure"}>
-        <label htmlFor={enabledId}>
+        <label className="memory-use-toggle" htmlFor={enabledId}>
           <PipelineControl
             inputId={enabledId}
             command="toggle-space-memory-pipeline"
@@ -370,8 +371,8 @@ function SpaceMemoryContent({
             disabled={!snapshot || busy || bridge.privateMode}
             onError={report}
             action={() => act(() => call("memory.pipeline.setPolicy", { workspaceId, enabled: !enabled }))}
-          />{" "}
-          Enable memory for this Space
+          />
+          <span>Enable memory for this Space</span>
         </label>
       </div>
       <div hidden={!!view && view !== "overview"}>

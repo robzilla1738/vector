@@ -120,6 +120,7 @@ function ContentControl({
     return memoryControlElement("input", {
       id: inputId,
       type: "checkbox",
+      className: "ui-switch",
       "data-command-id": command,
       ref: attach,
       checked,
@@ -687,8 +688,8 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
       <p {...staticHintProps}>
         Eligible readable HTTPS articles are remembered locally after you spend time on the tab. Sensitive
         pages and private windows are excluded. You can pause capture or forget saved articles. Semantic
-        search uses an installed local embedding model on this device. Forget removes articles
-        from recall; copies already included in older chats or exported files may remain.
+        search uses an installed local embedding model on this device. Forget removes articles from recall;
+        copies already included in older chats or exported files may remain.
       </p>
       {needsFreshBackup && <MemoryRecoveryNotice possible={possiblyRemoved} />}
       {policy && (
@@ -717,7 +718,7 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
           </label>
           {memory.enabled === false && (
             <p {...staticHintProps}>
-              Space memory is paused above. Article capture and search are unavailable.
+              Space memory is paused in Configure. Article capture and search are unavailable.
             </p>
           )}
           <label className="browsing-retention" htmlFor={retentionId}>

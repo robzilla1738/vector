@@ -53,6 +53,7 @@ function MemoryControl({
       id: inputId,
       ref,
       type: "checkbox",
+      className: "ui-switch",
       checked,
       disabled,
       onChange: invoke,

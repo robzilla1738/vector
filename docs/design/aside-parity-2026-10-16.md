@@ -1,5 +1,26 @@
 # Aside UI parity — October 16, 2026
 
+Memory control presentation (reference 077): Space memory use, extraction,
+browsing memory and page-content recall now use the shared switch appearance.
+Within Memory Settings, enable rows have rounded surfaces with the switch aligned
+right; retention rows align their selector with the label and wrap at narrow
+widths. Context section headings and spacing follow the quieter Settings
+hierarchy. Pause messages now point to Configure rather than an absent control
+“above.” Existing policies, command bindings and persistence are unchanged.
+
+Validation: integrated typecheck/lint and 4,619 tests across 742 files passed
+(111.66s); renderer build passed in 3.20s. Logs:
+`/tmp/aux-memory-control-rows-check.log`, `/tmp/aux-memory-control-rows-build.log`.
+Visual acceptance remains pending. These renderer edits are newer than the
+`6dba6ccbb` native consolidation: launcher 4136/session 59138 and Siso 4392
+remain live linking the framework. Do not restart the builder. The in-app browser
+surface is unavailable, and the disposable Aux preview has not launched yet.
+
+References 112/115 were also checked against ChatHistory: list/card layout,
+search, active/archive and Space filters, and newest/oldest sorting already exist.
+Their native visual comparison remains open; no duplicate controls were added.
+Full Aside parity remains incomplete.
+
 Native consolidation started for `6dba6ccbb` (Memory routes/history/documents
 and Quick Ask): launcher **4136**, tool session **59138**, log
 `/tmp/aux-memory-navigation-native.log`. The previous launcher 88765 was retired
