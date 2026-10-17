@@ -3,6 +3,17 @@
 
 ## October 16 UI parity review — in progress
 
+
+**Active native builder:** source0edb56c33/area0043, launcher50077,
+exec session72130, log /tmp/aux-shell-chooser-native.log. It includes Tidy source
+and neutral actions plus file chooser forwarding/dialog cancellation scope. Poll
+this same live handle; do not restart or clear its lock. Next: compiled chooser
+opens, Cancel preserves its editor, shared synthetic HTML preview/import succeeds,
+SDK verifies the new synthetic URL/folders, and compiled Tidy Save/reopen persists.
+Owned fixture still resides at /tmp/aux-settings-fixture-path; its URL was changed
+to example.test/aux-mutated-after-review for the refusal test. It remains safe
+synthetic input, and should now import only after a fresh explicit review.
+
 Current source adds Appearance → Customize Tidy Tabs, matching capture030’s
 compact dialog, 300-character counter, draft Cancel and explicit Save. The saved
 preference is persisted through settings and reaches the actual Tidy proposal;

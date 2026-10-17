@@ -1020,3 +1020,14 @@ Area0043 integrated check: typecheck/lint pass,4,576/4,577 tests across733
 files pass; only the existing coder-worktrees timeout fails. All5 Dialog cases,
 including descendant-cancel regression, pass. Renderer build passes3.03s.
 Native chooser forwarding is source/patch verified only until compiled launch.
+
+
+**Active native builder:** source0edb56c33/area0043, launcher50077,
+exec session72130, log /tmp/aux-shell-chooser-native.log. It includes Tidy source
+and neutral actions plus file chooser forwarding/dialog cancellation scope. Poll
+this same live handle; do not restart or clear its lock. Next: compiled chooser
+opens, Cancel preserves its editor, shared synthetic HTML preview/import succeeds,
+SDK verifies the new synthetic URL/folders, and compiled Tidy Save/reopen persists.
+Owned fixture still resides at /tmp/aux-settings-fixture-path; its URL was changed
+to example.test/aux-mutated-after-review for the refusal test. It remains safe
+synthetic input, and should now import only after a fresh explicit review.
