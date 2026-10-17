@@ -1,5 +1,27 @@
 # Aux status — October 16, 2026
 
+Bookmark Sort by name (reference 169) is now implemented in source. It persists
+folders-first, locale-aware title ordering through the existing checked native
+folder/bookmark moves. Equal-title items retain their relative order. Search
+results cannot be sorted; the command targets the selected folder. Already sorted
+folders do not dispatch moves. Successful steps update the snapshot and collect
+native inverses in reverse order for Undo sort; a failed step stops the batch and
+keeps completed steps undoable. Undo retains unfinished inverses after a failure
+and verifies the original window/Private identity before dispatch. Bookmarks are
+refreshed after sort/undo to display native order.
+
+Integrated check: typecheck/lint and 4,639 tests / 747 files passed in 92.19s;
+renderer build 3.17s. Regression covers folder/bookmark ordering, duplicate folder
+names, fresh destination children, inverse dispatch, partial failure, retired
+view and no-op sorting. First typecheck exposed an unnecessarily broad Bookmark
+input type requiring createdAt; narrowed to the fields used by sorting before the
+passing check. Logs `/tmp/aux-bookmark-sort-check.log` and
+`/tmp/aux-bookmark-sort-build.log`. Native sort/undo walkthrough remains pending;
+this source postdates the active native candidate 79bfa144e under launcher 52233.
+Do not restart that builder. Full parity, group/split destinations, clipboard and
+separate native page routes remain open.
+
+
 Consolidated native build started from `79bfa144e`, including bookmark window
 and Private destinations (area patch 0046), History rows/selection and rounded
 Library dialogs. Launcher **52233**, exec session **58825**, log

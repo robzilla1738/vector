@@ -8,6 +8,7 @@ import { ArchivedTabs } from "./ArchivedTabs";
 import "./Library.css";
 import { ActionMenu } from "../ui";
 import { NewBookmarkDialog } from "./NewBookmarkDialog";
+import { sortBookmarkFolder, undoBookmarkOrder, type BookmarkOrderUndo } from "../bookmark-sort";
 import { HistoryDeleteDialog } from "./HistoryDeleteDialog";
 import { HistoryVisitRow } from "./HistoryVisitRow";
 import { SavedPageActions } from "./SavedPageActions";
@@ -96,6 +97,7 @@ type BookmarkEditor = SavedPage & {
   destinationId: string;
 };
 type RemovedBookmark = { title: string; undoToken: string };
+const bookmarkWindowKey = () => JSON.stringify([bridge.windowId, bridge.privateMode, bridge.windowKind]);
 const visitKey = (item: HistoryEntry) => JSON.stringify([item.url, item.visitedAt]);
 const bookmarkKey = (item: SavedPage) => item.nodeId ?? item.url;
 type View = "archived" | "bookmarks" | "reading" | "history" | "closed";
@@ -526,6 +528,8 @@ export function Library({
   const [folderId, setFolderId] = useState("");
   const currentFolder = folders.find((item) => item.nodeId === (folderId || snapshot?.rootId));
   const folder = currentFolder?.path ?? [];
+  const [sortUndo, setSortUndo] = useState<BookmarkOrderUndo[]>([]);
+  const sortUndoOwner = useRef("");
   const [folderUndo, setFolderUndo] = useState<BookmarkFolderChange | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selection, setSelection] = useState<SavedPage[]>([]);
@@ -1087,6 +1091,43 @@ export function Library({
                 label="Organize bookmarks"
                 actions={[
                   {
+                    label: "Sort by name",
+                    disabled:
+                      busy ||
+                      !!q ||
+                      !snapshot?.editable ||
+                      !currentFolder ||
+                      currentFolder.childIds.length < 2,
+                    onSelect: () =>
+                      void action(async () => {
+                        if (!snapshot || !currentFolder) return;
+                        const undo: BookmarkOrderUndo[] = [];
+                        const owner = bookmarkWindowKey();
+                        let moved = 0;
+                        try {
+                          moved = await sortBookmarkFolder(
+                            snapshot,
+                            currentFolder.nodeId,
+                            bookmarks,
+                            current,
+                            (next, inverse) => {
+                              setSnapshot(next);
+                              if (inverse) undo.unshift(inverse);
+                              sortUndoOwner.current = owner;
+                              setSortUndo([...undo]);
+                            },
+                          );
+                          setNotice(moved ? "Folder sorted by name." : "Folder is already sorted by name.");
+                        } catch (reason) {
+                          if (undo.length)
+                            setNotice("Some items were sorted. Undo sort can restore those moves.");
+                          throw reason;
+                        } finally {
+                          useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
+                        }
+                      }),
+                  },
+                  {
                     label: "Add new bookmark",
                     disabled: busy || !snapshot?.editable || !currentFolder,
                     onSelect: () => {
@@ -1550,6 +1591,34 @@ export function Library({
                 <output className="library-message" data-block>
                   {notice}
                 </output>
+              )}
+              {sortUndo.length > 0 && (
+                <div className="library-message row">
+                  <button
+                    {...smallButtonProps}
+                    disabled={busy}
+                    onClick={() =>
+                      void action(async () => {
+                        const remaining = [...sortUndo];
+                        try {
+                          while (remaining.length) {
+                            if (!current() || sortUndoOwner.current !== bookmarkWindowKey())
+                              throw new Error("Return to the original Library window to undo sorting.");
+                            const result = await undoBookmarkOrder(remaining[0]!);
+                            setSnapshot(result.snapshot);
+                            remaining.shift();
+                            setSortUndo([...remaining]);
+                          }
+                          setNotice("Previous bookmark order restored.");
+                        } finally {
+                          useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
+                        }
+                      })
+                    }
+                  >
+                    Undo sort
+                  </button>
+                </div>
               )}
               {folderUndo && (
                 <div className="library-tools">
