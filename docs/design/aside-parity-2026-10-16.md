@@ -935,3 +935,9 @@ unproven until those real changed-flow checks pass. Full goal stays active.
 Final selected-export slice check: typecheck/lint pass; 4,563/4,564 tests
 across 732 files pass, with only the longstanding coder-worktrees 60-second
 timeout. All 21 focused import cases pass. Native 0042 build is still required.
+
+A single new native launcher builds544da21a2/area0042, PID41893,
+/tmp/aux-selected-export-native.log. Poll the existing process; do not restart
+on an observation timeout. The owned fixture is retained for native review,
+directory-metadata acceptance and changed/replaced-file refusal checks. Shared
+Settings native file-import acceptance also remains pending.

@@ -3,6 +3,15 @@
 
 ## October 16 UI parity review — in progress
 
+**Native build in progress: 544da21a2 / area0042.** Single launcher PID41893,
+node scripts/dev.mjs --temp-profile, log /tmp/aux-selected-export-native.log.
+It includes the shared bookmark entry and selected-file scope correction. Poll
+this same process/session before replacement; no active lock may be cleared.
+The owned synthetic fixture remains at the path in /tmp/aux-settings-fixture-path.
+Next acceptance: native selected-export import succeeds despite directory metadata
+changes, edited/replaced file still refuses, and shared Settings file review/import
+works with the disposable Profile. These outcomes are not yet established.
+
 Native 2425d212a verification is complete for the changed provider/language UI:
 Brave stays checked after the real Chromium URL normalization, fresh Settings and
 Home both show Search, and Add’s bounded alphabetized menu adds/saves Akan across
