@@ -1,5 +1,15 @@
 # Aside UI parity — October 16, 2026
 
+Native consolidation started for `6dba6ccbb` (Memory routes/history/documents
+and Quick Ask): launcher **4136**, tool session **59138**, log
+`/tmp/aux-memory-navigation-native.log`. The previous launcher 88765 was retired
+with SIGTERM; app 95564 exited, disposable Profile `aux-dev-VQvSoS` was removed,
+and its lock was released before the replacement started. Renderer and host
+method generation completed; the current Siso process 4392 is compiling under
+the single launcher. No replacement preview is ready yet. Continue polling this
+owner/session rather than starting another builder. No native acceptance is
+claimed for the consolidated source until launch and walkthrough complete.
+
 Memory navigation pass (references 072–077): Overview, History, Context
 awareness and Configure now have nested Settings-rail destinations and stable
 internal routes (`memory`, `memory-history`, `memory-context`, `memory-configure`).
