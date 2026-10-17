@@ -53,11 +53,20 @@ The280px populated rail review exposed its status label shrinking under the
 expand action. The follow-up keeps status/actions/chevrons fixed and lets title
 text truncate; spacing/button sizes reuse the shared tokens. Integrated check
 passed typecheck, lint and4,675tests/749files in100.61s
-(`/tmp/aux-rail-header-check.log`). This CSS correction needs replacement
-packaged acceptance. The live Aside window also has a bright native glass
-backdrop on the current desktop; no extra dark backing was added to Aux.
-Launcher36642 retired normally; app37763, runtime37777, API59718, disposable
-Profileaux-dev-EnQ6iy and the lock are gone. No diagnostic styles were injected.
+(`/tmp/aux-rail-header-check.log`). The live Aside window also has a bright native
+glass backdrop on the current desktop; no extra dark backing was added to Aux.
+Launcher36642 retired normally; its app, runtime, listener, Profile and lock are gone.
+
+Final native769ba5f86 built in8m27.57s. About/native and runtime report the same
+clean source. Captures102–103 verify a completed long-title conversation at400px
+and280px: title truncates and status, expand, new-chat and close remain separate.
+Synthetic run`run_mvct5lla_0z06qv` returned AUX READY with Low/local/Ask first and
+no page context. Default400px width is restored, with dark Run options open
+(capture104). No diagnostic styles were injected. Live launcher41079/app42302/
+runtime42316, API60846, disposable Profileaux-dev-dOcpUP, exec85819,
+log`/tmp/aux-rail-header-native.log`. Only this launcher owns cleanup.
+This is native acceptance of the dropdown/header batch, not full Aside parity,
+20-task smoke completion or a browser-readiness claim.
 
 
 ## Shared popup material and browser search

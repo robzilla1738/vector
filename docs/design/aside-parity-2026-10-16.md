@@ -2814,3 +2814,13 @@ Integrated typecheck/lint and4,675tests/749files passed100.61s
 (/tmp/aux-rail-header-check.log). Replacement acceptance remains pending for
 that correction. This walkthrough
 does not complete full surface parity or the manual20-task browser smoke.
+
+
+## October17 — final narrow-header acceptance,769ba5f86
+
+Build8m27.57s; About/native/runtime agree on clean769ba5f86. Captures102–103
+verify a completed long-title conversation at400px and280px without status/action
+overlap. Default400px width restored;104 shows final native Run options. A second
+synthetic no-tool request returned AUX READY with Low/local/Ask first and no page
+context. No diagnostic CSS was injected. Current launcher/Profile ownership is
+recorded inSTATUS. Full Aside parity and the20-task smoke remain incomplete.
