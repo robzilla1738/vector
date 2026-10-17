@@ -1,5 +1,25 @@
 # Aside UI parity — October 16, 2026
 
+Architecture review, October 17: references 164–170 are actual Chromium History
+and Bookmarks WebUIs (AX URLs chrome://history/grouped and chrome://bookmarks),
+not a combined Library. Before extending the renderer overlay further, inspect
+those built-in pages in the current disposable Aux candidate. This checkout's
+`chrome/browser/resources/bookmarks/command_manager.ts` already implements native
+Cut/Copy/Paste, multi-selection, new tab groups and split opening; `item.css`
+shows URLs only for selected rows, as reference 170 does. Its History WebUI
+constructs HistoryClustersHandler and displays native By date/By group tabs.
+These are source findings, not proof that the pages render or all features are
+enabled in Aux. Next: open both internal URLs using the ordinary address field,
+inspect native rendering/actions, then route public Library entry points to real
+pages and remove replaced overlay implementations where the native path covers
+them. Preserve separate Reading/Archived/Closed surfaces, Aux policy, Private
+behavior and runtime-independent usability. Avoid adding another clustering or
+bookmark clipboard implementation in the renderer before this investigation.
+
+Candidate 479f5a96b remains in native linking under launcher 73597/session 88582;
+ld64.lld PID 74150 was live at launcher elapsed 4m31s. No restart is warranted.
+
+
 Bookmark clipboard batch (reference 170) is implemented in source. Single-row
 Cut/Copy use Chromium's native bookmark clipboard format; Paste accepts native
 bookmark trees or a URL, inserts after the selected row or at the current folder's
