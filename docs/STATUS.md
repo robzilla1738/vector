@@ -582,3 +582,12 @@ label now matches the reference; no cookie deletion was introduced. Both writer
 directions and managed-policy tests pass. Integrated typecheck/lint pass,
 4,583/4,584 tests pass with only coder-worktrees60s timeout; renderer2.13s.
 This newer renderer is not part of active native63412; live verification remains.
+
+Active native builder: a8e2a2ea8/area0045, launcher74686, exec session46286,
+log /tmp/aux-shell-zoom-isolation-native.log. This build also stages the newer
+inline shortcut/reset-icon and cookie-selector renderer. Keep this owner/lock.
+Integrated check completed: typecheck/lint pass and4,583/4,584 tests pass; only
+coder-worktrees60s timeout failed (log /tmp/aux-shell-zoom-isolation-check.log).
+Poll the existing native builder rather than restarting. Next: shell stays100% at website defaults
+25%/500%, fresh websites inherit the chosen default, restore100%, verify saved
+website sizes exclude chrome://aux, then inspect current shortcut/cookie controls.
