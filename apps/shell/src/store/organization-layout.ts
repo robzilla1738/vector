@@ -37,7 +37,28 @@ export function fromOrganizationLayout(value: OrganizationLayout): Layout {
   };
 }
 
-const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
+/** Native JSON dictionaries may reorder keys; arrays still represent user order. */
+export function sameOrganizationValue(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (!left || !right || typeof left !== "object" || typeof right !== "object") return false;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => sameOrganizationValue(value, right[index]))
+    );
+  }
+  const a = left as Record<string, unknown>,
+    b = right as Record<string, unknown>;
+  const keys = Object.keys(a).filter((key) => a[key] !== undefined);
+  const otherKeys = Object.keys(b).filter((key) => b[key] !== undefined);
+  return (
+    keys.length === otherKeys.length &&
+    keys.every((key) => Object.hasOwn(b, key) && sameOrganizationValue(a[key], b[key]))
+  );
+}
+const same = sameOrganizationValue;
 
 function mergeRecord<T>(
   base: Record<string, T>,

@@ -4,6 +4,7 @@ import type { Layout } from "../workspace";
 import {
   fromOrganizationLayout,
   rebaseOrganizationLayout,
+  sameOrganizationValue,
   toOrganizationLayout,
 } from "./organization-layout";
 
@@ -26,8 +27,7 @@ function sameTidyState(left: OrganizationLayout, right: OrganizationLayout): boo
   const leftReceipt = left.shared.tidyUndo;
   const rightReceipt = right.shared.tidyUndo;
   if (!leftReceipt && !rightReceipt) return true;
-  if (!leftReceipt || !rightReceipt || JSON.stringify(leftReceipt) !== JSON.stringify(rightReceipt))
-    return false;
+  if (!leftReceipt || !rightReceipt || !sameOrganizationValue(leftReceipt, rightReceipt)) return false;
   if (!tidyFoldersMatch(leftReceipt.created, right.shared.folders)) return false;
   const created = new Set(leftReceipt.created.map((folder) => folder.id));
   const assignments = (layout: OrganizationLayout) =>
@@ -35,7 +35,7 @@ function sameTidyState(left: OrganizationLayout, right: OrganizationLayout): boo
       .filter(([, folderId]) => created.has(folderId))
       .sort(([leftId], [rightId]) => leftId.localeCompare(rightId))
       .map(([pageId, folderId]) => `${pageId}\0${folderId}`);
-  return JSON.stringify(assignments(left)) === JSON.stringify(assignments(right));
+  return sameOrganizationValue(assignments(left), assignments(right));
 }
 
 export interface OrganizationHost {
@@ -131,10 +131,7 @@ export class OrganizationPersistence {
   private async writeReviewed(reviewed: Layout, next: Layout): Promise<void> {
     await this.hydrate();
     const observed = await this.host.organizationSnapshot();
-    if (
-      !observed.layout ||
-      JSON.stringify(fromOrganizationLayout(observed.layout)) !== JSON.stringify(reviewed)
-    ) {
+    if (!observed.layout || !sameOrganizationValue(fromOrganizationLayout(observed.layout), reviewed)) {
       throw new Error(STALE_TIDY_UNDO);
     }
     const pendingAtStart = this.pending;
@@ -183,7 +180,7 @@ export class OrganizationPersistence {
       let local = toOrganizationLayout(pending);
       for (let attempt = 0; attempt < 5; attempt++) {
         const base = this.base!;
-        if (base.layout && JSON.stringify(local) === JSON.stringify(base.layout)) break;
+        if (base.layout && sameOrganizationValue(local, base.layout)) break;
         try {
           this.base = await this.host.organizationCommit({ expectedRevision: base.revision, layout: local });
           break;

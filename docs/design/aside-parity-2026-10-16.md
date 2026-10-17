@@ -1980,3 +1980,26 @@ CAS retry loop next. Capture:
 The synthetic draft was cleared and its expanded window closed; no model request
 was sent, shortcut registered or owner Profile touched. Populated Memory History,
 notes, responsive chat cards and full parity remain unaccepted.
+
+Organization persistence follow-up: found key-order-sensitive JSON comparisons
+in the no-op commit guard and three-way merge. Chromium dictionary serialization
+can reorder keys while preserving values; two normal windows refreshing Spaces
+could therefore keep writing equivalent state and contend for revisions. Source
+now compares object values independently of property order, retains array order,
+and treats omitted optional properties consistently with native JSON. Reviewed
+Tidy comparisons use the same value semantics; conflict/undo guards remain.
+
+Regression models two windows hydrating native-sorted JSON, one genuine edit,
+then repeated refresh/persist cycles: exactly one host commit. Additional cases
+preserve remote edits across reordered local objects and commit real tab reorder.
+Integrated check: typecheck/lint and 4,633 tests across 746 files passed in 94.25s.
+Renderer build 3.15s. Logs `/tmp/aux-organization-check.log` and
+`/tmp/aux-organization-build.log`. Native Quick Ask expansion must be rechecked
+before claiming the recurring notification resolved; active app 35867 predates
+this fix as well as the root-rail and bookmark-edit follow-ups.
+
+Native 122155dbe model-search focus was also inspected directly: the inner text
+rectangle from the owner's screenshot is absent; the rounded field retains focus
+indication. Capture `/tmp/aux-parity-2026-10-16/aux-model-search-focus-native-122155.png`.
+The screenshot includes the already-documented organization error from that old
+build; it is not evidence that persistence is fixed.
