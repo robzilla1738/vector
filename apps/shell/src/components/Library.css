@@ -535,7 +535,8 @@
     justify-content: center;
     flex: none;
   }
-  .library-bookmark-more > svg {
+  .library-bookmark-more > .ci,
+  .library-page[data-view="history"] .library-actions .ui-menu-trigger > .ci {
     transform: rotate(90deg);
   }
   .library-bookmark-actions {

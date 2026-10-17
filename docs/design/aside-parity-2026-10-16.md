@@ -2035,3 +2035,30 @@ bca52783c native candidate. Visual/native acceptance is pending. Date/group tabs
 real history clusters, selection and separate native page routes remain open;
 this is not full History parity. Reference corpus remains 380 source files.
 
+
+Native bca52783c acceptance: completed in 8m07.53s and About confirmed exact
+source `bca52783c5873cc42287ee81b59841ccaf0a32a5`. Launcher 41736 / session
+82219 still owns app 45506 and disposable Profile `aux-dev-vseCSW`; API port
+65046. No replacement build started. Preserve this launcher's cleanup ownership.
+
+Quick Ask opened, retained an unsent synthetic draft on expansion, and showed no
+organization-save notification after the delayed observation window. The original
+window also had no notification on return. Draft cleared and expanded window
+closed; no provider request sent. Native bookmark creation and two consecutive
+renames succeeded: Name received focus, each saved title updated immediately,
+and the second edit had no stale-source conflict. All three permanent roots are
+visible, with the selected root using the accent pill. Captures:
+`/tmp/aux-parity-2026-10-16/aux-quick-ask-expanded-native-bca527.png` and
+`/tmp/aux-parity-2026-10-16/aux-bookmark-repeat-edit-native-bca527.png`.
+These observations resolve the specific previous failures; broader persistence,
+restart, narrow and light-mode coverage remains pending.
+
+Current History source was visually inspected through the existing Vite mock at
+`http://127.0.0.1:5197` inside a new tab of this disposable browser. Populated rows
+show timestamps, icons, inline title/hostname and functioning overflow menus.
+Corrected row ellipses by rotating the shared icon wrapper (also fixes bookmark
+row ellipses); reloaded preview confirms vertical dots. Capture:
+`/tmp/aux-parity-2026-10-16/aux-history-compact-rows-vite.png`.
+This is renderer-preview evidence, not acceptance of native History mutations.
+No temporary fixture changes were needed. Full Aside parity remains incomplete.
+
