@@ -167,7 +167,7 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   {
     category: "Appearance",
     label: "Auto-hide toolbar",
-    description: "Reveal the address field from the top edge, or keep it visible.",
+    description: "Reveal browser controls from the top edge, or keep them visible.",
     target: "Auto-hide toolbar",
   },
   {
