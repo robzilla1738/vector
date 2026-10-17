@@ -1,0 +1,890 @@
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+index b866773..f09a985 100644
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -6915,13 +6915,15 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
+     // always denies a retired/missing Preview authority, including workers.
+     aux::NativeProjectPreview::ProxyFactory(frame, render_process_id,
+         type == URLLoaderFactoryType::kNavigation, factory_builder, header_client);
+-  } else aux::EgressController::ProxyFactory(Profile::FromBrowserContext(browser_context),
+-      frame, type == URLLoaderFactoryType::kNavigation,
+-      type == URLLoaderFactoryType::kWorkerMainResource ||
+-      type == URLLoaderFactoryType::kWorkerSubResource ||
+-      type == URLLoaderFactoryType::kServiceWorkerScript ||
+-      type == URLLoaderFactoryType::kServiceWorkerSubResource,
+-      factory_builder, header_client);
++  } else
++    aux::EgressController::ProxyFactory(
++        Profile::FromBrowserContext(browser_context), frame,
++        type == URLLoaderFactoryType::kNavigation, navigation_id,
++        type == URLLoaderFactoryType::kWorkerMainResource ||
++            type == URLLoaderFactoryType::kWorkerSubResource ||
++            type == URLLoaderFactoryType::kServiceWorkerScript ||
++            type == URLLoaderFactoryType::kServiceWorkerSubResource,
++        factory_builder, header_client);
+   if (semantic_filter_factory) {
+     aux::ContentBlockingController::MaybeProxySubresourceFactory(
+         Profile::FromBrowserContext(browser_context), factory_builder,
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.cc b/chrome/browser/ui/aux/browser_profile_importer.cc
+index 2b60eda..8981213 100644
+--- a/chrome/browser/ui/aux/browser_profile_importer.cc
++++ b/chrome/browser/ui/aux/browser_profile_importer.cc
+@@ -1124,10 +1124,16 @@ void BrowserProfileImporter::Dispatch(const std::shared_ptr<Job>& job) {
+           std::make_pair(tab.space->key, tab.space->folder_key), folder_id);
+       base::DictValue command;
+       command.Set("kind", "open"); command.Set("url", tab.url.spec());
+-      command.Set("pageId", page_id); command.Set("background", true);
++      command.Set("pageId", page_id);
++      command.Set("background", true);
+       auto* catalog = TabCatalog::GetForProfile(profile_);
+-      auto result = CurrentJob(*job) ? catalog->Command(job->source->window.get(),
+-          job->operation + "_tab_" + std::to_string(job->offset), command, std::nullopt) : base::DictValue();
++      auto result =
++          CurrentJob(*job)
++              ? catalog->Command(
++                    job->source->window.get(),
++                    job->operation + "_tab_" + std::to_string(job->offset),
++                    command, std::nullopt, TabCatalog::CommandSource::kRuntime)
++              : base::DictValue();
+       const auto* status = result.FindString("status");
+       BrowserWindowInterface* owner = nullptr;
+       auto* contents = catalog->FindPage(page_id, &owner);
+diff --git a/chrome/browser/ui/aux/egress_controller.cc b/chrome/browser/ui/aux/egress_controller.cc
+index 8de01a3..4c27894 100644
+--- a/chrome/browser/ui/aux/egress_controller.cc
++++ b/chrome/browser/ui/aux/egress_controller.cc
+@@ -1,10 +1,10 @@
+ // Copyright 2026 The Aux Authors
+ #include "chrome/browser/ui/aux/egress_controller.h"
+-#include <limits>
+-#include <cmath>
+ 
+ #include <algorithm>
+ #include <cctype>
++#include <cmath>
++#include <limits>
+ #include <utility>
+ 
+ #include "base/functional/bind.h"
+@@ -14,29 +14,31 @@
+ #include "base/logging.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/utf_string_conversions.h"
+-#include "base/time/time.h"
+ #include "base/task/sequenced_task_runner.h"
++#include "base/time/time.h"
+ #include "base/unguessable_token.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/egress_projection.h"
+ #include "chrome/browser/ui/aux/native_creator_close_receipt.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+-#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/tabs/tab_group_model.h"
+-#include "components/tabs/public/tab_group.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "components/tab_groups/tab_group_color.h"
+ #include "components/tab_groups/tab_group_visual_data.h"
+-#include "chrome/browser/ui/tabs/tab_enums.h"
+-#include "content/public/browser/navigation_handle.h"
+-#include "chrome/browser/ui/aux/page_identity.h"
+-#include "chrome/browser/ui/aux/runtime_host.h"
+-#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "components/tabs/public/tab_group.h"
++#include "content/browser/renderer_host/frame_tree_node.h"
++#include "content/browser/renderer_host/navigation_request.h"
+ #include "content/public/browser/browser_thread.h"
+-#include "content/public/browser/document_user_data.h"
+ #include "content/public/browser/devtools_agent_host.h"
++#include "content/public/browser/document_user_data.h"
++#include "content/public/browser/navigation_handle.h"
+ #include "content/public/browser/render_frame_host.h"
+-#include "content/public/browser/render_widget_host_view.h"
+ #include "content/public/browser/render_process_host.h"
++#include "content/public/browser/render_widget_host_view.h"
+ #include "content/public/browser/security_principal.h"
+ #include "content/public/browser/site_instance.h"
+ #include "content/public/browser/storage_partition.h"
+@@ -48,7 +50,27 @@
+ #include "url/origin.h"
+ 
+ namespace aux {
++struct NativePersonNavigationReceipt {
++  content::WeakDocumentPtr document;
++  base::WeakPtr<content::WebContents> page;
++  std::string page_id;
++  std::string control_generation;
++  bool admitted = false;
++};
+ namespace {
++const char kPersonNavigationKey = 0;
++struct PersonNavigationData : base::SupportsUserData::Data {
++  std::shared_ptr<NativePersonNavigationReceipt> receipt =
++      std::make_shared<NativePersonNavigationReceipt>();
++};
++content::NavigationRequest* PendingNavigation(content::WebContents* page) {
++  auto* frame = page ? page->GetPrimaryMainFrame() : nullptr;
++  auto* node = frame ? content::FrameTreeNode::GloballyFindByID(
++                           frame->GetFrameTreeNodeId())
++                     : nullptr;
++  return node ? node->navigation_request() : nullptr;
++}
++
+ const char kEgressKey = 0;
+ class EgressDocument : public content::DocumentUserData<EgressDocument> {
+  public:
+@@ -1099,7 +1121,92 @@ bool EgressController::GroupAgentPage(content::WebContents* page,
+       final_model->GetTabGroupForTab(final_index) == group &&
+       original->IsolationForPage(current_page_id, original_document.AsRenderFrameHostIfValid()) == final->second.get();
+ }
++std::shared_ptr<NativePersonNavigationReceipt>
++EgressController::CapturePersonNavigation(content::RenderFrameHost* frame,
++                                          int64_t navigation_id) {
++  auto* page =
++      frame ? content::WebContents::FromRenderFrameHost(frame) : nullptr;
++  auto* navigation = PendingNavigation(page);
++  if (!navigation || navigation->GetNavigationId() != navigation_id ||
++      !navigation->IsInPrimaryMainFrame() ||
++      navigation->IsRendererInitiated()) {
++    return {};
++  }
++  auto* data = static_cast<PersonNavigationData*>(
++      navigation->GetUserData(&kPersonNavigationKey));
++  if (!data) {
++    auto owned = std::make_unique<PersonNavigationData>();
++    data = owned.get();
++    auto& receipt = *data->receipt;
++    receipt.document = page->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++    receipt.page = page->GetWeakPtr();
++    receipt.page_id = PageIdentity::GetOrCreate(profile_, page);
++    const auto state = pages_.find(receipt.page_id);
++    if (state != pages_.end()) {
++      receipt.control_generation = state->second->control_generation;
++    }
++    navigation->SetUserData(&kPersonNavigationKey, std::move(owned));
++  }
++  return data->receipt;
++}
++bool EgressController::AllowsPersonNavigation(
++    const EgressRequestContext& context) const {
++  const auto& receipt = context.person_navigation;
++  if (!receipt || !receipt->admitted || !receipt->page ||
++      receipt->page_id != context.page_id || context.kind != "navigation" ||
++      context.ambiguous) {
++    return false;
++  }
++  auto* source = receipt->document.AsRenderFrameHostIfValid();
++  const auto state = pages_.find(context.page_id);
++  return source && source == context.document.AsRenderFrameHostIfValid() &&
++         receipt->page->GetBrowserContext() == profile_ &&
++         receipt->page->GetPrimaryMainFrame() == source &&
++         state != pages_.end() && state->second->lease.empty() &&
++         state->second->control_generation == receipt->control_generation &&
++         !isolation_run_by_page_.contains(context.page_id);
++}
++void EgressController::NavigateForPerson(content::WebContents* page,
++                                         base::OnceClosure navigate) {
++  auto original_page = page->GetWeakPtr();
++  auto original_document = page->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  auto* previous = PendingNavigation(page);
++  const int64_t previous_id = previous ? previous->GetNavigationId() : 0;
++  std::move(navigate).Run();
++  if (!original_page || page->GetPrimaryMainFrame() !=
++                            original_document.AsRenderFrameHostIfValid()) {
++    return;
++  }
++  auto* navigation = PendingNavigation(page);
++  const auto* identity = PageIdentity::FromWebContents(page);
++  if (!navigation || navigation->GetNavigationId() == previous_id ||
++      !identity || identity->runtime_owned() ||
++      page->GetBrowserContext() != profile_ ||
++      isolation_run_by_page_.contains(identity->id())) {
++    return;
++  }
++  const auto state = pages_.find(identity->id());
++  if (state == pages_.end() || !state->second->lease.empty() ||
++      state->second->returned_person_read_document.AsRenderFrameHostIfValid() !=
++          original_document.AsRenderFrameHostIfValid()) {
++    return;
++  }
++  auto receipt = CapturePersonNavigation(page->GetPrimaryMainFrame(),
++                                         navigation->GetNavigationId());
++  if (!receipt ||
++      receipt->document.AsRenderFrameHostIfValid() !=
++          original_document.AsRenderFrameHostIfValid() ||
++      receipt->control_generation != state->second->control_generation) {
++    return;
++  }
++  // Only this NavigationRequest gains authority. The old document's tombstone
++  // and retired control generation continue rejecting late task traffic.
++  receipt->admitted = true;
++}
+ bool EgressController::AllowsProfileCookies(const EgressRequestContext& context) const {
++  if (AllowsPersonNavigation(context)) {
++    return true;
++  }
+   auto owner = pages_.find(context.page_id);
+   auto* frame = context.document.AsRenderFrameHostIfValid();
+   const auto* isolation = frame ? IsolationForPage(context.page_id, frame) : nullptr;
+@@ -2011,7 +2118,7 @@ bool EgressController::IsProtected(const EgressRequestContext& context) {
+   return false;
+ }
+ bool EgressController::MayContinue(const EgressRequestContext& context) {
+-  if (!IsProtected(context)) {
++  if (AllowsPersonNavigation(context) || !IsProtected(context)) {
+     return true;
+   }
+   auto it = pages_.find(context.page_id);
+@@ -2141,7 +2248,7 @@ void EgressController::Check(const EgressRequestContext& context,
+                              base::OnceCallback<void(bool)> callback) {
+   const std::string request_id = base::UnguessableToken::Create().ToString();
+   const std::string phase = final_headers ? "send" : "preflight";
+-  if (!IsProtected(context)) {
++  if (AllowsPersonNavigation(context) || !IsProtected(context)) {
+     std::move(callback).Run(true);
+     return;
+   }
+diff --git a/chrome/browser/ui/aux/egress_controller.h b/chrome/browser/ui/aux/egress_controller.h
+index 61c102f..023c7f4 100644
+--- a/chrome/browser/ui/aux/egress_controller.h
++++ b/chrome/browser/ui/aux/egress_controller.h
+@@ -32,6 +32,7 @@ class AuxCreatorCloseBrowserTestPeer;
+ class BrowserWindowInterface;
+ namespace content {
+ class RenderFrameHost;
++class NavigationHandle;
+ class WebContents;
+ }  // namespace content
+ namespace net {
+@@ -42,11 +43,13 @@ struct ResourceRequest;
+ class URLLoaderFactoryBuilder;
+ }  // namespace network
+ namespace aux {
++struct NativePersonNavigationReceipt;
+ struct EgressRequestContext {
+   content::WeakDocumentPtr document;
+   std::string page_id;
+   std::string kind;
+   bool ambiguous = false;
++  std::shared_ptr<NativePersonNavigationReceipt> person_navigation;
+ };
+ struct NativeCdpRetirementReceipt {
+   base::DictValue original_lease;
+@@ -84,6 +87,7 @@ class EgressController final : public base::SupportsUserData::Data {
+       Profile* profile,
+       content::RenderFrameHost* frame,
+       bool navigation,
++      std::optional<int64_t> navigation_id,
+       bool worker,
+       network::URLLoaderFactoryBuilder& builder,
+       mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
+@@ -186,6 +190,10 @@ class EgressController final : public base::SupportsUserData::Data {
+   bool IsProtected(const EgressRequestContext& context);
+   bool CanPresentHumanSessionDocument(const EgressRequestContext& context);
+   bool MayContinue(const EgressRequestContext& context);
++  bool AllowsPersonNavigation(const EgressRequestContext& context) const;
++  // The trusted local shell ingress alone dispatches person navigation here.
++  void NavigateForPerson(content::WebContents* page,
++                         base::OnceClosure navigate);
+   base::CallbackListSubscription ObserveAuthority(
+       base::RepeatingClosure callback);
+   base::WeakPtr<EgressController> GetWeakPtr();
+@@ -199,6 +207,9 @@ class EgressController final : public base::SupportsUserData::Data {
+                bool allowed);
+ 
+  private:
++  std::shared_ptr<NativePersonNavigationReceipt> CapturePersonNavigation(
++      content::RenderFrameHost* frame,
++      int64_t navigation_id);
+   bool RetireRegisteredRunImpl(const std::string& run_id, uint64_t generation);
+   friend class ::AuxRuntimeHost;
+   friend class ::AuxCreatorCloseBrowserTestPeer;
+diff --git a/chrome/browser/ui/aux/egress_url_loader.cc b/chrome/browser/ui/aux/egress_url_loader.cc
+index a1e7753..014bcb3 100644
+--- a/chrome/browser/ui/aux/egress_url_loader.cc
++++ b/chrome/browser/ui/aux/egress_url_loader.cc
+@@ -253,7 +253,8 @@ class FactoryHeaderClient final
+     state->controller = state_->controller;
+     state->context = state_->context;
+     state->request = request;
+-    if (state->controller && state->controller->IsProtected(state->context)) {
++    if (state->controller && state->controller->IsProtected(state->context) &&
++        !state->controller->AllowsPersonNavigation(state->context)) {
+       // Caller-supplied and browser-bonus cookies never acquire session
+       // authority. Network Service selects ambient cookies from CookieStore.
+       state->request.headers.RemoveHeader("Cookie");
+@@ -311,7 +312,9 @@ class GuardedRequest final : public network::mojom::URLLoader,
+       return;
+     }
+     following_ = true;
+-    if (state_->controller && state_->controller->IsProtected(state_->context)) {
++    if (state_->controller &&
++        state_->controller->IsProtected(state_->context) &&
++        !state_->controller->AllowsPersonNavigation(state_->context)) {
+       updates.modified_headers.RemoveHeader("Cookie");
+       updates.modified_cors_exempt_headers.RemoveHeader("Cookie");
+       updates.removed_headers.push_back("Cookie");
+@@ -458,13 +461,15 @@ class GuardedFactory final : public network::SelfDeletingURLLoaderFactory {
+     state->context = state_->context;
+     state->request = request;
+     state->original_id = id;
+-    if (state->controller && state->controller->IsProtected(state->context)) {
++    if (state->controller && state->controller->IsProtected(state->context) &&
++        !state->controller->AllowsPersonNavigation(state->context)) {
+       state->request.headers.RemoveHeader("Cookie");
+       state->request.cors_exempt_headers.RemoveHeader("Cookie");
+       if (state->request.trusted_params)
+         state->request.trusted_params->allow_cookies_from_browser = false;
+     }
+     if (request.request_body && state->controller &&
++        !state->controller->AllowsPersonNavigation(state->context) &&
+         std::ranges::any_of(*request.request_body->elements(),
+                             [](const auto& element) {
+                               return element.type() !=
+@@ -517,7 +522,9 @@ class GuardedFactory final : public network::SelfDeletingURLLoaderFactory {
+       guard->Fail();
+       return;
+     }
+-    if (state_->controller && state_->controller->IsProtected(state_->context)) {
++    if (state_->controller &&
++        state_->controller->IsProtected(state_->context) &&
++        !state_->controller->AllowsPersonNavigation(state_->context)) {
+       // Session pages use only the original Profile's ambient CookieStore;
+       // private and other protected pages retain the empty-cookie transport.
+       if (!state_->controller->AllowsProfileCookies(state_->context))
+@@ -546,6 +553,7 @@ void EgressController::ProxyFactory(
+     Profile* profile,
+     content::RenderFrameHost* frame,
+     bool navigation,
++    std::optional<int64_t> navigation_id,
+     bool worker,
+     network::URLLoaderFactoryBuilder& builder,
+     mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
+@@ -569,6 +577,10 @@ void EgressController::ProxyFactory(
+   if (document) {
+     state->context.document = document->GetWeakDocumentPtr();
+     state->context.page_id = PageIdentity::GetOrCreate(profile, page);
++    if (navigation && navigation_id) {
++      state->context.person_navigation =
++          controller->CapturePersonNavigation(frame, *navigation_id);
++    }
+   } else {
+     state->context.ambiguous = true;
+   }
+diff --git a/chrome/browser/ui/aux/methods/native_tabs_methods.cc b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+index a8a21ed..7adca39 100644
+--- a/chrome/browser/ui/aux/methods/native_tabs_methods.cc
++++ b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+@@ -387,8 +387,9 @@ base::DictValue AuxRuntimeHost::HandleNativeTabsCall(
+       issuer = browsers->FindBrowserWithID(
+           SessionID::FromSerializedValue(parsed_id));
+     }
+-    base::DictValue ack = catalog->Command(issuer, *command_id, *command,
+-                                             params.FindInt("catalogVersion"));
++    base::DictValue ack = catalog->Command(
++        issuer, *command_id, *command, params.FindInt("catalogVersion"),
++        aux::TabCatalog::CommandSource::kRuntime);
+     if (const std::string* page_id = ack.FindString("pageId")) {
+       if (const std::string* kind = command->FindString("kind");
+           kind && *kind == "open") {
+diff --git a/chrome/browser/ui/aux/methods/tabs_methods.cc b/chrome/browser/ui/aux/methods/tabs_methods.cc
+index 6d416a8..f470c4b 100644
+--- a/chrome/browser/ui/aux/methods/tabs_methods.cc
++++ b/chrome/browser/ui/aux/methods/tabs_methods.cc
+@@ -692,7 +692,8 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
+     base::DictValue ack =
+         aux::TabCatalog::GetForProfile(browser_->GetProfile())
+             ->Command(browser_, command_id, (*list)[1].GetDict(),
+-                      expected_version);
++                      expected_version,
++                      aux::TabCatalog::CommandSource::kPerson);
+     std::move(callback).Run(true, *base::WriteJson(ack), "", "");
+     return;
+   }
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
+index 5a5b577..6da9a9a 100644
+--- a/chrome/browser/ui/aux/tab_catalog.cc
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -927,9 +927,10 @@ base::DictValue TabCatalog::SleepTab(BrowserWindowInterface* issuer,
+ }
+ 
+ base::DictValue TabCatalog::Command(BrowserWindowInterface* issuer,
+-                                      const std::string& command_id,
+-                                      const base::DictValue& command,
+-                                      std::optional<int> expected_version) {
++                                    const std::string& command_id,
++                                    const base::DictValue& command,
++                                    std::optional<int> expected_version,
++                                    CommandSource command_source) {
+   if (auto existing = command_acks_.find(command_id);
+       existing != command_acks_.end()) {
+     base::DictValue ack = existing->second.Clone();
+@@ -1186,31 +1187,43 @@ base::DictValue TabCatalog::Command(BrowserWindowInterface* issuer,
+       context.document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+       if (EgressController::ForProfile(profile_)->IsProtected(context))
+         return Reject(command_id, "forbidden", "Aux is working in this tab");
+-      if (const auto split = model->GetSplitForTab(index)) model->RemoveSplit(*split);
++      if (const auto split = model->GetSplitForTab(index)) {
++        model->RemoveSplit(*split);
++      }
+     } else if (*kind == "close") {
+       model->CloseWebContentsAt(index, TabCloseTypes::CLOSE_USER_GESTURE);
+-    } else if (*kind == "navigate") {
++    } else if (*kind == "navigate" || *kind == "back" || *kind == "forward" ||
++               *kind == "reload") {
+       const std::string* url_text = command.FindString("url");
+       const GURL url(url_text ? *url_text : "");
+-      if (!url.is_valid()) {
++      if (*kind == "navigate" && !url.is_valid()) {
+         return Reject(command_id, "invalid_params", "Invalid navigation URL");
+       }
+-      content::NavigationController::LoadURLParams load(url);
+-      contents->GetController().LoadURLWithParams(load);
+-    } else if (*kind == "back") {
+-      if (contents->GetController().CanGoBack()) {
+-        contents->GetController().GoBack();
+-      }
+-    } else if (*kind == "forward") {
+-      if (contents->GetController().CanGoForward()) {
+-        contents->GetController().GoForward();
++      auto navigate = base::BindOnce(
++          [](content::WebContents* contents, const std::string& kind,
++             const GURL& url, bool hard) {
++            auto& controller = contents->GetController();
++            if (kind == "navigate") {
++              controller.LoadURLWithParams(
++                  content::NavigationController::LoadURLParams(url));
++            } else if (kind == "back" && controller.CanGoBack()) {
++              controller.GoBack();
++            } else if (kind == "forward" && controller.CanGoForward()) {
++              controller.GoForward();
++            } else if (kind == "reload") {
++              controller.Reload(hard ? content::ReloadType::BYPASSING_CACHE
++                                     : content::ReloadType::NORMAL,
++                                true);
++            }
++          },
++          base::Unretained(contents), *kind, url,
++          command.FindBool("hard").value_or(false));
++      if (command_source == CommandSource::kPerson) {
++        EgressController::ForProfile(profile_)->NavigateForPerson(
++            contents, std::move(navigate));
++      } else {
++        std::move(navigate).Run();
+       }
+-    } else if (*kind == "reload") {
+-      contents->GetController().Reload(
+-          command.FindBool("hard").value_or(false)
+-              ? content::ReloadType::BYPASSING_CACHE
+-              : content::ReloadType::NORMAL,
+-          true);
+     } else if (*kind == "stop") {
+       contents->Stop();
+     } else if (*kind == "setMuted") {
+diff --git a/chrome/browser/ui/aux/tab_catalog.h b/chrome/browser/ui/aux/tab_catalog.h
+index e2976df..94df8e7 100644
+--- a/chrome/browser/ui/aux/tab_catalog.h
++++ b/chrome/browser/ui/aux/tab_catalog.h
+@@ -57,10 +57,12 @@ class TabCatalog final : public KeyedService,
+   base::DictValue SleepTab(BrowserWindowInterface* issuer,
+                            const std::string& page_id,
+                            const std::string& expected_url);
++  enum class CommandSource { kPerson, kRuntime };
+   base::DictValue Command(BrowserWindowInterface* issuer,
+-                            const std::string& command_id,
+-                            const base::DictValue& command,
+-                            std::optional<int> expected_version);
++                          const std::string& command_id,
++                          const base::DictValue& command,
++                          std::optional<int> expected_version,
++                          CommandSource command_source);
+   content::WebContents* FindPage(const std::string& page_id,
+                                  BrowserWindowInterface** owner = nullptr);
+   void BindSpace(const std::string& page_id, const std::string& space_id,
+diff --git a/chrome/browser/ui/views/autofill/autofill_bubble_handler_impl.cc b/chrome/browser/ui/views/autofill/autofill_bubble_handler_impl.cc
+index a63197e..a8f7679 100644
+--- a/chrome/browser/ui/views/autofill/autofill_bubble_handler_impl.cc
++++ b/chrome/browser/ui/views/autofill/autofill_bubble_handler_impl.cc
+@@ -36,7 +36,6 @@
+ #include "chrome/browser/ui/views/autofill/save_address_profile_view.h"
+ #include "chrome/browser/ui/views/autofill/update_address_profile_view.h"
+ #include "chrome/browser/ui/views/bubble_anchor_util_views.h"
+-#include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
+ #include "components/autofill/core/browser/foundations/autofill_client.h"
+ #include "components/autofill/core/browser/payments/virtual_card_enrollment_manager.h"
+ #include "components/autofill/core/browser/ui/payments/virtual_card_enroll_bubble_controller.h"
+@@ -50,13 +49,13 @@ namespace {
+ 
+ template <typename View, typename... Args>
+   requires(std::derived_from<View, AutofillLocationBarBubble>)
+-View* ShowBubble(ToolbarButtonProvider* toolbar_button_provider,
+-                 std::optional<actions::ActionId> action_id,
+-                 ui::ElementIdentifier highlight_element,
+-                 bool is_user_gesture,
+-                 Args&&... args) {
+-  views::BubbleAnchor const anchor_view =
+-      toolbar_button_provider->GetBubbleAnchor(action_id);
++View* ShowBubble(
++    const AutofillBubbleHandlerImpl::AnchorProvider& anchor_provider,
++    std::optional<actions::ActionId> action_id,
++    ui::ElementIdentifier highlight_element,
++    bool is_user_gesture,
++    Args&&... args) {
++  views::BubbleAnchor const anchor_view = anchor_provider.Run(action_id);
+   auto bubble =
+       std::make_unique<View>(anchor_view, std::forward<Args>(args)...);
+   // Handle anchors for icon highlighting.
+@@ -81,11 +80,11 @@ View* ShowBubble(ToolbarButtonProvider* toolbar_button_provider,
+ 
+ template <typename View, typename... Args>
+   requires std::derived_from<View, AutofillLocationBarBubble>
+-View* ShowAddressProfileBubble(ToolbarButtonProvider* toolbar_button_provider,
+-                               bool is_user_gesture,
+-                               Args&&... args) {
+-  return ShowBubble<View>(toolbar_button_provider,
+-                          kActionShowAddressesBubbleOrPage,
++View* ShowAddressProfileBubble(
++    const AutofillBubbleHandlerImpl::AnchorProvider& anchor_provider,
++    bool is_user_gesture,
++    Args&&... args) {
++  return ShowBubble<View>(anchor_provider, kActionShowAddressesBubbleOrPage,
+                           kAutofillAddressPageActionElementId, is_user_gesture,
+                           std::forward<Args>(args)...);
+ }
+@@ -94,8 +93,8 @@ View* ShowAddressProfileBubble(ToolbarButtonProvider* toolbar_button_provider,
+ 
+ AutofillBubbleHandlerImpl::AutofillBubbleHandlerImpl(
+     BrowserWindowInterface* browser,
+-    ToolbarButtonProvider* toolbar_button_provider)
+-    : toolbar_button_provider_(toolbar_button_provider),
++    AnchorProvider anchor_provider)
++    : anchor_provider_(std::move(anchor_provider)),
+       scoped_user_data_(browser->GetUnownedUserDataHost(), *this) {}
+ 
+ AutofillBubbleHandlerImpl::~AutofillBubbleHandlerImpl() = default;
+@@ -111,12 +110,12 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowSaveCreditCardBubble(
+     case PaymentsBubbleType::kUploadCvcSave:
+     case PaymentsBubbleType::kUploadInProgress:
+       return ShowBubble<SaveCardOfferBubbleViews>(
+-          toolbar_button_provider_, kActionShowPaymentsBubbleOrPage,
++          anchor_provider_, kActionShowPaymentsBubbleOrPage,
+           kAutofillSavePaymentsPageActionElementId, is_user_gesture,
+           web_contents, controller);
+     case PaymentsBubbleType::kManageCards:
+       return ShowBubble<SaveCardManageCardsBubbleViews>(
+-          toolbar_button_provider_, kActionShowPaymentsBubbleOrPage,
++          anchor_provider_, kActionShowPaymentsBubbleOrPage,
+           kAutofillSavePaymentsPageActionElementId, is_user_gesture,
+           web_contents, controller);
+     case PaymentsBubbleType::kUploadComplete:
+@@ -136,12 +135,12 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowIbanBubble(
+     case IbanBubbleType::kUploadSave:
+     case IbanBubbleType::kUploadInProgress:
+       return ShowBubble<SaveIbanBubbleView>(
+-          toolbar_button_provider_, kActionShowPaymentsBubbleOrPage,
++          anchor_provider_, kActionShowPaymentsBubbleOrPage,
+           kAutofillSavePaymentsPageActionElementId, is_user_gesture,
+           web_contents, controller);
+     case IbanBubbleType::kManageSavedIban:
+       return ShowBubble<ManageSavedIbanBubbleView>(
+-          toolbar_button_provider_, kActionShowPaymentsBubbleOrPage,
++          anchor_provider_, kActionShowPaymentsBubbleOrPage,
+           kAutofillSavePaymentsPageActionElementId, is_user_gesture,
+           web_contents, controller);
+     case IbanBubbleType::kUploadCompleted:
+@@ -156,7 +155,7 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowOfferNotificationBubble(
+     OfferNotificationBubbleController* controller,
+     bool is_user_gesture) {
+   return ShowBubble<OfferNotificationBubbleViews>(
+-      toolbar_button_provider_, kActionOffersAndRewardsForPage,
++      anchor_provider_, kActionOffersAndRewardsForPage,
+       kOfferNotificationChipElementId, is_user_gesture, web_contents,
+       controller);
+ }
+@@ -166,16 +165,15 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowSaveAddressProfileBubble(
+     std::unique_ptr<SaveAddressBubbleController> controller,
+     bool is_user_gesture) {
+   return ShowAddressProfileBubble<SaveAddressProfileView>(
+-      toolbar_button_provider_, is_user_gesture, std::move(controller),
+-      web_contents);
++      anchor_provider_, is_user_gesture, std::move(controller), web_contents);
+ }
+ 
+ #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowAddressSignInPromo(
+     content::WebContents* web_contents,
+     const AutofillProfile& autofill_profile) {
+-  views::BubbleAnchor anchor = toolbar_button_provider_->GetBubbleAnchor(
+-      kActionShowAddressesBubbleOrPage);
++  views::BubbleAnchor anchor =
++      anchor_provider_.Run(kActionShowAddressesBubbleOrPage);
+   AddressSignInPromoView* bubble =
+       new AddressSignInPromoView(anchor, web_contents, autofill_profile);
+   if (!bubble_anchor_util::IsHighlightable(anchor)) {
+@@ -192,7 +190,7 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowSaveAutofillAiDataBubble(
+     content::WebContents* web_contents,
+     AutofillAiImportDataController* controller) {
+   return ShowBubble<AutofillAiImportDataBubbleView>(
+-      toolbar_button_provider_, kActionShowAddressesBubbleOrPage,
++      anchor_provider_, kActionShowAddressesBubbleOrPage,
+       kAutofillAddressPageActionElementId, /*is_user_gesture=*/false,
+       web_contents, controller);
+ }
+@@ -202,7 +200,7 @@ AutofillBubbleHandlerImpl::ShowAutofillAiLocalSaveNotification(
+     content::WebContents* web_contents,
+     AutofillAiImportDataController* controller) {
+   return ShowBubble<AutofillAiLocalSaveNotificationView>(
+-      toolbar_button_provider_, kActionShowAddressesBubbleOrPage,
++      anchor_provider_, kActionShowAddressesBubbleOrPage,
+       kAutofillAddressPageActionElementId, /*is_user_gesture=*/false,
+       web_contents, controller);
+ }
+@@ -212,8 +210,7 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowUpdateAddressProfileBubble(
+     std::unique_ptr<UpdateAddressBubbleController> controller,
+     bool is_user_gesture) {
+   return ShowAddressProfileBubble<UpdateAddressProfileView>(
+-      toolbar_button_provider_, is_user_gesture, std::move(controller),
+-      web_contents);
++      anchor_provider_, is_user_gesture, std::move(controller), web_contents);
+ }
+ 
+ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowFilledCardInformationBubble(
+@@ -221,7 +218,7 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowFilledCardInformationBubble(
+     FilledCardInformationBubbleController* controller,
+     bool is_user_gesture) {
+   return ShowBubble<FilledCardInformationBubbleViews>(
+-      toolbar_button_provider_, kActionFilledCardInformation,
++      anchor_provider_, kActionFilledCardInformation,
+       kAutofillFilledCardInformationPageActionElementId, is_user_gesture,
+       web_contents, controller);
+ }
+@@ -230,8 +227,7 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowVirtualCardEnrollBubble(
+     content::WebContents* web_contents,
+     VirtualCardEnrollBubbleController* controller,
+     bool is_user_gesture) {
+-  views::BubbleAnchor anchor =
+-      toolbar_button_provider_->GetBubbleAnchor(kActionVirtualCardEnroll);
++  views::BubbleAnchor anchor = anchor_provider_.Run(kActionVirtualCardEnroll);
+   VirtualCardEnrollBubbleViews* bubble =
+       new VirtualCardEnrollBubbleViews(anchor, web_contents, controller);
+ 
+@@ -259,8 +255,7 @@ AutofillBubbleBase*
+ AutofillBubbleHandlerImpl::ShowVirtualCardEnrollConfirmationBubble(
+     content::WebContents* web_contents,
+     VirtualCardEnrollBubbleController* controller) {
+-  views::BubbleAnchor anchor =
+-      toolbar_button_provider_->GetBubbleAnchor(kActionVirtualCardEnroll);
++  views::BubbleAnchor anchor = anchor_provider_.Run(kActionVirtualCardEnroll);
+   base::OnceCallback<void(PaymentsUiClosedReason)> callback =
+       controller->GetOnBubbleClosedCallback();
+   const SavePaymentMethodAndVirtualCardEnrollConfirmationUiParams& ui_params =
+@@ -276,8 +271,7 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowMandatoryReauthBubble(
+     MandatoryReauthBubbleController* controller,
+     bool is_user_gesture,
+     MandatoryReauthBubbleType bubble_type) {
+-  auto anchor =
+-      toolbar_button_provider_->GetBubbleAnchor(kActionAutofillMandatoryReauth);
++  auto anchor = anchor_provider_.Run(kActionAutofillMandatoryReauth);
+ 
+   switch (bubble_type) {
+     case MandatoryReauthBubbleType::kOptIn: {
+@@ -309,8 +303,8 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowMandatoryReauthBubble(
+ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowSaveCardConfirmationBubble(
+     content::WebContents* web_contents,
+     SaveCardBubbleController* controller) {
+-  views::BubbleAnchor anchor = toolbar_button_provider_->GetBubbleAnchor(
+-      kActionShowPaymentsBubbleOrPage);
++  views::BubbleAnchor anchor =
++      anchor_provider_.Run(kActionShowPaymentsBubbleOrPage);
+   base::OnceCallback<void(PaymentsUiClosedReason)> callback =
+       controller->GetOnBubbleClosedCallback();
+ 
+@@ -325,8 +319,8 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowSaveCardConfirmationBubble(
+ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowSaveIbanConfirmationBubble(
+     content::WebContents* web_contents,
+     IbanBubbleController* controller) {
+-  views::BubbleAnchor anchor = toolbar_button_provider_->GetBubbleAnchor(
+-      kActionShowPaymentsBubbleOrPage);
++  views::BubbleAnchor anchor =
++      anchor_provider_.Run(kActionShowPaymentsBubbleOrPage);
+   base::OnceCallback<void(PaymentsUiClosedReason)> callback =
+       controller->GetOnBubbleClosedCallback();
+ 
+@@ -340,9 +334,8 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowOmniboxAutofillBubble(
+     content::WebContents* web_contents,
+     OmniboxAutofillBubbleController* controller) {
+   return ShowBubble<OmniboxAutofillBubbleView>(
+-      toolbar_button_provider_, kActionAutofillPayment,
+-      kAutofillPaymentIconElementId, /*is_user_gesture=*/true, web_contents,
+-      controller);
++      anchor_provider_, kActionAutofillPayment, kAutofillPaymentIconElementId,
++      /*is_user_gesture=*/true, web_contents, controller);
+ }
+ 
+ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowPaymentsChurnedUsersBubble(
+@@ -350,7 +343,7 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowPaymentsChurnedUsersBubble(
+     PaymentsChurnedUsersBubbleController* controller,
+     bool is_user_gesture) {
+   return ShowBubble<PaymentsChurnedUsersBubbleView>(
+-      toolbar_button_provider_, kActionShowPaymentsChurnedUsersBubble,
++      anchor_provider_, kActionShowPaymentsChurnedUsersBubble,
+       kPaymentsChurnedUsersBubbleId, is_user_gesture, web_contents, controller);
+ }
+ 
+@@ -358,8 +351,8 @@ AutofillBubbleBase*
+ AutofillBubbleHandlerImpl::ShowPaymentsChurnedUsersConfirmationBubble(
+     content::WebContents* web_contents,
+     PaymentsChurnedUsersBubbleController* controller) {
+-  views::BubbleAnchor anchor = toolbar_button_provider_->GetBubbleAnchor(
+-      kActionShowPaymentsChurnedUsersBubble);
++  views::BubbleAnchor anchor =
++      anchor_provider_.Run(kActionShowPaymentsChurnedUsersBubble);
+   base::OnceCallback<void(PaymentsUiClosedReason)> callback =
+       controller->GetConfirmationBubbleClosedCallback();
+ 
+@@ -373,7 +366,7 @@ AutofillBubbleBase* AutofillBubbleHandlerImpl::ShowWalletReminderNoticeBubble(
+     WalletReminderNoticeBubbleController* controller,
+     bool is_user_gesture) {
+   return ShowBubble<WalletReminderNoticeBubbleView>(
+-      toolbar_button_provider_, kActionWalletReminderNotice,
++      anchor_provider_, kActionWalletReminderNotice,
+       kPageActionWalletReminderNoticeElementId, is_user_gesture, web_contents,
+       controller);
+ }
+diff --git a/chrome/browser/ui/views/autofill/autofill_bubble_handler_impl.h b/chrome/browser/ui/views/autofill/autofill_bubble_handler_impl.h
+index ccc8c38..e59090a 100644
+--- a/chrome/browser/ui/views/autofill/autofill_bubble_handler_impl.h
++++ b/chrome/browser/ui/views/autofill/autofill_bubble_handler_impl.h
+@@ -5,17 +5,18 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_AUTOFILL_AUTOFILL_BUBBLE_HANDLER_IMPL_H_
+ #define CHROME_BROWSER_UI_VIEWS_AUTOFILL_AUTOFILL_BUBBLE_HANDLER_IMPL_H_
+ 
+-#include "base/functional/callback_forward.h"
+-#include "base/memory/raw_ptr.h"
++#include <optional>
++
++#include "base/functional/callback.h"
+ #include "base/scoped_observation.h"
+ #include "chrome/browser/ui/autofill/autofill_bubble_handler.h"
+ #include "components/autofill/core/browser/ui/payments/payments_ui_closed_reasons.h"
+ #include "components/autofill/core/browser/ui/payments/save_payment_method_and_virtual_card_enroll_confirmation_ui_params.h"
+ #include "components/signin/public/base/signin_buildflags.h"
++#include "ui/actions/action_id.h"
+ #include "ui/views/bubble/bubble_dialog_delegate_view.h"
+ 
+ class BrowserWindowInterface;
+-class ToolbarButtonProvider;
+ 
+ namespace content {
+ class WebContents;
+@@ -33,8 +34,11 @@ enum class IbanBubbleType;
+ 
+ class AutofillBubbleHandlerImpl : public AutofillBubbleHandler {
+  public:
++  using AnchorProvider = base::RepeatingCallback<views::BubbleAnchor(
++      std::optional<actions::ActionId>)>;
++
+   AutofillBubbleHandlerImpl(BrowserWindowInterface* browser,
+-                            ToolbarButtonProvider* toolbar_button_provider);
++                            AnchorProvider anchor_provider);
+ 
+   AutofillBubbleHandlerImpl(const AutofillBubbleHandlerImpl&) = delete;
+   AutofillBubbleHandlerImpl& operator=(const AutofillBubbleHandlerImpl&) =
+@@ -121,7 +125,7 @@ class AutofillBubbleHandlerImpl : public AutofillBubbleHandler {
+       ui::ElementIdentifier highlight_element,
+       SavePaymentMethodAndVirtualCardEnrollConfirmationUiParams ui_params);
+ 
+-  raw_ptr<ToolbarButtonProvider> toolbar_button_provider_ = nullptr;
++  AnchorProvider anchor_provider_;
+ 
+   ui::ScopedUnownedUserData<AutofillBubbleHandler> scoped_user_data_;
+ };
+diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
+index 7a34e78..758de1f 100644
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -5109,7 +5109,9 @@ void BrowserView::AddedToWidget() {
+   // be constructed following the check above.
+   autofill_bubble_handler_ =
+       std::make_unique<autofill::AutofillBubbleHandlerImpl>(
+-          browser_.get(), toolbar_button_provider);
++          browser_.get(),
++          base::BindRepeating(&ToolbarButtonProvider::GetBubbleAnchor,
++                              base::Unretained(toolbar_button_provider)));
+ 
+   auto* const frame_view = GetFrameView();
+   frame_view->OnBrowserViewInitViewsComplete();
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+index cd294f7..d04c62d 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+@@ -47,9 +47,10 @@
+ #include "chrome/browser/ui/interaction/browser_elements.h"
+ #include "chrome/browser/ui/side_panel/side_panel_ui_base.h"
+ #include "chrome/browser/ui/status_bubble.h"
+-#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/tabs/public/tab_features.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/unload_controller.h"
++#include "chrome/browser/ui/views/autofill/autofill_bubble_handler_impl.h"
+ #include "chrome/browser/ui/views/download/download_in_progress_dialog_view.h"
+ #include "chrome/browser/ui/views/eye_dropper/eye_dropper.h"
+ #include "chrome/browser/ui/views/find_bar_host.h"
+@@ -86,12 +87,12 @@
+ #include "ui/base/interaction/element_tracker.h"
+ #include "ui/compositor/compositor.h"
+ #include "ui/content_accelerators/accelerator_util.h"
+-#include "ui/events/event_constants.h"
+ #include "ui/display/types/display_constants.h"
++#include "ui/events/event_constants.h"
+ #include "ui/events/keycodes/keyboard_codes.h"
+ #include "ui/views/controls/webview/webview.h"
+-#include "ui/views/interaction/element_tracker_views.h"
+ #include "ui/views/focus/focus_manager.h"
++#include "ui/views/interaction/element_tracker_views.h"
+ #include "ui/views/widget/widget.h"
+ #include "ui/views/widget/widget_delegate.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+@@ -225,6 +226,17 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
+   }
+ 
+   location_bar_ = std::make_unique<WebUIStubLocationBar>(this);
++  autofill_bubble_handler_ =
++      std::make_unique<autofill::AutofillBubbleHandlerImpl>(
++          browser_,
++          base::BindRepeating(
++              [](WebUIBrowserWindow* window, std::optional<actions::ActionId>) {
++                if (auto* anchor = window->location_bar_->GetAnchorOrNull()) {
++                  return views::BubbleAnchor(anchor);
++                }
++                return views::BubbleAnchor(window->widget_->GetContentsView());
++              },
++              base::Unretained(this)));
+   web_contents_delegate_ =
+       std::make_unique<WebUIBrowserWebContentsDelegate>(this);
+   widget_delegate_ =
+@@ -971,8 +983,7 @@ void WebUIBrowserWindow::OnContentsElementShown(ui::TrackedElement* element) {
+ 
+ autofill::AutofillBubbleHandler*
+ WebUIBrowserWindow::GetAutofillBubbleHandler() {
+-  NOTIMPLEMENTED_LOG_ONCE();
+-  return nullptr;
++  return autofill_bubble_handler_.get();
+ }
+ 
+ LocationBar* WebUIBrowserWindow::GetLocationBar() const {
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.h b/chrome/browser/ui/webui_browser/webui_browser_window.h
+index b76477c..7a271cb 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.h
+@@ -324,6 +324,7 @@ class WebUIBrowserWindow : public BrowserWindow,
+   std::unique_ptr<NativePerformance> native_performance_;
+   raw_ptr<views::WebView> web_view_ = nullptr;
+   std::unique_ptr<WebUIStubLocationBar> location_bar_;
++  std::unique_ptr<autofill::AutofillBubbleHandler> autofill_bubble_handler_;
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   std::unique_ptr<StatusBubble> aux_status_bubble_;
+ #endif

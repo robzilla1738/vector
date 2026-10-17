@@ -7,6 +7,41 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Readiness implementation — source
+
+The owner authorized completing all six readiness batches with substantial
+implementation slices and focused verification. The active dependency and
+acceptance record is now at the top of ROADMAP-EXECUTION-GRAPH.
+
+Native area0056 gives trusted shell tab commands a navigation receipt attached
+to the actual Chromium NavigationRequest. Only the exact returned borrowed
+document and unchanged retired control generation qualify; runtime tab commands
+cannot mint a person receipt. Navigation factories retain it through header and
+redirect checks. Protected document tombstones, late task denial and original
+Profile cookie ownership remain. This targets the post-task address/back/forward/
+reload failure; no native acceptance is claimed yet.
+
+The same batch installs Chromium's existing address/payment autofill bubble
+handler in Aux's native window. It obtains its anchor from the actual Aux
+location element, with the window content view as fallback. The normal Chromium
+window supplies its existing toolbar anchor through the same callback. There is
+one implementation of save/update/payment dialogs and no null handler path.
+
+Launcher41079 retired normally before these edits. Its app42302, runtime42316,
+API60846, disposable Profileaux-dev-dOcpUP and lock are gone. Native compilation
+and changed-flow observation of area0056 are pending; the last accepted candidate
+remains769ba5f86. The upstream155.0.8059.85 tag was resolved from Chromium's
+official repository for the following security-update batch; the product pin
+has not changed before replay/build evidence.
+
+Integrated `npm run check` passed typecheck, lint and4,675tests/749files in108.26s
+(`/tmp/aux-person-navigation-check.log`). Area0056 reverse-apply verification
+passes against the edited product tree. This is source/integrated evidence;
+the native build and walkthrough follow from the frozen commit.
+The first native compile stopped at tab_catalog callback binding/name shadowing;
+both integration errors are corrected before the incremental retry. No runtime
+or renderer behavior changed, so the passing integrated suite is retained.
+
 ## Native dropdowns across the shell
 
 Single-choice selects now use startup-loaded Chromium `base-select` styling

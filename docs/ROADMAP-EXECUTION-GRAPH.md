@@ -1,5 +1,43 @@
 # Aux competitive execution graph
 
+## October 17 readiness execution — active
+
+The owner authorized completing the readiness audit's six substantial batches,
+with focused verification and no repeated unchanged checks. This supersedes the
+historical pause below. Baseline is clean local main `6f1016d8b`; the accepted
+native/renderer/runtime source is `769ba5f86`. The 4,675-test integrated check and
+native dropdown/rail observations remain valid for unchanged behavior. Full
+browser readiness, the manual 20-task smoke and performance acceptance remain open.
+
+```mermaid
+flowchart LR
+  R1[Human handback and native autofill] --> R3[Browser and agent acceptance]
+  R2[Current Chromium security baseline] --> R3
+  R4[Prompt efficiency and native performance] --> RF[Daily-use acceptance]
+  R5[Complete remaining Aux features] --> RF
+  R6[Matched Aside parity] --> RF
+  R3 --> RF
+```
+
+| Batch | State | Outcome and acceptance |
+| --- | --- | --- |
+| R1 | active | Preserve protected document tombstones while admitting actual human navigation after agent retirement; complete native address/payment save UI. Verify navigation/back/forward/reload, Stop/Take over and synthetic form save/update/cancel without authorizing late agent traffic. Investigate the earlier unexplained native exit through changed-flow lifecycle observations. |
+| R2 | ready | Update the pinned Chromium security baseline in a disposable checkout; replay ordered area patches, compile and inspect changed behavior while preserving the stable product/stock checkouts. |
+| R3 | waiting on R1/R2 | Complete native restore/sleep/wake/runtime-outage/import/extension/file/media/permission workflows and default-route manual smoke (at least 18/20), plus real research/site/file/coding journeys and durable controls. Reuse earlier valid observations. |
+| R4 | ready | Measure system/tool/page/history prompt contributions, reduce irrelevant schema/context and verify stable caching. Complete valid paired native startup/interaction/memory measurements against matching stock. |
+| R5 | ready | Finish channel persistence/transports/pairing/replies; named custom providers and supported subscription setup; Memory document authority/extraction/diffs/Dream; routine lifecycle; cloud provisioning/preview/Stop/recovery/cleanup; device/file-grant and notification acceptance. Existing implemented features remain enabled. |
+| R6 | ready | Complete compact Quick Ask/download popup and matched light/dark, normal/narrow, populated/error/focus-state comparisons across native browser chrome, Settings, chat and libraries using the current reference corpus. |
+| RF | waiting on integrated batches | All scoped implementation and native acceptance complete, current evidence recorded, no unresolved daily-use blocker. Distribution, signing/notarization, sync and other platforms remain separate scope. |
+
+One executor owns source integration, the native tree, builder and launcher/plain
+lock. Retire the current preview through its original launcher before replacing
+it. Consolidate native changes as area patches; commit coherent slices to local
+main. Runtime source changes rebuild dist before tests. Run one integrated check
+per slice and changed-flow native observations; repeat only for a changed
+dependency, invalid result or failure. External account registration, signed
+password-manager identity and DRM licensing stay explicit prerequisites rather
+than compatibility claims.
+
 ## Execution checkpoint — October 8 wrap-up
 
 The owner requested wrapping up, landing completed work on local main and stopping
