@@ -89,7 +89,7 @@ export const BookmarkOpenSchema = z
   .object({
     nodeId,
     url: z.string(),
-    disposition: z.enum(["current", "foreground", "background"]),
+    disposition: z.enum(["current", "foreground", "background", "window", "private"]),
     pageId: z.string().optional(),
     spaceId: z.string().min(1).max(128).optional(),
   })

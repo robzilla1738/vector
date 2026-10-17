@@ -1,0 +1,64 @@
+diff --git a/chrome/browser/ui/aux/methods/library_methods.cc b/chrome/browser/ui/aux/methods/library_methods.cc
+--- a/chrome/browser/ui/aux/methods/library_methods.cc
++++ b/chrome/browser/ui/aux/methods/library_methods.cc
+@@ -34,6 +34,7 @@
+ #include "components/printing/browser/print_to_pdf/pdf_print_utils.h"
+ #endif
+ #include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/incognito_allowed_url.h"
+ #include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+@@ -263,6 +264,27 @@
+         return;
+       }
+       const bool current = *disposition == "current";
++      const bool new_window = *disposition == "window";
++      const bool private_window = *disposition == "private";
++      if (!current && !new_window && !private_window &&
++          *disposition != "foreground" && *disposition != "background") {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Unsupported bookmark destination");
++        return;
++      }
++      if ((new_window || private_window) && params->FindString("spaceId")) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "New windows choose their own Space");
++        return;
++      }
++      // Do not let Navigate redirect a requested Private destination into
++      // the original Profile for internal URLs disallowed in incognito.
++      if ((private_window || (new_window && profile->IsOffTheRecord())) &&
++          !IsURLAllowedInIncognito(node->url())) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "This bookmark cannot open in a Private window");
++        return;
++      }
+       const bool activated = web_ui()
+                                  ->GetWebContents()
+                                  ->GetPrimaryMainFrame()
+@@ -318,7 +340,10 @@
+       }
+       NavigateParams navigation(browser_, node->url(),
+                                 ui::PAGE_TRANSITION_AUTO_BOOKMARK);
+-      navigation.disposition = current ? WindowOpenDisposition::CURRENT_TAB
++      navigation.disposition = current      ? WindowOpenDisposition::CURRENT_TAB
++                               : new_window ? WindowOpenDisposition::NEW_WINDOW
++                               : private_window
++                                   ? WindowOpenDisposition::OFF_THE_RECORD
+                                : *disposition == "background"
+                                    ? WindowOpenDisposition::NEW_BACKGROUND_TAB
+                                    : WindowOpenDisposition::NEW_FOREGROUND_TAB;
+@@ -327,6 +352,12 @@
+       navigation.original_user_gesture = activated;
+       Navigate(&navigation);
+       auto* opened = navigation.navigated_or_inserted_contents.get();
++      if (!opened && !current) {
++        std::move(callback).Run(
++            false, "", "unavailable",
++            "The bookmark could not open in this destination");
++        return;
++      }
+       const bool opened_here =
+           opened && opened->GetBrowserContext() == profile &&
+           browser_->GetTabStripModel()->GetIndexOfWebContents(opened) !=

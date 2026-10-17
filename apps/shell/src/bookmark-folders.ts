@@ -107,22 +107,22 @@ export async function editBookmark(params: BookmarkEntryEdit) {
 /** Saved browser addresses stay in Chromium's navigation pipeline, outside the WebUI document. */
 export async function openBookmark(
   item: Pick<Bookmark, "nodeId" | "url">,
-  background: boolean,
+  disposition: "foreground" | "background" | "window" | "private",
   pageId?: string,
   spaceId?: string,
 ) {
   if (!item.nodeId) throw new Error("This bookmark is no longer available.");
   const script = item.url.toLowerCase().startsWith("javascript:");
-  if (script && background)
+  if (script && disposition !== "foreground")
     throw new Error("Bookmarklets run in the current tab. Open this bookmark normally.");
   const response = await bridge.bookmarksInvoke({
     method: "bookmarks.open",
     params: {
       nodeId: item.nodeId,
       url: item.url,
-      disposition: script ? "current" : background ? "background" : "foreground",
+      disposition: script ? "current" : disposition,
       ...(script && pageId ? { pageId } : {}),
-      ...(spaceId ? { spaceId } : {}),
+      ...(spaceId && disposition !== "window" && disposition !== "private" ? { spaceId } : {}),
     },
   });
   if (response.method !== "bookmarks.open") throw new Error("Unexpected bookmark response.");

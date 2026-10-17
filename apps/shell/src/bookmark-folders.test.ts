@@ -84,19 +84,46 @@ it("keeps duplicate-folder membership distinct and sends saved schemes only to n
     .spyOn(bridge, "bookmarksInvoke")
     .mockResolvedValue({ method: "bookmarks.open", result: { pageId: "p_current" } });
   try {
-    await openBookmark({ nodeId: "12", url: "javascript:alert('saved')" }, false, "p_current");
+    await openBookmark({ nodeId: "12", url: "javascript:alert('saved')" }, "foreground", "p_current");
     expect(native).toHaveBeenLastCalledWith({
       method: "bookmarks.open",
       params: { nodeId: "12", url: "javascript:alert('saved')", disposition: "current", pageId: "p_current" },
     });
     await expect(
-      openBookmark({ nodeId: "12", url: "javascript:alert('saved')" }, true, "p_current"),
+      openBookmark({ nodeId: "12", url: "javascript:alert('saved')" }, "background", "p_current"),
     ).rejects.toThrow("current tab");
-    await openBookmark({ nodeId: "13", url: "chrome://settings/" }, false, undefined, "space-work");
+    await openBookmark({ nodeId: "13", url: "chrome://settings/" }, "foreground", undefined, "space-work");
     expect(native).toHaveBeenLastCalledWith({
       method: "bookmarks.open",
       params: { nodeId: "13", url: "chrome://settings/", disposition: "foreground", spaceId: "space-work" },
     });
+  } finally {
+    native.mockRestore();
+  }
+});
+
+it("opens new bookmark windows without inheriting the source Space or allowing bookmarklets", async () => {
+  const native = vi
+    .spyOn(bridge, "bookmarksInvoke")
+    .mockResolvedValue({ method: "bookmarks.open", result: { pageId: null } });
+  try {
+    for (const disposition of ["window", "private"] as const) {
+      await openBookmark(
+        { nodeId: "12", url: "https://example.com" },
+        disposition,
+        undefined,
+        "source-space",
+      );
+      expect(native).toHaveBeenLastCalledWith({
+        method: "bookmarks.open",
+        params: { nodeId: "12", url: "https://example.com", disposition },
+      });
+      const count = native.mock.calls.length;
+      await expect(openBookmark({ nodeId: "12", url: "javascript:alert(1)" }, disposition)).rejects.toThrow(
+        "current tab",
+      );
+      expect(native).toHaveBeenCalledTimes(count);
+    }
   } finally {
     native.mockRestore();
   }

@@ -62,7 +62,7 @@ export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[
             state.layout.tabSpace[page.pageId] === spaceId &&
             page.viewStatus !== "crashed",
         );
-        if (!existing) await openBookmark(item, true, undefined, spaceId);
+        if (!existing) await openBookmark(item, "background", undefined, spaceId);
         completed++;
       } catch (reason) {
         failed.push(queue[index]!);

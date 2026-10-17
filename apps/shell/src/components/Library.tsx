@@ -46,6 +46,7 @@ import { hostOf } from "../workspace";
 import {
   shellIconArchive,
   shellIconClock,
+  shellIconChromeSm,
   shellIconReopen,
   shellIconResult,
   shellIconBookmark,
@@ -170,6 +171,7 @@ const SavedPageRow = memo(function SavedPageRow({
     return () => cancelAnimationFrame(frame);
   }, [isEditing, busy]);
   const canPeek = useFeature("peek");
+  const privateWindows = useFeature("privateWindows");
   useStore((state) => {
     const item = state.bookmarks[position];
     return item && bookmarkKey(item) === itemKey
@@ -264,6 +266,36 @@ const SavedPageRow = memo(function SavedPageRow({
         )}
         {view === "bookmarks" ? (
           <>
+            <button
+              {...staticSmallIconButtonProps}
+              disabled={busy || item.url.toLowerCase().startsWith("javascript:")}
+              onClick={(event) => onOpen(item, true, event.currentTarget)}
+            >
+              {shellIconReopen}
+              <span>Open in new tab</span>
+            </button>
+            {(["window", "private"] as const)
+              .filter((destination) => destination === "window" || (privateWindows && !bridge.privateMode))
+              .map((destination) => (
+                <button
+                  key={destination}
+                  {...staticSmallIconButtonProps}
+                  disabled={busy || item.url.toLowerCase().startsWith("javascript:")}
+                  onClick={() =>
+                    void action(async () => {
+                      await openBookmark(item, destination);
+                      setNotice(
+                        destination === "private"
+                          ? "Bookmark opened in a Private window."
+                          : "Bookmark opened in a new window.",
+                      );
+                    })
+                  }
+                >
+                  {shellIconChromeSm}
+                  <span>{destination === "private" ? "Open in Private window" : "Open in new window"}</span>
+                </button>
+              ))}
             <button
               {...staticSmallIconButtonProps}
               title="Edit bookmark"
@@ -856,7 +888,7 @@ export function Library({
         if (background) {
           const overlay = state.overlay;
           if (item.nodeId) {
-            await openBookmark(item, true, undefined, state.layout.activeSpaceId);
+            await openBookmark(item, "background", undefined, state.layout.activeSpaceId);
           } else await state.openBackgroundTab(url, state.layout.activeSpaceId, false);
           setNotice(`Opened ${item.title || hostOf(url)} in a background tab.`);
           const returnFocus = () =>
@@ -876,7 +908,7 @@ export function Library({
           return;
         }
         if (item.nodeId) {
-          await openBookmark(item, false, state.activePageId ?? undefined, state.layout.activeSpaceId);
+          await openBookmark(item, "foreground", state.activePageId ?? undefined, state.layout.activeSpaceId);
         } else {
           const existing = orderedPages(state.pages).find(
             (page) =>

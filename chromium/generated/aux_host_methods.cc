@@ -1552,7 +1552,7 @@ bool ValidateNode84(const base::Value& value) {
 
 bool ValidateNode85(const base::Value& value) {
   if (!(value.is_string())) return false;
-  if (!((value == base::Value("current")) || (value == base::Value("foreground")) || (value == base::Value("background")))) return false;
+  if (!((value == base::Value("current")) || (value == base::Value("foreground")) || (value == base::Value("background")) || (value == base::Value("window")) || (value == base::Value("private")))) return false;
   return true;
 }
 

@@ -2093,3 +2093,30 @@ Profile aux-dev-vseCSW. No replacement builder started. Real grouped History,
 separate native page routes, narrow/light evidence and the remaining bookmark
 Sort/Cut/Copy/Paste/open destinations are still open. Full parity is not complete.
 
+
+Bookmark destination batch (reference 170): row actions now expose Open in new
+tab, Open in new window and Open in Private window. New-tab uses the existing
+background native bookmark path. Window destinations extend the exact saved-node
+bridge; URL/node mismatch checks and bookmarklet current-tab restrictions remain.
+Private action respects its feature opt-out and is omitted in Private windows.
+The helper now takes an explicit destination; all sidebar/folder callers migrated.
+New windows never inherit the source window's Space. Chromium rejects unsupported
+internal URLs for Private destinations before Navigate can redirect them into the
+original Profile. Failed navigation now returns an error instead of false success
+(bookmarklet current-tab execution retains its existing nullable result).
+
+Native source change is consolidated as area patch
+`chromium/patches/aux/0046-bookmark-window-destinations.patch`; generated host
+schema/ABI refreshed. Reverse-apply check against the product checkout passed.
+Integrated check: typecheck/lint and 4,637 tests / 746 files passed in 97.37s.
+Regression verifies new-window payloads omit source Space and both destinations
+reject bookmarklets without invoking native navigation. Log:
+`/tmp/aux-bookmark-destinations-check.log`. Native compile and walkthrough pending.
+
+Current preview still runs bca52783c under launcher 41736 / app 45506, disposable
+Profile aux-dev-vseCSW. It must be retired normally before the consolidated build
+containing this batch, History rows/selection and rounded Library dialogs. The
+reference corpus still contains 380 source files. Group/split destinations,
+bookmark Sort/Cut/Copy/Paste and separate native Library routes remain open.
+Full Aside parity is not complete.
+

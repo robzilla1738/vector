@@ -234,7 +234,7 @@ export function SidebarBookmarks() {
             latest.layout.tabSpace[page.pageId] === state.layout.activeSpaceId &&
             page.viewStatus !== "crashed",
         );
-        if (!existing) await openBookmark(item, true, undefined, state.layout.activeSpaceId);
+        if (!existing) await openBookmark(item, "background", undefined, state.layout.activeSpaceId);
         ++opened;
       }
       toast(
@@ -264,7 +264,7 @@ export function SidebarBookmarks() {
     const state = useStore.getState();
     void openBookmark(
       item,
-      backgroundLink(event),
+      backgroundLink(event) ? "background" : "foreground",
       state.activePageId ?? undefined,
       state.layout.activeSpaceId,
     ).catch(errToast);
@@ -492,7 +492,7 @@ export function SidebarBookmarks() {
                 onClick={() =>
                   action(async () => {
                     const spaceId = useStore.getState().layout.activeSpaceId;
-                    await openBookmark(item, true, undefined, spaceId);
+                    await openBookmark(item, "background", undefined, spaceId);
                   })
                 }
               >
