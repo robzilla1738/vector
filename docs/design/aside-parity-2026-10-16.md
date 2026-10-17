@@ -5,6 +5,20 @@ review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
 [the earlier surface ledger](aside-parity.md); it does not narrow its acceptance.
 
+## Split shortcut evidence reconciliation
+
+Reopened reference 031 and checked current registry, mount handlers and Appearance
+rows. `split-side-by-side` and `split-stacked` select the right/bottom split picker
+respectively; their editable shortcuts are already registered. Existing capture
+files for both native orientations were located, and the later Separate-to-stacked
+capture was reopened. Old “commands missing” notes are superseded. No product
+source changed and no unchanged tests were rerun during this reconciliation.
+
+Next native acceptance priorities remain routine model/reasoning persistence,
+image selection and focused account-dialog behavior in the active consolidation;
+then the newer provider-mark renderer. Launcher 75304/session 72707 is still live.
+Full split/card parity remains open rather than being inferred from command support.
+
 ## Provider identifiers
 
 Provider marks follow-up: bundled ten unmodified monochrome marks from
@@ -173,9 +187,12 @@ but is not included in this native build.
 
 Reference031: Quick Ask now joins the common inline recorder and reports actual
 global registration state. Extension shortcuts has a native navigation row using
-Chromium's implemented /shortcuts route. Source/test checks passed; visual and
-native acceptance remain OPEN. Direct split orientation commands and their rows
-are still missing; this does not establish complete shortcut-card parity.
+Chromium's implemented /shortcuts route. Both direct split-orientation commands
+and featured rows are implemented. Native `fc9df54b1` produced side-by-side and
+stacked panes; `80b9431f8` later covered a rapid Separate-to-stacked transition.
+The capture paths and current source were rechecked. Full shortcut-card visual,
+light/narrow and accessibility comparisons remain OPEN; do not reimplement the
+orientation commands based on the historical notes below.
 
 Latest references040–041 work: Adblock is a separate compact Settings card, with
 a real switch and searchable Configure menu. Configured sources open their editor;
@@ -287,7 +304,7 @@ source limitations. The complete source filename and metadata live in the folder
 | 028 | Appearance recent chats dropdown            | captured                                                                                                                  | Open                                                            |
 | 029 | Appearance tab order dropdown               | captured                                                                                                                  | Open                                                            |
 | 030 | Appearance tidy tabs configuration          | captured                                                                                                                  | Open                                                            |
-| 031 | Appearance keyboard shortcuts               | captured                                                                                                                  | Open                                                            |
+| 031 | Appearance keyboard shortcuts | captured | Eight featured rows implemented; native orientation shortcuts observed. Matched viewport, light/narrow and full-card comparison remain open. |
 | 032 | Settings account                            | captured                                                                                                                  | Aux boundary; compare truthful Profile/usage/budget equivalents |
 | 033 | Account device actions                      | captured                                                                                                                  | Aux boundary; compare truthful Profile/usage/budget equivalents |
 | 034 | Settings plan and usage                     | captured                                                                                                                  | Aux boundary; compare truthful Profile/usage/budget equivalents |
@@ -1281,9 +1298,9 @@ labels keep the rows searchable. Recorder tests cover Tab leaving, native
 restoration, conflict review and changing presentations. Integrated check passed
 4,582/4,583 tests with only coder-worktrees60s timeout; final typecheck/three
 recorder tests and renderer2.97s passed after static search indexing adjustment.
-Native visual acceptance, reset-icon fidelity, two direct split-orientation
-commands and the global Quick Ask row remain open. Agent Rail is labeled for its
-actual behavior. This remains partial progress toward the complete reference card.
+This historical five-row pass preceded the direct split commands and global Quick
+Ask row, now implemented as recorded above. Exact reset-icon/card fidelity and
+light/narrow acceptance remain open. Agent Rail retains its actual behavior.
 Reference folder rescan still contains562 files; no new captures found this batch.
 
 Reference040 reopened against current PrivacySecurity/SitePermissions source.
@@ -1414,8 +1431,10 @@ comparison, light/narrow states and native persistent creation remain open.
 
 The Separate race now gates restoration while any split operation is queued or
 in flight; it rechecks when the final operation settles. The full integrated
-check passes 4,596 tests/738 files. Native rapid Separate/re-split acceptance
-remains to be checked in the consolidated build. Overall parity remains open.
+check passes 4,596 tests/738 files. The later `80b9431f8` native walkthrough
+covered a rapid Separate-to-stacked transition, captured in
+`/tmp/aux-parity-2026-10-16/aux-split-separate-stacked-native-80b943.png`.
+That single walkthrough does not establish full split-flow parity.
 
 
 ## October 16 Models overview and task-menu consolidation

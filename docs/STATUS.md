@@ -1,5 +1,12 @@
 # Aux status — October 16, 2026
 
+Split shortcut evidence reconciliation: current registry and Appearance source
+already include both orientation commands. The existing native horizontal/stacked
+captures and later `80b9431f8` Separate-to-stacked capture were checked; stale
+“missing command” ledger entries were corrected. No product edits or repeated
+tests were needed. Matching viewport/light/narrow/full-card acceptance remains
+open. Continue the active native consolidation at launcher 75304/session 72707.
+
 Provider marks follow-up: bundled ten unmodified monochrome marks from
 `@lobehub/icons-static-svg@1.95.1` with source/package metadata and the upstream
 MIT license under `apps/shell/src/assets/model-providers`. Composer model choices,
