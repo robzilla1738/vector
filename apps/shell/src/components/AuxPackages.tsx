@@ -3,7 +3,8 @@ import type { MethodResult } from "@aux/contracts";
 import { call } from "../store";
 import { bridge } from "../bridge";
 import { errorMessage } from "../error-message";
-import { Button } from "../ui";
+import { Button, SettingsGroup, Switch } from "../ui";
+import { SettingsField } from "../settings/primitives";
 export function AuxPackages() {
   const [library, setLibrary] = useState<MethodResult<"packages.list"> | null>(null);
   const [busy, setBusy] = useState(false),
@@ -34,15 +35,31 @@ export function AuxPackages() {
   }
   return (
     <section className="field" aria-label="Aux Packages">
-      <h3>Aux Packages</h3>
+      <h4>Aux Packages</h4>
       <p>
         Skills, agent profiles and prompt templates for Aux. Select packages per run or choose defaults here.
       </p>
-      {library?.packages.map((item) => (
-        <div key={item.name}>
-          <label>
-            <input
-              type="checkbox"
+      <SettingsGroup>
+        {library?.packages.map((item) => (
+          <SettingsField
+            key={item.name}
+            compact
+            label={item.name}
+            hint={item.description}
+            details={
+              <>
+                <span className="hint">
+                  {item.version}
+                  {item.shipped ? " · Included" : ""}
+                </span>
+                {item.warnings.map((warning) => (
+                  <p key={warning}>{warning}</p>
+                ))}
+              </>
+            }
+          >
+            <Switch
+              aria-label={`Use ${item.name} by default`}
               disabled={busy}
               checked={library.defaults.includes(item.name)}
               onChange={(event) => {
@@ -52,27 +69,18 @@ export function AuxPackages() {
                 void update(() => call("packages.defaults", { names: [...names] }));
               }}
             />
-            {item.name}{" "}
-            <small>
-              {item.version}
-              {item.shipped ? " · Included" : ""}
-            </small>
-          </label>
-          {item.description && <p>{item.description}</p>}
-          {item.warnings.map((warning) => (
-            <p key={warning}>{warning}</p>
-          ))}
-          {!item.shipped && (
-            <Button
-              size={28}
-              disabled={busy}
-              onClick={() => void update(() => call("packages.remove", { name: item.name }))}
-            >
-              Remove
-            </Button>
-          )}
-        </div>
-      ))}
+            {!item.shipped && (
+              <Button
+                size={28}
+                disabled={busy}
+                onClick={() => void update(() => call("packages.remove", { name: item.name }))}
+              >
+                Remove
+              </Button>
+            )}
+          </SettingsField>
+        ))}
+      </SettingsGroup>
       <Button
         size={28}
         disabled={busy}

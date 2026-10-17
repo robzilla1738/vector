@@ -266,3 +266,20 @@ options, gives modal text inputs the shared quiet control fill, and focuses the
 first editable field in Settings editors. Models now uses the reference box icon;
 Memory uses the chip and Developers uses the code icon. These source corrections
 still require native acceptance after rebuilding.
+
+
+## Paired Settings sweep and structural batch
+
+Both live apps were captured across General/Appearance and the major Settings
+families. Local `aside-sweep-*`, `aux-sweep-*` and `paired-*` files preserve the
+comparison. Model root/submenus, native select focus and Tidy input focus/fill were
+verified in packaged `56f74fd32` (captures32–35). The preview was retired normally.
+
+The paired sweep exposed inline editor sprawl in Selection & Capture, Skills/MCP,
+password transfer and Night shift, narrower Models cards, and oversized feature
+card illustration insets. The current source consolidates those editors into
+shared dialogs, standardizes card/field fills and widths, and adds Skills/MCP tab
+keyboard and search behavior. Selection action saves, previews and reordering stay
+local until the existing explicit Save; no model/capture call is added. New native
+acceptance is pending. Decorative illustrations retain Aux identity and are not
+accepted as pixel-exact reference assets. Rescan: still182 PNGs.

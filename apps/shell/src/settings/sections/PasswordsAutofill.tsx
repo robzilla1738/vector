@@ -12,6 +12,7 @@ import { useStore } from "../../store";
 import { pushSettingsPath } from "../routes";
 import { shellIconRight } from "../../ui/icons";
 import { SettingsField, SettingsSection } from "../primitives";
+import { SettingsDialogControl } from "../SettingsDialogControl";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
 import { useScopedCommandControls } from "../../scoped-command-controls";
 import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
@@ -104,10 +105,13 @@ export function PasswordsAutofillSettings({
           </SettingsField>
         )}
         <SettingsField
+          compact
           label="Saved passwords"
           hint="Manage passwords in Chromium’s Profile store. Passkeys stay managed by Chromium."
         >
-          <PasswordTransferSetting />
+          <SettingsDialogControl active={active} label="Saved passwords" action="Manage…">
+            <PasswordTransferSetting />
+          </SettingsDialogControl>
         </SettingsField>
       </SettingsGroup>
       <SettingsGroup title="Autofill">

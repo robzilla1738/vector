@@ -3,7 +3,7 @@
     color: var(--ink-2);
     font-size: var(--fs-sm);
     font-weight: var(--fw-regular);
-    margin: 32px 12px 8px;
+    margin: var(--space-7) 0 var(--space-2);
   }
   .settings-content .models-overview > .ui-setting:first-child {
     display: flex;
@@ -12,7 +12,7 @@
     gap: 12px;
     padding: 0;
     background: transparent;
-    margin: 0;
+    margin: 0 calc(-1 * var(--space-3-5));
     min-height: 0;
     border-radius: var(--r-lg) var(--r-lg) 0 0;
   }
@@ -20,7 +20,7 @@
     display: none;
   }
   .settings-content .models-overview > .ui-setting:first-child > .setting-label {
-    padding: 0 12px;
+    padding: 0 var(--space-3-5);
     color: var(--ink-2);
     font-size: var(--fs-sm);
   }
@@ -48,8 +48,9 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    width: 100%;
-    padding: 12px 16px;
+    width: calc(100% + 2 * var(--space-3-5));
+    margin-inline: calc(-1 * var(--space-3-5));
+    padding: var(--space-3) var(--space-3-5);
     background: var(--settings-card);
     border-top: 1px solid var(--line);
     border-radius: 0 0 var(--r-lg) var(--r-lg);
@@ -73,7 +74,7 @@
     max-width: 100%;
     border: 1px solid var(--line);
     border-radius: var(--r-lg);
-    background: var(--surface-input);
+    background: var(--settings-control-fill);
   }
   .settings-content .field.ui-setting.compact:has(.settings-model-control) > .ui-setting-control {
     max-width: 210px;
@@ -160,14 +161,11 @@
     font-size: var(--fs-sm);
     padding: 8px;
   }
-  .settings-content .models-overview .field.ui-setting {
-    margin-inline: 0;
-  }
   .model-task-roles {
-    margin-block: 10px;
-    border-radius: var(--r-lg);
+    margin: var(--space-2-5) calc(-1 * var(--space-3-5));
+    border-radius: var(--r-xl);
     overflow: hidden;
-    background: var(--surface-secondary);
+    background: var(--settings-card);
   }
   .settings-content .models-overview .model-task-roles .field.ui-setting {
     background: transparent;
@@ -206,7 +204,7 @@
     padding: 7px 10px;
     border: 1px solid var(--line);
     border-radius: var(--r-md);
-    background: var(--surface-input);
+    background: var(--settings-control-fill);
   }
 }
 

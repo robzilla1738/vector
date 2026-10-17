@@ -1,7 +1,15 @@
-import { staticFieldProps as auxReserveStaticFieldProps } from "../../ui/class-props";
 import { staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   CaptureHotkeySchema,
   SelectionCaptureSettingsSchema,
@@ -20,6 +28,9 @@ import { useScopedCommandControls } from "../../scoped-command-controls";
 import { PreferenceAction } from "./preference-command";
 import { bindingFromKeydown } from "../../components/ShortcutsSetting";
 import { SettingsField, SettingsSection } from "../primitives";
+import { SettingsGroup, Switch } from "../../ui";
+import { SettingsDialogControl } from "../SettingsDialogControl";
+import "./SelectionCapture.css";
 import {
   staticPrimaryButtonProps as auxClassPrimaryButtonProps,
   staticGhostButtonProps as auxClassGhostButtonProps,
@@ -125,6 +136,9 @@ function Hotkey({
 
 function ActionRow({
   action,
+  active,
+  previewContent,
+  saveControls,
   index,
   count,
   disabled,
@@ -138,6 +152,9 @@ function ActionRow({
   remove,
 }: {
   action: Preferences["actions"][number];
+  active: boolean;
+  previewContent?: ReactNode;
+  saveControls: ReactNode;
   index: number;
   count: number;
   disabled: boolean;
@@ -151,75 +168,87 @@ function ActionRow({
   remove(id: string): void;
 }) {
   return (
-    <li {...auxReserveStaticFieldProps}>
-      <div className="row wrap">
-        <label>
-          <input
-            {...nativeCheckboxTypeProps}
-            checked={action.enabled}
+    <li className="selection-action-row">
+      <span>{action.name || "Untitled action"}</span>
+      {!action.enabled && <span className="selection-action-state">Off</span>}
+      <SettingsDialogControl active={active} label={`Edit ${action.name || "action"}`} action="⋯">
+        <div className="selection-action-editor">
+          <div className="row wrap">
+            <label>
+              <input
+                {...nativeCheckboxTypeProps}
+                checked={action.enabled}
+                disabled={disabled}
+                ref={(element) =>
+                  publish(`enabled:${action.id}`, "toggle-selection-action", element, () => toggle(action.id))
+                }
+                onChange={(event) => run("toggle-selection-action", event)}
+              />{" "}
+              Enabled
+            </label>
+            <input
+              aria-label={`Action ${index + 1} name`}
+              maxLength={60}
+              value={action.name}
+              disabled={disabled}
+              onChange={(event) => change(action.id, { name: event.target.value })}
+            />
+            <PreferenceAction
+              command="move-selection-action-up"
+              scopeId={scopeId}
+              {...smallGhostButtonProps}
+              aria-label={`Move ${action.name || "action"} up`}
+              disabled={disabled || index === 0}
+              invoke={() => move(action.id, -1)}
+            >
+              ↑
+            </PreferenceAction>
+            <PreferenceAction
+              command="move-selection-action-down"
+              scopeId={scopeId}
+              {...smallGhostButtonProps}
+              aria-label={`Move ${action.name || "action"} down`}
+              disabled={disabled || index === count - 1}
+              invoke={() => move(action.id, 1)}
+            >
+              ↓
+            </PreferenceAction>
+            <PreferenceAction
+              command="preview-selection-action"
+              scopeId={scopeId}
+              {...smallGhostButtonProps}
+              disabled={disabled}
+              invoke={() => preview(action.id)}
+            >
+              Preview {action.name || "action"}
+            </PreferenceAction>
+            <PreferenceAction
+              command="remove-selection-action"
+              scopeId={scopeId}
+              {...smallGhostButtonProps}
+              aria-label={`Remove ${action.name || "action"}`}
+              disabled={disabled}
+              invoke={() => remove(action.id)}
+            >
+              Remove
+            </PreferenceAction>
+          </div>
+          <textarea
+            aria-label={`Action ${index + 1} template`}
+            maxLength={2000}
+            rows={3}
+            value={action.template}
             disabled={disabled}
-            ref={(element) =>
-              publish(`enabled:${action.id}`, "toggle-selection-action", element, () => toggle(action.id))
-            }
-            onChange={(event) => run("toggle-selection-action", event)}
-          />{" "}
-          Enabled
-        </label>
-        <input
-          aria-label={`Action ${index + 1} name`}
-          maxLength={60}
-          value={action.name}
-          disabled={disabled}
-          onChange={(event) => change(action.id, { name: event.target.value })}
-        />
-        <PreferenceAction
-          command="move-selection-action-up"
-          scopeId={scopeId}
-          {...smallGhostButtonProps}
-          aria-label={`Move ${action.name || "action"} up`}
-          disabled={disabled || index === 0}
-          invoke={() => move(action.id, -1)}
-        >
-          ↑
-        </PreferenceAction>
-        <PreferenceAction
-          command="move-selection-action-down"
-          scopeId={scopeId}
-          {...smallGhostButtonProps}
-          aria-label={`Move ${action.name || "action"} down`}
-          disabled={disabled || index === count - 1}
-          invoke={() => move(action.id, 1)}
-        >
-          ↓
-        </PreferenceAction>
-        <PreferenceAction
-          command="preview-selection-action"
-          scopeId={scopeId}
-          {...smallGhostButtonProps}
-          disabled={disabled}
-          invoke={() => preview(action.id)}
-        >
-          Preview {action.name || "action"}
-        </PreferenceAction>
-        <PreferenceAction
-          command="remove-selection-action"
-          scopeId={scopeId}
-          {...smallGhostButtonProps}
-          aria-label={`Remove ${action.name || "action"}`}
-          disabled={disabled}
-          invoke={() => remove(action.id)}
-        >
-          Remove
-        </PreferenceAction>
-      </div>
-      <textarea
-        aria-label={`Action ${index + 1} template`}
-        maxLength={2000}
-        rows={3}
-        value={action.template}
-        disabled={disabled}
-        onChange={(event) => change(action.id, { template: event.target.value })}
-      />
+            onChange={(event) => change(action.id, { template: event.target.value })}
+          />
+          <p className="hint">
+            Use {"{text}"} for quoted text, {"{code}"} for code, or {"{image}"} for a capture. Edits stay in
+            this draft until you save Selection &amp; Capture.
+          </p>
+          {previewContent}
+          {saveControls}
+        </div>
+      </SettingsDialogControl>
     </li>
   );
 }
@@ -402,128 +431,8 @@ export function SelectionCaptureSettings({
       preview = reason instanceof Error ? reason.message : "Invalid template.";
     }
   }
-  return (
-    <SettingsSection name="Selection & Capture" hidden={!active}>
-      <p {...staticHintProps}>
-        Actions open an editable chat draft. Nothing is sent to a model until you send it. Capture is
-        unavailable in Private windows and must respect the source site’s policy.
-      </p>
-      <SettingsField
-        label="Selection actions"
-        hint="Order controls the selection menu. Use {text} for quoted text, {code} for quoted code, or {image} for a captured image. No page scripts or template commands run."
-        searchTerms={["Lasso", "prompt", "template", "sort", "double tap"]}
-      >
-        <ol className="plain-list">
-          {draft.actions.map((action, index) => (
-            <ActionRow
-              key={action.id}
-              action={action}
-              index={index}
-              count={draft.actions.length}
-              disabled={busy || unavailable}
-              scopeId={scopeId}
-              publish={publish}
-              run={run}
-              toggle={toggleAction}
-              change={updateAction}
-              move={moveAction}
-              preview={previewAction}
-              remove={removeAction}
-            />
-          ))}
-        </ol>
-        <button
-          ref={(element) => {
-            addButton.current = element;
-            publish("add", "add-selection-action", element, () =>
-              update({
-                actions: [
-                  ...draftRef.current.actions,
-                  {
-                    id: crypto.randomUUID(),
-                    name: "New action",
-                    enabled: true,
-                    template: "Explain this selection.\n\n{text}",
-                  },
-                ],
-              }),
-            );
-          }}
-          {...smallButtonProps}
-          disabled={busy || unavailable || draft.actions.length >= 12}
-          data-command-id="add-selection-action"
-          onClick={(event) => run("add-selection-action", event)}
-        >
-          Add selection action
-        </button>
-        {selectedPreview && (
-          <section aria-label="Selection action preview">
-            <strong>Local preview · example content</strong>
-            <pre style={{ whiteSpace: "pre-wrap" }}>{preview}</pre>
-            <PreferenceAction
-              command="close-selection-action-preview"
-              scopeId={scopeId}
-              {...smallGhostButtonProps}
-              invoke={() => {
-                if (!current()) throw new Error("Choose the current Selection & Capture preview.");
-                setPreviewId(null);
-              }}
-            >
-              Close preview
-            </PreferenceAction>
-          </section>
-        )}
-      </SettingsField>
-      <SettingsField
-        label="Selection double-tap shortcut"
-        hint="Press the same shortcut twice to request the selection menu. The native handler must ignore held keys; no selection is captured by this settings page."
-      >
-        <Hotkey
-          label="selection double-tap shortcut"
-          value={draft.selectionDoubleTap}
-          disabled={busy || unavailable}
-          active={active}
-          current={current}
-          scopeId={scopeId}
-          onChange={(selectionDoubleTap) => update({ selectionDoubleTap })}
-        />
-        <output {...staticHintProps}>{registration("selectionDoubleTap")}</output>
-      </SettingsField>
-      <SettingsField
-        label="Region-capture shortcut"
-        hint="Requests an explicit region picker. Review the captured image in the chat draft before sending it."
-      >
-        <Hotkey
-          label="region-capture shortcut"
-          value={draft.regionCapture}
-          disabled={busy || unavailable}
-          active={active}
-          current={current}
-          scopeId={scopeId}
-          onChange={(regionCapture) => update({ regionCapture })}
-        />
-        <output {...staticHintProps}>{registration("regionCapture")}</output>
-      </SettingsField>
-      <SettingsField
-        label="Inline assist"
-        hint="On explicit request, read a non-sensitive editable web field, draft a replacement, and apply it only after your review. Turn off to block new capture, drafting and insertion."
-      >
-        <label>
-          <input
-            {...nativeCheckboxTypeProps}
-            checked={draft.inlineAssist}
-            disabled={busy || unavailable}
-            ref={(element) =>
-              publish("inline", "toggle-inline-assist", element, () =>
-                update({ inlineAssist: !draftRef.current.inlineAssist }),
-              )
-            }
-            data-command-id="toggle-inline-assist"
-            onChange={(event) => run("toggle-inline-assist", event)}
-          />{" "}
-          Enable inline assist
-        </label>
-      </SettingsField>
+  const saveControls = (
+    <>
       {changedElsewhere && dirty && (
         <p {...nativeAlertRoleProps}>
           These settings changed in another window. Your edits are preserved; reload the saved version before
@@ -563,6 +472,167 @@ export function SelectionCaptureSettings({
           </PreferenceAction>
         )}
       </div>
+    </>
+  );
+  return (
+    <SettingsSection name="Selection & Capture" hidden={!active} className="selection-capture-settings">
+      <SettingsField
+        layout="feature"
+        label="Ask about what you select"
+        target="Selection & Capture overview"
+        hint="Select text or capture a region, then ask Aux to explain, translate, or turn it into a draft. You review it before sending."
+        details={
+          <div className="selection-capture-preview" aria-hidden="true">
+            <div className="selection-preview-document">
+              <span />
+              <span />
+              <mark>Make sense of any page.</mark>
+              <span />
+            </div>
+            <div className="selection-preview-menu">
+              <strong>Ask Aux</strong>
+              <span>Explain</span>
+              <span>Translate</span>
+            </div>
+          </div>
+        }
+      >
+        <span className="hint">Available outside Private windows.</span>
+      </SettingsField>
+      <SettingsGroup title="Text selection">
+        <SettingsField
+          label="Selection actions"
+          hint="Customize the actions in your selection menu. No page scripts or template commands run."
+          searchTerms={["Lasso", "prompt", "template", "sort", "double tap"]}
+        >
+          <ol className="selection-action-list">
+            {draft.actions.map((action, index) => (
+              <ActionRow
+                key={action.id}
+                action={action}
+                saveControls={saveControls}
+                active={!unavailable}
+                previewContent={
+                  <>
+                    {selectedPreview?.id === action.id && (
+                      <section aria-label="Selection action preview">
+                        <strong>Local preview · example content</strong>
+                        <pre style={{ whiteSpace: "pre-wrap" }}>{preview}</pre>
+                        <PreferenceAction
+                          command="close-selection-action-preview"
+                          scopeId={scopeId}
+                          {...smallGhostButtonProps}
+                          invoke={() => {
+                            if (!current())
+                              throw new Error("Choose the current Selection & Capture preview.");
+                            setPreviewId(null);
+                          }}
+                        >
+                          Close preview
+                        </PreferenceAction>
+                      </section>
+                    )}
+                  </>
+                }
+                index={index}
+                count={draft.actions.length}
+                disabled={busy || unavailable}
+                scopeId={scopeId}
+                publish={publish}
+                run={run}
+                toggle={toggleAction}
+                change={updateAction}
+                move={moveAction}
+                preview={previewAction}
+                remove={removeAction}
+              />
+            ))}
+          </ol>
+          <button
+            ref={(element) => {
+              addButton.current = element;
+              publish("add", "add-selection-action", element, () =>
+                update({
+                  actions: [
+                    ...draftRef.current.actions,
+                    {
+                      id: crypto.randomUUID(),
+                      name: "New action",
+                      enabled: true,
+                      template: "Explain this selection.\n\n{text}",
+                    },
+                  ],
+                }),
+              );
+            }}
+            {...smallButtonProps}
+            disabled={busy || unavailable || draft.actions.length >= 12}
+            data-command-id="add-selection-action"
+            onClick={(event) => run("add-selection-action", event)}
+          >
+            Add selection action
+          </button>
+        </SettingsField>
+        <SettingsField
+          compact
+          label="Selection double-tap shortcut"
+          hint="Press the same shortcut twice to open the selection menu."
+        >
+          <Hotkey
+            label="selection double-tap shortcut"
+            value={draft.selectionDoubleTap}
+            disabled={busy || unavailable}
+            active={active}
+            current={current}
+            scopeId={scopeId}
+            onChange={(selectionDoubleTap) => update({ selectionDoubleTap })}
+          />
+          <output {...staticHintProps}>{registration("selectionDoubleTap")}</output>
+        </SettingsField>
+      </SettingsGroup>
+      <SettingsGroup title="Screen capture">
+        <SettingsField
+          compact
+          label="Region-capture shortcut"
+          hint="Requests an explicit region picker. Review the captured image in the chat draft before sending it."
+        >
+          <Hotkey
+            label="region-capture shortcut"
+            value={draft.regionCapture}
+            disabled={busy || unavailable}
+            active={active}
+            current={current}
+            scopeId={scopeId}
+            onChange={(regionCapture) => update({ regionCapture })}
+          />
+          <output {...staticHintProps}>{registration("regionCapture")}</output>
+        </SettingsField>
+      </SettingsGroup>
+      <SettingsGroup>
+        <SettingsField
+          compact
+          label="Inline assist"
+          hint="On explicit request, read a non-sensitive editable web field, draft a replacement, and apply it only after your review. Turn off to block new capture, drafting and insertion."
+        >
+          <Switch
+            aria-label="Enable inline assist"
+            checked={draft.inlineAssist}
+            disabled={busy || unavailable}
+            controlRef={(element) =>
+              publish("inline", "toggle-inline-assist", element, () =>
+                update({ inlineAssist: !draftRef.current.inlineAssist }),
+              )
+            }
+            data-command-id="toggle-inline-assist"
+            onChange={(event) => run("toggle-inline-assist", event)}
+          />
+        </SettingsField>
+      </SettingsGroup>
+      <p className="hint">
+        Actions only prepare an editable chat draft. Nothing is sent until you send it. Capture respects the
+        source site’s policy.
+      </p>
+      {saveControls}
     </SettingsSection>
   );
 }

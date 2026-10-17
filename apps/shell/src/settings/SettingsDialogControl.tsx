@@ -66,7 +66,7 @@ export function SettingsDialogControl({
             ref={(node) => {
               editorFocus.current =
                 node?.querySelector<HTMLElement>(
-                  'input:not([type="hidden"]):not(:disabled), textarea:not(:disabled), select:not(:disabled)',
+                  'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:disabled), textarea:not(:disabled), select:not(:disabled)',
                 ) ?? null;
             }}
           >

@@ -103,7 +103,7 @@ export interface FeatureMount {
   overlays?: readonly ComponentType[];
   composerPlugins?: readonly ComponentType<ComposerPluginProps>[];
   composerActions?: readonly ComponentType<ComposerPluginProps>[];
-  settingsSections?: readonly { category: string; component: ComponentType }[];
+  settingsSections?: readonly { category: string; component: ComponentType<{ active?: boolean }> }[];
   commands?: Partial<
     Record<ShellCommandId, (context: CommandContext, invocation: CommandInvocation) => unknown>
   >;
@@ -190,7 +190,7 @@ export function FeatureSettings({ category }: { category: string | null }) {
           { key: `${mount.feature}:${index}`, hidden: section.category !== category },
           createElement(VisitedSection, {
             active: section.category === category,
-            children: createElement(section.component),
+            children: createElement(section.component, { active: section.category === category }),
           }),
         ),
       ),

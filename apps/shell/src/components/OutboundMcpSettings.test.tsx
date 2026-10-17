@@ -31,7 +31,7 @@ const server = () => ({
 });
 
 function button(label: string) {
-  const found = [...container.querySelectorAll("button")].find((item) => item.textContent?.trim() === label);
+  const found = [...document.querySelectorAll("button")].find((item) => item.textContent?.trim() === label);
   if (!found) throw new Error(`Button ${label} is missing`);
   return found;
 }
@@ -163,7 +163,8 @@ it("inspects a bundle before registration and submits its reviewed file fingerpr
 
   await act(async () => root.render(<OutboundMcpSettings />));
   await flush();
-  const source = container.querySelector<HTMLSelectElement>('select[aria-label="MCP source type"]')!;
+  await act(async () => button("＋ Add server…").click());
+  const source = document.querySelector<HTMLSelectElement>('select[aria-label="MCP source type"]')!;
   act(() => {
     source.value = "bundle";
     source.dispatchEvent(new Event("change", { bubbles: true }));
@@ -171,8 +172,8 @@ it("inspects a bundle before registration and submits its reviewed file fingerpr
   await act(async () => button("Choose and inspect bundle…").click());
   await flush();
   expect(rpc).toHaveBeenCalledWith("mcp.bundles.inspect", { path });
-  expect(container.textContent).toContain("server.js");
-  expect(container.textContent).toContain(sha256);
+  expect(document.body.textContent).toContain("server.js");
+  expect(document.body.textContent).toContain(sha256);
   await act(async () => button("Add server").click());
   await flush();
   expect(rpc).toHaveBeenCalledWith("mcp.servers.register", {

@@ -68,13 +68,18 @@ const held = <T,>() => {
   return { promise, resolve, reject };
 };
 const button = (name: string) =>
-  [...host.querySelectorAll<HTMLButtonElement>("button")].find((node) => node.textContent?.trim() === name)!;
-const template = () => host.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!;
+  [
+    ...document.querySelectorAll<HTMLButtonElement>("dialog button"),
+    ...host.querySelectorAll<HTMLButtonElement>("button"),
+  ].find((node) => node.textContent?.trim() === name)!;
+const template = () => document.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!;
 async function render() {
   await act(async () => root.render(<Settings />));
   await act(async () => vi.dynamicImportSettled());
 }
 async function write(value: string) {
+  if (!template())
+    await act(async () => host.querySelector<HTMLButtonElement>(".selection-action-row button")!.click());
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(template(), value);
     template().dispatchEvent(new Event("input", { bubbles: true }));

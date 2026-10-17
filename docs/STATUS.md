@@ -7,15 +7,36 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
-## Popup and editor follow-up — source
+## Settings structure and editor batch — source
 
-The full check passed 4,647 tests / 746 files plus typecheck and lint. Native
-inspection of d316d2d69 verified the Home canvas and modal stage bounds, then
-caught an anchored model picker inheriting those bounds. Popover now explicitly
-requests anchored placement, covered by the nested popup lifecycle test. The
-follow-up standardizes model menu widths (192px root / 208px submenu), modal text
-field fills and editor initial focus, and corrects Models/Memory/Developers icons.
-Final native acceptance is pending; the prior d316d2d69 preview has been retired.
+The next local slice replaces inline selection-action forms with compact rows and
+focused editors, puts MCP registration in a reviewed dialog, adds keyboard-operated
+Skills/MCP tabs, and moves password transfer and night-shift forms into focused
+editors. Models cards now share the full Settings column; feature cards share the
+reference's 4px inset, 10px gap and 288px illustration width. Settings/popup inputs
+and permission cards use the shared quiet fills. Package defaults use shared rows
+and switches. Aux branding, supported commands and permission boundaries remain.
+
+Save/preview/reorder ownership is retained. Selection editors expose the original
+save/reload commands and keep unsaved drafts on dismissal. Routed search waits for
+hidden tab panels to become visible before focusing. Feature sections propagate
+active state so their dialogs retire when leaving the section. The initial 27
+focused editor/ownership tests passed. Integrated typecheck and lint passed;
+4,644 tests passed and five integration tests still used the removed inline form.
+Those tests now open the real editor, and all six parent ownership tests pass.
+The full run covered747files/4,649tests in97.85s; unchanged tests were not repeated.
+Logs: `/tmp/aux-parity-settings-batch-check.log` and
+`/tmp/aux-parity-parent-owners.log`. Native acceptance is pending.
+
+## Popup and editor follow-up — native verified
+
+Packaged `56f74fd32` passed the native build in 9m14.56s; About confirmed the source.
+The model picker and nested submenu now use compact 192px/208px widths and Escape
+returns through each level correctly. General's native select has no default blue
+outline/shadow. Tidy Tabs opens with the prompt focused and a quiet field fill.
+Local captures 32–35 record these checks. The earlier full check passed 4,647 tests
+across 746 files; the menu-width follow-up passed 31 targeted tests. Full parity
+remains open, including selected-item popup alignment and populated/narrow states.
 
 ## Live Aside audit — Settings and shared surfaces
 
@@ -158,16 +179,11 @@ No unchanged full suite repeated. Packaged build succeeded in 9m52.23s.
 
 ## Current native preview
 
-Product **1ab8c11b2**, launcher **72801**, app **73957**, runtime **73986**,
-exec **49462**, API port **60858**, disposable Profile **aux-dev-fFDRPr**.
-Log `/tmp/aux-controls-final-native-build.log`; native build passed in **6m59.15s**.
-CUA `standardControlsApp` is live on native Quick Ask, with one browser sidebar.
-About confirms 1ab8c11b22f959e81470dc2504ff65c04494cf3b. General, Quick Ask and
-Appearance light/dark controls were inspected; Dark was restored. Previous launcher
-63746, app67654/runtime67669, disposable Profile and lock retired normally and were
-verified removed. The intermediate 522cbfe97 build was retired through its launcher
-before rebuilding the composite-input follow-up. Never embed the full mock renderer
-inside the user-visible native preview again.
+The `56f74fd32` preview has been retired normally through launcher **86926**.
+App **88158**, disposable Profile **aux-dev-jTFpmK** and the native lock were
+verified removed. Log: `/tmp/aux-parity-popup-native.log`. The next integrated
+Settings batch awaits its native build. Never embed the full mock renderer inside
+the user-visible native preview; inspect native `chrome://aux` pages.
 
 The following populated Memory evidence is from earlier disposable previews:
 

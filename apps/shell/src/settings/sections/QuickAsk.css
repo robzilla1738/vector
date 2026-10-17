@@ -3,12 +3,12 @@
     display: grid;
     place-items: center;
     width: 100%;
-    min-height: 140px;
+    min-height: 164px;
     border-radius: var(--r-lg);
     padding: var(--space-4);
     background:
-      radial-gradient(ellipse at 75% 75%, var(--accent) 0, transparent 65%),
-      linear-gradient(135deg, var(--surface-tertiary), var(--surface-primary));
+      radial-gradient(ellipse at 65% 15%, #ebc8a0 0, transparent 65%),
+      linear-gradient(135deg, #9a572d, #af7950 50%, #d8aa77);
   }
   .quick-ask-preview-composer {
     width: 100%;
@@ -16,9 +16,10 @@
     padding: var(--space-3);
     border: var(--hairline) solid var(--line-strong);
     border-radius: var(--r-xl);
-    background: var(--surface-menu);
+    background: color-mix(in srgb, #4c3427 82%, transparent);
+    backdrop-filter: blur(var(--blur-16));
     box-shadow: var(--shadow-pop);
-    color: var(--ink-2);
+    color: #e1d4c9;
     font-size: var(--fs-xs);
   }
   .quick-ask-preview-composer > div {

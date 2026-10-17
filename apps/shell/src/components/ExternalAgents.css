@@ -3,7 +3,7 @@
     display: grid;
     gap: var(--space-3);
     padding: var(--space-3-5);
-    background: var(--surface-secondary);
+    background: var(--settings-card);
   }
   .developer-connection-editor > p {
     margin: 0;
@@ -26,7 +26,8 @@
     width: 100%;
     padding: var(--space-4) 0 0 var(--space-4);
     border-radius: var(--r-lg);
-    background: linear-gradient(135deg, var(--surface-tertiary), var(--accent-soft));
+    min-height: 164px;
+    background: linear-gradient(135deg, #b592a4, #f1c4ce 58%, #c8c1d9);
     overflow: hidden;
   }
   .developer-cli-preview > div {

@@ -39,16 +39,34 @@ const held = <T,>() => {
   });
   return { promise, resolve, reject };
 };
-const named = (label: string) => host.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!;
+const named = (label: string) => document.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!;
 const button = (label: string) =>
-  [...host.querySelectorAll<HTMLButtonElement>("button")].find((node) => node.textContent?.trim() === label)!;
-const template = () => host.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!;
+  [
+    ...document.querySelectorAll<HTMLButtonElement>("dialog button"),
+    ...host.querySelectorAll<HTMLButtonElement>("button"),
+  ].find((node) => node.textContent?.trim() === label)!;
+const template = () => document.querySelector<HTMLTextAreaElement>("dialog textarea")!;
 async function render() {
   await act(async () =>
     root.render(<SelectionCaptureSettings active={active} settings={settings} onSave={save} />),
   );
 }
+async function openAction(name?: string) {
+  const dialog = document.querySelector<HTMLDialogElement>("dialog");
+  if (dialog && (!name || dialog.getAttribute("aria-label") === `Edit ${name}`)) return;
+  if (dialog)
+    await act(async () =>
+      dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
+    );
+  await act(async () =>
+    (name
+      ? named(`Edit ${name}`)
+      : host.querySelector<HTMLButtonElement>(".selection-action-row button")!
+    ).click(),
+  );
+}
 async function write(text: string) {
+  await openAction();
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(template(), text);
     template().dispatchEvent(new Event("input", { bubbles: true }));
@@ -106,15 +124,16 @@ it("registers exactly twelve focused normal Settings commands without adding sho
 it("uses the exact focused original row for moves/preview/removal and retains local-only content", async () => {
   const native = vi.spyOn(bridge, "invoke");
   await render();
+  await openAction("Explain");
   await invoke("move-selection-action-up", named("Move Explain up"));
-  expect(host.querySelector<HTMLInputElement>('[aria-label="Action 1 name"]')!.value).toBe("Explain");
+  expect(document.querySelector<HTMLInputElement>('[aria-label="Action 1 name"]')!.value).toBe("Explain");
   await invoke("preview-selection-action", button("Preview Explain"));
-  expect(host.querySelector('[aria-label="Selection action preview"]')!.textContent).toContain(
+  expect(document.querySelector('[aria-label="Selection action preview"]')!.textContent).toContain(
     "Local preview · example content",
   );
   await invoke("close-selection-action-preview", button("Close preview"));
   await invoke("remove-selection-action", named("Remove Explain"));
-  expect(host.querySelectorAll("textarea")).toHaveLength(3);
+  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(3);
   expect(document.activeElement).toBe(button("Add selection action"));
   expect(save).not.toHaveBeenCalled();
   expect(native).not.toHaveBeenCalled();
@@ -142,7 +161,7 @@ it("reserves same-tick saves and returns the original false ACK with retained dr
   await act(async () => old.resolve(false));
   expect(await completion).toBe(false);
   expect(template().value).toBe("Same tick {text}");
-  expect(host.textContent).toContain("Your edits are still here");
+  expect(document.body.textContent).toContain("Your edits are still here");
 });
 it("does not let retired success overwrite a fresh window draft or clear its pending save", async () => {
   await render();
@@ -166,11 +185,11 @@ it("does not let retired success overwrite a fresh window draft or clear its pen
   expect(await oldCompletion).toBe(true);
   expect(template().value).toBe("Fresh draft {text}");
   expect(button("Saving…").disabled).toBe(true);
-  expect(host.textContent).not.toContain("Saved for this Profile");
+  expect(document.body.textContent).not.toContain("Saved for this Profile");
   await act(async () => fresh.resolve(false));
   expect(await freshCompletion).toBe(false);
   expect(template().value).toBe("Fresh draft {text}");
-  expect(host.textContent).toContain("Your edits are still here");
+  expect(document.body.textContent).toContain("Your edits are still here");
 });
 it("returns a retired original rejection without publishing it after committed Private ABA", async () => {
   await render();
@@ -194,7 +213,7 @@ it("returns a retired original rejection without publishing it after committed P
   const errors = vi.fn();
   reportCommandCompletionFailure(completion, reason, errors);
   expect(errors).not.toHaveBeenCalled();
-  expect(host.textContent).not.toContain(reason.message);
+  expect(document.body.textContent).not.toContain(reason.message);
   expect(template().value).toBe("Current draft {text}");
 });
 it("retains actual external-revision conflict and suppresses stale acknowledged delivery", async () => {
@@ -212,8 +231,8 @@ it("retains actual external-revision conflict and suppresses stale acknowledged 
   await act(async () => old.resolve(true));
   expect(await completion).toBe(true);
   expect(template().value).toBe("My unsaved source {text}");
-  expect(host.textContent).toContain("changed in another window");
-  expect(host.textContent).not.toContain("Saved for this Profile");
+  expect(document.body.textContent).toContain("changed in another window");
+  expect(document.body.textContent).not.toContain("Saved for this Profile");
   await invoke("reload-selection-capture-settings", button("Reload saved settings"));
   expect(template().value).not.toContain("My unsaved");
 });
@@ -230,7 +249,7 @@ it("retires recording across connected incarnation and retains genuine Escape/mo
       new KeyboardEvent("keydown", { key: "9", metaKey: true, altKey: true, bubbles: true }),
     ),
   );
-  expect(host.textContent).toContain("Off. No capture shortcut requested.");
+  expect(document.body.textContent).toContain("Off. No capture shortcut requested.");
   await invoke("record-selection-capture-shortcut", record);
   await act(async () => record.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
   expect(record.textContent).toBe("Record shortcut");
@@ -264,21 +283,27 @@ it("reproduces the original late-ACK busy leak using actual Save clicks after wi
   } finally {
     await act(async () => old.resolve(true));
   }
-  expect(host.textContent).not.toContain("Saved for this Profile");
+  expect(document.body.textContent).not.toContain("Saved for this Profile");
 });
 it("dispatches original checkbox, add and shortcut-disable controls without native capture", async () => {
   await render();
   const native = vi.spyOn(bridge, "invoke");
-  const enabled = host.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+  await openAction();
+  const enabled = document.querySelector<HTMLInputElement>('dialog input[type="checkbox"]')!;
   await invoke("toggle-selection-action", enabled);
   expect(enabled.checked).toBe(false);
-  const inline = [...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].at(-1)!;
+  await act(async () =>
+    document
+      .querySelector("dialog")!
+      .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
+  );
+  const inline = host.querySelector<HTMLInputElement>('[aria-label="Enable inline assist"]')!;
   const previous = inline.checked;
   await invoke("toggle-inline-assist", inline);
   expect(inline.checked).toBe(!previous);
-  const count = host.querySelectorAll("textarea").length;
+  const count = host.querySelectorAll(".selection-action-row").length;
   await invoke("add-selection-action", button("Add selection action"));
-  expect(host.querySelectorAll("textarea")).toHaveLength(count + 1);
+  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(count + 1);
   const record = named("Record selection double-tap shortcut");
   await invoke("record-selection-capture-shortcut", record);
   await act(async () =>
@@ -308,10 +333,10 @@ it("preserves a synchronous original save rejection and recovers through the sam
     await expect(completion).rejects.toBe(reason);
   });
   expect(template().value).toBe("Recover my draft {text}");
-  expect(host.textContent).toContain(reason.message);
+  expect(document.body.textContent).toContain(reason.message);
   expect(button("Save Selection & Capture").disabled).toBe(false);
   expect(await invoke("save-selection-capture-settings", button("Save Selection & Capture"))).toBe(true);
-  expect(host.textContent).toContain("Saved for this Profile");
+  expect(document.body.textContent).toContain("Saved for this Profile");
 });
 
 it("validates and saves the exact latest same-tick original draft", async () => {
@@ -344,6 +369,7 @@ it("permanently retires an observed uncommitted window mismatch rather than revi
 });
 it("does not revive held original ACK delivery after an observed no-render window ABA", async () => {
   await render();
+  await openAction("Explain");
   await invoke("preview-selection-action", button("Preview Explain"));
   await write("Original held draft {text}");
   const old = held<boolean>();
@@ -360,5 +386,5 @@ it("does not revive held original ACK delivery after an observed no-render windo
   await act(async () => old.resolve(true));
   expect(await completion).toBe(true);
   expect(template().value).toBe("Original held draft {text}");
-  expect(host.textContent).not.toContain("Saved for this Profile");
+  expect(document.body.textContent).not.toContain("Saved for this Profile");
 });

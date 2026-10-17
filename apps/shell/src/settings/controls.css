@@ -38,7 +38,7 @@
     box-shadow: none;
     font-size: var(--fs-sm);
   }
-  .aux-native-dialog.aux-stage-dialog
+  :is(.settings-content, .aux-native-dialog)
     :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea):not(
       :where([data-input-surface], .ui-search-field, .ui-input-group) > *
     ) {

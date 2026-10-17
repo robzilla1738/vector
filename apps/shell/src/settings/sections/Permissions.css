@@ -60,7 +60,7 @@
 @layer overrides {
   .permission-policy-groups {
     border-radius: var(--r-lg);
-    background: var(--surface-secondary);
+    background: var(--settings-card);
     overflow: hidden;
   }
   .permission-policy-group {
@@ -128,7 +128,7 @@
   }
   .permission-defaults .permission-categories {
     margin-top: var(--space-2);
-    background: var(--surface-secondary);
+    background: var(--settings-card);
     border-radius: var(--r-lg);
   }
   .permission-defaults .permission-categories :is(th, td) {
@@ -166,7 +166,7 @@
     width: 100%;
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-md);
-    background: var(--surface-input);
+    background: var(--settings-control-fill);
     padding: var(--space-2) var(--space-2-5);
   }
   .permission-site-rule {

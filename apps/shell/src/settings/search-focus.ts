@@ -17,7 +17,7 @@ export async function focusSettingsDestination(
     const target = destination.target
       ? sections
           .flatMap((section) => [...section.querySelectorAll<HTMLElement>("[data-setting]")])
-          .find((node) => node.dataset.setting === destination.target)
+          .find((node) => node.dataset.setting === destination.target && !node.closest("[hidden], [inert]"))
       : section;
     if (target) {
       const disclosure = target.closest("details");

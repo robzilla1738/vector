@@ -581,6 +581,7 @@ export function Settings() {
           >
             <div data-setting="Plugins" tabIndex={-1}>
               <PluginsPanel
+                destination={destination?.category === "Connections" ? destination.target : undefined}
                 active={!searching && category === "Connections" && connectionTab === "Plugins"}
               />
             </div>

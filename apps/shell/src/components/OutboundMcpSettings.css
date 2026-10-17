@@ -1,14 +1,14 @@
 @layer components {
   .outbound-mcp {
-    border-top: 1px solid var(--line);
-    padding-top: 18px;
+    display: grid;
+    gap: var(--space-3);
   }
 
   .outbound-mcp :is(.mcp-register, .mcp-server-card) {
-    background: var(--bg-1);
+    background: var(--settings-card);
     border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 16px;
+    border-radius: var(--r-xl);
+    padding: var(--space-3-5);
   }
 
   .outbound-mcp .mcp-source-details {
@@ -62,5 +62,46 @@
     .outbound-mcp :is(.mcp-register, .mcp-server-card) {
       background: var(--bg-0);
     }
+  }
+}
+
+@layer components {
+  .mcp-add-editor {
+    gap: var(--space-5);
+  }
+  .mcp-add-editor fieldset {
+    min-width: 0;
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .mcp-add-editor :is(legend, summary) {
+    padding: 0 0 var(--space-3);
+    font-weight: var(--fw-medium);
+  }
+  .mcp-add-editor .mcp-official-connections > div {
+    padding-block: var(--space-3);
+  }
+  .mcp-add-editor .mcp-official-connections > div + div {
+    border-top: var(--hairline) solid var(--line);
+  }
+  .mcp-add-editor .mcp-official-connections p {
+    margin: var(--space-1) 0;
+    color: var(--ink-2);
+  }
+  .mcp-add-editor .mcp-register {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-3-5);
+  }
+  .mcp-add-editor label {
+    display: grid;
+    gap: var(--space-1-5);
+  }
+  .mcp-add-editor :is(input, select, textarea) {
+    width: 100%;
+  }
+  .settings-preference-dialog:has(.mcp-add-editor) {
+    width: 560px;
   }
 }

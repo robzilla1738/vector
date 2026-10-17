@@ -19,11 +19,9 @@
 .plugin-review-preview,
 .plugin-review-list,
 .plugin-review-detail {
-  border: 1px solid var(--accent-line);
-  border-radius: var(--r-card);
-  background: color-mix(in srgb, var(--surface-primary) 86%, transparent);
-  box-shadow: var(--highlight-inset);
-  backdrop-filter: blur(var(--blur-16));
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--settings-card);
 }
 
 .plugin-review-preview {
@@ -67,7 +65,7 @@
 
 .plugin-review-list button span {
   color: var(--text-muted);
-  font-size: 0.85em;
+  font-size: var(--fs-sm);
 }
 
 .plugin-review-detail {
@@ -80,7 +78,7 @@
   display: grid;
   gap: var(--space-1);
   padding: var(--space-2);
-  border-top: 1px solid var(--accent-line);
+  border-top: var(--hairline) solid var(--line);
 }
 
 @media (max-width: 660px) {
@@ -95,5 +93,26 @@
   .plugin-review-detail {
     background: var(--surface-primary);
     backdrop-filter: none;
+  }
+}
+
+@layer components {
+  .settings-page-tabs {
+    display: flex;
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+  }
+  .settings-page-tabs [role="tab"] {
+    padding: 0 0 var(--space-2);
+    border-bottom: var(--hairline) solid transparent;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+  }
+  .settings-page-tabs [role="tab"][aria-selected="true"] {
+    color: var(--ink-0);
+    border-bottom-color: var(--ink-0);
+  }
+  .plugins-settings .plugin-review {
+    margin-top: var(--space-7);
   }
 }

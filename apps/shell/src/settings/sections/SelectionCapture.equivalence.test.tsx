@@ -2,126 +2,54 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { defaultSelectionCaptureSettings } from "@aux/contracts";
 import { bridge } from "../../bridge";
-import { useStore } from "../../store";
 import { invokeScopedControl } from "../../scoped-control-commands";
 import { SelectionCaptureSettings } from "./SelectionCapture";
 import { AutofillSetting } from "../../components/AutofillSetting";
-/** Mounted DOM/control ledger from pinned before source, with the duplicate category
- * heading removed because the Settings shell supplies it. This checks section content
- * and control equivalence, never native pixel or hit geometry proof. */
-it("keeps the section hierarchy, full copy, attributes and local action results", async () => {
+it("keeps action drafts across editor dismissal and retires its registered controls", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
-    { width: 160, height: 36 },
-  ] as unknown as DOMRectList);
-  const previous = {
-    windowId: bridge.windowId,
-    windowKind: bridge.windowKind,
-    privateMode: bridge.privateMode,
-    connected: useStore.getState().connected,
-  };
-  bridge.windowId = "original";
-  bridge.windowKind = "normal";
-  bridge.privateMode = false;
-  useStore.setState({ connected: true });
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as never);
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
-  const settings = { selectionCapture: defaultSelectionCaptureSettings() };
-  const saved = vi.fn().mockResolvedValue(false);
+  const saved = vi.fn();
   const native = vi.spyOn(bridge, "invoke");
-  const button = (text: string) =>
-    [...host.querySelectorAll<HTMLButtonElement>("button")].find(
-      (node) => node.textContent?.trim() === text,
-    )!;
-  async function invoke(command: string, target: HTMLElement) {
-    await act(async () => {
-      target.focus();
-      await invokeScopedControl(command);
-    });
-  }
-  const states: unknown[] = [];
-  function record() {
-    const ids = new Map(
-      [...host.querySelectorAll<HTMLElement>("[id]")].map((node, index) => [node.id, `original-id-${index}`]),
-    );
-    function node(value: Node): unknown {
-      if (value.nodeType === Node.TEXT_NODE) return { text: value.textContent };
-      if (!(value instanceof Element)) return null;
-      const attrs = [...value.attributes]
-        .map((attr) => [
-          attr.name,
-          attr.value
-            .split(" ")
-            .map((part) => ids.get(part) ?? part)
-            .join(" "),
-        ])
-        .sort(([a], [b]) => a!.localeCompare(b!));
-      const state =
-        value instanceof HTMLInputElement
-          ? { value: value.value, checked: value.checked }
-          : value instanceof HTMLTextAreaElement
-            ? { value: value.value }
-            : {};
-      return { tag: value.tagName, attrs, state, children: [...value.childNodes].map(node) };
-    }
-    states.push({
-      tree: node(host),
-      focused: [...host.querySelectorAll("*")].indexOf(document.activeElement!),
-      saved: saved.mock.calls.map((call) => call[0]),
-    });
-  }
   try {
+    await act(async () => root.render(<SelectionCaptureSettings active settings={{}} onSave={saved} />));
+    expect(host.querySelector("textarea")).toBeNull();
+    const trigger = host.querySelector<HTMLButtonElement>('[aria-label="Edit Explain"]')!;
+    await act(async () => trigger.click());
+    const editor = document.querySelector<HTMLDialogElement>("dialog")!;
+    const template = editor.querySelector("textarea")!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+        template,
+        "Review {text}",
+      );
+      template.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const retired = editor.querySelector<HTMLButtonElement>('[aria-label="Remove Explain"]')!;
     await act(async () =>
-      root.render(<SelectionCaptureSettings active settings={settings} onSave={saved} />),
+      editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
     );
-    record();
-    await invoke("move-selection-action-up", host.querySelector('[aria-label="Move Explain up"]')!);
-    record();
-    await invoke("preview-selection-action", button("Preview Explain"));
-    record();
-    await invoke("close-selection-action-preview", button("Close preview"));
-    await invoke("remove-selection-action", host.querySelector('[aria-label="Remove Explain"]')!);
-    record();
-    await invoke("toggle-selection-action", host.querySelector('input[type="checkbox"]')!);
-    await invoke("save-selection-capture-settings", button("Save Selection & Capture"));
-    record();
+    expect(document.activeElement).toBe(trigger);
+    expect(document.querySelector("dialog")).toBeNull();
+    expect(() =>
+      invokeScopedControl("remove-selection-action", { nativeInputEvent: new MouseEvent("click") }),
+    ).toThrow();
+    await act(async () => retired.click());
+    expect(host.querySelectorAll(".selection-action-row")).toHaveLength(4);
+    await act(async () => trigger.click());
+    expect(document.querySelector("dialog textarea")).toHaveProperty("value", "Review {text}");
+    expect(saved).not.toHaveBeenCalled();
     expect(native).not.toHaveBeenCalled();
-    const fixture = resolve("apps/shell/src/settings/sections/SelectionCapture.original-dom.json");
-    // Text-node boundaries are an output-format detail; full text, hierarchy and controls remain checked.
-    const isText = (value: unknown): value is { text: string } =>
-      !!value &&
-      typeof value === "object" &&
-      Object.keys(value).length === 1 &&
-      "text" in value &&
-      typeof value.text === "string";
-    function canonical(value: unknown): unknown {
-      if (Array.isArray(value))
-        return value.map(canonical).reduce<unknown[]>((items, current) => {
-          const previous = items.at(-1);
-          if (isText(previous) && isText(current))
-            items[items.length - 1] = { text: previous.text + current.text };
-          else items.push(current);
-          return items;
-        }, []);
-      if (value && typeof value === "object")
-        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, canonical(item)]));
-      return value;
-    }
-    expect(canonical(states)).toEqual(canonical(JSON.parse(readFileSync(fixture, "utf8"))));
+    await act(async () =>
+      root.render(<SelectionCaptureSettings active={false} settings={{}} onSave={saved} />),
+    );
+    expect(document.querySelector("dialog")).toBeNull();
   } finally {
     await act(async () => root.unmount());
     host.remove();
-    Object.assign(bridge, {
-      windowId: previous.windowId,
-      windowKind: previous.windowKind,
-      privateMode: previous.privateMode,
-    });
-    useStore.setState({ connected: previous.connected });
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   }

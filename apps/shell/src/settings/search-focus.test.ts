@@ -48,3 +48,22 @@ it("focuses a lazily mounted feature field and ignores matching fields in retain
   ).toBe(true);
   expect(document.activeElement).toBe(target);
 });
+
+it("waits for a retained tab panel to become visible before focusing its matching field", async () => {
+  vi.useFakeTimers();
+  const root = document.createElement("div");
+  root.innerHTML =
+    '<section><div role="tabpanel" hidden><div data-setting="MCP servers"></div></div></section>';
+  document.body.append(root);
+  const target = root.querySelector<HTMLElement>("[data-setting]")!;
+  const focus = focusSettingsDestination(
+    root,
+    { category: "Connections", label: "MCP servers", target: "MCP servers", description: "" },
+    new AbortController().signal,
+  );
+  expect(document.activeElement).not.toBe(target);
+  root.querySelector<HTMLElement>("[role=tabpanel]")!.hidden = false;
+  await vi.advanceTimersByTimeAsync(50);
+  expect(await focus).toBe(true);
+  expect(document.activeElement).toBe(target);
+});

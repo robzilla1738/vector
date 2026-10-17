@@ -205,7 +205,7 @@ select keyboard behavior and use the shared focus/dismissal handling.
 Use `SettingsField` for searchable labeled rows, `SettingsGroup` or `settings-card`
 for grouped surfaces, and `SettingsDialogControl` for editors. `SettingsField`
 provides `surface="plain"` for unboxed sections and `layout="feature"` for the shared
-illustrated feature card used by CLI and Quick Ask. Do not duplicate card
+illustrated feature card used by CLI, Quick Ask and Selection & Capture. Do not duplicate card
 fills, borders or select geometry in page styles: translucent nested fills compound
 and drift between themes. Page CSS should describe layout unique to that page.
 Add semantic tokens only for a distinct reusable role; reuse existing scale tokens
@@ -222,3 +222,9 @@ position and backdrop bounds follow `.main-col > .main`, observed for resizing,
 so the browser sidebar and toolbar remain visually outside the modal content
 area. Anchored Menu and Popover surfaces retain their own placement. New dialogs
 should use this shared shell rather than calculating sidebar offsets independently.
+Editors mount only while open; their section supplies active state to retire them
+when navigating away. Selection action drafts and save ownership stay in the
+section, so closing an action editor does not discard the unsaved draft. Skills
+and MCP keep visited tab content mounted, while search waits for its destination
+panel to become visible before focusing it. Feature Settings mounts receive active
+state for the same lifecycle contract.

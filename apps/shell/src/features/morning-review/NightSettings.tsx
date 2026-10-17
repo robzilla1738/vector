@@ -148,7 +148,6 @@ export function NightSettings() {
   if (bridge.privateMode || bridge.windowKind !== "normal") return null;
   return (
     <section {...staticFieldProps} aria-label="Night shift settings">
-      <h3>Night shift</h3>
       <p {...staticHintProps}>
         Aux works within this local time window while your Mac is awake. Only work you queue can run. Actions
         that need your approval wait for morning.

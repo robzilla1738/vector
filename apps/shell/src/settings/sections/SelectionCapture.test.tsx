@@ -42,9 +42,13 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 const button = (label: string) =>
-  [...host.querySelectorAll<HTMLButtonElement>("button")].find((node) => node.textContent?.trim() === label)!;
-const named = (label: string) => host.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!;
+  [
+    ...document.querySelectorAll<HTMLButtonElement>("dialog button"),
+    ...host.querySelectorAll<HTMLButtonElement>("button"),
+  ].find((node) => node.textContent?.trim() === label)!;
+const named = (label: string) => document.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!;
 const click = async (node: HTMLElement) => act(async () => node.click());
+const openAction = async (name: string) => click(named(`Edit ${name}`));
 const write = async (node: HTMLInputElement | HTMLTextAreaElement, value: string) =>
   act(async () => {
     Object.getOwnPropertyDescriptor(
@@ -54,23 +58,25 @@ const write = async (node: HTMLInputElement | HTMLTextAreaElement, value: string
     node.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
-it("indexes all four fields and previews/reorders/edits actions without any model or capture call", async () => {
+it("indexes the overview and controls and previews/reorders/edits actions without any model or capture call", async () => {
   const invoke = vi.spyOn(bridge, "invoke");
   await act(async () => root.render(<Fixture />));
   expect(collectSettingsFields(host).map((field) => field.label)).toEqual([
+    "Ask about what you select",
     "Selection actions",
     "Selection double-tap shortcut",
     "Region-capture shortcut",
     "Inline assist",
   ]);
+  await openAction("Explain");
   await click(button("Preview Explain"));
-  expect(host.querySelector('[aria-label="Selection action preview"]')?.textContent).toContain(
+  expect(document.querySelector('[aria-label="Selection action preview"]')?.textContent).toContain(
     "Selected text (source content)",
   );
   await click(named("Move Explain up"));
-  expect(host.querySelector<HTMLInputElement>('[aria-label="Action 1 name"]')!.value).toBe("Explain");
+  expect(document.querySelector<HTMLInputElement>('[aria-label="Action 1 name"]')!.value).toBe("Explain");
   await write(
-    host.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!,
+    document.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!,
     "Translate into Spanish: {text}",
   );
   expect(save).not.toHaveBeenCalled();
@@ -81,7 +87,7 @@ it("indexes all four fields and previews/reorders/edits actions without any mode
     template: "Translate into Spanish: {text}",
   });
   expect(button("Save Selection & Capture").disabled).toBe(true);
-  expect(host.textContent).toContain("Saved for this Profile");
+  expect(document.body.textContent).toContain("Saved for this Profile");
   expect(invoke).not.toHaveBeenCalled();
 });
 
@@ -90,19 +96,20 @@ it("preserves edits after a failed save and provides explicit recovery", async (
   await click(button("Add selection action"));
   save.mockResolvedValueOnce(false);
   await click(button("Save Selection & Capture"));
-  expect(host.textContent).toContain("Your edits are still here");
-  expect(host.querySelectorAll("textarea")).toHaveLength(5);
+  expect(document.body.textContent).toContain("Your edits are still here");
+  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(5);
   await click(button("Reload saved settings"));
-  expect(host.querySelectorAll("textarea")).toHaveLength(4);
+  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(4);
 });
 
 it("retains an acknowledged save while the settings broadcast is still in flight", async () => {
   await act(async () => root.render(<SelectionCaptureSettings active settings={initial()} onSave={save} />));
   await click(button("Add selection action"));
   await click(button("Save Selection & Capture"));
-  expect(host.querySelectorAll("textarea")).toHaveLength(5);
+  expect(host.querySelectorAll(".selection-action-row")).toHaveLength(5);
   expect(button("Save Selection & Capture").disabled).toBe(true);
-  await write(host.querySelector<HTMLInputElement>('[aria-label="Action 5 name"]')!, "Next revision");
+  await openAction("New action");
+  await write(document.querySelector<HTMLInputElement>('[aria-label="Action 5 name"]')!, "Next revision");
   await click(button("Save Selection & Capture"));
   expect(save.mock.calls[1]![0].selectionCapture.revision).toBe(1);
 });
@@ -112,21 +119,22 @@ it("detects external revisions without overwriting an unsaved template", async (
   const render = async () =>
     act(async () => root.render(<SelectionCaptureSettings active settings={settings} onSave={save} />));
   await render();
+  await click(host.querySelector<HTMLButtonElement>(".selection-action-row button")!);
   await write(
-    host.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!,
+    document.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!,
     "My unsaved action {text}",
   );
   settings = { selectionCapture: { ...settings.selectionCapture, revision: 1, inlineAssist: false } };
   await render();
-  expect(host.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!.value).toBe(
+  expect(document.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!.value).toBe(
     "My unsaved action {text}",
   );
-  expect(host.textContent).toContain("changed in another window");
+  expect(document.body.textContent).toContain("changed in another window");
   expect(button("Save Selection & Capture").disabled).toBe(true);
   await click(button("Reload saved settings"));
-  expect(host.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!.value).not.toContain(
-    "My unsaved",
-  );
+  expect(
+    document.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!.value,
+  ).not.toContain("My unsaved");
 });
 
 it("records modified shortcuts, rejects collisions and does not claim native registration from a save", async () => {
@@ -137,7 +145,7 @@ it("records modified shortcuts, rejects collisions and does not claim native reg
   await act(async () =>
     record.dispatchEvent(new KeyboardEvent("keydown", { key: "t", metaKey: true, bubbles: true })),
   );
-  expect(host.textContent).toContain("already used by New Tab");
+  expect(document.body.textContent).toContain("already used by New Tab");
   expect(button("Save Selection & Capture").disabled).toBe(true);
   await click(record);
   await act(async () =>
@@ -153,8 +161,8 @@ it("records modified shortcuts, rejects collisions and does not claim native reg
     alt: true,
     shift: false,
   });
-  expect(host.textContent).toContain("Native shortcut registration has not been confirmed");
-  expect(host.textContent).not.toContain("Registered for this Profile");
+  expect(document.body.textContent).toContain("Native shortcut registration has not been confirmed");
+  expect(document.body.textContent).not.toContain("Registered for this Profile");
 });
 
 it("only displays a native acknowledgement for the exact saved preference revision", async () => {
@@ -168,7 +176,7 @@ it("only displays a native acknowledgement for the exact saved preference revisi
   await act(async () =>
     root.render(<SelectionCaptureSettings active settings={settings} nativeStatus={status} onSave={save} />),
   );
-  expect(host.textContent).toContain("Registered for this Profile");
+  expect(document.body.textContent).toContain("Registered for this Profile");
   await act(async () =>
     root.render(
       <SelectionCaptureSettings
@@ -179,6 +187,6 @@ it("only displays a native acknowledgement for the exact saved preference revisi
       />,
     ),
   );
-  expect(host.textContent).not.toContain("Registered for this Profile");
-  expect(host.textContent).toContain("has not been confirmed");
+  expect(document.body.textContent).not.toContain("Registered for this Profile");
+  expect(document.body.textContent).toContain("has not been confirmed");
 });
