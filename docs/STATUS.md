@@ -25,6 +25,11 @@ and extension choices. Empty discovery explains alternatives. Source discovery
 and import remain opt-in. Populated visual/native selector acceptance and closer
 reference dialog composition remain pending; no owner source Profile was read.
 
+**Native build in progress: `2425d212a`.** The verified preceding preview
+retired normally through its launcher (exit 0). New single launcher PID 31852
+runs `node scripts/dev.mjs --temp-profile`; log /tmp/aux-general-final-native.log.
+Poll this same live builder; do not start a second builder or clear its lock.
+
 **Compiled/staged candidate: `9d677b376`.** Native build passed in 26 steps /
 8m45.61s with 217 renderer assets, rebuilt runtime, Node 26.9 and unchanged
 273 methods / 30 events (cce8203bcbd0). The disposable preview proved native

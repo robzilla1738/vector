@@ -849,3 +849,9 @@ lint pass, 4,551/4,552 tests across 731 files pass; sole failure is the longstan
 coder-worktrees 60-second timeout. Renderer build 2.10s; whitespace check clean.
 No source browser Profile discovery/import or model call was performed. Full
 surface acceptance, pointer drag and newest-source native staging remain open.
+
+After that walkthrough, the exact owned preview retired normally (launcher exit
+0). A single new temporary-Profile launcher builds 2425d212a, PID 31852, log
+/tmp/aux-general-final-native.log; inspect the same process before any replacement.
+It includes the latest language/menu/import/native-template/default-display source.
+No newest-source native acceptance is claimed until this build and walkthrough.
