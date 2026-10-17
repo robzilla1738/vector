@@ -1,5 +1,29 @@
 # Aside UI parity — October 16, 2026
 
+Native consolidation acceptance follow-up: the `4e5fa2188` build completed
+successfully (8m21s, 26 steps). Launcher 75304 owns the live disposable preview,
+app PID 81926, Profile `aux-dev-QzFkHv`; no replacement builder was started.
+The earlier linking notes below are historical.
+
+Native Settings reload preserved the paused synthetic routine's GPT-6.1 Sol
+model, High thinking and completion notifications off. The routine was never
+resumed or run. Image-model search filtered to GPT Image 2, and Connect opened
+a focused ChatGPT setup dialog without starting authentication. Captures under
+`/tmp/aux-parity-2026-10-16/`:
+- `aux-routine-preferences-reloaded-native-4e5.png`
+- `aux-image-search-native-4e5.png`
+- `aux-chatgpt-setup-native-4e5.png`
+
+The newer `fcc55aac0` renderer was inspected through the local Vite guest page.
+Provider marks, compact image-model menu, bottom Default action, rounded search
+focus and Escape focus return render correctly. Capture:
+`aux-compact-image-menu-marks-vite-fcc.png`. Reference 061 was reopened for
+comparison. The native shell still predates the icon/menu geometry commits;
+this Vite observation is not native consolidation or runtime persistence evidence.
+Task-model trigger labels truncate earlier than the reference and need a sizing
+follow-up. Matching sidebar/viewport, light/narrow states and full parity remain
+open. No source changed and no unchanged tests were repeated in this walkthrough.
+
 This is the active capture-by-capture ledger for the owner's full Aux surface
 review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
