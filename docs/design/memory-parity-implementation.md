@@ -43,3 +43,36 @@ Acceptance requires synthetic documents and extraction runs, editing and reopeni
 conflict preservation, source provenance, actual recall, forget/recovery behavior,
 and native wide/narrow/light/dark comparison. Existing revision-browser tests and
 screenshots are not evidence that these requirements are complete.
+
+## Next integrated document batch
+
+October 17 source audit: `runs.ts` obtains pipeline recall through
+`MemoryPipeline.overview`, while manual Space notes use `workspaceMemoryText`.
+Pipeline search currently searches approved claim text, and recovery verifies an
+exact inventory of encrypted files plus deterministic summary/handbook/rollout
+projections. A document editor must update these consumers together; merely
+exposing `handbook.md.enc` would lose edits at the next extraction/consolidation.
+
+The next implementation should provide stable logical paths, document revisions,
+modification times and Markdown content in one encrypted generation. Owner-authored
+root documents and edits need explicit owner provenance. Generated episodic/site/
+routine sections retain their source claim/run associations; editing them cannot
+change an exact report quote into supposedly verified evidence. Keep a base
+revision in each editor draft, reject stale saves without discarding the draft,
+and include document revisions and source dependencies in recovery and Forget.
+
+The matching screen uses a narrow folder/file tree next to a full-width document
+pane, with breadcrumb, modification time and Edit in one top row. Folder expansion,
+selection, keyboard navigation, Markdown preview and Save/Cancel must be real.
+Retain pending-note review and recovery access as secondary destinations rather
+than squeezing those controls into the document pane. Do not add an inert Open
+folder action: encrypted storage cannot be presented as readable Markdown files.
+A readable export would need an explicit destination and export lifecycle.
+
+Recall and search must use the authoritative effective document text with bounded
+context, source eligibility and owner-edit attribution. Index status/count/update
+time and Rebuild should describe a real index over that same text; never label
+claim count as chunks without actual chunking. Episodic retention applies to daily
+observations and their revisions, preserving root owner notes and extraction
+watermarks so a forgotten source cannot silently reappear. Its deletion/recovery
+semantics must be integrated before exposing the selector from references075–076.
