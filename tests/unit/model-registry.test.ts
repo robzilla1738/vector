@@ -50,6 +50,7 @@ describe("typed model registry (AI-04)", () => {
     });
     expect(models.find((model) => model.id === LUNA_FAST_MODEL)?.textGeneration).toBe(false);
     expect(entries.some((model) => model.id === LUNA_FAST_MODEL)).toBe(false);
+    expect(entries.some((model) => model.id === "openai/gpt-image-2")).toBe(false);
     expect(entries).toContainEqual({ id: "unknown/future" });
     expect(entries).toContainEqual({ id: "my/custom-image-name" });
   });

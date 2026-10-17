@@ -53,7 +53,9 @@ const PrivacySecuritySettings = lazySection(
 const PasswordsAutofillSettings = lazySection(
   async () => (await import("../settings/sections/PasswordsAutofill")).PasswordsAutofillSettings,
 );
-const ModelsSettings = lazySection(async () => (await import("../settings/sections/Models")).ModelsSettings);
+const ModelsOverview = lazySection(
+  async () => (await import("../settings/sections/ModelsOverview")).ModelsOverview,
+);
 const UsageBudgetsSettings = lazySection(
   async () => (await import("../settings/sections/UsageBudgets")).UsageBudgetsSettings,
 );
@@ -305,7 +307,7 @@ export function Settings() {
   }, [refreshVersion]);
 
   useLayoutEffect(() => {
-    if (!destination || searching) return;
+    if (!destination || searching || destination.category === "Models") return;
     const controller = new AbortController();
     void focusSettingsDestination(scrollRef.current, destination, controller.signal).then(() => {
       if (!controller.signal.aborted) setDestination(null);
@@ -478,7 +480,13 @@ export function Settings() {
           </section>
         )}
         {permissionsAvailable && <PrivacySecuritySettings active={visible("Site permissions")} />}
-        <ModelsSettings active={visible("Models")} settings={settings} onSave={set} />
+        <ModelsOverview
+          active={visible("Models")}
+          settings={settings}
+          onSave={set}
+          destination={destination?.category === "Models" ? destination : null}
+          onDestinationHandled={() => setDestination(null)}
+        />
         <UsageBudgetsSettings active={visible("Usage & Budgets")} settings={settings} onSave={set} />
         {automationsFeatureAvailable && <RoutinesSettings active={visible("Routines")} />}
         <FeatureSettings

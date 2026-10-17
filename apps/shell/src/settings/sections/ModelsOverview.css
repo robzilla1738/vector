@@ -1,0 +1,225 @@
+@layer overrides {
+  .settings-content .models-overview > h3 {
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-regular);
+    margin: 32px 12px 8px;
+  }
+  .settings-content .models-overview > .ui-setting:first-child {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 0;
+    background: transparent;
+    margin: 0;
+    min-height: 0;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+  }
+  .settings-content .models-overview > .ui-setting:first-child > .hint {
+    display: none;
+  }
+  .settings-content .models-overview > .ui-setting:first-child > .setting-label {
+    padding: 0 12px;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+  }
+  .settings-content .models-overview > .ui-setting:first-child > .ui-setting-control {
+    width: 100%;
+    margin-top: 0;
+    padding: 8px 16px;
+    background: var(--surface-input);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+  }
+  .settings-content .models-overview [data-provider] {
+    padding: 6px 0;
+  }
+  .settings-content .models-overview [data-provider] + [data-provider] {
+    border-top: 1px solid var(--line);
+  }
+  .settings-content .models-overview [data-provider] strong {
+    font-weight: var(--fw-medium);
+  }
+  .settings-content .models-overview [data-provider] p {
+    margin: 2px 0 0;
+    font-size: var(--fs-xs);
+  }
+  .model-connect-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--surface-input);
+    border-top: 1px solid var(--line);
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+    text-align: left;
+    color: var(--ink-2);
+  }
+  .model-connect-row:hover {
+    background: var(--bg-hover);
+  }
+  .model-connect-row svg,
+  .settings-model-trigger svg,
+  .settings-model-picker svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  .settings-model-control {
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+    max-width: 100%;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface-input);
+  }
+  .settings-model-control > .ui-menu-trigger {
+    flex: none;
+    width: 28px;
+    height: auto;
+    min-height: 28px;
+    border-left: 1px solid var(--line);
+    border-radius: 0 var(--r-lg) var(--r-lg) 0;
+  }
+  .settings-model-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    padding: 5px 8px;
+    border-radius: var(--r-md);
+    background: transparent;
+    font-size: var(--fs-sm);
+  }
+  .settings-model-trigger span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  :root .aux-native-dialog.anchored-panel:has(> .settings-model-picker) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    overflow: visible;
+    width: auto;
+  }
+  .settings-model-picker {
+    width: 280px;
+    max-width: calc(100vw - 40px);
+  }
+  .settings-model-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+  }
+  .settings-model-search input {
+    min-width: 0;
+    width: 100%;
+    border: 0;
+    background: transparent;
+  }
+  .settings-model-options {
+    max-height: min(360px, 50vh);
+    overflow-y: auto;
+  }
+  .settings-model-options button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    padding: 8px;
+  }
+  .settings-model-options button:is(:hover, [aria-expanded="true"]) {
+    background: var(--bg-hover);
+    border-radius: var(--r-md);
+  }
+  .settings-model-options button span {
+    overflow-wrap: anywhere;
+  }
+  .settings-model-options p {
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    padding: 8px;
+  }
+  .settings-content .models-overview .field.ui-setting {
+    margin-inline: 0;
+  }
+  .model-task-roles {
+    margin-block: 10px;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    background: var(--surface-secondary);
+  }
+  .settings-content .models-overview .model-task-roles .field.ui-setting {
+    background: transparent;
+    border-radius: 0;
+    margin: 0;
+  }
+  .settings-content .models-overview .model-task-roles .field.ui-setting + .field.ui-setting {
+    border-top: 1px solid var(--line);
+  }
+  .model-advanced {
+    margin-top: 12px;
+    color: var(--ink-2);
+  }
+  .model-settings-dialog {
+    width: 680px;
+  }
+  .model-settings-dialog > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .model-settings-dialog .field {
+    margin-bottom: 12px;
+  }
+  .model-settings-dialog .ui-setting {
+    display: block;
+    padding: 12px;
+  }
+  .model-settings-dialog .ui-setting-control {
+    margin-top: 8px;
+  }
+  .model-settings-dialog :is(input:not([type="checkbox"]), select) {
+    max-width: 100%;
+    min-width: 0;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface-input);
+  }
+}
+
+@layer overrides {
+  .model-settings-dialog > header {
+    position: sticky;
+    top: -20px;
+    z-index: 1;
+    padding-block: 12px;
+    background: var(--surface-menu);
+  }
+  .model-settings-dialog .row {
+    flex-wrap: wrap;
+  }
+  .model-settings-dialog .row > input:not([type="checkbox"]) {
+    flex: 1 1 220px;
+    width: auto;
+  }
+  .model-settings-dialog .row > select {
+    flex: 0 1 140px;
+    width: 140px;
+  }
+  @media (forced-colors: none) {
+    .aux-native-dialog .settings-model-options button:focus-visible {
+      outline: none;
+      background: var(--bg-hover);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus-line) 65%, transparent);
+      border-radius: var(--r-md);
+    }
+  }
+}

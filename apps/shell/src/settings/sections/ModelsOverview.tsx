@@ -1,0 +1,542 @@
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  MODEL_PROVIDER_NAMES,
+  ModelProviderSchema,
+  ModelConnectionStatusSchema,
+  type ModelProvider,
+} from "@aux/contracts";
+import {
+  MODEL_REGISTRY,
+  agentModelRoute,
+  isTextModelCandidate,
+  type AgentModelCategory,
+  type AgentModelRoute,
+  type AgentModelRouteChain,
+} from "@aux/contracts/model-registry";
+import { call } from "../../store";
+import { errorMessage } from "../../error-message";
+import { Dialog } from "../../ui/dialog";
+import { Popover } from "../../ui/popover";
+import { Check, ChevronDown, Plus, Search } from "../../ui/icons";
+import { ActionMenu, type MenuAction } from "../../ui";
+import { ModelProviderMenu } from "../../composer/ModelProviderMenu";
+import "../../composer/ComposerModelPicker.css";
+import { moveListFocus } from "../../keyboard-list";
+import { SettingsField, SettingsSection } from "../primitives";
+import { ModelConnections } from "./ModelConnections";
+import { ModelsSettings } from "./Models";
+import { useModelControlOwner } from "./models-command-controls";
+import "./ModelsOverview.css";
+import { focusSettingsDestination } from "../search-focus";
+import type { SettingsSearchItem } from "../search";
+
+type ModelOption = { id: string; name?: string; provider?: string; textGeneration?: boolean };
+const providerNames: Record<string, string> = { ...MODEL_PROVIDER_NAMES, meta: "Meta", alibaba: "Alibaba" };
+const roles: { id: AgentModelCategory; label: string; hint: string }[] = [
+  { id: "fast", label: "Fast", hint: "Quick chats and lightweight tasks." },
+  { id: "standard", label: "Standard", hint: "Balanced reasoning and everyday work." },
+  { id: "deep", label: "Deep", hint: "Longer reasoning and complex work." },
+  { id: "visual", label: "Visual", hint: "Screenshots, images and visual tasks." },
+];
+
+export function ModelsOverview({
+  active,
+  settings,
+  onSave,
+  destination,
+  onDestinationHandled,
+}: {
+  destination?: SettingsSearchItem | null;
+  onDestinationHandled?(): void;
+  active: boolean;
+  settings: Record<string, unknown>;
+  onSave(patch: Record<string, unknown>): Promise<boolean>;
+}) {
+  const [editor, setEditor] = useState(false);
+  const [editorTarget, setEditorTarget] = useState<string>();
+  const editorReturn = useRef<HTMLElement | null>(null);
+  const openEditor = (target?: string) => {
+    editorReturn.current = document.activeElement as HTMLElement | null;
+    setEditorTarget(target);
+    setEditor(true);
+  };
+  const container = useRef<HTMLDivElement>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!editor || !editorTarget) return;
+    if (editorTarget === "API key") {
+      dialog.current?.querySelector<HTMLInputElement>('[aria-label="Provider API key"]')?.focus();
+      return;
+    }
+    const controller = new AbortController();
+    void focusSettingsDestination(
+      dialog.current,
+      {
+        category: "Models",
+        target: editorTarget,
+        label: editorTarget,
+        description: "",
+      },
+      controller.signal,
+    );
+    return () => controller.abort();
+  }, [editor, editorTarget]);
+  const handled = useRef(onDestinationHandled);
+  handled.current = onDestinationHandled;
+  useEffect(() => {
+    if (!active || !destination) return;
+    const target = destination.target;
+    const onPage =
+      !target ||
+      [...(container.current?.querySelectorAll<HTMLElement>("[data-setting]") ?? [])].some(
+        (node) => node.dataset.setting === target,
+      );
+    if (!onPage && !editor) {
+      setEditor(true);
+      return;
+    }
+    const controller = new AbortController();
+    void focusSettingsDestination(
+      onPage ? container.current : dialog.current,
+      destination,
+      controller.signal,
+    ).then(() => {
+      if (!controller.signal.aborted) handled.current?.();
+    });
+    return () => controller.abort();
+  }, [active, destination, editor]);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [catalog, setCatalog] = useState<ModelOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const owner = useModelControlOwner(
+    active,
+    JSON.stringify([settings.modelProvider, settings.modelConnectionRevision]),
+  );
+  const windowOwner = useModelControlOwner(active, "model-overview-window");
+  const provider = (settings.modelProvider as ModelProvider) ?? "gateway";
+  useEffect(() => {
+    if (!active) setEditor(false);
+  }, [active]);
+  useEffect(() => {
+    if (!active) return;
+    let live = true;
+    setLoading(true);
+    setCatalog([]);
+    setError("");
+    void call("models.list", {})
+      .then((result) => {
+        if (live) setCatalog(result.models.filter(isTextModelCandidate));
+      })
+      .catch((reason) => {
+        if (live) setError(errorMessage(reason));
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [active, provider, settings.modelConnectionRevision]);
+  async function save(patch: Record<string, unknown>) {
+    if (!owner.current() || !owner.reserve("overview")) return false;
+    setBusy(true);
+    setError("");
+    try {
+      const saved = await onSave(patch);
+      if (!saved && owner.current()) setError("The change could not be saved. Try again.");
+      return saved;
+    } catch (reason) {
+      if (owner.current()) setError(errorMessage(reason));
+      return false;
+    } finally {
+      owner.finish("overview");
+      if (owner.current()) setBusy(false);
+    }
+  }
+  useEffect(() => {
+    setBusy(false);
+  }, [owner]);
+  const parsed = ModelConnectionStatusSchema.array().safeParse(settings.modelConnections);
+  const connected = parsed.success
+    ? parsed.data.filter(
+        (item) =>
+          item.selected ||
+          item.credentialSource !== "none" ||
+          item.credentialUnavailable ||
+          item.localEndpoint,
+      )
+    : undefined;
+  const options = [
+    ...new Map(
+      [...(provider === "gateway" ? MODEL_REGISTRY.filter(isTextModelCandidate) : []), ...catalog].map(
+        (model) => [
+          model.id,
+          {
+            ...model,
+            provider: model.provider ?? MODEL_REGISTRY.find((entry) => entry.id === model.id)?.provider,
+          },
+        ],
+      ),
+    ).values(),
+  ];
+  const routes = (settings.agentModelRoutes ?? {}) as Partial<Record<AgentModelCategory, AgentModelRoute>>;
+  const overrides = (settings.agentModelRouteOverrides ?? {}) as Partial<
+    Record<AgentModelCategory, AgentModelRouteChain>
+  >;
+  return (
+    <div ref={container} hidden={!active}>
+      <SettingsSection name="Models" hidden={!active} className="models-overview">
+        <ModelConnections
+          concise
+          settings={{ ...settings, modelConnections: connected }}
+          active={active && !editor}
+          disabled={busy}
+          onSave={save}
+          onEdit={async (target, focus) => {
+            if (!owner.current()) return;
+            if ((target === provider || (await save({ modelProvider: target }))) && windowOwner.current())
+              openEditor(focus === "key" ? "API key" : "Model provider");
+          }}
+        >
+          <ConnectModels
+            disabled={busy}
+            triggerRef={trigger}
+            onSelect={async (target) => {
+              if (!windowOwner.current()) return;
+              if (
+                (!target || target === provider || (await save({ modelProvider: target }))) &&
+                windowOwner.current()
+              )
+                openEditor("Model provider");
+            }}
+          />
+          <h3>Task models</h3>
+          <ModelChoice
+            label="Default model"
+            hint="The model used by default for new chats."
+            value={String(settings.plannerModel ?? "")}
+            options={options}
+            disabled={busy || !active}
+            loading={loading}
+            onChange={(id) => save({ plannerModel: id })}
+            actions={[
+              { label: "Model options…", disabled: busy, onSelect: () => openEditor("Planner model") },
+            ]}
+          />
+          <div className="model-task-roles">
+            {roles.map((role) => {
+              const route = routes[role.id] ?? agentModelRoute(role.id);
+              return (
+                <ModelChoice
+                  key={role.id}
+                  label={role.label}
+                  hint={role.hint}
+                  value={route.modelId}
+                  automatic={!overrides[role.id]}
+                  options={options}
+                  disabled={busy || !active}
+                  loading={loading}
+                  actions={[
+                    ...(["low", "medium", "high", "xhigh"] as const).map((reasoning) => ({
+                      label: `${reasoning === "xhigh" ? "Extra high" : reasoning.charAt(0).toUpperCase() + reasoning.slice(1)} reasoning`,
+                      icon: route.reasoning === reasoning ? <Check /> : undefined,
+                      disabled: busy,
+                      onSelect: () => {
+                        void save({
+                          agentModelRoutes: {
+                            ...overrides,
+                            [role.id]: { modelId: route.modelId, reasoning },
+                          },
+                        });
+                      },
+                    })),
+                    {
+                      label: "Use automatic route",
+                      disabled: busy || !overrides[role.id],
+                      onSelect: () => {
+                        const next = { ...overrides };
+                        delete next[role.id];
+                        void save({ agentModelRoutes: next });
+                      },
+                    },
+                    {
+                      label: "Model options…",
+                      disabled: busy,
+                      onSelect: () => openEditor(`${role.label} model`),
+                    },
+                  ]}
+                  onChange={(id) => {
+                    const next = { ...overrides };
+                    if (id === undefined) delete next[role.id];
+                    else next[role.id] = { modelId: id, reasoning: route.reasoning };
+                    return save({ agentModelRoutes: next });
+                  }}
+                />
+              );
+            })}
+          </div>
+        </ModelConnections>
+        {error && <p role="alert">{error}</p>}
+        <button type="button" className="btn ghost model-advanced" onClick={() => openEditor()}>
+          Model settings…
+        </button>
+        {active && editor && (
+          <Dialog
+            dialogRef={dialog}
+            label="Model settings"
+            className="aux-dialog-surface model-settings-dialog"
+            returnFocus={editorReturn}
+            onClose={() => setEditor(false)}
+          >
+            <header>
+              <h3>Model settings</h3>
+              <button type="button" className="btn" onClick={() => setEditor(false)}>
+                Done
+              </button>
+            </header>
+            <ModelsSettings active settings={settings} onSave={onSave} />
+          </Dialog>
+        )}
+      </SettingsSection>
+    </div>
+  );
+}
+
+function ModelChoice({
+  label,
+  hint,
+  value,
+  automatic,
+  options,
+  disabled,
+  loading,
+  onChange,
+  actions,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  automatic?: boolean;
+  options: ModelOption[];
+  disabled: boolean;
+  loading: boolean;
+  onChange(value: string | undefined): Promise<boolean>;
+  actions: MenuAction[];
+}) {
+  const [query, setQuery] = useState("");
+  const search = useRef<HTMLInputElement>(null);
+  const [providerOpen, setProviderOpen] = useState<string | null>(null);
+  const selected = options.find((model) => model.id === value);
+  const name = selected?.name ?? value.split("/").at(-1) ?? "Choose model";
+  const matched = options.filter((model) =>
+    `${model.id} ${model.name ?? ""} ${providerNames[model.provider ?? ""] ?? ""}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
+  );
+  const groups = new Map<string, ModelOption[]>();
+  for (const model of matched) {
+    const group = model.provider ?? "";
+    groups.set(group, [...(groups.get(group) ?? []), model]);
+  }
+  const modelRows = (models: ModelOption[], close: () => void, root: boolean) =>
+    models.map((model) => (
+      <button
+        type="button"
+        key={model.id}
+        disabled={disabled}
+        role="menuitemradio"
+        data-model-root={root ? "" : undefined}
+        aria-checked={!automatic && value === model.id}
+        onClick={() =>
+          void onChange(model.id).then((ok) => {
+            if (ok) {
+              setProviderOpen(null);
+              close();
+            }
+          })
+        }
+      >
+        <span>{model.name ?? model.id}</span>
+        {!automatic && value === model.id && <Check />}
+      </button>
+    ));
+  const control = (close: () => void): ReactNode => (
+    <div
+      className="settings-model-picker"
+      onKeyDown={(event) => {
+        if (event.target === search.current) {
+          if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
+          event.preventDefault();
+          const choices = event.currentTarget.querySelectorAll<HTMLButtonElement>(
+            "[data-model-root]:not(:disabled)",
+          );
+          (event.key === "ArrowDown" ? choices[0] : choices[choices.length - 1])?.focus();
+          return;
+        }
+        moveListFocus(event, "[data-model-root]:not(:disabled)");
+      }}
+    >
+      <label className="settings-model-search" data-input-surface>
+        <Search />
+        <input
+          ref={search}
+          aria-label={`Search models for ${label.toLowerCase()}`}
+          placeholder="Search models"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setProviderOpen(null);
+          }}
+        />
+      </label>
+      <div className="settings-model-options" role="menu" aria-label={`${label} models`}>
+        {automatic !== undefined && (
+          <button
+            type="button"
+            data-model-root
+            role="menuitemradio"
+            aria-checked={automatic}
+            disabled={disabled}
+            onClick={() =>
+              void onChange(undefined).then((ok) => {
+                if (ok) close();
+              })
+            }
+          >
+            Automatic {automatic && <Check />}
+          </button>
+        )}
+        {loading && <p>Loading models…</p>}
+        {!loading && !matched.length && <p>No matching models. Use Model settings to enter a model ID.</p>}
+        {[...groups].map(([group, models]) =>
+          group && !query.trim() ? (
+            <ModelProviderMenu
+              key={group}
+              label={providerNames[group] ?? group}
+              open={providerOpen === group}
+              onOpen={() => setProviderOpen(group)}
+              onClose={() => setProviderOpen(null)}
+            >
+              {modelRows(models, close, false)}
+            </ModelProviderMenu>
+          ) : (
+            <div key={group}>{modelRows(models, close, true)}</div>
+          ),
+        )}
+      </div>
+    </div>
+  );
+  return (
+    <SettingsField compact label={label} hint={hint}>
+      <div className="settings-model-control">
+        <Popover
+          label={`${label} selection`}
+          className="settings-model-trigger"
+          disabled={disabled}
+          initialFocusRef={search}
+          trigger={
+            <>
+              <span>{name || "Choose model"}</span>
+              <ChevronDown />
+            </>
+          }
+        >
+          {control}
+        </Popover>
+        <ActionMenu label={`${label} options`} actions={actions} />
+      </div>
+    </SettingsField>
+  );
+}
+
+function ConnectModels({
+  disabled,
+  triggerRef,
+  onSelect,
+}: {
+  disabled: boolean;
+  triggerRef: import("react").RefObject<HTMLButtonElement | null>;
+  onSelect(provider?: ModelProvider): Promise<void>;
+}) {
+  const [query, setQuery] = useState("");
+  const search = useRef<HTMLInputElement>(null);
+  const providers = ModelProviderSchema.options.filter((provider) =>
+    MODEL_PROVIDER_NAMES[provider].toLowerCase().includes(query.trim().toLowerCase()),
+  );
+  return (
+    <Popover
+      label="Connect model provider"
+      className="model-connect-row"
+      disabled={disabled}
+      initialFocusRef={search}
+      trigger={
+        <>
+          <Plus />
+          Connect
+        </>
+      }
+      triggerControl={(node) => {
+        triggerRef.current = node;
+      }}
+    >
+      {(close) => (
+        <div
+          className="settings-model-picker"
+          onKeyDown={(event) => {
+            if (event.target === search.current) {
+              if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
+              event.preventDefault();
+              const choices =
+                event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)");
+              (event.key === "ArrowDown" ? choices[0] : choices[choices.length - 1])?.focus();
+              return;
+            }
+            moveListFocus(event, "button:not(:disabled)");
+          }}
+        >
+          <label className="settings-model-search" data-input-surface>
+            <Search />
+            <input
+              ref={search}
+              aria-label="Search providers"
+              placeholder="Search providers"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <div className="settings-model-options">
+            {!query && (
+              <>
+                <p>Subscriptions</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    close();
+                    void onSelect();
+                  }}
+                >
+                  Connect an account…
+                </button>
+              </>
+            )}
+            <p>{providers.length ? "API" : "No matching providers"}</p>
+            {providers.map((provider) => (
+              <button
+                type="button"
+                key={provider}
+                onClick={() => {
+                  close();
+                  void onSelect(provider);
+                }}
+              >
+                {MODEL_PROVIDER_NAMES[provider]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </Popover>
+  );
+}

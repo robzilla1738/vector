@@ -1252,3 +1252,44 @@ The Separate race now gates restoration while any split operation is queued or
 in flight; it rechecks when the final operation settles. The full integrated
 check passes 4,596 tests/738 files. Native rapid Separate/re-split acceptance
 remains to be checked in the consolidated build. Overall parity remains open.
+
+
+## October 16 Models overview and task-menu consolidation
+
+October 16 Models overview batch: references 058–061 now drive a compact
+Providers card, searchable Connect menu, Default model row, grouped task roles,
+and image-model row. Task selectors group models into adjacent provider menus;
+search flattens matching choices. Row actions save reasoning or restore automatic
+routing while preserving other role overrides. Detailed setup remains accessible
+in a dialog, with targeted field focus, a persistent Done control, readable model
+IDs and Escape focus return. Settings search opens the appropriate detailed field.
+The text registry now explicitly excludes GPT Image 2 from chat-model pickers.
+
+Validation: `npm run check` passed typecheck, lint and 4,598 tests/739 files;
+after the reasoning/reset regression was added, the three overview tests passed.
+Final renderer build passed (3.34s). Vite walkthrough verified provider submenus,
+search keyboard entry, targeted role setup and Escape return. The native app
+still runs source `7d913f2ff`; these Models and focus refinements are Vite-only
+until the next consolidated native build. Full parity remains open: provider
+brand icons, individual subscription setup, custom-provider JSON configuration,
+image-provider submenus, exact viewport/light/narrow comparisons and full-app
+acceptance remain outstanding.
+
+Native Projects follow-up: the `7d913f2ff` incremental build passed in 8m57.17s
+(25 steps). In its disposable Profile, creating “Design review” with a blue globe
+and a synthetic read-only folder succeeded after canonical-path/AGENTS.md review;
+the card persisted through Settings reload. The native directory chooser itself
+was not exercised. Launcher 21465/app 26376 owns this live preview; the previous
+launcher 9489 and its disposable Profile were retired normally. Rapid native
+Separate/re-split acceptance remains outstanding.
+
+Evidence under `/tmp/aux-parity-2026-10-16/`:
+- `aux-settings-provider-submenu-vite.png`: provider submenu positioning and keyboard focus (before the final softer menu focus styling).
+- `aux-model-options-dialog-vite.png`: repaired model-ID/reasoning layout, persistent Done, targeted Fast field.
+- `aux-project-saved-native-7d913.png`: native named project, icon/color and reviewed access.
+
+The provider-menu walkthrough exposed a backdrop-filter containing-block issue:
+fixed submenus were positioned outside the visible popover. The task-model popover
+now uses the opaque menu surface without backdrop filtering so submenu coordinates
+remain relative to the viewport. Its normal search and option focus indicators are
+rounded and quiet; forced-colors styling remains available.

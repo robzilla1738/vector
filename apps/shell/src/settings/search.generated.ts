@@ -443,6 +443,7 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     description:
       "Enter the exact model ID for the selected provider. Availability depends on your account.",
     target: "Planner model",
+    searchTerms: ["Default model"],
   },
   {
     category: "Models",
@@ -466,7 +467,7 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Models",
-    label: "Provider connections",
+    label: "Providers",
     description:
       "Disconnect stops future requests in this Profile, including environment credentials and localhost. Saved keys and model choices are kept for explicit reconnect. Requests already sent may finish. Remove saved key also disconnects the provider.",
     target: "Provider connections",

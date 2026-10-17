@@ -124,7 +124,7 @@ it("shows only masked connection status and performs explicit disconnect/reconne
   expect(call).not.toHaveBeenCalled();
   expect(save).not.toHaveBeenCalled();
   expect(collectSettingsFields(host).map((field) => field.label)).toEqual(
-    expect.arrayContaining(["Provider connections", "Image-generation model"]),
+    expect.arrayContaining(["Providers", "Image-generation model"]),
   );
   await menu();
   await chooseAction("Disconnect");

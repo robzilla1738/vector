@@ -1,5 +1,32 @@
 # Aux status — October 16, 2026
 
+October 16 Models overview batch: references 058–061 now drive a compact
+Providers card, searchable Connect menu, Default model row, grouped task roles,
+and image-model row. Task selectors group models into adjacent provider menus;
+search flattens matching choices. Row actions save reasoning or restore automatic
+routing while preserving other role overrides. Detailed setup remains accessible
+in a dialog, with targeted field focus, a persistent Done control, readable model
+IDs and Escape focus return. Settings search opens the appropriate detailed field.
+The text registry now explicitly excludes GPT Image 2 from chat-model pickers.
+
+Validation: `npm run check` passed typecheck, lint and 4,598 tests/739 files;
+after the reasoning/reset regression was added, the three overview tests passed.
+Final renderer build passed (3.34s). Vite walkthrough verified provider submenus,
+search keyboard entry, targeted role setup and Escape return. The native app
+still runs source `7d913f2ff`; these Models and focus refinements are Vite-only
+until the next consolidated native build. Full parity remains open: provider
+brand icons, individual subscription setup, custom-provider JSON configuration,
+image-provider submenus, exact viewport/light/narrow comparisons and full-app
+acceptance remain outstanding.
+
+Native Projects follow-up: the `7d913f2ff` incremental build passed in 8m57.17s
+(25 steps). In its disposable Profile, creating “Design review” with a blue globe
+and a synthetic read-only folder succeeded after canonical-path/AGENTS.md review;
+the card persisted through Settings reload. The native directory chooser itself
+was not exercised. Launcher 21465/app 26376 owns this live preview; the previous
+launcher 9489 and its disposable Profile were retired normally. Rapid native
+Separate/re-split acceptance remains outstanding.
+
 October 16 Projects batch: replaced the inline folder-access form with a compact
 Create row and a 512px Create Project dialog, using references 055–057. Project
 names, 24 existing library icons and nine colors persist with reviewed folders;
@@ -15,8 +42,8 @@ commit. Regression coverage includes deliberate separation and deferred recovery
 `npm run check` passes typecheck, lint and 4,596 tests across 738 files. Local Vite
 inspection confirmed dialog layout, icon/color selection and Escape focus return;
 `/tmp/aux-parity-2026-10-16/aux-project-create-vite.png` records the final rounded
-form controls. The Vite mock lacks folder RPCs, so persistence/chooser acceptance
-needs the consolidated native preview. No full-parity or phase completion claimed.
+form controls. Subsequent native persistence evidence is recorded above; native
+chooser acceptance remains open. No full-parity or phase completion claimed.
 
 
 

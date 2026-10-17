@@ -862,6 +862,7 @@ export function ModelsSettings({
       )}
       <IndexedField
         label="Planner model"
+        searchTerms={["Default model"]}
         hint="Enter the exact model ID for the selected provider. Availability depends on your account."
       >
         <div {...staticRowProps} ref={plannerControlRef}>

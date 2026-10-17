@@ -1,5 +1,5 @@
 import { staticHintProps, staticRowProps } from "../../ui/class-props";
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   IMAGE_MODELS,
   DEFAULT_IMAGE_MODEL_ID,
@@ -28,7 +28,11 @@ export function ModelConnections({
   disabled,
   onSave,
   onEdit,
+  children,
+  concise = false,
 }: {
+  concise?: boolean;
+  children?: ReactNode;
   settings: Record<string, unknown>;
   active: boolean;
   disabled: boolean;
@@ -198,8 +202,14 @@ export function ModelConnections({
   return (
     <>
       <SettingsField
-        label="Provider connections"
-        hint="Disconnect stops future requests in this Profile, including environment credentials and localhost. Saved keys and model choices are kept for explicit reconnect. Requests already sent may finish. Remove saved key also disconnects the provider."
+        label="Providers"
+        target="Provider connections"
+        description="Disconnect stops future requests in this Profile, including environment credentials and localhost. Saved keys and model choices are kept for explicit reconnect. Requests already sent may finish. Remove saved key also disconnects the provider."
+        hint={
+          concise
+            ? ""
+            : "Disconnect stops future requests in this Profile, including environment credentials and localhost. Saved keys and model choices are kept for explicit reconnect. Requests already sent may finish. Remove saved key also disconnects the provider."
+        }
       >
         {!parsed.success ? (
           <p {...staticHintProps}>Provider management is unavailable until the runtime reconnects.</p>
@@ -219,9 +229,16 @@ export function ModelConnections({
         )}
         {error && <p {...nativeAlertRoleProps}>{error}</p>}
       </SettingsField>
+      {children}
       <SettingsField
+        compact={concise}
         label="Image-generation model"
-        hint="Images use your Gateway connection independently of your chat provider. Aux uses the default image model unless you choose another or turn it off. Selecting a model makes no request."
+        description="Images use your Gateway connection independently of your chat provider. Aux uses the default image model unless you choose another or turn it off. Selecting a model makes no request."
+        hint={
+          concise
+            ? "Model used to generate and edit images."
+            : "Images use your Gateway connection independently of your chat provider. Aux uses the default image model unless you choose another or turn it off. Selecting a model makes no request."
+        }
       >
         <select
           aria-label="Image-generation model"
@@ -245,10 +262,12 @@ export function ModelConnections({
             Connect Gateway with a key authorized for this image model before generating an image.
           </p>
         )}
-        <p {...staticHintProps}>
-          Image requests count toward your spending limits. Usage may be charged; image costs are estimated
-          when the provider does not return a price.
-        </p>
+        {!concise && (
+          <p {...staticHintProps}>
+            Image requests count toward your spending limits. Usage may be charged; image costs are estimated
+            when the provider does not return a price.
+          </p>
+        )}
       </SettingsField>
       {confirmation}
     </>

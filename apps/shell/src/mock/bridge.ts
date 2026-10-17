@@ -537,6 +537,8 @@ export function installMockBridge(q: URLSearchParams) {
     theme,
     tabLayout: q.get("layout") === "horizontal" ? "horizontal" : "vertical",
     searchEngine: DEFAULT_SEARCH_ENGINE,
+    modelProvider: "gateway",
+    modelConnections: [{ provider: "gateway", selected: true, enabled: true, credentialSource: "saved", credentialUnavailable: false, localEndpoint: false }],
     plannerModel: "meta/muse-spark-1.3-contributor",
     maxWorkers: 4,
     maxModelCalls: 0,

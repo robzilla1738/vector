@@ -208,6 +208,7 @@ export const MODEL_REGISTRY: readonly ModelCapability[] = [
     id: "openai/gpt-image-2",
     name: "GPT Image 2",
     provider: "openai",
+    textGeneration: false,
     modalities: ["text"],
     structuredOutput: false,
     streaming: false,
