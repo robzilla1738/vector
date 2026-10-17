@@ -75,6 +75,21 @@
     border-radius: var(--r-lg);
     background: var(--surface-input);
   }
+  .settings-content .field.ui-setting.compact:has(.settings-model-control) > .ui-setting-control {
+    max-width: 210px;
+  }
+  @container settings-content (width < 440px) {
+    .settings-content .field.ui-setting.compact:has(.settings-model-control) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .settings-content .field.ui-setting.compact:has(.settings-model-control) > .ui-setting-control {
+      grid-column: 1;
+      grid-row: 3;
+      justify-self: start;
+      margin-top: 8px;
+      max-width: 100%;
+    }
+  }
   .settings-model-control > .ui-menu-trigger {
     flex: none;
     width: 28px;

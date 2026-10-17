@@ -1,5 +1,22 @@
 # Aside UI parity — October 16, 2026
 
+Model selector sizing follow-up: the generic compact-control cap of 160px
+clipped ordinary model names after provider marks were added. Shared model
+selectors now allow 210px, preserving the adjoining options button and text
+ellipsis for unusually long names. The full label is available on hover.
+Below a 440px Settings content width, these rows place the selector beneath the
+label/description rather than compressing both columns. This narrow rule still
+needs visual acceptance.
+
+Local Vite inspection confirms Claude Haiku 4.5, Sonnet 5.5 and Opus 5.5 display
+fully. Capture: `/tmp/aux-parity-2026-10-16/aux-model-label-sizing-vite.png`.
+Integrated typecheck/lint and all 4,617 tests across 741 files passed.
+Logs: `/tmp/aux-model-trigger-sizing-check.log` and
+`/tmp/aux-model-trigger-sizing-build.log`.
+Renderer build passed in 3.63s. Native shell remains `4e5fa2188`; the sizing change
+and earlier provider marks/compact menu geometry await native consolidation.
+Full parity remains open.
+
 Native consolidation acceptance follow-up: the `4e5fa2188` build completed
 successfully (8m21s, 26 steps). Launcher 75304 owns the live disposable preview,
 app PID 81926, Profile `aux-dev-QzFkHv`; no replacement builder was started.

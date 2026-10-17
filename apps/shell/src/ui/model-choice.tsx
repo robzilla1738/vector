@@ -156,7 +156,7 @@ export function ModelChoice({
           trigger={
             <>
               <ModelProviderMark provider={selected?.provider} />
-              <span>{name || "Choose model"}</span>
+              <span title={name || "Choose model"}>{name || "Choose model"}</span>
               <ChevronDown />
             </>
           }
