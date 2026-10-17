@@ -414,3 +414,20 @@ it("renews genuine request hydration across committed connection ABA and refuses
   expect(host.textContent).not.toContain("Original disconnected request failure");
   expect(useStore.getState().toasts).toEqual([]);
 });
+
+it.each(["queue", "steer"] as const)(
+  "uses the %s follow-up preference without replacing answers",
+  async (mode) => {
+    run.status = "running";
+    useStore.setState({ settings: { followUpBehavior: mode }, runs: [run] });
+    await render();
+    expect(control(`select-conversation-${mode}`).getAttribute("aria-pressed")).toBe("true");
+    expect(input().value).toBe("Original follow-up");
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.click());
+    expect(bridge.invoke).toHaveBeenCalledWith(
+      `runs.${mode}`,
+      expect.objectContaining({ text: "Original follow-up" }),
+    );
+    expect(useStore.getState().runAnswerDrafts[run.runId]?.text).toBe("Original answer");
+  },
+);

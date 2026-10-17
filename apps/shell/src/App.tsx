@@ -1,3 +1,4 @@
+import { useTabChats } from "./agent/tab-chats";
 import { useRunAttention } from "./app/use-run-attention";
 import { useNativeObservers } from "./app/use-native-observers";
 import { useSettingsRoute } from "./app/use-settings-route";
@@ -154,6 +155,7 @@ const placementFields = (page?: PageTarget) =>
   };
 
 export function App() {
+  useTabChats();
   const { runNotice, setRunNotice, noticePreference, foregroundRun, notificationGate } = useRunAttention();
   useNativeObservers();
   useSettingsRoute();

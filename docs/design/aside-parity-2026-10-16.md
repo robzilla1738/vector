@@ -5,6 +5,15 @@ review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
 [the earlier surface ledger](aside-parity.md); it does not narrow its acceptance.
 
+## Agent behavior follow-up
+
+References048–049 now have functional Queue/Steer and per-tab/current-chat
+preferences in the grouped Agent access card. Runtime persistence, live send
+routing, draft preservation and per-tab restoration have focused regression
+coverage. Vite confirms selectors and successful saves. Associations last for the
+browser window session, not across browser restart. Native walkthrough is pending;
+cleanup behavior and the remaining full-surface comparisons remain OPEN.
+
 ## Chat attention follow-up
 
 References045–046 now have a compact Chat card on the agent permissions surface,

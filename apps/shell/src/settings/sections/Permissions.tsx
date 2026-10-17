@@ -5,6 +5,7 @@ import type { AgentPolicyCategory, AgentPolicySettings, FileAccessSettings } fro
 import { SettingsField, SettingsSection } from "../primitives";
 import { Popover } from "../../ui/popover";
 import { Plus } from "../../ui/icons";
+import { AgentBehaviorSettings } from "./AgentBehavior";
 import { TaskAttentionSettings } from "../../agent/TaskAttentionSettings";
 import { PolicyGroups } from "../../features/permissions/PolicyGroups";
 import { Segmented } from "../../ui";
@@ -168,15 +169,18 @@ export function PermissionsSettings({
     <SettingsSection name="Permissions" hidden={!active} className="permissions-settings">
       {!bridge.privateMode && <TaskAttentionSettings active={active} />}
       <h3>Agent access</h3>
-      <SettingsField
-        compact
-        label="Agent mode"
-        hint="Choose when Aux asks before taking action."
-        searchTerms={["auto", "ask first", "full auto", "Touch ID"]}
-      >
-        <AgentModeControl active={active} disabled={busy} policy={policy} onSave={onSave} />
-      </SettingsField>
-      {error && <p role="alert">{error}</p>}
+      <div className="agent-behavior-card">
+        <SettingsField
+          compact
+          label="Agent mode"
+          hint="Choose when Aux asks before taking action."
+          searchTerms={["auto", "ask first", "full auto", "Touch ID"]}
+        >
+          <AgentModeControl active={active} disabled={busy} policy={policy} onSave={onSave} />
+        </SettingsField>
+        {error && <p role="alert">{error}</p>}
+        <AgentBehaviorSettings active={active} settings={settings} onSave={onSave} />
+      </div>
       <h3>File permissions</h3>
       <SettingsField
         compact

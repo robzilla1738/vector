@@ -940,7 +940,14 @@ function ConversationContent({
   const queueAttemptRef = useRef<QueueAttempt | null>(null);
   const [liveSendMode, setLiveSendMode] = useState<"answer" | "steer" | "queue">("answer");
   useEffect(() => setLiveSendMode("answer"), [last?.runId, answering]);
-  const effectiveLiveMode = answering ? liveSendMode : liveSendMode === "answer" ? "steer" : liveSendMode;
+  const followUpBehavior = useStore((state) =>
+    state.settings.followUpBehavior === "steer" ? "steer" : "queue",
+  );
+  const effectiveLiveMode = answering
+    ? liveSendMode
+    : liveSendMode === "answer"
+      ? followUpBehavior
+      : liveSendMode;
   const answerRunId = answering && effectiveLiveMode === "answer" ? last?.runId : undefined,
     answerQuestion = last?.statusMessage;
   const messageRunIds = JSON.stringify(

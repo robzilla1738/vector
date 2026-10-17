@@ -274,6 +274,18 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Permissions",
+    label: "Follow-up behavior",
+    description: "Queue follow-ups while Aux runs or steer the current run.",
+    target: "Follow-up behavior",
+  },
+  {
+    category: "Permissions",
+    label: "Ask Aux on tab switch",
+    description: "When you switch tabs, use a separate chat for each tab or keep the current chat.",
+    target: "Ask Aux on tab switch",
+  },
+  {
+    category: "Permissions",
     label: "Task notifications",
     description: "Choose which task events can notify you. Focus Mode pauses all alerts.",
     target: "Task notifications",

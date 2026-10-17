@@ -133,6 +133,8 @@ export interface Settings extends Pick<
   };
   searchEngine?: string;
   homeEntryMode?: "search" | "ask";
+  followUpBehavior?: "queue" | "steer";
+  askTabSwitch?: "per-tab" | "keep-current";
   commandRouting?: "automatic" | "prefer-chat" | "prefer-search";
   searchEngines?: { keyword: string; name: string; template: string }[];
   searchSuggestions?: boolean;
@@ -764,6 +766,8 @@ export class SettingsService {
       budgets: this.budgetLimits(),
       searchEngine: this.searchEngine(),
       homeEntryMode: this.get("homeEntryMode") as Settings["homeEntryMode"],
+      followUpBehavior: (this.get("followUpBehavior") as Settings["followUpBehavior"]) ?? "queue",
+      askTabSwitch: (this.get("askTabSwitch") as Settings["askTabSwitch"]) ?? "per-tab",
       commandRouting: (this.get("commandRouting") as Settings["commandRouting"]) ?? "automatic",
       searchEngines: (this.get("searchEngines") as Settings["searchEngines"]) ?? [],
       searchSuggestions: (this.get("searchSuggestions") as boolean | undefined) ?? false,

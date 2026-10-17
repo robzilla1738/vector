@@ -86,6 +86,24 @@ describe("settings defaults for a real test pass", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+  it("persists agent follow-up and tab-switch preferences", async () => {
+    const { dir, settings } = harness();
+    try {
+      expect(settings.all()).toMatchObject({ followUpBehavior: "queue", askTabSwitch: "per-tab" });
+      await settings.set(
+        MethodSchemas["settings.set"].parse({ followUpBehavior: "steer", askTabSwitch: "keep-current" }),
+      );
+      expect(settings.all()).toMatchObject({ followUpBehavior: "steer", askTabSwitch: "keep-current" });
+      expect(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8"))).toMatchObject({
+        followUpBehavior: "steer",
+        askTabSwitch: "keep-current",
+      });
+      expect(MethodSchemas["settings.set"].safeParse({ followUpBehavior: "unknown" }).success).toBe(false);
+      expect(MethodSchemas["settings.set"].safeParse({ askTabSwitch: "unknown" }).success).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it("persists the new-tab mode and rejects unsupported choices", async () => {
     const { dir, settings } = harness();
     try {

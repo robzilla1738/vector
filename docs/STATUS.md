@@ -1,5 +1,23 @@
 # Aux status — October 16, 2026
 
+October 16 behavior batch (references 048–049): Agent access now groups mode,
+Follow-up behavior (Queue/Steer), and Ask Aux on tab switch (New chat per tab/Keep
+current chat) in one rounded card. Both choices persist in runtime Settings and
+are indexed by Settings search. Queue is the default for live follow-ups; pending
+questions still default to Answer and explicit composer choices remain available.
+Per-tab assistant views are scoped to this browser-window session and Space;
+switching tabs preserves drafts and running work. Hiding the assistant retains
+associations. Explicit navigation and Set panels take precedence; deleted chats
+are evicted, and private/Quick Ask windows do not apply per-tab behavior.
+
+Runtime dist was rebuilt before tests. The focused defaults, live composer and
+tab ownership suites passed all 36 tests. Vite inspection verified both selectors,
+successful saves and grouped layout; capture:
+`/tmp/aux-parity-2026-10-16/aux-agent-behavior-settings-vite.png`.
+Final renderer build passed in 3.08s. Integrated `npm run check` passed typecheck,
+lint and all 4,610 tests across 741 files. Native consolidated acceptance is pending. Separate routine-completion filters,
+agent-tab cleanup, full Agents parity and phase acceptance remain open.
+
 October 16 Chat attention batch (references 045–046): notification controls moved
 from General to the Permissions/Agents surface, in a compact Chat card. An anchored
 selector independently filters completions and requests needing attention through

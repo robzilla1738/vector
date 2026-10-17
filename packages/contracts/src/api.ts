@@ -944,6 +944,8 @@ export const SettingsSetParams = z.object({
   searchEngine: SearchEngineTemplateSchema.optional(),
   /** Preferred surface when a new blank tab opens. Private windows always start in Search. */
   homeEntryMode: z.enum(["search", "ask"]).optional(),
+  followUpBehavior: z.enum(["queue", "steer"]).optional(),
+  askTabSwitch: z.enum(["per-tab", "keep-current"]).optional(),
   commandRouting: z.enum(["automatic", "prefer-chat", "prefer-search"]).optional(),
   /** `kw query` engines — user entries merge over the built-in list. */
   searchEngines: z
