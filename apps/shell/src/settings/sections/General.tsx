@@ -69,7 +69,7 @@ export function GeneralSettings({
           >
             <select
               aria-label="New tab mode"
-              value={String(settings.homeEntryMode ?? "ask")}
+              value={String(settings.homeEntryMode ?? "search")}
               onChange={(event) => void onSave({ homeEntryMode: event.target.value })}
             >
               <option value="search">Search</option>

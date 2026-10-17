@@ -244,3 +244,25 @@ it("closes the acknowledged menu while keeping the same trigger for focus return
   expect(host.querySelector('[aria-label="Default search engine"]')).toBe(trigger);
   expect(trigger.textContent).toContain("Brave");
 });
+
+it("recognizes the native Brave preset after Chromium adds its source parameter without rewriting it", async () => {
+  value = "https://search.brave.com/search?q=%s&source=csChrome";
+  await render();
+  expect(button("Brave").getAttribute("aria-pressed")).toBe("true");
+  expect(host.querySelector("input")).toBeNull();
+  expect(save).not.toHaveBeenCalled();
+  await custom();
+  expect(input().value).toBe(value);
+});
+it("keeps different endpoints and search placeholders custom", async () => {
+  for (const template of [
+    "https://search.brave.com/other?q=%s",
+    "https://other.example/search?q=%s",
+    "https://search.brave.com/search?q=constant&term=%s",
+  ]) {
+    value = template;
+    await render();
+    expect(button("Brave").getAttribute("aria-pressed")).toBe("false");
+    expect(input().value).toBe(template);
+  }
+});

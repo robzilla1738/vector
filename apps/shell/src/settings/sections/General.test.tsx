@@ -34,7 +34,7 @@ it("keeps General fields indexed and opens an editor after extraction", async ()
   };
   try {
     await act(async () => root.render(<GeneralSettings {...props} subview={null} />));
-    expect(container.querySelector<HTMLSelectElement>('[aria-label="New tab mode"]')!.value).toBe("ask");
+    expect(container.querySelector<HTMLSelectElement>('[aria-label="New tab mode"]')!.value).toBe("search");
     const fields = collectSettingsFields(container);
     expect(fields.filter((field) => field.category === "General").map((field) => field.label)).toEqual(
       expect.arrayContaining([

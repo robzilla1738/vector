@@ -815,3 +815,37 @@ expecting four source cards at once. Migrated onboarding to the four choices and
 unchecked per-browser reviews; final 44 affected integration cases pass. Final
 renderer build: 1.82s. This source is newer than native candidate 9d677b376;
 visual/native acceptance of the Add menu and import selector is pending.
+
+## Native 9d677b376 and follow-up correctness fixes
+
+The same live builder succeeded (26 steps / 8m45.61s; 217 renderer assets,
+273 methods / 30 events, cce8203bcbd0, Node 26.9). Launched with a disposable
+Profile. Native language Add → Cancel → reopen retained two original languages;
+Add → Save → reopen retained en-GB, with focus returning to Configure. Evidence:
+aux-languages-saved-native-9d677.png. This compiled draft editor predates capture
+019’s Add menu/catalog and corrected 520px geometry; those are not native-proven.
+
+Native Brave save succeeded, but no provider remained checked. A scoped SDK read
+of only searchEngine/homeEntryMode proved Chromium returned
+https://search.brave.com/search?q=%s&source=csChrome and no explicit Home mode.
+The prior equality check incorrectly treated this preset as Custom. New source
+recognizes preset origin/path and the exact q=%s placeholder, retaining the actual
+URL rather than rewriting it. Different origins/paths/placeholders stay Custom.
+General’s unset New tab mode now says Search, matching actual fresh Home behavior,
+instead of misleadingly showing Ask. Explicit saved modes remain unchanged.
+
+Fresh live renderer, loaded through the outer browser’s address control, showed
+the bounded 256px language chooser and 520px dialog. Selecting Akan added only ak
+to the draft; cancelled it. Anchored placement’s inline outer max-height previously
+overrode the intended limit; capping the inner scroll area fixes the observed
+oversized menu without changing shared popover placement. Evidence:
+aux-language-add-menu-live-d63caf.png. The exact Chromium-returned Brave template
+was saved through the custom editor in the mock renderer, then reopened as checked
+Brave: aux-search-engine-native-template-live.png. These are current-renderer
+evidence, not newly compiled native fixes.
+
+Final provider/General focused checks: 19 pass. Final integrated check: typecheck/
+lint pass, 4,551/4,552 tests across 731 files pass; sole failure is the longstanding
+coder-worktrees 60-second timeout. Renderer build 2.10s; whitespace check clean.
+No source browser Profile discovery/import or model call was performed. Full
+surface acceptance, pointer drag and newest-source native staging remain open.

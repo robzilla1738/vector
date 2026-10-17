@@ -27,6 +27,24 @@ const ENGINES = [
   { name: "Microsoft Bing", url: "https://www.bing.com/search?q=%s" },
   { name: "Ecosia", url: "https://www.ecosia.org/search?q=%s&addon=manualopensearch" },
 ];
+/** Chromium may append its own provider parameters when accepting a preset. */
+function presetFor(value: string) {
+  try {
+    const selected = new URL(value);
+    if (selected.username || selected.password) return undefined;
+    return ENGINES.find((engine) => {
+      const preset = new URL(engine.url);
+      return (
+        selected.origin === preset.origin &&
+        selected.pathname === preset.pathname &&
+        selected.searchParams.getAll("q").length === 1 &&
+        selected.searchParams.get("q") === "%s"
+      );
+    });
+  } catch {
+    return undefined;
+  }
+}
 /** Close an acknowledged/replaced selection without replacing its focus-return trigger. */
 function SearchEngineMenu({ value, close, children }: { value: string; close(): void; children: ReactNode }) {
   const original = useRef(value);
@@ -50,7 +68,7 @@ export function SearchEngineSetting({
   const windowId = bridge.windowId,
     privateMode = bridge.privateMode;
   const identity = useMemo(() => [value, windowId, privateMode], [value, windowId, privateMode]);
-  const initial = { identity, draft: value, custom: !ENGINES.some((engine) => engine.url === value) };
+  const initial = { identity, draft: value, custom: !presetFor(value) };
   const [editing, setEditing] = useState(initial);
   const { draft, custom } = editing.identity === identity ? editing : initial;
   const edit = useCallback(
@@ -61,9 +79,7 @@ export function SearchEngineSetting({
     ) =>
       setEditing((previous) => {
         const active =
-          previous.identity === identity
-            ? previous
-            : { identity, draft: value, custom: !ENGINES.some((engine) => engine.url === value) };
+          previous.identity === identity ? previous : { identity, draft: value, custom: !presetFor(value) };
         return { ...active, ...(typeof change === "function" ? change(active) : change) };
       }),
     [identity, value],
@@ -94,7 +110,7 @@ export function SearchEngineSetting({
         draftRef,
         () => onSave(template),
         () => {
-          edit({ draft: template, custom: !ENGINES.some((engine) => engine.url === template) });
+          edit({ draft: template, custom: !presetFor(template) });
         },
         "The search engine wasn’t saved. Try again.",
       );
@@ -118,7 +134,7 @@ export function SearchEngineSetting({
         label="Default search engine"
         trigger={
           <>
-            <span>{ENGINES.find((engine) => engine.url === value)?.name ?? "Custom"}</span>
+            <span>{presetFor(value)?.name ?? "Custom"}</span>
             {shellIconDown}
           </>
         }
@@ -140,11 +156,11 @@ export function SearchEngineSetting({
                 key={engine.name}
                 {...smallButtonProps}
                 disabled={busy}
-                aria-pressed={value === engine.url}
+                aria-pressed={presetFor(value)?.url === engine.url}
                 onClick={(event) => run("select-search-engine", event)}
               >
                 <span>{engine.name}</span>
-                {value === engine.url && shellIconCheck}
+                {presetFor(value)?.url === engine.url && shellIconCheck}
               </button>
             ))}
             <hr />

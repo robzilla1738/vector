@@ -3,106 +3,65 @@
 
 ## October 16 UI parity review — in progress
 
-Capture 019 correction: Add now opens an alphabetized language menu before
-changing the draft. The catalog contains 183 accept-language tags from the local
-Chromium source (excluding pseudolocales). Selected languages are omitted; custom
-code entry is offered inside that menu. Standard display names reuse one locale
-formatter. Normalized capture 018 measures 1,040 physical pixels / 520 CSS pixels
-at 2× density; the dialog now uses 520px, tighter rows and content-sized selectors.
-These menu/geometry changes are newer than the native build currently in flight.
+Latest source recognizes Chromium-normalized search templates by their exact
+provider origin, search path and q=%s placeholder. Native verification exposed
+Brave’s added source=csChrome parameter: the prior exact-string comparison lost
+its selection/checkmark after a successful save. The correction preserves the
+actual template, rejects different endpoints/placeholders and does not rewrite
+native settings merely to label them. General’s unset New tab mode now displays
+Search, matching actual fresh Home behavior; explicit saved Ask remains honored.
 
-Captures 020/021 comparison adds a real Detected browser selector after explicit
-source discovery. Only that browser’s Profile/category review is shown. Switching
-browsers clears old selections and extension choices, preventing hidden queued
-imports. Empty discovery points to export-file/Safari-window review. Discovery
-remains opt-in; no automatic import or source Profile access was added.
+Capture 019: Add opens an alphabetized menu backed by 183 local Chromium
+accept-language tags, excluding selected entries. Custom code entry is inside
+the menu. Density-corrected Languages geometry uses 520px width, 50px rows and
+32px content-sized selectors. The menu’s inner scroll area remains bounded even
+when anchored placement adjusts the outer surface. Live renderer inspection
+confirmed its alphabetic list, bounded height, intended Akan draft row and Cancel.
+The exact Chromium-returned Brave template also retained its checked selection.
 
-The menu integrated check passed typecheck/lint and 4,547/4,548 cases (known
-coder-worktrees timeout only). Import integrated check passed 4,548/4,550: that
-timeout plus one obsolete onboarding assertion expecting four simultaneous source
-cards. Migrated onboarding to verify all four picker choices and unchecked reviews;
-44 final affected integration cases pass. All 20 focused import cases pass.
-Final renderer build: 1.82s. Native/new-menu/import visual acceptance is pending.
+Captures 020/021: real Detected browser selection follows explicit discovery.
+Only its Profile/category review is shown; switching clears previous categories
+and extension choices. Empty discovery explains alternatives. Source discovery
+and import remain opt-in. Populated visual/native selector acceptance and closer
+reference dialog composition remain pending; no owner source Profile was read.
 
-Latest source also replaces the immediate-write language editor with a draft
-list matching capture 018: ranked rows, rounded language selectors, Add, removal,
-reordering and Cancel/Save. Keyboard arrows on the reorder handle and scoped
-move actions support accessible reordering. Drag handlers accept only this
-editor’s current owner. Common languages use localized standard names; a
-collapsed code editor preserves arbitrary valid language codes. Policy, forced
-languages, one-to-20 bounds and stale owner protections remain. Cancel and
-Escape discard unsaved drafts; only Save writes the complete ordered list.
+**Compiled/staged candidate: `9d677b376`.** Native build passed in 26 steps /
+8m45.61s with 217 renderer assets, rebuilt runtime, Node 26.9 and unchanged
+273 methods / 30 events (cce8203bcbd0). The disposable preview proved native
+language Cancel leaves the saved list unchanged and Save persists en-GB across
+reopening, returning focus to Configure. It also exposed the native provider
+normalization and unset-New-tab display bugs corrected in newer source. Evidence:
+aux-languages-saved-native-9d677.png and aux-search-engine-menu-native-9d677.png.
+The Add menu/catalog/geometry, import source selector and these bug fixes are
+newer than this compiled renderer and need their own native staging/walkthrough.
 
-Live local-renderer verification proved Cancel discards an added row, Save
-persists it across reopening, focus returns to Configure, and keyboard reordering
-retains its row. Pointer drag verification remains open: an automation attempt
-produced no observed reorder. This is not yet compiled native language evidence.
-Typecheck/lint pass; integrated 4,543/4,544 tests pass with only the known
-coder-worktrees timeout. Final 26 affected cases pass, including pending-owner
-retirement, synchronous failure and read retry. Renderer builds in 2.08s.
+Final typecheck/lint pass; 4,551/4,552 tests across 731 files pass, with only the
+longstanding coder-worktrees 60-second timeout. Nineteen focused provider/General
+cases pass. Prior final affected integration checks: 44 pass, including language,
+import and migrated onboarding; all 20 focused import cases pass. Final renderer
+build: 2.10s. Live evidence: aux-language-add-menu-live-d63caf.png and
+aux-search-engine-native-template-live.png in /tmp/aux-parity-2026-10-16/.
 
-Latest source replaces General Settings’ search-provider button strip with one
-compact dropdown: Google, DuckDuckGo, Brave, Microsoft Bing, Ecosia and the
-existing custom URL editor. Saved selection changes close the menu without
-replacing its focus-return trigger. Pending, failed and obsolete-owner saves
-retain their existing guards. Provider rows are flat, without inherited button
-shadows. Fresh local-renderer inspection verified the menu, acknowledged Brave
-selection, retained checkmark and custom editor. This search dropdown is newer
-than the compiled candidate below; native compilation remains pending.
+Earlier native 985ad7381 evidence established real reviewed-folder Project
+selection/checkmark, compact Routines anatomy, initial title focus and rounded
+model-search focus. No agent run was started for the Project review. Earlier
+ffb87541f evidence established a paused daily routine with matching source task
+revision/manual criteria and zero occurrences/agent runs. Scratch Project creation,
+native folder chooser anatomy and actual pointer reorder remain open.
 
-Typecheck/lint and the renderer build pass. The initial integrated search slice
-passed 4,543/4,546 cases: the known coder-worktrees timeout plus two obsolete
-integration assertions for the prior button strip and label. Corrected those
-assertions; all 18 affected cases pass. Final integrated check: typecheck/lint
-pass, 4,545/4,546 tests pass across 731 files; only the longstanding
-coder-worktrees 60-second timeout fails. Final renderer build passes in 1.92s.
+Work continues on local main against the growing
+~/Desktop/Aside UI Reference 2026-10-16 corpus. Latest recursive inventory still
+has 192 manifest entries and 562 total files, including derivatives/metadata.
+The [active ledger](design/aside-parity-2026-10-16.md) retains the full scope.
+Full parity is not established. Previous goal turns made source/native progress;
+no unresolved compilation blocker or phase acceptance is being claimed.
 
-**New native build in progress: `9d677b376`.** The preceding disposable preview
-retired normally (launcher exit 0); its synthetic Project fixture was removed.
-The single new launcher runs `node scripts/dev.mjs --temp-profile`; log:
-`/tmp/aux-settings-consolidated-native.log`. Inspect that same live builder before
-starting any replacement. New native language/search verification remains pending.
-
-**Compiled/staged candidate: `985ad7381`.** The single incremental native build
-passed in 25 steps / 8m33.06s, staging 215 renderer assets, rebuilt runtime and
-Node 26.9 (273 methods / 30 events, `cce8203bcbd0`). That preview has now retired normally; the new launcher above owns the
-development build and plain lock.
-
-Native walkthrough confirmed the direct Project picker, empty catalog, and Use
-an existing folder routing to the real Projects review editor in the Home Space.
-Reviewed only a newly created synthetic temporary folder, including its canonical
-path and AGENTS.md; granted read/write access in the disposable Profile, selected
-Parity project and reopened the menu to verify its persisted checkmark. No agent
-run was started. Scratch creation and native folder chooser anatomy remain open.
-
-The compiled compact routine form now shows Repeat/Time rows, collapsed time
-zone and Advanced details, Cancel/Create actions, initial title focus and disabled
-submission without a prompt. No second routine was created. Earlier native
-`ffb87541f` evidence established paused creation with matching task revision/manual
-criteria and zero routine occurrences/agent runs. The latest native model search
-also confirms a single rounded focus surface, with no inner rectangular outline.
-Screenshots are in `/tmp/aux-parity-2026-10-16/`; the capture ledger has filenames.
-
-Work continues on local `main` against the growing
-`~/Desktop/Aside UI Reference 2026-10-16` corpus. Latest manifest: 192 entries;
-recursive file inventory: 562 files including derivatives and metadata. The
-[active capture ledger](design/aside-parity-2026-10-16.md) retains full scope,
-exact evidence and remaining comparisons. Full parity is not established.
-
-Current behavior from preceding slices remains: direct composer model/thinking
-choices; Ask first and remembered confirmation preferences; rounded shared search
-focus; General Preferences/Languages/Import/About; All Chats contained composer,
-dense List/rich Card, search/filter/sort and real chat actions. Report excerpts/
-search and implicit internal-page context exclusion have native synthetic-run
-evidence. Home suggested tasks reuse supplied art, append reviewable drafts,
-preserve context, hide in private Profiles and retain explicit expansion.
-
-Remaining comparisons include the complete ledger, native Languages Save/Cancel and pointer drag,
-exact Time/custom recurrence popup, routine model/notifications, standalone/task
-and permission semantics, Settings pagination beyond 200 routines, scratch Project
-creation, provider nesting, Settings details and native floating sidebar behavior.
-Matched viewports, alternate themes, accessibility, error/approval states and
-phase performance/smoke evidence remain required before full-product acceptance.
+Remaining comparisons include the complete ledger, new source native staging,
+pointer reorder, exact Time/custom recurrence popup, routine model/notifications,
+standalone/task and permission semantics, pagination beyond 200 routines, scratch
+Project creation, provider nesting, Settings details and native floating sidebar
+behavior. Matched viewports, themes, accessibility, error/approval states and phase
+performance/smoke evidence remain required before full-product acceptance.
 
 ## Aside parity checkpoint — owner wrap-up
 

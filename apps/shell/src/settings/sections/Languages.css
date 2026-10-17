@@ -92,10 +92,13 @@
   .language-add-menu {
     display: grid;
     gap: 2px;
+    max-height: min(244px, calc(100dvh - 44px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .language-add-menu > button {
-    min-height: 36px;
-    padding: 8px 10px;
+    min-height: 32px;
+    padding: 6px 10px;
     color: var(--ink-1);
     text-align: left;
     border-radius: var(--r-md);

@@ -448,3 +448,16 @@ discovery explains available alternatives. Existing import protections remain.
 pass after migrating the obsolete onboarding card-count assertion. Integrated
 results and native/source distinction are in the ledger. Full acceptance remains
 open; native builder 21531 still owns its current compilation.
+
+## October 16 — native Settings walkthrough
+
+Native 9d677b376 passed (26 steps / 8m45.61s, 217 assets). Language Cancel and
+Save persistence/focus return are verified in its disposable Profile. Native
+Brave normalization exposed an exact-URL selection bug; source now recognizes
+the actual provider endpoint/placeholder without rewriting its template. Corrected
+General’s unset mode label to match fresh Home Search. Current renderer verified
+the exact native Brave template remains checked and the Add menu is bounded at
+256px with the corrected 520px dialog. Captures are named in the ledger.
+19 focused checks pass; full check passes typecheck/lint and 4,551/4,552 tests,
+known coder-worktrees timeout only. Renderer build 2.10s. Native staging of the
+newer source, import selector visual acceptance and full product QA remain open.
