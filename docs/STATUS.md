@@ -1,5 +1,16 @@
 # Aux status — October 16, 2026
 
+Native Library consolidation is running for source `122155dbe`: launcher **32186**,
+exec session **11165**, log `/tmp/aux-library-consolidated-native.log`.
+The previous launcher 18613 was retired with SIGTERM; launcher/app 22360 exited,
+Profile `aux-dev-8UsqSc` was removed, and the plain lock was released before this
+build began. Preserve launcher 32186's cleanup ownership; poll this existing
+build instead of starting another. Build completion and native acceptance remain
+pending. Next walkthrough: About source, Library entry, new folder/bookmark,
+row edit/delete/undo and persistence, search radius and narrow layout; then the
+previously pending Memory/Quick Ask/chat-card acceptance.
+
+
 Bookmark Organize batch (reference 169): creation, selection and HTML import/export
 now live in the Organize menu beside search. Added a web-bookmark form backed by
 the existing native create method, showing the destination folder, guarding busy

@@ -1912,3 +1912,13 @@ coverage. Final renderer build passed in 2.10s. Logs:
 Integrated Vite Library entry and Organize menu were visually inspected. Mock
 folders are read-only, so actual creation and final pill styling still require
 the consolidated native walkthrough. No real Profile was touched.
+
+Native Library consolidation is running for source `122155dbe`: launcher **32186**,
+exec session **11165**, log `/tmp/aux-library-consolidated-native.log`.
+The previous launcher 18613 was retired with SIGTERM; launcher/app 22360 exited,
+Profile `aux-dev-8UsqSc` was removed, and the plain lock was released before this
+build began. Preserve launcher 32186's cleanup ownership; poll this existing
+build instead of starting another. Build completion and native acceptance remain
+pending. Next walkthrough: About source, Library entry, new folder/bookmark,
+row edit/delete/undo and persistence, search radius and narrow layout; then the
+previously pending Memory/Quick Ask/chat-card acceptance.
