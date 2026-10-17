@@ -89,30 +89,35 @@ it("renders only registered commands and awaits the supplied real dispatcher bou
   await settle();
   expect(host.querySelector("input")?.getAttribute("aria-busy")).toBeNull();
 });
-it("split provider rows carry registered split-add payloads, not ad hoc actions", async () => {
-  const layout = useStore.getState().layout;
-  useStore.setState({
-    pages: normalizePages([
-      page,
-      { ...page, pageId: "p2", title: "Blue", url: "https://example.com/blue" },
-    ] as never),
-    layout: { ...layout, tabSpace: { p1: layout.activeSpaceId, p2: layout.activeSpaceId } },
-  } as never);
-  const execute = vi.fn().mockResolvedValue(undefined);
-  await act(async () =>
-    root.render(
-      <CommandSurface
-        request={{ mode: "command", provider: "split", sequence: 2 }}
-        executeCommand={execute}
-      />,
-    ),
-  );
-  const row = host.querySelector('[data-command-id="split-add"] [role="option"]');
-  expect(row?.textContent).toContain("Blue");
-  await act(async () => row!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
-  await settle();
-  expect(execute).toHaveBeenCalledWith("split-add", { payload: { pageId: "p2" } });
-});
+it.each([undefined, "right", "bottom"] as const)(
+  "split provider preserves the selected %s orientation",
+  async (splitEdge) => {
+    const layout = useStore.getState().layout;
+    useStore.setState({
+      pages: normalizePages([
+        page,
+        { ...page, pageId: "p2", title: "Blue", url: "https://example.com/blue" },
+      ] as never),
+      layout: { ...layout, tabSpace: { p1: layout.activeSpaceId, p2: layout.activeSpaceId } },
+    } as never);
+    const execute = vi.fn().mockResolvedValue(undefined);
+    await act(async () =>
+      root.render(
+        <CommandSurface
+          request={{ mode: "command", provider: "split", splitEdge, sequence: 2 }}
+          executeCommand={execute}
+        />,
+      ),
+    );
+    const row = host.querySelector('[data-command-id="split-add"] [role="option"]');
+    expect(row?.textContent).toContain("Blue");
+    await act(async () => row!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await settle();
+    expect(execute).toHaveBeenCalledWith("split-add", {
+      payload: { pageId: "p2", ...(splitEdge ? { edge: splitEdge } : {}) },
+    });
+  },
+);
 it("retains bounded task, note, draft and Set parity with query lifetime fencing", () => {
   const state = useStore.getState();
   const space = state.layout.spaces[0]!;

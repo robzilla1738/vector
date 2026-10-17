@@ -15,7 +15,16 @@ import { errorMessage } from "../../error-message";
 import { NativeSettingsLink } from "../NativeSettingsLink";
 import { AppearanceChoice } from "./AppearanceChoice";
 
-const COMMON_SHORTCUTS = ["sidebar", "overview", "agent-rail", "new-chat", "copy-url", "quick-ask"] as const;
+const COMMON_SHORTCUTS = [
+  "sidebar",
+  "overview",
+  "agent-rail",
+  "new-chat",
+  "copy-url",
+  "split-side-by-side",
+  "split-stacked",
+  "quick-ask",
+] as const;
 export function QuickAskShortcutField({
   active,
   revision,
@@ -117,6 +126,23 @@ function renderCommonShortcut(id: string, control: ReactNode, active: boolean, r
     case "copy-url":
       return (
         <SettingsField key={id} compact label="Copy URL" hint="Copy the current page URL.">
+          {control}
+        </SettingsField>
+      );
+    case "split-side-by-side":
+      return (
+        <SettingsField key={id} compact label="Split tabs (side by side)" hint="View two tabs side by side.">
+          {control}
+        </SettingsField>
+      );
+    case "split-stacked":
+      return (
+        <SettingsField
+          key={id}
+          compact
+          label="Split tabs (stacked)"
+          hint="View two tabs one above the other."
+        >
           {control}
         </SettingsField>
       );

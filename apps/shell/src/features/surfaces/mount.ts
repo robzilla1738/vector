@@ -33,6 +33,9 @@ export const mount: FeatureMount = {
               : "right",
           )
         : openCommandSurface({ mode: "command", provider: "split" }),
+    "split-side-by-side": () =>
+      openCommandSurface({ mode: "command", provider: "split", splitEdge: "right" }),
+    "split-stacked": () => openCommandSurface({ mode: "command", provider: "split", splitEdge: "bottom" }),
     "split-separate": (state, invocation) => {
       const id =
         invocation.payload && "pageId" in invocation.payload ? invocation.payload.pageId : state.activePageId;

@@ -1170,3 +1170,20 @@ Adblock/site-permission editors still differ from040/041 and remain open work.
 Full check4,582/4,584 (coder60s and CDP reconnect30s timeouts); isolated CDP9+clear2
 pass. Renderer2.57s. Nativea8e2a2ea8 currently linking does not include this later
 renderer slice. No live geometry/flow claim yet.
+
+## Appearance split shortcuts and native Privacy observation
+
+Reference031 now has both orientation-specific split rows, backed by registered
+commands and the existing guarded split writer. The picker preserves right/bottom
+placement; the common card shows primary default chords without duplicate key
+aliases. Full editor bindings remain available. Full check:4,594 tests pass;
+final badge adjustment:17 affected tests pass; renderer build2.17s. Native keyboard
+interception and actual resulting pane orientation remain to be inspected after
+consolidated compilation. Quick Ask and extension rows were visible in Vite.
+
+Native b1b4a2544 observation confirms Privacy grouping, configured EasyPrivacy
+search, rounded focus, Escape back to Configure, and browsing-history review with
+actual counts and Cancel. No data was deleted. Evidence under
+/tmp/aux-parity-2026-10-16: aux-filter-search-native-b1b4a.png,
+aux-history-review-native-b1b4a.png, aux-appearance-eight-shortcuts-vite.png.
+These observations do not close the full-surface parity ledger.

@@ -3,6 +3,25 @@
 
 ## October 16 UI parity review — in progress
 
+Appearance now exposes eight common shortcut rows, including separate side-by-side
+and stacked split commands in reference031 order. Both commands open the existing
+tab picker and preserve the requested edge through the registered split writer.
+Command-Shift-backslash selects side-by-side; Command-Shift-minus selects stacked.
+Command-minus remains Zoom Out. Common default badges show the primary binding,
+while the full editor retains keyboard-layout aliases and custom bindings.
+Settings search indexes both new rows. Full check passes all4,594 tests/738 files;
+after the final badge presentation adjustment,17 affected tests and the renderer
+build pass (2.17s). Native interception of the new commands still needs acceptance.
+
+CUA observation recovered without restarting the b1b4a2544 native preview. Its
+Privacy layout, configured filter search (EasyPrivacy), rounded search focus and
+Escape return to Configure were observed. Browsing-history review showed actual
+counts and Cancel without deletion. Evidence in /tmp/aux-parity-2026-10-16:
+aux-filter-search-native-b1b4a.png, aux-history-review-native-b1b4a.png, and
+aux-appearance-eight-shortcuts-vite.png (newer local renderer, not compiled native).
+The live native preview is still b1b4a2544; newer Appearance and split changes are
+local source until the next consolidated build. Full product parity remains open.
+
 The recurring coder-worktrees verification timeout is resolved. An isolated timed
 diagnostic completed all assertions in51.07s; the monolithic60s test exceeded its
 limit under full-suite load. Split it into independent snapshot/integration/undo,

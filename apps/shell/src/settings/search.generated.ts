@@ -39,6 +39,18 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Appearance",
+    label: "Split tabs (side by side)",
+    description: "View two tabs side by side.",
+    target: "Split tabs (side by side)",
+  },
+  {
+    category: "Appearance",
+    label: "Split tabs (stacked)",
+    description: "View two tabs one above the other.",
+    target: "Split tabs (stacked)",
+  },
+  {
+    category: "Appearance",
     label: "Theme",
     description: "Choose how Aux looks.",
     target: "Theme",

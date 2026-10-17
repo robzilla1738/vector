@@ -196,7 +196,12 @@ export function ShortcutsSetting({
                 value={
                   recording === def.id
                     ? ""
-                    : def.bindings.map((binding) => bindingLabel(binding, platform)).join(", ")
+                    : (featuredCommands && value[def.id] === undefined
+                        ? def.bindings.slice(0, 1)
+                        : def.bindings
+                      )
+                        .map((binding) => bindingLabel(binding, platform))
+                        .join(", ")
                 }
                 disabled={busy || disabled}
                 onFocus={() => {

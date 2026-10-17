@@ -7,17 +7,13 @@ export interface CommandSurfaceRequest {
   presentation?: "tab-search";
   seed?: string;
   provider?: "split";
+  splitEdge?: "right" | "bottom";
   sequence: number;
 }
 let current: CommandSurfaceRequest | null = null;
 let sequence = 0;
 const listeners = new Set<() => void>();
-export function openCommandSurface(request: {
-  mode: CommandSurfaceMode;
-  presentation?: "tab-search";
-  seed?: string;
-  provider?: "split";
-}): void {
+export function openCommandSurface(request: Omit<CommandSurfaceRequest, "sequence">): void {
   current = { ...request, sequence: ++sequence };
   useStore.getState().setOverlay("command-surface");
   for (const listener of listeners) listener();

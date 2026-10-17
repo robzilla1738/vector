@@ -198,6 +198,8 @@ export const COMMAND_ACTIONS = {
     "promote-tab",
     "picture-in-picture",
     "split-add",
+    "split-side-by-side",
+    "split-stacked",
     "split-close",
     "split-next",
     "split-previous",

@@ -184,7 +184,10 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
               `split-${page.pageId}`,
               tabLabel(layout, page),
               hostOf(page.url),
-              () => executeCommand("split-add", { payload: { pageId: page.pageId } }),
+              () =>
+                executeCommand("split-add", {
+                  payload: { pageId: page.pageId, ...(request.splitEdge ? { edge: request.splitEdge } : {}) },
+                }),
               "split-add",
             ),
           );
@@ -210,7 +213,18 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
         (a, b) => Number(b.title.toLocaleLowerCase() === term) - Number(a.title.toLocaleLowerCase() === term),
       );
     },
-    [pages, layout, activePage, activePageId, picker, registry, executeCommand, key, featureOverrides],
+    [
+      pages,
+      layout,
+      activePage,
+      activePageId,
+      picker,
+      registry,
+      executeCommand,
+      key,
+      featureOverrides,
+      request.splitEdge,
+    ],
   );
   const [placement, setPlacement] = useState<{ left: number; top: number; width: number } | null>(null);
   useEffect(() => {
