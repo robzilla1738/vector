@@ -188,14 +188,36 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   {
     category: "Permissions",
     label: "Agent mode",
-    description:
-      "Auto lets Aux work freely and uses Touch ID for payments and the first credential use on a site.",
+    description: "Choose when Aux asks before taking action.",
     target: "Agent mode",
     searchTerms: ["auto", "ask first", "full auto", "Touch ID"],
   },
   {
     category: "Permissions",
-    label: "Action categories",
+    label: "File access",
+    description:
+      "Guard reads Home except sensitive files and writes Documents, Downloads, Desktop, Projects, and reviewed writable Space folders. Read-only uses the same exclusions and keeps user files unchanged; Aux can still write its own scratch files and artifacts. Full reads and writes Home and reviewed external folders. Aux credentials and permission data remain protected in every mode.",
+    target: "File access",
+    searchTerms: [
+      "guard",
+      "read-only",
+      "full",
+      "filesystem",
+      "sandbox",
+      "SSH",
+      "Keychain",
+      "sensitive folders",
+    ],
+  },
+  {
+    category: "Permissions",
+    label: "Local folders",
+    description: "Review the folders shared with Aux in each Space.",
+    target: "Local folders",
+  },
+  {
+    category: "Permissions",
+    label: "Tool permissions",
     description:
       "Site rules take precedence over category rules. Account security and CAPTCHA always need you to take over.",
     target: "Action categories",
@@ -235,29 +257,6 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
       "Rules apply to an exact site origin. Revoke a rule to return to the category or mode default.",
     target: "Site permissions",
     searchTerms: ["always allow", "amount limit", "revoke", "origin"],
-  },
-  {
-    category: "Permissions",
-    label: "File access",
-    description:
-      "Guard reads Home except sensitive files and writes Documents, Downloads, Desktop, Projects, and reviewed writable Space folders. Read-only uses the same exclusions and keeps user files unchanged; Aux can still write its own scratch files and artifacts. Full reads and writes Home and reviewed external folders. Aux credentials and permission data remain protected in every mode.",
-    target: "File access",
-    searchTerms: [
-      "guard",
-      "read-only",
-      "full",
-      "filesystem",
-      "sandbox",
-      "SSH",
-      "Keychain",
-      "sensitive folders",
-    ],
-  },
-  {
-    category: "Permissions",
-    label: "Local folders",
-    description: "Review the folders shared with Aux in each Space.",
-    target: "Local folders",
   },
   {
     category: "Permissions",

@@ -3,6 +3,9 @@ import { AgentPolicyCategorySchema, AgentPolicySettingsSchema } from "@aux/contr
 import { FileAccessSettingsSchema } from "@aux/contracts/api";
 import type { AgentPolicyCategory, AgentPolicySettings, FileAccessSettings } from "@aux/contracts";
 import { SettingsField, SettingsSection } from "../primitives";
+import { Popover } from "../../ui/popover";
+import { Plus } from "../../ui/icons";
+import { PolicyGroups } from "../../features/permissions/PolicyGroups";
 import { Segmented } from "../../ui";
 import { useConfirm } from "../../ui/dialog";
 import { smallButtonProps } from "../../ui/button-props";
@@ -82,6 +85,10 @@ export function PermissionsSettings({
       if (!saved && current(original))
         setError("Permissions could not be saved. Refresh Settings before trying again.");
       return saved;
+    } catch (reason) {
+      if (current(original))
+        setError(reason instanceof Error ? reason.message : "Permissions could not be saved.");
+      return false;
     } finally {
       pending.current = false;
       setBusy(false);
@@ -145,6 +152,7 @@ export function PermissionsSettings({
       if (await save({ agentPolicies: replaceRule(rule) })) {
         setSite("");
         setAmount("");
+        return true;
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -156,17 +164,64 @@ export function PermissionsSettings({
     window.dispatchEvent(new PopStateEvent("popstate"));
   }
   return (
-    <SettingsSection name="Permissions" hidden={!active}>
+    <SettingsSection name="Permissions" hidden={!active} className="permissions-settings">
+      <h3>Agent access</h3>
       <SettingsField
+        compact
         label="Agent mode"
-        hint="Auto lets Aux work freely and uses Touch ID for payments and the first credential use on a site."
+        hint="Choose when Aux asks before taking action."
         searchTerms={["auto", "ask first", "full auto", "Touch ID"]}
       >
         <AgentModeControl active={active} disabled={busy} policy={policy} onSave={onSave} />
       </SettingsField>
       {error && <p role="alert">{error}</p>}
+      <h3>File permissions</h3>
       <SettingsField
-        label="Action categories"
+        compact
+        label="File access"
+        hint="Choose which files Aux can read and change."
+        description="Guard reads Home except sensitive files and writes Documents, Downloads, Desktop, Projects, and reviewed writable Space folders. Read-only uses the same exclusions and keeps user files unchanged; Aux can still write its own scratch files and artifacts. Full reads and writes Home and reviewed external folders. Aux credentials and permission data remain protected in every mode."
+        details={
+          <details className="permission-file-details">
+            <summary>What each access mode allows</summary>
+            <p>
+              Guard reads Home except sensitive files and writes Documents, Downloads, Desktop, Projects, and
+              reviewed writable Space folders. Read-only keeps user files unchanged; Aux can still write its
+              own scratch files and artifacts. Full reads and writes Home and reviewed external folders.
+              Credentials and permission data remain protected in every mode.
+            </p>
+          </details>
+        }
+        searchTerms={[
+          "guard",
+          "read-only",
+          "full",
+          "filesystem",
+          "sandbox",
+          "SSH",
+          "Keychain",
+          "sensitive folders",
+        ]}
+      >
+        <Segmented<FileAccessSettings["fileAccessMode"]>
+          label="File access"
+          value={fileAccess.fileAccessMode}
+          onChange={(mode) => void changeFileAccess(mode)}
+          items={[
+            { value: "guard", label: "Guard", disabled: busy },
+            { value: "read-only", label: "Read-only", disabled: busy },
+            { value: "full", label: "Full", disabled: busy },
+          ]}
+        />
+      </SettingsField>
+      <SettingsField compact label="Local folders" hint="Review the folders shared with Aux in each Space.">
+        <button {...smallButtonProps} onClick={() => openSettings("Projects")}>
+          Manage folders
+        </button>
+      </SettingsField>
+      <SettingsField
+        label="Tool permissions"
+        target="Action categories"
         hint="Site rules take precedence over category rules. Account security and CAPTCHA always need you to take over."
         searchTerms={[
           "allow",
@@ -197,7 +252,11 @@ export function PermissionsSettings({
           "shell commands",
         ]}
       >
-        <PolicyTable policy={policy} busy={busy} save={(rules) => void save({ agentPolicies: rules })} />
+        <PolicyGroups policy={policy} busy={!active || busy} save={(rules) => save({ agentPolicies: rules })} />
+        <details className="permission-defaults">
+          <summary>View all action defaults</summary>
+          <PolicyTable policy={policy} busy={busy} save={(rules) => void save({ agentPolicies: rules })} />
+        </details>
       </SettingsField>
       <SettingsField
         label="Site permissions"
@@ -229,93 +288,86 @@ export function PermissionsSettings({
             ))}
         </div>
         {!policy.agentPolicies.some((rule) => rule.site) && <p {...staticHintProps}>No saved site rules.</p>}
-        <form className="permission-site-form" onSubmit={(event) => void addSite(event)}>
-          <input
-            aria-label="Site origin"
-            type="url"
-            required
-            placeholder="https://example.com"
-            value={site}
-            onChange={(event) => setSite(event.target.value)}
-            disabled={busy}
-          />
-          <select
-            aria-label="Site action category"
-            value={category}
-            onChange={(event) => {
-              const found = AgentPolicyCategorySchema.options.find((key) => key === event.target.value);
-              if (found) setCategory(found);
-            }}
-            disabled={busy}
-          >
-            {AgentPolicyCategorySchema.options
-              .filter((key) => key !== "account_security" && key !== "captcha")
-              .map((key) => (
-                <option key={key} value={key}>
-                  {categoryLabels[key]}
-                </option>
-              ))}
-          </select>
-          <select
-            aria-label="Site access"
-            value={access}
-            onChange={(event) =>
-              setAccess(
-                event.target.value === "ask" ? "ask" : event.target.value === "block" ? "block" : "allow",
-              )
-            }
-            disabled={busy}
-          >
-            <option value="allow">Allow</option>
-            <option value="ask">Ask</option>
-            <option value="block">Block</option>
-          </select>
-          {category === "money" && access === "allow" && (
-            <input
-              aria-label="Optional payment amount limit"
-              type="number"
-              min="0"
-              step="any"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              placeholder="No amount limit"
-              disabled={busy}
-            />
+        <Popover
+          label="Add site rule"
+          className="permission-add-rule"
+          disabled={!active || busy}
+          trigger={
+            <>
+              <Plus /> Add Rule
+            </>
+          }
+        >
+          {(close) => (
+            <form
+              className="permission-site-form"
+              onSubmit={(event) =>
+                void addSite(event).then((saved) => {
+                  if (saved) close();
+                })
+              }
+            >
+              <strong>Add site rule</strong>
+              <p>Apply a rule to one exact site origin.</p>
+              <input
+                aria-label="Site origin"
+                type="url"
+                required
+                placeholder="https://example.com"
+                value={site}
+                onChange={(event) => setSite(event.target.value)}
+                disabled={busy}
+              />
+              <select
+                aria-label="Site action category"
+                value={category}
+                onChange={(event) => {
+                  const found = AgentPolicyCategorySchema.options.find((key) => key === event.target.value);
+                  if (found) setCategory(found);
+                }}
+                disabled={busy}
+              >
+                {AgentPolicyCategorySchema.options
+                  .filter((key) => key !== "account_security" && key !== "captcha")
+                  .map((key) => (
+                    <option key={key} value={key}>
+                      {categoryLabels[key]}
+                    </option>
+                  ))}
+              </select>
+              <select
+                aria-label="Site access"
+                value={access}
+                onChange={(event) =>
+                  setAccess(
+                    event.target.value === "ask" ? "ask" : event.target.value === "block" ? "block" : "allow",
+                  )
+                }
+                disabled={busy}
+              >
+                <option value="allow">Allow</option>
+                <option value="ask">Ask</option>
+                <option value="block">Block</option>
+              </select>
+              {category === "money" && access === "allow" && (
+                <input
+                  aria-label="Optional payment amount limit"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  placeholder="No amount limit"
+                  disabled={busy}
+                />
+              )}
+              <button {...smallButtonProps} type="submit" disabled={busy || !site.trim()}>
+                Save site rule
+              </button>
+              {error && <p role="alert">{error}</p>}
+            </form>
           )}
-          <button {...smallButtonProps} type="submit" disabled={busy || !site.trim()}>
-            Save site rule
-          </button>
-        </form>
-      </SettingsField>
-      <SettingsField
-        label="File access"
-        hint="Guard reads Home except sensitive files and writes Documents, Downloads, Desktop, Projects, and reviewed writable Space folders. Read-only uses the same exclusions and keeps user files unchanged; Aux can still write its own scratch files and artifacts. Full reads and writes Home and reviewed external folders. Aux credentials and permission data remain protected in every mode."
-        searchTerms={[
-          "guard",
-          "read-only",
-          "full",
-          "filesystem",
-          "sandbox",
-          "SSH",
-          "Keychain",
-          "sensitive folders",
-        ]}
-      >
-        <Segmented<FileAccessSettings["fileAccessMode"]>
-          label="File access"
-          value={fileAccess.fileAccessMode}
-          onChange={(mode) => void changeFileAccess(mode)}
-          items={[
-            { value: "guard", label: "Guard", disabled: busy },
-            { value: "read-only", label: "Read-only", disabled: busy },
-            { value: "full", label: "Full", disabled: busy },
-          ]}
-        />
-      </SettingsField>
-      <SettingsField label="Local folders" hint="Review the folders shared with Aux in each Space.">
-        <button {...smallButtonProps} onClick={() => openSettings("Projects")}>
-          Manage folders
-        </button>
+        </Popover>
       </SettingsField>
       <SettingsField
         label="Connected tools"

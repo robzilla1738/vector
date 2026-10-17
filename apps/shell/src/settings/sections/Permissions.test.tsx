@@ -129,3 +129,30 @@ it.each(["inactive", "revision"])("retires a Full file opt-in when its %s owner 
   );
   expect(save).not.toHaveBeenCalled();
 });
+
+it("adds a grouped rule with its revision while preserving exact-site overrides", async () => {
+  const siteRule = { category: "send", access: "block", site: "https://example.com" };
+  const save = vi.fn().mockResolvedValue(true);
+  await act(async () =>
+    root.render(
+      <PermissionsSettings active settings={{ ...settings, agentPolicies: [siteRule] }} onSave={save} />,
+    ),
+  );
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Add ask rule"]')!.click());
+  const dialog = document.querySelector('dialog[aria-label="Add ask rule"]')!;
+  const category = dialog.querySelector<HTMLSelectElement>('[aria-label="Action category"]')!;
+  expect(
+    [...category.options].some((option) => option.value === "captcha" || option.value === "account_security"),
+  ).toBe(false);
+  await act(async () => {
+    category.value = "send";
+    category.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await act(async () =>
+    dialog.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+  );
+  expect(save).toHaveBeenCalledExactlyOnceWith({
+    agentPolicies: [siteRule, { category: "send", access: "ask" }],
+    agentPolicyRevision: 7,
+  });
+});

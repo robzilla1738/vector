@@ -56,3 +56,223 @@
     font-size: var(--fs-xs);
   }
 }
+
+@layer overrides {
+  .settings-content .permissions-settings > h3 {
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-regular);
+    margin: 28px 12px 10px;
+  }
+  .settings-content .permissions-settings > h3:first-child {
+    margin-top: 0;
+  }
+  .settings-content .permissions-settings [data-setting="Action categories"] {
+    margin-top: 28px;
+    padding: 0;
+    background: transparent;
+  }
+  .settings-content .permissions-settings [data-setting="Action categories"] > .setting-label {
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+    padding-inline: 12px;
+  }
+  .permission-policy-groups {
+    border-radius: var(--r-lg);
+    background: var(--surface-secondary);
+    overflow: hidden;
+  }
+  .permission-policy-group {
+    padding: 12px 16px;
+  }
+  .permission-policy-group + .permission-policy-group {
+    border-top: 1px solid var(--line);
+  }
+  .permission-policy-group header {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+  .permission-policy-group strong {
+    font-weight: var(--fw-medium);
+  }
+  .permission-policy-group header > span,
+  .permission-policy-group > p {
+    font-size: var(--fs-sm);
+    color: var(--ink-2);
+  }
+  .permission-policy-group > p {
+    margin: 6px 0 0 52px;
+    color: var(--ink-3);
+  }
+  .permission-add-rule {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 6px;
+    color: var(--ink-1);
+  }
+  .permission-add-rule svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
+  }
+  .permission-policy-group ul {
+    padding: 0 0 0 52px;
+    margin: 6px 0 0;
+    list-style: none;
+  }
+  .permission-policy-group li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-block: 4px;
+  }
+  .permission-policy-group li > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .permission-policy-group li small {
+    color: var(--ink-2);
+  }
+  .permission-defaults {
+    margin-top: 12px;
+  }
+  .permission-defaults summary {
+    padding: 8px 12px;
+    color: var(--ink-2);
+    cursor: pointer;
+  }
+  .permission-defaults .permission-categories {
+    margin-top: 8px;
+    background: var(--surface-secondary);
+    border-radius: var(--r-lg);
+  }
+  .permission-defaults .permission-categories :is(th, td) {
+    padding: 8px 12px;
+  }
+  .permission-rule-popover {
+    width: 320px;
+    max-width: calc(100vw - 44px);
+    padding: 8px;
+  }
+  .anchored-panel:has(> .permission-rule-popover) {
+    width: auto;
+  }
+  .permission-rule-popover > p,
+  .permission-site-form > p {
+    margin: 4px 0 12px;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+  }
+  .permission-rule-popover > div {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .permission-rule-popover select {
+    flex: 1;
+    min-width: 0;
+  }
+  .permission-site-form {
+    margin: 0;
+    padding: 8px;
+  }
+  .permission-site-form input {
+    min-width: 0;
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface-input);
+    padding: 8px 10px;
+  }
+  .permission-site-rule {
+    padding-block: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .permission-site-rules + .hint {
+    margin-block: 4px 10px;
+  }
+  @media (max-width: 760px) {
+    .permission-policy-group header {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .permission-policy-group header > span {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .permission-policy-group header > button {
+      grid-column: 2;
+      grid-row: 1 / 3;
+    }
+    .permission-policy-group > p,
+    .permission-policy-group ul {
+      margin-left: 0;
+      padding-left: 0;
+    }
+  }
+}
+
+@layer overrides {
+  .settings-content .permissions-settings .field.ui-setting {
+    margin-inline: 0;
+  }
+  .settings-content .permissions-settings [data-setting="Local folders"] {
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+    margin-bottom: 28px;
+  }
+  .settings-content .permissions-settings [data-setting="Action categories"] {
+    margin-top: 28px;
+  }
+  .settings-content .permissions-settings .field.ui-setting.compact > .ui-setting-control {
+    max-width: none;
+  }
+  .settings-content .permissions-settings .seg {
+    width: auto;
+    max-width: 100%;
+  }
+  .settings-content .permissions-settings .seg button {
+    white-space: nowrap;
+    text-transform: none;
+  }
+  .permission-file-details {
+    margin-top: 8px;
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+  }
+  .permission-file-details summary {
+    cursor: pointer;
+  }
+  .permission-file-details p {
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+  @media (max-width: 1000px) {
+    .settings-content .permissions-settings .field.ui-setting.compact[data-setting="Agent mode"] {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .settings-content
+      .permissions-settings
+      .field.ui-setting.compact[data-setting="Agent mode"]
+      > .ui-setting-control {
+      grid-column: 1;
+      grid-row: auto;
+      justify-self: start;
+    }
+  }
+}
+
+@layer overrides {
+  .settings-content
+    .permissions-settings
+    .field.ui-setting:is(
+      [data-setting="Site permissions"],
+      [data-setting="Connected tools"],
+      [data-setting="Activity log"]
+    ) {
+    margin-block: 20px 0;
+    border-radius: var(--r-lg);
+  }
+}

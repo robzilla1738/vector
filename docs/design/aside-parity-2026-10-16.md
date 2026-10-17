@@ -1293,3 +1293,30 @@ fixed submenus were positioned outside the visible popover. The task-model popov
 now uses the opaque menu surface without backdrop filtering so submenu coordinates
 remain relative to the viewport. Its normal search and option focus indicators are
 rounded and quiet; forced-colors styling remains available.
+
+
+## October 16 Permissions grouping batch
+
+October 16 Permissions batch: references 045 and 051–053 now inform grouped
+Allow, Ask and Deny cards with anchored Add Rule forms. These edit the existing
+canonical action categories; exact-site overrides and policy revisions are
+preserved. Inherited defaults and person-only categories remain inspectable in
+“View all action defaults.” Site-rule entry moved into a popover. File access and
+folder navigation use compact cards, with the detailed access explanation in an
+expandable section. Auto, Ask first and Skip confirmation stay available; existing
+Full-file-access and Skip-confirmation opt-ins remain unchanged. Rejected saves
+now show an error instead of escaping the permission editor.
+
+Validation: typecheck and lint passed. The integrated unit run passed 4,584 tests
+but two unrelated browser command suites could not load a shared Vite cache file;
+the focused retry passed all 15 tests in those suites. Eight permission tests,
+including the new grouped-rule/site-override regression, passed separately. Final
+renderer build passed in 1.97s. Vite inspection confirmed compact labels without
+clipping, grouped rules, anchored rule form and focus return. Capture:
+`/tmp/aux-parity-2026-10-16/aux-permission-groups-vite.png`.
+
+This is not full Agents parity: notification/sound preferences, follow-up and
+tab-switch behavior, cleanup controls, direct per-folder grant lists, arbitrary
+tool globs, and the runtime maintenance presentation still need comparison and
+implementation against Aux's supported host behavior. Native preview remains
+`7d913f2ff`; Models, Permissions and focus refinements await consolidation.
