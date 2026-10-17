@@ -21,8 +21,8 @@ export function PrivacySecuritySettings({ active }: { active: boolean }) {
       )}
       <SettingsField
         compact
-        label="Cookies"
-        description="Block third-party cookies in the regular Profile. This can affect embedded sign-ins and widgets; existing cookies are kept."
+        label="Allow third-party cookies"
+        description="Used for embedded content, ads, and tracking by websites. Existing cookies are kept."
       >
         <CookieControlsSetting active={active} />
       </SettingsField>

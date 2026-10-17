@@ -560,3 +560,11 @@ only coder-worktrees60s timeout remains. Renderer2.81s. Native comparison pendin
 Reference040/044 inspection found Security & Privacy card/order gaps and confirms
 that the cookie reference uses exactly Allow/Block all, supported by Aux's existing
 boolean native policy; its current switch should become that selector.
+
+October16 cookie selector: reference044's Allow/Block all choices replace the
+third-party cookie switch, backed by the existing Chromium boolean policy writer.
+Managed/private restrictions and acknowledgement/readback remain intact. Row
+label now matches the reference; no cookie deletion was introduced. Both writer
+directions and managed-policy tests pass. Integrated typecheck/lint pass,
+4,583/4,584 tests pass with only coder-worktrees60s timeout; renderer2.13s.
+This newer renderer is not part of active native63412; live verification remains.

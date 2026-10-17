@@ -258,10 +258,10 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Site permissions",
-    label: "Cookies",
+    label: "Allow third-party cookies",
     description:
-      "Block third-party cookies in the regular Profile. This can affect embedded sign-ins and widgets; existing cookies are kept.",
-    target: "Cookies",
+      "Used for embedded content, ads, and tracking by websites. Existing cookies are kept.",
+    target: "Allow third-party cookies",
   },
   {
     category: "Site permissions",

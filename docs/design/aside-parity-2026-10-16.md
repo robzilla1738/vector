@@ -1120,3 +1120,11 @@ retain HTTPS-first in advanced controls. Keep crash reporting described truthful
 Aside’s wording. Native Chromium destinations must be implemented/verified before
 adding navigation rows. A visual-only mock of these missing destinations is not
 acceptance. Reference041/043/044 nested states still require direct comparison.
+
+Reference044 directly inspected: only Allow and Block all appear in the cookie
+menu. Native content_methods.cc already implements these via CookieControlsMode
+kOff/kBlockThirdParty and refuses managed/private writes. Current renderer now
+uses that two-choice selector and matching row label, preserving readback/error
+handling. Three tests cover Allow→Block, Block→Allow and managed policy. Integrated
+check4,583/4,584 (coder timeout only), renderer2.13s. Native live comparison pending;
+this source postdates builder63412's staged renderer.

@@ -4,7 +4,6 @@ import { smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import { bridge, inNativeHost } from "../../bridge";
-import { Switch } from "../../ui";
 import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 type CookieControls = { blockThirdParty: boolean; managed: boolean };
@@ -60,12 +59,15 @@ export function CookieControlsSetting({ active }: { active: boolean }) {
   return (
     <div {...staticRowProps}>
       {value ? (
-        <Switch
-          aria-label="Block third-party cookies"
-          checked={value.blockThirdParty}
+        <select
+          aria-label="Allow third-party cookies"
+          value={value.blockThirdParty ? "block" : "allow"}
           disabled={busy || value.managed}
-          onChange={(event) => void change(event.target.checked)}
-        />
+          onChange={(event) => void change(event.target.value === "block")}
+        >
+          <option value="allow">Allow</option>
+          <option value="block">Block all</option>
+        </select>
       ) : (
         <span {...staticHintProps}>Reading cookie setting…</span>
       )}
