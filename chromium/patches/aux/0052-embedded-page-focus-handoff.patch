@@ -1,0 +1,116 @@
+--- a/content/public/browser/surface_embed_connector.h
++++ b/content/public/browser/surface_embed_connector.h
+@@ -86,6 +86,10 @@
+ 
+   virtual Delegate* GetDelegate() = 0;
+ 
++  // Return keyboard ownership to the embedding page, only if this child or
++  // one of its descendants still owns focus. A stale blur must not steal focus.
++  virtual void FocusParentIfChildFocused() = 0;
++
+   // Called when the visibility of the parent frame changes.
+   virtual void OnVisibilityChanged(
+       blink::mojom::FrameVisibility visibility) = 0;
+--- a/content/browser/surface_embed/surface_embed_connector_impl.h
++++ b/content/browser/surface_embed/surface_embed_connector_impl.h
+@@ -51,6 +51,7 @@
+       public FrameConnector {
+  public:
+   ~SurfaceEmbedConnectorImpl() override;
++  void FocusParentIfChildFocused() override;
+ 
+   static bool ContainsOrIsFocusedWebContents(WebContentsImpl* web_contents);
+ 
+--- a/content/browser/surface_embed/surface_embed_connector_impl.cc
++++ b/content/browser/surface_embed/surface_embed_connector_impl.cc
+@@ -342,6 +342,13 @@
+       ->GetPrimaryMainFrame()
+       ->GetRenderWidgetHost()
+       ->SetPageFocus(true);
++}
++
++void SurfaceEmbedConnectorImpl::FocusParentIfChildFocused() {
++  if (parent_web_contents_ &&
++      ContainsOrIsFocusedWebContents(child_web_contents())) {
++    parent_web_contents()->SetAsFocusedWebContentsIfNecessary();
++  }
+ }
+ 
+ void SurfaceEmbedConnectorImpl::ClearFocusOnInnerWebContents() {
+--- a/components/surface_embed/browser/surface_embed_host.cc
++++ b/components/surface_embed/browser/surface_embed_host.cc
+@@ -206,8 +206,15 @@
+   }
+ 
+   if (!focused) {
+-    // TODO(crbug.com/508638062): the <embed> element in the parent frame lost
+-    // focus. Should we remove the page focus from the embedded page?
++    // Window deactivation preserves the logical focus target. An element blur
++    // instead returns keyboard ownership to the parent, so its inputs work
++    // without requiring a mouse click after programmatic focus.
++    if (focus_type != blink::mojom::FocusType::kPage &&
++        !pending_request_focus_on_embed_element_) {
++      if (auto* connector = GetConnector()) {
++        connector->FocusParentIfChildFocused();
++      }
++    }
+     return;
+   }
+ 
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -160,6 +160,7 @@
+ 
+   base::WeakPtr<WebUIBrowserUI> GetWeakPtr();
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++  void FocusAuxShell();
+   bool DispatchAuxShortcut(const std::string& command_id, bool focus_shell = false,
+                            std::optional<bool> website_pass_through = std::nullopt,
+                            bool preview_tabs = false);
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -131,6 +131,7 @@
+ #include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/surface_embed_connector.h"
+ #include "content/public/browser/storage_partition.h"
+ #include "content/public/browser/web_ui.h"
+ #include "content/public/browser/web_ui_data_source.h"
+@@ -775,12 +776,24 @@
+   shell_host_factory_receiver_.Bind(std::move(receiver));
+ }
+ 
++void WebUIBrowserUI::FocusAuxShell() {
++  // Focusing the native root view alone leaves SurfaceEmbed's child frame tree
++  // owning keyboard input. Release that ownership before dispatching a shortcut.
++  auto* active = browser_->GetTabStripModel()->GetActiveWebContents();
++  if (active) {
++    if (auto* connector = active->GetSurfaceEmbedConnector()) {
++      connector->FocusParentIfChildFocused();
++    }
++  }
++  web_ui()->GetWebContents()->Focus();
++}
++
+ bool WebUIBrowserUI::DispatchAuxShortcut(const std::string& command_id, bool focus_shell,
+                                            std::optional<bool> website_pass_through,
+                                            bool preview_tabs) {
+   if (!IsAuthorizedAuxDocument() || !shell_host_client_.is_bound())
+     return false;
+-  if (focus_shell || preview_tabs) web_ui()->GetWebContents()->Focus();
++  if (focus_shell || preview_tabs) FocusAuxShell();
+   base::DictValue shortcut;
+   shortcut.Set("commandId", command_id);
+   if (website_pass_through.has_value()) shortcut.Set("websitePassThrough", *website_pass_through);
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -832,7 +832,7 @@
+                               "Focus request takes no arguments");
+       return;
+     }
+-    web_ui()->GetWebContents()->Focus();
++    FocusAuxShell();
+     std::move(callback).Run(true, "null", "", "");
+     return;
+   }

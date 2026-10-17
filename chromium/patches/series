@@ -49,3 +49,4 @@ aux/0048-library-event-forwarding.patch
 aux/0049-native-library-presentation.patch
 aux/0050-private-history-navigation.patch
 aux/0051-native-library-feature-preferences.patch
+aux/0052-embedded-page-focus-handoff.patch

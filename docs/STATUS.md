@@ -1,5 +1,14 @@
 # Aux status — October 16, 2026
 
+Focus handoff source patch **0052** is applied in the native checkout and recorded
+in the patch series. SurfaceEmbed element blur now returns keyboard ownership to
+its parent when that child still owns focus, excluding window-focus notifications
+and pending nested embed focus requests. Native shell shortcuts and focusShell
+explicitly release the active embedded page before focusing the shell. This
+addresses the reproduced Cmd-T/typing/Escape failure below; native acceptance is
+pending. Integrated `npm run check` passed typecheck/lint and all4,620tests in
+744files (95.67s), log `/tmp/aux-focus-handoff-check.log`. No renderer/runtime edits.
+
 Current live preview: product **2408e4727**, launcher **4140**, app **5496**,
 runtime **5517**, exec **37073**, disposable Profile **aux-dev-NybYhE**,
 API `http://127.0.0.1:60568`. Log `/tmp/aux-memory-activity-native-build.log`.
@@ -24,7 +33,7 @@ focuses only the DOM input; the separate address focusRequest path calls native
 bridge.focusShell then refocuses. Native DispatchAuxShortcut already calls
 WebContents::Focus before emitting the shortcut. Trace native embedded-content
 focus ownership and overlay handoff; do not assume a delayed retry fixes it.
-No focus source edits yet. The preview is left on native Bookmarks with search
+The source fix above awaits a replacement build. The preview is left on native Bookmarks with search
 cleared after clicking the command input and Escape. Broader parity remains open.
 
 
