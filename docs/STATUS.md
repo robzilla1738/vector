@@ -3,6 +3,27 @@
 
 ## October 16 UI parity review — in progress
 
+Privacy & Security now has compact Site settings and Advanced navigation rows,
+opening chrome://settings/content and chrome://settings/security. Both destinations
+were inspected in native a8e2a2ea8: permissions/content controls and Safe Browsing,
+secure DNS, security keys and certificates are present. chrome://settings/adPrivacy
+redirects to Settings home, and the current Chromium Settings route source has no
+Ads privacy destination; no nonfunctional link was added.
+
+Aux's saved permission/data review remains accessible through a compact Manage
+dialog. Escape/Done preserve data; dismissal is prevented while its writer runs.
+The old inline presentation is removed. Vite verification covered the new rows,
+dialog opening and Escape returning to Manage. Evidence:
+aux-privacy-navigation-vite.png and aux-native-security-destination-a8e2a.png in
+/tmp/aux-parity-2026-10-16. Full check passed typecheck/lint and 4,588/4,589 tests
+(only the existing coder-worktrees timeout); renderer build passed in 2.53s.
+Navigation tests cover exact destinations, duplicate clicks and inactive controls.
+
+The previous native preview retired through launcher74686 normally: both launcher
+and app82128 ended, and disposable aux-dev-i17F6V was removed. A consolidated native
+build is the next acceptance step for recent renderer changes. No complete parity
+or phase acceptance is claimed.
+
 Privacy & Security now separates Adblock from site permissions and places its
 compact switch/Configure card before Privacy (references040–041). Configure
 opens a searchable anchored menu of configured sources and bundled recommendations;

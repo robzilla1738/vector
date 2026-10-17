@@ -271,10 +271,10 @@ export function SettingsRow({
   );
 }
 
-export function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {
+export function SettingsGroup({ title, children }: { title?: string; children: ReactNode }) {
   return (
     <section className="ui-settings-group" aria-label={title}>
-      <h4>{title}</h4>
+      {title && <h4>{title}</h4>}
       <div>{children}</div>
     </section>
   );

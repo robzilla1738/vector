@@ -277,6 +277,24 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "Site permissions",
+    label: "Site settings",
+    description: "Manage site permissions for location, camera, pop-ups, and more.",
+    target: "Site settings",
+  },
+  {
+    category: "Site permissions",
+    label: "Advanced",
+    description: "Manage DNS, SSL certificates, and Safe Browsing settings.",
+    target: "Advanced",
+  },
+  {
+    category: "Site permissions",
+    label: "Saved website access and data",
+    description: "Review saved permission decisions and cookies before resetting or clearing them.",
+    target: "Saved website access and data",
+  },
+  {
+    category: "Site permissions",
     label: "HTTPS-first",
     description:
       "Try HTTPS before HTTP for eligible sites. Other Chromium security modes may still require HTTPS.",

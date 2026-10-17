@@ -22,7 +22,13 @@ const labels: Record<string, string> = {
   "clipboard-sanitized-write": "Write clipboard",
 };
 
-export function SitePermissions({ query = "" }: { query?: string }) {
+export function SitePermissions({
+  query = "",
+  onBusyChange,
+}: {
+  query?: string;
+  onBusyChange?(busy: boolean): void;
+}) {
   const openSites = useStore(
     useShallow((state) => {
       const origins = new Set<string>();
@@ -104,6 +110,7 @@ export function SitePermissions({ query = "" }: { query?: string }) {
   async function action(id: string, work: () => Promise<void>) {
     if (pending.current) return;
     pending.current = true;
+    onBusyChange?.(true);
     ++request.current;
     setLoading(false);
     setBusy(id);
@@ -116,6 +123,7 @@ export function SitePermissions({ query = "" }: { query?: string }) {
       setError(errorMessage(error));
     } finally {
       pending.current = false;
+      onBusyChange?.(false);
       setBusy("");
       requestAnimationFrame(() => {
         if (!root.current || document.activeElement !== document.body) return;

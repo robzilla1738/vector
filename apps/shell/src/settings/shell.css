@@ -408,6 +408,12 @@
 }
 
 @layer components {
+  .saved-website-settings {
+    width: min(680px, calc(100vw - 32px));
+  }
+  .settings-content .ui-settings-group:not(:has(> h4)) {
+    margin-top: 8px;
+  }
   .settings-content .appearance-sidebar-card {
     margin-top: 12px;
   }
