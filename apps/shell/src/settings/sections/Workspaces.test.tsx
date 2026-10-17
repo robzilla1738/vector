@@ -191,7 +191,7 @@ it("keeps extracted notes pending until the owner accepts or discards them", asy
     decision: "accept",
   });
   expect(container.textContent).toContain("0 pending notes · 1 approved notes");
-  expect(container.querySelector("pre")?.textContent).toContain(note.text);
+  expect(container.querySelector(".memory-document")?.textContent).toContain(note.text);
   await act(async () => button("Restore this revision").click());
   expect(rpc).toHaveBeenCalledWith("memory.pipeline.revert", {
     workspaceId,

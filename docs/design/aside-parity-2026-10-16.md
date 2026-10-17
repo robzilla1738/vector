@@ -1,5 +1,31 @@
 # Aside UI parity — October 16, 2026
 
+Memory reference review (072, 074, 075): approved summaries, revision
+summaries and selected saved notes now share formatted document rendering instead
+of raw preformatted/plain text. The existing answer Markdown renderer provides
+headings, lists, links and code/table presentation, skips raw HTML and substitutes
+remote images rather than fetching them. Memory documents use a bounded reading
+measure, quiet headings and paragraph spacing. Stored text, editing, review and
+forget/restore behavior are unchanged. Visual acceptance remains pending.
+
+Validation: typecheck/lint passed; integrated suite passed 4,616 tests with
+one old `<pre>`-specific assertion failing. That assertion now checks the rendered
+memory document; all five tests in its suite passed on the focused rerun. Renderer
+build passed in 1.99s. Logs: `/tmp/aux-memory-document-check.log`,
+`/tmp/aux-memory-document-final-tests.log`, `/tmp/aux-memory-document-build.log`.
+The same native launcher 88765/session 10789 remains live linking `c7b770bfe`;
+this Memory rendering change is newer than that shell and awaits visual review.
+
+The broader Memory gap remains explicit: Aside has nested Overview/History/
+Context awareness/Configure destinations and an episodic/sites/routines file tree.
+Aux currently has Space notes, reviewed claims and revisions in one page. The
+pipeline history contract exposes revision time, note count, summary and source
+run IDs, not the extraction duration/model/token/cache/cost/file-diff records in
+reference 074. Configuration exposes pipeline enablement and separate browsing
+and content retention policies, not a matching episodic Never forget policy or
+index-rebuild status. These require real navigation and data-model/runtime work;
+renaming existing retention or refresh controls would not establish parity.
+
 Native consolidation started for `c7b770bfe` (Models marks/menu sizing and
 Routines cards). Previous launcher 75304 retired through SIGTERM; app exit and
 removal of disposable Profile `aux-dev-QzFkHv` were verified before replacement.

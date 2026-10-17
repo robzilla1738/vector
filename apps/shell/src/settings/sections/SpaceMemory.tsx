@@ -13,6 +13,7 @@ import { useConfirm } from "../../ui/dialog";
 import { SettingsField } from "../primitives";
 import { MemoryPasteImport } from "../../components/MemoryPasteImport";
 import { MemoryRecoveryNotice } from "../../components/MemoryRecoveryNotice";
+import { MemoryDocument } from "../../components/MemoryDocument";
 import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
 import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
@@ -509,7 +510,7 @@ function SpaceMemoryContent({
             </fieldset>
           ))}
           <p {...staticHintProps}>Approved summary used in later runs</p>
-          <pre>{overview?.summary || "No approved notes yet."}</pre>
+          <MemoryDocument text={overview?.summary || "No approved notes yet."} />
           {!!sourcesWithNotes.length && (
             <div {...staticRowProps}>
               <span {...staticHintProps}>Remove notes from one source and restorable revisions.</span>
@@ -598,7 +599,7 @@ function SpaceMemoryContent({
                 <p>
                   {new Date(revision.capturedAt).toLocaleString()} · {revision.claimCount} notes
                 </p>
-                <pre>{revision.summary || "No approved notes."}</pre>
+                <MemoryDocument text={revision.summary || "No approved notes."} />
                 <PipelineControl
                   command="restore-space-memory-revision"
                   scopeId={`${workspaceId}:${revision.revisionId}`}

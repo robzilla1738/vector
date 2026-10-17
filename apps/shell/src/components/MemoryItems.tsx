@@ -6,6 +6,7 @@ import "./MemoryItems.css";
 import { ActionMenu, Checkbox, DetailPane, ListRow, Select, TextField } from "../ui";
 import { shellIconFolder } from "../ui/icons";
 import { MemoryExclusions } from "./MemoryExclusions";
+import { MemoryDocument } from "./MemoryDocument";
 import { memorySourceExcluded } from "@aux/contracts/memory-context";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WorkspaceMemory, WorkspaceMemoryItem } from "@aux/contracts";
@@ -456,7 +457,7 @@ export function MemoryItems({
           closeRef={closeRef}
           onClose={closeRun}
         >
-          <p className="memory-note-content selectable">{selectedItem.content}</p>
+          <MemoryDocument text={selectedItem.content} />
           <div className="memory-note-metadata">
             <span {...auxClassMetadataKeyProps}>Scope</span>
             <span {...auxClassMetadataValueProps}>This Space</span>

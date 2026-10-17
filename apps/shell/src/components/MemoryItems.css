@@ -17,11 +17,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .memory-note-content {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    line-height: 1.6;
-  }
   .memory-note-metadata {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
