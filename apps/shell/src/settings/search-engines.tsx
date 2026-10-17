@@ -7,20 +7,39 @@ import {
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { useSettingsSaveOwner } from "./sections/use-settings-save-owner";
 import { useScopedCommandControls } from "../scoped-command-controls";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   DEFAULT_SEARCH_ENGINE,
   isSearchEngineTemplate,
   SEARCH_ENGINE_TEMPLATE_ERROR,
 } from "@aux/contracts/search-engine";
+import { Popover } from "../ui/popover";
+import { shellIconCheck, shellIconDown } from "../ui/icons";
+import { moveListFocus } from "../keyboard-list";
+import "./search-engines.css";
 import { bridge } from "../bridge";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 const ENGINES = [
-  { name: "DuckDuckGo", url: DEFAULT_SEARCH_ENGINE },
   { name: "Google", url: "https://www.google.com/search?q=%s" },
-  { name: "Bing", url: "https://www.bing.com/search?q=%s" },
+  { name: "DuckDuckGo", url: DEFAULT_SEARCH_ENGINE },
+  { name: "Brave", url: "https://search.brave.com/search?q=%s" },
+  { name: "Microsoft Bing", url: "https://www.bing.com/search?q=%s" },
+  { name: "Ecosia", url: "https://www.ecosia.org/search?q=%s&addon=manualopensearch" },
 ];
+/** Close an acknowledged/replaced selection without replacing its focus-return trigger. */
+function SearchEngineMenu({ value, close, children }: { value: string; close(): void; children: ReactNode }) {
+  const original = useRef(value);
+  useLayoutEffect(() => {
+    if (original.current !== value) close();
+  }, [value, close]);
+  return (
+    <div className="search-engine-menu" onKeyDown={(event) => moveListFocus(event, "button:not(:disabled)")}>
+      {children}
+    </div>
+  );
+}
+
 export function SearchEngineSetting({
   value,
   onSave,
@@ -94,35 +113,60 @@ export function SearchEngineSetting({
   }
   return (
     <div className="search-engine-setting">
-      <div className="search-engine-choices" role="group" aria-label="Search engine">
-        {ENGINES.map((engine) => (
-          <button
-            ref={(element) => publish(engine.name, "select-search-engine", element, () => save(engine.url))}
-            key={engine.name}
-            {...smallButtonProps}
-            disabled={busy}
-            aria-pressed={value === engine.url}
-            onClick={(event) => run("select-search-engine", event)}
-          >
-            {engine.name}
-          </button>
-        ))}
-        <button
-          ref={(element) =>
-            publish("custom", "toggle-custom-search-engine", element, () => {
-              if (!current(getOwner()) || getOwner().pending)
-                throw new Error("Choose the current search engine control.");
-              edit((active) => ({ custom: !active.custom }));
-            })
-          }
-          {...smallGhostButtonProps}
-          disabled={busy}
-          aria-expanded={custom}
-          onClick={(event) => run("toggle-custom-search-engine", event)}
-        >
-          Custom…
-        </button>
-      </div>
+      <Popover
+        key={JSON.stringify([windowId, privateMode])}
+        label="Default search engine"
+        trigger={
+          <>
+            <span>{ENGINES.find((engine) => engine.url === value)?.name ?? "Custom"}</span>
+            {shellIconDown}
+          </>
+        }
+      >
+        {(close) => (
+          <SearchEngineMenu value={value} close={close}>
+            {ENGINES.map((engine) => (
+              <button
+                ref={(element) =>
+                  publish(engine.name, "select-search-engine", element, () => {
+                    const original = getOwner();
+                    const completion = save(engine.url);
+                    return Promise.resolve(completion).then((saved) => {
+                      if (saved && current(original)) close();
+                      return saved;
+                    });
+                  })
+                }
+                key={engine.name}
+                {...smallButtonProps}
+                disabled={busy}
+                aria-pressed={value === engine.url}
+                onClick={(event) => run("select-search-engine", event)}
+              >
+                <span>{engine.name}</span>
+                {value === engine.url && shellIconCheck}
+              </button>
+            ))}
+            <hr />
+            <button
+              ref={(element) =>
+                publish("custom", "toggle-custom-search-engine", element, () => {
+                  if (!current(getOwner()) || getOwner().pending)
+                    throw new Error("Choose the current search engine control.");
+                  edit((active) => ({ custom: !active.custom }));
+                  close();
+                })
+              }
+              {...smallGhostButtonProps}
+              disabled={busy}
+              aria-expanded={custom}
+              onClick={(event) => run("toggle-custom-search-engine", event)}
+            >
+              Custom…
+            </button>
+          </SearchEngineMenu>
+        )}
+      </Popover>
       {custom && (
         <div className="search-engine-custom">
           <label htmlFor="search-engine-template">Search URL</label>

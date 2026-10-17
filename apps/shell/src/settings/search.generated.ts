@@ -523,9 +523,9 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   },
   {
     category: "General",
-    label: "Search engine",
-    description: "",
-    target: "Search engine",
+    label: "Default search engine",
+    description: "Used for searches from the address bar.",
+    target: "Default search engine",
   },
   {
     category: "General",

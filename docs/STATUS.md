@@ -3,79 +3,62 @@
 
 ## October 16 UI parity review — in progress
 
-Latest source adds a direct Project picker beside confirmation controls. It loads
-reviewed writable folders on demand, preserves explicit selection through catalog
-failure, retires old-Space menus and rejects changed native-window identity.
-Automatic retains the runtime’s single-reviewed-root behavior. Use an existing
-folder opens the real Projects review editor in the Home Space. Removed Project
-from Run options. Private Profiles omit the control; cloud runs disable it.
-Start from scratch/native folder creation remains an explicit reference gap.
+Latest source replaces General Settings’ search-provider button strip with one
+compact dropdown: Google, DuckDuckGo, Brave, Microsoft Bing, Ecosia and the
+existing custom URL editor. Saved selection changes close the menu without
+replacing its focus-return trigger. Pending, failed and obsolete-owner saves
+retain their existing guards. Provider rows are flat, without inherited button
+shadows. Fresh local-renderer inspection verified the menu, acknowledged Brave
+selection, retained checkmark and custom editor. This search dropdown is newer
+than the compiled candidate below; native compilation remains pending.
 
-Typecheck/lint and renderer build (2.90s) pass. Integrated check initially passed
-4,542/4,544 cases across 731 files: known coder-worktrees timeout plus an obsolete
-Conversation test targeting the removed select. Migrated that integration test
-to the direct picker/Space handoff; all 20 final affected cases pass. The initial
-15 picker/options/editor cases also passed. Live mock-renderer inspection showed
-placement, catalog-error/Retry state and routing to the real Projects editor;
-mock folder listing is unimplemented. Populated/native picker evidence remains
-pending, together with compact routine native staging.
+Typecheck/lint and the renderer build pass. The initial integrated search slice
+passed 4,543/4,546 cases: the known coder-worktrees timeout plus two obsolete
+integration assertions for the prior button strip and label. Corrected those
+assertions; all 18 affected cases pass. Final integrated check: typecheck/lint
+pass, 4,545/4,546 tests pass across 731 files; only the longstanding
+coder-worktrees 60-second timeout fails. Final renderer build passes in 1.92s.
+
+**Compiled/staged candidate: `985ad7381`.** The single incremental native build
+passed in 25 steps / 8m33.06s, staging 215 renderer assets, rebuilt runtime and
+Node 26.9 (273 methods / 30 events, `cce8203bcbd0`). The owned launcher holds a
+disposable Profile and its plain lock. Retire it normally before another build.
+
+Native walkthrough confirmed the direct Project picker, empty catalog, and Use
+an existing folder routing to the real Projects review editor in the Home Space.
+Reviewed only a newly created synthetic temporary folder, including its canonical
+path and AGENTS.md; granted read/write access in the disposable Profile, selected
+Parity project and reopened the menu to verify its persisted checkmark. No agent
+run was started. Scratch creation and native folder chooser anatomy remain open.
+
+The compiled compact routine form now shows Repeat/Time rows, collapsed time
+zone and Advanced details, Cancel/Create actions, initial title focus and disabled
+submission without a prompt. No second routine was created. Earlier native
+`ffb87541f` evidence established paused creation with matching task revision/manual
+criteria and zero routine occurrences/agent runs. The latest native model search
+also confirms a single rounded focus surface, with no inner rectangular outline.
+Screenshots are in `/tmp/aux-parity-2026-10-16/`; the capture ledger has filenames.
 
 Work continues on local `main` against the growing
-`~/Desktop/Aside UI Reference 2026-10-16` corpus. Latest recursive scan: 192
-manifest entries and 182 original images, unchanged since capture 192. The
-[active capture ledger](design/aside-parity-2026-10-16.md) retains the full scope,
+`~/Desktop/Aside UI Reference 2026-10-16` corpus. Latest manifest: 192 entries;
+recursive file inventory: 562 files including derivatives and metadata. The
+[active capture ledger](design/aside-parity-2026-10-16.md) retains full scope,
 exact evidence and remaining comparisons. Full parity is not established.
 
-**Compiled/staged candidate: `ffb87541f`.** The incremental native build passed
-in 25 steps / 9m06.46s with 215 renderer assets, 273 methods / 30 events
-(`cce8203bcbd0`), rebuilt runtime and Node 26.9. It includes the prior Home empty
-panel/narrow-card changes, Routines route and prompt creation. The old preview
-retired normally; the current launcher owns its disposable Profile/plain lock.
-Never start another builder until this owned preview retires and cleans up.
-
-Native verification: Home showed its centered empty Routines panel; All Routines
-opened Settings → Routines directly. A synthetic prompt created a **paused**
-daily 09:00 routine in America/Chicago. SDK reads confirmed source task revision
-1 equals the bound revision, exact matching manual review criteria, zero routine
-occurrences and zero agent runs. Returning Home showed the actual paused card.
-No activation or model call was performed. Evidence:
-`aux-routines-empty-native-ffb875.png` and
-`aux-routine-paused-native-ffb875.png` in `/tmp/aux-parity-2026-10-16/`.
-
-**Newer source: `00c737815`.** Routine timing now uses compact Repeat/Time rows,
-Daily/Weekdays/Weekly/Interval/Custom with real payloads, retained selected-day/event
-triggers, collapsed time-zone details, Advanced source/review/cap fields and
-Cancel/Create actions. Title receives initial focus. Scheduling can be prepared
-before the prompt; incomplete or busy forms refuse submission. Fresh live renderer
-inspection verified compact rows, initial focus and Weekly weekday disclosure,
-without creating a second routine. Evidence `aux-routine-compact-live-00c737.png`
-and `aux-routine-weekly-live-00c737.png`. This is current renderer/mock evidence,
-not the compiled native compact form. Compact native staging remains pending.
-
-Typecheck and lint pass. Integrated checks passed **4,537/4,538 tests across
-730 files**; only the longstanding coder-worktrees 60-second timeout failed.
-15 focused timing/creation cases pass. The production renderer built in 2.74s;
-final cosmetic/shared-action/focus changes were also typechecked and built.
-
 Current behavior from preceding slices remains: direct composer model/thinking
-choices; Ask first and remembered confirmation preferences; General Settings
-Preferences/Languages/Import/About with real compact editors; rounded shared
-search focus; All Chats real contained composer, default dense List, rich Card,
-search/filter/sort and real chat actions. Report excerpts/search and the internal-
-page implicit-context fix were verified with a native synthetic `seven` reply and
-no page IDs. Plain list excerpts use an on-demand bounded Markdown projection.
-Home suggested cards reuse supplied unbranded art, append a reviewable draft
-without sending, preserve text/context and hide in private Profiles. Customize
-opens Skills & MCP; explicit expansion survived a native Settings round trip.
+choices; Ask first and remembered confirmation preferences; rounded shared search
+focus; General Preferences/Languages/Import/About; All Chats contained composer,
+dense List/rich Card, search/filter/sort and real chat actions. Report excerpts/
+search and implicit internal-page context exclusion have native synthetic-run
+evidence. Home suggested tasks reuse supplied art, append reviewable drafts,
+preserve context, hide in private Profiles and retain explicit expansion.
 
-Remaining comparisons include the complete ledger, compact native form, exact
-Time/custom-recurrence popup, routine-level model/notifications, standalone/task
-and permission semantics, Settings pagination beyond 200 routines, project
-composer controls, provider nesting, Settings details and the native floating
-sidebar transition into web content. The ledger records concrete capability gaps;
-no similarly named or mock controls count as full parity. Matched viewports,
-alternate themes, accessibility, error/approval states and phase performance/smoke
-evidence are still required before any full-product acceptance.
+Remaining comparisons include the complete ledger, Languages draft Save/Cancel,
+exact Time/custom recurrence popup, routine model/notifications, standalone/task
+and permission semantics, Settings pagination beyond 200 routines, scratch Project
+creation, provider nesting, Settings details and native floating sidebar behavior.
+Matched viewports, alternate themes, accessibility, error/approval states and
+phase performance/smoke evidence remain required before full-product acceptance.
 
 ## Aside parity checkpoint — owner wrap-up
 

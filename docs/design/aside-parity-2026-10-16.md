@@ -695,3 +695,57 @@ and populated selection verification remain pending. The currently compiled app
 still containsffb87541f; Project and compact timing source are newer. Previous goal
 turn made native/source progress; this turn adds the direct control, removes its
 old implementation and migrates its integration coverage. Full goal remains open.
+
+## General search dropdown and compiled Project/compact routine evidence
+
+General search now uses one dropdown with Google, DuckDuckGo, Brave, Microsoft
+Bing and Ecosia, plus the retained custom URL editor. Rows use flat backgrounds,
+left-aligned labels and a selected checkmark. Removed the old preset strip.
+Selection only closes on acknowledged save or replaced setting value; its trigger
+retains identity for focus return. Busy/false acknowledgement, changed window,
+stale owner, composition and custom validation protections remain covered.
+Brave and Ecosia template provenance: [Brave Search FAQ](https://support.brave.com/hc/en-us/articles/4403568397837-Brave-Search-FAQ)
+and [Ecosia desktop setup](https://support.ecosia.org/article/657-installing-ecosia-on-your-desktop-device).
+
+Initial integrated result: 4,543/4,546 across 731 files, with the known
+coder-worktrees timeout and two stale integration assertions (old Google button
+outside the picker and the former indexed label). Updated those assertions;
+18 final affected cases pass. Renderer build passed in 2.14s. Final CSS removes
+inherited button shadows; fresh reload verified the flat menu in the local
+renderer. Selecting Brave acknowledged save, returned focus to the same trigger,
+closed the menu and retained its checked selection on reopen. Custom opened the
+existing URL editor with the actual Brave template. Screenshot:
+`aux-search-engine-menu-live.png`. This is renderer/mock evidence, not a new
+compiled native search dropdown. Language Save/Cancel parity remains open.
+
+The single native build of `985ad7381` succeeded in 25 steps / 8m33.06s with
+215 renderer assets, rebuilt runtime and Node 26.9. Normal disposable launcher
+ownership remains intact. Native Project walkthrough: empty catalog → Use an
+existing folder → real Projects editor/Home Space → inspect newly created
+synthetic temporary folder → review canonical path and synthetic AGENTS.md →
+grant read/write in disposable Profile → Home picker lists Parity project →
+select → reopen shows Automatic unchecked and Parity project checked. No agent
+run was started; no real Profile or owner files were used. The fixture path is
+recorded in `/tmp/aux-parity-project-fixture-path` for later owned cleanup.
+Evidence: `aux-project-populated-native-985ad7.png` and
+`aux-project-selected-native-985ad7.png`.
+
+Native All Routines opened the direct Routines route; Create routine showed
+initial title focus, compact Repeat/Time, collapsed zone and Advanced controls,
+Cancel and disabled Create paused routine until a prompt exists. Cancelled
+without creating another routine. Evidence:
+`aux-routine-compact-native-985ad7.png`. This supersedes the preceding pending
+compact-native/populated-Project claims; scratch creation remains unimplemented.
+
+The original ugly model-search rectangle is absent in the latest native build:
+one rounded focus surface encloses icon, text and the full field. Evidence:
+`aux-model-focus-native-985ad7.png`. Shared high-contrast keyboard indicators
+remain separately supported. Full product acceptance remains open.
+
+Recursive inventory still contains 192 manifest entries; all-files count is 562
+including derivatives and metadata. Existing capture comparisons remain active.
+
+Final search-slice integrated check: typecheck/lint pass; 4,545/4,546 tests
+across 731 files pass. The sole failure is the longstanding coder-worktrees
+60-second timeout. Final renderer build passes in 1.92s; diff whitespace check
+is clean. No runtime or native C++ source was changed in this search slice.

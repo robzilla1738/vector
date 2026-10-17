@@ -56,7 +56,7 @@ export function GeneralSettings({
     <>
       <section data-settings-section="General" hidden={!active || searching || !!subview}>
         <SettingsGroup title="Preferences">
-          <IndexedField label="Search engine">
+          <IndexedField compact label="Default search engine" hint="Used for searches from the address bar.">
             <SearchEngineSetting
               value={(settings.searchEngine as string) ?? DEFAULT_SEARCH_ENGINE}
               onSave={(searchEngine) => onSave({ searchEngine })}

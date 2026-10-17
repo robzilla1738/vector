@@ -404,3 +404,22 @@ coverage. Typecheck/lint and renderer build pass. One obsolete integrated select
 assertion was migrated; all20 final affected cases pass. Known coder-worktrees
 timeout remains. Live mock inspection covers placement/error/Retry and real editor
 routing only; populated/native selection and scratch creation are still open.
+
+## October 16 — native consolidation and General search picker
+
+Compiled `985ad7381` passed (25 native steps / 8m33.06s). Disposable native
+walkthrough verified real reviewed Project selection/checkmark and compact routine
+creation anatomy/initial title focus, without starting runs or creating a second
+routine. Latest native model search has one rounded focus surface; the inner
+rectangle from the owner’s screenshot is absent. Exact captures are in the ledger.
+
+General search now has a compact flat menu instead of a preset button strip.
+Fresh local-renderer inspection verified provider menu, successful Brave save,
+focus return/persisted checkmark and retained Custom URL editor. Current source
+is newer than that native build. Eighteen affected cases and renderer build pass;
+initial integrated check found two stale assertions plus the known coder-worktrees
+timeout. The assertions are updated; final integrated results follow in the ledger.
+Language Save/Cancel, scratch Project creation and full-product QA remain open.
+
+Final integrated result: typecheck/lint pass, 4,545/4,546 tests pass; only the
+known coder-worktrees 60-second timeout fails. Final renderer build: 1.92s.

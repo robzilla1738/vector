@@ -45,8 +45,22 @@ function deferred<T>() {
 }
 async function render() {
   await act(async () => root.render(<SearchEngineSetting value={value} onSave={save} />));
+  await openPicker();
 }
-const button = (text: string) => [...host.querySelectorAll("button")].find((b) => b.textContent === text)!;
+async function openPicker() {
+  if (!document.querySelector('[role="dialog"][aria-label="Default search engine"]'))
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[aria-label="Default search engine"]')!.click(),
+    );
+}
+async function custom() {
+  await openPicker();
+  await act(async () => button("Custom…").click());
+}
+const button = (text: string) =>
+  [...document.querySelectorAll<HTMLButtonElement>('button:not([aria-label="Default search engine"])')].find(
+    (b) => b.textContent === text,
+  )!;
 const input = () => host.querySelector<HTMLInputElement>("input")!;
 async function edit(next: string) {
   await act(async () => {
@@ -91,7 +105,7 @@ it("selects the exact original focused preset and retains a false save ACK", asy
 });
 it("preserves native keyboard Enter, trim, and the actual custom URL", async () => {
   await render();
-  await act(async () => button("Custom…").click());
+  await custom();
   await edit("  https://search.example/find?q=%s  ");
   input().focus();
   await act(async () => input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
@@ -101,7 +115,7 @@ it("preserves native keyboard Enter, trim, and the actual custom URL", async () 
 });
 it("retains the exact validation failure and makes no invalid save", async () => {
   await render();
-  await act(async () => button("Custom…").click());
+  await custom();
   await edit("javascript:alert(%s)");
   await act(async () => button("Save").click());
   expect(save).not.toHaveBeenCalled();
@@ -110,7 +124,7 @@ it("retains the exact validation failure and makes no invalid save", async () =>
 });
 it("refuses composition Enter without saving", async () => {
   await render();
-  await act(async () => button("Custom…").click());
+  await custom();
   await edit("https://search.example/?q=%s");
   await act(async () =>
     input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", isComposing: true, bubbles: true })),
@@ -157,12 +171,12 @@ it("keeps fresh B busy when original A completes after value roundtrip", async (
   await render();
   const fresh = deferred<boolean>();
   save.mockReturnValueOnce(fresh.promise);
-  await act(async () => button("Bing").click());
+  await act(async () => button("Microsoft Bing").click());
   await act(async () => old.resolve(true));
-  expect(button("Bing").disabled).toBe(true);
+  expect(button("Microsoft Bing").disabled).toBe(true);
   expect(host.querySelector("input")).toBeNull();
   await act(async () => fresh.resolve(true));
-  expect(button("Bing").disabled).toBe(false);
+  expect(document.querySelector('[role="dialog"][aria-label="Default search engine"]')).toBeNull();
   expect(state.toast).not.toHaveBeenCalled();
 });
 it("retires original window/private failures and preserves the new custom draft", async () => {
@@ -175,7 +189,7 @@ it("retires original window/private failures and preserves the new custom draft"
   state.privateMode = false;
   state.windowId = "two";
   await render();
-  await act(async () => button("Custom…").click());
+  await custom();
   await edit("https://fresh.example/?q=%s");
   await act(async () => old.reject(new Error("Retired failure")));
   expect(state.toast).not.toHaveBeenCalled();
@@ -202,11 +216,31 @@ it("returns the original successful ACK after replacement without stale draft de
 });
 it("refuses unrelated focus and preserves the existing draft when Custom closes", async () => {
   await render();
+  host.tabIndex = -1;
+  host.focus();
   expect(() => invokeScopedControl("select-search-engine")).toThrow();
-  await act(async () => button("Custom…").click());
+  await custom();
   await edit("https://kept.example/?q=%s");
-  await act(async () => button("Custom…").click());
-  await act(async () => button("Custom…").click());
+  await custom();
+  await custom();
   expect(input().value).toBe("https://kept.example/?q=%s");
   expect(save).not.toHaveBeenCalled();
+});
+
+it("saves the exact Brave and Ecosia search templates through the preset controls", async () => {
+  await render();
+  await act(async () => button("Brave").click());
+  expect(save).toHaveBeenLastCalledWith("https://search.brave.com/search?q=%s");
+  await openPicker();
+  await act(async () => button("Ecosia").click());
+  expect(save).toHaveBeenLastCalledWith("https://www.ecosia.org/search?q=%s&addon=manualopensearch");
+});
+it("closes the acknowledged menu while keeping the same trigger for focus return", async () => {
+  await render();
+  const trigger = host.querySelector<HTMLButtonElement>('[aria-label="Default search engine"]')!;
+  value = "https://search.brave.com/search?q=%s";
+  await act(async () => root.render(<SearchEngineSetting value={value} onSave={save} />));
+  expect(document.querySelector('[role="dialog"][aria-label="Default search engine"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Default search engine"]')).toBe(trigger);
+  expect(trigger.textContent).toContain("Brave");
 });

@@ -1,0 +1,43 @@
+@layer components {
+  .anchored-panel:has(.search-engine-menu) {
+    width: 200px;
+    padding: 6px;
+    border-radius: var(--r-xl);
+  }
+  .search-engine-menu {
+    display: grid;
+    gap: 2px;
+  }
+  .search-engine-menu > button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    min-height: 32px;
+    padding: 6px 8px;
+    border: 0;
+    box-shadow: none;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--ink-1);
+    font: inherit;
+    text-align: left;
+  }
+  .search-engine-menu > button > span:not(.ci) {
+    flex: 1;
+  }
+  .search-engine-menu > button:hover {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  .search-engine-menu hr {
+    border: 0;
+    border-top: var(--hairline) solid var(--line);
+    width: 100%;
+    margin: 4px 0;
+  }
+  .search-engine-custom {
+    margin-top: var(--space-3);
+  }
+}

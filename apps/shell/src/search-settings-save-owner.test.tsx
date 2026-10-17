@@ -38,7 +38,10 @@ it("keeps two actual Settings save owners independent through false and successf
         </>,
       ),
     );
-    const google = [...host.querySelectorAll("button")].find((node) => node.textContent === "Google")!;
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[aria-label="Default search engine"]')!.click(),
+    );
+    const google = [...document.querySelectorAll("button")].find((node) => node.textContent === "Google")!;
     const remove = host.querySelector<HTMLButtonElement>('button[aria-label="Remove gh engine"]')!;
     let first!: unknown, second!: unknown;
     google.focus();

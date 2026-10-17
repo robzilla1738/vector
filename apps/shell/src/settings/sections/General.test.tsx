@@ -38,7 +38,7 @@ it("keeps General fields indexed and opens an editor after extraction", async ()
     const fields = collectSettingsFields(container);
     expect(fields.filter((field) => field.category === "General").map((field) => field.label)).toEqual(
       expect.arrayContaining([
-        "Search engine",
+        "Default search engine",
         "New tab mode",
         "Memory saver",
         "Download folder",
