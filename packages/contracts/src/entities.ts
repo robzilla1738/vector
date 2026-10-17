@@ -170,6 +170,8 @@ export const RunSchema = z.object({
       nightShiftItemId: z.string().uuid().optional(),
       /** Runtime-assigned routine provenance for history and completion notifications. */
       routineId: z.string().min(1).optional(),
+      /** Completion delivery preference captured from the routine at launch. */
+      routineNotifications: z.boolean().optional(),
       /** Signed-out isolated task tabs, captured when the task starts. Distinct from private windows. */
       privateTask: z.boolean().optional(),
       agentMode: AgentModeSchema.optional(),

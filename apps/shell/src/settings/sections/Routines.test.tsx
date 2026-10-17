@@ -148,6 +148,8 @@ it("creates a paused prompt routine with a real source task and reuses the task 
   rpc.mockImplementation(async (method: string, params: unknown) => {
     if (method === "workspaces.list") return [{ workspaceId: "workspace-1", name: "Research" }];
     if (["routines.list", "routines.inbox", "tasks.list"].includes(method)) return [];
+    if (method === "models.list")
+      return { models: [{ id: "openai/test", name: "Test model", textGeneration: true }] };
     if (method === "tasks.create") return task;
     if (method === "routines.create") {
       if (++routineAttempt === 1) throw new Error("Synthetic save failure");
@@ -156,6 +158,10 @@ it("creates a paused prompt routine with a real source task and reuses the task 
     throw new Error(`Unexpected ${method}`);
   });
   await createPromptForm();
+  change("Routine model", "openai/test");
+  await act(async () =>
+    container.querySelector<HTMLInputElement>('[aria-label="Routine completion notifications"]')!.click(),
+  );
   expect(rpc).not.toHaveBeenCalledWith("tasks.create", expect.anything());
   await submitSchedule();
   expect(container.textContent).toContain("The task was saved, but the routine was not created.");
@@ -174,6 +180,8 @@ it("creates a paused prompt routine with a real source task and reuses the task 
   expect(rpc).toHaveBeenLastCalledWith(
     "routines.create",
     expect.objectContaining({
+      modelId: "openai/test",
+      notifications: false,
       sourceTaskId: task.taskId,
       sourceTaskRevision: 1,
       successCriteria: task.criteria,

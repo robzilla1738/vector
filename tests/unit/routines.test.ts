@@ -735,7 +735,10 @@ it("does not expose evidence through a mismatched Skill run link", async () => {
     config: { taskId: otherTask.taskId, taskRevision: otherTask.revision },
   });
   expect(() =>
-    f.routines.outcome(occurrence.routineRunId, new TaskEvidenceService(f.repo, f.events, new DocumentSnapshots(f.repo))),
+    f.routines.outcome(
+      occurrence.routineRunId,
+      new TaskEvidenceService(f.repo, f.events, new DocumentSnapshots(f.repo)),
+    ),
   ).toThrow(/does not belong/i);
 });
 
@@ -1916,4 +1919,33 @@ it("traverses every active schedule behind newer manual Skills and rechecks paus
   expect(started).not.toContain("Scheduled 54");
   expect(new Set(result.map((run) => run.occurrenceIdentity)).size).toBe(54);
   expect(await f.routines.due(now)).toEqual([]);
+});
+
+it("persists routine model and delivery choices without resetting them on unrelated edits", () => {
+  const { routines, task } = fixture();
+  const created = routines.fromResult({ taskId: task.taskId });
+  const chosen = routines.update({
+    routineId: created.routineId,
+    expectedRevision: created.revision,
+    modelId: "openai/test-model",
+    notifications: false,
+  });
+  expect(routines.get(chosen.routineId).routine).toMatchObject({
+    modelId: "openai/test-model",
+    notifications: false,
+  });
+  const renamed = routines.update({
+    routineId: chosen.routineId,
+    expectedRevision: chosen.revision,
+    title: "Renamed",
+  });
+  expect(renamed).toMatchObject({ modelId: "openai/test-model", notifications: false });
+  const reset = routines.update({
+    routineId: renamed.routineId,
+    expectedRevision: renamed.revision,
+    modelId: null,
+    notifications: true,
+  });
+  expect(reset.modelId).toBeUndefined();
+  expect(reset.notifications).toBe(true);
 });

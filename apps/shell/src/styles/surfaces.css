@@ -1869,7 +1869,7 @@
     font-size: var(--fs-sm);
     color: var(--ink-2);
   }
-  .routine-schedule input,
+  .routine-schedule input:not([type="checkbox"]),
   .routine-schedule select {
     width: 100%;
     min-width: 0;

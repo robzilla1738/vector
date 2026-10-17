@@ -18,6 +18,11 @@ import { openSavedSkill } from "../../task-navigation";
 import { RoutineSchedule, type CalendarTriggerAccounts } from "../../components/RoutineSchedule";
 import { shellIconPlusSm, shellIconClose } from "../../ui/icons";
 import "./Routines.css";
+import {
+  RoutinePreferencesFields,
+  RoutinePreferencesEditor,
+  type RoutinePreferences,
+} from "./RoutinePreferences";
 import { SettingsField, SettingsSection } from "../primitives";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../../ui/native-attribute-props";
 import {
@@ -43,6 +48,7 @@ function CreateRoutineDialog({
   const [taskId, setTaskId] = useState("");
   const [title, setTitle] = useState("");
   const [cap, setCap] = useState("");
+  const [preferences, setPreferences] = useState<RoutinePreferences>({});
   const [prompt, setPrompt] = useState("");
   const [criterion, setCriterion] = useState("The result satisfies the routine’s prompt.");
   const preparedTask = useRef<{ fingerprint: string; task: Task } | null>(null);
@@ -179,6 +185,7 @@ function CreateRoutineDialog({
         ...(trigger.kind === "calendar_event" ? { calendarGrantIds: [trigger.grantId] } : {}),
         successCriteria: source.criteria,
         spendCapUsd: amount,
+        ...preferences,
         trigger,
         paused: true,
       });
@@ -208,8 +215,7 @@ function CreateRoutineDialog({
         </button>
       </div>
       <p {...staticHintProps}>
-        New routines stay paused until you review and resume them. Outputs require your review. A prompt also
-        creates its saved task.
+        New routines start paused. Review and resume them when you’re ready.
       </p>
       <label>
         Title
@@ -249,6 +255,19 @@ function CreateRoutineDialog({
         disabled={busy}
         submitDisabled={!taskId && (!title.trim() || !prompt.trim() || !criterion.trim())}
         onSave={(trigger) => void create(trigger)}
+        preferences={
+          <RoutinePreferencesFields
+            value={preferences}
+            disabled={busy}
+            onChange={(patch) =>
+              setPreferences((current) => ({
+                ...current,
+                ...patch,
+                modelId: patch.modelId === null ? undefined : (patch.modelId ?? current.modelId),
+              }))
+            }
+          />
+        }
         actions={
           <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={onClose} disabled={busy}>
             Cancel
@@ -411,6 +430,8 @@ export function RoutinesSettings({ active }: { active: boolean }) {
     routine: Routine,
     patch: {
       spendCapUsd?: number | null;
+      modelId?: string | null;
+      notifications?: boolean;
       paused?: boolean;
       missedRunPolicy?: Routine["missedRunPolicy"];
       presenceGuardExempt?: boolean;
@@ -518,6 +539,13 @@ export function RoutinesSettings({ active }: { active: boolean }) {
                   </button>
                 )}
             </div>
+            {!routine.archivedAt && !routine.replay && (
+              <RoutinePreferencesEditor
+                value={routine}
+                disabled={!!busyId}
+                onChange={(patch) => void changeRoutine(routine, patch)}
+              />
+            )}
             {routine.pauseCause === "unread_results" && (
               <div {...staticFieldProps} {...nativeStatusRoleProps}>
                 <span>

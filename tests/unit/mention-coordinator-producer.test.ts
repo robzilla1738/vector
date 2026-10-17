@@ -174,11 +174,15 @@ it("actual running-loop termination releases its page lease and turn authority",
   const run = await coordinator.start({
     runId: "live-run",
     routineId: "routine-origin",
+    routineNotifications: false,
     goal: "Read fixture",
     pageIds: [ref.pageId],
     mentions: [ref],
   });
-  expect(repo.getRun(run.runId)?.config?.routineId).toBe("routine-origin");
+  expect(repo.getRun(run.runId)?.config).toMatchObject({
+    routineId: "routine-origin",
+    routineNotifications: false,
+  });
   expect(
     MethodSchemas["runs.start"].safeParse({ goal: "Ordinary task", routineId: "routine-origin" }).success,
   ).toBe(false);

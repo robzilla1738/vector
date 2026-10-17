@@ -269,3 +269,15 @@ it("filters routine completions by durable provenance without hiding their quest
     routine: true,
   });
 });
+
+it("honors a routine's captured completion opt-out while still delivering approvals", async () => {
+  const config = { routineId: "quiet-routine", routineNotifications: false };
+  const emit = vi.fn();
+  const gate = new RunNotificationGate({ getRun: async () => ({ run: { ...completed, config } }), emit });
+  expect(await gate.consider(running, completed, () => context)).toBeNull();
+  const approval = new RunNotificationGate({
+    getRun: async () => ({ run: { ...parked, config }, suspension: suspension("approval") }),
+    emit,
+  });
+  expect(await approval.consider(running, parked, () => context)).toMatchObject({ kind: "question" });
+});

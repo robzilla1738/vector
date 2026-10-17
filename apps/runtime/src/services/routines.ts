@@ -451,8 +451,9 @@ export class RoutineService {
   }
 
   update(
-    input: Omit<Partial<RoutineDefinition>, "spendCapUsd"> & {
+    input: Omit<Partial<RoutineDefinition>, "spendCapUsd" | "modelId"> & {
       spendCapUsd?: number | null;
+      modelId?: string | null;
       routineId: string;
       expectedRevision: number;
       activationReviewed?: boolean;
@@ -488,6 +489,7 @@ export class RoutineService {
     const next: Routine = {
       ...current,
       ...patch,
+      modelId: input.modelId === null ? undefined : (input.modelId ?? current.modelId),
       spendCapUsd: input.spendCapUsd === null ? undefined : (input.spendCapUsd ?? current.spendCapUsd),
       parameters: input.parameters ?? current.parameters,
       siteOrigins: input.siteOrigins ?? current.siteOrigins,

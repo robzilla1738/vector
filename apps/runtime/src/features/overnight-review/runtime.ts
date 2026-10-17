@@ -63,6 +63,8 @@ export function overnightRuntime(s: Services, power: NightPower): NightShiftRunt
             const run = await s.runs.start({
               ...prepared,
               routineId: routine.routineId,
+              routineNotifications: routine.notifications,
+              modelId: routine.modelId,
               deliveryRunId: authority.runId,
               nightShiftItemId: authority.itemId,
               goal: substituteParameters(routine.objective, parameters),

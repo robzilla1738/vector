@@ -5,6 +5,16 @@ review. The goal remains full visual and functional parity wherever Aux can
 support the behavior, using Aux identity. This ledger supplements
 [the earlier surface ledger](aside-parity.md); it does not narrow its acceptance.
 
+## Routine model and delivery controls
+
+Reference084 now has functional Model and Notifications rows in source and Vite.
+Saved model-led routines have editable run preferences, with catalog loading only
+when expanded. Normal/overnight starts receive the model choice, and normal,
+overnight and saved-step runs capture completion delivery preference. Approval
+requests remain visible. Tests cover persistence, clearing, unrelated edits,
+creation retry, durable capture and completion opt-out. STATUS records evidence.
+Native acceptance and exact model menu/reasoning presentation remain OPEN.
+
 ## Routine notification provenance and Agents naming
 
 Reference046 now has all three independent notification types. Runtime-assigned
@@ -678,9 +688,9 @@ Advanced references reviewed, still open:
 - 090: Read only / Guard / Full access. Aux preserves task grants, scheduled-write
   review and activation checks. Its current routine contract has no equivalent
   per-routine permission enum; do not pretend the modes are interchangeable.
-- 084/087: routine-level model and notification switches are still absent in the
-  current RoutineDefinition contract. Real persisted runtime support and behavior
-  verification are needed before matching controls can be accepted.
+- 084/087: the later routine preferences batch adds persisted model/notification
+  controls, launch wiring and focused validation. Native acceptance and exact
+  model/reasoning menu presentation remain open.
 - 086: native Time input exists, but the exact reference popup still needs a
   matched interaction comparison. Custom recurrence UI also remains to compare.
 

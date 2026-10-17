@@ -1,5 +1,25 @@
 # Aux status — October 16, 2026
 
+October 16 routine run preferences (reference 084): Create routine now includes
+Model and Notifications in the grouped timing card. Model-led saved routines also
+expose Run preferences. A blank model follows the default; explicit models persist
+and feed normal/overnight launch. Notification opt-out is captured in durable run
+config for normal, overnight and saved-step execution, suppressing completion
+alerts while preserving requests needing attention. Existing routines retain their
+previous defaults. Routine updates can clear the model without resetting unrelated
+fields. Catalog loading is deferred until saved preferences are expanded.
+
+Vite walkthrough selected GPT-6.1 Sol and switched completion notifications off;
+capture `/tmp/aux-parity-2026-10-16/aux-routine-model-notifications-vite.png`.
+No routine was created or activated in this walkthrough. A shared schedule input
+style was corrected so switches retain their compact shape. Creation copy and
+duplicate schedule summary were reduced. Runtime dist rebuilt before checks:
+`npm run check` passed typecheck/lint and 4,615 tests across 741 files. Final schedule
+checks passed 11 tests; renderer build passed in 3.33s. Native launch, live routine
+model selection and delivery acceptance remain open. Reasoning/provider presentation,
+standalone behavior and remaining full-surface comparisons are not yet complete.
+
+
 October 16 settings-menu refinement: notification and task-model selectors now
 align menus to the control's trailing edge, retaining viewport clamping and
 above/below placement. Shared anchored menus use tighter corners. Notification

@@ -44,6 +44,7 @@ export function RoutineSchedule({
   submitDisabled = false,
   children,
   actions,
+  preferences,
 }: {
   trigger: RoutineTrigger;
   disabled: boolean;
@@ -53,6 +54,7 @@ export function RoutineSchedule({
   submitDisabled?: boolean;
   children?: ReactNode;
   actions?: ReactNode;
+  preferences?: ReactNode;
 }) {
   const [repeat, setRepeat] = useState(() => {
     if (trigger.kind !== "schedule") return trigger.kind;
@@ -367,6 +369,7 @@ export function RoutineSchedule({
             />
           </label>
         )}
+        {preferences}
         {(kind === "schedule" || kind === "rrule" || kind === "monitor" || kind === "heartbeat") && (
           <details className="routine-timezone">
             <summary>Time zone · {timezone}</summary>
@@ -382,9 +385,11 @@ export function RoutineSchedule({
             )}
           </details>
         )}
-        <output className="routine-schedule-summary" data-block>
-          {summary}
-        </output>
+        {mode === "edit" && (
+          <output className="routine-schedule-summary" data-block>
+            {summary}
+          </output>
+        )}
         {children}
         <div className="routine-schedule-actions">
           {actions}

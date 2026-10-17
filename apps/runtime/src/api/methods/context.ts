@@ -227,7 +227,8 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
       }),
     browsingMemory: () => new BrowsingMemory(s.repo),
     spaces: () => new SpaceService(s.repo, s.events),
-    taskEvidence: () => new TaskEvidenceService(s.repo, s.events, s.documentSnapshots, s.pages, s.native, s.downloadsDir),
+    taskEvidence: () =>
+      new TaskEvidenceService(s.repo, s.events, s.documentSnapshots, s.pages, s.native, s.downloadsDir),
     vault: () => s.vault ?? new VaultService(s.repo, s.native),
     translate: () => new TranslateService(s.settings),
     safetyAudit: () => s.safetyAudit ?? new SafetyAuditStore(s.repo.db),
@@ -321,6 +322,8 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
           const run = await s.runs.start({
             ...prepared,
             routineId: routine.routineId,
+            routineNotifications: routine.notifications,
+            modelId: routine.modelId,
             goal: [
               substituteRoutine(routine.objective, parameters),
               routine.outputHint ? `Expected output: ${routine.outputHint}` : undefined,

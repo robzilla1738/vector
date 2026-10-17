@@ -161,6 +161,9 @@ export const RoutineDefinitionSchema = z.object({
   /** Exact task Calendar grants saved with this Skill. Imports must bind them locally. */
   calendarGrantIds: z.array(z.string().uuid()).max(20).default([]),
   outputHint: z.string().max(400).optional(),
+  /** Omitted model follows the current default; notifications default to enabled. */
+  modelId: text.max(200).optional(),
+  notifications: z.boolean().optional(),
   description: z.string().trim().max(2000).optional(),
   icon: z.string().trim().max(200).optional(),
   /** Context matches only suggest this Skill; they never start it or grant effects. */
@@ -387,6 +390,7 @@ export const RoutineRunOutcomeSchema = z.object({
 });
 export const RoutineCreateParams = RoutineDefinitionSchema;
 export const RoutineUpdateParams = RoutineDefinitionSchema.partial().extend({
+  modelId: text.max(200).nullable().optional(),
   spendCapUsd: z.number().positive().nullable().optional(),
   // A partial edit must not apply create-time defaults to omitted fields. In
   // particular, changing a trigger must never resume a paused Skill or clear

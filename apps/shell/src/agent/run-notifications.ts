@@ -152,6 +152,7 @@ export class RunNotificationGate {
     }
     const enabled = getContext().kinds;
     const routine = !!current.run.config?.routineId;
+    if (kind === "completed" && routine && current.run.config?.routineNotifications === false) return null;
     if (
       enabled &&
       !(kind === "completed"

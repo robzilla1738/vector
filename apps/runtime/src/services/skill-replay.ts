@@ -270,6 +270,7 @@ export function startSkillReplay(input: {
     config: {
       implementation: "skill-replay",
       routineId: routine.routineId,
+      routineNotifications: routine.notifications,
       routeReason: `skill-replay:${routine.routineId}:${replay.digest}`,
       taskId: routine.sourceTaskId,
       taskRevision: routine.sourceTaskRevision,

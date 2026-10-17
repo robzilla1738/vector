@@ -2538,6 +2538,7 @@ export class RunService {
     nightShiftItemId?: string;
     /** Internal routine provenance, never accepted from public run options. */
     routineId?: string;
+    routineNotifications?: boolean;
     queuedMessageId?: string;
     goal: string;
     defaultWorkspaceId?: string;
@@ -2903,6 +2904,7 @@ export class RunService {
           setId: opts.setId,
           config: {
             routineId: opts.routineId,
+            routineNotifications: opts.routineNotifications,
             modelId: opts.modelId,
             reasoning: opts.reasoning,
             privateTask: opts.privateTask,

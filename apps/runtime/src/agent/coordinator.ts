@@ -203,6 +203,7 @@ export class RunCoordinator {
     nightShiftItemId?: string;
     /** Internal routine provenance, never accepted from public run options. */
     routineId?: string;
+    routineNotifications?: boolean;
     /** Captured only by the authorized fork_self reservation; never persisted in Run.config. */
     forkTranscript?: ModelMessage[];
     branchSourceRunIds?: string[];
@@ -280,6 +281,7 @@ export class RunCoordinator {
       config: {
         nightShiftItemId: opts.nightShiftItemId,
         routineId: opts.routineId,
+        routineNotifications: opts.routineNotifications,
         modelId: opts.modelId,
         reasoning: opts.reasoning,
         privateTask: this.deps.privateBrowserProfile || (opts.privateTask ?? false),
