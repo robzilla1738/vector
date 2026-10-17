@@ -65,6 +65,36 @@ case (`/tmp/aux-memory-retry-check.log`). No unchanged full suite was repeated.
 Native light/narrow comparison and healthy-state verification of this layout
 remain open; renderer evidence is not a claim of complete Memory parity.
 
+## Approved-document editing foundation — source only
+
+Approved notes now expose stable episodic paths and modification times through
+memory.pipeline.documents. Owner edits are stored separately from immutable source
+quotes, inside the same encrypted claims/generation/history. Saves require the
+exact loaded generation, including after restore/rebuild, and preserve the user's
+supplied text on a conflict by rejecting the write. The future UI must retain that
+draft and let the owner review the current document.
+
+Recall, encrypted search chunks, handbook and approved-note rows use the effective
+owner prose with explicit owner-edited/unverified attribution. Original source
+eligibility and exact quote/hash checks still apply; changing/revoking the source
+withholds the edit from recall. Consolidation preserves distinct owner edits and
+uses modification time for age. Editing recomputes contradictions without merging
+or expiring unrelated documents. Source Forget removes edits and recoverable copies.
+
+Integrated check passed typecheck/lint and4,634tests/745files in98.55s
+(`/tmp/aux-memory-document-model-check.log`). After the contradiction correction,
+typecheck/lint and33focused Memory/recovery tests in2files passed in3.32s
+(`/tmp/aux-memory-document-conflicts-check.log`). Runtime dist rebuilt before tests.
+Evidence includes stale save rejection, preserved source quotes, changed recall/
+search, encryption, recovery inventory, source revocation/Forget, distinct edits
+through consolidation and removal of stale contradiction flags.
+
+This is a data/API foundation, not a delivered document browser. Root owner docs,
+the folder tree/editor, draft-preserving conflict UI and native walkthrough remain
+required. Existing Space content/items remain authoritative and must not be copied
+into a second divergent store. No native build started; group this with the browser
+UI and the already-checked configuration layout. Live product remainsf8a63b938.
+
 ## Previous Home/history native preview (retired)
 
 Product **0a5a757e0**, launcher **26443**, app **27577**, runtime **27591**,

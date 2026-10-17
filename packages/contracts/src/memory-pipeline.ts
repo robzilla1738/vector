@@ -10,6 +10,14 @@ export const MemoryClaimSchema = z.object({
   mergedClaimIds: z.array(z.string().uuid()).max(200).optional(),
   text: z.string().min(1).max(2000),
   capturedAt: z.number().int().nonnegative(),
+  ownerEdit: z
+    .object({
+      text: z.string().trim().min(1).max(2000),
+      revision: z.number().int().positive(),
+      updatedAt: z.number().int().nonnegative(),
+    })
+    .strict()
+    .optional(),
   /** Exact source quote: report evidence or explicitly unverified owner-pasted context. Older encrypted notes remain readable. */
   source: z
     .discriminatedUnion("kind", [
@@ -90,3 +98,29 @@ export const MemoryPipelineForgetResultSchema = z.object({
 });
 export type MemoryClaim = z.infer<typeof MemoryClaimSchema>;
 export type MemoryPipelineOverview = z.infer<typeof MemoryPipelineOverviewSchema>;
+
+/** Owner prose never replaces the original evidence quote. */
+export function memoryClaimText(claim: MemoryClaim): string {
+  return claim.ownerEdit?.text ?? claim.text;
+}
+export const MemoryClaimDocumentsSchema = z.object({
+  generation: z.string().nullable(),
+  documents: z
+    .array(
+      z.object({
+        path: z.string(),
+        updatedAt: z.number().int().nonnegative(),
+        claim: MemoryClaimSchema,
+      }),
+    )
+    .max(200),
+});
+export const MemoryClaimEditParams = z
+  .object({
+    workspaceId: z.string().min(1),
+    claimId: z.string().uuid(),
+    expectedGeneration: z.string().min(1),
+    text: z.string().trim().min(1).max(2000),
+  })
+  .strict();
+export type MemoryClaimDocuments = z.infer<typeof MemoryClaimDocumentsSchema>;

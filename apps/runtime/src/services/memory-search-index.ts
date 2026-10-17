@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { MemoryClaim } from "@aux/contracts";
+import { memoryClaimText, type MemoryClaim } from "@aux/contracts";
 import { digest } from "@aux/contracts/util/digest";
 
 const ChunkSchema = z.object({ claimId: z.string().uuid(), text: z.string().max(1024) }).strict();
@@ -15,7 +15,7 @@ export type MemorySearchIndex = z.infer<typeof MemorySearchIndexSchema>;
 
 /** Bounded overlapping chunks, derived only from the authoritative approved notes. */
 export function buildMemorySearchIndex(claims: MemoryClaim[], updatedAt = Date.now()): MemorySearchIndex {
-  const sources = claims.map(({ claimId, text }) => ({ claimId, text }));
+  const sources = claims.map((claim) => ({ claimId: claim.claimId, text: memoryClaimText(claim) }));
   return {
     version: 1,
     updatedAt,

@@ -932,3 +932,118 @@ it("indexes real encrypted chunks, survives restart and rebuild, and removes for
     f.close();
   }
 });
+
+it("keeps source quotes intact when editing documents and carries owner text through recall, recovery and Forget", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    const quote = "The original amber garden contains three paper flowers.";
+    f.save("document-source", quote);
+    await f.pipeline.extractRun(workspaceId, "document-source");
+    const [note] = await f.pipeline.inbox(workspaceId);
+    await f.pipeline.review(workspaceId, note!.claimId, "accept");
+    const before = await f.pipeline.documents(workspaceId);
+    const text = "The revised violet garden contains seven folded leaves.";
+    const edited = await f.pipeline.editClaim({
+      workspaceId,
+      claimId: note!.claimId,
+      expectedGeneration: before.generation,
+      text,
+    });
+    expect(edited.text).toBe(quote);
+    expect(edited.source).toEqual(note!.source);
+    expect(edited.ownerEdit).toMatchObject({ text, revision: 1 });
+    const after = await f.pipeline.documents(workspaceId);
+    expect(after.documents[0]!.path).toBe(before.documents[0]!.path);
+    expect(after.documents[0]!.updatedAt).toBe(edited.ownerEdit!.updatedAt);
+    expect(after.generation).not.toBe(before.generation);
+    await expect(
+      f.pipeline.editClaim({
+        workspaceId,
+        claimId: note!.claimId,
+        expectedGeneration: before.generation,
+        text: "A stale change must not replace the saved revision.",
+      }),
+    ).rejects.toThrow(/Memory changed/);
+    expect((await f.pipeline.overview(workspaceId)).summary).toContain(text);
+    expect((await f.pipeline.overview(workspaceId)).summary).toContain("owner-edited, unverified");
+    expect(await f.pipeline.search(workspaceId, "revised violet")).toHaveLength(1);
+    expect(await f.pipeline.search(workspaceId, "original amber")).toEqual([]);
+    await f.pipeline.reindex(workspaceId);
+    expect((await f.pipeline.documents(workspaceId)).documents[0]!.claim.ownerEdit!.text).toBe(text);
+    const backup = await f.pipeline.recoverySnapshot();
+    expect(backup[0]!.claims[0]!.ownerEdit!.text).toBe(text);
+    expect(JSON.stringify(f.db.prepare("SELECT content FROM memory_files").all())).not.toContain(text);
+    f.save("document-source", "The source report changed and no longer supports the original quote.");
+    expect(await f.pipeline.search(workspaceId, "revised violet")).toEqual([]);
+    expect((await f.pipeline.overview(workspaceId)).summary).not.toContain(text);
+    await f.pipeline.forget({ workspaceId, sourceRunId: "document-source" });
+    expect((await f.pipeline.documents(workspaceId)).documents).toEqual([]);
+    expect(JSON.stringify(await f.pipeline.recoverySnapshot())).not.toContain(text);
+  } finally {
+    await f.pipeline.close();
+    f.close();
+  }
+});
+
+it("preserves distinct owner edits when duplicate source notes are consolidated", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    const quote = "The imaginary notebook has a blue paper cover.";
+    f.save("duplicate-source", `${quote}\n\n${quote}`);
+    await f.pipeline.extractRun(workspaceId, "duplicate-source");
+    for (const note of await f.pipeline.inbox(workspaceId))
+      await f.pipeline.review(workspaceId, note.claimId, "accept");
+    const notes = await f.pipeline.claims(workspaceId);
+    for (const [i, note] of notes.entries()) {
+      const current = await f.pipeline.documents(workspaceId);
+      await f.pipeline.editClaim({
+        workspaceId,
+        claimId: note.claimId,
+        expectedGeneration: current.generation,
+        text: `Owner revision ${i}: the imaginary notebook has a distinct paper cover.`,
+      });
+    }
+    await f.pipeline.consolidate(workspaceId);
+    const saved = await f.pipeline.claims(workspaceId);
+    expect(saved).toHaveLength(2);
+    expect(new Set(saved.map((note) => note.ownerEdit?.text)).size).toBe(2);
+  } finally {
+    await f.pipeline.close();
+    f.close();
+  }
+});
+
+it("recomputes contradictions from owner prose without dropping other approved documents", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    f.save(
+      "conflicting-source",
+      "The fictional garden gate is open.\n\nThe fictional garden gate is not open.",
+    );
+    await f.pipeline.extractRun(workspaceId, "conflicting-source");
+    for (const note of await f.pipeline.inbox(workspaceId))
+      await f.pipeline.review(workspaceId, note.claimId, "accept");
+    await f.pipeline.consolidate(workspaceId);
+    const before = await f.pipeline.documents(workspaceId);
+    expect(before.documents.every((document) => document.claim.contradictionIds?.length)).toBe(true);
+    const negative = before.documents.find((document) => document.claim.text.includes("not open"))!;
+    const edited = await f.pipeline.editClaim({
+      workspaceId,
+      claimId: negative.claim.claimId,
+      expectedGeneration: before.generation,
+      text: "The fictional garden gate is open.",
+    });
+    expect(edited.source).toEqual(negative.claim.source);
+    expect(edited.contradictionIds).toBeUndefined();
+    const after = await f.pipeline.documents(workspaceId);
+    expect(after.documents).toHaveLength(2);
+    expect(after.documents.every((document) => !document.claim.contradictionIds?.length)).toBe(true);
+    expect((await f.pipeline.overview(workspaceId)).summary).toContain("owner-edited, unverified");
+  } finally {
+    await f.pipeline.close();
+    f.close();
+  }
+});

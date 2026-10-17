@@ -97,3 +97,28 @@ routine document model described above. Future owner-authored documents must joi
 these authoritative consumers and recovery/Forget semantics; this claim-backed
 index is not a substitute for the required document browser or episodic retention.
 Native acceptance remains pending with the next consolidated build.
+
+
+## Approved-document edit model — October 17
+
+memory.pipeline.documents returns each approved claim with its stable path
+`episodic/YYYY-MM-DD/<claimId>.md`, effective modification time and the encrypted
+workspace generation. memory.pipeline.edit requires that exact generation and
+stores ownerEdit text/revision/time beside, not over, the original quote. Recall,
+handbook and the search index use the effective text with owner-edit attribution;
+source eligibility and exact-quote checks still use original evidence. History
+and recovery carry the edit, while source/claim/all Forget removes it with its
+claim. Reindex cannot overwrite it. Consolidation never merges away distinct owner
+edits; editing refreshes contradiction flags without aging or merging other notes.
+
+The generation is the save precondition, including after rollback; the ownerEdit
+revision is descriptive and must not be used alone as a conflict token. A future
+editor must keep the rejected draft and base generation until explicit reload or
+cancel. Paths and source relationships survive edits, and removed claims cannot
+be recreated through this edit method.
+
+This implements the approved-note side only. Root MEMORY.md/USER.md/TAXONOMY.md,
+sites/routines and the document-browser UI remain incomplete. Manual Space content
+already has a revision and updatedAt in WorkspaceMemory, and is consumed directly
+by workspaceMemoryText; preserve that authority while integrating it. Do not make
+an independent copy of those notes merely to populate the tree.

@@ -191,6 +191,8 @@ export const RuntimeMethodPolicy = {
   "memory.pipeline.history": { feature: "memory", auth: "standard" },
   "memory.pipeline.activity": { feature: "memory", auth: "aux-webui" },
   "memory.pipeline.reindex": { feature: "memory", auth: "aux-webui" },
+  "memory.pipeline.documents": { feature: "memory", auth: "aux-webui" },
+  "memory.pipeline.edit": { feature: "memory", auth: "aux-webui" },
   "memory.pipeline.revert": { feature: "memory", auth: "standard" },
   "memory.pipeline.review": { feature: "memory", auth: "standard" },
   "memory.pipeline.overview": { feature: "memory", auth: "standard" },

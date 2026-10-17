@@ -1,3 +1,4 @@
+import { memoryClaimText } from "@aux/contracts";
 import type { MemoryView } from "../routes";
 import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallGhostButtonProps } from "../../ui/button-props";
@@ -639,9 +640,9 @@ function SpaceMemoryContent({
             {claims.map((claim) => (
               <div className="row" key={claim.claimId}>
                 <span {...auxClassGrowProps}>
-                  {claim.text}{" "}
+                  {memoryClaimText(claim)}{" "}
                   <span {...staticHintProps}>
-                    [
+                    [{claim.ownerEdit && "owner-edited, unverified · "}
                     {claim.source?.kind === "owner-paste"
                       ? `pasted import ${claim.source.importId.slice(0, 8)} · unverified`
                       : `run:${claim.sourceRunId}${claim.source ? `#${claim.source.quoteSha256.slice(0, 12)}` : ""}`}

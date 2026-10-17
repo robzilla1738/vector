@@ -2660,3 +2660,22 @@ Validation: layout check typecheck/lint +4,631tests/745files in109.59s, log
 /tmp/aux-memory-layout-check.log. After the read-error correction, typecheck/lint
 and40focused tests/3files pass, log /tmp/aux-memory-retry-check.log. No repeated
 unchanged full suite. Native healthy/light/narrow comparison remains open.
+
+
+## October 17 — approved-document editing foundation
+
+Added stable episodic paths/modified times and generation-checked edit API for
+approved notes. Owner prose lives separately from immutable report/paste quotes,
+in the same encrypted generation and recovery history. Recall/index/handbook/UI
+note rows use effective text and explicit owner-edit attribution. Original source
+eligibility and quote checks remain; revocation withholds edited prose. Forget
+scrubs it with its source. Consolidation preserves distinct edits; edits recompute
+contradictions without dropping other notes. No document-tree UI delivered yet.
+
+Integrated typecheck/lint +4,634tests/745files passed in98.55s, log
+/tmp/aux-memory-document-model-check.log. Final contradiction correction passed
+typecheck/lint +33focused tests/2files in3.32s, log
+/tmp/aux-memory-document-conflicts-check.log. Dist rebuilt before runtime tests.
+Next: actual browser/editor, root document authority, conflict draft retention,
+matched native evidence. Combine with the configuration layout in a later build;
+f8a63b938 remains live. Full parity remains open.

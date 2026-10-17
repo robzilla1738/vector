@@ -12,6 +12,7 @@ async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
     [
       "memory.pipeline.setPolicy",
       "memory.pipeline.reindex",
+      "memory.pipeline.edit",
       "memory.pipeline.revert",
       "memory.pipeline.review",
       "memory.pipeline.forget",
@@ -38,6 +39,8 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
     const result = await pipeline.extractRun(params.workspaceId, params.runId);
     return changed(result);
   }
+  if (method === "memory.pipeline.documents") return pipeline.documents(params.workspaceId);
+  if (method === "memory.pipeline.edit") return changed(await pipeline.editClaim(params));
   if (method === "memory.pipeline.sources") return pipeline.sources(params.workspaceId);
   if (method === "memory.pipeline.inbox") return pipeline.inbox(params.workspaceId);
   if (method === "memory.pipeline.claims") return pipeline.claims(params.workspaceId);
@@ -106,6 +109,8 @@ export const memoryMethods: Partial<Record<MethodName, MethodHandler>> = {
   "memory.pipeline.history": h_memory_pipeline_policy,
   "memory.pipeline.activity": h_memory_pipeline_policy,
   "memory.pipeline.reindex": h_memory_pipeline_policy,
+  "memory.pipeline.documents": h_memory_pipeline_policy,
+  "memory.pipeline.edit": h_memory_pipeline_policy,
   "memory.pipeline.revert": h_memory_pipeline_policy,
   "memory.pipeline.review": h_memory_pipeline_policy,
   "memory.pipeline.overview": h_memory_pipeline_policy,

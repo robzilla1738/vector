@@ -1,3 +1,4 @@
+import { memoryClaimText, MemoryClaimEditParams } from "@aux/contracts";
 import {
   buildMemorySearchIndex,
   validMemorySearchIndex,
@@ -41,7 +42,7 @@ import {
 } from "./memory-paste.js";
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
-import { consolidateMemoryClaims } from "./night-memory.js";
+import { consolidateMemoryClaims, markMemoryContradictions } from "./night-memory.js";
 import { SpaceMemoryStore, type MemoryGeneration, type MemoryRevision } from "./space-memory-store.js";
 import { renderObservation } from "./observation-render.js";
 
@@ -464,14 +465,18 @@ export class MemoryPipeline {
 
   private summary(claims: MemoryClaim[]): string {
     const latest = [...claims]
-      .filter((claim) => !claim.contradictionIds?.length && !memoryContentSensitivityReason(claim.text))
-      .sort((a, b) => b.capturedAt - a.capturedAt)
+      .filter(
+        (claim) => !claim.contradictionIds?.length && !memoryContentSensitivityReason(memoryClaimText(claim)),
+      )
+      .sort((a, b) => (b.ownerEdit?.updatedAt ?? b.capturedAt) - (a.ownerEdit?.updatedAt ?? a.capturedAt))
       .slice(0, 4);
     const lines: string[] = [];
     let bytes = 0;
     for (const claim of latest) {
-      const line =
-        claim.source?.kind === "owner-paste"
+      const text = memoryClaimText(claim);
+      const line = claim.ownerEdit
+        ? `- ${text.slice(0, 360)} [owner-edited, unverified; source:${claim.sourceRunId}]`
+        : claim.source?.kind === "owner-paste"
           ? `- ${claim.text.slice(0, 360)} [owner-pasted, unverified; import:${claim.source.importId}]`
           : `- ${claim.text.slice(0, 360)} [run:${claim.sourceRunId}${claim.source ? `#${claim.source.quoteSha256.slice(0, 12)}` : ""}]`;
       const size = Buffer.byteLength(line, "utf8") + 1;
@@ -490,7 +495,7 @@ export class MemoryPipeline {
             claim.source?.kind === "owner-paste"
               ? `Owner-pasted note (unverified), import: ${claim.source.importId}`
               : `Source run: ${claim.sourceRunId}`
-          }\n${claim.text}`,
+          }${claim.ownerEdit ? "\nOwner-edited text (unverified):" : ""}\n${memoryClaimText(claim)}`,
       )
       .join("\n\n");
   }
@@ -921,6 +926,62 @@ export class MemoryPipeline {
     });
   }
 
+  async documents(workspaceId: string) {
+    return this.own(async () => {
+      this.requireSpace(workspaceId);
+      const state = await this.readClaims(workspaceId);
+      return {
+        generation: state.prior?.generation ?? null,
+        documents: state.claims.map((claim) => ({
+          path: `episodic/${new Date(claim.capturedAt).toISOString().slice(0, 10)}/${claim.claimId}.md`,
+          updatedAt: claim.ownerEdit?.updatedAt ?? claim.capturedAt,
+          claim,
+        })),
+      };
+    });
+  }
+
+  async editClaim(raw: unknown) {
+    return this.own(async () => {
+      const input = MemoryClaimEditParams.parse(raw);
+      this.requireSpace(input.workspaceId);
+      if (memoryPasteSensitivity(input.text) || memoryContentSensitivityReason(input.text))
+        throw new AuxError(
+          "permission_denied",
+          "Remove sensitive details before saving this memory document.",
+        );
+      return this.leased(input.workspaceId, async () => {
+        const { claims, inbox, history, prior } = await this.readClaims(input.workspaceId);
+        if (prior?.generation !== input.expectedGeneration)
+          throw new AuxError(
+            "conflict",
+            "Memory changed. Review the latest document before saving your draft.",
+          );
+        const original = claims.find((claim) => claim.claimId === input.claimId);
+        if (!original) throw new AuxError("not_found", "This memory document is no longer available.");
+        const edited = MemoryClaimSchema.parse({
+          ...original,
+          ownerEdit: {
+            text: input.text,
+            revision: (original.ownerEdit?.revision ?? 0) + 1,
+            updatedAt: Date.now(),
+          },
+        });
+        const next = markMemoryContradictions(
+          claims.map((claim) => (claim.claimId === input.claimId ? edited : claim)),
+        );
+        await this.writeGeneration(
+          input.workspaceId,
+          next,
+          inbox,
+          [...history, this.snapshot(next)].slice(-10),
+          prior,
+        );
+        return next.find((claim) => claim.claimId === input.claimId)!;
+      });
+    });
+  }
+
   async reindex(workspaceId: string) {
     return this.own(() => this.reindexOwned(workspaceId));
   }
@@ -1058,7 +1119,7 @@ export class MemoryPipeline {
         (claim) =>
           !claim.contradictionIds?.length &&
           this.eligibleForRecall(workspaceId, claim) &&
-          !memoryContentSensitivityReason(claim.text) &&
+          !memoryContentSensitivityReason(memoryClaimText(claim)) &&
           matchingIds.has(claim.claimId),
       )
       .slice(-20)
