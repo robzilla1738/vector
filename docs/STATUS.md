@@ -1,5 +1,13 @@
 # Aux status — October 16, 2026
 
+Consolidated native clipboard candidate started from `f22e40699`, including
+context menus and split-readiness follow-up. Launcher **70194**, exec session
+**48817**, log `/tmp/aux-bookmark-clipboard-native.log`; process confirmed live at
+8s. Preserve its ownership and poll this session. Previous launcher 59717 received
+SIGTERM; app 63674 exited, Profile aux-dev-R84mt4 was removed and lock release was
+verified before replacement. Next: About identity, Cut/Copy/Paste and Undo using
+synthetic bookmarks, right-click/keyboard menus, and actual split opening.
+
 Bookmark clipboard batch (reference 170) is implemented in source. Single-row
 Cut/Copy use Chromium's native bookmark clipboard format; Paste accepts native
 bookmark trees or a URL, inserts after the selected row or at the current folder's
