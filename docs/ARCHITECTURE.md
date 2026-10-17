@@ -195,8 +195,11 @@ Configured model destinations retain the original account, connection revision, 
 ## Settings design ownership
 
 Settings uses the shared spacing, radius, typography and control-size tokens in
-`apps/shell/src/tokens.css`. `settings/controls.css` owns single-choice dropdown
-triggers and native picker styling for Settings and portaled dialogs. Keep native
+`apps/shell/src/tokens.css`. `settings/controls.css` owns buttons, form controls,
+single-choice dropdown triggers and native pickers for Settings and portaled dialogs.
+Status badges and timeline chips share pill geometry in styles/primitives.css; their
+individual selectors own only tone or content-specific behavior. Page/dialog title
+tokens scale with Interface text. Keep native
 select keyboard behavior and use the shared focus/dismissal handling.
 
 Use `SettingsField` for searchable labeled rows, `SettingsGroup` or `settings-card`

@@ -1,3 +1,4 @@
+import { settingsButtonCss } from "../../../../../tests/unit/settings-control-css";
 // @vitest-environment jsdom
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -53,10 +54,8 @@ beforeEach(() => {
   // Parse shipped scoped rules without layers/containers: jsdom does not lay out native text or pixels.
   const wrap = css.match(/\.settings-content :is\(\[role="alert"\], \.hint\) \{[^}]+\}/)?.[0];
   assert.ok(wrap);
-  const controls = css.match(/\.settings-content \.btn \{[^}]+\}/)?.[0];
-  assert.ok(controls?.includes("min-height: 32px"));
   style = document.createElement("style");
-  style.textContent = `${wrap}\n${controls}`;
+  style.textContent = `${wrap}\n${settingsButtonCss}`;
   document.head.append(style);
 });
 afterEach(async () => {
@@ -329,16 +328,20 @@ it("retains actual zoom ACK but refuses delivery after live capability loss", as
   expect(select.value).toBe("100");
 });
 
-
-it.each([25, 500])("saves and displays the %s%% endpoint through the native preference writer", async (percentage) => {
-  mocks.zoom.mockResolvedValueOnce({ percentage: 100, managed: false }).mockResolvedValueOnce({ percentage, managed: false });
-  await act(async () => root.render(<DefaultPageZoomSetting active />));
-  const select = host.querySelector<HTMLSelectElement>("select")!;
-  await act(async () => {
-    select.value = String(percentage);
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-  expect(mocks.zoom.mock.calls).toEqual([[], [percentage]]);
-  expect(select.value).toBe(String(percentage));
-  expect(host.querySelector('[role="alert"]')).toBeNull();
-});
+it.each([25, 500])(
+  "saves and displays the %s%% endpoint through the native preference writer",
+  async (percentage) => {
+    mocks.zoom
+      .mockResolvedValueOnce({ percentage: 100, managed: false })
+      .mockResolvedValueOnce({ percentage, managed: false });
+    await act(async () => root.render(<DefaultPageZoomSetting active />));
+    const select = host.querySelector<HTMLSelectElement>("select")!;
+    await act(async () => {
+      select.value = String(percentage);
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(mocks.zoom.mock.calls).toEqual([[], [percentage]]);
+    expect(select.value).toBe(String(percentage));
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  },
+);

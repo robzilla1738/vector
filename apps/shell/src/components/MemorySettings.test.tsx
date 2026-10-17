@@ -1,3 +1,4 @@
+import { settingsButtonCss } from "../../../../tests/unit/settings-control-css";
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -94,6 +95,8 @@ beforeEach(() => {
     readFileSync(join(dir, "../styles/primitives.css"), "utf8")
       .match(/\.btn(?:\.sm)? \{[^}]+\}/g)!
       .join("\n") +
+    "\n" +
+    settingsButtonCss +
     "\n" +
     memoryRules.join("\n");
   document.head.append(style);

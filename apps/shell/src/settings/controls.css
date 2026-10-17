@@ -1,6 +1,44 @@
 /* One control treatment for Settings and its portaled editors. Native select
  * keeps keyboard navigation, typeahead, labels, refs and change events intact. */
 @layer components {
+  :is(.settings-content, .aux-native-dialog) .btn {
+    min-height: var(--control-h-lg);
+    height: auto;
+    max-width: 100%;
+    padding: var(--space-1-5) var(--space-2-5);
+    border: var(--hairline) solid transparent;
+    border-radius: var(--r-lg);
+    box-shadow: none;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-regular);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  :is(.settings-content, .aux-native-dialog) .btn:not(.ghost):not(.primary):not(.danger) {
+    border-color: var(--line);
+  }
+  :is(.settings-content, .aux-native-dialog)
+    :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select) {
+    min-height: var(--control-h-lg);
+    height: var(--control-h-lg);
+    padding: 0 var(--space-2-5);
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: none;
+    font-size: var(--fs-sm);
+  }
+  :is(.settings-content, .aux-native-dialog) textarea {
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-lg);
+    padding: var(--space-3);
+    box-shadow: none;
+    font-size: var(--fs-sm);
+  }
+  :is(.settings-content, .aux-native-dialog) :is(input, select, textarea, .btn):focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: 2px;
+  }
+
   :is(.settings-content, .aux-native-dialog) select:not([multiple]):not([size]) {
     appearance: base-select;
     display: inline-flex;
@@ -64,7 +102,7 @@
   }
   :is(.settings-content, .aux-native-dialog) select option::checkmark {
     content: "✓";
-    font-size: 12px;
+    font-size: var(--fs-xs);
     order: 1;
     margin-inline-start: auto;
     color: var(--ink-1);

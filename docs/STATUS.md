@@ -7,6 +7,27 @@ The accumulated chronological status entries are preserved in
 [historical status](STATUS-HISTORY-2026-10-17.md); old preview handles there are
 retired and old gaps may have been resolved by later entries.
 
+## Pills, buttons and typography consolidation — source
+
+The owner requested consistent pills, buttons and text sizes across surfaces.
+Settings and portaled dialog buttons/inputs now share controls.css; removed the
+replaced Settings.css and shell.css button recipes. Status badges and timeline
+chips share pill geometry in primitives.css, with semantic height/radius/type
+tokens. Settings headings now scale with Interface text via page/dialog title
+tokens; no literal font sizes remain in settings stylesheets. Permission sections
+use SettingsGroup rather than title-specific margin/corner selectors. Feature cards
+now align with the surrounding groups.
+
+The integrated check passed 4,640 tests and found six stylesheet-fixture failures
+in four files after moving the rules. Updated those fixtures to read the shared
+stylesheet and actual tokens; all 54 affected tests in five files passed. Renderer
+build passed (`/tmp/aux-control-standards-build.log`). Final typecheck/lint follows
+in `/tmp/aux-controls-final-check.log`. Native acceptance of this source is pending.
+
+The local mock preview was briefly embedded inside Aux for source inspection,
+which duplicated browser sidebars. It has been closed and the visible app returned
+to native Quick Ask Settings. Keep the user-visible preview on native pages.
+
 ## Shared feature cards and Settings tokens — source
 
 CLI and Quick Ask now reuse the same responsive feature-card layout in
@@ -18,10 +39,11 @@ shows the real supported `aux open` command; installation behavior is unchanged.
 
 Integrated check passed 4,646 tests / 746 files, typecheck and lint in 96.48s
 (`/tmp/aux-settings-feature-check.log`). Subsequent grouping passed typecheck and
-six affected tests across three files. Renderer build passed. Native/source visual
-review of these latest feature cards is pending; current build targets a51e5a915.
+six affected tests across three files. Renderer build passed. CLI and Quick Ask
+feature cards were reviewed in the local renderer after a full refresh; alignment
+was corrected. Packaged acceptance remains pending.
 
-## Developers, Passwords and shared surfaces — source
+## Developers, Passwords and shared surfaces — packaged a51e5a915
 
 Developers now uses shared CLI, Remote control and Skills & MCP groups. Passwords
 uses Password managers and Autofill groups, with a working navigation row to Aux
@@ -33,8 +55,10 @@ card overrides; spacing reuses existing tokens.
 Integrated check passed 4,646 tests / 746 files, typecheck and lint
 (`/tmp/aux-developer-password-layout-check.log`). Follow-up typecheck and all nine
 Permissions tests passed; all five native-library route tests passed. Native area
-0053 returns the History clear-data dialog to History on dismissal; native build
-and cancellation acceptance are pending.
+0053 passed native acceptance: History → Delete browsing data opened the native
+dialog with the return route; Cancel returned directly to chrome://history/. No
+data was deleted. Packaged Developers grouping and the plain Tool permissions
+surface were observed; the remaining permission groups were then consolidated.
 
 ## General, Agents and Memory layout consolidation — packaged c9d878e2
 
@@ -100,12 +124,13 @@ No unchanged full suite repeated. Packaged build succeeded in 9m52.23s.
 
 ## Current native preview
 
-Product **c9d878e2**, launcher **58946**, app **62706**, exec **66192**,
-API port **58719**, disposable Profile **aux-dev-pz0B4o**.
-Log `/tmp/aux-settings-layout-native-build.log`; native build passed in **8m52.44s**.
-CUA `layoutSettingsApp` is live. Preserve launcher cleanup ownership. Prior launcher
-53737, its app/runtime, Profile and lock retired normally and were verified removed.
-About confirmed clean source c9d878e2c8e33808968c27e6e893a0bedd9633bc.
+Product **a51e5a915**, launcher **63746**, app **67654**, runtime **67669**,
+exec **69315**, API port **59755**, disposable Profile **aux-dev-e5H1uw**.
+Log `/tmp/aux-settings-library-native-build.log`; native build passed in **9m32.48s**.
+CUA `groupedSettingsApp` is live on native Quick Ask. Previous launcher58946,
+app62706/runtime62722, disposable Profile and lock retired normally and were verified
+removed. About confirms a51e5a9153ff87a5a7e67346fc86008c61bbbc1e. Latest source
+contains the subsequent shared feature-card/control/token consolidation.
 
 The following populated Memory evidence is from earlier disposable previews:
 
@@ -416,7 +441,7 @@ Other known work includes real channel transports/pairing/reply delivery
 and subscription adapters, standalone routine behavior, cleanup/timer ownership,
 device capture/file grants/maintenance, completion sound behavior, and matched
 native light/narrow/populated-state comparisons. The native Clear History cancel
-path still exposes Chromium/Google-worded Privacy settings. These are not an
+path now returns to History; the dialog itself still includes Chromium wording. These are not an
 exhaustive completion checklist; audit the full reference ledger and ROADMAP.
 
 Phase performance evidence and the manual20-task smoke remain incomplete.

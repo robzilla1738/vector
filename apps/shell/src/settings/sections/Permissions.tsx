@@ -270,134 +270,146 @@ export function PermissionsSettings({
           <PolicyTable policy={policy} busy={busy} save={(rules) => void save({ agentPolicies: rules })} />
         </details>
       </SettingsField>
-      <SettingsField
-        label="Site permissions"
-        hint="Rules apply to an exact site origin. Revoke a rule to return to the category or mode default."
-        searchTerms={["always allow", "amount limit", "revoke", "origin"]}
-      >
-        <div className="permission-site-rules">
-          {policy.agentPolicies
-            .filter((rule) => rule.site)
-            .map((rule) => (
-              <div className="permission-site-rule" key={`${rule.site}|${rule.category}`}>
-                <div>
-                  <strong>{rule.site}</strong>
-                  <span>
-                    {categoryLabels[rule.category]} · {rule.access}
-                    {rule.amountLimit !== undefined ? ` · up to ${rule.amountLimit}` : ""}
-                  </span>
-                </div>
-                <button
-                  {...smallButtonProps}
-                  disabled={busy}
-                  onClick={() =>
-                    void save({ agentPolicies: policy.agentPolicies.filter((value) => value !== rule) })
-                  }
-                >
-                  Revoke
-                </button>
-              </div>
-            ))}
-        </div>
-        {!policy.agentPolicies.some((rule) => rule.site) && <p {...staticHintProps}>No saved site rules.</p>}
-        <Popover
-          label="Add site rule"
-          className="permission-add-rule"
-          disabled={!active}
-          trigger={
-            <>
-              <Plus /> Add Rule
-            </>
-          }
+      <SettingsGroup>
+        <SettingsField
+          label="Site permissions"
+          hint="Rules apply to an exact site origin. Revoke a rule to return to the category or mode default."
+          searchTerms={["always allow", "amount limit", "revoke", "origin"]}
         >
-          {(close) => (
-            <form
-              className="permission-site-form"
-              onSubmit={(event) =>
-                void addSite(event).then((saved) => {
-                  if (saved) close();
-                })
-              }
-            >
-              <strong>Add site rule</strong>
-              <p>Apply a rule to one exact site origin.</p>
-              <input
-                aria-label="Site origin"
-                type="url"
-                required
-                placeholder="https://example.com"
-                value={site}
-                onChange={(event) => setSite(event.target.value)}
-                disabled={busy}
-              />
-              <select
-                aria-label="Site action category"
-                value={category}
-                onChange={(event) => {
-                  const found = AgentPolicyCategorySchema.options.find((key) => key === event.target.value);
-                  if (found) setCategory(found);
-                }}
-                disabled={busy}
-              >
-                {AgentPolicyCategorySchema.options
-                  .filter((key) => key !== "account_security" && key !== "captcha")
-                  .map((key) => (
-                    <option key={key} value={key}>
-                      {categoryLabels[key]}
-                    </option>
-                  ))}
-              </select>
-              <select
-                aria-label="Site access"
-                value={access}
-                onChange={(event) =>
-                  setAccess(
-                    event.target.value === "ask" ? "ask" : event.target.value === "block" ? "block" : "allow",
-                  )
+          <div className="permission-site-rules">
+            {policy.agentPolicies
+              .filter((rule) => rule.site)
+              .map((rule) => (
+                <div className="permission-site-rule" key={`${rule.site}|${rule.category}`}>
+                  <div>
+                    <strong>{rule.site}</strong>
+                    <span>
+                      {categoryLabels[rule.category]} · {rule.access}
+                      {rule.amountLimit !== undefined ? ` · up to ${rule.amountLimit}` : ""}
+                    </span>
+                  </div>
+                  <button
+                    {...smallButtonProps}
+                    disabled={busy}
+                    onClick={() =>
+                      void save({ agentPolicies: policy.agentPolicies.filter((value) => value !== rule) })
+                    }
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ))}
+          </div>
+          {!policy.agentPolicies.some((rule) => rule.site) && (
+            <p {...staticHintProps}>No saved site rules.</p>
+          )}
+          <Popover
+            label="Add site rule"
+            className="permission-add-rule"
+            disabled={!active}
+            trigger={
+              <>
+                <Plus /> Add Rule
+              </>
+            }
+          >
+            {(close) => (
+              <form
+                className="permission-site-form"
+                onSubmit={(event) =>
+                  void addSite(event).then((saved) => {
+                    if (saved) close();
+                  })
                 }
-                disabled={busy}
               >
-                <option value="allow">Allow</option>
-                <option value="ask">Ask</option>
-                <option value="block">Block</option>
-              </select>
-              {category === "money" && access === "allow" && (
+                <strong>Add site rule</strong>
+                <p>Apply a rule to one exact site origin.</p>
                 <input
-                  aria-label="Optional payment amount limit"
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  placeholder="No amount limit"
+                  aria-label="Site origin"
+                  type="url"
+                  required
+                  placeholder="https://example.com"
+                  value={site}
+                  onChange={(event) => setSite(event.target.value)}
                   disabled={busy}
                 />
-              )}
-              <button {...smallButtonProps} type="submit" disabled={busy || !site.trim()}>
-                Save site rule
-              </button>
-              {error && <p role="alert">{error}</p>}
-            </form>
-          )}
-        </Popover>
-      </SettingsField>
-      <SettingsField
-        label="Connected tools"
-        hint="Adding a server enables its tools. Disable individual tools here."
-        searchTerms={["MCP", "tools", "connections", "enable", "disable"]}
-      >
-        <McpPermissions active={active} />
-        <button {...smallButtonProps} onClick={() => openSettings("Connections", "Services")}>
-          Manage MCP tools
-        </button>
-      </SettingsField>
-      <SettingsField
-        label="Activity log"
-        hint="Review recorded permission decisions and the original task receipts."
-        searchTerms={["history", "undo", "blocked", "allowed"]}
-      >
-        <ActivityLog active={active} />
-      </SettingsField>
+                <select
+                  aria-label="Site action category"
+                  value={category}
+                  onChange={(event) => {
+                    const found = AgentPolicyCategorySchema.options.find((key) => key === event.target.value);
+                    if (found) setCategory(found);
+                  }}
+                  disabled={busy}
+                >
+                  {AgentPolicyCategorySchema.options
+                    .filter((key) => key !== "account_security" && key !== "captcha")
+                    .map((key) => (
+                      <option key={key} value={key}>
+                        {categoryLabels[key]}
+                      </option>
+                    ))}
+                </select>
+                <select
+                  aria-label="Site access"
+                  value={access}
+                  onChange={(event) =>
+                    setAccess(
+                      event.target.value === "ask"
+                        ? "ask"
+                        : event.target.value === "block"
+                          ? "block"
+                          : "allow",
+                    )
+                  }
+                  disabled={busy}
+                >
+                  <option value="allow">Allow</option>
+                  <option value="ask">Ask</option>
+                  <option value="block">Block</option>
+                </select>
+                {category === "money" && access === "allow" && (
+                  <input
+                    aria-label="Optional payment amount limit"
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                    placeholder="No amount limit"
+                    disabled={busy}
+                  />
+                )}
+                <button {...smallButtonProps} type="submit" disabled={busy || !site.trim()}>
+                  Save site rule
+                </button>
+                {error && <p role="alert">{error}</p>}
+              </form>
+            )}
+          </Popover>
+        </SettingsField>
+      </SettingsGroup>
+      <SettingsGroup>
+        <SettingsField
+          label="Connected tools"
+          hint="Adding a server enables its tools. Disable individual tools here."
+          searchTerms={["MCP", "tools", "connections", "enable", "disable"]}
+        >
+          <McpPermissions active={active} />
+          <button {...smallButtonProps} onClick={() => openSettings("Connections", "Services")}>
+            Manage MCP tools
+          </button>
+        </SettingsField>
+      </SettingsGroup>
+      <SettingsGroup>
+        <SettingsField
+          label="Activity log"
+          hint="Review recorded permission decisions and the original task receipts."
+          searchTerms={["history", "undo", "blocked", "allowed"]}
+        >
+          <ActivityLog active={active} />
+        </SettingsField>
+      </SettingsGroup>
       {confirmation}
     </SettingsSection>
   );

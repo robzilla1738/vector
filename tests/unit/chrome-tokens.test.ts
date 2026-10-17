@@ -376,10 +376,10 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     );
     const navigation = settingsCss.match(/\.settings-nav button\[data-category\]\s*\{[^}]+\}/)![0];
     expectCss(navigation).toContain(
-      ".settings-nav button[data-category] { display: flex; align-items: center; gap: 8px;",
+      ".settings-nav button[data-category] { display: flex; align-items: center; gap: var(--space-2);",
     );
     expectCss(navigation).toContain("height: 32px;");
-    expectCss(navigation).toContain("border-radius: 10px;");
+    expectCss(navigation).toContain("border-radius: var(--r-control);");
     expectCss(navigation).not.toContain("box-shadow:");
     expectCss(settingsCss).toContain(
       ".settings-content .field.ui-setting:not(.field.ui-setting + .field.ui-setting) { border-start-start-radius: var(--r-xl); border-start-end-radius: var(--r-xl); }",

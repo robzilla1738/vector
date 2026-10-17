@@ -67,6 +67,8 @@
     --fs-2xs: calc(var(--ui-font-size) - 3px);
     --fs-2xl: calc(var(--ui-font-size) + 9px);
     --fs-3xl: calc(var(--ui-font-size) + 15px);
+    --fs-page-title: calc(var(--ui-font-size) + 10px);
+    --fs-dialog-title: calc(var(--ui-font-size) + 6px);
 
     --lh-tight: 1.25;
     --lh-normal: 1.5;
@@ -158,6 +160,9 @@
     --hit: 32px;
     --chip-h: 24px;
     --badge-h: 20px;
+    --pill-h: var(--badge-h);
+    --pill-radius: var(--r-pill);
+    --pill-font-size: var(--fs-2xs);
     --row-h: 32px;
     --row-h-lg: 40px;
 

@@ -1,3 +1,4 @@
+import { settingsButtonCss, settingsControlCss } from "../../../tests/unit/settings-control-css";
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -37,13 +38,16 @@ beforeEach(() => {
   document.body.append(host);
   style = document.createElement("style");
   // Apply genuine flat rules because jsdom does not parse CSS layers/container queries.
-  style.textContent = [
-    ...settings.matchAll(
-      /(?:\.search-engines-setting[^{}]*|\.engine-[^{}]*|\.settings-content \.btn |\.settings-content \.row |\.settings-content :is\(input, select, textarea, \.btn\):focus-visible )\{[^}]*\}/g,
-    ),
-  ]
-    .map((row) => row[0])
-    .join("\n");
+  style.textContent =
+    settingsButtonCss +
+    "\n" +
+    [
+      ...settings.matchAll(
+        /(?:\.search-engines-setting[^{}]*|\.engine-[^{}]*|\.settings-content \.btn |\.settings-content \.row |\.settings-content :is\(input, select, textarea, \.btn\):focus-visible )\{[^}]*\}/g,
+      ),
+    ]
+      .map((row) => row[0])
+      .join("\n");
   document.head.append(style);
   root = createRoot(host);
 });
@@ -106,9 +110,9 @@ it("preserves existing focus, disabled, palette and preference recipes without n
   expect(rules).not.toMatch(
     /opacity|color:|background|outline|overflow:\s*(hidden|clip)|animation|transition|white-space:\s*nowrap/,
   );
-  expect(settings).toMatch(/\.settings-content \.btn\s*\{[^}]*min-height:\s*32px/);
-  expect(settings).toMatch(
-    /\.settings-content :is\(input, select, textarea, \.btn\):focus-visible\s*\{[^}]*outline:\s*2px solid var\(--focus-line\)/,
+  expect(settingsButtonCss).toMatch(/min-height:\s*32px/);
+  expect(settingsControlCss).toMatch(
+    /:is\(\.settings-content, \.aux-native-dialog\) :is\(input, select, textarea, \.btn\):focus-visible\s*\{[^}]*outline:\s*2px solid var\(--focus-line\)/,
   );
   expect(settings).toContain("@media (prefers-reduced-motion: reduce)");
   expect(settings).toContain("@container settings-page (width < 720px)");

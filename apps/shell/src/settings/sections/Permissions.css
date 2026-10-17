@@ -216,16 +216,3 @@
     line-height: 1.5;
   }
 }
-
-@layer overrides {
-  .settings-content
-    .permissions-settings
-    .field.ui-setting:is(
-      [data-setting="Site permissions"],
-      [data-setting="Connected tools"],
-      [data-setting="Activity log"]
-    ) {
-    margin-block: var(--space-5) 0;
-    border-radius: var(--r-lg);
-  }
-}

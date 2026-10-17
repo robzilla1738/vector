@@ -493,39 +493,6 @@
 }
 
 @layer components {
-  .settings-content .btn {
-    min-height: 32px;
-    height: auto;
-    padding: 6px 10px;
-    border: 0;
-    border-radius: var(--r-lg);
-    box-shadow: none;
-    font-size: var(--fs-sm);
-  }
-  .settings-content :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select) {
-    min-height: 32px;
-    height: 32px;
-    padding: 0 10px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    box-shadow: none;
-    font-size: var(--fs-sm);
-  }
-  .settings-content textarea {
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    padding: var(--space-3);
-    box-shadow: none;
-    font-size: var(--fs-sm);
-  }
-  .settings-content :is(input, select, textarea, .btn):focus-visible {
-    outline: 2px solid var(--focus-line);
-    outline-offset: 2px;
-  }
-  .settings-content .btn:not(.ghost):not(.primary):not(.danger) {
-    border: 1px solid var(--line);
-  }
-
   .feature-availability {
     width: 100%;
     table-layout: fixed;

@@ -843,15 +843,11 @@
     gap: var(--space-1);
   }
   .tl-chip {
-    display: inline-flex;
-    align-items: center;
     max-width: 100%;
-    height: var(--badge-h);
-    padding: 0 var(--space-2);
-    border-radius: var(--r-md);
     background: var(--bg-3);
     color: var(--ink-1);
-    font: var(--fs-2xs)/1 var(--font-mono);
+    font-family: var(--font-mono);
+    line-height: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

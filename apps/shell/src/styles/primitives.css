@@ -305,22 +305,23 @@
   .btn svg {
     flex: none;
   }
-  .st {
+  :is(.st, .badge, .ui-status, .tl-chip) {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    height: var(--badge-h);
+    min-height: var(--pill-h);
     padding: 0 var(--space-2);
-    border-radius: var(--r-xs);
-    font-size: var(--fs-2xs);
+    border-radius: var(--pill-radius);
+    font-size: var(--pill-font-size);
     font-weight: var(--fw-medium);
-    letter-spacing: 0.01em;
     flex: none;
     white-space: nowrap;
+  }
+  .st {
     text-transform: capitalize;
   }
   .st.mini {
-    height: var(--space-4);
+    min-height: var(--space-4);
     padding: 0 var(--space-1);
     font-size: var(--fs-2xs);
   }

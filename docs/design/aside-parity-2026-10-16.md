@@ -1,5 +1,15 @@
 # Aside UI parity — October 16, 2026
 
+October17 packaged **a51e5a915**: native History → Delete browsing data → Cancel
+returns directly to History. No deletion performed. Developers grouping and plain
+Tool permissions surface observed. New source consolidates Settings/dialog buttons,
+inputs, title typography and pill geometry; removes replaced recipes and groups the
+remaining permission cards. Full source check exposed stylesheet fixtures tied to
+old locations; all54 affected tests pass after using the shared rules/tokens.
+Latest native control acceptance pending; user-visible mock preview closed because
+embedding the whole renderer inside Aux duplicated its browser sidebars.
+
+
 October17 packaged **c9d878e2**: General grouping, Agents shared selects and
 Memory index status reviewed. Empty-Profile 30-day retention save persisted after
 refresh; populated expiry remains open. Follow-up source batch groups Developers

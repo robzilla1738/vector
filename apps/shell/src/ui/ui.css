@@ -310,12 +310,7 @@
     padding-right: var(--space-2);
   }
   .ui-status {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    font-size: var(--fs-xs);
     color: var(--ink-2);
-    white-space: nowrap;
   }
   .ui-status > span {
     width: var(--dot);

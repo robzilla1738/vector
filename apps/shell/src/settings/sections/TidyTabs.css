@@ -4,7 +4,7 @@
     padding: 24px;
   }
   .settings-preference-dialog:has(.tidy-prompt-editor) > header h3 {
-    font-size: 18px;
+    font-size: var(--fs-xl);
   }
   .tidy-prompt-editor {
     display: grid;
