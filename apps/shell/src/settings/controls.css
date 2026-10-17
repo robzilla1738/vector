@@ -18,7 +18,9 @@
     border-color: var(--line);
   }
   :is(.settings-content, .aux-native-dialog)
-    :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select) {
+    :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select):not(
+      :where([data-input-surface], .ui-search-field, .ui-input-group) > *
+    ) {
     min-height: var(--control-h-lg);
     height: var(--control-h-lg);
     padding: 0 var(--space-2-5);
@@ -27,7 +29,8 @@
     box-shadow: none;
     font-size: var(--fs-sm);
   }
-  :is(.settings-content, .aux-native-dialog) textarea {
+  :is(.settings-content, .aux-native-dialog)
+    textarea:not(:where([data-input-surface], .ui-search-field, .ui-input-group) > *) {
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-lg);
     padding: var(--space-3);
