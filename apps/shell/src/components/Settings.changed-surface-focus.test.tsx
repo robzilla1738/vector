@@ -3,6 +3,7 @@ import { act, useLayoutEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { Settings } from "./Settings";
+import { useStore } from "../store";
 const features = vi.hoisted(() => ({ mcp: false }));
 vi.mock("../use-feature", () => ({
   useFeature: (feature: string) => feature === "outboundMcp" && features.mcp,
@@ -14,6 +15,7 @@ vi.mock("../store", () => {
   return {
     useStore: Object.assign((selector: (value: typeof state) => unknown) => selector(state), {
       getState: () => state,
+      setState: vi.fn(),
     }),
     call: vi.fn(),
     errToast: vi.fn(),
@@ -85,8 +87,10 @@ it("shows feature-only Services in its own category and preserves new-chat focus
       (node) => node.textContent === "Connected services",
     )!;
     expect(services).toBeTruthy();
+    expect(useStore.setState).toHaveBeenLastCalledWith({ settingsPageTitle: "Models" });
     await act(async () => services.click());
     expect(github.hidden).toBe(false);
+    expect(useStore.setState).toHaveBeenLastCalledWith({ settingsPageTitle: "Connected services" });
     await act(async () => root.render(<Chat />));
     expect(document.activeElement).toBe(host.querySelector("textarea"));
     expect(document.activeElement).not.toBe(opener);

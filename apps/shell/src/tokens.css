@@ -155,6 +155,13 @@
     --control-h: 28px;
     --control-h-lg: 32px;
     /* Shared Settings control fill follows the current foreground in both themes. */
+    --settings-nav-width: 216px;
+    --settings-content-width: 636px;
+    --settings-content-top: 64px;
+    --settings-outline-step: 10px;
+    --menu-radius: var(--r-xl);
+    --menu-item-radius: var(--r-control);
+    --menu-padding: var(--space-1-5);
     --settings-control-fill: color-mix(in srgb, var(--ink-0) 4%, transparent);
     --control-h-hero: 48px;
     --hit: 32px;
@@ -253,6 +260,14 @@
     color-scheme: dark;
     --bg-window: #17171780;
     --bg-0: #171717;
+    /* Opaque Settings planes sampled from Aside 1.0.928.1, October 17.
+     * Keep these independent of translucent native window materials. */
+    --settings-chrome: #2d2d2d;
+    --settings-canvas: #1b1b1b;
+    --settings-card: #282828;
+    --settings-search-fill: rgb(255 255 255 / 3%);
+    --settings-title-ink: rgb(255 255 255 / 95%);
+    --settings-label-ink: var(--ink-0);
     --bg-1: #232323;
     --bg-2: var(--bg-1);
     --bg-3: #3c3c3c;
@@ -341,7 +356,7 @@
     --surface-card: var(--surface-primary);
     --surface-sidebar: var(--sb-bg);
     --surface-popover: var(--bg-2);
-    --surface-menu: var(--bg-2);
+    --surface-menu: #262626;
     --surface-input: var(--surface-primary);
     --border: var(--line);
     --panel: var(--surface-panel);
@@ -392,8 +407,14 @@
     color-scheme: light;
     --bg-window: #ffffff80;
     --bg-0: #fff;
+    --settings-chrome: #f3f4f6;
+    --settings-canvas: #fff;
+    --settings-card: #f7f7f7;
+    --settings-search-fill: rgb(0 0 0 / 3%);
+    --settings-title-ink: var(--ink-0);
     --bg-1: #f3f4f6;
     --bg-2: #fff;
+    --surface-menu: #fff;
     --bg-3: #f3f4f6;
     --bg-hover: rgb(0 0 0 / 10%);
     --bg-active: rgb(0 0 0 / 12.5%);

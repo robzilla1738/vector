@@ -15,6 +15,7 @@ import {
   shellIconBookmarkFill,
   shellIconGear,
   shellIconGrid,
+  shellIconGlobe,
   shellIconSidebarOpen,
 } from "../ui/icons";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
@@ -29,6 +30,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
   const horizontal = useStore((s) => (s.settings.tabLayout ?? "vertical") === "horizontal");
   const page = useStore((s) => (s.activePageId ? s.pages.byId[s.activePageId ?? ""] : undefined));
   const settingsRoute = useStore((s) => s.overlay === "settings");
+  const settingsPageTitle = useStore((s) => s.settingsPageTitle);
   const mode = useStore((s) => s.mode);
   const railOpen = useStore((s) => s.railOpen);
   const takingControl = useRef(false);
@@ -58,7 +60,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
     <header
       inert={hidden}
       aria-hidden={hidden}
-      className={`toolbar ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
+      className={`toolbar ${settingsRoute ? "toolbar-settings" : ""} ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
       style={
         themeColor
           ? ({
@@ -68,12 +70,12 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
       }
     >
       <div className="tb-left">
-        {!horizontal && (
+        {!horizontal && sidebar !== "expanded" && (
           <button
             {...staticIconButtonProps}
-            title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))}
-            aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"}
-            aria-expanded={sidebar === "expanded"}
+            title={withShortcut("Show sidebar", key("sidebar"))}
+            aria-label="Show sidebar"
+            aria-expanded={false}
             data-command-id="sidebar"
             onClick={() => runCommand("sidebar")}
           >
@@ -85,7 +87,18 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
         </div>
       </div>
 
-      {horizontal && <CommandBar compact />}
+      {settingsRoute && (
+        <div role="group" className="toolbar-breadcrumb" aria-label={`Aux Settings, ${settingsPageTitle}`}>
+          <span className="toolbar-product">
+            {shellIconGlobe}
+            <span>Aux</span>
+          </span>
+          <span className="toolbar-route">
+            Settings <span aria-hidden="true">›</span> {settingsPageTitle}
+          </span>
+        </div>
+      )}
+      {horizontal && !settingsRoute && <CommandBar compact />}
       {!horizontal && (
         <div className="toolbar-drag-space" title="Drag to move window" {...auxNativeAriaHiddenProps} />
       )}
@@ -129,17 +142,19 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
             <span className="ctl-take">Take over</span>
           </button>
         )}
-        <button
-          className={`icon-btn ${mode === "overview" ? "on" : ""}`}
-          title={withShortcut("Tab overview", key("overview"))}
-          aria-label="Tab overview"
-          aria-pressed={mode === "overview"}
-          data-command-id="overview"
-          onClick={() => runCommand("overview")}
-        >
-          {shellIconGrid}
-        </button>
-        {!bridge.privateMode && (
+        {!settingsRoute && (
+          <button
+            className={`icon-btn ${mode === "overview" ? "on" : ""}`}
+            title={withShortcut("Tab overview", key("overview"))}
+            aria-label="Tab overview"
+            aria-pressed={mode === "overview"}
+            data-command-id="overview"
+            onClick={() => runCommand("overview")}
+          >
+            {shellIconGrid}
+          </button>
+        )}
+        {!settingsRoute && !bridge.privateMode && (
           <button
             className={`icon-btn ${bookmarked ? "on" : ""}`}
             title={withShortcut(bookmarked ? "Remove bookmark" : "Bookmark this page", key("bookmark"))}
@@ -152,7 +167,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
             {bookmarked ? shellIconBookmarkFill : shellIconBookmark}
           </button>
         )}
-        {!bridge.privateMode && (
+        {!settingsRoute && !bridge.privateMode && (
           <button
             className={`tb-ask ${railOpen ? "on" : ""}`}
             title={withShortcut("Agent", key("agent-rail"))}

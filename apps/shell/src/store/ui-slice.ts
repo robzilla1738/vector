@@ -17,6 +17,7 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
   skillSelection: null,
   readerFindOpen: false,
   settingsCategory: "General",
+  settingsPageTitle: "General",
   memoryWorkspaceId: null,
   railOpen: false,
   railView: { kind: "home" },

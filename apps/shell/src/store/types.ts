@@ -89,6 +89,7 @@ export interface Workspace {
   skillSelection: { routineId: string; workspaceId: string } | null;
   readerFindOpen: boolean;
   settingsCategory: string;
+  settingsPageTitle: string;
   memoryWorkspaceId: string | null;
   railOpen: boolean;
   railView: RailView;
@@ -318,6 +319,7 @@ export type UiKeys =
   | "skillSelection"
   | "readerFindOpen"
   | "settingsCategory"
+  | "settingsPageTitle"
   | "memoryWorkspaceId"
   | "railOpen"
   | "railView"

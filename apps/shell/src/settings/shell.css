@@ -55,7 +55,7 @@
     flex: none;
   }
   .settings-page {
-    background: var(--bg-0);
+    background: var(--settings-chrome);
     container: settings-page / inline-size;
     position: absolute;
     inset: 0;
@@ -63,13 +63,13 @@
     display: flex;
   }
   .settings-nav {
-    width: clamp(144px, 30vw, 208px);
+    width: var(--settings-nav-width);
     flex: none;
     min-height: 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    padding: var(--space-1) 0 var(--space-1) var(--space-1-5);
+    padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1-5);
     gap: 0;
     background: transparent;
     border: 0;
@@ -127,7 +127,7 @@
   }
   .settings-rail-group-title {
     display: block;
-    padding: var(--space-3) var(--space-2-5) var(--space-1);
+    padding: var(--space-7) var(--space-2-5) var(--space-1);
     color: var(--ink-2);
     font-size: var(--fs-xs);
     font-weight: var(--fw-medium);
@@ -140,8 +140,9 @@
   .settings-search-box {
     flex: none;
     margin: 0 0 var(--space-3);
-    background: var(--surface-primary);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+    background: var(--settings-search-fill);
+    border: 1px solid var(--line);
+    box-shadow: none;
     border-radius: var(--r-control);
   }
   .settings-content {
@@ -153,16 +154,16 @@
     overflow: hidden;
     container: settings-content / inline-size;
     position: relative;
-    margin: var(--space-1) var(--space-1) var(--space-1) 0;
-    padding: 64px var(--space-7) 0;
+    margin: 0 var(--space-1-5) var(--space-1-5) 0;
+    padding: var(--settings-content-top) var(--space-7) 0;
     border: 0;
-    border-radius: 22.4px;
+    border-radius: var(--r-2xl);
     corner-shape: superellipse(var(--squircle-factor));
-    background: var(--surface-tertiary);
+    background: var(--settings-canvas);
   }
   .settings-content > :not(.settings-outline) {
     width: 100%;
-    max-width: 636px;
+    max-width: var(--settings-content-width);
     margin-inline: auto;
   }
   .settings-content .drawer-head {
@@ -175,6 +176,7 @@
   .settings-content .settings-heading h1 {
     margin: 0;
     font-size: var(--fs-page-title);
+    color: var(--settings-title-ink);
     font-weight: var(--fw-book);
     line-height: 1.25;
     letter-spacing: -0.03em;
@@ -223,7 +225,7 @@
     padding: var(--space-3-5);
     border: 0;
     border-radius: 0;
-    background: var(--surface-secondary);
+    background: var(--settings-card);
   }
   .settings-content .field.ui-setting + .field.ui-setting {
     margin-top: 1px;
@@ -231,6 +233,7 @@
   .settings-content .field.ui-setting > .setting-label {
     grid-column: 1;
     grid-row: 1;
+    color: var(--settings-label-ink);
     font-size: var(--fs-md);
     font-weight: var(--fw-regular);
     line-height: 20px;
@@ -377,7 +380,7 @@
       flex: none;
     }
     .settings-content {
-      margin: 104px var(--space-1) var(--space-1);
+      margin: 104px var(--space-1-5) var(--space-1-5);
       padding: var(--space-7) 18px 0;
     }
   }
@@ -426,23 +429,23 @@
     display: flex;
     align-items: center;
     width: 20px;
-    min-height: 20px;
-    padding: var(--space-1) 0;
+    min-height: var(--settings-outline-step);
+    padding: 0;
     border: 0;
     background: none;
     cursor: pointer;
     pointer-events: auto;
   }
   .settings-outline button span {
-    width: 8px;
+    width: 12px;
     height: 2px;
     background: var(--ink-3);
     border-radius: var(--r-pill);
     transition: width var(--t-fast) var(--ease-out);
   }
   .settings-outline button:is(:hover, [aria-current]) span {
-    width: 20px;
-    background: var(--ink-1);
+    width: 12px;
+    background: var(--ink-0);
   }
   .settings-outline button:focus-visible {
     outline: 2px solid var(--focus-line);

@@ -77,7 +77,8 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expectCss(styles).toContain(
       ".app.native-host .main-col.has-page { --page-shell-background: transparent; --stage-bg: transparent; }",
     );
-    expect(tokens).toMatch(/--surface-menu:\s*var\(--bg-2\)/);
+    expect(tokens).toMatch(/--surface-menu:\s*#262626/);
+    expect(tokens).toMatch(/--surface-menu:\s*#fff/);
   });
 
   it("keeps all tokens in tokens.css — styles.css never restates a theme block", () => {
@@ -146,7 +147,8 @@ describe("shipped stylesheet — native macOS chrome", () => {
       ':root[data-sidebar-appearance="translucent"] .sidebar.expanded { background: var(--window-glass-tint); }',
     );
     expectCss(styles).toContain(":is(.chat-sidebar, .rail)");
-    expect(tokens).toMatch(/--surface-menu:\s*var\(--bg-2\)/);
+    expect(tokens).toMatch(/--surface-menu:\s*#262626/);
+    expect(tokens).toMatch(/--surface-menu:\s*#fff/);
     expect(tokens).toMatch(/--hairline:\s*0\.5px/);
     expect(tokens).toMatch(/--squircle-factor:\s*1\.4/);
     expectCss(styles).toContain("corner-shape: superellipse(var(--squircle-factor))");

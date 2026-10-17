@@ -16,6 +16,7 @@
   }
   :is(.settings-content, .aux-native-dialog) .btn:not(.ghost):not(.primary):not(.danger) {
     border-color: var(--line);
+    background: var(--settings-control-fill);
   }
   :is(.settings-content, .aux-native-dialog)
     :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select):not(
@@ -69,10 +70,10 @@
     max-height: min(360px, calc(100dvh - 24px));
     overflow: auto;
     overscroll-behavior: contain;
-    padding: var(--space-1-5);
+    padding: var(--menu-padding);
     margin-block: var(--space-1);
     border: var(--hairline) solid var(--line);
-    border-radius: var(--r-xl);
+    border-radius: var(--menu-radius);
     background: var(--surface-menu);
     color: var(--ink-0);
     box-shadow: var(--shadow-pop);
@@ -96,7 +97,7 @@
     min-height: var(--control-h-lg);
     padding: var(--space-1-5) var(--space-2-5);
     border: 0;
-    border-radius: var(--r-md);
+    border-radius: var(--menu-item-radius);
     background: transparent;
     color: var(--ink-0);
     font: inherit;

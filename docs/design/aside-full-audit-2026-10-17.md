@@ -1,0 +1,228 @@
+# Aside full parity audit — October 17, 2026
+
+Full parity is not established. The owner requested all captured surfaces, granular
+colors/borders/menus and window chrome, and authorized live Aside inspection.
+
+## Current paired evidence
+
+Local captures in `/tmp/aux-parity-full-audit/`:
+1. `01-aside-general.png`: live Aside General, 3424×1978.
+2. `02-aux-general.png`: packaged Aux General before this slice, 3456×2010.
+3. `03-aside-menu.png`: live Aside New tab mode menu, dismissed without changes.
+
+Both are 2× captures. Window dimensions differ by 16 logical pixels; compare
+plane colors and intrinsic geometry directly, not whole-image pixel differences.
+No personal reference screenshots are committed to this repository.
+
+Observed differences and source corrections:
+- Settings navigation/toolbar: Aside #2d2d2d; Aux navigation #171717 and toolbar
+  #1d1d1d. Use a dedicated Settings chrome token, independent of native glass.
+- Content canvas: Aside #1b1b1b; Aux #202020. Cards: Aside #282828; Aux #2d2d2d.
+  Separate canvas/card tokens avoid accumulated alpha layers.
+- Settings navigation: Aside approximately216 logical pixels including the right
+  gutter; Aux208 with no right gutter. Add gutter and shared width token.
+- Group headings: Aside32px group spacing; Aux12px. Restore shared spacing.
+- Search: Aside quiet fill with outer border; Aux stronger fill with no border.
+- Outline markers: Aside12px wide/10px vertical pitch; Aux8px wide/20px pitch
+  with an oversized40px raster active line. Correct shared geometry.
+- Toolbar: Aside shows product + Settings/category breadcrumb and one sidebar
+  toggle. Aux repeats the toggle and omits the breadcrumb. Settings owns the
+  current title; toolbar observes it, including subviews/search.
+- Settings buttons used a different fill from select/popover triggers. Share fill.
+- Anchored popovers and native menus used different corner recipes. Shared menu
+  radius/item-radius/padding tokens now own those dimensions.
+
+Source corrections await packaged comparison. Light palette, popup positioning,
+all populated states, nested menus, narrow layouts and keyboard behavior need
+explicit comparison; an inventory thumbnail pass is not granular acceptance.
+
+## Complete reference inventory
+
+All182 PNGs were reviewed as seven numbered contact sheets during this audit.
+Rows below track detailed comparison separately. Reference names preserve gaps in
+the supplied numbering. Rescan the folder between integrated batches.
+
+| Capture | Detail acceptance |
+| --- | --- |
+| 001-new-tab-default | Pending paired verification |
+| 002-new-tab-profile-menu | Pending paired verification |
+| 003-new-tab-ask-composer | Pending paired verification |
+| 004-new-tab-routines | Pending paired verification |
+| 005-new-tab-suggested-tasks | Pending paired verification |
+| 006-composer-options-dropdown | Pending paired verification |
+| 007-composer-project-picker | Pending paired verification |
+| 008-composer-permission-guard | Pending paired verification |
+| 009-composer-model-picker | Pending paired verification |
+| 010-composer-model-provider-row-focused | Pending paired verification |
+| 011-composer-aside-models-expanded | Pending paired verification |
+| 012-composer-chatgpt-models-expanded | Pending paired verification |
+| 013-composer-reasoning-effort | Pending paired verification |
+| 014-composer-context-mention | Pending paired verification |
+| 015-settings-general-top | Pending paired verification |
+| 016-settings-search-engine-dropdown | Pending paired verification |
+| 017-settings-new-tab-mode-dropdown | Pending paired verification |
+| 018-settings-language-configuration | Pending paired verification |
+| 019-settings-add-language-dropdown | Pending paired verification |
+| 020-settings-browser-import-dialog | Pending paired verification |
+| 021-settings-import-browser-picker | Pending paired verification |
+| 022-settings-general-about-section | Pending paired verification |
+| 023-settings-appearance-top | Pending paired verification |
+| 024-appearance-theme-dropdown | Pending paired verification |
+| 025-appearance-zoom-dropdown | Pending paired verification |
+| 026-appearance-tab-position-dropdown | Pending paired verification |
+| 027-appearance-sidebar-sections-dropdown | Pending paired verification |
+| 028-appearance-recent-chats-dropdown | Pending paired verification |
+| 029-appearance-tab-order-dropdown | Pending paired verification |
+| 030-appearance-tidy-tabs-configuration | Pending paired verification |
+| 031-appearance-keyboard-shortcuts | Pending paired verification |
+| 032-settings-account | Pending paired verification |
+| 033-account-device-actions | Pending paired verification |
+| 034-settings-plan-and-usage | Pending paired verification |
+| 035-settings-plan-loaded | Pending paired verification |
+| 036-plan-selection-dialog | Pending paired verification |
+| 037-plan-selection-yearly | Pending paired verification |
+| 038-buy-credits-dialog | Pending paired verification |
+| 039-buy-credits-custom-input | Pending paired verification |
+| 040-settings-security-privacy | Pending paired verification |
+| 041-security-adblock-filter-dialog | Pending paired verification |
+| 042-security-filter-popover-dismissed | Pending paired verification |
+| 043-security-filter-actions-expanded | Pending paired verification |
+| 044-security-cookie-policy-dropdown | Pending paired verification |
+| 045-settings-agents | Pending paired verification |
+| 046-agents-notification-dropdown | Pending paired verification |
+| 047-agents-default-permission-dropdown | Pending paired verification |
+| 048-agents-followup-behavior-dropdown | Pending paired verification |
+| 049-agents-tab-switch-dropdown | Pending paired verification |
+| 050-agents-cleanup-tabs-dropdown | Pending paired verification |
+| 051-agents-file-permissions-section | Pending paired verification |
+| 052-agents-tool-permissions-section | Pending paired verification |
+| 053-agents-add-rule-dialog | Pending paired verification |
+| 054-agents-runtime-section | Pending paired verification |
+| 055-settings-projects | Pending paired verification |
+| 056-project-create-dialog | Pending paired verification |
+| 057-project-icon-color-picker | Pending paired verification |
+| 058-settings-models | Pending paired verification |
+| 059-models-connect-provider-dialog | Pending paired verification |
+| 060-models-custom-provider-form | Pending paired verification |
+| 061-models-image-generation-dropdown | Pending paired verification |
+| 062-models-image-selector-dismissed | Pending paired verification |
+| 063-settings-plugins-loaded | Pending paired verification |
+| 064-plugins-system-skills | Pending paired verification |
+| 065-plugins-password-manager-skills | Pending paired verification |
+| 066-plugins-import-actions | Pending paired verification |
+| 067-settings-mcps | Pending paired verification |
+| 068-mcp-connect-dialog | Pending paired verification |
+| 069-mcp-transport-dropdown | Pending paired verification |
+| 070-mcp-authentication-dropdown | Pending paired verification |
+| 071-mcp-advanced-settings | Pending paired verification |
+| 072-settings-memory | Pending paired verification |
+| 073-memory-overview | Pending paired verification |
+| 074-memory-history | Pending paired verification |
+| 075-memory-configuration | Pending paired verification |
+| 076-memory-retention-dropdown | Pending paired verification |
+| 077-settings-context-awareness | Pending paired verification |
+| 078-settings-passwords | Pending paired verification |
+| 079-passwords-vault-getting-started | Pending paired verification |
+| 080-passwords-1password-menu | Pending paired verification |
+| 081-passwords-external-manager-picker | Pending paired verification |
+| 082-passwords-other-managers-expanded | Pending paired verification |
+| 083-settings-routines | Pending paired verification |
+| 084-routine-create-form | Pending paired verification |
+| 085-routine-repeat-dropdown | Pending paired verification |
+| 086-routine-time-picker | Pending paired verification |
+| 087-routine-advanced-form | Pending paired verification |
+| 088-routine-type-dropdown | Pending paired verification |
+| 089-routine-environment-dropdown | Pending paired verification |
+| 090-routine-permission-dropdown | Pending paired verification |
+| 091-settings-channels | Pending paired verification |
+| 092-channels-add-menu | Pending paired verification |
+| 093-channel-slack-settings | Pending paired verification |
+| 094-channel-access-dropdown | Pending paired verification |
+| 095-channel-followup-dropdown | Pending paired verification |
+| 096-channel-pairing-tab | Pending paired verification |
+| 097-settings-developers | Pending paired verification |
+| 098-developers-cli-options-menu | Pending paired verification |
+| 099-developers-skill-install-menu | Pending paired verification |
+| 100-developers-mcp-setup-popover | Pending paired verification |
+| 101-developers-remote-control-popover | Pending paired verification |
+| 102-developers-faqs-expanded | Pending paired verification |
+| 103-settings-mini-popup | Pending paired verification |
+| 104-mini-popup-shortcut-attempt-settings-remain | Pending paired verification |
+| 105-settings-lasso | Pending paired verification |
+| 106-lasso-hotkey-dropdown | Pending paired verification |
+| 107-lasso-add-shortcut-dialog | Pending paired verification |
+| 108-lasso-shortcut-action-dropdown | Pending paired verification |
+| 109-settings-archived-chats | Pending paired verification |
+| 110-feedback-menu | Pending paired verification |
+| 111-archived-chat-actions | Pending paired verification |
+| 112-all-chats-page | Pending paired verification |
+| 113-all-chats-loaded | Pending paired verification |
+| 114-chats-filter-dropdown | Pending paired verification |
+| 115-chats-sort-dropdown | Pending paired verification |
+| 116-chats-search-expanded | Pending paired verification |
+| 117-chats-card-view | Pending paired verification |
+| 118-chat-detail-open | Pending paired verification |
+| 119-chat-header-actions | Pending paired verification |
+| 120-chat-share-popover | Pending paired verification |
+| 121-chat-sidebar-expanded | Pending paired verification |
+| 122-chat-sidepanel-add-menu-attempt | Pending paired verification |
+| 123-chat-new-side-chat | Pending paired verification |
+| 124-chat-work-log-expanded | Pending paired verification |
+| 125-chat-citation-attempt-scrolled-transcript | Pending paired verification |
+| 126-chat-inline-image-reference | Pending paired verification |
+| 127-browser-tab-search | Pending paired verification |
+| 128-browser-workspace-profile-menu-attempt | Pending paired verification |
+| 129-browser-profile-actions-attempt | Pending paired verification |
+| 130-browser-sidebar-collapsed | Pending paired verification |
+| 131-browser-sidebar-collapsed-clean | Pending paired verification |
+| 132-browser-downloads-popover | Pending paired verification |
+| 133-browser-extensions-popover | Pending paired verification |
+| 134-browser-address-bar-focused | Pending paired verification |
+| 135-browser-bookmark-all-tabs-dialog | Pending paired verification |
+| 146-browser-sidebar-restored | Pending paired verification |
+| 147-browser-tabs-section-hover | Pending paired verification |
+| 148-browser-bookmarks-section-hover | Pending paired verification |
+| 149-browser-pinned-tab-hover | Pending paired verification |
+| 150-browser-tab-context-inventory-with-window | Pending paired verification |
+| 151-chat-first-work-log-expanded | Pending paired verification |
+| 152-chat-work-trace-visible | Pending paired verification |
+| 153-chat-tool-activity-expanded | Pending paired verification |
+| 154-chat-tool-call-details | Pending paired verification |
+| 155-chat-new-empty | Pending paired verification |
+| 156-chat-skill-mention-picker | Pending paired verification |
+| 157-chat-composer-options | Pending paired verification |
+| 158-browser-profile-open-error-dialog | Pending paired verification |
+| 159-browser-fresh-profile-onboarding | Pending paired verification |
+| 160-browser-profile-edit-menu | Pending paired verification |
+| 161-browser-profile-actions-current | Pending paired verification |
+| 162-browser-profile-switcher-visible | Pending paired verification |
+| 163-browser-history-submenu | Pending paired verification |
+| 164-browser-history-page | Pending paired verification |
+| 165-history-group-view | Pending paired verification |
+| 166-history-item-actions | Pending paired verification |
+| 167-browser-bookmarks-submenu | Pending paired verification |
+| 168-browser-bookmark-manager | Pending paired verification |
+| 169-bookmarks-organize-menu | Pending paired verification |
+| 170-bookmark-item-actions | Pending paired verification |
+| 171-browser-advanced-security | Pending paired verification |
+| 172-browser-settings-profile | Pending paired verification |
+| 173-browser-settings-autofill | Pending paired verification |
+| 174-browser-settings-privacy | Pending paired verification |
+| 175-browser-settings-performance | Pending paired verification |
+| 176-browser-settings-appearance | Pending paired verification |
+| 177-browser-settings-search-engine | Pending paired verification |
+| 178-browser-settings-default-browser | Pending paired verification |
+| 179-browser-settings-startup | Pending paired verification |
+| 180-browser-settings-languages | Pending paired verification |
+| 181-browser-settings-downloads | Pending paired verification |
+| 182-browser-settings-accessibility | Pending paired verification |
+| 183-browser-settings-system | Pending paired verification |
+| 184-browser-settings-reset | Pending paired verification |
+| 185-browser-third-party-cookies | Pending paired verification |
+| 186-browser-site-settings-top | Pending paired verification |
+| 187-browser-location-permission-page | Pending paired verification |
+| 188-browser-camera-permissions | Pending paired verification |
+| 189-browser-microphone-permissions | Pending paired verification |
+| 190-browser-notification-permissions | Pending paired verification |
+| 191-browser-embedded-content-permissions | Pending paired verification |
+| 192-browser-javascript-permissions | Pending paired verification |

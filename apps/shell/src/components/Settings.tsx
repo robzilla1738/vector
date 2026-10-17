@@ -238,6 +238,9 @@ export function Settings() {
             : category;
   const [indexedFields, setIndexedFields] = useState<SettingsDestination[]>([]);
   const searching = !!query.trim();
+  useEffect(() => {
+    useStore.setState({ settingsPageTitle: searching ? "Search settings" : (subview ?? sectionTitle) });
+  }, [sectionTitle, subview, searching]);
   const results = searchSettings(query, indexedFields).filter(
     (result) =>
       (!result.feature || featureAvailable(result.feature as import("@aux/contracts").AuxFeature)) &&

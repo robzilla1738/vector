@@ -49,7 +49,7 @@
     margin: 0;
     padding: var(--space-1-5);
     border: var(--hairline) solid var(--line);
-    border-radius: var(--r-xl);
+    border-radius: var(--menu-radius);
     background: var(--surface-menu);
     color: var(--ink-0);
     box-shadow: var(--shadow-pop);

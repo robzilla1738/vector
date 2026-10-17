@@ -36,7 +36,7 @@
     overscroll-behavior: contain;
     padding: var(--space-2);
     border: var(--hairline) solid var(--line);
-    border-radius: var(--r-lg);
+    border-radius: var(--menu-radius);
     background: var(--surface-menu);
     color: var(--ink-0);
     box-shadow: var(--shadow-pop);
@@ -56,7 +56,7 @@
   }
   .anchored-panel input[type="search"] {
     width: 100%;
-    min-height: 36px;
+    min-height: calc(var(--control-h-lg) + var(--space-1));
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-md);
     padding: var(--space-2);
@@ -79,7 +79,7 @@
     color: var(--ink-0);
     border: var(--hairline) solid var(--line);
     box-shadow: var(--shadow-pop);
-    padding: 6px;
+    padding: var(--menu-padding);
     isolation: isolate;
   }
   :root .aux-native-dialog.anchored-panel::before,
@@ -93,9 +93,9 @@
     color: var(--ink-0);
     background: var(--bg-hover);
     border: var(--hairline) solid var(--line);
-    border-radius: 7px;
-    min-height: 32px;
-    padding: 4px 8px;
+    border-radius: var(--menu-item-radius);
+    min-height: var(--control-h-lg);
+    padding: var(--space-1) var(--space-2);
   }
   .anchored-panel header {
     color: var(--ink-2);
@@ -103,12 +103,12 @@
     font-weight: var(--fw-medium);
   }
   .anchored-panel :is(.home-tools-menu button, .composer-actions button) {
-    min-height: 36px;
+    min-height: calc(var(--control-h-lg) + var(--space-1));
     width: 100%;
     text-align: left;
     justify-content: flex-start;
-    padding: 8px 10px;
-    border-radius: 7px;
+    padding: var(--space-2) var(--space-2-5);
+    border-radius: var(--menu-item-radius);
     color: var(--ink-1);
     background: transparent;
   }
@@ -122,10 +122,10 @@
     display: flex;
     align-items: center;
     width: 100%;
-    min-height: 36px;
+    min-height: calc(var(--control-h-lg) + var(--space-1));
     justify-content: flex-start;
-    padding: 8px 10px;
-    border-radius: 7px;
+    padding: var(--space-2) var(--space-2-5);
+    border-radius: var(--menu-item-radius);
     background: transparent;
     color: var(--ink-1);
   }

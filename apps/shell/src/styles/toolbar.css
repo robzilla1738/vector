@@ -461,3 +461,41 @@
     color: var(--accent-ink);
   }
 }
+
+@layer overrides {
+  .toolbar-settings {
+    background: var(--settings-chrome);
+  }
+  .toolbar-settings .tb-left,
+  .toolbar-settings .tb-right {
+    flex: none;
+  }
+  .toolbar-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+    color: var(--ink-2);
+    font-size: var(--fs-md);
+    -webkit-app-region: drag;
+  }
+  .toolbar-product {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding-right: var(--space-3);
+    border-right: var(--hairline) solid var(--ink-3);
+    flex: none;
+  }
+  .toolbar-route {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .toolbar-route > span {
+    padding-inline: var(--space-1);
+  }
+  .toolbar-settings .toolbar-drag-space {
+    flex: 1;
+  }
+}
