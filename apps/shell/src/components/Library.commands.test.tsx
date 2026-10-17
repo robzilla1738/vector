@@ -398,3 +398,71 @@ it("bookmarks from a directly opened History and removes only the chosen visit",
   expect(host.querySelectorAll(".library-item")).toHaveLength(1);
   expect(host.querySelector("time")?.dateTime).toBe(new Date(second.visitedAt).toISOString());
 });
+
+it("reviews selected visits and retries only unfinished deletes after a partial failure", async () => {
+  const entries = visits("selected", 3);
+  let fail = true;
+  vi.mocked(bridge.invoke).mockImplementation(async (method, params) => {
+    if (method === "history.list") return entries as never;
+    if (method === "history.remove" && (params as { url: string }).url === entries[1]!.url && fail)
+      throw new Error("Temporary native error");
+    return [] as never;
+  });
+  await render();
+  await tick();
+  await act(async () => host.querySelector<HTMLInputElement>(".library-history-check")!.click());
+  const selectAll = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+    (button) => button.textContent === "Select all shown",
+  )!;
+  await act(async () => selectAll.click());
+  expect(host.querySelectorAll<HTMLInputElement>(".library-history-check:checked")).toHaveLength(3);
+  await act(async () =>
+    [...host.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "Delete selected")!
+      .click(),
+  );
+  const review = () => document.querySelector<HTMLElement>('[aria-label="Delete selected visits"]')!;
+  expect(review().querySelectorAll("li")).toHaveLength(3);
+  expect(vi.mocked(bridge.invoke).mock.calls.filter(([method]) => method === "history.remove")).toHaveLength(
+    0,
+  );
+  await act(async () =>
+    [...review().querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "Delete visits")!
+      .click(),
+  );
+  expect(review().querySelector('[role="alert"]')?.textContent).toContain("1 visit deleted");
+  expect(review().querySelectorAll("li")).toHaveLength(2);
+  expect(host.querySelectorAll(".library-item")).toHaveLength(2);
+  fail = false;
+  await act(async () =>
+    [...review().querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "Delete visits")!
+      .click(),
+  );
+  expect(review()).toBeNull();
+  expect(host.querySelectorAll(".library-item")).toHaveLength(0);
+  const deleted = vi
+    .mocked(bridge.invoke)
+    .mock.calls.filter(([method]) => method === "history.remove")
+    .map(([, params]) => params);
+  expect(deleted).toEqual(
+    [entries[0]!, entries[1]!, entries[1]!, entries[2]!].map(({ url, visitedAt }) => ({ url, visitedAt })),
+  );
+});
+
+it("extends visit selection with Shift and clears it when the date range changes", async () => {
+  vi.mocked(bridge.invoke).mockImplementation(
+    async (method) => (method === "history.list" ? visits("range", 4) : []) as never,
+  );
+  await render();
+  await tick();
+  const checks = host.querySelectorAll<HTMLInputElement>(".library-history-check");
+  await act(async () => checks[0]!.click());
+  await act(async () => checks[2]!.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true })));
+  expect(host.querySelectorAll(".library-history-check:checked")).toHaveLength(3);
+  await command(ids.range, button(ids.range, 1));
+  await tick();
+  expect(host.querySelectorAll(".library-history-check:checked")).toHaveLength(0);
+  expect(host.querySelector('[aria-label="Selected history visits"]')).toBeNull();
+});

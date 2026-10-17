@@ -1,5 +1,36 @@
 # Aux status — October 16, 2026
 
+History selection follow-up (reference 164): visit checkboxes, Shift-range
+selection, Select all shown, a selected-count toolbar and reviewed deletion are
+implemented. Selection identifies URL plus exact visit time; changing search,
+date range or view clears it. Bulk removal uses the existing native exact-visit
+method, removes acknowledged successes immediately, stops at the first failure
+and retains only unfinished visits for review/retry. It checks the original
+Library read owner before each dispatch. Successful removal restores search
+focus. A single-row remove also clears that visit from selection.
+
+New HistoryDeleteDialog uses the shared rounded dialog surface, a bounded list
+of selected visits and Cancel as initial focus. Add Bookmark now uses that same
+surface, correcting its previously unstyled square dialog. Source regression
+covers review before dispatch, partial failure/retry without repeating successful
+deletes, Shift-selection and reset after a date-range change. Integrated check:
+typecheck/lint and 4,636 tests / 746 files passed in 95.02s. Renderer build 3.42s.
+Logs `/tmp/aux-history-selection-check.log` and
+`/tmp/aux-history-selection-build.log`. First check stopped on test-only optional
+array indexing; fixed before the passing full check.
+
+Visual walkthrough used resettable fixture visits in the Vite preview at port
+5197, hosted in the existing disposable Aux browser. Checkboxes, selection
+count, rounded review, cancel and fixture deletion worked; deleted row and
+selection toolbar disappeared and search regained focus. Capture:
+`/tmp/aux-parity-2026-10-16/aux-history-selection-review-vite.png`.
+This is renderer evidence; native History batch mutation acceptance is pending.
+Existing native app remains source bca52783c, launcher 41736, app 45506, disposable
+Profile aux-dev-vseCSW. No replacement builder started. Real grouped History,
+separate native page routes, narrow/light evidence and the remaining bookmark
+Sort/Cut/Copy/Paste/open destinations are still open. Full parity is not complete.
+
+
 Native bca52783c acceptance: completed in 8m07.53s and About confirmed exact
 source `bca52783c5873cc42287ee81b59841ccaf0a32a5`. Launcher 41736 / session
 82219 still owns app 45506 and disposable Profile `aux-dev-vseCSW`; API port

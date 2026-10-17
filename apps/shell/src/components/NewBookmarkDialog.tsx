@@ -22,6 +22,7 @@ export function NewBookmarkDialog({
   const url = bookmarkWebUrl(address.trim());
   return (
     <Dialog
+      className="aux-dialog-surface library-form-dialog"
       label="Add new bookmark"
       initialFocusRef={name}
       onClose={() => {

@@ -13,6 +13,8 @@ export const HistoryVisitRow = memo(function HistoryVisitRow({
   firstResult,
   busy,
   bookmarked,
+  selected,
+  onSelect,
   onOpen,
   onBookmark,
   onRemove,
@@ -21,6 +23,8 @@ export const HistoryVisitRow = memo(function HistoryVisitRow({
   firstResult?: RefObject<HTMLButtonElement | null>;
   busy: boolean;
   bookmarked: boolean;
+  selected: boolean;
+  onSelect(range: boolean): void;
   onOpen(item: HistoryEntry, background?: boolean, trigger?: HTMLElement): void;
   onBookmark(): void;
   onRemove(): void;
@@ -31,7 +35,15 @@ export const HistoryVisitRow = memo(function HistoryVisitRow({
   const title = item.title || hostOf(item.url);
   const date = new Date(item.visitedAt);
   return (
-    <div className="library-item">
+    <div className="library-item" data-selected={selected || undefined}>
+      <input
+        className="library-history-check"
+        type="checkbox"
+        aria-label={`Select ${title}, ${date.toLocaleString()}`}
+        checked={selected}
+        disabled={busy}
+        onChange={(event) => onSelect(event.nativeEvent instanceof MouseEvent && event.nativeEvent.shiftKey)}
+      />
       <button
         ref={firstResult}
         className="library-open"

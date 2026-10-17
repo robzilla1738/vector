@@ -8,6 +8,7 @@ import { ArchivedTabs } from "./ArchivedTabs";
 import "./Library.css";
 import { ActionMenu } from "../ui";
 import { NewBookmarkDialog } from "./NewBookmarkDialog";
+import { HistoryDeleteDialog } from "./HistoryDeleteDialog";
 import { HistoryVisitRow } from "./HistoryVisitRow";
 import { SavedPageActions } from "./SavedPageActions";
 import { FavIcon } from "./SiteTile";
@@ -94,6 +95,7 @@ type BookmarkEditor = SavedPage & {
   destinationId: string;
 };
 type RemovedBookmark = { title: string; undoToken: string };
+const visitKey = (item: HistoryEntry) => JSON.stringify([item.url, item.visitedAt]);
 const bookmarkKey = (item: SavedPage) => item.nodeId ?? item.url;
 type View = "archived" | "bookmarks" | "reading" | "history" | "closed";
 const VIEWS: View[] = ["archived", "bookmarks", "reading", "history", "closed"];
@@ -513,6 +515,9 @@ export function Library({
     folder: BookmarkFolder;
   } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [selectedVisits, setSelectedVisits] = useState<HistoryEntry[]>([]);
+  const [reviewVisits, setReviewVisits] = useState(false);
+  const lastSelectedVisit = useRef<string | null>(null);
   const [historyRange, setHistoryRange] = useState("all");
   const [moreHistory, setMoreHistory] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -584,6 +589,9 @@ export function Library({
     ]);
     if (loadedFilter.current !== filter) {
       setHistory([]);
+      setSelectedVisits([]);
+      setReviewVisits(false);
+      lastSelectedVisit.current = null;
       setMoreHistory(false);
     }
     loadedFilter.current = filter;
@@ -781,6 +789,46 @@ export function Library({
         });
     }
   }, []);
+  const forgetVisit = (item: HistoryEntry) => {
+    setHistory((entries) => entries.filter((entry) => visitKey(entry) !== visitKey(item)));
+    setSelectedVisits((entries) => entries.filter((entry) => visitKey(entry) !== visitKey(item)));
+  };
+  const selectVisit = (item: HistoryEntry, range: boolean) => {
+    if (busy || !readCurrent()) return;
+    const anchor = history.findIndex((entry) => visitKey(entry) === lastSelectedVisit.current);
+    const end = history.findIndex((entry) => visitKey(entry) === visitKey(item));
+    const group =
+      range && anchor >= 0 ? history.slice(Math.min(anchor, end), Math.max(anchor, end) + 1) : [item];
+    const keys = new Set(group.map(visitKey));
+    setSelectedVisits((entries) =>
+      entries.some((entry) => visitKey(entry) === visitKey(item))
+        ? entries.filter((entry) => !keys.has(visitKey(entry)))
+        : [...entries.filter((entry) => !keys.has(visitKey(entry))), ...group],
+    );
+    lastSelectedVisit.current = visitKey(item);
+  };
+  const deleteSelectedVisits = () =>
+    void action(async () => {
+      let removed = 0;
+      try {
+        for (const item of selectedVisits) {
+          if (!readCurrent())
+            throw new Error("History changed. Review the remaining visits before deleting.");
+          await call("history.remove", { url: item.url, visitedAt: item.visitedAt });
+          forgetVisit(item);
+          removed++;
+        }
+        setReviewVisits(false);
+        requestAnimationFrame(() => search.current?.focus());
+      } catch (reason) {
+        throw new Error(
+          `${removed} ${removed === 1 ? "visit" : "visits"} deleted. Remaining visits are still selected. ${errorMessage(reason)}`,
+        );
+      } finally {
+        if (removed)
+          setNotice(`${removed} ${removed === 1 ? "visit" : "visits"} deleted from browsing history.`);
+      }
+    });
   const save = useCallback(
     async (item: SavedPage) => {
       const folders = view === "history" ? await readBookmarkFolders() : null;
@@ -1090,6 +1138,18 @@ export function Library({
               }
             />
           )}
+          {reviewVisits && view === "history" && (
+            <HistoryDeleteDialog
+              visits={selectedVisits}
+              busy={busy}
+              error={error}
+              onClose={() => {
+                setReviewVisits(false);
+                setError("");
+              }}
+              onDelete={deleteSelectedVisits}
+            />
+          )}
           {bridge.privateMode && (
             <p className="library-message hint">
               Bookmarks and history stay in this private window until it closes. Exported files remain on your
@@ -1172,6 +1232,39 @@ export function Library({
                   </>
                 )}
               </div>
+              {view === "history" && selectedVisits.length > 0 && (
+                <section className="library-history-selection" aria-label="Selected history visits">
+                  <strong>{selectedVisits.length} selected</strong>
+                  <button
+                    className="btn sm ghost"
+                    disabled={busy || loading}
+                    onClick={() => setSelectedVisits([...history])}
+                  >
+                    Select all shown
+                  </button>
+                  <span className="spacer" />
+                  <button
+                    className="btn sm ghost"
+                    disabled={busy}
+                    onClick={() => {
+                      setSelectedVisits([]);
+                      lastSelectedVisit.current = null;
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn sm danger"
+                    disabled={busy}
+                    onClick={() => {
+                      setError("");
+                      setReviewVisits(true);
+                    }}
+                  >
+                    Delete selected
+                  </button>
+                </section>
+              )}
               {view === "bookmarks" && selecting && (
                 <section className="library-selection" aria-label="Move selected bookmarks">
                   <div {...staticRowProps}>
@@ -1573,6 +1666,8 @@ export function Library({
                             firstResult={index === 0 ? firstResult : undefined}
                             busy={busy}
                             bookmarked={isSaved(item.url)}
+                            selected={selectedVisits.some((entry) => visitKey(entry) === visitKey(item))}
+                            onSelect={(range) => selectVisit(item, range)}
                             onOpen={open}
                             onBookmark={() =>
                               void action(async () => {
@@ -1583,11 +1678,7 @@ export function Library({
                             onRemove={() =>
                               void action(async () => {
                                 await call("history.remove", { url: item.url, visitedAt: item.visitedAt });
-                                setHistory((current) =>
-                                  current.filter(
-                                    (entry) => entry.url !== item.url || entry.visitedAt !== item.visitedAt,
-                                  ),
-                                );
+                                forgetVisit(item);
                                 setNotice(
                                   "Visit removed from browsing history. Bookmarks and saved work are unchanged.",
                                 );
