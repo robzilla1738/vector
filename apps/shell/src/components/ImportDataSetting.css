@@ -29,3 +29,25 @@
     flex-wrap: wrap;
   }
 }
+
+@layer components {
+  .import-browser-picker {
+    display: grid;
+    gap: 8px;
+    margin: 20px 0 12px;
+    color: var(--ink-1);
+  }
+  .import-browser-picker > span {
+    font-size: var(--fs-sm);
+  }
+  .import-browser-picker > select {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--bg-hover);
+    color: var(--ink-0);
+    font: inherit;
+  }
+}

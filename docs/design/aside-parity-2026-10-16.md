@@ -83,7 +83,7 @@ source limitations. The complete source filename and metadata live in the folder
 | 004 | New tab routines                            | captured                                                                                                                  | Empty panel source/live renderer reviewed; native pending                                                            |
 | 005 | New tab suggested tasks                     | captured                                                                                                                  | Native cards/draft action observed; full comparison open                                                            |
 | 006 | Composer options dropdown                   | captured                                                                                                                  | Open                                                            |
-| 007 | Composer project picker                     | captured                                                                                                                  | Direct source/error route reviewed; native/scratch flow open                                                            |
+| 007 | Composer project picker                     | captured                                                                                                                  | Native reviewed-folder selection verified; scratch creation open |
 | 008 | Composer permission guard                   | captured                                                                                                                  | Open                                                            |
 | 009 | Composer model picker                       | captured                                                                                                                  | Direct control implemented; visual comparison open              |
 | 010 | Composer model provider row focused         | supplemental — Provider row focused; see 011 for the expanded Aside models.                                               | Open                                                            |
@@ -92,12 +92,12 @@ source limitations. The complete source filename and metadata live in the folder
 | 013 | Composer reasoning effort                   | captured                                                                                                                  | Direct control implemented; visual comparison open              |
 | 014 | Composer context mention                    | captured                                                                                                                  | Open                                                            |
 | 015 | Settings general top                        | captured                                                                                                                  | Source changed; native comparison open                          |
-| 016 | Settings search engine dropdown             | captured                                                                                                                  | Open                                                            |
+| 016 | Settings search engine dropdown             | captured                                                                                                                  | Source/live dropdown reviewed; native staging pending |
 | 017 | Settings new tab mode dropdown              | captured                                                                                                                  | Open                                                            |
-| 018 | Settings language configuration             | captured                                                                                                                  | Compact dialog implemented; native composition comparison open |
-| 019 | Settings add language dropdown              | captured                                                                                                                  | Open                                                            |
-| 020 | Settings browser import dialog              | captured                                                                                                                  | Compact dialog implemented; native composition comparison open |
-| 021 | Settings import browser picker              | captured                                                                                                                  | Open                                                            |
+| 018 | Settings language configuration             | captured                                                                                                                  | Draft list source/live reviewed; normalized geometry revised, native pending |
+| 019 | Settings add language dropdown              | captured                                                                                                                  | Alphabetized Add picker source changed; visual/native acceptance pending |
+| 020 | Settings browser import dialog              | captured                                                                                                                  | Reviewed; source selector added, composition/native acceptance open |
+| 021 | Settings import browser picker              | captured                                                                                                                  | Reviewed; real source selector added, native acceptance pending |
 | 022 | Settings general about section              | captured                                                                                                                  | Open                                                            |
 | 023 | Settings appearance top                     | captured                                                                                                                  | Reviewed; matching native comparison open                       |
 | 024 | Appearance theme dropdown                   | captured                                                                                                                  | Open                                                            |
@@ -786,3 +786,32 @@ launcher (exit 0). Removed the exact synthetic Project fixture only after
 retirement. New single native launcher builds `9d677b376` with a temporary
 Profile; `/tmp/aux-settings-consolidated-native.log` tracks this build. Native
 search/language acceptance remains pending; do not replace a live builder.
+
+## Capture 019 correction and 020/021 import source selection
+
+Opened actual 019: Add opens a language chooser. Replaced automatic first-unused
+selection with an alphabetized menu; choosing an item changes the draft only.
+The menu excludes current languages and retains arbitrary code entry as its last
+action. Catalog: 183 tags from the product Chromium checkout’s
+ui/base/l10n/chromium_language_matcher.cc kAcceptLanguageList, pseudolocales
+excluded. A shared Intl.DisplayNames instance uses standard names; selectors fit
+the selected label. Capture 018’s center surface spans approximately physical
+x1475–2512 (1,040px), or 520 CSS pixels at 2× density. Reduced dialog width from
+620 to 520, padding to 20, rows to 50 and selectors to 32; custom code fields
+remain hidden until requested. Exact grip and actual pointer reorder remain open.
+
+Opened 020/021. Aux retains explicit discovery, opt-in categories, receipt recovery
+and the actual no-cookie/native-password boundaries. Added Detected browser after
+discovery, showing only its Profile/category review. Switching source clears both
+category selections and extension choices, preventing hidden-source imports. Empty
+discovery has a next step rather than a blank review. Browser logos, reference
+dialog composition, already-imported semantics and separate bookmark import remain
+open. No source discovery was run against the owner’s real Profile for this slice.
+
+Language menu checks: 14 focused pass; integrated typecheck/lint and 4,547/4,548
+cases pass (known coder-worktrees timeout only). Import focused: 20 pass. Integrated
+import: 4,548/4,550 pass, with the known timeout plus a stale onboarding assertion
+expecting four source cards at once. Migrated onboarding to the four choices and
+unchecked per-browser reviews; final 44 affected integration cases pass. Final
+renderer build: 1.82s. This source is newer than native candidate 9d677b376;
+visual/native acceptance of the Add menu and import selector is pending.

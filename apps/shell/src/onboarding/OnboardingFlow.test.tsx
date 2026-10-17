@@ -274,8 +274,19 @@ it("reuses four-browser review without discovering or importing on step entry", 
   );
   await act(async () => button("See what can be imported").click());
   const options = [...document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
-  expect(options).toHaveLength(4);
+  expect(options).toHaveLength(1);
   expect(options.every((input) => !input.checked)).toBe(true);
+  const picker = document.querySelector<HTMLSelectElement>('[aria-label="Detected browser"]')!;
+  expect([...picker.options].map((item) => item.value)).toEqual(["chrome", "arc", "safari", "firefox"]);
+  for (const id of ["arc", "safari", "firefox"]) {
+    await act(async () => {
+      picker.value = id;
+      picker.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const choices = [...document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    expect(choices).toHaveLength(1);
+    expect(choices[0]!.checked).toBe(false);
+  }
   expect(document.body.textContent).toContain("Keychain");
   expect(rpc.mock.calls.some(([method]) => method === "import.run")).toBe(false);
 });

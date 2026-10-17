@@ -3,6 +3,27 @@
 
 ## October 16 UI parity review — in progress
 
+Capture 019 correction: Add now opens an alphabetized language menu before
+changing the draft. The catalog contains 183 accept-language tags from the local
+Chromium source (excluding pseudolocales). Selected languages are omitted; custom
+code entry is offered inside that menu. Standard display names reuse one locale
+formatter. Normalized capture 018 measures 1,040 physical pixels / 520 CSS pixels
+at 2× density; the dialog now uses 520px, tighter rows and content-sized selectors.
+These menu/geometry changes are newer than the native build currently in flight.
+
+Captures 020/021 comparison adds a real Detected browser selector after explicit
+source discovery. Only that browser’s Profile/category review is shown. Switching
+browsers clears old selections and extension choices, preventing hidden queued
+imports. Empty discovery points to export-file/Safari-window review. Discovery
+remains opt-in; no automatic import or source Profile access was added.
+
+The menu integrated check passed typecheck/lint and 4,547/4,548 cases (known
+coder-worktrees timeout only). Import integrated check passed 4,548/4,550: that
+timeout plus one obsolete onboarding assertion expecting four simultaneous source
+cards. Migrated onboarding to verify all four picker choices and unchecked reviews;
+44 final affected integration cases pass. All 20 focused import cases pass.
+Final renderer build: 1.82s. Native/new-menu/import visual acceptance is pending.
+
 Latest source also replaces the immediate-write language editor with a draft
 list matching capture 018: ranked rows, rounded language selectors, Add, removal,
 reordering and Cancel/Save. Keyboard arrows on the reorder handle and scoped

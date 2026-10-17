@@ -435,3 +435,16 @@ with focus return. Pointer drag attempt gave no observed reorder; native staging
 and pointer acceptance remain open. Evidence is in the active capture ledger.
 Typecheck/lint pass, 4,543/4,544 integrated tests pass (known coder-worktrees timeout
 only), final 26 affected cases pass; renderer build 2.08s. Full QA remains open.
+
+## October 16 — Add language menu and import browser review
+
+Capture 019 disproved automatic language insertion. Add now opens an alphabetized
+menu backed by 183 local Chromium tags, omitting current choices and retaining
+custom codes. Corrected capture-density measurements: 520px dialog, 50px rows,
+32px selectors. Captures 020/021 add a real detected-browser selector after opt-in
+discovery; source switches clear hidden selections/extension choices. Empty
+discovery explains available alternatives. Existing import protections remain.
+14 language and 20 import focused cases pass. Final 44 affected integration cases
+pass after migrating the obsolete onboarding card-count assertion. Integrated
+results and native/source distinction are in the ledger. Full acceptance remains
+open; native builder 21531 still owns its current compilation.

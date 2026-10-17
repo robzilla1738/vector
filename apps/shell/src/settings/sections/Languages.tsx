@@ -1,102 +1,21 @@
 import { staticFieldErrorProps, staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
 import { PreferenceAction, usePreferenceCommand } from "./preference-command";
 import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 import { shellIconClose, shellIconMore, shellIconPlusSm, shellIconUp, shellIconDown } from "../../ui/icons";
 import "./Languages.css";
+import { LANGUAGE_CODES } from "./language-catalog";
+import { Popover } from "../../ui/popover";
+import { moveListFocus } from "../../keyboard-list";
 const read = () => bridge.languagePreferences();
 const write = (selected: string[]) =>
   bridge.languagePreferences(selected).then((value) => ({ ack: value, value }));
-const COMMON = [
-  "en-US",
-  "en",
-  "en-GB",
-  "es-ES",
-  "es-419",
-  "fr",
-  "fr-CA",
-  "de",
-  "it",
-  "pt-BR",
-  "pt-PT",
-  "ja",
-  "ko",
-  "zh-CN",
-  "zh-TW",
-  "hi",
-  "ar",
-  "af",
-  "am",
-  "az",
-  "be",
-  "bg",
-  "bn",
-  "bs",
-  "ca",
-  "cs",
-  "cy",
-  "da",
-  "el",
-  "et",
-  "eu",
-  "fa",
-  "fi",
-  "fil",
-  "gl",
-  "gu",
-  "he",
-  "hr",
-  "hu",
-  "hy",
-  "id",
-  "is",
-  "ka",
-  "kk",
-  "km",
-  "kn",
-  "lo",
-  "lt",
-  "lv",
-  "mk",
-  "ml",
-  "mn",
-  "mr",
-  "ms",
-  "my",
-  "nb",
-  "ne",
-  "nl",
-  "pa",
-  "pl",
-  "ro",
-  "ru",
-  "si",
-  "sk",
-  "sl",
-  "sq",
-  "sr",
-  "sv",
-  "sw",
-  "ta",
-  "te",
-  "th",
-  "tr",
-  "uk",
-  "ur",
-  "uz",
-  "vi",
-  "zu",
-];
-function name(code: string) {
+function languageName(code: string, display: Intl.DisplayNames) {
   try {
-    return (
-      new Intl.DisplayNames([navigator.language], { type: "language", languageDisplay: "standard" }).of(
-        code,
-      ) || code
-    );
+    return display.of(code) || code;
   } catch {
     return code;
   }
@@ -107,12 +26,14 @@ function LanguageSelect({
   disabled,
   scopeId,
   change,
+  name,
 }: {
   code: string;
   options: string[];
   disabled: boolean;
   scopeId: string;
   change(code: string): void;
+  name(code: string): string;
 }) {
   const [ref, run] = usePreferenceCommand<HTMLSelectElement>("set-site-language", scopeId, (control) =>
     change(control.value),
@@ -127,7 +48,88 @@ function LanguageSelect({
     </select>
   );
 }
+function AddLanguage({
+  options,
+  disabled,
+  scopeId,
+  name,
+  add,
+  current,
+  custom,
+}: {
+  options: string[];
+  disabled: boolean;
+  scopeId: string;
+  name(code: string): string;
+  add(code: string): void;
+  current(): boolean;
+  custom(): void;
+}) {
+  const activate = useRef<(() => void) | null>(null);
+  const [ref, run] = usePreferenceCommand<HTMLButtonElement>("add-site-language", scopeId, () => {
+    if (!current() || !activate.current) throw new Error("Choose the current languages preference.");
+    activate.current();
+  });
+  return (
+    <Popover
+      label="Add a language"
+      className="language-add"
+      disabled={disabled}
+      trigger={<>{shellIconPlusSm} Add</>}
+      triggerControl={(node, toggle) => {
+        activate.current = toggle;
+        ref(node);
+      }}
+      onTrigger={run}
+    >
+      {(close) => (
+        <div
+          className="language-add-menu"
+          onKeyDown={(event) => moveListFocus(event, "button:not(:disabled)")}
+        >
+          {options.map((code) => (
+            <PreferenceAction
+              key={code}
+              command="add-site-language"
+              scopeId={scopeId}
+              aria-label={`Add ${name(code)}`}
+              invoke={() => {
+                add(code);
+                close();
+              }}
+            >
+              {name(code)}
+            </PreferenceAction>
+          ))}
+          <hr />
+          <button
+            type="button"
+            onClick={() => {
+              if (!current()) return;
+              custom();
+              close();
+            }}
+          >
+            Use a language code…
+          </button>
+        </div>
+      )}
+    </Popover>
+  );
+}
 export function LanguagesSetting({ active, onClose }: { active: boolean; onClose?: () => void }) {
+  const displayNames = useMemo(
+    () => new Intl.DisplayNames([navigator.language], { type: "language", languageDisplay: "standard" }),
+    [navigator.language],
+  );
+  const name = (code: string) => languageName(code, displayNames);
+  const catalog = useMemo(
+    () =>
+      [...LANGUAGE_CODES].sort((left, right) =>
+        languageName(left, displayNames).localeCompare(languageName(right, displayNames), navigator.language),
+      ),
+    [displayNames],
+  );
   const available = inNativeHost || inMock;
   const { owner, scopeId, value, busy, error, perform, refresh } = useNativePreference({
     active,
@@ -143,6 +145,7 @@ export function LanguagesSetting({ active, onClose }: { active: boolean; onClose
   const customCode = customDraft?.owner === owner ? customDraft.text : "";
   const setCustomCode = (text: string) => setCustomDraft({ owner, text });
   const customInput = useRef<HTMLInputElement>(null);
+  const [customOwner, setCustomOwner] = useState<typeof owner | null>(null);
   const drag = useRef<{ owner: typeof owner; code: string } | null>(null);
   const selected = draft?.owner === owner ? draft.selected : (value?.selected ?? []);
   const current = () => value && owner.owns(value) && !busy && !value.managed;
@@ -223,7 +226,7 @@ export function LanguagesSetting({ active, onClose }: { active: boolean; onClose
       </span>
     );
   const editable = !busy && !value.managed;
-  const options = [...new Set([...COMMON, ...selected])];
+  const options = [...new Set([...catalog, ...selected])];
   return (
     <div className="language-editor">
       <p className="hint">Websites use the first matching language in this list when available.</p>
@@ -278,6 +281,7 @@ export function LanguagesSetting({ active, onClose }: { active: boolean; onClose
               {index + 1}
             </span>
             <LanguageSelect
+              name={name}
               code={code}
               options={options.filter(
                 (item) =>
@@ -322,43 +326,40 @@ export function LanguagesSetting({ active, onClose }: { active: boolean; onClose
           </li>
         ))}
       </ol>
-      <PreferenceAction
-        command="add-site-language"
+      <AddLanguage
         scopeId={scopeId}
-        {...smallButtonProps}
+        name={name}
         disabled={!editable || selected.length >= 20}
-        invoke={() => {
-          const next = COMMON.find(
-            (code) => !selected.some((item) => item.toLowerCase() === code.toLowerCase()),
-          );
-          if (!next) throw new Error("Choose a language code below.");
-          edit([...selected, next]);
-        }}
-      >
-        {shellIconPlusSm} Add
-      </PreferenceAction>
-      <details className="language-custom">
-        <summary>Use a language code</summary>
-        <form
-          ref={addRef}
-          onSubmit={(event) => {
-            event.preventDefault();
-            add(event);
-          }}
-        >
-          <input
-            ref={customInput}
-            aria-label="Language code"
-            placeholder="e.g. es-ES"
-            value={customCode}
-            disabled={!editable}
-            onChange={(event) => setCustomCode(event.target.value)}
-          />
-          <button {...smallButtonProps} type="submit" disabled={!editable || !customCode.trim()}>
-            Add language
-          </button>
-        </form>
-      </details>
+        options={catalog.filter(
+          (code) => !selected.some((item) => item.toLowerCase() === code.toLowerCase()),
+        )}
+        custom={() => setCustomOwner(owner)}
+        current={() => !!current()}
+        add={(code) => edit([...selected, code])}
+      />
+      {customOwner === owner && (
+        <div className="language-custom">
+          <form
+            ref={addRef}
+            onSubmit={(event) => {
+              event.preventDefault();
+              add(event);
+            }}
+          >
+            <input
+              ref={customInput}
+              aria-label="Language code"
+              placeholder="e.g. es-ES"
+              value={customCode}
+              disabled={!editable}
+              onChange={(event) => setCustomCode(event.target.value)}
+            />
+            <button {...smallButtonProps} type="submit" disabled={!editable || !customCode.trim()}>
+              Add language
+            </button>
+          </form>
+        </div>
+      )}
       {message && (
         <p {...nativeAlertRoleProps} {...staticFieldErrorProps}>
           {message} {retry}
@@ -372,6 +373,7 @@ export function LanguagesSetting({ active, onClose }: { active: boolean; onClose
             draftRef.current = null;
             setDraft(null);
             setCustomCode("");
+            setCustomOwner(null);
             setInvalid(null);
             onClose?.();
           }}

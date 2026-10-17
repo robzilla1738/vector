@@ -105,6 +105,7 @@ export function ImportDataSetting() {
   const [selectingSource, setSelectingSource] = useState(false);
   const [preview, setPreview] = useState<ImportSourcePreview[] | null>(null);
   const [selection, setSelection] = useState<Selection>({});
+  const [sourceId, setSourceId] = useState<string>();
   const [extensionReviews, setExtensionReviews] = useState<Record<string, ExtensionReviewState>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -198,6 +199,7 @@ export function ImportDataSetting() {
           setSelectingSource(false);
           if (receipt.sources) {
             setPreview(receipt.sources);
+            setSourceId(undefined);
             setSelection({});
             setExtensionReviews({});
           }
@@ -270,6 +272,7 @@ export function ImportDataSetting() {
         }
       }
       setPreview(result.sources);
+      setSourceId(undefined);
       setSelection(next);
       if (result.recentJobs?.[0]) apply(result.recentJobs[0]);
     } catch (reason) {
@@ -404,6 +407,8 @@ export function ImportDataSetting() {
       pendingCancels.current.delete(current.jobId);
     }
   };
+
+  const activeSource = preview?.find((source) => source.id === sourceId) ?? preview?.[0];
 
   return (
     <div className="import-setting">
@@ -549,7 +554,42 @@ export function ImportDataSetting() {
           password text is never sent to the runtime. Delete exported password files when finished.
         </p>
       </details>
-      {preview?.map((source) => (
+      {preview && preview.length > 0 && (
+        <label className="import-browser-picker">
+          <span>Detected browser</span>
+          <select
+            aria-label="Detected browser"
+            value={activeSource?.id ?? ""}
+            disabled={running || loading || selectingSource}
+            onChange={(event) => {
+              if (
+                busy.current ||
+                running ||
+                loading ||
+                selectingSource ||
+                !preview.some((source) => source.id === event.target.value)
+              )
+                return;
+              setSourceId(event.target.value);
+              setSelection({});
+              setExtensionReviews({});
+            }}
+          >
+            {preview.map((source) => (
+              <option key={source.id} value={source.id}>
+                {source.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {preview?.length === 0 && (
+        <p {...staticHintProps}>
+          No installed browser Profiles were found. Choose an export file or a Safari window to review another
+          source.
+        </p>
+      )}
+      {(activeSource ? [activeSource] : []).map((source) => (
         <fieldset className="import-source" key={source.id} disabled={running || loading}>
           <legend className="import-source-head">
             <strong>{source.label}</strong>

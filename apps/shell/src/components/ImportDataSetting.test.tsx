@@ -320,14 +320,19 @@ it("requires exact acknowledgement and a fresh unchecked native-source review af
         .click(),
     );
     const choices = [...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
-    expect(choices).toHaveLength(9);
+    expect(choices).toHaveLength(3);
     expect(choices[0]?.checked).toBe(true);
     expect(choices.slice(1).every((item) => !item.checked)).toBe(true);
     expect(
       [...host.querySelectorAll("button")].find((button) => button.textContent?.startsWith("Import selected"))
         ?.disabled,
     ).toBe(true);
-    await act(async () => choices[6]!.click());
+    await act(async () => {
+      const picker = host.querySelector<HTMLSelectElement>('[aria-label="Detected browser"]')!;
+      picker.value = "brave";
+      picker.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await act(async () => host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[2]!.click());
     await act(async () =>
       [...host.querySelectorAll("button")]
         .find((button) => button.textContent?.startsWith("Import selected"))!
@@ -591,6 +596,80 @@ it("retires displayed extension choices when a replacement export publishes a ne
     const category = host.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
     await act(async () => category.click());
     expect(button("Import selected").disabled).toBe(true);
+    expect(rpc.mock.calls.some(([method]) => method === "import.run")).toBe(false);
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
+
+it("switches detected browsers without keeping hidden selections queued", async () => {
+  rpc.mockReset();
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "import.preview")
+      return {
+        sources: ["chrome", "firefox"].map((id) => ({
+          id,
+          label: id,
+          profiles: ["Synthetic"],
+          categories: [],
+          profileCategories: [
+            { profileId: "Synthetic", categories: [{ category: "bookmarks", available: true }] },
+          ],
+        })),
+      };
+    if (method === "import.run") return { jobId: "selected-browser" };
+    if (method === "import.status") return { jobId: "selected-browser", done: true, progress: [] };
+    throw new Error(`Unexpected ${method}`);
+  });
+  const host = document.createElement("div"),
+    root = createRoot(host);
+  try {
+    await act(async () => root.render(<ImportDataSetting />));
+    await act(async () => host.querySelector("button")!.click());
+    await act(async () => host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+    expect(
+      [...host.querySelectorAll("button")].find((button) =>
+        button.textContent?.startsWith("Import selected"),
+      )!.disabled,
+    ).toBe(false);
+    await act(async () => {
+      const picker = host.querySelector<HTMLSelectElement>('[aria-label="Detected browser"]')!;
+      picker.value = "firefox";
+      picker.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const selected = host.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    expect(selected.checked).toBe(false);
+    expect(
+      [...host.querySelectorAll("button")].find((button) =>
+        button.textContent?.startsWith("Import selected"),
+      )!.disabled,
+    ).toBe(true);
+    await act(async () => selected.click());
+    await act(async () =>
+      [...host.querySelectorAll("button")]
+        .find((button) => button.textContent?.startsWith("Import selected"))!
+        .click(),
+    );
+    expect(rpc).toHaveBeenCalledWith("import.run", {
+      selections: [{ sourceId: "firefox", profileId: "Synthetic", categories: ["bookmarks"] }],
+    });
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
+it("shows an actionable empty browser discovery result", async () => {
+  rpc.mockReset().mockImplementation(async (method: string) => {
+    if (method === "import.preview") return { sources: [] };
+    throw new Error("No prior import");
+  });
+  const host = document.createElement("div"),
+    root = createRoot(host);
+  try {
+    await act(async () => root.render(<ImportDataSetting />));
+    await act(async () => host.querySelector("button")!.click());
+    expect(host.querySelector('[aria-label="Detected browser"]')).toBeNull();
+    expect(host.textContent).toContain("No installed browser Profiles were found");
+    expect(host.textContent).toContain("Choose an export file");
     expect(rpc.mock.calls.some(([method]) => method === "import.run")).toBe(false);
   } finally {
     await act(async () => root.unmount());
