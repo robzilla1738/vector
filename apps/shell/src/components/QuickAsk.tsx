@@ -6,10 +6,12 @@ import { useStore, errToast } from "../store";
 import { IconButton } from "../ui";
 import { shellIconClose, shellIconOpen, shellIconPlusSm } from "../ui/icons";
 import "./QuickAsk.css";
+import { useQuickAskLayout } from "./use-quick-ask-layout";
 
 export function QuickAsk({ onExpand }: { onExpand(): void }) {
   const composer = useRef<HTMLTextAreaElement>(null);
   const chatId = useStore((state) => state.conversationId);
+  useQuickAskLayout(composer, chatId);
   const title = useStore(
     (state) => state.runs.find((run) => (run.config?.chatId ?? run.runId) === chatId)?.goal ?? "Ask Aux",
   );

@@ -222,6 +222,22 @@ position and backdrop bounds follow `.main-col > .main`, observed for resizing,
 so the browser sidebar and toolbar remain visually outside the modal content
 area. Anchored Menu and Popover surfaces retain their own placement. New dialogs
 should use this shared shell rather than calculating sidebar offsets independently.
+
+Settings editors with asynchronously loaded fields transfer initial focus when the
+first editable field becomes available. Keyboard/pointer interaction cancels this
+handoff. External-agent connection drafts stay in one active Settings/window
+lifetime; pending mutations lock client/scope selection and retired results cannot
+install credentials into a replacement editor. Cloud account status has an explicit
+retry without dispatching configuration before its revision is known.
+
+Native tab catalog history flags own ordinary browser Back/Forward availability;
+late runtime full-page and partial events cannot replace those flags. Runtime-only
+pages retain their own navigation state until a catalog is available.
+
+Quick Ask's trusted `quickAskLayout` host method resizes only the controller's
+current compact window. The renderer measures draft height outside the flex layout,
+deduplicates requests and retires observers with the window. Native code clamps the
+draft range and keeps both draft/conversation bounds within the current display.
 Editors mount only while open; their section supplies active state to retire them
 when navigating away. Selection action drafts and save ownership stay in the
 section, so closing an action editor does not discard the unsaved draft. Skills

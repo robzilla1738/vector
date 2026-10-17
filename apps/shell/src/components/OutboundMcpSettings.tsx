@@ -17,7 +17,6 @@ import { McpToolAccess } from "../features/mcp/ToolAccess";
 import { bridge } from "../bridge";
 import { call } from "../store";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
-import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
 import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/class-props";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 

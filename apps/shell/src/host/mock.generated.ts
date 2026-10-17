@@ -267,6 +267,7 @@ const RESULTS: Record<string, unknown> = {
     "error": "mock-error"
   },
   "quickAsk": false,
+  "quickAskLayout": false,
   "showTabWindow": false,
   "littleWindow": false,
   "externalLinkTarget": "little",

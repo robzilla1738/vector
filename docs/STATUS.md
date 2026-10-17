@@ -9,6 +9,40 @@ retired and old gaps may have been resolved by later entries.
 
 ## Settings editor behavior and layout follow-up — source
 
+Packaged `0ea3c3575` built in 8m22.98s and About confirmed its source. Native
+rename/reorder/preview/save completed without the previous Selection conflict;
+reload retained the new name/order. New-action focus and removal focus passed.
+MCP fields, Models card edges and password transfer controls were reviewed.
+Cloud setup cleared a synthetic token draft on dismissal. Night shift opened
+with the time focused and persisted 00:01 with overnight work still disabled.
+Quick Ask transferred a synthetic draft intact into a full window, and a real
+default-route chat returned `READY`. Native navigation/bookmark creation worked;
+a destination redirect error recovered with Back. Toolbar history buttons still
+incorrectly appeared disabled, leading to the next source correction. Local
+captures 50–57 include a 1200×850 logical-pixel light editor walkthrough.
+
+## Browser readiness and remaining shared parity — source
+
+Native catalog history flags now survive late runtime page snapshots/patches,
+keeping toolbar navigation usable independently of runtime updates. Shared
+settings editors focus fields that arrive asynchronously without stealing focus
+after user interaction. Developers follows the reference group order; client and
+scope controls stay fixed during connection requests, and route/window retirement
+discards late configuration results. Cloud setup can retry a failed status read.
+Feature cards use the reference's 16px title and 14px description tokens.
+
+Native area 0054 adds bounded Quick Ask layout updates, accepted only from the
+current compact window. Drafts start at 440×184 and grow up to 360px; conversations
+use 520×640. The renderer measures draft content independently of window height
+and avoids repeating unchanged resize requests. Aux's native window controls and
+full composer controls retain a taller minimum than Aside's 92px draft. This is a
+remaining parity difference, not complete Quick Ask acceptance. Integrated
+`npm run check` passed typecheck/lint and 4,662 tests across 749 files in 95.01s
+(`/tmp/aux-parity-readiness-check.log`). The native patch passes reverse-apply
+verification against the checkout. A new native build remains pending.
+
+## Earlier settings editor source details
+
 The native5c4a43a07 walkthrough found Selection & Capture misclassifying its own
 persisted settings broadcast as an external conflict. Pending saves now retain
 ownership only for their exact expected value or a previously acknowledged value;
@@ -214,7 +248,10 @@ capture49 confirmed password editor focus/dismissal geometry and exposed cramped
 transfer buttons, now corrected in source. The first replacement build (launcher98844) was retired normally during early
 compilation to fold in reference-derived neutral primary-button tokens,384/512px
 dialog widths and MCP label alignment. Its builder and lock were verified absent.
-The consolidated replacement preview is pending.
+The consolidated `0ea3c3575` preview retired normally through original launcher
+**117**. Launcher/app 3397, API 51079, disposable Profile aux-dev-uD6wXE and the native
+lock were verified absent. CUA binding `editorFinalApp` is stale. New source changes
+above have not yet been packaged; the replacement preview is pending.
 Never embed the full mock renderer inside Aux.
 
 The following populated Memory evidence is from earlier disposable previews:

@@ -255,3 +255,15 @@ it("accepts runtime placement before any native catalog is available", () => {
     .applyEvent(event("page.updated", { page: { ...page("a"), windowId: "runtime-window" } }));
   expect(orderedPages(useStore.getState().pages)[0]?.windowId).toBe("runtime-window");
 });
+
+it("keeps native history available through later runtime snapshots and patches", () => {
+  tabs("a");
+  const native = { ...page("a"), backend: "aux" as const, canGoBack: true, canGoForward: true };
+  useStore.setState({ pages: normalizePages([native]), catalogVersion: 7 });
+  useStore.getState().applyEvent(event("page.updated", { page: { ...page("a"), backend: "aux" } }, 1));
+  expect(useStore.getState().pages.byId.a).toMatchObject({ canGoBack: true, canGoForward: true });
+  useStore.getState().applyEvent(
+    event("page.updated", { pageId: "a", canGoBack: false, canGoForward: false, loading: false }, 2),
+  );
+  expect(useStore.getState().pages.byId.a).toMatchObject({ canGoBack: true, canGoForward: true });
+});

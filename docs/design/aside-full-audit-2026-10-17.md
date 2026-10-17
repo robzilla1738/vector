@@ -3,6 +3,25 @@
 Full parity is not established. The owner requested all captured surfaces, granular
 colors/borders/menus and window chrome, and authorized live Aside inspection.
 
+## Native editor and browser walkthrough — `0ea3c3575`
+
+Captures 50–57 in the existing local audit directory record saved Selection editor,
+MCP setup, compact Developers, Night shift, password transfer, aligned Models,
+Quick Ask draft and the light password editor in a 1200×850 logical window.
+Selection save/reload, new-action/reorder/removal focus, cloud draft disposal,
+Night shift persistence while disabled and Quick Ask draft expansion passed.
+A real default-route chat completed with `READY`. Ordinary navigation and native
+bookmark creation passed; Back recovered from a destination redirect error.
+
+The walkthrough exposed toolbar history flags overwritten by runtime updates,
+async editor fields losing initial focus to Close, and an oversized empty Quick
+Ask window. The next source batch addresses these alongside Developers request
+ownership, group order, cloud read recovery and shared feature typography 16/14.
+Quick Ask still preserves Aux native window controls and full composer controls,
+so its proposed 184px minimum differs from Aside's 92px compact composer. Detailed
+paired acceptance, especially long drafts, narrow layouts and populated popups,
+remains open. The reference folder still contains 182 PNGs after this walkthrough.
+
 ## Current paired evidence
 
 Local captures in `/tmp/aux-parity-full-audit/`:

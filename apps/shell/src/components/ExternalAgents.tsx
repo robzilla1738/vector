@@ -7,7 +7,7 @@ import { RemoteDebugging } from "./RemoteDebugging";
 import { staticFieldProps } from "../ui/class-props";
 import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { AgentConnection, AgentConnectionScope, Task, Workspace } from "@aux/contracts";
 import { mcpCatalogGrouped, type McpCatalogTool } from "@aux/contracts/mcp-catalog";
 import { bridge } from "../bridge";
@@ -20,6 +20,28 @@ type Config = Awaited<ReturnType<typeof bridge.agentConfig>>;
 type Installation = Awaited<ReturnType<typeof bridge.agentClients>>[number];
 
 export function ExternalAgents({ active = false }: { active?: boolean }) {
+  if (!active || bridge.privateMode || bridge.windowKind !== "normal") return null;
+  return <ExternalAgentSettings key={bridge.windowId} />;
+}
+
+function ExternalAgentSettings() {
+  const epoch = useRef(0);
+  const pending = useRef(false);
+  const windowId = bridge.windowId;
+  useLayoutEffect(() => {
+    ++epoch.current;
+    return () => {
+      ++epoch.current;
+    };
+  }, []);
+  const delivery = () => {
+    const generation = epoch.current;
+    return () =>
+      generation === epoch.current &&
+      bridge.windowId === windowId &&
+      bridge.windowKind === "normal" &&
+      !bridge.privateMode;
+  };
   const [config, setConfig] = useState<Config | null>(null);
   const [client, setClient] = useState<AgentConnection["client"]>("codex");
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -55,12 +77,14 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
   };
 
   const refresh = async () => {
+    const current = delivery();
     const [nextWorkspaces, nextTasks, nextConnections, nextInstallations] = await Promise.all([
       bridge.invoke("workspaces.list", {}) as Promise<Workspace[]>,
       bridge.invoke("tasks.list", { includeArchived: true, limit: 500 }) as Promise<Task[]>,
       bridge.agentConnections(),
       bridge.agentClients(),
     ]);
+    if (!current()) return;
     setWorkspaces(nextWorkspaces);
     setTasks(nextTasks);
     setConnections(nextConnections);
@@ -72,7 +96,10 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
     );
   };
   useEffect(() => {
-    void refresh().catch((reason) => setError(String(reason)));
+    const current = delivery();
+    void refresh().catch((reason) => {
+      if (current()) setError(String(reason));
+    });
   }, []);
   useEffect(() => {
     if (!availableTasks.some((task) => task.taskId === taskId)) setTaskId(availableTasks[0]?.taskId ?? "");
@@ -107,6 +134,9 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
           .map(([key, value]) => `${key} = ${JSON.stringify(value)}`)
           .join("\n")}\n`;
   const create = async () => {
+    const current = delivery();
+    if (!current() || pending.current) return;
+    pending.current = true;
     setError("");
     setMessage("");
     setBusy(true);
@@ -114,32 +144,44 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
       const scope: AgentConnectionScope =
         scopeKind === "task" ? { kind: "task", workspaceId, taskId } : { kind: "workspace", workspaceId };
       const next = await bridge.agentConfig({ name: name.trim(), client, scope });
+      if (!current()) return;
       setConfig(next);
       await refresh();
+      if (!current()) return;
       setMessage(
         "Connection created. Copy this configuration now; Aux does not retain the token in readable form.",
       );
     } catch (reason) {
-      setError(String(reason));
+      if (current()) setError(String(reason));
     } finally {
-      setBusy(false);
+      pending.current = false;
+      if (current()) setBusy(false);
     }
   };
   const revoke = async (connectionId: string) => {
+    const current = delivery();
+    if (!current() || pending.current) return;
+    pending.current = true;
     setError("");
     setBusy(true);
     try {
       await bridge.revokeAgentConnection(connectionId);
+      if (!current()) return;
       await refresh();
+      if (!current()) return;
       setMessage("Connection revoked. Its existing configuration can no longer call Aux.");
     } catch (reason) {
-      setError(String(reason));
+      if (current()) setError(String(reason));
     } finally {
-      setBusy(false);
+      pending.current = false;
+      if (current()) setBusy(false);
     }
   };
 
   const connect = async () => {
+    const current = delivery();
+    if (!current() || pending.current) return;
+    pending.current = true;
     setError("");
     setMessage("");
     setBusy(true);
@@ -152,23 +194,23 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
         client,
         scope,
       })) as import("@aux/contracts").MethodResult<"agentConnections.install">;
+      if (!current()) return;
       await refresh();
+      if (!current()) return;
       setMessage(
         `Connected. Configuration saved to ${result.configPath}; Aux skill installed at ${result.skillPath}. Restart the client to load it.`,
       );
     } catch (reason) {
-      setError(String(reason));
+      if (current()) setError(String(reason));
     } finally {
-      setBusy(false);
+      pending.current = false;
+      if (current()) setBusy(false);
     }
   };
 
   return (
     <section className="external-agents" aria-label="External agents">
       <CliInstallControl />
-      <SettingsGroup title="Remote control">
-        <RemoteDebugging />
-      </SettingsGroup>
       <SettingsGroup title="Skills & MCP">
         <SettingsField
           compact
@@ -176,12 +218,7 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
           hint="Connect an MCP client to one saved task or Space using its own account and model."
           searchTerms={["MCP", "Codex", "Claude", "Cursor", "token", "tools", "scope"]}
         >
-          <SettingsDialogControl
-            active={active}
-            size="wide"
-            label="Connect an external agent"
-            action="Connect…"
-          >
+          <SettingsDialogControl active size="wide" label="Connect an external agent" action="Connect…">
             <div className="developer-connection-editor settings-editor-fields">
               <div role="group" {...staticRowProps} aria-label="Detected agent clients">
                 {installations.map((item) => (
@@ -253,6 +290,7 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
                     key={value}
                     className={client === value ? "on" : ""}
                     aria-pressed={client === value}
+                    disabled={busy}
                     onClick={() => setClient(value)}
                   >
                     {value === "codex" ? "TOML client" : value === "claude" ? "JSON client" : "Editor client"}
@@ -270,6 +308,7 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
                     <input
                       aria-label="Connection name"
                       value={name}
+                      disabled={busy}
                       maxLength={100}
                       onChange={(event) => {
                         setName(event.target.value);
@@ -282,6 +321,7 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
                     <select
                       aria-label="Connection workspace"
                       value={workspaceId}
+                      disabled={busy}
                       onChange={(event) => {
                         setWorkspaceId(event.target.value);
                         setConfig(null);
@@ -299,6 +339,7 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
                     <select
                       aria-label="Connection scope"
                       value={scopeKind}
+                      disabled={busy}
                       onChange={(event) => {
                         setScopeKind(event.target.value as "workspace" | "task");
                         setConfig(null);
@@ -314,6 +355,7 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
                       <select
                         aria-label="Connection task"
                         value={taskId}
+                        disabled={busy}
                         onChange={(event) => {
                           setTaskId(event.target.value);
                           setConfig(null);
@@ -440,6 +482,9 @@ export function ExternalAgents({ active = false }: { active?: boolean }) {
           Removing the client entry stops normal use. Revoking it here invalidates the token immediately.
           Quitting Aux stops the runtime.
         </span>
+      </SettingsGroup>
+      <SettingsGroup title="Remote control">
+        <RemoteDebugging />
       </SettingsGroup>
     </section>
   );

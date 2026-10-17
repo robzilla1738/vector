@@ -230,6 +230,10 @@ export const reducePageEvent: Reducer = (state, e) => {
           delete fields.split;
           delete fields.lastActiveAt;
           const native = state.pages.byId[pageId]!;
+          if (!native.ownedByRuntime && native.backend === "aux") {
+            delete fields.canGoBack;
+            delete fields.canGoForward;
+          }
           if (!native.ownedByRuntime && native.backend === "aux" && native.lifecycle !== undefined) {
             delete fields.lifecycle;
             if (fields.viewStatus === "detached") delete fields.viewStatus;

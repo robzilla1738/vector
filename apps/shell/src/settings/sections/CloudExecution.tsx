@@ -84,6 +84,7 @@ export function CloudExecutionEditor({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const [reviewed, setReviewed] = useState(false);
+  const [retry, setRetry] = useState(0);
   const epoch = useRef(0),
     pending = useRef(false);
   const windowId = bridge.windowId,
@@ -130,7 +131,7 @@ export function CloudExecutionEditor({
     return () => {
       ++epoch.current;
     };
-  }, [windowId, windowKind, privateMode]);
+  }, [windowId, windowKind, privateMode, retry]);
   async function update(clear = false) {
     if (!status || pending.current || !sameWindow()) return;
     const generation = epoch.current;
@@ -276,7 +277,7 @@ export function CloudExecutionEditor({
         I reviewed these account rates and understand that Cloud resource charges are separate from model
         charges.
       </label>
-      <button className="btn sm" disabled={disabled} onClick={() => void update()}>
+      <button className="btn sm primary" disabled={disabled} onClick={() => void update()}>
         Save cloud account and rates
       </button>
       {status?.configured && (
@@ -297,6 +298,12 @@ export function CloudExecutionEditor({
         </p>
       )}
       {error && <p role="alert">{error}</p>}
+      {!status && error && (
+        <button className="btn sm" type="button" onClick={() => setRetry((value) => value + 1)}>
+          Retry loading cloud account
+        </button>
+      )}
+      {!status && !error && <p role="status">Loading cloud account…</p>}
     </section>
   );
 }

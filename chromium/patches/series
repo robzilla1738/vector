@@ -51,3 +51,4 @@ aux/0050-private-history-navigation.patch
 aux/0051-native-library-feature-preferences.patch
 aux/0052-embedded-page-focus-handoff.patch
 aux/0053-native-history-dialog-return.patch
+aux/0054-quick-ask-draft-layout.patch

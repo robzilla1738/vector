@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, useEffect } from "react";
+import { act, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { SettingsDialogControl } from "./SettingsDialogControl";
@@ -61,3 +61,39 @@ it("opens the editor on demand, returns focus on Escape, and retires it when the
     vi.unstubAllGlobals();
   }
 });
+
+it.each([false, true])(
+  "focuses late editor fields without overriding prior interaction (%s)",
+  async (interacted) => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    let ready!: () => void;
+    function Editor() {
+      const [loaded, setLoaded] = useState(false);
+      ready = () => setLoaded(true);
+      return <input aria-label="Async editor value" disabled={!loaded} />;
+    }
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    try {
+      await act(async () =>
+        root.render(
+          <SettingsDialogControl active label="Async editor" action="Open">
+            <Editor />
+          </SettingsDialogControl>,
+        ),
+      );
+      await act(async () => host.querySelector<HTMLButtonElement>("button")!.click());
+      const dialog = document.querySelector("dialog")!;
+      const close = dialog.querySelector<HTMLButtonElement>("button")!;
+      close.focus();
+      if (interacted) dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+      await act(async () => ready());
+      expect(document.activeElement).toBe(interacted ? close : dialog.querySelector("input"));
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+      vi.unstubAllGlobals();
+    }
+  },
+);

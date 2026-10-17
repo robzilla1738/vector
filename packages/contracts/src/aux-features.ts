@@ -157,6 +157,7 @@ const BRIDGE_FEATURE_METHODS: Readonly<Record<string, AuxFeature>> = {
   openBrowserProfileUrl: "profiles",
   quickAsk: "quickAsk",
   quickAskShortcut: "quickAsk",
+  quickAskLayout: "quickAsk",
   filterLists: "contentBlocking",
   updateFilters: "contentBlocking",
   addFilterSource: "contentBlocking",

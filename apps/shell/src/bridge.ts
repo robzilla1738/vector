@@ -195,6 +195,7 @@ const stub: AuxBridge = {
   quickAskShortcut: async (enabled) => ({ enabled: !!enabled, registered: !!enabled, error: "" }),
   windowKind: "normal",
   quickAsk: async () => false,
+  quickAskLayout: async () => false,
   onQuickAskState: noop,
   privateMode: false,
   windowId: "main",

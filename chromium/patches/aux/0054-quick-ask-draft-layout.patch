@@ -1,0 +1,86 @@
+diff --git a/chrome/browser/ui/aux/quick_ask_controller.cc b/chrome/browser/ui/aux/quick_ask_controller.cc
+--- a/chrome/browser/ui/aux/quick_ask_controller.cc
++++ b/chrome/browser/ui/aux/quick_ask_controller.cc
+@@ -96,8 +96,8 @@
+       return false;
+     const gfx::Rect work_area =
+         screen->GetDisplayNearestPoint(screen->GetCursorScreenPoint()).work_area();
+-    constexpr int kWidth = 520;
+-    constexpr int kHeight = 640;
++    constexpr int kWidth = 440;
++    constexpr int kHeight = 184;
+     const gfx::Rect bounds(
+         work_area.CenterPoint().x() - kWidth / 2,
+         work_area.CenterPoint().y() - kHeight / 2, kWidth, kHeight);
+@@ -115,6 +115,26 @@
+     popup->GetWindow()->SetBounds(bounds);
+     popup->GetWindow()->Show();
+     popup->GetWindow()->Activate();
++    return true;
++  }
++
++  bool SetLayout(BrowserWindowInterface* browser, bool conversation,
++                 int draft_height) {
++    if (!IsPopup(browser) || browser->GetProfile()->IsOffTheRecord())
++      return false;
++    auto* screen = display::Screen::Get();
++    if (!screen) return false;
++    const gfx::Rect work_area = screen->GetDisplayNearestWindow(
++        browser->GetWindow()->GetNativeWindow()).work_area();
++    gfx::Rect bounds = browser->GetWindow()->GetBounds();
++    const int width = std::min(conversation ? 520 : 440, work_area.width());
++    const int height = std::min(conversation ? 640 : std::clamp(draft_height, 184, 360),
++                                work_area.height());
++    bounds.set_x(bounds.CenterPoint().x() - width / 2);
++    bounds.set_size(gfx::Size(width, height));
++    bounds.AdjustToFit(work_area);
++    if (bounds != browser->GetWindow()->GetBounds())
++      browser->GetWindow()->SetBounds(bounds);
+     return true;
+   }
+ 
+@@ -241,5 +261,9 @@
+ bool ExpandQuickAsk(BrowserWindowInterface* browser) {
+   return Controller().Expand(browser);
+ }
++bool SetQuickAskLayout(BrowserWindowInterface* browser, bool conversation,
++                       int draft_height) {
++  return Controller().SetLayout(browser, conversation, draft_height);
++}
+ 
+ }  // namespace aux
+diff --git a/chrome/browser/ui/aux/quick_ask_controller.h b/chrome/browser/ui/aux/quick_ask_controller.h
+--- a/chrome/browser/ui/aux/quick_ask_controller.h
++++ b/chrome/browser/ui/aux/quick_ask_controller.h
+@@ -29,6 +29,8 @@
+ bool OpenQuickAsk(Profile* profile);
+ bool DismissQuickAsk(BrowserWindowInterface* browser);
+ bool ExpandQuickAsk(BrowserWindowInterface* browser);
++bool SetQuickAskLayout(BrowserWindowInterface* browser, bool conversation,
++                       int draft_height);
+ 
+ }  // namespace aux
+ 
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -491,6 +491,19 @@
+                             "", "");
+     return;
+   }
++  if (method == "quickAskLayout") {
++    const auto* layout = list->size() == 1 ? (*list)[0].GetIfDict() : nullptr;
++    const auto conversation = layout ? layout->FindBool("conversation") : std::nullopt;
++    const auto height = layout ? layout->FindInt("draftHeight") : std::nullopt;
++    if (!conversation || !height || *height < 184 || *height > 360) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid Quick Ask layout");
++      return;
++    }
++    const bool changed = aux::SetQuickAskLayout(browser_, *conversation, *height);
++    std::move(callback).Run(changed, changed ? "true" : "", changed ? "" : "forbidden",
++                            changed ? "" : "Only the current Quick Ask window can resize itself.");
++    return;
++  }
+   if (method == "quickAsk") {
+     if (list->size() != 1 || !(*list)[0].is_string()) {
+       std::move(callback).Run(false, "", "invalid_argument",

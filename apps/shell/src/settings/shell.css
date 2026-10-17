@@ -514,13 +514,14 @@
   }
   .settings-content .field.ui-setting.ui-setting-feature > .setting-label {
     padding: var(--space-3) var(--space-3-5) 0;
-    font-size: var(--fs-md);
+    font-size: var(--fs-lg);
   }
   .settings-content .field.ui-setting.ui-setting-feature > .hint {
     grid-column: 1;
     grid-row: 2;
     padding: 0 var(--space-3-5);
     align-self: start;
+    font-size: var(--fs-md);
     font-weight: var(--fw-regular);
     line-height: 1.5;
   }

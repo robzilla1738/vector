@@ -1,6 +1,6 @@
 import type { PageTarget } from "@aux/contracts";
 
-/** Runtime content updates cannot overwrite native placement or ordinary tab lifecycle. */
+/** Runtime content updates cannot overwrite native placement, history or ordinary tab lifecycle. */
 export const retainNativeTabMetadata = (
   previous: PageTarget,
   next: PageTarget,
@@ -14,6 +14,9 @@ export const retainNativeTabMetadata = (
         anchor: previous.anchor,
         split: previous.split,
         lastActiveAt: previous.lastActiveAt,
+        ...(!previous.ownedByRuntime && previous.backend === "aux"
+          ? { canGoBack: previous.canGoBack, canGoForward: previous.canGoForward }
+          : {}),
         ...(!previous.ownedByRuntime && previous.backend === "aux" && previous.lifecycle !== undefined
           ? {
               lifecycle: previous.lifecycle,

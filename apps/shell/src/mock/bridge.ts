@@ -2297,6 +2297,7 @@ export function installMockBridge(q: URLSearchParams) {
     quickAskShortcut: async (enabled) => ({ enabled: !!enabled, registered: !!enabled, error: "" }),
     windowKind: q.get("quickAsk") === "1" ? "quick-ask" : q.get("little") === "1" ? "little" : "normal",
     quickAsk: async (action) => action === "status" && q.get("quickAsk") === "1",
+    quickAskLayout: async () => q.get("quickAsk") === "1",
     onQuickAskState: () => () => {},
     onPageAction: () => () => {},
     retryDownload: async () => {

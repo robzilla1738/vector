@@ -149,3 +149,38 @@ it("loads cloud setup on demand and clears the credential draft when the dialog 
     vi.unstubAllGlobals();
   }
 });
+
+it("recovers a failed status read without reopening the editor or admitting a save before status arrives", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  rpc
+    .mockReset()
+    .mockRejectedValueOnce(new Error("Runtime is reconnecting"))
+    .mockResolvedValueOnce({ configured: false, revision: 7 });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<CloudExecutionEditor />));
+    const save = () =>
+      [...host.querySelectorAll("button")].find(
+        (item) => item.textContent === "Save cloud account and rates",
+      )!;
+    expect(save().disabled).toBe(true);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("Runtime is reconnecting");
+    await act(async () =>
+      [...host.querySelectorAll("button")]
+        .find((item) => item.textContent === "Retry loading cloud account")!
+        .click(),
+    );
+    expect(save().disabled).toBe(false);
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(rpc.mock.calls.map(([method]) => method)).toEqual([
+      "settings.cloud.status",
+      "settings.cloud.status",
+    ]);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    vi.unstubAllGlobals();
+  }
+});

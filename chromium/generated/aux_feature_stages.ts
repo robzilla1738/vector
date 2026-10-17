@@ -220,7 +220,8 @@ const requirements = {
   "quickAsk": {
     "requires": [
       "quickAskShortcut",
-      "quickAsk"
+      "quickAsk",
+      "quickAskLayout"
     ]
   },
   "conversation": {

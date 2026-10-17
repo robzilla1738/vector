@@ -2,7 +2,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "../ui/dialog";
 import { smallButtonProps } from "../ui/button-props";
 import { shellIconClose, shellIconRight } from "../ui/icons";
+import { availableForFocus } from "../ui/focus";
+import { topModal } from "../ui/modal-stack";
 import "./SettingsDialogControl.css";
+
+const editorSelector =
+  'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:disabled), textarea:not(:disabled), select:not(:disabled)';
 
 /** Compact settings entry; the existing editor mounts only while its dialog is open. */
 export function SettingsDialogControl({
@@ -27,9 +32,38 @@ export function SettingsDialogControl({
   const [open, setOpen] = useState(defaultOpen);
   const trigger = useRef<HTMLButtonElement>(null);
   const editorFocus = useRef<HTMLElement>(null);
+  const editor = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!active) setOpen(false);
   }, [active]);
+  useEffect(() => {
+    const content = editor.current;
+    const dialog = content?.closest("dialog");
+    if (!open || !active || !content || !dialog || editorFocus.current) return;
+    // Async editors may initially have no enabled fields. Hand off their first
+    // focus once ready, unless the person has already interacted with the dialog.
+    const observer = new MutationObserver(() => {
+      const field = [...content.querySelectorAll<HTMLElement>(editorSelector)].find(availableForFocus);
+      if (field && dialog.open && topModal() === dialog) {
+        stop();
+        field.focus({ preventScroll: true });
+      }
+    });
+    const stop = () => {
+      observer.disconnect();
+      dialog.removeEventListener("keydown", stop, true);
+      dialog.removeEventListener("pointerdown", stop, true);
+    };
+    observer.observe(content, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["disabled", "hidden"],
+    });
+    dialog.addEventListener("keydown", stop, true);
+    dialog.addEventListener("pointerdown", stop, true);
+    return stop;
+  }, [open, active]);
   return (
     <>
       <button
@@ -68,10 +102,8 @@ export function SettingsDialogControl({
           <div
             className="settings-preference-editor"
             ref={(node) => {
-              editorFocus.current =
-                node?.querySelector<HTMLElement>(
-                  'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:disabled), textarea:not(:disabled), select:not(:disabled)',
-                ) ?? null;
+              editor.current = node;
+              editorFocus.current = node?.querySelector<HTMLElement>(editorSelector) ?? null;
             }}
           >
             {typeof children === "function" ? children(() => setOpen(false)) : children}

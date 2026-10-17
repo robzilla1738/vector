@@ -428,6 +428,10 @@ export const BrowserHostMethods = {
     strictObject({ enabled: bool, registered: bool, error: str }),
   ),
   quickAsk: quickAskShell(tuple([z.enum(["open", "expand", "dismiss", "status"])]), bool),
+  quickAskLayout: quickAskShell(
+    tuple([strictObject({ conversation: bool, draftHeight: z.number().int().min(184).max(360) })]),
+    bool,
+  ),
   showTabWindow: shell("windowSync", tuple([str]), bool),
   littleWindow: littleWindowShell(
     tuple([
