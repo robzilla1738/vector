@@ -1,5 +1,12 @@
 # Aux status — October 16, 2026
 
+Native consolidation started for `6f38844cc`: launcher 48050, exec session
+93092, log `/tmp/aux-agent-behavior-native.log`. Previous launcher 34917/app 36707
+exited normally and its disposable Profile was removed before starting. Keep this
+single builder and poll it; do not start another. Acceptance still needs native
+Settings persistence, sound preview/background delivery and per-tab chat restoration
+(including assistant hide/reopen and Keep current chat).
+
 October 16 behavior batch (references 048–049): Agent access now groups mode,
 Follow-up behavior (Queue/Steer), and Ask Aux on tab switch (New chat per tab/Keep
 current chat) in one rounded card. Both choices persist in runtime Settings and
