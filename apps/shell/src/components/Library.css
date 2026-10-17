@@ -599,6 +599,12 @@
     display: grid;
     gap: 4px;
   }
+  .library-bookmark-actions > hr {
+    width: 100%;
+    margin: 4px 0;
+    border: 0;
+    border-top: var(--hairline) solid var(--line);
+  }
   .library-bookmark-actions .icon-btn {
     display: flex;
     justify-content: flex-start;

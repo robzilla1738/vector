@@ -1,5 +1,26 @@
 # Aside UI parity — October 16, 2026
 
+Bookmark menu destination batch (reference 170): source now orders Edit/Delete,
+Private window, new tab group, new tab, new window and split view, with Preview
+last and a separator between editing and navigation. Clipboard actions remain
+missing. New group/split actions respect Labs capabilities and reject bookmarklets.
+Split is disabled without an available current browser page. Both use checked
+native saved-node opening in the source Space, refresh the native catalog, and
+verify local human ownership before arranging the returned page. Grouping uses
+existing persistent tab-folder organization; splitting uses native ACK-backed
+commitSplit. Window/Space changes stop later work. Arrangement failure retains
+the opened tab and reports partial success instead of closing potential user work.
+
+Integrated typecheck/lint and 4,643 tests / 748 files passed in 94.15s. Final
+menu-order/Space-guard refinement: typecheck and 21 focused tests passed (including
+five destination cases); renderer build passed in 2.07s. Logs:
+`/tmp/aux-bookmark-arrangements-check.log`,
+`/tmp/aux-bookmark-arrangements-final.log`,
+`/tmp/aux-bookmark-arrangements-build.log`.
+The Vite mock has no mutable native bookmarks, so it cannot validate these actions;
+native group/split and sort/undo walkthroughs remain required. No native bridge
+or C++ changes in this batch. Full Aside parity remains incomplete.
+
 Native walkthrough on October 17: the current disposable preview is verified in
 Settings > General as source `79bfa144e91b062efbbbc9f9d7adf34b107593a9`,
 build/ABI `c791d36afba5add46ccd2945dcc37acffe88fba766bcaebe1cc626df9aaf0b75`,

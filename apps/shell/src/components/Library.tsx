@@ -11,6 +11,8 @@ import { NewBookmarkDialog } from "./NewBookmarkDialog";
 import { sortBookmarkFolder, undoBookmarkOrder, type BookmarkOrderUndo } from "../bookmark-sort";
 import { HistoryDeleteDialog } from "./HistoryDeleteDialog";
 import { HistoryVisitRow } from "./HistoryVisitRow";
+import { openBookmarkDestination } from "../bookmark-destinations";
+import { localSplitPage } from "../features/surfaces/split-actions";
 import { SavedPageActions } from "./SavedPageActions";
 import { FavIcon } from "./SiteTile";
 import { BookmarkFolderNavigation } from "./BookmarkFolderNavigation";
@@ -45,6 +47,7 @@ import {
 import { call, useStore } from "../store";
 import { hostOf } from "../workspace";
 import {
+  shellIconSplit,
   shellIconArchive,
   shellIconClock,
   shellIconChromeSm,
@@ -174,6 +177,9 @@ const SavedPageRow = memo(function SavedPageRow({
   }, [isEditing, busy]);
   const canPeek = useFeature("peek");
   const privateWindows = useFeature("privateWindows");
+  const groups = useFeature("folders");
+  const splits = useFeature("splitView");
+  const canSplit = useStore((state) => !!state.activePageId && !!localSplitPage(state.activePageId));
   useStore((state) => {
     const item = state.bookmarks[position];
     return item && bookmarkKey(item) === itemKey
@@ -201,6 +207,25 @@ const SavedPageRow = memo(function SavedPageRow({
   );
   if (!item || bookmarkKey(item) !== itemKey) return null;
   const title = item.title || hostOf(item.url);
+  const windowAction = (destination: "window" | "private") => (
+    <button
+      {...staticSmallIconButtonProps}
+      disabled={busy || item.url.toLowerCase().startsWith("javascript:")}
+      onClick={() =>
+        void action(async () => {
+          await openBookmark(item, destination);
+          setNotice(
+            destination === "private"
+              ? "Bookmark opened in a Private window."
+              : "Bookmark opened in a new window.",
+          );
+        })
+      }
+    >
+      {shellIconChromeSm}
+      <span>{destination === "private" ? "Open in Private window" : "Open in new window"}</span>
+    </button>
+  );
   return (
     <div
       className={`library-item${selected ? " selected" : ""}${view === "reading" && item.readAt ? " read" : ""}`}
@@ -251,53 +276,8 @@ const SavedPageRow = memo(function SavedPageRow({
         hidden={view === "bookmarks" && selecting}
         disabled={busy}
       >
-        {canPeek && bookmarkWebUrl(item.url) && (
-          <button
-            {...staticSmallIconButtonProps}
-            title="Preview link"
-            disabled={busy}
-            aria-label={`Preview ${title}`}
-            onClick={() => {
-              useStore.getState().setOverlay(null);
-              void openPeekLink(item.url).catch((error) => useStore.getState().toast(errorMessage(error)));
-            }}
-          >
-            {shellIconSearch}
-            {view === "bookmarks" && <span>Preview link</span>}
-          </button>
-        )}
         {view === "bookmarks" ? (
           <>
-            <button
-              {...staticSmallIconButtonProps}
-              disabled={busy || item.url.toLowerCase().startsWith("javascript:")}
-              onClick={(event) => onOpen(item, true, event.currentTarget)}
-            >
-              {shellIconReopen}
-              <span>Open in new tab</span>
-            </button>
-            {(["window", "private"] as const)
-              .filter((destination) => destination === "window" || (privateWindows && !bridge.privateMode))
-              .map((destination) => (
-                <button
-                  key={destination}
-                  {...staticSmallIconButtonProps}
-                  disabled={busy || item.url.toLowerCase().startsWith("javascript:")}
-                  onClick={() =>
-                    void action(async () => {
-                      await openBookmark(item, destination);
-                      setNotice(
-                        destination === "private"
-                          ? "Bookmark opened in a Private window."
-                          : "Bookmark opened in a new window.",
-                      );
-                    })
-                  }
-                >
-                  {shellIconChromeSm}
-                  <span>{destination === "private" ? "Open in Private window" : "Open in new window"}</span>
-                </button>
-              ))}
             <button
               {...staticSmallIconButtonProps}
               title="Edit bookmark"
@@ -335,6 +315,37 @@ const SavedPageRow = memo(function SavedPageRow({
               {shellIconTrash}
               <span>Delete</span>
             </button>
+            <hr />
+            {privateWindows && !bridge.privateMode && windowAction("private")}
+            {groups && (
+              <button
+                {...staticSmallIconButtonProps}
+                disabled={busy || item.url.toLowerCase().startsWith("javascript:")}
+                onClick={() => void action(() => openBookmarkDestination(item, "group"))}
+              >
+                {shellIconFolderClosed}
+                <span>Open in new tab group</span>
+              </button>
+            )}
+            <button
+              {...staticSmallIconButtonProps}
+              disabled={busy || item.url.toLowerCase().startsWith("javascript:")}
+              onClick={(event) => onOpen(item, true, event.currentTarget)}
+            >
+              {shellIconReopen}
+              <span>Open in new tab</span>
+            </button>
+            {windowAction("window")}
+            {splits && (
+              <button
+                {...staticSmallIconButtonProps}
+                disabled={busy || !canSplit || item.url.toLowerCase().startsWith("javascript:")}
+                onClick={() => void action(() => openBookmarkDestination(item, "split"))}
+              >
+                {shellIconSplit}
+                <span>Open in split view</span>
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -402,6 +413,21 @@ const SavedPageRow = memo(function SavedPageRow({
               {shellIconTrash}
             </button>
           </>
+        )}
+        {canPeek && bookmarkWebUrl(item.url) && (
+          <button
+            {...staticSmallIconButtonProps}
+            title="Preview link"
+            disabled={busy}
+            aria-label={`Preview ${title}`}
+            onClick={() => {
+              useStore.getState().setOverlay(null);
+              void openPeekLink(item.url).catch((error) => useStore.getState().toast(errorMessage(error)));
+            }}
+          >
+            {shellIconSearch}
+            {view === "bookmarks" && <span>Preview link</span>}
+          </button>
         )}
       </SavedPageActions>
       {view === "bookmarks" && editing && (
